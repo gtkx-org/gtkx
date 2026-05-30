@@ -97,7 +97,7 @@ function constructGObject(
     const collector: GObjectPropCollector = { props, names: [], values: [], seen: new Set() };
     walkPropsForGObject(leafCtor, collector);
 
-    return objectNewWithProperties(Number(leafMeta.gtype()), collector.names, collector.values);
+    return objectNewWithProperties(leafMeta.gtype, collector.names, collector.values);
 }
 
 function walkPropsForGObject(ctor: NativeClass | null, collector: GObjectPropCollector): void {

@@ -1,58 +1,50 @@
 import type { ModuleContext } from "../dsl/context.js";
 import { indent, quote } from "../dsl/emit.js";
-import { camelCase, pascalCase } from "../dsl/identifier.js";
+import { camelCase } from "../dsl/identifier.js";
 import type { GirBoxed } from "../gir/boxed.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirProperty } from "../gir/property.js";
 import { computeBoxedFieldSlots } from "./boxed-field-accessor.js";
-import { renderGetTypeReference } from "./gtype-binding.js";
 import { collectInterfaceProperties } from "./inheritance.js";
 import { writeFfiType } from "./value.js";
 
 /**
- * Emits `registerConstructionMeta(Class, { kind: "gobject", ... })` for a
- * GObject class declaration.
+ * Renders the `{ kind: "gobject", props: { … } }` construction-meta fragment
+ * for a GObject class or interface descriptor.
  *
- * The meta lists every property the constructor accepts (writable,
- * construct, or construct-only) keyed by its camelCase JS name. Read-only
- * properties are intentionally omitted — they cannot be passed to
- * `g_object_new_with_properties` and consumers access them at runtime via
- * the property accessor's GIR-name path.
- *
- * Classes with no GType (rare but possible for abstract bases without
- * `glib:get-type`) are skipped.
+ * The meta lists every property the constructor accepts (writable, construct,
+ * or construct-only) keyed by its camelCase JS name. Read-only properties are
+ * intentionally omitted — they cannot be passed to
+ * `g_object_new_with_properties` and consumers access them at runtime via the
+ * property accessor's GIR-name path. The GType is omitted here: the runtime
+ * resolves the descriptor's shared GType once and injects it.
  *
  * @param ctx - The module context
  * @param klass - The class to register
  */
-export const emitClassConstructionMeta = (ctx: ModuleContext, klass: GirClass): void => {
-    if (klass.glibGetType === undefined) return;
-    const getTypeRef = renderGetTypeReference(ctx, klass.glibGetType, klass.glibTypeName);
-    if (getTypeRef === undefined) return;
-    const className = pascalCase(klass.name);
+export const renderGObjectConstructionMeta = (ctx: ModuleContext, klass: GirClass): string => {
     const props = [...klass.properties, ...collectInterfaceProperties(ctx, klass)].filter(isConstructable);
     const propsLiteral = renderPropsLiteral(ctx, props);
-    ctx.addRuntimeImport("registerConstructionMeta");
-    const body = `kind: "gobject",\ngtype: ${getTypeRef},\nprops: ${propsLiteral},`;
-    ctx.module.appendRegistration(`registerConstructionMeta(${className}, {\n${indent(body, 1)}\n});`);
+    const body = `kind: "gobject",\nprops: ${propsLiteral},`;
+    return `{\n${indent(body, 1)}\n}`;
 };
 
 /**
- * Emits `registerConstructionMeta(Class, { kind: "boxed", ... })` for a
- * boxed record declaration.
+ * Renders the `{ kind: "boxed", … }` construction-meta fragment for a boxed
+ * record descriptor.
  *
  * The meta records the struct size, GLib type/library (for the boxed
- * allocator), and per-field byte offsets keyed by camelCase JS name.
- * Vtable records are skipped; plain structs without a GType also skip
- * registration because they cannot be constructed through the meta path.
+ * allocator), and per-field byte offsets keyed by camelCase JS name. Vtable
+ * records are skipped; plain structs without a GType also skip registration
+ * because they cannot be constructed through the meta path. Returns `undefined`
+ * for those skipped records.
  *
  * @param ctx - The module context
  * @param boxed - The boxed record to register
  */
-export const emitBoxedConstructionMeta = (ctx: ModuleContext, boxed: GirBoxed): void => {
-    if (boxed.flavor === "vtable") return;
-    if (boxed.glibGetType === undefined && boxed.disguised) return;
-    const className = pascalCase(boxed.name);
+export const renderBoxedConstructionMeta = (ctx: ModuleContext, boxed: GirBoxed): string | undefined => {
+    if (boxed.flavor === "vtable") return undefined;
+    if (boxed.glibGetType === undefined && boxed.disguised) return undefined;
     const { slots, size } = computeBoxedFieldSlots(ctx, boxed.fields, boxed.isUnion);
     const fieldsLiteral = renderBoxedFieldsLiteral(ctx, slots);
     const lib = ctx.namespace.sharedLibrary;
@@ -61,8 +53,7 @@ export const emitBoxedConstructionMeta = (ctx: ModuleContext, boxed: GirBoxed): 
     if (glibTypeName !== undefined) lines.push(`glibTypeName: ${quote(glibTypeName)}`);
     if (lib !== undefined) lines.push(`lib: ${quote(lib)}`);
     lines.push(`fields: ${fieldsLiteral}`);
-    ctx.addRuntimeImport("registerConstructionMeta");
-    ctx.module.appendRegistration(`registerConstructionMeta(${className}, {\n${indent(lines.join(",\n"), 1)},\n});`);
+    return `{\n${indent(lines.join(",\n"), 1)},\n}`;
 };
 
 type BoxedFieldSlot = ReturnType<typeof computeBoxedFieldSlots>["slots"][number];

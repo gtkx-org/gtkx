@@ -9,7 +9,6 @@ import { emitConstant } from "../writers/constants.js";
 import { emitEnum } from "../writers/enum.js";
 import { emitNamespaceBootstrap, emitNamespaceFunction } from "../writers/function.js";
 import { emitInterface } from "../writers/interface.js";
-import { emitSignals } from "../writers/signal.js";
 
 /**
  * Generates the TypeScript source for one FFI namespace module.
@@ -39,11 +38,9 @@ export const generateNamespaceModule = (
     }
     for (const klass of topologicalClassOrder(namespace.classes, namespace.name)) {
         emitClass(ctx, klass);
-        emitSignals(ctx, klass);
     }
     for (const iface of namespace.interfaces) {
         emitInterface(ctx, iface);
-        emitSignals(ctx, iface);
     }
     for (const fn of namespace.functions) {
         emitNamespaceFunction(ctx, fn);

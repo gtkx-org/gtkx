@@ -53,7 +53,7 @@ export type SignalGObject = {
 
 type SignalMeta = {
     readonly signals: ReadonlyMap<string, SignalDescriptor>;
-    readonly getType: () => unknown;
+    readonly gtype: unknown;
     readonly gobject: SignalGObject;
 };
 
@@ -66,16 +66,16 @@ const signalMetaByClass = new WeakMap<NativeClass, SignalMeta>();
  *
  * @param cls - The generated wrapper class
  * @param signals - Map of signal name to its connect/emit descriptor
- * @param getType - Resolves the class's runtime `GType`
+ * @param gtype - The class's runtime `GType`, resolved at registration
  * @param gobject - The `GObject` namespace used for emit-side marshalling
  */
 export function registerSignalMeta(
     cls: NativeClass,
     signals: ReadonlyMap<string, SignalDescriptor>,
-    getType: () => unknown,
+    gtype: unknown,
     gobject: SignalGObject,
 ): void {
-    signalMetaByClass.set(cls, { signals, getType, gobject });
+    signalMetaByClass.set(cls, { signals, gtype, gobject });
 }
 
 /**
@@ -191,7 +191,7 @@ export function emitSignal(
         }
     }
 
-    const signalId = gobject.signalLookup(sigName, meta.getType());
+    const signalId = gobject.signalLookup(sigName, meta.gtype);
     if (descriptor.returnGType === null) {
         gobject.signalEmitv(values, signalId, 0);
     } else {

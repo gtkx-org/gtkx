@@ -8,8 +8,7 @@ import { ImportsManifest } from "./imports.js";
  * 1. *Bindings* — the `const fn_name = t.fn(...)` block at the top.
  * 2. *Declarations* — the class bodies, free function exports, enums,
  *    constants.
- * 3. *Registrations* — the trailing `registerSignalMeta`, `setClassStruct`,
- *    `registerInterfaceClassStruct` block.
+ * 3. *Registrations* — the trailing `registerNativeClass(...)` block.
  *
  * Keeping the three buckets independent removes ordering constraints
  * between writers and lets {@link emit} stitch a final source string with
@@ -52,8 +51,7 @@ export class ModuleBuilder {
     }
 
     /**
-     * Appends a trailing registration statement (`registerSignalMeta(…)`,
-     * `setClassStruct(…)`, `registerInterfaceClassStruct(…)`).
+     * Appends a trailing registration statement (`registerNativeClass(…)`).
      *
      * @param code - The source fragment, without a trailing newline
      */

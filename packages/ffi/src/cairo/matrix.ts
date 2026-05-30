@@ -1,8 +1,8 @@
 import { createRef, type NativeHandle } from "@gtkx/native";
-import { registerConstructionMeta } from "../construction-meta.js";
 import type { Status } from "../generated/cairo/cairo.js";
 import { getHandle, NativeObject } from "../handles.js";
 import { alloc, t } from "../native.js";
+import { registerNativeClass } from "../register-native-class.js";
 import { wrapHandle } from "../registry.js";
 import { DOUBLE_REF, DOUBLE_TYPE, INT_TYPE, LIB, MATRIX_T } from "./common.js";
 
@@ -168,10 +168,13 @@ export class Matrix extends NativeObject {
     }
 }
 
-registerConstructionMeta(Matrix, {
-    kind: "boxed",
-    size: 48,
-    glibTypeName: "cairo_matrix_t",
-    lib: LIB,
-    fields: {},
+registerNativeClass(Matrix, {
+    role: "boxed",
+    construction: {
+        kind: "boxed",
+        size: 48,
+        glibTypeName: "cairo_matrix_t",
+        lib: LIB,
+        fields: {},
+    },
 });

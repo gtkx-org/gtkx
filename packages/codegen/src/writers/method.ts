@@ -608,9 +608,38 @@ const parameterCallExpression = (ctx: ModuleContext, parameter: GirParameter, in
     return name;
 };
 
-const renderCallbackArgument = (ctx: ModuleContext, resolved: ResolvedCallback, name: string): string => {
-    const { callback, namespaceName } = resolved;
-    const callArgs = callback.parameters
+/**
+ * The marshalling plan for a callback or signal trampoline's incoming
+ * arguments: the rendered comma-separated handler call arguments and the
+ * trampoline-arg indices of any out-parameter cells.
+ */
+export type TrampolineArgPlan = {
+    readonly callArgs: string;
+    readonly outArgIndices: number[];
+};
+
+/**
+ * Plans how a callback or signal trampoline forwards its raw arguments to the
+ * user handler.
+ *
+ * In-parameters are wrapped via {@link wrapReturnValue} and joined into the
+ * handler call; out-parameters are dropped from the call and their trampoline
+ * cell indices collected for write-back. `argOffset` shifts every `args[...]`
+ * access: callbacks read from index `0`, while signal trampolines reserve
+ * index `0` for the emitting instance and so pass `1`.
+ *
+ * @param ctx - The module context
+ * @param parameters - The callback or signal parameters, varargs excluded
+ * @param namespaceName - The namespace the parameter type references resolve against
+ * @param argOffset - Added to each parameter's positional index
+ */
+export const planTrampolineArgs = (
+    ctx: ModuleContext,
+    parameters: readonly GirParameter[],
+    namespaceName: string,
+    argOffset: number,
+): TrampolineArgPlan => {
+    const callArgs = parameters
         .map((parameter, index) =>
             isOutParameter(parameter)
                 ? undefined
@@ -618,15 +647,23 @@ const renderCallbackArgument = (ctx: ModuleContext, resolved: ResolvedCallback, 
                       ref: qualifyTypeRef(parameter.type, namespaceName),
                       transfer: parameter.transferOwnership,
                       nullable: parameter.nullable,
-                      valueExpression: isCellInout(ctx, parameter) ? `args[${index}].value` : `args[${index}]`,
+                      valueExpression: isCellInout(ctx, parameter)
+                          ? `args[${index + argOffset}].value`
+                          : `args[${index + argOffset}]`,
                   }),
         )
         .filter((expression): expression is string => expression !== undefined)
         .join(", ");
-    const returnRef = qualifyTypeRef(callback.returnValue.type, namespaceName);
-    const outArgIndices = callback.parameters
-        .map((parameter, index) => (isOutParameter(parameter) || isCellInout(ctx, parameter) ? index : -1))
+    const outArgIndices = parameters
+        .map((parameter, index) => (isOutParameter(parameter) || isCellInout(ctx, parameter) ? index + argOffset : -1))
         .filter((index) => index >= 0);
+    return { callArgs, outArgIndices };
+};
+
+const renderCallbackArgument = (ctx: ModuleContext, resolved: ResolvedCallback, name: string): string => {
+    const { callback, namespaceName } = resolved;
+    const { callArgs, outArgIndices } = planTrampolineArgs(ctx, callback.parameters, namespaceName, 0);
+    const returnRef = qualifyTypeRef(callback.returnValue.type, namespaceName);
     if (outArgIndices.length > 0) {
         const body = renderTupleWriteback(ctx, `${name}(${callArgs})`, outArgIndices, returnRef);
         return `${name} ? (...args) => {\n    ${body}\n} : null`;

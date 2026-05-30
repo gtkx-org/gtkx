@@ -9,16 +9,16 @@ import {
     getNativeClass,
     getNativeObject,
     getNativeObjectAsInterface,
-    registerNativeClass,
+    setClassGType,
 } from "../src/registry.js";
 
-const INVALID_GTYPE = 0 as unknown as GType;
+const INVALID_GTYPE: GType = 0;
 
-describe("registerNativeClass", () => {
+describe("setClassGType", () => {
     it("registers a class by GType", () => {
         class TestClass extends NativeObject {}
-        const fakeGtype = 123456789 as unknown as GType;
-        registerNativeClass(TestClass as NativeClass, fakeGtype);
+        const fakeGtype: GType = 123456789;
+        setClassGType(TestClass as NativeClass, fakeGtype);
         expect(findNativeClass(fakeGtype)).toBe(TestClass);
     });
 

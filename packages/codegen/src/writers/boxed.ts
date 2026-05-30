@@ -5,8 +5,9 @@ import type { GirBoxed } from "../gir/boxed.js";
 import { computeBoxedFieldSlots, renderBoxedFieldAccessor } from "./boxed-field-accessor.js";
 import { buildPlainTypeMembers, type Callables, dedupeCallables, emitBindings } from "./callables.js";
 import { isClassStructRecord } from "./class-struct-record.js";
-import { emitBoxedConstructionMeta } from "./construction-meta.js";
-import { renderGetTypeCall } from "./gtype-binding.js";
+import { renderBoxedConstructionMeta } from "./construction-meta.js";
+import { renderGetTypeReference } from "./gtype-binding.js";
+import { appendNativeClassRegistration } from "./registration.js";
 
 /**
  * Emits a class declaration plus optional boxed registration for a
@@ -42,14 +43,16 @@ export const emitBoxed = (ctx: ModuleContext, boxed: GirBoxed): void => {
     const body = members.map((member) => indent(member, 1)).join("\n\n");
     ctx.module.appendDeclaration(`export class ${className} {\n${body}\n}`);
 
-    if (boxed.glibGetType !== undefined) {
-        const gtypeCall = renderGetTypeCall(ctx, boxed.glibGetType, boxed.glibTypeName);
-        if (gtypeCall !== undefined) {
-            ctx.addRuntimeImport("registerNativeClass");
-            ctx.module.appendRegistration(`registerNativeClass(${className}, ${gtypeCall});`);
-        }
-    }
-    emitBoxedConstructionMeta(ctx, boxed);
+    const getTypeRef =
+        boxed.glibGetType === undefined
+            ? undefined
+            : renderGetTypeReference(ctx, boxed.glibGetType, boxed.glibTypeName);
+    appendNativeClassRegistration(ctx, {
+        className,
+        role: "boxed",
+        getTypeRef,
+        construction: renderBoxedConstructionMeta(ctx, boxed),
+    });
 };
 
 const buildBoxedMembers = (

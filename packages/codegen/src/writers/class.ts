@@ -18,20 +18,16 @@ import {
     renderInstanceMethod,
     renderStaticHead,
 } from "./callables.js";
-import { emitClassStruct } from "./class-struct.js";
-import { emitClassConstructionMeta } from "./construction-meta.js";
-import { renderGetTypeCall } from "./gtype-binding.js";
+import { renderVFuncMeta } from "./class-struct.js";
+import { renderGObjectConstructionMeta } from "./construction-meta.js";
+import { renderGetTypeReference } from "./gtype-binding.js";
 import { collectInterfaceProperties, forEachAncestor, resolveImplementedInterface } from "./inheritance.js";
 import { inputParameters, methodExportName, writePromisifiedBody, writePromisifiedSignature } from "./method.js";
 import { renderPropertyAccessor } from "./property-accessor.js";
+import { appendNativeClassRegistration } from "./registration.js";
 import { renderRuntimeOverride } from "./runtime-override.js";
-import { renderSignalMembers } from "./signal.js";
+import { renderSignalMembers, renderSignalRegistration } from "./signal.js";
 import { writeTsType } from "./types-ts.js";
-
-type InterfaceRef = {
-    readonly typeExpression: string;
-    readonly runtimeExpression: string;
-};
 
 /**
  * Emits a full class declaration for a `<class>` element.
@@ -65,13 +61,12 @@ export const emitClass = (ctx: ModuleContext, klass: GirClass): void => {
 
     const interfaceRefs = klass.implements
         .map((name) => resolveImplementsReference(ctx, name))
-        .filter((entry): entry is InterfaceRef => entry !== undefined);
+        .filter((entry): entry is string => entry !== undefined);
     if (interfaceRefs.length > 0) {
-        const extendsList = interfaceRefs.map((ref) => ref.typeExpression).join(", ");
-        ctx.module.appendDeclaration(`export interface ${className} extends ${extendsList} {}`);
+        ctx.module.appendDeclaration(`export interface ${className} extends ${interfaceRefs.join(", ")} {}`);
     }
 
-    appendClassRegistrations(ctx, klass, className, interfaceRefs);
+    appendClassRegistrations(ctx, klass, className);
 };
 
 const buildClassMembers = (
@@ -174,24 +169,20 @@ const appendFlattenedInterfaceMethods = (options: AppendFlattenedInterfaceMethod
     }
 };
 
-const appendClassRegistrations = (
-    ctx: ModuleContext,
-    klass: GirClass,
-    className: string,
-    interfaceRefs: readonly InterfaceRef[],
-): void => {
-    if (klass.glibGetType !== undefined) {
-        const gtypeCall = renderGetTypeCall(ctx, klass.glibGetType, klass.glibTypeName);
-        if (gtypeCall !== undefined) {
-            ctx.addRuntimeImport("registerNativeClass");
-            ctx.module.appendRegistration(`registerNativeClass(${className}, ${gtypeCall});`);
-            emitClassConstructionMeta(ctx, klass);
-        }
-    }
-    if (klass.glibTypeStruct !== undefined) {
-        emitClassStruct(ctx, klass);
-    }
-    void interfaceRefs;
+const appendClassRegistrations = (ctx: ModuleContext, klass: GirClass, className: string): void => {
+    const getTypeRef =
+        klass.glibGetType === undefined
+            ? undefined
+            : renderGetTypeReference(ctx, klass.glibGetType, klass.glibTypeName);
+    const construction = getTypeRef === undefined ? undefined : renderGObjectConstructionMeta(ctx, klass);
+    appendNativeClassRegistration(ctx, {
+        className,
+        role: "class",
+        getTypeRef,
+        construction,
+        vfuncs: renderVFuncMeta(ctx, klass),
+        signals: renderSignalRegistration(ctx, klass),
+    });
 };
 
 const renderClassInstanceMember = (
@@ -229,17 +220,13 @@ const renderPromisifiedMember = (
     return `${name}(${signature}): ${returnType} {\n${indent(body, 1)}\n}`;
 };
 
-const resolveImplementsReference = (ctx: ModuleContext, name: string): InterfaceRef | undefined => {
+const resolveImplementsReference = (ctx: ModuleContext, name: string): string | undefined => {
     const { namespaceName, typeName } = splitQualifiedName(name, ctx.namespace.name);
     const resolved = ctx.repository.resolveNamed(namespaceName, typeName);
     if (resolved === undefined || resolved.kind !== "interface") return undefined;
-    if (namespaceName === ctx.namespace.name) {
-        const local = pascalCase(typeName);
-        return { typeExpression: local, runtimeExpression: local };
-    }
+    if (namespaceName === ctx.namespace.name) return pascalCase(typeName);
     const alias = ctx.addCrossNamespaceImport(namespaceName);
-    const qualified = `${alias}.${pascalCase(typeName)}`;
-    return { typeExpression: qualified, runtimeExpression: qualified };
+    return `${alias}.${pascalCase(typeName)}`;
 };
 
 /** An ancestor method together with the namespace its type references resolve against. */

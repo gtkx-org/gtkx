@@ -11,9 +11,9 @@ import { writeFfiType } from "./value.js";
 type VtableKind = "class" | "interface";
 
 /**
- * Emits the `const xxxVFuncMeta = { … }` vtable descriptor registry and the
- * trailing `registerClassVFuncMeta(Class, xxxVFuncMeta)` (and, for interfaces,
- * the additional `registerInterfaceVFuncMeta(...)`) call for `klass`.
+ * Renders the `{ … }` vtable descriptor literal for a class or interface
+ * descriptor's `vfuncs` field, or `undefined` when the type exposes no
+ * marshallable slots.
  *
  * Each entry describes one overridable vtable slot — keyed by the slot's
  * camelCase name and carrying `{ kind, className, vfuncName, byteOffset,
@@ -21,27 +21,20 @@ type VtableKind = "class" | "interface";
  * a subclass method, locate the matching slot by byte offset, and register a
  * trampoline with the correct marshalling. Slots whose signature cannot be
  * marshalled (non-introspectable, variadic, out-parameters without
- * caller-allocates, or nested callbacks) are omitted. Classes that expose no
- * marshallable slots emit nothing at all.
+ * caller-allocates, or nested callbacks) are omitted. The `kind` discriminator
+ * lets the runtime register an interface vfunc mapping in addition to the class
+ * one when the descriptor's role is `"interface"`.
  *
  * @param ctx - The module context
  * @param klass - The class or interface
  */
-export const emitClassStruct = (ctx: ModuleContext, klass: GirClass): void => {
-    if (klass.glibTypeStruct === undefined) return;
-    const className = pascalCase(klass.name);
+export const renderVFuncMeta = (ctx: ModuleContext, klass: GirClass): string | undefined => {
+    if (klass.glibTypeStruct === undefined) return undefined;
     const structName = pascalCase(klass.glibTypeStruct);
     const kind: VtableKind = klass.isInterface ? "interface" : "class";
     const entries = vtableEntries(ctx, structName, kind, klass.glibTypeStruct);
-    if (entries.length === 0) return;
-    const metaName = `${className.charAt(0).toLowerCase()}${className.slice(1)}VFuncMeta`;
-    const body = `{\n${entries.map((entry) => indent(entry, 1)).join("\n")}\n}`;
-    ctx.addRuntimeImport("registerClassVFuncMeta");
-    ctx.module.appendRegistration(`const ${metaName} = ${body};\nregisterClassVFuncMeta(${className}, ${metaName});`);
-    if (klass.isInterface && klass.glibGetType !== undefined) {
-        ctx.addRuntimeImport("registerInterfaceVFuncMeta");
-        ctx.module.appendRegistration(`registerInterfaceVFuncMeta(${klass.glibGetType}(), ${metaName});`);
-    }
+    if (entries.length === 0) return undefined;
+    return `{\n${entries.map((entry) => indent(entry, 1)).join("\n")}\n}`;
 };
 
 const vtableEntries = (ctx: ModuleContext, structName: string, kind: VtableKind, typeStruct: string): string[] => {

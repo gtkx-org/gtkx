@@ -16,24 +16,17 @@ const gtypeByClass = new WeakMap<NativeClass, GType>();
 const interfaceGtypeByClass = new WeakMap<NativeClass, GType>();
 
 /**
- * Registers a native class for type resolution.
+ * Records the GLib type identifier of a native class in the identity registry.
  *
- * Called automatically by generated bindings. Can be used to register
- * custom subclasses.
+ * Invoked by `registerNativeClass` once it has resolved the class's `GType`,
+ * and by `registerClass` for runtime-registered subclasses. The recorded
+ * mapping lets {@link getNativeObject} resolve a raw native pointer back to its
+ * JavaScript wrapper class.
  *
  * @param cls - The native class to register
  * @param gtype - The GLib type identifier for the class
- *
- * @example
- * ```tsx
- * import { registerNativeClass } from "@gtkx/ffi";
- * import { my_custom_widget_get_type } from "./my-custom-widget-gtype.js";
- *
- * class MyCustomWidget extends Gtk.Widget {}
- * registerNativeClass(MyCustomWidget, my_custom_widget_get_type());
- * ```
  */
-export function registerNativeClass(cls: NativeClass, gtype: GType): void {
+export function setClassGType(cls: NativeClass, gtype: GType): void {
     if (gtype !== G_TYPE_INVALID) {
         classRegistry.set(gtype, cls);
         gtypeByClass.set(cls, gtype);
@@ -42,18 +35,18 @@ export function registerNativeClass(cls: NativeClass, gtype: GType): void {
 }
 
 /**
- * Registers the GLib interface type identifier for a generated interface
+ * Records the GLib interface type identifier for a generated interface
  * wrapper class.
  *
- * Called automatically by generated bindings, once per interface. The
- * recorded `GType` lets {@link getNativeObjectAsInterface} pick the most
- * derived registered class that still conforms to the interface when the
- * runtime type is an unregistered private implementation.
+ * Invoked by `registerNativeClass` for interface roles. The recorded `GType`
+ * lets {@link getNativeObjectAsInterface} pick the most derived registered
+ * class that still conforms to the interface when the runtime type is an
+ * unregistered private implementation.
  *
  * @param cls - The interface wrapper class
  * @param gtype - The GLib interface type identifier
  */
-export function registerNativeInterface(cls: NativeClass, gtype: GType): void {
+export function setInterfaceGType(cls: NativeClass, gtype: GType): void {
     if (gtype !== G_TYPE_INVALID) {
         interfaceGtypeByClass.set(cls, gtype);
         (cls.prototype as GTypeStamped).__gtype__ = gtype;
@@ -70,7 +63,7 @@ export function getClassGType(cls: NativeClass): GType {
 
 /**
  * Returns the GLib interface type identifier registered for `cls` via
- * {@link registerNativeInterface}, or the invalid GType (`0`) when `cls` is
+ * {@link setInterfaceGType}, or the invalid GType (`0`) when `cls` is
  * not a registered interface wrapper.
  */
 export function getInterfaceGType(cls: NativeClass): GType {

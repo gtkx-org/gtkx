@@ -89,7 +89,7 @@ export function setHandle(obj: object, handle: NativeHandle): void {
  * and consulted by `registerClass` to auto-discover vfunc overrides supplied
  * as plain methods on user subclasses.
  */
-type ClassVFuncMeta = Readonly<Record<string, unknown>>;
+export type ClassVFuncMeta = Readonly<Record<string, unknown>>;
 
 const classVFuncMetaMap = new WeakMap<object, ClassVFuncMeta>();
 

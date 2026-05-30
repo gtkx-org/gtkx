@@ -34,6 +34,39 @@ export type BoxedFieldMeta = {
 };
 
 /**
+ * Construction metadata for a boxed value type.
+ *
+ * Boxed records have no GType dependency in their construction path, so this
+ * shape is shared verbatim between the registration descriptor and the stored
+ * {@link ConstructionMeta}.
+ */
+export type BoxedConstructionMeta = {
+    kind: "boxed";
+    /** Struct size in bytes. */
+    size: number;
+    /** Optional GLib type name used by the boxed allocator. */
+    glibTypeName?: string;
+    /** Optional shared library hosting the boxed type. */
+    lib?: string;
+    /** Writable fields keyed by their JavaScript name. */
+    fields: Record<string, BoxedFieldMeta>;
+};
+
+/**
+ * Construction metadata as supplied to `registerNativeClass`.
+ *
+ * The GObject arm carries no `gtype` — the runtime resolves the descriptor's
+ * shared GType once and injects the value when storing the {@link ConstructionMeta}.
+ */
+export type ConstructionDescriptor =
+    | {
+          kind: "gobject";
+          /** Writable / construct properties declared by this class only. */
+          props: Record<string, GObjectPropMeta>;
+      }
+    | BoxedConstructionMeta;
+
+/**
  * Metadata describing how to construct a registered native type.
  *
  * One entry per concrete class is registered in {@link CONSTRUCTION_META}
@@ -43,28 +76,12 @@ export type BoxedFieldMeta = {
 export type ConstructionMeta =
     | {
           kind: "gobject";
-          /**
-           * Returns the runtime GType for this class.
-           *
-           * Typed loosely because generated bindings expose `t.fn(...)`
-           * closures whose return type is broader than `number`. The
-           * constructor coerces the result via `Number(...)`.
-           */
-          gtype: (...args: unknown[]) => unknown;
+          /** Runtime GType of the class, resolved once at registration. */
+          gtype: number;
           /** Writable / construct properties declared by this class only. */
           props: Record<string, GObjectPropMeta>;
       }
-    | {
-          kind: "boxed";
-          /** Struct size in bytes. */
-          size: number;
-          /** Optional GLib type name used by the boxed allocator. */
-          glibTypeName?: string;
-          /** Optional shared library hosting the boxed type. */
-          lib?: string;
-          /** Writable fields keyed by their JavaScript name. */
-          fields: Record<string, BoxedFieldMeta>;
-      };
+    | BoxedConstructionMeta;
 
 /**
  * Global registry of construction metadata keyed by the wrapper class.

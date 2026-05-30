@@ -7,9 +7,8 @@ import { isOutParameter } from "../gir/parameter.js";
 import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirSignal } from "../gir/signal.js";
 import type { GirTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
-import { renderGetTypeReference } from "./gtype-binding.js";
 import { forEachAncestor, resolveImplementedInterface } from "./inheritance.js";
-import { isHandlePassing, renderTupleWriteback, wrapReturnValue } from "./method.js";
+import { isHandlePassing, planTrampolineArgs, renderTupleWriteback } from "./method.js";
 import { isCellInout, writeFfiType } from "./value.js";
 
 const SIGNAL_HANDLER_TYPE = "(...args: any[]) => any";
@@ -59,32 +58,28 @@ export const renderSignalMembers = (ctx: ModuleContext, klass: GirClass): readon
 };
 
 /**
- * Emits the trailing `registerSignalMeta(Class, new Map([...]), getType, gobject)`
- * registration describing every signal a class exposes.
+ * Renders the `{ table: new Map([...]), gobject: { … } }` signal-registration
+ * fragment for a class or interface descriptor's `signals` field, or
+ * `undefined` when the type exposes no signals of its own.
  *
- * Each entry carries the trampoline FFI descriptor used to connect a handler,
- * an `invoke` closure that marshals trampoline arguments into the user
- * handler, the per-parameter emit types, and the return-value `GType`
- * resolver. The trailing `gobject` argument supplies the `GObject` marshalling
- * surface the runtime emit path needs.
+ * Each table entry carries the trampoline FFI descriptor used to connect a
+ * handler, an `invoke` closure that marshals trampoline arguments into the user
+ * handler, the per-parameter emit types, and the return-value `GType` resolver.
+ * The `gobject` field supplies the `GObject` marshalling surface the runtime
+ * emit path needs; the class's shared GType comes from the descriptor.
  *
  * @param ctx - The module context
  * @param klass - The class whose signals to bind
  */
-export const emitSignals = (ctx: ModuleContext, klass: GirClass): void => {
-    if (klass.glibGetType === undefined) return;
+export const renderSignalRegistration = (ctx: ModuleContext, klass: GirClass): string | undefined => {
+    if (klass.glibGetType === undefined) return undefined;
     const signals = collectClassSignals(ctx, klass);
-    if (signals.length === 0) return;
-    const getTypeRef = renderGetTypeReference(ctx, klass.glibGetType, klass.glibTypeName);
-    if (getTypeRef === undefined) return;
-    ctx.addRuntimeImport("registerSignalMeta");
-    const className = pascalCase(klass.name);
+    if (signals.length === 0) return undefined;
     const entries = signals.map((collected) => renderSignalEntry(ctx, collected));
     const map = entries.length === 0 ? "[]" : `[\n${indent(entries.join(",\n"), 1)},\n]`;
     const gobject = renderGObjectSurface(ctx);
-    ctx.module.appendRegistration(
-        `registerSignalMeta(${className}, new globalThis.Map(${map}), ${getTypeRef}, ${gobject});`,
-    );
+    const body = `table: new globalThis.Map(${map}),\ngobject: ${gobject},`;
+    return `{\n${indent(body, 1)}\n}`;
 };
 
 const collectClassSignals = (ctx: ModuleContext, klass: GirClass): readonly CollectedSignal[] => {
@@ -156,22 +151,7 @@ const renderInvokeClosure = (
     returnRef: GirTypeRef | undefined,
 ): string => {
     const { namespaceName } = collected;
-    const callArgs = params
-        .map((parameter, index) =>
-            isOutParameter(parameter)
-                ? undefined
-                : wrapReturnValue(ctx, {
-                      ref: qualifyTypeRef(parameter.type, namespaceName),
-                      transfer: parameter.transferOwnership,
-                      nullable: parameter.nullable,
-                      valueExpression: isCellInout(ctx, parameter) ? `args[${index + 1}].value` : `args[${index + 1}]`,
-                  }),
-        )
-        .filter((expression): expression is string => expression !== undefined)
-        .join(", ");
-    const outArgIndices = params
-        .map((parameter, index) => (isOutParameter(parameter) || isCellInout(ctx, parameter) ? index + 1 : -1))
-        .filter((index) => index >= 0);
+    const { callArgs, outArgIndices } = planTrampolineArgs(ctx, params, namespaceName, 1);
     if (outArgIndices.length === 0) {
         if (returnRef !== undefined && isHandlePassing(ctx, returnRef)) {
             ctx.addRuntimeImport("tryGetHandle");

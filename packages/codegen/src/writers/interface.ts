@@ -13,13 +13,14 @@ import {
     emitBindings,
     renderInstanceMethod,
 } from "./callables.js";
-import { emitClassStruct } from "./class-struct.js";
-import { emitClassConstructionMeta } from "./construction-meta.js";
-import { renderGetTypeCall } from "./gtype-binding.js";
+import { renderVFuncMeta } from "./class-struct.js";
+import { renderGObjectConstructionMeta } from "./construction-meta.js";
+import { renderGetTypeReference } from "./gtype-binding.js";
 import { resolveImplementedInterface } from "./inheritance.js";
 import { methodExportName } from "./method.js";
 import { renderPropertyAccessor } from "./property-accessor.js";
-import { renderSignalMembers } from "./signal.js";
+import { appendNativeClassRegistration } from "./registration.js";
+import { renderSignalMembers, renderSignalRegistration } from "./signal.js";
 
 /**
  * Emits a class declaration for a `<interface>` element.
@@ -46,10 +47,9 @@ export const emitInterface = (ctx: ModuleContext, iface: GirClass): void => {
     emitBindings(ctx, callables);
 
     const parent = resolveInterfaceParent(ctx);
-    const extendsClause = parent === undefined ? "" : ` extends ${parent}`;
-    const members = buildInterfaceMembers(ctx, iface, callables, parent !== undefined);
+    const members = buildInterfaceMembers(ctx, iface, callables);
     const body = members.map((member) => indent(member, 1)).join("\n\n");
-    ctx.module.appendDeclaration(`export class ${className}${extendsClause} {\n${body}\n}`);
+    ctx.module.appendDeclaration(`export class ${className} extends ${parent} {\n${body}\n}`);
 
     const prerequisiteRefs = iface.prerequisites
         .map((name) => resolvePrerequisiteReference(ctx, name))
@@ -61,14 +61,15 @@ export const emitInterface = (ctx: ModuleContext, iface: GirClass): void => {
     appendInterfaceRegistrations(ctx, iface, className);
 };
 
-const buildInterfaceMembers = (
-    ctx: ModuleContext,
-    iface: GirClass,
-    callables: Callables,
-    hasParent: boolean,
-): readonly string[] => {
+const buildInterfaceMembers = (ctx: ModuleContext, iface: GirClass, callables: Callables): readonly string[] => {
     const className = pascalCase(iface.name);
-    const { members, claimedNames } = buildPlainTypeMembers({ ctx, className, callables, hasGType: true, hasParent });
+    const { members, claimedNames } = buildPlainTypeMembers({
+        ctx,
+        className,
+        callables,
+        hasGType: true,
+        hasParent: true,
+    });
     appendPrerequisiteMethods(ctx, iface, members, claimedNames);
     for (const property of iface.properties) {
         const block = renderPropertyAccessor(ctx, property, claimedNames);
@@ -138,20 +139,22 @@ const collectPrerequisiteMethods = (ctx: ModuleContext, iface: GirClass): readon
 };
 
 const appendInterfaceRegistrations = (ctx: ModuleContext, iface: GirClass, className: string): void => {
-    if (iface.glibGetType !== undefined) {
-        const gtypeCall = renderGetTypeCall(ctx, iface.glibGetType, iface.glibTypeName);
-        if (gtypeCall !== undefined) {
-            ctx.addRuntimeImport("registerNativeInterface");
-            ctx.module.appendRegistration(`registerNativeInterface(${className}, ${gtypeCall});`);
-            emitClassConstructionMeta(ctx, iface);
-        }
-    }
-    if (iface.glibTypeStruct !== undefined) {
-        emitClassStruct(ctx, iface);
-    }
+    const getTypeRef =
+        iface.glibGetType === undefined
+            ? undefined
+            : renderGetTypeReference(ctx, iface.glibGetType, iface.glibTypeName);
+    const construction = getTypeRef === undefined ? undefined : renderGObjectConstructionMeta(ctx, iface);
+    appendNativeClassRegistration(ctx, {
+        className,
+        role: "interface",
+        getTypeRef,
+        construction,
+        vfuncs: renderVFuncMeta(ctx, iface),
+        signals: renderSignalRegistration(ctx, iface),
+    });
 };
 
-const resolveInterfaceParent = (ctx: ModuleContext): string | undefined => {
+const resolveInterfaceParent = (ctx: ModuleContext): string => {
     if (ctx.namespace.name === "GObject") return "Object";
     const alias = ctx.addCrossNamespaceImport("GObject");
     return `${alias}.Object`;

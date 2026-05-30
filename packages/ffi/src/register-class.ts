@@ -7,7 +7,7 @@ import { CONSTRUCTION_META, registerConstructionMeta } from "./construction-meta
 import type { GType } from "./generated/gobject/gobject.js";
 import { G_TYPE_INVALID, typeInterfaces } from "./gtype.js";
 import { getClassVFuncMeta, getParentClass, type NativeClass, type NativeHandle } from "./handles.js";
-import { getClassGType, getNativeObject, registerNativeClass } from "./registry.js";
+import { getClassGType, getNativeObject, setClassGType } from "./registry.js";
 
 /**
  * Generated descriptor of a class vfunc slot. Codegen emits one per vfunc
@@ -111,7 +111,7 @@ export function registerClass<T extends NativeClass>(klass: T, options: Register
 
     const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings);
     const newGtype: GType = nativeRegisterClass(name, parentGType, nativeOptions);
-    registerNativeClass(klass, newGtype);
+    setClassGType(klass, newGtype);
     inheritConstructionMeta(klass, newGtype);
 
     return klass;
@@ -129,10 +129,9 @@ export function registerClass<T extends NativeClass>(klass: T, options: Register
 function inheritConstructionMeta(klass: NativeClass, newGtype: GType): void {
     const parentMeta = findGObjectConstructionMeta(getParentClass(klass));
     if (!parentMeta) return;
-    const gtypeNumber = Number(newGtype);
     registerConstructionMeta(klass, {
         kind: "gobject",
-        gtype: () => gtypeNumber,
+        gtype: Number(newGtype),
         props: {},
     });
 }

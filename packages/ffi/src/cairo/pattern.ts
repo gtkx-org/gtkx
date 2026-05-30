@@ -1,4 +1,4 @@
-import { createRef, type NativeHandle } from "@gtkx/native";
+import { createRef, type NativeHandle, type Ref } from "@gtkx/native";
 import {
     type Extend,
     type Filter,
@@ -36,6 +36,23 @@ export type RgbaColor = {
     green: number;
     blue: number;
     alpha: number;
+};
+
+/**
+ * Allocates four `double` out-cells, runs `fill` to populate them through a
+ * cairo `*_get_*_rgba` call, and reads them back as an {@link RgbaColor}.
+ *
+ * @param fill - Invokes the cairo getter with the four colour out-cells
+ */
+const readRgba = (
+    fill: (red: Ref<number>, green: Ref<number>, blue: Ref<number>, alpha: Ref<number>) => void,
+): RgbaColor => {
+    const redRef = createRef(0);
+    const greenRef = createRef(0);
+    const blueRef = createRef(0);
+    const alphaRef = createRef(0);
+    fill(redRef, greenRef, blueRef, alphaRef);
+    return { red: redRef.value, green: greenRef.value, blue: blueRef.value, alpha: alphaRef.value };
 };
 
 /**
@@ -185,13 +202,8 @@ const cairo_pattern_get_rgba = fn(
     [{ type: PATTERN_T_NONE }, { type: DOUBLE_REF }, { type: DOUBLE_REF }, { type: DOUBLE_REF }, { type: DOUBLE_REF }],
     INT_TYPE,
 );
-Pattern.prototype.getRgba = function (): { red: number; green: number; blue: number; alpha: number } {
-    const redRef = createRef(0);
-    const greenRef = createRef(0);
-    const blueRef = createRef(0);
-    const alphaRef = createRef(0);
-    cairo_pattern_get_rgba(getHandle(this), redRef, greenRef, blueRef, alphaRef);
-    return { red: redRef.value, green: greenRef.value, blue: blueRef.value, alpha: alphaRef.value };
+Pattern.prototype.getRgba = function (): RgbaColor {
+    return readRgba((red, green, blue, alpha) => cairo_pattern_get_rgba(getHandle(this), red, green, blue, alpha));
 };
 
 const cairo_pattern_status = fn(LIB, "cairo_pattern_status", [{ type: PATTERN_T_NONE }], INT_TYPE);
@@ -511,24 +523,10 @@ export class MeshPattern extends Pattern {
     /**
      * Returns the RGBA color of a corner of patch `patchNum`.
      */
-    getCornerColorRgba(
-        patchNum: number,
-        cornerNum: number,
-    ): { red: number; green: number; blue: number; alpha: number } {
-        const redRef = createRef(0);
-        const greenRef = createRef(0);
-        const blueRef = createRef(0);
-        const alphaRef = createRef(0);
-        cairo_mesh_pattern_get_corner_color_rgba(
-            getHandle(this),
-            patchNum,
-            cornerNum,
-            redRef,
-            greenRef,
-            blueRef,
-            alphaRef,
+    getCornerColorRgba(patchNum: number, cornerNum: number): RgbaColor {
+        return readRgba((red, green, blue, alpha) =>
+            cairo_mesh_pattern_get_corner_color_rgba(getHandle(this), patchNum, cornerNum, red, green, blue, alpha),
         );
-        return { red: redRef.value, green: greenRef.value, blue: blueRef.value, alpha: alphaRef.value };
     }
 }
 
