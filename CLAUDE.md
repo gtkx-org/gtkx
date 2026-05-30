@@ -109,3 +109,7 @@ When investigating errors, **ALWAYS** trace exactly where and why the error occu
 2. Determine if it's a codegen, reconciler, or FFI issue
 3. Trace the call path from the React node through FFI to native
 4. Check if the GIR definition matches the expected API
+
+## Version Control
+
+Be pragmatic about git, not paranoid. When asked to commit, just commit — including on top of existing commits, and even when the working tree or `HEAD` looks imperfect or mid-refactor. Don't pause to interrogate the repository state, second-guess earlier commits, or ask for confirmation about routine commit/stage operations; the maintainer manages branch history and will rebase or amend as needed. Reserve caution for genuinely destructive, irreversible actions (force-pushing shared branches, hard resets that discard work, history rewrites of pushed commits).
