@@ -42,7 +42,7 @@
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "dependencies": {
-        "fast-xml-parser": "4.3.6",
+        "fast-xml-parser": "5.7.0",
         "typescript": "^5.9.3"
     },
     "devDependencies": {
