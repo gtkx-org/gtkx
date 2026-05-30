@@ -59,6 +59,7 @@ pub mod ffi;
 pub mod glib_log_handler;
 pub mod managed;
 pub mod module;
+pub mod object_finalize;
 pub mod panic_handler;
 pub mod state;
 pub mod trampoline;

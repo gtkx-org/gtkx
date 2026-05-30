@@ -5,6 +5,7 @@
 mod alloc;
 mod call;
 mod field;
+mod finalize;
 mod freeze;
 mod gobject;
 pub(crate) mod handler;

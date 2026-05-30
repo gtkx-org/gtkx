@@ -7,6 +7,7 @@ import { CONSTRUCTION_META, registerConstructionMeta } from "./construction-meta
 import type { GType } from "./generated/gobject/gobject.js";
 import { G_TYPE_INVALID, typeInterfaces } from "./gtype.js";
 import { getClassVFuncMeta, getParentClass, type NativeClass, type NativeHandle } from "./handles.js";
+import { markStatefulClass } from "./instance-state.js";
 import { getClassGType, getNativeObject, setClassGType } from "./registry.js";
 
 /**
@@ -113,6 +114,7 @@ export function registerClass<T extends NativeClass>(klass: T, options: Register
     const newGtype: GType = nativeRegisterClass(name, parentGType, nativeOptions);
     setClassGType(klass, newGtype);
     inheritConstructionMeta(klass, newGtype);
+    markStatefulClass(klass);
 
     return klass;
 }

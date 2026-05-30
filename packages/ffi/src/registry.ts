@@ -9,6 +9,7 @@ import {
     setHandle,
     tryGetHandle,
 } from "./handles.js";
+import { linkInstanceState } from "./instance-state.js";
 import { getPendingConstruction } from "./pending-construction.js";
 
 const classRegistry = new Map<GType, NativeClass>();
@@ -86,6 +87,7 @@ export function getInterfaceGType(cls: NativeClass): GType {
 export function wrapHandle<T extends object>(cls: NativeClass<T>, handle: NativeHandle): T {
     const instance = Object.create(cls.prototype) as T;
     setHandle(instance, handle);
+    linkInstanceState(handle, instance);
     return instance;
 }
 

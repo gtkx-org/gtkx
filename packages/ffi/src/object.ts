@@ -4,6 +4,7 @@ import { gvalueFromProp } from "./gobject/gvalue.js";
 import { GVALUE_BORROWED, GVALUE_SIZE, LIBGOBJECT } from "./gtype.js";
 import { getParentClass, type NativeClass, type NativeObject, setHandle, tryGetHandle } from "./handles.js";
 import { t } from "./helpers.js";
+import { linkInstanceState } from "./instance-state.js";
 import { setPendingConstruction } from "./pending-construction.js";
 import { registerNativeObject } from "./registry.js";
 
@@ -73,6 +74,8 @@ export function constructNativeObject(instance: object, props: object = {}): voi
             setHandle(instance, handle);
             registerNativeObject(instance as NativeObject);
         }
+        const linked = tryGetHandle(instance);
+        if (linked !== undefined) linkInstanceState(linked, instance);
     } else {
         setHandle(instance, constructBoxed(meta, props as Record<string, unknown>));
     }
