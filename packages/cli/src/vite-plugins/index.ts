@@ -14,8 +14,5 @@ import { gtkxGSettings } from "./gsettings.js";
  * `gtkx.config.ts`, so no caller threads build-time configuration through.
  *
  * @returns The ordered list of core GTKX plugins.
- *
- * @internal Consumed by `@gtkx/vitest` and the cli dev/build pipelines; not
- * part of the user-facing API.
  */
 export const gtkxVitePlugins = (): Plugin[] => [gtkxGSettings(), gtkxResources(), gtkxAssets()];
