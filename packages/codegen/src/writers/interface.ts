@@ -142,7 +142,6 @@ const appendInterfaceRegistrations = (ctx: ModuleContext, iface: GirClass, class
         const gtypeCall = renderGetTypeCall(ctx, iface.glibGetType, iface.glibTypeName);
         if (gtypeCall !== undefined) {
             ctx.addRuntimeImport("registerNativeInterface");
-            ctx.module.appendRegistration(`${className}.prototype.__gtype__ = 0;`);
             ctx.module.appendRegistration(`registerNativeInterface(${className}, ${gtypeCall});`);
             emitClassConstructionMeta(ctx, iface);
         }

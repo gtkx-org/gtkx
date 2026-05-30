@@ -105,20 +105,3 @@ export function makeErrorDomain<const T extends Record<string, number>>(
     Object.defineProperty(enumObject, Symbol.hasInstance, { value: hasInstance });
     return Object.freeze(enumObject) as ErrorDomain<T>;
 }
-
-/**
- * Throws an `Error` reporting that a callable cannot be marshalled through the
- * `@gtkx/ffi` runtime.
- *
- * Generated bindings expose every method and function the contract declares,
- * including ones whose signature the FFI layer cannot marshal. Those members
- * delegate to this helper so a call surfaces a descriptive error instead of a
- * silent `undefined`. The `never` return type lets a delegating method body
- * (`return throwUnsupported(...)`) be inferred as `never`.
- *
- * @param message - Description of the unsupported callable.
- * @returns Never returns; always throws.
- */
-export function throwUnsupported(message: string): never {
-    throw new Error(message);
-}

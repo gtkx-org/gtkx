@@ -184,7 +184,6 @@ const appendClassRegistrations = (
         const gtypeCall = renderGetTypeCall(ctx, klass.glibGetType, klass.glibTypeName);
         if (gtypeCall !== undefined) {
             ctx.addRuntimeImport("registerNativeClass");
-            ctx.module.appendRegistration(`${className}.prototype.__gtype__ = 0;`);
             ctx.module.appendRegistration(`registerNativeClass(${className}, ${gtypeCall});`);
             emitClassConstructionMeta(ctx, klass);
         }

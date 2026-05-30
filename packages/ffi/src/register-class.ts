@@ -6,7 +6,7 @@ import {
 import { CONSTRUCTION_META, registerConstructionMeta } from "./construction-meta.js";
 import type { GType } from "./generated/gobject/gobject.js";
 import { G_TYPE_INVALID, typeInterfaces } from "./gtype.js";
-import { getClassStruct, getParentClass, type NativeClass, type NativeHandle } from "./handles.js";
+import { getClassVFuncMeta, getParentClass, type NativeClass, type NativeHandle } from "./handles.js";
 import { getClassGType, getNativeObject, registerNativeClass } from "./registry.js";
 
 /**
@@ -243,7 +243,7 @@ function discoverInterfaceVfuncs(
     interfaceGType: GType,
     claimedMethodNames: ReadonlySet<string>,
 ): DiscoveredInterfaceVfunc[] {
-    const struct = findInterfaceClassStruct(interfaceGType);
+    const struct = findInterfaceVFuncMeta(interfaceGType);
     if (!struct) return [];
     const proto = (klass as { prototype: Record<string, VfuncFn> }).prototype;
     const result: DiscoveredInterfaceVfunc[] = [];
@@ -266,7 +266,7 @@ function discoverInterfaceVfuncs(
 function findClassVfuncDescriptor(klass: NativeClass, methodName: string): RegisterClassVfuncDescriptor | null {
     let current = getParentClass(klass);
     while (current) {
-        const struct = getClassStruct(current);
+        const struct = getClassVFuncMeta(current);
         if (struct) {
             const entry = struct[methodName];
             if (entry && (entry as { kind?: string }).kind === "class") {
@@ -278,21 +278,21 @@ function findClassVfuncDescriptor(klass: NativeClass, methodName: string): Regis
     return null;
 }
 
-const interfaceClassStructByGType = new Map<GType, Readonly<Record<string, unknown>>>();
+const interfaceVFuncMetaByGType = new Map<GType, Readonly<Record<string, unknown>>>();
 
-function findInterfaceClassStruct(gtype: GType): Readonly<Record<string, unknown>> | null {
-    return interfaceClassStructByGType.get(gtype) ?? null;
+function findInterfaceVFuncMeta(gtype: GType): Readonly<Record<string, unknown>> | null {
+    return interfaceVFuncMetaByGType.get(gtype) ?? null;
 }
 
 /**
  * Registers a runtime mapping from an interface `GType` to its generated
- * class-struct descriptor map so that {@link registerClass} can auto-discover
+ * vtable vfunc descriptor map so that {@link registerClass} can auto-discover
  * interface vfunc overrides on a subclass. Codegen calls this once per
  * interface at module load.
  */
-export function registerInterfaceClassStruct(gtype: GType, struct: Readonly<Record<string, unknown>>): void {
+export function registerInterfaceVFuncMeta(gtype: GType, struct: Readonly<Record<string, unknown>>): void {
     if (gtype === G_TYPE_INVALID) return;
-    interfaceClassStructByGType.set(gtype, struct);
+    interfaceVFuncMetaByGType.set(gtype, struct);
 }
 
 function toNativeOptions(

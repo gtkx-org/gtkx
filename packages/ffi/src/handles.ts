@@ -84,28 +84,28 @@ export function setHandle(obj: object, handle: NativeHandle): void {
 }
 
 /**
- * Registry of generated class-struct vtable descriptors, keyed by the JS class
- * they belong to. Populated by codegen at module load via {@link setClassStruct}
+ * Registry of generated vtable vfunc descriptors, keyed by the JS class they
+ * belong to. Populated by codegen at module load via {@link registerClassVFuncMeta}
  * and consulted by `registerClass` to auto-discover vfunc overrides supplied
  * as plain methods on user subclasses.
  */
-type ClassStructDescriptors = Readonly<Record<string, unknown>>;
+type ClassVFuncMeta = Readonly<Record<string, unknown>>;
 
-const classStructMap = new WeakMap<object, ClassStructDescriptors>();
+const classVFuncMetaMap = new WeakMap<object, ClassVFuncMeta>();
 
 /**
- * Associates a class-struct vfunc registry with a generated class so that
+ * Associates a vtable vfunc descriptor registry with a generated class so that
  * `registerClass` can resolve vfunc overrides by method name on subclasses.
  *
  */
-export function setClassStruct(cls: object, descriptors: ClassStructDescriptors): void {
-    classStructMap.set(cls, descriptors);
+export function registerClassVFuncMeta(cls: object, meta: ClassVFuncMeta): void {
+    classVFuncMetaMap.set(cls, meta);
 }
 
 /**
- * Resolves the class-struct vfunc descriptor map associated with `cls`, or
+ * Resolves the vtable vfunc descriptor map associated with `cls`, or
  * `undefined` when no descriptors have been registered for it.
  */
-export function getClassStruct(cls: object): ClassStructDescriptors | undefined {
-    return classStructMap.get(cls);
+export function getClassVFuncMeta(cls: object): ClassVFuncMeta | undefined {
+    return classVFuncMetaMap.get(cls);
 }

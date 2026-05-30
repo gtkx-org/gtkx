@@ -24,33 +24,6 @@ export const layoutOfPrimitive = (category: PrimitiveCategory): FieldLayout => {
     return { size, align: size === 0 ? 1 : size };
 };
 
-/**
- * Computes total record size and per-field offsets for a list of fields,
- * applying natural alignment between fields and rounding the final size up
- * to the alignment of the strongest member.
- *
- * The list order must match the C declaration order; private fields and
- * padding must already be filtered out before calling.
- *
- * @param fields - Ordered field layouts
- * @returns Per-field offsets (parallel to `fields`) and the total record size
- */
-export const computeRecordLayout = (
-    fields: readonly FieldLayout[],
-): { readonly offsets: readonly number[]; readonly size: number } => {
-    let cursor = 0;
-    let maxAlign = 1;
-    const offsets: number[] = [];
-    for (const field of fields) {
-        const align = Math.max(1, field.align);
-        if (align > maxAlign) maxAlign = align;
-        cursor = roundUp(cursor, align);
-        offsets.push(cursor);
-        cursor += field.size;
-    }
-    return { offsets, size: roundUp(cursor, maxAlign) };
-};
-
 const roundUp = (value: number, multiple: number): number => {
     if (multiple <= 1) return value;
     const remainder = value % multiple;

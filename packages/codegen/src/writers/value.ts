@@ -125,11 +125,7 @@ export const resolveCallbackType = (ctx: ModuleContext, ref: GirTypeRef | undefi
  * @param namespaceName - The namespace the reference is resolved against
  * @param ref - The type reference
  */
-export const isScalarRef = (
-    repository: GirRepository,
-    namespaceName: string,
-    ref: GirTypeRef | undefined,
-): boolean => {
+export const isScalarRef = (repository: GirRepository, namespaceName: string, ref: GirTypeRef | undefined): boolean => {
     if (ref === undefined) return false;
     if (ref.kind === "primitive") return ref.category !== "string" && ref.category !== "void";
     if (ref.kind !== "named") return false;

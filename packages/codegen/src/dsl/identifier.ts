@@ -30,16 +30,6 @@ export const camelCaseMember = (input: string): string => toCamelCase(input);
 export const pascalCase = (input: string): string => toPascalCase(input);
 
 /**
- * Local FFI binding name for a callable: the C identifier itself.
- *
- * E.g. `g_object_new` stays `g_object_new`. Used as the `const` name in
- * the `const g_object_new = t.fn(...)` block.
- *
- * @param cIdentifier - The C symbol identifier from GIR
- */
-export const bindingIdentifier = (cIdentifier: string): string => cIdentifier;
-
-/**
  * Derives the public camelCase export name for a namespace-level callable.
  *
  * Strips the namespace's `c:symbol-prefixes` value from the C identifier

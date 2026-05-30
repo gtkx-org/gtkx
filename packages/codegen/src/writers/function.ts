@@ -4,6 +4,7 @@ import { namespaceFunctionExportName } from "../dsl/identifier.js";
 import type { GirFunction } from "../gir/function.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import type { GirParameter } from "../gir/parameter.js";
+import { callableReferencesClassStruct } from "./class-struct-record.js";
 import {
     closureAndDestroyIndices,
     needsRefArg,
@@ -89,6 +90,7 @@ export const writeFnExpression = (ctx: ModuleContext, fn: GirFunction): string |
 export const emitNamespaceFunction = (ctx: ModuleContext, fn: GirFunction): void => {
     if (!fn.introspectable) return;
     if (fn.shadowedBy !== undefined) return;
+    if (callableReferencesClassStruct(ctx, fn)) return;
     const expression = writeFnExpression(ctx, fn);
     if (expression === undefined) return;
     const bindingName = fn.cIdentifier;

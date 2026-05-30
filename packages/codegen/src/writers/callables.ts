@@ -2,6 +2,7 @@ import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
 import { camelCaseMember } from "../dsl/identifier.js";
 import type { GirFunction } from "../gir/function.js";
+import { callableReferencesClassStruct } from "./class-struct-record.js";
 import { writeFnExpression } from "./function.js";
 import { methodExportName, writeMethodBody, writeMethodReturnType, writeMethodSignature } from "./method.js";
 import { renderRuntimeOverride } from "./runtime-override.js";
@@ -53,6 +54,7 @@ export const dedupeCallables = (callables: readonly GirFunction[]): readonly Gir
  */
 export const appendMethodBinding = (ctx: ModuleContext, method: GirFunction): void => {
     if (method.cIdentifier === undefined) return;
+    if (callableReferencesClassStruct(ctx, method)) return;
     const expression = writeFnExpression(ctx, method);
     if (expression === undefined) return;
     ctx.module.appendBinding(`const ${method.cIdentifier} = ${expression};`, method.cIdentifier);
@@ -64,6 +66,7 @@ export const emitBindings = (ctx: ModuleContext, callables: Callables): void => 
         if (!callable.introspectable) continue;
         if (callable.shadowedBy !== undefined) continue;
         if (callable.cIdentifier === undefined) continue;
+        if (callableReferencesClassStruct(ctx, callable)) continue;
         const expression = writeFnExpression(ctx, callable);
         if (expression === undefined) continue;
         ctx.module.appendBinding(`const ${callable.cIdentifier} = ${expression};`, callable.cIdentifier);
@@ -97,7 +100,7 @@ export const renderConstructorStatic = (
     callable: GirFunction,
     ownerClassName: string,
 ): string | undefined => {
-    if (!isEmittableCallable(callable)) return undefined;
+    if (!isEmittableCallable(ctx, callable)) return undefined;
     const name = constructorMemberName(callable.name);
     if (name === undefined) return undefined;
     const cIdentifier = callable.cIdentifier;
@@ -116,7 +119,7 @@ export const renderConstructorStatic = (
  * @param callable - The GIR function callable
  */
 export const renderStaticMember = (ctx: ModuleContext, callable: GirFunction): string | undefined => {
-    if (!isEmittableCallable(callable)) return undefined;
+    if (!isEmittableCallable(ctx, callable)) return undefined;
     const cIdentifier = callable.cIdentifier;
     if (cIdentifier === undefined) return undefined;
     const name = camelCaseMember(callable.name);
@@ -140,7 +143,7 @@ export const renderStaticMember = (ctx: ModuleContext, callable: GirFunction): s
  * @param callable - The GIR method callable
  */
 export const renderInstanceMethod = (ctx: ModuleContext, callable: GirFunction): string | undefined => {
-    if (!isEmittableCallable(callable)) return undefined;
+    if (!isEmittableCallable(ctx, callable)) return undefined;
     const cIdentifier = callable.cIdentifier;
     if (cIdentifier === undefined) return undefined;
     const name = methodExportName(callable);
@@ -228,8 +231,11 @@ export const indexMethodsByName = (methods: readonly GirFunction[]): ReadonlyMap
     return map;
 };
 
-const isEmittableCallable = (callable: GirFunction): boolean =>
-    callable.introspectable && callable.shadowedBy === undefined && callable.cIdentifier !== undefined;
+const isEmittableCallable = (ctx: ModuleContext, callable: GirFunction): boolean =>
+    callable.introspectable &&
+    callable.shadowedBy === undefined &&
+    callable.cIdentifier !== undefined &&
+    !callableReferencesClassStruct(ctx, callable);
 
 const constructorMemberName = (girName: string): string | undefined => {
     const camel = camelCaseMember(girName);

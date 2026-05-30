@@ -11,9 +11,9 @@ import { writeFfiType } from "./value.js";
 type VtableKind = "class" | "interface";
 
 /**
- * Emits the `const XxxClass = { … }` vtable descriptor registry and the
- * trailing `setClassStruct(Class, XxxClass)` (and, for interfaces, the
- * additional `registerInterfaceClassStruct(...)`) call for `klass`.
+ * Emits the `const xxxVFuncMeta = { … }` vtable descriptor registry and the
+ * trailing `registerClassVFuncMeta(Class, xxxVFuncMeta)` (and, for interfaces,
+ * the additional `registerInterfaceVFuncMeta(...)`) call for `klass`.
  *
  * Each entry describes one overridable vtable slot — keyed by the slot's
  * camelCase name and carrying `{ kind, className, vfuncName, byteOffset,
@@ -21,7 +21,8 @@ type VtableKind = "class" | "interface";
  * a subclass method, locate the matching slot by byte offset, and register a
  * trampoline with the correct marshalling. Slots whose signature cannot be
  * marshalled (non-introspectable, variadic, out-parameters without
- * caller-allocates, or nested callbacks) are omitted.
+ * caller-allocates, or nested callbacks) are omitted. Classes that expose no
+ * marshallable slots emit nothing at all.
  *
  * @param ctx - The module context
  * @param klass - The class or interface
@@ -32,12 +33,14 @@ export const emitClassStruct = (ctx: ModuleContext, klass: GirClass): void => {
     const structName = pascalCase(klass.glibTypeStruct);
     const kind: VtableKind = klass.isInterface ? "interface" : "class";
     const entries = vtableEntries(ctx, structName, kind, klass.glibTypeStruct);
-    const body = entries.length === 0 ? "{}" : `{\n${entries.map((entry) => indent(entry, 1)).join("\n")}\n}`;
-    ctx.addRuntimeImport("setClassStruct");
-    ctx.module.appendRegistration(`const ${structName} = ${body};\nsetClassStruct(${className}, ${structName});`);
+    if (entries.length === 0) return;
+    const metaName = `${className.charAt(0).toLowerCase()}${className.slice(1)}VFuncMeta`;
+    const body = `{\n${entries.map((entry) => indent(entry, 1)).join("\n")}\n}`;
+    ctx.addRuntimeImport("registerClassVFuncMeta");
+    ctx.module.appendRegistration(`const ${metaName} = ${body};\nregisterClassVFuncMeta(${className}, ${metaName});`);
     if (klass.isInterface && klass.glibGetType !== undefined) {
-        ctx.addRuntimeImport("registerInterfaceClassStruct");
-        ctx.module.appendRegistration(`registerInterfaceClassStruct(${klass.glibGetType}(), ${structName});`);
+        ctx.addRuntimeImport("registerInterfaceVFuncMeta");
+        ctx.module.appendRegistration(`registerInterfaceVFuncMeta(${klass.glibGetType}(), ${metaName});`);
     }
 };
 

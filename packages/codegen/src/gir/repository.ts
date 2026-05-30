@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { GirBoxed } from "./boxed.js";
 import type { GirCallback } from "./callback.js";
@@ -135,49 +135,4 @@ const locateGirFile = (identifier: string, girPath: readonly string[]): string =
     }
     const tried = girPath.map((directory) => join(directory, filename)).join(", ");
     throw new Error(`GIR file ${filename} not found on girPath. Tried: ${tried}`);
-};
-
-/**
- * Discovers `Name-Version.gir` files on `girPath` and returns their
- * identifiers, keeping the highest version of each namespace.
- *
- * Intended for the `libraries: "*"` wildcard expansion; not used when an
- * explicit library list is provided.
- *
- * @param girPath - Ordered list of directories to search for `.gir` files
- */
-export const discoverGirIdentifiers = (girPath: readonly string[]): string[] => {
-    const highestByName = new Map<string, { version: string; identifier: string }>();
-    const pattern = /^([A-Za-z][A-Za-z0-9]*)-(\d+(?:\.\d+)*)\.gir$/;
-    for (const directory of girPath) {
-        let entries: string[];
-        try {
-            entries = readdirSync(directory);
-        } catch {
-            continue;
-        }
-        for (const entry of entries) {
-            const match = pattern.exec(entry);
-            if (match === null) continue;
-            const name = match[1] ?? "";
-            const version = match[2] ?? "";
-            const identifier = `${name}-${version}`;
-            const existing = highestByName.get(name);
-            if (existing === undefined || compareVersions(version, existing.version) > 0) {
-                highestByName.set(name, { version, identifier });
-            }
-        }
-    }
-    return [...highestByName.values()].map(({ identifier }) => identifier).sort((a, b) => a.localeCompare(b));
-};
-
-const compareVersions = (a: string, b: string): number => {
-    const aParts = a.split(".");
-    const bParts = b.split(".");
-    const length = Math.max(aParts.length, bParts.length);
-    for (let index = 0; index < length; index += 1) {
-        const difference = Number(aParts[index] ?? 0) - Number(bParts[index] ?? 0);
-        if (difference !== 0) return difference;
-    }
-    return 0;
 };

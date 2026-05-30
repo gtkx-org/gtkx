@@ -19,16 +19,14 @@
 
 export { createRef } from "@gtkx/native";
 export { promisify } from "./async.js";
-export type { ClassStructTarget } from "./class-struct-pointer.js";
-export { resolveClassStructPointer } from "./class-struct-pointer.js";
 export type { BoxedFieldMeta, ConstructionMeta, GObjectPropMeta } from "./construction-meta.js";
 export { registerConstructionMeta } from "./construction-meta.js";
 export type { NativeClass, NativeHandle } from "./handles.js";
-export { getClassStruct, getHandle, setClassStruct, setHandle, tryGetHandle } from "./handles.js";
+export { getClassVFuncMeta, getHandle, registerClassVFuncMeta, setHandle, tryGetHandle } from "./handles.js";
 export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineScope } from "./helpers.js";
 export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./helpers.js";
-export { checkError, makeErrorDomain, NativeError, throwUnsupported } from "./native.js";
-export { registerInterfaceClassStruct } from "./register-class.js";
+export { checkError, makeErrorDomain, NativeError } from "./native.js";
+export { registerInterfaceVFuncMeta } from "./register-class.js";
 export {
     getNativeObject,
     getNativeObjectAsInterface,

@@ -36,21 +36,6 @@ export const joinArgs = (parts: ReadonlyArray<string | undefined>): string =>
 export const quote = (value: string): string => JSON.stringify(value);
 
 /**
- * Renders an object literal where each key is a bare identifier and each
- * value is already a TypeScript expression string.
- *
- * Empty input renders as `{}`; populated input renders multiline with
- * 4-space indentation suitable for nesting.
- *
- * @param entries - Iterable of `[key, value]` pairs
- */
-export const objectLiteral = (entries: ReadonlyArray<readonly [string, string]>): string => {
-    if (entries.length === 0) return "{}";
-    const lines = entries.map(([key, value]) => `    ${key}: ${value},`);
-    return `{\n${lines.join("\n")}\n}`;
-};
-
-/**
  * Renders an array literal multi-line, indenting each element four spaces
  * and adding a trailing comma.
  *

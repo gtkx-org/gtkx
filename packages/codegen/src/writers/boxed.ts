@@ -4,6 +4,7 @@ import { pascalCase } from "../dsl/identifier.js";
 import type { GirBoxed } from "../gir/boxed.js";
 import { computeBoxedFieldSlots, renderBoxedFieldAccessor } from "./boxed-field-accessor.js";
 import { buildPlainTypeMembers, type Callables, dedupeCallables, emitBindings } from "./callables.js";
+import { isClassStructRecord } from "./class-struct-record.js";
 import { emitBoxedConstructionMeta } from "./construction-meta.js";
 import { renderGetTypeCall } from "./gtype-binding.js";
 
@@ -16,7 +17,9 @@ import { renderGetTypeCall } from "./gtype-binding.js";
  * and construction metadata are emitted by their dedicated writers.
  *
  * Vtable records (`glib:is-gtype-struct-for`) are skipped here — they are
- * consumed by the owning class's vtable registration.
+ * consumed by the owning class's vtable registration. Class- and
+ * interface-struct records (`GTypeClass`, `GEnumClass`, …) are likewise skipped
+ * as they are runtime vtables rather than marshallable values.
  *
  * @param ctx - The module context
  * @param boxed - The boxed to emit
@@ -25,6 +28,7 @@ export const emitBoxed = (ctx: ModuleContext, boxed: GirBoxed): void => {
     if (!boxed.introspectable) return;
     if (boxed.flavor === "vtable") return;
     if (boxed.name.length === 0) return;
+    if (isClassStructRecord(ctx.namespace.name, boxed)) return;
     ctx.addConstructNativeObjectImport();
     const className = pascalCase(boxed.name);
     const callables: Callables = {
@@ -42,7 +46,6 @@ export const emitBoxed = (ctx: ModuleContext, boxed: GirBoxed): void => {
         const gtypeCall = renderGetTypeCall(ctx, boxed.glibGetType, boxed.glibTypeName);
         if (gtypeCall !== undefined) {
             ctx.addRuntimeImport("registerNativeClass");
-            ctx.module.appendRegistration(`${className}.prototype.__gtype__ = 0;`);
             ctx.module.appendRegistration(`registerNativeClass(${className}, ${gtypeCall});`);
         }
     }

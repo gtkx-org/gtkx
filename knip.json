@@ -12,7 +12,7 @@
             "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
         },
         "packages/codegen": {
-            "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
+            "project": ["src/**/*.ts!"]
         },
         "packages/css": {
             "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
@@ -21,7 +21,7 @@
             "project": ["tests/**/*.{ts,tsx}"]
         },
         "packages/ffi": {
-            "entry": ["src/generated/*/*.js!"],
+            "entry": ["src/generated/*/*.js!", "src/*/index.ts!"],
             "project": ["src/**/*.{ts,js}!", "scripts/**/*.ts", "tests/**/*.{ts,tsx}"]
         },
         "packages/mcp": {

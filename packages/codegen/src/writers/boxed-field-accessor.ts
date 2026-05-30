@@ -12,6 +12,7 @@ import {
     layoutOfPrimitive,
 } from "../gir/size.js";
 import type { GirTypeRef, NamedTypeRef } from "../gir/type-ref.js";
+import { typeRefIsClassStruct } from "./class-struct-record.js";
 import { writeTsType } from "./types-ts.js";
 import { writeFfiType } from "./value.js";
 
@@ -81,6 +82,7 @@ export const renderBoxedFieldAccessor = (
     if (!field.readable && !field.writable) return undefined;
     if (field.callback !== undefined) return undefined;
     if (field.type === undefined) return undefined;
+    if (typeRefIsClassStruct(ctx, field.type)) return undefined;
     const jsName = camelCase(field.name);
     if (claimedMemberNames.has(jsName)) return undefined;
     if (jsName === "constructor") return undefined;
