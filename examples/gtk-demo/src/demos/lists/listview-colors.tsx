@@ -464,33 +464,49 @@ function useColorsLimitFill(
     }, [models, colorLimit, sortModeRef]);
 }
 
-interface ColorsProgress {
-    itemCount: number;
-    isFilling: boolean;
-}
+const formatItemCount = (count: number): string => `${count.toLocaleString("en-US")} /`;
 
-function useColorsProgress(baseStore: Gio.ListStore, colorLimit: ColorLimit): ColorsProgress {
-    const [progress, setProgress] = useState<ColorsProgress>(() => {
-        const itemCount = baseStore.getNItems();
-        return { itemCount, isFilling: itemCount < colorLimit };
-    });
-
+/**
+ * Mirrors the store's live item count into the header label without React
+ * state, so the batched tick-callback fill does not re-render the tree on
+ * every `items-changed`.
+ */
+function useStoreCountLabel(baseStore: Gio.ListStore, labelRef: React.RefObject<Gtk.Label | null>): void {
     useEffect(() => {
         const update = () => {
-            const itemCount = baseStore.getNItems();
-            const isFilling = itemCount < colorLimit;
-            setProgress((prev) =>
-                prev.itemCount === itemCount && prev.isFilling === isFilling ? prev : { itemCount, isFilling },
-            );
+            labelRef.current?.setLabel(formatItemCount(baseStore.getNItems()));
         };
         update();
         baseStore.on("items-changed", update);
         return () => {
             baseStore.off("items-changed", update);
         };
-    }, [baseStore, colorLimit]);
+    }, [baseStore, labelRef]);
+}
 
-    return progress;
+/**
+ * Drives the overlay progress bar's fraction and visibility imperatively
+ * from the store's item count, again avoiding a per-tick re-render.
+ */
+function useStoreProgressBar(
+    baseStore: Gio.ListStore,
+    colorLimit: ColorLimit,
+    progressBarRef: React.RefObject<Gtk.ProgressBar | null>,
+): void {
+    useEffect(() => {
+        const update = () => {
+            const bar = progressBarRef.current;
+            if (!bar) return;
+            const itemCount = baseStore.getNItems();
+            bar.setFraction(Math.min(1, itemCount / colorLimit));
+            bar.setVisible(itemCount > 0 && itemCount < colorLimit);
+        };
+        update();
+        baseStore.on("items-changed", update);
+        return () => {
+            baseStore.off("items-changed", update);
+        };
+    }, [baseStore, colorLimit, progressBarRef]);
 }
 
 function collectSelectedColors(selection: Gtk.MultiSelection): ColorItem[] {
@@ -543,8 +559,7 @@ function useColorsState() {
 type ColorsState = ReturnType<typeof useColorsState>;
 
 function useColorsComputed(state: ColorsState, models: ColorsModels) {
-    const { colorLimit, displayFactory, bumpRefillToken } = state;
-    const progress = useColorsProgress(models.baseStore, colorLimit);
+    const { displayFactory, bumpRefillToken } = state;
     const selectedColors = useSelectedColors(models.selection);
     const averageColor = useMemo(() => calculateAverageColor(selectedColors), [selectedColors]);
     const showDetails = displayFactory === "everything";
@@ -572,7 +587,6 @@ function useColorsComputed(state: ColorsState, models: ColorsModels) {
     );
 
     return {
-        progress,
         selectedColors,
         averageColor,
         showDetails,
@@ -609,7 +623,9 @@ const ListViewColorsProvider = ({ children }: DemoProviderProps) => {
 };
 
 const ColorsHeader = () => {
-    const { state, computed } = useColorsContext();
+    const { state, models, computed } = useColorsContext();
+    const countLabelRef = useRef<Gtk.Label | null>(null);
+    useStoreCountLabel(models.baseStore, countLabelRef);
     return (
         <GtkHeaderBar name="header-bar">
             <GtkHeaderBar.PackStart>
@@ -622,7 +638,8 @@ const ColorsHeader = () => {
                 />
                 <GtkButton label="_Refill" useUnderline onClicked={computed.handleRefill} />
                 <GtkLabel
-                    label={`${computed.progress.itemCount.toLocaleString("en-US")} /`}
+                    ref={countLabelRef}
+                    label={formatItemCount(models.baseStore.getNItems())}
                     attributes={getTnumAttrs()}
                     widthChars={8}
                     xalign={1}
@@ -661,13 +678,12 @@ const ColorsHeader = () => {
 const ColorsGridOverlay = () => {
     const { state, models, computed } = useColorsContext();
     const [gridView, setGridView] = useState<Gtk.GridView | null>(null);
+    const progressBarRef = useRef<Gtk.ProgressBar | null>(null);
     const sortModeRef = useLatest(state.sortMode);
     useColorsInitialFill(models, state.colorLimit, sortModeRef);
     useColorsLimitFill(models, state.colorLimit, sortModeRef);
     useColorsRefill(models, gridView, state.colorLimit, sortModeRef, state.refillToken);
-
-    const overlayFraction = computed.progress.itemCount / state.colorLimit;
-    const showProgress = computed.progress.isFilling;
+    useStoreProgressBar(models.baseStore, state.colorLimit, progressBarRef);
 
     return (
         <GtkOverlay name="grid-overlay" vexpand hexpand>
@@ -684,15 +700,9 @@ const ColorsGridOverlay = () => {
                     renderItem={computed.renderGridItem}
                 />
             </GtkScrolledWindow>
-            {showProgress && computed.progress.itemCount > 0 && (
-                <GtkOverlay.Child>
-                    <GtkProgressBar
-                        fraction={Math.min(1, overlayFraction)}
-                        halign={Gtk.Align.FILL}
-                        valign={Gtk.Align.START}
-                    />
-                </GtkOverlay.Child>
-            )}
+            <GtkOverlay.Child>
+                <GtkProgressBar ref={progressBarRef} visible={false} halign={Gtk.Align.FILL} valign={Gtk.Align.START} />
+            </GtkOverlay.Child>
         </GtkOverlay>
     );
 };

@@ -4,8 +4,6 @@
 coverage
 dist
 generated
-generated.lock
-generated.state
 gschemas.compiled
 node_modules
 out-tsc
