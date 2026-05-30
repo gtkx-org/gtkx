@@ -1,6 +1,7 @@
 import type { GirClass } from "../gir/class.js";
 import { splitQualifiedName } from "../gir/qualified-name.js";
 import type { GirRepository } from "../gir/repository.js";
+import { containerSlotsFor } from "./compounds-meta.js";
 import { buildWidgetPropsEntries } from "./props.js";
 import { isReactNodeClass, iterateClassesWithGlibName, type WidgetCandidate } from "./widgets.js";
 
@@ -102,6 +103,7 @@ const buildPropBlock = (repository: GirRepository, entry: WidgetEntry, ctx: Buil
         "    children?: ReactNode;",
         `    ref?: Ref<${widgetTypeRef}>;`,
         ...propLines.map((line) => `    ${line}`),
+        ...containerSlotsFor(entry.glibName).map((method) => `    ${method}?: ReactNode | null;`),
     ];
     const parentExtends = resolveParentPropsExtension(repository, entry, ctx.widgetByGlibName);
     return `export interface ${entry.glibName}Props extends ${parentExtends} {\n${ownerLines.join("\n")}\n}`;

@@ -214,18 +214,17 @@ const ThemesProvider = ({ window, children }: DemoProviderProps) => {
 const ThemesTitlebar = () => {
     const cycling = useThemes();
     return (
-        <GtkHeaderBar name="themes-header">
-            <GtkHeaderBar.PackStart>
+        <GtkHeaderBar
+            name="themes-header"
+            packStart={
                 <GtkToggleButton
                     label="Cycle"
                     active={cycling.isRunning}
                     onToggled={(btn) => cycling.handleToggle(btn.getActive())}
                 />
-            </GtkHeaderBar.PackStart>
-            <GtkHeaderBar.PackEnd>
-                <GtkLabel label={cycling.fps} widthChars={12} attributes={cycling.fpsAttrs} />
-            </GtkHeaderBar.PackEnd>
-        </GtkHeaderBar>
+            }
+            packEnd={<GtkLabel label={cycling.fps} widthChars={12} attributes={cycling.fpsAttrs} />}
+        />
     );
 };
 

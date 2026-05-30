@@ -70,11 +70,10 @@ const PaintableSvgProvider = ({ window, children }: DemoProviderProps) => {
 const PaintableSvgTitlebar = () => {
     const { handleOpen } = usePaintableSvgContext();
     return (
-        <GtkHeaderBar name="paintable-svg-header">
-            <GtkHeaderBar.PackStart>
-                <GtkButton label="_Open" useUnderline onClicked={handleOpen} />
-            </GtkHeaderBar.PackStart>
-        </GtkHeaderBar>
+        <GtkHeaderBar
+            name="paintable-svg-header"
+            packStart={<GtkButton label="_Open" useUnderline onClicked={handleOpen} />}
+        />
     );
 };
 

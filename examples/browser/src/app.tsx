@@ -98,24 +98,18 @@ const NavigationButtons = ({
     onReloadOrStop: () => void;
 }) => (
     <>
-        <AdwHeaderBar.PackStart>
-            <GtkButton iconName="go-previous-symbolic" onClicked={onBack} sensitive={canGoBack} tooltipText="Go back" />
-        </AdwHeaderBar.PackStart>
-        <AdwHeaderBar.PackStart>
-            <GtkButton
-                iconName="go-next-symbolic"
-                onClicked={onForward}
-                sensitive={canGoForward}
-                tooltipText="Go forward"
-            />
-        </AdwHeaderBar.PackStart>
-        <AdwHeaderBar.PackStart>
-            <GtkButton
-                iconName={isLoading ? "process-stop-symbolic" : "view-refresh-symbolic"}
-                onClicked={onReloadOrStop}
-                tooltipText={isLoading ? "Stop loading" : "Reload"}
-            />
-        </AdwHeaderBar.PackStart>
+        <GtkButton iconName="go-previous-symbolic" onClicked={onBack} sensitive={canGoBack} tooltipText="Go back" />
+        <GtkButton
+            iconName="go-next-symbolic"
+            onClicked={onForward}
+            sensitive={canGoForward}
+            tooltipText="Go forward"
+        />
+        <GtkButton
+            iconName={isLoading ? "process-stop-symbolic" : "view-refresh-symbolic"}
+            onClicked={onReloadOrStop}
+            tooltipText={isLoading ? "Stop loading" : "Reload"}
+        />
     </>
 );
 
@@ -130,8 +124,8 @@ export const App = () => {
 
     return (
         <AdwApplicationWindow title="GTKX Browser" defaultWidth={1024} defaultHeight={768} onClose={quit}>
-            <AdwToolbarView>
-                <AdwToolbarView.AddTopBar>
+            <AdwToolbarView
+                addTopBar={
                     <AdwHeaderBar
                         titleWidget={
                             <GtkEntry
@@ -143,19 +137,21 @@ export const App = () => {
                                 placeholderText="Enter URL..."
                             />
                         }
-                    >
-                        <NavigationButtons
-                            canGoBack={canGoBack}
-                            canGoForward={canGoForward}
-                            isLoading={isLoading}
-                            onBack={() => webViewRef.current?.goBack()}
-                            onForward={() => webViewRef.current?.goForward()}
-                            onReloadOrStop={() =>
-                                isLoading ? webViewRef.current?.stopLoading() : webViewRef.current?.reload()
-                            }
-                        />
-                    </AdwHeaderBar>
-                </AdwToolbarView.AddTopBar>
+                        packStart={
+                            <NavigationButtons
+                                canGoBack={canGoBack}
+                                canGoForward={canGoForward}
+                                isLoading={isLoading}
+                                onBack={() => webViewRef.current?.goBack()}
+                                onForward={() => webViewRef.current?.goForward()}
+                                onReloadOrStop={() =>
+                                    isLoading ? webViewRef.current?.stopLoading() : webViewRef.current?.reload()
+                                }
+                            />
+                        }
+                    />
+                }
+            >
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
                     <GtkProgressBar fraction={progress} cssClasses={[progressStyle, isLoading ? "" : "hidden"]} />
                     <WebKitWebView

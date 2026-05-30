@@ -85,11 +85,22 @@ export class CodegenRunner {
     }
 }
 
+const SOURCE_EXTENSIONS = [".tsx", ".ts"] as const;
+
+const stripSourceExtension = (relativePath: string): string => {
+    for (const extension of SOURCE_EXTENSIONS) {
+        if (relativePath.endsWith(extension)) {
+            return relativePath.slice(0, -extension.length);
+        }
+    }
+    return relativePath;
+};
+
 const writeTree = (outDir: string, sources: ReadonlyMap<string, string>): void => {
     rmSync(outDir, { recursive: true, force: true });
     mkdirSync(outDir, { recursive: true });
     for (const [relativePath, source] of sources) {
-        const stem = relativePath.endsWith(".ts") ? relativePath.slice(0, -".ts".length) : relativePath;
+        const stem = stripSourceExtension(relativePath);
         const { js, dts } = transpileSource(relativePath, source);
         writeOutputFile(outDir, `${stem}.js`, js);
         writeOutputFile(outDir, `${stem}.d.ts`, dts);

@@ -157,25 +157,27 @@ const AppHeaderBar = ({
     onKeyboardShortcuts,
     onAbout,
 }: AppHeaderBarProps) => (
-    <GtkHeaderBar>
-        <GtkHeaderBar.PackStart>
-            <GtkButton
-                label="Run"
-                onClicked={onRun}
-                sensitive={hasDemo}
-                valign={Gtk.Align.CENTER}
-                focusOnClick={false}
-            />
-            <GtkToggleButton
-                name="search-toggle"
-                iconName="edit-find-symbolic"
-                active={searchMode}
-                onToggled={(btn: Gtk.ToggleButton) => onSearchToggle(btn.getActive())}
-                valign={Gtk.Align.CENTER}
-                focusOnClick={false}
-            />
-        </GtkHeaderBar.PackStart>
-        <GtkHeaderBar.PackEnd>
+    <GtkHeaderBar
+        packStart={
+            <>
+                <GtkButton
+                    label="Run"
+                    onClicked={onRun}
+                    sensitive={hasDemo}
+                    valign={Gtk.Align.CENTER}
+                    focusOnClick={false}
+                />
+                <GtkToggleButton
+                    name="search-toggle"
+                    iconName="edit-find-symbolic"
+                    active={searchMode}
+                    onToggled={(btn: Gtk.ToggleButton) => onSearchToggle(btn.getActive())}
+                    valign={Gtk.Align.CENTER}
+                    focusOnClick={false}
+                />
+            </>
+        }
+        packEnd={
             <GtkMenuButton
                 name="menu-button"
                 iconName="open-menu-symbolic"
@@ -198,8 +200,8 @@ const AppHeaderBar = ({
                     <GtkMenuButton.MenuItem id="about" label="_About GTK Demo" onActivate={onAbout} />
                 </GtkMenuButton.MenuSection>
             </GtkMenuButton>
-        </GtkHeaderBar.PackEnd>
-    </GtkHeaderBar>
+        }
+    />
 );
 
 interface AppShortcutsProps {

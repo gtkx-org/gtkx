@@ -1150,16 +1150,17 @@ const FontFeaturesProvider = ({ children }: DemoProviderProps) => {
 const FontFeaturesTitlebar = () => {
     const { handlers } = useFontFeatures();
     return (
-        <GtkHeaderBar name="font-features-header">
-            <GtkHeaderBar.PackStart>
+        <GtkHeaderBar
+            name="font-features-header"
+            packStart={
                 <GtkButton
                     name="reset"
                     iconName="view-refresh-symbolic"
                     tooltipText="Reset"
                     onClicked={handlers.resetAll}
                 />
-            </GtkHeaderBar.PackStart>
-        </GtkHeaderBar>
+            }
+        />
     );
 };
 

@@ -111,25 +111,27 @@ const VideoPlayerTitlebar = () => {
     const { logoPaintable, bbbPaintable, handleOpen, handleLogo, handleBBB, handleFullscreen } =
         useVideoPlayerContext();
     return (
-        <GtkHeaderBar>
-            <GtkHeaderBar.PackStart>
-                <GtkButton name="open-button" label="_Open" useUnderline onClicked={handleOpen} />
-                <GtkButton name="logo-button" accessibleLabel="GTK Logo" onClicked={handleLogo}>
-                    <GtkImage paintable={logoPaintable} pixelSize={24} />
-                </GtkButton>
-                <GtkButton name="bbb-button" accessibleLabel="Big Buck Bunny" onClicked={handleBBB}>
-                    <GtkImage name="bbb-image" paintable={bbbPaintable} pixelSize={24} />
-                </GtkButton>
-            </GtkHeaderBar.PackStart>
-            <GtkHeaderBar.PackEnd>
+        <GtkHeaderBar
+            packStart={
+                <>
+                    <GtkButton name="open-button" label="_Open" useUnderline onClicked={handleOpen} />
+                    <GtkButton name="logo-button" accessibleLabel="GTK Logo" onClicked={handleLogo}>
+                        <GtkImage paintable={logoPaintable} pixelSize={24} />
+                    </GtkButton>
+                    <GtkButton name="bbb-button" accessibleLabel="Big Buck Bunny" onClicked={handleBBB}>
+                        <GtkImage name="bbb-image" paintable={bbbPaintable} pixelSize={24} />
+                    </GtkButton>
+                </>
+            }
+            packEnd={
                 <GtkButton
                     name="fullscreen-button"
                     iconName="view-fullscreen-symbolic"
                     accessibleLabel="Fullscreen"
                     onClicked={handleFullscreen}
                 />
-            </GtkHeaderBar.PackEnd>
-        </GtkHeaderBar>
+            }
+        />
     );
 };
 

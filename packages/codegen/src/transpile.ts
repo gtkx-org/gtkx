@@ -21,6 +21,8 @@ const COMPILER_OPTIONS: ts.CompilerOptions = {
     removeComments: false,
     sourceMap: false,
     declarationMap: false,
+    jsx: ts.JsxEmit.ReactJSX,
+    jsxImportSource: "react",
 };
 
 /**

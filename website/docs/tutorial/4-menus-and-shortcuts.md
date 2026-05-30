@@ -11,11 +11,11 @@ Attach a menu to a `GtkMenuButton` using `GtkMenuButton.MenuItem`, `GtkMenuButto
 ```tsx
 import { GtkMenuButton } from "@gtkx/react";
 
-<AdwHeaderBar>
-    <AdwHeaderBar.PackStart>
+<AdwHeaderBar
+    packStart={
         <GtkButton iconName="list-add-symbolic" tooltipText="New Note (Ctrl+N)" onClicked={addNote} />
-    </AdwHeaderBar.PackStart>
-    <AdwHeaderBar.PackEnd>
+    }
+    packEnd={
         <GtkMenuButton iconName="open-menu-symbolic" tooltipText="Main Menu">
             <GtkMenuButton.MenuItem
                 id="new"
@@ -45,8 +45,8 @@ import { GtkMenuButton } from "@gtkx/react";
                 />
             </GtkMenuButton.MenuSection>
         </GtkMenuButton>
-    </AdwHeaderBar.PackEnd>
-</AdwHeaderBar>
+    }
+/>
 ```
 
 ::: tip GNOME HIG Menu Guidelines
@@ -188,17 +188,17 @@ export default function App() {
                     disabled={!selectedId}
                 />
             </GtkShortcutController>
-            <AdwToolbarView>
-                <AdwToolbarView.AddTopBar>
-                    <AdwHeaderBar>
-                        <AdwHeaderBar.PackStart>
+            <AdwToolbarView
+                addTopBar={
+                    <AdwHeaderBar
+                        packStart={
                             <GtkButton
                                 iconName="list-add-symbolic"
                                 tooltipText="New Note (Ctrl+N)"
                                 onClicked={addNote}
                             />
-                        </AdwHeaderBar.PackStart>
-                        <AdwHeaderBar.PackEnd>
+                        }
+                        packEnd={
                             <GtkMenuButton iconName="open-menu-symbolic" tooltipText="Main Menu">
                                 <GtkMenuButton.MenuItem
                                     id="new"
@@ -222,9 +222,10 @@ export default function App() {
                                     />
                                 </GtkMenuButton.MenuSection>
                             </GtkMenuButton>
-                        </AdwHeaderBar.PackEnd>
-                    </AdwHeaderBar>
-                </AdwToolbarView.AddTopBar>
+                        }
+                    />
+                }
+            >
                 {/* ... list from previous chapter */}
             </AdwToolbarView>
         </AdwApplicationWindow>

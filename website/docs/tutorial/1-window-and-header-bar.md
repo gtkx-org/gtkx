@@ -24,10 +24,7 @@ import { AdwApplicationWindow, AdwHeaderBar, AdwStatusPage, AdwToolbarView, quit
 export default function App() {
     return (
         <AdwApplicationWindow title="Notes" defaultWidth={600} defaultHeight={500} onClose={quit}>
-            <AdwToolbarView>
-                <AdwToolbarView.AddTopBar>
-                    <AdwHeaderBar />
-                </AdwToolbarView.AddTopBar>
+            <AdwToolbarView addTopBar={<AdwHeaderBar />}>
                 <AdwStatusPage
                     vexpand
                     iconName="document-edit-symbolic"
@@ -44,28 +41,24 @@ export default function App() {
 
 `AdwStatusPage` is the standard GNOME pattern for empty states and placeholder views. It displays a centered icon, title, and description — use it instead of manual label layouts.
 
-### Compound Components
-
-Notice `<AdwToolbarView.AddTopBar>` — this is a **compound component**. Instead of imperatively calling `toolbar.addTopBar(headerBar)`, you declare the relationship in JSX. Compound components are auto-generated from GIR metadata and follow the pattern `ParentWidget.SlotName`.
-
-Common compound components you'll see throughout this tutorial:
-
-| Component | Purpose |
-|-----------|---------|
-| `AdwToolbarView.AddTopBar` | Add a widget to the top bar area |
-| `AdwToolbarView.AddBottomBar` | Add a widget to the bottom bar area |
-| `GtkHeaderBar.PackStart` | Pack a widget at the start of a header bar |
-| `GtkHeaderBar.PackEnd` | Pack a widget at the end of a header bar |
-
 ### Slot Props
 
-Some widgets accept a single child in a named position. These are expressed as **slot props** — JSX props that accept a React element:
+Notice the `addTopBar` prop on `<AdwToolbarView>` — this is a **slot prop**. Instead of imperatively calling `toolbar.addTopBar(headerBar)`, you pass the widget through a JSX prop that accepts a React element. Slot props are auto-generated from GIR metadata and follow the pattern `parentMethodName={<Widget />}`.
 
 ```tsx
 <AdwHeaderBar titleWidget={<GtkLabel label="Notes" cssClasses={["heading"]} />} />
 ```
 
 The `titleWidget` prop replaces the default title text with a custom widget. Other common slot props include `popover`, `startChild`, `endChild`, and `content`.
+
+Common slot props you'll see throughout this tutorial:
+
+| Prop | Purpose |
+|-----------|---------|
+| `AdwToolbarView` `addTopBar` | Add a widget to the top bar area |
+| `AdwToolbarView` `addBottomBar` | Add a widget to the bottom bar area |
+| `GtkHeaderBar` `packStart` | Pack a widget at the start of a header bar |
+| `GtkHeaderBar` `packEnd` | Pack a widget at the end of a header bar |
 
 ## Adding Header Bar Buttons
 
@@ -84,18 +77,19 @@ import {
 export default function App() {
     return (
         <AdwApplicationWindow title="Notes" defaultWidth={600} defaultHeight={500} onClose={quit}>
-            <AdwToolbarView>
-                <AdwToolbarView.AddTopBar>
-                    <AdwHeaderBar>
-                        <AdwHeaderBar.PackStart>
+            <AdwToolbarView
+                addTopBar={
+                    <AdwHeaderBar
+                        packStart={
                             <GtkButton
                                 iconName="list-add-symbolic"
                                 tooltipText="New Note"
                                 onClicked={() => console.log("New note!")}
                             />
-                        </AdwHeaderBar.PackStart>
-                    </AdwHeaderBar>
-                </AdwToolbarView.AddTopBar>
+                        }
+                    />
+                }
+            >
                 <AdwStatusPage
                     vexpand
                     iconName="document-edit-symbolic"

@@ -26,23 +26,26 @@ export const NotesSplitShell = ({ headerEndExtras }: NotesSplitShellProps) => (
         <AdwNavigationSplitView sidebarWidthFraction={0.25} minSidebarWidth={200} maxSidebarWidth={300}>
             <NotesSidebarPage />
             <AdwNavigationSplitView.Page id="content" title="All Notes">
-                <AdwToolbarView>
-                    <AdwToolbarView.AddTopBar>
-                        <AdwHeaderBar>
-                            {headerEndExtras ? <AdwHeaderBar.PackEnd>{headerEndExtras}</AdwHeaderBar.PackEnd> : null}
-                            <AdwHeaderBar.PackEnd>
-                                <GtkMenuButton iconName="open-menu-symbolic">
-                                    <GtkMenuButton.MenuItem id="about" label="About Notes" onActivate={noop} />
-                                    <GtkMenuButton.MenuItem
-                                        id="quit"
-                                        label="Quit"
-                                        accels="<Control>q"
-                                        onActivate={noop}
-                                    />
-                                </GtkMenuButton>
-                            </AdwHeaderBar.PackEnd>
-                        </AdwHeaderBar>
-                    </AdwToolbarView.AddTopBar>
+                <AdwToolbarView
+                    addTopBar={
+                        <AdwHeaderBar
+                            packEnd={
+                                <>
+                                    {headerEndExtras ? headerEndExtras : null}
+                                    <GtkMenuButton iconName="open-menu-symbolic">
+                                        <GtkMenuButton.MenuItem id="about" label="About Notes" onActivate={noop} />
+                                        <GtkMenuButton.MenuItem
+                                            id="quit"
+                                            label="Quit"
+                                            accels="<Control>q"
+                                            onActivate={noop}
+                                        />
+                                    </GtkMenuButton>
+                                </>
+                            }
+                        />
+                    }
+                >
                     <GtkScrolledWindow vexpand>
                         <GtkListView
                             estimatedItemHeight={80}

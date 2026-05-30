@@ -145,14 +145,15 @@ export default function App() {
 
     return (
         <AdwApplicationWindow title="Notes" defaultWidth={600} defaultHeight={500} onClose={quit}>
-            <AdwToolbarView>
-                <AdwToolbarView.AddTopBar>
-                    <AdwHeaderBar>
-                        <AdwHeaderBar.PackStart>
+            <AdwToolbarView
+                addTopBar={
+                    <AdwHeaderBar
+                        packStart={
                             <GtkButton iconName="list-add-symbolic" tooltipText="New Note" onClicked={addNote} />
-                        </AdwHeaderBar.PackStart>
-                    </AdwHeaderBar>
-                </AdwToolbarView.AddTopBar>
+                        }
+                    />
+                }
+            >
                 {notes.length > 0 ? (
                     <GtkScrolledWindow vexpand>
                         <GtkBox

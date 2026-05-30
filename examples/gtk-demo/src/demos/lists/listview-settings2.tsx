@@ -247,8 +247,8 @@ const ListViewSettings2Provider = ({ children }: DemoProviderProps) => {
 const ListViewSettings2Titlebar = () => {
     const { searchMode, setSearchMode, setSearchText } = useSettings2Context();
     return (
-        <GtkHeaderBar>
-            <GtkHeaderBar.PackEnd>
+        <GtkHeaderBar
+            packEnd={
                 <GtkToggleButton
                     name="search-toggle"
                     iconName="system-search-symbolic"
@@ -258,8 +258,8 @@ const ListViewSettings2Titlebar = () => {
                         setSearchText("");
                     }}
                 />
-            </GtkHeaderBar.PackEnd>
-        </GtkHeaderBar>
+            }
+        />
     );
 };
 

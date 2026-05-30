@@ -20,13 +20,11 @@ export const AppShell = ({
     children,
 }: AppShellProps) => (
     <AdwApplicationWindow title={title} defaultWidth={width} defaultHeight={height} onClose={noop}>
-        <AdwToolbarView>
-            <AdwToolbarView.AddTopBar>
-                <AdwHeaderBar>
-                    {headerStart && <AdwHeaderBar.PackStart>{headerStart}</AdwHeaderBar.PackStart>}
-                    {headerEnd && <AdwHeaderBar.PackEnd>{headerEnd}</AdwHeaderBar.PackEnd>}
-                </AdwHeaderBar>
-            </AdwToolbarView.AddTopBar>
+        <AdwToolbarView
+            addTopBar={
+                <AdwHeaderBar packStart={headerStart ? headerStart : null} packEnd={headerEnd ? headerEnd : null} />
+            }
+        >
             {children}
         </AdwToolbarView>
     </AdwApplicationWindow>

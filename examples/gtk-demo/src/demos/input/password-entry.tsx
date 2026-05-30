@@ -46,8 +46,10 @@ const PasswordEntryTitlebar = ({ onClose }: DemoProps) => {
     const { passwordsMatch } = usePasswordEntryContext();
     const { setDefaultWidget } = useDemo();
     return (
-        <GtkHeaderBar name="password-entry-header" showTitleButtons={false}>
-            <GtkHeaderBar.PackEnd>
+        <GtkHeaderBar
+            name="password-entry-header"
+            showTitleButtons={false}
+            packEnd={
                 <GtkButton
                     ref={setDefaultWidget}
                     label="_Done"
@@ -56,8 +58,8 @@ const PasswordEntryTitlebar = ({ onClose }: DemoProps) => {
                     sensitive={passwordsMatch}
                     onClicked={onClose}
                 />
-            </GtkHeaderBar.PackEnd>
-        </GtkHeaderBar>
+            }
+        />
     );
 };
 

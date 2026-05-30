@@ -133,16 +133,16 @@ const MarkupProvider = ({ children }: DemoProviderProps) => {
 const MarkupTitlebar = () => {
     const { showSource, handleSourceToggle } = useMarkupContext();
     return (
-        <GtkHeaderBar>
-            <GtkHeaderBar.PackStart>
+        <GtkHeaderBar
+            packStart={
                 <GtkCheckButton
                     label="Source"
                     active={showSource}
                     valign={Gtk.Align.CENTER}
                     onToggled={(btn) => handleSourceToggle(btn.getActive())}
                 />
-            </GtkHeaderBar.PackStart>
-        </GtkHeaderBar>
+            }
+        />
     );
 };
 

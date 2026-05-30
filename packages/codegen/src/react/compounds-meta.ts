@@ -1,58 +1,35 @@
 /**
  * Container-slot mapping for compound widgets — JSX element name to the
- * map of sub-component name → GTK setter prefix.
+ * camelCase GTK method names that append a child onto the widget.
  *
- * For example `AdwHeaderBar.PackStart` corresponds to GTK's
- * `adw_header_bar_pack_start(...)`; the runtime ContainerSlot router uses
- * the camelCase key (`packStart`) to dispatch the child onto the right
- * setter.
+ * Each method name doubles as a `ReactNode` prop on the compound and as the
+ * `<ContainerSlot id="…">` identifier the reconciler dispatches to. For
+ * example `packStart` on `AdwHeaderBar` maps to `adw_header_bar_pack_start(…)`;
+ * `<AdwHeaderBar packStart={…} />` packs the value at the start.
+ *
+ * Unlike setter slots ({@link BUILT_IN_SLOT_PROPS}), a container slot accepts
+ * multiple children and appends rather than replaces.
  *
  * The list is small and stable; defining it in code keeps the lookup
  * fast and avoids one more GIR-introspection pass.
  */
-export const CONTAINER_SLOTS: Readonly<
-    Record<string, ReadonlyArray<{ readonly child: string; readonly slot: string }>>
-> = Object.freeze({
-    AdwActionRow: [
-        { child: "AddPrefix", slot: "addPrefix" },
-        { child: "AddSuffix", slot: "addSuffix" },
-    ],
-    AdwEntryRow: [
-        { child: "AddPrefix", slot: "addPrefix" },
-        { child: "AddSuffix", slot: "addSuffix" },
-    ],
-    AdwExpanderRow: [
-        { child: "AddPrefix", slot: "addPrefix" },
-        { child: "AddSuffix", slot: "addSuffix" },
-        { child: "AddRow", slot: "addRow" },
-        { child: "AddAction", slot: "addAction" },
-    ],
-    AdwHeaderBar: [
-        { child: "PackStart", slot: "packStart" },
-        { child: "PackEnd", slot: "packEnd" },
-    ],
-    AdwToolbarView: [
-        { child: "AddTopBar", slot: "addTopBar" },
-        { child: "AddBottomBar", slot: "addBottomBar" },
-    ],
-    GtkActionBar: [
-        { child: "PackStart", slot: "packStart" },
-        { child: "PackEnd", slot: "packEnd" },
-    ],
-    GtkHeaderBar: [
-        { child: "PackStart", slot: "packStart" },
-        { child: "PackEnd", slot: "packEnd" },
-    ],
+export const CONTAINER_SLOTS: Readonly<Record<string, readonly string[]>> = Object.freeze({
+    AdwActionRow: ["addPrefix", "addSuffix"],
+    AdwEntryRow: ["addPrefix", "addSuffix"],
+    AdwExpanderRow: ["addPrefix", "addSuffix", "addRow", "addAction"],
+    AdwHeaderBar: ["packStart", "packEnd"],
+    AdwToolbarView: ["addTopBar", "addBottomBar"],
+    GtkActionBar: ["packStart", "packEnd"],
+    GtkHeaderBar: ["packStart", "packEnd"],
 });
 
 /**
- * Returns the container-slot record for a JSX element name, or an empty
- * array if no container slots exist.
+ * Returns the container-slot method names for a JSX element name, or an
+ * empty array if no container slots exist.
  *
  * @param jsxName - The JSX element name (PascalCase / GLib type name)
  */
-export const containerSlotsFor = (jsxName: string): ReadonlyArray<{ readonly child: string; readonly slot: string }> =>
-    CONTAINER_SLOTS[jsxName] ?? [];
+export const containerSlotsFor = (jsxName: string): readonly string[] => CONTAINER_SLOTS[jsxName] ?? [];
 
 /**
  * Virtual-child subcomponent mapping — JSX element name to the map of
@@ -80,8 +57,6 @@ export const VIRTUAL_SUBCOMPONENTS: Readonly<
         { child: "Page", intrinsic: "NotebookPage" },
         { child: "PageTab", intrinsic: "NotebookPageTab" },
     ],
-    AdwNavigationView: [{ child: "Page", intrinsic: "NavigationPage" }],
-    AdwNavigationSplitView: [{ child: "Page", intrinsic: "NavigationSplitViewPage" }],
     GtkGrid: [{ child: "Child", intrinsic: "GridChild" }],
     GtkFixed: [{ child: "Child", intrinsic: "FixedChild" }],
     GtkOverlay: [{ child: "Child", intrinsic: "OverlayChild" }],

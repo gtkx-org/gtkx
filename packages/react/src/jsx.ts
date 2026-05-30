@@ -1001,6 +1001,7 @@ declare global {
                 NotebookPage: NotebookPageProps;
                 NotebookPageTab: NotebookPageTabProps;
                 OverlayChild: OverlayChildProps;
+                GtkSizeGroup: GtkSizeGroupProps;
                 SizeGroupWidget: SizeGroupWidgetProps;
                 TextAnchor: TextAnchorProps;
                 TextPaintable: TextPaintableProps;
@@ -1227,6 +1228,7 @@ declare module "./generated/jsx.js" {
 }
 
 export { AdwComboRow, GtkColumnView, GtkDropDown, GtkGridView, GtkListView } from "./components/list.js";
+export { AdwNavigationSplitView, AdwNavigationView } from "./components/navigation.js";
 export { GtkSizeGroup } from "./components/size-group.js";
 export * from "./generated/compounds.js";
 

@@ -25,14 +25,12 @@ export const Sidebar = ({
             }}
         >
             {categories.map((cat) => (
-                <AdwActionRow key={cat.id} title={cat.title}>
-                    <AdwActionRow.AddPrefix>
-                        <GtkImage iconName={cat.icon} />
-                    </AdwActionRow.AddPrefix>
-                    <AdwActionRow.AddSuffix>
-                        <GtkLabel label={String(noteCounts[cat.id] ?? 0)} cssClasses={["dim-label"]} />
-                    </AdwActionRow.AddSuffix>
-                </AdwActionRow>
+                <AdwActionRow
+                    key={cat.id}
+                    title={cat.title}
+                    addPrefix={<GtkImage iconName={cat.icon} />}
+                    addSuffix={<GtkLabel label={String(noteCounts[cat.id] ?? 0)} cssClasses={["dim-label"]} />}
+                />
             ))}
         </GtkListBox>
     </GtkScrolledWindow>

@@ -1,6 +1,6 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { createElement, Fragment, type ReactNode, type Ref, useReducer, useRef } from "react";
+import { type ReactNode, type Ref, useReducer, useRef } from "react";
 import type {
     AdwComboRowProps,
     GtkColumnViewProps,
@@ -20,7 +20,16 @@ import type {
 } from "../jsx.js";
 import type { BoundItem } from "../nodes/internal/bound-item.js";
 import { createPortal } from "../portal.js";
-import { createVirtualChild } from "./compound.js";
+
+const GtkListViewElement = "GtkListView" as const;
+const GtkGridViewElement = "GtkGridView" as const;
+const GtkColumnViewElement = "GtkColumnView" as const;
+const GtkDropDownElement = "GtkDropDown" as const;
+const AdwComboRowElement = "AdwComboRow" as const;
+const ColumnViewColumnElement = "ColumnViewColumn" as const;
+const MenuItemElement = "MenuItem" as const;
+const MenuSectionElement = "MenuSection" as const;
+const MenuSubmenuElement = "MenuSubmenu" as const;
 
 type ListViewOwnKeys =
     | "items"
@@ -56,29 +65,33 @@ function useListHandle() {
     return { rerender, boundItemsRef, headerBoundItemsRef };
 }
 
-function renderListElement(intrinsicName: string, handle: ReturnType<typeof useListHandle>, props: object): ReactNode {
-    const { rerender, boundItemsRef, headerBoundItemsRef } = handle;
+type ListHandle = ReturnType<typeof useListHandle>;
 
+type ListReconcilerProps = {
+    readonly __boundItemsRef: { current: BoundItem[] };
+    readonly __rerender: () => void;
+    readonly __headerBoundItemsRef: { current: BoundItem[] };
+};
+
+const listElementProps = <P extends object>(props: P, handle: ListHandle): P & ListReconcilerProps => ({
+    ...props,
+    __boundItemsRef: handle.boundItemsRef,
+    __rerender: handle.rerender,
+    __headerBoundItemsRef: handle.headerBoundItemsRef,
+});
+
+const withPortals = (element: ReactNode, handle: ListHandle): ReactNode => {
     const portals: ReactNode[] = [];
-    for (const [content, container, key] of boundItemsRef.current) {
+    for (const [content, container, key] of [...handle.boundItemsRef.current, ...handle.headerBoundItemsRef.current]) {
         portals.push(createPortal(content, container, key));
     }
-    for (const [content, container, key] of headerBoundItemsRef.current) {
-        portals.push(createPortal(content, container, key));
-    }
-
-    return createElement(
-        Fragment,
-        null,
-        createElement(intrinsicName, {
-            ...(props as Record<string, unknown>),
-            __boundItemsRef: boundItemsRef,
-            __rerender: rerender,
-            __headerBoundItemsRef: headerBoundItemsRef,
-        }),
-        ...portals,
+    return (
+        <>
+            {element}
+            {portals}
+        </>
     );
-}
+};
 
 /**
  * Virtualized scrollable list that renders items from a flat or tree data model.
@@ -89,7 +102,8 @@ function renderListElement(intrinsicName: string, handle: ReturnType<typeof useL
 export function GtkListView<T = unknown, S = unknown>(
     props: GenericListViewProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.ListView> },
 ): ReactNode {
-    return renderListElement("GtkListView", useListHandle(), props);
+    const handle = useListHandle();
+    return withPortals(<GtkListViewElement {...(listElementProps(props, handle) as GtkListViewProps)} />, handle);
 }
 
 /**
@@ -101,14 +115,16 @@ export function GtkListView<T = unknown, S = unknown>(
 export function GtkGridView<T = unknown>(
     props: GenericGridViewProps<T> & { children?: ReactNode; ref?: Ref<Gtk.GridView> },
 ): ReactNode {
-    return renderListElement("GtkGridView", useListHandle(), props);
+    const handle = useListHandle();
+    return withPortals(<GtkGridViewElement {...(listElementProps(props, handle) as GtkGridViewProps)} />, handle);
 }
 
 /** @internal */
 function GtkColumnViewBase<T = unknown, S = unknown>(
     props: GenericColumnViewProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.ColumnView> },
 ): ReactNode {
-    return renderListElement("GtkColumnView", useListHandle(), props);
+    const handle = useListHandle();
+    return withPortals(<GtkColumnViewElement {...(listElementProps(props, handle) as GtkColumnViewProps)} />, handle);
 }
 
 /**
@@ -120,16 +136,21 @@ function GtkColumnViewBase<T = unknown, S = unknown>(
  * for the column header context menu.
  */
 export const GtkColumnView: typeof GtkColumnViewBase & {
+    /** Defines a column, with header and per-row cell rendering. */
     Column: <T = unknown>(props: ColumnViewColumnProps<T>) => ReactNode;
+    /** A menu item in a column header's context menu. */
     MenuItem: (props: MenuItemProps) => ReactNode;
+    /** A grouping section in a column header's context menu. */
     MenuSection: (props: MenuSectionProps) => ReactNode;
+    /** A nested submenu in a column header's context menu. */
     MenuSubmenu: (props: MenuSubmenuProps) => ReactNode;
 } = Object.assign(GtkColumnViewBase, {
-    Column: <T = unknown>(props: ColumnViewColumnProps<T>): ReactNode =>
-        createElement("ColumnViewColumn", props, props.children),
-    MenuItem: createVirtualChild<MenuItemProps>("MenuItem"),
-    MenuSection: createVirtualChild<MenuSectionProps>("MenuSection"),
-    MenuSubmenu: createVirtualChild<MenuSubmenuProps>("MenuSubmenu"),
+    Column: <T = unknown>(props: ColumnViewColumnProps<T>): ReactNode => (
+        <ColumnViewColumnElement {...(props as ColumnViewColumnProps)} />
+    ),
+    MenuItem: (props: MenuItemProps): ReactNode => <MenuItemElement {...props} />,
+    MenuSection: (props: MenuSectionProps): ReactNode => <MenuSectionElement {...props} />,
+    MenuSubmenu: (props: MenuSubmenuProps): ReactNode => <MenuSubmenuElement {...props} />,
 });
 
 /**
@@ -141,7 +162,8 @@ export const GtkColumnView: typeof GtkColumnViewBase & {
 export function GtkDropDown<T = unknown, S = unknown>(
     props: GenericDropDownProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.DropDown> },
 ): ReactNode {
-    return renderListElement("GtkDropDown", useListHandle(), props);
+    const handle = useListHandle();
+    return withPortals(<GtkDropDownElement {...(listElementProps(props, handle) as GtkDropDownProps)} />, handle);
 }
 
 /**
@@ -154,5 +176,6 @@ export function GtkDropDown<T = unknown, S = unknown>(
 export function AdwComboRow<T = unknown, S = unknown>(
     props: GenericComboRowProps<T, S> & { children?: ReactNode; ref?: Ref<Adw.ComboRow> },
 ): ReactNode {
-    return renderListElement("AdwComboRow", useListHandle(), props);
+    const handle = useListHandle();
+    return withPortals(<AdwComboRowElement {...(listElementProps(props, handle) as AdwComboRowProps)} />, handle);
 }

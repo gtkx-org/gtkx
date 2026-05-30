@@ -271,32 +271,31 @@ const ContentHeaderBar = ({
 >) => (
     <AdwHeaderBar
         titleWidget={selectedNote ? undefined : <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />}
-    >
-        <AdwHeaderBar.PackStart>
-            {selectedNote ? (
+        packStart={
+            <>
+                {selectedNote ? (
+                    <GtkButton
+                        iconName="go-previous-symbolic"
+                        tooltipText="Back to list"
+                        onClicked={() => setSelectedId(null)}
+                    />
+                ) : (
+                    <GtkButton
+                        iconName="system-search-symbolic"
+                        tooltipText="Search (Ctrl+F)"
+                        onClicked={() => setSearchMode(!searchMode)}
+                    />
+                )}
                 <GtkButton
-                    iconName="go-previous-symbolic"
-                    tooltipText="Back to list"
-                    onClicked={() => setSelectedId(null)}
+                    iconName="user-trash-symbolic"
+                    tooltipText="Delete Note (Delete)"
+                    sensitive={!!selectedId}
+                    onClicked={deleteSelected}
                 />
-            ) : (
-                <GtkButton
-                    iconName="system-search-symbolic"
-                    tooltipText="Search (Ctrl+F)"
-                    onClicked={() => setSearchMode(!searchMode)}
-                />
-            )}
-            <GtkButton
-                iconName="user-trash-symbolic"
-                tooltipText="Delete Note (Delete)"
-                sensitive={!!selectedId}
-                onClicked={deleteSelected}
-            />
-        </AdwHeaderBar.PackStart>
-        <AdwHeaderBar.PackEnd>
-            <MainMenu onAddNote={addNote} onPreferences={onPreferences} onAbout={onAbout} />
-        </AdwHeaderBar.PackEnd>
-    </AdwHeaderBar>
+            </>
+        }
+        packEnd={<MainMenu onAddNote={addNote} onPreferences={onPreferences} onAbout={onAbout} />}
+    />
 );
 
 const ContentBody = ({
@@ -378,10 +377,7 @@ const ContentPage = (props: ContentPageProps) => (
         id="content"
         title={props.selectedNote?.title ?? CATEGORY_TITLES[props.category] ?? "Notes"}
     >
-        <AdwToolbarView>
-            <AdwToolbarView.AddTopBar>
-                <ContentHeaderBar {...props} />
-            </AdwToolbarView.AddTopBar>
+        <AdwToolbarView addTopBar={<ContentHeaderBar {...props} />}>
             <ContentBody {...props} />
         </AdwToolbarView>
     </AdwNavigationSplitView.Page>
@@ -405,14 +401,15 @@ const SidebarPage = ({
     setSelectedId,
 }: SidebarPageProps) => (
     <AdwNavigationSplitView.Page id="sidebar" title="Notes">
-        <AdwToolbarView>
-            <AdwToolbarView.AddTopBar>
-                <AdwHeaderBar>
-                    <AdwHeaderBar.PackStart>
+        <AdwToolbarView
+            addTopBar={
+                <AdwHeaderBar
+                    packStart={
                         <GtkButton iconName="list-add-symbolic" tooltipText="New Note (Ctrl+N)" onClicked={addNote} />
-                    </AdwHeaderBar.PackStart>
-                </AdwHeaderBar>
-            </AdwToolbarView.AddTopBar>
+                    }
+                />
+            }
+        >
             <Sidebar
                 noteCounts={{
                     all: activeNotes.length,

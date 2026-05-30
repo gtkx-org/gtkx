@@ -6,7 +6,7 @@ import { mergeSlotProps } from "./slot-props.js";
 
 /**
  * Produces the three React generated files (`jsx.ts`, `internal.ts`,
- * `compounds.ts`) plus a summary widget count for the runner result.
+ * `compounds.tsx`) plus a summary widget count for the runner result.
  *
  * @param repository - The loaded GIR repository
  * @param userSlotProps - Slot-prop overrides from `gtkx.config.ts`
@@ -22,7 +22,7 @@ export const generateReactFiles = (
     const files = new Map<string, string>([
         ["jsx.ts", jsx],
         ["internal.ts", internal],
-        ["compounds.ts", compounds.source],
+        ["compounds.tsx", compounds.source],
     ]);
     const widgetCount = jsx.split("\n").filter((line) => line.startsWith("export const ")).length;
     return { files, widgetCount };

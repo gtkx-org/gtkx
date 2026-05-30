@@ -1,5 +1,8 @@
-import { createElement, type ReactElement, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { GtkSizeGroupProps, SizeGroupWidgetProps } from "../jsx.js";
+
+const GtkSizeGroupElement = "GtkSizeGroup" as const;
+const SizeGroupWidgetElement = "SizeGroupWidget" as const;
 
 /**
  * Declarative wrapper for `Gtk.SizeGroup`.
@@ -31,7 +34,9 @@ import type { GtkSizeGroupProps, SizeGroupWidgetProps } from "../jsx.js";
  * @public
  */
 export const GtkSizeGroup = Object.assign(
-    (props: GtkSizeGroupProps): ReactElement => createElement("GtkSizeGroup", { mode: props.mode }, props.children),
+    (props: GtkSizeGroupProps): ReactNode => (
+        <GtkSizeGroupElement mode={props.mode}>{props.children}</GtkSizeGroupElement>
+    ),
     {
         /**
          * Marks a single widget as a member of the enclosing `<GtkSizeGroup>`.
@@ -39,7 +44,8 @@ export const GtkSizeGroup = Object.assign(
          * Transparent in the GTK tree — the wrapped widget attaches to the
          * marker's grandparent container.
          */
-        Widget: (props: SizeGroupWidgetProps): ReactElement =>
-            createElement("SizeGroupWidget", null, props.children as ReactNode),
+        Widget: (props: SizeGroupWidgetProps): ReactNode => (
+            <SizeGroupWidgetElement>{props.children}</SizeGroupWidgetElement>
+        ),
     },
 );

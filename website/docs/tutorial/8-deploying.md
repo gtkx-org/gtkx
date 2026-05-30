@@ -224,8 +224,7 @@ For complete Snap setup, see the [Snapcraft Documentation](https://snapcraft.io/
 
 Congratulations! You've built a complete Notes application that follows the [GNOME Human Interface Guidelines](https://developer.gnome.org/hig/), covering:
 
-- **Compound components** — `AdwToolbarView.AddTopBar`, `AdwHeaderBar.PackStart`, and more
-- **Slot props** — `titleWidget`, `popover`, and other widget properties
+- **Slot props** — `AdwToolbarView` `addTopBar`, `AdwHeaderBar` `packStart`, `titleWidget`, `popover`, and more
 - **CSS-in-JS styling** — `@gtkx/css` with GTK CSS variables
 - **Virtualized lists** — `GtkListView`, `GtkGridView`, and `GtkColumnView` with tree support
 - **Menus and shortcuts** — `GtkMenuButton.MenuItem` and `GtkShortcutController.Shortcut`

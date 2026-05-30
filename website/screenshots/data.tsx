@@ -81,25 +81,16 @@ export const noop = () => {};
 
 export const NotesSidebarPage = () => (
     <AdwNavigationSplitView.Page id="sidebar" title="Notes">
-        <AdwToolbarView>
-            <AdwToolbarView.AddTopBar>
-                <AdwHeaderBar>
-                    <AdwHeaderBar.PackStart>
-                        <GtkButton iconName="list-add-symbolic" />
-                    </AdwHeaderBar.PackStart>
-                </AdwHeaderBar>
-            </AdwToolbarView.AddTopBar>
+        <AdwToolbarView addTopBar={<AdwHeaderBar packStart={<GtkButton iconName="list-add-symbolic" />} />}>
             <GtkScrolledWindow vexpand>
                 <GtkListBox cssClasses={["navigation-sidebar"]}>
                     {categories.map((cat) => (
-                        <AdwActionRow key={cat.id} title={cat.title}>
-                            <AdwActionRow.AddPrefix>
-                                <GtkImage iconName={cat.icon} />
-                            </AdwActionRow.AddPrefix>
-                            <AdwActionRow.AddSuffix>
-                                <GtkLabel label={cat.count} cssClasses={["dim-label"]} />
-                            </AdwActionRow.AddSuffix>
-                        </AdwActionRow>
+                        <AdwActionRow
+                            key={cat.id}
+                            title={cat.title}
+                            addPrefix={<GtkImage iconName={cat.icon} />}
+                            addSuffix={<GtkLabel label={cat.count} cssClasses={["dim-label"]} />}
+                        />
                     ))}
                 </GtkListBox>
             </GtkScrolledWindow>

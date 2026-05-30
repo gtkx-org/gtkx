@@ -627,51 +627,56 @@ const ColorsHeader = () => {
     const countLabelRef = useRef<Gtk.Label | null>(null);
     useStoreCountLabel(models.baseStore, countLabelRef);
     return (
-        <GtkHeaderBar name="header-bar">
-            <GtkHeaderBar.PackStart>
-                <GtkToggleButton
-                    name="selection-toggle"
-                    iconName="emblem-important-symbolic"
-                    tooltipText="Show selection info"
-                    active={state.showSelectionInfo}
-                    onToggled={(btn) => state.setShowSelectionInfo(btn.getActive())}
-                />
-                <GtkButton label="_Refill" useUnderline onClicked={computed.handleRefill} />
-                <GtkLabel
-                    ref={countLabelRef}
-                    label={formatItemCount(models.baseStore.getNItems())}
-                    attributes={getTnumAttrs()}
-                    widthChars={8}
-                    xalign={1}
-                />
-                <GtkDropDown
-                    name="limit-dropdown"
-                    selectedId={String(state.colorLimit)}
-                    onSelectionChanged={computed.handleLimitChange}
-                    items={COLOR_LIMITS.map((l) => ({ id: l.id, value: l.label }))}
-                />
-            </GtkHeaderBar.PackStart>
-            <GtkHeaderBar.PackEnd>
-                <GtkBox spacing={10}>
-                    <GtkLabel label="Sort by:" />
-                    <GtkDropDown
-                        name="sort-dropdown"
-                        selectedId={state.sortMode}
-                        onSelectionChanged={(id) => state.setSortMode(id as SortMode)}
-                        items={SORT_MODES.map((m) => ({ id: m.id, value: m.label }))}
+        <GtkHeaderBar
+            name="header-bar"
+            packStart={
+                <>
+                    <GtkToggleButton
+                        name="selection-toggle"
+                        iconName="emblem-important-symbolic"
+                        tooltipText="Show selection info"
+                        active={state.showSelectionInfo}
+                        onToggled={(btn) => state.setShowSelectionInfo(btn.getActive())}
                     />
-                </GtkBox>
-                <GtkBox spacing={10}>
-                    <GtkLabel label="Show:" />
-                    <GtkDropDown
-                        name="display-dropdown"
-                        selectedId={state.displayFactory}
-                        onSelectionChanged={(id) => state.setDisplayFactory(id as DisplayFactory)}
-                        items={DISPLAY_FACTORIES.map((f) => ({ id: f.id, value: f.label }))}
+                    <GtkButton label="_Refill" useUnderline onClicked={computed.handleRefill} />
+                    <GtkLabel
+                        ref={countLabelRef}
+                        label={formatItemCount(models.baseStore.getNItems())}
+                        attributes={getTnumAttrs()}
+                        widthChars={8}
+                        xalign={1}
                     />
-                </GtkBox>
-            </GtkHeaderBar.PackEnd>
-        </GtkHeaderBar>
+                    <GtkDropDown
+                        name="limit-dropdown"
+                        selectedId={String(state.colorLimit)}
+                        onSelectionChanged={computed.handleLimitChange}
+                        items={COLOR_LIMITS.map((l) => ({ id: l.id, value: l.label }))}
+                    />
+                </>
+            }
+            packEnd={
+                <>
+                    <GtkBox spacing={10}>
+                        <GtkLabel label="Sort by:" />
+                        <GtkDropDown
+                            name="sort-dropdown"
+                            selectedId={state.sortMode}
+                            onSelectionChanged={(id) => state.setSortMode(id as SortMode)}
+                            items={SORT_MODES.map((m) => ({ id: m.id, value: m.label }))}
+                        />
+                    </GtkBox>
+                    <GtkBox spacing={10}>
+                        <GtkLabel label="Show:" />
+                        <GtkDropDown
+                            name="display-dropdown"
+                            selectedId={state.displayFactory}
+                            onSelectionChanged={(id) => state.setDisplayFactory(id as DisplayFactory)}
+                            items={DISPLAY_FACTORIES.map((f) => ({ id: f.id, value: f.label }))}
+                        />
+                    </GtkBox>
+                </>
+            }
+        />
     );
 };
 

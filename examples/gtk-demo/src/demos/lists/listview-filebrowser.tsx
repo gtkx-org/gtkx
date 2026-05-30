@@ -196,11 +196,10 @@ const FilebrowserProvider = ({ children }: DemoProviderProps) => {
 const ListViewFilebrowserTitlebar = () => {
     const { viewMode, setViewMode, navigateUp } = useFilebrowserContext();
     return (
-        <GtkHeaderBar name="filebrowser-header">
-            <GtkHeaderBar.PackStart>
-                <GtkButton name="up-button" iconName="go-up-symbolic" onClicked={navigateUp} />
-            </GtkHeaderBar.PackStart>
-            <GtkHeaderBar.PackEnd>
+        <GtkHeaderBar
+            name="filebrowser-header"
+            packStart={<GtkButton name="up-button" iconName="go-up-symbolic" onClicked={navigateUp} />}
+            packEnd={
                 <GtkListView
                     name="view-switcher"
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -222,8 +221,8 @@ const ListViewFilebrowserTitlebar = () => {
                     renderItem={(item: ViewModeItem) => <GtkImage iconName={item.icon} tooltipText={item.label} />}
                     items={VIEW_MODES.map((mode) => ({ id: mode.id, value: mode }))}
                 />
-            </GtkHeaderBar.PackEnd>
-        </GtkHeaderBar>
+            }
+        />
     );
 };
 

@@ -39,15 +39,15 @@ const SearchEntryProvider = ({ children }: DemoProviderProps) => {
 const SearchEntryTitlebar = () => {
     const { searchMode, handleToggleButtonClicked } = useSearchEntryContext();
     return (
-        <GtkHeaderBar>
-            <GtkHeaderBar.PackEnd>
+        <GtkHeaderBar
+            packEnd={
                 <GtkToggleButton
                     iconName="system-search-symbolic"
                     active={searchMode}
                     onToggled={handleToggleButtonClicked}
                 />
-            </GtkHeaderBar.PackEnd>
-        </GtkHeaderBar>
+            }
+        />
     );
 };
 

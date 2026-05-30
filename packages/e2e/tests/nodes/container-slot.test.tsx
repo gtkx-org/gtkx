@@ -11,7 +11,7 @@ import {
     GtkListBox,
 } from "@gtkx/react";
 import { render } from "@gtkx/testing";
-import { createElement, createRef } from "react";
+import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { countChildren } from "../helpers/child-count.js";
 
@@ -36,14 +36,12 @@ describe("render - ContainerSlot (1)", () => {
 
             await render(
                 <GtkListBox>
-                    <AdwActionRow ref={rowRef} title="Test Row">
-                        <AdwActionRow.AddPrefix>
-                            <GtkLabel ref={prefixRef} label="First" />
-                        </AdwActionRow.AddPrefix>
-                        <AdwActionRow.AddSuffix>
-                            <GtkLabel ref={suffixRef} label="Second" />
-                        </AdwActionRow.AddSuffix>
-                    </AdwActionRow>
+                    <AdwActionRow
+                        ref={rowRef}
+                        title="Test Row"
+                        addPrefix={<GtkLabel ref={prefixRef} label="First" />}
+                        addSuffix={<GtkLabel ref={suffixRef} label="Second" />}
+                    />
                 </GtkListBox>,
             );
 
@@ -63,14 +61,14 @@ describe("render - ContainerSlot (2)", () => {
             function App({ count }: { count: number }) {
                 return (
                     <GtkListBox>
-                        <AdwActionRow ref={rowRef} title="Test Row">
-                            {Array.from({ length: count }, (_, i) => (
+                        <AdwActionRow
+                            ref={rowRef}
+                            title="Test Row"
+                            addSuffix={Array.from({ length: count }, (_, i) => (
                                 // biome-ignore lint/suspicious/noArrayIndexKey: Test fixture with stable items
-                                <AdwActionRow.AddSuffix key={`suffix-label-${i}`}>
-                                    <GtkLabel ref={labelRefs[i]} label={`Label ${i}`} />
-                                </AdwActionRow.AddSuffix>
+                                <GtkLabel key={`suffix-label-${i}`} ref={labelRefs[i]} label={`Label ${i}`} />
                             ))}
-                        </AdwActionRow>
+                        />
                     </GtkListBox>
                 );
             }
@@ -94,11 +92,11 @@ describe("render - ContainerSlot (2)", () => {
 
             await render(
                 <GtkListBox>
-                    <AdwActionRow ref={rowRef} title="Test Row">
-                        <AdwActionRow.AddPrefix>
-                            <GtkLabel ref={prefixRef} label="Prefix" />
-                        </AdwActionRow.AddPrefix>
-                    </AdwActionRow>
+                    <AdwActionRow
+                        ref={rowRef}
+                        title="Test Row"
+                        addPrefix={<GtkLabel ref={prefixRef} label="Prefix" />}
+                    />
                 </GtkListBox>,
             );
 
@@ -115,11 +113,11 @@ describe("render - ContainerSlot (3)", () => {
 
             await render(
                 <GtkListBox>
-                    <AdwActionRow ref={rowRef} title="Test Row">
-                        <AdwActionRow.AddSuffix>
-                            <GtkLabel ref={suffixRef} label="Suffix" />
-                        </AdwActionRow.AddSuffix>
-                    </AdwActionRow>
+                    <AdwActionRow
+                        ref={rowRef}
+                        title="Test Row"
+                        addSuffix={<GtkLabel ref={suffixRef} label="Suffix" />}
+                    />
                 </GtkListBox>,
             );
 
@@ -133,14 +131,12 @@ describe("render - ContainerSlot (3)", () => {
 
             await render(
                 <GtkListBox>
-                    <AdwActionRow ref={rowRef} title="Test Row">
-                        <AdwActionRow.AddPrefix>
-                            <GtkLabel ref={prefixRef} label="Prefix" />
-                        </AdwActionRow.AddPrefix>
-                        <AdwActionRow.AddSuffix>
-                            <GtkLabel ref={suffixRef} label="Suffix" />
-                        </AdwActionRow.AddSuffix>
-                    </AdwActionRow>
+                    <AdwActionRow
+                        ref={rowRef}
+                        title="Test Row"
+                        addPrefix={<GtkLabel ref={prefixRef} label="Prefix" />}
+                        addSuffix={<GtkLabel ref={suffixRef} label="Suffix" />}
+                    />
                 </GtkListBox>,
             );
 
@@ -160,16 +156,12 @@ describe("render - ContainerSlot (4)", () => {
             function App({ showPrefix }: { showPrefix: boolean }) {
                 return (
                     <GtkListBox>
-                        <AdwActionRow ref={rowRef} title="Test Row">
-                            {showPrefix && (
-                                <AdwActionRow.AddPrefix>
-                                    <GtkLabel ref={prefixRef} label="Prefix" />
-                                </AdwActionRow.AddPrefix>
-                            )}
-                            <AdwActionRow.AddSuffix>
-                                <GtkLabel ref={alwaysRef} label="Always" />
-                            </AdwActionRow.AddSuffix>
-                        </AdwActionRow>
+                        <AdwActionRow
+                            ref={rowRef}
+                            title="Test Row"
+                            addPrefix={showPrefix ? <GtkLabel ref={prefixRef} label="Prefix" /> : null}
+                            addSuffix={<GtkLabel ref={alwaysRef} label="Always" />}
+                        />
                     </GtkListBox>
                 );
             }
@@ -196,12 +188,16 @@ describe("render - ContainerSlot (5)", () => {
 
             await render(
                 <GtkListBox>
-                    <AdwActionRow ref={rowRef} title="Test Row">
-                        <AdwActionRow.AddPrefix>
-                            <GtkLabel ref={firstRef} label="First" />
-                            <GtkLabel ref={secondRef} label="Second" />
-                        </AdwActionRow.AddPrefix>
-                    </AdwActionRow>
+                    <AdwActionRow
+                        ref={rowRef}
+                        title="Test Row"
+                        addPrefix={
+                            <>
+                                <GtkLabel ref={firstRef} label="First" />
+                                <GtkLabel ref={secondRef} label="Second" />
+                            </>
+                        }
+                    />
                 </GtkListBox>,
             );
 
@@ -216,12 +212,16 @@ describe("render - ContainerSlot (5)", () => {
 
             await render(
                 <GtkListBox>
-                    <AdwActionRow ref={rowRef} title="Test Row">
-                        <AdwActionRow.AddSuffix>
-                            <GtkLabel ref={firstRef} label="First" />
-                            <GtkLabel ref={secondRef} label="Second" />
-                        </AdwActionRow.AddSuffix>
-                    </AdwActionRow>
+                    <AdwActionRow
+                        ref={rowRef}
+                        title="Test Row"
+                        addSuffix={
+                            <>
+                                <GtkLabel ref={firstRef} label="First" />
+                                <GtkLabel ref={secondRef} label="Second" />
+                            </>
+                        }
+                    />
                 </GtkListBox>,
             );
 
@@ -241,12 +241,16 @@ describe("render - ContainerSlot (6)", () => {
             function App({ showSecond }: { showSecond: boolean }) {
                 return (
                     <GtkListBox>
-                        <AdwActionRow ref={rowRef} title="Test Row">
-                            <AdwActionRow.AddPrefix>
-                                <GtkLabel ref={firstRef} label="First" />
-                                {showSecond && <GtkLabel ref={secondRef} label="Second" />}
-                            </AdwActionRow.AddPrefix>
-                        </AdwActionRow>
+                        <AdwActionRow
+                            ref={rowRef}
+                            title="Test Row"
+                            addPrefix={
+                                <>
+                                    <GtkLabel ref={firstRef} label="First" />
+                                    {showSecond && <GtkLabel ref={secondRef} label="Second" />}
+                                </>
+                            }
+                        />
                     </GtkListBox>
                 );
             }
@@ -294,14 +298,11 @@ describe("render - ContainerSlot (7)", () => {
             const suffixRef = createRef<Gtk.Button>();
 
             await render(
-                <AdwExpanderRow title="Row">
-                    <AdwExpanderRow.AddPrefix>
-                        <GtkButton ref={prefixRef} label="Prefix" />
-                    </AdwExpanderRow.AddPrefix>
-                    <AdwExpanderRow.AddSuffix>
-                        <GtkButton ref={suffixRef} label="Suffix" />
-                    </AdwExpanderRow.AddSuffix>
-                </AdwExpanderRow>,
+                <AdwExpanderRow
+                    title="Row"
+                    addPrefix={<GtkButton ref={prefixRef} label="Prefix" />}
+                    addSuffix={<GtkButton ref={suffixRef} label="Suffix" />}
+                />,
             );
 
             expect(prefixRef.current?.getLabel()).toBe("Prefix");
@@ -315,13 +316,7 @@ describe("render - ContainerSlot (8)", () => {
         it("adds nested rows to ExpanderRow", async () => {
             const rowRef = createRef<Adw.ActionRow>();
 
-            await render(
-                <AdwExpanderRow title="Settings">
-                    <AdwExpanderRow.AddRow>
-                        <AdwActionRow ref={rowRef} title="Option 1" />
-                    </AdwExpanderRow.AddRow>
-                </AdwExpanderRow>,
-            );
+            await render(<AdwExpanderRow title="Settings" addRow={<AdwActionRow ref={rowRef} title="Option 1" />} />);
 
             expect(rowRef.current).not.toBeNull();
             expect(rowRef.current?.getTitle()).toBe("Option 1");
@@ -332,12 +327,15 @@ describe("render - ContainerSlot (8)", () => {
             const row2Ref = createRef<Adw.ActionRow>();
 
             await render(
-                <AdwExpanderRow title="Settings">
-                    <AdwExpanderRow.AddRow>
-                        <AdwActionRow ref={row1Ref} title="Option 1" />
-                        <AdwActionRow ref={row2Ref} title="Option 2" />
-                    </AdwExpanderRow.AddRow>
-                </AdwExpanderRow>,
+                <AdwExpanderRow
+                    title="Settings"
+                    addRow={
+                        <>
+                            <AdwActionRow ref={row1Ref} title="Option 1" />
+                            <AdwActionRow ref={row2Ref} title="Option 2" />
+                        </>
+                    }
+                />,
             );
 
             expect(row1Ref.current?.getTitle()).toBe("Option 1");
@@ -353,12 +351,16 @@ describe("render - ContainerSlot (9)", () => {
 
             function App({ showRow }: { showRow: boolean }) {
                 return (
-                    <AdwExpanderRow ref={expanderRef} title="Settings">
-                        <AdwExpanderRow.AddRow>
-                            <AdwActionRow title="Always" />
-                            {showRow && <AdwActionRow title="Conditional" />}
-                        </AdwExpanderRow.AddRow>
-                    </AdwExpanderRow>
+                    <AdwExpanderRow
+                        ref={expanderRef}
+                        title="Settings"
+                        addRow={
+                            <>
+                                <AdwActionRow title="Always" />
+                                {showRow && <AdwActionRow title="Conditional" />}
+                            </>
+                        }
+                    />
                 );
             }
 
@@ -372,13 +374,7 @@ describe("render - ContainerSlot (9)", () => {
         it("adds action widgets to ExpanderRow", async () => {
             const actionRef = createRef<Gtk.Button>();
 
-            await render(
-                <AdwExpanderRow title="Group">
-                    <AdwExpanderRow.AddAction>
-                        <GtkButton ref={actionRef} label="Action" />
-                    </AdwExpanderRow.AddAction>
-                </AdwExpanderRow>,
-            );
+            await render(<AdwExpanderRow title="Group" addAction={<GtkButton ref={actionRef} label="Action" />} />);
 
             expect(actionRef.current?.getLabel()).toBe("Action");
         });
@@ -392,12 +388,15 @@ describe("render - ContainerSlot (10)", () => {
             const action2Ref = createRef<Gtk.Button>();
 
             await render(
-                <AdwExpanderRow title="Group">
-                    <AdwExpanderRow.AddAction>
-                        <GtkButton ref={action1Ref} label="Action 1" />
-                        <GtkButton ref={action2Ref} label="Action 2" />
-                    </AdwExpanderRow.AddAction>
-                </AdwExpanderRow>,
+                <AdwExpanderRow
+                    title="Group"
+                    addAction={
+                        <>
+                            <GtkButton ref={action1Ref} label="Action 1" />
+                            <GtkButton ref={action2Ref} label="Action 2" />
+                        </>
+                    }
+                />,
             );
 
             expect(action1Ref.current?.getLabel()).toBe("Action 1");
@@ -408,17 +407,23 @@ describe("render - ContainerSlot (10)", () => {
             const ref = createRef<Adw.ExpanderRow>();
 
             await render(
-                <AdwExpanderRow ref={ref} title="Complex">
-                    <AdwExpanderRow.AddAction>
-                        <GtkButton label="Action 1" />
-                        <GtkButton label="Action 2" />
-                    </AdwExpanderRow.AddAction>
-                    <AdwExpanderRow.AddRow>
-                        <AdwActionRow title="Row 1" />
-                        <AdwActionRow title="Row 2" />
-                        <AdwActionRow title="Row 3" />
-                    </AdwExpanderRow.AddRow>
-                </AdwExpanderRow>,
+                <AdwExpanderRow
+                    ref={ref}
+                    title="Complex"
+                    addAction={
+                        <>
+                            <GtkButton label="Action 1" />
+                            <GtkButton label="Action 2" />
+                        </>
+                    }
+                    addRow={
+                        <>
+                            <AdwActionRow title="Row 1" />
+                            <AdwActionRow title="Row 2" />
+                            <AdwActionRow title="Row 3" />
+                        </>
+                    }
+                />,
             );
 
             expect(ref.current).not.toBeNull();
@@ -432,13 +437,7 @@ describe("render - ContainerSlot (11)", () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const startRef = createRef<Gtk.Label>();
 
-            await render(
-                <GtkHeaderBar ref={headerBarRef}>
-                    <GtkHeaderBar.PackStart>
-                        <GtkLabel ref={startRef} label="Start" />
-                    </GtkHeaderBar.PackStart>
-                </GtkHeaderBar>,
-            );
+            await render(<GtkHeaderBar ref={headerBarRef} packStart={<GtkLabel ref={startRef} label="Start" />} />);
 
             expect(startRef.current).not.toBeNull();
             expect(startRef.current?.getLabel()).toBe("Start");
@@ -448,13 +447,7 @@ describe("render - ContainerSlot (11)", () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const endRef = createRef<Gtk.Label>();
 
-            await render(
-                <GtkHeaderBar ref={headerBarRef}>
-                    <GtkHeaderBar.PackEnd>
-                        <GtkLabel ref={endRef} label="End" />
-                    </GtkHeaderBar.PackEnd>
-                </GtkHeaderBar>,
-            );
+            await render(<GtkHeaderBar ref={headerBarRef} packEnd={<GtkLabel ref={endRef} label="End" />} />);
 
             expect(endRef.current).not.toBeNull();
             expect(endRef.current?.getLabel()).toBe("End");
@@ -470,14 +463,11 @@ describe("render - ContainerSlot (12)", () => {
             const endRef = createRef<Gtk.Label>();
 
             await render(
-                <GtkHeaderBar ref={headerBarRef}>
-                    <GtkHeaderBar.PackStart>
-                        <GtkLabel ref={startRef} label="Start" />
-                    </GtkHeaderBar.PackStart>
-                    <GtkHeaderBar.PackEnd>
-                        <GtkLabel ref={endRef} label="End" />
-                    </GtkHeaderBar.PackEnd>
-                </GtkHeaderBar>,
+                <GtkHeaderBar
+                    ref={headerBarRef}
+                    packStart={<GtkLabel ref={startRef} label="Start" />}
+                    packEnd={<GtkLabel ref={endRef} label="End" />}
+                />,
             );
 
             expect(startRef.current).not.toBeNull();
@@ -491,13 +481,11 @@ describe("render - ContainerSlot (12)", () => {
 
             function App({ showStart }: { showStart: boolean }) {
                 return (
-                    <GtkHeaderBar ref={headerBarRef} titleWidget={<GtkLabel ref={alwaysRef} label="Always" />}>
-                        {showStart && (
-                            <GtkHeaderBar.PackStart>
-                                <GtkLabel ref={startRef} label="Start" />
-                            </GtkHeaderBar.PackStart>
-                        )}
-                    </GtkHeaderBar>
+                    <GtkHeaderBar
+                        ref={headerBarRef}
+                        titleWidget={<GtkLabel ref={alwaysRef} label="Always" />}
+                        packStart={showStart ? <GtkLabel ref={startRef} label="Start" /> : null}
+                    />
                 );
             }
 
@@ -522,12 +510,15 @@ describe("render - ContainerSlot (13)", () => {
             const secondRef = createRef<Gtk.Label>();
 
             await render(
-                <GtkHeaderBar ref={headerBarRef}>
-                    <GtkHeaderBar.PackStart>
-                        <GtkLabel ref={firstRef} label="First" />
-                        <GtkLabel ref={secondRef} label="Second" />
-                    </GtkHeaderBar.PackStart>
-                </GtkHeaderBar>,
+                <GtkHeaderBar
+                    ref={headerBarRef}
+                    packStart={
+                        <>
+                            <GtkLabel ref={firstRef} label="First" />
+                            <GtkLabel ref={secondRef} label="Second" />
+                        </>
+                    }
+                />,
             );
 
             expect(firstRef.current).not.toBeNull();
@@ -540,12 +531,15 @@ describe("render - ContainerSlot (13)", () => {
             const secondRef = createRef<Gtk.Label>();
 
             await render(
-                <GtkHeaderBar ref={headerBarRef}>
-                    <GtkHeaderBar.PackEnd>
-                        <GtkLabel ref={firstRef} label="First" />
-                        <GtkLabel ref={secondRef} label="Second" />
-                    </GtkHeaderBar.PackEnd>
-                </GtkHeaderBar>,
+                <GtkHeaderBar
+                    ref={headerBarRef}
+                    packEnd={
+                        <>
+                            <GtkLabel ref={firstRef} label="First" />
+                            <GtkLabel ref={secondRef} label="Second" />
+                        </>
+                    }
+                />,
             );
 
             expect(firstRef.current).not.toBeNull();
@@ -561,16 +555,19 @@ describe("render - ContainerSlot (14)", () => {
 
             function App({ showBack }: { showBack: boolean }) {
                 return (
-                    <GtkHeaderBar ref={headerBarRef}>
-                        <GtkHeaderBar.PackStart>
-                            {showBack ? (
-                                <GtkButton key="back" label="Back" />
-                            ) : (
-                                <GtkButton key="search" label="Search" />
-                            )}
-                            <GtkButton label="Delete" />
-                        </GtkHeaderBar.PackStart>
-                    </GtkHeaderBar>
+                    <GtkHeaderBar
+                        ref={headerBarRef}
+                        packStart={
+                            <>
+                                {showBack ? (
+                                    <GtkButton key="back" label="Back" />
+                                ) : (
+                                    <GtkButton key="search" label="Search" />
+                                )}
+                                <GtkButton label="Delete" />
+                            </>
+                        }
+                    />
                 );
             }
 
@@ -598,9 +595,10 @@ describe("render - ContainerSlot (15)", () => {
 
             function App({ order }: { order: "ab" | "ba" }) {
                 return (
-                    <GtkHeaderBar ref={headerBarRef}>
-                        <GtkHeaderBar.PackStart>
-                            {order === "ab" ? (
+                    <GtkHeaderBar
+                        ref={headerBarRef}
+                        packStart={
+                            order === "ab" ? (
                                 <>
                                     <GtkButton key="a" ref={firstRef} label="A" />
                                     <GtkButton key="b" ref={secondRef} label="B" />
@@ -610,9 +608,9 @@ describe("render - ContainerSlot (15)", () => {
                                     <GtkButton key="b" ref={secondRef} label="B" />
                                     <GtkButton key="a" ref={firstRef} label="A" />
                                 </>
-                            )}
-                        </GtkHeaderBar.PackStart>
-                    </GtkHeaderBar>
+                            )
+                        }
+                    />
                 );
             }
 
@@ -638,12 +636,15 @@ describe("render - ContainerSlot (16)", () => {
 
             function App({ showSecond }: { showSecond: boolean }) {
                 return (
-                    <GtkHeaderBar ref={headerBarRef}>
-                        <GtkHeaderBar.PackStart>
-                            <GtkLabel ref={firstRef} label="First" />
-                            {showSecond && <GtkLabel ref={secondRef} label="Second" />}
-                        </GtkHeaderBar.PackStart>
-                    </GtkHeaderBar>
+                    <GtkHeaderBar
+                        ref={headerBarRef}
+                        packStart={
+                            <>
+                                <GtkLabel ref={firstRef} label="First" />
+                                {showSecond && <GtkLabel ref={secondRef} label="Second" />}
+                            </>
+                        }
+                    />
                 );
             }
 
@@ -667,10 +668,7 @@ describe("render - ContainerSlot (17)", () => {
             const contentRef = createRef<Gtk.Label>();
 
             await render(
-                <AdwToolbarView ref={toolbarRef}>
-                    <AdwToolbarView.AddTopBar>
-                        <AdwHeaderBar />
-                    </AdwToolbarView.AddTopBar>
+                <AdwToolbarView ref={toolbarRef} addTopBar={<AdwHeaderBar />}>
                     <GtkLabel ref={contentRef} label="Content" />
                 </AdwToolbarView>,
             );
@@ -684,11 +682,8 @@ describe("render - ContainerSlot (17)", () => {
             const contentRef = createRef<Gtk.Label>();
 
             await render(
-                <AdwToolbarView ref={toolbarRef}>
+                <AdwToolbarView ref={toolbarRef} addBottomBar={<AdwHeaderBar />}>
                     <GtkLabel ref={contentRef} label="Content" />
-                    <AdwToolbarView.AddBottomBar>
-                        <AdwHeaderBar />
-                    </AdwToolbarView.AddBottomBar>
                 </AdwToolbarView>,
             );
 
@@ -706,13 +701,15 @@ describe("render - ContainerSlot (18)", () => {
             const contentRef = createRef<Gtk.Label>();
 
             await render(
-                <AdwToolbarView ref={toolbarRef}>
-                    <AdwToolbarView.AddTopBar>
-                        <AdwHeaderBar />
-                    </AdwToolbarView.AddTopBar>
-                    <AdwToolbarView.AddTopBar>
-                        <GtkLabel ref={secondTopRef} label="Second Top Bar" />
-                    </AdwToolbarView.AddTopBar>
+                <AdwToolbarView
+                    ref={toolbarRef}
+                    addTopBar={
+                        <>
+                            <AdwHeaderBar />
+                            <GtkLabel ref={secondTopRef} label="Second Top Bar" />
+                        </>
+                    }
+                >
                     <GtkLabel ref={contentRef} label="Content" />
                 </AdwToolbarView>,
             );
@@ -727,12 +724,7 @@ describe("render - ContainerSlot (18)", () => {
 
             function App({ showTop }: { showTop: boolean }) {
                 return (
-                    <AdwToolbarView ref={toolbarRef}>
-                        {showTop && (
-                            <AdwToolbarView.AddTopBar>
-                                <AdwHeaderBar />
-                            </AdwToolbarView.AddTopBar>
-                        )}
+                    <AdwToolbarView ref={toolbarRef} addTopBar={showTop ? <AdwHeaderBar /> : null}>
                         <GtkLabel ref={contentRef} label="Content" />
                     </AdwToolbarView>
                 );
@@ -750,10 +742,14 @@ describe("render - ContainerSlot (18)", () => {
 describe("render - ContainerSlot (19)", () => {
     describe("error handling", () => {
         it("throws when the requested method does not exist on the parent", async () => {
+            const ContainerSlot = "ContainerSlot" as const;
+
             await expect(
                 render(
                     <GtkListBox>
-                        {createElement("ContainerSlot", { id: "thisMethodDoesNotExist" }, <GtkLabel label="orphan" />)}
+                        <ContainerSlot id="thisMethodDoesNotExist">
+                            <GtkLabel label="orphan" />
+                        </ContainerSlot>
                     </GtkListBox>,
                 ),
             ).rejects.toThrow(/Method 'thisMethodDoesNotExist' not found/);

@@ -28,19 +28,13 @@ export default function App() {
                 maxSidebarWidth={350}
             >
                 <AdwNavigationSplitView.Page id="sidebar" title="Notes">
-                    <AdwToolbarView>
-                        <AdwToolbarView.AddTopBar>
-                            <AdwHeaderBar />
-                        </AdwToolbarView.AddTopBar>
+                    <AdwToolbarView addTopBar={<AdwHeaderBar />}>
                         <GtkLabel label="Sidebar content" />
                     </AdwToolbarView>
                 </AdwNavigationSplitView.Page>
 
                 <AdwNavigationSplitView.Page id="content" title="Editor">
-                    <AdwToolbarView>
-                        <AdwToolbarView.AddTopBar>
-                            <AdwHeaderBar />
-                        </AdwToolbarView.AddTopBar>
+                    <AdwToolbarView addTopBar={<AdwHeaderBar />}>
                         <GtkLabel label="Content area" />
                     </AdwToolbarView>
                 </AdwNavigationSplitView.Page>
@@ -95,21 +89,19 @@ const Sidebar = ({
             }}
         >
             {categories.map((cat) => (
-                <AdwActionRow key={cat.id} title={cat.title}>
-                    <AdwActionRow.AddPrefix>
-                        <GtkImage iconName={cat.icon} />
-                    </AdwActionRow.AddPrefix>
-                    <AdwActionRow.AddSuffix>
-                        <GtkLabel label={String(noteCounts[cat.id] ?? 0)} cssClasses={["dim-label"]} />
-                    </AdwActionRow.AddSuffix>
-                </AdwActionRow>
+                <AdwActionRow
+                    key={cat.id}
+                    title={cat.title}
+                    addPrefix={<GtkImage iconName={cat.icon} />}
+                    addSuffix={<GtkLabel label={String(noteCounts[cat.id] ?? 0)} cssClasses={["dim-label"]} />}
+                />
             ))}
         </GtkListBox>
     </GtkScrolledWindow>
 );
 ```
 
-Notice `AdwActionRow.AddPrefix` and `AdwActionRow.AddSuffix` — these are compound components for placing widgets at the start and end of an action row.
+Notice the `addPrefix` and `addSuffix` props on `AdwActionRow` — these are slot props for placing widgets at the start and end of an action row.
 
 ## Stack Navigation
 
@@ -126,12 +118,9 @@ const ContentPane = () => {
     const [page, setPage] = useState("list");
 
     return (
-        <AdwToolbarView>
-            <AdwToolbarView.AddTopBar>
-                <AdwHeaderBar
-                    titleWidget={<AdwViewSwitcher stack={stack} />}
-                />
-            </AdwToolbarView.AddTopBar>
+        <AdwToolbarView
+            addTopBar={<AdwHeaderBar titleWidget={<AdwViewSwitcher stack={stack} />} />}
+        >
             <AdwViewStack ref={setStack} page={page} onPageChanged={setPage}>
                 <AdwViewStack.Page id="list" title="List" iconName="view-list-symbolic">
                     {/* Notes list from previous chapters */}
@@ -169,19 +158,13 @@ const NotesBrowser = () => {
     return (
         <AdwNavigationView history={history} onHistoryChanged={setHistory}>
             <AdwNavigationView.Page id="list" title="Notes">
-                <AdwToolbarView>
-                    <AdwToolbarView.AddTopBar>
-                        <AdwHeaderBar />
-                    </AdwToolbarView.AddTopBar>
+                <AdwToolbarView addTopBar={<AdwHeaderBar />}>
                     {/* Notes list — onClick calls pushNote(id) */}
                 </AdwToolbarView>
             </AdwNavigationView.Page>
 
             <AdwNavigationView.Page id={`note-${selectedNote?.id}`} title={selectedNote?.title ?? ""}>
-                <AdwToolbarView>
-                    <AdwToolbarView.AddTopBar>
-                        <AdwHeaderBar />
-                    </AdwToolbarView.AddTopBar>
+                <AdwToolbarView addTopBar={<AdwHeaderBar />}>
                     {/* Note editor */}
                 </AdwToolbarView>
             </AdwNavigationView.Page>
@@ -219,14 +202,15 @@ export default function App() {
                 maxSidebarWidth={300}
             >
                 <AdwNavigationSplitView.Page id="sidebar" title="Notes">
-                    <AdwToolbarView>
-                        <AdwToolbarView.AddTopBar>
-                            <AdwHeaderBar>
-                                <AdwHeaderBar.PackStart>
+                    <AdwToolbarView
+                        addTopBar={
+                            <AdwHeaderBar
+                                packStart={
                                     <GtkButton iconName="list-add-symbolic" tooltipText="New Note (Ctrl+N)" onClicked={addNote} />
-                                </AdwHeaderBar.PackStart>
-                            </AdwHeaderBar>
-                        </AdwToolbarView.AddTopBar>
+                                }
+                            />
+                        }
+                    >
                         <Sidebar
                             noteCounts={{ all: notes.length, favorites: 0, recent: notes.length, trash: 0 }}
                             onCategoryChanged={setCategory}
@@ -238,16 +222,17 @@ export default function App() {
                     id="content"
                     title={selectedNote?.title ?? categoryTitles[category] ?? "Notes"}
                 >
-                    <AdwToolbarView>
-                        <AdwToolbarView.AddTopBar>
-                            <AdwHeaderBar>
-                                <AdwHeaderBar.PackEnd>
+                    <AdwToolbarView
+                        addTopBar={
+                            <AdwHeaderBar
+                                packEnd={
                                     <GtkMenuButton iconName="open-menu-symbolic" tooltipText="Main Menu">
                                         {/* ... menu items */}
                                     </GtkMenuButton>
-                                </AdwHeaderBar.PackEnd>
-                            </AdwHeaderBar>
-                        </AdwToolbarView.AddTopBar>
+                                }
+                            />
+                        }
+                    >
                         {/* Notes list filtered by category */}
                     </AdwToolbarView>
                 </AdwNavigationSplitView.Page>
@@ -271,13 +256,15 @@ const [searchQuery, setSearchQuery] = useState("");
 const searchEntryRef = useRef<Gtk.SearchEntry | null>(null);
 
 // Add a search button to the header bar:
-<AdwHeaderBar.PackStart>
-    <GtkButton
-        iconName="system-search-symbolic"
-        tooltipText="Search (Ctrl+F)"
-        onClicked={() => setSearchMode(!searchMode)}
-    />
-</AdwHeaderBar.PackStart>
+<AdwHeaderBar
+    packStart={
+        <GtkButton
+            iconName="system-search-symbolic"
+            tooltipText="Search (Ctrl+F)"
+            onClicked={() => setSearchMode(!searchMode)}
+        />
+    }
+/>
 
 // Place the search bar below the header bar, inside the content area:
 <GtkSearchBar
