@@ -41,7 +41,7 @@ export const emitEnum = (ctx: ModuleContext, enumeration: GirEnum): void => {
 };
 
 const memberKey = (name: string): string => {
-    const upper = name.toUpperCase().replace(/-/g, "_");
+    const upper = name.toUpperCase().replaceAll("-", "_");
     return /^[0-9]/.test(upper) ? `_${upper}` : upper;
 };
 

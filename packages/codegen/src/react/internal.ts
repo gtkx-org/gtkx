@@ -25,7 +25,7 @@ export const generateInternal = (repository: GirRepository): string => {
         .filter(({ constructOnly }) => constructOnly.length > 0)
         .map(({ glibName, constructOnly }) => `    "${glibName}": new Set(${JSON.stringify(constructOnly)}),`);
 
-    const namespaces = [...new Set(widgets.map((widget) => widget.namespace))].sort();
+    const namespaces = [...new Set(widgets.map((widget) => widget.namespace))].sort((a, b) => a.localeCompare(b));
     const preamble = namespaces.map((name) => `import "@gtkx/ffi/${name.toLowerCase()}";`).join("\n");
 
     return `${[
