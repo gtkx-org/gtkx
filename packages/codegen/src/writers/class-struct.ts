@@ -1,5 +1,5 @@
 import type { ModuleContext } from "../dsl/context.js";
-import { indent } from "../dsl/emit.js";
+import { indent, quote } from "../dsl/emit.js";
 import { camelCase, pascalCase } from "../dsl/identifier.js";
 import { callbackFromNode, type GirCallback } from "../gir/callback.js";
 import type { GirClass } from "../gir/class.js";
@@ -83,9 +83,9 @@ const renderDescriptor = (ctx: ModuleContext, input: DescriptorInput): string =>
         .join(", ");
     const returnType = writeFfiType(ctx, callback.returnValue.type, callback.returnValue.transferOwnership);
     const lines = [
-        `kind: ${JSON.stringify(kind)},`,
-        `className: ${JSON.stringify(structName)},`,
-        `vfuncName: ${JSON.stringify(field.name)},`,
+        `kind: ${quote(kind)},`,
+        `className: ${quote(structName)},`,
+        `vfuncName: ${quote(field.name)},`,
         `byteOffset: ${byteOffset},`,
         `argTypes: [${argTypes}],`,
         `returnType: ${returnType},`,

@@ -1,5 +1,5 @@
 import type { ModuleContext } from "../dsl/context.js";
-import { indent } from "../dsl/emit.js";
+import { indent, quote } from "../dsl/emit.js";
 
 /**
  * The pre-rendered pieces of a single `registerNativeClass(...)` descriptor.
@@ -33,7 +33,7 @@ export const appendNativeClassRegistration = (ctx: ModuleContext, registration: 
         return;
     }
     ctx.addRuntimeImport("registerNativeClass");
-    const lines: string[] = [`role: ${JSON.stringify(role)},`];
+    const lines: string[] = [`role: ${quote(role)},`];
     if (getTypeRef !== undefined) lines.push(`gtype: ${getTypeRef},`);
     if (construction !== undefined) lines.push(`construction: ${construction},`);
     if (vfuncs !== undefined) lines.push(`vfuncs: ${vfuncs},`);

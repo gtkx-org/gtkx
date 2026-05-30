@@ -1,5 +1,5 @@
 import type { ModuleContext } from "../dsl/context.js";
-import { indent } from "../dsl/emit.js";
+import { indent, quote } from "../dsl/emit.js";
 import { camelCase, camelCaseMember } from "../dsl/identifier.js";
 import type { GirProperty } from "../gir/property.js";
 import { writeTsType } from "./types-ts.js";
@@ -32,14 +32,14 @@ export const renderPropertyAccessor = (
     const getBody =
         getterBody !== undefined
             ? `return this.${getterBody}() as ${tsType};`
-            : `return this.getProperty(${JSON.stringify(property.name)}) as ${tsType};`;
+            : `return this.getProperty(${quote(property.name)}) as ${tsType};`;
     blocks.push(`get ${jsName}(): ${tsType} {\n${indent(getBody, 1)}\n}`);
     if (property.writable || property.construct || property.constructOnly) {
         const setterMember = delegateMember(property.setter, jsName, claimedMemberNames);
         const setBody =
             setterMember !== undefined
                 ? `this.${setterMember}(value);`
-                : `this.setProperty(${JSON.stringify(property.name)}, value);`;
+                : `this.setProperty(${quote(property.name)}, value);`;
         blocks.push(`set ${jsName}(value: ${tsType}) {\n${indent(setBody, 1)}\n}`);
     }
     return blocks.join("\n\n");

@@ -1,4 +1,4 @@
-import { indent } from "../dsl/emit.js";
+import { indent, quote } from "../dsl/emit.js";
 import type { GirRepository } from "../gir/repository.js";
 import { containerSlotsFor, virtualSubcomponentsFor } from "./compounds-meta.js";
 import { mergeSlotProps } from "./slot-props.js";
@@ -133,7 +133,7 @@ const renderComponentFunction = (
 };
 
 const renderSlotChild = (elementConst: string, slot: string): string =>
-    `{${slot} != null && <${elementConst} id=${JSON.stringify(slot)}>{${slot}}</${elementConst}>}`;
+    `{${slot} != null && <${elementConst} id=${quote(slot)}>{${slot}}</${elementConst}>}`;
 
 const renderVirtualSubcomponent = (
     virtual: { readonly child: string; readonly intrinsic: string },
@@ -152,7 +152,7 @@ const renderVirtualSubcomponent = (
 const buildElementConsts = (accumulator: CompoundAccumulator): string =>
     [...accumulator.elementNames]
         .sort((a, b) => a.localeCompare(b))
-        .map((name) => `const ${name}Element = ${JSON.stringify(name)} as const;`)
+        .map((name) => `const ${name}Element = ${quote(name)} as const;`)
         .join("\n");
 
 const buildImportLines = (accumulator: CompoundAccumulator): readonly string[] => {

@@ -1,3 +1,5 @@
+import { quote } from "./emit.js";
+
 /**
  * Tracks imports for a single generated module.
  *
@@ -75,7 +77,7 @@ export class ImportsManifest {
     emit(): string {
         const lines: string[] = [];
         for (const specifier of this.sideEffects) {
-            lines.push(`import ${JSON.stringify(specifier)};`);
+            lines.push(`import ${quote(specifier)};`);
         }
         const specifiers = new Set<string>([
             ...this.named.keys(),
@@ -95,7 +97,7 @@ export class ImportsManifest {
                 parts.push(`{ ${sortedNames.join(", ")} }`);
             }
             if (parts.length === 0) continue;
-            lines.push(`import ${parts.join(", ")} from ${JSON.stringify(specifier)};`);
+            lines.push(`import ${parts.join(", ")} from ${quote(specifier)};`);
         }
         return lines.length === 0 ? "" : `${lines.join("\n")}\n`;
     }

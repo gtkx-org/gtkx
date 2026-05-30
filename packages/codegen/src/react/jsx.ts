@@ -1,3 +1,4 @@
+import { quote } from "../dsl/emit.js";
 import type { GirClass } from "../gir/class.js";
 import { splitQualifiedName } from "../gir/qualified-name.js";
 import type { GirRepository } from "../gir/repository.js";
@@ -34,7 +35,7 @@ export const generateJsx = (
     const widgets = collectWidgets(repository);
     const intrinsicWidgets = widgets.filter((entry) => !excludeNames.has(entry.glibName));
     const constLines = intrinsicWidgets.map(
-        (entry) => `export const ${entry.glibName} = ${JSON.stringify(entry.glibName)} as const;`,
+        (entry) => `export const ${entry.glibName} = ${quote(entry.glibName)} as const;`,
     );
 
     const widgetByGlibName = new Map(widgets.map((entry) => [entry.glibName, entry]));
@@ -55,7 +56,7 @@ export const generateJsx = (
     }
 
     const importLines = buildImportLines(namespaceImports);
-    const slotEntries = widgets.map((entry) => `    readonly ${JSON.stringify(entry.glibName)}: string`);
+    const slotEntries = widgets.map((entry) => `    readonly ${quote(entry.glibName)}: string`);
     const slotNamesLine = `export type WidgetSlotNames = {\n${slotEntries.join(";\n")};\n};`;
     const intrinsicEntries = widgets.map((entry) => `        ${entry.glibName}: ${entry.glibName}Props;`);
     const jsxAugmentation = [

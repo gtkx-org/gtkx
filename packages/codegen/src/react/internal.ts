@@ -1,3 +1,4 @@
+import { quote } from "../dsl/emit.js";
 import { camelCase } from "../dsl/identifier.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirRepository } from "../gir/repository.js";
@@ -21,7 +22,7 @@ export const generateInternal = (repository: GirRepository): string => {
     );
     const constructOnlyEntries = widgets
         .filter(({ constructOnly }) => constructOnly.length > 0)
-        .map(({ glibName, constructOnly }) => `    "${glibName}": new Set(${JSON.stringify(constructOnly)}),`);
+        .map(({ glibName, constructOnly }) => `    "${glibName}": new Set([${constructOnly.map(quote).join(",")}]),`);
 
     const namespaces = [...new Set(widgets.map((widget) => widget.namespace))].sort((a, b) => a.localeCompare(b));
     const preamble = namespaces.map((name) => `import "@gtkx/ffi/${name.toLowerCase()}";`).join("\n");
@@ -86,6 +87,6 @@ const collectConstructOnly = (sources: readonly GirClass[]): readonly string[] =
 
 const renderSignalsObject = (entries: ReadonlyArray<readonly [string, string]>): string => {
     if (entries.length === 0) return "{}";
-    const lines = entries.map(([key, value]) => `        ${JSON.stringify(key)}: ${JSON.stringify(value)}`);
+    const lines = entries.map(([key, value]) => `        ${quote(key)}: ${quote(value)}`);
     return `{\n${lines.join(",\n")}\n    }`;
 };
