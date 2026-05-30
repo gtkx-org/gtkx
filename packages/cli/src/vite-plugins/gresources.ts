@@ -344,8 +344,6 @@ const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void 
  * override absolute and bypasses `<prefix>` (e.g.
  * `?resource=/css_multiplebgs/brick.png` →
  * `resource:///css_multiplebgs/brick.png`).
- *
- * @internal
  */
 export function gtkxResources(): Plugin {
     const state: PluginState = {
@@ -403,38 +401,28 @@ export function gtkxResources(): Plugin {
  * Test-only: name of the virtual init module synthesized by
  * {@link gtkxResources}. Exposed so unit tests can drive the `load` hook
  * directly without depending on Vite internals.
- *
- * @internal
  */
 export const __TEST_VIRTUAL_INIT = VIRTUAL_INIT;
 
 /**
  * Test-only: prefix of the virtual asset module ids synthesized by
  * {@link gtkxResources}.
- *
- * @internal
  */
 export const __TEST_VIRTUAL_PREFIX = VIRTUAL_PREFIX;
 
 /**
  * Test-only: separator joining an asset's resolved id to its
  * `?resource=` override inside a virtual asset module id.
- *
- * @internal
  */
 export const __TEST_OVERRIDE_SEPARATOR = OVERRIDE_SEPARATOR;
 
 /**
  * Test-only: filename of the compiled bundle emitted by the build hook.
- *
- * @internal
  */
 export const __TEST_BUNDLE_FILENAME = BUNDLE_FILENAME;
 
 /**
  * Test-only: XML-escapes the five reserved characters (`<`, `>`, `&`, `"`,
  * `'`) used inside the generated GResource manifest.
- *
- * @internal
  */
 export const __TEST_escapeXml = escapeXml;

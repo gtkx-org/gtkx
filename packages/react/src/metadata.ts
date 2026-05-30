@@ -1,6 +1,6 @@
 import type { GType } from "@gtkx/ffi/gobject";
 import { typeName, typeParent } from "@gtkx/ffi/gobject";
-import { CONSTRUCT_ONLY, SIGNALS } from "./generated/internal.js";
+import { CONSTRUCT_ONLY_PROPS, SIGNALS } from "./generated/internal.js";
 import type { Container } from "./types.js";
 
 const typeNameChainCache = new Map<GType, readonly string[]>();
@@ -54,7 +54,7 @@ const memoize = <T>(
 export const isConstructOnlyProp = (instance: Container, key: string): boolean =>
     memoize(constructOnlyCache, instance, key, (typeNames) => {
         for (const name of typeNames) {
-            if (CONSTRUCT_ONLY[name]?.has(key)) return true;
+            if (CONSTRUCT_ONLY_PROPS[name]?.has(key)) return true;
         }
         return false;
     });

@@ -4,7 +4,7 @@ import type { GirRepository } from "../gir/repository.js";
 import { implementedInterfaces, isReactNodeClass, iterateClassesWithGlibName, signalHandlerName } from "./widgets.js";
 
 /**
- * Generates `internal.ts` source — the `SIGNALS` and `CONSTRUCT_ONLY`
+ * Generates `internal.ts` source — the `SIGNALS` and `CONSTRUCT_ONLY_PROPS`
  * tables consumed by the React metadata resolver.
  *
  * Walks every widget across every loaded namespace and emits one entry
@@ -29,7 +29,7 @@ export const generateInternal = (repository: GirRepository): string => {
     return `${[
         preamble,
         `export const SIGNALS: Readonly<Record<string, Readonly<Record<string, string>>>> = {\n${signalsEntries.join("\n")}\n};`,
-        `export const CONSTRUCT_ONLY: Readonly<Record<string, ReadonlySet<string>>> = {\n${constructOnlyEntries.join("\n")}\n};`,
+        `export const CONSTRUCT_ONLY_PROPS: Readonly<Record<string, ReadonlySet<string>>> = {\n${constructOnlyEntries.join("\n")}\n};`,
     ].join("\n\n")}\n`;
 };
 
