@@ -1,6 +1,6 @@
 {
     "$schema": "https://unpkg.com/knip@6/schema.json",
-    "tags": ["-public"],
+    "tags": ["-public", "-internal"],
     "ignoreExportsUsedInFile": true,
     "workspaces": {
         ".": {
