@@ -7,7 +7,7 @@
  * runtime in agreement with the contract.
  */
 
-import { RGBA as GeneratedRGBA } from "../generated/gdk/gdk.js";
+import { RGBA as GeneratedRGBA } from "@gtkx/gi/gdk/gdk.js";
 
 /**
  * Constructs an {@link RGBA} from a textual color specification.

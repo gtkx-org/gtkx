@@ -1,9 +1,7 @@
-import type { NativeHandle } from "@gtkx/native";
-import type { FontOptions, FontType, Status, TextClusterFlags } from "../generated/cairo/cairo.js";
-import { FontFace, ScaledFont } from "../generated/cairo/cairo.js";
-import { getHandle } from "../handles.js";
-import { alloc, read, t } from "../native.js";
-import { getNativeObject } from "../registry.js";
+import type { NativeHandle } from "@gtkx/ffi";
+import { alloc, getHandle, getNativeObject, read, t } from "@gtkx/ffi";
+import type { FontOptions, FontType, Status, TextClusterFlags } from "@gtkx/gi/cairo/cairo.js";
+import { FontFace, ScaledFont } from "@gtkx/gi/cairo/cairo.js";
 import {
     allocGlyphBuffer,
     type CairoGlyph,
@@ -35,7 +33,7 @@ const { fn } = t;
 const GLYPH_BUF_REF = t.ref(GLYPH_BUF_T);
 const CLUSTER_BUF_REF = t.ref(CLUSTER_BUF_T);
 
-declare module "../generated/cairo/cairo.js" {
+declare module "@gtkx/gi/cairo/cairo.js" {
     interface ScaledFont {
         status(): Status;
         extents(): FontExtents;
@@ -204,7 +202,7 @@ ScaledFont.prototype.getReferenceCount = function (): number {
     return cairo_scaled_font_get_reference_count(getHandle(this)) as number;
 };
 
-declare module "../generated/cairo/cairo.js" {
+declare module "@gtkx/gi/cairo/cairo.js" {
     interface ScaledFont {
         textToGlyphs(x: number, y: number, text: string): [CairoGlyph[], CairoTextCluster[], TextClusterFlags];
     }

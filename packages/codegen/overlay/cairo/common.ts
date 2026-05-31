@@ -1,6 +1,6 @@
-import type { NativeHandle } from "@gtkx/native";
-import { PathDataType } from "../generated/cairo/cairo.js";
-import { alloc, read, t, write } from "../native.js";
+import type { NativeHandle } from "@gtkx/ffi";
+import { alloc, read, t, write } from "@gtkx/ffi";
+import { PathDataType } from "@gtkx/gi/cairo/cairo.js";
 
 export const LIB = "libcairo.so.2";
 const LIB_GOBJECT = "libcairo-gobject.so.2";

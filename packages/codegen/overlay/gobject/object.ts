@@ -1,13 +1,26 @@
-import type { GType, ParamSpec } from "../generated/gobject/gobject.js";
-import { Object as GObject, signalEmitv, signalParseName, type Value } from "../generated/gobject/gobject.js";
-import { GVALUE_BORROWED, gtypeFromFfi, LIBGOBJECT } from "../gtype.js";
-import { getHandle } from "../handles.js";
-import { alloc, call, findObjectProperty, getInstanceGType, type NativeHandle, read, t } from "../native.js";
-import { getNativeObject } from "../registry.js";
-import { valueFromJS, valueFromObject, valueGetType, valueToJS } from "../value-marshal.js";
-import { GValue } from "./gvalue-native.js";
+import {
+    alloc,
+    call,
+    findObjectProperty,
+    GVALUE_BORROWED,
+    GValue,
+    getHandle,
+    getInstanceGType,
+    getNativeObject,
+    gtypeFromFfi,
+    LIBGOBJECT,
+    type NativeHandle,
+    read,
+    t,
+    valueFromJS,
+    valueFromObject,
+    valueGetType,
+    valueToJS,
+} from "@gtkx/ffi";
+import type { GType, ParamSpec } from "@gtkx/gi/gobject/gobject.js";
+import { Object as GObject, signalEmitv, signalParseName, type Value } from "@gtkx/gi/gobject/gobject.js";
 
-declare module "../generated/gobject/gobject.js" {
+declare module "@gtkx/gi/gobject/gobject.js" {
     interface Object {
         /**
          * Runtime GType of the underlying GObject, stamped onto every instance

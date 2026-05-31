@@ -12,10 +12,9 @@
  * This module supplies the concrete class via {@link setVariantClass}.
  */
 
-import { Variant } from "../generated/glib/glib.js";
-import { Value } from "../generated/gobject/gobject.js";
-import { readBoxed, writeBoxed } from "./gvalue.js";
-import { setVariantClass } from "./gvalue-native.js";
+import { readBoxed, setVariantClass, writeBoxed } from "@gtkx/ffi";
+import { Variant } from "@gtkx/gi/glib/glib.js";
+import { Value } from "@gtkx/gi/gobject/gobject.js";
 
 setVariantClass(Variant);
 

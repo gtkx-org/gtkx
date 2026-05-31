@@ -1,4 +1,4 @@
-import { t } from "../native.js";
+import { t } from "@gtkx/ffi";
 import { INT_TYPE, LIB, STRING_BORROWED } from "./common.js";
 
 const { fn } = t;

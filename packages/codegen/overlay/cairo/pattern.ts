@@ -1,4 +1,5 @@
-import type { NativeHandle } from "@gtkx/native";
+import type { NativeHandle } from "@gtkx/ffi";
+import { getHandle, t, wrapHandle } from "@gtkx/ffi";
 import {
     type Extend,
     type Filter,
@@ -6,10 +7,7 @@ import {
     type PatternType,
     type Status,
     type Surface,
-} from "../generated/cairo/cairo.js";
-import { getHandle } from "../handles.js";
-import { t } from "../native.js";
-import { wrapHandle } from "../registry.js";
+} from "@gtkx/gi/cairo/cairo.js";
 import {
     DOUBLE_REF,
     DOUBLE_TYPE,
@@ -87,7 +85,7 @@ export type RadialCircles = {
     radius1: number;
 };
 
-declare module "../generated/cairo/cairo.js" {
+declare module "@gtkx/gi/cairo/cairo.js" {
     interface Pattern {
         addColorStopRgb(offset: number, red: number, green: number, blue: number): void;
         addColorStopRgba(stop: ColorStopRgba): void;

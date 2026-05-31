@@ -7,11 +7,7 @@
  * statics implemented, keeping the FFI runtime in agreement with the contract.
  */
 
-import {
-    Point as GeneratedPoint,
-    Rect as GeneratedRect,
-    Size as GeneratedSize,
-} from "../generated/graphene/graphene.js";
+import { Point as GeneratedPoint, Rect as GeneratedRect, Size as GeneratedSize } from "@gtkx/gi/graphene/graphene.js";
 
 /**
  * Constructs a {@link Point} at the given coordinates.

@@ -1,9 +1,7 @@
-import type { NativeHandle } from "@gtkx/native";
-import type { Content, Format, RectangleInt, Status, SurfaceType } from "../generated/cairo/cairo.js";
-import { Surface } from "../generated/cairo/cairo.js";
-import { getHandle, setHandle } from "../handles.js";
-import { t } from "../native.js";
-import { wrapHandle } from "../registry.js";
+import type { NativeHandle } from "@gtkx/ffi";
+import { getHandle, setHandle, t, wrapHandle } from "@gtkx/ffi";
+import type { Content, Format, RectangleInt, Status, SurfaceType } from "@gtkx/gi/cairo/cairo.js";
+import { Surface } from "@gtkx/gi/cairo/cairo.js";
 import {
     DOUBLE_REF,
     DOUBLE_TYPE,
@@ -21,7 +19,7 @@ import { ImageSurface } from "./image-surface.js";
 const { fn } = t;
 const DEVICE_T_NONE = t.boxed("CairoDevice", "borrowed", LIB);
 
-declare module "../generated/cairo/cairo.js" {
+declare module "@gtkx/gi/cairo/cairo.js" {
     interface Surface {
         writeToPng(filename: string): Status;
         status(): Status;

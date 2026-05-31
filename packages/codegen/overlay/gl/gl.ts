@@ -1,4 +1,4 @@
-import { t } from "../native.js";
+import { t } from "@gtkx/ffi";
 import { INFO_LOG_LENGTH } from "./constants.js";
 
 const LIB = "libGL.so.1";

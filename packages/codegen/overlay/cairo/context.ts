@@ -1,4 +1,5 @@
-import type { NativeHandle } from "@gtkx/native";
+import type { NativeHandle } from "@gtkx/ffi";
+import { alloc, getHandle, getNativeObject, read, t, wrapHandle } from "@gtkx/ffi";
 import type {
     Antialias,
     Content,
@@ -11,11 +12,8 @@ import type {
     Operator,
     Status,
     TextClusterFlags,
-} from "../generated/cairo/cairo.js";
-import { Context, FontFace, Pattern, ScaledFont, Surface } from "../generated/cairo/cairo.js";
-import { getHandle } from "../handles.js";
-import { alloc, read, t } from "../native.js";
-import { getNativeObject, wrapHandle } from "../registry.js";
+} from "@gtkx/gi/cairo/cairo.js";
+import { Context, FontFace, Pattern, ScaledFont, Surface } from "@gtkx/gi/cairo/cairo.js";
 import {
     allocClusterBuffer,
     allocGlyphBuffer,
@@ -93,7 +91,7 @@ export type ArcParams = {
     angle2: number;
 };
 
-declare module "../generated/cairo/cairo.js" {
+declare module "@gtkx/gi/cairo/cairo.js" {
     interface Context {
         moveTo(x: number, y: number): void;
         lineTo(x: number, y: number): void;
@@ -836,7 +834,7 @@ Context.prototype.getReferenceCount = function (): number {
     return cairo_get_reference_count(getHandle(this)) as number;
 };
 
-declare module "../generated/cairo/cairo.js" {
+declare module "@gtkx/gi/cairo/cairo.js" {
     interface Context {
         pushGroup(): void;
         pushGroupWithContent(content: Content): void;
@@ -1005,7 +1003,7 @@ class ContextImpl extends Context {
 
 export { ContextImpl as Context };
 
-declare module "../generated/cairo/cairo.js" {
+declare module "@gtkx/gi/cairo/cairo.js" {
     interface Context {
         tagBegin(tagName: string, attributes: string): void;
         tagEnd(tagName: string): void;
