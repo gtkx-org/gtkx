@@ -31,62 +31,6 @@
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
         },
-        "./runtime": {
-            "types": "./dist/runtime.d.ts",
-            "default": "./dist/runtime.js"
-        },
-        "./object": {
-            "types": "./dist/object.d.ts",
-            "default": "./dist/object.js"
-        },
-        "./value-marshal": {
-            "types": "./dist/value-marshal.d.ts",
-            "default": "./dist/value-marshal.js"
-        },
-        "./handles": {
-            "types": "./dist/handles.d.ts",
-            "default": "./dist/handles.js"
-        },
-        "./native": {
-            "types": "./dist/native.d.ts",
-            "default": "./dist/native.js"
-        },
-        "./registry": {
-            "types": "./dist/registry.d.ts",
-            "default": "./dist/registry.js"
-        },
-        "./helpers": {
-            "types": "./dist/helpers.d.ts",
-            "default": "./dist/helpers.js"
-        },
-        "./gtype": {
-            "types": "./dist/gtype.d.ts",
-            "default": "./dist/gtype.js"
-        },
-        "./lifecycle": {
-            "types": "./dist/lifecycle.d.ts",
-            "default": "./dist/lifecycle.js"
-        },
-        "./register-native-class": {
-            "types": "./dist/register-native-class.d.ts",
-            "default": "./dist/register-native-class.js"
-        },
-        "./gobject/types": {
-            "types": "./dist/gobject/types.d.ts",
-            "default": "./dist/gobject/types.js"
-        },
-        "./gobject/fundamental-types": {
-            "types": "./dist/gobject/fundamental-types.d.ts",
-            "default": "./dist/gobject/fundamental-types.js"
-        },
-        "./gobject/gvalue": {
-            "types": "./dist/gobject/gvalue.d.ts",
-            "default": "./dist/gobject/gvalue.js"
-        },
-        "./gobject/gvalue-native": {
-            "types": "./dist/gobject/gvalue-native.d.ts",
-            "default": "./dist/gobject/gvalue-native.js"
-        },
         "./gl": {
             "types": "./dist/gl/index.d.ts",
             "default": "./dist/gl/index.js"
