@@ -4,6 +4,7 @@ import { GtkFontDialogButton } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
+import { expectDialogModalProp, expectDialogTitleTracksProp } from "../helpers/dialog-button-render.js";
 
 describe("render - FontDialogButton > FontDialogButtonNode (1)", () => {
     it("creates FontDialogButton widget", async () => {
@@ -59,27 +60,13 @@ describe("render - FontDialogButton > FontDialogButtonNode (2)", () => {
     });
 
     it("updates dialog title when prop changes", async () => {
-        const ref = createRef<Gtk.FontDialogButton>();
-
-        function App({ title }: { title: string }) {
-            return <GtkFontDialogButton ref={ref} title={title} />;
-        }
-
-        await render(<App title="First Title" />);
-        expect(ref.current?.getDialog()?.getTitle()).toBe("First Title");
-
-        await render(<App title="Second Title" />);
-        expect(ref.current?.getDialog()?.getTitle()).toBe("Second Title");
+        await expectDialogTitleTracksProp<Gtk.FontDialogButton>((ref, props) => (
+            <GtkFontDialogButton ref={ref} {...props} />
+        ));
     });
 
     it("sets dialog modal property", async () => {
-        const ref = createRef<Gtk.FontDialogButton>();
-
-        await render(<GtkFontDialogButton ref={ref} modal={false} />);
-
-        expect(ref.current).not.toBeNull();
-        const dialog = ref.current?.getDialog();
-        expect(dialog?.getModal()).toBe(false);
+        await expectDialogModalProp<Gtk.FontDialogButton>((ref, props) => <GtkFontDialogButton ref={ref} {...props} />);
     });
 
     it("sets useFont property", async () => {

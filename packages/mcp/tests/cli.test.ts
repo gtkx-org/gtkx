@@ -101,6 +101,28 @@ function getTool(connectionManager: AppQueryClient, name: string) {
     return tool;
 }
 
+/**
+ * Runs the `gtkx_list_apps` tool with no connected apps while `waitForApp`
+ * rejects with the supplied value, asserts the handler reports an error
+ * result, and returns its first text content entry.
+ *
+ * @param thrown - Value thrown by the stubbed `waitForApp`.
+ * @returns The first text content entry produced by the handler.
+ */
+async function runListAppsWithFailingWait(thrown: unknown): Promise<{ type: "text"; text: string }> {
+    const cm = makeConnectionManager({
+        hasConnectedApps: vi.fn(() => false),
+        waitForApp: vi.fn(async () => {
+            throw thrown;
+        }) as never,
+    });
+
+    const result = await getTool(cm, "gtkx_list_apps").handler({ waitForApps: true } as never);
+
+    expect(result.isError).toBe(true);
+    return result.content[0] as { type: "text"; text: string };
+}
+
 const allToolNames = [
     "gtkx_list_apps",
     "gtkx_get_widget_tree",
@@ -177,32 +199,12 @@ describe("buildTools — gtkx_list_apps waiting", () => {
     });
 
     it("returns an error result when waitForApp times out", async () => {
-        const cm = makeConnectionManager({
-            hasConnectedApps: vi.fn(() => false),
-            waitForApp: vi.fn(async () => {
-                throw new Error("Timeout waiting for app registration");
-            }) as never,
-        });
-
-        const result = await getTool(cm, "gtkx_list_apps").handler({ waitForApps: true } as never);
-
-        expect(result.isError).toBe(true);
-        const text = result.content[0] as { type: "text"; text: string };
+        const text = await runListAppsWithFailingWait(new Error("Timeout waiting for app registration"));
         expect(text.text).toContain("Timeout");
     });
 
     it("returns a generic error message when waitForApp throws a non-Error", async () => {
-        const cm = makeConnectionManager({
-            hasConnectedApps: vi.fn(() => false),
-            waitForApp: vi.fn(async () => {
-                throw "not an Error";
-            }) as never,
-        });
-
-        const result = await getTool(cm, "gtkx_list_apps").handler({ waitForApps: true } as never);
-
-        expect(result.isError).toBe(true);
-        const text = result.content[0] as { type: "text"; text: string };
+        const text = await runListAppsWithFailingWait("not an Error");
         expect(text.text).toBe("Timeout waiting for app");
     });
 

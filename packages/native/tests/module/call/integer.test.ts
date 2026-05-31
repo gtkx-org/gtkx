@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../../../index.js";
+import { expectClickedSignalHandlerId } from "../call-callback-integer-setup.js";
 import {
     connectSignal,
     connectSignalReturning,
@@ -230,12 +231,7 @@ describe("call - integer types - 64-bit signed", () => {
 
 describe("call - integer types - 64-bit unsigned basic", () => {
     it("passes and returns 64-bit unsigned integers", () => {
-        const button = createButton("Test");
-
-        const handlerId = connectSignal(button, "clicked", () => {});
-
-        expect(typeof handlerId).toBe("number");
-        expect(handlerId).toBeGreaterThan(0);
+        expectClickedSignalHandlerId();
     });
 });
 

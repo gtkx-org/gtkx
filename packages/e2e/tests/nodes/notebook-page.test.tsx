@@ -1,19 +1,10 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkLabel, GtkNotebook } from "@gtkx/react";
 import { render } from "@gtkx/testing";
-import { createRef, type RefObject } from "react";
+import { createRef } from "react";
 import { describe, expect, it } from "vitest";
+import { buildPlainNotebook } from "../helpers/notebook-render.js";
 import { renderChildren } from "../helpers/render-children.js";
-
-const buildNotebook = (ref: RefObject<Gtk.Notebook | null>) => (pages: string[]) => (
-    <GtkNotebook ref={ref}>
-        {pages.map((label) => (
-            <GtkNotebook.Page key={label} label={label}>
-                {label}
-            </GtkNotebook.Page>
-        ))}
-    </GtkNotebook>
-);
 
 describe("render - NotebookPage > NotebookPageNode (1)", () => {
     it("adds page to Notebook", async () => {
@@ -86,7 +77,7 @@ describe("render - NotebookPage > NotebookPageNode (2)", () => {
     it("removes page from Notebook", async () => {
         const notebookRef = createRef<Gtk.Notebook>();
 
-        const { rerender } = await renderChildren(["A", "B", "C"], buildNotebook(notebookRef));
+        const { rerender } = await renderChildren(["A", "B", "C"], buildPlainNotebook(notebookRef));
         expect(notebookRef.current?.getNPages()).toBe(3);
 
         await rerender(["A", "C"]);
@@ -98,7 +89,7 @@ describe("render - NotebookPage > NotebookPageNode (3)", () => {
     it("handles page reordering", async () => {
         const notebookRef = createRef<Gtk.Notebook>();
 
-        const { rerender } = await renderChildren(["First", "Second", "Third"], buildNotebook(notebookRef));
+        const { rerender } = await renderChildren(["First", "Second", "Third"], buildPlainNotebook(notebookRef));
         await rerender(["Second", "First", "Third"]);
 
         expect(notebookRef.current?.getNPages()).toBe(3);

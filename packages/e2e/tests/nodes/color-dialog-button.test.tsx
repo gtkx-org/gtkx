@@ -4,6 +4,7 @@ import { GtkColorDialogButton } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
+import { expectDialogModalProp, expectDialogTitleTracksProp } from "../helpers/dialog-button-render.js";
 
 const makeRgba = (red: number, green: number, blue: number, alpha: number): Gdk.RGBA => {
     const rgba = new Gdk.RGBA();
@@ -74,27 +75,15 @@ describe("render - ColorDialogButton > ColorDialogButtonNode (2)", () => {
     });
 
     it("updates dialog title when prop changes", async () => {
-        const ref = createRef<Gtk.ColorDialogButton>();
-
-        function App({ title }: { title: string }) {
-            return <GtkColorDialogButton ref={ref} title={title} />;
-        }
-
-        await render(<App title="First Title" />);
-        expect(ref.current?.getDialog()?.getTitle()).toBe("First Title");
-
-        await render(<App title="Second Title" />);
-        expect(ref.current?.getDialog()?.getTitle()).toBe("Second Title");
+        await expectDialogTitleTracksProp<Gtk.ColorDialogButton>((ref, props) => (
+            <GtkColorDialogButton ref={ref} {...props} />
+        ));
     });
 
     it("sets dialog modal property", async () => {
-        const ref = createRef<Gtk.ColorDialogButton>();
-
-        await render(<GtkColorDialogButton ref={ref} modal={false} />);
-
-        expect(ref.current).not.toBeNull();
-        const dialog = ref.current?.getDialog();
-        expect(dialog?.getModal()).toBe(false);
+        await expectDialogModalProp<Gtk.ColorDialogButton>((ref, props) => (
+            <GtkColorDialogButton ref={ref} {...props} />
+        ));
     });
 
     it("sets dialog withAlpha property", async () => {

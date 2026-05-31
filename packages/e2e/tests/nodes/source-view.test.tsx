@@ -1,9 +1,23 @@
 import * as GtkSource from "@gtkx/ffi/gtksource";
 import { GtkSourceView } from "@gtkx/react";
 import { render, waitFor } from "@gtkx/testing";
-import { createRef } from "react";
+import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { getBufferText, getSourceBuffer } from "../helpers/buffer-text.js";
+import { expectNoBufferChangedOnReconcile } from "../helpers/text-buffer-view-render.js";
+
+const buildLanguageSourceView = (ref: RefObject<GtkSource.View | null>, lang: string | undefined): ReactNode => (
+    <GtkSourceView ref={ref} language={lang}>
+        code
+    </GtkSourceView>
+);
+
+const renderJsLanguageSourceView = async (ref: RefObject<GtkSource.View | null>) => {
+    const { rerender } = await render(buildLanguageSourceView(ref, "js"));
+    const buffer = getSourceBuffer(ref);
+    expect(buffer.getLanguage()?.getId()).toBe("js");
+    return { buffer, rerender };
+};
 
 describe("render - SourceView (1)", () => {
     describe("basic rendering", () => {
@@ -57,30 +71,20 @@ describe("render - SourceView (1)", () => {
 
 describe("render - SourceView (2)", () => {
     describe("undo/redo support (1)", () => {
-        it("sets enableUndo property", async () => {
+        it.each([
+            ["sets enableUndo property", true],
+            ["disables undo when enableUndo is false", false],
+        ])("%s", async (_title, enableUndo) => {
             const ref = createRef<GtkSource.View>();
 
             await render(
-                <GtkSourceView ref={ref} enableUndo>
+                <GtkSourceView ref={ref} enableUndo={enableUndo}>
                     Content
                 </GtkSourceView>,
             );
 
             const buffer = getSourceBuffer(ref);
-            expect(buffer.getEnableUndo()).toBe(true);
-        });
-
-        it("disables undo when enableUndo is false", async () => {
-            const ref = createRef<GtkSource.View>();
-
-            await render(
-                <GtkSourceView ref={ref} enableUndo={false}>
-                    Content
-                </GtkSourceView>,
-            );
-
-            const buffer = getSourceBuffer(ref);
-            expect(buffer.getEnableUndo()).toBe(false);
+            expect(buffer.getEnableUndo()).toBe(enableUndo);
         });
 
         it("calls onCanUndoChanged when undo state changes", async () => {
@@ -304,22 +308,9 @@ describe("render - SourceView (8)", () => {
         });
 
         it("does not call onBufferChanged during React reconciliation", async () => {
-            const ref = createRef<GtkSource.View>();
-            const onBufferChanged = vi.fn();
-
-            function App({ text }: { text: string }) {
-                return (
-                    <GtkSourceView ref={ref} onBufferChanged={onBufferChanged}>
-                        {text}
-                    </GtkSourceView>
-                );
-            }
-
-            const { rerender } = await render(<App text="Initial" />);
-
-            await rerender(<App text="Updated" />);
-
-            expect(onBufferChanged).not.toHaveBeenCalled();
+            await expectNoBufferChangedOnReconcile((onBufferChanged, text) => (
+                <GtkSourceView onBufferChanged={onBufferChanged}>{text}</GtkSourceView>
+            ));
         });
     });
 });
@@ -401,20 +392,9 @@ describe("render - SourceView (11)", () => {
         it("updates language when prop changes", async () => {
             const ref = createRef<GtkSource.View>();
 
-            function App({ lang }: { lang: string }) {
-                return (
-                    <GtkSourceView ref={ref} language={lang}>
-                        code
-                    </GtkSourceView>
-                );
-            }
+            const { buffer, rerender } = await renderJsLanguageSourceView(ref);
 
-            const { rerender } = await render(<App lang="js" />);
-
-            const buffer = getSourceBuffer(ref);
-            expect(buffer.getLanguage()?.getId()).toBe("js");
-
-            await rerender(<App lang="python" />);
+            await rerender(buildLanguageSourceView(ref, "python"));
             expect(buffer.getLanguage()?.getId()).toBe("python");
         });
 
@@ -445,20 +425,9 @@ describe("render - SourceView (12)", () => {
         it("removes language when set to undefined", async () => {
             const ref = createRef<GtkSource.View>();
 
-            function App({ lang }: { lang: string | undefined }) {
-                return (
-                    <GtkSourceView ref={ref} language={lang}>
-                        code
-                    </GtkSourceView>
-                );
-            }
+            const { buffer, rerender } = await renderJsLanguageSourceView(ref);
 
-            const { rerender } = await render(<App lang="js" />);
-
-            const buffer = getSourceBuffer(ref);
-            expect(buffer.getLanguage()?.getId()).toBe("js");
-
-            await rerender(<App lang={undefined} />);
+            await rerender(buildLanguageSourceView(ref, undefined));
             expect(buffer.getLanguage()).toBeNull();
         });
     });

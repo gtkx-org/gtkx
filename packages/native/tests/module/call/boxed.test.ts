@@ -1,16 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { alloc, call, read, write } from "../../../index.js";
+import { call } from "../../../index.js";
 import {
-    BOOLEAN,
-    FLOAT32,
-    GDK_LIB,
-    INT32,
-    PANGO_LIB,
-    STRING,
-    STRING_BORROWED,
-    startMemoryMeasurement,
-    VOID,
-} from "../utils.js";
+    allocRectangle,
+    allocRgba,
+    expectRectangleFields,
+    readRectangleFields,
+    readRgbaChannels,
+    writeRectangleFields,
+    writeRgbaChannels,
+} from "../call-boxed-alloc-setup.js";
+import { BOOLEAN, GDK_LIB, INT32, PANGO_LIB, STRING, STRING_BORROWED, startMemoryMeasurement, VOID } from "../utils.js";
 
 const RGBA_BOXED_NONE = { type: "boxed" as const, innerType: "GdkRGBA", lib: GDK_LIB, ownership: "borrowed" as const };
 const RECTANGLE_BOXED_NONE = {
@@ -34,28 +33,22 @@ const PANGO_FONT_DESC_NONE = {
 
 describe("call - boxed types - GdkRGBA basic", () => {
     it("creates RGBA boxed type via alloc", () => {
-        const rgba = alloc(16, "GdkRGBA", GDK_LIB);
+        const rgba = allocRgba();
 
         expect(rgba).toBeDefined();
 
-        write(rgba, FLOAT32, 0, 1.0);
-        write(rgba, FLOAT32, 4, 0.0);
-        write(rgba, FLOAT32, 8, 0.0);
-        write(rgba, FLOAT32, 12, 1.0);
+        writeRgbaChannels(rgba, { red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0 });
 
-        const red = read(rgba, FLOAT32, 0);
-        const green = read(rgba, FLOAT32, 4);
-        const blue = read(rgba, FLOAT32, 8);
-        const alpha = read(rgba, FLOAT32, 12);
+        const channels = readRgbaChannels(rgba);
 
-        expect(red).toBeCloseTo(1.0);
-        expect(green).toBeCloseTo(0.0);
-        expect(blue).toBeCloseTo(0.0);
-        expect(alpha).toBeCloseTo(1.0);
+        expect(channels.red).toBeCloseTo(1.0);
+        expect(channels.green).toBeCloseTo(0.0);
+        expect(channels.blue).toBeCloseTo(0.0);
+        expect(channels.alpha).toBeCloseTo(1.0);
     });
 
     it("parses RGBA from string", () => {
-        const rgba = alloc(16, "GdkRGBA", GDK_LIB);
+        const rgba = allocRgba();
 
         const success = call(
             GDK_LIB,
@@ -69,24 +62,19 @@ describe("call - boxed types - GdkRGBA basic", () => {
 
         expect(success).toBe(true);
 
-        const red = read(rgba, FLOAT32, 0);
-        const green = read(rgba, FLOAT32, 4);
-        const blue = read(rgba, FLOAT32, 8);
+        const channels = readRgbaChannels(rgba);
 
-        expect(red).toBeCloseTo(1.0);
-        expect(green).toBeCloseTo(0.5, 1);
-        expect(blue).toBeCloseTo(0.0);
+        expect(channels.red).toBeCloseTo(1.0);
+        expect(channels.green).toBeCloseTo(0.5, 1);
+        expect(channels.blue).toBeCloseTo(0.0);
     });
 });
 
 describe("call - boxed types - GdkRGBA conversion", () => {
     it("converts RGBA to string", () => {
-        const rgba = alloc(16, "GdkRGBA", GDK_LIB);
+        const rgba = allocRgba();
 
-        write(rgba, FLOAT32, 0, 1.0);
-        write(rgba, FLOAT32, 4, 0.5);
-        write(rgba, FLOAT32, 8, 0.0);
-        write(rgba, FLOAT32, 12, 1.0);
+        writeRgbaChannels(rgba, { red: 1.0, green: 0.5, blue: 0.0, alpha: 1.0 });
 
         const result = call(GDK_LIB, "gdk_rgba_to_string", [{ type: RGBA_BOXED_NONE, value: rgba }], STRING);
 
@@ -95,18 +83,12 @@ describe("call - boxed types - GdkRGBA conversion", () => {
     });
 
     it("compares two RGBA values", () => {
-        const rgba1 = alloc(16, "GdkRGBA", GDK_LIB);
-        const rgba2 = alloc(16, "GdkRGBA", GDK_LIB);
+        const rgba1 = allocRgba();
+        const rgba2 = allocRgba();
 
-        write(rgba1, FLOAT32, 0, 1.0);
-        write(rgba1, FLOAT32, 4, 0.0);
-        write(rgba1, FLOAT32, 8, 0.0);
-        write(rgba1, FLOAT32, 12, 1.0);
+        writeRgbaChannels(rgba1, { red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0 });
 
-        write(rgba2, FLOAT32, 0, 1.0);
-        write(rgba2, FLOAT32, 4, 0.0);
-        write(rgba2, FLOAT32, 8, 0.0);
-        write(rgba2, FLOAT32, 12, 1.0);
+        writeRgbaChannels(rgba2, { red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0 });
 
         const equal = call(
             GDK_LIB,
@@ -124,40 +106,23 @@ describe("call - boxed types - GdkRGBA conversion", () => {
 
 describe("call - boxed types - GdkRectangle basic", () => {
     it("creates rectangle boxed type", () => {
-        const rect = alloc(16, "GdkRectangle", GDK_LIB);
+        const rect = allocRectangle();
 
-        write(rect, INT32, 0, 10);
-        write(rect, INT32, 4, 20);
-        write(rect, INT32, 8, 100);
-        write(rect, INT32, 12, 50);
+        writeRectangleFields(rect, { x: 10, y: 20, width: 100, height: 50 });
 
-        const x = read(rect, INT32, 0);
-        const y = read(rect, INT32, 4);
-        const width = read(rect, INT32, 8);
-        const height = read(rect, INT32, 12);
-
-        expect(x).toBe(10);
-        expect(y).toBe(20);
-        expect(width).toBe(100);
-        expect(height).toBe(50);
+        expectRectangleFields(rect, { x: 10, y: 20, width: 100, height: 50 });
     });
 });
 
 describe("call - boxed types - GdkRectangle intersection", () => {
     it("checks rectangle intersection", () => {
-        const rect1 = alloc(16, "GdkRectangle", GDK_LIB);
-        const rect2 = alloc(16, "GdkRectangle", GDK_LIB);
-        const dest = alloc(16, "GdkRectangle", GDK_LIB);
+        const rect1 = allocRectangle();
+        const rect2 = allocRectangle();
+        const dest = allocRectangle();
 
-        write(rect1, INT32, 0, 0);
-        write(rect1, INT32, 4, 0);
-        write(rect1, INT32, 8, 100);
-        write(rect1, INT32, 12, 100);
+        writeRectangleFields(rect1, { x: 0, y: 0, width: 100, height: 100 });
 
-        write(rect2, INT32, 0, 50);
-        write(rect2, INT32, 4, 50);
-        write(rect2, INT32, 8, 100);
-        write(rect2, INT32, 12, 100);
+        writeRectangleFields(rect2, { x: 50, y: 50, width: 100, height: 100 });
 
         const intersects = call(
             GDK_LIB,
@@ -172,33 +137,24 @@ describe("call - boxed types - GdkRectangle intersection", () => {
 
         expect(intersects).toBe(true);
 
-        const destX = read(dest, INT32, 0);
-        const destY = read(dest, INT32, 4);
-        const destWidth = read(dest, INT32, 8);
-        const destHeight = read(dest, INT32, 12);
+        const destFields = readRectangleFields(dest);
 
-        expect(destX).toBe(50);
-        expect(destY).toBe(50);
-        expect(destWidth).toBe(50);
-        expect(destHeight).toBe(50);
+        expect(destFields.x).toBe(50);
+        expect(destFields.y).toBe(50);
+        expect(destFields.width).toBe(50);
+        expect(destFields.height).toBe(50);
     });
 });
 
 describe("call - boxed types - GdkRectangle union", () => {
     it("computes rectangle union", () => {
-        const rect1 = alloc(16, "GdkRectangle", GDK_LIB);
-        const rect2 = alloc(16, "GdkRectangle", GDK_LIB);
-        const dest = alloc(16, "GdkRectangle", GDK_LIB);
+        const rect1 = allocRectangle();
+        const rect2 = allocRectangle();
+        const dest = allocRectangle();
 
-        write(rect1, INT32, 0, 0);
-        write(rect1, INT32, 4, 0);
-        write(rect1, INT32, 8, 50);
-        write(rect1, INT32, 12, 50);
+        writeRectangleFields(rect1, { x: 0, y: 0, width: 50, height: 50 });
 
-        write(rect2, INT32, 0, 50);
-        write(rect2, INT32, 4, 50);
-        write(rect2, INT32, 8, 50);
-        write(rect2, INT32, 12, 50);
+        writeRectangleFields(rect2, { x: 50, y: 50, width: 50, height: 50 });
 
         call(
             GDK_LIB,
@@ -211,22 +167,18 @@ describe("call - boxed types - GdkRectangle union", () => {
             VOID,
         );
 
-        const destWidth = read(dest, INT32, 8);
-        const destHeight = read(dest, INT32, 12);
+        const destFields = readRectangleFields(dest);
 
-        expect(destWidth).toBe(100);
-        expect(destHeight).toBe(100);
+        expect(destFields.width).toBe(100);
+        expect(destFields.height).toBe(100);
     });
 });
 
 describe("call - boxed types - GdkRectangle contains", () => {
     it("checks if point is contained in rectangle", () => {
-        const rect = alloc(16, "GdkRectangle", GDK_LIB);
+        const rect = allocRectangle();
 
-        write(rect, INT32, 0, 0);
-        write(rect, INT32, 4, 0);
-        write(rect, INT32, 8, 100);
-        write(rect, INT32, 12, 100);
+        writeRectangleFields(rect, { x: 0, y: 0, width: 100, height: 100 });
 
         const containsInside = call(
             GDK_LIB,
@@ -351,7 +303,7 @@ describe("call - boxed types - ownership", () => {
     });
 
     it("handles transfer none boxed correctly", () => {
-        const rgba = alloc(16, "GdkRGBA", GDK_LIB);
+        const rgba = allocRgba();
 
         call(
             GDK_LIB,
@@ -376,11 +328,8 @@ describe("call - boxed types - memory leaks RGBA", () => {
         const mem = startMemoryMeasurement();
 
         for (let i = 0; i < 500; i++) {
-            const rgba = alloc(16, "GdkRGBA", GDK_LIB);
-            write(rgba, FLOAT32, 0, Math.random());
-            write(rgba, FLOAT32, 4, Math.random());
-            write(rgba, FLOAT32, 8, Math.random());
-            write(rgba, FLOAT32, 12, 1.0);
+            const rgba = allocRgba();
+            writeRgbaChannels(rgba, { red: Math.random(), green: Math.random(), blue: Math.random(), alpha: 1.0 });
         }
 
         expect(mem.measure()).toBeLessThan(5 * 1024 * 1024);
@@ -416,11 +365,8 @@ describe("call - boxed types - memory leaks rectangles", () => {
         const mem = startMemoryMeasurement();
 
         for (let i = 0; i < 500; i++) {
-            const rect = alloc(16, "GdkRectangle", GDK_LIB);
-            write(rect, INT32, 0, i);
-            write(rect, INT32, 4, i);
-            write(rect, INT32, 8, 100);
-            write(rect, INT32, 12, 100);
+            const rect = allocRectangle();
+            writeRectangleFields(rect, { x: i, y: i, width: 100, height: 100 });
         }
 
         expect(mem.measure()).toBeLessThan(5 * 1024 * 1024);
@@ -429,7 +375,7 @@ describe("call - boxed types - memory leaks rectangles", () => {
 
 describe("call - boxed types - edge cases multi-lib", () => {
     it("handles boxed types from different libraries", () => {
-        const rgba = alloc(16, "GdkRGBA", GDK_LIB);
+        const rgba = allocRgba();
         const fontDesc = call(
             PANGO_LIB,
             "pango_font_description_from_string",
@@ -463,16 +409,13 @@ describe("call - boxed types - edge cases multi-lib", () => {
 
 describe("call - boxed types - edge cases zero-init", () => {
     it("handles zero-initialized boxed", () => {
-        const rgba = alloc(16, "GdkRGBA", GDK_LIB);
+        const rgba = allocRgba();
 
-        const red = read(rgba, FLOAT32, 0);
-        const green = read(rgba, FLOAT32, 4);
-        const blue = read(rgba, FLOAT32, 8);
-        const alpha = read(rgba, FLOAT32, 12);
+        const channels = readRgbaChannels(rgba);
 
-        expect(red).toBe(0);
-        expect(green).toBe(0);
-        expect(blue).toBe(0);
-        expect(alpha).toBe(0);
+        expect(channels.red).toBe(0);
+        expect(channels.green).toBe(0);
+        expect(channels.blue).toBe(0);
+        expect(channels.alpha).toBe(0);
     });
 });

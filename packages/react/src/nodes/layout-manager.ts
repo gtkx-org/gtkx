@@ -1,8 +1,8 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { Node } from "../node.js";
+import type { Node } from "../node.js";
 import type { Props } from "../types.js";
-import { applyProps } from "./internal/apply-props.js";
 import { createContainerWithProperties } from "./internal/construct.js";
+import { WidgetAttachmentNode } from "./internal/widget-attachment-node.js";
 import { WidgetNode } from "./widget.js";
 
 /**
@@ -22,7 +22,7 @@ export class LayoutManagerNode<
     T extends Gtk.LayoutManager = Gtk.LayoutManager,
     // biome-ignore lint/suspicious/noExplicitAny: Self-referential type bounds require any
     TChild extends Node = any,
-> extends Node<T, Props, WidgetNode, TChild> {
+> extends WidgetAttachmentNode<T, TChild> {
     public static override createContainer(
         typeName: string,
         props: Props,
@@ -45,11 +45,6 @@ export class LayoutManagerNode<
         if (parent) {
             parent.container.setLayoutManager(this.container);
         }
-    }
-
-    public override commitUpdate(oldProps: Props | null, newProps: Props): void {
-        super.commitUpdate(oldProps, newProps);
-        applyProps(this, oldProps, newProps, { table: this.getPropTable(), defaultBlockable: false });
     }
 
     public override detachDeletedInstance(): void {

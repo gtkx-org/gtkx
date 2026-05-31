@@ -339,6 +339,9 @@ importers:
       '@gtkx/react':
         specifier: workspace:*
         version: link:../react
+      '@gtkx/utils':
+        specifier: workspace:*
+        version: link:../utils
     devDependencies:
       '@gtkx/vitest':
         specifier: workspace:*

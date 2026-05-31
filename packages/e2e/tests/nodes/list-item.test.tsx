@@ -3,6 +3,7 @@ import { GtkDropDown, GtkLabel, GtkListView } from "@gtkx/react";
 import { render, screen } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
+import { expectAllVisibleOnce } from "../helpers/list-collection-render.js";
 import { renderChildren } from "../helpers/render-children.js";
 import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
 
@@ -27,35 +28,21 @@ const buildValueDropDown = (dropDownRef: RefObject<Gtk.DropDown | null>) => (ite
 describe("render - ListItem (1)", () => {
     describe("ListItem (1)", () => {
         it("renders list item in ListView", async () => {
-            await render(
-                <ScrollWrapper>
-                    <GtkListView
-                        items={[{ id: "1", value: { text: "First" } }]}
-                        renderItem={(item: { text: string }) => <GtkLabel label={item.text} />}
-                    />
-                </ScrollWrapper>,
-            );
+            await render(buildTextListView([{ id: "1", text: "First" }]));
 
-            expect(screen.queryAllByText("First")).toHaveLength(1);
+            expectAllVisibleOnce("First");
         });
 
         it("renders multiple list items", async () => {
             await render(
-                <ScrollWrapper>
-                    <GtkListView
-                        items={[
-                            { id: "1", value: { text: "First" } },
-                            { id: "2", value: { text: "Second" } },
-                            { id: "3", value: { text: "Third" } },
-                        ]}
-                        renderItem={(item: { text: string }) => <GtkLabel label={item.text} />}
-                    />
-                </ScrollWrapper>,
+                buildTextListView([
+                    { id: "1", text: "First" },
+                    { id: "2", text: "Second" },
+                    { id: "3", text: "Third" },
+                ]),
             );
 
-            expect(screen.queryAllByText("First")).toHaveLength(1);
-            expect(screen.queryAllByText("Second")).toHaveLength(1);
-            expect(screen.queryAllByText("Third")).toHaveLength(1);
+            expectAllVisibleOnce("First", "Second", "Third");
         });
     });
 });
@@ -91,9 +78,7 @@ describe("render - ListItem (2)", () => {
                 ],
                 buildTextListView,
             );
-            expect(screen.queryAllByText("First")).toHaveLength(1);
-            expect(screen.queryAllByText("Second")).toHaveLength(1);
-            expect(screen.queryAllByText("Third")).toHaveLength(1);
+            expectAllVisibleOnce("First", "Second", "Third");
 
             await rerender([{ id: "1", text: "First" }]);
             expect(screen.queryAllByText("First")).toHaveLength(1);
@@ -113,17 +98,14 @@ describe("render - ListItem (3)", () => {
                 ],
                 buildTextListView,
             );
-            expect(screen.queryAllByText("First")).toHaveLength(1);
-            expect(screen.queryAllByText("Last")).toHaveLength(1);
+            expectAllVisibleOnce("First", "Last");
 
             await rerender([
                 { id: "first", text: "First" },
                 { id: "middle", text: "Middle" },
                 { id: "last", text: "Last" },
             ]);
-            expect(screen.queryAllByText("First")).toHaveLength(1);
-            expect(screen.queryAllByText("Middle")).toHaveLength(1);
-            expect(screen.queryAllByText("Last")).toHaveLength(1);
+            expectAllVisibleOnce("First", "Middle", "Last");
         });
     });
 });

@@ -1,4 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { reverseNumericEnum } from "@gtkx/utils";
 import { type Container, traverse } from "./traversal.js";
 import { getWidgetAccessibleName } from "./widget-text.js";
 
@@ -10,18 +11,14 @@ export type RoleInfo = {
     name: string | null;
 };
 
+const ROLE_NAMES_BY_VALUE = reverseNumericEnum(Gtk.AccessibleRole);
+
 /**
  * Formats a GTK accessible role to a lowercase string.
  *
  * @param role - The GTK accessible role
  * @returns Lowercase role name (e.g., "button", "checkbox")
  */
-const ROLE_NAMES_BY_VALUE = new Map<number, string>(
-    Object.entries(Gtk.AccessibleRole)
-        .filter((entry): entry is [string, number] => typeof entry[1] === "number")
-        .map(([name, value]) => [value, name]),
-);
-
 export const formatRole = (role: Gtk.AccessibleRole | undefined): string => {
     if (role === undefined) return "unknown";
     const name = ROLE_NAMES_BY_VALUE.get(role);

@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { ConstraintLayoutWidgetProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { scheduleAfterCommit } from "../post-commit-queue.js";
+import { createAfterCommitDebounce } from "../post-commit-queue.js";
 import { ConstraintLayoutNode } from "./constraint-layout.js";
 import { attachChild, unparentWidget } from "./internal/widget.js";
 import { VirtualNode } from "./virtual.js";
@@ -22,7 +22,7 @@ export class ConstraintLayoutWidgetNode extends VirtualNode<ConstraintLayoutWidg
     private registeredId: string | null = null;
     private registeredWidget: Gtk.Widget | null = null;
     private registeredLayoutNode: ConstraintLayoutNode | null = null;
-    private syncScheduled = false;
+    private readonly scheduleSync = createAfterCommitDebounce(() => this.syncRegistration());
 
     public override isValidChild(child: Node): boolean {
         return child instanceof WidgetNode && this.children.length === 0;
@@ -105,15 +105,6 @@ export class ConstraintLayoutWidgetNode extends VirtualNode<ConstraintLayoutWidg
         }
         this.unregister();
         super.detachDeletedInstance();
-    }
-
-    private scheduleSync(): void {
-        if (this.syncScheduled) return;
-        this.syncScheduled = true;
-        scheduleAfterCommit(() => {
-            this.syncScheduled = false;
-            this.syncRegistration();
-        });
     }
 
     private syncRegistration(): void {

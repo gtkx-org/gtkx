@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { expectSingleMinRefMeasurementPopulatesNumber } from "../call-null-ref-setup.js";
 import { createLabel, getRefCount, measureWidget, measureWidgetAllNull, startMemoryMeasurement } from "../utils.js";
 
 describe("call - ref types - integer refs basic", () => {
@@ -81,12 +82,7 @@ describe("call - ref types - integer refs orientations", () => {
 
 describe("call - ref types - null refs", () => {
     it("ignores null refs (optional out params)", () => {
-        const label = createLabel("Test");
-        const minRef = { value: 0 };
-
-        measureWidget({ widget: label, orientation: 0, forSize: -1, minRef });
-
-        expect(typeof minRef.value).toBe("number");
+        expectSingleMinRefMeasurementPopulatesNumber();
     });
 
     it("uses null to indicate unneeded output", () => {

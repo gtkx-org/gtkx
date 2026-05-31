@@ -11,6 +11,35 @@ const expectCompletes = async (animation: ReactElement, label: string, onComplet
     await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout });
 };
 
+interface SpringTranslateXCase {
+    from: number;
+    to: number;
+    damping: number;
+    stiffness: number;
+    timeout: number;
+}
+
+const expectSpringTranslateXCompletes = async ({ from, to, damping, stiffness, timeout }: SpringTranslateXCase) => {
+    const onComplete = vi.fn();
+
+    await expectCompletes(
+        <AdwSpringAnimation
+            initial={{ translateX: from }}
+            animate={{ translateX: to }}
+            damping={damping}
+            stiffness={stiffness}
+            mass={1}
+            animateOnMount
+            onAnimationComplete={onComplete}
+        >
+            <GtkLabel label="Bouncy" />
+        </AdwSpringAnimation>,
+        "Bouncy",
+        onComplete,
+        timeout,
+    );
+};
+
 describe("AdwTimedAnimation / AdwSpringAnimation (1)", () => {
     describe("mount animation (1)", () => {
         it("applies initial values when animateOnMount is false", async () => {
@@ -155,24 +184,7 @@ describe("AdwTimedAnimation / AdwSpringAnimation (5)", () => {
         });
 
         it("respects spring transition parameters", async () => {
-            const onComplete = vi.fn();
-
-            await expectCompletes(
-                <AdwSpringAnimation
-                    initial={{ translateX: -100 }}
-                    animate={{ translateX: 0 }}
-                    damping={1}
-                    stiffness={200}
-                    mass={1}
-                    animateOnMount
-                    onAnimationComplete={onComplete}
-                >
-                    <GtkLabel label="Bouncy" />
-                </AdwSpringAnimation>,
-                "Bouncy",
-                onComplete,
-                2000,
-            );
+            await expectSpringTranslateXCompletes({ from: -100, to: 0, damping: 1, stiffness: 200, timeout: 2000 });
         });
     });
 });
@@ -404,24 +416,7 @@ describe("AdwTimedAnimation / AdwSpringAnimation (11)", () => {
 describe("AdwTimedAnimation / AdwSpringAnimation (12)", () => {
     describe("state-driven spring animation (2)", () => {
         it("animates spring with low damping for bouncy effect", async () => {
-            const onComplete = vi.fn();
-
-            await expectCompletes(
-                <AdwSpringAnimation
-                    initial={{ translateX: 0 }}
-                    animate={{ translateX: 100 }}
-                    damping={0.5}
-                    stiffness={100}
-                    mass={1}
-                    animateOnMount
-                    onAnimationComplete={onComplete}
-                >
-                    <GtkLabel label="Bouncy" />
-                </AdwSpringAnimation>,
-                "Bouncy",
-                onComplete,
-                3000,
-            );
+            await expectSpringTranslateXCompletes({ from: 0, to: 100, damping: 0.5, stiffness: 100, timeout: 3000 });
         });
     });
 

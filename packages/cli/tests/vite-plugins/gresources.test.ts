@@ -12,6 +12,7 @@ import {
     VIRTUAL_PREFIX,
 } from "../../src/vite-plugins/gresource-protocol.js";
 import { deriveResourcePrefix, gtkxResources } from "../../src/vite-plugins/gresources.js";
+import { expectBuildEndEmitsAsset, expectBuildEndIsNoop } from "./_vite-plugin-fixture.js";
 
 import type { BuildEndHook, LoadHook, ResolveIdHook } from "./plugin-hook-types.js";
 
@@ -275,9 +276,7 @@ describe("gtkxResources (buildEnd)", () => {
         const plugin = gtkxResources();
         await initPlugin(plugin, "build", tmpDir);
 
-        const emitFile = vi.fn();
-        expect(() => (plugin.buildEnd as BuildEndHook).call({ emitFile })).not.toThrow();
-        expect(emitFile).not.toHaveBeenCalled();
+        expectBuildEndIsNoop(plugin.buildEnd as BuildEndHook);
     });
 
     it("compiles tracked assets into a single .gresource and emits it", async () => {
@@ -290,16 +289,7 @@ describe("gtkxResources (buildEnd)", () => {
         writeFileSync(assetPath, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
         (plugin.load as LoadHook)(`${VIRTUAL_PREFIX}${assetPath}`);
 
-        const emitFile = vi.fn();
-        (plugin.buildEnd as BuildEndHook).call({ emitFile });
-
-        expect(emitFile).toHaveBeenCalledTimes(1);
-        const call = emitFile.mock.calls[0]?.[0];
-        expect(call).toBeDefined();
-        expect(call.type).toBe("asset");
-        expect(call.fileName).toBe(BUNDLE_FILENAME);
-        expect(Buffer.isBuffer(call.source)).toBe(true);
-        expect(call.source.length).toBeGreaterThan(0);
+        expectBuildEndEmitsAsset(plugin.buildEnd as BuildEndHook, BUNDLE_FILENAME);
     });
 });
 
@@ -323,22 +313,34 @@ const writeTinyPng = (path: string): void => {
     writeFileSync(path, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
 };
 
+type WatcherHarness = {
+    assetPath: string;
+    server: FakeServer;
+    refresh: ReturnType<typeof vi.fn>;
+};
+
+const setupTrackedAssetServer = async (assetName: string): Promise<WatcherHarness> => {
+    const plugin = gtkxResources();
+    await initPlugin(plugin, "serve", tmpDir);
+
+    const assetPath = join(tmpDir, assetName);
+    writeTinyPng(assetPath);
+    (plugin.load as LoadHook)(`${VIRTUAL_PREFIX}${assetPath}`);
+
+    const refresh = vi.fn();
+    const server = createFakeServer(refresh);
+    (plugin.configureServer as ConfigureServerHook).call(plugin, server);
+
+    return { assetPath, server, refresh };
+};
+
 describe("gtkxResources (watcher: change event)", () => {
     setupTmpDir();
 
     it("re-registers the GResource bundle when a tracked asset changes", async () => {
         if (!hasGlibCompileResources()) return;
 
-        const plugin = gtkxResources();
-        await initPlugin(plugin, "serve", tmpDir);
-
-        const assetPath = join(tmpDir, "icon.png");
-        writeTinyPng(assetPath);
-        (plugin.load as LoadHook)(`${VIRTUAL_PREFIX}${assetPath}`);
-
-        const refresh = vi.fn();
-        const server = createFakeServer(refresh);
-        (plugin.configureServer as ConfigureServerHook).call(plugin, server);
+        const { assetPath, server, refresh } = await setupTrackedAssetServer("icon.png");
 
         server.watcher.emit("change", assetPath);
         await waitTicks();
@@ -354,16 +356,7 @@ describe("gtkxResources (watcher: add event)", () => {
     it("re-registers the bundle on the 'add' watcher event for a tracked asset", async () => {
         if (!hasGlibCompileResources()) return;
 
-        const plugin = gtkxResources();
-        await initPlugin(plugin, "serve", tmpDir);
-
-        const assetPath = join(tmpDir, "addme.png");
-        writeTinyPng(assetPath);
-        (plugin.load as LoadHook)(`${VIRTUAL_PREFIX}${assetPath}`);
-
-        const refresh = vi.fn();
-        const server = createFakeServer(refresh);
-        (plugin.configureServer as ConfigureServerHook).call(plugin, server);
+        const { assetPath, server, refresh } = await setupTrackedAssetServer("addme.png");
 
         server.watcher.emit("add", assetPath);
         await waitTicks();

@@ -1,4 +1,4 @@
-export { isShallowArrayEqual, isShallowEqual, omit } from "./collection.js";
+export { isShallowArrayEqual, isShallowEqual, omit, reverseNumericEnum } from "./collection.js";
 export { errorMessage } from "./error.js";
 export {
     exitCodeForSignal,

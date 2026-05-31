@@ -1,24 +1,17 @@
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkButton } from "@gtkx/react";
-import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "../src/index.js";
+import { describe, expect, it } from "vitest";
+import { fireEvent } from "../src/index.js";
+import { renderClickButton } from "./event-render-setup.js";
 
 describe("fireEvent", () => {
     it("emits clicked signal on button", async () => {
-        const handleClick = vi.fn();
-        await render(<GtkButton label="Click me" onClicked={handleClick} />);
-
-        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click me" });
+        const { handleClick, button } = await renderClickButton();
         await fireEvent(button, "clicked");
 
         expect(handleClick).toHaveBeenCalledTimes(1);
     });
 
     it("emits multiple signals in sequence", async () => {
-        const handleClick = vi.fn();
-        await render(<GtkButton label="Click me" onClicked={handleClick} />);
-
-        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click me" });
+        const { handleClick, button } = await renderClickButton();
         await fireEvent(button, "clicked");
         await fireEvent(button, "clicked");
         await fireEvent(button, "clicked");
@@ -27,10 +20,7 @@ describe("fireEvent", () => {
     });
 
     it("returns a promise that resolves after signal emission", async () => {
-        const handleClick = vi.fn();
-        await render(<GtkButton label="Click me" onClicked={handleClick} />);
-
-        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click me" });
+        const { handleClick, button } = await renderClickButton();
         const promise = fireEvent(button, "clicked");
 
         expect(promise).toBeInstanceOf(Promise);

@@ -86,7 +86,10 @@ describe("screen screenshot selectors", () => {
 });
 
 describe("screen screenshot errors", () => {
-    it("throws when no window matches a string selector", async () => {
+    it.each([
+        ["throws when no window matches a string selector", "Nonexistent" as string | RegExp],
+        ["throws when no window matches a regex selector", /^Bogus/],
+    ])("%s", async (_title, selector) => {
         await render(<GtkLabel label="Unmatched" />, {
             wrapper: ({ children }) => (
                 <GtkApplicationWindow title="Real Title" defaultWidth={120} defaultHeight={80}>
@@ -95,19 +98,7 @@ describe("screen screenshot errors", () => {
             ),
         });
 
-        await expect(screen.screenshot("Nonexistent")).rejects.toThrow(/No window found with title matching/);
-    });
-
-    it("throws when no window matches a regex selector", async () => {
-        await render(<GtkLabel label="Unmatched" />, {
-            wrapper: ({ children }) => (
-                <GtkApplicationWindow title="Real Title" defaultWidth={120} defaultHeight={80}>
-                    {children}
-                </GtkApplicationWindow>
-            ),
-        });
-
-        await expect(screen.screenshot(/^Bogus/)).rejects.toThrow(/No window found with title matching/);
+        await expect(screen.screenshot(selector)).rejects.toThrow(/No window found with title matching/);
     });
 
     it("throws when no windows are available", async () => {

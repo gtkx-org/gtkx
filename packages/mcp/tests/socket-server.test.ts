@@ -71,6 +71,26 @@ function setupSocketServer(): void {
     });
 }
 
+const startWithClient = async (): Promise<net.Socket> => {
+    await socketCtx.server.start();
+    return connectClient(socketCtx.socketPath);
+};
+
+const nextRequest = (registry: ConnectionRegistry): Promise<IpcRequest> =>
+    new Promise((resolve) => {
+        registry.once("request", (_conn, req) => resolve(req));
+    });
+
+const collectFirstFrame = async <T>(client: net.Socket, act: () => void): Promise<T> => {
+    const collector = collectLines(client);
+    act();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    client.destroy();
+    await collector.promise;
+    expect(collector.lines.length).toBeGreaterThan(0);
+    return JSON.parse(collector.lines[0] as string) as T;
+};
+
 describe("SocketServer lifecycle", () => {
     setupSocketServer();
     it("does not accept connections before start", async () => {
@@ -130,13 +150,8 @@ describe("SocketServer connections", () => {
 describe("SocketServer framing — request events", () => {
     setupSocketServer();
     it("emits a request event for valid request frames", async () => {
-        const { server, socketPath, registry } = socketCtx;
-        await server.start();
-        const client = await connectClient(socketPath);
-
-        const received = new Promise<IpcRequest>((resolve) => {
-            registry.once("request", (_conn, req) => resolve(req));
-        });
+        const client = await startWithClient();
+        const received = nextRequest(socketCtx.registry);
 
         const request: IpcRequest = { id: "r-1", method: "ping", params: { a: 1 } };
         client.write(`${JSON.stringify(request)}\n`);
@@ -152,13 +167,8 @@ describe("SocketServer framing — request events", () => {
 describe("SocketServer framing — chunking & blanks", () => {
     setupSocketServer();
     it("ignores blank lines between frames", async () => {
-        const { server, socketPath, registry } = socketCtx;
-        await server.start();
-        const client = await connectClient(socketPath);
-
-        const received = new Promise<IpcRequest>((resolve) => {
-            registry.once("request", (_conn, req) => resolve(req));
-        });
+        const client = await startWithClient();
+        const received = nextRequest(socketCtx.registry);
 
         client.write("\n\n");
         client.write(`${JSON.stringify({ id: "r-3", method: "ping" })}\n`);
@@ -170,13 +180,8 @@ describe("SocketServer framing — chunking & blanks", () => {
     });
 
     it("frames messages spanning multiple TCP chunks", async () => {
-        const { server, socketPath, registry } = socketCtx;
-        await server.start();
-        const client = await connectClient(socketPath);
-
-        const received = new Promise<IpcRequest>((resolve) => {
-            registry.once("request", (_conn, req) => resolve(req));
-        });
+        const client = await startWithClient();
+        const received = nextRequest(socketCtx.registry);
 
         const message = JSON.stringify({ id: "r-split", method: "ping" });
         const half = Math.floor(message.length / 2);
@@ -194,55 +199,29 @@ describe("SocketServer framing — chunking & blanks", () => {
 describe("SocketServer framing — error responses", () => {
     setupSocketServer();
     it("returns an Invalid JSON error response for malformed lines", async () => {
-        const { server, socketPath } = socketCtx;
-        await server.start();
-        const client = await connectClient(socketPath);
-        const collector = collectLines(client);
+        const client = await startWithClient();
 
-        client.write("not-json\n");
-
-        await new Promise((resolve) => setTimeout(resolve, 20));
-        client.destroy();
-        await collector.promise;
-
-        expect(collector.lines.length).toBeGreaterThan(0);
-        const parsed = JSON.parse(collector.lines[0] as string) as IpcResponse;
+        const parsed = await collectFirstFrame<IpcResponse>(client, () => client.write("not-json\n"));
         expect(parsed.id).toBe("unknown");
         expect(parsed.error?.message).toContain("Invalid JSON");
     });
 
     it("returns an Invalid message format error for unknown shapes", async () => {
-        const { server, socketPath } = socketCtx;
-        await server.start();
-        const client = await connectClient(socketPath);
-        const collector = collectLines(client);
+        const client = await startWithClient();
 
-        client.write(`${JSON.stringify({ random: true })}\n`);
-
-        await new Promise((resolve) => setTimeout(resolve, 20));
-        client.destroy();
-        await collector.promise;
-
-        expect(collector.lines.length).toBeGreaterThan(0);
-        const parsed = JSON.parse(collector.lines[0] as string) as IpcResponse;
+        const parsed = await collectFirstFrame<IpcResponse>(client, () =>
+            client.write(`${JSON.stringify({ random: true })}\n`),
+        );
         expect(parsed.id).toBe("unknown");
         expect(parsed.error?.message).toContain("Invalid message format");
     });
 
     it("returns an Invalid message format error when a request payload fails schema validation", async () => {
-        const { server, socketPath } = socketCtx;
-        await server.start();
-        const client = await connectClient(socketPath);
-        const collector = collectLines(client);
+        const client = await startWithClient();
 
-        client.write(`${JSON.stringify({ id: 7, method: "ping" })}\n`);
-
-        await new Promise((resolve) => setTimeout(resolve, 20));
-        client.destroy();
-        await collector.promise;
-
-        expect(collector.lines.length).toBeGreaterThan(0);
-        const parsed = JSON.parse(collector.lines[0] as string) as IpcResponse & { id: unknown };
+        const parsed = await collectFirstFrame<IpcResponse & { id: unknown }>(client, () =>
+            client.write(`${JSON.stringify({ id: 7, method: "ping" })}\n`),
+        );
         expect(parsed.error?.message).toContain("Invalid message format");
     });
 });
@@ -262,15 +241,9 @@ describe("ConnectionRegistry send", () => {
         const client = await connectClient(socketPath);
         const connection = await connectionPromise;
 
-        const collector = collectLines(client);
-        registry.send(connection.id, { id: "out-1", result: 42 } as IpcMessage);
-
-        await new Promise((resolve) => setTimeout(resolve, 20));
-        client.destroy();
-        await collector.promise;
-
-        expect(collector.lines.length).toBeGreaterThan(0);
-        const parsed = JSON.parse(collector.lines[0] as string) as IpcMessage;
+        const parsed = await collectFirstFrame<IpcMessage>(client, () =>
+            registry.send(connection.id, { id: "out-1", result: 42 } as IpcMessage),
+        );
         expect((parsed as { id: string }).id).toBe("out-1");
     });
 });

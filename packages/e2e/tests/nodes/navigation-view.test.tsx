@@ -3,6 +3,7 @@ import { AdwNavigationView, GtkLabel } from "@gtkx/react";
 import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { expectNavigationStackSize, TwoNavigationPages } from "../helpers/navigation-view-render.js";
 
 describe("render - NavigationView (1)", () => {
     describe("NavigationViewNode", () => {
@@ -21,19 +22,11 @@ describe("render - NavigationView (1)", () => {
 
             await render(
                 <AdwNavigationView ref={viewRef} history={["page1", "page2"]}>
-                    <AdwNavigationView.Page id="page1" title="Page 1">
-                        <GtkLabel label="Content 1" />
-                    </AdwNavigationView.Page>
-                    <AdwNavigationView.Page id="page2" title="Page 2">
-                        <GtkLabel label="Content 2" />
-                    </AdwNavigationView.Page>
+                    <TwoNavigationPages contentPrefix="Content" />
                 </AdwNavigationView>,
             );
 
-            await waitFor(() => {
-                const stack = viewRef.current?.getNavigationStack();
-                expect(stack?.getNItems()).toBe(2);
-            });
+            await expectNavigationStackSize(viewRef, 2);
         });
     });
 });
@@ -61,17 +54,11 @@ describe("render - NavigationView (2)", () => {
 
             await render(<App history={["home"]} />);
 
-            await waitFor(() => {
-                const stack = viewRef.current?.getNavigationStack();
-                expect(stack?.getNItems()).toBe(1);
-            });
+            await expectNavigationStackSize(viewRef, 1);
 
             await render(<App history={["home", "details"]} />);
 
-            await waitFor(() => {
-                const stack = viewRef.current?.getNavigationStack();
-                expect(stack?.getNItems()).toBe(2);
-            });
+            await expectNavigationStackSize(viewRef, 2);
         });
     });
 });
@@ -84,12 +71,7 @@ describe("render - NavigationView (3)", () => {
 
             await render(
                 <AdwNavigationView ref={viewRef} onHistoryChanged={onHistoryChanged}>
-                    <AdwNavigationView.Page id="page1" title="Page 1">
-                        <GtkLabel label="Page 1" />
-                    </AdwNavigationView.Page>
-                    <AdwNavigationView.Page id="page2" title="Page 2">
-                        <GtkLabel label="Page 2" />
-                    </AdwNavigationView.Page>
+                    <TwoNavigationPages contentPrefix="Page" />
                 </AdwNavigationView>,
             );
 
@@ -111,12 +93,7 @@ describe("render - NavigationView (4)", () => {
             function App({ hasCallback }: { hasCallback: boolean }) {
                 return (
                     <AdwNavigationView ref={viewRef} onHistoryChanged={hasCallback ? onHistoryChanged : undefined}>
-                        <AdwNavigationView.Page id="page1" title="Page 1">
-                            <GtkLabel label="Page 1" />
-                        </AdwNavigationView.Page>
-                        <AdwNavigationView.Page id="page2" title="Page 2">
-                            <GtkLabel label="Page 2" />
-                        </AdwNavigationView.Page>
+                        <TwoNavigationPages contentPrefix="Page" />
                     </AdwNavigationView>
                 );
             }
@@ -135,10 +112,7 @@ describe("render - NavigationView (4)", () => {
 
             viewRef.current?.pop();
 
-            await waitFor(() => {
-                const stack = viewRef.current?.getNavigationStack();
-                expect(stack?.getNItems()).toBe(1);
-            });
+            await expectNavigationStackSize(viewRef, 1);
 
             expect(onHistoryChanged.mock.calls.length).toBe(callCount);
         });

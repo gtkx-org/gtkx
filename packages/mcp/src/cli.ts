@@ -164,39 +164,42 @@ const buildForwardParams = <Shape extends Record<string, z.ZodType>>(
     return { appId, params: custom ? custom(args) : rest };
 };
 
-const forwardJson = <Shape extends Record<string, z.ZodType>>(spec: ForwardSpec<Shape>): ToolDefinition =>
-    defineTool<Shape>({
-        name: spec.name,
-        config: { description: spec.description, inputSchema: spec.inputSchema },
-        handler: async (args) => {
-            const { appId, params } = buildForwardParams(args, spec.params);
-            const result = await spec.cm.sendToApp(appId, spec.method, params);
-            return textContent(JSON.stringify(result, null, 2));
-        },
-    });
-
-const forwardAck = <Shape extends Record<string, z.ZodType>>(
-    spec: ForwardSpec<Shape> & { ack: string },
+const forwardTool = <Shape extends Record<string, z.ZodType>>(
+    spec: ForwardSpec<Shape>,
+    perform: (
+        cm: AppQueryClient,
+        appId: string | undefined,
+        method: string,
+        params: unknown,
+    ) => Promise<ToolHandlerResult>,
 ): ToolDefinition =>
     defineTool<Shape>({
         name: spec.name,
         config: { description: spec.description, inputSchema: spec.inputSchema },
         handler: async (args) => {
             const { appId, params } = buildForwardParams(args, spec.params);
-            await spec.cm.sendToApp(appId, spec.method, params);
-            return textContent(spec.ack);
+            return perform(spec.cm, appId, spec.method, params);
         },
     });
 
+const forwardJson = <Shape extends Record<string, z.ZodType>>(spec: ForwardSpec<Shape>): ToolDefinition =>
+    forwardTool(spec, async (cm, appId, method, params) => {
+        const result = await cm.sendToApp(appId, method, params);
+        return textContent(JSON.stringify(result, null, 2));
+    });
+
+const forwardAck = <Shape extends Record<string, z.ZodType>>(
+    spec: ForwardSpec<Shape> & { ack: string },
+): ToolDefinition =>
+    forwardTool(spec, async (cm, appId, method, params) => {
+        await cm.sendToApp(appId, method, params);
+        return textContent(spec.ack);
+    });
+
 const forwardImage = <Shape extends Record<string, z.ZodType>>(spec: ForwardSpec<Shape>): ToolDefinition =>
-    defineTool<Shape>({
-        name: spec.name,
-        config: { description: spec.description, inputSchema: spec.inputSchema },
-        handler: async (args) => {
-            const { appId, params } = buildForwardParams(args, spec.params);
-            const result = await spec.cm.sendToApp<{ data: string; mimeType: string }>(appId, spec.method, params);
-            return imageContent(result.data, result.mimeType);
-        },
+    forwardTool(spec, async (cm, appId, method, params) => {
+        const result = await cm.sendToApp<{ data: string; mimeType: string }>(appId, method, params);
+        return imageContent(result.data, result.mimeType);
     });
 
 const listAppsTool = (cm: AppQueryClient) =>

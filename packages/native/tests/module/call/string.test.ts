@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../../../index.js";
+import { expectNoLeakCreatingLabels } from "../call-gobject-string-setup.js";
 import {
     createButton,
     createLabel,
@@ -185,13 +186,7 @@ describe("call - string types - memory leaks args", () => {
 
 describe("call - string types - memory leaks creation", () => {
     it("does not leak when creating many labels with strings", () => {
-        const mem = startMemoryMeasurement();
-
-        for (let i = 0; i < 1000; i++) {
-            createLabel(`Label ${i}`);
-        }
-
-        expect(mem.measure()).toBeLessThan(5 * 1024 * 1024);
+        expectNoLeakCreatingLabels();
     });
 });
 

@@ -94,23 +94,29 @@ export class StackPageNode extends SingleChildVirtualNode<StackPageProps, Widget
         if (parent instanceof Adw.ViewStack) {
             if (this.props.title && this.props.iconName) {
                 page = parent.addTitledWithIcon(child, this.props.id ?? null, this.props.title, this.props.iconName);
-            } else if (this.props.title) {
-                page = parent.addTitled(child, this.props.id ?? null, this.props.title);
-            } else if (this.props.id) {
-                page = parent.addNamed(child, this.props.id);
             } else {
-                page = parent.add(child);
+                page = this.addByTitleOrId(parent, child, () => parent.add(child));
             }
-        } else if (this.props.title) {
-            page = parent.addTitled(child, this.props.id ?? null, this.props.title);
-        } else if (this.props.id) {
-            page = parent.addNamed(child, this.props.id);
         } else {
-            page = parent.addChild(child);
+            page = this.addByTitleOrId(parent, child, () => parent.addChild(child));
         }
 
         this.page = page;
         this.commitUpdate(null, this.props);
+    }
+
+    private addByTitleOrId(
+        parent: StackWidget,
+        child: Gtk.Widget,
+        addUntitled: () => Gtk.StackPage | Adw.ViewStackPage,
+    ): Gtk.StackPage | Adw.ViewStackPage {
+        if (this.props.title) {
+            return parent.addTitled(child, this.props.id ?? null, this.props.title);
+        }
+        if (this.props.id) {
+            return parent.addNamed(child, this.props.id);
+        }
+        return addUntitled();
     }
 
     private removePage(oldChild: Gtk.Widget | null): void {

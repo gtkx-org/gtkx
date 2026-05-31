@@ -44,7 +44,8 @@
     },
     "dependencies": {
         "@gtkx/ffi": "workspace:*",
-        "@gtkx/react": "workspace:*"
+        "@gtkx/react": "workspace:*",
+        "@gtkx/utils": "workspace:*"
     },
     "devDependencies": {
         "@gtkx/vitest": "workspace:*",

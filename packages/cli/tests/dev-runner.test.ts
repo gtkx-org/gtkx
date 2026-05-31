@@ -96,12 +96,27 @@ const buildHarness = (
     };
 };
 
+const ENTRY = "/abs/src/main.tsx";
+
+const flushTick = (): Promise<void> => new Promise((r) => setImmediate(r));
+
+const startRunner = async (harness: Harness): Promise<void> => {
+    const runner = createDevRunner(harness.deps);
+    await runner.run(ENTRY);
+};
+
+const emitChangeAndFlush = async (harness: Harness, file: string, ticks: number): Promise<void> => {
+    harness.server.watcher.emit("change", file);
+    for (let i = 0; i < ticks; i++) {
+        await flushTick();
+    }
+};
+
 describe("createDevRunner (vite config)", () => {
     it("calls createServer with the resolved root, custom mode, supplied plugins, and ssr options", async () => {
         const harness = buildHarness();
-        const runner = createDevRunner(harness.deps);
 
-        await runner.run("/abs/src/main.tsx");
+        await startRunner(harness);
 
         expect(harness.createServer).toHaveBeenCalledOnce();
         const config = harness.createServer.mock.calls[0]?.[0];
@@ -124,20 +139,18 @@ describe("createDevRunner (vite config)", () => {
 describe("createDevRunner (entry loading)", () => {
     it("loads the user's entry via ssrLoadModule", async () => {
         const harness = buildHarness();
-        const runner = createDevRunner(harness.deps);
 
-        await runner.run("/abs/src/main.tsx");
+        await startRunner(harness);
 
-        expect(harness.server.ssrLoadModule).toHaveBeenCalledWith("/abs/src/main.tsx");
+        expect(harness.server.ssrLoadModule).toHaveBeenCalledWith(ENTRY);
     });
 });
 
 describe("createDevRunner (MCP lifecycle)", () => {
     it("starts the MCP client when the entry registers a Gio.Application", async () => {
         const harness = buildHarness({ appId: "com.example.app" });
-        const runner = createDevRunner(harness.deps);
 
-        await runner.run("/abs/src/main.tsx");
+        await startRunner(harness);
 
         expect(harness.startMcp).toHaveBeenCalledWith("com.example.app");
         const messages = harness.log.mock.calls.map((c: unknown[]) => String(c[0]));
@@ -147,9 +160,8 @@ describe("createDevRunner (MCP lifecycle)", () => {
 
     it("skips MCP startup when no Gio.Application is registered", async () => {
         const harness = buildHarness({ appId: null });
-        const runner = createDevRunner(harness.deps);
 
-        await runner.run("/abs/src/main.tsx");
+        await startRunner(harness);
 
         expect(harness.startMcp).not.toHaveBeenCalled();
         const messages = harness.log.mock.calls.map((c: unknown[]) => String(c[0]));
@@ -161,11 +173,10 @@ describe("createDevRunner (MCP lifecycle)", () => {
         const { promise: whenStoppedPromise, resolve: resolveStopped } = Promise.withResolvers<void>();
         harness.whenStopped.mockReturnValueOnce(whenStoppedPromise);
 
-        const runner = createDevRunner(harness.deps);
-        await runner.run("/abs/src/main.tsx");
+        await startRunner(harness);
 
         resolveStopped();
-        await new Promise((r) => setImmediate(r));
+        await flushTick();
 
         expect(harness.stopMcp).toHaveBeenCalled();
         expect(harness.server.close).toHaveBeenCalled();
@@ -177,11 +188,9 @@ describe("createDevRunner (file watcher wiring)", () => {
         const harness = buildHarness();
         harness.server.moduleGraph.getModuleById.mockReturnValueOnce(undefined);
 
-        const runner = createDevRunner(harness.deps);
-        await runner.run("/abs/src/main.tsx");
+        await startRunner(harness);
 
-        harness.server.watcher.emit("change", "/some/file.ts");
-        await new Promise((r) => setImmediate(r));
+        await emitChangeAndFlush(harness, "/some/file.ts", 1);
 
         expect(harness.server.moduleGraph.getModuleById).toHaveBeenCalledWith("/some/file.ts");
     });
@@ -190,11 +199,9 @@ describe("createDevRunner (file watcher wiring)", () => {
         const harness = buildHarness();
         harness.server.moduleGraph.getModuleById.mockReturnValueOnce(undefined);
 
-        const runner = createDevRunner(harness.deps);
-        await runner.run("/abs/src/main.tsx");
+        await startRunner(harness);
 
-        harness.server.watcher.emit("change", "/x/unknown.ts");
-        await new Promise((r) => setImmediate(r));
+        await emitChangeAndFlush(harness, "/x/unknown.ts", 1);
 
         expect(harness.server.moduleGraph.invalidateModule).not.toHaveBeenCalled();
         expect(harness.server.ssrLoadModule).toHaveBeenCalledTimes(1);
@@ -208,15 +215,12 @@ describe("createDevRunner (file watcher dispatch)", () => {
         const importerB = { id: "b" };
         const module = { id: "/x/y.ts", importers: new Set([importerA, importerB]) };
 
-        const runner = createDevRunner(harness.deps);
-        await runner.run("/abs/src/main.tsx");
+        await startRunner(harness);
 
         harness.server.moduleGraph.getModuleById.mockReturnValueOnce(module);
         harness.server.ssrLoadModule.mockResolvedValueOnce({ __isBoundary: true });
 
-        harness.server.watcher.emit("change", "/x/y.ts");
-        await new Promise((r) => setImmediate(r));
-        await new Promise((r) => setImmediate(r));
+        await emitChangeAndFlush(harness, "/x/y.ts", 2);
 
         expect(harness.server.moduleGraph.invalidateModule).toHaveBeenCalledWith(module);
         expect(harness.server.moduleGraph.invalidateModule).toHaveBeenCalledWith(importerA);
@@ -228,15 +232,12 @@ describe("createDevRunner (file watcher dispatch)", () => {
         const harness = buildHarness();
         const module = { id: "/x/y.ts", importers: new Set() };
 
-        const runner = createDevRunner(harness.deps);
-        await runner.run("/abs/src/main.tsx");
+        await startRunner(harness);
 
         harness.server.moduleGraph.getModuleById.mockReturnValueOnce(module);
         harness.server.ssrLoadModule.mockResolvedValueOnce({});
 
-        harness.server.watcher.emit("change", "/x/y.ts");
-        await new Promise((r) => setImmediate(r));
-        await new Promise((r) => setImmediate(r));
+        await emitChangeAndFlush(harness, "/x/y.ts", 2);
 
         expect(harness.server.close).toHaveBeenCalled();
         expect(harness.exit).toHaveBeenCalledWith(RELOAD_EXIT_CODE);

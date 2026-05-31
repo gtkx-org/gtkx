@@ -83,3 +83,21 @@ export const isShallowArrayEqual = <T extends Record<string, unknown>>(a: readon
 
     return true;
 };
+
+/**
+ * Builds a reverse lookup from a numeric enum's values to their member names.
+ *
+ * A TypeScript numeric enum's runtime object carries both name-to-value and
+ * value-to-name entries; this keeps only the name-to-value direction and
+ * inverts it, yielding a `Map` from each numeric value to the name that
+ * declared it.
+ *
+ * @param enumObject - A numeric enum's runtime object.
+ * @returns A map from each numeric enum value to its declared member name.
+ */
+export const reverseNumericEnum = (enumObject: Record<string, string | number>): Map<number, string> =>
+    new Map<number, string>(
+        Object.entries(enumObject)
+            .filter((entry): entry is [string, number] => typeof entry[1] === "number")
+            .map(([name, value]) => [value, name]),
+    );

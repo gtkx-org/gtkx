@@ -1,23 +1,47 @@
 import { describe, expect, it, vi } from "vitest";
+import type { Object as GObject } from "../../src/generated/gobject/gobject.js";
 import * as Gtk from "../../src/generated/gtk/gtk.js";
+
+type ClickedHandler = () => void;
+type RegisterClicked = (button: Gtk.Button, handler: ClickedHandler) => GObject;
+
+/**
+ * Asserts that a handler registered with `register` and immediately removed via
+ * `off` never fires for the `clicked` signal of a fresh button.
+ *
+ * @param register - Registers the handler on the button and returns the button
+ */
+const expectRemovableHandlerNeverFires = (register: RegisterClicked): void => {
+    const button = new Gtk.Button();
+    const handler = vi.fn();
+
+    register(button, handler);
+    button.off("clicked", handler);
+
+    expect(handler).not.toHaveBeenCalled();
+};
+
+/**
+ * Asserts that `register` returns the button it registered on, enabling method
+ * chaining, then removes the handler again.
+ *
+ * @param register - Registers the handler on the button and returns the button
+ */
+const expectRegisterReturnsButton = (register: RegisterClicked): void => {
+    const button = new Gtk.Button();
+    const handler = (): void => {};
+    const result = register(button, handler);
+    expect(result).toBe(button);
+    button.off("clicked", handler);
+};
 
 describe("on/off", () => {
     it("registers and removes handlers via callback identity", () => {
-        const button = new Gtk.Button();
-        const handler = vi.fn();
-
-        button.on("clicked", handler);
-        button.off("clicked", handler);
-
-        expect(handler).not.toHaveBeenCalled();
+        expectRemovableHandlerNeverFires((button, handler) => button.on("clicked", handler));
     });
 
     it("returns this for chaining", () => {
-        const button = new Gtk.Button();
-        const handler = (): void => {};
-        const result = button.on("clicked", handler);
-        expect(result).toBe(button);
-        button.off("clicked", handler);
+        expectRegisterReturnsButton((button, handler) => button.on("clicked", handler));
     });
 
     it("off() after the handler was already disconnected is a no-op", () => {
@@ -31,21 +55,11 @@ describe("on/off", () => {
 
 describe("once", () => {
     it("can be removed via off() before firing", () => {
-        const button = new Gtk.Button();
-        const handler = vi.fn();
-
-        button.once("clicked", handler);
-        button.off("clicked", handler);
-
-        expect(handler).not.toHaveBeenCalled();
+        expectRemovableHandlerNeverFires((button, handler) => button.once("clicked", handler));
     });
 
     it("returns this for chaining", () => {
-        const button = new Gtk.Button();
-        const handler = (): void => {};
-        const result = button.once("clicked", handler);
-        expect(result).toBe(button);
-        button.off("clicked", handler);
+        expectRegisterReturnsButton((button, handler) => button.once("clicked", handler));
     });
 });
 

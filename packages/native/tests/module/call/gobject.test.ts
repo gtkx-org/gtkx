@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../../../index.js";
+import { appendLabelAndExpectRefIncrement, expectNoLeakCreatingLabels } from "../call-gobject-string-setup.js";
 import {
     boxAppend,
     boxRemove,
@@ -162,13 +163,7 @@ describe("call - gobject types - widget hierarchy remove", () => {
 
 describe("call - gobject types - refcount management add", () => {
     it("container adds ref when child is appended", () => {
-        const box = createBox();
-        const label = createLabel("Test");
-        const initialRefCount = getRefCount(label);
-
-        boxAppend(box, label);
-
-        expect(getRefCount(label)).toBe(initialRefCount + 1);
+        const { box } = appendLabelAndExpectRefIncrement();
 
         expect(getFirstChild(box)).toBeDefined();
     });
@@ -189,13 +184,7 @@ describe("call - gobject types - refcount transfer none", () => {
 
 describe("call - gobject types - refcount release", () => {
     it("container releases ref when child is removed", () => {
-        const box = createBox();
-        const label = createLabel("Test");
-        const initialRefCount = getRefCount(label);
-
-        boxAppend(box, label);
-
-        expect(getRefCount(label)).toBe(initialRefCount + 1);
+        const { box, label, initialRefCount } = appendLabelAndExpectRefIncrement();
 
         boxRemove(box, label);
 
@@ -205,13 +194,7 @@ describe("call - gobject types - refcount release", () => {
 
 describe("call - gobject types - memory leaks creation", () => {
     it("does not leak when creating many GObjects in loop", () => {
-        const mem = startMemoryMeasurement();
-
-        for (let i = 0; i < 1000; i++) {
-            createLabel(`Label ${i}`);
-        }
-
-        expect(mem.measure()).toBeLessThan(5 * 1024 * 1024);
+        expectNoLeakCreatingLabels();
     });
 });
 

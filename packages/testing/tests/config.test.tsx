@@ -44,29 +44,30 @@ describe("configure updates", () => {
 describe("configure suggestions", () => {
     setupConfigReset();
 
-    it("disables suggestions in error messages when showSuggestions is false", async () => {
-        configure({ showSuggestions: false });
+    it.each([
+        {
+            title: "disables suggestions in error messages when showSuggestions is false",
+            showSuggestions: false,
+            assertMessage: (message: string) => {
+                expect(message).not.toContain("Here are the accessible roles:");
+            },
+        },
+        {
+            title: "includes suggestions in error messages when showSuggestions is true",
+            showSuggestions: true,
+            assertMessage: (message: string) => {
+                expect(message).toContain("Here are the accessible roles:");
+            },
+        },
+    ])("$title", async ({ showSuggestions, assertMessage }) => {
+        configure({ showSuggestions });
 
         const { container } = await render(<GtkLabel label="Test" />);
 
         try {
             await findByRole(container, Gtk.AccessibleRole.BUTTON, { timeout: 100 });
         } catch (error) {
-            const message = (error as Error).message;
-            expect(message).not.toContain("Here are the accessible roles:");
-        }
-    });
-
-    it("includes suggestions in error messages when showSuggestions is true", async () => {
-        configure({ showSuggestions: true });
-
-        const { container } = await render(<GtkLabel label="Test" />);
-
-        try {
-            await findByRole(container, Gtk.AccessibleRole.BUTTON, { timeout: 100 });
-        } catch (error) {
-            const message = (error as Error).message;
-            expect(message).toContain("Here are the accessible roles:");
+            assertMessage((error as Error).message);
         }
     });
 });

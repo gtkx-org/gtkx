@@ -16,6 +16,15 @@ const buildLabelBox = (boxRef: RefObject<Gtk.Box | null>) => (items: string[]) =
     </GtkBox>
 );
 
+const renderOrderedLabelBox = async () => {
+    const boxRef = createRef<Gtk.Box>();
+
+    const { rerender } = await renderChildren(["A", "B", "C"], buildLabelBox(boxRef));
+    expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
+
+    return { boxRef, rerender };
+};
+
 describe("host-config - children (1)", () => {
     describe("adding children", () => {
         it("appends child to appendable widget (Box)", async () => {
@@ -151,10 +160,7 @@ describe("host-config - children (4)", () => {
 describe("host-config - children (5)", () => {
     describe("child ordering", () => {
         it("maintains correct order after multiple operations", async () => {
-            const boxRef = createRef<Gtk.Box>();
-
-            const { rerender } = await renderChildren(["A", "B", "C"], buildLabelBox(boxRef));
-            expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
+            const { boxRef, rerender } = await renderOrderedLabelBox();
 
             await rerender(["A", "D", "B", "C"]);
             expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "D", "B", "C"]);
@@ -164,10 +170,7 @@ describe("host-config - children (5)", () => {
         });
 
         it("handles reordering via key changes", async () => {
-            const boxRef = createRef<Gtk.Box>();
-
-            const { rerender } = await renderChildren(["A", "B", "C"], buildLabelBox(boxRef));
-            expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
+            const { boxRef, rerender } = await renderOrderedLabelBox();
 
             await rerender(["C", "B", "A"]);
             expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["C", "B", "A"]);

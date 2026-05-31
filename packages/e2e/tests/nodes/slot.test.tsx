@@ -4,6 +4,15 @@ import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
+const expectPanedStartChild = async (label: string) => {
+    const panedRef = createRef<Gtk.Paned>();
+    const labelRef = createRef<Gtk.Label>();
+
+    await render(<GtkPaned ref={panedRef} startChild={<GtkLabel ref={labelRef} label={label} />} />);
+
+    expect(panedRef.current?.getStartChild()).toBe(labelRef.current);
+};
+
 describe("render - Slot (1)", () => {
     it("sets slot child via ReactNode prop", async () => {
         const headerBarRef = createRef<Gtk.HeaderBar>();
@@ -17,12 +26,7 @@ describe("render - Slot (1)", () => {
     });
 
     it("calls setSlotName(widget) on parent", async () => {
-        const panedRef = createRef<Gtk.Paned>();
-        const labelRef = createRef<Gtk.Label>();
-
-        await render(<GtkPaned ref={panedRef} startChild={<GtkLabel ref={labelRef} label="Start Content" />} />);
-
-        expect(panedRef.current?.getStartChild()).toBe(labelRef.current);
+        await expectPanedStartChild("Start Content");
     });
 
     it("clears slot when child removed", async () => {
@@ -73,12 +77,7 @@ describe("render - Slot (2)", () => {
     });
 
     it("handles Paned.StartChild slot", async () => {
-        const panedRef = createRef<Gtk.Paned>();
-        const labelRef = createRef<Gtk.Label>();
-
-        await render(<GtkPaned ref={panedRef} startChild={<GtkLabel ref={labelRef} label="Start Child" />} />);
-
-        expect(panedRef.current?.getStartChild()).toBe(labelRef.current);
+        await expectPanedStartChild("Start Child");
     });
 
     it("handles MenuButton.Popover slot", async () => {

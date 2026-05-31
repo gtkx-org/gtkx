@@ -21,18 +21,43 @@ import {
     GtkSwitch,
     GtkToggleButton,
 } from "@gtkx/react";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, userEvent, waitFor } from "../src/index.js";
 import { isEditable } from "../src/widget.js";
+import { renderClickButton } from "./event-render-setup.js";
 
 const widgetHasFocus = (w: Gtk.Widget): boolean => w.hasFocus();
 
+const expectEditableText = (entry: Gtk.Widget, expected: string): void => {
+    if (!isEditable(entry)) {
+        throw new Error("Element is not editable");
+    }
+    expect(entry.getText()).toBe(expected);
+};
+
+const renderGesturedLabel = async (name: string, label: string, gesture: ReactNode): Promise<Gtk.Widget> => {
+    await render(
+        <GtkLabel name={name} label={label}>
+            {gesture}
+        </GtkLabel>,
+    );
+    return screen.findByName(name);
+};
+
+const expectActionRejectsOnButton = async (
+    action: (button: Gtk.Widget) => Promise<unknown>,
+    message: string,
+): Promise<void> => {
+    await render(<GtkButton label="Test" />);
+
+    const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
+    await expect(action(button)).rejects.toThrow(message);
+};
+
 describe("userEvent.click", () => {
     it("emits clicked signal on button", async () => {
-        const handleClick = vi.fn();
-        await render(<GtkButton label="Click me" onClicked={handleClick} />);
-
-        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click me" });
+        const { handleClick, button } = await renderClickButton();
         await userEvent.click(button);
 
         await waitFor(() => expect(handleClick).toHaveBeenCalledTimes(1));
@@ -100,11 +125,7 @@ describe("userEvent.type", () => {
         const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
         await userEvent.type(entry, "Hello World");
 
-        if (!isEditable(entry)) {
-            throw new Error("Element is not editable");
-        }
-
-        expect(entry.getText()).toBe("Hello World");
+        expectEditableText(entry, "Hello World");
     });
 
     it("appends text to existing content", async () => {
@@ -113,19 +134,13 @@ describe("userEvent.type", () => {
         const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
         await userEvent.type(entry, "appended");
 
-        if (!isEditable(entry)) {
-            throw new Error("Element is not editable");
-        }
-
-        expect(entry.getText()).toBe("Initial appended");
+        expectEditableText(entry, "Initial appended");
     });
 
     describe("error handling", () => {
         it("throws when element is not editable", async () => {
-            await render(<GtkButton label="Test" />);
-
-            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
-            await expect(userEvent.type(button, "text")).rejects.toThrow(
+            await expectActionRejectsOnButton(
+                (button) => userEvent.type(button, "text"),
                 "Cannot type into element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)",
             );
         });
@@ -139,18 +154,13 @@ describe("userEvent.clear", () => {
         const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
         await userEvent.clear(entry);
 
-        if (!isEditable(entry)) {
-            throw new Error("Element is not editable");
-        }
-        expect(entry.getText()).toBe("");
+        expectEditableText(entry, "");
     });
 
     describe("error handling", () => {
         it("throws when element is not editable", async () => {
-            await render(<GtkButton label="Test" />);
-
-            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
-            await expect(userEvent.clear(button)).rejects.toThrow(
+            await expectActionRejectsOnButton(
+                (button) => userEvent.clear(button),
                 "Cannot clear element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)",
             );
         });
@@ -223,10 +233,8 @@ describe("userEvent.selectOptions", () => {
 
     describe("error handling", () => {
         it("throws when element is not selectable", async () => {
-            await render(<GtkButton label="Test" />);
-
-            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
-            await expect(userEvent.selectOptions(button, 0)).rejects.toThrow(
+            await expectActionRejectsOnButton(
+                (button) => userEvent.selectOptions(button, 0),
                 "Cannot select options: expected selectable widget (COMBO_BOX or LIST)",
             );
         });
@@ -279,13 +287,11 @@ describe("userEvent.deselectOptions", () => {
 describe("userEvent.rotate", () => {
     it("emits angle-changed on a widget's GestureRotate controller", async () => {
         const handleAngleChanged = vi.fn();
-        await render(
-            <GtkLabel name="rotated" label="Rotate me">
-                <GtkGestureRotate onAngleChanged={handleAngleChanged} />
-            </GtkLabel>,
+        const label = await renderGesturedLabel(
+            "rotated",
+            "Rotate me",
+            <GtkGestureRotate onAngleChanged={handleAngleChanged} />,
         );
-
-        const label = await screen.findByName("rotated");
         await userEvent.rotate(label, 1.25);
 
         const [angle, delta] = handleAngleChanged.mock.calls[0] ?? [];
@@ -295,13 +301,11 @@ describe("userEvent.rotate", () => {
 
     it("supports a separate delta angle", async () => {
         const handleAngleChanged = vi.fn();
-        await render(
-            <GtkLabel name="rotated" label="Rotate me">
-                <GtkGestureRotate onAngleChanged={handleAngleChanged} />
-            </GtkLabel>,
+        const label = await renderGesturedLabel(
+            "rotated",
+            "Rotate me",
+            <GtkGestureRotate onAngleChanged={handleAngleChanged} />,
         );
-
-        const label = await screen.findByName("rotated");
         await userEvent.rotate(label, 2.0, 0.5);
 
         const [angle, delta] = handleAngleChanged.mock.calls[0] ?? [];
@@ -320,13 +324,11 @@ describe("userEvent.rotate", () => {
 describe("userEvent.zoom", () => {
     it("emits scale-changed on a widget's GestureZoom controller", async () => {
         const handleScaleChanged = vi.fn();
-        await render(
-            <GtkLabel name="zoomed" label="Zoom me">
-                <GtkGestureZoom onScaleChanged={handleScaleChanged} />
-            </GtkLabel>,
+        const label = await renderGesturedLabel(
+            "zoomed",
+            "Zoom me",
+            <GtkGestureZoom onScaleChanged={handleScaleChanged} />,
         );
-
-        const label = await screen.findByName("zoomed");
         await userEvent.zoom(label, 1.5);
 
         const [scale] = handleScaleChanged.mock.calls[0] ?? [];
@@ -337,13 +339,7 @@ describe("userEvent.zoom", () => {
 describe("userEvent.swipe", () => {
     it("emits swipe with the given velocity vector", async () => {
         const handleSwipe = vi.fn();
-        await render(
-            <GtkLabel name="swiped" label="Swipe me">
-                <GtkGestureSwipe onSwipe={handleSwipe} />
-            </GtkLabel>,
-        );
-
-        const label = await screen.findByName("swiped");
+        const label = await renderGesturedLabel("swiped", "Swipe me", <GtkGestureSwipe onSwipe={handleSwipe} />);
         await userEvent.swipe(label, 200, -100);
 
         const [vx, vy] = handleSwipe.mock.calls[0] ?? [];
@@ -355,13 +351,11 @@ describe("userEvent.swipe", () => {
 describe("userEvent.longPress", () => {
     it("emits pressed at the given coordinates", async () => {
         const handlePressed = vi.fn();
-        await render(
-            <GtkLabel name="long-pressed" label="Long press me">
-                <GtkGestureLongPress onPressed={handlePressed} />
-            </GtkLabel>,
+        const label = await renderGesturedLabel(
+            "long-pressed",
+            "Long press me",
+            <GtkGestureLongPress onPressed={handlePressed} />,
         );
-
-        const label = await screen.findByName("long-pressed");
         await userEvent.longPress(label, 50, 75);
 
         const [x, y] = handlePressed.mock.calls[0] ?? [];
@@ -371,13 +365,11 @@ describe("userEvent.longPress", () => {
 
     it("defaults to (0, 0) when no coordinates are given", async () => {
         const handlePressed = vi.fn();
-        await render(
-            <GtkLabel name="long-pressed" label="Long press me">
-                <GtkGestureLongPress onPressed={handlePressed} />
-            </GtkLabel>,
+        const label = await renderGesturedLabel(
+            "long-pressed",
+            "Long press me",
+            <GtkGestureLongPress onPressed={handlePressed} />,
         );
-
-        const label = await screen.findByName("long-pressed");
         await userEvent.longPress(label);
 
         const [x, y] = handlePressed.mock.calls[0] ?? [];
@@ -389,23 +381,21 @@ describe("userEvent.longPress", () => {
 describe("userEvent.drag", () => {
     it("emits drag-begin, drag-update and drag-end in sequence", async () => {
         const events: string[] = [];
-        await render(
-            <GtkLabel name="dragged" label="Drag me">
-                <GtkGestureDrag
-                    onDragBegin={() => {
-                        events.push("begin");
-                    }}
-                    onDragUpdate={() => {
-                        events.push("update");
-                    }}
-                    onDragEnd={() => {
-                        events.push("end");
-                    }}
-                />
-            </GtkLabel>,
+        const label = await renderGesturedLabel(
+            "dragged",
+            "Drag me",
+            <GtkGestureDrag
+                onDragBegin={() => {
+                    events.push("begin");
+                }}
+                onDragUpdate={() => {
+                    events.push("update");
+                }}
+                onDragEnd={() => {
+                    events.push("end");
+                }}
+            />,
         );
-
-        const label = await screen.findByName("dragged");
         await userEvent.drag(label, 30, -15);
 
         expect(events).toEqual(["begin", "update", "end"]);
@@ -413,17 +403,15 @@ describe("userEvent.drag", () => {
 
     it("reports a realistic start point so handlers can call getStartPoint()", async () => {
         const startPoints: Array<[boolean, number, number]> = [];
-        await render(
-            <GtkLabel name="dragged" label="Drag me">
-                <GtkGestureDrag
-                    onDragUpdate={(_offsetX, _offsetY, self) => {
-                        startPoints.push(self.getStartPoint() as [boolean, number, number]);
-                    }}
-                />
-            </GtkLabel>,
+        const label = await renderGesturedLabel(
+            "dragged",
+            "Drag me",
+            <GtkGestureDrag
+                onDragUpdate={(_offsetX, _offsetY, self) => {
+                    startPoints.push(self.getStartPoint() as [boolean, number, number]);
+                }}
+            />,
         );
-
-        const label = await screen.findByName("dragged");
         await userEvent.drag(label, 30, -15, { startX: 50, startY: 25 });
 
         expect(startPoints[0]).toEqual([true, 50, 25]);
@@ -431,17 +419,15 @@ describe("userEvent.drag", () => {
 
     it("reports a realistic offset so handlers can call getOffset()", async () => {
         const offsets: Array<[boolean, number, number]> = [];
-        await render(
-            <GtkLabel name="dragged" label="Drag me">
-                <GtkGestureDrag
-                    onDragUpdate={(_offsetX, _offsetY, self) => {
-                        offsets.push(self.getOffset() as [boolean, number, number]);
-                    }}
-                />
-            </GtkLabel>,
+        const label = await renderGesturedLabel(
+            "dragged",
+            "Drag me",
+            <GtkGestureDrag
+                onDragUpdate={(_offsetX, _offsetY, self) => {
+                    offsets.push(self.getOffset() as [boolean, number, number]);
+                }}
+            />,
         );
-
-        const label = await screen.findByName("dragged");
         await userEvent.drag(label, 40, -20);
 
         expect(offsets[0]).toEqual([true, 40, -20]);

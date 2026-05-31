@@ -3,6 +3,7 @@ import { AdwNavigationView, GtkLabel } from "@gtkx/react";
 import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
+import { TwoNavigationPages } from "../helpers/navigation-view-render.js";
 
 describe("render - NavigationPage > NavigationPageNode (1)", () => {
     it("adds page with id", async () => {
@@ -37,12 +38,7 @@ describe("render - NavigationPage > NavigationPageNode (1)", () => {
 
         await render(
             <AdwNavigationView ref={viewRef}>
-                <AdwNavigationView.Page id="page1" title="Page 1">
-                    <GtkLabel label="Content 1" />
-                </AdwNavigationView.Page>
-                <AdwNavigationView.Page id="page2" title="Page 2">
-                    <GtkLabel label="Content 2" />
-                </AdwNavigationView.Page>
+                <TwoNavigationPages contentPrefix="Content" />
             </AdwNavigationView>,
         );
 

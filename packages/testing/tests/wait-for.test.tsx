@@ -1,8 +1,22 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton } from "@gtkx/react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { describe, expect, it } from "vitest";
 import { render, screen, userEvent, waitFor, waitForElementToBeRemoved } from "../src/index.js";
+
+/**
+ * Builds a component that renders a "Remove" button which hides the given
+ * `removableContent` when clicked, used to exercise element-removal waits.
+ */
+const createDynamicComponent = (removableContent: ReactNode) => () => {
+    const [showLabel, setShowLabel] = useState(true);
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <GtkButton label="Remove" onClicked={() => setShowLabel(false)} />
+            {showLabel && removableContent}
+        </GtkBox>
+    );
+};
 
 describe("waitFor resolves", () => {
     it("resolves when callback succeeds", async () => {
@@ -99,15 +113,7 @@ describe("waitFor error handling", () => {
 
 describe("waitForElementToBeRemoved widget", () => {
     it("resolves when element is removed from tree", async () => {
-        const DynamicComponent = () => {
-            const [showLabel, setShowLabel] = useState(true);
-            return (
-                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkButton label="Remove" onClicked={() => setShowLabel(false)} />
-                    {showLabel && <GtkButton label="Temporary" />}
-                </GtkBox>
-            );
-        };
+        const DynamicComponent = createDynamicComponent(<GtkButton label="Temporary" />);
 
         await render(<DynamicComponent />);
 
@@ -121,15 +127,7 @@ describe("waitForElementToBeRemoved widget", () => {
     });
 
     it("accepts callback that returns element", async () => {
-        const DynamicComponent = () => {
-            const [showLabel, setShowLabel] = useState(true);
-            return (
-                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkButton label="Remove" onClicked={() => setShowLabel(false)} />
-                    {showLabel && <GtkButton label="ToRemove" name="removable" />}
-                </GtkBox>
-            );
-        };
+        const DynamicComponent = createDynamicComponent(<GtkButton label="ToRemove" name="removable" />);
 
         await render(<DynamicComponent />);
 

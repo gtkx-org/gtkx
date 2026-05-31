@@ -77,11 +77,22 @@ const waitFor = async (predicate: () => boolean, timeoutMs = 1000): Promise<void
 const parseLines = (lines: string[]): Array<Record<string, unknown>> =>
     lines.map((line) => JSON.parse(line) as Record<string, unknown>);
 
-const connectAndRegister = async (ctx: ServerContext): Promise<McpClient> => {
+type PendingRegistration = {
+    client: McpClient;
+    connectPromise: Promise<void>;
+    registerLine: Record<string, unknown> | undefined;
+};
+
+const beginRegistration = async (ctx: ServerContext): Promise<PendingRegistration> => {
     const client = new McpClient({ socketPath: ctx.socketPath, appId: "com.test.app" });
     const connectPromise = client.connect();
     await waitFor(() => ctx.received[0]?.length === 1);
     const [registerLine] = parseLines(ctx.received[0] ?? []);
+    return { client, connectPromise, registerLine };
+};
+
+const connectAndRegister = async (ctx: ServerContext): Promise<McpClient> => {
+    const { client, connectPromise, registerLine } = await beginRegistration(ctx);
     ctx.sockets[0]?.write(`${JSON.stringify({ id: registerLine?.id, result: {} })}\n`);
     await connectPromise;
     return client;
@@ -100,12 +111,8 @@ afterEach(async () => {
 
 describe("McpClient.connect", () => {
     it("connects and sends an app.register request as its first message", async () => {
-        const client = new McpClient({ socketPath: ctx.socketPath, appId: "com.test.app" });
+        const { client, connectPromise, registerLine } = await beginRegistration(ctx);
 
-        const connectPromise = client.connect();
-        await waitFor(() => ctx.received[0]?.length === 1);
-
-        const [registerLine] = parseLines(ctx.received[0] ?? []);
         expect(registerLine?.method).toBe("app.register");
         expect((registerLine?.params as { appId: string }).appId).toBe("com.test.app");
 
@@ -118,11 +125,7 @@ describe("McpClient.connect", () => {
 
 describe("McpClient response correlation", () => {
     it("ignores responses whose ids do not match any pending request", async () => {
-        const client = new McpClient({ socketPath: ctx.socketPath, appId: "com.test.app" });
-
-        const connectPromise = client.connect();
-        await waitFor(() => ctx.received[0]?.length === 1);
-        const [registerLine] = parseLines(ctx.received[0] ?? []);
+        const { client, connectPromise, registerLine } = await beginRegistration(ctx);
 
         ctx.sockets[0]?.write(`${JSON.stringify({ id: "unknown-id", result: { stale: true } })}\n`);
         ctx.sockets[0]?.write(`${JSON.stringify({ id: registerLine?.id, result: {} })}\n`);

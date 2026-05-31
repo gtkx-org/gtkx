@@ -13,6 +13,32 @@ const TWO_ITEMS = [
 
 const THREE_ITEMS = [...TWO_ITEMS, { id: "3", value: { name: "Third" } }];
 
+/**
+ * Renders {@link TWO_ITEMS}, clicks the first row, and asserts the change
+ * callback fires with the id of that row.
+ */
+const expectSelectionChangedOnFirstRowClick = async (): Promise<void> => {
+    const onSelectionChanged = vi.fn();
+
+    const { ref } = await renderListView(TWO_ITEMS, { onSelectionChanged });
+
+    await userEvent.selectOptions(ref.current, 0);
+
+    expect(onSelectionChanged).toHaveBeenCalledWith(["1"]);
+};
+
+/**
+ * Renders a single selected item, re-renders it with an empty selection, and
+ * asserts the row still renders exactly once.
+ */
+const expectUnselectKeepsRow = async (): Promise<void> => {
+    const { rerender } = await renderListView([{ id: "1", value: { name: "First" } }], { selected: ["1"] });
+
+    await rerender([{ id: "1", value: { name: "First" } }], { selected: [] });
+
+    expect(screen.queryAllByText("First")).toHaveLength(1);
+};
+
 describe("render - ListView - selection (1)", () => {
     describe("single (1)", () => {
         it("sets selected item via selected prop", async () => {
@@ -21,15 +47,7 @@ describe("render - ListView - selection (1)", () => {
             expect(screen.queryAllByText("Second")).toHaveLength(1);
         });
 
-        it("calls onSelectionChanged when selection changes", async () => {
-            const onSelectionChanged = vi.fn();
-
-            const { ref } = await renderListView(TWO_ITEMS, { onSelectionChanged });
-
-            await userEvent.selectOptions(ref.current, 0);
-
-            expect(onSelectionChanged).toHaveBeenCalledWith(["1"]);
-        });
+        it("calls onSelectionChanged when selection changes", expectSelectionChangedOnFirstRowClick);
 
         it("selects correct item after scrolling to bottom of large list", async () => {
             const onSelectionChanged = vi.fn();
@@ -52,13 +70,7 @@ describe("render - ListView - selection (1)", () => {
 
 describe("render - ListView - selection (2)", () => {
     describe("single (2)", () => {
-        it("handles unselect (empty selection)", async () => {
-            const { rerender } = await renderListView([{ id: "1", value: { name: "First" } }], { selected: ["1"] });
-
-            await rerender([{ id: "1", value: { name: "First" } }], { selected: [] });
-
-            expect(screen.queryAllByText("First")).toHaveLength(1);
-        });
+        it("handles unselect (empty selection)", expectUnselectKeepsRow);
     });
 });
 
@@ -121,27 +133,13 @@ describe("render - ListView - selection (4)", () => {
             expect(onSelectionChanged).toHaveBeenCalledWith(["first"]);
         });
 
-        it("calls onSelectionChanged when selection changes", async () => {
-            const onSelectionChanged = vi.fn();
-
-            const { ref } = await renderListView(TWO_ITEMS, { onSelectionChanged });
-
-            await userEvent.selectOptions(ref.current, 0);
-
-            expect(onSelectionChanged).toHaveBeenCalledWith(["1"]);
-        });
+        it("calls onSelectionChanged when selection changes", expectSelectionChangedOnFirstRowClick);
     });
 });
 
 describe("render - ListView - selection (5)", () => {
     describe("tree - single (2)", () => {
-        it("handles unselect (empty selection)", async () => {
-            const { rerender } = await renderListView([{ id: "1", value: { name: "First" } }], { selected: ["1"] });
-
-            await rerender([{ id: "1", value: { name: "First" } }], { selected: [] });
-
-            expect(screen.queryAllByText("First")).toHaveLength(1);
-        });
+        it("handles unselect (empty selection)", expectUnselectKeepsRow);
 
         it("selects correct child item after scrolling to bottom of expanded tree", async () => {
             const onSelectionChanged = vi.fn();

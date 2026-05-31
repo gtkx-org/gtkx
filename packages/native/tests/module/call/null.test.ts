@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../../../index.js";
+import { expectSingleMinRefMeasurementPopulatesNumber } from "../call-null-ref-setup.js";
 import {
     boxAppend,
     createBox,
@@ -10,7 +11,6 @@ import {
     getFirstChild,
     getNextSibling,
     getParent,
-    measureWidget,
     measureWidgetAllNull,
     POINTER,
     STRING_BORROWED,
@@ -87,12 +87,7 @@ describe("call - null pointer arguments - edge cases", () => {
 
 describe("call - null pointer arguments - edge cases mixed", () => {
     it("handles null in mixed position arguments", () => {
-        const label = createLabel("Test");
-        const minRef = { value: 0 };
-
-        measureWidget({ widget: label, orientation: 0, forSize: -1, minRef });
-
-        expect(typeof minRef.value).toBe("number");
+        expectSingleMinRefMeasurementPopulatesNumber();
     });
 
     it("handles consecutive null pointer arguments", () => {

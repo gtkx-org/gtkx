@@ -3,9 +3,10 @@ import * as Pango from "@gtkx/ffi/pango";
 import { GtkButton, GtkTextView } from "@gtkx/react";
 import { render, screen } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { getBufferText, getTextBuffer } from "../helpers/buffer-text.js";
 import { renderChildren } from "../helpers/render-children.js";
+import { expectNoBufferChangedOnReconcile } from "../helpers/text-buffer-view-render.js";
 
 const hasTagAtOffset = (buffer: Gtk.TextBuffer, tagName: string, offset: number): boolean => {
     const tagTable = buffer.getTagTable();
@@ -306,50 +307,27 @@ describe("render - TextView (7)", () => {
 describe("render - TextView (8)", () => {
     describe("callbacks", () => {
         it("does not call onBufferChanged during React reconciliation", async () => {
-            const ref = createRef<Gtk.TextView>();
-            const onBufferChanged = vi.fn();
-
-            function App({ text }: { text: string }) {
-                return (
-                    <GtkTextView ref={ref} onBufferChanged={onBufferChanged}>
-                        {text}
-                    </GtkTextView>
-                );
-            }
-
-            const { rerender } = await render(<App text="Initial" />);
-
-            await rerender(<App text="Updated" />);
-
-            expect(onBufferChanged).not.toHaveBeenCalled();
+            await expectNoBufferChangedOnReconcile((onBufferChanged, text) => (
+                <GtkTextView onBufferChanged={onBufferChanged}>{text}</GtkTextView>
+            ));
         });
     });
 
     describe("enableUndo", () => {
-        it("sets enableUndo on buffer", async () => {
+        it.each([
+            ["sets enableUndo on buffer", true],
+            ["disables undo when enableUndo is false", false],
+        ])("%s", async (_title, enableUndo) => {
             const ref = createRef<Gtk.TextView>();
 
             await render(
-                <GtkTextView ref={ref} enableUndo>
+                <GtkTextView ref={ref} enableUndo={enableUndo}>
                     Content
                 </GtkTextView>,
             );
 
             const buffer = getTextBuffer(ref);
-            expect(buffer?.getEnableUndo()).toBe(true);
-        });
-
-        it("disables undo when enableUndo is false", async () => {
-            const ref = createRef<Gtk.TextView>();
-
-            await render(
-                <GtkTextView ref={ref} enableUndo={false}>
-                    Content
-                </GtkTextView>,
-            );
-
-            const buffer = getTextBuffer(ref);
-            expect(buffer?.getEnableUndo()).toBe(false);
+            expect(buffer?.getEnableUndo()).toBe(enableUndo);
         });
     });
 });

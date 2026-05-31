@@ -51,6 +51,42 @@ const getColumn = (columnView: Gtk.ColumnView, index: number): Gtk.ColumnViewCol
     return columnView.getColumns().getItem(index) as Gtk.ColumnViewColumn;
 };
 
+const renderNameColumnMenu = async (menu: ReactNode): Promise<Gtk.ColumnViewColumn> => {
+    const columnViewRef = createRef<Gtk.ColumnView>();
+
+    await renderColumns(
+        columnViewRef,
+        <DefaultColumn id="name" title="Name">
+            {menu}
+        </DefaultColumn>,
+    );
+
+    return getColumn(columnViewRef.current as Gtk.ColumnView, 0);
+};
+
+const expectHeaderMenuItemCount = (column: Gtk.ColumnViewColumn, count: number): void => {
+    expect(column.getHeaderMenu()).not.toBeNull();
+    expect(column.getHeaderMenu()?.getNItems()).toBe(count);
+};
+
+interface MenuItemSpec {
+    id: string;
+    label: string;
+    onActivate: () => void;
+}
+
+const menuColumn = (id: string, title: string, sections: MenuItemSpec[][]): ReactNode => (
+    <DefaultColumn id={id} title={title}>
+        {sections.map((items) => (
+            <MenuSection key={items.map((item) => item.id).join("-")}>
+                {items.map((item) => (
+                    <MenuItem key={item.id} id={item.id} label={item.label} onActivate={item.onActivate} />
+                ))}
+            </MenuSection>
+        ))}
+    </DefaultColumn>
+);
+
 describe("render - ColumnViewColumn (1)", () => {
     describe("ColumnViewColumnNode (1)", () => {
         it("adds column to ColumnView", async () => {
@@ -179,36 +215,25 @@ describe("render - ColumnViewColumn (4)", () => {
 describe("render - ColumnViewColumn (5)", () => {
     describe("header menu (1)", () => {
         it("sets header menu when menu items are added", async () => {
-            const columnViewRef = createRef<Gtk.ColumnView>();
-
-            await renderColumns(
-                columnViewRef,
-                <DefaultColumn id="name" title="Name">
+            const column = await renderNameColumnMenu(
+                <>
                     <MenuItem id="sort-asc" label="Sort A-Z" onActivate={noop} />
                     <MenuItem id="sort-desc" label="Sort Z-A" onActivate={noop} />
-                </DefaultColumn>,
+                </>,
             );
 
-            const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
-            expect(column.getHeaderMenu()).not.toBeNull();
-            expect(column.getHeaderMenu()?.getNItems()).toBe(2);
+            expectHeaderMenuItemCount(column, 2);
         });
 
         it("has no header menu when no menu children", async () => {
-            const columnViewRef = createRef<Gtk.ColumnView>();
+            const column = await renderNameColumnMenu(null);
 
-            await renderColumns(columnViewRef, <DefaultColumn id="name" title="Name" />);
-
-            const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
             expect(column.getHeaderMenu()).toBeNull();
         });
 
         it("supports menu sections", async () => {
-            const columnViewRef = createRef<Gtk.ColumnView>();
-
-            await renderColumns(
-                columnViewRef,
-                <DefaultColumn id="name" title="Name">
+            const column = await renderNameColumnMenu(
+                <>
                     <MenuSection>
                         <MenuItem id="sort-asc" label="Sort A-Z" onActivate={noop} />
                         <MenuItem id="sort-desc" label="Sort Z-A" onActivate={noop} />
@@ -216,12 +241,10 @@ describe("render - ColumnViewColumn (5)", () => {
                     <MenuSection>
                         <MenuItem id="hide" label="Hide Column" onActivate={noop} />
                     </MenuSection>
-                </DefaultColumn>,
+                </>,
             );
 
-            const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
-            expect(column.getHeaderMenu()).not.toBeNull();
-            expect(column.getHeaderMenu()?.getNItems()).toBe(2);
+            expectHeaderMenuItemCount(column, 2);
         });
     });
 });
@@ -229,21 +252,16 @@ describe("render - ColumnViewColumn (5)", () => {
 describe("render - ColumnViewColumn (6)", () => {
     describe("header menu (2)", () => {
         it("supports menu submenus", async () => {
-            const columnViewRef = createRef<Gtk.ColumnView>();
-
-            await renderColumns(
-                columnViewRef,
-                <DefaultColumn id="name" title="Name">
+            const column = await renderNameColumnMenu(
+                <>
                     <MenuItem id="sort" label="Sort" onActivate={noop} />
                     <MenuSubmenu label="More">
                         <MenuItem id="hide" label="Hide" onActivate={noop} />
                     </MenuSubmenu>
-                </DefaultColumn>,
+                </>,
             );
 
-            const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
-            expect(column.getHeaderMenu()).not.toBeNull();
-            expect(column.getHeaderMenu()?.getNItems()).toBe(2);
+            expectHeaderMenuItemCount(column, 2);
         });
 
         it("dynamically adds menu items", async () => {
@@ -495,28 +513,20 @@ describe("render - ColumnViewColumn (11)", () => {
             await renderColumns(
                 columnViewRef,
                 <>
-                    <DefaultColumn id="name" title="Name">
-                        <MenuSection>
-                            <MenuItem id="sort-asc" label="Sort Ascending" onActivate={nameSortAsc} />
-                            <MenuItem id="sort-desc" label="Sort Descending" onActivate={nameSortDesc} />
-                        </MenuSection>
-                    </DefaultColumn>
-                    <DefaultColumn id="role" title="Role">
-                        <MenuSection>
-                            <MenuItem id="sort-asc" label="Sort Ascending" onActivate={roleSortAsc} />
-                        </MenuSection>
-                        <MenuSection>
-                            <MenuItem id="hide" label="Hide Column" onActivate={roleHide} />
-                        </MenuSection>
-                    </DefaultColumn>
-                    <DefaultColumn id="salary" title="Salary">
-                        <MenuSection>
-                            <MenuItem id="sort-asc" label="Sort Ascending" onActivate={salarySortAsc} />
-                        </MenuSection>
-                        <MenuSection>
-                            <MenuItem id="hide" label="Hide Column" onActivate={salaryHide} />
-                        </MenuSection>
-                    </DefaultColumn>
+                    {menuColumn("name", "Name", [
+                        [
+                            { id: "sort-asc", label: "Sort Ascending", onActivate: nameSortAsc },
+                            { id: "sort-desc", label: "Sort Descending", onActivate: nameSortDesc },
+                        ],
+                    ])}
+                    {menuColumn("role", "Role", [
+                        [{ id: "sort-asc", label: "Sort Ascending", onActivate: roleSortAsc }],
+                        [{ id: "hide", label: "Hide Column", onActivate: roleHide }],
+                    ])}
+                    {menuColumn("salary", "Salary", [
+                        [{ id: "sort-asc", label: "Sort Ascending", onActivate: salarySortAsc }],
+                        [{ id: "hide", label: "Hide Column", onActivate: salaryHide }],
+                    ])}
                 </>,
             );
 
@@ -555,21 +565,17 @@ describe("render - ColumnViewColumn (12)", () => {
             await renderColumns(
                 columnViewRef,
                 <>
-                    <DefaultColumn id="name" title="Name">
-                        <MenuSection>
-                            <MenuItem id="sort-asc" label="Sort Ascending" onActivate={noop} />
-                            <MenuItem id="sort-desc" label="Sort Descending" onActivate={noop} />
-                            <MenuItem id="sort-clear" label="Clear Sort" onActivate={noop} />
-                        </MenuSection>
-                    </DefaultColumn>
-                    <DefaultColumn id="role" title="Role">
-                        <MenuSection>
-                            <MenuItem id="sort-asc" label="Sort Ascending" onActivate={noop} />
-                        </MenuSection>
-                        <MenuSection>
-                            <MenuItem id="hide" label="Hide Column" onActivate={noop} />
-                        </MenuSection>
-                    </DefaultColumn>
+                    {menuColumn("name", "Name", [
+                        [
+                            { id: "sort-asc", label: "Sort Ascending", onActivate: noop },
+                            { id: "sort-desc", label: "Sort Descending", onActivate: noop },
+                            { id: "sort-clear", label: "Clear Sort", onActivate: noop },
+                        ],
+                    ])}
+                    {menuColumn("role", "Role", [
+                        [{ id: "sort-asc", label: "Sort Ascending", onActivate: noop }],
+                        [{ id: "hide", label: "Hide Column", onActivate: noop }],
+                    ])}
                 </>,
             );
 

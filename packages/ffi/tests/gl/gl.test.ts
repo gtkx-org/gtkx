@@ -27,6 +27,8 @@ void main() {
     gl_Position = uMat4 * vec4(aPos * uFloat + vec3(uVec2, 0.0) + uVec3 + uVec4.xyz, 1.0) + vec4(uInt);
 }`;
 
+const TRIANGLE_POSITIONS = [-1, -1, 0, 1, -1, 0, 0, 1, 0];
+
 const compileShaderPair = (vertSrc: string, fragSrc: string): number => {
     const vertShader = gl.createShader(gl.VERTEX_SHADER);
     gl.shaderSource(vertShader, vertSrc);
@@ -45,6 +47,19 @@ const compileShaderPair = (vertSrc: string, fragSrc: string): number => {
     gl.deleteShader(fragShader);
 
     return program;
+};
+
+const setUpTriangleAttribArray = (): { vao: number; vbo: number } => {
+    const vao = gl.genVertexArray();
+    gl.bindVertexArray(vao);
+
+    const vbo = gl.genBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, TRIANGLE_POSITIONS, gl.STATIC_DRAW);
+    gl.vertexAttribPointer(0, { size: 3, type: gl.FLOAT, normalized: false, stride: 0, offset: 0 });
+    gl.enableVertexAttribArray(0);
+
+    return { vao, vbo };
 };
 
 beforeAll(async () => {
@@ -274,14 +289,7 @@ describe("buffer operations", () => {
 describe("vertex attributes", () => {
     it("configures vertex attribute pointers", () => {
         if (!glReady) return;
-        const vao = gl.genVertexArray();
-        const vbo = gl.genBuffer();
-
-        gl.bindVertexArray(vao);
-        gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-        gl.bufferData(gl.ARRAY_BUFFER, [-1, -1, 0, 1, -1, 0, 0, 1, 0], gl.STATIC_DRAW);
-        gl.vertexAttribPointer(0, { size: 3, type: gl.FLOAT, normalized: false, stride: 0, offset: 0 });
-        gl.enableVertexAttribArray(0);
+        const { vao, vbo } = setUpTriangleAttribArray();
         expect(gl.getError()).toBe(gl.NO_ERROR);
 
         gl.disableVertexAttribArray(0);
@@ -354,14 +362,7 @@ describe("drawing operations — state", () => {
 describe("drawing operations — draw calls", () => {
     it("draws arrays", () => {
         if (!glReady) return;
-        const vao = gl.genVertexArray();
-        gl.bindVertexArray(vao);
-
-        const vbo = gl.genBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-        gl.bufferData(gl.ARRAY_BUFFER, [-1, -1, 0, 1, -1, 0, 0, 1, 0], gl.STATIC_DRAW);
-        gl.vertexAttribPointer(0, { size: 3, type: gl.FLOAT, normalized: false, stride: 0, offset: 0 });
-        gl.enableVertexAttribArray(0);
+        const { vao, vbo } = setUpTriangleAttribArray();
 
         gl.drawArrays(gl.TRIANGLES, 0, 3);
         expect(gl.getError()).toBe(gl.NO_ERROR);
@@ -373,14 +374,7 @@ describe("drawing operations — draw calls", () => {
 
     it("draws elements", () => {
         if (!glReady) return;
-        const vao = gl.genVertexArray();
-        gl.bindVertexArray(vao);
-
-        const vbo = gl.genBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-        gl.bufferData(gl.ARRAY_BUFFER, [-1, -1, 0, 1, -1, 0, 0, 1, 0], gl.STATIC_DRAW);
-        gl.vertexAttribPointer(0, { size: 3, type: gl.FLOAT, normalized: false, stride: 0, offset: 0 });
-        gl.enableVertexAttribArray(0);
+        const { vao, vbo } = setUpTriangleAttribArray();
 
         const ebo = gl.genBuffer();
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo);

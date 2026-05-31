@@ -59,3 +59,25 @@ export function drainAfterCommit(): void {
 export function scheduleAfterCommit(fn: () => void): void {
     queue.push(fn);
 }
+
+/**
+ * Builds an idempotent scheduler that runs `run` once at the end of the
+ * current commit. Repeated calls before the work fires collapse into a
+ * single {@link scheduleAfterCommit} entry, so a node can request a
+ * resync from several reconciler hooks within one commit without queuing
+ * duplicate work.
+ *
+ * @param run - The work to run once per scheduled commit drain.
+ * @returns A function that schedules `run`, ignoring calls already pending.
+ */
+export function createAfterCommitDebounce(run: () => void): () => void {
+    let scheduled = false;
+    return () => {
+        if (scheduled) return;
+        scheduled = true;
+        scheduleAfterCommit(() => {
+            scheduled = false;
+            run();
+        });
+    };
+}

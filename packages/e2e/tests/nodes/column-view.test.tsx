@@ -3,7 +3,20 @@ import { GtkColumnView, GtkLabel } from "@gtkx/react";
 import { act, render } from "@gtkx/testing";
 import { createRef, useCallback, useMemo, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { filterableIds } from "../helpers/filterable-items.js";
+import {
+    COUNTER_BASELINE_TEXTS,
+    COUNTER_SINGLE_UPDATE_TEXTS,
+    type CollectionView,
+    counterBaselineRows,
+    counterSingleUpdateRows,
+    expectFilteredViewReorder,
+    expectInitialOrder,
+    expectLargeDatasetReorder,
+    expectRapidReorder,
+    expectReorder,
+    namedRows,
+    RAPID_REORDER_ORDERS,
+} from "../helpers/list-collection-render.js";
 import { type ColumnDef, renderColumnView } from "../helpers/list-fixtures.js";
 import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
 import { getChildTexts } from "../helpers/widget-text.js";
@@ -13,6 +26,11 @@ const getColumnViewItemTexts = (columnView: Gtk.ColumnView): string[] => {
     if (child) child = child.getNextSibling();
     if (child) return getChildTexts(child);
     return [];
+};
+
+const columnViewView = async (items: Parameters<typeof renderColumnView>[0]): Promise<CollectionView> => {
+    const { ref, rerender } = await renderColumnView(items);
+    return { texts: () => getColumnViewItemTexts(ref.current), rerender };
 };
 
 const labelCell = (item: { name: string }) => <GtkLabel label={item.name} />;
@@ -232,40 +250,50 @@ describe("render - ColumnView (2)", () => {
 describe("render - ColumnView (3)", () => {
     describe("ListItem", () => {
         it("adds item to list model", async () => {
-            const { ref } = await renderColumnView([
-                { id: "1", value: { name: "First" } },
-                { id: "2", value: { name: "Second" } },
-            ]);
+            const { ref } = await renderColumnView(
+                namedRows([
+                    ["1", "First"],
+                    ["2", "Second"],
+                ]),
+            );
 
             expect(ref.current?.getModel()).not.toBeNull();
         });
 
         it("inserts item before existing item", async () => {
-            const { ref, rerender } = await renderColumnView([
-                { id: "1", value: { name: "First" } },
-                { id: "3", value: { name: "Third" } },
-            ]);
+            const { ref, rerender } = await renderColumnView(
+                namedRows([
+                    ["1", "First"],
+                    ["3", "Third"],
+                ]),
+            );
 
-            await rerender([
-                { id: "1", value: { name: "First" } },
-                { id: "2", value: { name: "Second" } },
-                { id: "3", value: { name: "Third" } },
-            ]);
+            await rerender(
+                namedRows([
+                    ["1", "First"],
+                    ["2", "Second"],
+                    ["3", "Third"],
+                ]),
+            );
 
             expect(ref.current?.getModel()).not.toBeNull();
         });
 
         it("removes item", async () => {
-            const { ref, rerender } = await renderColumnView([
-                { id: "1", value: { name: "A" } },
-                { id: "2", value: { name: "B" } },
-                { id: "3", value: { name: "C" } },
-            ]);
+            const { ref, rerender } = await renderColumnView(
+                namedRows([
+                    ["1", "A"],
+                    ["2", "B"],
+                    ["3", "C"],
+                ]),
+            );
 
-            await rerender([
-                { id: "1", value: { name: "A" } },
-                { id: "3", value: { name: "C" } },
-            ]);
+            await rerender(
+                namedRows([
+                    ["1", "A"],
+                    ["3", "C"],
+                ]),
+            );
 
             expect(ref.current?.getModel()).not.toBeNull();
         });
@@ -458,49 +486,27 @@ describe("render - ColumnView (9)", () => {
 describe("render - ColumnView (10)", () => {
     describe("item reordering (1)", () => {
         it("respects React declaration order on initial render", async () => {
-            const { ref } = await renderColumnView(["C", "A", "B"]);
-
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["C", "A", "B"]);
+            await expectInitialOrder(columnViewView, ["C", "A", "B"]);
         });
 
         it("handles complete reversal of items", async () => {
-            const { ref, rerender } = await renderColumnView(["A", "B", "C", "D", "E"]);
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["A", "B", "C", "D", "E"]);
-
-            await rerender(["E", "D", "C", "B", "A"]);
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["E", "D", "C", "B", "A"]);
+            await expectReorder(columnViewView, ["A", "B", "C", "D", "E"], ["E", "D", "C", "B", "A"]);
         });
 
         it("handles interleaved reordering", async () => {
-            const { ref, rerender } = await renderColumnView(["A", "B", "C", "D"]);
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["A", "B", "C", "D"]);
-
-            await rerender(["B", "D", "A", "C"]);
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["B", "D", "A", "C"]);
+            await expectReorder(columnViewView, ["A", "B", "C", "D"], ["B", "D", "A", "C"]);
         });
 
         it("handles removing and adding while reordering", async () => {
-            const { ref, rerender } = await renderColumnView(["A", "B", "C"]);
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["A", "B", "C"]);
-
-            await rerender(["D", "B", "E"]);
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["D", "B", "E"]);
+            await expectReorder(columnViewView, ["A", "B", "C"], ["D", "B", "E"]);
         });
 
         it("handles insert at beginning", async () => {
-            const { ref, rerender } = await renderColumnView(["B", "C"]);
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["B", "C"]);
-
-            await rerender(["A", "B", "C"]);
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["A", "B", "C"]);
+            await expectReorder(columnViewView, ["B", "C"], ["A", "B", "C"]);
         });
 
         it("handles single item to multiple items", async () => {
-            const { ref, rerender } = await renderColumnView(["A"]);
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["A"]);
-
-            await rerender(["X", "A", "Y"]);
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["X", "A", "Y"]);
+            await expectReorder(columnViewView, ["A"], ["X", "A", "Y"]);
         });
     });
 });
@@ -508,51 +514,23 @@ describe("render - ColumnView (10)", () => {
 describe("render - ColumnView (11)", () => {
     describe("item reordering (2)", () => {
         it("handles rapid reordering", async () => {
-            const { ref, rerender } = await renderColumnView(["A", "B", "C"]);
-            await rerender(["C", "A", "B"]);
-            await rerender(["B", "C", "A"]);
-            await rerender(["A", "B", "C"]);
-
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["A", "B", "C"]);
+            await expectRapidReorder(columnViewView, RAPID_REORDER_ORDERS);
         });
 
         it("handles large dataset reordering (200 items)", async () => {
-            const initialItems = Array.from({ length: 200 }, (_, i) => String(i + 1));
-            const reversedItems = [...initialItems].reverse();
-
-            const { ref, rerender } = await renderColumnView(initialItems);
-            const visibleInitial = getColumnViewItemTexts(ref.current);
-            expect(visibleInitial.length).toBeGreaterThan(0);
-            expect(visibleInitial[0]).toBe("1");
-
-            await rerender(reversedItems);
-            const visibleReversed = getColumnViewItemTexts(ref.current);
-            expect(visibleReversed.length).toBeGreaterThan(0);
-            expect(visibleReversed[0]).toBe("200");
+            await expectLargeDatasetReorder(columnViewView);
         });
 
         it("handles move first item to last position", async () => {
-            const { ref, rerender } = await renderColumnView(["A", "B", "C", "D"]);
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["A", "B", "C", "D"]);
-
-            await rerender(["B", "C", "D", "A"]);
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["B", "C", "D", "A"]);
+            await expectReorder(columnViewView, ["A", "B", "C", "D"], ["B", "C", "D", "A"]);
         });
 
         it("handles move last item to first position", async () => {
-            const { ref, rerender } = await renderColumnView(["A", "B", "C", "D"]);
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["A", "B", "C", "D"]);
-
-            await rerender(["D", "A", "B", "C"]);
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["D", "A", "B", "C"]);
+            await expectReorder(columnViewView, ["A", "B", "C", "D"], ["D", "A", "B", "C"]);
         });
 
         it("handles swap of two items", async () => {
-            const { ref, rerender } = await renderColumnView(["A", "B", "C", "D"]);
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["A", "B", "C", "D"]);
-
-            await rerender(["A", "C", "B", "D"]);
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["A", "C", "B", "D"]);
+            await expectReorder(columnViewView, ["A", "B", "C", "D"], ["A", "C", "B", "D"]);
         });
     });
 });
@@ -560,17 +538,7 @@ describe("render - ColumnView (11)", () => {
 describe("render - ColumnView (12)", () => {
     describe("item reordering (3)", () => {
         it("handles filtered view reordering", async () => {
-            const { ref, rerender } = await renderColumnView(filterableIds("all"));
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["1", "2", "3", "4", "5"]);
-
-            await rerender(filterableIds("active"));
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["1", "3", "5"]);
-
-            await rerender(filterableIds("inactive"));
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["2", "4"]);
-
-            await rerender(filterableIds("all"));
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["1", "2", "3", "4", "5"]);
+            await expectFilteredViewReorder(columnViewView);
         });
     });
 });
@@ -606,26 +574,20 @@ describe("render - ColumnView (13)", () => {
                 });
             };
             const toRows = (rows: Item[]) => rows.map((item) => ({ id: item.id, value: item }));
-
-            const { ref, rerender } = await renderColumnView(toRows(sortBy(null, Gtk.SortType.ASCENDING)), {
+            const rowsFor = (sortColumn: SortColumn) => toRows(sortBy(sortColumn, Gtk.SortType.ASCENDING));
+            const optionsFor = (sortColumn: SortColumn) => ({
                 columns,
-                sortColumn: null,
+                sortColumn,
                 sortOrder: Gtk.SortType.ASCENDING,
             });
+
+            const { ref, rerender } = await renderColumnView(rowsFor(null), optionsFor(null));
             expect(getColumnViewItemTexts(ref.current)).toEqual(["Charlie", "Alice", "Bob"]);
 
-            await rerender(toRows(sortBy("name", Gtk.SortType.ASCENDING)), {
-                columns,
-                sortColumn: "name",
-                sortOrder: Gtk.SortType.ASCENDING,
-            });
+            await rerender(rowsFor("name"), optionsFor("name"));
             expect(getColumnViewItemTexts(ref.current)).toEqual(["Alice", "Bob", "Charlie"]);
 
-            await rerender(toRows(sortBy(null, Gtk.SortType.ASCENDING)), {
-                columns,
-                sortColumn: null,
-                sortOrder: Gtk.SortType.ASCENDING,
-            });
+            await rerender(rowsFor(null), optionsFor(null));
             expect(getColumnViewItemTexts(ref.current)).toEqual(["Charlie", "Alice", "Bob"]);
         });
     });
@@ -634,18 +596,22 @@ describe("render - ColumnView (13)", () => {
 describe("render - ColumnView (14)", () => {
     describe("item reordering (5)", () => {
         it("preserves order when only item values change", async () => {
-            const { ref, rerender } = await renderColumnView([
-                { id: "1", value: { name: "Alice" } },
-                { id: "2", value: { name: "Bob" } },
-                { id: "3", value: { name: "Charlie" } },
-            ]);
+            const { ref, rerender } = await renderColumnView(
+                namedRows([
+                    ["1", "Alice"],
+                    ["2", "Bob"],
+                    ["3", "Charlie"],
+                ]),
+            );
             expect(getColumnViewItemTexts(ref.current)).toEqual(["Alice", "Bob", "Charlie"]);
 
-            await rerender([
-                { id: "1", value: { name: "Alice Updated" } },
-                { id: "2", value: { name: "Bob Updated" } },
-                { id: "3", value: { name: "Charlie Updated" } },
-            ]);
+            await rerender(
+                namedRows([
+                    ["1", "Alice Updated"],
+                    ["2", "Bob Updated"],
+                    ["3", "Charlie Updated"],
+                ]),
+            );
             expect(getColumnViewItemTexts(ref.current)).toEqual(["Alice Updated", "Bob Updated", "Charlie Updated"]);
         });
 
@@ -655,25 +621,11 @@ describe("render - ColumnView (14)", () => {
                 { id: "name", title: "Name", renderCell: (item) => <GtkLabel label={`${item.name}: ${item.count}`} /> },
             ];
 
-            const { ref, rerender } = await renderColumnView(
-                [
-                    { id: "1", value: { name: "Counter A", count: 0 } },
-                    { id: "2", value: { name: "Counter B", count: 0 } },
-                    { id: "3", value: { name: "Counter C", count: 0 } },
-                ],
-                { columns },
-            );
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["Counter A: 0", "Counter B: 0", "Counter C: 0"]);
+            const { ref, rerender } = await renderColumnView(counterBaselineRows(), { columns });
+            expect(getColumnViewItemTexts(ref.current)).toEqual(COUNTER_BASELINE_TEXTS);
 
-            await rerender(
-                [
-                    { id: "1", value: { name: "Counter A", count: 0 } },
-                    { id: "2", value: { name: "Counter B", count: 5 } },
-                    { id: "3", value: { name: "Counter C", count: 0 } },
-                ],
-                { columns },
-            );
-            expect(getColumnViewItemTexts(ref.current)).toEqual(["Counter A: 0", "Counter B: 5", "Counter C: 0"]);
+            await rerender(counterSingleUpdateRows(), { columns });
+            expect(getColumnViewItemTexts(ref.current)).toEqual(COUNTER_SINGLE_UPDATE_TEXTS);
         });
     });
 });

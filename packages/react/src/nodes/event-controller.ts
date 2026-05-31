@@ -1,17 +1,18 @@
 import type * as Gdk from "@gtkx/ffi/gdk";
 import { G_TYPE_INVALID, type GType } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Node } from "../node.js";
+import type { Node } from "../node.js";
 import type { Props } from "../types.js";
-import { applyProps, imperative, type PropDescriptorTable } from "./internal/apply-props.js";
+import { imperative, type PropDescriptorTable } from "./internal/apply-props.js";
 import { createContainerWithProperties } from "./internal/construct.js";
+import { WidgetAttachmentNode } from "./internal/widget-attachment-node.js";
 import { WidgetNode } from "./widget.js";
 
 export class EventControllerNode<
     T extends Gtk.EventController = Gtk.EventController,
     // biome-ignore lint/suspicious/noExplicitAny: Self-referential type bounds require any
     TChild extends Node = any,
-> extends Node<T, Props, WidgetNode, TChild> {
+> extends WidgetAttachmentNode<T, TChild> {
     public static override createContainer(
         typeName: string,
         props: Props,
@@ -43,11 +44,6 @@ export class EventControllerNode<
         if (parent) {
             parent.container.addController(this.container);
         }
-    }
-
-    public override commitUpdate(oldProps: Props | null, newProps: Props): void {
-        super.commitUpdate(oldProps, newProps);
-        applyProps(this, oldProps, newProps, { table: this.getPropTable(), defaultBlockable: false });
     }
 
     protected override ownPropDescriptors(): PropDescriptorTable {

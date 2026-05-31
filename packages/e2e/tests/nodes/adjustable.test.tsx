@@ -1,8 +1,25 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkScale } from "@gtkx/react";
+import { type AdjustableProps, GtkScale } from "@gtkx/react";
 import { render, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
+
+/**
+ * Renders a `GtkScale` with the given adjustable props and asserts that the
+ * value read from its `Gtk.Adjustment` equals the expected number.
+ */
+const expectScaleAdjustment = async (
+    props: AdjustableProps,
+    read: (adjustment: Gtk.Adjustment | null | undefined) => number | undefined,
+    expected: number,
+) => {
+    const ref = createRef<Gtk.Scale>();
+
+    await render(<GtkScale ref={ref} {...props} />);
+
+    const adjustment = ref.current?.getAdjustment();
+    expect(read(adjustment)).toBe(expected);
+};
 
 describe("render - Adjustment > AdjustableNode (1)", () => {
     it("creates Adjustment for Scale widget", async () => {
@@ -16,59 +33,41 @@ describe("render - Adjustment > AdjustableNode (1)", () => {
     });
 
     it("sets initial value", async () => {
-        const ref = createRef<Gtk.Scale>();
-
-        await render(<GtkScale ref={ref} value={75} lower={0} upper={100} />);
-
-        const adjustment = ref.current?.getAdjustment();
-        expect(adjustment?.getValue()).toBe(75);
+        await expectScaleAdjustment({ value: 75, lower: 0, upper: 100 }, (adjustment) => adjustment?.getValue(), 75);
     });
 
     it("sets lower bound", async () => {
-        const ref = createRef<Gtk.Scale>();
-
-        await render(<GtkScale ref={ref} value={50} lower={10} upper={100} />);
-
-        const adjustment = ref.current?.getAdjustment();
-        expect(adjustment?.getLower()).toBe(10);
+        await expectScaleAdjustment({ value: 50, lower: 10, upper: 100 }, (adjustment) => adjustment?.getLower(), 10);
     });
 
     it("sets upper bound", async () => {
-        const ref = createRef<Gtk.Scale>();
-
-        await render(<GtkScale ref={ref} value={50} lower={0} upper={200} />);
-
-        const adjustment = ref.current?.getAdjustment();
-        expect(adjustment?.getUpper()).toBe(200);
+        await expectScaleAdjustment({ value: 50, lower: 0, upper: 200 }, (adjustment) => adjustment?.getUpper(), 200);
     });
 
     it("sets step increment", async () => {
-        const ref = createRef<Gtk.Scale>();
-
-        await render(<GtkScale ref={ref} value={50} lower={0} upper={100} stepIncrement={5} />);
-
-        const adjustment = ref.current?.getAdjustment();
-        expect(adjustment?.getStepIncrement()).toBe(5);
+        await expectScaleAdjustment(
+            { value: 50, lower: 0, upper: 100, stepIncrement: 5 },
+            (adjustment) => adjustment?.getStepIncrement(),
+            5,
+        );
     });
 });
 
 describe("render - Adjustment > AdjustableNode (2)", () => {
     it("sets page increment", async () => {
-        const ref = createRef<Gtk.Scale>();
-
-        await render(<GtkScale ref={ref} value={50} lower={0} upper={100} pageIncrement={20} />);
-
-        const adjustment = ref.current?.getAdjustment();
-        expect(adjustment?.getPageIncrement()).toBe(20);
+        await expectScaleAdjustment(
+            { value: 50, lower: 0, upper: 100, pageIncrement: 20 },
+            (adjustment) => adjustment?.getPageIncrement(),
+            20,
+        );
     });
 
     it("sets page size", async () => {
-        const ref = createRef<Gtk.Scale>();
-
-        await render(<GtkScale ref={ref} value={50} lower={0} upper={100} pageSize={10} />);
-
-        const adjustment = ref.current?.getAdjustment();
-        expect(adjustment?.getPageSize()).toBe(10);
+        await expectScaleAdjustment(
+            { value: 50, lower: 0, upper: 100, pageSize: 10 },
+            (adjustment) => adjustment?.getPageSize(),
+            10,
+        );
     });
 
     it("updates value when prop changes", async () => {

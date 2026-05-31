@@ -9,6 +9,16 @@ type DrawFunc = (cr: cairo.Context, width: number, height: number, self: Gtk.Dra
 
 const noopDraw: DrawFunc = () => {};
 
+const expectDefaultContentSize = async (drawFunc: DrawFunc | undefined) => {
+    const ref = createRef<Gtk.DrawingArea>();
+
+    await render(<GtkDrawingArea ref={ref} render={drawFunc} />);
+
+    expect(ref.current).toBeInstanceOf(Gtk.DrawingArea);
+    expect(ref.current?.getContentWidth()).toBe(0);
+    expect(ref.current?.getContentHeight()).toBe(0);
+};
+
 describe("render - DrawingArea > DrawingAreaNode (1)", () => {
     it("creates DrawingArea widget", async () => {
         const ref = createRef<Gtk.DrawingArea>();
@@ -20,23 +30,11 @@ describe("render - DrawingArea > DrawingAreaNode (1)", () => {
     });
 
     it("creates DrawingArea without render callback", async () => {
-        const ref = createRef<Gtk.DrawingArea>();
-
-        await render(<GtkDrawingArea ref={ref} />);
-
-        expect(ref.current).toBeInstanceOf(Gtk.DrawingArea);
-        expect(ref.current?.getContentWidth()).toBe(0);
-        expect(ref.current?.getContentHeight()).toBe(0);
+        await expectDefaultContentSize(undefined);
     });
 
     it("creates DrawingArea with render callback", async () => {
-        const ref = createRef<Gtk.DrawingArea>();
-
-        await render(<GtkDrawingArea ref={ref} render={noopDraw} />);
-
-        expect(ref.current).toBeInstanceOf(Gtk.DrawingArea);
-        expect(ref.current?.getContentWidth()).toBe(0);
-        expect(ref.current?.getContentHeight()).toBe(0);
+        await expectDefaultContentSize(noopDraw);
     });
 
     it("sets content size", async () => {

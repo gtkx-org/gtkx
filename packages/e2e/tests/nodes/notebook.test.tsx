@@ -1,19 +1,10 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkLabel, GtkNotebook } from "@gtkx/react";
+import { GtkNotebook } from "@gtkx/react";
 import { render } from "@gtkx/testing";
-import { createRef, type RefObject } from "react";
+import { createRef } from "react";
 import { describe, expect, it } from "vitest";
+import { buildLabelNotebook } from "../helpers/notebook-render.js";
 import { renderChildren } from "../helpers/render-children.js";
-
-const buildLabelNotebook = (ref: RefObject<Gtk.Notebook | null>) => (pages: string[]) => (
-    <GtkNotebook ref={ref}>
-        {pages.map((label) => (
-            <GtkNotebook.Page key={label} label={label}>
-                <GtkLabel label={`Content: ${label}`} />
-            </GtkNotebook.Page>
-        ))}
-    </GtkNotebook>
-);
 
 const getPageLabels = (notebook: Gtk.Notebook): string[] => {
     const labels: string[] = [];

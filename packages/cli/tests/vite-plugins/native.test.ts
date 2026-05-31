@@ -46,8 +46,8 @@ describe("gtkxNative (plugin shape)", () => {
 });
 
 describe("gtkxNative (buildStart platform guards)", () => {
-    it("buildStart throws on unsupported platform", async () => {
-        mockOs("darwin", "x64");
+    const expectBuildStartThrows = async (platform: string, arch: string, message: RegExp): Promise<void> => {
+        mockOs(platform, arch);
         const { gtkxNative } = await import("../../src/vite-plugins/native.js");
         const plugin = gtkxNative("/tmp");
 
@@ -55,23 +55,17 @@ describe("gtkxNative (buildStart platform guards)", () => {
             (plugin.buildStart as BuildStartHook).call({
                 emitFile: () => undefined,
             }),
-        ).toThrow(/Unsupported build platform/);
+        ).toThrow(message);
 
         unmockOs();
+    };
+
+    it("buildStart throws on unsupported platform", async () => {
+        await expectBuildStartThrows("darwin", "x64", /Unsupported build platform/);
     });
 
     it("buildStart throws on unsupported architecture", async () => {
-        mockOs("linux", "ia32");
-        const { gtkxNative } = await import("../../src/vite-plugins/native.js");
-        const plugin = gtkxNative("/tmp");
-
-        expect(() =>
-            (plugin.buildStart as BuildStartHook).call({
-                emitFile: () => undefined,
-            }),
-        ).toThrow(/Unsupported build architecture/);
-
-        unmockOs();
+        await expectBuildStartThrows("linux", "ia32", /Unsupported build architecture/);
     });
 });
 

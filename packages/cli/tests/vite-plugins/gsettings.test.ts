@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gtkxGSettings } from "../../src/vite-plugins/gsettings.js";
+import { expectBuildEndEmitsAsset, expectBuildEndIsNoop } from "./_vite-plugin-fixture.js";
 import type { BuildEndHook, ResolveIdHook } from "./plugin-hook-types.js";
 
 type HandleHotUpdateHook = (this: unknown, ctx: { file: string; server: unknown }) => unknown;
@@ -155,9 +156,7 @@ describe("gtkxGSettings (buildEnd)", () => {
         const plugin = gtkxGSettings();
         (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
 
-        const emitFile = vi.fn();
-        expect(() => (plugin.buildEnd as BuildEndHook).call({ emitFile })).not.toThrow();
-        expect(emitFile).not.toHaveBeenCalled();
+        expectBuildEndIsNoop(plugin.buildEnd as BuildEndHook);
     });
 
     it("buildEnd emits a compiled gschemas asset for queued schemas", () => {
@@ -180,15 +179,7 @@ describe("gtkxGSettings (buildEnd)", () => {
             (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
             (plugin.load as LoadHook).call(stubLoadContext(), `\0gtkx-gsettings:${schemaPath}`);
 
-            const emitFile = vi.fn();
-            (plugin.buildEnd as BuildEndHook).call({ emitFile });
-
-            expect(emitFile).toHaveBeenCalledTimes(1);
-            const call = emitFile.mock.calls[0]?.[0];
-            expect(call?.type).toBe("asset");
-            expect(call?.fileName).toBe("gschemas.compiled");
-            expect(Buffer.isBuffer(call?.source)).toBe(true);
-            expect((call?.source as Buffer).length).toBeGreaterThan(0);
+            expectBuildEndEmitsAsset(plugin.buildEnd as BuildEndHook, "gschemas.compiled");
         } finally {
             rmSync(tmp, { recursive: true, force: true });
         }
@@ -222,6 +213,16 @@ const writeSchema = (tmp: string, fileName: string, schemaId: string): string =>
 </schemalist>`,
     );
     return schemaPath;
+};
+
+const gsettingsVirtualId = (schemaPath: string): string => `\0gtkx-gsettings:${schemaPath}`;
+
+const loadSchemaInServeMode = (schemaPath: string): { plugin: ReturnType<typeof gtkxGSettings>; virtualId: string } => {
+    const plugin = gtkxGSettings();
+    (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
+    const virtualId = gsettingsVirtualId(schemaPath);
+    (plugin.load as LoadHook).call(stubLoadContext(), virtualId);
+    return { plugin, virtualId };
 };
 
 describe("gtkxGSettings (dev-mode load: fresh schema dir)", () => {
@@ -261,9 +262,7 @@ describe("gtkxGSettings (dev-mode load: existing schema dir)", () => {
         const schemaPath = writeSchema(tmp, "dev.gschema.xml", "com.example.dev2");
 
         try {
-            const plugin = gtkxGSettings();
-            (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
-            (plugin.load as LoadHook).call(stubLoadContext(), `\0gtkx-gsettings:${schemaPath}`);
+            loadSchemaInServeMode(schemaPath);
 
             expect(process.env.GSETTINGS_SCHEMA_DIR).toMatch(/^.*:\/existing\/dir$/);
         } finally {
@@ -301,11 +300,7 @@ describe("gtkxGSettings (handleHotUpdate: tracked match)", () => {
         const schemaPath = writeSchema(tmp, "hmr.gschema.xml", "com.example.hmr");
 
         try {
-            const plugin = gtkxGSettings();
-            (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
-
-            const virtualId = `\0gtkx-gsettings:${schemaPath}`;
-            (plugin.load as LoadHook).call(stubLoadContext(), virtualId);
+            const { plugin, virtualId } = loadSchemaInServeMode(schemaPath);
 
             const matchingModule = { id: virtualId };
             const server = {
@@ -340,9 +335,7 @@ describe("gtkxGSettings (closeBundle)", () => {
         const schemaPath = writeSchema(tmp, "close.gschema.xml", "com.example.close");
 
         try {
-            const plugin = gtkxGSettings();
-            (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
-            (plugin.load as LoadHook).call(stubLoadContext(), `\0gtkx-gsettings:${schemaPath}`);
+            const { plugin } = loadSchemaInServeMode(schemaPath);
 
             const schemaDir = process.env.GSETTINGS_SCHEMA_DIR?.split(":")[0] ?? "";
             expect(existsSync(schemaDir)).toBe(true);
@@ -367,9 +360,7 @@ describe("gtkxGSettings (configureServer)", () => {
         const schemaPath = writeSchema(tmp, "srv.gschema.xml", "com.example.srv");
 
         try {
-            const plugin = gtkxGSettings();
-            (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
-            (plugin.load as LoadHook).call(stubLoadContext(), `\0gtkx-gsettings:${schemaPath}`);
+            const { plugin } = loadSchemaInServeMode(schemaPath);
 
             const schemaDir = process.env.GSETTINGS_SCHEMA_DIR?.split(":")[0] ?? "";
             expect(existsSync(schemaDir)).toBe(true);
@@ -394,11 +385,7 @@ describe("gtkxGSettings (handleHotUpdate: tracked orphan)", () => {
         const schemaPath = writeSchema(tmp, "orphan.gschema.xml", "com.example.orphan");
 
         try {
-            const plugin = gtkxGSettings();
-            (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
-
-            const virtualId = `\0gtkx-gsettings:${schemaPath}`;
-            (plugin.load as LoadHook).call(stubLoadContext(), virtualId);
+            const { plugin } = loadSchemaInServeMode(schemaPath);
 
             const server = {
                 moduleGraph: {

@@ -2,58 +2,67 @@ import type * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { AdwViewStack, AdwViewSwitcher, GtkBox, GtkStack, GtkStackSidebar, GtkStackSwitcher } from "@gtkx/react";
 import { render, screen } from "@gtkx/testing";
+import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
+
+const findWidget = async <T extends Gtk.Widget>(name: string): Promise<T> => (await screen.findByName(name)) as T;
+
+const StackWithSinglePage = ({
+    name,
+    pageId = "a",
+    title = "A",
+    content = "A",
+}: {
+    name: string;
+    pageId?: string;
+    title?: string;
+    content?: string;
+}): ReactNode => (
+    <GtkStack name={name}>
+        <GtkStack.Page id={pageId} title={title}>
+            {content}
+        </GtkStack.Page>
+    </GtkStack>
+);
+
+const expectControlWiredToSibling = async (controlName: string, stackName: string): Promise<void> => {
+    const control = await findWidget<Gtk.StackSwitcher | Gtk.StackSidebar>(controlName);
+    const stack = await findWidget<Gtk.Stack>(stackName);
+    expect(control.getStack()).toBe(stack);
+};
 
 describe("render - StackNavigation auto-wire", () => {
     it("binds GtkStackSidebar to a sibling GtkStack without an explicit prop", async () => {
         await render(
             <GtkBox>
                 <GtkStackSidebar name="sidebar" />
-                <GtkStack name="stack">
-                    <GtkStack.Page id="a" title="A">
-                        A
-                    </GtkStack.Page>
-                </GtkStack>
+                <StackWithSinglePage name="stack" />
             </GtkBox>,
         );
 
-        const sidebar = (await screen.findByName("sidebar")) as Gtk.StackSidebar;
-        const stack = (await screen.findByName("stack")) as Gtk.Stack;
-        expect(sidebar.getStack()).toBe(stack);
+        await expectControlWiredToSibling("sidebar", "stack");
     });
 
     it("binds GtkStackSwitcher to a sibling GtkStack without an explicit prop", async () => {
         await render(
             <GtkBox>
                 <GtkStackSwitcher name="switcher" />
-                <GtkStack name="stack">
-                    <GtkStack.Page id="a" title="A">
-                        A
-                    </GtkStack.Page>
-                </GtkStack>
+                <StackWithSinglePage name="stack" />
             </GtkBox>,
         );
 
-        const switcher = (await screen.findByName("switcher")) as Gtk.StackSwitcher;
-        const stack = (await screen.findByName("stack")) as Gtk.Stack;
-        expect(switcher.getStack()).toBe(stack);
+        await expectControlWiredToSibling("switcher", "stack");
     });
 
     it("auto-wires regardless of declaration order", async () => {
         await render(
             <GtkBox>
-                <GtkStack name="stack">
-                    <GtkStack.Page id="a" title="A">
-                        A
-                    </GtkStack.Page>
-                </GtkStack>
+                <StackWithSinglePage name="stack" />
                 <GtkStackSwitcher name="switcher" />
             </GtkBox>,
         );
 
-        const switcher = (await screen.findByName("switcher")) as Gtk.StackSwitcher;
-        const stack = (await screen.findByName("stack")) as Gtk.Stack;
-        expect(switcher.getStack()).toBe(stack);
+        await expectControlWiredToSibling("switcher", "stack");
     });
 
     it("binds AdwViewSwitcher to a sibling AdwViewStack", async () => {
@@ -68,8 +77,8 @@ describe("render - StackNavigation auto-wire", () => {
             </GtkBox>,
         );
 
-        const switcher = (await screen.findByName("switcher")) as Adw.ViewSwitcher;
-        const stack = (await screen.findByName("stack")) as Adw.ViewStack;
+        const switcher = await findWidget<Adw.ViewSwitcher>("switcher");
+        const stack = await findWidget<Adw.ViewStack>("stack");
         expect(switcher.getStack()).toBe(stack);
     });
 });
@@ -80,22 +89,18 @@ describe("render - StackNavigation sibling replacement", () => {
             return (
                 <GtkBox>
                     <GtkStackSwitcher name="switcher" />
-                    <GtkStack key={stackKey} name="stack">
-                        <GtkStack.Page id={stackKey} title="A">
-                            A
-                        </GtkStack.Page>
-                    </GtkStack>
+                    <StackWithSinglePage key={stackKey} name="stack" pageId={stackKey} />
                 </GtkBox>
             );
         }
 
         const { rerender } = await render(<App stackKey="a" />);
-        const switcher = (await screen.findByName("switcher")) as Gtk.StackSwitcher;
-        const firstStack = (await screen.findByName("stack")) as Gtk.Stack;
+        const switcher = await findWidget<Gtk.StackSwitcher>("switcher");
+        const firstStack = await findWidget<Gtk.Stack>("stack");
         expect(switcher.getStack()).toBe(firstStack);
 
         await rerender(<App stackKey="b" />);
-        const secondStack = (await screen.findByName("stack")) as Gtk.Stack;
+        const secondStack = await findWidget<Gtk.Stack>("stack");
         expect(secondStack).not.toBe(firstStack);
         expect(switcher.getStack()).toBe(secondStack);
     });
@@ -108,16 +113,12 @@ describe("render - StackNavigation explicit prop", () => {
         await render(
             <GtkBox>
                 <GtkStackSwitcher name="switcher" stack={explicitStack} />
-                <GtkStack name="ignored">
-                    <GtkStack.Page id="ignored" title="Ignored">
-                        Ignored
-                    </GtkStack.Page>
-                </GtkStack>
+                <StackWithSinglePage name="ignored" pageId="ignored" title="Ignored" content="Ignored" />
             </GtkBox>,
         );
 
-        const switcher = (await screen.findByName("switcher")) as Gtk.StackSwitcher;
-        const ignored = (await screen.findByName("ignored")) as Gtk.Stack;
+        const switcher = await findWidget<Gtk.StackSwitcher>("switcher");
+        const ignored = await findWidget<Gtk.Stack>("ignored");
         expect(switcher.getStack()).toBe(explicitStack);
         expect(switcher.getStack()).not.toBe(ignored);
     });
@@ -126,15 +127,11 @@ describe("render - StackNavigation explicit prop", () => {
         await render(
             <GtkBox>
                 <GtkStackSwitcher name="switcher" stack={null} />
-                <GtkStack name="stack">
-                    <GtkStack.Page id="a" title="A">
-                        A
-                    </GtkStack.Page>
-                </GtkStack>
+                <StackWithSinglePage name="stack" />
             </GtkBox>,
         );
 
-        const switcher = (await screen.findByName("switcher")) as Gtk.StackSwitcher;
+        const switcher = await findWidget<Gtk.StackSwitcher>("switcher");
         expect(switcher.getStack()).toBeNull();
     });
 });
@@ -147,21 +144,17 @@ describe("render - StackNavigation transitions", () => {
             return (
                 <GtkBox>
                     <GtkStackSwitcher name="switcher" stack={useExplicit ? explicitStack : undefined} />
-                    <GtkStack name="sibling">
-                        <GtkStack.Page id="a" title="A">
-                            A
-                        </GtkStack.Page>
-                    </GtkStack>
+                    <StackWithSinglePage name="sibling" />
                 </GtkBox>
             );
         }
 
         const { rerender } = await render(<App useExplicit={true} />);
-        const switcher = (await screen.findByName("switcher")) as Gtk.StackSwitcher;
+        const switcher = await findWidget<Gtk.StackSwitcher>("switcher");
         expect(switcher.getStack()).toBe(explicitStack);
 
         await rerender(<App useExplicit={false} />);
-        const sibling = (await screen.findByName("sibling")) as Gtk.Stack;
+        const sibling = await findWidget<Gtk.Stack>("sibling");
         expect(switcher.getStack()).toBe(sibling);
     });
 });

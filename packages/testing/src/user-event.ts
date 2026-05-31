@@ -43,17 +43,28 @@ const wrapValue = (content: DropContent): GObject.Value => {
     return value;
 };
 
-const findController = <T extends Gtk.EventController>(
+const findExistingController = <T extends Gtk.EventController>(
     element: Gtk.Widget,
     controllerType: new (...args: never[]) => T,
-): T => {
+): T | null => {
     const controllers = element.observeControllers();
     const nItems = controllers.getNItems();
     for (let i = 0; i < nItems; i++) {
         const controller = controllers.getItem(i);
         if (controller instanceof controllerType) return controller;
     }
-    throw new Error(`No ${controllerType.name} controller is attached to the widget`);
+    return null;
+};
+
+const findController = <T extends Gtk.EventController>(
+    element: Gtk.Widget,
+    controllerType: new (...args: never[]) => T,
+): T => {
+    const controller = findExistingController(element, controllerType);
+    if (!controller) {
+        throw new Error(`No ${controllerType.name} controller is attached to the widget`);
+    }
+    return controller;
 };
 
 /**
@@ -262,15 +273,8 @@ const deselectOptions = async (element: Gtk.Widget, values: number | number[]): 
 };
 
 const getOrCreateController = <T extends Gtk.EventController>(element: Gtk.Widget, controllerType: new () => T): T => {
-    const controllers = element.observeControllers();
-    const nItems = controllers.getNItems();
-
-    for (let i = 0; i < nItems; i++) {
-        const controller = controllers.getItem(i);
-        if (controller instanceof controllerType) {
-            return controller;
-        }
-    }
+    const existing = findExistingController(element, controllerType);
+    if (existing) return existing;
 
     const controller = new controllerType();
     element.addController(controller);

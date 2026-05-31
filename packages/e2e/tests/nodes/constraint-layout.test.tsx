@@ -1,32 +1,21 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkConstraintLayout, GtkLabel } from "@gtkx/react";
+import { GtkBox, GtkConstraintLayout } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
+import {
+    ButtonMarker,
+    collectConstraints,
+    collectGuides,
+    firstConstraint,
+    LabelMarker,
+    layoutFrom,
+    onlyConstraint,
+} from "../helpers/constraint-layout-cases.js";
 
 const A = Gtk.ConstraintAttribute;
 const R = Gtk.ConstraintRelation;
 const S = Gtk.ConstraintStrength;
-
-function collectConstraints(layout: Gtk.ConstraintLayout): Gtk.Constraint[] {
-    const observer = layout.observeConstraints();
-    const out: Gtk.Constraint[] = [];
-    for (let i = 0; i < observer.getNItems(); i++) {
-        const item = observer.getItem(i);
-        if (item instanceof Gtk.Constraint) out.push(item);
-    }
-    return out;
-}
-
-function collectGuides(layout: Gtk.ConstraintLayout): Gtk.ConstraintGuide[] {
-    const observer = layout.observeGuides();
-    const out: Gtk.ConstraintGuide[] = [];
-    for (let i = 0; i < observer.getNItems(); i++) {
-        const item = observer.getItem(i);
-        if (item instanceof Gtk.ConstraintGuide) out.push(item);
-    }
-    return out;
-}
 
 describe("render - GtkConstraintLayout attach", () => {
     it("attaches a ConstraintLayout to the host widget", async () => {
@@ -50,7 +39,7 @@ describe("render - GtkConstraintLayout attach", () => {
             </GtkBox>,
         );
 
-        const layout = boxRef.current?.getLayoutManager() as Gtk.ConstraintLayout;
+        const layout = layoutFrom(boxRef);
         expect(collectConstraints(layout)).toHaveLength(0);
         expect(collectGuides(layout)).toHaveLength(0);
     });
@@ -72,19 +61,12 @@ describe("render - GtkConstraintLayout.Widget registration (a)", () => {
                         sourceAttribute={A.WIDTH}
                     />
                 </GtkConstraintLayout>
-                <GtkConstraintLayout.Widget id="a">
-                    <GtkLabel ref={labelARef} label="A" />
-                </GtkConstraintLayout.Widget>
-                <GtkConstraintLayout.Widget id="b">
-                    <GtkLabel ref={labelBRef} label="B" />
-                </GtkConstraintLayout.Widget>
+                <LabelMarker id="a" label="A" labelRef={labelARef} />
+                <LabelMarker id="b" label="B" labelRef={labelBRef} />
             </GtkBox>,
         );
 
-        const layout = boxRef.current?.getLayoutManager() as Gtk.ConstraintLayout;
-        const constraints = collectConstraints(layout);
-        expect(constraints).toHaveLength(1);
-        const c = constraints[0] as Gtk.Constraint;
+        const c = onlyConstraint(boxRef);
         expect(c.getTarget()).toBe(labelARef.current);
         expect(c.getSource()).toBe(labelBRef.current);
         expect(c.getTargetAttribute()).toBe(A.WIDTH);
@@ -100,9 +82,7 @@ describe("render - GtkConstraintLayout.Widget registration (b)", () => {
         await render(
             <GtkBox ref={boxRef}>
                 <GtkConstraintLayout />
-                <GtkConstraintLayout.Widget id="a">
-                    <GtkLabel ref={labelRef} label="Inside" />
-                </GtkConstraintLayout.Widget>
+                <LabelMarker id="a" label="Inside" labelRef={labelRef} />
             </GtkBox>,
         );
 
@@ -123,16 +103,11 @@ describe("render - GtkConstraintLayout.Widget registration (b)", () => {
                         constant={8}
                     />
                 </GtkConstraintLayout>
-                <GtkConstraintLayout.Widget id="a">
-                    <GtkLabel ref={labelRef} label="A" />
-                </GtkConstraintLayout.Widget>
+                <LabelMarker id="a" label="A" labelRef={labelRef} />
             </GtkBox>,
         );
 
-        const layout = boxRef.current?.getLayoutManager() as Gtk.ConstraintLayout;
-        const constraints = collectConstraints(layout);
-        expect(constraints).toHaveLength(1);
-        const c = constraints[0] as Gtk.Constraint;
+        const c = onlyConstraint(boxRef);
         expect(c.getTarget()).toBe(labelRef.current);
         expect(c.getSource()).toBeNull();
         expect(c.getConstant()).toBe(8);
@@ -172,7 +147,7 @@ describe("render - GtkConstraintLayout.Guide (construction)", () => {
             </GtkBox>,
         );
 
-        const layout = boxRef.current?.getLayoutManager() as Gtk.ConstraintLayout;
+        const layout = layoutFrom(boxRef);
         const guides = collectGuides(layout);
         expect(guides).toHaveLength(1);
         const guide = guides[0] as Gtk.ConstraintGuide;
@@ -206,17 +181,12 @@ describe("render - GtkConstraintLayout.Guide (references)", () => {
                         sourceAttribute={A.START}
                     />
                 </GtkConstraintLayout>
-                <GtkConstraintLayout.Widget id="a">
-                    <GtkLabel ref={labelRef} label="A" />
-                </GtkConstraintLayout.Widget>
+                <LabelMarker id="a" label="A" labelRef={labelRef} />
             </GtkBox>,
         );
 
-        const layout = boxRef.current?.getLayoutManager() as Gtk.ConstraintLayout;
-        const guides = collectGuides(layout);
-        const guide = guides[0];
-        const constraints = collectConstraints(layout);
-        const c = constraints[0] as Gtk.Constraint;
+        const guide = collectGuides(layoutFrom(boxRef))[0];
+        const c = firstConstraint(boxRef);
         expect(c.getSource()).toBe(guide);
         expect(c.getTarget()).toBe(labelRef.current);
     });
@@ -233,11 +203,11 @@ describe("render - GtkConstraintLayout.Guide (references)", () => {
         }
 
         const { rerender } = await render(<App show={true} />);
-        let layout = boxRef.current?.getLayoutManager() as Gtk.ConstraintLayout;
+        let layout = layoutFrom(boxRef);
         expect(collectGuides(layout)).toHaveLength(1);
 
         await rerender(<App show={false} />);
-        layout = boxRef.current?.getLayoutManager() as Gtk.ConstraintLayout;
+        layout = layoutFrom(boxRef);
         expect(collectGuides(layout)).toHaveLength(0);
     });
 });
@@ -257,21 +227,19 @@ describe("render - GtkConstraintLayout.Constraint updates", () => {
                             constant={constant}
                         />
                     </GtkConstraintLayout>
-                    <GtkConstraintLayout.Widget id="a">
-                        <GtkButton label="A" />
-                    </GtkConstraintLayout.Widget>
+                    <ButtonMarker id="a" label="A" />
                 </GtkBox>
             );
         }
 
         const { rerender } = await render(<App constant={10} />);
-        let layout = boxRef.current?.getLayoutManager() as Gtk.ConstraintLayout;
+        let layout = layoutFrom(boxRef);
         let constraints = collectConstraints(layout);
         expect(constraints).toHaveLength(1);
         expect((constraints[0] as Gtk.Constraint).getConstant()).toBe(10);
 
         await rerender(<App constant={50} />);
-        layout = boxRef.current?.getLayoutManager() as Gtk.ConstraintLayout;
+        layout = layoutFrom(boxRef);
         constraints = collectConstraints(layout);
         expect(constraints).toHaveLength(1);
         expect((constraints[0] as Gtk.Constraint).getConstant()).toBe(50);
@@ -293,19 +261,17 @@ describe("render - GtkConstraintLayout.Constraint updates", () => {
                             />
                         )}
                     </GtkConstraintLayout>
-                    <GtkConstraintLayout.Widget id="a">
-                        <GtkButton label="A" />
-                    </GtkConstraintLayout.Widget>
+                    <ButtonMarker id="a" label="A" />
                 </GtkBox>
             );
         }
 
         const { rerender } = await render(<App show={true} />);
-        let layout = boxRef.current?.getLayoutManager() as Gtk.ConstraintLayout;
+        let layout = layoutFrom(boxRef);
         expect(collectConstraints(layout)).toHaveLength(1);
 
         await rerender(<App show={false} />);
-        layout = boxRef.current?.getLayoutManager() as Gtk.ConstraintLayout;
+        layout = layoutFrom(boxRef);
         expect(collectConstraints(layout)).toHaveLength(0);
     });
 });
@@ -325,14 +291,11 @@ describe("render - GtkConstraintLayout.Constraint props", () => {
                         constant={200}
                     />
                 </GtkConstraintLayout>
-                <GtkConstraintLayout.Widget id="a">
-                    <GtkButton label="A" />
-                </GtkConstraintLayout.Widget>
+                <ButtonMarker id="a" label="A" />
             </GtkBox>,
         );
 
-        const layout = boxRef.current?.getLayoutManager() as Gtk.ConstraintLayout;
-        const c = collectConstraints(layout)[0] as Gtk.Constraint;
+        const c = firstConstraint(boxRef);
         expect(c.getRelation()).toBe(R.LE);
         expect(c.getConstant()).toBe(200);
     });
@@ -351,14 +314,11 @@ describe("render - GtkConstraintLayout.Constraint props", () => {
                         strength={S.STRONG}
                     />
                 </GtkConstraintLayout>
-                <GtkConstraintLayout.Widget id="a">
-                    <GtkButton label="A" />
-                </GtkConstraintLayout.Widget>
+                <ButtonMarker id="a" label="A" />
             </GtkBox>,
         );
 
-        const layout = boxRef.current?.getLayoutManager() as Gtk.ConstraintLayout;
-        const c = collectConstraints(layout)[0] as Gtk.Constraint;
+        const c = firstConstraint(boxRef);
         expect(c.getStrength()).toBe(S.STRONG);
     });
 });
@@ -379,22 +339,16 @@ describe("render - GtkConstraintLayout.Widget lifecycle", () => {
                             constant={1}
                         />
                     </GtkConstraintLayout>
-                    <GtkConstraintLayout.Widget id={id}>
-                        <GtkLabel ref={labelRef} label="L" />
-                    </GtkConstraintLayout.Widget>
+                    <LabelMarker id={id} label="L" labelRef={labelRef} />
                 </GtkBox>
             );
         }
 
         const { rerender } = await render(<App id="first" />);
-        let layout = boxRef.current?.getLayoutManager() as Gtk.ConstraintLayout;
-        let c = collectConstraints(layout)[0] as Gtk.Constraint;
-        expect(c.getTarget()).toBe(labelRef.current);
+        expect(firstConstraint(boxRef).getTarget()).toBe(labelRef.current);
 
         await rerender(<App id="second" />);
-        layout = boxRef.current?.getLayoutManager() as Gtk.ConstraintLayout;
-        c = collectConstraints(layout)[0] as Gtk.Constraint;
-        expect(c.getTarget()).toBe(labelRef.current);
+        expect(firstConstraint(boxRef).getTarget()).toBe(labelRef.current);
     });
 
     it("unmounts the wrapper cleanly when conditionally removed", async () => {
@@ -406,14 +360,8 @@ describe("render - GtkConstraintLayout.Widget lifecycle", () => {
             return (
                 <GtkBox ref={boxRef}>
                     <GtkConstraintLayout />
-                    <GtkConstraintLayout.Widget id="persist">
-                        <GtkLabel ref={persistRef} label="P" />
-                    </GtkConstraintLayout.Widget>
-                    {show && (
-                        <GtkConstraintLayout.Widget id="cond">
-                            <GtkLabel ref={conditionalRef} label="C" />
-                        </GtkConstraintLayout.Widget>
-                    )}
+                    <LabelMarker id="persist" label="P" labelRef={persistRef} />
+                    {show && <LabelMarker id="cond" label="C" labelRef={conditionalRef} />}
                 </GtkBox>
             );
         }
@@ -431,9 +379,7 @@ describe("render - GtkConstraintLayout.Widget lifecycle", () => {
         await expect(
             render(
                 <GtkBox>
-                    <GtkConstraintLayout.Widget id="orphan">
-                        <GtkLabel label="Orphan" />
-                    </GtkConstraintLayout.Widget>
+                    <LabelMarker id="orphan" label="Orphan" />
                 </GtkBox>,
             ),
         ).rejects.toThrow(/must be a sibling of <GtkConstraintLayout>/);
@@ -453,16 +399,12 @@ describe("render - GtkConstraintLayout.Vfl", () => {
                         vspacing={8}
                     />
                 </GtkConstraintLayout>
-                <GtkConstraintLayout.Widget id="a">
-                    <GtkButton label="A" />
-                </GtkConstraintLayout.Widget>
-                <GtkConstraintLayout.Widget id="b">
-                    <GtkButton label="B" />
-                </GtkConstraintLayout.Widget>
+                <ButtonMarker id="a" label="A" />
+                <ButtonMarker id="b" label="B" />
             </GtkBox>,
         );
 
-        const layout = boxRef.current?.getLayoutManager() as Gtk.ConstraintLayout;
+        const layout = layoutFrom(boxRef);
         const constraints = collectConstraints(layout);
         expect(constraints.length).toBeGreaterThanOrEqual(5);
     });
@@ -476,20 +418,18 @@ describe("render - GtkConstraintLayout.Vfl", () => {
                     <GtkConstraintLayout>
                         <GtkConstraintLayout.Vfl lines={lines} />
                     </GtkConstraintLayout>
-                    <GtkConstraintLayout.Widget id="a">
-                        <GtkButton label="A" />
-                    </GtkConstraintLayout.Widget>
+                    <ButtonMarker id="a" label="A" />
                 </GtkBox>
             );
         }
 
         const { rerender } = await render(<App lines={["H:|-[a]-|"]} />);
-        let layout = boxRef.current?.getLayoutManager() as Gtk.ConstraintLayout;
+        let layout = layoutFrom(boxRef);
         const initialCount = collectConstraints(layout).length;
         expect(initialCount).toBeGreaterThan(0);
 
         await rerender(<App lines={["H:|-[a]-|", "V:|-[a]-|"]} />);
-        layout = boxRef.current?.getLayoutManager() as Gtk.ConstraintLayout;
+        layout = layoutFrom(boxRef);
         const updatedCount = collectConstraints(layout).length;
         expect(updatedCount).toBeGreaterThan(initialCount);
     });

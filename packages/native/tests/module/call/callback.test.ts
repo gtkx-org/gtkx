@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../../../index.js";
+import { expectClickedSignalHandlerId } from "../call-callback-integer-setup.js";
 import { suppressUnhandledRejections } from "../lifecycle.js";
 import {
     connectSignal,
@@ -18,12 +19,7 @@ import {
 
 describe("call - trampoline - connect", () => {
     it("connects callback to signal", () => {
-        const button = createButton("Test");
-
-        const handlerId = connectSignal(button, "clicked", () => {});
-
-        expect(typeof handlerId).toBe("number");
-        expect(handlerId).toBeGreaterThan(0);
+        expectClickedSignalHandlerId();
     });
 });
 
