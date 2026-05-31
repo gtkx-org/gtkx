@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isShallowArrayEqual, isShallowEqual, omit } from "../src/collection.js";
+import { isShallowArrayEqual, isShallowEqual, omit, reverseNumericEnum } from "../src/collection.js";
 
 describe("omit", () => {
     it("removes the listed keys", () => {
@@ -48,5 +48,30 @@ describe("isShallowArrayEqual", () => {
     it("returns false when key sets or lengths differ", () => {
         expect(isShallowArrayEqual([{ a: 1 }], [{ a: 1, b: 2 }])).toBe(false);
         expect(isShallowArrayEqual([{ a: 1 }], [])).toBe(false);
+    });
+});
+
+describe("reverseNumericEnum", () => {
+    enum Color {
+        Red = 0,
+        Green = 5,
+        Blue = 6,
+    }
+
+    it("maps each numeric enum value to its member name", () => {
+        const byValue = reverseNumericEnum(Color);
+        expect(byValue.get(0)).toBe("Red");
+        expect(byValue.get(5)).toBe("Green");
+        expect(byValue.get(6)).toBe("Blue");
+    });
+
+    it("keeps only the value-to-name direction of the enum object", () => {
+        expect(reverseNumericEnum(Color).size).toBe(3);
+    });
+
+    it("reverses a plain object of numeric values", () => {
+        const byValue = reverseNumericEnum({ a: 1, b: 2 });
+        expect(byValue.get(1)).toBe("a");
+        expect(byValue.get(2)).toBe("b");
     });
 });

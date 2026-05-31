@@ -39,7 +39,11 @@ export const constraintsOf = (boxRef: RefObject<Gtk.Box | null>): Gtk.Constraint
     collectConstraints(layoutFrom(boxRef));
 
 /** Reads the first constraint of the layout owned by the box behind `boxRef`. */
-export const firstConstraint = (boxRef: RefObject<Gtk.Box | null>): Gtk.Constraint => constraintsOf(boxRef)[0];
+export const firstConstraint = (boxRef: RefObject<Gtk.Box | null>): Gtk.Constraint => {
+    const [constraint] = constraintsOf(boxRef);
+    if (!constraint) throw new Error("expected at least one constraint");
+    return constraint;
+};
 
 /**
  * Asserts the layout owned by the box behind `boxRef` holds exactly one
@@ -50,7 +54,9 @@ export const firstConstraint = (boxRef: RefObject<Gtk.Box | null>): Gtk.Constrai
 export const onlyConstraint = (boxRef: RefObject<Gtk.Box | null>): Gtk.Constraint => {
     const constraints = constraintsOf(boxRef);
     expect(constraints).toHaveLength(1);
-    return constraints[0];
+    const [constraint] = constraints;
+    if (!constraint) throw new Error("expected exactly one constraint");
+    return constraint;
 };
 
 /**
