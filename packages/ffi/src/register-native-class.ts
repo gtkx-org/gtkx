@@ -9,8 +9,7 @@
  * runtime registries.
  */
 
-import type { GType } from "./generated/gobject/gobject.js";
-import { G_TYPE_INVALID } from "./gtype.js";
+import { G_TYPE_INVALID, type GType } from "./gtype.js";
 import { type ClassVFuncMeta, type NativeClass, registerClassVFuncMeta } from "./handles.js";
 import { registerInterfaceVFuncMeta } from "./register-class.js";
 import { setClassGType, setInterfaceGType } from "./registry.js";

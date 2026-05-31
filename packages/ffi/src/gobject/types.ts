@@ -1,5 +1,4 @@
-import type { GType } from "../generated/gobject/gobject.js";
-import { typeFromName } from "../generated/gobject/gobject.js";
+import { type GType, typeFromName } from "../gtype.js";
 
 const FUNDAMENTAL_TYPE_NAMES = {
     INVALID: "void",

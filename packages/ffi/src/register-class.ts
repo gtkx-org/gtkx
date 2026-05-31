@@ -3,8 +3,7 @@ import {
     type RegisterClassNativeOptions,
     type RegisterClassVfuncDefinition,
 } from "@gtkx/native";
-import type { GType } from "./generated/gobject/gobject.js";
-import { G_TYPE_INVALID, typeInterfaces } from "./gtype.js";
+import { G_TYPE_INVALID, type GType, typeInterfaces } from "./gtype.js";
 import { getClassVFuncMeta, getParentClass, type NativeClass, type NativeHandle } from "./handles.js";
 import { markStatefulClass } from "./instance-state.js";
 import { getClassGType, getNativeObject, setClassGType } from "./registry.js";

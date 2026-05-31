@@ -8,7 +8,7 @@
  * `TYPE_*` name the contract declares.
  */
 
-import { typeFromName } from "../generated/gobject/gobject.js";
+import { typeFromName } from "../gtype.js";
 
 /**
  * The fundamental `GType` of an uninitialized or invalid value.

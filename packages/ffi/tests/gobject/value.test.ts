@@ -29,7 +29,10 @@ describe("Value boxed accessors", () => {
     });
 
     it("getBoxed returns null for a value that does not hold a boxed type", () => {
-        expect(valueFromJS(Type.STRING, "text").getBoxed()).toBeNull();
+        const value = new Value();
+        value.init(Type.STRING);
+        value.setString("text");
+        expect(value.getBoxed()).toBeNull();
     });
 
     it("getBoxed returns null when setBoxed was given null", () => {

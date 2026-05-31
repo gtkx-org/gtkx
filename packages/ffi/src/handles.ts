@@ -1,5 +1,5 @@
 import type { NativeHandle } from "@gtkx/native";
-import type { GType } from "./generated/gobject/gobject.js";
+import type { GType } from "./gtype.js";
 
 export type { NativeHandle } from "@gtkx/native";
 

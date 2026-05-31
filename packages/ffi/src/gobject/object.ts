@@ -1,10 +1,11 @@
 import type { GType, ParamSpec } from "../generated/gobject/gobject.js";
-import { Object as GObject, signalEmitv, signalParseName, Value } from "../generated/gobject/gobject.js";
+import { Object as GObject, signalEmitv, signalParseName, type Value } from "../generated/gobject/gobject.js";
 import { GVALUE_BORROWED, gtypeFromFfi, LIBGOBJECT } from "../gtype.js";
 import { getHandle } from "../handles.js";
 import { alloc, call, findObjectProperty, getInstanceGType, type NativeHandle, read, t } from "../native.js";
 import { getNativeObject } from "../registry.js";
 import { valueFromJS, valueFromObject, valueGetType, valueToJS } from "../value-marshal.js";
+import { GValue } from "./gvalue-native.js";
 
 declare module "../generated/gobject/gobject.js" {
     interface Object {
@@ -196,7 +197,7 @@ function emitImpl(this: GObject, sigName: string, ...args: unknown[]): void {
         t.void,
     );
 
-    const paramValues: Value[] = [];
+    const paramValues: GValue[] = [];
     const paramCount = read(query, t.uint32, SIGNAL_QUERY_N_PARAMS_OFFSET) as number;
     if (paramCount > 0) {
         const paramTypes = read(
@@ -210,7 +211,7 @@ function emitImpl(this: GObject, sigName: string, ...args: unknown[]): void {
         }
     }
 
-    signalEmitv([valueFromObject(this), ...paramValues], signalId, detail);
+    signalEmitv([valueFromObject(this), ...paramValues] as Value[], signalId, detail);
 }
 GObject.prototype.emit = emitImpl;
 
@@ -223,7 +224,7 @@ const resolvePropertyValueType = (obj: GObject, propertyName: string): GType => 
     return valueGetType(getNativeObject<ParamSpec>(pspecHandle).getDefaultValue());
 };
 
-const dispatchPropertyCall = (fnName: string, obj: GObject, propertyName: string, gvalue: Value): void => {
+const dispatchPropertyCall = (fnName: string, obj: GObject, propertyName: string, gvalue: GValue): void => {
     call(
         LIBGOBJECT,
         fnName,
@@ -238,7 +239,7 @@ const dispatchPropertyCall = (fnName: string, obj: GObject, propertyName: string
 
 GObject.prototype.getProperty = function getProperty(propertyName: string): unknown {
     const valueType = resolvePropertyValueType(this, propertyName);
-    const gvalue = new Value();
+    const gvalue = new GValue();
     gvalue.init(valueType);
     dispatchPropertyCall("g_object_get_property", this, propertyName, gvalue);
     return valueToJS(gvalue);

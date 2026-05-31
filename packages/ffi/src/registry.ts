@@ -1,6 +1,5 @@
 import { getInstanceGType, getNativeId, type NativeHandle } from "@gtkx/native";
-import type { GType } from "./generated/gobject/gobject.js";
-import { G_TYPE_INVALID, typeFromName, typeIsA, typeParent } from "./gtype.js";
+import { G_TYPE_INVALID, type GType, typeFromName, typeIsA, typeParent } from "./gtype.js";
 import {
     type GTypeStamped,
     getHandle,

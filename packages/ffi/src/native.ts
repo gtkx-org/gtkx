@@ -12,13 +12,28 @@ export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineS
 export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./helpers.js";
 
 import type { NativeHandle } from "@gtkx/native";
-import type { Error as GError } from "./generated/glib/glib.js";
 import type { NativeClass } from "./handles.js";
 import { getNativeObject } from "./registry.js";
 
 export type { NativeHandle, Type } from "@gtkx/native";
 export { findObjectProperty, getInstanceGType } from "@gtkx/native";
 export type { NativeClass } from "./handles.js";
+
+/**
+ * Structural shape of a thrown GLib `GError` boxed wrapper.
+ *
+ * The runtime only ever reads an error's `domain`, `code`, and `message`, so a
+ * hand-written structural type keeps `@gtkx/ffi` independent of the generated
+ * `GLib.Error` class; any generated error wrapper satisfies it.
+ */
+export interface GError {
+    /** The error domain quark. */
+    readonly domain: number;
+    /** The domain-specific error code. */
+    readonly code: number;
+    /** The human-readable error message. */
+    readonly message: string;
+}
 
 /**
  * Throws the failing `GError` when a `GError` out-parameter holds an error.
