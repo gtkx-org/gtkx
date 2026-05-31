@@ -10,7 +10,6 @@
  * runtime self-contained.
  */
 
-import { createRef } from "@gtkx/native";
 import type { GType } from "./generated/gobject/gobject.js";
 import { t } from "./helpers.js";
 
@@ -103,7 +102,7 @@ export function typeParent(type: GType): GType {
  * @param type - The GType whose implemented interfaces to enumerate
  */
 export function typeInterfaces(type: GType): GType[] {
-    const nInterfacesRef = createRef(0);
+    const nInterfacesRef = { value: 0 };
     return g_type_interfaces(type, nInterfacesRef) as GType[];
 }
 

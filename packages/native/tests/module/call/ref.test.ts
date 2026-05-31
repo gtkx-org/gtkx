@@ -1,18 +1,11 @@
 import { describe, expect, it } from "vitest";
-import {
-    createLabel,
-    createRef,
-    getRefCount,
-    measureWidget,
-    measureWidgetAllNull,
-    startMemoryMeasurement,
-} from "../utils.js";
+import { createLabel, getRefCount, measureWidget, measureWidgetAllNull, startMemoryMeasurement } from "../utils.js";
 
 describe("call - ref types - integer refs basic", () => {
     it("populates 32-bit signed integer ref", () => {
         const label = createLabel("Test Label Content");
-        const minRef = createRef(0);
-        const naturalRef = createRef(0);
+        const minRef = { value: 0 };
+        const naturalRef = { value: 0 };
 
         measureWidget({ widget: label, orientation: 0, forSize: -1, minRef, naturalRef });
 
@@ -24,10 +17,10 @@ describe("call - ref types - integer refs basic", () => {
 
     it("handles multiple integer refs in same call", () => {
         const label = createLabel("A longer test label for measuring");
-        const minRef = createRef(0);
-        const naturalRef = createRef(0);
-        const minBaselineRef = createRef(0);
-        const naturalBaselineRef = createRef(0);
+        const minRef = { value: 0 };
+        const naturalRef = { value: 0 };
+        const minBaselineRef = { value: 0 };
+        const naturalBaselineRef = { value: 0 };
 
         measureWidget({
             widget: label,
@@ -50,8 +43,8 @@ describe("call - ref types - integer refs orientations", () => {
     it("measures widget in different orientations", () => {
         const label = createLabel("Test");
 
-        const horizontalMinRef = createRef(0);
-        const horizontalNaturalRef = createRef(0);
+        const horizontalMinRef = { value: 0 };
+        const horizontalNaturalRef = { value: 0 };
         measureWidget({
             widget: label,
             orientation: 0,
@@ -60,8 +53,8 @@ describe("call - ref types - integer refs orientations", () => {
             naturalRef: horizontalNaturalRef,
         });
 
-        const verticalMinRef = createRef(0);
-        const verticalNaturalRef = createRef(0);
+        const verticalMinRef = { value: 0 };
+        const verticalNaturalRef = { value: 0 };
         measureWidget({
             widget: label,
             orientation: 1,
@@ -76,8 +69,8 @@ describe("call - ref types - integer refs orientations", () => {
 
     it("measures with for_size constraint", () => {
         const label = createLabel("Size test");
-        const minRef = createRef(0);
-        const naturalRef = createRef(0);
+        const minRef = { value: 0 };
+        const naturalRef = { value: 0 };
 
         measureWidget({ widget: label, orientation: 1, forSize: 100, minRef, naturalRef });
 
@@ -89,7 +82,7 @@ describe("call - ref types - integer refs orientations", () => {
 describe("call - ref types - null refs", () => {
     it("ignores null refs (optional out params)", () => {
         const label = createLabel("Test");
-        const minRef = createRef(0);
+        const minRef = { value: 0 };
 
         measureWidget({ widget: label, orientation: 0, forSize: -1, minRef });
 
@@ -98,7 +91,7 @@ describe("call - ref types - null refs", () => {
 
     it("uses null to indicate unneeded output", () => {
         const label = createLabel("Test");
-        const naturalRef = createRef(0);
+        const naturalRef = { value: 0 };
 
         measureWidget({ widget: label, orientation: 0, forSize: -1, naturalRef });
 
@@ -123,8 +116,8 @@ describe("call - ref types - memory leaks loop", () => {
                 widget: label,
                 orientation: 0,
                 forSize: -1,
-                minRef: createRef(0),
-                naturalRef: createRef(0),
+                minRef: { value: 0 },
+                naturalRef: { value: 0 },
             });
         }
 
@@ -140,7 +133,7 @@ describe("call - ref types - memory leaks mixed", () => {
         const mem = startMemoryMeasurement();
 
         for (let i = 0; i < 500; i++) {
-            const ref = createRef(0);
+            const ref = { value: 0 };
             const useFirst = i % 2 === 0;
             measureWidget({
                 widget: label,
@@ -159,7 +152,7 @@ describe("call - ref types - memory leaks mixed", () => {
 describe("call - ref types - edge cases overwriting", () => {
     it("handles ref initial value overwriting", () => {
         const label = createLabel("Test");
-        const ref = createRef(9999);
+        const ref = { value: 9999 };
 
         measureWidget({ widget: label, orientation: 0, forSize: -1, minRef: ref });
 
@@ -170,8 +163,8 @@ describe("call - ref types - edge cases overwriting", () => {
 describe("call - ref types - edge cases partial", () => {
     it("handles partial out-param usage (some null)", () => {
         const label = createLabel("Test");
-        const minRef = createRef(0);
-        const baselineRef = createRef(0);
+        const minRef = { value: 0 };
+        const baselineRef = { value: 0 };
 
         measureWidget({
             widget: label,
@@ -190,7 +183,7 @@ describe("call - ref types - edge cases reuse", () => {
     it("handles ref reuse across multiple calls", () => {
         const label1 = createLabel("Short");
         const label2 = createLabel("This is a much longer label text");
-        const ref = createRef(0);
+        const ref = { value: 0 };
 
         measureWidget({ widget: label1, orientation: 0, forSize: -1, minRef: ref });
         const shortWidth = ref.value;
@@ -205,8 +198,8 @@ describe("call - ref types - edge cases reuse", () => {
 describe("call - ref types - edge cases consistent reads", () => {
     it("ref values are consistent across multiple reads", () => {
         const label = createLabel("Consistent Test");
-        const ref1 = createRef(0);
-        const ref2 = createRef(0);
+        const ref1 = { value: 0 };
+        const ref2 = { value: 0 };
 
         measureWidget({ widget: label, orientation: 0, forSize: -1, minRef: ref1 });
         measureWidget({ widget: label, orientation: 0, forSize: -1, minRef: ref2 });

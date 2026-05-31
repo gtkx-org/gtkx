@@ -1,4 +1,4 @@
-import { createRef, type NativeHandle } from "@gtkx/native";
+import type { NativeHandle } from "@gtkx/native";
 import type { Content, Format, RectangleInt, Status, SurfaceType } from "../generated/cairo/cairo.js";
 import { Surface } from "../generated/cairo/cairo.js";
 import { getHandle, setHandle } from "../handles.js";
@@ -194,8 +194,8 @@ const cairo_surface_get_device_offset = fn(
     t.void,
 );
 Surface.prototype.getDeviceOffset = function (): { xOffset: number; yOffset: number } {
-    const xRef = createRef(0);
-    const yRef = createRef(0);
+    const xRef = { value: 0 };
+    const yRef = { value: 0 };
     cairo_surface_get_device_offset(getHandle(this), xRef, yRef);
     return { xOffset: xRef.value, yOffset: yRef.value };
 };
@@ -207,8 +207,8 @@ const cairo_surface_get_device_scale = fn(
     t.void,
 );
 Surface.prototype.getDeviceScale = function (): { xScale: number; yScale: number } {
-    const xRef = createRef(0);
-    const yRef = createRef(0);
+    const xRef = { value: 0 };
+    const yRef = { value: 0 };
     cairo_surface_get_device_scale(getHandle(this), xRef, yRef);
     return { xScale: xRef.value, yScale: yRef.value };
 };
@@ -240,8 +240,8 @@ const cairo_surface_get_fallback_resolution = fn(
     t.void,
 );
 Surface.prototype.getFallbackResolution = function (): { xPixelsPerInch: number; yPixelsPerInch: number } {
-    const xRef = createRef(0);
-    const yRef = createRef(0);
+    const xRef = { value: 0 };
+    const yRef = { value: 0 };
     cairo_surface_get_fallback_resolution(getHandle(this), xRef, yRef);
     return { xPixelsPerInch: xRef.value, yPixelsPerInch: yRef.value };
 };

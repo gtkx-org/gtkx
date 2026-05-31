@@ -127,13 +127,3 @@ export type Arg = {
     /** Whether the argument can be null/undefined */
     optional?: boolean;
 };
-
-/**
- * A mutable reference wrapper for out-parameters.
- *
- * @typeParam T - The type of the referenced value
- */
-export type Ref<T> = {
-    readonly __brand: "Ref";
-    value: T;
-};

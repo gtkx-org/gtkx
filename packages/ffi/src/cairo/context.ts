@@ -1,4 +1,4 @@
-import { createRef, type NativeHandle } from "@gtkx/native";
+import type { NativeHandle } from "@gtkx/native";
 import type {
     Antialias,
     Content,
@@ -446,7 +446,7 @@ Context.prototype.getDash = function (): [number[], number] {
         return [[], 0];
     }
     const dashBuf = alloc(count * 8, "double[]", LIB);
-    const offsetRef = createRef(0);
+    const offsetRef = { value: 0 };
     cairo_get_dash(getHandle(this), dashBuf, offsetRef);
     const dashes: number[] = [];
     for (let i = 0; i < count; i++) {
@@ -631,8 +631,8 @@ Context.prototype.getCurrentPoint = function (): [number, number] | null {
     if (!this.hasCurrentPoint()) {
         return null;
     }
-    const xRef = createRef(0);
-    const yRef = createRef(0);
+    const xRef = { value: 0 };
+    const yRef = { value: 0 };
     cairo_get_current_point(getHandle(this), xRef, yRef);
     return [xRef.value, yRef.value];
 };
@@ -655,10 +655,10 @@ const cairo_clip_extents = fn(LIB, "cairo_clip_extents", EXTENTS_ARGS, t.void);
 const cairo_path_extents = fn(LIB, "cairo_path_extents", EXTENTS_ARGS, t.void);
 
 const getExtents = (ctx: Context, boundFn: (...args: unknown[]) => unknown): [number, number, number, number] => {
-    const x1Ref = createRef(0);
-    const y1Ref = createRef(0);
-    const x2Ref = createRef(0);
-    const y2Ref = createRef(0);
+    const x1Ref = { value: 0 };
+    const y1Ref = { value: 0 };
+    const x2Ref = { value: 0 };
+    const y2Ref = { value: 0 };
     boundFn(getHandle(ctx), x1Ref, y1Ref, x2Ref, y2Ref);
     return [x1Ref.value, y1Ref.value, x2Ref.value, y2Ref.value];
 };
@@ -804,8 +804,8 @@ const coordTransform = (
     a: number,
     b: number,
 ): [number, number] => {
-    const aRef = createRef(a);
-    const bRef = createRef(b);
+    const aRef = { value: a };
+    const bRef = { value: b };
     boundFn(getHandle(ctx), aRef, bRef);
     return [aRef.value, bRef.value];
 };

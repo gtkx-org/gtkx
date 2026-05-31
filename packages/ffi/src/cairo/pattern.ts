@@ -1,4 +1,4 @@
-import { createRef, type NativeHandle, type Ref } from "@gtkx/native";
+import type { NativeHandle } from "@gtkx/native";
 import {
     type Extend,
     type Filter,
@@ -45,12 +45,12 @@ export type RgbaColor = {
  * @param fill - Invokes the cairo getter with the four colour out-cells
  */
 const readRgba = (
-    fill: (red: Ref<number>, green: Ref<number>, blue: Ref<number>, alpha: Ref<number>) => void,
+    fill: (red: { value: number }, green: { value: number }, blue: { value: number }, alpha: { value: number }) => void,
 ): RgbaColor => {
-    const redRef = createRef(0);
-    const greenRef = createRef(0);
-    const blueRef = createRef(0);
-    const alphaRef = createRef(0);
+    const redRef = { value: 0 };
+    const greenRef = { value: 0 };
+    const blueRef = { value: 0 };
+    const alphaRef = { value: 0 };
     fill(redRef, greenRef, blueRef, alphaRef);
     return { red: redRef.value, green: greenRef.value, blue: blueRef.value, alpha: alphaRef.value };
 };
@@ -155,7 +155,7 @@ const cairo_pattern_get_color_stop_count = fn(
     INT_TYPE,
 );
 Pattern.prototype.getColorStopCount = function (): number {
-    const countRef = createRef(0);
+    const countRef = { value: 0 };
     cairo_pattern_get_color_stop_count(getHandle(this), countRef);
     return countRef.value;
 };
@@ -181,11 +181,11 @@ Pattern.prototype.getColorStopRgba = function (index: number): {
     blue: number;
     alpha: number;
 } {
-    const offsetRef = createRef(0);
-    const redRef = createRef(0);
-    const greenRef = createRef(0);
-    const blueRef = createRef(0);
-    const alphaRef = createRef(0);
+    const offsetRef = { value: 0 };
+    const redRef = { value: 0 };
+    const greenRef = { value: 0 };
+    const blueRef = { value: 0 };
+    const alphaRef = { value: 0 };
     cairo_pattern_get_color_stop_rgba(getHandle(this), index, offsetRef, redRef, greenRef, blueRef, alphaRef);
     return {
         offset: offsetRef.value,
@@ -392,10 +392,10 @@ export class LinearPattern extends Pattern {
      * Returns the endpoints of the gradient line.
      */
     getLinearPoints(): { x0: number; y0: number; x1: number; y1: number } {
-        const x0Ref = createRef(0);
-        const y0Ref = createRef(0);
-        const x1Ref = createRef(0);
-        const y1Ref = createRef(0);
+        const x0Ref = { value: 0 };
+        const y0Ref = { value: 0 };
+        const x1Ref = { value: 0 };
+        const y1Ref = { value: 0 };
         cairo_pattern_get_linear_points(getHandle(this), x0Ref, y0Ref, x1Ref, y1Ref);
         return { x0: x0Ref.value, y0: y0Ref.value, x1: x1Ref.value, y1: y1Ref.value };
     }
@@ -409,12 +409,12 @@ export class RadialPattern extends Pattern {
      * Returns the centres and radii of the gradient circles.
      */
     getRadialCircles(): { x0: number; y0: number; r0: number; x1: number; y1: number; r1: number } {
-        const x0Ref = createRef(0);
-        const y0Ref = createRef(0);
-        const r0Ref = createRef(0);
-        const x1Ref = createRef(0);
-        const y1Ref = createRef(0);
-        const r1Ref = createRef(0);
+        const x0Ref = { value: 0 };
+        const y0Ref = { value: 0 };
+        const r0Ref = { value: 0 };
+        const x1Ref = { value: 0 };
+        const y1Ref = { value: 0 };
+        const r1Ref = { value: 0 };
         cairo_pattern_get_radial_circles(getHandle(this), x0Ref, y0Ref, r0Ref, x1Ref, y1Ref, r1Ref);
         return {
             x0: x0Ref.value,
@@ -498,7 +498,7 @@ export class MeshPattern extends Pattern {
      * Returns the number of patches recorded in the mesh pattern.
      */
     getPatchCount(): number {
-        const countRef = createRef(0);
+        const countRef = { value: 0 };
         cairo_mesh_pattern_get_patch_count(getHandle(this), countRef);
         return countRef.value;
     }
@@ -514,8 +514,8 @@ export class MeshPattern extends Pattern {
      * Returns an internal control point of patch `patchNum`.
      */
     getControlPoint(patchNum: number, pointNum: number): { x: number; y: number } {
-        const xRef = createRef(0);
-        const yRef = createRef(0);
+        const xRef = { value: 0 };
+        const yRef = { value: 0 };
         cairo_mesh_pattern_get_control_point(getHandle(this), patchNum, pointNum, xRef, yRef);
         return { x: xRef.value, y: yRef.value };
     }

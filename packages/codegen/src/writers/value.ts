@@ -116,7 +116,7 @@ export const resolveCallbackType = (ctx: ModuleContext, ref: GirTypeRef | undefi
 
 /**
  * Whether a type reference is a scalar the native trampoline can read and
- * write through a `Ref` cell: a non-string, non-void primitive, an enum or
+ * write through a `{ value }` cell: a non-string, non-void primitive, an enum or
  * flags type, or an alias resolving to one. Pointer-shaped types (strings,
  * objects, boxed records, arrays) are excluded — their out-parameter slots may
  * be uninitialized, so reading the incoming value would be unsound.
@@ -139,8 +139,8 @@ export const isScalarRef = (repository: GirRepository, namespaceName: string, re
 };
 
 /**
- * Whether an inout parameter marshals through a readable-and-writable `Ref`
- * cell rather than being passed by handle and mutated in place.
+ * Whether an inout parameter marshals through a readable-and-writable
+ * `{ value }` cell rather than being passed by handle and mutated in place.
  *
  * True for scalar inout parameters (see {@link isScalarRef}): the native
  * trampoline seeds the cell with the incoming value, the handler returns its

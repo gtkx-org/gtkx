@@ -1,4 +1,3 @@
-import { createRef } from "@gtkx/native";
 import { t } from "../native.js";
 import { INFO_LOG_LENGTH } from "./constants.js";
 
@@ -198,14 +197,14 @@ export function compileShader(shader: number): void {
  * @returns The parameter value
  */
 export function getShaderiv(shader: number, pname: number): number {
-    const params = createRef(0);
+    const params = { value: 0 };
     glGetShaderiv(shader, pname, params);
     return params.value;
 }
 
 function readInfoLog(symbol: string, id: number, logLength: number): string {
-    const infoLogRef = createRef("");
-    const lengthRef = createRef(0);
+    const infoLogRef = { value: "" };
+    const lengthRef = { value: 0 };
     fn(
         LIB,
         symbol,
@@ -277,7 +276,7 @@ export function useProgram(program: number): void {
  * @returns The parameter value
  */
 export function getProgramiv(program: number, pname: number): number {
-    const params = createRef(0);
+    const params = { value: 0 };
     glGetProgramiv(program, pname, params);
     return params.value;
 }
@@ -379,7 +378,7 @@ export function uniformMatrix4fv(location: number, count: number, transpose: boo
  * @returns The VAO ID
  */
 export function genVertexArray(): number {
-    const array = createRef(0);
+    const array = { value: 0 };
     glGenVertexArrays(1, array);
     return array.value;
 }
@@ -405,7 +404,7 @@ export function deleteVertexArray(array: number): void {
  * @returns The buffer object ID
  */
 export function genBuffer(): number {
-    const buffer = createRef(0);
+    const buffer = { value: 0 };
     glGenBuffers(1, buffer);
     return buffer.value;
 }

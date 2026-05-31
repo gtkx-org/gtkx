@@ -71,7 +71,7 @@ export const parameterFromNode = (node: RawNode, isInstance: boolean): GirParame
 
 /**
  * Whether a parameter is a pure out-parameter: `direction="out"` and not
- * caller-allocated, so it marshals through a `Ref` cell the callee writes into.
+ * caller-allocated, so it marshals through a `{ value }` cell the callee writes into.
  *
  * @param parameter - The parameter to test
  */
@@ -81,7 +81,7 @@ export const isOutParameter = (parameter: GirParameter): boolean =>
 /**
  * Whether a parameter is a caller-allocated out-parameter: `direction="out"`
  * with `caller-allocates="1"`, passed as a pre-built handle the callee fills
- * in place rather than through a `Ref` cell.
+ * in place rather than through a `{ value }` cell.
  *
  * @param parameter - The parameter to test
  */

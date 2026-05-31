@@ -1,5 +1,5 @@
 import * as native from "./native-binding.cjs";
-import type { Arg, ArrayType, FfiValue, HashTableType, Ref, RefType, TrampolineType, Type } from "./types.js";
+import type { Arg, ArrayType, FfiValue, HashTableType, RefType, TrampolineType, Type } from "./types.js";
 
 type NativeVfuncDefinition = {
     readonly byteOffset: number;
@@ -46,29 +46,6 @@ export function getNativeId(handle: NativeHandle): number {
     return native.getNativeId(handle as unknown as ExternalHandle);
 }
 
-/**
- * Creates a mutable reference wrapper.
- *
- * Used for out-parameters in FFI calls where the native function
- * needs to write a value back.
- *
- * @typeParam T - The type of the referenced value
- * @param value - Initial value
- * @returns A reference object containing the value
- *
- * @example
- * ```tsx
- * const errorRef = createRef<GError | null>(null);
- * const result = someFunction(errorRef);
- * if (errorRef.value) {
- *   console.error(errorRef.value.message);
- * }
- * ```
- */
-export function createRef<T>(value: T): Ref<T> {
-    return { value } as Ref<T>;
-}
-
 function isHandleType(type: Type): boolean {
     return type.type === "gobject" || type.type === "boxed" || type.type === "struct" || type.type === "fundamental";
 }
@@ -84,7 +61,7 @@ function unwrapValue(value: unknown, type: Type): unknown {
         case "hashtable":
             return unwrapHashTable(value, type);
         case "ref":
-            return unwrapRefArg(value as Ref<unknown>, type);
+            return unwrapRefArg(value as { value: unknown }, type);
         case "trampoline":
             return wrapUserCallback(value, type);
         default:
@@ -105,7 +82,7 @@ function unwrapHashTable(value: unknown, type: HashTableType): unknown {
     });
 }
 
-function unwrapRefArg(ref: Ref<unknown>, type: RefType): Ref<unknown> {
+function unwrapRefArg(ref: { value: unknown }, type: RefType): { value: unknown } {
     ref.value = unwrapValue(ref.value, type.innerType);
     return ref;
 }
@@ -140,7 +117,7 @@ function wrapValue(value: unknown, type: Type): unknown {
     }
 }
 
-function rewrapRefArg(ref: Ref<unknown>, type: RefType): void {
+function rewrapRefArg(ref: { value: unknown }, type: RefType): void {
     ref.value = wrapValue(ref.value, type.innerType);
 }
 
@@ -166,7 +143,7 @@ export function call(library: string, symbol: string, args: Arg[], returnType: T
 
     for (const arg of args) {
         if (arg.type.type === "ref") {
-            rewrapRefArg(arg.value as Ref<unknown>, arg.type);
+            rewrapRefArg(arg.value as { value: unknown }, arg.type);
         }
     }
 
@@ -390,4 +367,4 @@ export function unfreeze(): void {
     native.unfreeze();
 }
 
-export type { Arg, FfiValue, Ref, Type } from "./types.js";
+export type { Arg, FfiValue, Type } from "./types.js";

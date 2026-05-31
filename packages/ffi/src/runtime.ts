@@ -17,7 +17,6 @@
  * this barrel fully acyclic and order-independent.
  */
 
-export { createRef } from "@gtkx/native";
 export { promisify } from "./async.js";
 export type { ClassVFuncMeta, NativeClass, NativeHandle } from "./handles.js";
 export { getHandle, setHandle, tryGetHandle } from "./handles.js";

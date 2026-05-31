@@ -1,4 +1,4 @@
-import { createRef, type NativeHandle } from "@gtkx/native";
+import type { NativeHandle } from "@gtkx/native";
 import type { FontOptions, FontType, Status, TextClusterFlags } from "../generated/cairo/cairo.js";
 import { FontFace, ScaledFont } from "../generated/cairo/cairo.js";
 import { getHandle } from "../handles.js";
@@ -237,11 +237,11 @@ ScaledFont.prototype.textToGlyphs = function (
 ): [CairoGlyph[], CairoTextCluster[], TextClusterFlags] {
     const utf8 = new TextEncoder().encode(text);
 
-    const glyphsRef = createRef<NativeHandle | null>(null);
-    const numGlyphsRef = createRef(0);
-    const clustersRef = createRef<NativeHandle | null>(null);
-    const numClustersRef = createRef(0);
-    const clusterFlagsRef = createRef(0);
+    const glyphsRef: { value: NativeHandle | null } = { value: null };
+    const numGlyphsRef = { value: 0 };
+    const clustersRef: { value: NativeHandle | null } = { value: null };
+    const numClustersRef = { value: 0 };
+    const clusterFlagsRef = { value: 0 };
 
     cairo_scaled_font_text_to_glyphs(
         getHandle(this),

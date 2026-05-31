@@ -327,7 +327,7 @@ export const writeMethodBody = (ctx: ModuleContext, fn: GirFunction, options: Wr
         builder.callArgs.push("getHandle(this)");
     }
     collectParameterArgs(ctx, fn, builder);
-    const errorRef = appendErrorRef(ctx, fn, builder);
+    const errorRef = appendErrorRef(fn, builder);
     const callExpression = `${bindingExpression}(${builder.callArgs.join(", ")})`;
     const lines: string[] = [...builder.setup];
     const returnsValue = !isVoidReturn(fn);
@@ -384,14 +384,13 @@ type AppendOutRefOptions = {
 
 const appendOutRef = (options: AppendOutRefOptions): void => {
     const { ctx, parameter, builder } = options;
-    ctx.addRuntimeImport("createRef");
     const refName = `out${builder.outRefs.length}`;
-    builder.setup.push(`const ${refName} = createRef(${outRefInitial(ctx, parameter.type)});`);
+    builder.setup.push(`const ${refName} = { value: ${outRefInitial(ctx, parameter.type)} };`);
     registerRefArg(options, refName);
 };
 
 /**
- * The initial value seeded into a pure-out `createRef(...)` cell.
+ * The initial value seeded into a pure-out `{ value }` ref cell.
  *
  * The native marshaller encodes the cell's current value against the ref's
  * inner FFI type before the call, so the seed must be assignable to that
@@ -441,9 +440,8 @@ const namedInitial = (ctx: ModuleContext, ref: NamedTypeRef): string => {
 
 const appendInoutRef = (options: AppendOutRefOptions): void => {
     const { ctx, parameter, index, builder } = options;
-    ctx.addRuntimeImport("createRef");
     const refName = `inout${builder.outRefs.length}`;
-    builder.setup.push(`const ${refName} = createRef(${parameterCallExpression(ctx, parameter, index)});`);
+    builder.setup.push(`const ${refName} = { value: ${parameterCallExpression(ctx, parameter, index)} };`);
     registerRefArg(options, refName);
 };
 
@@ -493,11 +491,10 @@ const appendCallerAllocatedOut = (ctx: ModuleContext, parameter: GirParameter, b
     });
 };
 
-const appendErrorRef = (ctx: ModuleContext, fn: GirFunction, builder: BodyBuilder): string | undefined => {
+const appendErrorRef = (fn: GirFunction, builder: BodyBuilder): string | undefined => {
     if (!fn.throws) return undefined;
-    ctx.addRuntimeImport("createRef");
     const errorRef = "__error";
-    builder.setup.push(`const ${errorRef} = createRef(null);`);
+    builder.setup.push(`const ${errorRef} = { value: null };`);
     builder.callArgs.push(errorRef);
     return errorRef;
 };
@@ -536,7 +533,7 @@ const appendReturn = (
 /**
  * Whether a parameter is passed to the FFI binding as a `t.ref(...)` cell.
  *
- * Pure out parameters marshal through a `createRef` cell the native layer
+ * Pure out parameters marshal through a `{ value }` ref cell the native layer
  * writes into. Inout parameters do too — except handle-passing ones
  * (objects, interfaces, boxed), which are passed by their existing handle
  * and mutated in place rather than through a pointer-to-pointer cell.
@@ -681,8 +678,8 @@ const renderCallbackArgument = (ctx: ModuleContext, resolved: ResolvedCallback, 
  *
  * The wrapped user function returns `[primary, ...outs]` (or the scalar out
  * alone for a void return with a single out, or an out-only tuple otherwise).
- * This emits `const _result = …;`, writes each out value into its `Ref` cell's
- * `value` slot (`args[i].value = …`), and returns the primary — keeping the
+ * This emits `const _result = …;`, writes each out value into its `{ value }`
+ * cell's `value` slot (`args[i].value = …`), and returns the primary — keeping the
  * tuple convention entirely in generated code so the native layer only flushes
  * cells through their out-pointers. Shared by signal and callback writers.
  *

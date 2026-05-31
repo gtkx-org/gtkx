@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import * as runtime from "../src/runtime.js";
 
 const EXPECTED_RUNTIME_EXPORTS = [
-    "createRef",
     "promisify",
     "getHandle",
     "setHandle",

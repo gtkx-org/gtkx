@@ -1,4 +1,3 @@
-import { createRef } from "@gtkx/native";
 import { describe, expect, it } from "vitest";
 import { FileError, Error as GError, quarkFromString } from "../src/generated/glib/glib.js";
 import type { GType } from "../src/generated/gobject/gobject.js";
@@ -17,11 +16,11 @@ const gerrorIn = (domain: number): GError => GError.newLiteral(domain, FILE_ERRO
 
 describe("checkError", () => {
     it("does nothing when the error ref is empty", () => {
-        expect(() => checkError(createRef(null), GError)).not.toThrow();
+        expect(() => checkError({ value: null }, GError)).not.toThrow();
     });
 
     it("throws the raw GError when the ref is populated", () => {
-        const ref = createRef(getHandle(gerrorIn(FILE_ERROR_DOMAIN)));
+        const ref = { value: getHandle(gerrorIn(FILE_ERROR_DOMAIN)) };
 
         let thrown: unknown;
         try {
@@ -34,7 +33,7 @@ describe("checkError", () => {
     });
 
     it("surfaces the GError message, domain, and code on the thrown value", () => {
-        const ref = createRef(getHandle(gerrorIn(FILE_ERROR_DOMAIN)));
+        const ref = { value: getHandle(gerrorIn(FILE_ERROR_DOMAIN)) };
 
         let thrown: GError | undefined;
         try {
@@ -49,7 +48,7 @@ describe("checkError", () => {
     });
 
     it("attaches a stack trace pointing past checkError", () => {
-        const ref = createRef(getHandle(gerrorIn(FILE_ERROR_DOMAIN)));
+        const ref = { value: getHandle(gerrorIn(FILE_ERROR_DOMAIN)) };
 
         let stack: string | undefined;
         try {

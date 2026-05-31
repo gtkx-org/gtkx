@@ -1,7 +1,5 @@
-import { call, createRef, type NativeHandle, read } from "../../index.js";
+import { call, type NativeHandle, read } from "../../index.js";
 import type { Type } from "../../types.js";
-
-export { createRef };
 
 const GOBJECT_REF_COUNT_OFFSET = 8;
 
@@ -226,8 +224,8 @@ export function getParent(widget: unknown): unknown {
 const INT32_REF = { type: "ref" as const, innerType: INT32 };
 
 function measureSlot(
-    ref: ReturnType<typeof createRef> | null,
-): { type: typeof INT32_REF; value: ReturnType<typeof createRef> } | { type: typeof POINTER; value: 0 } {
+    ref: { value: number } | null,
+): { type: typeof INT32_REF; value: { value: number } } | { type: typeof POINTER; value: 0 } {
     if (ref === null) return { type: POINTER, value: 0 };
     return { type: INT32_REF, value: ref };
 }
@@ -236,10 +234,10 @@ export interface MeasureWidgetOptions {
     widget: unknown;
     orientation: number;
     forSize: number;
-    minRef?: ReturnType<typeof createRef> | null;
-    naturalRef?: ReturnType<typeof createRef> | null;
-    minBaselineRef?: ReturnType<typeof createRef> | null;
-    naturalBaselineRef?: ReturnType<typeof createRef> | null;
+    minRef?: { value: number } | null;
+    naturalRef?: { value: number } | null;
+    minBaselineRef?: { value: number } | null;
+    naturalBaselineRef?: { value: number } | null;
 }
 
 export function measureWidget(options: MeasureWidgetOptions): void {

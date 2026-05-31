@@ -1,4 +1,4 @@
-import { createRef, type NativeHandle } from "@gtkx/native";
+import type { NativeHandle } from "@gtkx/native";
 import type { Content } from "../generated/cairo/cairo.js";
 import { Surface } from "../generated/cairo/cairo.js";
 import { getHandle } from "../handles.js";
@@ -64,10 +64,10 @@ export class RecordingSurface extends Surface {
      * Measures the extents of the operations recorded into the surface.
      */
     inkExtents(): { x0: number; y0: number; width: number; height: number } {
-        const x0Ref = createRef(0);
-        const y0Ref = createRef(0);
-        const widthRef = createRef(0);
-        const heightRef = createRef(0);
+        const x0Ref = { value: 0 };
+        const y0Ref = { value: 0 };
+        const widthRef = { value: 0 };
+        const heightRef = { value: 0 };
         cairo_recording_surface_ink_extents(getHandle(this), x0Ref, y0Ref, widthRef, heightRef);
         return { x0: x0Ref.value, y0: y0Ref.value, width: widthRef.value, height: heightRef.value };
     }

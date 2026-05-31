@@ -1,4 +1,4 @@
-import { createRef, type NativeHandle } from "@gtkx/native";
+import type { NativeHandle } from "@gtkx/native";
 import type { Status } from "../generated/cairo/cairo.js";
 import { getHandle, NativeObject } from "../handles.js";
 import { alloc, t } from "../native.js";
@@ -106,8 +106,8 @@ export class Matrix extends NativeObject {
      * Transforms the point `(x, y)` by the transformation in `this`.
      */
     transformPoint(x: number, y: number): [number, number] {
-        const xRef = createRef(x);
-        const yRef = createRef(y);
+        const xRef = { value: x };
+        const yRef = { value: y };
         cairo_matrix_transform_point(getHandle(this), xRef, yRef);
         return [xRef.value, yRef.value];
     }
@@ -116,8 +116,8 @@ export class Matrix extends NativeObject {
      * Transforms the distance vector `(dx, dy)` by the transformation in `this`.
      */
     transformDistance(dx: number, dy: number): [number, number] {
-        const dxRef = createRef(dx);
-        const dyRef = createRef(dy);
+        const dxRef = { value: dx };
+        const dyRef = { value: dy };
         cairo_matrix_transform_distance(getHandle(this), dxRef, dyRef);
         return [dxRef.value, dyRef.value];
     }

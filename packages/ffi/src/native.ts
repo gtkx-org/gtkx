@@ -11,7 +11,7 @@
 export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineScope } from "./helpers.js";
 export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./helpers.js";
 
-import type { NativeHandle, Ref } from "@gtkx/native";
+import type { NativeHandle } from "@gtkx/native";
 import type { Error as GError } from "./generated/glib/glib.js";
 import type { NativeClass } from "./handles.js";
 import { getNativeObject } from "./registry.js";
@@ -34,7 +34,7 @@ export type { NativeClass } from "./handles.js";
  * @param error - Out-parameter ref populated by the FFI call
  * @param errorClass - The GLib `Error` wrapper class
  */
-export function checkError(error: Ref<NativeHandle | null>, errorClass: NativeClass<GError>): void {
+export function checkError(error: { value: NativeHandle | null }, errorClass: NativeClass<GError>): void {
     if (error.value !== null) {
         const gerror = getNativeObject(error.value, errorClass);
         const carrier = new Error(gerror.message);

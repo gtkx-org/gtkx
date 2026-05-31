@@ -4,7 +4,6 @@ import {
     boxAppend,
     createBox,
     createLabel,
-    createRef,
     GOBJECT,
     GOBJECT_BORROWED,
     GTK_LIB,
@@ -89,7 +88,7 @@ describe("call - null pointer arguments - edge cases", () => {
 describe("call - null pointer arguments - edge cases mixed", () => {
     it("handles null in mixed position arguments", () => {
         const label = createLabel("Test");
-        const minRef = createRef(0);
+        const minRef = { value: 0 };
 
         measureWidget({ widget: label, orientation: 0, forSize: -1, minRef });
 
