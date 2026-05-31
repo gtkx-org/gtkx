@@ -1,32 +1,49 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { computeInputHash, writeCacheManifest } from "../../src/codegen/codegen-cache.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { preflightCodegen, runCodegen } from "../../src/codegen/run-codegen.js";
 
-const installFfiPackage = (cwd: string) => {
-    const ffiDir = join(cwd, "node_modules", "@gtkx", "ffi");
-    mkdirSync(ffiDir, { recursive: true });
+vi.mock("@gtkx/codegen", () => ({
+    CodegenRunner: class {
+        run() {
+            return Promise.resolve({ namespaces: 1, widgets: 0, duration: 1 });
+        }
+    },
+}));
+
+const installPackage = (cwd: string, name: string) => {
+    const dir = join(cwd, "node_modules", "@gtkx", name);
+    mkdirSync(dir, { recursive: true });
     writeFileSync(
-        join(ffiDir, "package.json"),
-        JSON.stringify({ name: "@gtkx/ffi", version: "0.0.0", main: "./index.js" }),
+        join(dir, "package.json"),
+        JSON.stringify({ name: `@gtkx/${name}`, version: "0.0.0", main: "./index.js" }),
     );
-    writeFileSync(join(ffiDir, "index.js"), "");
-    mkdirSync(join(ffiDir, "dist", "generated"), { recursive: true });
-    return ffiDir;
+    writeFileSync(join(dir, "index.js"), "");
+    const generatedDir = join(dir, "dist", "generated");
+    mkdirSync(generatedDir, { recursive: true });
+    return generatedDir;
 };
 
-const writeConfig = (cwd: string, body = `export default { libraries: ["Gtk-4.0"] };`) => {
+const installFfiPackage = (cwd: string) => installPackage(cwd, "ffi");
+
+const writeConfig = (cwd: string, body = `export default { libraries: ["Gtk-4.0"], girPath: ["${cwd}"] };`) => {
     writeFileSync(join(cwd, "gtkx.config.ts"), `${body}\n`);
 };
 
-const readCodegenVersion = (): string => {
-    const req = createRequire(import.meta.url);
-    const pkgPath = req.resolve("@gtkx/codegen/package.json");
-    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as { version: string };
-    return pkg.version;
+const writeNamespaceModule = (generatedDir: string, namespace: string) => {
+    mkdirSync(join(generatedDir, namespace), { recursive: true });
+    writeFileSync(join(generatedDir, namespace, `${namespace}.js`), "");
+};
+
+const preflightLogs = async (cwd: string): Promise<string> => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    try {
+        await preflightCodegen(cwd);
+        return logSpy.mock.calls.map((call) => String(call[0])).join("\n");
+    } finally {
+        logSpy.mockRestore();
+    }
 };
 
 describe("runCodegen", () => {
@@ -38,35 +55,6 @@ describe("runCodegen", () => {
 
     afterEach(() => {
         rmSync(cwd, { recursive: true, force: true });
-    });
-
-    it("returns ran=false when the cache is valid and the FFI output dir exists", async () => {
-        installFfiPackage(cwd);
-        writeConfig(cwd);
-
-        const version = readCodegenVersion();
-        const inputHash = computeInputHash(["Gtk-4.0"], undefined, undefined, version);
-        writeCacheManifest(cwd, inputHash, version);
-
-        const result = await runCodegen({ cwd });
-
-        expect(result.ran).toBe(false);
-        expect(result.namespaces).toBe(0);
-        expect(result.widgets).toBe(0);
-        expect(result.duration).toBe(0);
-    });
-
-    it("resolves the default libraries when the config omits them", async () => {
-        installFfiPackage(cwd);
-        writeConfig(cwd, "export default {};");
-
-        const version = readCodegenVersion();
-        const inputHash = computeInputHash(["Gtk-4.0", "Adw-1"], undefined, undefined, version);
-        writeCacheManifest(cwd, inputHash, version);
-
-        const result = await runCodegen({ cwd });
-
-        expect(result.ran).toBe(false);
     });
 
     it("throws when no gtkx.config.ts is present", async () => {
@@ -82,6 +70,33 @@ describe("runCodegen", () => {
         } finally {
             process.chdir(originalCwd);
         }
+    });
+
+    it("with clean, removes the FFI and React output dirs before regenerating", async () => {
+        const ffiGenerated = installFfiPackage(cwd);
+        const reactGenerated = installPackage(cwd, "react");
+        writeConfig(cwd);
+        const ffiStale = join(ffiGenerated, "stale.js");
+        const reactStale = join(reactGenerated, "stale.js");
+        writeFileSync(ffiStale, "");
+        writeFileSync(reactStale, "");
+
+        const result = await runCodegen({ cwd, clean: true });
+
+        expect(existsSync(ffiStale)).toBe(false);
+        expect(existsSync(reactStale)).toBe(false);
+        expect(result.namespaces).toBe(1);
+    });
+
+    it("with clean and no React package, removes only the FFI output dir", async () => {
+        const ffiGenerated = installFfiPackage(cwd);
+        writeConfig(cwd);
+        const ffiStale = join(ffiGenerated, "stale.js");
+        writeFileSync(ffiStale, "");
+
+        await runCodegen({ cwd, clean: true });
+
+        expect(existsSync(ffiStale)).toBe(false);
     });
 });
 
@@ -124,5 +139,22 @@ describe("preflightCodegen", () => {
     it("returns silently when the FFI is workspace-linked (real cwd outside node_modules)", async () => {
         delete process.env.GTKX_DISABLE_PREFLIGHT;
         await expect(preflightCodegen(cwd)).resolves.toBeUndefined();
+    });
+
+    it("runs codegen when a configured namespace module is missing", async () => {
+        delete process.env.GTKX_DISABLE_PREFLIGHT;
+        installFfiPackage(cwd);
+        writeConfig(cwd);
+
+        expect(await preflightLogs(cwd)).toContain("running codegen");
+    });
+
+    it("skips codegen when every configured namespace module exists", async () => {
+        delete process.env.GTKX_DISABLE_PREFLIGHT;
+        const ffiGenerated = installFfiPackage(cwd);
+        writeNamespaceModule(ffiGenerated, "gtk");
+        writeConfig(cwd);
+
+        expect(await preflightLogs(cwd)).toBe("");
     });
 });

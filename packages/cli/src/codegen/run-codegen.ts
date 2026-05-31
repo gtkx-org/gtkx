@@ -1,10 +1,9 @@
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, realpathSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { CodegenRunner } from "@gtkx/codegen";
 import type { GtkxConfig } from "../config.js";
-import { computeInputHash, isCacheValid, writeCacheManifest } from "./codegen-cache.js";
 import { GtkxConfigNotFoundError, loadGtkxConfig } from "./config-loader.js";
 import { resolveGirPath } from "./gir-resolver.js";
 import { resolveLibraries } from "./library-resolver.js";
@@ -16,25 +15,26 @@ import { resolveOutputDirs } from "./output-resolver.js";
 export type RunCodegenOptions = {
     /** Project root in which to look for `gtkx.config.ts`. Defaults to `process.cwd()`. */
     cwd?: string;
-    /** When true, skip the cache check and regenerate unconditionally. */
-    force?: boolean;
+    /**
+     * When true, remove the entire generated output directories before
+     * regenerating, for a guaranteed-fresh tree.
+     */
+    clean?: boolean;
 };
 
 /**
  * Result of a codegen invocation.
  */
 export type RunCodegenResult = {
-    /** Whether the codegen pipeline actually ran (false if the cache was hit). */
-    ran: boolean;
-    /** Number of namespaces processed (0 if cached). */
+    /** Number of namespaces processed. */
     namespaces: number;
-    /** Number of widgets metadata-collected for React (0 if cached). */
+    /** Number of widgets metadata-collected for React. */
     widgets: number;
-    /** Wall-clock duration in milliseconds (0 if cached). */
+    /** Wall-clock duration in milliseconds. */
     duration: number;
-    /** Resolved configuration that produced the run, or `null` if cached. */
+    /** Resolved configuration that produced the run. */
     config?: GtkxConfig;
-    /** Resolved GIR search path used by the run, or `null` if cached. */
+    /** Resolved GIR search path used by the run. */
     girPath?: string[];
     /** Path of the loaded `gtkx.config.ts`, when one was used. */
     configFile?: string;
@@ -53,7 +53,10 @@ export type RunCodegenResult = {
  * `@gtkx/react` directories, and delegates to {@link CodegenRunner} which
  * owns the generation, transpile, and disk-write steps.
  *
- * Skips work when the input hash matches the cache manifest, unless `force`.
+ * Always regenerates: turbo (in the monorepo) and the install lifecycle (for
+ * downstream projects) own the decision of whether to invoke codegen at all.
+ * With {@link RunCodegenOptions.clean}, the generated output directories are
+ * removed first so nothing stale survives.
  *
  * Performs no logging itself — callers are responsible for presenting status.
  *
@@ -63,25 +66,25 @@ export type RunCodegenResult = {
  */
 export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
     const cwd = options.cwd ?? process.cwd();
-    const force = options.force ?? false;
 
     const { config, configFile } = await loadGtkxConfig(cwd);
-    const codegenVersion = readCodegenVersion();
 
     const girPath = resolveGirPath(config.girPath);
     const libraries = resolveLibraries(config.libraries, girPath);
-    const inputHash = computeInputHash(libraries, config.girPath, config.slotProps, codegenVersion);
 
     const { ffiOutputDir, reactOutputDir } = resolveOutputDirs(cwd);
-
-    if (!force && isCacheValid(cwd, inputHash) && existsSync(ffiOutputDir)) {
-        return { ran: false, namespaces: 0, widgets: 0, duration: 0 };
-    }
 
     if (girPath.length === 0) {
         throw new Error(
             "No GIR search paths available. Install gobject-introspection (Linux: `sudo dnf install gobject-introspection-devel` or `sudo apt install libgirepository1.0-dev`), or set `girPath` in gtkx.config.ts.",
         );
+    }
+
+    if (options.clean) {
+        rmSync(ffiOutputDir, { recursive: true, force: true });
+        if (reactOutputDir !== null) {
+            rmSync(reactOutputDir, { recursive: true, force: true });
+        }
     }
 
     const runner = new CodegenRunner({
@@ -93,10 +96,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
     });
     const result = await runner.run();
 
-    writeCacheManifest(cwd, inputHash, codegenVersion);
-
     return {
-        ran: true,
         namespaces: result.namespaces,
         widgets: result.widgets,
         duration: result.duration,
@@ -108,15 +108,17 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
 };
 
 /**
- * Returns true if the user's `node_modules/@gtkx/ffi/dist/generated/`
- * directory is missing or stale relative to the cache manifest.
+ * Returns true if any configured library's generated namespace module is
+ * missing from `@gtkx/ffi`'s `generated/` directory.
  *
- * Used by `gtkx dev` and `gtkx build` to decide whether to auto-run codegen
- * before starting their work.
+ * Used by `gtkx dev` and `gtkx build` to auto-run codegen when the output is
+ * absent or a newly configured library has not been generated yet. Detecting
+ * deeper staleness (changed GIR contents, codegen upgrades) is left to the
+ * install lifecycle and turbo, which own when codegen runs.
  *
  * @param cwd - Project root
  * @param config - The user's resolved configuration
- * @returns True when codegen output is missing or stale by manifest hash
+ * @returns True when a configured namespace module is missing
  */
 const isCodegenNeeded = (cwd: string, config: GtkxConfig): boolean => {
     try {
@@ -124,22 +126,30 @@ const isCodegenNeeded = (cwd: string, config: GtkxConfig): boolean => {
         if (!existsSync(ffiOutputDir)) {
             return true;
         }
-
         const girPath = resolveGirPath(config.girPath);
         const libraries = resolveLibraries(config.libraries, girPath);
-        const codegenVersion = readCodegenVersion();
-        const inputHash = computeInputHash(libraries, config.girPath, config.slotProps, codegenVersion);
-        return !isCacheValid(cwd, inputHash);
+        return libraries.some((library) => !existsSync(namespaceModulePath(ffiOutputDir, library)));
     } catch {
         return true;
     }
 };
 
 /**
+ * Absolute path to the generated `.js` module for a `Name-Version` GIR library
+ * identifier, mirroring the codegen output layout: `<namespace>/<namespace>.js`
+ * with the namespace lowercased.
+ */
+const namespaceModulePath = (ffiOutputDir: string, library: string): string => {
+    const separator = library.indexOf("-");
+    const namespace = (separator === -1 ? library : library.slice(0, separator)).toLowerCase();
+    return join(ffiOutputDir, namespace, `${namespace}.js`);
+};
+
+/**
  * Best-effort preflight for `gtkx dev` and `gtkx build`.
  *
- * Runs codegen if a `gtkx.config.ts` is present and the cache or output dir
- * are stale or missing. Returns silently when:
+ * Runs codegen if a `gtkx.config.ts` is present and a configured library's
+ * generated namespace module is missing. Returns silently when:
  *
  *   - `GTKX_DISABLE_PREFLIGHT=1` is set in the environment (escape hatch
  *     for unusual workspace layouts)
@@ -161,8 +171,7 @@ export const preflightCodegen = async (cwd: string): Promise<void> => {
 
     let config: GtkxConfig;
     try {
-        const loaded = await loadGtkxConfig(cwd);
-        config = loaded.config;
+        ({ config } = await loadGtkxConfig(cwd));
     } catch (error) {
         if (error instanceof GtkxConfigNotFoundError) {
             return;
@@ -171,7 +180,7 @@ export const preflightCodegen = async (cwd: string): Promise<void> => {
     }
 
     if (isCodegenNeeded(cwd, config)) {
-        console.log("[gtkx] generated bindings missing or stale; running codegen...");
+        console.log("[gtkx] generated bindings missing; running codegen...");
         await runCodegen({ cwd });
     }
 };
@@ -186,11 +195,4 @@ const isWorkspaceLinkedFfi = (cwd: string): boolean => {
     } catch {
         return false;
     }
-};
-
-const readCodegenVersion = (): string => {
-    const require = createRequire(import.meta.url);
-    const pkgPath = require.resolve("@gtkx/codegen/package.json");
-    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as { version: string };
-    return pkg.version;
 };

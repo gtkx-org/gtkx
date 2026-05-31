@@ -6,8 +6,8 @@ import { runCodegen } from "../codegen/run-codegen.js";
  * `gtkx codegen` — regenerate TypeScript bindings for the GIR libraries
  * declared in `gtkx.config.ts`.
  *
- * Skips work when the codegen cache reports the output is up to date,
- * unless `--force` is supplied.
+ * Always regenerates; turbo and the install lifecycle own when it runs. Pass
+ * `--clean` to wipe the generated output directories first.
  */
 export const codegen = defineCommand({
     meta: {
@@ -15,9 +15,9 @@ export const codegen = defineCommand({
         description: "Generate TypeScript bindings for the GIR libraries declared in gtkx.config.ts",
     },
     args: {
-        force: {
+        clean: {
             type: "boolean",
-            description: "Skip cache check and regenerate unconditionally",
+            description: "Remove the generated output directories before regenerating",
             default: false,
         },
         cwd: {
@@ -29,12 +29,7 @@ export const codegen = defineCommand({
         const cwd = args.cwd ? resolve(args.cwd) : process.cwd();
         const startedAt = Date.now();
 
-        const result = await runCodegen({ cwd, force: args.force });
-
-        if (!result.ran) {
-            console.log("[gtkx] codegen: up to date (use --force to regenerate)");
-            return;
-        }
+        const result = await runCodegen({ cwd, clean: args.clean });
 
         if (result.configFile) {
             console.log(`[gtkx] codegen: config=${result.configFile}`);

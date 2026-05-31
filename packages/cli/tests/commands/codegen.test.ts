@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/codegen/run-codegen.js", () => ({
     preflightCodegen: vi.fn(async () => undefined),
     runCodegen: vi.fn(async () => ({
-        ran: true,
         configFile: "/project/gtkx.config.ts",
         config: { libraries: ["Gtk-4.0", "Adw-1"] },
         girPath: ["/usr/share/gir-1.0"],
@@ -21,7 +20,7 @@ const runCodegenMock = vi.mocked(runCodegen);
 
 type CommandRun<Args extends Record<string, unknown>> = (ctx: { args: Args }) => Promise<unknown>;
 
-type CodegenArgs = { force?: boolean; cwd?: string };
+type CodegenArgs = { clean?: boolean; cwd?: string };
 
 type LogState = { logSpy: ReturnType<typeof vi.spyOn> };
 
@@ -40,28 +39,17 @@ const setupLogState = (): LogState => {
 const collectLogged = (logSpy: ReturnType<typeof vi.spyOn>): string =>
     logSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("\n");
 
-describe("codegen command (skip and forwarding)", () => {
-    const state = setupLogState();
+describe("codegen command (forwarding)", () => {
+    setupLogState();
 
-    it("logs the up-to-date message and skips reporting when nothing ran", async () => {
-        runCodegenMock.mockResolvedValueOnce({ ran: false } as never);
+    it("forwards --clean and --cwd flags", async () => {
         const run = codegen.run as unknown as CommandRun<CodegenArgs>;
 
-        await run({ args: {} });
-
-        const logged = collectLogged(state.logSpy);
-        expect(logged).toContain("up to date");
-        expect(logged).not.toContain("namespaces");
-    });
-
-    it("forwards --force and --cwd flags", async () => {
-        const run = codegen.run as unknown as CommandRun<CodegenArgs>;
-
-        await run({ args: { force: true, cwd: "/custom/dir" } });
+        await run({ args: { clean: true, cwd: "/custom/dir" } });
 
         expect(runCodegenMock).toHaveBeenCalledWith({
             cwd: expect.stringContaining("custom/dir"),
-            force: true,
+            clean: true,
         });
     });
 });
@@ -74,7 +62,7 @@ describe("codegen command (result reporting)", () => {
 
         await run({ args: {} });
 
-        expect(runCodegenMock).toHaveBeenCalledWith({ cwd: process.cwd(), force: undefined });
+        expect(runCodegenMock).toHaveBeenCalledWith({ cwd: process.cwd(), clean: undefined });
 
         const logged = collectLogged(state.logSpy);
         expect(logged).toContain("config=/project/gtkx.config.ts");
@@ -85,7 +73,6 @@ describe("codegen command (result reporting)", () => {
 
     it("skips optional log lines when fields are missing from the result", async () => {
         runCodegenMock.mockResolvedValueOnce({
-            ran: true,
             namespaces: 0,
             widgets: 0,
             duration: 5,
