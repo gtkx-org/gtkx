@@ -1,6 +1,6 @@
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
-import { pascalCase } from "../dsl/identifier.js";
+import { pascalCase } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import { splitQualifiedName } from "../gir/qualified-name.js";

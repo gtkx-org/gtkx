@@ -1,8 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { quote } from "../../src/dsl/emit.js";
+import { quote, toIdentifier } from "../src/source.js";
 
 const LINE_SEPARATOR = String.fromCharCode(0x2028);
 const PARAGRAPH_SEPARATOR = String.fromCharCode(0x2029);
+
+describe("toIdentifier", () => {
+    it("leaves a non-reserved identifier unchanged", () => {
+        expect(toIdentifier("iconName")).toBe("iconName");
+    });
+
+    it("appends an underscore to a reserved word", () => {
+        expect(toIdentifier("class")).toBe("class_");
+        expect(toIdentifier("new")).toBe("new_");
+        expect(toIdentifier("default")).toBe("default_");
+    });
+
+    it("leaves the empty string unchanged", () => {
+        expect(toIdentifier("")).toBe("");
+    });
+});
 
 describe("quote", () => {
     it("wraps a plain string in double quotes", () => {

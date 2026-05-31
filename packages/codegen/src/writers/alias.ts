@@ -1,5 +1,5 @@
 import type { ModuleContext } from "../dsl/context.js";
-import { pascalCase } from "../dsl/identifier.js";
+import { pascalCase } from "@gtkx/utils";
 import type { GirAlias } from "../gir/namespace.js";
 import { writeTsType } from "./types-ts.js";
 

@@ -1,4 +1,4 @@
-import { quote } from "./emit.js";
+import { quote } from "@gtkx/utils";
 
 /**
  * Tracks imports for a single generated module.

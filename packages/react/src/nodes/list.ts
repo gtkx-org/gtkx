@@ -12,7 +12,8 @@ import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
 import type { BoundItem } from "./internal/bound-item.js";
 import { asLifecycleItem, connectFactoryLifecycle, UNBOUND_POSITION } from "./internal/list-factory.js";
-import { filterProps, hasChanged } from "./internal/props.js";
+import { omit } from "@gtkx/utils";
+import { hasChanged } from "./internal/props.js";
 import { widgetIdOf } from "./internal/widget-id.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
@@ -169,7 +170,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     }
 
     public override commitUpdate(oldProps: ListProps | null, newProps: ListProps): void {
-        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+        super.commitUpdate(oldProps ? omit(oldProps, OWN_PROPS) : null, omit(newProps, OWN_PROPS));
         this.props = newProps;
         if (oldProps === null) return;
         this.applyOwnProps(oldProps, newProps);

@@ -1,6 +1,6 @@
 import type { ModuleContext } from "../dsl/context.js";
-import { indent, quote } from "../dsl/emit.js";
-import { camelCase, pascalCase } from "../dsl/identifier.js";
+import { camelCase, pascalCase, quote, toIdentifier } from "@gtkx/utils";
+import { indent } from "../dsl/emit.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirProperty } from "../gir/property.js";
 import { splitQualifiedName } from "../gir/qualified-name.js";
@@ -34,7 +34,7 @@ export const collectConstructableProps = (ctx: ModuleContext, klass: GirClass): 
     const seen = new Set<string>();
     const result: GirProperty[] = [];
     for (const property of all) {
-        const jsName = camelCase(property.name);
+        const jsName = toIdentifier(camelCase(property.name));
         if (seen.has(jsName)) continue;
         seen.add(jsName);
         result.push(property);
@@ -57,7 +57,7 @@ export const renderConstructorPropsInterface = (ctx: ModuleContext, klass: GirCl
     const parentRef = resolveParentPropsReference(ctx, klass);
     const extendsClause = parentRef === undefined ? "" : ` extends ${parentRef}`;
     const lines = collectConstructableProps(ctx, klass).map(
-        (property) => `${camelCase(property.name)}?: ${writeTsType(ctx, property.type, true)};`,
+        (property) => `${toIdentifier(camelCase(property.name))}?: ${writeTsType(ctx, property.type, true)};`,
     );
     const body = lines.length === 0 ? "" : `\n${indent(lines.join("\n"), 1)}\n`;
     return `export interface ${className}ConstructorProps${extendsClause} {${body}}`;
@@ -100,11 +100,11 @@ const renderRootConstructor = (ctx: ModuleContext): string => {
 
 const renderTranslatingConstructor = (ctx: ModuleContext, props: readonly GirProperty[], className: string): string => {
     ctx.addValueFromFfiOptionalImport();
-    const destructured = props.map((property) => camelCase(property.name));
+    const destructured = props.map((property) => toIdentifier(camelCase(property.name)));
     const pattern = `{ ${[...destructured, "...rest"].join(", ")} }`;
     const entries = props.map(
         (property) =>
-            `${quote(property.name)}: valueFromFfiOptional(${writeFfiType(ctx, property.type, property.transferOwnership)}, ${camelCase(property.name)}),`,
+            `${quote(property.name)}: valueFromFfiOptional(${writeFfiType(ctx, property.type, property.transferOwnership)}, ${toIdentifier(camelCase(property.name))}),`,
     );
     const superArg = `{\n${indent([...entries, "...rest,"].join("\n"), 1)}\n}`;
     const body = `super(${superArg});`;

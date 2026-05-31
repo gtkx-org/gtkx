@@ -1,6 +1,6 @@
 import type { ModuleContext } from "../dsl/context.js";
-import { indent, quote } from "../dsl/emit.js";
-import { camelCase, camelCaseMember } from "../dsl/identifier.js";
+import { indent } from "../dsl/emit.js";
+import { camelCase, quote, toIdentifier } from "@gtkx/utils";
 import type { GirProperty } from "../gir/property.js";
 import { writeTsType } from "./types-ts.js";
 
@@ -23,7 +23,7 @@ export const renderPropertyAccessor = (
     property: GirProperty,
     claimedMemberNames: ReadonlySet<string>,
 ): string | undefined => {
-    const jsName = camelCase(property.name);
+    const jsName = toIdentifier(camelCase(property.name));
     if (claimedMemberNames.has(jsName)) return undefined;
     if (jsName === "constructor") return undefined;
     const tsType = writeTsType(ctx, property.type, true);
@@ -65,7 +65,7 @@ const delegateMember = (
     claimedMemberNames: ReadonlySet<string>,
 ): string | undefined => {
     if (attribute === undefined) return undefined;
-    const member = camelCaseMember(attribute);
+    const member = camelCase(attribute);
     if (member === accessorName) return undefined;
     if (!claimedMemberNames.has(member)) return undefined;
     return member;

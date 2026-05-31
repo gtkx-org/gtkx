@@ -42,6 +42,7 @@
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "dependencies": {
+        "@gtkx/utils": "workspace:*",
         "fast-xml-parser": "^5.8.0",
         "typescript": "^6.0.3"
     },

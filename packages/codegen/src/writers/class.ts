@@ -1,6 +1,6 @@
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
-import { camelCaseMember, pascalCase } from "../dsl/identifier.js";
+import { camelCase, pascalCase } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import { splitQualifiedName } from "../gir/qualified-name.js";
@@ -270,7 +270,7 @@ const absorbInheritedMethods = (
     const { returnTypes, definitions, names } = accumulator;
     for (const method of resolved.klass.methods) {
         if (!method.introspectable) continue;
-        const name = camelCaseMember(method.name);
+        const name = camelCase(method.name);
         names.add(name);
         if (returnTypes.has(name)) continue;
         definitions.set(name, { method, namespaceName: resolved.namespaceName });
@@ -289,7 +289,7 @@ const absorbInheritedInterfaceMethodNames = (
         if (iface === undefined) continue;
         for (const method of iface.klass.methods) {
             if (!method.introspectable) continue;
-            names.add(camelCaseMember(method.name));
+            names.add(camelCase(method.name));
         }
     }
 };

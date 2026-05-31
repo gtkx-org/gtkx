@@ -4,7 +4,7 @@ import type { Node } from "../node.js";
 import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
 import { imperative, type PropDescriptorTable, signal } from "./internal/apply-props.js";
-import { primitiveArrayEqual } from "./internal/props.js";
+import { isShallowEqual } from "@gtkx/utils";
 import { NavigationPageNode } from "./navigation-page.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
@@ -29,7 +29,7 @@ export class NavigationViewNode extends WidgetNode<Adw.NavigationView, Navigatio
             history: imperative((oldProps) => {
                 const newHistory = this.props.history;
                 const oldHistory = (oldProps as NavigationViewProps | null)?.history;
-                if (newHistory && !primitiveArrayEqual(oldHistory, newHistory)) {
+                if (newHistory && !isShallowEqual(oldHistory, newHistory)) {
                     this.container.replaceWithTags(newHistory);
                 }
             }),

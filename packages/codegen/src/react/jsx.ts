@@ -1,4 +1,4 @@
-import { quote } from "../dsl/emit.js";
+import { quote } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import { splitQualifiedName } from "../gir/qualified-name.js";
 import type { GirRepository } from "../gir/repository.js";

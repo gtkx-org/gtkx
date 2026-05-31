@@ -1,4 +1,5 @@
-import { indent, quote } from "../dsl/emit.js";
+import { quote } from "@gtkx/utils";
+import { indent } from "../dsl/emit.js";
 import type { GirRepository } from "../gir/repository.js";
 import { containerSlotsFor, virtualSubcomponentsFor } from "./compounds-meta.js";
 import { mergeSlotProps } from "./slot-props.js";

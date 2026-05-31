@@ -1,5 +1,4 @@
-import { quote } from "../dsl/emit.js";
-import { camelCase } from "../dsl/identifier.js";
+import { camelCase, quote, toIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirRepository } from "../gir/repository.js";
 import { implementedInterfaces, isReactNodeClass, iterateClassesWithGlibName, signalHandlerName } from "./widgets.js";
@@ -76,7 +75,7 @@ const collectConstructOnly = (sources: readonly GirClass[]): readonly string[] =
     for (const source of sources) {
         for (const property of source.properties) {
             if (!property.constructOnly) continue;
-            const jsName = camelCase(property.name);
+            const jsName = toIdentifier(camelCase(property.name));
             if (seen.has(jsName)) continue;
             seen.add(jsName);
             names.push(jsName);

@@ -3,8 +3,8 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import type { AdwToggleGroupProps, ToggleProps } from "../jsx.js";
 import type { Container, Props } from "../types.js";
 import { arraySync, imperative, type PropDescriptorTable, signal, teardownNode } from "./internal/apply-props.js";
+import { isShallowArrayEqual } from "@gtkx/utils";
 import { createContainerWithProperties } from "./internal/construct.js";
-import { shallowArrayEqual } from "./internal/props.js";
 import { WidgetNode } from "./widget.js";
 
 type ToggleGroupProps = Pick<AdwToggleGroupProps, "onActiveChanged" | "toggles" | "activeName" | "active">;
@@ -23,7 +23,7 @@ export class ToggleGroupNode extends WidgetNode<Adw.ToggleGroup, ToggleGroupProp
         return {
             ...super.ownPropDescriptors(),
             toggles: arraySync<ToggleProps, Adw.Toggle>({
-                equal: shallowArrayEqual,
+                equal: isShallowArrayEqual,
                 clearItem: (toggle) => this.container.remove(toggle),
                 add: (toggleProps) => {
                     const toggle = new Adw.Toggle();

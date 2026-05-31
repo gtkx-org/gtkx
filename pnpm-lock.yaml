@@ -216,6 +216,9 @@ importers:
 
   packages/codegen:
     dependencies:
+      '@gtkx/utils':
+        specifier: workspace:*
+        version: link:../utils
       fast-xml-parser:
         specifier: ^5.8.0
         version: 5.8.0
@@ -314,6 +317,9 @@ importers:
       '@gtkx/ffi':
         specifier: workspace:*
         version: link:../ffi
+      '@gtkx/utils':
+        specifier: workspace:*
+        version: link:../utils
       react:
         specifier: ^19
         version: 19.2.6

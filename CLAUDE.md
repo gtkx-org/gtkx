@@ -1,5 +1,16 @@
 # GTKX — Project Guidelines
 
+## Non-negotiable: main is always green
+
+No failure is ever "pre-existing". `main` is always green, so any red check —
+typecheck, lint, test, or a GTK/GLib warning — is a regression to investigate
+and fix **now**. Never attribute a failure to the environment, a prior commit,
+or an untouched file, and never use the word "pre-existing" to excuse it. If a
+check is red, find the root cause and make it green. Generated FFI bindings
+must come from the project's pinned GTK/Adwaita runtime (via `scripts/docker-run`),
+never regenerated against an older host runtime — doing so silently downgrades
+the bindings and breaks typecheck.
+
 ## Architecture
 
 GTKX is a pnpm + Turbo monorepo. The package map and the boundaries between the

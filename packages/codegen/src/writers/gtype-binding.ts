@@ -1,5 +1,5 @@
+import { quote } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
-import { quote } from "../dsl/emit.js";
 
 const TYPE_FROM_NAME_BINDING = "g_type_from_name";
 const TYPE_FROM_NAME_LIB = "libgobject-2.0.so.0";

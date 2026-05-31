@@ -1,5 +1,6 @@
 import type { ModuleContext } from "../dsl/context.js";
-import { joinArgs, quote } from "../dsl/emit.js";
+import { joinArgs } from "../dsl/emit.js";
+import { quote } from "@gtkx/utils";
 import { callbackFromNode, type GirCallback } from "../gir/callback.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import { type GirParameter, isInoutParameter, isOutParameter, type ParameterTransfer } from "../gir/parameter.js";

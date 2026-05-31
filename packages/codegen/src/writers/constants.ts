@@ -1,6 +1,6 @@
 import type { ModuleContext } from "../dsl/context.js";
-import { quote } from "../dsl/emit.js";
 import type { GirConstant } from "../gir/namespace.js";
+import { quote } from "@gtkx/utils";
 
 /**
  * Emits an `export const NAME = value` declaration for a namespace

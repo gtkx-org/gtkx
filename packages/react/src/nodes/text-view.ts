@@ -1,9 +1,9 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { omit } from "@gtkx/utils";
 import type { GtkTextViewProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
-import { filterProps } from "./internal/props.js";
 import { TextBufferController } from "./internal/text-buffer-controller.js";
 import { SlotNode } from "./slot.js";
 import { TextAnchorNode } from "./text-anchor.js";
@@ -60,7 +60,7 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps, TextVi
     }
 
     public override commitUpdate(oldProps: TextViewProps | null, newProps: TextViewProps): void {
-        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+        super.commitUpdate(oldProps ? omit(oldProps, OWN_PROPS) : null, omit(newProps, OWN_PROPS));
         this.ensureBufferController().applyOwnProps(oldProps, newProps);
     }
 

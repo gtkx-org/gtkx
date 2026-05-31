@@ -1,5 +1,5 @@
+import { pascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
-import { pascalCase } from "../dsl/identifier.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import { PRIMITIVE_TS_TYPE } from "../gir/primitives.js";
 import type { ResolvedNamed } from "../gir/repository.js";

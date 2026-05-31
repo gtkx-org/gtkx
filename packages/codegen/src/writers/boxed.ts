@@ -1,6 +1,6 @@
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
-import { pascalCase } from "../dsl/identifier.js";
+import { pascalCase } from "@gtkx/utils";
 import type { GirBoxed } from "../gir/boxed.js";
 import { renderBoxedConstructor, renderBoxedConstructorPropsInterface } from "./boxed-constructor.js";
 import { renderBoxedFieldAccessor } from "./boxed-field-accessor.js";

@@ -1,5 +1,6 @@
 import type { ModuleContext } from "../dsl/context.js";
-import { indent, quote } from "../dsl/emit.js";
+import { indent } from "../dsl/emit.js";
+import { quote } from "@gtkx/utils";
 
 /**
  * The pre-rendered pieces of a single `registerNativeClass(...)` descriptor.

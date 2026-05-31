@@ -1,7 +1,6 @@
 import type { ModuleContext } from "../dsl/context.js";
-import { quote } from "../dsl/emit.js";
-import { pascalCase } from "../dsl/identifier.js";
 import type { GirEnum } from "../gir/enum.js";
+import { pascalCase, quote } from "@gtkx/utils";
 
 /**
  * Emits the runtime declaration for an `<enumeration>` or `<bitfield>`.

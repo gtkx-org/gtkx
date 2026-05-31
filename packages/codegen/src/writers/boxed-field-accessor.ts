@@ -1,6 +1,6 @@
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
-import { camelCase } from "../dsl/identifier.js";
+import { camelCase, toIdentifier } from "@gtkx/utils";
 import type { GirField } from "../gir/field.js";
 import type { FieldSlot } from "../gir/size.js";
 import type { GirTypeRef } from "../gir/type-ref.js";
@@ -34,7 +34,7 @@ export const renderBoxedFieldAccessor = (
     if (field.callback !== undefined) return undefined;
     if (field.type === undefined) return undefined;
     if (typeRefIsClassStruct(ctx, field.type)) return undefined;
-    const jsName = camelCase(field.name);
+    const jsName = toIdentifier(camelCase(field.name));
     if (claimedMemberNames.has(jsName)) return undefined;
     if (jsName === "constructor") return undefined;
 
@@ -95,7 +95,7 @@ const arrayLengthExpression = (
     if (arrayRef.lengthParameterIndex === undefined) return undefined;
     const lengthField = siblingFields.filter((field) => !field.private)[arrayRef.lengthParameterIndex];
     if (lengthField === undefined) return undefined;
-    return `this.${camelCase(lengthField.name)}`;
+    return `this.${toIdentifier(camelCase(lengthField.name))}`;
 };
 
 const renderElementReadObject = (ctx: ModuleContext, fields: readonly GirField[], baseOffset: number): string => {
@@ -103,7 +103,7 @@ const renderElementReadObject = (ctx: ModuleContext, fields: readonly GirField[]
     const entries: string[] = [];
     for (const { field, slot } of slots) {
         if (field.private || field.type === undefined || field.callback !== undefined) continue;
-        const jsName = camelCase(field.name);
+        const jsName = toIdentifier(camelCase(field.name));
         const offset = baseOffset + slot.byteOffset;
         const nested = resolveInlineStructFields(ctx, field.type);
         if (nested !== undefined) {
@@ -138,7 +138,7 @@ const renderElementWriteStatements = (ctx: ModuleContext, plan: ElementWritePlan
     const { slots } = computeBoxedFieldSlots(ctx, fields);
     for (const { field, slot } of slots) {
         if (field.private || field.type === undefined || field.callback !== undefined) continue;
-        const valueExpr = `${valuePath}.${camelCase(field.name)}`;
+        const valueExpr = `${valuePath}.${toIdentifier(camelCase(field.name))}`;
         const offset = baseOffset + slot.byteOffset;
         const nested = resolveInlineStructFields(ctx, field.type);
         if (nested !== undefined) {

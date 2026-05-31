@@ -1,5 +1,5 @@
 import { join, resolve } from "node:path";
-import { errorMessage } from "@gtkx/utils";
+import { errorMessage, upperFirst } from "@gtkx/utils";
 import { isValidAppId } from "../config.js";
 import type { TemplateContext } from "../templates.js";
 import { isValidProjectName, type TestingOption } from "./options.js";
@@ -119,7 +119,7 @@ export const getRunCommand = (pm: PackageManager): string => RUN_DEV_COMMAND[pm]
 const titleFromName = (name: string): string =>
     name
         .split("-")
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .map(upperFirst)
         .join(" ");
 
 const suggestAppId = (name: string): string => `com.${name.replaceAll("-", "")}.app`;

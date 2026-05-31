@@ -2,7 +2,7 @@ import * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { NavigationPageProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { toCamelCase } from "./internal/naming.js";
+import { camelCase } from "@gtkx/utils";
 import { hasChanged } from "./internal/props.js";
 import { SingleChildVirtualNode } from "./internal/single-child-virtual.js";
 import { getFocusWidget, isDescendantOf } from "./internal/widget.js";
@@ -87,7 +87,7 @@ export class NavigationPageNode extends SingleChildVirtualNode<NavigationPagePro
     }
 
     private applySlotChild(parentWidget: Gtk.Widget, oldChild: Gtk.Widget | null): void {
-        const propId = toCamelCase(this.props.id ?? "");
+        const propId = camelCase(this.props.id ?? "");
 
         if (oldChild && !this.wrappedPage) {
             const focus = getFocusWidget(oldChild);

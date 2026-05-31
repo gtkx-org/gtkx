@@ -1,4 +1,4 @@
-import { camelCase, pascalCase } from "../dsl/identifier.js";
+import { camelCase, pascalCase, toIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import { type GirParameter, isInoutParameter, isOutParameter } from "../gir/parameter.js";
@@ -69,7 +69,7 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
     const selfTypeName = resolveSelfTypeName(klass, selfNamespace, imports);
 
     const acceptProperty = (property: GirProperty, owningNamespace: string): void => {
-        const jsName = camelCase(property.name);
+        const jsName = toIdentifier(camelCase(property.name));
         if (seen.has(jsName)) return;
         seen.add(jsName);
         if (isPropOverridden(ownerName, jsName)) return;
@@ -220,7 +220,7 @@ const renderSignalHandler = (options: SignalRenderOptions): string => {
     const params = visible
         .filter((parameter) => !isOutParameter(parameter))
         .map((parameter, index) => {
-            const name = parameter.name.length === 0 ? `arg${index + 1}` : camelCase(parameter.name);
+            const name = parameter.name.length === 0 ? `arg${index + 1}` : toIdentifier(camelCase(parameter.name));
             const qualified = qualifyTypeRef(parameter.type, owningNamespace);
             const baseType = renderTsType(repository, qualified, false, imports);
             return `${name}: ${baseType}`;

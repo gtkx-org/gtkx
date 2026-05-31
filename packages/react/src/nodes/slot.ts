@@ -2,7 +2,7 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import type { SlotProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Props } from "../types.js";
-import { toCamelCase } from "./internal/naming.js";
+import { camelCase } from "@gtkx/utils";
 import { getFocusWidget, isDescendantOf } from "./internal/widget.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
@@ -88,7 +88,7 @@ export class SlotNode<P extends Props = SlotProps, TChild extends Node = WidgetN
             throw new Error("Expected 'id' prop to be present on Slot");
         }
 
-        return toCamelCase(id);
+        return camelCase(id);
     }
 
     private getParentWidget(): Gtk.Widget {

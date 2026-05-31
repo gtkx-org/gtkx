@@ -1,12 +1,10 @@
 import * as GObject from "@gtkx/ffi/gobject";
+import { kebabCase } from "@gtkx/utils";
 import { useEffect, useState } from "react";
 
 type ReadableKey<T> = {
     [K in keyof T]: K extends string ? (T[K] extends (...args: unknown[]) => unknown ? never : K) : never;
 }[keyof T];
-
-const toKebabCase = (str: string): string =>
-    str.replaceAll(/[A-Z]/g, (c, i: number) => (i === 0 ? c.toLowerCase() : `-${c.toLowerCase()}`));
 
 /**
  * Subscribes to a GObject property and returns its current value as React state.
@@ -44,7 +42,7 @@ export function useProperty<T extends GObject.Object, K extends ReadableKey<T>>(
 
         setValue(obj[propertyName]);
 
-        const signal = `notify::${toKebabCase(propertyName)}`;
+        const signal = `notify::${kebabCase(propertyName)}`;
         const handlerId = obj.connect(signal, () => {
             setValue(obj[propertyName]);
         });

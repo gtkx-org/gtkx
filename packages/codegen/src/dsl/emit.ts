@@ -27,35 +27,6 @@ export const indent = (block: string, level: number): string => {
 export const joinArgs = (parts: ReadonlyArray<string | undefined>): string =>
     parts.filter((part): part is string => part !== undefined).join(", ");
 
-const UNSAFE_SOURCE_CHARS = /[<>\u2028\u2029]/g;
-
-const escapeSourceChar = (char: string): string => {
-    switch (char) {
-        case "<":
-            return "\\u003C";
-        case ">":
-            return "\\u003E";
-        case "\u2028":
-            return "\\u2028";
-        case "\u2029":
-            return "\\u2029";
-        default:
-            return char;
-    }
-};
-
-/**
- * Quotes a string for safe embedding as a literal in generated TypeScript
- * source.
- *
- * Builds a double-quoted literal with `JSON.stringify`, then escapes the
- * characters that are valid inside a JSON string yet unsafe inside JavaScript
- * source: the angle brackets that could otherwise break out of an enclosing
- * `</script>` and the U+2028/U+2029 line separators that prematurely terminate
- * a string literal. The escaped form parses back to the original value.
- */
-export const quote = (value: string): string => JSON.stringify(value).replace(UNSAFE_SOURCE_CHARS, escapeSourceChar);
-
 /**
  * Renders an array literal multi-line, indenting each element four spaces
  * and adding a trailing comma.

@@ -3,8 +3,8 @@ import type { GtkCalendarProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
+import { isShallowEqual } from "@gtkx/utils";
 import { arraySync, type PropDescriptorTable } from "./internal/apply-props.js";
-import { primitiveArrayEqual } from "./internal/props.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
@@ -20,7 +20,7 @@ export class CalendarNode extends WidgetNode<Gtk.Calendar, CalendarProps, Calend
         return {
             ...super.ownPropDescriptors(),
             markedDays: arraySync<number, number>({
-                equal: primitiveArrayEqual,
+                equal: isShallowEqual,
                 clearAll: () => this.container.clearMarks(),
                 add: (day) => {
                     this.container.markDay(day);

@@ -1,6 +1,7 @@
 import type { ModuleContext } from "../dsl/context.js";
-import { arrayLiteral, indent, joinArgs, quote } from "../dsl/emit.js";
+import { arrayLiteral, indent, joinArgs } from "../dsl/emit.js";
 import { namespaceFunctionExportName } from "../dsl/identifier.js";
+import { quote } from "@gtkx/utils";
 import type { GirFunction } from "../gir/function.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import type { GirParameter } from "../gir/parameter.js";

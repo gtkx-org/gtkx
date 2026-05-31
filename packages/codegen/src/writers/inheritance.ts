@@ -1,5 +1,5 @@
+import { camelCase, toIdentifier } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
-import { camelCase } from "../dsl/identifier.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirProperty } from "../gir/property.js";
 import { type ResolvedQualifiedClass, resolveQualifiedClass, splitQualifiedName } from "../gir/qualified-name.js";
@@ -79,13 +79,13 @@ export const forEachAncestor = (
  */
 export const collectInterfaceProperties = (ctx: ModuleContext, klass: GirClass): readonly GirProperty[] => {
     const seen = new Set<string>();
-    for (const property of klass.properties) seen.add(camelCase(property.name));
+    for (const property of klass.properties) seen.add(toIdentifier(camelCase(property.name)));
     forEachAncestor(ctx, klass, (ancestor) => {
-        for (const property of ancestor.klass.properties) seen.add(camelCase(property.name));
+        for (const property of ancestor.klass.properties) seen.add(toIdentifier(camelCase(property.name)));
         for (const implementName of ancestor.klass.implements) {
             const iface = resolveImplementedInterface(ctx, implementName, ancestor.namespaceName);
             if (iface === undefined) continue;
-            for (const property of iface.klass.properties) seen.add(camelCase(property.name));
+            for (const property of iface.klass.properties) seen.add(toIdentifier(camelCase(property.name)));
         }
     });
     const result: GirProperty[] = [];
@@ -93,7 +93,7 @@ export const collectInterfaceProperties = (ctx: ModuleContext, klass: GirClass):
         const iface = resolveImplementedInterface(ctx, implementName);
         if (iface === undefined) continue;
         for (const property of iface.klass.properties) {
-            const name = camelCase(property.name);
+            const name = toIdentifier(camelCase(property.name));
             if (seen.has(name)) continue;
             seen.add(name);
             result.push({ ...property, type: qualifyTypeRef(property.type, iface.namespaceName) });
