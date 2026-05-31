@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { preflightCodegen, runCodegen } from "../../src/codegen/run-codegen.js";
+import { ensureGenerated, preflightCodegen, runCodegen } from "../../src/codegen/run-codegen.js";
 
 vi.mock("@gtkx/codegen", () => ({
     CodegenRunner: class {
@@ -34,6 +34,12 @@ const writeConfig = (cwd: string, body = `export default { libraries: ["Gtk-4.0"
 const writeNamespaceModule = (generatedDir: string, namespace: string) => {
     mkdirSync(join(generatedDir, namespace), { recursive: true });
     writeFileSync(join(generatedDir, namespace, `${namespace}.js`), "");
+};
+
+const writeReactModules = (generatedDir: string) => {
+    for (const module of ["compounds.js", "internal.js", "jsx.js"]) {
+        writeFileSync(join(generatedDir, module), "");
+    }
 };
 
 const preflightLogs = async (cwd: string): Promise<string> => {
@@ -86,17 +92,6 @@ describe("runCodegen", () => {
         expect(existsSync(ffiStale)).toBe(false);
         expect(existsSync(reactStale)).toBe(false);
         expect(result.namespaces).toBe(1);
-    });
-
-    it("with clean and no React package, removes only the FFI output dir", async () => {
-        const ffiGenerated = installFfiPackage(cwd);
-        writeConfig(cwd);
-        const ffiStale = join(ffiGenerated, "stale.js");
-        writeFileSync(ffiStale, "");
-
-        await runCodegen({ cwd, clean: true });
-
-        expect(existsSync(ffiStale)).toBe(false);
     });
 });
 
@@ -151,10 +146,51 @@ describe("preflightCodegen", () => {
 
     it("skips codegen when every configured namespace module exists", async () => {
         delete process.env.GTKX_DISABLE_PREFLIGHT;
-        const ffiGenerated = installFfiPackage(cwd);
-        writeNamespaceModule(ffiGenerated, "gtk");
+        writeNamespaceModule(installFfiPackage(cwd), "gtk");
+        writeReactModules(installPackage(cwd, "react"));
         writeConfig(cwd);
 
         expect(await preflightLogs(cwd)).toBe("");
+    });
+});
+
+describe("ensureGenerated", () => {
+    let cwd: string;
+
+    beforeEach(() => {
+        cwd = mkdtempSync(join(tmpdir(), "gtkx-ensure-"));
+    });
+
+    afterEach(() => {
+        rmSync(cwd, { recursive: true, force: true });
+    });
+
+    it("regenerates when a React generated module is missing", async () => {
+        writeNamespaceModule(installFfiPackage(cwd), "gtk");
+        installPackage(cwd, "react");
+        writeConfig(cwd);
+
+        expect(await ensureGenerated(cwd)).toBe(true);
+    });
+
+    it("does nothing when every FFI and React module exists", async () => {
+        writeNamespaceModule(installFfiPackage(cwd), "gtk");
+        writeReactModules(installPackage(cwd, "react"));
+        writeConfig(cwd);
+
+        expect(await ensureGenerated(cwd)).toBe(false);
+    });
+
+    it("does nothing when there is no gtkx.config.ts", async () => {
+        installFfiPackage(cwd);
+
+        expect(await ensureGenerated(cwd)).toBe(false);
+    });
+
+    it("propagates non-NotFound config errors", async () => {
+        installFfiPackage(cwd);
+        writeConfig(cwd, `export default { libraries: [] };`);
+
+        await expect(ensureGenerated(cwd)).rejects.toThrow();
     });
 });

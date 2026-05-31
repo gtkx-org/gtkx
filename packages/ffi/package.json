@@ -69,11 +69,12 @@
         "!**/*.tsbuildinfo"
     ],
     "scripts": {
-        "build": "tsc -b && pnpm run copy-generated-dts",
+        "build": "pnpm run ensure-generated && tsc -b && pnpm run copy-generated-dts",
         "copy-generated-dts": "node scripts/copy-generated-dts.ts",
+        "ensure-generated": "node --conditions=source --import tsx ../cli/src/cli.ts codegen --if-missing --cwd ../..",
         "postinstall": "node scripts/postinstall.ts",
         "test": "vitest run",
-        "typecheck": "tsc -b --emitDeclarationOnly && pnpm run copy-generated-dts"
+        "typecheck": "pnpm run ensure-generated && tsc -b --emitDeclarationOnly && pnpm run copy-generated-dts"
     },
     "engines": {
         "node": ">=24"

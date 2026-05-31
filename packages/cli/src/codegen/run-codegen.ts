@@ -108,30 +108,76 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
 };
 
 /**
- * Returns true if any configured library's generated namespace module is
- * missing from `@gtkx/ffi`'s `generated/` directory.
+ * Top-level `@gtkx/react` generated modules that must exist whenever React
+ * bindings have been generated. Missing any of these means the React tree is
+ * absent or partial and codegen must run.
+ */
+const REACT_GENERATED_MODULES: readonly string[] = ["compounds.js", "internal.js", "jsx.js"];
+
+/**
+ * Returns true if any configured library's generated FFI namespace module, or
+ * any `@gtkx/react` generated module, is missing from the resolved output
+ * directories.
  *
- * Used by `gtkx dev` and `gtkx build` to auto-run codegen when the output is
- * absent or a newly configured library has not been generated yet. Detecting
- * deeper staleness (changed GIR contents, codegen upgrades) is left to the
- * install lifecycle and turbo, which own when codegen runs.
+ * Used by `gtkx dev`/`gtkx build` and by {@link ensureGenerated} to auto-run
+ * codegen when output is absent or a newly configured library has not been
+ * generated yet. Detecting deeper staleness (changed GIR contents, codegen
+ * upgrades) is left to the install lifecycle, which owns when codegen runs.
  *
  * @param cwd - Project root
  * @param config - The user's resolved configuration
- * @returns True when a configured namespace module is missing
+ * @returns True when a required generated module is missing
  */
 const isCodegenNeeded = (cwd: string, config: GtkxConfig): boolean => {
     try {
-        const { ffiOutputDir } = resolveOutputDirs(cwd);
+        const { ffiOutputDir, reactOutputDir } = resolveOutputDirs(cwd);
         if (!existsSync(ffiOutputDir)) {
             return true;
         }
         const girPath = resolveGirPath(config.girPath);
         const libraries = resolveLibraries(config.libraries, girPath);
-        return libraries.some((library) => !existsSync(namespaceModulePath(ffiOutputDir, library)));
+        if (libraries.some((library) => !existsSync(namespaceModulePath(ffiOutputDir, library)))) {
+            return true;
+        }
+        return (
+            reactOutputDir !== null &&
+            REACT_GENERATED_MODULES.some((module) => !existsSync(join(reactOutputDir, module)))
+        );
     } catch {
         return true;
     }
+};
+
+/**
+ * Regenerates the gitignored `src/generated` trees when any required module is
+ * missing, leaving them untouched otherwise.
+ *
+ * The generated bindings are produced as an install side-effect and are not
+ * tracked by the build system, so a cache-restored `@gtkx/ffi`/`@gtkx/react`
+ * build can be present without its `src/generated` inputs. Build and typecheck
+ * scripts call this first so generation is coupled to the build graph and the
+ * trees are guaranteed present before `tsc` consumes them.
+ *
+ * No-ops (no config, nothing missing) are cheap so this is safe to run on
+ * every build.
+ *
+ * @param cwd - Project root in which to look for `gtkx.config.ts`
+ */
+export const ensureGenerated = async (cwd: string): Promise<boolean> => {
+    let config: GtkxConfig;
+    try {
+        ({ config } = await loadGtkxConfig(cwd));
+    } catch (error) {
+        if (error instanceof GtkxConfigNotFoundError) {
+            return false;
+        }
+        throw error;
+    }
+    if (!isCodegenNeeded(cwd, config)) {
+        return false;
+    }
+    await runCodegen({ cwd });
+    return true;
 };
 
 /**

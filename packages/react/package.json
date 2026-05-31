@@ -44,9 +44,10 @@
         "!**/*.tsbuildinfo"
     ],
     "scripts": {
-        "build": "tsc -b && pnpm run copy-generated-dts",
+        "build": "pnpm run ensure-generated && tsc -b && pnpm run copy-generated-dts",
         "copy-generated-dts": "node scripts/copy-generated-dts.ts",
-        "typecheck": "tsc -b --emitDeclarationOnly && pnpm run copy-generated-dts"
+        "ensure-generated": "node --conditions=source --import tsx ../cli/src/cli.ts codegen --if-missing --cwd ../..",
+        "typecheck": "pnpm run ensure-generated && tsc -b --emitDeclarationOnly && pnpm run copy-generated-dts"
     },
     "dependencies": {
         "@gtkx/ffi": "workspace:*",
