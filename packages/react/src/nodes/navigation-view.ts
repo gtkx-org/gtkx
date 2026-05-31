@@ -1,10 +1,10 @@
 import * as Adw from "@gtkx/ffi/adw";
+import { isShallowEqual } from "@gtkx/utils";
 import type { AdwNavigationViewProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
 import { imperative, type PropDescriptorTable, signal } from "./internal/apply-props.js";
-import { isShallowEqual } from "@gtkx/utils";
 import { NavigationPageNode } from "./navigation-page.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";

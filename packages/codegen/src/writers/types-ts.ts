@@ -1,4 +1,4 @@
-import { pascalCase } from "@gtkx/utils";
+import { toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import { PRIMITIVE_TS_TYPE } from "../gir/primitives.js";
@@ -104,9 +104,9 @@ const resolveAliasTsType = (
 };
 
 const qualifiedTypeReference = (ctx: ModuleContext, namespaceName: string, typeName: string): string => {
-    if (namespaceName === ctx.namespace.name) return pascalCase(typeName);
+    if (namespaceName === ctx.namespace.name) return toPascalCase(typeName);
     const alias = ctx.addCrossNamespaceImport(namespaceName);
-    return `${alias}.${pascalCase(typeName)}`;
+    return `${alias}.${toPascalCase(typeName)}`;
 };
 
 const arrayTsType = (ctx: ModuleContext, ref: ArrayTypeRef): string => {

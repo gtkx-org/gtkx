@@ -1,6 +1,6 @@
+import { toCamelCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
-import { camelCase } from "@gtkx/utils";
 import type { GirFunction } from "../gir/function.js";
 import { callableReferencesClassStruct } from "./class-struct-record.js";
 import { writeFnExpression } from "./function.js";
@@ -110,7 +110,7 @@ export const renderStaticMember = (ctx: ModuleContext, callable: GirFunction): s
     if (!isEmittableCallable(ctx, callable)) return undefined;
     const cIdentifier = callable.cIdentifier;
     if (cIdentifier === undefined) return undefined;
-    const name = camelCase(callable.name);
+    const name = toCamelCase(callable.name);
     if (name === "constructor") return undefined;
     const signature = writeMethodSignature(ctx, callable);
     const returnType = writeMethodReturnType(ctx, callable);
@@ -161,7 +161,7 @@ export const renderInstanceAlias = (
     shadower: GirFunction,
 ): string | undefined => {
     if (shadower.cIdentifier === undefined) return undefined;
-    const aliasName = camelCase(original.name);
+    const aliasName = toCamelCase(original.name);
     if (aliasName === "constructor") return undefined;
     const signature = writeMethodSignature(ctx, shadower);
     const returnType = writeMethodReturnType(ctx, shadower);
@@ -200,7 +200,7 @@ export const appendShadowedAliases = (options: ShadowedAliasOptions): void => {
         if (callable.introspectable) continue;
         const shadower = methodByName.get(callable.shadowedBy);
         if (shadower === undefined || !shadower.introspectable) continue;
-        const aliasName = camelCase(callable.name);
+        const aliasName = toCamelCase(callable.name);
         if (claimedNames.has(aliasName)) continue;
         const block = renderInstanceAlias(ctx, callable, shadower);
         if (block !== undefined) {
@@ -226,7 +226,7 @@ const isEmittableCallable = (ctx: ModuleContext, callable: GirFunction): boolean
     !callableReferencesClassStruct(ctx, callable);
 
 const constructorMemberName = (girName: string): string | undefined => {
-    const camel = camelCase(girName);
+    const camel = toCamelCase(girName);
     if (camel === "constructor") return undefined;
     return camel;
 };

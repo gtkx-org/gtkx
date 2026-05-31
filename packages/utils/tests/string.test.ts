@@ -1,72 +1,72 @@
 import { describe, expect, it } from "vitest";
-import { camelCase, kebabCase, pascalCase, upperFirst } from "../src/string.js";
+import { toCamelCase, toKebabCase, toPascalCase, toUpperFirst } from "../src/string.js";
 
-describe("upperFirst", () => {
+describe("toUpperFirst", () => {
     it("uppercases the first character", () => {
-        expect(upperFirst("fred")).toBe("Fred");
+        expect(toUpperFirst("fred")).toBe("Fred");
     });
 
     it("preserves the casing of the tail", () => {
-        expect(upperFirst("fooBar")).toBe("FooBar");
-        expect(upperFirst("URL")).toBe("URL");
+        expect(toUpperFirst("fooBar")).toBe("FooBar");
+        expect(toUpperFirst("URL")).toBe("URL");
     });
 
     it("returns the empty string unchanged", () => {
-        expect(upperFirst("")).toBe("");
+        expect(toUpperFirst("")).toBe("");
     });
 });
 
-describe("camelCase", () => {
+describe("toCamelCase", () => {
     it("converts snake_case GIR symbols", () => {
-        expect(camelCase("icon_name")).toBe("iconName");
-        expect(camelCase("get_text")).toBe("getText");
-        expect(camelCase("n_pages")).toBe("nPages");
+        expect(toCamelCase("icon_name")).toBe("iconName");
+        expect(toCamelCase("get_text")).toBe("getText");
+        expect(toCamelCase("n_pages")).toBe("nPages");
     });
 
     it("converts kebab-case ids", () => {
-        expect(camelCase("start-widget")).toBe("startWidget");
-        expect(camelCase("content")).toBe("content");
+        expect(toCamelCase("start-widget")).toBe("startWidget");
+        expect(toCamelCase("content")).toBe("content");
     });
 
     it("keeps the first segment verbatim and leaves separator-free input unchanged", () => {
-        expect(camelCase("Box")).toBe("Box");
-        expect(camelCase("startWidget")).toBe("startWidget");
+        expect(toCamelCase("Box")).toBe("Box");
+        expect(toCamelCase("startWidget")).toBe("startWidget");
     });
 
     it("drops empty segments from leading, trailing, or repeated separators", () => {
-        expect(camelCase("a__b")).toBe("aB");
-        expect(camelCase("_leading")).toBe("leading");
-        expect(camelCase("trailing_")).toBe("trailing");
+        expect(toCamelCase("a__b")).toBe("aB");
+        expect(toCamelCase("_leading")).toBe("leading");
+        expect(toCamelCase("trailing_")).toBe("trailing");
     });
 });
 
-describe("pascalCase", () => {
+describe("toPascalCase", () => {
     it("title-cases every segment", () => {
-        expect(pascalCase("icon_name")).toBe("IconName");
-        expect(pascalCase("scrolled-window")).toBe("ScrolledWindow");
+        expect(toPascalCase("icon_name")).toBe("IconName");
+        expect(toPascalCase("scrolled-window")).toBe("ScrolledWindow");
     });
 
     it("leaves an already-PascalCase name unchanged", () => {
-        expect(pascalCase("Box")).toBe("Box");
-        expect(pascalCase("ApplicationWindow")).toBe("ApplicationWindow");
+        expect(toPascalCase("Box")).toBe("Box");
+        expect(toPascalCase("ApplicationWindow")).toBe("ApplicationWindow");
     });
 
     it("returns the empty string unchanged", () => {
-        expect(pascalCase("")).toBe("");
+        expect(toPascalCase("")).toBe("");
     });
 });
 
-describe("kebabCase", () => {
+describe("toKebabCase", () => {
     it("converts camelCase to kebab-case", () => {
-        expect(kebabCase("iconName")).toBe("icon-name");
-        expect(kebabCase("activeWindow")).toBe("active-window");
+        expect(toKebabCase("iconName")).toBe("icon-name");
+        expect(toKebabCase("activeWindow")).toBe("active-window");
     });
 
     it("lowercases a leading capital without a leading hyphen", () => {
-        expect(kebabCase("Title")).toBe("title");
+        expect(toKebabCase("Title")).toBe("title");
     });
 
     it("leaves a lowercase word unchanged", () => {
-        expect(kebabCase("label")).toBe("label");
+        expect(toKebabCase("label")).toBe("label");
     });
 });

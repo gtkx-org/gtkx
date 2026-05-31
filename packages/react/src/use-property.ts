@@ -1,5 +1,5 @@
 import * as GObject from "@gtkx/ffi/gobject";
-import { kebabCase } from "@gtkx/utils";
+import { toKebabCase } from "@gtkx/utils";
 import { useEffect, useState } from "react";
 
 type ReadableKey<T> = {
@@ -42,7 +42,7 @@ export function useProperty<T extends GObject.Object, K extends ReadableKey<T>>(
 
         setValue(obj[propertyName]);
 
-        const signal = `notify::${kebabCase(propertyName)}`;
+        const signal = `notify::${toKebabCase(propertyName)}`;
         const handlerId = obj.connect(signal, () => {
             setValue(obj[propertyName]);
         });

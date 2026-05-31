@@ -1,9 +1,9 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
+import { isShallowEqual } from "@gtkx/utils";
 import type { GtkCalendarProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
-import { isShallowEqual } from "@gtkx/utils";
 import { arraySync, type PropDescriptorTable } from "./internal/apply-props.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";

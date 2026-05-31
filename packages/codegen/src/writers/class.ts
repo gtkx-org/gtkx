@@ -1,6 +1,6 @@
+import { toCamelCase, toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
-import { camelCase, pascalCase } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import { splitQualifiedName } from "../gir/qualified-name.js";
@@ -43,7 +43,7 @@ import { writeTsType } from "./types-ts.js";
 export const emitClass = (ctx: ModuleContext, klass: GirClass): void => {
     if (!klass.introspectable) return;
     if (klass.name.length === 0) return;
-    const className = pascalCase(klass.name);
+    const className = toPascalCase(klass.name);
     const callables: Callables = {
         constructors: dedupeCallables(klass.constructors),
         functions: dedupeCallables(klass.functions),
@@ -74,7 +74,7 @@ const buildClassMembers = (
     callables: Callables,
     hasParent: boolean,
 ): readonly string[] => {
-    const className = pascalCase(klass.name);
+    const className = toPascalCase(klass.name);
     const members: string[] = ["declare __gtype__: number;"];
     const constructorBlock = renderClassConstructor(ctx, klass, className, hasParent);
     if (constructorBlock !== undefined) members.push(constructorBlock);
@@ -222,9 +222,9 @@ const resolveImplementsReference = (ctx: ModuleContext, name: string): string | 
     const { namespaceName, typeName } = splitQualifiedName(name, ctx.namespace.name);
     const resolved = ctx.repository.resolveNamed(namespaceName, typeName);
     if (resolved === undefined || resolved.kind !== "interface") return undefined;
-    if (namespaceName === ctx.namespace.name) return pascalCase(typeName);
+    if (namespaceName === ctx.namespace.name) return toPascalCase(typeName);
     const alias = ctx.addCrossNamespaceImport(namespaceName);
-    return `${alias}.${pascalCase(typeName)}`;
+    return `${alias}.${toPascalCase(typeName)}`;
 };
 
 /** An ancestor method together with the namespace its type references resolve against. */
@@ -270,7 +270,7 @@ const absorbInheritedMethods = (
     const { returnTypes, definitions, names } = accumulator;
     for (const method of resolved.klass.methods) {
         if (!method.introspectable) continue;
-        const name = camelCase(method.name);
+        const name = toCamelCase(method.name);
         names.add(name);
         if (returnTypes.has(name)) continue;
         definitions.set(name, { method, namespaceName: resolved.namespaceName });
@@ -289,7 +289,7 @@ const absorbInheritedInterfaceMethodNames = (
         if (iface === undefined) continue;
         for (const method of iface.klass.methods) {
             if (!method.introspectable) continue;
-            names.add(camelCase(method.name));
+            names.add(toCamelCase(method.name));
         }
     }
 };
@@ -348,7 +348,7 @@ const enumIdentity = (
 const resolveParent = (ctx: ModuleContext, klass: GirClass): string | undefined => {
     if (klass.parent === undefined) return undefined;
     const { namespaceName, typeName } = splitQualifiedName(klass.parent, ctx.namespace.name);
-    if (namespaceName === ctx.namespace.name) return pascalCase(typeName);
+    if (namespaceName === ctx.namespace.name) return toPascalCase(typeName);
     const alias = ctx.addCrossNamespaceImport(namespaceName);
-    return `${alias}.${pascalCase(typeName)}`;
+    return `${alias}.${toPascalCase(typeName)}`;
 };

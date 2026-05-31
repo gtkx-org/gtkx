@@ -1,6 +1,6 @@
+import { toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
-import { pascalCase } from "@gtkx/utils";
 import type { GirBoxed } from "../gir/boxed.js";
 import { renderBoxedConstructor, renderBoxedConstructorPropsInterface } from "./boxed-constructor.js";
 import { renderBoxedFieldAccessor } from "./boxed-field-accessor.js";
@@ -31,7 +31,7 @@ export const emitBoxed = (ctx: ModuleContext, boxed: GirBoxed): void => {
     if (boxed.flavor === "vtable") return;
     if (boxed.name.length === 0) return;
     if (isClassStructRecord(ctx.namespace.name, boxed)) return;
-    const className = pascalCase(boxed.name);
+    const className = toPascalCase(boxed.name);
     const callables: Callables = {
         constructors: dedupeCallables(boxed.constructors),
         functions: dedupeCallables(boxed.functions),

@@ -1,4 +1,4 @@
-import { camelCase, toIdentifier } from "@gtkx/utils";
+import { toCamelCase, toIdentifier } from "@gtkx/utils";
 
 /**
  * Derives the public camelCase export name for a namespace-level callable.
@@ -20,9 +20,9 @@ export const namespaceFunctionExportName = (
 ): string => {
     const stripped = stripLongestPrefix(cIdentifier, symbolPrefixes);
     if (stripped.length === 0 || stripped === cIdentifier) {
-        return toIdentifier(camelCase(girName));
+        return toIdentifier(toCamelCase(girName));
     }
-    return toIdentifier(camelCase(stripped));
+    return toIdentifier(toCamelCase(stripped));
 };
 
 const stripLongestPrefix = (input: string, prefixes: readonly string[]): string => {

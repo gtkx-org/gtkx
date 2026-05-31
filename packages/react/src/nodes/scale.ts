@@ -1,8 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { isShallowArrayEqual } from "@gtkx/utils";
 import type { ScaleMark } from "../jsx.js";
 import { AdjustableNode } from "./adjustable.js";
 import { arraySync, type PropDescriptorTable } from "./internal/apply-props.js";
-import { isShallowArrayEqual } from "@gtkx/utils";
 
 export class ScaleNode extends AdjustableNode<Gtk.Scale> {
     protected override ownPropDescriptors(): PropDescriptorTable {

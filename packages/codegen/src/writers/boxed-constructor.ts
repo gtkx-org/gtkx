@@ -1,6 +1,6 @@
+import { quote, toCamelCase, toIdentifier } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
-import { camelCase, quote, toIdentifier } from "@gtkx/utils";
 import type { GirBoxed } from "../gir/boxed.js";
 import type { GirField } from "../gir/field.js";
 import type { GirTypeRef } from "../gir/type-ref.js";
@@ -42,7 +42,9 @@ export const renderBoxedConstructorPropsInterface = (
     const { slots } = computeBoxedFieldSlots(ctx, boxed.fields, boxed.isUnion);
     const lines = slots
         .filter(isWritableFieldSlot)
-        .map((entry) => `${toIdentifier(camelCase(entry.field.name))}?: ${writeTsType(ctx, entry.field.type, true)};`);
+        .map(
+            (entry) => `${toIdentifier(toCamelCase(entry.field.name))}?: ${writeTsType(ctx, entry.field.type, true)};`,
+        );
     const body = lines.length === 0 ? "" : `\n${indent(lines.join("\n"), 1)}\n`;
     return `export interface ${className}ConstructorProps {${body}}`;
 };
@@ -91,7 +93,7 @@ const renderFieldWrite = (ctx: ModuleContext, entry: WritableFieldSlot): string 
     ctx.addRuntimeImport("t");
     ctx.addRuntimeImport("write");
     const ffiType = writeFfiType(ctx, entry.field.type, "none");
-    const name = toIdentifier(camelCase(entry.field.name));
+    const name = toIdentifier(toCamelCase(entry.field.name));
     const offset = entry.slot.byteOffset;
     if (entry.slot.bitWidth === undefined) {
         return `if (props.${name} !== undefined) write(handle, ${ffiType}, ${offset}, props.${name});`;

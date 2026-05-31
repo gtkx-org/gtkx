@@ -1,6 +1,6 @@
+import { toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
-import { pascalCase } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import { splitQualifiedName } from "../gir/qualified-name.js";
@@ -36,7 +36,7 @@ import { renderSignalMembers, renderSignalRegistration } from "./signal.js";
 export const emitInterface = (ctx: ModuleContext, iface: GirClass): void => {
     if (!iface.introspectable) return;
     if (iface.name.length === 0) return;
-    const className = pascalCase(iface.name);
+    const className = toPascalCase(iface.name);
     const callables: Callables = {
         constructors: dedupeCallables(iface.constructors),
         functions: dedupeCallables(iface.functions),
@@ -60,7 +60,7 @@ export const emitInterface = (ctx: ModuleContext, iface: GirClass): void => {
 };
 
 const buildInterfaceMembers = (ctx: ModuleContext, iface: GirClass, callables: Callables): readonly string[] => {
-    const className = pascalCase(iface.name);
+    const className = toPascalCase(iface.name);
     const { members, claimedNames } = buildPlainTypeMembers({
         ctx,
         className,
@@ -160,7 +160,7 @@ const resolvePrerequisiteReference = (ctx: ModuleContext, name: string): string 
     const resolved = ctx.repository.resolveNamed(namespaceName, typeName);
     if (resolved === undefined) return undefined;
     if (resolved.kind !== "interface" && resolved.kind !== "class") return undefined;
-    if (namespaceName === ctx.namespace.name) return pascalCase(typeName);
+    if (namespaceName === ctx.namespace.name) return toPascalCase(typeName);
     const alias = ctx.addCrossNamespaceImport(namespaceName);
-    return `${alias}.${pascalCase(typeName)}`;
+    return `${alias}.${toPascalCase(typeName)}`;
 };

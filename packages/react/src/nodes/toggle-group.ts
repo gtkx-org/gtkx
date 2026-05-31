@@ -1,9 +1,9 @@
 import * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
+import { isShallowArrayEqual } from "@gtkx/utils";
 import type { AdwToggleGroupProps, ToggleProps } from "../jsx.js";
 import type { Container, Props } from "../types.js";
 import { arraySync, imperative, type PropDescriptorTable, signal, teardownNode } from "./internal/apply-props.js";
-import { isShallowArrayEqual } from "@gtkx/utils";
 import { createContainerWithProperties } from "./internal/construct.js";
 import { WidgetNode } from "./widget.js";
 

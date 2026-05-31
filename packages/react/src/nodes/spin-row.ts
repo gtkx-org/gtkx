@@ -1,7 +1,7 @@
 import type * as Adw from "@gtkx/ffi/adw";
+import { omit } from "@gtkx/utils";
 import type { AdjustableProps } from "../jsx.js";
 import { ADJUSTMENT_PROPS, AdjustmentController } from "./internal/adjustment.js";
-import { omit } from "@gtkx/utils";
 import { hasChanged } from "./internal/props.js";
 import { WidgetNode } from "./widget.js";
 
@@ -13,10 +13,7 @@ export class SpinRowNode extends WidgetNode<Adw.SpinRow, SpinRowProps> {
     private readonly adjustmentController = new AdjustmentController(this.container);
 
     public override commitUpdate(oldProps: SpinRowProps | null, newProps: SpinRowProps): void {
-        super.commitUpdate(
-            oldProps ? omit(oldProps, ADJUSTMENT_PROPS) : null,
-            omit(newProps, ADJUSTMENT_PROPS),
-        );
+        super.commitUpdate(oldProps ? omit(oldProps, ADJUSTMENT_PROPS) : null, omit(newProps, ADJUSTMENT_PROPS));
         this.applyOwnProps(oldProps, newProps);
     }
 

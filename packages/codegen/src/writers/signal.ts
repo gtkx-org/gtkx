@@ -1,6 +1,6 @@
+import { quote, toCamelCase, toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
-import { camelCase, pascalCase, quote } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirParameter } from "../gir/parameter.js";
 import { isOutParameter } from "../gir/parameter.js";
@@ -43,7 +43,7 @@ export const renderSignalMembers = (ctx: ModuleContext, klass: GirClass): readon
     if (collectClassSignals(ctx, klass).length === 0) return [];
     ctx.addRuntimeImport("connectSignal");
     ctx.addRuntimeImport("emitSignal");
-    const className = pascalCase(klass.name);
+    const className = toPascalCase(klass.name);
     const isRootObject = ctx.namespace.name === "GObject" && klass.name === "Object";
     const connectBody = isRootObject
         ? `return connectSignal({ instance: this, cls: ${className} }, signal, handler, { after });`
@@ -87,7 +87,7 @@ const collectClassSignals = (ctx: ModuleContext, klass: GirClass): readonly Coll
     const seen = new Set<string>();
     const result: CollectedSignal[] = [];
     for (const signal of klass.signals) {
-        const name = camelCase(signal.name);
+        const name = toCamelCase(signal.name);
         if (inheritedNames.has(name) || seen.has(name)) continue;
         seen.add(name);
         result.push({ signal, namespaceName: ctx.namespace.name });
@@ -96,7 +96,7 @@ const collectClassSignals = (ctx: ModuleContext, klass: GirClass): readonly Coll
         const iface = resolveImplementedInterface(ctx, implementName);
         if (iface === undefined) continue;
         for (const signal of iface.klass.signals) {
-            const name = camelCase(signal.name);
+            const name = toCamelCase(signal.name);
             if (inheritedNames.has(name) || seen.has(name)) continue;
             seen.add(name);
             result.push({ signal, namespaceName: iface.namespaceName });
@@ -108,11 +108,11 @@ const collectClassSignals = (ctx: ModuleContext, klass: GirClass): readonly Coll
 const collectInheritedSignalNames = (ctx: ModuleContext, klass: GirClass): ReadonlySet<string> => {
     const names = new Set<string>();
     forEachAncestor(ctx, klass, (ancestor) => {
-        for (const signal of ancestor.klass.signals) names.add(camelCase(signal.name));
+        for (const signal of ancestor.klass.signals) names.add(toCamelCase(signal.name));
         for (const implementName of ancestor.klass.implements) {
             const iface = resolveImplementedInterface(ctx, implementName, ancestor.namespaceName);
             if (iface === undefined) continue;
-            for (const signal of iface.klass.signals) names.add(camelCase(signal.name));
+            for (const signal of iface.klass.signals) names.add(toCamelCase(signal.name));
         }
     });
     return names;

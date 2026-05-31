@@ -1,5 +1,5 @@
+import { toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
-import { pascalCase } from "@gtkx/utils";
 import type { GirAlias } from "../gir/namespace.js";
 import { writeTsType } from "./types-ts.js";
 
@@ -18,7 +18,7 @@ import { writeTsType } from "./types-ts.js";
  * @param alias - The alias to emit
  */
 export const emitAlias = (ctx: ModuleContext, alias: GirAlias): void => {
-    const exportName = alias.cType ?? pascalCase(alias.name);
+    const exportName = alias.cType ?? toPascalCase(alias.name);
     const targetType = writeTsType(ctx, alias.target);
     ctx.module.appendDeclaration(`export type ${exportName} = ${targetType};`);
 };

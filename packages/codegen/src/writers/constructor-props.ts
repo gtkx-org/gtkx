@@ -1,5 +1,5 @@
+import { quote, toCamelCase, toIdentifier, toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
-import { camelCase, pascalCase, quote, toIdentifier } from "@gtkx/utils";
 import { indent } from "../dsl/emit.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirProperty } from "../gir/property.js";
@@ -34,7 +34,7 @@ export const collectConstructableProps = (ctx: ModuleContext, klass: GirClass): 
     const seen = new Set<string>();
     const result: GirProperty[] = [];
     for (const property of all) {
-        const jsName = toIdentifier(camelCase(property.name));
+        const jsName = toIdentifier(toCamelCase(property.name));
         if (seen.has(jsName)) continue;
         seen.add(jsName);
         result.push(property);
@@ -57,7 +57,7 @@ export const renderConstructorPropsInterface = (ctx: ModuleContext, klass: GirCl
     const parentRef = resolveParentPropsReference(ctx, klass);
     const extendsClause = parentRef === undefined ? "" : ` extends ${parentRef}`;
     const lines = collectConstructableProps(ctx, klass).map(
-        (property) => `${toIdentifier(camelCase(property.name))}?: ${writeTsType(ctx, property.type, true)};`,
+        (property) => `${toIdentifier(toCamelCase(property.name))}?: ${writeTsType(ctx, property.type, true)};`,
     );
     const body = lines.length === 0 ? "" : `\n${indent(lines.join("\n"), 1)}\n`;
     return `export interface ${className}ConstructorProps${extendsClause} {${body}}`;
@@ -100,11 +100,11 @@ const renderRootConstructor = (ctx: ModuleContext): string => {
 
 const renderTranslatingConstructor = (ctx: ModuleContext, props: readonly GirProperty[], className: string): string => {
     ctx.addValueFromFfiOptionalImport();
-    const destructured = props.map((property) => toIdentifier(camelCase(property.name)));
+    const destructured = props.map((property) => toIdentifier(toCamelCase(property.name)));
     const pattern = `{ ${[...destructured, "...rest"].join(", ")} }`;
     const entries = props.map(
         (property) =>
-            `${quote(property.name)}: valueFromFfiOptional(${writeFfiType(ctx, property.type, property.transferOwnership)}, ${toIdentifier(camelCase(property.name))}),`,
+            `${quote(property.name)}: valueFromFfiOptional(${writeFfiType(ctx, property.type, property.transferOwnership)}, ${toIdentifier(toCamelCase(property.name))}),`,
     );
     const superArg = `{\n${indent([...entries, "...rest,"].join("\n"), 1)}\n}`;
     const body = `super(${superArg});`;
@@ -114,7 +114,7 @@ const renderTranslatingConstructor = (ctx: ModuleContext, props: readonly GirPro
 const resolveParentPropsReference = (ctx: ModuleContext, klass: GirClass): string | undefined => {
     if (klass.parent === undefined) return undefined;
     const { namespaceName, typeName } = splitQualifiedName(klass.parent, ctx.namespace.name);
-    const propsName = `${pascalCase(typeName)}ConstructorProps`;
+    const propsName = `${toPascalCase(typeName)}ConstructorProps`;
     if (namespaceName === ctx.namespace.name) return propsName;
     const alias = ctx.addCrossNamespaceImport(namespaceName);
     return `${alias}.${propsName}`;

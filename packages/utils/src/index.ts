@@ -7,4 +7,4 @@ export {
     installGracefulShutdown,
 } from "./graceful-shutdown.js";
 export { quote, toIdentifier } from "./source.js";
-export { camelCase, kebabCase, pascalCase, upperFirst } from "./string.js";
+export { toCamelCase, toKebabCase, toPascalCase, toUpperFirst } from "./string.js";

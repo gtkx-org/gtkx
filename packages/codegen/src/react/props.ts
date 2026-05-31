@@ -1,4 +1,4 @@
-import { camelCase, pascalCase, toIdentifier } from "@gtkx/utils";
+import { toCamelCase, toIdentifier, toPascalCase } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import { type GirParameter, isInoutParameter, isOutParameter } from "../gir/parameter.js";
@@ -69,7 +69,7 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
     const selfTypeName = resolveSelfTypeName(klass, selfNamespace, imports);
 
     const acceptProperty = (property: GirProperty, owningNamespace: string): void => {
-        const jsName = toIdentifier(camelCase(property.name));
+        const jsName = toIdentifier(toCamelCase(property.name));
         if (seen.has(jsName)) return;
         seen.add(jsName);
         if (isPropOverridden(ownerName, jsName)) return;
@@ -103,9 +103,9 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
 };
 
 const resolveSelfTypeName = (klass: GirClass, selfNamespace: string, imports: Map<string, string>): string => {
-    if (selfNamespace === "?") return pascalCase(klass.name);
+    if (selfNamespace === "?") return toPascalCase(klass.name);
     imports.set(selfNamespace, selfNamespace);
-    return `${selfNamespace}.${pascalCase(klass.name)}`;
+    return `${selfNamespace}.${toPascalCase(klass.name)}`;
 };
 
 type WalkContext = {
@@ -220,7 +220,7 @@ const renderSignalHandler = (options: SignalRenderOptions): string => {
     const params = visible
         .filter((parameter) => !isOutParameter(parameter))
         .map((parameter, index) => {
-            const name = parameter.name.length === 0 ? `arg${index + 1}` : toIdentifier(camelCase(parameter.name));
+            const name = parameter.name.length === 0 ? `arg${index + 1}` : toIdentifier(toCamelCase(parameter.name));
             const qualified = qualifyTypeRef(parameter.type, owningNamespace);
             const baseType = renderTsType(repository, qualified, false, imports);
             return `${name}: ${baseType}`;
@@ -305,12 +305,12 @@ const primitiveTsType = (ref: PrimitiveTypeRef): string => PRIMITIVE_TS_TYPE[ref
 const namedTsType = (repository: GirRepository, ref: NamedTypeRef, imports: Map<string, string>): string => {
     const namespaceName = ref.namespaceName;
     if (namespaceName === undefined) {
-        return pascalCase(ref.typeName);
+        return toPascalCase(ref.typeName);
     }
     const resolved = repository.resolveNamed(namespaceName, ref.typeName);
     if (resolved === undefined) {
         imports.set(namespaceName, namespaceName);
-        return `${namespaceName}.${pascalCase(ref.typeName)}`;
+        return `${namespaceName}.${toPascalCase(ref.typeName)}`;
     }
     if (resolved.kind === "callback") return "(...args: unknown[]) => unknown";
     if (resolved.kind === "alias") {
@@ -322,5 +322,5 @@ const namedTsType = (repository: GirRepository, ref: NamedTypeRef, imports: Map<
         );
     }
     imports.set(namespaceName, namespaceName);
-    return `${namespaceName}.${pascalCase(ref.typeName)}`;
+    return `${namespaceName}.${toPascalCase(ref.typeName)}`;
 };

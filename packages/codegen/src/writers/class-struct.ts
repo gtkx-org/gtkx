@@ -1,6 +1,6 @@
+import { quote, toCamelCase, toIdentifier, toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
-import { camelCase, pascalCase, quote, toIdentifier } from "@gtkx/utils";
 import { callbackFromNode, type GirCallback } from "../gir/callback.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirField } from "../gir/field.js";
@@ -30,7 +30,7 @@ type VtableKind = "class" | "interface";
  */
 export const renderVFuncMeta = (ctx: ModuleContext, klass: GirClass): string | undefined => {
     if (klass.glibTypeStruct === undefined) return undefined;
-    const structName = pascalCase(klass.glibTypeStruct);
+    const structName = toPascalCase(klass.glibTypeStruct);
     const kind: VtableKind = klass.isInterface ? "interface" : "class";
     const entries = vtableEntries(ctx, structName, kind, klass.glibTypeStruct);
     if (entries.length === 0) return undefined;
@@ -45,7 +45,7 @@ const vtableEntries = (ctx: ModuleContext, structName: string, kind: VtableKind,
     const claimed = new Set<string>();
     for (const { field, slot } of slots) {
         if (field.callback === undefined) continue;
-        const key = toIdentifier(camelCase(field.name));
+        const key = toIdentifier(toCamelCase(field.name));
         if (key === "constructor" || claimed.has(key)) continue;
         const callback = callbackFromNode(field.callback);
         if (!isVtableSlotEligible(callback)) continue;

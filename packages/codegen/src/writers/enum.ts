@@ -1,6 +1,6 @@
+import { quote, toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import type { GirEnum } from "../gir/enum.js";
-import { pascalCase, quote } from "@gtkx/utils";
 
 /**
  * Emits the runtime declaration for an `<enumeration>` or `<bitfield>`.
@@ -21,7 +21,7 @@ import { pascalCase, quote } from "@gtkx/utils";
  */
 export const emitEnum = (ctx: ModuleContext, enumeration: GirEnum): void => {
     if (!enumeration.introspectable) return;
-    const name = pascalCase(enumeration.name);
+    const name = toPascalCase(enumeration.name);
     const memberKeys = enumeration.members.map((member) => memberKey(member.name));
     if (enumeration.errorDomain !== undefined) {
         const memberEntries = enumeration.members.map((member, index) => `${memberKeys[index]}: ${member.value}`);

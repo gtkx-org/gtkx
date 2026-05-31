@@ -1,5 +1,5 @@
+import { toCamelCase, toIdentifier } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
-import { camelCase, toIdentifier } from "@gtkx/utils";
 import type { GirFunction } from "../gir/function.js";
 import {
     type GirParameter,
@@ -19,14 +19,14 @@ import { isCellInout, type ResolvedCallback, resolveCallbackType } from "./value
  *
  * @param fn - The callable
  */
-export const methodExportName = (fn: GirFunction): string => camelCase(fn.name);
+export const methodExportName = (fn: GirFunction): string => toCamelCase(fn.name);
 
 /**
  * Renders the TypeScript parameter list for a callable.
  *
  * Drops out-only parameters, `<varargs>` slots, and array-length
  * parameters whose value is computed from a sibling array's `.length`.
- * Names follow `camelCase` of the GIR name, falling back to
+ * Names follow `toCamelCase` of the GIR name, falling back to
  * `arg<index>` for unnamed positions.
  *
  * @param ctx - The module context
@@ -573,7 +573,7 @@ const allocateCallerOut = (
 
 const parameterIdentifier = (parameter: GirParameter, index: number): string => {
     if (parameter.name.length === 0) return `arg${index}`;
-    return toIdentifier(camelCase(parameter.name));
+    return toIdentifier(toCamelCase(parameter.name));
 };
 
 const parameterCallExpression = (ctx: ModuleContext, parameter: GirParameter, index: number): string => {

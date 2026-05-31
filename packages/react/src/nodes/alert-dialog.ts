@@ -1,8 +1,8 @@
 import type * as Adw from "@gtkx/ffi/adw";
+import { isShallowArrayEqual } from "@gtkx/utils";
 import type { AlertDialogResponseProps } from "../jsx.js";
 import { DialogNode } from "./dialog.js";
 import { arraySync, type PropDescriptorTable, teardownNode } from "./internal/apply-props.js";
-import { isShallowArrayEqual } from "@gtkx/utils";
 
 export class AlertDialogNode extends DialogNode {
     protected override ownPropDescriptors(): PropDescriptorTable {
