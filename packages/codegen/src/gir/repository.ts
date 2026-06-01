@@ -26,6 +26,7 @@ export type ResolvedNamed =
           readonly namespace: GirNamespace;
           readonly target: string | undefined;
           readonly targetRef: GirTypeRef | undefined;
+          readonly cType: string | undefined;
       };
 
 /**
@@ -91,7 +92,13 @@ const indexNamespace = (index: Map<string, ResolvedNamed>, namespace: GirNamespa
     }
     for (const alias of namespace.aliases) {
         const target = alias.target?.kind === "named" ? alias.target.typeName : undefined;
-        index.set(entityKey(namespace.name, alias.name), { kind: "alias", namespace, target, targetRef: alias.target });
+        index.set(entityKey(namespace.name, alias.name), {
+            kind: "alias",
+            namespace,
+            target,
+            targetRef: alias.target,
+            cType: alias.cType,
+        });
     }
 };
 

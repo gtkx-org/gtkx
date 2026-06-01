@@ -248,8 +248,13 @@ function newFromArrayFfi(ffiType: FfiArrayType, value: unknown): GValue {
     throw new Error(`Unsupported array type for GValue conversion: ${ffiType.kind} of ${ffiType.itemType.type}`);
 }
 
+/**
+ * Builds a `GValue` from a fundamental FFI descriptor, routing `GVariant`
+ * (identified by its stable `typeName`) to the variant marshaller and every
+ * other ref-counted fundamental to the boxed marshaller.
+ */
 function newFromFundamentalFfi(ffiType: FfiFundamentalType, value: unknown): GValue {
-    if (ffiType.refFn === "g_variant_ref_sink") {
+    if (ffiType.typeName === "GVariant") {
         return newFromVariant(value as object);
     }
     return newFromBoxed(value as object, resolveBoxedGType(ffiType));

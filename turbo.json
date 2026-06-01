@@ -110,14 +110,6 @@
         },
         "@gtkx/cli#codegen": {
             "dependsOn": ["@gtkx/ffi#build"],
-            "inputs": [
-                "src/cli.ts",
-                "src/commands/codegen.ts",
-                "src/codegen/**",
-                "../codegen/src/**",
-                "../codegen/overlay/**",
-                "../../gtkx.config.ts"
-            ],
             "cache": false
         },
         "@gtkx/react#build": {
@@ -191,10 +183,12 @@
                 "scripts/**/*.ts",
                 "tests/**/*.ts",
                 "tests/**/*.tsx",
+                "overlay/**/*.ts",
                 "tsconfig.json",
                 "tsconfig.app.json",
                 "tsconfig.lib.json",
-                "tsconfig.test.json"
+                "tsconfig.test.json",
+                "overlay/tsconfig.json"
             ],
             "outputs": [],
             "outputLogs": "new-only"

@@ -91,23 +91,31 @@ export const renderClassConstructor = (
     return renderTranslatingConstructor(ctx, props, className);
 };
 
+/** The forwarding record of marshalled `GValue`s a constructor hands to `super`. */
+const GVALUE_RECORD = "Record<string, GValue | undefined>";
+
 const renderRootConstructor = (ctx: ModuleContext): string => {
     ctx.addConstructGObjectInstanceImport();
-    const valueRef = ctx.namespace.name === "GObject" ? "Value" : `${ctx.addCrossNamespaceImport("GObject")}.Value`;
+    ctx.addRuntimeImport("GValue");
     const body = "constructGObjectInstance(this, props);";
-    return `constructor(props: Record<string, ${valueRef} | undefined> = {}) {\n${indent(body, 1)}\n}`;
+    return `constructor(props: ${GVALUE_RECORD} = {}) {\n${indent(body, 1)}\n}`;
 };
 
 const renderTranslatingConstructor = (ctx: ModuleContext, props: readonly GirProperty[], className: string): string => {
     ctx.addValueFromFfiOptionalImport();
+    ctx.addRuntimeImport("GValue");
     const destructured = props.map((property) => toIdentifier(toCamelCase(property.name)));
     const pattern = `{ ${[...destructured, "...rest"].join(", ")} }`;
     const entries = props.map(
         (property) =>
             `${quote(property.name)}: valueFromFfiOptional(${writeFfiType(ctx, property.type, property.transferOwnership)}, ${toIdentifier(toCamelCase(property.name))}),`,
     );
-    const superArg = `{\n${indent([...entries, "...rest,"].join("\n"), 1)}\n}`;
-    const body = `super(${superArg});`;
+    const recordLiteral = `{\n${indent(entries.join("\n"), 1)}\n}`;
+    const lines = [
+        `const props: ${GVALUE_RECORD} = ${recordLiteral};`,
+        "super({ ...props, ...rest });",
+    ];
+    const body = lines.join("\n");
     return `constructor(${pattern}: ${className}ConstructorProps = {}) {\n${indent(body, 1)}\n}`;
 };
 

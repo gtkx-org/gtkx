@@ -5,7 +5,6 @@ import {
     getNativeObject,
     getNativeObjectAsInterface,
     type NativeClass,
-    NativeObject,
     setClassGType,
 } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/gi/gdk";
@@ -18,7 +17,7 @@ const INVALID_GTYPE: GType = 0;
 
 describe("setClassGType", () => {
     it("registers a class by GType", () => {
-        class TestClass extends NativeObject {}
+        class TestClass {}
         const fakeGtype: GType = 123456789;
         setClassGType(TestClass as NativeClass, fakeGtype);
         expect(findNativeClass(fakeGtype)).toBe(TestClass);

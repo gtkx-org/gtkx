@@ -9,7 +9,7 @@ import { quote } from "@gtkx/utils";
  * everything else to raw TS strings the writers compose themselves.
  */
 export class ImportsManifest {
-    private readonly named = new Map<string, Set<string>>();
+    private readonly named = new Map<string, Map<string, boolean>>();
     private readonly defaultNames = new Map<string, string>();
     private readonly namespaces = new Map<string, string>();
     private readonly sideEffects = new Set<string>();
@@ -18,18 +18,21 @@ export class ImportsManifest {
      * Records a named import: `import { foo, bar } from "lib"`.
      *
      * Repeated calls deduplicate; the final emit alphabetises within the
-     * braces.
+     * braces. A name is emitted with the inline `type` modifier only when
+     * every recording of it is type-only — a single value import of the same
+     * name keeps it a value import.
      *
      * @param specifier - The module specifier (e.g. `"../../runtime.js"`)
      * @param name - The identifier to import
+     * @param isType - Whether this recording is type-only (`import { type X }`)
      */
-    addNamed(specifier: string, name: string): void {
+    addNamed(specifier: string, name: string, isType = false): void {
         let bucket = this.named.get(specifier);
         if (bucket === undefined) {
-            bucket = new Set();
+            bucket = new Map();
             this.named.set(specifier, bucket);
         }
-        bucket.add(name);
+        bucket.set(name, (bucket.get(name) ?? true) && isType);
     }
 
     /**
@@ -93,7 +96,9 @@ export class ImportsManifest {
             if (defaultAlias !== undefined) parts.push(defaultAlias);
             if (namespaceAlias !== undefined) parts.push(`* as ${namespaceAlias}`);
             if (namedNames !== undefined && namedNames.size > 0) {
-                const sortedNames = [...namedNames].sort((a, b) => a.localeCompare(b));
+                const sortedNames = [...namedNames.entries()]
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([name, isType]) => (isType ? `type ${name}` : name));
                 parts.push(`{ ${sortedNames.join(", ")} }`);
             }
             if (parts.length === 0) continue;

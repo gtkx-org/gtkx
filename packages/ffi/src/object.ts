@@ -1,7 +1,7 @@
 import { call, type NativeHandle } from "@gtkx/native";
 import { GValue } from "./gobject/gvalue-native.js";
 import { GVALUE_BORROWED, GVALUE_SIZE, LIBGOBJECT } from "./gtype.js";
-import { getHandle, type NativeClass, type NativeObject, setHandle, tryGetHandle } from "./handles.js";
+import { type GTyped, getHandle, type NativeClass, setHandle, tryGetHandle } from "./handles.js";
 import { t } from "./helpers.js";
 import { linkInstanceState } from "./instance-state.js";
 import { setPendingConstruction } from "./pending-construction.js";
@@ -59,7 +59,7 @@ export function constructGObjectInstance(instance: object, props: Record<string,
 
     if (tryGetHandle(instance) === undefined) {
         setHandle(instance, handle);
-        registerNativeObject(instance as NativeObject);
+        registerNativeObject(instance as GTyped);
     }
     const linked = tryGetHandle(instance);
     if (linked !== undefined) linkInstanceState(linked, instance);

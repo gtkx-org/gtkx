@@ -1,4 +1,4 @@
-import { toCamelCase, toIdentifier } from "@gtkx/utils";
+import { toCamelCase, toIdentifier, toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import type { GirFunction } from "../gir/function.js";
 import {
@@ -47,12 +47,15 @@ const renderInputParameters = (
     isOptionalExtra: (parameter: GirParameter) => boolean,
 ): string => {
     const parts: string[] = [];
+    let sawOptional = false;
     for (const { parameter, index } of inputParameters(fn)) {
         if (skip(parameter)) continue;
         const name = parameterIdentifier(parameter, index);
-        const optional = parameter.nullable || parameter.optional || isOptionalExtra(parameter);
+        if (parameter.optional || isOptionalExtra(parameter)) {
+            sawOptional = true;
+        }
         const annotation = writeTsType(ctx, parameter.type, parameter.nullable);
-        parts.push(optional ? `${name}?: ${annotation}` : `${name}: ${annotation}`);
+        parts.push(sawOptional ? `${name}?: ${annotation}` : `${name}: ${annotation}`);
     }
     return parts.join(", ");
 };
@@ -139,7 +142,8 @@ export const writeMethodReturnType = (ctx: ModuleContext, fn: GirFunction): stri
     const consumedByReturn = returnArrayLengthIndices(fn);
     const outs = fn.parameters.filter(
         (p, index) =>
-            (isOutParameter(p) || isCallerAllocatedOut(p) || isInoutParameter(p)) && !consumedByReturn.has(index),
+            (isOutParameter(p) || (isCallerAllocatedOut(p) && isCollectibleCallerOut(ctx, p)) || isInoutParameter(p)) &&
+            !consumedByReturn.has(index),
     );
     const primaryReturnsValue = !isVoidReturn(fn);
     if (outs.length === 0) {
@@ -172,12 +176,36 @@ const isVoidReturn = (fn: GirFunction): boolean => {
  * Constructors use this to force the result to be wrapped as the owning
  * class even when the GIR `<return-value>` is typed as a parent class.
  */
-export type ReturnOverride = {
-    /** Local class identifier to pass as the second argument of `getNativeObject`. */
-    readonly className: string;
-    /** Kind of wrapping helper to use. */
-    readonly via: "class" | "interface";
-};
+export type ReturnOverride =
+    | {
+          /**
+           * Resolve the wrapper from the value's runtime GLib type, so a
+           * constructor that hands back a subclass instance (e.g.
+           * `ShortcutTrigger.parseString` returning a `KeyvalTrigger`) keeps
+           * its concrete class and identity registration.
+           */
+          readonly via: "gobject";
+      }
+    | {
+          /** Local interface identifier to fall back to when no registered class conforms. */
+          readonly className: string;
+          /**
+           * Resolve the wrapper from the runtime type, walking to the closest
+           * registered ancestor that still implements the interface and falling
+           * back to the interface class itself — the path interface-typed values
+           * take so a private implementation type still exposes the interface.
+           */
+          readonly via: "interface";
+      }
+    | {
+          /** Local class identifier to pass as the second argument of `getNativeObject`. */
+          readonly className: string;
+          /**
+           * Wrap as the exact value-type class. Boxed records carry no runtime
+           * GObject type instance, so the class must be supplied explicitly.
+           */
+          readonly via: "boxed";
+      };
 
 /**
  * Renders the JS body of a promisified `*_async` method that delegates to
@@ -385,7 +413,7 @@ type AppendOutRefOptions = {
 const appendOutRef = (options: AppendOutRefOptions): void => {
     const { ctx, parameter, builder } = options;
     const refName = `out${builder.outRefs.length}`;
-    builder.setup.push(`const ${refName} = { value: ${outRefInitial(ctx, parameter.type)} };`);
+    builder.setup.push(`const ${refName}: { value: unknown } = { value: ${outRefInitial(ctx, parameter.type)} };`);
     registerRefArg(options, refName);
 };
 
@@ -441,7 +469,7 @@ const namedInitial = (ctx: ModuleContext, ref: NamedTypeRef): string => {
 const appendInoutRef = (options: AppendOutRefOptions): void => {
     const { ctx, parameter, index, builder } = options;
     const refName = `inout${builder.outRefs.length}`;
-    builder.setup.push(`const ${refName} = { value: ${parameterCallExpression(ctx, parameter, index)} };`);
+    builder.setup.push(`const ${refName}: { value: unknown } = { value: ${parameterCallExpression(ctx, parameter, index)} };`);
     registerRefArg(options, refName);
 };
 
@@ -515,7 +543,7 @@ const appendReturn = (
             : wrapReturnValue(ctx, {
                   ref: ref.type,
                   transfer: "full",
-                  nullable: ref.nullable,
+                  nullable: false,
                   valueExpression: `${ref.name}.value`,
               }),
     );
@@ -551,16 +579,26 @@ export const needsRefArg = (ctx: ModuleContext, parameter: GirParameter): boolea
     return !passesHandleDirectly;
 };
 
+/**
+ * Whether a caller-allocated-out parameter is one the body can materialize and
+ * collect into the return — a boxed record or class the runtime can allocate
+ * via its wrapper constructor. Array and other caller-out buffers cannot be
+ * allocated here, so they are excluded from both the body and the return type.
+ */
+const isCollectibleCallerOut = (ctx: ModuleContext, parameter: GirParameter): boolean => {
+    if (parameter.type === undefined || parameter.type.kind !== "named") return false;
+    const resolved = ctx.repository.resolveNamed(parameter.type.namespaceName ?? ctx.namespace.name, parameter.type.typeName);
+    return resolved?.kind === "boxed" || resolved?.kind === "class";
+};
+
 const allocateCallerOut = (
     ctx: ModuleContext,
     parameter: GirParameter,
     index: number,
 ): { readonly setup: string; readonly callArg: string; readonly returnExpression: string } | undefined => {
     if (parameter.type === undefined || parameter.type.kind !== "named") return undefined;
+    if (!isCollectibleCallerOut(ctx, parameter)) return undefined;
     const owner = parameter.type.namespaceName ?? ctx.namespace.name;
-    const resolved = ctx.repository.resolveNamed(owner, parameter.type.typeName);
-    if (resolved === undefined) return undefined;
-    if (resolved.kind !== "boxed" && resolved.kind !== "class") return undefined;
     const local = `__out${index}`;
     const classExpression = qualifiedRuntimeReference(ctx, owner, parameter.type.typeName);
     ctx.addRuntimeImport("getHandle");
@@ -663,13 +701,13 @@ const renderCallbackArgument = (ctx: ModuleContext, resolved: ResolvedCallback, 
     const returnRef = qualifyTypeRef(callback.returnValue.type, namespaceName);
     if (outArgIndices.length > 0) {
         const body = renderTupleWriteback(ctx, `${name}(${callArgs})`, outArgIndices, returnRef);
-        return `${name} ? (...args) => {\n    ${body}\n} : null`;
+        return `${name} ? (...args: unknown[]) => {\n    ${body}\n} : null`;
     }
     if (returnRef !== undefined && isHandlePassing(ctx, returnRef)) {
         ctx.addRuntimeImport("getHandle");
-        return `${name} ? (...args) => {\n    const _result = ${name}(${callArgs});\n    return _result != null ? getHandle(_result) : null;\n} : null`;
+        return `${name} ? (...args: unknown[]) => {\n    const _result = ${name}(${callArgs});\n    return _result != null ? getHandle(_result) : null;\n} : null`;
     }
-    return `${name} ? (...args) => ${name}(${callArgs}) : null`;
+    return `${name} ? (...args: unknown[]) => ${name}(${callArgs}) : null`;
 };
 
 /**
@@ -744,6 +782,17 @@ export const isHandlePassing = (ctx: ModuleContext, ref: GirTypeRef): boolean =>
     }
 };
 
+/**
+ * Casts a raw FFI call result to a native handle so the registry wrappers
+ * (`getNativeObject` / `getNativeObjectAsInterface`) accept it. The cast widens
+ * to `NativeHandle | null` for a GIR-nullable value so the wrapper result type
+ * stays nullable, matching the declared return.
+ */
+const handleCast = (ctx: ModuleContext, valueExpression: string, nullable: boolean): string => {
+    ctx.addRuntimeTypeImport("NativeHandle");
+    return `${valueExpression} as NativeHandle${nullable ? " | null" : ""}`;
+};
+
 const wrapPrimary = (
     ctx: ModuleContext,
     fn: GirFunction,
@@ -751,12 +800,17 @@ const wrapPrimary = (
     returnAs: ReturnOverride | undefined,
 ): string => {
     if (returnAs !== undefined) {
-        if (returnAs.via === "class") {
+        const handle = handleCast(ctx, valueExpression, false);
+        if (returnAs.via === "gobject") {
             ctx.addRuntimeImport("getNativeObject");
-            return `getNativeObject(${valueExpression}, ${returnAs.className})`;
+            return `getNativeObject(${handle})`;
+        }
+        if (returnAs.via === "boxed") {
+            ctx.addRuntimeImport("getNativeObject");
+            return `getNativeObject(${handle}, ${returnAs.className})`;
         }
         ctx.addRuntimeImport("getNativeObjectAsInterface");
-        return `getNativeObjectAsInterface(${valueExpression}, ${returnAs.className})`;
+        return `getNativeObjectAsInterface(${handle}, ${returnAs.className})`;
     }
     return wrapReturnValue(ctx, {
         ref: fn.returnValue.type,
@@ -794,15 +848,17 @@ export const wrapReturnValue = (ctx: ModuleContext, options: WrapReturnOptions):
         case "primitive":
             return wrapPrimitive(ref, nullable, valueExpression);
         case "named":
-            return wrapNamed(ctx, ref, valueExpression);
+            return wrapNamed(ctx, ref, valueExpression, nullable);
         case "array":
-            return wrapCollection(ctx, ref.element, valueExpression);
+            return wrapCollection(ctx, ref.element, valueExpression, nullable);
         case "list":
             return ref.flavor === "gbytearray"
-                ? `(${valueExpression} as number[])`
-                : wrapCollection(ctx, ref.element, valueExpression);
+                ? `(${valueExpression} as number[]${nullable ? " | null" : ""})`
+                : wrapCollection(ctx, ref.element, valueExpression, nullable);
         case "hashtable":
-            return `new globalThis.Map(${valueExpression} as Iterable<readonly [unknown, unknown]>)`;
+            return nullable
+                ? `(${valueExpression} === null ? null : new globalThis.Map(${valueExpression} as Iterable<readonly [unknown, unknown]>))`
+                : `new globalThis.Map(${valueExpression} as Iterable<readonly [unknown, unknown]>)`;
         case "callback":
         case "varargs":
             return `(${valueExpression} as unknown[])`;
@@ -819,10 +875,20 @@ export const wrapReturnValue = (ctx: ModuleContext, options: WrapReturnOptions):
  * return of the same type receives) while primitive and enum elements pass
  * through untouched.
  */
-const wrapCollection = (ctx: ModuleContext, element: GirTypeRef | undefined, valueExpression: string): string => {
+const wrapCollection = (
+    ctx: ModuleContext,
+    element: GirTypeRef | undefined,
+    valueExpression: string,
+    nullable: boolean,
+): string => {
     const itemExpression = collectionItemWrap(ctx, element);
-    if (itemExpression === undefined) return `(${valueExpression} as unknown[])`;
-    return `(${valueExpression} as unknown[]).map((item) => ${itemExpression})`;
+    if (itemExpression === undefined) {
+        const elementTs = element === undefined ? "unknown" : writeTsType(ctx, element, false);
+        return `(${valueExpression} as ${elementTs}[]${nullable ? " | null" : ""})`;
+    }
+    return nullable
+        ? `((${valueExpression} as unknown[] | null)?.map((item) => ${itemExpression}) ?? null)`
+        : `(${valueExpression} as unknown[]).map((item) => ${itemExpression})`;
 };
 
 const collectionItemWrap = (ctx: ModuleContext, element: GirTypeRef | undefined): string | undefined => {
@@ -831,16 +897,16 @@ const collectionItemWrap = (ctx: ModuleContext, element: GirTypeRef | undefined)
     const resolved = ctx.repository.resolveNamed(owner, element.typeName);
     if (resolved === undefined) {
         ctx.addRuntimeImport("getNativeObject");
-        return "getNativeObject(item)";
+        return `getNativeObject(${handleCast(ctx, "item", false)})`;
     }
     switch (resolved.kind) {
         case "class":
         case "boxed":
             ctx.addRuntimeImport("getNativeObject");
-            return "getNativeObject(item)";
+            return `getNativeObject(${handleCast(ctx, "item", false)})`;
         case "interface": {
             ctx.addRuntimeImport("getNativeObjectAsInterface");
-            return `getNativeObjectAsInterface(item, ${qualifiedRuntimeReference(ctx, owner, element.typeName)})`;
+            return `getNativeObjectAsInterface(${handleCast(ctx, "item", false)}, ${qualifiedRuntimeReference(ctx, owner, element.typeName)})`;
         }
         case "alias":
             return resolved.target === undefined
@@ -865,51 +931,56 @@ const wrapPrimitive = (ref: PrimitiveTypeRef, nullable: boolean, valueExpression
     return `(${valueExpression} as number)`;
 };
 
-const wrapNamed = (ctx: ModuleContext, ref: NamedTypeRef, valueExpression: string): string => {
+const wrapNamed = (ctx: ModuleContext, ref: NamedTypeRef, valueExpression: string, nullable: boolean): string => {
     const owner = ref.namespaceName ?? ctx.namespace.name;
     const resolved = ctx.repository.resolveNamed(owner, ref.typeName);
     if (resolved === undefined) {
         ctx.addRuntimeImport("getNativeObject");
-        return `getNativeObject(${valueExpression})`;
+        return `getNativeObject(${handleCast(ctx, valueExpression, nullable)})`;
     }
-    return wrapResolved(ctx, resolved, { namespaceName: owner, typeName: ref.typeName, valueExpression });
+    return wrapResolved(ctx, resolved, { namespaceName: owner, typeName: ref.typeName, valueExpression, nullable });
 };
 
 type WrapResolvedTarget = {
     readonly namespaceName: string;
     readonly typeName: string;
     readonly valueExpression: string;
+    readonly nullable: boolean;
 };
 
 const wrapResolved = (ctx: ModuleContext, resolved: ResolvedNamed, target: WrapResolvedTarget): string => {
-    const { namespaceName, typeName, valueExpression } = target;
+    const { namespaceName, typeName, valueExpression, nullable } = target;
     switch (resolved.kind) {
         case "class": {
             ctx.addRuntimeImport("getNativeObject");
-            return `getNativeObject(${valueExpression})`;
+            return `getNativeObject(${handleCast(ctx, valueExpression, nullable)})`;
         }
         case "interface": {
             const classExpression = qualifiedRuntimeReference(ctx, namespaceName, typeName);
             ctx.addRuntimeImport("getNativeObjectAsInterface");
-            return `getNativeObjectAsInterface(${valueExpression}, ${classExpression})`;
+            return `getNativeObjectAsInterface(${handleCast(ctx, valueExpression, nullable)}, ${classExpression})`;
         }
         case "boxed": {
             const classExpression = qualifiedRuntimeReference(ctx, namespaceName, typeName);
             ctx.addRuntimeImport("getNativeObject");
-            return `getNativeObject(${valueExpression}, ${classExpression})`;
+            return `getNativeObject(${handleCast(ctx, valueExpression, nullable)}, ${classExpression})`;
         }
         case "enum":
             return `(${valueExpression} as number)`;
         case "callback":
-        case "alias":
             return valueExpression;
+        case "alias":
+            return resolved.targetRef === undefined
+                ? valueExpression
+                : wrapReturnValue(ctx, { ref: resolved.targetRef, transfer: "full", nullable, valueExpression });
     }
 };
 
 const qualifiedRuntimeReference = (ctx: ModuleContext, namespaceName: string, typeName: string): string => {
-    if (namespaceName === ctx.namespace.name) return typeName;
+    const local = toPascalCase(typeName);
+    if (namespaceName === ctx.namespace.name) return local;
     const alias = ctx.addCrossNamespaceImport(namespaceName);
-    return `${alias}.${typeName}`;
+    return `${alias}.${local}`;
 };
 
 const errorClassReference = (ctx: ModuleContext): string => {

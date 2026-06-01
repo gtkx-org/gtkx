@@ -44,7 +44,7 @@ describe("promisify", () => {
             (args[args.length - 1] as (source: NativeHandle, result: NativeHandle) => void)(handle(1), rawResult);
         };
 
-        return promisify(asyncFn, (result) => getHandle(result), undefined, { leading: [] }).then((resolvedHandle) => {
+        return promisify(asyncFn, (result: object) => getHandle(result), undefined, { leading: [] }).then((resolvedHandle) => {
             expect(resolvedHandle).toBe(rawResult);
         });
     });

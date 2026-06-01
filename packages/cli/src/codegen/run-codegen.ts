@@ -139,13 +139,18 @@ const namespaceBarrelPath = (giStoreDir: string, library: string): string => {
 };
 
 /**
- * Returns true if the injected `@gtkx/gi` (or, when React is present,
- * `@gtkx/react-jsx`) package is missing a required module or its visible alias.
+ * Returns true if the injected `@gtkx/gi` (or, when the React stack — both
+ * `@gtkx/react` and the `react` runtime — is present, `@gtkx/react-jsx`)
+ * package is missing a required module or its visible alias.
  *
  * Used by `gtkx dev`/`gtkx build` and by {@link ensureGenerated} to auto-run
  * codegen when the store is absent, partial, or a newly configured library has
- * not been generated. Deeper staleness (changed GIR, codegen upgrades) is left
- * to the install lifecycle.
+ * not been generated. The jsx-freshness branch is gated on the same condition
+ * {@link runCodegen} uses to emit the jsx unit — both the `@gtkx/react` package
+ * and the `react` runtime resolving — so a project with `@gtkx/react` but no
+ * `react` runtime does not wedge on a jsx unit that can never be produced.
+ * Deeper staleness (changed GIR, codegen upgrades) is left to the install
+ * lifecycle.
  *
  * @param cwd - Project root
  * @param config - The user's resolved configuration
@@ -162,7 +167,7 @@ const isCodegenNeeded = (cwd: string, config: GtkxConfig): boolean => {
         if (libraries.some((library) => !existsSync(namespaceBarrelPath(store.giStoreDir, library)))) {
             return true;
         }
-        if (store.realReactDir !== null) {
+        if (store.realReactDir !== null && store.realReactRuntimeDir !== null) {
             if (!existsSync(store.jsxLinkDir)) return true;
             if (REACT_GENERATED_MODULES.some((module) => !existsSync(join(store.jsxStoreDir, module)))) return true;
         }

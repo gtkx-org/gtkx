@@ -9,21 +9,9 @@ export type { NativeHandle } from "@gtkx/native";
  * boxed wrapper produced by `@gtkx/ffi` satisfies this interface; consumers
  * that need the runtime `GType` of an instance read it through this type.
  */
-export interface GTypeStamped {
+export interface GTyped {
     /** Runtime GType of the underlying GObject or boxed instance. */
     __gtype__: GType;
-}
-
-/**
- * Internal abstract base for hand-written `@gtkx/ffi` native wrappers such as
- * the cairo `Matrix`. Generated wrapper classes do not extend it — GObject
- * roots delegate to `constructGObjectInstance` and boxed records allocate
- * inline in their own constructor. Also the wrapper type threaded through the
- * identity registry. Not exported from the public `@gtkx/ffi` surface.
- */
-export abstract class NativeObject implements GTypeStamped {
-    /** Runtime GType of the underlying GObject or boxed instance. */
-    declare __gtype__: GType;
 }
 
 /**

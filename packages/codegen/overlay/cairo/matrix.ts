@@ -1,5 +1,5 @@
 import type { NativeHandle } from "@gtkx/ffi";
-import { alloc, getHandle, NativeObject, registerNativeClass, t, wrapHandle } from "@gtkx/ffi";
+import { alloc, getHandle, registerNativeClass, t, wrapHandle } from "@gtkx/ffi";
 import type { Status } from "@gtkx/gi/cairo/cairo.js";
 import { DOUBLE_REF, DOUBLE_TYPE, INT_TYPE, LIB, MATRIX_T } from "./common.js";
 
@@ -70,7 +70,7 @@ const cairo_matrix_init_rotate = fn(
  * own functions. Instances are produced by the static `init*` factories and
  * mutated in place by the prototype methods.
  */
-export class Matrix extends NativeObject {
+export class Matrix {
     /**
      * Applies a translation to the transformation in `this` by `(tx, ty)`.
      */

@@ -1,8 +1,33 @@
 import { quote, toCamelCase, toIdentifier } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
+import type { GirFunction } from "../gir/function.js";
 import type { GirProperty } from "../gir/property.js";
+import type { GirTypeRef } from "../gir/type-ref.js";
+import { writeMethodReturnType } from "./method.js";
 import { writeTsType } from "./types-ts.js";
+
+/**
+ * Whether a GObject property of `type` can hold `null`.
+ *
+ * Reference values — objects, boxed records, interfaces, and containers —
+ * marshal to `null` when unset; scalar value types (numbers, booleans,
+ * strings, `unichar`, enums) are surfaced non-null to match their typed
+ * setters. Aliases resolve to their target.
+ *
+ * @param ctx - The module context
+ * @param type - The property's value type
+ */
+const isNullablePropertyType = (ctx: ModuleContext, type: GirTypeRef | undefined): boolean => {
+    if (type === undefined) return false;
+    if (type.kind === "primitive") return false;
+    if (type.kind !== "named") return true;
+    const resolved = ctx.repository.resolveNamed(type.namespaceName ?? ctx.namespace.name, type.typeName);
+    if (resolved === undefined) return true;
+    if (resolved.kind === "enum") return false;
+    if (resolved.kind === "alias") return isNullablePropertyType(ctx, resolved.targetRef);
+    return true;
+};
 
 /**
  * Renders the `get` / `set` accessor pair for a single GObject property
@@ -22,20 +47,33 @@ export const renderPropertyAccessor = (
     ctx: ModuleContext,
     property: GirProperty,
     claimedMemberNames: ReadonlySet<string>,
+    methodByName: ReadonlyMap<string, GirFunction>,
 ): string | undefined => {
     const jsName = toIdentifier(toCamelCase(property.name));
     if (claimedMemberNames.has(jsName)) return undefined;
     if (jsName === "constructor") return undefined;
-    const tsType = writeTsType(ctx, property.type, true);
+
+    const writable = property.writable || property.construct || property.constructOnly;
+    const getterMember = delegateMember(property.getter, jsName, claimedMemberNames);
+    const getMethod =
+        getterMember !== undefined && property.getter !== undefined ? methodByName.get(property.getter) : undefined;
+    const setterMember = writable ? delegateMember(property.setter, jsName, claimedMemberNames) : undefined;
+    const setMethod =
+        setterMember !== undefined && property.setter !== undefined ? methodByName.get(property.setter) : undefined;
+    const setParam = setMethod?.parameters[0];
+
+    const tsType =
+        setParam !== undefined
+            ? writeTsType(ctx, setParam.type, setParam.nullable || setParam.optional)
+            : getMethod !== undefined
+              ? writeMethodReturnType(ctx, getMethod)
+              : writeTsType(ctx, property.type, isNullablePropertyType(ctx, property.type));
+
     const blocks: string[] = [];
-    const getterBody = delegateMember(property.getter, jsName, claimedMemberNames) ?? undefined;
-    const getBody =
-        getterBody !== undefined
-            ? `return this.${getterBody}() as ${tsType};`
-            : `return this.getProperty(${quote(property.name)}) as ${tsType};`;
+    const getBody = renderGetterBody(ctx, property, getterMember, getMethod, tsType);
     blocks.push(`get ${jsName}(): ${tsType} {\n${indent(getBody, 1)}\n}`);
-    if (property.writable || property.construct || property.constructOnly) {
-        const setterMember = delegateMember(property.setter, jsName, claimedMemberNames);
+
+    if (writable) {
         const setBody =
             setterMember !== undefined
                 ? `this.${setterMember}(value);`
@@ -43,6 +81,27 @@ export const renderPropertyAccessor = (
         blocks.push(`set ${jsName}(value: ${tsType}) {\n${indent(setBody, 1)}\n}`);
     }
     return blocks.join("\n\n");
+};
+
+/**
+ * Renders a property getter body.
+ *
+ * The property type follows the setter's parameter (what callers may assign),
+ * so a getter whose own GIR nullability differs is narrowed to it with a single
+ * assertion; matching nullability needs no cast. Properties with no typed
+ * getter read through the generic `getProperty` GValue path.
+ */
+const renderGetterBody = (
+    ctx: ModuleContext,
+    property: GirProperty,
+    getterMember: string | undefined,
+    getMethod: GirFunction | undefined,
+    tsType: string,
+): string => {
+    if (getterMember === undefined) return `return this.getProperty(${quote(property.name)}) as ${tsType};`;
+    if (getMethod === undefined) return `return this.${getterMember}() as ${tsType};`;
+    const getType = writeMethodReturnType(ctx, getMethod);
+    return getType === tsType ? `return this.${getterMember}();` : `return this.${getterMember}() as ${tsType};`;
 };
 
 /**

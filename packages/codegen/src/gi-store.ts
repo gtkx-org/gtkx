@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { resetDir, swapStore, symlinkRelative, tempStoreFor, writeFilePair, writePackageJson } from "./store-fs.js";
+import { swapStore, symlinkRelative, tempStoreFor, writeFilePair, writePackageJson } from "./store-fs.js";
 
 /**
  * Absolute path to the hand-written augment overlay shipped with `@gtkx/codegen`.
@@ -83,8 +83,10 @@ const barrelSource = (directory: string): string => {
  *
  * Writes every namespace's raw generated module, its augment overlay, and its
  * barrel into a temporary store, emits the `package.json` and gi's own
- * `node_modules/@gtkx/ffi` symlink, atomically swaps it into place, and points
- * the visible `node_modules/@gtkx/gi` alias at it.
+ * `node_modules/@gtkx/{ffi,gi}` symlinks — the self-referential `@gtkx/gi` link
+ * lets augment modules resolve sibling namespaces without relying on the
+ * project's top-level alias — swaps it into place, and points the visible
+ * `node_modules/@gtkx/gi` alias at it.
  *
  * @param options - Resolved store/link/dependency paths
  * @param namespaces - Per-namespace raw module inputs
@@ -93,16 +95,16 @@ export const writeGiStore = (options: GiStoreOptions, namespaces: readonly GiNam
     const standaloneOverlays = readdirSync(OVERLAY_ROOT).filter(
         (name) => isAugmented(name) && !barrelNeedsGenerated(name),
     );
+    const standaloneSet = new Set(standaloneOverlays);
     const directories = new Set<string>([...namespaces.map((n) => n.directory), ...standaloneOverlays]);
     const rawByDirectory = new Map(namespaces.map((n) => [n.directory, n.rawSource]));
 
     const tmp = tempStoreFor(options.storeDir);
-    resetDir(tmp);
 
     const exportsMap: Record<string, unknown> = { "./package.json": "./package.json" };
 
     for (const directory of directories) {
-        const rawSource = rawByDirectory.get(directory) ?? null;
+        const rawSource = standaloneSet.has(directory) ? null : (rawByDirectory.get(directory) ?? null);
         if (rawSource !== null) {
             writeFilePair(tmp, `${directory}/${directory}`, `${directory}/${directory}.ts`, rawSource);
             exportsMap[`./${directory}/${directory}.js`] = {
@@ -131,6 +133,7 @@ export const writeGiStore = (options: GiStoreOptions, namespaces: readonly GiNam
     });
 
     symlinkRelative(join(tmp, "node_modules", "@gtkx", "ffi"), options.realFfiDir);
+    symlinkRelative(join(tmp, "node_modules", "@gtkx", "gi"), tmp);
 
     swapStore(tmp, options.storeDir, options.linkDir);
 };

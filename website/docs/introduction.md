@@ -21,7 +21,9 @@ Your app (JSX intrinsic elements)
  ↓
 @gtkx/react (reconciler)
  ↓
-@gtkx/ffi (TypeScript bindings)
+@gtkx/gi (generated TypeScript bindings)
+ ↓
+@gtkx/ffi (runtime + GValue/GType)
  ↓
 @gtkx/native (Rust/Neon/libffi)
  ↓

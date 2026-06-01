@@ -66,6 +66,7 @@ const buildBoxedMembers = (
         className,
         callables,
         hasGType: boxed.glibGetType !== undefined,
+        wrap: "boxed",
     });
     members.unshift(renderBoxedConstructor(ctx, boxed, className));
     const { slots } = computeBoxedFieldSlots(ctx, boxed.fields, boxed.isUnion);

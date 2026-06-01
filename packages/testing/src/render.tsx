@@ -1,4 +1,3 @@
-import { stop } from "@gtkx/ffi";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { ApplicationContext, GtkApplicationWindow, reconciler, setReconcilerErrorHandler } from "@gtkx/react";
@@ -163,11 +162,3 @@ export const cleanup = async (): Promise<void> => {
     container = null;
     setScreenRoot(null);
 };
-
-const handleSignal = (): void => {
-    stop().catch(() => {});
-    process.exit(0);
-};
-
-process.on("SIGTERM", handleSignal);
-process.on("SIGINT", handleSignal);

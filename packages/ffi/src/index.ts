@@ -16,7 +16,6 @@ export { readBoxed, writeBoxed } from "./gobject/gvalue.js";
 export { GValue, setVariantClass } from "./gobject/gvalue-native.js";
 export { Type } from "./gobject/types.js";
 export * from "./gtype.js";
-export { NativeObject } from "./handles.js";
 export * from "./lifecycle.js";
 export type { ErrorDomain, GError, Type as FfiType } from "./native.js";
 export { findObjectProperty, getInstanceGType } from "./native.js";

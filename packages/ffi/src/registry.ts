@@ -1,13 +1,6 @@
 import { getInstanceGType, getNativeId, type NativeHandle } from "@gtkx/native";
 import { G_TYPE_INVALID, type GType, typeFromName, typeIsA, typeParent } from "./gtype.js";
-import {
-    type GTypeStamped,
-    getHandle,
-    type NativeClass,
-    type NativeObject,
-    setHandle,
-    tryGetHandle,
-} from "./handles.js";
+import { type GTyped, getHandle, type NativeClass, setHandle, tryGetHandle } from "./handles.js";
 import { linkInstanceState } from "./instance-state.js";
 import { getPendingConstruction } from "./pending-construction.js";
 
@@ -30,7 +23,7 @@ export function setClassGType(cls: NativeClass, gtype: GType): void {
     if (gtype !== G_TYPE_INVALID) {
         classRegistry.set(gtype, cls);
         gtypeByClass.set(cls, gtype);
-        (cls.prototype as GTypeStamped).__gtype__ = gtype;
+        (cls.prototype as GTyped).__gtype__ = gtype;
     }
 }
 
@@ -49,7 +42,7 @@ export function setClassGType(cls: NativeClass, gtype: GType): void {
 export function setInterfaceGType(cls: NativeClass, gtype: GType): void {
     if (gtype !== G_TYPE_INVALID) {
         interfaceGtypeByClass.set(cls, gtype);
-        (cls.prototype as GTypeStamped).__gtype__ = gtype;
+        (cls.prototype as GTyped).__gtype__ = gtype;
     }
 }
 
@@ -181,7 +174,7 @@ export const findNativeClassForInterface = (gtype: GType, interfaceGtype: GType)
     return null;
 };
 
-const objectRegistry = new Map<number, WeakRef<NativeObject>>();
+const objectRegistry = new Map<number, WeakRef<GTyped>>();
 
 const cleanupObjectRegistry = new FinalizationRegistry<number>((pointerId) => {
     objectRegistry.delete(pointerId);
@@ -196,7 +189,7 @@ const cleanupObjectRegistry = new FinalizationRegistry<number>((pointerId) => {
  *
  * @param obj - The native object wrapper to register
  */
-export function registerNativeObject(obj: NativeObject): void {
+export function registerNativeObject(obj: GTyped): void {
     const pointerId = getNativeId(getHandle(obj));
     objectRegistry.set(pointerId, new WeakRef(obj));
     cleanupObjectRegistry.register(obj, pointerId, obj);
@@ -212,7 +205,7 @@ export function registerNativeObject(obj: NativeObject): void {
  * @param handle - The native handle to look up
  * @returns The existing wrapper, or null if not found
  */
-export function findNativeObject(handle: NativeHandle): NativeObject | null {
+export function findNativeObject(handle: NativeHandle): GTyped | null {
     const pointerId = getNativeId(handle);
     const ref = objectRegistry.get(pointerId);
 
@@ -256,8 +249,8 @@ export function getNativeObject<T extends object>(
     targetType: NativeClass<T>,
 ): T | null;
 export function getNativeObject(handle: null | undefined): null;
-export function getNativeObject<T extends object = NativeObject>(handle: NativeHandle): T;
-export function getNativeObject<T extends object = NativeObject>(handle: NativeHandle | null | undefined): T | null;
+export function getNativeObject<T extends object = GTyped>(handle: NativeHandle): T;
+export function getNativeObject<T extends object = GTyped>(handle: NativeHandle | null | undefined): T | null;
 export function getNativeObject(handle: NativeHandle | null | undefined, targetType?: NativeClass): object | null {
     if (handle === null || handle === undefined) {
         return null;
@@ -282,7 +275,7 @@ export function getNativeObject(handle: NativeHandle | null | undefined, targetT
     const adopted = tryAdoptPendingConstruction(handle, cls);
     if (adopted) return adopted;
 
-    const instance = wrapHandle(cls, handle) as NativeObject;
+    const instance = wrapHandle(cls, handle) as GTyped;
     registerNativeObject(instance);
     return instance;
 }
@@ -297,14 +290,14 @@ export function getNativeObject(handle: NativeHandle | null | undefined, targetT
  * subclass wrapper to a base-class handle and break identity for any later
  * lookup of the genuine subclass instance.
  */
-function tryAdoptPendingConstruction(handle: NativeHandle, cls: NativeClass): NativeObject | null {
+function tryAdoptPendingConstruction(handle: NativeHandle, cls: NativeClass): GTyped | null {
     const pending = getPendingConstruction();
     if (!pending) return null;
     if (pending.constructor !== cls) return null;
     if (tryGetHandle(pending) !== undefined) return null;
     setHandle(pending, handle);
-    registerNativeObject(pending as NativeObject);
-    return pending as NativeObject;
+    registerNativeObject(pending as GTyped);
+    return pending as GTyped;
 }
 
 /**
@@ -346,7 +339,7 @@ export function getNativeObjectAsInterface<T extends NativeHandle | null | undef
     const cls = findNativeClassForInterface(runtimeGtype, interfaceGtype) ?? interfaceClass;
     const adopted = tryAdoptPendingConstruction(handle, cls);
     if (adopted) return adopted as Result;
-    const instance = wrapHandle(cls, handle) as NativeObject;
+    const instance = wrapHandle(cls, handle) as GTyped;
     registerNativeObject(instance);
     return instance as Result;
 }

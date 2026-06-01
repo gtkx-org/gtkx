@@ -6,6 +6,7 @@ import type { FieldSlot } from "../gir/size.js";
 import type { GirTypeRef } from "../gir/type-ref.js";
 import { type BoxedFieldSlot, computeBoxedFieldSlots } from "./boxed-layout.js";
 import { typeRefIsClassStruct } from "./class-struct-record.js";
+import { wrapReturnValue } from "./method.js";
 import { writeTsType } from "./types-ts.js";
 import { writeFfiType } from "./value.js";
 
@@ -49,7 +50,7 @@ export const renderBoxedFieldAccessor = (
 
     const ffiType = writeFfiType(ctx, field.type, "none");
     const tsType = writeTsType(ctx, field.type, false);
-    const accessorOptions: AccessorOptions = { ctx, jsName, tsType, ffiType, slot: slot.slot };
+    const accessorOptions: AccessorOptions = { ctx, jsName, tsType, ffiType, slot: slot.slot, fieldType: field.type };
     const blocks: string[] = [getterBlock(accessorOptions)];
     if (field.writable) {
         blocks.push(setterBlock(accessorOptions));
@@ -248,14 +249,17 @@ type AccessorOptions = {
     readonly tsType: string;
     readonly ffiType: string;
     readonly slot: FieldSlot;
+    readonly fieldType: GirTypeRef;
 };
 
 const getterBlock = (options: AccessorOptions): string => {
-    const { ctx, jsName, tsType, ffiType, slot } = options;
+    const { ctx, jsName, tsType, ffiType, slot, fieldType } = options;
     ctx.addRuntimeImport("read");
     ctx.addRuntimeImport("getHandle");
     if (slot.bitWidth === undefined) {
-        const body = `return read(getHandle(this), ${ffiType}, ${slot.byteOffset}) as ${tsType};`;
+        const valueExpression = `read(getHandle(this), ${ffiType}, ${slot.byteOffset})`;
+        const wrapped = wrapReturnValue(ctx, { ref: fieldType, transfer: "none", nullable: false, valueExpression });
+        const body = `return ${wrapped};`;
         return `get ${jsName}(): ${tsType} {\n${indent(body, 1)}\n}`;
     }
     const mask = bitMask(slot.bitWidth);

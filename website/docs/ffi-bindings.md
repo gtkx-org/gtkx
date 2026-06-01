@@ -2,13 +2,39 @@
 
 ## Importing GTK/GLib Bindings
 
-All GTK and GLib bindings are available through the `@gtkx/ffi` package. You can import entire libraries or specific functions and types as needed. For a full list of available bindings, see the [girs](https://github.com/gtkx/gtkx/tree/main/girs) directory in the GTKX repo.
+All GTK and GLib bindings are available through the `@gtkx/gi` package. You can import entire libraries or specific functions and types as needed. For a full list of available bindings, see the [girs](https://github.com/gtkx/gtkx/tree/main/girs) directory in the GTKX repo.
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 ```
+
+## Running an Application
+
+The GLib main loop runs on a dedicated thread that starts as soon as `@gtkx/ffi` is loaded, so a plain (non-React) application keeps the loop alive without you running it yourself. Drive the application through `register` and `activate` and build your widgets in the `activate` handler:
+
+```tsx
+import * as Gio from "@gtkx/gi/gio";
+import * as Gtk from "@gtkx/gi/gtk";
+
+const app = new Gtk.Application({
+    applicationId: "com.example.myapp",
+    flags: Gio.ApplicationFlags.NON_UNIQUE,
+});
+
+app.on("activate", () => {
+    const window = new Gtk.ApplicationWindow({ application: app, title: "Hello" });
+    window.present();
+});
+
+app.register(null);
+app.activate();
+```
+
+Do **not** call `Gio.Application.run`: it blocks the JavaScript thread for the lifetime of the application, which prevents Node.js from servicing timers, promises, and — most importantly — signal handlers.
+
+`SIGINT` (Ctrl+C), `SIGTERM`, and `SIGHUP` are handled automatically: the runtime routes the signal through {@link stop} to quit the main loop and drain finalizers before exiting with the signal's conventional code. To shut down from code, call `stop()` directly. Embedders that own process signals can suppress the handlers by setting `GTKX_DISABLE_SHUTDOWN_HANDLERS=1`.
 
 ## Async Methods
 

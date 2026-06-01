@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { resetDir, swapStore, symlinkRelative, tempStoreFor, writeFilePair, writePackageJson } from "./store-fs.js";
+import { swapStore, symlinkRelative, tempStoreFor, writeFilePair, writePackageJson } from "./store-fs.js";
 
 /**
  * Options for assembling the injected `@gtkx/react-jsx` unit.
@@ -31,7 +31,6 @@ const stem = (relativePath: string): string => relativePath.replace(/\.(tsx|ts)$
  */
 export const writeJsxStore = (options: JsxStoreOptions, files: ReadonlyMap<string, string>): void => {
     const tmp = tempStoreFor(options.storeDir);
-    resetDir(tmp);
 
     for (const [relativePath, source] of files) {
         writeFilePair(tmp, stem(relativePath), relativePath, source);

@@ -275,6 +275,9 @@ importers:
       '@gtkx/native':
         specifier: workspace:*
         version: link:../native
+      '@gtkx/utils':
+        specifier: workspace:*
+        version: link:../utils
     devDependencies:
       '@gtkx/vitest':
         specifier: workspace:*

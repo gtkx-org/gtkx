@@ -11,6 +11,16 @@ import type { Plugin } from "vitest/config";
  * projects use the combined `gtkx()` from `@gtkx/cli/vitest`, which layers the
  * GResource/asset plugins on top of this one.
  *
+ * Two settings keep the GObject identity registries on a single `@gtkx/ffi`
+ * instance. `server.deps.inline` transforms every `@gtkx/*` runtime package and
+ * the codegen-injected `@gtkx/gi`/`@gtkx/react-jsx` so their `@gtkx/ffi` imports
+ * resolve to the one source-built runtime; a second copy from `dist` would split
+ * the registries. `ssr.resolve.conditions` prefers each package's `source`
+ * export so every bare `@gtkx/*` import (including `@gtkx/ffi`, reached only
+ * through bare specifiers) loads its TypeScript source under one module
+ * identity, which also lets V8 attribute coverage to `src` rather than the
+ * unmappable `dist` build.
+ *
  * @returns Vitest plugin configuration
  *
  * @example
@@ -37,11 +47,6 @@ const gtkx = (): Plugin => {
                     setupFiles: [workerSetupPath, ...(Array.isArray(setupFiles) ? setupFiles : [setupFiles])],
                     pool: "forks",
                     server: {
-                        // Transform every `@gtkx/*` runtime package (and the
-                        // codegen-injected `@gtkx/gi`/`@gtkx/react-jsx`) so their
-                        // `@gtkx/ffi` imports all resolve to the one source-built
-                        // runtime the tests use. A second copy from `dist` would
-                        // split the identity registries.
                         deps: {
                             inline: [/@gtkx\/(ffi|gi|react|react-jsx|testing|css)/, /[/\\]\.gtkx[/\\]/],
                         },
@@ -49,13 +54,6 @@ const gtkx = (): Plugin => {
                 },
                 ssr: {
                     resolve: {
-                        // Prefer each workspace package's `source` export so every
-                        // `@gtkx/*` bare import (including `@gtkx/ffi`, reached only
-                        // through bare specifiers) loads its TypeScript source under
-                        // a single module identity. The Vitest module runner uses
-                        // these SSR conditions; resolving to `src` keeps the GObject
-                        // registries on one instance and lets V8 attribute coverage
-                        // to `src` rather than the unmappable `dist` build.
                         conditions: ["source", "module", "node", "development|production"],
                     },
                 },

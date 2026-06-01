@@ -36,6 +36,14 @@ export class ModuleContext {
         this.module.imports.addNamed("@gtkx/ffi", name);
     }
 
+    /**
+     * Adds a type-only named import from the `@gtkx/ffi` runtime barrel
+     * (`import { type Name }`), erased from the emitted `.js`.
+     */
+    addRuntimeTypeImport(name: string): void {
+        this.module.imports.addNamed("@gtkx/ffi", name, true);
+    }
+
     /** Adds the canonical `constructGObjectInstance` import from `@gtkx/ffi`. */
     addConstructGObjectInstanceImport(): void {
         this.module.imports.addNamed("@gtkx/ffi", "constructGObjectInstance");

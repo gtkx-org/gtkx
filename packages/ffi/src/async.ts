@@ -10,7 +10,7 @@
  */
 
 import type { NativeHandle } from "@gtkx/native";
-import { type NativeObject, setHandle, tryGetHandle } from "./handles.js";
+import { setHandle, tryGetHandle } from "./handles.js";
 
 /**
  * Wraps the raw `GAsyncResult*` handle delivered to a `GAsyncReadyCallback`
@@ -23,8 +23,8 @@ import { type NativeObject, setHandle, tryGetHandle } from "./handles.js";
  * module and serve no purpose, since the result object is transient and never
  * surfaces to callers.
  */
-const wrapAsyncResult = (rawResult: NativeHandle): NativeObject => {
-    const result = {} as NativeObject;
+const wrapAsyncResult = (rawResult: NativeHandle): object => {
+    const result: object = {};
     setHandle(result, rawResult);
     return result;
 };
@@ -39,8 +39,13 @@ type AsyncStartFn = (...args: unknown[]) => void;
 /**
  * The companion `*_finish` callable, already bound to its owner when the
  * async operation is an instance method.
+ *
+ * `TResult` is the concrete `GAsyncResult` wrapper the `*_finish` member
+ * declares (e.g. `Gio.AsyncResult`); inferring it from the supplied callable
+ * lets a typed `*_finish` flow through {@link promisify} without widening its
+ * parameter.
  */
-type AsyncFinishFn<R> = (result: NativeObject) => R;
+type AsyncFinishFn<R, TResult> = (result: TResult) => R;
 
 /**
  * Positional native arguments threaded through {@link promisify} into the
@@ -63,15 +68,16 @@ export type PromisifyArgs = {
  * throws (typically a `GError`).
  *
  * @typeParam R - The resolved value type, i.e. the `*_finish` return type.
+ * @typeParam TResult - The `GAsyncResult` wrapper type the `*_finish` member accepts.
  * @param asyncFn - The native `*_async` start callable.
  * @param finish - The companion `*_finish` callable; bound to its owner for instance methods.
  * @param cancellable - The optional `GCancellable`, or `null`/`undefined` when the operation takes none.
  * @param args - The leading and (optional) trailing native arguments to splice around the `GCancellable*` slot.
  * @returns A promise resolving with the `*_finish` result.
  */
-export const promisify = <R>(
+export const promisify = <R, TResult>(
     asyncFn: AsyncStartFn,
-    finish: AsyncFinishFn<R>,
+    finish: AsyncFinishFn<R, TResult>,
     cancellable: object | null | undefined,
     args: PromisifyArgs,
 ): Promise<R> =>
@@ -82,7 +88,7 @@ export const promisify = <R>(
             ...(args.trailing ?? []),
             (_source: NativeHandle, rawResult: NativeHandle) => {
                 try {
-                    resolve(finish(wrapAsyncResult(rawResult)));
+                    resolve(finish(wrapAsyncResult(rawResult) as TResult));
                 } catch (error) {
                     reject(error);
                 }

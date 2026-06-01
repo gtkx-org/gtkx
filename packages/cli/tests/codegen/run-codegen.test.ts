@@ -24,6 +24,18 @@ const installPackage = (cwd: string, name: string) => {
 
 const installFfiPackage = (cwd: string) => installPackage(cwd, "ffi");
 
+/**
+ * Installs `@gtkx/react` plus the bare `react` runtime so the jsx codegen path
+ * is active — `isCodegenNeeded` only considers the jsx unit when both resolve.
+ */
+const installReactStack = (cwd: string) => {
+    installPackage(cwd, "react");
+    const dir = join(cwd, "node_modules", "react");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "react", version: "19.0.0", main: "./index.js" }));
+    writeFileSync(join(dir, "index.js"), "");
+};
+
 const writeConfig = (cwd: string, body = `export default { libraries: ["Gtk-4.0"], girPath: ["${cwd}"] };`) => {
     writeFileSync(join(cwd, "gtkx.config.ts"), `${body}\n`);
 };
@@ -142,6 +154,7 @@ describe("preflightCodegen", () => {
     it("skips codegen when the gi and jsx stores are present", async () => {
         delete process.env.GTKX_DISABLE_PREFLIGHT;
         installFfiPackage(cwd);
+        installReactStack(cwd);
         writeConfig(cwd);
         writeGiBarrel(cwd, "gtk");
         writeJsxStore(cwd);
@@ -163,6 +176,7 @@ describe("ensureGenerated", () => {
 
     it("regenerates when the jsx unit is missing", async () => {
         installFfiPackage(cwd);
+        installReactStack(cwd);
         writeConfig(cwd);
         writeGiBarrel(cwd, "gtk");
 
@@ -171,9 +185,19 @@ describe("ensureGenerated", () => {
 
     it("does nothing when the gi and jsx stores are present", async () => {
         installFfiPackage(cwd);
+        installReactStack(cwd);
         writeConfig(cwd);
         writeGiBarrel(cwd, "gtk");
         writeJsxStore(cwd);
+
+        expect(await ensureGenerated(cwd)).toBe(false);
+    });
+
+    it("does not wedge on a missing jsx unit when the react runtime is absent", async () => {
+        installFfiPackage(cwd);
+        installPackage(cwd, "react");
+        writeConfig(cwd);
+        writeGiBarrel(cwd, "gtk");
 
         expect(await ensureGenerated(cwd)).toBe(false);
     });

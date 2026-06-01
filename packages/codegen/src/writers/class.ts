@@ -79,7 +79,7 @@ const buildClassMembers = (
     const constructorBlock = renderClassConstructor(ctx, klass, className, hasParent);
     if (constructorBlock !== undefined) members.push(constructorBlock);
     const claimedNames = new Set<string>();
-    members.push(...renderStaticHead(ctx, callables, className));
+    members.push(...renderStaticHead(ctx, callables, className, "gobject"));
     const inherited = collectInheritedMethods(ctx, klass);
     const methodByName = indexMethodsByName(callables.methods);
     appendInstanceMethods({
@@ -89,15 +89,16 @@ const buildClassMembers = (
         inherited,
         members,
         claimedNames,
+        className,
     });
     appendShadowedAliases({ ctx, methods: callables.methods, methodByName, members, claimedNames });
     appendFlattenedInterfaceMethods({ ctx, klass, inheritedNames: inherited.names, members, claimedNames });
     for (const property of klass.properties) {
-        const block = renderPropertyAccessor(ctx, property, claimedNames);
+        const block = renderPropertyAccessor(ctx, property, claimedNames, methodByName);
         if (block !== undefined) members.push(block);
     }
     for (const property of collectInterfaceProperties(ctx, klass)) {
-        const block = renderPropertyAccessor(ctx, property, claimedNames);
+        const block = renderPropertyAccessor(ctx, property, claimedNames, methodByName);
         if (block !== undefined) members.push(block);
     }
     members.push(...renderSignalMembers(ctx, klass));
@@ -111,17 +112,27 @@ type AppendInstanceMethodsOptions = {
     readonly inherited: InheritedMethods;
     readonly members: string[];
     readonly claimedNames: Set<string>;
+    readonly className: string;
 };
 
 const appendInstanceMethods = (options: AppendInstanceMethodsOptions): void => {
-    const { ctx, methods, methodByName, inherited, members, claimedNames } = options;
+    const { ctx, methods, methodByName, inherited, members, claimedNames, className } = options;
     for (const callable of methods) {
-        if (conflictsWithInherited(ctx, callable, inherited)) continue;
-        const block = renderClassInstanceMember(ctx, callable, methodByName);
+        const rename = conflictRename(ctx, callable, inherited, className);
+        const block = renderClassInstanceMember(ctx, callable, methodByName, rename);
         if (block === undefined) continue;
         members.push(block);
-        claimedNames.add(methodExportName(callable));
+        claimedNames.add(rename ?? methodExportName(callable));
     }
+};
+
+/**
+ * The disambiguated name a colliding instance method is emitted under:
+ * `<lowerClassName><MethodName>` (e.g. `iconViewSetCursor`).
+ */
+const generateConflictingMethodName = (className: string, methodName: string): string => {
+    const camel = toCamelCase(className);
+    return `${camel.charAt(0).toLowerCase()}${camel.slice(1)}${toPascalCase(methodName)}`;
 };
 
 type AppendFlattenedInterfaceMethodsOptions = {
@@ -187,17 +198,18 @@ const renderClassInstanceMember = (
     ctx: ModuleContext,
     callable: GirFunction,
     siblings: ReadonlyMap<string, GirFunction>,
+    nameOverride?: string,
 ): string | undefined => {
     if (!callable.introspectable || callable.shadowedBy !== undefined || callable.cIdentifier === undefined) {
         return undefined;
     }
-    const name = methodExportName(callable);
+    const name = nameOverride ?? methodExportName(callable);
     if (name === "constructor") return undefined;
     const override = renderRuntimeOverride(callable, name);
     if (override !== undefined) return override;
     const promisified = renderPromisifiedMember(ctx, callable, siblings, name);
     if (promisified !== undefined) return promisified;
-    return renderInstanceMethod(ctx, callable);
+    return renderInstanceMethod(ctx, callable, nameOverride);
 };
 
 const renderPromisifiedMember = (
@@ -294,15 +306,33 @@ const absorbInheritedInterfaceMethodNames = (
     }
 };
 
-const conflictsWithInherited = (ctx: ModuleContext, callable: GirFunction, inherited: InheritedMethods): boolean => {
-    if (!callable.introspectable) return false;
+/**
+ * The disambiguated name an instance method is emitted under when it collides
+ * incompatibly with an inherited method, or `undefined` when no rename applies.
+ *
+ * A collision is incompatible when the inherited method of the same name has a
+ * different return type, a distinct enum at a parameter position, or a
+ * different input-parameter arity — each of which would make the override
+ * structurally unassignable to its base. The colliding method is renamed so
+ * both it and the inherited method stay callable.
+ */
+const conflictRename = (
+    ctx: ModuleContext,
+    callable: GirFunction,
+    inherited: InheritedMethods,
+    className: string,
+): string | undefined => {
+    if (!callable.introspectable) return undefined;
     const name = methodExportName(callable);
     const inheritedReturn = inherited.returnTypes.get(name);
-    if (inheritedReturn === undefined) return false;
-    const ownReturn = writeTsType(ctx, callable.returnValue.type, callable.returnValue.nullable);
-    if (inheritedReturn !== ownReturn) return true;
     const inheritedMethod = inherited.definitions.get(name);
-    return inheritedMethod !== undefined && parameterEnumConflict(ctx, callable, inheritedMethod);
+    if (inheritedReturn === undefined || inheritedMethod === undefined) return undefined;
+    const ownReturn = writeTsType(ctx, callable.returnValue.type, callable.returnValue.nullable);
+    const conflicts =
+        inheritedReturn !== ownReturn ||
+        parameterEnumConflict(ctx, callable, inheritedMethod) ||
+        inputParameters(callable).length !== inputParameters(inheritedMethod.method).length;
+    return conflicts ? generateConflictingMethodName(className, callable.name) : undefined;
 };
 
 /**

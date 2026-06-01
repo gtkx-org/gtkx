@@ -48,6 +48,7 @@ process.env.GSK_RENDERER = "cairo";
 process.env.GTK_A11Y = "test";
 process.env.LIBGL_ALWAYS_SOFTWARE = "1";
 process.env.GSETTINGS_BACKEND = "memory";
+process.env.GTKX_DISABLE_SHUTDOWN_HANDLERS = "1";
 
 const waitForFile = async (path: string, label: string, timeout = 15000): Promise<void> => {
     const start = Date.now();

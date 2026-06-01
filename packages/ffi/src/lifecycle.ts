@@ -1,4 +1,5 @@
 import { stop as nativeStop } from "@gtkx/native";
+import { type GracefulShutdownHandle, installGracefulShutdown } from "@gtkx/utils";
 
 const KEEP_ALIVE_INTERVAL = 2147483647;
 
@@ -55,6 +56,45 @@ export const stop = async (): Promise<void> => {
         clearTimeout(keepAliveTimeout);
         keepAliveTimeout = null;
     }
+};
+
+/**
+ * Installs `SIGINT`/`SIGTERM`/`SIGHUP` handlers that shut the runtime down by
+ * routing the signal through {@link stop}.
+ *
+ * The GLib main loop runs on a dedicated thread, so the Node.js event loop
+ * stays responsive and these handlers fire on the JS thread. A plain
+ * (non-React) CLI app therefore quits its loop cleanly on Ctrl+C, provided it
+ * drives the application through `activate` rather than blocking the JS thread
+ * in `Gio.Application.run`. The first signal drains finalizers and quits the
+ * loop before the process exits with the signal's conventional code; a second
+ * `SIGINT` forces an immediate exit.
+ *
+ * Called automatically when this module loads unless
+ * `GTKX_DISABLE_SHUTDOWN_HANDLERS` is set to `"1"`.
+ *
+ * @returns A handle whose `uninstall()` detaches the handlers.
+ * @see {@link stop}
+ * @see {@link uninstallShutdownHandlers}
+ */
+export const installShutdownHandlers = (): GracefulShutdownHandle =>
+    installGracefulShutdown({ onSignal: () => stop() });
+
+let autoInstalledHandle: GracefulShutdownHandle | null =
+    process.env.GTKX_DISABLE_SHUTDOWN_HANDLERS === "1" ? null : installShutdownHandlers();
+
+/**
+ * Detaches the shutdown handlers installed automatically when this module
+ * loaded, handing signal ownership back to an embedding host.
+ *
+ * Idempotent, and a no-op when auto-installation was suppressed via
+ * `GTKX_DISABLE_SHUTDOWN_HANDLERS`.
+ *
+ * @see {@link installShutdownHandlers}
+ */
+export const uninstallShutdownHandlers = (): void => {
+    autoInstalledHandle?.uninstall();
+    autoInstalledHandle = null;
 };
 
 keepAlive();

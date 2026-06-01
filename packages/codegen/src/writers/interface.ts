@@ -11,6 +11,7 @@ import {
     type Callables,
     dedupeCallables,
     emitBindings,
+    indexMethodsByName,
     renderInstanceMethod,
 } from "./callables.js";
 import { renderVFuncMeta } from "./class-struct.js";
@@ -66,10 +67,12 @@ const buildInterfaceMembers = (ctx: ModuleContext, iface: GirClass, callables: C
         className,
         callables,
         hasGType: true,
+        wrap: "interface",
     });
     appendPrerequisiteMethods(ctx, iface, members, claimedNames);
+    const methodByName = indexMethodsByName(callables.methods);
     for (const property of iface.properties) {
-        const block = renderPropertyAccessor(ctx, property, claimedNames);
+        const block = renderPropertyAccessor(ctx, property, claimedNames, methodByName);
         if (block !== undefined) members.push(block);
     }
     members.push(...renderSignalMembers(ctx, iface));

@@ -6,7 +6,7 @@ import { ParamFlags, paramSpecBoolean, typeFromName, Value } from "@gtkx/gi/gobj
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
 import "@gtkx/gi/gobject";
-import { call, valueFromFfi, valueFromJS, valueFromObject, valueGetType, valueToJS } from "@gtkx/ffi";
+import { call, t, valueFromFfi, valueFromJS, valueFromObject, valueGetType, valueToJS } from "@gtkx/ffi";
 
 const callGetType = (lib: string, fn: string): GType => {
     const result = call(lib, fn, [], { type: "uint64" });
@@ -286,6 +286,23 @@ describe("valueFromFfi — objects and boxed", () => {
         expect(() =>
             valueFromFfi({ type: "boxed", ownership: "borrowed", innerType: "NotARealGType" }, makeRgba(0, 0, 0, 1)),
         ).toThrow(/Cannot resolve gtype/);
+    });
+});
+
+describe("valueFromFfi — variant fundamental", () => {
+    it("round-trips a GVariant through a fundamental descriptor keyed by typeName", () => {
+        const variant = GLib.Variant.newString("payload");
+        const descriptor = t.fundamental("libgobject-2.0.so.0,libglib-2.0.so.0", "g_variant_ref", "g_variant_unref", {
+            ownership: "borrowed",
+            typeName: "GVariant",
+        });
+
+        const value = valueFromFfi(descriptor, variant);
+        expect(valueGetType(value)).toBe(Type.VARIANT);
+
+        const result = valueToJS(value);
+        expect(result).toBeInstanceOf(GLib.Variant);
+        expect((result as GLib.Variant).getString()[0]).toBe("payload");
     });
 });
 

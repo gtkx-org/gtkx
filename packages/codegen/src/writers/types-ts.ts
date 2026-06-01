@@ -1,6 +1,5 @@
 import { toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
-import type { GirNamespace } from "../gir/namespace.js";
 import { PRIMITIVE_TS_TYPE } from "../gir/primitives.js";
 import type { ResolvedNamed } from "../gir/repository.js";
 import type {
@@ -86,21 +85,12 @@ const resolvedTsType = (
             return qualifiedTypeReference(ctx, namespaceName, typeName);
         case "callback":
             return "((...args: any[]) => any)";
-        case "alias":
-            return resolveAliasTsType(ctx, resolved.namespace, resolved.target, typeName);
+        case "alias": {
+            const exportName = resolved.cType ?? toPascalCase(typeName);
+            if (namespaceName === ctx.namespace.name) return exportName;
+            return `${ctx.addCrossNamespaceImport(namespaceName)}.${exportName}`;
+        }
     }
-};
-
-const resolveAliasTsType = (
-    ctx: ModuleContext,
-    namespace: GirNamespace,
-    target: string | undefined,
-    fallbackName: string,
-): string => {
-    if (target === undefined) {
-        return qualifiedTypeReference(ctx, namespace.name, fallbackName);
-    }
-    return qualifiedTypeReference(ctx, namespace.name, target);
 };
 
 const qualifiedTypeReference = (ctx: ModuleContext, namespaceName: string, typeName: string): string => {

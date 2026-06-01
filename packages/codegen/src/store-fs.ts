@@ -1,4 +1,4 @@
-import { mkdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { transpileSource } from "./transpile.js";
 
@@ -48,24 +48,35 @@ export const writePackageJson = (storeDir: string, manifest: unknown): void => {
 };
 
 /**
- * Atomically swaps a fully-assembled temp store into place and re-points the
- * visible alias at it.
+ * Swaps a fully-assembled temp store into place and re-points the visible alias
+ * at it.
+ *
+ * The live store is renamed aside and the temp store renamed in before the old
+ * tree is deleted, so the store is unavailable only for the duration of a single
+ * rename rather than a full recursive delete. Not safe against a second codegen
+ * run swapping the same store concurrently.
  *
  * @param tmp - Absolute temp store directory to promote
  * @param storeDir - Absolute final store directory
  * @param visibleLink - Absolute path of the visible alias symlink
  */
 export const swapStore = (tmp: string, storeDir: string, visibleLink: string): void => {
-    rmSync(storeDir, { recursive: true, force: true });
+    const previous = `${storeDir}.old`;
+    rmSync(previous, { recursive: true, force: true });
+    if (existsSync(storeDir)) {
+        renameSync(storeDir, previous);
+    }
     renameSync(tmp, storeDir);
+    rmSync(previous, { recursive: true, force: true });
     symlinkRelative(visibleLink, storeDir);
 };
 
-/** Resolves a fresh temp store directory path for `storeDir`. */
-export const tempStoreFor = (storeDir: string): string => `${storeDir}.tmp`;
-
-/** Removes and recreates `dir` as an empty directory. */
-export const resetDir = (dir: string): void => {
-    rmSync(dir, { recursive: true, force: true });
-    mkdirSync(dir, { recursive: true });
+/**
+ * Creates a fresh, per-run temporary store directory next to `storeDir` and
+ * returns its path. The random suffix isolates concurrent or repeated runs so
+ * they cannot corrupt each other's in-progress trees.
+ */
+export const tempStoreFor = (storeDir: string): string => {
+    mkdirSync(dirname(storeDir), { recursive: true });
+    return mkdtempSync(`${storeDir}.tmp-`);
 };
