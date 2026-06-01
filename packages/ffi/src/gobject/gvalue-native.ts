@@ -104,15 +104,10 @@ const g_value_set_param = t.fn(
 );
 const g_value_get_param = t.fn(LIBGOBJECT, "g_value_get_param", [{ type: GVALUE_BORROWED }], PARAM_FUNDAMENTAL);
 
-const VARIANT_FUNDAMENTAL = t.fundamental(
-    "libgobject-2.0.so.0,libglib-2.0.so.0",
-    "g_variant_ref",
-    "g_variant_unref",
-    {
-        ownership: "borrowed",
-        typeName: "GVariant",
-    },
-);
+const VARIANT_FUNDAMENTAL = t.fundamental("libgobject-2.0.so.0,libglib-2.0.so.0", "g_variant_ref", "g_variant_unref", {
+    ownership: "borrowed",
+    typeName: "GVariant",
+});
 const g_value_set_variant = t.fn(
     LIBGOBJECT,
     "g_value_set_variant",
