@@ -1,53 +1,61 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { resolveOutputDirs } from "../../src/codegen/output-resolver.js";
+import { resolveCodegenStore } from "../../src/codegen/output-resolver.js";
 
-describe("resolveOutputDirs", () => {
+describe("resolveCodegenStore", () => {
     let projectRoot: string;
 
     beforeEach(() => {
-        projectRoot = mkdtempSync(join(tmpdir(), "gtkx-output-resolver-"));
+        projectRoot = mkdtempSync(join(tmpdir(), "gtkx-store-"));
     });
 
     afterEach(() => {
         rmSync(projectRoot, { recursive: true, force: true });
     });
 
-    function installPackage(name: string): string {
+    function installPackage(name: string, version = "1.2.3"): string {
         const pkgDir = join(projectRoot, "node_modules", name);
         mkdirSync(pkgDir, { recursive: true });
-        const pkgJson = { name, version: "0.0.0", main: "./index.js" };
-        writeFileSync(join(pkgDir, "package.json"), JSON.stringify(pkgJson));
+        writeFileSync(join(pkgDir, "package.json"), JSON.stringify({ name, version, main: "./index.js" }));
         writeFileSync(join(pkgDir, "index.js"), "");
         return pkgDir;
     }
 
-    it("resolves the FFI output directory under the locally installed @gtkx/ffi", () => {
-        const ffiDir = installPackage("@gtkx/ffi");
-        const result = resolveOutputDirs(projectRoot);
-        expect(result.ffiOutputDir).toBe(join(ffiDir, "dist", "generated"));
-    });
-
-    it("resolves the React output directory under the locally installed @gtkx/react", () => {
+    it("resolves the store and alias directories under the project node_modules", () => {
         installPackage("@gtkx/ffi");
-        const reactDir = installPackage("@gtkx/react");
-        const result = resolveOutputDirs(projectRoot);
-        expect(result.reactOutputDir).toBe(join(reactDir, "dist", "generated"));
+        const store = resolveCodegenStore(projectRoot);
+        const nodeModules = join(projectRoot, "node_modules");
+        expect(store.giStoreDir).toBe(join(nodeModules, ".gtkx", "gi"));
+        expect(store.giLinkDir).toBe(join(nodeModules, "@gtkx", "gi"));
+        expect(store.jsxStoreDir).toBe(join(nodeModules, ".gtkx", "jsx"));
+        expect(store.jsxLinkDir).toBe(join(nodeModules, "@gtkx", "react-jsx"));
     });
 
-    it("returns a string FFI dir and either a string or null React dir", () => {
+    it("resolves @gtkx/ffi's real directory and version", () => {
+        const ffiDir = installPackage("@gtkx/ffi", "9.9.9");
+        const store = resolveCodegenStore(projectRoot);
+        expect(store.realFfiDir).toBe(ffiDir);
+        expect(store.ffiVersion).toBe("9.9.9");
+    });
+
+    it("returns null React directories when @gtkx/react is absent", () => {
         installPackage("@gtkx/ffi");
-        const result = resolveOutputDirs(projectRoot);
-        expect(typeof result.ffiOutputDir).toBe("string");
-        expect(result.reactOutputDir === null || typeof result.reactOutputDir === "string").toBe(true);
+        const store = resolveCodegenStore(projectRoot);
+        expect(store.realReactDir).toBeNull();
+        expect(store.reactVersion).toBeNull();
     });
 
-    it("places generated dirs under the resolved package directory", () => {
-        const ffiDir = installPackage("@gtkx/ffi");
-        const result = resolveOutputDirs(projectRoot);
-        expect(result.ffiOutputDir.startsWith(dirname(ffiDir))).toBe(true);
-        expect(result.ffiOutputDir.endsWith(join("dist", "generated"))).toBe(true);
+    it("resolves @gtkx/react's real directory and version when present", () => {
+        installPackage("@gtkx/ffi");
+        const reactDir = installPackage("@gtkx/react", "4.5.6");
+        const store = resolveCodegenStore(projectRoot);
+        expect(store.realReactDir).toBe(reactDir);
+        expect(store.reactVersion).toBe("4.5.6");
+    });
+
+    it("throws when @gtkx/ffi cannot be resolved", () => {
+        expect(() => resolveCodegenStore(projectRoot)).toThrow(/@gtkx\/ffi/);
     });
 });

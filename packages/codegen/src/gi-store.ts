@@ -43,6 +43,14 @@ const overlayFiles = (directory: string): readonly string[] => {
 const isAugmented = (directory: string): boolean => existsSync(join(OVERLAY_ROOT, directory, "index.ts"));
 
 /**
+ * Whether an augmented namespace's barrel re-exports a generated module (and so
+ * may only be emitted when that namespace is generated), as opposed to a
+ * standalone overlay like `gl` that has no GIR backing.
+ */
+const barrelNeedsGenerated = (directory: string): boolean =>
+    readFileSync(join(OVERLAY_ROOT, directory, "index.ts"), "utf8").includes("../generated/");
+
+/**
  * Retargets a barrel-template specifier from its source layout (under
  * `overlay/<ns>/`) to its emitted layout (under `gi/<ns>/`): the namespace's
  * own generated module becomes a sibling, augment files move under `augment/`,
@@ -82,8 +90,10 @@ const barrelSource = (directory: string): string => {
  * @param namespaces - Per-namespace raw module inputs
  */
 export const writeGiStore = (options: GiStoreOptions, namespaces: readonly GiNamespaceInput[]): void => {
-    const overlayNamespaces = readdirSync(OVERLAY_ROOT).filter((name) => isAugmented(name));
-    const directories = new Set<string>([...namespaces.map((n) => n.directory), ...overlayNamespaces]);
+    const standaloneOverlays = readdirSync(OVERLAY_ROOT).filter(
+        (name) => isAugmented(name) && !barrelNeedsGenerated(name),
+    );
+    const directories = new Set<string>([...namespaces.map((n) => n.directory), ...standaloneOverlays]);
     const rawByDirectory = new Map(namespaces.map((n) => [n.directory, n.rawSource]));
 
     const tmp = tempStoreFor(options.storeDir);

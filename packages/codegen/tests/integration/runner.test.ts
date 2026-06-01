@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -11,44 +11,65 @@ afterAll(() => {
     rmSync(workDir, { recursive: true, force: true });
 });
 
+const giOptions = (name: string) => {
+    const root = join(workDir, name);
+    const realFfiDir = join(root, "fake-ffi");
+    mkdirSync(realFfiDir, { recursive: true });
+    return {
+        root,
+        gi: {
+            storeDir: join(root, "node_modules", ".gtkx", "gi"),
+            linkDir: join(root, "node_modules", "@gtkx", "gi"),
+            realFfiDir,
+            version: "0.0.0",
+        },
+    };
+};
+
 describe("CodegenRunner", () => {
-    it("writes the FFI tree and skips React when no reactOutDir is given", async () => {
-        const ffiOutDir = join(workDir, "ffi-only");
-        const result = await new CodegenRunner({
-            libraries: ["GObject-2.0"],
-            girPath: GIR_PATH,
-            ffiOutDir,
-        }).run();
+    it("writes the gi store with raw modules, barrels, a package.json and the visible alias", async () => {
+        const { gi } = giOptions("gi-only");
+        const result = await new CodegenRunner({ libraries: ["GObject-2.0"], girPath: GIR_PATH, gi }).run();
 
         expect(result.namespaces).toBeGreaterThan(0);
         expect(result.widgets).toBe(0);
         expect(result.duration).toBeGreaterThanOrEqual(0);
-        expect(existsSync(join(ffiOutDir, "gobject", "gobject.js"))).toBe(true);
-        expect(existsSync(join(ffiOutDir, "gobject", "gobject.d.ts"))).toBe(true);
+        expect(existsSync(join(gi.storeDir, "gobject", "gobject.js"))).toBe(true);
+        expect(existsSync(join(gi.storeDir, "gobject", "gobject.d.ts"))).toBe(true);
+        expect(existsSync(join(gi.storeDir, "gobject", "index.js"))).toBe(true);
+        expect(existsSync(join(gi.storeDir, "package.json"))).toBe(true);
+        expect(existsSync(gi.linkDir)).toBe(true);
     });
 
-    it("writes both FFI and React trees when reactOutDir is given", async () => {
-        const ffiOutDir = join(workDir, "ffi");
-        const reactOutDir = join(workDir, "react");
-        const result = await new CodegenRunner({
-            libraries: ["Gtk-4.0"],
-            girPath: GIR_PATH,
-            ffiOutDir,
-            reactOutDir,
-        }).run();
+    it("writes the jsx unit when jsx options are given", async () => {
+        const { root, gi } = giOptions("with-jsx");
+        const realReactRuntimeDir = join(root, "fake-react");
+        const realReactPackageDir = join(root, "fake-gtkx-react");
+        mkdirSync(realReactRuntimeDir, { recursive: true });
+        mkdirSync(realReactPackageDir, { recursive: true });
+        const jsx = {
+            storeDir: join(root, "node_modules", ".gtkx", "jsx"),
+            linkDir: join(root, "node_modules", "@gtkx", "react-jsx"),
+            giStoreDir: gi.storeDir,
+            realReactRuntimeDir,
+            realReactPackageDir,
+            version: "0.0.0",
+        };
+
+        const result = await new CodegenRunner({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, gi, jsx }).run();
 
         expect(result.widgets).toBeGreaterThan(0);
-        expect(existsSync(join(ffiOutDir, "gtk", "gtk.js"))).toBe(true);
-        const jsx = readFileSync(join(reactOutDir, "jsx.js"), "utf8");
-        expect(jsx.length).toBeGreaterThan(0);
+        expect(existsSync(join(gi.storeDir, "gtk", "gtk.js"))).toBe(true);
+        expect(readFileSync(join(jsx.storeDir, "jsx.js"), "utf8").length).toBeGreaterThan(0);
+        expect(existsSync(jsx.linkDir)).toBe(true);
     });
 
-    it("overwrites a pre-existing output tree on a second run", async () => {
-        const ffiOutDir = join(workDir, "rerun");
-        const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, ffiOutDir };
+    it("overwrites a pre-existing store on a second run", async () => {
+        const { gi } = giOptions("rerun");
+        const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
         await new CodegenRunner(options).run();
         const result = await new CodegenRunner(options).run();
         expect(result.namespaces).toBeGreaterThan(0);
-        expect(existsSync(join(ffiOutDir, "glib", "glib.js"))).toBe(true);
+        expect(existsSync(join(gi.storeDir, "glib", "glib.js"))).toBe(true);
     });
 });
