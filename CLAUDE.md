@@ -65,6 +65,21 @@ Then identify the exact message and stack trace, classify it (codegen,
 reconciler, or FFI), trace the call path from the React node through FFI to
 native, and check the GIR definition against the expected API.
 
+Two rules hold without exception:
+
+- **GC pressure is never an explanation.** Memory pressure or finalization
+  timing only changes *when* a bug surfaces, never *whether* it is one. A
+  double-unref, use-after-free, or any crash reachable from ordinary JS is a
+  real defect in the FFI's reference counting — trace the ref/unref accounting
+  to the exact mismatch and fix it. "Only under load / after GC" names the
+  trigger, not the cause.
+- **Fix the cause, never the symptom.** Never paper over an issue with a
+  defensive guard (an `is_connected` check, a `try`/`catch` that swallows,
+  null-padding), a runtime normalization band-aid, or by deleting or weakening
+  the test that exposed it. Correct the logic at its origin — codegen output,
+  the FFI descriptor, the reconciler node — so the wrong state can no longer
+  arise.
+
 ## Version control
 
 Be pragmatic about git, not paranoid. When asked to commit, just commit —
