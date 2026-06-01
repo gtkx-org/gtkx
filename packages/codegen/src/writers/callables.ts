@@ -175,11 +175,7 @@ export const renderInstanceMethod = (
  * @param original - The shadowed callable whose name should remain reachable
  * @param shadower - The callable the alias dispatches into
  */
-const renderInstanceAlias = (
-    ctx: ModuleContext,
-    original: GirFunction,
-    shadower: GirFunction,
-): string | undefined => {
+const renderInstanceAlias = (ctx: ModuleContext, original: GirFunction, shadower: GirFunction): string | undefined => {
     if (shadower.cIdentifier === undefined) return undefined;
     const aliasName = toCamelCase(original.name);
     if (aliasName === "constructor") return undefined;
