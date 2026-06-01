@@ -1,13 +1,20 @@
 import { Type } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/gi/gdk";
+import * as GLib from "@gtkx/gi/glib";
 import type { GType } from "@gtkx/gi/gobject";
-import { typeFromName, Value } from "@gtkx/gi/gobject";
+import { ParamFlags, paramSpecBoolean, typeFromName, Value } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
 import "@gtkx/gi/gobject";
 import { call, valueFromFfi, valueFromJS, valueFromObject, valueGetType, valueToJS } from "@gtkx/ffi";
 
-const callGetType = (lib: string, fn: string): GType => call(lib, fn, [], { type: "uint64" }) as unknown as GType;
+const callGetType = (lib: string, fn: string): GType => {
+    const result = call(lib, fn, [], { type: "uint64" });
+    if (typeof result !== "number") {
+        throw new TypeError(`${fn} did not return a GType`);
+    }
+    return result;
+};
 const gdkRgbaGType = (): GType => callGetType("libgtk-4.so.1", "gdk_rgba_get_type");
 
 const makeRgba = (red: number, green: number, blue: number, alpha: number): Gdk.RGBA =>
@@ -174,6 +181,21 @@ describe("valueToJS extra coverage", () => {
         v.init(gdkRgbaGType());
         v.setBoxed(makeRgba(0.1, 0.2, 0.3, 1.0));
         expect(valueToJS(v)).toBeInstanceOf(Gdk.RGBA);
+    });
+});
+
+describe("valueFromJS / valueToJS round-trips — variant and param", () => {
+    it("round-trips a GLib.Variant preserving its payload", () => {
+        const variant = GLib.Variant.newString("payload");
+        const result = valueToJS(valueFromJS(Type.VARIANT, variant));
+        expect(result).toBeInstanceOf(GLib.Variant);
+        const [text] = (result as GLib.Variant).getString();
+        expect(text).toBe("payload");
+    });
+
+    it("round-trips a ParamSpec returning the same wrapper", () => {
+        const spec = paramSpecBoolean("flag", "Flag", "A flag", false, ParamFlags.READABLE);
+        expect(valueToJS(valueFromJS(Type.PARAM, spec))).toBe(spec);
     });
 });
 
