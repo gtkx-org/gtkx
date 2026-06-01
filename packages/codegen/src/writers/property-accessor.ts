@@ -70,7 +70,7 @@ export const renderPropertyAccessor = (
               : writeTsType(ctx, property.type, isNullablePropertyType(ctx, property.type));
 
     const blocks: string[] = [];
-    const getBody = renderGetterBody(ctx, property, getterMember, getMethod, tsType);
+    const getBody = renderGetterBody({ ctx, property, getterMember, getMethod, tsType });
     blocks.push(`get ${jsName}(): ${tsType} {\n${indent(getBody, 1)}\n}`);
 
     if (writable) {
@@ -84,20 +84,28 @@ export const renderPropertyAccessor = (
 };
 
 /**
+ * Inputs for {@link renderGetterBody}.
+ */
+type GetterBodyInputs = {
+    readonly ctx: ModuleContext;
+    readonly property: GirProperty;
+    readonly getterMember: string | undefined;
+    readonly getMethod: GirFunction | undefined;
+    readonly tsType: string;
+};
+
+/**
  * Renders a property getter body.
  *
  * The property type follows the setter's parameter (what callers may assign),
  * so a getter whose own GIR nullability differs is narrowed to it with a single
  * assertion; matching nullability needs no cast. Properties with no typed
  * getter read through the generic `getProperty` GValue path.
+ *
+ * @param inputs - {@link GetterBodyInputs}
  */
-const renderGetterBody = (
-    ctx: ModuleContext,
-    property: GirProperty,
-    getterMember: string | undefined,
-    getMethod: GirFunction | undefined,
-    tsType: string,
-): string => {
+const renderGetterBody = (inputs: GetterBodyInputs): string => {
+    const { ctx, property, getterMember, getMethod, tsType } = inputs;
     if (getterMember === undefined) return `return this.getProperty(${quote(property.name)}) as ${tsType};`;
     if (getMethod === undefined) return `return this.${getterMember}() as ${tsType};`;
     const getType = writeMethodReturnType(ctx, getMethod);

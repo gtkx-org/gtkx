@@ -111,10 +111,7 @@ const renderTranslatingConstructor = (ctx: ModuleContext, props: readonly GirPro
             `${quote(property.name)}: valueFromFfiOptional(${writeFfiType(ctx, property.type, property.transferOwnership)}, ${toIdentifier(toCamelCase(property.name))}),`,
     );
     const recordLiteral = `{\n${indent(entries.join("\n"), 1)}\n}`;
-    const lines = [
-        `const props: ${GVALUE_RECORD} = ${recordLiteral};`,
-        "super({ ...props, ...rest });",
-    ];
+    const lines = [`const props: ${GVALUE_RECORD} = ${recordLiteral};`, "super({ ...props, ...rest });"];
     const body = lines.join("\n");
     return `constructor(${pattern}: ${className}ConstructorProps = {}) {\n${indent(body, 1)}\n}`;
 };

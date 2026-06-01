@@ -44,9 +44,11 @@ describe("promisify", () => {
             (args[args.length - 1] as (source: NativeHandle, result: NativeHandle) => void)(handle(1), rawResult);
         };
 
-        return promisify(asyncFn, (result: object) => getHandle(result), undefined, { leading: [] }).then((resolvedHandle) => {
-            expect(resolvedHandle).toBe(rawResult);
-        });
+        return promisify(asyncFn, (result: object) => getHandle(result), undefined, { leading: [] }).then(
+            (resolvedHandle) => {
+                expect(resolvedHandle).toBe(rawResult);
+            },
+        );
     });
 
     it("rejects with the error thrown by the finish callable", () => {

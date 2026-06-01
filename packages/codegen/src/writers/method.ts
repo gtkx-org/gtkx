@@ -469,7 +469,9 @@ const namedInitial = (ctx: ModuleContext, ref: NamedTypeRef): string => {
 const appendInoutRef = (options: AppendOutRefOptions): void => {
     const { ctx, parameter, index, builder } = options;
     const refName = `inout${builder.outRefs.length}`;
-    builder.setup.push(`const ${refName}: { value: unknown } = { value: ${parameterCallExpression(ctx, parameter, index)} };`);
+    builder.setup.push(
+        `const ${refName}: { value: unknown } = { value: ${parameterCallExpression(ctx, parameter, index)} };`,
+    );
     registerRefArg(options, refName);
 };
 
@@ -587,7 +589,10 @@ export const needsRefArg = (ctx: ModuleContext, parameter: GirParameter): boolea
  */
 const isCollectibleCallerOut = (ctx: ModuleContext, parameter: GirParameter): boolean => {
     if (parameter.type === undefined || parameter.type.kind !== "named") return false;
-    const resolved = ctx.repository.resolveNamed(parameter.type.namespaceName ?? ctx.namespace.name, parameter.type.typeName);
+    const resolved = ctx.repository.resolveNamed(
+        parameter.type.namespaceName ?? ctx.namespace.name,
+        parameter.type.typeName,
+    );
     return resolved?.kind === "boxed" || resolved?.kind === "class";
 };
 
