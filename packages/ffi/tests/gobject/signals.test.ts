@@ -1,6 +1,6 @@
+import type { Object as GObject } from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it, vi } from "vitest";
-import type { Object as GObject } from "../../src/generated/gobject/gobject.js";
-import * as Gtk from "../../src/generated/gtk/gtk.js";
 
 type ClickedHandler = () => void;
 type RegisterClicked = (button: Gtk.Button, handler: ClickedHandler) => GObject;

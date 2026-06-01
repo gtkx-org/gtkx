@@ -1,5 +1,5 @@
+import * as runtime from "@gtkx/ffi";
 import { describe, expect, it } from "vitest";
-import * as runtime from "../src/runtime.js";
 
 const EXPECTED_RUNTIME_EXPORTS = [
     "promisify",

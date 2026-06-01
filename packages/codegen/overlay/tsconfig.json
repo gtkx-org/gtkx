@@ -13,5 +13,6 @@
         "jsxImportSource": "react",
         "types": []
     },
-    "include": ["**/*.ts"]
+    "include": ["**/*.ts"],
+    "exclude": ["**/index.ts"]
 }

@@ -1,5 +1,5 @@
+import { Type } from "@gtkx/gi/gobject";
 import { describe, expect, it } from "vitest";
-import { Type } from "../../src/gobject/index.js";
 
 const ZERO_VALUED_FUNDAMENTALS = ["INVALID", "NONE"] as const;
 

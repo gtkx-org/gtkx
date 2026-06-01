@@ -1,12 +1,11 @@
+import { Type } from "@gtkx/ffi";
+import * as Gdk from "@gtkx/gi/gdk";
+import type { GType } from "@gtkx/gi/gobject";
+import { typeFromName, Value } from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
-import * as Gdk from "../../src/generated/gdk/gdk.js";
-import type { GType } from "../../src/generated/gobject/gobject.js";
-import { typeFromName, Value } from "../../src/generated/gobject/gobject.js";
-import * as Gtk from "../../src/generated/gtk/gtk.js";
-import { Type } from "../../src/gobject/types.js";
-import "../../src/gobject/value.js";
-import { call } from "../../src/native.js";
-import { valueFromFfi, valueFromJS, valueFromObject, valueGetType, valueToJS } from "../../src/value-marshal.js";
+import "@gtkx/gi/gobject";
+import { call, valueFromFfi, valueFromJS, valueFromObject, valueGetType, valueToJS } from "@gtkx/ffi";
 
 const callGetType = (lib: string, fn: string): GType => call(lib, fn, [], { type: "uint64" }) as unknown as GType;
 const gdkRgbaGType = (): GType => callGetType("libgtk-4.so.1", "gdk_rgba_get_type");

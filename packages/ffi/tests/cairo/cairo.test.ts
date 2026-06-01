@@ -1,21 +1,27 @@
 import { existsSync, unlinkSync } from "node:fs";
-import { describe, expect, it } from "vitest";
-import { Context, FontOptions, ImageSurface, MeshPattern, Pattern, Region, Surface } from "../../src/cairo/index.js";
 import {
     Content,
+    Context,
     Extend,
     Filter,
+    FontOptions,
     Format,
     HintMetrics,
     HintStyle,
+    ImageSurface,
     LineCap,
     LineJoin,
+    MeshPattern,
     Operator,
+    Pattern,
     PatternType,
+    Region,
     Status,
     SubpixelOrder,
+    Surface,
     SurfaceType,
-} from "../../src/generated/cairo/cairo.js";
+} from "@gtkx/gi/cairo";
+import { describe, expect, it } from "vitest";
 
 const createTestSurface = (): Surface => {
     return ImageSurface.create(Format.ARGB32, 200, 200);

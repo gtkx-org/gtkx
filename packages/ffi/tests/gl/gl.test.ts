@@ -1,6 +1,6 @@
+import * as gl from "@gtkx/gi/gl";
+import * as Gtk from "@gtkx/gi/gtk";
 import { beforeAll, describe, expect, it } from "vitest";
-import * as Gtk from "../../src/generated/gtk/gtk.js";
-import * as gl from "../../src/gl/index.js";
 
 let glReady = false;
 

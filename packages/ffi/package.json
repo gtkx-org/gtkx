@@ -28,53 +28,22 @@
     "exports": {
         "./package.json": "./package.json",
         ".": {
+            "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
-        },
-        "./gl": {
-            "types": "./dist/gl/index.d.ts",
-            "default": "./dist/gl/index.js"
-        },
-        "./cairo": {
-            "types": "./dist/cairo/index.d.ts",
-            "default": "./dist/cairo/index.js"
-        },
-        "./gdk": {
-            "types": "./dist/gdk/index.d.ts",
-            "default": "./dist/gdk/index.js"
-        },
-        "./gobject": {
-            "types": "./dist/gobject/index.d.ts",
-            "default": "./dist/gobject/index.js"
-        },
-        "./graphene": {
-            "types": "./dist/graphene/index.d.ts",
-            "default": "./dist/graphene/index.js"
-        },
-        "./gtk": {
-            "types": "./dist/gtk/index.d.ts",
-            "default": "./dist/gtk/index.js"
-        },
-        "./*": {
-            "types": "./dist/generated/*/*.d.ts",
-            "default": "./dist/generated/*/*.js"
         }
     },
     "files": [
         "dist",
         "src",
         "scripts",
-        "!dist/generated",
-        "!src/generated",
         "!**/*.tsbuildinfo"
     ],
     "scripts": {
-        "build": "pnpm run ensure-generated && tsc -b && pnpm run copy-generated-dts",
-        "copy-generated-dts": "node scripts/copy-generated-dts.ts",
-        "ensure-generated": "node --conditions=source --import tsx ../cli/src/cli.ts codegen --if-missing --cwd ../..",
+        "build": "tsc -b",
         "postinstall": "node scripts/postinstall.ts",
         "test": "vitest run",
-        "typecheck": "pnpm run ensure-generated && tsc -b --emitDeclarationOnly && pnpm run copy-generated-dts"
+        "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "engines": {
         "node": ">=24"

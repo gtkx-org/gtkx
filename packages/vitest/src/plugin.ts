@@ -36,6 +36,13 @@ const gtkx = (): Plugin => {
                 test: {
                     setupFiles: [workerSetupPath, ...(Array.isArray(setupFiles) ? setupFiles : [setupFiles])],
                     pool: "forks",
+                    server: {
+                        // Transform the codegen-injected packages so their
+                        // `@gtkx/ffi` imports resolve to the same source-built
+                        // runtime the tests use, rather than a second copy from
+                        // `dist` — two copies would split the identity registries.
+                        deps: { inline: [/@gtkx\/gi/, /@gtkx\/react-jsx/, /[/\\]\.gtkx[/\\]/] },
+                    },
                 },
             };
         },

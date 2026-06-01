@@ -1,5 +1,5 @@
+import { stop, whenStopped } from "@gtkx/ffi";
 import { describe, expect, it } from "vitest";
-import { stop, whenStopped } from "../src/index.js";
 
 describe("stop and whenStopped", () => {
     it("resolves the whenStopped promise", async () => {

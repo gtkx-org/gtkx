@@ -1,5 +1,5 @@
+import { EVENT_CONTINUE, EVENT_STOP } from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
-import { EVENT_CONTINUE, EVENT_STOP } from "../src/gtk/constants.js";
 
 describe("gtk event-handler return constants", () => {
     it("EVENT_CONTINUE is false to allow further propagation", () => {

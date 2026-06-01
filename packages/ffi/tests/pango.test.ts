@@ -1,5 +1,5 @@
+import * as Pango from "@gtkx/gi/pango";
 import { describe, expect, it } from "vitest";
-import * as Pango from "../src/generated/pango/pango.js";
 
 describe("Pango.GlyphString.glyphs", () => {
     it("round-trips the glyph array including nested geometry and bitfield attrs", () => {

@@ -1,7 +1,7 @@
+import * as Gdk from "@gtkx/gi/gdk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it, vi } from "vitest";
-import * as Gdk from "../../src/generated/gdk/gdk.js";
-import * as Gtk from "../../src/generated/gtk/gtk.js";
-import "../../src/gobject/object.js";
+import "@gtkx/gi/gobject";
 
 describe("Object.setProperty / getProperty auto-marshalling", () => {
     it("round-trips a string property through pspec lookup", () => {

@@ -10,5 +10,5 @@ import { beforeAll } from "vitest";
  * exports `DISPLAY`.
  */
 beforeAll(async () => {
-    await import("../src/index.js");
+    await import("@gtkx/ffi");
 });
