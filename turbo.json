@@ -105,7 +105,44 @@
                 "tsconfig.lib.json",
                 "tsconfig.test.json"
             ],
-            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo", "src/generated/**"],
+            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
+            "outputLogs": "new-only"
+        },
+        "@gtkx/cli#codegen": {
+            "dependsOn": ["@gtkx/ffi#build"],
+            "inputs": [
+                "src/cli.ts",
+                "src/commands/codegen.ts",
+                "src/codegen/**",
+                "../codegen/src/**",
+                "../codegen/overlay/**",
+                "../../gtkx.config.ts"
+            ],
+            "cache": false
+        },
+        "@gtkx/react#build": {
+            "dependsOn": ["^build", "native-build", "@gtkx/cli#codegen"],
+            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
+            "outputLogs": "new-only"
+        },
+        "@gtkx/testing#build": {
+            "dependsOn": ["^build", "native-build", "@gtkx/cli#codegen"],
+            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
+            "outputLogs": "new-only"
+        },
+        "@gtkx/css#build": {
+            "dependsOn": ["^build", "native-build", "@gtkx/cli#codegen"],
+            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
+            "outputLogs": "new-only"
+        },
+        "@gtkx/cli#build": {
+            "dependsOn": ["^build", "native-build", "@gtkx/cli#codegen"],
+            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
+            "outputLogs": "new-only"
+        },
+        "@gtkx/e2e#build": {
+            "dependsOn": ["^build", "native-build", "@gtkx/cli#codegen"],
+            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
             "outputLogs": "new-only"
         },
         "native-build": {
@@ -145,7 +182,7 @@
             "cache": false
         },
         "typecheck": {
-            "dependsOn": ["^build"],
+            "dependsOn": ["^build", "@gtkx/cli#codegen"],
             "inputs": [
                 "src/**/*.ts",
                 "src/**/*.tsx",
@@ -163,7 +200,7 @@
             "outputLogs": "new-only"
         },
         "test": {
-            "dependsOn": ["^build", "native-test"],
+            "dependsOn": ["^build", "native-test", "@gtkx/cli#codegen"],
             "inputs": ["vitest.config.ts", "src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],
             "outputLogs": "new-only"
         },
