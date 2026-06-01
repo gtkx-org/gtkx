@@ -43,8 +43,20 @@ const gtkx = (): Plugin => {
                         // runtime the tests use. A second copy from `dist` would
                         // split the identity registries.
                         deps: {
-                            inline: [/@gtkx\/(gi|react|react-jsx|testing|css)/, /[/\\]\.gtkx[/\\]/],
+                            inline: [/@gtkx\/(ffi|gi|react|react-jsx|testing|css)/, /[/\\]\.gtkx[/\\]/],
                         },
+                    },
+                },
+                ssr: {
+                    resolve: {
+                        // Prefer each workspace package's `source` export so every
+                        // `@gtkx/*` bare import (including `@gtkx/ffi`, reached only
+                        // through bare specifiers) loads its TypeScript source under
+                        // a single module identity. The Vitest module runner uses
+                        // these SSR conditions; resolving to `src` keeps the GObject
+                        // registries on one instance and lets V8 attribute coverage
+                        // to `src` rather than the unmappable `dist` build.
+                        conditions: ["source", "module", "node", "development|production"],
                     },
                 },
             };
