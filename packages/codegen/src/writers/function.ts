@@ -127,7 +127,7 @@ export const emitNamespaceBootstrap = (ctx: ModuleContext, namespace: GirNamespa
         if (fn.name === "init") {
             ctx.module.appendRegistration(`${exportName}();`);
         } else if (fn.name === "finalize") {
-            ctx.module.imports.addNamed("../../lifecycle.js", "whenStopped");
+            ctx.module.imports.addNamed("@gtkx/ffi", "whenStopped");
             ctx.module.appendRegistration(`whenStopped().then(${exportName});`);
         }
     }

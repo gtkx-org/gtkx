@@ -133,7 +133,7 @@ const collectWidgets = (repository: GirRepository): readonly WidgetEntry[] => {
     return entries.sort((a, b) => a.glibName.localeCompare(b.glibName));
 };
 
-const ffiImportPath = (directory: string): string => `@gtkx/ffi/${directory}`;
+const ffiImportPath = (directory: string): string => `@gtkx/gi/${directory}`;
 
 const resolveParentPropsExtension = (
     repository: GirRepository,

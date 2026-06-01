@@ -24,7 +24,7 @@ const create = (value: string): GeneratedRGBA => {
 /**
  * The `Gdk.RGBA` boxed type, extended with the `create` factory shorthand.
  */
-export const RGBA = Object.assign(GeneratedRGBA, { create });
+export const RGBA: typeof GeneratedRGBA & { create: typeof create } = Object.assign(GeneratedRGBA, { create });
 
 /**
  * An instance of the `Gdk.RGBA` boxed type.

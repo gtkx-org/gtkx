@@ -53,7 +53,9 @@ const createSize = (width: number, height: number): GeneratedSize => {
 /**
  * The `Graphene.Point` struct, extended with the `create` factory shorthand.
  */
-export const Point = Object.assign(GeneratedPoint, { create: createPoint });
+export const Point: typeof GeneratedPoint & { create: typeof createPoint } = Object.assign(GeneratedPoint, {
+    create: createPoint,
+});
 
 /**
  * An instance of the `Graphene.Point` struct.
@@ -63,7 +65,9 @@ export type Point = GeneratedPoint;
 /**
  * The `Graphene.Rect` struct, extended with the `create` factory shorthand.
  */
-export const Rect = Object.assign(GeneratedRect, { create: createRect });
+export const Rect: typeof GeneratedRect & { create: typeof createRect } = Object.assign(GeneratedRect, {
+    create: createRect,
+});
 
 /**
  * An instance of the `Graphene.Rect` struct.
@@ -73,7 +77,9 @@ export type Rect = GeneratedRect;
 /**
  * The `Graphene.Size` struct, extended with the `create` factory shorthand.
  */
-export const Size = Object.assign(GeneratedSize, { create: createSize });
+export const Size: typeof GeneratedSize & { create: typeof createSize } = Object.assign(GeneratedSize, {
+    create: createSize,
+});
 
 /**
  * An instance of the `Graphene.Size` struct.

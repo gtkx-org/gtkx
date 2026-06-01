@@ -27,5 +27,5 @@ export {
     TYPE_VARIANT,
 } from "./fundamental-types.js";
 export * from "./object.js";
-export * from "./types.js";
+export { Type } from "./types.js";
 export * from "./value.js";

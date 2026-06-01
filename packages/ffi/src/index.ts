@@ -7,10 +7,11 @@
  * directly. Routing all of it through one entry keeps `@gtkx/ffi` a single
  * transparent runtime specifier rather than a fan of subpaths.
  *
- * The FFI `Type` descriptor from `@gtkx/native` is intentionally not
- * re-exported here so the GObject fundamental `Type` constants own the name.
+ * The FFI `Type` descriptor from `@gtkx/native` is re-exported as `FfiType`
+ * so the GObject fundamental `Type` constants own the unqualified name.
  */
 
+export type { Type as FfiType } from "./native.js";
 export * from "./gobject/fundamental-types.js";
 export { readBoxed, writeBoxed } from "./gobject/gvalue.js";
 export { GValue, setVariantClass } from "./gobject/gvalue-native.js";

@@ -1,4 +1,4 @@
-import type { NativeHandle } from "@gtkx/ffi";
+import type { FfiType, NativeHandle } from "@gtkx/ffi";
 import { alloc, read, t, write } from "@gtkx/ffi";
 import { PathDataType } from "@gtkx/gi/cairo/cairo.js";
 
@@ -8,37 +8,49 @@ const LIB_GOBJECT = "libcairo-gobject.so.2";
 const cairoBoxed = (innerType: string, ownership: "borrowed" | "full" = "borrowed", getTypeFn?: string) =>
     t.boxed(innerType, ownership, LIB_GOBJECT, getTypeFn);
 
-export const FONT_OPTIONS_T = cairoBoxed("CairoFontOptions", "borrowed", "cairo_gobject_font_options_get_type");
-export const FONT_OPTIONS_T_FULL = cairoBoxed("CairoFontOptions", "full", "cairo_gobject_font_options_get_type");
-export const CAIRO_T = cairoBoxed("CairoContext", "borrowed", "cairo_gobject_context_get_type");
-export const PATTERN_T = cairoBoxed("CairoPattern", "full", "cairo_gobject_pattern_get_type");
-export const PATTERN_T_NONE = cairoBoxed("CairoPattern", "borrowed", "cairo_gobject_pattern_get_type");
-export const SURFACE_T = cairoBoxed("CairoSurface", "full", "cairo_gobject_surface_get_type");
-export const SURFACE_T_NONE = cairoBoxed("CairoSurface", "borrowed", "cairo_gobject_surface_get_type");
-export const FONT_FACE_T = cairoBoxed("CairoFontFace", "full", "cairo_gobject_font_face_get_type");
-export const FONT_FACE_T_NONE = cairoBoxed("CairoFontFace", "borrowed", "cairo_gobject_font_face_get_type");
-export const SCALED_FONT_T = cairoBoxed("CairoScaledFont", "full", "cairo_gobject_scaled_font_get_type");
-export const SCALED_FONT_T_NONE = cairoBoxed("CairoScaledFont", "borrowed", "cairo_gobject_scaled_font_get_type");
-export const REGION_T = cairoBoxed("CairoRegion", "full", "cairo_gobject_region_get_type");
-export const REGION_T_NONE = cairoBoxed("CairoRegion", "borrowed", "cairo_gobject_region_get_type");
+export const FONT_OPTIONS_T: FfiType = cairoBoxed(
+    "CairoFontOptions",
+    "borrowed",
+    "cairo_gobject_font_options_get_type",
+);
+export const FONT_OPTIONS_T_FULL: FfiType = cairoBoxed(
+    "CairoFontOptions",
+    "full",
+    "cairo_gobject_font_options_get_type",
+);
+export const CAIRO_T: FfiType = cairoBoxed("CairoContext", "borrowed", "cairo_gobject_context_get_type");
+export const PATTERN_T: FfiType = cairoBoxed("CairoPattern", "full", "cairo_gobject_pattern_get_type");
+export const PATTERN_T_NONE: FfiType = cairoBoxed("CairoPattern", "borrowed", "cairo_gobject_pattern_get_type");
+export const SURFACE_T: FfiType = cairoBoxed("CairoSurface", "full", "cairo_gobject_surface_get_type");
+export const SURFACE_T_NONE: FfiType = cairoBoxed("CairoSurface", "borrowed", "cairo_gobject_surface_get_type");
+export const FONT_FACE_T: FfiType = cairoBoxed("CairoFontFace", "full", "cairo_gobject_font_face_get_type");
+export const FONT_FACE_T_NONE: FfiType = cairoBoxed("CairoFontFace", "borrowed", "cairo_gobject_font_face_get_type");
+export const SCALED_FONT_T: FfiType = cairoBoxed("CairoScaledFont", "full", "cairo_gobject_scaled_font_get_type");
+export const SCALED_FONT_T_NONE: FfiType = cairoBoxed(
+    "CairoScaledFont",
+    "borrowed",
+    "cairo_gobject_scaled_font_get_type",
+);
+export const REGION_T: FfiType = cairoBoxed("CairoRegion", "full", "cairo_gobject_region_get_type");
+export const REGION_T_NONE: FfiType = cairoBoxed("CairoRegion", "borrowed", "cairo_gobject_region_get_type");
 
-export const DOUBLE_TYPE = t.float64;
-export const INT_TYPE = t.int32;
-export const ULONG_TYPE = t.uint64;
+export const DOUBLE_TYPE: FfiType = t.float64;
+export const INT_TYPE: FfiType = t.int32;
+export const ULONG_TYPE: FfiType = t.uint64;
 
-export const DOUBLE_REF = t.ref(DOUBLE_TYPE);
-export const INT_REF = t.ref(INT_TYPE);
-export const STRING_FULL = t.string("full");
-export const STRING_BORROWED = t.string("borrowed");
+export const DOUBLE_REF: FfiType = t.ref(DOUBLE_TYPE);
+export const INT_REF: FfiType = t.ref(INT_TYPE);
+export const STRING_FULL: FfiType = t.string("full");
+export const STRING_BORROWED: FfiType = t.string("borrowed");
 
-export const RECT_INT_T = t.boxed("cairo_rectangle_int_t", "borrowed", LIB);
-export const PATH_STRUCT_T = t.boxed("cairo_path_t", "full", LIB, undefined, "cairo_path_destroy");
-export const GLYPH_BUF_T = t.boxed("cairo_glyph_t", "borrowed", LIB);
-export const RECT_LIST_T = t.boxed("cairo_rectangle_list_t", "borrowed", LIB);
-export const MATRIX_T = t.boxed("cairo_matrix_t", "borrowed", LIB);
-export const CLUSTER_BUF_T = t.boxed("cairo_text_cluster_t", "borrowed", LIB);
-export const TEXT_EXTENTS_T = t.boxed("cairo_text_extents_t", "borrowed", LIB);
-export const FONT_EXTENTS_T = t.boxed("cairo_font_extents_t", "borrowed", LIB);
+export const RECT_INT_T: FfiType = t.boxed("cairo_rectangle_int_t", "borrowed", LIB);
+export const PATH_STRUCT_T: FfiType = t.boxed("cairo_path_t", "full", LIB, undefined, "cairo_path_destroy");
+export const GLYPH_BUF_T: FfiType = t.boxed("cairo_glyph_t", "borrowed", LIB);
+export const RECT_LIST_T: FfiType = t.boxed("cairo_rectangle_list_t", "borrowed", LIB);
+export const MATRIX_T: FfiType = t.boxed("cairo_matrix_t", "borrowed", LIB);
+export const CLUSTER_BUF_T: FfiType = t.boxed("cairo_text_cluster_t", "borrowed", LIB);
+export const TEXT_EXTENTS_T: FfiType = t.boxed("cairo_text_extents_t", "borrowed", LIB);
+export const FONT_EXTENTS_T: FfiType = t.boxed("cairo_font_extents_t", "borrowed", LIB);
 
 export const allocGlyphBuffer = (glyphs: Array<{ index: number; x: number; y: number }>): NativeHandle => {
     const buf = alloc(glyphs.length * 24, "cairo_glyph_t[]", LIB);

@@ -1,75 +1,90 @@
-import { existsSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 /**
- * Resolved output directories for the codegen pipeline.
+ * Resolved locations for the codegen-owned injected packages.
  *
- * For an installed dependency the generated files live under the package's
- * compiled `dist/generated/` subtree; for a workspace-linked package (the
- * gtkx monorepo itself) they live under `src/generated/`, where the package's
- * own `tsc` build expects them. Codegen overwrites them on every run.
+ * Codegen materializes `@gtkx/gi` (and, when React is present,
+ * `@gtkx/react-jsx`) into a hidden `node_modules/.gtkx` store and exposes each
+ * through a visible `node_modules/@gtkx/<name>` symlink. The injected packages
+ * resolve `@gtkx/ffi`/`react` through their own bundled symlinks, so the real
+ * directories of those runtime dependencies are resolved here too.
  */
-export type OutputDirs = {
-    /** Absolute path to `@gtkx/ffi`'s `generated/` directory. Always present. */
-    ffiOutputDir: string;
-    /**
-     * Absolute path to `@gtkx/react`'s `generated/` directory, or `null` if
-     * `@gtkx/react` cannot be located from the project.
-     */
-    reactOutputDir: string | null;
+export type CodegenStore = {
+    /** Hidden store for the `@gtkx/gi` bindings package. */
+    readonly giStoreDir: string;
+    /** Visible `@gtkx/gi` alias symlink. */
+    readonly giLinkDir: string;
+    /** Hidden store for the `@gtkx/react-jsx` unit. */
+    readonly jsxStoreDir: string;
+    /** Visible `@gtkx/react-jsx` alias symlink. */
+    readonly jsxLinkDir: string;
+    /** Real directory of the installed `@gtkx/ffi`. */
+    readonly realFfiDir: string;
+    /** `@gtkx/ffi`'s version, copied onto the emitted `@gtkx/gi`. */
+    readonly ffiVersion: string;
+    /** Real directory of the installed `@gtkx/react`, or `null` when absent. */
+    readonly realReactDir: string | null;
+    /** Real directory of the installed `react` runtime, or `null` when absent. */
+    readonly realReactRuntimeDir: string | null;
+    /** `@gtkx/react`'s version, or `null` when absent. */
+    readonly reactVersion: string | null;
+};
+
+type ResolvedPackage = { readonly dir: string; readonly version: string };
+
+const readVersion = (packageJsonPath: string): string => {
+    const parsed = JSON.parse(readFileSync(packageJsonPath, "utf8")) as { version?: string };
+    return parsed.version ?? "0.0.0";
 };
 
 /**
- * Locates the directory of `packageName` — either as a resolvable dependency
- * of the project, or, when that fails, as a workspace package under the
- * project's `packages/<name>/` directory (the gtkx monorepo layout).
+ * Resolves a package's real directory and version, falling back to the gtkx
+ * monorepo workspace layout (`<projectRoot>/packages/<name>`) when the package
+ * is not resolvable as an installed dependency.
  */
-const resolvePackageDir = (require: NodeJS.Require, projectRoot: string, packageName: string): string | null => {
+const resolvePackage = (require: NodeJS.Require, projectRoot: string, packageName: string): ResolvedPackage | null => {
     try {
-        return dirname(realpathSync(require.resolve(`${packageName}/package.json`)));
+        const real = realpathSync(require.resolve(`${packageName}/package.json`));
+        return { dir: dirname(real), version: readVersion(real) };
     } catch {
-        const unscopedName = packageName.replace(/^@[^/]+\//, "");
-        const workspaceDir = join(projectRoot, "packages", unscopedName);
-        return existsSync(join(workspaceDir, "package.json")) ? realpathSync(workspaceDir) : null;
+        const unscoped = packageName.replace(/^@[^/]+\//, "");
+        const workspacePkg = join(projectRoot, "packages", unscoped, "package.json");
+        if (!existsSync(workspacePkg)) return null;
+        const real = realpathSync(workspacePkg);
+        return { dir: dirname(real), version: readVersion(real) };
     }
 };
 
 /**
- * Resolves the `generated/` directory of `packageName`, choosing `src/` when
- * the package is workspace-linked (its real path is outside the project's
- * `node_modules`) and `dist/` when it is an installed dependency.
- */
-const resolveGeneratedDir = (require: NodeJS.Require, projectRoot: string, packageName: string): string | null => {
-    const packageDir = resolvePackageDir(require, projectRoot, packageName);
-    if (packageDir === null) {
-        return null;
-    }
-    const projectNodeModules = resolve(projectRoot, "node_modules");
-    const isWorkspaceLinked = !packageDir.startsWith(`${projectNodeModules}/`);
-    const subtree = isWorkspaceLinked ? "src" : "dist";
-    return join(packageDir, subtree, "generated");
-};
-
-/**
- * Resolves the absolute output directories where codegen should write
- * generated files.
+ * Resolves the store layout codegen writes into for `projectRoot`.
  *
  * @param projectRoot - Absolute path to the project root
- * @returns Object containing absolute output directories
+ * @returns The resolved {@link CodegenStore}
  * @throws If `@gtkx/ffi` cannot be located from the project
  */
-export const resolveOutputDirs = (projectRoot: string): OutputDirs => {
+export const resolveCodegenStore = (projectRoot: string): CodegenStore => {
     const require = createRequire(pathToFileURL(join(projectRoot, "__gtkx_resolver__.js")).href);
 
-    const ffiOutputDir = resolveGeneratedDir(require, projectRoot, "@gtkx/ffi");
-    if (ffiOutputDir === null) {
+    const ffi = resolvePackage(require, projectRoot, "@gtkx/ffi");
+    if (ffi === null) {
         throw new Error("Cannot resolve @gtkx/ffi from the project; is it installed?");
     }
+    const react = resolvePackage(require, projectRoot, "@gtkx/react");
+    const reactRuntime = resolvePackage(require, projectRoot, "react");
 
+    const nodeModules = join(projectRoot, "node_modules");
     return {
-        ffiOutputDir,
-        reactOutputDir: resolveGeneratedDir(require, projectRoot, "@gtkx/react"),
+        giStoreDir: join(nodeModules, ".gtkx", "gi"),
+        giLinkDir: join(nodeModules, "@gtkx", "gi"),
+        jsxStoreDir: join(nodeModules, ".gtkx", "jsx"),
+        jsxLinkDir: join(nodeModules, "@gtkx", "react-jsx"),
+        realFfiDir: ffi.dir,
+        ffiVersion: ffi.version,
+        realReactDir: react?.dir ?? null,
+        realReactRuntimeDir: reactRuntime?.dir ?? null,
+        reactVersion: react?.version ?? null,
     };
 };
