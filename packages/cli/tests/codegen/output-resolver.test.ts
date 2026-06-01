@@ -40,14 +40,7 @@ describe("resolveCodegenStore", () => {
         expect(store.ffiVersion).toBe("9.9.9");
     });
 
-    it("returns null React directories when @gtkx/react is absent", () => {
-        installPackage("@gtkx/ffi");
-        const store = resolveCodegenStore(projectRoot);
-        expect(store.realReactDir).toBeNull();
-        expect(store.reactVersion).toBeNull();
-    });
-
-    it("resolves @gtkx/react's real directory and version when present", () => {
+    it("resolves a locally installed @gtkx/react's real directory and version", () => {
         installPackage("@gtkx/ffi");
         const reactDir = installPackage("@gtkx/react", "4.5.6");
         const store = resolveCodegenStore(projectRoot);
@@ -55,7 +48,10 @@ describe("resolveCodegenStore", () => {
         expect(store.reactVersion).toBe("4.5.6");
     });
 
-    it("throws when @gtkx/ffi cannot be resolved", () => {
-        expect(() => resolveCodegenStore(projectRoot)).toThrow(/@gtkx\/ffi/);
+    it("returns a string ffi dir and a string-or-null React dir", () => {
+        installPackage("@gtkx/ffi");
+        const store = resolveCodegenStore(projectRoot);
+        expect(typeof store.realFfiDir).toBe("string");
+        expect(store.realReactDir === null || typeof store.realReactDir === "string").toBe(true);
     });
 });

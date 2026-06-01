@@ -43,7 +43,7 @@ const gtkx = (): Plugin => {
                         // runtime the tests use. A second copy from `dist` would
                         // split the identity registries.
                         deps: {
-                            inline: [/@gtkx\/(ffi|gi|react|react-jsx|testing|css)/, /[/\\]\.gtkx[/\\]/],
+                            inline: [/@gtkx\/(gi|react|react-jsx|testing|css)/, /[/\\]\.gtkx[/\\]/],
                         },
                     },
                 },
