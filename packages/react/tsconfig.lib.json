@@ -1,6 +1,3 @@
 {
-    "extends": "../../tsconfig.lib.json",
-    "compilerOptions": {
-        "customConditions": ["source"]
-    }
+    "extends": "../../tsconfig.lib.json"
 }

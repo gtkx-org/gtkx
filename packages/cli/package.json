@@ -31,18 +31,22 @@
     "exports": {
         "./package.json": "./package.json",
         ".": {
+            "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
         },
         "./builder": {
+            "source": "./src/builder.ts",
             "types": "./dist/builder.d.ts",
             "default": "./dist/builder.js"
         },
         "./refresh-runtime": {
+            "source": "./src/refresh-runtime.ts",
             "types": "./dist/refresh-runtime.d.ts",
             "default": "./dist/refresh-runtime.js"
         },
         "./vitest": {
+            "source": "./src/vitest.ts",
             "types": "./dist/vitest.d.ts",
             "default": "./dist/vitest.js"
         },

@@ -1,8 +1,5 @@
 {
     "extends": "../../tsconfig.test.json",
-    "compilerOptions": {
-        "customConditions": ["source"]
-    },
     "include": ["${configDir}/tests/**/*.ts", "${configDir}/scripts/**/*.ts"],
     "references": [
         {

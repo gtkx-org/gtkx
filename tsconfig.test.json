@@ -1,6 +1,7 @@
 {
     "extends": "./tsconfig.base.json",
     "compilerOptions": {
+        "customConditions": ["source"],
         "rootDir": "${configDir}",
         "outDir": "${configDir}/out-tsc/test",
         "emitDeclarationOnly": true

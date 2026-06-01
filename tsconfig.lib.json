@@ -1,6 +1,7 @@
 {
     "extends": "./tsconfig.base.json",
     "compilerOptions": {
+        "customConditions": ["source"],
         "rootDir": "${configDir}/src",
         "outDir": "${configDir}/dist"
     },
