@@ -255,11 +255,27 @@ type FundamentalDescriptor = {
     readonly ownership: "borrowed" | "full" | "none";
 };
 
+/**
+ * Translates a GLib ref-func into the function the FFI runtime calls to add an
+ * independent reference.
+ *
+ * The runtime references a fundamental to make a defensive copy of a borrowed
+ * return, to clone a handle, or to hand a callee its own reference for a
+ * transfer-full argument — each must *add* a reference. GObject registers
+ * `*_ref_sink` (e.g. `g_param_spec_ref_sink`, `g_variant_ref_sink`) as the
+ * ref-func for floating types, but a sink only clears the floating flag on a
+ * floating instance and adds no reference, so a wrapper built from it would
+ * later unref a reference it never took and abort. The plain `*_ref`
+ * counterpart adds a reference for floating and non-floating instances alike.
+ */
+const referenceAddingFunc = (refFunc: string): string =>
+    refFunc.endsWith("_ref_sink") ? refFunc.slice(0, -"_sink".length) : refFunc;
+
 const renderFundamental = (descriptor: FundamentalDescriptor): string => {
     const { lib, refFunc, unrefFunc, glibTypeName, ownership } = descriptor;
     const parts = [`ownership: ${quote(ownership)}`];
     if (glibTypeName !== undefined) parts.push(`typeName: ${quote(glibTypeName)}`);
-    return `t.fundamental(${quote(lib)}, ${quote(refFunc)}, ${quote(unrefFunc)}, { ${parts.join(", ")} })`;
+    return `t.fundamental(${quote(lib)}, ${quote(referenceAddingFunc(refFunc))}, ${quote(unrefFunc)}, { ${parts.join(", ")} })`;
 };
 
 const classOrInterfaceExpression = (
