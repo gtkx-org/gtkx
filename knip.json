@@ -2,6 +2,7 @@
     "$schema": "https://unpkg.com/knip@6/schema.json",
     "tags": ["-public"],
     "ignoreExportsUsedInFile": true,
+    "ignoreDependencies": ["@gtkx/gi", "@gtkx/react-jsx", "@gtkx/ffi"],
     "workspaces": {
         ".": {
             "entry": ["gtkx.config.ts"],
@@ -21,8 +22,8 @@
             "project": ["tests/**/*.{ts,tsx}"]
         },
         "packages/ffi": {
-            "entry": ["src/generated/*/*.js!", "src/*/index.ts!"],
-            "project": ["src/**/*.{ts,js}!", "scripts/**/*.ts", "tests/**/*.{ts,tsx}"]
+            "entry": ["src/index.ts!"],
+            "project": ["src/**/*.ts!", "scripts/**/*.ts", "tests/**/*.{ts,tsx}"]
         },
         "packages/mcp": {
             "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
@@ -35,7 +36,7 @@
             "project": ["*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/react": {
-            "project": ["src/**/*.{ts,tsx}!", "scripts/**/*.ts"]
+            "project": ["src/**/*.{ts,tsx}!"]
         },
         "packages/testing": {
             "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
