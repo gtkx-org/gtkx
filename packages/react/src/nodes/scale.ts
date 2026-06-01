@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { isShallowArrayEqual } from "@gtkx/utils";
 import type { ScaleMark } from "../jsx.js";
 import { AdjustableNode } from "./adjustable.js";

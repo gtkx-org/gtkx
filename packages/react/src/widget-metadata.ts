@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 
 /**
  * Per-widget metadata maintained by the reconciler for accessible properties

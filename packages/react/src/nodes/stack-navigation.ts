@@ -25,8 +25,8 @@
  * which routes the throw through React's commit-phase error pipeline.
  */
 
-import type * as Adw from "@gtkx/ffi/adw";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Adw from "@gtkx/gi/adw";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { Node } from "../node.js";
 import { scheduleAfterCommit } from "../post-commit-queue.js";
 import type { Props } from "../types.js";

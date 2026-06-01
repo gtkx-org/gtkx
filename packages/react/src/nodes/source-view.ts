@@ -1,5 +1,5 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
-import * as GtkSource from "@gtkx/ffi/gtksource";
+import type * as Gtk from "@gtkx/gi/gtk";
+import * as GtkSource from "@gtkx/gi/gtksource";
 import type { GtkSourceViewProps } from "../jsx.js";
 import { hasChanged } from "./internal/props.js";
 import { TextBufferController } from "./internal/text-buffer-controller.js";

@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { toCamelCase } from "@gtkx/utils";
 import type { SlotProps } from "../jsx.js";
 import type { Node } from "../node.js";

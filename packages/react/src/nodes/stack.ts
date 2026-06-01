@@ -1,5 +1,5 @@
-import type * as Adw from "@gtkx/ffi/adw";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Adw from "@gtkx/gi/adw";
+import type * as Gtk from "@gtkx/gi/gtk";
 import type { AdwViewStackProps, GtkStackProps } from "../jsx.js";
 import { imperative, type PropDescriptorTable, signal } from "./internal/apply-props.js";
 import { WidgetNode } from "./widget.js";

@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { ConstraintProps } from "../jsx.js";
 import type { ConstraintLayoutNode } from "./constraint-layout.js";
 import { ConstraintLayoutChildNode } from "./internal/constraint-layout-child.js";

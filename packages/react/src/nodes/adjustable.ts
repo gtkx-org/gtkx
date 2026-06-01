@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import type { AdjustableProps } from "../jsx.js";
 import { AdjustmentController } from "./internal/adjustment.js";
 import { imperative, type PropDescriptorTable, signal } from "./internal/apply-props.js";

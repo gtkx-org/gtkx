@@ -28,26 +28,21 @@
     "exports": {
         "./package.json": "./package.json",
         ".": {
+            "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
         }
     },
-    "sideEffects": [
-        "**/generated/internal.js"
-    ],
+    "sideEffects": false,
     "files": [
         "dist",
         "src",
         "scripts",
-        "!dist/generated",
-        "!src/generated",
         "!**/*.tsbuildinfo"
     ],
     "scripts": {
-        "build": "pnpm run ensure-generated && tsc -b && pnpm run copy-generated-dts",
-        "copy-generated-dts": "node scripts/copy-generated-dts.ts",
-        "ensure-generated": "node --conditions=source --import tsx ../cli/src/cli.ts codegen --if-missing --cwd ../..",
-        "typecheck": "pnpm run ensure-generated && tsc -b --emitDeclarationOnly && pnpm run copy-generated-dts"
+        "build": "tsc -b",
+        "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "dependencies": {
         "@gtkx/ffi": "workspace:*",

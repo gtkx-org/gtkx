@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 
 /** Union of GLib instance kinds the reconciler tracks as nodes. */
 export type Container =

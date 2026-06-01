@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import type { DialogButtonProps } from "../jsx.js";
 import type { Container } from "../types.js";
 import { imperative, type PropDescriptorTable } from "./internal/apply-props.js";

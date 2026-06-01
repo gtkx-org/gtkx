@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { GtkFontDialogButtonProps } from "../jsx.js";
 import type { Container } from "../types.js";
 import { DialogButtonNode } from "./dialog-button.js";

@@ -12,7 +12,9 @@ export type JsxStoreOptions = {
     /** Absolute path to the gi store, for the unit's own `node_modules/@gtkx/gi`. */
     readonly giStoreDir: string;
     /** Real (symlink-resolved) directory of the installed `react` runtime. */
-    readonly realReactDir: string;
+    readonly realReactRuntimeDir: string;
+    /** Real (symlink-resolved) directory of the installed `@gtkx/react`. */
+    readonly realReactPackageDir: string;
     /** Version string copied onto the emitted `@gtkx/react-jsx` package. */
     readonly version: string;
 };
@@ -50,7 +52,8 @@ export const writeJsxStore = (options: JsxStoreOptions, files: ReadonlyMap<strin
     });
 
     symlinkRelative(join(tmp, "node_modules", "@gtkx", "gi"), options.giStoreDir);
-    symlinkRelative(join(tmp, "node_modules", "react"), options.realReactDir);
+    symlinkRelative(join(tmp, "node_modules", "@gtkx", "react"), options.realReactPackageDir);
+    symlinkRelative(join(tmp, "node_modules", "react"), options.realReactRuntimeDir);
 
     swapStore(tmp, options.storeDir, options.linkDir);
 };

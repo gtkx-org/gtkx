@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { isShallowArrayEqual } from "@gtkx/utils";
 import type { GtkLevelBarProps } from "../jsx.js";
 import { arraySync, type PropDescriptorTable } from "./internal/apply-props.js";

@@ -1,5 +1,5 @@
-import * as Gio from "@gtkx/ffi/gio";
-import * as GObject from "@gtkx/ffi/gobject";
+import * as Gio from "@gtkx/gi/gio";
+import * as GObject from "@gtkx/gi/gobject";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface SettingTypeMap {

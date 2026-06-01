@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import type { GtkSearchBarProps } from "../jsx.js";
 import { type PropDescriptorTable, signal } from "./internal/apply-props.js";
 import { WidgetNode } from "./widget.js";

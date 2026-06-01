@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { NotebookPageProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { hasChanged } from "./internal/props.js";

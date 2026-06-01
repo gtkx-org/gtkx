@@ -1,5 +1,5 @@
-import * as Adw from "@gtkx/ffi/adw";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Adw from "@gtkx/gi/adw";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { StackPageProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { hasChanged } from "./internal/props.js";

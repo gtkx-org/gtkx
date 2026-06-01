@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { GtkScrolledWindowProps } from "../jsx.js";
 import { imperative, type PropDescriptorTable } from "./internal/apply-props.js";
 import { WidgetNode } from "./widget.js";

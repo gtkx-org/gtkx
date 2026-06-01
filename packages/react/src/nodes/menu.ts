@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { Container } from "../types.js";
 import { MenuModel, type MenuModelProps, type MenuType } from "./models/menu.js";
 

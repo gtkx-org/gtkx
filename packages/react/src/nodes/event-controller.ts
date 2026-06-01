@@ -1,6 +1,6 @@
-import type * as Gdk from "@gtkx/ffi/gdk";
-import { G_TYPE_INVALID, type GType } from "@gtkx/ffi/gobject";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gdk from "@gtkx/gi/gdk";
+import { G_TYPE_INVALID, type GType } from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { Node } from "../node.js";
 import type { Props } from "../types.js";
 import { imperative, type PropDescriptorTable } from "./internal/apply-props.js";

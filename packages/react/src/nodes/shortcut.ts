@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { ShortcutProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { EventControllerNode } from "./event-controller.js";

@@ -1,6 +1,6 @@
+import { AdwNavigationSplitView as AdwNavigationSplitViewBase } from "@gtkx/react-jsx/compounds";
+import type { AdwNavigationSplitViewProps, AdwNavigationViewProps } from "@gtkx/react-jsx/jsx";
 import type { ReactNode } from "react";
-import { AdwNavigationSplitView as AdwNavigationSplitViewBase } from "../generated/compounds.js";
-import type { AdwNavigationSplitViewProps, AdwNavigationViewProps } from "../generated/jsx.js";
 import type { NavigationSplitViewPageProps, NavigationViewPageProps } from "../jsx.js";
 
 const AdwNavigationViewElement = "AdwNavigationView" as const;

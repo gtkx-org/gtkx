@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import type { GtkDrawingAreaProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { ContainerSlotNode } from "./container-slot.js";
@@ -7,7 +7,7 @@ import { imperative, type PropDescriptorTable } from "./internal/apply-props.js"
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
-type DrawFunc = (cr: import("@gtkx/ffi/cairo").Context, width: number, height: number, self: Gtk.DrawingArea) => void;
+type DrawFunc = (cr: import("@gtkx/gi/cairo").Context, width: number, height: number, self: Gtk.DrawingArea) => void;
 type DrawingAreaProps = Pick<GtkDrawingAreaProps, "render">;
 type DrawingAreaChild = EventControllerNode | SlotNode | ContainerSlotNode;
 

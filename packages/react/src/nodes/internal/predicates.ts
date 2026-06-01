@@ -5,7 +5,7 @@
  * GTK widgets don't have a consistent interface - different widgets support
  * different child management APIs - so runtime checking is necessary.
  */
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 
 type AppendableWidget = Gtk.Widget & { append: (child: Gtk.Widget) => void };
 type AddableWidget = Gtk.Widget & { add: (child: Gtk.Widget) => void };

@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { omit } from "@gtkx/utils";
 import type { GtkTextViewProps } from "../jsx.js";
 import type { Node } from "../node.js";

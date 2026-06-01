@@ -1,5 +1,5 @@
-import * as Adw from "@gtkx/ffi/adw";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import * as Adw from "@gtkx/gi/adw";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { toCamelCase } from "@gtkx/utils";
 import type { NavigationPageProps } from "../jsx.js";
 import type { Node } from "../node.js";

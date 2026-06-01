@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import type { Node } from "../node.js";
 import { LayoutManagerNode } from "./layout-manager.js";
 

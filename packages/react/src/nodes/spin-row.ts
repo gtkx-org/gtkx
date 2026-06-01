@@ -1,4 +1,4 @@
-import type * as Adw from "@gtkx/ffi/adw";
+import type * as Adw from "@gtkx/gi/adw";
 import { omit } from "@gtkx/utils";
 import type { AdjustableProps } from "../jsx.js";
 import { ADJUSTMENT_PROPS, AdjustmentController } from "./internal/adjustment.js";

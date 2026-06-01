@@ -1,13 +1,13 @@
-import type * as Adw from "@gtkx/ffi/adw";
-import type * as Gtk from "@gtkx/ffi/gtk";
-import { type ReactNode, type Ref, useReducer, useRef } from "react";
+import type * as Adw from "@gtkx/gi/adw";
+import type * as Gtk from "@gtkx/gi/gtk";
 import type {
     AdwComboRowProps,
     GtkColumnViewProps,
     GtkDropDownProps,
     GtkGridViewProps,
     GtkListViewProps,
-} from "../generated/jsx.js";
+} from "@gtkx/react-jsx/jsx";
+import { type ReactNode, type Ref, useReducer, useRef } from "react";
 import type {
     ColumnViewColumnProps,
     ColumnViewProps,

@@ -1,6 +1,6 @@
 import { freeze, unfreeze } from "@gtkx/ffi";
-import { typeName } from "@gtkx/ffi/gobject";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import { typeName } from "@gtkx/gi/gobject";
+import type * as Gtk from "@gtkx/gi/gtk";
 import React from "react";
 import type ReactReconciler from "react-reconciler";
 import { DiscreteEventPriority } from "react-reconciler/constants.js";

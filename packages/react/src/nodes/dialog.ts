@@ -1,4 +1,4 @@
-import type * as Adw from "@gtkx/ffi/adw";
+import type * as Adw from "@gtkx/gi/adw";
 import type { Props } from "../types.js";
 import { WidgetNode } from "./widget.js";
 import { WindowNode } from "./window.js";

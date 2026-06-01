@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
 import { MenuChildController } from "./internal/menu-child.js";

@@ -1,5 +1,5 @@
-import * as Gio from "@gtkx/ffi/gio";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import * as Gio from "@gtkx/gi/gio";
+import type * as Gtk from "@gtkx/gi/gtk";
 import type { Node } from "../../node.js";
 import type { Container } from "../../types.js";
 import { VirtualNode } from "../virtual.js";

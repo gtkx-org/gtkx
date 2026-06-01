@@ -1,7 +1,7 @@
-import * as Adw from "@gtkx/ffi/adw";
-import * as Gio from "@gtkx/ffi/gio";
-import type * as GObject from "@gtkx/ffi/gobject";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Adw from "@gtkx/gi/adw";
+import * as Gio from "@gtkx/gi/gio";
+import type * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
 import { omit } from "@gtkx/utils";
 import type { ReactNode } from "react";
 import type { ListItem } from "../jsx.js";

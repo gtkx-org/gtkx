@@ -1,5 +1,5 @@
-import type * as GObject from "@gtkx/ffi/gobject";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as GObject from "@gtkx/gi/gobject";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { widgetIdOf } from "./widget-id.js";
 
 export const UNBOUND_POSITION = -1;

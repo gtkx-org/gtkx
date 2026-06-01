@@ -1,6 +1,6 @@
-import * as Adw from "@gtkx/ffi/adw";
-import * as Gdk from "@gtkx/ffi/gdk";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Adw from "@gtkx/gi/adw";
+import * as Gdk from "@gtkx/gi/gdk";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { AdwSpringAnimationProps, AdwTimedAnimationProps, AnimatableProperties, AnimationProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";

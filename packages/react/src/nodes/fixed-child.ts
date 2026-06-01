@@ -1,6 +1,6 @@
-import * as Graphene from "@gtkx/ffi/graphene";
-import * as Gsk from "@gtkx/ffi/gsk";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Graphene from "@gtkx/gi/graphene";
+import * as Gsk from "@gtkx/gi/gsk";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { FixedChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { AttachOnParentVirtualNode } from "./internal/attach-on-parent-virtual.js";

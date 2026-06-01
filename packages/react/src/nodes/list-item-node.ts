@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { Node } from "../node.js";
 import type { Props } from "../types.js";
 import { unparentWidget } from "./internal/widget.js";

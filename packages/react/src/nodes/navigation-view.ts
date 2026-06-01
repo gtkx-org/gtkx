@@ -1,4 +1,4 @@
-import * as Adw from "@gtkx/ffi/adw";
+import * as Adw from "@gtkx/gi/adw";
 import { isShallowEqual } from "@gtkx/utils";
 import type { AdwNavigationViewProps } from "../jsx.js";
 import type { Node } from "../node.js";

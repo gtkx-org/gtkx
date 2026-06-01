@@ -1,5 +1,5 @@
-import * as Adw from "@gtkx/ffi/adw";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import * as Adw from "@gtkx/gi/adw";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { isShallowArrayEqual } from "@gtkx/utils";
 import type { AdwToggleGroupProps, ToggleProps } from "../jsx.js";
 import type { Container, Props } from "../types.js";

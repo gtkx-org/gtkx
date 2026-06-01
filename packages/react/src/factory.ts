@@ -1,5 +1,5 @@
 import { getNativeClassByName } from "@gtkx/ffi";
-import { type GType, typeFromName } from "@gtkx/ffi/gobject";
+import { type GType, typeFromName } from "@gtkx/gi/gobject";
 import { collectTypeNameChain } from "./metadata.js";
 import type { Node } from "./node.js";
 import { NODE_REGISTRY, type NodeClass } from "./registry.js";

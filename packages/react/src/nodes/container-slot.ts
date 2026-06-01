@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import type { ContainerSlotProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { AttachOnParentVirtualNode } from "./internal/attach-on-parent-virtual.js";

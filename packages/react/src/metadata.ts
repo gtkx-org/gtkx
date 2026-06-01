@@ -1,6 +1,6 @@
-import type { GType } from "@gtkx/ffi/gobject";
-import { typeName, typeParent } from "@gtkx/ffi/gobject";
-import { CONSTRUCT_ONLY_PROPS, SIGNALS } from "./generated/internal.js";
+import type { GType } from "@gtkx/gi/gobject";
+import { typeName, typeParent } from "@gtkx/gi/gobject";
+import { CONSTRUCT_ONLY_PROPS, SIGNALS } from "@gtkx/react-jsx/internal";
 import type { Container } from "./types.js";
 
 const typeNameChainCache = new Map<GType, readonly string[]>();

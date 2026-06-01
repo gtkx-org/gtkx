@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import type { SlotProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { NotebookPageNode } from "./notebook-page.js";

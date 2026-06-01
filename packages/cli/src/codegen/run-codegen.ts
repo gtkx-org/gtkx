@@ -65,7 +65,8 @@ const buildRunner = (
                       storeDir: store.jsxStoreDir,
                       linkDir: store.jsxLinkDir,
                       giStoreDir: store.giStoreDir,
-                      realReactDir: store.realReactRuntimeDir,
+                      realReactRuntimeDir: store.realReactRuntimeDir,
+                      realReactPackageDir: store.realReactDir,
                       version: store.reactVersion ?? store.ffiVersion,
                   }
                 : undefined,

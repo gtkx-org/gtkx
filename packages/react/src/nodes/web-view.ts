@@ -1,4 +1,4 @@
-import type * as WebKit from "@gtkx/ffi/webkit";
+import type * as WebKit from "@gtkx/gi/webkit";
 import type { WebKitWebViewProps } from "../jsx.js";
 import { type PropDescriptorTable, signal } from "./internal/apply-props.js";
 import { WidgetNode } from "./widget.js";

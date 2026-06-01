@@ -164,7 +164,7 @@ const buildImportLines = (accumulator: CompoundAccumulator): readonly string[] =
     }
     const virtualPropTypes = [...accumulator.virtualPropTypes].sort((a, b) => a.localeCompare(b));
     if (virtualPropTypes.length > 0) {
-        lines.push(`import type { ${virtualPropTypes.join(", ")} } from "../jsx.js";`);
+        lines.push(`import type { ${virtualPropTypes.join(", ")} } from "@gtkx/react";`);
     }
     return lines;
 };

@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import type { ConstraintLayoutWidgetProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { createAfterCommitDebounce } from "../post-commit-queue.js";

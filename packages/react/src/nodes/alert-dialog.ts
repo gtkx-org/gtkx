@@ -1,4 +1,4 @@
-import type * as Adw from "@gtkx/ffi/adw";
+import type * as Adw from "@gtkx/gi/adw";
 import { isShallowArrayEqual } from "@gtkx/utils";
 import type { AlertDialogResponseProps } from "../jsx.js";
 import { DialogNode } from "./dialog.js";

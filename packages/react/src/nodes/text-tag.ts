@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { TextTagProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { BufferOffsetNode } from "./internal/buffer-offset-node.js";
