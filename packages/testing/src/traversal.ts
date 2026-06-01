@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { Container } from "@gtkx/react";
 
 export type { Container };

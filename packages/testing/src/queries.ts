@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { buildMultipleFoundError, buildNotFoundError } from "./error-builder.js";
 import { buildQueries } from "./query-helpers.js";
 import { type Container, findAll, traverse } from "./traversal.js";

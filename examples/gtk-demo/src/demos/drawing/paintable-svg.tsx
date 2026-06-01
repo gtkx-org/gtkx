@@ -1,5 +1,5 @@
-import * as Gio from "@gtkx/ffi/gio";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gio from "@gtkx/gi/gio";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkButton, GtkGestureClick, GtkHeaderBar, GtkPicture } from "@gtkx/react";
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";

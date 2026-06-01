@@ -1,8 +1,8 @@
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import * as Adw from "@gtkx/ffi/adw";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import * as Adw from "@gtkx/gi/adw";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { cleanup, render, screen } from "@gtkx/testing";
 import type { ReactElement } from "react";
 import { afterEach, describe, it } from "vitest";

@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { fireEvent, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { listboxDemo } from "../../../src/demos/lists/listbox.js";

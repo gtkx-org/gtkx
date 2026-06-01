@@ -1,4 +1,4 @@
-import * as Adw from "@gtkx/ffi/adw";
+import * as Adw from "@gtkx/gi/adw";
 import { AdwAlertDialog } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";

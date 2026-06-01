@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { textviewDemo } from "../../../src/demos/input/textview.js";

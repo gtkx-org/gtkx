@@ -1,4 +1,4 @@
-import * as GObject from "@gtkx/ffi/gobject";
+import * as GObject from "@gtkx/gi/gobject";
 
 /**
  * Builds a `GObject.Value` of the given `GType`, runs `populate` to set its

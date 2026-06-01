@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { getConfig } from "./config.js";
 import { buildTimeoutError } from "./error-builder.js";
 import { getIsReactActEnvironment, setIsReactActEnvironment } from "./timing.js";

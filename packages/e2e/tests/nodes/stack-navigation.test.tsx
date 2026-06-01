@@ -1,5 +1,5 @@
-import type * as Adw from "@gtkx/ffi/adw";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Adw from "@gtkx/gi/adw";
+import * as Gtk from "@gtkx/gi/gtk";
 import { AdwViewStack, AdwViewSwitcher, GtkBox, GtkStack, GtkStackSidebar, GtkStackSwitcher } from "@gtkx/react";
 import { render, screen } from "@gtkx/testing";
 import type { ReactNode } from "react";

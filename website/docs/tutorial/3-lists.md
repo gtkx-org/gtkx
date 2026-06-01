@@ -10,7 +10,7 @@ Replace the `map()` rendering with `GtkListView`:
 
 ```tsx
 import { GtkListView, GtkScrolledWindow } from "@gtkx/react";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 
 <GtkScrolledWindow vexpand>
     <GtkListView
@@ -54,7 +54,7 @@ For table-like layouts, use `GtkColumnView` with `GtkColumnView.Column` compound
 
 ```tsx
 import { GtkColumnView, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 
 const NotesTable = ({ notes }: { notes: Note[] }) => {
     const [sortColumn, setSortColumn] = useState<string | null>("title");

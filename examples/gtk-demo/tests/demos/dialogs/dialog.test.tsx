@@ -1,5 +1,5 @@
-import type * as Adw from "@gtkx/ffi/adw";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Adw from "@gtkx/gi/adw";
+import * as Gtk from "@gtkx/gi/gtk";
 import { fireEvent, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { dialogDemo } from "../../../src/demos/dialogs/dialog.js";

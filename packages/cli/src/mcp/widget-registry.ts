@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { SerializedWidget } from "@gtkx/mcp";
 import { reverseNumericEnum } from "@gtkx/utils";
 

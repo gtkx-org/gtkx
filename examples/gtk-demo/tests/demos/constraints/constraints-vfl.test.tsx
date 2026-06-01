@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { constraintsVflDemo } from "../../../src/demos/constraints/constraints-vfl.js";

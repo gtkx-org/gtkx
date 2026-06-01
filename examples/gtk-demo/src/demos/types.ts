@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import type { ComponentType, ReactNode, RefObject } from "react";
 
 export type DemoProps = {

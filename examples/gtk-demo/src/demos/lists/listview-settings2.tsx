@@ -1,6 +1,6 @@
-import * as Gio from "@gtkx/ffi/gio";
-import * as GLib from "@gtkx/ffi/glib";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gio from "@gtkx/gi/gio";
+import * as GLib from "@gtkx/gi/glib";
+import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkBox,
     GtkEntry,

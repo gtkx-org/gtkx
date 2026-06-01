@@ -1,4 +1,4 @@
-import * as Gio from "@gtkx/ffi/gio";
+import * as Gio from "@gtkx/gi/gio";
 import { useSetting } from "@gtkx/react";
 import { act, renderHook, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";

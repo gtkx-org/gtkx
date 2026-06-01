@@ -1,6 +1,6 @@
-import type { Context } from "@gtkx/ffi/cairo";
-import * as Gdk from "@gtkx/ffi/gdk";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type { Context } from "@gtkx/gi/cairo";
+import * as Gdk from "@gtkx/gi/gdk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkButton, GtkDrawingArea, GtkFlowBox, GtkScrolledWindow } from "@gtkx/react";
 import { useMemo } from "react";
 import type { Demo } from "../types.js";

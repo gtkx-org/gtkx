@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkGridView, GtkHeaderBar, GtkImage, GtkLabel } from "@gtkx/react";
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";

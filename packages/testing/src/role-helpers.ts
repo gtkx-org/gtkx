@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { reverseNumericEnum } from "@gtkx/utils";
 import { type Container, traverse } from "./traversal.js";
 import { getWidgetAccessibleName } from "./widget-text.js";

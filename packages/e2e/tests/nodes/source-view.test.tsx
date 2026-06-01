@@ -1,4 +1,4 @@
-import * as GtkSource from "@gtkx/ffi/gtksource";
+import * as GtkSource from "@gtkx/gi/gtksource";
 import { GtkSourceView } from "@gtkx/react";
 import { render, waitFor } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";

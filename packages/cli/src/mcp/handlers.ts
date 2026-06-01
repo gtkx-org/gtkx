@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { type IpcMethod, methodNotFoundError, widgetNotFoundError } from "@gtkx/mcp";
 import { loadTestingModule } from "./testing-loader.js";
 import type { WidgetRegistry } from "./widget-registry.js";

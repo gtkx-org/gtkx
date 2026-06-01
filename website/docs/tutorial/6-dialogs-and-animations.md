@@ -10,7 +10,7 @@ Use `AdwAlertDialog` with the `responses` prop and `createPortal` to show it on 
 
 ```tsx
 import { AdwAlertDialog, createPortal, useApplication, useProperty } from "@gtkx/react";
-import * as Adw from "@gtkx/ffi/adw";
+import * as Adw from "@gtkx/gi/adw";
 import { useState } from "react";
 
 const DeleteConfirmation = ({
@@ -141,7 +141,7 @@ Wrap a widget with `AdwTimedAnimation` to animate its properties over a fixed du
 
 ```tsx
 import { AdwTimedAnimation, GtkBox } from "@gtkx/react";
-import * as Adw from "@gtkx/ffi/adw";
+import * as Adw from "@gtkx/gi/adw";
 
 const NoteCard = ({ note }: { note: Note }) => (
     <AdwTimedAnimation
@@ -263,7 +263,7 @@ Monitor animation lifecycle:
 After a destructive action like deleting a note, show a toast notification with an undo option. Wrap the content area in `AdwToastOverlay` and create `Adw.Toast` objects imperatively:
 
 ```tsx
-import * as Adw from "@gtkx/ffi/adw";
+import * as Adw from "@gtkx/gi/adw";
 import { AdwToastOverlay } from "@gtkx/react";
 import { useRef } from "react";
 
@@ -304,7 +304,7 @@ The GNOME HIG recommends toasts for short-lived event messages and one-time noti
 Every GNOME app should have an About dialog, accessible from the primary menu. Use `AdwAboutDialog` to display app name, version, credits, and license:
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAboutDialog, createPortal, useApplication, useProperty } from "@gtkx/react";
 
 const About = ({ onClose }: { onClose: () => void }) => {

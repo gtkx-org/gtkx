@@ -4,7 +4,7 @@ const { listToplevels } = vi.hoisted(() => ({
     listToplevels: vi.fn(() => [] as unknown[]),
 }));
 
-vi.mock("@gtkx/ffi/gtk", () => ({
+vi.mock("@gtkx/gi/gtk", () => ({
     AccessibleRole: { BUTTON: 1, LABEL: 2 } as Record<string, number>,
     Window: { listToplevels },
 }));

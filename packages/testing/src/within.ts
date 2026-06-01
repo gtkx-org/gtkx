@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { bindQueries } from "./bind-queries.js";
 import type { BoundQueries } from "./types.js";
 

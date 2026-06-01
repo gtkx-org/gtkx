@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { resetConfig } from "../src/config.js";

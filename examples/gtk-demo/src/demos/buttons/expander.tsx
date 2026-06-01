@@ -1,6 +1,6 @@
-import * as Gdk from "@gtkx/ffi/gdk";
-import type * as GObject from "@gtkx/ffi/gobject";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gdk from "@gtkx/gi/gdk";
+import type * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkExpander, GtkLabel, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
 import { useCallback, useMemo } from "react";
 import type { Demo } from "../types.js";

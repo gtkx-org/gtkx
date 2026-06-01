@@ -1,5 +1,5 @@
-import type * as Gio from "@gtkx/ffi/gio";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gio from "@gtkx/gi/gio";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
 import { render, screen, userEvent } from "@gtkx/testing";
 import { createRef, type RefObject, useState } from "react";

@@ -1,5 +1,5 @@
 import { css } from "@gtkx/css";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkGrid,
     GtkImage,

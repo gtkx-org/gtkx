@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { cssMultiplebgsDemo } from "../../../src/demos/css/css-multiplebgs.js";

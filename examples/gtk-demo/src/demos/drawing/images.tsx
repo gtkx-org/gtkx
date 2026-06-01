@@ -1,5 +1,5 @@
-import * as Gio from "@gtkx/ffi/gio";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gio from "@gtkx/gi/gio";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkPicture, GtkSwitch, GtkToggleButton, GtkVideo } from "@gtkx/react";
 import { useEffect, useMemo, useState } from "react";
 import { path as floppybuddyGifPath } from "../gestures/floppybuddy.gif";

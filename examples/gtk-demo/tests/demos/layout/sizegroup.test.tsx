@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { sizegroupDemo } from "../../../src/demos/layout/sizegroup.js";

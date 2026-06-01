@@ -1,5 +1,5 @@
-import * as Gio from "@gtkx/ffi/gio";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gio from "@gtkx/gi/gio";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkHeaderBar, GtkImage, GtkLabel, GtkStack, GtkStackSidebar } from "@gtkx/react";
 import { useMemo } from "react";
 import demoIconUri from "../../icons/org.gtk.Demo4.svg";

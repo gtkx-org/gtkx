@@ -1,10 +1,10 @@
 import { css } from "@gtkx/css";
 import { registerClass } from "@gtkx/ffi";
-import type { Context } from "@gtkx/ffi/cairo";
-import * as Gio from "@gtkx/ffi/gio";
-import * as GObject from "@gtkx/ffi/gobject";
-import * as Gtk from "@gtkx/ffi/gtk";
-import * as Pango from "@gtkx/ffi/pango";
+import type { Context } from "@gtkx/gi/cairo";
+import * as Gio from "@gtkx/gi/gio";
+import * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
+import * as Pango from "@gtkx/gi/pango";
 import {
     GtkBox,
     GtkButton,

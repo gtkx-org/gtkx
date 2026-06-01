@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { screen } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { cursorsDemo } from "../../../src/demos/gestures/cursors.js";

@@ -1,9 +1,9 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import * as Gio from "@gtkx/ffi/gio";
-import * as GObject from "@gtkx/ffi/gobject";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gio from "@gtkx/gi/gio";
+import * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { pickersDemo } from "../../../src/demos/dialogs/pickers.js";

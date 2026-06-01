@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkCheckButton, GtkHeaderBar, GtkScrolledWindow, GtkStack, GtkTextView } from "@gtkx/react";
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";

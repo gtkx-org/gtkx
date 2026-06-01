@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel, type ListItem } from "@gtkx/react";
 import { act, screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";

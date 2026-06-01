@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { fireEvent, screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewMinesweeperDemo } from "../../../src/demos/games/listview-minesweeper.js";

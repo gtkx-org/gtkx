@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkGrid, GtkLabel, GtkScale } from "@gtkx/react";
 import type { Demo } from "../types.js";
 import sourceCode from "./scale.tsx?raw";

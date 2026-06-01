@@ -1,6 +1,6 @@
 import { stop } from "@gtkx/ffi";
-import * as Gio from "@gtkx/ffi/gio";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gio from "@gtkx/gi/gio";
+import * as Gtk from "@gtkx/gi/gtk";
 import { ApplicationContext, GtkApplicationWindow, reconciler, setReconcilerErrorHandler } from "@gtkx/react";
 import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";

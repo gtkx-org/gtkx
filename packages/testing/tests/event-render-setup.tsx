@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkButton } from "@gtkx/react";
 import { type Mock, vi } from "vitest";
 import { render, screen } from "../src/index.js";

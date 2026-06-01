@@ -1,5 +1,5 @@
-import * as Gtk from "@gtkx/ffi/gtk";
-import * as Pango from "@gtkx/ffi/pango";
+import * as Gtk from "@gtkx/gi/gtk";
+import * as Pango from "@gtkx/gi/pango";
 import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { tabsDemo } from "../../../src/demos/input/tabs.js";

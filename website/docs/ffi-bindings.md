@@ -5,9 +5,9 @@
 All GTK and GLib bindings are available through the `@gtkx/ffi` package. You can import entire libraries or specific functions and types as needed. For a full list of available bindings, see the [girs](https://github.com/gtkx/gtkx/tree/main/girs) directory in the GTKX repo.
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
-import * as Gio from "@gtkx/ffi/gio";
-import * as GLib from "@gtkx/ffi/glib";
+import * as Gtk from "@gtkx/gi/gtk";
+import * as Gio from "@gtkx/gi/gio";
+import * as GLib from "@gtkx/gi/glib";
 ```
 
 ## Async Methods
@@ -15,7 +15,7 @@ import * as GLib from "@gtkx/ffi/glib";
 GTKX automatically transforms Gio.AsyncResult-based methods into Promise-based async methods. This allows you to use `async/await` syntax for idiomatic asynchronous code.
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 
 const dialog = new Gtk.FileDialog();
 const file = await dialog.openAsync(window);
@@ -26,8 +26,8 @@ const file = await dialog.openAsync(window);
 Pass a `Gio.Cancellable` to cancel operations programmatically:
 
 ```tsx
-import * as Gio from "@gtkx/ffi/gio";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gio from "@gtkx/gi/gio";
+import * as Gtk from "@gtkx/gi/gtk";
 
 const cancellable = new Gio.Cancellable();
 
@@ -67,7 +67,7 @@ try {
 The `NativeError` class also provides access to the underlying `GError` struct for advanced use cases:
 
 ```tsx
-import * as Gio from "@gtkx/ffi/gio";
+import * as Gio from "@gtkx/gi/gio";
 
 const gerror = error.gerror;
 

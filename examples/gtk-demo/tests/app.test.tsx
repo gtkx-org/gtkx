@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { render, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/app.js";

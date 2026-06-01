@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { bindQueries } from "./bind-queries.js";
 import { prettyWidget } from "./pretty-widget.js";
 import { logRoles } from "./role-helpers.js";

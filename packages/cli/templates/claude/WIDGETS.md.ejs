@@ -433,7 +433,7 @@ Custom titlebar:
 
 ## Adwaita (Libadwaita)
 
-Import: `import * as Adw from "@gtkx/ffi/adw";`
+Import: `import * as Adw from "@gtkx/gi/adw";`
 
 ### AdwApplicationWindow + AdwToolbarView
 Modern app structure.
@@ -658,8 +658,8 @@ Wrap widgets in `x.Animation` for declarative animations with spring or timed tr
 All widgets support drag-and-drop through props. Use `onDragPrepare`, `onDragBegin`, and `onDragEnd` to make a widget draggable, and `dropTypes`, `onDrop`, `onDropEnter`, and `onDropLeave` to accept drops.
 
 ```tsx
-import * as Gdk from "@gtkx/ffi/gdk";
-import { Type, Value } from "@gtkx/ffi/gobject";
+import * as Gdk from "@gtkx/gi/gdk";
+import { Type, Value } from "@gtkx/gi/gobject";
 
 const DraggableButton = ({ label }: { label: string }) => (
     <GtkButton
@@ -708,7 +708,7 @@ Type constants for `dropTypes`: `Type.STRING`, `Type.INT`, `Type.DOUBLE`, `Type.
 Render custom graphics with `GtkDrawingArea` using the `render` callback:
 
 ```tsx
-import type { Context } from "@gtkx/ffi/cairo";
+import type { Context } from "@gtkx/gi/cairo";
 
 const Canvas = () => {
     const handleDraw = (cr: Context, width: number, height: number) => {

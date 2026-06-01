@@ -1,6 +1,6 @@
-import * as Graphene from "@gtkx/ffi/graphene";
-import * as Gsk from "@gtkx/ffi/gsk";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Graphene from "@gtkx/gi/graphene";
+import * as Gsk from "@gtkx/gi/gsk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkFixed, GtkFrame, GtkScrolledWindow } from "@gtkx/react";
 import { useMemo } from "react";
 import { useCssResource } from "../../use-css-resource.js";

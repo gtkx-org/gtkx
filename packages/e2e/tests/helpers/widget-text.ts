@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 
 const firstLabelWithin = (widget: Gtk.Widget): string | null => {
     if (widget instanceof Gtk.Label) return widget.getLabel();

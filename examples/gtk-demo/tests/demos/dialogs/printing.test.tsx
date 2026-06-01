@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { waitFor } from "@gtkx/testing";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { configurePrintOperation, printingDemo } from "../../../src/demos/dialogs/printing.js";

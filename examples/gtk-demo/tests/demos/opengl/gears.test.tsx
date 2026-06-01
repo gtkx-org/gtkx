@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { act, screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { gearsDemo } from "../../../src/demos/opengl/gears.js";

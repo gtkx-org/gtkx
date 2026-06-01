@@ -1,5 +1,5 @@
-import type * as Adw from "@gtkx/ffi/adw";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Adw from "@gtkx/gi/adw";
+import * as Gtk from "@gtkx/gi/gtk";
 import { fireEvent, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { themesDemo } from "../../../src/demos/benchmark/themes.js";

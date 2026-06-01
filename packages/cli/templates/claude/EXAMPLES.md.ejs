@@ -6,7 +6,7 @@
 
 ```tsx
 // src/index.tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplicationWindow, GtkLabel, render, quit } from "@gtkx/react";
 
 const App = () => (
@@ -24,7 +24,7 @@ The entry calls `render` directly (similar to `createRoot().render()` in `react-
 ### Modern Adwaita App
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import {
     AdwApplicationWindow,
     AdwHeaderBar,
@@ -68,7 +68,7 @@ export const appId = "com.example.myapp";
 ### Controlled Form
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkEntry, GtkGrid, GtkLabel, x } from "@gtkx/react";
 import { useState } from "react";
 
@@ -105,7 +105,7 @@ const LoginForm = () => {
 ### List with CRUD Operations
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkEntry, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import { useCallback, useState } from "react";
 
@@ -159,7 +159,7 @@ const TodoList = () => {
 ### Stack with Sidebar Navigation
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel, GtkListView, GtkPaned, GtkScrolledWindow, GtkStack, x } from "@gtkx/react";
 import { useState } from "react";
 
@@ -207,7 +207,7 @@ const SidebarNav = () => {
 ### Header Bar with Back Navigation
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplicationWindow, GtkBox, GtkButton, GtkHeaderBar, GtkLabel, GtkStack, GtkWindow, quit, x } from "@gtkx/react";
 import { useState } from "react";
 
@@ -247,7 +247,7 @@ const AppWithNavigation = () => {
 ## Settings Page
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import {
     AdwPreferencesPage,
     AdwPreferencesGroup,
@@ -300,7 +300,7 @@ const SettingsPage = () => {
 ## Data Table with Sorting
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkColumnView, GtkLabel, GtkScrolledWindow, x } from "@gtkx/react";
 import { useMemo, useState } from "react";
 
@@ -359,7 +359,7 @@ const FileTable = () => {
 ## Menu with Keyboard Shortcuts
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel, GtkMenuButton, GtkPopoverMenu, quit, x } from "@gtkx/react";
 import { useState } from "react";
 
@@ -399,7 +399,7 @@ const MenuDemo = () => {
 ## Async Data Loading
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { AdwSpinner, GtkBox, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
 import { useEffect, useState } from "react";
 
@@ -462,7 +462,7 @@ const AsyncList = () => {
 ## Reusable Component Pattern
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
 import type { ReactNode } from "react";
 
@@ -502,7 +502,7 @@ const CardDemo = () => (
 ## Navigation with AdwNavigationView
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import {
     AdwApplicationWindow,
     AdwHeaderBar,
@@ -551,7 +551,7 @@ const NavigationDemo = () => {
 ## Sidebar/Content Split with AdwNavigationSplitView
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import {
     AdwActionRow,
     AdwApplicationWindow,
@@ -630,7 +630,7 @@ const SplitViewDemo = () => {
 ## File Browser with GtkListView (tree)
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
 import { useState } from "react";
 
@@ -688,7 +688,7 @@ const FileBrowser = () => {
 ## Stack with Programmatic Navigation
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel, GtkStack, x } from "@gtkx/react";
 import { useState } from "react";
 
@@ -719,7 +719,7 @@ const StackNavigation = () => {
 ## Animated Card with Toggle
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel, x } from "@gtkx/react";
 import { useState } from "react";
 

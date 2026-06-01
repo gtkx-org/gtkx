@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { act, render, renderHook, screen } from "@gtkx/testing";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";

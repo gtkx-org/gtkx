@@ -1,5 +1,5 @@
-import type * as Adw from "@gtkx/ffi/adw";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Adw from "@gtkx/gi/adw";
+import * as Gtk from "@gtkx/gi/gtk";
 import { AdwToggleGroup } from "@gtkx/react";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";

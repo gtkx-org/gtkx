@@ -1,6 +1,6 @@
 import * as net from "node:net";
-import * as Gio from "@gtkx/ffi/gio";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gio from "@gtkx/gi/gio";
+import * as Gtk from "@gtkx/gi/gtk";
 import { DEFAULT_SOCKET_PATH, type IpcRequest, JsonStreamTransport, McpError, McpErrorCode } from "@gtkx/mcp";
 import { errorMessage } from "@gtkx/utils";
 import { dispatch } from "./handlers.js";

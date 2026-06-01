@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { fireEvent, screen, userEvent, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { drawingAreaDemo } from "../../../src/demos/drawing/drawingarea.js";

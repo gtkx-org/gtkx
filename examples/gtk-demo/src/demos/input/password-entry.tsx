@@ -1,5 +1,5 @@
-import type * as GObject from "@gtkx/ffi/gobject";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkHeaderBar, GtkPasswordEntry } from "@gtkx/react";
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { useDemo } from "../../context/demo-context.js";

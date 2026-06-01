@@ -1,7 +1,7 @@
-import type * as Gdk from "@gtkx/ffi/gdk";
-import * as gl from "@gtkx/ffi/gl";
-import * as GLib from "@gtkx/ffi/glib";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gdk from "@gtkx/gi/gdk";
+import * as gl from "@gtkx/gi/gl";
+import * as GLib from "@gtkx/gi/glib";
+import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkAspectFrame,
     GtkBox,

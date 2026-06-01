@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { constraintsInteractiveDemo } from "../../../src/demos/constraints/constraints-interactive.js";

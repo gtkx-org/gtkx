@@ -14,7 +14,7 @@ vi.mock("@gtkx/ffi", () => ({
     whenStopped: hoisted.whenStopped,
 }));
 
-vi.mock("@gtkx/ffi/gio", () => ({
+vi.mock("@gtkx/gi/gio", () => ({
     Application: { getDefault: hoisted.getDefault },
 }));
 

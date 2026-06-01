@@ -1,10 +1,10 @@
 import { css, cx } from "@gtkx/css";
-import * as Gdk from "@gtkx/ffi/gdk";
-import * as Gio from "@gtkx/ffi/gio";
-import * as GObject from "@gtkx/ffi/gobject";
-import * as Graphene from "@gtkx/ffi/graphene";
-import * as Gsk from "@gtkx/ffi/gsk";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gdk from "@gtkx/gi/gdk";
+import * as Gio from "@gtkx/gi/gio";
+import * as GObject from "@gtkx/gi/gobject";
+import * as Graphene from "@gtkx/gi/graphene";
+import * as Gsk from "@gtkx/gi/gsk";
+import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkBox,
     GtkButton,

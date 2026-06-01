@@ -144,7 +144,7 @@ const buildInitModuleSource = (): string =>
     [
         `import { dirname, join } from "node:path";`,
         `import { fileURLToPath } from "node:url";`,
-        `import { resourceLoad, resourcesRegister } from "@gtkx/ffi/gio";`,
+        `import { resourceLoad, resourcesRegister } from "@gtkx/gi/gio";`,
         ``,
         `const bundleDir = dirname(fileURLToPath(import.meta.url));`,
         `const resource = resourceLoad(join(bundleDir, ${JSON.stringify(BUNDLE_FILENAME)}));`,
@@ -158,7 +158,7 @@ const devInitModuleSource = (bundlePath: string): string => {
     const bundlePathLiteral = JSON.stringify(bundlePath);
     return [
         `import { statSync } from "node:fs";`,
-        `import { resourceLoad, resourcesRegister, resourcesUnregister } from "@gtkx/ffi/gio";`,
+        `import { resourceLoad, resourcesRegister, resourcesUnregister } from "@gtkx/gi/gio";`,
         ``,
         `let current = null;`,
         `let lastSig = "";`,

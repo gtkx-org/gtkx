@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkBox,
     GtkButton,

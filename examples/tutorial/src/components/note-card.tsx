@@ -1,6 +1,6 @@
 import { css } from "@gtkx/css";
-import * as Adw from "@gtkx/ffi/adw";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Adw from "@gtkx/gi/adw";
+import * as Gtk from "@gtkx/gi/gtk";
 import { AdwTimedAnimation, GtkBox, GtkLabel } from "@gtkx/react";
 import type { Note } from "../types.js";
 

@@ -1,7 +1,7 @@
-import * as Adw from "@gtkx/ffi/adw";
-import type * as Gdk from "@gtkx/ffi/gdk";
-import * as Gtk from "@gtkx/ffi/gtk";
-import * as Pango from "@gtkx/ffi/pango";
+import * as Adw from "@gtkx/gi/adw";
+import type * as Gdk from "@gtkx/gi/gdk";
+import * as Gtk from "@gtkx/gi/gtk";
+import * as Pango from "@gtkx/gi/pango";
 import { AdwAlertDialog, createPortal, GtkBox, GtkButton, GtkHeaderBar, GtkLabel, GtkToggleButton } from "@gtkx/react";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Demo, DemoProps, DemoProviderProps } from "../types.js";

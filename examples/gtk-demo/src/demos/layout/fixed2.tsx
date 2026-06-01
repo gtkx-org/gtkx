@@ -1,7 +1,7 @@
-import type * as Gdk from "@gtkx/ffi/gdk";
-import * as Graphene from "@gtkx/ffi/graphene";
-import * as Gsk from "@gtkx/ffi/gsk";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gdk from "@gtkx/gi/gdk";
+import * as Graphene from "@gtkx/gi/graphene";
+import * as Gsk from "@gtkx/gi/gsk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkFixed, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import { useCallback, useEffect, useRef } from "react";
 import type { Demo } from "../types.js";

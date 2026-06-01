@@ -9,13 +9,13 @@ const hoisted = vi.hoisted(() => ({
     getDefault: vi.fn(() => null as unknown),
 }));
 
-vi.mock("@gtkx/ffi/gtk", () => ({
+vi.mock("@gtkx/gi/gtk", () => ({
     AccessibleRole: {} as Record<string, number>,
     Window: { listToplevels: hoisted.listToplevels },
     Application: class {},
 }));
 
-vi.mock("@gtkx/ffi/gio", () => ({
+vi.mock("@gtkx/gi/gio", () => ({
     Application: { getDefault: hoisted.getDefault },
 }));
 

@@ -1,6 +1,6 @@
 import { whenStopped } from "@gtkx/ffi";
-import * as Gio from "@gtkx/ffi/gio";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gio from "@gtkx/gi/gio";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplicationWindow, quit, render, useApplication } from "@gtkx/react";
 import { Component, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

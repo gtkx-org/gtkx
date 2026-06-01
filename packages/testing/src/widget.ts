@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 
 const EDITABLE_ROLES = new Set<Gtk.AccessibleRole>([
     Gtk.AccessibleRole.TEXT_BOX,

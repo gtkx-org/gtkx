@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkButton, GtkListView, GtkMenuButton, GtkScrolledWindow } from "@gtkx/react";
 import { AppShell } from "../AppShell";
 import { type Note, NoteCardComponent, noop, sampleNotes } from "../data";

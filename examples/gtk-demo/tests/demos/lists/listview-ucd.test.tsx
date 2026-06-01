@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { fireEvent, screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { listviewUcdDemo } from "../../../src/demos/lists/listview-ucd.js";

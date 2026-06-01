@@ -1,7 +1,7 @@
 import { css } from "@gtkx/css";
-import type * as GObject from "@gtkx/ffi/gobject";
-import * as Gtk from "@gtkx/ffi/gtk";
-import * as WebKit from "@gtkx/ffi/webkit";
+import type * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
+import * as WebKit from "@gtkx/gi/webkit";
 import {
     AdwApplicationWindow,
     AdwHeaderBar,

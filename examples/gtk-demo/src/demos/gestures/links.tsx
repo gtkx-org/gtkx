@@ -1,5 +1,5 @@
-import * as Adw from "@gtkx/ffi/adw";
-import * as Pango from "@gtkx/ffi/pango";
+import * as Adw from "@gtkx/gi/adw";
+import * as Pango from "@gtkx/gi/pango";
 import { GtkLabel } from "@gtkx/react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./links.tsx?raw";

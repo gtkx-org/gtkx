@@ -1,5 +1,5 @@
-import { Content, Context, Format, ImageSurface, Operator, Surface } from "@gtkx/ffi/cairo";
-import * as Gtk from "@gtkx/ffi/gtk";
+import { Content, Context, Format, ImageSurface, Operator, Surface } from "@gtkx/gi/cairo";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkDrawingArea, GtkFrame, GtkGestureDrag, GtkLabel } from "@gtkx/react";
 import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";

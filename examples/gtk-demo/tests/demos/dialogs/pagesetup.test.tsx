@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { pageSetupDemo } from "../../../src/demos/dialogs/pagesetup.js";

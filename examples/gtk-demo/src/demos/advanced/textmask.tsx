@@ -1,8 +1,8 @@
-import type { Context } from "@gtkx/ffi/cairo";
-import { Pattern } from "@gtkx/ffi/cairo";
-import type * as Gtk from "@gtkx/ffi/gtk";
-import * as Pango from "@gtkx/ffi/pango";
-import * as PangoCairo from "@gtkx/ffi/pangocairo";
+import type { Context } from "@gtkx/gi/cairo";
+import { Pattern } from "@gtkx/gi/cairo";
+import type * as Gtk from "@gtkx/gi/gtk";
+import * as Pango from "@gtkx/gi/pango";
+import * as PangoCairo from "@gtkx/gi/pangocairo";
 import { GtkDrawingArea } from "@gtkx/react";
 import { useCallback, useRef } from "react";
 import type { Demo } from "../types.js";

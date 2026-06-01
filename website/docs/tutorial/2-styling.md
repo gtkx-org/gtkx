@@ -90,7 +90,7 @@ import {
     GtkScrolledWindow,
     quit,
 } from "@gtkx/react";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { css } from "@gtkx/css";
 import { useState } from "react";
 

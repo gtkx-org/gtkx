@@ -1,4 +1,4 @@
-import * as GObject from "@gtkx/ffi/gobject";
+import * as GObject from "@gtkx/gi/gobject";
 import { describe, expect, it } from "vitest";
 import { makeValue } from "../src/gvalue.js";
 

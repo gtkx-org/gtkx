@@ -109,8 +109,8 @@ For tabbed views within a pane, use `AdwViewStack` with `AdwViewStack.Page` and 
 
 ```tsx
 import { AdwHeaderBar, AdwToolbarView, AdwViewStack, AdwViewSwitcher } from "@gtkx/react";
-import * as Adw from "@gtkx/ffi/adw";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Adw from "@gtkx/gi/adw";
+import * as Gtk from "@gtkx/gi/gtk";
 import { useState } from "react";
 
 const ContentPane = () => {
@@ -248,7 +248,7 @@ Most content-centric GNOME apps provide search. `GtkSearchBar` slides into view 
 
 ```tsx
 import { GtkButton, GtkSearchBar, GtkSearchEntry } from "@gtkx/react";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { useRef, useState } from "react";
 
 const [searchMode, setSearchMode] = useState(false);

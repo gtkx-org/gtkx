@@ -1,8 +1,8 @@
-import * as Adw from "@gtkx/ffi/adw";
-import type { Context } from "@gtkx/ffi/cairo";
-import * as Gtk from "@gtkx/ffi/gtk";
-import * as Pango from "@gtkx/ffi/pango";
-import * as PangoCairo from "@gtkx/ffi/pangocairo";
+import * as Adw from "@gtkx/gi/adw";
+import type { Context } from "@gtkx/gi/cairo";
+import * as Gtk from "@gtkx/gi/gtk";
+import * as Pango from "@gtkx/gi/pango";
+import * as PangoCairo from "@gtkx/gi/pangocairo";
 import { useEffect } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./printing.tsx?raw";

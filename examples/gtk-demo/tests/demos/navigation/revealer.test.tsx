@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { act, screen, waitFor } from "@gtkx/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { revealerDemo } from "../../../src/demos/navigation/revealer.js";

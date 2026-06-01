@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { act, screen, userEvent, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewFilebrowserDemo } from "../../../src/demos/lists/listview-filebrowser.js";

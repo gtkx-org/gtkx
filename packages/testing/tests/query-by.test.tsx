@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkEntry, GtkLabel } from "@gtkx/react";
 import { describe, expect, it } from "vitest";
 import {

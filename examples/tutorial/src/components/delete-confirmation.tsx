@@ -1,4 +1,4 @@
-import * as Adw from "@gtkx/ffi/adw";
+import * as Adw from "@gtkx/gi/adw";
 import { AdwAlertDialog, createPortal, useApplication, useProperty } from "@gtkx/react";
 
 export const DeleteConfirmation = ({

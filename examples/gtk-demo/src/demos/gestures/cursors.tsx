@@ -1,5 +1,5 @@
-import * as Gdk from "@gtkx/ffi/gdk";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gdk from "@gtkx/gi/gdk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkListBox, GtkListBoxRow, GtkScrolledWindow } from "@gtkx/react";
 import { useMemo } from "react";
 import { useCssResource } from "../../use-css-resource.js";

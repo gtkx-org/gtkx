@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
 import { useEffect, useRef } from "react";
 import type { Demo } from "../types.js";

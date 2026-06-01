@@ -37,7 +37,7 @@ Configure your test script in `package.json`:
 ## Basic Test
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { cleanup, render, screen, userEvent } from "@gtkx/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
@@ -97,7 +97,7 @@ See the [renderHook API reference](/api/testing/functions/renderHook.md) for ful
 Role queries can filter by widget state like `pressed`, `expanded`, and `selected`:
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkExpander, GtkToggleButton } from "@gtkx/react";
 import { cleanup, render, screen } from "@gtkx/testing";
 import { afterEach, describe, expect, it } from "vitest";
@@ -162,7 +162,7 @@ describe("async", () => {
 ## Complete Example
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { cleanup, render, screen, userEvent, within } from "@gtkx/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { TodoApp } from "../src/app.js";

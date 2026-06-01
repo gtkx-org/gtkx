@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { act, screen, screenshot, userEvent } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { gesturesDemo } from "../../../src/demos/gestures/gestures.js";

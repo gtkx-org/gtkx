@@ -1,5 +1,5 @@
-import type * as cairo from "@gtkx/ffi/cairo";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as cairo from "@gtkx/gi/cairo";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkDrawingArea } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";

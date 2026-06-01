@@ -40,7 +40,7 @@ vi.mock("@gtkx/testing", () => ({
     userEvent: { click: hoisted.click, type: hoisted.typeText, clear: hoisted.clear },
 }));
 
-vi.mock("@gtkx/ffi/gtk", () => ({
+vi.mock("@gtkx/gi/gtk", () => ({
     AccessibleRole: hoisted.AccessibleRole,
     Window: { listToplevels: hoisted.listToplevels },
 }));

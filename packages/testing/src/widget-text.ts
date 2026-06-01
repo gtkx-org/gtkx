@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { getAccessibleMetadata } from "@gtkx/react";
 
 const getLabelText = (widget: Gtk.Widget): string | null => {

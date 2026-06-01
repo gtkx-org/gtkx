@@ -1,7 +1,7 @@
 import * as basename from "node:path/posix";
-import * as Adw from "@gtkx/ffi/adw";
-import * as Gdk from "@gtkx/ffi/gdk";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Adw from "@gtkx/gi/adw";
+import * as Gdk from "@gtkx/gi/gdk";
+import * as Gtk from "@gtkx/gi/gtk";
 import {
     AdwAboutDialog,
     createPortal,

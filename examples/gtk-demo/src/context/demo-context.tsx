@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
 import type { Demo, TreeItem } from "../demos/types.js";
 

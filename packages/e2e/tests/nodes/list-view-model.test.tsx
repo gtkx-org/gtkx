@@ -1,7 +1,7 @@
 import { registerClass } from "@gtkx/ffi";
-import * as Gio from "@gtkx/ffi/gio";
-import * as GObject from "@gtkx/ffi/gobject";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gio from "@gtkx/gi/gio";
+import * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnView, GtkDropDown, GtkGridView, GtkLabel, GtkListView } from "@gtkx/react";
 import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";

@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { act, screen } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { textmaskDemo } from "../../../src/demos/advanced/textmask.js";

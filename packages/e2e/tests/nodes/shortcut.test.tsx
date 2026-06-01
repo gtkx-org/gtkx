@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkShortcutController } from "@gtkx/react";
 import { act, render } from "@gtkx/testing";
 import { createRef, useState } from "react";

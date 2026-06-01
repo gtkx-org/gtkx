@@ -1,5 +1,5 @@
-import * as GObject from "@gtkx/ffi/gobject";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkAboutDialog,
     GtkApplicationWindow,

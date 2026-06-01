@@ -116,7 +116,7 @@ For shortcuts not tied to menus, use `GtkShortcutController` with `GtkShortcutCo
 
 ```tsx
 import { GtkShortcutController } from "@gtkx/react";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 
 <GtkBox orientation={Gtk.Orientation.VERTICAL} focusable>
     <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
@@ -173,7 +173,7 @@ import {
     GtkShortcutController,
     quit,
 } from "@gtkx/react";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 
 export default function App() {
     // ... state from previous chapters

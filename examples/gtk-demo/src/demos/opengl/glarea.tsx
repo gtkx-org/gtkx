@@ -1,6 +1,6 @@
-import * as Gdk from "@gtkx/ffi/gdk";
-import * as gl from "@gtkx/ffi/gl";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gdk from "@gtkx/gi/gdk";
+import * as gl from "@gtkx/gi/gl";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkGLArea, GtkLabel, GtkScale } from "@gtkx/react";
 import { useCallback, useRef, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";

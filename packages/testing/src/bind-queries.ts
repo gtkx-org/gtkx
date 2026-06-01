@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import * as queries from "./queries.js";
 import type { Container } from "./traversal.js";
 import type { BoundQueries, ByRoleOptions, Matcher, MatcherOptions } from "./types.js";

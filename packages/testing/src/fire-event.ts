@@ -1,4 +1,4 @@
-import type * as GObject from "@gtkx/ffi/gobject";
+import type * as GObject from "@gtkx/gi/gobject";
 import { act } from "./timing.js";
 
 /**

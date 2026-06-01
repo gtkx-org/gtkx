@@ -1,5 +1,5 @@
-import * as Adw from "@gtkx/ffi/adw";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import * as Adw from "@gtkx/gi/adw";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { AdwSpringAnimation, AdwTimedAnimation, GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import React, { createRef, type ReactElement } from "react";

@@ -1,5 +1,5 @@
-import * as Gtk from "@gtkx/ffi/gtk";
-import type * as GtkSource from "@gtkx/ffi/gtksource";
+import * as Gtk from "@gtkx/gi/gtk";
+import type * as GtkSource from "@gtkx/gi/gtksource";
 import { GtkBox, GtkLabel, GtkScrolledWindow, GtkSourceView } from "@gtkx/react";
 import { useCallback } from "react";
 import { useDemo } from "../context/demo-context.js";

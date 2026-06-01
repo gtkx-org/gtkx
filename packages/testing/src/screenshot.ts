@@ -1,5 +1,5 @@
-import * as Gsk from "@gtkx/ffi/gsk";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gsk from "@gtkx/gi/gsk";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { ScreenshotResult, WaitForOptions } from "./types.js";
 import { waitFor } from "./wait-for.js";
 
@@ -74,7 +74,7 @@ export type ScreenshotOptions = Pick<WaitForOptions, "timeout" | "interval">;
  * @example
  * ```tsx
  * import { render, screenshot } from "@gtkx/testing";
- * import * as Gtk from "@gtkx/ffi/gtk";
+ * import * as Gtk from "@gtkx/gi/gtk";
  *
  * const { container } = await render(<MyApp />);
  * const window = container.getWindows()[0];

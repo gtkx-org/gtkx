@@ -49,7 +49,7 @@ my-app/
 
 ```tsx
 import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, quit } from "@gtkx/react";
 
 export default function App() {

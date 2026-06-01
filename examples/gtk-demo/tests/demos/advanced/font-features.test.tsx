@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { act, fireEvent, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { fontFeaturesDemo } from "../../../src/demos/advanced/font-features.js";

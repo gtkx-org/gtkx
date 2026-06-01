@@ -1,9 +1,9 @@
-import type { Context } from "@gtkx/ffi/cairo";
-import * as Gdk from "@gtkx/ffi/gdk";
-import * as Gio from "@gtkx/ffi/gio";
-import type { GType } from "@gtkx/ffi/gobject";
-import * as GObject from "@gtkx/ffi/gobject";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type { Context } from "@gtkx/gi/cairo";
+import * as Gdk from "@gtkx/gi/gdk";
+import * as Gio from "@gtkx/gi/gio";
+import type { GType } from "@gtkx/gi/gobject";
+import * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkBox,
     GtkButton,

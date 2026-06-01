@@ -1,8 +1,8 @@
-import * as Gdk from "@gtkx/ffi/gdk";
-import type * as GLib from "@gtkx/ffi/glib";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { cssParserWarningQuark } from "@gtkx/ffi/gtk";
-import * as Pango from "@gtkx/ffi/pango";
+import * as Gdk from "@gtkx/gi/gdk";
+import type * as GLib from "@gtkx/gi/glib";
+import * as Gtk from "@gtkx/gi/gtk";
+import { cssParserWarningQuark } from "@gtkx/gi/gtk";
+import * as Pango from "@gtkx/gi/pango";
 import type { RefObject } from "react";
 import { useCallback, useLayoutEffect, useRef } from "react";
 

@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnView, GtkLabel } from "@gtkx/react";
 import { act, render } from "@gtkx/testing";
 import { createRef, useCallback, useMemo, useState } from "react";

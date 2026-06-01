@@ -1,5 +1,5 @@
-import * as Adw from "@gtkx/ffi/adw";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Adw from "@gtkx/gi/adw";
+import * as Gtk from "@gtkx/gi/gtk";
 import {
     AdwApplicationWindow,
     AdwHeaderBar,

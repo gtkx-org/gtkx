@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkNotebook } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";

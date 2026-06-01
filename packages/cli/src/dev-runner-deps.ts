@@ -1,5 +1,5 @@
 import { whenStopped } from "@gtkx/ffi";
-import * as Gio from "@gtkx/ffi/gio";
+import * as Gio from "@gtkx/gi/gio";
 import { createServer } from "vite";
 import type { DevRunnerDeps } from "./dev-runner.js";
 import { startMcpClient, stopMcpClient } from "./mcp/index.js";

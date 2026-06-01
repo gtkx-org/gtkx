@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplicationWindow } from "@gtkx/react";
 import { type RenderResult, render } from "@gtkx/testing";
 import { type ComponentType, createRef, type ReactNode, type RefObject, useCallback, useState } from "react";

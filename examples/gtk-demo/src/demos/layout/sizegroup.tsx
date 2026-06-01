@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkCheckButton, GtkDropDown, GtkFrame, GtkLabel, GtkSizeGroup } from "@gtkx/react";
 import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";

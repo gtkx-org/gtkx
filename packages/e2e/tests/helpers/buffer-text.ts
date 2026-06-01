@@ -1,5 +1,5 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
-import type * as GtkSource from "@gtkx/ffi/gtksource";
+import type * as Gtk from "@gtkx/gi/gtk";
+import type * as GtkSource from "@gtkx/gi/gtksource";
 import type { RefObject } from "react";
 
 /**

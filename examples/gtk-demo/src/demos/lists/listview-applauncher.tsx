@@ -1,7 +1,7 @@
-import * as Adw from "@gtkx/ffi/adw";
-import * as Gdk from "@gtkx/ffi/gdk";
-import * as Gio from "@gtkx/ffi/gio";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Adw from "@gtkx/gi/adw";
+import * as Gdk from "@gtkx/gi/gdk";
+import * as Gio from "@gtkx/gi/gio";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
 import { useCallback, useMemo } from "react";
 import type { Demo, DemoProps } from "../types.js";

@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
 import { useMemo } from "react";
 import type { Demo } from "../types.js";

@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { screen, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { fixed2Demo } from "../../../src/demos/layout/fixed2.js";

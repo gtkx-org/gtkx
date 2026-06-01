@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { getConfig } from "./config.js";
 import { prettyWidget } from "./pretty-widget.js";
 import { formatRole, prettyRoles } from "./role-helpers.js";

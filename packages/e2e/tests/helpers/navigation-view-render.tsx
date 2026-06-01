@@ -1,4 +1,4 @@
-import type * as Adw from "@gtkx/ffi/adw";
+import type * as Adw from "@gtkx/gi/adw";
 import { AdwNavigationView, GtkLabel } from "@gtkx/react";
 import { waitFor } from "@gtkx/testing";
 import type { ReactNode, RefObject } from "react";

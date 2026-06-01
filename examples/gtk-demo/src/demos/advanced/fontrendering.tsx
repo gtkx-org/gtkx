@@ -9,11 +9,11 @@ import {
     HintStyle,
     ImageSurface,
     Surface,
-} from "@gtkx/ffi/cairo";
-import type * as Gdk from "@gtkx/ffi/gdk";
-import * as Gtk from "@gtkx/ffi/gtk";
-import * as Pango from "@gtkx/ffi/pango";
-import * as PangoCairo from "@gtkx/ffi/pangocairo";
+} from "@gtkx/gi/cairo";
+import type * as Gdk from "@gtkx/gi/gdk";
+import * as Gtk from "@gtkx/gi/gtk";
+import * as Pango from "@gtkx/gi/pango";
+import * as PangoCairo from "@gtkx/gi/pangocairo";
 import {
     GtkBox,
     GtkButton,

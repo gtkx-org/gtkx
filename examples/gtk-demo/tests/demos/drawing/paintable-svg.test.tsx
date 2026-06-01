@@ -1,5 +1,5 @@
-import * as Gio from "@gtkx/ffi/gio";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gio from "@gtkx/gi/gio";
+import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import nodeEditorSvgUri from "../../../src/demos/drawing/org.gtk.gtk4.NodeEditor.Devel.svg";

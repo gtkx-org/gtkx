@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import type { ComponentType, ReactNode } from "react";
 import type { Container } from "./traversal.js";
 

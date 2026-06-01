@@ -1,6 +1,6 @@
-import * as Gdk from "@gtkx/ffi/gdk";
-import * as Gio from "@gtkx/ffi/gio";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gdk from "@gtkx/gi/gdk";
+import * as Gio from "@gtkx/gi/gio";
+import * as Gtk from "@gtkx/gi/gtk";
 import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { App } from "../src/app.js";

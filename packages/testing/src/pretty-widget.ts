@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { formatRole } from "./role-helpers.js";
 import { type Container, isApplication } from "./traversal.js";
 import { getWidgetPropertyText } from "./widget-text.js";

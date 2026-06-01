@@ -1,8 +1,8 @@
-import { Context, Format, ImageSurface } from "@gtkx/ffi/cairo";
-import * as Gdk from "@gtkx/ffi/gdk";
-import * as GLib from "@gtkx/ffi/glib";
-import * as Gtk from "@gtkx/ffi/gtk";
-import * as Pango from "@gtkx/ffi/pango";
+import { Context, Format, ImageSurface } from "@gtkx/gi/cairo";
+import * as Gdk from "@gtkx/gi/gdk";
+import * as GLib from "@gtkx/gi/glib";
+import * as Gtk from "@gtkx/gi/gtk";
+import * as Pango from "@gtkx/gi/pango";
 import { GtkButton, GtkDropDown, GtkEntry, GtkPaned, GtkScale, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
 import { type RefObject, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";

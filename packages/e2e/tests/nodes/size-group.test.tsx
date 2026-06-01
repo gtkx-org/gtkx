@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkFrame, GtkLabel, GtkSizeGroup } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";

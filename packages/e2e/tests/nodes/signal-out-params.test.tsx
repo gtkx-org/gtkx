@@ -1,5 +1,5 @@
-import * as Gdk from "@gtkx/ffi/gdk";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import * as Gdk from "@gtkx/gi/gdk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel, GtkOverlay, GtkSpinButton, GtkText } from "@gtkx/react";
 import { act, render, waitFor } from "@gtkx/testing";
 import { createRef } from "react";

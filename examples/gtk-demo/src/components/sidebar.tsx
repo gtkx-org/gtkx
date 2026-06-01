@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkInscription, GtkListView, GtkScrolledWindow, GtkSearchBar, GtkSearchEntry } from "@gtkx/react";
 import { useCallback, useMemo } from "react";
 import { useDemo } from "../context/demo-context.js";

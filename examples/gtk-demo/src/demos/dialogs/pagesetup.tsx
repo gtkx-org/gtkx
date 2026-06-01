@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { useEffect } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./pagesetup.tsx?raw";
