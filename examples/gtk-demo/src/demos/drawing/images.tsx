@@ -56,15 +56,10 @@ const StatefulIconPanel = () => {
     const svg = useMemo(() => loadSvgPaintable(statefulSvgPath), []);
     const [state, setState] = useState(false);
 
-    const attachFrameClock = (image: Gtk.Widget) => {
-        const frameClock = image.getFrameClock();
-        if (frameClock) svg.setFrameClock(frameClock);
-    };
-
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
             <ImagesPanel title="Stateful icon">
-                <GtkImage paintable={svg} pixelSize={128} onRealize={attachFrameClock} />
+                <GtkImage paintable={svg} pixelSize={128} />
             </ImagesPanel>
             <GtkSwitch
                 halign={Gtk.Align.START}
@@ -82,14 +77,9 @@ const StatefulIconPanel = () => {
 const PathAnimationPanel = () => {
     const svg = useMemo(() => loadSvgPaintable(animatedSvgPath), []);
 
-    const attachFrameClock = (image: Gtk.Widget) => {
-        const frameClock = image.getFrameClock();
-        if (frameClock) svg.setFrameClock(frameClock);
-    };
-
     return (
         <ImagesPanel title="Path animation">
-            <GtkImage paintable={svg} pixelSize={128} onRealize={attachFrameClock} />
+            <GtkImage paintable={svg} pixelSize={128} />
         </ImagesPanel>
     );
 };
