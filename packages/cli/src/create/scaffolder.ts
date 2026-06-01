@@ -24,7 +24,7 @@ export type CreateOptions = {
 /**
  * Resolved options after all prompts have been answered.
  */
-export type ResolvedOptions = {
+type ResolvedOptions = {
     name: string;
     appId: string;
     packageManager: PackageManager;
@@ -37,7 +37,7 @@ export type ResolvedOptions = {
  * as a `Pick` of the real package so tests inject a structurally compatible
  * mock without re-deriving clack's option shapes.
  */
-export type ScaffolderPrompts = Pick<
+type ScaffolderPrompts = Pick<
     typeof import("@clack/prompts"),
     "intro" | "note" | "cancel" | "text" | "select" | "confirm" | "isCancel"
 > & {
@@ -48,7 +48,7 @@ export type ScaffolderPrompts = Pick<
 /**
  * Filesystem operations the scaffolder needs.
  */
-export type ScaffolderFs = {
+type ScaffolderFs = {
     existsSync(path: string): boolean;
     mkdirSync(path: string, opts: { recursive: boolean }): void;
     writeFileSync(path: string, content: string): void;
@@ -58,7 +58,7 @@ export type ScaffolderFs = {
  * Function invoked to install a set of dependencies into a freshly scaffolded
  * project. Production wires this to `nypm`.
  */
-export type InstallDependenciesFn = (opts: {
+type InstallDependenciesFn = (opts: {
     cwd: string;
     packageManager: PackageManager;
     dependencies: string[];
@@ -69,7 +69,7 @@ export type InstallDependenciesFn = (opts: {
  * Function invoked to initialize a git repository at the given directory.
  * Production wires this to `tinyexec`.
  */
-export type GitInitFn = (cwd: string) => Promise<void>;
+type GitInitFn = (cwd: string) => Promise<void>;
 
 /**
  * Collaborators required by {@link createScaffolder}.

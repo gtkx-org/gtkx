@@ -4,7 +4,7 @@
  *
  * Listed without the leading dot. Matching is case-insensitive.
  */
-export const ASSET_EXTENSIONS = [
+const ASSET_EXTENSIONS = [
     "png",
     "jpg",
     "jpeg",

@@ -7,4 +7,4 @@
  * `react/`) are not part of the supported surface and may change in any
  * release.
  */
-export { CodegenRunner, type CodegenRunnerOptions, type CodegenRunnerResult } from "./runner.js";
+export { CodegenRunner } from "./runner.js";

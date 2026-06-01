@@ -2,7 +2,7 @@ import { functionFromNode, type GirFunction } from "./function.js";
 import { attr, childrenOf, type RawNode } from "./parse.js";
 
 /** A single `<member>` of an `<enumeration>` or `<bitfield>`. */
-export type GirEnumMember = {
+type GirEnumMember = {
     /** GIR `name`, snake_case lowercase (e.g. `"fill"`). */
     readonly name: string;
     /** GIR `c:identifier`, SCREAMING_SNAKE_CASE (e.g. `"GTK_ALIGN_FILL"`). */

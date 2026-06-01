@@ -65,7 +65,7 @@ export interface ArraySyncDescriptor {
 }
 
 /** A descriptor for one bespoke prop. */
-export type PropDescriptor = SignalDescriptor | ImperativeDescriptor | ArraySyncDescriptor;
+type PropDescriptor = SignalDescriptor | ImperativeDescriptor | ArraySyncDescriptor;
 
 /** A node's bespoke props, keyed by prop name. */
 export type PropDescriptorTable = Record<string, PropDescriptor>;

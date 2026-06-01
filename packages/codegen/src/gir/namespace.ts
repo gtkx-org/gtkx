@@ -56,7 +56,7 @@ export type GirNamespace = {
 };
 
 /** A `<include>` entry pointing at another namespace identifier. */
-export type NamespaceInclude = {
+type NamespaceInclude = {
     readonly name: string;
     readonly version: string;
 };

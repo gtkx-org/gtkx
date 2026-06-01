@@ -26,7 +26,7 @@ const HARDCODED_INLINE_ELEMENT_SIZES: ReadonlyMap<string, number> = new Map([["G
  *
  * @param transfer - GIR transfer-ownership (`"none"`, `"full"`, `"container"`)
  */
-export const ffiOwnership = (transfer: ParameterTransfer): "borrowed" | "full" | "none" => {
+const ffiOwnership = (transfer: ParameterTransfer): "borrowed" | "full" | "none" => {
     if (transfer === "full") return "full";
     if (transfer === "container") return "full";
     return "borrowed";

@@ -265,7 +265,7 @@ export type RegisterClassVfuncDefinition = {
  * struct). Each vfunc is wrapped in a libffi trampoline whose function pointer
  * is written into the new class's own copy of the inherited interface vtable.
  */
-export type RegisterClassInterfaceVfuncsDefinition = {
+type RegisterClassInterfaceVfuncsDefinition = {
     /** GType of the inherited interface whose vfuncs are overridden. */
     readonly gtype: number;
     /** Vfunc overrides relative to the interface struct base. */

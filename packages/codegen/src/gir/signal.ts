@@ -2,7 +2,7 @@ import { type GirParameter, type GirReturnValue, parameterFromNode, returnValueF
 import { attr, attrBool, childOf, childrenOf, type RawNode } from "./parse.js";
 
 /** Emission stage (`<glib:signal when="…">`). */
-export type SignalWhen = "first" | "last" | "cleanup";
+type SignalWhen = "first" | "last" | "cleanup";
 
 /** A GObject `<glib:signal>` declaration. */
 export type GirSignal = {

@@ -69,13 +69,13 @@ export type HashTableTypeRef = {
 };
 
 /** An inline `<callback>` (used for vtable slots and callback parameters). */
-export type InlineCallbackTypeRef = {
+type InlineCallbackTypeRef = {
     readonly kind: "callback";
     readonly callback: RawNode;
 };
 
 /** A `<varargs/>` parameter placeholder; not marshalable. */
-export type VarargsTypeRef = { readonly kind: "varargs" };
+type VarargsTypeRef = { readonly kind: "varargs" };
 
 const LIST_KIND_BY_NAME: ReadonlyMap<string, "glist" | "gslist" | "gptrarray" | "garray" | "gbytearray"> = new Map([
     ["GLib.List", "glist"],
@@ -118,7 +118,7 @@ export const typeRefFromSlot = (parent: RawNode | undefined): GirTypeRef | undef
  *
  * @param typeNode - A `<type>` element
  */
-export const typeRefFromTypeNode = (typeNode: RawNode): GirTypeRef => {
+const typeRefFromTypeNode = (typeNode: RawNode): GirTypeRef => {
     const name = attr(typeNode, "name") ?? "";
     const cType = attr(typeNode, "c:type");
 

@@ -169,7 +169,7 @@ const AUXILIARY_BASE_TYPES: ReadonlySet<string> = new Set(["GtkEventController",
  * @param namespace - The namespace the class lives in
  * @param repository - The repository for cross-namespace parent lookups
  */
-export const isAuxiliaryReactType = (klass: GirClass, namespace: GirNamespace, repository: GirRepository): boolean =>
+const isAuxiliaryReactType = (klass: GirClass, namespace: GirNamespace, repository: GirRepository): boolean =>
     descendsFrom(klass, namespace, repository, (glibName) => AUXILIARY_BASE_TYPES.has(glibName));
 
 /**

@@ -35,7 +35,7 @@ export const collectGuides = (layout: Gtk.ConstraintLayout): Gtk.ConstraintGuide
 };
 
 /** Collects the constraints of the layout owned by the box behind `boxRef`. */
-export const constraintsOf = (boxRef: RefObject<Gtk.Box | null>): Gtk.Constraint[] =>
+const constraintsOf = (boxRef: RefObject<Gtk.Box | null>): Gtk.Constraint[] =>
     collectConstraints(layoutFrom(boxRef));
 
 /** Reads the first constraint of the layout owned by the box behind `boxRef`. */

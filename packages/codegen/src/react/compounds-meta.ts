@@ -13,7 +13,7 @@
  * The list is small and stable; defining it in code keeps the lookup
  * fast and avoids one more GIR-introspection pass.
  */
-export const CONTAINER_SLOTS: Readonly<Record<string, readonly string[]>> = Object.freeze({
+const CONTAINER_SLOTS: Readonly<Record<string, readonly string[]>> = Object.freeze({
     AdwActionRow: ["addPrefix", "addSuffix"],
     AdwEntryRow: ["addPrefix", "addSuffix"],
     AdwExpanderRow: ["addPrefix", "addSuffix", "addRow", "addAction"],
@@ -41,7 +41,7 @@ export const containerSlotsFor = (jsxName: string): readonly string[] => CONTAIN
  * subcomponents render an existing intrinsic element rather than
  * invoking a setter on the parent widget.
  */
-export const VIRTUAL_SUBCOMPONENTS: Readonly<
+const VIRTUAL_SUBCOMPONENTS: Readonly<
     Record<string, ReadonlyArray<{ readonly child: string; readonly intrinsic: string }>>
 > = Object.freeze({
     GtkShortcutController: [{ child: "Shortcut", intrinsic: "Shortcut" }],

@@ -1,7 +1,6 @@
 {
     "$schema": "https://unpkg.com/knip@6/schema.json",
     "tags": ["-public"],
-    "ignoreExportsUsedInFile": true,
     "ignoreDependencies": ["@gtkx/gi", "@gtkx/react-jsx", "@gtkx/ffi"],
     "workspaces": {
         ".": {
@@ -13,15 +12,18 @@
             "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
         },
         "packages/codegen": {
+            "includeEntryExports": true,
             "project": ["src/**/*.ts!"]
         },
         "packages/css": {
             "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
         },
         "packages/e2e": {
+            "includeEntryExports": true,
             "project": ["tests/**/*.{ts,tsx}"]
         },
         "packages/ffi": {
+            "includeEntryExports": true,
             "entry": ["src/index.ts!"],
             "project": ["src/**/*.ts!", "scripts/**/*.ts", "tests/**/*.{ts,tsx}"]
         },
@@ -29,9 +31,11 @@
             "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/utils": {
+            "includeEntryExports": true,
             "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/native": {
+            "includeEntryExports": true,
             "entry": ["types.ts!"],
             "project": ["*.ts!", "tests/**/*.{ts,tsx}"]
         },
@@ -42,6 +46,7 @@
             "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
         },
         "packages/vitest": {
+            "includeEntryExports": true,
             "entry": ["src/setup.ts!"],
             "project": ["src/**/*.ts!"]
         },

@@ -8,8 +8,7 @@
  * thrown values.
  */
 
-export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineScope } from "./helpers.js";
-export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./helpers.js";
+export { alloc, call, read, t } from "./helpers.js";
 
 import type { NativeHandle } from "@gtkx/native";
 import type { NativeClass } from "./handles.js";

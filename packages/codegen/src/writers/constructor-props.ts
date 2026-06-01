@@ -15,7 +15,7 @@ import { writeFfiType } from "./value.js";
  *
  * @param property - The GIR property
  */
-export const isConstructable = (property: GirProperty): boolean =>
+const isConstructable = (property: GirProperty): boolean =>
     property.writable || property.construct || property.constructOnly;
 
 /**
@@ -29,7 +29,7 @@ export const isConstructable = (property: GirProperty): boolean =>
  * @param ctx - The module context
  * @param klass - The class whose construct props to collect
  */
-export const collectConstructableProps = (ctx: ModuleContext, klass: GirClass): readonly GirProperty[] => {
+const collectConstructableProps = (ctx: ModuleContext, klass: GirClass): readonly GirProperty[] => {
     const all = [...klass.properties, ...collectInterfaceProperties(ctx, klass)].filter(isConstructable);
     const seen = new Set<string>();
     const result: GirProperty[] = [];

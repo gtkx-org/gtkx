@@ -30,7 +30,7 @@ const blackColor = (): Gdk.RGBA => {
     return rgba;
 };
 
-export class ColorWidget extends Gtk.Widget {
+class ColorWidget extends Gtk.Widget {
     private color1: Gdk.RGBA = blackColor();
     private color2: Gdk.RGBA = blackColor();
     private time2 = 0;

@@ -108,7 +108,7 @@ const structT = (ownership: Ownership = "borrowed", size?: number): Type => {
 };
 
 /** Optional configuration for {@link t.fundamental}. */
-export type FundamentalOptions = {
+type FundamentalOptions = {
     /** Owned (`"full"`) or borrowed (`"borrowed"`) value. */
     ownership?: Ownership;
     /** Fundamental GType name (e.g., `"GBytes"`). */

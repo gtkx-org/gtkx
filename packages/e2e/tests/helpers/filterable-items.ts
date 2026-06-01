@@ -2,13 +2,13 @@
  * A simple `id`/`active` pair used by reordering and filter-view tests across
  * the e2e suite (list-view, column-view).
  */
-export interface FilterableItem {
+interface FilterableItem {
     id: string;
     active: boolean;
 }
 
 /** Five items with alternating `active` flags, used as the canonical filter input. */
-export const FILTERABLE_ITEMS: readonly FilterableItem[] = [
+const FILTERABLE_ITEMS: readonly FilterableItem[] = [
     { id: "1", active: true },
     { id: "2", active: false },
     { id: "3", active: true },

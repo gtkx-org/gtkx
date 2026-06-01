@@ -53,7 +53,7 @@ export type CounterRow = { id: string; value: { name: string; count: number } };
  *
  * @param entries - `[id, name, count]` triples, one per row.
  */
-export const counterRows = (entries: [string, string, number][]): CounterRow[] =>
+const counterRows = (entries: [string, string, number][]): CounterRow[] =>
     entries.map(([id, name, count]) => ({ id, value: { name, count } }));
 
 /** Renders a counter row's `name: count` label. */

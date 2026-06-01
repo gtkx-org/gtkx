@@ -94,7 +94,7 @@ export type ConstructorWrap = "gobject" | "interface" | "boxed";
  * @param ownerClassName - The local class name that wraps the result
  * @param wrap - How the result is lifted to its JavaScript wrapper
  */
-export const renderConstructorStatic = (
+const renderConstructorStatic = (
     ctx: ModuleContext,
     callable: GirFunction,
     ownerClassName: string,
@@ -122,7 +122,7 @@ export const renderConstructorStatic = (
  * @param ctx - The module context
  * @param callable - The GIR function callable
  */
-export const renderStaticMember = (ctx: ModuleContext, callable: GirFunction): string | undefined => {
+const renderStaticMember = (ctx: ModuleContext, callable: GirFunction): string | undefined => {
     if (!isEmittableCallable(ctx, callable)) return undefined;
     const cIdentifier = callable.cIdentifier;
     if (cIdentifier === undefined) return undefined;
@@ -175,7 +175,7 @@ export const renderInstanceMethod = (
  * @param original - The shadowed callable whose name should remain reachable
  * @param shadower - The callable the alias dispatches into
  */
-export const renderInstanceAlias = (
+const renderInstanceAlias = (
     ctx: ModuleContext,
     original: GirFunction,
     shadower: GirFunction,
@@ -286,7 +286,7 @@ export const renderStaticHead = (
  * Records each emitted method name in `claimedNames` so subsequent property
  * and signal-method renderers can detect collisions.
  */
-export const renderPlainInstanceMethods = (
+const renderPlainInstanceMethods = (
     ctx: ModuleContext,
     methods: readonly GirFunction[],
     claimedNames: Set<string>,

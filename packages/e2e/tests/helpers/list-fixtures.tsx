@@ -23,7 +23,7 @@ const toListItems = <T,>(items: FixtureInput<T>): ListItem<T>[] =>
 const renderNamed = (item: unknown): ReactNode => <GtkLabel label={(item as NamedValue).name} />;
 
 /** Options shared by the list-view and grid-view fixtures. */
-export interface ListViewFixtureOptions<T> {
+interface ListViewFixtureOptions<T> {
     /** Renders a single item; defaults to a `GtkLabel` bound to `value.name`. */
     renderItem?: (item: T, row?: Gtk.TreeListRow | null) => ReactNode;
     /** Selected item ids. */

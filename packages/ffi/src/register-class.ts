@@ -15,7 +15,7 @@ import { getClassGType, getNativeObject, setClassGType } from "./registry.js";
  * `registerClass` discovers methods on a subclass whose camelCase name
  * matches a vfunc declared on an ancestor class struct.
  */
-export type RegisterClassVfuncDescriptor = {
+type RegisterClassVfuncDescriptor = {
     readonly kind: "class";
     readonly className: string;
     readonly vfuncName: string;
@@ -31,7 +31,7 @@ export type RegisterClassVfuncDescriptor = {
  * `registerClass` discovers methods whose camelCase names match vfuncs of an
  * interface the registered class inherits from its parent.
  */
-export type RegisterClassInterfaceVfuncDescriptor = {
+type RegisterClassInterfaceVfuncDescriptor = {
     readonly kind: "interface";
     readonly className: string;
     readonly vfuncName: string;

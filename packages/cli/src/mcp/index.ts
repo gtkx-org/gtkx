@@ -32,4 +32,3 @@ export const stopMcpClient = (): void => {
 };
 
 export { McpClient } from "./client.js";
-export { WidgetRegistry } from "./widget-registry.js";

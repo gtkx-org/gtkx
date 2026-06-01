@@ -93,7 +93,7 @@ const signalBaseName = (signal: string): string => {
  *
  * Passed as the first argument to {@link connectSignal} and {@link emitSignal}.
  */
-export type SignalTarget = {
+type SignalTarget = {
     readonly instance: object;
     readonly cls: NativeClass;
 };
@@ -101,7 +101,7 @@ export type SignalTarget = {
 /**
  * Optional configuration for {@link connectSignal}.
  */
-export type ConnectSignalOptions = {
+type ConnectSignalOptions = {
     /** When true, run the handler after the default handler. */
     readonly after?: boolean | undefined;
     /** The inherited `connect`, used for non-own signals. */

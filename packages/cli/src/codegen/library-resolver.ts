@@ -7,7 +7,7 @@ import { GIR_NAMESPACE_PATTERN, type GtkxConfig, LIBRARIES_WILDCARD } from "../c
  * GTK 4 and libadwaita; their transitive dependencies (GLib, GObject, Gio,
  * Gdk, Pango, Cairo, …) are resolved automatically from the GIR files on disk.
  */
-export const DEFAULT_LIBRARIES: readonly string[] = ["Gtk-4.0", "Adw-1"];
+const DEFAULT_LIBRARIES: readonly string[] = ["Gtk-4.0", "Adw-1"];
 
 const GIR_FILE_SUFFIX = ".gir";
 

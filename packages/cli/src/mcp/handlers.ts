@@ -15,7 +15,7 @@ export type HandlerContext = {
 /**
  * Function signature implemented by every entry in {@link HANDLERS}.
  */
-export type Handler = (ctx: HandlerContext, params: unknown) => Promise<unknown>;
+type Handler = (ctx: HandlerContext, params: unknown) => Promise<unknown>;
 
 const requireWidget = (registry: WidgetRegistry, widgetId: string | undefined): Gtk.Widget => {
     if (widgetId === undefined) {

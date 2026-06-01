@@ -25,7 +25,7 @@ import { writeFfiType, writeSelfFfiType, writeTrampolineType } from "./value.js"
  * @param ctx - The module context
  * @param fn - The callable
  */
-export const writeArgsLiteral = (ctx: ModuleContext, fn: GirFunction): string => {
+const writeArgsLiteral = (ctx: ModuleContext, fn: GirFunction): string => {
     const args: string[] = [];
     const instanceOffset = fn.instance === undefined ? 0 : 1;
     if (fn.instance !== undefined) {

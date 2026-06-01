@@ -176,7 +176,7 @@ const isVoidReturn = (fn: GirFunction): boolean => {
  * Constructors use this to force the result to be wrapped as the owning
  * class even when the GIR `<return-value>` is typed as a parent class.
  */
-export type ReturnOverride =
+type ReturnOverride =
     | {
           /**
            * Resolve the wrapper from the value's runtime GLib type, so a

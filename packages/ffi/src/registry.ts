@@ -59,7 +59,7 @@ export function getClassGType(cls: NativeClass): GType {
  * {@link setInterfaceGType}, or the invalid GType (`0`) when `cls` is
  * not a registered interface wrapper.
  */
-export function getInterfaceGType(cls: NativeClass): GType {
+function getInterfaceGType(cls: NativeClass): GType {
     return interfaceGtypeByClass.get(cls) ?? G_TYPE_INVALID;
 }
 
@@ -154,7 +154,7 @@ export const findNativeClass = (gtype: GType, walkHierarchy = true): NativeClass
  * @param interfaceGtype - The GLib interface type the instance implements
  * @returns The resolved class, or null when none is registered
  */
-export const findNativeClassForInterface = (gtype: GType, interfaceGtype: GType): NativeClass | null => {
+const findNativeClassForInterface = (gtype: GType, interfaceGtype: GType): NativeClass | null => {
     const exact = getNativeClass(gtype);
     if (exact) return exact;
 
@@ -205,7 +205,7 @@ export function registerNativeObject(obj: GTyped): void {
  * @param handle - The native handle to look up
  * @returns The existing wrapper, or null if not found
  */
-export function findNativeObject(handle: NativeHandle): GTyped | null {
+function findNativeObject(handle: NativeHandle): GTyped | null {
     const pointerId = getNativeId(handle);
     const ref = objectRegistry.get(pointerId);
 

@@ -7,7 +7,7 @@
  * names that should be promoted. User-supplied `slotProps` from
  * `gtkx.config.ts` merge into this map.
  */
-export const BUILT_IN_SLOT_PROPS: Readonly<Record<string, readonly string[]>> = Object.freeze({
+const BUILT_IN_SLOT_PROPS: Readonly<Record<string, readonly string[]>> = Object.freeze({
     GtkWindow: ["titlebar"],
     AdwWindow: ["content"],
     AdwApplicationWindow: ["content"],

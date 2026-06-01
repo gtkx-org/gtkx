@@ -2,7 +2,7 @@ import { attr, attrBool, childOf, type RawNode } from "./parse.js";
 import { type GirTypeRef, typeRefFromSlot } from "./type-ref.js";
 
 /** Direction of a `<parameter>` (`in`, `out`, `inout`). */
-export type ParameterDirection = "in" | "out" | "inout";
+type ParameterDirection = "in" | "out" | "inout";
 
 /**
  * Lifetime conveyed by `transfer-ownership`. Mirrors the GIR vocabulary one
@@ -11,7 +11,7 @@ export type ParameterDirection = "in" | "out" | "inout";
 export type ParameterTransfer = "none" | "full" | "container";
 
 /** Lifetime of a callback parameter (`scope=…`). */
-export type CallbackScope = "call" | "notified" | "async" | "forever";
+type CallbackScope = "call" | "notified" | "async" | "forever";
 
 /**
  * A `<parameter>` or `<instance-parameter>` of a callable.

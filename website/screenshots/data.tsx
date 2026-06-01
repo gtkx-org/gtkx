@@ -37,7 +37,7 @@ export const sampleNotes: Note[] = [
     },
 ];
 
-export const categories = [
+const categories = [
     { id: "all", title: "All Notes", icon: "document-edit-symbolic", count: "4" },
     { id: "favorites", title: "Favorites", icon: "starred-symbolic", count: "1" },
     { id: "recent", title: "Recent", icon: "document-open-recent-symbolic", count: "3" },

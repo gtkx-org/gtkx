@@ -23,7 +23,7 @@ export type IpcRequest = z.infer<typeof IpcRequestSchema>;
 /**
  * Zod schema for validating IPC errors.
  */
-export const IpcErrorSchema = z.object({
+const IpcErrorSchema = z.object({
     code: z.number(),
     message: z.string(),
     data: z.unknown().optional(),
@@ -122,7 +122,7 @@ export type IpcMessage = IpcRequest | IpcResponse;
  *
  * @returns Path to the runtime directory
  */
-export const getRuntimeDir = (): string => process.env.XDG_RUNTIME_DIR ?? tmpdir();
+const getRuntimeDir = (): string => process.env.XDG_RUNTIME_DIR ?? tmpdir();
 
 /**
  * Default path for the MCP socket file.
