@@ -8,22 +8,20 @@
     "type": "module",
     "scripts": {
         "build": "turbo build --filter=!gtkx",
-        "changeset": "changeset",
         "codegen": "node --conditions=source --import tsx packages/cli/src/cli.ts codegen",
         "coverage": "turbo coverage:all native-coverage --filter=!gtkx",
         "coverage:all": "vitest run --coverage",
         "docs": "turbo run docs --filter=!gtkx",
         "lint": "turbo lint:all lint --filter=!gtkx",
         "lint:all": "ln -sfn node_modules/.gtkx .gtkx && biome check . && knip --no-gitignore --exclude files && knip --production --no-gitignore --exclude files && depcruise packages",
+        "publish-test": "node scripts/publish-test.ts",
         "release": "node scripts/publish.ts",
         "test": "turbo test --filter=!gtkx",
         "test:all": "vitest run",
-        "typecheck": "turbo typecheck --filter=!gtkx",
-        "version-packages": "changeset version"
+        "typecheck": "turbo typecheck --filter=!gtkx"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.4.16",
-        "@changesets/cli": "^2.31.0",
         "@types/node": "^25.9.1",
         "@types/react": "^19.2.15",
         "@vitest/coverage-v8": "^4.1.7",
@@ -33,6 +31,7 @@
         "tsx": "^4.22.4",
         "turbo": "^2.9.16",
         "typescript": "^6.0.3",
+        "verdaccio": "^6.7.2",
         "vitest": "^4.1.7"
     },
     "engines": {

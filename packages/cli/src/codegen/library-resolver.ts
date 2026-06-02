@@ -2,23 +2,27 @@ import { readdirSync } from "node:fs";
 import { GIR_NAMESPACE_PATTERN, type GtkxConfig, LIBRARIES_WILDCARD } from "../config.js";
 
 /**
- * GIR namespaces generated when `gtkx.config.ts` omits `libraries`.
+ * GIR namespaces always generated, whether or not `gtkx.config.ts` lists
+ * `libraries`.
  *
- * GTK 4 and libadwaita; their transitive dependencies (GLib, GObject, Gio,
- * Gdk, Pango, Cairo, …) are resolved automatically from the GIR files on disk.
+ * GTK 4, libadwaita, and GtkSource — the namespaces `@gtkx/react`'s built-in
+ * widget nodes import at runtime. Their transitive dependencies (GLib, GObject,
+ * Gio, Gdk, Pango, Cairo, …) are resolved automatically from the GIR files on
+ * disk. Explicit `libraries` are merged with this set rather than replacing it,
+ * so a project's bindings always cover the reconciler's needs.
  */
-const DEFAULT_LIBRARIES: readonly string[] = ["Gtk-4.0", "Adw-1"];
+const DEFAULT_LIBRARIES: readonly string[] = ["Gtk-4.0", "Adw-1", "GtkSource-5"];
 
 const GIR_FILE_SUFFIX = ".gir";
 
 /**
- * Resolves the {@link GtkxConfig.libraries} setting to a concrete, sorted list
- * of `Name-Version` GIR namespace identifiers:
+ * Resolves the {@link GtkxConfig.libraries} setting to a concrete list of
+ * `Name-Version` GIR namespace identifiers:
  *
  * - omitted → {@link DEFAULT_LIBRARIES}
  * - `"*"` → every `.gir` discovered across `girPath`, keeping the newest
  *   version of each namespace
- * - an explicit array → returned unchanged
+ * - an explicit array → merged with {@link DEFAULT_LIBRARIES}, deduplicated
  *
  * @param libraries - The validated `libraries` field from {@link GtkxConfig}
  * @param girPath - Resolved GIR search directories, used only to expand `"*"`
@@ -41,7 +45,7 @@ export const resolveLibraries = (libraries: GtkxConfig["libraries"], girPath: re
         return discovered;
     }
 
-    return libraries;
+    return [...new Set([...DEFAULT_LIBRARIES, ...libraries])];
 };
 
 /**

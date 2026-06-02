@@ -9,7 +9,8 @@
  * 3. Stages the napi sub-package directories and copies the prebuilt native
  *    binaries into them so `@gtkx/native-linux-*-gnu` ship the correct
  *    `.node` files.
- * 4. Publishes every package with a pending changeset.
+ * 4. Publishes every public workspace package whose version is not already on
+ *    the registry via `pnpm -r publish`.
  *
  * A package counts as published when its `package.json` does not set
  * `private: true`. The script fails fast on the first non-zero exit so a
@@ -86,4 +87,4 @@ run("pnpm", ["build"]);
 await copyReadme();
 run("pnpm", ["--filter", "@gtkx/native", "create-npm-dirs"]);
 run("pnpm", ["--filter", "@gtkx/native", "artifacts"]);
-run("pnpm", ["exec", "--", "changeset", "publish"]);
+run("pnpm", ["-r", "publish", "--access", "public", "--no-git-checks"]);
