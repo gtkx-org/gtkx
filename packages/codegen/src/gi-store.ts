@@ -23,6 +23,8 @@ export type GiStoreOptions = {
     readonly linkDir: string;
     /** Real (symlink-resolved) directory of the installed `@gtkx/ffi`. */
     readonly realFfiDir: string;
+    /** Real (symlink-resolved) directory of the installed `@gtkx/native`. */
+    readonly realNativeDir: string;
     /** Version string copied onto the emitted `@gtkx/gi` package. */
     readonly version: string;
 };
@@ -56,12 +58,13 @@ const barrelNeedsGenerated = (directory: string): boolean =>
  * Retargets a barrel-template specifier from its source layout (under
  * `overlay/<ns>/`) to its emitted layout (under `gi/<ns>/`): the namespace's
  * own generated module becomes a sibling, augment files move under `augment/`,
- * and runtime modules that stay in `@gtkx/ffi` collapse to that barrel.
+ * and relative runtime modules collapse to the `@gtkx/ffi` barrel. The
+ * `@gtkx/native` specifier passes through so low-level primitives resolve
+ * straight to the native package.
  */
 const retargetBarrelSpecifier = (spec: string, directory: string): string => {
     const generated = spec.match(/^\.\.\/generated\/[a-z0-9]+\/([a-z0-9]+)\.js$/);
     if (generated) return `./${generated[1]}.js`;
-    if (spec === "@gtkx/native") return "@gtkx/ffi";
     if (spec.startsWith("../")) return "@gtkx/ffi";
     const sibling = spec.match(/^\.\/([a-z0-9-]+)\.js$/);
     if (sibling) {
@@ -167,7 +170,10 @@ export const writeGiStore = (options: GiStoreOptions, namespaces: readonly GiNam
                   overlay: false,
               },
     );
-    typecheckGiStore(tmp, sources, join(options.realFfiDir, "src", "index.ts"));
+    typecheckGiStore(tmp, sources, {
+        ffiEntry: join(options.realFfiDir, "src", "index.ts"),
+        nativeEntry: join(options.realNativeDir, "dist", "index.d.ts"),
+    });
 
     for (const file of collected) {
         writeFilePair(tmp, file.stem, file.fileName, file.source);
@@ -182,6 +188,7 @@ export const writeGiStore = (options: GiStoreOptions, namespaces: readonly GiNam
     });
 
     symlinkRelative(join(tmp, "node_modules", "@gtkx", "ffi"), options.realFfiDir);
+    symlinkRelative(join(tmp, "node_modules", "@gtkx", "native"), options.realNativeDir);
     symlinkRelative(join(tmp, "node_modules", "@gtkx", "gi"), tmp);
 
     swapStore(tmp, options.storeDir, options.linkDir);

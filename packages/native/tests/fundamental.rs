@@ -164,10 +164,11 @@ fn from_glib_none_without_ref_fn_does_not_ref() {
 
     let fundamental = unsafe { Fundamental::from_glib_none(ptr, None, Some(param_spec_unref)) };
 
-    assert!(fundamental.is_owned());
+    assert!(!fundamental.is_owned());
     assert_eq!(param_spec_refcount(ptr), initial_ref);
 
-    std::mem::forget(fundamental);
+    drop(fundamental);
+    assert_eq!(param_spec_refcount(ptr), initial_ref);
 
     unsafe { glib::gobject_ffi::g_param_spec_unref(ptr as *mut _) };
 }

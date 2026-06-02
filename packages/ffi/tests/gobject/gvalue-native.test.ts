@@ -1,6 +1,7 @@
-import { call, type GType, GValue, Type } from "@gtkx/ffi";
+import { type GType, GValue, Type } from "@gtkx/ffi";
 import * as GLib from "@gtkx/gi/glib";
 import { ParamFlags, paramSpecBoolean } from "@gtkx/gi/gobject";
+import { call } from "@gtkx/native";
 import "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";

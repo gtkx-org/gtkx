@@ -1,5 +1,4 @@
-import type { NativeHandle } from "@gtkx/ffi";
-import { alloc, getHandle, getNativeObject, read, t, wrapHandle } from "@gtkx/ffi";
+import { getHandle, getNativeObject, t, wrapHandle } from "@gtkx/ffi";
 import type {
     Antialias,
     Content,
@@ -14,6 +13,7 @@ import type {
     TextClusterFlags,
 } from "@gtkx/gi/cairo/cairo.js";
 import { Context, FontFace, Pattern, ScaledFont, Surface } from "@gtkx/gi/cairo/cairo.js";
+import { alloc, type NativeHandle, read } from "@gtkx/native";
 import {
     allocClusterBuffer,
     allocGlyphBuffer,

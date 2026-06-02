@@ -161,6 +161,21 @@ fn lookup_fundamental_fns_empty_names_yield_none() {
 }
 
 #[test]
+fn lookup_fundamental_fns_unref_without_ref_errors() {
+    common::run(|| {
+        let err = GlibThreadState::with(|state| {
+            state
+                .lookup_fundamental_fns("libgobject-2.0.so.0", "", "g_object_unref")
+                .err()
+                .map(|e| e.to_string())
+        });
+
+        let message = err.expect("unref without ref should fail");
+        assert!(message.contains("without a ref function"));
+    });
+}
+
+#[test]
 fn lookup_fundamental_fns_missing_ref_symbol_errors() {
     common::run(|| {
         let err = GlibThreadState::with(|state| {

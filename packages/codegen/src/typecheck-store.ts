@@ -31,16 +31,27 @@ const COMPILER_OPTIONS: ts.CompilerOptions = {
     types: [],
 };
 
+/**
+ * Source entries the overlay type-check resolves the runtime packages to.
+ */
+export type RuntimeEntries = {
+    /** Absolute path to `@gtkx/ffi`'s source entry (`src/index.ts`). */
+    readonly ffiEntry: string;
+    /** Absolute path to `@gtkx/native`'s declaration entry (`dist/index.d.ts`). */
+    readonly nativeEntry: string;
+};
+
 const buildCompilerHost = (
     storeRoot: string,
     virtualSources: ReadonlyMap<string, string>,
-    ffiEntry: string,
+    entries: RuntimeEntries,
 ): ts.CompilerHost => {
     const readSource = (fileName: string): string | undefined =>
         virtualSources.get(fileName) ?? (existsSync(fileName) ? readFileSync(fileName, "utf8") : undefined);
 
     const resolveInjected = (specifier: string): string | undefined => {
-        if (specifier === "@gtkx/ffi") return ffiEntry;
+        if (specifier === "@gtkx/ffi") return entries.ffiEntry;
+        if (specifier === "@gtkx/native") return entries.nativeEntry;
         if (!specifier.startsWith(GI_SPECIFIER)) return undefined;
         const stem = specifier.slice(GI_SPECIFIER.length).replace(/\.js$/, "");
         return [`${stem}.d.ts`, `${stem}.ts`, `${stem}/index.d.ts`, `${stem}/index.ts`]
@@ -112,14 +123,18 @@ const reportOverlayErrors = (program: ts.Program, overlayPaths: readonly string[
  *
  * @param storeRoot - Absolute root the virtual source paths are rooted at.
  * @param files - The in-memory generated declarations and overlay sources.
- * @param ffiEntry - Absolute path to `@gtkx/ffi`'s source entry (`src/index.ts`).
+ * @param entries - Absolute source entries for `@gtkx/ffi` and `@gtkx/native`.
  * @throws When any overlay source has a semantic type error.
  */
-export const typecheckGiStore = (storeRoot: string, files: readonly StoreSourceFile[], ffiEntry: string): void => {
+export const typecheckGiStore = (
+    storeRoot: string,
+    files: readonly StoreSourceFile[],
+    entries: RuntimeEntries,
+): void => {
     const overlayPaths = files.filter((file) => file.overlay).map((file) => file.path);
     if (overlayPaths.length === 0) return;
     const virtualSources = new Map(files.map((file) => [file.path, file.source]));
-    const host = buildCompilerHost(storeRoot, virtualSources, ffiEntry);
+    const host = buildCompilerHost(storeRoot, virtualSources, entries);
     const program = ts.createProgram({ rootNames: files.map((file) => file.path), options: COMPILER_OPTIONS, host });
     reportOverlayErrors(program, overlayPaths, storeRoot);
 };

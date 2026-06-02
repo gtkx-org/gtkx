@@ -1,10 +1,10 @@
 /**
- * Cross-process graceful shutdown primitive shared by every long-running
- * GTKX entry point — the dev supervisor, the MCP CLI, and the Vitest worker
- * setup. The helper installs `SIGINT`/`SIGTERM`/`SIGHUP` handlers, routes the
- * first signal through a user-supplied close callback, and escalates either
- * on a second `SIGINT` or after a configurable timeout. On completion it
- * calls `process.exit` with the canonical exit code for the signal.
+ * Cross-process graceful shutdown primitive for long-running Node processes.
+ *
+ * The helper installs `SIGINT`/`SIGTERM`/`SIGHUP` handlers, routes the first
+ * delivered signal through a user-supplied close callback, and escalates either
+ * on a second `SIGINT` or after a configurable timeout. On completion it calls
+ * `process.exit` with the canonical exit code for the signal.
  */
 
 const HANDLED_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP"] as const satisfies readonly NodeJS.Signals[];
@@ -111,7 +111,7 @@ export const installGracefulShutdown = (options: GracefulShutdownOptions): Grace
             Promise.resolve()
                 .then(() => options.onSignal(signal))
                 .catch((error: unknown) => {
-                    console.error("[gtkx] Graceful shutdown error:", error);
+                    console.error("Graceful shutdown error:", error);
                 })
                 .finally(() => finish(signal));
             return;

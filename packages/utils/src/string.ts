@@ -1,12 +1,10 @@
 /**
- * Pure, runtime-agnostic string-case helpers shared across GTKX packages.
+ * Pure, runtime-agnostic string-case helpers.
  *
- * GTKX bridges several casing conventions: GIR uses snake_case for symbols,
- * kebab-case for properties and signals, and PascalCase for types, while the
- * JavaScript surface uses camelCase for members and PascalCase for types. The
- * helpers below codify the conversions between those shapes. They split only
- * on underscores and hyphens and preserve the case of each segment, so they
- * are not a substitute for a full Unicode-aware case transform.
+ * The conversions translate between snake_case, kebab-case, camelCase, and
+ * PascalCase. They split only on underscores and hyphens and preserve the case
+ * of each segment, so they are not a substitute for a full Unicode-aware case
+ * transform.
  */
 
 /**

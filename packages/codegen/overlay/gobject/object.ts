@@ -1,16 +1,10 @@
 import {
-    alloc,
-    call,
-    findObjectProperty,
     GVALUE_BORROWED,
     GValue,
     getHandle,
-    getInstanceGType,
     getNativeObject,
     gTypeFromFfi,
     LIBGOBJECT,
-    type NativeHandle,
-    read,
     t,
     valueFromJS,
     valueFromObject,
@@ -19,6 +13,7 @@ import {
 } from "@gtkx/ffi";
 import type { GType, ParamSpec } from "@gtkx/gi/gobject/gobject.js";
 import { Object as GObject, signalEmitv, signalParseName, type Value } from "@gtkx/gi/gobject/gobject.js";
+import { alloc, call, findObjectProperty, getInstanceGType, type NativeHandle, read } from "@gtkx/native";
 
 declare module "@gtkx/gi/gobject/gobject.js" {
     interface Object {

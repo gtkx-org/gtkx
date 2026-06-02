@@ -1,4 +1,4 @@
-import { freeze, unfreeze } from "@gtkx/ffi";
+import { freezeDispatch, unfreezeDispatch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/gi/gtk";
 import { act, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
@@ -9,13 +9,13 @@ vi.setConfig({ testTimeout: 30000 });
 
 const readBufferText = (textView: Gtk.TextView): string => {
     const buffer = textView.getBuffer();
-    freeze();
+    freezeDispatch();
     try {
         const start = buffer.getStartIter();
         const end = buffer.getEndIter();
         return buffer.getText(start, end, false) ?? "";
     } finally {
-        unfreeze();
+        unfreezeDispatch();
     }
 };
 

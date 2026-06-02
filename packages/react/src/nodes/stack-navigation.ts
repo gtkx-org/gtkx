@@ -144,7 +144,8 @@ export class StackNavigationNode extends WidgetNode<StackNavigationWidget, Stack
         if (stack === null && !this.supportsNullStack()) return;
 
         this.unsubscribeFromWiredStack();
-        (this.backingInstance as unknown as StackBindable).setStack(stack);
+        const bindable: StackBindable = this.backingInstance;
+        bindable.setStack(stack);
         this.wiredStack = stack;
         if (stack !== null) this.subscribeToStackParent(stack);
     }
@@ -193,7 +194,7 @@ export class StackNavigationNode extends WidgetNode<StackNavigationWidget, Stack
 
     private collectStackNodes(node: Node, expectedTypeName: string, out: StackNode[]): void {
         for (const child of node.children) {
-            if (child === (this as unknown as Node)) continue;
+            if (child === this) continue;
             if (child instanceof StackNode) {
                 if (child.typeName === expectedTypeName) out.push(child);
                 continue;

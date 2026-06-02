@@ -6,7 +6,8 @@ import { ParamFlags, paramSpecBoolean, typeFromName, Value } from "@gtkx/gi/gobj
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
 import "@gtkx/gi/gobject";
-import { call, t, valueFromFfi, valueFromJS, valueFromObject, valueGetType, valueToJS } from "@gtkx/ffi";
+import { t, valueFromFfi, valueFromJS, valueFromObject, valueGetType, valueToJS } from "@gtkx/ffi";
+import { call } from "@gtkx/native";
 
 const callGetType = (lib: string, fn: string): GType => {
     const result = call(lib, fn, [], { type: "uint64" });

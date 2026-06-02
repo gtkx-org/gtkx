@@ -57,6 +57,7 @@ const buildRunner = (
             storeDir: store.giStoreDir,
             linkDir: store.giLinkDir,
             realFfiDir: store.realFfiDir,
+            realNativeDir: store.realNativeDir,
             version: store.ffiVersion,
         },
         jsx:

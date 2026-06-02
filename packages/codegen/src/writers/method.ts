@@ -798,7 +798,7 @@ export const isHandlePassing = (context: ModuleContext, ref: GirTypeRef): boolea
  * stays nullable, matching the declared return.
  */
 const handleCast = (context: ModuleContext, valueExpression: string, nullable: boolean): string => {
-    context.addRuntimeTypeImport("NativeHandle");
+    context.addNativeTypeImport("NativeHandle");
     return `${valueExpression} as NativeHandle${nullable ? " | null" : ""}`;
 };
 

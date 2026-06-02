@@ -569,10 +569,7 @@ export type DragOptions = {
     startY?: number;
 };
 
-interface DragInstancePatch {
-    getStartPoint?: () => [boolean, number, number];
-    getOffset?: () => [boolean, number, number];
-}
+type DragInstancePatch = Partial<Pick<Gtk.GestureDrag, "getStartPoint" | "getOffset">>;
 
 const withGestureDragState = <T>(
     controller: Gtk.GestureDrag,
@@ -580,7 +577,7 @@ const withGestureDragState = <T>(
     startY: number,
     runWithOffset: (setOffset: (dx: number, dy: number) => void) => T,
 ): T => {
-    const instance = controller as unknown as DragInstancePatch;
+    const instance: DragInstancePatch = controller;
     const ownsStartPoint = Object.hasOwn(instance, "getStartPoint");
     const ownsOffset = Object.hasOwn(instance, "getOffset");
     const previousStartPoint = instance.getStartPoint;

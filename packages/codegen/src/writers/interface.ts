@@ -20,7 +20,7 @@ import { resolveImplementedInterface } from "./inheritance.js";
 import { methodExportName } from "./method.js";
 import { renderPropertyAccessor } from "./property-accessor.js";
 import { appendNativeClassRegistration } from "./registration.js";
-import { renderSignalMembers, renderSignalRegistration } from "./signal.js";
+import { renderSignalMembers } from "./signal.js";
 
 /**
  * Emits a class declaration for a `<interface>` element.
@@ -148,7 +148,6 @@ const appendInterfaceRegistrations = (context: ModuleContext, iface: GirClass, c
         role: "interface",
         getTypeRef,
         vfuncs: renderVfuncMetadata(context, iface),
-        signals: renderSignalRegistration(context, iface),
     });
 };
 

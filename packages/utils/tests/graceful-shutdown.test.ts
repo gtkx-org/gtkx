@@ -152,7 +152,7 @@ describe("installGracefulShutdown — force-kill escalation and error paths", ()
         await flush();
 
         expect(errorSpy).toHaveBeenCalledWith(
-            "[gtkx] Graceful shutdown error:",
+            "Graceful shutdown error:",
             expect.objectContaining({ message: "shutdown boom" }),
         );
         expect(fixture.exitSpy).toHaveBeenCalledWith(143);

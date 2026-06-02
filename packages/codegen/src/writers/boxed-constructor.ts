@@ -64,7 +64,7 @@ export const renderBoxedConstructor = (context: ModuleContext, boxed: GirBoxed, 
     if (isOpaque(boxed)) {
         return `constructor() {\n${indent(`throw new Error(${quote(`Cannot construct ${className}: opaque boxed type with no known layout`)});`, 1)}\n}`;
     }
-    context.addRuntimeImport("alloc");
+    context.addNativeImport("alloc");
     context.addRuntimeImport("setHandle");
     const { slots, size } = computeBoxedFieldSlots(context, boxed.fields, boxed.isUnion);
     const statements = [`const handle = alloc(${allocArgs(context, boxed, size).join(", ")});`];
@@ -90,14 +90,14 @@ const allocArgs = (context: ModuleContext, boxed: GirBoxed, size: number): reado
 
 const renderFieldWrite = (context: ModuleContext, entry: WritableFieldSlot): string => {
     context.addRuntimeImport("t");
-    context.addRuntimeImport("write");
+    context.addNativeImport("write");
     const ffiType = renderFfiType(context, entry.field.type, "none");
     const name = toIdentifier(toCamelCase(entry.field.name));
     const offset = entry.slot.byteOffset;
     if (entry.slot.bitWidth === undefined) {
         return `if (props.${name} !== undefined) write(handle, ${ffiType}, ${offset}, props.${name});`;
     }
-    context.addRuntimeImport("read");
+    context.addNativeImport("read");
     const mask = (1 << entry.slot.bitWidth) - 1;
     const bitOffset = entry.slot.bitOffset ?? 0;
     const merged = `(((read(handle, ${ffiType}, ${offset}) as number) & ~(${mask} << ${bitOffset})) | ((Number(props.${name}) & ${mask}) << ${bitOffset})) >>> 0`;

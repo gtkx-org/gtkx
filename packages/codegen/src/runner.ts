@@ -46,7 +46,7 @@ export type CodegenRunnerResult = {
  * await new CodegenRunner({
  *     libraries: ["Gtk-4.0", "Adw-1"],
  *     girPath: ["/usr/share/gir-1.0"],
- *     gi: { storeDir, linkDir, realFfiDir, version },
+ *     gi: { storeDir, linkDir, realFfiDir, realNativeDir, version },
  * }).run();
  * ```
  */

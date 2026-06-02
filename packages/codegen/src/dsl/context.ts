@@ -44,6 +44,25 @@ export class ModuleContext {
         this.module.imports.addNamed("@gtkx/ffi", name, true);
     }
 
+    /**
+     * Adds a named import from the low-level `@gtkx/native` runtime.
+     *
+     * The transport primitives (`alloc`, `call`, `read`, `write`) live in
+     * `@gtkx/native`; generated bindings reach them directly so `@gtkx/ffi`
+     * stays the home of higher-level runtime helpers only.
+     */
+    addNativeImport(name: string): void {
+        this.module.imports.addNamed("@gtkx/native", name);
+    }
+
+    /**
+     * Adds a type-only named import from `@gtkx/native`
+     * (`import { type Name }`), erased from the emitted `.js`.
+     */
+    addNativeTypeImport(name: string): void {
+        this.module.imports.addNamed("@gtkx/native", name, true);
+    }
+
     /** Adds the canonical `constructGObjectInstance` import from `@gtkx/ffi`. */
     addConstructGObjectInstanceImport(): void {
         this.module.imports.addNamed("@gtkx/ffi", "constructGObjectInstance");

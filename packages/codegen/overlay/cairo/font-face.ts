@@ -1,7 +1,7 @@
-import type { NativeHandle } from "@gtkx/ffi";
 import { getHandle, t, wrapHandle } from "@gtkx/ffi";
 import type { FontSlant, FontType, FontWeight, Status } from "@gtkx/gi/cairo/cairo.js";
 import { FontFace } from "@gtkx/gi/cairo/cairo.js";
+import type { NativeHandle } from "@gtkx/native";
 import { FONT_FACE_T, FONT_FACE_T_NONE, INT_TYPE, LIB, STRING_BORROWED, STRING_FULL } from "./common.js";
 
 const { fn } = t;

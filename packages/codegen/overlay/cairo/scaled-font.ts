@@ -1,7 +1,7 @@
-import type { NativeHandle } from "@gtkx/ffi";
-import { alloc, getHandle, getNativeObject, read, t } from "@gtkx/ffi";
+import { getHandle, getNativeObject, t } from "@gtkx/ffi";
 import type { FontOptions, FontType, Status, TextClusterFlags } from "@gtkx/gi/cairo/cairo.js";
 import { FontFace, ScaledFont } from "@gtkx/gi/cairo/cairo.js";
+import { alloc, type NativeHandle, read } from "@gtkx/native";
 import {
     allocGlyphBuffer,
     type CairoGlyph,

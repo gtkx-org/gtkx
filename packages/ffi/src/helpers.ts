@@ -1,6 +1,6 @@
 import { type Arg, call as nativeCall, type Type } from "@gtkx/native";
 
-export { alloc, call, freeze, read, unfreeze, write } from "@gtkx/native";
+export { alloc, call, read } from "@gtkx/native";
 
 /**
  * Lifetime of a value crossing the FFI boundary.

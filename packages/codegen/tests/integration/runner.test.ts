@@ -12,6 +12,7 @@ afterAll(() => {
 });
 
 const REAL_FFI_DIR = join(import.meta.dirname, "..", "..", "..", "ffi");
+const REAL_NATIVE_DIR = join(import.meta.dirname, "..", "..", "..", "native");
 
 const giOptions = (name: string) => {
     const root = join(workDir, name);
@@ -21,6 +22,7 @@ const giOptions = (name: string) => {
             storeDir: join(root, "node_modules", ".gtkx", "gi"),
             linkDir: join(root, "node_modules", "@gtkx", "gi"),
             realFfiDir: REAL_FFI_DIR,
+            realNativeDir: REAL_NATIVE_DIR,
             version: "0.0.0",
         },
     };

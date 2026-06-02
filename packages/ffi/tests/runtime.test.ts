@@ -6,26 +6,28 @@ const EXPECTED_RUNTIME_EXPORTS = [
     "getHandle",
     "setHandle",
     "tryGetHandle",
-    "alloc",
-    "call",
-    "freeze",
-    "read",
     "t",
-    "unfreeze",
-    "write",
     "checkError",
     "createErrorDomain",
     "registerNativeClass",
     "getNativeObject",
     "getNativeObjectAsInterface",
     "connectSignal",
-    "emitSignal",
+    "signalBaseName",
 ] as const;
 
+const NATIVE_TRANSPORT_PRIMITIVES = ["alloc", "call", "read", "write", "freeze", "unfreeze"] as const;
+
 describe("runtime barrel", () => {
-    it("exposes every value symbol generated code depends on", () => {
+    it("exposes every helper symbol generated code depends on", () => {
         for (const name of EXPECTED_RUNTIME_EXPORTS) {
             expect(runtime, `missing runtime export: ${name}`).toHaveProperty(name);
+        }
+    });
+
+    it("does not re-export low-level transport primitives owned by `@gtkx/native`", () => {
+        for (const name of NATIVE_TRANSPORT_PRIMITIVES) {
+            expect(runtime, `unexpected native primitive re-export: ${name}`).not.toHaveProperty(name);
         }
     });
 

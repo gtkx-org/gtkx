@@ -196,6 +196,12 @@ impl FundamentalFnCache {
             })
         };
 
+        if ref_fn.is_none() && unref_fn.is_some() {
+            anyhow::bail!(
+                "Fundamental type declares unref '{unref_func}' without a ref function; a wrapper built from it would release a reference it never took"
+            );
+        }
+
         let result = (ref_fn, unref_fn);
         self.cache
             .entry(ref_func.to_owned())

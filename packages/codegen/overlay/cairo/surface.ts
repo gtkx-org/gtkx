@@ -1,7 +1,7 @@
-import type { NativeHandle } from "@gtkx/ffi";
 import { getHandle, setHandle, t, wrapHandle } from "@gtkx/ffi";
 import type { Content, Format, RectangleInt, Status, SurfaceType } from "@gtkx/gi/cairo/cairo.js";
 import { Surface } from "@gtkx/gi/cairo/cairo.js";
+import type { NativeHandle } from "@gtkx/native";
 import {
     DOUBLE_REF,
     DOUBLE_TYPE,

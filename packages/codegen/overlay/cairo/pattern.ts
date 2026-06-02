@@ -1,4 +1,3 @@
-import type { NativeHandle } from "@gtkx/ffi";
 import { getHandle, t, wrapHandle } from "@gtkx/ffi";
 import {
     type Extend,
@@ -8,6 +7,7 @@ import {
     type Status,
     type Surface,
 } from "@gtkx/gi/cairo/cairo.js";
+import type { NativeHandle } from "@gtkx/native";
 import {
     DOUBLE_REF,
     DOUBLE_TYPE,

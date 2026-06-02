@@ -47,7 +47,7 @@ impl Fundamental {
 
         Self {
             ptr: owned_ptr,
-            owned: true,
+            owned: ref_fn.is_some(),
             ref_fn,
             unref_fn,
         }
@@ -83,7 +83,7 @@ impl Clone for Fundamental {
 
         Self {
             ptr: cloned_ptr,
-            owned: true,
+            owned: self.ref_fn.is_some(),
             ref_fn: self.ref_fn,
             unref_fn: self.unref_fn,
         }

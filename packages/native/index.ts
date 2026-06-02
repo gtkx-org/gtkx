@@ -352,7 +352,7 @@ export function watchObjectFinalize(handle: NativeHandle): void {
  * Bracketed by [[unfreeze]] to release the GLib main loop. Calls nest: only
  * the outermost `freeze` / `unfreeze` pair starts and stops the freeze loop.
  *
- * @internal Used by `@gtkx/react` around React commits.
+ * @internal Wrapped by `@gtkx/ffi`'s commit-bracket facade.
  */
 export function freeze(): void {
     native.freeze();
@@ -361,7 +361,7 @@ export function freeze(): void {
 /**
  * Resumes normal GTK frame-clock dispatch after a [[freeze]] block.
  *
- * @internal Used by `@gtkx/react` around React commits.
+ * @internal Wrapped by `@gtkx/ffi`'s commit-bracket facade.
  */
 export function unfreeze(): void {
     native.unfreeze();

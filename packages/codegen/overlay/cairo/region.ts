@@ -1,7 +1,7 @@
-import type { NativeHandle } from "@gtkx/ffi";
-import { alloc, getHandle, getNativeObject, t, wrapHandle, write } from "@gtkx/ffi";
+import { getHandle, getNativeObject, t, wrapHandle } from "@gtkx/ffi";
 import type { RegionOverlap, Status } from "@gtkx/gi/cairo/cairo.js";
 import { RectangleInt, Region } from "@gtkx/gi/cairo/cairo.js";
+import { alloc, type NativeHandle, write } from "@gtkx/native";
 import { INT_TYPE, LIB, RECT_INT_T, REGION_T, REGION_T_NONE } from "./common.js";
 
 const { fn } = t;

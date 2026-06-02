@@ -1,4 +1,4 @@
-import { freeze, unfreeze } from "@gtkx/ffi";
+import { freezeDispatch, unfreezeDispatch } from "@gtkx/ffi";
 import { typeName } from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import React from "react";
@@ -218,7 +218,7 @@ const createCommitConfig = (): CommitConfig => ({
     },
     prepareForCommit: () => {
         beginCommit();
-        freeze();
+        freezeDispatch();
         return null;
     },
     resetAfterCommit: () => {
@@ -229,7 +229,7 @@ const createCommitConfig = (): CommitConfig => ({
             drainError = error;
         } finally {
             endCommit();
-            unfreeze();
+            unfreezeDispatch();
         }
         if (drainError !== null) reportReconcilerError(drainError);
     },

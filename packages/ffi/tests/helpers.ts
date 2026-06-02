@@ -1,6 +1,6 @@
-import { G_TYPE_INVALID, getInstanceGType, typeIsA } from "@gtkx/ffi";
+import { G_TYPE_INVALID, typeIsA } from "@gtkx/ffi";
 import type { GType } from "@gtkx/gi/gobject";
-import type { NativeHandle } from "@gtkx/native";
+import { getInstanceGType, type NativeHandle } from "@gtkx/native";
 
 /**
  * Tests whether a `GTypeInstance`-compatible handle is an instance of `gtype`.

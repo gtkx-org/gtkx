@@ -66,6 +66,8 @@ export type CodegenStore = {
     readonly jsxLinkDir: string;
     /** Real directory of the installed `@gtkx/ffi`. */
     readonly realFfiDir: string;
+    /** Real directory of the installed `@gtkx/native`. */
+    readonly realNativeDir: string;
     /** `@gtkx/ffi`'s version, copied onto the emitted `@gtkx/gi`. */
     readonly ffiVersion: string;
     /** Real directory of the installed `@gtkx/react`, or `null` when absent. */
@@ -116,6 +118,10 @@ export const resolveCodegenStore = (projectRoot: string): CodegenStore => {
     if (ffi === null) {
         throw new Error("Cannot resolve @gtkx/ffi from the project; is it installed?");
     }
+    const native = resolvePackage(require, root, "@gtkx/native");
+    if (native === null) {
+        throw new Error("Cannot resolve @gtkx/native from the project; is it installed?");
+    }
     const react = resolvePackage(require, root, "@gtkx/react");
     const reactRuntime = resolvePackage(require, root, "react");
 
@@ -126,6 +132,7 @@ export const resolveCodegenStore = (projectRoot: string): CodegenStore => {
         jsxStoreDir: join(nodeModules, ".gtkx", "jsx"),
         jsxLinkDir: join(nodeModules, "@gtkx", "react-jsx"),
         realFfiDir: ffi.dir,
+        realNativeDir: native.dir,
         ffiVersion: ffi.version,
         realReactDir: react?.dir ?? null,
         realReactRuntimeDir: reactRuntime?.dir ?? null,

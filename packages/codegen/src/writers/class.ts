@@ -25,7 +25,7 @@ import { inputParameters, methodExportName, renderPromisifiedBody, renderPromisi
 import { renderPropertyAccessor } from "./property-accessor.js";
 import { appendNativeClassRegistration } from "./registration.js";
 import { renderRuntimeOverride } from "./runtime-override.js";
-import { renderSignalMembers, renderSignalRegistration } from "./signal.js";
+import { renderSignalMembers } from "./signal.js";
 import { renderTsType } from "./ts-type.js";
 
 /**
@@ -190,7 +190,6 @@ const appendClassRegistrations = (context: ModuleContext, klass: GirClass, class
         role: "class",
         getTypeRef,
         vfuncs: renderVfuncMetadata(context, klass),
-        signals: renderSignalRegistration(context, klass),
     });
 };
 

@@ -1,7 +1,7 @@
-import type { NativeHandle } from "@gtkx/ffi";
-import { alloc, getHandle, read, t, wrapHandle, write } from "@gtkx/ffi";
+import { getHandle, t, wrapHandle } from "@gtkx/ffi";
 import type { Content } from "@gtkx/gi/cairo/cairo.js";
 import { Surface } from "@gtkx/gi/cairo/cairo.js";
+import { alloc, type NativeHandle, read, write } from "@gtkx/native";
 import { DOUBLE_REF, DOUBLE_TYPE, INT_TYPE, LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";
 
 const { fn } = t;

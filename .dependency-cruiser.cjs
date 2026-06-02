@@ -6,9 +6,11 @@
  *
  * Rule summary:
  *   1. `@gtkx/native` is private to `@gtkx/ffi`. The only other package
- *      permitted to reference it is `@gtkx/codegen`, and only via
- *      `import type { ... }` so the generator can emit binding signatures
- *      without dragging the native module into its runtime graph.
+ *      permitted to reference it is `@gtkx/codegen`: the generator logic via
+ *      `import type { ... }` so it can emit binding signatures without dragging
+ *      the native module into its runtime graph, and the augment overlay with
+ *      runtime imports, since it is hand-written `@gtkx/gi` code that reaches
+ *      the native transport layer directly.
  *   2. `@gtkx/mcp` is near-leaf: it may only depend on `@gtkx/utils` (which
  *      is itself a true leaf — no `@gtkx/*` deps). Any other `@gtkx/*`
  *      import would couple the MCP server to GTK runtime concerns.
@@ -47,9 +49,11 @@ module.exports = {
             name: "codegen-native-type-only",
             severity: "error",
             comment:
-                "@gtkx/codegen may reference @gtkx/native, but only with `import type`. " +
-                "A runtime import would couple the code generator to the native module.",
-            from: { path: "^packages/codegen/" },
+                "@gtkx/codegen's generator logic may reference @gtkx/native, but only with " +
+                "`import type`. A runtime import would couple the code generator to the native " +
+                "module. The augment overlay under overlay/ is exempt: it is hand-written " +
+                "@gtkx/gi runtime code that reaches @gtkx/native directly for low-level transport.",
+            from: { path: "^packages/codegen/(?!overlay/)" },
             to: {
                 path: "^(packages/native/|@gtkx/native(/|$))",
                 dependencyTypesNot: ["type-only"],

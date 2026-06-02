@@ -233,7 +233,7 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
     const elementSize = computeBoxedFieldSlots(context, elementFields).size;
     if (elementSize === 0) return undefined;
 
-    context.addRuntimeImport("read");
+    context.addNativeImport("read");
     context.addRuntimeImport("getHandle");
     context.addRuntimeImport("t");
     const options: StructArrayAccessorOptions = {
@@ -249,7 +249,7 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
     const blocks: string[] = [];
     if (field.readable) blocks.push(structArrayGetterBlock(options));
     if (field.writable) {
-        context.addRuntimeImport("write");
+        context.addNativeImport("write");
         blocks.push(structArraySetterBlock(options));
     }
     return blocks.length === 0 ? undefined : blocks.join("\n\n");
@@ -266,7 +266,7 @@ type AccessorOptions = {
 
 const getterBlock = (options: AccessorOptions): string => {
     const { context, jsName, tsType, ffiType, slot, fieldType } = options;
-    context.addRuntimeImport("read");
+    context.addNativeImport("read");
     context.addRuntimeImport("getHandle");
     if (slot.bitWidth === undefined) {
         const valueExpression = `read(getHandle(this), ${ffiType}, ${slot.byteOffset})`;
@@ -287,13 +287,13 @@ const getterBlock = (options: AccessorOptions): string => {
 
 const setterBlock = (options: AccessorOptions): string => {
     const { context, jsName, tsType, ffiType, slot } = options;
-    context.addRuntimeImport("write");
+    context.addNativeImport("write");
     context.addRuntimeImport("getHandle");
     if (slot.bitWidth === undefined) {
         const body = `write(getHandle(this), ${ffiType}, ${slot.byteOffset}, value);`;
         return `set ${jsName}(value: ${tsType}) {\n${indent(body, 1)}\n}`;
     }
-    context.addRuntimeImport("read");
+    context.addNativeImport("read");
     const mask = bitMask(slot.bitWidth);
     const shift = slot.bitOffset ?? 0;
     const body = `const __unit = read(getHandle(this), ${ffiType}, ${slot.byteOffset}) as number;\nconst __next = ((__unit & ~(${mask} << ${shift})) | ((Number(value) & ${mask}) << ${shift})) >>> 0;\nwrite(getHandle(this), ${ffiType}, ${slot.byteOffset}, __next);`;
