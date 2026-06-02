@@ -1,7 +1,7 @@
 import type { GType } from "@gtkx/gi/gobject";
 import { typeName, typeParent } from "@gtkx/gi/gobject";
 import { CONSTRUCT_ONLY_PROPS, SIGNALS } from "@gtkx/react-jsx/internal";
-import type { Container } from "./types.js";
+import type { BackingInstance } from "./types.js";
 
 const typeNameChainCache = new Map<GType, readonly string[]>();
 const signalCache = new Map<GType, Map<string, string | null>>();
@@ -34,7 +34,7 @@ export const collectTypeNameChain = (gtype: GType): readonly string[] => {
 
 const memoize = <T>(
     cache: Map<GType, Map<string, T>>,
-    instance: Container,
+    instance: BackingInstance,
     key: string,
     compute: (typeNames: readonly string[]) => T,
 ): T => {
@@ -51,7 +51,7 @@ const memoize = <T>(
     return result;
 };
 
-export const isConstructOnlyProp = (instance: Container, key: string): boolean =>
+export const isConstructOnlyProp = (instance: BackingInstance, key: string): boolean =>
     memoize(constructOnlyCache, instance, key, (typeNames) => {
         for (const name of typeNames) {
             if (CONSTRUCT_ONLY_PROPS[name]?.has(key)) return true;
@@ -59,7 +59,7 @@ export const isConstructOnlyProp = (instance: Container, key: string): boolean =
         return false;
     });
 
-export const resolveSignal = (instance: Container, propName: string): string | null => {
+export const resolveSignal = (instance: BackingInstance, propName: string): string | null => {
     if (propName === "onNotify") return "notify";
     return memoize(signalCache, instance, propName, (typeNames) => {
         for (const name of typeNames) {

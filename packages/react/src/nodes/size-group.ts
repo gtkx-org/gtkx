@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import type { SizeGroupProps, SizeGroupWidgetProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { createAfterCommitDebounce } from "../post-commit-queue.js";
-import type { Container } from "../types.js";
+import type { BackingInstance } from "../types.js";
 import { hasChanged } from "./internal/props.js";
 import { attachChild, unparentWidget } from "./internal/widget.js";
 import { VirtualNode } from "./virtual.js";
@@ -83,8 +83,8 @@ abstract class TransparentVirtualNode<TProps, TChild extends Node> extends Virtu
         if (child instanceof WidgetNode) {
             const ancestor = findAncestor(this.parent, isWidgetNode);
             if (!ancestor) return;
-            attachChild(child.container, ancestor.container);
-            this.attachedWidgets.add(child.container);
+            attachChild(child.backingInstance, ancestor.backingInstance);
+            this.attachedWidgets.add(child.backingInstance);
             return;
         }
         if (child instanceof TransparentVirtualNode) {
@@ -94,8 +94,8 @@ abstract class TransparentVirtualNode<TProps, TChild extends Node> extends Virtu
 
     private detachDescendant(child: Node): void {
         if (child instanceof WidgetNode) {
-            unparentWidget(child.container);
-            this.attachedWidgets.delete(child.container);
+            unparentWidget(child.backingInstance);
+            this.attachedWidgets.delete(child.backingInstance);
             return;
         }
         if (child instanceof TransparentVirtualNode) {
@@ -134,7 +134,7 @@ export class SizeGroupNode extends TransparentVirtualNode<SizeGroupProps, Widget
     public readonly sizeGroup: Gtk.SizeGroup;
     private readonly members = new Set<Gtk.Widget>();
 
-    constructor(typeName: string, props: SizeGroupProps, container: undefined, rootContainer: Container) {
+    constructor(typeName: string, props: SizeGroupProps, container: undefined, rootContainer: BackingInstance) {
         super(typeName, props, container, rootContainer);
         this.sizeGroup = Gtk.SizeGroup.new(props.mode ?? Gtk.SizeGroupMode.HORIZONTAL);
     }
@@ -231,7 +231,7 @@ export class SizeGroupWidgetNode extends TransparentVirtualNode<SizeGroupWidgetP
     }
 
     private syncRegistration(): void {
-        const widget = this.children[0]?.container ?? null;
+        const widget = this.children[0]?.backingInstance ?? null;
         const shouldRegister = this.parent !== null && widget !== null;
 
         if (!shouldRegister) {

@@ -78,7 +78,7 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
             return;
         }
         const qualified = qualifyTypeRef(property.type, owningNamespace);
-        const tsType = renderTsType(repository, qualified, true, imports);
+        const tsType = renderReactPropType(repository, qualified, true, imports);
         propEntries.push(`${jsName}?: ${tsType} | null;`);
     };
 
@@ -222,7 +222,7 @@ const renderSignalHandler = (options: SignalRenderOptions): string => {
         .map((parameter, index) => {
             const name = parameter.name.length === 0 ? `arg${index + 1}` : toIdentifier(toCamelCase(parameter.name));
             const qualified = qualifyTypeRef(parameter.type, owningNamespace);
-            const baseType = renderTsType(repository, qualified, false, imports);
+            const baseType = renderReactPropType(repository, qualified, false, imports);
             return `${name}: ${baseType}`;
         });
     params.push(`self: ${selfType}`);
@@ -245,14 +245,16 @@ const renderSignalHandler = (options: SignalRenderOptions): string => {
 const renderSignalReturnType = (options: SignalRenderOptions, visible: readonly GirParameter[]): string => {
     const { repository, signal, imports, owningNamespace } = options;
     const qualifiedReturn = qualifyTypeRef(signal.returnValue.type, owningNamespace);
-    const baseReturn = renderTsType(repository, qualifiedReturn, signal.returnValue.nullable, imports);
+    const baseReturn = renderReactPropType(repository, qualifiedReturn, signal.returnValue.nullable, imports);
     const outTypes = visible
         .filter(
             (parameter) =>
                 isOutParameter(parameter) ||
                 (isInoutParameter(parameter) && isScalarRef(repository, owningNamespace, parameter.type)),
         )
-        .map((parameter) => renderTsType(repository, qualifyTypeRef(parameter.type, owningNamespace), false, imports));
+        .map((parameter) =>
+            renderReactPropType(repository, qualifyTypeRef(parameter.type, owningNamespace), false, imports),
+        );
     if (outTypes.length === 0) {
         return baseReturn === "void" ? "void" : `${baseReturn} | void`;
     }
@@ -264,14 +266,14 @@ const renderSignalReturnType = (options: SignalRenderOptions, visible: readonly 
     return `[${outTypes.join(", ")}]`;
 };
 
-const renderTsType = (
+const renderReactPropType = (
     repository: GirRepository,
     ref: GirTypeRef | undefined,
-    nullableHint: boolean,
+    isNullable: boolean,
     imports: Map<string, string>,
 ): string => {
     const base = renderBaseType(repository, ref, imports);
-    return nullableHint ? `${base} | null` : base;
+    return isNullable ? `${base} | null` : base;
 };
 
 const renderBaseType = (
@@ -291,10 +293,10 @@ const renderBaseType = (
             return namedTsType(repository, ref, imports);
         case "array":
         case "list":
-            return `${renderTsType(repository, ref.element, false, imports)}[]`;
+            return `${renderReactPropType(repository, ref.element, false, imports)}[]`;
         case "hashtable": {
-            const key = renderTsType(repository, ref.key, false, imports);
-            const value = renderTsType(repository, ref.value, false, imports);
+            const key = renderReactPropType(repository, ref.key, false, imports);
+            const value = renderReactPropType(repository, ref.value, false, imports);
             return `Record<${key}, ${value}>`;
         }
     }

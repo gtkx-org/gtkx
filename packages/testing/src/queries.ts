@@ -91,9 +91,9 @@ const matchByRoleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolea
  * @returns Array of matching widgets (empty if none found)
  */
 export const queryAllByRole = (container: Container, role: Gtk.AccessibleRole, options?: ByRoleOptions): Gtk.Widget[] =>
-    findAll(container, (node) => {
-        if (node.getAccessibleRole() !== role) return false;
-        return matchByRoleOptions(node, options);
+    findAll(container, (widget) => {
+        if (widget.getAccessibleRole() !== role) return false;
+        return matchByRoleOptions(widget, options);
     });
 
 const roleVariants = buildQueries<[role: Gtk.AccessibleRole, options?: ByRoleOptions]>(
@@ -116,14 +116,14 @@ const roleVariants = buildQueries<[role: Gtk.AccessibleRole, options?: ByRoleOpt
 export const queryAllByLabelText = (container: Container, text: Matcher, options?: MatcherOptions): Gtk.Widget[] => {
     const results: Gtk.Widget[] = [];
 
-    for (const node of traverse(container)) {
-        if (!(node instanceof Gtk.Label)) continue;
+    for (const widget of traverse(container)) {
+        if (!(widget instanceof Gtk.Label)) continue;
 
-        const labelText = node.getLabel();
+        const labelText = widget.getLabel();
         if (!labelText) continue;
-        if (!matchText(labelText, text, node, options)) continue;
+        if (!matchText(labelText, text, widget, options)) continue;
 
-        const target = node.getMnemonicWidget();
+        const target = widget.getMnemonicWidget();
         if (target) {
             results.push(target);
         }
@@ -147,7 +147,7 @@ const labelTextVariants = buildQueries<[text: Matcher, options?: MatcherOptions]
  * @returns Array of matching widgets (empty if none found)
  */
 export const queryAllByText = (container: Container, text: Matcher, options?: MatcherOptions): Gtk.Widget[] =>
-    findAll(container, (node) => matchText(getWidgetText(node), text, node, options));
+    findAll(container, (widget) => matchText(getWidgetText(widget), text, widget, options));
 
 const textVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
     queryAllByText,
@@ -164,7 +164,7 @@ const textVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
  * @returns Array of matching widgets (empty if none found)
  */
 export const queryAllByName = (container: Container, name: Matcher, options?: MatcherOptions): Gtk.Widget[] =>
-    findAll(container, (node) => matchText(getWidgetName(node), name, node, options));
+    findAll(container, (widget) => matchText(getWidgetName(widget), name, widget, options));
 
 const nameVariants = buildQueries<[name: Matcher, options?: MatcherOptions]>(
     queryAllByName,

@@ -26,11 +26,11 @@ const isConstructable = (property: GirProperty): boolean =>
  * Ancestor class properties are intentionally excluded — each class translates
  * only the props it introduces and forwards the rest up the `super(...)` chain.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param klass - The class whose construct props to collect
  */
-const collectConstructableProps = (ctx: ModuleContext, klass: GirClass): readonly GirProperty[] => {
-    const all = [...klass.properties, ...collectInterfaceProperties(ctx, klass)].filter(isConstructable);
+const collectConstructableProps = (context: ModuleContext, klass: GirClass): readonly GirProperty[] => {
+    const all = [...klass.properties, ...collectInterfaceProperties(context, klass)].filter(isConstructable);
     const seen = new Set<string>();
     const result: GirProperty[] = [];
     for (const property of all) {
@@ -49,15 +49,15 @@ const collectConstructableProps = (ctx: ModuleContext, klass: GirClass): readonl
  * property the class introduces and `extends` its parent's interface, so the
  * full inherited prop set is available when typing `new <Class>(props)`.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param klass - The class to render props for
  * @param className - The local PascalCase class name
  */
-export const renderConstructorPropsInterface = (ctx: ModuleContext, klass: GirClass, className: string): string => {
-    const parentRef = resolveParentPropsReference(ctx, klass);
+export const renderConstructorPropsInterface = (context: ModuleContext, klass: GirClass, className: string): string => {
+    const parentRef = resolveParentPropsReference(context, klass);
     const extendsClause = parentRef === undefined ? "" : ` extends ${parentRef}`;
-    const lines = collectConstructableProps(ctx, klass).map(
-        (property) => `${toIdentifier(toCamelCase(property.name))}?: ${renderTsType(ctx, property.type, true)};`,
+    const lines = collectConstructableProps(context, klass).map(
+        (property) => `${toIdentifier(toCamelCase(property.name))}?: ${renderTsType(context, property.type, true)};`,
     );
     const body = lines.length === 0 ? "" : `\n${indent(lines.join("\n"), 1)}\n`;
     return `export interface ${className}ConstructorProps${extendsClause} {${body}}`;
@@ -74,41 +74,45 @@ export const renderConstructorPropsInterface = (ctx: ModuleContext, klass: GirCl
  * class that introduces no props gets no constructor and inherits its nearest
  * typed ancestor's, keeping the chain free of redundant hops.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param klass - The class being emitted
  * @param className - The local PascalCase class name
  * @param hasParent - Whether the class declares an `extends` clause
  */
 export const renderClassConstructor = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     klass: GirClass,
     className: string,
     hasParent: boolean,
 ): string | undefined => {
-    if (!hasParent) return renderRootConstructor(ctx);
-    const props = collectConstructableProps(ctx, klass);
+    if (!hasParent) return renderRootConstructor(context);
+    const props = collectConstructableProps(context, klass);
     if (props.length === 0) return undefined;
-    return renderTranslatingConstructor(ctx, props, className);
+    return renderTranslatingConstructor(context, props, className);
 };
 
 /** The forwarding record of marshalled `GValue`s a constructor hands to `super`. */
 const GVALUE_RECORD = "Record<string, GValue | undefined>";
 
-const renderRootConstructor = (ctx: ModuleContext): string => {
-    ctx.addConstructGObjectInstanceImport();
-    ctx.addRuntimeImport("GValue");
+const renderRootConstructor = (context: ModuleContext): string => {
+    context.addConstructGObjectInstanceImport();
+    context.addRuntimeImport("GValue");
     const body = "constructGObjectInstance(this, props);";
     return `constructor(props: ${GVALUE_RECORD} = {}) {\n${indent(body, 1)}\n}`;
 };
 
-const renderTranslatingConstructor = (ctx: ModuleContext, props: readonly GirProperty[], className: string): string => {
-    ctx.addValueFromFfiOptionalImport();
-    ctx.addRuntimeImport("GValue");
+const renderTranslatingConstructor = (
+    context: ModuleContext,
+    props: readonly GirProperty[],
+    className: string,
+): string => {
+    context.addValueFromFfiOptionalImport();
+    context.addRuntimeImport("GValue");
     const destructured = props.map((property) => toIdentifier(toCamelCase(property.name)));
     const pattern = `{ ${[...destructured, "...rest"].join(", ")} }`;
     const entries = props.map(
         (property) =>
-            `${quote(property.name)}: valueFromFfiOptional(${renderFfiType(ctx, property.type, property.transferOwnership)}, ${toIdentifier(toCamelCase(property.name))}),`,
+            `${quote(property.name)}: valueFromFfiOptional(${renderFfiType(context, property.type, property.transferOwnership)}, ${toIdentifier(toCamelCase(property.name))}),`,
     );
     const recordLiteral = `{\n${indent(entries.join("\n"), 1)}\n}`;
     const lines = [`const props: ${GVALUE_RECORD} = ${recordLiteral};`, "super({ ...props, ...rest });"];
@@ -116,11 +120,11 @@ const renderTranslatingConstructor = (ctx: ModuleContext, props: readonly GirPro
     return `constructor(${pattern}: ${className}ConstructorProps = {}) {\n${indent(body, 1)}\n}`;
 };
 
-const resolveParentPropsReference = (ctx: ModuleContext, klass: GirClass): string | undefined => {
+const resolveParentPropsReference = (context: ModuleContext, klass: GirClass): string | undefined => {
     if (klass.parent === undefined) return undefined;
-    const { namespaceName, typeName } = splitQualifiedName(klass.parent, ctx.namespace.name);
+    const { namespaceName, typeName } = splitQualifiedName(klass.parent, context.namespace.name);
     const propsName = `${toPascalCase(typeName)}ConstructorProps`;
-    if (namespaceName === ctx.namespace.name) return propsName;
-    const alias = ctx.addCrossNamespaceImport(namespaceName);
+    if (namespaceName === context.namespace.name) return propsName;
+    const alias = context.addCrossNamespaceImport(namespaceName);
     return `${alias}.${propsName}`;
 };

@@ -90,7 +90,7 @@ export function wrapHandle<T extends object>(cls: AnyClass<T>, handle: NativeHan
  * @param gtype - The GLib type identifier
  * @returns The registered class, or null if not found
  */
-function getNativeClass(gtype: GType): AnyClass | null {
+export function getNativeClass(gtype: GType): AnyClass | null {
     return classRegistry.get(gtype) ?? null;
 }
 
@@ -115,17 +115,14 @@ export function getNativeClassByName(name: string): AnyClass | null {
  * Finds a native class by walking the type hierarchy.
  *
  * If the exact type is not registered, walks up the parent chain
- * until a registered type is found (unless walkHierarchy is false).
+ * until a registered type is found.
  *
  * @param gtype - The GLib type identifier to start from
- * @param walkHierarchy - Whether to walk up the parent chain (default: true)
  * @returns The closest registered parent class, or null
  */
-export function findNativeClass(gtype: GType, walkHierarchy = true): AnyClass | null {
+export function findNativeClass(gtype: GType): AnyClass | null {
     const cls = getNativeClass(gtype);
     if (cls) return cls;
-
-    if (!walkHierarchy) return null;
 
     let currentGType = gtype;
     while (currentGType !== G_TYPE_INVALID) {
@@ -188,12 +185,12 @@ const cleanupObjectRegistry = new FinalizationRegistry<number>((pointerId) => {
  * JavaScript wrapper, preserving object identity (`===`). The reference
  * is weak, so objects can still be garbage collected.
  *
- * @param obj - The native object wrapper to register
+ * @param instance - The native object wrapper to register
  */
-export function registerNativeObject(obj: GTyped): void {
-    const pointerId = getNativeId(getHandle(obj));
-    objectRegistry.set(pointerId, new WeakRef(obj));
-    cleanupObjectRegistry.register(obj, pointerId, obj);
+export function registerNativeObject(instance: GTyped): void {
+    const pointerId = getNativeId(getHandle(instance));
+    objectRegistry.set(pointerId, new WeakRef(instance));
+    cleanupObjectRegistry.register(instance, pointerId, instance);
 }
 
 /**
@@ -206,19 +203,19 @@ export function registerNativeObject(obj: GTyped): void {
  * @param handle - The native handle to look up
  * @returns The existing wrapper, or null if not found
  */
-function findNativeObject(handle: NativeHandle): GTyped | null {
+function getNativeObjectById(handle: NativeHandle): GTyped | null {
     const pointerId = getNativeId(handle);
     const ref = objectRegistry.get(pointerId);
 
     if (!ref) return null;
 
-    const obj = ref.deref();
-    if (!obj) {
+    const instance = ref.deref();
+    if (!instance) {
         objectRegistry.delete(pointerId);
         return null;
     }
 
-    return obj;
+    return instance;
 }
 
 /**
@@ -261,7 +258,7 @@ export function getNativeObject(handle: NativeHandle | null | undefined, targetT
         return wrapHandle(targetType, handle);
     }
 
-    const existing = findNativeObject(handle);
+    const existing = getNativeObjectById(handle);
     if (existing) return existing;
 
     const runtimeGType: GType = getInstanceGType(handle);
@@ -328,7 +325,7 @@ export function getNativeObjectAsInterface<T extends NativeHandle | null | undef
 
     if (handle === null || handle === undefined) return null as Result;
 
-    const existing = findNativeObject(handle);
+    const existing = getNativeObjectById(handle);
     if (existing) return existing as Result;
 
     const runtimeGType: GType = getInstanceGType(handle);

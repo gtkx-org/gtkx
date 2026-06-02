@@ -10,9 +10,9 @@ export class AlertDialogNode extends DialogNode {
             ...super.ownPropDescriptors(),
             responses: arraySync<AlertDialogResponseProps, string>({
                 equal: isShallowArrayEqual,
-                clearItem: (id) => (this.container as Adw.AlertDialog).removeResponse(id),
+                clearItem: (id) => (this.backingInstance as Adw.AlertDialog).removeResponse(id),
                 add: (response) => {
-                    const dialog = this.container as Adw.AlertDialog;
+                    const dialog = this.backingInstance as Adw.AlertDialog;
                     dialog.addResponse(response.id, response.label);
                     if (response.appearance !== undefined) {
                         dialog.setResponseAppearance(response.id, response.appearance);

@@ -10,9 +10,13 @@ export class ScaleNode extends AdjustableNode<Gtk.Scale> {
             ...super.ownPropDescriptors(),
             marks: arraySync<ScaleMark, void>({
                 equal: isShallowArrayEqual,
-                clearAll: () => this.container.clearMarks(),
+                clearAll: () => this.backingInstance.clearMarks(),
                 add: (mark) => {
-                    this.container.addMark(mark.value, mark.position ?? Gtk.PositionType.BOTTOM, mark.label ?? null);
+                    this.backingInstance.addMark(
+                        mark.value,
+                        mark.position ?? Gtk.PositionType.BOTTOM,
+                        mark.label ?? null,
+                    );
                 },
             }),
         };

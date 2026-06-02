@@ -57,7 +57,7 @@ export const generateCompounds = (
 
     const sections = [
         renderImportLines(accumulator).join("\n"),
-        buildElementConsts(accumulator),
+        renderElementConsts(accumulator),
         exportLines.join("\n\n"),
     ];
     const source = `${sections.filter((section) => section.length > 0).join("\n\n")}\n`;
@@ -150,7 +150,7 @@ const renderVirtualSubcomponent = (
     };
 };
 
-const buildElementConsts = (accumulator: CompoundAccumulator): string =>
+const renderElementConsts = (accumulator: CompoundAccumulator): string =>
     [...accumulator.elementNames]
         .sort((a, b) => a.localeCompare(b))
         .map((name) => `const ${name}Element = ${quote(name)} as const;`)

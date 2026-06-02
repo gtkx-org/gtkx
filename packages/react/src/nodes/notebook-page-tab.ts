@@ -15,11 +15,11 @@ export class NotebookPageTabNode extends VirtualNode<SlotProps, NotebookPageNode
     }
 
     private getNotebook(): Gtk.Notebook | null {
-        return this.parent?.parent?.container ?? null;
+        return this.parent?.parent?.backingInstance ?? null;
     }
 
     private getPage(): Gtk.Widget | null {
-        return this.parent?.findContentChild()?.container ?? null;
+        return this.parent?.findContentChild()?.backingInstance ?? null;
     }
 
     public override appendChild(child: WidgetNode): void {
@@ -50,6 +50,6 @@ export class NotebookPageTabNode extends VirtualNode<SlotProps, NotebookPageNode
             return;
         }
 
-        notebook.setTabLabel(page, this.children[0]?.container ?? null);
+        notebook.setTabLabel(page, this.children[0]?.backingInstance ?? null);
     }
 }

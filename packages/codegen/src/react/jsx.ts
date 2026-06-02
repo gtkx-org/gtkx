@@ -44,7 +44,7 @@ export const generateJsx = (
     const namespaceImports = new Map<string, string>();
     const propBlocks: string[] = ["export interface WidgetProps {\n    name?: string;\n}"];
     for (const entry of widgets) {
-        const block = buildPropBlock(repository, entry, {
+        const block = renderPropBlock(repository, entry, {
             slotPropMap,
             isWidgetAncestor,
             widgetByGlibName,
@@ -80,23 +80,27 @@ export const generateJsx = (
     return `${body}\n`;
 };
 
-type BuildPropBlockContext = {
+type RenderPropBlockContext = {
     readonly slotPropMap: Readonly<Record<string, readonly string[]>>;
     readonly isWidgetAncestor: (candidate: GirClass) => boolean;
     readonly widgetByGlibName: ReadonlyMap<string, WidgetCandidate>;
     readonly namespaceImports: Map<string, string>;
 };
 
-const buildPropBlock = (repository: GirRepository, entry: WidgetCandidate, ctx: BuildPropBlockContext): string => {
-    const slotPropNames = new Set(ctx.slotPropMap[entry.glibName] ?? []);
+const renderPropBlock = (
+    repository: GirRepository,
+    entry: WidgetCandidate,
+    context: RenderPropBlockContext,
+): string => {
+    const slotPropNames = new Set(context.slotPropMap[entry.glibName] ?? []);
     const { propLines, imports } = buildWidgetPropsEntries({
         repository,
         klass: entry.klass,
         slotPropNames,
-        isWidgetAncestor: ctx.isWidgetAncestor,
+        isWidgetAncestor: context.isWidgetAncestor,
     });
-    for (const [namespace, alias] of imports) ctx.namespaceImports.set(namespace, alias);
-    ctx.namespaceImports.set(entry.namespace.name, entry.namespace.name);
+    for (const [namespace, alias] of imports) context.namespaceImports.set(namespace, alias);
+    context.namespaceImports.set(entry.namespace.name, entry.namespace.name);
     const widgetTypeRef = `${entry.namespace.name}.${entry.klass.name} | null`;
     const ownerLines = [
         "    children?: ReactNode;",
@@ -104,7 +108,7 @@ const buildPropBlock = (repository: GirRepository, entry: WidgetCandidate, ctx: 
         ...propLines.map((line) => `    ${line}`),
         ...containerSlotsFor(entry.glibName).map((method) => `    ${method}?: ReactNode | null;`),
     ];
-    const parentExtends = resolveParentPropsExtension(repository, entry, ctx.widgetByGlibName);
+    const parentExtends = resolveParentPropsExtension(repository, entry, context.widgetByGlibName);
     return `export interface ${entry.glibName}Props extends ${parentExtends} {\n${ownerLines.join("\n")}\n}`;
 };
 

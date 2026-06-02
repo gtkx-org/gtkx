@@ -12,9 +12,9 @@ export class LevelBarNode extends WidgetNode<Gtk.LevelBar, LevelBarProps> {
             ...super.ownPropDescriptors(),
             offsets: arraySync<LevelBarOffset, string>({
                 equal: isShallowArrayEqual,
-                clearItem: (id) => this.container.removeOffsetValue(id),
+                clearItem: (id) => this.backingInstance.removeOffsetValue(id),
                 add: (offset) => {
-                    this.container.addOffsetValue(offset.id, offset.value);
+                    this.backingInstance.addOffsetValue(offset.id, offset.value);
                     return offset.id;
                 },
             }),

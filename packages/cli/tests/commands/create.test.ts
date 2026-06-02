@@ -13,7 +13,7 @@ type CommandRun<Args extends Record<string, unknown>> = (ctx: { args: Args }) =>
 
 type CreateArgs = {
     name?: string;
-    "app-id"?: string;
+    "application-id"?: string;
     pm?: string;
     testing?: string;
     "claude-skills"?: boolean;
@@ -30,7 +30,7 @@ describe("create", () => {
         await run({
             args: {
                 name: "my-app",
-                "app-id": "com.example.myapp",
+                "application-id": "com.example.myapp",
                 pm: "pnpm",
                 testing: "vitest",
                 "claude-skills": true,
@@ -39,7 +39,7 @@ describe("create", () => {
 
         expect(createAppMock).toHaveBeenCalledWith({
             name: "my-app",
-            appId: "com.example.myapp",
+            applicationId: "com.example.myapp",
             packageManager: "pnpm",
             testing: "vitest",
             claudeSkills: true,
@@ -53,7 +53,7 @@ describe("create", () => {
 
         expect(createAppMock).toHaveBeenCalledWith({
             name: undefined,
-            appId: undefined,
+            applicationId: undefined,
             packageManager: undefined,
             testing: undefined,
             claudeSkills: undefined,

@@ -16,27 +16,27 @@ import type { GirEnum } from "../gir/enum.js";
  * hyphens normalized to underscores. Names that would start with a digit
  * (e.g. `5_6_5` → `_5_6_5`) are prefixed with an underscore.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param enumeration - The enum to emit
  */
-export const emitEnum = (ctx: ModuleContext, enumeration: GirEnum): void => {
+export const emitEnum = (context: ModuleContext, enumeration: GirEnum): void => {
     if (!enumeration.introspectable) return;
     const name = enumeration.name;
     const memberKeys = enumeration.members.map((member) => memberKey(member.name));
     if (enumeration.errorDomain !== undefined) {
         const memberEntries = enumeration.members.map((member, index) => `${memberKeys[index]}: ${member.value}`);
         const typeFields = memberKeys.map((key) => `readonly ${key}: number`).join("; ");
-        ctx.addRuntimeImport("createErrorDomain");
-        ctx.addRuntimeImport("ErrorDomain");
-        const quarkExpression = renderQuarkExpression(ctx, enumeration.errorDomain);
-        ctx.module.appendDeclaration(`export type ${name} = number;`);
-        ctx.module.appendDeclaration(
+        context.addRuntimeImport("createErrorDomain");
+        context.addRuntimeImport("ErrorDomain");
+        const quarkExpression = renderQuarkExpression(context, enumeration.errorDomain);
+        context.module.appendDeclaration(`export type ${name} = number;`);
+        context.module.appendDeclaration(
             `export const ${name}: ErrorDomain<{ ${typeFields} }> = createErrorDomain(${quarkExpression}, { ${memberEntries.join(", ")} });`,
         );
         return;
     }
     const memberDeclarations = enumeration.members.map((member, index) => `${memberKeys[index]} = ${member.value}`);
-    ctx.module.appendDeclaration(`export enum ${name} { ${memberDeclarations.join(", ")} }`);
+    context.module.appendDeclaration(`export enum ${name} { ${memberDeclarations.join(", ")} }`);
 };
 
 const memberKey = (name: string): string => {
@@ -44,10 +44,10 @@ const memberKey = (name: string): string => {
     return /^[0-9]/.test(upper) ? `_${upper}` : upper;
 };
 
-const renderQuarkExpression = (ctx: ModuleContext, errorDomain: string): string => {
-    if (ctx.namespace.name === "GLib") {
+const renderQuarkExpression = (context: ModuleContext, errorDomain: string): string => {
+    if (context.namespace.name === "GLib") {
         return `() => quarkFromString(${quote(errorDomain)})`;
     }
-    const alias = ctx.addCrossNamespaceImport("GLib");
+    const alias = context.addCrossNamespaceImport("GLib");
     return `() => ${alias}.quarkFromString(${quote(errorDomain)})`;
 };

@@ -15,17 +15,17 @@ import { renderTsType } from "./ts-type.js";
  * strings, `unichar`, enums) are surfaced non-null to match their typed
  * setters. Aliases resolve to their target.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param type - The property's value type
  */
-const isNullablePropertyType = (ctx: ModuleContext, type: GirTypeRef | undefined): boolean => {
+const isNullablePropertyType = (context: ModuleContext, type: GirTypeRef | undefined): boolean => {
     if (type === undefined) return false;
     if (type.kind === "primitive") return false;
     if (type.kind !== "named") return true;
-    const resolved = ctx.repository.resolveNamed(type.namespaceName ?? ctx.namespace.name, type.typeName);
+    const resolved = context.repository.resolveNamed(type.namespaceName ?? context.namespace.name, type.typeName);
     if (resolved === undefined) return true;
     if (resolved.kind === "enum") return false;
-    if (resolved.kind === "alias") return isNullablePropertyType(ctx, resolved.targetRef);
+    if (resolved.kind === "alias") return isNullablePropertyType(context, resolved.targetRef);
     return true;
 };
 
@@ -39,12 +39,12 @@ const isNullablePropertyType = (ctx: ModuleContext, type: GirTypeRef | undefined
  * skipped, since the method takes precedence — the runtime accessor is
  * always reachable via `this.getProperty(girName)` in that case.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param property - The property to surface
  * @param claimedNames - Names already used by emitted methods
  */
 export const renderPropertyAccessor = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     property: GirProperty,
     claimedNames: ReadonlySet<string>,
     methodByName: ReadonlyMap<string, GirFunction>,
@@ -64,13 +64,13 @@ export const renderPropertyAccessor = (
 
     const tsType =
         setParam !== undefined
-            ? renderTsType(ctx, setParam.type, setParam.nullable || setParam.optional)
+            ? renderTsType(context, setParam.type, setParam.nullable || setParam.optional)
             : getMethod !== undefined
-              ? renderMethodReturnType(ctx, getMethod)
-              : renderTsType(ctx, property.type, isNullablePropertyType(ctx, property.type));
+              ? renderMethodReturnType(context, getMethod)
+              : renderTsType(context, property.type, isNullablePropertyType(context, property.type));
 
     const blocks: string[] = [];
-    const getBody = renderGetterBody({ ctx, property, getterMember, getMethod, tsType });
+    const getBody = renderGetterBody({ context, property, getterMember, getMethod, tsType });
     blocks.push(`get ${jsName}(): ${tsType} {\n${indent(getBody, 1)}\n}`);
 
     if (writable) {
@@ -87,7 +87,7 @@ export const renderPropertyAccessor = (
  * Inputs for {@link renderGetterBody}.
  */
 type GetterBodyOptions = {
-    readonly ctx: ModuleContext;
+    readonly context: ModuleContext;
     readonly property: GirProperty;
     readonly getterMember: string | undefined;
     readonly getMethod: GirFunction | undefined;
@@ -105,10 +105,10 @@ type GetterBodyOptions = {
  * @param options - {@link GetterBodyOptions}
  */
 const renderGetterBody = (options: GetterBodyOptions): string => {
-    const { ctx, property, getterMember, getMethod, tsType } = options;
+    const { context, property, getterMember, getMethod, tsType } = options;
     if (getterMember === undefined) return `return this.getProperty(${quote(property.name)}) as ${tsType};`;
     if (getMethod === undefined) return `return this.${getterMember}() as ${tsType};`;
-    const getType = renderMethodReturnType(ctx, getMethod);
+    const getType = renderMethodReturnType(context, getMethod);
     return getType === tsType ? `return this.${getterMember}();` : `return this.${getterMember}() as ${tsType};`;
 };
 

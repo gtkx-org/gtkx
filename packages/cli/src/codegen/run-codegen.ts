@@ -5,7 +5,7 @@ import type { GtkxConfig } from "../config.js";
 import { GtkxConfigNotFoundError, loadGtkxConfig } from "./config-loader.js";
 import { resolveGirPath } from "./gir-resolver.js";
 import { resolveLibraries } from "./library-resolver.js";
-import { type CodegenStore, findCodegenRoot, resolveCodegenStore } from "./output-resolver.js";
+import { type CodegenStore, findCodegenRoot, resolveCodegenStore } from "./store-resolver.js";
 
 /**
  * Options for {@link runCodegen}.

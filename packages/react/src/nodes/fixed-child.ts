@@ -22,7 +22,7 @@ export class FixedChildNode extends AttachOnParentVirtualNode<FixedChildProps, W
     }
 
     public override isValidParent(parent: Node): boolean {
-        return parent instanceof WidgetNode && parent.container.getLayoutManager() instanceof Gtk.FixedLayout;
+        return parent instanceof WidgetNode && parent.backingInstance.getLayoutManager() instanceof Gtk.FixedLayout;
     }
 
     public override commitUpdate(oldProps: FixedChildProps | null, newProps: FixedChildProps): void {
@@ -49,10 +49,10 @@ export class FixedChildNode extends AttachOnParentVirtualNode<FixedChildProps, W
     private applyLayoutTransform(): void {
         if (!this.parent || !this.children[0]) return;
 
-        const layoutManager = this.parent.container.getLayoutManager();
+        const layoutManager = this.parent.backingInstance.getLayoutManager();
         if (!(layoutManager instanceof Gtk.FixedLayout)) return;
 
-        const layoutChild = layoutManager.getLayoutChild(this.children[0].container) as Gtk.FixedLayoutChild;
+        const layoutChild = layoutManager.getLayoutChild(this.children[0].backingInstance) as Gtk.FixedLayoutChild;
 
         const x = this.props.x ?? 0;
         const y = this.props.y ?? 0;

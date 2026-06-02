@@ -9,7 +9,7 @@ import { getGtkCache } from "./cache.js";
  */
 type CssClassName = string & { __brand: "css" };
 
-const flush = (input: string): void => {
+const insertRules = (input: string): void => {
     const sheet = getGtkCache().sheet;
     serialize(
         compile(input),
@@ -66,7 +66,7 @@ export const css = (...args: CSSInterpolation[]): CssClassName => {
     const className = `${cache.key}-${serialized.name}`;
 
     if (cache.inserted[serialized.name] === undefined) {
-        flush(`.${className}{${serialized.styles}}`);
+        insertRules(`.${className}{${serialized.styles}}`);
         cache.inserted[serialized.name] = true;
         cache.registered[className] = serialized.styles;
     }
@@ -133,7 +133,7 @@ export const injectGlobal = (...args: CSSInterpolation[]): void => {
     const insertedKey = `global-${serialized.name}`;
 
     if (cache.inserted[insertedKey] === undefined) {
-        flush(serialized.styles);
+        insertRules(serialized.styles);
         cache.inserted[insertedKey] = true;
     }
 };

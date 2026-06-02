@@ -27,14 +27,14 @@ const callbackAsFunction = (callback: GirCallback): GirFunction => ({
  * {@link renderMethodReturnType}, so out-parameters tuple into the return the
  * same way a method's would.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param callback - The callback to emit
  */
-export const emitCallback = (ctx: ModuleContext, callback: GirCallback): void => {
+export const emitCallback = (context: ModuleContext, callback: GirCallback): void => {
     if (!callback.introspectable) return;
     if (callback.name.length === 0) return;
     const fn = callbackAsFunction(callback);
-    const signature = renderMethodSignature(ctx, fn);
-    const returnType = renderMethodReturnType(ctx, fn);
-    ctx.module.appendDeclaration(`export type ${callback.name} = (${signature}) => ${returnType};`);
+    const signature = renderMethodSignature(context, fn);
+    const returnType = renderMethodReturnType(context, fn);
+    context.module.appendDeclaration(`export type ${callback.name} = (${signature}) => ${returnType};`);
 };

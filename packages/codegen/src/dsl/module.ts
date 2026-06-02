@@ -63,9 +63,9 @@ export class ModuleBuilder {
      * Renders the full TypeScript source: imports, bindings, declarations,
      * registrations — separated by a single blank line.
      */
-    emit(): string {
+    toSource(): string {
         const sections: string[] = [];
-        const importsBlock = this.imports.emit();
+        const importsBlock = this.imports.toSource();
         if (importsBlock.length > 0) sections.push(importsBlock.trimEnd());
         if (this.bindings.length > 0) sections.push(this.bindings.join("\n\n"));
         if (this.declarations.length > 0) sections.push(this.declarations.join("\n\n"));

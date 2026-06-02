@@ -9,11 +9,11 @@ import { renderTsType } from "./ts-type.js";
  * The alias is exported under {@link aliasExportName} — its GIR `name`, with
  * GObject's `Type` published as `GType`.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param alias - The alias to emit
  */
-export const emitAlias = (ctx: ModuleContext, alias: GirAlias): void => {
-    const exportName = aliasExportName(ctx.namespace.name, alias.name);
-    const targetType = renderTsType(ctx, alias.target);
-    ctx.module.appendDeclaration(`export type ${exportName} = ${targetType};`);
+export const emitAlias = (context: ModuleContext, alias: GirAlias): void => {
+    const exportName = aliasExportName(context.namespace.name, alias.name);
+    const targetType = renderTsType(context, alias.target);
+    context.module.appendDeclaration(`export type ${exportName} = ${targetType};`);
 };

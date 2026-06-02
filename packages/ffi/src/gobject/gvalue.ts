@@ -10,7 +10,7 @@ import {
 } from "../gtype.js";
 import { getHandle } from "../handles.js";
 import { call, type Type as FfiType, getInstanceGType, type NativeHandle, read, t } from "../native.js";
-import { findNativeClass, getNativeObject } from "../registry.js";
+import { getNativeClass, getNativeObject } from "../registry.js";
 import { GValue } from "./gvalue-native.js";
 import { Type } from "./types.js";
 
@@ -96,7 +96,7 @@ export function getBoxed(value: object): object | null {
     if (typeFundamental(gtype) !== Type.BOXED) {
         return null;
     }
-    const cls = findNativeClass(gtype, false);
+    const cls = getNativeClass(gtype);
     if (!cls) {
         throw new Error(`No registered class for boxed GType '${typeName(gtype) ?? String(gtype)}'`);
     }
@@ -159,8 +159,14 @@ function newFromString(value: string | null): GValue {
     return initValue(Type.STRING, (v) => v.setString(value));
 }
 
-/** Creates a `GValue` initialized with a `GObject` (or `null`). */
-export function newFromObject(value: object | null): GValue {
+/**
+ * Creates a `GValue` initialized with a `GObject` instance.
+ *
+ * The `GType` is derived from the object's runtime class.
+ *
+ * @param value - The `GObject` instance, or `null`.
+ */
+export function valueFromObject(value: object | null): GValue {
     const v = new GValue();
     if (value) {
         const gtype: GType = getInstanceGType(getHandle(value));
@@ -269,10 +275,14 @@ function newFromFundamentalFfi(ffiType: FfiFundamentalType, value: unknown): GVa
 }
 
 /**
- * Builds a `GValue` from an FFI type descriptor and a JavaScript value,
- * dispatching on `ffiType.type`.
+ * Creates a `GValue` from an FFI type descriptor and a JavaScript value.
+ *
+ * Dispatches to the appropriate constructor based on the descriptor's type.
+ *
+ * @param ffiType - The FFI type descriptor.
+ * @param value - The JS value to convert.
  */
-export function newFrom(ffiType: FfiType, value: unknown): GValue {
+export function valueFromFfi(ffiType: FfiType, value: unknown): GValue {
     switch (ffiType.type) {
         case "boolean":
             return newFromBoolean(value as boolean);
@@ -295,7 +305,7 @@ export function newFrom(ffiType: FfiType, value: unknown): GValue {
         case "float64":
             return newFromDouble(value as number);
         case "gobject":
-            return newFromObject(value as object | null);
+            return valueFromObject(value as object | null);
         case "boxed":
             return newFromBoxed(value as object, resolveBoxedGType(ffiType));
         case "array":
@@ -369,7 +379,7 @@ let fundamentalMarshallers: Map<GType, FundamentalMarshaller> | undefined;
 /**
  * The single fundamental-keyed marshalling table.
  *
- * Both directions dispatch through it: {@link fromJS} reads each entry's
+ * Both directions dispatch through it: {@link valueFromJS} reads each entry's
  * `to`, and `valueToJS` reads its `from`. Supporting a new fundamental — or
  * correcting how an existing one is marshalled — is a one-line edit here
  * rather than a change spread across parallel write and read structures.
@@ -393,7 +403,7 @@ export function getFundamentalMarshallers(): Map<GType, FundamentalMarshaller> {
         [Type.UCHAR, { to: (g, v) => initValue(g, (val) => val.setUchar(v as number)), from: (v) => v.getUchar() }],
         [Type.ENUM, { to: (g, v) => newFromEnum(g, v as number), from: (v) => v.getEnum() }],
         [Type.FLAGS, { to: (g, v) => newFromFlags(g, v as number), from: (v) => v.getFlags() }],
-        [Type.OBJECT, { to: (_g, v) => newFromObject(v as object | null), from: (v) => v.getObject() }],
+        [Type.OBJECT, { to: (_g, v) => valueFromObject(v as object | null), from: (v) => v.getObject() }],
         [Type.VARIANT, { to: (_g, v) => newFromVariant(v as object), from: (v) => v.getVariant() }],
         [
             Type.PARAM,
@@ -404,10 +414,17 @@ export function getFundamentalMarshallers(): Map<GType, FundamentalMarshaller> {
 }
 
 /**
- * Builds a `GValue` of the given `GType` from a JavaScript value, dispatching
- * on the type's fundamental.
+ * Creates a `GValue` typed as `gtype` and marshals `value` into it.
+ *
+ * The runtime counterpart to {@link valueFromFfi}: where `valueFromFfi`
+ * consumes a codegen-time FFI type descriptor, this consumes a runtime `GType`
+ * integer (typically derived from a `GParamSpec`).
+ *
+ * @param gtype - The concrete `GType` (not necessarily the fundamental).
+ * @param value - The JS value to marshal.
+ * @throws on `G_TYPE_POINTER` with a non-null value, or unsupported `GType`s.
  */
-export function fromJS(gtype: GType, value: unknown): GValue {
+export function valueFromJS(gtype: GType, value: unknown): GValue {
     if (gtype === getStrvGType()) return newStrvValue(gtype, value);
 
     const fundamental = typeFundamental(gtype);
@@ -417,5 +434,5 @@ export function fromJS(gtype: GType, value: unknown): GValue {
     if (fundamental === Type.POINTER) return newPointerValue(gtype, value);
     if (fundamental === Type.BOXED) return newBoxedValue(gtype, value);
 
-    throw new Error(`Unsupported GType for Value.fromJS: ${typeName(gtype) ?? String(gtype)}`);
+    throw new Error(`Unsupported GType for valueFromJS: ${typeName(gtype) ?? String(gtype)}`);
 }

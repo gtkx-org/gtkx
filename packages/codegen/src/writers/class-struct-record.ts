@@ -36,18 +36,18 @@ export const isClassStructRecord = (namespaceName: string, boxed: GirBoxed): boo
     return GTYPE_STRUCT_ROOTS.has(qualify(fieldNamespace, first.type.typeName));
 };
 
-const refIsClassStruct = (ctx: ModuleContext, ref: GirTypeRef | undefined): boolean => {
+const refIsClassStruct = (context: ModuleContext, ref: GirTypeRef | undefined): boolean => {
     if (ref === undefined) return false;
     switch (ref.kind) {
         case "named": {
-            const namespaceName = ref.namespaceName ?? ctx.namespace.name;
-            const resolved = ctx.repository.resolveNamed(namespaceName, ref.typeName);
+            const namespaceName = ref.namespaceName ?? context.namespace.name;
+            const resolved = context.repository.resolveNamed(namespaceName, ref.typeName);
             if (resolved === undefined || resolved.kind !== "boxed") return false;
             return isClassStructRecord(resolved.namespace.name, resolved.value);
         }
         case "array":
         case "list":
-            return refIsClassStruct(ctx, ref.element);
+            return refIsClassStruct(context, ref.element);
         default:
             return false;
     }
@@ -57,19 +57,19 @@ const refIsClassStruct = (ctx: ModuleContext, ref: GirTypeRef | undefined): bool
  * Reports whether a type reference resolves to a class/interface-struct record,
  * following array and list element types.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param ref - The type reference, or `undefined`
  */
-export const typeRefIsClassStruct = (ctx: ModuleContext, ref: GirTypeRef | undefined): boolean =>
-    refIsClassStruct(ctx, ref);
+export const typeRefIsClassStruct = (context: ModuleContext, ref: GirTypeRef | undefined): boolean =>
+    refIsClassStruct(context, ref);
 
 /**
  * Reports whether a callable's return type or any parameter resolves to a
  * class/interface-struct record, so its binding and wrapper can be dropped.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param fn - The callable
  */
-export const callableReferencesClassStruct = (ctx: ModuleContext, fn: GirFunction): boolean =>
-    refIsClassStruct(ctx, fn.returnValue.type) ||
-    fn.parameters.some((parameter) => refIsClassStruct(ctx, parameter.type));
+export const callableReferencesClassStruct = (context: ModuleContext, fn: GirFunction): boolean =>
+    refIsClassStruct(context, fn.returnValue.type) ||
+    fn.parameters.some((parameter) => refIsClassStruct(context, parameter.type));

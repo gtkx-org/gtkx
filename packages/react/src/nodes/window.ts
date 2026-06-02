@@ -2,7 +2,7 @@ import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { GtkAboutDialogProps, GtkWindowProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import type { Container, Props } from "../types.js";
+import type { BackingInstance, Props } from "../types.js";
 import { AnimationNode } from "./animation.js";
 import { ContainerSlotNode } from "./container-slot.js";
 import type { DialogNode } from "./dialog.js";
@@ -41,7 +41,7 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
         typeName: string,
         props: Props,
         containerClass: typeof Gtk.Window,
-        rootContainer: Container | undefined,
+        rootContainer: BackingInstance | undefined,
     ): Gtk.Window {
         const WindowClass = containerClass;
 
@@ -63,7 +63,7 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
         return WidgetNode.createContainer(typeName, props, containerClass) as Gtk.Window;
     }
 
-    constructor(typeName: string, props: WindowProps, container: Gtk.Window, rootContainer: Container) {
+    constructor(typeName: string, props: WindowProps, container: Gtk.Window, rootContainer: BackingInstance) {
         super(typeName, props, container, rootContainer);
         const application = rootContainer instanceof Gtk.Application ? rootContainer : undefined;
         const actionMap = container instanceof Gtk.ApplicationWindow ? container : undefined;
@@ -97,7 +97,7 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
 
     public override appendChild(child: WindowChild): void {
         if (child instanceof WindowNode) {
-            child.container.setTransientFor(this.container);
+            child.backingInstance.setTransientFor(this.backingInstance);
             super.appendChild(child);
             return;
         }
@@ -109,8 +109,8 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
 
     public override removeChild(child: WindowChild): void {
         if (child instanceof WindowNode) {
-            child.container.setVisible(false);
-            child.container.setTransientFor(null);
+            child.backingInstance.setVisible(false);
+            child.backingInstance.setTransientFor(null);
             super.removeChild(child);
             return;
         }
@@ -122,7 +122,7 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
 
     public override insertBefore(child: WindowChild, before: WindowChild): void {
         if (child instanceof WindowNode) {
-            child.container.setTransientFor(this.container);
+            child.backingInstance.setTransientFor(this.backingInstance);
             super.insertBefore(child, before);
             return;
         }
@@ -145,11 +145,11 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
     }
 
     public override commitMount(): void {
-        this.container.present();
+        this.backingInstance.present();
     }
 
     public override detachDeletedInstance(): void {
         super.detachDeletedInstance();
-        this.container.destroy();
+        this.backingInstance.destroy();
     }
 }

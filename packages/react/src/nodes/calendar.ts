@@ -21,9 +21,9 @@ export class CalendarNode extends WidgetNode<Gtk.Calendar, CalendarProps, Calend
             ...super.ownPropDescriptors(),
             markedDays: arraySync<number, void>({
                 equal: isShallowEqual,
-                clearAll: () => this.container.clearMarks(),
+                clearAll: () => this.backingInstance.clearMarks(),
                 add: (day) => {
-                    this.container.markDay(day);
+                    this.backingInstance.markDay(day);
                 },
             }),
         };

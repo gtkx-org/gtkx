@@ -27,8 +27,8 @@ export const defaultScaffolderDeps = (): ScaffolderDeps => ({
         spinner: () => {
             const spin = p.spinner();
             return {
-                start: (msg: string) => spin.start(msg),
-                stop: (msg: string) => spin.stop(msg),
+                start: (message: string) => spin.start(message),
+                stop: (message: string) => spin.stop(message),
             };
         },
         note: p.note,

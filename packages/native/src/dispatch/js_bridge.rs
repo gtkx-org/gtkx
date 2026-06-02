@@ -19,7 +19,7 @@ use crate::value::{JsRef, Value};
 
 impl Mailbox {
     /// Stores the threadsafe function used to wake the JS thread from arbitrary
-    /// other threads. Set once during `start()` and invoked by the `GLib` thread
+    /// other threads. Set once during `init()` and invoked by the `GLib` thread
     /// when callbacks are pushed onto the node inbox.
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn set_wake_tsfn(&self, tsfn: Arc<WakeJsTsfn>) {

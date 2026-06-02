@@ -44,15 +44,6 @@ export function unparentWidget(widget: Gtk.Widget): void {
     detachChild(widget, currentParent);
 }
 
-export function removeChildFromParent(
-    parent: Gtk.Widget & { remove: (child: Gtk.Widget) => void },
-    child: Gtk.Widget,
-): void {
-    if (child.getParent() === parent) {
-        parent.remove(child);
-    }
-}
-
 export function getFocusWidget(widget: Gtk.Widget): Gtk.Widget | null {
     const root = widget.getRoot();
     return root?.getFocus?.() ?? null;

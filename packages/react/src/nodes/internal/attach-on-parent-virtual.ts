@@ -21,8 +21,8 @@ export abstract class AttachOnParentVirtualNode<
     public override appendChild(child: TChild): void {
         super.appendChild(child);
         if (this.parent) {
-            this.detachFromParent(this.parent.container, child.container);
-            this.attachToParent(this.parent.container, child.container);
+            this.detachFromParent(this.parent.backingInstance, child.backingInstance);
+            this.attachToParent(this.parent.backingInstance, child.backingInstance);
         }
     }
 
@@ -35,31 +35,31 @@ export abstract class AttachOnParentVirtualNode<
 
     public override removeChild(child: TChild): void {
         if (this.parent) {
-            this.detachFromParent(this.parent.container, child.container);
+            this.detachFromParent(this.parent.backingInstance, child.backingInstance);
         }
         super.removeChild(child);
     }
 
     public override setParent(parent: TParent | null): void {
         if (!parent && this.parent) {
-            const currentParent = this.parent.container;
+            const currentParent = this.parent.backingInstance;
             for (const child of this.children) {
-                this.detachFromParent(currentParent, child.container);
+                this.detachFromParent(currentParent, child.backingInstance);
             }
         }
         super.setParent(parent);
         if (parent) {
             for (const child of this.children) {
-                this.attachToParent(parent.container, child.container);
+                this.attachToParent(parent.backingInstance, child.backingInstance);
             }
         }
     }
 
     public override detachDeletedInstance(): void {
         if (this.parent) {
-            const currentParent = this.parent.container;
+            const currentParent = this.parent.backingInstance;
             for (const child of this.children) {
-                this.detachFromParent(currentParent, child.container);
+                this.detachFromParent(currentParent, child.backingInstance);
             }
         }
         super.detachDeletedInstance();
@@ -67,18 +67,18 @@ export abstract class AttachOnParentVirtualNode<
 
     protected reinsertAllChildren(): void {
         if (!this.parent) return;
-        const parent = this.parent.container;
+        const parent = this.parent.backingInstance;
         for (const child of this.children) {
-            this.detachFromParent(parent, child.container);
+            this.detachFromParent(parent, child.backingInstance);
         }
         for (const child of this.children) {
-            this.attachToParent(parent, child.container);
+            this.attachToParent(parent, child.backingInstance);
         }
     }
 
-    protected abstract attachToParent(parent: TParent["container"], child: Gtk.Widget): void;
+    protected abstract attachToParent(parent: TParent["backingInstance"], child: Gtk.Widget): void;
 
-    protected detachFromParent(_parent: TParent["container"], child: Gtk.Widget): void {
+    protected detachFromParent(_parent: TParent["backingInstance"], child: Gtk.Widget): void {
         unparentWidget(child);
     }
 }

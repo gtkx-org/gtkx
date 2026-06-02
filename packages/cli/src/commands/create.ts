@@ -18,9 +18,9 @@ export const create = defineCommand({
             description: "Project name",
             required: false,
         },
-        "app-id": {
+        "application-id": {
             type: "string",
-            description: "App ID (e.g., com.example.myapp)",
+            description: "Application ID (e.g., com.example.myapp)",
         },
         pm: {
             type: "string",
@@ -38,7 +38,7 @@ export const create = defineCommand({
     async run({ args }) {
         await createApp({
             name: args.name,
-            appId: args["app-id"],
+            applicationId: args["application-id"],
             packageManager: args.pm as "pnpm" | "npm" | "yarn" | undefined,
             testing: args.testing as "vitest" | "none" | undefined,
             claudeSkills: args["claude-skills"],

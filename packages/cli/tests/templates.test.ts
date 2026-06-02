@@ -3,7 +3,7 @@ import { renderFile, type TemplateContext } from "../src/templates.js";
 
 const baseContext: TemplateContext = {
     name: "my-app",
-    appId: "com.example.MyApp",
+    applicationId: "com.example.MyApp",
     title: "My App",
     testing: "none",
 };
@@ -31,7 +31,7 @@ describe("renderFile", () => {
         expect(output).not.toContain("vitest");
     });
 
-    it("propagates the appId and title to templates that use them", () => {
+    it("propagates the applicationId and title to templates that use them", () => {
         const output = renderFile("gitignore.ejs", baseContext);
         expect(typeof output).toBe("string");
     });

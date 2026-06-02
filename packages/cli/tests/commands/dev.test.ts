@@ -4,13 +4,13 @@ vi.mock("../../src/codegen/run-codegen.js", () => ({
     preflightCodegen: vi.fn(async () => undefined),
 }));
 
-vi.mock("../../src/dev-supervisor.js", () => ({
+vi.mock("../../src/dev/supervisor.js", () => ({
     runDevSupervisor: vi.fn(async () => undefined),
 }));
 
 import { preflightCodegen } from "../../src/codegen/run-codegen.js";
 import { dev } from "../../src/commands/dev.js";
-import { runDevSupervisor } from "../../src/dev-supervisor.js";
+import { runDevSupervisor } from "../../src/dev/supervisor.js";
 
 const preflightMock = vi.mocked(preflightCodegen);
 const runDevSupervisorMock = vi.mocked(runDevSupervisor);

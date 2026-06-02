@@ -20,7 +20,7 @@ export class GridChildNode extends AttachOnParentVirtualNode<GridChildProps, Wid
     }
 
     public override isValidParent(parent: Node): boolean {
-        return parent instanceof WidgetNode && parent.container.getLayoutManager() instanceof Gtk.GridLayout;
+        return parent instanceof WidgetNode && parent.backingInstance.getLayoutManager() instanceof Gtk.GridLayout;
     }
 
     public override commitUpdate(oldProps: GridChildProps | null, newProps: GridChildProps): void {
@@ -34,7 +34,7 @@ export class GridChildNode extends AttachOnParentVirtualNode<GridChildProps, Wid
             hasChanged(oldProps, newProps, "columnSpan") ||
             hasChanged(oldProps, newProps, "rowSpan")
         ) {
-            this.applyGridChildProps(this.parent.container, this.children[0].container);
+            this.applyGridChildProps(this.parent.backingInstance, this.children[0].backingInstance);
         }
     }
 

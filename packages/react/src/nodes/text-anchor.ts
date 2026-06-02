@@ -47,17 +47,17 @@ export class TextAnchorNode extends BufferOffsetNode<TextAnchorProps, Node & Tex
         }
 
         const widgetChild = this.children[0];
-        if (widgetChild?.container && this.anchor) {
-            this.textView.addChildAtAnchor(widgetChild.container, this.anchor);
+        if (widgetChild?.backingInstance && this.anchor) {
+            this.textView.addChildAtAnchor(widgetChild.backingInstance, this.anchor);
         }
     }
 
     public override appendChild(child: WidgetNode): void {
         super.appendChild(child);
 
-        if (this.textView && this.anchor && child.container) {
-            unparentWidget(child.container);
-            this.textView.addChildAtAnchor(child.container, this.anchor);
+        if (this.textView && this.anchor && child.backingInstance) {
+            unparentWidget(child.backingInstance);
+            this.textView.addChildAtAnchor(child.backingInstance, this.anchor);
         }
     }
 

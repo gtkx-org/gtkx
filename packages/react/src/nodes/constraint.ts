@@ -13,7 +13,7 @@ export class ConstraintNode extends ConstraintLayoutChildNode<ConstraintProps> {
     private constraint: Gtk.Constraint | null = null;
 
     protected override applyToLayout(parent: ConstraintLayoutNode): void {
-        const layout = parent.container;
+        const layout = parent.backingInstance;
 
         if (this.constraint) {
             layout.removeConstraint(this.constraint);
@@ -45,7 +45,7 @@ export class ConstraintNode extends ConstraintLayoutChildNode<ConstraintProps> {
 
     protected override removeFromLayout(parent: ConstraintLayoutNode): void {
         if (this.constraint) {
-            parent.container.removeConstraint(this.constraint);
+            parent.backingInstance.removeConstraint(this.constraint);
         }
         this.constraint = null;
     }

@@ -4,7 +4,7 @@ import type { GirBoxed } from "../gir/boxed.js";
 import { renderBoxedConstructor, renderBoxedConstructorPropsInterface } from "./boxed-constructor.js";
 import { renderBoxedFieldAccessor } from "./boxed-field-accessor.js";
 import { computeBoxedFieldSlots } from "./boxed-layout.js";
-import { buildPlainTypeMembers, type Callables, dedupeCallables, emitBindings } from "./callables.js";
+import { type Callables, dedupeCallables, emitBindings, renderPlainTypeMembers } from "./callables.js";
 import { isClassStructRecord } from "./class-struct-record.js";
 import { renderGetTypeReference } from "./gtype-binding.js";
 import { appendNativeClassRegistration } from "./registration.js";
@@ -22,55 +22,55 @@ import { appendNativeClassRegistration } from "./registration.js";
  * interface-struct records (`GTypeClass`, `GEnumClass`, …) are likewise skipped
  * as they are runtime vtables rather than marshallable values.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param boxed - The boxed to emit
  */
-export const emitBoxed = (ctx: ModuleContext, boxed: GirBoxed): void => {
+export const emitBoxed = (context: ModuleContext, boxed: GirBoxed): void => {
     if (!boxed.introspectable) return;
     if (boxed.kind === "vtable") return;
     if (boxed.name.length === 0) return;
-    if (isClassStructRecord(ctx.namespace.name, boxed)) return;
+    if (isClassStructRecord(context.namespace.name, boxed)) return;
     const className = boxed.name;
     const callables: Callables = {
         constructors: dedupeCallables(boxed.constructors),
         functions: dedupeCallables(boxed.functions),
         methods: dedupeCallables(boxed.methods),
     };
-    emitBindings(ctx, callables);
+    emitBindings(context, callables);
 
-    const members = buildBoxedMembers(ctx, boxed, className, callables);
+    const members = renderBoxedMembers(context, boxed, className, callables);
     const body = members.map((member) => indent(member, 1)).join("\n\n");
-    ctx.module.appendDeclaration(`export class ${className} {\n${body}\n}`);
-    ctx.module.appendDeclaration(renderBoxedConstructorPropsInterface(ctx, boxed, className));
+    context.module.appendDeclaration(`export class ${className} {\n${body}\n}`);
+    context.module.appendDeclaration(renderBoxedConstructorPropsInterface(context, boxed, className));
 
     const getTypeRef =
         boxed.glibGetType === undefined
             ? undefined
-            : renderGetTypeReference(ctx, boxed.glibGetType, boxed.glibTypeName);
-    appendNativeClassRegistration(ctx, {
+            : renderGetTypeReference(context, boxed.glibGetType, boxed.glibTypeName);
+    appendNativeClassRegistration(context, {
         className,
         role: "boxed",
         getTypeRef,
     });
 };
 
-const buildBoxedMembers = (
-    ctx: ModuleContext,
+const renderBoxedMembers = (
+    context: ModuleContext,
     boxed: GirBoxed,
     className: string,
     callables: Callables,
 ): readonly string[] => {
-    const { members, claimedNames } = buildPlainTypeMembers({
-        ctx,
+    const { members, claimedNames } = renderPlainTypeMembers({
+        context,
         className,
         callables,
         hasGType: boxed.glibGetType !== undefined,
         wrap: "boxed",
     });
-    members.unshift(renderBoxedConstructor(ctx, boxed, className));
-    const { slots } = computeBoxedFieldSlots(ctx, boxed.fields, boxed.isUnion);
+    members.unshift(renderBoxedConstructor(context, boxed, className));
+    const { slots } = computeBoxedFieldSlots(context, boxed.fields, boxed.isUnion);
     for (const slot of slots) {
-        const block = renderBoxedFieldAccessor(ctx, slot, claimedNames, boxed.fields);
+        const block = renderBoxedFieldAccessor(context, slot, claimedNames, boxed.fields);
         if (block !== undefined) members.push(block);
     }
     return members;

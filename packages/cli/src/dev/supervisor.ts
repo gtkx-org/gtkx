@@ -1,9 +1,9 @@
 import { type ChildProcess, fork } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { exitCodeForSignal, installGracefulShutdown } from "@gtkx/utils";
-import { RELOAD_EXIT_CODE } from "./dev-protocol.js";
+import { RELOAD_EXIT_CODE } from "./protocol.js";
 
-const DEV_RUNNER_URL = new URL("../bin/gtkx-dev-runner.js", import.meta.url);
+const DEV_RUNNER_URL = new URL("../../bin/gtkx-dev-runner.js", import.meta.url);
 const FORCE_KILL_TIMEOUT_MS = 5000;
 
 const forwardSignal = (child: ChildProcess, signal: NodeJS.Signals): void => {

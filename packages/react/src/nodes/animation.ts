@@ -3,7 +3,7 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { AdwSpringAnimationProps, AdwTimedAnimationProps, AnimatableProperties, AnimationProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import type { Container } from "../types.js";
+import type { BackingInstance } from "../types.js";
 import { SingleChildVirtualNode } from "./internal/single-child-virtual.js";
 import { attachChild, detachChild, isAttachedTo } from "./internal/widget.js";
 import { WidgetNode } from "./widget.js";
@@ -31,7 +31,7 @@ export class AnimationNode extends SingleChildVirtualNode<AnimationProps, Node, 
     private detachedParentContainer: unknown = null;
     private classApplied = false;
 
-    constructor(typeName: string, props: AnimationProps, container: undefined, rootContainer: Container) {
+    constructor(typeName: string, props: AnimationProps, container: undefined, rootContainer: BackingInstance) {
         super(typeName, props, container, rootContainer);
         this.className = `gtkx-anim-${animationCounter++}`;
     }
@@ -46,7 +46,7 @@ export class AnimationNode extends SingleChildVirtualNode<AnimationProps, Node, 
 
     protected override onDetach(_oldChild: Gtk.Widget | null): void {
         if (this.parent) {
-            this.detachedParentContainer = this.parent.container;
+            this.detachedParentContainer = this.parent.backingInstance;
         }
     }
 
@@ -99,8 +99,8 @@ export class AnimationNode extends SingleChildVirtualNode<AnimationProps, Node, 
     }
 
     protected override onChildChange(oldChild: Gtk.Widget | null): void {
-        const parentContainer = this.parent?.container ?? null;
-        const childWidget = this.children[0]?.container ?? null;
+        const parentContainer = this.parent?.backingInstance ?? null;
+        const childWidget = this.children[0]?.backingInstance ?? null;
 
         if (oldChild && this.classApplied) {
             oldChild.removeCssClass(this.className);
@@ -143,8 +143,8 @@ export class AnimationNode extends SingleChildVirtualNode<AnimationProps, Node, 
     }
 
     private detachChildFromParentWidget(): void {
-        const parentContainer = this.parent?.container ?? this.detachedParentContainer;
-        const childWidget = this.children[0]?.container ?? null;
+        const parentContainer = this.parent?.backingInstance ?? this.detachedParentContainer;
+        const childWidget = this.children[0]?.backingInstance ?? null;
 
         if (childWidget && parentContainer instanceof Gtk.Widget && isAttachedTo(childWidget, parentContainer)) {
             detachChild(childWidget, parentContainer);
@@ -154,7 +154,7 @@ export class AnimationNode extends SingleChildVirtualNode<AnimationProps, Node, 
     }
 
     private setupCssProvider(): void {
-        const childWidget = this.children[0]?.container ?? null;
+        const childWidget = this.children[0]?.backingInstance ?? null;
         if (this.provider || !childWidget) return;
 
         this.provider = new Gtk.CssProvider();
@@ -170,7 +170,7 @@ export class AnimationNode extends SingleChildVirtualNode<AnimationProps, Node, 
     }
 
     private cleanup(): void {
-        const childWidget = this.children[0]?.container ?? null;
+        const childWidget = this.children[0]?.backingInstance ?? null;
 
         if (this.currentAnimation) {
             this.currentAnimation.skip();
@@ -191,7 +191,7 @@ export class AnimationNode extends SingleChildVirtualNode<AnimationProps, Node, 
     }
 
     private animateTo(target: AnimatableProperties, onComplete?: () => void): void {
-        const childWidget = this.children[0]?.container ?? null;
+        const childWidget = this.children[0]?.backingInstance ?? null;
         if (!childWidget) return;
 
         if (this.currentAnimation) {
@@ -292,7 +292,7 @@ export class AnimationNode extends SingleChildVirtualNode<AnimationProps, Node, 
             return;
         }
 
-        const childWidget = this.children[0]?.container ?? null;
+        const childWidget = this.children[0]?.backingInstance ?? null;
         if (childWidget && !this.classApplied) {
             childWidget.addCssClass(this.className);
             this.classApplied = true;

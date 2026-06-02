@@ -5,7 +5,7 @@ import type { TestingOption } from "./create/options.js";
 
 export type TemplateContext = {
     name: string;
-    appId: string;
+    applicationId: string;
     title: string;
     testing: TestingOption;
 };

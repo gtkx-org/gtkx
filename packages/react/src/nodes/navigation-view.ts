@@ -30,7 +30,7 @@ export class NavigationViewNode extends WidgetNode<Adw.NavigationView, Navigatio
                 const newHistory = this.props.history;
                 const oldHistory = (oldProps as NavigationViewProps | null)?.history;
                 if (newHistory && !isShallowEqual(oldHistory, newHistory)) {
-                    this.container.replaceWithTags(newHistory);
+                    this.backingInstance.replaceWithTags(newHistory);
                 }
             }),
             onHistoryChanged: signal(["popped", "pushed", "replaced"], {
@@ -40,7 +40,7 @@ export class NavigationViewNode extends WidgetNode<Adw.NavigationView, Navigatio
     }
 
     private getCurrentHistory(): string[] {
-        const stack = this.container.getNavigationStack();
+        const stack = this.backingInstance.getNavigationStack();
         const history: string[] = [];
         const nItems = stack.getNItems();
 

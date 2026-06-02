@@ -68,11 +68,11 @@ export function noAppConnectedError(): McpError {
 /**
  * Creates an error for when a requested app is not found.
  *
- * @param appId - The application ID that was not found
+ * @param applicationId - The application ID that was not found
  * @returns McpError with APP_NOT_FOUND code
  */
-export function appNotFoundError(appId: string): McpError {
-    return new McpError(McpErrorCode.APP_NOT_FOUND, `Application '${appId}' not found`, { appId });
+export function appNotFoundError(applicationId: string): McpError {
+    return new McpError(McpErrorCode.APP_NOT_FOUND, `Application '${applicationId}' not found`, { applicationId });
 }
 
 /**
@@ -80,14 +80,14 @@ export function appNotFoundError(appId: string): McpError {
  * is not writable (typically because the app disconnected between routing
  * the request and writing the frame).
  *
- * @param appId - The application ID whose connection failed.
+ * @param applicationId - The application ID whose connection failed.
  * @returns McpError with CONNECTION_WRITE_FAILED code.
  */
-export function connectionWriteFailedError(appId: string): McpError {
+export function connectionWriteFailedError(applicationId: string): McpError {
     return new McpError(
         McpErrorCode.CONNECTION_WRITE_FAILED,
-        `Connection to application '${appId}' is no longer writable`,
-        { appId },
+        `Connection to application '${applicationId}' is no longer writable`,
+        { applicationId },
     );
 }
 

@@ -24,4 +24,5 @@ export { constructGObjectInstance } from "./object.js";
 export { registerClass } from "./register-class.js";
 export { getNativeClassByName, wrapHandle } from "./registry.js";
 export * from "./runtime.js";
+export type { SignalHandler } from "./signals.js";
 export * from "./value-marshal.js";

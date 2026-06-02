@@ -22,34 +22,39 @@ import { renderFfiType, renderSelfFfiType, renderTrampolineType } from "./value.
  * Includes the instance parameter (if any), every regular parameter, and
  * the implicit `GError**` ref when `throws=1`.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param fn - The callable
  */
-const writeArgsLiteral = (ctx: ModuleContext, fn: GirFunction): string => {
+const renderArgsLiteral = (context: ModuleContext, fn: GirFunction): string => {
     const args: string[] = [];
     const instanceOffset = fn.instance === undefined ? 0 : 1;
     if (fn.instance !== undefined) {
-        ctx.addRuntimeImport("t");
-        args.push(`{ type: ${renderSelfFfiType(ctx, fn.instance)} }`);
+        context.addRuntimeImport("t");
+        args.push(`{ type: ${renderSelfFfiType(context, fn.instance)} }`);
     }
     const closureIndices = closureAndDestroyIndices(fn);
     fn.parameters.forEach((parameter, index) => {
         if (parameter.isVarargs) return;
         if (closureIndices.has(index)) return;
         const optional = parameter.direction === "in" && (parameter.nullable || parameter.optional);
-        args.push(argLiteral(ctx, parameter, optional, instanceOffset));
+        args.push(argLiteral(context, parameter, optional, instanceOffset));
     });
     if (fn.throws) {
-        ctx.addRuntimeImport("t");
+        context.addRuntimeImport("t");
         args.push(`{ type: t.ref(t.boxed("GError", "full", "libgobject-2.0.so.0", "g_error_get_type")) }`);
     }
     return arrayLiteral(args);
 };
 
-const argLiteral = (ctx: ModuleContext, parameter: GirParameter, optional: boolean, instanceOffset: number): string => {
-    const trampoline = renderTrampolineType(ctx, parameter.type, parameter);
-    const inner = trampoline ?? renderFfiType(ctx, parameter.type, parameter.transferOwnership, instanceOffset);
-    const refWrapped = needsRefArg(ctx, parameter);
+const argLiteral = (
+    context: ModuleContext,
+    parameter: GirParameter,
+    optional: boolean,
+    instanceOffset: number,
+): string => {
+    const trampoline = renderTrampolineType(context, parameter.type, parameter);
+    const inner = trampoline ?? renderFfiType(context, parameter.type, parameter.transferOwnership, instanceOffset);
+    const refWrapped = needsRefArg(context, parameter);
     const expression = refWrapped ? `t.ref(${inner})` : inner;
     return optional && !refWrapped ? `{ type: ${expression}, optional: true }` : `{ type: ${expression} }`;
 };
@@ -59,17 +64,17 @@ const argLiteral = (ctx: ModuleContext, parameter: GirParameter, optional: boole
  * callable. Returns `undefined` when the callable cannot be bound (no C
  * identifier or missing namespace shared-library).
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param fn - The callable
  */
-export const renderFnExpression = (ctx: ModuleContext, fn: GirFunction): string | undefined => {
+export const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | undefined => {
     if (fn.cIdentifier === undefined) return undefined;
-    const library = ctx.namespace.sharedLibrary;
+    const library = context.namespace.sharedLibrary;
     if (library === undefined) return undefined;
-    ctx.addRuntimeImport("t");
-    const args = writeArgsLiteral(ctx, fn);
+    context.addRuntimeImport("t");
+    const args = renderArgsLiteral(context, fn);
     const returnType = renderFfiType(
-        ctx,
+        context,
         fn.returnValue.type,
         fn.returnValue.transferOwnership,
         fn.instance === undefined ? 0 : 1,
@@ -85,24 +90,26 @@ export const renderFnExpression = (ctx: ModuleContext, fn: GirFunction): string 
  * (e.g. macros, unintrospectable signatures) or when the GIR marks the
  * callable as `introspectable="0"`.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param fn - The callable
  */
-export const emitNamespaceFunction = (ctx: ModuleContext, fn: GirFunction): void => {
+export const emitNamespaceFunction = (context: ModuleContext, fn: GirFunction): void => {
     if (!fn.introspectable) return;
     if (fn.shadowedBy !== undefined) return;
-    if (callableReferencesClassStruct(ctx, fn)) return;
-    const expression = renderFnExpression(ctx, fn);
+    if (callableReferencesClassStruct(context, fn)) return;
+    const expression = renderFnExpression(context, fn);
     if (expression === undefined) return;
     const bindingName = fn.cIdentifier;
     if (bindingName === undefined) return;
-    ctx.module.appendBinding(`const ${bindingName} = ${expression};`, bindingName);
+    context.module.appendBinding(`const ${bindingName} = ${expression};`, bindingName);
 
-    const exportName = namespaceFunctionExportName(bindingName, fn.name, ctx.namespace.cSymbolPrefixes);
-    const signature = renderMethodSignature(ctx, fn);
-    const returnType = renderMethodReturnType(ctx, fn);
-    const body = renderMethodBody(ctx, fn, { bindingExpression: bindingName, isStatic: true });
-    ctx.module.appendDeclaration(`export function ${exportName}(${signature}): ${returnType} {\n${indent(body, 1)}\n}`);
+    const exportName = namespaceFunctionExportName(bindingName, fn.name, context.namespace.cSymbolPrefixes);
+    const signature = renderMethodSignature(context, fn);
+    const returnType = renderMethodReturnType(context, fn);
+    const body = renderMethodBody(context, fn, { bindingExpression: bindingName, isStatic: true });
+    context.module.appendDeclaration(
+        `export function ${exportName}(${signature}): ${returnType} {\n${indent(body, 1)}\n}`,
+    );
 };
 
 /**
@@ -116,19 +123,19 @@ export const emitNamespaceFunction = (ctx: ModuleContext, fn: GirFunction): void
  * touched — without it a `Gdk` display lookup can run before `gtk_init`.
  * Deferring `finalize` to `whenStopped` runs it during shutdown.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param namespace - The namespace being generated
  */
-export const emitNamespaceBootstrap = (ctx: ModuleContext, namespace: GirNamespace): void => {
+export const emitNamespaceBootstrap = (context: ModuleContext, namespace: GirNamespace): void => {
     for (const fn of namespace.functions) {
         if (fn.parameters.length > 0) continue;
         if (!fn.introspectable || fn.shadowedBy !== undefined || fn.cIdentifier === undefined) continue;
-        const exportName = namespaceFunctionExportName(fn.cIdentifier, fn.name, ctx.namespace.cSymbolPrefixes);
+        const exportName = namespaceFunctionExportName(fn.cIdentifier, fn.name, context.namespace.cSymbolPrefixes);
         if (fn.name === "init") {
-            ctx.module.appendRegistration(`${exportName}();`);
+            context.module.appendRegistration(`${exportName}();`);
         } else if (fn.name === "finalize") {
-            ctx.module.imports.addNamed("@gtkx/ffi", "whenStopped");
-            ctx.module.appendRegistration(`whenStopped().then(${exportName});`);
+            context.module.imports.addNamed("@gtkx/ffi", "whenStopped");
+            context.module.appendRegistration(`whenStopped().then(${exportName});`);
         }
     }
 };

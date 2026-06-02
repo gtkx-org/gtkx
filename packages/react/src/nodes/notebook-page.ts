@@ -16,7 +16,7 @@ export class NotebookPageNode extends VirtualNode<NotebookPageProps, WidgetNode<
     }
 
     public override isValidParent(parent: Node): boolean {
-        return parent instanceof WidgetNode && parent.container instanceof Gtk.Notebook;
+        return parent instanceof WidgetNode && parent.backingInstance instanceof Gtk.Notebook;
     }
 
     public findTabNode(): NotebookPageTabNode | undefined {
@@ -31,7 +31,7 @@ export class NotebookPageNode extends VirtualNode<NotebookPageProps, WidgetNode<
 
     public override setParent(parent: WidgetNode<Gtk.Notebook> | null): void {
         if (!parent && this.parent) {
-            const childWidget = this.findContentChild()?.container ?? null;
+            const childWidget = this.findContentChild()?.backingInstance ?? null;
             if (childWidget) {
                 this.detachPage(childWidget);
             }
@@ -50,7 +50,7 @@ export class NotebookPageNode extends VirtualNode<NotebookPageProps, WidgetNode<
             return;
         }
 
-        const oldContent = this.findContentChild()?.container ?? null;
+        const oldContent = this.findContentChild()?.backingInstance ?? null;
         super.appendChild(child);
 
         if (this.parent) {
@@ -65,7 +65,7 @@ export class NotebookPageNode extends VirtualNode<NotebookPageProps, WidgetNode<
         }
 
         const isContent = child === this.findContentChild();
-        const oldContent = isContent ? child.container : null;
+        const oldContent = isContent ? child.backingInstance : null;
         super.removeChild(child);
 
         if (isContent && this.parent && oldContent) {
@@ -79,7 +79,7 @@ export class NotebookPageNode extends VirtualNode<NotebookPageProps, WidgetNode<
     }
 
     public override detachDeletedInstance(): void {
-        const childWidget = this.findContentChild()?.container ?? null;
+        const childWidget = this.findContentChild()?.backingInstance ?? null;
         if (childWidget && this.parent) {
             const notebook = this.getParentWidget();
             if (notebook.getNPages() <= 1) {
@@ -100,7 +100,7 @@ export class NotebookPageNode extends VirtualNode<NotebookPageProps, WidgetNode<
             throw new Error("Expected content child widget to be set on NotebookPageNode");
         }
 
-        return contentChild.container;
+        return contentChild.backingInstance;
     }
 
     private getParentWidget(): Gtk.Notebook {
@@ -108,12 +108,12 @@ export class NotebookPageNode extends VirtualNode<NotebookPageProps, WidgetNode<
             throw new Error("Expected parent widget to be set on NotebookPageNode");
         }
 
-        return this.parent.container;
+        return this.parent.backingInstance;
     }
 
     private applyOwnProps(oldProps: NotebookPageProps | null, newProps: NotebookPageProps): void {
         const contentChild = this.findContentChild();
-        const childWidget = contentChild?.container ?? null;
+        const childWidget = contentChild?.backingInstance ?? null;
         const tabNode = this.findTabNode();
 
         if (hasChanged(oldProps, newProps, "label") && childWidget && this.parent && !tabNode?.children[0]) {
@@ -136,7 +136,7 @@ export class NotebookPageNode extends VirtualNode<NotebookPageProps, WidgetNode<
         let tabLabel: Gtk.Widget;
 
         if (tabNode?.children[0]) {
-            tabLabel = tabNode.children[0].container;
+            tabLabel = tabNode.children[0].backingInstance;
         } else {
             const label = new Gtk.Label();
             label.setLabel(this.props.label ?? "");
@@ -153,7 +153,7 @@ export class NotebookPageNode extends VirtualNode<NotebookPageProps, WidgetNode<
     }
 
     private applyPageProps(): void {
-        const child = this.findContentChild()?.container ?? null;
+        const child = this.findContentChild()?.backingInstance ?? null;
         if (!child || !this.parent) return;
 
         const notebook = this.getParentWidget();

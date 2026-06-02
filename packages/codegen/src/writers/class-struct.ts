@@ -25,22 +25,22 @@ type VtableKind = "class" | "interface";
  * lets the runtime register an interface vfunc mapping in addition to the class
  * one when the descriptor's role is `"interface"`.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param klass - The class or interface
  */
-export const renderVfuncMetadata = (ctx: ModuleContext, klass: GirClass): string | undefined => {
+export const renderVfuncMetadata = (context: ModuleContext, klass: GirClass): string | undefined => {
     if (klass.glibTypeStruct === undefined) return undefined;
     const structName = toPascalCase(klass.glibTypeStruct);
     const kind: VtableKind = klass.isInterface ? "interface" : "class";
-    const entries = vtableEntries(ctx, structName, kind, klass.glibTypeStruct);
+    const entries = vtableEntries(context, structName, kind, klass.glibTypeStruct);
     if (entries.length === 0) return undefined;
     return `{\n${entries.map((entry) => indent(entry, 1)).join("\n")}\n}`;
 };
 
-const vtableEntries = (ctx: ModuleContext, structName: string, kind: VtableKind, typeStruct: string): string[] => {
-    const resolved = ctx.repository.resolveNamed(ctx.namespace.name, typeStruct);
+const vtableEntries = (context: ModuleContext, structName: string, kind: VtableKind, typeStruct: string): string[] => {
+    const resolved = context.repository.resolveNamed(context.namespace.name, typeStruct);
     if (resolved === undefined || resolved.kind !== "boxed") return [];
-    const { slots } = computeBoxedFieldSlots(ctx, resolved.value.fields, resolved.value.isUnion);
+    const { slots } = computeBoxedFieldSlots(context, resolved.value.fields, resolved.value.isUnion);
     const entries: string[] = [];
     const claimedNames = new Set<string>();
     for (const { field, slot } of slots) {
@@ -50,7 +50,9 @@ const vtableEntries = (ctx: ModuleContext, structName: string, kind: VtableKind,
         const callback = callbackFromNode(field.callback);
         if (!isVtableSlotEligible(callback)) continue;
         claimedNames.add(key);
-        entries.push(renderDescriptor(ctx, { key, structName, kind, field, callback, byteOffset: slot.byteOffset }));
+        entries.push(
+            renderDescriptor(context, { key, structName, kind, field, callback, byteOffset: slot.byteOffset }),
+        );
     }
     return entries;
 };
@@ -76,12 +78,12 @@ type RenderDescriptorOptions = {
     readonly byteOffset: number;
 };
 
-const renderDescriptor = (ctx: ModuleContext, options: RenderDescriptorOptions): string => {
+const renderDescriptor = (context: ModuleContext, options: RenderDescriptorOptions): string => {
     const { key, structName, kind, field, callback, byteOffset } = options;
     const argTypes = callback.parameters
-        .map((param) => renderFfiType(ctx, param.type, param.transferOwnership))
+        .map((param) => renderFfiType(context, param.type, param.transferOwnership))
         .join(", ");
-    const returnType = renderFfiType(ctx, callback.returnValue.type, callback.returnValue.transferOwnership);
+    const returnType = renderFfiType(context, callback.returnValue.type, callback.returnValue.transferOwnership);
     const lines = [
         `kind: ${quote(kind)},`,
         `className: ${quote(structName)},`,

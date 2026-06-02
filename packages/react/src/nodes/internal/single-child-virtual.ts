@@ -16,7 +16,7 @@ export abstract class SingleChildVirtualNode<
     TChild extends WidgetNode,
 > extends VirtualNode<TProps, TParent, TChild> {
     public override appendChild(child: TChild): void {
-        const oldChildWidget = this.children[0]?.container ?? null;
+        const oldChildWidget = this.children[0]?.backingInstance ?? null;
         super.appendChild(child);
         if (this.parent) {
             this.onChildChange(oldChildWidget);
@@ -24,7 +24,7 @@ export abstract class SingleChildVirtualNode<
     }
 
     public override removeChild(child: TChild): void {
-        const oldChildWidget = child.container;
+        const oldChildWidget = child.backingInstance;
         super.removeChild(child);
         if (this.parent && oldChildWidget) {
             this.onChildChange(oldChildWidget);
@@ -33,7 +33,7 @@ export abstract class SingleChildVirtualNode<
 
     public override setParent(parent: TParent | null): void {
         if (!parent && this.parent) {
-            this.onDetach(this.children[0]?.container ?? null);
+            this.onDetach(this.children[0]?.backingInstance ?? null);
         }
         super.setParent(parent);
         if (parent && this.children[0]) {
@@ -43,7 +43,7 @@ export abstract class SingleChildVirtualNode<
 
     public override detachDeletedInstance(): void {
         if (this.parent) {
-            this.onDetach(this.children[0]?.container ?? null);
+            this.onDetach(this.children[0]?.backingInstance ?? null);
         }
         super.detachDeletedInstance();
     }

@@ -15,7 +15,7 @@ export type PackageManager = "pnpm" | "npm" | "yarn";
  */
 export type CreateOptions = {
     name?: string;
-    appId?: string;
+    applicationId?: string;
     packageManager?: PackageManager;
     testing?: TestingOption;
     claudeSkills?: boolean;
@@ -26,7 +26,7 @@ export type CreateOptions = {
  */
 type ResolvedOptions = {
     name: string;
-    appId: string;
+    applicationId: string;
     packageManager: PackageManager;
     testing: TestingOption;
     claudeSkills: boolean;
@@ -41,8 +41,8 @@ type ScaffolderPrompts = Pick<
     typeof import("@clack/prompts"),
     "intro" | "note" | "cancel" | "text" | "select" | "confirm" | "isCancel"
 > & {
-    spinner(): { start(msg: string): void; stop(msg: string): void };
-    log: { info(msg: string): void; error(msg: string): void };
+    spinner(): { start(message: string): void; stop(message: string): void };
+    log: { info(message: string): void; error(message: string): void };
 };
 
 /**
@@ -118,7 +118,7 @@ const getRunCommand = (pm: PackageManager): string => RUN_DEV_COMMAND[pm];
 
 const titleFromName = (name: string): string => name.split("-").map(toUpperFirst).join(" ");
 
-const suggestAppId = (name: string): string => `com.${name.replaceAll("-", "")}.app`;
+const suggestApplicationId = (name: string): string => `com.${name.replaceAll("-", "")}.app`;
 
 const getDevDependencies = (testing: TestingOption): string[] => {
     const devDeps = [...DEV_DEPENDENCIES];
@@ -147,10 +147,10 @@ const validateProjectName = (deps: ScaffolderDeps, value: string | undefined): s
     return undefined;
 };
 
-const validateAppIdInput = (value: string | undefined): string | undefined => {
-    if (!value) return "App ID is required";
+const validateApplicationIdInput = (value: string | undefined): string | undefined => {
+    if (!value) return "Application ID is required";
     if (!isValidApplicationId(value)) {
-        return "App ID must be reverse domain notation (e.g., com.example.myapp)";
+        return "Application ID must be reverse domain notation (e.g., com.example.myapp)";
     }
     return undefined;
 };
@@ -165,15 +165,15 @@ const promptName = async (deps: ScaffolderDeps): Promise<string> =>
         }),
     );
 
-const promptAppId = async (deps: ScaffolderDeps, name: string): Promise<string> => {
-    const defaultAppId = suggestAppId(name);
+const promptApplicationId = async (deps: ScaffolderDeps, name: string): Promise<string> => {
+    const defaultApplicationId = suggestApplicationId(name);
     return guardCancellation(
         deps,
         await deps.prompts.text({
-            message: "App ID",
-            placeholder: defaultAppId,
-            initialValue: defaultAppId,
-            validate: validateAppIdInput,
+            message: "Application ID",
+            placeholder: defaultApplicationId,
+            initialValue: defaultApplicationId,
+            validate: validateApplicationIdInput,
         }),
     );
 };
@@ -217,11 +217,11 @@ const promptClaudeSkills = async (deps: ScaffolderDeps): Promise<boolean> =>
 
 const promptForOptions = async (deps: ScaffolderDeps, options: CreateOptions): Promise<ResolvedOptions> => {
     const name = options.name ?? (await promptName(deps));
-    const appId = options.appId ?? (await promptAppId(deps, name));
+    const applicationId = options.applicationId ?? (await promptApplicationId(deps, name));
     const packageManager = options.packageManager ?? (await promptPackageManager(deps));
     const testing = options.testing ?? (await promptTesting(deps));
     const claudeSkills = options.claudeSkills ?? (await promptClaudeSkills(deps));
-    return { name, appId, packageManager, testing, claudeSkills };
+    return { name, applicationId, packageManager, testing, claudeSkills };
 };
 
 const writeClaudeSkills = (deps: ScaffolderDeps, projectPath: string, context: TemplateContext): void => {
@@ -238,8 +238,8 @@ const writeVitestFiles = (deps: ScaffolderDeps, projectPath: string, context: Te
 };
 
 const scaffoldProject = (deps: ScaffolderDeps, projectPath: string, resolved: ResolvedOptions): void => {
-    const { name, appId, testing, claudeSkills } = resolved;
-    const context: TemplateContext = { name, appId, title: titleFromName(name), testing };
+    const { name, applicationId, testing, claudeSkills } = resolved;
+    const context: TemplateContext = { name, applicationId, title: titleFromName(name), testing };
 
     deps.fs.mkdirSync(projectPath, { recursive: true });
     deps.fs.mkdirSync(join(projectPath, "src"), { recursive: true });

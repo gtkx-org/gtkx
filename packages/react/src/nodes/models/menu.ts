@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { Node } from "../../node.js";
-import type { Container } from "../../types.js";
+import type { BackingInstance } from "../../types.js";
 import { VirtualNode } from "../virtual.js";
 
 export type MenuModelProps = {
@@ -20,7 +20,7 @@ export type MenuType = "root" | "item" | "section" | "submenu";
 export type MenuModelOptions = {
     readonly type: MenuType;
     readonly props: MenuModelProps;
-    readonly rootContainer: Container;
+    readonly rootContainer: BackingInstance;
     readonly actionMap?: Gio.ActionMap;
     readonly application?: Gtk.Application;
 };

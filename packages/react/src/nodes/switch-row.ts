@@ -11,7 +11,7 @@ export class SwitchRowNode extends WidgetNode<Adw.SwitchRow, SwitchRowProps> {
         return {
             ...super.ownPropDescriptors(),
             onActiveChanged: signal("notify::active", {
-                getArgs: () => [this.container.getActive()],
+                getArgs: () => [this.backingInstance.getActive()],
             }),
         };
     }

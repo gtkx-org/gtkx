@@ -47,7 +47,7 @@ const deriveElementTransfer = (transfer: ParameterTransfer): ParameterTransfer =
  * Renders a TypeScript expression that materialises the FFI type
  * descriptor for `ref`.
  *
- * @param ctx - The module context (used for cross-namespace imports)
+ * @param context - The module context (used for cross-namespace imports)
  * @param ref - The GIR type reference, or `undefined` for void
  * @param transfer - GIR transfer-ownership conveyed onto the descriptor
  * @param argIndexOffset - Shift applied to a sized array's length-parameter
@@ -55,7 +55,7 @@ const deriveElementTransfer = (transfer: ParameterTransfer): ParameterTransfer =
  *     instance receiver) rather than the GIR parameter list
  */
 export const renderFfiType = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     ref: GirTypeRef | undefined,
     transfer: ParameterTransfer = "none",
     argIndexOffset = 0,
@@ -70,19 +70,19 @@ export const renderFfiType = (
         case "callback":
             return "t.void";
         case "named":
-            return namedExpression(ctx, ref, ownership);
+            return namedExpression(context, ref, ownership);
         case "array":
-            return arrayExpression(ctx, ref, transfer, argIndexOffset);
+            return arrayExpression(context, ref, transfer, argIndexOffset);
         case "list": {
             if (ref.flavor === "gbytearray") return `t.byteArray(${quote(ownership)})`;
-            const element = renderFfiType(ctx, ref.element, deriveElementTransfer(transfer), argIndexOffset);
+            const element = renderFfiType(context, ref.element, deriveElementTransfer(transfer), argIndexOffset);
             const helper = LIST_HELPERS[ref.flavor];
             return `t.${helper}(${element}, ${quote(ownership)})`;
         }
         case "hashtable": {
             const elementTransfer = deriveElementTransfer(transfer);
-            const key = renderFfiType(ctx, ref.key, elementTransfer, argIndexOffset);
-            const value = renderFfiType(ctx, ref.value, elementTransfer, argIndexOffset);
+            const key = renderFfiType(context, ref.key, elementTransfer, argIndexOffset);
+            const value = renderFfiType(context, ref.value, elementTransfer, argIndexOffset);
             return `t.hashTable(${key}, ${value}, ${quote(ownership)})`;
         }
     }
@@ -102,15 +102,19 @@ export type ResolvedCallback = {
  * declared inline (`<callback>` child) or by name (a namespace-level
  * `<callback>`). Returns `undefined` for non-callback references.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param ref - The parameter type reference
  */
-export const resolveCallbackType = (ctx: ModuleContext, ref: GirTypeRef | undefined): ResolvedCallback | undefined => {
+export const resolveCallbackType = (
+    context: ModuleContext,
+    ref: GirTypeRef | undefined,
+): ResolvedCallback | undefined => {
     if (ref === undefined) return undefined;
-    if (ref.kind === "callback") return { callback: callbackFromNode(ref.callback), namespaceName: ctx.namespace.name };
+    if (ref.kind === "callback")
+        return { callback: callbackFromNode(ref.callback), namespaceName: context.namespace.name };
     if (ref.kind !== "named") return undefined;
-    const owner = ref.namespaceName ?? ctx.namespace.name;
-    const resolved = ctx.repository.resolveNamed(owner, ref.typeName);
+    const owner = ref.namespaceName ?? context.namespace.name;
+    const resolved = context.repository.resolveNamed(owner, ref.typeName);
     if (resolved === undefined || resolved.kind !== "callback") return undefined;
     return { callback: resolved.value, namespaceName: resolved.namespace.name };
 };
@@ -149,11 +153,11 @@ export const isScalarRef = (repository: GirRepository, namespaceName: string, re
  * Handle-passing inout parameters (objects, interfaces, boxed records) stay
  * plain arguments the handler mutates directly.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param parameter - The parameter to test
  */
-export const isCellInout = (ctx: ModuleContext, parameter: GirParameter): boolean =>
-    isInoutParameter(parameter) && isScalarRef(ctx.repository, ctx.namespace.name, parameter.type);
+export const isCellInout = (context: ModuleContext, parameter: GirParameter): boolean =>
+    isInoutParameter(parameter) && isScalarRef(context.repository, context.namespace.name, parameter.type);
 
 /**
  * Renders the `t.trampoline(...)` FFI descriptor for a callback parameter.
@@ -164,21 +168,21 @@ export const isCellInout = (ctx: ModuleContext, parameter: GirParameter): boolea
  * the C-level callback, `user_data`, and destroy arguments into this single
  * descriptor. Returns `undefined` when `ref` is not a callback.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param ref - The parameter type reference
  * @param owningParameter - The parameter that carries the callback, for scope/destroy
  */
 export const renderTrampolineType = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     ref: GirTypeRef | undefined,
     owningParameter: GirParameter,
 ): string | undefined => {
-    const resolved = resolveCallbackType(ctx, ref);
+    const resolved = resolveCallbackType(context, ref);
     if (resolved === undefined) return undefined;
     const { callback, namespaceName } = resolved;
     const argTypes = callback.parameters.map((parameter) => {
-        const ffi = renderFfiType(ctx, qualifyTypeRef(parameter.type, namespaceName), parameter.transferOwnership);
-        return isOutParameter(parameter) || isCellInout(ctx, parameter) ? `t.ref(${ffi})` : ffi;
+        const ffi = renderFfiType(context, qualifyTypeRef(parameter.type, namespaceName), parameter.transferOwnership);
+        return isOutParameter(parameter) || isCellInout(context, parameter) ? `t.ref(${ffi})` : ffi;
     });
     let userDataIndex: number | undefined;
     callback.parameters.forEach((parameter, index) => {
@@ -186,7 +190,7 @@ export const renderTrampolineType = (
     });
     const returnRef = qualifyTypeRef(callback.returnValue.type, namespaceName);
     const isVoid = returnRef === undefined || (returnRef.kind === "primitive" && returnRef.category === "void");
-    const returnType = isVoid ? "t.void" : renderFfiType(ctx, returnRef, callback.returnValue.transferOwnership);
+    const returnType = isVoid ? "t.void" : renderFfiType(context, returnRef, callback.returnValue.transferOwnership);
     const options: string[] = [];
     if (owningParameter.destroyIndex !== undefined) options.push("hasDestroy: true");
     if (userDataIndex !== undefined) options.push(`userDataIndex: ${userDataIndex}`);
@@ -228,13 +232,17 @@ const primitiveExpression = (
     return `t.${category}`;
 };
 
-const namedExpression = (ctx: ModuleContext, ref: NamedTypeRef, ownership: "borrowed" | "full" | "none"): string => {
-    const namespaceName = ref.namespaceName ?? ctx.namespace.name;
-    const resolved = ctx.repository.resolveNamed(namespaceName, ref.typeName);
+const namedExpression = (
+    context: ModuleContext,
+    ref: NamedTypeRef,
+    ownership: "borrowed" | "full" | "none",
+): string => {
+    const namespaceName = ref.namespaceName ?? context.namespace.name;
+    const resolved = context.repository.resolveNamed(namespaceName, ref.typeName);
     if (resolved === undefined) {
         return `t.object(${quote(ownership)})`;
     }
-    return expressionForResolved(ctx, resolved, ownership);
+    return expressionForResolved(context, resolved, ownership);
 };
 
 /**
@@ -303,7 +311,7 @@ type AncestorFundamental = {
 };
 
 const fundamentalAncestor = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     namespaceName: string,
     typeName: string,
 ): AncestorFundamental | undefined => {
@@ -312,7 +320,7 @@ const fundamentalAncestor = (
     let name = typeName;
     while (!seen.has(`${owner}.${name}`)) {
         seen.add(`${owner}.${name}`);
-        const resolved = ctx.repository.resolveNamed(owner, name);
+        const resolved = context.repository.resolveNamed(owner, name);
         if (resolved === undefined || (resolved.kind !== "class" && resolved.kind !== "interface")) return undefined;
         const cls = resolved.value;
         if (cls.fundamental && cls.glibRefFunc !== undefined && cls.glibUnrefFunc !== undefined) {
@@ -341,17 +349,17 @@ const fundamentalAncestor = (
  * `t.fundamental`; every other receiver — GObject subclasses and opaque
  * records alike — is a borrowed `t.object`.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param instance - The instance parameter
  */
-export const renderSelfFfiType = (ctx: ModuleContext, instance: GirParameter): string => {
+export const renderSelfFfiType = (context: ModuleContext, instance: GirParameter): string => {
     const ref = instance.type;
     if (ref === undefined || ref.kind !== "named") return `t.object("borrowed")`;
-    const owner = ref.namespaceName ?? ctx.namespace.name;
-    const resolved = ctx.repository.resolveNamed(owner, ref.typeName);
+    const owner = ref.namespaceName ?? context.namespace.name;
+    const resolved = context.repository.resolveNamed(owner, ref.typeName);
     if (resolved === undefined) return `t.object("borrowed")`;
     if (resolved.kind === "class" || resolved.kind === "interface") {
-        const ancestor = fundamentalAncestor(ctx, owner, ref.typeName);
+        const ancestor = fundamentalAncestor(context, owner, ref.typeName);
         return ancestor === undefined
             ? `t.object("borrowed")`
             : renderFundamental({ ...ancestor, ownership: "borrowed" });
@@ -392,7 +400,7 @@ const boxedExpression = (
 };
 
 const expressionForResolved = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     resolved: ResolvedNamed,
     ownership: "borrowed" | "full" | "none",
 ): string => {
@@ -413,7 +421,7 @@ const expressionForResolved = (
         case "callback":
             return "t.void";
         case "alias":
-            return aliasExpression(ctx, {
+            return aliasExpression(context, {
                 namespace: resolved.namespace,
                 targetRef: resolved.targetRef,
                 ownership,
@@ -422,14 +430,14 @@ const expressionForResolved = (
 };
 
 const arrayExpression = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     ref: ArrayTypeRef,
     transfer: ParameterTransfer,
     argIndexOffset: number,
 ): string => {
     const ownership = ffiOwnership(transfer);
-    const element = renderFfiType(ctx, ref.element, deriveElementTransfer(transfer), argIndexOffset);
-    const size = inlineElementSize(ctx, ref.element);
+    const element = renderFfiType(context, ref.element, deriveElementTransfer(transfer), argIndexOffset);
+    const size = inlineElementSize(context, ref.element);
     const sizeArg = size === undefined ? "" : `, ${size}`;
     if (ref.lengthParameterIndex !== undefined) {
         return `t.sizedArray(${element}, ${ref.lengthParameterIndex + argIndexOffset}, ${quote(ownership)}${sizeArg})`;
@@ -447,17 +455,17 @@ const arrayExpression = (
  * buffer. Returns `undefined` for pointer elements (objects, strings, boxed
  * pointers) and primitives, which the native layer already sizes.
  */
-const inlineElementSize = (ctx: ModuleContext, element: GirTypeRef | undefined): number | undefined => {
+const inlineElementSize = (context: ModuleContext, element: GirTypeRef | undefined): number | undefined => {
     if (element === undefined || element.kind !== "named") return undefined;
-    const owner = element.namespaceName ?? ctx.namespace.name;
+    const owner = element.namespaceName ?? context.namespace.name;
     const hardcoded = HARDCODED_INLINE_ELEMENT_SIZES.get(`${owner}.${element.typeName}`);
     if (hardcoded !== undefined) return hardcoded;
     if (element.cType?.includes("*")) return undefined;
-    const resolved = ctx.repository.resolveNamed(owner, element.typeName);
+    const resolved = context.repository.resolveNamed(owner, element.typeName);
     if (resolved === undefined || resolved.kind !== "boxed") return undefined;
     const boxed = resolved.value;
     if (boxed.opaque || boxed.disguised || boxed.fields.length === 0) return undefined;
-    const { size } = computeBoxedFieldSlots(ctx, boxed.fields, boxed.isUnion);
+    const { size } = computeBoxedFieldSlots(context, boxed.fields, boxed.isUnion);
     return size > 0 ? size : undefined;
 };
 
@@ -467,11 +475,11 @@ type AliasExpressionOptions = {
     readonly ownership: "borrowed" | "full" | "none";
 };
 
-const aliasExpression = (ctx: ModuleContext, options: AliasExpressionOptions): string => {
+const aliasExpression = (context: ModuleContext, options: AliasExpressionOptions): string => {
     const { namespace, targetRef, ownership } = options;
     const qualified = qualifyTypeRef(targetRef, namespace.name);
     if (qualified === undefined) {
         return `t.object(${quote(ownership)})`;
     }
-    return renderFfiType(ctx, qualified, ownership === "full" ? "full" : "none");
+    return renderFfiType(context, qualified, ownership === "full" ? "full" : "none");
 };

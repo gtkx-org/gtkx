@@ -2,7 +2,7 @@
  * Runtime signal dispatch for generated FFI bindings.
  *
  * Generated classes register a per-class signal table via
- * {@link registerSignalMetadata} and delegate their `connect` and `emit` methods
+ * {@link registerSignalRegistry} and delegate their `connect` and `emit` methods
  * to {@link connectSignal} and {@link emitSignal}, which centralize handler
  * wrapping, trampoline connection, and `GValue` marshalling.
  */
@@ -52,13 +52,13 @@ export type SignalGObject = {
     signalEmitv(values: readonly SignalGValue[], signalId: number, detail: number, returnValue?: SignalGValue): void;
 };
 
-type SignalMetadata = {
-    readonly signals: ReadonlyMap<string, SignalDescriptor>;
+type SignalRegistry = {
+    readonly table: ReadonlyMap<string, SignalDescriptor>;
     readonly gtype: unknown;
     readonly gobject: SignalGObject;
 };
 
-const signalMetadataByClass = new WeakMap<AnyClass, SignalMetadata>();
+const signalRegistryByClass = new WeakMap<AnyClass, SignalRegistry>();
 
 /**
  * Registers the signal table for a generated class.
@@ -66,17 +66,17 @@ const signalMetadataByClass = new WeakMap<AnyClass, SignalMetadata>();
  * Called once per signal-bearing class at module-load time.
  *
  * @param cls - The generated wrapper class
- * @param signals - Map of signal name to its connect/emit descriptor
+ * @param table - Map of signal name to its connect/emit descriptor
  * @param gtype - The class's runtime `GType`, resolved at registration
  * @param gobject - The `GObject` namespace used for emit-side marshalling
  */
-export function registerSignalMetadata(
+export function registerSignalRegistry(
     cls: AnyClass,
-    signals: ReadonlyMap<string, SignalDescriptor>,
+    table: ReadonlyMap<string, SignalDescriptor>,
     gtype: unknown,
     gobject: SignalGObject,
 ): void {
-    signalMetadataByClass.set(cls, { signals, gtype, gobject });
+    signalRegistryByClass.set(cls, { table, gtype, gobject });
 }
 
 /**
@@ -133,7 +133,7 @@ export function connectSignal(
 ): number {
     const { instance, cls } = target;
     const { after, parentConnect } = options;
-    const descriptor = signalMetadataByClass.get(cls)?.signals.get(signalBaseName(signal));
+    const descriptor = signalRegistryByClass.get(cls)?.table.get(signalBaseName(signal));
     if (!descriptor) {
         if (parentConnect) return parentConnect(signal, handler, after);
         throw new Error(`Unknown signal '${signal}'`);
@@ -173,8 +173,8 @@ export function emitSignal(
     parentEmit?: (sigName: string, ...args: unknown[]) => void,
 ): void {
     const { instance, cls } = target;
-    const meta = signalMetadataByClass.get(cls);
-    const descriptor = meta?.signals.get(sigName);
+    const meta = signalRegistryByClass.get(cls);
+    const descriptor = meta?.table.get(sigName);
     if (!meta || !descriptor) {
         if (parentEmit) {
             parentEmit(sigName, ...args);

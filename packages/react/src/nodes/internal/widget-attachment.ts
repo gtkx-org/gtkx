@@ -12,14 +12,14 @@ import { applyProps } from "./apply-props.js";
  * container through {@link applyProps} with `defaultBlockable` disabled, so
  * every declared prop is written even when the prop table marks it blockable.
  *
- * @typeParam TContainer - The wrapped GObject type.
+ * @typeParam TBackingInstance - The wrapped GObject type.
  * @typeParam TChild - The reconciler child node type.
  */
 export abstract class WidgetAttachmentNode<
-    TContainer,
+    TBackingInstance,
     // biome-ignore lint/suspicious/noExplicitAny: Self-referential type bounds require any
     TChild extends Node = any,
-> extends Node<TContainer, Props, WidgetNode, TChild> {
+> extends Node<TBackingInstance, Props, WidgetNode, TChild> {
     public override commitUpdate(oldProps: Props | null, newProps: Props): void {
         super.commitUpdate(oldProps, newProps);
         applyProps(this, oldProps, newProps, { table: this.getPropTable(), defaultBlockable: false });

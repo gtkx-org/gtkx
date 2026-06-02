@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { Node } from "../node.js";
-import type { Container, Props } from "../types.js";
+import type { BackingInstance, Props } from "../types.js";
 import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
 import { MenuChildController } from "./internal/menu-child.js";
@@ -28,17 +28,17 @@ export class PopoverMenuNode extends WidgetNode<PopoverMenuWidget, Props, Popove
         );
     }
 
-    constructor(typeName: string, props: Props, container: PopoverMenuWidget, rootContainer: Container) {
+    constructor(typeName: string, props: Props, container: PopoverMenuWidget, rootContainer: BackingInstance) {
         super(typeName, props, container, rootContainer);
 
         const application = rootContainer instanceof Gtk.Application ? rootContainer : undefined;
         const actionGroup = new Gio.SimpleActionGroup();
         const prefix = application ? "app" : "menu";
 
-        this.container.insertActionGroup(prefix, actionGroup);
+        this.backingInstance.insertActionGroup(prefix, actionGroup);
         const menu = new MenuModel({ type: "root", props: {}, rootContainer, actionMap: actionGroup, application });
         this.menuController = new MenuChildController(menu);
-        this.container.setMenuModel(menu.getMenu());
+        this.backingInstance.setMenuModel(menu.getMenu());
     }
 
     public override appendChild(child: PopoverMenuChild): void {

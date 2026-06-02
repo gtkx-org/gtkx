@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import type { ListItem } from "../jsx.js";
 import type { Node } from "../node.js";
 import { isInCommit, scheduleAfterCommit } from "../post-commit-queue.js";
-import type { Container } from "../types.js";
+import type { BackingInstance } from "../types.js";
 import { ColumnViewColumnNode } from "./column-view-column.js";
 import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
@@ -114,7 +114,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const isMove = child instanceof ColumnViewColumnNode && this.children.includes(child);
         super.appendChild(child);
         if (child instanceof ColumnViewColumnNode) {
-            const columnView = this.container as Gtk.ColumnView;
+            const columnView = this.backingInstance as Gtk.ColumnView;
             if (isMove) {
                 columnView.removeColumn(child.getColumn());
             } else {
@@ -126,7 +126,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
     public override removeChild(child: ListChild): void {
         if (child instanceof ColumnViewColumnNode) {
-            const columnView = this.container as Gtk.ColumnView;
+            const columnView = this.backingInstance as Gtk.ColumnView;
             columnView.removeColumn(child.getColumn());
             child.uninstallActionGroup(columnView);
         }
@@ -137,7 +137,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const isMove = child instanceof ColumnViewColumnNode && this.children.includes(child);
         super.insertBefore(child, before);
         if (child instanceof ColumnViewColumnNode) {
-            const columnView = this.container as Gtk.ColumnView;
+            const columnView = this.backingInstance as Gtk.ColumnView;
             if (isMove) {
                 columnView.removeColumn(child.getColumn());
             } else {
@@ -227,11 +227,11 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     }
 
     private isDropDown(): boolean {
-        return this.container instanceof Gtk.DropDown || this.container instanceof Adw.ComboRow;
+        return this.backingInstance instanceof Gtk.DropDown || this.backingInstance instanceof Adw.ComboRow;
     }
 
     private isColumnView(): boolean {
-        return this.container instanceof Gtk.ColumnView;
+        return this.backingInstance instanceof Gtk.ColumnView;
     }
 
     private detectMode(): "sections" | "tree" | "flat" {
@@ -436,7 +436,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     }
 
     private assignModelToWidget(): void {
-        const widget = this.container;
+        const widget = this.backingInstance;
 
         if (this.isDropDown()) {
             const dropDownModel = this.hasSections()
@@ -460,7 +460,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     }
 
     private assignUncontrolledModelToWidget(): void {
-        const widget = this.container;
+        const widget = this.backingInstance;
         const model = this.props.model;
         if (!model) return;
         if (widget instanceof Gtk.DropDown || widget instanceof Adw.ComboRow) {
@@ -473,7 +473,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     }
 
     private assignFactoryToWidget(): void {
-        const widget = this.container;
+        const widget = this.backingInstance;
 
         if (widget instanceof Gtk.ListView) {
             widget.setFactory(this.factory);
@@ -867,14 +867,14 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     }
 
     private setDropDownSelected(position: number): void {
-        if (this.container instanceof Gtk.DropDown || this.container instanceof Adw.ComboRow) {
-            this.container.setSelected(position);
+        if (this.backingInstance instanceof Gtk.DropDown || this.backingInstance instanceof Adw.ComboRow) {
+            this.backingInstance.setSelected(position);
         }
     }
 
     private getDropDownSelected(): number {
-        if (this.container instanceof Gtk.DropDown || this.container instanceof Adw.ComboRow) {
-            return this.container.getSelected();
+        if (this.backingInstance instanceof Gtk.DropDown || this.backingInstance instanceof Adw.ComboRow) {
+            return this.backingInstance.getSelected();
         }
         return -1;
     }
@@ -930,7 +930,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         if (this.isDropDown()) {
             const callback = onSelectionChanged as ((id: string) => void) | null | undefined;
             const handler = callback ? this.buildDropDownSelectionHandler(callback) : undefined;
-            this.signalStore.set({ owner: this, obj: this.container, signal: "notify::selected", handler });
+            this.signalStore.set({ owner: this, obj: this.backingInstance, signal: "notify::selected", handler });
             return;
         }
 
@@ -951,7 +951,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     private connectSortSignal(): void {
         if (!this.isColumnView()) return;
 
-        const columnView = this.container as Gtk.ColumnView;
+        const columnView = this.backingInstance as Gtk.ColumnView;
         const sorter = columnView.getSorter();
         if (!sorter) return;
 
@@ -976,7 +976,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     private applySortColumn(props: ListProps): void {
         if (!this.isColumnView()) return;
 
-        const columnView = this.container as Gtk.ColumnView;
+        const columnView = this.backingInstance as Gtk.ColumnView;
         const { sortColumn, sortOrder } = props;
 
         if (sortColumn === null || sortColumn === undefined) {
@@ -992,7 +992,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
     private findColumnById(id: string): Gtk.ColumnViewColumn | null {
         if (!this.isColumnView()) return null;
-        const columnView = this.container as Gtk.ColumnView;
+        const columnView = this.backingInstance as Gtk.ColumnView;
         const columns = columnView.getColumns();
         const nItems = columns.getNItems();
 
@@ -1136,8 +1136,8 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     }
 
     private collectContainerBoundItems(args: {
-        containers: Map<Container, number>;
-        containerKeys: Map<Container, string>;
+        containers: Map<BackingInstance, number>;
+        containerKeys: Map<BackingInstance, string>;
         resolveItem: (position: number) => unknown;
         renderFn: (item: unknown, row?: Gtk.TreeListRow | null) => ReactNode;
         out: BoundItem[];
@@ -1159,7 +1159,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     }
 
     private appendTreeBoundItem(args: {
-        container: Container;
+        container: BackingInstance;
         key: string;
         renderFn: (item: unknown, row?: Gtk.TreeListRow | null) => ReactNode;
         out: BoundItem[];
@@ -1174,7 +1174,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     }
 
     private appendFlatBoundItem(args: {
-        container: Container;
+        container: BackingInstance;
         position: number;
         key: string;
         resolveItem: (position: number) => unknown;

@@ -47,7 +47,7 @@ export function markStatefulClass(cls: AnyClass): void {
 }
 
 /**
- * Points `obj.state` at the persisted state object for its GObject, creating
+ * Points `instance.state` at the persisted state object for its GObject, creating
  * the entry (and arming the finalize watch) the first time the object is seen.
  *
  * A no-op for wrappers whose class is not a registered subclass. Called at
@@ -55,10 +55,10 @@ export function markStatefulClass(cls: AnyClass): void {
  * same `state` object as the original.
  *
  * @param handle - The wrapper's native handle
- * @param obj - The wrapper to link
+ * @param instance - The wrapper to link
  */
-export function linkInstanceState(handle: NativeHandle, obj: object): void {
-    if (!statefulClasses.has(obj.constructor as AnyClass)) return;
+export function linkInstanceState(handle: NativeHandle, instance: object): void {
+    if (!statefulClasses.has(instance.constructor as AnyClass)) return;
     const pointerId = getNativeId(handle);
     let state = instanceStateRegistry.get(pointerId);
     if (state === undefined) {
@@ -66,5 +66,5 @@ export function linkInstanceState(handle: NativeHandle, obj: object): void {
         instanceStateRegistry.set(pointerId, state);
         watchObjectFinalize(handle);
     }
-    Object.defineProperty(obj, "state", { value: state, enumerable: false, configurable: true });
+    Object.defineProperty(instance, "state", { value: state, enumerable: false, configurable: true });
 }

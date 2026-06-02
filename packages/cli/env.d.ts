@@ -6,7 +6,7 @@ interface ImportMetaEnv {
      *
      * Empty string when the project has not declared an application id.
      */
-    readonly GTKX_APP_ID: string;
+    readonly GTKX_APPLICATION_ID: string;
 }
 
 interface ImportMeta {

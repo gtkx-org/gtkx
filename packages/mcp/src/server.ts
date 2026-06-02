@@ -12,14 +12,14 @@ import { SocketServer } from "./socket-server.js";
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
 
-const APP_ID_DESCRIPTION = "App ID to query. If not specified, uses the first connected app.";
+const APPLICATION_ID_DESCRIPTION = "Application ID to query. If not specified, uses the first connected app.";
 const WIDGET_ID_DESCRIPTION = "Widget ID";
 
-const appIdField = z.string().optional().describe(APP_ID_DESCRIPTION);
+const applicationIdField = z.string().optional().describe(APPLICATION_ID_DESCRIPTION);
 const widgetIdField = z.string().describe(WIDGET_ID_DESCRIPTION);
 
-const appIdShape = { appId: appIdField };
-const widgetIdShape = { ...appIdShape, widgetId: widgetIdField };
+const applicationIdShape = { applicationId: applicationIdField };
+const widgetIdShape = { ...applicationIdShape, widgetId: widgetIdField };
 
 const listAppsShape = {
     waitForApps: z
@@ -32,7 +32,7 @@ const listAppsShape = {
 };
 
 const queryWidgetsShape = {
-    ...appIdShape,
+    ...applicationIdShape,
     by: z.enum(["role", "text", "name", "labelText"]).describe("Query type"),
     value: z.union([z.string(), z.number()]).describe("Value to search for"),
     options: z
@@ -58,7 +58,7 @@ const fireEventShape = {
 };
 
 const screenshotShape = {
-    ...appIdShape,
+    ...applicationIdShape,
     windowId: z.string().optional().describe("Window ID to capture. If not specified, captures the first window."),
 };
 
@@ -159,16 +159,16 @@ type ForwardOptions<Shape extends Record<string, z.ZodType>> = {
 const buildForwardParams = <Shape extends Record<string, z.ZodType>>(
     args: ToolArgs<Shape>,
     custom: ForwardOptions<Shape>["params"],
-): { appId: string | undefined; params: unknown } => {
-    const { appId, ...rest } = args as ToolArgs<Shape> & { appId?: string };
-    return { appId, params: custom ? custom(args) : rest };
+): { applicationId: string | undefined; params: unknown } => {
+    const { applicationId, ...rest } = args as ToolArgs<Shape> & { applicationId?: string };
+    return { applicationId, params: custom ? custom(args) : rest };
 };
 
 const forwardTool = <Shape extends Record<string, z.ZodType>>(
     options: ForwardOptions<Shape>,
     perform: (
         connectionManager: AppQueryClient,
-        appId: string | undefined,
+        applicationId: string | undefined,
         method: string,
         params: unknown,
     ) => Promise<ToolHandlerResult>,
@@ -177,28 +177,32 @@ const forwardTool = <Shape extends Record<string, z.ZodType>>(
         name: options.name,
         config: { description: options.description, inputSchema: options.inputSchema },
         handler: async (args) => {
-            const { appId, params } = buildForwardParams(args, options.params);
-            return perform(options.connectionManager, appId, options.method, params);
+            const { applicationId, params } = buildForwardParams(args, options.params);
+            return perform(options.connectionManager, applicationId, options.method, params);
         },
     });
 
 const forwardJson = <Shape extends Record<string, z.ZodType>>(options: ForwardOptions<Shape>): ToolDefinition =>
-    forwardTool(options, async (connectionManager, appId, method, params) => {
-        const result = await connectionManager.sendToApp(appId, method, params);
+    forwardTool(options, async (connectionManager, applicationId, method, params) => {
+        const result = await connectionManager.sendToApp(applicationId, method, params);
         return textContent(JSON.stringify(result, null, 2));
     });
 
 const forwardAck = <Shape extends Record<string, z.ZodType>>(
     options: ForwardOptions<Shape> & { ack: string },
 ): ToolDefinition =>
-    forwardTool(options, async (connectionManager, appId, method, params) => {
-        await connectionManager.sendToApp(appId, method, params);
+    forwardTool(options, async (connectionManager, applicationId, method, params) => {
+        await connectionManager.sendToApp(applicationId, method, params);
         return textContent(options.ack);
     });
 
 const forwardImage = <Shape extends Record<string, z.ZodType>>(options: ForwardOptions<Shape>): ToolDefinition =>
-    forwardTool(options, async (connectionManager, appId, method, params) => {
-        const result = await connectionManager.sendToApp<{ data: string; mimeType: string }>(appId, method, params);
+    forwardTool(options, async (connectionManager, applicationId, method, params) => {
+        const result = await connectionManager.sendToApp<{ data: string; mimeType: string }>(
+            applicationId,
+            method,
+            params,
+        );
         return imageContent(result.data, result.mimeType);
     });
 
@@ -224,7 +228,7 @@ const listAppsTool = (connectionManager: AppQueryClient) =>
                     try {
                         const result = await connectionManager.sendToApp<{
                             windows: Array<{ id: string; title: string | null }>;
-                        }>(app.appId, "app.getWindows", {});
+                        }>(app.applicationId, "app.getWindows", {});
                         return { ...app, windows: result.windows };
                     } catch {
                         return app;
@@ -241,10 +245,10 @@ const getWidgetTreeTool = (connectionManager: AppQueryClient) =>
         config: {
             description:
                 "Get the widget hierarchy for a connected GTKX app. Returns a tree of all widgets with their IDs, types, roles, and properties.",
-            inputSchema: appIdShape,
+            inputSchema: applicationIdShape,
         },
-        handler: async ({ appId }) => {
-            const result = await connectionManager.sendToApp<{ tree: string }>(appId, "widget.getTree", {});
+        handler: async ({ applicationId }) => {
+            const result = await connectionManager.sendToApp<{ tree: string }>(applicationId, "widget.getTree", {});
             return textContent(result.tree);
         },
     });
@@ -326,7 +330,7 @@ export type CreateMcpServerOptions = {
 /**
  * Runtime handle returned by {@link createMcpServer}.
  */
-export type McpServerInstance = {
+export type McpServerHandle = {
     /** Starts the socket server and connects the MCP stdio transport. */
     start(): Promise<void>;
     /**
@@ -347,7 +351,7 @@ export type McpServerInstance = {
  * @param options - Server configuration.
  * @returns A handle exposing `start` and `stop`.
  */
-export const createMcpServer = (options: CreateMcpServerOptions): McpServerInstance => {
+export const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
     const socketPath = options.socketPath ?? DEFAULT_SOCKET_PATH;
 
     const registry = new ConnectionRegistry();
@@ -362,11 +366,11 @@ export const createMcpServer = (options: CreateMcpServerOptions): McpServerInsta
     });
 
     connectionManager.on("appRegistered", (appInfo) => {
-        console.error(`[gtkx] App registered: ${appInfo.appId} (PID: ${appInfo.pid})`);
+        console.error(`[gtkx] App registered: ${appInfo.applicationId} (PID: ${appInfo.pid})`);
     });
 
-    connectionManager.on("appUnregistered", (appId) => {
-        console.error(`[gtkx] App unregistered: ${appId}`);
+    connectionManager.on("appUnregistered", (applicationId) => {
+        console.error(`[gtkx] App unregistered: ${applicationId}`);
     });
 
     const mcpServer = new McpServer({ name: "gtkx-mcp", version: options.version });

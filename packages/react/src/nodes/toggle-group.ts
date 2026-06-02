@@ -2,7 +2,7 @@ import * as Adw from "@gtkx/gi/adw";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { isShallowArrayEqual } from "@gtkx/utils";
 import type { AdwToggleGroupProps, ToggleProps } from "../jsx.js";
-import type { Container, Props } from "../types.js";
+import type { BackingInstance, Props } from "../types.js";
 import { arraySync, imperative, type PropDescriptorTable, signal, teardownNode } from "./internal/apply-props.js";
 import { createContainerWithProperties } from "./internal/construct.js";
 import { WidgetNode } from "./widget.js";
@@ -14,7 +14,7 @@ export class ToggleGroupNode extends WidgetNode<Adw.ToggleGroup, ToggleGroupProp
         typeName: string,
         props: Props,
         _containerClass: typeof Gtk.Widget,
-    ): Container | null {
+    ): BackingInstance | null {
         const { activeName: _, active: __, ...rest } = props;
         return createContainerWithProperties(typeName, rest);
     }
@@ -24,23 +24,23 @@ export class ToggleGroupNode extends WidgetNode<Adw.ToggleGroup, ToggleGroupProp
             ...super.ownPropDescriptors(),
             toggles: arraySync<ToggleProps, Adw.Toggle>({
                 equal: isShallowArrayEqual,
-                clearItem: (toggle) => this.container.remove(toggle),
+                clearItem: (toggle) => this.backingInstance.remove(toggle),
                 add: (toggleProps) => {
                     const toggle = new Adw.Toggle();
                     applyToggleProps(toggle, toggleProps);
-                    this.container.add(toggle);
+                    this.backingInstance.add(toggle);
                     return toggle;
                 },
             }),
             activeName: imperative(() => {
-                this.container.setActiveName(this.props.activeName ?? null);
+                this.backingInstance.setActiveName(this.props.activeName ?? null);
             }),
             active: imperative(() => {
                 const { active } = this.props;
-                if (active != null) this.container.setActive(active);
+                if (active != null) this.backingInstance.setActive(active);
             }),
             onActiveChanged: signal("notify::active", {
-                getArgs: () => [this.container.getActive(), this.container.getActiveName()],
+                getArgs: () => [this.backingInstance.getActive(), this.backingInstance.getActiveName()],
             }),
         };
     }

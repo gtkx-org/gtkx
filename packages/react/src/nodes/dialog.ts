@@ -14,12 +14,12 @@ export class DialogNode extends WidgetNode<Adw.Dialog> {
     }
 
     public override commitMount(): void {
-        const parent = this.parent instanceof WindowNode ? this.parent.container : null;
-        this.container.present(parent);
+        const parent = this.parent instanceof WindowNode ? this.parent.backingInstance : null;
+        this.backingInstance.present(parent);
     }
 
     public override detachDeletedInstance(): void {
-        this.container.forceClose();
+        this.backingInstance.forceClose();
         super.detachDeletedInstance();
     }
 }

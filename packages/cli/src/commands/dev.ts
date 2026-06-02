@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { defineCommand } from "citty";
 import { preflightCodegen } from "../codegen/run-codegen.js";
-import { runDevSupervisor } from "../dev-supervisor.js";
+import { runDevSupervisor } from "../dev/supervisor.js";
 
 /**
  * `gtkx dev` — start the development server with HMR.

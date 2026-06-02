@@ -88,11 +88,11 @@ const getElement = (elementOrCallback: ElementOrCallback): Gtk.Widget | null => 
     return elementOrCallback;
 };
 
-const isElementRemoved = (element: Gtk.Widget | null): boolean => {
-    if (element === null) return true;
+const isElementRemoved = (widget: Gtk.Widget | null): boolean => {
+    if (widget === null) return true;
 
     try {
-        const parent = element.getParent();
+        const parent = widget.getParent();
         return parent === null;
     } catch {
         return true;
@@ -100,11 +100,11 @@ const isElementRemoved = (element: Gtk.Widget | null): boolean => {
 };
 
 /**
- * Waits for an element to be removed from the widget tree.
+ * Waits for a widget to be removed from the widget tree.
  *
- * Polls until the element no longer has a parent or no longer exists.
+ * Polls until the widget no longer has a parent or no longer exists.
  *
- * @param elementOrCallback - Element or function returning element to watch
+ * @param elementOrCallback - Element or function returning widget to watch
  * @param options - Timeout and interval configuration
  *
  * @example
@@ -124,8 +124,8 @@ export const waitForElementToBeRemoved = (
         const config = getConfig();
         const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
 
-        const initialElement = getElement(elementOrCallback);
-        if (initialElement === null || isElementRemoved(initialElement)) {
+        const initialWidget = getElement(elementOrCallback);
+        if (initialWidget === null || isElementRemoved(initialWidget)) {
             throw new Error(
                 "Element already removed: waitForElementToBeRemoved requires the element to be present initially",
             );
@@ -134,8 +134,8 @@ export const waitForElementToBeRemoved = (
         const startTime = Date.now();
 
         while (Date.now() - startTime < timeout) {
-            const element = getElement(elementOrCallback);
-            if (isElementRemoved(element)) {
+            const widget = getElement(elementOrCallback);
+            if (isElementRemoved(widget)) {
                 return;
             }
             await new Promise((resolve) => setTimeout(resolve, interval));

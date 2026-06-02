@@ -28,11 +28,11 @@ const SETTERS: { [K in SettingType]: (settings: Gio.Settings, key: string, value
     strv: (settings, key, value) => settings.setStrv(key, value),
 };
 
-function readSetting<T extends SettingType>(settings: Gio.Settings, key: string, type: T): SettingTypeMap[T] {
+function getSetting<T extends SettingType>(settings: Gio.Settings, key: string, type: T): SettingTypeMap[T] {
     return GETTERS[type](settings, key);
 }
 
-function writeSetting<T extends SettingType>(
+function setSetting<T extends SettingType>(
     settings: Gio.Settings,
     key: string,
     type: T,
@@ -72,13 +72,13 @@ export function useSetting<T extends SettingType>(
     type: T,
 ): [SettingTypeMap[T], (value: SettingTypeMap[T]) => void] {
     const settings = useMemo(() => Gio.Settings.new(schemaId), [schemaId]);
-    const [value, setValue] = useState<SettingTypeMap[T]>(() => readSetting(settings, key, type));
+    const [value, setValue] = useState<SettingTypeMap[T]>(() => getSetting(settings, key, type));
 
     useEffect(() => {
-        setValue(readSetting(settings, key, type));
+        setValue(getSetting(settings, key, type));
 
         const handlerId = settings.connect(`changed::${key}`, () => {
-            setValue(readSetting(settings, key, type));
+            setValue(getSetting(settings, key, type));
         });
 
         return () => {
@@ -88,7 +88,7 @@ export function useSetting<T extends SettingType>(
 
     const set = useCallback(
         (newValue: SettingTypeMap[T]) => {
-            writeSetting(settings, key, type, newValue);
+            setSetting(settings, key, type, newValue);
         },
         [settings, key, type],
     );

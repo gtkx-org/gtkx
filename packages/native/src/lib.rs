@@ -7,7 +7,7 @@
 //!
 //! | Function | Purpose |
 //! |----------|---------|
-//! | `start` | Spawn the `GLib` thread, run a `MainLoop`, and return its handle |
+//! | `init` | Spawn the `GLib` thread, run a `MainLoop`, and return its handle |
 //! | `stop` | Quit the `GLib` main loop and drain pending finalizers |
 //! | `call` | Execute FFI function call to native library |
 //! | `alloc` | Allocate memory for boxed types |

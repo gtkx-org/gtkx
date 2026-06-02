@@ -3,7 +3,7 @@ import { type GType, typeFromName } from "@gtkx/gi/gobject";
 import { collectTypeNameChain } from "./gtype.js";
 import type { Node } from "./node.js";
 import { NODE_REGISTRY, type NodeClass } from "./registry.js";
-import type { Container, ContainerClass, Props } from "./types.js";
+import type { BackingInstance, BackingInstanceClass, Props } from "./types.js";
 
 /**
  * Resolves the FFI widget class backing a JSX intrinsic element name.
@@ -13,8 +13,8 @@ import type { Container, ContainerClass, Props } from "./types.js";
  *
  * @param type - JSX intrinsic element name, e.g. `"GtkButton"`
  */
-export const resolveContainerClass = (type: string): ContainerClass | null =>
-    getNativeClassByName(type) as ContainerClass | null;
+export const resolveContainerClass = (type: string): BackingInstanceClass | null =>
+    getNativeClassByName(type) as BackingInstanceClass | null;
 
 const resolveNodeClass = (elementType: string, gtype: GType): NodeClass | null => {
     if (gtype === 0) {
@@ -47,8 +47,8 @@ const resolveNodeClass = (elementType: string, gtype: GType): NodeClass | null =
 export const createNode = (
     elementType: string,
     props: Props,
-    existingContainer: Container | undefined,
-    rootContainer: Container,
+    existingContainer: BackingInstance | undefined,
+    rootContainer: BackingInstance,
 ): Node => {
     const gtype: GType = existingContainer ? existingContainer.__gtype__ : typeFromName(elementType);
 

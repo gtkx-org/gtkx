@@ -15,7 +15,7 @@ use napi::{Env, JsObject};
 use super::prelude::*;
 use crate::error_reporter::NativeErrorReporter;
 use crate::managed::{Boxed, NativeValue};
-use crate::state::GtkThreadState;
+use crate::state::GlibThreadState;
 
 #[derive(Debug, Clone)]
 pub struct BoxedType {
@@ -71,7 +71,7 @@ impl BoxedType {
     }
 
     fn lookup_free_fn(lib_name: &str, free_fn: &str) -> anyhow::Result<BoxedFreeFn> {
-        GtkThreadState::with(|state| -> anyhow::Result<_> {
+        GlibThreadState::with(|state| -> anyhow::Result<_> {
             let library = state.library(lib_name)?;
             let sym = unsafe {
                 library
@@ -110,7 +110,7 @@ impl BoxedType {
             return Ok(None);
         };
 
-        let symbol = GtkThreadState::with(|state| -> anyhow::Result<_> {
+        let symbol = GlibThreadState::with(|state| -> anyhow::Result<_> {
             let library = state.library(lib_name)?;
             let sym = unsafe {
                 library

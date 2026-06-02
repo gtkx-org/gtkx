@@ -7,8 +7,8 @@ vi.mock("node:child_process", () => ({
     fork: vi.fn(),
 }));
 
-import { RELOAD_EXIT_CODE } from "../src/dev-protocol.js";
-import { runDevSupervisor } from "../src/dev-supervisor.js";
+import { RELOAD_EXIT_CODE } from "../../src/dev/protocol.js";
+import { runDevSupervisor } from "../../src/dev/supervisor.js";
 
 const flushMicrotasks = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
 

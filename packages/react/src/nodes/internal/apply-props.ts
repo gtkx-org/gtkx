@@ -19,7 +19,7 @@
  */
 import { isConstructOnlyProp, resolveSignal } from "../../gtype.js";
 import type { Node } from "../../node.js";
-import type { Container, Props } from "../../types.js";
+import type { BackingInstance, Props } from "../../types.js";
 import { isEditable } from "./predicates.js";
 import type { SignalHandler } from "./signal-store.js";
 
@@ -28,7 +28,7 @@ import type { SignalHandler } from "./signal-store.js";
  *
  * @see {@link signal}
  */
-export interface SignalDescriptor {
+export interface SignalPropDescriptor {
     readonly kind: "signal";
     readonly signals: readonly string[];
     readonly blockable?: boolean;
@@ -65,7 +65,7 @@ export interface ArraySyncDescriptor {
 }
 
 /** A descriptor for one bespoke prop. */
-type PropDescriptor = SignalDescriptor | ImperativeDescriptor | ArraySyncDescriptor;
+type PropDescriptor = SignalPropDescriptor | ImperativeDescriptor | ArraySyncDescriptor;
 
 /** A node's bespoke props, keyed by prop name. */
 export type PropDescriptorTable = Record<string, PropDescriptor>;
@@ -73,7 +73,7 @@ export type PropDescriptorTable = Record<string, PropDescriptor>;
 const EMPTY_TABLE: PropDescriptorTable = {};
 
 /**
- * Builds a {@link SignalDescriptor}.
+ * Builds a {@link SignalPropDescriptor}.
  *
  * @param signals - GObject signal name, or names, the callback connects to
  * @param options - `blockable` overrides whether the handler is suppressed
@@ -83,8 +83,8 @@ const EMPTY_TABLE: PropDescriptorTable = {};
  */
 export function signal(
     signals: string | readonly string[],
-    options?: Omit<SignalDescriptor, "kind" | "signals">,
-): SignalDescriptor {
+    options?: Omit<SignalPropDescriptor, "kind" | "signals">,
+): SignalPropDescriptor {
     return {
         kind: "signal",
         signals: typeof signals === "string" ? [signals] : signals,
@@ -170,7 +170,7 @@ export type ApplyPropsOptions = {
 export function applyProps(node: Node, oldProps: Props | null, newProps: Props, options?: ApplyPropsOptions): void {
     const context: ApplyContext = {
         node,
-        container: node.container as Container,
+        container: node.backingInstance as BackingInstance,
         oldProps,
         newProps,
         table: options?.table ?? EMPTY_TABLE,
@@ -182,7 +182,7 @@ export function applyProps(node: Node, oldProps: Props | null, newProps: Props, 
 
 type ApplyContext = {
     readonly node: Node;
-    readonly container: Container;
+    readonly container: BackingInstance;
     readonly oldProps: Props | null;
     readonly newProps: Props;
     readonly table: PropDescriptorTable;
@@ -297,9 +297,9 @@ const applyTableDescriptors = (context: ApplyContext): void => {
 
 const applySignalDescriptor = (
     node: Node,
-    container: Container,
+    container: BackingInstance,
     callbackValue: unknown,
-    descriptor: SignalDescriptor,
+    descriptor: SignalPropDescriptor,
 ): void => {
     const handler =
         typeof callbackValue === "function"
@@ -312,7 +312,7 @@ const applySignalDescriptor = (
     }
 };
 
-const buildSignalHandler = (callback: SignalHandler, descriptor: SignalDescriptor): SignalHandler => {
+const buildSignalHandler = (callback: SignalHandler, descriptor: SignalPropDescriptor): SignalHandler => {
     if (!descriptor.getArgs && descriptor.returnValue === undefined) return callback;
 
     return (...signalArgs: unknown[]) => {

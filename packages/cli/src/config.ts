@@ -54,7 +54,7 @@ export type GtkxConfig = {
 
     /**
      * GLib application id used by the GResource pipeline and exposed to
-     * application code as `import.meta.env.GTKX_APP_ID`.
+     * application code as `import.meta.env.GTKX_APPLICATION_ID`.
      *
      * When set, asset imports resolve to `resource:///<prefix>/<rel>` where
      * `<prefix>` is derived from the id (`org.gtk.Demo4` → `/org/gtk/Demo4`)
@@ -65,7 +65,7 @@ export type GtkxConfig = {
      * Must match `g_application_id_is_valid` — see {@link isValidApplicationId}.
      *
      * When omitted, the GResource pipeline falls back to the prefix
-     * `/gtkx/app` and `import.meta.env.GTKX_APP_ID` is the empty string.
+     * `/gtkx/app` and `import.meta.env.GTKX_APPLICATION_ID` is the empty string.
      */
     applicationId?: string;
 

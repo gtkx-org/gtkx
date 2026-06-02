@@ -20,7 +20,7 @@ export class ConstraintVflNode extends ConstraintLayoutChildNode<ConstraintVflPr
         const views = parent.snapshotTargets();
 
         try {
-            this.appliedConstraints = parent.container.addConstraintsFromDescription(
+            this.appliedConstraints = parent.backingInstance.addConstraintsFromDescription(
                 this.props.lines,
                 this.props.hspacing ?? 0,
                 this.props.vspacing ?? 0,
@@ -34,7 +34,7 @@ export class ConstraintVflNode extends ConstraintLayoutChildNode<ConstraintVflPr
 
     protected override removeFromLayout(parent: ConstraintLayoutNode): void {
         for (const constraint of this.appliedConstraints) {
-            parent.container.removeConstraint(constraint);
+            parent.backingInstance.removeConstraint(constraint);
         }
         this.appliedConstraints = [];
     }

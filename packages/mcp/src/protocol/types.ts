@@ -81,7 +81,7 @@ export type SerializedWidget = {
  */
 export type AppInfo = {
     /** Application ID (e.g., "com.example.myapp") */
-    appId: string;
+    applicationId: string;
     /** Process ID */
     pid: number;
     /** Open windows */
@@ -93,7 +93,7 @@ export type AppInfo = {
 
 /** Zod schema for app registration parameters. */
 export const RegisterParamsSchema = z.object({
-    appId: z.string(),
+    applicationId: z.string(),
     pid: z.number(),
 });
 

@@ -31,12 +31,12 @@ const ADJUSTMENT_SYNCERS: readonly AdjustmentSyncer[] = [
 export class AdjustmentController {
     private adjustment: Gtk.Adjustment | null = null;
 
-    constructor(private readonly container: { setAdjustment: (a: Gtk.Adjustment) => void }) {}
+    constructor(private readonly backingInstance: { setAdjustment: (a: Gtk.Adjustment) => void }) {}
 
     apply(oldProps: AdjustableProps | null, newProps: AdjustableProps): void {
         if (!this.adjustment) {
             this.adjustment = this.createAdjustment(newProps);
-            this.container.setAdjustment(this.adjustment);
+            this.backingInstance.setAdjustment(this.adjustment);
             return;
         }
 

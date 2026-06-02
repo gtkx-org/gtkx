@@ -4,7 +4,7 @@ import type { StackPageProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { hasChanged } from "./internal/props.js";
 import { SingleChildVirtualNode } from "./internal/single-child-virtual.js";
-import { removeChildFromParent } from "./internal/widget.js";
+import { detachChild, isAttachedTo } from "./internal/widget.js";
 import type { StackWidget } from "./stack.js";
 import { WidgetNode } from "./widget.js";
 
@@ -18,7 +18,7 @@ export class StackPageNode extends SingleChildVirtualNode<StackPageProps, Widget
     public override isValidParent(parent: Node): boolean {
         return (
             parent instanceof WidgetNode &&
-            (parent.container instanceof Gtk.Stack || parent.container instanceof Adw.ViewStack)
+            (parent.backingInstance instanceof Gtk.Stack || parent.backingInstance instanceof Adw.ViewStack)
         );
     }
 
@@ -32,14 +32,14 @@ export class StackPageNode extends SingleChildVirtualNode<StackPageProps, Widget
         if (!child) {
             throw new Error("Expected child widget to be set on StackPageNode");
         }
-        return child.container;
+        return child.backingInstance;
     }
 
     private getParentWidget(): StackWidget {
         if (!this.parent) {
             throw new Error("Expected parent widget to be set on StackPageNode");
         }
-        return this.parent.container;
+        return this.parent.backingInstance;
     }
 
     private applyOwnProps(oldProps: StackPageProps | null, newProps: StackPageProps): void {
@@ -73,19 +73,19 @@ export class StackPageNode extends SingleChildVirtualNode<StackPageProps, Widget
     }
 
     protected override onChildChange(oldChild: Gtk.Widget | null): void {
-        this.removePage(oldChild);
+        this.detachPage(oldChild);
 
         if (this.children[0]) {
-            this.addPage();
+            this.attachPage();
         }
     }
 
     protected override onDetach(oldChild: Gtk.Widget | null): void {
-        if (oldChild) this.removePage(oldChild);
+        if (oldChild) this.detachPage(oldChild);
         this.page = null;
     }
 
-    private addPage(): void {
+    private attachPage(): void {
         const child = this.getChildWidget();
         const parent = this.getParentWidget();
 
@@ -119,8 +119,9 @@ export class StackPageNode extends SingleChildVirtualNode<StackPageProps, Widget
         return addUntitled();
     }
 
-    private removePage(oldChild: Gtk.Widget | null): void {
+    private detachPage(oldChild: Gtk.Widget | null): void {
         if (!oldChild) return;
-        removeChildFromParent(this.getParentWidget(), oldChild);
+        const parent = this.getParentWidget();
+        if (isAttachedTo(oldChild, parent)) detachChild(oldChild, parent);
     }
 }

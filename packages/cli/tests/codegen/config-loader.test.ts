@@ -81,7 +81,7 @@ describe("loadApplicationId", () => {
     let cwd: string;
 
     beforeEach(() => {
-        cwd = mkdtempSync(join(tmpdir(), "gtkx-load-app-id-"));
+        cwd = mkdtempSync(join(tmpdir(), "gtkx-load-application-id-"));
     });
 
     afterEach(() => {

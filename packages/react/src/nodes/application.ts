@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { Node } from "../node.js";
-import type { Container, Props } from "../types.js";
+import type { BackingInstance, Props } from "../types.js";
 import { MenuChildController } from "./internal/menu-child.js";
 import { MenuModel } from "./models/menu.js";
 import { WindowNode } from "./window.js";
@@ -8,7 +8,7 @@ import { WindowNode } from "./window.js";
 export class ApplicationNode extends Node<Gtk.Application, Props, Node, Node> {
     private readonly menuController: MenuChildController;
 
-    constructor(typeName: string, props: Props, container: Gtk.Application, rootContainer: Container) {
+    constructor(typeName: string, props: Props, container: Gtk.Application, rootContainer: BackingInstance) {
         super(typeName, props, container, rootContainer);
         const application = rootContainer instanceof Gtk.Application ? rootContainer : undefined;
         this.menuController = new MenuChildController(
@@ -45,7 +45,7 @@ export class ApplicationNode extends Node<Gtk.Application, Props, Node, Node> {
         }
 
         if (child instanceof WindowNode) {
-            child.container.setVisible(false);
+            child.backingInstance.setVisible(false);
         }
 
         super.removeChild(child);
@@ -53,6 +53,6 @@ export class ApplicationNode extends Node<Gtk.Application, Props, Node, Node> {
 
     private syncMenubar(): void {
         const menu = this.menuController.menu.getMenu();
-        this.container.setMenubar(menu.getNItems() > 0 ? menu : null);
+        this.backingInstance.setMenubar(menu.getNItems() > 0 ? menu : null);
     }
 }

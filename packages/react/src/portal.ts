@@ -1,5 +1,5 @@
 import type { ReactNode, ReactPortal } from "react";
-import type { Container } from "./types.js";
+import type { BackingInstance } from "./types.js";
 
 /**
  * Creates a React portal for rendering children into a different part of the widget tree.
@@ -37,11 +37,11 @@ type PortalElement = {
     $$typeof: symbol;
     key: string | null;
     children: ReactNode;
-    containerInfo: Container;
+    containerInfo: BackingInstance;
     implementation: null;
 };
 
-export const createPortal = (children: ReactNode, container: Container, key?: string | null): ReactPortal => {
+export const createPortal = (children: ReactNode, container: BackingInstance, key?: string | null): ReactPortal => {
     const portal: PortalElement = {
         $$typeof: Symbol.for("react.portal"),
         key: key ?? null,

@@ -7,17 +7,21 @@
  * `packages/ffi` modules (and the generated bindings) and are not part of any
  * public namespace surface. They build on the hand-written {@link GValue}
  * wrapper, keeping the runtime independent of generated code.
+ *
+ * The forward builders ({@link valueFromFfi}, {@link valueFromJS},
+ * {@link valueFromObject}) live in `./gobject/gvalue.js` and are re-exported
+ * here so the whole marshalling vocabulary reads under one `value<Source>`
+ * stem; this module adds the omitted-prop guard {@link valueFromFfiOptional}
+ * and the reverse direction {@link valueToJS}.
  */
 
 import type { Type as FfiType, NativeHandle } from "@gtkx/native";
 import {
-    fromJS,
     type GValueReader,
     getBoxed,
     getFundamentalMarshallers,
     getStrvGType,
-    newFrom,
-    newFromObject,
+    valueFromFfi,
     valueGetType,
 } from "./gobject/gvalue.js";
 import type { GValue } from "./gobject/gvalue-native.js";
@@ -26,17 +30,8 @@ import { type GType, GVALUE_BORROWED, LIBGOBJECT, typeFundamental, typeName } fr
 import { getHandle } from "./handles.js";
 import { read, t } from "./native.js";
 
-/**
- * Creates a `GValue` from an FFI type descriptor and a JavaScript value.
- *
- * Dispatches to the appropriate constructor based on the descriptor's type.
- *
- * @param ffiType - The FFI type descriptor.
- * @param value - The JS value to convert.
- */
-export function valueFromFfi(ffiType: FfiType, value: unknown): GValue {
-    return newFrom(ffiType, value);
-}
+export { valueFromJS, valueFromObject } from "./gobject/gvalue.js";
+export { valueFromFfi };
 
 /**
  * Like {@link valueFromFfi}, but returns `undefined` when `value` is
@@ -51,34 +46,7 @@ export function valueFromFfi(ffiType: FfiType, value: unknown): GValue {
  * @param value - The JS value to convert, or `undefined` to skip.
  */
 export function valueFromFfiOptional(ffiType: FfiType, value: unknown): GValue | undefined {
-    return value === undefined ? undefined : newFrom(ffiType, value);
-}
-
-/**
- * Creates a `GValue` typed as `gtype` and marshals `value` into it.
- *
- * The runtime counterpart to {@link valueFromFfi}: where `valueFromFfi`
- * consumes a codegen-time FFI type descriptor, this consumes a runtime `GType`
- * integer (typically derived from a `GParamSpec` via
- * `valueGetType(pspec.getDefaultValue())`).
- *
- * @param gtype - The concrete `GType` (not necessarily the fundamental).
- * @param value - The JS value to marshal.
- * @throws on `G_TYPE_POINTER` with a non-null value, or unsupported `GType`s.
- */
-export function valueFromJS(gtype: GType, value: unknown): GValue {
-    return fromJS(gtype, value);
-}
-
-/**
- * Creates a `GValue` initialized with a `GObject` instance.
- *
- * The `GType` is derived from the object's runtime class.
- *
- * @param value - The `GObject` instance, or `null`.
- */
-export function valueFromObject(value: object | null): GValue {
-    return newFromObject(value);
+    return value === undefined ? undefined : valueFromFfi(ffiType, value);
 }
 
 const g_value_get_boxed_strv = t.fn(

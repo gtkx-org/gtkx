@@ -19,7 +19,7 @@ import { createScaffolder } from "./create/scaffolder.js";
  *
  * await createApp({
  *   name: "my-app",
- *   appId: "com.example.myapp",
+ *   applicationId: "com.example.myapp",
  *   packageManager: "pnpm",
  *   testing: "vitest",
  * });

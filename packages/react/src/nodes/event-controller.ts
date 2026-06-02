@@ -27,7 +27,7 @@ export class EventControllerNode<
     }
 
     public override isValidChild(child: Node): boolean {
-        return this.container instanceof Gtk.ShortcutController && child.typeName === "Shortcut";
+        return this.backingInstance instanceof Gtk.ShortcutController && child.typeName === "Shortcut";
     }
 
     public override isValidParent(parent: Node): boolean {
@@ -36,13 +36,13 @@ export class EventControllerNode<
 
     public override setParent(parent: WidgetNode | null): void {
         if (!parent && this.parent) {
-            this.parent.container.removeController(this.container);
+            this.parent.backingInstance.removeController(this.backingInstance);
         }
 
         super.setParent(parent);
 
         if (parent) {
-            parent.container.addController(this.container);
+            parent.backingInstance.addController(this.backingInstance);
         }
     }
 
@@ -50,16 +50,16 @@ export class EventControllerNode<
         return {
             ...super.ownPropDescriptors(),
             types: imperative(() => {
-                if (this.container instanceof Gtk.DropTarget) {
-                    this.container.setGtypes(this.props.types as GType[]);
+                if (this.backingInstance instanceof Gtk.DropTarget) {
+                    this.backingInstance.setGtypes(this.props.types as GType[]);
                 }
             }),
         };
     }
 
     public override detachDeletedInstance(): void {
-        if (this.container.getWidget() === this.parent?.container) {
-            this.parent.container.removeController(this.container);
+        if (this.backingInstance.getWidget() === this.parent?.backingInstance) {
+            this.parent.backingInstance.removeController(this.backingInstance);
         }
         super.detachDeletedInstance();
     }

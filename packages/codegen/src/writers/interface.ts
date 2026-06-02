@@ -7,12 +7,12 @@ import { splitQualifiedName } from "../gir/qualified-name.js";
 import { qualifyFunction } from "../gir/qualify.js";
 import {
     appendMethodBinding,
-    buildPlainTypeMembers,
     type Callables,
     dedupeCallables,
     emitBindings,
     indexMethodsByName,
     renderInstanceMethod,
+    renderPlainTypeMembers,
 } from "./callables.js";
 import { renderVfuncMetadata } from "./class-struct.js";
 import { renderGetTypeReference } from "./gtype-binding.js";
@@ -31,10 +31,10 @@ import { renderSignalMembers, renderSignalRegistration } from "./signal.js";
  * surfaced on the interface class just like a regular class so JS callers
  * can dispatch them directly on interface-typed values.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param iface - The interface to emit
  */
-export const emitInterface = (ctx: ModuleContext, iface: GirClass): void => {
+export const emitInterface = (context: ModuleContext, iface: GirClass): void => {
     if (!iface.introspectable) return;
     if (iface.name.length === 0) return;
     const className = toPascalCase(iface.name);
@@ -43,39 +43,39 @@ export const emitInterface = (ctx: ModuleContext, iface: GirClass): void => {
         functions: dedupeCallables(iface.functions),
         methods: dedupeCallables(iface.methods),
     };
-    emitBindings(ctx, callables);
+    emitBindings(context, callables);
 
-    const parent = resolveInterfaceParent(ctx);
-    const members = buildInterfaceMembers(ctx, iface, callables);
+    const parent = resolveInterfaceParent(context);
+    const members = renderInterfaceMembers(context, iface, callables);
     const body = members.map((member) => indent(member, 1)).join("\n\n");
-    ctx.module.appendDeclaration(`export class ${className} extends ${parent} {\n${body}\n}`);
+    context.module.appendDeclaration(`export class ${className} extends ${parent} {\n${body}\n}`);
 
     const prerequisiteRefs = iface.prerequisites
-        .map((name) => resolvePrerequisiteReference(ctx, name))
+        .map((name) => resolvePrerequisiteReference(context, name))
         .filter((entry): entry is string => entry !== undefined);
     if (prerequisiteRefs.length > 0) {
-        ctx.module.appendDeclaration(`export interface ${className} extends ${prerequisiteRefs.join(", ")} {}`);
+        context.module.appendDeclaration(`export interface ${className} extends ${prerequisiteRefs.join(", ")} {}`);
     }
 
-    appendInterfaceRegistrations(ctx, iface, className);
+    appendInterfaceRegistrations(context, iface, className);
 };
 
-const buildInterfaceMembers = (ctx: ModuleContext, iface: GirClass, callables: Callables): readonly string[] => {
+const renderInterfaceMembers = (context: ModuleContext, iface: GirClass, callables: Callables): readonly string[] => {
     const className = toPascalCase(iface.name);
-    const { members, claimedNames } = buildPlainTypeMembers({
-        ctx,
+    const { members, claimedNames } = renderPlainTypeMembers({
+        context,
         className,
         callables,
         hasGType: true,
         wrap: "interface",
     });
-    appendPrerequisiteMethods(ctx, iface, members, claimedNames);
+    appendPrerequisiteMethods(context, iface, members, claimedNames);
     const methodByName = indexMethodsByName(callables.methods);
     for (const property of iface.properties) {
-        const block = renderPropertyAccessor(ctx, property, claimedNames, methodByName);
+        const block = renderPropertyAccessor(context, property, claimedNames, methodByName);
         if (block !== undefined) members.push(block);
     }
-    members.push(...renderSignalMembers(ctx, iface));
+    members.push(...renderSignalMembers(context, iface));
     return members;
 };
 
@@ -89,29 +89,29 @@ const buildInterfaceMembers = (ctx: ModuleContext, iface: GirClass, callables: C
  * namespace, bound, and emitted as direct members; names already provided by
  * the interface itself are skipped.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param iface - The interface being emitted
  * @param members - The accumulating member list
  * @param claimedNames - Names already emitted on the interface body
  */
 const appendPrerequisiteMethods = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     iface: GirClass,
     members: string[],
     claimedNames: Set<string>,
 ): void => {
-    for (const method of collectPrerequisiteMethods(ctx, iface)) {
+    for (const method of collectPrerequisiteMethods(context, iface)) {
         const name = methodExportName(method);
         if (name === "constructor" || claimedNames.has(name)) continue;
-        const block = renderInstanceMethod(ctx, method);
+        const block = renderInstanceMethod(context, method);
         if (block === undefined) continue;
-        appendMethodBinding(ctx, method);
+        appendMethodBinding(context, method);
         members.push(block);
         claimedNames.add(name);
     }
 };
 
-const collectPrerequisiteMethods = (ctx: ModuleContext, iface: GirClass): readonly GirFunction[] => {
+const collectPrerequisiteMethods = (context: ModuleContext, iface: GirClass): readonly GirFunction[] => {
     const result: GirFunction[] = [];
     const visited = new Set<string>();
     const seen = new Set<string>();
@@ -120,7 +120,7 @@ const collectPrerequisiteMethods = (ctx: ModuleContext, iface: GirClass): readon
     }
     const visit = (klass: GirClass, namespaceName: string): void => {
         for (const prerequisiteName of klass.prerequisites) {
-            const prerequisite = resolveImplementedInterface(ctx, prerequisiteName, namespaceName);
+            const prerequisite = resolveImplementedInterface(context, prerequisiteName, namespaceName);
             if (prerequisite === undefined) continue;
             const key = `${prerequisite.namespaceName}.${prerequisite.klass.name}`;
             if (visited.has(key)) continue;
@@ -134,36 +134,36 @@ const collectPrerequisiteMethods = (ctx: ModuleContext, iface: GirClass): readon
             visit(prerequisite.klass, prerequisite.namespaceName);
         }
     };
-    visit(iface, ctx.namespace.name);
+    visit(iface, context.namespace.name);
     return result;
 };
 
-const appendInterfaceRegistrations = (ctx: ModuleContext, iface: GirClass, className: string): void => {
+const appendInterfaceRegistrations = (context: ModuleContext, iface: GirClass, className: string): void => {
     const getTypeRef =
         iface.glibGetType === undefined
             ? undefined
-            : renderGetTypeReference(ctx, iface.glibGetType, iface.glibTypeName);
-    appendNativeClassRegistration(ctx, {
+            : renderGetTypeReference(context, iface.glibGetType, iface.glibTypeName);
+    appendNativeClassRegistration(context, {
         className,
         role: "interface",
         getTypeRef,
-        vfuncs: renderVfuncMetadata(ctx, iface),
-        signals: renderSignalRegistration(ctx, iface),
+        vfuncs: renderVfuncMetadata(context, iface),
+        signals: renderSignalRegistration(context, iface),
     });
 };
 
-const resolveInterfaceParent = (ctx: ModuleContext): string => {
-    if (ctx.namespace.name === "GObject") return "Object";
-    const alias = ctx.addCrossNamespaceImport("GObject");
+const resolveInterfaceParent = (context: ModuleContext): string => {
+    if (context.namespace.name === "GObject") return "Object";
+    const alias = context.addCrossNamespaceImport("GObject");
     return `${alias}.Object`;
 };
 
-const resolvePrerequisiteReference = (ctx: ModuleContext, name: string): string | undefined => {
-    const { namespaceName, typeName } = splitQualifiedName(name, ctx.namespace.name);
-    const resolved = ctx.repository.resolveNamed(namespaceName, typeName);
+const resolvePrerequisiteReference = (context: ModuleContext, name: string): string | undefined => {
+    const { namespaceName, typeName } = splitQualifiedName(name, context.namespace.name);
+    const resolved = context.repository.resolveNamed(namespaceName, typeName);
     if (resolved === undefined) return undefined;
     if (resolved.kind !== "interface" && resolved.kind !== "class") return undefined;
-    if (namespaceName === ctx.namespace.name) return toPascalCase(typeName);
-    const alias = ctx.addCrossNamespaceImport(namespaceName);
+    if (namespaceName === context.namespace.name) return toPascalCase(typeName);
+    const alias = context.addCrossNamespaceImport(namespaceName);
     return `${alias}.${toPascalCase(typeName)}`;
 };

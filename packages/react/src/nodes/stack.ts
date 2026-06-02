@@ -18,14 +18,18 @@ export class StackNode extends WidgetNode<StackWidget, StackProps> {
             page: imperative(
                 () => {
                     const { page } = this.props;
-                    if (page && this.container.getVisibleChildName() !== page && this.container.getChildByName(page)) {
-                        this.container.setVisibleChildName(page);
+                    if (
+                        page &&
+                        this.backingInstance.getVisibleChildName() !== page &&
+                        this.backingInstance.getChildByName(page)
+                    ) {
+                        this.backingInstance.setVisibleChildName(page);
                     }
                 },
                 { always: true },
             ),
             onPageChanged: signal("notify::visible-child-name", {
-                getArgs: () => [this.container.getVisibleChildName()],
+                getArgs: () => [this.backingInstance.getVisibleChildName()],
             }),
         };
     }

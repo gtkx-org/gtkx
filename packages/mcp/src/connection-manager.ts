@@ -95,12 +95,12 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
         });
     }
 
-    async sendToApp<T>(appId: string | undefined, method: string, params?: unknown): Promise<T> {
-        const app = appId ? this.apps.get(appId) : this.getDefaultApp();
+    async sendToApp<T>(applicationId: string | undefined, method: string, params?: unknown): Promise<T> {
+        const app = applicationId ? this.apps.get(applicationId) : this.getDefaultApp();
 
         if (!app) {
-            if (appId) {
-                throw appNotFoundError(appId);
+            if (applicationId) {
+                throw appNotFoundError(applicationId);
             }
             throw noAppConnectedError();
         }
@@ -110,7 +110,7 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
         } catch (error) {
             if (error instanceof TransportClosedError) {
                 this.removeApp(app.connection);
-                throw connectionWriteFailedError(app.info.appId);
+                throw connectionWriteFailedError(app.info.applicationId);
             }
             throw error;
         }
@@ -142,13 +142,13 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
 
         const params = parseResult.data;
         const appInfo: AppInfo = {
-            appId: params.appId,
+            applicationId: params.applicationId,
             pid: params.pid,
             windows: [],
         };
 
-        this.apps.set(params.appId, { info: appInfo, connection });
-        this.connectionToApp.set(connection.id, params.appId);
+        this.apps.set(params.applicationId, { info: appInfo, connection });
+        this.connectionToApp.set(connection.id, params.applicationId);
 
         this.acknowledge(connection, request);
 
@@ -169,10 +169,10 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
     }
 
     private removeApp(connection: AppConnection): void {
-        const appId = this.connectionToApp.get(connection.id);
-        if (!appId) return;
-        this.apps.delete(appId);
+        const applicationId = this.connectionToApp.get(connection.id);
+        if (!applicationId) return;
+        this.apps.delete(applicationId);
         this.connectionToApp.delete(connection.id);
-        this.emit("appUnregistered", appId);
+        this.emit("appUnregistered", applicationId);
     }
 }

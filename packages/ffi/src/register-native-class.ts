@@ -11,10 +11,10 @@
 
 import type { AnyClass } from "@gtkx/utils";
 import { G_TYPE_INVALID, type GType } from "./gtype.js";
-import { type ClassVfuncMetadata, registerClassVfuncMetadata } from "./handles.js";
-import { registerInterfaceVfuncMetadata } from "./register-class.js";
+import { registerVfuncRegistry, type VfuncRegistry } from "./handles.js";
+import { registerInterfaceVfuncRegistry } from "./register-class.js";
 import { setClassGType, setInterfaceGType } from "./registry.js";
-import { registerSignalMetadata, type SignalDescriptor, type SignalGObject } from "./signals.js";
+import { registerSignalRegistry, type SignalDescriptor, type SignalGObject } from "./signals.js";
 
 /**
  * The kind of native type being registered, selecting which identity registry
@@ -50,7 +50,7 @@ export type NativeClassDescriptor = {
      */
     readonly gtype?: () => unknown;
     /** Overridable vtable slot descriptors, absent when none are marshallable. */
-    readonly vfuncs?: ClassVfuncMetadata;
+    readonly vfuncs?: VfuncRegistry;
     /** Signal table and marshalling surface, absent for signal-free types. */
     readonly signals?: NativeSignalRegistration;
 };
@@ -76,13 +76,13 @@ export function registerNativeClass(cls: AnyClass, descriptor: NativeClassDescri
     }
 
     if (descriptor.vfuncs) {
-        registerClassVfuncMetadata(cls, descriptor.vfuncs);
+        registerVfuncRegistry(cls, descriptor.vfuncs);
         if (descriptor.role === "interface") {
-            registerInterfaceVfuncMetadata(gtype, descriptor.vfuncs);
+            registerInterfaceVfuncRegistry(gtype, descriptor.vfuncs);
         }
     }
 
     if (descriptor.signals) {
-        registerSignalMetadata(cls, descriptor.signals.table, gtype, descriptor.signals.gobject);
+        registerSignalRegistry(cls, descriptor.signals.table, gtype, descriptor.signals.gobject);
     }
 }

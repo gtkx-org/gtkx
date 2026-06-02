@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { resolveCodegenStore } from "../../src/codegen/output-resolver.js";
+import { resolveCodegenStore } from "../../src/codegen/store-resolver.js";
 
 describe("resolveCodegenStore", () => {
     let projectRoot: string;

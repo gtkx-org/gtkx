@@ -111,11 +111,11 @@ export class StackNavigationNode extends WidgetNode<StackNavigationWidget, Stack
             if (matches.length !== 1) return;
             const target = matches[0];
             if (!target) return;
-            this.bindStack(target.container);
+            this.bindStack(target.backingInstance);
             return;
         }
 
-        this.bindStack(this.assertSingleSiblingStack()[0].container);
+        this.bindStack(this.assertSingleSiblingStack()[0].backingInstance);
     }
 
     private assertSingleSiblingStack(): [StackNode] {
@@ -144,7 +144,7 @@ export class StackNavigationNode extends WidgetNode<StackNavigationWidget, Stack
         if (stack === null && !this.supportsNullStack()) return;
 
         this.unsubscribeFromWiredStack();
-        (this.container as unknown as StackBindable).setStack(stack);
+        (this.backingInstance as unknown as StackBindable).setStack(stack);
         this.wiredStack = stack;
         if (stack !== null) this.subscribeToStackParent(stack);
     }
@@ -170,7 +170,7 @@ export class StackNavigationNode extends WidgetNode<StackNavigationWidget, Stack
     }
 
     private supportsNullStack(): boolean {
-        return !(this.container instanceof Gtk.StackSidebar);
+        return !(this.backingInstance instanceof Gtk.StackSidebar);
     }
 
     private findSiblingStackNodes(): StackNode[] {
@@ -205,7 +205,7 @@ export class StackNavigationNode extends WidgetNode<StackNavigationWidget, Stack
     }
 
     private expectedStackTypeName(): string {
-        const widget = this.container;
+        const widget = this.backingInstance;
         const isGtkFamily = widget instanceof Gtk.StackSidebar || widget instanceof Gtk.StackSwitcher;
         return isGtkFamily ? GTK_STACK_TYPE_NAME : ADW_VIEW_STACK_TYPE_NAME;
     }

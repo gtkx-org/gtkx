@@ -88,7 +88,7 @@ function makeConnectionManager(overrides: Partial<AppQueryClient> = {}): AppQuer
     return {
         getApps: vi.fn(() => []),
         hasConnectedApps: vi.fn(() => false),
-        waitForApp: vi.fn(async () => ({ appId: "app-a", pid: 1, windows: [] }) as AppInfo),
+        waitForApp: vi.fn(async () => ({ applicationId: "app-a", pid: 1, windows: [] }) as AppInfo),
         sendToApp: vi.fn(async () => ({}) as never),
         ...overrides,
     };
@@ -151,7 +151,7 @@ describe("buildTools — registration", () => {
 
 describe("buildTools — gtkx_list_apps success", () => {
     it("returns connected apps with their windows", async () => {
-        const apps: AppInfo[] = [{ appId: "app-a", pid: 1, windows: [] }];
+        const apps: AppInfo[] = [{ applicationId: "app-a", pid: 1, windows: [] }];
         const sendToApp = vi.fn(async () => ({
             windows: [{ id: "w1", title: "Main" }],
         }));
@@ -166,11 +166,13 @@ describe("buildTools — gtkx_list_apps success", () => {
         expect(sendToApp).toHaveBeenCalledWith("app-a", "app.getWindows", {});
         expect(result.content[0]).toMatchObject({ type: "text" });
         const text = result.content[0] as { type: "text"; text: string };
-        expect(JSON.parse(text.text)).toEqual([{ appId: "app-a", pid: 1, windows: [{ id: "w1", title: "Main" }] }]);
+        expect(JSON.parse(text.text)).toEqual([
+            { applicationId: "app-a", pid: 1, windows: [{ id: "w1", title: "Main" }] },
+        ]);
     });
 
     it("falls back to the original app info when getWindows fails", async () => {
-        const apps: AppInfo[] = [{ appId: "app-a", pid: 1, windows: [] }];
+        const apps: AppInfo[] = [{ applicationId: "app-a", pid: 1, windows: [] }];
         const cm = makeConnectionManager({
             getApps: vi.fn(() => apps),
             hasConnectedApps: vi.fn(() => true),
@@ -187,7 +189,7 @@ describe("buildTools — gtkx_list_apps success", () => {
 
 describe("buildTools — gtkx_list_apps waiting", () => {
     it("waits for an app when waitForApps is true and none are connected", async () => {
-        const waitForApp = vi.fn(async () => ({ appId: "app-a", pid: 1, windows: [] }) as AppInfo);
+        const waitForApp = vi.fn(async () => ({ applicationId: "app-a", pid: 1, windows: [] }) as AppInfo);
         const cm = makeConnectionManager({
             hasConnectedApps: vi.fn(() => false),
             waitForApp: waitForApp as never,
@@ -222,11 +224,11 @@ describe("buildTools — gtkx_list_apps waiting", () => {
 });
 
 describe("buildTools — gtkx_get_widget_tree", () => {
-    it("forwards appId and returns the tree string", async () => {
+    it("forwards applicationId and returns the tree string", async () => {
         const sendToApp = vi.fn(async () => ({ tree: "TREE" }));
         const cm = makeConnectionManager({ sendToApp: sendToApp as never });
 
-        const result = await getTool(cm, "gtkx_get_widget_tree").handler({ appId: "app-a" } as never);
+        const result = await getTool(cm, "gtkx_get_widget_tree").handler({ applicationId: "app-a" } as never);
 
         expect(sendToApp).toHaveBeenCalledWith("app-a", "widget.getTree", {});
         expect(result.content[0]).toEqual({ type: "text", text: "TREE" });
@@ -239,7 +241,7 @@ describe("buildTools — gtkx_query_widgets", () => {
         const cm = makeConnectionManager({ sendToApp: sendToApp as never });
 
         const result = await getTool(cm, "gtkx_query_widgets").handler({
-            appId: "app-a",
+            applicationId: "app-a",
             by: "role",
             value: "button",
             options: { exact: true },
@@ -261,7 +263,7 @@ describe("buildTools — gtkx_get_widget_props", () => {
         const cm = makeConnectionManager({ sendToApp: sendToApp as never });
 
         const result = await getTool(cm, "gtkx_get_widget_props").handler({
-            appId: "app-a",
+            applicationId: "app-a",
             widgetId: "w1",
         } as never);
 
@@ -329,7 +331,7 @@ describe("buildTools — gtkx_take_screenshot", () => {
         const cm = makeConnectionManager({ sendToApp: sendToApp as never });
 
         const result = await getTool(cm, "gtkx_take_screenshot").handler({
-            appId: "app-a",
+            applicationId: "app-a",
             windowId: "w-main",
         } as never);
 
@@ -425,7 +427,7 @@ describe("main — error logging", () => {
         const cm = connectionManagerInstances[0];
         if (!cm) throw new Error("ConnectionManager not registered");
 
-        cm.emit("appRegistered", { appId: "app-a", pid: 42 });
+        cm.emit("appRegistered", { applicationId: "app-a", pid: 42 });
         cm.emit("appUnregistered", "app-a");
 
         const messages = setup.errorSpy.mock.calls.map((c: unknown[]) => String(c[0]));

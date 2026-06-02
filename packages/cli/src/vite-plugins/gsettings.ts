@@ -65,7 +65,7 @@ type PluginState = {
 };
 
 type PluginContext = {
-    error: (msg: string) => never;
+    error: (message: string) => never;
     emitFile: (file: { type: "asset"; fileName: string; source: Buffer }) => void;
 };
 

@@ -1,5 +1,5 @@
 import type { InlineConfig, Plugin, ViteDevServer } from "vite";
-import { RELOAD_EXIT_CODE } from "./dev-protocol.js";
+import { RELOAD_EXIT_CODE } from "./protocol.js";
 
 /**
  * Collaborators the dev runner uses to talk to the outside world.
@@ -11,7 +11,7 @@ export type DevRunnerDeps = {
     createServer(config: InlineConfig): Promise<ViteDevServer>;
     whenStopped(): Promise<void>;
     getApplicationId(): string | null;
-    startMcpClient(appId: string): Promise<unknown>;
+    startMcpClient(applicationId: string): Promise<unknown>;
     stopMcpClient(): void;
     performRefresh(): void;
     isReactRefreshBoundary(module: Record<string, unknown>): boolean;
@@ -108,10 +108,10 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
         deps.log(`Loading entry: ${entryPath}`);
         await server.ssrLoadModule(entryPath);
 
-        const appId = deps.getApplicationId();
-        if (appId) {
-            deps.log(`Connected app id: ${appId}`);
-            await deps.startMcpClient(appId);
+        const applicationId = deps.getApplicationId();
+        if (applicationId) {
+            deps.log(`Connected application id: ${applicationId}`);
+            await deps.startMcpClient(applicationId);
         } else {
             deps.log("Entry did not call render() — MCP client not started.");
         }

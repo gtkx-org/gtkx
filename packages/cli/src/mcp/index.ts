@@ -5,16 +5,16 @@ let globalClient: McpClient | null = null;
 /**
  * Starts (or reuses) the singleton MCP client for the current process.
  *
- * @param appId - The GTK application ID to register with the server.
+ * @param applicationId - The GTK application ID to register with the server.
  * @returns The configured {@link McpClient}, connected or in the middle of
  *   its reconnect cycle.
  */
-export const startMcpClient = async (appId: string): Promise<McpClient> => {
+export const startMcpClient = async (applicationId: string): Promise<McpClient> => {
     if (globalClient) {
         return globalClient;
     }
 
-    globalClient = new McpClient({ appId });
+    globalClient = new McpClient({ applicationId });
 
     await globalClient.connect().catch(() => {});
 

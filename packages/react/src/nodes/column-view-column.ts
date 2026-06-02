@@ -2,7 +2,7 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { ColumnViewColumnProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import type { Container } from "../types.js";
+import type { BackingInstance } from "../types.js";
 import type { BoundItem } from "./internal/bound-item.js";
 import { connectFactoryLifecycle, UNBOUND_POSITION } from "./internal/list-factory.js";
 import { MenuChildController } from "./internal/menu-child.js";
@@ -30,7 +30,7 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
     private readonly menuController: MenuChildController;
     private readonly actionGroup: Gio.SimpleActionGroup;
 
-    constructor(typeName: string, props: ColumnViewColumnProps, container: undefined, rootContainer: Container) {
+    constructor(typeName: string, props: ColumnViewColumnProps, container: undefined, rootContainer: BackingInstance) {
         super(typeName, props, container, rootContainer);
         this.actionGroup = new Gio.SimpleActionGroup();
         const menu = new MenuModel({ type: "root", props: {}, rootContainer, actionMap: this.actionGroup });
@@ -43,7 +43,7 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
     }
 
     public override isValidParent(parent: Node): boolean {
-        return parent instanceof WidgetNode && parent.container instanceof Gtk.ColumnView;
+        return parent instanceof WidgetNode && parent.backingInstance instanceof Gtk.ColumnView;
     }
 
     public override finalizeInitialChildren(props: ColumnViewColumnProps): boolean {

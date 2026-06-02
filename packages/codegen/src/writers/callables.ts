@@ -41,7 +41,7 @@ export const dedupeCallables = (callables: readonly GirFunction[]): readonly Gir
  * Appends the top-level `const fn = t.fn(...)` binding for every introspectable
  * callable that has a C identifier and is not shadowed.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param callables - The callables to bind
  */
 /**
@@ -49,27 +49,27 @@ export const dedupeCallables = (callables: readonly GirFunction[]): readonly Gir
  * deduplicated by its C identifier. Used when flattening interface and
  * prerequisite methods onto a type one at a time.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param method - The callable to bind
  */
-export const appendMethodBinding = (ctx: ModuleContext, method: GirFunction): void => {
+export const appendMethodBinding = (context: ModuleContext, method: GirFunction): void => {
     if (method.cIdentifier === undefined) return;
-    if (callableReferencesClassStruct(ctx, method)) return;
-    const expression = renderFnExpression(ctx, method);
+    if (callableReferencesClassStruct(context, method)) return;
+    const expression = renderFnExpression(context, method);
     if (expression === undefined) return;
-    ctx.module.appendBinding(`const ${method.cIdentifier} = ${expression};`, method.cIdentifier);
+    context.module.appendBinding(`const ${method.cIdentifier} = ${expression};`, method.cIdentifier);
 };
 
-export const emitBindings = (ctx: ModuleContext, callables: Callables): void => {
+export const emitBindings = (context: ModuleContext, callables: Callables): void => {
     const all = [...callables.constructors, ...callables.functions, ...callables.methods];
     for (const callable of all) {
         if (!callable.introspectable) continue;
         if (callable.shadowedBy !== undefined) continue;
         if (callable.cIdentifier === undefined) continue;
-        if (callableReferencesClassStruct(ctx, callable)) continue;
-        const expression = renderFnExpression(ctx, callable);
+        if (callableReferencesClassStruct(context, callable)) continue;
+        const expression = renderFnExpression(context, callable);
         if (expression === undefined) continue;
-        ctx.module.appendBinding(`const ${callable.cIdentifier} = ${expression};`, callable.cIdentifier);
+        context.module.appendBinding(`const ${callable.cIdentifier} = ${expression};`, callable.cIdentifier);
     }
 };
 
@@ -89,24 +89,24 @@ export type ConstructorWrap = "gobject" | "interface" | "boxed";
  * Returns `undefined` for non-introspectable, shadowed, identifier-less, or
  * `constructor`-named entries.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param callable - The GIR constructor callable
  * @param ownerClassName - The local class name that wraps the result
  * @param wrap - How the result is lifted to its JavaScript wrapper
  */
 const renderConstructorStatic = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     callable: GirFunction,
     ownerClassName: string,
     wrap: ConstructorWrap,
 ): string | undefined => {
-    if (!isEmittableCallable(ctx, callable)) return undefined;
+    if (!isEmittableCallable(context, callable)) return undefined;
     const name = constructorMemberName(callable.name);
     if (name === undefined) return undefined;
     const cIdentifier = callable.cIdentifier;
     if (cIdentifier === undefined) return undefined;
-    const signature = renderMethodSignature(ctx, callable);
-    const body = renderMethodBody(ctx, callable, {
+    const signature = renderMethodSignature(context, callable);
+    const body = renderMethodBody(context, callable, {
         bindingExpression: cIdentifier,
         isStatic: true,
         returnAs: wrap === "gobject" ? { via: "gobject" } : { via: wrap, className: ownerClassName },
@@ -119,18 +119,18 @@ const renderConstructorStatic = (
  *
  * Returns `undefined` when the callable cannot be emitted on a class body.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param callable - The GIR function callable
  */
-const renderStaticMember = (ctx: ModuleContext, callable: GirFunction): string | undefined => {
-    if (!isEmittableCallable(ctx, callable)) return undefined;
+const renderStaticMember = (context: ModuleContext, callable: GirFunction): string | undefined => {
+    if (!isEmittableCallable(context, callable)) return undefined;
     const cIdentifier = callable.cIdentifier;
     if (cIdentifier === undefined) return undefined;
     const name = toCamelCase(callable.name);
     if (name === "constructor") return undefined;
-    const signature = renderMethodSignature(ctx, callable);
-    const returnType = renderMethodReturnType(ctx, callable);
-    const body = renderMethodBody(ctx, callable, { bindingExpression: cIdentifier, isStatic: true });
+    const signature = renderMethodSignature(context, callable);
+    const returnType = renderMethodReturnType(context, callable);
+    const body = renderMethodBody(context, callable, { bindingExpression: cIdentifier, isStatic: true });
     return `static ${name}(${signature}): ${returnType} {\n${indent(body, 1)}\n}`;
 };
 
@@ -143,24 +143,24 @@ const renderStaticMember = (ctx: ModuleContext, callable: GirFunction): string |
  *
  * Returns `undefined` for non-emittable callables.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param callable - The GIR method callable
  */
 export const renderInstanceMethod = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     callable: GirFunction,
     nameOverride?: string,
 ): string | undefined => {
-    if (!isEmittableCallable(ctx, callable)) return undefined;
+    if (!isEmittableCallable(context, callable)) return undefined;
     const cIdentifier = callable.cIdentifier;
     if (cIdentifier === undefined) return undefined;
     const name = nameOverride ?? methodExportName(callable);
     if (name === "constructor") return undefined;
     const override = renderRuntimeOverride(callable, name);
     if (override !== undefined) return override;
-    const signature = renderMethodSignature(ctx, callable);
-    const returnType = renderMethodReturnType(ctx, callable);
-    const body = renderMethodBody(ctx, callable, { bindingExpression: cIdentifier, isStatic: false });
+    const signature = renderMethodSignature(context, callable);
+    const returnType = renderMethodReturnType(context, callable);
+    const body = renderMethodBody(context, callable, { bindingExpression: cIdentifier, isStatic: false });
     return `${name}(${signature}): ${returnType} {\n${indent(body, 1)}\n}`;
 };
 
@@ -171,17 +171,21 @@ export const renderInstanceMethod = (
  * Returns `undefined` when the alias collides with `constructor` or the
  * shadower lacks a C identifier.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param original - The shadowed callable whose name should remain reachable
  * @param shadower - The callable the alias dispatches into
  */
-const renderInstanceAlias = (ctx: ModuleContext, original: GirFunction, shadower: GirFunction): string | undefined => {
+const renderInstanceAlias = (
+    context: ModuleContext,
+    original: GirFunction,
+    shadower: GirFunction,
+): string | undefined => {
     if (shadower.cIdentifier === undefined) return undefined;
     const aliasName = toCamelCase(original.name);
     if (aliasName === "constructor") return undefined;
-    const signature = renderMethodSignature(ctx, shadower);
-    const returnType = renderMethodReturnType(ctx, shadower);
-    const body = renderMethodBody(ctx, shadower, { bindingExpression: shadower.cIdentifier, isStatic: false });
+    const signature = renderMethodSignature(context, shadower);
+    const returnType = renderMethodReturnType(context, shadower);
+    const body = renderMethodBody(context, shadower, { bindingExpression: shadower.cIdentifier, isStatic: false });
     return `${aliasName}(${signature}): ${returnType} {\n${indent(body, 1)}\n}`;
 };
 
@@ -189,7 +193,7 @@ const renderInstanceAlias = (ctx: ModuleContext, original: GirFunction, shadower
  * Inputs for {@link appendShadowedAliases}.
  */
 export type ShadowedAliasOptions = {
-    readonly ctx: ModuleContext;
+    readonly context: ModuleContext;
     /** The full list of method callables. */
     readonly methods: readonly GirFunction[];
     /** Lookup table for shadower resolution. */
@@ -210,7 +214,7 @@ export type ShadowedAliasOptions = {
  * @param options - {@link ShadowedAliasOptions}
  */
 export const appendShadowedAliases = (options: ShadowedAliasOptions): void => {
-    const { ctx, methods, methodByName, members, claimedNames } = options;
+    const { context, methods, methodByName, members, claimedNames } = options;
     for (const callable of methods) {
         if (callable.shadowedBy === undefined) continue;
         if (callable.introspectable) continue;
@@ -218,7 +222,7 @@ export const appendShadowedAliases = (options: ShadowedAliasOptions): void => {
         if (shadower === undefined || !shadower.introspectable) continue;
         const aliasName = toCamelCase(callable.name);
         if (claimedNames.has(aliasName)) continue;
-        const block = renderInstanceAlias(ctx, callable, shadower);
+        const block = renderInstanceAlias(context, callable, shadower);
         if (block !== undefined) {
             members.push(block);
             claimedNames.add(aliasName);
@@ -235,11 +239,11 @@ export const indexMethodsByName = (methods: readonly GirFunction[]): ReadonlyMap
     return map;
 };
 
-const isEmittableCallable = (ctx: ModuleContext, callable: GirFunction): boolean =>
+const isEmittableCallable = (context: ModuleContext, callable: GirFunction): boolean =>
     callable.introspectable &&
     callable.shadowedBy === undefined &&
     callable.cIdentifier !== undefined &&
-    !callableReferencesClassStruct(ctx, callable);
+    !callableReferencesClassStruct(context, callable);
 
 const constructorMemberName = (girName: string): string | undefined => {
     const camel = toCamelCase(girName);
@@ -251,24 +255,24 @@ const constructorMemberName = (girName: string): string | undefined => {
  * Renders the shared head of a class/interface/boxed body: every `static`
  * constructor factory and every `static` namespace function on the same type.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param callables - The class's emittable callables
  * @param ownerClassName - The local PascalCase class name
  * @param wrap - How static constructors lift their result to a wrapper
  */
 export const renderStaticHead = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     callables: Callables,
     ownerClassName: string,
     wrap: ConstructorWrap,
 ): readonly string[] => {
     const blocks: string[] = [];
     for (const callable of callables.constructors) {
-        const block = renderConstructorStatic(ctx, callable, ownerClassName, wrap);
+        const block = renderConstructorStatic(context, callable, ownerClassName, wrap);
         if (block !== undefined) blocks.push(block);
     }
     for (const callable of callables.functions) {
-        const block = renderStaticMember(ctx, callable);
+        const block = renderStaticMember(context, callable);
         if (block !== undefined) blocks.push(block);
     }
     return blocks;
@@ -283,13 +287,13 @@ export const renderStaticHead = (
  * and signal-method renderers can detect collisions.
  */
 const renderPlainInstanceMethods = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     methods: readonly GirFunction[],
     claimedNames: Set<string>,
 ): readonly string[] => {
     const blocks: string[] = [];
     for (const callable of methods) {
-        const block = renderInstanceMethod(ctx, callable);
+        const block = renderInstanceMethod(context, callable);
         if (block === undefined) continue;
         blocks.push(block);
         claimedNames.add(methodExportName(callable));
@@ -298,10 +302,10 @@ const renderPlainInstanceMethods = (
 };
 
 /**
- * Inputs for {@link buildPlainTypeMembers}.
+ * Inputs for {@link renderPlainTypeMembers}.
  */
 export type PlainTypeMembersOptions = {
-    readonly ctx: ModuleContext;
+    readonly context: ModuleContext;
     readonly className: string;
     readonly callables: Callables;
     /** Whether to prepend `declare __gtype__: number;`. */
@@ -320,16 +324,16 @@ export type PlainTypeMembersOptions = {
  * signal members on top of the returned members list. The class writer takes
  * a different path because it has to consult inherited signatures.
  */
-export const buildPlainTypeMembers = (
+export const renderPlainTypeMembers = (
     options: PlainTypeMembersOptions,
 ): { readonly members: string[]; readonly claimedNames: Set<string> } => {
-    const { ctx, className, callables, hasGType, wrap } = options;
+    const { context, className, callables, hasGType, wrap } = options;
     const members: string[] = [];
     if (hasGType) members.push("declare __gtype__: number;");
     const claimedNames = new Set<string>();
-    members.push(...renderStaticHead(ctx, callables, className, wrap));
-    members.push(...renderPlainInstanceMethods(ctx, callables.methods, claimedNames));
+    members.push(...renderStaticHead(context, callables, className, wrap));
+    members.push(...renderPlainInstanceMethods(context, callables.methods, claimedNames));
     const methodByName = indexMethodsByName(callables.methods);
-    appendShadowedAliases({ ctx, methods: callables.methods, methodByName, members, claimedNames });
+    appendShadowedAliases({ context, methods: callables.methods, methodByName, members, claimedNames });
     return { members, claimedNames };
 };

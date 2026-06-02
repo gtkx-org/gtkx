@@ -8,7 +8,7 @@ type ScrolledWindowProps = Pick<GtkScrolledWindowProps, "hscrollbarPolicy" | "vs
 export class ScrolledWindowNode extends WidgetNode<Gtk.ScrolledWindow, ScrolledWindowProps> {
     protected override ownPropDescriptors(): PropDescriptorTable {
         const applyPolicy = imperative(() => {
-            this.container.setPolicy(
+            this.backingInstance.setPolicy(
                 this.props.hscrollbarPolicy ?? Gtk.PolicyType.AUTOMATIC,
                 this.props.vscrollbarPolicy ?? Gtk.PolicyType.AUTOMATIC,
             );

@@ -30,7 +30,7 @@ export class SlotNode<P extends Props = SlotProps, TChild extends Node = WidgetN
         }
 
         if (!parent && previousParent) {
-            this.detachedParentWidget = previousParent.container;
+            this.detachedParentWidget = previousParent.backingInstance;
         }
 
         super.setParent(parent);
@@ -42,7 +42,7 @@ export class SlotNode<P extends Props = SlotProps, TChild extends Node = WidgetN
 
     public override appendChild(child: TChild): void {
         const firstChild = this.children[0];
-        const oldChildWidget = firstChild instanceof WidgetNode ? firstChild.container : null;
+        const oldChildWidget = firstChild instanceof WidgetNode ? firstChild.backingInstance : null;
 
         super.appendChild(child);
 
@@ -52,7 +52,7 @@ export class SlotNode<P extends Props = SlotProps, TChild extends Node = WidgetN
     }
 
     public override removeChild(child: TChild): void {
-        const oldChildWidget = child instanceof WidgetNode ? child.container : null;
+        const oldChildWidget = child instanceof WidgetNode ? child.backingInstance : null;
 
         super.removeChild(child);
 
@@ -68,7 +68,7 @@ export class SlotNode<P extends Props = SlotProps, TChild extends Node = WidgetN
             if (parentWidget.getRoot() !== null) {
                 this.cachedSetter = null;
                 const setter = this.resolveChildSetter(parentWidget);
-                const oldChild = this.children[0].container;
+                const oldChild = this.children[0].backingInstance;
                 const focus = getFocusWidget(oldChild);
                 if (focus && isDescendantOf(focus, oldChild)) {
                     parentWidget.grabFocus();
@@ -96,7 +96,7 @@ export class SlotNode<P extends Props = SlotProps, TChild extends Node = WidgetN
             throw new Error(`Expected parent widget to be set on '${this.getId()}' SlotNode`);
         }
 
-        return this.parent.container;
+        return this.parent.backingInstance;
     }
 
     private ensureChildSetter(): (child: Gtk.Widget | null) => void {
@@ -108,7 +108,7 @@ export class SlotNode<P extends Props = SlotProps, TChild extends Node = WidgetN
 
     private onChildChange(oldChild: Gtk.Widget | null): void {
         const setter = this.ensureChildSetter();
-        const childWidget = this.children[0]?.container ?? null;
+        const childWidget = this.children[0]?.backingInstance ?? null;
 
         if (oldChild && !childWidget) {
             const parent = this.getParentWidget();

@@ -1,7 +1,7 @@
+import type { SignalHandler } from "@gtkx/ffi";
 import * as GObject from "@gtkx/gi/gobject";
 
-// biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
-export type SignalHandler = (...args: any[]) => any;
+export type { SignalHandler };
 
 const LIFECYCLE_SIGNALS = new Set([
     "realize",

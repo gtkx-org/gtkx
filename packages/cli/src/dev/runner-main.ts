@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { createDevRunner } from "./dev-runner.js";
+import { createDevRunner } from "./runner.js";
 
 const ENTRY_ARG_INDEX = 2;
 
@@ -7,7 +7,7 @@ const ENTRY_ARG_INDEX = 2;
  * Runner entry point invoked by the CLI supervisor.
  *
  * Reads the entry path from `process.argv`, builds the production runner via
- * a dynamic import of `dev-runner-deps.ts`, and runs it. Exits with code `1`
+ * a dynamic import of `runner-deps.ts`, and runs it. Exits with code `1`
  * if the supervisor failed to pass an entry path.
  */
 export const main = async (): Promise<void> => {
@@ -20,7 +20,7 @@ export const main = async (): Promise<void> => {
     }
 
     const entryPath = resolve(cwd, entryArg);
-    const { defaultDevRunnerDeps } = await import("./dev-runner-deps.js");
+    const { defaultDevRunnerDeps } = await import("./runner-deps.js");
     const runner = createDevRunner(defaultDevRunnerDeps());
     await runner.run(entryPath);
 };

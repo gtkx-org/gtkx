@@ -89,20 +89,20 @@ describe("gtkxResources (plugin shape)", () => {
 describe("gtkxResources (define)", () => {
     setupTmpDir();
 
-    it("exposes the configured applicationId as import.meta.env.GTKX_APP_ID", async () => {
+    it("exposes the configured applicationId as import.meta.env.GTKX_APPLICATION_ID", async () => {
         writeAppConfig(tmpDir, "org.gtk.Demo4");
         const plugin = gtkxResources();
         const result = await (plugin.config as ConfigHook).call(plugin, { root: tmpDir });
         expect(result.define).toEqual({
-            "import.meta.env.GTKX_APP_ID": JSON.stringify("org.gtk.Demo4"),
+            "import.meta.env.GTKX_APPLICATION_ID": JSON.stringify("org.gtk.Demo4"),
         });
     });
 
-    it("defaults GTKX_APP_ID to the empty string when no config is present", async () => {
+    it("defaults GTKX_APPLICATION_ID to the empty string when no config is present", async () => {
         const plugin = gtkxResources();
         const result = await (plugin.config as ConfigHook).call(plugin, { root: tmpDir });
         expect(result.define).toEqual({
-            "import.meta.env.GTKX_APP_ID": JSON.stringify(""),
+            "import.meta.env.GTKX_APPLICATION_ID": JSON.stringify(""),
         });
     });
 });

@@ -18,7 +18,7 @@ export class ConstraintGuideNode extends ConstraintLayoutChildNode<ConstraintGui
     protected override applyToLayout(parent: ConstraintLayoutNode): void {
         if (!this.guide) {
             this.guide = new Gtk.ConstraintGuide();
-            parent.container.addGuide(this.guide);
+            parent.backingInstance.addGuide(this.guide);
         }
 
         this.applyId(parent, this.guide);
@@ -27,7 +27,7 @@ export class ConstraintGuideNode extends ConstraintLayoutChildNode<ConstraintGui
 
     protected override removeFromLayout(parent: ConstraintLayoutNode): void {
         if (this.guide) {
-            parent.container.removeGuide(this.guide);
+            parent.backingInstance.removeGuide(this.guide);
         }
         if (this.registeredId !== null) {
             parent.unregisterTarget(this.registeredId);

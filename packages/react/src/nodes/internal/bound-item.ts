@@ -1,4 +1,4 @@
 import type { ReactNode } from "react";
-import type { Container } from "../../types.js";
+import type { BackingInstance } from "../../types.js";
 
-export type BoundItem = [ReactNode, Container, string];
+export type BoundItem = [ReactNode, BackingInstance, string];

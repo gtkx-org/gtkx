@@ -1,9 +1,9 @@
 import { EventEmitter } from "node:events";
 import type { Plugin, ViteDevServer } from "vite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { RELOAD_EXIT_CODE } from "../src/dev-protocol.js";
-import { createDevRunner, type DevRunnerDeps } from "../src/dev-runner.js";
-import { main } from "../src/dev-runner-main.js";
+import { RELOAD_EXIT_CODE } from "../../src/dev/protocol.js";
+import { createDevRunner, type DevRunnerDeps } from "../../src/dev/runner.js";
+import { main } from "../../src/dev/runner-main.js";
 
 type FakeServer = {
     close: ReturnType<typeof vi.fn>;
@@ -41,12 +41,12 @@ type Harness = {
     log: ReturnType<typeof vi.fn>;
     exit: ReturnType<typeof vi.fn>;
     plugins: Plugin[];
-    appId: string | null;
+    applicationId: string | null;
 };
 
 const buildHarness = (
     overrides: Partial<{
-        appId: string | null;
+        applicationId: string | null;
         isBoundary: (mod: Record<string, unknown>) => boolean;
     }> = {},
 ): Harness => {
@@ -58,7 +58,7 @@ const buildHarness = (
         { name: "gtkx:refresh" },
         { name: "gtkx:skip-react-dom-optimize" },
     ] as Plugin[];
-    const appId = overrides.appId ?? null;
+    const applicationId = overrides.applicationId ?? null;
     const createServer = vi.fn<DevRunnerDeps["createServer"]>(async () => server as unknown as ViteDevServer);
     const whenStopped = vi.fn<DevRunnerDeps["whenStopped"]>(() => new Promise<void>(() => {}));
     const startMcp = vi.fn<DevRunnerDeps["startMcpClient"]>(async () => undefined);
@@ -72,7 +72,7 @@ const buildHarness = (
     const deps: DevRunnerDeps = {
         createServer,
         whenStopped,
-        getApplicationId: () => appId,
+        getApplicationId: () => applicationId,
         startMcpClient: startMcp,
         stopMcpClient: stopMcp,
         performRefresh,
@@ -84,7 +84,7 @@ const buildHarness = (
     return {
         server,
         plugins,
-        appId,
+        applicationId,
         createServer,
         whenStopped,
         startMcp,
@@ -149,18 +149,18 @@ describe("createDevRunner (entry loading)", () => {
 
 describe("createDevRunner (MCP lifecycle)", () => {
     it("starts the MCP client when the entry registers a Gio.Application", async () => {
-        const harness = buildHarness({ appId: "com.example.app" });
+        const harness = buildHarness({ applicationId: "com.example.app" });
 
         await startRunner(harness);
 
         expect(harness.startMcp).toHaveBeenCalledWith("com.example.app");
         const messages = harness.log.mock.calls.map((c: unknown[]) => String(c[0]));
-        expect(messages.some((m) => m.includes("Connected app id: com.example.app"))).toBe(true);
+        expect(messages.some((m) => m.includes("Connected application id: com.example.app"))).toBe(true);
         expect(messages.some((m) => m.includes("HMR enabled"))).toBe(true);
     });
 
     it("skips MCP startup when no Gio.Application is registered", async () => {
-        const harness = buildHarness({ appId: null });
+        const harness = buildHarness({ applicationId: null });
 
         await startRunner(harness);
 

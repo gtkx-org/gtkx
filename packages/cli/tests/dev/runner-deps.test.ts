@@ -22,17 +22,17 @@ vi.mock("vite", () => ({
     createServer: hoisted.createServer,
 }));
 
-vi.mock("../src/mcp/index.js", () => ({
+vi.mock("../../src/mcp/index.js", () => ({
     startMcpClient: hoisted.startMcpClient,
     stopMcpClient: hoisted.stopMcpClient,
 }));
 
-vi.mock("../src/refresh-runtime.js", () => ({
+vi.mock("../../src/refresh-runtime.js", () => ({
     isReactRefreshBoundary: hoisted.isReactRefreshBoundary,
     performRefresh: hoisted.performRefresh,
 }));
 
-import { defaultDevRunnerDeps } from "../src/dev-runner-deps.js";
+import { defaultDevRunnerDeps } from "../../src/dev/runner-deps.js";
 
 beforeEach(() => {
     hoisted.getDefault.mockReset();

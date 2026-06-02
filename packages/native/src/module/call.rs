@@ -9,7 +9,7 @@
 //! 1. Parse library name, symbol name, arguments, and return type from JS
 //! 2. Convert arguments to [`ffi::FfiValue`] representations
 //! 3. Build a libffi CIF (Call Interface) with proper type signatures
-//! 4. Load the library and resolve the symbol on the GTK thread
+//! 4. Load the library and resolve the symbol on the GLib thread
 //! 5. Execute the FFI call with proper type dispatching
 //! 6. Convert the result back to a [`Value`] for JavaScript
 //! 7. Update any `Ref` type out-parameters with modified values
@@ -32,7 +32,7 @@ use super::handler::{ModuleRequest, RefUpdate};
 use crate::{
     arg::Arg,
     ffi,
-    state::GtkThreadState,
+    state::GlibThreadState,
     types::{FfiEncoder as _, Type},
     value::Value,
 };
@@ -76,7 +76,7 @@ impl ModuleRequest for CallRequest {
         }
 
         let symbol_ptr = unsafe {
-            GtkThreadState::with::<_, anyhow::Result<libffi::CodePtr>>(|state| {
+            GlibThreadState::with::<_, anyhow::Result<libffi::CodePtr>>(|state| {
                 let library = state.library(&self.library_name)?;
                 let symbol =
                     library.get::<unsafe extern "C" fn() -> ()>(self.symbol_name.as_bytes())?;

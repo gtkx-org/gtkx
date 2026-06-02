@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import type { Container } from "@gtkx/react";
+import type { BackingInstance } from "@gtkx/react";
 
-export type { Container };
+export type Container = BackingInstance;
 
 export const isApplication = (container: Container): container is Gtk.Application =>
     container instanceof Gtk.Application;

@@ -56,7 +56,7 @@ export class NavigationPageNode extends SingleChildVirtualNode<NavigationPagePro
     protected override onChildChange(oldChild: Gtk.Widget | null): void {
         const parentWidget = this.getParentWidget();
         const title = this.props.title ?? "";
-        const childWidget = this.children[0]?.container ?? null;
+        const childWidget = this.children[0]?.backingInstance ?? null;
 
         if (childWidget) {
             this.wrappedPage = this.props.id
@@ -103,6 +103,6 @@ export class NavigationPageNode extends SingleChildVirtualNode<NavigationPagePro
         if (!this.parent) {
             throw new Error("Expected parent widget to be set on NavigationPageNode");
         }
-        return this.parent.container;
+        return this.parent.backingInstance;
     }
 }

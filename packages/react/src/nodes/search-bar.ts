@@ -10,7 +10,7 @@ export class SearchBarNode extends WidgetNode<Gtk.SearchBar, SearchBarProps> {
         return {
             ...super.ownPropDescriptors(),
             onSearchModeChanged: signal("notify::search-mode-enabled", {
-                getArgs: () => [this.container.getSearchMode()],
+                getArgs: () => [this.backingInstance.getSearchMode()],
             }),
         };
     }

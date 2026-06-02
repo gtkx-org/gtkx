@@ -7,7 +7,7 @@ import { WidgetNode } from "./widget.js";
 type SpinRowProps = AdjustableProps;
 
 export class SpinRowNode extends WidgetNode<Adw.SpinRow, SpinRowProps> {
-    private readonly adjustmentController = new AdjustmentController(this.container);
+    private readonly adjustmentController = new AdjustmentController(this.backingInstance);
 
     protected override ownPropDescriptors(): PropDescriptorTable {
         return {
@@ -16,7 +16,7 @@ export class SpinRowNode extends WidgetNode<Adw.SpinRow, SpinRowProps> {
                 this.adjustmentController,
                 () => this.props,
                 "notify::value",
-                () => this.container.getValue(),
+                () => this.backingInstance.getValue(),
             ),
         };
     }

@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import type { GtkFontDialogButtonProps } from "../jsx.js";
-import type { Container } from "../types.js";
+import type { BackingInstance } from "../types.js";
 import { DialogButtonNode } from "./dialog-button.js";
 import { imperative, type PropDescriptorTable, signal } from "./internal/apply-props.js";
 
@@ -27,7 +27,7 @@ export class FontDialogButtonNode extends DialogButtonNode<
         _typeName: string,
         _props: FontDialogButtonProps,
         containerClass: typeof Gtk.FontDialogButton,
-    ): Container | null {
+    ): BackingInstance | null {
         return new containerClass({ dialog: new Gtk.FontDialog() });
     }
 
@@ -40,16 +40,16 @@ export class FontDialogButtonNode extends DialogButtonNode<
             }),
             filter: imperative(() => this.dialog.setFilter(this.props.filter ?? null)),
             fontMap: imperative(() => this.dialog.setFontMap(this.props.fontMap ?? null)),
-            useFont: imperative(() => this.container.setUseFont(this.props.useFont ?? false)),
-            useSize: imperative(() => this.container.setUseSize(this.props.useSize ?? false)),
-            level: imperative(() => this.container.setLevel(this.props.level ?? Gtk.FontLevel.FONT)),
+            useFont: imperative(() => this.backingInstance.setUseFont(this.props.useFont ?? false)),
+            useSize: imperative(() => this.backingInstance.setUseSize(this.props.useSize ?? false)),
+            level: imperative(() => this.backingInstance.setLevel(this.props.level ?? Gtk.FontLevel.FONT)),
             fontDesc: imperative(() => {
                 const { fontDesc } = this.props;
-                if (fontDesc) this.container.setFontDesc(fontDesc);
+                if (fontDesc) this.backingInstance.setFontDesc(fontDesc);
             }),
             onFontDescChanged: signal("notify::font-desc", {
                 getArgs: () => {
-                    const fontDesc = this.container.getFontDesc();
+                    const fontDesc = this.backingInstance.getFontDesc();
                     return fontDesc ? [fontDesc] : null;
                 },
             }),

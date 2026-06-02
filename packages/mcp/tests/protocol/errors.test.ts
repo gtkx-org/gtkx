@@ -62,7 +62,7 @@ describe("error factory functions", () => {
 
         expect(error.code).toBe(McpErrorCode.APP_NOT_FOUND);
         expect(error.message).toContain("my-app");
-        expect(error.data).toEqual({ appId: "my-app" });
+        expect(error.data).toEqual({ applicationId: "my-app" });
     });
 
     it("widgetNotFoundError creates correct error", () => {

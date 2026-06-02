@@ -1,11 +1,11 @@
 mod common;
 
-use native::state::{GtkThread, GtkThreadState};
+use native::state::{GlibThread, GlibThreadState};
 
 #[test]
 fn gtk_thread_state_default_initializes_correctly() {
     common::run(|| {
-        GtkThreadState::with(|state| {
+        GlibThreadState::with(|state| {
             assert!(state.libs.is_empty());
         });
     });
@@ -14,7 +14,7 @@ fn gtk_thread_state_default_initializes_correctly() {
 #[test]
 fn get_library_loads_glib() {
     common::run(|| {
-        let success = GtkThreadState::with(|state| state.library("libglib-2.0.so.0").is_ok());
+        let success = GlibThreadState::with(|state| state.library("libglib-2.0.so.0").is_ok());
 
         assert!(success);
     });
@@ -23,7 +23,7 @@ fn get_library_loads_glib() {
 #[test]
 fn get_library_caches_loaded_libraries() {
     common::run(|| {
-        GtkThreadState::with(|state| {
+        GlibThreadState::with(|state| {
             let _ = state.library("libglib-2.0.so.0");
             let lib1_ptr = state
                 .library("libglib-2.0.so.0")
@@ -45,7 +45,7 @@ fn get_library_caches_loaded_libraries() {
 fn get_library_returns_error_for_nonexistent() {
     common::run(|| {
         let is_err =
-            GtkThreadState::with(|state| state.library("libnonexistent_library_12345.so").is_err());
+            GlibThreadState::with(|state| state.library("libnonexistent_library_12345.so").is_err());
 
         assert!(is_err);
     });
@@ -54,7 +54,7 @@ fn get_library_returns_error_for_nonexistent() {
 #[test]
 fn get_library_tries_comma_separated_names() {
     common::run(|| {
-        let success = GtkThreadState::with(|state| {
+        let success = GlibThreadState::with(|state| {
             state.library("libnonexistent.so,libglib-2.0.so.0").is_ok()
         });
 
@@ -65,7 +65,7 @@ fn get_library_tries_comma_separated_names() {
 #[test]
 fn library_cache_len_and_is_empty_track_loads() {
     common::run(|| {
-        GtkThreadState::with(|state| {
+        GlibThreadState::with(|state| {
             let before = state.libs.len();
             let _ = state.library("libgobject-2.0.so.0");
             assert!(!state.libs.is_empty());
@@ -77,7 +77,7 @@ fn library_cache_len_and_is_empty_track_loads() {
 #[test]
 fn library_cache_load_total_failure_reports_error() {
     common::run(|| {
-        let err = GtkThreadState::with(|state| {
+        let err = GlibThreadState::with(|state| {
             state
                 .library("libnope_one_12345.so,libnope_two_12345.so")
                 .err()
@@ -92,7 +92,7 @@ fn library_cache_load_total_failure_reports_error() {
 #[test]
 fn resolve_gtype_resolves_known_get_type_function() {
     common::run(|| {
-        let gtype = GtkThreadState::with(|state| {
+        let gtype = GlibThreadState::with(|state| {
             state.resolve_gtype("libgtk-4.so.1", "gtk_widget_get_type")
         });
 
@@ -104,7 +104,7 @@ fn resolve_gtype_resolves_known_get_type_function() {
 #[test]
 fn resolve_gtype_missing_symbol_returns_error() {
     common::run(|| {
-        let err = GtkThreadState::with(|state| {
+        let err = GlibThreadState::with(|state| {
             state
                 .resolve_gtype("libgtk-4.so.1", "no_such_get_type_symbol_12345")
                 .err()
@@ -119,7 +119,7 @@ fn resolve_gtype_missing_symbol_returns_error() {
 #[test]
 fn lookup_fundamental_fns_resolves_ref_and_unref() {
     common::run(|| {
-        let resolved = GtkThreadState::with(|state| {
+        let resolved = GlibThreadState::with(|state| {
             state
                 .lookup_fundamental_fns("libgobject-2.0.so.0", "g_object_ref", "g_object_unref")
                 .map(|(r, u)| (r.is_some(), u.is_some()))
@@ -132,7 +132,7 @@ fn lookup_fundamental_fns_resolves_ref_and_unref() {
 #[test]
 fn lookup_fundamental_fns_caches_repeated_lookups() {
     common::run(|| {
-        GtkThreadState::with(|state| {
+        GlibThreadState::with(|state| {
             let first = state
                 .lookup_fundamental_fns("libgobject-2.0.so.0", "g_object_ref", "g_object_unref")
                 .expect("first lookup should succeed");
@@ -149,7 +149,7 @@ fn lookup_fundamental_fns_caches_repeated_lookups() {
 #[test]
 fn lookup_fundamental_fns_empty_names_yield_none() {
     common::run(|| {
-        let resolved = GtkThreadState::with(|state| {
+        let resolved = GlibThreadState::with(|state| {
             state
                 .lookup_fundamental_fns("libgobject-2.0.so.0", "", "")
                 .map(|(r, u)| (r.is_none(), u.is_none()))
@@ -162,7 +162,7 @@ fn lookup_fundamental_fns_empty_names_yield_none() {
 #[test]
 fn lookup_fundamental_fns_missing_ref_symbol_errors() {
     common::run(|| {
-        let err = GtkThreadState::with(|state| {
+        let err = GlibThreadState::with(|state| {
             state
                 .lookup_fundamental_fns(
                     "libgobject-2.0.so.0",
@@ -181,7 +181,7 @@ fn lookup_fundamental_fns_missing_ref_symbol_errors() {
 #[test]
 fn lookup_fundamental_fns_missing_unref_symbol_errors() {
     common::run(|| {
-        let err = GtkThreadState::with(|state| {
+        let err = GlibThreadState::with(|state| {
             state
                 .lookup_fundamental_fns(
                     "libgobject-2.0.so.0",
@@ -200,9 +200,9 @@ fn lookup_fundamental_fns_missing_unref_symbol_errors() {
 #[test]
 fn gtk_thread_state_debug_format() {
     common::run(|| {
-        GtkThreadState::with(|state| {
+        GlibThreadState::with(|state| {
             let debug_str = format!("{state:?}");
-            assert!(debug_str.contains("GtkThreadState"));
+            assert!(debug_str.contains("GlibThreadState"));
             assert!(debug_str.contains("libraries_len"));
 
             let libs_debug = format!("{:?}", state.libs);
@@ -218,22 +218,22 @@ fn gtk_thread_state_debug_format() {
 
 #[test]
 fn gtk_thread_global_is_stable_singleton() {
-    let first = GtkThread::global() as *const GtkThread;
-    let second = GtkThread::global() as *const GtkThread;
+    let first = GlibThread::global() as *const GlibThread;
+    let second = GlibThread::global() as *const GlibThread;
     assert_eq!(first, second);
 }
 
 #[test]
 fn gtk_thread_join_without_handle_returns_none() {
-    assert!(GtkThread::global().join().is_none());
+    assert!(GlibThread::global().join().is_none());
 }
 
 #[test]
 fn gtk_thread_set_handle_then_join_collects_thread() {
     let handle = std::thread::spawn(|| {});
-    GtkThread::global().set_handle(handle);
+    GlibThread::global().set_handle(handle);
 
-    let result = GtkThread::global().join();
+    let result = GlibThread::global().join();
     assert!(result.is_none());
 }
 
@@ -245,8 +245,8 @@ fn gtk_thread_join_reports_str_panic_payload() {
         let handle = std::thread::spawn(|| {
             std::panic::panic_any("static panic message");
         });
-        GtkThread::global().set_handle(handle);
-        let result = GtkThread::global().join();
+        GlibThread::global().set_handle(handle);
+        let result = GlibThread::global().join();
         std::panic::set_hook(previous_hook);
 
         assert_eq!(result.as_deref(), Some("static panic message"));
@@ -261,8 +261,8 @@ fn gtk_thread_join_reports_string_panic_payload() {
         let handle = std::thread::spawn(|| {
             panic!("{}", String::from("owned panic message"));
         });
-        GtkThread::global().set_handle(handle);
-        let result = GtkThread::global().join();
+        GlibThread::global().set_handle(handle);
+        let result = GlibThread::global().join();
         std::panic::set_hook(previous_hook);
 
         assert_eq!(result.as_deref(), Some("owned panic message"));
@@ -277,8 +277,8 @@ fn gtk_thread_join_reports_unknown_panic_payload() {
         let handle = std::thread::spawn(|| {
             std::panic::panic_any(42_u32);
         });
-        GtkThread::global().set_handle(handle);
-        let result = GtkThread::global().join();
+        GlibThread::global().set_handle(handle);
+        let result = GlibThread::global().join();
         std::panic::set_hook(previous_hook);
 
         assert_eq!(result.as_deref(), Some("unknown panic"));
@@ -287,6 +287,6 @@ fn gtk_thread_join_reports_unknown_panic_payload() {
 
 #[test]
 fn gtk_thread_debug_format() {
-    let debug_str = format!("{:?}", GtkThread::global());
-    assert!(debug_str.contains("GtkThread"));
+    let debug_str = format!("{:?}", GlibThread::global());
+    assert!(debug_str.contains("GlibThread"));
 }

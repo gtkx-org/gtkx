@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 
 /** Union of GLib instance kinds the reconciler tracks as nodes. */
-export type Container =
+export type BackingInstance =
     | Gtk.Widget
     | Gtk.Application
     | Gtk.EventController
@@ -11,7 +11,7 @@ export type Container =
 
 export type Props = Record<string, unknown>;
 
-export type ContainerClass =
+export type BackingInstanceClass =
     | typeof Gtk.Widget
     | typeof Gtk.Application
     | typeof Gtk.EventController

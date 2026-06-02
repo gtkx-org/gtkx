@@ -27,21 +27,22 @@ const isOpaque = (boxed: GirBoxed): boolean => boxed.glibGetType === undefined &
  * camelCase, optional, nullable form of every writable field. Opaque boxed
  * records (disguised, no GType) have no known fields and get an empty bag.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param boxed - The boxed record
  * @param className - The local PascalCase class name
  */
 export const renderBoxedConstructorPropsInterface = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     boxed: GirBoxed,
     className: string,
 ): string => {
     if (isOpaque(boxed)) return `export interface ${className}ConstructorProps {}`;
-    const { slots } = computeBoxedFieldSlots(ctx, boxed.fields, boxed.isUnion);
+    const { slots } = computeBoxedFieldSlots(context, boxed.fields, boxed.isUnion);
     const lines = slots
         .filter(isWritableFieldSlot)
         .map(
-            (entry) => `${toIdentifier(toCamelCase(entry.field.name))}?: ${renderTsType(ctx, entry.field.type, true)};`,
+            (entry) =>
+                `${toIdentifier(toCamelCase(entry.field.name))}?: ${renderTsType(context, entry.field.type, true)};`,
         );
     const body = lines.length === 0 ? "" : `\n${indent(lines.join("\n"), 1)}\n`;
     return `export interface ${className}ConstructorProps {${body}}`;
@@ -55,30 +56,30 @@ export const renderBoxedConstructorPropsInterface = (
  * through a read-modify-write into their shared storage word. Opaque records
  * have no known layout, so their constructor throws.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param boxed - The boxed record
  * @param className - The local PascalCase class name
  */
-export const renderBoxedConstructor = (ctx: ModuleContext, boxed: GirBoxed, className: string): string => {
+export const renderBoxedConstructor = (context: ModuleContext, boxed: GirBoxed, className: string): string => {
     if (isOpaque(boxed)) {
         return `constructor() {\n${indent(`throw new Error(${quote(`Cannot construct ${className}: opaque boxed type with no known layout`)});`, 1)}\n}`;
     }
-    ctx.addRuntimeImport("alloc");
-    ctx.addRuntimeImport("setHandle");
-    const { slots, size } = computeBoxedFieldSlots(ctx, boxed.fields, boxed.isUnion);
-    const statements = [`const handle = alloc(${allocArgs(ctx, boxed, size).join(", ")});`];
+    context.addRuntimeImport("alloc");
+    context.addRuntimeImport("setHandle");
+    const { slots, size } = computeBoxedFieldSlots(context, boxed.fields, boxed.isUnion);
+    const statements = [`const handle = alloc(${allocArgs(context, boxed, size).join(", ")});`];
     for (const entry of slots) {
         if (!isWritableFieldSlot(entry)) continue;
-        statements.push(renderFieldWrite(ctx, entry));
+        statements.push(renderFieldWrite(context, entry));
     }
     statements.push("setHandle(this, handle);");
     const body = statements.join("\n");
     return `constructor(props: ${className}ConstructorProps = {}) {\n${indent(body, 1)}\n}`;
 };
 
-const allocArgs = (ctx: ModuleContext, boxed: GirBoxed, size: number): readonly string[] => {
+const allocArgs = (context: ModuleContext, boxed: GirBoxed, size: number): readonly string[] => {
     const glibTypeName = boxed.glibTypeName ?? boxed.cType;
-    const lib = ctx.namespace.sharedLibrary;
+    const lib = context.namespace.sharedLibrary;
     const args = [String(size)];
     if (glibTypeName !== undefined || lib !== undefined) {
         args.push(glibTypeName !== undefined ? quote(glibTypeName) : "undefined");
@@ -87,16 +88,16 @@ const allocArgs = (ctx: ModuleContext, boxed: GirBoxed, size: number): readonly 
     return args;
 };
 
-const renderFieldWrite = (ctx: ModuleContext, entry: WritableFieldSlot): string => {
-    ctx.addRuntimeImport("t");
-    ctx.addRuntimeImport("write");
-    const ffiType = renderFfiType(ctx, entry.field.type, "none");
+const renderFieldWrite = (context: ModuleContext, entry: WritableFieldSlot): string => {
+    context.addRuntimeImport("t");
+    context.addRuntimeImport("write");
+    const ffiType = renderFfiType(context, entry.field.type, "none");
     const name = toIdentifier(toCamelCase(entry.field.name));
     const offset = entry.slot.byteOffset;
     if (entry.slot.bitWidth === undefined) {
         return `if (props.${name} !== undefined) write(handle, ${ffiType}, ${offset}, props.${name});`;
     }
-    ctx.addRuntimeImport("read");
+    context.addRuntimeImport("read");
     const mask = (1 << entry.slot.bitWidth) - 1;
     const bitOffset = entry.slot.bitOffset ?? 0;
     const merged = `(((read(handle, ${ffiType}, ${offset}) as number) & ~(${mask} << ${bitOffset})) | ((Number(props.${name}) & ${mask}) << ${bitOffset})) >>> 0`;

@@ -13,7 +13,7 @@ export type McpClientOptions = {
     /** Socket path to connect to; defaults to `@gtkx/mcp`'s {@link DEFAULT_SOCKET_PATH}. */
     socketPath?: string;
     /** The GTK application ID the client should register with. */
-    appId: string;
+    applicationId: string;
 };
 
 const RECONNECT_DELAY_MS = 2000;
@@ -31,7 +31,7 @@ export class McpClient {
     private socket: net.Socket | null = null;
     private transport: JsonStreamTransport | null = null;
     private readonly socketPath: string;
-    private readonly appId: string;
+    private readonly applicationId: string;
     private reconnectTimer: NodeJS.Timeout | null = null;
     private hasConnected = false;
     private isStopping = false;
@@ -40,7 +40,7 @@ export class McpClient {
 
     constructor(options: McpClientOptions) {
         this.socketPath = options.socketPath ?? DEFAULT_SOCKET_PATH;
-        this.appId = options.appId;
+        this.applicationId = options.applicationId;
     }
 
     /**
@@ -160,7 +160,7 @@ export class McpClient {
             return Promise.reject(new Error("Transport not initialized"));
         }
         return this.transport.sendRequest("app.register", {
-            appId: this.appId,
+            applicationId: this.applicationId,
             pid: process.pid,
         });
     }

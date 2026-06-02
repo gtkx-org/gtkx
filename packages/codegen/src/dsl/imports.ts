@@ -77,7 +77,7 @@ export class ImportsBuilder {
      * newline. Side-effect imports come first (in insertion order),
      * followed by named/namespace/default imports sorted by specifier.
      */
-    emit(): string {
+    toSource(): string {
         const lines: string[] = [];
         for (const specifier of this.sideEffects) {
             lines.push(`import ${quote(specifier)};`);

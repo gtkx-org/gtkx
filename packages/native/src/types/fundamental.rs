@@ -10,7 +10,7 @@ use napi::{Env, JsObject};
 
 use super::prelude::*;
 use crate::managed::{Fundamental, NativeValue, RefFn, UnrefFn};
-use crate::state::GtkThreadState;
+use crate::state::GlibThreadState;
 
 #[derive(Debug, Clone)]
 pub struct FundamentalType {
@@ -44,7 +44,7 @@ impl FundamentalType {
     }
 
     pub fn lookup_fns(&self) -> anyhow::Result<(Option<RefFn>, Option<UnrefFn>)> {
-        GtkThreadState::with(|state| {
+        GlibThreadState::with(|state| {
             state.lookup_fundamental_fns(&self.library, &self.ref_func, &self.unref_func)
         })
     }

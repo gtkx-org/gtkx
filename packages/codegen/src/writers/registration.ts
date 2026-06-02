@@ -25,20 +25,20 @@ export type NativeClassRegistration = {
  * Emits nothing when the registration carries no metadata at all, so callers
  * can pass the result of optional sub-renderers without pre-checking.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param registration - The pre-rendered descriptor pieces
  */
-export const appendNativeClassRegistration = (ctx: ModuleContext, registration: NativeClassRegistration): void => {
+export const appendNativeClassRegistration = (context: ModuleContext, registration: NativeClassRegistration): void => {
     const { className, role, getTypeRef, construction, vfuncs, signals } = registration;
     if (getTypeRef === undefined && construction === undefined && vfuncs === undefined && signals === undefined) {
         return;
     }
-    ctx.addRuntimeImport("registerNativeClass");
+    context.addRuntimeImport("registerNativeClass");
     const lines: string[] = [`role: ${quote(role)},`];
     if (getTypeRef !== undefined) lines.push(`gtype: ${getTypeRef},`);
     if (construction !== undefined) lines.push(`construction: ${construction},`);
     if (vfuncs !== undefined) lines.push(`vfuncs: ${vfuncs},`);
     if (signals !== undefined) lines.push(`signals: ${signals},`);
     const body = lines.map((line) => indent(line, 1)).join("\n");
-    ctx.module.appendRegistration(`registerNativeClass(${className}, {\n${body}\n});`);
+    context.module.appendRegistration(`registerNativeClass(${className}, {\n${body}\n});`);
 };

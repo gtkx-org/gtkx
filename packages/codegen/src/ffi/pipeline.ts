@@ -27,39 +27,39 @@ export const generateNamespaceModule = (
     namespace: GirNamespace,
     repository: GirRepository,
 ): { readonly path: string; readonly source: string } => {
-    const ctx = new ModuleContext(namespace, repository);
-    ctx.addGObjectBootstrapImports();
+    const context = new ModuleContext(namespace, repository);
+    context.addGObjectBootstrapImports();
 
     for (const enumeration of namespace.enums) {
-        emitEnum(ctx, enumeration);
+        emitEnum(context, enumeration);
     }
     for (const boxed of namespace.boxeds) {
-        emitBoxed(ctx, boxed);
+        emitBoxed(context, boxed);
     }
     for (const klass of topologicalClassOrder(namespace.classes, namespace.name)) {
-        emitClass(ctx, klass);
+        emitClass(context, klass);
     }
     for (const iface of namespace.interfaces) {
-        emitInterface(ctx, iface);
+        emitInterface(context, iface);
     }
     for (const callback of namespace.callbacks) {
-        emitCallback(ctx, callback);
+        emitCallback(context, callback);
     }
     for (const fn of namespace.functions) {
-        emitNamespaceFunction(ctx, fn);
+        emitNamespaceFunction(context, fn);
     }
-    emitNamespaceBootstrap(ctx, namespace);
+    emitNamespaceBootstrap(context, namespace);
     for (const constant of namespace.constants) {
-        emitConstant(ctx, constant);
+        emitConstant(context, constant);
     }
     for (const alias of namespace.aliases) {
-        emitAlias(ctx, alias);
+        emitAlias(context, alias);
     }
 
     const directory = namespace.name.toLowerCase();
     return {
         path: `${directory}/${directory}.ts`,
-        source: ctx.module.emit(),
+        source: context.module.toSource(),
     };
 };
 

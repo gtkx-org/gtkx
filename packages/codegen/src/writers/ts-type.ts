@@ -31,16 +31,16 @@ import type {
  * arrays as `T[]`, lists as `T[]`, hashtables as `Record<K, V>`, primitive
  * categories to their TS counterpart, and `undefined` to `void`).
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param ref - The type reference, or `undefined` for void
  * @param isNullable - Whether the slot accepts `null`
  */
-export const renderTsType = (ctx: ModuleContext, ref: GirTypeRef | undefined, isNullable = false): string => {
-    const base = writeBaseType(ctx, ref);
+export const renderTsType = (context: ModuleContext, ref: GirTypeRef | undefined, isNullable = false): string => {
+    const base = renderBaseType(context, ref);
     return isNullable ? `${base} | null` : base;
 };
 
-const writeBaseType = (ctx: ModuleContext, ref: GirTypeRef | undefined): string => {
+const renderBaseType = (context: ModuleContext, ref: GirTypeRef | undefined): string => {
     if (ref === undefined) return "void";
     switch (ref.kind) {
         case "primitive":
@@ -50,29 +50,29 @@ const writeBaseType = (ctx: ModuleContext, ref: GirTypeRef | undefined): string 
         case "callback":
             return "((...args: any[]) => any)";
         case "named":
-            return namedTsType(ctx, ref);
+            return namedTsType(context, ref);
         case "array":
-            return arrayTsType(ctx, ref);
+            return arrayTsType(context, ref);
         case "list":
-            return listTsType(ctx, ref);
+            return listTsType(context, ref);
         case "hashtable":
-            return hashTableTsType(ctx, ref);
+            return hashTableTsType(context, ref);
     }
 };
 
 const primitiveTsType = (ref: PrimitiveTypeRef): string => PRIMITIVE_TS_TYPE[ref.category];
 
-const namedTsType = (ctx: ModuleContext, ref: NamedTypeRef): string => {
-    const namespaceName = ref.namespaceName ?? ctx.namespace.name;
-    const resolved = ctx.repository.resolveNamed(namespaceName, ref.typeName);
+const namedTsType = (context: ModuleContext, ref: NamedTypeRef): string => {
+    const namespaceName = ref.namespaceName ?? context.namespace.name;
+    const resolved = context.repository.resolveNamed(namespaceName, ref.typeName);
     if (resolved === undefined) {
-        return qualifiedTypeReference(ctx, namespaceName, ref.typeName);
+        return qualifiedTypeReference(context, namespaceName, ref.typeName);
     }
-    return resolvedTsType(ctx, namespaceName, ref.typeName, resolved);
+    return resolvedTsType(context, namespaceName, ref.typeName, resolved);
 };
 
 const resolvedTsType = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     namespaceName: string,
     typeName: string,
     resolved: ResolvedNamed,
@@ -83,34 +83,34 @@ const resolvedTsType = (
         case "boxed":
         case "enum":
         case "callback":
-            return qualifiedTypeReference(ctx, namespaceName, typeName);
+            return qualifiedTypeReference(context, namespaceName, typeName);
         case "alias": {
             const exportName = aliasExportName(namespaceName, typeName);
-            if (namespaceName === ctx.namespace.name) return exportName;
-            return `${ctx.addCrossNamespaceImport(namespaceName)}.${exportName}`;
+            if (namespaceName === context.namespace.name) return exportName;
+            return `${context.addCrossNamespaceImport(namespaceName)}.${exportName}`;
         }
     }
 };
 
-const qualifiedTypeReference = (ctx: ModuleContext, namespaceName: string, typeName: string): string => {
-    if (namespaceName === ctx.namespace.name) return typeName;
-    const alias = ctx.addCrossNamespaceImport(namespaceName);
+const qualifiedTypeReference = (context: ModuleContext, namespaceName: string, typeName: string): string => {
+    if (namespaceName === context.namespace.name) return typeName;
+    const alias = context.addCrossNamespaceImport(namespaceName);
     return `${alias}.${typeName}`;
 };
 
-const arrayTsType = (ctx: ModuleContext, ref: ArrayTypeRef): string => {
-    const element = writeBaseType(ctx, ref.element);
+const arrayTsType = (context: ModuleContext, ref: ArrayTypeRef): string => {
+    const element = renderBaseType(context, ref.element);
     return `${element}[]`;
 };
 
-const listTsType = (ctx: ModuleContext, ref: ListTypeRef): string => {
+const listTsType = (context: ModuleContext, ref: ListTypeRef): string => {
     if (ref.flavor === "gbytearray") return "number[]";
-    const element = writeBaseType(ctx, ref.element);
+    const element = renderBaseType(context, ref.element);
     return `${element}[]`;
 };
 
-const hashTableTsType = (ctx: ModuleContext, ref: HashTableTypeRef): string => {
-    const key = writeBaseType(ctx, ref.key);
-    const value = writeBaseType(ctx, ref.value);
+const hashTableTsType = (context: ModuleContext, ref: HashTableTypeRef): string => {
+    const key = renderBaseType(context, ref.key);
+    const value = renderBaseType(context, ref.value);
     return `Map<${key}, ${value}>`;
 };

@@ -13,14 +13,14 @@ export class ListItemNode extends Node<Gtk.ListItem | Gtk.ListHeader, Props, Nod
         super.appendChild(child);
 
         if (child instanceof WidgetNode) {
-            unparentWidget(child.container);
-            this.container.setChild(child.container);
+            unparentWidget(child.backingInstance);
+            this.backingInstance.setChild(child.backingInstance);
         }
     }
 
     public override removeChild(child: Node): void {
         if (child instanceof WidgetNode) {
-            this.container.setChild(null);
+            this.backingInstance.setChild(null);
         }
 
         super.removeChild(child);
@@ -30,8 +30,8 @@ export class ListItemNode extends Node<Gtk.ListItem | Gtk.ListHeader, Props, Nod
         super.insertBefore(child, before);
 
         if (child instanceof WidgetNode) {
-            unparentWidget(child.container);
-            this.container.setChild(child.container);
+            unparentWidget(child.backingInstance);
+            this.backingInstance.setChild(child.backingInstance);
         }
     }
 }

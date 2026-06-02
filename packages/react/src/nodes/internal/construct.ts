@@ -1,5 +1,5 @@
 import { getNativeClassByName } from "@gtkx/ffi";
-import type { Container, Props } from "../../types.js";
+import type { BackingInstance, Props } from "../../types.js";
 
 /**
  * Instantiates a container widget from the React reconciler.
@@ -13,10 +13,10 @@ import type { Container, Props } from "../../types.js";
  * @param props - React prop bag; only construct-time properties are picked
  *   up, all others are ignored at construction
  */
-export function createContainerWithProperties(typeName: string, props: Props): Container {
+export function createContainerWithProperties(typeName: string, props: Props): BackingInstance {
     const cls = getNativeClassByName(typeName);
     if (!cls) {
         throw new Error(`createContainerWithProperties: no registered class for GLib type '${typeName}'`);
     }
-    return new (cls as new (props: Record<string, unknown>) => Container)(props as Record<string, unknown>);
+    return new (cls as new (props: Record<string, unknown>) => BackingInstance)(props as Record<string, unknown>);
 }

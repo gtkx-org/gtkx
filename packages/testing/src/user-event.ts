@@ -44,10 +44,10 @@ const wrapValue = (content: DropContent): GObject.Value => {
 };
 
 const findExistingController = <T extends Gtk.EventController>(
-    element: Gtk.Widget,
+    widget: Gtk.Widget,
     controllerType: new (...args: never[]) => T,
 ): T | null => {
-    const controllers = element.observeControllers();
+    const controllers = widget.observeControllers();
     const nItems = controllers.getNItems();
     for (let i = 0; i < nItems; i++) {
         const controller = controllers.getItem(i);
@@ -57,10 +57,10 @@ const findExistingController = <T extends Gtk.EventController>(
 };
 
 const findController = <T extends Gtk.EventController>(
-    element: Gtk.Widget,
+    widget: Gtk.Widget,
     controllerType: new (...args: never[]) => T,
 ): T => {
-    const controller = findExistingController(element, controllerType);
+    const controller = findExistingController(widget, controllerType);
     if (!controller) {
         throw new Error(`No ${controllerType.name} controller is attached to the widget`);
     }
@@ -75,19 +75,19 @@ export type TabOptions = {
     shift?: boolean;
 };
 
-const click = async (element: Gtk.Widget): Promise<void> => {
-    if (element instanceof Gtk.Button) {
-        await emitClickSequence(element, 1);
+const click = async (widget: Gtk.Widget): Promise<void> => {
+    if (widget instanceof Gtk.Button) {
+        await emitClickSequence(widget, 1);
         return;
     }
     await act(() => {
-        element.activate();
+        widget.activate();
     });
 };
 
-const emitClickSequence = async (element: Gtk.Widget, nPress: number): Promise<void> => {
+const emitClickSequence = async (widget: Gtk.Widget, nPress: number): Promise<void> => {
     await act(() => {
-        const controller = getOrCreateController(element, Gtk.GestureClick);
+        const controller = getOrCreateController(widget, Gtk.GestureClick);
 
         for (let i = 1; i <= nPress; i++) {
             controller.emit("pressed", i, 0, 0);
@@ -96,14 +96,14 @@ const emitClickSequence = async (element: Gtk.Widget, nPress: number): Promise<v
     });
 };
 
-const dblClick = (element: Gtk.Widget): Promise<void> => emitClickSequence(element, 2);
+const dblClick = (widget: Gtk.Widget): Promise<void> => emitClickSequence(widget, 2);
 
-const tripleClick = (element: Gtk.Widget): Promise<void> => emitClickSequence(element, 3);
+const tripleClick = (widget: Gtk.Widget): Promise<void> => emitClickSequence(widget, 3);
 
-const tab = async (element: Gtk.Widget, options?: TabOptions): Promise<void> => {
+const tab = async (widget: Gtk.Widget, options?: TabOptions): Promise<void> => {
     await act(() => {
         const direction = options?.shift ? Gtk.DirectionType.TAB_BACKWARD : Gtk.DirectionType.TAB_FORWARD;
-        const root = element.getRoot();
+        const root = widget.getRoot();
 
         if (root && root instanceof Gtk.Widget) {
             root.childFocus(direction);
@@ -111,41 +111,41 @@ const tab = async (element: Gtk.Widget, options?: TabOptions): Promise<void> => 
     });
 };
 
-const getEditableDelegate = (element: Gtk.Widget): Gtk.Widget | null => {
-    if (!isEditable(element)) return null;
-    const getDelegate = (element as { getDelegate?: () => Gtk.Editable | null }).getDelegate;
+const getEditableDelegate = (widget: Gtk.Widget): Gtk.Widget | null => {
+    if (!isEditable(widget)) return null;
+    const getDelegate = (widget as { getDelegate?: () => Gtk.Editable | null }).getDelegate;
     if (typeof getDelegate !== "function") return null;
-    const delegate = getDelegate.call(element);
+    const delegate = getDelegate.call(widget);
     return delegate instanceof Gtk.Widget ? delegate : null;
 };
 
-const type = async (element: Gtk.Widget, text: string): Promise<void> => {
+const type = async (widget: Gtk.Widget, text: string): Promise<void> => {
     await act(() => {
-        if (!isEditable(element)) {
+        if (!isEditable(widget)) {
             throw new Error(
                 "Cannot type into element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)",
             );
         }
 
-        const target = getEditableDelegate(element) ?? element;
+        const target = getEditableDelegate(widget) ?? widget;
         if (target instanceof Gtk.Text || target instanceof Gtk.TextView) {
             target.emit("insert-at-cursor", text);
             return;
         }
 
-        const position = element.getPosition();
-        const newPosition = element.insertText(text, text.length, position);
-        element.setPosition(newPosition);
+        const position = widget.getPosition();
+        const newPosition = widget.insertText(text, text.length, position);
+        widget.setPosition(newPosition);
     });
 };
 
-const clear = async (element: Gtk.Widget): Promise<void> => {
+const clear = async (widget: Gtk.Widget): Promise<void> => {
     await act(() => {
-        if (!isEditable(element)) {
+        if (!isEditable(widget)) {
             throw new Error("Cannot clear element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)");
         }
 
-        element.setText("");
+        widget.setText("");
     });
 };
 
@@ -183,31 +183,31 @@ const isListView = (widget: Gtk.Widget): widget is Gtk.ListView | Gtk.GridView |
     return widget instanceof Gtk.ListView || widget instanceof Gtk.GridView || widget instanceof Gtk.ColumnView;
 };
 
-const selectComboBoxOption = (element: Gtk.Widget, values: number | number[], valueArray: number[]): void => {
+const selectComboBoxOption = (widget: Gtk.Widget, values: number | number[], valueArray: number[]): void => {
     if (Array.isArray(values) && values.length > 1) {
         throw new Error("Cannot select multiple options: ComboBox only supports single selection");
     }
     const [selection] = valueArray;
     if (selection === undefined) return;
-    if (element instanceof Gtk.DropDown) {
-        element.setSelected(selection);
-    } else if (element instanceof Gtk.ComboBox) {
-        element.setActive(selection);
+    if (widget instanceof Gtk.DropDown) {
+        widget.setSelected(selection);
+    } else if (widget instanceof Gtk.ComboBox) {
+        widget.setActive(selection);
     }
 };
 
-const selectListBoxOptions = (element: Gtk.ListBox, valueArray: number[]): void => {
+const selectListBoxOptions = (widget: Gtk.ListBox, valueArray: number[]): void => {
     for (const value of valueArray) {
-        const row = element.getRowAtIndex(value);
+        const row = widget.getRowAtIndex(value);
         if (row) {
-            element.selectRow(row);
+            widget.selectRow(row);
             row.activate();
         }
     }
 };
 
-const selectInListView = (element: Gtk.ListView | Gtk.GridView | Gtk.ColumnView, valueArray: number[]): void => {
-    const selectionModel = element.getModel();
+const selectInListView = (widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView, valueArray: number[]): void => {
+    const selectionModel = widget.getModel();
     if (selectionModel === null) {
         throw new Error("Cannot select options: list view has no selection model");
     }
@@ -215,32 +215,32 @@ const selectInListView = (element: Gtk.ListView | Gtk.GridView | Gtk.ColumnView,
     selectListViewItems(selectionModel, valueArray, !isMultiSelection);
 };
 
-const selectByRole = (element: Gtk.Widget, values: number | number[], valueArray: number[]): void => {
-    if (!isSelectable(element)) {
+const selectByRole = (widget: Gtk.Widget, values: number | number[], valueArray: number[]): void => {
+    if (!isSelectable(widget)) {
         throw new Error("Cannot select options: expected selectable widget (COMBO_BOX or LIST)");
     }
 
-    const role = element.getAccessibleRole();
+    const role = widget.getAccessibleRole();
     if (role === Gtk.AccessibleRole.COMBO_BOX) {
-        selectComboBoxOption(element, values, valueArray);
+        selectComboBoxOption(widget, values, valueArray);
     } else if (role === Gtk.AccessibleRole.LIST) {
-        selectListBoxOptions(element as Gtk.ListBox, valueArray);
+        selectListBoxOptions(widget as Gtk.ListBox, valueArray);
     }
 };
 
-const selectOptions = async (element: Gtk.Widget, values: number | number[]): Promise<void> => {
+const selectOptions = async (widget: Gtk.Widget, values: number | number[]): Promise<void> => {
     await act(() => {
         const valueArray = Array.isArray(values) ? values : [values];
-        if (isListView(element)) {
-            selectInListView(element, valueArray);
+        if (isListView(widget)) {
+            selectInListView(widget, valueArray);
             return;
         }
-        selectByRole(element, values, valueArray);
+        selectByRole(widget, values, valueArray);
     });
 };
 
-const deselectInListView = (element: Gtk.ListView | Gtk.GridView | Gtk.ColumnView, valueArray: number[]): void => {
-    const selectionModel = element.getModel();
+const deselectInListView = (widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView, valueArray: number[]): void => {
+    const selectionModel = widget.getModel();
     if (selectionModel === null) {
         throw new Error("Cannot deselect options: list view has no selection model");
     }
@@ -258,39 +258,39 @@ const deselectInListBox = (listBox: Gtk.ListBox, valueArray: number[]): void => 
     }
 };
 
-const deselectOptions = async (element: Gtk.Widget, values: number | number[]): Promise<void> => {
+const deselectOptions = async (widget: Gtk.Widget, values: number | number[]): Promise<void> => {
     await act(() => {
         const valueArray = Array.isArray(values) ? values : [values];
-        if (isListView(element)) {
-            deselectInListView(element, valueArray);
+        if (isListView(widget)) {
+            deselectInListView(widget, valueArray);
             return;
         }
-        if (element.getAccessibleRole() !== Gtk.AccessibleRole.LIST) {
+        if (widget.getAccessibleRole() !== Gtk.AccessibleRole.LIST) {
             throw new Error("Cannot deselect options: only ListBox supports deselection");
         }
-        deselectInListBox(element as Gtk.ListBox, valueArray);
+        deselectInListBox(widget as Gtk.ListBox, valueArray);
     });
 };
 
-const getOrCreateController = <T extends Gtk.EventController>(element: Gtk.Widget, controllerType: new () => T): T => {
-    const existing = findExistingController(element, controllerType);
+const getOrCreateController = <T extends Gtk.EventController>(widget: Gtk.Widget, controllerType: new () => T): T => {
+    const existing = findExistingController(widget, controllerType);
     if (existing) return existing;
 
     const controller = new controllerType();
-    element.addController(controller);
+    widget.addController(controller);
     return controller;
 };
 
-const hover = async (element: Gtk.Widget): Promise<void> => {
+const hover = async (widget: Gtk.Widget): Promise<void> => {
     await act(() => {
-        const controller = getOrCreateController(element, Gtk.EventControllerMotion);
+        const controller = getOrCreateController(widget, Gtk.EventControllerMotion);
         controller.emit("enter", 0, 0);
     });
 };
 
-const unhover = async (element: Gtk.Widget): Promise<void> => {
+const unhover = async (widget: Gtk.Widget): Promise<void> => {
     await act(() => {
-        const controller = getOrCreateController(element, Gtk.EventControllerMotion);
+        const controller = getOrCreateController(widget, Gtk.EventControllerMotion);
         controller.emit("leave");
     });
 };
@@ -448,17 +448,17 @@ const dispatchShortcutsOnWidget = (widget: Gtk.Widget, keyval: number, modifiers
     return false;
 };
 
-const dispatchShortcuts = (element: Gtk.Widget, keyval: number, modifiers: number): boolean => {
-    const delegate = getEditableDelegate(element);
+const dispatchShortcuts = (widget: Gtk.Widget, keyval: number, modifiers: number): boolean => {
+    const delegate = getEditableDelegate(widget);
     if (delegate && dispatchShortcutsOnWidget(delegate, keyval, modifiers)) return true;
-    for (let widget: Gtk.Widget | null = element; widget; widget = widget.getParent()) {
-        if (dispatchShortcutsOnWidget(widget, keyval, modifiers)) return true;
+    for (let current: Gtk.Widget | null = widget; current; current = current.getParent()) {
+        if (dispatchShortcutsOnWidget(current, keyval, modifiers)) return true;
     }
     return false;
 };
 
 const applyKeyAction = async (
-    element: Gtk.Widget,
+    widget: Gtk.Widget,
     controller: Gtk.EventControllerKey,
     state: UserEventState,
     action: KeyAction,
@@ -467,26 +467,26 @@ const applyKeyAction = async (
     const signalName = action.press ? "key-pressed" : "key-released";
     controller.emit(signalName, action.keyval, 0, state.modifierState);
     if (action.press) {
-        const handled = dispatchShortcuts(element, action.keyval, state.modifierState);
-        if (!handled && action.keyval === Gdk.KEY_Return && isEditable(element) && !(element instanceof Gtk.TextView)) {
-            await fireEvent(element, "activate");
+        const handled = dispatchShortcuts(widget, action.keyval, state.modifierState);
+        if (!handled && action.keyval === Gdk.KEY_Return && isEditable(widget) && !(widget instanceof Gtk.TextView)) {
+            await fireEvent(widget, "activate");
         }
     }
 };
 
 const keyboardWith =
     (state: UserEventState) =>
-    async (element: Gtk.Widget, input: string): Promise<void> => {
+    async (widget: Gtk.Widget, input: string): Promise<void> => {
         await act(async () => {
-            const controller = getOrCreateController(element, Gtk.EventControllerKey);
+            const controller = getOrCreateController(widget, Gtk.EventControllerKey);
             for (const action of parseKeyboardInput(input)) {
-                await applyKeyAction(element, controller, state, action);
+                await applyKeyAction(widget, controller, state, action);
             }
         });
     };
 
-const keyboard = (element: Gtk.Widget, input: string): Promise<void> =>
-    keyboardWith(createInitialState())(element, input);
+const keyboard = (widget: Gtk.Widget, input: string): Promise<void> =>
+    keyboardWith(createInitialState())(widget, input);
 
 /**
  * Pointer input actions for simulating mouse interactions.
@@ -521,40 +521,40 @@ const applyPointerInput = (controller: Gtk.GestureClick, state: UserEventState, 
 
 const pointerWith =
     (state: UserEventState) =>
-    async (element: Gtk.Widget, input: PointerInput): Promise<void> => {
+    async (widget: Gtk.Widget, input: PointerInput): Promise<void> => {
         await act(() => {
-            const controller = getOrCreateController(element, Gtk.GestureClick);
+            const controller = getOrCreateController(widget, Gtk.GestureClick);
             applyPointerInput(controller, state, input);
         });
     };
 
-const pointer = (element: Gtk.Widget, input: PointerInput): Promise<void> =>
-    pointerWith(createInitialState())(element, input);
+const pointer = (widget: Gtk.Widget, input: PointerInput): Promise<void> =>
+    pointerWith(createInitialState())(widget, input);
 
-const rotate = async (element: Gtk.Widget, angle: number, deltaAngle: number = angle): Promise<void> => {
+const rotate = async (widget: Gtk.Widget, angle: number, deltaAngle: number = angle): Promise<void> => {
     await act(() => {
-        const controller = findController(element, Gtk.GestureRotate);
+        const controller = findController(widget, Gtk.GestureRotate);
         controller.emit("angle-changed", angle, deltaAngle);
     });
 };
 
-const zoom = async (element: Gtk.Widget, scale: number): Promise<void> => {
+const zoom = async (widget: Gtk.Widget, scale: number): Promise<void> => {
     await act(() => {
-        const controller = findController(element, Gtk.GestureZoom);
+        const controller = findController(widget, Gtk.GestureZoom);
         controller.emit("scale-changed", scale);
     });
 };
 
-const swipe = async (element: Gtk.Widget, velocityX: number, velocityY: number): Promise<void> => {
+const swipe = async (widget: Gtk.Widget, velocityX: number, velocityY: number): Promise<void> => {
     await act(() => {
-        const controller = findController(element, Gtk.GestureSwipe);
+        const controller = findController(widget, Gtk.GestureSwipe);
         controller.emit("swipe", velocityX, velocityY);
     });
 };
 
-const longPress = async (element: Gtk.Widget, x: number = 0, y: number = 0): Promise<void> => {
+const longPress = async (widget: Gtk.Widget, x: number = 0, y: number = 0): Promise<void> => {
     await act(() => {
-        const controller = findController(element, Gtk.GestureLongPress);
+        const controller = findController(widget, Gtk.GestureLongPress);
         controller.emit("pressed", x, y);
     });
 };
@@ -603,11 +603,11 @@ const withGestureDragState = <T>(
     }
 };
 
-const drag = async (element: Gtk.Widget, dx: number, dy: number, options: DragOptions = {}): Promise<void> => {
+const drag = async (widget: Gtk.Widget, dx: number, dy: number, options: DragOptions = {}): Promise<void> => {
     const startX = options.startX ?? 0;
     const startY = options.startY ?? 0;
     await act(() => {
-        const controller = findController(element, Gtk.GestureDrag);
+        const controller = findController(widget, Gtk.GestureDrag);
         withGestureDragState(controller, startX, startY, (setOffset) => {
             controller.emit("drag-begin", startX, startY);
             setOffset(dx, dy);
@@ -617,9 +617,9 @@ const drag = async (element: Gtk.Widget, dx: number, dy: number, options: DragOp
     });
 };
 
-const drop = async (element: Gtk.Widget, content: DropContent, options: DropOptions = {}): Promise<void> => {
+const drop = async (widget: Gtk.Widget, content: DropContent, options: DropOptions = {}): Promise<void> => {
     await act(() => {
-        const target = findController(element, Gtk.DropTarget);
+        const target = findController(widget, Gtk.DropTarget);
         target.emit("drop", wrapValue(content), options.x ?? 0, options.y ?? 0);
     });
 };
@@ -687,7 +687,7 @@ export const userEvent = {
     /**
      * Simulates Tab key navigation.
      *
-     * @param element - Starting element
+     * @param widget - Starting widget
      * @param options - Use `shift: true` for backwards navigation
      */
     tab,
@@ -697,7 +697,7 @@ export const userEvent = {
      * Appends text to the current content. Works with Entry, SearchEntry,
      * and SpinButton widgets.
      *
-     * @param element - The editable widget
+     * @param widget - The editable widget
      * @param text - Text to type
      */
     type,
@@ -712,7 +712,7 @@ export const userEvent = {
      *
      * Works with DropDown, ComboBox, ListBox, ListView, GridView, and ColumnView.
      *
-     * @param element - The selectable widget
+     * @param widget - The selectable widget
      * @param values - Index or array of indices to select
      */
     selectOptions,
@@ -721,7 +721,7 @@ export const userEvent = {
      *
      * Works with ListBox and multi-selection list views.
      *
-     * @param element - The selectable widget
+     * @param widget - The selectable widget
      * @param values - Index or array of indices to deselect
      */
     deselectOptions,
@@ -745,9 +745,9 @@ export const userEvent = {
      *
      * @example
      * ```tsx
-     * await userEvent.keyboard(element, "hello");
-     * await userEvent.keyboard(element, "{Enter}");
-     * await userEvent.keyboard(element, "{Shift>}A{/Shift}");
+     * await userEvent.keyboard(widget, "hello");
+     * await userEvent.keyboard(widget, "{Enter}");
+     * await userEvent.keyboard(widget, "{Shift>}A{/Shift}");
      * ```
      */
     keyboard,
@@ -758,8 +758,8 @@ export const userEvent = {
      *
      * @example
      * ```tsx
-     * await userEvent.pointer(element, "click");
-     * await userEvent.pointer(element, "[MouseLeft]");
+     * await userEvent.pointer(widget, "click");
+     * await userEvent.pointer(widget, "[MouseLeft]");
      * ```
      */
     pointer,
@@ -770,7 +770,7 @@ export const userEvent = {
      * `angle-changed` with the given absolute and delta angles in radians.
      * Throws if the widget has no `GestureRotate` controller attached.
      *
-     * @param element - The widget receiving the gesture
+     * @param widget - The widget receiving the gesture
      * @param angle - Absolute rotation angle in radians
      * @param deltaAngle - Angle delta since gesture start, in radians (default: `angle`)
      */
@@ -782,7 +782,7 @@ export const userEvent = {
      * `scale-changed` with the given scale factor. Throws if the widget
      * has no `GestureZoom` controller attached.
      *
-     * @param element - The widget receiving the gesture
+     * @param widget - The widget receiving the gesture
      * @param scale - The new scale factor (1 = no zoom)
      */
     zoom,
@@ -793,7 +793,7 @@ export const userEvent = {
      * with the supplied velocity vector. Throws if the widget has no
      * `GestureSwipe` controller attached.
      *
-     * @param element - The widget receiving the gesture
+     * @param widget - The widget receiving the gesture
      * @param velocityX - Horizontal velocity in pixels per second
      * @param velocityY - Vertical velocity in pixels per second
      */
@@ -805,7 +805,7 @@ export const userEvent = {
      * `pressed` at the supplied coordinates. Throws if the widget has no
      * `GestureLongPress` controller attached.
      *
-     * @param element - The widget receiving the gesture
+     * @param widget - The widget receiving the gesture
      * @param x - X coordinate in widget-local pixels (default: 0)
      * @param y - Y coordinate in widget-local pixels (default: 0)
      */
@@ -817,7 +817,7 @@ export const userEvent = {
      * `drag-begin` → `drag-update` → `drag-end` sequence with the supplied
      * offset. Throws if the widget has no `GestureDrag` controller attached.
      *
-     * @param element - The widget receiving the gesture
+     * @param widget - The widget receiving the gesture
      * @param dx - Horizontal offset from the gesture origin
      * @param dy - Vertical offset from the gesture origin
      */
@@ -830,7 +830,7 @@ export const userEvent = {
      * `GObject.Value` instances are forwarded unchanged) and emits `drop`.
      * Throws if the widget has no `DropTarget` controller attached.
      *
-     * @param element - The drop target widget
+     * @param widget - The drop target widget
      * @param content - Payload value (auto-marshalled or a pre-built GObject.Value)
      * @param options - Drop coordinates relative to the widget
      */
@@ -910,6 +910,6 @@ export type UserEventInstance = {
     drag: typeof drag;
     drop: typeof drop;
     dragAndDrop: typeof dragAndDrop;
-    keyboard: (element: Gtk.Widget, input: string) => Promise<void>;
-    pointer: (element: Gtk.Widget, input: PointerInput) => Promise<void>;
+    keyboard: (widget: Gtk.Widget, input: string) => Promise<void>;
+    pointer: (widget: Gtk.Widget, input: PointerInput) => Promise<void>;
 };

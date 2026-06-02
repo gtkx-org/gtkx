@@ -1,3 +1,4 @@
+import type { SignalHandler } from "@gtkx/ffi";
 import * as GtkSource from "@gtkx/gi/gtksource";
 import type { GtkSourceViewProps } from "../jsx.js";
 import { hasChanged } from "./internal/props.js";
@@ -23,7 +24,7 @@ type SourceViewProps = Pick<
 
 export class SourceViewNode extends TextViewNode {
     protected override createBufferController(): TextBufferController<GtkSource.Buffer> {
-        return new TextBufferController<GtkSource.Buffer>(this, this.container, () => new GtkSource.Buffer());
+        return new TextBufferController<GtkSource.Buffer>(this, this.backingInstance, () => new GtkSource.Buffer());
     }
 
     protected override ensureBufferController(): TextBufferController<GtkSource.Buffer> {
@@ -125,7 +126,7 @@ export class SourceViewNode extends TextViewNode {
             owner: this,
             obj: buffer,
             signal: "highlight-updated",
-            handler: onHighlightUpdated ?? undefined,
+            handler: (onHighlightUpdated ?? undefined) as SignalHandler | undefined,
         });
     }
 }

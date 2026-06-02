@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { DialogButtonProps } from "../jsx.js";
-import type { Container } from "../types.js";
+import type { BackingInstance } from "../types.js";
 import { imperative, type PropDescriptorTable } from "./internal/apply-props.js";
 import { WidgetNode } from "./widget.js";
 
@@ -31,7 +31,7 @@ export class DialogButtonNode<
 > extends WidgetNode<TButton, P> {
     protected readonly dialog: TDialog;
 
-    constructor(typeName: string, props: P, container: TButton, rootContainer: Container) {
+    constructor(typeName: string, props: P, container: TButton, rootContainer: BackingInstance) {
         super(typeName, props, container, rootContainer);
         const dialog = container.getDialog();
         if (!dialog) {

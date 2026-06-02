@@ -11,11 +11,11 @@ import type { GirTypeRef } from "../gir/type-ref.js";
  * `G_CSET_DIGITS = "0123456789"`. Other constants keep the bare-numeral form
  * when the value is a plain number and are quoted otherwise.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param constant - The constant
  */
-export const emitConstant = (ctx: ModuleContext, constant: GirConstant): void => {
-    ctx.module.appendDeclaration(`export const ${constant.name} = ${constantLiteral(constant)};`);
+export const emitConstant = (context: ModuleContext, constant: GirConstant): void => {
+    context.module.appendDeclaration(`export const ${constant.name} = ${constantLiteral(constant)};`);
 };
 
 const constantLiteral = (constant: GirConstant): string => {

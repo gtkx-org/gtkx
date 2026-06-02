@@ -16,33 +16,33 @@ const TYPE_FROM_NAME_LIB = "libgobject-2.0.so.0";
  * `g_type_from_name` and returns a `() => g_type_from_name("…")` thunk. Returns
  * `undefined` when neither path is available.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param getType - The C symbol name or the GIR sentinel `"intern"`
  * @param glibTypeName - The GLib type name (for `"intern"` get-types)
  */
 export const renderGetTypeReference = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     getType: string,
     glibTypeName: string | undefined,
 ): string | undefined => {
     if (getType === "intern" || getType === "") {
         if (glibTypeName === undefined) return undefined;
-        appendGTypeFromNameBinding(ctx);
+        appendGTypeFromNameBinding(context);
         return `() => ${TYPE_FROM_NAME_BINDING}(${quote(glibTypeName)})`;
     }
-    appendGetTypeBinding(ctx, getType);
+    appendGetTypeBinding(context, getType);
     return getType;
 };
 
-const appendGetTypeBinding = (ctx: ModuleContext, getType: string): void => {
-    const lib = ctx.namespace.sharedLibrary ?? "";
+const appendGetTypeBinding = (context: ModuleContext, getType: string): void => {
+    const lib = context.namespace.sharedLibrary ?? "";
     const expression = `t.fn(${quote(lib)}, ${quote(getType)}, [], t.uint64)`;
-    ctx.module.appendBinding(`const ${getType} = ${expression};`, getType);
+    context.module.appendBinding(`const ${getType} = ${expression};`, getType);
 };
 
-const appendGTypeFromNameBinding = (ctx: ModuleContext): void => {
+const appendGTypeFromNameBinding = (context: ModuleContext): void => {
     const expression =
         `t.fn(${quote(TYPE_FROM_NAME_LIB)}, ${quote(TYPE_FROM_NAME_BINDING)}, ` +
         `[{ type: t.string("borrowed") }], t.uint64)`;
-    ctx.module.appendBinding(`const ${TYPE_FROM_NAME_BINDING} = ${expression};`, TYPE_FROM_NAME_BINDING);
+    context.module.appendBinding(`const ${TYPE_FROM_NAME_BINDING} = ${expression};`, TYPE_FROM_NAME_BINDING);
 };

@@ -35,7 +35,7 @@ use crate::dispatch::{Mailbox, WakeJsTsfn};
 use crate::error_reporter::{ErrorReporterTsfn, NativeErrorReporter};
 use crate::glib_log_handler::GlibLogHandler;
 use crate::panic_handler::{format_panic_payload, install_panic_hook};
-use crate::state::GtkThread;
+use crate::state::GlibThread;
 
 #[napi(catch_unwind)]
 #[cfg_attr(test, allow(dead_code))]
@@ -104,7 +104,7 @@ pub fn init(env: Env) -> napi::Result<External<glib::MainLoop>> {
             )
         })?;
 
-    GtkThread::global().set_handle(handle);
+    GlibThread::global().set_handle(handle);
 
     let main_loop = rx.recv().map_err(|err| {
         napi::Error::new(

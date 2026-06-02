@@ -30,17 +30,17 @@ export type BoxedFieldSlot = {
  * `field.private` while still seeing the layout-correct offsets of public
  * fields after them.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param fields - The boxed's field list in declaration order
  */
 export const computeBoxedFieldSlots = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     fields: readonly GirField[],
     isUnion = false,
 ): { readonly slots: readonly BoxedFieldSlot[]; readonly size: number } => {
     const inputs: FieldLayoutInput[] = [];
     for (const field of fields) {
-        inputs.push(fieldLayoutInput(ctx, field, new Set()));
+        inputs.push(fieldLayoutInput(context, field, new Set()));
     }
     const result = computeFieldSlots(inputs, isUnion);
     const slots = result.slots.map((slot, index) => {
@@ -53,24 +53,24 @@ export const computeBoxedFieldSlots = (
     return { slots, size: result.size };
 };
 
-const fieldLayoutInput = (ctx: ModuleContext, field: GirField, visited: ReadonlySet<string>): FieldLayoutInput => {
+const fieldLayoutInput = (context: ModuleContext, field: GirField, visited: ReadonlySet<string>): FieldLayoutInput => {
     if (field.callback !== undefined) {
         return { layout: POINTER_LAYOUT, bits: undefined };
     }
     if (field.type === undefined) {
         return { layout: POINTER_LAYOUT, bits: undefined };
     }
-    return { layout: layoutOfType(ctx, field.type, visited), bits: field.bits };
+    return { layout: layoutOfType(context, field.type, visited), bits: field.bits };
 };
 
-const layoutOfType = (ctx: ModuleContext, ref: GirTypeRef, visited: ReadonlySet<string>): FieldLayout => {
+const layoutOfType = (context: ModuleContext, ref: GirTypeRef, visited: ReadonlySet<string>): FieldLayout => {
     switch (ref.kind) {
         case "primitive":
             return layoutOfPrimitive(ref.category);
         case "named":
-            return layoutOfNamed(ctx, ref, visited);
+            return layoutOfNamed(context, ref, visited);
         case "array":
-            return arrayLayout(ctx, ref, visited);
+            return arrayLayout(context, ref, visited);
         case "list":
         case "hashtable":
         case "callback":
@@ -80,41 +80,45 @@ const layoutOfType = (ctx: ModuleContext, ref: GirTypeRef, visited: ReadonlySet<
 };
 
 const arrayLayout = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     ref: Extract<GirTypeRef, { kind: "array" }>,
     visited: ReadonlySet<string>,
 ): FieldLayout => {
     if (ref.fixedSize === undefined) return POINTER_LAYOUT;
-    const elementLayout = layoutOfType(ctx, ref.element, visited);
+    const elementLayout = layoutOfType(context, ref.element, visited);
     return { size: elementLayout.size * ref.fixedSize, align: elementLayout.align };
 };
 
-const layoutOfNamed = (ctx: ModuleContext, ref: NamedTypeRef, visited: ReadonlySet<string>): FieldLayout => {
+const layoutOfNamed = (context: ModuleContext, ref: NamedTypeRef, visited: ReadonlySet<string>): FieldLayout => {
     if (ref.cType?.endsWith("*") === true) return POINTER_LAYOUT;
-    const namespaceName = ref.namespaceName ?? ctx.namespace.name;
-    const resolved = ctx.repository.resolveNamed(namespaceName, ref.typeName);
+    const namespaceName = ref.namespaceName ?? context.namespace.name;
+    const resolved = context.repository.resolveNamed(namespaceName, ref.typeName);
     if (resolved === undefined) return POINTER_LAYOUT;
-    return layoutOfResolved(ctx, resolved, visited);
+    return layoutOfResolved(context, resolved, visited);
 };
 
-const layoutOfResolved = (ctx: ModuleContext, resolved: ResolvedNamed, visited: ReadonlySet<string>): FieldLayout => {
+const layoutOfResolved = (
+    context: ModuleContext,
+    resolved: ResolvedNamed,
+    visited: ReadonlySet<string>,
+): FieldLayout => {
     switch (resolved.kind) {
         case "class":
         case "interface":
             return POINTER_LAYOUT;
         case "boxed":
-            return layoutOfBoxedRecord(ctx, resolved, visited);
+            return layoutOfBoxedRecord(context, resolved, visited);
         case "enum":
             return layoutOfPrimitive("int32");
         case "callback":
             return POINTER_LAYOUT;
         case "alias":
-            return resolveAliasLayout(ctx, resolved, visited);
+            return resolveAliasLayout(context, resolved, visited);
     }
 };
 
 const layoutOfBoxedRecord = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     resolved: Extract<ResolvedNamed, { kind: "boxed" }>,
     visited: ReadonlySet<string>,
 ): FieldLayout => {
@@ -135,7 +139,7 @@ const layoutOfBoxedRecord = (
             inputs.push({ layout: POINTER_LAYOUT, bits: undefined });
             continue;
         }
-        inputs.push({ layout: layoutOfType(ctx, field.type, nextVisited), bits: field.bits });
+        inputs.push({ layout: layoutOfType(context, field.type, nextVisited), bits: field.bits });
     }
     if (inputs.length === 0) return POINTER_LAYOUT;
     const { size } = computeFieldSlots(inputs, resolved.value.isUnion);
@@ -148,7 +152,7 @@ const layoutOfBoxedRecord = (
 const recordLayoutCache = new Map<string, FieldLayout>();
 
 const resolveAliasLayout = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     resolved: Extract<ResolvedNamed, { kind: "alias" }>,
     visited: ReadonlySet<string>,
 ): FieldLayout => {
@@ -158,5 +162,5 @@ const resolveAliasLayout = (
         const primitive = primitiveCategory(ref.typeName);
         if (primitive !== undefined) return layoutOfPrimitive(primitive);
     }
-    return layoutOfType(ctx, ref, visited);
+    return layoutOfType(context, ref, visited);
 };

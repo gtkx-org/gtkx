@@ -35,14 +35,14 @@ export class ConstraintLayoutWidgetNode extends VirtualNode<ConstraintLayoutWidg
     public override appendChild(child: WidgetNode): void {
         super.appendChild(child);
         if (this.parent) {
-            attachChild(child.container, this.parent.container);
+            attachChild(child.backingInstance, this.parent.backingInstance);
             this.syncRegistration();
         }
     }
 
     public override removeChild(child: WidgetNode): void {
         if (this.parent) {
-            unparentWidget(child.container);
+            unparentWidget(child.backingInstance);
         }
         this.unregister();
         super.removeChild(child);
@@ -51,7 +51,7 @@ export class ConstraintLayoutWidgetNode extends VirtualNode<ConstraintLayoutWidg
     public override setParent(parent: WidgetNode | null): void {
         if (!parent && this.parent) {
             for (const child of this.children) {
-                unparentWidget(child.container);
+                unparentWidget(child.backingInstance);
             }
             this.unregister();
         }
@@ -60,7 +60,7 @@ export class ConstraintLayoutWidgetNode extends VirtualNode<ConstraintLayoutWidg
 
         if (parent) {
             for (const child of this.children) {
-                attachChild(child.container, parent.container);
+                attachChild(child.backingInstance, parent.backingInstance);
             }
             this.syncRegistration();
             if (!this.registeredLayoutNode) {
@@ -100,7 +100,7 @@ export class ConstraintLayoutWidgetNode extends VirtualNode<ConstraintLayoutWidg
     public override detachDeletedInstance(): void {
         if (this.parent) {
             for (const child of this.children) {
-                unparentWidget(child.container);
+                unparentWidget(child.backingInstance);
             }
         }
         this.unregister();
@@ -108,7 +108,7 @@ export class ConstraintLayoutWidgetNode extends VirtualNode<ConstraintLayoutWidg
     }
 
     private syncRegistration(): void {
-        const widget = this.children[0]?.container ?? null;
+        const widget = this.children[0]?.backingInstance ?? null;
         const id = this.props.id;
         if (!this.parent || !widget) {
             this.unregister();

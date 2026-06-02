@@ -27,13 +27,13 @@ export class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProp
                 this.currentDrawFunc = this.props.render ?? null;
 
                 if (hasDraw && !hadDraw) {
-                    this.container.setDrawFunc((self, cr, width, height) => {
+                    this.backingInstance.setDrawFunc((self, cr, width, height) => {
                         this.currentDrawFunc?.(cr, width, height, self);
                     });
                 } else if (!hasDraw && hadDraw) {
-                    this.container.setDrawFunc(null);
+                    this.backingInstance.setDrawFunc(null);
                 } else if (hasDraw) {
-                    this.container.queueDraw();
+                    this.backingInstance.queueDraw();
                 }
             }),
         };
@@ -42,7 +42,7 @@ export class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProp
     public override detachDeletedInstance(): void {
         if (this.currentDrawFunc !== null) {
             this.currentDrawFunc = null;
-            this.container.setDrawFunc(null);
+            this.backingInstance.setDrawFunc(null);
         }
         super.detachDeletedInstance();
     }

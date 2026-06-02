@@ -8,7 +8,7 @@ import { WidgetNode } from "./widget.js";
 export type AdjustableWidget = Gtk.SpinButton | Gtk.ScaleButton | Gtk.Range;
 
 export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> extends WidgetNode<T, AdjustableProps> {
-    private readonly adjustmentController = new AdjustmentController(this.container);
+    private readonly adjustmentController = new AdjustmentController(this.backingInstance);
 
     protected override ownPropDescriptors(): PropDescriptorTable {
         return {
@@ -17,7 +17,7 @@ export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> exten
                 this.adjustmentController,
                 () => this.props,
                 "value-changed",
-                () => this.container.getValue(),
+                () => this.backingInstance.getValue(),
             ),
         };
     }

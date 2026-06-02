@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import type { GtkColorDialogButtonProps } from "../jsx.js";
-import type { Container } from "../types.js";
+import type { BackingInstance } from "../types.js";
 import { DialogButtonNode } from "./dialog-button.js";
 import { imperative, type PropDescriptorTable, signal } from "./internal/apply-props.js";
 
@@ -18,7 +18,7 @@ export class ColorDialogButtonNode extends DialogButtonNode<
         _typeName: string,
         _props: ColorDialogButtonProps,
         containerClass: typeof Gtk.ColorDialogButton,
-    ): Container | null {
+    ): BackingInstance | null {
         return new containerClass({ dialog: new Gtk.ColorDialog() });
     }
 
@@ -28,9 +28,9 @@ export class ColorDialogButtonNode extends DialogButtonNode<
             withAlpha: imperative(() => this.dialog.setWithAlpha(this.props.withAlpha ?? true)),
             rgba: imperative(() => {
                 const { rgba } = this.props;
-                if (rgba) this.container.setRgba(rgba);
+                if (rgba) this.backingInstance.setRgba(rgba);
             }),
-            onRgbaChanged: signal("notify::rgba", { getArgs: () => [this.container.getRgba()] }),
+            onRgbaChanged: signal("notify::rgba", { getArgs: () => [this.backingInstance.getRgba()] }),
         };
     }
 }

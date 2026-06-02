@@ -5,7 +5,7 @@ import { typeFromName } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { AnyClass } from "@gtkx/utils";
 import { describe, expect, it } from "vitest";
-import { findNativeClass, setClassGType } from "../src/registry.js";
+import { findNativeClass, getNativeClass, setClassGType } from "../src/registry.js";
 
 const INVALID_GTYPE: GType = 0;
 
@@ -31,12 +31,12 @@ describe("findNativeClass", () => {
     });
 
     it("walks hierarchy to find a registered parent class", () => {
-        const cls = findNativeClass(typeFromName("GtkButton"), true);
+        const cls = findNativeClass(typeFromName("GtkButton"));
         expect(cls).not.toBeNull();
     });
 
-    it("returns null when walkHierarchy is false and type is not registered", () => {
-        const cls = findNativeClass(INVALID_GTYPE, false);
+    it("returns null for an unregistered type via exact lookup", () => {
+        const cls = getNativeClass(INVALID_GTYPE);
         expect(cls).toBeNull();
     });
 });

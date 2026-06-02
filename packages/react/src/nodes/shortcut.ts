@@ -11,7 +11,7 @@ export class ShortcutNode extends VirtualNode<ShortcutProps, EventControllerNode
     }
 
     public override isValidParent(parent: Node): boolean {
-        return parent instanceof EventControllerNode && parent.container instanceof Gtk.ShortcutController;
+        return parent instanceof EventControllerNode && parent.backingInstance instanceof Gtk.ShortcutController;
     }
 
     private shortcut: Gtk.Shortcut | null = null;
@@ -27,7 +27,7 @@ export class ShortcutNode extends VirtualNode<ShortcutProps, EventControllerNode
         if (parent && !this.shortcut) {
             this.createShortcut();
             const shortcut = this.shortcut;
-            if (shortcut) parent.container.addShortcut(shortcut);
+            if (shortcut) parent.backingInstance.addShortcut(shortcut);
         }
     }
 
@@ -43,7 +43,7 @@ export class ShortcutNode extends VirtualNode<ShortcutProps, EventControllerNode
 
     private removeFromController(): void {
         if (!this.parent || !this.shortcut) return;
-        this.parent.container.removeShortcut(this.shortcut);
+        this.parent.backingInstance.removeShortcut(this.shortcut);
         this.shortcut = null;
         this.action = null;
     }
