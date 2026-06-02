@@ -46,10 +46,6 @@ export class Node<TContainer = any, TProps = any, TParent extends Node = any, TC
         this.parent = parent;
     }
 
-    public appendInitialChild(child: TChild): void {
-        this.appendChild(child);
-    }
-
     public appendChild(child: TChild): void {
         if (!this.isValidChild(child)) {
             throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}'`);

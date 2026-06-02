@@ -1,16 +1,12 @@
 import type { TextSegmentProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { BufferOffsetNode } from "./internal/buffer-offset-node.js";
+import { BufferOffsetNode } from "./internal/buffer-offset.js";
 import { hasChanged } from "./internal/props.js";
 import type { TextContentParent } from "./text-content.js";
 
 type TextSegmentParent = Node & TextContentParent;
 
 export class TextSegmentNode extends BufferOffsetNode<TextSegmentProps, TextSegmentParent, never> {
-    public override isValidChild(_child: Node): boolean {
-        return false;
-    }
-
     public override isValidParent(parent: Node): boolean {
         return isTextContentParent(parent);
     }
@@ -25,12 +21,11 @@ export class TextSegmentNode extends BufferOffsetNode<TextSegmentProps, TextSegm
 
     public override commitUpdate(oldProps: TextSegmentProps | null, newProps: TextSegmentProps): void {
         const oldText = oldProps?.text ?? "";
-        const newText = newProps.text;
 
         super.commitUpdate(oldProps, newProps);
 
         if (hasChanged(oldProps, newProps, "text") && this.parent) {
-            this.parent.onChildTextChanged(this, oldText.length, newText.length);
+            this.parent.onChildTextChanged(this, oldText.length);
         }
     }
 }

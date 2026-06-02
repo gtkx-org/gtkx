@@ -114,7 +114,7 @@ const RUN_DEV_COMMAND: Record<PackageManager, string> = {
  * @param pm - The package manager.
  * @returns The shell command to print in the "next steps" hint.
  */
-export const getRunCommand = (pm: PackageManager): string => RUN_DEV_COMMAND[pm];
+const getRunCommand = (pm: PackageManager): string => RUN_DEV_COMMAND[pm];
 
 const titleFromName = (name: string): string => name.split("-").map(toUpperFirst).join(" ");
 

@@ -1,6 +1,6 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { widgetIdOf } from "./widget-id.js";
+import { stableIdOf } from "./stable-id.js";
 
 export const UNBOUND_POSITION = -1;
 
@@ -34,7 +34,7 @@ export function connectFactoryLifecycle<T extends ListLifecycleItem>(
     factory.connect("setup", (obj: GObject.Object) => {
         const item = asLifecycleItem<T>(obj);
         containers.set(item, UNBOUND_POSITION);
-        containerKeys.set(item, widgetIdOf(item));
+        containerKeys.set(item, stableIdOf(item));
         onSetup?.(item);
     });
 

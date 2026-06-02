@@ -1,5 +1,7 @@
+import { Type } from "./types.js";
+
 export * from "../generated/gobject/gobject.js";
-export { G_TYPE_INVALID, isInvalidGType } from "../gtype.js";
+export { G_TYPE_INVALID } from "../gtype.js";
 export {
     TYPE_BOOLEAN,
     TYPE_BOXED,
@@ -27,5 +29,5 @@ export {
     TYPE_VARIANT,
 } from "./fundamental-types.js";
 export * from "./object.js";
-export { Type } from "./types.js";
 export * from "./value.js";
+export { Type };

@@ -1,15 +1,11 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { TextPaintableProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { BufferOffsetNode } from "./internal/buffer-offset-node.js";
+import { BufferOffsetNode } from "./internal/buffer-offset.js";
 import { TEXT_OBJECT_REPLACEMENT, type TextContentParent } from "./text-content.js";
 import { isTextContentParent } from "./text-segment.js";
 
 export class TextPaintableNode extends BufferOffsetNode<TextPaintableProps, Node & TextContentParent, never> {
-    public override isValidChild(_child: Node): boolean {
-        return false;
-    }
-
     public override isValidParent(parent: Node): boolean {
         return isTextContentParent(parent);
     }

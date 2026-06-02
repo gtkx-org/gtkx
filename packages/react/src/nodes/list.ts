@@ -14,7 +14,7 @@ import { EventControllerNode } from "./event-controller.js";
 import type { BoundItem } from "./internal/bound-item.js";
 import { asLifecycleItem, connectFactoryLifecycle, UNBOUND_POSITION } from "./internal/list-factory.js";
 import { hasChanged } from "./internal/props.js";
-import { widgetIdOf } from "./internal/widget-id.js";
+import { stableIdOf } from "./internal/stable-id.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
@@ -49,7 +49,6 @@ const OWN_PROPS = [
     "renderItem",
     "renderListItem",
     "renderHeader",
-    "renderCell",
     "autoexpand",
     "selected",
     "onSelectionChanged",
@@ -294,7 +293,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             const expander = new Gtk.TreeExpander();
             listItem.setChild(expander);
             this.containers.set(expander, UNBOUND_POSITION);
-            this.containerKeys.set(expander, widgetIdOf(expander));
+            this.containerKeys.set(expander, stableIdOf(expander));
             this.treeExpanders.set(listItem, expander);
             return;
         }
@@ -306,7 +305,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             listItem.setChild(placeholder);
         }
         this.containers.set(listItem, UNBOUND_POSITION);
-        this.containerKeys.set(listItem, widgetIdOf(listItem));
+        this.containerKeys.set(listItem, stableIdOf(listItem));
     }
 
     private onFactoryBind(obj: GObject.Object, isTree: boolean): void {
@@ -991,7 +990,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         }
     }
 
-    public findColumnById(id: string): Gtk.ColumnViewColumn | null {
+    private findColumnById(id: string): Gtk.ColumnViewColumn | null {
         if (!this.isColumnView()) return null;
         const columnView = this.container as Gtk.ColumnView;
         const columns = columnView.getColumns();
@@ -1191,7 +1190,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     public getEstimatedItemSize(): { width: number; height: number } {
         return {
             width: this.props.estimatedItemWidth ?? -1,
-            height: this.props.estimatedItemHeight ?? -1,
+            height: this.props.estimatedItemHeight ?? this.props.estimatedRowHeight ?? -1,
         };
     }
 

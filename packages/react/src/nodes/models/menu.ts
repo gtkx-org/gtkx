@@ -8,7 +8,7 @@ export type MenuModelProps = {
     id?: string;
     label?: string;
     accels?: string | string[];
-    onActivate?: () => boolean | undefined;
+    onActivate?: () => void;
 };
 
 export type MenuType = "root" | "item" | "section" | "submenu";
@@ -16,7 +16,6 @@ export type MenuType = "root" | "item" | "section" | "submenu";
 /**
  * Options for constructing a {@link MenuModel}.
  *
- * @public
  */
 export interface MenuModelOptions {
     readonly type: MenuType;
@@ -85,7 +84,7 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
 
     private getOnActivate(): () => void {
         if (!this.props.onActivate) {
-            throw new Error("Expected 'onActivate' prop to be present on MenuItem");
+            throw new Error("Expected 'onActivate' prop to be present on MenuModel");
         }
 
         return this.props.onActivate;
@@ -93,7 +92,7 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
 
     private getId(): string {
         if (!this.props.id) {
-            throw new Error("Expected 'id' prop to be present on MenuItem");
+            throw new Error("Expected 'id' prop to be present on MenuModel");
         }
 
         return this.props.id;
@@ -101,7 +100,7 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
 
     private getParentMenu(): Gio.Menu {
         if (!this.parent) {
-            throw new Error("Expected parent menu to be set on MenuNode");
+            throw new Error("Expected parent menu to be set on MenuModel");
         }
 
         return this.parent.getMenu();
@@ -109,7 +108,7 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
 
     private getActionMap(): Gio.ActionMap {
         if (!this.actionMap) {
-            throw new Error("Expected actionMap to be set on MenuNode");
+            throw new Error("Expected actionMap to be set on MenuModel");
         }
 
         return this.actionMap;
@@ -171,7 +170,7 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
 
     private getAction(): Gio.SimpleAction {
         if (!this.action) {
-            throw new Error("Expected action to be created on MenuItem");
+            throw new Error("Expected action to be created on MenuModel");
         }
 
         return this.action;

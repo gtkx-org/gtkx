@@ -1,7 +1,8 @@
-import { findNativeClass, getHandle, registerClass } from "@gtkx/ffi";
+import { getHandle, registerClass } from "@gtkx/ffi";
 import { Object as GObject, typeFromName, typeName, typeParent } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
+import { findNativeClass } from "../src/registry.js";
 import { instanceIsA } from "./helpers.js";
 
 let suffix = 0;

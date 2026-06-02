@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { AdjustableProps } from "../jsx.js";
-import { AdjustmentController } from "./internal/adjustment.js";
-import { imperative, type PropDescriptorTable, signal } from "./internal/apply-props.js";
+import { AdjustmentController, adjustablePropDescriptors } from "./internal/adjustment.js";
+import type { PropDescriptorTable } from "./internal/apply-props.js";
 import { WidgetNode } from "./widget.js";
 
 /** Widgets the {@link AdjustableNode} reconciler node specializes. */
@@ -11,23 +11,14 @@ export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> exten
     private readonly adjustmentController = new AdjustmentController(this.container);
 
     protected override ownPropDescriptors(): PropDescriptorTable {
-        const applyAdjustment = imperative(
-            (oldProps) => {
-                this.adjustmentController.apply(oldProps, this.props);
-            },
-            { always: true },
-        );
         return {
             ...super.ownPropDescriptors(),
-            onValueChanged: signal("value-changed", {
-                getArgs: () => [this.container.getValue()],
-            }),
-            value: applyAdjustment,
-            lower: applyAdjustment,
-            upper: applyAdjustment,
-            stepIncrement: applyAdjustment,
-            pageIncrement: applyAdjustment,
-            pageSize: applyAdjustment,
+            ...adjustablePropDescriptors(
+                this.adjustmentController,
+                () => this.props,
+                "value-changed",
+                () => this.container.getValue(),
+            ),
         };
     }
 }

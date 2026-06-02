@@ -1,7 +1,8 @@
 import { call, type NativeHandle } from "@gtkx/native";
+import type { AnyClass } from "@gtkx/utils";
 import { GValue } from "./gobject/gvalue-native.js";
 import { GVALUE_BORROWED, GVALUE_SIZE, LIBGOBJECT } from "./gtype.js";
-import { type GTyped, getHandle, type NativeClass, setHandle, tryGetHandle } from "./handles.js";
+import { type GTyped, getHandle, setHandle, tryGetHandle } from "./handles.js";
 import { t } from "./helpers.js";
 import { linkInstanceState } from "./instance-state.js";
 import { setPendingConstruction } from "./pending-construction.js";
@@ -38,7 +39,7 @@ export function constructGObjectInstance(instance: object, props: Record<string,
         }
     }
 
-    const gtype = getClassGType(instance.constructor as NativeClass);
+    const gtype = getClassGType(instance.constructor as AnyClass);
     const previous = setPendingConstruction(instance);
     let handle: NativeHandle;
     try {

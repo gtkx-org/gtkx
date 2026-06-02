@@ -45,19 +45,6 @@ export const GVALUE_BORROWED = t.boxed("GValue", "borrowed", LIBGOBJECT, "g_valu
 export const G_TYPE_INVALID: GType = 0;
 
 /**
- * Whether `gtype` is the {@link G_TYPE_INVALID} sentinel.
- *
- * The branded `GType` cannot be compared to a bare numeric literal at the
- * type level, so callers that need to detect "no type" should use this
- * predicate instead of an unchecked numeric comparison.
- *
- * @param gtype - The GType to test.
- */
-export function isInvalidGType(gtype: GType): boolean {
-    return gtype === G_TYPE_INVALID;
-}
-
-/**
  * Narrows a marshaled FFI result to a `GType`.
  *
  * A `g_*_get_type` FFI call yields its numeric `gsize` as an untyped

@@ -3,36 +3,24 @@ import {
     type RegisterClassNativeOptions,
     type RegisterClassVfuncDefinition,
 } from "@gtkx/native";
+import type { AnyClass } from "@gtkx/utils";
 import { G_TYPE_INVALID, type GType, typeInterfaces } from "./gtype.js";
-import { getClassVFuncMeta, getParentClass, type NativeClass, type NativeHandle } from "./handles.js";
+import { getClassVfuncMetadata, getParentClass, type NativeHandle } from "./handles.js";
 import { markStatefulClass } from "./instance-state.js";
 import { getClassGType, getNativeObject, setClassGType } from "./registry.js";
 
 /**
- * Generated descriptor of a class vfunc slot. Codegen emits one per vfunc
- * on each class-struct registry (e.g. `GObjectClass.setProperty`). Users
- * never construct these manually — they are resolved automatically when
- * `registerClass` discovers methods on a subclass whose camelCase name
- * matches a vfunc declared on an ancestor class struct.
+ * Generated descriptor of a vtable vfunc slot. Codegen emits one per vfunc on
+ * each class-struct registry (e.g. `GObjectClass.setProperty`) or
+ * interface-struct registry (e.g. `GIconIface.hash`), discriminated by `kind`.
+ * Users never construct these manually — they are resolved automatically when
+ * `registerClass` discovers methods on a subclass whose camelCase name matches
+ * a vfunc declared on an ancestor class struct or an inherited interface.
+ *
+ * @typeParam K - Whether the slot lives on a class vtable or an interface vtable.
  */
-type RegisterClassVfuncDescriptor = {
-    readonly kind: "class";
-    readonly className: string;
-    readonly vfuncName: string;
-    readonly byteOffset: number;
-    readonly argTypes: RegisterClassVfuncDefinition["argTypes"];
-    readonly returnType: RegisterClassVfuncDefinition["returnType"];
-};
-
-/**
- * Generated descriptor of an interface vfunc slot. Codegen emits one per
- * vfunc on each interface-struct registry (e.g. `GIconIface.hash`). Users
- * never construct these manually — they are resolved automatically when
- * `registerClass` discovers methods whose camelCase names match vfuncs of an
- * interface the registered class inherits from its parent.
- */
-type RegisterClassInterfaceVfuncDescriptor = {
-    readonly kind: "interface";
+type RegisterClassVfuncDescriptor<K extends "class" | "interface" = "class" | "interface"> = {
+    readonly kind: K;
     readonly className: string;
     readonly vfuncName: string;
     readonly byteOffset: number;
@@ -53,12 +41,12 @@ export type RegisterClassOptions = {
 
 type VfuncFn = RegisterClassVfuncDefinition["fn"];
 
-type DiscoveredClassVfunc = RegisterClassVfuncDescriptor & {
+type DiscoveredClassVfunc = RegisterClassVfuncDescriptor<"class"> & {
     readonly methodName: string;
     readonly fn: VfuncFn;
 };
 
-type DiscoveredInterfaceVfunc = RegisterClassInterfaceVfuncDescriptor & {
+type DiscoveredInterfaceVfunc = RegisterClassVfuncDescriptor<"interface"> & {
     readonly methodName: string;
     readonly fn: VfuncFn;
 };
@@ -89,7 +77,7 @@ type InterfaceVfuncBinding = {
  * registerClass(MyButton);
  * ```
  */
-export function registerClass<T extends NativeClass>(klass: T, options: RegisterClassOptions = {}): T {
+export function registerClass<T extends AnyClass>(klass: T, options: RegisterClassOptions = {}): T {
     if (!hasRegisteredAncestor(klass)) {
         throw new TypeError(`registerClass: ${klass.name} must extend a registered native class`);
     }
@@ -116,8 +104,8 @@ export function registerClass<T extends NativeClass>(klass: T, options: Register
     return klass;
 }
 
-function hasRegisteredAncestor(klass: NativeClass): boolean {
-    let current: NativeClass | null = getParentClass(klass);
+function hasRegisteredAncestor(klass: AnyClass): boolean {
+    let current: AnyClass | null = getParentClass(klass);
     while (current) {
         if (getClassGType(current) !== G_TYPE_INVALID) return true;
         current = getParentClass(current);
@@ -125,7 +113,7 @@ function hasRegisteredAncestor(klass: NativeClass): boolean {
     return false;
 }
 
-function resolveParentGType(klass: NativeClass): GType {
+function resolveParentGType(klass: AnyClass): GType {
     let current = getParentClass(klass);
     while (current) {
         const gtype = getClassGType(current);
@@ -137,7 +125,7 @@ function resolveParentGType(klass: NativeClass): GType {
 
 const SKIP_PROTOTYPE_NAMES = new Set(["constructor", "_init"]);
 
-function ownInstanceMethodNames(klass: NativeClass): string[] {
+function ownInstanceMethodNames(klass: AnyClass): string[] {
     const proto = (klass as { prototype?: object }).prototype;
     if (!proto) return [];
     return Object.getOwnPropertyNames(proto).filter((name) => {
@@ -146,7 +134,7 @@ function ownInstanceMethodNames(klass: NativeClass): string[] {
     });
 }
 
-function discoverClassVfuncs(klass: NativeClass): DiscoveredClassVfunc[] {
+function discoverClassVfuncs(klass: AnyClass): DiscoveredClassVfunc[] {
     const proto = (klass as { prototype: Record<string, VfuncFn> }).prototype;
     const result: DiscoveredClassVfunc[] = [];
     for (const methodName of ownInstanceMethodNames(klass)) {
@@ -191,7 +179,7 @@ function wrapVfunc(fn: VfuncFn, argTypes: RegisterClassVfuncDefinition["argTypes
  * always wins over an interface slot of the same name.
  */
 function discoverInheritedInterfaceVfuncs(
-    klass: NativeClass,
+    klass: AnyClass,
     parentGType: GType,
     claimedMethodNames: ReadonlySet<string>,
 ): InterfaceVfuncBinding[] {
@@ -206,11 +194,11 @@ function discoverInheritedInterfaceVfuncs(
 }
 
 function discoverInterfaceVfuncs(
-    klass: NativeClass,
+    klass: AnyClass,
     interfaceGType: GType,
     claimedMethodNames: ReadonlySet<string>,
 ): DiscoveredInterfaceVfunc[] {
-    const struct = findInterfaceVFuncMeta(interfaceGType);
+    const struct = interfaceVfuncMetadataByGType.get(interfaceGType);
     if (!struct) return [];
     const proto = (klass as { prototype: Record<string, VfuncFn> }).prototype;
     const result: DiscoveredInterfaceVfunc[] = [];
@@ -220,7 +208,7 @@ function discoverInterfaceVfuncs(
         if (!descriptor || (descriptor as { kind?: string }).kind !== "interface") continue;
         const fn = proto[methodName];
         if (!fn) continue;
-        const ifaceDescriptor = descriptor as RegisterClassInterfaceVfuncDescriptor;
+        const ifaceDescriptor = descriptor as RegisterClassVfuncDescriptor<"interface">;
         result.push({
             ...ifaceDescriptor,
             methodName,
@@ -230,14 +218,14 @@ function discoverInterfaceVfuncs(
     return result;
 }
 
-function findClassVfuncDescriptor(klass: NativeClass, methodName: string): RegisterClassVfuncDescriptor | null {
+function findClassVfuncDescriptor(klass: AnyClass, methodName: string): RegisterClassVfuncDescriptor<"class"> | null {
     let current = getParentClass(klass);
     while (current) {
-        const struct = getClassVFuncMeta(current);
+        const struct = getClassVfuncMetadata(current);
         if (struct) {
             const entry = struct[methodName];
             if (entry && (entry as { kind?: string }).kind === "class") {
-                return entry as RegisterClassVfuncDescriptor;
+                return entry as RegisterClassVfuncDescriptor<"class">;
             }
         }
         current = getParentClass(current);
@@ -245,11 +233,7 @@ function findClassVfuncDescriptor(klass: NativeClass, methodName: string): Regis
     return null;
 }
 
-const interfaceVFuncMetaByGType = new Map<GType, Readonly<Record<string, unknown>>>();
-
-function findInterfaceVFuncMeta(gtype: GType): Readonly<Record<string, unknown>> | null {
-    return interfaceVFuncMetaByGType.get(gtype) ?? null;
-}
+const interfaceVfuncMetadataByGType = new Map<GType, Readonly<Record<string, unknown>>>();
 
 /**
  * Registers a runtime mapping from an interface `GType` to its generated
@@ -257,9 +241,9 @@ function findInterfaceVFuncMeta(gtype: GType): Readonly<Record<string, unknown>>
  * interface vfunc overrides on a subclass. Codegen calls this once per
  * interface at module load.
  */
-export function registerInterfaceVFuncMeta(gtype: GType, struct: Readonly<Record<string, unknown>>): void {
+export function registerInterfaceVfuncMetadata(gtype: GType, struct: Readonly<Record<string, unknown>>): void {
     if (gtype === G_TYPE_INVALID) return;
-    interfaceVFuncMetaByGType.set(gtype, struct);
+    interfaceVfuncMetadataByGType.set(gtype, struct);
 }
 
 function toNativeOptions(

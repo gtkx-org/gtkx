@@ -1,5 +1,5 @@
 import type { Node } from "../../node.js";
-import { scheduleAfterCommit } from "../../post-commit-queue.js";
+import { createAfterCommitDebounce } from "../../post-commit-queue.js";
 import { ConstraintLayoutNode } from "../constraint-layout.js";
 import { VirtualNode } from "../virtual.js";
 
@@ -21,8 +21,6 @@ import { VirtualNode } from "../virtual.js";
  * calling {@link scheduleApply}.
  */
 export abstract class ConstraintLayoutChildNode<TProps> extends VirtualNode<TProps, ConstraintLayoutNode, never> {
-    private applyScheduled = false;
-
     public override isValidChild(_child: Node): boolean {
         return false;
     }
@@ -55,16 +53,11 @@ export abstract class ConstraintLayoutChildNode<TProps> extends VirtualNode<TPro
         super.detachDeletedInstance();
     }
 
-    protected scheduleApply(): void {
-        if (this.applyScheduled) return;
-        this.applyScheduled = true;
-        scheduleAfterCommit(() => {
-            this.applyScheduled = false;
-            if (this.parent) {
-                this.applyToLayout(this.parent);
-            }
-        });
-    }
+    protected readonly scheduleApply = createAfterCommitDebounce(() => {
+        if (this.parent) {
+            this.applyToLayout(this.parent);
+        }
+    });
 
     protected abstract applyToLayout(parent: ConstraintLayoutNode): void;
     protected abstract removeFromLayout(parent: ConstraintLayoutNode): void;

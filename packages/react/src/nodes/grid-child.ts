@@ -3,7 +3,7 @@ import type { GridChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { AttachOnParentVirtualNode } from "./internal/attach-on-parent-virtual.js";
 import { hasChanged } from "./internal/props.js";
-import { attachChild, unparentWidget } from "./internal/widget.js";
+import { attachChild } from "./internal/widget.js";
 import { WidgetNode } from "./widget.js";
 
 /**
@@ -41,10 +41,6 @@ export class GridChildNode extends AttachOnParentVirtualNode<GridChildProps, Wid
     protected override attachToParent(parent: Gtk.Widget, child: Gtk.Widget): void {
         attachChild(child, parent);
         this.applyGridChildProps(parent, child);
-    }
-
-    protected override detachFromParent(_parent: Gtk.Widget, child: Gtk.Widget): void {
-        unparentWidget(child);
     }
 
     private applyGridChildProps(parent: Gtk.Widget, child: Gtk.Widget): void {

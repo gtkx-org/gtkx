@@ -22,7 +22,7 @@ export class ImportsManifest {
      * every recording of it is type-only — a single value import of the same
      * name keeps it a value import.
      *
-     * @param specifier - The module specifier (e.g. `"../../runtime.js"`)
+     * @param specifier - The module specifier (e.g. `"@gtkx/ffi"`)
      * @param name - The identifier to import
      * @param isType - Whether this recording is type-only (`import { type X }`)
      */

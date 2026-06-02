@@ -26,15 +26,18 @@ const OWN_PROPS = [
 type TextViewProps = Pick<GtkTextViewProps, (typeof OWN_PROPS)[number]>;
 type TextViewChild = TextContentChild | SlotNode | ContainerSlotNode | EventControllerNode | WidgetNode;
 
+const isTextContentChild = (child: Node): child is TextContentChild =>
+    child instanceof TextSegmentNode ||
+    child instanceof TextTagNode ||
+    child instanceof TextAnchorNode ||
+    child instanceof TextPaintableNode;
+
 export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps, TextViewChild> implements TextContentParent {
     protected bufferController: TextBufferController | null = null;
 
     public override isValidChild(child: Node): boolean {
         return (
-            child instanceof TextSegmentNode ||
-            child instanceof TextTagNode ||
-            child instanceof TextAnchorNode ||
-            child instanceof TextPaintableNode ||
+            isTextContentChild(child) ||
             child instanceof SlotNode ||
             child instanceof ContainerSlotNode ||
             child instanceof EventControllerNode ||
@@ -66,7 +69,7 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps, TextVi
 
     public override appendChild(child: TextViewChild): void {
         const controller = this.ensureBufferController();
-        if (controller.isTextContentChild(child)) {
+        if (isTextContentChild(child)) {
             controller.appendChild(child);
         }
         super.appendChild(child);
@@ -74,7 +77,7 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps, TextVi
 
     public override insertBefore(child: TextViewChild, before: TextViewChild): void {
         const controller = this.ensureBufferController();
-        if (controller.isTextContentChild(child)) {
+        if (isTextContentChild(child)) {
             controller.insertBefore(child, before as TextContentChild);
         }
         super.insertBefore(child, before);
@@ -82,7 +85,7 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps, TextVi
 
     public override removeChild(child: TextViewChild): void {
         const controller = this.ensureBufferController();
-        if (controller.isTextContentChild(child)) {
+        if (isTextContentChild(child)) {
             controller.removeChild(child);
         }
         super.removeChild(child);
@@ -96,7 +99,7 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps, TextVi
         this.ensureBufferController().onChildRemoved(child);
     }
 
-    public onChildTextChanged(child: TextSegmentNode, oldLength: number, newLength: number): void {
-        this.ensureBufferController().onChildTextChanged(child, oldLength, newLength);
+    public onChildTextChanged(child: TextSegmentNode, oldLength: number): void {
+        this.ensureBufferController().onChildTextChanged(child, oldLength);
     }
 }

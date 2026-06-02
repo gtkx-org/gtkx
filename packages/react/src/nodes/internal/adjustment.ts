@@ -1,16 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import type { AdjustableProps } from "../../jsx.js";
+import { imperative, type PropDescriptorTable, signal } from "./apply-props.js";
 import { hasChanged } from "./props.js";
-
-export const ADJUSTMENT_PROPS = [
-    "value",
-    "lower",
-    "upper",
-    "stepIncrement",
-    "pageIncrement",
-    "pageSize",
-    "onValueChanged",
-] as const;
 
 type AdjustmentSyncer = (oldProps: AdjustableProps, newProps: AdjustableProps, adjustment: Gtk.Adjustment) => void;
 
@@ -42,17 +33,16 @@ export class AdjustmentController {
 
     constructor(private readonly container: { setAdjustment: (a: Gtk.Adjustment) => void }) {}
 
-    apply(oldProps: AdjustableProps | null, newProps: AdjustableProps): Gtk.Adjustment {
+    apply(oldProps: AdjustableProps | null, newProps: AdjustableProps): void {
         if (!this.adjustment) {
             this.adjustment = this.createAdjustment(newProps);
             this.container.setAdjustment(this.adjustment);
-            return this.adjustment;
+            return;
         }
 
         if (oldProps) {
             this.syncChangedProps(oldProps, newProps, this.adjustment);
         }
-        return this.adjustment;
     }
 
     private createAdjustment(props: AdjustableProps): Gtk.Adjustment {
@@ -72,3 +62,32 @@ export class AdjustmentController {
         }
     }
 }
+
+/**
+ * Builds the prop descriptors shared by every adjustment-backed widget: the
+ * `value`/`lower`/`upper`/`stepIncrement`/`pageIncrement`/`pageSize` props
+ * applied imperatively through `controller`, plus the value-changed signal.
+ *
+ * @param controller - The adjustment controller bound to the widget
+ * @param currentProps - Reads the node's current props for the imperative apply
+ * @param valueChangedSignal - The widget's value-changed signal name
+ * @param readValue - Reads the widget's current value for the signal arguments
+ * @returns The shared prop descriptor table
+ */
+export const adjustablePropDescriptors = (
+    controller: AdjustmentController,
+    currentProps: () => AdjustableProps,
+    valueChangedSignal: string,
+    readValue: () => number,
+): PropDescriptorTable => {
+    const applyAdjustment = imperative((oldProps) => controller.apply(oldProps, currentProps()), { always: true });
+    return {
+        onValueChanged: signal(valueChangedSignal, { getArgs: () => [readValue()] }),
+        value: applyAdjustment,
+        lower: applyAdjustment,
+        upper: applyAdjustment,
+        stepIncrement: applyAdjustment,
+        pageIncrement: applyAdjustment,
+        pageSize: applyAdjustment,
+    };
+};

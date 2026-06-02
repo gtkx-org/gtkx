@@ -7,7 +7,7 @@ import type {
     GtkGridViewProps,
     GtkListViewProps,
 } from "@gtkx/react-jsx/jsx";
-import { type ReactNode, type Ref, useReducer, useRef } from "react";
+import { createElement, type ReactNode, type Ref, useReducer, useRef } from "react";
 import type {
     ColumnViewColumnProps,
     ColumnViewProps,
@@ -94,6 +94,19 @@ const withPortals = (element: ReactNode, handle: ListHandle): ReactNode => {
 };
 
 /**
+ * Renders a virtualized list intrinsic element with its bound-item portals.
+ *
+ * Each public list component is a thin generic-typed wrapper over this hook:
+ * it threads the reconciler refs into the element props and emits the element
+ * plus its portals, so the only per-component difference is the element name
+ * and the public prop type.
+ */
+const useListElement = (elementType: string, props: object): ReactNode => {
+    const handle = useListHandle();
+    return withPortals(createElement(elementType, listElementProps(props, handle)), handle);
+};
+
+/**
  * Virtualized scrollable list that renders items from a flat or tree data model.
  *
  * Wraps `GtkListView` with React-managed item rendering via portals,
@@ -102,8 +115,7 @@ const withPortals = (element: ReactNode, handle: ListHandle): ReactNode => {
 export function GtkListView<T = unknown, S = unknown>(
     props: GenericListViewProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.ListView> },
 ): ReactNode {
-    const handle = useListHandle();
-    return withPortals(<GtkListViewElement {...(listElementProps(props, handle) as GtkListViewProps)} />, handle);
+    return useListElement(GtkListViewElement, props);
 }
 
 /**
@@ -115,16 +127,14 @@ export function GtkListView<T = unknown, S = unknown>(
 export function GtkGridView<T = unknown>(
     props: GenericGridViewProps<T> & { children?: ReactNode; ref?: Ref<Gtk.GridView> },
 ): ReactNode {
-    const handle = useListHandle();
-    return withPortals(<GtkGridViewElement {...(listElementProps(props, handle) as GtkGridViewProps)} />, handle);
+    return useListElement(GtkGridViewElement, props);
 }
 
 /** @internal */
 function GtkColumnViewBase<T = unknown, S = unknown>(
     props: GenericColumnViewProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.ColumnView> },
 ): ReactNode {
-    const handle = useListHandle();
-    return withPortals(<GtkColumnViewElement {...(listElementProps(props, handle) as GtkColumnViewProps)} />, handle);
+    return useListElement(GtkColumnViewElement, props);
 }
 
 /**
@@ -162,8 +172,7 @@ export const GtkColumnView: typeof GtkColumnViewBase & {
 export function GtkDropDown<T = unknown, S = unknown>(
     props: GenericDropDownProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.DropDown> },
 ): ReactNode {
-    const handle = useListHandle();
-    return withPortals(<GtkDropDownElement {...(listElementProps(props, handle) as GtkDropDownProps)} />, handle);
+    return useListElement(GtkDropDownElement, props);
 }
 
 /**
@@ -176,6 +185,5 @@ export function GtkDropDown<T = unknown, S = unknown>(
 export function AdwComboRow<T = unknown, S = unknown>(
     props: GenericComboRowProps<T, S> & { children?: ReactNode; ref?: Ref<Adw.ComboRow> },
 ): ReactNode {
-    const handle = useListHandle();
-    return withPortals(<AdwComboRowElement {...(listElementProps(props, handle) as AdwComboRowProps)} />, handle);
+    return useListElement(AdwComboRowElement, props);
 }

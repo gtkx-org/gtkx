@@ -2,7 +2,7 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import type { Node } from "../node.js";
 import type { Props } from "../types.js";
 import { createContainerWithProperties } from "./internal/construct.js";
-import { WidgetAttachmentNode } from "./internal/widget-attachment-node.js";
+import { WidgetAttachmentNode } from "./internal/widget-attachment.js";
 import { WidgetNode } from "./widget.js";
 
 /**
@@ -16,7 +16,6 @@ import { WidgetNode } from "./widget.js";
  * `GtkConstraintLayout`-specific behaviour (constraint/guide/Vfl children,
  * the id→target registry) lives in {@link ConstraintLayoutNode}.
  *
- * @public
  */
 export class LayoutManagerNode<
     T extends Gtk.LayoutManager = Gtk.LayoutManager,

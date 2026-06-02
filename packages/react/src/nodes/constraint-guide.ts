@@ -51,7 +51,7 @@ export class ConstraintGuideNode extends ConstraintLayoutChildNode<ConstraintGui
         guide.setNatSize(this.props.natWidth ?? 0, this.props.natHeight ?? 0);
         guide.setMaxSize(this.props.maxWidth ?? 0, this.props.maxHeight ?? 0);
         if (this.props.strength !== undefined) {
-            guide.setStrength(this.props.strength as Gtk.ConstraintStrength);
+            guide.setStrength(this.props.strength);
         }
     }
 }

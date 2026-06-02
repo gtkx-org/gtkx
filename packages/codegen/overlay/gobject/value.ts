@@ -12,16 +12,16 @@
  * This module supplies the concrete class via {@link setVariantClass}.
  */
 
-import { readBoxed, setVariantClass, writeBoxed } from "@gtkx/ffi";
+import { getBoxed, setBoxed, setVariantClass } from "@gtkx/ffi";
 import { Variant } from "@gtkx/gi/glib/glib.js";
 import { Value } from "@gtkx/gi/gobject/gobject.js";
 
 setVariantClass(Variant);
 
-Value.prototype.getBoxed = function getBoxed<T = unknown>(this: Value): T {
-    return readBoxed(this) as T;
+Value.prototype.getBoxed = function <T = unknown>(this: Value): T {
+    return getBoxed(this) as T;
 };
 
-Value.prototype.setBoxed = function setBoxed(this: Value, vBoxed: object | null): void {
-    writeBoxed(this, vBoxed);
+Value.prototype.setBoxed = function (this: Value, vBoxed: object | null): void {
+    setBoxed(this, vBoxed);
 };

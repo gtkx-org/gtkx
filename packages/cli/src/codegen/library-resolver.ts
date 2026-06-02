@@ -16,8 +16,8 @@ const GIR_FILE_SUFFIX = ".gir";
  * of `Name-Version` GIR namespace identifiers:
  *
  * - omitted → {@link DEFAULT_LIBRARIES}
- * - `"*"` → every `.gir` discovered across `girPath` (newest version of each
- *   namespace — see {@link discoverGirNamespaces})
+ * - `"*"` → every `.gir` discovered across `girPath`, keeping the newest
+ *   version of each namespace
  * - an explicit array → returned unchanged
  *
  * @param libraries - The validated `libraries` field from {@link GtkxConfig}
@@ -56,7 +56,7 @@ export const resolveLibraries = (libraries: GtkxConfig["libraries"], girPath: re
  * @param girPath - Resolved GIR search directories
  * @returns Sorted GIR namespace identifiers, one per namespace
  */
-export const discoverGirNamespaces = (girPath: readonly string[]): string[] => {
+const discoverGirNamespaces = (girPath: readonly string[]): string[] => {
     const highestByName = new Map<string, { version: string; identifier: string }>();
 
     for (const dir of girPath) {

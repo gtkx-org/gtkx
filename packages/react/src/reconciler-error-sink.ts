@@ -33,7 +33,6 @@ let errorHandler: ReconcilerErrorHandler | null = null;
  * Returns the handler that was previously registered, allowing callers to
  * restore it on teardown.
  *
- * @public
  */
 export function setReconcilerErrorHandler(handler: ReconcilerErrorHandler | null): ReconcilerErrorHandler | null {
     const prior = errorHandler;
@@ -48,7 +47,6 @@ export function setReconcilerErrorHandler(handler: ReconcilerErrorHandler | null
  * with a clear prefix; callers that want fatal behaviour can register a
  * re-throwing handler explicitly.
  *
- * @public
  */
 export function reportReconcilerError(error: unknown): void {
     if (errorHandler) {

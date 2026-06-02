@@ -26,10 +26,10 @@
  */
 
 import { getNativeId, type NativeHandle, onObjectFinalized, watchObjectFinalize } from "@gtkx/native";
-import type { NativeClass } from "./handles.js";
+import type { AnyClass } from "@gtkx/utils";
 
 const instanceStateRegistry = new Map<number, Record<string, unknown>>();
-const statefulClasses = new WeakSet<NativeClass>();
+const statefulClasses = new WeakSet<AnyClass>();
 
 onObjectFinalized((pointerId) => {
     instanceStateRegistry.delete(pointerId);
@@ -42,7 +42,7 @@ onObjectFinalized((pointerId) => {
  *
  * @param cls - The registered subclass
  */
-export function markStatefulClass(cls: NativeClass): void {
+export function markStatefulClass(cls: AnyClass): void {
     statefulClasses.add(cls);
 }
 
@@ -58,7 +58,7 @@ export function markStatefulClass(cls: NativeClass): void {
  * @param obj - The wrapper to link
  */
 export function linkInstanceState(handle: NativeHandle, obj: object): void {
-    if (!statefulClasses.has(obj.constructor as NativeClass)) return;
+    if (!statefulClasses.has(obj.constructor as AnyClass)) return;
     const pointerId = getNativeId(handle);
     let state = instanceStateRegistry.get(pointerId);
     if (state === undefined) {

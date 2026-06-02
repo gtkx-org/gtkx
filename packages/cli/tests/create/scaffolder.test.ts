@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     type CreateOptions,
     createScaffolder,
-    getRunCommand,
     type PackageManager,
     type ScaffolderDeps,
 } from "../../src/create/scaffolder.js";
@@ -125,20 +124,6 @@ const runScaffolder = async (
     await createScaffolder(harness.deps).run(defaultOptions(optionOverrides));
     return harness;
 };
-
-describe("getRunCommand", () => {
-    it("returns pnpm dev", () => {
-        expect(getRunCommand("pnpm")).toBe("pnpm dev");
-    });
-
-    it("returns npm run dev", () => {
-        expect(getRunCommand("npm")).toBe("npm run dev");
-    });
-
-    it("returns yarn dev", () => {
-        expect(getRunCommand("yarn")).toBe("yarn dev");
-    });
-});
 
 describe("createScaffolder (directory structure)", () => {
     setupVol();
@@ -283,6 +268,18 @@ describe("createScaffolder (next steps)", () => {
         expect(note?.message).toContain("cd test-app");
         expect(note?.message).toContain("npm run dev");
         expect(note?.message).toContain("xvfb");
+    });
+
+    it("prints the pnpm dev command", async () => {
+        const harness = await runScaffolder({ packageManager: "pnpm", testing: "none" });
+
+        expect(harness.notes.at(-1)?.message).toContain("pnpm dev");
+    });
+
+    it("prints the yarn dev command", async () => {
+        const harness = await runScaffolder({ packageManager: "yarn", testing: "none" });
+
+        expect(harness.notes.at(-1)?.message).toContain("yarn dev");
     });
 
     it("omits the xvfb note when testing=none", async () => {

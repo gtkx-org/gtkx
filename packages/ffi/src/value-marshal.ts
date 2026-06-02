@@ -13,11 +13,11 @@ import type { Type as FfiType, NativeHandle } from "@gtkx/native";
 import {
     fromJS,
     type GValueReader,
+    getBoxed,
     getFundamentalMarshallers,
     getStrvGType,
     newFrom,
     newFromObject,
-    readBoxed,
 } from "./gobject/gvalue.js";
 import type { GValue } from "./gobject/gvalue-native.js";
 import { Type } from "./gobject/types.js";
@@ -107,7 +107,7 @@ const valueFromFundamental = (value: GValueReader, fundamental: GType): unknown 
     return marshaller ? marshaller.from(value) : undefined;
 };
 
-const readPointerValue = (handle: NativeHandle): null => {
+const getPointerValue = (handle: NativeHandle): null => {
     const ptr = read(handle, t.uint64, 8) as number;
     if (ptr !== 0) {
         throw new Error("G_TYPE_POINTER non-null values cannot be marshalled to JS");
@@ -143,8 +143,8 @@ export function valueToJS(value: GValueReader): unknown {
     const fundamentalValue = valueFromFundamental(value, fundamental);
     if (fundamentalValue !== undefined) return fundamentalValue;
 
-    if (fundamental === Type.POINTER) return readPointerValue(getHandle(value));
-    if (fundamental === Type.BOXED) return readBoxed(value);
+    if (fundamental === Type.POINTER) return getPointerValue(getHandle(value));
+    if (fundamental === Type.BOXED) return getBoxed(value);
 
     throw new Error(`Unsupported GType for valueToJS: ${typeName(gtype) ?? String(gtype)}`);
 }

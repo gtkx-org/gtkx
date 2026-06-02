@@ -1,4 +1,3 @@
-import type * as Gtk from "@gtkx/gi/gtk";
 import * as GtkSource from "@gtkx/gi/gtksource";
 import type { GtkSourceViewProps } from "../jsx.js";
 import { hasChanged } from "./internal/props.js";
@@ -21,14 +20,6 @@ type SourceViewProps = Pick<
     | "onCursorMoved"
     | "onHighlightUpdated"
 >;
-
-interface BufferPropChanges {
-    readonly languageChanged: boolean;
-    readonly styleSchemeChanged: boolean;
-    readonly highlightSyntaxChanged: boolean;
-    readonly highlightBracketsChanged: boolean;
-    readonly trailingNewlineChanged: boolean;
-}
 
 export class SourceViewNode extends TextViewNode {
     protected override createBufferController(): TextBufferController<GtkSource.Buffer> {
@@ -69,42 +60,37 @@ export class SourceViewNode extends TextViewNode {
     }
 
     private applyBufferProps(oldProps: SourceViewProps | null, newProps: SourceViewProps): void {
-        const changes = this.collectBufferPropChanges(oldProps, newProps);
-        if (!this.anyBufferPropChanged(changes)) return;
+        const languageChanged = hasChanged(oldProps, newProps, "language");
+        const styleSchemeChanged = hasChanged(oldProps, newProps, "styleScheme");
+        const highlightSyntaxChanged = hasChanged(oldProps, newProps, "highlightSyntax");
+        const highlightBracketsChanged = hasChanged(oldProps, newProps, "highlightMatchingBrackets");
+        const trailingNewlineChanged = hasChanged(oldProps, newProps, "implicitTrailingNewline");
+
+        if (
+            !(
+                languageChanged ||
+                styleSchemeChanged ||
+                highlightSyntaxChanged ||
+                highlightBracketsChanged ||
+                trailingNewlineChanged
+            )
+        ) {
+            return;
+        }
 
         const buffer = this.ensureBufferController().ensureBuffer();
 
-        if (changes.languageChanged) this.applyLanguage(buffer, oldProps, newProps);
-        if (changes.styleSchemeChanged) this.applyStyleScheme(buffer, oldProps, newProps);
-        if (changes.highlightSyntaxChanged || changes.languageChanged) {
+        if (languageChanged) this.applyLanguage(buffer, oldProps, newProps);
+        if (styleSchemeChanged) this.applyStyleScheme(buffer, oldProps, newProps);
+        if (highlightSyntaxChanged || languageChanged) {
             buffer.setHighlightSyntax(newProps.highlightSyntax ?? newProps.language !== undefined);
         }
-        if (changes.highlightBracketsChanged) {
+        if (highlightBracketsChanged) {
             buffer.setHighlightMatchingBrackets(newProps.highlightMatchingBrackets ?? true);
         }
-        if (changes.trailingNewlineChanged && newProps.implicitTrailingNewline !== undefined) {
+        if (trailingNewlineChanged && newProps.implicitTrailingNewline !== undefined) {
             buffer.setImplicitTrailingNewline(newProps.implicitTrailingNewline);
         }
-    }
-
-    private collectBufferPropChanges(oldProps: SourceViewProps | null, newProps: SourceViewProps): BufferPropChanges {
-        return {
-            languageChanged: hasChanged(oldProps, newProps, "language"),
-            styleSchemeChanged: hasChanged(oldProps, newProps, "styleScheme"),
-            highlightSyntaxChanged: hasChanged(oldProps, newProps, "highlightSyntax"),
-            highlightBracketsChanged: hasChanged(oldProps, newProps, "highlightMatchingBrackets"),
-            trailingNewlineChanged: hasChanged(oldProps, newProps, "implicitTrailingNewline"),
-        };
-    }
-
-    private anyBufferPropChanged(changes: BufferPropChanges): boolean {
-        return (
-            changes.languageChanged ||
-            changes.styleSchemeChanged ||
-            changes.highlightSyntaxChanged ||
-            changes.highlightBracketsChanged ||
-            changes.trailingNewlineChanged
-        );
     }
 
     private applyLanguage(buffer: GtkSource.Buffer, oldProps: SourceViewProps | null, newProps: SourceViewProps): void {
@@ -139,9 +125,7 @@ export class SourceViewNode extends TextViewNode {
             owner: this,
             obj: buffer,
             signal: "highlight-updated",
-            handler: onHighlightUpdated
-                ? (start: Gtk.TextIter, end: Gtk.TextIter) => onHighlightUpdated(start, end)
-                : undefined,
+            handler: onHighlightUpdated ?? undefined,
         });
     }
 }

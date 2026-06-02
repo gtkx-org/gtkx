@@ -5,7 +5,7 @@ import type { GtkxConfig } from "../config.js";
 import { GtkxConfigNotFoundError, loadGtkxConfig } from "./config-loader.js";
 import { resolveGirPath } from "./gir-resolver.js";
 import { resolveLibraries } from "./library-resolver.js";
-import { type CodegenStore, resolveCodegenStore } from "./output-resolver.js";
+import { type CodegenStore, findCodegenRoot, resolveCodegenStore } from "./output-resolver.js";
 
 /**
  * Options for {@link runCodegen}.
@@ -88,7 +88,7 @@ const buildRunner = (
  * @returns Summary of work performed, plus the resolved config and GIR path
  */
 export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
-    const cwd = options.cwd ?? process.cwd();
+    const cwd = findCodegenRoot(options.cwd ?? process.cwd());
 
     const { config, configFile } = await loadGtkxConfig(cwd);
 
@@ -139,6 +139,19 @@ const namespaceBarrelPath = (giStoreDir: string, library: string): string => {
 };
 
 /**
+ * Whether the gi store's own `node_modules/@gtkx/{ffi,gi}` symlinks resolve.
+ *
+ * The injected `@gtkx/gi` package imports `@gtkx/ffi` and its sibling
+ * namespaces through these bundled links; `pnpm install` can prune them while
+ * leaving the store tree intact, which silently breaks module resolution for
+ * every generated module. Verifying the linked manifests resolve forces a
+ * regeneration that restores them.
+ */
+const giStoreLinksResolve = (giStoreDir: string): boolean =>
+    existsSync(join(giStoreDir, "node_modules", "@gtkx", "ffi", "package.json")) &&
+    existsSync(join(giStoreDir, "node_modules", "@gtkx", "gi", "package.json"));
+
+/**
  * Returns true if the injected `@gtkx/gi` (or, when the React stack — both
  * `@gtkx/react` and the `react` runtime — is present, `@gtkx/react-jsx`)
  * package is missing a required module or its visible alias.
@@ -162,6 +175,9 @@ const isCodegenNeeded = (cwd: string, config: GtkxConfig): boolean => {
         if (!existsSync(store.giLinkDir) || !existsSync(store.giStoreDir)) {
             return true;
         }
+        if (!giStoreLinksResolve(store.giStoreDir)) {
+            return true;
+        }
         const girPath = resolveGirPath(config.girPath);
         const libraries = resolveLibraries(config.libraries, girPath);
         if (libraries.some((library) => !existsSync(namespaceBarrelPath(store.giStoreDir, library)))) {
@@ -178,6 +194,46 @@ const isCodegenNeeded = (cwd: string, config: GtkxConfig): boolean => {
 };
 
 /**
+ * Removes a workspace member's own generated store and aliases so they cannot
+ * shadow the shared root store.
+ *
+ * When a member shares the workspace root's store, a leftover member-local
+ * `.gtkx` (or its `@gtkx/{gi,react-jsx}` symlinks) would resolve ahead of the
+ * root copy, reintroducing the duplicate-instance split this sharing avoids.
+ *
+ * @param memberDir - The workspace member whose shadowing store to prune
+ */
+const pruneShadowingStore = (memberDir: string): void => {
+    const nodeModules = join(memberDir, "node_modules");
+    for (const path of [
+        join(nodeModules, ".gtkx"),
+        join(nodeModules, "@gtkx", "gi"),
+        join(nodeModules, "@gtkx", "react-jsx"),
+    ]) {
+        rmSync(path, { recursive: true, force: true });
+    }
+};
+
+/**
+ * Resolves the codegen root and configuration for `cwd`, pruning a member's
+ * shadowing store along the way.
+ *
+ * @param cwd - Project root in which to look for `gtkx.config.ts`
+ * @returns The resolved root and config, or `null` when no config is found
+ */
+const resolveCodegenContext = async (cwd: string): Promise<{ root: string; config: GtkxConfig } | null> => {
+    const root = findCodegenRoot(cwd);
+    if (root !== cwd) pruneShadowingStore(cwd);
+    try {
+        const { config } = await loadGtkxConfig(root);
+        return { root, config };
+    } catch (error) {
+        if (error instanceof GtkxConfigNotFoundError) return null;
+        throw error;
+    }
+};
+
+/**
  * Regenerates the injected packages when any required module or alias is
  * missing, leaving them untouched otherwise.
  *
@@ -189,19 +245,11 @@ const isCodegenNeeded = (cwd: string, config: GtkxConfig): boolean => {
  * @param cwd - Project root in which to look for `gtkx.config.ts`
  */
 export const ensureGenerated = async (cwd: string): Promise<boolean> => {
-    let config: GtkxConfig;
-    try {
-        ({ config } = await loadGtkxConfig(cwd));
-    } catch (error) {
-        if (error instanceof GtkxConfigNotFoundError) {
-            return false;
-        }
-        throw error;
-    }
-    if (!isCodegenNeeded(cwd, config)) {
+    const context = await resolveCodegenContext(cwd);
+    if (!context || !isCodegenNeeded(context.root, context.config)) {
         return false;
     }
-    await runCodegen({ cwd });
+    await runCodegen({ cwd: context.root });
     return true;
 };
 
@@ -219,18 +267,9 @@ export const preflightCodegen = async (cwd: string): Promise<void> => {
         return;
     }
 
-    let config: GtkxConfig;
-    try {
-        ({ config } = await loadGtkxConfig(cwd));
-    } catch (error) {
-        if (error instanceof GtkxConfigNotFoundError) {
-            return;
-        }
-        throw error;
-    }
-
-    if (isCodegenNeeded(cwd, config)) {
+    const context = await resolveCodegenContext(cwd);
+    if (context && isCodegenNeeded(context.root, context.config)) {
         console.log("[gtkx] generated bindings missing; running codegen...");
-        await runCodegen({ cwd });
+        await runCodegen({ cwd: context.root });
     }
 };

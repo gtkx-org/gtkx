@@ -58,9 +58,6 @@ importers:
       '@gtkx/css':
         specifier: workspace:*
         version: link:../../packages/css
-      '@gtkx/ffi':
-        specifier: workspace:*
-        version: link:../../packages/ffi
       '@gtkx/react':
         specifier: workspace:*
         version: link:../../packages/react
@@ -105,9 +102,6 @@ importers:
 
   examples/hello-world:
     dependencies:
-      '@gtkx/ffi':
-        specifier: workspace:*
-        version: link:../../packages/ffi
       '@gtkx/react':
         specifier: workspace:*
         version: link:../../packages/react
@@ -124,9 +118,6 @@ importers:
       '@gtkx/css':
         specifier: workspace:*
         version: link:../../packages/css
-      '@gtkx/ffi':
-        specifier: workspace:*
-        version: link:../../packages/ffi
       '@gtkx/react':
         specifier: workspace:*
         version: link:../../packages/react
@@ -238,9 +229,6 @@ importers:
       '@emotion/serialize':
         specifier: ^1.3.3
         version: 1.3.3
-      '@gtkx/ffi':
-        specifier: workspace:*
-        version: link:../ffi
       stylis:
         specifier: ^4.4.0
         version: 4.4.0
@@ -336,9 +324,6 @@ importers:
 
   packages/testing:
     dependencies:
-      '@gtkx/ffi':
-        specifier: workspace:*
-        version: link:../ffi
       '@gtkx/react':
         specifier: workspace:*
         version: link:../react
@@ -369,9 +354,6 @@ importers:
       '@gtkx/css':
         specifier: workspace:*
         version: link:../packages/css
-      '@gtkx/ffi':
-        specifier: workspace:*
-        version: link:../packages/ffi
       '@gtkx/react':
         specifier: workspace:*
         version: link:../packages/react

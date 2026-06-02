@@ -39,7 +39,7 @@
     "scripts": {
         "build": "tsc -b",
         "test": "vitest run",
-        "typecheck": "tsc -b --emitDeclarationOnly && tsc -p overlay/tsconfig.json"
+        "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "dependencies": {
         "@gtkx/utils": "workspace:*",

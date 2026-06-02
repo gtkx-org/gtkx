@@ -58,7 +58,7 @@ function boxedTypeName(gtype: GType): string {
  * @param value - The `GValue` (any object backed by a `GValue` handle).
  * @param vBoxed - The boxed wrapper to store, or `null`.
  */
-export function writeBoxed(value: object, vBoxed: object | null): void {
+export function setBoxed(value: object, vBoxed: object | null): void {
     call(
         LIBGOBJECT,
         "g_value_set_boxed",
@@ -83,7 +83,7 @@ export function writeBoxed(value: object, vBoxed: object | null): void {
  *   type or the boxed pointer is NULL.
  * @throws if the boxed `GType` has no registered wrapper class.
  */
-export function readBoxed(value: object): object | null {
+export function getBoxed(value: object): object | null {
     const gtype = valueHeldType(value);
     if (typeFundamental(gtype) !== Type.BOXED) {
         return null;
@@ -166,7 +166,7 @@ export function newFromObject(value: object | null): GValue {
 
 /** Creates a `GValue` initialized with a boxed value of the given `GType`. */
 function newFromBoxed(value: object, gtype: GType): GValue {
-    return initValue(gtype, (v) => writeBoxed(v, value));
+    return initValue(gtype, (v) => setBoxed(v, value));
 }
 
 /** Creates a `GValue` initialized with a `GStrv` from a JS string array. */

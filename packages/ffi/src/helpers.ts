@@ -1,6 +1,6 @@
 import { type Arg, call as nativeCall, type Type } from "@gtkx/native";
 
-export { alloc, call, freeze, getNativeId, read, unfreeze, write } from "@gtkx/native";
+export { alloc, call, freeze, read, unfreeze, write } from "@gtkx/native";
 
 /**
  * Lifetime of a value crossing the FFI boundary.
@@ -18,13 +18,13 @@ export { alloc, call, freeze, getNativeId, read, unfreeze, write } from "@gtkx/n
  *   owns (e.g. `pango_layout_iter_get_run`), where copying would defeat
  *   in-place mutation. Maps to node-gtk's `kNone`.
  */
-export type Ownership = "full" | "borrowed" | "none";
+type Ownership = "full" | "borrowed" | "none";
 
 /** Container shape for array-like FFI types. */
-export type ArrayKind = "array" | "glist" | "gslist" | "gptrarray" | "garray" | "gbytearray" | "sized" | "fixed";
+type ArrayKind = "array" | "glist" | "gslist" | "gptrarray" | "garray" | "gbytearray" | "sized" | "fixed";
 
 /** Lifetime of a callback trampoline. */
-export type TrampolineScope = "call" | "notified" | "async" | "forever";
+type TrampolineScope = "call" | "notified" | "async" | "forever";
 
 /**
  * Binds a native function symbol once and returns a callable that dispatches it.
@@ -146,7 +146,7 @@ const flagsT = (library: string, getTypeFn: string, signed: boolean): Type => ({
 });
 
 /** Optional sizing metadata for array-like FFI descriptors. */
-export type ArrayOptions = {
+type ArrayOptions = {
     /** Size of each element in bytes (used for `garray`). */
     elementSize?: number;
     /** Index of the parameter carrying the array length (used for `sized`). */
@@ -190,7 +190,7 @@ const fixedArray = (itemType: Type, fixedSize: number, ownership: Ownership = "b
     arrayT(itemType, "fixed", ownership, { fixedSize, elementSize });
 
 /** Optional configuration for a trampoline FFI descriptor. */
-export type TrampolineOptions = {
+type TrampolineOptions = {
     /** Whether the call has a paired destroy-notify parameter. */
     hasDestroy?: boolean;
     /** Index of the user-data parameter passed to the callback. */

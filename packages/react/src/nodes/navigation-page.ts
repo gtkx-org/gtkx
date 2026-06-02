@@ -59,11 +59,10 @@ export class NavigationPageNode extends SingleChildVirtualNode<NavigationPagePro
         const childWidget = this.children[0]?.container ?? null;
 
         if (childWidget) {
-            const wrappedChild = this.props.id
+            this.wrappedPage = this.props.id
                 ? Adw.NavigationPage.newWithTag(childWidget, title, this.props.id)
                 : Adw.NavigationPage.new(childWidget, title);
 
-            this.wrappedPage = wrappedChild;
             this.applyOwnProps(null, this.props);
 
             if (parentWidget instanceof Adw.NavigationView) {
@@ -71,7 +70,7 @@ export class NavigationPageNode extends SingleChildVirtualNode<NavigationPagePro
                     parentWidget.remove(oldChild);
                 }
 
-                parentWidget.add(wrappedChild);
+                parentWidget.add(this.wrappedPage);
             } else {
                 this.applySlotChild(parentWidget, oldChild);
             }

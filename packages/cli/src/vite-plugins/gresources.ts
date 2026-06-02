@@ -21,7 +21,7 @@ const MANIFEST_PREFIX = "/";
  * the pipeline still emits a deterministic, registerable path for projects
  * that have not yet declared an `applicationId` in `gtkx.config.ts`.
  */
-export const deriveResourcePrefix = (applicationId?: string): string => {
+const deriveResourcePrefix = (applicationId?: string): string => {
     if (!applicationId) return DEFAULT_RESOURCE_PREFIX;
     return `/${applicationId.replaceAll(".", "/")}`;
 };
@@ -312,8 +312,9 @@ const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void 
  *
  * **Path layout:** By default an asset resolves to
  * `resource:///<prefix>/<path-relative-to-vite-root>`, where `<prefix>` is
- * derived by {@link deriveResourcePrefix} from the `applicationId` declared
- * in `gtkx.config.ts` (loaded during the `config` hook). The exact value is
+ * derived from the `applicationId` declared in `gtkx.config.ts` (loaded
+ * during the `config` hook) — `org.gtk.Demo4` yields `/org/gtk/Demo4`, and a
+ * missing id falls back to `/gtkx/app`. The exact value is
  * incidental — callers use the import's returned `path`/URI rather than
  * depending on it.
  *

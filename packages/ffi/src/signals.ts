@@ -2,14 +2,15 @@
  * Runtime signal dispatch for generated FFI bindings.
  *
  * Generated classes register a per-class signal table via
- * {@link registerSignalMeta} and delegate their `connect` and `emit` methods
+ * {@link registerSignalMetadata} and delegate their `connect` and `emit` methods
  * to {@link connectSignal} and {@link emitSignal}, which centralize handler
  * wrapping, trampoline connection, and `GValue` marshalling.
  */
 
 import type { Type } from "@gtkx/native";
+import type { AnyClass } from "@gtkx/utils";
 import { LIBGOBJECT } from "./gtype.js";
-import { getHandle, type NativeClass } from "./handles.js";
+import { getHandle } from "./handles.js";
 import { call, t } from "./helpers.js";
 
 /** A user-supplied signal handler. */
@@ -40,7 +41,7 @@ export type SignalDescriptor = {
 };
 
 /** A `GObject.Value` instance, narrowed to the surface {@link emitSignal} uses. */
-export type SignalGValue = { init(gtype: unknown): void };
+type SignalGValue = { init(gtype: unknown): void };
 
 /** The `GObject` namespace surface that {@link emitSignal} marshals through. */
 export type SignalGObject = {
@@ -51,13 +52,13 @@ export type SignalGObject = {
     signalEmitv(values: readonly SignalGValue[], signalId: number, detail: number, returnValue?: SignalGValue): void;
 };
 
-type SignalMeta = {
+type SignalMetadata = {
     readonly signals: ReadonlyMap<string, SignalDescriptor>;
     readonly gtype: unknown;
     readonly gobject: SignalGObject;
 };
 
-const signalMetaByClass = new WeakMap<NativeClass, SignalMeta>();
+const signalMetadataByClass = new WeakMap<AnyClass, SignalMetadata>();
 
 /**
  * Registers the signal table for a generated class.
@@ -69,13 +70,13 @@ const signalMetaByClass = new WeakMap<NativeClass, SignalMeta>();
  * @param gtype - The class's runtime `GType`, resolved at registration
  * @param gobject - The `GObject` namespace used for emit-side marshalling
  */
-export function registerSignalMeta(
-    cls: NativeClass,
+export function registerSignalMetadata(
+    cls: AnyClass,
     signals: ReadonlyMap<string, SignalDescriptor>,
     gtype: unknown,
     gobject: SignalGObject,
 ): void {
-    signalMetaByClass.set(cls, { signals, gtype, gobject });
+    signalMetadataByClass.set(cls, { signals, gtype, gobject });
 }
 
 /**
@@ -95,7 +96,7 @@ const signalBaseName = (signal: string): string => {
  */
 type SignalTarget = {
     readonly instance: object;
-    readonly cls: NativeClass;
+    readonly cls: AnyClass;
 };
 
 /**
@@ -132,7 +133,7 @@ export function connectSignal(
 ): number {
     const { instance, cls } = target;
     const { after, parentConnect } = options;
-    const descriptor = signalMetaByClass.get(cls)?.signals.get(signalBaseName(signal));
+    const descriptor = signalMetadataByClass.get(cls)?.signals.get(signalBaseName(signal));
     if (!descriptor) {
         if (parentConnect) return parentConnect(signal, handler, after);
         throw new Error(`Unknown signal '${signal}'`);
@@ -172,7 +173,7 @@ export function emitSignal(
     parentEmit?: (sigName: string, ...args: unknown[]) => void,
 ): void {
     const { instance, cls } = target;
-    const meta = signalMetaByClass.get(cls);
+    const meta = signalMetadataByClass.get(cls);
     const descriptor = meta?.signals.get(sigName);
     if (!meta || !descriptor) {
         if (parentEmit) {

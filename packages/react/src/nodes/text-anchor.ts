@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import type { TextAnchorProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { BufferOffsetNode } from "./internal/buffer-offset-node.js";
+import { BufferOffsetNode } from "./internal/buffer-offset.js";
 import { unparentWidget } from "./internal/widget.js";
 import { TEXT_OBJECT_REPLACEMENT, type TextContentParent } from "./text-content.js";
 import { isTextContentParent } from "./text-segment.js";

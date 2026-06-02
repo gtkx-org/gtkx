@@ -11,12 +11,11 @@
 export { alloc, call, read, t } from "./helpers.js";
 
 import type { NativeHandle } from "@gtkx/native";
-import type { NativeClass } from "./handles.js";
+import type { AnyClass } from "@gtkx/utils";
 import { getNativeObject } from "./registry.js";
 
 export type { NativeHandle, Type } from "@gtkx/native";
 export { findObjectProperty, getInstanceGType } from "@gtkx/native";
-export type { NativeClass } from "./handles.js";
 
 /**
  * Structural shape of a thrown GLib `GError` boxed wrapper.
@@ -48,7 +47,7 @@ export interface GError {
  * @param error - Out-parameter ref populated by the FFI call
  * @param errorClass - The GLib `Error` wrapper class
  */
-export function checkError(error: { value: NativeHandle | null }, errorClass: NativeClass<GError>): void {
+export function checkError(error: { value: NativeHandle | null }, errorClass: AnyClass<GError>): void {
     if (error.value !== null) {
         const gerror = getNativeObject(error.value, errorClass);
         const carrier = new Error(gerror.message);

@@ -19,12 +19,11 @@ export class CalendarNode extends WidgetNode<Gtk.Calendar, CalendarProps, Calend
     protected override ownPropDescriptors(): PropDescriptorTable {
         return {
             ...super.ownPropDescriptors(),
-            markedDays: arraySync<number, number>({
+            markedDays: arraySync<number, void>({
                 equal: isShallowEqual,
                 clearAll: () => this.container.clearMarks(),
                 add: (day) => {
                     this.container.markDay(day);
-                    return day;
                 },
             }),
         };

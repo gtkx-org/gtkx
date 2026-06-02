@@ -45,7 +45,7 @@ const fromRefList: CreateValue = (val) => {
     return makeValue(Gtk.AccessibleList.prototype.__gtype__, (v) => v.setBoxed(list));
 };
 
-const prop = (enumValue: Gtk.AccessibleProperty, createValue: CreateValue): PropertyDef => ({
+const property = (enumValue: Gtk.AccessibleProperty, createValue: CreateValue): PropertyDef => ({
     kind: "property",
     enumValue,
     createValue,
@@ -64,26 +64,26 @@ const relation = (enumValue: Gtk.AccessibleRelation, createValue: CreateValue): 
 });
 
 const ACCESSIBLE_PROP_MAP: Record<string, AccessiblePropDef> = {
-    accessibleAutocomplete: prop(Gtk.AccessibleProperty.AUTOCOMPLETE, fromInt),
-    accessibleDescription: prop(Gtk.AccessibleProperty.DESCRIPTION, fromString),
-    accessibleHasPopup: prop(Gtk.AccessibleProperty.HAS_POPUP, fromBoolean),
-    accessibleKeyShortcuts: prop(Gtk.AccessibleProperty.KEY_SHORTCUTS, fromString),
-    accessibleLabel: prop(Gtk.AccessibleProperty.LABEL, fromString),
-    accessibleLevel: prop(Gtk.AccessibleProperty.LEVEL, fromInt),
-    accessibleModal: prop(Gtk.AccessibleProperty.MODAL, fromBoolean),
-    accessibleMultiLine: prop(Gtk.AccessibleProperty.MULTI_LINE, fromBoolean),
-    accessibleMultiSelectable: prop(Gtk.AccessibleProperty.MULTI_SELECTABLE, fromBoolean),
-    accessibleOrientation: prop(Gtk.AccessibleProperty.ORIENTATION, fromInt),
-    accessiblePlaceholder: prop(Gtk.AccessibleProperty.PLACEHOLDER, fromString),
-    accessibleReadOnly: prop(Gtk.AccessibleProperty.READ_ONLY, fromBoolean),
-    accessibleRequired: prop(Gtk.AccessibleProperty.REQUIRED, fromBoolean),
-    accessibleRoleDescription: prop(Gtk.AccessibleProperty.ROLE_DESCRIPTION, fromString),
-    accessibleSort: prop(Gtk.AccessibleProperty.SORT, fromInt),
-    accessibleValueMax: prop(Gtk.AccessibleProperty.VALUE_MAX, fromDouble),
-    accessibleValueMin: prop(Gtk.AccessibleProperty.VALUE_MIN, fromDouble),
-    accessibleValueNow: prop(Gtk.AccessibleProperty.VALUE_NOW, fromDouble),
-    accessibleValueText: prop(Gtk.AccessibleProperty.VALUE_TEXT, fromString),
-    accessibleHelpText: prop(Gtk.AccessibleProperty.HELP_TEXT, fromString),
+    accessibleAutocomplete: property(Gtk.AccessibleProperty.AUTOCOMPLETE, fromInt),
+    accessibleDescription: property(Gtk.AccessibleProperty.DESCRIPTION, fromString),
+    accessibleHasPopup: property(Gtk.AccessibleProperty.HAS_POPUP, fromBoolean),
+    accessibleKeyShortcuts: property(Gtk.AccessibleProperty.KEY_SHORTCUTS, fromString),
+    accessibleLabel: property(Gtk.AccessibleProperty.LABEL, fromString),
+    accessibleLevel: property(Gtk.AccessibleProperty.LEVEL, fromInt),
+    accessibleModal: property(Gtk.AccessibleProperty.MODAL, fromBoolean),
+    accessibleMultiLine: property(Gtk.AccessibleProperty.MULTI_LINE, fromBoolean),
+    accessibleMultiSelectable: property(Gtk.AccessibleProperty.MULTI_SELECTABLE, fromBoolean),
+    accessibleOrientation: property(Gtk.AccessibleProperty.ORIENTATION, fromInt),
+    accessiblePlaceholder: property(Gtk.AccessibleProperty.PLACEHOLDER, fromString),
+    accessibleReadOnly: property(Gtk.AccessibleProperty.READ_ONLY, fromBoolean),
+    accessibleRequired: property(Gtk.AccessibleProperty.REQUIRED, fromBoolean),
+    accessibleRoleDescription: property(Gtk.AccessibleProperty.ROLE_DESCRIPTION, fromString),
+    accessibleSort: property(Gtk.AccessibleProperty.SORT, fromInt),
+    accessibleValueMax: property(Gtk.AccessibleProperty.VALUE_MAX, fromDouble),
+    accessibleValueMin: property(Gtk.AccessibleProperty.VALUE_MIN, fromDouble),
+    accessibleValueNow: property(Gtk.AccessibleProperty.VALUE_NOW, fromDouble),
+    accessibleValueText: property(Gtk.AccessibleProperty.VALUE_TEXT, fromString),
+    accessibleHelpText: property(Gtk.AccessibleProperty.HELP_TEXT, fromString),
 
     accessibleBusy: state(Gtk.AccessibleState.BUSY, fromBoolean),
     accessibleChecked: state(Gtk.AccessibleState.CHECKED, fromInt),

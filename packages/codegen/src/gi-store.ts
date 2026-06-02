@@ -2,6 +2,8 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { swapStore, symlinkRelative, tempStoreFor, writeFilePair, writePackageJson } from "./store-fs.js";
+import { transpileSource } from "./transpile.js";
+import { type StoreSourceFile, typecheckGiStore } from "./typecheck-store.js";
 
 /**
  * Absolute path to the hand-written augment overlay shipped with `@gtkx/codegen`.
@@ -78,6 +80,60 @@ const barrelSource = (directory: string): string => {
     return template.replace(/"([^"]+)"/g, (_match, spec) => `"${retargetBarrelSpecifier(spec, directory)}"`);
 };
 
+type CollectedFile = {
+    readonly stem: string;
+    readonly fileName: string;
+    readonly source: string;
+    readonly overlay: boolean;
+};
+
+/**
+ * Gathers the per-namespace generated module, augment overlay, and barrel
+ * sources into a flat file list, building the package `exports` map alongside.
+ */
+const collectStoreSources = (
+    directories: ReadonlySet<string>,
+    standaloneSet: ReadonlySet<string>,
+    rawByDirectory: ReadonlyMap<string, string | null>,
+): { collected: CollectedFile[]; exportsMap: Record<string, unknown> } => {
+    const exportsMap: Record<string, unknown> = { "./package.json": "./package.json" };
+    const collected: CollectedFile[] = [];
+    for (const directory of directories) {
+        const rawSource = standaloneSet.has(directory) ? null : (rawByDirectory.get(directory) ?? null);
+        if (rawSource !== null) {
+            collected.push({
+                stem: `${directory}/${directory}`,
+                fileName: `${directory}/${directory}.ts`,
+                source: rawSource,
+                overlay: false,
+            });
+            exportsMap[`./${directory}/${directory}.js`] = {
+                types: `./${directory}/${directory}.d.ts`,
+                default: `./${directory}/${directory}.js`,
+            };
+        }
+        for (const file of overlayFiles(directory)) {
+            collected.push({
+                stem: `${directory}/augment/${file.slice(0, -".ts".length)}`,
+                fileName: `${directory}/augment/${file}`,
+                source: readFileSync(join(OVERLAY_ROOT, directory, file), "utf8"),
+                overlay: true,
+            });
+        }
+        collected.push({
+            stem: `${directory}/index`,
+            fileName: `${directory}/index.ts`,
+            source: barrelSource(directory),
+            overlay: false,
+        });
+        exportsMap[`./${directory}`] = {
+            types: `./${directory}/index.d.ts`,
+            default: `./${directory}/index.js`,
+        };
+    }
+    return { collected, exportsMap };
+};
+
 /**
  * Assembles the self-contained injected `@gtkx/gi` package.
  *
@@ -100,28 +156,21 @@ export const writeGiStore = (options: GiStoreOptions, namespaces: readonly GiNam
     const rawByDirectory = new Map(namespaces.map((n) => [n.directory, n.rawSource]));
 
     const tmp = tempStoreFor(options.storeDir);
+    const { collected, exportsMap } = collectStoreSources(directories, standaloneSet, rawByDirectory);
 
-    const exportsMap: Record<string, unknown> = { "./package.json": "./package.json" };
+    const sources: StoreSourceFile[] = collected.map((file) =>
+        file.overlay
+            ? { path: join(tmp, file.fileName), source: file.source, overlay: true }
+            : {
+                  path: join(tmp, `${file.stem}.d.ts`),
+                  source: transpileSource(file.fileName, file.source).dts,
+                  overlay: false,
+              },
+    );
+    typecheckGiStore(tmp, sources, join(options.realFfiDir, "src", "index.ts"));
 
-    for (const directory of directories) {
-        const rawSource = standaloneSet.has(directory) ? null : (rawByDirectory.get(directory) ?? null);
-        if (rawSource !== null) {
-            writeFilePair(tmp, `${directory}/${directory}`, `${directory}/${directory}.ts`, rawSource);
-            exportsMap[`./${directory}/${directory}.js`] = {
-                types: `./${directory}/${directory}.d.ts`,
-                default: `./${directory}/${directory}.js`,
-            };
-        }
-        for (const file of overlayFiles(directory)) {
-            const fileStem = file.slice(0, -".ts".length);
-            const source = readFileSync(join(OVERLAY_ROOT, directory, file), "utf8");
-            writeFilePair(tmp, `${directory}/augment/${fileStem}`, `${directory}/augment/${file}`, source);
-        }
-        writeFilePair(tmp, `${directory}/index`, `${directory}/index.ts`, barrelSource(directory));
-        exportsMap[`./${directory}`] = {
-            types: `./${directory}/index.d.ts`,
-            default: `./${directory}/index.js`,
-        };
+    for (const file of collected) {
+        writeFilePair(tmp, file.stem, file.fileName, file.source);
     }
 
     writePackageJson(tmp, {

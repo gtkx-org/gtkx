@@ -18,13 +18,10 @@
  */
 
 export { promisify } from "./async.js";
-export type { ClassVFuncMeta, NativeClass, NativeHandle } from "./handles.js";
+export type { NativeHandle } from "./handles.js";
 export { getHandle, setHandle, tryGetHandle } from "./handles.js";
-export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineScope } from "./helpers.js";
-export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./helpers.js";
+export { alloc, call, freeze, read, t, unfreeze, write } from "./helpers.js";
 export { checkError, makeErrorDomain } from "./native.js";
-export type { NativeClassDescriptor, NativeClassRole, NativeSignalRegistration } from "./register-native-class.js";
 export { registerNativeClass } from "./register-native-class.js";
 export { getNativeObject, getNativeObjectAsInterface } from "./registry.js";
-export type { SignalDescriptor, SignalGObject, SignalGValue, SignalHandler } from "./signals.js";
 export { connectSignal, emitSignal } from "./signals.js";

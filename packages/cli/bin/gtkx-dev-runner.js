@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { main } from "../dist/dev-runner.js";
+import { main } from "../dist/dev-runner-main.js";
 
 try {
     await main();

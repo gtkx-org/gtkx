@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import type { GtkSizeGroupProps, SizeGroupWidgetProps } from "../jsx.js";
+import type { SizeGroupProps, SizeGroupWidgetProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { createAfterCommitDebounce } from "../post-commit-queue.js";
 import type { Container } from "../types.js";
@@ -8,14 +8,16 @@ import { attachChild, unparentWidget } from "./internal/widget.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-function findWidgetAncestor(node: Node | null): WidgetNode | null {
-    let current: Node | null = node;
+function findAncestor<T extends Node>(start: Node | null, is: (node: Node) => node is T): T | null {
+    let current: Node | null = start;
     while (current) {
-        if (current instanceof WidgetNode) return current;
+        if (is(current)) return current;
         current = current.parent;
     }
     return null;
 }
+
+const isWidgetNode = (node: Node): node is WidgetNode => node instanceof WidgetNode;
 
 abstract class TransparentVirtualNode<TProps, TChild extends Node> extends VirtualNode<TProps, Node, TChild> {
     private readonly attachedWidgets = new Set<Gtk.Widget>();
@@ -79,7 +81,7 @@ abstract class TransparentVirtualNode<TProps, TChild extends Node> extends Virtu
 
     private attachDescendant(child: Node): void {
         if (child instanceof WidgetNode) {
-            const ancestor = findWidgetAncestor(this.parent);
+            const ancestor = findAncestor(this.parent, isWidgetNode);
             if (!ancestor) return;
             attachChild(child.container, ancestor.container);
             this.attachedWidgets.add(child.container);
@@ -127,13 +129,12 @@ abstract class TransparentVirtualNode<TProps, TChild extends Node> extends Virtu
  * walking up the React parent chain and call {@link addMember} /
  * {@link removeMember} to opt their wrapped widget into the group.
  *
- * @public
  */
-export class SizeGroupNode extends TransparentVirtualNode<GtkSizeGroupProps, WidgetNode> {
+export class SizeGroupNode extends TransparentVirtualNode<SizeGroupProps, WidgetNode> {
     public readonly sizeGroup: Gtk.SizeGroup;
     private readonly members = new Set<Gtk.Widget>();
 
-    constructor(typeName: string, props: GtkSizeGroupProps, container: undefined, rootContainer: Container) {
+    constructor(typeName: string, props: SizeGroupProps, container: undefined, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
         this.sizeGroup = Gtk.SizeGroup.new(props.mode ?? Gtk.SizeGroupMode.HORIZONTAL);
     }
@@ -142,7 +143,7 @@ export class SizeGroupNode extends TransparentVirtualNode<GtkSizeGroupProps, Wid
         return child instanceof WidgetNode || child instanceof SizeGroupWidgetNode;
     }
 
-    public override commitUpdate(oldProps: GtkSizeGroupProps | null, newProps: GtkSizeGroupProps): void {
+    public override commitUpdate(oldProps: SizeGroupProps | null, newProps: SizeGroupProps): void {
         super.commitUpdate(oldProps, newProps);
         if (oldProps && hasChanged(oldProps, newProps, "mode")) {
             this.sizeGroup.setMode(newProps.mode ?? Gtk.SizeGroupMode.HORIZONTAL);
@@ -182,7 +183,6 @@ export class SizeGroupNode extends TransparentVirtualNode<GtkSizeGroupProps, Wid
  * routes throws through its commit-phase error pipeline (so test harnesses
  * see a rejected `render` instead of an uncaught microtask exception).
  *
- * @public
  */
 export class SizeGroupWidgetNode extends TransparentVirtualNode<SizeGroupWidgetProps, WidgetNode> {
     private registeredWidget: Gtk.Widget | null = null;
@@ -262,11 +262,6 @@ export class SizeGroupWidgetNode extends TransparentVirtualNode<SizeGroupWidgetP
     }
 
     private findSizeGroupAncestor(): SizeGroupNode | null {
-        let current: Node | null = this.parent;
-        while (current) {
-            if (current instanceof SizeGroupNode) return current;
-            current = current.parent;
-        }
-        return null;
+        return findAncestor(this.parent, (node): node is SizeGroupNode => node instanceof SizeGroupNode);
     }
 }

@@ -155,7 +155,7 @@ const createInstanceConfig = (): InstanceConfig => ({
         return node;
     },
     appendInitialChild: (parent, child) => {
-        parent.appendInitialChild(child);
+        parent.appendChild(child);
     },
     finalizeInitialChildren: (instance, _type, props) =>
         withSignalsBlocked(instance, () => instance.finalizeInitialChildren(props)),

@@ -32,10 +32,6 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         return this.buffer;
     }
 
-    hasTextChildren(): boolean {
-        return this.textChildren.length > 0;
-    }
-
     ensureBuffer(): TBuffer {
         if (!this.buffer) {
             this.buffer = this.createBuffer();
@@ -127,15 +123,6 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         owner.signalStore.set({ owner, obj: buffer, signal: "delete-range", handler: handlers.deleteRange });
         owner.signalStore.set({ owner, obj: buffer, signal: "notify::can-undo", handler: handlers.canUndo });
         owner.signalStore.set({ owner, obj: buffer, signal: "notify::can-redo", handler: handlers.canRedo });
-    }
-
-    isTextContentChild(child: Node): child is TextContentChild {
-        return (
-            child instanceof TextSegmentNode ||
-            child instanceof TextTagNode ||
-            child instanceof TextAnchorNode ||
-            child instanceof TextPaintableNode
-        );
     }
 
     appendChild(child: TextContentChild): void {
@@ -367,7 +354,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         this.reapplyTagsFromOffset(offset);
     }
 
-    onChildTextChanged(child: TextSegmentNode, oldLength: number, _newLength: number): void {
+    onChildTextChanged(child: TextSegmentNode, oldLength: number): void {
         if (!this.buffer) return;
 
         const offset = child.getBufferOffset();

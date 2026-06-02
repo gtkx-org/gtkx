@@ -1,7 +1,5 @@
 import * as GObject from "@gtkx/gi/gobject";
 
-type SignalOwner = object;
-
 // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
 export type SignalHandler = (...args: any[]) => any;
 
@@ -28,10 +26,9 @@ type SignalKey = `${string}:${string}`;
 /**
  * Parameter object for {@link SignalStore.set}.
  *
- * @public
  */
 export interface SignalBinding {
-    readonly owner: SignalOwner;
+    readonly owner: object;
     readonly obj: GObject.Object;
     readonly signal: string;
     readonly handler?: SignalHandler | null;
@@ -51,10 +48,10 @@ function getSignalKey(obj: GObject.Object, signal: string): SignalKey {
 }
 
 export class SignalStore {
-    private readonly ownerHandlers: Map<SignalOwner, Map<SignalKey, HandlerEntry>> = new Map();
+    private readonly ownerHandlers: Map<object, Map<SignalKey, HandlerEntry>> = new Map();
     private blockDepth = 0;
 
-    private getOwnerMap(owner: SignalOwner): Map<SignalKey, HandlerEntry> {
+    private getOwnerMap(owner: object): Map<SignalKey, HandlerEntry> {
         let map = this.ownerHandlers.get(owner);
         if (!map) {
             map = new Map();
@@ -82,7 +79,7 @@ export class SignalStore {
         };
     }
 
-    private disconnect(owner: SignalOwner, obj: GObject.Object, signal: string): void {
+    private disconnect(owner: object, obj: GObject.Object, signal: string): void {
         const key = getSignalKey(obj, signal);
         const ownerMap = this.ownerHandlers.get(owner);
         const existing = ownerMap?.get(key);
@@ -110,7 +107,7 @@ export class SignalStore {
         }
     }
 
-    public clear(owner: SignalOwner): void {
+    public clear(owner: object): void {
         const ownerMap = this.ownerHandlers.get(owner);
 
         if (ownerMap) {

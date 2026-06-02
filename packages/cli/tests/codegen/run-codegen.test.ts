@@ -40,11 +40,16 @@ const writeConfig = (cwd: string, body = `export default { libraries: ["Gtk-4.0"
     writeFileSync(join(cwd, "gtkx.config.ts"), `${body}\n`);
 };
 
-/** Materializes the gi store barrel for `namespace` plus its visible alias. */
+/** Materializes the gi store barrel for `namespace`, its visible alias, and the bundled store links. */
 const writeGiBarrel = (cwd: string, namespace: string) => {
     mkdirSync(join(cwd, "node_modules", ".gtkx", "gi", namespace), { recursive: true });
     writeFileSync(join(cwd, "node_modules", ".gtkx", "gi", namespace, "index.js"), "");
     mkdirSync(join(cwd, "node_modules", "@gtkx", "gi"), { recursive: true });
+    for (const pkg of ["ffi", "gi"]) {
+        const linkDir = join(cwd, "node_modules", ".gtkx", "gi", "node_modules", "@gtkx", pkg);
+        mkdirSync(linkDir, { recursive: true });
+        writeFileSync(join(linkDir, "package.json"), JSON.stringify({ name: `@gtkx/${pkg}`, version: "0.0.0" }));
+    }
 };
 
 /** Materializes the jsx unit modules plus its visible alias. */
@@ -213,5 +218,31 @@ describe("ensureGenerated", () => {
         writeConfig(cwd, `export default { libraries: [] };`);
 
         await expect(ensureGenerated(cwd)).rejects.toThrow();
+    });
+});
+
+describe("ensureGenerated — store links", () => {
+    let cwd: string;
+
+    beforeEach(() => {
+        cwd = mkdtempSync(join(tmpdir(), "gtkx-ensure-links-"));
+    });
+
+    afterEach(() => {
+        rmSync(cwd, { recursive: true, force: true });
+    });
+
+    it("regenerates when the bundled gi store links are pruned", async () => {
+        installFfiPackage(cwd);
+        installReactStack(cwd);
+        writeConfig(cwd);
+        writeGiBarrel(cwd, "gtk");
+        writeJsxStore(cwd);
+        rmSync(join(cwd, "node_modules", ".gtkx", "gi", "node_modules", "@gtkx", "ffi"), {
+            recursive: true,
+            force: true,
+        });
+
+        expect(await ensureGenerated(cwd)).toBe(true);
     });
 });

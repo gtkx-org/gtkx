@@ -11,16 +11,16 @@ afterAll(() => {
     rmSync(workDir, { recursive: true, force: true });
 });
 
+const REAL_FFI_DIR = join(import.meta.dirname, "..", "..", "..", "ffi");
+
 const giOptions = (name: string) => {
     const root = join(workDir, name);
-    const realFfiDir = join(root, "fake-ffi");
-    mkdirSync(realFfiDir, { recursive: true });
     return {
         root,
         gi: {
             storeDir: join(root, "node_modules", ".gtkx", "gi"),
             linkDir: join(root, "node_modules", "@gtkx", "gi"),
-            realFfiDir,
+            realFfiDir: REAL_FFI_DIR,
             version: "0.0.0",
         },
     };

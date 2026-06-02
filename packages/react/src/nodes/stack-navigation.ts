@@ -28,7 +28,7 @@
 import type * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { Node } from "../node.js";
-import { scheduleAfterCommit } from "../post-commit-queue.js";
+import { createAfterCommitDebounce } from "../post-commit-queue.js";
 import type { Props } from "../types.js";
 import { hasChanged } from "./internal/props.js";
 import { StackNode, type StackWidget } from "./stack.js";
@@ -61,10 +61,9 @@ interface StackBindable {
  * Reconciler node backing every navigation widget that binds to a stack via a
  * `stack` property. See the module documentation for the auto-wire contract.
  *
- * @public
  */
 export class StackNavigationNode extends WidgetNode<StackNavigationWidget, StackNavigationProps> {
-    private syncScheduled = false;
+    private readonly scheduleSync = createAfterCommitDebounce(() => this.applyWiring());
     private wiredStack: StackWidget | null = null;
     private initialMountValidated = false;
 
@@ -99,15 +98,6 @@ export class StackNavigationNode extends WidgetNode<StackNavigationWidget, Stack
         if (parent) this.scheduleSync();
     }
 
-    private scheduleSync(): void {
-        if (this.syncScheduled) return;
-        this.syncScheduled = true;
-        scheduleAfterCommit(() => {
-            this.syncScheduled = false;
-            this.applyWiring();
-        });
-    }
-
     private applyWiring(): void {
         if (!this.parent) return;
 
@@ -125,8 +115,7 @@ export class StackNavigationNode extends WidgetNode<StackNavigationWidget, Stack
             return;
         }
 
-        const matches = this.assertSingleSiblingStack();
-        this.bindStack(matches[0].container);
+        this.bindStack(this.assertSingleSiblingStack()[0].container);
     }
 
     private assertSingleSiblingStack(): [StackNode] {

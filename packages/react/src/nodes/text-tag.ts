@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import type { TextTagProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { BufferOffsetNode } from "./internal/buffer-offset-node.js";
+import { BufferOffsetNode } from "./internal/buffer-offset.js";
 import { hasChanged } from "./internal/props.js";
 import { TextAnchorNode } from "./text-anchor.js";
 import type { TextContentChild, TextContentParent } from "./text-content.js";
@@ -60,6 +60,15 @@ export class TextTagNode
 
     public override isValidChild(child: Node): boolean {
         return this.isTextContentChild(child);
+    }
+
+    private isTextContentChild(child: Node): child is TextContentChild {
+        return (
+            child instanceof TextSegmentNode ||
+            child instanceof TextTagNode ||
+            child instanceof TextAnchorNode ||
+            child instanceof TextPaintableNode
+        );
     }
 
     public override isValidParent(parent: Node): boolean {
@@ -171,13 +180,13 @@ export class TextTagNode
         this.parent?.onChildRemoved(child);
     }
 
-    public onChildTextChanged(child: TextSegmentNode, oldLength: number, newLength: number): void {
+    public onChildTextChanged(child: TextSegmentNode, oldLength: number): void {
         const index = this.children.indexOf(child);
         if (index !== -1) {
             this.updateChildOffsets(index + 1);
         }
 
-        this.parent?.onChildTextChanged(child, oldLength, newLength);
+        this.parent?.onChildTextChanged(child, oldLength);
     }
 
     private setupTag(): void {
@@ -268,14 +277,5 @@ export class TextTagNode
                 offset += child.getLength();
             }
         }
-    }
-
-    private isTextContentChild(child: Node): child is TextContentChild {
-        return (
-            child instanceof TextSegmentNode ||
-            child instanceof TextTagNode ||
-            child instanceof TextAnchorNode ||
-            child instanceof TextPaintableNode
-        );
     }
 }

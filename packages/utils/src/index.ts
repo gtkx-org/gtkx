@@ -1,3 +1,4 @@
+export type { AnyClass } from "./class.js";
 export { isShallowArrayEqual, isShallowEqual, omit, reverseNumericEnum } from "./collection.js";
 export { errorMessage } from "./error.js";
 export {

@@ -73,28 +73,12 @@ export const stop = async (): Promise<void> => {
  * Called automatically when this module loads unless
  * `GTKX_DISABLE_SHUTDOWN_HANDLERS` is set to `"1"`.
  *
- * @returns A handle whose `uninstall()` detaches the handlers.
  * @see {@link stop}
- * @see {@link uninstallShutdownHandlers}
  */
-export const installShutdownHandlers = (): GracefulShutdownHandle =>
-    installGracefulShutdown({ onSignal: () => stop() });
+const installShutdownHandlers = (): GracefulShutdownHandle => installGracefulShutdown({ onSignal: () => stop() });
 
-let autoInstalledHandle: GracefulShutdownHandle | null =
-    process.env.GTKX_DISABLE_SHUTDOWN_HANDLERS === "1" ? null : installShutdownHandlers();
-
-/**
- * Detaches the shutdown handlers installed automatically when this module
- * loaded, handing signal ownership back to an embedding host.
- *
- * Idempotent, and a no-op when auto-installation was suppressed via
- * `GTKX_DISABLE_SHUTDOWN_HANDLERS`.
- *
- * @see {@link installShutdownHandlers}
- */
-export const uninstallShutdownHandlers = (): void => {
-    autoInstalledHandle?.uninstall();
-    autoInstalledHandle = null;
-};
+if (process.env.GTKX_DISABLE_SHUTDOWN_HANDLERS !== "1") {
+    installShutdownHandlers();
+}
 
 keepAlive();

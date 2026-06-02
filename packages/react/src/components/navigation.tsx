@@ -12,7 +12,6 @@ const NavigationPageElement = "NavigationPage" as const;
  * Use the `<AdwNavigationView.Page>` sub-component to declare pages; each
  * page's `id` is its navigation tag and its `title` the header title.
  *
- * @public
  */
 export const AdwNavigationView: ((props: AdwNavigationViewProps) => ReactNode) & {
     /**
@@ -32,7 +31,6 @@ export const AdwNavigationView: ((props: AdwNavigationViewProps) => ReactNode) &
  * sub-component wraps a child in an `Adw.NavigationPage` whose `id`
  * (`"content"` or `"sidebar"`) selects the pane.
  *
- * @public
  */
 export const AdwNavigationSplitView: ((props: AdwNavigationSplitViewProps) => ReactNode) & {
     /**

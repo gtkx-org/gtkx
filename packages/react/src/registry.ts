@@ -21,7 +21,7 @@ import { GridChildNode } from "./nodes/grid-child.js";
 import { LayoutManagerNode } from "./nodes/layout-manager.js";
 import { LevelBarNode } from "./nodes/level-bar.js";
 import { ListNode } from "./nodes/list.js";
-import { ListItemNode } from "./nodes/list-item-node.js";
+import { ListItemNode } from "./nodes/list-item.js";
 import { MenuNode } from "./nodes/menu.js";
 import { NavigationPageNode } from "./nodes/navigation-page.js";
 import { NavigationViewNode } from "./nodes/navigation-view.js";

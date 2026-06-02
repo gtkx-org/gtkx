@@ -14,8 +14,9 @@
  */
 
 import type { NativeHandle } from "@gtkx/native";
+import type { AnyClass } from "@gtkx/utils";
 import { type GType, GVALUE_BORROWED, GVALUE_SIZE, LIBGOBJECT } from "../gtype.js";
-import { getHandle, type NativeClass, setHandle, tryGetHandle } from "../handles.js";
+import { getHandle, setHandle, tryGetHandle } from "../handles.js";
 import { alloc, t } from "../native.js";
 import { getNativeObject } from "../registry.js";
 
@@ -116,7 +117,7 @@ const g_value_set_variant = t.fn(
 );
 const g_value_get_variant = t.fn(LIBGOBJECT, "g_value_get_variant", [{ type: GVALUE_BORROWED }], VARIANT_FUNDAMENTAL);
 
-let variantClass: NativeClass | undefined;
+let variantClass: AnyClass | undefined;
 
 /**
  * Supplies the `GLib.Variant` wrapper class used by {@link GValue.getVariant}.
@@ -128,7 +129,7 @@ let variantClass: NativeClass | undefined;
  *
  * @param cls - The `GLib.Variant` wrapper class
  */
-export function setVariantClass(cls: NativeClass): void {
+export function setVariantClass(cls: AnyClass): void {
     variantClass = cls;
 }
 

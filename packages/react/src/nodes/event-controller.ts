@@ -5,7 +5,7 @@ import type { Node } from "../node.js";
 import type { Props } from "../types.js";
 import { imperative, type PropDescriptorTable } from "./internal/apply-props.js";
 import { createContainerWithProperties } from "./internal/construct.js";
-import { WidgetAttachmentNode } from "./internal/widget-attachment-node.js";
+import { WidgetAttachmentNode } from "./internal/widget-attachment.js";
 import { WidgetNode } from "./widget.js";
 
 export class EventControllerNode<

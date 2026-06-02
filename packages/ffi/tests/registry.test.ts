@@ -1,17 +1,11 @@
-import {
-    findNativeClass,
-    getHandle,
-    getNativeClass,
-    getNativeObject,
-    getNativeObjectAsInterface,
-    type NativeClass,
-    setClassGType,
-} from "@gtkx/ffi";
+import { getHandle, getNativeObject, getNativeObjectAsInterface } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/gi/gdk";
 import type { GType } from "@gtkx/gi/gobject";
 import { typeFromName } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import type { AnyClass } from "@gtkx/utils";
 import { describe, expect, it } from "vitest";
+import { findNativeClass, setClassGType } from "../src/registry.js";
 
 const INVALID_GTYPE: GType = 0;
 
@@ -19,7 +13,7 @@ describe("setClassGType", () => {
     it("registers a class by GType", () => {
         class TestClass {}
         const fakeGtype: GType = 123456789;
-        setClassGType(TestClass as NativeClass, fakeGtype);
+        setClassGType(TestClass as AnyClass, fakeGtype);
         expect(findNativeClass(fakeGtype)).toBe(TestClass);
     });
 
@@ -27,18 +21,6 @@ describe("setClassGType", () => {
         const label = new Gtk.Label({ label: "Test" });
         const wrapped = getNativeObject(getHandle(label));
         expect(wrapped).toBeInstanceOf(Gtk.Label);
-    });
-});
-
-describe("getNativeClass", () => {
-    it("returns a registered class by GType", () => {
-        const cls = getNativeClass(typeFromName("GtkLabel"));
-        expect(cls).toBe(Gtk.Label);
-    });
-
-    it("returns null for an unregistered GType", () => {
-        const cls = getNativeClass(INVALID_GTYPE);
-        expect(cls).toBeNull();
     });
 });
 

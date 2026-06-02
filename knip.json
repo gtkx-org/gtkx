@@ -1,7 +1,5 @@
 {
     "$schema": "https://unpkg.com/knip@6/schema.json",
-    "tags": ["-public"],
-    "ignoreDependencies": ["@gtkx/gi", "@gtkx/react-jsx", "@gtkx/ffi"],
     "workspaces": {
         ".": {
             "entry": ["gtkx.config.ts"],
@@ -24,7 +22,6 @@
         },
         "packages/ffi": {
             "includeEntryExports": true,
-            "entry": ["src/index.ts!"],
             "project": ["src/**/*.ts!", "scripts/**/*.ts", "tests/**/*.{ts,tsx}"]
         },
         "packages/mcp": {
@@ -69,6 +66,12 @@
         "website": {
             "entry": ["screenshots/**/*.test.{ts,tsx}"],
             "project": [".vitepress/**/*.{ts,tsx,js}", "scripts/**/*.{ts,js}", "screenshots/**/*.{ts,tsx}"]
+        },
+        ".gtkx/gi": {
+            "entry": ["**/*.{js,d.ts}!"]
+        },
+        ".gtkx/jsx": {
+            "entry": ["**/*.js"]
         }
     }
 }

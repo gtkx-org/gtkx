@@ -7,7 +7,7 @@ import { WidgetNode } from "./widget.js";
 /** Widgets the {@link StackNode} reconciler node specializes. */
 export type StackWidget = Gtk.Stack | Adw.ViewStack;
 
-type StackProps = Omit<Pick<GtkStackProps | AdwViewStackProps, "page" | "onPageChanged">, "onPageChanged"> & {
+type StackProps = Pick<GtkStackProps | AdwViewStackProps, "page"> & {
     onPageChanged?: ((page: string | null) => void) | null;
 };
 

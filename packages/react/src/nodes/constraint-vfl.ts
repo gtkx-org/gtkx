@@ -17,7 +17,7 @@ export class ConstraintVflNode extends ConstraintLayoutChildNode<ConstraintVflPr
     protected override applyToLayout(parent: ConstraintLayoutNode): void {
         this.removeFromLayout(parent);
 
-        const views = new Map<string, Gtk.ConstraintTarget>(parent.getTargetRegistry());
+        const views = parent.snapshotTargets();
 
         try {
             this.appliedConstraints = parent.container.addConstraintsFromDescription(

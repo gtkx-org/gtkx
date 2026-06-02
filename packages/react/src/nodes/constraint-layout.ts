@@ -11,7 +11,6 @@ import { LayoutManagerNode } from "./layout-manager.js";
  * managers neither accept Constraint/Guide/Vfl children nor support
  * id-based references.
  *
- * @public
  */
 export class ConstraintLayoutNode extends LayoutManagerNode<Gtk.ConstraintLayout> {
     private readonly targetRegistry = new Map<string, Gtk.ConstraintTarget>();
@@ -56,10 +55,10 @@ export class ConstraintLayoutNode extends LayoutManagerNode<Gtk.ConstraintLayout
     }
 
     /**
-     * Returns the current id→target map (live reference; do not mutate).
-     * Used by the VFL marker to build the `views` map at apply time.
+     * Returns a fresh copy of the id→target map for the VFL marker to build
+     * its `views` argument at apply time, without exposing the live registry.
      */
-    public getTargetRegistry(): ReadonlyMap<string, Gtk.ConstraintTarget> {
-        return this.targetRegistry;
+    public snapshotTargets(): Map<string, Gtk.ConstraintTarget> {
+        return new Map(this.targetRegistry);
     }
 }

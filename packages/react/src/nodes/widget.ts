@@ -149,12 +149,19 @@ export class WidgetNode<
         }
     }
 
-    private findAutowrappedPosition(before: WidgetNode): number | null {
-        let position = 0;
-        let currentChild = this.container.getFirstChild();
-        const beforeIsRow = before.container instanceof Gtk.ListBoxRow || before.container instanceof Gtk.FlowBoxChild;
+    private *gtkChildren(): IterableIterator<Gtk.Widget> {
+        let child = this.container.getFirstChild();
+        while (child) {
+            yield child;
+            child = child.getNextSibling();
+        }
+    }
 
-        while (currentChild) {
+    private findAutowrappedPosition(before: WidgetNode): number | null {
+        const beforeIsRow = before.container instanceof Gtk.ListBoxRow || before.container instanceof Gtk.FlowBoxChild;
+        let position = 0;
+
+        for (const currentChild of this.gtkChildren()) {
             const widgetToCompare = beforeIsRow ? currentChild : this.unwrapGtkChild(currentChild);
 
             if (widgetToCompare && widgetToCompare === before.container) {
@@ -162,7 +169,6 @@ export class WidgetNode<
             }
 
             position++;
-            currentChild = currentChild.getNextSibling();
         }
 
         return null;
@@ -213,13 +219,10 @@ export class WidgetNode<
     }
 
     private findPreviousSibling(before: WidgetNode): Gtk.Widget | undefined {
-        let beforeChild = this.container.getFirstChild();
-
-        while (beforeChild) {
-            if (beforeChild === before.container) {
-                return beforeChild.getPrevSibling() ?? undefined;
+        for (const child of this.gtkChildren()) {
+            if (child === before.container) {
+                return child.getPrevSibling() ?? undefined;
             }
-            beforeChild = beforeChild.getNextSibling();
         }
 
         throw new Error(`Cannot find 'before' sibling in '${this.typeName}'`);
@@ -227,14 +230,12 @@ export class WidgetNode<
 
     private findInsertPosition(before: WidgetNode): number {
         let position = 0;
-        let currentChild = this.container.getFirstChild();
 
-        while (currentChild) {
+        for (const currentChild of this.gtkChildren()) {
             if (currentChild === before.container) {
                 return position;
             }
             position++;
-            currentChild = currentChild.getNextSibling();
         }
 
         throw new Error(`Cannot find 'before' child position in '${this.typeName}'`);

@@ -15,7 +15,7 @@ type AccessibleMetadata = Map<string, unknown>;
 
 const widgetMetadata = new WeakMap<Gtk.Widget, AccessibleMetadata>();
 
-const getOrCreate = (widget: Gtk.Widget): AccessibleMetadata => {
+const getOrCreateMetadata = (widget: Gtk.Widget): AccessibleMetadata => {
     let entry = widgetMetadata.get(widget);
     if (!entry) {
         entry = new Map();
@@ -29,7 +29,7 @@ const getOrCreate = (widget: Gtk.Widget): AccessibleMetadata => {
  * the reconciler whenever it writes one of the `accessible*` props.
  */
 export const setAccessibleMetadata = (widget: Gtk.Widget, propName: string, value: unknown): void => {
-    getOrCreate(widget).set(propName, value);
+    getOrCreateMetadata(widget).set(propName, value);
 };
 
 /**

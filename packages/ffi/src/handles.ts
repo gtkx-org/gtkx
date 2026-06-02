@@ -1,4 +1,5 @@
 import type { NativeHandle } from "@gtkx/native";
+import type { AnyClass } from "@gtkx/utils";
 import type { GType } from "./gtype.js";
 
 export type { NativeHandle } from "@gtkx/native";
@@ -15,26 +16,15 @@ export interface GTyped {
 }
 
 /**
- * Constructor type for a generated native wrapper class. Accepted by the
- * wrapper-resolution helpers (`getNativeObject`, `registerNativeClass`) and
- * used as the key type of the GType identity registries.
- */
-export type NativeClass<T extends object = object> = (abstract new (
-    ...args: never[]
-) => T) & {
-    readonly prototype: T;
-};
-
-/**
  * Returns the superclass of a native wrapper class, or `null` when `cls` is a
  * root class whose prototype is `Function.prototype` (the JavaScript class
  * hierarchy root). Encapsulates the single boundary where a prototype-chain
  * walk over generated classes meets the untyped function root, so callers can
  * iterate ancestry without comparing against `Function.prototype` themselves.
  */
-export function getParentClass(cls: NativeClass): NativeClass | null {
+export function getParentClass(cls: AnyClass): AnyClass | null {
     const parent: unknown = Object.getPrototypeOf(cls);
-    return typeof parent === "function" && parent !== Function.prototype ? (parent as NativeClass) : null;
+    return typeof parent === "function" && parent !== Function.prototype ? (parent as AnyClass) : null;
 }
 
 const handleMap = new WeakMap<object, NativeHandle>();
@@ -73,27 +63,27 @@ export function setHandle(obj: object, handle: NativeHandle): void {
 
 /**
  * Registry of generated vtable vfunc descriptors, keyed by the JS class they
- * belong to. Populated by codegen at module load via {@link registerClassVFuncMeta}
+ * belong to. Populated by codegen at module load via {@link registerClassVfuncMetadata}
  * and consulted by `registerClass` to auto-discover vfunc overrides supplied
  * as plain methods on user subclasses.
  */
-export type ClassVFuncMeta = Readonly<Record<string, unknown>>;
+export type ClassVfuncMetadata = Readonly<Record<string, unknown>>;
 
-const classVFuncMetaMap = new WeakMap<object, ClassVFuncMeta>();
+const classVfuncMetadataMap = new WeakMap<object, ClassVfuncMetadata>();
 
 /**
  * Associates a vtable vfunc descriptor registry with a generated class so that
  * `registerClass` can resolve vfunc overrides by method name on subclasses.
  *
  */
-export function registerClassVFuncMeta(cls: object, meta: ClassVFuncMeta): void {
-    classVFuncMetaMap.set(cls, meta);
+export function registerClassVfuncMetadata(cls: object, metadata: ClassVfuncMetadata): void {
+    classVfuncMetadataMap.set(cls, metadata);
 }
 
 /**
  * Resolves the vtable vfunc descriptor map associated with `cls`, or
  * `undefined` when no descriptors have been registered for it.
  */
-export function getClassVFuncMeta(cls: object): ClassVFuncMeta | undefined {
-    return classVFuncMetaMap.get(cls);
+export function getClassVfuncMetadata(cls: object): ClassVfuncMetadata | undefined {
+    return classVfuncMetadataMap.get(cls);
 }

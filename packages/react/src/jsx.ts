@@ -874,7 +874,7 @@ interface StackProps {
  * children of its parent. Widgets opt into the group by being wrapped in
  * `<GtkSizeGroup.Widget>` anywhere within the subtree.
  */
-export type GtkSizeGroupProps = {
+export type SizeGroupProps = {
     /** Dimensions along which grouped widgets request the same size */
     mode?: Gtk.SizeGroupMode;
     /** Subtree containing widgets to group (must include `<GtkSizeGroup.Widget>` markers) */
@@ -945,7 +945,7 @@ export type ConstraintGuideProps = {
     /** Maximum height in pixels */
     maxHeight?: number;
     /** Strength of the natural-size constraint (default `MEDIUM`) */
-    strength?: number;
+    strength?: Gtk.ConstraintStrength;
 };
 
 /**
@@ -1001,7 +1001,7 @@ declare global {
                 NotebookPage: NotebookPageProps;
                 NotebookPageTab: NotebookPageTabProps;
                 OverlayChild: OverlayChildProps;
-                GtkSizeGroup: GtkSizeGroupProps;
+                GtkSizeGroup: SizeGroupProps;
                 SizeGroupWidget: SizeGroupWidgetProps;
                 TextAnchor: TextAnchorProps;
                 TextPaintable: TextPaintableProps;
@@ -1114,7 +1114,7 @@ declare module "@gtkx/react-jsx/jsx" {
 
     interface GtkLevelBarProps {
         /** Named offset thresholds that change the bar's appearance */
-        offsets?: Array<{ id: string; value: number }> | null;
+        offsets?: LevelBarOffset[] | null;
     }
 
     interface GtkTextViewProps extends TextBufferProps {}

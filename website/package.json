@@ -12,7 +12,6 @@
     },
     "devDependencies": {
         "@gtkx/css": "workspace:*",
-        "@gtkx/ffi": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/testing": "workspace:*",
         "@gtkx/vitest": "workspace:*",

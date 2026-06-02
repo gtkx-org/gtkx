@@ -7,7 +7,7 @@ let nextId = 0;
  * with the JavaScript wrapper itself, so callers do not need to access the
  * underlying native handle to derive a key.
  */
-export const widgetIdOf = (obj: object): string => {
+export const stableIdOf = (obj: object): string => {
     let id = ids.get(obj);
     if (!id) {
         id = String(++nextId);

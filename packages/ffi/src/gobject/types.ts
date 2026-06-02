@@ -1,55 +1,37 @@
-import { type GType, typeFromName } from "../gtype.js";
-
-const FUNDAMENTAL_TYPE_NAMES = {
-    INVALID: "void",
-    NONE: "void",
-    INTERFACE: "GInterface",
-    CHAR: "gchar",
-    UCHAR: "guchar",
-    BOOLEAN: "gboolean",
-    INT: "gint",
-    UINT: "guint",
-    LONG: "glong",
-    ULONG: "gulong",
-    INT64: "gint64",
-    UINT64: "guint64",
-    ENUM: "GEnum",
-    FLAGS: "GFlags",
-    FLOAT: "gfloat",
-    DOUBLE: "gdouble",
-    STRING: "gchararray",
-    POINTER: "gpointer",
-    BOXED: "GBoxed",
-    PARAM: "GParam",
-    OBJECT: "GObject",
-    VARIANT: "GVariant",
-} as const;
-
-type FundamentalTypeName = keyof typeof FUNDAMENTAL_TYPE_NAMES;
-
-const resolvedTypes = new Map<string, GType>();
-
-const resolveType = (glibName: string): GType => {
-    let gtype = resolvedTypes.get(glibName);
-    if (gtype === undefined) {
-        gtype = typeFromName(glibName);
-        resolvedTypes.set(glibName, gtype);
-    }
-    return gtype;
-};
-
-const typeDescriptors: PropertyDescriptorMap = {};
-for (const [name, glibName] of Object.entries(FUNDAMENTAL_TYPE_NAMES)) {
-    typeDescriptors[name] = { enumerable: true, get: (): GType => resolveType(glibName) };
-}
+import {
+    TYPE_BOOLEAN,
+    TYPE_BOXED,
+    TYPE_CHAR,
+    TYPE_DOUBLE,
+    TYPE_ENUM,
+    TYPE_FLAGS,
+    TYPE_FLOAT,
+    TYPE_GTYPE,
+    TYPE_INT,
+    TYPE_INT64,
+    TYPE_INTERFACE,
+    TYPE_INVALID,
+    TYPE_LONG,
+    TYPE_NONE,
+    TYPE_OBJECT,
+    TYPE_PARAM,
+    TYPE_POINTER,
+    TYPE_STRING,
+    TYPE_UCHAR,
+    TYPE_UINT,
+    TYPE_UINT64,
+    TYPE_ULONG,
+    TYPE_UNICHAR,
+    TYPE_VARIANT,
+} from "./fundamental-types.js";
 
 /**
- * Fundamental GLib type constants.
+ * Fundamental GLib type constants, addressed by short member name.
  *
- * Provides lazy-loaded GType identifiers for primitive and object types.
- * Each member resolves its `g_type_from_name` lookup on first access and
- * memoizes it by GLib type name, so `INVALID` and `NONE` (both `void`)
- * share a single resolution.
+ * Each member aliases the matching `TYPE_*` constant from
+ * {@link ./fundamental-types}, the single source of truth for fundamental
+ * `GType` resolution. Both spellings — `Type.STRING` and `TYPE_STRING` — name
+ * the identical value and expose the identical member set.
  *
  * Use with the `@gtkx/ffi` marshalling helpers that require explicit type
  * specification.
@@ -62,6 +44,29 @@ for (const [name, glibName] of Object.entries(FUNDAMENTAL_TYPE_NAMES)) {
  * console.log(Type.STRING); // GType for gchararray
  * ```
  */
-export const Type: Readonly<Record<FundamentalTypeName, GType>> = Object.freeze(
-    Object.defineProperties({} as Record<FundamentalTypeName, GType>, typeDescriptors),
-);
+export const Type = Object.freeze({
+    INVALID: TYPE_INVALID,
+    NONE: TYPE_NONE,
+    INTERFACE: TYPE_INTERFACE,
+    CHAR: TYPE_CHAR,
+    UCHAR: TYPE_UCHAR,
+    BOOLEAN: TYPE_BOOLEAN,
+    INT: TYPE_INT,
+    UINT: TYPE_UINT,
+    LONG: TYPE_LONG,
+    ULONG: TYPE_ULONG,
+    INT64: TYPE_INT64,
+    UINT64: TYPE_UINT64,
+    ENUM: TYPE_ENUM,
+    FLAGS: TYPE_FLAGS,
+    FLOAT: TYPE_FLOAT,
+    DOUBLE: TYPE_DOUBLE,
+    STRING: TYPE_STRING,
+    POINTER: TYPE_POINTER,
+    BOXED: TYPE_BOXED,
+    PARAM: TYPE_PARAM,
+    OBJECT: TYPE_OBJECT,
+    GTYPE: TYPE_GTYPE,
+    VARIANT: TYPE_VARIANT,
+    UNICHAR: TYPE_UNICHAR,
+});

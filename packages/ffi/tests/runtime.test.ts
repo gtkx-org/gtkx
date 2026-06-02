@@ -9,7 +9,6 @@ const EXPECTED_RUNTIME_EXPORTS = [
     "alloc",
     "call",
     "freeze",
-    "getNativeId",
     "read",
     "t",
     "unfreeze",

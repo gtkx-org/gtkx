@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { GtkSizeGroupProps, SizeGroupWidgetProps } from "../jsx.js";
+import type { SizeGroupProps, SizeGroupWidgetProps } from "../jsx.js";
 
 const GtkSizeGroupElement = "GtkSizeGroup" as const;
 const SizeGroupWidgetElement = "SizeGroupWidget" as const;
@@ -31,12 +31,9 @@ const SizeGroupWidgetElement = "SizeGroupWidget" as const;
  * </GtkBox>
  * ```
  *
- * @public
  */
 export const GtkSizeGroup = Object.assign(
-    (props: GtkSizeGroupProps): ReactNode => (
-        <GtkSizeGroupElement mode={props.mode}>{props.children}</GtkSizeGroupElement>
-    ),
+    (props: SizeGroupProps): ReactNode => <GtkSizeGroupElement mode={props.mode}>{props.children}</GtkSizeGroupElement>,
     {
         /**
          * Marks a single widget as a member of the enclosing `<GtkSizeGroup>`.
