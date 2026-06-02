@@ -20,9 +20,10 @@ import { codegen } from "../../src/commands/codegen.js";
 const runCodegenMock = vi.mocked(runCodegen);
 const ensureGeneratedMock = vi.mocked(ensureGenerated);
 
-type CommandRun<Args extends Record<string, unknown>> = (ctx: { args: Args }) => Promise<unknown>;
+type CodegenArgs = { force?: boolean; cwd?: string };
+type CommandRun = (ctx: { args: CodegenArgs }) => Promise<unknown>;
 
-type CodegenArgs = { clean?: boolean; "if-missing"?: boolean; cwd?: string };
+const run = (args: CodegenArgs): Promise<unknown> => (codegen.run as unknown as CommandRun)({ args });
 
 type LogState = { logSpy: ReturnType<typeof vi.spyOn> };
 
@@ -41,48 +42,37 @@ const setupLogState = (): LogState => {
 const collectLogged = (logSpy: ReturnType<typeof vi.spyOn>): string =>
     logSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("\n");
 
-describe("codegen command (forwarding)", () => {
+describe("codegen command (default — conditional)", () => {
     const state = setupLogState();
 
-    it("forwards --clean and --cwd flags", async () => {
-        const run = codegen.run as unknown as CommandRun<CodegenArgs>;
-
-        await run({ args: { clean: true, cwd: "/custom/dir" } });
-
-        expect(runCodegenMock).toHaveBeenCalledWith({
-            cwd: expect.stringContaining("custom/dir"),
-            clean: true,
-        });
-    });
-
-    it("delegates to ensureGenerated and skips reporting with --if-missing", async () => {
-        const run = codegen.run as unknown as CommandRun<CodegenArgs>;
-
-        await run({ args: { "if-missing": true, cwd: "/custom/dir" } });
+    it("delegates to ensureGenerated and reports a regeneration", async () => {
+        await run({ cwd: "/custom/dir" });
 
         expect(ensureGeneratedMock).toHaveBeenCalledWith(expect.stringContaining("custom/dir"));
         expect(runCodegenMock).not.toHaveBeenCalled();
+        expect(collectLogged(state.logSpy)).toContain("regenerated stale bindings");
     });
 
-    it("stays silent with --if-missing when nothing was regenerated", async () => {
+    it("reports up to date when nothing was regenerated", async () => {
         ensureGeneratedMock.mockResolvedValueOnce(false);
-        const run = codegen.run as unknown as CommandRun<CodegenArgs>;
 
-        await run({ args: { "if-missing": true } });
+        await run({});
 
-        expect(collectLogged(state.logSpy)).toBe("");
+        expect(collectLogged(state.logSpy)).toContain("bindings up to date");
     });
 });
 
-describe("codegen command (result reporting)", () => {
+describe("codegen command (--force)", () => {
     const state = setupLogState();
 
-    it("logs config, libraries, gir path, and totals after a successful run", async () => {
-        const run = codegen.run as unknown as CommandRun<CodegenArgs>;
+    it("wipes and regenerates, reporting config, libraries, gir path, and totals", async () => {
+        await run({ force: true, cwd: "/custom/dir" });
 
-        await run({ args: {} });
-
-        expect(runCodegenMock).toHaveBeenCalledWith({ cwd: process.cwd(), clean: undefined });
+        expect(runCodegenMock).toHaveBeenCalledWith({
+            cwd: expect.stringContaining("custom/dir"),
+            force: true,
+        });
+        expect(ensureGeneratedMock).not.toHaveBeenCalled();
 
         const logged = collectLogged(state.logSpy);
         expect(logged).toContain("config=/project/gtkx.config.ts");
@@ -97,9 +87,8 @@ describe("codegen command (result reporting)", () => {
             widgets: 0,
             duration: 5,
         } as never);
-        const run = codegen.run as unknown as CommandRun<CodegenArgs>;
 
-        await run({ args: {} });
+        await run({ force: true });
 
         const logged = collectLogged(state.logSpy);
         expect(logged).not.toContain("config=");

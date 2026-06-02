@@ -6,13 +6,8 @@ import type { GirFunction } from "../gir/function.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import type { GirParameter } from "../gir/parameter.js";
 import { callableReferencesClassStruct } from "./class-struct-record.js";
-import {
-    closureAndDestroyIndices,
-    needsRefArg,
-    renderMethodBody,
-    renderMethodReturnType,
-    renderMethodSignature,
-} from "./method.js";
+import { renderMethodBody, renderMethodReturnType, renderMethodSignature } from "./method.js";
+import { closureAndDestroyIndices, needsRefArg } from "./param-classify.js";
 import { renderFfiType, renderSelfFfiType, renderTrampolineType } from "./value.js";
 
 /**

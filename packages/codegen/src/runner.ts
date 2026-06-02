@@ -1,4 +1,5 @@
 import { generateNamespaceModule } from "./ffi/pipeline.js";
+import { computeFingerprint } from "./fingerprint.js";
 import { type GiNamespaceInput, type GiStoreOptions, writeGiStore } from "./gi-store.js";
 import { loadGirRepository } from "./gir/repository.js";
 import { type JsxStoreOptions, writeJsxStore } from "./jsx-store.js";
@@ -65,7 +66,12 @@ export class CodegenRunner {
             const { source } = generateNamespaceModule(namespace, repository);
             namespaces.push({ directory: namespace.name.toLowerCase(), rawSource: source });
         }
-        writeGiStore(this.options.gi, namespaces);
+        const libraries = [...this.options.libraries];
+        writeGiStore(this.options.gi, namespaces, {
+            value: computeFingerprint(repository.girFiles, libraries),
+            girFiles: repository.girFiles,
+            libraries,
+        });
 
         let widgetCount = 0;
         if (this.options.jsx !== undefined) {

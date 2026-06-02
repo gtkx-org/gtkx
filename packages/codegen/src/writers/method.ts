@@ -1,16 +1,19 @@
-import { toCamelCase, toIdentifier } from "@gtkx/utils";
+import { toCamelCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import type { GirFunction } from "../gir/function.js";
-import {
-    type GirParameter,
-    isCallerAllocatedOut,
-    isInoutParameter,
-    isOutParameter,
-    type ParameterTransfer,
-} from "../gir/parameter.js";
+import { type GirParameter, isCallerAllocatedOut, isInoutParameter, isOutParameter } from "../gir/parameter.js";
 import { qualifyTypeRef } from "../gir/qualify.js";
-import type { ResolvedNamed } from "../gir/repository.js";
 import type { GirTypeRef, NamedTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
+import {
+    arrayLengthSources,
+    closureAndDestroyIndices,
+    inputParameters,
+    isCollectibleCallerOut,
+    isHandlePassing,
+    parameterIdentifier,
+    returnArrayLengthIndices,
+} from "./param-classify.js";
+import { handleCast, wrapReturnValue } from "./return-wrap.js";
 import { renderTsType } from "./ts-type.js";
 import { isCellInout, type ResolvedCallback, resolveCallbackType } from "./value.js";
 
@@ -61,74 +64,6 @@ const renderInputParameters = (
 };
 
 /**
- * A callable input parameter paired with its original GIR position.
- */
-export type InputParameter = {
-    /** The GIR parameter. */
-    readonly parameter: GirParameter;
-    /** The parameter's index in the callable's full parameter list. */
-    readonly index: number;
-};
-
-/**
- * The input parameters a callable's TypeScript signature exposes.
- *
- * Drops `<varargs>` slots, out-only and caller-allocated-out parameters,
- * array-length parameters computed from a sibling array, and the
- * `user_data`/`GDestroyNotify` slots folded into a callback descriptor —
- * the same positions {@link renderMethodSignature} omits. Each surviving
- * parameter keeps its original index so callers can recover argument names.
- *
- * @param fn - The callable
- */
-export const inputParameters = (fn: GirFunction): readonly InputParameter[] => {
-    const lengthIndices = arrayLengthIndices(fn);
-    const closureIndices = closureAndDestroyIndices(fn);
-    const result: InputParameter[] = [];
-    fn.parameters.forEach((parameter, index) => {
-        if (parameter.isVarargs) return;
-        if (isOutParameter(parameter)) return;
-        if (isCallerAllocatedOut(parameter)) return;
-        if (lengthIndices.has(index)) return;
-        if (closureIndices.has(index)) return;
-        result.push({ parameter, index });
-    });
-    return result;
-};
-
-/**
- * Indices of the `gpointer user_data` and `GDestroyNotify` parameters paired
- * to a callback parameter. These slots are folded into the callback's
- * trampoline descriptor and are not emitted as standalone FFI arguments.
- *
- * @param fn - The callable
- */
-export const closureAndDestroyIndices = (fn: GirFunction): ReadonlySet<number> => {
-    const indices = new Set<number>();
-    for (const parameter of fn.parameters) {
-        if (parameter.closureIndex !== undefined) indices.add(parameter.closureIndex);
-        if (parameter.destroyIndex !== undefined) indices.add(parameter.destroyIndex);
-    }
-    return indices;
-};
-
-const arrayLengthIndices = (fn: GirFunction): ReadonlySet<number> => {
-    const map = arrayLengthSources(fn);
-    return new Set(map.keys());
-};
-
-const arrayLengthSources = (fn: GirFunction): ReadonlyMap<number, number> => {
-    const map = new Map<number, number>();
-    fn.parameters.forEach((parameter, index) => {
-        if (parameter.type?.kind !== "array") return;
-        const lengthIndex = parameter.type.lengthParameterIndex;
-        if (lengthIndex === undefined) return;
-        map.set(lengthIndex, index);
-    });
-    return map;
-};
-
-/**
  * Renders the TypeScript return-type annotation for a callable.
  *
  * Multi-out callables tuple the primary return with each out-parameter
@@ -157,13 +92,6 @@ export const renderMethodReturnType = (context: ModuleContext, fn: GirFunction):
     }
     const primary = renderTsType(context, fn.returnValue.type, fn.returnValue.nullable);
     return `[${primary}, ${outTypes.join(", ")}]`;
-};
-
-const returnArrayLengthIndices = (fn: GirFunction): ReadonlySet<number> => {
-    if (fn.returnValue.type?.kind !== "array") return new Set();
-    const lengthIndex = fn.returnValue.type.lengthParameterIndex;
-    if (lengthIndex === undefined) return new Set();
-    return new Set([lengthIndex]);
 };
 
 const isVoidReturn = (fn: GirFunction): boolean => {
@@ -364,7 +292,7 @@ export const renderMethodBody = (context: ModuleContext, fn: GirFunction, option
     lines.push(returnsValue ? `const __result = ${callExpression};` : `${callExpression};`);
     if (errorRef !== undefined) {
         context.addRuntimeImport("checkError");
-        lines.push(`checkError(${errorRef}, ${errorClassReference(context)});`);
+        lines.push(`checkError(${errorRef}, ${context.qualify("GLib", "Error")});`);
     }
     const primary = returnsValue ? wrapPrimary(context, fn, "__result", returnAs) : undefined;
     appendReturn(context, lines, primary, builder.outRefs);
@@ -562,42 +490,6 @@ const appendReturn = (
     lines.push(`return [${outExpressions.join(", ")}];`);
 };
 
-/**
- * Whether a parameter is passed to the FFI binding as a `t.ref(...)` cell.
- *
- * Pure out parameters marshal through a `{ value }` ref cell the native layer
- * writes into. Inout parameters do too — except handle-passing ones
- * (objects, interfaces, boxed), which are passed by their existing handle
- * and mutated in place rather than through a pointer-to-pointer cell.
- * Caller-allocated outs pass a pre-built handle and are excluded.
- *
- * @param context - The module context
- * @param parameter - The parameter to test
- */
-export const needsRefArg = (context: ModuleContext, parameter: GirParameter): boolean => {
-    if (parameter.direction !== "out" && parameter.direction !== "inout") return false;
-    const passesHandleDirectly =
-        (parameter.callerAllocates || parameter.direction === "inout") &&
-        parameter.type !== undefined &&
-        isHandlePassing(context, parameter.type);
-    return !passesHandleDirectly;
-};
-
-/**
- * Whether a caller-allocated-out parameter is one the body can materialize and
- * collect into the return — a boxed record or class the runtime can allocate
- * via its wrapper constructor. Array and other caller-out buffers cannot be
- * allocated here, so they are excluded from both the body and the return type.
- */
-const isCollectibleCallerOut = (context: ModuleContext, parameter: GirParameter): boolean => {
-    if (parameter.type === undefined || parameter.type.kind !== "named") return false;
-    const resolved = context.repository.resolveNamed(
-        parameter.type.namespaceName ?? context.namespace.name,
-        parameter.type.typeName,
-    );
-    return resolved?.kind === "boxed" || resolved?.kind === "class";
-};
-
 const allocateCallerOut = (
     context: ModuleContext,
     parameter: GirParameter,
@@ -607,18 +499,13 @@ const allocateCallerOut = (
     if (!isCollectibleCallerOut(context, parameter)) return undefined;
     const owner = parameter.type.namespaceName ?? context.namespace.name;
     const local = `__out${index}`;
-    const classExpression = qualifiedRuntimeReference(context, owner, parameter.type.typeName);
+    const classExpression = context.qualify(owner, parameter.type.typeName);
     context.addRuntimeImport("getHandle");
     return {
         setup: `const ${local} = new ${classExpression}();`,
         callArg: `getHandle(${local})`,
         returnExpression: local,
     };
-};
-
-const parameterIdentifier = (parameter: GirParameter, index: number): string => {
-    if (parameter.name.length === 0) return `arg${index}`;
-    return toIdentifier(toCamelCase(parameter.name));
 };
 
 const parameterCallExpression = (context: ModuleContext, parameter: GirParameter, index: number): string => {
@@ -763,45 +650,6 @@ export const renderTupleWriteback = (
     return lines.join("\n    ");
 };
 
-/**
- * Whether a value of `ref` is passed across the FFI boundary as a native
- * handle (object, interface, boxed, or an alias to one) rather than by value.
- *
- * @param context - The module context
- * @param ref - The type reference to test
- */
-export const isHandlePassing = (context: ModuleContext, ref: GirTypeRef): boolean => {
-    if (ref.kind !== "named") return false;
-    const owner = ref.namespaceName ?? context.namespace.name;
-    const resolved = context.repository.resolveNamed(owner, ref.typeName);
-    if (resolved === undefined) return true;
-    switch (resolved.kind) {
-        case "class":
-        case "interface":
-        case "boxed":
-            return true;
-        case "alias": {
-            const target = resolved.targetRef;
-            if (target === undefined || target.kind !== "named") return false;
-            return isHandlePassing(context, target);
-        }
-        case "enum":
-        case "callback":
-            return false;
-    }
-};
-
-/**
- * Casts a raw FFI call result to a native handle so the registry wrappers
- * (`getNativeObject` / `getNativeObjectAsInterface`) accept it. The cast widens
- * to `NativeHandle | null` for a GIR-nullable value so the wrapper result type
- * stays nullable, matching the declared return.
- */
-const handleCast = (context: ModuleContext, valueExpression: string, nullable: boolean): string => {
-    context.addNativeTypeImport("NativeHandle");
-    return `${valueExpression} as NativeHandle${nullable ? " | null" : ""}`;
-};
-
 const wrapPrimary = (
     context: ModuleContext,
     fn: GirFunction,
@@ -827,173 +675,4 @@ const wrapPrimary = (
         nullable: fn.returnValue.nullable,
         valueExpression,
     });
-};
-
-/**
- * Inputs for {@link wrapReturnValue}.
- */
-export type WrapReturnOptions = {
-    readonly ref: GirTypeRef | undefined;
-    readonly transfer: ParameterTransfer;
-    readonly nullable: boolean;
-    readonly valueExpression: string;
-};
-
-/**
- * Wraps a raw FFI value into its typed JavaScript form.
- *
- * Objects resolve to their runtime-registered wrapper, interfaces to the
- * interface wrapper, boxed values to a typed wrapper, collections recurse per
- * element, and primitives pass through with the appropriate coercion. Shared
- * by return-value handling and signal-handler argument marshalling.
- *
- * @param context - The module context
- * @param options - {@link WrapReturnOptions}
- */
-export const wrapReturnValue = (context: ModuleContext, options: WrapReturnOptions): string => {
-    const { ref, nullable, valueExpression } = options;
-    if (ref === undefined) return valueExpression;
-    switch (ref.kind) {
-        case "primitive":
-            return wrapPrimitive(ref, nullable, valueExpression);
-        case "named":
-            return wrapNamed(context, ref, valueExpression, nullable);
-        case "array":
-            return wrapCollection(context, ref.element, valueExpression, nullable);
-        case "list":
-            return ref.flavor === "gbytearray"
-                ? `(${valueExpression} as number[]${nullable ? " | null" : ""})`
-                : wrapCollection(context, ref.element, valueExpression, nullable);
-        case "hashtable":
-            return nullable
-                ? `(${valueExpression} === null ? null : new globalThis.Map(${valueExpression} as Iterable<readonly [unknown, unknown]>))`
-                : `new globalThis.Map(${valueExpression} as Iterable<readonly [unknown, unknown]>)`;
-        case "callback":
-        case "varargs":
-            return `(${valueExpression} as unknown[])`;
-    }
-};
-
-/**
- * Wraps a collection return value, mapping each element through the runtime
- * wrapper its type requires.
- *
- * The native layer hands collection returns back as arrays of raw element
- * values; object, interface, and boxed elements must be lifted into their
- * typed JavaScript wrappers (matching the per-element wrapping a scalar
- * return of the same type receives) while primitive and enum elements pass
- * through untouched.
- */
-const wrapCollection = (
-    context: ModuleContext,
-    element: GirTypeRef | undefined,
-    valueExpression: string,
-    nullable: boolean,
-): string => {
-    const itemExpression = collectionItemWrap(context, element);
-    if (itemExpression === undefined) {
-        const elementTs = element === undefined ? "unknown" : renderTsType(context, element, false);
-        return `(${valueExpression} as ${elementTs}[]${nullable ? " | null" : ""})`;
-    }
-    return nullable
-        ? `((${valueExpression} as unknown[] | null)?.map((item) => ${itemExpression}) ?? null)`
-        : `(${valueExpression} as unknown[]).map((item) => ${itemExpression})`;
-};
-
-const collectionItemWrap = (context: ModuleContext, element: GirTypeRef | undefined): string | undefined => {
-    if (element === undefined || element.kind !== "named") return undefined;
-    const owner = element.namespaceName ?? context.namespace.name;
-    const resolved = context.repository.resolveNamed(owner, element.typeName);
-    if (resolved === undefined) {
-        context.addRuntimeImport("getNativeObject");
-        return `getNativeObject(${handleCast(context, "item", false)})`;
-    }
-    switch (resolved.kind) {
-        case "class":
-        case "boxed":
-            context.addRuntimeImport("getNativeObject");
-            return `getNativeObject(${handleCast(context, "item", false)})`;
-        case "interface": {
-            context.addRuntimeImport("getNativeObjectAsInterface");
-            return `getNativeObjectAsInterface(${handleCast(context, "item", false)}, ${qualifiedRuntimeReference(context, owner, element.typeName)})`;
-        }
-        case "alias":
-            return resolved.target === undefined
-                ? undefined
-                : collectionItemWrap(context, {
-                      kind: "named",
-                      namespaceName: resolved.namespace.name,
-                      typeName: resolved.target,
-                      cType: undefined,
-                  });
-        case "enum":
-        case "callback":
-            return undefined;
-    }
-};
-
-const wrapPrimitive = (ref: PrimitiveTypeRef, nullable: boolean, valueExpression: string): string => {
-    const category = ref.category;
-    if (category === "void") return valueExpression;
-    if (category === "string") return `(${valueExpression} as ${nullable ? "string | null" : "string"})`;
-    if (category === "boolean") return `Boolean(${valueExpression})`;
-    return `(${valueExpression} as number)`;
-};
-
-const wrapNamed = (context: ModuleContext, ref: NamedTypeRef, valueExpression: string, nullable: boolean): string => {
-    const owner = ref.namespaceName ?? context.namespace.name;
-    const resolved = context.repository.resolveNamed(owner, ref.typeName);
-    if (resolved === undefined) {
-        context.addRuntimeImport("getNativeObject");
-        return `getNativeObject(${handleCast(context, valueExpression, nullable)})`;
-    }
-    return wrapResolved(context, resolved, { namespaceName: owner, typeName: ref.typeName, valueExpression, nullable });
-};
-
-type WrapResolvedOptions = {
-    readonly namespaceName: string;
-    readonly typeName: string;
-    readonly valueExpression: string;
-    readonly nullable: boolean;
-};
-
-const wrapResolved = (context: ModuleContext, resolved: ResolvedNamed, options: WrapResolvedOptions): string => {
-    const { namespaceName, typeName, valueExpression, nullable } = options;
-    switch (resolved.kind) {
-        case "class": {
-            context.addRuntimeImport("getNativeObject");
-            return `getNativeObject(${handleCast(context, valueExpression, nullable)})`;
-        }
-        case "interface": {
-            const classExpression = qualifiedRuntimeReference(context, namespaceName, typeName);
-            context.addRuntimeImport("getNativeObjectAsInterface");
-            return `getNativeObjectAsInterface(${handleCast(context, valueExpression, nullable)}, ${classExpression})`;
-        }
-        case "boxed": {
-            const classExpression = qualifiedRuntimeReference(context, namespaceName, typeName);
-            context.addRuntimeImport("getNativeObject");
-            return `getNativeObject(${handleCast(context, valueExpression, nullable)}, ${classExpression})`;
-        }
-        case "enum":
-            return `(${valueExpression} as number)`;
-        case "callback":
-            return valueExpression;
-        case "alias":
-            return resolved.targetRef === undefined
-                ? valueExpression
-                : wrapReturnValue(context, { ref: resolved.targetRef, transfer: "full", nullable, valueExpression });
-    }
-};
-
-const qualifiedRuntimeReference = (context: ModuleContext, namespaceName: string, typeName: string): string => {
-    const local = typeName;
-    if (namespaceName === context.namespace.name) return local;
-    const alias = context.addCrossNamespaceImport(namespaceName);
-    return `${alias}.${local}`;
-};
-
-const errorClassReference = (context: ModuleContext): string => {
-    if (context.namespace.name === "GLib") return "Error";
-    const alias = context.addCrossNamespaceImport("GLib");
-    return `${alias}.Error`;
 };

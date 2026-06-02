@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import ts from "typescript";
+import { baseCompilerOptions } from "./transpile.js";
 
 /**
  * One in-memory source destined for the injected `@gtkx/gi` store, plus whether
@@ -19,15 +20,10 @@ export type StoreSourceFile = {
 const GI_SPECIFIER = "@gtkx/gi/";
 
 const COMPILER_OPTIONS: ts.CompilerOptions = {
-    module: ts.ModuleKind.ESNext,
-    moduleResolution: ts.ModuleResolutionKind.Bundler,
+    ...baseCompilerOptions(),
     customConditions: ["source"],
-    target: ts.ScriptTarget.ESNext,
     strict: true,
-    skipLibCheck: true,
     noEmit: true,
-    jsx: ts.JsxEmit.ReactJSX,
-    jsxImportSource: "react",
     types: [],
 };
 

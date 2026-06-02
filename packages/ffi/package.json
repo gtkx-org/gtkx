@@ -36,12 +36,10 @@
     "files": [
         "dist",
         "src",
-        "scripts",
         "!**/*.tsbuildinfo"
     ],
     "scripts": {
         "build": "tsc -b",
-        "postinstall": "node scripts/postinstall.ts",
         "test": "vitest run",
         "typecheck": "tsc -b --emitDeclarationOnly"
     },

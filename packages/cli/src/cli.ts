@@ -15,10 +15,10 @@ const { version } = require("../package.json") as { version: string };
  * `src/commands/`.
  *
  * The CLI has two execution edges: the shipped `bin/gtkx.js` (which imports
- * from the compiled `dist/`) and `@gtkx/ffi`'s monorepo `postinstall` script
- * (which imports this file directly via tsx, before any build has run). The
- * entry-point check below makes the second path work; the bin handles the
- * first.
+ * from the compiled `dist/`) and the monorepo's source runner — the root
+ * `codegen` script and the `@gtkx/cli#codegen` turbo task both invoke this file
+ * directly via tsx, before any build has run. The entry-point check below makes
+ * the second path work; the bin handles the first.
  */
 export const main = defineCommand({
     meta: {

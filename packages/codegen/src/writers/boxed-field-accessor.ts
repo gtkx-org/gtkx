@@ -6,7 +6,7 @@ import type { FieldSlot } from "../gir/size.js";
 import type { GirTypeRef } from "../gir/type-ref.js";
 import { type BoxedFieldSlot, computeBoxedFieldSlots } from "./boxed-layout.js";
 import { typeRefIsClassStruct } from "./class-struct-record.js";
-import { wrapReturnValue } from "./method.js";
+import { wrapReturnValue } from "./return-wrap.js";
 import { renderTsType } from "./ts-type.js";
 import { renderFfiType } from "./value.js";
 

@@ -67,7 +67,7 @@
         "build": "tsc -b",
         "test": "vitest run",
         "typecheck": "tsc -b --emitDeclarationOnly",
-        "codegen": "node --conditions=source --import tsx src/cli.ts codegen --if-missing --cwd ../.."
+        "codegen": "node --conditions=source --import tsx src/cli.ts codegen --cwd ../.."
     },
     "dependencies": {
         "@clack/prompts": "^1.5.0",

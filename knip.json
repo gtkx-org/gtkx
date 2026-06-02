@@ -23,7 +23,7 @@
         },
         "packages/ffi": {
             "includeEntryExports": true,
-            "project": ["src/**/*.ts!", "scripts/**/*.ts", "tests/**/*.{ts,tsx}"]
+            "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/mcp": {
             "entry": ["src/server.ts!"],

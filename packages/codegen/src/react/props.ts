@@ -2,13 +2,13 @@ import { toCamelCase, toIdentifier, toPascalCase } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import { type GirParameter, isInoutParameter, isOutParameter } from "../gir/parameter.js";
-import { PRIMITIVE_TS_TYPE } from "../gir/primitives.js";
 import type { GirProperty } from "../gir/property.js";
 import { resolveQualifiedClass, splitQualifiedName } from "../gir/qualified-name.js";
 import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirRepository } from "../gir/repository.js";
 import type { GirSignal } from "../gir/signal.js";
-import type { GirTypeRef, NamedTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
+import type { GirTypeRef, NamedTypeRef } from "../gir/type-ref.js";
+import { renderBaseTypeFor, type TsTypeTarget } from "../writers/ts-type.js";
 import { isScalarRef } from "../writers/value.js";
 import { signalHandlerName } from "./widgets.js";
 
@@ -266,43 +266,22 @@ const renderSignalReturnType = (options: SignalRenderOptions, visible: readonly 
     return `[${outTypes.join(", ")}]`;
 };
 
+const reactTarget = (repository: GirRepository, imports: Map<string, string>): TsTypeTarget => ({
+    containerStyle: "record",
+    callbackType: "(...args: unknown[]) => unknown",
+    byteArrayAsNumber: false,
+    renderNamed: (ref) => namedTsType(repository, ref, imports),
+});
+
 const renderReactPropType = (
     repository: GirRepository,
     ref: GirTypeRef | undefined,
     isNullable: boolean,
     imports: Map<string, string>,
 ): string => {
-    const base = renderBaseType(repository, ref, imports);
+    const base = renderBaseTypeFor(reactTarget(repository, imports), ref);
     return isNullable ? `${base} | null` : base;
 };
-
-const renderBaseType = (
-    repository: GirRepository,
-    ref: GirTypeRef | undefined,
-    imports: Map<string, string>,
-): string => {
-    if (ref === undefined) return "void";
-    switch (ref.kind) {
-        case "primitive":
-            return primitiveTsType(ref);
-        case "varargs":
-            return "unknown[]";
-        case "callback":
-            return "(...args: unknown[]) => unknown";
-        case "named":
-            return namedTsType(repository, ref, imports);
-        case "array":
-        case "list":
-            return `${renderReactPropType(repository, ref.element, false, imports)}[]`;
-        case "hashtable": {
-            const key = renderReactPropType(repository, ref.key, false, imports);
-            const value = renderReactPropType(repository, ref.value, false, imports);
-            return `Record<${key}, ${value}>`;
-        }
-    }
-};
-
-const primitiveTsType = (ref: PrimitiveTypeRef): string => PRIMITIVE_TS_TYPE[ref.category];
 
 const namedTsType = (repository: GirRepository, ref: NamedTypeRef, imports: Map<string, string>): string => {
     const namespaceName = ref.namespaceName;

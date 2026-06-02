@@ -1,0 +1,178 @@
+import { toCamelCase, toIdentifier } from "@gtkx/utils";
+import type { ModuleContext } from "../dsl/context.js";
+import type { GirFunction } from "../gir/function.js";
+import { type GirParameter, isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
+import type { GirTypeRef } from "../gir/type-ref.js";
+
+/**
+ * Parameter classification shared across the callable writers: which positions
+ * a TypeScript signature exposes, which marshal through a `{ value }` ref cell,
+ * which cross the FFI as native handles, and how a parameter is named. Depends
+ * only on the GIR model and the module context.
+ */
+
+/**
+ * A callable input parameter paired with its original GIR position.
+ */
+export type InputParameter = {
+    /** The GIR parameter. */
+    readonly parameter: GirParameter;
+    /** The parameter's index in the callable's full parameter list. */
+    readonly index: number;
+};
+
+/**
+ * The input parameters a callable's TypeScript signature exposes.
+ *
+ * Drops `<varargs>` slots, out-only and caller-allocated-out parameters,
+ * array-length parameters computed from a sibling array, and the
+ * `user_data`/`GDestroyNotify` slots folded into a callback descriptor. Each
+ * surviving parameter keeps its original index so callers can recover argument
+ * names.
+ *
+ * @param fn - The callable
+ */
+export const inputParameters = (fn: GirFunction): readonly InputParameter[] => {
+    const lengthIndices = arrayLengthIndices(fn);
+    const closureIndices = closureAndDestroyIndices(fn);
+    const result: InputParameter[] = [];
+    fn.parameters.forEach((parameter, index) => {
+        if (parameter.isVarargs) return;
+        if (isOutParameter(parameter)) return;
+        if (isCallerAllocatedOut(parameter)) return;
+        if (lengthIndices.has(index)) return;
+        if (closureIndices.has(index)) return;
+        result.push({ parameter, index });
+    });
+    return result;
+};
+
+/**
+ * Indices of the `gpointer user_data` and `GDestroyNotify` parameters paired
+ * to a callback parameter. These slots are folded into the callback's
+ * trampoline descriptor and are not emitted as standalone FFI arguments.
+ *
+ * @param fn - The callable
+ */
+export const closureAndDestroyIndices = (fn: GirFunction): ReadonlySet<number> => {
+    const indices = new Set<number>();
+    for (const parameter of fn.parameters) {
+        if (parameter.closureIndex !== undefined) indices.add(parameter.closureIndex);
+        if (parameter.destroyIndex !== undefined) indices.add(parameter.destroyIndex);
+    }
+    return indices;
+};
+
+const arrayLengthIndices = (fn: GirFunction): ReadonlySet<number> => {
+    const map = arrayLengthSources(fn);
+    return new Set(map.keys());
+};
+
+/**
+ * Maps each array-length parameter's index to the array parameter whose
+ * `.length` supplies it.
+ *
+ * @param fn - The callable
+ */
+export const arrayLengthSources = (fn: GirFunction): ReadonlyMap<number, number> => {
+    const map = new Map<number, number>();
+    fn.parameters.forEach((parameter, index) => {
+        if (parameter.type?.kind !== "array") return;
+        const lengthIndex = parameter.type.lengthParameterIndex;
+        if (lengthIndex === undefined) return;
+        map.set(lengthIndex, index);
+    });
+    return map;
+};
+
+/**
+ * Indices of parameters consumed as the length of the return array (and so
+ * dropped from the return tuple).
+ *
+ * @param fn - The callable
+ */
+export const returnArrayLengthIndices = (fn: GirFunction): ReadonlySet<number> => {
+    if (fn.returnValue.type?.kind !== "array") return new Set();
+    const lengthIndex = fn.returnValue.type.lengthParameterIndex;
+    if (lengthIndex === undefined) return new Set();
+    return new Set([lengthIndex]);
+};
+
+/**
+ * Whether a parameter is passed to the FFI binding as a `t.ref(...)` cell.
+ *
+ * Pure out parameters marshal through a `{ value }` ref cell the native layer
+ * writes into. Inout parameters do too — except handle-passing ones
+ * (objects, interfaces, boxed), which are passed by their existing handle
+ * and mutated in place, not through a pointer-to-pointer cell.
+ * Caller-allocated outs pass a pre-built handle and are excluded.
+ *
+ * @param context - The module context
+ * @param parameter - The parameter to test
+ */
+export const needsRefArg = (context: ModuleContext, parameter: GirParameter): boolean => {
+    if (parameter.direction !== "out" && parameter.direction !== "inout") return false;
+    const passesHandleDirectly =
+        (parameter.callerAllocates || parameter.direction === "inout") &&
+        parameter.type !== undefined &&
+        isHandlePassing(context, parameter.type);
+    return !passesHandleDirectly;
+};
+
+/**
+ * Whether a caller-allocated-out parameter is one the body can materialize and
+ * collect into the return — a boxed record or class the runtime can allocate
+ * via its wrapper constructor. Array and other caller-out buffers cannot be
+ * allocated here, so they are excluded from both the body and the return type.
+ *
+ * @param context - The module context
+ * @param parameter - The parameter to test
+ */
+export const isCollectibleCallerOut = (context: ModuleContext, parameter: GirParameter): boolean => {
+    if (parameter.type === undefined || parameter.type.kind !== "named") return false;
+    const resolved = context.repository.resolveNamed(
+        parameter.type.namespaceName ?? context.namespace.name,
+        parameter.type.typeName,
+    );
+    return resolved?.kind === "boxed" || resolved?.kind === "class";
+};
+
+/**
+ * Whether a value of `ref` is passed across the FFI boundary as a native
+ * handle (object, interface, boxed, or an alias to one) instead of by value.
+ *
+ * @param context - The module context
+ * @param ref - The type reference to test
+ */
+export const isHandlePassing = (context: ModuleContext, ref: GirTypeRef): boolean => {
+    if (ref.kind !== "named") return false;
+    const owner = ref.namespaceName ?? context.namespace.name;
+    const resolved = context.repository.resolveNamed(owner, ref.typeName);
+    if (resolved === undefined) return true;
+    switch (resolved.kind) {
+        case "class":
+        case "interface":
+        case "boxed":
+            return true;
+        case "alias": {
+            const target = resolved.targetRef;
+            if (target === undefined || target.kind !== "named") return false;
+            return isHandlePassing(context, target);
+        }
+        case "enum":
+        case "callback":
+            return false;
+    }
+};
+
+/**
+ * The JavaScript identifier for a parameter: the camelCased GIR name, or
+ * `arg<index>` for an unnamed position.
+ *
+ * @param parameter - The GIR parameter
+ * @param index - The parameter's position in the callable
+ */
+export const parameterIdentifier = (parameter: GirParameter, index: number): string => {
+    if (parameter.name.length === 0) return `arg${index}`;
+    return toIdentifier(toCamelCase(parameter.name));
+};

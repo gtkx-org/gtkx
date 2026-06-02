@@ -130,4 +130,17 @@ export class ModuleContext {
         this.module.imports.addNamespace(path, namespaceName);
         return namespaceName;
     }
+
+    /**
+     * Renders a namespace-qualified reference to `typeName`: the bare name when
+     * it lives in this module's own namespace, otherwise `Alias.Name` with the
+     * foreign namespace imported on demand via {@link addCrossNamespaceImport}.
+     *
+     * @param namespaceName - The namespace the referenced type lives in
+     * @param typeName - The local type or export name within that namespace
+     */
+    qualify(namespaceName: string, typeName: string): string {
+        if (namespaceName === this.namespace.name) return typeName;
+        return `${this.addCrossNamespaceImport(namespaceName)}.${typeName}`;
+    }
 }

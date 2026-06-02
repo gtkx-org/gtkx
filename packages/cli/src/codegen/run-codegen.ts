@@ -1,6 +1,6 @@
-import { existsSync, rmSync } from "node:fs";
-import { join } from "node:path";
-import { CodegenRunner } from "@gtkx/codegen";
+import { existsSync, readFileSync, rmSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { type CodegenFingerprint, CodegenRunner, computeFingerprint, FINGERPRINT_FILENAME } from "@gtkx/codegen";
 import type { GtkxConfig } from "../config.js";
 import { GtkxConfigNotFoundError, loadGtkxConfig } from "./config-loader.js";
 import { resolveGirPath } from "./gir-resolver.js";
@@ -15,9 +15,10 @@ export type RunCodegenOptions = {
     cwd?: string;
     /**
      * When true, remove the entire generated store and aliases before
-     * regenerating, for a guaranteed-fresh tree.
+     * regenerating, for a guaranteed-fresh tree — the `--force` escape hatch
+     * for a corrupted store.
      */
-    clean?: boolean;
+    force?: boolean;
 };
 
 /**
@@ -81,9 +82,10 @@ const buildRunner = (
  * to {@link CodegenRunner}, which materializes the injected `@gtkx/gi` (and,
  * when React is present, `@gtkx/react-jsx`) packages into `node_modules`.
  *
- * Always regenerates: turbo (in the monorepo) and the install lifecycle (for
- * downstream projects) own the decision of whether to invoke codegen at all.
- * With {@link RunCodegenOptions.clean}, the store and aliases are removed first.
+ * Always regenerates: the conditional {@link ensureGenerated} gate (used by the
+ * turbo task and the `gtkx dev`/`gtkx build` preflight) owns the decision of
+ * whether to invoke codegen at all. With {@link RunCodegenOptions.force}, the
+ * store and aliases are removed first.
  *
  * @param options - {@link RunCodegenOptions}
  * @returns Summary of work performed, plus the resolved config and GIR path
@@ -104,7 +106,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
         );
     }
 
-    if (options.clean) {
+    if (options.force) {
         for (const path of [store.giStoreDir, store.giLinkDir, store.jsxStoreDir, store.jsxLinkDir]) {
             rmSync(path, { recursive: true, force: true });
         }
@@ -163,12 +165,16 @@ const giStoreLinksResolve = (giStoreDir: string): boolean =>
  * {@link runCodegen} uses to emit the jsx unit — both the `@gtkx/react` package
  * and the `react` runtime resolving — so a project with `@gtkx/react` but no
  * `react` runtime does not wedge on a jsx unit that can never be produced.
- * Deeper staleness (changed GIR, codegen upgrades) is left to the install
- * lifecycle.
+ * Beyond presence, it compares the gi store's fingerprint sentinel against the
+ * current `@gtkx/codegen` version, resolved library set, and GIR file contents,
+ * so a runtime bump or a codegen upgrade triggers a regeneration. A
+ * `gtkx.config.ts` library change is caught both here and, mid-session, by the
+ * `gtkx dev` config watcher. `gtkx codegen --force` wipes and regenerates
+ * regardless.
  *
  * @param cwd - Project root
  * @param config - The user's resolved configuration
- * @returns True when a required generated module or alias is missing
+ * @returns True when a required generated module or alias is missing or stale
  */
 const isCodegenNeeded = (cwd: string, config: GtkxConfig): boolean => {
     try {
@@ -188,7 +194,33 @@ const isCodegenNeeded = (cwd: string, config: GtkxConfig): boolean => {
             if (!existsSync(store.jsxLinkDir)) return true;
             if (REACT_GENERATED_MODULES.some((module) => !existsSync(join(store.jsxStoreDir, module)))) return true;
         }
-        return false;
+        return fingerprintStale(store.giStoreDir, libraries);
+    } catch {
+        return true;
+    }
+};
+
+/**
+ * Whether the gi store's fingerprint sentinel is absent or no longer matches the
+ * current codegen version, library set, or GIR file contents. Recomputing from
+ * the sentinel's recorded GIR file list re-reads those files but does not reload
+ * or reparse the repository.
+ *
+ * @param giStoreDir - The hidden `@gtkx/gi` store directory
+ * @param libraries - The currently-resolved library identifiers
+ */
+const fingerprintStale = (giStoreDir: string, libraries: readonly string[]): boolean => {
+    const sentinelPath = join(giStoreDir, FINGERPRINT_FILENAME);
+    if (!existsSync(sentinelPath)) return true;
+    let sentinel: CodegenFingerprint;
+    try {
+        sentinel = JSON.parse(readFileSync(sentinelPath, "utf8")) as CodegenFingerprint;
+    } catch {
+        return true;
+    }
+    if ([...sentinel.libraries].sort().join(",") !== [...libraries].sort().join(",")) return true;
+    try {
+        return computeFingerprint(sentinel.girFiles, sentinel.libraries) !== sentinel.value;
     } catch {
         return true;
     }
@@ -238,10 +270,10 @@ const resolveCodegenContext = async (cwd: string): Promise<{ root: string; confi
  * Regenerates the injected packages when any required module or alias is
  * missing, leaving them untouched otherwise.
  *
- * The injected packages are produced as an install side-effect and are not
- * tracked by the build system, so a cache-restored build can be present without
- * them. Build and typecheck scripts call this first so generation is coupled to
- * the build graph.
+ * The injected packages are a generated artifact that the build system does not
+ * track, so a cache-restored build can be present without them. The
+ * `gtkx dev`/`gtkx build` flows and the `@gtkx/cli#codegen` turbo task call this
+ * first so generation is coupled to the build graph.
  *
  * @param cwd - Project root in which to look for `gtkx.config.ts`
  */
@@ -272,5 +304,35 @@ export const preflightCodegen = async (cwd: string): Promise<void> => {
     if (context && isCodegenNeeded(context.root, context.config)) {
         console.log("[gtkx] generated bindings missing; running codegen...");
         await runCodegen({ cwd: context.root });
+    }
+};
+
+/**
+ * Resolves the `gtkx dev` config watch: the project's `gtkx.config.ts` path and
+ * a regenerate hook that re-runs codegen against its codegen root.
+ *
+ * A `libraries` (or any) edit to `gtkx.config.ts` thus regenerates the bindings
+ * and restarts the supervised runner. Returns `undefined` when no
+ * `gtkx.config.ts` is present, so `gtkx dev` simply runs without config-driven
+ * regeneration. The shape matches the supervisor's `DevWatch`.
+ *
+ * @param cwd - Project root passed to `gtkx dev`
+ */
+export const resolveConfigWatch = async (
+    cwd: string,
+): Promise<{ readonly paths: readonly string[]; readonly regenerate: () => Promise<void> } | undefined> => {
+    const root = findCodegenRoot(cwd);
+    try {
+        const { configFile, rootDir } = await loadGtkxConfig(root);
+        if (configFile === undefined) return undefined;
+        return {
+            paths: [resolve(rootDir, configFile)],
+            regenerate: async () => {
+                await runCodegen({ cwd: root });
+            },
+        };
+    } catch (error) {
+        if (error instanceof GtkxConfigNotFoundError) return undefined;
+        throw error;
     }
 };

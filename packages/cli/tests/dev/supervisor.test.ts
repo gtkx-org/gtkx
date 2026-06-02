@@ -1,11 +1,18 @@
 import type { ChildProcess } from "node:child_process";
 import { fork } from "node:child_process";
 import { EventEmitter } from "node:events";
+import type { FSWatcher } from "node:fs";
+import { watch as watchFs } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("node:child_process", () => ({
     fork: vi.fn(),
 }));
+
+vi.mock("node:fs", async (importActual) => {
+    const actual = await importActual<typeof import("node:fs")>();
+    return { ...actual, watch: vi.fn() };
+});
 
 import { RELOAD_EXIT_CODE } from "../../src/dev/protocol.js";
 import { runDevSupervisor } from "../../src/dev/supervisor.js";
@@ -13,6 +20,7 @@ import { runDevSupervisor } from "../../src/dev/supervisor.js";
 const flushMicrotasks = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
 
 const forkMock = vi.mocked(fork);
+const watchMock = vi.mocked(watchFs);
 
 type FakeChild = EventEmitter & { killed: boolean; kill: ReturnType<typeof vi.fn> };
 
@@ -24,6 +32,43 @@ function createFakeChild(): FakeChild {
         return true;
     });
     return child;
+}
+
+/**
+ * Stubs the next `fork()` with a fresh fake child and returns it, so tests
+ * never repeat the `ChildProcess` test-double cast at each call site.
+ */
+function queueChild(): FakeChild {
+    const child = createFakeChild();
+    forkMock.mockReturnValueOnce(child as unknown as ChildProcess);
+    return child;
+}
+
+function createFakeWatcher(): FSWatcher {
+    const watcher: FSWatcher = Object.assign(new EventEmitter(), {
+        close(): void {},
+        ref(): FSWatcher {
+            return watcher;
+        },
+        unref(): FSWatcher {
+            return watcher;
+        },
+        [Symbol.dispose](): void {},
+    });
+    return watcher;
+}
+
+/**
+ * Stubs the next `watch()` with a fake `FSWatcher`, capturing the change
+ * listener so a test can fire a synthetic config-file change.
+ */
+function captureConfigWatcher(): { fireConfigChange: () => void } {
+    let fire: () => void = () => {};
+    watchMock.mockImplementationOnce((_path, listener) => {
+        fire = () => listener?.("change", "gtkx.config.ts");
+        return createFakeWatcher();
+    });
+    return { fireConfigChange: () => fire() };
 }
 
 type SupervisorContext = {
@@ -67,8 +112,7 @@ const setupSupervisorCtx = (): SupervisorContext => {
 };
 
 const startSupervisor = async (entry = "/abs/src/main.tsx"): Promise<FakeChild> => {
-    const child = createFakeChild();
-    forkMock.mockReturnValueOnce(child as unknown as ChildProcess);
+    const child = queueChild();
     runDevSupervisor(entry).catch(() => undefined);
     await Promise.resolve();
     return child;
@@ -91,8 +135,7 @@ describe("runDevSupervisor (child exit handling)", () => {
 
     it("relaunches the runner when the child exits with the reload code", async () => {
         const child = await startSupervisor();
-        const second = createFakeChild();
-        forkMock.mockReturnValueOnce(second as unknown as ChildProcess);
+        queueChild();
 
         child.emit("exit", RELOAD_EXIT_CODE, null);
 
@@ -232,5 +275,56 @@ describe("runDevSupervisor (signal forwarding — force kill)", () => {
         const kills = processKillSpy.mock.calls.filter((args) => args[1] === "SIGKILL");
         expect(kills.length).toBeGreaterThanOrEqual(1);
         processKillSpy.mockRestore();
+    });
+});
+
+describe("runDevSupervisor (config watch)", () => {
+    const ctx = setupSupervisorCtx();
+
+    const startWithWatch = async (
+        regenerate: () => Promise<void>,
+    ): Promise<{ child: FakeChild; fireConfigChange: () => void }> => {
+        const child = queueChild();
+        const { fireConfigChange } = captureConfigWatcher();
+        runDevSupervisor("/proj/src/index.tsx", {
+            paths: ["/proj/gtkx.config.ts"],
+            regenerate,
+        }).catch(() => undefined);
+        await Promise.resolve();
+        return { child, fireConfigChange };
+    };
+
+    it("regenerates and restarts the runner when the config changes", async () => {
+        const regenerate = vi.fn(async () => {});
+        const { child, fireConfigChange } = await startWithWatch(regenerate);
+        queueChild();
+
+        fireConfigChange();
+        await new Promise((resolve) => setTimeout(resolve, 250));
+
+        expect(regenerate).toHaveBeenCalledOnce();
+        expect(child.kill).toHaveBeenCalledWith("SIGTERM");
+
+        child.emit("exit", null, "SIGTERM");
+        await flushMicrotasks();
+
+        expect(forkMock).toHaveBeenCalledTimes(2);
+        expect(ctx.exitSpy).not.toHaveBeenCalled();
+    });
+
+    it("keeps the current runner when regeneration fails", async () => {
+        const regenerate = vi.fn(async () => {
+            throw new Error("bad config");
+        });
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+        const { child, fireConfigChange } = await startWithWatch(regenerate);
+
+        fireConfigChange();
+        await new Promise((resolve) => setTimeout(resolve, 250));
+
+        expect(regenerate).toHaveBeenCalledOnce();
+        expect(child.kill).not.toHaveBeenCalled();
+        expect(forkMock).toHaveBeenCalledOnce();
+        errorSpy.mockRestore();
     });
 });

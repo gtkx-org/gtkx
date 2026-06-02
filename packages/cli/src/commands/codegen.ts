@@ -3,13 +3,14 @@ import { defineCommand } from "citty";
 import { ensureGenerated, runCodegen } from "../codegen/run-codegen.js";
 
 /**
- * `gtkx codegen` — regenerate TypeScript bindings for the GIR libraries
+ * `gtkx codegen` — regenerate the TypeScript bindings for the GIR libraries
  * declared in `gtkx.config.ts`.
  *
- * Always regenerates; turbo and the install lifecycle own when it runs. Pass
- * `--clean` to wipe the generated output directories first, or `--if-missing`
- * to regenerate only when a required generated module is absent (used as a
- * build/typecheck prerequisite so the gitignored trees are present for `tsc`).
+ * Default: regenerate only when the store is missing or its fingerprint is stale
+ * (a changed library set, GIR runtime, or `@gtkx/codegen` version) — the
+ * conditional path the `@gtkx/cli#codegen` turbo task and the `gtkx dev`/`gtkx
+ * build` preflight use. Pass `--force` to wipe the store and regenerate
+ * unconditionally: the last-ditch recovery for a corrupted store.
  */
 export const codegen = defineCommand({
     meta: {
@@ -17,14 +18,9 @@ export const codegen = defineCommand({
         description: "Generate TypeScript bindings for the GIR libraries declared in gtkx.config.ts",
     },
     args: {
-        clean: {
+        force: {
             type: "boolean",
-            description: "Remove the generated output directories before regenerating",
-            default: false,
-        },
-        "if-missing": {
-            type: "boolean",
-            description: "Regenerate only when a required generated module is missing",
+            description: "Wipe the generated store and regenerate unconditionally (recover a corrupted store)",
             default: false,
         },
         cwd: {
@@ -34,17 +30,15 @@ export const codegen = defineCommand({
     },
     async run({ args }) {
         const cwd = args.cwd ? resolve(args.cwd) : process.cwd();
-        const startedAt = Date.now();
 
-        if (args["if-missing"]) {
+        if (!args.force) {
             const ran = await ensureGenerated(cwd);
-            if (ran) {
-                console.log("[gtkx] codegen: generated missing bindings");
-            }
+            console.log(ran ? "[gtkx] codegen: regenerated stale bindings" : "[gtkx] codegen: bindings up to date");
             return;
         }
 
-        const result = await runCodegen({ cwd, clean: args.clean });
+        const startedAt = Date.now();
+        const result = await runCodegen({ cwd, force: true });
 
         if (result.configFile) {
             console.log(`[gtkx] codegen: config=${result.configFile}`);

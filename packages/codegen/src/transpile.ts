@@ -11,18 +11,27 @@ export type TranspiledFile = {
     readonly dts: string;
 };
 
-const COMPILER_OPTIONS: ts.CompilerOptions = {
+/**
+ * The compiler options shared by the store's two TypeScript passes — the
+ * single-file transpile here and the overlay type-check in `typecheck-store.ts`.
+ * Each pass spreads these and adds its own emit/check-specific keys.
+ */
+export const baseCompilerOptions = (): ts.CompilerOptions => ({
     module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler,
     target: ts.ScriptTarget.ESNext,
-    declaration: true,
     skipLibCheck: true,
+    jsx: ts.JsxEmit.ReactJSX,
+    jsxImportSource: "react",
+});
+
+const COMPILER_OPTIONS: ts.CompilerOptions = {
+    ...baseCompilerOptions(),
+    declaration: true,
     skipDefaultLibCheck: true,
     removeComments: false,
     sourceMap: false,
     declarationMap: false,
-    jsx: ts.JsxEmit.ReactJSX,
-    jsxImportSource: "react",
 };
 
 /**

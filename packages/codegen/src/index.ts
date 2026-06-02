@@ -7,4 +7,10 @@
  * `react/`) are not part of the supported surface and may change in any
  * release.
  */
+export {
+    CODEGEN_VERSION,
+    type CodegenFingerprint,
+    computeFingerprint,
+    FINGERPRINT_FILENAME,
+} from "./fingerprint.js";
 export { CodegenRunner } from "./runner.js";

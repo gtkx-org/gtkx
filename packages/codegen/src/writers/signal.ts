@@ -8,7 +8,8 @@ import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirSignal } from "../gir/signal.js";
 import type { GirTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
 import { forEachAncestor, resolveImplementedInterface } from "./inheritance.js";
-import { isHandlePassing, planTrampolineArgs, renderTupleWriteback } from "./method.js";
+import { planTrampolineArgs, renderTupleWriteback } from "./method.js";
+import { isHandlePassing } from "./param-classify.js";
 import { isCellInout, renderFfiType } from "./value.js";
 
 const SIGNAL_HANDLER_TYPE = "(...args: any[]) => any";

@@ -10,7 +10,17 @@ vi.mock("@gtkx/codegen", () => ({
             return Promise.resolve({ namespaces: 1, widgets: 0, duration: 1 });
         }
     },
+    computeFingerprint: () => "test-fingerprint",
+    FINGERPRINT_FILENAME: ".codegen-fingerprint.json",
 }));
+
+/** Writes a fingerprint sentinel whose recomputed value matches the mock. */
+const writeFingerprint = (cwd: string, libraries: readonly string[] = ["Gtk-4.0"]) => {
+    writeFileSync(
+        join(cwd, "node_modules", ".gtkx", "gi", ".codegen-fingerprint.json"),
+        JSON.stringify({ value: "test-fingerprint", girFiles: [], libraries }),
+    );
+};
 
 const installPackage = (cwd: string, name: string) => {
     const dir = join(cwd, "node_modules", "@gtkx", name);
@@ -98,14 +108,14 @@ describe("runCodegen", () => {
         }
     });
 
-    it("with clean, removes the gi store before regenerating", async () => {
+    it("with force, removes the gi store before regenerating", async () => {
         installFfiPackage(cwd);
         writeConfig(cwd);
         writeGiBarrel(cwd, "gtk");
         const giStale = join(cwd, "node_modules", ".gtkx", "gi", "stale.js");
         writeFileSync(giStale, "");
 
-        const result = await runCodegen({ cwd, clean: true });
+        const result = await runCodegen({ cwd, force: true });
 
         expect(existsSync(giStale)).toBe(false);
         expect(result.namespaces).toBe(1);
@@ -163,6 +173,7 @@ describe("preflightCodegen", () => {
         writeConfig(cwd);
         writeGiBarrel(cwd, "gtk");
         writeJsxStore(cwd);
+        writeFingerprint(cwd);
 
         expect(await preflightLogs(cwd)).toBe("");
     });
@@ -194,6 +205,7 @@ describe("ensureGenerated", () => {
         writeConfig(cwd);
         writeGiBarrel(cwd, "gtk");
         writeJsxStore(cwd);
+        writeFingerprint(cwd);
 
         expect(await ensureGenerated(cwd)).toBe(false);
     });
@@ -203,6 +215,7 @@ describe("ensureGenerated", () => {
         installPackage(cwd, "react");
         writeConfig(cwd);
         writeGiBarrel(cwd, "gtk");
+        writeFingerprint(cwd);
 
         expect(await ensureGenerated(cwd)).toBe(false);
     });
@@ -244,5 +257,55 @@ describe("ensureGenerated — store links", () => {
         });
 
         expect(await ensureGenerated(cwd)).toBe(true);
+    });
+});
+
+describe("ensureGenerated — fingerprint", () => {
+    let cwd: string;
+
+    beforeEach(() => {
+        cwd = mkdtempSync(join(tmpdir(), "gtkx-ensure-fp-"));
+    });
+
+    afterEach(() => {
+        rmSync(cwd, { recursive: true, force: true });
+    });
+
+    const installPresentStore = () => {
+        installFfiPackage(cwd);
+        installReactStack(cwd);
+        writeConfig(cwd);
+        writeGiBarrel(cwd, "gtk");
+        writeJsxStore(cwd);
+    };
+
+    it("regenerates when the fingerprint sentinel is absent", async () => {
+        installPresentStore();
+
+        expect(await ensureGenerated(cwd)).toBe(true);
+    });
+
+    it("regenerates when the fingerprint value no longer matches", async () => {
+        installPresentStore();
+        writeFileSync(
+            join(cwd, "node_modules", ".gtkx", "gi", ".codegen-fingerprint.json"),
+            JSON.stringify({ value: "stale", girFiles: [], libraries: ["Gtk-4.0"] }),
+        );
+
+        expect(await ensureGenerated(cwd)).toBe(true);
+    });
+
+    it("regenerates when the resolved library set changed", async () => {
+        installPresentStore();
+        writeFingerprint(cwd, ["Gtk-4.0", "Adw-1"]);
+
+        expect(await ensureGenerated(cwd)).toBe(true);
+    });
+
+    it("skips when the fingerprint matches", async () => {
+        installPresentStore();
+        writeFingerprint(cwd);
+
+        expect(await ensureGenerated(cwd)).toBe(false);
     });
 });

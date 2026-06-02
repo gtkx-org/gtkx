@@ -40,6 +40,7 @@ describe("CodegenRunner", () => {
         expect(existsSync(join(gi.storeDir, "gobject", "gobject.d.ts"))).toBe(true);
         expect(existsSync(join(gi.storeDir, "gobject", "index.js"))).toBe(true);
         expect(existsSync(join(gi.storeDir, "package.json"))).toBe(true);
+        expect(existsSync(join(gi.storeDir, ".codegen-fingerprint.json"))).toBe(true);
         expect(existsSync(gi.linkDir)).toBe(true);
     });
 

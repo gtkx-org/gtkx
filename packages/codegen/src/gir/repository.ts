@@ -37,6 +37,8 @@ export type ResolvedNamed =
 export class GirRepository {
     /** Namespaces keyed by their unqualified name (e.g. `"Gtk"`, `"GLib"`). */
     public readonly namespaces: ReadonlyMap<string, GirNamespace>;
+    /** Absolute paths of every `.gir` file loaded, for staleness fingerprinting. */
+    public readonly girFiles: readonly string[];
     private readonly entityIndex: Map<string, ResolvedNamed>;
 
     /**
@@ -46,9 +48,11 @@ export class GirRepository {
      * parses files for you.
      *
      * @param namespaces - Namespaces keyed by unqualified name
+     * @param girFiles - Absolute paths of the `.gir` files the namespaces came from
      */
-    constructor(namespaces: ReadonlyMap<string, GirNamespace>) {
+    constructor(namespaces: ReadonlyMap<string, GirNamespace>, girFiles: readonly string[] = []) {
         this.namespaces = namespaces;
+        this.girFiles = girFiles;
         this.entityIndex = new Map();
         for (const namespace of namespaces.values()) {
             indexNamespace(this.entityIndex, namespace);
@@ -111,6 +115,7 @@ const indexNamespace = (index: Map<string, ResolvedNamed>, namespace: GirNamespa
  */
 export const loadGirRepository = (libraries: readonly string[], girPath: readonly string[]): GirRepository => {
     const namespaces = new Map<string, GirNamespace>();
+    const girFiles: string[] = [];
     const queue: string[] = [...libraries];
     while (queue.length > 0) {
         const identifier = queue.shift();
@@ -118,6 +123,7 @@ export const loadGirRepository = (libraries: readonly string[], girPath: readonl
         const namespaceName = identifier.split("-")[0] ?? identifier;
         if (namespaces.has(namespaceName)) continue;
         const path = locateGirFile(identifier, girPath);
+        girFiles.push(path);
         const root = parseGirFile(path);
         const repository = root.repository;
         if (typeof repository !== "object" || repository === null) {
@@ -129,7 +135,7 @@ export const loadGirRepository = (libraries: readonly string[], girPath: readonl
             queue.push(`${include.name}-${include.version}`);
         }
     }
-    return new GirRepository(namespaces);
+    return new GirRepository(namespaces, girFiles);
 };
 
 const locateGirFile = (identifier: string, girPath: readonly string[]): string => {

@@ -1,7 +1,8 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { swapStore, symlinkRelative, tempStoreFor, writeFilePair, writePackageJson } from "./store-fs.js";
+import { type CodegenFingerprint, FINGERPRINT_FILENAME } from "./fingerprint.js";
+import { type StoreOptions, writeStore } from "./store-fs.js";
 import { transpileSource } from "./transpile.js";
 import { type StoreSourceFile, typecheckGiStore } from "./typecheck-store.js";
 
@@ -16,17 +17,11 @@ const OVERLAY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "ove
 /**
  * Options for assembling the injected `@gtkx/gi` package.
  */
-export type GiStoreOptions = {
-    /** Absolute path to the hidden store directory (`node_modules/.gtkx/gi`). */
-    readonly storeDir: string;
-    /** Absolute path to the visible symlink (`node_modules/@gtkx/gi`). */
-    readonly linkDir: string;
+export type GiStoreOptions = StoreOptions & {
     /** Real (symlink-resolved) directory of the installed `@gtkx/ffi`. */
     readonly realFfiDir: string;
     /** Real (symlink-resolved) directory of the installed `@gtkx/native`. */
     readonly realNativeDir: string;
-    /** Version string copied onto the emitted `@gtkx/gi` package. */
-    readonly version: string;
 };
 
 /** Per-namespace inputs the store assembler turns into gi modules. */
@@ -149,8 +144,13 @@ const collectStoreSources = (
  *
  * @param options - Resolved store/link/dependency paths
  * @param namespaces - Per-namespace raw module inputs
+ * @param fingerprint - Staleness sentinel written into the store, when provided
  */
-export const writeGiStore = (options: GiStoreOptions, namespaces: readonly GiNamespaceInput[]): void => {
+export const writeGiStore = (
+    options: GiStoreOptions,
+    namespaces: readonly GiNamespaceInput[],
+    fingerprint?: CodegenFingerprint,
+): void => {
     const standaloneOverlays = readdirSync(OVERLAY_ROOT).filter(
         (name) => isAugmented(name) && !barrelNeedsGenerated(name),
     );
@@ -158,38 +158,42 @@ export const writeGiStore = (options: GiStoreOptions, namespaces: readonly GiNam
     const directories = new Set<string>([...namespaces.map((n) => n.directory), ...standaloneOverlays]);
     const rawByDirectory = new Map(namespaces.map((n) => [n.directory, n.rawSource]));
 
-    const tmp = tempStoreFor(options.storeDir);
     const { collected, exportsMap } = collectStoreSources(directories, standaloneSet, rawByDirectory);
 
-    const sources: StoreSourceFile[] = collected.map((file) =>
-        file.overlay
-            ? { path: join(tmp, file.fileName), source: file.source, overlay: true }
-            : {
-                  path: join(tmp, `${file.stem}.d.ts`),
-                  source: transpileSource(file.fileName, file.source).dts,
-                  overlay: false,
-              },
-    );
-    typecheckGiStore(tmp, sources, {
-        ffiEntry: join(options.realFfiDir, "src", "index.ts"),
-        nativeEntry: join(options.realNativeDir, "dist", "index.d.ts"),
+    writeStore({
+        storeDir: options.storeDir,
+        linkDir: options.linkDir,
+        files: collected.map((file) => ({ stem: file.stem, fileName: file.fileName, source: file.source })),
+        manifest: {
+            name: "@gtkx/gi",
+            type: "module",
+            version: options.version,
+            sideEffects: true,
+            exports: exportsMap,
+        },
+        rawFiles:
+            fingerprint === undefined
+                ? []
+                : [{ relativePath: FINGERPRINT_FILENAME, content: `${JSON.stringify(fingerprint, null, 2)}\n` }],
+        symlinks: [
+            { segments: ["node_modules", "@gtkx", "ffi"], target: options.realFfiDir },
+            { segments: ["node_modules", "@gtkx", "native"], target: options.realNativeDir },
+            { segments: ["node_modules", "@gtkx", "gi"], target: "self" },
+        ],
+        validate: (tmp) => {
+            const sources: StoreSourceFile[] = collected.map((file) =>
+                file.overlay
+                    ? { path: join(tmp, file.fileName), source: file.source, overlay: true }
+                    : {
+                          path: join(tmp, `${file.stem}.d.ts`),
+                          source: transpileSource(file.fileName, file.source).dts,
+                          overlay: false,
+                      },
+            );
+            typecheckGiStore(tmp, sources, {
+                ffiEntry: join(options.realFfiDir, "src", "index.ts"),
+                nativeEntry: join(options.realNativeDir, "dist", "index.d.ts"),
+            });
+        },
     });
-
-    for (const file of collected) {
-        writeFilePair(tmp, file.stem, file.fileName, file.source);
-    }
-
-    writePackageJson(tmp, {
-        name: "@gtkx/gi",
-        type: "module",
-        version: options.version,
-        sideEffects: true,
-        exports: exportsMap,
-    });
-
-    symlinkRelative(join(tmp, "node_modules", "@gtkx", "ffi"), options.realFfiDir);
-    symlinkRelative(join(tmp, "node_modules", "@gtkx", "native"), options.realNativeDir);
-    symlinkRelative(join(tmp, "node_modules", "@gtkx", "gi"), tmp);
-
-    swapStore(tmp, options.storeDir, options.linkDir);
 };
