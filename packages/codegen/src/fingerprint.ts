@@ -39,8 +39,8 @@ export const computeFingerprint = (girFiles: readonly string[], libraries: reado
     const hash = createHash("sha256");
     hash.update(CODEGEN_VERSION);
     hash.update("\n");
-    hash.update([...libraries].sort().join(","));
-    for (const file of [...girFiles].sort()) {
+    hash.update([...libraries].sort((a, b) => a.localeCompare(b)).join(","));
+    for (const file of [...girFiles].sort((a, b) => a.localeCompare(b))) {
         hash.update("\n");
         hash.update(file);
         hash.update("\0");

@@ -218,7 +218,8 @@ const fingerprintStale = (giStoreDir: string, libraries: readonly string[]): boo
     } catch {
         return true;
     }
-    if ([...sentinel.libraries].sort().join(",") !== [...libraries].sort().join(",")) return true;
+    const sortAlpha = (values: readonly string[]): string => [...values].sort((a, b) => a.localeCompare(b)).join(",");
+    if (sortAlpha(sentinel.libraries) !== sortAlpha(libraries)) return true;
     try {
         return computeFingerprint(sentinel.girFiles, sentinel.libraries) !== sentinel.value;
     } catch {
