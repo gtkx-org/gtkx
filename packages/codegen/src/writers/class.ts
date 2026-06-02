@@ -17,7 +17,7 @@ import {
     renderInstanceMethod,
     renderStaticHead,
 } from "./callables.js";
-import { renderVFuncMeta } from "./class-struct.js";
+import { renderVfuncMetadata } from "./class-struct.js";
 import { renderClassConstructor, renderConstructorPropsInterface } from "./constructor-props.js";
 import { renderGetTypeReference } from "./gtype-binding.js";
 import { collectInterfaceProperties, forEachAncestor, resolveImplementedInterface } from "./inheritance.js";
@@ -26,7 +26,7 @@ import { renderPropertyAccessor } from "./property-accessor.js";
 import { appendNativeClassRegistration } from "./registration.js";
 import { renderRuntimeOverride } from "./runtime-override.js";
 import { renderSignalMembers, renderSignalRegistration } from "./signal.js";
-import { writeTsType } from "./types-ts.js";
+import { writeTsType } from "./ts-type.js";
 
 /**
  * Emits a full class declaration for a `<class>` element.
@@ -130,7 +130,7 @@ const appendInstanceMethods = (options: AppendInstanceMethodsOptions): void => {
  * The disambiguated name a colliding instance method is emitted under:
  * `<lowerClassName><MethodName>` (e.g. `iconViewSetCursor`).
  */
-const generateConflictingMethodName = (className: string, methodName: string): string => {
+const conflictingMethodName = (className: string, methodName: string): string => {
     const camel = toCamelCase(className);
     return `${camel.charAt(0).toLowerCase()}${camel.slice(1)}${toPascalCase(methodName)}`;
 };
@@ -189,7 +189,7 @@ const appendClassRegistrations = (ctx: ModuleContext, klass: GirClass, className
         className,
         role: "class",
         getTypeRef,
-        vfuncs: renderVFuncMeta(ctx, klass),
+        vfuncs: renderVfuncMetadata(ctx, klass),
         signals: renderSignalRegistration(ctx, klass),
     });
 };
@@ -330,9 +330,9 @@ const conflictRename = (
     const ownReturn = writeTsType(ctx, callable.returnValue.type, callable.returnValue.nullable);
     const conflicts =
         inheritedReturn !== ownReturn ||
-        parameterEnumConflict(ctx, callable, inheritedMethod) ||
+        hasParameterEnumConflict(ctx, callable, inheritedMethod) ||
         inputParameters(callable).length !== inputParameters(inheritedMethod.method).length;
-    return conflicts ? generateConflictingMethodName(className, callable.name) : undefined;
+    return conflicts ? conflictingMethodName(className, callable.name) : undefined;
 };
 
 /**
@@ -348,7 +348,7 @@ const conflictRename = (
  * @param own - The override declared on the derived class
  * @param inherited - The nearest ancestor definition of the same name
  */
-const parameterEnumConflict = (ctx: ModuleContext, own: GirFunction, inherited: InheritedMethod): boolean => {
+const hasParameterEnumConflict = (ctx: ModuleContext, own: GirFunction, inherited: InheritedMethod): boolean => {
     const ownParams = inputParameters(own);
     const inheritedParams = inputParameters(inherited.method);
     const count = Math.min(ownParams.length, inheritedParams.length);

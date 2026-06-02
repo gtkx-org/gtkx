@@ -13,7 +13,7 @@
  */
 
 export * from "./gobject/fundamental-types.js";
-export { getBoxed, setBoxed } from "./gobject/gvalue.js";
+export { getBoxed, setBoxed, valueGetType } from "./gobject/gvalue.js";
 export { GValue, setVariantClass } from "./gobject/gvalue-native.js";
 export { Type } from "./gobject/types.js";
 export * from "./gtype.js";

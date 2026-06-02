@@ -861,10 +861,10 @@ export type AdjustableProps = {
     onValueChanged?: ((value: number) => void) | null;
 };
 
-interface StackProps {
+type StackProps = {
     /** ID of the currently visible page */
     page?: string | null;
-}
+};
 
 /**
  * Props for the `<GtkSizeGroup>` declarative wrapper.

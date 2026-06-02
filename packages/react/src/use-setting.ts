@@ -2,13 +2,13 @@ import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-interface SettingTypeMap {
+type SettingTypeMap = {
     boolean: boolean;
     int: number;
     double: number;
     string: string;
     strv: string[];
-}
+};
 
 type SettingType = keyof SettingTypeMap;
 

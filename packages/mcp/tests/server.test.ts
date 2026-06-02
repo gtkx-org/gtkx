@@ -80,7 +80,7 @@ vi.mock("../src/connection-manager.js", () => ({
     },
 }));
 
-import { buildTools, main } from "../src/cli.js";
+import { buildTools, main } from "../src/server.js";
 
 type AppQueryClient = Pick<ConnectionManager, "getApps" | "hasConnectedApps" | "waitForApp" | "sendToApp">;
 

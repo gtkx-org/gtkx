@@ -17,7 +17,7 @@
  * handler when the prop changes, and {@link arraySync} reconciles an array prop
  * against the widget through clear/add operations.
  */
-import { isConstructOnlyProp, resolveSignal } from "../../metadata.js";
+import { isConstructOnlyProp, resolveSignal } from "../../gtype.js";
 import type { Node } from "../../node.js";
 import type { Container, Props } from "../../types.js";
 import { isEditable } from "./predicates.js";
@@ -146,14 +146,14 @@ const getArraySyncState = (node: Node, key: string): ArraySyncState => {
 };
 
 /** Options for {@link applyProps}. */
-export interface ApplyPropsOptions {
+export type ApplyPropsOptions = {
     /** The node's bespoke-prop descriptors; table keys bypass the generic path. */
     readonly table?: PropDescriptorTable;
     /** Prop names to omit from the generic path (e.g. accessible props). */
     readonly exclude?: (name: string) => boolean;
     /** Whether generic signal handlers are suppressed during commits. */
     readonly defaultBlockable?: boolean;
-}
+};
 
 /**
  * Applies a prop commit to a node's container.
@@ -180,13 +180,13 @@ export function applyProps(node: Node, oldProps: Props | null, newProps: Props, 
     applyTableDescriptors(context);
 }
 
-interface ApplyContext {
+type ApplyContext = {
     readonly node: Node;
     readonly container: Container;
     readonly oldProps: Props | null;
     readonly newProps: Props;
     readonly table: PropDescriptorTable;
-}
+};
 
 /**
  * Resets the array-sync state a node accumulated through {@link applyProps},

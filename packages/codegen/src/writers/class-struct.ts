@@ -28,7 +28,7 @@ type VtableKind = "class" | "interface";
  * @param ctx - The module context
  * @param klass - The class or interface
  */
-export const renderVFuncMeta = (ctx: ModuleContext, klass: GirClass): string | undefined => {
+export const renderVfuncMetadata = (ctx: ModuleContext, klass: GirClass): string | undefined => {
     if (klass.glibTypeStruct === undefined) return undefined;
     const structName = toPascalCase(klass.glibTypeStruct);
     const kind: VtableKind = klass.isInterface ? "interface" : "class";
@@ -67,7 +67,7 @@ const isVtableSlotEligible = (callback: GirCallback): boolean => {
 
 const isCallbackRef = (ref: GirTypeRef | undefined): boolean => ref?.kind === "callback";
 
-type DescriptorInput = {
+type RenderDescriptorOptions = {
     readonly key: string;
     readonly structName: string;
     readonly kind: VtableKind;
@@ -76,7 +76,7 @@ type DescriptorInput = {
     readonly byteOffset: number;
 };
 
-const renderDescriptor = (ctx: ModuleContext, input: DescriptorInput): string => {
+const renderDescriptor = (ctx: ModuleContext, input: RenderDescriptorOptions): string => {
     const { key, structName, kind, field, callback, byteOffset } = input;
     const argTypes = callback.parameters
         .map((param) => writeFfiType(ctx, param.type, param.transferOwnership))

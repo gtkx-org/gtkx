@@ -5,7 +5,7 @@ import type { GirClass } from "../gir/class.js";
 import type { GirProperty } from "../gir/property.js";
 import { splitQualifiedName } from "../gir/qualified-name.js";
 import { collectInterfaceProperties } from "./inheritance.js";
-import { writeTsType } from "./types-ts.js";
+import { writeTsType } from "./ts-type.js";
 import { writeFfiType } from "./value.js";
 
 /**

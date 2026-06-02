@@ -5,7 +5,7 @@ import type { GirFunction } from "../gir/function.js";
 import type { GirProperty } from "../gir/property.js";
 import type { GirTypeRef } from "../gir/type-ref.js";
 import { writeMethodReturnType } from "./method.js";
-import { writeTsType } from "./types-ts.js";
+import { writeTsType } from "./ts-type.js";
 
 /**
  * Whether a GObject property of `type` can hold `null`.
@@ -86,7 +86,7 @@ export const renderPropertyAccessor = (
 /**
  * Inputs for {@link renderGetterBody}.
  */
-type GetterBodyInputs = {
+type GetterBodyOptions = {
     readonly ctx: ModuleContext;
     readonly property: GirProperty;
     readonly getterMember: string | undefined;
@@ -102,10 +102,10 @@ type GetterBodyInputs = {
  * assertion; matching nullability needs no cast. Properties with no typed
  * getter read through the generic `getProperty` GValue path.
  *
- * @param inputs - {@link GetterBodyInputs}
+ * @param options - {@link GetterBodyOptions}
  */
-const renderGetterBody = (inputs: GetterBodyInputs): string => {
-    const { ctx, property, getterMember, getMethod, tsType } = inputs;
+const renderGetterBody = (options: GetterBodyOptions): string => {
+    const { ctx, property, getterMember, getMethod, tsType } = options;
     if (getterMember === undefined) return `return this.getProperty(${quote(property.name)}) as ${tsType};`;
     if (getMethod === undefined) return `return this.${getterMember}() as ${tsType};`;
     const getType = writeMethodReturnType(ctx, getMethod);

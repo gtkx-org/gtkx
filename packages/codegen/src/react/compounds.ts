@@ -56,7 +56,7 @@ export const generateCompounds = (
     }
 
     const sections = [
-        buildImportLines(accumulator).join("\n"),
+        renderImportLines(accumulator).join("\n"),
         buildElementConsts(accumulator),
         exportLines.join("\n\n"),
     ];
@@ -156,7 +156,7 @@ const buildElementConsts = (accumulator: CompoundAccumulator): string =>
         .map((name) => `const ${name}Element = ${quote(name)} as const;`)
         .join("\n");
 
-const buildImportLines = (accumulator: CompoundAccumulator): readonly string[] => {
+const renderImportLines = (accumulator: CompoundAccumulator): readonly string[] => {
     const lines = ['import type { ReactNode } from "react";'];
     const compoundPropTypes = [...accumulator.compoundPropTypes].sort((a, b) => a.localeCompare(b));
     if (compoundPropTypes.length > 0) {

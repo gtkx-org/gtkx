@@ -18,10 +18,11 @@ import {
     getStrvGType,
     newFrom,
     newFromObject,
+    valueGetType,
 } from "./gobject/gvalue.js";
 import type { GValue } from "./gobject/gvalue-native.js";
 import { Type } from "./gobject/types.js";
-import { type GType, GVALUE_BORROWED, gtypeFromFfi, LIBGOBJECT, typeFundamental, typeName } from "./gtype.js";
+import { type GType, GVALUE_BORROWED, LIBGOBJECT, typeFundamental, typeName } from "./gtype.js";
 import { getHandle } from "./handles.js";
 import { read, t } from "./native.js";
 
@@ -86,19 +87,6 @@ const g_value_get_boxed_strv = t.fn(
     [{ type: GVALUE_BORROWED }],
     t.array(t.string("borrowed")),
 );
-
-/**
- * Gets the `GType` of the value stored in a `GValue`.
- *
- * Equivalent to the C macro `G_VALUE_TYPE(value)`.
- *
- * @param value - The `GValue` to inspect (any object backed by a `GValue`
- *   handle, including the generated `GObject.Value`).
- * @returns The `GType` identifier.
- */
-export function valueGetType(value: object): GType {
-    return gtypeFromFfi(read(getHandle(value), t.uint64, 0));
-}
 
 const valueGetStrv = (value: object): string[] => (g_value_get_boxed_strv(getHandle(value)) as string[] | null) ?? [];
 

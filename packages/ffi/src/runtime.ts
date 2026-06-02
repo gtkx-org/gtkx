@@ -21,7 +21,7 @@ export { promisify } from "./async.js";
 export type { NativeHandle } from "./handles.js";
 export { getHandle, setHandle, tryGetHandle } from "./handles.js";
 export { alloc, call, freeze, read, t, unfreeze, write } from "./helpers.js";
-export { checkError, makeErrorDomain } from "./native.js";
+export { checkError, createErrorDomain } from "./native.js";
 export { registerNativeClass } from "./register-native-class.js";
 export { getNativeObject, getNativeObjectAsInterface } from "./registry.js";
 export { connectSignal, emitSignal } from "./signals.js";

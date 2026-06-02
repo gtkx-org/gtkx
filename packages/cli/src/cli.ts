@@ -2,7 +2,7 @@ import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineCommand, runMain } from "citty";
-import { buildCmd } from "./commands/build.js";
+import { build } from "./commands/build.js";
 import { codegen } from "./commands/codegen.js";
 import { create } from "./commands/create.js";
 import { dev } from "./commands/dev.js";
@@ -28,7 +28,7 @@ export const main = defineCommand({
     },
     subCommands: {
         dev,
-        build: buildCmd,
+        build,
         codegen,
         create,
     },

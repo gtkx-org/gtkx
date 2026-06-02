@@ -5,7 +5,7 @@ import type { GirRepository } from "../gir/repository.js";
 import { emitAlias } from "../writers/alias.js";
 import { emitBoxed } from "../writers/boxed.js";
 import { emitClass } from "../writers/class.js";
-import { emitConstant } from "../writers/constants.js";
+import { emitConstant } from "../writers/constant.js";
 import { emitEnum } from "../writers/enum.js";
 import { emitNamespaceBootstrap, emitNamespaceFunction } from "../writers/function.js";
 import { emitInterface } from "../writers/interface.js";

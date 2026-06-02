@@ -14,7 +14,7 @@ import {
     indexMethodsByName,
     renderInstanceMethod,
 } from "./callables.js";
-import { renderVFuncMeta } from "./class-struct.js";
+import { renderVfuncMetadata } from "./class-struct.js";
 import { renderGetTypeReference } from "./gtype-binding.js";
 import { resolveImplementedInterface } from "./inheritance.js";
 import { methodExportName } from "./method.js";
@@ -147,7 +147,7 @@ const appendInterfaceRegistrations = (ctx: ModuleContext, iface: GirClass, class
         className,
         role: "interface",
         getTypeRef,
-        vfuncs: renderVFuncMeta(ctx, iface),
+        vfuncs: renderVfuncMetadata(ctx, iface),
         signals: renderSignalRegistration(ctx, iface),
     });
 };

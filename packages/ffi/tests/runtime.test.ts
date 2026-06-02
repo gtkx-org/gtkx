@@ -14,7 +14,7 @@ const EXPECTED_RUNTIME_EXPORTS = [
     "unfreeze",
     "write",
     "checkError",
-    "makeErrorDomain",
+    "createErrorDomain",
     "registerNativeClass",
     "getNativeObject",
     "getNativeObjectAsInterface",

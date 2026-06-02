@@ -1,7 +1,7 @@
 import { toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import type { GirAlias } from "../gir/namespace.js";
-import { writeTsType } from "./types-ts.js";
+import { writeTsType } from "./ts-type.js";
 
 /**
  * Emits an `export type` declaration for a GIR `<alias>`.

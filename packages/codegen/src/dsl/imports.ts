@@ -8,7 +8,7 @@ import { quote } from "@gtkx/utils";
  * side-effect and named imports from the same specifier) and leaves
  * everything else to raw TS strings the writers compose themselves.
  */
-export class ImportsManifest {
+export class ImportsBuilder {
     private readonly named = new Map<string, Map<string, boolean>>();
     private readonly defaultNames = new Map<string, string>();
     private readonly namespaces = new Map<string, string>();

@@ -7,7 +7,7 @@ import type { GirTypeRef } from "../gir/type-ref.js";
 import { type BoxedFieldSlot, computeBoxedFieldSlots } from "./boxed-layout.js";
 import { typeRefIsClassStruct } from "./class-struct-record.js";
 import { wrapReturnValue } from "./method.js";
-import { writeTsType } from "./types-ts.js";
+import { writeTsType } from "./ts-type.js";
 import { writeFfiType } from "./value.js";
 
 /**
@@ -127,14 +127,14 @@ const renderElementReadObject = (ctx: ModuleContext, fields: readonly GirField[]
     return `{ ${entries.join(", ")} }`;
 };
 
-type ElementWritePlan = {
+type ElementWriteOptions = {
     readonly fields: readonly GirField[];
     readonly baseOffset: number;
     readonly valuePath: string;
     readonly out: string[];
 };
 
-const renderElementWriteStatements = (ctx: ModuleContext, plan: ElementWritePlan): void => {
+const renderElementWriteStatements = (ctx: ModuleContext, plan: ElementWriteOptions): void => {
     const { fields, baseOffset, valuePath, out } = plan;
     const { slots } = computeBoxedFieldSlots(ctx, fields);
     for (const { field, slot } of slots) {
@@ -167,7 +167,7 @@ type StructArrayTarget = {
     readonly siblingFields: readonly GirField[];
 };
 
-type StructArrayContext = {
+type StructArrayAccessorOptions = {
     readonly ctx: ModuleContext;
     readonly jsName: string;
     readonly tsType: string;
@@ -178,7 +178,7 @@ type StructArrayContext = {
     readonly elementFields: readonly GirField[];
 };
 
-const structArrayGetterBlock = (context: StructArrayContext): string => {
+const structArrayGetterBlock = (context: StructArrayAccessorOptions): string => {
     const { ctx, jsName, tsType, bufferType, offset, lengthExpr, elementSize, elementFields } = context;
     const element = renderElementReadObject(ctx, elementFields, 0);
     const loop = [`const __base = __index * ${elementSize};`, `__result.push(${element});`].join("\n");
@@ -193,7 +193,7 @@ const structArrayGetterBlock = (context: StructArrayContext): string => {
     return `get ${jsName}(): ${tsType} {\n${indent(body, 1)}\n}`;
 };
 
-const structArraySetterBlock = (context: StructArrayContext): string => {
+const structArraySetterBlock = (context: StructArrayAccessorOptions): string => {
     const { ctx, jsName, tsType, bufferType, offset, elementSize, elementFields } = context;
     const writes: string[] = [];
     renderElementWriteStatements(ctx, { fields: elementFields, baseOffset: 0, valuePath: "__element", out: writes });
@@ -224,7 +224,7 @@ const renderStructArrayAccessor = (ctx: ModuleContext, target: StructArrayTarget
     ctx.addRuntimeImport("read");
     ctx.addRuntimeImport("getHandle");
     ctx.addRuntimeImport("t");
-    const context: StructArrayContext = {
+    const context: StructArrayAccessorOptions = {
         ctx,
         jsName,
         tsType: writeTsType(ctx, arrayRef, false),

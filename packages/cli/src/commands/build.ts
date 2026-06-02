@@ -1,16 +1,16 @@
 import { resolve } from "node:path";
 import { defineCommand } from "citty";
-import { build } from "../builder.js";
+import { build as buildApp } from "../builder.js";
 import { preflightCodegen } from "../codegen/run-codegen.js";
 
 /**
  * `gtkx build` — bundle the project for production.
  *
- * Runs codegen preflight, then invokes {@link build} with the resolved entry
+ * Runs codegen preflight, then invokes {@link buildApp} with the resolved entry
  * and the optional asset base path. The GResource pipeline reads
  * `applicationId` directly from `gtkx.config.ts`.
  */
-export const buildCmd = defineCommand({
+export const build = defineCommand({
     meta: {
         name: "build",
         description: "Build application for production",
@@ -33,7 +33,7 @@ export const buildCmd = defineCommand({
 
         await preflightCodegen(cwd);
 
-        await build({
+        await buildApp({
             entry,
             assetBase: args["asset-base"],
             vite: {

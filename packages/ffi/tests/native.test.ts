@@ -1,4 +1,4 @@
-import { checkError, getHandle, makeErrorDomain } from "@gtkx/ffi";
+import { checkError, createErrorDomain, getHandle } from "@gtkx/ffi";
 import { FileError, Error as GError, quarkFromString } from "@gtkx/gi/glib";
 import type { GType } from "@gtkx/gi/gobject";
 import { typeFromName } from "@gtkx/gi/gobject";
@@ -63,27 +63,27 @@ describe("checkError", () => {
     });
 });
 
-describe("makeErrorDomain", () => {
+describe("createErrorDomain", () => {
     it("exposes the enum members", () => {
-        const domain = makeErrorDomain(() => FILE_ERROR_DOMAIN, { NOENT: FILE_ERROR_NOENT });
+        const domain = createErrorDomain(() => FILE_ERROR_DOMAIN, { NOENT: FILE_ERROR_NOENT });
 
         expect(domain.NOENT).toBe(FILE_ERROR_NOENT);
     });
 
     it("matches a GError from the same domain via instanceof", () => {
-        const domain = makeErrorDomain(() => FILE_ERROR_DOMAIN, { NOENT: FILE_ERROR_NOENT });
+        const domain = createErrorDomain(() => FILE_ERROR_DOMAIN, { NOENT: FILE_ERROR_NOENT });
 
         expect(gerrorIn(FILE_ERROR_DOMAIN) instanceof domain).toBe(true);
     });
 
     it("rejects a GError from a different domain", () => {
-        const domain = makeErrorDomain(() => FILE_ERROR_DOMAIN, { NOENT: FILE_ERROR_NOENT });
+        const domain = createErrorDomain(() => FILE_ERROR_DOMAIN, { NOENT: FILE_ERROR_NOENT });
 
         expect(gerrorIn(FILE_ERROR_DOMAIN + 1) instanceof domain).toBe(false);
     });
 
     it("rejects values that are not a GError", () => {
-        const domain = makeErrorDomain(() => FILE_ERROR_DOMAIN, { NOENT: FILE_ERROR_NOENT });
+        const domain = createErrorDomain(() => FILE_ERROR_DOMAIN, { NOENT: FILE_ERROR_NOENT });
 
         expect(new Error("plain") instanceof domain).toBe(false);
     });

@@ -16,20 +16,20 @@ export type ListLifecycleItem = Gtk.ListItem | Gtk.ListHeader;
  */
 export const asLifecycleItem = <T extends ListLifecycleItem>(obj: GObject.Object): T => obj as T;
 
-export interface ListFactoryOptions<T extends ListLifecycleItem> {
+export type ListFactoryOptions<T extends ListLifecycleItem> = {
     containers: Map<T, number>;
     containerKeys: Map<T, string>;
     getPosition: (item: T) => number;
     onBoundItemsChanged: () => void;
     onSetup?: (item: T) => void;
-    isDisposed?: () => boolean;
-}
+    isDetached?: () => boolean;
+};
 
 export function connectFactoryLifecycle<T extends ListLifecycleItem>(
     factory: Gtk.SignalListItemFactory,
     options: ListFactoryOptions<T>,
 ): void {
-    const { containers, containerKeys, getPosition, onBoundItemsChanged, onSetup, isDisposed } = options;
+    const { containers, containerKeys, getPosition, onBoundItemsChanged, onSetup, isDetached } = options;
 
     factory.connect("setup", (obj: GObject.Object) => {
         const item = asLifecycleItem<T>(obj);
@@ -39,14 +39,14 @@ export function connectFactoryLifecycle<T extends ListLifecycleItem>(
     });
 
     factory.connect("bind", (obj: GObject.Object) => {
-        if (isDisposed?.()) return;
+        if (isDetached?.()) return;
         const item = asLifecycleItem<T>(obj);
         containers.set(item, getPosition(item));
         onBoundItemsChanged();
     });
 
     factory.connect("unbind", (obj: GObject.Object) => {
-        if (isDisposed?.()) return;
+        if (isDetached?.()) return;
         const item = asLifecycleItem<T>(obj);
         containers.set(item, UNBOUND_POSITION);
         onBoundItemsChanged();

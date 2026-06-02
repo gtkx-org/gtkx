@@ -11,7 +11,7 @@ import {
 import { qualifyTypeRef } from "../gir/qualify.js";
 import type { ResolvedNamed } from "../gir/repository.js";
 import type { GirTypeRef, NamedTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
-import { writeTsType } from "./types-ts.js";
+import { writeTsType } from "./ts-type.js";
 import { isCellInout, type ResolvedCallback, resolveCallbackType } from "./value.js";
 
 /**
@@ -946,14 +946,14 @@ const wrapNamed = (ctx: ModuleContext, ref: NamedTypeRef, valueExpression: strin
     return wrapResolved(ctx, resolved, { namespaceName: owner, typeName: ref.typeName, valueExpression, nullable });
 };
 
-type WrapResolvedTarget = {
+type WrapResolvedOptions = {
     readonly namespaceName: string;
     readonly typeName: string;
     readonly valueExpression: string;
     readonly nullable: boolean;
 };
 
-const wrapResolved = (ctx: ModuleContext, resolved: ResolvedNamed, target: WrapResolvedTarget): string => {
+const wrapResolved = (ctx: ModuleContext, resolved: ResolvedNamed, target: WrapResolvedOptions): string => {
     const { namespaceName, typeName, valueExpression, nullable } = target;
     switch (resolved.kind) {
         case "class": {

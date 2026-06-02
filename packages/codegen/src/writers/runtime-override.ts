@@ -28,7 +28,7 @@ const RUNTIME_OVERRIDES: ReadonlyMap<string, RuntimeOverride> = new Map([
     [
         "g_value_set_boxed",
         {
-            signature: "vBoxed: object | null",
+            signature: "boxed: object | null",
             returnType: "void",
             body: 'throw new Error("g_value_set_boxed: runtime override not installed");',
         },

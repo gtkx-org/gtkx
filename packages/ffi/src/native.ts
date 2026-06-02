@@ -90,7 +90,7 @@ export type ErrorDomain<T extends Record<string, number>> = Readonly<T> & {
  * @param members - The enum's member-name to numeric-value map.
  * @returns A frozen enum object usable as an `instanceof` right-hand side.
  */
-export function makeErrorDomain<const T extends Record<string, number>>(
+export function createErrorDomain<const T extends Record<string, number>>(
     resolveDomain: () => number,
     members: T,
 ): ErrorDomain<T> {

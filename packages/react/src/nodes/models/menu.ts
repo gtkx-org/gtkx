@@ -17,13 +17,13 @@ export type MenuType = "root" | "item" | "section" | "submenu";
  * Options for constructing a {@link MenuModel}.
  *
  */
-export interface MenuModelOptions {
+export type MenuModelOptions = {
     readonly type: MenuType;
     readonly props: MenuModelProps;
     readonly rootContainer: Container;
     readonly actionMap?: Gio.ActionMap;
     readonly application?: Gtk.Application;
-}
+};
 
 export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel> {
     private actionMap: Gio.ActionMap | null = null;

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { main } from "../dist/cli.js";
+import { main } from "../dist/server.js";
 
 try {
     await main();

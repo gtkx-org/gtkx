@@ -142,12 +142,12 @@ const defineTool = <Shape extends Record<string, z.ZodType>>(tool: TypedTool<Sha
     config: tool.config,
     handler: tool.handler,
     register: (server) => {
-        const callback = tool.handler as unknown as ToolCallback<Shape>;
+        const callback = ((args: ToolArgs<Shape>, _extra: unknown) => tool.handler(args)) as ToolCallback<Shape>;
         server.registerTool(tool.name, tool.config, callback);
     },
 });
 
-type ForwardSpec<Shape extends Record<string, z.ZodType>> = {
+type ForwardOptions<Shape extends Record<string, z.ZodType>> = {
     name: string;
     description: string;
     inputSchema: Shape;
@@ -158,14 +158,14 @@ type ForwardSpec<Shape extends Record<string, z.ZodType>> = {
 
 const buildForwardParams = <Shape extends Record<string, z.ZodType>>(
     args: ToolArgs<Shape>,
-    custom: ForwardSpec<Shape>["params"],
+    custom: ForwardOptions<Shape>["params"],
 ): { appId: string | undefined; params: unknown } => {
     const { appId, ...rest } = args as ToolArgs<Shape> & { appId?: string };
     return { appId, params: custom ? custom(args) : rest };
 };
 
 const forwardTool = <Shape extends Record<string, z.ZodType>>(
-    spec: ForwardSpec<Shape>,
+    options: ForwardOptions<Shape>,
     perform: (
         cm: AppQueryClient,
         appId: string | undefined,
@@ -174,30 +174,30 @@ const forwardTool = <Shape extends Record<string, z.ZodType>>(
     ) => Promise<ToolHandlerResult>,
 ): ToolDefinition =>
     defineTool<Shape>({
-        name: spec.name,
-        config: { description: spec.description, inputSchema: spec.inputSchema },
+        name: options.name,
+        config: { description: options.description, inputSchema: options.inputSchema },
         handler: async (args) => {
-            const { appId, params } = buildForwardParams(args, spec.params);
-            return perform(spec.cm, appId, spec.method, params);
+            const { appId, params } = buildForwardParams(args, options.params);
+            return perform(options.cm, appId, options.method, params);
         },
     });
 
-const forwardJson = <Shape extends Record<string, z.ZodType>>(spec: ForwardSpec<Shape>): ToolDefinition =>
-    forwardTool(spec, async (cm, appId, method, params) => {
+const forwardJson = <Shape extends Record<string, z.ZodType>>(options: ForwardOptions<Shape>): ToolDefinition =>
+    forwardTool(options, async (cm, appId, method, params) => {
         const result = await cm.sendToApp(appId, method, params);
         return textContent(JSON.stringify(result, null, 2));
     });
 
 const forwardAck = <Shape extends Record<string, z.ZodType>>(
-    spec: ForwardSpec<Shape> & { ack: string },
+    options: ForwardOptions<Shape> & { ack: string },
 ): ToolDefinition =>
-    forwardTool(spec, async (cm, appId, method, params) => {
+    forwardTool(options, async (cm, appId, method, params) => {
         await cm.sendToApp(appId, method, params);
-        return textContent(spec.ack);
+        return textContent(options.ack);
     });
 
-const forwardImage = <Shape extends Record<string, z.ZodType>>(spec: ForwardSpec<Shape>): ToolDefinition =>
-    forwardTool(spec, async (cm, appId, method, params) => {
+const forwardImage = <Shape extends Record<string, z.ZodType>>(options: ForwardOptions<Shape>): ToolDefinition =>
+    forwardTool(options, async (cm, appId, method, params) => {
         const result = await cm.sendToApp<{ data: string; mimeType: string }>(appId, method, params);
         return imageContent(result.data, result.mimeType);
     });

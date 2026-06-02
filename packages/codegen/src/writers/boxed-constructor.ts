@@ -5,7 +5,7 @@ import type { GirBoxed } from "../gir/boxed.js";
 import type { GirField } from "../gir/field.js";
 import type { GirTypeRef } from "../gir/type-ref.js";
 import { computeBoxedFieldSlots } from "./boxed-layout.js";
-import { writeTsType } from "./types-ts.js";
+import { writeTsType } from "./ts-type.js";
 import { writeFfiType } from "./value.js";
 
 type FieldSlot = ReturnType<typeof computeBoxedFieldSlots>["slots"][number];

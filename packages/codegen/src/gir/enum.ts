@@ -24,7 +24,7 @@ export type GirEnum = {
     readonly glibTypeName: string | undefined;
     /** GLib get-type C symbol; absent for unregistered enums. */
     readonly glibGetType: string | undefined;
-    /** Optional `glib:error-domain` marker; presence flips emission to `makeErrorDomain`. */
+    /** Optional `glib:error-domain` marker; presence flips emission to `createErrorDomain`. */
     readonly errorDomain: string | undefined;
     readonly introspectable: boolean;
     readonly members: readonly GirEnumMember[];

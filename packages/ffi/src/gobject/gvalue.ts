@@ -38,8 +38,16 @@ function initValue(gtype: GType, populate: (v: GValue) => void): GValue {
     return v;
 }
 
-/** The `GType` a `GValue` currently holds — the `G_VALUE_TYPE` C macro. */
-function valueHeldType(value: object): GType {
+/**
+ * Gets the `GType` of the value stored in a `GValue`.
+ *
+ * Equivalent to the C macro `G_VALUE_TYPE(value)`.
+ *
+ * @param value - The `GValue` to inspect (any object backed by a `GValue`
+ *   handle, including the generated `GObject.Value`).
+ * @returns The `GType` identifier.
+ */
+export function valueGetType(value: object): GType {
     return gtypeFromFfi(read(getHandle(value), t.uint64, 0));
 }
 
@@ -56,17 +64,17 @@ function boxedTypeName(gtype: GType): string {
  * Sets the boxed payload of a `GValue` already typed with a boxed `GType`.
  *
  * @param value - The `GValue` (any object backed by a `GValue` handle).
- * @param vBoxed - The boxed wrapper to store, or `null`.
+ * @param boxed - The boxed wrapper to store, or `null`.
  */
-export function setBoxed(value: object, vBoxed: object | null): void {
+export function setBoxed(value: object, boxed: object | null): void {
     call(
         LIBGOBJECT,
         "g_value_set_boxed",
         [
             { type: GVALUE_BORROWED, value: getHandle(value) },
             {
-                type: t.boxed(boxedTypeName(valueHeldType(value)), "borrowed", LIBGOBJECT),
-                value: vBoxed === null ? null : getHandle(vBoxed),
+                type: t.boxed(boxedTypeName(valueGetType(value)), "borrowed", LIBGOBJECT),
+                value: boxed === null ? null : getHandle(boxed),
                 optional: true,
             },
         ],
@@ -84,7 +92,7 @@ export function setBoxed(value: object, vBoxed: object | null): void {
  * @throws if the boxed `GType` has no registered wrapper class.
  */
 export function getBoxed(value: object): object | null {
-    const gtype = valueHeldType(value);
+    const gtype = valueGetType(value);
     if (typeFundamental(gtype) !== Type.BOXED) {
         return null;
     }

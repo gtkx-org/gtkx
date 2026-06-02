@@ -22,6 +22,6 @@ Value.prototype.getBoxed = function <T = unknown>(this: Value): T {
     return getBoxed(this) as T;
 };
 
-Value.prototype.setBoxed = function (this: Value, vBoxed: object | null): void {
-    setBoxed(this, vBoxed);
+Value.prototype.setBoxed = function (this: Value, boxed: object | null): void {
+    setBoxed(this, boxed);
 };

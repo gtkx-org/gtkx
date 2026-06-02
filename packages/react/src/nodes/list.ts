@@ -90,7 +90,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     private readonly listContainers = new Map<Gtk.ListItem, number>();
     private readonly listContainerKeys = new Map<Gtk.ListItem, string>();
     private readonly treeExpanders = new Map<Gtk.ListItem, Gtk.TreeExpander>();
-    private disposed = false;
+    private detached = false;
     private boundItemsUpdateScheduled = false;
     private syncScheduled = false;
     private modeCacheItems: readonly ListItem[] | null = null;
@@ -184,7 +184,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     }
 
     public override detachDeletedInstance(): void {
-        this.disposed = true;
+        this.detached = true;
         this.treeExpanders.clear();
         this.rootItemIds = [];
         super.detachDeletedInstance();
@@ -309,7 +309,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     }
 
     private onFactoryBind(obj: GObject.Object, isTree: boolean): void {
-        if (this.disposed) return;
+        if (this.detached) return;
         const listItem = asLifecycleItem<Gtk.ListItem>(obj);
         const position = listItem.getPosition();
 
@@ -339,7 +339,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     }
 
     private onFactoryUnbind(obj: GObject.Object, isTree: boolean): void {
-        if (this.disposed) return;
+        if (this.detached) return;
         const listItem = asLifecycleItem<Gtk.ListItem>(obj);
 
         if (isTree) {
@@ -356,7 +356,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     }
 
     private onFactoryTeardown(obj: GObject.Object, isTree: boolean): void {
-        if (this.disposed) return;
+        if (this.detached) return;
         const listItem = asLifecycleItem<Gtk.ListItem>(obj);
 
         if (isTree) {
@@ -381,7 +381,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             containerKeys: this.listContainerKeys,
             getPosition: (item) => item.getPosition(),
             onBoundItemsChanged: () => this.queueBoundItemsUpdate(),
-            isDisposed: () => this.disposed,
+            isDetached: () => this.detached,
         });
     }
 
@@ -392,7 +392,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             containerKeys: this.headerContainerKeys,
             getPosition: (item) => item.getStart(),
             onBoundItemsChanged: () => this.queueBoundItemsUpdate(),
-            isDisposed: () => this.disposed,
+            isDetached: () => this.detached,
         });
     }
 
@@ -1011,7 +1011,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
         scheduleAfterCommit(() => {
             this.syncScheduled = false;
-            if (this.disposed) return;
+            if (this.detached) return;
             this.syncModel();
         });
     }
@@ -1023,7 +1023,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     }
 
     public queueBoundItemsUpdate(): void {
-        if (this.disposed || this.boundItemsUpdateScheduled) return;
+        if (this.detached || this.boundItemsUpdateScheduled) return;
         this.boundItemsUpdateScheduled = true;
         if (isInCommit()) {
             scheduleAfterCommit(this.flushBoundItemsUpdate);
@@ -1034,7 +1034,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
     private flushBoundItemsUpdate = (): void => {
         this.boundItemsUpdateScheduled = false;
-        if (this.disposed) return;
+        if (this.detached) return;
         this.rebuildBoundItems();
     };
 

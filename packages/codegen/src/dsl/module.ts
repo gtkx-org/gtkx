@@ -1,4 +1,4 @@
-import { ImportsManifest } from "./imports.js";
+import { ImportsBuilder } from "./imports.js";
 
 /**
  * Accumulator for one generated TypeScript module's source.
@@ -16,7 +16,7 @@ import { ImportsManifest } from "./imports.js";
  */
 export class ModuleBuilder {
     /** Imports manifest the writers feed into. */
-    public readonly imports = new ImportsManifest();
+    public readonly imports = new ImportsBuilder();
     private readonly bindings: string[] = [];
     private readonly bindingNames = new Set<string>();
     private readonly declarations: string[] = [];

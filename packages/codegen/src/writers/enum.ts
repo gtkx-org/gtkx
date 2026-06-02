@@ -7,7 +7,7 @@ import type { GirEnum } from "../gir/enum.js";
  *
  * Two branches:
  * - `glib:error-domain` present → `export type Name = number` plus
- *   `makeErrorDomain(quark, members)` typed as `ErrorDomain<{ members }>`,
+ *   `createErrorDomain(quark, members)` typed as `ErrorDomain<{ members }>`,
  *   since the domain object must stay `instanceof`-matchable.
  * - GLib-registered enum/flags or C-only enum (no GLib registration) →
  *   a TypeScript `enum Name { members }` declaration.
@@ -26,12 +26,12 @@ export const emitEnum = (ctx: ModuleContext, enumeration: GirEnum): void => {
     if (enumeration.errorDomain !== undefined) {
         const memberEntries = enumeration.members.map((member, index) => `${memberKeys[index]}: ${member.value}`);
         const typeFields = memberKeys.map((key) => `readonly ${key}: number`).join("; ");
-        ctx.addRuntimeImport("makeErrorDomain");
+        ctx.addRuntimeImport("createErrorDomain");
         ctx.addRuntimeImport("ErrorDomain");
-        const quarkExpression = quarkExpression_(ctx, enumeration.errorDomain);
+        const quarkExpression = renderQuarkExpression(ctx, enumeration.errorDomain);
         ctx.module.appendDeclaration(`export type ${name} = number;`);
         ctx.module.appendDeclaration(
-            `export const ${name}: ErrorDomain<{ ${typeFields} }> = makeErrorDomain(${quarkExpression}, { ${memberEntries.join(", ")} });`,
+            `export const ${name}: ErrorDomain<{ ${typeFields} }> = createErrorDomain(${quarkExpression}, { ${memberEntries.join(", ")} });`,
         );
         return;
     }
@@ -44,7 +44,7 @@ const memberKey = (name: string): string => {
     return /^[0-9]/.test(upper) ? `_${upper}` : upper;
 };
 
-const quarkExpression_ = (ctx: ModuleContext, errorDomain: string): string => {
+const renderQuarkExpression = (ctx: ModuleContext, errorDomain: string): string => {
     if (ctx.namespace.name === "GLib") {
         return `() => quarkFromString(${quote(errorDomain)})`;
     }
