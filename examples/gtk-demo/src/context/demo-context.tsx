@@ -108,7 +108,7 @@ function filterTree(items: TreeItem[], query: string): TreeItem[] {
     return result;
 }
 
-interface DemoProviderProps {
+interface DemoTreeProviderProps {
     demos: Demo[];
     children: ReactNode;
 }
@@ -129,7 +129,7 @@ const findFirstDemo = (treeItems: TreeItem[]): Demo | null => {
     return null;
 };
 
-export const DemoProvider = ({ demos, children }: DemoProviderProps) => {
+export const DemoProvider = ({ demos, children }: DemoTreeProviderProps) => {
     const treeItems = useMemo(() => buildTree(demos), [demos]);
 
     const firstDemo = useMemo(() => findFirstDemo(treeItems), [treeItems]);

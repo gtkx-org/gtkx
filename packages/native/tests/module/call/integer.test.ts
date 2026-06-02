@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../../../index.js";
-import { expectClickedSignalHandlerId } from "../call-callback-integer-setup.js";
+import { expectClickedSignalHandlerId } from "../call-callback-integer-helpers.js";
 import {
     connectSignal,
     connectSignalReturning,

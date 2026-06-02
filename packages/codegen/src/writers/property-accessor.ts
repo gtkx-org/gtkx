@@ -4,8 +4,8 @@ import { indent } from "../dsl/emit.js";
 import type { GirFunction } from "../gir/function.js";
 import type { GirProperty } from "../gir/property.js";
 import type { GirTypeRef } from "../gir/type-ref.js";
-import { writeMethodReturnType } from "./method.js";
-import { writeTsType } from "./ts-type.js";
+import { renderMethodReturnType } from "./method.js";
+import { renderTsType } from "./ts-type.js";
 
 /**
  * Whether a GObject property of `type` can hold `null`.
@@ -41,33 +41,33 @@ const isNullablePropertyType = (ctx: ModuleContext, type: GirTypeRef | undefined
  *
  * @param ctx - The module context
  * @param property - The property to surface
- * @param claimedMemberNames - Names already used by emitted methods
+ * @param claimedNames - Names already used by emitted methods
  */
 export const renderPropertyAccessor = (
     ctx: ModuleContext,
     property: GirProperty,
-    claimedMemberNames: ReadonlySet<string>,
+    claimedNames: ReadonlySet<string>,
     methodByName: ReadonlyMap<string, GirFunction>,
 ): string | undefined => {
     const jsName = toIdentifier(toCamelCase(property.name));
-    if (claimedMemberNames.has(jsName)) return undefined;
+    if (claimedNames.has(jsName)) return undefined;
     if (jsName === "constructor") return undefined;
 
     const writable = property.writable || property.construct || property.constructOnly;
-    const getterMember = delegateMember(property.getter, jsName, claimedMemberNames);
+    const getterMember = delegateMember(property.getter, jsName, claimedNames);
     const getMethod =
         getterMember !== undefined && property.getter !== undefined ? methodByName.get(property.getter) : undefined;
-    const setterMember = writable ? delegateMember(property.setter, jsName, claimedMemberNames) : undefined;
+    const setterMember = writable ? delegateMember(property.setter, jsName, claimedNames) : undefined;
     const setMethod =
         setterMember !== undefined && property.setter !== undefined ? methodByName.get(property.setter) : undefined;
     const setParam = setMethod?.parameters[0];
 
     const tsType =
         setParam !== undefined
-            ? writeTsType(ctx, setParam.type, setParam.nullable || setParam.optional)
+            ? renderTsType(ctx, setParam.type, setParam.nullable || setParam.optional)
             : getMethod !== undefined
-              ? writeMethodReturnType(ctx, getMethod)
-              : writeTsType(ctx, property.type, isNullablePropertyType(ctx, property.type));
+              ? renderMethodReturnType(ctx, getMethod)
+              : renderTsType(ctx, property.type, isNullablePropertyType(ctx, property.type));
 
     const blocks: string[] = [];
     const getBody = renderGetterBody({ ctx, property, getterMember, getMethod, tsType });
@@ -108,7 +108,7 @@ const renderGetterBody = (options: GetterBodyOptions): string => {
     const { ctx, property, getterMember, getMethod, tsType } = options;
     if (getterMember === undefined) return `return this.getProperty(${quote(property.name)}) as ${tsType};`;
     if (getMethod === undefined) return `return this.${getterMember}() as ${tsType};`;
-    const getType = writeMethodReturnType(ctx, getMethod);
+    const getType = renderMethodReturnType(ctx, getMethod);
     return getType === tsType ? `return this.${getterMember}();` : `return this.${getterMember}() as ${tsType};`;
 };
 
@@ -124,16 +124,16 @@ const renderGetterBody = (options: GetterBodyOptions): string => {
  *
  * @param accessorName - The accessor's own camelCase member name
  * @param attribute - The GIR `getter`/`setter` attribute, if present
- * @param claimedMemberNames - Names already emitted as methods on the class
+ * @param claimedNames - Names already emitted as methods on the class
  */
 const delegateMember = (
     attribute: string | undefined,
     accessorName: string,
-    claimedMemberNames: ReadonlySet<string>,
+    claimedNames: ReadonlySet<string>,
 ): string | undefined => {
     if (attribute === undefined) return undefined;
     const member = toCamelCase(attribute);
     if (member === accessorName) return undefined;
-    if (!claimedMemberNames.has(member)) return undefined;
+    if (!claimedNames.has(member)) return undefined;
     return member;
 };

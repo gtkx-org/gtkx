@@ -26,7 +26,6 @@ export type ResolvedNamed =
           readonly namespace: GirNamespace;
           readonly target: string | undefined;
           readonly targetRef: GirTypeRef | undefined;
-          readonly cType: string | undefined;
       };
 
 /**
@@ -97,7 +96,6 @@ const indexNamespace = (index: Map<string, ResolvedNamed>, namespace: GirNamespa
             namespace,
             target,
             targetRef: alias.target,
-            cType: alias.cType,
         });
     }
 };

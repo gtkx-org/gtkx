@@ -4,19 +4,17 @@ import { indent } from "../dsl/emit.js";
 import type { GirBoxed } from "../gir/boxed.js";
 import type { GirField } from "../gir/field.js";
 import type { GirTypeRef } from "../gir/type-ref.js";
-import { computeBoxedFieldSlots } from "./boxed-layout.js";
-import { writeTsType } from "./ts-type.js";
-import { writeFfiType } from "./value.js";
-
-type FieldSlot = ReturnType<typeof computeBoxedFieldSlots>["slots"][number];
+import { type BoxedFieldSlot, computeBoxedFieldSlots } from "./boxed-layout.js";
+import { renderTsType } from "./ts-type.js";
+import { renderFfiType } from "./value.js";
 
 /**
  * A boxed field that carries a writable value (private, read-only, callback,
  * and type-less fields are not settable at construction).
  */
-type WritableFieldSlot = FieldSlot & { readonly field: GirField & { readonly type: GirTypeRef } };
+type WritableFieldSlot = BoxedFieldSlot & { readonly field: GirField & { readonly type: GirTypeRef } };
 
-const isWritableFieldSlot = (entry: FieldSlot): entry is WritableFieldSlot =>
+const isWritableFieldSlot = (entry: BoxedFieldSlot): entry is WritableFieldSlot =>
     !entry.field.private &&
     entry.field.writable &&
     entry.field.callback === undefined &&
@@ -43,7 +41,7 @@ export const renderBoxedConstructorPropsInterface = (
     const lines = slots
         .filter(isWritableFieldSlot)
         .map(
-            (entry) => `${toIdentifier(toCamelCase(entry.field.name))}?: ${writeTsType(ctx, entry.field.type, true)};`,
+            (entry) => `${toIdentifier(toCamelCase(entry.field.name))}?: ${renderTsType(ctx, entry.field.type, true)};`,
         );
     const body = lines.length === 0 ? "" : `\n${indent(lines.join("\n"), 1)}\n`;
     return `export interface ${className}ConstructorProps {${body}}`;
@@ -92,7 +90,7 @@ const allocArgs = (ctx: ModuleContext, boxed: GirBoxed, size: number): readonly 
 const renderFieldWrite = (ctx: ModuleContext, entry: WritableFieldSlot): string => {
     ctx.addRuntimeImport("t");
     ctx.addRuntimeImport("write");
-    const ffiType = writeFfiType(ctx, entry.field.type, "none");
+    const ffiType = renderFfiType(ctx, entry.field.type, "none");
     const name = toIdentifier(toCamelCase(entry.field.name));
     const offset = entry.slot.byteOffset;
     if (entry.slot.bitWidth === undefined) {

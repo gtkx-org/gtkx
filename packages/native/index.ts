@@ -276,13 +276,13 @@ type RegisterClassInterfaceVfuncsDefinition = {
  * Optional payload for {@link registerClass} carrying class vfunc overrides and
  * inherited-interface vfunc overrides.
  */
-export type RegisterClassNativeOptions = {
+export type RegisterClassVfuncOptions = {
     readonly vfuncs?: readonly RegisterClassVfuncDefinition[];
     readonly interfaceVfuncs?: readonly RegisterClassInterfaceVfuncsDefinition[];
 };
 
 /**
- * Registers a new `GType` derived from `parentGtype` under `name`.
+ * Registers a new `GType` derived from `parentGType` under `name`.
  *
  * Wraps `g_type_register_static`, sizing the new class so it matches the
  * parent's class and instance struct sizes. Class vfunc overrides are installed
@@ -292,16 +292,16 @@ export type RegisterClassNativeOptions = {
  * the JS class registry) lives in `@gtkx/ffi`'s `registerClass`.
  *
  * @param name - Globally-unique GType name (must not already be registered)
- * @param parentGtype - Numeric GType of the parent class
+ * @param parentGType - Numeric GType of the parent class
  * @param options - Optional class and inherited-interface vfunc overrides
  * @returns Numeric GType of the newly registered subclass
  */
-export function registerClass(name: string, parentGtype: number, options?: RegisterClassNativeOptions): number {
+export function registerClass(name: string, parentGType: number, options?: RegisterClassVfuncOptions): number {
     const nativeOptions = options ? buildNativeOptions(options) : undefined;
-    return native.registerClass(name, parentGtype, nativeOptions) as number;
+    return native.registerClass(name, parentGType, nativeOptions) as number;
 }
 
-function buildNativeOptions(options: RegisterClassNativeOptions): NativeRegisterClassOptions {
+function buildNativeOptions(options: RegisterClassVfuncOptions): NativeRegisterClassOptions {
     return {
         vfuncs: options.vfuncs?.map(toNativeVfunc),
         interfaceVfuncs: options.interfaceVfuncs?.map((iface) => ({

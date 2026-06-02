@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defineConfig, isValidAppId } from "../src/config.js";
+import { defineConfig, isValidApplicationId } from "../src/config.js";
 import { isValidProjectName } from "../src/create/options.js";
 
 describe("defineConfig", () => {
@@ -126,65 +126,65 @@ describe("defineConfig slotProps validation", () => {
     });
 });
 
-describe("isValidAppId", () => {
+describe("isValidApplicationId", () => {
     it("accepts a standard reverse-DNS application ID", () => {
-        expect(isValidAppId("com.example.MyApp")).toBe(true);
+        expect(isValidApplicationId("com.example.MyApp")).toBe(true);
     });
 
     it("accepts hyphens and underscores within elements", () => {
-        expect(isValidAppId("com.example.my-app_v2")).toBe(true);
+        expect(isValidApplicationId("com.example.my-app_v2")).toBe(true);
     });
 
     it("rejects an ID with no dots", () => {
-        expect(isValidAppId("singletoken")).toBe(false);
+        expect(isValidApplicationId("singletoken")).toBe(false);
     });
 
     it("rejects an empty string", () => {
-        expect(isValidAppId("")).toBe(false);
+        expect(isValidApplicationId("")).toBe(false);
     });
 
     it("rejects an ID exceeding 255 characters", () => {
         const long = `${"a".repeat(252)}.${"b".repeat(3)}`;
         expect(long.length).toBe(256);
-        expect(isValidAppId(long)).toBe(false);
+        expect(isValidApplicationId(long)).toBe(false);
     });
 
     it("rejects an element starting with a digit", () => {
-        expect(isValidAppId("com.4example.app")).toBe(false);
+        expect(isValidApplicationId("com.4example.app")).toBe(false);
     });
 
     it("rejects whitespace and disallowed characters", () => {
-        expect(isValidAppId("com.example.my app")).toBe(false);
-        expect(isValidAppId("com.example.my$app")).toBe(false);
+        expect(isValidApplicationId("com.example.my app")).toBe(false);
+        expect(isValidApplicationId("com.example.my$app")).toBe(false);
     });
 
     it("rejects trailing or leading dots", () => {
-        expect(isValidAppId(".com.example")).toBe(false);
-        expect(isValidAppId("com.example.")).toBe(false);
+        expect(isValidApplicationId(".com.example")).toBe(false);
+        expect(isValidApplicationId("com.example.")).toBe(false);
     });
 
     it("accepts a two-segment ID", () => {
-        expect(isValidAppId("org.app")).toBe(true);
+        expect(isValidApplicationId("org.app")).toBe(true);
     });
 
     it("accepts single-character segments", () => {
-        expect(isValidAppId("a.b")).toBe(true);
+        expect(isValidApplicationId("a.b")).toBe(true);
     });
 
     it("accepts a deeply nested ID", () => {
-        expect(isValidAppId("com.example.sub.category.app")).toBe(true);
+        expect(isValidApplicationId("com.example.sub.category.app")).toBe(true);
     });
 
     it("accepts elements containing digits after the first character", () => {
-        expect(isValidAppId("org.gtkx123.app456")).toBe(true);
+        expect(isValidApplicationId("org.gtkx123.app456")).toBe(true);
     });
 
     it("rejects an ID with consecutive dots", () => {
-        expect(isValidAppId("com..app")).toBe(false);
+        expect(isValidApplicationId("com..app")).toBe(false);
     });
 
     it("rejects a segment starting with a hyphen", () => {
-        expect(isValidAppId("com.-app.test")).toBe(false);
+        expect(isValidApplicationId("com.-app.test")).toBe(false);
     });
 });
 

@@ -1,7 +1,7 @@
 import {
     registerClass as nativeRegisterClass,
-    type RegisterClassNativeOptions,
     type RegisterClassVfuncDefinition,
+    type RegisterClassVfuncOptions,
 } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { G_TYPE_INVALID, type GType, typeInterfaces } from "./gtype.js";
@@ -97,8 +97,8 @@ export function registerClass<T extends AnyClass>(klass: T, options: RegisterCla
     const interfaceBindings = discoverInheritedInterfaceVfuncs(klass, parentGType, claimedMethodNames);
 
     const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings);
-    const newGtype: GType = nativeRegisterClass(name, parentGType, nativeOptions);
-    setClassGType(klass, newGtype);
+    const newGType: GType = nativeRegisterClass(name, parentGType, nativeOptions);
+    setClassGType(klass, newGType);
     markStatefulClass(klass);
 
     return klass;
@@ -249,7 +249,7 @@ export function registerInterfaceVfuncMetadata(gtype: GType, struct: Readonly<Re
 function toNativeOptions(
     classVfuncs: readonly DiscoveredClassVfunc[],
     interfaceBindings: readonly InterfaceVfuncBinding[],
-): RegisterClassNativeOptions | undefined {
+): RegisterClassVfuncOptions | undefined {
     const hasInterfaces = interfaceBindings.length > 0;
     const hasClassVfuncs = classVfuncs.length > 0;
     if (!hasClassVfuncs && !hasInterfaces) {

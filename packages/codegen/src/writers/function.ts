@@ -9,11 +9,11 @@ import { callableReferencesClassStruct } from "./class-struct-record.js";
 import {
     closureAndDestroyIndices,
     needsRefArg,
-    writeMethodBody,
-    writeMethodReturnType,
-    writeMethodSignature,
+    renderMethodBody,
+    renderMethodReturnType,
+    renderMethodSignature,
 } from "./method.js";
-import { writeFfiType, writeSelfFfiType, writeTrampolineType } from "./value.js";
+import { renderFfiType, renderSelfFfiType, renderTrampolineType } from "./value.js";
 
 /**
  * Renders the FFI argument list for a callable, as a TypeScript array
@@ -30,7 +30,7 @@ const writeArgsLiteral = (ctx: ModuleContext, fn: GirFunction): string => {
     const instanceOffset = fn.instance === undefined ? 0 : 1;
     if (fn.instance !== undefined) {
         ctx.addRuntimeImport("t");
-        args.push(`{ type: ${writeSelfFfiType(ctx, fn.instance)} }`);
+        args.push(`{ type: ${renderSelfFfiType(ctx, fn.instance)} }`);
     }
     const closureIndices = closureAndDestroyIndices(fn);
     fn.parameters.forEach((parameter, index) => {
@@ -47,8 +47,8 @@ const writeArgsLiteral = (ctx: ModuleContext, fn: GirFunction): string => {
 };
 
 const argLiteral = (ctx: ModuleContext, parameter: GirParameter, optional: boolean, instanceOffset: number): string => {
-    const trampoline = writeTrampolineType(ctx, parameter.type, parameter);
-    const inner = trampoline ?? writeFfiType(ctx, parameter.type, parameter.transferOwnership, instanceOffset);
+    const trampoline = renderTrampolineType(ctx, parameter.type, parameter);
+    const inner = trampoline ?? renderFfiType(ctx, parameter.type, parameter.transferOwnership, instanceOffset);
     const refWrapped = needsRefArg(ctx, parameter);
     const expression = refWrapped ? `t.ref(${inner})` : inner;
     return optional && !refWrapped ? `{ type: ${expression}, optional: true }` : `{ type: ${expression} }`;
@@ -62,13 +62,13 @@ const argLiteral = (ctx: ModuleContext, parameter: GirParameter, optional: boole
  * @param ctx - The module context
  * @param fn - The callable
  */
-export const writeFnExpression = (ctx: ModuleContext, fn: GirFunction): string | undefined => {
+export const renderFnExpression = (ctx: ModuleContext, fn: GirFunction): string | undefined => {
     if (fn.cIdentifier === undefined) return undefined;
     const library = ctx.namespace.sharedLibrary;
     if (library === undefined) return undefined;
     ctx.addRuntimeImport("t");
     const args = writeArgsLiteral(ctx, fn);
-    const returnType = writeFfiType(
+    const returnType = renderFfiType(
         ctx,
         fn.returnValue.type,
         fn.returnValue.transferOwnership,
@@ -81,7 +81,7 @@ export const writeFnExpression = (ctx: ModuleContext, fn: GirFunction): string |
  * Emits both the bound `const fooBinding = t.fn(...)` and the
  * `export function camelName(...)` wrapper for a namespace-level callable.
  *
- * Silently skipped when {@link writeFnExpression} cannot bind the callable
+ * Silently skipped when {@link renderFnExpression} cannot bind the callable
  * (e.g. macros, unintrospectable signatures) or when the GIR marks the
  * callable as `introspectable="0"`.
  *
@@ -92,16 +92,16 @@ export const emitNamespaceFunction = (ctx: ModuleContext, fn: GirFunction): void
     if (!fn.introspectable) return;
     if (fn.shadowedBy !== undefined) return;
     if (callableReferencesClassStruct(ctx, fn)) return;
-    const expression = writeFnExpression(ctx, fn);
+    const expression = renderFnExpression(ctx, fn);
     if (expression === undefined) return;
     const bindingName = fn.cIdentifier;
     if (bindingName === undefined) return;
     ctx.module.appendBinding(`const ${bindingName} = ${expression};`, bindingName);
 
     const exportName = namespaceFunctionExportName(bindingName, fn.name, ctx.namespace.cSymbolPrefixes);
-    const signature = writeMethodSignature(ctx, fn);
-    const returnType = writeMethodReturnType(ctx, fn);
-    const body = writeMethodBody(ctx, fn, { bindingExpression: bindingName, isStatic: true });
+    const signature = renderMethodSignature(ctx, fn);
+    const returnType = renderMethodReturnType(ctx, fn);
+    const body = renderMethodBody(ctx, fn, { bindingExpression: bindingName, isStatic: true });
     ctx.module.appendDeclaration(`export function ${exportName}(${signature}): ${returnType} {\n${indent(body, 1)}\n}`);
 };
 

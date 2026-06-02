@@ -50,7 +50,7 @@ const formatQueryDescription = (queryType: QueryType, args: QueryArgs): string =
 /**
  * Builds an error for when no elements match a query.
  */
-export const buildNotFoundError = (container: Container, queryType: QueryType, args: QueryArgs): Error => {
+export const notFoundError = (container: Container, queryType: QueryType, args: QueryArgs): Error => {
     const config = getConfig();
     const description = formatQueryDescription(queryType, args);
     const lines: string[] = [`Unable to find an element with ${description}`];
@@ -68,7 +68,7 @@ export const buildNotFoundError = (container: Container, queryType: QueryType, a
 /**
  * Builds an error for when multiple elements match a query but only one was expected.
  */
-export const buildMultipleFoundError = (
+export const multipleFoundError = (
     container: Container,
     queryType: QueryType,
     args: QueryArgs,
@@ -89,7 +89,7 @@ export const buildMultipleFoundError = (
 /**
  * Builds a timeout error with the last query error message.
  */
-export const buildTimeoutError = (timeout: number, lastError: Error | null): Error => {
+export const timeoutError = (timeout: number, lastError: Error | null): Error => {
     const baseMessage = `Timed out after ${timeout}ms`;
     if (lastError) {
         return new Error(`${baseMessage}.\n\n${lastError.message}`);

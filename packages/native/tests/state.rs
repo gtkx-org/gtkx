@@ -90,10 +90,10 @@ fn library_cache_load_total_failure_reports_error() {
 }
 
 #[test]
-fn gtype_from_lib_resolves_known_get_type_function() {
+fn resolve_gtype_resolves_known_get_type_function() {
     common::run(|| {
         let gtype = GtkThreadState::with(|state| {
-            state.gtype_from_lib("libgtk-4.so.1", "gtk_widget_get_type")
+            state.resolve_gtype("libgtk-4.so.1", "gtk_widget_get_type")
         });
 
         let gtype = gtype.expect("gtk_widget_get_type should resolve");
@@ -102,11 +102,11 @@ fn gtype_from_lib_resolves_known_get_type_function() {
 }
 
 #[test]
-fn gtype_from_lib_missing_symbol_returns_error() {
+fn resolve_gtype_missing_symbol_returns_error() {
     common::run(|| {
         let err = GtkThreadState::with(|state| {
             state
-                .gtype_from_lib("libgtk-4.so.1", "no_such_get_type_symbol_12345")
+                .resolve_gtype("libgtk-4.so.1", "no_such_get_type_symbol_12345")
                 .err()
                 .map(|e| e.to_string())
         });

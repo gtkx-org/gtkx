@@ -7,8 +7,8 @@ import type { GirTypeRef } from "../gir/type-ref.js";
 import { type BoxedFieldSlot, computeBoxedFieldSlots } from "./boxed-layout.js";
 import { typeRefIsClassStruct } from "./class-struct-record.js";
 import { wrapReturnValue } from "./method.js";
-import { writeTsType } from "./ts-type.js";
-import { writeFfiType } from "./value.js";
+import { renderTsType } from "./ts-type.js";
+import { renderFfiType } from "./value.js";
 
 /**
  * Renders the `get` / `set` accessor pair for a single boxed field.
@@ -21,12 +21,12 @@ import { writeFfiType } from "./value.js";
  *
  * @param ctx - The module context
  * @param slot - The field plus its layout slot
- * @param claimedMemberNames - Names already used by emitted methods
+ * @param claimedNames - Names already used by emitted methods
  */
 export const renderBoxedFieldAccessor = (
     ctx: ModuleContext,
     slot: BoxedFieldSlot,
-    claimedMemberNames: ReadonlySet<string>,
+    claimedNames: ReadonlySet<string>,
     siblingFields: readonly GirField[],
 ): string | undefined => {
     const { field } = slot;
@@ -36,20 +36,20 @@ export const renderBoxedFieldAccessor = (
     if (field.type === undefined) return undefined;
     if (typeRefIsClassStruct(ctx, field.type)) return undefined;
     const jsName = toIdentifier(toCamelCase(field.name));
-    if (claimedMemberNames.has(jsName)) return undefined;
+    if (claimedNames.has(jsName)) return undefined;
     if (jsName === "constructor") return undefined;
 
     const structArray = renderStructArrayAccessor(ctx, { field, jsName, slot: slot.slot, siblingFields });
     if (structArray !== undefined) return structArray;
 
     if (!isAccessorEligibleType(field.type)) {
-        const tsType = writeTsType(ctx, field.type, false);
+        const tsType = renderTsType(ctx, field.type, false);
         const modifier = field.writable ? "declare" : "declare readonly";
         return `${modifier} ${jsName}: ${tsType};`;
     }
 
-    const ffiType = writeFfiType(ctx, field.type, "none");
-    const tsType = writeTsType(ctx, field.type, false);
+    const ffiType = renderFfiType(ctx, field.type, "none");
+    const tsType = renderTsType(ctx, field.type, false);
     const accessorOptions: AccessorOptions = { ctx, jsName, tsType, ffiType, slot: slot.slot, fieldType: field.type };
     const blocks: string[] = [getterBlock(accessorOptions)];
     if (field.writable) {
@@ -112,10 +112,10 @@ const renderElementReadObject = (ctx: ModuleContext, fields: readonly GirField[]
             continue;
         }
         if (!isAccessorEligibleType(field.type)) continue;
-        const ffi = writeFfiType(ctx, field.type, "none");
+        const ffi = renderFfiType(ctx, field.type, "none");
         if (slot.bitWidth === undefined) {
             entries.push(
-                `${jsName}: read(__array, ${ffi}, __base + ${offset}) as ${writeTsType(ctx, field.type, false)}`,
+                `${jsName}: read(__array, ${ffi}, __base + ${offset}) as ${renderTsType(ctx, field.type, false)}`,
             );
             continue;
         }
@@ -134,8 +134,8 @@ type ElementWriteOptions = {
     readonly out: string[];
 };
 
-const renderElementWriteStatements = (ctx: ModuleContext, plan: ElementWriteOptions): void => {
-    const { fields, baseOffset, valuePath, out } = plan;
+const renderElementWriteStatements = (ctx: ModuleContext, options: ElementWriteOptions): void => {
+    const { fields, baseOffset, valuePath, out } = options;
     const { slots } = computeBoxedFieldSlots(ctx, fields);
     for (const { field, slot } of slots) {
         if (field.private || field.type === undefined || field.callback !== undefined) continue;
@@ -147,7 +147,7 @@ const renderElementWriteStatements = (ctx: ModuleContext, plan: ElementWriteOpti
             continue;
         }
         if (!isAccessorEligibleType(field.type)) continue;
-        const ffi = writeFfiType(ctx, field.type, "none");
+        const ffi = renderFfiType(ctx, field.type, "none");
         if (slot.bitWidth === undefined) {
             out.push(`write(__array, ${ffi}, __base + ${offset}, ${valueExpr});`);
             continue;
@@ -178,8 +178,8 @@ type StructArrayAccessorOptions = {
     readonly elementFields: readonly GirField[];
 };
 
-const structArrayGetterBlock = (context: StructArrayAccessorOptions): string => {
-    const { ctx, jsName, tsType, bufferType, offset, lengthExpr, elementSize, elementFields } = context;
+const structArrayGetterBlock = (options: StructArrayAccessorOptions): string => {
+    const { ctx, jsName, tsType, bufferType, offset, lengthExpr, elementSize, elementFields } = options;
     const element = renderElementReadObject(ctx, elementFields, 0);
     const loop = [`const __base = __index * ${elementSize};`, `__result.push(${element});`].join("\n");
     const body = [
@@ -193,8 +193,8 @@ const structArrayGetterBlock = (context: StructArrayAccessorOptions): string => 
     return `get ${jsName}(): ${tsType} {\n${indent(body, 1)}\n}`;
 };
 
-const structArraySetterBlock = (context: StructArrayAccessorOptions): string => {
-    const { ctx, jsName, tsType, bufferType, offset, elementSize, elementFields } = context;
+const structArraySetterBlock = (options: StructArrayAccessorOptions): string => {
+    const { ctx, jsName, tsType, bufferType, offset, elementSize, elementFields } = options;
     const writes: string[] = [];
     renderElementWriteStatements(ctx, { fields: elementFields, baseOffset: 0, valuePath: "__element", out: writes });
     const loop = [`const __element = __value[__index];`, `const __base = __index * ${elementSize};`, ...writes].join(
@@ -224,10 +224,10 @@ const renderStructArrayAccessor = (ctx: ModuleContext, target: StructArrayTarget
     ctx.addRuntimeImport("read");
     ctx.addRuntimeImport("getHandle");
     ctx.addRuntimeImport("t");
-    const context: StructArrayAccessorOptions = {
+    const options: StructArrayAccessorOptions = {
         ctx,
         jsName,
-        tsType: writeTsType(ctx, arrayRef, false),
+        tsType: renderTsType(ctx, arrayRef, false),
         bufferType: `t.struct("borrowed", ${lengthExpr} * ${elementSize})`,
         offset: slot.byteOffset,
         lengthExpr,
@@ -235,10 +235,10 @@ const renderStructArrayAccessor = (ctx: ModuleContext, target: StructArrayTarget
         elementFields,
     };
     const blocks: string[] = [];
-    if (field.readable) blocks.push(structArrayGetterBlock(context));
+    if (field.readable) blocks.push(structArrayGetterBlock(options));
     if (field.writable) {
         ctx.addRuntimeImport("write");
-        blocks.push(structArraySetterBlock(context));
+        blocks.push(structArraySetterBlock(options));
     }
     return blocks.length === 0 ? undefined : blocks.join("\n\n");
 };

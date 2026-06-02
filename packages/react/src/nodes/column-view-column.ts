@@ -17,10 +17,10 @@ import { WidgetNode } from "./widget.js";
  * cells. Matched structurally so the column does not depend on the concrete
  * list node, which would close a reconciler import cycle.
  */
-interface ParentBoundItemsUpdater {
+type ParentBoundItemsUpdater = {
     scheduleBoundItemsUpdate(): void;
     queueBoundItemsUpdate(): void;
-}
+};
 
 export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, WidgetNode, MenuNode> {
     private column: Gtk.ColumnViewColumn | null = null;

@@ -81,6 +81,9 @@ export function createCancellable(): unknown {
     return call(GIO_LIB, "g_cancellable_new", [], GOBJECT);
 }
 
+export const typeFromName = (name: string): number =>
+    Number(call(GOBJECT_LIB, "g_type_from_name", [{ type: STRING_BORROWED, value: name }], UINT64));
+
 export function forceGC(): void {
     if (!global.gc) {
         throw new Error("global.gc is not available. Run tests with --expose-gc flag.");
@@ -230,7 +233,7 @@ function measureSlot(
     return { type: INT32_REF, value: ref };
 }
 
-export interface MeasureWidgetOptions {
+export type MeasureWidgetOptions = {
     widget: unknown;
     orientation: number;
     forSize: number;
@@ -238,7 +241,7 @@ export interface MeasureWidgetOptions {
     naturalRef?: { value: number } | null;
     minBaselineRef?: { value: number } | null;
     naturalBaselineRef?: { value: number } | null;
-}
+};
 
 export function measureWidget(options: MeasureWidgetOptions): void {
     call(

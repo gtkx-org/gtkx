@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../../../index.js";
-import { expectNoLeakCreatingLabels } from "../call-gobject-string-setup.js";
+import { expectNoLeakCreatingLabels } from "../call-gobject-string-helpers.js";
 import {
     createButton,
     createLabel,

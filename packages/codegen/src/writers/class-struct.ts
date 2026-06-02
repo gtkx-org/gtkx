@@ -6,7 +6,7 @@ import type { GirClass } from "../gir/class.js";
 import type { GirField } from "../gir/field.js";
 import type { GirTypeRef } from "../gir/type-ref.js";
 import { computeBoxedFieldSlots } from "./boxed-layout.js";
-import { writeFfiType } from "./value.js";
+import { renderFfiType } from "./value.js";
 
 type VtableKind = "class" | "interface";
 
@@ -42,14 +42,14 @@ const vtableEntries = (ctx: ModuleContext, structName: string, kind: VtableKind,
     if (resolved === undefined || resolved.kind !== "boxed") return [];
     const { slots } = computeBoxedFieldSlots(ctx, resolved.value.fields, resolved.value.isUnion);
     const entries: string[] = [];
-    const claimed = new Set<string>();
+    const claimedNames = new Set<string>();
     for (const { field, slot } of slots) {
         if (field.callback === undefined) continue;
         const key = toIdentifier(toCamelCase(field.name));
-        if (key === "constructor" || claimed.has(key)) continue;
+        if (key === "constructor" || claimedNames.has(key)) continue;
         const callback = callbackFromNode(field.callback);
         if (!isVtableSlotEligible(callback)) continue;
-        claimed.add(key);
+        claimedNames.add(key);
         entries.push(renderDescriptor(ctx, { key, structName, kind, field, callback, byteOffset: slot.byteOffset }));
     }
     return entries;
@@ -76,12 +76,12 @@ type RenderDescriptorOptions = {
     readonly byteOffset: number;
 };
 
-const renderDescriptor = (ctx: ModuleContext, input: RenderDescriptorOptions): string => {
-    const { key, structName, kind, field, callback, byteOffset } = input;
+const renderDescriptor = (ctx: ModuleContext, options: RenderDescriptorOptions): string => {
+    const { key, structName, kind, field, callback, byteOffset } = options;
     const argTypes = callback.parameters
-        .map((param) => writeFfiType(ctx, param.type, param.transferOwnership))
+        .map((param) => renderFfiType(ctx, param.type, param.transferOwnership))
         .join(", ");
-    const returnType = writeFfiType(ctx, callback.returnValue.type, callback.returnValue.transferOwnership);
+    const returnType = renderFfiType(ctx, callback.returnValue.type, callback.returnValue.transferOwnership);
     const lines = [
         `kind: ${quote(kind)},`,
         `className: ${quote(structName)},`,

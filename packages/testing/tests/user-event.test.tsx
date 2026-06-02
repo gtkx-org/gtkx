@@ -23,8 +23,8 @@ import {
 } from "@gtkx/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { isEditable } from "../src/editable.js";
 import { render, screen, userEvent, waitFor } from "../src/index.js";
-import { isEditable } from "../src/widget.js";
 import { renderClickButton } from "./event-render-setup.js";
 
 const widgetHasFocus = (w: Gtk.Widget): boolean => w.hasFocus();
@@ -402,7 +402,7 @@ describe("userEvent.drag", () => {
     });
 
     it("reports a realistic start point so handlers can call getStartPoint()", async () => {
-        const startPoints: Array<[boolean, number, number]> = [];
+        const startPoints: [boolean, number, number][] = [];
         const label = await renderGesturedLabel(
             "dragged",
             "Drag me",
@@ -418,7 +418,7 @@ describe("userEvent.drag", () => {
     });
 
     it("reports a realistic offset so handlers can call getOffset()", async () => {
-        const offsets: Array<[boolean, number, number]> = [];
+        const offsets: [boolean, number, number][] = [];
         const label = await renderGesturedLabel(
             "dragged",
             "Drag me",

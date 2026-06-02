@@ -3,8 +3,8 @@ import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
 import type { GirFunction } from "../gir/function.js";
 import { callableReferencesClassStruct } from "./class-struct-record.js";
-import { writeFnExpression } from "./function.js";
-import { methodExportName, writeMethodBody, writeMethodReturnType, writeMethodSignature } from "./method.js";
+import { renderFnExpression } from "./function.js";
+import { methodExportName, renderMethodBody, renderMethodReturnType, renderMethodSignature } from "./method.js";
 import { renderRuntimeOverride } from "./runtime-override.js";
 
 /**
@@ -55,7 +55,7 @@ export const dedupeCallables = (callables: readonly GirFunction[]): readonly Gir
 export const appendMethodBinding = (ctx: ModuleContext, method: GirFunction): void => {
     if (method.cIdentifier === undefined) return;
     if (callableReferencesClassStruct(ctx, method)) return;
-    const expression = writeFnExpression(ctx, method);
+    const expression = renderFnExpression(ctx, method);
     if (expression === undefined) return;
     ctx.module.appendBinding(`const ${method.cIdentifier} = ${expression};`, method.cIdentifier);
 };
@@ -67,7 +67,7 @@ export const emitBindings = (ctx: ModuleContext, callables: Callables): void => 
         if (callable.shadowedBy !== undefined) continue;
         if (callable.cIdentifier === undefined) continue;
         if (callableReferencesClassStruct(ctx, callable)) continue;
-        const expression = writeFnExpression(ctx, callable);
+        const expression = renderFnExpression(ctx, callable);
         if (expression === undefined) continue;
         ctx.module.appendBinding(`const ${callable.cIdentifier} = ${expression};`, callable.cIdentifier);
     }
@@ -105,8 +105,8 @@ const renderConstructorStatic = (
     if (name === undefined) return undefined;
     const cIdentifier = callable.cIdentifier;
     if (cIdentifier === undefined) return undefined;
-    const signature = writeMethodSignature(ctx, callable);
-    const body = writeMethodBody(ctx, callable, {
+    const signature = renderMethodSignature(ctx, callable);
+    const body = renderMethodBody(ctx, callable, {
         bindingExpression: cIdentifier,
         isStatic: true,
         returnAs: wrap === "gobject" ? { via: "gobject" } : { via: wrap, className: ownerClassName },
@@ -128,9 +128,9 @@ const renderStaticMember = (ctx: ModuleContext, callable: GirFunction): string |
     if (cIdentifier === undefined) return undefined;
     const name = toCamelCase(callable.name);
     if (name === "constructor") return undefined;
-    const signature = writeMethodSignature(ctx, callable);
-    const returnType = writeMethodReturnType(ctx, callable);
-    const body = writeMethodBody(ctx, callable, { bindingExpression: cIdentifier, isStatic: true });
+    const signature = renderMethodSignature(ctx, callable);
+    const returnType = renderMethodReturnType(ctx, callable);
+    const body = renderMethodBody(ctx, callable, { bindingExpression: cIdentifier, isStatic: true });
     return `static ${name}(${signature}): ${returnType} {\n${indent(body, 1)}\n}`;
 };
 
@@ -158,9 +158,9 @@ export const renderInstanceMethod = (
     if (name === "constructor") return undefined;
     const override = renderRuntimeOverride(callable, name);
     if (override !== undefined) return override;
-    const signature = writeMethodSignature(ctx, callable);
-    const returnType = writeMethodReturnType(ctx, callable);
-    const body = writeMethodBody(ctx, callable, { bindingExpression: cIdentifier, isStatic: false });
+    const signature = renderMethodSignature(ctx, callable);
+    const returnType = renderMethodReturnType(ctx, callable);
+    const body = renderMethodBody(ctx, callable, { bindingExpression: cIdentifier, isStatic: false });
     return `${name}(${signature}): ${returnType} {\n${indent(body, 1)}\n}`;
 };
 
@@ -179,9 +179,9 @@ const renderInstanceAlias = (ctx: ModuleContext, original: GirFunction, shadower
     if (shadower.cIdentifier === undefined) return undefined;
     const aliasName = toCamelCase(original.name);
     if (aliasName === "constructor") return undefined;
-    const signature = writeMethodSignature(ctx, shadower);
-    const returnType = writeMethodReturnType(ctx, shadower);
-    const body = writeMethodBody(ctx, shadower, { bindingExpression: shadower.cIdentifier, isStatic: false });
+    const signature = renderMethodSignature(ctx, shadower);
+    const returnType = renderMethodReturnType(ctx, shadower);
+    const body = renderMethodBody(ctx, shadower, { bindingExpression: shadower.cIdentifier, isStatic: false });
     return `${aliasName}(${signature}): ${returnType} {\n${indent(body, 1)}\n}`;
 };
 

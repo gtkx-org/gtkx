@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../../../index.js";
-import { expectSingleMinRefMeasurementPopulatesNumber } from "../call-null-ref-setup.js";
+import { expectSingleMinRefMeasurementPopulatesNumber } from "../call-null-ref-helpers.js";
 import {
     boxAppend,
     createBox,

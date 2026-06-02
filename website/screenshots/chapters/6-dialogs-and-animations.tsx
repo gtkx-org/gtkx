@@ -1,5 +1,5 @@
 import { AdwToggleGroup } from "@gtkx/react";
-import { NotesSplitShell } from "../NotesSplitShell";
+import { NotesSplitShell } from "../notes-split-shell";
 
 export const Chapter6 = () => (
     <NotesSplitShell

@@ -7,17 +7,17 @@ import { attr, attrBool, childrenOf, GIR_CONSTRUCTOR_TAG, type RawNode } from ".
  * can take in GIR.
  *
  * - `boxed` — a record with a `glib:get-type`; registers as a GObject boxed.
- * - `plainStruct` — a record without GType; passed by pointer using
+ * - `plain-struct` — a record without GType; passed by pointer using
  *   `t.struct(ownership)`.
  * - `vtable` — a record carrying `glib:is-gtype-struct-for`; its fields are
  *   function pointers consumed by the class struct registration.
- * - `glibBoxed` — a top-level `<glib:boxed>` element with no struct body.
+ * - `glib-boxed` — a top-level `<glib:boxed>` element with no struct body.
  */
-export type BoxedFlavor = "boxed" | "plainStruct" | "vtable" | "glibBoxed";
+export type BoxedKind = "boxed" | "plain-struct" | "vtable" | "glib-boxed";
 
 /** A `<record>`, `<glib:boxed>`, or `<union>` declaration. */
 export type GirBoxed = {
-    readonly flavor: BoxedFlavor;
+    readonly kind: BoxedKind;
     /** Local name inside the namespace (no prefix). */
     readonly name: string;
     readonly cType: string | undefined;
@@ -52,11 +52,11 @@ export type GirBoxed = {
  * Builds a {@link GirBoxed} from a `<record>`, `<union>`, or `<glib:boxed>` element.
  *
  * @param node - The XML element
- * @param flavor - The flavor inferred from element name and attribute set
+ * @param kind - The kind inferred from element name and attribute set
  * @param isUnion - `true` when the source element was `<union>`
  */
-export const boxedFromNode = (node: RawNode, flavor: BoxedFlavor, isUnion: boolean): GirBoxed => ({
-    flavor,
+export const boxedFromNode = (node: RawNode, kind: BoxedKind, isUnion: boolean): GirBoxed => ({
+    kind,
     name: attr(node, "name") ?? attr(node, "glib:name") ?? "",
     cType: attr(node, "c:type"),
     glibTypeName: attr(node, "glib:type-name"),
@@ -79,7 +79,7 @@ export const boxedFromNode = (node: RawNode, flavor: BoxedFlavor, isUnion: boole
 });
 
 /**
- * Decides which {@link BoxedFlavor} applies to a `<record>` or `<union>` element.
+ * Decides which {@link BoxedKind} applies to a `<record>` or `<union>` element.
  *
  * Vtable records (`glib:is-gtype-struct-for`) take precedence; otherwise a
  * `glib:get-type` flips the record to a registered boxed; otherwise it's a
@@ -87,8 +87,8 @@ export const boxedFromNode = (node: RawNode, flavor: BoxedFlavor, isUnion: boole
  *
  * @param node - The `<record>` or `<union>` element
  */
-export const recordFlavor = (node: RawNode): BoxedFlavor => {
+export const boxedKind = (node: RawNode): BoxedKind => {
     if (attr(node, "glib:is-gtype-struct-for") !== undefined) return "vtable";
     if (attr(node, "glib:get-type") !== undefined) return "boxed";
-    return "plainStruct";
+    return "plain-struct";
 };

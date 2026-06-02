@@ -60,7 +60,7 @@ describe("defaultDevRunnerDeps (wiring)", () => {
             "gtkx:assets",
             "gtkx:swc-ssr-refresh",
             "gtkx:refresh",
-            "gtkx:remove-react-dom-optimized",
+            "gtkx:skip-react-dom-optimize",
         ]);
     });
 });

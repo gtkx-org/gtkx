@@ -187,13 +187,13 @@ export const quit = (): void => {
     }
 
     let remaining = roots.length;
-    const onRootUnmounted = (): void => {
+    const handleRootUnmounted = (): void => {
         remaining -= 1;
         if (remaining === 0) finalize();
     };
 
     for (const root of roots) {
         setReconcilerErrorHandler(root.priorHandler);
-        reconciler.updateContainer(null, root.container, null, onRootUnmounted);
+        reconciler.updateContainer(null, root.container, null, handleRootUnmounted);
     }
 };

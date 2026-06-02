@@ -5,10 +5,10 @@ import { x } from "tinyexec";
 import { renderFile } from "../templates.js";
 import type { PackageManager, ScaffolderDeps } from "./scaffolder.js";
 
-const KNOWN_PACKAGE_MANAGERS: ReadonlyArray<PackageManager> = ["pnpm", "npm", "yarn"];
+const KNOWN_PACKAGE_MANAGERS: readonly PackageManager[] = ["pnpm", "npm", "yarn"];
 
 const isKnownPackageManager = (name: string): name is PackageManager =>
-    (KNOWN_PACKAGE_MANAGERS as ReadonlyArray<string>).includes(name);
+    (KNOWN_PACKAGE_MANAGERS as readonly string[]).includes(name);
 
 /**
  * Production wiring for {@link createScaffolder}.

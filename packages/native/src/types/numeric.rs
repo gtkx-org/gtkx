@@ -483,7 +483,7 @@ impl TaggedType {
 
     fn resolve_gtype(&self) -> anyhow::Result<glib::Type> {
         crate::state::GtkThreadState::with(|state| {
-            state.gtype_from_lib(&self.library, &self.get_type_fn)
+            state.resolve_gtype(&self.library, &self.get_type_fn)
         })
     }
 

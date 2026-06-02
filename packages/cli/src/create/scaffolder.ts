@@ -1,6 +1,6 @@
 import { join, resolve } from "node:path";
 import { errorMessage, toUpperFirst } from "@gtkx/utils";
-import { isValidAppId } from "../config.js";
+import { isValidApplicationId } from "../config.js";
 import type { TemplateContext } from "../templates.js";
 import { isValidProjectName, type TestingOption } from "./options.js";
 
@@ -149,7 +149,7 @@ const validateProjectName = (deps: ScaffolderDeps, value: string | undefined): s
 
 const validateAppIdInput = (value: string | undefined): string | undefined => {
     if (!value) return "App ID is required";
-    if (!isValidAppId(value)) {
+    if (!isValidApplicationId(value)) {
         return "App ID must be reverse domain notation (e.g., com.example.myapp)";
     }
     return undefined;

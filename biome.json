@@ -16,7 +16,47 @@
                 "useMaxParams": "error"
             },
             "style": {
-                "noNonNullAssertion": "error"
+                "noNonNullAssertion": "error",
+                "useNodejsImportProtocol": "error",
+                "useImportType": "error",
+                "useExportType": "error",
+                "useConsistentArrayType": {
+                    "level": "error",
+                    "options": { "syntax": "shorthand" }
+                },
+                "useFilenamingConvention": {
+                    "level": "error",
+                    "options": {
+                        "requireAscii": true,
+                        "filenameCases": ["kebab-case"]
+                    }
+                },
+                "useNamingConvention": {
+                    "level": "error",
+                    "options": {
+                        "strictCase": false,
+                        "requireAscii": true,
+                        "conventions": [
+                            { "selector": { "kind": "typeParameter" }, "match": "T?[A-Z][a-zA-Z0-9]*" },
+                            { "selector": { "kind": "enumMember" }, "formats": ["CONSTANT_CASE", "PascalCase"] },
+                            {
+                                "selector": { "kind": "objectLiteralProperty" },
+                                "match": "\\$?\\$?_?_?[a-zA-Z][a-zA-Z0-9_]*_?_?\\$?\\$?",
+                                "formats": ["camelCase", "PascalCase", "CONSTANT_CASE"]
+                            },
+                            {
+                                "selector": { "kind": "typeProperty" },
+                                "match": "\\$?\\$?_?_?[a-zA-Z][a-zA-Z0-9_]*_?_?\\$?\\$?",
+                                "formats": ["camelCase", "PascalCase", "CONSTANT_CASE"]
+                            },
+                            {
+                                "selector": { "kind": "typeAlias" },
+                                "match": "[A-Z][a-zA-Z0-9]*",
+                                "formats": ["PascalCase"]
+                            }
+                        ]
+                    }
+                }
             }
         }
     },
@@ -44,6 +84,25 @@
                         "noExcessiveCognitiveComplexity": "off",
                         "noExcessiveLinesPerFunction": "off",
                         "useMaxParams": "off"
+                    },
+                    "style": {
+                        "useNamingConvention": "off"
+                    }
+                }
+            }
+        },
+        {
+            "includes": [
+                "packages/codegen/overlay/**",
+                "packages/ffi/src/gtype.ts",
+                "packages/ffi/src/value-marshal.ts",
+                "packages/ffi/src/gobject/**",
+                "packages/react/src/jsx.ts"
+            ],
+            "linter": {
+                "rules": {
+                    "style": {
+                        "useNamingConvention": "off"
                     }
                 }
             }

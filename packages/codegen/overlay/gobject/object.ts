@@ -7,7 +7,7 @@ import {
     getHandle,
     getInstanceGType,
     getNativeObject,
-    gtypeFromFfi,
+    gTypeFromFfi,
     LIBGOBJECT,
     type NativeHandle,
     read,
@@ -219,7 +219,7 @@ function emitImpl(this: GObject, sigName: string, ...args: unknown[]): void {
             SIGNAL_QUERY_PARAM_TYPES_OFFSET,
         ) as NativeHandle;
         for (let i = 0; i < paramCount; i++) {
-            const paramGType = gtypeFromFfi(read(paramTypes, t.uint64, i * GTYPE_SIZE));
+            const paramGType = gTypeFromFfi(read(paramTypes, t.uint64, i * GTYPE_SIZE));
             paramValues.push(valueFromJS(paramGType, args[i]));
         }
     }

@@ -1,4 +1,4 @@
-import * as basename from "node:path/posix";
+import * as path from "node:path/posix";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -28,8 +28,8 @@ import { demos } from "./demos/index.js";
 import { path as logoResourcePath } from "./icons/org.gtk.Demo4.svg";
 import { useLatest } from "./use-latest.js";
 
-const applicationIconName = basename.basename(logoResourcePath, basename.extname(logoResourcePath));
-const iconResourceDir = basename.dirname(logoResourcePath);
+const applicationIconName = path.basename(logoResourcePath, path.extname(logoResourcePath));
+const iconResourceDir = path.dirname(logoResourcePath);
 const displaysWithIconPath = new WeakSet<Gdk.Display>();
 
 const useApplicationIcon = (): void => {

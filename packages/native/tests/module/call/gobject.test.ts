@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../../../index.js";
-import { appendLabelAndExpectRefIncrement, expectNoLeakCreatingLabels } from "../call-gobject-string-setup.js";
+import { appendLabelAndExpectRefIncrement, expectNoLeakCreatingLabels } from "../call-gobject-string-helpers.js";
 import {
     boxAppend,
     boxRemove,

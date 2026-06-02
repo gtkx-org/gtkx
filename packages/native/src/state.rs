@@ -245,7 +245,7 @@ impl GtkThreadState {
             .lookup(&mut self.libs, library_name, ref_func, unref_func)
     }
 
-    pub fn gtype_from_lib(
+    pub fn resolve_gtype(
         &mut self,
         lib_name: &str,
         get_type_fn_name: &str,

@@ -234,7 +234,7 @@ const renderSignalHandler = (options: SignalRenderOptions): string => {
  *
  * Pure out-parameters (`direction="out"`, not caller-allocated) are surfaced
  * through the return value as a tuple `[primary, ...outs]`, mirroring the
- * convention {@link writeMethodReturnType} produces for methods: a value return
+ * convention {@link renderMethodReturnType} produces for methods: a value return
  * with no outs stays scalar (with `| void` so handlers may opt out); a void
  * return with a single out unwraps to that out's type; otherwise the primary
  * (when present) leads a tuple of the out types.
@@ -305,12 +305,12 @@ const primitiveTsType = (ref: PrimitiveTypeRef): string => PRIMITIVE_TS_TYPE[ref
 const namedTsType = (repository: GirRepository, ref: NamedTypeRef, imports: Map<string, string>): string => {
     const namespaceName = ref.namespaceName;
     if (namespaceName === undefined) {
-        return toPascalCase(ref.typeName);
+        return ref.typeName;
     }
     const resolved = repository.resolveNamed(namespaceName, ref.typeName);
     if (resolved === undefined) {
         imports.set(namespaceName, namespaceName);
-        return `${namespaceName}.${toPascalCase(ref.typeName)}`;
+        return `${namespaceName}.${ref.typeName}`;
     }
     if (resolved.kind === "callback") return "(...args: unknown[]) => unknown";
     if (resolved.kind === "alias") {
@@ -322,5 +322,5 @@ const namedTsType = (repository: GirRepository, ref: NamedTypeRef, imports: Map<
         );
     }
     imports.set(namespaceName, namespaceName);
-    return `${namespaceName}.${toPascalCase(ref.typeName)}`;
+    return `${namespaceName}.${ref.typeName}`;
 };

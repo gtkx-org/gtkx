@@ -1,4 +1,4 @@
-import { boxedFromNode, type GirBoxed, recordFlavor } from "./boxed.js";
+import { boxedFromNode, boxedKind, type GirBoxed } from "./boxed.js";
 import { callbackFromNode, type GirCallback } from "./callback.js";
 import { classFromNode, type GirClass } from "./class.js";
 import { enumFromNode, type GirEnum } from "./enum.js";
@@ -19,7 +19,6 @@ export type GirConstant = {
 /** A `<alias>` declaration at namespace level. */
 export type GirAlias = {
     readonly name: string;
-    readonly cType: string | undefined;
     readonly target: GirTypeRef | undefined;
 };
 
@@ -100,7 +99,6 @@ export const namespaceFromRepository = (repositoryNode: RawNode): GirNamespace =
         })),
         aliases: childrenOf(namespaceNode, "alias").map((alias) => ({
             name: attr(alias, "name") ?? "",
-            cType: attr(alias, "c:type"),
             target: typeRefFromSlot(alias),
         })),
     };
@@ -110,8 +108,8 @@ const splitPrefixes = (raw: string | undefined): readonly string[] =>
     (raw ?? "").split(",").filter((prefix) => prefix.length > 0);
 
 const collectBoxeds = (namespaceNode: RawNode): readonly GirBoxed[] => [
-    ...childrenOf(namespaceNode, "record").map((record) => boxedFromNode(record, recordFlavor(record), false)),
-    ...childrenOf(namespaceNode, "union").map((union) => boxedFromNode(union, recordFlavor(union), true)),
+    ...childrenOf(namespaceNode, "record").map((record) => boxedFromNode(record, boxedKind(record), false)),
+    ...childrenOf(namespaceNode, "union").map((union) => boxedFromNode(union, boxedKind(union), true)),
 ];
 
 const collectEnums = (namespaceNode: RawNode) => [

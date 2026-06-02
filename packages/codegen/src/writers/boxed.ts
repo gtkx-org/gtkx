@@ -1,4 +1,3 @@
-import { toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
 import type { GirBoxed } from "../gir/boxed.js";
@@ -28,10 +27,10 @@ import { appendNativeClassRegistration } from "./registration.js";
  */
 export const emitBoxed = (ctx: ModuleContext, boxed: GirBoxed): void => {
     if (!boxed.introspectable) return;
-    if (boxed.flavor === "vtable") return;
+    if (boxed.kind === "vtable") return;
     if (boxed.name.length === 0) return;
     if (isClassStructRecord(ctx.namespace.name, boxed)) return;
-    const className = toPascalCase(boxed.name);
+    const className = boxed.name;
     const callables: Callables = {
         constructors: dedupeCallables(boxed.constructors),
         functions: dedupeCallables(boxed.functions),

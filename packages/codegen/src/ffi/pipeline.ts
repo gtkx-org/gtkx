@@ -4,6 +4,7 @@ import type { GirNamespace } from "../gir/namespace.js";
 import type { GirRepository } from "../gir/repository.js";
 import { emitAlias } from "../writers/alias.js";
 import { emitBoxed } from "../writers/boxed.js";
+import { emitCallback } from "../writers/callback.js";
 import { emitClass } from "../writers/class.js";
 import { emitConstant } from "../writers/constant.js";
 import { emitEnum } from "../writers/enum.js";
@@ -13,11 +14,10 @@ import { emitInterface } from "../writers/interface.js";
 /**
  * Generates the TypeScript source for one FFI namespace module.
  *
- * Walks the namespace's declared classes, interfaces, boxeds, enums,
- * functions, and constants in GIR order, dispatching to the per-construct
- * writers in `writers/`. The order matches what the existing generated
- * output uses today: bindings first, declarations second, registrations
- * trailing.
+ * Walks the namespace's declared enums, boxeds, classes, interfaces,
+ * callbacks, functions, constants, and aliases, dispatching to the
+ * per-construct writers in `writers/`: bindings first, declarations second,
+ * registrations trailing.
  *
  * @param namespace - The namespace to emit
  * @param repository - The full repository (for cross-namespace lookups)
@@ -41,6 +41,9 @@ export const generateNamespaceModule = (
     }
     for (const iface of namespace.interfaces) {
         emitInterface(ctx, iface);
+    }
+    for (const callback of namespace.callbacks) {
+        emitCallback(ctx, callback);
     }
     for (const fn of namespace.functions) {
         emitNamespaceFunction(ctx, fn);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expectSingleMinRefMeasurementPopulatesNumber } from "../call-null-ref-setup.js";
+import { expectSingleMinRefMeasurementPopulatesNumber } from "../call-null-ref-helpers.js";
 import { createLabel, getRefCount, measureWidget, measureWidgetAllNull, startMemoryMeasurement } from "../utils.js";
 
 describe("call - ref types - integer refs basic", () => {

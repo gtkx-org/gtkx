@@ -54,7 +54,7 @@ const deriveElementTransfer = (transfer: ParameterTransfer): ParameterTransfer =
  *     index so it addresses the FFI argument list (which includes the
  *     instance receiver) rather than the GIR parameter list
  */
-export const writeFfiType = (
+export const renderFfiType = (
     ctx: ModuleContext,
     ref: GirTypeRef | undefined,
     transfer: ParameterTransfer = "none",
@@ -75,14 +75,14 @@ export const writeFfiType = (
             return arrayExpression(ctx, ref, transfer, argIndexOffset);
         case "list": {
             if (ref.flavor === "gbytearray") return `t.byteArray(${quote(ownership)})`;
-            const element = writeFfiType(ctx, ref.element, deriveElementTransfer(transfer), argIndexOffset);
+            const element = renderFfiType(ctx, ref.element, deriveElementTransfer(transfer), argIndexOffset);
             const helper = LIST_HELPERS[ref.flavor];
             return `t.${helper}(${element}, ${quote(ownership)})`;
         }
         case "hashtable": {
             const elementTransfer = deriveElementTransfer(transfer);
-            const key = writeFfiType(ctx, ref.key, elementTransfer, argIndexOffset);
-            const value = writeFfiType(ctx, ref.value, elementTransfer, argIndexOffset);
+            const key = renderFfiType(ctx, ref.key, elementTransfer, argIndexOffset);
+            const value = renderFfiType(ctx, ref.value, elementTransfer, argIndexOffset);
             return `t.hashTable(${key}, ${value}, ${quote(ownership)})`;
         }
     }
@@ -168,7 +168,7 @@ export const isCellInout = (ctx: ModuleContext, parameter: GirParameter): boolea
  * @param ref - The parameter type reference
  * @param owningParameter - The parameter that carries the callback, for scope/destroy
  */
-export const writeTrampolineType = (
+export const renderTrampolineType = (
     ctx: ModuleContext,
     ref: GirTypeRef | undefined,
     owningParameter: GirParameter,
@@ -177,7 +177,7 @@ export const writeTrampolineType = (
     if (resolved === undefined) return undefined;
     const { callback, namespaceName } = resolved;
     const argTypes = callback.parameters.map((parameter) => {
-        const ffi = writeFfiType(ctx, qualifyTypeRef(parameter.type, namespaceName), parameter.transferOwnership);
+        const ffi = renderFfiType(ctx, qualifyTypeRef(parameter.type, namespaceName), parameter.transferOwnership);
         return isOutParameter(parameter) || isCellInout(ctx, parameter) ? `t.ref(${ffi})` : ffi;
     });
     let userDataIndex: number | undefined;
@@ -186,7 +186,7 @@ export const writeTrampolineType = (
     });
     const returnRef = qualifyTypeRef(callback.returnValue.type, namespaceName);
     const isVoid = returnRef === undefined || (returnRef.kind === "primitive" && returnRef.category === "void");
-    const returnType = isVoid ? "t.void" : writeFfiType(ctx, returnRef, callback.returnValue.transferOwnership);
+    const returnType = isVoid ? "t.void" : renderFfiType(ctx, returnRef, callback.returnValue.transferOwnership);
     const options: string[] = [];
     if (owningParameter.destroyIndex !== undefined) options.push("hasDestroy: true");
     if (userDataIndex !== undefined) options.push(`userDataIndex: ${userDataIndex}`);
@@ -344,7 +344,7 @@ const fundamentalAncestor = (
  * @param ctx - The module context
  * @param instance - The instance parameter
  */
-export const writeSelfFfiType = (ctx: ModuleContext, instance: GirParameter): string => {
+export const renderSelfFfiType = (ctx: ModuleContext, instance: GirParameter): string => {
     const ref = instance.type;
     if (ref === undefined || ref.kind !== "named") return `t.object("borrowed")`;
     const owner = ref.namespaceName ?? ctx.namespace.name;
@@ -407,7 +407,7 @@ const expressionForResolved = (
             const signed = resolved.value.members.some((member) => member.value.startsWith("-"));
             if (getter === undefined || getter === "") return signed ? "t.int32" : "t.uint32";
             const lib = resolved.namespace.sharedLibrary ?? "";
-            const helper = resolved.value.flavor === "bitfield" ? "flags" : "enum";
+            const helper = resolved.value.kind === "bitfield" ? "flags" : "enum";
             return `t.${helper}(${quote(lib)}, ${quote(getter)}, ${String(signed)})`;
         }
         case "callback":
@@ -428,7 +428,7 @@ const arrayExpression = (
     argIndexOffset: number,
 ): string => {
     const ownership = ffiOwnership(transfer);
-    const element = writeFfiType(ctx, ref.element, deriveElementTransfer(transfer), argIndexOffset);
+    const element = renderFfiType(ctx, ref.element, deriveElementTransfer(transfer), argIndexOffset);
     const size = inlineElementSize(ctx, ref.element);
     const sizeArg = size === undefined ? "" : `, ${size}`;
     if (ref.lengthParameterIndex !== undefined) {
@@ -473,5 +473,5 @@ const aliasExpression = (ctx: ModuleContext, options: AliasExpressionOptions): s
     if (qualified === undefined) {
         return `t.object(${quote(ownership)})`;
     }
-    return writeFfiType(ctx, qualified, ownership === "full" ? "full" : "none");
+    return renderFfiType(ctx, qualified, ownership === "full" ? "full" : "none");
 };

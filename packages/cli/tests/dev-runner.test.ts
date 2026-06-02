@@ -56,7 +56,7 @@ const buildHarness = (
         { name: "gtkx:assets" },
         { name: "gtkx:swc-refresh" },
         { name: "gtkx:refresh" },
-        { name: "gtkx:remove-react-dom-optimized" },
+        { name: "gtkx:skip-react-dom-optimize" },
     ] as Plugin[];
     const appId = overrides.appId ?? null;
     const createServer = vi.fn<DevRunnerDeps["createServer"]>(async () => server as unknown as ViteDevServer);
@@ -132,7 +132,7 @@ describe("createDevRunner (vite config)", () => {
             "gtkx:assets",
             "gtkx:swc-refresh",
             "gtkx:refresh",
-            "gtkx:remove-react-dom-optimized",
+            "gtkx:skip-react-dom-optimize",
         ]);
     });
 });

@@ -74,7 +74,7 @@ const waitFor = async (predicate: () => boolean, timeoutMs = 1000): Promise<void
     }
 };
 
-const parseLines = (lines: string[]): Array<Record<string, unknown>> =>
+const parseLines = (lines: string[]): Record<string, unknown>[] =>
     lines.map((line) => JSON.parse(line) as Record<string, unknown>);
 
 type PendingRegistration = {

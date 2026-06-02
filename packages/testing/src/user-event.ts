@@ -1,9 +1,9 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import { isEditable } from "./editable.js";
 import { fireEvent } from "./fire-event.js";
 import { act } from "./timing.js";
-import { isEditable } from "./widget.js";
 
 /**
  * Content payload accepted by {@link userEvent.drop} and

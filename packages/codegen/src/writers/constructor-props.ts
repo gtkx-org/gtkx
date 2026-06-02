@@ -5,8 +5,8 @@ import type { GirClass } from "../gir/class.js";
 import type { GirProperty } from "../gir/property.js";
 import { splitQualifiedName } from "../gir/qualified-name.js";
 import { collectInterfaceProperties } from "./inheritance.js";
-import { writeTsType } from "./ts-type.js";
-import { writeFfiType } from "./value.js";
+import { renderTsType } from "./ts-type.js";
+import { renderFfiType } from "./value.js";
 
 /**
  * Whether a property can be passed to a constructor: writable, construct, or
@@ -57,7 +57,7 @@ export const renderConstructorPropsInterface = (ctx: ModuleContext, klass: GirCl
     const parentRef = resolveParentPropsReference(ctx, klass);
     const extendsClause = parentRef === undefined ? "" : ` extends ${parentRef}`;
     const lines = collectConstructableProps(ctx, klass).map(
-        (property) => `${toIdentifier(toCamelCase(property.name))}?: ${writeTsType(ctx, property.type, true)};`,
+        (property) => `${toIdentifier(toCamelCase(property.name))}?: ${renderTsType(ctx, property.type, true)};`,
     );
     const body = lines.length === 0 ? "" : `\n${indent(lines.join("\n"), 1)}\n`;
     return `export interface ${className}ConstructorProps${extendsClause} {${body}}`;
@@ -108,7 +108,7 @@ const renderTranslatingConstructor = (ctx: ModuleContext, props: readonly GirPro
     const pattern = `{ ${[...destructured, "...rest"].join(", ")} }`;
     const entries = props.map(
         (property) =>
-            `${quote(property.name)}: valueFromFfiOptional(${writeFfiType(ctx, property.type, property.transferOwnership)}, ${toIdentifier(toCamelCase(property.name))}),`,
+            `${quote(property.name)}: valueFromFfiOptional(${renderFfiType(ctx, property.type, property.transferOwnership)}, ${toIdentifier(toCamelCase(property.name))}),`,
     );
     const recordLiteral = `{\n${indent(entries.join("\n"), 1)}\n}`;
     const lines = [`const props: ${GVALUE_RECORD} = ${recordLiteral};`, "super({ ...props, ...rest });"];

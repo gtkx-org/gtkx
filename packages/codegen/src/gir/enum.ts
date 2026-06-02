@@ -2,7 +2,7 @@ import { functionFromNode, type GirFunction } from "./function.js";
 import { attr, childrenOf, type RawNode } from "./parse.js";
 
 /** A single `<member>` of an `<enumeration>` or `<bitfield>`. */
-type GirEnumMember = {
+type EnumMember = {
     /** GIR `name`, snake_case lowercase (e.g. `"fill"`). */
     readonly name: string;
     /** GIR `c:identifier`, SCREAMING_SNAKE_CASE (e.g. `"GTK_ALIGN_FILL"`). */
@@ -12,11 +12,11 @@ type GirEnumMember = {
 };
 
 /** Discriminator for enums vs bitfields. */
-export type GirEnumFlavor = "enumeration" | "bitfield";
+export type EnumKind = "enumeration" | "bitfield";
 
 /** An `<enumeration>` or `<bitfield>` declaration. */
 export type GirEnum = {
-    readonly flavor: GirEnumFlavor;
+    readonly kind: EnumKind;
     /** Local name within the namespace (no namespace prefix). */
     readonly name: string;
     readonly cType: string | undefined;
@@ -27,7 +27,7 @@ export type GirEnum = {
     /** Optional `glib:error-domain` marker; presence flips emission to `createErrorDomain`. */
     readonly errorDomain: string | undefined;
     readonly introspectable: boolean;
-    readonly members: readonly GirEnumMember[];
+    readonly members: readonly EnumMember[];
     /** Free functions nested inside the enum (e.g. error quark accessors). */
     readonly functions: readonly GirFunction[];
 };
@@ -36,10 +36,10 @@ export type GirEnum = {
  * Builds a {@link GirEnum} from an `<enumeration>` or `<bitfield>` element.
  *
  * @param node - The XML element
- * @param flavor - `"enumeration"` or `"bitfield"`, matching the element name
+ * @param kind - `"enumeration"` or `"bitfield"`, matching the element name
  */
-export const enumFromNode = (node: RawNode, flavor: GirEnumFlavor): GirEnum => ({
-    flavor,
+export const enumFromNode = (node: RawNode, kind: EnumKind): GirEnum => ({
+    kind,
     name: attr(node, "name") ?? "",
     cType: attr(node, "c:type"),
     glibTypeName: attr(node, "glib:type-name"),

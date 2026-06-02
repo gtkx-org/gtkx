@@ -1,5 +1,5 @@
-import { toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
+import { aliasExportName } from "../dsl/identifier.js";
 import { PRIMITIVE_TS_TYPE } from "../gir/primitives.js";
 import type { ResolvedNamed } from "../gir/repository.js";
 import type {
@@ -26,8 +26,8 @@ import type {
 /**
  * Renders a TypeScript type annotation for a `GirTypeRef`.
  *
- * Routes through resolution (classes/interfaces/boxeds/enums as their
- * PascalCase type, callbacks as `Function`,
+ * Routes through resolution (classes/interfaces/boxeds/enums/callbacks as their
+ * named TypeScript identifier — the GIR `name` verbatim,
  * arrays as `T[]`, lists as `T[]`, hashtables as `Record<K, V>`, primitive
  * categories to their TS counterpart, and `undefined` to `void`).
  *
@@ -35,7 +35,7 @@ import type {
  * @param ref - The type reference, or `undefined` for void
  * @param isNullable - Whether the slot accepts `null`
  */
-export const writeTsType = (ctx: ModuleContext, ref: GirTypeRef | undefined, isNullable = false): string => {
+export const renderTsType = (ctx: ModuleContext, ref: GirTypeRef | undefined, isNullable = false): string => {
     const base = writeBaseType(ctx, ref);
     return isNullable ? `${base} | null` : base;
 };
@@ -82,11 +82,10 @@ const resolvedTsType = (
         case "interface":
         case "boxed":
         case "enum":
-            return qualifiedTypeReference(ctx, namespaceName, typeName);
         case "callback":
-            return "((...args: any[]) => any)";
+            return qualifiedTypeReference(ctx, namespaceName, typeName);
         case "alias": {
-            const exportName = resolved.cType ?? toPascalCase(typeName);
+            const exportName = aliasExportName(namespaceName, typeName);
             if (namespaceName === ctx.namespace.name) return exportName;
             return `${ctx.addCrossNamespaceImport(namespaceName)}.${exportName}`;
         }
@@ -94,9 +93,9 @@ const resolvedTsType = (
 };
 
 const qualifiedTypeReference = (ctx: ModuleContext, namespaceName: string, typeName: string): string => {
-    if (namespaceName === ctx.namespace.name) return toPascalCase(typeName);
+    if (namespaceName === ctx.namespace.name) return typeName;
     const alias = ctx.addCrossNamespaceImport(namespaceName);
-    return `${alias}.${toPascalCase(typeName)}`;
+    return `${alias}.${typeName}`;
 };
 
 const arrayTsType = (ctx: ModuleContext, ref: ArrayTypeRef): string => {

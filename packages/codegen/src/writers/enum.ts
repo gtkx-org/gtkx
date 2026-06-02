@@ -1,4 +1,4 @@
-import { quote, toPascalCase } from "@gtkx/utils";
+import { quote } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import type { GirEnum } from "../gir/enum.js";
 
@@ -21,7 +21,7 @@ import type { GirEnum } from "../gir/enum.js";
  */
 export const emitEnum = (ctx: ModuleContext, enumeration: GirEnum): void => {
     if (!enumeration.introspectable) return;
-    const name = toPascalCase(enumeration.name);
+    const name = enumeration.name;
     const memberKeys = enumeration.members.map((member) => memberKey(member.name));
     if (enumeration.errorDomain !== undefined) {
         const memberEntries = enumeration.members.map((member, index) => `${memberKeys[index]}: ${member.value}`);

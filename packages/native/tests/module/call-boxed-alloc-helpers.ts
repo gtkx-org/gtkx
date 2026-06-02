@@ -7,22 +7,22 @@ const BOXED_SIZE = 16;
 /**
  * The four signed 32-bit fields of a `GdkRectangle`.
  */
-export interface RectangleFields {
+export type RectangleFields = {
     x: number;
     y: number;
     width: number;
     height: number;
-}
+};
 
 /**
  * The four 32-bit floating-point channels of a `GdkRGBA`.
  */
-export interface RgbaChannels {
+export type RgbaChannels = {
     red: number;
     green: number;
     blue: number;
     alpha: number;
-}
+};
 
 /**
  * Allocates a zeroed `GdkRectangle` boxed value backed by GDK memory.

@@ -20,7 +20,7 @@ import {
     GtkToggleButton,
 } from "@gtkx/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { makeValue } from "../../gvalue.js";
+import { buildValue } from "../../gvalue.js";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./clipboard.tsx?raw";
 import { path as floppyBuddyPath } from "./floppybuddy.gif";
@@ -56,7 +56,7 @@ function drawColorSwatch(cr: Context, width: number, height: number, rgba: Gdk.R
     cr.fill();
 }
 
-const makeRgba = (red: number, green: number, blue: number, alpha: number): Gdk.RGBA => {
+const buildRgba = (red: number, green: number, blue: number, alpha: number): Gdk.RGBA => {
     const rgba = new Gdk.RGBA();
     rgba.red = red;
     rgba.green = green;
@@ -68,7 +68,7 @@ const makeRgba = (red: number, green: number, blue: number, alpha: number): Gdk.
 function useClipboardState() {
     const [sourceType, setSourceType] = useState<SourceType>("Text");
     const [sourceText, setSourceText] = useState("Copy this!");
-    const [sourceColor, setSourceColor] = useState<Gdk.RGBA>(makeRgba(128 / 255, 0, 128 / 255, 1));
+    const [sourceColor, setSourceColor] = useState<Gdk.RGBA>(buildRgba(128 / 255, 0, 128 / 255, 1));
     const [selectedImage, setSelectedImage] = useState(0);
     const [sourceFile, setSourceFile] = useState<Gio.File | null>(null);
     const [pastedContent, setPastedContent] = useState<PastedContent>({ type: "" });
@@ -135,12 +135,12 @@ function useDragProviders(state: ClipboardState) {
     const { sourceText, sourceColor, selectedImage, sourceFile } = state;
 
     const createTextDragProvider = useCallback(
-        () => Gdk.ContentProvider.newForValue(makeValue(GObject.Type.STRING, (v) => v.setString(sourceText))),
+        () => Gdk.ContentProvider.newForValue(buildValue(GObject.Type.STRING, (v) => v.setString(sourceText))),
         [sourceText],
     );
 
     const createColorDragProvider = useCallback(
-        () => Gdk.ContentProvider.newForValue(makeValue(gdkRgbaType, (v) => v.setBoxed(sourceColor))),
+        () => Gdk.ContentProvider.newForValue(buildValue(gdkRgbaType, (v) => v.setBoxed(sourceColor))),
         [sourceColor],
     );
 
@@ -148,7 +148,7 @@ function useDragProviders(state: ClipboardState) {
         const path = imagePathForIndex(selectedImage);
         try {
             const texture = Gdk.Texture.newFromResource(path);
-            return Gdk.ContentProvider.newForValue(makeValue(gdkPaintableType, (v) => v.setObject(texture)));
+            return Gdk.ContentProvider.newForValue(buildValue(gdkPaintableType, (v) => v.setObject(texture)));
         } catch (e) {
             if (e instanceof Error) console.error(e.message);
             return null;
@@ -157,7 +157,7 @@ function useDragProviders(state: ClipboardState) {
 
     const createFileDragProvider = useCallback(() => {
         if (!sourceFile) return null;
-        return Gdk.ContentProvider.newForValue(makeValue(gFileType, (v) => v.setObject(sourceFile)));
+        return Gdk.ContentProvider.newForValue(buildValue(gFileType, (v) => v.setObject(sourceFile)));
     }, [sourceFile]);
 
     return { createTextDragProvider, createColorDragProvider, createImageDragProvider, createFileDragProvider };
@@ -171,13 +171,13 @@ const imagePathForIndex = (index: number) => {
 const copyTextToClipboard = (clipboard: Gdk.Clipboard, sourceText: string) =>
     setClipboardValue(
         clipboard,
-        makeValue(GObject.Type.STRING, (v) => v.setString(sourceText)),
+        buildValue(GObject.Type.STRING, (v) => v.setString(sourceText)),
     );
 
 const copyColorToClipboard = (clipboard: Gdk.Clipboard, sourceColor: Gdk.RGBA) =>
     setClipboardValue(
         clipboard,
-        makeValue(gdkRgbaType, (v) => v.setBoxed(sourceColor)),
+        buildValue(gdkRgbaType, (v) => v.setBoxed(sourceColor)),
     );
 
 const copyImageToClipboard = (clipboard: Gdk.Clipboard, selectedImage: number) => {
@@ -186,7 +186,7 @@ const copyImageToClipboard = (clipboard: Gdk.Clipboard, selectedImage: number) =
         const texture = Gdk.Texture.newFromResource(path);
         setClipboardValue(
             clipboard,
-            makeValue(gdkPaintableType, (v) => v.setObject(texture)),
+            buildValue(gdkPaintableType, (v) => v.setObject(texture)),
         );
     } catch (e) {
         if (e instanceof Error) console.error(e.message);
@@ -196,7 +196,7 @@ const copyImageToClipboard = (clipboard: Gdk.Clipboard, selectedImage: number) =
 const copyFileToClipboard = (clipboard: Gdk.Clipboard, sourceFile: Gio.File) =>
     setClipboardValue(
         clipboard,
-        makeValue(gFileType, (v) => v.setObject(sourceFile)),
+        buildValue(gFileType, (v) => v.setObject(sourceFile)),
     );
 
 function useClipboardHandlers(state: ClipboardState, window: React.RefObject<Gtk.Window | null>) {
@@ -281,7 +281,7 @@ const tryPasteColor = async (
     const value = await readValueAsync(clipboard, gdkRgbaType);
     const rgba = value.getBoxed<Gdk.RGBA>();
     if (!rgba) return false;
-    setPastedContent({ type: "Color", color: makeRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha) });
+    setPastedContent({ type: "Color", color: buildRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha) });
     return true;
 };
 
@@ -341,7 +341,7 @@ const handleClipboardDrop = (value: GObject.Value, setPastedContent: SetPastedCo
     if (GObject.typeCheckValueHolds(value, gdkRgbaType)) {
         const rgba = value.getBoxed<Gdk.RGBA>();
         if (rgba) {
-            setPastedContent({ type: "Color", color: makeRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha) });
+            setPastedContent({ type: "Color", color: buildRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha) });
             return true;
         }
     }
@@ -440,7 +440,7 @@ const SourcePageColor = ({
             rgba={state.sourceColor}
             valign={Gtk.Align.CENTER}
             accessibleLabel="Color Drag Source"
-            onRgbaChanged={(rgba) => state.setSourceColor(makeRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha))}
+            onRgbaChanged={(rgba) => state.setSourceColor(buildRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha))}
         >
             <GtkDragSource onPrepare={createColorDragProvider} actions={Gdk.DragAction.COPY} />
         </GtkColorDialogButton>

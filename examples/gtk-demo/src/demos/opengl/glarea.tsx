@@ -243,7 +243,7 @@ const useGLAreaHandlers = (args: UseGLAreaHandlersArgs) => {
 
     const handleResize = useCallback((width: number, height: number) => gl.viewport(0, 0, width, height), []);
 
-    const makeAxisHandler = useCallback(
+    const createAxisHandler = useCallback(
         (axisSetter: (v: number) => void) => (value: number) => {
             axisSetter((value * Math.PI) / 180);
             glAreaRef.current?.queueRender();
@@ -251,7 +251,7 @@ const useGLAreaHandlers = (args: UseGLAreaHandlersArgs) => {
         [glAreaRef],
     );
 
-    return { handleRealize, handleUnrealize, handleRender, handleResize, makeAxisHandler };
+    return { handleRealize, handleUnrealize, handleRender, handleResize, createAxisHandler };
 };
 
 const GLAreaDemo = ({ window }: DemoProps) => {
@@ -296,9 +296,9 @@ const GLAreaDemo = ({ window }: DemoProps) => {
                 onResize={handlers.handleResize}
             />
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <AxisScale label="X axis" onValueChanged={handlers.makeAxisHandler(setRotationX)} />
-                <AxisScale label="Y axis" onValueChanged={handlers.makeAxisHandler(setRotationY)} />
-                <AxisScale label="Z axis" onValueChanged={handlers.makeAxisHandler(setRotationZ)} />
+                <AxisScale label="X axis" onValueChanged={handlers.createAxisHandler(setRotationX)} />
+                <AxisScale label="Y axis" onValueChanged={handlers.createAxisHandler(setRotationY)} />
+                <AxisScale label="Z axis" onValueChanged={handlers.createAxisHandler(setRotationZ)} />
                 <GtkButton label="Quit" hexpand onClicked={() => window.current?.destroy()} />
             </GtkBox>
         </GtkBox>

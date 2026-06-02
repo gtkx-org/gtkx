@@ -8,7 +8,7 @@ import {
     readRgbaChannels,
     writeRectangleFields,
     writeRgbaChannels,
-} from "../call-boxed-alloc-setup.js";
+} from "../call-boxed-alloc-helpers.js";
 import { BOOLEAN, GDK_LIB, INT32, PANGO_LIB, STRING, STRING_BORROWED, startMemoryMeasurement, VOID } from "../utils.js";
 
 const RGBA_BOXED_NONE = { type: "boxed" as const, innerType: "GdkRGBA", lib: GDK_LIB, ownership: "borrowed" as const };

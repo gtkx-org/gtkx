@@ -48,14 +48,14 @@ const waitForConnection = (registry: ConnectionRegistry): Promise<AppConnection>
         registry.once("connection", (connection) => resolve(connection));
     });
 
-interface SocketServerCtx {
+interface SocketServerContext {
     tmpDir: string;
     socketPath: string;
     server: SocketServer;
     registry: ConnectionRegistry;
 }
 
-const socketCtx = {} as SocketServerCtx;
+const socketCtx = {} as SocketServerContext;
 
 function setupSocketServer(): void {
     beforeEach(() => {

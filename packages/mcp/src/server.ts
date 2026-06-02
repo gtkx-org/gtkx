@@ -151,7 +151,7 @@ type ForwardOptions<Shape extends Record<string, z.ZodType>> = {
     name: string;
     description: string;
     inputSchema: Shape;
-    cm: AppQueryClient;
+    connectionManager: AppQueryClient;
     method: string;
     params?: (args: ToolArgs<Shape>) => unknown;
 };
@@ -167,7 +167,7 @@ const buildForwardParams = <Shape extends Record<string, z.ZodType>>(
 const forwardTool = <Shape extends Record<string, z.ZodType>>(
     options: ForwardOptions<Shape>,
     perform: (
-        cm: AppQueryClient,
+        connectionManager: AppQueryClient,
         appId: string | undefined,
         method: string,
         params: unknown,
@@ -178,31 +178,31 @@ const forwardTool = <Shape extends Record<string, z.ZodType>>(
         config: { description: options.description, inputSchema: options.inputSchema },
         handler: async (args) => {
             const { appId, params } = buildForwardParams(args, options.params);
-            return perform(options.cm, appId, options.method, params);
+            return perform(options.connectionManager, appId, options.method, params);
         },
     });
 
 const forwardJson = <Shape extends Record<string, z.ZodType>>(options: ForwardOptions<Shape>): ToolDefinition =>
-    forwardTool(options, async (cm, appId, method, params) => {
-        const result = await cm.sendToApp(appId, method, params);
+    forwardTool(options, async (connectionManager, appId, method, params) => {
+        const result = await connectionManager.sendToApp(appId, method, params);
         return textContent(JSON.stringify(result, null, 2));
     });
 
 const forwardAck = <Shape extends Record<string, z.ZodType>>(
     options: ForwardOptions<Shape> & { ack: string },
 ): ToolDefinition =>
-    forwardTool(options, async (cm, appId, method, params) => {
-        await cm.sendToApp(appId, method, params);
+    forwardTool(options, async (connectionManager, appId, method, params) => {
+        await connectionManager.sendToApp(appId, method, params);
         return textContent(options.ack);
     });
 
 const forwardImage = <Shape extends Record<string, z.ZodType>>(options: ForwardOptions<Shape>): ToolDefinition =>
-    forwardTool(options, async (cm, appId, method, params) => {
-        const result = await cm.sendToApp<{ data: string; mimeType: string }>(appId, method, params);
+    forwardTool(options, async (connectionManager, appId, method, params) => {
+        const result = await connectionManager.sendToApp<{ data: string; mimeType: string }>(appId, method, params);
         return imageContent(result.data, result.mimeType);
     });
 
-const listAppsTool = (cm: AppQueryClient) =>
+const listAppsTool = (connectionManager: AppQueryClient) =>
     defineTool({
         name: "gtkx_list_apps",
         config: {
@@ -210,19 +210,19 @@ const listAppsTool = (cm: AppQueryClient) =>
             inputSchema: listAppsShape,
         },
         handler: async ({ waitForApps, timeout }) => {
-            if (waitForApps && !cm.hasConnectedApps()) {
+            if (waitForApps && !connectionManager.hasConnectedApps()) {
                 try {
-                    await cm.waitForApp(timeout);
+                    await connectionManager.waitForApp(timeout);
                 } catch (error) {
                     return textError(error instanceof Error ? error.message : "Timeout waiting for app");
                 }
             }
 
-            const apps = cm.getApps();
+            const apps = connectionManager.getApps();
             const appsWithWindows = await Promise.all(
                 apps.map(async (app) => {
                     try {
-                        const result = await cm.sendToApp<{
+                        const result = await connectionManager.sendToApp<{
                             windows: Array<{ id: string; title: string | null }>;
                         }>(app.appId, "app.getWindows", {});
                         return { ...app, windows: result.windows };
@@ -235,7 +235,7 @@ const listAppsTool = (cm: AppQueryClient) =>
         },
     });
 
-const getWidgetTreeTool = (cm: AppQueryClient) =>
+const getWidgetTreeTool = (connectionManager: AppQueryClient) =>
     defineTool({
         name: "gtkx_get_widget_tree",
         config: {
@@ -244,7 +244,7 @@ const getWidgetTreeTool = (cm: AppQueryClient) =>
             inputSchema: appIdShape,
         },
         handler: async ({ appId }) => {
-            const result = await cm.sendToApp<{ tree: string }>(appId, "widget.getTree", {});
+            const result = await connectionManager.sendToApp<{ tree: string }>(appId, "widget.getTree", {});
             return textContent(result.tree);
         },
     });
@@ -255,20 +255,20 @@ const getWidgetTreeTool = (cm: AppQueryClient) =>
  * Exposed so tests can drive each tool handler against a fake
  * {@link ConnectionManager} without spinning up a real socket server.
  *
- * @param cm - Connection manager that proxies tool requests to the connected
+ * @param connectionManager - Connection manager that proxies tool requests to the connected
  *   GTKX application.
  * @returns Array of tool definitions in registration order.
  */
-export function buildTools(cm: AppQueryClient): ToolDefinition[] {
+export function buildTools(connectionManager: AppQueryClient): ToolDefinition[] {
     return [
-        listAppsTool(cm),
-        getWidgetTreeTool(cm),
+        listAppsTool(connectionManager),
+        getWidgetTreeTool(connectionManager),
         forwardJson({
             name: "gtkx_query_widgets",
             description:
                 "Find widgets by role, text, name, or label. Returns matching widgets with their IDs and properties.",
             inputSchema: queryWidgetsShape,
-            cm,
+            connectionManager,
             method: "widget.query",
             params: ({ by, value, options }) => ({ queryType: by, value, options }),
         }),
@@ -276,14 +276,14 @@ export function buildTools(cm: AppQueryClient): ToolDefinition[] {
             name: "gtkx_get_widget_props",
             description: "Get all properties of a specific widget by its ID",
             inputSchema: widgetIdShape,
-            cm,
+            connectionManager,
             method: "widget.getProps",
         }),
         forwardAck({
             name: "gtkx_click",
             description: "Click a widget. Works with buttons, checkboxes, and other interactive widgets.",
             inputSchema: widgetIdShape,
-            cm,
+            connectionManager,
             method: "widget.click",
             ack: "Click successful",
         }),
@@ -291,7 +291,7 @@ export function buildTools(cm: AppQueryClient): ToolDefinition[] {
             name: "gtkx_type",
             description: "Type text into an editable widget like Entry or TextView",
             inputSchema: typeShape,
-            cm,
+            connectionManager,
             method: "widget.type",
             ack: "Type successful",
         }),
@@ -299,7 +299,7 @@ export function buildTools(cm: AppQueryClient): ToolDefinition[] {
             name: "gtkx_fire_event",
             description: "Emit a GTK signal on a widget. Use this for custom interactions.",
             inputSchema: fireEventShape,
-            cm,
+            connectionManager,
             method: "widget.fireEvent",
             ack: "Event fired successfully",
         }),
@@ -307,16 +307,16 @@ export function buildTools(cm: AppQueryClient): ToolDefinition[] {
             name: "gtkx_take_screenshot",
             description: "Capture a screenshot of a window. Returns base64-encoded PNG image data.",
             inputSchema: screenshotShape,
-            cm,
+            connectionManager,
             method: "widget.screenshot",
         }),
     ];
 }
 
 /**
- * Configuration for {@link buildMcpServer}.
+ * Configuration for {@link createMcpServer}.
  */
-export type BuildMcpServerOptions = {
+export type CreateMcpServerOptions = {
     /** Unix-domain socket path the server listens on. */
     socketPath?: string;
     /** Version reported to MCP clients. */
@@ -324,7 +324,7 @@ export type BuildMcpServerOptions = {
 };
 
 /**
- * Runtime handle returned by {@link buildMcpServer}.
+ * Runtime handle returned by {@link createMcpServer}.
  */
 export type McpServerInstance = {
     /** Starts the socket server and connects the MCP stdio transport. */
@@ -341,13 +341,13 @@ export type McpServerInstance = {
  * connection registry, the connection manager, and the MCP SDK server.
  * Returns lifecycle hooks the caller invokes to start and stop the server.
  *
- * The shape is intentionally testable: `buildMcpServer` is what tests drive,
+ * The shape is intentionally testable: `createMcpServer` is what tests drive,
  * `main` is the thin shell that adds signal handling on top.
  *
  * @param options - Server configuration.
  * @returns A handle exposing `start` and `stop`.
  */
-export const buildMcpServer = (options: BuildMcpServerOptions): McpServerInstance => {
+export const createMcpServer = (options: CreateMcpServerOptions): McpServerInstance => {
     const socketPath = options.socketPath ?? DEFAULT_SOCKET_PATH;
 
     const registry = new ConnectionRegistry();
@@ -399,7 +399,7 @@ export const buildMcpServer = (options: BuildMcpServerOptions): McpServerInstanc
  * shutdown helper, and awaits the listening socket.
  */
 export async function main() {
-    const server = buildMcpServer({ version });
+    const server = createMcpServer({ version });
     installGracefulShutdown({
         onSignal: () => server.stop(),
     });

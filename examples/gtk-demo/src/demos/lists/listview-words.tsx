@@ -61,7 +61,7 @@ const loadWordsFromFile = async (
     }
 };
 
-interface FilterCtx {
+interface FilterState {
     canceled: boolean;
 }
 
@@ -74,7 +74,7 @@ const runFilterStep = ({
     setFilterProgress,
     setFilteredWords,
 }: {
-    ctx: FilterCtx;
+    ctx: FilterState;
     words: string[];
     lower: string;
     result: string[];
@@ -114,7 +114,7 @@ const runFilterStep = ({
 function useFilteredWords(words: string[], searchText: string) {
     const [filteredWords, setFilteredWords] = useState(initialWords);
     const [filterProgress, setFilterProgress] = useState(1);
-    const filterRef = useRef<FilterCtx>({ canceled: false });
+    const filterRef = useRef<FilterState>({ canceled: false });
 
     useEffect(() => {
         filterRef.current.canceled = true;

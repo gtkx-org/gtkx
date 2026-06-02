@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkButton, GtkListView, GtkScrolledWindow } from "@gtkx/react";
-import { AppShell } from "../AppShell";
+import { AppShell } from "../app-shell";
 import { type Note, NoteCardComponent, sampleNotes } from "../data";
 
 export const Chapter3 = () => (

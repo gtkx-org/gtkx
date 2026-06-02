@@ -53,9 +53,9 @@ const GTK_STACK_TYPE_NAME = "GtkStack";
 const ADW_VIEW_STACK_TYPE_NAME = "AdwViewStack";
 const STACK_PARENT_SIGNAL = "notify::parent";
 
-interface StackBindable {
+type StackBindable = {
     setStack(stack: StackWidget | null): void;
-}
+};
 
 /**
  * Reconciler node backing every navigation widget that binds to a stack via a

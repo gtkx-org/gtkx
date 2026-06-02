@@ -5,11 +5,11 @@ import { boxAppend, createBox, createLabel, getRefCount, startMemoryMeasurement 
  * The box, the appended label, and the label's reference count captured before
  * the append.
  */
-export interface AppendedLabelRefCount {
+export type AppendedLabelRefCount = {
     box: unknown;
     label: unknown;
     initialRefCount: number;
-}
+};
 
 /**
  * Creates a box and a label, appends the label to the box, and asserts that the

@@ -21,12 +21,12 @@ import { renderVfuncMetadata } from "./class-struct.js";
 import { renderClassConstructor, renderConstructorPropsInterface } from "./constructor-props.js";
 import { renderGetTypeReference } from "./gtype-binding.js";
 import { collectInterfaceProperties, forEachAncestor, resolveImplementedInterface } from "./inheritance.js";
-import { inputParameters, methodExportName, writePromisifiedBody, writePromisifiedSignature } from "./method.js";
+import { inputParameters, methodExportName, renderPromisifiedBody, renderPromisifiedSignature } from "./method.js";
 import { renderPropertyAccessor } from "./property-accessor.js";
 import { appendNativeClassRegistration } from "./registration.js";
 import { renderRuntimeOverride } from "./runtime-override.js";
 import { renderSignalMembers, renderSignalRegistration } from "./signal.js";
-import { writeTsType } from "./ts-type.js";
+import { renderTsType } from "./ts-type.js";
 
 /**
  * Emits a full class declaration for a `<class>` element.
@@ -224,9 +224,9 @@ const renderPromisifiedMember = (
     if (finishFn === undefined) return undefined;
     const cIdentifier = callable.cIdentifier;
     if (cIdentifier === undefined) return undefined;
-    const { signature, returnType } = writePromisifiedSignature(ctx, callable, finishFn);
+    const { signature, returnType } = renderPromisifiedSignature(ctx, callable, finishFn);
     const finishMember = methodExportName(finishFn);
-    const body = writePromisifiedBody(ctx, callable, finishMember, cIdentifier);
+    const body = renderPromisifiedBody(ctx, callable, finishMember, cIdentifier);
     return `${name}(${signature}): ${returnType} {\n${indent(body, 1)}\n}`;
 };
 
@@ -287,7 +287,7 @@ const absorbInheritedMethods = (
         if (returnTypes.has(name)) continue;
         definitions.set(name, { method, namespaceName: resolved.namespaceName });
         const qualifiedType = qualifyTypeRef(method.returnValue.type, resolved.namespaceName);
-        returnTypes.set(name, writeTsType(ctx, qualifiedType, method.returnValue.nullable));
+        returnTypes.set(name, renderTsType(ctx, qualifiedType, method.returnValue.nullable));
     }
 };
 
@@ -327,7 +327,7 @@ const conflictRename = (
     const inheritedReturn = inherited.returnTypes.get(name);
     const inheritedMethod = inherited.definitions.get(name);
     if (inheritedReturn === undefined || inheritedMethod === undefined) return undefined;
-    const ownReturn = writeTsType(ctx, callable.returnValue.type, callable.returnValue.nullable);
+    const ownReturn = renderTsType(ctx, callable.returnValue.type, callable.returnValue.nullable);
     const conflicts =
         inheritedReturn !== ownReturn ||
         hasParameterEnumConflict(ctx, callable, inheritedMethod) ||

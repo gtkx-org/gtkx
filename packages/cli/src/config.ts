@@ -62,7 +62,7 @@ export type GtkxConfig = {
      * asset at an exact path — e.g. `style.css` at the GApplication default
      * `resource_base_path` for Adw/Gtk auto-loading — pin it with a
      * `?resource=<path>` import query.
-     * Must match `g_application_id_is_valid` — see {@link isValidAppId}.
+     * Must match `g_application_id_is_valid` — see {@link isValidApplicationId}.
      *
      * When omitted, the GResource pipeline falls back to the prefix
      * `/gtkx/app` and `import.meta.env.GTKX_APP_ID` is the empty string.
@@ -142,7 +142,7 @@ const validateGirPath = (girPath: GtkxConfig["girPath"]): void => {
 
 const validateApplicationId = (applicationId: GtkxConfig["applicationId"]): void => {
     if (applicationId === undefined) return;
-    if (typeof applicationId !== "string" || !isValidAppId(applicationId)) {
+    if (typeof applicationId !== "string" || !isValidApplicationId(applicationId)) {
         throw new Error(
             `gtkx.config.ts: invalid \`applicationId\` "${String(applicationId)}" — ` +
                 `must satisfy g_application_id_is_valid (e.g. "org.example.MyApp")`,
@@ -189,8 +189,8 @@ export const defineConfig = (config: GtkxConfig): GtkxConfig => {
     return config;
 };
 
-const APP_ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$/;
-const APP_ID_MAX_LENGTH = 255;
+const APPLICATION_ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$/;
+const APPLICATION_ID_MAX_LENGTH = 255;
 
 /**
  * Validates an application ID against the D-Bus well-known name spec used by
@@ -201,12 +201,12 @@ const APP_ID_MAX_LENGTH = 255;
  *   - Each element starts with `[A-Za-z_]` and continues with `[A-Za-z0-9_-]`
  *   - Total length 1..=255 characters
  *
- * @param appId - The candidate identifier
+ * @param applicationId - The candidate identifier
  * @returns `true` if the identifier is a valid GTK application ID
  */
-export const isValidAppId = (appId: string): boolean => {
-    if (appId.length === 0 || appId.length > APP_ID_MAX_LENGTH) {
+export const isValidApplicationId = (applicationId: string): boolean => {
+    if (applicationId.length === 0 || applicationId.length > APPLICATION_ID_MAX_LENGTH) {
         return false;
     }
-    return APP_ID_PATTERN.test(appId);
+    return APPLICATION_ID_PATTERN.test(applicationId);
 };

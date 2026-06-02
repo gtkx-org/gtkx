@@ -8,7 +8,7 @@ import {
     methodNotFoundError,
     noAppConnectedError,
     widgetNotFoundError,
-} from "../src/protocol/errors.js";
+} from "../../src/protocol/errors.js";
 
 describe("McpError", () => {
     it("creates an error with code and message", () => {

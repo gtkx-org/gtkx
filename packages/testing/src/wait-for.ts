@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { getConfig } from "./config.js";
-import { buildTimeoutError } from "./error-builder.js";
+import { timeoutError } from "./errors.js";
 import { getIsReactActEnvironment, setIsReactActEnvironment } from "./timing.js";
 import type { WaitForOptions } from "./types.js";
 
@@ -71,11 +71,11 @@ export const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOpti
             }
         }
 
-        const timeoutError = buildTimeoutError(timeout, lastError);
+        const error = timeoutError(timeout, lastError);
         if (onTimeout) {
-            throw onTimeout(timeoutError);
+            throw onTimeout(error);
         }
-        throw timeoutError;
+        throw error;
     });
 
 /** @internal */

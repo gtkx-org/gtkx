@@ -9,7 +9,7 @@ import type { GirSignal } from "../gir/signal.js";
 import type { GirTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
 import { forEachAncestor, resolveImplementedInterface } from "./inheritance.js";
 import { isHandlePassing, planTrampolineArgs, renderTupleWriteback } from "./method.js";
-import { isCellInout, writeFfiType } from "./value.js";
+import { isCellInout, renderFfiType } from "./value.js";
 
 const SIGNAL_HANDLER_TYPE = "(...args: any[]) => any";
 
@@ -122,14 +122,14 @@ const renderSignalEntry = (ctx: ModuleContext, collected: CollectedSignal): stri
     const { signal, namespaceName } = collected;
     const params = signal.parameters.filter((parameter) => !parameter.isVarargs);
     const paramFfi = params.map((parameter) =>
-        writeFfiType(ctx, qualifyTypeRef(parameter.type, namespaceName), parameter.transferOwnership),
+        renderFfiType(ctx, qualifyTypeRef(parameter.type, namespaceName), parameter.transferOwnership),
     );
     const trampolineParamFfi = params.map((parameter, index) =>
         isOutParameter(parameter) || isCellInout(ctx, parameter) ? `t.ref(${paramFfi[index]})` : paramFfi[index],
     );
     const returnRef = qualifyTypeRef(signal.returnValue.type, namespaceName);
     const isVoid = isVoidRef(returnRef);
-    const returnFfi = isVoid ? "t.void" : writeFfiType(ctx, returnRef, signal.returnValue.transferOwnership);
+    const returnFfi = isVoid ? "t.void" : renderFfiType(ctx, returnRef, signal.returnValue.transferOwnership);
     const trampolineArgs = ['t.object("borrowed")', ...trampolineParamFfi, "t.void"].join(", ");
     const trampoline = `t.trampoline([${trampolineArgs}], ${returnFfi}, { hasDestroy: true, userDataIndex: ${params.length + 1} })`;
     const invoke = renderInvokeClosure(ctx, collected, params, isVoid ? undefined : returnRef);
@@ -165,7 +165,7 @@ const renderInvokeClosure = (
 /**
  * Renders the invoke closure for a signal with out-parameters.
  *
- * The handler returns its results as the tuple {@link writeMethodReturnType}
+ * The handler returns its results as the tuple {@link renderMethodReturnType}
  * describes (`[primary, ...outs]` when both exist, the scalar out alone for a
  * void return with a single out, or an out-only tuple otherwise). The shared
  * {@link renderTupleWriteback} destructures that tuple and writes each out

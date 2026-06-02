@@ -15,7 +15,7 @@ const getConfigHook = (): ConfigHook => {
 describe("gtkxSkipReactDomOptimize", () => {
     it("has the canonical plugin name and post enforcement", () => {
         const plugin = gtkxSkipReactDomOptimize();
-        expect(plugin.name).toBe("gtkx:remove-react-dom-optimized");
+        expect(plugin.name).toBe("gtkx:skip-react-dom-optimize");
         expect(plugin.enforce).toBe("post");
     });
 

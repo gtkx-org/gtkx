@@ -49,12 +49,12 @@ function lastOutgoingRequest(conn: TestConnection): IpcRequest {
     return JSON.parse(line) as IpcRequest;
 }
 
-interface ManagerCtx {
+interface ManagerContext {
     transport: FakeAppTransport;
     manager: ConnectionManager;
 }
 
-const ctx = {} as ManagerCtx;
+const ctx = {} as ManagerContext;
 
 /**
  * Emits an `app.register` request for the given connection on the shared
@@ -83,7 +83,7 @@ function registerWithUnregisterSpy(): { conn: TestConnection; onUnregister: Retu
     return { conn, onUnregister };
 }
 
-function setupManagerCtx(): void {
+function setupManagerContext(): void {
     beforeEach(() => {
         vi.useFakeTimers();
         ctx.transport = new FakeAppTransport();
@@ -96,7 +96,7 @@ function setupManagerCtx(): void {
 }
 
 describe("ConnectionManager registration — basics", () => {
-    setupManagerCtx();
+    setupManagerContext();
     it("registers an app and emits appRegistered with its info", () => {
         const { transport, manager } = ctx;
         const conn = makeConnection("c1");
@@ -134,7 +134,7 @@ describe("ConnectionManager registration — basics", () => {
 });
 
 describe("ConnectionManager registration — explicit unregister", () => {
-    setupManagerCtx();
+    setupManagerContext();
     it("unregisters an app via app.unregister and emits appUnregistered", () => {
         const { transport, manager } = ctx;
         const { conn, onUnregister } = registerWithUnregisterSpy();
@@ -159,7 +159,7 @@ describe("ConnectionManager registration — explicit unregister", () => {
 });
 
 describe("ConnectionManager registration — disconnect", () => {
-    setupManagerCtx();
+    setupManagerContext();
     it("removes the app when its connection disconnects", () => {
         const { transport, manager } = ctx;
         const { conn, onUnregister } = registerWithUnregisterSpy();
@@ -182,7 +182,7 @@ describe("ConnectionManager registration — disconnect", () => {
 });
 
 describe("ConnectionManager getDefaultApp", () => {
-    setupManagerCtx();
+    setupManagerContext();
     it("returns undefined when no apps are connected", () => {
         expect(ctx.manager.getDefaultApp()).toBeUndefined();
     });
@@ -197,7 +197,7 @@ describe("ConnectionManager getDefaultApp", () => {
 });
 
 describe("ConnectionManager waitForApp", () => {
-    setupManagerCtx();
+    setupManagerContext();
     it("resolves immediately when an app is already registered", async () => {
         const { manager } = ctx;
         const conn = makeConnection("c1");
@@ -227,7 +227,7 @@ describe("ConnectionManager waitForApp", () => {
     });
 });
 
-function registerAppForCtx(appId: string, connectionId = "c1"): TestConnection {
+function registerAppForContext(appId: string, connectionId = "c1"): TestConnection {
     const conn = makeConnection(connectionId);
     emitRegister(conn, { appId, pid: 1 }, "reg");
     ctx.transport.sent.length = 0;
@@ -235,9 +235,9 @@ function registerAppForCtx(appId: string, connectionId = "c1"): TestConnection {
 }
 
 describe("ConnectionManager sendToApp — happy paths", () => {
-    setupManagerCtx();
+    setupManagerContext();
     it("sends a request to the named app and resolves with the response result", async () => {
-        const conn = registerAppForCtx("app-a");
+        const conn = registerAppForContext("app-a");
         const promise = ctx.manager.sendToApp("app-a", "ping", { hello: "world" });
         const sent = lastOutgoingRequest(conn);
 
@@ -247,7 +247,7 @@ describe("ConnectionManager sendToApp — happy paths", () => {
     });
 
     it("sends to the default app when appId is undefined", async () => {
-        const conn = registerAppForCtx("app-a");
+        const conn = registerAppForContext("app-a");
         const promise = ctx.manager.sendToApp(undefined, "ping");
         const sent = lastOutgoingRequest(conn);
 
@@ -257,7 +257,7 @@ describe("ConnectionManager sendToApp — happy paths", () => {
     });
 
     it("ignores responses for unknown request ids", async () => {
-        const conn = registerAppForCtx("app-a");
+        const conn = registerAppForContext("app-a");
         const promise = ctx.manager.sendToApp("app-a", "ping");
         const sent = lastOutgoingRequest(conn);
 
@@ -269,7 +269,7 @@ describe("ConnectionManager sendToApp — happy paths", () => {
 });
 
 describe("ConnectionManager sendToApp — lookup errors", () => {
-    setupManagerCtx();
+    setupManagerContext();
     it("rejects with appNotFound when the named app is unknown", async () => {
         await expect(ctx.manager.sendToApp("missing", "ping")).rejects.toMatchObject({
             code: McpErrorCode.APP_NOT_FOUND,
@@ -284,9 +284,9 @@ describe("ConnectionManager sendToApp — lookup errors", () => {
 });
 
 describe("ConnectionManager sendToApp — transport errors", () => {
-    setupManagerCtx();
+    setupManagerContext();
     it("rejects with connectionWriteFailed and removes the app when the underlying send fails", async () => {
-        const conn = registerAppForCtx("app-a");
+        const conn = registerAppForContext("app-a");
         const onUnregister = vi.fn();
         ctx.manager.on("appUnregistered", onUnregister);
         conn.capture.writable = false;
@@ -312,7 +312,7 @@ describe("ConnectionManager sendToApp — transport errors", () => {
     });
 
     it("rejects with the McpError described by an error response", async () => {
-        const conn = registerAppForCtx("app-a");
+        const conn = registerAppForContext("app-a");
         const promise = ctx.manager.sendToApp("app-a", "ping");
         const sent = lastOutgoingRequest(conn);
 
@@ -333,9 +333,9 @@ describe("ConnectionManager sendToApp — transport errors", () => {
 });
 
 describe("ConnectionManager cleanup", () => {
-    setupManagerCtx();
+    setupManagerContext();
     it("rejects all pending requests with a shutdown error", async () => {
-        const conn = registerAppForCtx("app-a");
+        const conn = registerAppForContext("app-a");
 
         const promise = ctx.manager.sendToApp("app-a", "ping");
         expect(conn.capture.lines.length).toBeGreaterThan(0);

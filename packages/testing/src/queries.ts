@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { buildMultipleFoundError, buildNotFoundError } from "./error-builder.js";
+import { multipleFoundError, notFoundError } from "./errors.js";
 import { buildQueries } from "./query-helpers.js";
 import { type Container, findAll, traverse } from "./traversal.js";
 import type { ByRoleOptions, Matcher, MatcherOptions } from "./types.js";
@@ -98,8 +98,8 @@ export const queryAllByRole = (container: Container, role: Gtk.AccessibleRole, o
 
 const roleVariants = buildQueries<[role: Gtk.AccessibleRole, options?: ByRoleOptions]>(
     queryAllByRole,
-    (container, count, role, options) => buildMultipleFoundError(container, "role", { role, options }, count),
-    (container, role, options) => buildNotFoundError(container, "role", { role, options }),
+    (container, count, role, options) => multipleFoundError(container, "role", { role, options }, count),
+    (container, role, options) => notFoundError(container, "role", { role, options }),
 );
 
 /**
@@ -134,8 +134,8 @@ export const queryAllByLabelText = (container: Container, text: Matcher, options
 
 const labelTextVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
     queryAllByLabelText,
-    (container, count, text, options) => buildMultipleFoundError(container, "labelText", { text, options }, count),
-    (container, text, options) => buildNotFoundError(container, "labelText", { text, options }),
+    (container, count, text, options) => multipleFoundError(container, "labelText", { text, options }, count),
+    (container, text, options) => notFoundError(container, "labelText", { text, options }),
 );
 
 /**
@@ -151,8 +151,8 @@ export const queryAllByText = (container: Container, text: Matcher, options?: Ma
 
 const textVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
     queryAllByText,
-    (container, count, text, options) => buildMultipleFoundError(container, "text", { text, options }, count),
-    (container, text, options) => buildNotFoundError(container, "text", { text, options }),
+    (container, count, text, options) => multipleFoundError(container, "text", { text, options }, count),
+    (container, text, options) => notFoundError(container, "text", { text, options }),
 );
 
 /**
@@ -168,8 +168,8 @@ export const queryAllByName = (container: Container, name: Matcher, options?: Ma
 
 const nameVariants = buildQueries<[name: Matcher, options?: MatcherOptions]>(
     queryAllByName,
-    (container, count, name, options) => buildMultipleFoundError(container, "name", { name, options }, count),
-    (container, name, options) => buildNotFoundError(container, "name", { name, options }),
+    (container, count, name, options) => multipleFoundError(container, "name", { name, options }, count),
+    (container, name, options) => notFoundError(container, "name", { name, options }),
 );
 
 /** Finds a single element matching a role without throwing. Returns `null` if not found; throws if multiple match. */

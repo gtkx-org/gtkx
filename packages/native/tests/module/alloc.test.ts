@@ -6,7 +6,7 @@ import {
     expectRectangleFields,
     readRgbaChannels,
     writeRectangleFields,
-} from "./call-boxed-alloc-setup.js";
+} from "./call-boxed-alloc-helpers.js";
 import { FLOAT32, GTK_LIB } from "./utils.js";
 
 describe("alloc", () => {

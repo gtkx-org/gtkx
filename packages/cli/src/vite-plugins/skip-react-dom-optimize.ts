@@ -13,7 +13,7 @@ import type { Plugin } from "vite";
  * @returns A Vite plugin that mutates `config.optimizeDeps.include` in place.
  */
 export const gtkxSkipReactDomOptimize = (): Plugin => ({
-    name: "gtkx:remove-react-dom-optimized",
+    name: "gtkx:skip-react-dom-optimize",
     enforce: "post",
     config(config) {
         config.optimizeDeps ??= {};

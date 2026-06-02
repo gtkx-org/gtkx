@@ -1,4 +1,4 @@
-import { toCamelCase, toIdentifier, toPascalCase } from "@gtkx/utils";
+import { toCamelCase, toIdentifier } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import type { GirFunction } from "../gir/function.js";
 import {
@@ -11,7 +11,7 @@ import {
 import { qualifyTypeRef } from "../gir/qualify.js";
 import type { ResolvedNamed } from "../gir/repository.js";
 import type { GirTypeRef, NamedTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
-import { writeTsType } from "./ts-type.js";
+import { renderTsType } from "./ts-type.js";
 import { isCellInout, type ResolvedCallback, resolveCallbackType } from "./value.js";
 
 /**
@@ -32,7 +32,7 @@ export const methodExportName = (fn: GirFunction): string => toCamelCase(fn.name
  * @param ctx - The module context
  * @param fn - The callable
  */
-export const writeMethodSignature = (ctx: ModuleContext, fn: GirFunction): string =>
+export const renderMethodSignature = (ctx: ModuleContext, fn: GirFunction): string =>
     renderInputParameters(
         ctx,
         fn,
@@ -54,7 +54,7 @@ const renderInputParameters = (
         if (parameter.optional || isOptionalExtra(parameter)) {
             sawOptional = true;
         }
-        const annotation = writeTsType(ctx, parameter.type, parameter.nullable);
+        const annotation = renderTsType(ctx, parameter.type, parameter.nullable);
         parts.push(sawOptional ? `${name}?: ${annotation}` : `${name}: ${annotation}`);
     }
     return parts.join(", ");
@@ -76,7 +76,7 @@ export type InputParameter = {
  * Drops `<varargs>` slots, out-only and caller-allocated-out parameters,
  * array-length parameters computed from a sibling array, and the
  * `user_data`/`GDestroyNotify` slots folded into a callback descriptor —
- * the same positions {@link writeMethodSignature} omits. Each surviving
+ * the same positions {@link renderMethodSignature} omits. Each surviving
  * parameter keeps its original index so callers can recover argument names.
  *
  * @param fn - The callable
@@ -138,7 +138,7 @@ const arrayLengthSources = (fn: GirFunction): ReadonlyMap<number, number> => {
  * @param ctx - The module context
  * @param fn - The callable
  */
-export const writeMethodReturnType = (ctx: ModuleContext, fn: GirFunction): string => {
+export const renderMethodReturnType = (ctx: ModuleContext, fn: GirFunction): string => {
     const consumedByReturn = returnArrayLengthIndices(fn);
     const outs = fn.parameters.filter(
         (p, index) =>
@@ -147,13 +147,13 @@ export const writeMethodReturnType = (ctx: ModuleContext, fn: GirFunction): stri
     );
     const primaryReturnsValue = !isVoidReturn(fn);
     if (outs.length === 0) {
-        return primaryReturnsValue ? writeTsType(ctx, fn.returnValue.type, fn.returnValue.nullable) : "void";
+        return primaryReturnsValue ? renderTsType(ctx, fn.returnValue.type, fn.returnValue.nullable) : "void";
     }
-    const outTypes = outs.map((parameter) => writeTsType(ctx, parameter.type, false));
+    const outTypes = outs.map((parameter) => renderTsType(ctx, parameter.type, false));
     if (!primaryReturnsValue) {
         return outTypes.length === 1 ? `${outTypes[0]}` : `[${outTypes.join(", ")}]`;
     }
-    const primary = writeTsType(ctx, fn.returnValue.type, fn.returnValue.nullable);
+    const primary = renderTsType(ctx, fn.returnValue.type, fn.returnValue.nullable);
     return `[${primary}, ${outTypes.join(", ")}]`;
 };
 
@@ -222,7 +222,7 @@ type ReturnOverride =
  * @param finishMember - The camelCase JS name of the companion `*_finish` method
  * @param bindingExpression - Expression that evaluates to the bound async `t.fn` callable
  */
-export const writePromisifiedBody = (
+export const renderPromisifiedBody = (
     ctx: ModuleContext,
     asyncFn: GirFunction,
     finishMember: string,
@@ -281,7 +281,7 @@ const findCancellableIndex = (parameters: readonly GirParameter[]): number => {
  * @param asyncFn - The `*_async` callable
  * @param finishFn - The companion `*_finish` callable
  */
-export const writePromisifiedSignature = (
+export const renderPromisifiedSignature = (
     ctx: ModuleContext,
     asyncFn: GirFunction,
     finishFn: GirFunction,
@@ -292,7 +292,7 @@ export const writePromisifiedSignature = (
         (parameter) => isCallbackParameter(ctx, parameter),
         isCancellable,
     );
-    const finishReturn = writeMethodReturnType(ctx, finishFn);
+    const finishReturn = renderMethodReturnType(ctx, finishFn);
     return { signature, returnType: `Promise<${finishReturn}>` };
 };
 
@@ -347,7 +347,7 @@ export type WriteMethodBodyOptions = {
     readonly returnAs?: ReturnOverride;
 };
 
-export const writeMethodBody = (ctx: ModuleContext, fn: GirFunction, options: WriteMethodBodyOptions): string => {
+export const renderMethodBody = (ctx: ModuleContext, fn: GirFunction, options: WriteMethodBodyOptions): string => {
     const { bindingExpression, isStatic, returnAs } = options;
     const builder: BodyBuilder = { callArgs: [], setup: [], outRefs: [] };
     if (!isStatic && fn.instance !== undefined) {
@@ -888,7 +888,7 @@ const wrapCollection = (
 ): string => {
     const itemExpression = collectionItemWrap(ctx, element);
     if (itemExpression === undefined) {
-        const elementTs = element === undefined ? "unknown" : writeTsType(ctx, element, false);
+        const elementTs = element === undefined ? "unknown" : renderTsType(ctx, element, false);
         return `(${valueExpression} as ${elementTs}[]${nullable ? " | null" : ""})`;
     }
     return nullable
@@ -953,8 +953,8 @@ type WrapResolvedOptions = {
     readonly nullable: boolean;
 };
 
-const wrapResolved = (ctx: ModuleContext, resolved: ResolvedNamed, target: WrapResolvedOptions): string => {
-    const { namespaceName, typeName, valueExpression, nullable } = target;
+const wrapResolved = (ctx: ModuleContext, resolved: ResolvedNamed, options: WrapResolvedOptions): string => {
+    const { namespaceName, typeName, valueExpression, nullable } = options;
     switch (resolved.kind) {
         case "class": {
             ctx.addRuntimeImport("getNativeObject");
@@ -982,7 +982,7 @@ const wrapResolved = (ctx: ModuleContext, resolved: ResolvedNamed, target: WrapR
 };
 
 const qualifiedRuntimeReference = (ctx: ModuleContext, namespaceName: string, typeName: string): string => {
-    const local = toPascalCase(typeName);
+    const local = typeName;
     if (namespaceName === ctx.namespace.name) return local;
     const alias = ctx.addCrossNamespaceImport(namespaceName);
     return `${alias}.${local}`;
