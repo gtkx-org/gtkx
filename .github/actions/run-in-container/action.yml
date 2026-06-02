@@ -82,10 +82,14 @@ runs:
           done
         fi
 
+        # The container runs as root while /workspace is owned by the runner
+        # user, so git refuses to operate on it until it is marked safe.
+        TRUST_WORKSPACE="git config --global --add safe.directory /workspace"
+
         if [ "$INPUT_INSTALL" = "true" ]; then
-          FULL_COMMAND="pnpm install --frozen-lockfile && $INPUT_COMMAND"
+          FULL_COMMAND="$TRUST_WORKSPACE && pnpm install --frozen-lockfile && $INPUT_COMMAND"
         else
-          FULL_COMMAND="$INPUT_COMMAND"
+          FULL_COMMAND="$TRUST_WORKSPACE && $INPUT_COMMAND"
         fi
 
         docker run "${DOCKER_ARGS[@]}" gtkx-ci:local bash -c "$FULL_COMMAND"
