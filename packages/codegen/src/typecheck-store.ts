@@ -21,6 +21,7 @@ const GI_SPECIFIER = "@gtkx/gi/";
 const COMPILER_OPTIONS: ts.CompilerOptions = {
     module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler,
+    customConditions: ["source"],
     target: ts.ScriptTarget.ESNext,
     strict: true,
     skipLibCheck: true,
