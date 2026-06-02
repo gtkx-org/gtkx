@@ -12,6 +12,7 @@ export default defineConfig({
         },
     },
     test: {
+        bail: 1,
         name: "e2e",
         include: ["tests/**/*.test.{ts,tsx}"],
         setupFiles: ["./tests/setup.ts"],

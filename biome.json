@@ -1,8 +1,5 @@
 {
     "$schema": "https://biomejs.dev/schemas/2.4.16/schema.json",
-    "assist": {
-        "enabled": true
-    },
     "css": {
         "parser": {
             "cssModules": true
@@ -51,7 +48,6 @@
                             },
                             {
                                 "selector": { "kind": "typeAlias" },
-                                "match": "[A-Z][a-zA-Z0-9]*",
                                 "formats": ["PascalCase"]
                             }
                         ]

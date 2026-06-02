@@ -18,7 +18,6 @@ export default defineConfig({
                 "packages/react/src/**/*.{ts,tsx}",
                 "packages/testing/src/**/*.{ts,tsx}",
                 "packages/utils/src/**/*.{ts,tsx}",
-                "packages/vitest/src/**/*.{ts,tsx}",
             ],
             exclude: ["**/generated/**", "**/dist/**", "**/out-tsc/**", "**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}"],
         },
