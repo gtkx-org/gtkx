@@ -5,13 +5,15 @@ import { GIR_NAMESPACE_PATTERN, type GtkxConfig, LIBRARIES_WILDCARD } from "../c
  * GIR namespaces always generated, whether or not `gtkx.config.ts` lists
  * `libraries`.
  *
- * GTK 4, libadwaita, and GtkSource — the namespaces `@gtkx/react`'s built-in
- * widget nodes import at runtime. Their transitive dependencies (GLib, GObject,
- * Gio, Gdk, Pango, Cairo, …) are resolved automatically from the GIR files on
- * disk. Explicit `libraries` are merged with this set rather than replacing it,
- * so a project's bindings always cover the reconciler's needs.
+ * GTK 4, libadwaita, GtkSource, and WebKit — the namespaces `@gtkx/react`'s
+ * built-in widget nodes use: GtkSource at runtime (the SourceView node) and
+ * WebKit in the node typings (the WebView node), so a project's generated
+ * bindings always resolve both the reconciler's imports and its types. Their
+ * transitive dependencies (GLib, GObject, Gio, Gdk, Pango, Cairo, …) are
+ * resolved automatically from the GIR files on disk. Explicit `libraries` are
+ * merged with this set rather than replacing it.
  */
-const DEFAULT_LIBRARIES: readonly string[] = ["Gtk-4.0", "Adw-1", "GtkSource-5"];
+const DEFAULT_LIBRARIES: readonly string[] = ["Gtk-4.0", "Adw-1", "GtkSource-5", "WebKit-6.0"];
 
 const GIR_FILE_SUFFIX = ".gir";
 

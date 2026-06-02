@@ -17,8 +17,9 @@
  *    publish every public `@gtkx/*` package.
  * 4. Installs the published CLI globally, scaffolds a new app with `gtkx create`
  *    in a directory outside the workspace, and builds it with `gtkx build`.
- * 5. Asserts the build produced a non-empty bundle and native binary, then runs
- *    the scaffolded app's own test suite, which renders it under Xvfb.
+ * 5. Asserts the build produced a non-empty bundle and native binary, then
+ *    type-checks the app and runs its own test suite, which renders it under
+ *    Xvfb.
  *
  * The process exits non-zero if any step fails, and always tears down the
  * registry and temporary directories.
@@ -280,6 +281,19 @@ async function buildConsumer(appDir: string, env: NodeJS.ProcessEnv): Promise<vo
 }
 
 /**
+ * Type-checks the scaffolded app, confirming the published bindings resolve
+ * every namespace `@gtkx/react`'s types reference (including WebKit, which the
+ * WebView node's typings import) — something the bundler's type stripping would
+ * otherwise hide.
+ *
+ * @param appDir - The scaffolded app directory.
+ * @param env - The registry-scoped environment.
+ */
+async function typecheckConsumer(appDir: string, env: NodeJS.ProcessEnv): Promise<void> {
+    await run("npm", ["run", "typecheck"], { cwd: appDir, env });
+}
+
+/**
  * Runs the scaffolded app's own test suite, which renders the app under Xvfb
  * via `@gtkx/vitest` and queries it through `@gtkx/testing`, exercising the
  * published runtime — not just the bundle — end to end.
@@ -345,13 +359,15 @@ async function main(): Promise<void> {
     const npmrcPath = join(homedir(), ".npmrc");
     const previousNpmrc = existsSync(npmrcPath) ? readFileSync(npmrcPath, "utf8") : undefined;
     const manifestSnapshot = snapshotManifests();
-    writeFileSync(configPath, verdaccioConfig(registryDir));
 
-    const server: Server = await runServer(configPath);
+    let server: Server | undefined;
     try {
+        writeFileSync(configPath, verdaccioConfig(registryDir));
+        const activeServer: Server = await runServer(configPath);
+        server = activeServer;
         await new Promise<void>((resolve, reject) => {
-            server.once("error", reject);
-            server.listen(PORT, () => resolve());
+            activeServer.once("error", reject);
+            activeServer.listen(PORT, () => resolve());
         });
         await waitForRegistry();
 
@@ -364,13 +380,17 @@ async function main(): Promise<void> {
         const appDir = await scaffoldConsumer(consumerRoot, env);
         await buildConsumer(appDir, env);
         assertBuildOutputs(appDir);
+        await typecheckConsumer(appDir, env);
         await testConsumer(appDir, env);
 
-        console.log("publish-test: consumer scaffold, build, and test succeeded");
+        console.log("publish-test: consumer scaffold, build, typecheck, and test succeeded");
     } finally {
-        await new Promise<void>((resolve) => {
-            server.close(() => resolve());
-        });
+        if (server) {
+            const runningServer = server;
+            await new Promise<void>((resolve) => {
+                runningServer.close(() => resolve());
+            });
+        }
         if (previousNpmrc === undefined) {
             rmSync(npmrcPath, { force: true });
         } else {

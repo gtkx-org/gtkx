@@ -15,7 +15,10 @@ vi.mock("@gtkx/codegen", () => ({
 }));
 
 /** Writes a fingerprint sentinel whose recomputed value matches the mock. */
-const writeFingerprint = (cwd: string, libraries: readonly string[] = ["Gtk-4.0", "Adw-1", "GtkSource-5"]) => {
+const writeFingerprint = (
+    cwd: string,
+    libraries: readonly string[] = ["Gtk-4.0", "Adw-1", "GtkSource-5", "WebKit-6.0"],
+) => {
     writeFileSync(
         join(cwd, "node_modules", ".gtkx", "gi", ".codegen-fingerprint.json"),
         JSON.stringify({ value: "test-fingerprint", girFiles: [], libraries }),
@@ -64,7 +67,7 @@ const writeGiBarrel = (cwd: string, namespace: string) => {
 
 /** Materializes gi barrels for every namespace the default library set resolves to. */
 const writeDefaultGiBarrels = (cwd: string) => {
-    for (const namespace of ["gtk", "adw", "gtksource"]) {
+    for (const namespace of ["gtk", "adw", "gtksource", "webkit"]) {
         writeGiBarrel(cwd, namespace);
     }
 };
@@ -296,7 +299,11 @@ describe("ensureGenerated — fingerprint", () => {
         installPresentStore();
         writeFileSync(
             join(cwd, "node_modules", ".gtkx", "gi", ".codegen-fingerprint.json"),
-            JSON.stringify({ value: "stale", girFiles: [], libraries: ["Gtk-4.0", "Adw-1", "GtkSource-5"] }),
+            JSON.stringify({
+                value: "stale",
+                girFiles: [],
+                libraries: ["Gtk-4.0", "Adw-1", "GtkSource-5", "WebKit-6.0"],
+            }),
         );
 
         expect(await ensureGenerated(cwd)).toBe(true);

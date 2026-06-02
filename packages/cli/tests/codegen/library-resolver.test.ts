@@ -5,16 +5,17 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resolveLibraries } from "../../src/codegen/library-resolver.js";
 
 describe("resolveLibraries", () => {
-    it("returns the default GTK + libadwaita + GtkSource set when libraries is omitted", () => {
-        expect(resolveLibraries(undefined, [])).toEqual(["Gtk-4.0", "Adw-1", "GtkSource-5"]);
+    it("returns the default GTK + libadwaita + GtkSource + WebKit set when libraries is omitted", () => {
+        expect(resolveLibraries(undefined, [])).toEqual(["Gtk-4.0", "Adw-1", "GtkSource-5", "WebKit-6.0"]);
     });
 
     it("merges an explicit list with the defaults, deduplicating overlaps", () => {
-        expect(resolveLibraries(["GtkSource-5", "WebKit-6.0"], [])).toEqual([
+        expect(resolveLibraries(["WebKit-6.0", "Soup-3.0"], [])).toEqual([
             "Gtk-4.0",
             "Adw-1",
             "GtkSource-5",
             "WebKit-6.0",
+            "Soup-3.0",
         ]);
     });
 
