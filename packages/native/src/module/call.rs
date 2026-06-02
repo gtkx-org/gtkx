@@ -9,7 +9,7 @@
 //! 1. Parse library name, symbol name, arguments, and return type from JS
 //! 2. Convert arguments to [`ffi::FfiValue`] representations
 //! 3. Build a libffi CIF (Call Interface) with proper type signatures
-//! 4. Load the library and resolve the symbol on the GLib thread
+//! 4. Load the library and resolve the symbol on the `GLib` thread
 //! 5. Execute the FFI call with proper type dispatching
 //! 6. Convert the result back to a [`Value`] for JavaScript
 //! 7. Update any `Ref` type out-parameters with modified values

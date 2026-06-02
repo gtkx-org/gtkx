@@ -44,8 +44,9 @@ fn get_library_caches_loaded_libraries() {
 #[test]
 fn get_library_returns_error_for_nonexistent() {
     common::run(|| {
-        let is_err =
-            GlibThreadState::with(|state| state.library("libnonexistent_library_12345.so").is_err());
+        let is_err = GlibThreadState::with(|state| {
+            state.library("libnonexistent_library_12345.so").is_err()
+        });
 
         assert!(is_err);
     });

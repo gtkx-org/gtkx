@@ -1,12 +1,12 @@
-//! GLib thread-local state and native library management.
+//! `GLib` thread-local state and native library management.
 //!
-//! This module manages the thread-local state for the GLib thread, composed of
+//! This module manages the thread-local state for the `GLib` thread, composed of
 //! focused single-responsibility types:
 //!
 //! - [`LibraryCache`]: Caches dynamically loaded native libraries
 //! - [`FundamentalFnCache`]: Caches ref/unref function pointers for fundamental types
 //! - [`GlibThreadState`]: Thin coordinator composing the above, accessed via [`GlibThreadState::with`]
-//! - [`GlibThread`]: Singleton for GLib thread lifecycle management
+//! - [`GlibThread`]: Singleton for `GLib` thread lifecycle management
 
 use std::cell::RefCell;
 use std::collections::HashMap;

@@ -17,6 +17,7 @@ use std::sync::atomic::{AtomicPtr, Ordering};
 
 use ::libffi::low as libffi_low;
 use ::libffi::middle as libffi;
+use gtk4::glib;
 use napi::JsFunction;
 
 use crate::dispatch::Mailbox;
@@ -223,6 +224,22 @@ fn flush_out_cells(cells: &[(usize, Value)], out_targets: &[(*mut c_void, &Type)
     }
 }
 
+/// Posts the drop of a consumed one-shot trampoline state onto a `GLib` idle
+/// source so it runs after the current handler unwinds.
+///
+/// The async scope hands its [`TrampolineState`] back from
+/// [`TrampolineData::handle_call`] once the JavaScript callback has run.
+/// Dropping it inline would free the libffi closure whose handler is still on
+/// the stack, returning execution into freed executable memory once the handler
+/// returns. The idle source runs on the `GLib` thread after the trampoline stub
+/// is no longer live, making the free safe.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+fn defer_oneshot_free(state_ptr: *mut TrampolineState) {
+    glib::idle_add_local_once(move || {
+        drop(unsafe { Box::from_raw(state_ptr) });
+    });
+}
+
 unsafe extern "C" fn trampoline_handler(
     _cif: &libffi_low::ffi_cif,
     result: &mut u64,
@@ -231,6 +248,6 @@ unsafe extern "C" fn trampoline_handler(
 ) {
     let state_ptr = unsafe { data.handle_call(args, result as *mut u64 as *mut c_void) };
     if let Some(ptr) = state_ptr {
-        drop(unsafe { Box::from_raw(ptr) });
+        defer_oneshot_free(ptr);
     }
 }
