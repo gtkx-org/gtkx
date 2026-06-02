@@ -8,9 +8,10 @@
  * 1. Starts a Verdaccio registry that serves `@gtkx/*` from local storage only
  *    (no uplink) while proxying every other package to npmjs, so the scaffolded
  *    app resolves the freshly built packages instead of anything on npm.
- * 2. Registers a registry user and writes a user-level `.npmrc` so pnpm, the
- *    release script's `npm publish` calls, and the consumer's installs all
- *    target the local registry with that token regardless of directory.
+ * 2. Registers a registry user and writes a throwaway `.npmrc` (pointed to by
+ *    `NPM_CONFIG_USERCONFIG`) so pnpm, the release script's `npm publish`
+ *    calls, and the consumer's installs all target the local registry with
+ *    that token, without touching any global config.
  * 3. Builds the native binary for the current architecture and stages it the
  *    way the release workflow arranges downloaded artifacts, then reuses the
  *    release script (pointed at Verdaccio, without provenance) to build and
@@ -38,7 +39,7 @@ import {
     writeFileSync,
 } from "node:fs";
 import type { Server } from "node:http";
-import { homedir, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
@@ -191,17 +192,20 @@ async function createUserToken(): Promise<string> {
 }
 
 /**
- * Builds the environment for the publish and consumer commands. `npm` honors
- * `npm_config_registry`, which redirects the scaffolded app's installs; `pnpm`
- * ignores it and reads the registry from the user `.npmrc` instead. Provenance
- * is dropped for the throwaway publish.
+ * Builds the environment for the publish and consumer commands. Both `npm` and
+ * `pnpm` read the registry and token from the throwaway `.npmrc` pointed to by
+ * `NPM_CONFIG_USERCONFIG`, which propagates through `pnpm run` into the nested
+ * `pnpm -r publish` and `napi`/`npm publish` calls, so no global config is
+ * touched. Provenance is dropped for the throwaway publish.
  *
+ * @param userConfig - Absolute path of the throwaway npm config.
  * @returns The environment for every publish and consumer command.
  */
-function registryEnv(): NodeJS.ProcessEnv {
+function registryEnv(userConfig: string): NodeJS.ProcessEnv {
     const env: NodeJS.ProcessEnv = {
         ...process.env,
         npm_config_registry: REGISTRY,
+        NPM_CONFIG_USERCONFIG: userConfig,
     };
     delete env.NPM_CONFIG_PROVENANCE;
     return env;
@@ -356,8 +360,7 @@ async function main(): Promise<void> {
     const registryDir = mkdtempSync(join(tmpdir(), "gtkx-registry-"));
     const consumerRoot = mkdtempSync(join(tmpdir(), "gtkx-consumer-"));
     const configPath = join(registryDir, "config.yaml");
-    const npmrcPath = join(homedir(), ".npmrc");
-    const previousNpmrc = existsSync(npmrcPath) ? readFileSync(npmrcPath, "utf8") : undefined;
+    const npmrcPath = join(registryDir, "npmrc");
     const manifestSnapshot = snapshotManifests();
 
     let server: Server | undefined;
@@ -373,7 +376,7 @@ async function main(): Promise<void> {
 
         const token = await createUserToken();
         writeFileSync(npmrcPath, `registry=${REGISTRY}\n//${HOST}/:_authToken=${token}\n`);
-        const env = registryEnv();
+        const env = registryEnv(npmrcPath);
 
         await stageNativeArtifacts();
         await publishPackages(env);
@@ -390,11 +393,6 @@ async function main(): Promise<void> {
             await new Promise<void>((resolve) => {
                 runningServer.close(() => resolve());
             });
-        }
-        if (previousNpmrc === undefined) {
-            rmSync(npmrcPath, { force: true });
-        } else {
-            writeFileSync(npmrcPath, previousNpmrc);
         }
         restoreManifests(manifestSnapshot);
         rmSync(registryDir, { recursive: true, force: true });
