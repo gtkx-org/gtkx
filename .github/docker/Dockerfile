@@ -58,6 +58,7 @@ RUN apt-get update \
         git \
         gdb \
         valgrind \
+        gnu-coreutils \
         libasan8 \
         adwaita-icon-theme \
         gsettings-desktop-schemas \
@@ -129,6 +130,28 @@ RUN url="https://github.com/CodSpeedHQ/valgrind-codspeed/releases/download/3.26.
     && rm -f /tmp/valgrind-codspeed.deb \
     && rm -rf /var/lib/apt/lists/* \
     && valgrind --version | grep -q codspeed
+
+# Ubuntu 26.04 ships the uutils (Rust) coreutils as the default provider, so
+# /bin/echo, /usr/bin/env and ~100 other utilities are symlinks into a single
+# multicall binary that picks its applet from its own executable identity. Under
+# `valgrind --tool=callgrind` — how CodSpeed instruments the benches — that
+# identity misreads as valgrind's tool binary `callgrind-amd64-linux`, so every
+# coreutils call the bench spawns exits non-zero with
+# "coreutils: unknown program 'callgrind-amd64-linux'", which the runner surfaces
+# as "failed to execute valgrind". GNU coreutils picks its applet from argv[0] and
+# is immune, so point each uutils symlink at the GNU build that gnu-coreutils
+# installs as /usr/bin/gnu<name>. coreutils-from-uutils stays installed because
+# build-essential depends on it; only the symlink targets move. The nine
+# uutils-only utilities without a gnu<name> counterpart keep their uutils target
+# and are off the benchmark path.
+RUN set -eux \
+    && for link in $(dpkg -L coreutils-from-uutils | while read -r p; do [ -L "$p" ] && echo "$p"; done); do \
+         name="$(basename "$link")"; \
+         if [ -x "/usr/bin/gnu$name" ]; then ln -sf "/usr/bin/gnu$name" "$link"; fi; \
+       done \
+    && [ "$(readlink -f /bin/echo)" = /usr/bin/gnuecho ] \
+    && /bin/echo --version | grep -q 'GNU coreutils' \
+    && /usr/bin/env --version | grep -q 'GNU coreutils'
 
 # CI has no GPU; drop any hardware Vulkan ICD so GTK selects the software
 # rasterizer instead of failing to initialize a real driver.
