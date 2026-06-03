@@ -51,6 +51,9 @@ RUN /usr/local/cargo/bin/rustup toolchain install nightly --profile minimal --co
 RUN /usr/local/cargo/bin/cargo install cargo-llvm-cov --locked \
     && chmod -R a+rwX $CARGO_HOME
 
+RUN /usr/local/cargo/bin/cargo install cargo-codspeed --locked \
+    && chmod -R a+rwX $CARGO_HOME
+
 RUN find /usr/share/vulkan/icd.d -type f -name '*.json' ! -name 'lvp_icd*' -delete
 
 ENV RUSTUP_TOOLCHAIN=stable

@@ -240,6 +240,10 @@ jobs:
           command: scripts/ci-miri.sh
           mount-cargo-cache: "true"
 
+  # Runs inside the CI container so the CodSpeed action instruments the bench
+  # processes directly (no nested docker, no host/container profile-path skew).
+  # Rust benches go through `cargo codspeed`; the reconciler benches through the
+  # vitest plugin.
   bench:
     needs: [changes, image]
     if: needs.changes.outputs.code == 'true'
@@ -247,29 +251,34 @@ jobs:
     timeout-minutes: 40
     # Report-only until a run is confirmed clean; then drop this line to gate.
     continue-on-error: true
+    container:
+      image: ${{ needs.image.outputs.ref }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     permissions:
       contents: read
+      packages: read
       id-token: write # public repo: authenticate to CodSpeed over OIDC, no token
-    env:
-      CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
-      # The runner has both docker and podman; pull-image tags the image under
-      # docker, so docker-run must use docker too (podman would rootless-rebuild
-      # and fail on newuidmap).
-      CONTAINER_ENGINE: docker
-      # Profiles written inside the container land under the mounted workspace so
-      # the host CodSpeed action can collect them.
-      CODSPEED_PROFILE_FOLDER: ${{ github.workspace }}/.codspeed
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
-      - name: Setup CI
-        uses: ./.github/actions/setup-ci
+      - name: Trust the workspace for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the workspace and the Rust benchmark
+        run: |
+          pnpm exec turbo build --filter=@gtkx/e2e
+          (cd packages/native && cargo codspeed build --bench marshalling)
 
       - name: Run CodSpeed benchmarks
         uses: CodSpeedHQ/action@v4
         with:
           mode: instrumentation
           run: |
-            scripts/docker-run pnpm --filter @gtkx/e2e bench
-            scripts/docker-run pnpm --filter @gtkx/native native-bench
+            (cd packages/native && cargo codspeed run)
+            pnpm --filter @gtkx/e2e bench
