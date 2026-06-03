@@ -373,8 +373,8 @@ importers:
         specifier: ^4.11.0
         version: 4.11.0(typedoc@0.28.19(typescript@6.0.3(patch_hash=7f52f469df09267ca72c1e431ec219bf69756877047c869a0e0ab0453d3e3299)))
       typedoc-vitepress-theme:
-        specifier: ^1.1.2
-        version: 1.1.2(typedoc-plugin-markdown@4.11.0(typedoc@0.28.19(typescript@6.0.3(patch_hash=7f52f469df09267ca72c1e431ec219bf69756877047c869a0e0ab0453d3e3299))))
+        specifier: ^1.1.3
+        version: 1.1.3(typedoc-plugin-markdown@4.11.0(typedoc@0.28.19(typescript@6.0.3(patch_hash=7f52f469df09267ca72c1e431ec219bf69756877047c869a0e0ab0453d3e3299))))
       vitepress:
         specifier: ^1.6.4
         version: 1.6.4(@algolia/client-search@5.53.0)(@types/node@25.9.1)(@types/react@19.2.15)(fuse.js@7.3.0)(lightningcss@1.32.0)(postcss@8.5.15)(react@19.2.6)(search-insights@2.17.3)(typescript@6.0.3(patch_hash=7f52f469df09267ca72c1e431ec219bf69756877047c869a0e0ab0453d3e3299))
@@ -4598,10 +4598,10 @@ packages:
     peerDependencies:
       typedoc: 0.28.x
 
-  typedoc-vitepress-theme@1.1.2:
-    resolution: {integrity: sha512-hQvCZRr5uKDqY1bRuY1+eNTNn6d4TE4OP5pnw65Y7WGgajkJW9X1/lVJK2UJpcwCmwkdjw1QIO49H9JQlxWhhw==}
+  typedoc-vitepress-theme@1.1.3:
+    resolution: {integrity: sha512-EK9iV7e3+R8lFNigdc0rIPWMxqfmDku0uGac3qYUu9tS4Qf1rhWZnyZJ4zu4G3iXrP5mqNPkv2wpODzRlA7jLw==}
     peerDependencies:
-      typedoc-plugin-markdown: '>=4.4.0'
+      typedoc-plugin-markdown: '>=4.11.0'
 
   typedoc@0.28.19:
     resolution: {integrity: sha512-wKh+lhdmMFivMlc6vRRcMGXeGEHGU2g8a2CkPTJjJlwRf1iXbimWIPcFolCqe4E0d/FRtGszpIrsp3WLpDB8Pw==}
@@ -9100,7 +9100,7 @@ snapshots:
     dependencies:
       typedoc: 0.28.19(typescript@6.0.3(patch_hash=7f52f469df09267ca72c1e431ec219bf69756877047c869a0e0ab0453d3e3299))
 
-  typedoc-vitepress-theme@1.1.2(typedoc-plugin-markdown@4.11.0(typedoc@0.28.19(typescript@6.0.3(patch_hash=7f52f469df09267ca72c1e431ec219bf69756877047c869a0e0ab0453d3e3299)))):
+  typedoc-vitepress-theme@1.1.3(typedoc-plugin-markdown@4.11.0(typedoc@0.28.19(typescript@6.0.3(patch_hash=7f52f469df09267ca72c1e431ec219bf69756877047c869a0e0ab0453d3e3299)))):
     dependencies:
       typedoc-plugin-markdown: 4.11.0(typedoc@0.28.19(typescript@6.0.3(patch_hash=7f52f469df09267ca72c1e431ec219bf69756877047c869a0e0ab0453d3e3299)))
 
