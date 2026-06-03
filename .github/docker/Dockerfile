@@ -58,7 +58,6 @@ RUN apt-get update \
         git \
         gdb \
         valgrind \
-        gnu-coreutils \
         libasan8 \
         adwaita-icon-theme \
         gsettings-desktop-schemas \
@@ -143,8 +142,12 @@ RUN url="https://github.com/CodSpeedHQ/valgrind-codspeed/releases/download/3.26.
 # installs as /usr/bin/gnu<name>. coreutils-from-uutils stays installed because
 # build-essential depends on it; only the symlink targets move. The nine
 # uutils-only utilities without a gnu<name> counterpart keep their uutils target
-# and are off the benchmark path.
+# and are off the benchmark path. Installing gnu-coreutils in this late layer
+# keeps the costly toolchain layers above cache-valid across rebuilds.
 RUN set -eux \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends gnu-coreutils \
+    && rm -rf /var/lib/apt/lists/* \
     && for link in $(dpkg -L coreutils-from-uutils | while read -r p; do [ -L "$p" ] && echo "$p"; done); do \
          name="$(basename "$link")"; \
          if [ -x "/usr/bin/gnu$name" ]; then ln -sf "/usr/bin/gnu$name" "$link"; fi; \
