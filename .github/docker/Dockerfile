@@ -1,70 +1,125 @@
-FROM fedora:44
+FROM ubuntu:26.04
 
-RUN dnf install -y \
-    gcc \
-    gcc-c++ \
-    make \
-    pkg-config \
-    gtk4-devel \
-    gobject-introspection-devel \
-    gtksourceview5-devel \
-    libadwaita-devel \
-    webkitgtk6.0-devel \
-    vte291-gtk4-devel \
-    gstreamer1-devel \
-    gstreamer1-plugins-base-devel \
-    gvfs \
-    gtk4-layer-shell-devel \
-    libsoup3-devel \
-    json-glib-devel \
-    libxml2-devel \
-    libsecret-devel \
-    at-spi2-core-devel \
-    appstream-devel \
-    mesa-libGLES \
-    xorg-x11-server-Xvfb \
-    ImageMagick \
-    dbus-daemon \
-    git \
-    gdb \
-    valgrind \
-    libasan \
-    && dnf debuginfo-install -y glib2 gtk4 libadwaita \
-    && dnf clean all \
-    && rm -rf /var/cache/dnf/*
+# Build-only; keeps apt non-interactive without persisting into the runtime env.
+ARG DEBIAN_FRONTEND=noninteractive
 
-RUN curl -fsSL https://rpm.nodesource.com/setup_26.x | bash - \
-    && dnf install -y nodejs \
-    && dnf clean all
+# A UTF-8 locale is always present on Ubuntu as C.UTF-8; setting it keeps GLib
+# and Pango from emitting locale warnings the test suite treats as failures.
+ENV LANG=C.UTF-8
 
-# Secondary Node 22 for CodSpeed benches only: @codspeed/core's native addon
-# uses a V8 symbol that Node 26's V8 has dropped, so the reconciler benches run
-# under the latest Node 22 (still on V8 12.4) while every other job stays on the
-# default Node 26.
-RUN mkdir -p /opt/node22 \
-    && ver=$(curl -fsSL https://nodejs.org/dist/index.json | grep -oE 'v22\.[0-9]+\.[0-9]+' | head -1) \
-    && curl -fsSL "https://nodejs.org/dist/${ver}/node-${ver}-linux-x64.tar.xz" \
-       | tar -xJ --strip-components=1 -C /opt/node22
+# The GTK/Adwaita build and runtime stack, GObject-introspection (codegen reads
+# the system GIR at /usr/share/gir-1.0), the GStreamer media backend, icon
+# themes and fonts for rendering, and the debug/test toolchain. The ddebs
+# repository supplies the GLib/GTK/Adwaita debug symbols so AddressSanitizer and
+# Valgrind backtraces resolve to source.
+#
+# The bindings target GTK 4.22.4; 26.04 releases with 4.22.2 and stages the
+# 4.22.4 bugfix in -proposed (Ubuntu-built, so it resolves against the release).
+# Pinning only the gtk4 source there — runtime, headers, GIR, and debug symbols
+# together — makes layout and text metrics match the target exactly while every
+# other package stays on the release pocket.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl gnupg ubuntu-dbgsym-keyring \
+    && codename="$(. /etc/os-release; echo "$VERSION_CODENAME")" \
+    && printf 'deb http://ddebs.ubuntu.com %s main restricted universe multiverse\ndeb http://ddebs.ubuntu.com %s-updates main restricted universe multiverse\ndeb http://ddebs.ubuntu.com %s-proposed main restricted universe multiverse\n' \
+        "$codename" "$codename" "$codename" > /etc/apt/sources.list.d/ddebs.list \
+    && printf 'deb http://archive.ubuntu.com/ubuntu %s-proposed main\n' "$codename" > /etc/apt/sources.list.d/proposed.list \
+    && printf 'Package: *\nPin: release a=%s-proposed\nPin-Priority: 100\n\nPackage: src:gtk4\nPin: release a=%s-proposed\nPin-Priority: 600\n' \
+        "$codename" "$codename" > /etc/apt/preferences.d/gtk4-proposed \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        pkg-config \
+        libgtk-4-dev \
+        libadwaita-1-dev \
+        libgtksourceview-5-dev \
+        libwebkitgtk-6.0-dev \
+        libvte-2.91-gtk4-dev \
+        libsoup-3.0-dev \
+        libjson-glib-dev \
+        libgtk4-layer-shell-dev \
+        libgstreamer1.0-dev \
+        libgstreamer-plugins-base1.0-dev \
+        libxml2-dev \
+        libsecret-1-dev \
+        libatspi2.0-dev \
+        libappstream-dev \
+        libgirepository1.0-dev \
+        gobject-introspection \
+        gir1.2-gstreamer-1.0 \
+        gir1.2-gst-plugins-base-1.0 \
+        gvfs \
+        libgles2 \
+        libgl1-mesa-dri \
+        xvfb \
+        imagemagick \
+        dbus \
+        dbus-x11 \
+        git \
+        gdb \
+        valgrind \
+        libasan8 \
+        adwaita-icon-theme \
+        gsettings-desktop-schemas \
+        shared-mime-info \
+        hicolor-icon-theme \
+        librsvg2-common \
+        fontconfig \
+        fonts-noto-core \
+        fonts-dejavu-core \
+        libgtk-4-1-dbgsym \
+        libadwaita-1-0-dbgsym \
+        libglib2.0-0t64-dbgsym \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g corepack && corepack enable && corepack prepare pnpm@latest --activate
+# Pin the sans-serif generic to Noto Sans so headless GTK text metrics match the
+# pinned runtime; the build-time cache refresh keeps the first test run cheap.
+COPY 60-gtkx-noto-sans.conf /etc/fonts/conf.d/60-gtkx-noto-sans.conf
+RUN fc-cache -f
+
+# Node 26 is the default runtime; a secondary Node 22 lives in /opt/node22 for
+# the CodSpeed reconciler benches, whose @codspeed/core native addon uses a V8
+# symbol Node 26 has dropped. Both come from nodejs.org so each version is pinned
+# independently of the distribution.
+RUN for major in 26 22; do \
+        ver="$(curl -fsSL https://nodejs.org/dist/index.json | grep -oE "v${major}\.[0-9]+\.[0-9]+" | head -1)"; \
+        if [ "$major" = 26 ]; then dest=/usr/local; else dest=/opt/node22; fi; \
+        mkdir -p "$dest"; \
+        curl -fsSL "https://nodejs.org/dist/${ver}/node-${ver}-linux-x64.tar.xz" \
+            | tar -xJ --strip-components=1 -C "$dest"; \
+    done
+
+RUN npm install -g corepack@latest && corepack enable && corepack prepare pnpm@latest --activate
 
 ENV RUSTUP_HOME=/usr/local/rustup
 ENV CARGO_HOME=/usr/local/cargo
 ENV PATH="/usr/local/cargo/bin:${PATH}"
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy,llvm-tools-preview --default-toolchain stable \
-    && chmod -R a+rwX $RUSTUP_HOME $CARGO_HOME
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component llvm-tools-preview --default-toolchain stable \
+    && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
 
-RUN /usr/local/cargo/bin/rustup toolchain install nightly --profile minimal --component llvm-tools-preview --component rust-src --component miri \
-    && chmod -R a+rwX $RUSTUP_HOME $CARGO_HOME
+RUN rustup toolchain install nightly --profile minimal --component llvm-tools-preview --component rust-src --component miri \
+    && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
 
-RUN /usr/local/cargo/bin/cargo install cargo-llvm-cov --locked \
-    && chmod -R a+rwX $CARGO_HOME
+RUN cargo install cargo-llvm-cov --locked \
+    && chmod -R a+rwX "$CARGO_HOME"
 
-RUN /usr/local/cargo/bin/cargo install cargo-codspeed --locked \
-    && chmod -R a+rwX $CARGO_HOME
+RUN cargo install cargo-codspeed --locked \
+    && chmod -R a+rwX "$CARGO_HOME"
 
-RUN find /usr/share/vulkan/icd.d -type f -name '*.json' ! -name 'lvp_icd*' -delete
+# The CodSpeed runner instruments and uploads the benchmarks. It only supports a
+# Debian/Ubuntu host, which this image now is, so the bench job runs it directly
+# inside the container instead of wrapping the host action around docker-run.
+RUN curl -fsSL https://codspeed.io/install.sh | bash \
+    && install -m 0755 "$(find / -name codspeed -type f -path '*bin*' 2>/dev/null | head -1)" /usr/local/bin/codspeed \
+    && codspeed --version \
+    && chmod -R a+rwX "$CARGO_HOME"
+
+# CI has no GPU; drop any hardware Vulkan ICD so GTK selects the software
+# rasterizer instead of failing to initialize a real driver.
+RUN if [ -d /usr/share/vulkan/icd.d ]; then \
+        find /usr/share/vulkan/icd.d -type f -name '*.json' ! -name 'lvp_icd*' -delete; \
+    fi
 
 ENV RUSTUP_TOOLCHAIN=stable
 ENV CARGO_INCREMENTAL=0

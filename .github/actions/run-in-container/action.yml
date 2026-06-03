@@ -65,6 +65,9 @@ runs:
             -e GITHUB_REPOSITORY
             -e GITHUB_REPOSITORY_OWNER
             -e GITHUB_REF
+            -e GITHUB_REF_NAME
+            -e GITHUB_HEAD_REF
+            -e GITHUB_BASE_REF
             -e GITHUB_SHA
             -e GITHUB_RUN_ID
             -e GITHUB_RUN_ATTEMPT

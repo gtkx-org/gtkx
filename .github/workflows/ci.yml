@@ -202,8 +202,6 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    # Report-only until a run is confirmed clean; then drop this line to gate.
-    continue-on-error: true
     env:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
@@ -240,29 +238,22 @@ jobs:
           command: scripts/ci-miri.sh
           mount-cargo-cache: "true"
 
-  # The CodSpeed runner only supports Debian/Ubuntu, but the benches must use the
-  # pinned Fedora image (codegen reads the system GIR, so building elsewhere
-  # downgrades the bindings). So the CodSpeed action runs on the Ubuntu host
-  # while the benches execute inside the container via docker-run: the in-container
-  # vitest plugin and `cargo codspeed` do the instrumentation, and the profile
-  # folder is bind-mounted at a shared path for the host action to upload.
+  # The benches need the image's pinned GTK runtime, and that image is now
+  # Ubuntu-based — the platform the CodSpeed runner supports — so the runner runs
+  # directly inside the container (scripts/ci-bench.sh) and uploads over OIDC.
+  # One `codspeed run` wraps both the Rust and TypeScript suites as a single
+  # report; run-in-container forwards the OIDC token and GitHub context it needs.
   bench:
     needs: [changes, image]
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    # Report-only until a run is confirmed clean; then drop this line to gate.
-    continue-on-error: true
     permissions:
       contents: read
       packages: read
       id-token: write # public repo: authenticate to CodSpeed over OIDC, no token
     env:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
-      # The runner has both docker and podman; pull-image tags under docker, so
-      # docker-run must use docker too (podman would rootless-rebuild and fail).
-      CONTAINER_ENGINE: docker
-      CODSPEED_PROFILE_FOLDER: ${{ github.workspace }}/.codspeed
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -277,10 +268,10 @@ jobs:
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
 
-      - name: Run CodSpeed benchmarks
-        uses: CodSpeedHQ/action@v4
+      - name: Run the benchmarks under CodSpeed inside the container
+        uses: ./.github/actions/run-in-container
         with:
-          mode: simulation
-          run: |
-            scripts/docker-run bash -lc "cd packages/native && cargo codspeed run"
-            scripts/docker-run bash -lc "export PATH=/opt/node22/bin:\$PATH && GSK_RENDERER=cairo LIBGL_ALWAYS_SOFTWARE=1 pnpm --filter @gtkx/e2e bench"
+          install: "false"
+          command: scripts/ci-bench.sh
+          mount-cargo-cache: "true"
+          mount-pnpm-store: "true"

@@ -85,10 +85,9 @@ add_engine_args() {
     fi
 }
 
-# Forward the CodSpeed runner environment so the bench plugins instrument inside
-# the container. CodSpeed sets these on the host runner; the bench job points
-# the profile folder at a path under the mounted workspace so the host action
-# can read what the container writes.
+# Forward any CodSpeed environment so a `codspeed run` invoked inside the
+# container can authenticate and tag its upload. The runner executes entirely in
+# the container, so no profile folder needs sharing with the host.
 add_codspeed_args() {
     local name
     while IFS='=' read -r name _; do
@@ -96,12 +95,6 @@ add_codspeed_args() {
             CODSPEED_*) RUN_ARGS+=(-e "$name") ;;
         esac
     done < <(env)
-    # Mount the profile folder at the same path so profiles the in-container
-    # bench plugins write are visible to the host CodSpeed action that uploads.
-    if [ -n "${CODSPEED_PROFILE_FOLDER:-}" ]; then
-        mkdir -p "$CODSPEED_PROFILE_FOLDER"
-        RUN_ARGS+=(-v "$CODSPEED_PROFILE_FOLDER:$CODSPEED_PROFILE_FOLDER")
-    fi
 }
 
 main() {
