@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
 
 class NameObject extends GObject.Object {
-    declare state: { name: string };
+    name = "";
 }
 registerClass(NameObject, { gtypeName: "GtkxTestModelNameObject" });
 
@@ -17,7 +17,7 @@ const namedStore = (names: string[]): Gio.ListStore => {
     const store = Gio.ListStore.new(NameObject.prototype.__gtype__);
     for (const name of names) {
         const item = new NameObject();
-        item.state.name = name;
+        item.name = name;
         store.append(item);
     }
     return store;
@@ -36,7 +36,7 @@ const renderListWithModel = async (
             <GtkListView<NameObject>
                 ref={refSlot}
                 model={model}
-                renderItem={(item) => <GtkLabel label={item.state.name} />}
+                renderItem={(item) => <GtkLabel label={item.name} />}
             />
         </ScrollWrapper>
     );
@@ -67,7 +67,7 @@ describe("ListView model prop", () => {
         expect(screen.queryAllByText("Second")).toHaveLength(0);
 
         const next = new NameObject();
-        next.state.name = "Second";
+        next.name = "Second";
         store.append(next);
 
         await screen.findAllByText("Second");
@@ -112,7 +112,7 @@ describe("GridView model prop", () => {
                 <GtkGridView<NameObject>
                     ref={ref}
                     model={noSelection(store)}
-                    renderItem={(item) => <GtkLabel label={item.state.name} />}
+                    renderItem={(item) => <GtkLabel label={item.name} />}
                 />
             </ScrollWrapper>,
         );
@@ -129,11 +129,7 @@ describe("DropDown model prop", () => {
         const store = namedStore(["Choice A", "Choice B"]);
         const ref = createRef<Gtk.DropDown>();
         await render(
-            <GtkDropDown<NameObject>
-                ref={ref}
-                model={store}
-                renderItem={(item) => <GtkLabel label={item.state.name} />}
-            />,
+            <GtkDropDown<NameObject> ref={ref} model={store} renderItem={(item) => <GtkLabel label={item.name} />} />,
         );
 
         expect(ref.current).not.toBeNull();
@@ -151,7 +147,7 @@ describe("ColumnView model prop", () => {
                     <GtkColumnView.Column<NameObject>
                         id="name"
                         title="Name"
-                        renderCell={(item) => <GtkLabel label={item.state.name} />}
+                        renderCell={(item) => <GtkLabel label={item.name} />}
                     />
                 </GtkColumnView>
             </ScrollWrapper>,
@@ -160,5 +156,17 @@ describe("ColumnView model prop", () => {
         expect(ref.current).not.toBeNull();
         await screen.findAllByText("Row 1");
         await screen.findAllByText("Row 2");
+    });
+});
+
+describe("wrapper identity", () => {
+    it("returns the same wrapper instance for an item held by a store", () => {
+        const item = new NameObject();
+        item.name = "Persisted";
+        const store = Gio.ListStore.new(NameObject.prototype.__gtype__);
+        store.append(item);
+
+        expect(store.getItem(0)).toBe(item);
+        expect((store.getItem(0) as NameObject).name).toBe("Persisted");
     });
 });

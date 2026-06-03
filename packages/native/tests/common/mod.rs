@@ -7,6 +7,7 @@ use gtk4::gdk;
 use gtk4::glib::{self, translate::IntoGlib as _};
 use gtk4::prelude::StaticType as _;
 
+use native::managed::Boxed;
 use native::types::{IntegerKind, TaggedKind, TaggedType};
 
 static GTK_INIT: Once = Once::new();
@@ -97,6 +98,15 @@ pub fn allocate_test_boxed(gtype: glib::Type) -> *mut std::ffi::c_void {
         let rgba = gdk::RGBA::new(1.0, 0.5, 0.25, 1.0);
         glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), rgba.as_ptr() as *const _)
     }
+}
+
+/// Allocates an owned `GdkRGBA` boxed value, returning the [`Boxed`] wrapper
+/// paired with the raw pointer it took ownership of so tests can assert on it.
+#[must_use]
+pub fn owned_rgba_boxed() -> (Boxed, *mut std::ffi::c_void) {
+    let gtype = gdk::RGBA::static_type();
+    let ptr = allocate_test_boxed(gtype);
+    (Boxed::from_glib_full(Some(gtype), ptr), ptr)
 }
 
 pub fn is_valid_boxed_ptr(ptr: *mut std::ffi::c_void, gtype: glib::Type) -> bool {

@@ -1,9 +1,33 @@
-import { getInstanceGType, getNativeId, type NativeHandle } from "@gtkx/native";
+import {
+    applyWrapperRefOp,
+    getInstanceGType,
+    getWrapper,
+    type NativeHandle,
+    setObjectToggleNotify,
+    setWrapper,
+} from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { G_TYPE_INVALID, type GType, typeFromName, typeIsA, typeParent } from "./gtype.js";
-import { type GTyped, getHandle, setHandle, tryGetHandle } from "./handles.js";
-import { linkInstanceState } from "./instance-state.js";
+import { type GTyped, setHandle, tryGetHandle } from "./handles.js";
 import { getPendingConstruction } from "./pending-construction.js";
+
+setObjectToggleNotify((refPtr, op) => applyWrapperRefOp(refPtr, op));
+
+let gObjectGType: GType = G_TYPE_INVALID;
+
+/**
+ * Whether `gtype` is a `GObject` descendant, as opposed to another
+ * `GTypeInstance` fundamental (a `GParamSpec`, for example). Toggle references
+ * are a `GObject`-only mechanism, so non-`GObject` instances are wrapped without
+ * one. The `GObject` fundamental type is resolved lazily and memoized, since it
+ * is registered by the time any instance crosses the boundary.
+ */
+function isGObjectType(gtype: GType): boolean {
+    if (gObjectGType === G_TYPE_INVALID) {
+        gObjectGType = typeFromName("GObject");
+    }
+    return gObjectGType !== G_TYPE_INVALID && typeIsA(gtype, gObjectGType);
+}
 
 const classRegistry = new Map<GType, AnyClass>();
 const gTypeByClass = new WeakMap<AnyClass, GType>();
@@ -80,7 +104,6 @@ function getInterfaceGType(cls: AnyClass): GType {
 export function wrapHandle<T extends object>(cls: AnyClass<T>, handle: NativeHandle): T {
     const instance = Object.create(cls.prototype) as T;
     setHandle(instance, handle);
-    linkInstanceState(handle, instance);
     return instance;
 }
 
@@ -172,52 +195,6 @@ function findNativeClassForInterface(gtype: GType, interfaceGType: GType): AnyCl
     return null;
 }
 
-const objectRegistry = new Map<number, WeakRef<GTyped>>();
-
-const cleanupObjectRegistry = new FinalizationRegistry<number>((pointerId) => {
-    objectRegistry.delete(pointerId);
-});
-
-/**
- * Registers a native object in the identity registry.
- *
- * Ensures that the same native pointer always resolves to the same
- * JavaScript wrapper, preserving object identity (`===`). The reference
- * is weak, so objects can still be garbage collected.
- *
- * @param instance - The native object wrapper to register
- */
-export function registerNativeObject(instance: GTyped): void {
-    const pointerId = getNativeId(getHandle(instance));
-    objectRegistry.set(pointerId, new WeakRef(instance));
-    cleanupObjectRegistry.register(instance, pointerId, instance);
-}
-
-/**
- * Finds an existing JavaScript wrapper for a native pointer.
- *
- * Looks up the identity registry to find a previously registered wrapper
- * for the given native handle. Returns null if no wrapper exists or if
- * the wrapper has been garbage collected.
- *
- * @param handle - The native handle to look up
- * @returns The existing wrapper, or null if not found
- */
-function getNativeObjectById(handle: NativeHandle): GTyped | null {
-    const pointerId = getNativeId(handle);
-    const ref = objectRegistry.get(pointerId);
-
-    if (!ref) return null;
-
-    const instance = ref.deref();
-    if (!instance) {
-        objectRegistry.delete(pointerId);
-        return null;
-    }
-
-    return instance;
-}
-
 /**
  * Creates a JavaScript wrapper for a native handle.
  *
@@ -258,7 +235,7 @@ export function getNativeObject(handle: NativeHandle | null | undefined, targetT
         return wrapHandle(targetType, handle);
     }
 
-    const existing = getNativeObjectById(handle);
+    const existing = getWrapper(handle);
     if (existing) return existing;
 
     const runtimeGType: GType = getInstanceGType(handle);
@@ -274,7 +251,9 @@ export function getNativeObject(handle: NativeHandle | null | undefined, targetT
     if (adopted) return adopted;
 
     const instance = wrapHandle(cls, handle) as GTyped;
-    registerNativeObject(instance);
+    if (isGObjectType(runtimeGType)) {
+        setWrapper(handle, instance);
+    }
     return instance;
 }
 
@@ -294,7 +273,7 @@ function tryAdoptPendingConstruction(handle: NativeHandle, cls: AnyClass): GType
     if (pending.constructor !== cls) return null;
     if (tryGetHandle(pending) !== undefined) return null;
     setHandle(pending, handle);
-    registerNativeObject(pending as GTyped);
+    setWrapper(handle, pending as GTyped);
     return pending as GTyped;
 }
 
@@ -325,7 +304,7 @@ export function getNativeObjectAsInterface<T extends NativeHandle | null | undef
 
     if (handle === null || handle === undefined) return null as Result;
 
-    const existing = getNativeObjectById(handle);
+    const existing = getWrapper(handle);
     if (existing) return existing as Result;
 
     const runtimeGType: GType = getInstanceGType(handle);
@@ -338,6 +317,8 @@ export function getNativeObjectAsInterface<T extends NativeHandle | null | undef
     const adopted = tryAdoptPendingConstruction(handle, cls);
     if (adopted) return adopted as Result;
     const instance = wrapHandle(cls, handle) as GTyped;
-    registerNativeObject(instance);
+    if (isGObjectType(runtimeGType)) {
+        setWrapper(handle, instance);
+    }
     return instance as Result;
 }

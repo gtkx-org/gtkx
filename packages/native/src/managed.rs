@@ -1,18 +1,21 @@
 //! Managed object wrappers and reference tracking.
 //!
-//! This module provides wrappers for `GObject`, Boxed, and Fundamental instances
-//! that need to cross the FFI boundary. Each [`NativeHandle`] owns its underlying
+//! This module provides owned wrappers for Boxed and Fundamental instances that
+//! cross the FFI boundary. Each owned [`NativeHandle`] holds its underlying
 //! [`NativeValue`] directly via [`SendWrapper`], so the JavaScript-facing handle
-//! and the native value share one allocation.
+//! and the native value share one allocation. `GObject` instances are not owned
+//! here: they cross as non-owning [`NativeHandle::borrowed_gobject`] handles and
+//! their lifetime is governed by a toggle reference (see [`crate::toggle_ref`]).
 //!
 //! ## Key Types
 //!
-//! - [`NativeValue`]: Enum wrapping `GObject`, Boxed, or Fundamental instances
-//! - [`NativeHandle`]: Owned handle returned to JavaScript via [`napi::bindgen_prelude::External`]
+//! - [`NativeValue`]: Enum wrapping a Boxed or Fundamental instance
+//! - [`NativeHandle`]: Handle returned to JavaScript via [`napi::bindgen_prelude::External`],
+//!   either owning a [`NativeValue`] or borrowing a raw pointer
 //! - [`Boxed`]: `GObject` boxed type wrapper with copy/free semantics
 //! - [`Fundamental`]: `GLib` fundamental type wrapper with ref/unref semantics
 //!
-//! ## Lifecycle
+//! ## Lifecycle (owned handles)
 //!
 //! 1. Native code creates a [`NativeValue`] on the `GLib` thread.
 //! 2. [`NativeValue`] is wrapped in [`NativeHandle`] via `From`, capturing the
@@ -22,8 +25,8 @@
 //! 4. When JS garbage collects the external value, napi-rs calls the
 //!    [`NativeHandle`]'s [`Drop`] impl, which routes the drop back to the
 //!    `GLib` thread via `glib::idle_add_once`.
-//! 5. On the `GLib` thread, the underlying `GObject` ref / boxed copy /
-//!    fundamental unref is released.
+//! 5. On the `GLib` thread, the underlying boxed copy or fundamental unref is
+//!    released.
 //!
 //! At shutdown ([`Mailbox::is_stopped`]) the handle's value is intentionally
 //! leaked via [`std::mem::forget`] to avoid post-shutdown teardown crashes.
@@ -36,7 +39,7 @@ pub use fundamental::{Fundamental, RefFn, UnrefFn};
 
 use std::ffi::c_void;
 
-use gtk4::glib::{self, prelude::ObjectType as _};
+use gtk4::glib;
 use send_wrapper::SendWrapper;
 
 use crate::dispatch::Mailbox;
@@ -66,7 +69,6 @@ impl std::fmt::Debug for NativeHandle {
 impl From<NativeValue> for NativeHandle {
     fn from(value: NativeValue) -> Self {
         let ptr = match &value {
-            NativeValue::GObject(obj) => obj.as_ptr() as usize,
             NativeValue::Boxed(boxed) => boxed.as_ptr() as usize,
             NativeValue::Fundamental(fundamental) => fundamental.as_ptr() as usize,
         };
@@ -113,6 +115,22 @@ impl NativeHandle {
         }
     }
 
+    /// Constructs a non-owning handle for a `GObject` whose lifetime is
+    /// governed by its toggle reference rather than this handle.
+    ///
+    /// The handle carries only the pointer — its [`Drop`] does nothing — so the
+    /// object stays alive for exactly as long as its toggle ref and JavaScript
+    /// wrapper do. It still reports the `GObject` external-memory hint to V8 so
+    /// garbage-collection pressure stays proportional to the live wrapper count.
+    #[must_use]
+    pub fn borrowed_gobject(ptr: *mut c_void) -> Self {
+        Self {
+            ptr: ptr as usize,
+            size_hint: GOBJECT_SIZE_HINT,
+            inner: None,
+        }
+    }
+
     /// Returns the raw native pointer.
     ///
     /// The pointer is recorded at construction and is readable from any thread
@@ -148,19 +166,18 @@ impl Drop for NativeHandle {
     }
 }
 
-/// Managed value wrapper for FFI objects.
+/// Managed value wrapper for owned FFI objects.
 ///
-/// `GObject` uses `glib::Object` directly since it already has built-in reference counting
-/// via `g_object_ref`/`g_object_unref` that the Rust bindings handle automatically.
-///
-/// `Boxed` and `Fundamental` use custom wrappers because they require type-specific
+/// `GObject` instances are not represented here: their lifetime is governed by
+/// a toggle reference (see [`crate::toggle_ref`]), and they cross the boundary
+/// as non-owning [`NativeHandle::borrowed_gobject`] handles. `Boxed` and
+/// `Fundamental` use custom wrappers because they require type-specific
 /// lifecycle management:
 /// - `Boxed`: Uses `g_boxed_copy`/`g_boxed_free` for GType-registered types,
 ///   or `g_malloc0`/`g_free` for plain structs without `GType`
 /// - `Fundamental`: Uses custom ref/unref functions that must be looked up dynamically
 #[derive(Debug, Clone)]
 pub enum NativeValue {
-    GObject(glib::Object),
     Boxed(Boxed),
     Fundamental(Fundamental),
 }
@@ -179,7 +196,6 @@ impl NativeValue {
     #[must_use]
     pub fn size_hint(&self) -> usize {
         match self {
-            Self::GObject(_) => GOBJECT_SIZE_HINT,
             Self::Boxed(_) => BOXED_SIZE_HINT,
             Self::Fundamental(_) => FUNDAMENTAL_SIZE_HINT,
         }

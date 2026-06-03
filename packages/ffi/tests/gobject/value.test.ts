@@ -194,9 +194,11 @@ describe("valueFromJS / valueToJS round-trips — variant and param", () => {
         expect(text).toBe("payload");
     });
 
-    it("round-trips a ParamSpec returning the same wrapper", () => {
+    it("round-trips a ParamSpec to an equivalent wrapper", () => {
         const spec = paramSpecBoolean("flag", "Flag", "A flag", false, ParamFlags.READABLE);
-        expect(valueToJS(valueFromJS(Type.PARAM, spec))).toBe(spec);
+        const roundTripped = valueToJS(valueFromJS(Type.PARAM, spec)) as typeof spec | null;
+        expect(roundTripped).not.toBeNull();
+        expect(roundTripped?.getName()).toBe(spec.getName());
     });
 });
 

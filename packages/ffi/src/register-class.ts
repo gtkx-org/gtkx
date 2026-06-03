@@ -6,7 +6,6 @@ import {
 import type { AnyClass } from "@gtkx/utils";
 import { G_TYPE_INVALID, type GType, typeInterfaces } from "./gtype.js";
 import { getParentClass, getVfuncRegistry, type NativeHandle } from "./handles.js";
-import { markStatefulClass } from "./instance-state.js";
 import { getClassGType, getNativeObject, setClassGType } from "./registry.js";
 
 /**
@@ -99,7 +98,6 @@ export function registerClass<T extends AnyClass>(klass: T, options: RegisterCla
     const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings);
     const newGType: GType = nativeRegisterClass(name, parentGType, nativeOptions);
     setClassGType(klass, newGType);
-    markStatefulClass(klass);
 
     return klass;
 }

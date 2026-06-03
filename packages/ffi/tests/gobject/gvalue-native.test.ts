@@ -147,11 +147,13 @@ describe("GValue object", () => {
 });
 
 describe("GValue param", () => {
-    it("round-trips a ParamSpec returning the same wrapper", () => {
+    it("round-trips a ParamSpec to an equivalent wrapper", () => {
         const spec = paramSpecBoolean("flag", "Flag", "A flag", false, ParamFlags.READABLE);
         const value = initialized(Type.PARAM);
         value.setParam(spec);
-        expect(value.getParam()).toBe(spec);
+        const roundTripped = value.getParam() as typeof spec | null;
+        expect(roundTripped).not.toBeNull();
+        expect(roundTripped?.getName()).toBe(spec.getName());
     });
 
     it("round-trips a null param", () => {

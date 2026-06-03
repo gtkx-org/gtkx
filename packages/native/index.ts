@@ -18,7 +18,7 @@ type NativeRegisterClassOptions = {
     readonly interfaceVfuncs?: readonly NativeInterfaceVfuncsDefinition[];
 };
 
-type ExternalHandle = Parameters<typeof native.getNativeId>[0];
+type ExternalHandle = Parameters<typeof native.read>[0];
 
 declare const __nativeHandleBrand: unique symbol;
 
@@ -32,19 +32,6 @@ declare const __nativeHandleBrand: unique symbol;
  * native external pointer; the brand ensures TypeScript treats it opaquely.
  */
 export type NativeHandle = { readonly [__nativeHandleBrand]: never };
-
-/**
- * Returns the numeric pointer identity for a native handle.
- *
- * Two handles referring to the same underlying instance return the same
- * value, making the result suitable as a key in identity-tracking
- * collections.
- *
- * @param handle - A handle produced by this module
- */
-export function getNativeId(handle: NativeHandle): number {
-    return native.getNativeId(handle as unknown as ExternalHandle);
-}
 
 function isHandleType(type: Type): boolean {
     return type.type === "gobject" || type.type === "boxed" || type.type === "struct" || type.type === "fundamental";
@@ -321,29 +308,52 @@ function toNativeVfunc(vfunc: RegisterClassVfuncDefinition): NativeVfuncDefiniti
 }
 
 /**
- * Registers the callback invoked, on the JavaScript thread, with the pointer
- * id of each watched native object when it is finalized.
+ * Installs the JavaScript callback that applies a wrapper-reference operation,
+ * invoked synchronously on the JS thread with `(refPtr, opcode)` whenever a
+ * `GObject`'s toggle reference must flip its wrapper strong/weak or delete it.
  *
- * Installed once at startup by `@gtkx/ffi` to evict per-instance state keyed by
- * pointer id. The pointer id matches the value returned by {@link getNativeId}.
+ * Installed once at startup by `@gtkx/ffi`. The `refPtr` is forwarded verbatim
+ * to {@link applyWrapperRefOp}; the opcode meanings are an internal native
+ * detail callers never interpret.
  *
- * @param callback - Receives the finalized object's pointer id
+ * @param callback - Receives `(refPtr, opcode)` for each reference operation
  */
-export function onObjectFinalized(callback: (pointerId: number) => void): void {
-    native.setObjectFinalizedCallback(callback);
+export function setObjectToggleNotify(callback: (refPtr: number, op: number) => void): void {
+    native.setObjectToggleNotify(callback);
 }
 
 /**
- * Arms a one-shot finalize watch on `handle`'s native object, so
- * {@link onObjectFinalized} fires with its pointer id when it is destroyed.
+ * Applies one wrapper-reference operation requested by the toggle-notify
+ * callback. Runs on the JS thread, where every napi reference call must happen.
  *
- * The object must be live when this is called. Repeated calls for the same
- * object are no-ops.
+ * @param refPtr - The wrapper reference pointer, as delivered to the toggle callback
+ * @param op - The opcode delivered alongside `refPtr`
+ */
+export function applyWrapperRefOp(refPtr: number, op: number): void {
+    native.applyWrapperRefOp(refPtr, op);
+}
+
+/**
+ * Binds a freshly created JavaScript wrapper to the `GObject` behind `handle`
+ * by installing a toggle reference, making the wrapper and object share one
+ * lifetime. Called once per object, the first time it is wrapped.
+ *
+ * @param handle - A handle produced by this module
+ * @param wrapper - The JavaScript wrapper object to bind
+ */
+export function setWrapper(handle: NativeHandle, wrapper: object): void {
+    native.setWrapper(handle as unknown as ExternalHandle, wrapper);
+}
+
+/**
+ * Returns the existing JavaScript wrapper bound to the `GObject` behind
+ * `handle`, or `null` when the object is untracked or its wrapper has already
+ * been garbage collected.
  *
  * @param handle - A handle produced by this module
  */
-export function watchObjectFinalize(handle: NativeHandle): void {
-    native.watchObjectFinalize(handle as unknown as ExternalHandle);
+export function getWrapper(handle: NativeHandle): object | null {
+    return (native.getWrapper(handle as unknown as ExternalHandle) as object | undefined) ?? null;
 }
 
 /**

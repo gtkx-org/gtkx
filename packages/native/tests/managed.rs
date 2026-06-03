@@ -3,14 +3,13 @@ mod common;
 use std::ffi::c_void;
 use std::thread;
 
-use gtk4::gdk;
 use gtk4::glib;
-use gtk4::prelude::{ObjectType as _, StaticType as _};
+use gtk4::prelude::ObjectType as _;
 
 use native::dispatch::Mailbox;
-use native::managed::{Boxed, Fundamental, NativeHandle, NativeValue};
+use native::managed::{Fundamental, NativeHandle, NativeValue};
 
-use common::{param_spec_ref, param_spec_unref};
+use common::{param_spec_ref, param_spec_refcount, param_spec_unref};
 
 fn param_spec_ptr() -> *mut c_void {
     common::ensure_gtk_init();
@@ -26,13 +25,22 @@ fn param_spec_ptr() -> *mut c_void {
     }
 }
 
+fn owned_fundamental(ptr: *mut c_void) -> NativeHandle {
+    NativeValue::Fundamental(Fundamental::from_glib_full(
+        ptr,
+        Some(param_spec_ref),
+        Some(param_spec_unref),
+    ))
+    .into()
+}
+
 #[test]
-fn from_native_value_gobject_records_pointer() {
+fn borrowed_gobject_handle_records_pointer() {
     common::run(|| {
         let obj = glib::Object::new::<glib::Object>();
         let expected = obj.as_ptr() as usize;
 
-        let handle: NativeHandle = NativeValue::GObject(obj).into();
+        let handle = NativeHandle::borrowed_gobject(obj.as_ptr() as *mut c_void);
 
         assert_eq!(handle.ptr_as_usize(), expected);
     });
@@ -41,9 +49,7 @@ fn from_native_value_gobject_records_pointer() {
 #[test]
 fn from_native_value_boxed_records_pointer() {
     common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let ptr = common::allocate_test_boxed(gtype);
-        let boxed = Boxed::from_glib_full(Some(gtype), ptr);
+        let (boxed, ptr) = common::owned_rgba_boxed();
 
         let handle: NativeHandle = NativeValue::Boxed(boxed).into();
 
@@ -55,9 +61,7 @@ fn from_native_value_boxed_records_pointer() {
 fn from_native_value_fundamental_records_pointer() {
     let ptr = param_spec_ptr();
 
-    let fundamental =
-        Fundamental::from_glib_full(ptr, Some(param_spec_ref), Some(param_spec_unref));
-    let handle: NativeHandle = NativeValue::Fundamental(fundamental).into();
+    let handle = owned_fundamental(ptr);
 
     assert_eq!(handle.ptr(), ptr);
 }
@@ -85,31 +89,28 @@ fn borrowed_handle_with_null_pointer() {
 
 #[test]
 fn debug_format_marks_owned_handle() {
-    common::run(|| {
-        let obj = glib::Object::new::<glib::Object>();
-        let handle: NativeHandle = NativeValue::GObject(obj).into();
+    let ptr = param_spec_ptr();
+    let handle = owned_fundamental(ptr);
 
-        let debug_str = format!("{handle:?}");
-        assert!(debug_str.contains("NativeHandle"));
-        assert!(debug_str.contains("owned: true"));
-    });
+    let debug_str = format!("{handle:?}");
+    assert!(debug_str.contains("NativeHandle"));
+    assert!(debug_str.contains("owned: true"));
 }
 
 #[test]
-fn clone_owned_gobject_handle_preserves_pointer() {
+fn clone_owned_handle_preserves_pointer() {
     common::run(|| {
-        let obj = glib::Object::new::<glib::Object>();
-        let ptr = obj.as_ptr();
-        let initial_ref = common::get_gobject_refcount(ptr);
+        let ptr = param_spec_ptr();
+        let initial_ref = param_spec_refcount(ptr);
 
-        let handle: NativeHandle = NativeValue::GObject(obj).into();
+        let handle = owned_fundamental(ptr);
         let cloned = handle.clone();
 
         assert_eq!(cloned.ptr(), handle.ptr());
-        assert_eq!(common::get_gobject_refcount(ptr), initial_ref + 1);
+        assert_eq!(param_spec_refcount(ptr), initial_ref + 1);
 
         drop(cloned);
-        assert_eq!(common::get_gobject_refcount(ptr), initial_ref);
+        assert_eq!(param_spec_refcount(ptr), initial_ref);
         drop(handle);
     });
 }
@@ -128,16 +129,14 @@ fn clone_borrowed_handle_preserves_pointer() {
 #[test]
 fn drop_owned_handle_on_creating_thread_releases_value() {
     common::run(|| {
-        let obj = glib::Object::new::<glib::Object>();
-        let ptr = obj.as_ptr();
-        let initial_ref = common::get_gobject_refcount(ptr);
+        let ptr = param_spec_ptr();
+        let initial_ref = param_spec_refcount(ptr);
 
-        let handle: NativeHandle = NativeValue::GObject(obj.clone()).into();
-        assert_eq!(common::get_gobject_refcount(ptr), initial_ref + 1);
+        let handle = owned_fundamental(ptr);
+        assert_eq!(param_spec_refcount(ptr), initial_ref);
 
         drop(handle);
-        assert_eq!(common::get_gobject_refcount(ptr), initial_ref);
-        drop(obj);
+        assert_eq!(param_spec_refcount(ptr), initial_ref - 1);
     });
 }
 
@@ -154,12 +153,12 @@ fn drop_borrowed_handle_is_noop() {
 #[test]
 fn a_drop_owned_handle_off_thread_routes_through_glib_idle() {
     common::run(|| {
-        let obj = glib::Object::new::<glib::Object>();
-        let ptr = obj.as_ptr();
-        let initial_ref = common::get_gobject_refcount(ptr);
-
-        let handle: NativeHandle = NativeValue::GObject(obj.clone()).into();
-        assert_eq!(common::get_gobject_refcount(ptr), initial_ref + 1);
+        let ptr = param_spec_ptr();
+        let fundamental = unsafe {
+            Fundamental::from_glib_none(ptr, Some(param_spec_ref), Some(param_spec_unref))
+        };
+        let initial_ref = param_spec_refcount(ptr);
+        let handle: NativeHandle = NativeValue::Fundamental(fundamental).into();
 
         thread::spawn(move || {
             drop(handle);
@@ -169,7 +168,7 @@ fn a_drop_owned_handle_off_thread_routes_through_glib_idle() {
 
         let context = glib::MainContext::default();
         for _ in 0..1000 {
-            if common::get_gobject_refcount(ptr) == initial_ref {
+            if param_spec_refcount(ptr) == initial_ref - 1 {
                 break;
             }
             if !context.iteration(false) {
@@ -177,16 +176,16 @@ fn a_drop_owned_handle_off_thread_routes_through_glib_idle() {
             }
         }
 
-        assert_eq!(common::get_gobject_refcount(ptr), initial_ref);
-        drop(obj);
+        assert_eq!(param_spec_refcount(ptr), initial_ref - 1);
+        unsafe { param_spec_unref(ptr) };
     });
 }
 
 #[test]
 fn drop_owned_handle_off_thread_while_stopped_leaks_value() {
     common::run(|| {
-        let obj = glib::Object::new::<glib::Object>();
-        let handle: NativeHandle = NativeValue::GObject(obj).into();
+        let ptr = param_spec_ptr();
+        let handle = owned_fundamental(ptr);
 
         let mailbox = Mailbox::global();
         mailbox.mark_stopped();
@@ -198,31 +197,29 @@ fn drop_owned_handle_off_thread_while_stopped_leaks_value() {
         .expect("dropping handle while stopped should not panic");
 
         mailbox.reset_for_test();
+        unsafe { param_spec_unref(ptr) };
     });
 }
 
 #[test]
 fn native_value_debug_and_clone() {
-    common::run(|| {
-        let obj = glib::Object::new::<glib::Object>();
-        let value = NativeValue::GObject(obj);
+    let ptr = param_spec_ptr();
+    let value = NativeValue::Fundamental(Fundamental::from_glib_full(
+        ptr,
+        Some(param_spec_ref),
+        Some(param_spec_unref),
+    ));
 
-        let cloned = value.clone();
-        assert_eq!(format!("{value:?}"), format!("{cloned:?}"));
-        assert!(format!("{cloned:?}").contains("GObject"));
-    });
+    let cloned = value.clone();
+    assert_eq!(format!("{value:?}"), format!("{cloned:?}"));
+    assert!(format!("{cloned:?}").contains("Fundamental"));
 }
 
 #[test]
 fn size_hint_distinguishes_native_value_variants() {
     common::run(|| {
-        let obj = glib::Object::new::<glib::Object>();
-        let gobject_hint = NativeValue::GObject(obj).size_hint();
-
-        let gtype = gdk::RGBA::static_type();
-        let boxed_ptr = common::allocate_test_boxed(gtype);
-        let boxed_hint =
-            NativeValue::Boxed(Boxed::from_glib_full(Some(gtype), boxed_ptr)).size_hint();
+        let (boxed, _boxed_ptr) = common::owned_rgba_boxed();
+        let boxed_hint = NativeValue::Boxed(boxed).size_hint();
 
         let pspec = param_spec_ptr();
         let fundamental_hint = NativeValue::Fundamental(Fundamental::from_glib_full(
@@ -232,32 +229,37 @@ fn size_hint_distinguishes_native_value_variants() {
         ))
         .size_hint();
 
-        assert!(gobject_hint > 0);
         assert!(boxed_hint > 0);
         assert!(fundamental_hint > 0);
-        assert_ne!(gobject_hint, boxed_hint);
         assert_ne!(boxed_hint, fundamental_hint);
-        assert_ne!(gobject_hint, fundamental_hint);
     });
 }
 
 #[test]
 fn native_handle_caches_size_hint_at_construction() {
-    common::run(|| {
-        let obj = glib::Object::new::<glib::Object>();
-        let value = NativeValue::GObject(obj);
-        let expected = value.size_hint();
-        let handle: NativeHandle = value.into();
+    let ptr = param_spec_ptr();
+    let value = NativeValue::Fundamental(Fundamental::from_glib_full(
+        ptr,
+        Some(param_spec_ref),
+        Some(param_spec_unref),
+    ));
+    let expected = value.size_hint();
+    let handle: NativeHandle = value.into();
 
-        assert_eq!(handle.size_hint(), expected);
-
-        let cloned = handle.clone();
-        assert_eq!(cloned.size_hint(), expected);
-    });
+    assert_eq!(handle.size_hint(), expected);
 }
 
 #[test]
 fn borrowed_native_handle_reports_zero_size_hint() {
     let handle = NativeHandle::borrowed(0xDEAD_BEEFusize as *mut c_void);
     assert_eq!(handle.size_hint(), 0);
+}
+
+#[test]
+fn borrowed_gobject_handle_reports_nonzero_size_hint() {
+    common::run(|| {
+        let obj = glib::Object::new::<glib::Object>();
+        let handle = NativeHandle::borrowed_gobject(obj.as_ptr() as *mut c_void);
+        assert!(handle.size_hint() > 0);
+    });
 }

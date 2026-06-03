@@ -13,7 +13,8 @@
 //! | `alloc` | Allocate memory for boxed types |
 //! | `read` | Read field from boxed/struct memory |
 //! | `write` | Write primitive field to boxed memory (constructor initialization) |
-//! | `getNativeId` | Get internal handle ID for managed object |
+//! | `setWrapper` | Bind a JS wrapper to a `GObject` via a toggle reference |
+//! | `getWrapper` | Resolve the JS wrapper a `GObject` already owns |
 //! | `freeze` | Freeze tick callbacks during React commit (prevents intermediate repaints) |
 //! | `unfreeze` | Unfreeze tick callbacks and allow a single repaint |
 //!
@@ -59,9 +60,9 @@ pub mod ffi;
 pub mod glib_log_handler;
 pub mod managed;
 pub mod module;
-pub mod object_finalize;
 pub mod panic_handler;
 pub mod state;
+pub mod toggle_ref;
 pub mod trampoline;
 pub mod types;
 pub mod value;

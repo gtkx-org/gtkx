@@ -181,10 +181,10 @@ across the surface and its builders (or fold the pass-throughs into `gvalue.ts`)
 add a `valueToJS` private mirror for read/write symmetry.
 
 **JS wrapper variable named both `obj` and `instance`.** *Low.*
-`handles.ts`, `registry.ts`, and `instance-state.ts` (literally the "instance state"
-module) name the JS wrapper `obj`; `object.ts`, `pending-construction.ts`, `signals.ts`
-name it `instance`. They interleave — `registry.ts wrapHandle` passes `instance` into
-`setHandle(obj, …)`. → Rename the `obj` parameters to `instance`.
+`handles.ts` and `registry.ts` name the JS wrapper `obj`; `object.ts`,
+`pending-construction.ts`, `signals.ts` name it `instance`. They interleave —
+`registry.ts wrapHandle` passes `instance` into `setHandle(obj, …)`. → Rename the
+`obj` parameters to `instance`.
 
 **`Gtk.Widget` parameter named `element` vs `widget` in testing.** *Medium.*
 `user-event.ts` and `wait-for.ts` call the widget `element`; `widget-text.ts`,
@@ -260,7 +260,7 @@ Highest impact first (severity, then cross-file reach).
 14. **`@gtkx/testing` — `element`→`widget`** for internal `Gtk.Widget` params (keep `waitForElementToBeRemoved`).
 15. **App identifier — `appId`→`applicationId` repo-wide**, including `--application-id` flag, `GTKX_APPLICATION_ID` env, and the MCP wire field (both ends in-repo). Only the Flatpak manifest `app-id` stays.
 16. **`@gtkx/codegen` — `ctx`→`context`** across `writers/*.ts` and `dsl/context.ts`.
-17. **`@gtkx/ffi` — `obj`→`instance`** in `handles.ts`, `instance-state.ts`, `registry.ts`.
+17. **`@gtkx/ffi` — `obj`→`instance`** in `handles.ts`, `registry.ts`.
 18. **`@gtkx/react` — `readSetting`/`writeSetting`→`getSetting`/`setSetting`.**
 19. **`@gtkx/cli` — `msg`→`message`** in `scaffolder.ts`, `deps.ts`, `gsettings.ts` (+ test mocks).
 

@@ -1,13 +1,14 @@
 use anyhow::bail;
 use gtk4::glib::{
     self,
-    translate::{FromGlibPtrFull as _, FromGlibPtrNone as _, IntoGlibPtr, ToGlibPtr as _},
+    translate::{FromGlibPtrNone as _, IntoGlibPtr, ToGlibPtr as _},
     value::ToValue as _,
 };
 use napi::{Env, JsObject};
 
 use super::prelude::*;
-use crate::managed::NativeValue;
+use crate::managed::NativeHandle;
+use crate::toggle_ref;
 
 /// Loads and validates the instance's `g_class` pointer.
 ///
@@ -28,6 +29,57 @@ unsafe fn load_type_class(
         bail!("GObject has invalid type class (object may have been freed)");
     }
     Ok(type_class)
+}
+
+/// Builds the JavaScript-facing handle for a `GObject` crossing the boundary.
+///
+/// The handle is a non-owning pointer carrier: a `GObject`'s lifetime is
+/// governed by its toggle reference (installed by `setWrapper` on first wrap)
+/// and its wrapper's finalizer, never by the handle. This normalizes the object
+/// so it carries exactly one pending owned reference that the install step will
+/// consume: a full transfer of a floating or `GInitiallyUnowned` object sinks
+/// the floating reference to claim it; a full transfer of a plain object keeps
+/// the caller's reference; a borrow takes a fresh reference and never sinks, so
+/// a still-floating object being wrapped from a `constructed` vfunc keeps its
+/// floating reference for the construction return to claim. For an object the
+/// registry already tracks, no toggle ref is installed; a full transfer is
+/// released here, sinking first when the object is still floating.
+///
+/// # Safety
+///
+/// `gobject_ptr` must be a non-null pointer to a live `GObject`. Must run on the
+/// `GLib` thread.
+#[cfg_attr(coverage_nightly, coverage(off))]
+fn tracked_gobject_value(
+    gobject_ptr: *mut glib::gobject_ffi::GObject,
+    ownership: Ownership,
+) -> anyhow::Result<value::Value> {
+    let type_class = unsafe { load_type_class(gobject_ptr)? };
+    let gtype = unsafe { (*type_class).g_type };
+    let is_initially_unowned = unsafe {
+        glib::gobject_ffi::g_type_is_a(gtype, glib::gobject_ffi::g_initially_unowned_get_type())
+            != 0
+    };
+    let is_floating = unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
+
+    if unsafe { toggle_ref::has_wrapper(gobject_ptr) } {
+        if ownership.is_full() {
+            if is_floating {
+                unsafe { glib::gobject_ffi::g_object_ref_sink(gobject_ptr) };
+            }
+            unsafe { glib::gobject_ffi::g_object_unref(gobject_ptr) };
+        }
+    } else if ownership.is_full() {
+        if is_floating || is_initially_unowned {
+            unsafe { glib::gobject_ffi::g_object_ref_sink(gobject_ptr) };
+        }
+    } else {
+        unsafe { glib::gobject_ffi::g_object_ref(gobject_ptr) };
+    }
+
+    Ok(value::Value::Object(NativeHandle::borrowed_gobject(
+        gobject_ptr.cast(),
+    )))
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -64,52 +116,30 @@ impl FfiEncoder for GObjectType {
 impl FfiDecoder for GObjectType {
     /// Decodes a `GObject` pointer returned across the FFI boundary.
     ///
-    /// A `GInitiallyUnowned` is claimed with `g_object_ref_sink` whenever the
-    /// caller owns the result: that sinks a still-floating reference, and adds
-    /// an owned reference to an instance already sunk during construction —
-    /// e.g. a `GtkApplicationWindow` whose `application` property parents it
-    /// into the `GtkApplication` before the constructor returns, leaving it
-    /// non-floating with the application holding its only reference. Taking
-    /// such a pointer with `from_glib_full` would steal that reference. A
-    /// plain transfer-full pointer is taken with `from_glib_full`; a borrowed
-    /// one is referenced with `from_glib_none`.
+    /// The transfer mode controls how the object's reference count is
+    /// normalized before its toggle reference is installed: a `GInitiallyUnowned`
+    /// is claimed with `g_object_ref_sink` whenever the caller owns the result —
+    /// sinking a still-floating reference, or adding an owned reference to an
+    /// instance already sunk during construction (e.g. a `GtkApplicationWindow`
+    /// parented into its `GtkApplication` before the constructor returns). A
+    /// plain transfer-full pointer keeps the caller's reference; a borrowed one
+    /// is referenced. See [`tracked_gobject_value`].
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let Some(object_ptr) = ffi_value.as_non_null_ptr("GObject")? else {
             return Ok(value::Value::Null);
         };
 
-        let gobject_ptr = object_ptr as *mut glib::gobject_ffi::GObject;
-
-        let type_class = unsafe { load_type_class(gobject_ptr)? };
-
-        let is_floating = unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
-
-        let gtype = unsafe { (*type_class).g_type };
-        let is_initially_unowned = unsafe {
-            glib::gobject_ffi::g_type_is_a(gtype, glib::gobject_ffi::g_initially_unowned_get_type())
-                != 0
-        };
-
-        let object = if is_floating || (is_initially_unowned && self.ownership.is_full()) {
-            unsafe { glib::gobject_ffi::g_object_ref_sink(gobject_ptr) };
-            NativeValue::GObject(unsafe { glib::Object::from_glib_full(gobject_ptr) })
-        } else if self.ownership.is_full() {
-            NativeValue::GObject(unsafe { glib::Object::from_glib_full(gobject_ptr) })
-        } else {
-            NativeValue::GObject(unsafe { glib::Object::from_glib_none(gobject_ptr) })
-        };
-
-        Ok(value::Value::Object(object.into()))
+        tracked_gobject_value(
+            object_ptr as *mut glib::gobject_ffi::GObject,
+            self.ownership,
+        )
     }
 }
 
 impl RawPtrCodec for GObjectType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         null_guarded(ptr, |ptr| {
-            let gobject_ptr = ptr as *mut glib::gobject_ffi::GObject;
-            unsafe { load_type_class(gobject_ptr)? };
-            let object = unsafe { glib::Object::from_glib_none(gobject_ptr) };
-            Ok(value::Value::Object(NativeValue::GObject(object).into()))
+            tracked_gobject_value(ptr as *mut glib::gobject_ffi::GObject, Ownership::None)
         })
     }
 
@@ -162,8 +192,6 @@ impl GlibValueCodec for GObjectType {
         if obj_ptr.is_null() {
             return Ok(value::Value::Null);
         }
-        unsafe { load_type_class(obj_ptr)? };
-        let obj = unsafe { glib::Object::from_glib_none(obj_ptr) };
-        Ok(value::Value::Object(NativeValue::GObject(obj).into()))
+        tracked_gobject_value(obj_ptr, Ownership::None)
     }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findObjectProperty, getNativeId, type NativeHandle } from "../../index.js";
+import { findObjectProperty, type NativeHandle } from "../../index.js";
 import { createLabel } from "./utils.js";
 
 describe("findObjectProperty", () => {
@@ -9,7 +9,6 @@ describe("findObjectProperty", () => {
 
         expect(pspec).not.toBeNull();
         expect(pspec).toBeDefined();
-        expect(typeof getNativeId(pspec as NativeHandle)).toBe("number");
     });
 
     it("returns null when the property name is unknown", () => {

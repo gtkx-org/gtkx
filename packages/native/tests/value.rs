@@ -39,13 +39,18 @@ fn gobject_transfer_none_does_not_take_ownership() {
 
         assert_eq!(after_ref, initial_ref + 1);
 
+        // The handle is a non-owning pointer carrier; dropping it releases nothing.
+        // The pending reference is consumed by `setWrapper` in production.
         drop(result);
+        assert_eq!(get_gobject_refcount(obj_ptr), initial_ref + 1);
+
+        unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
         assert_eq!(get_gobject_refcount(obj_ptr), initial_ref);
     });
 }
 
 #[test]
-fn gobject_full_transfer_takes_ownership() {
+fn gobject_full_transfer_keeps_pending_reference() {
     common::run(|| {
         let obj = glib::Object::new::<glib::Object>();
         let obj_ptr = obj.as_ptr();
@@ -68,9 +73,15 @@ fn gobject_full_transfer_takes_ownership() {
 
         let ref_after_transfer = get_gobject_refcount(obj_ptr);
 
+        // Transfer-full keeps the caller's reference as the single pending ref.
         assert_eq!(ref_after_transfer, ref_before_transfer);
 
+        // The non-owning handle releases nothing on drop; `setWrapper` consumes
+        // the pending reference in production.
         drop(result);
+        assert_eq!(get_gobject_refcount(obj_ptr), ref_before_transfer);
+
+        unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
         assert_eq!(get_gobject_refcount(obj_ptr), ref_before_transfer - 1);
     });
 }
@@ -481,7 +492,12 @@ fn from_glib_value_gobject_transfer_none() {
         let after_ref = get_gobject_refcount(obj_ptr);
         assert_eq!(after_ref, initial_ref + 1);
 
+        // The non-owning handle releases nothing on drop; the pending reference
+        // is consumed by `setWrapper` in production.
         drop(result);
+        assert_eq!(get_gobject_refcount(obj_ptr), initial_ref + 1);
+
+        unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
         assert_eq!(get_gobject_refcount(obj_ptr), initial_ref);
     });
 }
@@ -1112,7 +1128,7 @@ fn result_to_ptr_returns_handle_pointer_for_object() {
     common::run(|| {
         let obj = glib::Object::new::<glib::Object>();
         let obj_ptr = obj.as_ptr() as *mut c_void;
-        let handle: native::NativeHandle = native::NativeValue::GObject(obj).into();
+        let handle = native::NativeHandle::borrowed_gobject(obj.as_ptr() as *mut c_void);
 
         let result: Result<Value, ()> = Ok(Value::Object(handle));
         assert_eq!(Value::result_to_ptr(&result), obj_ptr);
@@ -1149,7 +1165,7 @@ fn object_ptr_returns_handle_pointer() {
     common::run(|| {
         let obj = glib::Object::new::<glib::Object>();
         let obj_ptr = obj.as_ptr() as *mut c_void;
-        let handle: native::NativeHandle = native::NativeValue::GObject(obj).into();
+        let handle = native::NativeHandle::borrowed_gobject(obj.as_ptr() as *mut c_void);
 
         let value = Value::Object(handle);
         assert_eq!(value.object_ptr("GObject").unwrap(), obj_ptr);
@@ -1266,7 +1282,7 @@ fn to_glib_value_typed_uses_expected_type_when_available() {
 fn to_glib_value_object_with_pointer() {
     common::run(|| {
         let obj = glib::Object::new::<glib::Object>();
-        let handle: native::NativeHandle = native::NativeValue::GObject(obj).into();
+        let handle = native::NativeHandle::borrowed_gobject(obj.as_ptr() as *mut c_void);
 
         let value = Value::Object(handle);
         let gvalue = value.to_glib_value();

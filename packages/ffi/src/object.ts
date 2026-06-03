@@ -1,12 +1,11 @@
-import { call, type NativeHandle } from "@gtkx/native";
+import { call, type NativeHandle, setWrapper } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { GValue } from "./gobject/gvalue-native.js";
 import { GVALUE_BORROWED, GVALUE_SIZE, LIBGOBJECT } from "./gtype.js";
-import { type GTyped, getHandle, setHandle, tryGetHandle } from "./handles.js";
+import { getHandle, setHandle, tryGetHandle } from "./handles.js";
 import { t } from "./helpers.js";
-import { linkInstanceState } from "./instance-state.js";
 import { setPendingConstruction } from "./pending-construction.js";
-import { getClassGType, registerNativeObject } from "./registry.js";
+import { getClassGType } from "./registry.js";
 
 /**
  * Canonical "new GObject with properties" implementation.
@@ -21,9 +20,8 @@ import { getClassGType, registerNativeObject } from "./registry.js";
  *
  * The pending-construction guard lets a `constructed` vfunc that fires
  * synchronously during allocation adopt this wrapper instead of spawning a
- * second one; identity registration then makes future handles round-trip to
- * the same JS wrapper, and instance-state linking attaches the persistent
- * `state` object for user subclasses.
+ * second one; the toggle reference installed by `setWrapper` then makes
+ * every future handle for this object round-trip to the same JS wrapper.
  *
  * @param instance - The wrapper being constructed; its leaf class supplies the GType
  * @param props - GIR-name-keyed record of `GValue`s (plus ignored extras)
@@ -60,8 +58,6 @@ export function constructGObjectInstance(instance: object, props: Record<string,
 
     if (tryGetHandle(instance) === undefined) {
         setHandle(instance, handle);
-        registerNativeObject(instance as GTyped);
+        setWrapper(handle, instance);
     }
-    const linked = tryGetHandle(instance);
-    if (linked !== undefined) linkInstanceState(linked, instance);
 }
