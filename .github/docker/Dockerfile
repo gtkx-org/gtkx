@@ -39,9 +39,11 @@ RUN curl -fsSL https://rpm.nodesource.com/setup_26.x | bash - \
 
 # Secondary Node 22 for CodSpeed benches only: @codspeed/core's native addon
 # uses a V8 symbol that Node 26's V8 has dropped, so the reconciler benches run
-# under Node 22 while every other job stays on the default Node 26.
+# under the latest Node 22 (still on V8 12.4) while every other job stays on the
+# default Node 26.
 RUN mkdir -p /opt/node22 \
-    && curl -fsSL https://nodejs.org/dist/v22.12.0/node-v22.12.0-linux-x64.tar.xz \
+    && ver=$(curl -fsSL https://nodejs.org/dist/index.json | grep -oE 'v22\.[0-9]+\.[0-9]+' | head -1) \
+    && curl -fsSL "https://nodejs.org/dist/${ver}/node-${ver}-linux-x64.tar.xz" \
        | tar -xJ --strip-components=1 -C /opt/node22
 
 RUN npm install -g corepack && corepack enable && corepack prepare pnpm@latest --activate
