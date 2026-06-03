@@ -1,37 +1,4 @@
 /**
- * Container-slot mapping for compound widgets — JSX element name to the
- * camelCase GTK method names that append a child onto the widget.
- *
- * Each method name doubles as a `ReactNode` prop on the compound and as the
- * `<ContainerSlot id="…">` identifier the reconciler dispatches to. For
- * example `packStart` on `AdwHeaderBar` maps to `adw_header_bar_pack_start(…)`;
- * `<AdwHeaderBar packStart={…} />` packs the value at the start.
- *
- * Unlike setter slots ({@link BUILT_IN_SLOT_PROPS}), a container slot accepts
- * multiple children and appends rather than replaces.
- *
- * The list is small and stable; defining it in code keeps the lookup
- * fast and avoids one more GIR-introspection pass.
- */
-const CONTAINER_SLOTS: Readonly<Record<string, readonly string[]>> = Object.freeze({
-    AdwActionRow: ["addPrefix", "addSuffix"],
-    AdwEntryRow: ["addPrefix", "addSuffix"],
-    AdwExpanderRow: ["addPrefix", "addSuffix", "addRow", "addAction"],
-    AdwHeaderBar: ["packStart", "packEnd"],
-    AdwToolbarView: ["addTopBar", "addBottomBar"],
-    GtkActionBar: ["packStart", "packEnd"],
-    GtkHeaderBar: ["packStart", "packEnd"],
-});
-
-/**
- * Returns the container-slot method names for a JSX element name, or an
- * empty array if no container slots exist.
- *
- * @param jsxName - The JSX element name (PascalCase / GLib type name)
- */
-export const containerSlotsFor = (jsxName: string): readonly string[] => CONTAINER_SLOTS[jsxName] ?? [];
-
-/**
  * Virtual-child subcomponent mapping — JSX element name to the map of
  * subcomponent property → virtual JSX intrinsic name it routes through.
  *
@@ -40,6 +7,9 @@ export const containerSlotsFor = (jsxName: string): readonly string[] => CONTAIN
  * GtkConstraint to the layout. Unlike container slots, virtual
  * subcomponents render an existing intrinsic element rather than
  * invoking a setter on the parent widget.
+ *
+ * The list is small and stable; defining it in code keeps the lookup
+ * fast and avoids one more GIR-introspection pass.
  */
 const VIRTUAL_SUBCOMPONENTS: Readonly<
     Record<string, ReadonlyArray<{ readonly child: string; readonly intrinsic: string }>>

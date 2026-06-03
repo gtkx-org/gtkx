@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { defineConfig, isValidApplicationId } from "../src/config.js";
+import { defineConfig, type GtkxConfig, isValidApplicationId } from "../src/config.js";
 import { isValidProjectName } from "../src/create/options.js";
+
+const defineUnknown = (config: unknown): GtkxConfig => defineConfig(config as GtkxConfig);
 
 describe("defineConfig", () => {
     it("returns the config unchanged when valid", () => {
@@ -20,7 +22,7 @@ describe("defineConfig", () => {
     });
 
     it("rejects a non-array, non-wildcard libraries field", () => {
-        expect(() => defineConfig({ libraries: "Gtk-4.0" as unknown as string[] })).toThrow(
+        expect(() => defineUnknown({ libraries: "Gtk-4.0" })).toThrow(
             '`libraries` must be "*", a non-empty string array, or omitted',
         );
     });
@@ -53,13 +55,13 @@ describe("defineConfig", () => {
     });
 
     it("rejects a non-string library entry", () => {
-        expect(() => defineConfig({ libraries: [123 as unknown as string] })).toThrow(/invalid library identifier/);
+        expect(() => defineUnknown({ libraries: [123] })).toThrow(/invalid library identifier/);
     });
 
     it("rejects a non-array girPath", () => {
-        expect(() =>
-            defineConfig({ libraries: ["Gtk-4.0"], girPath: "/usr/share/gir-1.0" as unknown as string[] }),
-        ).toThrow(/`girPath` must be an array of strings if provided/);
+        expect(() => defineUnknown({ libraries: ["Gtk-4.0"], girPath: "/usr/share/gir-1.0" })).toThrow(
+            /`girPath` must be an array of strings if provided/,
+        );
     });
 });
 
@@ -74,7 +76,7 @@ describe("defineConfig (applicationId)", () => {
     });
 
     it("rejects a non-string applicationId", () => {
-        expect(() => defineConfig({ applicationId: 123 as unknown as string })).toThrow(/invalid `applicationId`/);
+        expect(() => defineUnknown({ applicationId: 123 })).toThrow(/invalid `applicationId`/);
     });
 
     it("accepts a config that omits applicationId", () => {
@@ -83,46 +85,49 @@ describe("defineConfig (applicationId)", () => {
     });
 });
 
-describe("defineConfig slotProps validation", () => {
-    it("accepts a slotProps map", () => {
-        const config = { libraries: ["Gtk-4.0"], slotProps: { MyAppFooBar: ["content"] } };
+describe("defineConfig slot-map validation", () => {
+    it("accepts a widgetSlots map", () => {
+        const config: GtkxConfig = { libraries: ["Gtk-4.0"], widgetSlots: { MyAppFooBar: ["content"] } };
         expect(defineConfig(config)).toBe(config);
     });
 
-    it("rejects a slotProps value that is not an object", () => {
-        expect(() => defineConfig({ slotProps: "nope" as unknown as Record<string, string[]> })).toThrow(
-            /`slotProps` must be an object/,
-        );
+    it("accepts a containerSlots map", () => {
+        const config: GtkxConfig = { libraries: ["Gtk-4.0"], containerSlots: { MyAppHeaderBar: ["packStart"] } };
+        expect(defineConfig(config)).toBe(config);
     });
 
-    it("rejects a slotProps array", () => {
-        expect(() => defineConfig({ slotProps: [] as unknown as Record<string, string[]> })).toThrow(
-            /`slotProps` must be an object/,
-        );
-    });
+    describe.each(["widgetSlots", "containerSlots"] as const)("%s", (option) => {
+        it("rejects a value that is not an object", () => {
+            expect(() => defineUnknown({ [option]: "nope" })).toThrow(new RegExp(`\`${option}\` must be an object`));
+        });
 
-    it("rejects a slotProps key that is not PascalCase", () => {
-        expect(() => defineConfig({ slotProps: { "kebab-name": ["content"] } })).toThrow(
-            /invalid `slotProps` key "kebab-name"/,
-        );
-    });
+        it("rejects an array value", () => {
+            expect(() => defineUnknown({ [option]: [] })).toThrow(new RegExp(`\`${option}\` must be an object`));
+        });
 
-    it("rejects a slotProps entry with an empty array", () => {
-        expect(() => defineConfig({ slotProps: { MyAppFooBar: [] } })).toThrow(
-            /`slotProps\.MyAppFooBar` must be a non-empty array/,
-        );
-    });
+        it("rejects a key that is not PascalCase", () => {
+            expect(() => defineUnknown({ [option]: { "kebab-name": ["content"] } })).toThrow(
+                new RegExp(`invalid \`${option}\` key "kebab-name"`),
+            );
+        });
 
-    it("rejects a slotProps entry that is not an array", () => {
-        expect(() => defineConfig({ slotProps: { MyAppFooBar: "content" as unknown as string[] } })).toThrow(
-            /`slotProps\.MyAppFooBar` must be a non-empty array/,
-        );
-    });
+        it("rejects an entry with an empty array", () => {
+            expect(() => defineUnknown({ [option]: { MyAppFooBar: [] } })).toThrow(
+                new RegExp(`\`${option}\\.MyAppFooBar\` must be a non-empty array`),
+            );
+        });
 
-    it("rejects a slotProps prop name that is not camelCase", () => {
-        expect(() => defineConfig({ slotProps: { MyAppFooBar: ["Content"] } })).toThrow(
-            /invalid `slotProps\.MyAppFooBar` entry "Content"/,
-        );
+        it("rejects an entry that is not an array", () => {
+            expect(() => defineUnknown({ [option]: { MyAppFooBar: "content" } })).toThrow(
+                new RegExp(`\`${option}\\.MyAppFooBar\` must be a non-empty array`),
+            );
+        });
+
+        it("rejects a name that is not camelCase", () => {
+            expect(() => defineUnknown({ [option]: { MyAppFooBar: ["Content"] } })).toThrow(
+                new RegExp(`invalid \`${option}\\.MyAppFooBar\` entry "Content"`),
+            );
+        });
     });
 });
 

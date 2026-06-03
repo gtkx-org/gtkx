@@ -95,8 +95,8 @@ export const implementedInterfaces = (
 
 /**
  * Returns the GLib type names of a class and every ancestor it descends from,
- * nearest first. Used to let a subclass inherit slot-prop declarations made on
- * its ancestors.
+ * nearest first. Used to let a subclass inherit widget-slot declarations made
+ * on its ancestors.
  *
  * @param klass - The class to start from
  * @param namespace - The namespace the class lives in

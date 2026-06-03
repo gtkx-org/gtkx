@@ -12,7 +12,7 @@ const ffiModules = [...repository.namespaces.values()].map((namespace) =>
     generateNamespaceModule(namespace, repository),
 );
 
-const reactPipeline = generateReactFiles(repository, undefined);
+const reactPipeline = generateReactFiles(repository);
 
 describe("codegen FFI pipeline", () => {
     it("resolves the transitive dependency closure of Gtk and Adw", () => {
@@ -71,10 +71,33 @@ describe("codegen React pipeline", () => {
         }
     });
 
-    it("honours user-supplied slot-prop overrides", () => {
-        const overridden = generateReactFiles(repository, { GtkButton: ["child"] });
-        expect(overridden.files.size).toBe(3);
-        expect(overridden.widgetCount).toBeGreaterThan(0);
+    it("honours user-supplied widget-slot overrides", () => {
+        const overridden = generateReactFiles(repository, { widgetSlots: { GtkButton: ["child"] } });
+        const compoundsSource = overridden.files.get("compounds.tsx") ?? "";
+        expect(compoundsSource).toContain('id="child"');
+        const { js } = transpileSource("compounds.tsx", compoundsSource);
+        expect(js.length).toBeGreaterThan(0);
+    });
+
+    it("promotes a user-supplied container slot on a widget without built-in ones", () => {
+        const overridden = generateReactFiles(repository, { containerSlots: { GtkButton: ["addChild"] } });
+        const jsxSource = overridden.files.get("jsx.ts") ?? "";
+        const compoundsSource = overridden.files.get("compounds.tsx") ?? "";
+        expect(jsxSource).toContain("addChild?: ReactNode | null;");
+        expect(compoundsSource).toContain('id="addChild"');
+        const { js } = transpileSource("compounds.tsx", compoundsSource);
+        expect(js.length).toBeGreaterThan(0);
+    });
+
+    it("ignores a user container slot on a non-ReactNode class", () => {
+        const overridden = generateReactFiles(repository, { containerSlots: { GApplication: ["addWindow"] } });
+        const compoundsSource = overridden.files.get("compounds.tsx") ?? "";
+        expect(compoundsSource).not.toContain("GApplicationProps");
+        for (const [path, source] of overridden.files) {
+            const { js, dts } = transpileSource(path, source);
+            expect(js.length).toBeGreaterThan(0);
+            expect(dts.length).toBeGreaterThan(0);
+        }
     });
 });
 

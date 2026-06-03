@@ -13,8 +13,10 @@ export type CodegenRunnerOptions = {
     readonly libraries: readonly string[];
     /** Directories searched for `.gir` files. */
     readonly girPath: readonly string[];
-    /** Optional user slot-prop overrides keyed by JSX element name. */
-    readonly slotProps?: Readonly<Record<string, readonly string[]>>;
+    /** Optional user widget-slot overrides keyed by JSX element name (setter semantics). */
+    readonly widgetSlots?: Readonly<Record<string, readonly string[]>>;
+    /** Optional user container-slot overrides keyed by JSX element name (append semantics). */
+    readonly containerSlots?: Readonly<Record<string, readonly string[]>>;
     /** Target for the injected `@gtkx/gi` bindings package. */
     readonly gi: GiStoreOptions;
     /** Target for the injected `@gtkx/react-jsx` unit; React is skipped when omitted. */
@@ -75,7 +77,10 @@ export class CodegenRunner {
 
         let widgetCount = 0;
         if (this.options.jsx !== undefined) {
-            const reactPipeline = generateReactFiles(repository, this.options.slotProps);
+            const reactPipeline = generateReactFiles(repository, {
+                widgetSlots: this.options.widgetSlots,
+                containerSlots: this.options.containerSlots,
+            });
             writeJsxStore(this.options.jsx, reactPipeline.files);
             widgetCount = reactPipeline.widgetCount;
         }

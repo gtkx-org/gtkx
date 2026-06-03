@@ -1,9 +1,14 @@
 import { quote } from "@gtkx/utils";
 import { indent } from "../dsl/emit.js";
 import type { GirRepository } from "../gir/repository.js";
-import { containerSlotsFor, virtualSubcomponentsFor } from "./compounds-meta.js";
-import { mergeSlotProps } from "./slot-props.js";
-import { ancestorGlibNames, isWidgetClass, iterateClassesWithGlibName, type WidgetCandidate } from "./widgets.js";
+import { virtualSubcomponentsFor } from "./compounds-meta.js";
+import {
+    ancestorGlibNames,
+    isReactNodeClass,
+    isWidgetClass,
+    iterateClassesWithGlibName,
+    type WidgetCandidate,
+} from "./widgets.js";
 
 type CompoundAccumulator = {
     readonly elementNames: Set<string>;
@@ -30,13 +35,14 @@ type CompoundAccumulator = {
  * `jsx.ts`.
  *
  * @param repository - The loaded GIR repository
- * @param userSlotProps - User-supplied slot-prop overrides
+ * @param widgetSlotMap - Merged widget-slot names keyed by JSX element name
+ * @param containerSlotMap - Merged container-slot methods keyed by JSX element name
  */
 export const generateCompounds = (
     repository: GirRepository,
-    userSlotProps: Readonly<Record<string, readonly string[]>> | undefined,
+    widgetSlotMap: Readonly<Record<string, readonly string[]>>,
+    containerSlotMap: Readonly<Record<string, readonly string[]>>,
 ): { readonly source: string; readonly exportedNames: ReadonlySet<string> } => {
-    const slotPropMap = mergeSlotProps(userSlotProps);
     const exportedNames = new Set<string>();
     const exportLines: string[] = [];
     const accumulator: CompoundAccumulator = {
@@ -45,9 +51,9 @@ export const generateCompounds = (
         virtualPropTypes: new Set<string>(),
     };
 
-    for (const { glibName, klass, namespace } of collectCompoundCandidates(repository)) {
-        const slots = resolveInheritedSlots(slotPropMap, klass, namespace, repository);
-        const containers = containerSlotsFor(glibName);
+    for (const { glibName, klass, namespace } of collectCompoundCandidates(repository, containerSlotMap)) {
+        const slots = resolveInheritedSlots(widgetSlotMap, klass, namespace, repository);
+        const containers = containerSlotMap[glibName] ?? [];
         const virtuals = virtualSubcomponentsFor(glibName);
         if (slots.length === 0 && containers.length === 0 && virtuals.length === 0) continue;
 
@@ -170,7 +176,7 @@ const renderImportLines = (accumulator: CompoundAccumulator): readonly string[] 
 };
 
 const resolveInheritedSlots = (
-    slotPropMap: Readonly<Record<string, readonly string[]>>,
+    widgetSlotMap: Readonly<Record<string, readonly string[]>>,
     klass: WidgetCandidate["klass"],
     namespace: WidgetCandidate["namespace"],
     repository: GirRepository,
@@ -178,7 +184,7 @@ const resolveInheritedSlots = (
     const seen = new Set<string>();
     const slots: string[] = [];
     for (const glibName of ancestorGlibNames(klass, namespace, repository)) {
-        for (const slot of slotPropMap[glibName] ?? []) {
+        for (const slot of widgetSlotMap[glibName] ?? []) {
             if (seen.has(slot)) continue;
             seen.add(slot);
             slots.push(slot);
@@ -187,13 +193,17 @@ const resolveInheritedSlots = (
     return slots;
 };
 
-const collectCompoundCandidates = (repository: GirRepository): readonly WidgetCandidate[] => {
+const collectCompoundCandidates = (
+    repository: GirRepository,
+    containerSlotMap: Readonly<Record<string, readonly string[]>>,
+): readonly WidgetCandidate[] => {
     const seen = new Set<string>();
     const candidates: WidgetCandidate[] = [];
     for (const candidate of iterateClassesWithGlibName(repository)) {
         const { glibName, klass, namespace } = candidate;
         const isWidget = isWidgetClass(klass, namespace, repository);
-        const hasContainerSlot = containerSlotsFor(glibName).length > 0;
+        const hasContainerSlot =
+            isReactNodeClass(klass, namespace, repository) && (containerSlotMap[glibName] ?? []).length > 0;
         const hasVirtualChild = virtualSubcomponentsFor(glibName).length > 0;
         if (!isWidget && !hasContainerSlot && !hasVirtualChild) continue;
         if (seen.has(glibName)) continue;
