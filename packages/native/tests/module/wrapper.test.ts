@@ -26,4 +26,12 @@ describe("wrapper toggle references", () => {
 
         expect(getWrapper(label)).toBe(wrapper);
     });
+
+    it("rejects a non-function toggle-notify callback", () => {
+        const notAFunction: unknown = 42;
+
+        expect(() => {
+            setObjectToggleNotify(notAFunction as (refPtr: number, op: number) => void);
+        }).toThrow();
+    });
 });

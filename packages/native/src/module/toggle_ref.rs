@@ -47,10 +47,17 @@ unsafe extern "C" fn on_wrapper_finalize(
 
 /// Installs the JavaScript reference-operation callback invoked, on the JS
 /// thread, with `(refPtr, opcode)` whenever the binding must flip a wrapper
-/// reference strong/weak or delete it.
+/// reference strong/weak or delete it. A non-function `callback` is rejected
+/// with `InvalidArg`.
 #[napi(catch_unwind)]
 #[cfg_attr(test, allow(dead_code))]
 pub fn set_object_toggle_notify(env: Env, callback: Unknown<'_>) -> napi::Result<()> {
+    if !matches!(callback.get_type()?, napi::ValueType::Function) {
+        return Err(napi::Error::new(
+            napi::Status::InvalidArg,
+            "set_object_toggle_notify: callback must be a function",
+        ));
+    }
     let func: JsFunction = unsafe { JsFunction::from_raw_unchecked(env.raw(), callback.raw()) };
     let func_ref = JsRef::from_js_value(&env, &func)?;
     toggle_ref::initialize(Arc::new(func_ref));
@@ -87,6 +94,7 @@ pub fn apply_wrapper_ref_op(env: Env, ref_ptr: f64, op: f64) -> napi::Result<()>
 /// single pending owned reference the decode path left on the object. For a
 /// freshly created object with no other holder, the install's final unref fires
 /// the toggle notify synchronously, weakening the reference before this returns.
+/// A null `handle` pointer is rejected with `InvalidArg`.
 #[napi(catch_unwind)]
 #[cfg_attr(test, allow(dead_code))]
 pub fn set_wrapper(
@@ -95,6 +103,12 @@ pub fn set_wrapper(
     wrapper: JsObject,
 ) -> napi::Result<()> {
     let gobject_addr = handle.ptr() as usize;
+    if gobject_addr == 0 {
+        return Err(napi::Error::new(
+            napi::Status::InvalidArg,
+            "set_wrapper: handle has a null pointer",
+        ));
+    }
 
     let data = Box::into_raw(Box::new(FinalizeData {
         gobject_addr,
@@ -143,6 +157,10 @@ pub fn set_wrapper(
 /// or `undefined` when the object is untracked or its wrapper has already been
 /// collected. Reads the wrapper reference from qdata on the `GLib` thread, then
 /// resolves it to its JS value on the JS thread.
+///
+/// A null or non-`GObject` `handle` resolves to `undefined`: unlike
+/// [`set_wrapper`], this lookup needs no null guard because
+/// [`toggle_ref::wrapper_ref`] checks both conditions before touching qdata.
 #[napi(catch_unwind)]
 #[cfg_attr(test, allow(dead_code))]
 pub fn get_wrapper<'env>(
