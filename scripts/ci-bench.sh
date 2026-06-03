@@ -30,8 +30,17 @@ codspeed run -m simulation -- bash -c '
 ' || status=$?
 
 if [ "$status" -ne 0 ]; then
-  echo "::group::valgrind.log"
-  find "$CODSPEED_PROFILE_FOLDER" -name 'valgrind*.log' -print -exec cat {} + 2>/dev/null || true
+  echo "::group::valgrind diagnostic"
+  valgrind --version || true
+  echo "--- reproducing the runner's valgrind invocation on /bin/echo ---"
+  setarch "$(uname -m)" --addr-no-randomize \
+    valgrind --tool=callgrind --cache-sim=yes \
+    --I1=32768,8,64 --D1=32768,8,64 --LL=8388608,16,64 \
+    --fair-sched=yes --log-file=/tmp/vg-min.log /bin/echo hi 2>&1 | tail -20 || true
+  echo "--- /tmp/vg-min.log ---"
+  cat /tmp/vg-min.log 2>/dev/null || true
+  echo "--- any runner valgrind*.log on disk ---"
+  find / -name 'valgrind*.log' 2>/dev/null -print -exec tail -30 {} + 2>/dev/null || true
   echo "::endgroup::"
   exit "$status"
 fi
