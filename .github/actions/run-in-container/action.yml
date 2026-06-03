@@ -58,25 +58,20 @@ runs:
           fi
         done
 
+        # The CodSpeed runner authenticates over OIDC from inside the container.
+        # It detects GitHub Actions via GITHUB_ACTIONS and reads run metadata from
+        # the whole GITHUB_*/ACTIONS_* environment plus the event payload at
+        # GITHUB_EVENT_PATH, so forward all of it and bind-mount the event file at
+        # its original path.
         if [ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
-          DOCKER_ARGS+=(
-            -e ACTIONS_ID_TOKEN_REQUEST_URL
-            -e ACTIONS_ID_TOKEN_REQUEST_TOKEN
-            -e GITHUB_REPOSITORY
-            -e GITHUB_REPOSITORY_OWNER
-            -e GITHUB_REF
-            -e GITHUB_REF_NAME
-            -e GITHUB_HEAD_REF
-            -e GITHUB_BASE_REF
-            -e GITHUB_SHA
-            -e GITHUB_RUN_ID
-            -e GITHUB_RUN_ATTEMPT
-            -e GITHUB_ACTOR
-            -e GITHUB_WORKFLOW
-            -e GITHUB_SERVER_URL
-            -e GITHUB_API_URL
-            -e GITHUB_EVENT_NAME
-          )
+          while IFS='=' read -r name _; do
+            case "$name" in
+              GITHUB_*|GH_*|RUNNER_*|ACTIONS_*|CI) DOCKER_ARGS+=(-e "$name") ;;
+            esac
+          done < <(env)
+          if [ -n "${GITHUB_EVENT_PATH:-}" ] && [ -f "$GITHUB_EVENT_PATH" ]; then
+            DOCKER_ARGS+=(-v "$GITHUB_EVENT_PATH:$GITHUB_EVENT_PATH:ro")
+          fi
         fi
 
         if [ -n "$INPUT_EXTRA_ENV" ]; then
