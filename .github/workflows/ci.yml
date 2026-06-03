@@ -275,3 +275,4 @@ jobs:
           command: scripts/ci-bench.sh
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
+          seccomp-unconfined: "true"
