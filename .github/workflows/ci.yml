@@ -225,8 +225,6 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Report-only until a run is confirmed clean; then drop this line to gate.
-    continue-on-error: true
     env:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
@@ -254,6 +252,10 @@ jobs:
       id-token: write # public repo: authenticate to CodSpeed over OIDC, no token
     env:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
+      # The runner has both docker and podman; pull-image tags the image under
+      # docker, so docker-run must use docker too (podman would rootless-rebuild
+      # and fail on newuidmap).
+      CONTAINER_ENGINE: docker
       # Profiles written inside the container land under the mounted workspace so
       # the host CodSpeed action can collect them.
       CODSPEED_PROFILE_FOLDER: ${{ github.workspace }}/.codspeed
