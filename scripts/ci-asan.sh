@@ -17,20 +17,20 @@ set -euo pipefail
 
 export RUSTUP_TOOLCHAIN=nightly
 export RUSTFLAGS="-Zsanitizer=address -Cforce-frame-pointers=yes"
+export CARGO_UNSTABLE_BUILD_STD="std,panic_abort"
 export ASAN_OPTIONS="detect_leaks=0:abort_on_error=1:detect_stack_use_after_return=1"
 
 TARGET="x86_64-unknown-linux-gnu"
 
 pushd packages/native >/dev/null
-napi build --platform --release \
+pnpm exec napi build --platform --release \
   --js native-binding.cjs --dts native-binding.d.cts \
-  --target "$TARGET" \
-  --cargo-flags="-Z build-std"
+  --target "$TARGET"
 cp "native.linux-x64-gnu.node" "npm/linux-x64-gnu/"
 popd >/dev/null
 
 SYSROOT="$(rustc +nightly --print sysroot)"
-ASAN_RT="$(find "$SYSROOT" -name 'librustc-*_rt.asan.so' -print -quit)"
+ASAN_RT="$(find "$SYSROOT" -name 'librustc*_rt.asan.so' -print -quit)"
 if [ -z "$ASAN_RT" ]; then
   echo "ci-asan: could not locate the AddressSanitizer runtime under $SYSROOT" >&2
   exit 1

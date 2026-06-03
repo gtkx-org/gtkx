@@ -141,6 +141,11 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    # Report-only on its first run: the AddressSanitizer build (instrumented std
+    # via `-Z build-std`, runtime preload) and its interaction with the
+    # uninstrumented GTK libraries need one live run to confirm. Promote to a
+    # blocking gate once a run is clean.
+    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -160,6 +165,10 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Report-only on its first run: Miri building the GTK-linked crate and
+    # interpreting the marshalling target needs one live run to confirm. Promote
+    # to a blocking gate once a run is clean.
+    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -178,6 +187,11 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    # Report-only for its first run: the benches execute inside the gtkx-ci
+    # container while the CodSpeed action runs on the host, so the in-container
+    # instrumentation and profile hand-off need one live run to confirm. Promote
+    # to a blocking gate once a run uploads successfully.
+    continue-on-error: true
     permissions:
       contents: read
       id-token: write # public repo: authenticate to CodSpeed over OIDC, no token
@@ -193,7 +207,7 @@ jobs:
         uses: ./.github/actions/setup-ci
 
       - name: Run CodSpeed benchmarks
-        uses: CodSpeedHQ/action@v3
+        uses: CodSpeedHQ/action@v4
         with:
           mode: instrumentation
           run: |
