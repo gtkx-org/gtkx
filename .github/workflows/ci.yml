@@ -283,4 +283,4 @@ jobs:
           mode: simulation
           run: |
             scripts/docker-run bash -lc "cd packages/native && cargo codspeed run"
-            scripts/docker-run pnpm --filter @gtkx/e2e bench
+            scripts/docker-run bash -lc "GSK_RENDERER=cairo LIBGL_ALWAYS_SOFTWARE=1 pnpm --filter @gtkx/e2e bench"

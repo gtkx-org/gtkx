@@ -9,9 +9,11 @@ import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
  * Sizes grown geometrically so an instruction-count gate (CodSpeed) sees a flat
  * per-item slope for the linear paths and a rising slope for any quadratic
  * regression: a quadratic in selection apply or child insertion makes the 2x
- * and 4x cases cost far more than 2x and 4x the base case.
+ * and 4x cases cost far more than 2x and 4x the base case. Kept modest because
+ * the benches run under CodSpeed's Valgrind instrumentation, where exact
+ * instruction counts make the slope visible without large inputs.
  */
-const SIZES = [1500, 3000, 6000];
+const SIZES = [100, 200, 400];
 
 /**
  * Section-mode items: the apply path that the GOLD report found quadratic
@@ -41,7 +43,7 @@ describe("selection apply", () => {
             // Apply selection repeatedly so the O(N) apply path — not the one-time
             // render — dominates the measurement; reusing the same `items`
             // reference keeps the model in sync so only `applySelection` runs.
-            for (let k = 0; k < 12; k++) {
+            for (let k = 0; k < 3; k++) {
                 await rerender(items, { selectionMode: Gtk.SelectionMode.MULTIPLE, selected: [targetId] });
                 await rerender(items, { selectionMode: Gtk.SelectionMode.MULTIPLE, selected: [] });
             }
