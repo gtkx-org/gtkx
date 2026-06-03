@@ -27,10 +27,12 @@ pnpm exec napi build --platform --release \
 cp native.linux-x64-gnu.node npm/linux-x64-gnu/
 popd >/dev/null
 
-ASAN_RT="/usr/lib/gcc/x86_64-redhat-linux/$(gcc -dumpversion)/libasan.so"
-if [ ! -f "$ASAN_RT" ]; then
-  echo "ci-asan: GCC AddressSanitizer runtime not found at $ASAN_RT; candidates:" >&2
-  find /usr/lib/gcc -name 'libasan.so*' 2>/dev/null >&2 || true
+# The linker script under gcc points at the real runtime SONAME, which the
+# `libasan` package installs under /usr/lib64. LD_PRELOAD needs the real .so,
+# not the linker script.
+ASAN_RT="$(find /usr/lib64 /usr/lib -name 'libasan.so.[0-9]*' 2>/dev/null | sort | head -1)"
+if [ -z "$ASAN_RT" ]; then
+  echo "ci-asan: AddressSanitizer runtime not found; install the libasan package." >&2
   exit 1
 fi
 

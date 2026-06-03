@@ -28,6 +28,7 @@ RUN dnf install -y \
     git \
     gdb \
     valgrind \
+    libasan \
     && dnf debuginfo-install -y glib2 gtk4 libadwaita \
     && dnf clean all \
     && rm -rf /var/cache/dnf/*

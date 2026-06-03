@@ -240,10 +240,12 @@ jobs:
           command: scripts/ci-miri.sh
           mount-cargo-cache: "true"
 
-  # Runs inside the CI container so the CodSpeed action instruments the bench
-  # processes directly (no nested docker, no host/container profile-path skew).
-  # Rust benches go through `cargo codspeed`; the reconciler benches through the
-  # vitest plugin.
+  # The CodSpeed runner only supports Debian/Ubuntu, but the benches must use the
+  # pinned Fedora image (codegen reads the system GIR, so building elsewhere
+  # downgrades the bindings). So the CodSpeed action runs on the Ubuntu host
+  # while the benches execute inside the container via docker-run: the in-container
+  # vitest plugin and `cargo codspeed` do the instrumentation, and the profile
+  # folder is bind-mounted at a shared path for the host action to upload.
   bench:
     needs: [changes, image]
     if: needs.changes.outputs.code == 'true'
@@ -251,34 +253,34 @@ jobs:
     timeout-minutes: 40
     # Report-only until a run is confirmed clean; then drop this line to gate.
     continue-on-error: true
-    container:
-      image: ${{ needs.image.outputs.ref }}
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
     permissions:
       contents: read
       packages: read
       id-token: write # public repo: authenticate to CodSpeed over OIDC, no token
+    env:
+      CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
+      # The runner has both docker and podman; pull-image tags under docker, so
+      # docker-run must use docker too (podman would rootless-rebuild and fail).
+      CONTAINER_ENGINE: docker
+      CODSPEED_PROFILE_FOLDER: ${{ github.workspace }}/.codspeed
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
-      - name: Trust the workspace for git
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Setup CI
+        uses: ./.github/actions/setup-ci
 
       - name: Build the workspace and the Rust benchmark
-        run: |
-          pnpm exec turbo build --filter=@gtkx/e2e
-          (cd packages/native && cargo codspeed build --bench marshalling)
+        uses: ./.github/actions/run-in-container
+        with:
+          command: pnpm exec turbo build --filter=@gtkx/e2e && (cd packages/native && cargo codspeed build --bench marshalling)
+          mount-cargo-cache: "true"
+          mount-pnpm-store: "true"
 
       - name: Run CodSpeed benchmarks
         uses: CodSpeedHQ/action@v4
         with:
-          mode: instrumentation
+          mode: simulation
           run: |
-            (cd packages/native && cargo codspeed run)
-            pnpm --filter @gtkx/e2e bench
+            scripts/docker-run bash -lc "cd packages/native && cargo codspeed run"
+            scripts/docker-run pnpm --filter @gtkx/e2e bench
