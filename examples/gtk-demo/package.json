@@ -22,7 +22,7 @@
     "devDependencies": {
         "@gtkx/cli": "workspace:*",
         "@gtkx/testing": "workspace:*",
-        "@vitest/coverage-v8": "^4.1.7",
+        "@vitest/coverage-v8": "^4.1.8",
         "vite": "^8.0.14",
         "vitest": "^4.1.7"
     }
