@@ -201,6 +201,15 @@
             "inputs": ["vitest.config.ts", "src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],
             "outputLogs": "new-only"
         },
+        "bench": {
+            "dependsOn": ["^build", "native-build", "@gtkx/cli#codegen"],
+            "cache": false
+        },
+        "native-bench": {
+            "dependsOn": ["native-build"],
+            "cache": false,
+            "passThroughEnv": ["RUSTUP_TOOLCHAIN", "CODSPEED_RUNNER_MODE"]
+        },
         "docs": {
             "dependsOn": ["@gtkx/ffi#build", "@gtkx/react#build"],
             "inputs": [

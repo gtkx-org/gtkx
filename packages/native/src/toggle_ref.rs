@@ -31,6 +31,22 @@
 //! `napi_ref` pointer across as a `usize`, exactly as [`JsRef`] does. Every path
 //! here either touches qdata on the `GLib` thread or drives a JS callback, so
 //! the module is excluded from coverage instrumentation.
+//!
+//! # Teardown serialization invariant
+//!
+//! [`on_toggle_notify`] and the finalize cleanup that [`schedule_cleanup`] posts
+//! both run on the `GLib` thread, which dispatches its sources one at a time, so
+//! a notify can never execute *concurrently* with a cleanup. Ordering across the
+//! boundary is then closed by the sequence the cleanup runs: it clears the qdata
+//! slot, deletes the `napi_ref`, and only then removes the toggle ref. A notify
+//! that fires after the slot is cleared reads a null reference and returns
+//! without touching the dead wrapper (`ref_ptr.is_null()`), and the
+//! `wrapper_ref(gobject) == ref_ptr` guard makes the qdata-clear itself a no-op
+//! once a new wrapper has rebound the same object. A teardown and a stale notify
+//! therefore can never both act on one `napi_ref`. This single-`GLib`-thread
+//! serialization is the lifetime system's one cross-thread ordering guarantee;
+//! no change may move the notify or the cleanup off the `GLib` thread without
+//! replacing it. The race is exercised by `tests/module/toggle-cross-thread.test.ts`.
 
 #![cfg_attr(coverage_nightly, coverage(off))]
 

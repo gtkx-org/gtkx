@@ -136,3 +136,67 @@ jobs:
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
 
+  asan:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup CI
+        uses: ./.github/actions/setup-ci
+
+      - name: Build the native addon under AddressSanitizer and run its suite
+        uses: ./.github/actions/run-in-container
+        with:
+          command: scripts/ci-asan.sh
+          mount-cargo-cache: "true"
+          mount-pnpm-store: "true"
+
+  miri:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup CI
+        uses: ./.github/actions/setup-ci
+
+      - name: Run Miri over the FFI-free marshalling subset
+        uses: ./.github/actions/run-in-container
+        with:
+          command: scripts/ci-miri.sh
+          mount-cargo-cache: "true"
+
+  bench:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      id-token: write # public repo: authenticate to CodSpeed over OIDC, no token
+    env:
+      # Profiles written inside the container land under the mounted workspace so
+      # the host CodSpeed action can collect them.
+      CODSPEED_PROFILE_FOLDER: ${{ github.workspace }}/.codspeed
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup CI
+        uses: ./.github/actions/setup-ci
+
+      - name: Run CodSpeed benchmarks
+        uses: CodSpeedHQ/action@v3
+        with:
+          mode: instrumentation
+          run: |
+            scripts/docker-run pnpm --filter @gtkx/e2e bench
+            scripts/docker-run pnpm --filter @gtkx/native native-bench
+

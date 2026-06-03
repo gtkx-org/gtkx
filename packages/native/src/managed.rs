@@ -143,8 +143,12 @@ impl NativeHandle {
 
     /// Returns the raw native pointer reinterpreted as a [`usize`].
     ///
-    /// Used by the JS-facing `getNativeId` to expose the pointer value as an
-    /// object-identity token.
+    /// Used where the address must travel as a plain integer rather than a
+    /// dereferenceable handle: the address-based field reads and writes in
+    /// `module::field`, the numeric marshalling of pointer-valued arguments in
+    /// `types::numeric`, and the property and `GType` lookups in
+    /// `module::gobject` that capture an instance address to resolve on the
+    /// `GLib` thread.
     #[must_use]
     pub fn ptr_as_usize(&self) -> usize {
         self.ptr

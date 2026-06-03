@@ -20,6 +20,7 @@ export class Node<TBackingInstance = any, TProps = any, TParent extends Node = a
     rootContainer: BackingInstance;
     parent: TParent | null = null;
     children: TChild[] = [];
+    protected childSet = new Set<TChild>();
     private cachedPropTable: PropDescriptorTable | null = null;
 
     constructor(typeName: string, props: TProps, backingInstance: TBackingInstance, rootContainer: BackingInstance) {
@@ -46,14 +47,20 @@ export class Node<TBackingInstance = any, TProps = any, TParent extends Node = a
         this.parent = parent;
     }
 
+    /** Whether `child` is currently a direct child of this node, in O(1). */
+    public hasChild(child: TChild): boolean {
+        return this.childSet.has(child);
+    }
+
     public appendChild(child: TChild): void {
         if (!this.isValidChild(child)) {
             throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}'`);
         }
 
-        const existingIndex = this.children.indexOf(child);
-        if (existingIndex !== -1) {
-            this.children.splice(existingIndex, 1);
+        if (this.childSet.has(child)) {
+            this.children.splice(this.children.indexOf(child), 1);
+        } else {
+            this.childSet.add(child);
         }
         this.children.push(child);
 
@@ -64,10 +71,9 @@ export class Node<TBackingInstance = any, TProps = any, TParent extends Node = a
 
     public removeChild(child: TChild): void {
         child.setParent(null);
-        const index = this.children.indexOf(child);
 
-        if (index !== -1) {
-            this.children.splice(index, 1);
+        if (this.childSet.delete(child)) {
+            this.children.splice(this.children.indexOf(child), 1);
         }
     }
 
@@ -76,9 +82,8 @@ export class Node<TBackingInstance = any, TProps = any, TParent extends Node = a
             throw new Error(`Cannot insert '${child.typeName}' into '${this.typeName}'`);
         }
 
-        const existingIndex = this.children.indexOf(child);
-        if (existingIndex !== -1) {
-            this.children.splice(existingIndex, 1);
+        if (this.childSet.delete(child)) {
+            this.children.splice(this.children.indexOf(child), 1);
         }
 
         const beforeIndex = this.children.indexOf(before);
@@ -87,6 +92,7 @@ export class Node<TBackingInstance = any, TProps = any, TParent extends Node = a
         }
 
         this.children.splice(beforeIndex, 0, child);
+        this.childSet.add(child);
 
         if (child.parent !== this) {
             child.setParent(this);

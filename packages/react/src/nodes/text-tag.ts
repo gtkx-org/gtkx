@@ -91,6 +91,7 @@ export class TextTagNode
         const index = this.children.indexOf(child);
         if (index !== -1) {
             this.children.splice(index, 1);
+            this.childSet.delete(child);
             child.setParent(null);
             this.updateChildOffsets(index);
             this.parent?.onChildRemoved(child);

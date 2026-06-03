@@ -9,6 +9,10 @@ exclude = ["index.node"]
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[[bench]]
+name = "marshalling"
+harness = false
+
 [dependencies]
 napi = { version = "3", features = ["napi8", "anyhow", "compat-mode"] }
 napi-derive = "3"
@@ -49,3 +53,6 @@ as_ptr_cast_mut = "allow"
 ptr_cast_constness = "allow"
 float_cmp = "allow"
 cast_ptr_alignment = "allow"
+
+[dev-dependencies]
+codspeed-criterion-compat = "4.7.0"

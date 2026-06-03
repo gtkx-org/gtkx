@@ -287,3 +287,22 @@ describe("render - ListView - selection (6) > tree - single (3)", () => {
         expect(scrollPosAfter).toBe(scrollPosBefore);
     });
 });
+
+describe("render - ListView - selection (7) > selectionMode + selected together", () => {
+    it("keeps the selection when selectionMode and selected change in the same render", async () => {
+        const { ref, rerender } = await renderListView(THREE_ITEMS, {
+            selectionMode: Gtk.SelectionMode.SINGLE,
+            selected: ["1"],
+        });
+
+        await rerender(THREE_ITEMS, {
+            selectionMode: Gtk.SelectionMode.MULTIPLE,
+            selected: ["1", "3"],
+        });
+
+        const selection = (ref.current.getModel() as Gtk.MultiSelection).getSelection();
+        expect(selection.getSize()).toBe(2);
+        expect(selection.contains(0)).toBe(true);
+        expect(selection.contains(2)).toBe(true);
+    });
+});

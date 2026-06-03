@@ -21,7 +21,7 @@ export class NotebookNode extends WidgetNode<Gtk.Notebook, Props, NotebookChild>
 
     public override insertBefore(child: NotebookChild, before: NotebookChild): void {
         if (child instanceof NotebookPageNode && before instanceof NotebookPageNode) {
-            const isMove = this.children.includes(child);
+            const isMove = this.hasChild(child);
             const beforePosition = this.backingInstance.pageNum(before.getChildWidget());
             child.setPosition(beforePosition);
 

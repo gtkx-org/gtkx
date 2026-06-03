@@ -27,6 +27,7 @@ RUN dnf install -y \
     dbus-daemon \
     git \
     gdb \
+    valgrind \
     && dnf debuginfo-install -y glib2 gtk4 libadwaita \
     && dnf clean all \
     && rm -rf /var/cache/dnf/*
@@ -44,7 +45,7 @@ ENV PATH="/usr/local/cargo/bin:${PATH}"
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy,llvm-tools-preview --default-toolchain stable \
     && chmod -R a+rwX $RUSTUP_HOME $CARGO_HOME
 
-RUN /usr/local/cargo/bin/rustup toolchain install nightly --profile minimal --component llvm-tools-preview \
+RUN /usr/local/cargo/bin/rustup toolchain install nightly --profile minimal --component llvm-tools-preview rust-src miri \
     && chmod -R a+rwX $RUSTUP_HOME $CARGO_HOME
 
 RUN /usr/local/cargo/bin/cargo install cargo-llvm-cov --locked \

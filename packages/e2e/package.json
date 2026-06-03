@@ -4,11 +4,13 @@
     "private": true,
     "type": "module",
     "scripts": {
+        "bench": "vitest bench --run --config vitest.bench.config.ts",
         "build": "tsc -b",
         "test": "vitest run",
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "devDependencies": {
+        "@codspeed/vitest-plugin": "^5.5.0",
         "@gtkx/ffi": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/testing": "workspace:*",
