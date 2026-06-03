@@ -1,5 +1,5 @@
 name: Pull CI Image
-description: Pull the CI Docker image from GHCR and retag locally as gtkx-ci:local; build locally if the registry image is unavailable.
+description: Pull this run's CI image (CI_IMAGE_REF, built by the `image` job) and retag locally as gtkx-ci:local; fall back to :latest, then a cache-primed local build if the registry image is unavailable.
 
 runs:
   using: composite
@@ -16,12 +16,15 @@ runs:
       id: pull
       shell: bash
       run: |
-        if docker pull ghcr.io/gtkx-org/gtkx-ci:latest; then
-          docker tag ghcr.io/gtkx-org/gtkx-ci:latest gtkx-ci:local
-          echo "result=pulled" >> "$GITHUB_OUTPUT"
-        else
-          echo "result=missing" >> "$GITHUB_OUTPUT"
-        fi
+        for ref in "${CI_IMAGE_REF:-}" "ghcr.io/gtkx-org/gtkx-ci:latest"; do
+          [ -z "$ref" ] && continue
+          if docker pull "$ref"; then
+            docker tag "$ref" gtkx-ci:local
+            echo "result=pulled" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+        done
+        echo "result=missing" >> "$GITHUB_OUTPUT"
 
     - name: Set up Docker Buildx (fallback build)
       if: steps.pull.outputs.result == 'missing'
@@ -34,3 +37,4 @@ runs:
         context: .github/docker
         load: true
         tags: gtkx-ci:local
+        cache-from: type=gha,scope=ci-image
