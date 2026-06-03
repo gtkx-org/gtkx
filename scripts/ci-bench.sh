@@ -13,6 +13,12 @@
 
 set -euo pipefail
 
+# Pin the profile folder so the Valgrind log can be surfaced when the runner
+# fails during measurement, before it would have uploaded anything.
+export CODSPEED_PROFILE_FOLDER="${CODSPEED_PROFILE_FOLDER:-/tmp/codspeed-profile}"
+mkdir -p "$CODSPEED_PROFILE_FOLDER"
+
+status=0
 codspeed run -m simulation -- bash -c '
   set -e
   (cd packages/native && cargo codspeed run)
@@ -21,4 +27,11 @@ codspeed run -m simulation -- bash -c '
     LIBGL_ALWAYS_SOFTWARE=1 \
     PATH="/opt/node22/bin:$PATH" \
     pnpm --filter @gtkx/e2e bench
-'
+' || status=$?
+
+if [ "$status" -ne 0 ]; then
+  echo "::group::valgrind.log"
+  find "$CODSPEED_PROFILE_FOLDER" -name 'valgrind*.log' -print -exec cat {} + 2>/dev/null || true
+  echo "::endgroup::"
+  exit "$status"
+fi
