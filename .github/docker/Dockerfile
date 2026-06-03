@@ -107,13 +107,28 @@ RUN cargo install cargo-llvm-cov --locked \
 RUN cargo install cargo-codspeed --locked \
     && chmod -R a+rwX "$CARGO_HOME"
 
-# The CodSpeed runner instruments and uploads the benchmarks. It only supports a
-# Debian/Ubuntu host, which this image now is, so the bench job runs it directly
-# inside the container instead of wrapping the host action around docker-run.
+# The CodSpeed runner instruments and uploads the benchmarks, so the bench job
+# runs it directly inside the container instead of wrapping a host action around
+# docker-run.
 RUN curl -fsSL https://codspeed.io/install.sh | bash \
     && install -m 0755 "$(find / -name codspeed -type f -path '*bin*' 2>/dev/null | head -1)" /usr/local/bin/codspeed \
     && codspeed --version \
     && chmod -R a+rwX "$CARGO_HOME"
+
+# CodSpeed publishes its patched valgrind only for Ubuntu 22.04/24.04. On 26.04
+# the runner classes its executor as "requires manual installation" and skips
+# its own download when a `.codspeed` valgrind is already present. Install the
+# 24.04 build — upstream valgrind 3.26, the same release this image ships — over
+# the stock package so `codspeed run` instruments here instead of bailing with
+# "Unsupported system". The SHA-256 matches the runner's own pinned artifact.
+RUN url="https://github.com/CodSpeedHQ/valgrind-codspeed/releases/download/3.26.0-0codspeed2/valgrind_3.26.0-0codspeed2_ubuntu-24.04_amd64.deb" \
+    && curl -fsSL -o /tmp/valgrind-codspeed.deb "$url" \
+    && echo "2e21cf5b1dea52bc7e23156fab6adc8893fac5ff101f33a4b68c0ecdb1716f3f  /tmp/valgrind-codspeed.deb" | sha256sum -c - \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends --allow-downgrades /tmp/valgrind-codspeed.deb \
+    && rm -f /tmp/valgrind-codspeed.deb \
+    && rm -rf /var/lib/apt/lists/* \
+    && valgrind --version | grep -q codspeed
 
 # CI has no GPU; drop any hardware Vulkan ICD so GTK selects the software
 # rasterizer instead of failing to initialize a real driver.

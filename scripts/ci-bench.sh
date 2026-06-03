@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-codspeed run -m instrumentation -- bash -c '
+codspeed run -m simulation -- bash -c '
   set -e
   (cd packages/native && cargo codspeed run)
   xvfb-run -a env \
