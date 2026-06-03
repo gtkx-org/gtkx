@@ -43,7 +43,7 @@
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "devDependencies": {
-        "vitest": "^4.1.7"
+        "vitest": "^4.1.8"
     },
     "peerDependencies": {
         "vitest": ">=4"

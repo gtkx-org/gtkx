@@ -32,7 +32,7 @@
         "turbo": "^2.9.16",
         "typescript": "^6.0.3",
         "verdaccio": "^6.7.2",
-        "vitest": "^4.1.7"
+        "vitest": "^4.1.8"
     },
     "engines": {
         "node": ">=24"
