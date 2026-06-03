@@ -34,6 +34,15 @@ fn owned_fundamental(ptr: *mut c_void) -> NativeHandle {
     .into()
 }
 
+/// Wraps `ptr` in a handle that takes its own reference (transfer-none), so the
+/// caller's reference keeps the value alive past the handle's drop and the
+/// post-drop refcount can be read safely.
+fn borrowed_fundamental(ptr: *mut c_void) -> NativeHandle {
+    let fundamental =
+        unsafe { Fundamental::from_glib_none(ptr, Some(param_spec_ref), Some(param_spec_unref)) };
+    NativeValue::Fundamental(fundamental).into()
+}
+
 #[test]
 fn borrowed_gobject_handle_records_pointer() {
     common::run(|| {
@@ -130,13 +139,13 @@ fn clone_borrowed_handle_preserves_pointer() {
 fn drop_owned_handle_on_creating_thread_releases_value() {
     common::run(|| {
         let ptr = param_spec_ptr();
+        let handle = borrowed_fundamental(ptr);
         let initial_ref = param_spec_refcount(ptr);
-
-        let handle = owned_fundamental(ptr);
-        assert_eq!(param_spec_refcount(ptr), initial_ref);
 
         drop(handle);
         assert_eq!(param_spec_refcount(ptr), initial_ref - 1);
+
+        unsafe { param_spec_unref(ptr) };
     });
 }
 
@@ -154,11 +163,8 @@ fn drop_borrowed_handle_is_noop() {
 fn a_drop_owned_handle_off_thread_routes_through_glib_idle() {
     common::run(|| {
         let ptr = param_spec_ptr();
-        let fundamental = unsafe {
-            Fundamental::from_glib_none(ptr, Some(param_spec_ref), Some(param_spec_unref))
-        };
+        let handle = borrowed_fundamental(ptr);
         let initial_ref = param_spec_refcount(ptr);
-        let handle: NativeHandle = NativeValue::Fundamental(fundamental).into();
 
         thread::spawn(move || {
             drop(handle);

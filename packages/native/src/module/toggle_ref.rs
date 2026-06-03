@@ -57,7 +57,9 @@ pub fn set_object_toggle_notify(env: Env, callback: Unknown<'_>) -> napi::Result
     Ok(())
 }
 
-/// Applies one `napi_reference_*` operation to `ref_ptr` by opcode. A stale or
+/// Applies one `napi_reference_*` operation to `ref_ptr` by opcode. Only the
+/// three known opcodes act; any other value is a no-op rather than a silent
+/// deletion, so a stray call cannot destroy a wrapper reference. A stale or
 /// already-deleted reference yields a benign failure status that is ignored, so
 /// teardown ordering never crashes.
 #[napi(catch_unwind)]
@@ -71,7 +73,7 @@ pub fn apply_wrapper_ref_op(env: Env, ref_ptr: f64, op: f64) -> napi::Result<()>
             sys::napi_reference_ref(env.raw(), raw_ref, &mut count);
         } else if op == toggle_ref::OP_WEAKEN {
             sys::napi_reference_unref(env.raw(), raw_ref, &mut count);
-        } else {
+        } else if op == toggle_ref::OP_DELETE {
             sys::napi_delete_reference(env.raw(), raw_ref);
         }
     }
