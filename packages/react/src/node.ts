@@ -52,13 +52,25 @@ export class Node<TBackingInstance = any, TProps = any, TParent extends Node = a
         return this.childSet.has(child);
     }
 
+    /**
+     * Removes `child` from the ordered {@link children} list, resolving its
+     * index once. A missing child is left untouched, so the splice can never
+     * fall back to `-1` and delete an unrelated trailing child.
+     */
+    private removeFromChildOrder(child: TChild): void {
+        const index = this.children.indexOf(child);
+        if (index !== -1) {
+            this.children.splice(index, 1);
+        }
+    }
+
     public appendChild(child: TChild): void {
         if (!this.isValidChild(child)) {
             throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}'`);
         }
 
         if (this.childSet.has(child)) {
-            this.children.splice(this.children.indexOf(child), 1);
+            this.removeFromChildOrder(child);
         } else {
             this.childSet.add(child);
         }
@@ -73,7 +85,7 @@ export class Node<TBackingInstance = any, TProps = any, TParent extends Node = a
         child.setParent(null);
 
         if (this.childSet.delete(child)) {
-            this.children.splice(this.children.indexOf(child), 1);
+            this.removeFromChildOrder(child);
         }
     }
 
@@ -83,7 +95,7 @@ export class Node<TBackingInstance = any, TProps = any, TParent extends Node = a
         }
 
         if (this.childSet.delete(child)) {
-            this.children.splice(this.children.indexOf(child), 1);
+            this.removeFromChildOrder(child);
         }
 
         const beforeIndex = this.children.indexOf(before);

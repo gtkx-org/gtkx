@@ -79,15 +79,18 @@ RUN fc-cache -f
 
 # Node 26 is the default runtime; a secondary Node 22 lives in /opt/node22 for
 # the CodSpeed reconciler benches, whose @codspeed/core native addon uses a V8
-# symbol Node 26 has dropped. Both come from nodejs.org so each version is pinned
-# independently of the distribution.
-RUN for major in 26 22; do \
-        ver="$(curl -fsSL https://nodejs.org/dist/index.json | grep -oE "v${major}\.[0-9]+\.[0-9]+" | head -1)"; \
-        if [ "$major" = 26 ]; then dest=/usr/local; else dest=/opt/node22; fi; \
-        mkdir -p "$dest"; \
-        curl -fsSL "https://nodejs.org/dist/${ver}/node-${ver}-linux-x64.tar.xz" \
-            | tar -xJ --strip-components=1 -C "$dest"; \
-    done
+# symbol Node 26 has dropped. Both come from nodejs.org at exact patch versions
+# so the image stays reproducible under its content hash; bump these deliberately.
+ARG NODE26_VERSION=26.3.0
+ARG NODE22_VERSION=22.22.3
+RUN set -eux \
+    && curl -fsSL "https://nodejs.org/dist/v${NODE26_VERSION}/node-v${NODE26_VERSION}-linux-x64.tar.xz" \
+        | tar -xJ --strip-components=1 -C /usr/local \
+    && mkdir -p /opt/node22 \
+    && curl -fsSL "https://nodejs.org/dist/v${NODE22_VERSION}/node-v${NODE22_VERSION}-linux-x64.tar.xz" \
+        | tar -xJ --strip-components=1 -C /opt/node22 \
+    && node --version | grep -q "v${NODE26_VERSION}" \
+    && /opt/node22/bin/node --version | grep -q "v${NODE22_VERSION}"
 
 RUN npm install -g corepack@latest && corepack enable && corepack prepare pnpm@latest --activate
 

@@ -68,9 +68,21 @@ export class SelectionController {
     }
 
     public rebuild(selectionMode: Gtk.SelectionMode | null | undefined): void {
-        this.selectionModel = this.createSelectionModel(selectionMode ?? Gtk.SelectionMode.SINGLE);
+        this.disconnectSelectionSignal();
+        this.selectionModel = this.host.isDropDown()
+            ? null
+            : this.createSelectionModel(selectionMode ?? Gtk.SelectionMode.SINGLE);
         this.host.assignModelToWidget();
         this.connectSelectionSignal();
+    }
+
+    private disconnectSelectionSignal(): void {
+        if (!this.selectionModel) return;
+        this.owner.signalStore.set({
+            owner: this.owner,
+            obj: this.selectionModel,
+            signal: "selection-changed",
+        });
     }
 
     private clearSelection(): void {
@@ -122,9 +134,13 @@ export class SelectionController {
         }
     }
 
-    public applySelectedId(id: string | null): void {
+    public applySelectedId(id: string | null | undefined): void {
         if (!this.host.isDropDown()) return;
-        if (id === null || id === undefined) return;
+        if (id === undefined) return;
+        if (id === null) {
+            this.setDropDownSelected(Gtk.INVALID_LIST_POSITION);
+            return;
+        }
 
         const flatItems = this.model.collectFlatItems();
         for (let i = 0; i < flatItems.length; i++) {

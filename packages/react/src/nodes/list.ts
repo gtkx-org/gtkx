@@ -170,7 +170,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         this.selectionController.connectSelectionSignal();
         this.connectSortSignal();
         this.selectionController.applySelection(this.props.selected ?? null);
-        this.selectionController.applySelectedId(this.props.selectedId ?? null);
+        this.selectionController.applySelectedId(this.props.selectedId);
     }
 
     public override detachDeletedInstance(): void {
@@ -278,37 +278,54 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         this.containers.set(expander, position);
     }
 
-    private onFactoryUnbind(obj: GObject.Object, isTree: boolean): void {
+    private withLifecycleItem(
+        obj: GObject.Object,
+        isTree: boolean,
+        onTreeExpander: (expander: Gtk.TreeExpander) => void,
+        onFlatItem: (listItem: Gtk.ListItem) => void,
+    ): Gtk.ListItem | null {
         const listItem = this.lifecycleListItem(obj);
-        if (!listItem) return;
+        if (!listItem) return null;
 
         if (isTree) {
-            this.withTreeExpander(listItem, (expander) => {
-                this.containers.set(expander, UNBOUND_POSITION);
-                expander.setListRow(null);
-            });
+            this.withTreeExpander(listItem, onTreeExpander);
         } else {
-            this.containers.set(listItem, UNBOUND_POSITION);
+            onFlatItem(listItem);
         }
 
-        this.queueBoundItemsUpdate();
+        return listItem;
+    }
+
+    private onFactoryUnbind(obj: GObject.Object, isTree: boolean): void {
+        const listItem = this.withLifecycleItem(
+            obj,
+            isTree,
+            (expander) => {
+                this.containers.set(expander, UNBOUND_POSITION);
+                expander.setListRow(null);
+            },
+            (item) => {
+                this.containers.set(item, UNBOUND_POSITION);
+            },
+        );
+        if (listItem) this.queueBoundItemsUpdate();
     }
 
     private onFactoryTeardown(obj: GObject.Object, isTree: boolean): void {
-        const listItem = this.lifecycleListItem(obj);
-        if (!listItem) return;
-
-        if (isTree) {
-            this.withTreeExpander(listItem, (expander) => {
+        const listItem = this.withLifecycleItem(
+            obj,
+            isTree,
+            (expander) => {
                 this.containers.delete(expander);
                 this.containerKeys.delete(expander);
-            });
-            this.treeExpanders.delete(listItem);
-        } else {
-            this.containers.delete(listItem);
-            this.containerKeys.delete(listItem);
-        }
-
+            },
+            (item) => {
+                this.containers.delete(item);
+                this.containerKeys.delete(item);
+            },
+        );
+        if (!listItem) return;
+        if (isTree) this.treeExpanders.delete(listItem);
         listItem.setChild(null);
     }
 
@@ -425,21 +442,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             this.scheduleSync();
         }
 
-        if (hasChanged(oldProps, newProps, "selectionMode")) {
-            this.selectionController.rebuild(newProps.selectionMode);
-        }
-
-        if (hasChanged(oldProps, newProps, "selected")) {
-            this.selectionController.applySelection(newProps.selected ?? null);
-        }
-
-        if (hasChanged(oldProps, newProps, "selectedId")) {
-            this.selectionController.applySelectedId(newProps.selectedId ?? null);
-        }
-
-        if (hasChanged(oldProps, newProps, "onSelectionChanged")) {
-            this.selectionController.connectSelectionSignal();
-        }
+        this.applySelectionProps(oldProps, newProps);
 
         if (
             hasChanged(oldProps, newProps, "renderItem") ||
@@ -459,6 +462,25 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
         if (hasChanged(oldProps, newProps, "sortColumn") || hasChanged(oldProps, newProps, "sortOrder")) {
             this.applySortColumn(newProps);
+        }
+    }
+
+    private applySelectionProps(oldProps: ListProps, newProps: ListProps): void {
+        const selectionModeChanged = hasChanged(oldProps, newProps, "selectionMode");
+        if (selectionModeChanged) {
+            this.selectionController.rebuild(newProps.selectionMode);
+        }
+
+        if (selectionModeChanged || hasChanged(oldProps, newProps, "selected")) {
+            this.selectionController.applySelection(newProps.selected ?? null);
+        }
+
+        if (selectionModeChanged || hasChanged(oldProps, newProps, "selectedId")) {
+            this.selectionController.applySelectedId(newProps.selectedId);
+        }
+
+        if (hasChanged(oldProps, newProps, "onSelectionChanged")) {
+            this.selectionController.connectSelectionSignal();
         }
     }
 

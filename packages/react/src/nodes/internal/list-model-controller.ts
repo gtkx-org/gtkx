@@ -383,7 +383,8 @@ export class ListModelController {
     }
 
     /**
-     * Resolves the item id at every position `0..count` in a single pass.
+     * Resolves the item id at each position in the half-open range `[0, count)`
+     * in a single pass.
      *
      * Flat and section modes index the memoized flat list directly. Tree mode
      * builds the root-object index once and resolves each row against it, so
