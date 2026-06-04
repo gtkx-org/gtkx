@@ -70,7 +70,7 @@
         "codegen": "node --conditions=source --import tsx src/cli.ts codegen --cwd ../.."
     },
     "dependencies": {
-        "@clack/prompts": "^1.5.0",
+        "@clack/prompts": "^1.5.1",
         "@gtkx/codegen": "workspace:*",
         "@gtkx/ffi": "workspace:*",
         "@gtkx/mcp": "workspace:*",
