@@ -42,8 +42,10 @@ unsafe fn load_type_class(
 /// the caller's reference; a borrow takes a fresh reference and never sinks, so
 /// a still-floating object being wrapped from a `constructed` vfunc keeps its
 /// floating reference for the construction return to claim. For an object the
-/// registry already tracks, no toggle ref is installed; a full transfer is
-/// released here, sinking first when the object is still floating.
+/// registry already tracks, no toggle ref is installed and the re-acquisition is
+/// recorded via [`toggle_ref::note_reacquired`] (so a deferred teardown for a
+/// since-collected wrapper cannot finalize it); a full transfer is released
+/// here, sinking first when the object is still floating.
 ///
 /// # Safety
 ///
@@ -63,6 +65,7 @@ fn tracked_gobject_value(
     let is_floating = unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
 
     if unsafe { toggle_ref::has_wrapper(gobject_ptr) } {
+        unsafe { toggle_ref::note_reacquired(gobject_ptr) };
         if ownership.is_full() {
             if is_floating {
                 unsafe { glib::gobject_ffi::g_object_ref_sink(gobject_ptr) };

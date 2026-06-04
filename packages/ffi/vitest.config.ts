@@ -8,5 +8,6 @@ export default defineConfig({
         name: "ffi",
         include: ["tests/**/*.test.{ts,tsx}"],
         setupFiles: ["./tests/setup.ts"],
+        execArgv: ["--expose-gc"],
     },
 });
