@@ -1,28 +1,44 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { ConstraintLayoutWidgetProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { createAfterCommitDebounce } from "../post-commit-queue.js";
 import { ConstraintLayoutNode } from "./constraint-layout.js";
-import { attachChild, unparentWidget } from "./internal/widget.js";
-import { VirtualNode } from "./virtual.js";
+import { AttachOnParentVirtualNode } from "./internal/attach-on-parent-virtual.js";
+import { attachChild } from "./internal/widget.js";
+import { WidgetRegistrationController } from "./internal/widget-registration.js";
 import { WidgetNode } from "./widget.js";
 
 /**
  * Reconciler node for `<GtkConstraintLayout.Widget>`.
  *
  * Transparent in the GTK tree: the wrapped widget is reparented onto the
- * grandparent (the host widget that owns the constraint layout). Registers
- * `id → widget` on the sibling {@link ConstraintLayoutNode} so
- * `<Constraint>` and `<Vfl>` markers can resolve the id at apply time.
+ * grandparent (the host widget that owns the constraint layout) by the
+ * {@link AttachOnParentVirtualNode} base. Registers `id → widget` on the sibling
+ * {@link ConstraintLayoutNode} so `<Constraint>` and `<Vfl>` markers can resolve
+ * the id at apply time.
  *
  * Registration runs after the commit so the sibling layout manager has
  * settled into the tree first.
  */
-export class ConstraintLayoutWidgetNode extends VirtualNode<ConstraintLayoutWidgetProps, WidgetNode, WidgetNode> {
-    private registeredId: string | null = null;
-    private registeredWidget: Gtk.Widget | null = null;
-    private registeredLayoutNode: ConstraintLayoutNode | null = null;
-    private readonly scheduleSync = createAfterCommitDebounce(() => this.syncRegistration());
+export class ConstraintLayoutWidgetNode extends AttachOnParentVirtualNode<
+    ConstraintLayoutWidgetProps,
+    WidgetNode,
+    WidgetNode
+> {
+    private readonly registration = new WidgetRegistrationController<{
+        layoutNode: ConstraintLayoutNode;
+        id: string;
+    }>({
+        resolveWidget: () => (this.parent ? (this.children[0]?.backingInstance ?? null) : null),
+        register: (widget) => {
+            const layoutNode = this.findSiblingLayoutNode();
+            if (!layoutNode) return null;
+            const id = this.props.id;
+            layoutNode.registerTarget(id, widget);
+            return { layoutNode, id };
+        },
+        unregister: ({ layoutNode, id }) => layoutNode.unregisterTarget(id),
+        identity: () => this.props.id,
+    });
 
     public override isValidChild(child: Node): boolean {
         return child instanceof WidgetNode && this.children.length === 0;
@@ -32,40 +48,31 @@ export class ConstraintLayoutWidgetNode extends VirtualNode<ConstraintLayoutWidg
         return parent instanceof WidgetNode;
     }
 
+    protected override attachToParent(parent: Gtk.Widget, child: Gtk.Widget): void {
+        attachChild(child, parent);
+    }
+
     public override appendChild(child: WidgetNode): void {
         super.appendChild(child);
         if (this.parent) {
-            attachChild(child.backingInstance, this.parent.backingInstance);
-            this.syncRegistration();
+            this.registration.sync();
         }
     }
 
     public override removeChild(child: WidgetNode): void {
-        if (this.parent) {
-            unparentWidget(child.backingInstance);
-        }
-        this.unregister();
+        this.registration.unregister();
         super.removeChild(child);
     }
 
     public override setParent(parent: WidgetNode | null): void {
         if (!parent && this.parent) {
-            for (const child of this.children) {
-                unparentWidget(child.backingInstance);
-            }
-            this.unregister();
+            this.registration.unregister();
         }
 
         super.setParent(parent);
 
         if (parent) {
-            for (const child of this.children) {
-                attachChild(child.backingInstance, parent.backingInstance);
-            }
             this.syncRegistration();
-            if (!this.registeredLayoutNode) {
-                this.scheduleSync();
-            }
         }
     }
 
@@ -75,11 +82,7 @@ export class ConstraintLayoutWidgetNode extends VirtualNode<ConstraintLayoutWidg
     ): void {
         super.commitUpdate(oldProps, newProps);
         if (oldProps && oldProps.id !== newProps.id) {
-            this.unregister();
             this.syncRegistration();
-            if (!this.registeredLayoutNode) {
-                this.scheduleSync();
-            }
         }
     }
 
@@ -98,45 +101,15 @@ export class ConstraintLayoutWidgetNode extends VirtualNode<ConstraintLayoutWidg
     }
 
     public override detachDeletedInstance(): void {
-        if (this.parent) {
-            for (const child of this.children) {
-                unparentWidget(child.backingInstance);
-            }
-        }
-        this.unregister();
+        this.registration.unregister();
         super.detachDeletedInstance();
     }
 
     private syncRegistration(): void {
-        const widget = this.children[0]?.backingInstance ?? null;
-        const id = this.props.id;
-        if (!this.parent || !widget) {
-            this.unregister();
-            return;
+        this.registration.sync();
+        if (!this.registration.isRegistered()) {
+            this.registration.scheduleSync();
         }
-
-        if (this.registeredId === id && this.registeredWidget === widget) return;
-
-        if (this.registeredId !== null) {
-            this.unregister();
-        }
-
-        const layoutNode = this.findSiblingLayoutNode();
-        if (!layoutNode) return;
-
-        layoutNode.registerTarget(id, widget);
-        this.registeredId = id;
-        this.registeredWidget = widget;
-        this.registeredLayoutNode = layoutNode;
-    }
-
-    private unregister(): void {
-        if (this.registeredLayoutNode && this.registeredId !== null) {
-            this.registeredLayoutNode.unregisterTarget(this.registeredId);
-        }
-        this.registeredId = null;
-        this.registeredWidget = null;
-        this.registeredLayoutNode = null;
     }
 
     private findSiblingLayoutNode(): ConstraintLayoutNode | null {

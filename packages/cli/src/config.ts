@@ -36,7 +36,11 @@ export type GtkxConfig = {
      * the resolved GIR search path, keeping the newest version of each
      * namespace.
      *
-     * When omitted, defaults to `["Gtk-4.0", "Adw-1"]`.
+     * The namespaces `["Gtk-4.0", "Adw-1", "GtkSource-5", "WebKit-6.0"]` are
+     * always generated, since `@gtkx/react`'s built-in nodes depend on them.
+     * An explicit array is merged with this always-on set and deduplicated,
+     * not used in its place. When omitted, only the always-on set is
+     * generated.
      */
     libraries?: typeof LIBRARIES_WILDCARD | string[];
 

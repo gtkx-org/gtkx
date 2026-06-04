@@ -53,7 +53,7 @@ export const TEXT_EXTENTS_T: FfiType = t.boxed("cairo_text_extents_t", "borrowed
 export const FONT_EXTENTS_T: FfiType = t.boxed("cairo_font_extents_t", "borrowed", LIB);
 
 export const allocGlyphBuffer = (glyphs: Array<{ index: number; x: number; y: number }>): NativeHandle => {
-    const buf = alloc(glyphs.length * 24, "cairo_glyph_t[]", LIB);
+    const buf = alloc(glyphs.length * 24, "cairo_glyph_t[]");
     let offset = 0;
     for (const glyph of glyphs) {
         write(buf, ULONG_TYPE, offset, glyph.index);
@@ -65,7 +65,7 @@ export const allocGlyphBuffer = (glyphs: Array<{ index: number; x: number; y: nu
 };
 
 export const allocClusterBuffer = (clusters: Array<{ numBytes: number; numGlyphs: number }>): NativeHandle => {
-    const buf = alloc(clusters.length * 8, "cairo_text_cluster_t[]", LIB);
+    const buf = alloc(clusters.length * 8, "cairo_text_cluster_t[]");
     let offset = 0;
     for (const cluster of clusters) {
         write(buf, INT_TYPE, offset, cluster.numBytes);

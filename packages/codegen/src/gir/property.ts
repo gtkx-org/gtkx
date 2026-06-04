@@ -6,8 +6,9 @@ import { type GirTypeRef, typeRefFromSlot } from "./type-ref.js";
  * A `<property>` of a class or interface.
  *
  * GIR property names are kebab-case; the writers convert them to camelCase
- * for the JS surface and pass the original GIR name through to
- * `registerConstructionMeta` for `g_object_newv` parameter building.
+ * for the JS surface and emit the original GIR name as the GValue-record
+ * key that typed per-class constructors pass to
+ * `g_object_new_with_properties` (see `constructor-props.ts`).
  */
 export type GirProperty = {
     /** GIR property name, kebab-case (e.g. `"css-name"`). */

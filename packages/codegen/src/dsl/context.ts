@@ -37,14 +37,6 @@ export class ModuleContext {
     }
 
     /**
-     * Adds a type-only named import from the `@gtkx/ffi` runtime barrel
-     * (`import { type Name }`), erased from the emitted `.js`.
-     */
-    addRuntimeTypeImport(name: string): void {
-        this.module.imports.addNamed("@gtkx/ffi", name, true);
-    }
-
-    /**
      * Adds a named import from the low-level `@gtkx/native` runtime.
      *
      * The transport primitives (`alloc`, `call`, `read`, `write`) live in

@@ -23,9 +23,9 @@ export const getGtkCache = (): EmotionCache => {
  * `EmotionCache.sheet` is typed as the DOM-coupled `@emotion/sheet`
  * `StyleSheet`, whose `HTMLStyleElement`/`Node` members have no GTK
  * equivalent. The local {@link StyleSheet} is a deliberate DOM-free
- * reimplementation exposing the `key`/`insert`/`flush`/`hydrate` surface the
- * cache actually invokes; the `unknown` hop is the single boundary bridging
- * that drop-in to the third-party type.
+ * reimplementation exposing the `key`/`insert` surface the cache actually
+ * invokes; the `unknown` hop is the single boundary bridging that drop-in to
+ * the third-party type.
  */
 const createGtkSheet = (): EmotionCache["sheet"] => {
     const sheet: unknown = new StyleSheet({ key: "gtkx" });

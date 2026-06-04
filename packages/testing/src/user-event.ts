@@ -152,7 +152,6 @@ const clear = async (widget: Gtk.Widget): Promise<void> => {
 const SELECTABLE_ROLES = new Set<Gtk.AccessibleRole>([Gtk.AccessibleRole.COMBO_BOX, Gtk.AccessibleRole.LIST]);
 
 const isSelectable = (widget: Gtk.Widget): boolean => {
-    if (!widget) return false;
     return SELECTABLE_ROLES.has(widget.getAccessibleRole());
 };
 

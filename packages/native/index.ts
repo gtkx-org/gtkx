@@ -18,20 +18,21 @@ type NativeRegisterClassOptions = {
     readonly interfaceVfuncs?: readonly NativeInterfaceVfuncsDefinition[];
 };
 
-type ExternalHandle = Parameters<typeof native.read>[0];
-
-declare const __nativeHandleBrand: unique symbol;
-
 /**
- * Opaque reference to a native pointer (GObject, Boxed, Fundamental, or
- * GLib main-loop handle).
+ * Opaque reference to a native pointer (GObject, Boxed, Fundamental, or struct).
  *
  * Values of this type are produced exclusively by the functions in this
- * module ({@link alloc}, {@link call}, etc.) and must never be constructed
- * by user code. The underlying value is a raw
- * native external pointer; the brand ensures TypeScript treats it opaquely.
+ * module ({@link alloc}, {@link call}, etc.) and must never be constructed by
+ * user code. It is the napi `ExternalObject` wrapping a raw native pointer, so
+ * TypeScript treats it opaquely.
  */
-export type NativeHandle = { readonly [__nativeHandleBrand]: never };
+export type NativeHandle = Parameters<typeof native.read>[0];
+
+/**
+ * Opaque reference to the `GLib` main loop spawned at module load, produced by
+ * `native.init` and consumed by `native.stop`.
+ */
+type MainLoopHandle = ReturnType<typeof native.init>;
 
 function isHandleType(type: Type): boolean {
     return type.type === "gobject" || type.type === "boxed" || type.type === "struct" || type.type === "fundamental";
@@ -142,7 +143,7 @@ export function call(library: string, symbol: string, args: Arg[], returnType: T
  * first loaded. Stored so {@link stop} can quit the loop without callers
  * having to thread the handle through.
  */
-let mainLoopHandle: NativeHandle | null = native.init() as unknown as NativeHandle;
+let mainLoopHandle: MainLoopHandle | null = native.init();
 
 /**
  * Quits the `GLib` main loop spawned at module load.
@@ -153,7 +154,7 @@ let mainLoopHandle: NativeHandle | null = native.init() as unknown as NativeHand
  */
 export function stop(): void {
     if (!mainLoopHandle) return;
-    native.stop(mainLoopHandle as unknown as Parameters<typeof native.stop>[0]);
+    native.stop(mainLoopHandle);
     mainLoopHandle = null;
 }
 
@@ -166,7 +167,7 @@ export function stop(): void {
  * @returns The read value
  */
 export function read(handle: NativeHandle, type: Type, offset: number): FfiValue {
-    const result = native.read(handle as unknown as ExternalHandle, type, offset);
+    const result = native.read(handle, type, offset);
     return wrapValue(result, type) as FfiValue;
 }
 
@@ -179,7 +180,7 @@ export function read(handle: NativeHandle, type: Type, offset: number): FfiValue
  * @param value - Value to write
  */
 export function write(handle: NativeHandle, type: Type, offset: number, value: unknown): void {
-    native.write(handle as unknown as ExternalHandle, type, offset, unwrapValue(value, type));
+    native.write(handle, type, offset, unwrapValue(value, type));
 }
 
 /**
@@ -187,11 +188,10 @@ export function write(handle: NativeHandle, type: Type, offset: number, value: u
  *
  * @param size - Size in bytes to allocate
  * @param glibTypeName - GLib type name for boxed types (optional for plain structs)
- * @param lib - Optional library containing the type
  * @returns Native handle to allocated memory
  */
-export function alloc(size: number, glibTypeName?: string, lib?: string): NativeHandle {
-    return native.alloc(size, glibTypeName, lib) as unknown as NativeHandle;
+export function alloc(size: number, glibTypeName?: string): NativeHandle {
+    return native.alloc(size, glibTypeName) as NativeHandle;
 }
 
 /**
@@ -208,7 +208,7 @@ export function alloc(size: number, glibTypeName?: string, lib?: string): Native
  * @returns Borrowed `GParamSpec` handle, or `null` when no such property exists
  */
 export function findObjectProperty(handle: NativeHandle, propertyName: string): NativeHandle | null {
-    const result = native.findObjectProperty(handle as unknown as ExternalHandle, propertyName);
+    const result = native.findObjectProperty(handle, propertyName);
     return result == null ? null : (result as NativeHandle);
 }
 
@@ -221,7 +221,7 @@ export function findObjectProperty(handle: NativeHandle, propertyName: string): 
  * @param handle - Handle to a live GObject-compatible instance
  */
 export function getInstanceGType(handle: NativeHandle): number {
-    return native.getInstanceGtype(handle as unknown as ExternalHandle) as number;
+    return native.getInstanceGtype(handle) as number;
 }
 
 /**
@@ -342,7 +342,7 @@ export function applyWrapperRefOp(refPtr: number, op: number): void {
  * @param wrapper - The JavaScript wrapper object to bind
  */
 export function setWrapper(handle: NativeHandle, wrapper: object): void {
-    native.setWrapper(handle as unknown as ExternalHandle, wrapper);
+    native.setWrapper(handle, wrapper);
 }
 
 /**
@@ -353,7 +353,7 @@ export function setWrapper(handle: NativeHandle, wrapper: object): void {
  * @param handle - A handle produced by this module
  */
 export function getWrapper(handle: NativeHandle): object | null {
-    return (native.getWrapper(handle as unknown as ExternalHandle) as object | undefined) ?? null;
+    return (native.getWrapper(handle) as object | undefined) ?? null;
 }
 
 /**

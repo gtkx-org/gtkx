@@ -85,7 +85,6 @@ type PluginState = {
     prefix: string;
     isBuild: boolean;
     root: string;
-    server: ViteDevServer | null;
     entries: Map<string, ResourceEntry>;
     devStagingDir: string | null;
     devBundlePath: string;
@@ -286,7 +285,6 @@ const resolveResourceConfig = async (state: PluginState, config: UserConfig) => 
  * and re-registers the GResource bundle without a process restart.
  */
 const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void => {
-    state.server = server;
     const onFileEvent = (file: string): void => {
         if (!isTrackedSource(state, file)) return;
         refreshDevRegistration(server, state).catch((error) => {
@@ -332,7 +330,6 @@ export function gtkxResources(): Plugin {
         prefix: DEFAULT_RESOURCE_PREFIX,
         isBuild: false,
         root: "",
-        server: null,
         entries: new Map(),
         devStagingDir: null,
         devBundlePath: "",

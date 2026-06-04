@@ -22,45 +22,4 @@ describe("StyleSheet", () => {
             sheet.insert(".rule3 { color: green; }");
         }).not.toThrow();
     });
-
-    it("allows flush without throwing when not registered", () => {
-        const sheet = new StyleSheet({ key: "flush-test" });
-        sheet.insert(".test { color: red; }");
-        expect(() => {
-            sheet.flush();
-        }).not.toThrow();
-    });
-
-    it("hydrate accepts an empty array without throwing", () => {
-        const sheet = new StyleSheet({ key: "hydrate-test" });
-        expect(() => {
-            sheet.hydrate([]);
-        }).not.toThrow();
-    });
-
-    it("hydrate accepts an array of elements without throwing", () => {
-        const sheet = new StyleSheet({ key: "hydrate-elements-test" });
-        expect(() => {
-            sheet.hydrate([{}, {}, {}]);
-        }).not.toThrow();
-    });
-
-    it("can be flushed multiple times without error", () => {
-        const sheet = new StyleSheet({ key: "multi-flush-test" });
-        sheet.insert(".test { color: red; }");
-        sheet.flush();
-        sheet.flush();
-        expect(() => {
-            sheet.flush();
-        }).not.toThrow();
-    });
-
-    it("can insert rules after flush", () => {
-        const sheet = new StyleSheet({ key: "post-flush-test" });
-        sheet.insert(".test1 { color: red; }");
-        sheet.flush();
-        expect(() => {
-            sheet.insert(".test2 { color: blue; }");
-        }).not.toThrow();
-    });
 });

@@ -119,13 +119,12 @@ export class JsonStreamTransport extends EventEmitter<JsonStreamTransportEvents>
         options: {
             onClose?: () => void;
             onError?: (error: Error) => void;
-            closeReason?: string;
         } = {},
     ): JsonStreamTransport {
         const transport = new JsonStreamTransport(socket);
         socket.on("data", (data: Buffer) => transport.feed(data));
         socket.on("close", () => {
-            transport.rejectPending(new Error(options.closeReason ?? "Connection closed"));
+            transport.rejectPending(new Error("Connection closed"));
             options.onClose?.();
         });
         if (options.onError) {

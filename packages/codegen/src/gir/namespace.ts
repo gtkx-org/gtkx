@@ -9,8 +9,6 @@ import { type GirTypeRef, typeRefFromSlot } from "./type-ref.js";
 /** A `<constant>` declaration at namespace level. */
 export type GirConstant = {
     readonly name: string;
-    readonly cType: string | undefined;
-    readonly cIdentifier: string | undefined;
     /** Constant value as the raw string from GIR. */
     readonly value: string;
     readonly type: GirTypeRef | undefined;
@@ -92,8 +90,6 @@ export const namespaceFromRepository = (repositoryNode: RawNode): GirNamespace =
         functions: childrenOf(namespaceNode, "function").map((fn) => functionFromNode(fn, "function")),
         constants: childrenOf(namespaceNode, "constant").map((constant) => ({
             name: attr(constant, "name") ?? "",
-            cType: attr(constant, "c:type"),
-            cIdentifier: attr(constant, "c:identifier"),
             value: attr(constant, "value") ?? "",
             type: typeRefFromSlot(constant),
         })),

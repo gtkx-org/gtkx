@@ -14,8 +14,10 @@ import { appendNativeClassRegistration } from "./registration.js";
  * `<record>`, `<union>`, or `<glib:boxed>`.
  *
  * Walks constructors, static functions, and methods just like
- * {@link emitClass}, attaching them to the boxed class. Field accessors
- * and construction metadata are emitted by their dedicated writers.
+ * {@link emitClass}, attaching them to the boxed class. The typed
+ * constructor ({@link renderBoxedConstructor}), its
+ * {@link renderBoxedConstructorPropsInterface} props interface, and the
+ * field accessors are emitted by their dedicated writers.
  *
  * Vtable records (`glib:is-gtype-struct-for`) are skipped here — they are
  * consumed by the owning class's vtable registration. Class- and

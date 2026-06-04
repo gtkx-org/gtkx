@@ -7,7 +7,7 @@ import {
     readRgbaChannels,
     writeRectangleFields,
 } from "./call-boxed-alloc-helpers.js";
-import { FLOAT32, GTK_LIB } from "./utils.js";
+import { FLOAT32 } from "./utils.js";
 
 describe("alloc", () => {
     it("allocates a zeroed struct for GdkRGBA", () => {
@@ -25,7 +25,7 @@ describe("alloc", () => {
     });
 
     it("allocates a zeroed struct for GtkBorder", () => {
-        const border = alloc(8, "GtkBorder", GTK_LIB);
+        const border = alloc(8, "GtkBorder");
 
         expect(border).toBeDefined();
         expect(typeof border).toBe("object");

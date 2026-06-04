@@ -1,10 +1,10 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import type { SizeGroupProps, SizeGroupWidgetProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { createAfterCommitDebounce } from "../post-commit-queue.js";
 import type { BackingInstance } from "../types.js";
 import { hasChanged } from "./internal/props.js";
 import { attachChild, unparentWidget } from "./internal/widget.js";
+import { WidgetRegistrationController } from "./internal/widget-registration.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
@@ -185,9 +185,16 @@ export class SizeGroupNode extends TransparentVirtualNode<SizeGroupProps, Widget
  *
  */
 export class SizeGroupWidgetNode extends TransparentVirtualNode<SizeGroupWidgetProps, WidgetNode> {
-    private registeredWidget: Gtk.Widget | null = null;
-    private registeredGroup: SizeGroupNode | null = null;
-    private readonly scheduleSync = createAfterCommitDebounce(() => this.syncRegistration());
+    private readonly registration = new WidgetRegistrationController<{ group: SizeGroupNode; widget: Gtk.Widget }>({
+        resolveWidget: () => (this.parent ? (this.children[0]?.backingInstance ?? null) : null),
+        register: (widget) => {
+            const group = this.findSizeGroupAncestor();
+            if (!group) return null;
+            group.addMember(widget);
+            return { group, widget };
+        },
+        unregister: ({ group, widget }) => group.removeMember(widget),
+    });
 
     public override isValidChild(child: Node): boolean {
         return child instanceof WidgetNode && this.children.length === 0;
@@ -207,58 +214,27 @@ export class SizeGroupWidgetNode extends TransparentVirtualNode<SizeGroupWidgetP
 
     public override appendChild(child: WidgetNode): void {
         super.appendChild(child);
-        this.scheduleSync();
+        this.registration.scheduleSync();
     }
 
     public override removeChild(child: WidgetNode): void {
         super.removeChild(child);
-        this.scheduleSync();
+        this.registration.scheduleSync();
     }
 
     public override setParent(parent: Node | null): void {
-        if (!parent && this.registeredWidget) {
-            this.unregister();
+        if (!parent) {
+            this.registration.unregister();
         }
         super.setParent(parent);
         if (parent) {
-            this.scheduleSync();
+            this.registration.scheduleSync();
         }
     }
 
     public override detachDeletedInstance(): void {
-        this.unregister();
+        this.registration.unregister();
         super.detachDeletedInstance();
-    }
-
-    private syncRegistration(): void {
-        const widget = this.children[0]?.backingInstance ?? null;
-        const shouldRegister = this.parent !== null && widget !== null;
-
-        if (!shouldRegister) {
-            this.unregister();
-            return;
-        }
-
-        if (this.registeredWidget === widget) return;
-
-        if (this.registeredWidget) {
-            this.unregister();
-        }
-
-        const group = this.findSizeGroupAncestor();
-        if (!group) return;
-
-        group.addMember(widget);
-        this.registeredWidget = widget;
-        this.registeredGroup = group;
-    }
-
-    private unregister(): void {
-        if (this.registeredGroup && this.registeredWidget) {
-            this.registeredGroup.removeMember(this.registeredWidget);
-        }
-        this.registeredWidget = null;
-        this.registeredGroup = null;
     }
 
     private findSizeGroupAncestor(): SizeGroupNode | null {

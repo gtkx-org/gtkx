@@ -144,7 +144,7 @@ export function setVariantClass(cls: AnyClass): void {
  */
 export class GValue {
     constructor() {
-        setHandle(this, alloc(GVALUE_SIZE, "GValue", LIBGOBJECT));
+        setHandle(this, alloc(GVALUE_SIZE, "GValue"));
     }
 
     /** Initializes the value to hold `gType`. */

@@ -19,8 +19,7 @@ const ROLE_NAMES_BY_VALUE = reverseNumericEnum(Gtk.AccessibleRole);
  * @param role - The GTK accessible role
  * @returns Lowercase role name (e.g., "button", "checkbox")
  */
-export const formatRole = (role: Gtk.AccessibleRole | undefined): string => {
-    if (role === undefined) return "unknown";
+export const formatRole = (role: Gtk.AccessibleRole): string => {
     const name = ROLE_NAMES_BY_VALUE.get(role);
     if (!name) return String(role);
     return name.toLowerCase();
@@ -50,8 +49,7 @@ export const getRoles = (container: Container): Map<string, RoleInfo[]> => {
     const roles = new Map<string, RoleInfo[]>();
 
     for (const widget of traverse(container)) {
-        const role = widget.getAccessibleRole?.();
-        if (role === undefined) continue;
+        const role = widget.getAccessibleRole();
 
         const roleName = formatRole(role);
         const name = getWidgetAccessibleName(widget);
@@ -70,7 +68,7 @@ export const getRoles = (container: Container): Map<string, RoleInfo[]> => {
 
 const formatWidgetPreview = (widget: Gtk.Widget, name: string | null): string => {
     const tagName = widget.constructor.name;
-    const roleAttr = formatRole(widget.getAccessibleRole?.());
+    const roleAttr = formatRole(widget.getAccessibleRole());
     const nameDisplay = name ? `Name "${name}"` : 'Name ""';
     return `${nameDisplay}: <${tagName} role="${roleAttr}">${name ?? ""}</${tagName}>`;
 };

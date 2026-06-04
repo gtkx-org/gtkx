@@ -18,6 +18,7 @@ import {
     GtkSearchEntry,
     GtkShortcutController,
     quit,
+    useApplication,
     useSetting,
 } from "@gtkx/react";
 import { useCallback, useRef, useState } from "react";
@@ -179,6 +180,24 @@ const useNotesState = (toastOverlayRef: React.RefObject<Adw.ToastOverlay | null>
     };
 };
 
+const showShortcutsDialog = (window: Gtk.Window): void => {
+    const dialog = new Adw.ShortcutsDialog();
+
+    const general = Adw.ShortcutsSection.new("General");
+    general.add(Adw.ShortcutsItem.new("New note", "<Control>n"));
+    general.add(Adw.ShortcutsItem.new("Search notes", "<Control>f"));
+    general.add(Adw.ShortcutsItem.new("Preferences", "<Control>comma"));
+    general.add(Adw.ShortcutsItem.new("Keyboard shortcuts", "<Control>question"));
+    dialog.add(general);
+
+    const editing = Adw.ShortcutsSection.new("Editing");
+    editing.add(Adw.ShortcutsItem.new("Delete note", "Delete"));
+    editing.add(Adw.ShortcutsItem.new("Close note", "Escape"));
+    dialog.add(editing);
+
+    dialog.present(window);
+};
+
 const MainMenu = ({
     onAddNote,
     onPreferences,
@@ -187,28 +206,39 @@ const MainMenu = ({
     onAddNote: () => void;
     onPreferences: () => void;
     onAbout: () => void;
-}) => (
-    <GtkMenuButton iconName="open-menu-symbolic" tooltipText="Main Menu">
-        <GtkMenuButton.MenuItem id="new" label="New Note" onActivate={onAddNote} accels="<Control>n" />
-        <GtkMenuButton.MenuSection>
-            <GtkMenuButton.MenuItem
-                id="preferences"
-                label="Preferences"
-                onActivate={onPreferences}
-                accels="<Control>comma"
-            />
-            <GtkMenuButton.MenuItem
-                id="shortcuts"
-                label="Keyboard Shortcuts"
-                onActivate={() => {}}
-                accels="<Control>question"
-            />
-        </GtkMenuButton.MenuSection>
-        <GtkMenuButton.MenuSection>
-            <GtkMenuButton.MenuItem id="about" label="About Notes" onActivate={onAbout} />
-        </GtkMenuButton.MenuSection>
-    </GtkMenuButton>
-);
+}) => {
+    const app = useApplication();
+
+    const onShortcuts = () => {
+        const window = app.getActiveWindow();
+        if (window) {
+            showShortcutsDialog(window);
+        }
+    };
+
+    return (
+        <GtkMenuButton iconName="open-menu-symbolic" tooltipText="Main Menu">
+            <GtkMenuButton.MenuItem id="new" label="New Note" onActivate={onAddNote} accels="<Control>n" />
+            <GtkMenuButton.MenuSection>
+                <GtkMenuButton.MenuItem
+                    id="preferences"
+                    label="Preferences"
+                    onActivate={onPreferences}
+                    accels="<Control>comma"
+                />
+                <GtkMenuButton.MenuItem
+                    id="shortcuts"
+                    label="Keyboard Shortcuts"
+                    onActivate={onShortcuts}
+                    accels="<Control>question"
+                />
+            </GtkMenuButton.MenuSection>
+            <GtkMenuButton.MenuSection>
+                <GtkMenuButton.MenuItem id="about" label="About Notes" onActivate={onAbout} />
+            </GtkMenuButton.MenuSection>
+        </GtkMenuButton>
+    );
+};
 
 const ViewModeToggle = ({ viewMode, onChange }: { viewMode: string; onChange: (name: string) => void }) => (
     <AdwToggleGroup

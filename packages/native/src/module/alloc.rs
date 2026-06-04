@@ -58,12 +58,7 @@ mod napi_export {
 
     #[napi(catch_unwind)]
     #[cfg_attr(test, allow(dead_code))]
-    pub fn alloc(
-        env: &Env,
-        size: f64,
-        type_name: Option<String>,
-        _lib: Option<String>,
-    ) -> napi::Result<Unknown<'_>> {
+    pub fn alloc(env: &Env, size: f64, type_name: Option<String>) -> napi::Result<Unknown<'_>> {
         let request = AllocRequest {
             size: size as usize,
             type_name,

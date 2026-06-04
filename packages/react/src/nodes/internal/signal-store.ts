@@ -19,10 +19,6 @@ const LIFECYCLE_SIGNALS = new Set([
     "teardown",
 ]);
 
-type HandlerEntry = { obj: GObject.Object; handlerId: number };
-
-type SignalKey = `${string}:${string}`;
-
 /**
  * Parameter object for {@link SignalStore.set}.
  *
@@ -35,29 +31,22 @@ export interface SignalBinding {
     readonly blockable?: boolean;
 }
 
-const signalKeyCache = new WeakMap<GObject.Object, string>();
-let nextSignalObjId = 0;
-
-function getSignalKey(obj: GObject.Object, signal: string): SignalKey {
-    let objKey = signalKeyCache.get(obj);
-    if (!objKey) {
-        objKey = String(nextSignalObjId++);
-        signalKeyCache.set(obj, objKey);
-    }
-    return `${objKey}:${signal}`;
-}
-
 export class SignalStore {
-    private readonly ownerHandlers: Map<object, Map<SignalKey, HandlerEntry>> = new Map();
+    private readonly ownerHandlers: Map<object, Map<GObject.Object, Map<string, number>>> = new Map();
     private blockDepth = 0;
 
-    private getOwnerMap(owner: object): Map<SignalKey, HandlerEntry> {
-        let map = this.ownerHandlers.get(owner);
-        if (!map) {
-            map = new Map();
-            this.ownerHandlers.set(owner, map);
+    private getObjectMap(owner: object, obj: GObject.Object): Map<string, number> {
+        let ownerMap = this.ownerHandlers.get(owner);
+        if (!ownerMap) {
+            ownerMap = new Map();
+            this.ownerHandlers.set(owner, ownerMap);
         }
-        return map;
+        let objMap = ownerMap.get(obj);
+        if (!objMap) {
+            objMap = new Map();
+            ownerMap.set(obj, objMap);
+        }
+        return objMap;
     }
 
     private wrapHandler(
@@ -80,22 +69,24 @@ export class SignalStore {
     }
 
     private disconnect(owner: object, obj: GObject.Object, signal: string): void {
-        const key = getSignalKey(obj, signal);
         const ownerMap = this.ownerHandlers.get(owner);
-        const existing = ownerMap?.get(key);
+        const objMap = ownerMap?.get(obj);
+        const handlerId = objMap?.get(signal);
 
-        if (existing) {
-            GObject.signalHandlerDisconnect(existing.obj, existing.handlerId);
-            ownerMap?.delete(key);
+        if (handlerId !== undefined) {
+            GObject.signalHandlerDisconnect(obj, handlerId);
+            objMap?.delete(signal);
+            if (objMap?.size === 0) {
+                ownerMap?.delete(obj);
+            }
         }
     }
 
     private connect(binding: SignalBinding & { handler: SignalHandler; blockable: boolean }): void {
         const { owner, obj, signal, handler, blockable } = binding;
-        const key = getSignalKey(obj, signal);
         const wrappedHandler = this.wrapHandler(handler, signal, obj, blockable);
         const handlerId = obj.connect(signal, wrappedHandler);
-        this.getOwnerMap(owner).set(key, { obj, handlerId });
+        this.getObjectMap(owner, obj).set(signal, handlerId);
     }
 
     public set(binding: SignalBinding): void {
@@ -111,8 +102,10 @@ export class SignalStore {
         const ownerMap = this.ownerHandlers.get(owner);
 
         if (ownerMap) {
-            for (const { obj, handlerId } of ownerMap.values()) {
-                GObject.signalHandlerDisconnect(obj, handlerId);
+            for (const [obj, objMap] of ownerMap) {
+                for (const handlerId of objMap.values()) {
+                    GObject.signalHandlerDisconnect(obj, handlerId);
+                }
             }
 
             this.ownerHandlers.delete(owner);

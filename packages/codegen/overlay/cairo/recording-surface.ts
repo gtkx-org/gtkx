@@ -46,7 +46,7 @@ export class RecordingSurface extends Surface {
     ): RecordingSurface {
         let handle: NativeHandle;
         if (extents) {
-            const rect = alloc(32, "cairo_rectangle_t", LIB);
+            const rect = alloc(32, "cairo_rectangle_t");
             write(rect, DOUBLE_TYPE, 0, extents.x);
             write(rect, DOUBLE_TYPE, 8, extents.y);
             write(rect, DOUBLE_TYPE, 16, extents.width);
@@ -75,7 +75,7 @@ export class RecordingSurface extends Surface {
      * when the surface is unbounded.
      */
     getExtents(): { x: number; y: number; width: number; height: number } | null {
-        const rect = alloc(32, "cairo_rectangle_t", LIB);
+        const rect = alloc(32, "cairo_rectangle_t");
         const result = cairo_recording_surface_get_extents(getHandle(this), rect) as boolean;
         if (!result) return null;
         return {

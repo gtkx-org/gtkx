@@ -3,9 +3,9 @@
  *
  * Every generated wrapper type — GObject class, interface, or boxed record —
  * registers itself with a single {@link registerNativeClass} call carrying one
- * descriptor. The descriptor bundles the runtime `GType`, construction
- * metadata, and vtable vfunc descriptors; this module resolves the shared
- * `GType` once and fans the pieces out to the individual runtime registries.
+ * descriptor. The descriptor bundles the runtime `GType` and vtable vfunc
+ * descriptors; this module resolves the shared `GType` once and fans the
+ * pieces out to the individual runtime registries.
  */
 
 import type { AnyClass } from "@gtkx/utils";

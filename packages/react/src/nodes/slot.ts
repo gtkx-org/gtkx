@@ -3,17 +3,15 @@ import { toCamelCase } from "@gtkx/utils";
 import type { SlotProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Props } from "../types.js";
+import { SingleChildVirtualNode } from "./internal/single-child-virtual.js";
 import { getFocusWidget, isDescendantOf } from "./internal/widget.js";
-import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-export class SlotNode<P extends Props = SlotProps, TChild extends Node = WidgetNode> extends VirtualNode<
-    P,
-    WidgetNode,
-    TChild
-> {
+export class SlotNode<
+    P extends Props = SlotProps,
+    TChild extends WidgetNode = WidgetNode,
+> extends SingleChildVirtualNode<P, WidgetNode, TChild> {
     private cachedSetter: ((child: Gtk.Widget | null) => void) | null = null;
-    private detachedParentWidget: Gtk.Widget | null = null;
 
     public override isValidChild(child: Node): boolean {
         return child instanceof WidgetNode;
@@ -24,61 +22,47 @@ export class SlotNode<P extends Props = SlotProps, TChild extends Node = WidgetN
     }
 
     public override setParent(parent: WidgetNode | null): void {
-        const previousParent = this.parent;
-        if (previousParent !== parent) {
+        if (this.parent !== parent) {
             this.cachedSetter = null;
         }
-
-        if (!parent && previousParent) {
-            this.detachedParentWidget = previousParent.backingInstance;
-        }
-
         super.setParent(parent);
-
-        if (parent && this.children[0]) {
-            this.onChildChange(null);
-        }
     }
 
-    public override appendChild(child: TChild): void {
-        const firstChild = this.children[0];
-        const oldChildWidget = firstChild instanceof WidgetNode ? firstChild.backingInstance : null;
+    protected override onChildChange(oldChild: Gtk.Widget | null): void {
+        const setter = this.ensureChildSetter();
+        const childWidget = this.children[0]?.backingInstance ?? null;
 
-        super.appendChild(child);
+        if (oldChild && !childWidget) {
+            const parent = this.getParentWidget();
+            const focus = getFocusWidget(oldChild);
 
-        if (this.parent) {
-            this.onChildChange(oldChildWidget);
-        }
-    }
-
-    public override removeChild(child: TChild): void {
-        const oldChildWidget = child instanceof WidgetNode ? child.backingInstance : null;
-
-        super.removeChild(child);
-
-        if (this.parent && oldChildWidget) {
-            this.onChildChange(oldChildWidget);
-        }
-    }
-
-    public override detachDeletedInstance(): void {
-        const parentWidget = this.detachedParentWidget;
-
-        if (parentWidget && this.children[0]) {
-            if (parentWidget.getRoot() !== null) {
-                this.cachedSetter = null;
-                const setter = this.resolveChildSetter(parentWidget);
-                const oldChild = this.children[0].backingInstance;
-                const focus = getFocusWidget(oldChild);
-                if (focus && isDescendantOf(focus, oldChild)) {
-                    parentWidget.grabFocus();
-                }
-                setter(null);
+            if (focus && isDescendantOf(focus, oldChild)) {
+                parent.grabFocus();
             }
-            this.detachedParentWidget = null;
         }
 
-        super.detachDeletedInstance();
+        setter(childWidget);
+    }
+
+    protected override onDetach(oldChild: Gtk.Widget | null): void {
+        if (!oldChild) return;
+
+        const parentWidget = this.getParentWidget();
+        if (parentWidget.getRoot() === null) return;
+
+        this.cachedSetter = null;
+        const setter = this.resolveChildSetter(parentWidget);
+        const focus = getFocusWidget(oldChild);
+
+        if (focus && isDescendantOf(focus, oldChild)) {
+            parentWidget.grabFocus();
+        }
+
+        setter(null);
+    }
+
+    protected override detachesOnDelete(): boolean {
+        return false;
     }
 
     private getId(): string {
@@ -104,22 +88,6 @@ export class SlotNode<P extends Props = SlotProps, TChild extends Node = WidgetN
 
         this.cachedSetter = this.resolveChildSetter(this.getParentWidget());
         return this.cachedSetter;
-    }
-
-    private onChildChange(oldChild: Gtk.Widget | null): void {
-        const setter = this.ensureChildSetter();
-        const childWidget = this.children[0]?.backingInstance ?? null;
-
-        if (oldChild && !childWidget) {
-            const parent = this.getParentWidget();
-            const focus = getFocusWidget(oldChild);
-
-            if (focus && isDescendantOf(focus, oldChild)) {
-                parent.grabFocus();
-            }
-        }
-
-        setter(childWidget);
     }
 
     private resolveChildSetter(parent: Gtk.Widget): (child: Gtk.Widget | null) => void {

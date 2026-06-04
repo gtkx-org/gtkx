@@ -22,7 +22,7 @@ features:
     details: Full React 19 support with hooks, state, effects, and the component model you already know.
   - icon: 🚀
     title: Native Performance
-    details: No Electron. No WebView. Runs on vanilla Node with the help of a Rust/Neon native module.
+    details: No Electron. No WebView. Runs on vanilla Node with the help of a Rust/napi-rs native module.
   - icon: 🧩
     title: Complete GTK4 API
     details: Access every GTK4, Libadwaita, and GLib widget and function through typed bindings.

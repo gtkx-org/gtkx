@@ -38,13 +38,6 @@ export const dedupeCallables = (callables: readonly GirFunction[]): readonly Gir
 };
 
 /**
- * Appends the top-level `const fn = t.fn(...)` binding for every introspectable
- * callable that has a C identifier and is not shadowed.
- *
- * @param context - The module context
- * @param callables - The callables to bind
- */
-/**
  * Appends the top-level `const fn = t.fn(...)` binding for a single callable,
  * deduplicated by its C identifier. Used when flattening interface and
  * prerequisite methods onto a type one at a time.
@@ -60,6 +53,13 @@ export const appendMethodBinding = (context: ModuleContext, method: GirFunction)
     context.module.appendBinding(`const ${method.cIdentifier} = ${expression};`, method.cIdentifier);
 };
 
+/**
+ * Appends the top-level `const fn = t.fn(...)` binding for every introspectable
+ * callable that has a C identifier and is not shadowed.
+ *
+ * @param context - The module context
+ * @param callables - The callables to bind
+ */
 export const emitBindings = (context: ModuleContext, callables: Callables): void => {
     const all = [...callables.constructors, ...callables.functions, ...callables.methods];
     for (const callable of all) {

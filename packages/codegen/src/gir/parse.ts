@@ -91,7 +91,7 @@ const PARSER = new XMLParser({
  *
  * The returned object always has a single `repository` property containing
  * the root `<repository>` element. Callers should not interpret the tree
- * directly — pass it to {@link GirRepository.load} (in `./repository.ts`),
+ * directly — pass it to {@link loadGirRepository} (in `./repository.ts`),
  * which builds the typed domain model on top of it.
  *
  * @param path - Absolute path to a `.gir` file

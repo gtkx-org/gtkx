@@ -6,7 +6,7 @@ import { DOUBLE_REF, DOUBLE_TYPE, INT_TYPE, LIB, MATRIX_T } from "./common.js";
 const { fn } = t;
 
 export const allocMatrix = (): { handle: NativeHandle; obj: Matrix } => {
-    const handle = alloc(48, "cairo_matrix_t", LIB);
+    const handle = alloc(48, "cairo_matrix_t");
     const obj = wrapHandle(Matrix, handle);
     return { handle, obj };
 };

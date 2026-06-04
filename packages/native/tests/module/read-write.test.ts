@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { alloc, read, write } from "../../index.js";
-import { GDK_LIB } from "./utils.js";
 
 describe("read and write - float fields", () => {
     it("writes and reads float values at offset 0", () => {
-        const rgba = alloc(16, "GdkRGBA", GDK_LIB);
+        const rgba = alloc(16, "GdkRGBA");
 
         write(rgba, { type: "float32" }, 0, 0.75);
         const result = read(rgba, { type: "float32" }, 0);
@@ -13,7 +12,7 @@ describe("read and write - float fields", () => {
     });
 
     it("writes and reads float values at different offsets", () => {
-        const rgba = alloc(16, "GdkRGBA", GDK_LIB);
+        const rgba = alloc(16, "GdkRGBA");
 
         write(rgba, { type: "float32" }, 0, 1.0);
         write(rgba, { type: "float32" }, 4, 0.5);
@@ -27,7 +26,7 @@ describe("read and write - float fields", () => {
     });
 
     it("handles zero float values", () => {
-        const rgba = alloc(16, "GdkRGBA", GDK_LIB);
+        const rgba = alloc(16, "GdkRGBA");
 
         write(rgba, { type: "float32" }, 0, 0.0);
         const result = read(rgba, { type: "float32" }, 0);
@@ -38,7 +37,7 @@ describe("read and write - float fields", () => {
 
 describe("read and write - integer fields", () => {
     it("writes and reads int32 values", () => {
-        const rect = alloc(16, "GdkRectangle", GDK_LIB);
+        const rect = alloc(16, "GdkRectangle");
 
         write(rect, { type: "int32" }, 0, 100);
         const result = read(rect, { type: "int32" }, 0);
@@ -47,7 +46,7 @@ describe("read and write - integer fields", () => {
     });
 
     it("writes and reads multiple int32 fields at different offsets", () => {
-        const rect = alloc(16, "GdkRectangle", GDK_LIB);
+        const rect = alloc(16, "GdkRectangle");
 
         write(rect, { type: "int32" }, 0, 10);
         write(rect, { type: "int32" }, 4, 20);
@@ -61,7 +60,7 @@ describe("read and write - integer fields", () => {
     });
 
     it("handles negative int32 values", () => {
-        const rect = alloc(16, "GdkRectangle", GDK_LIB);
+        const rect = alloc(16, "GdkRectangle");
 
         write(rect, { type: "int32" }, 0, -50);
         const result = read(rect, { type: "int32" }, 0);
@@ -70,7 +69,7 @@ describe("read and write - integer fields", () => {
     });
 
     it("handles zero int32 values", () => {
-        const rect = alloc(16, "GdkRectangle", GDK_LIB);
+        const rect = alloc(16, "GdkRectangle");
 
         write(rect, { type: "int32" }, 0, 0);
         const result = read(rect, { type: "int32" }, 0);
@@ -81,7 +80,7 @@ describe("read and write - integer fields", () => {
 
 describe("read and write - edge cases", () => {
     it("overwrites existing values", () => {
-        const rgba = alloc(16, "GdkRGBA", GDK_LIB);
+        const rgba = alloc(16, "GdkRGBA");
 
         write(rgba, { type: "float32" }, 0, 1.0);
         expect(read(rgba, { type: "float32" }, 0)).toBeCloseTo(1.0);
@@ -91,7 +90,7 @@ describe("read and write - edge cases", () => {
     });
 
     it("reads default zero value from allocated struct", () => {
-        const rgba = alloc(16, "GdkRGBA", GDK_LIB);
+        const rgba = alloc(16, "GdkRGBA");
 
         const result = read(rgba, { type: "float32" }, 0);
 

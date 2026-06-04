@@ -358,13 +358,11 @@ interface ColorsModels {
     baseStore: Gio.ListStore;
     selection: Gtk.MultiSelection;
     /**
-     * Holds strong JS references to every {@link ColorObject} currently in
-     * {@link baseStore}. The `@gtkx/ffi` identity registry uses `WeakRef`s
-     * (`packages/ffi/src/registry.ts:198`), so without an external strong
-     * reference the JS instance — and with it our `colorItem` field — would be
-     * collected as soon as React's render frames release it, and the next
-     * `baseStore.getItem(pos)` would resolve to a fresh wrapper with no field
-     * state. Cleared and rebuilt in lockstep with `baseStore` mutations.
+     * The demo's sort-state: an ordered array of every {@link ColorObject}
+     * currently in {@link baseStore}, kept in lockstep with it. {@link reorderStore}
+     * sorts this array by the active sort mode and splices the new order back
+     * into {@link baseStore} in one pass, so the visible list reflects the
+     * chosen ordering without rebuilding the items.
      */
     liveRefs: ColorObject[];
 }

@@ -28,7 +28,7 @@ GTKX is a modern framework for building native Linux applications using React an
 ## Features
 
 - **React 19** — Hooks, concurrent features, and the component model you know
-- **Fully native Node.js environment** - Runs on vanilla Node.js, with the help of a Neon native module
+- **Fully native Node.js environment** - Runs on vanilla Node.js, with the help of a napi-rs native module
 - **TypeScript first** — Full type safety with auto-generated bindings
 - **Rich GLib support** — Provides bindings for most modern GLib/GObject libraries, including Adwaita
 - **HMR** — Fast refresh during development powered by Vite

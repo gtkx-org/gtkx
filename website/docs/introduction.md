@@ -1,6 +1,6 @@
 # Introduction
 
-Developing native applications for Linux has traditionally been a complex and repetitive process, requiring imperative UI management, complex state synchronization, slow feedback loop, and a limited ecosystem of libraries. GTKX addresses these challenges by providing a React reconciler that renders to GTK4 widgets, and runs natively on vanilla Node.js thanks to a custom Rust/Neon native module. This allows you to leverage the immense ecosystem of React/Node.js libraries and tools while building rich, native applications that integrate seamlessly with the Linux desktop.
+Developing native applications for Linux has traditionally been a complex and repetitive process, requiring imperative UI management, complex state synchronization, slow feedback loop, and a limited ecosystem of libraries. GTKX addresses these challenges by providing a React reconciler that renders to GTK4 widgets, and runs natively on vanilla Node.js thanks to a custom Rust/napi-rs native module. This allows you to leverage the immense ecosystem of React/Node.js libraries and tools while building rich, native applications that integrate seamlessly with the Linux desktop.
 
 ## What you get
 
@@ -25,7 +25,7 @@ Your app (JSX intrinsic elements)
  ↓
 @gtkx/ffi (runtime + GValue/GType)
  ↓
-@gtkx/native (Rust/Neon/libffi)
+@gtkx/native (Rust/napi-rs/libffi)
  ↓
 GTK4/GLib (native libraries)
 ```

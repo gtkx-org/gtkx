@@ -60,9 +60,11 @@ export class GirRepository {
     }
 
     /**
-     * Looks up a type by `(namespace, name)`. Aliases are followed one step
-     * to their target. Returns `undefined` when neither the namespace nor a
-     * matching entity exists.
+     * Looks up a type by `(namespace, name)` and returns the raw
+     * `(namespace, entity)` entry. Aliases are not dereferenced: an alias
+     * resolves to an `alias`-kind entry exposing `target`/`targetRef` that
+     * callers follow themselves. Returns `undefined` when neither the
+     * namespace nor a matching entity exists.
      *
      * @param namespaceName - Namespace to look in (e.g. `"GLib"`)
      * @param typeName - Local type name within the namespace (e.g. `"Variant"`)

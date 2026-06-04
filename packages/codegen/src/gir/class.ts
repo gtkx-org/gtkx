@@ -20,8 +20,6 @@ export type GirClass = {
     /** Glib ref/unref/etc. function names on fundamentals; not used for GObject subclasses. */
     readonly glibRefFunc: string | undefined;
     readonly glibUnrefFunc: string | undefined;
-    readonly glibSetValueFunc: string | undefined;
-    readonly glibGetValueFunc: string | undefined;
     /** `glib:fundamental="1"` — a non-GObject fundamental type (e.g. `GdkEvent`, `GskRenderNode`). */
     readonly fundamental: boolean;
     readonly abstract: boolean;
@@ -56,8 +54,6 @@ export const classFromNode = (node: RawNode, isInterface: boolean): GirClass => 
     glibTypeStruct: attr(node, "glib:type-struct"),
     glibRefFunc: attr(node, "glib:ref-func"),
     glibUnrefFunc: attr(node, "glib:unref-func"),
-    glibSetValueFunc: attr(node, "glib:set-value-func"),
-    glibGetValueFunc: attr(node, "glib:get-value-func"),
     fundamental: attrBool(node, "glib:fundamental"),
     abstract: attrBool(node, "abstract"),
     final: attrBool(node, "final"),

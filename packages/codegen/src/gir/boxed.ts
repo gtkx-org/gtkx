@@ -30,8 +30,6 @@ export type GirBoxed = {
     /** GLib ref/unref/etc. function names on fundamentals. */
     readonly glibRefFunc: string | undefined;
     readonly glibUnrefFunc: string | undefined;
-    readonly glibSetValueFunc: string | undefined;
-    readonly glibGetValueFunc: string | undefined;
     /** `copy-function`/`free-function` — the ref/unref pair for records that are reference-counted rather than g_boxed-copyable. */
     readonly copyFunc: string | undefined;
     readonly freeFunc: string | undefined;
@@ -64,8 +62,6 @@ export const boxedFromNode = (node: RawNode, kind: BoxedKind, isUnion: boolean):
     glibIsGTypeStructFor: attr(node, "glib:is-gtype-struct-for"),
     glibRefFunc: attr(node, "glib:ref-func"),
     glibUnrefFunc: attr(node, "glib:unref-func"),
-    glibSetValueFunc: attr(node, "glib:set-value-func"),
-    glibGetValueFunc: attr(node, "glib:get-value-func"),
     copyFunc: attr(node, "copy-function"),
     freeFunc: attr(node, "free-function"),
     disguised: attrBool(node, "disguised"),

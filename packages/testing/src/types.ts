@@ -78,18 +78,8 @@ export type WaitForOptions = {
 };
 
 /**
- * A wrapper component that exposes its root GTK widget via `ref`.
- * Accept `ref` as a prop and pass it through to the root intrinsic element.
- */
-/**
- * A wrapper component that receives the rendered tree as children.
- */
-/**
- * A wrapper component that exposes its root GTK widget via `ref`.
- * Accept `ref` as a prop and pass it through to the root intrinsic element.
- */
-/**
- * A wrapper component that receives the rendered tree as children.
+ * A wrapper component that receives the rendered tree as `children` and renders
+ * them. It does not receive or forward a `ref`.
  */
 export type WrapperComponent = ComponentType<{
     children: ReactNode;
@@ -103,7 +93,7 @@ export type RenderOptions = {
      * Wrapper component or boolean.
      * - `true` (default): Wrap in GtkApplicationWindow
      * - `false`: No wrapper
-     * - Component: Custom wrapper that passes `ref` to its root element
+     * - Component: Custom wrapper that renders its `children`
      */
     wrapper?: boolean | WrapperComponent;
     /**
@@ -214,7 +204,7 @@ export type RenderHookOptions<Props> = {
      * Wrapper component or boolean.
      * - `true` (default): Wrap in GtkApplicationWindow
      * - `false`: No wrapper
-     * - Component: Custom wrapper that passes `ref` to its root element
+     * - Component: Custom wrapper that renders its `children`
      */
     wrapper?: boolean | WrapperComponent;
 } & (undefined extends Props

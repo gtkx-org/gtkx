@@ -10,7 +10,6 @@ import { quote } from "@gtkx/utils";
  */
 export class ImportsBuilder {
     private readonly named = new Map<string, Map<string, boolean>>();
-    private readonly defaultNames = new Map<string, string>();
     private readonly namespaces = new Map<string, string>();
     private readonly sideEffects = new Set<string>();
 
@@ -51,19 +50,6 @@ export class ImportsBuilder {
     }
 
     /**
-     * Records a default import: `import Alias from "lib"`. Subsequent calls
-     * with a different alias are ignored.
-     *
-     * @param specifier - The module specifier
-     * @param alias - The local name bound to the default export
-     */
-    addDefault(specifier: string, alias: string): void {
-        if (!this.defaultNames.has(specifier)) {
-            this.defaultNames.set(specifier, alias);
-        }
-    }
-
-    /**
      * Records a side-effect-only import: `import "lib"`.
      *
      * @param specifier - The module specifier
@@ -82,18 +68,12 @@ export class ImportsBuilder {
         for (const specifier of this.sideEffects) {
             lines.push(`import ${quote(specifier)};`);
         }
-        const specifiers = new Set<string>([
-            ...this.named.keys(),
-            ...this.namespaces.keys(),
-            ...this.defaultNames.keys(),
-        ]);
+        const specifiers = new Set<string>([...this.named.keys(), ...this.namespaces.keys()]);
         const sortedSpecifiers = [...specifiers].sort((a, b) => a.localeCompare(b));
         for (const specifier of sortedSpecifiers) {
-            const defaultAlias = this.defaultNames.get(specifier);
             const namespaceAlias = this.namespaces.get(specifier);
             const namedNames = this.named.get(specifier);
             const parts: string[] = [];
-            if (defaultAlias !== undefined) parts.push(defaultAlias);
             if (namespaceAlias !== undefined) parts.push(`* as ${namespaceAlias}`);
             if (namedNames !== undefined && namedNames.size > 0) {
                 const sortedNames = [...namedNames.entries()]

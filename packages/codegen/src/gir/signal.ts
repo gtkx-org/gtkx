@@ -1,8 +1,5 @@
 import { type GirParameter, type GirReturnValue, parameterFromNode, returnValueFromNode } from "./parameter.js";
-import { attr, attrBool, childOf, childrenOf, type RawNode } from "./parse.js";
-
-/** Emission stage (`<glib:signal when="…">`). */
-type SignalWhen = "first" | "last" | "cleanup";
+import { attr, childOf, childrenOf, type RawNode } from "./parse.js";
 
 /** A GObject `<glib:signal>` declaration. */
 export type GirSignal = {
@@ -10,11 +7,6 @@ export type GirSignal = {
     readonly name: string;
     readonly parameters: readonly GirParameter[];
     readonly returnValue: GirReturnValue;
-    readonly when: SignalWhen;
-    readonly detailed: boolean;
-    readonly action: boolean;
-    readonly noRecurse: boolean;
-    readonly noHooks: boolean;
 };
 
 /**
@@ -27,10 +19,5 @@ export const signalFromNode = (node: RawNode): GirSignal => {
         name: attr(node, "name") ?? "",
         parameters: parameterNodes.map((parameter) => parameterFromNode(parameter, false)),
         returnValue: returnValueFromNode(childOf(node, "return-value")),
-        when: (attr(node, "when") ?? "last") as SignalWhen,
-        detailed: attrBool(node, "detailed"),
-        action: attrBool(node, "action"),
-        noRecurse: attrBool(node, "no-recurse"),
-        noHooks: attrBool(node, "no-hooks"),
     };
 };

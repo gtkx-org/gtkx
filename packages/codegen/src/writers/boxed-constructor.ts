@@ -67,7 +67,7 @@ export const renderBoxedConstructor = (context: ModuleContext, boxed: GirBoxed, 
     context.addNativeImport("alloc");
     context.addRuntimeImport("setHandle");
     const { slots, size } = computeBoxedFieldSlots(context, boxed.fields, boxed.isUnion);
-    const statements = [`const handle = alloc(${allocArgs(context, boxed, size).join(", ")});`];
+    const statements = [`const handle = alloc(${allocArgs(boxed, size).join(", ")});`];
     for (const entry of slots) {
         if (!isWritableFieldSlot(entry)) continue;
         statements.push(renderFieldWrite(context, entry));
@@ -77,14 +77,12 @@ export const renderBoxedConstructor = (context: ModuleContext, boxed: GirBoxed, 
     return `constructor(props: ${className}ConstructorProps = {}) {\n${indent(body, 1)}\n}`;
 };
 
-const allocArgs = (context: ModuleContext, boxed: GirBoxed, size: number): readonly string[] => {
+const allocArgs = (boxed: GirBoxed, size: number): readonly string[] => {
     const glibTypeName = boxed.glibTypeName ?? boxed.cType;
-    const lib = context.namespace.sharedLibrary;
     const args = [String(size)];
-    if (glibTypeName !== undefined || lib !== undefined) {
-        args.push(glibTypeName !== undefined ? quote(glibTypeName) : "undefined");
+    if (glibTypeName !== undefined) {
+        args.push(quote(glibTypeName));
     }
-    if (lib !== undefined) args.push(quote(lib));
     return args;
 };
 

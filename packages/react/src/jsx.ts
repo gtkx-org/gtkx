@@ -128,9 +128,9 @@ export type AnimationProps = AdwTimedAnimationProps | AdwSpringAnimationProps;
  * @example
  * ```tsx
  * <GtkShortcutController>
- *     <x.Shortcut trigger="<Control>s" onActivate={save} />
- *     <x.Shortcut trigger={["F5", "<Control>r"]} onActivate={refresh} />
- *     <x.Shortcut trigger="Escape" onActivate={cancel} disabled={!canCancel} />
+ *     <GtkShortcutController.Shortcut trigger="<Control>s" onActivate={save} />
+ *     <GtkShortcutController.Shortcut trigger={["F5", "<Control>r"]} onActivate={refresh} />
+ *     <GtkShortcutController.Shortcut trigger="Escape" onActivate={cancel} disabled={!canCancel} />
  * </GtkShortcutController>
  * ```
  */
@@ -156,11 +156,9 @@ export type ShortcutProps = {
  * @example
  * ```tsx
  * <GtkTextView>
- *     <x.TextBuffer>
- *         Click here: <x.TextAnchor>
- *             <GtkButton label="Click me" />
- *         </x.TextAnchor> to continue.
- *     </x.TextBuffer>
+ *     Click here: <GtkTextView.Anchor>
+ *         <GtkButton label="Click me" />
+ *     </GtkTextView.Anchor> to continue.
  * </GtkTextView>
  * ```
  */
@@ -189,9 +187,7 @@ export type TextPaintableProps = {
  * @example
  * ```tsx
  * <GtkTextView>
- *     <x.TextBuffer>
- *         Hello <x.TextTag id="bold" weight={Pango.Weight.BOLD}>bold</x.TextTag> world
- *     </x.TextBuffer>
+ *     Hello <GtkTextView.Tag id="bold" weight={Pango.Weight.BOLD}>bold</GtkTextView.Tag> world
  * </GtkTextView>
  * ```
  */
@@ -545,11 +541,13 @@ export type OverlayChildProps = {
  *
  * @example
  * ```tsx
- * <AdwToggleGroup>
- *     <x.Toggle id="view-list" iconName="view-list-symbolic" />
- *     <x.Toggle id="view-grid" iconName="view-grid-symbolic" />
- *     <x.Toggle id="view-flow" label="Flow" />
- * </AdwToggleGroup>
+ * <AdwToggleGroup
+ *     toggles={[
+ *         { id: "view-list", iconName: "view-list-symbolic" },
+ *         { id: "view-grid", iconName: "view-grid-symbolic" },
+ *         { id: "view-flow", label: "Flow" },
+ *     ]}
+ * />
  * ```
  */
 export type ToggleProps = {
@@ -625,19 +623,19 @@ export type NavigationSplitViewPageProps = NavigationPageBaseProps & {
  * ```tsx
  * // In NavigationView - id can be any string
  * <AdwNavigationView history={["home", "details"]}>
- *   <x.NavigationPage for={AdwNavigationView} id="home" title="Home">
+ *   <AdwNavigationView.Page id="home" title="Home">
  *     <HomeContent />
- *   </x.NavigationPage>
+ *   </AdwNavigationView.Page>
  * </AdwNavigationView>
  *
  * // In NavigationSplitView - id is narrowed to "content" | "sidebar"
  * <AdwNavigationSplitView>
- *   <x.NavigationPage for={AdwNavigationSplitView} id="sidebar" title="Sidebar">
+ *   <AdwNavigationSplitView.Page id="sidebar" title="Sidebar">
  *     <SidebarContent />
- *   </x.NavigationPage>
- *   <x.NavigationPage for={AdwNavigationSplitView} id="content" title="Content">
+ *   </AdwNavigationSplitView.Page>
+ *   <AdwNavigationSplitView.Page id="content" title="Content">
  *     <MainContent />
- *   </x.NavigationPage>
+ *   </AdwNavigationSplitView.Page>
  * </AdwNavigationSplitView>
  * ```
  */

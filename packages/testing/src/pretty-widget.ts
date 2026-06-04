@@ -42,10 +42,7 @@ const buildAttrs = (widget: Gtk.Widget, includeIds: boolean): ReadonlyArray<read
         attrs.push(["name", name]);
     }
 
-    const role = widget.getAccessibleRole();
-    if (role !== undefined) {
-        attrs.push(["role", formatRole(role)]);
-    }
+    attrs.push(["role", formatRole(widget.getAccessibleRole())]);
 
     if (!widget.getSensitive()) {
         attrs.push(["aria-disabled", "true"]);

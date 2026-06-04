@@ -443,7 +443,7 @@ Context.prototype.getDash = function (): [number[], number] {
     if (count === 0) {
         return [[], 0];
     }
-    const dashBuf = alloc(count * 8, "double[]", LIB);
+    const dashBuf = alloc(count * 8, "double[]");
     const offsetRef = { value: 0 };
     cairo_get_dash(getHandle(this), dashBuf, offsetRef);
     const dashes: number[] = [];
@@ -555,14 +555,14 @@ const cairo_text_extents = fn(
     t.void,
 );
 Context.prototype.textExtents = function (text: string): TextExtents {
-    const extents = alloc(48, "cairo_text_extents_t", LIB);
+    const extents = alloc(48, "cairo_text_extents_t");
     cairo_text_extents(getHandle(this), text, extents);
     return readTextExtents(extents);
 };
 
 const cairo_font_extents = fn(LIB, "cairo_font_extents", [{ type: CAIRO_T }, { type: FONT_EXTENTS_T }], t.void);
 Context.prototype.fontExtents = function (): FontExtents {
-    const extents = alloc(40, "cairo_font_extents_t", LIB);
+    const extents = alloc(40, "cairo_font_extents_t");
     cairo_font_extents(getHandle(this), extents);
     return readFontExtents(extents);
 };
@@ -954,7 +954,7 @@ const cairo_glyph_extents = fn(
 );
 Context.prototype.glyphExtents = function (glyphs: Array<{ index: number; x: number; y: number }>): TextExtents {
     const buf = allocGlyphBuffer(glyphs);
-    const extents = alloc(48, "cairo_text_extents_t", LIB);
+    const extents = alloc(48, "cairo_text_extents_t");
     cairo_glyph_extents(getHandle(this), buf, glyphs.length, extents);
     return readTextExtents(extents);
 };

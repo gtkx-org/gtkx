@@ -46,9 +46,6 @@ const collectLabels = (widget: Gtk.Widget, recursive: boolean): string[] => {
  * @returns The joined text content or null if none found
  */
 export const getWidgetText = (widget: Gtk.Widget): string | null => {
-    const role = widget.getAccessibleRole();
-    if (role === undefined) return null;
-
     const childLabels = collectLabels(widget, false);
     return childLabels.length > 0 ? childLabels.join(" ") : null;
 };
@@ -78,7 +75,6 @@ export const getWidgetPropertyText = (widget: Gtk.Widget): string | null => {
  */
 export const getWidgetAccessibleName = (widget: Gtk.Widget): string | null => {
     const role = widget.getAccessibleRole();
-    if (role === undefined) return null;
 
     if (role === Gtk.AccessibleRole.TAB_PANEL) {
         const parent = widget.getParent();

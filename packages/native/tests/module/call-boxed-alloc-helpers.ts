@@ -1,6 +1,6 @@
 import { expect } from "vitest";
 import { alloc, type NativeHandle, read, write } from "../../index.js";
-import { FLOAT32, GDK_LIB, INT32 } from "./utils.js";
+import { FLOAT32, INT32 } from "./utils.js";
 
 const BOXED_SIZE = 16;
 
@@ -28,14 +28,14 @@ export type RgbaChannels = {
  * Allocates a zeroed `GdkRectangle` boxed value backed by GDK memory.
  */
 export function allocRectangle(): NativeHandle {
-    return alloc(BOXED_SIZE, "GdkRectangle", GDK_LIB);
+    return alloc(BOXED_SIZE, "GdkRectangle");
 }
 
 /**
  * Allocates a zeroed `GdkRGBA` boxed value backed by GDK memory.
  */
 export function allocRgba(): NativeHandle {
-    return alloc(BOXED_SIZE, "GdkRGBA", GDK_LIB);
+    return alloc(BOXED_SIZE, "GdkRGBA");
 }
 
 /**

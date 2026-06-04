@@ -52,7 +52,7 @@ class RegionImpl extends Region {
         if (rects.length === 0) {
             return RegionImpl.empty();
         }
-        const buf = alloc(rects.length * 16, "cairo_rectangle_int_t[]", LIB);
+        const buf = alloc(rects.length * 16, "cairo_rectangle_int_t[]");
         let offset = 0;
         for (const rect of rects) {
             write(buf, INT_TYPE, offset, rect.x);

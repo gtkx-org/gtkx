@@ -17,10 +17,6 @@ export const IpcRequestSchema = z.object({
 export type IpcRequest = z.infer<typeof IpcRequestSchema>;
 
 /**
- * An IPC error object.
- */
-
-/**
  * Zod schema for validating IPC errors.
  */
 const IpcErrorSchema = z.object({
