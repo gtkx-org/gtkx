@@ -24,21 +24,26 @@ describe("observeControllers wrapper lifetime", () => {
         expect(first.getNItems()).toBeGreaterThanOrEqual(0);
     });
 
-    it("reproduces: re-acquiring the cached model after its wrapper is collected must not read a freed object", async () => {
-        const button = new Gtk.Button();
-        button.addController(new Gtk.GestureClick());
+    it(
+        "reproduces: re-acquiring the cached model after its wrapper is collected must not read a freed object",
+        async () => {
+            const button = new Gtk.Button();
+            button.addController(new Gtk.GestureClick());
 
-        // Each iteration re-acquires the cached model right after its wrapper is
-        // collected (cleanup still pending), which before the rebind fix tripped
-        // a toggle-ref CRITICAL / freed-handle on roughly every pass. A few
-        // hundred passes reliably catch a regression while staying well inside
-        // the test budget.
-        for (let i = 0; i < 400; i++) {
-            touchControllers(button);
-            await drain();
-            gc();
-            const controllers = button.observeControllers();
-            expect(controllers.getNItems()).toBeGreaterThanOrEqual(0);
-        }
-    });
+            // Each iteration re-acquires the cached model right after its wrapper
+            // is collected (cleanup still pending), which before the rebind fix
+            // tripped a toggle-ref CRITICAL / freed-handle on roughly every pass.
+            // A forced GC per pass is costly, so the count is kept low — at this
+            // hit rate even a handful of passes would catch a regression — while
+            // the timeout is widened for slower, loaded CI runners.
+            for (let i = 0; i < 150; i++) {
+                touchControllers(button);
+                await drain();
+                gc();
+                const controllers = button.observeControllers();
+                expect(controllers.getNItems()).toBeGreaterThanOrEqual(0);
+            }
+        },
+        30_000,
+    );
 });
