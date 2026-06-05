@@ -9,7 +9,7 @@ import type { GirSignal } from "../gir/signal.js";
 import type { GirTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
 import { forEachAncestor, resolveImplementedInterface } from "./inheritance.js";
 import { planTrampolineArgs, renderTupleWriteback } from "./method.js";
-import { isCollectibleCallerOut, isHandlePassing } from "./param-classify.js";
+import { isBoxedCallerOut, isHandlePassing } from "./param-classify.js";
 import { isCellInout, renderFfiType } from "./value.js";
 
 const SIGNAL_HANDLER_TYPE = "(...args: any[]) => any";
@@ -104,14 +104,14 @@ const renderConnectCase = (context: ModuleContext, collected: CollectedSignal): 
  * (via `valueToJS`) together with every out value — using the same tuple
  * convention {@link renderSignalReturnType} describes for handlers.
  * Out-parameters consume no emit argument; in- and inout-parameters do. A
- * caller-allocated out-parameter the runtime cannot allocate (a raw buffer with
- * no boxed/class wrapper) throws, since `emit()` has nowhere to source the
- * storage.
+ * caller-allocated out-parameter that is not a boxed record — a raw buffer, or a
+ * class with no boxed `GType` — throws, since `outBoxedFromFfi` has no `GType` to
+ * resolve for it.
  */
 const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): string => {
     const { signal, namespaceName } = collected;
     const params = signal.parameters.filter((parameter) => !parameter.isVarargs);
-    if (params.some((parameter) => isCallerAllocatedOut(parameter) && !isCollectibleCallerOut(context, parameter))) {
+    if (params.some((parameter) => isCallerAllocatedOut(parameter) && !isBoxedCallerOut(context, parameter))) {
         return renderUnsupportedEmitCase(signal);
     }
     context.addValueFromFfiImport();
@@ -187,8 +187,9 @@ const renderEmitReturn = (context: ModuleContext, isVoid: boolean, outReads: rea
 
 /**
  * Renders an `emit` case that throws because the signal carries a
- * caller-allocated out-parameter the runtime cannot allocate (a raw buffer with
- * no boxed/class wrapper), so `emit()` has nowhere to source the storage.
+ * caller-allocated out-parameter the emit path cannot marshal — a raw buffer, or
+ * a class with no boxed `GType` (only boxed records pass through
+ * `outBoxedFromFfi`), so `emit()` has nowhere to source the storage.
  *
  * @param signal - The signal whose emit case throws
  */

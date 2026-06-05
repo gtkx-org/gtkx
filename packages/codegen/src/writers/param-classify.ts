@@ -138,6 +138,14 @@ export const needsRefArg = (context: ModuleContext, parameter: GirParameter): bo
     return !passesHandleInPlace(context, parameter);
 };
 
+const resolveCallerOut = (context: ModuleContext, parameter: GirParameter) => {
+    if (parameter.type === undefined || parameter.type.kind !== "named") return undefined;
+    return context.repository.resolveNamed(
+        parameter.type.namespaceName ?? context.namespace.name,
+        parameter.type.typeName,
+    );
+};
+
 /**
  * Whether a caller-allocated-out parameter is one the body can materialize and
  * collect into the return — a boxed record or class the runtime can allocate
@@ -148,13 +156,22 @@ export const needsRefArg = (context: ModuleContext, parameter: GirParameter): bo
  * @param parameter - The parameter to test
  */
 export const isCollectibleCallerOut = (context: ModuleContext, parameter: GirParameter): boolean => {
-    if (parameter.type === undefined || parameter.type.kind !== "named") return false;
-    const resolved = context.repository.resolveNamed(
-        parameter.type.namespaceName ?? context.namespace.name,
-        parameter.type.typeName,
-    );
-    return resolved?.kind === "boxed" || resolved?.kind === "class";
+    const kind = resolveCallerOut(context, parameter)?.kind;
+    return kind === "boxed" || kind === "class";
 };
+
+/**
+ * Whether a caller-allocated-out parameter is a boxed record specifically — the
+ * only caller-out the signal `emit` path can marshal, since it passes the
+ * allocated wrapper through `outBoxedFromFfi`, which resolves a boxed `GType`.
+ * Class caller-outs ({@link isCollectibleCallerOut} also admits them for the
+ * method body) have no boxed `GType` and route to the unsupported-emit throw.
+ *
+ * @param context - The module context
+ * @param parameter - The parameter to test
+ */
+export const isBoxedCallerOut = (context: ModuleContext, parameter: GirParameter): boolean =>
+    resolveCallerOut(context, parameter)?.kind === "boxed";
 
 /**
  * Whether a value of `ref` is passed across the FFI boundary as a native
