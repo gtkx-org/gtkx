@@ -22,17 +22,30 @@ export abstract class SingleChildVirtualNode<
     TChild extends Node = WidgetNode,
 > extends VirtualNode<TProps, TParent, TChild> {
     public override appendChild(child: TChild): void {
-        const oldChildWidget = this.trackedChild()?.backingInstance ?? null;
-        super.appendChild(child);
-        if (this.parent && child instanceof WidgetNode) {
-            this.onChildChange(oldChildWidget);
-        }
+        this.withTrackedChildChange(() => super.appendChild(child));
     }
 
     public override removeChild(child: TChild): void {
-        const oldChildWidget = child instanceof WidgetNode ? child.backingInstance : null;
-        super.removeChild(child);
-        if (this.parent && oldChildWidget) {
+        this.withTrackedChildChange(() => super.removeChild(child));
+    }
+
+    public override insertBefore(child: TChild, before: TChild): void {
+        this.withTrackedChildChange(() => super.insertBefore(child, before));
+    }
+
+    /**
+     * Runs a child-list mutation and fires {@link onChildChange} when it leaves
+     * the tracked child's backing widget different from before, while the node is
+     * attached. Comparing the tracked widget across the mutation keeps the hook
+     * firing for every way React can introduce, replace, or remove the wrapped
+     * child — append, remove, and insert-before alike — while skipping mutations
+     * that only reorder non-tracked siblings.
+     */
+    private withTrackedChildChange(mutate: () => void): void {
+        const oldChildWidget = this.trackedChild()?.backingInstance ?? null;
+        mutate();
+        const newChildWidget = this.trackedChild()?.backingInstance ?? null;
+        if (this.parent && newChildWidget !== oldChildWidget) {
             this.onChildChange(oldChildWidget);
         }
     }

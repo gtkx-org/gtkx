@@ -95,3 +95,31 @@ describe("render - NotebookPage > NotebookPageNode (3)", () => {
         expect(notebookRef.current?.getNPages()).toBe(3);
     });
 });
+
+describe("render - NotebookPage > NotebookPageNode (4)", () => {
+    it("attaches the page when content is inserted before an existing tab marker", async () => {
+        const notebookRef = createRef<Gtk.Notebook>();
+        const contentRef = createRef<Gtk.Label>();
+
+        function App({ showContent }: { showContent: boolean }) {
+            return (
+                <GtkNotebook ref={notebookRef}>
+                    <GtkNotebook.Page>
+                        {showContent ? <GtkLabel ref={contentRef} label="Content" /> : null}
+                        <GtkNotebook.PageTab>
+                            <GtkLabel label="Tab" />
+                        </GtkNotebook.PageTab>
+                    </GtkNotebook.Page>
+                </GtkNotebook>
+            );
+        }
+
+        await render(<App showContent={false} />);
+        expect(notebookRef.current?.getNPages()).toBe(0);
+
+        await render(<App showContent={true} />);
+        expect(notebookRef.current?.getNPages()).toBe(1);
+        const tabLabel = notebookRef.current?.getTabLabel(contentRef.current as Gtk.Widget) as Gtk.Label;
+        expect(tabLabel?.getLabel()).toBe("Tab");
+    });
+});
