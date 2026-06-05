@@ -337,4 +337,3 @@ describe("ConnectionManager sendToApp — transport errors", () => {
         });
     });
 });
-
