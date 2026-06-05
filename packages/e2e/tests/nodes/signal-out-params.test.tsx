@@ -146,3 +146,26 @@ describe("signal emit() - reads out-values and return back", () => {
         expect(spin.emit("output")).toBe(true);
     });
 });
+
+describe("signal emit() - caller-allocated out-parameter", () => {
+    it("allocates the out-parameter so the default handler fills it through the returned wrapper", async () => {
+        const overlayRef = createRef<Gtk.Overlay>();
+
+        await render(
+            <GtkOverlay ref={overlayRef} widthRequest={200} heightRequest={200}>
+                <GtkLabel label="Main" />
+                <GtkOverlay.Child>
+                    <GtkBox widthRequest={40} heightRequest={20} />
+                </GtkOverlay.Child>
+            </GtkOverlay>,
+        );
+
+        const overlay = overlayRef.current as Gtk.Overlay;
+        const child = overlay.getLastChild() as Gtk.Widget;
+        const [handled, allocation] = overlay.emit("get-child-position", child) as [boolean, Gdk.Rectangle];
+
+        expect(handled).toBe(true);
+        expect(allocation.width).toBe(overlay.getWidth());
+        expect(allocation.height).toBe(overlay.getHeight());
+    });
+});

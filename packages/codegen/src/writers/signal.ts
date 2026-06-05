@@ -3,13 +3,13 @@ import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirParameter } from "../gir/parameter.js";
-import { isOutParameter } from "../gir/parameter.js";
+import { isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
 import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirSignal } from "../gir/signal.js";
 import type { GirTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
 import { forEachAncestor, resolveImplementedInterface } from "./inheritance.js";
 import { planTrampolineArgs, renderTupleWriteback } from "./method.js";
-import { isHandlePassing } from "./param-classify.js";
+import { isCollectibleCallerOut, isHandlePassing } from "./param-classify.js";
 import { isCellInout, renderFfiType } from "./value.js";
 
 const SIGNAL_HANDLER_TYPE = "(...args: any[]) => any";
@@ -97,15 +97,23 @@ const renderConnectCase = (context: ModuleContext, collected: CollectedSignal): 
 /**
  * Renders one `emit` switch case. In-parameters marshal into `GValue`s with
  * `valueFromFfi`; out- and scalar-inout parameters marshal into pointer-backed
- * cells via `outValueFromFfi`, which a handler reached through `g_signal_emitv`
- * writes into. After emission the case returns the signal's result — the
- * non-void return value (via `valueToJS`) together with any out-cell read-backs
- * — using the same tuple convention {@link renderSignalReturnType} describes for
- * handlers. Out-parameters consume no emit argument; in- and inout-parameters do.
+ * cells via `outValueFromFfi`; a caller-allocated boxed/class out-parameter is
+ * allocated here and referenced in place by `outBoxedFromFfi` (a no-copy
+ * `GValue`) so the handler reached through `g_signal_emitv` fills it. After
+ * emission the case returns the signal's result — the non-void return value
+ * (via `valueToJS`) together with every out value — using the same tuple
+ * convention {@link renderSignalReturnType} describes for handlers.
+ * Out-parameters consume no emit argument; in- and inout-parameters do. A
+ * caller-allocated out-parameter the runtime cannot allocate (a raw buffer with
+ * no boxed/class wrapper) throws, since `emit()` has nowhere to source the
+ * storage.
  */
 const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): string => {
     const { signal, namespaceName } = collected;
     const params = signal.parameters.filter((parameter) => !parameter.isVarargs);
+    if (params.some((parameter) => isCallerAllocatedOut(parameter) && !isCollectibleCallerOut(context, parameter))) {
+        return renderUnsupportedEmitCase(signal);
+    }
     context.addValueFromFfiImport();
     const refs = gobjectRefs(context);
 
@@ -115,13 +123,18 @@ const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): str
     let argIndex = 0;
     params.forEach((parameter, index) => {
         const ffi = renderFfiType(context, qualifyTypeRef(parameter.type, namespaceName), parameter.transferOwnership);
+        const cell = `_out${index}`;
         if (isOutParameter(parameter) || isCellInout(context, parameter)) {
             context.addRuntimeImport("outValueFromFfi");
-            const cell = `_out${index}`;
             const seed = isOutParameter(parameter) ? "" : `, args[${argIndex++}]`;
             preStatements.push(`const ${cell} = outValueFromFfi(${ffi}${seed});`);
             valueExprs.push(`${cell}.value`);
             outReads.push(`${cell}.read()`);
+        } else if (isCallerAllocatedOut(parameter)) {
+            context.addRuntimeImport("outBoxedFromFfi");
+            preStatements.push(`const ${cell} = ${renderCallerOutAllocation(context, parameter, namespaceName)};`);
+            valueExprs.push(`outBoxedFromFfi(${ffi}, ${cell})`);
+            outReads.push(cell);
         } else {
             valueExprs.push(`valueFromFfi(${ffi}, args[${argIndex++}])`);
         }
@@ -170,6 +183,35 @@ const renderEmitReturn = (context: ModuleContext, isVoid: boolean, outReads: rea
         return `return ${outReads[0]};`;
     }
     return `return [${outReads.join(", ")}];`;
+};
+
+/**
+ * Renders an `emit` case that throws because the signal carries a
+ * caller-allocated out-parameter the runtime cannot allocate (a raw buffer with
+ * no boxed/class wrapper), so `emit()` has nowhere to source the storage.
+ *
+ * @param signal - The signal whose emit case throws
+ */
+const renderUnsupportedEmitCase = (signal: GirSignal): string => {
+    const message = `emit() cannot allocate the caller-allocated out-parameter of '${signal.name}'`;
+    return `case ${quote(signal.name)}: {\n${indent(`throw new globalThis.Error(${quote(message)});`, 1)}\n}`;
+};
+
+/**
+ * Renders the `new Namespace.Type()` allocation for a caller-allocated boxed or
+ * class out-parameter, qualifying the wrapper through its owning namespace.
+ *
+ * @param context - The module context
+ * @param parameter - The caller-allocated out parameter (a named boxed/class)
+ * @param namespaceName - The signal's namespace, used when the type is unqualified
+ */
+const renderCallerOutAllocation = (context: ModuleContext, parameter: GirParameter, namespaceName: string): string => {
+    const type = parameter.type;
+    if (type === undefined || type.kind !== "named") {
+        throw new Error("renderCallerOutAllocation: expected a named caller-allocated out-parameter");
+    }
+    const owner = type.namespaceName ?? namespaceName;
+    return `new ${context.qualify(owner, type.typeName)}()`;
 };
 
 /**

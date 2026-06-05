@@ -83,6 +83,45 @@ export function setBoxed(value: object, boxed: object | null): void {
 }
 
 /**
+ * Stores `boxed` as a `GValue`'s payload without copying it: the value holds the
+ * wrapper's own pointer (`g_value_set_static_boxed`), so a callee that mutates
+ * the boxed in place — a signal handler filling a caller-allocated
+ * out-parameter — writes through to `boxed`. The `"none"` arg ownership skips
+ * the defensive `g_boxed_copy` a `"borrowed"` boxed would make. The wrapper
+ * retains ownership, so the value must not outlive it.
+ *
+ * @param value - The `GValue` (already typed with a boxed `GType`).
+ * @param boxed - The boxed wrapper to reference in place.
+ */
+export function setStaticBoxed(value: object, boxed: object): void {
+    call(
+        LIBGOBJECT,
+        "g_value_set_static_boxed",
+        [
+            { type: GVALUE_BORROWED, value: getHandle(value) },
+            { type: t.boxed(boxedTypeName(valueGetType(value)), "none", LIBGOBJECT), value: getHandle(boxed) },
+        ],
+        t.void,
+    );
+}
+
+/**
+ * Builds a `G_TYPE_BOXED` `GValue` that references `boxed` in place (no copy),
+ * for emitting a signal whose caller-allocated out-parameter a handler fills.
+ * Pairs with the generated `emit`, which allocates the wrapper, passes this
+ * value through `g_signal_emitv`, and returns the now-populated wrapper.
+ *
+ * @param ffiType - The boxed FFI descriptor naming the value's `GType`.
+ * @param boxed - The freshly allocated wrapper the handler writes into.
+ */
+export function outBoxedFromFfi(ffiType: FfiType, boxed: object): GValue {
+    const value = new GValue();
+    value.init(resolveBoxedGType(ffiType));
+    setStaticBoxed(value, boxed);
+    return value;
+}
+
+/**
  * Reads the boxed payload of a `GValue`, resolving the wrapper class through
  * the registry.
  *
