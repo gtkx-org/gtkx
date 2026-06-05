@@ -31,8 +31,6 @@ export type RunCodegenResult = {
     widgets: number;
     /** Wall-clock duration in milliseconds. */
     duration: number;
-    /** Resolved configuration that produced the run. */
-    config?: GtkxConfig;
     /** Resolved GIR search path used by the run. */
     girPath?: string[];
     /** Path of the loaded `gtkx.config.ts`, when one was used. */
@@ -122,7 +120,6 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
         namespaces: result.namespaces,
         widgets: result.widgets,
         duration: result.duration,
-        config,
         girPath,
         configFile,
         libraries,
