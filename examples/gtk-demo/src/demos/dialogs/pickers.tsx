@@ -15,7 +15,7 @@ import { useCallback, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./pickers.tsx?raw";
 
-const gFileType = Gio.File.prototype.__gtype__;
+const gfileType = Gio.File.prototype.__gtype__;
 
 const DIALOG_TIMEOUT_SECONDS = 20;
 
@@ -61,7 +61,7 @@ function useDropAndOpenHandlers(window: React.RefObject<Gtk.Window | null>, stat
 
     const handleFileDrop = useCallback(
         (value: GObject.Value) => {
-            if (!GObject.typeCheckValueHolds(value, gFileType)) return false;
+            if (!GObject.typeCheckValueHolds(value, gfileType)) return false;
             const file = value.getObject();
             if (file && file instanceof Gio.File) {
                 setFile(file);
@@ -215,7 +215,7 @@ const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWid
                     accessibleHasPopup
                     onClicked={() => void handlers.handleOpenFile()}
                 >
-                    <GtkDropTarget types={[gFileType]} actions={Gdk.DragAction.COPY} onDrop={handlers.handleFileDrop} />
+                    <GtkDropTarget types={[gfileType]} actions={Gdk.DragAction.COPY} onDrop={handlers.handleFileDrop} />
                 </GtkButton>
                 <GtkButton
                     name="open-file-button"

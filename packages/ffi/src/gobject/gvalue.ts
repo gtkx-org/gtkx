@@ -2,7 +2,7 @@ import {
     G_TYPE_INVALID,
     type GType,
     GVALUE_BORROWED,
-    gTypeFromFfi,
+    gtypeFromFfi,
     LIBGOBJECT,
     typeFromName,
     typeFundamental,
@@ -27,7 +27,7 @@ let cachedStrvGType: GType | undefined;
 
 /** Resolves and caches the `GStrv` (`gchar**`) boxed `GType`. */
 export function getStrvGType(): GType {
-    cachedStrvGType ??= gTypeFromFfi(g_strv_get_type());
+    cachedStrvGType ??= gtypeFromFfi(g_strv_get_type());
     return cachedStrvGType;
 }
 
@@ -48,7 +48,7 @@ function initValue(gtype: GType, populate: (v: GValue) => void): GValue {
  * @returns The `GType` identifier.
  */
 export function valueGetType(value: object): GType {
-    return gTypeFromFfi(read(getHandle(value), t.uint64, 0));
+    return gtypeFromFfi(read(getHandle(value), t.uint64, 0));
 }
 
 /** Resolves the GLib type name of a boxed `GType`, throwing when unknown. */
@@ -206,7 +206,7 @@ function newFromFlags(gtype: GType, value: number): GValue {
 function resolveBoxedGType(ffiType: FfiType): GType {
     if (ffiType.type === "boxed") {
         if (ffiType.getTypeFn && ffiType.library) {
-            return gTypeFromFfi(call(ffiType.library, ffiType.getTypeFn, [], t.uint64));
+            return gtypeFromFfi(call(ffiType.library, ffiType.getTypeFn, [], t.uint64));
         }
         const gtype = typeFromName(ffiType.innerType);
         if (gtype === G_TYPE_INVALID) {
@@ -229,7 +229,7 @@ type FfiArrayType = Extract<FfiType, { type: "array" }>;
 type FfiFundamentalType = Extract<FfiType, { type: "fundamental" }>;
 
 function newFromEnumOrFlagsFfi(ffiType: FfiEnumOrFlagsType, value: unknown): GValue {
-    const gtype = gTypeFromFfi(call(ffiType.library, ffiType.getTypeFn, [], t.uint64));
+    const gtype = gtypeFromFfi(call(ffiType.library, ffiType.getTypeFn, [], t.uint64));
     if (ffiType.type === "flags" || typeFundamental(gtype) === Type.FLAGS) {
         return newFromFlags(gtype, value as number);
     }

@@ -173,7 +173,7 @@ const slist = (itemType: Type, ownership: Ownership = "borrowed"): Type => array
 
 const ptrArray = (itemType: Type, ownership: Ownership = "borrowed"): Type => arrayT(itemType, "gptrarray", ownership);
 
-const gArray = (itemType: Type, ownership: Ownership = "borrowed", elementSize?: number): Type =>
+const garray = (itemType: Type, ownership: Ownership = "borrowed", elementSize?: number): Type =>
     arrayT(itemType, "garray", ownership, elementSize === undefined ? undefined : { elementSize });
 
 const byteArray = (ownership: Ownership = "borrowed"): Type => arrayT(uint8, "gbytearray", ownership);
@@ -251,7 +251,7 @@ export const t = {
     list,
     slist,
     ptrArray,
-    gArray,
+    garray,
     byteArray,
     sizedArray,
     fixedArray,

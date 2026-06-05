@@ -13,7 +13,7 @@ import { getPendingConstruction } from "./pending-construction.js";
 
 setObjectToggleNotify((refPtr, op) => applyWrapperRefOp(refPtr, op));
 
-let gObjectGType: GType = G_TYPE_INVALID;
+let gobjectGType: GType = G_TYPE_INVALID;
 
 /**
  * Whether `gtype` is a `GObject` descendant, as opposed to another
@@ -23,14 +23,14 @@ let gObjectGType: GType = G_TYPE_INVALID;
  * is registered by the time any instance crosses the boundary.
  */
 function isGObjectType(gtype: GType): boolean {
-    if (gObjectGType === G_TYPE_INVALID) {
-        gObjectGType = typeFromName("GObject");
+    if (gobjectGType === G_TYPE_INVALID) {
+        gobjectGType = typeFromName("GObject");
     }
-    return gObjectGType !== G_TYPE_INVALID && typeIsA(gtype, gObjectGType);
+    return gobjectGType !== G_TYPE_INVALID && typeIsA(gtype, gobjectGType);
 }
 
 const classRegistry = new Map<GType, AnyClass>();
-const gTypeByClass = new WeakMap<AnyClass, GType>();
+const gtypeByClass = new WeakMap<AnyClass, GType>();
 const interfaceGTypeByClass = new WeakMap<AnyClass, GType>();
 
 /**
@@ -47,7 +47,7 @@ const interfaceGTypeByClass = new WeakMap<AnyClass, GType>();
 export function setClassGType(cls: AnyClass, gtype: GType): void {
     if (gtype !== G_TYPE_INVALID) {
         classRegistry.set(gtype, cls);
-        gTypeByClass.set(cls, gtype);
+        gtypeByClass.set(cls, gtype);
         (cls.prototype as GTyped).__gtype__ = gtype;
     }
 }
@@ -76,7 +76,7 @@ export function setInterfaceGType(cls: AnyClass, gtype: GType): void {
  * GType (`0`) when the class has not been registered (e.g. boxed value types).
  */
 export function getClassGType(cls: AnyClass): GType {
-    return gTypeByClass.get(cls) ?? G_TYPE_INVALID;
+    return gtypeByClass.get(cls) ?? G_TYPE_INVALID;
 }
 
 /**

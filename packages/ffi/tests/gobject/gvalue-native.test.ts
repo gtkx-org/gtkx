@@ -17,9 +17,9 @@ const gtypeOf = (library: string, getTypeFn: string): GType => {
 const enumGType = (): GType => gtypeOf("libgtk-4.so.1", "gtk_align_get_type");
 const flagsGType = (): GType => gtypeOf("libgobject-2.0.so.0", "g_binding_flags_get_type");
 
-const initialized = (gType: GType): GValue => {
+const initialized = (gtype: GType): GValue => {
     const value = new GValue();
-    value.init(gType);
+    value.init(gtype);
     return value;
 };
 

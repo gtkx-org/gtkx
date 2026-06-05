@@ -55,7 +55,7 @@ export const G_TYPE_INVALID: GType = 0;
  * @param value - The marshaled FFI result of a type-resolution call.
  * @returns The result as a `GType`.
  */
-export const gTypeFromFfi: (value: unknown) => GType = Number;
+export const gtypeFromFfi: (value: unknown) => GType = Number;
 
 const g_type_from_name = t.fn(LIBGOBJECT, "g_type_from_name", [{ type: t.string("borrowed") }], t.uint64);
 

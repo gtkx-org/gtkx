@@ -12,9 +12,9 @@ const INVALID_GTYPE: GType = 0;
 describe("setClassGType", () => {
     it("registers a class by GType", () => {
         class TestClass {}
-        const fakeGtype: GType = 123456789;
-        setClassGType(TestClass as AnyClass, fakeGtype);
-        expect(findNativeClass(fakeGtype)).toBe(TestClass);
+        const fakeGType: GType = 123456789;
+        setClassGType(TestClass as AnyClass, fakeGType);
+        expect(findNativeClass(fakeGType)).toBe(TestClass);
     });
 
     it("allows getNativeObject to find registered types", () => {

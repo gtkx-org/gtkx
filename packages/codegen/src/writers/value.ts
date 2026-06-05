@@ -203,7 +203,7 @@ const LIST_HELPERS: Readonly<Record<"glist" | "gslist" | "gptrarray" | "garray" 
     glist: "list",
     gslist: "slist",
     gptrarray: "ptrArray",
-    garray: "gArray",
+    garray: "garray",
     gbytearray: "byteArray",
 };
 

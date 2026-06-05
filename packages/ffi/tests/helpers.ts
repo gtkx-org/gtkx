@@ -12,7 +12,7 @@ import { getInstanceGType, type NativeHandle } from "@gtkx/native";
  * @param gtype - GType identifier of the target type
  */
 export function instanceIsA(handle: NativeHandle, gtype: GType): boolean {
-    const instanceGtype: GType = getInstanceGType(handle);
-    if (instanceGtype === G_TYPE_INVALID) return false;
-    return typeIsA(instanceGtype, gtype);
+    const instanceGType: GType = getInstanceGType(handle);
+    if (instanceGType === G_TYPE_INVALID) return false;
+    return typeIsA(instanceGType, gtype);
 }

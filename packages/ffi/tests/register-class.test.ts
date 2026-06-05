@@ -27,8 +27,8 @@ describe("registerClass — registration", () => {
 
         registerClass(CustomButton, { gtypeName: name });
 
-        const newGtype = typeFromName(name);
-        expect(findNativeClass(newGtype)).toBe(CustomButton);
+        const newGType = typeFromName(name);
+        expect(findNativeClass(newGType)).toBe(CustomButton);
     });
 
     it("falls back to klass.name when no gtypeName option is supplied", () => {
@@ -69,9 +69,9 @@ describe("registerClass — vfunc dispatch", () => {
 
         registerClass(CustomObject, { gtypeName: name });
 
-        const customGtype = typeFromName(name);
-        expect(customGtype).not.toBe(0);
-        const instance = GObject.newv(customGtype, []);
+        const customGType = typeFromName(name);
+        expect(customGType).not.toBe(0);
+        const instance = GObject.newv(customGType, []);
         expect(instance).toBeDefined();
     });
 
@@ -86,8 +86,8 @@ describe("registerClass — vfunc dispatch", () => {
 
         registerClass(CustomObject, { gtypeName: name });
 
-        const customGtype = typeFromName(name);
-        GObject.newv(customGtype, []);
+        const customGType = typeFromName(name);
+        GObject.newv(customGType, []);
 
         expect(constructedCalls).toEqual(["constructed invoked"]);
     });
@@ -104,10 +104,10 @@ describe("registerClass — vfunc dispatch", () => {
 
         registerClass(CustomWidget, { gtypeName: name });
 
-        const customGtype = typeFromName(name);
-        expect(customGtype).not.toBe(0);
+        const customGType = typeFromName(name);
+        expect(customGType).not.toBe(0);
 
-        const instance = GObject.newv(customGtype, []);
+        const instance = GObject.newv(customGType, []);
         expect(instanceIsA(getHandle(instance), typeFromName("GtkBuildable"))).toBe(true);
 
         const builder = Gtk.Builder.new();

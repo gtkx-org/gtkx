@@ -168,9 +168,9 @@ export class GValue {
         setHandle(this, alloc(GVALUE_SIZE, "GValue"));
     }
 
-    /** Initializes the value to hold `gType`. */
-    init(gType: GType): void {
-        g_value_init(getHandle(this), gType);
+    /** Initializes the value to hold `gtype`. */
+    init(gtype: GType): void {
+        g_value_init(getHandle(this), gtype);
     }
 
     setBoolean(value: boolean): void {

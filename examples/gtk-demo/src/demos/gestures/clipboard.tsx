@@ -45,7 +45,7 @@ interface PastedContent {
 
 const gdkRgbaType = Gdk.RGBA.prototype.__gtype__;
 const gdkPaintableType = Gdk.Paintable.prototype.__gtype__;
-const gFileType = Gio.File.prototype.__gtype__;
+const gfileType = Gio.File.prototype.__gtype__;
 const gdkTextureType = Gdk.Texture.prototype.__gtype__;
 
 const SOURCE_TYPES: SourceType[] = ["Text", "Color", "Image", "File", "Folder"];
@@ -115,7 +115,7 @@ const computeCanPaste = (formats: Gdk.ContentFormats): boolean =>
     formats.containGtype(GObject.Type.STRING) ||
     formats.containGtype(gdkRgbaType) ||
     formats.containGtype(gdkPaintableType) ||
-    formats.containGtype(gFileType) ||
+    formats.containGtype(gfileType) ||
     formats.containMimeType("image/png");
 
 function useClipboardChangedListener(setCanPaste: (canPaste: boolean) => void) {
@@ -157,7 +157,7 @@ function useDragProviders(state: ClipboardState) {
 
     const createFileDragProvider = useCallback(() => {
         if (!sourceFile) return null;
-        return Gdk.ContentProvider.newForValue(buildValue(gFileType, (v) => v.setObject(sourceFile)));
+        return Gdk.ContentProvider.newForValue(buildValue(gfileType, (v) => v.setObject(sourceFile)));
     }, [sourceFile]);
 
     return { createTextDragProvider, createColorDragProvider, createImageDragProvider, createFileDragProvider };
@@ -196,7 +196,7 @@ const copyImageToClipboard = (clipboard: Gdk.Clipboard, selectedImage: number) =
 const copyFileToClipboard = (clipboard: Gdk.Clipboard, sourceFile: Gio.File) =>
     setClipboardValue(
         clipboard,
-        buildValue(gFileType, (v) => v.setObject(sourceFile)),
+        buildValue(gfileType, (v) => v.setObject(sourceFile)),
     );
 
 function useClipboardHandlers(state: ClipboardState, window: React.RefObject<Gtk.Window | null>) {
@@ -290,8 +290,8 @@ const tryPasteFile = async (
     formats: Gdk.ContentFormats,
     setPastedContent: SetPastedContent,
 ): Promise<boolean> => {
-    if (!formats.containGtype(gFileType)) return false;
-    const value = await readValueAsync(clipboard, gFileType);
+    if (!formats.containGtype(gfileType)) return false;
+    const value = await readValueAsync(clipboard, gfileType);
     const obj = value.getObject();
     if (!(obj instanceof Gio.File)) return false;
     setPastedContent({ type: "File", filePath: obj.getPath() ?? obj.getUri() ?? undefined });
@@ -541,7 +541,7 @@ interface ClipboardPasteSectionProps {
 const ClipboardPasteSection = ({ pastedContent, canPaste, onPaste, onDrop }: ClipboardPasteSectionProps) => (
     <GtkBox name="paste-box" spacing={12}>
         <GtkDropTarget
-            types={[gdkTextureType, gdkPaintableType, gFileType, gdkRgbaType, GObject.Type.STRING]}
+            types={[gdkTextureType, gdkPaintableType, gfileType, gdkRgbaType, GObject.Type.STRING]}
             actions={Gdk.DragAction.COPY}
             onDrop={onDrop}
         />

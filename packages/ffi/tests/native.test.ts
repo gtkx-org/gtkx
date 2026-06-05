@@ -98,9 +98,9 @@ describe("createErrorDomain", () => {
 describe("instanceIsA", () => {
     it("returns true when the instance derives from the requested GType", () => {
         const box = new Gtk.Box();
-        const widgetGtype = typeFromName("GtkWidget");
+        const widgetGType = typeFromName("GtkWidget");
 
-        expect(instanceIsA(getHandle(box), widgetGtype)).toBe(true);
+        expect(instanceIsA(getHandle(box), widgetGType)).toBe(true);
     });
 
     it("returns true when the instance implements an interface GType", () => {
