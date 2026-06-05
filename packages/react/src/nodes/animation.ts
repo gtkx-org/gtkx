@@ -72,7 +72,7 @@ export class AnimationNode extends SingleChildVirtualNode<AnimationProps, Node, 
 
         if (oldProps && newProps.animate && !this.areAnimatedPropsEqual(oldProps.animate, newProps.animate)) {
             const target = newProps.animate;
-            if (this.children[0] && !this.isExiting) {
+            if (this.children[0]) {
                 this.animateTo(target);
             }
         }

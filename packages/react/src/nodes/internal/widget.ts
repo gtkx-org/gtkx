@@ -46,7 +46,7 @@ export function unparentWidget(widget: Gtk.Widget): void {
 
 export function getFocusWidget(widget: Gtk.Widget): Gtk.Widget | null {
     const root = widget.getRoot();
-    return root?.getFocus?.() ?? null;
+    return root?.getFocus() ?? null;
 }
 
 export function isDescendantOf(widget: Gtk.Widget, ancestor: Gtk.Widget): boolean {

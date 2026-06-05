@@ -133,10 +133,6 @@ export class WidgetNode<
             } else {
                 this.detachAutowrappedChild(child);
             }
-        } else if (
-            !(child.backingInstance instanceof Gtk.ListBoxRow || child.backingInstance instanceof Gtk.FlowBoxChild)
-        ) {
-            this.detachAutowrappedChild(child);
         }
 
         const container: Gtk.Widget = this.backingInstance;
