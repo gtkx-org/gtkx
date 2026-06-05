@@ -9,8 +9,9 @@
 //! the object's total reference count crosses between "only the toggle ref" and
 //! "the toggle ref plus at least one other holder".
 //!
-//! The binding stores its wrapper inside the object's qdata as a napi
-//! `napi_ref`. The reference's refcount encodes collectability:
+//! The binding stores a per-object [`WrapperBinding`] cell inside the object's
+//! qdata; the cell holds the wrapper's napi `napi_ref`. The reference's refcount
+//! encodes collectability:
 //!
 //! - **strong** (refcount 1): native code holds another reference, so the
 //!   wrapper must survive a JavaScript GC to preserve identity when the object
@@ -47,31 +48,42 @@
 //!
 //! A collected wrapper's cleanup is *deferred*, so the same object can be handed
 //! back across the FFI boundary between the wrapper's collection and its
-//! teardown. Every binding carries a process-unique epoch: [`install`] stamps a
-//! fresh one and the decode path re-stamps via [`note_reacquired`] each time it
-//! re-acquires an object that still carries a wrapper. A cleanup captures the
-//! epoch when scheduled and, if it no longer matches — because the object was
-//! re-acquired, its address was reused, or it was already torn down — drops only
-//! its own `napi_ref` and leaves the rest to the live binding, *without
-//! dereferencing the possibly-freed object*. The epoch is process-unique and the
-//! absent value `0` is never assigned, so this comparison alone distinguishes a
-//! live sole binding from a superseded or dead one. A matching epoch means this
-//! wrapper's toggle ref is still the object's sole binding holder, so the full
-//! teardown is safe; [`install`] reuses that toggle ref on a rebind instead of
-//! adding a second. This keeps exactly one toggle ref per object across rebinds
-//! and is exercised by `@gtkx/ffi`'s `observe-controllers-lifetime` test.
+//! teardown. In that window a lookup finds the qdata cell still present but its
+//! `napi_ref` already resolving to null, so the registry builds a fresh wrapper
+//! and calls [`install`] again. [`install`] detects the occupied cell and
+//! **reuses** the existing toggle ref instead of adding a second — which would
+//! make `GObject` emit "Unexpected number of toggle-refs" — so exactly one toggle
+//! ref exists per object across any number of rebinds.
+//!
+//! Each object owns one [`WrapperBinding`] cell, held by an `Arc` whose strong
+//! count is shared between the qdata slot and every pending finalizer. The cell
+//! carries a `generation` that [`install`] bumps on each bind; a finalizer
+//! captures the generation in effect when its wrapper was bound. A wrapper that
+//! ever bound the object schedules its own cleanup when collected, and those
+//! cleanups can dispatch in any order — so a stale cleanup must decide its fate
+//! without dereferencing an object a sibling teardown may already have freed. It
+//! does so through the cell, never the object: it compares the cell's current
+//! `generation` (read through the `Arc`, which outlives the object) against its
+//! captured one. A match means no rebind has superseded it and the toggle ref —
+//! reused, never removed, across every rebind — still holds the object alive, so
+//! the full teardown is safe (zero the generation, clear qdata, drop the qdata
+//! `Arc` count, remove the toggle ref). A mismatch means the binding was
+//! superseded or already torn down; the cleanup drops only its own `napi_ref` and
+//! its `Arc` count, touching neither the object nor the toggle ref. Because the
+//! generation is captured at bind time, exactly one cleanup ever matches, and it
+//! is the only one that dereferences the object.
 //!
 //! This single-`GLib`-thread serialization is the lifetime system's one
 //! cross-thread ordering guarantee; no change may move the notify or the cleanup
 //! off the `GLib` thread without replacing it. The race is exercised by
-//! `tests/module/toggle-cross-thread.test.ts`.
+//! `tests/module/toggle-cross-thread.test.ts`, `tests/module/toggle-rebind.test.ts`,
+//! and `@gtkx/ffi`'s `observe-controllers-lifetime` test.
 
 #![cfg_attr(coverage_nightly, coverage(off))]
 
-use std::collections::HashMap;
 use std::ffi::c_void;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::{Arc, OnceLock};
 
 use gtk4::glib;
 use napi::JsFunction;
@@ -93,65 +105,28 @@ pub const OP_DELETE: f64 = 2.0;
 /// synchronously on the JS thread through [`Mailbox::invoke_node_and_wait`].
 static TOGGLE_CB: OnceLock<Arc<JsRef<JsFunction>>> = OnceLock::new();
 
-/// Quark under which each tracked `GObject` stores its wrapper `napi_ref`.
+/// Quark under which each tracked `GObject` stores its [`WrapperBinding`] cell.
 static WRAPPER_QUARK: OnceLock<glib::ffi::GQuark> = OnceLock::new();
 
-/// Source of process-unique wrapper-binding epochs.
+/// Per-object binding state, stored in qdata and reached off the object by a
+/// deferred cleanup.
 ///
-/// Each fresh [`install`] and each re-acquisition ([`note_reacquired`]) stamps
-/// the object with the next value, so an epoch is unique across the whole
-/// process — even after a `GObject` is finalized and its address reused. A
-/// deferred teardown ([`schedule_cleanup`]) captures the object's epoch when
-/// scheduled and, if it has since changed (supersession or address reuse) or the
-/// object has been torn down (no epoch), skips finalizing — detecting all of
-/// that by an integer comparison alone, never dereferencing a possibly-freed
-/// object. The absent value `0` is never assigned, so a captured epoch (always
-/// `>= 1`) cannot collide with a forgotten entry.
-static NEXT_BINDING_EPOCH: AtomicU64 = AtomicU64::new(1);
-
-/// Live binding epoch per `GObject` address. Mutex-guarded because
-/// [`schedule_cleanup`] reads it on the JS thread (from the napi finalizer)
-/// while [`note_reacquired`], [`install`], and the teardown body run on the
-/// `GLib` thread. Entries are dropped on full teardown, so the map tracks only
-/// objects with a live binding.
-static BINDING_EPOCHS: OnceLock<Mutex<HashMap<usize, u64>>> = OnceLock::new();
-
-fn binding_epochs() -> &'static Mutex<HashMap<usize, u64>> {
-    BINDING_EPOCHS.get_or_init(|| Mutex::new(HashMap::new()))
-}
-
-/// Stamps `gobject_addr` with a fresh process-unique binding epoch, replacing
-/// any prior one.
-fn stamp_binding_epoch(gobject_addr: usize) {
-    let epoch = NEXT_BINDING_EPOCH.fetch_add(1, Ordering::Relaxed);
-    binding_epochs().lock().unwrap().insert(gobject_addr, epoch);
-}
-
-fn binding_epoch(gobject_addr: usize) -> u64 {
-    binding_epochs()
-        .lock()
-        .unwrap()
-        .get(&gobject_addr)
-        .copied()
-        .unwrap_or(0)
-}
-
-fn forget_binding_epoch(gobject_addr: usize) {
-    binding_epochs().lock().unwrap().remove(&gobject_addr);
-}
-
-/// Records that the decode path handed back an object that still carried a
-/// wrapper.
-///
-/// Stamps a fresh binding epoch, so a teardown scheduled for an earlier wrapper
-/// detects the revival and leaves the object's toggle ref intact.
-///
-/// # Safety
-///
-/// `gobject` must be a non-null pointer to a live `GObject`. May run on either
-/// thread, but is called from the decode path on the `GLib` thread.
-pub unsafe fn note_reacquired(gobject: *mut glib::gobject_ffi::GObject) {
-    stamp_binding_epoch(gobject as usize);
+/// One cell exists per tracked object for as long as the object carries a toggle
+/// ref or any of its wrappers has a pending finalizer. It is held by an `Arc`
+/// whose strong count is shared between two kinds of owner: the qdata slot (one
+/// count, dropped by the full teardown) and each pending finalizer (one count
+/// per wrapper, dropped by that wrapper's cleanup). The cell therefore outlives
+/// the `GObject`, so a stale cleanup can read it without touching freed memory.
+struct WrapperBinding {
+    /// The current wrapper's `napi_ref`, as a `usize`. Overwritten by [`install`]
+    /// on each rebind so [`wrapper_ref`] and [`on_toggle_notify`] always see the
+    /// live wrapper.
+    napi_ref: AtomicUsize,
+    /// Generation of the current binding: `1` on a fresh bind, incremented on
+    /// each rebind, and `0` once the full teardown has run. A finalizer captures
+    /// the value in effect at its bind, so only the live binding's cleanup finds
+    /// a match.
+    generation: AtomicU64,
 }
 
 /// Installs the JavaScript reference-operation callback. Called once at startup;
@@ -184,8 +159,23 @@ unsafe fn is_gobject(instance: *mut glib::gobject_ffi::GObject) -> bool {
     }
 }
 
-/// Reads the wrapper `napi_ref` stored in `gobject`'s qdata, or null when the
-/// instance is not a `GObject` or has no wrapper attached.
+/// Reads the [`WrapperBinding`] cell stored in `gobject`'s qdata, or null when
+/// the instance is not a `GObject` or has no binding attached.
+///
+/// # Safety
+///
+/// `gobject` must be null or a valid pointer to a live `GTypeInstance`. Must run
+/// on the `GLib` thread.
+unsafe fn binding_ptr(gobject: *mut glib::gobject_ffi::GObject) -> *const WrapperBinding {
+    if gobject.is_null() || !unsafe { is_gobject(gobject) } {
+        return std::ptr::null();
+    }
+    unsafe { glib::gobject_ffi::g_object_get_qdata(gobject, wrapper_quark()) }
+        .cast::<WrapperBinding>()
+}
+
+/// Reads the current wrapper `napi_ref` bound to `gobject`, or null when the
+/// instance is not a `GObject` or has no binding attached.
 ///
 /// # Safety
 ///
@@ -193,10 +183,11 @@ unsafe fn is_gobject(instance: *mut glib::gobject_ffi::GObject) -> bool {
 /// on the `GLib` thread.
 #[must_use]
 pub unsafe fn wrapper_ref(gobject: *mut glib::gobject_ffi::GObject) -> *mut c_void {
-    if gobject.is_null() || !unsafe { is_gobject(gobject) } {
+    let binding = unsafe { binding_ptr(gobject) };
+    if binding.is_null() {
         return std::ptr::null_mut();
     }
-    unsafe { glib::gobject_ffi::g_object_get_qdata(gobject, wrapper_quark()) }
+    unsafe { (*binding).napi_ref.load(Ordering::Relaxed) as *mut c_void }
 }
 
 /// Whether `gobject` already has an attached wrapper.
@@ -210,7 +201,7 @@ pub unsafe fn wrapper_ref(gobject: *mut glib::gobject_ffi::GObject) -> *mut c_vo
 /// the `GLib` thread.
 #[must_use]
 pub unsafe fn has_wrapper(gobject: *mut glib::gobject_ffi::GObject) -> bool {
-    !unsafe { wrapper_ref(gobject) }.is_null()
+    !unsafe { binding_ptr(gobject) }.is_null()
 }
 
 /// Drives one reference operation on the JS thread, blocking the `GLib` thread
@@ -253,88 +244,134 @@ unsafe extern "C" fn on_toggle_notify(
     invoke_ref_op(ref_ptr, op);
 }
 
-/// Binds the wrapper `napi_ref` to `gobject`, installing or reusing its toggle
-/// ref so the object always carries exactly one.
+/// Binds the wrapper `napi_ref` to `gobject` so the object always carries exactly
+/// one toggle ref.
 ///
-/// On a fresh bind (no wrapper ref in qdata) the decode path left exactly one
-/// pending owned reference on the object (a sunk floating ref, the caller's
-/// transfer-full ref, or a fresh ref for transfer-none); this stores the
-/// wrapper ref in qdata, adds the toggle ref, then releases that one pending
-/// reference, leaving the toggle ref alone. If the object is otherwise unheld
-/// the final unref fires [`on_toggle_notify`] with `is_last_ref == true`,
-/// weakening the wrapper synchronously.
+/// Returns the address of the object's [`WrapperBinding`] cell together with this
+/// bind's generation, for the wrapper's finalizer to capture.
+///
+/// On a fresh bind (no cell in qdata) the decode path left exactly one pending
+/// owned reference on the object (a sunk floating ref, the caller's transfer-full
+/// ref, or a fresh ref for transfer-none); this allocates the cell at generation
+/// `1`, stores it in qdata as one `Arc` count, takes a second count for the
+/// finalizer, adds the toggle ref, then releases that one pending reference,
+/// leaving the toggle ref alone. If the object is otherwise unheld the final
+/// unref fires [`on_toggle_notify`] with `is_last_ref == true`, weakening the
+/// wrapper synchronously.
 ///
 /// On a rebind — when a stale wrapper whose teardown has not run still occupies
-/// qdata (the decode path already released its pending reference and bumped the
-/// generation via [`note_reacquired`]) — this overwrites the qdata ref and
-/// **reuses** the existing toggle ref instead of adding a second, which would
-/// make `GObject` emit "Unexpected number of toggle-refs". A balanced
-/// `ref`/`unref` re-fires the toggle notify so the new wrapper adopts the
-/// correct strong/weak state for the object's current holders.
+/// qdata (the decode path already released its pending reference) — this
+/// overwrites the cell's `napi_ref`, bumps its generation, takes a fresh `Arc`
+/// count for the new wrapper's finalizer, and **reuses** the existing toggle ref
+/// instead of adding a second, which would make `GObject` emit "Unexpected number
+/// of toggle-refs". A balanced `ref`/`unref` re-fires the toggle notify so the
+/// new wrapper adopts the correct strong/weak state for the object's current
+/// holders.
 ///
 /// # Safety
 ///
 /// `gobject` must be a valid pointer to a live `GObject` carrying one pending
 /// owned reference on a fresh bind. `ref_ptr` must be a live `napi_ref`. Must
 /// run on the `GLib` thread.
-pub unsafe fn install(gobject: *mut glib::gobject_ffi::GObject, ref_ptr: *mut c_void) {
+pub unsafe fn install(
+    gobject: *mut glib::gobject_ffi::GObject,
+    ref_ptr: *mut c_void,
+) -> (usize, u64) {
     unsafe {
-        let existing = wrapper_ref(gobject);
-        glib::gobject_ffi::g_object_set_qdata(gobject, wrapper_quark(), ref_ptr);
-        if existing.is_null() {
-            stamp_binding_epoch(gobject as usize);
+        let existing = binding_ptr(gobject);
+        let result = if existing.is_null() {
+            let cell = Arc::new(WrapperBinding {
+                napi_ref: AtomicUsize::new(ref_ptr as usize),
+                generation: AtomicU64::new(1),
+            });
+            let cell_ptr = Arc::into_raw(cell);
+            glib::gobject_ffi::g_object_set_qdata(
+                gobject,
+                wrapper_quark(),
+                cell_ptr as *mut c_void,
+            );
+            Arc::increment_strong_count(cell_ptr);
             glib::gobject_ffi::g_object_add_toggle_ref(
                 gobject,
                 Some(on_toggle_notify),
                 std::ptr::null_mut(),
             );
+            (cell_ptr as usize, 1)
         } else {
+            let generation = (*existing).generation.load(Ordering::Relaxed) + 1;
+            (*existing)
+                .napi_ref
+                .store(ref_ptr as usize, Ordering::Relaxed);
+            (*existing).generation.store(generation, Ordering::Relaxed);
+            Arc::increment_strong_count(existing);
             glib::gobject_ffi::g_object_ref(gobject);
-        }
+            (existing as usize, generation)
+        };
         glib::gobject_ffi::g_object_unref(gobject);
+        result
     }
 }
 
 /// Schedules teardown for a wrapper whose JavaScript object has been collected.
 ///
-/// Called from the napi finalizer on the JS thread. Posts a fire-and-forget
-/// `GLib`-thread task — at the default idle priority, below the frame clock —
-/// that clears the qdata slot (so no later notify or lookup touches the
-/// reference), deletes the `napi_ref` on the JS thread, then removes the toggle
-/// ref, which finalizes the object when the toggle ref was its last holder.
+/// Called from the napi finalizer on the JS thread with the object's
+/// [`WrapperBinding`] cell (`binding_addr`, holding one `Arc` count for this
+/// finalizer), the `generation` captured when this wrapper was bound, and the
+/// addresses of the object and this wrapper's `napi_ref`. Posts a
+/// fire-and-forget `GLib`-thread task at the default idle priority, below the
+/// frame clock.
+///
+/// The task decides its fate through the cell, never the object: it compares the
+/// cell's current generation against `generation`. A mismatch means a rebind
+/// superseded this wrapper, or the binding was already torn down — the toggle ref
+/// and the object belong to a newer binding or to nothing — so it drops only this
+/// wrapper's `napi_ref` and this finalizer's `Arc` count, dereferencing neither
+/// the object nor the toggle ref. A match means this wrapper is still the live
+/// binding, so the reused toggle ref still holds the object alive: it zeroes the
+/// generation, clears qdata (so no later notify or lookup finds the cell), drops
+/// the qdata `Arc` count, deletes the reference on the JS thread, removes the
+/// toggle ref (which finalizes the object when the toggle ref was its last
+/// holder), and finally drops this finalizer's `Arc` count.
+///
+/// A `binding_addr` of `0` marks a wrapper whose [`install`] never ran (a
+/// dispatch failure during shutdown): there is no cell or toggle ref, so the task
+/// only deletes the reference.
 ///
 /// The low priority is deliberate: a draw, tick, or animation callback already
 /// queued against the object must run while the object is still alive, so the
 /// finalize waits behind that pending work rather than racing ahead of it.
 /// Serializing the teardown on the `GLib` thread also keeps it from racing a
 /// concurrent toggle notify.
-pub fn schedule_cleanup(gobject_addr: usize, ref_addr: usize) {
+pub fn schedule_cleanup(
+    binding_addr: usize,
+    generation: u64,
+    gobject_addr: usize,
+    ref_addr: usize,
+) {
     if Mailbox::global().is_stopped() {
         return;
     }
-    let scheduled_epoch = binding_epoch(gobject_addr);
     glib::idle_add_once(move || {
-        let gobject = gobject_addr as *mut glib::gobject_ffi::GObject;
         let ref_ptr = ref_addr as *mut c_void;
 
-        // Compare the binding epoch before touching `gobject`: if it changed (the
-        // object was handed back out and stamped anew, or its address was reused
-        // by a different object) or is gone (the object was already torn down),
-        // the toggle ref and qdata belong to a live, newer binding or to nothing
-        // at all — and `gobject` may already be freed, so it must not be
-        // dereferenced. Drop only this wrapper's orphaned reference.
-        if binding_epoch(gobject_addr) != scheduled_epoch {
+        if binding_addr == 0 {
             invoke_ref_op(ref_ptr, OP_DELETE);
             return;
         }
 
-        // The epoch is unchanged, so this wrapper's toggle ref is still the
-        // object's sole binding holder: the object is alive and qdata still
-        // points at this wrapper.
+        let binding = binding_addr as *const WrapperBinding;
+        if unsafe { (*binding).generation.load(Ordering::Relaxed) } != generation {
+            invoke_ref_op(ref_ptr, OP_DELETE);
+            unsafe { Arc::decrement_strong_count(binding) };
+            return;
+        }
+
+        let gobject = gobject_addr as *mut glib::gobject_ffi::GObject;
+        unsafe { (*binding).generation.store(0, Ordering::Relaxed) };
         unsafe {
             glib::gobject_ffi::g_object_set_qdata(gobject, wrapper_quark(), std::ptr::null_mut());
         }
-        forget_binding_epoch(gobject_addr);
+        unsafe { Arc::decrement_strong_count(binding) };
         invoke_ref_op(ref_ptr, OP_DELETE);
         unsafe {
             glib::gobject_ffi::g_object_remove_toggle_ref(
@@ -343,5 +380,6 @@ pub fn schedule_cleanup(gobject_addr: usize, ref_addr: usize) {
                 std::ptr::null_mut(),
             );
         }
+        unsafe { Arc::decrement_strong_count(binding) };
     });
 }

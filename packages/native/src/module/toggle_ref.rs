@@ -25,24 +25,36 @@ use crate::managed::NativeHandle;
 use crate::toggle_ref;
 use crate::value::JsRef;
 
-/// Finalizer payload carried by a wrapper's napi reference: the addresses of
-/// the `GObject` and the `napi_ref`, both reconstituted on the `GLib` thread
-/// during teardown.
+/// Finalizer payload carried by a wrapper's napi reference: the addresses of the
+/// `GObject`, the `napi_ref`, and the object's `WrapperBinding` cell, plus the
+/// binding generation in effect when this wrapper was bound — all reconstituted
+/// on the `GLib` thread during teardown. [`set_wrapper`] fills `binding_addr` and
+/// `generation` from the value [`toggle_ref::install`] returns, so a finalizer
+/// that runs before that write (only on a shutdown dispatch failure) carries a
+/// zero `binding_addr` and merely deletes its reference.
 struct FinalizeData {
     gobject_addr: usize,
     ref_addr: usize,
+    binding_addr: usize,
+    generation: u64,
 }
 
 /// Runs when a tracked wrapper is garbage collected (JS thread). Hands the
-/// object and reference addresses to [`toggle_ref::schedule_cleanup`], which
-/// removes the toggle ref and deletes the reference on the `GLib` thread.
+/// binding cell, generation, and object and reference addresses to
+/// [`toggle_ref::schedule_cleanup`], which resolves the binding and tears it down
+/// on the `GLib` thread.
 unsafe extern "C" fn on_wrapper_finalize(
     _env: sys::napi_env,
     finalize_data: *mut c_void,
     _finalize_hint: *mut c_void,
 ) {
     let data = unsafe { Box::from_raw(finalize_data.cast::<FinalizeData>()) };
-    toggle_ref::schedule_cleanup(data.gobject_addr, data.ref_addr);
+    toggle_ref::schedule_cleanup(
+        data.binding_addr,
+        data.generation,
+        data.gobject_addr,
+        data.ref_addr,
+    );
 }
 
 /// Installs the JavaScript reference-operation callback invoked, on the JS
@@ -113,6 +125,8 @@ pub fn set_wrapper(
     let data = Box::into_raw(Box::new(FinalizeData {
         gobject_addr,
         ref_addr: 0,
+        binding_addr: 0,
+        generation: 0,
     }));
 
     let mut raw_ref: sys::napi_ref = std::ptr::null_mut();
@@ -144,11 +158,15 @@ pub fn set_wrapper(
     }
 
     let ref_addr = raw_ref as usize;
-    Mailbox::global()
+    let (binding_addr, generation) = Mailbox::global()
         .dispatch_to_glib_and_wait(env, move || unsafe {
-            toggle_ref::install(gobject_addr as *mut _, ref_addr as *mut c_void);
+            toggle_ref::install(gobject_addr as *mut _, ref_addr as *mut c_void)
         })
         .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))?;
+    unsafe {
+        (*data).binding_addr = binding_addr;
+        (*data).generation = generation;
+    }
 
     Ok(())
 }

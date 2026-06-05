@@ -42,4 +42,24 @@ describe("observeControllers wrapper lifetime", () => {
             expect(controllers.getNItems()).toBeGreaterThanOrEqual(0);
         }
     }, 30_000);
+
+    it("survives a burst of rebinds whose cleanups are left pending together", async () => {
+        const button = new Gtk.Button();
+        button.addController(new Gtk.GestureClick());
+
+        // Each round rebinds several times before draining, so a batch of
+        // deferred cleanups for the same model dispatches together. A stale
+        // cleanup that tore down the live binding, or that dispatched ahead of
+        // the live one, would surface as a toggle-ref CRITICAL or a freed read.
+        for (let round = 0; round < 40; round++) {
+            for (let k = 0; k < 5; k++) {
+                touchControllers(button);
+                await drain();
+                gc();
+                button.observeControllers().getNItems();
+            }
+            await drain();
+            expect(button.observeControllers().getNItems()).toBeGreaterThanOrEqual(0);
+        }
+    }, 30_000);
 });
