@@ -122,3 +122,27 @@ describe("signal out-parameters - GtkOverlay::get-child-position (caller-allocat
         });
     });
 });
+
+describe("signal emit() - reads out-values and return back", () => {
+    it("returns the [return, out] tuple when emitting a pure-out signal", async () => {
+        const spinRef = createRef<Gtk.SpinButton>();
+
+        await render(<GtkSpinButton ref={spinRef} lower={0} upper={1000} stepIncrement={1} />);
+
+        const spin = spinRef.current as Gtk.SpinButton;
+        spin.connect("input", () => [1, 256]);
+
+        expect(spin.emit("input")).toEqual([1, 256]);
+    });
+
+    it("returns the non-void return value when emitting a signal with no out-parameters", async () => {
+        const spinRef = createRef<Gtk.SpinButton>();
+
+        await render(<GtkSpinButton ref={spinRef} lower={0} upper={1000} stepIncrement={1} />);
+
+        const spin = spinRef.current as Gtk.SpinButton;
+        spin.connect("output", () => true);
+
+        expect(spin.emit("output")).toBe(true);
+    });
+});
