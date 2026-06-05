@@ -28,8 +28,8 @@ export type GiStoreOptions = StoreOptions & {
 export type GiNamespaceInput = {
     /** Lowercased namespace directory name (e.g. `"gtk"`). */
     readonly directory: string;
-    /** Transpilable raw module source, or `null` for augment-only namespaces (gl). */
-    readonly rawSource: string | null;
+    /** Transpilable raw module source. */
+    readonly rawSource: string;
 };
 
 /** Returns the augment `.ts` files for a namespace, or `[]` when it is pure pass-through. */
@@ -92,7 +92,7 @@ type CollectedFile = {
 const collectStoreSources = (
     directories: ReadonlySet<string>,
     standaloneSet: ReadonlySet<string>,
-    rawByDirectory: ReadonlyMap<string, string | null>,
+    rawByDirectory: ReadonlyMap<string, string>,
 ): { collected: CollectedFile[]; exportsMap: Record<string, unknown> } => {
     const exportsMap: Record<string, unknown> = { "./package.json": "./package.json" };
     const collected: CollectedFile[] = [];
@@ -144,12 +144,12 @@ const collectStoreSources = (
  *
  * @param options - Resolved store/link/dependency paths
  * @param namespaces - Per-namespace raw module inputs
- * @param fingerprint - Staleness sentinel written into the store, when provided
+ * @param fingerprint - Staleness sentinel written into the store
  */
 export const writeGiStore = (
     options: GiStoreOptions,
     namespaces: readonly GiNamespaceInput[],
-    fingerprint?: CodegenFingerprint,
+    fingerprint: CodegenFingerprint,
 ): void => {
     const standaloneOverlays = readdirSync(OVERLAY_ROOT).filter(
         (name) => isAugmented(name) && !barrelNeedsGenerated(name),
@@ -171,10 +171,7 @@ export const writeGiStore = (
             sideEffects: true,
             exports: exportsMap,
         },
-        rawFiles:
-            fingerprint === undefined
-                ? []
-                : [{ relativePath: FINGERPRINT_FILENAME, content: `${JSON.stringify(fingerprint, null, 2)}\n` }],
+        rawFiles: [{ relativePath: FINGERPRINT_FILENAME, content: `${JSON.stringify(fingerprint, null, 2)}\n` }],
         symlinks: [
             { segments: ["node_modules", "@gtkx", "ffi"], target: options.realFfiDir },
             { segments: ["node_modules", "@gtkx", "native"], target: options.realNativeDir },
