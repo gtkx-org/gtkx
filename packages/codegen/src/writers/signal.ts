@@ -262,7 +262,7 @@ const renderResultType = (
     optOut: boolean,
 ): string => {
     const { signal, namespaceName } = collected;
-    const returnRef = signal.returnValue.skip ? undefined : qualifyTypeRef(signal.returnValue.type, namespaceName);
+    const returnRef = qualifyTypeRef(signal.returnValue.type, namespaceName);
     const primary = isVoidRef(returnRef) ? undefined : renderTsType(context, returnRef, signal.returnValue.nullable);
     const outTypes = signal.parameters
         .filter(
@@ -375,7 +375,7 @@ const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): str
     const values = `[${['valueFromFfi(t.object("full"), this)', ...valueExprs].join(", ")}]`;
     const lookup = `${refs.signalLookup}(${quote(signal.name)}, this.__gtype__)`;
     const returnRef = qualifyTypeRef(signal.returnValue.type, namespaceName);
-    const isVoid = signal.returnValue.skip || returnRef === undefined || isVoidRef(returnRef);
+    const isVoid = returnRef === undefined || isVoidRef(returnRef);
 
     const statements = [...preStatements];
     if (isVoid) {
@@ -486,8 +486,7 @@ const renderTrampolineAndInvoke = (
     const returnFfi = isVoid ? "t.void" : renderFfiType(context, returnRef, signal.returnValue.transferOwnership);
     const trampolineArgs = ['t.object("borrowed")', ...trampolineParamFfi, "t.void"].join(", ");
     const trampoline = `t.trampoline([${trampolineArgs}], ${returnFfi}, { hasDestroy: true, userDataIndex: ${params.length + 1} })`;
-    const omitsReturn = isVoid || signal.returnValue.skip;
-    const invoke = renderInvokeClosure(context, collected, params, omitsReturn ? undefined : returnRef);
+    const invoke = renderInvokeClosure(context, collected, params, isVoid ? undefined : returnRef);
     return { trampoline, invoke };
 };
 
