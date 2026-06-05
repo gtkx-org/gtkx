@@ -8,6 +8,7 @@ import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirRepository } from "../gir/repository.js";
 import type { GirSignal } from "../gir/signal.js";
 import type { GirTypeRef, NamedTypeRef } from "../gir/type-ref.js";
+import { renderHandlerParameters } from "../writers/param-classify.js";
 import { renderBaseTypeFor, type TsTypeTarget } from "../writers/ts-type.js";
 import { isScalarRef } from "../writers/value.js";
 import { signalHandlerName } from "./widgets.js";
@@ -217,15 +218,12 @@ const isSignalOverridden = (ownerName: string, handlerName: string): boolean => 
 const renderSignalHandler = (options: SignalRenderOptions): string => {
     const { repository, signal, imports, selfType, owningNamespace } = options;
     const visible = signal.parameters.filter((parameter) => !parameter.isVarargs);
-    const params = visible
-        .filter((parameter) => !isOutParameter(parameter))
-        .map((parameter, index) => {
-            const name = parameter.name.length === 0 ? `arg${index + 1}` : toIdentifier(toCamelCase(parameter.name));
-            const qualified = qualifyTypeRef(parameter.type, owningNamespace);
-            const baseType = renderReactPropType(repository, qualified, false, imports);
-            return `${name}: ${baseType}`;
-        });
-    params.push(`self: ${selfType}`);
+    const params = [
+        ...renderHandlerParameters(signal.parameters, owningNamespace, (ref, nullable) =>
+            renderReactPropType(repository, ref, nullable, imports),
+        ),
+        `self: ${selfType}`,
+    ];
     return `(${params.join(", ")}) => ${renderSignalReturnType(options, visible)}`;
 };
 
@@ -235,8 +233,8 @@ const renderSignalHandler = (options: SignalRenderOptions): string => {
  * Pure out-parameters (`direction="out"`, not caller-allocated) are surfaced
  * through the return value as a tuple `[primary, ...outs]`, mirroring the
  * convention {@link renderMethodReturnType} produces for methods: a value return
- * with no outs stays scalar (with `| void` so handlers may opt out); a void
- * return with a single out unwraps to that out's type; otherwise the primary
+ * with no outs stays scalar (unioned with `undefined` so handlers may opt out); a
+ * void return with a single out unwraps to that out's type; otherwise the primary
  * (when present) leads a tuple of the out types.
  *
  * @param options - The signal render options
@@ -256,7 +254,7 @@ const renderSignalReturnType = (options: SignalRenderOptions, visible: readonly 
             renderReactPropType(repository, qualifyTypeRef(parameter.type, owningNamespace), false, imports),
         );
     if (outTypes.length === 0) {
-        return baseReturn === "void" ? "void" : `${baseReturn} | void`;
+        return baseReturn === "void" ? "void" : `${baseReturn} | undefined`;
     }
     if (baseReturn !== "void") {
         return `[${baseReturn}, ${outTypes.join(", ")}]`;

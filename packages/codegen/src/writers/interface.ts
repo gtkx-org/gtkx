@@ -20,7 +20,7 @@ import { resolveImplementedInterface } from "./inheritance.js";
 import { methodExportName } from "./method.js";
 import { renderPropertyAccessor } from "./property-accessor.js";
 import { appendNativeClassRegistration } from "./registration.js";
-import { renderSignalMembers } from "./signal.js";
+import { renderSignalDeclarations, renderSignalMembers } from "./signal.js";
 
 /**
  * Emits a class declaration for a `<interface>` element.
@@ -55,6 +55,9 @@ export const emitInterface = (context: ModuleContext, iface: GirClass): void => 
         .filter((entry): entry is string => entry !== undefined);
     if (prerequisiteRefs.length > 0) {
         context.module.appendDeclaration(`export interface ${className} extends ${prerequisiteRefs.join(", ")} {}`);
+    }
+    for (const declaration of renderSignalDeclarations(context, iface, className, true)) {
+        context.module.appendDeclaration(declaration);
     }
 
     appendInterfaceRegistrations(context, iface, className);

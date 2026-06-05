@@ -2,6 +2,7 @@ import { toCamelCase, toIdentifier } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import type { GirFunction } from "../gir/function.js";
 import { type GirParameter, isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
+import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirTypeRef } from "../gir/type-ref.js";
 
 /**
@@ -212,3 +213,26 @@ export const parameterIdentifier = (parameter: GirParameter, index: number): str
     if (parameter.name.length === 0) return `arg${index}`;
     return toIdentifier(toCamelCase(parameter.name));
 };
+
+/**
+ * Renders a signal handler's typed parameter list: each non-varargs, non-out
+ * parameter as `name: type`, named by {@link parameterIdentifier} and typed by
+ * `renderType` after qualification against `namespaceName`. The emitting instance
+ * is not a handler parameter, so it is never included; out- and scalar-inout
+ * parameters surface through the handler's result tuple, not its parameters.
+ *
+ * @param parameters - The signal's parameters
+ * @param namespaceName - The namespace the parameter references resolve against
+ * @param renderType - Renders a qualified type reference to its TS annotation
+ */
+export const renderHandlerParameters = (
+    parameters: readonly GirParameter[],
+    namespaceName: string,
+    renderType: (ref: GirTypeRef | undefined, nullable: boolean) => string,
+): readonly string[] =>
+    parameters
+        .filter((parameter) => !parameter.isVarargs && !isOutParameter(parameter))
+        .map(
+            (parameter, index) =>
+                `${parameterIdentifier(parameter, index)}: ${renderType(qualifyTypeRef(parameter.type, namespaceName), parameter.nullable)}`,
+        );

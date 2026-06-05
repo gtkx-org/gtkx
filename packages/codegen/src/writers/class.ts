@@ -26,7 +26,7 @@ import { inputParameters } from "./param-classify.js";
 import { renderPropertyAccessor } from "./property-accessor.js";
 import { appendNativeClassRegistration } from "./registration.js";
 import { renderRuntimeOverride } from "./runtime-override.js";
-import { renderSignalMembers } from "./signal.js";
+import { renderSignalDeclarations, renderSignalMembers } from "./signal.js";
 import { renderTsType } from "./ts-type.js";
 
 /**
@@ -58,6 +58,9 @@ export const emitClass = (context: ModuleContext, klass: GirClass): void => {
     const body = members.map((member) => indent(member, 1)).join("\n\n");
     context.module.appendDeclaration(`export class ${className}${extendsClause} {\n${body}\n}`);
     context.module.appendDeclaration(renderConstructorPropsInterface(context, klass, className));
+    for (const declaration of renderSignalDeclarations(context, klass, className, false)) {
+        context.module.appendDeclaration(declaration);
+    }
 
     const interfaceRefs = klass.implements
         .map((name) => resolveImplementsReference(context, name))
