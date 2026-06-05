@@ -78,7 +78,7 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
             return;
         }
         const qualified = qualifyTypeRef(property.type, owningNamespace);
-        const tsType = renderReactPropType(repository, qualified, true, imports);
+        const tsType = renderReactPropType(repository, qualified, false, imports);
         propEntries.push(`${jsName}?: ${tsType} | null;`);
     };
 

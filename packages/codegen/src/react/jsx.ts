@@ -56,7 +56,11 @@ export const generateJsx = (
     }
 
     const importLines = renderImportLines(namespaceImports);
-    const slotEntries = widgets.map((entry) => `    readonly ${quote(entry.glibName)}: string`);
+    const slotEntries = widgets.map((entry) => {
+        const slots = widgetSlotMap[entry.glibName] ?? [];
+        const slotType = slots.length === 0 ? "string" : slots.map((slot) => quote(slot)).join(" | ");
+        return `    readonly ${quote(entry.glibName)}: ${slotType}`;
+    });
     const slotNamesLine = `export type WidgetSlotNames = {\n${slotEntries.join(";\n")};\n};`;
     const intrinsicEntries = widgets.map((entry) => `        ${entry.glibName}: ${entry.glibName}Props;`);
     const jsxAugmentation = [
