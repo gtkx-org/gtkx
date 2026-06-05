@@ -8,46 +8,46 @@ import type { TextContentChild, TextContentParent } from "./text-content.js";
 import { TextPaintableNode } from "./text-paintable.js";
 import { isTextContentParent, TextSegmentNode } from "./text-segment.js";
 
-const STYLE_PROPS: Partial<Record<keyof TextTagProps, string>> = {
-    background: "setBackground",
-    backgroundFullHeight: "backgroundFullHeight",
-    foreground: "setForeground",
-    family: "family",
-    font: "font",
-    sizePoints: "sizePoints",
-    size: "size",
-    scale: "scale",
-    weight: "weight",
-    style: "style",
-    stretch: "stretch",
-    variant: "variant",
-    strikethrough: "strikethrough",
-    underline: "underline",
-    overline: "overline",
-    rise: "rise",
-    letterSpacing: "letterSpacing",
-    lineHeight: "lineHeight",
-    leftMargin: "leftMargin",
-    rightMargin: "rightMargin",
-    indent: "indent",
-    pixelsAboveLines: "pixelsAboveLines",
-    pixelsBelowLines: "pixelsBelowLines",
-    pixelsInsideWrap: "pixelsInsideWrap",
-    justification: "justification",
-    direction: "direction",
-    wrapMode: "wrapMode",
-    editable: "editable",
-    invisible: "invisible",
-    allowBreaks: "allowBreaks",
-    insertHyphens: "insertHyphens",
-    fallback: "fallback",
-    accumulativeMargin: "accumulativeMargin",
-    paragraphBackground: "setParagraphBackground",
-    showSpaces: "showSpaces",
-    textTransform: "textTransform",
-    fontFeatures: "fontFeatures",
-    language: "language",
-};
+const STYLE_PROP_KEYS: readonly (keyof TextTagProps)[] = [
+    "background",
+    "backgroundFullHeight",
+    "foreground",
+    "family",
+    "font",
+    "sizePoints",
+    "size",
+    "scale",
+    "weight",
+    "style",
+    "stretch",
+    "variant",
+    "strikethrough",
+    "underline",
+    "overline",
+    "rise",
+    "letterSpacing",
+    "lineHeight",
+    "leftMargin",
+    "rightMargin",
+    "indent",
+    "pixelsAboveLines",
+    "pixelsBelowLines",
+    "pixelsInsideWrap",
+    "justification",
+    "direction",
+    "wrapMode",
+    "editable",
+    "invisible",
+    "allowBreaks",
+    "insertHyphens",
+    "fallback",
+    "accumulativeMargin",
+    "paragraphBackground",
+    "showSpaces",
+    "textTransform",
+    "fontFeatures",
+    "language",
+];
 
 type TextTagParent = Node & TextContentParent;
 
@@ -222,17 +222,11 @@ export class TextTagNode
 
     private applyStyleProps(oldProps: TextTagProps | null, newProps: TextTagProps): void {
         if (!this.tag) return;
-        for (const prop of Object.keys(STYLE_PROPS) as (keyof TextTagProps)[]) {
+        for (const prop of STYLE_PROP_KEYS) {
             if (hasChanged(oldProps, newProps, prop)) {
                 const value = newProps[prop];
-                const target = STYLE_PROPS[prop];
-                if (value !== undefined && target) {
-                    const member = Reflect.get(this.tag, target);
-                    if (typeof member === "function") {
-                        (member as (v: unknown) => void).call(this.tag, value);
-                    } else {
-                        Reflect.set(this.tag, target, value);
-                    }
+                if (value !== undefined) {
+                    Reflect.set(this.tag, prop, value);
                 }
             }
         }

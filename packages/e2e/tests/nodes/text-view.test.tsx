@@ -105,6 +105,36 @@ describe("render - TextView (2)", () => {
             expect(getBufferText(buffer)).toBe("Red Text");
             expect(hasTagAtOffset(buffer, "red", 0)).toBe(true);
         });
+
+        it("applies foreground and background colors to the tag", async () => {
+            const ref = createRef<Gtk.TextView>();
+
+            await render(
+                <GtkTextView ref={ref}>
+                    <GtkTextView.Tag id="colored" foreground="red" background="rgb(0,0,255)" paragraphBackground="green">
+                        Colored
+                    </GtkTextView.Tag>
+                </GtkTextView>,
+            );
+
+            const buffer = getTextBuffer(ref);
+            const tag = buffer?.getTagTable().lookup("colored") ?? null;
+            expect(tag).not.toBeNull();
+            expect(tag?.foregroundSet).toBe(true);
+            expect(tag?.backgroundSet).toBe(true);
+            expect(tag?.paragraphBackgroundSet).toBe(true);
+
+            const fg = tag?.foregroundRgba ?? null;
+            expect(fg).not.toBeNull();
+            expect(fg?.red).toBeCloseTo(1, 2);
+            expect(fg?.green).toBeCloseTo(0, 2);
+            expect(fg?.blue).toBeCloseTo(0, 2);
+
+            const bg = tag?.backgroundRgba ?? null;
+            expect(bg).not.toBeNull();
+            expect(bg?.red).toBeCloseTo(0, 2);
+            expect(bg?.blue).toBeCloseTo(1, 2);
+        });
     });
 });
 

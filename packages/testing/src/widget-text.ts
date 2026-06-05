@@ -171,14 +171,12 @@ export const getWidgetExpandedState = (widget: Gtk.Widget): boolean | null => {
  * @returns The selected state or null if not applicable
  */
 export const getWidgetSelectedState = (widget: Gtk.Widget): boolean | null => {
-    const role = widget.getAccessibleRole();
-
-    if (role === Gtk.AccessibleRole.ROW) {
-        return (widget as Gtk.ListBoxRow).isSelected();
+    if (widget instanceof Gtk.ListBoxRow) {
+        return widget.isSelected();
     }
 
-    if (role === Gtk.AccessibleRole.LIST_ITEM && widget instanceof Gtk.ListBoxRow) {
-        return widget.isSelected();
+    if (widget.getAccessibleRole() === Gtk.AccessibleRole.ROW) {
+        return (widget.getStateFlags() & Gtk.StateFlags.SELECTED) !== 0;
     }
 
     return null;

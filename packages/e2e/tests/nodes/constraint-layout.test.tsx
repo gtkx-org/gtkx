@@ -433,4 +433,17 @@ describe("render - GtkConstraintLayout.Vfl", () => {
         const updatedCount = collectConstraints(layout).length;
         expect(updatedCount).toBeGreaterThan(initialCount);
     });
+
+    it("rejects when the VFL description references an unknown view", async () => {
+        await expect(
+            render(
+                <GtkBox>
+                    <GtkConstraintLayout>
+                        <GtkConstraintLayout.Vfl lines={["H:|-[ghost]-|"]} />
+                    </GtkConstraintLayout>
+                    <ButtonMarker id="a" label="A" />
+                </GtkBox>,
+            ),
+        ).rejects.toThrow();
+    });
 });

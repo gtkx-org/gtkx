@@ -19,17 +19,12 @@ export class ConstraintVflNode extends ConstraintLayoutChildNode<ConstraintVflPr
 
         const views = parent.snapshotTargets();
 
-        try {
-            this.appliedConstraints = parent.backingInstance.addConstraintsFromDescription(
-                this.props.lines,
-                this.props.hspacing ?? 0,
-                this.props.vspacing ?? 0,
-                views,
-            );
-        } catch (e) {
-            console.error("VFL parsing error:", e);
-            this.appliedConstraints = [];
-        }
+        this.appliedConstraints = parent.backingInstance.addConstraintsFromDescription(
+            this.props.lines,
+            this.props.hspacing ?? 0,
+            this.props.vspacing ?? 0,
+            views,
+        );
     }
 
     protected override removeFromLayout(parent: ConstraintLayoutNode): void {
