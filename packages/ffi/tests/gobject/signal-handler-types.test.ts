@@ -1,3 +1,4 @@
+import type * as Gdk from "@gtkx/gi/gdk";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
@@ -38,12 +39,27 @@ describe("generated signal handler types", () => {
         expect(calls).toBe(1);
     });
 
-    it("derives the emit result from the same handler map", () => {
+    it("types emit() arguments and result per signal off the emit map", () => {
         const button = new Gtk.Button();
         // The typed overload returns the signal's result (`void` for `clicked`);
         // the untyped `string` fallback would return `unknown`, which a `void`
         // binding rejects — so this assignment only compiles when `emit` is typed.
         const result: void = button.emit("clicked");
         expect(result).toBeUndefined();
+
+        const emitSignatures: [
+            // void signal: no arguments, void result
+            Expect<Equal<Gtk.ButtonSignalEmit["clicked"]["result"], void>>,
+            // non-void, no out-parameters: the concrete value, never the handler's opt-out undefined
+            Expect<Equal<Gtk.SpinButtonSignalEmit["output"]["result"], boolean>>,
+            // pure scalar out: dropped from the arguments, returned in the result tuple
+            Expect<Equal<Gtk.SpinButtonSignalEmit["input"]["result"], [number, number]>>,
+            // caller-allocated out: dropped from the arguments (emit allocates it)…
+            Expect<Equal<Gtk.OverlaySignalEmit["get-child-position"]["args"], [widget: Gtk.Widget]>>,
+            // …and surfaced in the result tuple, so the call needs no cast
+            Expect<Equal<Gtk.OverlaySignalEmit["get-child-position"]["result"], [boolean, Gdk.Rectangle]>>,
+        ] = [true, true, true, true, true];
+
+        expect(emitSignatures).toEqual([true, true, true, true, true]);
     });
 });

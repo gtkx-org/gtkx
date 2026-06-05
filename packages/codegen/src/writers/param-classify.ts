@@ -100,6 +100,24 @@ export const returnArrayLengthIndices = (fn: GirFunction): ReadonlySet<number> =
 };
 
 /**
+ * Indices of parameters whose value is an array's element count and so never
+ * surface in the return: the `length` companion of any array parameter, plus
+ * the `length` companion of the return array. A GObject-Introspection `length`
+ * annotation makes the count recoverable from the materialized array's
+ * `.length`, so the count parameter folds away — the convention every GI
+ * binding follows. Both the rendered return type and the method body exclude
+ * these from the out-parameter tuple while still passing the underlying ref
+ * cell to the FFI, which the native marshaller reads to size the array.
+ *
+ * @param fn - The callable
+ */
+export const foldedLengthIndices = (fn: GirFunction): ReadonlySet<number> => {
+    const indices = new Set<number>(arrayLengthSources(fn).keys());
+    for (const index of returnArrayLengthIndices(fn)) indices.add(index);
+    return indices;
+};
+
+/**
  * Whether an out/inout parameter is passed by its existing native handle and
  * mutated in place by the callee — objects, interfaces, and boxed records,
  * which travel as a borrowed pointer, not a pointer-to-pointer cell.
@@ -230,23 +248,30 @@ export const parameterIdentifier = (parameter: GirParameter, index: number): str
 };
 
 /**
- * Renders a signal handler's typed parameter list: each non-varargs, non-out
- * parameter as `name: type`, named by {@link parameterIdentifier} and typed by
- * `renderType` after qualification against `namespaceName`. The emitting instance
- * is not a handler parameter, so it is never included; out- and scalar-inout
- * parameters surface through the handler's result tuple, not its parameters.
+ * Renders a signal's typed parameter list: each non-varargs, non-out parameter
+ * as `name: type`, named by {@link parameterIdentifier} and typed by `renderType`
+ * after qualification against `namespaceName`. The emitting instance is not a
+ * parameter, so it is never included; out- and scalar-inout parameters surface
+ * through the result tuple, not the parameter list.
+ *
+ * The handler signature uses the default (only pure out-parameters dropped), so a
+ * handler still receives caller-allocated outs to fill in place. The `emit`
+ * argument list passes `isCallerAllocatedOut` as `additionalExclude`, since `emit`
+ * allocates those itself and returns them rather than taking them as arguments.
  *
  * @param parameters - The signal's parameters
  * @param namespaceName - The namespace the parameter references resolve against
  * @param renderType - Renders a qualified type reference to its TS annotation
+ * @param additionalExclude - Extra predicate for parameters to drop from the list
  */
 export const renderHandlerParameters = (
     parameters: readonly GirParameter[],
     namespaceName: string,
     renderType: (ref: GirTypeRef | undefined, nullable: boolean) => string,
+    additionalExclude: (parameter: GirParameter) => boolean = () => false,
 ): readonly string[] =>
     parameters
-        .filter((parameter) => !parameter.isVarargs && !isOutParameter(parameter))
+        .filter((parameter) => !parameter.isVarargs && !isOutParameter(parameter) && !additionalExclude(parameter))
         .map(
             (parameter, index) =>
                 `${parameterIdentifier(parameter, index)}: ${renderType(qualifyTypeRef(parameter.type, namespaceName), parameter.nullable)}`,

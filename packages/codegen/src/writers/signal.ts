@@ -81,21 +81,26 @@ export const renderSignalMembers = (context: ModuleContext, klass: GirClass): re
 
 /** The interface-name suffix carrying a type's per-signal handler map. */
 const SIGNAL_HANDLERS_SUFFIX = "SignalHandlers";
+const SIGNAL_EMIT_SUFFIX = "SignalEmit";
 
 /**
  * Renders the module-level declarations that type a class's signal-connection
- * surface: a `<Class>SignalHandlers` map keyed by signal name, and — when the
- * class introduces signals of its own — a declaration-merged `interface <Class>`
- * whose `connect`/`emit`/`on`/`once`/`off` overloads narrow the handler (and,
- * for `emit`, the arguments and result) to the map entry for the signal name
- * passed, falling back to the untyped `string` signature for dynamic and
- * detailed (`"notify::prop"`) names.
+ * surface: a `<Class>SignalHandlers` map keyed by signal name, a parallel
+ * `<Class>SignalEmit` map giving each signal's `emit` arguments and result, and —
+ * when the class introduces signals of its own — a declaration-merged
+ * `interface <Class>` whose `connect`/`on`/`once`/`off` overloads narrow the
+ * handler off the handler map and whose `emit` overload narrows the arguments and
+ * result off the emit map, falling back to the untyped `string` signature for
+ * dynamic and detailed (`"notify::prop"`) names.
  *
- * The map `extends` its parent's map (or `GObject.ObjectSignalHandlers` for an
- * interface wrapper, whose runtime class extends `GObject.Object`) so each type
- * lists only the signals it introduces while `keyof` resolves the full inherited
- * set. The runtime `connect`/`emit` switch {@link renderSignalMembers} renders is
- * unchanged; these declarations are erased from the emitted `.js`.
+ * `emit` needs its own map because a caller-allocated out-parameter is a handler
+ * argument (the handler fills it in place) but an `emit` result (the runtime
+ * allocates it and returns it), so the two shapes diverge. Each map `extends` its
+ * parent's (or the `GObject.Object` map for an interface wrapper, whose runtime
+ * class extends `GObject.Object`) so each type lists only the signals it
+ * introduces while `keyof` resolves the full inherited set. The runtime
+ * `connect`/`emit` switch {@link renderSignalMembers} renders is unchanged; these
+ * declarations are erased from the emitted `.js`.
  *
  * @param context - The module context
  * @param klass - The class or interface being emitted
@@ -109,7 +114,11 @@ export const renderSignalDeclarations = (
     className: string,
     parentlessExtendsObject: boolean,
 ): readonly string[] => {
-    const declarations = [renderSignalHandlersMap(context, klass, className, parentlessExtendsObject)];
+    const base = { context, klass, className, parentlessExtendsObject };
+    const declarations = [
+        renderSignalMap({ ...base, suffix: SIGNAL_HANDLERS_SUFFIX, renderEntry: renderSignalHandlerType }),
+        renderSignalMap({ ...base, suffix: SIGNAL_EMIT_SUFFIX, renderEntry: renderSignalEmitEntry }),
+    ];
     if (klass.glibGetType !== undefined && collectClassSignals(context, klass).length > 0) {
         const isRootObject = context.namespace.name === "GObject" && klass.name === "Object";
         declarations.push(renderSignalConnectInterface(className, isRootObject));
@@ -117,61 +126,71 @@ export const renderSignalDeclarations = (
     return declarations;
 };
 
-/**
- * Renders the `export interface <Class>SignalHandlers` map, one entry per signal
- * the class introduces, extending the parent type's map so inherited signals
- * resolve through `keyof`.
- */
-const renderSignalHandlersMap = (
-    context: ModuleContext,
-    klass: GirClass,
-    className: string,
-    parentlessExtendsObject: boolean,
-): string => {
-    const extendsRef = signalHandlersParentRef(context, klass, parentlessExtendsObject);
-    const extendsClause = extendsRef === undefined ? "" : ` extends ${extendsRef}`;
-    const entries = collectClassSignals(context, klass).map(
-        (collected) => `${quote(collected.signal.name)}: ${renderSignalHandlerType(context, collected)};`,
-    );
-    const body = entries.length === 0 ? "" : `\n${indent(entries.join("\n"), 1)}\n`;
-    return `export interface ${className}${SIGNAL_HANDLERS_SUFFIX}${extendsClause} {${body}}`;
+/** Inputs for {@link renderSignalMap}: where the map is emitted and what each entry renders to. */
+type SignalMapSpec = {
+    readonly context: ModuleContext;
+    readonly klass: GirClass;
+    readonly className: string;
+    readonly parentlessExtendsObject: boolean;
+    readonly suffix: string;
+    readonly renderEntry: (context: ModuleContext, collected: CollectedSignal) => string;
 };
 
 /**
- * Resolves the `<Parent>SignalHandlers` reference a type's map extends: the
- * parent class's map (qualified across namespaces), `GObject.ObjectSignalHandlers`
- * for a parentless interface wrapper, or `undefined` for the root `GObject.Object`.
+ * Renders an `export interface <Class><Suffix>` map, one entry per signal the
+ * class introduces, extending the parent type's map so inherited signals resolve
+ * through `keyof`. `renderEntry` renders each signal's value type — a handler
+ * function for the handler map, an `{ args; result }` shape for the emit map.
  */
-const signalHandlersParentRef = (
+const renderSignalMap = (spec: SignalMapSpec): string => {
+    const { context, klass, className, parentlessExtendsObject, suffix, renderEntry } = spec;
+    const extendsRef = signalMapParentRef(context, klass, parentlessExtendsObject, suffix);
+    const extendsClause = extendsRef === undefined ? "" : ` extends ${extendsRef}`;
+    const entries = collectClassSignals(context, klass).map(
+        (collected) => `${quote(collected.signal.name)}: ${renderEntry(context, collected)};`,
+    );
+    const body = entries.length === 0 ? "" : `\n${indent(entries.join("\n"), 1)}\n`;
+    return `export interface ${className}${suffix}${extendsClause} {${body}}`;
+};
+
+/**
+ * Resolves the `<Parent><Suffix>` reference a type's signal map extends: the
+ * parent class's map (qualified across namespaces), the `GObject.Object` map for a
+ * parentless interface wrapper, or `undefined` for the root `GObject.Object`.
+ */
+const signalMapParentRef = (
     context: ModuleContext,
     klass: GirClass,
     parentlessExtendsObject: boolean,
+    suffix: string,
 ): string | undefined => {
     if (klass.parent !== undefined) {
         const { namespaceName, typeName } = splitQualifiedName(klass.parent, context.namespace.name);
-        const name = `${toPascalCase(typeName)}${SIGNAL_HANDLERS_SUFFIX}`;
+        const name = `${toPascalCase(typeName)}${suffix}`;
         if (namespaceName === context.namespace.name) return name;
         return `${context.addCrossNamespaceImport(namespaceName)}.${name}`;
     }
     if (!parentlessExtendsObject) return undefined;
-    if (context.namespace.name === "GObject") return `Object${SIGNAL_HANDLERS_SUFFIX}`;
-    return `${context.addCrossNamespaceImport("GObject")}.Object${SIGNAL_HANDLERS_SUFFIX}`;
+    if (context.namespace.name === "GObject") return `Object${suffix}`;
+    return `${context.addCrossNamespaceImport("GObject")}.Object${suffix}`;
 };
 
 /**
  * Renders the declaration-merged `interface <Class>` carrying the typed
- * `connect`/`emit`/`on`/`once`/`off` overloads. `emit` is the inverse of a
- * handler, so its arguments and result are read straight off the handler map
- * with `Parameters`/`ReturnType`. `on`/`once`/`off` are omitted for the root
+ * `connect`/`emit`/`on`/`once`/`off` overloads. `connect`/`on`/`once`/`off` narrow
+ * the handler off the `SignalHandlers` map; `emit` narrows its arguments and
+ * result off the `SignalEmit` map, whose shape differs from a handler for
+ * caller-allocated outs. `on`/`once`/`off` are omitted for the root
  * `GObject.Object`, whose untyped EventEmitter-style methods are declared by the
  * hand-written overlay; every subclass shadows them with typed overloads.
  */
 const renderSignalConnectInterface = (className: string, isRootObject: boolean): string => {
     const map = `${className}${SIGNAL_HANDLERS_SUFFIX}`;
+    const emitMap = `${className}${SIGNAL_EMIT_SUFFIX}`;
     const lines = [
         `connect<K extends keyof ${map}>(signal: K, handler: ${map}[K], after?: boolean): number;`,
         `connect(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, after?: boolean): number;`,
-        `emit<K extends keyof ${map}>(sigName: K, ...args: Parameters<${map}[K]>): ReturnType<${map}[K]>;`,
+        `emit<K extends keyof ${emitMap}>(sigName: K, ...args: ${emitMap}[K]["args"]): ${emitMap}[K]["result"];`,
         "emit(sigName: string, ...args: unknown[]): unknown;",
     ];
     if (!isRootObject) {
@@ -192,46 +211,92 @@ const renderSignalConnectInterface = (className: string, isRootObject: boolean):
  * mirroring the trampoline {@link renderInvokeClosure} marshals. The emitting
  * instance (trampoline arg 0) is not passed to the handler, so it is absent here;
  * out- and scalar-inout parameters surface through the result tuple
- * {@link renderSignalHandlerReturnType} encodes rather than the parameter list.
+ * {@link renderResultType} encodes rather than the parameter list.
  */
 const renderSignalHandlerType = (context: ModuleContext, collected: CollectedSignal): string => {
     const { signal, namespaceName } = collected;
-    const visible = signal.parameters.filter((parameter) => !parameter.isVarargs);
     const params = renderHandlerParameters(signal.parameters, namespaceName, (ref, nullable) =>
         renderTsType(context, ref, nullable),
     );
-    return `(${params.join(", ")}) => ${renderSignalHandlerReturnType(context, collected, visible)}`;
+    return `(${params.join(", ")}) => ${renderResultType(context, collected, false, true)}`;
 };
 
 /**
- * Computes a signal handler's return type, mirroring the tuple convention
- * {@link renderEmitReturn} reads back: a value return alone (unioned with
- * `undefined` so a handler may opt out), a single scalar out alone, or
- * `[primary, ...outs]` when both a value return and out-parameters are present.
+ * Assembles a signal's result type from its primary return and out-value types,
+ * following the tuple convention {@link renderEmitReturn} reads back: a single
+ * value alone, `[primary, ...outs]` when both are present, the lone out alone, or
+ * an out-only tuple. `optOut` adds `| undefined` for the value-only handler case,
+ * where a handler may decline to produce a result; `emit` passes `false`, since it
+ * always yields the concrete value.
+ *
+ * @param primary - The non-void return type, or `undefined` for a void return
+ * @param outTypes - The out-value types, in declaration order
+ * @param optOut - Whether the value-only case unions `| undefined`
+ */
+const assembleSignalResult = (primary: string | undefined, outTypes: readonly string[], optOut: boolean): string => {
+    if (outTypes.length === 0) {
+        if (primary === undefined) return "void";
+        return optOut ? `${primary} | undefined` : primary;
+    }
+    if (primary !== undefined) return `[${primary}, ${outTypes.join(", ")}]`;
+    return outTypes.length === 1 ? (outTypes[0] ?? "void") : `[${outTypes.join(", ")}]`;
+};
+
+/**
+ * Renders a signal's result type, shared by the handler return (`optOut`,
+ * `includeCallerAllocated: false`) and the `emit` result (`includeCallerAllocated`,
+ * no `optOut`). Caller-allocated outs join the `emit` tuple — the runtime collects
+ * them — whereas a handler fills them in place; `optOut` unions `| undefined` for
+ * the value-only handler case. A `(skip)`-annotated return carries nothing a caller
+ * needs, so it is dropped like a void return, exposing only the out-parameters.
  *
  * @param context - The module context
  * @param collected - The signal and the namespace its references resolve against
- * @param visible - The signal's non-varargs parameters
+ * @param includeCallerAllocated - Whether caller-allocated outs join the tuple
+ * @param optOut - Whether the value-only case unions `| undefined`
  */
-const renderSignalHandlerReturnType = (
+const renderResultType = (
     context: ModuleContext,
     collected: CollectedSignal,
-    visible: readonly GirParameter[],
+    includeCallerAllocated: boolean,
+    optOut: boolean,
 ): string => {
     const { signal, namespaceName } = collected;
-    const returnRef = qualifyTypeRef(signal.returnValue.type, namespaceName);
-    const isVoid = isVoidRef(returnRef);
-    const outTypes = visible
-        .filter((parameter) => isOutParameter(parameter) || isCellInout(context, parameter))
+    const returnRef = signal.returnValue.skip ? undefined : qualifyTypeRef(signal.returnValue.type, namespaceName);
+    const primary = isVoidRef(returnRef) ? undefined : renderTsType(context, returnRef, signal.returnValue.nullable);
+    const outTypes = signal.parameters
+        .filter(
+            (parameter) =>
+                !parameter.isVarargs &&
+                (isOutParameter(parameter) ||
+                    isCellInout(context, parameter) ||
+                    (includeCallerAllocated && isCallerAllocatedOut(parameter))),
+        )
         .map((parameter) => renderTsType(context, qualifyTypeRef(parameter.type, namespaceName), false));
-    if (outTypes.length === 0) {
-        return isVoid ? "void" : `${renderTsType(context, returnRef, signal.returnValue.nullable)} | undefined`;
-    }
-    if (!isVoid) {
-        const primary = renderTsType(context, returnRef, signal.returnValue.nullable);
-        return `[${primary}, ${outTypes.join(", ")}]`;
-    }
-    return outTypes.length === 1 ? (outTypes[0] ?? "void") : `[${outTypes.join(", ")}]`;
+    return assembleSignalResult(primary, outTypes, optOut);
+};
+
+/**
+ * Renders one `<Class>SignalEmit` entry, `{ args; result }`. `args` is the labeled
+ * tuple `emit` accepts — the handler parameters minus caller-allocated outs, which
+ * `emit` allocates rather than receives. `result` is the tuple `emit` returns: the
+ * non-void return value (never the handler's opt-out `undefined`) followed by
+ * every out value, including caller-allocated outs the runtime collects through
+ * `getBoxed`.
+ *
+ * @param context - The module context
+ * @param collected - The signal and the namespace its references resolve against
+ */
+const renderSignalEmitEntry = (context: ModuleContext, collected: CollectedSignal): string => {
+    const { signal, namespaceName } = collected;
+    const args = renderHandlerParameters(
+        signal.parameters,
+        namespaceName,
+        (ref, nullable) => renderTsType(context, ref, nullable),
+        isCallerAllocatedOut,
+    );
+    const result = renderResultType(context, collected, true, false);
+    return `{ args: [${args.join(", ")}]; result: ${result} }`;
 };
 
 /**
@@ -310,7 +375,7 @@ const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): str
     const values = `[${['valueFromFfi(t.object("full"), this)', ...valueExprs].join(", ")}]`;
     const lookup = `${refs.signalLookup}(${quote(signal.name)}, this.__gtype__)`;
     const returnRef = qualifyTypeRef(signal.returnValue.type, namespaceName);
-    const isVoid = returnRef === undefined || isVoidRef(returnRef);
+    const isVoid = signal.returnValue.skip || returnRef === undefined || isVoidRef(returnRef);
 
     const statements = [...preStatements];
     if (isVoid) {
@@ -421,7 +486,8 @@ const renderTrampolineAndInvoke = (
     const returnFfi = isVoid ? "t.void" : renderFfiType(context, returnRef, signal.returnValue.transferOwnership);
     const trampolineArgs = ['t.object("borrowed")', ...trampolineParamFfi, "t.void"].join(", ");
     const trampoline = `t.trampoline([${trampolineArgs}], ${returnFfi}, { hasDestroy: true, userDataIndex: ${params.length + 1} })`;
-    const invoke = renderInvokeClosure(context, collected, params, isVoid ? undefined : returnRef);
+    const omitsReturn = isVoid || signal.returnValue.skip;
+    const invoke = renderInvokeClosure(context, collected, params, omitsReturn ? undefined : returnRef);
     return { trampoline, invoke };
 };
 

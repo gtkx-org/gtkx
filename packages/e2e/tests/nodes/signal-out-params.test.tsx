@@ -164,7 +164,7 @@ describe("signal emit() - caller-allocated out-parameter", () => {
 
         const overlay = overlayRef.current as Gtk.Overlay;
         const child = overlay.getLastChild() as Gtk.Widget;
-        const [handled, allocation] = overlay.emit("get-child-position", child) as [boolean, Gdk.Rectangle];
+        const [handled, allocation] = overlay.emit("get-child-position", child);
 
         expect(handled).toBe(true);
         expect(allocation.width).toBe(overlay.getWidth());
