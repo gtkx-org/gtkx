@@ -50,6 +50,37 @@ describe("codegen FFI pipeline", () => {
     }, 60000);
 });
 
+describe("codegen return-value convention", () => {
+    it("folds an out-array length companion out of the return tuple", () => {
+        const gio = ffiModules.find(({ path }) => path === "gio/gio.ts");
+        const source = gio?.source ?? "";
+        expect(source).toContain("loadContents(cancellable: Cancellable | null): [boolean, number[], string]");
+        expect(source).not.toContain("[boolean, number[], number, string]");
+    });
+
+    it("returns a bare array when the only surfaced out is an array with a folded length", () => {
+        const pango = ffiModules.find(({ path }) => path === "pango/pango.ts");
+        const source = pango?.source ?? "";
+        expect(source).toContain("listFamilies(): FontFamily[]");
+        expect(source).not.toContain("listFamilies(): [FontFamily[], number]");
+    });
+
+    it("keeps an unlinked length out-parameter in the return tuple", () => {
+        const glib = ffiModules.find(({ path }) => path === "glib/glib.ts");
+        const source = glib?.source ?? "";
+        expect(source).toContain("getGroups(): [string[], number]");
+    });
+
+    it("drops a skip-annotated return value from the surfaced result", () => {
+        const glib = ffiModules.find(({ path }) => path === "glib/glib.ts");
+        const source = glib?.source ?? "";
+        expect(source).toContain(
+            "uriSplit(uriRef: string, flags: UriFlags): [string, string, string, number, string, string, string]",
+        );
+        expect(source).not.toContain("[boolean, string, string, string, number, string, string, string]");
+    });
+});
+
 describe("codegen React pipeline", () => {
     it("emits the jsx, compounds, and internal files", () => {
         const paths = [...reactPipeline.files.keys()].sort((a, b) => a.localeCompare(b));

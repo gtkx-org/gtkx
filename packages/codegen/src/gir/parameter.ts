@@ -96,6 +96,12 @@ export type GirReturnValue = {
     readonly type: GirTypeRef | undefined;
     readonly transferOwnership: ParameterTransfer;
     readonly nullable: boolean;
+    /**
+     * `skip="1"` — the C return value carries no information a JS caller needs
+     * (the `(skip)` annotation), so it is dropped from the surfaced return,
+     * leaving only the out-parameters.
+     */
+    readonly skip: boolean;
 };
 
 /**
@@ -106,11 +112,12 @@ export type GirReturnValue = {
  */
 export const returnValueFromNode = (node: RawNode | undefined): GirReturnValue => {
     if (node === undefined) {
-        return { type: undefined, transferOwnership: "none", nullable: false };
+        return { type: undefined, transferOwnership: "none", nullable: false, skip: false };
     }
     return {
         type: typeRefFromSlot(node),
         transferOwnership: (attr(node, "transfer-ownership") ?? "none") as ParameterTransfer,
         nullable: attrBool(node, "nullable") || attrBool(node, "allow-none"),
+        skip: attrBool(node, "skip"),
     };
 };

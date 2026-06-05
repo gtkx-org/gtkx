@@ -7,11 +7,11 @@ import type { GirTypeRef, NamedTypeRef, PrimitiveTypeRef } from "../gir/type-ref
 import {
     arrayLengthSources,
     closureAndDestroyIndices,
+    foldedLengthIndices,
     inputParameters,
     isCollectibleCallerOut,
     isHandlePassing,
     parameterIdentifier,
-    returnArrayLengthIndices,
 } from "./param-classify.js";
 import { handleCast, wrapReturnValue } from "./return-wrap.js";
 import { renderTsType } from "./ts-type.js";
@@ -74,15 +74,15 @@ const renderInputParameters = (
  * @param fn - The callable
  */
 export const renderMethodReturnType = (context: ModuleContext, fn: GirFunction): string => {
-    const consumedByReturn = returnArrayLengthIndices(fn);
+    const folded = foldedLengthIndices(fn);
     const outs = fn.parameters.filter(
         (p, index) =>
             (isOutParameter(p) ||
                 (isCallerAllocatedOut(p) && isCollectibleCallerOut(context, p)) ||
                 isInoutParameter(p)) &&
-            !consumedByReturn.has(index),
+            !folded.has(index),
     );
-    const primaryReturnsValue = !isVoidReturn(fn);
+    const primaryReturnsValue = !omitsPrimaryReturn(fn);
     if (outs.length === 0) {
         return primaryReturnsValue ? renderTsType(context, fn.returnValue.type, fn.returnValue.nullable) : "void";
     }
@@ -99,6 +99,16 @@ const isVoidReturn = (fn: GirFunction): boolean => {
     if (ref === undefined) return true;
     return ref.kind === "primitive" && ref.category === "void";
 };
+
+/**
+ * Whether the callable's primary return value is dropped from the surfaced
+ * result: a `void` return, or a `(skip)`-annotated one whose C value carries
+ * nothing a JS caller needs. Either way the rendered return type and body
+ * expose only the out-parameters.
+ *
+ * @param fn - The callable
+ */
+const omitsPrimaryReturn = (fn: GirFunction): boolean => isVoidReturn(fn) || fn.returnValue.skip;
 
 /**
  * Optional override for the wrapper produced for the primary return value.
@@ -260,6 +270,12 @@ type OutRef = {
     readonly type: GirTypeRef | undefined;
     readonly nullable: boolean;
     readonly raw?: boolean;
+    /**
+     * The cell backs an array's folded `length` companion: it is allocated and
+     * passed to the FFI so the native marshaller can size the array, but it is
+     * dropped from the surfaced return tuple.
+     */
+    readonly consumed?: boolean;
 };
 
 type BodyBuilder = {
@@ -288,7 +304,7 @@ export const renderMethodBody = (context: ModuleContext, fn: GirFunction, option
     const errorRef = appendErrorRef(fn, builder);
     const callExpression = `${bindingExpression}(${builder.callArgs.join(", ")})`;
     const lines: string[] = [...builder.setup];
-    const returnsValue = !isVoidReturn(fn);
+    const returnsValue = !omitsPrimaryReturn(fn);
     lines.push(returnsValue ? `const __result = ${callExpression};` : `${callExpression};`);
     if (errorRef !== undefined) {
         context.addRuntimeImport("checkError");
@@ -302,11 +318,11 @@ export const renderMethodBody = (context: ModuleContext, fn: GirFunction, option
 const collectParameterArgs = (context: ModuleContext, fn: GirFunction, builder: BodyBuilder): void => {
     const lengthFor = arrayLengthSources(fn);
     const closureIndices = closureAndDestroyIndices(fn);
-    const returnLengthIndices = returnArrayLengthIndices(fn);
+    const folded = foldedLengthIndices(fn);
     fn.parameters.forEach((parameter, index) => {
         if (parameter.isVarargs) return;
         if (isOutParameter(parameter)) {
-            appendOutRef({ context, parameter, index, returnLengthIndices, builder });
+            appendOutRef({ context, parameter, index, folded, builder });
             return;
         }
         if (isCallerAllocatedOut(parameter)) {
@@ -314,7 +330,7 @@ const collectParameterArgs = (context: ModuleContext, fn: GirFunction, builder: 
             return;
         }
         if (isInoutParameter(parameter)) {
-            appendInoutParameter({ context, parameter, index, returnLengthIndices, builder });
+            appendInoutParameter({ context, parameter, index, folded, builder });
             return;
         }
         const sourceIndex = lengthFor.get(index);
@@ -336,7 +352,7 @@ type AppendOutRefOptions = {
     readonly context: ModuleContext;
     readonly parameter: GirParameter;
     readonly index: number;
-    readonly returnLengthIndices: ReadonlySet<number>;
+    readonly folded: ReadonlySet<number>;
     readonly builder: BodyBuilder;
 };
 
@@ -415,24 +431,26 @@ const appendInoutParameter = (options: AppendOutRefOptions): void => {
 };
 
 const appendInoutHandle = (options: AppendOutRefOptions): void => {
-    const { context, parameter, index, returnLengthIndices, builder } = options;
+    const { context, parameter, index, folded, builder } = options;
     builder.callArgs.push(parameterCallExpression(context, parameter, index));
-    if (!returnLengthIndices.has(index)) {
-        builder.outRefs.push({
-            name: parameterIdentifier(parameter, index),
-            type: parameter.type,
-            nullable: parameter.nullable,
-            raw: true,
-        });
-    }
+    builder.outRefs.push({
+        name: parameterIdentifier(parameter, index),
+        type: parameter.type,
+        nullable: parameter.nullable,
+        raw: true,
+        consumed: folded.has(index),
+    });
 };
 
 const registerRefArg = (options: AppendOutRefOptions, refName: string): void => {
-    const { parameter, index, returnLengthIndices, builder } = options;
+    const { parameter, index, folded, builder } = options;
     builder.callArgs.push(refName);
-    if (!returnLengthIndices.has(index)) {
-        builder.outRefs.push({ name: refName, type: parameter.type, nullable: parameter.nullable });
-    }
+    builder.outRefs.push({
+        name: refName,
+        type: parameter.type,
+        nullable: parameter.nullable,
+        consumed: folded.has(index),
+    });
 };
 
 const appendCallerAllocatedOut = (context: ModuleContext, parameter: GirParameter, builder: BodyBuilder): void => {
@@ -465,11 +483,12 @@ const appendReturn = (
     primary: string | undefined,
     outRefs: readonly OutRef[],
 ): void => {
-    if (outRefs.length === 0) {
+    const surfaced = outRefs.filter((ref) => ref.consumed !== true);
+    if (surfaced.length === 0) {
         if (primary !== undefined) lines.push(`return ${primary};`);
         return;
     }
-    const outExpressions = outRefs.map((ref) =>
+    const outExpressions = surfaced.map((ref) =>
         ref.raw === true
             ? ref.name
             : wrapReturnValue(context, {
