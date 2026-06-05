@@ -19,7 +19,7 @@ export const callbackFromNode = (node: RawNode): GirCallback => {
     return {
         name: attr(node, "name") ?? "",
         cType: attr(node, "c:type"),
-        parameters: parameterNodes.map((parameter) => parameterFromNode(parameter, false)),
+        parameters: parameterNodes.map((parameter) => parameterFromNode(parameter)),
         returnValue: returnValueFromNode(childOf(node, "return-value")),
         introspectable: attr(node, "introspectable") !== "0",
     };

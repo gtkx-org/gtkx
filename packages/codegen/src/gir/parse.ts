@@ -24,8 +24,6 @@ export type RawNode = {
  */
 const MULTI_TAGS: ReadonlySet<string> = new Set([
     "include",
-    "c:include",
-    "package",
     "class",
     "interface",
     "record",
@@ -33,11 +31,9 @@ const MULTI_TAGS: ReadonlySet<string> = new Set([
     "bitfield",
     "callback",
     "function",
-    "function-macro",
     "constant",
     "alias",
     "union",
-    "glib:boxed",
     "method",
     "constructor",
     "virtual-method",
@@ -48,7 +44,6 @@ const MULTI_TAGS: ReadonlySet<string> = new Set([
     "prerequisite",
     "member",
     "parameter",
-    "attribute",
 ]);
 
 /**

@@ -3,19 +3,17 @@ import { functionFromNode, type GirFunction } from "./function.js";
 import { attr, attrBool, childrenOf, GIR_CONSTRUCTOR_TAG, type RawNode } from "./parse.js";
 
 /**
- * Discriminator for the different shapes a `<record>` (or `<glib:boxed>`)
- * can take in GIR.
+ * Discriminator for the different shapes a `<record>` can take in GIR.
  *
  * - `boxed` — a record with a `glib:get-type`; registers as a GObject boxed.
  * - `plain-struct` — a record without GType; passed by pointer using
  *   `t.struct(ownership)`.
  * - `vtable` — a record carrying `glib:is-gtype-struct-for`; its fields are
  *   function pointers consumed by the class struct registration.
- * - `glib-boxed` — a top-level `<glib:boxed>` element with no struct body.
  */
-export type BoxedKind = "boxed" | "plain-struct" | "vtable" | "glib-boxed";
+export type BoxedKind = "boxed" | "plain-struct" | "vtable";
 
-/** A `<record>`, `<glib:boxed>`, or `<union>` declaration. */
+/** A `<record>` or `<union>` declaration. */
 export type GirBoxed = {
     readonly kind: BoxedKind;
     /** Local name inside the namespace (no prefix). */
@@ -25,8 +23,6 @@ export type GirBoxed = {
     readonly glibTypeName: string | undefined;
     /** GLib get-type C symbol; absent on plain structs. */
     readonly glibGetType: string | undefined;
-    /** Class name this record is the vtable for (`glib:is-gtype-struct-for`). */
-    readonly glibIsGTypeStructFor: string | undefined;
     /** GLib ref/unref/etc. function names on fundamentals. */
     readonly glibRefFunc: string | undefined;
     readonly glibUnrefFunc: string | undefined;
@@ -47,7 +43,7 @@ export type GirBoxed = {
 };
 
 /**
- * Builds a {@link GirBoxed} from a `<record>`, `<union>`, or `<glib:boxed>` element.
+ * Builds a {@link GirBoxed} from a `<record>` or `<union>` element.
  *
  * @param node - The XML element
  * @param kind - The kind inferred from element name and attribute set
@@ -59,7 +55,6 @@ export const boxedFromNode = (node: RawNode, kind: BoxedKind, isUnion: boolean):
     cType: attr(node, "c:type"),
     glibTypeName: attr(node, "glib:type-name"),
     glibGetType: attr(node, "glib:get-type"),
-    glibIsGTypeStructFor: attr(node, "glib:is-gtype-struct-for"),
     glibRefFunc: attr(node, "glib:ref-func"),
     glibUnrefFunc: attr(node, "glib:unref-func"),
     copyFunc: attr(node, "copy-function"),

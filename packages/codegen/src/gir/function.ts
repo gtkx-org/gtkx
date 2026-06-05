@@ -25,19 +25,13 @@ export type GirFunction = {
     readonly throws: boolean;
     /** `introspectable="0"` — the function is skipped in JS output. */
     readonly introspectable: boolean;
-    /** Indicates the function is the preferred binding for the named method. */
-    readonly shadows: string | undefined;
     /** Indicates a different function is the preferred binding (the shadower). */
     readonly shadowedBy: string | undefined;
-    /** Marker that re-homes a namespace function onto a type method. */
-    readonly movedTo: string | undefined;
     /** The instance parameter for methods; `undefined` otherwise. */
     readonly instance: GirParameter | undefined;
     /** Regular parameters (no instance and no implicit GError). */
     readonly parameters: readonly GirParameter[];
     readonly returnValue: GirReturnValue;
-    /** Linked invoker method when this is a `<virtual-method>`. */
-    readonly invoker: string | undefined;
 };
 
 /**
@@ -56,12 +50,9 @@ export const functionFromNode = (node: RawNode, kind: FunctionKind): GirFunction
         cIdentifier: attr(node, "c:identifier"),
         throws: attrBool(node, "throws"),
         introspectable: attr(node, "introspectable") !== "0",
-        shadows: attr(node, "shadows"),
         shadowedBy: attr(node, "shadowed-by"),
-        movedTo: attr(node, "moved-to"),
-        instance: instanceNode === undefined ? undefined : parameterFromNode(instanceNode, true),
-        parameters: parameterNodes.map((parameter) => parameterFromNode(parameter, false)),
+        instance: instanceNode === undefined ? undefined : parameterFromNode(instanceNode),
+        parameters: parameterNodes.map((parameter) => parameterFromNode(parameter)),
         returnValue: returnValueFromNode(childOf(node, "return-value")),
-        invoker: attr(node, "invoker"),
     };
 };

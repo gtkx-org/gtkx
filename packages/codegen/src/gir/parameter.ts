@@ -36,8 +36,6 @@ export type GirParameter = {
     readonly closureIndex: number | undefined;
     /** Index of the paired `GDestroyNotify` parameter in the C signature. */
     readonly destroyIndex: number | undefined;
-    /** `true` for `<instance-parameter>` (the implicit `self` of a method). */
-    readonly isInstance: boolean;
     /** `<varargs/>` parameter; not marshalable. */
     readonly isVarargs: boolean;
 };
@@ -46,9 +44,8 @@ export type GirParameter = {
  * Builds a {@link GirParameter} from a `<parameter>` or `<instance-parameter>`.
  *
  * @param node - The XML element
- * @param isInstance - Whether the source element was `<instance-parameter>`
  */
-export const parameterFromNode = (node: RawNode, isInstance: boolean): GirParameter => {
+export const parameterFromNode = (node: RawNode): GirParameter => {
     const direction = (attr(node, "direction") ?? "in") as ParameterDirection;
     const transferOwnership = (attr(node, "transfer-ownership") ?? "none") as ParameterTransfer;
     const closure = attr(node, "closure");
@@ -64,7 +61,6 @@ export const parameterFromNode = (node: RawNode, isInstance: boolean): GirParame
         scope: attr(node, "scope") as CallbackScope | undefined,
         closureIndex: closure === undefined ? undefined : Number.parseInt(closure, 10),
         destroyIndex: destroy === undefined ? undefined : Number.parseInt(destroy, 10),
-        isInstance,
         isVarargs: childOf(node, "varargs") !== undefined,
     };
 };

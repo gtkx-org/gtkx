@@ -11,7 +11,7 @@ import { appendNativeClassRegistration } from "./registration.js";
 
 /**
  * Emits a class declaration plus optional boxed registration for a
- * `<record>`, `<union>`, or `<glib:boxed>`.
+ * `<record>` or `<union>`.
  *
  * Walks constructors, static functions, and methods just like
  * {@link emitClass}, attaching them to the boxed class. The typed

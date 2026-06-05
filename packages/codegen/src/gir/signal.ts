@@ -17,7 +17,7 @@ export const signalFromNode = (node: RawNode): GirSignal => {
     const parameterNodes = childrenOf(parametersNode, "parameter");
     return {
         name: attr(node, "name") ?? "",
-        parameters: parameterNodes.map((parameter) => parameterFromNode(parameter, false)),
+        parameters: parameterNodes.map((parameter) => parameterFromNode(parameter)),
         returnValue: returnValueFromNode(childOf(node, "return-value")),
     };
 };

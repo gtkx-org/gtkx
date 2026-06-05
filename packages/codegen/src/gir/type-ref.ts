@@ -1,4 +1,4 @@
-import { attr, attrBool, childOf, childrenOf, type RawNode } from "./parse.js";
+import { attr, childOf, childrenOf, type RawNode } from "./parse.js";
 import { type PrimitiveCategory, primitiveCategory } from "./primitives.js";
 
 /**
@@ -42,14 +42,13 @@ export type NamedTypeRef = {
     readonly cType: string | undefined;
 };
 
-/** A C array (`<array>`) with optional length, fixed-size, or zero-terminated metadata. */
+/** A C array (`<array>`) with optional length or fixed-size metadata. */
 export type ArrayTypeRef = {
     readonly kind: "array";
     readonly element: GirTypeRef;
     readonly cType: string | undefined;
     readonly lengthParameterIndex: number | undefined;
     readonly fixedSize: number | undefined;
-    readonly zeroTerminated: boolean;
 };
 
 /** A GLib `GList` / `GSList` / `GPtrArray` / `GArray` / `GByteArray`. */
@@ -167,7 +166,6 @@ const arrayTypeRefFromNode = (arrayNode: RawNode): ArrayTypeRef | ListTypeRef =>
         cType,
         lengthParameterIndex: lengthAttr === undefined ? undefined : Number.parseInt(lengthAttr, 10),
         fixedSize: fixedSizeAttr === undefined ? undefined : Number.parseInt(fixedSizeAttr, 10),
-        zeroTerminated: attrBool(arrayNode, "zero-terminated", false),
     };
 };
 

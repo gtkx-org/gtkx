@@ -30,14 +30,8 @@ export type GirAlias = {
 export type GirNamespace = {
     /** Namespace name (e.g. `"Gtk"`). */
     readonly name: string;
-    /** Namespace version (e.g. `"4.0"`). */
-    readonly version: string;
-    /** `Name-Version` identifier (e.g. `"Gtk-4.0"`). */
-    readonly identifier: string;
     /** Comma-separated `shared-library` value (passed verbatim to `t.fn(...)`). */
     readonly sharedLibrary: string | undefined;
-    /** GIR `c:identifier-prefixes` (used to strip type prefixes). */
-    readonly cIdentifierPrefixes: readonly string[];
     /** GIR `c:symbol-prefixes` (used to strip function prefixes). */
     readonly cSymbolPrefixes: readonly string[];
     /** Other namespaces referenced via `<include>`. */
@@ -73,13 +67,9 @@ export const namespaceFromRepository = (repositoryNode: RawNode): GirNamespace =
         throw new Error("GIR repository has no <namespace> child");
     }
     const name = attr(namespaceNode, "name") ?? "";
-    const version = attr(namespaceNode, "version") ?? "";
     return {
         name,
-        version,
-        identifier: `${name}-${version}`,
         sharedLibrary: attr(namespaceNode, "shared-library"),
-        cIdentifierPrefixes: splitPrefixes(attr(namespaceNode, "c:identifier-prefixes")),
         cSymbolPrefixes: splitPrefixes(attr(namespaceNode, "c:symbol-prefixes")),
         includes,
         classes: childrenOf(namespaceNode, "class").map((klass) => classFromNode(klass, false)),

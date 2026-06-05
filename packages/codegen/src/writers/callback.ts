@@ -9,13 +9,10 @@ const callbackAsFunction = (callback: GirCallback): GirFunction => ({
     cIdentifier: undefined,
     throws: false,
     introspectable: callback.introspectable,
-    shadows: undefined,
     shadowedBy: undefined,
-    movedTo: undefined,
     instance: undefined,
     parameters: callback.parameters,
     returnValue: callback.returnValue,
-    invoker: undefined,
 });
 
 /**
