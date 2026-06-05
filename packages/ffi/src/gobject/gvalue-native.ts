@@ -21,6 +21,27 @@ import { alloc, t } from "../native.js";
 import { getNativeObject } from "../registry.js";
 
 const g_value_init = t.fn(LIBGOBJECT, "g_value_init", [{ type: GVALUE_BORROWED }, { type: t.uint64 }], t.void);
+const g_value_set_pointer = t.fn(
+    LIBGOBJECT,
+    "g_value_set_pointer",
+    [{ type: GVALUE_BORROWED }, { type: t.uint64 }],
+    t.void,
+);
+
+/**
+ * Stores `pointer`'s raw address as `value`'s `G_TYPE_POINTER` payload. `value`
+ * must already be initialized to `G_TYPE_POINTER`; a handler reached through the
+ * payload writes into the memory `pointer` references.
+ *
+ * Provided as a free function, not a {@link GValue} method, so the wrapper
+ * stays a structural subset of the generated `GObject.Value`.
+ *
+ * @param value - The `G_TYPE_POINTER`-initialized value to populate.
+ * @param pointer - Handle whose backing memory the payload points at.
+ */
+export const setGValuePointer = (value: GValue, pointer: NativeHandle): void => {
+    g_value_set_pointer(getHandle(value), pointer);
+};
 
 const g_value_set_boolean = t.fn(
     LIBGOBJECT,

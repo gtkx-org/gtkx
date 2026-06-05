@@ -8,7 +8,7 @@
  * thrown values.
  */
 
-export { alloc, call, read, t } from "./helpers.js";
+export { alloc, call, read, t, write } from "./helpers.js";
 
 import type { NativeHandle } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";

@@ -24,11 +24,11 @@ import {
     valueFromFfi,
     valueGetType,
 } from "./gobject/gvalue.js";
-import type { GValue } from "./gobject/gvalue-native.js";
+import { GValue, setGValuePointer } from "./gobject/gvalue-native.js";
 import { Type } from "./gobject/types.js";
 import { type GType, GVALUE_BORROWED, LIBGOBJECT, typeFundamental, typeName } from "./gtype.js";
 import { getHandle } from "./handles.js";
-import { read, t } from "./native.js";
+import { alloc, read, t, write } from "./native.js";
 
 export { valueFromJS, valueFromObject } from "./gobject/gvalue.js";
 export { valueFromFfi };
@@ -47,6 +47,32 @@ export { valueFromFfi };
  */
 export function valueFromFfiOptional(ffiType: FfiType, value: unknown): GValue | undefined {
     return value === undefined ? undefined : valueFromFfi(ffiType, value);
+}
+
+/** Storage size, in bytes, of a single out-parameter cell (a pointer or any scalar). */
+const OUT_PARAM_STORAGE_SIZE = 8;
+
+/**
+ * Builds the `G_TYPE_POINTER` GValue a signal out-parameter is emitted through,
+ * paired with a reader for the value a handler writes back.
+ *
+ * `g_signal_emitv` hands the pointer payload to handlers as the out-parameter's
+ * `T*`, so a handler writes into the freshly allocated storage; the returned
+ * {@link read} unmarshals that storage with `innerFfi`. The `initial` value
+ * seeds the storage for inout parameters, where the handler both reads the
+ * incoming value and overwrites it.
+ *
+ * @param innerFfi - FFI descriptor of the pointed-to value (the `t.ref` inner type).
+ * @param initial - Seed written before emission, for inout parameters.
+ */
+export function outValueFromFfi(innerFfi: FfiType, initial?: unknown): { value: GValue; read: () => unknown } {
+    const storage = alloc(OUT_PARAM_STORAGE_SIZE);
+    write(storage, t.uint64, 0, 0);
+    if (initial !== undefined) write(storage, innerFfi, 0, initial);
+    const value = new GValue();
+    value.init(Type.POINTER);
+    setGValuePointer(value, storage);
+    return { value, read: () => read(storage, innerFfi, 0) };
 }
 
 const g_value_get_boxed_strv = t.fn(
