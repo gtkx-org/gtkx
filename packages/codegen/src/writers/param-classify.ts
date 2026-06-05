@@ -1,7 +1,7 @@
 import { toCamelCase, toIdentifier } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import type { GirFunction } from "../gir/function.js";
-import { type GirParameter, isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
+import { type GirParameter, isCallerAllocatedOut, isInoutParameter, isOutParameter } from "../gir/parameter.js";
 import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirTypeRef } from "../gir/type-ref.js";
 
@@ -139,7 +139,7 @@ export const needsRefArg = (context: ModuleContext, parameter: GirParameter): bo
     return !passesHandleInPlace(context, parameter);
 };
 
-const resolveCallerOut = (context: ModuleContext, parameter: GirParameter) => {
+const resolveNamedParam = (context: ModuleContext, parameter: GirParameter) => {
     if (parameter.type === undefined || parameter.type.kind !== "named") return undefined;
     return context.repository.resolveNamed(
         parameter.type.namespaceName ?? context.namespace.name,
@@ -157,7 +157,7 @@ const resolveCallerOut = (context: ModuleContext, parameter: GirParameter) => {
  * @param parameter - The parameter to test
  */
 export const isCollectibleCallerOut = (context: ModuleContext, parameter: GirParameter): boolean => {
-    const kind = resolveCallerOut(context, parameter)?.kind;
+    const kind = resolveNamedParam(context, parameter)?.kind;
     return kind === "boxed" || kind === "class";
 };
 
@@ -172,7 +172,22 @@ export const isCollectibleCallerOut = (context: ModuleContext, parameter: GirPar
  * @param parameter - The parameter to test
  */
 export const isBoxedCallerOut = (context: ModuleContext, parameter: GirParameter): boolean =>
-    resolveCallerOut(context, parameter)?.kind === "boxed";
+    resolveNamedParam(context, parameter)?.kind === "boxed";
+
+/**
+ * Whether a parameter is a boxed-record inout — `direction="inout"` with a type
+ * resolving to a boxed record. The signal `emit` path shares the caller's
+ * wrapper in place (`inoutBoxedFromFfi` / `g_value_set_static_boxed`) so a
+ * handler's mutation lands on the caller's object, mirroring how the connect
+ * side passes the same pointer. GObject/interface handle inouts marshal through
+ * `g_value_set_object`, which already preserves identity, so they stay on the
+ * plain in-parameter path.
+ *
+ * @param context - The module context
+ * @param parameter - The parameter to test
+ */
+export const isBoxedInout = (context: ModuleContext, parameter: GirParameter): boolean =>
+    isInoutParameter(parameter) && resolveNamedParam(context, parameter)?.kind === "boxed";
 
 /**
  * Whether a value of `ref` is passed across the FFI boundary as a native

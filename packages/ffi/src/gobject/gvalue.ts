@@ -83,11 +83,9 @@ export function setBoxed(value: object, boxed: object | null): void {
 }
 
 /**
- * Stores `boxed` as a `GValue`'s payload without copying it: the value holds the
- * wrapper's own pointer (`g_value_set_static_boxed`), so a callee that mutates
- * the boxed in place — a signal handler filling a caller-allocated
- * out-parameter — writes through to `boxed`. The `"none"` arg ownership skips
- * the defensive `g_boxed_copy` a `"borrowed"` boxed would make. The wrapper
+ * Stores `boxed` as a `GValue`'s payload without copying it
+ * (`g_value_set_static_boxed`): the value holds the wrapper's own pointer, so a
+ * callee that mutates the boxed in place writes through to `boxed`. The wrapper
  * retains ownership, so the value must not outlive it.
  *
  * @param value - The `GValue` (already typed with a boxed `GType`).
@@ -106,15 +104,33 @@ export function setStaticBoxed(value: object, boxed: object): void {
 }
 
 /**
- * Builds a `G_TYPE_BOXED` `GValue` that references `boxed` in place (no copy),
- * for emitting a signal whose caller-allocated out-parameter a handler fills.
- * Pairs with the generated `emit`, which allocates the wrapper, passes this
- * value through `g_signal_emitv`, and returns the now-populated wrapper.
+ * Builds a `G_TYPE_BOXED` `GValue` holding a copy of `boxed`, for emitting a
+ * signal whose caller-allocated out-parameter a handler fills. The handler
+ * mutates the value's owned copy in place; the generated `emit` reads that copy
+ * back through {@link getBoxed} after `g_signal_emitv` returns.
  *
  * @param ffiType - The boxed FFI descriptor naming the value's `GType`.
- * @param boxed - The freshly allocated wrapper the handler writes into.
+ * @param boxed - The freshly allocated wrapper whose contents seed the copy.
  */
 export function outBoxedFromFfi(ffiType: FfiType, boxed: object): GValue {
+    const value = new GValue();
+    value.init(resolveBoxedGType(ffiType));
+    setBoxed(value, boxed);
+    return value;
+}
+
+/**
+ * Builds a `G_TYPE_BOXED` `GValue` that references `boxed` in place (no copy),
+ * for emitting a signal whose boxed inout-parameter a handler mutates. The
+ * value shares the caller's pointer through {@link setStaticBoxed}, so the
+ * handler's in-place writes land on the caller's wrapper directly; the result
+ * surfaces through that wrapper rather than the `emit` return tuple. The value
+ * must not outlive `boxed`.
+ *
+ * @param ffiType - The boxed FFI descriptor naming the value's `GType`.
+ * @param boxed - The caller's wrapper the handler mutates in place.
+ */
+export function inoutBoxedFromFfi(ffiType: FfiType, boxed: object): GValue {
     const value = new GValue();
     value.init(resolveBoxedGType(ffiType));
     setStaticBoxed(value, boxed);

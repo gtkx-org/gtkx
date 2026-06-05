@@ -30,7 +30,7 @@ import { type GType, GVALUE_BORROWED, LIBGOBJECT, typeFundamental, typeName } fr
 import { getHandle } from "./handles.js";
 import { alloc, read, t, write } from "./native.js";
 
-export { outBoxedFromFfi, valueFromJS, valueFromObject } from "./gobject/gvalue.js";
+export { inoutBoxedFromFfi, outBoxedFromFfi, valueFromJS, valueFromObject } from "./gobject/gvalue.js";
 export { valueFromFfi };
 
 /**

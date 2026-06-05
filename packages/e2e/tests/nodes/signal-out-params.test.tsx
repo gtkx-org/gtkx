@@ -1,6 +1,8 @@
+import { getBoxed, inoutBoxedFromFfi, outBoxedFromFfi, t } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/gi/gdk";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkLabel, GtkOverlay, GtkSpinButton, GtkText } from "@gtkx/react";
+import * as GtkSource from "@gtkx/gi/gtksource";
+import { GtkBox, GtkLabel, GtkOverlay, GtkSourceView, GtkSpinButton, GtkText } from "@gtkx/react";
 import { act, render, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -167,5 +169,48 @@ describe("signal emit() - caller-allocated out-parameter", () => {
         expect(handled).toBe(true);
         expect(allocation.width).toBe(overlay.getWidth());
         expect(allocation.height).toBe(overlay.getHeight());
+    });
+});
+
+describe("signal emit() - boxed marshalling: caller-allocated out copies, inout shares", () => {
+    const rectangleFfi = t.boxed("GdkRectangle", "none", "libgtk-4.so.1", "gdk_rectangle_get_type");
+
+    it("inoutBoxedFromFfi shares the caller's wrapper so an in-place mutation is visible", () => {
+        const rect = new Gdk.Rectangle({ width: 1 });
+        const value = inoutBoxedFromFfi(rectangleFfi, rect);
+        rect.width = 42;
+        const seen = getBoxed(value) as Gdk.Rectangle;
+        expect(seen.width).toBe(42);
+    });
+
+    it("outBoxedFromFfi copies the wrapper so a later mutation is not visible", () => {
+        const rect = new Gdk.Rectangle({ width: 1 });
+        const value = outBoxedFromFfi(rectangleFfi, rect);
+        rect.width = 42;
+        const seen = getBoxed(value) as Gdk.Rectangle;
+        expect(seen.width).toBe(1);
+    });
+});
+
+describe("signal emit() - boxed inout-parameter (GtkSource.View::push-snippet)", () => {
+    it("advances the caller's TextIter in place through the shared boxed inout", async () => {
+        const viewRef = createRef<GtkSource.View>();
+
+        await render(<GtkSourceView ref={viewRef} />);
+
+        const view = viewRef.current as GtkSource.View;
+        const buffer = view.getBuffer() as GtkSource.Buffer;
+        const snippet = GtkSource.Snippet.new(null, null);
+        const chunk = GtkSource.SnippetChunk.new();
+        chunk.setSpec("abc");
+        snippet.addChunk(chunk);
+
+        const location = buffer.getStartIter();
+        expect(location.getOffset()).toBe(0);
+
+        view.emit("push-snippet", snippet, location);
+
+        expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false)).toBe("abc");
+        expect(location.getOffset()).toBe(3);
     });
 });

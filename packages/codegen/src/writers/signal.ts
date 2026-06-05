@@ -10,7 +10,7 @@ import type { GirSignal } from "../gir/signal.js";
 import type { GirTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
 import { forEachAncestor, resolveImplementedInterface } from "./inheritance.js";
 import { planTrampolineArgs, renderTupleWriteback } from "./method.js";
-import { isBoxedCallerOut, isHandlePassing, renderHandlerParameters } from "./param-classify.js";
+import { isBoxedCallerOut, isBoxedInout, isHandlePassing, renderHandlerParameters } from "./param-classify.js";
 import { renderTsType } from "./ts-type.js";
 import { isCellInout, renderFfiType } from "./value.js";
 
@@ -254,16 +254,20 @@ const renderConnectCase = (context: ModuleContext, collected: CollectedSignal): 
 /**
  * Renders one `emit` switch case. In-parameters marshal into `GValue`s with
  * `valueFromFfi`; out- and scalar-inout parameters marshal into pointer-backed
- * cells via `outValueFromFfi`; a caller-allocated boxed/class out-parameter is
- * allocated here and referenced in place by `outBoxedFromFfi` (a no-copy
- * `GValue`) so the handler reached through `g_signal_emitv` fills it. After
- * emission the case returns the signal's result — the non-void return value
- * (via `valueToJS`) together with every out value — using the same tuple
- * convention {@link renderSignalReturnType} describes for handlers.
- * Out-parameters consume no emit argument; in- and inout-parameters do. A
- * caller-allocated out-parameter that is not a boxed record — a raw buffer, or a
- * class with no boxed `GType` — throws, since `outBoxedFromFfi` has no `GType` to
- * resolve for it.
+ * cells via `outValueFromFfi`; a caller-allocated boxed out-parameter is
+ * allocated here and copied into a `G_TYPE_BOXED` `GValue` by `outBoxedFromFfi`
+ * so the handler reached through `g_signal_emitv` fills the value's owned copy,
+ * which `getBoxed` reads back after emission; a boxed inout-parameter shares the
+ * caller's wrapper in place through `inoutBoxedFromFfi` (`g_value_set_static_boxed`),
+ * so the handler's mutation lands on the caller's object directly and surfaces
+ * through that wrapper rather than the return tuple. After emission the case
+ * returns the signal's result — the non-void return value (via `valueToJS`)
+ * together with every out value — using the same tuple convention
+ * {@link renderSignalReturnType} describes for handlers. Out-parameters consume
+ * no emit argument; in- and inout-parameters do. A caller-allocated
+ * out-parameter that is not a boxed record — a raw buffer, or a class with no
+ * boxed `GType` — throws, since `outBoxedFromFfi` has no `GType` to resolve for
+ * it.
  */
 const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): string => {
     const { signal, namespaceName } = collected;
@@ -289,9 +293,15 @@ const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): str
             outReads.push(`${cell}.read()`);
         } else if (isCallerAllocatedOut(parameter)) {
             context.addRuntimeImport("outBoxedFromFfi");
-            preStatements.push(`const ${cell} = ${renderCallerOutAllocation(context, parameter, namespaceName)};`);
-            valueExprs.push(`outBoxedFromFfi(${ffi}, ${cell})`);
-            outReads.push(cell);
+            context.addRuntimeImport("getBoxed");
+            preStatements.push(
+                `const ${cell} = outBoxedFromFfi(${ffi}, ${renderCallerOutAllocation(context, parameter, namespaceName)});`,
+            );
+            valueExprs.push(cell);
+            outReads.push(`getBoxed(${cell})`);
+        } else if (isBoxedInout(context, parameter)) {
+            context.addRuntimeImport("inoutBoxedFromFfi");
+            valueExprs.push(`inoutBoxedFromFfi(${ffi}, args[${argIndex++}])`);
         } else {
             valueExprs.push(`valueFromFfi(${ffi}, args[${argIndex++}])`);
         }
