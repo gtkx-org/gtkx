@@ -1,7 +1,7 @@
 use std::ffi::{CStr, c_char};
 
 use anyhow::bail;
-use gtk4::glib::{self, translate::ToGlibPtr as _};
+use gtk4::glib;
 use napi::bindgen_prelude::*;
 use napi::{Env, JsObject};
 
@@ -183,38 +183,6 @@ impl RawPtrCodec for RefType {
             return Ok(value::Value::Null);
         }
         self.inner_type.read_from_raw_ptr(inner_ptr, "ref inner")
-    }
-}
-
-impl GlibValueCodec for RefType {
-    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        let ptr =
-            unsafe { glib::gobject_ffi::g_value_get_pointer(gvalue.to_glib_none().0 as *const _) };
-        if ptr.is_null() {
-            return Ok(value::Value::Null);
-        }
-        match &*self.inner_type {
-            Type::Float(float_kind) => {
-                let val = float_kind.read_ptr(ptr as *const u8);
-                Ok(value::Value::Number(val))
-            }
-            Type::Integer(int_kind) => {
-                let val = int_kind.read_ptr(ptr as *const u8);
-                Ok(value::Value::Number(val))
-            }
-            Type::Tagged(tagged) => {
-                let val = tagged.storage.read_ptr(ptr as *const u8);
-                Ok(value::Value::Number(val))
-            }
-            Type::Boolean(_) => {
-                let val = unsafe { *(ptr as *const i32) };
-                Ok(value::Value::Boolean(val != 0))
-            }
-            _ => bail!(
-                "Unsupported Ref inner type for GValue conversion: {:?}",
-                self.inner_type
-            ),
-        }
     }
 }
 

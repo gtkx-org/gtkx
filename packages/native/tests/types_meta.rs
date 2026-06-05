@@ -10,8 +10,8 @@ use std::str::FromStr as _;
 use libffi::middle;
 use native::types::{
     ArrayKind, ArrayType, BooleanType, BoxedType, FfiDecoder, FfiEncoder, FloatKind,
-    FundamentalType, GObjectType, GlibValueCodec, HashTableType, IntegerKind, Ownership,
-    RawPtrCodec, RefType, StringType, StructType, TrampolineType, Type, UnicharType, VoidType,
+    FundamentalType, GObjectType, HashTableType, IntegerKind, Ownership, RawPtrCodec, RefType,
+    StringType, StructType, TrampolineType, Type, UnicharType, VoidType,
 };
 use native::value::Value;
 use native::{ffi, value};
@@ -230,29 +230,6 @@ fn raw_ptr_codec_write_value_to_raw_ptr_default_bails() {
     let ptr = &mut slot as *mut *mut c_void as *mut c_void;
     assert!(
         RawPtrCodec::write_value_to_raw_ptr(&trampoline_type(), ptr, &Value::Number(1.0)).is_err()
-    );
-}
-
-#[test]
-fn glib_value_codec_from_glib_value_default_bails() {
-    common::run(|| {
-        let gvalue = gtk4::glib::Value::from(1_i32);
-        assert!(GlibValueCodec::from_glib_value(&trampoline_type(), &gvalue).is_err());
-        assert!(GlibValueCodec::from_glib_value(&UnicharType, &gvalue).is_err());
-    });
-}
-
-#[test]
-fn glib_value_codec_to_glib_value_default_yields_none() {
-    assert!(
-        GlibValueCodec::to_glib_value(&trampoline_type(), &Value::Number(1.0))
-            .unwrap()
-            .is_none()
-    );
-    assert!(
-        GlibValueCodec::to_glib_value(&UnicharType, &Value::String("a".to_owned()))
-            .unwrap()
-            .is_none()
     );
 }
 

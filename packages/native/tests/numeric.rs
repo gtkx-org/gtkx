@@ -2,11 +2,8 @@ mod common;
 
 use std::ffi::c_void;
 
-use gtk4::glib;
 use libffi::middle;
-use native::types::{
-    FfiDecoder, FfiEncoder, FloatKind, GlibValueCodec, IntegerKind, RawPtrCodec, Type,
-};
+use native::types::{FfiDecoder, FfiEncoder, FloatKind, IntegerKind, RawPtrCodec, Type};
 use native::value::Value;
 use native::{ffi, value};
 
@@ -283,24 +280,6 @@ fn integer_raw_ptr_codec_round_trips() {
     }
 }
 
-#[test]
-fn integer_glib_value_round_trips() {
-    common::run(|| {
-        for kind in INTEGER_KINDS {
-            let gvalue = GlibValueCodec::to_glib_value(&kind, &Value::Number(3.0))
-                .unwrap()
-                .expect("integer kind produces a glib value");
-            let decoded = GlibValueCodec::from_glib_value(&kind, &gvalue).unwrap();
-            assert!(matches!(decoded, Value::Number(n) if n == 3.0));
-            assert!(
-                GlibValueCodec::to_glib_value(&kind, &Value::Boolean(true))
-                    .unwrap()
-                    .is_none()
-            );
-        }
-    });
-}
-
 extern "C" fn ret_u8() -> u8 {
     8
 }
@@ -452,24 +431,6 @@ fn float_codec_encode_decode_and_raw_ptr() {
 }
 
 #[test]
-fn float_glib_value_round_trips() {
-    common::run(|| {
-        for kind in [FloatKind::F32, FloatKind::F64] {
-            let gvalue = GlibValueCodec::to_glib_value(&kind, &Value::Number(6.0))
-                .unwrap()
-                .expect("float kind produces a glib value");
-            let decoded = GlibValueCodec::from_glib_value(&kind, &gvalue).unwrap();
-            assert!(matches!(decoded, Value::Number(n) if (n - 6.0).abs() < 1e-6));
-            assert!(
-                GlibValueCodec::to_glib_value(&kind, &Value::Null)
-                    .unwrap()
-                    .is_none()
-            );
-        }
-    });
-}
-
-#[test]
 fn float_call_cif_invokes_native_functions() {
     let cif32 = middle::Cif::new(Vec::new(), FloatKind::F32.ffi_type());
     let r32 = FfiEncoder::call_cif(
@@ -539,30 +500,6 @@ fn tagged_raw_ptr_codec() {
 }
 
 #[test]
-fn tagged_glib_value_round_trips_enum_and_flags() {
-    common::run(|| {
-        let enum_tagged = common::enum_tagged();
-        let enum_gvalue = GlibValueCodec::to_glib_value(&enum_tagged, &Value::Number(1.0))
-            .unwrap()
-            .expect("enum tagged produces a glib value");
-        let enum_decoded = GlibValueCodec::from_glib_value(&enum_tagged, &enum_gvalue).unwrap();
-        assert!(matches!(enum_decoded, Value::Number(n) if n == 1.0));
-        assert!(
-            GlibValueCodec::to_glib_value(&enum_tagged, &Value::Boolean(true))
-                .unwrap()
-                .is_none()
-        );
-
-        let flags_tagged = common::flags_tagged();
-        let flags_gvalue = GlibValueCodec::to_glib_value(&flags_tagged, &Value::Number(1.0))
-            .unwrap()
-            .expect("flags tagged produces a glib value");
-        let flags_decoded = GlibValueCodec::from_glib_value(&flags_tagged, &flags_gvalue).unwrap();
-        assert!(matches!(flags_decoded, Value::Number(n) if n == 1.0));
-    });
-}
-
-#[test]
 fn tagged_type_appears_in_type_enum() {
     let ty = Type::Tagged(common::enum_tagged());
     assert!(ty.can_be_return_type());
@@ -601,14 +538,6 @@ fn integer_codec_covers_every_kind() {
             let encoded = FfiEncoder::encode(&kind, &Value::Number(1.0), false).unwrap();
             FfiDecoder::decode(&kind, &encoded).unwrap();
 
-            let gvalue = GlibValueCodec::to_glib_value(&kind, &Value::Number(1.0))
-                .unwrap()
-                .expect("integer kind yields a glib value");
-            GlibValueCodec::from_glib_value(&kind, &gvalue).unwrap();
-
-            let wrong = glib::Value::from("not a number");
-            assert!(GlibValueCodec::from_glib_value(&kind, &wrong).is_err());
-
             let mut slot = [0u8; 8];
             let ptr = slot.as_mut_ptr().cast::<c_void>();
             RawPtrCodec::write_value_to_raw_ptr(&kind, ptr, &Value::Number(2.0)).unwrap();
@@ -636,13 +565,6 @@ fn float_codec_covers_every_kind() {
 
             let encoded = FfiEncoder::encode(&kind, &Value::Number(1.0), false).unwrap();
             FfiDecoder::decode(&kind, &encoded).unwrap();
-
-            let gvalue = GlibValueCodec::to_glib_value(&kind, &Value::Number(1.0))
-                .unwrap()
-                .expect("float kind yields a glib value");
-            GlibValueCodec::from_glib_value(&kind, &gvalue).unwrap();
-            let wrong = glib::Value::from("not a number");
-            assert!(GlibValueCodec::from_glib_value(&kind, &wrong).is_err());
 
             let ptr = slot.as_mut_ptr().cast::<c_void>();
             RawPtrCodec::write_value_to_raw_ptr(&kind, ptr, &Value::Number(2.0)).unwrap();

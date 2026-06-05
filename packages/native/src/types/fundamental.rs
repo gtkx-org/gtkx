@@ -4,8 +4,6 @@
 //! derive from `GObject`. Examples include `GParamSpec` and Pango layout types.
 //! They have custom ref/unref functions rather than using `g_object_ref/unref`.
 
-use anyhow::bail;
-use gtk4::glib::{self, translate::ToGlibPtr as _, translate::ToGlibPtrMut as _};
 use napi::{Env, JsObject};
 
 use super::prelude::*;
@@ -47,34 +45,6 @@ impl FundamentalType {
         GlibThreadState::with(|state| {
             state.lookup_fundamental_fns(&self.library, &self.ref_func, &self.unref_func)
         })
-    }
-
-    pub fn ptr_to_glib_value(&self, ptr: *mut c_void) -> anyhow::Result<glib::Value> {
-        let gtype = self.type_name.as_deref().and_then(glib::Type::from_name);
-
-        let Some(gtype) = gtype else {
-            bail!(
-                "Cannot convert Fundamental type to glib::Value: no GType for '{}'",
-                self.type_name.as_deref().unwrap_or(&self.unref_func)
-            )
-        };
-
-        let mut value = glib::Value::from_type(gtype);
-        if gtype.is_a(glib::types::Type::VARIANT) {
-            unsafe {
-                glib::gobject_ffi::g_value_set_variant(value.to_glib_none_mut().0, ptr as *mut _);
-            }
-        } else if gtype.is_a(glib::types::Type::PARAM_SPEC) {
-            unsafe {
-                glib::gobject_ffi::g_value_set_param(value.to_glib_none_mut().0, ptr as *mut _);
-            }
-        } else {
-            bail!(
-                "Unsupported fundamental GType '{}' for glib::Value conversion",
-                gtype.name()
-            )
-        }
-        Ok(value)
     }
 
     /// Wraps a non-null fundamental `ptr` into a [`value::Value`], honoring
@@ -162,39 +132,5 @@ impl RawPtrCodec for FundamentalType {
             unsafe { unref_fn(old_ptr) };
         }
         Ok(())
-    }
-}
-
-impl GlibValueCodec for FundamentalType {
-    fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
-        let ptr = match val {
-            value::Value::Object(handle) => handle.ptr(),
-            _ => return Ok(None),
-        };
-        if ptr.is_null() {
-            return Ok(None);
-        }
-        self.ptr_to_glib_value(ptr).map(Some)
-    }
-
-    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        let gvalue_type = gvalue.type_();
-        let ptr = if gvalue_type.is_a(glib::types::Type::VARIANT) {
-            unsafe {
-                glib::gobject_ffi::g_value_get_variant(gvalue.to_glib_none().0 as *const _)
-                    .cast::<c_void>()
-            }
-        } else if gvalue_type.is_a(glib::types::Type::PARAM_SPEC) {
-            unsafe {
-                glib::gobject_ffi::g_value_get_param(gvalue.to_glib_none().0 as *const _)
-                    .cast::<c_void>()
-            }
-        } else {
-            bail!("Unsupported fundamental type in GValue: {gvalue_type:?}")
-        };
-        if ptr.is_null() {
-            return Ok(value::Value::Null);
-        }
-        self.wrap_ptr(ptr)
     }
 }

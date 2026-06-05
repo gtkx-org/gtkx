@@ -1,10 +1,8 @@
 use anyhow::bail;
 #[cfg(debug_assertions)]
+use gtk4::glib;
+#[cfg(debug_assertions)]
 use gtk4::glib::translate::IntoGlib as _;
-use gtk4::glib::{
-    self,
-    translate::{ToGlibPtr as _, ToGlibPtrMut as _},
-};
 use libffi::middle as libffi;
 use napi::{Env, JsObject};
 
@@ -98,17 +96,15 @@ macro_rules! impl_integer_kind_dispatch {
 }
 with_integer_kinds!(impl_integer_kind_dispatch);
 
-/// Generates the four FFI codec trait impls (`FfiEncoder`, `FfiDecoder`,
-/// `RawPtrCodec`, `GlibValueCodec`) for a numeric kind enum.
+/// Generates the three FFI codec trait impls (`FfiEncoder`, `FfiDecoder`,
+/// `RawPtrCodec`) for a numeric kind enum.
 ///
 /// Every numeric kind marshals identically across the codec boundary — a JS
 /// `Number` to and from an `f64` — so the trait surface is uniform. The
-/// genuinely type-specific behavior (range checking, the per-variant
-/// `g_value_*` calls, pointer interpretation) lives in inherent methods
-/// (`checked_to_ffi_value`, `number_to_glib_value`, `number_from_glib_value`,
-/// `ptr_to_value_raw`, `ffi_type`, `read_ptr`, `write_ptr`, `call_cif_raw`)
-/// that the generated impls delegate to. `$label` names the kind in error
-/// messages.
+/// genuinely type-specific behavior (range checking, pointer interpretation)
+/// lives in inherent methods (`checked_to_ffi_value`, `ptr_to_value_raw`,
+/// `ffi_type`, `read_ptr`, `write_ptr`, `call_cif_raw`) that the generated
+/// impls delegate to. `$label` names the kind in error messages.
 macro_rules! impl_numeric_codecs {
     ($kind:ty, $label:literal) => {
         impl FfiEncoder for $kind {
@@ -186,16 +182,6 @@ macro_rules! impl_numeric_codecs {
                 Ok(())
             }
         }
-
-        impl GlibValueCodec for $kind {
-            fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
-                Ok(val.as_number().map(|n| self.number_to_glib_value(n)))
-            }
-
-            fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-                Ok(value::Value::Number(self.number_from_glib_value(gvalue)?))
-            }
-        }
     };
 }
 
@@ -262,57 +248,6 @@ impl IntegerKind {
             Self::U64 => ptr as u64 as f64,
         };
         value::Value::Number(number)
-    }
-
-    fn number_to_glib_value(self, n: f64) -> glib::Value {
-        match self {
-            Self::I8 => (n as i8).into(),
-            Self::U8 => (n as u8).into(),
-            Self::I16 => (n as i16 as i32).into(),
-            Self::U16 => (n as u16 as u32).into(),
-            Self::I32 => (n as i32).into(),
-            Self::U32 => (n as u32).into(),
-            Self::I64 => (n as i64).into(),
-            Self::U64 => (n as u64).into(),
-        }
-    }
-
-    fn number_from_glib_value(self, gvalue: &glib::Value) -> anyhow::Result<f64> {
-        let number = match self {
-            Self::I8 => gvalue
-                .get::<i8>()
-                .map_err(|e| anyhow::anyhow!("Failed to get i8 from GValue: {e}"))?
-                as f64,
-            Self::U8 => gvalue
-                .get::<u8>()
-                .map_err(|e| anyhow::anyhow!("Failed to get u8 from GValue: {e}"))?
-                as f64,
-            Self::I16 => gvalue
-                .get::<i32>()
-                .map_err(|e| anyhow::anyhow!("Failed to get i32 (as i16) from GValue: {e}"))?
-                as i16 as f64,
-            Self::U16 => gvalue
-                .get::<u32>()
-                .map_err(|e| anyhow::anyhow!("Failed to get u32 (as u16) from GValue: {e}"))?
-                as u16 as f64,
-            Self::I32 => gvalue
-                .get::<i32>()
-                .map_err(|e| anyhow::anyhow!("Failed to get i32 from GValue: {e}"))?
-                as f64,
-            Self::U32 => gvalue
-                .get::<u32>()
-                .map_err(|e| anyhow::anyhow!("Failed to get u32 from GValue: {e}"))?
-                as f64,
-            Self::I64 => gvalue
-                .get::<i64>()
-                .map_err(|e| anyhow::anyhow!("Failed to get i64 from GValue: {e}"))?
-                as f64,
-            Self::U64 => gvalue
-                .get::<u64>()
-                .map_err(|e| anyhow::anyhow!("Failed to get u64 from GValue: {e}"))?
-                as f64,
-        };
-        Ok(number)
     }
 }
 
@@ -407,26 +342,6 @@ impl FloatKind {
         }
         value::Value::Number(self.read_ptr(ptr as *const u8))
     }
-
-    fn number_to_glib_value(self, n: f64) -> glib::Value {
-        match self {
-            Self::F32 => (n as f32).into(),
-            Self::F64 => n.into(),
-        }
-    }
-
-    fn number_from_glib_value(self, gvalue: &glib::Value) -> anyhow::Result<f64> {
-        let number = match self {
-            Self::F32 => gvalue
-                .get::<f32>()
-                .map_err(|e| anyhow::anyhow!("Failed to get f32 from GValue: {e}"))?
-                as f64,
-            Self::F64 => gvalue
-                .get::<f64>()
-                .map_err(|e| anyhow::anyhow!("Failed to get f64 from GValue: {e}"))?,
-        };
-        Ok(number)
-    }
 }
 
 impl_numeric_codecs!(FloatKind, "float");
@@ -481,6 +396,7 @@ impl TaggedType {
         })
     }
 
+    #[cfg(debug_assertions)]
     fn resolve_gtype(&self) -> anyhow::Result<glib::Type> {
         crate::state::GlibThreadState::with(|state| {
             state.resolve_gtype(&self.library, &self.get_type_fn)
@@ -563,39 +479,5 @@ impl RawPtrCodec for TaggedType {
 
     fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
         RawPtrCodec::write_value_to_raw_ptr(&self.storage, ptr, value)
-    }
-}
-
-impl GlibValueCodec for TaggedType {
-    fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
-        let Some(n) = val.as_number() else {
-            return Ok(None);
-        };
-        let mut gvalue = glib::Value::from_type(self.resolve_gtype()?);
-        unsafe {
-            match self.kind {
-                TaggedKind::Enum => {
-                    glib::gobject_ffi::g_value_set_enum(gvalue.to_glib_none_mut().0, n as i32);
-                }
-                TaggedKind::Flags => {
-                    glib::gobject_ffi::g_value_set_flags(gvalue.to_glib_none_mut().0, n as u32);
-                }
-            }
-        }
-        Ok(Some(gvalue))
-    }
-
-    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        let number = unsafe {
-            match self.kind {
-                TaggedKind::Enum => {
-                    glib::gobject_ffi::g_value_get_enum(gvalue.to_glib_none().0 as *const _) as f64
-                }
-                TaggedKind::Flags => {
-                    glib::gobject_ffi::g_value_get_flags(gvalue.to_glib_none().0 as *const _) as f64
-                }
-            }
-        };
-        Ok(value::Value::Number(number))
     }
 }

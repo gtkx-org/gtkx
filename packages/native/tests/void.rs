@@ -1,10 +1,8 @@
-mod common;
-
 use std::ffi::c_void;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use libffi::middle;
-use native::types::{FfiDecoder, FfiEncoder, GlibValueCodec, RawPtrCodec, VoidType};
+use native::types::{FfiDecoder, FfiEncoder, RawPtrCodec, VoidType};
 use native::value::Value;
 use native::{ffi, value};
 
@@ -79,15 +77,6 @@ fn write_return_to_raw_ptr_is_a_no_op() {
     RawPtrCodec::write_return_to_raw_ptr(&VoidType, ret, &Ok(Value::Undefined));
     RawPtrCodec::write_return_to_raw_ptr(&VoidType, ret, &Err(()));
     assert_eq!(slot, 99);
-}
-
-#[test]
-fn from_glib_value_yields_null() {
-    common::run(|| {
-        let gvalue = gtk4::glib::Value::from(5_i32);
-        let decoded = GlibValueCodec::from_glib_value(&VoidType, &gvalue).unwrap();
-        assert!(matches!(decoded, Value::Null));
-    });
 }
 
 #[test]

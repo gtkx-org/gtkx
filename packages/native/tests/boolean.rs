@@ -1,9 +1,7 @@
-mod common;
-
 use std::ffi::c_void;
 
 use libffi::middle;
-use native::types::{BooleanType, FfiDecoder, FfiEncoder, GlibValueCodec, RawPtrCodec};
+use native::types::{BooleanType, FfiDecoder, FfiEncoder, RawPtrCodec};
 use native::value::Value;
 use native::{ffi, value};
 
@@ -121,31 +119,6 @@ fn write_value_to_raw_ptr_writes_boolean_and_rejects_other() {
     assert_eq!(slot, 0);
 
     assert!(RawPtrCodec::write_value_to_raw_ptr(&BooleanType, ptr, &Value::Number(1.0)).is_err());
-}
-
-#[test]
-fn glib_value_round_trips_and_rejects_other() {
-    common::run(|| {
-        let gvalue = GlibValueCodec::to_glib_value(&BooleanType, &Value::Boolean(true))
-            .unwrap()
-            .expect("boolean produces a glib value");
-        let decoded = GlibValueCodec::from_glib_value(&BooleanType, &gvalue).unwrap();
-        assert!(matches!(decoded, Value::Boolean(true)));
-
-        assert!(
-            GlibValueCodec::to_glib_value(&BooleanType, &Value::Number(1.0))
-                .unwrap()
-                .is_none()
-        );
-    });
-}
-
-#[test]
-fn from_glib_value_rejects_non_boolean() {
-    common::run(|| {
-        let int_value = gtk4::glib::Value::from(7_i32);
-        assert!(GlibValueCodec::from_glib_value(&BooleanType, &int_value).is_err());
-    });
 }
 
 #[test]

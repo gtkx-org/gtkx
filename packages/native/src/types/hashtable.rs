@@ -272,5 +272,3 @@ impl RawPtrCodec for HashTableType {
         self.decode(&ffi::FfiValue::Ptr(ptr))
     }
 }
-
-impl GlibValueCodec for HashTableType {}

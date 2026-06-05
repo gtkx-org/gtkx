@@ -8,7 +8,7 @@
 use anyhow::bail;
 use gtk4::glib::{
     self,
-    translate::{FromGlib as _, IntoGlib as _, ToGlibPtr as _, ToGlibPtrMut as _},
+    translate::{FromGlib as _, IntoGlib as _},
 };
 use napi::{Env, JsObject};
 
@@ -226,59 +226,6 @@ impl RawPtrCodec for BoxedType {
     }
 }
 
-impl GlibValueCodec for BoxedType {
-    fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
-        let value::Value::Object(handle) = val else {
-            return Ok(None);
-        };
-        let ptr = handle.ptr();
-        if ptr.is_null() {
-            return Ok(None);
-        }
-        let Some(gtype) = self.gtype() else {
-            return Ok(None);
-        };
-        let mut gvalue = glib::Value::from_type(gtype);
-        unsafe {
-            glib::gobject_ffi::g_value_set_boxed(gvalue.to_glib_none_mut().0, ptr as *const _);
-        }
-        Ok(Some(gvalue))
-    }
-
-    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        let gvalue_type = gvalue.type_();
-
-        if gvalue_type == glib::Type::STRING {
-            let string: String = gvalue
-                .get()
-                .map_err(|e| anyhow::anyhow!("Failed to get String from GValue: {e}"))?;
-            return Ok(value::Value::String(string));
-        }
-
-        let boxed_ptr =
-            unsafe { glib::gobject_ffi::g_value_get_boxed(gvalue.to_glib_none().0 as *const _) };
-        if boxed_ptr.is_null() {
-            return Ok(value::Value::Null);
-        }
-
-        if gvalue_type.name() == "GValue" {
-            let inner_gvalue = unsafe { &*(boxed_ptr as *const glib::Value) };
-            return self.from_glib_value(inner_gvalue);
-        }
-
-        let gtype = self.gtype().or(Some(gvalue_type));
-        let boxed = if self.ownership.is_full() {
-            let owned_ptr = unsafe {
-                glib::gobject_ffi::g_value_dup_boxed(gvalue.to_glib_none().0 as *const _)
-            };
-            Boxed::from_glib_full(gtype, owned_ptr)
-        } else {
-            Boxed::from_glib_none(gtype, boxed_ptr)?
-        };
-        Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct StructType {
     pub ownership: Ownership,
@@ -360,13 +307,5 @@ impl RawPtrCodec for StructType {
             return Ok(());
         }
         write_object_ptr(ptr, value, "Struct field write")
-    }
-}
-
-impl GlibValueCodec for StructType {
-    fn from_glib_value(&self, _gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        bail!(
-            "Plain struct type should not appear in glib value conversion - structs without GType cannot be stored in GValue"
-        )
     }
 }

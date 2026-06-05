@@ -7,7 +7,7 @@ use std::ffi::{CStr, CString, c_char, c_void};
 use gtk4::glib;
 
 use native::ffi;
-use native::types::{FfiDecoder, FfiEncoder, GlibValueCodec, Ownership, RawPtrCodec, StringType};
+use native::types::{FfiDecoder, FfiEncoder, Ownership, RawPtrCodec, StringType};
 use native::value::Value;
 
 fn borrowed() -> StringType {
@@ -211,63 +211,5 @@ fn write_value_to_raw_ptr_rejects_non_string() {
             &Value::Number(7.0),
         );
         assert!(result.is_err());
-    });
-}
-
-#[test]
-fn to_glib_value_wraps_string() {
-    common::run(|| {
-        let gvalue = borrowed()
-            .to_glib_value(&Value::String("gv".to_owned()))
-            .expect("to_glib_value should succeed")
-            .expect("expected Some(glib::Value)");
-        let extracted: String = gvalue.get().unwrap();
-        assert_eq!(extracted, "gv");
-    });
-}
-
-#[test]
-fn to_glib_value_null_yields_none_string() {
-    common::run(|| {
-        let gvalue = borrowed()
-            .to_glib_value(&Value::Null)
-            .expect("to_glib_value should succeed")
-            .expect("expected Some(glib::Value)");
-        assert!(gvalue.get::<Option<String>>().unwrap().is_none());
-
-        let gvalue = borrowed()
-            .to_glib_value(&Value::Undefined)
-            .expect("to_glib_value should succeed")
-            .expect("expected Some(glib::Value)");
-        assert!(gvalue.get::<Option<String>>().unwrap().is_none());
-    });
-}
-
-#[test]
-fn to_glib_value_non_string_yields_none() {
-    common::run(|| {
-        let result = borrowed()
-            .to_glib_value(&Value::Number(3.0))
-            .expect("to_glib_value should succeed");
-        assert!(result.is_none());
-    });
-}
-
-#[test]
-fn from_glib_value_extracts_string() {
-    common::run(|| {
-        let gvalue = glib::Value::from("from-gv");
-        let value = borrowed()
-            .from_glib_value(&gvalue)
-            .expect("from_glib_value should succeed");
-        assert!(matches!(value, Value::String(s) if s == "from-gv"));
-    });
-}
-
-#[test]
-fn from_glib_value_wrong_type_bails() {
-    common::run(|| {
-        let gvalue = glib::Value::from(42i32);
-        assert!(borrowed().from_glib_value(&gvalue).is_err());
     });
 }

@@ -46,9 +46,3 @@ impl RawPtrCodec for VoidType {
 
     fn write_return_to_raw_ptr(&self, _ret: *mut c_void, _value: &Result<value::Value, ()>) {}
 }
-
-impl GlibValueCodec for VoidType {
-    fn from_glib_value(&self, _gvalue: &gtk4::glib::Value) -> anyhow::Result<value::Value> {
-        Ok(value::Value::Null)
-    }
-}

@@ -7,14 +7,12 @@ use std::ffi::c_void;
 
 use gtk4::gdk;
 use gtk4::glib;
-use gtk4::glib::translate::{FromGlib as _, IntoGlib as _, ToGlibPtrMut as _};
+use gtk4::glib::translate::IntoGlib as _;
 use gtk4::prelude::StaticType as _;
 
 use native::ffi;
 use native::managed::NativeHandle;
-use native::types::{
-    BoxedType, FfiDecoder, FfiEncoder, GlibValueCodec, Ownership, RawPtrCodec, StructType,
-};
+use native::types::{BoxedType, FfiDecoder, FfiEncoder, Ownership, RawPtrCodec, StructType};
 use native::value::Value;
 
 fn rgba_type_name() -> String {
@@ -489,156 +487,6 @@ fn write_value_to_raw_ptr_frees_previous_pointer_in_slot() {
 }
 
 #[test]
-fn to_glib_value_wraps_boxed() {
-    common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = common::allocate_test_boxed(gtype);
-
-        let gvalue = boxed(Ownership::Borrowed)
-            .to_glib_value(&Value::Object(NativeHandle::borrowed(original)))
-            .expect("to_glib_value should succeed")
-            .expect("expected Some(glib::Value)");
-        assert_eq!(gvalue.type_(), gtype);
-
-        unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original) };
-    });
-}
-
-#[test]
-fn to_glib_value_non_object_yields_none() {
-    common::run(|| {
-        let result = boxed(Ownership::Borrowed)
-            .to_glib_value(&Value::Number(1.0))
-            .expect("to_glib_value should succeed");
-        assert!(result.is_none());
-    });
-}
-
-#[test]
-fn to_glib_value_null_pointer_yields_none() {
-    common::run(|| {
-        let result = boxed(Ownership::Borrowed)
-            .to_glib_value(&Value::Object(NativeHandle::borrowed(std::ptr::null_mut())))
-            .expect("to_glib_value should succeed");
-        assert!(result.is_none());
-    });
-}
-
-#[test]
-fn to_glib_value_unknown_gtype_yields_none() {
-    common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = common::allocate_test_boxed(gtype);
-        let unknown = BoxedType {
-            ownership: Ownership::Borrowed,
-            type_name: "GtypeUnknownBoxed".to_owned(),
-            library: None,
-            get_type_fn: None,
-            free_fn: None,
-        };
-        let result = unknown
-            .to_glib_value(&Value::Object(NativeHandle::borrowed(original)))
-            .expect("to_glib_value should succeed");
-        assert!(result.is_none());
-
-        unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original) };
-    });
-}
-
-#[test]
-fn from_glib_value_string_type_returns_string() {
-    common::run(|| {
-        let gvalue = glib::Value::from("boxed-string");
-        let value = boxed(Ownership::Borrowed)
-            .from_glib_value(&gvalue)
-            .expect("from_glib_value should succeed");
-        assert!(matches!(value, Value::String(s) if s == "boxed-string"));
-    });
-}
-
-#[test]
-fn from_glib_value_string_type_with_null_content_bails() {
-    common::run(|| {
-        let gvalue = glib::Value::from_type(glib::Type::STRING);
-        let result = boxed(Ownership::Borrowed).from_glib_value(&gvalue);
-        assert!(result.is_err());
-    });
-}
-
-#[test]
-fn from_glib_value_null_boxed_yields_null() {
-    common::run(|| {
-        let gvalue = glib::Value::from_type(gdk::RGBA::static_type());
-        let value = boxed(Ownership::Borrowed)
-            .from_glib_value(&gvalue)
-            .expect("from_glib_value should succeed");
-        assert!(matches!(value, Value::Null));
-    });
-}
-
-#[test]
-fn from_glib_value_borrowed_boxed() {
-    common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = common::allocate_test_boxed(gtype);
-
-        let mut gvalue = glib::Value::from_type(gtype);
-        unsafe {
-            glib::gobject_ffi::g_value_set_boxed(gvalue.to_glib_none_mut().0, original as *const _);
-        }
-        let value = boxed(Ownership::Borrowed)
-            .from_glib_value(&gvalue)
-            .expect("from_glib_value should succeed");
-        assert!(matches!(value, Value::Object(_)));
-        drop(value);
-
-        unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original) };
-    });
-}
-
-#[test]
-fn from_glib_value_full_boxed_dups() {
-    common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = common::allocate_test_boxed(gtype);
-
-        let mut gvalue = glib::Value::from_type(gtype);
-        unsafe {
-            glib::gobject_ffi::g_value_set_boxed(gvalue.to_glib_none_mut().0, original as *const _);
-        }
-        let value = boxed(Ownership::Full)
-            .from_glib_value(&gvalue)
-            .expect("from_glib_value should succeed");
-        let Value::Object(handle) = &value else {
-            panic!("expected Object value");
-        };
-        assert_ne!(handle.ptr(), original);
-        drop(value);
-
-        unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original) };
-    });
-}
-
-#[test]
-fn from_glib_value_nested_gvalue_unwraps() {
-    common::run(|| {
-        let inner = glib::Value::from("nested");
-        let gvalue_type = unsafe { glib::Type::from_glib(glib::gobject_ffi::g_value_get_type()) };
-        let mut outer = glib::Value::from_type(gvalue_type);
-        unsafe {
-            glib::gobject_ffi::g_value_set_boxed(
-                outer.to_glib_none_mut().0,
-                (&inner as *const glib::Value).cast(),
-            );
-        }
-        let value = boxed(Ownership::Borrowed)
-            .from_glib_value(&outer)
-            .expect("from_glib_value should succeed");
-        assert!(matches!(value, Value::String(s) if s == "nested"));
-    });
-}
-
-#[test]
 fn struct_encode_keeps_pointer() {
     common::run(|| {
         let gtype = gdk::RGBA::static_type();
@@ -856,18 +704,6 @@ fn struct_write_value_to_raw_ptr_with_size_bails_for_null_dst() {
             );
 
         assert!(err.is_err());
-    });
-}
-
-#[test]
-fn struct_from_glib_value_bails() {
-    common::run(|| {
-        let gvalue = glib::Value::from(1i32);
-        assert!(
-            struct_type(Ownership::Borrowed, None)
-                .from_glib_value(&gvalue)
-                .is_err()
-        );
     });
 }
 

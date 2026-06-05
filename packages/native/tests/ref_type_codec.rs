@@ -9,15 +9,14 @@ mod common;
 use std::ffi::{CString, c_char, c_void};
 
 use gtk4::glib;
-use gtk4::glib::translate::ToGlibPtrMut as _;
 use gtk4::prelude::ObjectType as _;
 
 use libffi::middle as libffi;
 
 use native::ffi::{self, FfiStorage, FfiStorageKind};
 use native::types::{
-    ArrayKind, ArrayType, BooleanType, FfiDecoder, FloatKind, GObjectType, GlibValueCodec,
-    IntegerKind, Ownership, RawPtrCodec, RefType, StringType, TaggedKind, TaggedType, Type,
+    ArrayKind, ArrayType, BooleanType, FfiDecoder, FloatKind, GObjectType, IntegerKind, Ownership,
+    RawPtrCodec, RefType, StringType, TaggedKind, TaggedType, Type,
 };
 use native::value::Value;
 
@@ -410,115 +409,5 @@ fn read_from_raw_ptr_string_inner_reads_value() {
             .read_from_raw_ptr(&inner_slot as *const *mut c_void as *const c_void, "ctx")
             .expect("read_from_raw_ptr should succeed");
         assert!(matches!(value, Value::String(s) if s == "raw-ref"));
-    });
-}
-
-#[test]
-fn from_glib_value_null_pointer_yields_null() {
-    common::run(|| {
-        let gvalue = glib::Value::from_type(glib::types::Type::POINTER);
-        let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
-        let value = ref_type
-            .from_glib_value(&gvalue)
-            .expect("from_glib_value should succeed");
-        assert!(matches!(value, Value::Null));
-    });
-}
-
-#[test]
-fn from_glib_value_float_inner_reads_number() {
-    common::run(|| {
-        let mut number: f64 = 6.25;
-        let mut gvalue = glib::Value::from_type(glib::types::Type::POINTER);
-        unsafe {
-            glib::gobject_ffi::g_value_set_pointer(
-                gvalue.to_glib_none_mut().0,
-                &mut number as *mut f64 as *mut c_void,
-            );
-        }
-        let ref_type = RefType::new(Type::Float(FloatKind::F64));
-        let value = ref_type
-            .from_glib_value(&gvalue)
-            .expect("from_glib_value should succeed");
-        assert!(matches!(value, Value::Number(n) if (n - 6.25).abs() < f64::EPSILON));
-    });
-}
-
-#[test]
-fn from_glib_value_integer_inner_reads_number() {
-    common::run(|| {
-        let mut number: i32 = 77;
-        let mut gvalue = glib::Value::from_type(glib::types::Type::POINTER);
-        unsafe {
-            glib::gobject_ffi::g_value_set_pointer(
-                gvalue.to_glib_none_mut().0,
-                &mut number as *mut i32 as *mut c_void,
-            );
-        }
-        let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
-        let value = ref_type
-            .from_glib_value(&gvalue)
-            .expect("from_glib_value should succeed");
-        assert!(matches!(value, Value::Number(n) if (n - 77.0).abs() < f64::EPSILON));
-    });
-}
-
-#[test]
-fn from_glib_value_tagged_inner_reads_number() {
-    common::run(|| {
-        let mut number: i32 = 3;
-        let mut gvalue = glib::Value::from_type(glib::types::Type::POINTER);
-        unsafe {
-            glib::gobject_ffi::g_value_set_pointer(
-                gvalue.to_glib_none_mut().0,
-                &mut number as *mut i32 as *mut c_void,
-            );
-        }
-        let tagged = TaggedType {
-            kind: TaggedKind::Flags,
-            library: "libgobject-2.0.so.0".to_owned(),
-            get_type_fn: "g_unused_get_type".to_owned(),
-            storage: IntegerKind::I32,
-        };
-        let ref_type = RefType::new(Type::Tagged(tagged));
-        let value = ref_type
-            .from_glib_value(&gvalue)
-            .expect("from_glib_value should succeed");
-        assert!(matches!(value, Value::Number(n) if (n - 3.0).abs() < f64::EPSILON));
-    });
-}
-
-#[test]
-fn from_glib_value_boolean_inner_reads_boolean() {
-    common::run(|| {
-        let mut flag: i32 = 1;
-        let mut gvalue = glib::Value::from_type(glib::types::Type::POINTER);
-        unsafe {
-            glib::gobject_ffi::g_value_set_pointer(
-                gvalue.to_glib_none_mut().0,
-                &mut flag as *mut i32 as *mut c_void,
-            );
-        }
-        let ref_type = RefType::new(Type::Boolean(BooleanType));
-        let value = ref_type
-            .from_glib_value(&gvalue)
-            .expect("from_glib_value should succeed");
-        assert!(matches!(value, Value::Boolean(true)));
-    });
-}
-
-#[test]
-fn from_glib_value_unsupported_inner_bails() {
-    common::run(|| {
-        let mut byte: u8 = 0;
-        let mut gvalue = glib::Value::from_type(glib::types::Type::POINTER);
-        unsafe {
-            glib::gobject_ffi::g_value_set_pointer(
-                gvalue.to_glib_none_mut().0,
-                &mut byte as *mut u8 as *mut c_void,
-            );
-        }
-        let ref_type = RefType::new(Type::String(string_type()));
-        assert!(ref_type.from_glib_value(&gvalue).is_err());
     });
 }

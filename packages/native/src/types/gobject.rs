@@ -1,8 +1,7 @@
 use anyhow::bail;
 use gtk4::glib::{
     self,
-    translate::{FromGlibPtrNone as _, IntoGlibPtr, ToGlibPtr as _},
-    value::ToValue as _,
+    translate::{FromGlibPtrNone as _, IntoGlibPtr},
 };
 use napi::{Env, JsObject};
 
@@ -166,32 +165,5 @@ impl RawPtrCodec for GObjectType {
             }
         }
         Ok(())
-    }
-}
-
-impl GlibValueCodec for GObjectType {
-    fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
-        let ptr = match val {
-            value::Value::Object(handle) => handle.ptr(),
-            value::Value::Null | value::Value::Undefined => {
-                return Ok(Some(Option::<glib::Object>::None.into()));
-            }
-            _ => return Ok(None),
-        };
-        if ptr.is_null() {
-            return Ok(Some(Option::<glib::Object>::None.into()));
-        }
-        let obj: glib::Object =
-            unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
-        Ok(Some(obj.to_value()))
-    }
-
-    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        let obj_ptr =
-            unsafe { glib::gobject_ffi::g_value_get_object(gvalue.to_glib_none().0 as *const _) };
-        if obj_ptr.is_null() {
-            return Ok(value::Value::Null);
-        }
-        tracked_gobject_value(obj_ptr, Ownership::None)
     }
 }

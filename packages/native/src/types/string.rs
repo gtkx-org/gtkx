@@ -103,20 +103,3 @@ impl RawPtrCodec for StringType {
         Ok(())
     }
 }
-
-impl GlibValueCodec for StringType {
-    fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
-        match val {
-            value::Value::String(s) => Ok(Some(s.as_str().into())),
-            value::Value::Null | value::Value::Undefined => Ok(Some(Option::<String>::None.into())),
-            _ => Ok(None),
-        }
-    }
-
-    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        let string: String = gvalue
-            .get()
-            .map_err(|e| anyhow::anyhow!("Failed to get String from GValue: {e}"))?;
-        Ok(value::Value::String(string))
-    }
-}

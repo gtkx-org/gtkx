@@ -5,13 +5,10 @@ mod common;
 use std::ffi::c_void;
 
 use gtk4::glib;
-use gtk4::glib::translate::{ToGlibPtr, ToGlibPtrMut as _};
 
 use native::ffi;
 use native::managed::NativeHandle;
-use native::types::{
-    FfiDecoder, FfiEncoder, FundamentalType, GlibValueCodec, Ownership, RawPtrCodec,
-};
+use native::types::{FfiDecoder, FfiEncoder, FundamentalType, Ownership, RawPtrCodec};
 use native::value::Value;
 
 fn create_param_spec() -> *mut c_void {
@@ -52,76 +49,6 @@ fn lookup_fns_resolves_ref_and_unref() {
             .expect("lookup_fns should succeed");
         assert!(ref_fn.is_some());
         assert!(unref_fn.is_some());
-    });
-}
-
-#[test]
-fn ptr_to_glib_value_for_param_spec() {
-    common::run(|| {
-        let pspec = create_param_spec();
-        let before = param_spec_refcount(pspec);
-
-        let gvalue = fundamental(Ownership::Borrowed)
-            .ptr_to_glib_value(pspec)
-            .expect("ptr_to_glib_value should succeed");
-        assert!(gvalue.type_().is_a(glib::types::Type::PARAM_SPEC));
-
-        assert_eq!(param_spec_refcount(pspec), before + 1);
-        drop(gvalue);
-        assert_eq!(param_spec_refcount(pspec), before);
-        unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
-    });
-}
-
-#[test]
-fn ptr_to_glib_value_for_variant() {
-    common::run(|| {
-        let variant = glib::Variant::from(true);
-        let variant_type = FundamentalType {
-            ownership: Ownership::Borrowed,
-            library: "libgobject-2.0.so.0".to_owned(),
-            ref_func: "g_variant_ref".to_owned(),
-            unref_func: "g_variant_unref".to_owned(),
-            type_name: Some("GVariant".to_owned()),
-        };
-        let stash = ToGlibPtr::<*const glib::ffi::GVariant>::to_glib_none(&variant);
-        let raw = stash.0 as *mut c_void;
-        let gvalue = variant_type
-            .ptr_to_glib_value(raw)
-            .expect("variant ptr_to_glib_value should succeed");
-        assert!(gvalue.type_().is_a(glib::types::Type::VARIANT));
-    });
-}
-
-#[test]
-fn ptr_to_glib_value_without_gtype_bails() {
-    common::run(|| {
-        let pspec = create_param_spec();
-        let no_gtype = FundamentalType {
-            ownership: Ownership::Borrowed,
-            library: "libgobject-2.0.so.0".to_owned(),
-            ref_func: "g_param_spec_ref".to_owned(),
-            unref_func: "g_param_spec_unref".to_owned(),
-            type_name: None,
-        };
-        assert!(no_gtype.ptr_to_glib_value(pspec).is_err());
-        unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
-    });
-}
-
-#[test]
-fn ptr_to_glib_value_unsupported_gtype_bails() {
-    common::run(|| {
-        let pspec = create_param_spec();
-        let unsupported = FundamentalType {
-            ownership: Ownership::Borrowed,
-            library: "libgobject-2.0.so.0".to_owned(),
-            ref_func: "g_param_spec_ref".to_owned(),
-            unref_func: "g_param_spec_unref".to_owned(),
-            type_name: Some("GObject".to_owned()),
-        };
-        assert!(unsupported.ptr_to_glib_value(pspec).is_err());
-        unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
     });
 }
 
@@ -460,130 +387,5 @@ fn write_value_to_raw_ptr_null_releases_previous_fundamental() {
         assert_eq!(param_spec_refcount(pspec), before - 1);
 
         unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
-    });
-}
-
-#[test]
-fn to_glib_value_wraps_param_spec() {
-    common::run(|| {
-        let pspec = create_param_spec();
-
-        let gvalue = fundamental(Ownership::Borrowed)
-            .to_glib_value(&Value::Object(NativeHandle::borrowed(pspec)))
-            .expect("to_glib_value should succeed")
-            .expect("expected Some(glib::Value)");
-        assert!(gvalue.type_().is_a(glib::types::Type::PARAM_SPEC));
-        drop(gvalue);
-
-        unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
-    });
-}
-
-#[test]
-fn to_glib_value_non_object_yields_none() {
-    common::run(|| {
-        let result = fundamental(Ownership::Borrowed)
-            .to_glib_value(&Value::Number(1.0))
-            .expect("to_glib_value should succeed");
-        assert!(result.is_none());
-    });
-}
-
-#[test]
-fn to_glib_value_null_pointer_yields_none() {
-    common::run(|| {
-        let result = fundamental(Ownership::Borrowed)
-            .to_glib_value(&Value::Object(NativeHandle::borrowed(std::ptr::null_mut())))
-            .expect("to_glib_value should succeed");
-        assert!(result.is_none());
-    });
-}
-
-#[test]
-fn from_glib_value_param_spec_borrowed() {
-    common::run(|| {
-        let pspec = create_param_spec();
-        let before = param_spec_refcount(pspec);
-
-        let mut gvalue = glib::Value::from_type(glib::types::Type::PARAM_SPEC);
-        unsafe {
-            glib::gobject_ffi::g_value_set_param(gvalue.to_glib_none_mut().0, pspec.cast());
-        }
-        let value = fundamental(Ownership::Borrowed)
-            .from_glib_value(&gvalue)
-            .expect("from_glib_value should succeed");
-        assert!(matches!(value, Value::Object(_)));
-
-        drop(value);
-        drop(gvalue);
-        assert_eq!(param_spec_refcount(pspec), before);
-        unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
-    });
-}
-
-#[test]
-fn from_glib_value_param_spec_full() {
-    common::run(|| {
-        let pspec = create_param_spec();
-        unsafe { glib::gobject_ffi::g_param_spec_ref(pspec.cast()) };
-
-        let mut gvalue = glib::Value::from_type(glib::types::Type::PARAM_SPEC);
-        unsafe {
-            glib::gobject_ffi::g_value_set_param(gvalue.to_glib_none_mut().0, pspec.cast());
-        }
-        let before = param_spec_refcount(pspec);
-
-        let value = fundamental(Ownership::Full)
-            .from_glib_value(&gvalue)
-            .expect("from_glib_value should succeed");
-        assert!(matches!(value, Value::Object(_)));
-        assert_eq!(param_spec_refcount(pspec), before);
-
-        drop(value);
-        drop(gvalue);
-    });
-}
-
-#[test]
-fn from_glib_value_variant() {
-    common::run(|| {
-        let variant = glib::Variant::from(7i32);
-        let gvalue = glib::Value::from(&variant);
-
-        let variant_type = FundamentalType {
-            ownership: Ownership::Borrowed,
-            library: "libgobject-2.0.so.0".to_owned(),
-            ref_func: "g_variant_ref".to_owned(),
-            unref_func: "g_variant_unref".to_owned(),
-            type_name: Some("GVariant".to_owned()),
-        };
-        let value = variant_type
-            .from_glib_value(&gvalue)
-            .expect("from_glib_value should succeed");
-        assert!(matches!(value, Value::Object(_)));
-        drop(value);
-    });
-}
-
-#[test]
-fn from_glib_value_null_param_yields_null() {
-    common::run(|| {
-        let gvalue = glib::Value::from_type(glib::types::Type::PARAM_SPEC);
-        let value = fundamental(Ownership::Borrowed)
-            .from_glib_value(&gvalue)
-            .expect("from_glib_value should succeed");
-        assert!(matches!(value, Value::Null));
-    });
-}
-
-#[test]
-fn from_glib_value_unsupported_type_bails() {
-    common::run(|| {
-        let gvalue = glib::Value::from(42i32);
-        assert!(
-            fundamental(Ownership::Borrowed)
-                .from_glib_value(&gvalue)
-                .is_err()
-        );
     });
 }

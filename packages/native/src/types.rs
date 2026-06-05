@@ -39,7 +39,6 @@ use std::ffi::c_void;
 
 use anyhow::bail;
 use enum_dispatch::enum_dispatch;
-use gtk4::glib;
 use libffi::middle as libffi;
 use napi::bindgen_prelude::*;
 use napi::{Env, JsObject};
@@ -270,24 +269,10 @@ pub trait RawPtrCodec {
     }
 }
 
-#[enum_dispatch]
-#[allow(clippy::wrong_self_convention)]
-pub trait GlibValueCodec {
-    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        let _ = gvalue;
-        bail!("This type does not support GLib value conversion")
-    }
+pub trait FfiCodec: FfiEncoder + FfiDecoder + RawPtrCodec {}
+impl<T: FfiEncoder + FfiDecoder + RawPtrCodec> FfiCodec for T {}
 
-    fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
-        let _ = val;
-        Ok(None)
-    }
-}
-
-pub trait FfiCodec: FfiEncoder + FfiDecoder + RawPtrCodec + GlibValueCodec {}
-impl<T: FfiEncoder + FfiDecoder + RawPtrCodec + GlibValueCodec> FfiCodec for T {}
-
-#[enum_dispatch(FfiEncoder, FfiDecoder, RawPtrCodec, GlibValueCodec)]
+#[enum_dispatch(FfiEncoder, FfiDecoder, RawPtrCodec)]
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum Type {

@@ -69,5 +69,3 @@ impl RawPtrCodec for UnicharType {
         unsafe { *(ret as *mut u32) = val };
     }
 }
-
-impl GlibValueCodec for UnicharType {}

@@ -65,19 +65,3 @@ impl RawPtrCodec for BooleanType {
         Ok(())
     }
 }
-
-impl GlibValueCodec for BooleanType {
-    fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<gtk4::glib::Value>> {
-        let value::Value::Boolean(b) = val else {
-            return Ok(None);
-        };
-        Ok(Some((*b).into()))
-    }
-
-    fn from_glib_value(&self, gvalue: &gtk4::glib::Value) -> anyhow::Result<value::Value> {
-        let boolean: bool = gvalue
-            .get()
-            .map_err(|e| anyhow::anyhow!("Failed to get bool from GValue: {e}"))?;
-        Ok(value::Value::Boolean(boolean))
-    }
-}

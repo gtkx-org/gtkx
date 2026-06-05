@@ -21,15 +21,12 @@ use std::ffi::c_void;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-use anyhow::bail;
-use gtk4::glib::{self, translate::FromGlibPtrNone as _, value::ToValue as _};
 use napi::bindgen_prelude::*;
 use napi::sys;
 use napi::{Env, JsFunction, JsObject, NapiRaw, NapiValue, ValueType};
 
-use crate::error_reporter::NativeErrorReporter;
 use crate::managed::NativeHandle;
-use crate::types::{FfiDecoder, GlibValueCodec, Type};
+use crate::types::{FfiDecoder, Type};
 use crate::{arg::Arg, ffi};
 
 /// Send-safe napi reference to a JavaScript value of type `T`.
@@ -249,78 +246,6 @@ impl Value {
         ty.decode_with_context(ffi_value, ffi_args, args)
     }
 
-    #[must_use]
-    pub fn into_glib_value_with_default(self, return_type: Option<&Type>) -> Option<glib::Value> {
-        match &self {
-            Self::Undefined => {
-                let ty = return_type?;
-                let default = match ty {
-                    Type::Boolean(_) => Self::Boolean(false),
-                    Type::Integer(_) | Type::Tagged(_) | Type::Float(_) => Self::Number(0.0),
-                    Type::String(_) | Type::GObject(_) => Self::Null,
-                    _ => return None,
-                };
-                match ty.to_glib_value(&default) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        NativeErrorReporter::global()
-                            .report(&e.context("failed to compute default glib value"));
-                        None
-                    }
-                }
-            }
-            Self::Number(_)
-            | Self::String(_)
-            | Self::Boolean(_)
-            | Self::Object(_)
-            | Self::Null
-            | Self::Array(_)
-            | Self::Callback(_)
-            | Self::Ref(_) => match self.to_glib_value_typed(return_type) {
-                Ok(v) => Some(v),
-                Err(e) => {
-                    NativeErrorReporter::global()
-                        .report(&e.context("failed to convert value to glib::Value"));
-                    None
-                }
-            },
-        }
-    }
-
-    pub fn to_glib_value(self) -> anyhow::Result<glib::Value> {
-        self.to_glib_value_typed(None)
-    }
-
-    pub fn to_glib_value_typed(self, expected_type: Option<&Type>) -> anyhow::Result<glib::Value> {
-        if let Some(ty) = expected_type
-            && let Some(gvalue) = ty.to_glib_value(&self)?
-        {
-            return Ok(gvalue);
-        }
-        match self {
-            Self::Number(n) => Ok(n.into()),
-            Self::String(s) => Ok(s.into()),
-            Self::Boolean(b) => Ok(b.into()),
-            Self::Object(handle) => {
-                let ptr = handle.ptr();
-                if ptr.is_null() {
-                    Ok(Option::<glib::Object>::None.to_value())
-                } else {
-                    let obj: glib::Object = unsafe {
-                        glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject)
-                    };
-                    Ok(obj.to_value())
-                }
-            }
-            Self::Null | Self::Undefined => {
-                bail!("Cannot convert Null/Undefined to glib::Value without a type hint")
-            }
-            Self::Array(_) | Self::Callback(_) | Self::Ref(_) => {
-                bail!("Unsupported Value type for glib::Value conversion: {self:?}")
-            }
-        }
-    }
-
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
         let value_type = value.get_type()?;
@@ -410,10 +335,6 @@ impl Value {
                 format!("Unsupported Value type for JS conversion: {self:?}"),
             )),
         }
-    }
-
-    pub fn from_glib_value(gvalue: &glib::Value, ty: &Type) -> anyhow::Result<Self> {
-        ty.from_glib_value(gvalue)
     }
 }
 

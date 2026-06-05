@@ -151,8 +151,6 @@ impl RawPtrCodec for ArrayType {
     }
 }
 
-impl GlibValueCodec for ArrayType {}
-
 /// The native representation of one array element, resolved once from an
 /// [`ArrayType`]'s `item_type`.
 ///

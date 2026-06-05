@@ -174,8 +174,6 @@ impl FfiDecoder for TrampolineType {}
 
 impl RawPtrCodec for TrampolineType {}
 
-impl GlibValueCodec for TrampolineType {}
-
 impl TrampolineType {
     fn build_null_ffi_value(&self) -> ffi::FfiValue {
         ffi::FfiValue::Trampoline(ffi::TrampolineValue::new(
