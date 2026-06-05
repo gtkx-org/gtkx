@@ -391,7 +391,6 @@ export const createMcpServer = (options: CreateMcpServerOptions): McpServerHandl
         async stop() {
             if (stopped) return;
             stopped = true;
-            connectionManager.cleanup();
             await socketServer.stop();
             await mcpServer.close();
         },

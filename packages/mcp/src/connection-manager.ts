@@ -116,12 +116,6 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
         }
     }
 
-    cleanup(): void {
-        for (const app of this.apps.values()) {
-            app.connection.transport.rejectPending(new Error("Connection manager shutting down"));
-        }
-    }
-
     private handleRequest(connection: AppConnection, request: IpcRequest): void {
         if (request.method === "app.register") {
             this.handleRegister(connection, request);

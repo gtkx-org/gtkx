@@ -251,6 +251,27 @@ describe("ConnectionRegistry send", () => {
     });
 });
 
+describe("ConnectionRegistry shutdown", () => {
+    setupSocketServer();
+    it("rejects in-flight requests when closeAll runs", async () => {
+        const { server, socketPath, registry } = socketCtx;
+        await server.start();
+
+        const connectionPromise = waitForConnection(registry);
+        const client = await connectClient(socketPath);
+        const connection = await connectionPromise;
+
+        const pending = connection.transport.sendRequest("ping", {}, 5000);
+        registry.closeAll("Server stopping");
+
+        await expect(pending).rejects.toThrow("Server stopping");
+
+        const disconnection = new Promise<void>((resolve) => registry.once("disconnection", () => resolve()));
+        client.end();
+        await disconnection;
+    });
+});
+
 describe("SocketServer errors", () => {
     setupSocketServer();
     it("rejects start and routes error to the registry when binding to an unreachable path", async () => {

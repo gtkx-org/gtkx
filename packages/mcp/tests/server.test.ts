@@ -65,17 +65,15 @@ vi.mock("../src/connection-registry.js", () => ({
     },
 }));
 
-const { connectionManagerInstances, cleanupMock } = vi.hoisted(() => ({
-    connectionManagerInstances: [] as Array<EventEmitter & { cleanup: ReturnType<typeof vi.fn> }>,
-    cleanupMock: vi.fn(),
+const { connectionManagerInstances } = vi.hoisted(() => ({
+    connectionManagerInstances: [] as EventEmitter[],
 }));
 
 vi.mock("../src/connection-manager.js", () => ({
     ConnectionManager: class extends EventEmitter {
-        cleanup = cleanupMock;
         constructor(_socketServer: unknown) {
             super();
-            connectionManagerInstances.push(this as EventEmitter & { cleanup: typeof cleanupMock });
+            connectionManagerInstances.push(this);
         }
     },
 }));
@@ -354,7 +352,6 @@ function resetMainMocks(): void {
     mcpCloseMock.mockClear();
     socketStartMock.mockClear();
     socketStopMock.mockClear();
-    cleanupMock.mockClear();
     socketServerInstances.length = 0;
     connectionManagerInstances.length = 0;
     stdioInstances.length = 0;
@@ -449,7 +446,6 @@ describe("main — shutdown", () => {
         process.emit("SIGINT", "SIGINT");
         await new Promise((r) => setImmediate(r));
 
-        expect(cleanupMock).toHaveBeenCalledOnce();
         expect(socketStopMock).toHaveBeenCalledOnce();
         expect(mcpCloseMock).toHaveBeenCalledOnce();
         expect(setup.exitSpy).toHaveBeenCalledWith(130);
@@ -457,7 +453,6 @@ describe("main — shutdown", () => {
         process.emit("SIGTERM", "SIGTERM");
         await new Promise((r) => setImmediate(r));
 
-        expect(cleanupMock).toHaveBeenCalledOnce();
         expect(socketStopMock).toHaveBeenCalledOnce();
     });
 });

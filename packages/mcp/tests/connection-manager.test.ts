@@ -15,6 +15,8 @@ type TestConnection = AppConnection & {
     capture: { lines: string[]; writable: boolean };
 };
 
+const createdConnections: TestConnection[] = [];
+
 function makeConnection(id: string): TestConnection {
     const capture = { lines: [] as string[], writable: true };
     const writer: FrameWriter = {
@@ -27,7 +29,9 @@ function makeConnection(id: string): TestConnection {
         },
     };
     const transport = new JsonStreamTransport(writer);
-    return { id, transport, capture };
+    const connection: TestConnection = { id, transport, capture };
+    createdConnections.push(connection);
+    return connection;
 }
 
 class FakeAppTransport extends EventEmitter<AppTransportEvents> implements AppTransport {
@@ -86,11 +90,14 @@ function registerWithUnregisterSpy(): { conn: TestConnection; onUnregister: Retu
 function setupManagerContext(): void {
     beforeEach(() => {
         vi.useFakeTimers();
+        createdConnections.length = 0;
         ctx.transport = new FakeAppTransport();
         ctx.manager = new ConnectionManager(ctx.transport);
     });
     afterEach(() => {
-        ctx.manager.cleanup();
+        for (const connection of createdConnections) {
+            connection.transport.rejectPending(new Error("test teardown"));
+        }
         vi.useRealTimers();
     });
 }
@@ -308,7 +315,6 @@ describe("ConnectionManager sendToApp — transport errors", () => {
         vi.advanceTimersByTime(5000);
 
         await expect(promise).rejects.toMatchObject({ code: McpErrorCode.IPC_TIMEOUT });
-        customManager.cleanup();
     });
 
     it("rejects with the McpError described by an error response", async () => {
@@ -332,15 +338,3 @@ describe("ConnectionManager sendToApp — transport errors", () => {
     });
 });
 
-describe("ConnectionManager cleanup", () => {
-    setupManagerContext();
-    it("rejects all pending requests with a shutdown error", async () => {
-        const conn = registerAppForContext("app-a");
-
-        const promise = ctx.manager.sendToApp("app-a", "ping");
-        expect(conn.capture.lines.length).toBeGreaterThan(0);
-        ctx.manager.cleanup();
-
-        await expect(promise).rejects.toThrow("Connection manager shutting down");
-    });
-});
