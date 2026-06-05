@@ -7,7 +7,7 @@ import type { GirNamespace } from "../gir/namespace.js";
 import type { GirParameter } from "../gir/parameter.js";
 import { callableReferencesClassStruct } from "./class-struct-record.js";
 import { renderMethodBody, renderMethodReturnType, renderMethodSignature } from "./method.js";
-import { closureAndDestroyIndices, needsRefArg } from "./param-classify.js";
+import { closureAndDestroyIndices, needsRefArg, passesHandleInPlace } from "./param-classify.js";
 import { renderFfiType, renderSelfFfiType, renderTrampolineType } from "./value.js";
 
 /**
@@ -48,7 +48,8 @@ const argLiteral = (
     instanceOffset: number,
 ): string => {
     const trampoline = renderTrampolineType(context, parameter.type, parameter);
-    const inner = trampoline ?? renderFfiType(context, parameter.type, parameter.transferOwnership, instanceOffset);
+    const transfer = passesHandleInPlace(context, parameter) ? "none" : parameter.transferOwnership;
+    const inner = trampoline ?? renderFfiType(context, parameter.type, transfer, instanceOffset);
     const refWrapped = needsRefArg(context, parameter);
     const expression = refWrapped ? `t.ref(${inner})` : inner;
     return optional && !refWrapped ? `{ type: ${expression}, optional: true }` : `{ type: ${expression} }`;

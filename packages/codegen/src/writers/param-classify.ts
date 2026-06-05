@@ -99,24 +99,43 @@ export const returnArrayLengthIndices = (fn: GirFunction): ReadonlySet<number> =
 };
 
 /**
+ * Whether an out/inout parameter is passed by its existing native handle and
+ * mutated in place by the callee — objects, interfaces, and boxed records,
+ * which travel as a borrowed pointer, not a pointer-to-pointer cell.
+ *
+ * The borrowed pointer is what makes the callee's in-place write visible to the
+ * caller, so such an argument must marshal as `"borrowed"` regardless of its
+ * GIR `transfer-ownership`: a transfer-full copy of the handle (e.g. the
+ * `inout` `GValue*` `g_signal_emitv` writes the return into) would discard the
+ * write.
+ *
+ * @param context - The module context
+ * @param parameter - The parameter to test
+ */
+export const passesHandleInPlace = (context: ModuleContext, parameter: GirParameter): boolean => {
+    if (parameter.direction !== "out" && parameter.direction !== "inout") return false;
+    return (
+        (parameter.callerAllocates || parameter.direction === "inout") &&
+        parameter.type !== undefined &&
+        isHandlePassing(context, parameter.type)
+    );
+};
+
+/**
  * Whether a parameter is passed to the FFI binding as a `t.ref(...)` cell.
  *
  * Pure out parameters marshal through a `{ value }` ref cell the native layer
- * writes into. Inout parameters do too — except handle-passing ones
- * (objects, interfaces, boxed), which are passed by their existing handle
- * and mutated in place, not through a pointer-to-pointer cell.
- * Caller-allocated outs pass a pre-built handle and are excluded.
+ * writes into. Inout parameters do too — except handle-passing ones (see
+ * {@link passesHandleInPlace}), which are passed by their existing handle and
+ * mutated in place. Caller-allocated outs pass a pre-built handle and are
+ * excluded.
  *
  * @param context - The module context
  * @param parameter - The parameter to test
  */
 export const needsRefArg = (context: ModuleContext, parameter: GirParameter): boolean => {
     if (parameter.direction !== "out" && parameter.direction !== "inout") return false;
-    const passesHandleDirectly =
-        (parameter.callerAllocates || parameter.direction === "inout") &&
-        parameter.type !== undefined &&
-        isHandlePassing(context, parameter.type);
-    return !passesHandleDirectly;
+    return !passesHandleInPlace(context, parameter);
 };
 
 /**

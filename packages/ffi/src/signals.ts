@@ -10,11 +10,9 @@
  */
 
 import type { Type } from "@gtkx/native";
-import { GVALUE_BORROWED, GVALUE_SIZE, LIBGOBJECT } from "./gtype.js";
+import { LIBGOBJECT } from "./gtype.js";
 import { getHandle } from "./handles.js";
 import { call, t } from "./helpers.js";
-
-const GVALUE_ARRAY = t.array(GVALUE_BORROWED, "array", "borrowed", { elementSize: GVALUE_SIZE });
 
 /** A user-supplied signal handler. */
 export type SignalHandler = (...args: unknown[]) => unknown;
@@ -66,39 +64,4 @@ export function connectSignal(
         ],
         t.uint64,
     ) as number;
-}
-
-/**
- * Emits a signal through `g_signal_emitv`, dispatching the pre-built
- * instance-and-parameter `GValue`s and writing the emission's accumulated
- * return into `returnValue` when one is supplied.
- *
- * The `return_value` slot is passed as a borrowed `GValue` so the emission
- * writes into the caller's value in place — the GIR marks it `transfer="full"`,
- * which the generated binding would copy, discarding the result. Out-parameter
- * cells in `instanceAndParams` carry pointers the default handler writes
- * through, so the generated `emit` reads them back after this returns.
- *
- * @param instanceAndParams - The emitting instance value followed by each parameter value.
- * @param signalId - The numeric signal id from `g_signal_lookup`.
- * @param detail - The detail quark, or `0` for an undetailed signal.
- * @param returnValue - An initialized `GValue` to receive the return, or `null`.
- */
-export function emitSignalv(
-    instanceAndParams: readonly object[],
-    signalId: number,
-    detail: number,
-    returnValue: object | null = null,
-): void {
-    call(
-        LIBGOBJECT,
-        "g_signal_emitv",
-        [
-            { type: GVALUE_ARRAY, value: instanceAndParams.map(getHandle) },
-            { type: t.uint32, value: signalId },
-            { type: t.uint32, value: detail },
-            { type: GVALUE_BORROWED, value: returnValue === null ? null : getHandle(returnValue) },
-        ],
-        t.void,
-    );
 }

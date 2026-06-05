@@ -28,6 +28,7 @@ type CollectedSignal = {
 /** The generated marshalling references a class's inline `emit` switch uses. */
 type GObjectRefs = {
     readonly Value: string;
+    readonly signalEmitv: string;
     readonly signalLookup: string;
 };
 
@@ -106,7 +107,6 @@ const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): str
     const { signal, namespaceName } = collected;
     const params = signal.parameters.filter((parameter) => !parameter.isVarargs);
     context.addValueFromFfiImport();
-    context.addRuntimeImport("emitSignalv");
     const refs = gobjectRefs(context);
 
     const preStatements: string[] = [];
@@ -134,11 +134,11 @@ const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): str
 
     const statements = [...preStatements];
     if (isVoid) {
-        statements.push(`emitSignalv(${values}, ${lookup}, 0);`);
+        statements.push(`${refs.signalEmitv}(${values}, ${lookup}, 0);`);
     } else {
         statements.push(`const returnValue = new ${refs.Value}();`);
         statements.push(`returnValue.init(${renderReturnGType(context, returnRef)});`);
-        statements.push(`emitSignalv(${values}, ${lookup}, 0, returnValue);`);
+        statements.push(`${refs.signalEmitv}(${values}, ${lookup}, 0, returnValue);`);
     }
     statements.push(renderEmitReturn(context, isVoid, outReads));
 
@@ -174,15 +174,16 @@ const renderEmitReturn = (context: ModuleContext, isVoid: boolean, outReads: rea
 
 /**
  * Resolves the `GObject` marshalling references the inline `emit` switch needs.
- * Within the `GObject` namespace the generated `Value` and `signalLookup` are
- * local; elsewhere they are reached through the cross-namespace `GObject` alias.
+ * Within the `GObject` namespace the generated `Value`, `signalEmitv`, and
+ * `signalLookup` are local; elsewhere they are reached through the cross-
+ * namespace `GObject` alias.
  */
 const gobjectRefs = (context: ModuleContext): GObjectRefs => {
     if (context.namespace.name === "GObject") {
-        return { Value: "Value", signalLookup: "signalLookup" };
+        return { Value: "Value", signalEmitv: "signalEmitv", signalLookup: "signalLookup" };
     }
     const alias = context.addCrossNamespaceImport("GObject");
-    return { Value: `${alias}.Value`, signalLookup: `${alias}.signalLookup` };
+    return { Value: `${alias}.Value`, signalEmitv: `${alias}.signalEmitv`, signalLookup: `${alias}.signalLookup` };
 };
 
 /**
