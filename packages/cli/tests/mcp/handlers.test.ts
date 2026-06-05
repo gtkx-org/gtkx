@@ -120,10 +120,10 @@ describe("widget.query", () => {
             "widget.query",
             { queryType: "role", value: "BUTTON", options: { exact: true } },
             { app: makeApp() as never, registry },
-        )) as { widgets: Array<{ label: string | null }> };
+        )) as { widgets: Array<{ text: string | null }> };
 
         expect(findAllByRole).toHaveBeenCalledWith(expect.anything(), 1, { exact: true });
-        expect(result.widgets[0]?.label).toBe("OK");
+        expect(result.widgets[0]?.text).toBe("OK");
     });
 
     it("routes text/name/labelText through the matching testing helper", async () => {

@@ -96,7 +96,6 @@ describe("WidgetRegistry.serialize", () => {
         const [serializedChild] = result.children;
         expect(serializedChild?.type).toBe("GtkButton");
         expect(serializedChild?.text).toBe("OK");
-        expect(serializedChild?.label).toBe("OK");
     });
 
     it("falls back through getLabel, getText, getTitle in order when extracting text", () => {

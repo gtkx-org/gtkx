@@ -110,7 +110,6 @@ export class WidgetRegistry {
             type: widget.constructor.name,
             role: formatRole(widget.getAccessibleRole()),
             name: widget.getName() || null,
-            label: text,
             text,
             sensitive: widget.getSensitive(),
             visible: widget.getVisible(),

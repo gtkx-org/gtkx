@@ -51,8 +51,6 @@ export type SerializedWidget = {
     role: string;
     /** Widget name (test ID) */
     name: string | null;
-    /** Accessible label */
-    label: string | null;
     /** Text content */
     text: string | null;
     /** Whether the widget is sensitive (interactive) */
@@ -63,13 +61,6 @@ export type SerializedWidget = {
     cssClasses: string[];
     /** Child widgets */
     children: SerializedWidget[];
-    /** Widget bounds in window coordinates */
-    bounds?: {
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-    };
 };
 
 /**
