@@ -1,10 +1,9 @@
 /**
  * Hand-written `Gdk.RGBA` factory shorthand.
  *
- * The contract `.d.ts` declares a `static create` on `RGBA` that ts-for-gir
- * injects from its node-gtk override tables; it has no GIR backing. This module
- * re-exports the generated `RGBA` with that static implemented, keeping the FFI
- * runtime in agreement with the contract.
+ * `RGBA` gains a `static create` shorthand that has no GIR backing. This module
+ * implements that `create` and re-exports the GIR-generated `RGBA` augmented
+ * with it via `Object.assign`.
  */
 
 import { RGBA as GeneratedRGBA } from "@gtkx/gi/gdk/gdk.js";

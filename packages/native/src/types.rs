@@ -107,20 +107,18 @@ pub use void::VoidType;
 
 /// Lifecycle of a value crossing the FFI boundary.
 ///
-/// Mirrors node-gtk's three `ResourceOwnership` modes:
+/// One of three ownership modes:
 ///
 /// - [`Self::Full`] — caller takes ownership of the original pointer
 ///   (GIR `transfer full`). On drop the type-specific destructor releases it.
 /// - [`Self::Borrowed`] — the underlying value's lifetime is uncertain, so
 ///   the codec makes a defensive copy / reference (`g_boxed_copy`,
-///   `g_object_ref`, `g_strdup`) and owns the copy. Maps to node-gtk's
-///   `kCopy`.
+///   `g_object_ref`, `g_strdup`) and owns the copy.
 /// - [`Self::None`] — borrow the pointer with no copy and no destructor.
 ///   The caller is responsible for ensuring the wrapped value outlives the
 ///   JS handle. Used for GIR `transfer none` returns that point into
 ///   memory the parent object owns (e.g. `pango_layout_iter_get_run`),
-///   where copying would defeat in-place mutation. Maps to node-gtk's
-///   `kNone`.
+///   where copying would defeat in-place mutation.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Ownership {

@@ -3,9 +3,8 @@
  *
  * The GObject type system exposes a fixed set of fundamental `GType`
  * identifiers (`TYPE_INT`, `TYPE_STRING`, `TYPE_OBJECT`, ...). They have no
- * GIR backing — node-gtk synthesises them at runtime — so the gtkx FFI
- * resolves each one from `g_type_from_name` and re-exports it under the same
- * `TYPE_*` name the contract declares.
+ * GIR backing, so the gtkx FFI resolves each one at runtime from
+ * `g_type_from_name` and re-exports it under its `TYPE_*` name.
  */
 
 import { typeFromName } from "../gtype.js";

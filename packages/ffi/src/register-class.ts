@@ -64,7 +64,7 @@ type InterfaceVfuncBinding = {
  * the subclass whose camelCase name matches a vfunc on an ancestor's class
  * struct, or a vfunc of an interface the parent already implements, is
  * registered as the override implementation. A class vfunc takes precedence
- * when a method name matches both. Mirrors node-gtk's `registerClass`.
+ * when a method name matches both.
  *
  * @example
  * ```tsx
@@ -121,7 +121,7 @@ function resolveParentGType(klass: AnyClass): GType {
     return G_TYPE_INVALID;
 }
 
-const SKIP_PROTOTYPE_NAMES = new Set(["constructor", "_init"]);
+const SKIP_PROTOTYPE_NAMES = new Set(["constructor"]);
 
 function ownInstanceMethodNames(klass: AnyClass): string[] {
     const proto = (klass as { prototype?: object }).prototype;
@@ -152,7 +152,7 @@ function discoverClassVfuncs(klass: AnyClass): DiscoveredClassVfunc[] {
  * `self` for any instance vfunc — is bound as `this` and is NOT forwarded
  * positionally, so subclass authors receive only the remaining vfunc
  * arguments and can write `this.setLayoutManager(...)` exactly the way they
- * would in any other instance method. Matches the node-gtk convention.
+ * would in any other instance method.
  */
 function wrapVfunc(fn: VfuncFn, argTypes: RegisterClassVfuncDefinition["argTypes"]): VfuncFn {
     return ((...rawArgs: unknown[]) => {

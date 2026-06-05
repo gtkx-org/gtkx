@@ -2,7 +2,7 @@
  * Internal `GValue` marshalling surface.
  *
  * Converting a JavaScript value into a `GValue` — and back out — is a gtkx
- * runtime concern with no node-gtk counterpart. These functions back the
+ * runtime concern. These functions back the
  * signal-emission and property-access paths; they are consumed only by other
  * `packages/ffi` modules (and the generated bindings) and are not part of any
  * public namespace surface. They build on the hand-written {@link GValue}

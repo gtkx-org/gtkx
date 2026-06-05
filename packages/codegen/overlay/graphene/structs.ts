@@ -1,10 +1,9 @@
 /**
  * Hand-written `Graphene` struct factory shorthands.
  *
- * The contract `.d.ts` declares a `static create` on `Point`, `Rect`, and
- * `Size` that ts-for-gir injects from its node-gtk override tables; these have
- * no GIR backing. This module re-exports the generated structs with those
- * statics implemented, keeping the FFI runtime in agreement with the contract.
+ * The `Point`, `Rect`, and `Size` structs gain a `static create` shorthand
+ * that has no GIR backing. This module implements each `create` and re-exports
+ * the GIR-generated struct augmented with it via `Object.assign`.
  */
 
 import { Point as GeneratedPoint, Rect as GeneratedRect, Size as GeneratedSize } from "@gtkx/gi/graphene/graphene.js";
