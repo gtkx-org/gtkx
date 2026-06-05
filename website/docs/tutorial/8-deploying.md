@@ -125,7 +125,7 @@ Flatpak is the recommended format for Linux desktop applications. The manifest b
 # flatpak/com.gtkx.tutorial.yaml
 app-id: com.gtkx.tutorial
 runtime: org.gnome.Platform
-runtime-version: "48"
+runtime-version: "50"
 sdk: org.gnome.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.node22

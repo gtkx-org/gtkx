@@ -75,7 +75,7 @@ npx gtkx dev src/playground.tsx
 - **Single-file output** — All dependencies inlined into one minified ESM bundle
 - **Vite-powered** — Uses Vite SSR mode for Node.js-targeted bundling
 
-Static assets (images, SVGs, etc.) should be handled via Vite imports rather than `path.resolve` / `import.meta.dirname`.
+Static assets (images, SVGs, etc.) should be handled via Vite imports instead of `path.resolve` / `import.meta.dirname`.
 
 ### Generated npm Scripts
 
@@ -109,7 +109,7 @@ import { build, createApp } from "@gtkx/cli";
 // Create a new project
 await createApp({
     name: "my-app",
-    appId: "com.example.myapp",
+    applicationId: "com.example.myapp",
     packageManager: "pnpm",
     testing: "vitest",
 });
@@ -118,4 +118,4 @@ await createApp({
 await build({ entry: "./src/index.tsx", vite: { root: process.cwd() } });
 ```
 
-The dev server runs as a forked worker; invoke it via the `gtkx dev` CLI rather than constructing it programmatically.
+The dev server runs as a forked worker; invoke it via the `gtkx dev` CLI instead of constructing it programmatically.

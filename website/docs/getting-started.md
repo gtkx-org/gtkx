@@ -35,7 +35,7 @@ A new GTKX project has this structure:
 my-app/
 ├── src/
 │ ├── app.tsx # Main application component
-│ └── index.tsx # Default-export entry used by `gtkx dev` and `gtkx build`
+│ └── index.tsx # Entry that mounts the app, used by `gtkx dev` and `gtkx build`
 ├── tests/
 │ └── app.test.tsx # Example test
 ├── gtkx.config.ts
@@ -45,32 +45,50 @@ my-app/
 
 ### Key Files
 
-**`src/app.tsx`** — The default app component (just an example, can be removed or renamed):
+**`src/app.tsx`** — The default app component (just an example, can be removed or renamed). It is provided as a named export `App`:
 
 ```tsx
-import { useState } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, quit } from "@gtkx/react";
+import { useState } from "react";
 
-export default function App() {
+export const App = () => {
     const [count, setCount] = useState(0);
 
     return (
         <GtkApplicationWindow title="My App" defaultWidth={400} defaultHeight={300} onClose={quit}>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginTop={40} marginStart={40} marginEnd={40}>
-                Welcome to GTKX!
-                <GtkLabel label={`Count: ${count}`} />
-                <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
+            <GtkBox
+                orientation={Gtk.Orientation.VERTICAL}
+                spacing={20}
+                marginTop={40}
+                marginBottom={40}
+                marginStart={40}
+                marginEnd={40}
+                valign={Gtk.Align.CENTER}
+                halign={Gtk.Align.CENTER}
+            >
+                <GtkLabel label="Welcome to GTKX!" cssClasses={["title-1"]} />
+                <GtkLabel label={`Count: ${count}`} cssClasses={["title-2"]} />
+                <GtkButton
+                    label="Increment"
+                    onClicked={() => setCount((c) => c + 1)}
+                    cssClasses={["suggested-action", "pill"]}
+                />
             </GtkBox>
         </GtkApplicationWindow>
     );
-}
+};
 ```
 
-**`src/index.tsx`** — Application entry consumed by both `gtkx dev` and `gtkx build`:
+**`src/index.tsx`** — Application entry consumed by both `gtkx dev` and `gtkx build`. It constructs the `Gtk.Application` with the `applicationId` from `import.meta.env.GTKX_APPLICATION_ID` and renders `App` into it:
 
 ```tsx
-export { default } from "./app.js";
+import * as Gtk from "@gtkx/gi/gtk";
+import { render } from "@gtkx/react";
+import { App } from "./app.js";
+
+const app = new Gtk.Application({ applicationId: import.meta.env.GTKX_APPLICATION_ID });
+render(<App />, app);
 ```
 
 **`gtkx.config.ts`** — Project configuration including the application identifier and optional flags:
@@ -79,7 +97,7 @@ export { default } from "./app.js";
 import { defineConfig } from "@gtkx/cli";
 
 export default defineConfig({
-    appId: "com.example.myapp",
+    applicationId: "com.example.myapp",
     libraries: ["Gtk-4.0", "Adw-1"],
 });
 ```

@@ -134,11 +134,11 @@ Search existing issues before creating new ones to avoid duplicates.
 
 ### Updating Documentation
 
-The documentation site lives in `website/` and uses Docusaurus:
+The documentation site lives in `website/` and uses VitePress:
 
 ```bash
 pnpm docs # Build documentation
-cd website && pnpm start # Local preview
+cd website && pnpm dev # Local preview
 ```
 
 ### API Documentation

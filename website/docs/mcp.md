@@ -48,20 +48,20 @@ List all connected GTKX applications.
 
 Get the complete widget hierarchy for a connected app.
 
-| Parameter | Type   | Required | Description                                                 |
-| --------- | ------ | -------- | ----------------------------------------------------------- |
-| `appId`   | string | No       | App ID to query. Uses first connected app if not specified. |
+| Parameter         | Type   | Required | Description                                                 |
+| ----------------- | ------ | -------- | ----------------------------------------------------------- |
+| `applicationId`   | string | No       | App ID to query. Uses first connected app if not specified. |
 
 **Returns:** Tree structure with all widgets, their IDs, types, roles, and properties.
 
 ### `gtkx_query_widgets`
 
-Find widgets by role, text, testId, or label text.
+Find widgets by role, text, name, or label text.
 
 | Parameter         | Type             | Required | Description                                                  |
 | ----------------- | ---------------- | -------- | ------------------------------------------------------------ |
-| `appId`           | string           | No       | App ID to query                                              |
-| `by`              | string           | Yes      | Query type: `"role"`, `"text"`, `"testId"`, or `"labelText"` |
+| `applicationId`   | string           | No       | App ID to query                                              |
+| `by`              | string           | Yes      | Query type: `"role"`, `"text"`, `"name"`, or `"labelText"`   |
 | `value`           | string \| number | Yes      | Value to search for                                          |
 | `options.name`    | string           | No       | Widget name filter                                           |
 | `options.exact`   | boolean          | No       | Require exact match                                          |
@@ -73,10 +73,10 @@ Find widgets by role, text, testId, or label text.
 
 Get all properties of a specific widget.
 
-| Parameter  | Type   | Required | Description          |
-| ---------- | ------ | -------- | -------------------- |
-| `appId`    | string | No       | App ID to query      |
-| `widgetId` | string | Yes      | Widget ID to inspect |
+| Parameter       | Type   | Required | Description          |
+| --------------- | ------ | -------- | -------------------- |
+| `applicationId` | string | No       | App ID to query      |
+| `widgetId`      | string | Yes      | Widget ID to inspect |
 
 **Returns:** Widget properties including type, role, text, sensitivity, visibility, and CSS classes.
 
@@ -84,19 +84,19 @@ Get all properties of a specific widget.
 
 Click a widget. Works with buttons, checkboxes, and other interactive widgets.
 
-| Parameter  | Type   | Required | Description        |
-| ---------- | ------ | -------- | ------------------ |
-| `appId`    | string | No       | App ID to query    |
-| `widgetId` | string | Yes      | Widget ID to click |
+| Parameter       | Type   | Required | Description        |
+| --------------- | ------ | -------- | ------------------ |
+| `applicationId` | string | No       | App ID to query    |
+| `widgetId`      | string | Yes      | Widget ID to click |
 
 ### `gtkx_type`
 
 Type text into an editable widget like Entry or TextView.
 
-| Parameter  | Type    | Required | Description                       |
-| ---------- | ------- | -------- | --------------------------------- |
-| `appId`    | string  | No       | App ID to query                   |
-| `widgetId` | string  | Yes      | Widget ID to type into            |
+| Parameter       | Type    | Required | Description                       |
+| --------------- | ------- | -------- | --------------------------------- |
+| `applicationId` | string  | No       | App ID to query                   |
+| `widgetId`      | string  | Yes      | Widget ID to type into            |
 | `text`     | string  | Yes      | Text to type                      |
 | `clear`    | boolean | No       | Clear existing text before typing |
 
@@ -104,10 +104,10 @@ Type text into an editable widget like Entry or TextView.
 
 Emit a GTK signal on a widget for custom interactions.
 
-| Parameter  | Type   | Required | Description                                       |
-| ---------- | ------ | -------- | ------------------------------------------------- |
-| `appId`    | string | No       | App ID to query                                   |
-| `widgetId` | string | Yes      | Widget ID to emit event on                        |
+| Parameter       | Type   | Required | Description                                       |
+| --------------- | ------ | -------- | ------------------------------------------------- |
+| `applicationId` | string | No       | App ID to query                                   |
+| `widgetId`      | string | Yes      | Widget ID to emit event on                        |
 | `signal`   | string | Yes      | GTK signal name (e.g., `"activate"`, `"clicked"`) |
 | `args`     | array  | No       | Arguments to pass to the signal                   |
 
@@ -115,10 +115,10 @@ Emit a GTK signal on a widget for custom interactions.
 
 Capture a screenshot of a window.
 
-| Parameter  | Type   | Required | Description                                               |
-| ---------- | ------ | -------- | --------------------------------------------------------- |
-| `appId`    | string | No       | App ID to query                                           |
-| `windowId` | string | No       | Window ID to capture. Uses first window if not specified. |
+| Parameter       | Type   | Required | Description                                               |
+| --------------- | ------ | -------- | --------------------------------------------------------- |
+| `applicationId` | string | No       | App ID to query                                           |
+| `windowId`      | string | No       | Window ID to capture. Uses first window if not specified. |
 
 **Returns:** Base64-encoded PNG image data.
 
