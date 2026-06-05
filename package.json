@@ -26,7 +26,7 @@
         "@types/react": "^19.2.16",
         "@vitest/coverage-v8": "^4.1.8",
         "dependency-cruiser": "^17.4.3",
-        "knip": "^6.15.0",
+        "knip": "^6.16.0",
         "react": "^19.2.7",
         "tsx": "^4.22.4",
         "turbo": "^2.9.16",
