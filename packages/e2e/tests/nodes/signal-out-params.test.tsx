@@ -1,5 +1,6 @@
 import { getBoxed, inoutBoxedFromFfi, outBoxedFromFfi, t } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/gi/gdk";
+import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import * as GtkSource from "@gtkx/gi/gtksource";
 import { GtkBox, GtkLabel, GtkOverlay, GtkSourceView, GtkSpinButton, GtkText } from "@gtkx/react";
@@ -212,5 +213,56 @@ describe("signal emit() - boxed inout-parameter (GtkSource.View::push-snippet)",
 
         expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false)).toBe("abc");
         expect(location.getOffset()).toBe(3);
+    });
+});
+
+describe("signal connect()/emit() - notify::<property> detailed signal", () => {
+    it("fires a notify::<property> handler only when that property changes", async () => {
+        const labelRef = createRef<Gtk.Label>();
+
+        await render(<GtkLabel ref={labelRef} label="initial" xalign={0} />);
+
+        const label = labelRef.current as Gtk.Label;
+        const onLabelNotify = vi.fn();
+        label.connect("notify::label", onLabelNotify);
+
+        label.setLabel("changed");
+        await waitFor(() => {
+            expect(onLabelNotify).toHaveBeenCalledTimes(1);
+        });
+
+        onLabelNotify.mockClear();
+        label.setXalign(1);
+        expect(onLabelNotify).not.toHaveBeenCalled();
+    });
+
+    it("routes a typed emit('notify::<property>', pspec) to the detailed handler", async () => {
+        const labelRef = createRef<Gtk.Label>();
+
+        await render(<GtkLabel ref={labelRef} label="initial" />);
+
+        const label = labelRef.current as Gtk.Label;
+        let capturedPspec: GObject.ParamSpec | undefined;
+        label.connect("notify::label", (pspec) => {
+            capturedPspec = pspec;
+        });
+
+        label.setLabel("changed");
+        await waitFor(() => {
+            expect(capturedPspec).toBeDefined();
+        });
+
+        const pspec = capturedPspec;
+        if (pspec === undefined) throw new Error("expected the notify handler to capture a ParamSpec");
+
+        const onLabelEmit = vi.fn();
+        const onOtherEmit = vi.fn();
+        label.connect("notify::label", onLabelEmit);
+        label.connect("notify::xalign", onOtherEmit);
+
+        label.emit("notify::label", pspec);
+
+        expect(onLabelEmit).toHaveBeenCalledTimes(1);
+        expect(onOtherEmit).not.toHaveBeenCalled();
     });
 });

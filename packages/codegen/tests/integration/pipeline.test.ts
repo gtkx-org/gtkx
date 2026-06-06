@@ -81,6 +81,38 @@ describe("codegen return-value convention", () => {
     });
 });
 
+describe("codegen notify detail signals", () => {
+    it("keys each introduced property's notify detail off GObject.Object's notify member", () => {
+        const gobject = ffiModules.find(({ path }) => path === "gobject/gobject.ts");
+        const source = gobject?.source ?? "";
+        expect(source).toContain('"notify::source-property": ObjectSignalHandlers["notify"];');
+        expect(source).toContain('"notify::source-property": ObjectSignalEmit["notify"];');
+    });
+
+    it("qualifies the notify member reference across namespaces", () => {
+        const gtk = ffiModules.find(({ path }) => path === "gtk/gtk.ts");
+        const source = gtk?.source ?? "";
+        expect(source).toContain('"notify::visible": GObject.ObjectSignalHandlers["notify"];');
+        expect(source).toContain('"notify::visible": GObject.ObjectSignalEmit["notify"];');
+    });
+
+    it("inherits a property's notify detail through the parent map rather than re-listing it", () => {
+        const gtk = ffiModules.find(({ path }) => path === "gtk/gtk.ts");
+        const source = gtk?.source ?? "";
+        const buttonHandlers = source.slice(source.indexOf("export interface ButtonSignalHandlers"));
+        const buttonBody = buttonHandlers.slice(0, buttonHandlers.indexOf("}"));
+        expect(buttonBody).not.toContain('"notify::visible"');
+    });
+
+    it("gives a class that introduces properties but no signals its own typed overloads", () => {
+        const gobject = ffiModules.find(({ path }) => path === "gobject/gobject.ts");
+        const source = gobject?.source ?? "";
+        expect(source).toContain("export interface Binding {");
+        expect(source).toContain("connect<K extends keyof BindingSignalHandlers>");
+        expect(source).toContain("emit<K extends keyof BindingSignalEmit>");
+    });
+});
+
 describe("codegen React pipeline", () => {
     it("emits the jsx, compounds, and internal files", () => {
         const paths = [...reactPipeline.files.keys()].sort((a, b) => a.localeCompare(b));

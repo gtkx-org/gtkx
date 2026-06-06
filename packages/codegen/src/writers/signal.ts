@@ -4,11 +4,12 @@ import { indent } from "../dsl/emit.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirParameter } from "../gir/parameter.js";
 import { isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
+import type { GirProperty } from "../gir/property.js";
 import { splitQualifiedName } from "../gir/qualified-name.js";
 import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirSignal } from "../gir/signal.js";
 import type { GirTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
-import { forEachAncestor, resolveImplementedInterface } from "./inheritance.js";
+import { collectInterfaceProperties, forEachAncestor, resolveImplementedInterface } from "./inheritance.js";
 import { planTrampolineArgs, renderTupleWriteback } from "./method.js";
 import { isBoxedCallerOut, isBoxedInout, isHandlePassing, renderHandlerParameters } from "./param-classify.js";
 import { renderTsType } from "./ts-type.js";
@@ -87,11 +88,15 @@ const SIGNAL_EMIT_SUFFIX = "SignalEmit";
  * Renders the module-level declarations that type a class's signal-connection
  * surface: a `<Class>SignalHandlers` map keyed by signal name, a parallel
  * `<Class>SignalEmit` map giving each signal's `emit` arguments and result, and —
- * when the class introduces signals of its own — a declaration-merged
+ * when the class introduces signals or properties of its own — a declaration-merged
  * `interface <Class>` whose `connect`/`on`/`once`/`off` overloads narrow the
  * handler off the handler map and whose `emit` overload narrows the arguments and
- * result off the emit map, falling back to the untyped `string` signature for
- * dynamic and detailed (`"notify::prop"`) names.
+ * result off the emit map. Both maps additionally carry a `notify::<property>` key per
+ * introduced property — valued by the `notify` member of `GObject.Object`'s map — so a
+ * property's change notification is typed like any other signal; the untyped `string`
+ * signature still covers dynamic and unknown detail names. A type introducing properties
+ * but no signals gains its own interface for the same reason: the parent's overloads are
+ * pinned to the parent's map and cannot see the child's added keys.
  *
  * `emit` needs its own map because a caller-allocated out-parameter is a handler
  * argument (the handler fills it in place) but an `emit` result (the runtime
@@ -119,7 +124,10 @@ export const renderSignalDeclarations = (
         renderSignalMap({ ...base, suffix: SIGNAL_HANDLERS_SUFFIX, renderEntry: renderSignalHandlerType }),
         renderSignalMap({ ...base, suffix: SIGNAL_EMIT_SUFFIX, renderEntry: renderSignalEmitEntry }),
     ];
-    if (klass.glibGetType !== undefined && collectClassSignals(context, klass).length > 0) {
+    if (
+        klass.glibGetType !== undefined &&
+        (collectClassSignals(context, klass).length > 0 || collectNotifyDetails(context, klass).length > 0)
+    ) {
         const isRootObject = context.namespace.name === "GObject" && klass.name === "Object";
         declarations.push(renderSignalConnectInterface(className, isRootObject));
     }
@@ -146,11 +154,29 @@ const renderSignalMap = (spec: SignalMapSpec): string => {
     const { context, klass, className, parentlessExtendsObject, suffix, renderEntry } = spec;
     const extendsRef = signalMapParentRef(context, klass, parentlessExtendsObject, suffix);
     const extendsClause = extendsRef === undefined ? "" : ` extends ${extendsRef}`;
-    const entries = collectClassSignals(context, klass).map(
+    const signalEntries = collectClassSignals(context, klass).map(
         (collected) => `${quote(collected.signal.name)}: ${renderEntry(context, collected)};`,
     );
+    const entries = [...signalEntries, ...renderNotifyDetailEntries(context, klass, suffix)];
     const body = entries.length === 0 ? "" : `\n${indent(entries.join("\n"), 1)}\n`;
     return `export interface ${className}${suffix}${extendsClause} {${body}}`;
+};
+
+/**
+ * Renders the `notify::<property>` detail entries for a class's signal map: one
+ * entry per property the class introduces, keyed by the canonical kebab-case
+ * detailed name and valued by `GObject.Object`'s `notify` member of the same
+ * suffix — the handler type in a `SignalHandlers` map, the `{ args; result }`
+ * shape in a `SignalEmit` map. Returns an empty array when the class introduces
+ * no properties.
+ *
+ * @param context - The module context
+ * @param klass - The class whose introduced properties seed the detail entries
+ * @param suffix - The signal-map suffix (`SignalHandlers` or `SignalEmit`)
+ */
+const renderNotifyDetailEntries = (context: ModuleContext, klass: GirClass, suffix: string): readonly string[] => {
+    const notifyValue = `${gobjectObjectMapRef(context, suffix)}["notify"]`;
+    return collectNotifyDetails(context, klass).map((name) => `${quote(`notify::${name}`)}: ${notifyValue};`);
 };
 
 /**
@@ -171,6 +197,19 @@ const signalMapParentRef = (
         return `${context.addCrossNamespaceImport(namespaceName)}.${name}`;
     }
     if (!parentlessExtendsObject) return undefined;
+    return gobjectObjectMapRef(context, suffix);
+};
+
+/**
+ * Resolves the reference to `GObject.Object`'s signal map of the given suffix:
+ * the bare local name within the `GObject` namespace, or the cross-namespace
+ * `<GObjectAlias>.Object<Suffix>` elsewhere. The `notify::<prop>` detail entries
+ * reuse this map's `notify` member as their value type.
+ *
+ * @param context - The module context
+ * @param suffix - The signal-map suffix (`SignalHandlers` or `SignalEmit`)
+ */
+const gobjectObjectMapRef = (context: ModuleContext, suffix: string): string => {
     if (context.namespace.name === "GObject") return `Object${suffix}`;
     return `${context.addCrossNamespaceImport("GObject")}.Object${suffix}`;
 };
@@ -515,17 +554,64 @@ const collectClassSignals = (context: ModuleContext, klass: GirClass): readonly 
     return result;
 };
 
-const collectInheritedSignalNames = (context: ModuleContext, klass: GirClass): ReadonlySet<string> => {
+/** A class member carrying a GIR `name` — the dedup key for inheritance flattening. */
+type NamedMember = { readonly name: string };
+
+/**
+ * Collects the camelCased names of a class's inherited members of one kind:
+ * those declared on any ancestor or flattened from an ancestor-implemented
+ * interface. `select` picks the member list — signals or properties — off each
+ * resolved class. Shared by the signal and `notify`-detail collectors so each
+ * type's map lists only the members it introduces while `extends` resolves the
+ * inherited remainder.
+ *
+ * @param context - The module context
+ * @param klass - The class whose inherited member names to collect
+ * @param select - Picks the member list off a resolved class
+ */
+const collectInheritedMemberNames = (
+    context: ModuleContext,
+    klass: GirClass,
+    select: (source: GirClass) => readonly NamedMember[],
+): ReadonlySet<string> => {
     const names = new Set<string>();
     forEachAncestor(context, klass, (ancestor) => {
-        for (const signal of ancestor.klass.signals) names.add(toCamelCase(signal.name));
+        for (const member of select(ancestor.klass)) names.add(toCamelCase(member.name));
         for (const implementName of ancestor.klass.implements) {
             const iface = resolveImplementedInterface(context, implementName, ancestor.namespaceName);
             if (iface === undefined) continue;
-            for (const signal of iface.klass.signals) names.add(toCamelCase(signal.name));
+            for (const member of select(iface.klass)) names.add(toCamelCase(member.name));
         }
     });
     return names;
+};
+
+const collectInheritedSignalNames = (context: ModuleContext, klass: GirClass): ReadonlySet<string> =>
+    collectInheritedMemberNames(context, klass, (source) => source.signals);
+
+/**
+ * Collects the kebab-case names of the properties a class introduces — its own
+ * declared properties and those flattened from directly-implemented interfaces,
+ * minus any inherited from an ancestor — whose `notify::<name>` detailed signal
+ * the class's connection surface should type. Mirrors {@link collectClassSignals}
+ * so inherited property details resolve through the parent map's `extends` chain.
+ *
+ * @param context - The module context
+ * @param klass - The class whose introduced property names to collect
+ */
+const collectNotifyDetails = (context: ModuleContext, klass: GirClass): readonly string[] => {
+    const inherited = collectInheritedMemberNames(context, klass, (source) => source.properties);
+    const seen = new Set<string>();
+    const result: string[] = [];
+    const consider = (property: GirProperty): void => {
+        const name = toCamelCase(property.name);
+        if (inherited.has(name) || seen.has(name)) return;
+        seen.add(name);
+        result.push(property.name);
+    };
+    for (const property of klass.properties) consider(property);
+    for (const property of collectInterfaceProperties(context, klass)) consider(property);
+    return result;
 };
 
 const renderInvokeClosure = (
