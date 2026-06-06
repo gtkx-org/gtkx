@@ -1,6 +1,5 @@
 import { getHandle, LIBGOBJECT, t } from "@gtkx/ffi";
 import { Object as GObject } from "@gtkx/gi/gobject/gobject.js";
-import { call } from "@gtkx/native";
 
 declare module "@gtkx/gi/gobject/gobject.js" {
     interface Object {
@@ -98,16 +97,15 @@ const untrackListener = (instance: GObject, signal: string, handler: Listener): 
     if (byHandler?.size === 0) bySignal?.delete(signal);
 };
 
+const g_signal_handler_disconnect = t.fn(
+    LIBGOBJECT,
+    "g_signal_handler_disconnect",
+    [{ type: GOBJECT_BORROWED }, { type: t.uint64 }],
+    t.void,
+);
+
 GObject.prototype.disconnect = function disconnect(handlerId: number): void {
-    call(
-        LIBGOBJECT,
-        "g_signal_handler_disconnect",
-        [
-            { type: GOBJECT_BORROWED, value: getHandle(this) },
-            { type: t.uint64, value: handlerId },
-        ],
-        t.void,
-    );
+    g_signal_handler_disconnect(getHandle(this), handlerId);
 };
 
 function onImpl(this: GObjectWithConnect, sigName: string, callback: Listener, after?: boolean): GObject {

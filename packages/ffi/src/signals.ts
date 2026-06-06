@@ -30,6 +30,13 @@ export const signalBaseName = (signal: string): string => {
     return detailIndex === -1 ? signal : signal.slice(0, detailIndex);
 };
 
+const g_quark_from_string = t.fn(
+    "libgobject-2.0.so.0,libglib-2.0.so.0",
+    "g_quark_from_string",
+    [{ type: t.string("borrowed") }],
+    t.uint32,
+);
+
 /**
  * Resolves the `GQuark` of a signal name's `::detail` suffix, for forwarding to
  * `g_signal_emitv`. A name without a detail yields `0` — the unrestricted detail
@@ -44,12 +51,7 @@ export const signalBaseName = (signal: string): string => {
 export function signalDetailQuark(signal: string): number {
     const detailIndex = signal.indexOf("::");
     if (detailIndex === -1) return 0;
-    return call(
-        "libgobject-2.0.so.0,libglib-2.0.so.0",
-        "g_quark_from_string",
-        [{ type: t.string("borrowed"), value: signal.slice(detailIndex + 2) }],
-        t.uint32,
-    ) as number;
+    return g_quark_from_string(signal.slice(detailIndex + 2)) as number;
 }
 
 /**

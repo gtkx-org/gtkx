@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import "@gtkx/gi/gobject";
 import { t, valueFromFfi, valueFromObject, valueGetType, valueToJS } from "@gtkx/ffi";
 import { call } from "@gtkx/native";
+import { emptyValueFromFfi } from "../../src/gobject/gvalue.js";
 
 const callGetType = (lib: string, fn: string): GType => {
     const result = call(lib, fn, [], { type: "uint64" });
@@ -264,5 +265,73 @@ describe("valueFromFfi — arrays and errors", () => {
 
     it("throws for unsupported FFI types", () => {
         expect(() => valueFromFfi({ type: "unichar" }, 0)).toThrow(/Unsupported FFI type for GValue conversion/);
+    });
+});
+
+const gtypeOfEmpty = (ffi: Parameters<typeof emptyValueFromFfi>[0]): GType => valueGetType(emptyValueFromFfi(ffi));
+const gdkRgbaFfi = {
+    type: "boxed",
+    ownership: "borrowed",
+    innerType: "GdkRGBA",
+    library: "libgtk-4.so.1",
+    getTypeFn: "gdk_rgba_get_type",
+} as const;
+const variantFfi = t.fundamental("libgobject-2.0.so.0,libglib-2.0.so.0", "g_variant_ref", "g_variant_unref", {
+    ownership: "borrowed",
+    typeName: "GVariant",
+});
+const strvFfi = {
+    type: "array",
+    kind: "array",
+    ownership: "borrowed",
+    itemType: { type: "string", ownership: "borrowed" },
+} as const;
+
+describe("emptyValueFromFfi — GType resolution from an FFI descriptor", () => {
+    it("resolves primitive descriptors to their fundamental GType", () => {
+        expect(gtypeOfEmpty({ type: "boolean" })).toBe(Type.BOOLEAN);
+        expect(gtypeOfEmpty({ type: "string", ownership: "borrowed" })).toBe(Type.STRING);
+        expect(gtypeOfEmpty({ type: "int8" })).toBe(Type.INT);
+        expect(gtypeOfEmpty({ type: "int16" })).toBe(Type.INT);
+        expect(gtypeOfEmpty({ type: "int32" })).toBe(Type.INT);
+        expect(gtypeOfEmpty({ type: "uint8" })).toBe(Type.UINT);
+        expect(gtypeOfEmpty({ type: "uint16" })).toBe(Type.UINT);
+        expect(gtypeOfEmpty({ type: "uint32" })).toBe(Type.UINT);
+        expect(gtypeOfEmpty({ type: "int64" })).toBe(Type.INT64);
+        expect(gtypeOfEmpty({ type: "uint64" })).toBe(Type.UINT64);
+        expect(gtypeOfEmpty({ type: "float32" })).toBe(Type.FLOAT);
+        expect(gtypeOfEmpty({ type: "float64" })).toBe(Type.DOUBLE);
+        expect(gtypeOfEmpty({ type: "gobject", ownership: "borrowed" })).toBe(Type.OBJECT);
+    });
+
+    it("resolves enum and flags descriptors through their get-type", () => {
+        const align = {
+            type: "enum",
+            library: "libgtk-4.so.1",
+            getTypeFn: "gtk_align_get_type",
+            signed: false,
+        } as const;
+        const flags = {
+            type: "flags",
+            library: "libgobject-2.0.so.0",
+            getTypeFn: "g_binding_flags_get_type",
+            signed: false,
+        } as const;
+        expect(gtypeOfEmpty(align)).toBe(callGetType("libgtk-4.so.1", "gtk_align_get_type"));
+        expect(gtypeOfEmpty(flags)).toBe(callGetType("libgobject-2.0.so.0", "g_binding_flags_get_type"));
+    });
+
+    it("resolves boxed and variant-fundamental descriptors", () => {
+        expect(gtypeOfEmpty(gdkRgbaFfi)).toBe(gdkRgbaGType());
+        expect(gtypeOfEmpty(variantFfi)).toBe(Type.VARIANT);
+    });
+
+    it("resolves a string-array descriptor to GStrv", () => {
+        expect(gtypeOfEmpty(strvFfi)).toBe(typeFromName("GStrv"));
+    });
+
+    it("throws for unsupported descriptors", () => {
+        expect(() => emptyValueFromFfi({ ...strvFfi, kind: "glist" })).toThrow(/unsupported array type/);
+        expect(() => emptyValueFromFfi({ type: "unichar" })).toThrow(/unsupported FFI type/);
     });
 });

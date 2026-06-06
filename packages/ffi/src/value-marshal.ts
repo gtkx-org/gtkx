@@ -30,7 +30,7 @@ import { GValue, setGValuePointer } from "./gobject/gvalue-native.js";
 import { Type } from "./gobject/types.js";
 import { type GType, GVALUE_BORROWED, LIBGOBJECT, typeFundamental, typeName } from "./gtype.js";
 import { getHandle } from "./handles.js";
-import { alloc, call, read, t, write } from "./native.js";
+import { alloc, read, t, write } from "./native.js";
 
 export { inoutBoxedFromFfi, outBoxedFromFfi, valueFromObject } from "./gobject/gvalue.js";
 export { valueFromFfi };
@@ -133,22 +133,14 @@ export function valueToJS(value: GValueReader): unknown {
     throw new Error(`Unsupported GType for valueToJS: ${typeName(gtype) ?? String(gtype)}`);
 }
 
-/**
- * Dispatches a `g_object_{get,set}_property` call with a borrowed receiver, the
- * property name, and a borrowed `GValue`.
- */
-const dispatchPropertyCall = (fnName: string, obj: object, propertyName: string, value: GValue): void => {
-    call(
-        LIBGOBJECT,
-        fnName,
-        [
-            { type: t.object("borrowed"), value: getHandle(obj) },
-            { type: t.string("borrowed"), value: propertyName },
-            { type: GVALUE_BORROWED, value: getHandle(value) },
-        ],
-        t.void,
-    );
-};
+const PROPERTY_CALL_ARGS = [
+    { type: t.object("borrowed") },
+    { type: t.string("borrowed") },
+    { type: GVALUE_BORROWED },
+] as const;
+
+const g_object_get_property = t.fn(LIBGOBJECT, "g_object_get_property", [...PROPERTY_CALL_ARGS], t.void);
+const g_object_set_property = t.fn(LIBGOBJECT, "g_object_set_property", [...PROPERTY_CALL_ARGS], t.void);
 
 /**
  * Reads a GObject property into a plain JavaScript value through a
@@ -165,7 +157,7 @@ const dispatchPropertyCall = (fnName: string, obj: object, propertyName: string,
  */
 export function getObjectProperty(obj: object, propertyName: string, ffiType: FfiType): unknown {
     const value = emptyValueFromFfi(ffiType);
-    dispatchPropertyCall("g_object_get_property", obj, propertyName, value);
+    g_object_get_property(getHandle(obj), propertyName, getHandle(value));
     return valueToJS(value);
 }
 
@@ -184,5 +176,5 @@ export function getObjectProperty(obj: object, propertyName: string, ffiType: Ff
  * @param jsValue - The JS value to set.
  */
 export function setObjectProperty(obj: object, propertyName: string, ffiType: FfiType, jsValue: unknown): void {
-    dispatchPropertyCall("g_object_set_property", obj, propertyName, valueFromFfi(ffiType, jsValue));
+    g_object_set_property(getHandle(obj), propertyName, getHandle(valueFromFfi(ffiType, jsValue)));
 }
