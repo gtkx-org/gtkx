@@ -89,6 +89,9 @@ importers:
       '@gtkx/cli':
         specifier: workspace:*
         version: link:../../packages/cli
+      '@gtkx/native':
+        specifier: workspace:*
+        version: link:../../packages/native
       '@gtkx/testing':
         specifier: workspace:*
         version: link:../../packages/testing
@@ -313,6 +316,9 @@ importers:
       '@gtkx/ffi':
         specifier: workspace:*
         version: link:../ffi
+      '@gtkx/native':
+        specifier: workspace:*
+        version: link:../native
       '@gtkx/utils':
         specifier: workspace:*
         version: link:../utils

@@ -1,5 +1,5 @@
-import { freezeDispatch, unfreezeDispatch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/gi/gtk";
+import { freeze, unfreeze } from "@gtkx/native";
 import { act, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { shadertoyDemo } from "../../../src/demos/opengl/shadertoy.js";
@@ -9,13 +9,13 @@ vi.setConfig({ testTimeout: 30000 });
 
 const readBufferText = (textView: Gtk.TextView): string => {
     const buffer = textView.getBuffer();
-    freezeDispatch();
+    freeze();
     try {
         const start = buffer.getStartIter();
         const end = buffer.getEndIter();
         return buffer.getText(start, end, false) ?? "";
     } finally {
-        unfreezeDispatch();
+        unfreeze();
     }
 };
 

@@ -1,30 +1,5 @@
-import { freeze as nativeFreeze, stop as nativeStop, unfreeze as nativeUnfreeze } from "@gtkx/native";
+import { stop as nativeStop } from "@gtkx/native";
 import { type GracefulShutdownHandle, installGracefulShutdown } from "@gtkx/utils";
-
-/**
- * Suspends GLib-thread dispatch for the span of a reconciler commit.
- *
- * The React reconciler brackets a batch of mutations with {@link freezeDispatch}
- * and {@link unfreezeDispatch} so the GLib frame clock cannot fire between
- * individual mutations and observe a half-applied tree. Nested pairs are
- * reference-counted by the native mailbox; only the outermost pair starts and
- * stops the freeze loop. This is the sanctioned commit-bracket helper, so the
- * reconciler never names a `@gtkx/native` primitive directly.
- *
- * @see {@link unfreezeDispatch}
- */
-export const freezeDispatch = (): void => {
-    nativeFreeze();
-};
-
-/**
- * Resumes GLib-thread dispatch suspended by {@link freezeDispatch}.
- *
- * @see {@link freezeDispatch}
- */
-export const unfreezeDispatch = (): void => {
-    nativeUnfreeze();
-};
 
 const KEEP_ALIVE_INTERVAL = 2147483647;
 

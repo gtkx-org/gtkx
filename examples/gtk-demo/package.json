@@ -21,6 +21,7 @@
     },
     "devDependencies": {
         "@gtkx/cli": "workspace:*",
+        "@gtkx/native": "workspace:*",
         "@gtkx/testing": "workspace:*",
         "@vitest/coverage-v8": "^4.1.8",
         "vite": "^8.0.16",

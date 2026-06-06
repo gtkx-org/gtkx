@@ -5,12 +5,13 @@
  * expressed through package.json dependencies alone.
  *
  * Rule summary:
- *   1. `@gtkx/native` is private to `@gtkx/ffi`. The only other package
- *      permitted to reference it is `@gtkx/codegen`: the generator logic via
- *      `import type { ... }` so it can emit binding signatures without dragging
- *      the native module into its runtime graph, and the augment overlay with
- *      runtime imports, since it is hand-written `@gtkx/gi` code that reaches
- *      the native transport layer directly.
+ *   1. `@gtkx/native` is the low-level transport layer. `@gtkx/ffi` is its
+ *      primary consumer; `@gtkx/react` may also import it to bracket reconciler
+ *      commits with `freeze`/`unfreeze`. `@gtkx/codegen` may reference it too:
+ *      the generator logic via `import type { ... }` so it can emit binding
+ *      signatures without dragging the native module into its runtime graph,
+ *      and the augment overlay with runtime imports, since it is hand-written
+ *      `@gtkx/gi` code that reaches the native transport layer directly.
  *   2. `@gtkx/mcp` is near-leaf: it may only depend on `@gtkx/utils` (which
  *      is itself a true leaf — no `@gtkx/*` deps). Any other `@gtkx/*`
  *      import would couple the MCP server to GTK runtime concerns.
@@ -40,9 +41,10 @@ module.exports = {
             severity: "error",
             comment:
                 "@gtkx/native is the low-level transport and GObject identity layer. " +
-                "Only @gtkx/ffi may import it. @gtkx/codegen is permitted type-only " +
+                "Only @gtkx/ffi and @gtkx/react may import it — react brackets reconciler " +
+                "commits with native's freeze/unfreeze. @gtkx/codegen is permitted type-only " +
                 "imports (handled by the codegen-native-type-only rule).",
-            from: { path: "^packages/(?!(ffi|codegen|native)/)" },
+            from: { path: "^packages/(?!(ffi|codegen|native|react)/)" },
             to: { path: "^(packages/native/|@gtkx/native(/|$))" },
         },
         {

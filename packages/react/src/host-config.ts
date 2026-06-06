@@ -1,6 +1,6 @@
-import { freezeDispatch, unfreezeDispatch } from "@gtkx/ffi";
 import { typeName } from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
+import { freeze, unfreeze } from "@gtkx/native";
 import React from "react";
 import type ReactReconciler from "react-reconciler";
 import { DiscreteEventPriority } from "react-reconciler/constants.js";
@@ -218,7 +218,7 @@ const createCommitConfig = (): CommitConfig => ({
     },
     prepareForCommit: () => {
         beginCommit();
-        freezeDispatch();
+        freeze();
         return null;
     },
     resetAfterCommit: () => {
@@ -229,7 +229,7 @@ const createCommitConfig = (): CommitConfig => ({
             drainError = error;
         } finally {
             endCommit();
-            unfreezeDispatch();
+            unfreeze();
         }
         if (drainError !== null) reportReconcilerError(drainError);
     },
