@@ -7,6 +7,8 @@ type EnumMember = {
     readonly name: string;
     /** Numeric value as a string; preserved verbatim from GIR. */
     readonly value: string;
+    /** C constant name (e.g. `"GTK_ALIGN_FILL"`), as a property's `default-value` references it. */
+    readonly cIdentifier: string | undefined;
 };
 
 /** Discriminator for enums vs bitfields. */
@@ -45,6 +47,7 @@ export const enumFromNode = (node: RawNode, kind: EnumKind): GirEnum => ({
     members: childrenOf(node, "member").map((member) => ({
         name: attr(member, "name") ?? "",
         value: attr(member, "value") ?? "0",
+        cIdentifier: attr(member, "c:identifier"),
     })),
     functions: childrenOf(node, "function").map((function_) => functionFromNode(function_, "function")),
 });

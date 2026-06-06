@@ -8,15 +8,17 @@
  * public namespace surface. They build on the hand-written {@link GValue}
  * wrapper, keeping the runtime independent of generated code.
  *
- * The forward builders ({@link valueFromFfi}, {@link valueFromJS},
- * {@link valueFromObject}) live in `./gobject/gvalue.js` and are re-exported
- * here so the whole marshalling vocabulary reads under one `value<Source>`
- * stem; this module adds the omitted-prop guard {@link valueFromFfiOptional}
- * and the reverse direction {@link valueToJS}.
+ * The forward builders ({@link valueFromFfi}, {@link valueFromObject}) live in
+ * `./gobject/gvalue.js` and are re-exported here so the whole marshalling
+ * vocabulary reads under one `value<Source>` stem; this module adds the
+ * omitted-prop guard {@link valueFromFfiOptional}, the property accessors
+ * {@link getObjectProperty} / {@link setObjectProperty}, and the reverse
+ * direction {@link valueToJS}.
  */
 
 import type { Type as FfiType, NativeHandle } from "@gtkx/native";
 import {
+    emptyValueFromFfi,
     type GValueReader,
     getBoxed,
     getFundamentalMarshallers,
@@ -28,9 +30,9 @@ import { GValue, setGValuePointer } from "./gobject/gvalue-native.js";
 import { Type } from "./gobject/types.js";
 import { type GType, GVALUE_BORROWED, LIBGOBJECT, typeFundamental, typeName } from "./gtype.js";
 import { getHandle } from "./handles.js";
-import { alloc, read, t, write } from "./native.js";
+import { alloc, call, read, t, write } from "./native.js";
 
-export { inoutBoxedFromFfi, outBoxedFromFfi, valueFromJS, valueFromObject } from "./gobject/gvalue.js";
+export { inoutBoxedFromFfi, outBoxedFromFfi, valueFromObject } from "./gobject/gvalue.js";
 export { valueFromFfi };
 
 /**
@@ -129,4 +131,58 @@ export function valueToJS(value: GValueReader): unknown {
     if (fundamental === Type.BOXED) return getBoxed(value);
 
     throw new Error(`Unsupported GType for valueToJS: ${typeName(gtype) ?? String(gtype)}`);
+}
+
+/**
+ * Dispatches a `g_object_{get,set}_property` call with a borrowed receiver, the
+ * property name, and a borrowed `GValue`.
+ */
+const dispatchPropertyCall = (fnName: string, obj: object, propertyName: string, value: GValue): void => {
+    call(
+        LIBGOBJECT,
+        fnName,
+        [
+            { type: t.object("borrowed"), value: getHandle(obj) },
+            { type: t.string("borrowed"), value: propertyName },
+            { type: GVALUE_BORROWED, value: getHandle(value) },
+        ],
+        t.void,
+    );
+};
+
+/**
+ * Reads a GObject property into a plain JavaScript value through a
+ * statically-known FFI type descriptor.
+ *
+ * The generated property getter passes the property's FFI type — resolved from
+ * the GIR at codegen time — so an empty `GValue` of the matching type is
+ * populated by `g_object_get_property` and unmarshalled via {@link valueToJS},
+ * with no runtime param-spec introspection.
+ *
+ * @param obj - The GObject instance whose property is read.
+ * @param propertyName - The property name (kebab-case GIR name).
+ * @param ffiType - The property's FFI type descriptor.
+ */
+export function getObjectProperty(obj: object, propertyName: string, ffiType: FfiType): unknown {
+    const value = emptyValueFromFfi(ffiType);
+    dispatchPropertyCall("g_object_get_property", obj, propertyName, value);
+    return valueToJS(value);
+}
+
+/**
+ * Writes a plain JavaScript value to a GObject property through a
+ * statically-known FFI type descriptor.
+ *
+ * The generated property setter passes the property's FFI type — resolved from
+ * the GIR at codegen time — so `value` is marshalled by {@link valueFromFfi} and
+ * dispatched to `g_object_set_property`, with no runtime param-spec
+ * introspection.
+ *
+ * @param obj - The GObject instance whose property is written.
+ * @param propertyName - The property name (kebab-case GIR name).
+ * @param ffiType - The property's FFI type descriptor.
+ * @param jsValue - The JS value to set.
+ */
+export function setObjectProperty(obj: object, propertyName: string, ffiType: FfiType, jsValue: unknown): void {
+    dispatchPropertyCall("g_object_set_property", obj, propertyName, valueFromFfi(ffiType, jsValue));
 }

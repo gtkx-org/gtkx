@@ -23,4 +23,4 @@ export { t } from "./helpers.js";
 export { checkError, createErrorDomain } from "./native.js";
 export { registerNativeClass } from "./register-native-class.js";
 export { getNativeObject, getNativeObjectAsInterface } from "./registry.js";
-export { connectSignal, signalBaseName } from "./signals.js";
+export { connectSignal, signalBaseName, signalDetailQuark } from "./signals.js";

@@ -4,8 +4,6 @@
 //! not need to traverse the `GTypeInstance` → `GTypeClass` → `GObjectClass`
 //! chain through several individual FFI dispatches.
 
-use std::ffi::{CString, c_void};
-
 use gtk4::glib::gobject_ffi;
 use napi::Env;
 use napi::bindgen_prelude::*;
@@ -13,42 +11,6 @@ use napi_derive::napi;
 
 use super::handler::ModuleRequest;
 use crate::managed::NativeHandle;
-
-#[cfg_attr(test, allow(dead_code))]
-struct FindObjectPropertyRequest {
-    instance_addr: usize,
-    property_name: CString,
-}
-
-impl ModuleRequest for FindObjectPropertyRequest {
-    type Output = Option<NativeHandle>;
-
-    fn execute(self) -> anyhow::Result<Option<NativeHandle>> {
-        if self.instance_addr == 0 {
-            anyhow::bail!("instance handle has a null pointer");
-        }
-
-        let instance = self.instance_addr as *mut gobject_ffi::GTypeInstance;
-        let object_class = unsafe { (*instance).g_class.cast::<gobject_ffi::GObjectClass>() };
-        if object_class.is_null() {
-            anyhow::bail!("instance has no resolved class");
-        }
-
-        let pspec = unsafe {
-            gobject_ffi::g_object_class_find_property(object_class, self.property_name.as_ptr())
-        };
-
-        if pspec.is_null() {
-            return Ok(None);
-        }
-
-        Ok(Some(NativeHandle::borrowed(pspec.cast::<c_void>())))
-    }
-
-    fn error_context() -> &'static str {
-        "find_object_property"
-    }
-}
 
 #[cfg_attr(test, allow(dead_code))]
 struct GetInstanceGtypeRequest {
@@ -76,30 +38,14 @@ impl ModuleRequest for GetInstanceGtypeRequest {
     }
 }
 
-/// napi export shims for `GObject` metadata access. Excluded from coverage
-/// instrumentation: both dispatch through a live [`napi::Env`]. The
-/// [`FindObjectPropertyRequest`] and [`GetInstanceGtypeRequest`] `execute`
-/// logic they dispatch is exercised directly by tests.
+/// napi export shim for `GObject` metadata access. Excluded from coverage
+/// instrumentation: it dispatches through a live [`napi::Env`]. The
+/// [`GetInstanceGtypeRequest`] `execute` logic it dispatches is exercised
+/// directly by tests.
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[allow(clippy::wildcard_imports)]
 mod napi_export {
     use super::*;
-
-    #[napi(catch_unwind)]
-    #[cfg_attr(test, allow(dead_code))]
-    pub fn find_object_property<'env>(
-        env: &'env Env,
-        handle: &External<NativeHandle>,
-        property_name: String,
-    ) -> napi::Result<Unknown<'env>> {
-        let property_name = CString::new(property_name)
-            .map_err(|err| napi::Error::new(napi::Status::InvalidArg, err.to_string()))?;
-        FindObjectPropertyRequest {
-            instance_addr: handle.ptr_as_usize(),
-            property_name,
-        }
-        .dispatch(env)
-    }
 
     #[napi(catch_unwind)]
     #[cfg_attr(test, allow(dead_code))]
@@ -116,70 +62,15 @@ mod napi_export {
 
 #[cfg(test)]
 mod tests {
-    use gtk4::gio;
     use gtk4::glib;
     use gtk4::glib::translate::{IntoGlib as _, ToGlibPtr as _};
-    use gtk4::prelude::{Cast as _, StaticType as _};
+    use gtk4::prelude::StaticType as _;
 
     use super::*;
 
     fn object_addr(object: &glib::Object) -> usize {
         let ptr: *const glib::gobject_ffi::GObject = object.to_glib_none().0;
         ptr as usize
-    }
-
-    #[test]
-    fn find_object_property_returns_handle_for_known_property() {
-        let action = gio::SimpleAction::new("test-action", None);
-        let request = FindObjectPropertyRequest {
-            instance_addr: object_addr(action.upcast_ref::<glib::Object>()),
-            property_name: CString::new("enabled").unwrap(),
-        };
-        let result = request.execute().expect("property lookup should succeed");
-        let handle = result.expect("enabled property should exist");
-        assert!(!handle.ptr().is_null());
-    }
-
-    #[test]
-    fn find_object_property_returns_none_for_unknown_property() {
-        let action = gio::SimpleAction::new("test-action", None);
-        let request = FindObjectPropertyRequest {
-            instance_addr: object_addr(action.upcast_ref::<glib::Object>()),
-            property_name: CString::new("no-such-property").unwrap(),
-        };
-        let result = request.execute().expect("property lookup should succeed");
-        assert!(result.is_none());
-    }
-
-    #[test]
-    fn find_object_property_rejects_null_instance() {
-        let request = FindObjectPropertyRequest {
-            instance_addr: 0,
-            property_name: CString::new("value").unwrap(),
-        };
-        let err = request.execute().expect_err("null instance should fail");
-        assert!(err.to_string().contains("null pointer"));
-    }
-
-    #[test]
-    fn find_object_property_rejects_instance_without_class() {
-        let mut instance: gobject_ffi::GTypeInstance = unsafe { std::mem::zeroed() };
-        let request = FindObjectPropertyRequest {
-            instance_addr: std::ptr::addr_of_mut!(instance) as usize,
-            property_name: CString::new("value").unwrap(),
-        };
-        let err = request
-            .execute()
-            .expect_err("instance without class should fail");
-        assert!(err.to_string().contains("no resolved class"));
-    }
-
-    #[test]
-    fn find_object_property_error_context_is_stable() {
-        assert_eq!(
-            FindObjectPropertyRequest::error_context(),
-            "find_object_property"
-        );
     }
 
     #[test]

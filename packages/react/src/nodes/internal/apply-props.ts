@@ -17,7 +17,7 @@
  * handler when the prop changes, and {@link arraySync} reconciles an array prop
  * against the widget through clear/add operations.
  */
-import { isConstructOnlyProp, resolveSignal } from "../../gtype.js";
+import { isConstructOnlyProp, resolveDefaultProp, resolveSignal } from "../../gtype.js";
 import type { Node } from "../../node.js";
 import type { BackingInstance, Props } from "../../types.js";
 import { isEditable } from "./predicates.js";
@@ -218,6 +218,23 @@ type PendingSignal = { signalName: string; newValue: unknown };
 
 type PendingProperty = { name: string; oldValue: unknown; newValue: unknown };
 
+/**
+ * Resolves the property change a non-signal prop contributes: the new value
+ * when present, or — when the prop was removed — its GIR default so the widget
+ * resets to its initial state. Returns `undefined` when a removed prop has no
+ * known default and is therefore left untouched.
+ */
+const resolvePendingProperty = (
+    container: BackingInstance,
+    name: string,
+    oldValue: unknown,
+    newValue: unknown,
+): PendingProperty | undefined => {
+    if (newValue !== undefined) return { name, oldValue, newValue };
+    const fallback = resolveDefaultProp(container, name);
+    return fallback.has ? { name, oldValue, newValue: fallback.value } : undefined;
+};
+
 const collectGenericChanges = (
     context: ApplyContext,
     exclude: ((name: string) => boolean) | undefined,
@@ -238,9 +255,10 @@ const collectGenericChanges = (
         const signalName = resolveSignal(container, name);
         if (signalName) {
             pendingSignals.push({ signalName, newValue });
-        } else if (newValue !== undefined) {
-            pendingProperties.push({ name, oldValue, newValue });
+            continue;
         }
+        const pending = resolvePendingProperty(container, name, oldValue, newValue);
+        if (pending) pendingProperties.push(pending);
     }
 
     return { pendingSignals, pendingProperties };

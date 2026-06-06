@@ -1,61 +1,57 @@
+import { getObjectProperty, setObjectProperty, t } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it, vi } from "vitest";
 import "@gtkx/gi/gobject";
 
-describe("Object.setProperty / getProperty auto-marshalling", () => {
-    it("round-trips a string property through pspec lookup", () => {
+describe("getObjectProperty / setObjectProperty auto-marshalling", () => {
+    it("round-trips a string property", () => {
         const label = new Gtk.Label({ label: "" });
-        label.setProperty("label", "hello");
-        expect(label.getProperty("label")).toBe("hello");
+        setObjectProperty(label, "label", t.string("borrowed"), "hello");
+        expect(getObjectProperty(label, "label", t.string("borrowed"))).toBe("hello");
     });
 
     it("round-trips a boolean property", () => {
         const button = new Gtk.Button();
-        button.setProperty("sensitive", false);
-        expect(button.getProperty("sensitive")).toBe(false);
-        button.setProperty("sensitive", true);
-        expect(button.getProperty("sensitive")).toBe(true);
-    });
-
-    it("round-trips an enum property as its integer payload", () => {
-        const button = new Gtk.Button();
-        button.setProperty("halign", Gtk.Align.CENTER);
-        expect(button.getProperty("halign")).toBe(Gtk.Align.CENTER);
+        setObjectProperty(button, "sensitive", t.boolean, false);
+        expect(getObjectProperty(button, "sensitive", t.boolean)).toBe(false);
+        setObjectProperty(button, "sensitive", t.boolean, true);
+        expect(getObjectProperty(button, "sensitive", t.boolean)).toBe(true);
     });
 
     it("round-trips an integer property", () => {
         const scale = new Gtk.Scale();
-        scale.setProperty("width-request", 240);
-        expect(scale.getProperty("width-request")).toBe(240);
+        setObjectProperty(scale, "width-request", t.int32, 240);
+        expect(getObjectProperty(scale, "width-request", t.int32)).toBe(240);
     });
 
     it("round-trips a double property", () => {
         const adjustment = Gtk.Adjustment.new(0, 0, 1, 0.1, 0.1, 0);
-        adjustment.setProperty("value", 0.75);
-        expect(adjustment.getProperty("value") as number).toBeCloseTo(0.75);
+        setObjectProperty(adjustment, "value", t.float64, 0.75);
+        expect(getObjectProperty(adjustment, "value", t.float64) as number).toBeCloseTo(0.75);
     });
 
     it("preserves null when reading a string property that is unset", () => {
         const button = new Gtk.Button();
-        const result = button.getProperty("label");
+        const result = getObjectProperty(button, "label", t.string("borrowed"));
         expect(result === null || result === "").toBe(true);
     });
 
-    it("returns a wrapper instance for boxed properties via class registry", () => {
+    it("returns a wrapper instance for object properties via the class registry", () => {
         const window = new Gtk.Window();
-        const settings = window.getProperty("display");
-        expect(settings).toBeInstanceOf(Gdk.Display);
+        expect(getObjectProperty(window, "display", t.object("borrowed"))).toBeInstanceOf(Gdk.Display);
+    });
+});
+
+describe("generated property accessors route through the static GValue path", () => {
+    it("round-trips an integer property that has no typed C accessor", () => {
+        const window = new Gtk.Window();
+        window.widthRequest = 240;
+        expect(window.widthRequest).toBe(240);
     });
 
-    it("throws when getting an unknown property", () => {
-        const button = new Gtk.Button();
-        expect(() => button.getProperty("does-not-exist")).toThrow(/No property 'does-not-exist'/);
-    });
-
-    it("throws when setting an unknown property", () => {
-        const button = new Gtk.Button();
-        expect(() => button.setProperty("does-not-exist", 1)).toThrow(/No property 'does-not-exist'/);
+    it("reads an object property that has no typed C accessor", () => {
+        expect(new Gtk.Window().display).toBeInstanceOf(Gdk.Display);
     });
 });
 
@@ -118,8 +114,6 @@ describe("Object.emit() typed signal emission — inheritance and errors", () =>
 
     it("throws on an unknown signal at the GObject root", () => {
         const button = new Gtk.Button();
-        expect(() => (button as unknown as { emit(s: string): unknown }).emit("not-a-real-signal")).toThrow(
-            /Unknown signal 'not-a-real-signal'/,
-        );
+        expect(() => button.emit("not-a-real-signal")).toThrow(/Unknown signal 'not-a-real-signal'/);
     });
 });

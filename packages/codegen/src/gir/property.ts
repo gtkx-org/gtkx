@@ -23,6 +23,12 @@ export type GirProperty = {
     readonly getter: string | undefined;
     /** Optional method name that backs the property's setter (`setter="set_foo"`). */
     readonly setter: string | undefined;
+    /**
+     * GIR `default-value`, verbatim — a `GParamSpec` default rendered as a
+     * string (`"TRUE"`, `"0"`, `"NULL"`, an enum `c:identifier`, a literal). Absent
+     * when the GIR omits it.
+     */
+    readonly defaultValue: string | undefined;
 };
 
 /**
@@ -37,4 +43,5 @@ export const propertyFromNode = (node: RawNode): GirProperty => ({
     transferOwnership: (attr(node, "transfer-ownership") ?? "none") as ParameterTransfer,
     getter: attr(node, "getter"),
     setter: attr(node, "setter"),
+    defaultValue: attr(node, "default-value"),
 });

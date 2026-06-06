@@ -31,6 +31,28 @@ export const signalBaseName = (signal: string): string => {
 };
 
 /**
+ * Resolves the `GQuark` of a signal name's `::detail` suffix, for forwarding to
+ * `g_signal_emitv`. A name without a detail yields `0` — the unrestricted detail
+ * that matches every handler — so an undetailed emit behaves as before. The
+ * quark is a runtime registration artifact, like a signal id; the generated
+ * `emit` switch resolves it per emission and passes it alongside the statically
+ * marshalled arguments.
+ *
+ * @param signal - The signal name, optionally carrying a `::detail` suffix
+ * @returns The detail `GQuark`, or `0` when no detail is present
+ */
+export function signalDetailQuark(signal: string): number {
+    const detailIndex = signal.indexOf("::");
+    if (detailIndex === -1) return 0;
+    return call(
+        "libgobject-2.0.so.0,libglib-2.0.so.0",
+        "g_quark_from_string",
+        [{ type: t.string("borrowed"), value: signal.slice(detailIndex + 2) }],
+        t.uint32,
+    ) as number;
+}
+
+/**
  * Connects a wrapped handler to a signal through `g_signal_connect_data`.
  *
  * A thin wrapper around the non-introspectable `g_signal_connect_data`: the

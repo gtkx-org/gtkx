@@ -195,24 +195,6 @@ export function alloc(size: number, glibTypeName?: string): NativeHandle {
 }
 
 /**
- * Looks up a property descriptor on a `GObject` instance by property name.
- *
- * Walks the `GTypeInstance` → `GObjectClass` → `g_object_class_find_property`
- * chain entirely on the GLib thread, returning a borrowed `GParamSpec` handle
- * (or `null` if the property is unknown). The returned handle's pointer is
- * owned by the class vtable and remains valid for the lifetime of the type
- * registration.
- *
- * @param handle - Handle to a live `GObject` instance
- * @param propertyName - Property name in dashed form (e.g. `"label"`, `"halign"`)
- * @returns Borrowed `GParamSpec` handle, or `null` when no such property exists
- */
-export function findObjectProperty(handle: NativeHandle, propertyName: string): NativeHandle | null {
-    const result = native.findObjectProperty(handle, propertyName);
-    return result == null ? null : (result as NativeHandle);
-}
-
-/**
  * Returns the runtime GType of a `GTypeInstance`-compatible handle.
  *
  * Reads the `g_class->g_type` field on the GLib thread. Returns `0`

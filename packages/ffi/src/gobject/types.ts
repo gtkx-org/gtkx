@@ -33,14 +33,12 @@ import {
  * `GType` resolution. Both spellings — `Type.STRING` and `TYPE_STRING` — name
  * the identical value and expose the identical member set.
  *
- * Use with the `@gtkx/ffi` marshalling helpers that require explicit type
- * specification.
+ * Names a `GValue`'s fundamental type when initializing or inspecting one.
  *
  * @example
  * ```ts
- * import { Type, valueFromJS } from "@gtkx/ffi";
+ * import { Type } from "@gtkx/ffi";
  *
- * const value = valueFromJS(Type.INT, 0);
  * console.log(Type.STRING); // GType for gchararray
  * ```
  */

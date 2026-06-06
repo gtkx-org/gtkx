@@ -318,15 +318,20 @@ function newFromArrayFfi(ffiType: FfiArrayType, value: unknown): GValue {
 }
 
 /**
- * Builds a `GValue` from a fundamental FFI descriptor, routing `GVariant`
- * (identified by its stable `typeName`) to the variant marshaller and every
- * other ref-counted fundamental to the boxed marshaller.
+ * Builds a `GValue` from a fundamental FFI descriptor. The descriptor's `GType`
+ * is resolved and routed through the {@link getFundamentalMarshallers} table, so
+ * a `GParamSpec` marshals via `g_value_set_param`, a `GVariant` via the variant
+ * marshaller, and so on; a fundamental whose `GType` is a boxed type falls back
+ * to the boxed marshaller.
  */
 function newFromFundamentalFfi(ffiType: FfiFundamentalType, value: unknown): GValue {
     if (ffiType.typeName === "GVariant") {
         return newFromVariant(value as object);
     }
-    return newFromBoxed(value as object, resolveBoxedGType(ffiType));
+    const gtype = resolveBoxedGType(ffiType);
+    const marshaller = getFundamentalMarshallers().get(typeFundamental(gtype));
+    if (marshaller) return marshaller.to(gtype, value);
+    return newFromBoxed(value as object, gtype);
 }
 
 /**
@@ -377,21 +382,63 @@ function emptyValue(gtype: GType): GValue {
     return initValue(gtype, () => {});
 }
 
-function newPointerValue(gtype: GType, value: unknown): GValue {
-    if (value !== null && value !== undefined) {
-        throw new Error("G_TYPE_POINTER properties cannot be set from a non-null JS value");
+/**
+ * Resolves the concrete `GType` an FFI type descriptor denotes, the inverse of
+ * the type half of {@link valueFromFfi}. Primitive descriptors map to their
+ * fundamental {@link Type}; enum/flags and boxed/fundamental descriptors resolve
+ * their registered `GType`; a string-array descriptor resolves `GStrv`.
+ *
+ * @param ffiType - The FFI type descriptor (rendered statically by codegen).
+ */
+function gTypeFromFfi(ffiType: FfiType): GType {
+    switch (ffiType.type) {
+        case "boolean":
+            return Type.BOOLEAN;
+        case "string":
+            return Type.STRING;
+        case "int8":
+        case "int16":
+        case "int32":
+            return Type.INT;
+        case "uint8":
+        case "uint16":
+        case "uint32":
+            return Type.UINT;
+        case "int64":
+            return Type.INT64;
+        case "uint64":
+            return Type.UINT64;
+        case "float32":
+            return Type.FLOAT;
+        case "float64":
+            return Type.DOUBLE;
+        case "gobject":
+            return Type.OBJECT;
+        case "enum":
+        case "flags":
+            return gtypeFromFfi(call(ffiType.library, ffiType.getTypeFn, [], t.uint64));
+        case "boxed":
+            return resolveBoxedGType(ffiType);
+        case "fundamental":
+            return ffiType.typeName === "GVariant" ? Type.VARIANT : resolveBoxedGType(ffiType);
+        case "array":
+            if (ffiType.itemType.type === "string" && ffiType.kind === "array") return getStrvGType();
+            throw new Error(`emptyValueFromFfi: unsupported array type ${ffiType.kind} of ${ffiType.itemType.type}`);
+        default:
+            throw new Error(`emptyValueFromFfi: unsupported FFI type '${(ffiType as { type: string }).type}'`);
     }
-    return emptyValue(gtype);
 }
 
-function newBoxedValue(gtype: GType, value: unknown): GValue {
-    if (value === null || value === undefined) return emptyValue(gtype);
-    return newFromBoxed(value as object, gtype);
-}
-
-function newStrvValue(gtype: GType, value: unknown): GValue {
-    if (value === null || value === undefined) return emptyValue(gtype);
-    return newFromStrv(value as string[]);
+/**
+ * Creates an empty `GValue` typed to the `GType` an FFI descriptor denotes,
+ * ready for `g_object_get_property` to populate. The runtime counterpart of the
+ * codegen-time property GType: where the generated accessor knows the property's
+ * type statically, this materialises the matching empty cell.
+ *
+ * @param ffiType - The property's FFI type descriptor.
+ */
+export function emptyValueFromFfi(ffiType: FfiType): GValue {
+    return emptyValue(gTypeFromFfi(ffiType));
 }
 
 /**
@@ -434,10 +481,11 @@ let fundamentalMarshallers: Map<GType, FundamentalMarshaller> | undefined;
 /**
  * The single fundamental-keyed marshalling table.
  *
- * Both directions dispatch through it: {@link valueFromJS} reads each entry's
- * `to`, and `valueToJS` reads its `from`. Supporting a new fundamental — or
- * correcting how an existing one is marshalled — is a one-line edit here
- * rather than a change spread across parallel write and read structures.
+ * Both directions dispatch through it: {@link newFromFundamentalFfi} reads each
+ * entry's `to` when an FFI descriptor's `GType` names a fundamental, and
+ * `valueToJS` reads its `from`. Supporting a new fundamental — or correcting how
+ * an existing one is marshalled — is a one-line edit here rather than a change
+ * spread across parallel write and read structures.
  *
  * Built lazily because every key is a {@link Type} member whose GType is
  * itself resolved on first access.
@@ -466,28 +514,4 @@ export function getFundamentalMarshallers(): Map<GType, FundamentalMarshaller> {
         ],
     ]);
     return fundamentalMarshallers;
-}
-
-/**
- * Creates a `GValue` typed as `gtype` and marshals `value` into it.
- *
- * The runtime counterpart to {@link valueFromFfi}: where `valueFromFfi`
- * consumes a codegen-time FFI type descriptor, this consumes a runtime `GType`
- * integer (typically derived from a `GParamSpec`).
- *
- * @param gtype - The concrete `GType` (not necessarily the fundamental).
- * @param value - The JS value to marshal.
- * @throws on `G_TYPE_POINTER` with a non-null value, or unsupported `GType`s.
- */
-export function valueFromJS(gtype: GType, value: unknown): GValue {
-    if (gtype === getStrvGType()) return newStrvValue(gtype, value);
-
-    const fundamental = typeFundamental(gtype);
-    const marshaller = getFundamentalMarshallers().get(fundamental);
-    if (marshaller) return marshaller.to(gtype, value);
-
-    if (fundamental === Type.POINTER) return newPointerValue(gtype, value);
-    if (fundamental === Type.BOXED) return newBoxedValue(gtype, value);
-
-    throw new Error(`Unsupported GType for valueFromJS: ${typeName(gtype) ?? String(gtype)}`);
 }

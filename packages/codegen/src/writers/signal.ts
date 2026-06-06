@@ -39,13 +39,16 @@ type GObjectRefs = {
  * Renders the `connect` and `emit` instance methods for a class that owns or
  * inherits-by-interface at least one signal.
  *
- * Each method is a `switch` over the type's own signals. `connect` resolves the
- * per-signal trampoline, wraps the handler, and hands it to the thin
- * `connectSignal` wrapper around the non-introspectable `g_signal_connect_data`.
- * `emit` marshals the arguments into `GValue`s with `valueFromFfi` and calls the
- * generated `signalLookup` / `signalEmitv` directly. Unknown signals route up
- * the class chain via `super.connect` / `super.emit`; the root `GObject.Object`
- * throws because it bottoms out the hierarchy.
+ * Each method is a `switch` over the type's own signals, keyed by the bare
+ * signal name `signalBaseName` strips any `::detail` suffix down to. `connect`
+ * resolves the per-signal trampoline, wraps the handler, and hands it to the
+ * thin `connectSignal` wrapper around the non-introspectable
+ * `g_signal_connect_data`. `emit` marshals the arguments into `GValue`s with
+ * `valueFromFfi`, resolves the signal id via the generated `signalLookup` and
+ * the detail quark from the name's `::detail` suffix via `signalDetailQuark`,
+ * and dispatches `signalEmitv` directly. Unknown signals route up the class
+ * chain via `super.connect` / `super.emit`; the root `GObject.Object` throws
+ * because it bottoms out the hierarchy.
  *
  * Returns an empty array when the class contributes no signals of its own.
  *
@@ -72,7 +75,7 @@ export const renderSignalMembers = (context: ModuleContext, klass: GirClass): re
         : "default:\n    return super.emit(sigName, ...args);";
 
     const connectSwitch = `switch (signalBaseName(signal)) {\n${indent([...connectCases, connectDefault].join("\n"), 1)}\n}`;
-    const emitSwitch = `switch (sigName) {\n${indent([...emitCases, emitDefault].join("\n"), 1)}\n}`;
+    const emitSwitch = `switch (signalBaseName(sigName)) {\n${indent([...emitCases, emitDefault].join("\n"), 1)}\n}`;
 
     return [
         `connect(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, after?: boolean): number {\n${indent(connectSwitch, 1)}\n}`,
@@ -382,6 +385,7 @@ const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): str
         return renderUnsupportedEmitCase(signal);
     }
     context.addValueFromFfiImport();
+    context.addRuntimeImport("signalDetailQuark");
     const refs = gobjectRefs(context);
 
     const preStatements: string[] = [];
@@ -418,13 +422,14 @@ const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): str
     const returnRef = qualifyTypeRef(signal.returnValue.type, namespaceName);
     const isVoid = returnRef === undefined || omitsPrimaryReturn(returnRef, signal);
 
+    const detail = `signalDetailQuark(sigName)`;
     const statements = [...preStatements];
     if (isVoid) {
-        statements.push(`${refs.signalEmitv}(${values}, ${lookup}, 0);`);
+        statements.push(`${refs.signalEmitv}(${values}, ${lookup}, ${detail});`);
     } else {
         statements.push(`const returnValue = new ${refs.Value}();`);
         statements.push(`returnValue.init(${renderReturnGType(context, returnRef)});`);
-        statements.push(`${refs.signalEmitv}(${values}, ${lookup}, 0, returnValue);`);
+        statements.push(`${refs.signalEmitv}(${values}, ${lookup}, ${detail}, returnValue);`);
     }
     statements.push(renderEmitReturn(context, isVoid, outReads));
 

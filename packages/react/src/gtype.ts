@@ -1,11 +1,12 @@
 import type { GType } from "@gtkx/gi/gobject";
 import { typeName, typeParent } from "@gtkx/gi/gobject";
-import { CONSTRUCT_ONLY_PROPS, SIGNALS } from "@gtkx/react-jsx/internal";
+import { CONSTRUCT_ONLY_PROPS, DEFAULT_PROPS, SIGNALS } from "@gtkx/react-jsx/internal";
 import type { BackingInstance } from "./types.js";
 
 const typeNameChainCache = new Map<GType, readonly string[]>();
 const signalCache = new Map<GType, Map<string, string | null>>();
 const constructOnlyCache = new Map<GType, Map<string, boolean>>();
+const defaultPropCache = new Map<GType, Map<string, DefaultPropLookup>>();
 
 /**
  * Returns a GLib type's ancestry as type names, most-derived first.
@@ -69,3 +70,30 @@ export const resolveSignal = (instance: BackingInstance, propName: string): stri
         return null;
     });
 };
+
+/**
+ * The outcome of a default-prop lookup: whether the property has a known
+ * default and, if so, the value to reset it to. A discriminant is needed
+ * because a valid default may itself be `null`, `false`, `0`, or `""`.
+ */
+export type DefaultPropLookup = { readonly has: boolean; readonly value: unknown };
+
+const NO_DEFAULT_PROP: DefaultPropLookup = { has: false, value: undefined };
+
+/**
+ * Resolves the value a removed prop should be reset to: the property's GIR
+ * default, looked up by walking the instance's GType ancestry against the
+ * generated `DEFAULT_PROPS` table. Returns {@link NO_DEFAULT_PROP} when no
+ * default is known, in which case the prop is left untouched.
+ *
+ * @param instance - the backing GObject whose property is being reset
+ * @param key - the camelCase property name
+ */
+export const resolveDefaultProp = (instance: BackingInstance, key: string): DefaultPropLookup =>
+    memoize(defaultPropCache, instance, key, (typeNames) => {
+        for (const name of typeNames) {
+            const table = DEFAULT_PROPS[name];
+            if (table && key in table) return { has: true, value: table[key] };
+        }
+        return NO_DEFAULT_PROP;
+    });
