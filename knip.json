@@ -1,6 +1,14 @@
 {
     "$schema": "https://unpkg.com/knip@6/schema.json",
     "ignoreExportsUsedInFile": true,
+    "ignoreBinaries": [
+        "espeak-ng",
+        "glib-compile-resources",
+        "glib-compile-schemas",
+        "import",
+        "pkg-config",
+        "setpriv"
+    ],
     "workspaces": {
         ".": {
             "entry": ["gtkx.config.ts"],

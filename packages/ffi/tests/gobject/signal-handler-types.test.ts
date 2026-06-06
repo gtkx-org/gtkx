@@ -42,9 +42,11 @@ describe("generated signal handler types", () => {
     it("types emit() arguments and result per signal off the emit map", () => {
         const button = new Gtk.Button();
         // The typed overload returns the signal's result (`void` for `clicked`);
-        // the untyped `string` fallback would return `unknown`, which a `void`
-        // binding rejects — so this assignment only compiles when `emit` is typed.
-        const result: void = button.emit("clicked");
+        // the untyped `string` fallback would return `unknown`, so this equality
+        // holds only when `emit` is typed per signal.
+        const result = button.emit("clicked");
+        const clickedEmitIsTyped: Expect<Equal<typeof result, void>> = true;
+        expect(clickedEmitIsTyped).toBe(true);
         expect(result).toBeUndefined();
 
         const emitSignatures: [
