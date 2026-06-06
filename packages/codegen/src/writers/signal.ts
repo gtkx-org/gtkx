@@ -263,7 +263,9 @@ const renderResultType = (
 ): string => {
     const { signal, namespaceName } = collected;
     const returnRef = qualifyTypeRef(signal.returnValue.type, namespaceName);
-    const primary = isVoidRef(returnRef) ? undefined : renderTsType(context, returnRef, signal.returnValue.nullable);
+    const primary = omitsPrimaryReturn(returnRef, signal)
+        ? undefined
+        : renderTsType(context, returnRef, signal.returnValue.nullable);
     const outTypes = signal.parameters
         .filter(
             (parameter) =>
@@ -328,7 +330,7 @@ const renderConnectCase = (context: ModuleContext, collected: CollectedSignal): 
  * through that wrapper rather than the return tuple. After emission the case
  * returns the signal's result — the non-void return value (via `valueToJS`)
  * together with every out value — using the same tuple convention
- * {@link renderSignalReturnType} describes for handlers. Out-parameters consume
+ * {@link renderResultType} describes for handlers. Out-parameters consume
  * no emit argument; in- and inout-parameters do. A caller-allocated
  * out-parameter that is not a boxed record — a raw buffer, or a class with no
  * boxed `GType` — throws, since `outBoxedFromFfi` has no `GType` to resolve for
@@ -375,7 +377,7 @@ const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): str
     const values = `[${['valueFromFfi(t.object("full"), this)', ...valueExprs].join(", ")}]`;
     const lookup = `${refs.signalLookup}(${quote(signal.name)}, this.__gtype__)`;
     const returnRef = qualifyTypeRef(signal.returnValue.type, namespaceName);
-    const isVoid = returnRef === undefined || isVoidRef(returnRef);
+    const isVoid = returnRef === undefined || omitsPrimaryReturn(returnRef, signal);
 
     const statements = [...preStatements];
     if (isVoid) {
@@ -392,7 +394,7 @@ const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): str
 
 /**
  * Renders an `emit` case's `return` statement following the tuple convention
- * {@link renderSignalReturnType} encodes: a non-void return alone, a single
+ * {@link renderResultType} encodes: a non-void return alone, a single
  * out-cell alone, or `[primary?, ...outs]` when both are present.
  *
  * @param context - The module context
@@ -482,7 +484,7 @@ const renderTrampolineAndInvoke = (
         isOutParameter(parameter) || isCellInout(context, parameter) ? `t.ref(${paramFfi[index]})` : paramFfi[index],
     );
     const returnRef = qualifyTypeRef(signal.returnValue.type, namespaceName);
-    const isVoid = isVoidRef(returnRef);
+    const isVoid = omitsPrimaryReturn(returnRef, signal);
     const returnFfi = isVoid ? "t.void" : renderFfiType(context, returnRef, signal.returnValue.transferOwnership);
     const trampolineArgs = ['t.object("borrowed")', ...trampolineParamFfi, "t.void"].join(", ");
     const trampoline = `t.trampoline([${trampolineArgs}], ${returnFfi}, { hasDestroy: true, userDataIndex: ${params.length + 1} })`;
@@ -597,6 +599,15 @@ const renderReturnGType = (context: ModuleContext, ref: GirTypeRef): string => {
 
 const isVoidRef = (ref: GirTypeRef | undefined): boolean =>
     ref === undefined || (ref.kind === "primitive" && ref.category === "void");
+
+/**
+ * Whether a signal's primary return is dropped from the surfaced result: a void
+ * return, or a `(skip)`-annotated one whose C value carries nothing a JS caller
+ * needs. Either way only the out-parameters remain, mirroring the method path's
+ * `omitsPrimaryReturn`.
+ */
+const omitsPrimaryReturn = (returnRef: GirTypeRef | undefined, signal: GirSignal): boolean =>
+    isVoidRef(returnRef) || signal.returnValue.skip;
 
 const glibTypeNameOf = (value: {
     readonly glibTypeName?: string | undefined;

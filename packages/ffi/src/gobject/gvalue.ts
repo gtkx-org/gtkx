@@ -97,7 +97,7 @@ export function setStaticBoxed(value: object, boxed: object): void {
         "g_value_set_static_boxed",
         [
             { type: GVALUE_BORROWED, value: getHandle(value) },
-            { type: t.boxed(boxedTypeName(valueGetType(value)), "none", LIBGOBJECT), value: getHandle(boxed) },
+            { type: t.boxed(boxedTypeName(valueGetType(value)), "borrowed", LIBGOBJECT), value: getHandle(boxed) },
         ],
         t.void,
     );

@@ -20,13 +20,14 @@ const HARDCODED_INLINE_ELEMENT_SIZES: ReadonlyMap<string, number> = new Map([["G
  * Maps a GIR transfer-ownership value to the FFI runtime's ownership
  * vocabulary.
  *
- * The runtime treats `"none"` as `"borrowed"` for incoming values and as
- * `"full"` for return values that already own the pointer. Callers pass
- * the GIR string directly; this helper does the translation.
+ * GIR `transfer none` becomes a `"borrowed"` defensive copy/reference, while
+ * `transfer full` and `transfer container` (which owns the container) become
+ * `"full"`. Callers pass the GIR string directly; this helper does the
+ * translation.
  *
  * @param transfer - GIR transfer-ownership (`"none"`, `"full"`, `"container"`)
  */
-const ffiOwnership = (transfer: ParameterTransfer): "borrowed" | "full" | "none" => {
+const ffiOwnership = (transfer: ParameterTransfer): "borrowed" | "full" => {
     if (transfer === "full") return "full";
     if (transfer === "container") return "full";
     return "borrowed";
@@ -224,7 +225,7 @@ const primitiveExpression = (
         | "string"
         | "unichar"
         | "pointer",
-    ownership: "borrowed" | "full" | "none",
+    ownership: "borrowed" | "full",
 ): string => {
     if (category === "void") return "t.void";
     if (category === "string") return `t.string(${quote(ownership)})`;
@@ -232,11 +233,7 @@ const primitiveExpression = (
     return `t.${category}`;
 };
 
-const namedExpression = (
-    context: ModuleContext,
-    ref: NamedTypeRef,
-    ownership: "borrowed" | "full" | "none",
-): string => {
+const namedExpression = (context: ModuleContext, ref: NamedTypeRef, ownership: "borrowed" | "full"): string => {
     const namespaceName = ref.namespaceName ?? context.namespace.name;
     const resolved = context.repository.resolveNamed(namespaceName, ref.typeName);
     if (resolved === undefined) {
@@ -260,7 +257,7 @@ type FundamentalDescriptor = {
     readonly refFunc: string;
     readonly unrefFunc: string;
     readonly glibTypeName: string | undefined;
-    readonly ownership: "borrowed" | "full" | "none";
+    readonly ownership: "borrowed" | "full";
 };
 
 /**
@@ -288,7 +285,7 @@ const renderFundamental = (descriptor: FundamentalDescriptor): string => {
 
 const classOrInterfaceExpression = (
     resolved: Extract<ResolvedNamed, { kind: "class" | "interface" }>,
-    ownership: "borrowed" | "full" | "none",
+    ownership: "borrowed" | "full",
 ): string => {
     const cls = resolved.value;
     if (cls.glibRefFunc === undefined || cls.glibUnrefFunc === undefined) {
@@ -379,7 +376,7 @@ const isReferenceableBoxed = (boxed: Extract<ResolvedNamed, { kind: "boxed" }>["
 
 const boxedExpression = (
     resolved: Extract<ResolvedNamed, { kind: "boxed" }>,
-    ownership: "borrowed" | "full" | "none",
+    ownership: "borrowed" | "full",
 ): string => {
     const boxed = resolved.value;
     const intrinsic =
@@ -402,7 +399,7 @@ const boxedExpression = (
 const expressionForResolved = (
     context: ModuleContext,
     resolved: ResolvedNamed,
-    ownership: "borrowed" | "full" | "none",
+    ownership: "borrowed" | "full",
 ): string => {
     switch (resolved.kind) {
         case "class":
@@ -472,7 +469,7 @@ const inlineElementSize = (context: ModuleContext, element: GirTypeRef | undefin
 type AliasExpressionOptions = {
     readonly namespace: GirNamespace;
     readonly targetRef: GirTypeRef | undefined;
-    readonly ownership: "borrowed" | "full" | "none";
+    readonly ownership: "borrowed" | "full";
 };
 
 const aliasExpression = (context: ModuleContext, options: AliasExpressionOptions): string => {

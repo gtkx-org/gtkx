@@ -272,7 +272,6 @@ const getterBlock = (options: AccessorOptions): string => {
         const valueExpression = `read(getHandle(this), ${ffiType}, ${slot.byteOffset})`;
         const wrapped = wrapReturnValue(context, {
             ref: fieldType,
-            transfer: "none",
             nullable: false,
             valueExpression,
         });

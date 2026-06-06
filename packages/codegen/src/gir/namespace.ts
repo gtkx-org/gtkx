@@ -1,4 +1,4 @@
-import { boxedFromNode, boxedKind, type GirBoxed } from "./boxed.js";
+import { boxedFromNode, type GirBoxed, isVtableRecord } from "./boxed.js";
 import { callbackFromNode, type GirCallback } from "./callback.js";
 import { classFromNode, type GirClass } from "./class.js";
 import { enumFromNode, type GirEnum } from "./enum.js";
@@ -94,8 +94,8 @@ const splitPrefixes = (raw: string | undefined): readonly string[] =>
     (raw ?? "").split(",").filter((prefix) => prefix.length > 0);
 
 const collectBoxeds = (namespaceNode: RawNode): readonly GirBoxed[] => [
-    ...childrenOf(namespaceNode, "record").map((record) => boxedFromNode(record, boxedKind(record), false)),
-    ...childrenOf(namespaceNode, "union").map((union) => boxedFromNode(union, boxedKind(union), true)),
+    ...childrenOf(namespaceNode, "record").map((record) => boxedFromNode(record, isVtableRecord(record), false)),
+    ...childrenOf(namespaceNode, "union").map((union) => boxedFromNode(union, isVtableRecord(union), true)),
 ];
 
 const collectEnums = (namespaceNode: RawNode) => [

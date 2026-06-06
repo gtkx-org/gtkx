@@ -2,20 +2,15 @@ import { fieldFromNode, type GirField } from "./field.js";
 import { functionFromNode, type GirFunction } from "./function.js";
 import { attr, attrBool, childrenOf, GIR_CONSTRUCTOR_TAG, type RawNode } from "./parse.js";
 
-/**
- * Discriminator for the different shapes a `<record>` can take in GIR.
- *
- * - `boxed` — a record with a `glib:get-type`; registers as a GObject boxed.
- * - `plain-struct` — a record without GType; passed by pointer using
- *   `t.struct(ownership)`.
- * - `vtable` — a record carrying `glib:is-gtype-struct-for`; its fields are
- *   function pointers consumed by the class struct registration.
- */
-export type BoxedKind = "boxed" | "plain-struct" | "vtable";
-
 /** A `<record>` or `<union>` declaration. */
 export type GirBoxed = {
-    readonly kind: BoxedKind;
+    /**
+     * `true` when the record is a vtable (`glib:is-gtype-struct-for`): its
+     * fields are function pointers consumed by the class struct registration.
+     * Whether a non-vtable record is a registered boxed or a plain struct is
+     * derived where needed from {@link GirBoxed.glibGetType}.
+     */
+    readonly isVtable: boolean;
     /** Local name inside the namespace (no prefix). */
     readonly name: string;
     readonly cType: string | undefined;
@@ -46,11 +41,11 @@ export type GirBoxed = {
  * Builds a {@link GirBoxed} from a `<record>` or `<union>` element.
  *
  * @param node - The XML element
- * @param kind - The kind inferred from element name and attribute set
+ * @param isVtable - Whether the record is a vtable (see {@link isVtableRecord})
  * @param isUnion - `true` when the source element was `<union>`
  */
-export const boxedFromNode = (node: RawNode, kind: BoxedKind, isUnion: boolean): GirBoxed => ({
-    kind,
+export const boxedFromNode = (node: RawNode, isVtable: boolean, isUnion: boolean): GirBoxed => ({
+    isVtable,
     name: attr(node, "name") ?? attr(node, "glib:name") ?? "",
     cType: attr(node, "c:type"),
     glibTypeName: attr(node, "glib:type-name"),
@@ -70,16 +65,10 @@ export const boxedFromNode = (node: RawNode, kind: BoxedKind, isUnion: boolean):
 });
 
 /**
- * Decides which {@link BoxedKind} applies to a `<record>` or `<union>` element.
- *
- * Vtable records (`glib:is-gtype-struct-for`) take precedence; otherwise a
- * `glib:get-type` flips the record to a registered boxed; otherwise it's a
- * plain struct.
+ * Whether a `<record>` or `<union>` element is a vtable record — one carrying
+ * `glib:is-gtype-struct-for`, whose fields are function pointers consumed by the
+ * class struct registration.
  *
  * @param node - The `<record>` or `<union>` element
  */
-export const boxedKind = (node: RawNode): BoxedKind => {
-    if (attr(node, "glib:is-gtype-struct-for") !== undefined) return "vtable";
-    if (attr(node, "glib:get-type") !== undefined) return "boxed";
-    return "plain-struct";
-};
+export const isVtableRecord = (node: RawNode): boolean => attr(node, "glib:is-gtype-struct-for") !== undefined;

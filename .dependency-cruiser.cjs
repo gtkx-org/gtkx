@@ -88,7 +88,6 @@ module.exports = {
                 "packages/[^/]+/dist/",
                 "packages/[^/]+/out-tsc/",
                 "packages/[^/]+/coverage/",
-                "packages/[^/]+/src/generated/",
                 "packages/native/(target|npm)/",
                 "examples/",
                 "website/",

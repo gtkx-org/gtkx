@@ -69,27 +69,6 @@ impl ModuleResponse for Option<NativeHandle> {
     }
 }
 
-impl ModuleResponse for Option<String> {
-    fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
-        unsafe {
-            let raw = match self {
-                Some(value) => String::to_napi_value(env.raw(), value)?,
-                None => Undefined::to_napi_value(env.raw(), ())?,
-            };
-            Ok(Unknown::from_raw_unchecked(env.raw(), raw))
-        }
-    }
-}
-
-impl ModuleResponse for bool {
-    fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
-        unsafe {
-            let raw = Self::to_napi_value(env.raw(), self)?;
-            Ok(Unknown::from_raw_unchecked(env.raw(), raw))
-        }
-    }
-}
-
 impl ModuleResponse for u64 {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
         unsafe {

@@ -36,7 +36,6 @@ const MULTI_TAGS: ReadonlySet<string> = new Set([
     "union",
     "method",
     "constructor",
-    "virtual-method",
     "property",
     "field",
     "glib:signal",

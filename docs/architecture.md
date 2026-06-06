@@ -83,7 +83,8 @@ regenerates unconditionally (recovery for a corrupted store). `gtkx dev` also
 watches `gtkx.config.ts` and regenerates plus restarts the dev runner when it
 changes (e.g. an edited `libraries` list). Because the packages are a generated
 build artifact and not declared dependencies, consumers import `@gtkx/gi` /
-`@gtkx/react-jsx` without listing them in `package.json` — knip's
-`ignoreDependencies` records this deliberate gap.
+`@gtkx/react-jsx` without listing them in `package.json`; knip resolves them as
+the `.gtkx/gi` and `.gtkx/jsx` workspaces (registered through the `.gtkx` symlink
+into `node_modules/.gtkx`), so no `ignoreDependencies` allowance is needed.
 
 Run codegen with `turbo codegen`.

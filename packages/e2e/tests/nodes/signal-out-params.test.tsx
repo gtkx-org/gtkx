@@ -173,7 +173,7 @@ describe("signal emit() - caller-allocated out-parameter", () => {
 });
 
 describe("signal emit() - boxed marshalling: caller-allocated out copies, inout shares", () => {
-    const rectangleFfi = t.boxed("GdkRectangle", "none", "libgtk-4.so.1", "gdk_rectangle_get_type");
+    const rectangleFfi = t.boxed("GdkRectangle", "borrowed", "libgtk-4.so.1", "gdk_rectangle_get_type");
 
     it("inoutBoxedFromFfi shares the caller's wrapper so an in-place mutation is visible", () => {
         const rect = new Gdk.Rectangle({ width: 1 });

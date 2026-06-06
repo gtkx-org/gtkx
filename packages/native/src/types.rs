@@ -106,25 +106,19 @@ pub use void::VoidType;
 
 /// Lifecycle of a value crossing the FFI boundary.
 ///
-/// One of three ownership modes:
+/// One of two ownership modes:
 ///
 /// - [`Self::Full`] — caller takes ownership of the original pointer
 ///   (GIR `transfer full`). On drop the type-specific destructor releases it.
 /// - [`Self::Borrowed`] — the underlying value's lifetime is uncertain, so
 ///   the codec makes a defensive copy / reference (`g_boxed_copy`,
 ///   `g_object_ref`, `g_strdup`) and owns the copy.
-/// - [`Self::None`] — borrow the pointer with no copy and no destructor.
-///   The caller is responsible for ensuring the wrapped value outlives the
-///   JS handle. Used for GIR `transfer none` returns that point into
-///   memory the parent object owns (e.g. `pango_layout_iter_get_run`),
-///   where copying would defeat in-place mutation.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Ownership {
     #[default]
     Borrowed,
     Full,
-    None,
 }
 
 impl Ownership {
@@ -138,12 +132,6 @@ impl Ownership {
     #[must_use]
     pub fn is_borrowed(self) -> bool {
         matches!(self, Self::Borrowed)
-    }
-
-    #[inline]
-    #[must_use]
-    pub fn is_none(self) -> bool {
-        matches!(self, Self::None)
     }
 }
 
@@ -173,7 +161,6 @@ impl std::fmt::Display for Ownership {
         match self {
             Self::Borrowed => write!(f, "borrowed"),
             Self::Full => write!(f, "full"),
-            Self::None => write!(f, "none"),
         }
     }
 }
@@ -185,9 +172,8 @@ impl std::str::FromStr for Ownership {
         match s {
             "full" => Ok(Self::Full),
             "borrowed" => Ok(Self::Borrowed),
-            "none" => Ok(Self::None),
             other => Err(format!(
-                "'ownership' must be 'full', 'borrowed', or 'none', got '{other}'"
+                "'ownership' must be 'full' or 'borrowed', got '{other}'"
             )),
         }
     }

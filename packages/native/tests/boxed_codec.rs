@@ -287,62 +287,12 @@ fn ptr_to_value_null_yields_null() {
 }
 
 #[test]
-fn decode_none_wraps_without_copying() {
-    common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = common::allocate_test_boxed(gtype);
-
-        let decoded = boxed(Ownership::None)
-            .decode(&ffi::FfiValue::Ptr(original))
-            .expect("none decode should succeed");
-        let Value::Object(handle) = &decoded else {
-            panic!("expected Object value");
-        };
-        assert_eq!(handle.ptr(), original);
-
-        // Dropping the wrapper must not free the underlying pointer: the
-        // caller (the test) still owns it.
-        drop(decoded);
-        assert!(common::is_valid_boxed_ptr(original, gtype));
-
-        unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original) };
-    });
-}
-
-#[test]
-fn decode_none_skips_borrowed_copy_failure() {
-    common::run(|| {
-        // The same descriptor under Borrowed would `bail!` because there is
-        // no GType to copy from; under None it just wraps the pointer.
-        let raw = unsafe { glib::ffi::g_malloc0(64) };
-        let descriptor = BoxedType {
-            ownership: Ownership::None,
-            type_name: "NoneDecodeUnknownBoxed".to_owned(),
-            library: None,
-            get_type_fn: None,
-            free_fn: None,
-        };
-
-        let decoded = descriptor
-            .decode(&ffi::FfiValue::Ptr(raw))
-            .expect("none decode should succeed even without gtype");
-        let Value::Object(handle) = &decoded else {
-            panic!("expected Object value");
-        };
-        assert_eq!(handle.ptr(), raw);
-        drop(decoded);
-
-        unsafe { glib::ffi::g_free(raw) };
-    });
-}
-
-#[test]
 fn ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
     common::run(|| {
         let gtype = gdk::RGBA::static_type();
         let original = common::allocate_test_boxed(gtype);
 
-        for ownership in [Ownership::Borrowed, Ownership::Full, Ownership::None] {
+        for ownership in [Ownership::Borrowed, Ownership::Full] {
             let value = boxed(ownership)
                 .ptr_to_value(original, "ctx")
                 .expect("ptr_to_value should succeed");
@@ -580,7 +530,7 @@ fn struct_ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
     common::run(|| {
         let raw = unsafe { glib::ffi::g_malloc0(64) };
 
-        for ownership in [Ownership::Borrowed, Ownership::Full, Ownership::None] {
+        for ownership in [Ownership::Borrowed, Ownership::Full] {
             let value = struct_type(ownership, Some(64))
                 .ptr_to_value(raw, "ctx")
                 .expect("struct ptr_to_value should succeed");
@@ -704,24 +654,6 @@ fn struct_write_value_to_raw_ptr_with_size_bails_for_null_dst() {
             );
 
         assert!(err.is_err());
-    });
-}
-
-#[test]
-fn struct_decode_none_wraps_without_copying() {
-    common::run(|| {
-        let raw = unsafe { glib::ffi::g_malloc0(24) };
-
-        let decoded = struct_type(Ownership::None, Some(24))
-            .decode(&ffi::FfiValue::Ptr(raw))
-            .expect("struct none decode should succeed");
-        let Value::Object(handle) = &decoded else {
-            panic!("expected Object value");
-        };
-        assert_eq!(handle.ptr(), raw);
-        drop(decoded);
-
-        unsafe { glib::ffi::g_free(raw) };
     });
 }
 

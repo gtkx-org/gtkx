@@ -138,7 +138,7 @@ impl FfiDecoder for GObjectType {
 impl RawPtrCodec for GObjectType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         null_guarded(ptr, |ptr| {
-            tracked_gobject_value(ptr as *mut glib::gobject_ffi::GObject, Ownership::None)
+            tracked_gobject_value(ptr as *mut glib::gobject_ffi::GObject, Ownership::Borrowed)
         })
     }
 

@@ -53,35 +53,67 @@ GTK signals map to `on<SignalName>` props: `clicked` → `onClicked`, `toggled` 
 
 ### Widget Slots
 
-Some widgets require children in specific slots:
+Some widgets require children in specific slots. The idiomatic form is a prop on the widget; the compound wrapper synthesizes the underlying `<Slot>` for you:
+
+```tsx
+<GtkPaned startChild={<Sidebar />} endChild={<Content />} />
+```
+
+When no compound prop fits, fall back to the bare `<Slot>` intrinsic (no import needed — it is a JSX intrinsic, and `id` is the only prop):
 
 ```tsx
 <GtkPaned>
-    <x.Slot for={GtkPaned} id="startChild"><Sidebar /></x.Slot>
-    <x.Slot for={GtkPaned} id="endChild"><Content /></x.Slot>
+    <Slot id="startChild"><Sidebar /></Slot>
+    <Slot id="endChild"><Content /></Slot>
 </GtkPaned>
 ```
 
 ### Container Slots (HeaderBar, ActionBar, ToolbarView, ActionRow, ExpanderRow)
 
+Packing slots are also plain props on the compound widget (`packStart=`, `packEnd=`, `addTopBar=`, `addPrefix=`, …):
+
+```tsx
+<GtkHeaderBar
+    packStart={<GtkButton iconName="go-previous-symbolic" />}
+    packEnd={<GtkMenuButton iconName="open-menu-symbolic" />}
+/>
+```
+
+The bare `<ContainerSlot>` intrinsic is the escape hatch — its `id` is the parent method name used to append the child:
+
 ```tsx
 <GtkHeaderBar>
-    <x.ContainerSlot for={GtkHeaderBar} id="packStart"><GtkButton iconName="go-previous-symbolic" /></x.ContainerSlot>
-    <x.ContainerSlot for={GtkHeaderBar} id="packEnd"><GtkMenuButton iconName="open-menu-symbolic" /></x.ContainerSlot>
+    <ContainerSlot id="packStart"><GtkButton iconName="go-previous-symbolic" /></ContainerSlot>
+    <ContainerSlot id="packEnd"><GtkMenuButton iconName="open-menu-symbolic" /></ContainerSlot>
 </GtkHeaderBar>
 ```
 
 ### Animations
 
+Animations are first-class components, picked by physics model: `AdwSpringAnimation` (damping/stiffness/mass) or `AdwTimedAnimation` (duration/easing). Import the name from `@gtkx/react`.
+
 ```tsx
-<x.Animation
+<AdwSpringAnimation
     initial={{ opacity: 0, scale: 0.8 }}
     animate={{ opacity: 1, scale: 1 }}
-    transition={{ mode: "spring", damping: 0.8, stiffness: 200 }}
+    damping={0.8}
+    stiffness={200}
     animateOnMount
 >
     <GtkLabel label="Animated!" />
-</x.Animation>
+</AdwSpringAnimation>
+```
+
+```tsx
+<AdwTimedAnimation
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    duration={300}
+    easing={Adw.Easing.EASE_OUT_CUBIC}
+    animateOnMount
+>
+    <GtkLabel label="Fade in" />
+</AdwTimedAnimation>
 ```
 
 ## Key Constraints

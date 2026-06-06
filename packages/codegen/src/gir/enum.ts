@@ -5,8 +5,6 @@ import { attr, childrenOf, type RawNode } from "./parse.js";
 type EnumMember = {
     /** GIR `name`, snake_case lowercase (e.g. `"fill"`). */
     readonly name: string;
-    /** GIR `c:identifier`, SCREAMING_SNAKE_CASE (e.g. `"GTK_ALIGN_FILL"`). */
-    readonly cIdentifier: string | undefined;
     /** Numeric value as a string; preserved verbatim from GIR. */
     readonly value: string;
 };
@@ -48,7 +46,6 @@ export const enumFromNode = (node: RawNode, kind: EnumKind): GirEnum => ({
     introspectable: attr(node, "introspectable") !== "0",
     members: childrenOf(node, "member").map((member) => ({
         name: attr(member, "name") ?? "",
-        cIdentifier: attr(member, "c:identifier"),
         value: attr(member, "value") ?? "0",
     })),
     functions: childrenOf(node, "function").map((function_) => functionFromNode(function_, "function")),

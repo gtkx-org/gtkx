@@ -31,8 +31,8 @@ const extractTimeout = (args: readonly unknown[]): number | undefined => {
 };
 
 /**
- * Expands a single `queryAllBy*` predicate into the six query-variant family
- * (`queryAllBy*`, `queryBy*`, `getAllBy*`, `getBy*`, `findAllBy*`, `findBy*`).
+ * Expands a single `queryAllBy*` predicate into the five query-variant family
+ * (`queryBy*`, `getAllBy*`, `getBy*`, `findAllBy*`, `findBy*`).
  *
  * Mirrors the `buildQueries` helper from `@testing-library/dom`.
  *

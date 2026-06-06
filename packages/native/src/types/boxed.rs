@@ -17,6 +17,12 @@ use crate::error_reporter::NativeErrorReporter;
 use crate::managed::{Boxed, NativeValue};
 use crate::state::GlibThreadState;
 
+/// Wraps a [`Boxed`] in the `Value::Object` shape the boxed and struct codecs
+/// hand back to JavaScript.
+fn boxed_value(boxed: Boxed) -> value::Value {
+    value::Value::Object(NativeValue::Boxed(boxed).into())
+}
+
 #[derive(Debug, Clone)]
 pub struct BoxedType {
     pub ownership: Ownership,
@@ -166,23 +172,18 @@ impl FfiDecoder for BoxedType {
         };
 
         if self.free_fn.is_some() {
-            let boxed = self.boxed_with_free_fn(boxed_ptr)?;
-            return Ok(value::Value::Object(NativeValue::Boxed(boxed).into()));
+            return Ok(boxed_value(self.boxed_with_free_fn(boxed_ptr)?));
         }
 
         let gtype = self.gtype();
         let boxed = match self.ownership {
-            Ownership::Full => NativeValue::Boxed(Boxed::from_glib_full(gtype, boxed_ptr)),
-            Ownership::Borrowed => NativeValue::Boxed(Boxed::from_glib_none_with_size(
-                gtype,
-                boxed_ptr,
-                None,
-                Some(&self.type_name),
-            )?),
-            Ownership::None => NativeValue::Boxed(Boxed::from_ptr_unowned(boxed_ptr)),
+            Ownership::Full => Boxed::from_glib_full(gtype, boxed_ptr),
+            Ownership::Borrowed => {
+                Boxed::from_glib_none_with_size(gtype, boxed_ptr, None, Some(&self.type_name))?
+            }
         };
 
-        Ok(value::Value::Object(boxed.into()))
+        Ok(boxed_value(boxed))
     }
 }
 
@@ -190,12 +191,9 @@ impl RawPtrCodec for BoxedType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         null_guarded(ptr, |ptr| {
             if self.free_fn.is_some() {
-                return Ok(value::Value::Object(
-                    NativeValue::Boxed(Boxed::from_ptr_unowned(ptr)).into(),
-                ));
+                return Ok(boxed_value(Boxed::from_ptr_unowned(ptr)));
             }
-            let boxed = Boxed::from_glib_none(self.gtype(), ptr)?;
-            Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
+            Ok(boxed_value(Boxed::from_glib_none(self.gtype(), ptr)?))
         })
     }
 
@@ -267,10 +265,9 @@ impl FfiDecoder for StructType {
                     .expect("struct decode with a known size always succeeds"),
                 None => Boxed::from_ptr_unowned(struct_ptr),
             },
-            Ownership::None => Boxed::from_ptr_unowned(struct_ptr),
         };
 
-        Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
+        Ok(boxed_value(boxed))
     }
 }
 
@@ -282,7 +279,7 @@ impl RawPtrCodec for StructType {
                     .expect("struct ptr_to_value with a known size always succeeds"),
                 None => Boxed::from_ptr_unowned(ptr),
             };
-            Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
+            Ok(boxed_value(boxed))
         })
     }
 

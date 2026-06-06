@@ -29,7 +29,9 @@
 //! that exposes a GLib-bound inbox and a JS-bound inbox. Cross-boundary calls
 //! park on a wake signal while their wait loop continues to service incoming
 //! requests, so re-entrance `JS → GLib → JS → GLib` falls out of the call stack
-//! to arbitrary depth without explicit driver state or depth tracking.
+//! to arbitrary depth. Each `GLib` task is tagged with the JS callback-nesting
+//! depth in effect when it was enqueued, and a thread parked inside a callback
+//! drains only the tasks nested at or below that depth.
 //!
 //! ## Core Types
 //!

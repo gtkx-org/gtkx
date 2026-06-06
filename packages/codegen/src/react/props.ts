@@ -186,9 +186,7 @@ const resolveInterface = (
  */
 const PROP_OVERRIDES_BY_WIDGET: Readonly<Record<string, ReadonlySet<string>>> = {
     AdwToggleGroup: new Set(["toggles"]),
-    AdwAlertDialog: new Set(["responses"]),
     GtkColumnView: new Set(["columns"]),
-    GtkScale: new Set(["marks"]),
 };
 
 const isPropOverridden = (ownerName: string, propName: string): boolean => {
@@ -203,10 +201,8 @@ const isPropOverridden = (ownerName: string, propName: string): boolean => {
  */
 const SIGNAL_OVERRIDES_BY_WIDGET: Readonly<Record<string, ReadonlySet<string>>> = {
     GtkRange: new Set(["onValueChanged"]),
-    GtkScale: new Set(["onValueChanged"]),
     GtkScaleButton: new Set(["onValueChanged"]),
     GtkSpinButton: new Set(["onValueChanged"]),
-    AdwSpinRow: new Set(["onValueChanged"]),
     AdwSwitchRow: new Set(["onActivated"]),
 };
 

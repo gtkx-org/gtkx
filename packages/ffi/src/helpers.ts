@@ -11,13 +11,8 @@ export { alloc, call, read, write } from "@gtkx/native";
  * - `"borrowed"` — defensive-copy mode: the underlying value's lifetime is
  *   uncertain, so the codec makes a copy / reference (`g_boxed_copy`,
  *   `g_object_ref`, `g_strdup`) and owns the copy.
- * - `"none"` — borrow the pointer with no copy and no destructor. The
- *   caller must ensure the wrapped value outlives the JS handle. Used for
- *   GIR `transfer none` returns that point into memory the parent object
- *   owns (e.g. `pango_layout_iter_get_run`), where copying would defeat
- *   in-place mutation.
  */
-type Ownership = "full" | "borrowed" | "none";
+type Ownership = "full" | "borrowed";
 
 /** Container shape for array-like FFI types. */
 type ArrayKind = "array" | "glist" | "gslist" | "gptrarray" | "garray" | "gbytearray" | "sized" | "fixed";

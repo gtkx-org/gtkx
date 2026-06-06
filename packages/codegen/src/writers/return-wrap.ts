@@ -1,5 +1,4 @@
 import type { ModuleContext } from "../dsl/context.js";
-import type { ParameterTransfer } from "../gir/parameter.js";
 import type { ResolvedNamed } from "../gir/repository.js";
 import type { GirTypeRef, NamedTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
 import { renderTsType } from "./ts-type.js";
@@ -28,7 +27,6 @@ export const handleCast = (context: ModuleContext, valueExpression: string, null
  */
 export type WrapReturnOptions = {
     readonly ref: GirTypeRef | undefined;
-    readonly transfer: ParameterTransfer;
     readonly nullable: boolean;
     readonly valueExpression: string;
 };
@@ -175,6 +173,6 @@ const wrapResolved = (context: ModuleContext, resolved: ResolvedNamed, options: 
         case "alias":
             return resolved.targetRef === undefined
                 ? valueExpression
-                : wrapReturnValue(context, { ref: resolved.targetRef, transfer: "full", nullable, valueExpression });
+                : wrapReturnValue(context, { ref: resolved.targetRef, nullable, valueExpression });
     }
 };

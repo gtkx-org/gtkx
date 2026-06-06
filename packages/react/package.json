@@ -37,7 +37,6 @@
     "files": [
         "dist",
         "src",
-        "scripts",
         "!**/*.tsbuildinfo"
     ],
     "scripts": {

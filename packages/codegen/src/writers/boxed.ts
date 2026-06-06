@@ -29,7 +29,7 @@ import { appendNativeClassRegistration } from "./registration.js";
  */
 export const emitBoxed = (context: ModuleContext, boxed: GirBoxed): void => {
     if (!boxed.introspectable) return;
-    if (boxed.kind === "vtable") return;
+    if (boxed.isVtable) return;
     if (boxed.name.length === 0) return;
     if (isClassStructRecord(context.namespace.name, boxed)) return;
     const className = boxed.name;

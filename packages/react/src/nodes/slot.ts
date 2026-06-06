@@ -1,5 +1,4 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { toCamelCase } from "@gtkx/utils";
 import type { SlotProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Props } from "../types.js";
@@ -72,7 +71,7 @@ export class SlotNode<
             throw new Error("Expected 'id' prop to be present on Slot");
         }
 
-        return toCamelCase(id);
+        return id;
     }
 
     private getParentWidget(): Gtk.Widget {

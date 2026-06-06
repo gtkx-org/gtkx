@@ -3,17 +3,16 @@ import { attr, attrBool, childOf, childrenOf, type RawNode } from "./parse.js";
 
 /**
  * Whether this callable is a free function, a static method on a type, an
- * instance method, a constructor, or a virtual method.
+ * instance method, or a constructor.
  *
  * The kind controls call-site shape in the writers: instance methods pass
  * `self` as the first FFI argument, constructors return a fresh native
  * handle, etc.
  */
-export type FunctionKind = "function" | "method" | "constructor" | "virtual-method";
+export type FunctionKind = "function" | "method" | "constructor";
 
 /**
- * A callable declaration: `<function>`, `<method>`, `<constructor>`, or
- * `<virtual-method>`.
+ * A callable declaration: `<function>`, `<method>`, or `<constructor>`.
  */
 export type GirFunction = {
     readonly kind: FunctionKind;

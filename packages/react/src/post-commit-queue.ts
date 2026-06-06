@@ -7,8 +7,9 @@
  * places it between commit and passive-effects, which leaves it invisible to
  * `useLayoutEffect` and forces test harnesses to insert an extra microtask
  * drain. Routing the work through this queue instead runs it synchronously
- * inside `resetAfterCommit`, before `unfreeze()` flushes batched FFI calls,
- * so it lands within the same `act()` boundary the test is already awaiting.
+ * inside `resetAfterCommit`, before `unfreeze()` re-enables tick callbacks and
+ * lets GTK repaint, so it lands within the same `act()` boundary the test is
+ * already awaiting.
  *
  * Only call {@link scheduleAfterCommit} from inside a React render or commit;
  * anything queued outside that window sits until the next commit drains it.
@@ -40,8 +41,8 @@ export function endCommit(): void {
 
 /**
  * Drains the queued post-commit work. Called by the host config's
- * `resetAfterCommit` hook, before `unfreeze()`, so the drained work still
- * benefits from FFI batching.
+ * `resetAfterCommit` hook, before `unfreeze()` re-enables tick callbacks, so the
+ * drained work completes before GTK repaints.
  *
  * The drain is reentrant: work that schedules more work during its own
  * execution is appended and processed in the same pass.

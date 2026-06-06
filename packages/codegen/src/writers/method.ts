@@ -493,7 +493,6 @@ const appendReturn = (
             ? ref.name
             : wrapReturnValue(context, {
                   ref: ref.type,
-                  transfer: "full",
                   nullable: false,
                   valueExpression: `${ref.name}.value`,
               }),
@@ -593,7 +592,6 @@ export const planTrampolineArgs = (
                 ? undefined
                 : wrapReturnValue(context, {
                       ref: qualifyTypeRef(parameter.type, namespaceName),
-                      transfer: parameter.transferOwnership,
                       nullable: parameter.nullable,
                       valueExpression: isCellInout(context, parameter)
                           ? `args[${index + argOffset}].value`
@@ -690,7 +688,6 @@ const wrapPrimary = (
     }
     return wrapReturnValue(context, {
         ref: fn.returnValue.type,
-        transfer: fn.returnValue.transferOwnership,
         nullable: fn.returnValue.nullable,
         valueExpression,
     });

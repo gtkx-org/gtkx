@@ -33,7 +33,6 @@ export type GirClass = {
     readonly methods: readonly GirFunction[];
     readonly constructors: readonly GirFunction[];
     readonly functions: readonly GirFunction[];
-    readonly virtualMethods: readonly GirFunction[];
     readonly properties: readonly GirProperty[];
     readonly signals: readonly GirSignal[];
     readonly fields: readonly GirField[];
@@ -68,7 +67,6 @@ export const classFromNode = (node: RawNode, isInterface: boolean): GirClass => 
     methods: childrenOf(node, "method").map((method) => functionFromNode(method, "method")),
     constructors: childrenOf(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, "constructor")),
     functions: childrenOf(node, "function").map((function_) => functionFromNode(function_, "function")),
-    virtualMethods: childrenOf(node, "virtual-method").map((vmethod) => functionFromNode(vmethod, "virtual-method")),
     properties: childrenOf(node, "property").map(propertyFromNode),
     signals: childrenOf(node, "glib:signal").map(signalFromNode),
     fields: childrenOf(node, "field").map(fieldFromNode),

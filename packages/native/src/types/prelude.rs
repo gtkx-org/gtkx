@@ -13,7 +13,7 @@ pub(super) use crate::{ffi, value};
 /// Stamps out an [`FfiEncoder::call_cif`] override that bails with
 /// `"{kind} cannot be return types"`.
 ///
-/// `Callback`, `Trampoline`, and `Ref` are argument-only shapes. The dispatch
+/// `Trampoline` and `Ref` are argument-only shapes. The dispatch
 /// site in [`crate::module::call`] rejects them through
 /// [`super::Type::can_be_return_type`] before they would ever reach
 /// `call_cif`, so this body is the unreachable defensive branch.

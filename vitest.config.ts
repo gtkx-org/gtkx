@@ -19,7 +19,7 @@ export default defineConfig({
                 "packages/testing/src/**/*.{ts,tsx}",
                 "packages/utils/src/**/*.{ts,tsx}",
             ],
-            exclude: ["**/generated/**", "**/dist/**", "**/out-tsc/**", "**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}"],
+            exclude: ["**/dist/**", "**/out-tsc/**", "**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}"],
         },
     },
 });
