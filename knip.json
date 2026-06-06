@@ -9,6 +9,7 @@
         "pkg-config",
         "setpriv"
     ],
+    "ignoreWorkspaces": ["packages/native/npm/*"],
     "workspaces": {
         ".": {
             "entry": ["gtkx.config.ts"],

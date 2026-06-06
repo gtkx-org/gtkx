@@ -359,19 +359,15 @@ export function getWrapper(handle: NativeHandle): object | null {
 /**
  * Suspends GTK frame-clock dispatch while a batch of mutations is applied.
  *
- * Bracketed by [[unfreeze]] to release the GLib main loop. Calls nest: only
+ * Bracketed by {@link unfreeze} to release the GLib main loop. Calls nest: only
  * the outermost `freeze` / `unfreeze` pair starts and stops the freeze loop.
- *
- * @internal Wrapped by `@gtkx/ffi`'s commit-bracket facade.
  */
 export function freeze(): void {
     native.freeze();
 }
 
 /**
- * Resumes normal GTK frame-clock dispatch after a [[freeze]] block.
- *
- * @internal Wrapped by `@gtkx/ffi`'s commit-bracket facade.
+ * Resumes normal GTK frame-clock dispatch after a {@link freeze} block.
  */
 export function unfreeze(): void {
     native.unfreeze();
