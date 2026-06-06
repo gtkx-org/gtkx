@@ -148,7 +148,21 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
         this.backingInstance.present();
     }
 
+    /**
+     * Clears the window's default widget before tearing the window down.
+     *
+     * `Gtk.Window` holds its default widget as a borrowed (`transfer none`)
+     * back-pointer that GTK never references. Because GObject finalization is
+     * deferred to an idle, the default widget can be finalized on its own idle
+     * before the window's deferred dispose runs `gtk_window_set_default_widget`,
+     * which would then dereference a freed widget. Resetting the pointer to
+     * `null` here — synchronously, while the default widget is still alive —
+     * leaves the later dispose nothing dangling to read.
+     */
     public override detachDeletedInstance(): void {
+        if (this.backingInstance instanceof Gtk.Window) {
+            this.backingInstance.setDefaultWidget(null);
+        }
         super.detachDeletedInstance();
         this.backingInstance.destroy();
     }
