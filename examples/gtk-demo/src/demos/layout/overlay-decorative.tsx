@@ -1,6 +1,15 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkOverlay, GtkPicture, GtkScale, GtkScrolledWindow, GtkTextView, useAdjustment } from "@gtkx/react";
+import {
+    GtkOverlay,
+    GtkOverlayChild,
+    GtkPicture,
+    GtkScale,
+    GtkScrolledWindow,
+    GtkTextTag,
+    GtkTextView,
+    useAdjustment,
+} from "@gtkx/react";
 import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import { path as decor1Path } from "./decor1.png";
@@ -22,13 +31,13 @@ const OverlayDecorativeDemo = () => {
                 vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
             >
                 <GtkTextView name="text-view" hexpand vexpand leftMargin={Math.round(margin)}>
-                    <GtkTextView.Tag id="top-margin" pixelsAboveLines={Math.round(margin)}>
+                    <GtkTextTag name="top-margin" pixelsAboveLines={Math.round(margin)}>
                         {"Dear"}
-                    </GtkTextView.Tag>
+                    </GtkTextTag>
                     {" diary..."}
                 </GtkTextView>
             </GtkScrolledWindow>
-            <GtkOverlay.Child>
+            <GtkOverlayChild>
                 <GtkPicture
                     name="picture-start"
                     paintable={decor1}
@@ -36,8 +45,8 @@ const OverlayDecorativeDemo = () => {
                     valign={Gtk.Align.START}
                     canTarget={false}
                 />
-            </GtkOverlay.Child>
-            <GtkOverlay.Child>
+            </GtkOverlayChild>
+            <GtkOverlayChild>
                 <GtkPicture
                     name="picture-end"
                     paintable={decor2}
@@ -45,8 +54,8 @@ const OverlayDecorativeDemo = () => {
                     valign={Gtk.Align.END}
                     canTarget={false}
                 />
-            </GtkOverlay.Child>
-            <GtkOverlay.Child>
+            </GtkOverlayChild>
+            <GtkOverlayChild>
                 <GtkScale
                     name="margin-scale"
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -61,7 +70,7 @@ const OverlayDecorativeDemo = () => {
                     adjustment={marginAdjustment}
                     onValueChanged={(scale) => setMargin(scale.getValue())}
                 />
-            </GtkOverlay.Child>
+            </GtkOverlayChild>
         </GtkOverlay>
     );
 };

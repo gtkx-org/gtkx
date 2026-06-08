@@ -8,6 +8,7 @@ import {
     GtkInscription,
     GtkListView,
     GtkOverlay,
+    GtkOverlayChild,
     GtkProgressBar,
     GtkScrolledWindow,
     GtkSearchEntry,
@@ -164,9 +165,9 @@ const WordsList = ({ filteredWords, filterProgress }: { filteredWords: string[];
             />
         </GtkScrolledWindow>
         {filterProgress < 1 && (
-            <GtkOverlay.Child>
+            <GtkOverlayChild>
                 <GtkProgressBar fraction={filterProgress} halign={Gtk.Align.FILL} valign={Gtk.Align.START} hexpand />
-            </GtkOverlay.Child>
+            </GtkOverlayChild>
         )}
     </GtkOverlay>
 );

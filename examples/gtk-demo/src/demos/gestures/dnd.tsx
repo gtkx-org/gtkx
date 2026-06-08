@@ -12,6 +12,7 @@ import {
     GtkDropTarget,
     GtkEntry,
     GtkFixed,
+    GtkFixedChild,
     GtkGestureClick,
     GtkGestureRotate,
     GtkImage,
@@ -523,7 +524,7 @@ const DndItem = ({ item, dnd }: { item: CanvasItem; dnd: DndState }) => {
     const halfW = refs.itemHalves.current.get(item.id)?.halfW ?? ITEM_SIZE / 2;
     const halfH = refs.itemHalves.current.get(item.id)?.halfH ?? ITEM_SIZE / 2;
     return (
-        <GtkFixed.Child
+        <GtkFixedChild
             x={item.x}
             y={item.y}
             transform={createRotationTransform(halfW, halfH, item.angle + item.angleDelta)}
@@ -571,14 +572,14 @@ const DndItem = ({ item, dnd }: { item: CanvasItem; dnd: DndState }) => {
                     onEnd={() => handlers.handleRotateEnd(item.id)}
                 />
             </GtkLabel>
-        </GtkFixed.Child>
+        </GtkFixedChild>
     );
 };
 
 const DndContextMenu = ({ dnd }: { dnd: DndState }) => {
     const { refs, contextMenu, setContextMenu, handlers } = dnd;
     return (
-        <GtkFixed.Child x={0} y={0}>
+        <GtkFixedChild x={0} y={0}>
             <GtkPopover
                 name="context-menu"
                 ref={refs.contextMenuRef}
@@ -605,7 +606,7 @@ const DndContextMenu = ({ dnd }: { dnd: DndState }) => {
                     />
                 </GtkBox>
             </GtkPopover>
-        </GtkFixed.Child>
+        </GtkFixedChild>
     );
 };
 
@@ -614,7 +615,7 @@ const DndItemEditor = ({ dnd, editingItem }: { dnd: DndState; editingItem: Canva
     const halfH = refs.itemHalves.current.get(editingItem.id)?.halfH ?? ITEM_SIZE / 2;
     const angleAdjustment = useAdjustment({ value: editingItem.angle % 360, lower: 0, upper: 360 });
     return (
-        <GtkFixed.Child x={editingItem.x} y={editingItem.y + 2 * halfH}>
+        <GtkFixedChild x={editingItem.x} y={editingItem.y + 2 * halfH}>
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkEntry
                     ref={refs.entryRef}
@@ -630,7 +631,7 @@ const DndItemEditor = ({ dnd, editingItem }: { dnd: DndState; editingItem: Canva
                     drawValue={false}
                 />
             </GtkBox>
-        </GtkFixed.Child>
+        </GtkFixedChild>
     );
 };
 
@@ -657,7 +658,7 @@ const DndTrashZone = ({ boxRef, trashHovering, setTrashHovering, handleTrashDrop
     };
 
     return (
-        <GtkFixed.Child x={20} y={20}>
+        <GtkFixedChild x={20} y={20}>
             <GtkBox
                 ref={boxRef}
                 visible={false}
@@ -688,7 +689,7 @@ const DndTrashZone = ({ boxRef, trashHovering, setTrashHovering, handleTrashDrop
                 />
                 <GtkImage paintable={svg} pixelSize={64} cssClasses={["error"]} onRealize={attachFrameClockAndPlay} />
             </GtkBox>
-        </GtkFixed.Child>
+        </GtkFixedChild>
     );
 };
 

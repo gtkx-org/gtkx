@@ -9,8 +9,8 @@ import {
     useLayoutEffect,
     useRef,
 } from "react";
+import { WRAPPER_NODE_ELEMENT } from "../instance.js";
 import type { SizeGroupProps, SizeGroupWidgetProps } from "../jsx.js";
-import { WRAPPER_NODE_ELEMENT } from "../nodes/wrapper.js";
 import { assignRef } from "../use-merged-refs.js";
 import { SizeGroupContext, type SizeGroupRegistry, useSizeGroup } from "../use-size-group.js";
 

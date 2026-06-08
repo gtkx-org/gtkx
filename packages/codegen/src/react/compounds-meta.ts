@@ -1,89 +1,90 @@
 /**
- * Virtual-child subcomponent mapping — JSX element name to the map of
- * subcomponent property → virtual JSX intrinsic name it routes through.
+ * Virtual-child subcomponent mapping — the flat, top-level components that stand
+ * in for a parent's metadata children (`<GtkStackPage>` for a stack page,
+ * `<GtkGridChild>` for a grid cell, …). Each renders the `__GTKX_WRAPPER_NODE__`
+ * sentinel carrying a generic wrapper kind plus its metadata props, which the
+ * reconciler's element map attaches to the grandparent.
  *
- * For example `GtkStack.Page` renders the `<StackPage>` virtual
- * intrinsic so the reconciler can attach a child to the stack with
- * its page metadata. Unlike container slots, virtual subcomponents
- * render an existing intrinsic element rather than invoking a setter
- * on the parent widget.
- *
- * The list is small and stable; defining it in code keeps the lookup
- * fast and avoids one more GIR-introspection pass.
+ * The list is small and stable; defining it in code keeps the lookup fast and
+ * avoids one more GIR-introspection pass.
  */
+
 /**
- * One virtual-child subcomponent: the `child` property the parent exposes, the
- * JSX intrinsic (or wrapper-kind virtual) it renders, the public prop type that
- * types it, and an optional `renameProps` map translating an ergonomic public
- * prop to the GObject property name the intrinsic expects (e.g. a text tag's
- * `id` to the construct-only `name`).
+ * One virtual-child subcomponent: the flat top-level component name it is
+ * emitted as (e.g. `"GtkStackPage"`), the generic wrapper kind the reconciler
+ * resolves at runtime, and the public prop type that types it.
  */
 export type VirtualSubcomponent = {
-    readonly child: string;
-    readonly intrinsic: string;
+    readonly flatName: string;
+    readonly kind: string;
     readonly propsType: string;
-    readonly renameProps?: Readonly<Record<string, string>>;
 };
 
-const TEXT_TAG: VirtualSubcomponent = {
-    child: "Tag",
-    intrinsic: "GtkTextTag",
-    propsType: "TextTagProps",
-    renameProps: { id: "name" },
+const STACK_PAGE: VirtualSubcomponent = { flatName: "GtkStackPage", kind: "meta-object", propsType: "StackPageProps" };
+const VIEW_STACK_PAGE: VirtualSubcomponent = {
+    flatName: "AdwViewStackPage",
+    kind: "meta-object",
+    propsType: "StackPageProps",
 };
-const TEXT_ANCHOR: VirtualSubcomponent = { child: "Anchor", intrinsic: "TextAnchor", propsType: "TextAnchorProps" };
+const NOTEBOOK_PAGE: VirtualSubcomponent = {
+    flatName: "GtkNotebookPage",
+    kind: "meta-object",
+    propsType: "NotebookPageProps",
+};
+const NOTEBOOK_PAGE_TAB: VirtualSubcomponent = {
+    flatName: "GtkNotebookPageTab",
+    kind: "notebook-tab",
+    propsType: "NotebookPageTabProps",
+};
+const GRID_CHILD: VirtualSubcomponent = { flatName: "GtkGridChild", kind: "layout-child", propsType: "GridChildProps" };
+const FIXED_CHILD: VirtualSubcomponent = {
+    flatName: "GtkFixedChild",
+    kind: "layout-child",
+    propsType: "FixedChildProps",
+};
+const OVERLAY_CHILD: VirtualSubcomponent = {
+    flatName: "GtkOverlayChild",
+    kind: "overlay",
+    propsType: "OverlayChildProps",
+};
+const TEXT_ANCHOR: VirtualSubcomponent = {
+    flatName: "GtkTextAnchor",
+    kind: "text-anchor",
+    propsType: "TextAnchorProps",
+};
 const TEXT_PAINTABLE: VirtualSubcomponent = {
-    child: "Paintable",
-    intrinsic: "TextPaintable",
+    flatName: "GtkTextPaintable",
+    kind: "text-paintable",
     propsType: "TextPaintableProps",
 };
 
-const TEXT_VIEW_SUBCOMPONENTS: readonly VirtualSubcomponent[] = [TEXT_TAG, TEXT_ANCHOR, TEXT_PAINTABLE];
+const TEXT_VIEW_SUBCOMPONENTS: readonly VirtualSubcomponent[] = [TEXT_ANCHOR, TEXT_PAINTABLE];
 
 const VIRTUAL_SUBCOMPONENTS: Readonly<Record<string, readonly VirtualSubcomponent[]>> = Object.freeze({
-    GtkStack: [{ child: "Page", intrinsic: "StackPage", propsType: "StackPageProps" }],
-    AdwViewStack: [{ child: "Page", intrinsic: "StackPage", propsType: "StackPageProps" }],
-    GtkNotebook: [
-        { child: "Page", intrinsic: "NotebookPage", propsType: "NotebookPageProps" },
-        { child: "PageTab", intrinsic: "NotebookPageTab", propsType: "NotebookPageTabProps" },
-    ],
-    GtkGrid: [{ child: "Child", intrinsic: "GridChild", propsType: "GridChildProps" }],
-    GtkFixed: [{ child: "Child", intrinsic: "FixedChild", propsType: "FixedChildProps" }],
-    GtkOverlay: [{ child: "Child", intrinsic: "OverlayChild", propsType: "OverlayChildProps" }],
+    GtkStack: [STACK_PAGE],
+    AdwViewStack: [VIEW_STACK_PAGE],
+    GtkNotebook: [NOTEBOOK_PAGE, NOTEBOOK_PAGE_TAB],
+    GtkGrid: [GRID_CHILD],
+    GtkFixed: [FIXED_CHILD],
+    GtkOverlay: [OVERLAY_CHILD],
     GtkTextView: TEXT_VIEW_SUBCOMPONENTS,
     GtkSourceView: TEXT_VIEW_SUBCOMPONENTS,
 });
 
 /**
- * Returns the virtual-subcomponent records for a JSX element name, or an
- * empty array if no virtual subcomponents exist.
- *
- * @param jsxName - The JSX element name (PascalCase / GLib type name)
+ * Returns every distinct flat virtual subcomponent across all parents,
+ * deduplicated by {@link VirtualSubcomponent.flatName} (the text anchor and
+ * paintable are shared by both text-view kinds).
  */
-export const virtualSubcomponentsFor = (jsxName: string): readonly VirtualSubcomponent[] =>
-    VIRTUAL_SUBCOMPONENTS[jsxName] ?? [];
-
-/**
- * Maps a virtual-subcomponent intrinsic name to the generic wrapper kind the
- * reconciler resolves at runtime. Intrinsics absent from this map render a real
- * GObject intrinsic element directly (e.g. `GtkTextTag`) rather than a wrapper.
- */
-const WRAPPER_KIND_BY_INTRINSIC: Readonly<Record<string, string>> = Object.freeze({
-    StackPage: "meta-object",
-    NotebookPage: "meta-object",
-    NotebookPageTab: "notebook-tab",
-    GridChild: "layout-child",
-    FixedChild: "layout-child",
-    OverlayChild: "overlay",
-    TextAnchor: "text-anchor",
-    TextPaintable: "text-paintable",
-});
-
-/**
- * Returns the generic wrapper kind for a virtual-subcomponent intrinsic, or
- * `null` when the intrinsic renders a real GObject element directly.
- *
- * @param intrinsic - The virtual intrinsic name (e.g. `"StackPage"`).
- */
-export const wrapperKindForIntrinsic = (intrinsic: string): string | null =>
-    WRAPPER_KIND_BY_INTRINSIC[intrinsic] ?? null;
+export const allVirtualSubcomponents = (): readonly VirtualSubcomponent[] => {
+    const seen = new Set<string>();
+    const result: VirtualSubcomponent[] = [];
+    for (const virtuals of Object.values(VIRTUAL_SUBCOMPONENTS)) {
+        for (const virtual of virtuals) {
+            if (seen.has(virtual.flatName)) continue;
+            seen.add(virtual.flatName);
+            result.push(virtual);
+        }
+    }
+    return result.sort((a, b) => a.flatName.localeCompare(b.flatName));
+};

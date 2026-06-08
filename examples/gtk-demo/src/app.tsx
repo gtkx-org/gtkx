@@ -14,6 +14,8 @@ import {
     GtkLabel,
     GtkMenuButton,
     GtkNotebook,
+    GtkNotebookPage,
+    GtkNotebookPageTab,
     GtkScrolledWindow,
     GtkShortcut,
     GtkShortcutController,
@@ -252,20 +254,20 @@ const AppNotebook = ({ page, onSwitchPage }: AppNotebookProps) => (
         showBorder={false}
         enablePopup
     >
-        <GtkNotebook.Page>
-            <GtkNotebook.PageTab>
+        <GtkNotebookPage>
+            <GtkNotebookPageTab>
                 <GtkLabel label="_Info" useUnderline />
-            </GtkNotebook.PageTab>
+            </GtkNotebookPageTab>
             <GtkScrolledWindow vexpand hexpand>
                 <InfoTab />
             </GtkScrolledWindow>
-        </GtkNotebook.Page>
-        <GtkNotebook.Page>
-            <GtkNotebook.PageTab>
+        </GtkNotebookPage>
+        <GtkNotebookPage>
+            <GtkNotebookPageTab>
                 <GtkLabel label="Source" />
-            </GtkNotebook.PageTab>
+            </GtkNotebookPageTab>
             <SourceViewer />
-        </GtkNotebook.Page>
+        </GtkNotebookPage>
     </GtkNotebook>
 );
 

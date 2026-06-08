@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import type { Node } from "../../node.js";
+import type { Instance } from "../../instance.js";
 
 /**
  * The controller surface the registry shares with the reconciler: enough to
@@ -53,14 +53,14 @@ export const disposeTextBufferController = (view: Gtk.TextView): void => {
  * the reconciler's universal text branches so any structural or content change
  * within a text view's buffered subtree refreshes the buffer.
  *
- * @param node - The node whose buffered subtree changed.
+ * @param node - The instance whose buffered subtree changed.
  */
-export const scheduleBufferRebuild = (node: Node): void => {
-    let current: Node | null = node;
+export const scheduleBufferRebuild = (node: Instance): void => {
+    let current: Instance | null = node;
     while (current) {
-        const instance = current.backingInstance;
-        if (instance instanceof Gtk.TextView) {
-            controllers.get(instance)?.scheduleRebuild();
+        const backing = current.backingInstance;
+        if (backing instanceof Gtk.TextView) {
+            controllers.get(backing)?.scheduleRebuild();
             return;
         }
         current = current.parent;

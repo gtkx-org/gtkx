@@ -1,119 +1,49 @@
 /**
- * Per-GType prop descriptors for the generic {@link ElementNode}.
+ * Per-GType signal/imperative prop descriptors for real-GObject instances.
  *
- * A handful of widget props are not plain GObject properties: applying them is
- * an imperative GTK call (`addMark`, `addResponse`, `setVisibleChildName`, …) or
- * a refined signal connection. Those props live here as data keyed by GLib type
- * name, and {@link ElementNode} merges the matching entries (walking the
- * instance's GType ancestry) into its descriptor table, sparing each widget a
- * bespoke node subclass.
- *
- * Declarative array props rebuild on reference change: when the prop's array
- * identity differs from the previous commit, the previously-applied items are
- * cleared and the current ones re-applied. Callers that re-render frequently
- * should memoize the array to avoid needless rebuilds.
+ * A handful of widget props are neither plain GObject properties nor array props:
+ * applying them is an imperative GTK call (`setVisibleChildName`, dialog setup,
+ * buffer rebuild) or a refined signal connection. Those props live here as data
+ * keyed by GLib type name; {@link getPropDescriptors} merges the matching entries
+ * (walking the instance's GType ancestry) into the table the renderer's
+ * `apply-props` consumes, sparing each widget a bespoke node subclass.
  */
 import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
-import type { GType } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import { scheduleFlush } from "../../commit-flush.js";
 import { buildMenuModel, type MenuActionContext, type MenuEntry } from "../../components/internal/menu-model.js";
-import type {
-    AlertDialogResponseProps,
-    GtkSourceViewProps,
-    GtkTextViewProps,
-    LevelBarOffset,
-    ScaleMark,
-    ToggleProps,
-} from "../../jsx.js";
-import type { Node } from "../../node.js";
-import { scheduleAfterCommit } from "../../post-commit-queue.js";
+import { collectTypeNameChain } from "../../gtype.js";
+import { type Instance, registerTeardown } from "../../instance.js";
+import type { GtkSourceViewProps, GtkTextViewProps } from "../../jsx.js";
 import { type ImperativeHandler, imperative, type PropDescriptorTable, signal } from "./apply-props.js";
 import { getTextBufferController } from "./text-buffer-registry.js";
 
-/** Builds the descriptor set a single GType contributes to a node. */
-type DescriptorFactory = (node: Node) => PropDescriptorTable;
+/** Builds the descriptor set a single GType contributes to an instance. */
+type DescriptorFactory = (instance: Instance) => PropDescriptorTable;
 
-const applyToggleProps = (toggle: Adw.Toggle, props: ToggleProps): void => {
-    if (props.id != null) toggle.setName(props.id);
-    if (props.label != null) toggle.setLabel(props.label);
-    if (props.iconName != null) toggle.setIconName(props.iconName);
-    if (props.tooltip !== undefined) toggle.setTooltip(props.tooltip);
-    if (props.enabled !== undefined) toggle.setEnabled(props.enabled);
-    if (props.useUnderline !== undefined) toggle.setUseUnderline(props.useUnderline);
-};
-
-const scaleDescriptors: DescriptorFactory = (node): PropDescriptorTable => {
-    const scale = node.backingInstance;
-    if (!(scale instanceof Gtk.Scale)) return {};
-    return {
-        marks: imperative(() => {
-            scale.clearMarks();
-            for (const mark of (node.props.marks as readonly ScaleMark[] | null | undefined) ?? []) {
-                scale.addMark(mark.value, mark.position ?? Gtk.PositionType.BOTTOM, mark.label ?? null);
-            }
-        }),
-    };
-};
-
-const levelBarDescriptors: DescriptorFactory = (node): PropDescriptorTable => {
-    const bar = node.backingInstance;
-    if (!(bar instanceof Gtk.LevelBar)) return {};
-    return {
-        offsets: imperative((oldProps) => {
-            for (const offset of (oldProps?.offsets as readonly LevelBarOffset[] | null | undefined) ?? []) {
-                bar.removeOffsetValue(offset.id);
-            }
-            for (const offset of (node.props.offsets as readonly LevelBarOffset[] | null | undefined) ?? []) {
-                bar.addOffsetValue(offset.id, offset.value);
-            }
-        }),
-    };
-};
-
-const calendarDescriptors: DescriptorFactory = (node): PropDescriptorTable => {
-    const calendar = node.backingInstance;
-    if (!(calendar instanceof Gtk.Calendar)) return {};
-    return {
-        markedDays: imperative(() => {
-            calendar.clearMarks();
-            for (const day of (node.props.markedDays as readonly number[] | null | undefined) ?? []) {
-                calendar.markDay(day);
-            }
-        }),
-    };
-};
-
-const toggleGroupDescriptors: DescriptorFactory = (node): PropDescriptorTable => {
-    const group = node.backingInstance;
+const toggleGroupDescriptors: DescriptorFactory = (instance): PropDescriptorTable => {
+    const group = instance.backingInstance;
     if (!(group instanceof Adw.ToggleGroup)) return {};
     const applySelection = (): void => {
-        const activeName = node.props.activeName as string | null | undefined;
+        const activeName = instance.props.activeName as string | null | undefined;
         if (activeName !== undefined) group.setActiveName(activeName);
-        const active = node.props.active as number | null | undefined;
+        const active = instance.props.active as number | null | undefined;
         if (active != null) group.setActive(active);
     };
     return {
-        toggles: imperative(() => {
-            group.removeAll();
-            for (const toggle of (node.props.toggles as readonly ToggleProps[] | null | undefined) ?? []) {
-                const item = new Adw.Toggle();
-                applyToggleProps(item, toggle);
-                group.add(item);
-            }
-        }),
         active: imperative(applySelection, { always: true }),
         activeName: imperative(applySelection, { always: true }),
     };
 };
 
-const stackDescriptors: DescriptorFactory = (node): PropDescriptorTable => {
-    const stack = node.backingInstance;
+const stackDescriptors: DescriptorFactory = (instance): PropDescriptorTable => {
+    const stack = instance.backingInstance;
     if (!(stack instanceof Gtk.Stack) && !(stack instanceof Adw.ViewStack)) return {};
     return {
         page: imperative(
             () => {
-                const page = node.props.page as string | null | undefined;
+                const page = instance.props.page as string | null | undefined;
                 if (page && stack.getVisibleChildName() !== page && stack.getChildByName(page)) {
                     stack.setVisibleChildName(page);
                 }
@@ -123,15 +53,15 @@ const stackDescriptors: DescriptorFactory = (node): PropDescriptorTable => {
     };
 };
 
-const colorDialogButtonDescriptors: DescriptorFactory = (node): PropDescriptorTable => {
-    const button = node.backingInstance;
+const colorDialogButtonDescriptors: DescriptorFactory = (instance): PropDescriptorTable => {
+    const button = instance.backingInstance;
     if (!(button instanceof Gtk.ColorDialogButton)) return {};
     const applyDialog = (): void => {
         const dialog = button.getDialog() ?? new Gtk.ColorDialog();
         if (button.getDialog() !== dialog) button.setDialog(dialog);
-        dialog.setTitle((node.props.title as string | null | undefined) ?? "");
-        dialog.setModal((node.props.modal as boolean | null | undefined) ?? true);
-        dialog.setWithAlpha((node.props.withAlpha as boolean | null | undefined) ?? true);
+        dialog.setTitle((instance.props.title as string | null | undefined) ?? "");
+        dialog.setModal((instance.props.modal as boolean | null | undefined) ?? true);
+        dialog.setWithAlpha((instance.props.withAlpha as boolean | null | undefined) ?? true);
     };
     return {
         title: imperative(applyDialog, { always: true }),
@@ -141,18 +71,18 @@ const colorDialogButtonDescriptors: DescriptorFactory = (node): PropDescriptorTa
     };
 };
 
-const fontDialogButtonDescriptors: DescriptorFactory = (node): PropDescriptorTable => {
-    const button = node.backingInstance;
+const fontDialogButtonDescriptors: DescriptorFactory = (instance): PropDescriptorTable => {
+    const button = instance.backingInstance;
     if (!(button instanceof Gtk.FontDialogButton)) return {};
     const applyDialog = (): void => {
         const dialog = button.getDialog() ?? new Gtk.FontDialog();
         if (button.getDialog() !== dialog) button.setDialog(dialog);
-        dialog.setTitle((node.props.title as string | null | undefined) ?? "");
-        dialog.setModal((node.props.modal as boolean | null | undefined) ?? true);
-        const language = node.props.language as Parameters<Gtk.FontDialog["setLanguage"]>[0] | null | undefined;
+        dialog.setTitle((instance.props.title as string | null | undefined) ?? "");
+        dialog.setModal((instance.props.modal as boolean | null | undefined) ?? true);
+        const language = instance.props.language as Parameters<Gtk.FontDialog["setLanguage"]>[0] | null | undefined;
         if (language) dialog.setLanguage(language);
-        dialog.setFilter((node.props.filter as Gtk.Filter | null | undefined) ?? null);
-        dialog.setFontMap((node.props.fontMap as Parameters<Gtk.FontDialog["setFontMap"]>[0]) ?? null);
+        dialog.setFilter((instance.props.filter as Gtk.Filter | null | undefined) ?? null);
+        dialog.setFontMap((instance.props.fontMap as Parameters<Gtk.FontDialog["setFontMap"]>[0]) ?? null);
     };
     return {
         title: imperative(applyDialog, { always: true }),
@@ -169,56 +99,18 @@ const fontDialogButtonDescriptors: DescriptorFactory = (node): PropDescriptorTab
     };
 };
 
-const alertDialogDescriptors: DescriptorFactory = (node): PropDescriptorTable => {
-    const dialog = node.backingInstance;
-    if (!(dialog instanceof Adw.AlertDialog)) return {};
-    return {
-        responses: imperative((oldProps) => {
-            for (const response of (oldProps?.responses as readonly AlertDialogResponseProps[] | null | undefined) ??
-                []) {
-                dialog.removeResponse(response.id);
-            }
-            for (const response of (node.props.responses as readonly AlertDialogResponseProps[] | null | undefined) ??
-                []) {
-                dialog.addResponse(response.id, response.label);
-                if (response.appearance !== undefined) dialog.setResponseAppearance(response.id, response.appearance);
-                if (response.enabled !== undefined) dialog.setResponseEnabled(response.id, response.enabled);
-            }
-        }),
-    };
-};
-
-const dropTargetDescriptors: DescriptorFactory = (node): PropDescriptorTable => {
-    const target = node.backingInstance;
-    if (!(target instanceof Gtk.DropTarget)) return {};
-    return {
-        types: imperative(() => {
-            target.setGtypes((node.props.types as GType[] | null | undefined) ?? []);
-        }),
-    };
-};
-
-const windowDescriptors: DescriptorFactory = (node): PropDescriptorTable => {
-    if (!(node.backingInstance instanceof Gtk.Window)) return {};
+const windowDescriptors: DescriptorFactory = (instance): PropDescriptorTable => {
+    if (!(instance.backingInstance instanceof Gtk.Window)) return {};
     return {
         onClose: signal("close-request", { getArgs: () => [], returnValue: true }),
     };
 };
 
-type TeardownRegistrar = { registerTeardown(callback: () => void): void };
-
-const hasTeardownRegistry = (node: Node): node is Node & TeardownRegistrar =>
-    typeof (node as Partial<TeardownRegistrar>).registerTeardown === "function";
-
-const registerTeardownOn = (node: Node, callback: () => void): void => {
-    if (hasTeardownRegistry(node)) node.registerTeardown(callback);
-};
-
-const findHostWidget = (node: Node): Gtk.Widget | null => {
-    let current: Node | null = node.parent;
+const findHostWidget = (instance: Instance): Gtk.Widget | null => {
+    let current: Instance | null = instance.parent;
     while (current) {
-        const instance = current.backingInstance;
-        if (instance instanceof Gtk.Widget) return instance;
+        const backing = current.backingInstance;
+        if (backing instanceof Gtk.Widget) return backing;
         current = current.parent;
     }
     return null;
@@ -228,13 +120,13 @@ const entriesHaveAccels = (entries: readonly MenuEntry[]): boolean =>
     entries.some((entry) => (entry.type === "item" ? entry.accels != null : entriesHaveAccels(entry.children)));
 
 const resolveMenuContext = (
-    node: Node,
+    instance: Instance,
     entries: readonly MenuEntry[],
 ): { context: MenuActionContext; cleanup?: () => void } | null => {
-    const explicit = node.props.menuActionContext as MenuActionContext | undefined;
+    const explicit = instance.props.menuActionContext as MenuActionContext | undefined;
     if (explicit) return { context: explicit };
-    const application = (node.props.menuApplication as Gtk.Application | null | undefined) ?? null;
-    const host = findHostWidget(node);
+    const application = (instance.props.menuApplication as Gtk.Application | null | undefined) ?? null;
+    const host = findHostWidget(instance);
     if (host && !(application && entriesHaveAccels(entries))) {
         const actionGroup = new Gio.SimpleActionGroup();
         host.insertActionGroup("menu", actionGroup);
@@ -247,8 +139,8 @@ const resolveMenuContext = (
     return null;
 };
 
-const menuDescriptors: DescriptorFactory = (node): PropDescriptorTable => {
-    const menu = node.backingInstance;
+const menuDescriptors: DescriptorFactory = (instance): PropDescriptorTable => {
+    const menu = instance.backingInstance;
     if (!(menu instanceof Gio.Menu)) return {};
     let dispose: (() => void) | null = null;
 
@@ -256,9 +148,9 @@ const menuDescriptors: DescriptorFactory = (node): PropDescriptorTable => {
         dispose?.();
         dispose = null;
         menu.removeAll();
-        const entries = (node.props.menuEntries as readonly MenuEntry[] | null | undefined) ?? [];
+        const entries = (instance.props.menuEntries as readonly MenuEntry[] | null | undefined) ?? [];
         if (entries.length === 0) return;
-        const resolved = resolveMenuContext(node, entries);
+        const resolved = resolveMenuContext(instance, entries);
         if (!resolved) return;
         const built = buildMenuModel(entries, resolved.context, menu);
         dispose = () => {
@@ -267,31 +159,13 @@ const menuDescriptors: DescriptorFactory = (node): PropDescriptorTable => {
         };
     };
 
-    registerTeardownOn(node, () => {
+    registerTeardown(instance, () => {
         dispose?.();
         dispose = null;
     });
 
     return {
-        menuEntries: imperative(() => scheduleAfterCommit(build)),
-    };
-};
-
-const aboutDialogDescriptors: DescriptorFactory = (node): PropDescriptorTable => {
-    const dialog = node.backingInstance;
-    if (!(dialog instanceof Gtk.AboutDialog)) return {};
-    return {
-        creditSections: imperative((oldProps) => {
-            const previous =
-                (oldProps?.creditSections as readonly { name: string; people: string[] }[] | null | undefined) ?? [];
-            if (previous.length > 0) return;
-            for (const section of (node.props.creditSections as
-                | readonly { name: string; people: string[] }[]
-                | null
-                | undefined) ?? []) {
-                dialog.addCreditSection(section.name, section.people);
-            }
-        }),
+        menuEntries: imperative(() => scheduleFlush(build)),
     };
 };
 
@@ -323,66 +197,77 @@ const fillTable = (props: readonly string[], handler: ImperativeHandler): PropDe
 
 const TEXT_TAG_WRITE_ONLY_PROPS = ["foreground", "background", "paragraphBackground"] as const;
 
-const textTagDescriptors: DescriptorFactory = (node): PropDescriptorTable => {
-    const tag = node.backingInstance;
+const textTagDescriptors: DescriptorFactory = (instance): PropDescriptorTable => {
+    const tag = instance.backingInstance;
     if (!(tag instanceof Gtk.TextTag)) return {};
     const table: PropDescriptorTable = {
         priority: imperative(() => {
-            const priority = node.props.priority as number | null | undefined;
+            const priority = instance.props.priority as number | null | undefined;
             if (priority != null) tag.setPriority(priority);
         }),
     };
     for (const prop of TEXT_TAG_WRITE_ONLY_PROPS) {
         table[prop] = imperative(() => {
-            const value = node.props[prop] as string | null | undefined;
+            const value = instance.props[prop] as string | null | undefined;
             if (value != null) Reflect.set(tag, prop, value);
         });
     }
     return table;
 };
 
-const textViewDescriptors: DescriptorFactory = (node): PropDescriptorTable => {
-    const view = node.backingInstance;
+const textViewDescriptors: DescriptorFactory = (instance): PropDescriptorTable => {
+    const view = instance.backingInstance;
     if (!(view instanceof Gtk.TextView)) return {};
-    const controller = getTextBufferController(node, view);
-    const apply: ImperativeHandler = (oldProps) => controller.applyProps(oldProps, node.props);
+    const controller = getTextBufferController(instance, view);
+    const apply: ImperativeHandler = (oldProps) => controller.applyProps(oldProps, instance.props);
     return fillTable(TEXT_VIEW_BUFFER_PROPS, apply);
 };
 
-const sourceViewDescriptors: DescriptorFactory = (node): PropDescriptorTable => {
-    const view = node.backingInstance;
+const sourceViewDescriptors: DescriptorFactory = (instance): PropDescriptorTable => {
+    const view = instance.backingInstance;
     if (!(view instanceof Gtk.TextView)) return {};
-    const controller = getTextBufferController(node, view);
-    const applySource: ImperativeHandler = (oldProps) => controller.applySourceProps(oldProps, node.props);
+    const controller = getTextBufferController(instance, view);
+    const applySource: ImperativeHandler = (oldProps) => controller.applySourceProps(oldProps, instance.props);
     return fillTable(SOURCE_VIEW_BUFFER_PROPS, applySource);
 };
 
 /**
- * Maps a GLib type name to the prop descriptors that {@link ElementNode} merges
- * for any instance whose GType ancestry includes that type.
+ * Maps a GLib type name to the prop descriptors merged for any instance whose
+ * GType ancestry includes that type.
  */
-export const PROP_DESCRIPTOR_TABLE: Readonly<Record<string, DescriptorFactory>> = {
-    GtkScale: scaleDescriptors,
-    GtkLevelBar: levelBarDescriptors,
-    GtkCalendar: calendarDescriptors,
+const PROP_DESCRIPTOR_TABLE: Readonly<Record<string, DescriptorFactory>> = {
     AdwToggleGroup: toggleGroupDescriptors,
     GtkStack: stackDescriptors,
     AdwViewStack: stackDescriptors,
     GtkColorDialogButton: colorDialogButtonDescriptors,
     GtkFontDialogButton: fontDialogButtonDescriptors,
-    AdwAlertDialog: alertDialogDescriptors,
-    GtkDropTarget: dropTargetDescriptors,
     GtkWindow: windowDescriptors,
-    GtkAboutDialog: aboutDialogDescriptors,
     GMenu: menuDescriptors,
     GtkTextTag: textTagDescriptors,
     GtkTextView: textViewDescriptors,
     GtkSourceView: sourceViewDescriptors,
 };
 
+const tableCache = new WeakMap<Instance, PropDescriptorTable>();
+
 /**
- * Props that must be withheld from a widget's constructor because their JSX form
- * is not the GObject property's value type (the descriptor sets the real value
- * after construction). Keyed by GLib type name.
+ * Returns the signal/imperative prop descriptors for `instance`, merged across
+ * its backing GObject's GType ancestry (most-derived entries win). Cached per
+ * instance, since each factory closes over the instance.
+ *
+ * @param instance - The reconciler instance whose descriptors to resolve.
  */
-export const CONSTRUCTION_SKIP_PROPS: Readonly<Record<string, readonly string[]>> = {};
+export const getPropDescriptors = (instance: Instance): PropDescriptorTable => {
+    const cached = tableCache.get(instance);
+    if (cached) return cached;
+    let table: PropDescriptorTable = {};
+    const backing = instance.backingInstance;
+    if (backing) {
+        for (const typeName of collectTypeNameChain(backing.__gtype__)) {
+            const factory = PROP_DESCRIPTOR_TABLE[typeName];
+            if (factory) table = { ...factory(instance), ...table };
+        }
+    }
+    tableCache.set(instance, table);
+    return table;
+};

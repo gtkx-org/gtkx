@@ -1,6 +1,6 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkCheckButton, GtkImage, GtkSpinner, GtkStack, GtkStackSwitcher } from "@gtkx/react";
+import { GtkBox, GtkCheckButton, GtkImage, GtkSpinner, GtkStack, GtkStackPage, GtkStackSwitcher } from "@gtkx/react";
 import { useMemo, useState } from "react";
 import demoIconUri from "../../icons/org.gtk.Demo4.svg";
 import type { Demo } from "../types.js";
@@ -18,15 +18,15 @@ const StackDemo = () => {
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
             <GtkStackSwitcher halign={Gtk.Align.CENTER} stack={stack} />
             <GtkStack ref={setStack} name="stack" transitionType={Gtk.StackTransitionType.CROSSFADE}>
-                <GtkStack.Page id="page1" title="Page 1">
+                <GtkStackPage id="page1" title="Page 1">
                     <GtkImage gicon={demoIcon} pixelSize={100} marginTop={20} marginBottom={20} />
-                </GtkStack.Page>
-                <GtkStack.Page id="page2" title="Page 2">
+                </GtkStackPage>
+                <GtkStackPage id="page2" title="Page 2">
                     <GtkCheckButton label="Page 2" halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
-                </GtkStack.Page>
-                <GtkStack.Page id="page3" iconName="face-laugh-symbolic">
+                </GtkStackPage>
+                <GtkStackPage id="page3" iconName="face-laugh-symbolic">
                     <GtkSpinner spinning halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
-                </GtkStack.Page>
+                </GtkStackPage>
             </GtkStack>
         </GtkBox>
     );

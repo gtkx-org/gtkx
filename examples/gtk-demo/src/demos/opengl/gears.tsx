@@ -1,7 +1,16 @@
 import type * as Gdk from "@gtkx/gi/gdk";
 import * as gl from "@gtkx/gi/gl";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkFrame, GtkGLArea, GtkLabel, GtkOverlay, GtkScale, useAdjustment } from "@gtkx/react";
+import {
+    GtkBox,
+    GtkFrame,
+    GtkGLArea,
+    GtkLabel,
+    GtkOverlay,
+    GtkOverlayChild,
+    GtkScale,
+    useAdjustment,
+} from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLatest } from "../../use-latest.js";
 import type { Demo } from "../types.js";
@@ -710,7 +719,7 @@ const GearsDemo = () => {
                 <AxisSlider axis="Y" value={state.viewRotY} onChange={state.setViewRotY} />
                 <AxisSlider axis="Z" value={state.viewRotZ} onChange={state.setViewRotZ} />
             </GtkBox>
-            <GtkOverlay.Child>
+            <GtkOverlayChild>
                 <GtkLabel
                     label={state.fps > 0 ? `FPS: ${state.fps.toFixed(1)}` : "FPS: ---"}
                     halign={Gtk.Align.START}
@@ -719,7 +728,7 @@ const GearsDemo = () => {
                     marginTop={12}
                     cssClasses={["app-notification"]}
                 />
-            </GtkOverlay.Child>
+            </GtkOverlayChild>
         </GtkOverlay>
     );
 };

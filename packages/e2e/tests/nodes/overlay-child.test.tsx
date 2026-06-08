@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkButton, GtkLabel, GtkOverlay } from "@gtkx/react";
+import { GtkButton, GtkLabel, GtkOverlay, GtkOverlayChild } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -14,9 +14,9 @@ describe("render - OverlayChild > OverlayChildNode (1)", () => {
         await render(
             <GtkOverlay ref={overlayRef}>
                 <GtkLabel ref={mainRef} label="Main Content" />
-                <GtkOverlay.Child>
+                <GtkOverlayChild>
                     <GtkButton ref={overlayChildRef} label="Overlay Button" />
-                </GtkOverlay.Child>
+                </GtkOverlayChild>
             </GtkOverlay>,
         );
 
@@ -33,9 +33,9 @@ describe("render - OverlayChild > OverlayChildNode (1)", () => {
         await render(
             <GtkOverlay ref={overlayRef}>
                 Main
-                <GtkOverlay.Child measure={true}>
+                <GtkOverlayChild measure={true}>
                     <GtkButton ref={buttonRef} label="Measured Overlay" />
-                </GtkOverlay.Child>
+                </GtkOverlayChild>
             </GtkOverlay>,
         );
 
@@ -52,9 +52,9 @@ describe("render - OverlayChild > OverlayChildNode (2)", () => {
         await render(
             <GtkOverlay ref={overlayRef}>
                 Main
-                <GtkOverlay.Child clipOverlay={true}>
+                <GtkOverlayChild clipOverlay={true}>
                     <GtkButton ref={buttonRef} label="Clipped Overlay" />
-                </GtkOverlay.Child>
+                </GtkOverlayChild>
             </GtkOverlay>,
         );
 
@@ -72,9 +72,9 @@ describe("render - OverlayChild > OverlayChildNode (3)", () => {
                 <GtkOverlay ref={overlayRef}>
                     Main
                     {showOverlay && (
-                        <GtkOverlay.Child>
+                        <GtkOverlayChild>
                             <GtkButton label="Removable Overlay" />
-                        </GtkOverlay.Child>
+                        </GtkOverlayChild>
                     )}
                 </GtkOverlay>
             );
@@ -95,12 +95,12 @@ describe("render - OverlayChild > OverlayChildNode (4)", () => {
         await render(
             <GtkOverlay ref={overlayRef}>
                 Main
-                <GtkOverlay.Child>
+                <GtkOverlayChild>
                     <GtkButton label="First Overlay" />
-                </GtkOverlay.Child>
-                <GtkOverlay.Child>
+                </GtkOverlayChild>
+                <GtkOverlayChild>
                     <GtkButton label="Second Overlay" />
-                </GtkOverlay.Child>
+                </GtkOverlayChild>
             </GtkOverlay>,
         );
 
@@ -117,10 +117,10 @@ describe("render - OverlayChild > OverlayChildNode (5)", () => {
         await render(
             <GtkOverlay ref={overlayRef}>
                 Main
-                <GtkOverlay.Child>
+                <GtkOverlayChild>
                     <GtkButton ref={firstRef} label="First Overlay" />
                     <GtkButton ref={secondRef} label="Second Overlay" />
-                </GtkOverlay.Child>
+                </GtkOverlayChild>
             </GtkOverlay>,
         );
 
@@ -142,10 +142,10 @@ describe("render - OverlayChild > OverlayChildNode (6)", () => {
         await render(
             <GtkOverlay ref={overlayRef}>
                 Main
-                <GtkOverlay.Child measure={true}>
+                <GtkOverlayChild measure={true}>
                     <GtkButton ref={firstRef} label="First" />
                     <GtkButton ref={secondRef} label="Second" />
-                </GtkOverlay.Child>
+                </GtkOverlayChild>
             </GtkOverlay>,
         );
 

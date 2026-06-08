@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkCheckButton, GtkHeaderBar, GtkScrolledWindow, GtkStack, GtkTextView } from "@gtkx/react";
+import { GtkCheckButton, GtkHeaderBar, GtkScrolledWindow, GtkStack, GtkStackPage, GtkTextView } from "@gtkx/react";
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./markup.tsx?raw";
@@ -45,7 +45,7 @@ const MarkupStack = ({ showSource, formattedViewRef, sourceViewRef, onFormattedR
         hexpand
         transitionType={Gtk.StackTransitionType.NONE}
     >
-        <GtkStack.Page id="formatted" title="Formatted">
+        <GtkStackPage id="formatted" title="Formatted">
             <GtkScrolledWindow
                 vexpand
                 hexpand
@@ -62,8 +62,8 @@ const MarkupStack = ({ showSource, formattedViewRef, sourceViewRef, onFormattedR
                     onRealize={onFormattedRealized}
                 />
             </GtkScrolledWindow>
-        </GtkStack.Page>
-        <GtkStack.Page id="source" title="Source">
+        </GtkStackPage>
+        <GtkStackPage id="source" title="Source">
             <GtkScrolledWindow
                 vexpand
                 hexpand
@@ -80,7 +80,7 @@ const MarkupStack = ({ showSource, formattedViewRef, sourceViewRef, onFormattedR
                     {SAMPLE_MARKUP}
                 </GtkTextView>
             </GtkScrolledWindow>
-        </GtkStack.Page>
+        </GtkStackPage>
     </GtkStack>
 );
 

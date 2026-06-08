@@ -1,5 +1,14 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkDrawingArea, GtkOverlay, GtkPaned, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
+import {
+    GtkBox,
+    GtkButton,
+    GtkDrawingArea,
+    GtkOverlay,
+    GtkOverlayChild,
+    GtkPaned,
+    GtkScrolledWindow,
+    GtkTextView,
+} from "@gtkx/react";
 import type { Demo } from "../types.js";
 import brickUri from "./brick.png";
 import brick2Uri from "./brick2.png";
@@ -153,7 +162,7 @@ const CssMultiplebgsDemo = () => {
     return (
         <GtkOverlay name="overlay">
             <GtkDrawingArea name="canvas" hexpand vexpand />
-            <GtkOverlay.Child>
+            <GtkOverlayChild>
                 <GtkButton
                     name="bricks-button"
                     halign={Gtk.Align.CENTER}
@@ -161,8 +170,8 @@ const CssMultiplebgsDemo = () => {
                     widthRequest={250}
                     heightRequest={84}
                 />
-            </GtkOverlay.Child>
-            <GtkOverlay.Child>
+            </GtkOverlayChild>
+            <GtkOverlayChild>
                 <GtkPaned
                     name="paned"
                     orientation={Gtk.Orientation.VERTICAL}
@@ -175,7 +184,7 @@ const CssMultiplebgsDemo = () => {
                         </GtkScrolledWindow>
                     }
                 />
-            </GtkOverlay.Child>
+            </GtkOverlayChild>
         </GtkOverlay>
     );
 };

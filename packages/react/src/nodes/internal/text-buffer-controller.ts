@@ -2,17 +2,11 @@ import type { SignalHandler } from "@gtkx/ffi";
 import type * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as GtkSource from "@gtkx/gi/gtksource";
+import { scheduleFlush } from "../../commit-flush.js";
+import type { Instance } from "../../instance.js";
 import type { GtkSourceViewProps, GtkTextViewProps } from "../../jsx.js";
-import type { Node } from "../../node.js";
-import { createAfterCommitDebounce } from "../../post-commit-queue.js";
 import { hasChanged } from "./props.js";
-import {
-    type AnchorNode,
-    isAnchorWrapper,
-    isBufferContentWrapper,
-    isBufferTextWrapper,
-    isPaintableWrapper,
-} from "./text-wrapper.js";
+import { isAnchorWrapper, isBufferContentWrapper, isBufferTextWrapper, isPaintableWrapper } from "./text-wrapper.js";
 import { unparentWidget } from "./widget.js";
 
 type BufferCallbackProps = Pick<
@@ -59,19 +53,17 @@ export class TextBufferController {
     private externallyManaged = false;
     private managesContent = false;
     private readonly anchoredWidgets = new Set<Gtk.Widget>();
-    private readonly requestRebuild: () => void;
+    private readonly boundRebuild = (): void => this.rebuild();
 
     /**
-     * @param owner - The `ElementNode` whose backing instance is the text view;
-     *   its `children` are the content the buffer is rebuilt from.
+     * @param owner - The instance whose backing GObject is the text view; its
+     *   `children` are the content the buffer is rebuilt from.
      * @param view - The backing `Gtk.TextView` the buffer attaches to.
      */
     constructor(
-        private readonly owner: Node,
+        private readonly owner: Instance,
         private readonly view: Gtk.TextView,
-    ) {
-        this.requestRebuild = createAfterCommitDebounce(() => this.rebuild());
-    }
+    ) {}
 
     /** The view's current buffer, or `null` before one has been created. */
     public getBuffer(): Gtk.TextBuffer | null {
@@ -80,7 +72,7 @@ export class TextBufferController {
 
     /** Schedules a single buffer rebuild to run after the current commit drains. */
     public scheduleRebuild(): void {
-        this.requestRebuild();
+        scheduleFlush(this.boundRebuild);
     }
 
     /**
@@ -284,18 +276,18 @@ export class TextBufferController {
         for (const tag of tags) tagTable.remove(tag);
     }
 
-    private insertChildren(buffer: Gtk.TextBuffer, children: readonly Node[]): void {
+    private insertChildren(buffer: Gtk.TextBuffer, children: readonly Instance[]): void {
         for (const child of children) {
             this.insertChild(buffer, child);
         }
     }
 
-    private insertChild(buffer: Gtk.TextBuffer, child: Node): void {
+    private insertChild(buffer: Gtk.TextBuffer, child: Instance): void {
         const instance = child.backingInstance;
         if (isBufferTextWrapper(child)) {
-            this.insertText(buffer, child.props.text);
+            this.insertText(buffer, child.props.text as string);
         } else if (isPaintableWrapper(child)) {
-            this.insertPaintable(buffer, child.props.paintable);
+            this.insertPaintable(buffer, child.props.paintable as Gdk.Paintable);
         } else if (isAnchorWrapper(child)) {
             this.insertAnchor(buffer, child);
         } else if (instance instanceof Gtk.TextTag) {
@@ -303,7 +295,7 @@ export class TextBufferController {
         }
     }
 
-    private insertTag(buffer: Gtk.TextBuffer, element: Node, tag: Gtk.TextTag): void {
+    private insertTag(buffer: Gtk.TextBuffer, element: Instance, tag: Gtk.TextTag): void {
         const tagTable = buffer.getTagTable();
         if (tag.name && !tagTable.lookup(tag.name)) tagTable.add(tag);
 
@@ -315,7 +307,7 @@ export class TextBufferController {
         }
     }
 
-    private insertAnchor(buffer: Gtk.TextBuffer, wrapper: AnchorNode): void {
+    private insertAnchor(buffer: Gtk.TextBuffer, wrapper: Instance): void {
         const child = wrapper.children[0];
         const widget = child?.backingInstance;
         const replacement = wrapper.props.replacementChar;

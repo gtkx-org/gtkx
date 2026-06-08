@@ -143,27 +143,12 @@ const descendsFrom = (
 };
 
 /**
- * Decides whether a `<class>` is a "widget" for the React reconciler — a
- * descendant (direct or transitive) of `GtkWidget`.
- *
- * Walks the parent chain across namespaces. Returns `false` if any
- * ancestor cannot be resolved (which is preferable to silently treating
- * an unknown type as a widget).
- *
- * @param klass - The class to inspect
- * @param namespace - The namespace the class lives in
- * @param repository - The repository for cross-namespace parent lookups
- */
-export const isWidgetClass = (klass: GirClass, namespace: GirNamespace, repository: GirRepository): boolean =>
-    descendsFrom(klass, namespace, repository, (glibName) => glibName === "GtkWidget");
-
-/**
  * Decides whether a `<class>` is a React reconciler node — any instantiable
  * GObject (a direct or transitive descendant of `GObject.Object`). Every such
- * class is a valid JSX element backed by the generic `ElementNode`, so codegen
- * emits prop, signal, and construct-only metadata for all of them: widgets,
- * event controllers, layout managers, and plain objects such as `Gio.Menu` or
- * `Gtk.StringList` that participate in the tree as slot values.
+ * class is a valid JSX element, so codegen emits prop, signal, and
+ * construct-only metadata for all of them: widgets, event controllers, layout
+ * managers, and plain objects such as `Gio.Menu` or `Gtk.StringList` that
+ * participate in the tree as slot values.
  *
  * @param klass - The class to inspect
  * @param namespace - The namespace the class lives in

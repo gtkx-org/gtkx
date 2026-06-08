@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkGrid } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkGrid, GtkGridChild } from "@gtkx/react";
 import type { Demo } from "../types.js";
 import sourceCode from "./theming-style-classes.tsx?raw";
 
@@ -13,20 +13,20 @@ const ThemingStyleClassesDemo = () => (
         marginBottom={10}
         orientation={Gtk.Orientation.VERTICAL}
     >
-        <GtkGrid.Child column={0} row={0}>
+        <GtkGridChild column={0} row={0}>
             <GtkBox name="linked-buttons" cssClasses={["linked"]} valign={Gtk.Align.CENTER} halign={Gtk.Align.CENTER}>
                 <GtkButton label="Hi, I am a button" receivesDefault />
                 <GtkButton label="And I'm another button" receivesDefault />
                 <GtkButton label="This is a button party!" receivesDefault />
             </GtkBox>
-        </GtkGrid.Child>
-        <GtkGrid.Child column={0} row={1}>
+        </GtkGridChild>
+        <GtkGridChild column={0} row={1}>
             <GtkBox spacing={10}>
                 <GtkButton label="Plain" halign={Gtk.Align.END} hexpand />
                 <GtkButton label="Destructive" cssClasses={["destructive-action"]} />
                 <GtkButton label="Suggested" cssClasses={["suggested-action"]} />
             </GtkBox>
-        </GtkGrid.Child>
+        </GtkGridChild>
     </GtkGrid>
 );
 

@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkStack } from "@gtkx/react";
+import { GtkStack, GtkStackPage } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -12,7 +12,7 @@ describe("render - StackPage", () => {
 
             await render(
                 <GtkStack ref={stackRef}>
-                    <GtkStack.Page id="test-page">Content</GtkStack.Page>
+                    <GtkStackPage id="test-page">Content</GtkStackPage>
                 </GtkStack>,
             );
 
@@ -24,9 +24,9 @@ describe("render - StackPage", () => {
 
             await render(
                 <GtkStack ref={stackRef}>
-                    <GtkStack.Page id="titled" title="Page Title">
+                    <GtkStackPage id="titled" title="Page Title">
                         Content
-                    </GtkStack.Page>
+                    </GtkStackPage>
                 </GtkStack>,
             );
 
@@ -40,9 +40,9 @@ describe("render - StackPage", () => {
 
             await render(
                 <GtkStack ref={stackRef}>
-                    <GtkStack.Page id="iconic" iconName="dialog-information">
+                    <GtkStackPage id="iconic" iconName="dialog-information">
                         Content
-                    </GtkStack.Page>
+                    </GtkStackPage>
                 </GtkStack>,
             );
 
@@ -56,9 +56,9 @@ describe("render - StackPage", () => {
             const buildStack = (pages: string[]) => (
                 <GtkStack ref={stackRef}>
                     {pages.map((name) => (
-                        <GtkStack.Page key={name} id={name}>
+                        <GtkStackPage key={name} id={name}>
                             {name}
-                        </GtkStack.Page>
+                        </GtkStackPage>
                     ))}
                 </GtkStack>
             );

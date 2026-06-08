@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkLabel, GtkNotebook } from "@gtkx/react";
+import { GtkLabel, GtkNotebook, GtkNotebookPage, GtkNotebookPageTab } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -12,7 +12,7 @@ describe("render - NotebookPage > NotebookPageNode (1)", () => {
 
         await render(
             <GtkNotebook ref={notebookRef}>
-                <GtkNotebook.Page label="Page 1">Content 1</GtkNotebook.Page>
+                <GtkNotebookPage label="Page 1">Content 1</GtkNotebookPage>
             </GtkNotebook>,
         );
 
@@ -25,9 +25,9 @@ describe("render - NotebookPage > NotebookPageNode (1)", () => {
 
         await render(
             <GtkNotebook ref={notebookRef}>
-                <GtkNotebook.Page label="My Tab">
+                <GtkNotebookPage label="My Tab">
                     <GtkLabel ref={contentRef} label="Content" />
-                </GtkNotebook.Page>
+                </GtkNotebookPage>
             </GtkNotebook>,
         );
 
@@ -44,9 +44,9 @@ describe("render - NotebookPage > NotebookPageNode (2)", () => {
         function App({ tabLabel }: { tabLabel: string }) {
             return (
                 <GtkNotebook ref={notebookRef}>
-                    <GtkNotebook.Page label={tabLabel}>
+                    <GtkNotebookPage label={tabLabel}>
                         <GtkLabel ref={contentRef} label="Content" />
-                    </GtkNotebook.Page>
+                    </GtkNotebookPage>
                 </GtkNotebook>
             );
         }
@@ -65,9 +65,9 @@ describe("render - NotebookPage > NotebookPageNode (2)", () => {
 
         await render(
             <GtkNotebook ref={notebookRef}>
-                <GtkNotebook.Page label="Page 1">Content 1</GtkNotebook.Page>
-                <GtkNotebook.Page label="Page 2">Content 2</GtkNotebook.Page>
-                <GtkNotebook.Page label="Page 3">Content 3</GtkNotebook.Page>
+                <GtkNotebookPage label="Page 1">Content 1</GtkNotebookPage>
+                <GtkNotebookPage label="Page 2">Content 2</GtkNotebookPage>
+                <GtkNotebookPage label="Page 3">Content 3</GtkNotebookPage>
             </GtkNotebook>,
         );
 
@@ -104,12 +104,12 @@ describe("render - NotebookPage > NotebookPageNode (4)", () => {
         function App({ showContent }: { showContent: boolean }) {
             return (
                 <GtkNotebook ref={notebookRef}>
-                    <GtkNotebook.Page>
+                    <GtkNotebookPage>
                         {showContent ? <GtkLabel ref={contentRef} label="Content" /> : null}
-                        <GtkNotebook.PageTab>
+                        <GtkNotebookPageTab>
                             <GtkLabel label="Tab" />
-                        </GtkNotebook.PageTab>
-                    </GtkNotebook.Page>
+                        </GtkNotebookPageTab>
+                    </GtkNotebookPage>
                 </GtkNotebook>
             );
         }

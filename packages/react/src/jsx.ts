@@ -1163,4 +1163,13 @@ export { GtkMenuButton, GtkPopoverMenu, GtkPopoverMenuBar } from "./components/m
 export { AdwNavigationSplitView, AdwNavigationView } from "./components/navigation.js";
 export { GtkSizeGroup } from "./components/size-group.js";
 export { WebKitWebView } from "./components/web-view.js";
-export { AdwApplicationWindow, GtkApplicationWindow } from "./components/window.js";
+export {
+    AdwAboutDialog,
+    AdwAlertDialog,
+    AdwApplicationWindow,
+    AdwDialog,
+    AdwPreferencesWindow,
+    GtkAboutDialog,
+    GtkApplicationWindow,
+    GtkWindow,
+} from "./components/window.js";

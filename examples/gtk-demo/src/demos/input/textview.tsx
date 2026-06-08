@@ -10,6 +10,9 @@ import {
     GtkPaned,
     GtkScale,
     GtkScrolledWindow,
+    GtkTextAnchor,
+    GtkTextPaintable,
+    GtkTextTag,
     GtkTextView,
     useAdjustment,
 } from "@gtkx/react";
@@ -162,84 +165,84 @@ const TextViewIntroSection = () => (
 
 const TextViewFontStylesSection = () => (
     <>
-        <GtkTextView.Tag id="heading-font" {...headingProps}>
+        <GtkTextTag name="heading-font" {...headingProps}>
             {"Font styles. "}
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {"For example, you can have "}
-        <GtkTextView.Tag id="italic" style={Pango.Style.ITALIC}>
+        <GtkTextTag name="italic" style={Pango.Style.ITALIC}>
             italic
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {", "}
-        <GtkTextView.Tag id="bold" weight={Pango.Weight.BOLD}>
+        <GtkTextTag name="bold" weight={Pango.Weight.BOLD}>
             bold
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {", or "}
-        <GtkTextView.Tag id="monospace" family="monospace">
+        <GtkTextTag name="monospace" family="monospace">
             {"monospace (typewriter)"}
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {", or "}
-        <GtkTextView.Tag id="big" size={20 * Pango.SCALE}>
+        <GtkTextTag name="big" size={20 * Pango.SCALE}>
             big
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {" text. It's best not to hardcode specific text sizes; you can use relative sizes as with CSS, such as "}
-        <GtkTextView.Tag id="xx-small" scale={SCALE_XX_SMALL}>
+        <GtkTextTag name="xx-small" scale={SCALE_XX_SMALL}>
             xx-small
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {" or "}
-        <GtkTextView.Tag id="x-large" scale={SCALE_X_LARGE}>
+        <GtkTextTag name="x-large" scale={SCALE_X_LARGE}>
             x-large
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {" to ensure that your program properly adapts if the user changes the default font size.\n\n"}
     </>
 );
 
 const TextViewColorsSection = () => (
     <>
-        <GtkTextView.Tag id="heading-colors" {...headingProps}>
+        <GtkTextTag name="heading-colors" {...headingProps}>
             {"Colors. "}
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {"Colors such as "}
-        <GtkTextView.Tag id="blue_foreground" foreground="blue">
+        <GtkTextTag name="blue_foreground" foreground="blue">
             {"a blue foreground"}
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {" or "}
-        <GtkTextView.Tag id="red_background" background="red">
+        <GtkTextTag name="red_background" background="red">
             {"a red background"}
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {" or even "}
-        <GtkTextView.Tag id="blue_fg" foreground="blue">
-            <GtkTextView.Tag id="red_bg" background="red">
+        <GtkTextTag name="blue_fg" foreground="blue">
+            <GtkTextTag name="red_bg" background="red">
                 {"a blue foreground on red background"}
-            </GtkTextView.Tag>
-        </GtkTextView.Tag>
+            </GtkTextTag>
+        </GtkTextTag>
         {" (select that to read it) can be used.\n\n"}
     </>
 );
 
 const TextViewUnderlineRiseSection = () => (
     <>
-        <GtkTextView.Tag id="heading-underline" {...headingProps}>
+        <GtkTextTag name="heading-underline" {...headingProps}>
             {"Underline, strikethrough, and rise. "}
-        </GtkTextView.Tag>
-        <GtkTextView.Tag id="strikethrough" strikethrough>
+        </GtkTextTag>
+        <GtkTextTag name="strikethrough" strikethrough>
             Strikethrough
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {", "}
-        <GtkTextView.Tag id="underline" underline={Pango.Underline.SINGLE}>
+        <GtkTextTag name="underline" underline={Pango.Underline.SINGLE}>
             underline
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {", "}
-        <GtkTextView.Tag id="double_underline" underline={Pango.Underline.DOUBLE}>
+        <GtkTextTag name="double_underline" underline={Pango.Underline.DOUBLE}>
             {"double underline"}
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {", "}
-        <GtkTextView.Tag id="superscript" rise={10 * Pango.SCALE} size={8 * Pango.SCALE}>
+        <GtkTextTag name="superscript" rise={10 * Pango.SCALE} size={8 * Pango.SCALE}>
             superscript
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {", and "}
-        <GtkTextView.Tag id="subscript" rise={-10 * Pango.SCALE} size={8 * Pango.SCALE}>
+        <GtkTextTag name="subscript" rise={-10 * Pango.SCALE} size={8 * Pango.SCALE}>
             subscript
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {" are all supported.\n\n"}
     </>
 );
@@ -251,117 +254,117 @@ interface ImagesSectionProps {
 
 const TextViewImagesSection = ({ iconPaintable, nuclearPaintable }: ImagesSectionProps) => (
     <>
-        <GtkTextView.Tag id="heading-images" {...headingProps}>
+        <GtkTextTag name="heading-images" {...headingProps}>
             {"Images. "}
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {"The buffer can have images in it: "}
-        {iconPaintable && <GtkTextView.Paintable paintable={iconPaintable} />}
-        <GtkTextView.Paintable paintable={nuclearPaintable} />
+        {iconPaintable && <GtkTextPaintable paintable={iconPaintable} />}
+        <GtkTextPaintable paintable={nuclearPaintable} />
         {" for example.\n\n"}
     </>
 );
 
 const TextViewSpacingSection = () => (
     <>
-        <GtkTextView.Tag id="heading-spacing" {...headingProps}>
+        <GtkTextTag name="heading-spacing" {...headingProps}>
             {"Spacing. "}
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {"You can adjust the amount of space before each line.\n"}
-        <GtkTextView.Tag id="wide_margins_1" leftMargin={50} rightMargin={50}>
-            <GtkTextView.Tag id="big_gap_before" pixelsAboveLines={30}>
+        <GtkTextTag name="wide_margins_1" leftMargin={50} rightMargin={50}>
+            <GtkTextTag name="big_gap_before" pixelsAboveLines={30}>
                 {"This line has a whole lot of space before it."}
-            </GtkTextView.Tag>
-        </GtkTextView.Tag>
+            </GtkTextTag>
+        </GtkTextTag>
         {"\n"}
-        <GtkTextView.Tag id="wide_margins_2" leftMargin={50} rightMargin={50}>
-            <GtkTextView.Tag id="big_gap_after" pixelsBelowLines={30}>
+        <GtkTextTag name="wide_margins_2" leftMargin={50} rightMargin={50}>
+            <GtkTextTag name="big_gap_after" pixelsBelowLines={30}>
                 {
                     "You can also adjust the amount of space after each line; this line has a whole lot of space after it."
                 }
-            </GtkTextView.Tag>
-        </GtkTextView.Tag>
+            </GtkTextTag>
+        </GtkTextTag>
         {"\n"}
-        <GtkTextView.Tag id="wide_margins_3" leftMargin={50} rightMargin={50}>
-            <GtkTextView.Tag id="double_spaced" pixelsInsideWrap={10}>
+        <GtkTextTag name="wide_margins_3" leftMargin={50} rightMargin={50}>
+            <GtkTextTag name="double_spaced" pixelsInsideWrap={10}>
                 {
                     "You can also adjust the amount of space between wrapped lines; this line has extra space between each wrapped line in the same paragraph. To show off wrapping, some filler text: the quick brown fox jumped over the lazy dog. Blah blah blah blah blah blah blah blah blah."
                 }
-            </GtkTextView.Tag>
-        </GtkTextView.Tag>
+            </GtkTextTag>
+        </GtkTextTag>
         {"\nAlso note that those lines have extra-wide margins.\n\n"}
     </>
 );
 
 const TextViewEditabilitySection = () => (
     <>
-        <GtkTextView.Tag id="heading-edit" {...headingProps}>
+        <GtkTextTag name="heading-edit" {...headingProps}>
             {"Editability. "}
-        </GtkTextView.Tag>
-        <GtkTextView.Tag id="not_editable" editable={false}>
+        </GtkTextTag>
+        <GtkTextTag name="not_editable" editable={false}>
             {"This line is 'locked down' and can't be edited by the user - just try it! You can't delete this line."}
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {"\n\n"}
     </>
 );
 
 const TextViewWrappingSection = () => (
     <>
-        <GtkTextView.Tag id="heading-wrap" {...headingProps}>
+        <GtkTextTag name="heading-wrap" {...headingProps}>
             {"Wrapping. "}
-        </GtkTextView.Tag>
-        <GtkTextView.Tag id="word_wrap" wrapMode={Gtk.WrapMode.WORD}>
+        </GtkTextTag>
+        <GtkTextTag name="word_wrap" wrapMode={Gtk.WrapMode.WORD}>
             {
                 "This line (and most of the others in this buffer) is word-wrapped, using the proper Unicode algorithm. Word wrap should work in all scripts and languages that GTK supports. Let's make this a long paragraph to demonstrate: blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah"
             }
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {"\n\n"}
-        <GtkTextView.Tag id="char_wrap" wrapMode={Gtk.WrapMode.CHAR}>
+        <GtkTextTag name="char_wrap" wrapMode={Gtk.WrapMode.CHAR}>
             {
                 "This line has character-based wrapping, and can wrap between any two character glyphs. Let's make this a long paragraph to demonstrate: blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah"
             }
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {"\n\n"}
-        <GtkTextView.Tag id="no_wrap" wrapMode={Gtk.WrapMode.NONE}>
+        <GtkTextTag name="no_wrap" wrapMode={Gtk.WrapMode.NONE}>
             {"This line has all wrapping turned off, so it makes the horizontal scrollbar appear."}
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {"\n\n\n"}
     </>
 );
 
 const TextViewJustificationSection = () => (
     <>
-        <GtkTextView.Tag id="heading-justify" {...headingProps}>
+        <GtkTextTag name="heading-justify" {...headingProps}>
             {"Justification. "}
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {"\n"}
-        <GtkTextView.Tag id="center" justification={Gtk.Justification.CENTER}>
+        <GtkTextTag name="center" justification={Gtk.Justification.CENTER}>
             {"This line has center justification."}
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {"\n"}
-        <GtkTextView.Tag id="right_justify" justification={Gtk.Justification.RIGHT}>
+        <GtkTextTag name="right_justify" justification={Gtk.Justification.RIGHT}>
             {"This line has right justification."}
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {"\n\n"}
-        <GtkTextView.Tag id="wide_margins" leftMargin={50} rightMargin={50}>
+        <GtkTextTag name="wide_margins" leftMargin={50} rightMargin={50}>
             {
                 "This line has big wide margins. Text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text."
             }
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {"\n\n"}
     </>
 );
 
 const TextViewInternationalSection = () => (
     <>
-        <GtkTextView.Tag id="heading-intl" {...headingProps}>
+        <GtkTextTag name="heading-intl" {...headingProps}>
             {"Internationalization. "}
-        </GtkTextView.Tag>
+        </GtkTextTag>
         {
             " You can put all sorts of Unicode text in the buffer.\n\nGerman (Deutsch Süd) Grüß Gott\nGreek (Ελληνικά) Γειά σας\nHebrew שלום\nJapanese (日本語)\n\nThe widget properly handles bidirectional text, word wrapping, DOS/UNIX/Unicode paragraph separators, grapheme boundaries, and so on using the Pango internationalization framework.\n"
         }
         {"Here's a word-wrapped quote in a right-to-left language:\n"}
-        <GtkTextView.Tag
-            id="rtl_quote"
+        <GtkTextTag
+            name="rtl_quote"
             wrapMode={Gtk.WrapMode.WORD}
             direction={Gtk.TextDirection.RTL}
             indent={30}
@@ -371,7 +374,7 @@ const TextViewInternationalSection = () => (
             {
                 "وقد بدأ ثلاث من أكثر المؤسسات تقدما في شبكة اكسيون برامجها كمنظمات لا تسعى للربح، ثم تحولت في السنوات الخمس الماضية إلى مؤسسات مالية منظمة، وباتت جزءا من النظام المالي في بلدانها، ولكنها تتخصص في خدمة قطاع المشروعات الصغيرة. وأحد أكثر هذه المؤسسات نجاحا هو «بانكوسول» في بوليفيا."
             }
-        </GtkTextView.Tag>
+        </GtkTextTag>
     </>
 );
 
@@ -380,11 +383,11 @@ const TextViewWidgetsSection = ({ onClickMe }: { onClickMe: () => void }) => {
     return (
         <>
             {"\n\nYou can put widgets in the buffer: Here's a button: "}
-            <GtkTextView.Anchor>
+            <GtkTextAnchor>
                 <GtkButton label="Click Me" onClicked={onClickMe} />
-            </GtkTextView.Anchor>
+            </GtkTextAnchor>
             {" and a menu: "}
-            <GtkTextView.Anchor>
+            <GtkTextAnchor>
                 <GtkDropDown
                     items={[
                         { id: "opt1", value: "Option 1" },
@@ -392,15 +395,15 @@ const TextViewWidgetsSection = ({ onClickMe }: { onClickMe: () => void }) => {
                         { id: "opt3", value: "Option 3" },
                     ]}
                 />
-            </GtkTextView.Anchor>
+            </GtkTextAnchor>
             {" and a scale: "}
-            <GtkTextView.Anchor>
+            <GtkTextAnchor>
                 <GtkScale orientation={Gtk.Orientation.HORIZONTAL} adjustment={scaleAdjustment} widthRequest={100} />
-            </GtkTextView.Anchor>
+            </GtkTextAnchor>
             {" finally a text entry: "}
-            <GtkTextView.Anchor>
+            <GtkTextAnchor>
                 <GtkEntry widthChars={10} />
-            </GtkTextView.Anchor>
+            </GtkTextAnchor>
             {
                 ".\n\nThis demo doesn't demonstrate all the GtkTextBuffer features; it leaves out, for example: invisible/hidden text, tab stops, application-drawn areas on the sides of the widget for displaying breakpoints and such..."
             }

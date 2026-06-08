@@ -12,6 +12,7 @@ import {
     GtkFontDialogButton,
     GtkGestureClick,
     GtkGrid,
+    GtkGridChild,
     GtkHeaderBar,
     GtkLabel,
     GtkScale,
@@ -19,6 +20,7 @@ import {
     GtkShortcut,
     GtkShortcutController,
     GtkStack,
+    GtkStackPage,
     GtkTextView,
     GtkToggleButton,
     GtkViewport,
@@ -740,21 +742,21 @@ const FontFeaturesColorRows = ({ state, handlers }: { state: FontFeaturesState; 
     const { fgColor, setFgColor, bgColor, setBgColor } = state;
     return (
         <>
-            <GtkGrid.Child column={0} row={3}>
+            <GtkGridChild column={0} row={3}>
                 <GtkLabel label="Foreground" xalign={0} valign={Gtk.Align.BASELINE} />
-            </GtkGrid.Child>
-            <GtkGrid.Child column={1} row={3}>
+            </GtkGridChild>
+            <GtkGridChild column={1} row={3}>
                 <GtkColorDialogButton rgba={fgColor} onRgbaChanged={setFgColor} valign={Gtk.Align.BASELINE} />
-            </GtkGrid.Child>
+            </GtkGridChild>
 
-            <GtkGrid.Child column={0} row={4}>
+            <GtkGridChild column={0} row={4}>
                 <GtkLabel label="Background" xalign={0} valign={Gtk.Align.BASELINE} />
-            </GtkGrid.Child>
-            <GtkGrid.Child column={1} row={4}>
+            </GtkGridChild>
+            <GtkGridChild column={1} row={4}>
                 <GtkColorDialogButton rgba={bgColor} onRgbaChanged={setBgColor} valign={Gtk.Align.BASELINE} />
-            </GtkGrid.Child>
+            </GtkGridChild>
 
-            <GtkGrid.Child column={2} row={3} rowSpan={2}>
+            <GtkGridChild column={2} row={3} rowSpan={2}>
                 <GtkButton
                     name="swap-colors"
                     iconName="object-flip-vertical-symbolic"
@@ -764,7 +766,7 @@ const FontFeaturesColorRows = ({ state, handlers }: { state: FontFeaturesState; 
                     tooltipText="Swap colors"
                     onClicked={handlers.swapColors}
                 />
-            </GtkGrid.Child>
+            </GtkGridChild>
         </>
     );
 };
@@ -801,10 +803,10 @@ const SliderEntryRow = ({
     const adjustment = useAdjustment({ value, lower, upper, stepIncrement, pageIncrement });
     return (
         <>
-            <GtkGrid.Child column={0} row={row}>
+            <GtkGridChild column={0} row={row}>
                 <GtkLabel label={label} xalign={0} valign={Gtk.Align.BASELINE} />
-            </GtkGrid.Child>
-            <GtkGrid.Child column={1} row={row}>
+            </GtkGridChild>
+            <GtkGridChild column={1} row={row}>
                 <GtkScale
                     hexpand
                     widthRequest={100}
@@ -813,8 +815,8 @@ const SliderEntryRow = ({
                     onValueChanged={(scale) => onValueChanged(scale.getValue())}
                     sensitive={sensitive}
                 />
-            </GtkGrid.Child>
-            <GtkGrid.Child column={2} row={row}>
+            </GtkGridChild>
+            <GtkGridChild column={2} row={row}>
                 <GtkEntry
                     name={entryName}
                     widthChars={4}
@@ -824,7 +826,7 @@ const SliderEntryRow = ({
                     onActivate={onEntryActivate}
                     sensitive={sensitive}
                 />
-            </GtkGrid.Child>
+            </GtkGridChild>
         </>
     );
 };
@@ -1107,17 +1109,17 @@ const FontFeaturesPreview = ({ state, styles, handlers, stackPage, previewAttrib
             cssClasses={[styles.bgStyle]}
         >
             <GtkStack name="stack" page={stackPage}>
-                <GtkStack.Page id="label">
+                <GtkStackPage id="label">
                     <FontFeaturesPreviewLabel state={state} styles={styles} attributes={previewAttributes} />
-                </GtkStack.Page>
-                <GtkStack.Page id="entry">
+                </GtkStackPage>
+                <GtkStackPage id="entry">
                     <GtkTextView
                         ref={state.editTextViewRef}
                         cssClasses={[styles.editStyle]}
                         wrapMode={Gtk.WrapMode.WORD}
                         valign={Gtk.Align.FILL}
                     />
-                </GtkStack.Page>
+                </GtkStackPage>
             </GtkStack>
         </GtkScrolledWindow>
 

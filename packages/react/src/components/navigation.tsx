@@ -1,8 +1,8 @@
 import { AdwNavigationSplitView as AdwNavigationSplitViewBase } from "@gtkx/react-jsx/compounds";
 import type { AdwNavigationSplitViewProps, AdwNavigationViewProps } from "@gtkx/react-jsx/jsx";
 import type { ReactNode } from "react";
+import { WRAPPER_NODE_ELEMENT } from "../instance.js";
 import type { NavigationSplitViewPageProps, NavigationViewPageProps } from "../jsx.js";
-import { WRAPPER_NODE_ELEMENT } from "../nodes/wrapper.js";
 
 const AdwNavigationViewElement = "AdwNavigationView" as const;
 const WrapperNodeElement = WRAPPER_NODE_ELEMENT;

@@ -9,6 +9,7 @@ import {
     GtkDropTarget,
     GtkFontDialogButton,
     GtkGrid,
+    GtkGridChild,
     GtkLabel,
 } from "@gtkx/react";
 import { useCallback, useState } from "react";
@@ -146,7 +147,7 @@ interface ColorRowProps {
 
 const ColorPickerRow = ({ colorWidget, setColorWidget }: ColorRowProps) => (
     <>
-        <GtkGrid.Child column={0} row={0}>
+        <GtkGridChild column={0} row={0}>
             <GtkLabel
                 label="_Color:"
                 useUnderline
@@ -155,10 +156,10 @@ const ColorPickerRow = ({ colorWidget, setColorWidget }: ColorRowProps) => (
                 hexpand
                 mnemonicWidget={colorWidget}
             />
-        </GtkGrid.Child>
-        <GtkGrid.Child column={1} row={0}>
+        </GtkGridChild>
+        <GtkGridChild column={1} row={0}>
             <GtkColorDialogButton name="color-button" ref={setColorWidget} />
-        </GtkGrid.Child>
+        </GtkGridChild>
     </>
 );
 
@@ -169,7 +170,7 @@ interface FontRowProps {
 
 const FontPickerRow = ({ fontWidget, setFontWidget }: FontRowProps) => (
     <>
-        <GtkGrid.Child column={0} row={1}>
+        <GtkGridChild column={0} row={1}>
             <GtkLabel
                 label="_Font:"
                 useUnderline
@@ -178,10 +179,10 @@ const FontPickerRow = ({ fontWidget, setFontWidget }: FontRowProps) => (
                 hexpand
                 mnemonicWidget={fontWidget}
             />
-        </GtkGrid.Child>
-        <GtkGrid.Child column={1} row={1}>
+        </GtkGridChild>
+        <GtkGridChild column={1} row={1}>
             <GtkFontDialogButton name="font-button" ref={setFontWidget} />
-        </GtkGrid.Child>
+        </GtkGridChild>
     </>
 );
 
@@ -194,7 +195,7 @@ interface FilePickerRowProps {
 
 const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWidget }: FilePickerRowProps) => (
     <>
-        <GtkGrid.Child column={0} row={2}>
+        <GtkGridChild column={0} row={2}>
             <GtkLabel
                 label="_File:"
                 useUnderline
@@ -203,8 +204,8 @@ const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWid
                 hexpand
                 mnemonicWidget={fileButtonWidget}
             />
-        </GtkGrid.Child>
-        <GtkGrid.Child column={1} row={2}>
+        </GtkGridChild>
+        <GtkGridChild column={1} row={2}>
             <GtkBox spacing={6}>
                 <GtkLabel label={fileState.fileName} xalign={0} ellipsize={2} hexpand />
                 <GtkButton
@@ -244,7 +245,7 @@ const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWid
                     onClicked={() => void handlers.handlePrintFile()}
                 />
             </GtkBox>
-        </GtkGrid.Child>
+        </GtkGridChild>
     </>
 );
 
@@ -256,7 +257,7 @@ interface UriRowProps {
 
 const UriPickerRow = ({ uriButtonWidget, setUriButtonWidget, onLaunchUri }: UriRowProps) => (
     <>
-        <GtkGrid.Child column={0} row={3}>
+        <GtkGridChild column={0} row={3}>
             <GtkLabel
                 label="_URI:"
                 useUnderline
@@ -265,8 +266,8 @@ const UriPickerRow = ({ uriButtonWidget, setUriButtonWidget, onLaunchUri }: UriR
                 hexpand
                 mnemonicWidget={uriButtonWidget}
             />
-        </GtkGrid.Child>
-        <GtkGrid.Child column={1} row={3}>
+        </GtkGridChild>
+        <GtkGridChild column={1} row={3}>
             <GtkButton
                 ref={setUriButtonWidget}
                 label="www.gtk.org"
@@ -274,7 +275,7 @@ const UriPickerRow = ({ uriButtonWidget, setUriButtonWidget, onLaunchUri }: UriR
                 accessibleHasPopup
                 onClicked={() => void onLaunchUri()}
             />
-        </GtkGrid.Child>
+        </GtkGridChild>
     </>
 );
 

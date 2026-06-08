@@ -23,6 +23,7 @@ import {
     GtkEntry,
     GtkFontDialogButton,
     GtkGrid,
+    GtkGridChild,
     GtkHeaderBar,
     GtkLabel,
     GtkScrolledWindow,
@@ -664,9 +665,9 @@ const FontRenderingControls = ({ state, onZoomIn, onZoomOut }: FontRenderingCont
         <FontRenderingHintControls state={state} />
         <FontRenderingExtraOverlays state={state} />
         <FontRenderingZoomButtons state={state} onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
-        <GtkGrid.Child column={8} row={0}>
+        <GtkGridChild column={8} row={0}>
             <GtkLabel label="" hexpand />
-        </GtkGrid.Child>
+        </GtkGridChild>
     </GtkGrid>
 );
 
@@ -674,18 +675,18 @@ const FontRenderingTextRow = ({ state }: { state: FontRenderingState }) => {
     const { text, setText, fontDesc, setFontDesc } = state;
     return (
         <>
-            <GtkGrid.Child column={1} row={0}>
+            <GtkGridChild column={1} row={0}>
                 <GtkLabel label="Text" xalign={1} marginStart={10} cssClasses={["dim-label"]} />
-            </GtkGrid.Child>
-            <GtkGrid.Child column={2} row={0}>
+            </GtkGridChild>
+            <GtkGridChild column={2} row={0}>
                 <GtkEntry name="entry" text={text} onChanged={(entry) => setText(entry.getText())} />
-            </GtkGrid.Child>
-            <GtkGrid.Child column={1} row={1}>
+            </GtkGridChild>
+            <GtkGridChild column={1} row={1}>
                 <GtkLabel label="Font" xalign={1} marginStart={10} cssClasses={["dim-label"]} />
-            </GtkGrid.Child>
-            <GtkGrid.Child column={2} row={1}>
+            </GtkGridChild>
+            <GtkGridChild column={2} row={1}>
                 <GtkFontDialogButton fontDesc={fontDesc} onFontDescChanged={setFontDesc} />
-            </GtkGrid.Child>
+            </GtkGridChild>
         </>
     );
 };
@@ -694,22 +695,22 @@ const FontRenderingOverlayChecks = ({ state }: { state: FontRenderingState }) =>
     const { overlays, setOverlays } = state;
     return (
         <>
-            <GtkGrid.Child column={3} row={0}>
+            <GtkGridChild column={3} row={0}>
                 <GtkCheckButton
                     label="Show _Pixels"
                     useUnderline
                     active={overlays.showPixels}
                     onToggled={(btn) => setOverlays((o) => ({ ...o, showPixels: btn.getActive() }))}
                 />
-            </GtkGrid.Child>
-            <GtkGrid.Child column={3} row={1}>
+            </GtkGridChild>
+            <GtkGridChild column={3} row={1}>
                 <GtkCheckButton
                     label="Show _Outline"
                     useUnderline
                     active={overlays.showOutlines}
                     onToggled={(btn) => setOverlays((o) => ({ ...o, showOutlines: btn.getActive() }))}
                 />
-            </GtkGrid.Child>
+            </GtkGridChild>
         </>
     );
 };
@@ -718,7 +719,7 @@ const FontRenderingHintControls = ({ state }: { state: FontRenderingState }) => 
     const { hintStyle, setHintStyle, antialias, setAntialias, hintMetrics, setHintMetrics } = state;
     return (
         <>
-            <GtkGrid.Child column={4} row={0} columnSpan={2}>
+            <GtkGridChild column={4} row={0} columnSpan={2}>
                 <GtkBox spacing={6}>
                     <GtkLabel label="_Hinting" useUnderline cssClasses={["dim-label"]} />
                     <GtkDropDown
@@ -732,23 +733,23 @@ const FontRenderingHintControls = ({ state }: { state: FontRenderingState }) => 
                         items={hintStyleOptions.map((opt) => ({ id: opt.id, value: opt.label }))}
                     />
                 </GtkBox>
-            </GtkGrid.Child>
-            <GtkGrid.Child column={4} row={1}>
+            </GtkGridChild>
+            <GtkGridChild column={4} row={1}>
                 <GtkCheckButton
                     label="_Antialias"
                     useUnderline
                     active={antialias}
                     onToggled={(btn) => setAntialias(btn.getActive())}
                 />
-            </GtkGrid.Child>
-            <GtkGrid.Child column={5} row={1}>
+            </GtkGridChild>
+            <GtkGridChild column={5} row={1}>
                 <GtkCheckButton
                     label="Hint _Metrics"
                     useUnderline
                     active={hintMetrics}
                     onToggled={(btn) => setHintMetrics(btn.getActive())}
                 />
-            </GtkGrid.Child>
+            </GtkGridChild>
         </>
     );
 };
@@ -757,22 +758,22 @@ const FontRenderingExtraOverlays = ({ state }: { state: FontRenderingState }) =>
     const { overlays, setOverlays } = state;
     return (
         <>
-            <GtkGrid.Child column={6} row={0}>
+            <GtkGridChild column={6} row={0}>
                 <GtkCheckButton
                     label="Show _Extents"
                     useUnderline
                     active={overlays.showExtents}
                     onToggled={(btn) => setOverlays((o) => ({ ...o, showExtents: btn.getActive() }))}
                 />
-            </GtkGrid.Child>
-            <GtkGrid.Child column={6} row={1}>
+            </GtkGridChild>
+            <GtkGridChild column={6} row={1}>
                 <GtkCheckButton
                     label="Show _Grid"
                     useUnderline
                     active={overlays.showGrid}
                     onToggled={(btn) => setOverlays((o) => ({ ...o, showGrid: btn.getActive() }))}
                 />
-            </GtkGrid.Child>
+            </GtkGridChild>
         </>
     );
 };
@@ -789,7 +790,7 @@ const FontRenderingZoomButtons = ({
     const { scale } = state;
     return (
         <>
-            <GtkGrid.Child column={7} row={0}>
+            <GtkGridChild column={7} row={0}>
                 <GtkButton
                     name="up_button"
                     iconName="list-add-symbolic"
@@ -800,8 +801,8 @@ const FontRenderingZoomButtons = ({
                     valign={Gtk.Align.CENTER}
                     accessibleLabel="Zoom in"
                 />
-            </GtkGrid.Child>
-            <GtkGrid.Child column={7} row={1}>
+            </GtkGridChild>
+            <GtkGridChild column={7} row={1}>
                 <GtkButton
                     name="down_button"
                     iconName="list-remove-symbolic"
@@ -812,7 +813,7 @@ const FontRenderingZoomButtons = ({
                     valign={Gtk.Align.CENTER}
                     accessibleLabel="Zoom out"
                 />
-            </GtkGrid.Child>
+            </GtkGridChild>
         </>
     );
 };

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkBoxLayout, GtkFixedLayout, GtkGrid, GtkGridLayout, GtkLabel } from "@gtkx/react";
+import { GtkBox, GtkBoxLayout, GtkFixedLayout, GtkGridChild, GtkGridLayout, GtkLabel } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -97,7 +97,7 @@ describe("render - LayoutManagerNode lifecycle", () => {
     });
 });
 
-describe("render - GtkGrid.Child against a generic widget with GridLayout", () => {
+describe("render - GtkGridChild against a generic widget with GridLayout", () => {
     it("positions widgets via the layout-child API", async () => {
         const boxRef = createRef<Gtk.Box>();
         const labelARef = createRef<Gtk.Label>();
@@ -106,12 +106,12 @@ describe("render - GtkGrid.Child against a generic widget with GridLayout", () =
         await render(
             <GtkBox ref={boxRef}>
                 <GtkGridLayout />
-                <GtkGrid.Child column={0} row={0}>
+                <GtkGridChild column={0} row={0}>
                     <GtkLabel ref={labelARef} label="A" />
-                </GtkGrid.Child>
-                <GtkGrid.Child column={1} row={1}>
+                </GtkGridChild>
+                <GtkGridChild column={1} row={1}>
                     <GtkLabel ref={labelBRef} label="B" />
-                </GtkGrid.Child>
+                </GtkGridChild>
             </GtkBox>,
         );
 

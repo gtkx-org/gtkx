@@ -3,7 +3,7 @@ import * as Gdk from "@gtkx/gi/gdk";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as GtkSource from "@gtkx/gi/gtksource";
-import { GtkBox, GtkLabel, GtkOverlay, GtkSourceView, GtkSpinButton, GtkText } from "@gtkx/react";
+import { GtkBox, GtkLabel, GtkOverlay, GtkOverlayChild, GtkSourceView, GtkSpinButton, GtkText } from "@gtkx/react";
 import { act, render, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -112,9 +112,9 @@ describe("signal out-parameters - GtkOverlay::get-child-position (caller-allocat
                 onGetChildPosition={handleGetChildPosition}
             >
                 <GtkLabel label="Main Content" />
-                <GtkOverlay.Child>
+                <GtkOverlayChild>
                     <GtkBox widthRequest={40} heightRequest={20} />
-                </GtkOverlay.Child>
+                </GtkOverlayChild>
             </GtkOverlay>,
         );
 
@@ -155,9 +155,9 @@ describe("signal emit() - caller-allocated out-parameter", () => {
         await render(
             <GtkOverlay ref={overlayRef} widthRequest={200} heightRequest={200}>
                 <GtkLabel label="Main" />
-                <GtkOverlay.Child>
+                <GtkOverlayChild>
                     <GtkBox widthRequest={40} heightRequest={20} />
-                </GtkOverlay.Child>
+                </GtkOverlayChild>
             </GtkOverlay>,
         );
 

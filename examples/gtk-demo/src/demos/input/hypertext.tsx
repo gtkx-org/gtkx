@@ -10,6 +10,9 @@ import {
     GtkLabel,
     GtkLevelBar,
     GtkScrolledWindow,
+    GtkTextAnchor,
+    GtkTextPaintable,
+    GtkTextTag,
     GtkTextView,
 } from "@gtkx/react";
 import type { ReactNode } from "react";
@@ -62,38 +65,38 @@ const buildPage1 = (
     b.nodes.push(b.trackText("Some text to show that simple "));
     b.trackLink("hypertext", "hypertext", 3);
     b.nodes.push(
-        <GtkTextView.Tag key="link-hypertext" id="link-hypertext" foreground="blue" underline={Pango.Underline.SINGLE}>
+        <GtkTextTag key="link-hypertext" name="link-hypertext" foreground="blue" underline={Pango.Underline.SINGLE}>
             hypertext
-        </GtkTextView.Tag>,
+        </GtkTextTag>,
     );
     b.nodes.push(b.trackText(" can easily be realized with "));
     b.trackLink("tags", "tags", 2);
     b.nodes.push(
-        <GtkTextView.Tag key="link-tags" id="link-tags" foreground="blue" underline={Pango.Underline.SINGLE}>
+        <GtkTextTag key="link-tags" name="link-tags" foreground="blue" underline={Pango.Underline.SINGLE}>
             tags
-        </GtkTextView.Tag>,
+        </GtkTextTag>,
     );
     b.nodes.push(b.trackText(".\nOf course you can also embed Emoji 😋, "));
     b.nodes.push(b.trackText("icons "));
 
     b.trackPlaceholder();
     const iconPaintable = getIconPaintable("view-conceal-symbolic", 16);
-    b.nodes.push(iconPaintable ? <GtkTextView.Paintable key="icon" paintable={iconPaintable} /> : null);
+    b.nodes.push(iconPaintable ? <GtkTextPaintable key="icon" paintable={iconPaintable} /> : null);
 
     b.nodes.push(b.trackText(", or even widgets "));
     b.trackPlaceholder();
     b.nodes.push(
-        <GtkTextView.Anchor key="levelbar">
+        <GtkTextAnchor key="levelbar">
             <GtkLevelBar value={50} minValue={0} maxValue={100} widthRequest={100} />
-        </GtkTextView.Anchor>,
+        </GtkTextAnchor>,
     );
 
     b.nodes.push(b.trackText(" and labels with "));
     b.trackPlaceholder();
     b.nodes.push(
-        <GtkTextView.Anchor key="ghost-anchor" replacementChar="👻">
+        <GtkTextAnchor key="ghost-anchor" replacementChar="👻">
             <GtkLabel label="ghost" />
-        </GtkTextView.Anchor>,
+        </GtkTextAnchor>,
     );
 
     b.nodes.push(b.trackText(" text."));
@@ -135,28 +138,28 @@ const buildDefinitionPage = ({ title, phonetic, definition, sayWord }: Definitio
     b.trackText(" ");
     b.trackPlaceholder();
     b.nodes.push(
-        <GtkTextView.Tag key="nobreaks" id="nobreaks" allowBreaks={false}>
-            <GtkTextView.Tag key="title" id="title" weight={Pango.Weight.BOLD} scale={1.44}>
+        <GtkTextTag key="nobreaks" name="nobreaks" allowBreaks={false}>
+            <GtkTextTag key="title" name="title" weight={Pango.Weight.BOLD} scale={1.44}>
                 {title}
-            </GtkTextView.Tag>
+            </GtkTextTag>
             {" / "}
-            <GtkTextView.Tag key="phonetic" id="phonetic" family="monospace">
+            <GtkTextTag key="phonetic" name="phonetic" family="monospace">
                 {phonetic}
-            </GtkTextView.Tag>
+            </GtkTextTag>
             {" / "}
-            <GtkTextView.Anchor key="speaker">
+            <GtkTextAnchor key="speaker">
                 <GtkImage iconName="audio-volume-high-symbolic" cursor={Gdk.Cursor.newFromName("pointer", null)}>
                     <GtkGestureClick onPressed={() => sayWord(title)} />
                 </GtkImage>
-            </GtkTextView.Anchor>
-        </GtkTextView.Tag>,
+            </GtkTextAnchor>
+        </GtkTextTag>,
     );
     b.nodes.push(b.trackText(definition));
     b.trackLink("goback", "Go back", 1);
     b.nodes.push(
-        <GtkTextView.Tag key="link-goback" id="link-goback" foreground="blue" underline={Pango.Underline.SINGLE}>
+        <GtkTextTag key="link-goback" name="link-goback" foreground="blue" underline={Pango.Underline.SINGLE}>
             Go back
-        </GtkTextView.Tag>,
+        </GtkTextTag>,
     );
     return { content: b.nodes, linkInfos: b.links };
 };

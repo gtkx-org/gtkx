@@ -6,6 +6,7 @@ import {
     GtkButton,
     GtkEntry,
     GtkGrid,
+    GtkGridChild,
     GtkLabel,
     GtkSeparator,
 } from "@gtkx/react";
@@ -39,28 +40,28 @@ const DialogEntryRow = ({
     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
         <GtkButton label="_Interactive Dialog" useUnderline valign={Gtk.Align.START} onClicked={onOpenInteractive} />
         <GtkGrid rowSpacing={4} columnSpacing={4}>
-            <GtkGrid.Child column={0} row={0}>
+            <GtkGridChild column={0} row={0}>
                 <GtkLabel label="_Entry 1" useUnderline mnemonicWidget={entry1Widget} />
-            </GtkGrid.Child>
-            <GtkGrid.Child column={1} row={0}>
+            </GtkGridChild>
+            <GtkGridChild column={1} row={0}>
                 <GtkEntry
                     name="demo-entry-1"
                     ref={setEntry1Widget}
                     text={entry1}
                     onChanged={(e) => setEntry1(e.getText())}
                 />
-            </GtkGrid.Child>
-            <GtkGrid.Child column={0} row={1}>
+            </GtkGridChild>
+            <GtkGridChild column={0} row={1}>
                 <GtkLabel label="E_ntry 2" useUnderline mnemonicWidget={entry2Widget} />
-            </GtkGrid.Child>
-            <GtkGrid.Child column={1} row={1}>
+            </GtkGridChild>
+            <GtkGridChild column={1} row={1}>
                 <GtkEntry
                     name="demo-entry-2"
                     ref={setEntry2Widget}
                     text={entry2}
                     onChanged={(e) => setEntry2(e.getText())}
                 />
-            </GtkGrid.Child>
+            </GtkGridChild>
         </GtkGrid>
     </GtkBox>
 );
@@ -125,28 +126,28 @@ const InteractiveDialog = ({
                     halign={Gtk.Align.CENTER}
                     valign={Gtk.Align.CENTER}
                 >
-                    <GtkGrid.Child column={0} row={0}>
+                    <GtkGridChild column={0} row={0}>
                         <GtkLabel label="_Entry 1" useUnderline mnemonicWidget={dialogEntry1Widget} />
-                    </GtkGrid.Child>
-                    <GtkGrid.Child column={1} row={0}>
+                    </GtkGridChild>
+                    <GtkGridChild column={1} row={0}>
                         <GtkEntry
                             name="dialog-entry-1"
                             ref={setDialogEntry1Widget}
                             text={entry1Text}
                             onChanged={(e) => setEntry1Text(e.getText())}
                         />
-                    </GtkGrid.Child>
-                    <GtkGrid.Child column={0} row={1}>
+                    </GtkGridChild>
+                    <GtkGridChild column={0} row={1}>
                         <GtkLabel label="E_ntry 2" useUnderline mnemonicWidget={dialogEntry2Widget} />
-                    </GtkGrid.Child>
-                    <GtkGrid.Child column={1} row={1}>
+                    </GtkGridChild>
+                    <GtkGridChild column={1} row={1}>
                         <GtkEntry
                             name="dialog-entry-2"
                             ref={setDialogEntry2Widget}
                             text={entry2Text}
                             onChanged={(e) => setEntry2Text(e.getText())}
                         />
-                    </GtkGrid.Child>
+                    </GtkGridChild>
                 </GtkGrid>
             }
             responses={[

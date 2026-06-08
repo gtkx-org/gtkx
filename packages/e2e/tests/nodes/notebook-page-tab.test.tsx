@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkLabel, GtkNotebook } from "@gtkx/react";
+import { GtkBox, GtkLabel, GtkNotebook, GtkNotebookPage, GtkNotebookPageTab } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -12,14 +12,14 @@ describe("render - NotebookPageTab > NotebookPageTabNode (1)", () => {
 
         await render(
             <GtkNotebook ref={notebookRef}>
-                <GtkNotebook.Page>
-                    <GtkNotebook.PageTab>
+                <GtkNotebookPage>
+                    <GtkNotebookPageTab>
                         <GtkBox ref={tabRef}>
                             <GtkLabel label="Custom Tab" />
                         </GtkBox>
-                    </GtkNotebook.PageTab>
+                    </GtkNotebookPageTab>
                     <GtkLabel ref={contentRef} label="Content" />
-                </GtkNotebook.Page>
+                </GtkNotebookPage>
             </GtkNotebook>,
         );
 
@@ -35,12 +35,12 @@ describe("render - NotebookPageTab > NotebookPageTabNode (1)", () => {
 
         await render(
             <GtkNotebook ref={notebookRef}>
-                <GtkNotebook.Page label="Ignored Label">
-                    <GtkNotebook.PageTab>
+                <GtkNotebookPage label="Ignored Label">
+                    <GtkNotebookPageTab>
                         <GtkLabel ref={tabRef} label="Custom Tab Wins" />
-                    </GtkNotebook.PageTab>
+                    </GtkNotebookPageTab>
                     <GtkLabel ref={contentRef} label="Content" />
-                </GtkNotebook.Page>
+                </GtkNotebookPage>
             </GtkNotebook>,
         );
 
@@ -59,12 +59,12 @@ describe("render - NotebookPageTab > NotebookPageTabNode (2)", () => {
         function App({ tabText }: { tabText: string }) {
             return (
                 <GtkNotebook ref={notebookRef}>
-                    <GtkNotebook.Page>
-                        <GtkNotebook.PageTab>
+                    <GtkNotebookPage>
+                        <GtkNotebookPageTab>
                             <GtkLabel ref={tabRef} label={tabText} />
-                        </GtkNotebook.PageTab>
+                        </GtkNotebookPageTab>
                         <GtkLabel ref={contentRef} label="Content" />
-                    </GtkNotebook.Page>
+                    </GtkNotebookPage>
                 </GtkNotebook>
             );
         }
@@ -89,18 +89,18 @@ describe("render - NotebookPageTab > NotebookPageTabNode (3)", () => {
 
         await render(
             <GtkNotebook ref={notebookRef}>
-                <GtkNotebook.Page>
-                    <GtkNotebook.PageTab>
+                <GtkNotebookPage>
+                    <GtkNotebookPageTab>
                         <GtkLabel ref={tab1Ref} label="Tab 1" />
-                    </GtkNotebook.PageTab>
+                    </GtkNotebookPageTab>
                     <GtkLabel ref={content1Ref} label="Content 1" />
-                </GtkNotebook.Page>
-                <GtkNotebook.Page>
-                    <GtkNotebook.PageTab>
+                </GtkNotebookPage>
+                <GtkNotebookPage>
+                    <GtkNotebookPageTab>
                         <GtkLabel ref={tab2Ref} label="Tab 2" />
-                    </GtkNotebook.PageTab>
+                    </GtkNotebookPageTab>
                     <GtkLabel ref={content2Ref} label="Content 2" />
-                </GtkNotebook.Page>
+                </GtkNotebookPage>
             </GtkNotebook>,
         );
 
@@ -121,17 +121,17 @@ describe("render - NotebookPageTab > NotebookPageTabNode (4)", () => {
 
         await render(
             <GtkNotebook ref={notebookRef}>
-                <GtkNotebook.Page label="Text Tab">
+                <GtkNotebookPage label="Text Tab">
                     <GtkLabel ref={content1Ref} label="Content 1" />
-                </GtkNotebook.Page>
-                <GtkNotebook.Page>
-                    <GtkNotebook.PageTab>
+                </GtkNotebookPage>
+                <GtkNotebookPage>
+                    <GtkNotebookPageTab>
                         <GtkBox ref={customTabRef}>
                             <GtkLabel label="Custom" />
                         </GtkBox>
-                    </GtkNotebook.PageTab>
+                    </GtkNotebookPageTab>
                     <GtkLabel ref={content2Ref} label="Content 2" />
-                </GtkNotebook.Page>
+                </GtkNotebookPage>
             </GtkNotebook>,
         );
 

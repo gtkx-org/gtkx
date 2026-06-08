@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkGrid, GtkLabel, GtkScale, useAdjustment } from "@gtkx/react";
+import { GtkGrid, GtkGridChild, GtkLabel, GtkScale, useAdjustment } from "@gtkx/react";
 import type { Demo } from "../types.js";
 import sourceCode from "./scale.tsx?raw";
 
@@ -15,12 +15,12 @@ const ScaleRow = ({ label, row, scaleProps }: ScaleRowProps) => {
     const adjustment = useAdjustment({ value: 2, upper: 4, stepIncrement: 0.1, pageIncrement: 1 });
     return (
         <>
-            <GtkGrid.Child column={0} row={row}>
+            <GtkGridChild column={0} row={row}>
                 <GtkLabel label={label} xalign={0} />
-            </GtkGrid.Child>
-            <GtkGrid.Child column={1} row={row}>
+            </GtkGridChild>
+            <GtkGridChild column={1} row={row}>
                 <GtkScale widthRequest={200} drawValue={false} hexpand adjustment={adjustment} {...scaleProps} />
-            </GtkGrid.Child>
+            </GtkGridChild>
         </>
     );
 };

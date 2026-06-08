@@ -3,6 +3,7 @@ import type * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { ReactNode } from "react";
+import { isInCommit, scheduleFlush } from "../../commit-flush.js";
 import type { ListItem } from "../../jsx.js";
 import type { BoundItem } from "../../nodes/internal/bound-item.js";
 import { asLifecycleItem, connectFactoryLifecycle, UNBOUND_POSITION } from "../../nodes/internal/list-factory.js";
@@ -10,7 +11,6 @@ import { ListModelController } from "../../nodes/internal/list-model-controller.
 import { SelectionController } from "../../nodes/internal/selection-controller.js";
 import { SignalStore } from "../../nodes/internal/signal-store.js";
 import { stableIdOf } from "../../nodes/internal/stable-id.js";
-import { isInCommit, scheduleAfterCommit } from "../../post-commit-queue.js";
 import type { BackingInstance } from "../../types.js";
 import type { ColumnController } from "./column-controller.js";
 
@@ -235,7 +235,7 @@ export class ListController {
         if (this.boundItemsUpdateScheduled) return;
         this.boundItemsUpdateScheduled = true;
         if (isInCommit()) {
-            scheduleAfterCommit(this.flushBoundItemsUpdate);
+            scheduleFlush(this.flushBoundItemsUpdate);
         } else {
             queueMicrotask(this.flushBoundItemsUpdate);
         }
@@ -252,7 +252,7 @@ export class ListController {
         if (this.detached || this.boundItemsUpdateScheduled) return;
         this.boundItemsUpdateScheduled = true;
         if (isInCommit()) {
-            scheduleAfterCommit(this.flushBoundItemsUpdate);
+            scheduleFlush(this.flushBoundItemsUpdate);
         } else {
             setImmediate(this.flushBoundItemsUpdate);
         }

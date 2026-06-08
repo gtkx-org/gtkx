@@ -1,10 +1,10 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkLabel, GtkNotebook } from "@gtkx/react";
+import { GtkLabel, GtkNotebook, GtkNotebookPage } from "@gtkx/react";
 import type { ReactNode, RefObject } from "react";
 import type { ChildrenBuilder } from "./render-children.js";
 
 /**
- * Maps a page label to the content rendered inside its `GtkNotebook.Page`.
+ * Maps a page label to the content rendered inside its `GtkNotebookPage`.
  *
  * @param label - The page's tab label, also used as its React key.
  */
@@ -12,7 +12,7 @@ export type NotebookPageContent = (label: string) => ReactNode;
 
 /**
  * Builds a {@link ChildrenBuilder} that renders a `GtkNotebook` bound to `ref`
- * and turns each item label into a `GtkNotebook.Page` whose tab label is the
+ * and turns each item label into a `GtkNotebookPage` whose tab label is the
  * item and whose content is produced by `content`.
  *
  * @param ref - Ref attached to the rendered `GtkNotebook`.
@@ -23,9 +23,9 @@ const buildNotebookFrom =
     (pages) => (
         <GtkNotebook ref={ref}>
             {pages.map((label) => (
-                <GtkNotebook.Page key={label} label={label}>
+                <GtkNotebookPage key={label} label={label}>
                     {content(label)}
-                </GtkNotebook.Page>
+                </GtkNotebookPage>
             ))}
         </GtkNotebook>
     );

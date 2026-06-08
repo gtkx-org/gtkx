@@ -5,6 +5,7 @@ import {
     AdwToolbarView,
     GtkEntry,
     GtkGrid,
+    GtkGridChild,
     GtkLabel,
     GtkScale,
     GtkShortcut,
@@ -97,7 +98,7 @@ interface EntryRowProps {
 
 const DetailsEntryRow = ({ detailsEntry, setDetailsEntry, onChange }: EntryRowProps) => (
     <>
-        <GtkGrid.Child column={0} row={0}>
+        <GtkGridChild column={0} row={0}>
             <GtkLabel
                 label="_Details"
                 useUnderline
@@ -106,10 +107,10 @@ const DetailsEntryRow = ({ detailsEntry, setDetailsEntry, onChange }: EntryRowPr
                 cssClasses={["dim-label"]}
                 mnemonicWidget={detailsEntry}
             />
-        </GtkGrid.Child>
-        <GtkGrid.Child column={1} row={0} columnSpan={2}>
+        </GtkGridChild>
+        <GtkGridChild column={1} row={0} columnSpan={2}>
             <GtkEntry ref={setDetailsEntry} valign={Gtk.Align.BASELINE} onChanged={onChange} />
-        </GtkGrid.Child>
+        </GtkGridChild>
     </>
 );
 
@@ -127,7 +128,7 @@ const MoreDetailsEntryRow = ({
     onChange,
 }: MoreDetailsRowProps) => (
     <>
-        <GtkGrid.Child column={0} row={1}>
+        <GtkGridChild column={0} row={1}>
             <GtkLabel
                 label="More D_etails"
                 useUnderline
@@ -136,8 +137,8 @@ const MoreDetailsEntryRow = ({
                 cssClasses={["dim-label"]}
                 mnemonicWidget={moreDetailsEntry}
             />
-        </GtkGrid.Child>
-        <GtkGrid.Child column={1} row={1} columnSpan={2}>
+        </GtkGridChild>
+        <GtkGridChild column={1} row={1} columnSpan={2}>
             <GtkEntry
                 ref={setMoreDetailsEntry}
                 valign={Gtk.Align.BASELINE}
@@ -148,7 +149,7 @@ const MoreDetailsEntryRow = ({
                 }
                 onChanged={onChange}
             />
-        </GtkGrid.Child>
+        </GtkGridChild>
     </>
 );
 
@@ -162,7 +163,7 @@ const LevelScaleRow = ({ levelScale, setLevelScale, onValueChanged }: LevelScale
     const adjustment = useAdjustment({ value: 50, lower: 0, upper: 100, stepIncrement: 1, pageIncrement: 10 });
     return (
         <>
-            <GtkGrid.Child column={0} row={2}>
+            <GtkGridChild column={0} row={2}>
                 <GtkLabel
                     label="_Level"
                     useUnderline
@@ -171,8 +172,8 @@ const LevelScaleRow = ({ levelScale, setLevelScale, onValueChanged }: LevelScale
                     cssClasses={["dim-label"]}
                     mnemonicWidget={levelScale}
                 />
-            </GtkGrid.Child>
-            <GtkGrid.Child column={1} row={2} columnSpan={2}>
+            </GtkGridChild>
+            <GtkGridChild column={1} row={2} columnSpan={2}>
                 <GtkScale
                     ref={setLevelScale}
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -181,7 +182,7 @@ const LevelScaleRow = ({ levelScale, setLevelScale, onValueChanged }: LevelScale
                     adjustment={adjustment}
                     onValueChanged={(scale) => onValueChanged(scale.getValue())}
                 />
-            </GtkGrid.Child>
+            </GtkGridChild>
         </>
     );
 };
@@ -195,7 +196,7 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
     const { modeSwitch, setModeSwitch, showError, errorLabel, setErrorLabel } = state;
     return (
         <>
-            <GtkGrid.Child column={0} row={3}>
+            <GtkGridChild column={0} row={3}>
                 <GtkLabel
                     label="_Mode"
                     useUnderline
@@ -204,8 +205,8 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
                     cssClasses={["dim-label"]}
                     mnemonicWidget={modeSwitch}
                 />
-            </GtkGrid.Child>
-            <GtkGrid.Child column={1} row={3}>
+            </GtkGridChild>
+            <GtkGridChild column={1} row={3}>
                 <GtkSwitch
                     ref={setModeSwitch}
                     halign={Gtk.Align.START}
@@ -225,8 +226,8 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
                         />
                     </GtkShortcutController>
                 </GtkSwitch>
-            </GtkGrid.Child>
-            <GtkGrid.Child column={2} row={3}>
+            </GtkGridChild>
+            <GtkGridChild column={2} row={3}>
                 {showError && (
                     <GtkLabel
                         ref={setErrorLabel}
@@ -236,7 +237,7 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
                         cssClasses={["error"]}
                     />
                 )}
-            </GtkGrid.Child>
+            </GtkGridChild>
         </>
     );
 };
