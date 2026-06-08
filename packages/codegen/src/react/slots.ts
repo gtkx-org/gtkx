@@ -12,6 +12,15 @@
  *   `<ContainerSlot>` and dispatched by the reconciler as
  *   `parent[method](child)`. Users extend them through `containerSlots` in
  *   `gtkx.config.ts`.
+ *
+ * Alongside the slot maps, {@link mergeArrayProps} owns the array-prop surface:
+ * per JSX element name, a map of camelCase prop name to the item-type name the
+ * generated `Props` interface declares as `prop?: ItemType[] | null;`. Unlike
+ * the slot maps its values are objects rather than string arrays, so each
+ * user-supplied prop object is spread over the built-in one. The runtime
+ * add/remove/clear behavior lives in `@gtkx/react`'s `ARRAY_PROPS`, keyed by the
+ * same element and prop names. Users extend it through `arrayProps` in
+ * `gtkx.config.ts`.
  */
 
 /**
@@ -116,3 +125,45 @@ export const mergeWidgetSlots = (
 export const mergeContainerSlots = (
     userContainerSlots: Readonly<Record<string, readonly string[]>> | undefined,
 ): Readonly<Record<string, readonly string[]>> => mergeSlotMap(BUILT_IN_CONTAINER_SLOTS, userContainerSlots);
+
+/**
+ * Built-in array props keyed by JSX element name, then by camelCase prop name,
+ * with the item-type name the generated `Props` interface declares for that
+ * prop (an exported member of `@gtkx/react`). Each entry's runtime
+ * add/remove/clear behavior lives in `@gtkx/react`'s `ARRAY_PROPS`, keyed by the
+ * same element and prop names. User-supplied `arrayProps` from `gtkx.config.ts`
+ * merge into this map.
+ */
+const BUILT_IN_ARRAY_PROPS: Readonly<Record<string, Readonly<Record<string, string>>>> = Object.freeze({
+    GtkScale: { marks: "ScaleMark" },
+    GtkLevelBar: { offsets: "LevelBarOffset" },
+    GtkCalendar: { markedDays: "CalendarMark" },
+    AdwToggleGroup: { toggles: "ToggleProps" },
+    AdwAlertDialog: { responses: "AlertDialogResponseProps" },
+    GtkDropTarget: { types: "DropTargetType" },
+    GtkAboutDialog: { creditSections: "CreditSection" },
+});
+
+/**
+ * Merges the built-in array props with the user-supplied `arrayProps` map.
+ *
+ * Per JSX element name, the user's prop-to-item-type object is spread over the
+ * built-in one, so user entries add new props or override an existing prop's
+ * item type; elements the user does not touch keep their built-in object.
+ *
+ * @param userArrayProps - The user-provided `arrayProps` map, or `undefined`
+ */
+export const mergeArrayProps = (
+    userArrayProps: Readonly<Record<string, Readonly<Record<string, string>>>> | undefined,
+): Readonly<Record<string, Readonly<Record<string, string>>>> => {
+    const result: Record<string, Record<string, string>> = {};
+    for (const [key, props] of Object.entries(BUILT_IN_ARRAY_PROPS)) {
+        result[key] = { ...props };
+    }
+    if (userArrayProps !== undefined) {
+        for (const [key, props] of Object.entries(userArrayProps)) {
+            result[key] = { ...result[key], ...props };
+        }
+    }
+    return result;
+};

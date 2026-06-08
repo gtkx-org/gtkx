@@ -283,6 +283,33 @@ export type LevelBarOffset = {
 };
 
 /**
+ * A day number (1–31) to mark on a GtkCalendar.
+ *
+ * @see {@link https://docs.gtk.org/gtk4/method.Calendar.mark_day.html GtkCalendar.mark_day}
+ */
+export type CalendarMark = number;
+
+/**
+ * A `GType` value accepted as drop content on a GtkDropTarget.
+ *
+ * @see {@link https://docs.gtk.org/gtk4/method.DropTarget.set_gtypes.html GtkDropTarget.set_gtypes}
+ */
+export type DropTargetType = GType;
+
+/**
+ * A named credit section for a GtkAboutDialog, pairing a section heading with
+ * the list of people credited under it.
+ *
+ * @see {@link https://docs.gtk.org/gtk4/method.AboutDialog.add_credit_section.html GtkAboutDialog.add_credit_section}
+ */
+export type CreditSection = {
+    /** The section heading shown in the dialog's Credits tab */
+    name: string;
+    /** The people credited under this section */
+    people: string[];
+};
+
+/**
  * Props for slot-based child positioning.
  *
  * Used internally by compound components with slot props (e.g. `titleWidget` on `AdwHeaderBar`).
@@ -1006,26 +1033,6 @@ declare module "@gtkx/react-jsx/jsx" {
         render?: ((cr: cairo.Context, width: number, height: number, self: Gtk.DrawingArea) => void) | null;
     }
 
-    interface GtkScaleProps {
-        /** Declarative value marks shown along the scale. */
-        marks?: ScaleMark[] | null;
-    }
-
-    interface GtkLevelBarProps {
-        /** Declarative named offset thresholds. */
-        offsets?: LevelBarOffset[] | null;
-    }
-
-    interface GtkCalendarProps {
-        /** Day numbers to mark on the calendar. */
-        markedDays?: number[] | null;
-    }
-
-    interface AdwToggleGroupProps {
-        /** Declarative toggle definitions for the group. */
-        toggles?: ToggleProps[] | null;
-    }
-
     interface GtkColorDialogButtonProps extends DialogButtonProps {
         /** Callback fired when the selected color changes */
         onRgbaChanged?: ((rgba: Gdk.RGBA) => void) | null;
@@ -1040,16 +1047,6 @@ declare module "@gtkx/react-jsx/jsx" {
         filter?: Gtk.Filter | null;
         /** Custom font map to select fonts from */
         fontMap?: Pango.FontMap | null;
-    }
-
-    interface GtkAboutDialogProps {
-        /** Additional credit sections with names and lists of people */
-        creditSections?: Array<{ name: string; people: string[] }>;
-    }
-
-    interface AdwAlertDialogProps {
-        /** Declarative response button definitions for the dialog */
-        responses?: AlertDialogResponseProps[];
     }
 
     interface GMenuProps {
@@ -1078,11 +1075,6 @@ declare module "@gtkx/react-jsx/jsx" {
         iconHotX?: number;
         /** Y offset of the hotspot within the drag icon */
         iconHotY?: number;
-    }
-
-    interface GtkDropTargetProps {
-        /** GType values for accepted drop content types */
-        types?: GType[];
     }
 }
 

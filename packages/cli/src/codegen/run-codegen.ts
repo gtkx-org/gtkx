@@ -46,13 +46,14 @@ const buildRunner = (
     store: CodegenStore,
     libraries: readonly string[],
     girPath: readonly string[],
-    slots: Pick<GtkxConfig, "widgetSlots" | "containerSlots">,
+    slots: Pick<GtkxConfig, "widgetSlots" | "containerSlots" | "arrayProps">,
 ): CodegenRunner =>
     new CodegenRunner({
         libraries,
         girPath,
         widgetSlots: slots.widgetSlots,
         containerSlots: slots.containerSlots,
+        arrayProps: slots.arrayProps,
         gi: {
             storeDir: store.giStoreDir,
             linkDir: store.giLinkDir,
@@ -114,6 +115,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
     const result = await buildRunner(store, libraries, girPath, {
         widgetSlots: config.widgetSlots,
         containerSlots: config.containerSlots,
+        arrayProps: config.arrayProps,
     }).run();
 
     return {

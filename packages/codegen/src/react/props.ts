@@ -34,6 +34,8 @@ export type WidgetPropsOptions = {
     readonly klass: GirClass;
     /** Property names that should be widened to `ReactNode` slot children. */
     readonly slotPropNames?: ReadonlySet<string>;
+    /** Property names whose raw GObject emission is suppressed in favor of an array-prop surface. */
+    readonly arrayPropNames?: ReadonlySet<string>;
     /** Returns `true` when `candidate` already has its own widget Props interface. */
     readonly isWidgetAncestor?: (candidate: GirClass) => boolean;
 };
@@ -60,7 +62,13 @@ type ParentRef = { readonly klass: GirClass; readonly namespaceName: string };
  * @param options - {@link WidgetPropsOptions}
  */
 export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetPropsEntries => {
-    const { repository, klass, slotPropNames = new Set<string>(), isWidgetAncestor = () => false } = options;
+    const {
+        repository,
+        klass,
+        slotPropNames = new Set<string>(),
+        arrayPropNames = new Set<string>(),
+        isWidgetAncestor = () => false,
+    } = options;
     const imports = new Map<string, string>();
     const propEntries: string[] = [];
     const seen = new Set<string>();
@@ -74,6 +82,7 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
         if (seen.has(jsName)) return;
         seen.add(jsName);
         if (isPropOverridden(ownerName, jsName)) return;
+        if (arrayPropNames.has(jsName)) return;
         if (slotPropNames.has(jsName)) {
             propEntries.push(`${jsName}?: ReactNode | null;`);
             return;
@@ -168,20 +177,17 @@ const resolveInterface = (
 };
 
 /**
- * Per-widget prop names whose generated emission is suppressed because the
- * React surface supplies them declaratively instead of as the raw GObject
- * property. The replacement comes either from a hand-written `declare
- * module` augmentation that re-types the member (e.g. `toggles` on
- * `AdwToggleGroup`) or from a compound child component (e.g. `columns` on
- * `GtkColumnView`, supplied through `<GtkColumnViewColumn>`). Suppressing the
- * generated prop both avoids TS2717 when an augmentation re-types it and
- * keeps the raw GObject model off a surface that takes the data as children.
+ * Per-widget prop names whose generated emission is suppressed because a
+ * compound child component supplies the data declaratively instead of the raw
+ * GObject property (e.g. `columns` on `GtkColumnView`, supplied through
+ * `<GtkColumnViewColumn>`). Suppressing the generated prop keeps the raw
+ * GObject model off a surface that takes the data as children.
  *
  * Entries are matched against the widget's GLib type name (e.g.
- * `"AdwToggleGroup"`); values are the JS prop names to skip.
+ * `"GtkColumnView"`); values are the JS prop names to skip. Array props are
+ * suppressed separately, through `arrayPropNames`.
  */
 const PROP_OVERRIDES_BY_WIDGET: Readonly<Record<string, ReadonlySet<string>>> = {
-    AdwToggleGroup: new Set(["toggles"]),
     GtkColumnView: new Set(["columns"]),
 };
 

@@ -17,6 +17,8 @@ export type CodegenRunnerOptions = {
     readonly widgetSlots?: Readonly<Record<string, readonly string[]>>;
     /** Optional user container-slot overrides keyed by JSX element name (append semantics). */
     readonly containerSlots?: Readonly<Record<string, readonly string[]>>;
+    /** Optional user array-prop overrides keyed by JSX element name then prop name to item-type name. */
+    readonly arrayProps?: Readonly<Record<string, Readonly<Record<string, string>>>>;
     /** Target for the injected `@gtkx/gi` bindings package. */
     readonly gi: GiStoreOptions;
     /** Target for the injected `@gtkx/react-jsx` unit; React is skipped when omitted. */
@@ -80,6 +82,7 @@ export class CodegenRunner {
             const reactPipeline = generateReactFiles(repository, {
                 widgetSlots: this.options.widgetSlots,
                 containerSlots: this.options.containerSlots,
+                arrayProps: this.options.arrayProps,
             });
             writeJsxStore(this.options.jsx, reactPipeline.files);
             widgetCount = reactPipeline.widgetCount;

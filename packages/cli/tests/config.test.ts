@@ -131,6 +131,57 @@ describe("defineConfig slot-map validation", () => {
     });
 });
 
+describe("defineConfig arrayProps validation", () => {
+    it("accepts an arrayProps map", () => {
+        const config: GtkxConfig = { libraries: ["Gtk-4.0"], arrayProps: { MyAppChart: { series: "ChartSeries" } } };
+        expect(defineConfig(config)).toBe(config);
+    });
+
+    it("rejects a value that is not an object", () => {
+        expect(() => defineUnknown({ arrayProps: "nope" })).toThrow(/`arrayProps` must be an object/);
+    });
+
+    it("rejects an array value", () => {
+        expect(() => defineUnknown({ arrayProps: [] })).toThrow(/`arrayProps` must be an object/);
+    });
+
+    it("rejects a key that is not PascalCase", () => {
+        expect(() => defineUnknown({ arrayProps: { "kebab-name": { series: "ChartSeries" } } })).toThrow(
+            /invalid `arrayProps` key "kebab-name"/,
+        );
+    });
+
+    it("rejects an entry with an empty object", () => {
+        expect(() => defineUnknown({ arrayProps: { MyAppChart: {} } })).toThrow(
+            /`arrayProps\.MyAppChart` must be a non-empty object/,
+        );
+    });
+
+    it("rejects an entry that is not an object", () => {
+        expect(() => defineUnknown({ arrayProps: { MyAppChart: ["series"] } })).toThrow(
+            /`arrayProps\.MyAppChart` must be a non-empty object/,
+        );
+    });
+
+    it("rejects a prop name that is not camelCase", () => {
+        expect(() => defineUnknown({ arrayProps: { MyAppChart: { Series: "ChartSeries" } } })).toThrow(
+            /invalid `arrayProps\.MyAppChart` prop "Series"/,
+        );
+    });
+
+    it("rejects an item type that is not PascalCase", () => {
+        expect(() => defineUnknown({ arrayProps: { MyAppChart: { series: "chartSeries" } } })).toThrow(
+            /invalid `arrayProps\.MyAppChart\.series` item type "chartSeries"/,
+        );
+    });
+
+    it("rejects a non-string item type", () => {
+        expect(() => defineUnknown({ arrayProps: { MyAppChart: { series: 123 } } })).toThrow(
+            /invalid `arrayProps\.MyAppChart\.series` item type "123"/,
+        );
+    });
+});
+
 describe("isValidApplicationId", () => {
     it("accepts a standard reverse-DNS application ID", () => {
         expect(isValidApplicationId("com.example.MyApp")).toBe(true);

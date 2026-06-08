@@ -2,7 +2,7 @@ import type { GirRepository } from "../gir/repository.js";
 import { generateCompounds } from "./compounds.js";
 import { generateInternal } from "./internal.js";
 import { generateJsx } from "./jsx.js";
-import { mergeContainerSlots, mergeWidgetSlots } from "./slots.js";
+import { mergeArrayProps, mergeContainerSlots, mergeWidgetSlots } from "./slots.js";
 
 /**
  * User-supplied slot overrides from `gtkx.config.ts`, keyed by JSX element
@@ -13,6 +13,8 @@ export type UserSlots = {
     readonly widgetSlots?: Readonly<Record<string, readonly string[]>>;
     /** Container methods to surface as append-semantics `ReactNode` slots. */
     readonly containerSlots?: Readonly<Record<string, readonly string[]>>;
+    /** Array-valued props keyed by JSX element name then camelCase prop name to item-type name. */
+    readonly arrayProps?: Readonly<Record<string, Readonly<Record<string, string>>>>;
 };
 
 /**
@@ -28,8 +30,9 @@ export const generateReactFiles = (
 ): { readonly files: Map<string, string>; readonly widgetCount: number } => {
     const widgetSlotMap = mergeWidgetSlots(userSlots.widgetSlots);
     const containerSlotMap = mergeContainerSlots(userSlots.containerSlots);
+    const arrayPropMap = mergeArrayProps(userSlots.arrayProps);
     const compounds = generateCompounds(repository, widgetSlotMap, containerSlotMap);
-    const jsx = generateJsx(repository, compounds.exportedNames, widgetSlotMap, containerSlotMap);
+    const jsx = generateJsx(repository, compounds.exportedNames, { widgetSlotMap, containerSlotMap, arrayPropMap });
     const internal = generateInternal(repository);
     const files = new Map<string, string>([
         ["jsx.ts", jsx],

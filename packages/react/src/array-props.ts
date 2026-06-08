@@ -9,14 +9,24 @@
  * and on array-identity change reconciles the previous elements against the
  * current ones through the matching descriptor.
  *
- * This is the single source of truth for array props; the JSX prop types in
- * `jsx.ts` mirror it, and codegen will later generate both from it.
+ * {@link ARRAY_PROPS} owns the runtime add/remove/clear behavior. The matching
+ * JSX surface — the typed prop line in each generated `Props` interface and the
+ * suppression of the raw GObject prop of the same name — is owned by the codegen
+ * `arrayProps` map, keyed by the same JSX element and prop names.
  */
 import * as Adw from "@gtkx/gi/adw";
 import type { GType } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { collectTypeNameChain } from "./gtype.js";
-import type { AlertDialogResponseProps, LevelBarOffset, ScaleMark, ToggleProps } from "./jsx.js";
+import type {
+    AlertDialogResponseProps,
+    CalendarMark,
+    CreditSection,
+    DropTargetType,
+    LevelBarOffset,
+    ScaleMark,
+    ToggleProps,
+} from "./jsx.js";
 import type { BackingInstance } from "./types.js";
 
 /**
@@ -83,7 +93,7 @@ export const ARRAY_PROPS: Readonly<Record<string, Readonly<Record<string, ArrayP
                 if (target instanceof Gtk.Calendar) target.clearMarks();
             },
             add: (target, item) => {
-                if (target instanceof Gtk.Calendar) target.markDay(item as number);
+                if (target instanceof Gtk.Calendar) target.markDay(item as CalendarMark);
             },
         },
     },
@@ -117,7 +127,7 @@ export const ARRAY_PROPS: Readonly<Record<string, Readonly<Record<string, ArrayP
     GtkDropTarget: {
         types: {
             set: (target, items) => {
-                if (target instanceof Gtk.DropTarget) target.setGtypes(items as GType[]);
+                if (target instanceof Gtk.DropTarget) target.setGtypes(items as DropTargetType[]);
             },
         },
     },
@@ -126,7 +136,7 @@ export const ARRAY_PROPS: Readonly<Record<string, Readonly<Record<string, ArrayP
             appendOnce: true,
             add: (target, item) => {
                 if (!(target instanceof Gtk.AboutDialog)) return;
-                const section = item as { name: string; people: string[] };
+                const section = item as CreditSection;
                 target.addCreditSection(section.name, section.people);
             },
         },

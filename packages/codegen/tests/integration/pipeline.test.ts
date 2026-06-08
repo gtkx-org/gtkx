@@ -156,6 +156,46 @@ describe("codegen React pipeline", () => {
     });
 });
 
+const interfaceBody = (jsxSource: string, glibName: string): string => {
+    const block = jsxSource.slice(jsxSource.indexOf(`export interface ${glibName}Props`));
+    return block.slice(0, block.indexOf("\n}"));
+};
+
+const importBlockOf = (jsxSource: string): string => jsxSource.slice(0, jsxSource.indexOf("export const"));
+
+describe("codegen array props", () => {
+    it("emits the built-in array-prop line and item-type import on its element", () => {
+        const jsxSource = reactPipeline.files.get("jsx.ts") ?? "";
+        expect(interfaceBody(jsxSource, "GtkScale")).toContain("marks?: ScaleMark[] | null;");
+        expect(jsxSource).toMatch(/import type \{[^}]*\} from "@gtkx\/react";/);
+        const importBlock = importBlockOf(jsxSource);
+        expect(importBlock).toContain("ScaleMark");
+        expect(importBlock).toContain("ToggleProps");
+    });
+
+    it("suppresses the raw GObject property of an array-prop name", () => {
+        const jsxSource = reactPipeline.files.get("jsx.ts") ?? "";
+        const dropTargetBody = interfaceBody(jsxSource, "GtkDropTarget");
+        expect(dropTargetBody).toContain("types?: DropTargetType[] | null;");
+        expect(dropTargetBody).not.toContain("types?: GType[] | null;");
+        expect(dropTargetBody).not.toContain("onNotifyTypes");
+        const { dts } = transpileSource("jsx.ts", jsxSource);
+        expect(dts).not.toContain("TS2717");
+    });
+
+    it("merges a user arrayProps entry with the built-ins, emitting its line and import", () => {
+        const overridden = generateReactFiles(repository, { arrayProps: { GtkScale: { marks: "ScaleMark" } } });
+        const jsxSource = overridden.files.get("jsx.ts") ?? "";
+        expect(interfaceBody(jsxSource, "GtkScale")).toContain("marks?: ScaleMark[] | null;");
+        expect(interfaceBody(jsxSource, "GtkCalendar")).toContain("markedDays?: CalendarMark[] | null;");
+        const importBlock = importBlockOf(jsxSource);
+        expect(importBlock).toContain('from "@gtkx/react";');
+        expect(importBlock).toContain("ScaleMark");
+        const { dts } = transpileSource("jsx.ts", jsxSource);
+        expect(dts.length).toBeGreaterThan(0);
+    });
+});
+
 describe("repository lookups", () => {
     it("resolves a known cross-namespace type", () => {
         expect(repository.resolveNamed("GLib", "Variant")).toBeDefined();

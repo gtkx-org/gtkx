@@ -22,14 +22,12 @@ import { isReactNodeClass, iterateClassesWithGlibName, type WidgetCandidate } fr
  *
  * @param repository - The loaded GIR repository
  * @param excludeNames - Widgets already exported by `compounds.ts`
- * @param widgetSlotMap - Merged widget-slot names keyed by JSX element name
- * @param containerSlotMap - Merged container-slot methods keyed by JSX element name
+ * @param maps - Merged widget-slot, container-slot, and array-prop maps keyed by JSX element name
  */
 export const generateJsx = (
     repository: GirRepository,
     excludeNames: ReadonlySet<string> = new Set(),
-    widgetSlotMap: Readonly<Record<string, readonly string[]>> = {},
-    containerSlotMap: Readonly<Record<string, readonly string[]>> = {},
+    maps: JsxSurfaceMaps = {},
 ): string => {
     const widgets = collectWidgets(repository);
     const intrinsicWidgets = widgets.filter((entry) => !excludeNames.has(entry.glibName));
@@ -43,55 +41,77 @@ export const generateJsx = (
         return candidateGlib !== undefined && widgetByGlibName.has(candidateGlib);
     };
     const namespaceImports = new Map<string, string>();
+    const referencedItemTypes = new Set<string>();
     const propBlocks: string[] = ["export interface WidgetProps {\n    name?: string;\n}"];
     for (const entry of widgets) {
-        const block = renderPropBlock(repository, entry, {
-            widgetSlotMap,
-            containerSlotMap,
-            isWidgetAncestor,
-            widgetByGlibName,
-            namespaceImports,
-        });
-        propBlocks.push(block);
+        propBlocks.push(
+            renderPropBlock(repository, entry, {
+                widgetSlotMap: maps.widgetSlotMap ?? {},
+                containerSlotMap: maps.containerSlotMap ?? {},
+                arrayPropMap: maps.arrayPropMap ?? {},
+                isWidgetAncestor,
+                widgetByGlibName,
+                namespaceImports,
+                referencedItemTypes,
+            }),
+        );
     }
 
-    const importLines = renderImportLines(namespaceImports);
-    const slotEntries = widgets.map((entry) => {
-        const slots = widgetSlotMap[entry.glibName] ?? [];
-        const slotType = slots.length === 0 ? "string" : slots.map((slot) => quote(slot)).join(" | ");
-        return `    readonly ${quote(entry.glibName)}: ${slotType}`;
-    });
-    const slotNamesLine = `export type WidgetSlotNames = {\n${slotEntries.join(";\n")};\n};`;
-    const intrinsicEntries = widgets.map((entry) => `        ${entry.glibName}: ${entry.glibName}Props;`);
-    const jsxAugmentation = [
-        "declare global {",
-        "    namespace React.JSX {",
-        "        interface IntrinsicElements {",
-        ...intrinsicEntries,
-        "        }",
-        "    }",
-        "}",
-    ].join("\n");
     const body = [
-        importLines.join("\n"),
+        renderImportLines(namespaceImports, referencedItemTypes).join("\n"),
         "",
         constLines.join("\n"),
         "",
         propBlocks.join("\n\n"),
         "",
-        slotNamesLine,
+        renderSlotNamesLine(widgets, maps.widgetSlotMap ?? {}),
         "",
-        jsxAugmentation,
+        renderJsxAugmentation(widgets),
     ].join("\n");
     return `${body}\n`;
 };
 
+/** Merged JSX-surface maps keyed by JSX element name, threaded into {@link generateJsx}. */
+type JsxSurfaceMaps = {
+    /** Widget-slot names keyed by JSX element name. */
+    readonly widgetSlotMap?: Readonly<Record<string, readonly string[]>>;
+    /** Container-slot methods keyed by JSX element name. */
+    readonly containerSlotMap?: Readonly<Record<string, readonly string[]>>;
+    /** Array props keyed by JSX element name then prop name to item-type name. */
+    readonly arrayPropMap?: Readonly<Record<string, Readonly<Record<string, string>>>>;
+};
+
+const renderSlotNamesLine = (
+    widgets: readonly WidgetCandidate[],
+    widgetSlotMap: Readonly<Record<string, readonly string[]>>,
+): string => {
+    const slotEntries = widgets.map((entry) => {
+        const slots = widgetSlotMap[entry.glibName] ?? [];
+        const slotType = slots.length === 0 ? "string" : slots.map((slot) => quote(slot)).join(" | ");
+        return `    readonly ${quote(entry.glibName)}: ${slotType}`;
+    });
+    return `export type WidgetSlotNames = {\n${slotEntries.join(";\n")};\n};`;
+};
+
+const renderJsxAugmentation = (widgets: readonly WidgetCandidate[]): string =>
+    [
+        "declare global {",
+        "    namespace React.JSX {",
+        "        interface IntrinsicElements {",
+        ...widgets.map((entry) => `        ${entry.glibName}: ${entry.glibName}Props;`),
+        "        }",
+        "    }",
+        "}",
+    ].join("\n");
+
 type RenderPropBlockContext = {
     readonly widgetSlotMap: Readonly<Record<string, readonly string[]>>;
     readonly containerSlotMap: Readonly<Record<string, readonly string[]>>;
+    readonly arrayPropMap: Readonly<Record<string, Readonly<Record<string, string>>>>;
     readonly isWidgetAncestor: (candidate: GirClass) => boolean;
     readonly widgetByGlibName: ReadonlyMap<string, WidgetCandidate>;
     readonly namespaceImports: Map<string, string>;
+    readonly referencedItemTypes: Set<string>;
 };
 
 const renderPropBlock = (
@@ -100,28 +120,42 @@ const renderPropBlock = (
     context: RenderPropBlockContext,
 ): string => {
     const slotPropNames = new Set(context.widgetSlotMap[entry.glibName] ?? []);
+    const arrayProps = context.arrayPropMap[entry.glibName] ?? {};
     const { propLines, imports } = buildWidgetPropsEntries({
         repository,
         klass: entry.klass,
         slotPropNames,
+        arrayPropNames: new Set(Object.keys(arrayProps)),
         isWidgetAncestor: context.isWidgetAncestor,
     });
     for (const [namespace, alias] of imports) context.namespaceImports.set(namespace, alias);
     context.namespaceImports.set(entry.namespace.name, entry.namespace.name);
     const widgetTypeRef = `${entry.namespace.name}.${entry.klass.name} | null`;
+    const arrayPropLines = Object.entries(arrayProps).map(([propName, itemType]) => {
+        context.referencedItemTypes.add(itemType);
+        return `    ${propName}?: ${itemType}[] | null;`;
+    });
     const ownerLines = [
         "    children?: ReactNode;",
         `    ref?: Ref<${widgetTypeRef}>;`,
         ...propLines.map((line) => `    ${line}`),
         ...(context.containerSlotMap[entry.glibName] ?? []).map((method) => `    ${method}?: ReactNode | null;`),
+        ...arrayPropLines,
     ];
     const parentExtends = resolveParentPropsExtension(repository, entry, context.widgetByGlibName);
     const selfDefault = `${entry.namespace.name}.${entry.klass.name}`;
     return `export interface ${entry.glibName}Props<Self = ${selfDefault}> extends ${parentExtends} {\n${ownerLines.join("\n")}\n}`;
 };
 
-const renderImportLines = (namespaceImports: ReadonlyMap<string, string>): readonly string[] => {
+const renderImportLines = (
+    namespaceImports: ReadonlyMap<string, string>,
+    referencedItemTypes: ReadonlySet<string>,
+): readonly string[] => {
     const lines = ['import type { ReactNode, Ref } from "react";'];
+    if (referencedItemTypes.size > 0) {
+        const names = [...referencedItemTypes].sort((a, b) => a.localeCompare(b));
+        lines.push(`import type { ${names.join(", ")} } from "@gtkx/react";`);
+    }
     for (const [namespaceName, alias] of namespaceImports) {
         if (namespaceName === "") continue;
         const directory = namespaceName.toLowerCase();

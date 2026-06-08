@@ -112,6 +112,28 @@ export type GtkxConfig = {
      * ```
      */
     containerSlots?: Record<string, string[]>;
+
+    /**
+     * Additional array-valued props to expose on a widget's JSX surface, where
+     * each element maps to a repeated GTK call rather than a single property set.
+     *
+     * Keys are PascalCase JSX element names (e.g. `"GtkScale"`, `"MyAppChart"`);
+     * each value maps a camelCase prop name to an item-type name. The item type
+     * must be an exported member of `@gtkx/react` — codegen type-imports it from
+     * that hard-coded path and emits `prop?: ItemType[] | null;` into the element's
+     * generated `Props` interface, suppressing the raw GObject prop of the same
+     * name. Entries merge with the built-in array-prop map. The runtime
+     * add/remove/clear behavior is not configured here: it lives in `@gtkx/react`'s
+     * `ARRAY_PROPS`, keyed by the same element and prop names.
+     *
+     * @example
+     * ```ts
+     * arrayProps: {
+     *     MyAppChart: { series: "ChartSeries" },
+     * }
+     * ```
+     */
+    arrayProps?: Record<string, Record<string, string>>;
 };
 
 const validateLibraryEntry = (library: unknown): void => {
@@ -158,6 +180,7 @@ const validateApplicationId = (applicationId: GtkxConfig["applicationId"]): void
 
 const JSX_NAME_PATTERN = /^[A-Z][A-Za-z0-9]*$/;
 const SLOT_ENTRY_PATTERN = /^[a-z][A-Za-z0-9]*$/;
+const ITEM_TYPE_PATTERN = /^[A-Z][A-Za-z0-9]*$/;
 
 const validateSlotMap = (slotMap: Record<string, string[]> | undefined, optionName: string): void => {
     if (slotMap === undefined) return;
@@ -187,6 +210,46 @@ const validateSlotMap = (slotMap: Record<string, string[]> | undefined, optionNa
     }
 };
 
+const validateArrayPropEntry = (props: Record<string, string>, optionName: string, jsxName: string): void => {
+    if (typeof props !== "object" || Array.isArray(props) || props === null || Object.keys(props).length === 0) {
+        throw new Error(
+            `gtkx.config.ts: \`${optionName}.${jsxName}\` must be a non-empty object mapping camelCase prop names to item-type names`,
+        );
+    }
+    for (const [propName, itemType] of Object.entries(props)) {
+        if (!SLOT_ENTRY_PATTERN.test(propName)) {
+            throw new Error(
+                `gtkx.config.ts: invalid \`${optionName}.${jsxName}\` prop "${propName}" — must be a camelCase name (e.g. "marks")`,
+            );
+        }
+        if (typeof itemType !== "string" || !ITEM_TYPE_PATTERN.test(itemType)) {
+            throw new Error(
+                `gtkx.config.ts: invalid \`${optionName}.${jsxName}.${propName}\` item type "${String(itemType)}" — must be a PascalCase exported member of @gtkx/react (e.g. "ScaleMark")`,
+            );
+        }
+    }
+};
+
+const validateArrayProps = (
+    arrayProps: Record<string, Record<string, string>> | undefined,
+    optionName: string,
+): void => {
+    if (arrayProps === undefined) return;
+    if (typeof arrayProps !== "object" || Array.isArray(arrayProps) || arrayProps === null) {
+        throw new Error(
+            `gtkx.config.ts: \`${optionName}\` must be an object mapping JSX names to objects of camelCase prop names to item-type names`,
+        );
+    }
+    for (const [jsxName, props] of Object.entries(arrayProps)) {
+        if (!JSX_NAME_PATTERN.test(jsxName)) {
+            throw new Error(
+                `gtkx.config.ts: invalid \`${optionName}\` key "${jsxName}" — must be a PascalCase JSX element name (e.g. "MyAppChart")`,
+            );
+        }
+        validateArrayPropEntry(props, optionName, jsxName);
+    }
+};
+
 /**
  * Identity helper that lets users author a {@link GtkxConfig} with full
  * type-checking and IDE autocompletion.
@@ -213,6 +276,7 @@ export const defineConfig = (config: GtkxConfig): GtkxConfig => {
     validateApplicationId(config.applicationId);
     validateSlotMap(config.widgetSlots, "widgetSlots");
     validateSlotMap(config.containerSlots, "containerSlots");
+    validateArrayProps(config.arrayProps, "arrayProps");
     return config;
 };
 
