@@ -1,7 +1,7 @@
 import { quote, toCamelCase } from "@gtkx/utils";
 import type { GirNamespace } from "../gir/namespace.js";
 import type { GirRepository } from "../gir/repository.js";
-import { allVirtualSubcomponents } from "./compounds-meta.js";
+import { allVirtualSubcomponents, type VirtualSubcomponent } from "./compounds-meta.js";
 import { ancestorGlibNames, collectReactNodeClasses, type WidgetCandidate } from "./widgets.js";
 
 type CompoundAccumulator = {
@@ -88,9 +88,7 @@ export const generateCompounds = (
     for (const virtual of allVirtualSubcomponents()) {
         useWrapperElement(accumulator);
         accumulator.virtualPropTypes.add(virtual.propsType);
-        exportLines.push(
-            `export const ${virtual.flatName} = (props: ${virtual.propsType}): ReactNode => (\n    <WrapperNodeElement kind=${quote(virtual.kind)} {...props} />\n);`,
-        );
+        exportLines.push(renderVirtualSubcomponent(virtual));
         exportedNames.add(virtual.flatName);
     }
 
@@ -207,6 +205,46 @@ const renderComponentFunction = (
 
 const renderSlotChild = (kind: string, targetProp: string, slot: string): string =>
     `{${slot} != null && <WrapperNodeElement kind=${quote(kind)} ${targetProp}=${quote(slot)}>{${slot}}</WrapperNodeElement>}`;
+
+/**
+ * Emits the conditional inert wrapper child for a positionally-consumed slot:
+ * `{prop != null && <WrapperNodeElement kind="...">{prop}</WrapperNodeElement>}`.
+ * Unlike {@link renderSlotChild} it carries no target attribute, because the
+ * enclosing meta-object reads this wrapper's child by position rather than
+ * setting a property from it.
+ *
+ * @param kind - The wrapper kind the child is emitted with.
+ * @param prop - The prop name carrying the `ReactNode`.
+ */
+const renderPositionalSlotChild = (kind: string, prop: string): string =>
+    `{${prop} != null && <WrapperNodeElement kind=${quote(kind)}>{${prop}}</WrapperNodeElement>}`;
+
+/**
+ * Emits one flat virtual-child subcomponent. A virtual without a slot spreads
+ * all its props onto the wrapper sentinel; a virtual with a
+ * {@link VirtualSubcomponent.slot} destructures that slot prop and `children`
+ * out of the rest, spreads the rest onto the sentinel, and renders `children`
+ * followed by the conditional positional slot child.
+ *
+ * @param virtual - The virtual subcomponent to emit.
+ */
+const renderVirtualSubcomponent = (virtual: VirtualSubcomponent): string => {
+    const { flatName, kind, propsType, slot } = virtual;
+    if (slot === undefined) {
+        return `export const ${flatName} = (props: ${propsType}): ReactNode => (\n    <WrapperNodeElement kind=${quote(kind)} {...props} />\n);`;
+    }
+    return [
+        `export const ${flatName} = (props: ${propsType}): ReactNode => {`,
+        `    const { ${slot.prop}, children, ...rest } = props;`,
+        "    return (",
+        `        <WrapperNodeElement kind=${quote(kind)} {...rest}>`,
+        "            {children}",
+        `            ${renderPositionalSlotChild(slot.kind, slot.prop)}`,
+        "        </WrapperNodeElement>",
+        "    );",
+        "};",
+    ].join("\n");
+};
 
 const renderElementConsts = (accumulator: CompoundAccumulator): string =>
     [...accumulator.elementNames]

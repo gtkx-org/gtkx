@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkLabel, GtkNotebook, GtkNotebookPage, GtkNotebookPageTab } from "@gtkx/react";
+import { GtkLabel, GtkNotebook, GtkNotebookPage } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -41,21 +41,21 @@ describe("render - NotebookPage > NotebookPageNode (2)", () => {
         const notebookRef = createRef<Gtk.Notebook>();
         const contentRef = createRef<Gtk.Label>();
 
-        function App({ tabLabel }: { tabLabel: string }) {
+        function App({ labelText }: { labelText: string }) {
             return (
                 <GtkNotebook ref={notebookRef}>
-                    <GtkNotebookPage label={tabLabel}>
+                    <GtkNotebookPage label={labelText}>
                         <GtkLabel ref={contentRef} label="Content" />
                     </GtkNotebookPage>
                 </GtkNotebook>
             );
         }
 
-        await render(<App tabLabel="Initial" />);
+        await render(<App labelText="Initial" />);
         let tabLabel = notebookRef.current?.getTabLabel(contentRef.current as Gtk.Widget) as Gtk.Label;
         expect(tabLabel?.getLabel()).toBe("Initial");
 
-        await render(<App tabLabel="Updated" />);
+        await render(<App labelText="Updated" />);
         tabLabel = notebookRef.current?.getTabLabel(contentRef.current as Gtk.Widget) as Gtk.Label;
         expect(tabLabel?.getLabel()).toBe("Updated");
     });
@@ -104,11 +104,8 @@ describe("render - NotebookPage > NotebookPageNode (4)", () => {
         function App({ showContent }: { showContent: boolean }) {
             return (
                 <GtkNotebook ref={notebookRef}>
-                    <GtkNotebookPage>
+                    <GtkNotebookPage tabLabel={<GtkLabel label="Tab" />}>
                         {showContent ? <GtkLabel ref={contentRef} label="Content" /> : null}
-                        <GtkNotebookPageTab>
-                            <GtkLabel label="Tab" />
-                        </GtkNotebookPageTab>
                     </GtkNotebookPage>
                 </GtkNotebook>
             );

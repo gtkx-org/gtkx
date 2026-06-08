@@ -78,12 +78,12 @@ const childWidget = (instance: Instance): Gtk.Widget | null => {
 
 // --- Wrapper content selection ---
 
-const NOTEBOOK_TAB_KIND = "notebook-tab";
+const TAB_LABEL_KIND = "tab-label";
 const META_OBJECT_KIND = "meta-object";
 
-/** The wrapper's primary tracked content child, skipping an ancillary notebook tab. */
+/** The wrapper's primary tracked content child, skipping the tab-label slot. */
 const trackedChild = (marker: Instance): Instance | null =>
-    marker.children.find((child) => !isWrapperKind(child, NOTEBOOK_TAB_KIND)) ?? marker.children[0] ?? null;
+    marker.children.find((child) => !isWrapperKind(child, TAB_LABEL_KIND)) ?? marker.children[0] ?? null;
 
 const trackedWidget = (marker: Instance): Gtk.Widget | null => {
     const child = trackedChild(marker);
@@ -208,7 +208,7 @@ const notebookPosition = (marker: Instance): number | null => {
 };
 
 const notebookTabLabel = (marker: Instance): Gtk.Widget => {
-    const tab = marker.children.find((child) => isWrapperKind(child, NOTEBOOK_TAB_KIND));
+    const tab = marker.children.find((child) => isWrapperKind(child, TAB_LABEL_KIND));
     const label = tab?.children[0]?.backingInstance;
     if (label instanceof Gtk.Widget) return label;
     const synthesized = new Gtk.Label();
@@ -224,7 +224,7 @@ const applyNotebookMeta = (notebook: Gtk.Notebook, widget: Gtk.Widget, props: In
 };
 
 const updateNotebookTabLabel = (notebook: Gtk.Notebook, widget: Gtk.Widget, marker: Instance): void => {
-    if (marker.children.some((child) => isWrapperKind(child, NOTEBOOK_TAB_KIND))) return;
+    if (marker.children.some((child) => isWrapperKind(child, TAB_LABEL_KIND))) return;
     const current = notebook.getTabLabel(widget);
     if (current instanceof Gtk.Label)
         current.setLabel(typeof marker.props.label === "string" ? marker.props.label : "");
@@ -747,7 +747,7 @@ const widgetContainerMapping: ElementMapping = {
  * The ordered attach/detach table. The reconciler applies the first matching
  * entry, so specific relationships precede the generic widget-container
  * fallback. Wrappers that carry buffered text content (`text`, `text-anchor`,
- * `text-paintable`) and the inert `notebook-tab` have no entry: the text-buffer
+ * `text-paintable`) and the inert `tab-label` slot have no entry: the text-buffer
  * controller and the enclosing `meta-object` consume them.
  */
 export const ELEMENT_MAP: readonly ElementMapping[] = [

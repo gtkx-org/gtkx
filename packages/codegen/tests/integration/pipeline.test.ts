@@ -154,6 +154,14 @@ describe("codegen React pipeline", () => {
             expect(dts.length).toBeGreaterThan(0);
         }
     });
+
+    it("desugars a virtual subcomponent's slot into a positional wrapper child", () => {
+        const compoundsSource = reactPipeline.files.get("compounds.tsx") ?? "";
+        expect(compoundsSource).toContain("export const GtkNotebookPage");
+        expect(compoundsSource).toContain('kind="tab-label"');
+        expect(compoundsSource).toContain("tabLabel");
+        expect(compoundsSource).not.toContain("GtkNotebookPageTab");
+    });
 });
 
 const interfaceBody = (jsxSource: string, glibName: string): string => {

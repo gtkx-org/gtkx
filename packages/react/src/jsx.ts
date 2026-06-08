@@ -441,20 +441,14 @@ export type ColumnViewColumnProps<T = unknown> = {
 export type NotebookPageProps = {
     /** Content to place in the notebook page */
     children?: ReactNode;
-    /** Tab label text (optional when using Notebook.PageTab) */
+    /** Tab label text; ignored when `tabLabel` is provided */
     label?: string;
+    /** Custom widget rendered as the tab label; when provided it takes precedence over `label` */
+    tabLabel?: ReactNode;
     /** Whether the tab should expand to fill available space */
     tabExpand?: boolean;
     /** Whether the tab should fill its allocated space */
     tabFill?: boolean;
-};
-
-/**
- * Props for custom notebook page tab widgets.
- */
-export type NotebookPageTabProps = {
-    /** Content to place in the notebook page tab */
-    children?: ReactNode;
 };
 
 /**

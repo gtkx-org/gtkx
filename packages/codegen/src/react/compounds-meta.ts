@@ -10,14 +10,29 @@
  */
 
 /**
+ * An optional slot a virtual subcomponent desugars from a single `ReactNode`
+ * prop into a nested inert wrapper child the enclosing meta-object consumes
+ * positionally.
+ */
+export type VirtualSubcomponentSlot = {
+    /** The prop name carrying the `ReactNode` (e.g. `"tabLabel"`). */
+    readonly prop: string;
+    /** The wrapper kind the nested child is emitted with (e.g. `"tab-label"`). */
+    readonly kind: string;
+};
+
+/**
  * One virtual-child subcomponent: the flat top-level component name it is
  * emitted as (e.g. `"GtkStackPage"`), the generic wrapper kind the reconciler
- * resolves at runtime, and the public prop type that types it.
+ * resolves at runtime, the public prop type that types it, and an optional
+ * {@link VirtualSubcomponentSlot} desugared from a `ReactNode` prop into a
+ * nested wrapper child.
  */
 export type VirtualSubcomponent = {
     readonly flatName: string;
     readonly kind: string;
     readonly propsType: string;
+    readonly slot?: VirtualSubcomponentSlot;
 };
 
 const STACK_PAGE: VirtualSubcomponent = { flatName: "GtkStackPage", kind: "meta-object", propsType: "StackPageProps" };
@@ -30,11 +45,7 @@ const NOTEBOOK_PAGE: VirtualSubcomponent = {
     flatName: "GtkNotebookPage",
     kind: "meta-object",
     propsType: "NotebookPageProps",
-};
-const NOTEBOOK_PAGE_TAB: VirtualSubcomponent = {
-    flatName: "GtkNotebookPageTab",
-    kind: "notebook-tab",
-    propsType: "NotebookPageTabProps",
+    slot: { prop: "tabLabel", kind: "tab-label" },
 };
 const GRID_CHILD: VirtualSubcomponent = { flatName: "GtkGridChild", kind: "layout-child", propsType: "GridChildProps" };
 const FIXED_CHILD: VirtualSubcomponent = {
@@ -63,7 +74,7 @@ const TEXT_VIEW_SUBCOMPONENTS: readonly VirtualSubcomponent[] = [TEXT_ANCHOR, TE
 const VIRTUAL_SUBCOMPONENTS: Readonly<Record<string, readonly VirtualSubcomponent[]>> = Object.freeze({
     GtkStack: [STACK_PAGE],
     AdwViewStack: [VIEW_STACK_PAGE],
-    GtkNotebook: [NOTEBOOK_PAGE, NOTEBOOK_PAGE_TAB],
+    GtkNotebook: [NOTEBOOK_PAGE],
     GtkGrid: [GRID_CHILD],
     GtkFixed: [FIXED_CHILD],
     GtkOverlay: [OVERLAY_CHILD],
