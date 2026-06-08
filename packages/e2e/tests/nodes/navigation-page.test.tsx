@@ -1,5 +1,5 @@
 import type * as Adw from "@gtkx/gi/adw";
-import { AdwNavigationView, GtkLabel } from "@gtkx/react";
+import { AdwNavigationPage, AdwNavigationView, GtkLabel } from "@gtkx/react";
 import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -11,9 +11,9 @@ describe("render - NavigationPage > NavigationPageNode (1)", () => {
 
         await render(
             <AdwNavigationView ref={viewRef}>
-                <AdwNavigationView.Page id="home" title="Home">
+                <AdwNavigationPage tag="home" title="Home">
                     <GtkLabel label="Home Content" />
-                </AdwNavigationView.Page>
+                </AdwNavigationPage>
             </AdwNavigationView>,
         );
 
@@ -24,9 +24,9 @@ describe("render - NavigationPage > NavigationPageNode (1)", () => {
     it("adds page with title", async () => {
         await render(
             <AdwNavigationView>
-                <AdwNavigationView.Page id="main" title="Main Page">
+                <AdwNavigationPage tag="main" title="Main Page">
                     <GtkLabel label="Main Content" />
-                </AdwNavigationView.Page>
+                </AdwNavigationPage>
             </AdwNavigationView>,
         );
 
@@ -53,9 +53,9 @@ describe("render - NavigationPage > NavigationPageNode (2)", () => {
 
         await render(
             <AdwNavigationView ref={viewRef}>
-                <AdwNavigationView.Page id="root" title="Root" canPop={false}>
+                <AdwNavigationPage tag="root" title="Root" canPop={false}>
                     <GtkLabel label="Root Page" />
-                </AdwNavigationView.Page>
+                </AdwNavigationPage>
             </AdwNavigationView>,
         );
 
@@ -70,13 +70,13 @@ describe("render - NavigationPage > NavigationPageNode (2)", () => {
         function App({ showPage }: { showPage: boolean }) {
             return (
                 <AdwNavigationView ref={viewRef}>
-                    <AdwNavigationView.Page id="permanent" title="Permanent">
+                    <AdwNavigationPage tag="permanent" title="Permanent">
                         <GtkLabel label="Always Here" />
-                    </AdwNavigationView.Page>
+                    </AdwNavigationPage>
                     {showPage && (
-                        <AdwNavigationView.Page id="removable" title="Removable">
+                        <AdwNavigationPage tag="removable" title="Removable">
                             <GtkLabel label="Maybe Here" />
-                        </AdwNavigationView.Page>
+                        </AdwNavigationPage>
                     )}
                 </AdwNavigationView>
             );
@@ -97,9 +97,9 @@ describe("render - NavigationPage > NavigationPageNode (3)", () => {
         function App({ title }: { title: string }) {
             return (
                 <AdwNavigationView ref={viewRef}>
-                    <AdwNavigationView.Page id="dynamic" title={title}>
+                    <AdwNavigationPage tag="dynamic" title={title}>
                         <GtkLabel label="Content" />
-                    </AdwNavigationView.Page>
+                    </AdwNavigationPage>
                 </AdwNavigationView>
             );
         }
@@ -119,9 +119,9 @@ describe("render - NavigationPage > NavigationPageNode (3)", () => {
         function App({ canPop }: { canPop: boolean }) {
             return (
                 <AdwNavigationView ref={viewRef}>
-                    <AdwNavigationView.Page id="page" title="Page" canPop={canPop}>
+                    <AdwNavigationPage tag="page" title="Page" canPop={canPop}>
                         <GtkLabel label="Content" />
-                    </AdwNavigationView.Page>
+                    </AdwNavigationPage>
                 </AdwNavigationView>
             );
         }

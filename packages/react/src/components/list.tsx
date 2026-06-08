@@ -374,14 +374,17 @@ function GtkColumnViewBase<T = unknown, S = unknown>(
  * Multi-column sortable list with React-managed cell rendering.
  *
  * Wraps `GtkColumnView` with portal-based factories. Use the
- * `GtkColumnView.Column` compound component to define columns, passing
+ * `<GtkColumnViewColumn>` component to define columns, passing
  * `<MenuItem>` / `<MenuSection>` / `<MenuSubmenu>` children to build the
  * column header context menu.
  */
-export const GtkColumnView: typeof GtkColumnViewBase & {
-    /** Defines a column, with header and per-row cell rendering. */
-    Column: <T = unknown>(props: ColumnViewColumnProps<T>) => ReactNode;
-} = Object.assign(GtkColumnViewBase, { Column: ColumnViewColumn });
+export const GtkColumnView: typeof GtkColumnViewBase = GtkColumnViewBase;
+
+/**
+ * Declares one column of a `GtkColumnView`, with header and per-row cell
+ * rendering. Place it as a child of `<GtkColumnView>`.
+ */
+export const GtkColumnViewColumn: <T = unknown>(props: ColumnViewColumnProps<T>) => ReactNode = ColumnViewColumn;
 
 /**
  * Declares one column of a `GtkColumnView`.

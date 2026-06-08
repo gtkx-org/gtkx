@@ -4,6 +4,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkBox,
     GtkColumnView,
+    GtkColumnViewColumn,
     GtkEditableLabel,
     GtkHeaderBar,
     GtkLabel,
@@ -372,12 +373,12 @@ const SettingsColumnView = ({
                 cssClasses={["data-table"]}
                 items={filteredKeyInfos.map((k) => ({ id: k.name, value: k }))}
             >
-                <GtkColumnView.Column
+                <GtkColumnViewColumn
                     id="name"
                     title="Name"
                     renderCell={(item: KeyInfo) => <GtkLabel label={item.name} xalign={0} />}
                 />
-                <GtkColumnView.Column
+                <GtkColumnViewColumn
                     id="value"
                     title="Value"
                     resizable
@@ -388,21 +389,21 @@ const SettingsColumnView = ({
                         />
                     )}
                 />
-                <GtkColumnView.Column
+                <GtkColumnViewColumn
                     id="type"
                     title="Type"
                     resizable
                     sortable
                     renderCell={(item: KeyInfo) => <GtkLabel label={item.type} xalign={0} />}
                 />
-                <GtkColumnView.Column
+                <GtkColumnViewColumn
                     id="default"
                     title="Default"
                     resizable
                     expand
                     renderCell={(item: KeyInfo) => <GtkLabel label={item.defaultValue} xalign={0} />}
                 />
-                <GtkColumnView.Column
+                <GtkColumnViewColumn
                     id="summary"
                     title="Summary"
                     resizable
@@ -410,7 +411,7 @@ const SettingsColumnView = ({
                     expand
                     renderCell={(item: KeyInfo) => <GtkLabel label={item.summary} xalign={0} wrap />}
                 />
-                <GtkColumnView.Column
+                <GtkColumnViewColumn
                     id="description"
                     title="Description"
                     resizable

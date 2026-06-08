@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkColumnView, GtkGridView, GtkLabel, GtkListView, type ListItem } from "@gtkx/react";
+import { GtkColumnView, GtkColumnViewColumn, GtkGridView, GtkLabel, GtkListView, type ListItem } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { ScrollWrapper } from "./scroll-wrapper.js";
@@ -222,7 +222,7 @@ export const renderColumnView = async <T = NamedValue>(
                     onSortChanged={opts.onSortChanged}
                 >
                     {columns.map((column) => (
-                        <GtkColumnView.Column
+                        <GtkColumnViewColumn
                             key={column.id}
                             id={column.id}
                             title={column.title}

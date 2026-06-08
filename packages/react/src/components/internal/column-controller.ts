@@ -7,7 +7,7 @@ import type { ListController } from "./list-controller.js";
 import { buildMenuModel } from "./menu-model.js";
 
 /**
- * Drives one `Gtk.ColumnViewColumn` from the `GtkColumnView.Column` component.
+ * Drives one `Gtk.ColumnViewColumn` from the `<GtkColumnViewColumn>` component.
  *
  * It owns the real `Gtk.ColumnViewColumn`, its cell `Gtk.SignalListItemFactory`,
  * the per-column header menu (`Gio.Menu` plus a `Gio.SimpleActionGroup` keyed by

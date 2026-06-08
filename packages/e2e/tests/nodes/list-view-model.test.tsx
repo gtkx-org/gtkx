@@ -2,7 +2,7 @@ import { registerClass } from "@gtkx/ffi";
 import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkColumnView, GtkDropDown, GtkGridView, GtkLabel, GtkListView } from "@gtkx/react";
+import { GtkColumnView, GtkColumnViewColumn, GtkDropDown, GtkGridView, GtkLabel, GtkListView } from "@gtkx/react";
 import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
@@ -144,7 +144,7 @@ describe("ColumnView model prop", () => {
         await render(
             <ScrollWrapper minContentHeight={300}>
                 <GtkColumnView<NameObject> ref={ref} model={noSelection(store)}>
-                    <GtkColumnView.Column<NameObject>
+                    <GtkColumnViewColumn<NameObject>
                         id="name"
                         title="Name"
                         renderCell={(item) => <GtkLabel label={item.name} />}

@@ -15,7 +15,6 @@ import * as Adw from "@gtkx/gi/adw";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { toCamelCase } from "@gtkx/utils";
 import { type Instance, isWrapperInstance, isWrapperKind } from "./instance.js";
 import {
     type InsertableWidget,
@@ -395,61 +394,6 @@ const overlayMapping: ElementMapping = {
     },
 };
 
-// --- Wrap then add (single, AdwNavigationPage in a view or split-view slot) ---
-
-type WrapState = { wrapper: Adw.NavigationPage; slot: string | null; widget: Gtk.Widget };
-
-const buildNavigationPage = (widget: Gtk.Widget, props: Instance["props"]): Adw.NavigationPage => {
-    const title = typeof props.title === "string" ? props.title : "";
-    const tag = typeof props.id === "string" ? props.id : undefined;
-    const page =
-        tag != null ? Adw.NavigationPage.newWithTag(widget, title, tag) : Adw.NavigationPage.new(widget, title);
-    if (tag != null) page.setTag(tag);
-    page.setTitle(title);
-    page.setCanPop(props.canPop !== false);
-    return page;
-};
-
-const wrapThenAddMapping: ElementMapping = {
-    matches: (child, parent) => isWrapperKind(child, "wrap-then-add") && parent.backingInstance !== undefined,
-    attach: (child, parent) => {
-        const target = parent.backingInstance;
-        const widget = trackedWidget(child);
-        const state = child.attachState as WrapState | undefined;
-        if (state) {
-            if (widget && widget === state.widget) {
-                state.wrapper.setTitle(typeof child.props.title === "string" ? child.props.title : "");
-                state.wrapper.setCanPop(child.props.canPop !== false);
-                return;
-            }
-            wrapThenAddMapping.detach(child, parent);
-        }
-        if (!widget || !target) return;
-        const wrapper = buildNavigationPage(widget, child.props);
-        if (target instanceof Adw.NavigationView) {
-            target.add(wrapper);
-            child.attachState = { wrapper, slot: null, widget };
-        } else {
-            const slot = toCamelCase(typeof child.props.id === "string" ? child.props.id : "");
-            Reflect.set(target, slot, wrapper);
-            child.attachState = { wrapper, slot, widget };
-        }
-    },
-    detach: (child, parent) => {
-        const state = child.attachState as WrapState | undefined;
-        const target = parent.backingInstance;
-        child.attachState = undefined;
-        if (!state || !target) return;
-        if (state.slot) {
-            if (!isRooted(target)) return;
-            rescueFocus(target, state.wrapper);
-            Reflect.set(target, state.slot, null);
-        } else if (target instanceof Adw.NavigationView) {
-            target.remove(state.wrapper);
-        }
-    },
-};
-
 // --- Transparent (single, attaches its child to the marker's parent widget) ---
 
 const transparentMapping: ElementMapping = {
@@ -725,7 +669,6 @@ export const ELEMENT_MAP: readonly ElementMapping[] = [
     metaObjectMapping,
     layoutChildMapping,
     overlayMapping,
-    wrapThenAddMapping,
     transparentMapping,
     eventControllerMapping,
     layoutManagerMapping,

@@ -4,6 +4,7 @@ import {
     AdwApplication,
     AdwApplicationWindow,
     AdwHeaderBar,
+    AdwNavigationPage,
     AdwNavigationSplitView,
     AdwStatusPage,
     AdwToastOverlay,
@@ -402,14 +403,11 @@ const ContentBody = ({
 };
 
 const ContentPage = (props: ContentPageProps) => (
-    <AdwNavigationSplitView.Page
-        id="content"
-        title={props.selectedNote?.title ?? CATEGORY_TITLES[props.category] ?? "Notes"}
-    >
+    <AdwNavigationPage title={props.selectedNote?.title ?? CATEGORY_TITLES[props.category] ?? "Notes"}>
         <AdwToolbarView addTopBar={<ContentHeaderBar {...props} />}>
             <ContentBody {...props} />
         </AdwToolbarView>
-    </AdwNavigationSplitView.Page>
+    </AdwNavigationPage>
 );
 
 interface SidebarPageProps {
@@ -429,7 +427,7 @@ const SidebarPage = ({
     setCategory,
     setSelectedId,
 }: SidebarPageProps) => (
-    <AdwNavigationSplitView.Page id="sidebar" title="Notes">
+    <AdwNavigationPage title="Notes">
         <AdwToolbarView
             addTopBar={
                 <AdwHeaderBar
@@ -452,7 +450,7 @@ const SidebarPage = ({
                 }}
             />
         </AdwToolbarView>
-    </AdwNavigationSplitView.Page>
+    </AdwNavigationPage>
 );
 
 const filterNotes = (notes: Note[], searchQuery: string): Note[] => {
@@ -585,37 +583,44 @@ const AppBody = ({
     deleteSelected,
     toastOverlayRef,
 }: AppBodyProps) => (
-    <AdwNavigationSplitView sidebarWidthFraction={0.25} minSidebarWidth={200} maxSidebarWidth={300}>
-        <SidebarPage
-            activeNotes={notes.activeNotes}
-            trashedNotes={notes.trashedNotes}
-            favoriteNotes={notes.favoriteNotes}
-            addNote={notes.addNote}
-            setCategory={view.setCategory}
-            setSelectedId={notes.setSelectedId}
-        />
-        <ContentPage
-            selectedNote={notes.selectedNote}
-            selectedId={notes.selectedId}
-            setSelectedId={notes.setSelectedId}
-            category={view.category}
-            viewMode={view.viewMode}
-            setViewMode={view.setViewMode}
-            searchMode={view.searchMode}
-            setSearchMode={view.setSearchMode}
-            searchQuery={view.searchQuery}
-            setSearchQuery={view.setSearchQuery}
-            filteredNotes={filteredNotes}
-            compactMode={compactMode}
-            fontSize={fontSize}
-            addNote={notes.addNote}
-            updateNote={notes.updateNote}
-            deleteSelected={deleteSelected}
-            onPreferences={() => dialogs.setShowPreferences(true)}
-            onAbout={() => dialogs.setShowAbout(true)}
-            toastOverlayRef={toastOverlayRef}
-        />
-    </AdwNavigationSplitView>
+    <AdwNavigationSplitView
+        sidebarWidthFraction={0.25}
+        minSidebarWidth={200}
+        maxSidebarWidth={300}
+        sidebar={
+            <SidebarPage
+                activeNotes={notes.activeNotes}
+                trashedNotes={notes.trashedNotes}
+                favoriteNotes={notes.favoriteNotes}
+                addNote={notes.addNote}
+                setCategory={view.setCategory}
+                setSelectedId={notes.setSelectedId}
+            />
+        }
+        content={
+            <ContentPage
+                selectedNote={notes.selectedNote}
+                selectedId={notes.selectedId}
+                setSelectedId={notes.setSelectedId}
+                category={view.category}
+                viewMode={view.viewMode}
+                setViewMode={view.setViewMode}
+                searchMode={view.searchMode}
+                setSearchMode={view.setSearchMode}
+                searchQuery={view.searchQuery}
+                setSearchQuery={view.setSearchQuery}
+                filteredNotes={filteredNotes}
+                compactMode={compactMode}
+                fontSize={fontSize}
+                addNote={notes.addNote}
+                updateNote={notes.updateNote}
+                deleteSelected={deleteSelected}
+                onPreferences={() => dialogs.setShowPreferences(true)}
+                onAbout={() => dialogs.setShowAbout(true)}
+                toastOverlayRef={toastOverlayRef}
+            />
+        }
+    />
 );
 
 function NotesWindow() {

@@ -173,7 +173,7 @@ const resolveInterface = (
  * property. The replacement comes either from a hand-written `declare
  * module` augmentation that re-types the member (e.g. `toggles` on
  * `AdwToggleGroup`) or from a compound child component (e.g. `columns` on
- * `GtkColumnView`, supplied through `GtkColumnView.Column`). Suppressing the
+ * `GtkColumnView`, supplied through `<GtkColumnViewColumn>`). Suppressing the
  * generated prop both avoids TS2717 when an augmentation re-types it and
  * keeps the raw GObject model off a surface that takes the data as children.
  *

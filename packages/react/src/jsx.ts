@@ -8,7 +8,6 @@ import type * as Gsk from "@gtkx/gi/gsk";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type * as GtkSource from "@gtkx/gi/gtksource";
 import type * as Pango from "@gtkx/gi/pango";
-import type { WidgetSlotNames } from "@gtkx/react-jsx/jsx";
 import type { ReactNode } from "react";
 import type { MenuActionContext, MenuEntry } from "./components/internal/menu-model.js";
 
@@ -130,9 +129,9 @@ export type AnimationProps = AdwTimedAnimationProps | AdwSpringAnimationProps;
  * @example
  * ```tsx
  * <GtkTextView>
- *     Click here: <GtkTextView.Anchor>
+ *     Click here: <GtkTextAnchor>
  *         <GtkButton label="Click me" />
- *     </GtkTextView.Anchor> to continue.
+ *     </GtkTextAnchor> to continue.
  * </GtkTextView>
  * ```
  */
@@ -161,7 +160,7 @@ export type TextPaintableProps = {
  * @example
  * ```tsx
  * <GtkTextView>
- *     Hello <GtkTextView.Tag id="bold" weight={Pango.Weight.BOLD}>bold</GtkTextView.Tag> world
+ *     Hello <GtkTextTag name="bold" weight={Pango.Weight.BOLD}>bold</GtkTextTag> world
  * </GtkTextView>
  * ```
  */
@@ -340,7 +339,7 @@ export type ListItem<T = unknown, S = unknown> =
 /**
  * Props for positioning children within a GtkGrid.
  *
- * Used by `GtkGrid.Child` compound component.
+ * Used by the `<GtkGridChild>` component.
  */
 export type GridChildProps = {
     /** Content to place in the grid cell */
@@ -358,7 +357,7 @@ export type GridChildProps = {
 /**
  * Props for positioning children within a GtkFixed.
  *
- * Used by `GtkFixed.Child` compound component.
+ * Used by the `<GtkFixedChild>` component.
  */
 export type FixedChildProps = {
     /** Content to place in the fixed container */
@@ -376,7 +375,7 @@ export type FixedChildProps = {
  *
  * @typeParam T - The type of data for each row
  *
- * Used by `GtkColumnView.Column` compound component.
+ * Used by the `<GtkColumnViewColumn>` component.
  */
 export type ColumnViewColumnProps<T = unknown> = {
     /** Column header text */
@@ -403,7 +402,7 @@ export type ColumnViewColumnProps<T = unknown> = {
     children?: ReactNode;
     /**
      * @internal The menu structure extracted from `children` by the
-     * `GtkColumnView.Column` component and consumed by the reconciler to build
+     * `<GtkColumnViewColumn>` component and consumed by the reconciler to build
      * the column's header menu. Not intended for direct use.
      */
     menuEntries?: MenuEntry[];
@@ -434,7 +433,7 @@ export type NotebookPageTabProps = {
 /**
  * Props for pages within a Stack or ViewStack.
  *
- * Used by `GtkStack.Page` and `AdwViewStack.Page` compound components.
+ * Used by the `<GtkStackPage>` and `<AdwViewStackPage>` components.
  */
 export type StackPageProps = {
     /** Content to place in the stack page */
@@ -565,69 +564,6 @@ export type AlertDialogResponseProps = {
     /** Whether the response button is enabled */
     enabled?: boolean;
 };
-
-/**
- * Base props shared by all navigation page declarations, regardless
- * of the parent container (NavigationView or NavigationSplitView).
- */
-export type NavigationPageBaseProps = {
-    /** Display title for the navigation page */
-    title?: string;
-    /** Whether the page can be popped from the navigation stack */
-    canPop?: boolean;
-    /** Page content */
-    children?: ReactNode;
-};
-
-/**
- * Props for a navigation page inside an `AdwNavigationView`.
- *
- * The `id` serves as the page tag for navigation history.
- */
-export type NavigationViewPageProps = NavigationPageBaseProps & { id: string };
-
-/**
- * Props for a navigation page inside an `AdwNavigationSplitView`.
- *
- * The `id` is narrowed to the valid slot positions of the split view.
- */
-export type NavigationSplitViewPageProps = NavigationPageBaseProps & {
-    id: WidgetSlotNames["AdwNavigationSplitView"];
-};
-
-/**
- * Props for the NavigationPage virtual element with type-safe targeting.
- *
- * The `for` prop is required and determines valid `id` values:
- * - `AdwNavigationView`: `id` can be any string (page tags for navigation history)
- * - `AdwNavigationSplitView`: `id` is narrowed to `"content" | "sidebar"` (slot positions)
- *
- * @example
- * ```tsx
- * // In NavigationView - id can be any string
- * <AdwNavigationView>
- *   <AdwNavigationView.Page id="home" title="Home">
- *     <HomeContent />
- *   </AdwNavigationView.Page>
- * </AdwNavigationView>
- *
- * // In NavigationSplitView - id is narrowed to "content" | "sidebar"
- * <AdwNavigationSplitView>
- *   <AdwNavigationSplitView.Page id="sidebar" title="Sidebar">
- *     <SidebarContent />
- *   </AdwNavigationSplitView.Page>
- *   <AdwNavigationSplitView.Page id="content" title="Content">
- *     <MainContent />
- *   </AdwNavigationSplitView.Page>
- * </AdwNavigationSplitView>
- * ```
- */
-export type NavigationPageProps =
-    | (NavigationPageBaseProps & { for: "AdwNavigationView"; id: string })
-    | (NavigationPageBaseProps & {
-          for: "AdwNavigationSplitView";
-          id: WidgetSlotNames["AdwNavigationSplitView"];
-      });
 
 /**
  * Props shared by text buffer hosts (GtkTextView, GtkSourceView).
@@ -1157,10 +1093,16 @@ export { AdwSpringAnimation, AdwTimedAnimation } from "./components/animation.js
 export { AdwApplication, GtkApplication } from "./components/application.js";
 export { GtkConstraintLayout } from "./components/constraint-layout.js";
 export { GtkDrawingArea } from "./components/drawing-area.js";
-export { AdwComboRow, GtkColumnView, GtkDropDown, GtkGridView, GtkListView } from "./components/list.js";
+export {
+    AdwComboRow,
+    GtkColumnView,
+    GtkColumnViewColumn,
+    GtkDropDown,
+    GtkGridView,
+    GtkListView,
+} from "./components/list.js";
 export { Menu, MenuItem, MenuSection, MenuSubmenu } from "./components/menu.js";
 export { GtkMenuButton, GtkPopoverMenu, GtkPopoverMenuBar } from "./components/menu-widgets.js";
-export { AdwNavigationSplitView, AdwNavigationView } from "./components/navigation.js";
 export { GtkSizeGroup } from "./components/size-group.js";
 export { WebKitWebView } from "./components/web-view.js";
 export {

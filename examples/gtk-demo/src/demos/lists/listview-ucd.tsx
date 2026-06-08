@@ -2,7 +2,7 @@ import { css } from "@gtkx/css";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkColumnView, GtkInscription, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
+import { GtkBox, GtkColumnView, GtkColumnViewColumn, GtkInscription, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-ucd.tsx?raw";
@@ -431,7 +431,7 @@ const renderUcdHeader = (script: string) => (
 );
 
 const UcdCodepointColumn = () => (
-    <GtkColumnView.Column
+    <GtkColumnViewColumn
         id="codepoint"
         title="Codepoint"
         sortable
@@ -442,7 +442,7 @@ const UcdCodepointColumn = () => (
 );
 
 const UcdCharColumn = () => (
-    <GtkColumnView.Column
+    <GtkColumnViewColumn
         id="char"
         title="Char"
         renderCell={(item: UcdEntry) => (
@@ -452,7 +452,7 @@ const UcdCharColumn = () => (
 );
 
 const UcdNameColumn = () => (
-    <GtkColumnView.Column
+    <GtkColumnViewColumn
         id="name"
         title="Name"
         resizable
@@ -476,7 +476,7 @@ interface UcdInscriptionColumnProps {
 }
 
 const UcdInscriptionColumn = ({ id, title, label }: UcdInscriptionColumnProps) => (
-    <GtkColumnView.Column
+    <GtkColumnViewColumn
         id={id}
         title={title}
         resizable
