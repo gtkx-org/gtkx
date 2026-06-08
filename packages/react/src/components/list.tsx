@@ -8,14 +8,11 @@ import type {
     GtkListViewProps,
 } from "@gtkx/react-jsx/jsx";
 import {
-    createContext,
     createElement,
     type ReactNode,
     type Ref,
-    useContext,
     useEffect,
     useLayoutEffect,
-    useMemo,
     useReducer,
     useRef,
     useState,
@@ -24,13 +21,14 @@ import type { ColumnViewColumnProps, ColumnViewProps, DropDownProps, GridViewPro
 import type { BoundItem } from "../nodes/internal/bound-item.js";
 import { createPortal } from "../portal.js";
 import { useMergedRefs } from "../use-merged-refs.js";
-import { ColumnController } from "./internal/column-controller.js";
+import { setColumnViewController } from "./internal/column-view-registry.js";
 import { ListController, type ListControllerProps } from "./internal/list-controller.js";
 import { useMenuEntries } from "./menu.js";
 
 const GtkListViewElement = "GtkListView" as const;
 const GtkGridViewElement = "GtkGridView" as const;
 const GtkColumnViewElement = "GtkColumnView" as const;
+const GtkColumnViewColumnElement = "GtkColumnViewColumn" as const;
 const GtkDropDownElement = "GtkDropDown" as const;
 const AdwComboRowElement = "AdwComboRow" as const;
 
@@ -244,72 +242,14 @@ export function AdwComboRow<T = unknown, S = unknown>(
     return useListElement(AdwComboRowElement, props as Record<string, unknown> & { ref?: Ref<Gtk.Widget> });
 }
 
-/** The ordered registry a `GtkColumnView` shares with its `Column` children. */
-interface ColumnRegistry {
-    /** The list controller the columns collect cells for, set once the widget settles. */
-    list: ListController | null;
-    /** The column view the columns attach to, set once the widget settles. */
-    columnView: Gtk.ColumnView | null;
-    /** The column controllers collected in render order during the current pass. */
-    readonly order: ColumnController[];
-    /** Token of the column-view render pass that last cleared {@link order}. */
-    renderToken: number;
-    /** The {@link renderToken} a `Column` child last stamped while rendering. */
-    stampedToken: number;
-}
-
 /**
- * Context payload carrying the column registry and the settled list controller.
- * Recreated when the controller settles so `Column` consumers re-render and
- * observe it, which the stable registry object alone could not signal.
- */
-interface ColumnRegistryHolder {
-    /** The mutable registry the column view shares with its `Column` children. */
-    readonly registry: ColumnRegistry;
-    /** The settled list controller, or `null` before the widget settles. */
-    readonly list: ListController | null;
-}
-
-const ColumnRegistryContext = createContext<ColumnRegistryHolder | null>(null);
-
-/**
- * Reconciles the live columns of the registry's column view to the order the
- * `Column` children declared this render: each declared controller is inserted
- * or moved to its declared index, and any controller no longer present is removed.
+ * Drives a `GtkColumnView`, publishing its settled list controller so the
+ * `<GtkColumnViewColumn>` children reach it as the reconciler attaches them.
  *
- * @param registry - The shared registry carrying the column view and declarations.
- * @param attached - The set of controllers currently attached to the column view.
- */
-const reconcileColumns = (registry: ColumnRegistry, attached: Set<ColumnController>): void => {
-    const { list, columnView, order } = registry;
-    if (!list || !columnView) return;
-    const declared = new Set(order);
-    for (const controller of attached) {
-        if (declared.has(controller)) continue;
-        controller.detachFrom(columnView);
-        attached.delete(controller);
-    }
-    order.forEach((controller, index) => {
-        if (attached.has(controller)) {
-            controller.moveWithin(columnView, index);
-        } else {
-            controller.attachTo(columnView, index);
-            attached.add(controller);
-        }
-    });
-};
-
-/**
- * Drives a `GtkColumnView` and its `Column` children.
- *
- * The list controller is captured asynchronously, so the column children cannot
- * build their controllers on the first render. A layout effect publishes the
- * settled controller through `list` state, which recreates the context holder so
- * the children re-render and observe it. Each render bumps `renderToken` and the
- * children stamp it as they render; the reconcile effect attaches, moves, or
- * detaches columns only when the children stamped the current token, so a portal
- * re-render that bails the children out never mistakes an empty order for a
- * removed column set.
+ * The columns are real reconciler elements: their order, insertion, and removal
+ * flow through the host config like any ordered container, so this component
+ * only renders the column-view element with the columns as its children and
+ * records the controller keyed by the live column-view widget.
  *
  * @internal
  */
@@ -317,57 +257,17 @@ function GtkColumnViewBase<T = unknown, S = unknown>(
     props: GenericColumnViewProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.ColumnView> },
 ): ReactNode {
     const { children, ...rest } = props as Record<string, unknown> & { children?: ReactNode };
-    const registry = useRef<ColumnRegistry>({
-        list: null,
-        columnView: null,
-        order: [],
-        renderToken: 0,
-        stampedToken: -1,
-    }).current;
-    registry.renderToken += 1;
-    registry.order.length = 0;
-    const attachedRef = useRef(new Set<ColumnController>());
-    const handleRef = useRef<ListHandle | null>(null);
-    const prevOrderRef = useRef<ColumnController[]>([]);
-    const [list, setList] = useState<ListController | null>(null);
-
-    const value = useMemo<ColumnRegistryHolder>(() => ({ registry, list }), [registry, list]);
-    const scope = <ColumnRegistryContext.Provider value={value}>{children}</ColumnRegistryContext.Provider>;
-    const element = useListElement(
+    return useListElement(
         GtkColumnViewElement,
         rest as Record<string, unknown> & { ref?: Ref<Gtk.Widget> },
-        scope,
+        children as ReactNode,
         (handle) => {
-            handleRef.current = handle;
-            registry.list = handle.controller;
             const widget = handle.controller?.getWidget() ?? null;
-            registry.columnView = widget instanceof Gtk.ColumnView ? widget : null;
+            if (widget instanceof Gtk.ColumnView && handle.controller) {
+                setColumnViewController(widget, handle.controller);
+            }
         },
     );
-
-    useLayoutEffect(() => {
-        const controller = handleRef.current?.controller ?? null;
-        if (controller !== list) setList(controller);
-    });
-
-    useLayoutEffect(() => {
-        if (registry.stampedToken !== registry.renderToken) return;
-        const order = registry.order;
-        const prev = prevOrderRef.current;
-        const orderChanged =
-            order.length !== prev.length || order.some((controller, index) => controller !== prev[index]);
-        if (!orderChanged) return;
-        prevOrderRef.current = order.slice();
-        reconcileColumns(registry, attachedRef.current);
-        const handle = handleRef.current;
-        if (handle?.controller) {
-            handle.controller.finishColumnViewAttach();
-            handle.controller.applySortColumn(handle.controllerProps);
-            handle.controller.scheduleBoundItemsUpdate();
-        }
-    });
-
-    return element;
 }
 
 /**
@@ -390,39 +290,20 @@ export const GtkColumnViewColumn: <T = unknown>(props: ColumnViewColumnProps<T>)
  * Declares one column of a `GtkColumnView`.
  *
  * Collects the column's header-menu entries from its `<MenuItem>` /
- * `<MenuSection>` / `<MenuSubmenu>` children, owns a {@link ColumnController}
- * across its lifetime, and contributes its controller to the enclosing
- * `GtkColumnView` registry in render order. Renders only its menu scope.
+ * `<MenuSection>` / `<MenuSubmenu>` children, then renders the real
+ * `GtkColumnViewColumn` intrinsic element carrying the column's GObject props
+ * plus the cell renderer and collected menu entries the reconciler builds the
+ * column's cell factory and header menu from. The menu collector scope is
+ * rendered alongside the element so the markers populate `entries`.
  *
  * @param props - The column definition and optional header-menu children.
  */
 function ColumnViewColumn<T = unknown>({ children, ...rest }: ColumnViewColumnProps<T>): ReactNode {
-    const registry = useContext(ColumnRegistryContext)?.registry ?? null;
     const { entries, scope } = useMenuEntries(children);
-    const columnProps: ColumnViewColumnProps = { ...(rest as ColumnViewColumnProps), menuEntries: entries };
-    const controllerRef = useRef<ColumnController | null>(null);
-    const prevPropsRef = useRef<ColumnViewColumnProps>(columnProps);
-
-    if (registry?.list && !controllerRef.current) {
-        controllerRef.current = new ColumnController(registry.list, columnProps);
-        prevPropsRef.current = columnProps;
-    }
-
-    const controller = controllerRef.current;
-    if (registry) {
-        registry.stampedToken = registry.renderToken;
-        if (controller) registry.order.push(controller);
-    }
-
-    useEffect(() => {
-        if (!controller) return;
-        controller.update(prevPropsRef.current, columnProps);
-        prevPropsRef.current = columnProps;
-    });
-
-    useLayoutEffect(() => {
-        return () => controllerRef.current?.dispose();
-    }, []);
-
-    return scope;
+    return (
+        <>
+            {scope}
+            {createElement(GtkColumnViewColumnElement, { ...rest, menuEntries: entries })}
+        </>
+    );
 }

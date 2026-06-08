@@ -13,6 +13,7 @@ import { SignalStore } from "../../nodes/internal/signal-store.js";
 import { stableIdOf } from "../../nodes/internal/stable-id.js";
 import type { BackingInstance } from "../../types.js";
 import type { ColumnController } from "./column-controller.js";
+import { deleteColumnViewController, getColumnController } from "./column-view-registry.js";
 
 /** Renders one bound row; `row` carries tree state for hierarchical lists. */
 export type ListItemRenderer = (item: unknown, row?: Gtk.TreeListRow | null) => ReactNode;
@@ -158,6 +159,27 @@ export class ListController {
             this.selectionController.applySelection(this.props.selected ?? null);
             this.selectionController.applySelectedId(this.props.selectedId);
         }
+        if (isColumnView) this.adoptExistingColumns();
+    }
+
+    /**
+     * Registers the controllers of every column already inserted into the column
+     * view, then runs the settle so the model and sort apply once. Covers the
+     * initial mount, where the columns attach in the commit that builds the view
+     * before this controller settles and can be recorded.
+     */
+    private adoptExistingColumns(): void {
+        const columnView = this.widget;
+        if (!(columnView instanceof Gtk.ColumnView)) return;
+        const columns = columnView.getColumns();
+        const nItems = columns.getNItems();
+        for (let i = 0; i < nItems; i++) {
+            const column = columns.getItem(i);
+            if (column instanceof Gtk.ColumnViewColumn) {
+                getColumnController(column)?.register(this, columnView);
+            }
+        }
+        this.settleColumns();
     }
 
     /**
@@ -200,6 +222,7 @@ export class ListController {
         this.modelController.detach();
         this.signals.clear(this.signalOwner);
         this.columns.clear();
+        if (this.widget instanceof Gtk.ColumnView) deleteColumnViewController(this.widget);
     }
 
     /** Registers a column controller so the controller can collect its cells. */
@@ -210,6 +233,54 @@ export class ListController {
     /** Unregisters a column controller. */
     public removeColumn(column: ColumnController): void {
         this.columns.delete(column);
+    }
+
+    /**
+     * Schedules the column-view settle work to run once after every column
+     * mutation of the current commit applies. The reconciler inserts and removes
+     * columns during the commit's freeze window; queuing the settle through the
+     * commit flush (deduped by identity) collapses many column mutations into one
+     * settle that sees the final column set.
+     */
+    public scheduleColumnSettle(): void {
+        if (!this.isColumnView() || this.detached) return;
+        scheduleFlush(this.settleColumns);
+    }
+
+    private settleColumns = (): void => {
+        if (this.detached) return;
+        const modelWasAssigned = this.columnViewModelAssigned;
+        this.finishColumnViewAttach();
+        if (modelWasAssigned) this.relayoutColumns();
+        this.applySortColumn(this.props);
+        this.scheduleBoundItemsUpdate();
+    };
+
+    /**
+     * Re-inserts every live column in its current order so the column view
+     * rebuilds each already-realized row's cells in column order.
+     *
+     * `Gtk.ColumnView.insertColumn` appends a newly inserted column's cells to the
+     * visual end of rows that GTK has already realized, leaving the cells out of
+     * logical column order. Removing then re-inserting the whole column set forces
+     * GTK to lay every row's cells out in the columns' order. It runs only on a
+     * settle after the model is assigned, when realized cells exist; the initial
+     * settle builds the cells once against the final column set and needs no
+     * relayout.
+     */
+    private relayoutColumns(): void {
+        const columnView = this.widget;
+        if (!(columnView instanceof Gtk.ColumnView)) return;
+        const columns = columnView.getColumns();
+        const ordered: Gtk.ColumnViewColumn[] = [];
+        for (let i = 0; i < columns.getNItems(); i++) {
+            const column = columns.getItem(i);
+            if (column instanceof Gtk.ColumnViewColumn) ordered.push(column);
+        }
+        for (const column of ordered) columnView.removeColumn(column);
+        ordered.forEach((column, index) => {
+            columnView.insertColumn(index, column);
+        });
     }
 
     /** Whether this controller drives a dropdown-style widget. */

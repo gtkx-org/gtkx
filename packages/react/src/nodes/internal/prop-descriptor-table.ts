@@ -12,10 +12,11 @@ import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { scheduleFlush } from "../../commit-flush.js";
+import { getColumnController } from "../../components/internal/column-view-registry.js";
 import { buildMenuModel, type MenuActionContext, type MenuEntry } from "../../components/internal/menu-model.js";
 import { collectTypeNameChain } from "../../gtype.js";
 import { type Instance, registerTeardown } from "../../instance.js";
-import type { GtkSourceViewProps, GtkTextViewProps } from "../../jsx.js";
+import type { ColumnViewColumnProps, GtkSourceViewProps, GtkTextViewProps } from "../../jsx.js";
 import { type ImperativeHandler, imperative, type PropDescriptorTable, signal } from "./apply-props.js";
 import { getTextBufferController } from "./text-buffer-registry.js";
 
@@ -169,6 +170,34 @@ const menuDescriptors: DescriptorFactory = (instance): PropDescriptorTable => {
     };
 };
 
+const COLUMN_VIEW_COLUMN_PROPS: readonly (keyof ColumnViewColumnProps)[] = [
+    "title",
+    "expand",
+    "resizable",
+    "fixedWidth",
+    "visible",
+    "sortable",
+    "renderCell",
+    "menuEntries",
+];
+
+const columnViewColumnDescriptors: DescriptorFactory = (instance): PropDescriptorTable => {
+    const column = instance.backingInstance;
+    if (!(column instanceof Gtk.ColumnViewColumn)) return {};
+    const controller = getColumnController(column);
+    if (!controller) return {};
+    registerTeardown(instance, () => controller.teardown());
+    const apply: ImperativeHandler = (oldProps) => {
+        controller.update(
+            (oldProps ?? instance.props) as ColumnViewColumnProps,
+            instance.props as ColumnViewColumnProps,
+        );
+    };
+    const table: PropDescriptorTable = {};
+    for (const prop of COLUMN_VIEW_COLUMN_PROPS) table[prop] = imperative(apply);
+    return table;
+};
+
 const TEXT_VIEW_BUFFER_PROPS: readonly (keyof GtkTextViewProps)[] = [
     "buffer",
     "enableUndo",
@@ -242,6 +271,7 @@ const PROP_DESCRIPTOR_TABLE: Readonly<Record<string, DescriptorFactory>> = {
     GtkColorDialogButton: colorDialogButtonDescriptors,
     GtkFontDialogButton: fontDialogButtonDescriptors,
     GtkWindow: windowDescriptors,
+    GtkColumnViewColumn: columnViewColumnDescriptors,
     GMenu: menuDescriptors,
     GtkTextTag: textTagDescriptors,
     GtkTextView: textViewDescriptors,

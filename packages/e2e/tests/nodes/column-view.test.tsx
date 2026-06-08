@@ -28,6 +28,13 @@ const getColumnViewItemTexts = (columnView: Gtk.ColumnView): string[] => {
     return [];
 };
 
+const getFirstRowCellTexts = (columnView: Gtk.ColumnView): string[] => {
+    const header = columnView.getFirstChild();
+    const rows = header?.getNextSibling();
+    const firstRow = rows?.getFirstChild();
+    return firstRow ? getChildTexts(firstRow) : [];
+};
+
 const columnViewView = async (items: Parameters<typeof renderColumnView>[0]): Promise<CollectionView> => {
     const { ref, rerender } = await renderColumnView(items);
     return { texts: () => getColumnViewItemTexts(ref.current), rerender };
@@ -37,6 +44,13 @@ const labelCell = (item: { name: string }) => <GtkLabel label={item.name} />;
 
 const titleColumns = (titles: string[]): ColumnDef<{ name: string }>[] =>
     titles.map((title) => ({ id: title, title, renderCell: labelCell }));
+
+const orderedColumns = (ids: string[]): ColumnDef<{ name: string }>[] =>
+    ids.map((id) => ({
+        id,
+        title: id,
+        renderCell: (item: { name: string }) => <GtkLabel label={`${id}:${item.name}`} />,
+    }));
 
 interface Employee {
     id: string;
@@ -215,6 +229,17 @@ describe("render - ColumnView (2)", () => {
             });
 
             expect(ref.current?.getColumns()).not.toBeNull();
+        });
+
+        it("keeps cells in column order after inserting a column mid-list", async () => {
+            const rows = [{ id: "1", value: { name: "r1" } }];
+            const { ref, rerender } = await renderColumnView(rows, { columns: orderedColumns(["A", "C"]) });
+
+            expect(getFirstRowCellTexts(ref.current)).toEqual(["A:r1", "C:r1"]);
+
+            await rerender(rows, { columns: orderedColumns(["A", "B", "C"]) });
+
+            expect(getFirstRowCellTexts(ref.current)).toEqual(["A:r1", "B:r1", "C:r1"]);
         });
 
         it("removes column", async () => {

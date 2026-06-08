@@ -15,6 +15,7 @@ import * as Adw from "@gtkx/gi/adw";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
+import { getColumnController, getColumnViewController } from "./components/internal/column-view-registry.js";
 import { type Instance, isWrapperInstance, isWrapperKind } from "./instance.js";
 import {
     type InsertableWidget,
@@ -474,6 +475,92 @@ const shortcutMapping: ElementMapping = {
     },
 };
 
+// --- Column view column (ordered, insertColumn / removeColumn) ---
+
+type ColumnAttachState = { view: Gtk.ColumnView; column: Gtk.ColumnViewColumn };
+
+/**
+ * The index `column` currently occupies in `columnView`'s live column list, or
+ * `-1` when it is not present.
+ */
+const columnIndexOf = (columnView: Gtk.ColumnView, column: Gtk.ColumnViewColumn): number => {
+    const columns = columnView.getColumns();
+    const nItems = columns.getNItems();
+    for (let i = 0; i < nItems; i++) {
+        if (columns.getItem(i) === column) return i;
+    }
+    return -1;
+};
+
+/**
+ * The position `column` should insert at to land before `anchor`, computed
+ * against the live column list that must NOT contain `column` (a move removes it
+ * first): the anchor's current index, or the end when there is no anchor or it
+ * is not present, mirroring {@link findInsertPosition} over the column
+ * `ListModel` rather than the widget children.
+ */
+const columnInsertPosition = (columnView: Gtk.ColumnView, anchor: BackingInstance | null | undefined): number => {
+    const columns = columnView.getColumns();
+    const nItems = columns.getNItems();
+    if (anchor instanceof Gtk.ColumnViewColumn) {
+        for (let i = 0; i < nItems; i++) {
+            if (columns.getItem(i) === anchor) return i;
+        }
+    }
+    return nItems;
+};
+
+/**
+ * Whether `column` already sits immediately before `anchor` (or last, when there
+ * is no anchor) in the live column list, so a re-invoked attach can skip the
+ * remove/insert.
+ */
+const columnIsPlacedBefore = (
+    columnView: Gtk.ColumnView,
+    column: Gtk.ColumnViewColumn,
+    anchor: BackingInstance | null | undefined,
+): boolean => {
+    const index = columnIndexOf(columnView, column);
+    if (index < 0) return false;
+    if (anchor instanceof Gtk.ColumnViewColumn) return columnIndexOf(columnView, anchor) === index + 1;
+    return index === columnView.getColumns().getNItems() - 1;
+};
+
+const columnViewColumnMapping: ElementMapping = {
+    matches: (child, parent) =>
+        child.backingInstance instanceof Gtk.ColumnViewColumn && parent.backingInstance instanceof Gtk.ColumnView,
+    attach: (child, parent, anchor) => {
+        const column = child.backingInstance;
+        const columnView = parent.backingInstance;
+        if (!(column instanceof Gtk.ColumnViewColumn) || !(columnView instanceof Gtk.ColumnView)) return;
+        const state = child.attachState as ColumnAttachState | undefined;
+        const alreadyAttached = state?.view === columnView;
+        if (alreadyAttached) {
+            if (columnIsPlacedBefore(columnView, column, anchor)) return;
+            if (columnIndexOf(columnView, column) >= 0) columnView.removeColumn(column);
+        }
+        const position = columnInsertPosition(columnView, anchor);
+        columnView.insertColumn(position, column);
+        if (!alreadyAttached) {
+            child.attachState = { view: columnView, column };
+            const list = getColumnViewController(columnView);
+            if (list) getColumnController(column)?.register(list, columnView);
+        }
+        getColumnViewController(columnView)?.scheduleColumnSettle();
+    },
+    detach: (child, parent) => {
+        const column = child.backingInstance;
+        const columnView = parent.backingInstance;
+        const state = child.attachState as ColumnAttachState | undefined;
+        if (!(column instanceof Gtk.ColumnViewColumn) || !(columnView instanceof Gtk.ColumnView)) return;
+        if (state?.view !== columnView) return;
+        columnView.removeColumn(column);
+        getColumnController(column)?.unregister(columnView);
+        child.attachState = undefined;
+        getColumnViewController(columnView)?.scheduleColumnSettle();
+    },
+};
+
 // --- Top-level surfaces ---
 
 const isTopLevel = (instance: Instance): boolean =>
@@ -673,6 +760,7 @@ export const ELEMENT_MAP: readonly ElementMapping[] = [
     eventControllerMapping,
     layoutManagerMapping,
     shortcutMapping,
+    columnViewColumnMapping,
     topLevelSkipMapping,
     listItemChildMapping,
     widgetContainerMapping,

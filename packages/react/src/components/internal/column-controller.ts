@@ -6,55 +6,72 @@ import { connectFactoryLifecycle, UNBOUND_POSITION } from "../../nodes/internal/
 import type { ListController } from "./list-controller.js";
 import { buildMenuModel } from "./menu-model.js";
 
+const UNREGISTERED_ITEM_SIZE = { width: -1, height: -1 } as const;
+
 /**
- * Drives one `Gtk.ColumnViewColumn` from the `<GtkColumnViewColumn>` component.
+ * Drives one `Gtk.ColumnViewColumn` element of a `<GtkColumnView>`.
  *
- * It owns the real `Gtk.ColumnViewColumn`, its cell `Gtk.SignalListItemFactory`,
- * the per-column header menu (`Gio.Menu` plus a `Gio.SimpleActionGroup` keyed by
- * the column id), and the bound cells the parent list controller collects into
- * portals. The component constructs the controller, attaches it to the column
- * view, applies prop changes, and disposes it on unmount.
+ * It owns the column's cell `Gtk.SignalListItemFactory`, the per-column header
+ * menu (`Gio.Menu` plus a `Gio.SimpleActionGroup` keyed by the column id), and
+ * the bound cells the parent list controller collects into portals. The
+ * reconciler constructs the controller alongside its backing column during
+ * element construction, registers it on the enclosing column view's list
+ * controller when the column attaches, applies prop changes through the prop
+ * descriptor, and tears it down when the column element is removed.
  */
 export class ColumnController {
-    private readonly column: Gtk.ColumnViewColumn;
-    private readonly columnFactory: Gtk.SignalListItemFactory;
     private readonly containers = new Map<Gtk.ListItem, number>();
     private readonly containerKeys = new Map<Gtk.ListItem, string>();
     private readonly actionGroup = new Gio.SimpleActionGroup();
     private disposeMenu: (() => void) | null = null;
-    private attachedView: Gtk.ColumnView | null = null;
+    private list: ListController | null = null;
 
     /**
-     * @param list - The parent list controller this column collects cells for.
+     * Builds the cell factory and the backing `Gtk.ColumnViewColumn`, applies the
+     * initial column props, then constructs the controller bound to them.
+     *
+     * The factory's lifecycle callbacks read the controller's currently-registered
+     * list controller, so a column built before it attaches to a column view seeds
+     * cells with a default placeholder size and defers bound-item refreshes until
+     * registration.
+     *
      * @param props - The column's initial props.
+     * @returns The controller bound to its constructed column.
      */
-    constructor(
-        private readonly list: ListController,
-        private props: ColumnViewColumnProps,
-    ) {
-        this.columnFactory = new Gtk.SignalListItemFactory();
-        connectFactoryLifecycle(this.columnFactory, {
-            containers: this.containers,
-            containerKeys: this.containerKeys,
+    public static build(props: ColumnViewColumnProps): ColumnController {
+        const factory = new Gtk.SignalListItemFactory();
+        const column = Gtk.ColumnViewColumn.new(props.title, factory);
+        const controller = new ColumnController(column, props);
+        connectFactoryLifecycle(factory, {
+            containers: controller.containers,
+            containerKeys: controller.containerKeys,
             getPosition: (item) => item.getPosition(),
-            onBoundItemsChanged: () => this.list.queueBoundItemsUpdate(),
+            onBoundItemsChanged: () => controller.list?.queueBoundItemsUpdate(),
             onSetup: (item) => {
                 const placeholder = new Gtk.Box();
-                const { width, height } = this.list.getEstimatedItemSize();
+                const { width, height } = controller.list?.getEstimatedItemSize() ?? UNREGISTERED_ITEM_SIZE;
                 placeholder.setSizeRequest(width, height);
                 item.setChild(placeholder);
             },
         });
-        this.column = Gtk.ColumnViewColumn.new(props.title, this.columnFactory);
-        this.column.setId(props.id);
-        if (props.expand !== undefined) this.column.setExpand(props.expand);
-        if (props.resizable !== undefined) this.column.setResizable(props.resizable);
-        if (props.fixedWidth !== undefined) this.column.setFixedWidth(props.fixedWidth);
-        if (props.visible !== undefined) this.column.setVisible(props.visible);
-        if (props.sortable) this.column.setSorter(new Gtk.CustomSorter());
-        this.updateHeaderMenu();
-        this.list.addColumn(this);
+        column.setId(props.id);
+        if (props.expand !== undefined) column.setExpand(props.expand);
+        if (props.resizable !== undefined) column.setResizable(props.resizable);
+        if (props.fixedWidth !== undefined) column.setFixedWidth(props.fixedWidth);
+        if (props.visible !== undefined) column.setVisible(props.visible);
+        if (props.sortable) column.setSorter(new Gtk.CustomSorter());
+        controller.updateHeaderMenu();
+        return controller;
     }
+
+    /**
+     * @param column - The backing column the cell factory was constructed with.
+     * @param props - The column's initial props.
+     */
+    private constructor(
+        private readonly column: Gtk.ColumnViewColumn,
+        private props: ColumnViewColumnProps,
+    ) {}
 
     /** The backing `Gtk.ColumnViewColumn`. */
     public getColumn(): Gtk.ColumnViewColumn {
@@ -62,32 +79,36 @@ export class ColumnController {
     }
 
     /**
-     * Inserts this column into `columnView` at `position` and installs its
-     * header-menu action group under the column id.
+     * Registers the controller on `list` so it collects this column's cells, and
+     * installs the header-menu action group under the column id on the column
+     * view. Idempotent: re-registering on the same list is a no-op.
+     *
+     * @param list - The enclosing column view's list controller.
+     * @param columnView - The column view the action group installs on.
      */
-    public attachTo(columnView: Gtk.ColumnView, position: number): void {
+    public register(list: ListController, columnView: Gtk.ColumnView): void {
+        if (this.list === list) return;
+        this.list = list;
+        list.addColumn(this);
         columnView.insertActionGroup(this.props.id, this.actionGroup);
-        columnView.insertColumn(position, this.column);
-        this.attachedView = columnView;
-    }
-
-    /** Moves this column to `position` within `columnView` without re-installing actions. */
-    public moveWithin(columnView: Gtk.ColumnView, position: number): void {
-        columnView.removeColumn(this.column);
-        columnView.insertColumn(position, this.column);
-        this.attachedView = columnView;
     }
 
     /**
-     * Removes this column from `columnView` and uninstalls its action group.
-     * A no-op when the column is no longer attached, so a removal and an unmount
-     * disposal cannot double-remove the same column.
+     * Unregisters the controller from its list and uninstalls the header-menu
+     * action group from `columnView`. Idempotent: a no-op when not registered.
+     *
+     * @param columnView - The column view the action group uninstalls from.
      */
-    public detachFrom(columnView: Gtk.ColumnView): void {
-        if (this.attachedView !== columnView) return;
-        columnView.removeColumn(this.column);
+    public unregister(columnView: Gtk.ColumnView): void {
+        if (!this.list) return;
+        this.list.removeColumn(this);
+        this.list = null;
         columnView.insertActionGroup(this.props.id, null);
-        this.attachedView = null;
+    }
+
+    /** Requests a bound-item refresh on the registered list, if any. */
+    private scheduleBoundItemsUpdate(): void {
+        this.list?.scheduleBoundItemsUpdate();
     }
 
     /** Applies a column prop change, refreshing its header menu and cells. */
@@ -101,21 +122,20 @@ export class ColumnController {
         if (oldProps.sortable !== newProps.sortable) {
             this.column.setSorter(newProps.sortable ? new Gtk.CustomSorter() : null);
         }
-        if (oldProps.renderCell !== newProps.renderCell) this.list.scheduleBoundItemsUpdate();
+        if (oldProps.renderCell !== newProps.renderCell) this.scheduleBoundItemsUpdate();
         if (oldProps.menuEntries !== newProps.menuEntries) this.updateHeaderMenu();
     }
 
     /**
-     * Removes the column from its column view, releases its header menu, and
-     * unregisters it from the parent list controller, leaving no column behind
-     * when only this column unmounts while the column view stays mounted.
+     * Releases the column's header menu and clears its bound-cell bookkeeping.
+     * Called from the column element's teardown when it unmounts.
      */
-    public dispose(): void {
-        if (this.attachedView) this.detachFrom(this.attachedView);
+    public teardown(): void {
         this.column.setHeaderMenu(null);
         this.disposeMenu?.();
         this.disposeMenu = null;
-        this.list.removeColumn(this);
+        this.containers.clear();
+        this.containerKeys.clear();
     }
 
     /** Collects this column's currently-bound cells as portals. */

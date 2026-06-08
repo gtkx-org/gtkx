@@ -8,7 +8,8 @@ export type BackingInstance =
     | Gtk.LayoutManager
     | Gtk.ListItem
     | Gtk.ListHeader
-    | Gtk.ConstraintGuide;
+    | Gtk.ConstraintGuide
+    | Gtk.ColumnViewColumn;
 
 /**
  * Opaque per-root token used as the reconciler container for a top-level
@@ -33,4 +34,5 @@ export type BackingInstanceClass =
     | typeof Gtk.LayoutManager
     | typeof Gtk.ListItem
     | typeof Gtk.ListHeader
-    | typeof Gtk.ConstraintGuide;
+    | typeof Gtk.ConstraintGuide
+    | typeof Gtk.ColumnViewColumn;
