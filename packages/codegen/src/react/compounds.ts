@@ -22,7 +22,7 @@ type TopLevelHoc = "withTopLevel" | "createApplication" | "withApplicationWindow
  *
  * @param accumulator - The shared compound accumulator.
  */
-const useWrapperElement = (accumulator: CompoundAccumulator): void => {
+const recordWrapperElement = (accumulator: CompoundAccumulator): void => {
     accumulator.elementNames.add(WRAPPER_NODE_ELEMENT);
 };
 
@@ -86,7 +86,7 @@ export const generateCompounds = (
     }
 
     for (const virtual of allVirtualSubcomponents()) {
-        useWrapperElement(accumulator);
+        recordWrapperElement(accumulator);
         accumulator.virtualPropTypes.add(virtual.propsType);
         exportLines.push(renderVirtualSubcomponent(virtual));
         exportedNames.add(virtual.flatName);
@@ -143,7 +143,7 @@ const renderCompound = (shape: CompoundShape, accumulator: CompoundAccumulator):
     accumulator.compoundPropTypes.add(propsType);
     accumulator.elementNames.add(glibName);
     const hasSlots = slots.length > 0 || containers.length > 0;
-    if (hasSlots) useWrapperElement(accumulator);
+    if (hasSlots) recordWrapperElement(accumulator);
     if (hoc === undefined) {
         return `export const ${glibName} = ${renderComponentFunction(glibName, propsType, slots, containers)};`;
     }
