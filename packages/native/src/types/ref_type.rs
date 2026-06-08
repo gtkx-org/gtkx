@@ -212,15 +212,12 @@ impl RefType {
 
             if matches!(storage.kind(), FfiStorageKind::PtrStorage(_))
                 && array_type.ownership.is_full()
+                && matches!(
+                    &array_type.kind,
+                    ArrayKind::Sized { .. } | ArrayKind::Fixed { .. }
+                )
             {
-                let freed_by_decode =
-                    matches!(array_type.kind, ArrayKind::GList | ArrayKind::GSList)
-                        || (array_type.kind == ArrayKind::Array
-                            && matches!(&*array_type.item_type, Type::String(_)));
-
-                if !freed_by_decode {
-                    unsafe { glib::ffi::g_free(actual_ptr) };
-                }
+                unsafe { glib::ffi::g_free(actual_ptr) };
             }
 
             return Ok(result);

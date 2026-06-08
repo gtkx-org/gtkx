@@ -148,6 +148,28 @@ fn lookup_fundamental_fns_caches_repeated_lookups() {
 }
 
 #[test]
+fn lookup_fundamental_fns_keys_cache_by_library() {
+    common::run(|| {
+        GlibThreadState::with(|state| {
+            state
+                .lookup_fundamental_fns("libgobject-2.0.so.0", "g_object_ref", "g_object_unref")
+                .expect("first lookup should succeed");
+            let err = state
+                .lookup_fundamental_fns(
+                    "libnonexistent_fundamental_cache_test.so",
+                    "g_object_ref",
+                    "g_object_unref",
+                )
+                .err()
+                .map(|e| e.to_string());
+
+            let message = err.expect("same symbols in another library should miss the cache");
+            assert!(message.contains("Failed to load library"));
+        });
+    });
+}
+
+#[test]
 fn lookup_fundamental_fns_empty_names_yield_none() {
     common::run(|| {
         let resolved = GlibThreadState::with(|state| {

@@ -7,7 +7,7 @@ use gtk4::prelude::StaticType as _;
 
 use native::NativeHandle;
 use native::arg::Arg;
-use native::ffi::{FfiValue, GArrayData};
+use native::ffi::{FfiStorageKind, FfiValue, GArrayData};
 use native::types::{
     ArrayKind, ArrayType, BooleanType, FfiDecoder, FfiEncoder, FloatKind, IntegerKind, Ownership,
     RawPtrCodec, RefType, StringType, StructType, TaggedKind, TaggedType, Type, VoidType,
@@ -276,7 +276,28 @@ fn encode_pointer_array_null_terminated_with_handles() {
     let ty = array_type(struct_item_type(), ArrayKind::Array, Ownership::Full);
     let val = Value::Array(vec![Value::Object(boxed_handle())]);
     let encoded = ty.encode(&val, false).unwrap();
-    assert!(matches!(encoded, FfiValue::Storage(_)));
+    let FfiValue::Storage(storage) = encoded else {
+        panic!("expected storage")
+    };
+    let FfiStorageKind::ObjectArray(_, ptrs) = storage.kind() else {
+        panic!("expected object array storage")
+    };
+    assert_eq!(ptrs.len(), 2);
+    assert!(ptrs[1].is_null());
+}
+
+#[test]
+fn encode_pointer_array_null_terminated_empty_has_sentinel() {
+    let ty = array_type(struct_item_type(), ArrayKind::Array, Ownership::Full);
+    let encoded = ty.encode(&Value::Array(vec![]), false).unwrap();
+    let FfiValue::Storage(storage) = encoded else {
+        panic!("expected storage")
+    };
+    let FfiStorageKind::ObjectArray(_, ptrs) = storage.kind() else {
+        panic!("expected object array storage")
+    };
+    assert_eq!(ptrs.len(), 1);
+    assert!(ptrs[0].is_null());
 }
 
 #[test]
@@ -683,7 +704,7 @@ fn decode_null_terminated_string_array_from_ptr() {
 fn decode_null_terminated_string_array_full_ownership_frees() {
     common::run(|| {
         let ty = array_type(
-            string_item_type(Ownership::Borrowed),
+            string_item_type(Ownership::Full),
             ArrayKind::Array,
             Ownership::Full,
         );
@@ -697,6 +718,26 @@ fn decode_null_terminated_string_array_full_ownership_frees() {
             panic!("expected array")
         };
         assert_eq!(items.len(), 2);
+    });
+}
+
+#[test]
+fn decode_null_terminated_borrowed_string_array_full_ownership_frees_vector_only() {
+    common::run(|| {
+        let ty = array_type(
+            string_item_type(Ownership::Borrowed),
+            ArrayKind::Array,
+            Ownership::Full,
+        );
+        let strv = unsafe {
+            let arr = glib::ffi::g_malloc0(size_of::<*mut c_char>() * 2) as *mut *mut c_char;
+            *arr = c"borrowed".as_ptr().cast_mut();
+            arr
+        };
+        let Value::Array(items) = ty.decode(&FfiValue::Ptr(strv as *mut c_void)).unwrap() else {
+            panic!("expected array")
+        };
+        assert!(matches!(items.first(), Some(Value::String(s)) if s == "borrowed"));
     });
 }
 

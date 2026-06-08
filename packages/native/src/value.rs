@@ -20,11 +20,13 @@
 use std::ffi::c_void;
 use std::marker::PhantomData;
 use std::sync::Arc;
+use std::thread::ThreadId;
 
 use napi::bindgen_prelude::*;
 use napi::sys;
 use napi::{Env, JsFunction, JsObject, NapiRaw, NapiValue, ValueType};
 
+use crate::dispatch::{JsReference, Mailbox};
 use crate::managed::NativeHandle;
 use crate::types::{FfiDecoder, Type};
 use crate::{arg::Arg, ffi};
@@ -42,6 +44,7 @@ use crate::{arg::Arg, ffi};
 pub struct JsRef<T> {
     raw: sys::napi_ref,
     env: sys::napi_env,
+    owner_thread: ThreadId,
     _marker: PhantomData<T>,
 }
 
@@ -58,8 +61,12 @@ impl<T> std::fmt::Debug for JsRef<T> {
 #[cfg_attr(coverage_nightly, coverage(off))]
 impl<T> Drop for JsRef<T> {
     fn drop(&mut self) {
-        let status = unsafe { sys::napi_delete_reference(self.env, self.raw) };
-        debug_assert_eq!(status, sys::Status::napi_ok);
+        let reference = JsReference::new(self.env, self.raw);
+        if std::thread::current().id() == self.owner_thread {
+            reference.delete_on_js_thread();
+        } else {
+            Mailbox::global().schedule_js_reference_delete(reference);
+        }
     }
 }
 
@@ -82,6 +89,7 @@ impl<T: NapiRaw + NapiValue> JsRef<T> {
         Ok(Self {
             raw: raw_ref,
             env: env.raw(),
+            owner_thread: std::thread::current().id(),
             _marker: PhantomData,
         })
     }

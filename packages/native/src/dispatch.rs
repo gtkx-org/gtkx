@@ -48,7 +48,7 @@ use std::sync::{Arc, Mutex, OnceLock, mpsc};
 
 use gtk4::glib;
 use napi::threadsafe_function::ThreadsafeFunction;
-use napi::{JsFunction, Status};
+use napi::{JsFunction, Status, sys};
 
 use crate::error_reporter::NativeErrorReporter;
 use crate::panic_handler::format_panic_payload;
@@ -76,6 +76,31 @@ struct NodeCallback {
     result_tx: mpsc::Sender<anyhow::Result<NodeCallbackResult>>,
 }
 
+enum NodeTask {
+    Callback(NodeCallback),
+    DeleteReference(JsReference),
+}
+
+#[derive(Debug)]
+pub(crate) struct JsReference {
+    env: sys::napi_env,
+    raw: sys::napi_ref,
+}
+
+unsafe impl Send for JsReference {}
+
+impl JsReference {
+    pub(crate) fn new(env: sys::napi_env, raw: sys::napi_ref) -> Self {
+        Self { env, raw }
+    }
+
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    pub(crate) fn delete_on_js_thread(self) {
+        let status = unsafe { sys::napi_delete_reference(self.env, self.raw) };
+        debug_assert_eq!(status, sys::Status::napi_ok);
+    }
+}
+
 /// Bidirectional message queues coordinating the JS and `GLib` threads.
 ///
 /// Holds two inboxes — one for tasks bound for the `GLib` thread, one for
@@ -83,7 +108,7 @@ struct NodeCallback {
 /// each thread when its inbox is empty.
 pub struct Mailbox {
     glib_inbox: Mutex<VecDeque<DepthTaggedTask>>,
-    node_inbox: Mutex<VecDeque<NodeCallback>>,
+    node_inbox: Mutex<VecDeque<NodeTask>>,
 
     callback_depth: AtomicUsize,
 

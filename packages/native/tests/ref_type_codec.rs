@@ -342,6 +342,51 @@ fn decode_with_context_array_string_items_not_freed_by_ref() {
 }
 
 #[test]
+fn decode_with_context_array_container_released_by_array_decoder() {
+    common::run(|| {
+        let inner = unsafe { glib::ffi::g_malloc0(std::mem::size_of::<*mut c_void>()) };
+        let slot = Box::new(inner);
+        let storage = ptr_storage(slot);
+
+        let array_type = ArrayType {
+            item_type: Box::new(Type::GObject(GObjectType {
+                ownership: Ownership::Borrowed,
+            })),
+            kind: ArrayKind::Array,
+            ownership: Ownership::Full,
+            element_size: None,
+        };
+        let ref_type = RefType::new(Type::Array(array_type));
+        let decoded = ref_type
+            .decode_with_context(&storage, &[], &[])
+            .expect("array decode should release null-terminated container once");
+        assert!(matches!(decoded, Value::Array(arr) if arr.is_empty()));
+    });
+}
+
+#[test]
+fn decode_with_context_garray_container_released_by_array_decoder() {
+    common::run(|| {
+        let g_array =
+            unsafe { glib::ffi::g_array_sized_new(0, 0, std::mem::size_of::<u8>() as u32, 0) };
+        let slot = Box::new(g_array as *mut c_void);
+        let storage = ptr_storage(slot);
+
+        let array_type = ArrayType {
+            item_type: Box::new(Type::Integer(IntegerKind::U8)),
+            kind: ArrayKind::GArray,
+            ownership: Ownership::Full,
+            element_size: None,
+        };
+        let ref_type = RefType::new(Type::Array(array_type));
+        let decoded = ref_type
+            .decode_with_context(&storage, &[], &[])
+            .expect("GArray decode should release container once");
+        assert!(matches!(decoded, Value::Array(arr) if arr.is_empty()));
+    });
+}
+
+#[test]
 fn decode_with_context_array_non_string_items_freed_by_ref() {
     common::run(|| {
         let inner = unsafe { glib::ffi::g_malloc0(std::mem::size_of::<*mut c_void>()) };

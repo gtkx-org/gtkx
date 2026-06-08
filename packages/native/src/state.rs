@@ -139,15 +139,31 @@ impl LibraryCache {
 
 type FundamentalFns = (Option<RefFn>, Option<UnrefFn>);
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct FundamentalFnKey {
+    library_name: String,
+    ref_func: String,
+    unref_func: String,
+}
+
+impl FundamentalFnKey {
+    fn new(library_name: &str, ref_func: &str, unref_func: &str) -> Self {
+        Self {
+            library_name: library_name.to_owned(),
+            ref_func: ref_func.to_owned(),
+            unref_func: unref_func.to_owned(),
+        }
+    }
+}
+
 pub struct FundamentalFnCache {
-    cache: HashMap<String, HashMap<String, FundamentalFns>>,
+    cache: HashMap<FundamentalFnKey, FundamentalFns>,
 }
 
 impl std::fmt::Debug for FundamentalFnCache {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let len: usize = self.cache.values().map(HashMap::len).sum();
         f.debug_struct("FundamentalFnCache")
-            .field("len", &len)
+            .field("len", &self.cache.len())
             .finish()
     }
 }
@@ -166,11 +182,8 @@ impl FundamentalFnCache {
         ref_func: &str,
         unref_func: &str,
     ) -> anyhow::Result<FundamentalFns> {
-        if let Some(cached) = self
-            .cache
-            .get(ref_func)
-            .and_then(|by_unref| by_unref.get(unref_func))
-        {
+        let key = FundamentalFnKey::new(library_name, ref_func, unref_func);
+        if let Some(cached) = self.cache.get(&key) {
             return Ok(*cached);
         }
 
@@ -203,10 +216,7 @@ impl FundamentalFnCache {
         }
 
         let result = (ref_fn, unref_fn);
-        self.cache
-            .entry(ref_func.to_owned())
-            .or_default()
-            .insert(unref_func.to_owned(), result);
+        self.cache.insert(key, result);
         Ok(result)
     }
 }

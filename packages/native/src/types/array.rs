@@ -266,7 +266,7 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
         item_type: &Type,
         _ownership: Ownership,
     ) -> anyhow::Result<ffi::FfiValue> {
-        let mut ptrs: Vec<*mut c_void> = Vec::with_capacity(handles.len());
+        let mut ptrs: Vec<*mut c_void> = Vec::with_capacity(handles.len() + 1);
         for handle in handles {
             let ptr = handle.ptr();
             if ptr.is_null() {
@@ -274,6 +274,7 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
             }
             ptrs.push(item_type.ref_for_transfer(ptr)?);
         }
+        ptrs.push(std::ptr::null_mut());
         let ptr = ptrs.as_ptr() as *mut c_void;
 
         Ok(ffi::FfiValue::Storage(FfiStorage::new(
@@ -962,7 +963,12 @@ impl ArrayType {
         }
 
         if self.ownership.is_full() {
-            unsafe { glib::ffi::g_strfreev(ptr as *mut *mut c_char) };
+            if matches!(&*self.item_type, Type::String(string_type) if string_type.ownership.is_full())
+            {
+                unsafe { glib::ffi::g_strfreev(ptr as *mut *mut c_char) };
+            } else {
+                unsafe { glib::ffi::g_free(ptr) };
+            }
         }
 
         value::Value::Array(values)

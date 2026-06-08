@@ -13,7 +13,10 @@ use napi::bindgen_prelude::{FromNapiValue, Unknown};
 use napi::threadsafe_function::ThreadsafeFunctionCallMode;
 use napi::{Env, JsFunction, JsObject, NapiValue as _};
 
-use super::{GlibDisconnectedError, Mailbox, NodeCallback, NodeCallbackResult, WakeJsTsfn};
+use super::{
+    GlibDisconnectedError, JsReference, Mailbox, NodeCallback, NodeCallbackResult, NodeTask,
+    WakeJsTsfn,
+};
 use crate::error_reporter::NativeErrorReporter;
 use crate::value::{JsRef, Value};
 
@@ -27,20 +30,33 @@ impl Mailbox {
     }
 
     #[cfg_attr(coverage_nightly, coverage(off))]
-    fn push_node_callback(&self, callback: NodeCallback) {
+    fn push_node_task(&self, task: NodeTask) {
         self.node_inbox
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .push_back(callback);
+            .push_back(task);
         self.wake_js.notify();
     }
 
     #[cfg_attr(coverage_nightly, coverage(off))]
-    fn pop_node_callback(&self) -> Option<NodeCallback> {
+    fn pop_node_task(&self) -> Option<NodeTask> {
         self.node_inbox
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .pop_front()
+    }
+
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn wake_node_thread(&self) {
+        if let Some(tsfn) = self.wake_js_tsfn.get() {
+            tsfn.call((), ThreadsafeFunctionCallMode::NonBlocking);
+        }
+    }
+
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    pub(crate) fn schedule_js_reference_delete(&self, reference: JsReference) {
+        self.push_node_task(NodeTask::DeleteReference(reference));
+        self.wake_node_thread();
     }
 
     /// Schedules a task on the `GLib` thread and blocks the JS thread until the
@@ -120,17 +136,15 @@ impl Mailbox {
         let callback_depth = self.callback_depth.load(Ordering::Acquire) + 1;
         let (tx, rx) = mpsc::channel();
 
-        self.push_node_callback(NodeCallback {
+        self.push_node_task(NodeTask::Callback(NodeCallback {
             callback: callback.clone(),
             args,
             capture_result,
             out_cell_indices,
             result_tx: tx,
-        });
+        }));
 
-        if let Some(tsfn) = self.wake_js_tsfn.get() {
-            tsfn.call((), ThreadsafeFunctionCallMode::NonBlocking);
-        }
+        self.wake_node_thread();
 
         self.wait_for_node_result(&rx, callback_depth)
     }
@@ -163,23 +177,33 @@ impl Mailbox {
     /// [`Mailbox::wait_for_glib_result`].
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn process_node_pending(&self, env: Env) {
-        while let Some(pending) = self.pop_node_callback() {
-            let NodeCallback {
-                callback,
-                args,
-                capture_result,
-                out_cell_indices,
-                result_tx,
-            } = pending;
-            self.enter_callback();
-            let result =
-                Self::execute_callback(env, &callback, args, capture_result, &out_cell_indices);
-            self.leave_callback();
-            if result_tx.send(result).is_err() {
-                NativeErrorReporter::global()
-                    .report_str("Node callback completed but result channel was closed");
+        while let Some(task) = self.pop_node_task() {
+            match task {
+                NodeTask::Callback(pending) => {
+                    let NodeCallback {
+                        callback,
+                        args,
+                        capture_result,
+                        out_cell_indices,
+                        result_tx,
+                    } = pending;
+                    self.enter_callback();
+                    let result = Self::execute_callback(
+                        env,
+                        &callback,
+                        args,
+                        capture_result,
+                        &out_cell_indices,
+                    );
+                    self.leave_callback();
+                    if result_tx.send(result).is_err() {
+                        NativeErrorReporter::global()
+                            .report_str("Node callback completed but result channel was closed");
+                    }
+                    self.wake_glib.notify();
+                }
+                NodeTask::DeleteReference(reference) => reference.delete_on_js_thread(),
             }
-            self.wake_glib.notify();
         }
     }
 
