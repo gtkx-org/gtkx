@@ -25,24 +25,17 @@ type AccessibleRelationDescriptor = {
 
 type AccessibleDescriptor = AccessiblePropertyDescriptor | AccessibleStateDescriptor | AccessibleRelationDescriptor;
 
-const createGValue = (gtype: GObject.GType, populate: (value: GObject.Value) => void): GObject.Value => {
-    const value = new GObject.Value();
-    value.init(gtype);
-    populate(value);
-    return value;
-};
-
-const fromString: CreateValue = (val) => createGValue(GObject.TYPE_STRING, (v) => v.setString(val as string));
-const fromBoolean: CreateValue = (val) => createGValue(GObject.TYPE_BOOLEAN, (v) => v.setBoolean(val as boolean));
-const fromInt: CreateValue = (val) => createGValue(GObject.TYPE_INT, (v) => v.setInt(val as number));
-const fromDouble: CreateValue = (val) => createGValue(GObject.TYPE_DOUBLE, (v) => v.setDouble(val as number));
+const fromString: CreateValue = (val) => GObject.buildValue(GObject.TYPE_STRING, (v) => v.setString(val as string));
+const fromBoolean: CreateValue = (val) => GObject.buildValue(GObject.TYPE_BOOLEAN, (v) => v.setBoolean(val as boolean));
+const fromInt: CreateValue = (val) => GObject.buildValue(GObject.TYPE_INT, (v) => v.setInt(val as number));
+const fromDouble: CreateValue = (val) => GObject.buildValue(GObject.TYPE_DOUBLE, (v) => v.setDouble(val as number));
 const fromObject: CreateValue = (val) =>
-    createGValue(GObject.TYPE_OBJECT, (v) => v.setObject((val as GObject.Object) ?? null));
+    GObject.buildValue(GObject.TYPE_OBJECT, (v) => v.setObject((val as GObject.Object) ?? null));
 
 const fromRefList: CreateValue = (val) => {
     const widgets = val as Gtk.Accessible[];
     const list = Gtk.AccessibleList.newFromList(widgets);
-    return createGValue(Gtk.AccessibleList.prototype.__gtype__, (v) => v.setBoxed(list));
+    return GObject.buildValue(Gtk.AccessibleList.prototype.__gtype__, (v) => v.setBoxed(list));
 };
 
 const property = (enumValue: Gtk.AccessibleProperty, createValue: CreateValue): AccessiblePropertyDescriptor => ({

@@ -15,13 +15,12 @@ Do it already!
 const ExpanderDemo = () => {
     const texture = useMemo(() => Gdk.Texture.newFromResource(gtkLogoCursorPath), []);
 
-    const handleExpandedNotify = useCallback((pspec: GObject.ParamSpec, self: Gtk.Widget) => {
+    const handleExpandedNotify = useCallback((pspec: GObject.ParamSpec, self: Gtk.Expander) => {
         if (pspec.getName() !== "expanded") return;
-        const expander = self as Gtk.Expander;
-        const root = expander.getRoot();
+        const root = self.getRoot();
         if (!root) return;
         const win = root instanceof Gtk.Window ? root : null;
-        if (win) win.setResizable(expander.getExpanded());
+        if (win) win.setResizable(self.getExpanded());
     }, []);
 
     return (

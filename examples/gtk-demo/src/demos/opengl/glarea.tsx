@@ -1,7 +1,7 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as gl from "@gtkx/gi/gl";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkGLArea, GtkLabel, GtkScale } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkGLArea, GtkLabel, GtkScale, useAdjustment } from "@gtkx/react";
 import { useCallback, useRef, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./glarea.tsx?raw";
@@ -187,21 +187,20 @@ const renderGLArea = ({ glStateRef, rotationX, rotationY, rotationZ }: RenderGLA
     return true;
 };
 
-const AxisScale = ({ label, onValueChanged }: { label: string; onValueChanged: (value: number) => void }) => (
-    <GtkBox spacing={12}>
-        <GtkLabel label={label} widthRequest={60} halign={Gtk.Align.START} />
-        <GtkScale
-            hexpand
-            drawValue={false}
-            value={0}
-            lower={0}
-            upper={360}
-            stepIncrement={1}
-            pageIncrement={12}
-            onValueChanged={onValueChanged}
-        />
-    </GtkBox>
-);
+const AxisScale = ({ label, onValueChanged }: { label: string; onValueChanged: (value: number) => void }) => {
+    const adjustment = useAdjustment({ value: 0, lower: 0, upper: 360, stepIncrement: 1, pageIncrement: 12 });
+    return (
+        <GtkBox spacing={12}>
+            <GtkLabel label={label} widthRequest={60} halign={Gtk.Align.START} />
+            <GtkScale
+                hexpand
+                drawValue={false}
+                adjustment={adjustment}
+                onValueChanged={(scale) => onValueChanged(scale.getValue())}
+            />
+        </GtkBox>
+    );
+};
 
 interface UseGLAreaHandlersArgs {
     glAreaRef: React.RefObject<Gtk.GLArea | null>;

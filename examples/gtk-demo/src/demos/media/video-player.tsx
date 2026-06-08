@@ -1,7 +1,7 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkButton, GtkHeaderBar, GtkImage, GtkShortcutController, GtkVideo } from "@gtkx/react";
+import { GtkButton, GtkHeaderBar, GtkImage, GtkShortcut, GtkShortcutController, GtkVideo } from "@gtkx/react";
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import { path as bbbPngPath } from "./bbb.png";
@@ -140,7 +140,13 @@ const VideoPlayerDemo = () => {
     return (
         <>
             <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-                <GtkShortcutController.Shortcut trigger="F11" onActivate={handleToggleFullscreen} />
+                <GtkShortcut
+                    trigger={Gtk.ShortcutTrigger.parseString("F11")}
+                    action={Gtk.CallbackAction.new(() => {
+                        handleToggleFullscreen();
+                        return true;
+                    })}
+                />
             </GtkShortcutController>
             <GtkVideo name="video" file={videoFile} autoplay graphicsOffload={Gtk.GraphicsOffloadEnabled.ENABLED} />
         </>

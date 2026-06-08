@@ -13,6 +13,8 @@ import {
     GtkMenuButton,
     GtkRevealer,
     GtkScrolledWindow,
+    MenuItem,
+    MenuSection,
 } from "@gtkx/react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { path as appleRedPath } from "../css/apple-red.png";
@@ -174,10 +176,10 @@ const MessageActions = ({
                 <GtkButton label="Reshare" receivesDefault hasFrame={false} onClicked={() => onReshare(message.id)} />
                 <GtkButton label="Favorite" receivesDefault hasFrame={false} onClicked={() => onFavorite(message.id)} />
                 <GtkMenuButton receivesDefault hasFrame={false} label="More...">
-                    <GtkMenuButton.MenuSection>
-                        <GtkMenuButton.MenuItem id="email-msg" label="Email message" onActivate={() => {}} />
-                        <GtkMenuButton.MenuItem id="embed-msg" label="Embed message" onActivate={() => {}} />
-                    </GtkMenuButton.MenuSection>
+                    <MenuSection>
+                        <MenuItem id="email-msg" label="Email message" onActivate={() => {}} />
+                        <MenuItem id="embed-msg" label="Embed message" onActivate={() => {}} />
+                    </MenuSection>
                 </GtkMenuButton>
             </GtkBox>
         </GtkBox>

@@ -14,6 +14,7 @@ import {
     GtkSpinButton,
     GtkSwitch,
     GtkViewport,
+    useAdjustment,
 } from "@gtkx/react";
 import { type ReactNode, useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
@@ -116,50 +117,48 @@ const Group1List = ({
     </GtkListBox>
 );
 
-const Group2List = () => (
-    <GtkListBox name="group-2-list" selectionMode={Gtk.SelectionMode.NONE} cssClasses={["rich-list", "boxed-list"]}>
-        <LabeledRow labelText="_Scale" useUnderline activatable={false}>
-            <GtkScale
-                name="scale"
-                halign={Gtk.Align.END}
-                valign={Gtk.Align.CENTER}
-                drawValue={false}
-                widthRequest={150}
-                upper={100}
-                value={50}
-                stepIncrement={1}
-                pageIncrement={10}
-            />
-        </LabeledRow>
-        <LabeledRow labelText="S_pinbutton" useUnderline activatable={false}>
-            <GtkSpinButton
-                name="spin"
-                halign={Gtk.Align.END}
-                valign={Gtk.Align.CENTER}
-                upper={100}
-                value={50}
-                stepIncrement={1}
-                pageIncrement={10}
-            />
-        </LabeledRow>
-        <LabeledRow labelText="_Dropdown" useUnderline activatable={false}>
-            <GtkDropDown
-                name="dropdown"
-                halign={Gtk.Align.END}
-                valign={Gtk.Align.CENTER}
-                items={[
-                    { id: "1", value: "Choice 1" },
-                    { id: "2", value: "Choice 2" },
-                    { id: "3", value: "Choice 3" },
-                    { id: "4", value: "Choice 4" },
-                ]}
-            />
-        </LabeledRow>
-        <LabeledRow labelText="_Entry" useUnderline activatable={false}>
-            <GtkEntry name="entry" halign={Gtk.Align.END} valign={Gtk.Align.CENTER} placeholderText="Type here…" />
-        </LabeledRow>
-    </GtkListBox>
-);
+const Group2List = () => {
+    const scaleAdjustment = useAdjustment({ value: 50, upper: 100, stepIncrement: 1, pageIncrement: 10 });
+    const spinAdjustment = useAdjustment({ value: 50, upper: 100, stepIncrement: 1, pageIncrement: 10 });
+    return (
+        <GtkListBox name="group-2-list" selectionMode={Gtk.SelectionMode.NONE} cssClasses={["rich-list", "boxed-list"]}>
+            <LabeledRow labelText="_Scale" useUnderline activatable={false}>
+                <GtkScale
+                    name="scale"
+                    halign={Gtk.Align.END}
+                    valign={Gtk.Align.CENTER}
+                    drawValue={false}
+                    widthRequest={150}
+                    adjustment={scaleAdjustment}
+                />
+            </LabeledRow>
+            <LabeledRow labelText="S_pinbutton" useUnderline activatable={false}>
+                <GtkSpinButton
+                    name="spin"
+                    halign={Gtk.Align.END}
+                    valign={Gtk.Align.CENTER}
+                    adjustment={spinAdjustment}
+                />
+            </LabeledRow>
+            <LabeledRow labelText="_Dropdown" useUnderline activatable={false}>
+                <GtkDropDown
+                    name="dropdown"
+                    halign={Gtk.Align.END}
+                    valign={Gtk.Align.CENTER}
+                    items={[
+                        { id: "1", value: "Choice 1" },
+                        { id: "2", value: "Choice 2" },
+                        { id: "3", value: "Choice 3" },
+                        { id: "4", value: "Choice 4" },
+                    ]}
+                />
+            </LabeledRow>
+            <LabeledRow labelText="_Entry" useUnderline activatable={false}>
+                <GtkEntry name="entry" halign={Gtk.Align.END} valign={Gtk.Align.CENTER} placeholderText="Type here…" />
+            </LabeledRow>
+        </GtkListBox>
+    );
+};
 
 const ListBoxControlsDemo = () => {
     const [switchActive, setSwitchActive] = useState(false);

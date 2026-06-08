@@ -3,6 +3,7 @@ import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as WebKit from "@gtkx/gi/webkit";
 import {
+    AdwApplication,
     AdwApplicationWindow,
     AdwHeaderBar,
     AdwToolbarView,
@@ -113,7 +114,7 @@ const NavigationButtons = ({
     </>
 );
 
-export const App = () => {
+const BrowserWindow = () => {
     const webViewRef = useRef<WebKit.WebView | null>(null);
     const { state, setUrl, navigate, handleLoadChanged, handleNotify } = useBrowserController(webViewRef);
     const { url, isLoading, canGoBack, canGoForward, progress } = state;
@@ -166,3 +167,9 @@ export const App = () => {
         </AdwApplicationWindow>
     );
 };
+
+export const App = () => (
+    <AdwApplication applicationId="com.gtkx.browser">
+        <BrowserWindow />
+    </AdwApplication>
+);

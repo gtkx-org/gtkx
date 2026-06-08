@@ -688,14 +688,14 @@ describe("render - ContainerSlot (18)", () => {
 describe("render - ContainerSlot (19)", () => {
     describe("error handling", () => {
         it("throws when the requested method does not exist on the parent", async () => {
-            const ContainerSlot = "ContainerSlot" as const;
+            const WrapperNode = "__GTKX_WRAPPER_NODE__" as const;
 
             await expect(
                 render(
                     <GtkListBox>
-                        <ContainerSlot id="thisMethodDoesNotExist">
+                        <WrapperNode kind="container-slot" method="thisMethodDoesNotExist">
                             <GtkLabel label="orphan" />
-                        </ContainerSlot>
+                        </WrapperNode>
                     </GtkListBox>,
                 ),
             ).rejects.toThrow(/Method 'thisMethodDoesNotExist' not found/);

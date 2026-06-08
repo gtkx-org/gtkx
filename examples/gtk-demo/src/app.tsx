@@ -1,10 +1,12 @@
 import * as path from "node:path/posix";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
+import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     AdwAboutDialog,
     createPortal,
+    GtkApplication,
     GtkApplicationWindow,
     GtkBox,
     GtkButton,
@@ -13,9 +15,12 @@ import {
     GtkMenuButton,
     GtkNotebook,
     GtkScrolledWindow,
+    GtkShortcut,
     GtkShortcutController,
     GtkToggleButton,
     GtkWindow,
+    MenuItem,
+    MenuSection,
     quit,
     useApplication,
     useProperty,
@@ -184,21 +189,21 @@ const AppHeaderBar = ({
                 valign={Gtk.Align.CENTER}
                 focusOnClick={false}
             >
-                <GtkMenuButton.MenuSection>
-                    <GtkMenuButton.MenuItem
+                <MenuSection>
+                    <MenuItem
                         id="inspector"
                         label="_Inspector"
                         onActivate={() => Gtk.Window.setInteractiveDebugging(true)}
                         accels="<Control><Shift>i"
                     />
-                    <GtkMenuButton.MenuItem
+                    <MenuItem
                         id="shortcuts"
                         label="_Keyboard Shortcuts"
                         onActivate={onKeyboardShortcuts}
                         accels="<Control>question"
                     />
-                    <GtkMenuButton.MenuItem id="about" label="_About GTK Demo" onActivate={onAbout} />
-                </GtkMenuButton.MenuSection>
+                    <MenuItem id="about" label="_About GTK Demo" onActivate={onAbout} />
+                </MenuSection>
             </GtkMenuButton>
         }
     />
@@ -211,16 +216,23 @@ interface AppShortcutsProps {
     onNotebookPrev: () => void;
 }
 
+const shortcut = (accelerator: string, run: () => void) => (
+    <GtkShortcut
+        trigger={Gtk.ShortcutTrigger.parseString(accelerator)}
+        action={Gtk.CallbackAction.new(() => {
+            run();
+            return true;
+        })}
+    />
+);
+
 const AppShortcuts = ({ onSearchToggle, onKeyboardShortcuts, onNotebookNext, onNotebookPrev }: AppShortcutsProps) => (
     <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-        <GtkShortcutController.Shortcut trigger="<Control>f" onActivate={onSearchToggle} />
-        <GtkShortcutController.Shortcut
-            trigger="<Control><Shift>i"
-            onActivate={() => Gtk.Window.setInteractiveDebugging(true)}
-        />
-        <GtkShortcutController.Shortcut trigger="<Control>question" onActivate={onKeyboardShortcuts} />
-        <GtkShortcutController.Shortcut trigger="<Control>Page_Down" onActivate={onNotebookNext} />
-        <GtkShortcutController.Shortcut trigger="<Control>Page_Up" onActivate={onNotebookPrev} />
+        {shortcut("<Control>f", onSearchToggle)}
+        {shortcut("<Control><Shift>i", () => Gtk.Window.setInteractiveDebugging(true))}
+        {shortcut("<Control>question", onKeyboardShortcuts)}
+        {shortcut("<Control>Page_Down", onNotebookNext)}
+        {shortcut("<Control>Page_Up", onNotebookPrev)}
     </GtkShortcutController>
 );
 
@@ -382,7 +394,12 @@ const MainWindow = () => {
     );
 };
 
-export const App = () => {
+/**
+ * The application's content tree: the main window and its provider, without the
+ * surrounding {@link GtkApplication}. Rendered directly by tests that supply
+ * their own application context.
+ */
+export const Demo = () => {
     useApplicationIcon();
 
     return (
@@ -391,3 +408,9 @@ export const App = () => {
         </DemoProvider>
     );
 };
+
+export const App = () => (
+    <GtkApplication applicationId={import.meta.env.GTKX_APPLICATION_ID} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+        <Demo />
+    </GtkApplication>
+);

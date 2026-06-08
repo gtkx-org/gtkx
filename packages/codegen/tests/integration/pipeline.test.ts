@@ -1,16 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { generateNamespaceModule } from "../../src/ffi/pipeline.js";
-import { loadGirRepository } from "../../src/gir/repository.js";
 import { generateReactFiles } from "../../src/react/pipeline.js";
 import { transpileSource } from "../../src/transpile.js";
-
-const GIR_PATH = ["/usr/share/gir-1.0"];
-
-const repository = loadGirRepository(["Gtk-4.0", "Adw-1"], GIR_PATH);
-
-const ffiModules = [...repository.namespaces.values()].map((namespace) =>
-    generateNamespaceModule(namespace, repository),
-);
+import { ffiModules, repository } from "../helpers/repository.js";
 
 const reactPipeline = generateReactFiles(repository);
 
@@ -137,7 +128,7 @@ describe("codegen React pipeline", () => {
     it("honours user-supplied widget-slot overrides", () => {
         const overridden = generateReactFiles(repository, { widgetSlots: { GtkButton: ["child"] } });
         const compoundsSource = overridden.files.get("compounds.tsx") ?? "";
-        expect(compoundsSource).toContain('id="child"');
+        expect(compoundsSource).toContain('kind="slot" propName="child"');
         const { js } = transpileSource("compounds.tsx", compoundsSource);
         expect(js.length).toBeGreaterThan(0);
     });
@@ -147,15 +138,16 @@ describe("codegen React pipeline", () => {
         const jsxSource = overridden.files.get("jsx.ts") ?? "";
         const compoundsSource = overridden.files.get("compounds.tsx") ?? "";
         expect(jsxSource).toContain("addChild?: ReactNode | null;");
-        expect(compoundsSource).toContain('id="addChild"');
+        expect(compoundsSource).toContain('kind="container-slot" method="addChild"');
         const { js } = transpileSource("compounds.tsx", compoundsSource);
         expect(js.length).toBeGreaterThan(0);
     });
 
-    it("ignores a user container slot on a non-ReactNode class", () => {
+    it("promotes a user container slot on a plain GObject class", () => {
         const overridden = generateReactFiles(repository, { containerSlots: { GApplication: ["addWindow"] } });
         const compoundsSource = overridden.files.get("compounds.tsx") ?? "";
-        expect(compoundsSource).not.toContain("GApplicationProps");
+        expect(compoundsSource).toContain("GApplicationProps");
+        expect(compoundsSource).toContain('kind="container-slot" method="addWindow"');
         for (const [path, source] of overridden.files) {
             const { js, dts } = transpileSource(path, source);
             expect(js.length).toBeGreaterThan(0);

@@ -14,9 +14,32 @@
 
 import { getBoxed, setBoxed, setVariantClass } from "@gtkx/ffi";
 import { Variant } from "@gtkx/gi/glib/glib.js";
-import { Value } from "@gtkx/gi/gobject/gobject.js";
+import { type GType, Value } from "@gtkx/gi/gobject/gobject.js";
 
 setVariantClass(Variant);
+
+/**
+ * Builds a `GObject.Value` of the given `GType`, runs `populate` to set its
+ * payload, and returns it.
+ *
+ * Use this to hand a typed value to GTK APIs that take a raw `GValue`, such as
+ * `Gdk.ContentProvider.newForValue`.
+ *
+ * @param gtype - The `GType` to initialize the value with.
+ * @param populate - Callback that sets the value's payload via `setString`,
+ *   `setBoxed`, `setObject`, etc.
+ * @returns The initialized and populated value.
+ * @example
+ * ```ts
+ * const value = buildValue(GObject.TYPE_STRING, (v) => v.setString("hello"));
+ * ```
+ */
+export const buildValue = (gtype: GType, populate: (value: Value) => void): Value => {
+    const value = new Value();
+    value.init(gtype);
+    populate(value);
+    return value;
+};
 
 Value.prototype.getBoxed = function <T = unknown>(this: Value): T {
     return getBoxed(this) as T;

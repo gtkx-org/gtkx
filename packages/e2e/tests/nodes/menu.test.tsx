@@ -1,13 +1,9 @@
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkPopoverMenu, GtkPopoverMenuBar } from "@gtkx/react";
+import { GtkPopoverMenu, GtkPopoverMenuBar, MenuItem, MenuSection, MenuSubmenu } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef, type ReactNode } from "react";
 import { describe, expect, it } from "vitest";
-
-const MenuItem = "MenuItem" as const;
-const MenuSection = "MenuSection" as const;
-const MenuSubmenu = "MenuSubmenu" as const;
 
 const noop = () => {};
 

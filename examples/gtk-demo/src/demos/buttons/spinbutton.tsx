@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkGrid, GtkLabel, GtkSpinButton } from "@gtkx/react";
+import { type AdjustmentConfig, GtkGrid, GtkLabel, GtkSpinButton, useAdjustment } from "@gtkx/react";
 import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./spinbutton.tsx?raw";
@@ -88,29 +88,33 @@ interface SpinRowConfig extends SpinRowProps {
     row: number;
     label: string;
     spinName: string;
+    adjustment: AdjustmentConfig;
     spin: React.ComponentProps<typeof GtkSpinButton>;
 }
 
-const SpinRow = ({ row, label, spinName, value, setValue, spinRef, spin }: SpinRowConfig) => (
-    <>
-        <GtkGrid.Child column={0} row={row}>
-            <GtkLabel label={label} useUnderline xalign={1} mnemonicWidget={spinRef.current} />
-        </GtkGrid.Child>
-        <GtkGrid.Child column={1} row={row}>
-            <GtkSpinButton
-                ref={spinRef}
-                name={spinName}
-                halign={Gtk.Align.START}
-                value={value}
-                onValueChanged={setValue}
-                {...spin}
-            />
-        </GtkGrid.Child>
-        <GtkGrid.Child column={2} row={row}>
-            <GtkLabel label={String(value)} widthChars={10} xalign={1} />
-        </GtkGrid.Child>
-    </>
-);
+const SpinRow = ({ row, label, spinName, value, setValue, spinRef, adjustment, spin }: SpinRowConfig) => {
+    const adj = useAdjustment({ ...adjustment, value });
+    return (
+        <>
+            <GtkGrid.Child column={0} row={row}>
+                <GtkLabel label={label} useUnderline xalign={1} mnemonicWidget={spinRef.current} />
+            </GtkGrid.Child>
+            <GtkGrid.Child column={1} row={row}>
+                <GtkSpinButton
+                    ref={spinRef}
+                    name={spinName}
+                    halign={Gtk.Align.START}
+                    adjustment={adj}
+                    onValueChanged={(widget) => setValue(widget.getValue())}
+                    {...spin}
+                />
+            </GtkGrid.Child>
+            <GtkGrid.Child column={2} row={row}>
+                <GtkLabel label={String(value)} widthChars={10} xalign={1} />
+            </GtkGrid.Child>
+        </>
+    );
+};
 
 const NumericSpinRow = (props: SpinRowProps) => (
     <SpinRow
@@ -118,15 +122,12 @@ const NumericSpinRow = (props: SpinRowProps) => (
         row={0}
         label="_Numeric"
         spinName="basic_spin"
+        adjustment={{ lower: -10000, upper: 10000, stepIncrement: 0.5, pageIncrement: 100 }}
         spin={{
             widthChars: 5,
             digits: 2,
             climbRate: 1,
             numeric: true,
-            lower: -10000,
-            upper: 10000,
-            stepIncrement: 0.5,
-            pageIncrement: 100,
         }}
     />
 );
@@ -137,13 +138,10 @@ const HexSpinRow = (props: SpinRowProps) => (
         row={1}
         label="_Hexadecimal"
         spinName="hex_spin"
+        adjustment={{ lower: 0, upper: 255, stepIncrement: 1, pageIncrement: 16 }}
         spin={{
             widthChars: 4,
             wrap: true,
-            lower: 0,
-            upper: 255,
-            stepIncrement: 1,
-            pageIncrement: 16,
             onInput: handleHexInput,
             onOutput: handleHexOutput,
         }}
@@ -156,13 +154,10 @@ const TimeSpinRow = (props: SpinRowProps) => (
         row={2}
         label="_Time"
         spinName="time_spin"
+        adjustment={{ lower: 0, upper: 1410, stepIncrement: 30, pageIncrement: 60 }}
         spin={{
             widthChars: 5,
             wrap: true,
-            lower: 0,
-            upper: 1410,
-            stepIncrement: 30,
-            pageIncrement: 60,
             onInput: handleTimeInput,
             onOutput: handleTimeOutput,
         }}
@@ -182,14 +177,11 @@ const MonthSpinRow = ({ value, setValue, spinRef, onInput, onOutput }: MonthSpin
         row={3}
         label="_Month"
         spinName="month_spin"
+        adjustment={{ lower: 1, upper: 12, stepIncrement: 1, pageIncrement: 5 }}
         spin={{
             widthChars: 9,
             wrap: true,
             updatePolicy: Gtk.SpinButtonUpdatePolicy.IF_VALID,
-            lower: 1,
-            upper: 12,
-            stepIncrement: 1,
-            pageIncrement: 5,
             onInput,
             onOutput,
         }}

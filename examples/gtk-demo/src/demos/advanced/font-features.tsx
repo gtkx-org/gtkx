@@ -16,11 +16,13 @@ import {
     GtkLabel,
     GtkScale,
     GtkScrolledWindow,
+    GtkShortcut,
     GtkShortcutController,
     GtkStack,
     GtkTextView,
     GtkToggleButton,
     GtkViewport,
+    useAdjustment,
 } from "@gtkx/react";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
@@ -795,38 +797,37 @@ const SliderEntryRow = ({
     displayText,
     onEntryActivate,
     sensitive,
-}: SliderEntryRowProps) => (
-    <>
-        <GtkGrid.Child column={0} row={row}>
-            <GtkLabel label={label} xalign={0} valign={Gtk.Align.BASELINE} />
-        </GtkGrid.Child>
-        <GtkGrid.Child column={1} row={row}>
-            <GtkScale
-                hexpand
-                widthRequest={100}
-                valign={Gtk.Align.BASELINE}
-                value={value}
-                lower={lower}
-                upper={upper}
-                stepIncrement={stepIncrement}
-                pageIncrement={pageIncrement}
-                onValueChanged={onValueChanged}
-                sensitive={sensitive}
-            />
-        </GtkGrid.Child>
-        <GtkGrid.Child column={2} row={row}>
-            <GtkEntry
-                name={entryName}
-                widthChars={4}
-                maxWidthChars={4}
-                valign={Gtk.Align.BASELINE}
-                text={displayText}
-                onActivate={onEntryActivate}
-                sensitive={sensitive}
-            />
-        </GtkGrid.Child>
-    </>
-);
+}: SliderEntryRowProps) => {
+    const adjustment = useAdjustment({ value, lower, upper, stepIncrement, pageIncrement });
+    return (
+        <>
+            <GtkGrid.Child column={0} row={row}>
+                <GtkLabel label={label} xalign={0} valign={Gtk.Align.BASELINE} />
+            </GtkGrid.Child>
+            <GtkGrid.Child column={1} row={row}>
+                <GtkScale
+                    hexpand
+                    widthRequest={100}
+                    valign={Gtk.Align.BASELINE}
+                    adjustment={adjustment}
+                    onValueChanged={(scale) => onValueChanged(scale.getValue())}
+                    sensitive={sensitive}
+                />
+            </GtkGrid.Child>
+            <GtkGrid.Child column={2} row={row}>
+                <GtkEntry
+                    name={entryName}
+                    widthChars={4}
+                    maxWidthChars={4}
+                    valign={Gtk.Align.BASELINE}
+                    text={displayText}
+                    onActivate={onEntryActivate}
+                    sensitive={sensitive}
+                />
+            </GtkGrid.Child>
+        </>
+    );
+};
 
 const FontFeaturesExpander = ({ state, handlers }: { state: FontFeaturesState; handlers: FontFeaturesHandlers }) => {
     const { checkStates, radioStates } = state;
@@ -1183,10 +1184,10 @@ const FontFeaturesDemo = () => {
     return (
         <>
             <GtkShortcutController scope={Gtk.ShortcutScope.MANAGED}>
-                <GtkShortcutController.Shortcut
-                    trigger="Escape"
-                    onActivate={() => {
-                        if (state.viewMode !== "edit") return;
+                <GtkShortcut
+                    trigger={Gtk.ShortcutTrigger.parseString("Escape")}
+                    action={Gtk.CallbackAction.new(() => {
+                        if (state.viewMode !== "edit") return false;
                         const tv = state.editTextViewRef.current;
                         if (tv) {
                             const buffer = tv.getBuffer();
@@ -1194,7 +1195,8 @@ const FontFeaturesDemo = () => {
                         }
                         state.setPreviewText(state.savedTextRef.current);
                         state.setViewMode("plain");
-                    }}
+                        return true;
+                    })}
                 />
             </GtkShortcutController>
             <GtkBox ref={state.containerRef}>

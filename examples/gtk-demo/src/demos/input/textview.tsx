@@ -3,7 +3,16 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
-import { GtkButton, GtkDropDown, GtkEntry, GtkPaned, GtkScale, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
+import {
+    GtkButton,
+    GtkDropDown,
+    GtkEntry,
+    GtkPaned,
+    GtkScale,
+    GtkScrolledWindow,
+    GtkTextView,
+    useAdjustment,
+} from "@gtkx/react";
 import { type RefObject, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./textview.tsx?raw";
@@ -366,42 +375,38 @@ const TextViewInternationalSection = () => (
     </>
 );
 
-const TextViewWidgetsSection = ({ onClickMe }: { onClickMe: () => void }) => (
-    <>
-        {"\n\nYou can put widgets in the buffer: Here's a button: "}
-        <GtkTextView.Anchor>
-            <GtkButton label="Click Me" onClicked={onClickMe} />
-        </GtkTextView.Anchor>
-        {" and a menu: "}
-        <GtkTextView.Anchor>
-            <GtkDropDown
-                items={[
-                    { id: "opt1", value: "Option 1" },
-                    { id: "opt2", value: "Option 2" },
-                    { id: "opt3", value: "Option 3" },
-                ]}
-            />
-        </GtkTextView.Anchor>
-        {" and a scale: "}
-        <GtkTextView.Anchor>
-            <GtkScale
-                orientation={Gtk.Orientation.HORIZONTAL}
-                lower={0}
-                upper={100}
-                stepIncrement={1}
-                pageIncrement={10}
-                widthRequest={100}
-            />
-        </GtkTextView.Anchor>
-        {" finally a text entry: "}
-        <GtkTextView.Anchor>
-            <GtkEntry widthChars={10} />
-        </GtkTextView.Anchor>
-        {
-            ".\n\nThis demo doesn't demonstrate all the GtkTextBuffer features; it leaves out, for example: invisible/hidden text, tab stops, application-drawn areas on the sides of the widget for displaying breakpoints and such..."
-        }
-    </>
-);
+const TextViewWidgetsSection = ({ onClickMe }: { onClickMe: () => void }) => {
+    const scaleAdjustment = useAdjustment({ lower: 0, upper: 100, stepIncrement: 1, pageIncrement: 10 });
+    return (
+        <>
+            {"\n\nYou can put widgets in the buffer: Here's a button: "}
+            <GtkTextView.Anchor>
+                <GtkButton label="Click Me" onClicked={onClickMe} />
+            </GtkTextView.Anchor>
+            {" and a menu: "}
+            <GtkTextView.Anchor>
+                <GtkDropDown
+                    items={[
+                        { id: "opt1", value: "Option 1" },
+                        { id: "opt2", value: "Option 2" },
+                        { id: "opt3", value: "Option 3" },
+                    ]}
+                />
+            </GtkTextView.Anchor>
+            {" and a scale: "}
+            <GtkTextView.Anchor>
+                <GtkScale orientation={Gtk.Orientation.HORIZONTAL} adjustment={scaleAdjustment} widthRequest={100} />
+            </GtkTextView.Anchor>
+            {" finally a text entry: "}
+            <GtkTextView.Anchor>
+                <GtkEntry widthChars={10} />
+            </GtkTextView.Anchor>
+            {
+                ".\n\nThis demo doesn't demonstrate all the GtkTextBuffer features; it leaves out, for example: invisible/hidden text, tab stops, application-drawn areas on the sides of the widget for displaying breakpoints and such..."
+            }
+        </>
+    );
+};
 
 const TextViewDemo = () => {
     const textView1Ref = useRef<Gtk.TextView | null>(null);

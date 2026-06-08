@@ -157,29 +157,17 @@ const descendsFrom = (
 export const isWidgetClass = (klass: GirClass, namespace: GirNamespace, repository: GirRepository): boolean =>
     descendsFrom(klass, namespace, repository, (glibName) => glibName === "GtkWidget");
 
-const AUXILIARY_BASE_TYPES: ReadonlySet<string> = new Set(["GtkEventController", "GtkGesture", "GtkLayoutManager"]);
-
 /**
- * Decides whether a `<class>` is a non-widget React reconciler node — an event
- * controller, gesture, or layout manager (direct or transitive descendant of
- * `GtkEventController`, `GtkGesture`, or `GtkLayoutManager`). These are JSX
- * elements that need the same prop/signal metadata as widgets.
- *
- * @param klass - The class to inspect
- * @param namespace - The namespace the class lives in
- * @param repository - The repository for cross-namespace parent lookups
- */
-const isAuxiliaryReactType = (klass: GirClass, namespace: GirNamespace, repository: GirRepository): boolean =>
-    descendsFrom(klass, namespace, repository, (glibName) => AUXILIARY_BASE_TYPES.has(glibName));
-
-/**
- * Decides whether a `<class>` is any React reconciler node — a widget or one
- * of the auxiliary node kinds. This is the set of classes that need generated
- * prop, signal, and construct-only metadata.
+ * Decides whether a `<class>` is a React reconciler node — any instantiable
+ * GObject (a direct or transitive descendant of `GObject.Object`). Every such
+ * class is a valid JSX element backed by the generic `ElementNode`, so codegen
+ * emits prop, signal, and construct-only metadata for all of them: widgets,
+ * event controllers, layout managers, and plain objects such as `Gio.Menu` or
+ * `Gtk.StringList` that participate in the tree as slot values.
  *
  * @param klass - The class to inspect
  * @param namespace - The namespace the class lives in
  * @param repository - The repository for cross-namespace parent lookups
  */
 export const isReactNodeClass = (klass: GirClass, namespace: GirNamespace, repository: GirRepository): boolean =>
-    isWidgetClass(klass, namespace, repository) || isAuxiliaryReactType(klass, namespace, repository);
+    descendsFrom(klass, namespace, repository, (glibName) => glibName === "GObject");

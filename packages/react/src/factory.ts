@@ -1,65 +1,71 @@
 import { getNativeClassByName } from "@gtkx/ffi";
-import { type GType, typeFromName } from "@gtkx/gi/gobject";
-import { collectTypeNameChain } from "./gtype.js";
 import type { Node } from "./node.js";
-import { NODE_REGISTRY, type NodeClass } from "./registry.js";
-import type { BackingInstance, BackingInstanceClass, Props } from "./types.js";
+import { ElementNode } from "./nodes/element.js";
+import { WRAPPER_NODE_ELEMENT, WrapperNode } from "./nodes/wrapper.js";
+import type { BackingInstance, BackingInstanceClass, ContainerInfo, Props } from "./types.js";
 
 /**
  * Resolves the FFI widget class backing a JSX intrinsic element name.
  *
- * Returns `null` for virtual reconciler elements such as `"Slot"` or
- * `"TextTag"` that have no backing GLib type.
+ * Returns `null` for the metadata-wrapper sentinel element, which has no
+ * backing GLib type.
  *
  * @param type - JSX intrinsic element name, e.g. `"GtkButton"`
  */
 export const resolveContainerClass = (type: string): BackingInstanceClass | null =>
     getNativeClassByName(type) as BackingInstanceClass | null;
 
-const resolveNodeClass = (elementType: string, gtype: GType): NodeClass | null => {
-    if (gtype === 0) {
-        return NODE_REGISTRY.get(elementType) ?? null;
+/**
+ * Resolves the backing GObject for an element: the pre-existing container in the
+ * root-container case, otherwise a freshly constructed instance of the element's
+ * FFI class.
+ *
+ * @param elementType - JSX intrinsic element name, e.g. `"GtkButton"`
+ * @param props - React prop bag; construct-time properties are applied
+ * @param existingContainer - Pre-existing container to wrap, or `undefined`
+ * @param rootContainer - The reconciler root container
+ * @throws When the element has no resolvable backing class
+ */
+const resolveBackingInstance = (
+    elementType: string,
+    props: Props,
+    existingContainer: BackingInstance | undefined,
+    rootContainer: ContainerInfo,
+): BackingInstance => {
+    if (existingContainer) return existingContainer;
+    const containerClass = resolveContainerClass(elementType);
+    if (!containerClass) {
+        throw new Error(`Unable to resolve a backing class for element '${elementType}'`);
     }
-    for (const ancestorName of collectTypeNameChain(gtype)) {
-        const nodeClass = NODE_REGISTRY.get(ancestorName);
-        if (nodeClass) {
-            return nodeClass;
-        }
+    const container = ElementNode.createContainer(elementType, props, containerClass, rootContainer);
+    if (!container) {
+        throw new Error(`Unable to construct a backing instance for element '${elementType}'`);
     }
-    return null;
+    return container;
 };
 
 /**
  * Builds the reconciler {@link Node} for a JSX intrinsic element.
  *
- * The backing node class is resolved by walking the element's GLib type
- * ancestry against {@link NODE_REGISTRY}: the most-derived registered ancestor
- * wins, falling back to the `"GtkWidget"` catch-all. Virtual elements with no
- * GLib type are matched by their literal name.
+ * The metadata-wrapper sentinel element becomes a {@link WrapperNode} carrying
+ * its kind; every other element backs a real GObject and becomes an
+ * {@link ElementNode}.
  *
  * @param elementType - JSX intrinsic element name, e.g. `"GtkButton"`
  * @param props - React prop bag for the element
  * @param existingContainer - Pre-existing container to wrap (root container
  *   case); when supplied, no new container is constructed
  * @param rootContainer - The reconciler root container
- * @throws When no node class matches the element
  */
 export const createNode = (
     elementType: string,
     props: Props,
     existingContainer: BackingInstance | undefined,
-    rootContainer: BackingInstance,
+    rootContainer: ContainerInfo,
 ): Node => {
-    const gtype: GType = existingContainer ? existingContainer.__gtype__ : typeFromName(elementType);
-
-    const NodeClass = resolveNodeClass(elementType, gtype);
-    if (!NodeClass) {
-        throw new Error(`Unable to find node class for type '${elementType}'`);
+    if (elementType === WRAPPER_NODE_ELEMENT) {
+        return new WrapperNode(props.kind as string, props, undefined, rootContainer);
     }
-
-    const containerClass = existingContainer ? null : resolveContainerClass(elementType);
-    const container =
-        existingContainer ??
-        (containerClass && NodeClass.createContainer(elementType, props, containerClass, rootContainer));
-    return new NodeClass(elementType, props, container, rootContainer);
+    const container = resolveBackingInstance(elementType, props, existingContainer, rootContainer);
+    return new ElementNode(elementType, props, container, rootContainer);
 };

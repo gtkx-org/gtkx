@@ -8,7 +8,7 @@
     "type": "module",
     "scripts": {
         "build": "turbo build --filter=!gtkx",
-        "codegen": "node --conditions=source --import tsx packages/cli/src/cli.ts codegen",
+        "codegen": "turbo run codegen --filter=@gtkx/cli",
         "coverage": "turbo coverage:all native-coverage --filter=!gtkx",
         "coverage:all": "vitest run --coverage",
         "docs": "turbo run docs --filter=!gtkx",

@@ -59,7 +59,7 @@ const SearchEntryDemo = ({ window }: DemoProps) => {
                 searchModeEnabled={searchMode}
                 showCloseButton={false}
                 keyCaptureWidget={window.current}
-                onSearchModeChanged={setSearchMode}
+                onNotifySearchModeEnabled={(enabled) => setSearchMode(enabled ?? false)}
             >
                 <GtkSearchEntry halign={Gtk.Align.CENTER} onSearchChanged={(entry) => setSearchText(entry.getText())} />
             </GtkSearchBar>

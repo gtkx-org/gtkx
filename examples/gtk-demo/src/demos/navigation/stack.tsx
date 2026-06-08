@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkCheckButton, GtkImage, GtkSpinner, GtkStack, GtkStackSwitcher } from "@gtkx/react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import demoIconUri from "../../icons/org.gtk.Demo4.svg";
 import type { Demo } from "../types.js";
 import sourceCode from "./stack.tsx?raw";
@@ -12,11 +12,12 @@ import sourceCode from "./stack.tsx?raw";
  */
 const StackDemo = () => {
     const demoIcon = useMemo<Gio.Icon>(() => Gio.FileIcon.new(Gio.fileNewForUri(demoIconUri)), []);
+    const [stack, setStack] = useState<Gtk.Stack | null>(null);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <GtkStackSwitcher halign={Gtk.Align.CENTER} />
-            <GtkStack name="stack" transitionType={Gtk.StackTransitionType.CROSSFADE}>
+            <GtkStackSwitcher halign={Gtk.Align.CENTER} stack={stack} />
+            <GtkStack ref={setStack} name="stack" transitionType={Gtk.StackTransitionType.CROSSFADE}>
                 <GtkStack.Page id="page1" title="Page 1">
                     <GtkImage gicon={demoIcon} pixelSize={100} marginTop={20} marginBottom={20} />
                 </GtkStack.Page>

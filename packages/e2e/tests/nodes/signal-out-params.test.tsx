@@ -1,7 +1,7 @@
 import { getBoxed, inoutBoxedFromFfi, outBoxedFromFfi, t } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/gi/gdk";
 import type * as GObject from "@gtkx/gi/gobject";
-import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import * as GtkSource from "@gtkx/gi/gtksource";
 import { GtkBox, GtkLabel, GtkOverlay, GtkSourceView, GtkSpinButton, GtkText } from "@gtkx/react";
 import { act, render, waitFor } from "@gtkx/testing";
@@ -11,6 +11,8 @@ import { describe, expect, it, vi } from "vitest";
 const FALSE = 0;
 const GTK_INPUT_ERROR = -1;
 
+const makeAdjustment = () => Gtk.Adjustment.new(0, 0, 1000, 1, 10, 0);
+
 describe("signal out-parameters - GtkSpinButton::input (pure out)", () => {
     it("writes the handler's tuple out-value back through the new_value pointer", async () => {
         const spinRef = createRef<Gtk.SpinButton>();
@@ -18,9 +20,7 @@ describe("signal out-parameters - GtkSpinButton::input (pure out)", () => {
         await render(
             <GtkSpinButton
                 ref={spinRef}
-                lower={0}
-                upper={1000}
-                stepIncrement={1}
+                adjustment={makeAdjustment()}
                 onInput={(spin) => {
                     const parsed = Number.parseInt(spin.getText().replace(/[^0-9]/g, ""), 10);
                     return Number.isNaN(parsed) ? [GTK_INPUT_ERROR, 0] : [1, parsed];
@@ -38,9 +38,7 @@ describe("signal out-parameters - GtkSpinButton::input (pure out)", () => {
     it("falls back to GTK's default parsing when the handler returns the not-handled primary", async () => {
         const spinRef = createRef<Gtk.SpinButton>();
 
-        await render(
-            <GtkSpinButton ref={spinRef} lower={0} upper={1000} stepIncrement={1} onInput={() => [FALSE, 0]} />,
-        );
+        await render(<GtkSpinButton ref={spinRef} adjustment={makeAdjustment()} onInput={() => [FALSE, 0]} />);
 
         const spin = spinRef.current as Gtk.SpinButton;
         await act(() => spin.setText("55"));
@@ -52,7 +50,7 @@ describe("signal out-parameters - GtkSpinButton::input (pure out)", () => {
     it("round-trips the tuple out-value through a direct FFI connect", async () => {
         const spinRef = createRef<Gtk.SpinButton>();
 
-        await render(<GtkSpinButton ref={spinRef} lower={0} upper={1000} stepIncrement={1} />);
+        await render(<GtkSpinButton ref={spinRef} adjustment={makeAdjustment()} />);
 
         const spin = spinRef.current as Gtk.SpinButton;
         spin.connect("input", () => [1, 256]);
@@ -130,7 +128,7 @@ describe("signal emit() - reads out-values and return back", () => {
     it("returns the [return, out] tuple when emitting a pure-out signal", async () => {
         const spinRef = createRef<Gtk.SpinButton>();
 
-        await render(<GtkSpinButton ref={spinRef} lower={0} upper={1000} stepIncrement={1} />);
+        await render(<GtkSpinButton ref={spinRef} adjustment={makeAdjustment()} />);
 
         const spin = spinRef.current as Gtk.SpinButton;
         spin.connect("input", () => [1, 256]);
@@ -141,7 +139,7 @@ describe("signal emit() - reads out-values and return back", () => {
     it("returns the non-void return value when emitting a signal with no out-parameters", async () => {
         const spinRef = createRef<Gtk.SpinButton>();
 
-        await render(<GtkSpinButton ref={spinRef} lower={0} upper={1000} stepIncrement={1} />);
+        await render(<GtkSpinButton ref={spinRef} adjustment={makeAdjustment()} />);
 
         const spin = spinRef.current as Gtk.SpinButton;
         spin.connect("output", () => true);

@@ -20,7 +20,6 @@ import {
     GtkToggleButton,
 } from "@gtkx/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { buildValue } from "../../gvalue.js";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./clipboard.tsx?raw";
 import { path as floppyBuddyPath } from "./floppybuddy.gif";
@@ -135,12 +134,12 @@ function useDragProviders(state: ClipboardState) {
     const { sourceText, sourceColor, selectedImage, sourceFile } = state;
 
     const createTextDragProvider = useCallback(
-        () => Gdk.ContentProvider.newForValue(buildValue(GObject.Type.STRING, (v) => v.setString(sourceText))),
+        () => Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.Type.STRING, (v) => v.setString(sourceText))),
         [sourceText],
     );
 
     const createColorDragProvider = useCallback(
-        () => Gdk.ContentProvider.newForValue(buildValue(gdkRgbaType, (v) => v.setBoxed(sourceColor))),
+        () => Gdk.ContentProvider.newForValue(GObject.buildValue(gdkRgbaType, (v) => v.setBoxed(sourceColor))),
         [sourceColor],
     );
 
@@ -148,7 +147,7 @@ function useDragProviders(state: ClipboardState) {
         const path = imagePathForIndex(selectedImage);
         try {
             const texture = Gdk.Texture.newFromResource(path);
-            return Gdk.ContentProvider.newForValue(buildValue(gdkPaintableType, (v) => v.setObject(texture)));
+            return Gdk.ContentProvider.newForValue(GObject.buildValue(gdkPaintableType, (v) => v.setObject(texture)));
         } catch (e) {
             if (e instanceof Error) console.error(e.message);
             return null;
@@ -157,7 +156,7 @@ function useDragProviders(state: ClipboardState) {
 
     const createFileDragProvider = useCallback(() => {
         if (!sourceFile) return null;
-        return Gdk.ContentProvider.newForValue(buildValue(gfileType, (v) => v.setObject(sourceFile)));
+        return Gdk.ContentProvider.newForValue(GObject.buildValue(gfileType, (v) => v.setObject(sourceFile)));
     }, [sourceFile]);
 
     return { createTextDragProvider, createColorDragProvider, createImageDragProvider, createFileDragProvider };
@@ -171,13 +170,13 @@ const imagePathForIndex = (index: number) => {
 const copyTextToClipboard = (clipboard: Gdk.Clipboard, sourceText: string) =>
     setClipboardValue(
         clipboard,
-        buildValue(GObject.Type.STRING, (v) => v.setString(sourceText)),
+        GObject.buildValue(GObject.Type.STRING, (v) => v.setString(sourceText)),
     );
 
 const copyColorToClipboard = (clipboard: Gdk.Clipboard, sourceColor: Gdk.RGBA) =>
     setClipboardValue(
         clipboard,
-        buildValue(gdkRgbaType, (v) => v.setBoxed(sourceColor)),
+        GObject.buildValue(gdkRgbaType, (v) => v.setBoxed(sourceColor)),
     );
 
 const copyImageToClipboard = (clipboard: Gdk.Clipboard, selectedImage: number) => {
@@ -186,7 +185,7 @@ const copyImageToClipboard = (clipboard: Gdk.Clipboard, selectedImage: number) =
         const texture = Gdk.Texture.newFromResource(path);
         setClipboardValue(
             clipboard,
-            buildValue(gdkPaintableType, (v) => v.setObject(texture)),
+            GObject.buildValue(gdkPaintableType, (v) => v.setObject(texture)),
         );
     } catch (e) {
         if (e instanceof Error) console.error(e.message);
@@ -196,7 +195,7 @@ const copyImageToClipboard = (clipboard: Gdk.Clipboard, selectedImage: number) =
 const copyFileToClipboard = (clipboard: Gdk.Clipboard, sourceFile: Gio.File) =>
     setClipboardValue(
         clipboard,
-        buildValue(gfileType, (v) => v.setObject(sourceFile)),
+        GObject.buildValue(gfileType, (v) => v.setObject(sourceFile)),
     );
 
 function useClipboardHandlers(state: ClipboardState, window: React.RefObject<Gtk.Window | null>) {

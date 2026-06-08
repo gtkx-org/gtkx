@@ -1,8 +1,5 @@
-import type * as Adw from "@gtkx/gi/adw";
 import { AdwNavigationView, GtkLabel } from "@gtkx/react";
-import { waitFor } from "@gtkx/testing";
-import type { ReactNode, RefObject } from "react";
-import { expect } from "vitest";
+import type { ReactNode } from "react";
 
 /**
  * Renders the two `AdwNavigationView.Page` markers shared by the navigation
@@ -21,16 +18,3 @@ export const TwoNavigationPages = ({ contentPrefix }: { contentPrefix: string })
         </AdwNavigationView.Page>
     </>
 );
-
-/**
- * Waits for the navigation stack of the view behind `viewRef` to hold exactly
- * `size` items.
- *
- * @param viewRef - Ref to the `AdwNavigationView` under test.
- * @param size - Expected number of items in the navigation stack.
- */
-export const expectNavigationStackSize = (viewRef: RefObject<Adw.NavigationView | null>, size: number): Promise<void> =>
-    waitFor(() => {
-        const stack = viewRef.current?.getNavigationStack();
-        expect(stack?.getNItems()).toBe(size);
-    });

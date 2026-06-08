@@ -7,8 +7,10 @@ import {
     GtkGrid,
     GtkLabel,
     GtkScale,
+    GtkShortcut,
     GtkShortcutController,
     GtkSwitch,
+    useAdjustment,
 } from "@gtkx/react";
 import { useCallback, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
@@ -156,34 +158,33 @@ interface LevelScaleProps {
     onValueChanged: (value: number) => void;
 }
 
-const LevelScaleRow = ({ levelScale, setLevelScale, onValueChanged }: LevelScaleProps) => (
-    <>
-        <GtkGrid.Child column={0} row={2}>
-            <GtkLabel
-                label="_Level"
-                useUnderline
-                halign={Gtk.Align.END}
-                valign={Gtk.Align.BASELINE}
-                cssClasses={["dim-label"]}
-                mnemonicWidget={levelScale}
-            />
-        </GtkGrid.Child>
-        <GtkGrid.Child column={1} row={2} columnSpan={2}>
-            <GtkScale
-                ref={setLevelScale}
-                orientation={Gtk.Orientation.HORIZONTAL}
-                valign={Gtk.Align.BASELINE}
-                drawValue={false}
-                value={50}
-                lower={0}
-                upper={100}
-                stepIncrement={1}
-                pageIncrement={10}
-                onValueChanged={onValueChanged}
-            />
-        </GtkGrid.Child>
-    </>
-);
+const LevelScaleRow = ({ levelScale, setLevelScale, onValueChanged }: LevelScaleProps) => {
+    const adjustment = useAdjustment({ value: 50, lower: 0, upper: 100, stepIncrement: 1, pageIncrement: 10 });
+    return (
+        <>
+            <GtkGrid.Child column={0} row={2}>
+                <GtkLabel
+                    label="_Level"
+                    useUnderline
+                    halign={Gtk.Align.END}
+                    valign={Gtk.Align.BASELINE}
+                    cssClasses={["dim-label"]}
+                    mnemonicWidget={levelScale}
+                />
+            </GtkGrid.Child>
+            <GtkGrid.Child column={1} row={2} columnSpan={2}>
+                <GtkScale
+                    ref={setLevelScale}
+                    orientation={Gtk.Orientation.HORIZONTAL}
+                    valign={Gtk.Align.BASELINE}
+                    drawValue={false}
+                    adjustment={adjustment}
+                    onValueChanged={(scale) => onValueChanged(scale.getValue())}
+                />
+            </GtkGrid.Child>
+        </>
+    );
+};
 
 interface ModeSwitchRowProps {
     state: ErrorStatesState;
@@ -215,9 +216,12 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
                     onStateSet={onStateSet}
                 >
                     <GtkShortcutController scope={Gtk.ShortcutScope.MANAGED}>
-                        <GtkShortcutController.Shortcut
-                            trigger="<Control>m"
-                            onActivate={() => modeSwitch?.activate()}
+                        <GtkShortcut
+                            trigger={Gtk.ShortcutTrigger.parseString("<Control>m")}
+                            action={Gtk.CallbackAction.new(() => {
+                                modeSwitch?.activate();
+                                return true;
+                            })}
                         />
                     </GtkShortcutController>
                 </GtkSwitch>

@@ -12,16 +12,28 @@
  * by the generic path, so there is no separate list of own-prop names to keep
  * in sync.
  *
- * Three descriptor kinds cover every case: {@link signal} wires a callback prop
- * to one or more GObject signals, {@link imperative} runs a side-effecting
- * handler when the prop changes, and {@link arraySync} reconciles an array prop
- * against the widget through clear/add operations.
+ * Two descriptor kinds cover every case: {@link signal} wires a callback prop
+ * to one or more GObject signals, and {@link imperative} runs a side-effecting
+ * handler when the prop changes (declarative array props rebuild from the new
+ * value inside such a handler).
  */
+import { toCamelCase } from "@gtkx/utils";
 import { isConstructOnlyProp, resolveDefaultProp, resolveSignal } from "../../gtype.js";
 import type { Node } from "../../node.js";
 import type { BackingInstance, Props } from "../../types.js";
 import { isEditable } from "./predicates.js";
 import type { SignalHandler } from "./signal-store.js";
+
+const NOTIFY_DETAIL_PREFIX = "notify::";
+
+/**
+ * Wraps a callback bound to a `notify::<prop>` signal so it receives the
+ * property's current value (and the object), rather than the raw `GParamSpec`.
+ */
+const notifyValueHandler = (container: BackingInstance, signalName: string, callback: SignalHandler): SignalHandler => {
+    const prop = toCamelCase(signalName.slice(NOTIFY_DETAIL_PREFIX.length));
+    return () => callback(Reflect.get(container, prop), container);
+};
 
 /**
  * Descriptor for a prop whose value is a callback bound to GObject signals.
@@ -50,22 +62,8 @@ export interface ImperativeDescriptor {
     readonly always: boolean;
 }
 
-/**
- * Descriptor for an array prop reconciled against the widget by clearing the
- * previously-applied items and adding the current ones.
- *
- * @see {@link arraySync}
- */
-export interface ArraySyncDescriptor {
-    readonly kind: "arraySync";
-    readonly equal: (a: readonly unknown[], b: readonly unknown[]) => boolean;
-    readonly clearAll?: () => void;
-    readonly clearItem?: (handle: unknown) => void;
-    readonly add: (item: unknown) => unknown;
-}
-
 /** A descriptor for one bespoke prop. */
-type PropDescriptor = SignalPropDescriptor | ImperativeDescriptor | ArraySyncDescriptor;
+type PropDescriptor = SignalPropDescriptor | ImperativeDescriptor;
 
 /** A node's bespoke props, keyed by prop name. */
 export type PropDescriptorTable = Record<string, PropDescriptor>;
@@ -106,43 +104,32 @@ export function imperative(handler: ImperativeHandler, options?: { always?: bool
     return { kind: "imperative", handler, always: options?.always ?? false };
 }
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+    if (typeof value !== "object" || value === null) return false;
+    const proto = Object.getPrototypeOf(value);
+    return proto === Object.prototype || proto === null;
+};
+
+const elementsEqual = (a: unknown, b: unknown): boolean => {
+    if (a === b) return true;
+    if (!isPlainObject(a) || !isPlainObject(b)) return false;
+    const keys = Object.keys(a);
+    return keys.length === Object.keys(b).length && keys.every((key) => Object.hasOwn(b, key) && a[key] === b[key]);
+};
+
 /**
- * Builds an {@link ArraySyncDescriptor}.
- *
- * The previously-applied items are cleared — through `clearAll`, or per item
- * through `clearItem` with the handle `add` returned — and the current items
- * are added. `equal` short-circuits the reconciliation when the array is
- * unchanged.
- *
- * @param options - `equal` compares the applied items against the next ones;
- *   `clearAll`/`clearItem` remove the applied items; `add` applies one item and
- *   returns a handle passed back to `clearItem`
+ * Whether two prop values are equal for change detection: identical references,
+ * or arrays of equal length whose elements match (by reference, or — for plain
+ * data objects only — by a one-level key comparison). Widgets, GObjects, and
+ * functions inside arrays fall back to reference equality, never a deep walk, so
+ * content-stable inline arrays do not trigger redundant re-application.
  */
-export function arraySync<TItem, THandle>(options: {
-    equal: (a: readonly TItem[], b: readonly TItem[]) => boolean;
-    clearAll?: () => void;
-    clearItem?: (handle: THandle) => void;
-    add: (item: TItem) => THandle;
-}): ArraySyncDescriptor {
-    return { kind: "arraySync", ...options } as ArraySyncDescriptor;
-}
-
-type ArraySyncState = { items: readonly unknown[]; handles: unknown[] };
-
-const arraySyncStates = new WeakMap<Node, Map<string, ArraySyncState>>();
-
-const getArraySyncState = (node: Node, key: string): ArraySyncState => {
-    let nodeStates = arraySyncStates.get(node);
-    if (!nodeStates) {
-        nodeStates = new Map();
-        arraySyncStates.set(node, nodeStates);
+const propsEqual = (a: unknown, b: unknown): boolean => {
+    if (a === b) return true;
+    if (Array.isArray(a) && Array.isArray(b)) {
+        return a.length === b.length && a.every((item, index) => elementsEqual(item, b[index]));
     }
-    let state = nodeStates.get(key);
-    if (!state) {
-        state = { items: [], handles: [] };
-        nodeStates.set(key, state);
-    }
-    return state;
+    return false;
 };
 
 /** Options for {@link applyProps}. */
@@ -188,32 +175,6 @@ type ApplyContext = {
     readonly table: PropDescriptorTable;
 };
 
-/**
- * Resets the array-sync state a node accumulated through {@link applyProps},
- * clearing each tracked array prop from the widget.
- *
- * @param node - the node being detached
- * @param table - the node's descriptor table
- */
-export function teardownNode(node: Node, table: PropDescriptorTable): void {
-    const nodeStates = arraySyncStates.get(node);
-    if (!nodeStates) return;
-
-    for (const [key, state] of nodeStates) {
-        const descriptor = table[key];
-        if (descriptor?.kind !== "arraySync") continue;
-        if (descriptor.clearAll) {
-            descriptor.clearAll();
-        } else if (descriptor.clearItem) {
-            for (const handle of state.handles) {
-                descriptor.clearItem(handle);
-            }
-        }
-    }
-
-    arraySyncStates.delete(node);
-}
-
 type PendingSignal = { signalName: string; newValue: unknown };
 
 type PendingProperty = { name: string; oldValue: unknown; newValue: unknown };
@@ -250,7 +211,7 @@ const collectGenericChanges = (
 
         const oldValue = oldProps?.[name];
         const newValue = newProps[name];
-        if (oldValue === newValue) continue;
+        if (propsEqual(oldValue, newValue)) continue;
 
         const signalName = resolveSignal(container, name);
         if (signalName) {
@@ -273,7 +234,11 @@ const applyGenericProps = (
     const { pendingSignals, pendingProperties } = collectGenericChanges(context, exclude);
 
     for (const { signalName, newValue } of pendingSignals) {
-        const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
+        const callback = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
+        const handler =
+            callback && signalName.startsWith(NOTIFY_DETAIL_PREFIX)
+                ? notifyValueHandler(container, signalName, callback)
+                : callback;
         node.signalStore.set({ owner: node, obj: container, signal: signalName, handler, blockable: defaultBlockable });
     }
 
@@ -293,21 +258,18 @@ const applyTableDescriptors = (context: ApplyContext): void => {
     for (const [key, descriptor] of Object.entries(table)) {
         switch (descriptor.kind) {
             case "signal":
-                if (oldProps?.[key] !== newProps[key]) {
+                if (!propsEqual(oldProps?.[key], newProps[key])) {
                     applySignalDescriptor(node, container, newProps[key], descriptor);
                 }
                 break;
             case "imperative":
                 if (
-                    (descriptor.always || oldProps?.[key] !== newProps[key]) &&
+                    (descriptor.always || !propsEqual(oldProps?.[key], newProps[key])) &&
                     !ranImperatives.has(descriptor.handler)
                 ) {
                     ranImperatives.add(descriptor.handler);
                     descriptor.handler(oldProps);
                 }
-                break;
-            case "arraySync":
-                applyArraySyncDescriptor(node, key, descriptor, newProps[key]);
                 break;
         }
     }
@@ -338,26 +300,4 @@ const buildSignalHandler = (callback: SignalHandler, descriptor: SignalPropDescr
         if (args !== null) callback(...args);
         return descriptor.returnValue;
     };
-};
-
-const applyArraySyncDescriptor = (
-    node: Node,
-    key: string,
-    descriptor: ArraySyncDescriptor,
-    newValue: unknown,
-): void => {
-    const newItems = (newValue as readonly unknown[] | undefined) ?? [];
-    const state = getArraySyncState(node, key);
-    if (descriptor.equal(state.items, newItems)) return;
-
-    if (descriptor.clearAll) {
-        descriptor.clearAll();
-    } else if (descriptor.clearItem) {
-        for (const handle of state.handles) {
-            descriptor.clearItem(handle);
-        }
-    }
-
-    state.handles = newItems.map((item) => descriptor.add(item));
-    state.items = [...newItems];
 };

@@ -108,7 +108,7 @@
             "outputLogs": "new-only"
         },
         "@gtkx/cli#codegen": {
-            "dependsOn": ["@gtkx/native#build"],
+            "dependsOn": ["@gtkx/native#native-build", "@gtkx/native#build"],
             "cache": false
         },
         "@gtkx/ffi#build": {

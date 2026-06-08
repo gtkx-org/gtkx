@@ -1,8 +1,8 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, quit } from "@gtkx/react";
+import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, quit } from "@gtkx/react";
 import { useState } from "react";
 
-export const App = () => {
+const Counter = () => {
     const [count, setCount] = useState(0);
 
     return (
@@ -28,3 +28,9 @@ export const App = () => {
         </GtkApplicationWindow>
     );
 };
+
+export const App = () => (
+    <GtkApplication applicationId="com.gtkx.hello-world">
+        <Counter />
+    </GtkApplication>
+);

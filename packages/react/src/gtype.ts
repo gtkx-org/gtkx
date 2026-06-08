@@ -1,7 +1,25 @@
 import type { GType } from "@gtkx/gi/gobject";
 import { typeName, typeParent } from "@gtkx/gi/gobject";
 import { CONSTRUCT_ONLY_PROPS, DEFAULT_PROPS, SIGNALS } from "@gtkx/react-jsx/internal";
+import { toKebabCase } from "@gtkx/utils";
 import type { BackingInstance } from "./types.js";
+
+const NOTIFY_PREFIX = "onNotify";
+
+/**
+ * Maps an `onNotify<Prop>` handler prop to the GObject `notify::<prop>` signal
+ * it observes, or `null` when the prop is not an `onNotify` handler. The bare
+ * `onNotify` prop maps to the undetailed `notify` signal.
+ *
+ * @param propName - The JSX prop name (e.g. `onNotifyActive`).
+ */
+export const resolveNotifySignal = (propName: string): string | null => {
+    if (propName === NOTIFY_PREFIX) return "notify";
+    if (!propName.startsWith(NOTIFY_PREFIX) || propName.length === NOTIFY_PREFIX.length) return null;
+    const tail = propName.slice(NOTIFY_PREFIX.length);
+    if (tail[0] !== tail[0]?.toUpperCase()) return null;
+    return `notify::${toKebabCase(tail.charAt(0).toLowerCase() + tail.slice(1))}`;
+};
 
 const typeNameChainCache = new Map<GType, readonly string[]>();
 const signalCache = new Map<GType, Map<string, string | null>>();
@@ -61,7 +79,8 @@ export const isConstructOnlyProp = (instance: BackingInstance, key: string): boo
     });
 
 export const resolveSignal = (instance: BackingInstance, propName: string): string | null => {
-    if (propName === "onNotify") return "notify";
+    const notify = resolveNotifySignal(propName);
+    if (notify) return notify;
     return memoize(signalCache, instance, propName, (typeNames) => {
         for (const name of typeNames) {
             const result = SIGNALS[name]?.[propName];

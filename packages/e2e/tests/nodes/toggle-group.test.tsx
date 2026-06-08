@@ -169,6 +169,30 @@ describe("render - ToggleGroup (4)", () => {
     });
 });
 
+describe("render - ToggleGroup (6)", () => {
+    describe("uncontrolled selection", () => {
+        it("preserves the clicked selection across an unrelated re-render", async () => {
+            const ref = createRef<Adw.ToggleGroup>();
+            const toggles = [
+                { id: "list", label: "List" },
+                { id: "grid", label: "Grid" },
+            ];
+
+            const { rerender } = await render(<AdwToggleGroup ref={ref} toggles={toggles} />);
+
+            const gridToggle = await screen.findByRole(Gtk.AccessibleRole.RADIO, { name: "Grid" });
+            await userEvent.click(gridToggle);
+            await waitFor(() => {
+                expect(ref.current?.getActive()).toBe(1);
+            });
+
+            await rerender(<AdwToggleGroup ref={ref} toggles={toggles} cssClasses={["flat"]} />);
+
+            expect(ref.current?.getActive()).toBe(1);
+        });
+    });
+});
+
 describe("render - ToggleGroup (5)", () => {
     describe("user interactions (2)", () => {
         it("finds all toggles by role in a toggle group", async () => {

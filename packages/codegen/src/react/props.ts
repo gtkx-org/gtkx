@@ -1,4 +1,4 @@
-import { toCamelCase, toIdentifier, toPascalCase } from "@gtkx/utils";
+import { toCamelCase, toIdentifier, toUpperFirst } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import { type GirParameter, isInoutParameter, isOutParameter } from "../gir/parameter.js";
@@ -67,9 +67,9 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
 
     const ownerName = klass.glibTypeName ?? klass.cType ?? klass.name;
     const selfNamespace = currentNamespaceKey(repository, klass);
-    const selfTypeName = resolveSelfTypeName(klass, selfNamespace, imports);
 
     const acceptProperty = (property: GirProperty, owningNamespace: string): void => {
+        if (!property.introspectable) return;
         const jsName = toIdentifier(toCamelCase(property.name));
         if (seen.has(jsName)) return;
         seen.add(jsName);
@@ -81,18 +81,18 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
         const qualified = qualifyTypeRef(property.type, owningNamespace);
         const tsType = renderReactPropType(repository, qualified, false, imports);
         propEntries.push(`${jsName}?: ${tsType} | null;`);
+        propEntries.push(`onNotify${toUpperFirst(jsName)}?: ((value: ${tsType} | null, self: Self) => void) | null;`);
     };
 
     const acceptSignal = (signal: GirSignal, owningNamespace: string): void => {
         const handlerName = signalHandlerName(signal.name);
         if (seen.has(handlerName)) return;
         seen.add(handlerName);
-        if (isSignalOverridden(ownerName, handlerName)) return;
         const signature = renderSignalHandler({
             repository,
             signal,
             imports,
-            selfType: selfTypeName,
+            selfType: "Self",
             owningNamespace,
         });
         propEntries.push(`${handlerName}?: ${signature};`);
@@ -101,12 +101,6 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
     visitClassAndAncestors({ repository, klass, selfNamespace, isWidgetAncestor }, acceptProperty, acceptSignal);
 
     return { propLines: propEntries, imports };
-};
-
-const resolveSelfTypeName = (klass: GirClass, selfNamespace: string, imports: Map<string, string>): string => {
-    if (selfNamespace === "?") return toPascalCase(klass.name);
-    imports.set(selfNamespace, selfNamespace);
-    return `${selfNamespace}.${toPascalCase(klass.name)}`;
 };
 
 type WalkContext = {
@@ -194,22 +188,6 @@ const PROP_OVERRIDES_BY_WIDGET: Readonly<Record<string, ReadonlySet<string>>> = 
 const isPropOverridden = (ownerName: string, propName: string): boolean => {
     const overrides = PROP_OVERRIDES_BY_WIDGET[ownerName];
     return overrides?.has(propName) ?? false;
-};
-
-/**
- * Per-widget signal-handler names whose generated emission is skipped so
- * a hand-written `declare module` augmentation can supply a refined
- * signature without triggering TS2717.
- */
-const SIGNAL_OVERRIDES_BY_WIDGET: Readonly<Record<string, ReadonlySet<string>>> = {
-    GtkRange: new Set(["onValueChanged"]),
-    GtkScaleButton: new Set(["onValueChanged"]),
-    GtkSpinButton: new Set(["onValueChanged"]),
-};
-
-const isSignalOverridden = (ownerName: string, handlerName: string): boolean => {
-    const overrides = SIGNAL_OVERRIDES_BY_WIDGET[ownerName];
-    return overrides?.has(handlerName) ?? false;
 };
 
 const renderSignalHandler = (options: SignalRenderOptions): string => {

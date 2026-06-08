@@ -53,10 +53,11 @@ const expectListenerClearedWhenHandlerNull = async <Widget,>({
 describe("render - SpinRow (1)", () => {
     it("creates a SpinRow with a value", async () => {
         const ref = createRef<Adw.SpinRow>();
+        const adjustment = Gtk.Adjustment.new(5, 0, 100, 1, 10, 0);
 
         await render(
             <AdwPreferencesGroup>
-                <AdwSpinRow ref={ref} title="Quantity" value={5} />
+                <AdwSpinRow ref={ref} title="Quantity" adjustment={adjustment} />
             </AdwPreferencesGroup>,
         );
 
@@ -69,7 +70,7 @@ describe("render - SpinRow (1)", () => {
 
         await render(
             <AdwPreferencesGroup>
-                <AdwSpinRow ref={ref} title="Q" value={1} onValueChanged={onValueChanged} />
+                <AdwSpinRow ref={ref} title="Q" value={1} onNotifyValue={onValueChanged} />
             </AdwPreferencesGroup>,
         );
 
@@ -90,7 +91,7 @@ describe("render - SpinRow (2)", () => {
         await expectListenerClearedWhenHandlerNull<Adw.SpinRow>({
             renderRow: (ref, handler) => (
                 <AdwPreferencesGroup>
-                    <AdwSpinRow ref={ref} title="Q" value={1} onValueChanged={handler} />
+                    <AdwSpinRow ref={ref} title="Q" value={1} onNotifyValue={handler} />
                 </AdwPreferencesGroup>
             ),
             afterMount: (row) => installAdjustment(row, 0, 10, 1),
@@ -119,7 +120,7 @@ describe("render - SwitchRow (1)", () => {
 
         await render(
             <AdwPreferencesGroup>
-                <AdwSwitchRow ref={ref} title="Enabled" active={false} onActiveChanged={onActiveChanged} />
+                <AdwSwitchRow ref={ref} title="Enabled" active={false} onNotifyActive={onActiveChanged} />
             </AdwPreferencesGroup>,
         );
 
@@ -136,7 +137,7 @@ describe("render - SwitchRow (2)", () => {
         await expectListenerClearedWhenHandlerNull<Adw.SwitchRow>({
             renderRow: (ref, handler) => (
                 <AdwPreferencesGroup>
-                    <AdwSwitchRow ref={ref} title="Enabled" active={false} onActiveChanged={handler} />
+                    <AdwSwitchRow ref={ref} title="Enabled" active={false} onNotifyActive={handler} />
                 </AdwPreferencesGroup>
             ),
             fireFirst: (row) => row.setActive(true),

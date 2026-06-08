@@ -19,6 +19,7 @@
  */
 
 const queue: Array<() => void> = [];
+const lateQueue: Array<() => void> = [];
 let commitDepth = 0;
 
 /**
@@ -52,6 +53,14 @@ export function drainAfterCommit(): void {
         const fn = queue.shift();
         if (fn) fn();
     }
+    while (lateQueue.length > 0) {
+        const fn = lateQueue.shift();
+        if (fn) fn();
+        while (queue.length > 0) {
+            const inner = queue.shift();
+            if (inner) inner();
+        }
+    }
 }
 
 /**
@@ -59,6 +68,18 @@ export function drainAfterCommit(): void {
  */
 export function scheduleAfterCommit(fn: () => void): void {
     queue.push(fn);
+}
+
+/**
+ * Queues `fn` to run after every {@link scheduleAfterCommit} task of the
+ * current commit has drained. This is the second phase used by work that
+ * depends on first-phase side-effects — a constraint resolving the widget and
+ * guide ids that sibling markers register in the first phase.
+ *
+ * @param fn - The late work to run once the first phase is empty.
+ */
+export function scheduleLateAfterCommit(fn: () => void): void {
+    lateQueue.push(fn);
 }
 
 /**
@@ -77,6 +98,25 @@ export function createAfterCommitDebounce(run: () => void): () => void {
         if (scheduled) return;
         scheduled = true;
         scheduleAfterCommit(() => {
+            scheduled = false;
+            run();
+        });
+    };
+}
+
+/**
+ * Like {@link createAfterCommitDebounce} but queues into the late phase, so the
+ * work runs only after every first-phase task of the commit has drained.
+ *
+ * @param run - The work to run once per scheduled late commit drain.
+ * @returns A function that schedules `run`, ignoring calls already pending.
+ */
+export function createLateAfterCommitDebounce(run: () => void): () => void {
+    let scheduled = false;
+    return () => {
+        if (scheduled) return;
+        scheduled = true;
+        scheduleLateAfterCommit(() => {
             scheduled = false;
             run();
         });

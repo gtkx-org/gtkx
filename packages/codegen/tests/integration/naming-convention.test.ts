@@ -1,14 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateNamespaceModule } from "../../src/ffi/pipeline.js";
-import { loadGirRepository } from "../../src/gir/repository.js";
-
-const GIR_PATH = ["/usr/share/gir-1.0"];
-
-const repository = loadGirRepository(["Gtk-4.0", "Adw-1"], GIR_PATH);
-
-const ffiModules = [...repository.namespaces.values()].map((namespace) =>
-    generateNamespaceModule(namespace, repository),
-);
+import { ffiModules } from "../helpers/repository.js";
 
 const moduleSource = (path: string): string => {
     const found = ffiModules.find((entry) => entry.path === path);

@@ -3,6 +3,7 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { isAddable, isAppendable, isContentWidget, isRemovable, isSingleChild } from "./predicates.js";
 
 export function detachChild(child: Gtk.Widget, container: Gtk.Widget): void {
+    if (!isAttachedTo(child, container)) return;
     if (isAppendable(container) || isAddable(container)) {
         if (isRemovable(container)) {
             container.remove(child);

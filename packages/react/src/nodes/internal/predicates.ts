@@ -37,6 +37,26 @@ type BufferedWidget = Gtk.Widget & {
 const hasMethod = (obj: unknown, name: string): obj is Gtk.Widget =>
     obj instanceof Gtk.Widget && name in obj && typeof Reflect.get(obj, name) === "function";
 
+/**
+ * A non-widget single-child container, such as `Gtk.ListItem`/`Gtk.ListHeader`,
+ * that exposes `getChild`/`setChild` to hold one widget child.
+ */
+export type SingleChildContainer = {
+    getChild: () => Gtk.Widget | null;
+    setChild: (child: Gtk.Widget | null) => void;
+};
+
+const hasFunction = (obj: object, name: string): boolean => name in obj && typeof Reflect.get(obj, name) === "function";
+
+/**
+ * Whether `obj` is a single-child container exposing `getChild`/`setChild`,
+ * including non-widget containers a list factory produces.
+ *
+ * @param obj - The candidate container.
+ */
+export const isSingleChildContainer = (obj: unknown): obj is SingleChildContainer =>
+    typeof obj === "object" && obj !== null && hasFunction(obj, "getChild") && hasFunction(obj, "setChild");
+
 export const isAppendable = (obj: unknown): obj is AppendableWidget => hasMethod(obj, "append");
 
 export const isAddable = (obj: unknown): obj is AddableWidget => hasMethod(obj, "add");

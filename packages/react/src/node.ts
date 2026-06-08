@@ -1,6 +1,6 @@
 import type { PropDescriptorTable } from "./nodes/internal/apply-props.js";
 import { getSignalStore, type SignalStore } from "./nodes/internal/signal-store.js";
-import type { BackingInstance, BackingInstanceClass, Props } from "./types.js";
+import type { BackingInstanceClass, ContainerInfo, Props } from "./types.js";
 
 // biome-ignore lint/suspicious/noExplicitAny: Self-referential type bounds require any
 export class Node<TBackingInstance = any, TProps = any, TParent extends Node = any, TChild extends Node = any> {
@@ -8,7 +8,7 @@ export class Node<TBackingInstance = any, TProps = any, TParent extends Node = a
         _typeName: string,
         _props: Props,
         _containerClass: BackingInstanceClass,
-        _rootContainer?: BackingInstance,
+        _rootContainer?: ContainerInfo,
     ): unknown {
         throw new Error("Cannot create container: unsupported node type");
     }
@@ -17,13 +17,13 @@ export class Node<TBackingInstance = any, TProps = any, TParent extends Node = a
     props: TProps;
     typeName: string;
     signalStore: SignalStore;
-    rootContainer: BackingInstance;
+    rootContainer: ContainerInfo;
     parent: TParent | null = null;
     children: TChild[] = [];
     protected childSet = new Set<TChild>();
     private cachedPropTable: PropDescriptorTable | null = null;
 
-    constructor(typeName: string, props: TProps, backingInstance: TBackingInstance, rootContainer: BackingInstance) {
+    constructor(typeName: string, props: TProps, backingInstance: TBackingInstance, rootContainer: ContainerInfo) {
         this.typeName = typeName;
         this.props = props;
         this.backingInstance = backingInstance;

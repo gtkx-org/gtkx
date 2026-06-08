@@ -10,6 +10,7 @@ import type * as GtkSource from "@gtkx/gi/gtksource";
 import type * as Pango from "@gtkx/gi/pango";
 import type { WidgetSlotNames } from "@gtkx/react-jsx/jsx";
 import type { ReactNode } from "react";
+import type { MenuActionContext, MenuEntry } from "./components/internal/menu-model.js";
 
 /**
  * CSS properties that can be animated on a widget.
@@ -117,35 +118,8 @@ export type AdwSpringAnimationProps = AnimationBaseProps & {
     delay?: number;
 };
 
-/** Union of the animation prop shapes accepted by the AnimationNode reconciler. */
+/** Union of the timed and spring animation prop shapes. */
 export type AnimationProps = AdwTimedAnimationProps | AdwSpringAnimationProps;
-
-/**
- * Props for the Shortcut virtual element.
- *
- * Defines a keyboard shortcut. Must be a child of `<GtkShortcutController>`.
- *
- * @example
- * ```tsx
- * <GtkShortcutController>
- *     <GtkShortcutController.Shortcut trigger="<Control>s" onActivate={save} />
- *     <GtkShortcutController.Shortcut trigger={["F5", "<Control>r"]} onActivate={refresh} />
- *     <GtkShortcutController.Shortcut trigger="Escape" onActivate={cancel} disabled={!canCancel} />
- * </GtkShortcutController>
- * ```
- */
-export type ShortcutProps = {
-    /** The trigger string(s) using GTK accelerator format (e.g., "\<Control\>s", "F1") */
-    trigger: string | string[];
-    /**
-     * Called when the shortcut is activated.
-     * Return false to indicate the shortcut was not handled; otherwise it is considered handled.
-     */
-    // biome-ignore lint/suspicious/noConfusingVoidType: void is intentional to allow callbacks that don't return a value
-    onActivate: () => boolean | void;
-    /** Whether the shortcut is disabled */
-    disabled?: boolean;
-};
 
 /**
  * Props for the TextAnchor virtual element.
@@ -274,15 +248,6 @@ export type TextTagProps = {
     language?: string;
     /** Text content and nested TextTag children */
     children?: ReactNode;
-};
-
-/** Props for the TextSegment virtual element.
- *
- * Represents a segment of text within a TextBuffer.
- */
-export type TextSegmentProps = {
-    /** The text content of this segment */
-    text: string;
 };
 
 /**
@@ -434,8 +399,14 @@ export type ColumnViewColumnProps<T = unknown> = {
      * in uncontrolled mode. Specialize `T` to the appropriate type at the call site.
      */
     renderCell: (item: T) => ReactNode;
-    /** Menu items for the column header context menu */
+    /** Menu entries (`<MenuItem>`, `<MenuSection>`, `<MenuSubmenu>`) for the column header context menu */
     children?: ReactNode;
+    /**
+     * @internal The menu structure extracted from `children` by the
+     * `GtkColumnView.Column` component and consumed by the reconciler to build
+     * the column's header menu. Not intended for direct use.
+     */
+    menuEntries?: MenuEntry[];
 };
 
 /**
@@ -485,9 +456,21 @@ export type StackPageProps = {
 };
 
 /**
- * Props for menu items.
+ * Props for the `<Menu>` component.
  *
- * Used by menu compound components like `GtkMenuButton.MenuItem`.
+ * Assembles its {@link MenuItemProps}, {@link MenuSectionProps}, and
+ * {@link MenuSubmenuProps} children into a `Gio.Menu` model placed in a host's
+ * menu slot (`menuModel`, `menubar`, `headerMenu`).
+ */
+export type MenuProps = {
+    /** Declarative menu entries: `<MenuItem>`, `<MenuSection>`, `<MenuSubmenu>`. */
+    children?: ReactNode;
+};
+
+/**
+ * Props for the `<MenuItem>` menu entry.
+ *
+ * Declares one activatable item, backed by a `Gio.SimpleAction`.
  */
 export type MenuItemProps = {
     /** Unique identifier for this menu item */
@@ -501,7 +484,7 @@ export type MenuItemProps = {
 };
 
 /**
- * Props for menu sections.
+ * Props for the `<MenuSection>` menu entry.
  *
  * Sections group related menu items with optional labels.
  */
@@ -513,7 +496,7 @@ export type MenuSectionProps = {
 };
 
 /**
- * Props for submenus.
+ * Props for the `<MenuSubmenu>` menu entry.
  */
 export type MenuSubmenuProps = {
     /** Submenu label */
@@ -622,7 +605,7 @@ export type NavigationSplitViewPageProps = NavigationPageBaseProps & {
  * @example
  * ```tsx
  * // In NavigationView - id can be any string
- * <AdwNavigationView history={["home", "details"]}>
+ * <AdwNavigationView>
  *   <AdwNavigationView.Page id="home" title="Home">
  *     <HomeContent />
  *   </AdwNavigationView.Page>
@@ -836,29 +819,6 @@ export type DialogButtonProps = {
     modal?: boolean;
 };
 
-/**
- * Props for widgets backed by a GtkAdjustment.
- *
- * Used by GtkRange, GtkScaleButton, GtkSpinButton, and AdwSpinRow
- * to configure the adjustment bounds, increments, and value change callback.
- */
-export type AdjustableProps = {
-    /** The current value of the adjustable */
-    value?: number;
-    /** The minimum allowed value */
-    lower?: number;
-    /** The maximum allowed value */
-    upper?: number;
-    /** The step increment for small adjustments */
-    stepIncrement?: number;
-    /** The page increment for larger adjustments */
-    pageIncrement?: number;
-    /** The size of the visible portion (for scrollbars) */
-    pageSize?: number;
-    /** Callback fired when the adjustable value changes */
-    onValueChanged?: ((value: number) => void) | null;
-};
-
 type StackProps = {
     /** ID of the currently visible page */
     page?: string | null;
@@ -978,36 +938,27 @@ export type ConstraintLayoutWidgetProps = {
     children: ReactNode;
 };
 
+/**
+ * Permissive prop bag for the internal wrapper sentinel element
+ * (`"__GTKX_WRAPPER_NODE__"`). Every metadata wrapper renders this single
+ * element, passing its concrete kind through `kind` and its metadata through the
+ * remaining props. The publicly typed wrapper prop shapes (e.g. {@link SlotProps},
+ * {@link StackPageProps}) are validated by the sugar components, which then pass
+ * the values through to this element.
+ */
+export type WrapperNodeElementProps = {
+    /** The wrapper kind name, e.g. `"Slot"` or `"StackPage"`. */
+    kind: string;
+    /** The wrapped subtree the wrapper attaches to its grandparent. */
+    children?: ReactNode;
+    [key: string]: unknown;
+};
+
 declare global {
     namespace React {
         namespace JSX {
             interface IntrinsicElements {
-                Slot: SlotProps;
-                AdwTimedAnimation: AdwTimedAnimationProps;
-                AdwSpringAnimation: AdwSpringAnimationProps;
-                ContainerSlot: ContainerSlotProps;
-                ColumnViewColumn: ColumnViewColumnProps;
-                Constraint: ConstraintProps;
-                ConstraintGuide: ConstraintGuideProps;
-                ConstraintLayoutWidget: ConstraintLayoutWidgetProps;
-                ConstraintVfl: ConstraintVflProps;
-                FixedChild: FixedChildProps;
-                GridChild: GridChildProps;
-                MenuItem: MenuItemProps;
-                MenuSection: MenuSectionProps;
-                MenuSubmenu: MenuSubmenuProps;
-                NotebookPage: NotebookPageProps;
-                NotebookPageTab: NotebookPageTabProps;
-                OverlayChild: OverlayChildProps;
-                GtkSizeGroup: SizeGroupProps;
-                SizeGroupWidget: SizeGroupWidgetProps;
-                TextAnchor: TextAnchorProps;
-                TextPaintable: TextPaintableProps;
-                TextTag: TextTagProps;
-
-                StackPage: StackPageProps;
-                NavigationPage: NavigationPageProps;
-                Shortcut: ShortcutProps;
+                __GTKX_WRAPPER_NODE__: WrapperNodeElementProps;
             }
         }
     }
@@ -1075,46 +1026,6 @@ export type AccessibleProps = {
 declare module "@gtkx/react-jsx/jsx" {
     interface WidgetProps extends AccessibleProps {}
 
-    interface GtkRangeProps extends Omit<AdjustableProps, "onValueChanged"> {
-        /** Callback fired when the range value changes */
-        onValueChanged?: ((value: number) => void) | null;
-    }
-
-    interface GtkScaleProps {
-        /** Visual marks placed along the scale at specific values */
-        marks?: Array<{ value: number; position?: Gtk.PositionType; label?: string | null }> | null;
-    }
-
-    interface GtkScaleButtonProps extends Omit<AdjustableProps, "value" | "onValueChanged"> {
-        /** Callback fired when the scale button value changes */
-        onValueChanged?: ((value: number) => void) | null;
-    }
-
-    interface GtkSpinButtonProps extends Omit<AdjustableProps, "value" | "onValueChanged"> {
-        /** Callback fired when the spin button value changes */
-        onValueChanged?: ((value: number) => void) | null;
-    }
-
-    interface AdwSpinRowProps extends Omit<AdjustableProps, "value" | "onValueChanged"> {
-        /** Callback fired when the spin row value changes */
-        onValueChanged?: ((value: number) => void) | null;
-    }
-
-    interface AdwSwitchRowProps {
-        /** Callback fired when the switch row active state changes */
-        onActiveChanged?: ((active: boolean) => void) | null;
-    }
-
-    interface GtkCalendarProps {
-        /** Array of day numbers (1-31) to display as marked */
-        markedDays?: number[] | null;
-    }
-
-    interface GtkLevelBarProps {
-        /** Named offset thresholds that change the bar's appearance */
-        offsets?: LevelBarOffset[] | null;
-    }
-
     interface GtkTextViewProps extends TextBufferProps {}
 
     interface GtkSourceViewProps extends TextBufferProps {
@@ -1145,22 +1056,9 @@ declare module "@gtkx/react-jsx/jsx" {
         estimatedRowHeight?: number | null;
     }
 
-    interface GtkStackProps extends StackProps {
-        /** Callback fired when the visible page changes */
-        onPageChanged?: ((page: string | null) => void) | null;
-    }
+    interface GtkStackProps extends StackProps {}
 
-    interface AdwViewStackProps extends StackProps {
-        /** Callback fired when the visible page changes */
-        onPageChanged?: ((page: string | null) => void) | null;
-    }
-
-    interface AdwNavigationViewProps {
-        /** Ordered list of page tags representing the navigation stack */
-        history?: string[] | null;
-        /** Callback fired when the navigation history changes */
-        onHistoryChanged?: ((history: string[]) => void) | null;
-    }
+    interface AdwViewStackProps extends StackProps {}
 
     interface GtkWindowProps {
         /** Callback fired when the window close button is clicked */
@@ -1170,6 +1068,26 @@ declare module "@gtkx/react-jsx/jsx" {
     interface GtkDrawingAreaProps {
         /** Render function called when the drawing area needs to be redrawn. Changing this reference automatically queues a redraw. */
         render?: ((cr: cairo.Context, width: number, height: number, self: Gtk.DrawingArea) => void) | null;
+    }
+
+    interface GtkScaleProps {
+        /** Declarative value marks shown along the scale. */
+        marks?: ScaleMark[] | null;
+    }
+
+    interface GtkLevelBarProps {
+        /** Declarative named offset thresholds. */
+        offsets?: LevelBarOffset[] | null;
+    }
+
+    interface GtkCalendarProps {
+        /** Day numbers to mark on the calendar. */
+        markedDays?: number[] | null;
+    }
+
+    interface AdwToggleGroupProps {
+        /** Declarative toggle definitions for the group. */
+        toggles?: ToggleProps[] | null;
     }
 
     interface GtkColorDialogButtonProps extends DialogButtonProps {
@@ -1193,21 +1111,28 @@ declare module "@gtkx/react-jsx/jsx" {
         creditSections?: Array<{ name: string; people: string[] }>;
     }
 
-    interface GtkSearchBarProps {
-        /** Callback fired when search mode is toggled */
-        onSearchModeChanged?: ((searchMode: boolean) => void) | null;
-    }
-
-    interface AdwToggleGroupProps {
-        /** Callback fired when the active toggle changes */
-        onActiveChanged?: ((active: number, activeName: string | null) => void) | null;
-        /** Declarative toggle definitions for the group */
-        toggles?: ToggleProps[];
-    }
-
     interface AdwAlertDialogProps {
         /** Declarative response button definitions for the dialog */
         responses?: AlertDialogResponseProps[];
+    }
+
+    interface GMenuProps {
+        /**
+         * @internal Menu structure collected by the `Menu` component and built by
+         * the reconciler into this `Gio.Menu`. Not intended for direct use.
+         */
+        menuEntries?: MenuEntry[];
+        /**
+         * @internal The application a built menu's accelerators bind on. Injected
+         * by the `Menu` component from the application context; not intended for
+         * direct use.
+         */
+        menuApplication?: Gtk.Application | null;
+        /**
+         * @internal An explicit action context for callers that own the action
+         * map (e.g. a column header menu). Not intended for direct use.
+         */
+        menuActionContext?: MenuActionContext;
     }
 
     interface GtkDragSourceProps {
@@ -1226,13 +1151,16 @@ declare module "@gtkx/react-jsx/jsx" {
 }
 
 export * from "@gtkx/react-jsx/compounds";
+export * from "@gtkx/react-jsx/jsx";
+export { AnimatePresence } from "./components/animate-presence.js";
+export { AdwSpringAnimation, AdwTimedAnimation } from "./components/animation.js";
+export { AdwApplication, GtkApplication } from "./components/application.js";
+export { GtkConstraintLayout } from "./components/constraint-layout.js";
+export { GtkDrawingArea } from "./components/drawing-area.js";
 export { AdwComboRow, GtkColumnView, GtkDropDown, GtkGridView, GtkListView } from "./components/list.js";
+export { Menu, MenuItem, MenuSection, MenuSubmenu } from "./components/menu.js";
+export { GtkMenuButton, GtkPopoverMenu, GtkPopoverMenuBar } from "./components/menu-widgets.js";
 export { AdwNavigationSplitView, AdwNavigationView } from "./components/navigation.js";
 export { GtkSizeGroup } from "./components/size-group.js";
-
-/** JSX intrinsic element name for timed (duration-based) Adwaita animations. */
-export const AdwTimedAnimation = "AdwTimedAnimation" as const;
-/** JSX intrinsic element name for spring-physics-based Adwaita animations. */
-export const AdwSpringAnimation = "AdwSpringAnimation" as const;
-
-export * from "@gtkx/react-jsx/jsx";
+export { WebKitWebView } from "./components/web-view.js";
+export { AdwApplicationWindow, GtkApplicationWindow } from "./components/window.js";

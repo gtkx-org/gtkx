@@ -8,7 +8,9 @@ import { type ReconcilerErrorHandler, setReconcilerErrorHandler } from "./reconc
 /**
  * React Context providing access to the GTK Application instance.
  *
- * Use {@link useApplication} to access the application in components.
+ * The {@link GtkApplication} and {@link AdwApplication} components publish their
+ * backing application through this context. Use {@link useApplication} to read it
+ * in descendant components.
  *
  * @example
  * ```tsx
@@ -24,8 +26,9 @@ export const ApplicationContext = createContext<Gtk.Application | null>(null);
 /**
  * Hook to access the GTK Application instance.
  *
- * Must be called within a component rendered by {@link render}.
- * Throws an error if called outside the application context.
+ * Must be called within a component rendered under a {@link GtkApplication} or
+ * {@link AdwApplication}. Throws an error if called outside the application
+ * context.
  *
  * @returns The GTK Application instance
  *
@@ -51,6 +54,7 @@ export const useApplication = (): Gtk.Application => {
 
 type ActiveRoot = {
     container: unknown;
+    sentinel: object;
     priorHandler: ReconcilerErrorHandler | null;
 };
 
@@ -69,12 +73,14 @@ export type RenderHandle = {
 };
 
 /**
- * Renders a React element tree into a GTK4 application window.
+ * Renders a React element tree.
  *
- * Registers and activates the supplied application, then begins the React
- * reconciliation process. Mirrors the role of `createRoot().render()` in
- * `react-dom`: call once at module top-level in your entry file, or once per
- * test that drives the reconciler directly.
+ * Creates a per-root sentinel container and begins reconciliation. The element
+ * tree is expected to render a {@link GtkApplication} (or {@link AdwApplication})
+ * component, which constructs the GTK application, registers and activates it,
+ * and publishes it through {@link ApplicationContext}. Mirrors the role of
+ * `createRoot().render()` in `react-dom`: call once at module top-level in your
+ * entry file, or once per test that drives the reconciler directly.
  *
  * In the dev server, the entry module runs once per process. Component-level
  * edits are applied via React Refresh; edits that propagate up to the entry
@@ -82,45 +88,41 @@ export type RenderHandle = {
  * process.
  *
  * @param element - The root React element to render
- * @param app - The GTK application to host the rendered tree
  * @returns A handle whose `unmount()` method tears down this root.
  *
  * @example
  * ```tsx
- * import * as Gio from "@gtkx/gi/gio";
- * import * as Gtk from "@gtkx/gi/gtk";
- * import { render, quit } from "@gtkx/react";
+ * import { GtkApplication, GtkApplicationWindow, render, quit } from "@gtkx/react";
  *
  * const App = () => (
- *   <GtkApplicationWindow title="My App" onClose={quit}>
- *     <GtkLabel label="Hello, GTKX!" />
- *   </GtkApplicationWindow>
+ *   <GtkApplication applicationId="com.example.myapp">
+ *     <GtkApplicationWindow title="My App" onClose={quit}>
+ *       <GtkLabel label="Hello, GTKX!" />
+ *     </GtkApplicationWindow>
+ *   </GtkApplication>
  * );
  *
- * const app = new Gtk.Application(Gio.ApplicationFlags.NON_UNIQUE, "com.example.myapp");
- * render(<App />, app);
+ * render(<App />);
  * ```
  *
  * @see {@link quit} for shutting down the application
  */
-export const render = (element: ReactNode, app: Gtk.Application): RenderHandle => {
-    app.register(null);
-    app.on("activate", () => {});
-    app.activate();
+export const render = (element: ReactNode): RenderHandle => {
+    const sentinel: object = {};
 
     const onUncaughtError = (error: unknown): void => {
-        getSignalStore(app).forceUnblockAll();
+        getSignalStore(sentinel).forceUnblockAll();
         throw error;
     };
     const onCaughtError = (error: unknown): void => {
-        getSignalStore(app).forceUnblockAll();
+        getSignalStore(sentinel).forceUnblockAll();
         console.error(error);
     };
 
     const priorHandler = setReconcilerErrorHandler(onUncaughtError);
 
     const container = reconciler.createContainer(
-        app,
+        sentinel,
         1,
         null,
         false,
@@ -132,15 +134,10 @@ export const render = (element: ReactNode, app: Gtk.Application): RenderHandle =
         () => {},
     );
 
-    const root: ActiveRoot = { container, priorHandler };
+    const root: ActiveRoot = { container, sentinel, priorHandler };
     activeRoots.add(root);
 
-    reconciler.updateContainer(
-        <ApplicationContext.Provider value={app}>{element}</ApplicationContext.Provider>,
-        container,
-        null,
-        () => {},
-    );
+    reconciler.updateContainer(element, container, null, () => {});
 
     return {
         unmount: () => {

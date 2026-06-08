@@ -1,22 +1,31 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkLabel, GtkListBox, GtkShortcutController } from "@gtkx/react";
+import { GtkLabel, GtkListBox, GtkShortcut, GtkShortcutController } from "@gtkx/react";
 import type { Demo } from "../types.js";
 import sourceCode from "./shortcut-triggers.tsx?raw";
+
+const logAction = (message: string): Gtk.ShortcutAction =>
+    Gtk.CallbackAction.new(() => {
+        console.log(message);
+        return true;
+    });
 
 const ShortcutTriggersDemo = () => {
     return (
         <GtkListBox name="list-box" marginTop={6} marginBottom={6} marginStart={6} marginEnd={6}>
             <GtkLabel name="label-ctrl-g" label="Press Ctrl-G">
                 <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-                    <GtkShortcutController.Shortcut
-                        trigger="<Control>g"
-                        onActivate={() => console.log("activated Press Ctrl-G")}
+                    <GtkShortcut
+                        trigger={Gtk.ShortcutTrigger.parseString("<Control>g")}
+                        action={logAction("activated Press Ctrl-G")}
                     />
                 </GtkShortcutController>
             </GtkLabel>
             <GtkLabel name="label-x" label="Press X">
                 <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-                    <GtkShortcutController.Shortcut trigger="x" onActivate={() => console.log("activated Press X")} />
+                    <GtkShortcut
+                        trigger={Gtk.ShortcutTrigger.parseString("x")}
+                        action={logAction("activated Press X")}
+                    />
                 </GtkShortcutController>
             </GtkLabel>
         </GtkListBox>

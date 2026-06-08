@@ -116,7 +116,8 @@ const renderPropBlock = (
         ...(context.containerSlotMap[entry.glibName] ?? []).map((method) => `    ${method}?: ReactNode | null;`),
     ];
     const parentExtends = resolveParentPropsExtension(repository, entry, context.widgetByGlibName);
-    return `export interface ${entry.glibName}Props extends ${parentExtends} {\n${ownerLines.join("\n")}\n}`;
+    const selfDefault = `${entry.namespace.name}.${entry.klass.name}`;
+    return `export interface ${entry.glibName}Props<Self = ${selfDefault}> extends ${parentExtends} {\n${ownerLines.join("\n")}\n}`;
 };
 
 const renderImportLines = (namespaceImports: ReadonlyMap<string, string>): readonly string[] => {
@@ -158,5 +159,5 @@ const resolveParentPropsExtension = (
     const parentGlib = resolved.value.glibTypeName ?? resolved.value.cType;
     if (parentGlib === undefined) return "WidgetProps";
     if (!widgetByGlibName.has(parentGlib)) return "WidgetProps";
-    return `${parentGlib}Props`;
+    return `${parentGlib}Props<Self>`;
 };

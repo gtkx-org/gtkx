@@ -6,26 +6,27 @@
 
 ```tsx
 // src/index.tsx
-import * as Gtk from "@gtkx/gi/gtk";
-import { GtkApplicationWindow, GtkLabel, render, quit } from "@gtkx/react";
+import { GtkApplication, GtkApplicationWindow, GtkLabel, render, quit } from "@gtkx/react";
 
 const App = () => (
-    <GtkApplicationWindow title="Hello" defaultWidth={400} defaultHeight={300} onClose={quit}>
-        <GtkLabel label="Hello, World!" />
-    </GtkApplicationWindow>
+    <GtkApplication applicationId="com.example.hello">
+        <GtkApplicationWindow title="Hello" defaultWidth={400} defaultHeight={300} onClose={quit}>
+            <GtkLabel label="Hello, World!" />
+        </GtkApplicationWindow>
+    </GtkApplication>
 );
 
-const app = new Gtk.Application({ applicationId: "com.example.hello" });
-render(<App />, app);
+render(<App />);
 ```
 
-The entry calls `render` directly (similar to `createRoot().render()` in `react-dom`). `gtkx dev` restarts the Node process on entry-level changes so the top-level call only runs once per process life.
+The entry calls `render` directly (similar to `createRoot().render()` in `react-dom`). The `<GtkApplication>` component constructs, registers, and activates the GTK application. `gtkx dev` restarts the Node process on entry-level changes so the top-level call only runs once per process life.
 
 ### Modern Adwaita App
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
 import {
+    AdwApplication,
     AdwApplicationWindow,
     AdwHeaderBar,
     AdwToolbarView,
@@ -35,7 +36,7 @@ import {
     quit,
 } from "@gtkx/react";
 
-export const App = () => (
+const MainWindow = () => (
     <AdwApplicationWindow title="My App" defaultWidth={800} defaultHeight={600} onClose={quit}>
         <AdwToolbarView
             addTopBar={
@@ -54,7 +55,11 @@ export const App = () => (
     </AdwApplicationWindow>
 );
 
-export const applicationId = "com.example.myapp";
+export const App = () => (
+    <AdwApplication applicationId="com.example.myapp">
+        <MainWindow />
+    </AdwApplication>
+);
 ```
 
 ---

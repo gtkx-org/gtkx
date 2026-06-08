@@ -1,4 +1,4 @@
-import { attr, attrBool, childOf, type RawNode } from "./parse.js";
+import { attr, attrBool, childOf, childrenOf, type RawNode } from "./parse.js";
 import { type GirTypeRef, typeRefFromSlot } from "./type-ref.js";
 
 /** Direction of a `<parameter>` (`in`, `out`, `inout`). */
@@ -119,5 +119,29 @@ export const returnValueFromNode = (node: RawNode | undefined): GirReturnValue =
         transferOwnership: (attr(node, "transfer-ownership") ?? "none") as ParameterTransfer,
         nullable: attrBool(node, "nullable") || attrBool(node, "allow-none"),
         skip: attrBool(node, "skip"),
+    };
+};
+
+/** The name, parameters, and return value shared by every GIR callable element. */
+export type GirCallable = {
+    readonly name: string;
+    readonly parameters: readonly GirParameter[];
+    readonly returnValue: GirReturnValue;
+};
+
+/**
+ * Parses the `name`, `<parameters>`, and `<return-value>` shared by GIR
+ * callable elements such as `<callback>` and `<glib:signal>`.
+ *
+ * @param node - The callable element (a `<callback>`, `<glib:signal>`, etc.)
+ * @returns The callable's name, parsed parameters, and parsed return value.
+ */
+export const parseCallable = (node: RawNode): GirCallable => {
+    const parametersNode = childOf(node, "parameters");
+    const parameterNodes = childrenOf(parametersNode, "parameter");
+    return {
+        name: attr(node, "name") ?? "",
+        parameters: parameterNodes.map((parameter) => parameterFromNode(parameter)),
+        returnValue: returnValueFromNode(childOf(node, "return-value")),
     };
 };

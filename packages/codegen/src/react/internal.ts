@@ -94,7 +94,7 @@ const collectConstructOnly = (sources: readonly GirClass[]): readonly string[] =
     const names: string[] = [];
     for (const source of sources) {
         for (const property of source.properties) {
-            if (!property.constructOnly) continue;
+            if (!property.constructOnly || !property.introspectable) continue;
             const jsName = toIdentifier(toCamelCase(property.name));
             if (seen.has(jsName)) continue;
             seen.add(jsName);
@@ -129,7 +129,7 @@ const collectDefaultProps = (
     for (const { klass, namespaceName } of sources) {
         for (const property of klass.properties) {
             const settable = (property.writable || property.construct) && !property.constructOnly;
-            if (!settable) continue;
+            if (!settable || !property.introspectable) continue;
             const jsName = toIdentifier(toCamelCase(property.name));
             if (seen.has(jsName)) continue;
             seen.add(jsName);

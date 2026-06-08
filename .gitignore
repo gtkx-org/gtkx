@@ -10,6 +10,7 @@ out-tsc
 packages/**/README.md
 .pnpm-store
 .claude/
+CLAUDE.md
 
 # Local secrets
 .env

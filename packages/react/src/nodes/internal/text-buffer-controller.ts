@@ -1,13 +1,19 @@
 import type { SignalHandler } from "@gtkx/ffi";
-import type * as Gtk from "@gtkx/gi/gtk";
-import type { GtkTextViewProps } from "../../jsx.js";
+import type * as Gdk from "@gtkx/gi/gdk";
+import * as Gtk from "@gtkx/gi/gtk";
+import * as GtkSource from "@gtkx/gi/gtksource";
+import type { GtkSourceViewProps, GtkTextViewProps } from "../../jsx.js";
 import type { Node } from "../../node.js";
-import { TextAnchorNode } from "../text-anchor.js";
-import type { TextContentChild, TextContentParent } from "../text-content.js";
-import { TextPaintableNode } from "../text-paintable.js";
-import { TextSegmentNode } from "../text-segment.js";
-import { TextTagNode } from "../text-tag.js";
+import { createAfterCommitDebounce } from "../../post-commit-queue.js";
 import { hasChanged } from "./props.js";
+import {
+    type AnchorNode,
+    isAnchorWrapper,
+    isBufferContentWrapper,
+    isBufferTextWrapper,
+    isPaintableWrapper,
+} from "./text-wrapper.js";
+import { unparentWidget } from "./widget.js";
 
 type BufferCallbackProps = Pick<
     GtkTextViewProps,
@@ -16,67 +22,78 @@ type BufferCallbackProps = Pick<
 
 type BufferProps = Pick<GtkTextViewProps, "enableUndo" | "buffer"> & BufferCallbackProps;
 
-export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffer> {
-    private buffer: TBuffer | null = null;
+type SourceBufferProps = Pick<
+    GtkSourceViewProps,
+    | "language"
+    | "styleScheme"
+    | "highlightSyntax"
+    | "highlightMatchingBrackets"
+    | "implicitTrailingNewline"
+    | "onCursorMoved"
+    | "onHighlightUpdated"
+>;
+
+const resolveLanguage = (language: string | GtkSource.Language): GtkSource.Language | null =>
+    typeof language === "string" ? GtkSource.LanguageManager.getDefault().getLanguage(language) : language;
+
+const resolveStyleScheme = (scheme: string | GtkSource.StyleScheme): GtkSource.StyleScheme | null =>
+    typeof scheme === "string" ? GtkSource.StyleSchemeManager.getDefault().getScheme(scheme) : scheme;
+
+/**
+ * Owns the `Gtk.TextBuffer` of a single `Gtk.TextView` (or `GtkSource.View`),
+ * linearizing the view's React content children into buffer text, tag ranges,
+ * anchored widgets, and inline paintables.
+ *
+ * On every structural or content change the buffer is rebuilt in tree order:
+ * the children are walked depth-first while the buffer end iterator advances,
+ * text runs and inline paintables are inserted, anchored widgets occupy one
+ * anchor each, and each `Gtk.TextTag` is applied across the offset range its
+ * descendant content spans. The rebuild is bracketed by
+ * `beginIrreversibleAction`/`endIrreversibleAction` so it never pollutes the
+ * user-facing undo stack, and is coalesced to one pass per commit through a
+ * post-commit debounce. Buffer signal handlers are suppressed during a commit
+ * by the owner's signal store.
+ */
+export class TextBufferController {
+    private buffer: Gtk.TextBuffer | null = null;
     private externallyManaged = false;
-    private readonly textChildren: TextContentChild[] = [];
-    private initialMount = true;
-    private irreversibleStarted = false;
+    private managesContent = false;
+    private readonly anchoredWidgets = new Set<Gtk.Widget>();
+    private readonly requestRebuild: () => void;
 
+    /**
+     * @param owner - The `ElementNode` whose backing instance is the text view;
+     *   its `children` are the content the buffer is rebuilt from.
+     * @param view - The backing `Gtk.TextView` the buffer attaches to.
+     */
     constructor(
-        private readonly owner: Node & TextContentParent,
-        private readonly backingInstance: Gtk.TextView,
-        private readonly createBuffer: () => TBuffer,
-    ) {}
+        private readonly owner: Node,
+        private readonly view: Gtk.TextView,
+    ) {
+        this.requestRebuild = createAfterCommitDebounce(() => this.rebuild());
+    }
 
-    getBuffer(): TBuffer | null {
+    /** The view's current buffer, or `null` before one has been created. */
+    public getBuffer(): Gtk.TextBuffer | null {
         return this.buffer;
     }
 
-    ensureBuffer(): TBuffer {
-        if (!this.buffer) {
-            this.buffer = this.createBuffer();
-            this.backingInstance.setBuffer(this.buffer);
-        }
-        return this.buffer;
+    /** Schedules a single buffer rebuild to run after the current commit drains. */
+    public scheduleRebuild(): void {
+        this.requestRebuild();
     }
 
-    setExternalBuffer(buffer: Gtk.TextBuffer | null | undefined): void {
-        if (buffer) {
-            if (this.buffer === (buffer as TBuffer) && this.externallyManaged) return;
-            this.buffer = buffer as TBuffer;
-            this.externallyManaged = true;
-            this.backingInstance.setBuffer(buffer);
-        } else if (this.externallyManaged) {
-            this.buffer = null;
-            this.externallyManaged = false;
-        }
-    }
-
-    finalizeInitialMount(): void {
-        if (this.irreversibleStarted) {
-            this.buffer?.endIrreversibleAction();
-            this.irreversibleStarted = false;
-        }
-        this.initialMount = false;
-    }
-
-    applyOwnProps(oldProps: BufferProps | null, newProps: BufferProps): void {
+    /**
+     * Applies the text-view buffer props (`buffer`, `enableUndo`, the buffer
+     * signal callbacks) and schedules a content rebuild from the owner's
+     * children.
+     *
+     * @param oldProps - The previously-committed props, or `null` on first mount.
+     * @param newProps - The props to apply this commit.
+     */
+    public applyProps(oldProps: BufferProps | null, newProps: BufferProps): void {
         if (hasChanged(oldProps, newProps, "buffer")) {
             this.setExternalBuffer(newProps.buffer);
-        }
-
-        const hasBufferProps =
-            newProps.buffer !== undefined ||
-            newProps.enableUndo !== undefined ||
-            newProps.onBufferChanged !== undefined ||
-            newProps.onTextInserted !== undefined ||
-            newProps.onTextDeleted !== undefined ||
-            newProps.onCanUndoChanged !== undefined ||
-            newProps.onCanRedoChanged !== undefined;
-
-        if (!hasBufferProps && this.textChildren.length === 0) {
-            return;
         }
 
         const buffer = this.ensureBuffer();
@@ -85,289 +102,241 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
             buffer.setEnableUndo(newProps.enableUndo);
         }
 
-        const signalHandlersChanged =
+        this.applyBufferSignals(oldProps, newProps);
+        this.scheduleRebuild();
+    }
+
+    /**
+     * Applies the props specific to a `GtkSource.View`: syntax language, style
+     * scheme, highlight flags, the implicit trailing newline, and the
+     * cursor/highlight signal callbacks.
+     *
+     * @param oldProps - The previously-committed props, or `null` on first mount.
+     * @param newProps - The props to apply this commit.
+     */
+    public applySourceProps(oldProps: SourceBufferProps | null, newProps: SourceBufferProps): void {
+        const buffer = this.ensureBuffer();
+        if (!(buffer instanceof GtkSource.Buffer)) return;
+
+        this.applySourceBufferProps(buffer, oldProps, newProps);
+        this.applySourceSignals(oldProps, newProps);
+    }
+
+    /**
+     * Releases the controller's buffer signal handlers so the view tears down
+     * without leaving handlers connected. The buffer and its anchored widgets
+     * are finalized with the view; the controller leaves them untouched.
+     */
+    public dispose(): void {
+        if (this.buffer) this.owner.signalStore.clear(this);
+        this.anchoredWidgets.clear();
+        this.buffer = null;
+        this.externallyManaged = false;
+    }
+
+    private ensureBuffer(): Gtk.TextBuffer {
+        if (!this.buffer) {
+            this.buffer = this.createBuffer();
+            this.view.setBuffer(this.buffer);
+        }
+        return this.buffer;
+    }
+
+    private createBuffer(): Gtk.TextBuffer {
+        return this.view instanceof GtkSource.View ? new GtkSource.Buffer() : new Gtk.TextBuffer();
+    }
+
+    private setExternalBuffer(buffer: Gtk.TextBuffer | null | undefined): void {
+        if (buffer) {
+            if (this.buffer === buffer && this.externallyManaged) return;
+            this.detachBufferSignals();
+            this.buffer = buffer;
+            this.externallyManaged = true;
+            this.view.setBuffer(buffer);
+        } else if (this.externallyManaged) {
+            this.detachBufferSignals();
+            this.buffer = null;
+            this.externallyManaged = false;
+        }
+    }
+
+    private detachBufferSignals(): void {
+        if (this.buffer) this.owner.signalStore.clear(this);
+    }
+
+    private applyBufferSignals(oldProps: BufferProps | null, newProps: BufferProps): void {
+        const changed =
             hasChanged(oldProps, newProps, "onBufferChanged") ||
             hasChanged(oldProps, newProps, "onTextInserted") ||
             hasChanged(oldProps, newProps, "onTextDeleted") ||
             hasChanged(oldProps, newProps, "onCanUndoChanged") ||
             hasChanged(oldProps, newProps, "onCanRedoChanged");
+        if (!changed || !this.buffer) return;
 
-        if (signalHandlersChanged) {
-            this.setSignalHandlersChanged(newProps);
-        }
-    }
-
-    private buildBufferSignalHandlers(buffer: TBuffer, callbacks: BufferCallbackProps) {
-        const { onBufferChanged, onTextInserted, onTextDeleted, onCanUndoChanged, onCanRedoChanged } = callbacks;
-        return {
-            changed: onBufferChanged ? () => onBufferChanged(buffer) : null,
-            insertText: onTextInserted
-                ? (location: Gtk.TextIter, text: string) => onTextInserted(buffer, location.getOffset(), text)
+        const buffer = this.buffer;
+        const { onBufferChanged, onTextInserted, onTextDeleted, onCanUndoChanged, onCanRedoChanged } = newProps;
+        this.setBufferSignal("changed", onBufferChanged ? () => onBufferChanged(buffer) : null);
+        this.setBufferSignal(
+            "insert-text",
+            onTextInserted
+                ? (...args) => onTextInserted(buffer, (args[0] as Gtk.TextIter).getOffset(), args[1] as string)
                 : null,
-            deleteRange: onTextDeleted
-                ? (start: Gtk.TextIter, end: Gtk.TextIter) => onTextDeleted(buffer, start.getOffset(), end.getOffset())
+        );
+        this.setBufferSignal(
+            "delete-range",
+            onTextDeleted
+                ? (...args) =>
+                      onTextDeleted(
+                          buffer,
+                          (args[0] as Gtk.TextIter).getOffset(),
+                          (args[1] as Gtk.TextIter).getOffset(),
+                      )
                 : null,
-            canUndo: onCanUndoChanged ? () => onCanUndoChanged(buffer.getCanUndo()) : null,
-            canRedo: onCanRedoChanged ? () => onCanRedoChanged(buffer.getCanRedo()) : null,
-        } as Record<string, SignalHandler | null>;
+        );
+        this.setBufferSignal("notify::can-undo", onCanUndoChanged ? () => onCanUndoChanged(buffer.getCanUndo()) : null);
+        this.setBufferSignal("notify::can-redo", onCanRedoChanged ? () => onCanRedoChanged(buffer.getCanRedo()) : null);
     }
 
-    private setSignalHandlersChanged(callbacks: BufferCallbackProps): void {
+    private setBufferSignal(signal: string, handler: SignalHandler | null): void {
         if (!this.buffer) return;
+        this.owner.signalStore.set({ owner: this, obj: this.buffer, signal, handler });
+    }
 
+    private applySourceBufferProps(
+        buffer: GtkSource.Buffer,
+        oldProps: SourceBufferProps | null,
+        newProps: SourceBufferProps,
+    ): void {
+        if (hasChanged(oldProps, newProps, "language")) {
+            buffer.setLanguage(newProps.language !== undefined ? resolveLanguage(newProps.language) : null);
+        }
+        if (hasChanged(oldProps, newProps, "styleScheme")) {
+            buffer.setStyleScheme(newProps.styleScheme !== undefined ? resolveStyleScheme(newProps.styleScheme) : null);
+        }
+        if (hasChanged(oldProps, newProps, "highlightSyntax") || hasChanged(oldProps, newProps, "language")) {
+            buffer.setHighlightSyntax(newProps.highlightSyntax ?? newProps.language !== undefined);
+        }
+        if (hasChanged(oldProps, newProps, "highlightMatchingBrackets")) {
+            buffer.setHighlightMatchingBrackets(newProps.highlightMatchingBrackets ?? true);
+        }
+        if (
+            hasChanged(oldProps, newProps, "implicitTrailingNewline") &&
+            newProps.implicitTrailingNewline !== undefined
+        ) {
+            buffer.setImplicitTrailingNewline(newProps.implicitTrailingNewline);
+        }
+    }
+
+    private applySourceSignals(oldProps: SourceBufferProps | null, newProps: SourceBufferProps): void {
+        if (hasChanged(oldProps, newProps, "onCursorMoved")) {
+            const onCursorMoved = newProps.onCursorMoved;
+            this.setBufferSignal("cursor-moved", onCursorMoved ? () => onCursorMoved() : null);
+        }
+        if (hasChanged(oldProps, newProps, "onHighlightUpdated")) {
+            const onHighlightUpdated = newProps.onHighlightUpdated;
+            this.setBufferSignal(
+                "highlight-updated",
+                onHighlightUpdated
+                    ? (...args) => onHighlightUpdated(args[0] as Gtk.TextIter, args[1] as Gtk.TextIter)
+                    : null,
+            );
+        }
+    }
+
+    private hasManagedChildren(): boolean {
+        return this.owner.children.some(
+            (child) => isBufferContentWrapper(child) || child.backingInstance instanceof Gtk.TextTag,
+        );
+    }
+
+    private rebuild(): void {
         const buffer = this.buffer;
-        const handlers = this.buildBufferSignalHandlers(buffer, callbacks);
+        if (!buffer) return;
 
-        const owner = this.owner;
-        owner.signalStore.set({ owner, obj: buffer, signal: "changed", handler: handlers.changed });
-        owner.signalStore.set({ owner, obj: buffer, signal: "insert-text", handler: handlers.insertText });
-        owner.signalStore.set({ owner, obj: buffer, signal: "delete-range", handler: handlers.deleteRange });
-        owner.signalStore.set({ owner, obj: buffer, signal: "notify::can-undo", handler: handlers.canUndo });
-        owner.signalStore.set({ owner, obj: buffer, signal: "notify::can-redo", handler: handlers.canRedo });
-    }
+        if (this.hasManagedChildren()) this.managesContent = true;
+        if (!this.managesContent) return;
 
-    appendChild(child: TextContentChild): void {
-        const buffer = this.ensureBuffer();
-        this.beginIrreversibleIfMounting(buffer);
-
-        const wasMoved = this.removeIfPresent(child);
-
-        const offset = this.getTotalLength();
-        this.textChildren.push(child);
-        this.placeChildAtOffset(child, offset, buffer);
-
-        if (wasMoved) {
-            this.updateChildOffsets(0);
-            this.reapplyTagsFromOffset(0);
+        this.owner.signalStore.blockAll();
+        buffer.beginIrreversibleAction();
+        try {
+            this.detachAnchoredWidgets();
+            this.clearBuffer(buffer);
+            this.insertChildren(buffer, this.owner.children);
+        } finally {
+            buffer.endIrreversibleAction();
+            this.owner.signalStore.unblockAll();
         }
     }
 
-    insertBefore(child: TextContentChild, before: TextContentChild): void {
-        const buffer = this.ensureBuffer();
-        this.beginIrreversibleIfMounting(buffer);
-
-        this.removeIfPresent(child);
-
-        const beforeIndex = this.textChildren.indexOf(before);
-        const insertIndex = beforeIndex === -1 ? this.textChildren.length : beforeIndex;
-
-        let offset = 0;
-        for (let i = 0; i < insertIndex; i++) {
-            const c = this.textChildren[i];
-            if (c) offset += c.getLength();
-        }
-
-        this.textChildren.splice(insertIndex, 0, child);
-        this.placeChildAtOffset(child, offset, buffer);
-
-        this.updateChildOffsets(0);
-        this.reapplyTagsFromOffset(0);
+    private detachAnchoredWidgets(): void {
+        for (const widget of this.anchoredWidgets) unparentWidget(widget);
+        this.anchoredWidgets.clear();
     }
 
-    private beginIrreversibleIfMounting(buffer: Gtk.TextBuffer): void {
-        if (this.initialMount && !this.irreversibleStarted) {
-            buffer.beginIrreversibleAction();
-            this.irreversibleStarted = true;
-        }
+    private clearBuffer(buffer: Gtk.TextBuffer): void {
+        const start = buffer.getStartIter();
+        const end = buffer.getEndIter();
+        if (!start.equal(end)) buffer.delete(start, end);
+
+        const tagTable = buffer.getTagTable();
+        const tags: Gtk.TextTag[] = [];
+        tagTable.foreach((tag) => tags.push(tag));
+        for (const tag of tags) tagTable.remove(tag);
     }
 
-    private removeIfPresent(child: TextContentChild): boolean {
-        const existingIndex = this.textChildren.indexOf(child);
-        if (existingIndex === -1) return false;
-
-        const oldOffset = child.getBufferOffset();
-        const oldLength = child.getLength();
-
-        this.textChildren.splice(existingIndex, 1);
-
-        if (oldLength > 0) {
-            this.deleteTextAtRange(oldOffset, oldOffset + oldLength);
-        }
-
-        this.updateChildOffsets(existingIndex);
-        return true;
-    }
-
-    private placeChildAtOffset(child: TextContentChild, offset: number, buffer: Gtk.TextBuffer): void {
-        child.setBufferOffset(offset);
-
-        if (child instanceof TextSegmentNode) {
-            this.insertTextAtOffset(child.getText(), offset);
-        } else if (child instanceof TextTagNode) {
-            this.insertTextAtOffset(child.getText(), offset);
-            if (!child.hasBuffer()) {
-                child.setBuffer(buffer);
-            }
-            this.setupEmbeddedObjects(child);
-        } else if (child instanceof TextAnchorNode || child instanceof TextPaintableNode) {
-            child.setTextViewAndBuffer(this.backingInstance, buffer);
-        }
-    }
-
-    removeChild(child: TextContentChild): void {
-        const index = this.textChildren.indexOf(child);
-        if (index === -1) return;
-
-        const offset = child.getBufferOffset();
-        const length = child.getLength();
-
-        this.textChildren.splice(index, 1);
-
-        if (this.buffer && length > 0) {
-            this.deleteTextAtRange(offset, offset + length);
-        }
-
-        this.updateChildOffsets(index);
-        this.reapplyTagsFromOffset(offset);
-    }
-
-    private setupEmbeddedObjects(tag: TextTagNode): void {
-        if (!this.buffer) return;
-
-        for (const child of tag.children) {
-            if (child instanceof TextPaintableNode || child instanceof TextAnchorNode) {
-                this.deleteTextAtRange(child.getBufferOffset(), child.getBufferOffset() + 1);
-                child.setTextViewAndBuffer(this.backingInstance, this.buffer);
-            } else if (child instanceof TextTagNode) {
-                this.setupEmbeddedObjects(child);
-            }
-        }
-
-        tag.reapplyTag();
-    }
-
-    private getTotalLength(): number {
-        let length = 0;
-        for (const child of this.textChildren) {
-            length += child.getLength();
-        }
-        return length;
-    }
-
-    private insertTextAtOffset(text: string, offset: number): void {
-        const buffer = this.buffer;
-        if (!buffer || text.length === 0) return;
-
-        const iter = buffer.getIterAtOffset(offset);
-        buffer.insert(iter, text, -1);
-    }
-
-    private deleteTextAtRange(start: number, end: number): void {
-        const buffer = this.buffer;
-        if (!buffer || start >= end) return;
-
-        const startIter = buffer.getIterAtOffset(start);
-        const endIter = buffer.getIterAtOffset(end);
-        buffer.delete(startIter, endIter);
-    }
-
-    private updateChildOffsets(startIndex: number): void {
-        let offset = 0;
-
-        for (let i = 0; i < startIndex; i++) {
-            const child = this.textChildren[i];
-            if (child) offset += child.getLength();
-        }
-
-        for (let i = startIndex; i < this.textChildren.length; i++) {
-            const child = this.textChildren[i];
-            if (child) {
-                child.setBufferOffset(offset);
-                offset += child.getLength();
-            }
-        }
-    }
-
-    private reapplyAllTagsRecursive(children: TextContentChild[]): void {
+    private insertChildren(buffer: Gtk.TextBuffer, children: readonly Node[]): void {
         for (const child of children) {
-            if (child instanceof TextTagNode) {
-                child.reapplyTag();
-                this.reapplyAllTagsRecursive(child.children);
-            }
+            this.insertChild(buffer, child);
         }
     }
 
-    private reapplyTagsFromOffset(fromOffset: number): void {
-        for (const child of this.textChildren) {
-            if (child instanceof TextTagNode) {
-                if (child.getBufferOffset() + child.getLength() > fromOffset) {
-                    child.reapplyTag();
-                    this.reapplyAllTagsRecursive(child.children);
-                }
-            }
+    private insertChild(buffer: Gtk.TextBuffer, child: Node): void {
+        const instance = child.backingInstance;
+        if (isBufferTextWrapper(child)) {
+            this.insertText(buffer, child.props.text);
+        } else if (isPaintableWrapper(child)) {
+            this.insertPaintable(buffer, child.props.paintable);
+        } else if (isAnchorWrapper(child)) {
+            this.insertAnchor(buffer, child);
+        } else if (instance instanceof Gtk.TextTag) {
+            this.insertTag(buffer, child, instance);
         }
     }
 
-    private findDirectChildContaining(offset: number): number {
-        for (let i = 0; i < this.textChildren.length; i++) {
-            const child = this.textChildren[i];
-            if (child) {
-                const start = child.getBufferOffset();
-                const end = start + child.getLength();
-                if (offset >= start && offset <= end) {
-                    return i;
-                }
-            }
+    private insertTag(buffer: Gtk.TextBuffer, element: Node, tag: Gtk.TextTag): void {
+        const tagTable = buffer.getTagTable();
+        if (tag.name && !tagTable.lookup(tag.name)) tagTable.add(tag);
+
+        const start = buffer.getCharCount();
+        this.insertChildren(buffer, element.children);
+        const end = buffer.getCharCount();
+        if (end > start) {
+            buffer.applyTag(tag, buffer.getIterAtOffset(start), buffer.getIterAtOffset(end));
         }
-        return -1;
     }
 
-    onChildInserted(child: TextContentChild): void {
-        if (!this.buffer) return;
-
-        if (child instanceof TextPaintableNode) {
-            child.setTextViewAndBuffer(this.backingInstance, this.buffer);
-        } else if (child instanceof TextAnchorNode) {
-            child.setTextViewAndBuffer(this.backingInstance, this.buffer);
-        } else {
-            const text = child.getText();
-            if (text.length > 0) {
-                this.insertTextAtOffset(text, child.getBufferOffset());
-            }
-            if (child instanceof TextTagNode) {
-                this.setupEmbeddedObjects(child);
-            }
+    private insertAnchor(buffer: Gtk.TextBuffer, wrapper: AnchorNode): void {
+        const child = wrapper.children[0];
+        const widget = child?.backingInstance;
+        const replacement = wrapper.props.replacementChar;
+        const anchor =
+            typeof replacement === "string"
+                ? Gtk.TextChildAnchor.newWithReplacement(replacement)
+                : Gtk.TextChildAnchor.new();
+        buffer.insertChildAnchor(buffer.getEndIter(), anchor);
+        if (widget instanceof Gtk.Widget) {
+            unparentWidget(widget);
+            this.view.addChildAtAnchor(widget, anchor);
+            this.anchoredWidgets.add(widget);
         }
-
-        const containingIndex = this.findDirectChildContaining(child.getBufferOffset());
-        if (containingIndex !== -1) {
-            this.updateChildOffsets(containingIndex + 1);
-        }
-
-        this.reapplyTagsFromOffset(child.getBufferOffset());
     }
 
-    onChildRemoved(child: TextContentChild): void {
-        if (!this.buffer) return;
-
-        const offset = child.getBufferOffset();
-        const length = child.getLength();
-
-        if (length > 0) {
-            this.deleteTextAtRange(offset, offset + length);
-        }
-
-        const containingIndex = this.findDirectChildContaining(offset);
-        if (containingIndex !== -1) {
-            this.updateChildOffsets(containingIndex + 1);
-        }
-
-        this.reapplyTagsFromOffset(offset);
+    private insertPaintable(buffer: Gtk.TextBuffer, paintable: Gdk.Paintable): void {
+        buffer.insertPaintable(buffer.getEndIter(), paintable);
     }
 
-    onChildTextChanged(child: TextSegmentNode, oldLength: number): void {
-        if (!this.buffer) return;
-
-        const offset = child.getBufferOffset();
-
-        this.deleteTextAtRange(offset, offset + oldLength);
-        this.insertTextAtOffset(child.getText(), offset);
-
-        const containingIndex = this.findDirectChildContaining(offset);
-        if (containingIndex !== -1) {
-            this.updateChildOffsets(containingIndex + 1);
-        }
-
-        this.reapplyTagsFromOffset(offset);
+    private insertText(buffer: Gtk.TextBuffer, text: string): void {
+        if (text.length === 0) return;
+        buffer.insert(buffer.getEndIter(), text, -1);
     }
 }

@@ -5,6 +5,7 @@ import {
     AdwSpinRow,
     AdwSwitchRow,
     createPortal,
+    useAdjustment,
     useApplication,
     useProperty,
     useSetting,
@@ -18,6 +19,7 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
     const [compactMode, setCompactMode] = useSetting(schemaId, "compact-mode", "boolean");
     const [spellCheck, setSpellCheck] = useSetting(schemaId, "spell-check", "boolean");
     const [fontSize, setFontSize] = useSetting(schemaId, "font-size", "int");
+    const fontSizeAdjustment = useAdjustment({ value: fontSize, lower: 8, upper: 32, stepIncrement: 1 });
 
     if (!activeWindow) return null;
 
@@ -29,7 +31,7 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
                         title="Compact Mode"
                         subtitle="Use smaller spacing in the note list"
                         active={compactMode}
-                        onActiveChanged={setCompactMode}
+                        onNotifyActive={(active) => setCompactMode(active ?? false)}
                     />
                 </AdwPreferencesGroup>
                 <AdwPreferencesGroup title="Editor">
@@ -37,16 +39,13 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
                         title="Spell Check"
                         subtitle="Highlight spelling errors while typing"
                         active={spellCheck}
-                        onActiveChanged={setSpellCheck}
+                        onNotifyActive={(active) => setSpellCheck(active ?? false)}
                     />
                     <AdwSpinRow
                         title="Font Size"
                         subtitle="Base font size for the editor"
-                        value={fontSize}
-                        lower={8}
-                        upper={32}
-                        stepIncrement={1}
-                        onValueChanged={setFontSize}
+                        adjustment={fontSizeAdjustment}
+                        onNotifyValue={(value) => setFontSize(value ?? 8)}
                     />
                 </AdwPreferencesGroup>
             </AdwPreferencesPage>

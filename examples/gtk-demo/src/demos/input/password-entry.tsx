@@ -8,8 +8,8 @@ import sourceCode from "./password-entry.tsx?raw";
 
 interface PasswordEntryContextValue {
     passwordsMatch: boolean;
-    handlePasswordNotify: (pspec: GObject.ParamSpec, self: Gtk.Widget) => void;
-    handleConfirmNotify: (pspec: GObject.ParamSpec, self: Gtk.Widget) => void;
+    handlePasswordNotify: (pspec: GObject.ParamSpec, self: Gtk.PasswordEntry) => void;
+    handleConfirmNotify: (pspec: GObject.ParamSpec, self: Gtk.PasswordEntry) => void;
 }
 
 const PasswordEntryContext = createContext<PasswordEntryContextValue | null>(null);
@@ -26,12 +26,12 @@ const PasswordEntryProvider = ({ children }: DemoProviderProps) => {
 
     const passwordsMatch = password.length > 0 && password === confirm;
 
-    const handlePasswordNotify = useCallback((pspec: GObject.ParamSpec, self: Gtk.Widget) => {
-        if (pspec.getName() === "text") setPassword((self as Gtk.PasswordEntry).getText() ?? "");
+    const handlePasswordNotify = useCallback((pspec: GObject.ParamSpec, self: Gtk.PasswordEntry) => {
+        if (pspec.getName() === "text") setPassword(self.getText() ?? "");
     }, []);
 
-    const handleConfirmNotify = useCallback((pspec: GObject.ParamSpec, self: Gtk.Widget) => {
-        if (pspec.getName() === "text") setConfirm((self as Gtk.PasswordEntry).getText() ?? "");
+    const handleConfirmNotify = useCallback((pspec: GObject.ParamSpec, self: Gtk.PasswordEntry) => {
+        if (pspec.getName() === "text") setConfirm(self.getText() ?? "");
     }, []);
 
     const value = useMemo<PasswordEntryContextValue>(

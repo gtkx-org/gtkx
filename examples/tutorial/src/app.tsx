@@ -1,6 +1,7 @@
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
+    AdwApplication,
     AdwApplicationWindow,
     AdwHeaderBar,
     AdwNavigationSplitView,
@@ -16,7 +17,10 @@ import {
     GtkScrolledWindow,
     GtkSearchBar,
     GtkSearchEntry,
+    GtkShortcut,
     GtkShortcutController,
+    MenuItem,
+    MenuSection,
     quit,
     useApplication,
     useSetting,
@@ -218,24 +222,19 @@ const MainMenu = ({
 
     return (
         <GtkMenuButton iconName="open-menu-symbolic" tooltipText="Main Menu">
-            <GtkMenuButton.MenuItem id="new" label="New Note" onActivate={onAddNote} accels="<Control>n" />
-            <GtkMenuButton.MenuSection>
-                <GtkMenuButton.MenuItem
-                    id="preferences"
-                    label="Preferences"
-                    onActivate={onPreferences}
-                    accels="<Control>comma"
-                />
-                <GtkMenuButton.MenuItem
+            <MenuItem id="new" label="New Note" onActivate={onAddNote} accels="<Control>n" />
+            <MenuSection>
+                <MenuItem id="preferences" label="Preferences" onActivate={onPreferences} accels="<Control>comma" />
+                <MenuItem
                     id="shortcuts"
                     label="Keyboard Shortcuts"
                     onActivate={onShortcuts}
                     accels="<Control>question"
                 />
-            </GtkMenuButton.MenuSection>
-            <GtkMenuButton.MenuSection>
-                <GtkMenuButton.MenuItem id="about" label="About Notes" onActivate={onAbout} />
-            </GtkMenuButton.MenuSection>
+            </MenuSection>
+            <MenuSection>
+                <MenuItem id="about" label="About Notes" onActivate={onAbout} />
+            </MenuSection>
         </GtkMenuButton>
     );
 };
@@ -243,7 +242,7 @@ const MainMenu = ({
 const ViewModeToggle = ({ viewMode, onChange }: { viewMode: string; onChange: (name: string) => void }) => (
     <AdwToggleGroup
         activeName={viewMode}
-        onActiveChanged={(_index, name) => onChange(name ?? "list")}
+        onNotifyActiveName={(name) => onChange(name ?? "list")}
         toggles={[
             { id: "list", iconName: "view-list-symbolic", tooltip: "List View" },
             { id: "grid", iconName: "view-grid-symbolic", tooltip: "Grid View" },
@@ -369,7 +368,7 @@ const ContentBody = ({
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
                     <GtkSearchBar
                         searchModeEnabled={searchMode}
-                        onSearchModeChanged={setSearchMode}
+                        onNotifySearchModeEnabled={(enabled) => setSearchMode(enabled ?? false)}
                         keyCaptureWidget={searchEntryRef.current}
                     >
                         <GtkSearchEntry
@@ -489,16 +488,22 @@ interface AppShortcutsProps {
     setSelectedId: (id: string | null) => void;
 }
 
+const shortcut = (accelerator: string, run: () => void, enabled = true) => (
+    <GtkShortcut
+        trigger={enabled ? Gtk.ShortcutTrigger.parseString(accelerator) : Gtk.NeverTrigger.get()}
+        action={Gtk.CallbackAction.new(() => {
+            run();
+            return true;
+        })}
+    />
+);
+
 const AppShortcuts = ({ selectedId, addNote, deleteSelected, setSearchMode, setSelectedId }: AppShortcutsProps) => (
     <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-        <GtkShortcutController.Shortcut trigger="<Control>n" onActivate={addNote} />
-        <GtkShortcutController.Shortcut trigger="Delete" onActivate={deleteSelected} disabled={!selectedId} />
-        <GtkShortcutController.Shortcut trigger="<Control>f" onActivate={() => setSearchMode(true)} />
-        <GtkShortcutController.Shortcut
-            trigger="Escape"
-            onActivate={() => setSelectedId(null)}
-            disabled={!selectedId}
-        />
+        {shortcut("<Control>n", addNote)}
+        {shortcut("Delete", deleteSelected, Boolean(selectedId))}
+        {shortcut("<Control>f", () => setSearchMode(true))}
+        {shortcut("Escape", () => setSelectedId(null), Boolean(selectedId))}
     </GtkShortcutController>
 );
 
@@ -613,7 +618,7 @@ const AppBody = ({
     </AdwNavigationSplitView>
 );
 
-export function App() {
+function NotesWindow() {
     const [compactMode] = useSetting(schemaId, "compact-mode", "boolean");
     const [fontSize] = useSetting(schemaId, "font-size", "int");
     const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
@@ -660,5 +665,13 @@ export function App() {
                 setShowAbout={dialogs.setShowAbout}
             />
         </AdwApplicationWindow>
+    );
+}
+
+export function App() {
+    return (
+        <AdwApplication applicationId="com.gtkx.tutorial">
+            <NotesWindow />
+        </AdwApplication>
     );
 }

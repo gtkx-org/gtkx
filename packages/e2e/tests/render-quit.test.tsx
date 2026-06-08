@@ -1,8 +1,8 @@
 import { whenStopped } from "@gtkx/ffi";
 import * as Gio from "@gtkx/gi/gio";
-import * as Gtk from "@gtkx/gi/gtk";
-import { GtkApplicationWindow, quit, render, useApplication } from "@gtkx/react";
-import { Component, type ReactNode } from "react";
+import type * as Gtk from "@gtkx/gi/gtk";
+import { GtkApplication, GtkApplicationWindow, quit, render, useApplication } from "@gtkx/react";
+import { Component, createRef, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 declare global {
@@ -22,10 +22,7 @@ afterEach(() => {
 
 describe("render and quit", () => {
     it("logs caught render errors via console.error and registers the app", async () => {
-        const app = new Gtk.Application({
-            applicationId: "org.gtkx.render-coverage",
-            flags: Gio.ApplicationFlags.NON_UNIQUE,
-        });
+        const appRef = createRef<Gtk.Application>();
         const stopHandler = vi.fn();
         whenStopped().then(stopHandler);
         const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -58,14 +55,24 @@ describe("render and quit", () => {
             );
         };
 
-        render(<Probe />, app);
+        render(
+            <GtkApplication
+                ref={appRef}
+                applicationId="org.gtkx.render-coverage"
+                flags={Gio.ApplicationFlags.NON_UNIQUE}
+            >
+                <Probe />
+            </GtkApplication>,
+        );
         await new Promise((resolve) => setTimeout(resolve, 0));
 
         const messages = errorSpy.mock.calls.map((call) => String(call[0])).join("\n");
         expect(messages).toContain("boom-from-render");
         errorSpy.mockRestore();
 
-        expect(app.getIsRegistered()).toBe(true);
+        const app = appRef.current;
+        expect(app).not.toBeNull();
+        expect(app?.getIsRegistered()).toBe(true);
         expect(resolvedApp).toBe(app);
 
         quit();

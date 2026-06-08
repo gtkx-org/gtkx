@@ -7,15 +7,20 @@ import { DiscreteEventPriority } from "react-reconciler/constants.js";
 import { createNode, resolveContainerClass } from "./factory.js";
 import type { Node } from "./node.js";
 import { isBuffered } from "./nodes/internal/predicates.js";
+import { BUFFER_TEXT_KIND } from "./nodes/internal/text-buffer-kinds.js";
+import { scheduleBufferRebuild } from "./nodes/internal/text-buffer-rebuild.js";
+import { isBufferTextWrapper } from "./nodes/internal/text-wrapper.js";
+import { RootNode } from "./nodes/root.js";
+import { WrapperNode } from "./nodes/wrapper.js";
 import { beginCommit, drainAfterCommit, endCommit } from "./post-commit-queue.js";
 import { reportReconcilerError } from "./reconciler-error-sink.js";
-import type { BackingInstance, Props } from "./types.js";
+import type { BackingInstance, ContainerInfo, Props } from "./types.js";
 
 declare global {
-    var __GTKX_CONTAINER_NODE_CACHE__: WeakMap<BackingInstance, Node> | undefined;
+    var __GTKX_CONTAINER_NODE_CACHE__: WeakMap<ContainerInfo, Node> | undefined;
 }
 
-globalThis.__GTKX_CONTAINER_NODE_CACHE__ ??= new WeakMap<BackingInstance, Node>();
+globalThis.__GTKX_CONTAINER_NODE_CACHE__ ??= new WeakMap<ContainerInfo, Node>();
 
 const containerNodeCache = globalThis.__GTKX_CONTAINER_NODE_CACHE__;
 
@@ -27,7 +32,7 @@ type HostContext = {
 type HostConfig = ReactReconciler.HostConfig<
     string,
     Props,
-    BackingInstance,
+    ContainerInfo,
     Node,
     Node,
     never,
@@ -41,17 +46,24 @@ type HostConfig = ReactReconciler.HostConfig<
     number
 >;
 
-export type ReconcilerInstance = ReactReconciler.Reconciler<BackingInstance, Node, Node, never, never, PublicInstance>;
+export type ReconcilerInstance = ReactReconciler.Reconciler<ContainerInfo, Node, Node, never, never, PublicInstance>;
 
-const getOrCreateContainerNode = (container: BackingInstance): Node => {
+const hasGType = (container: ContainerInfo): container is BackingInstance =>
+    typeof (container as { __gtype__?: unknown }).__gtype__ === "number";
+
+const getOrCreateContainerNode = (container: ContainerInfo): Node => {
     let node = containerNodeCache.get(container);
 
     if (!node) {
-        const runtimeName = typeName(container.__gtype__);
-        if (!runtimeName) {
-            throw new Error("Cannot resolve runtime GLib type name for container");
+        if (!hasGType(container)) {
+            node = new RootNode(container);
+        } else {
+            const runtimeName = typeName(container.__gtype__);
+            if (!runtimeName) {
+                throw new Error("Cannot resolve runtime GLib type name for container");
+            }
+            node = createNode(runtimeName, {}, container, container);
         }
-        node = createNode(runtimeName, {}, container, container);
         containerNodeCache.set(container, node);
     }
 
@@ -129,7 +141,7 @@ const createHostContextConfig = (): HostContextConfig => ({
     getRootHostContext: () => ({}),
     getChildHostContext: (parentHostContext, type) => {
         const containerClass = resolveContainerClass(type);
-        if ((containerClass && isBuffered(containerClass.prototype)) || type === "TextTag") {
+        if ((containerClass && isBuffered(containerClass.prototype)) || type === "GtkTextTag") {
             return { insideTextBuffer: true };
         }
         if (parentHostContext.insideTextBuffer) {
@@ -148,9 +160,11 @@ type InstanceConfig = Pick<
 const createInstanceConfig = (): InstanceConfig => ({
     createInstance: (type, props, rootContainer) => createNode(type, props, undefined, rootContainer),
     createTextInstance: (text, rootContainer, hostContext) => {
-        const props = hostContext.insideTextBuffer ? { text } : { label: text };
-        const type = hostContext.insideTextBuffer ? "TextSegment" : "GtkLabel";
-        const node = createNode(type, props, undefined, rootContainer);
+        if (hostContext.insideTextBuffer) {
+            return new WrapperNode(BUFFER_TEXT_KIND, { text }, undefined, rootContainer);
+        }
+        const props = { label: text };
+        const node = createNode("GtkLabel", props, undefined, rootContainer);
         withSignalsBlocked(node, () => node.commitUpdate(null, props));
         return node;
     },
@@ -213,8 +227,12 @@ const createCommitConfig = (): CommitConfig => ({
         }
     },
     commitTextUpdate: (textInstance, oldText, newText) => {
-        const key = textInstance.typeName === "TextSegment" ? "text" : "label";
-        withSignalsBlocked(textInstance, () => textInstance.commitUpdate({ [key]: oldText }, { [key]: newText }));
+        if (isBufferTextWrapper(textInstance)) {
+            textInstance.commitUpdate({ text: oldText }, { text: newText });
+            scheduleBufferRebuild(textInstance);
+            return;
+        }
+        withSignalsBlocked(textInstance, () => textInstance.commitUpdate({ label: oldText }, { label: newText }));
     },
     prepareForCommit: () => {
         beginCommit();

@@ -18,6 +18,12 @@ export type GirProperty = {
     readonly writable: boolean;
     readonly construct: boolean;
     readonly constructOnly: boolean;
+    /**
+     * Whether the property is exposed to introspection. A property marked
+     * `introspectable="0"` (e.g. one typed against a private C type) carries no
+     * usable value type and cannot be marshalled, so generators omit it.
+     */
+    readonly introspectable: boolean;
     readonly transferOwnership: ParameterTransfer;
     /** Optional method name that backs the property's getter (`getter="get_foo"`). */
     readonly getter: string | undefined;
@@ -40,6 +46,7 @@ export const propertyFromNode = (node: RawNode): GirProperty => ({
     writable: attrBool(node, "writable"),
     construct: attrBool(node, "construct"),
     constructOnly: attrBool(node, "construct-only"),
+    introspectable: attrBool(node, "introspectable", true),
     transferOwnership: (attr(node, "transfer-ownership") ?? "none") as ParameterTransfer,
     getter: attr(node, "getter"),
     setter: attr(node, "setter"),

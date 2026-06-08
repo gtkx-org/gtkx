@@ -1,0 +1,7 @@
+{
+    "extends": "./tsconfig.lib.json",
+    "compilerOptions": {
+        "outDir": "${configDir}/out-tsc/app",
+        "tsBuildInfoFile": "${configDir}/out-tsc/app/tsconfig.app.tsbuildinfo"
+    }
+}

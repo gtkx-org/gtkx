@@ -2,9 +2,10 @@ import { AdwNavigationSplitView as AdwNavigationSplitViewBase } from "@gtkx/reac
 import type { AdwNavigationSplitViewProps, AdwNavigationViewProps } from "@gtkx/react-jsx/jsx";
 import type { ReactNode } from "react";
 import type { NavigationSplitViewPageProps, NavigationViewPageProps } from "../jsx.js";
+import { WRAPPER_NODE_ELEMENT } from "../nodes/wrapper.js";
 
 const AdwNavigationViewElement = "AdwNavigationView" as const;
-const NavigationPageElement = "NavigationPage" as const;
+const WrapperNodeElement = WRAPPER_NODE_ELEMENT;
 
 /**
  * Declarative wrapper for `Adw.NavigationView`.
@@ -20,7 +21,9 @@ export const AdwNavigationView: ((props: AdwNavigationViewProps) => ReactNode) &
      */
     Page: (props: NavigationViewPageProps) => ReactNode;
 } = Object.assign((props: AdwNavigationViewProps): ReactNode => <AdwNavigationViewElement {...props} />, {
-    Page: (props: NavigationViewPageProps): ReactNode => <NavigationPageElement for="AdwNavigationView" {...props} />,
+    Page: (props: NavigationViewPageProps): ReactNode => (
+        <WrapperNodeElement kind="wrap-then-add" for="AdwNavigationView" {...props} />
+    ),
 });
 
 /**
@@ -40,6 +43,6 @@ export const AdwNavigationSplitView: ((props: AdwNavigationSplitViewProps) => Re
     Page: (props: NavigationSplitViewPageProps) => ReactNode;
 } = Object.assign(AdwNavigationSplitViewBase, {
     Page: (props: NavigationSplitViewPageProps): ReactNode => (
-        <NavigationPageElement for="AdwNavigationSplitView" {...props} />
+        <WrapperNodeElement kind="wrap-then-add" for="AdwNavigationSplitView" {...props} />
     ),
 });

@@ -1,5 +1,5 @@
-import { type GirParameter, type GirReturnValue, parameterFromNode, returnValueFromNode } from "./parameter.js";
-import { attr, childOf, childrenOf, type RawNode } from "./parse.js";
+import { type GirParameter, type GirReturnValue, parseCallable } from "./parameter.js";
+import { attr, type RawNode } from "./parse.js";
 
 /** A `<callback>` declaration (top-level inside a namespace or nested in a field). */
 export type GirCallback = {
@@ -12,13 +12,7 @@ export type GirCallback = {
 /**
  * Builds a {@link GirCallback} from a `<callback>` element.
  */
-export const callbackFromNode = (node: RawNode): GirCallback => {
-    const parametersNode = childOf(node, "parameters");
-    const parameterNodes = childrenOf(parametersNode, "parameter");
-    return {
-        name: attr(node, "name") ?? "",
-        parameters: parameterNodes.map((parameter) => parameterFromNode(parameter)),
-        returnValue: returnValueFromNode(childOf(node, "return-value")),
-        introspectable: attr(node, "introspectable") !== "0",
-    };
-};
+export const callbackFromNode = (node: RawNode): GirCallback => ({
+    ...parseCallable(node),
+    introspectable: attr(node, "introspectable") !== "0",
+});

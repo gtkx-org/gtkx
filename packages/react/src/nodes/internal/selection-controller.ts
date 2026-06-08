@@ -1,10 +1,20 @@
 import * as Adw from "@gtkx/gi/adw";
 import type * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import type { Node } from "../../node.js";
 import type { ListModelController } from "./list-model-controller.js";
+import type { SignalStore } from "./signal-store.js";
 
 type SelectionCallback = ((ids: string[]) => void) | ((id: string) => void) | null | undefined;
+
+/**
+ * The owner a selection controller routes its signal connections through: a
+ * `SignalStore` paired with a stable key the store dedupes handlers by. Both the
+ * reconciler node and the hand-written list controller satisfy this shape.
+ */
+export interface SelectionSignalOwner {
+    /** The store the controller connects and clears signal handlers on. */
+    readonly signalStore: SignalStore;
+}
 
 /**
  * The slice of the list node the selection controller drives back: the
@@ -28,7 +38,7 @@ export class SelectionController {
     public selectionModel: Gtk.SingleSelection | Gtk.MultiSelection | Gtk.NoSelection | null = null;
 
     constructor(
-        private readonly owner: Node,
+        private readonly owner: SelectionSignalOwner,
         private readonly backingInstance: Gtk.Widget,
         private readonly model: ListModelController,
         private readonly host: SelectionHost,

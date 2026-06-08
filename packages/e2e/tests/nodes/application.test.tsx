@@ -1,17 +1,41 @@
+import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkApplicationWindow } from "@gtkx/react";
+import { GtkApplication, GtkApplicationWindow, Menu, MenuItem, MenuSubmenu } from "@gtkx/react";
 import { render } from "@gtkx/testing";
+import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 
-const MenuSubmenu = "MenuSubmenu" as const;
-const MenuItem = "MenuItem" as const;
+const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
+
+let nextAppId = 0;
+const uniqueAppId = (): string => `org.gtkx.applicationtest${nextAppId++}`;
+
+const MenubarApp = ({
+    appRef,
+    appId,
+    menubar,
+}: {
+    appRef: RefObject<Gtk.Application | null>;
+    appId: string;
+    menubar: ReactNode;
+}): ReactNode => (
+    <GtkApplication ref={appRef} applicationId={appId} flags={APP_FLAGS} menubar={menubar}>
+        <GtkApplicationWindow defaultWidth={800} defaultHeight={600} />
+    </GtkApplication>
+);
+
+const renderApp = async (menubar: ReactNode): Promise<Gtk.Application> => {
+    const ref = createRef<Gtk.Application>();
+    await render(<MenubarApp appRef={ref} appId={uniqueAppId()} menubar={menubar} />, { wrapper: false });
+    if (!ref.current) throw new Error("Expected application instance");
+    return ref.current;
+};
 
 describe("render - Application", () => {
-    describe("ApplicationNode", () => {
-        it("sets menubar from Menu children", async () => {
-            const { baseElement } = await render(
-                <>
-                    <GtkApplicationWindow defaultWidth={800} defaultHeight={600} />
+    describe("menubar slot", () => {
+        it("sets menubar from a Menu", async () => {
+            const app = await renderApp(
+                <Menu>
                     <MenuSubmenu label="File">
                         <MenuItem id="new" label="New" onActivate={() => {}} />
                         <MenuItem id="open" label="Open" onActivate={() => {}} />
@@ -19,58 +43,55 @@ describe("render - Application", () => {
                     <MenuSubmenu label="Edit">
                         <MenuItem id="cut" label="Cut" onActivate={() => {}} />
                     </MenuSubmenu>
-                </>,
-                { wrapper: false },
+                </Menu>,
             );
 
-            const app = baseElement as Gtk.Application;
-            expect(app.getMenubar()).not.toBeNull();
+            const menubar = app.getMenubar();
+            expect(menubar).not.toBeNull();
+            expect(menubar?.getNItems()).toBe(2);
         });
 
         it("clears menubar when Menu is removed", async () => {
-            function App({ showMenu }: { showMenu: boolean }) {
-                return (
-                    <>
-                        <GtkApplicationWindow defaultWidth={800} defaultHeight={600} />
-                        {showMenu ? (
-                            <MenuSubmenu label="File">
-                                <MenuItem id="new" label="New" onActivate={() => {}} />
-                            </MenuSubmenu>
-                        ) : null}
-                    </>
-                );
-            }
+            const ref = createRef<Gtk.Application>();
+            const appId = uniqueAppId();
+            const fileMenu = (
+                <Menu>
+                    <MenuSubmenu label="File">
+                        <MenuItem id="new" label="New" onActivate={() => {}} />
+                    </MenuSubmenu>
+                </Menu>
+            );
 
-            const { baseElement, rerender } = await render(<App showMenu={true} />, { wrapper: false });
+            const { rerender } = await render(<MenubarApp appRef={ref} appId={appId} menubar={fileMenu} />, {
+                wrapper: false,
+            });
+            expect(ref.current?.getMenubar()).not.toBeNull();
 
-            const app = baseElement as Gtk.Application;
-            expect(app.getMenubar()).not.toBeNull();
-
-            await rerender(<App showMenu={false} />);
-            expect(app.getMenubar()).toBeNull();
+            await rerender(<MenubarApp appRef={ref} appId={appId} menubar={null} />);
+            expect(ref.current?.getMenubar()).toBeNull();
         });
 
         it("updates menubar when items change", async () => {
-            function App({ items }: { items: string[] }) {
-                return (
-                    <>
-                        <GtkApplicationWindow defaultWidth={800} defaultHeight={600} />
-                        <MenuSubmenu label="File">
-                            {items.map((label) => (
-                                <MenuItem key={label} id={label} label={label} onActivate={() => {}} />
-                            ))}
-                        </MenuSubmenu>
-                    </>
-                );
-            }
+            const ref = createRef<Gtk.Application>();
+            const appId = uniqueAppId();
+            const fileMenu = (items: string[]): ReactNode => (
+                <Menu>
+                    <MenuSubmenu label="File">
+                        {items.map((label) => (
+                            <MenuItem key={label} id={label} label={label} onActivate={() => {}} />
+                        ))}
+                    </MenuSubmenu>
+                </Menu>
+            );
 
-            const { baseElement, rerender } = await render(<App items={["New", "Open"]} />, { wrapper: false });
+            const { rerender } = await render(
+                <MenubarApp appRef={ref} appId={appId} menubar={fileMenu(["New", "Open"])} />,
+                { wrapper: false },
+            );
+            expect(ref.current?.getMenubar()?.getItemLink(0, "submenu")?.getNItems()).toBe(2);
 
-            const app = baseElement as Gtk.Application;
-            expect(app.getMenubar()).not.toBeNull();
-
-            await rerender(<App items={["New", "Open", "Save"]} />);
-            expect(app.getMenubar()).not.toBeNull();
+            await rerender(<MenubarApp appRef={ref} appId={appId} menubar={fileMenu(["New", "Open", "Save"])} />);
+            expect(ref.current?.getMenubar()?.getItemLink(0, "submenu")?.getNItems()).toBe(3);
         });
     });
 });

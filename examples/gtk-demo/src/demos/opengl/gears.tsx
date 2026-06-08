@@ -1,7 +1,7 @@
 import type * as Gdk from "@gtkx/gi/gdk";
 import * as gl from "@gtkx/gi/gl";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkFrame, GtkGLArea, GtkLabel, GtkOverlay, GtkScale } from "@gtkx/react";
+import { GtkBox, GtkFrame, GtkGLArea, GtkLabel, GtkOverlay, GtkScale, useAdjustment } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLatest } from "../../use-latest.js";
 import type { Demo } from "../types.js";
@@ -443,23 +443,22 @@ function drawGear(params: DrawGearParams) {
     gl.disableVertexAttribArray(0);
 }
 
-const AxisSlider = ({ axis, value, onChange }: { axis: string; value: number; onChange: (value: number) => void }) => (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-        <GtkLabel label={axis} />
-        <GtkScale
-            orientation={Gtk.Orientation.VERTICAL}
-            inverted
-            drawValue={false}
-            vexpand
-            value={value}
-            lower={0}
-            upper={360}
-            stepIncrement={1}
-            pageIncrement={12}
-            onValueChanged={onChange}
-        />
-    </GtkBox>
-);
+const AxisSlider = ({ axis, value, onChange }: { axis: string; value: number; onChange: (value: number) => void }) => {
+    const adjustment = useAdjustment({ value, lower: 0, upper: 360, stepIncrement: 1, pageIncrement: 12 });
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
+            <GtkLabel label={axis} />
+            <GtkScale
+                orientation={Gtk.Orientation.VERTICAL}
+                inverted
+                drawValue={false}
+                vexpand
+                adjustment={adjustment}
+                onValueChanged={(scale) => onChange(scale.getValue())}
+            />
+        </GtkBox>
+    );
+};
 
 function useGearsState() {
     const [viewRotX, setViewRotX] = useState(20);

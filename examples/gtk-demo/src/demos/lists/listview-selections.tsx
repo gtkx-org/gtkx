@@ -17,6 +17,7 @@ import {
     GtkScrolledWindow,
     GtkSeparator,
     GtkSpinButton,
+    useAdjustment,
 } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
@@ -484,6 +485,12 @@ const DirectorySuggestionEntry = () => {
 const ListViewSelectionsDemo = () => {
     const [fontIndex, setFontIndex] = useState(0);
     const [enableFontSearch, setEnableFontSearch] = useState(false);
+    const fontAdjustment = useAdjustment({
+        value: fontIndex,
+        lower: -1,
+        upper: getFontFamilies().length,
+        stepIncrement: 1,
+    });
 
     const handleFontSpinChanged = useCallback((val: number) => {
         const idx = Math.round(val);
@@ -516,11 +523,8 @@ const ListViewSelectionsDemo = () => {
                     name="font-spin"
                     halign={Gtk.Align.START}
                     marginStart={20}
-                    value={fontIndex}
-                    lower={-1}
-                    upper={getFontFamilies().length}
-                    stepIncrement={1}
-                    onValueChanged={handleFontSpinChanged}
+                    adjustment={fontAdjustment}
+                    onValueChanged={(spin) => handleFontSpinChanged(spin.getValue())}
                 />
 
                 <GtkCheckButton

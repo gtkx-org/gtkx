@@ -20,9 +20,9 @@ import {
     GtkScale,
     GtkScrolledWindow,
     GtkSeparator,
+    useAdjustment,
 } from "@gtkx/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { buildValue } from "../../gvalue.js";
 import { useContextMenuGesture } from "../../use-context-menu-gesture.js";
 import { useImperativeDragVisibility } from "../../use-imperative-drag-visibility.js";
 import type { Demo } from "../types.js";
@@ -155,7 +155,7 @@ function ColorSwatch({ color }: Readonly<{ color: string }>) {
     const createColorProvider = useCallback(() => {
         const rgba = new Gdk.RGBA();
         rgba.parse(color);
-        return Gdk.ContentProvider.newForValue(buildValue(gdkRgbaType, (v) => v.setBoxed(rgba)));
+        return Gdk.ContentProvider.newForValue(GObject.buildValue(gdkRgbaType, (v) => v.setBoxed(rgba)));
     }, [color]);
 
     return (
@@ -167,7 +167,7 @@ function ColorSwatch({ color }: Readonly<{ color: string }>) {
 
 function CssPatternSwatch({ id, cssClass }: Readonly<{ id: string; cssClass: string }>) {
     const createClassProvider = useCallback(() => {
-        return Gdk.ContentProvider.newForValue(buildValue(GObject.Type.STRING, (v) => v.setString(cssClass)));
+        return Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.Type.STRING, (v) => v.setString(cssClass)));
     }, [cssClass]);
 
     return (
@@ -339,7 +339,7 @@ function useItemEditHandlers(args: DndHandlerArgs) {
 
     const createContentProvider = useCallback(
         (itemId: string) =>
-            Gdk.ContentProvider.newForValue(buildValue(GObject.Type.STRING, (v) => v.setString(itemId))),
+            Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.Type.STRING, (v) => v.setString(itemId))),
         [],
     );
 
@@ -612,6 +612,7 @@ const DndContextMenu = ({ dnd }: { dnd: DndState }) => {
 const DndItemEditor = ({ dnd, editingItem }: { dnd: DndState; editingItem: CanvasItem }) => {
     const { refs, handlers, setEditState } = dnd;
     const halfH = refs.itemHalves.current.get(editingItem.id)?.halfH ?? ITEM_SIZE / 2;
+    const angleAdjustment = useAdjustment({ value: editingItem.angle % 360, lower: 0, upper: 360 });
     return (
         <GtkFixed.Child x={editingItem.x} y={editingItem.y + 2 * halfH}>
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
@@ -624,10 +625,8 @@ const DndItemEditor = ({ dnd, editingItem }: { dnd: DndState; editingItem: Canva
                 />
                 <GtkScale
                     orientation={Gtk.Orientation.HORIZONTAL}
-                    lower={0}
-                    upper={360}
-                    value={editingItem.angle % 360}
-                    onValueChanged={(val) => handlers.updateItemAngle(editingItem.id, val)}
+                    adjustment={angleAdjustment}
+                    onValueChanged={(scale) => handlers.updateItemAngle(editingItem.id, scale.getValue())}
                     drawValue={false}
                 />
             </GtkBox>

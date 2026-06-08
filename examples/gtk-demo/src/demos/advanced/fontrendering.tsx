@@ -27,6 +27,7 @@ import {
     GtkLabel,
     GtkScrolledWindow,
     GtkSeparator,
+    GtkShortcut,
     GtkShortcutController,
     GtkToggleButton,
 } from "@gtkx/react";
@@ -863,8 +864,20 @@ const FontRenderingDemo = () => {
     return (
         <>
             <GtkShortcutController scope={Gtk.ShortcutScope.MANAGED}>
-                <GtkShortcutController.Shortcut trigger="<Control>plus" onActivate={zoomIn} />
-                <GtkShortcutController.Shortcut trigger="<Control>minus" onActivate={zoomOut} />
+                <GtkShortcut
+                    trigger={Gtk.ShortcutTrigger.parseString("<Control>plus")}
+                    action={Gtk.CallbackAction.new(() => {
+                        zoomIn();
+                        return true;
+                    })}
+                />
+                <GtkShortcut
+                    trigger={Gtk.ShortcutTrigger.parseString("<Control>minus")}
+                    action={Gtk.CallbackAction.new(() => {
+                        zoomOut();
+                        return true;
+                    })}
+                />
             </GtkShortcutController>
             <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
                 <FontRenderingControls state={state} onZoomIn={zoomIn} onZoomOut={zoomOut} />

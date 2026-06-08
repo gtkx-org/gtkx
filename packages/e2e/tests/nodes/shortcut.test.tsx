@@ -1,8 +1,10 @@
-import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkShortcutController } from "@gtkx/react";
+import * as Gtk from "@gtkx/gi/gtk";
+import { GtkBox, GtkShortcut, GtkShortcutController } from "@gtkx/react";
 import { act, render } from "@gtkx/testing";
 import { createRef, useState } from "react";
 import { describe, expect, it } from "vitest";
+
+const callbackAction = (): Gtk.ShortcutAction => Gtk.CallbackAction.new(() => true);
 
 describe("render - Shortcut (1)", () => {
     it("attaches shortcuts to the parent ShortcutController", async () => {
@@ -11,7 +13,7 @@ describe("render - Shortcut (1)", () => {
         await render(
             <GtkBox>
                 <GtkShortcutController ref={controllerRef}>
-                    <GtkShortcutController.Shortcut trigger="<Control>s" onActivate={() => true} />
+                    <GtkShortcut trigger={Gtk.ShortcutTrigger.parseString("<Control>s")} action={callbackAction()} />
                 </GtkShortcutController>
             </GtkBox>,
         );
@@ -23,19 +25,20 @@ describe("render - Shortcut (1)", () => {
 
     it.each([
         {
-            label: "supports an array of triggers (alternative trigger)",
-            trigger: ["<Control>s", "F2"],
-            disabled: false,
+            label: "supports an alternative trigger",
+            trigger: Gtk.AlternativeTrigger.new(
+                Gtk.ShortcutTrigger.parseString("<Control>s"),
+                Gtk.ShortcutTrigger.parseString("F2"),
+            ),
         },
-        { label: "uses NeverTrigger when disabled", trigger: "<Control>s", disabled: true },
-        { label: "uses NeverTrigger for an empty trigger array", trigger: [], disabled: false },
-    ])("$label", async ({ trigger, disabled }) => {
+        { label: "supports a never trigger", trigger: Gtk.NeverTrigger.get() },
+    ])("$label", async ({ trigger }) => {
         const controllerRef = createRef<Gtk.ShortcutController>();
 
         await render(
             <GtkBox>
                 <GtkShortcutController ref={controllerRef}>
-                    <GtkShortcutController.Shortcut trigger={trigger} onActivate={() => true} disabled={disabled} />
+                    <GtkShortcut trigger={trigger} action={callbackAction()} />
                 </GtkShortcutController>
             </GtkBox>,
         );
@@ -54,12 +57,12 @@ describe("render - Shortcut (2)", () => {
                 <GtkBox>
                     <GtkShortcutController ref={controllerRef}>
                         {show && (
-                            <GtkShortcutController.Shortcut
-                                trigger="<Control>s"
-                                onActivate={() => {
+                            <GtkShortcut
+                                trigger={Gtk.ShortcutTrigger.parseString("<Control>s")}
+                                action={Gtk.CallbackAction.new(() => {
                                     setShow(false);
                                     return true;
-                                }}
+                                })}
                             />
                         )}
                     </GtkShortcutController>
@@ -82,7 +85,7 @@ describe("render - Shortcut (2)", () => {
 });
 
 describe("render - Shortcut (3)", () => {
-    it("re-applies the trigger when the disabled prop changes", async () => {
+    it("re-applies the trigger when it changes", async () => {
         const controllerRef = createRef<Gtk.ShortcutController>();
         let updateDisabled: (next: boolean) => void = () => {};
 
@@ -92,10 +95,9 @@ describe("render - Shortcut (3)", () => {
             return (
                 <GtkBox>
                     <GtkShortcutController ref={controllerRef}>
-                        <GtkShortcutController.Shortcut
-                            trigger="<Control>s"
-                            disabled={disabled}
-                            onActivate={() => true}
+                        <GtkShortcut
+                            trigger={disabled ? Gtk.NeverTrigger.get() : Gtk.ShortcutTrigger.parseString("<Control>s")}
+                            action={callbackAction()}
                         />
                     </GtkShortcutController>
                 </GtkBox>

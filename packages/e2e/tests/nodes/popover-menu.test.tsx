@@ -1,11 +1,8 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkMenuButton, GtkPopoverMenu } from "@gtkx/react";
+import { GtkMenuButton, GtkPopoverMenu, MenuItem, MenuSection } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
-
-const MenuItem = "MenuItem" as const;
-const MenuSection = "MenuSection" as const;
 
 describe("render - PopoverMenu > PopoverMenuNode (1)", () => {
     it("creates PopoverMenu widget", async () => {

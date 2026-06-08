@@ -1,15 +1,11 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkColumnView, GtkLabel } from "@gtkx/react";
+import { GtkColumnView, GtkLabel, MenuItem, MenuSection, MenuSubmenu } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import type { ComponentProps, ReactNode, RefObject } from "react";
 import { createRef, useCallback, useMemo, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderChildren } from "../helpers/render-children.js";
 import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
-
-const MenuItem = "MenuItem" as const;
-const MenuSection = "MenuSection" as const;
-const MenuSubmenu = "MenuSubmenu" as const;
 
 const noop = () => {};
 const cellRenderer = () => "Cell";

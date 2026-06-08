@@ -17,6 +17,7 @@ import {
     GtkLabel,
     GtkListBox,
     GtkListBoxRow,
+    GtkShortcut,
     GtkShortcutController,
     GtkSwitch,
     GtkToggleButton,
@@ -555,7 +556,10 @@ describe("userEvent.keyboard — shortcut dispatch", () => {
         await render(
             <GtkBox name="host">
                 <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-                    <GtkShortcutController.Shortcut trigger="F5" onActivate={onActivate} />
+                    <GtkShortcut
+                        trigger={Gtk.ShortcutTrigger.parseString("F5")}
+                        action={Gtk.CallbackAction.new(onActivate)}
+                    />
                 </GtkShortcutController>
                 <GtkLabel label="anchor" />
             </GtkBox>,
@@ -570,7 +574,13 @@ describe("userEvent.keyboard — shortcut dispatch", () => {
         await render(
             <GtkBox name="host">
                 <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-                    <GtkShortcutController.Shortcut trigger={["F6", "F7"]} onActivate={onActivate} />
+                    <GtkShortcut
+                        trigger={Gtk.AlternativeTrigger.new(
+                            Gtk.ShortcutTrigger.parseString("F6"),
+                            Gtk.ShortcutTrigger.parseString("F7"),
+                        )}
+                        action={Gtk.CallbackAction.new(onActivate)}
+                    />
                 </GtkShortcutController>
                 <GtkLabel label="anchor" />
             </GtkBox>,
@@ -586,7 +596,10 @@ describe("userEvent.keyboard — shortcut dispatch", () => {
         await render(
             <GtkBox name="host">
                 <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-                    <GtkShortcutController.Shortcut trigger="F8" onActivate={onActivate} />
+                    <GtkShortcut
+                        trigger={Gtk.ShortcutTrigger.parseString("F8")}
+                        action={Gtk.CallbackAction.new(onActivate)}
+                    />
                 </GtkShortcutController>
                 <GtkLabel label="anchor" />
             </GtkBox>,
