@@ -90,6 +90,7 @@ pub(crate) struct JsReference {
 unsafe impl Send for JsReference {}
 
 impl JsReference {
+    #[cfg_attr(coverage_nightly, coverage(off))]
     pub(crate) fn new(env: sys::napi_env, raw: sys::napi_ref) -> Self {
         Self { env, raw }
     }
