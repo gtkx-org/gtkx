@@ -3,6 +3,7 @@ import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import {
     cloneElement,
+    type ElementType,
     isValidElement,
     type ReactNode,
     type Ref,
@@ -101,6 +102,40 @@ const ApplicationChildren = ({ app, children }: { app: Gtk.Application | null; c
     app && <ApplicationContext.Provider value={app}>{children}</ApplicationContext.Provider>;
 
 /**
+ * Builds an application component for an application host element. The component
+ * constructs the backing application from `applicationId`/`flags`, registers and
+ * activates it, provides it to descendants through {@link ApplicationContext},
+ * and installs a `<Menu>` passed to `menubar` once the application has
+ * registered.
+ *
+ * @typeParam T - The concrete application type (`Gtk.Application` or a subtype).
+ * @typeParam P - The component prop shape (`Gtk`/`Adw` application props plus a
+ *   `<Menu>`-typed `menubar`).
+ * @param Element - The application host intrinsic to construct.
+ */
+const createApplication = <
+    T extends Gtk.Application,
+    P extends { children?: ReactNode; menubar?: ReactNode; ref?: Ref<T | null> },
+>(
+    Element: ElementType,
+): ((props: P) => ReactNode) => {
+    return (props: P): ReactNode => {
+        const { children, menubar, ref, ...rest } = props;
+        const [app, captureApp] = useApplicationInstance(ref);
+        const [menu, setMenu] = useState<Gio.Menu | null>(null);
+        useApplicationMenubar(app, menu);
+        return (
+            <Element ref={captureApp} {...rest}>
+                <ApplicationChildren app={app}>
+                    {renderMenubar(menubar, setMenu)}
+                    {children}
+                </ApplicationChildren>
+            </Element>
+        );
+    };
+};
+
+/**
  * Declarative wrapper for `Gtk.Application`.
  *
  * Constructs the backing `Gtk.Application` from `applicationId`/`flags`,
@@ -115,20 +150,7 @@ const ApplicationChildren = ({ app, children }: { app: Gtk.Application | null; c
  * </GtkApplication>
  * ```
  */
-export const GtkApplication = (props: GtkApplicationComponentProps): ReactNode => {
-    const { children, menubar, ref, ...rest } = props;
-    const [app, captureApp] = useApplicationInstance(ref);
-    const [menu, setMenu] = useState<Gio.Menu | null>(null);
-    useApplicationMenubar(app, menu);
-    return (
-        <GtkApplicationElement ref={captureApp} {...rest}>
-            <ApplicationChildren app={app}>
-                {renderMenubar(menubar, setMenu)}
-                {children}
-            </ApplicationChildren>
-        </GtkApplicationElement>
-    );
-};
+export const GtkApplication = createApplication<Gtk.Application, GtkApplicationComponentProps>(GtkApplicationElement);
 
 /**
  * Declarative wrapper for `Adw.Application`.
@@ -145,20 +167,7 @@ export const GtkApplication = (props: GtkApplicationComponentProps): ReactNode =
  * </AdwApplication>
  * ```
  */
-export const AdwApplication = (props: AdwApplicationComponentProps): ReactNode => {
-    const { children, menubar, ref, ...rest } = props;
-    const [app, captureApp] = useApplicationInstance(ref);
-    const [menu, setMenu] = useState<Gio.Menu | null>(null);
-    useApplicationMenubar(app, menu);
-    return (
-        <AdwApplicationElement ref={captureApp} {...rest}>
-            <ApplicationChildren app={app}>
-                {renderMenubar(menubar, setMenu)}
-                {children}
-            </ApplicationChildren>
-        </AdwApplicationElement>
-    );
-};
+export const AdwApplication = createApplication<Adw.Application, AdwApplicationComponentProps>(AdwApplicationElement);
 
 const renderMenubar = (menubar: ReactNode, setMenu: (menu: Gio.Menu | null) => void): ReactNode => {
     if (!isValidElement<MenuProps & { ref?: Ref<Gio.Menu | null> }>(menubar)) return null;
