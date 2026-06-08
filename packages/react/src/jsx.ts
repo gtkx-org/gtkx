@@ -1082,7 +1082,7 @@ export * from "@gtkx/react-jsx/compounds";
 export * from "@gtkx/react-jsx/jsx";
 export { AnimatePresence } from "./components/animate-presence.js";
 export { AdwSpringAnimation, AdwTimedAnimation } from "./components/animation.js";
-export { AdwApplication, GtkApplication } from "./components/application.js";
+export { createApplication, withApplicationWindow } from "./components/application.js";
 export { GtkConstraintLayout } from "./components/constraint-layout.js";
 export { GtkDrawingArea } from "./components/drawing-area.js";
 export {
@@ -1096,14 +1096,5 @@ export {
 export { Menu, MenuItem, MenuSection, MenuSubmenu } from "./components/menu.js";
 export { GtkMenuButton, GtkPopoverMenu, GtkPopoverMenuBar } from "./components/menu-widgets.js";
 export { GtkSizeGroup } from "./components/size-group.js";
+export { withTopLevel } from "./components/top-level.js";
 export { WebKitWebView } from "./components/web-view.js";
-export {
-    AdwAboutDialog,
-    AdwAlertDialog,
-    AdwApplicationWindow,
-    AdwDialog,
-    AdwPreferencesWindow,
-    GtkAboutDialog,
-    GtkApplicationWindow,
-    GtkWindow,
-} from "./components/window.js";

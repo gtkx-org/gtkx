@@ -156,3 +156,23 @@ const descendsFrom = (
  */
 export const isReactNodeClass = (klass: GirClass, namespace: GirNamespace, repository: GirRepository): boolean =>
     descendsFrom(klass, namespace, repository, (glibName) => glibName === "GObject");
+
+/**
+ * Collects every React-node class in the repository, deduplicated by GLib type
+ * name and sorted alphabetically by it. Shared by the `jsx.ts` intrinsic emitter
+ * and the `compounds.tsx` compound emitter so both walk the same stable set.
+ *
+ * @param repository - The loaded GIR repository
+ */
+export const collectReactNodeClasses = (repository: GirRepository): readonly WidgetCandidate[] => {
+    const seen = new Set<string>();
+    const entries: WidgetCandidate[] = [];
+    for (const candidate of iterateClassesWithGlibName(repository)) {
+        const { glibName, klass, namespace } = candidate;
+        if (!isReactNodeClass(klass, namespace, repository)) continue;
+        if (seen.has(glibName)) continue;
+        seen.add(glibName);
+        entries.push(candidate);
+    }
+    return entries.sort((a, b) => a.glibName.localeCompare(b.glibName));
+};

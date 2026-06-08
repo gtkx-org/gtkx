@@ -3,7 +3,7 @@ import type { GirClass } from "../gir/class.js";
 import { splitQualifiedName } from "../gir/qualified-name.js";
 import type { GirRepository } from "../gir/repository.js";
 import { buildWidgetPropsEntries } from "./props.js";
-import { isReactNodeClass, iterateClassesWithGlibName, type WidgetCandidate } from "./widgets.js";
+import { collectReactNodeClasses, type WidgetCandidate } from "./widgets.js";
 
 /**
  * Generates `jsx.ts` source — one `export const Name = "Name"` per JSX
@@ -29,7 +29,7 @@ export const generateJsx = (
     excludeNames: ReadonlySet<string> = new Set(),
     maps: JsxSurfaceMaps = {},
 ): string => {
-    const widgets = collectWidgets(repository);
+    const widgets = collectReactNodeClasses(repository);
     const intrinsicWidgets = widgets.filter((entry) => !excludeNames.has(entry.glibName));
     const constLines = intrinsicWidgets.map(
         (entry) => `export const ${entry.glibName} = ${quote(entry.glibName)} as const;`,
@@ -162,19 +162,6 @@ const renderImportLines = (
         lines.push(`import type * as ${alias} from "${ffiImportPath(directory)}";`);
     }
     return lines;
-};
-
-const collectWidgets = (repository: GirRepository): readonly WidgetCandidate[] => {
-    const entries: WidgetCandidate[] = [];
-    const seen = new Set<string>();
-    for (const candidate of iterateClassesWithGlibName(repository)) {
-        const { glibName, klass, namespace } = candidate;
-        if (!isReactNodeClass(klass, namespace, repository)) continue;
-        if (seen.has(glibName)) continue;
-        seen.add(glibName);
-        entries.push(candidate);
-    }
-    return entries.sort((a, b) => a.glibName.localeCompare(b.glibName));
 };
 
 const ffiImportPath = (directory: string): string => `@gtkx/gi/${directory}`;

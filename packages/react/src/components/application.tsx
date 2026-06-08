@@ -1,4 +1,3 @@
-import type * as Adw from "@gtkx/gi/adw";
 import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import {
@@ -12,32 +11,24 @@ import {
     useLayoutEffect,
     useState,
 } from "react";
-import type { AdwApplicationProps, GtkApplicationProps, MenuProps } from "../jsx.js";
-import { ApplicationContext } from "../render.js";
+import type { MenuProps } from "../jsx.js";
+import { ApplicationContext, useApplication } from "../render.js";
 import { assignRef } from "../use-merged-refs.js";
-
-const GtkApplicationElement = "GtkApplication" as const;
-const AdwApplicationElement = "AdwApplication" as const;
+import { withTopLevel } from "./top-level.js";
 
 /**
- * Props for the {@link GtkApplication} component: the generated application props
- * with the `menubar` property re-typed to accept a `<Menu>` element.
+ * The concrete application instance type a props shape captures through its
+ * `ref`, defaulting to `Gtk.Application` when the props expose no application
+ * ref. Lets {@link createApplication} forward the caller's ref without widening
+ * an `Adw.Application` ref to `Gtk.Application`.
+ *
+ * @typeParam P - The application component prop shape.
  */
-type GtkApplicationComponentProps = Omit<GtkApplicationProps, "menubar"> & {
-    /** A `<Menu>` whose built `Gio.Menu` is installed as the application menubar. */
-    menubar?: ReactNode;
-};
-
-/**
- * Props for the {@link AdwApplication} component: the generated application props
- * with the `menubar` property re-typed to accept a `<Menu>` element.
- */
-type AdwApplicationComponentProps = Omit<AdwApplicationProps, "menubar"> & {
-    /** A `<Menu>` whose built `Gio.Menu` is installed as the application menubar. */
-    menubar?: ReactNode;
-    /** Caller ref forwarded to the backing `Adw.Application`. */
-    ref?: Ref<Adw.Application | null>;
-};
+type ApplicationOf<P> = P extends { ref?: Ref<infer T | null> }
+    ? T extends Gtk.Application
+        ? T
+        : Gtk.Application
+    : Gtk.Application;
 
 /**
  * Captures an application instance through a callback ref, exposes it as state,
@@ -102,26 +93,39 @@ const ApplicationChildren = ({ app, children }: { app: Gtk.Application | null; c
     app && <ApplicationContext.Provider value={app}>{children}</ApplicationContext.Provider>;
 
 /**
+ * The minimum prop shape {@link createApplication} requires: a child tree, an
+ * optional `<Menu>` for the menubar slot, and an optional caller ref to the
+ * backing application.
+ *
+ * @typeParam T - The concrete application type captured through `ref`.
+ */
+type ApplicationComponentProps<T extends Gtk.Application> = {
+    /** The application's window tree. */
+    children?: ReactNode;
+    /** A `<Menu>` whose built `Gio.Menu` is installed as the application menubar. */
+    menubar?: ReactNode;
+    /** Caller ref forwarded to the backing application. */
+    ref?: Ref<T | null>;
+};
+
+/**
  * Builds an application component for an application host element. The component
  * constructs the backing application from `applicationId`/`flags`, registers and
  * activates it, provides it to descendants through {@link ApplicationContext},
  * and installs a `<Menu>` passed to `menubar` once the application has
  * registered.
  *
- * @typeParam T - The concrete application type (`Gtk.Application` or a subtype).
- * @typeParam P - The component prop shape (`Gtk`/`Adw` application props plus a
- *   `<Menu>`-typed `menubar`).
+ * @typeParam P - The component prop shape; its `ref` determines the captured
+ *   application type and its `menubar` accepts a `<Menu>` element.
  * @param Element - The application host intrinsic to construct.
+ * @returns A component that drives the application's lifecycle.
  */
-const createApplication = <
-    T extends Gtk.Application,
-    P extends { children?: ReactNode; menubar?: ReactNode; ref?: Ref<T | null> },
->(
+export const createApplication = <P extends ApplicationComponentProps<ApplicationOf<P>>>(
     Element: ElementType,
 ): ((props: P) => ReactNode) => {
     return (props: P): ReactNode => {
         const { children, menubar, ref, ...rest } = props;
-        const [app, captureApp] = useApplicationInstance(ref);
+        const [app, captureApp] = useApplicationInstance<ApplicationOf<P>>(ref);
         const [menu, setMenu] = useState<Gio.Menu | null>(null);
         useApplicationMenubar(app, menu);
         return (
@@ -136,38 +140,27 @@ const createApplication = <
 };
 
 /**
- * Declarative wrapper for `Gtk.Application`.
+ * Builds an application-window component for a top-level surface host element.
  *
- * Constructs the backing `Gtk.Application` from `applicationId`/`flags`,
- * registers and activates it, and provides it to descendants through
- * {@link ApplicationContext}. Pass a `<Menu>` to `menubar` to install an
- * application menubar; render the application's windows as children.
+ * The component reads the enclosing application from {@link useApplication} and
+ * passes it as the window's construct-only `application` property, then drives
+ * the surface lifecycle through {@link withTopLevel}: it presents the window on
+ * mount and destroys it on unmount.
  *
- * @example
- * ```tsx
- * <GtkApplication applicationId="com.example.myapp">
- *   <GtkApplicationWindow title="My App">…</GtkApplicationWindow>
- * </GtkApplication>
- * ```
+ * @typeParam P - The application-window prop shape.
+ * @param Underlying - The window host intrinsic or slotted compound to render.
+ * @returns A component that injects the application and drives the window's
+ *   lifecycle.
  */
-export const GtkApplication = createApplication<Gtk.Application, GtkApplicationComponentProps>(GtkApplicationElement);
-
-/**
- * Declarative wrapper for `Adw.Application`.
- *
- * Constructs the backing `Adw.Application` from `applicationId`/`flags`,
- * registers and activates it, and provides it to descendants through
- * {@link ApplicationContext}. Pass a `<Menu>` to `menubar` to install an
- * application menubar; render the application's windows as children.
- *
- * @example
- * ```tsx
- * <AdwApplication applicationId="com.example.myapp">
- *   <AdwApplicationWindow>…</AdwApplicationWindow>
- * </AdwApplication>
- * ```
- */
-export const AdwApplication = createApplication<Adw.Application, AdwApplicationComponentProps>(AdwApplicationElement);
+export const withApplicationWindow = <P extends { children?: ReactNode; ref?: Ref<Gtk.Window | null> }>(
+    Underlying: ElementType,
+): ((props: P) => ReactNode) => {
+    const Surface = withTopLevel<P>(Underlying);
+    return (props: P): ReactNode => {
+        const application = useApplication();
+        return <Surface application={application} {...props} />;
+    };
+};
 
 const renderMenubar = (menubar: ReactNode, setMenu: (menu: Gio.Menu | null) => void): ReactNode => {
     if (!isValidElement<MenuProps & { ref?: Ref<Gio.Menu | null> }>(menubar)) return null;
