@@ -13,6 +13,7 @@ import {
     type Ref,
     useEffect,
     useLayoutEffect,
+    useMemo,
     useReducer,
     useRef,
     useState,
@@ -151,6 +152,9 @@ const useListController = (controllerProps: ListControllerProps): ListHandle => 
     return { setWidget, controller, rerender, controllerProps };
 };
 
+/** Shared empty bound-item list so an unsettled controller yields a stable reference. */
+const EMPTY_BOUND_ITEMS: BoundItem[] = [];
+
 const renderPortals = (boundItems: BoundItem[], headerBoundItems: BoundItem[]): ReactNode[] => {
     const portals: ReactNode[] = [];
     for (const [content, container, key] of [...boundItems, ...headerBoundItems]) {
@@ -183,12 +187,13 @@ const useListElement = (
     const handle = useListController(controllerProps);
     onHandle?.(handle);
     const mergedRef = useMergedRefs<Gtk.Widget>(handle.setWidget, ref);
-    const boundItems = handle.controller?.getBoundItems() ?? [];
-    const headerBoundItems = handle.controller?.getHeaderBoundItems() ?? [];
+    const boundItems = handle.controller?.getBoundItems() ?? EMPTY_BOUND_ITEMS;
+    const headerBoundItems = handle.controller?.getHeaderBoundItems() ?? EMPTY_BOUND_ITEMS;
+    const portals = useMemo(() => renderPortals(boundItems, headerBoundItems), [boundItems, headerBoundItems]);
     return (
         <>
             {createElement(elementType, { ...elementProps, ref: mergedRef }, scope ?? children)}
-            {renderPortals(boundItems, headerBoundItems)}
+            {portals}
         </>
     );
 };
