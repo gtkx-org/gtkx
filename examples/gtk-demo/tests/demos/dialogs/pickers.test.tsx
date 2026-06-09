@@ -151,7 +151,7 @@ describe("pickersDemo file-dependent handlers", () => {
     });
 
     it("enables the Print button and runs handlePrintFile after dropping a PDF GFile", async () => {
-        const printFileSpy = vi.spyOn(Gtk.PrintDialog.prototype, "printFile").mockResolvedValue(undefined);
+        const printFileSpy = vi.spyOn(Gtk.PrintDialog.prototype, "printFile").mockResolvedValue(true);
         await renderDemo(pickersDemo);
         const selectFile = (await screen.findByName("select-file-button")) as Gtk.Button;
         await userEvent.drop(selectFile, makeFileValue(pdfPath));

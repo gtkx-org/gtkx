@@ -132,7 +132,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
  * Top-level `@gtkx/react-jsx` generated modules that must exist whenever React
  * bindings have been generated.
  */
-const REACT_GENERATED_MODULES: readonly string[] = ["compounds.js", "internal.js", "jsx.js"];
+const REACT_GENERATED_MODULES: readonly string[] = ["compounds.js", "internal.js", "jsx.js", "presence.js"];
 
 /**
  * Absolute path to the generated barrel for a `Name-Version` GIR library

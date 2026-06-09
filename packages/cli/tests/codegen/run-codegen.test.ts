@@ -76,7 +76,7 @@ const writeDefaultGiBarrels = (cwd: string) => {
 const writeJsxStore = (cwd: string) => {
     const dir = join(cwd, "node_modules", ".gtkx", "jsx");
     mkdirSync(dir, { recursive: true });
-    for (const module of ["compounds.js", "internal.js", "jsx.js"]) {
+    for (const module of ["compounds.js", "internal.js", "jsx.js", "presence.js"]) {
         writeFileSync(join(dir, module), "");
     }
     mkdirSync(join(cwd, "node_modules", "@gtkx", "react-jsx"), { recursive: true });
