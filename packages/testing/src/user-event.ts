@@ -271,12 +271,29 @@ const deselectOptions = async (widget: Gtk.Widget, values: number | number[]): P
     });
 };
 
-const getOrCreateController = <T extends Gtk.EventController>(widget: Gtk.Widget, controllerType: new () => T): T => {
-    const existing = findExistingController(widget, controllerType);
-    if (existing) return existing;
+/**
+ * Controllers the harness created or adopted, kept alive and keyed by widget so a
+ * repeated interaction reuses the same controller instead of re-observing the
+ * widget's controller list. Retaining the wrapper keeps its toggle reference
+ * strong, and skipping the re-observation avoids resolving controllers GTK may be
+ * recycling under garbage-collection pressure mid-interaction.
+ */
+const adoptedControllers = new WeakMap<Gtk.Widget, Map<new () => Gtk.EventController, Gtk.EventController>>();
 
-    const controller = new controllerType();
-    widget.addController(controller);
+const getOrCreateController = <T extends Gtk.EventController>(widget: Gtk.Widget, controllerType: new () => T): T => {
+    let perWidget = adoptedControllers.get(widget);
+    const cached = perWidget?.get(controllerType);
+    if (cached) return cached as T;
+
+    const existing = findExistingController(widget, controllerType);
+    const controller = existing ?? new controllerType();
+    if (!existing) widget.addController(controller);
+
+    if (!perWidget) {
+        perWidget = new Map();
+        adoptedControllers.set(widget, perWidget);
+    }
+    perWidget.set(controllerType, controller);
     return controller;
 };
 
