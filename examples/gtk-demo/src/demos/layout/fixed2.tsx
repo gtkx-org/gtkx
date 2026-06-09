@@ -3,7 +3,7 @@ import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkFixed, GtkFixedChild, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./fixed2.tsx?raw";
 
@@ -40,22 +40,21 @@ const Fixed2Demo = () => {
     const fixedRef = useRef<Gtk.Fixed | null>(null);
     const tickIdRef = useRef<number | null>(null);
 
-    const tickCallback = useCallback((_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
-        const fixed = fixedRef.current;
-        const label = labelRef.current;
-        if (!fixed || !label) return true;
-        const now = frameClock.getFrameTime();
-        startTimeRef.current ??= now;
-        const duration = (now - startTimeRef.current) / 1_000_000;
-        const transform = computeFixedTransform(duration, label, fixed) ?? null;
-        fixed.setChildTransform(label, transform);
-        return true;
-    }, []);
-
     useEffect(() => {
         const fixed = fixedRef.current;
         if (!fixed) return;
         startTimeRef.current = null;
+        const tickCallback = (_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
+            const currentFixed = fixedRef.current;
+            const label = labelRef.current;
+            if (!currentFixed || !label) return true;
+            const now = frameClock.getFrameTime();
+            startTimeRef.current ??= now;
+            const duration = (now - startTimeRef.current) / 1_000_000;
+            const transform = computeFixedTransform(duration, label, currentFixed) ?? null;
+            currentFixed.setChildTransform(label, transform);
+            return true;
+        };
         tickIdRef.current = fixed.addTickCallback(tickCallback);
         return () => {
             if (tickIdRef.current !== null) {
@@ -63,15 +62,15 @@ const Fixed2Demo = () => {
                 tickIdRef.current = null;
             }
         };
-    }, [tickCallback]);
+    }, []);
 
-    const handleLabelRef = useCallback((label: Gtk.Label | null) => {
+    const handleLabelRef = (label: Gtk.Label | null) => {
         labelRef.current = label;
-    }, []);
+    };
 
-    const handleFixedRef = useCallback((fixed: Gtk.Fixed | null) => {
+    const handleFixedRef = (fixed: Gtk.Fixed | null) => {
         fixedRef.current = fixed;
-    }, []);
+    };
 
     return (
         <GtkScrolledWindow name="scrolled" hexpand vexpand>

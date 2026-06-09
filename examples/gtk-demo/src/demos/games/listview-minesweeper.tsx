@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkGridView, GtkHeaderBar, GtkImage, GtkLabel } from "@gtkx/react";
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-minesweeper.tsx?raw";
 
@@ -127,38 +127,37 @@ const MinesweeperProvider = ({ children }: DemoProviderProps) => {
     const [gameState, setGameState] = useState<GameState>("playing");
     const soundStreamRef = useRef<Gtk.MediaFile | null>(null);
 
-    const playSound = useCallback((win: boolean) => playGameSound(win, soundStreamRef), []);
+    const playSound = (win: boolean) => playGameSound(win, soundStreamRef);
 
-    const handleCellClick = useCallback(
-        (index: number) => {
-            if (gameState !== "playing") return;
-            const cell = board[index];
-            if (!cell || cell.isRevealed) return;
+    const handleCellClick = (index: number) => {
+        if (gameState !== "playing") return;
+        const cell = board[index];
+        if (!cell || cell.isRevealed) return;
 
-            const newBoard = revealCell(index, board);
-            setBoard(newBoard);
+        const newBoard = revealCell(index, board);
+        setBoard(newBoard);
 
-            const result = evaluateBoard(newBoard, index);
-            if (result === "lost") {
-                setGameState("lost");
-                playSound(false);
-            } else if (result === "won") {
-                setGameState("won");
-                playSound(true);
-            }
-        },
-        [board, gameState, playSound],
-    );
+        const result = evaluateBoard(newBoard, index);
+        if (result === "lost") {
+            setGameState("lost");
+            playSound(false);
+        } else if (result === "won") {
+            setGameState("won");
+            playSound(true);
+        }
+    };
 
-    const resetGame = useCallback(() => {
+    const resetGame = () => {
         setBoard(createBoard());
         setGameState("playing");
-    }, []);
+    };
 
-    const value = useMemo<MinesweeperContextValue>(
-        () => ({ board, gameState, handleCellClick, resetGame }),
-        [board, gameState, handleCellClick, resetGame],
-    );
+    const value = {
+        board,
+        gameState,
+        handleCellClick,
+        resetGame,
+    };
 
     return <MinesweeperContext.Provider value={value}>{children}</MinesweeperContext.Provider>;
 };

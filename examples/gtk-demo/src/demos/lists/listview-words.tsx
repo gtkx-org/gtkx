@@ -14,7 +14,7 @@ import {
     GtkSearchEntry,
 } from "@gtkx/react";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useDemo } from "../../context/demo-context.js";
 import type { Demo, DemoProps, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-words.tsx?raw";
@@ -193,9 +193,9 @@ const ListViewWordsProvider = ({ window, children }: DemoProviderProps) => {
     const [searchText, setSearchText] = useState("");
     const { filteredWords, filterProgress } = useFilteredWords(words, searchText);
 
-    const loadFile = useCallback((filePath: string) => loadWordsFromFile(filePath, setWords, setSearchText), []);
+    const loadFile = (filePath: string) => loadWordsFromFile(filePath, setWords, setSearchText);
 
-    const handleOpen = useCallback(() => {
+    const handleOpen = () => {
         const run = async () => {
             const dialog = new Gtk.FileDialog();
             dialog.setTitle("Open file");
@@ -208,12 +208,15 @@ const ListViewWordsProvider = ({ window, children }: DemoProviderProps) => {
             }
         };
         void run();
-    }, [window, loadFile]);
+    };
 
-    const value = useMemo<WordsContextValue>(
-        () => ({ searchText, setSearchText, filteredWords, filterProgress, handleOpen }),
-        [searchText, filteredWords, filterProgress, handleOpen],
-    );
+    const value = {
+        searchText,
+        setSearchText,
+        filteredWords,
+        filterProgress,
+        handleOpen,
+    };
 
     return <WordsContext.Provider value={value}>{children}</WordsContext.Provider>;
 };

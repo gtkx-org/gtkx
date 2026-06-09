@@ -13,7 +13,7 @@ import {
     GtkScrolledWindow,
     GtkTextView,
 } from "@gtkx/react";
-import { type RefCallback, useCallback, useEffect, useRef, useState } from "react";
+import { type RefCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./shadertoy.tsx?raw";
 
@@ -1135,29 +1135,26 @@ interface AnimState {
 }
 
 function useShaderTickCallback(animRef: React.RefObject<AnimState>, glAreaRef: React.RefObject<Gtk.GLArea | null>) {
-    return useCallback(
-        (_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
-            const anim = animRef.current;
-            const frame = frameClock.getFrameCounter();
-            const frameTime = frameClock.getFrameTime();
+    return (_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
+        const anim = animRef.current;
+        const frame = frameClock.getFrameCounter();
+        const frameTime = frameClock.getFrameTime();
 
-            if (anim.firstFrameTime === 0) {
-                anim.firstFrameTime = frameTime;
-                anim.firstFrame = frame;
-                anim.time = 0;
-                anim.timedelta = 0;
-            } else {
-                const previousTime = anim.time;
-                anim.time = (frameTime - anim.firstFrameTime) / 1_000_000;
-                anim.frame = frame - anim.firstFrame;
-                anim.timedelta = anim.time - previousTime;
-            }
+        if (anim.firstFrameTime === 0) {
+            anim.firstFrameTime = frameTime;
+            anim.firstFrame = frame;
+            anim.time = 0;
+            anim.timedelta = 0;
+        } else {
+            const previousTime = anim.time;
+            anim.time = (frameTime - anim.firstFrameTime) / 1_000_000;
+            anim.frame = frame - anim.firstFrame;
+            anim.timedelta = anim.time - previousTime;
+        }
 
-            glAreaRef.current?.queueDraw();
-            return true;
-        },
-        [animRef, glAreaRef],
-    );
+        glAreaRef.current?.queueDraw();
+        return true;
+    };
 }
 
 function useShaderRefCallback(
@@ -1165,17 +1162,14 @@ function useShaderRefCallback(
     tickIdRef: React.RefObject<number | null>,
     tickCallback: (widget: Gtk.Widget, frameClock: Gdk.FrameClock) => boolean,
 ) {
-    return useCallback<RefCallback<Gtk.GLArea>>(
-        (area: Gtk.GLArea | null) => {
-            if (glAreaRef.current && tickIdRef.current !== null) {
-                glAreaRef.current.removeTickCallback(tickIdRef.current);
-                tickIdRef.current = null;
-            }
-            glAreaRef.current = area;
-            if (area) tickIdRef.current = area.addTickCallback(tickCallback);
-        },
-        [glAreaRef, tickIdRef, tickCallback],
-    );
+    return (area: Gtk.GLArea | null) => {
+        if (glAreaRef.current && tickIdRef.current !== null) {
+            glAreaRef.current.removeTickCallback(tickIdRef.current);
+            tickIdRef.current = null;
+        }
+        glAreaRef.current = area;
+        if (area) tickIdRef.current = area.addTickCallback(tickCallback);
+    };
 }
 
 function useShaderCleanup(glAreaRef: React.RefObject<Gtk.GLArea | null>, tickIdRef: React.RefObject<number | null>) {
@@ -1298,17 +1292,14 @@ const ShaderPreview = ({ shaderCode }: { shaderCode: string }) => {
     const tickCallback = useShaderTickCallback(animRef, glAreaRef);
     const handleRef = useShaderRefCallback(glAreaRef, tickIdRef, tickCallback);
     useShaderCleanup(glAreaRef, tickIdRef);
-    const handleUnrealize = useCallback(() => releaseShaderState(glStateRef), []);
-    const handleRender = useCallback(
-        (_context: Gdk.GLContext, self: Gtk.GLArea) =>
-            renderShaderPreview({ glStateRef, animRef, resolutionRef, self, shaderCode }),
-        [shaderCode],
-    );
+    const handleUnrealize = () => releaseShaderState(glStateRef);
+    const handleRender = (_context: Gdk.GLContext, self: Gtk.GLArea) =>
+        renderShaderPreview({ glStateRef, animRef, resolutionRef, self, shaderCode });
 
-    const handleResize = useCallback((width: number, height: number) => {
+    const handleResize = (width: number, height: number) => {
         resolutionRef.current = [width, height, 1];
         gl.viewport(0, 0, width, height);
-    }, []);
+    };
 
     return (
         <GtkGLArea
@@ -1489,45 +1480,39 @@ const drawShadertoyFrame = (state: GLState, anim: AnimState, resolution: [number
 function useShadertoyDrag(glAreaRef: React.RefObject<Gtk.GLArea | null>, animRef: React.RefObject<AnimState>) {
     const dragStartRef = useRef({ x: 0, y: 0 });
 
-    const handleDragBegin = useCallback(
-        (x: number, y: number) => {
-            const area = glAreaRef.current;
-            if (!area) return;
-            dragStartRef.current = { x, y };
-            const height = area.getHeight();
-            const scale = area.getScaleFactor();
+    const handleDragBegin = (x: number, y: number) => {
+        const area = glAreaRef.current;
+        if (!area) return;
+        dragStartRef.current = { x, y };
+        const height = area.getHeight();
+        const scale = area.getScaleFactor();
+        const anim = animRef.current;
+        anim.mouse[0] = x * scale;
+        anim.mouse[1] = (height - y) * scale;
+        anim.mouse[2] = anim.mouse[0];
+        anim.mouse[3] = anim.mouse[1];
+    };
+
+    const handleDragUpdate = (dx: number, dy: number) => {
+        const area = glAreaRef.current;
+        if (!area) return;
+        const sx = dragStartRef.current.x + dx;
+        const sy = dragStartRef.current.y + dy;
+        const width = area.getWidth();
+        const height = area.getHeight();
+        const scale = area.getScaleFactor();
+        if (sx >= 0 && sx < width && sy >= 0 && sy < height) {
             const anim = animRef.current;
-            anim.mouse[0] = x * scale;
-            anim.mouse[1] = (height - y) * scale;
-            anim.mouse[2] = anim.mouse[0];
-            anim.mouse[3] = anim.mouse[1];
-        },
-        [glAreaRef, animRef],
-    );
+            anim.mouse[0] = sx * scale;
+            anim.mouse[1] = (height - sy) * scale;
+        }
+    };
 
-    const handleDragUpdate = useCallback(
-        (dx: number, dy: number) => {
-            const area = glAreaRef.current;
-            if (!area) return;
-            const sx = dragStartRef.current.x + dx;
-            const sy = dragStartRef.current.y + dy;
-            const width = area.getWidth();
-            const height = area.getHeight();
-            const scale = area.getScaleFactor();
-            if (sx >= 0 && sx < width && sy >= 0 && sy < height) {
-                const anim = animRef.current;
-                anim.mouse[0] = sx * scale;
-                anim.mouse[1] = (height - sy) * scale;
-            }
-        },
-        [glAreaRef, animRef],
-    );
-
-    const handleDragEnd = useCallback(() => {
+    const handleDragEnd = () => {
         const anim = animRef.current;
         anim.mouse[2] = -anim.mouse[2];
         anim.mouse[3] = -anim.mouse[3];
-    }, [animRef]);
+    };
 
     return { handleDragBegin, handleDragUpdate, handleDragEnd };
 }
@@ -1536,26 +1521,23 @@ function useShadertoyEditor(
     sourceViewRef: React.RefObject<Gtk.TextView | null>,
     setCompiledCode: (code: string) => void,
 ) {
-    const handleRun = useCallback(() => {
+    const handleRun = () => {
         const view = sourceViewRef.current;
         if (!view) return;
         const buffer = view.getBuffer();
         const start = buffer.getStartIter();
         const end = buffer.getEndIter();
         setCompiledCode(buffer.getText(start, end, false) ?? "");
-    }, [sourceViewRef, setCompiledCode]);
+    };
 
-    const handleClear = useCallback(() => {
+    const handleClear = () => {
         sourceViewRef.current?.getBuffer().setText("", -1);
-    }, [sourceViewRef]);
+    };
 
-    const loadPreset = useCallback(
-        (code: string) => {
-            sourceViewRef.current?.getBuffer().setText(code, -1);
-            setCompiledCode(code);
-        },
-        [sourceViewRef, setCompiledCode],
-    );
+    const loadPreset = (code: string) => {
+        sourceViewRef.current?.getBuffer().setText(code, -1);
+        setCompiledCode(code);
+    };
 
     return { handleRun, handleClear, loadPreset };
 }
@@ -1604,14 +1586,11 @@ const ShadertoyEditor = ({
     sourceViewRef: React.RefObject<Gtk.TextView | null>;
     initialCode: string;
 }) => {
-    const handleSourceViewRef = useCallback(
-        (view: Gtk.TextView | null) => {
-            const previous = sourceViewRef.current;
-            sourceViewRef.current = view;
-            if (view && !previous) view.getBuffer().setText(initialCode, -1);
-        },
-        [sourceViewRef, initialCode],
-    );
+    const handleSourceViewRef = (view: Gtk.TextView | null) => {
+        const previous = sourceViewRef.current;
+        sourceViewRef.current = view;
+        if (view && !previous) view.getBuffer().setText(initialCode, -1);
+    };
     return (
         <GtkScrolledWindow minContentHeight={250} hasFrame hexpand>
             <GtkTextView
@@ -1671,44 +1650,32 @@ const ShadertoyControls = ({ onRun, onClear, onLoadPreset }: ShadertoyControlsPr
 
 function useShadertoyHandlers(refs: ReturnType<typeof useShadertoyRefs>, compiledCode: string) {
     const tickCallback = useShaderTickCallback(refs.animRef, refs.glAreaRef);
-    const handleUnrealize = useCallback(() => releaseShaderState(refs.glStateRef), [refs.glStateRef]);
+    const handleUnrealize = () => releaseShaderState(refs.glStateRef);
     const handleGLAreaRef = useShaderRefCallback(refs.glAreaRef, refs.tickIdRef, tickCallback);
     useShaderCleanup(refs.glAreaRef, refs.tickIdRef);
 
-    const compileShader = useCallback(
-        (imageShader: string): boolean =>
-            compileShadertoyShader({
-                glAreaRef: refs.glAreaRef,
-                glStateRef: refs.glStateRef,
-                animRef: refs.animRef,
-                imageShader,
-            }),
-        [refs.animRef, refs.glAreaRef, refs.glStateRef],
-    );
-
     useEffect(() => {
-        compileShader(compiledCode);
-    }, [compiledCode, compileShader]);
+        compileShadertoyShader({
+            glAreaRef: refs.glAreaRef,
+            glStateRef: refs.glStateRef,
+            animRef: refs.animRef,
+            imageShader: compiledCode,
+        });
+    }, [compiledCode, refs]);
 
-    const handleRender = useCallback(
-        (_context: Gdk.GLContext, self: Gtk.GLArea) =>
-            renderShadertoy({
-                glStateRef: refs.glStateRef,
-                animRef: refs.animRef,
-                resolution: refs.resolutionRef.current,
-                self,
-                compiledCode,
-            }),
-        [compiledCode, refs.animRef, refs.glStateRef, refs.resolutionRef],
-    );
+    const handleRender = (_context: Gdk.GLContext, self: Gtk.GLArea) =>
+        renderShadertoy({
+            glStateRef: refs.glStateRef,
+            animRef: refs.animRef,
+            resolution: refs.resolutionRef.current,
+            self,
+            compiledCode,
+        });
 
-    const handleResize = useCallback(
-        (width: number, height: number) => {
-            refs.resolutionRef.current = [width, height, 1];
-            gl.viewport(0, 0, width, height);
-        },
-        [refs.resolutionRef],
-    );
+    const handleResize = (width: number, height: number) => {
+        refs.resolutionRef.current = [width, height, 1];
+        gl.viewport(0, 0, width, height);
+    };
 
     return { handleUnrealize, handleGLAreaRef, handleRender, handleResize };
 }

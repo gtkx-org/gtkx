@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkGrid, GtkGridChild, GtkImage, GtkRevealer } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./revealer.tsx?raw";
 
@@ -50,14 +50,14 @@ const RevealerDemo = () => {
         return () => clearInterval(timer);
     }, []);
 
-    const handleChildRevealed = useCallback((index: number) => {
+    const handleChildRevealed = (index: number) => {
         if (!activatedRef.current[index]) return;
         setRevealed((prev) => {
             const next = [...prev];
             next[index] = !next[index];
             return next;
         });
-    }, []);
+    };
 
     return (
         <GtkGrid name="revealer-grid" halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>

@@ -26,7 +26,7 @@ import {
     useApplication,
     useSetting,
 } from "@gtkx/react";
-import { useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import schemaId from "../com.gtkx.tutorial.gschema.xml";
 import { About } from "./components/about.js";
 import { DeleteConfirmation } from "./components/delete-confirmation.js";
@@ -137,20 +137,20 @@ const useNotesState = (toastOverlayRef: React.RefObject<Adw.ToastOverlay | null>
     const trashedNotes = notes.filter((n) => n.deleted);
     const favoriteNotes = activeNotes.filter((n) => n.favorite);
 
-    const addNote = useCallback(() => {
+    const addNote = () => {
         const note: Note = { id: crypto.randomUUID(), title: "Untitled", body: "", createdAt: new Date() };
         setNotes((prev) => [note, ...prev]);
-    }, []);
+    };
 
-    const updateNote = useCallback((id: string, fields: Partial<Pick<Note, "title" | "body">>) => {
+    const updateNote = (id: string, fields: Partial<Pick<Note, "title" | "body">>) => {
         setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, ...fields } : n)));
-    }, []);
+    };
 
-    const restoreNote = useCallback((id: string) => {
+    const restoreNote = (id: string) => {
         setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, deleted: false } : n)));
-    }, []);
+    };
 
-    const confirmDelete = useCallback(() => {
+    const confirmDelete = () => {
         if (!noteToDelete) return;
         const deletedNote = noteToDelete;
         if (selectedId === deletedNote.id) setSelectedId(null);
@@ -167,7 +167,7 @@ const useNotesState = (toastOverlayRef: React.RefObject<Adw.ToastOverlay | null>
         toast.buttonLabel = "Undo";
         toast.connect("button-clicked", () => restoreNote(deletedNote.id));
         toastOverlayRef.current?.addToast(toast);
-    }, [noteToDelete, selectedId, restoreNote, toastOverlayRef]);
+    };
 
     return {
         notes,

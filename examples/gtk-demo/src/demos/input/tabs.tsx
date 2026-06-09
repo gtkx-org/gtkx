@@ -1,19 +1,18 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import { GtkScrolledWindow, GtkTextView } from "@gtkx/react";
-import { useMemo } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./tabs.tsx?raw";
 
 const TabsDemo = () => {
-    const tabs = useMemo(() => {
+    const tabs = (() => {
         const t = Pango.TabArray.new(3, true);
         t.setTab(0, Pango.TabAlign.LEFT, 0);
         t.setTab(1, Pango.TabAlign.DECIMAL, 150);
         t.setDecimalPoint(1, ".");
         t.setTab(2, Pango.TabAlign.RIGHT, 290);
         return t;
-    }, []);
+    })();
 
     return (
         <GtkScrolledWindow

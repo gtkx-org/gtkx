@@ -1,6 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkInscription, GtkListView, GtkScrolledWindow, GtkSearchBar, GtkSearchEntry } from "@gtkx/react";
-import { useCallback, useMemo } from "react";
 import { useDemo } from "../context/demo-context.js";
 import type { TreeItem } from "../demos/types.js";
 
@@ -37,20 +36,17 @@ const renderItem = (item: TreeItem) => {
 export const Sidebar = ({ searchMode, onSearchChanged }: SidebarProps) => {
     const { filteredTreeItems, currentDemo, setCurrentDemo, searchQuery, demos } = useDemo();
 
-    const items = useMemo(() => filteredTreeItems.map(treeItemToData), [filteredTreeItems]);
+    const items = filteredTreeItems.map(treeItemToData);
 
-    const selected = useMemo(() => (currentDemo ? [`demo-${currentDemo.id}`] : EMPTY_SELECTION), [currentDemo]);
+    const selected = currentDemo ? [`demo-${currentDemo.id}`] : EMPTY_SELECTION;
 
-    const handleSelectionChanged = useCallback(
-        (ids: string[]) => {
-            const selectedId = ids[0];
-            if (!selectedId?.startsWith("demo-")) return;
-            const demoId = selectedId.slice(5);
-            const demo = demos.find((d) => d.id === demoId);
-            if (demo) setCurrentDemo(demo);
-        },
-        [demos, setCurrentDemo],
-    );
+    const handleSelectionChanged = (ids: string[]) => {
+        const selectedId = ids[0];
+        if (!selectedId?.startsWith("demo-")) return;
+        const demoId = selectedId.slice(5);
+        const demo = demos.find((d) => d.id === demoId);
+        if (demo) setCurrentDemo(demo);
+    };
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>

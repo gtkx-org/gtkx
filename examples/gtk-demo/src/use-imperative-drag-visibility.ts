@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { type RefObject, useCallback, useRef } from "react";
+import { type RefObject, useRef } from "react";
 
 /**
  * Imperatively toggles the visibility of an ancillary widget across a drag
@@ -30,13 +30,13 @@ export interface ImperativeDragVisibility<T extends Gtk.Widget> {
 export function useImperativeDragVisibility<T extends Gtk.Widget>(): ImperativeDragVisibility<T> {
     const ref = useRef<T | null>(null);
 
-    const show = useCallback(() => {
+    const show = () => {
         ref.current?.setVisible(true);
-    }, []);
+    };
 
-    const hide = useCallback(() => {
+    const hide = () => {
         ref.current?.setVisible(false);
-    }, []);
+    };
 
     return { ref, show, hide };
 }

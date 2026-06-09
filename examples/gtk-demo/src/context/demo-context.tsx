@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, type ReactNode, useContext, useState } from "react";
 import type { Demo, TreeItem } from "../demos/types.js";
 
 interface DemoContextValue {
@@ -130,42 +130,36 @@ const findFirstDemo = (treeItems: TreeItem[]): Demo | null => {
 };
 
 export const DemoProvider = ({ demos, children }: DemoTreeProviderProps) => {
-    const treeItems = useMemo(() => buildTree(demos), [demos]);
+    const treeItems = buildTree(demos);
 
-    const firstDemo = useMemo(() => findFirstDemo(treeItems), [treeItems]);
+    const firstDemo = findFirstDemo(treeItems);
 
     const [currentDemo, setCurrentDemoState] = useState<Demo | null>(firstDemo);
     const [searchQuery, setSearchQuery] = useState("");
     const [windowTitle, setWindowTitle] = useState<string | null>(null);
     const [defaultWidget, setDefaultWidget] = useState<Gtk.Widget | null>(null);
 
-    const setCurrentDemo = useCallback((demo: Demo | null) => {
+    const setCurrentDemo = (demo: Demo | null) => {
         setCurrentDemoState(demo);
         setWindowTitle(null);
         setDefaultWidget(null);
-    }, []);
+    };
 
-    const filteredTreeItems = useMemo(
-        () => (searchQuery.trim() ? filterTree(treeItems, searchQuery) : treeItems),
-        [treeItems, searchQuery],
-    );
+    const filteredTreeItems = searchQuery.trim() ? filterTree(treeItems, searchQuery) : treeItems;
 
-    const contextValue = useMemo(
-        () => ({
-            demos,
-            treeItems,
-            currentDemo,
-            setCurrentDemo,
-            searchQuery,
-            setSearchQuery,
-            filteredTreeItems,
-            windowTitle,
-            setWindowTitle,
-            defaultWidget,
-            setDefaultWidget,
-        }),
-        [demos, treeItems, currentDemo, searchQuery, filteredTreeItems, windowTitle, defaultWidget, setCurrentDemo],
-    );
+    const contextValue = {
+        demos,
+        treeItems,
+        currentDemo,
+        setCurrentDemo,
+        searchQuery,
+        setSearchQuery,
+        filteredTreeItems,
+        windowTitle,
+        setWindowTitle,
+        defaultWidget,
+        setDefaultWidget,
+    };
 
     return <DemoContext.Provider value={contextValue}>{children}</DemoContext.Provider>;
 };

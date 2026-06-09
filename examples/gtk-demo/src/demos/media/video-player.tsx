@@ -2,7 +2,7 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkButton, GtkHeaderBar, GtkImage, GtkShortcut, GtkShortcutController, GtkVideo } from "@gtkx/react";
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import { path as bbbPngPath } from "./bbb.png";
 import { path as gtkLogoCursorPath } from "./gtk_logo_cursor.png";
@@ -62,47 +62,33 @@ const useVideoPlayerContext = (): VideoPlayerContextValue => {
 
 const VideoPlayerProvider = ({ window, children }: DemoProviderProps) => {
     const [videoFile, setVideoFile] = useState<Gio.File | null>(null);
-    const logoPaintable = useMemo(() => Gdk.Texture.newFromResource(gtkLogoCursorPath), []);
-    const bbbPaintable = useMemo(() => Gdk.Texture.newFromResource(bbbPngPath), []);
+    const logoPaintable = Gdk.Texture.newFromResource(gtkLogoCursorPath);
+    const bbbPaintable = Gdk.Texture.newFromResource(bbbPngPath);
 
-    const handleOpen = useCallback(() => {
+    const handleOpen = () => {
         void openVideoDialog(window.current, setVideoFile);
-    }, [window]);
-    const handleLogo = useCallback(() => setVideoFile(Gio.fileNewForUri(gtkLogoUri)), []);
-    const handleBBB = useCallback(
-        () => setVideoFile(Gio.fileNewForUri("https://download.blender.org/peach/trailer/trailer_400p.ogg")),
-        [],
-    );
-    const handleFullscreen = useCallback(() => window.current?.fullscreen(), [window]);
-    const handleToggleFullscreen = useCallback(() => {
+    };
+    const handleLogo = () => setVideoFile(Gio.fileNewForUri(gtkLogoUri));
+    const handleBBB = () =>
+        setVideoFile(Gio.fileNewForUri("https://download.blender.org/peach/trailer/trailer_400p.ogg"));
+    const handleFullscreen = () => window.current?.fullscreen();
+    const handleToggleFullscreen = () => {
         const win = window.current;
         if (!win) return;
         if (win.isFullscreen()) win.unfullscreen();
         else win.fullscreen();
-    }, [window]);
+    };
 
-    const value = useMemo<VideoPlayerContextValue>(
-        () => ({
-            videoFile,
-            logoPaintable,
-            bbbPaintable,
-            handleOpen,
-            handleLogo,
-            handleBBB,
-            handleFullscreen,
-            handleToggleFullscreen,
-        }),
-        [
-            videoFile,
-            logoPaintable,
-            bbbPaintable,
-            handleOpen,
-            handleLogo,
-            handleBBB,
-            handleFullscreen,
-            handleToggleFullscreen,
-        ],
-    );
+    const value = {
+        videoFile,
+        logoPaintable,
+        bbbPaintable,
+        handleOpen,
+        handleLogo,
+        handleBBB,
+        handleFullscreen,
+        handleToggleFullscreen,
+    };
 
     return <VideoPlayerContext.Provider value={value}>{children}</VideoPlayerContext.Provider>;
 };

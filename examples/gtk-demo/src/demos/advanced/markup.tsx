@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkCheckButton, GtkHeaderBar, GtkScrolledWindow, GtkStack, GtkStackPage, GtkTextView } from "@gtkx/react";
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./markup.tsx?raw";
 import markupContent from "./markup.txt?raw";
@@ -107,25 +107,26 @@ const MarkupProvider = ({ children }: DemoProviderProps) => {
     const [showSource, setShowSource] = useState(false);
     const markupRef = useRef(SAMPLE_MARKUP);
 
-    const applyMarkup = useCallback(() => {
+    const applyMarkup = () => {
         applyMarkupToView(formattedViewRef.current, markupRef.current);
-    }, []);
+    };
 
-    const handleSourceToggle = useCallback(
-        (active: boolean) => {
-            if (!active && showSource) {
-                syncMarkupFromSource(sourceViewRef.current, markupRef);
-                applyMarkup();
-            }
-            setShowSource(active);
-        },
-        [showSource, applyMarkup],
-    );
+    const handleSourceToggle = (active: boolean) => {
+        if (!active && showSource) {
+            syncMarkupFromSource(sourceViewRef.current, markupRef);
+            applyMarkup();
+        }
+        setShowSource(active);
+    };
 
-    const value = useMemo<MarkupContextValue>(
-        () => ({ showSource, handleSourceToggle, applyMarkup, formattedViewRef, sourceViewRef, markupRef }),
-        [showSource, handleSourceToggle, applyMarkup],
-    );
+    const value = {
+        showSource,
+        handleSourceToggle,
+        applyMarkup,
+        formattedViewRef,
+        sourceViewRef,
+        markupRef,
+    };
 
     return <MarkupContext.Provider value={value}>{children}</MarkupContext.Provider>;
 };

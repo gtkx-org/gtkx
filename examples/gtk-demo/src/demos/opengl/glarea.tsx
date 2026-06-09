@@ -2,7 +2,7 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as gl from "@gtkx/gi/gl";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkGLArea, GtkLabel, GtkScale, useAdjustment } from "@gtkx/react";
-import { useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./glarea.tsx?raw";
 
@@ -216,7 +216,7 @@ interface UseGLAreaHandlersArgs {
 const useGLAreaHandlers = (args: UseGLAreaHandlersArgs) => {
     const { glAreaRef, glStateRef, rotationX, rotationY, rotationZ } = args;
 
-    const handleRealize = useCallback(() => {
+    const handleRealize = () => {
         const area = glAreaRef.current;
         if (!area) return;
         area.makeCurrent();
@@ -227,28 +227,22 @@ const useGLAreaHandlers = (args: UseGLAreaHandlersArgs) => {
             if (e instanceof Error) console.error(e.message);
             glStateRef.current = null;
         }
-    }, [glAreaRef, glStateRef]);
+    };
 
-    const handleUnrealize = useCallback(() => {
+    const handleUnrealize = () => {
         const area = glAreaRef.current;
         if (area) area.makeCurrent();
         releaseGLState(glStateRef);
-    }, [glAreaRef, glStateRef]);
+    };
 
-    const handleRender = useCallback(
-        (_context: Gdk.GLContext) => renderGLArea({ glStateRef, rotationX, rotationY, rotationZ }),
-        [glStateRef, rotationX, rotationY, rotationZ],
-    );
+    const handleRender = (_context: Gdk.GLContext) => renderGLArea({ glStateRef, rotationX, rotationY, rotationZ });
 
-    const handleResize = useCallback((width: number, height: number) => gl.viewport(0, 0, width, height), []);
+    const handleResize = (width: number, height: number) => gl.viewport(0, 0, width, height);
 
-    const createAxisHandler = useCallback(
-        (axisSetter: (v: number) => void) => (value: number) => {
-            axisSetter((value * Math.PI) / 180);
-            glAreaRef.current?.queueRender();
-        },
-        [glAreaRef],
-    );
+    const createAxisHandler = (axisSetter: (v: number) => void) => (value: number) => {
+        axisSetter((value * Math.PI) / 180);
+        glAreaRef.current?.queueRender();
+    };
 
     return { handleRealize, handleUnrealize, handleRender, handleResize, createAxisHandler };
 };

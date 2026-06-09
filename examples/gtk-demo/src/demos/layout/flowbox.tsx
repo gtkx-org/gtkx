@@ -2,7 +2,6 @@ import type { Context } from "@gtkx/gi/cairo";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkButton, GtkDrawingArea, GtkFlowBox, GtkScrolledWindow } from "@gtkx/react";
-import { useMemo } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./flowbox.tsx?raw";
 
@@ -694,14 +693,10 @@ function drawColor(cr: Context, _width: number, _height: number, rgba: Gdk.RGBA)
 }
 
 const FlowBoxDemo = () => {
-    const colorItems = useMemo(
-        () =>
-            COLORS.map((color) => {
-                const rgba = getParsedColors().get(color);
-                return { color, rgba };
-            }),
-        [],
-    );
+    const colorItems = COLORS.map((color) => {
+        const rgba = getParsedColors().get(color);
+        return { color, rgba };
+    });
 
     return (
         <GtkScrolledWindow name="scrolled" hscrollbarPolicy={Gtk.PolicyType.NEVER}>

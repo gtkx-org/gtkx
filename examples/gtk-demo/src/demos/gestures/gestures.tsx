@@ -2,7 +2,7 @@ import type { Context } from "@gtkx/gi/cairo";
 import { Pattern } from "@gtkx/gi/cairo";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkDrawingArea, GtkGestureLongPress, GtkGestureRotate, GtkGestureSwipe, GtkGestureZoom } from "@gtkx/react";
-import { useCallback, useRef } from "react";
+import { useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./gestures.tsx?raw";
 
@@ -13,24 +13,21 @@ interface GestureState {
 }
 
 function useGesturesHandlers(gestureStateRef: React.RefObject<GestureState>, queueDraw: () => void) {
-    const handleSwipe = useCallback(
-        (velocityX: number, velocityY: number) => {
-            gestureStateRef.current.swipeX = velocityX / 10;
-            gestureStateRef.current.swipeY = velocityY / 10;
-            queueDraw();
-        },
-        [queueDraw, gestureStateRef],
-    );
+    const handleSwipe = (velocityX: number, velocityY: number) => {
+        gestureStateRef.current.swipeX = velocityX / 10;
+        gestureStateRef.current.swipeY = velocityY / 10;
+        queueDraw();
+    };
 
-    const handleLongPressPressed = useCallback(() => {
+    const handleLongPressPressed = () => {
         gestureStateRef.current.longPressed = true;
         queueDraw();
-    }, [queueDraw, gestureStateRef]);
+    };
 
-    const handleLongPressEnd = useCallback(() => {
+    const handleLongPressEnd = () => {
         gestureStateRef.current.longPressed = false;
         queueDraw();
-    }, [queueDraw, gestureStateRef]);
+    };
 
     return { handleSwipe, handleLongPressPressed, handleLongPressEnd };
 }
@@ -114,11 +111,11 @@ const GesturesDemo = () => {
     const zoomRef = useRef<Gtk.GestureZoom | null>(null);
     const drawingAreaRef = useRef<Gtk.DrawingArea | null>(null);
 
-    const queueDraw = useCallback(() => drawingAreaRef.current?.queueDraw(), []);
+    const queueDraw = () => drawingAreaRef.current?.queueDraw();
 
     const handlers = useGesturesHandlers(gestureStateRef, queueDraw);
 
-    const drawFunc = useCallback((cr: Context, width: number, height: number) => {
+    const drawFunc = (cr: Context, width: number, height: number) => {
         drawGestures(cr, {
             width,
             height,
@@ -126,7 +123,7 @@ const GesturesDemo = () => {
             rotate: rotateRef.current,
             zoom: zoomRef.current,
         });
-    }, []);
+    };
 
     return (
         <GtkDrawingArea

@@ -3,7 +3,7 @@ import type * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import { AdwAlertDialog, createPortal, GtkBox, GtkButton, GtkHeaderBar, GtkLabel, GtkToggleButton } from "@gtkx/react";
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Demo, DemoProps, DemoProviderProps } from "../types.js";
 import sourceCode from "./themes.tsx?raw";
 
@@ -125,11 +125,11 @@ const ThemesWarningDialog = ({ window, onResponse }: { window: Gtk.Window; onRes
     );
 
 function useFpsAttrs() {
-    return useMemo(() => {
+    return (() => {
         const attrs = Pango.AttrList.new();
         attrs.insert(Pango.attrFontFeaturesNew("tnum=1"));
         return attrs;
-    }, []);
+    })();
 }
 
 function useThemesCycling(window: React.RefObject<Gtk.Window | null>) {
@@ -145,11 +145,8 @@ function useThemesCycling(window: React.RefObject<Gtk.Window | null>) {
 
     useThemesLifecycle(window, originalSettingsRef, tickIdRef);
 
-    const tickCallback = useCallback(
-        (_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean =>
-            applyNextTheme(window, themeIndexRef, frameClock, fpsRef),
-        [window],
-    );
+    const tickCallback = (_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean =>
+        applyNextTheme(window, themeIndexRef, frameClock, fpsRef);
 
     useEffect(() => {
         if (!isRunning) return;
@@ -157,14 +154,14 @@ function useThemesCycling(window: React.RefObject<Gtk.Window | null>) {
         return () => clearInterval(interval);
     }, [isRunning]);
 
-    const startCycling = useCallback(() => {
+    const startCycling = () => {
         const win = window.current;
         if (!win) return;
         tickIdRef.current = win.addTickCallback(tickCallback);
         setIsRunning(true);
-    }, [window, tickCallback]);
+    };
 
-    const stopCycling = useCallback(() => {
+    const stopCycling = () => {
         const win = window.current;
         if (win && tickIdRef.current !== null) {
             win.removeTickCallback(tickIdRef.current);
@@ -174,24 +171,18 @@ function useThemesCycling(window: React.RefObject<Gtk.Window | null>) {
         setIsRunning(false);
         fpsRef.current = "";
         setFps("");
-    }, [window]);
+    };
 
-    const handleToggle = useCallback(
-        (active: boolean) => {
-            if (active) setShowWarning(true);
-            else stopCycling();
-        },
-        [stopCycling],
-    );
+    const handleToggle = (active: boolean) => {
+        if (active) setShowWarning(true);
+        else stopCycling();
+    };
 
-    const handleWarningResponse = useCallback(
-        (response: string) => {
-            setShowWarning(false);
-            if (response === "ok") startCycling();
-            else setIsRunning(false);
-        },
-        [startCycling],
-    );
+    const handleWarningResponse = (response: string) => {
+        setShowWarning(false);
+        if (response === "ok") startCycling();
+        else setIsRunning(false);
+    };
 
     return { isRunning, fps, showWarning, fpsAttrs, boxRef, handleToggle, handleWarningResponse };
 }

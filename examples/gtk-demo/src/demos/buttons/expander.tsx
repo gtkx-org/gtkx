@@ -10,7 +10,6 @@ import {
     GtkTextTag,
     GtkTextView,
 } from "@gtkx/react";
-import { useCallback, useMemo } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./expander.tsx?raw";
 import { path as gtkLogoCursorPath } from "./gtk_logo_cursor.png";
@@ -21,15 +20,15 @@ Do it already!
 `;
 
 const ExpanderDemo = () => {
-    const texture = useMemo(() => Gdk.Texture.newFromResource(gtkLogoCursorPath), []);
+    const texture = Gdk.Texture.newFromResource(gtkLogoCursorPath);
 
-    const handleExpandedNotify = useCallback((pspec: GObject.ParamSpec, self: Gtk.Expander) => {
+    const handleExpandedNotify = (pspec: GObject.ParamSpec, self: Gtk.Expander) => {
         if (pspec.getName() !== "expanded") return;
         const root = self.getRoot();
         if (!root) return;
         const win = root instanceof Gtk.Window ? root : null;
         if (win) win.setResizable(self.getExpanded());
-    }, []);
+    };
 
     return (
         <GtkBox

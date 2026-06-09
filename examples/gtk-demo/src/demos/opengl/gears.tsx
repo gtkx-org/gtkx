@@ -11,7 +11,7 @@ import {
     GtkScale,
     useAdjustment,
 } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLatest } from "../../use-latest.js";
 import type { Demo } from "../types.js";
 import sourceCode from "./gears.tsx?raw";
@@ -531,49 +531,44 @@ const sampleFps = (frameClock: Gdk.FrameClock, frameTime: number, fpsRef: React.
 const FPS_POLL_MS = 500;
 
 function useGearsAnimation(refs: GearsRefs, fpsRef: React.RefObject<number>, setFps: (fps: number) => void) {
-    const tickCallback = useCallback(
-        (_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
-            const frameTime = frameClock.getFrameTime();
-            if (refs.firstFrameTimeRef.current === 0) {
-                refs.firstFrameTimeRef.current = frameTime;
-                return true;
-            }
-            refs.angleRef.current = (((frameTime - refs.firstFrameTimeRef.current) / 1_000_000) * 70) % 360;
-            refs.glAreaRef.current?.queueRender();
-            sampleFps(frameClock, frameTime, fpsRef);
+    const tickCallback = (_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
+        const frameTime = frameClock.getFrameTime();
+        if (refs.firstFrameTimeRef.current === 0) {
+            refs.firstFrameTimeRef.current = frameTime;
             return true;
-        },
-        [refs, fpsRef],
-    );
+        }
+        refs.angleRef.current = (((frameTime - refs.firstFrameTimeRef.current) / 1_000_000) * 70) % 360;
+        refs.glAreaRef.current?.queueRender();
+        sampleFps(frameClock, frameTime, fpsRef);
+        return true;
+    };
 
-    const startAnimation = useCallback(() => {
+    const startAnimation = () => {
         const glArea = refs.glAreaRef.current;
         if (!glArea || refs.tickIdRef.current !== null) return;
         refs.firstFrameTimeRef.current = 0;
         refs.tickIdRef.current = glArea.addTickCallback(tickCallback);
-    }, [refs, tickCallback]);
+    };
 
-    const stopAnimation = useCallback(() => {
-        const glArea = refs.glAreaRef.current;
-        if (!glArea || refs.tickIdRef.current === null) return;
-        glArea.removeTickCallback(refs.tickIdRef.current);
-        refs.tickIdRef.current = null;
-        refs.firstFrameTimeRef.current = 0;
-    }, [refs]);
+    const handleGLAreaRef = (glArea: Gtk.GLArea | null) => {
+        if (refs.glAreaRef.current && refs.tickIdRef.current !== null) {
+            refs.glAreaRef.current.removeTickCallback(refs.tickIdRef.current);
+            refs.tickIdRef.current = null;
+        }
+        refs.glAreaRef.current = glArea;
+        if (glArea) startAnimation();
+    };
 
-    const handleGLAreaRef = useCallback(
-        (glArea: Gtk.GLArea | null) => {
-            if (refs.glAreaRef.current && refs.tickIdRef.current !== null) {
-                refs.glAreaRef.current.removeTickCallback(refs.tickIdRef.current);
-                refs.tickIdRef.current = null;
-            }
-            refs.glAreaRef.current = glArea;
-            if (glArea) startAnimation();
+    useEffect(
+        () => () => {
+            const glArea = refs.glAreaRef.current;
+            if (!glArea || refs.tickIdRef.current === null) return;
+            glArea.removeTickCallback(refs.tickIdRef.current);
+            refs.tickIdRef.current = null;
+            refs.firstFrameTimeRef.current = 0;
         },
-        [refs, startAnimation],
+        [refs],
     );
-
-    useEffect(() => stopAnimation, [stopAnimation]);
 
     useEffect(() => {
         const interval = setInterval(() => setFps(fpsRef.current), FPS_POLL_MS);
@@ -584,14 +579,14 @@ function useGearsAnimation(refs: GearsRefs, fpsRef: React.RefObject<number>, set
 }
 
 function useGearsUnrealize(glStateRef: React.RefObject<GLState | null>) {
-    return useCallback(() => {
+    return () => {
         const state = glStateRef.current;
         if (!state) return;
         for (const vbo of state.gearVbos) gl.deleteBuffer(vbo);
         gl.deleteVertexArray(state.vao);
         gl.deleteProgram(state.program);
         glStateRef.current = null;
-    }, [glStateRef]);
+    };
 }
 
 const initGLOrError = (
@@ -650,34 +645,31 @@ const computeViewTransform = (refs: GearsRefs): number[] => {
 };
 
 function useGearsRender(refs: GearsRefs, setError: (e: string) => void) {
-    return useCallback(
-        (_context: Gdk.GLContext, self: Gtk.GLArea) => {
-            if (!initGLOrError(refs.glStateRef, self, setError)) return true;
-            const state = refs.glStateRef.current;
-            if (!state) return true;
+    return (_context: Gdk.GLContext, self: Gtk.GLArea) => {
+        if (!initGLOrError(refs.glStateRef, self, setError)) return true;
+        const state = refs.glStateRef.current;
+        if (!state) return true;
 
-            const scale = self.getScaleFactor();
-            const width = self.getAllocatedWidth() * scale;
-            const height = self.getAllocatedHeight() * scale;
+        const scale = self.getScaleFactor();
+        const width = self.getAllocatedWidth() * scale;
+        const height = self.getAllocatedHeight() * scale;
 
-            const projection = mat4Perspective(Math.PI / 3, width / height, 1, 1024);
-            gl.viewport(0, 0, width, height);
-            gl.clearColor(0, 0, 0, 0);
-            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-            gl.bindVertexArray(state.vao);
-            // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
-            gl.useProgram(state.program);
+        const projection = mat4Perspective(Math.PI / 3, width / height, 1, 1024);
+        gl.viewport(0, 0, width, height);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.bindVertexArray(state.vao);
+        // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
+        gl.useProgram(state.program);
 
-            const transform = computeViewTransform(refs);
-            drawAllGears(state, transform, projection, refs.angleRef.current);
+        const transform = computeViewTransform(refs);
+        drawAllGears(state, transform, projection, refs.angleRef.current);
 
-            // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
-            gl.useProgram(0);
-            gl.bindVertexArray(0);
-            return true;
-        },
-        [refs, setError],
-    );
+        // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
+        gl.useProgram(0);
+        gl.bindVertexArray(0);
+        return true;
+    };
 }
 
 const GearsError = ({ error }: { error: string }) => (

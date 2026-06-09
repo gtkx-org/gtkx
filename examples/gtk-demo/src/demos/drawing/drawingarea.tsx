@@ -1,7 +1,7 @@
 import { Content, Context, Format, ImageSurface, Operator, Surface } from "@gtkx/gi/cairo";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkDrawingArea, GtkFrame, GtkGestureDrag, GtkLabel } from "@gtkx/react";
-import { useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./drawingarea.tsx?raw";
 
@@ -127,29 +127,23 @@ function useScribbleHandlers(
     surfaceRef: React.RefObject<ImageSurface | null>,
     startPointRef: React.RefObject<{ x: number; y: number }>,
 ) {
-    const handleDragBegin = useCallback(
-        (startX: number, startY: number) => {
-            startPointRef.current = { x: startX, y: startY };
-            if (surfaceRef.current && ref.current) {
-                drawBrush(surfaceRef.current, ref.current, startX, startY);
-            }
-        },
-        [ref, surfaceRef, startPointRef],
-    );
+    const handleDragBegin = (startX: number, startY: number) => {
+        startPointRef.current = { x: startX, y: startY };
+        if (surfaceRef.current && ref.current) {
+            drawBrush(surfaceRef.current, ref.current, startX, startY);
+        }
+    };
 
-    const handleDragOffset = useCallback(
-        (offsetX: number, offsetY: number) => {
-            if (surfaceRef.current && ref.current) {
-                drawBrush(
-                    surfaceRef.current,
-                    ref.current,
-                    startPointRef.current.x + offsetX,
-                    startPointRef.current.y + offsetY,
-                );
-            }
-        },
-        [ref, surfaceRef, startPointRef],
-    );
+    const handleDragOffset = (offsetX: number, offsetY: number) => {
+        if (surfaceRef.current && ref.current) {
+            drawBrush(
+                surfaceRef.current,
+                ref.current,
+                startPointRef.current.x + offsetX,
+                startPointRef.current.y + offsetY,
+            );
+        }
+    };
 
     return { handleDragBegin, handleDragUpdate: handleDragOffset, handleDragEnd: handleDragOffset };
 }
@@ -159,16 +153,16 @@ const ScribbleArea = ({ accessibleLabelledBy }: { accessibleLabelledBy?: Gtk.Wid
     const surfaceRef = useRef<ImageSurface | null>(null);
     const startPointRef = useRef({ x: 0, y: 0 });
 
-    const handleResize = useCallback((width: number, height: number) => {
+    const handleResize = (width: number, height: number) => {
         surfaceRef.current = createSurface(width, height);
-    }, []);
+    };
 
-    const drawScribble = useCallback((cr: Context) => {
+    const drawScribble = (cr: Context) => {
         if (surfaceRef.current) {
             cr.setSourceSurface(surfaceRef.current, 0, 0);
             cr.paint();
         }
-    }, []);
+    };
 
     const { handleDragBegin, handleDragUpdate, handleDragEnd } = useScribbleHandlers(ref, surfaceRef, startPointRef);
 

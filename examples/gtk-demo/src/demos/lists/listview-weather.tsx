@@ -1,6 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
-import { useMemo } from "react";
 import type { Demo } from "../types.js";
 import rawWeatherData from "./listview_weather.txt?raw";
 import sourceCode from "./listview-weather.tsx?raw";
@@ -111,7 +110,7 @@ const parseWeatherData = (): WeatherInfo[] => {
 };
 
 const ListViewWeatherDemo = () => {
-    const weatherData = useMemo(() => parseWeatherData(), []);
+    const weatherData = parseWeatherData();
 
     return (
         <GtkScrolledWindow name="scrolled" vexpand hexpand>

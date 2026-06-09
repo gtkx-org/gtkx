@@ -23,7 +23,7 @@ import {
     GtkSeparator,
     useAdjustment,
 } from "@gtkx/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useContextMenuGesture } from "../../use-context-menu-gesture.js";
 import { useImperativeDragVisibility } from "../../use-imperative-drag-visibility.js";
 import type { Demo } from "../types.js";
@@ -153,11 +153,11 @@ function ColorSwatch({ color }: Readonly<{ color: string }>) {
         background-color: ${color};
     `;
 
-    const createColorProvider = useCallback(() => {
+    const createColorProvider = () => {
         const rgba = new Gdk.RGBA();
         rgba.parse(color);
         return Gdk.ContentProvider.newForValue(GObject.buildValue(gdkRgbaType, (v) => v.setBoxed(rgba)));
-    }, [color]);
+    };
 
     return (
         <GtkBox name={`swatch-${color}`} cssClasses={[swatchStyle, dynamicStyle]}>
@@ -167,9 +167,9 @@ function ColorSwatch({ color }: Readonly<{ color: string }>) {
 }
 
 function CssPatternSwatch({ id, cssClass }: Readonly<{ id: string; cssClass: string }>) {
-    const createClassProvider = useCallback(() => {
+    const createClassProvider = () => {
         return Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.Type.STRING, (v) => v.setString(cssClass)));
-    }, [cssClass]);
+    };
 
     return (
         <GtkBox name={`pattern-${id}`} cssClasses={[swatchStyle, cssClass]}>
@@ -235,10 +235,7 @@ function useDndState() {
         refs,
     });
 
-    const editingItem = useMemo(
-        () => (editState ? items.find((i) => i.id === editState.itemId) : null),
-        [editState, items],
-    );
+    const editingItem = editState ? items.find((i) => i.id === editState.itemId) : null;
 
     return {
         items,
@@ -338,28 +335,17 @@ function useItemHandlers(args: DndHandlerArgs) {
 function useItemEditHandlers(args: DndHandlerArgs) {
     const { setItems } = args;
 
-    const createContentProvider = useCallback(
-        (itemId: string) =>
-            Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.Type.STRING, (v) => v.setString(itemId))),
-        [],
-    );
+    const createContentProvider = (itemId: string) =>
+        Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.Type.STRING, (v) => v.setString(itemId)));
 
-    const toggleEditing = useCallback(
-        (itemId: string) => args.setEditState(args.contextMenu?.itemId === itemId ? null : { itemId }),
-        [args],
-    );
+    const toggleEditing = (itemId: string) =>
+        args.setEditState(args.contextMenu?.itemId === itemId ? null : { itemId });
 
-    const updateItemLabel = useCallback(
-        (itemId: string, label: string) =>
-            setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, label } : item))),
-        [setItems],
-    );
+    const updateItemLabel = (itemId: string, label: string) =>
+        setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, label } : item)));
 
-    const updateItemAngle = useCallback(
-        (itemId: string, angle: number) =>
-            setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, angle } : item))),
-        [setItems],
-    );
+    const updateItemAngle = (itemId: string, angle: number) =>
+        setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, angle } : item)));
 
     return { createContentProvider, toggleEditing, updateItemLabel, updateItemAngle };
 }
@@ -367,29 +353,18 @@ function useItemEditHandlers(args: DndHandlerArgs) {
 function useItemRotateHandlers(args: DndHandlerArgs) {
     const { setItems } = args;
 
-    const updateItemAngleDelta = useCallback(
-        (itemId: string, angleDeltaDeg: number) =>
-            setItems((prev) =>
-                prev.map((item) => (item.id === itemId ? { ...item, angleDelta: angleDeltaDeg } : item)),
-            ),
-        [setItems],
-    );
+    const updateItemAngleDelta = (itemId: string, angleDeltaDeg: number) =>
+        setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, angleDelta: angleDeltaDeg } : item)));
 
-    const handleRotateAngleChanged = useCallback(
-        (itemId: string) => (_angle: number, angleDelta: number) =>
-            updateItemAngleDelta(itemId, (angleDelta * 180) / Math.PI),
-        [updateItemAngleDelta],
-    );
+    const handleRotateAngleChanged = (itemId: string) => (_angle: number, angleDelta: number) =>
+        updateItemAngleDelta(itemId, (angleDelta * 180) / Math.PI);
 
-    const handleRotateEnd = useCallback(
-        (itemId: string) =>
-            setItems((prev) =>
-                prev.map((item) =>
-                    item.id === itemId ? { ...item, angle: item.angle + item.angleDelta, angleDelta: 0 } : item,
-                ),
+    const handleRotateEnd = (itemId: string) =>
+        setItems((prev) =>
+            prev.map((item) =>
+                item.id === itemId ? { ...item, angle: item.angle + item.angleDelta, angleDelta: 0 } : item,
             ),
-        [setItems],
-    );
+        );
 
     return { handleRotateAngleChanged, handleRotateEnd };
 }
@@ -397,28 +372,22 @@ function useItemRotateHandlers(args: DndHandlerArgs) {
 function useItemDragHandlers(args: DndHandlerArgs) {
     const { setItems, refs } = args;
 
-    const bringToFront = useCallback(
-        (itemId: string) =>
-            setItems((prev) => {
-                const idx = prev.findIndex((i) => i.id === itemId);
-                if (idx === -1 || idx === prev.length - 1) return prev;
-                const item = prev[idx];
-                if (!item) return prev;
-                return [...prev.slice(0, idx), ...prev.slice(idx + 1), item];
-            }),
-        [setItems],
-    );
+    const bringToFront = (itemId: string) =>
+        setItems((prev) => {
+            const idx = prev.findIndex((i) => i.id === itemId);
+            if (idx === -1 || idx === prev.length - 1) return prev;
+            const item = prev[idx];
+            if (!item) return prev;
+            return [...prev.slice(0, idx), ...prev.slice(idx + 1), item];
+        });
 
-    const setDragIcon = useCallback(
-        (itemId: string, source: Gtk.DragSource) => {
-            const button = refs.buttonRefs.current.get(itemId);
-            if (!button) return;
-            const paintable = Gtk.WidgetPaintable.new(button);
-            const { x, y } = refs.dragHotspotRef.current;
-            source.setIcon(paintable, x, y);
-        },
-        [refs],
-    );
+    const setDragIcon = (itemId: string, source: Gtk.DragSource) => {
+        const button = refs.buttonRefs.current.get(itemId);
+        if (!button) return;
+        const paintable = Gtk.WidgetPaintable.new(button);
+        const { x, y } = refs.dragHotspotRef.current;
+        source.setIcon(paintable, x, y);
+    };
 
     return { bringToFront, setDragIcon };
 }
@@ -426,20 +395,17 @@ function useItemDragHandlers(args: DndHandlerArgs) {
 function useContextMenuHandlers(args: DndHandlerArgs) {
     const { items, setItems, contextMenu, setContextMenu, setEditState, refs } = args;
 
-    const handleContextMenu = useCallback(
-        (clickX: number, clickY: number) => {
-            const hitItem = items.find((item) => {
-                const r = refs.itemRadii.current.get(item.id) ?? ITEM_SIZE;
-                const size = 2 * r;
-                return clickX >= item.x && clickX <= item.x + size && clickY >= item.y && clickY <= item.y + size;
-            });
-            setContextMenu({ x: clickX, y: clickY, itemId: hitItem?.id ?? null });
-            setTimeout(() => refs.contextMenuRef.current?.popup(), 0);
-        },
-        [items, setContextMenu, refs],
-    );
+    const handleContextMenu = (clickX: number, clickY: number) => {
+        const hitItem = items.find((item) => {
+            const r = refs.itemRadii.current.get(item.id) ?? ITEM_SIZE;
+            const size = 2 * r;
+            return clickX >= item.x && clickX <= item.x + size && clickY >= item.y && clickY <= item.y + size;
+        });
+        setContextMenu({ x: clickX, y: clickY, itemId: hitItem?.id ?? null });
+        setTimeout(() => refs.contextMenuRef.current?.popup(), 0);
+    };
 
-    const handleAddItem = useCallback(() => {
+    const handleAddItem = () => {
         if (!contextMenu) return;
         const id = String(nextItemNumber);
         const label = `Item ${nextItemNumber}`;
@@ -450,20 +416,20 @@ function useContextMenuHandlers(args: DndHandlerArgs) {
         ]);
         refs.contextMenuRef.current?.popdown();
         setContextMenu(null);
-    }, [contextMenu, setItems, setContextMenu, refs]);
+    };
 
-    const handleEditItem = useCallback(() => {
+    const handleEditItem = () => {
         if (!contextMenu?.itemId) return;
         setEditState({ itemId: contextMenu.itemId });
         refs.contextMenuRef.current?.popdown();
-    }, [contextMenu, setEditState, refs]);
+    };
 
-    const handleDeleteItem = useCallback(() => {
+    const handleDeleteItem = () => {
         if (!contextMenu?.itemId) return;
         setItems((prev) => prev.filter((item) => item.id !== contextMenu.itemId));
         refs.contextMenuRef.current?.popdown();
         setContextMenu(null);
-    }, [contextMenu, setItems, setContextMenu, refs]);
+    };
 
     return { handleContextMenu, handleAddItem, handleEditItem, handleDeleteItem };
 }
@@ -471,50 +437,39 @@ function useContextMenuHandlers(args: DndHandlerArgs) {
 function useDropHandlers(args: DndHandlerArgs) {
     const { setItems, setTrashHovering, refs } = args;
 
-    const handleCanvasDrop = useCallback(
-        (value: GObject.Value, x: number, y: number) => {
-            const itemId = value.getString();
-            if (itemId) {
-                const r = refs.itemRadii.current.get(itemId) ?? 0;
-                setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, x: x - r, y: y - r } : item)));
-            }
-            return true;
-        },
-        [setItems, refs],
-    );
+    const handleCanvasDrop = (value: GObject.Value, x: number, y: number) => {
+        const itemId = value.getString();
+        if (itemId) {
+            const r = refs.itemRadii.current.get(itemId) ?? 0;
+            setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, x: x - r, y: y - r } : item)));
+        }
+        return true;
+    };
 
-    const handleTrashDrop = useCallback(
-        (value: GObject.Value) => {
-            const itemId = value.getString();
-            if (itemId) setItems((prev) => prev.filter((item) => item.id !== itemId));
-            setTrashHovering(false);
-            return true;
-        },
-        [setItems, setTrashHovering],
-    );
+    const handleTrashDrop = (value: GObject.Value) => {
+        const itemId = value.getString();
+        if (itemId) setItems((prev) => prev.filter((item) => item.id !== itemId));
+        setTrashHovering(false);
+        return true;
+    };
 
-    const handleItemColorDrop = useCallback(
-        (itemId: string, value: GObject.Value) => {
-            const rgba = value.getBoxed<Gdk.RGBA>();
-            if (rgba instanceof Gdk.RGBA) {
-                const cssColor = rgba.toString() ?? "transparent";
-                setItems((prev) =>
-                    prev.map((item) => (item.id === itemId ? { ...item, style: { type: "rgba", cssColor } } : item)),
-                );
-                return true;
-            }
-            const className = value.getString();
-            if (className) {
-                setItems((prev) =>
-                    prev.map((item) =>
-                        item.id === itemId ? { ...item, style: { type: "cssClass", className } } : item,
-                    ),
-                );
-            }
+    const handleItemColorDrop = (itemId: string, value: GObject.Value) => {
+        const rgba = value.getBoxed<Gdk.RGBA>();
+        if (rgba instanceof Gdk.RGBA) {
+            const cssColor = rgba.toString() ?? "transparent";
+            setItems((prev) =>
+                prev.map((item) => (item.id === itemId ? { ...item, style: { type: "rgba", cssColor } } : item)),
+            );
             return true;
-        },
-        [setItems],
-    );
+        }
+        const className = value.getString();
+        if (className) {
+            setItems((prev) =>
+                prev.map((item) => (item.id === itemId ? { ...item, style: { type: "cssClass", className } } : item)),
+            );
+        }
+        return true;
+    };
 
     return { handleCanvasDrop, handleTrashDrop, handleItemColorDrop };
 }
@@ -648,7 +603,7 @@ const loadTrashPaintable = (): Gtk.Svg => {
 };
 
 const DndTrashZone = ({ boxRef, trashHovering, setTrashHovering, handleTrashDrop }: DndTrashZoneProps) => {
-    const svg = useMemo(loadTrashPaintable, []);
+    const [svg] = useState(loadTrashPaintable);
 
     const attachFrameClockAndPlay = (image: Gtk.Widget) => {
         const frameClock = image.getFrameClock();

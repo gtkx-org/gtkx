@@ -16,7 +16,7 @@ import {
     GtkTextView,
     useAdjustment,
 } from "@gtkx/react";
-import { type RefObject, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type RefObject, useLayoutEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./textview.tsx?raw";
 
@@ -417,19 +417,19 @@ const TextViewDemo = () => {
     const easterEggWindowRef = useRef<Gtk.Window | null>(null);
     const [sharedBuffer] = useState(() => new Gtk.TextBuffer());
 
-    const handleClickMe = useCallback(() => {
+    const handleClickMe = () => {
         const tv = textView1Ref.current;
         if (tv) handleEasterEgg(tv, easterEggWindowRef);
-    }, []);
+    };
 
-    const iconPaintable = useMemo(() => {
+    const iconPaintable = (() => {
         const display = Gdk.Display.getDefault();
         if (!display) return null;
         const iconTheme = Gtk.IconTheme.getForDisplay(display);
         return iconTheme.lookupIcon("drive-harddisk", null, 32, 1, Gtk.TextDirection.NONE, 0);
-    }, []);
+    })();
 
-    const nuclearPaintable = useMemo(() => createNuclearTexture(), []);
+    const nuclearPaintable = createNuclearTexture();
 
     useLayoutEffect(() => {
         const tv2 = textView2Ref.current;

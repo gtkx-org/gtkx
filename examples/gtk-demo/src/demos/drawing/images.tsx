@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkPicture, GtkSwitch, GtkToggleButton, GtkVideo } from "@gtkx/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { path as floppybuddyGifPath } from "../gestures/floppybuddy.gif";
 import gtkLogoWebmUri from "../media/gtk-logo.webm";
 import type { Demo, DemoProps } from "../types.js";
@@ -53,7 +53,7 @@ const ImagesPanel = ({ title, children }: { title: string; children: React.React
 );
 
 const StatefulIconPanel = () => {
-    const svg = useMemo(() => loadSvgPaintable(statefulSvgPath), []);
+    const [svg] = useState(() => loadSvgPaintable(statefulSvgPath));
     const [state, setState] = useState(false);
 
     return (
@@ -75,7 +75,7 @@ const StatefulIconPanel = () => {
 };
 
 const PathAnimationPanel = () => {
-    const svg = useMemo(() => loadSvgPaintable(animatedSvgPath), []);
+    const [svg] = useState(() => loadSvgPaintable(animatedSvgPath));
 
     return (
         <ImagesPanel title="Path animation">
@@ -88,7 +88,7 @@ const ImagesDemo = ({ window }: DemoProps) => {
     const [widgetPaintable, setWidgetPaintable] = useState<Gtk.WidgetPaintable | null>(null);
     const gifPaintable = useGifPaintable();
     const [insensitive, setInsensitive] = useState(false);
-    const videoFile = useMemo(() => Gio.fileNewForUri(gtkLogoWebmUri), []);
+    const videoFile = Gio.fileNewForUri(gtkLogoWebmUri);
 
     useEffect(() => {
         const win = window.current;

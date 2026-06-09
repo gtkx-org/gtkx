@@ -16,7 +16,7 @@ import {
     GtkViewport,
     useAdjustment,
 } from "@gtkx/react";
-import { type ReactNode, useCallback, useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listbox-controls.tsx?raw";
 
@@ -169,14 +169,14 @@ const ListBoxControlsDemo = () => {
     const checkRef = useRef<Gtk.CheckButton | null>(null);
     const imageRef = useRef<Gtk.Image | null>(null);
 
-    const handleRowActivated = useCallback((row: Gtk.ListBoxRow) => {
+    const handleRowActivated = (row: Gtk.ListBoxRow) => {
         const sw = switchRef.current;
         const chk = checkRef.current;
         const img = imageRef.current;
         if (sw?.isAncestor(row)) setSwitchActive((prev) => !prev);
         else if (chk?.isAncestor(row)) setCheckActive((prev) => !prev);
         else if (img?.isAncestor(row)) setImageOpacity((prev) => (prev === 0 ? 1 : 0));
-    }, []);
+    };
 
     return (
         <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER} minContentHeight={200} vexpand>

@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkHeaderBar, GtkLabel, GtkSearchBar, GtkSearchEntry, GtkToggleButton } from "@gtkx/react";
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import type { Demo, DemoProps, DemoProviderProps } from "../types.js";
 import sourceCode from "./search-entry.tsx?raw";
 
@@ -24,14 +24,17 @@ const SearchEntryProvider = ({ children }: DemoProviderProps) => {
     const [searchText, setSearchText] = useState("");
     const [searchMode, setSearchMode] = useState(false);
 
-    const handleToggleButtonClicked = useCallback((btn: Gtk.ToggleButton) => {
+    const handleToggleButtonClicked = (btn: Gtk.ToggleButton) => {
         setSearchMode(btn.getActive());
-    }, []);
+    };
 
-    const value = useMemo<SearchEntryContextValue>(
-        () => ({ searchText, setSearchText, searchMode, setSearchMode, handleToggleButtonClicked }),
-        [searchText, searchMode, handleToggleButtonClicked],
-    );
+    const value = {
+        searchText,
+        setSearchText,
+        searchMode,
+        setSearchMode,
+        handleToggleButtonClicked,
+    };
 
     return <SearchEntryContext.Provider value={value}>{children}</SearchEntryContext.Provider>;
 };

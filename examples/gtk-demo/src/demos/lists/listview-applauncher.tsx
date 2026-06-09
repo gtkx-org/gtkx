@@ -3,7 +3,6 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
-import { useCallback, useMemo } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./listview-applauncher.tsx?raw";
 
@@ -15,40 +14,33 @@ interface AppItem {
 }
 
 const ListViewApplauncherDemo = ({ window }: DemoProps) => {
-    const apps = useMemo<AppItem[]>(
-        () =>
-            Gio.appInfoGetAll().map((app) => ({
-                appInfo: app,
-                id: app.getId() ?? crypto.randomUUID(),
-                name: app.getDisplayName(),
-                icon: app.getIcon(),
-            })),
-        [],
-    );
+    const apps = Gio.appInfoGetAll().map((app) => ({
+        appInfo: app,
+        id: app.getId() ?? crypto.randomUUID(),
+        name: app.getDisplayName(),
+        icon: app.getIcon(),
+    }));
 
-    const handleActivate = useCallback(
-        (position: number) => {
-            const app = apps[position];
-            if (!app) return;
+    const handleActivate = (position: number) => {
+        const app = apps[position];
+        if (!app) return;
 
-            const display = Gdk.Display.getDefault();
-            if (!display) return;
+        const display = Gdk.Display.getDefault();
+        if (!display) return;
 
-            const context = display.getAppLaunchContext();
-            try {
-                app.appInfo.launch(null, context);
-            } catch (error) {
-                const dialog = new Adw.AlertDialog();
-                dialog.setHeading(`Could not launch ${app.name}`);
-                dialog.setBody(error instanceof Error ? error.message : String(error));
-                dialog.addResponse("ok", "_OK");
-                dialog.setDefaultResponse("ok");
-                dialog.setCloseResponse("ok");
-                dialog.present(window.current);
-            }
-        },
-        [apps, window],
-    );
+        const context = display.getAppLaunchContext();
+        try {
+            app.appInfo.launch(null, context);
+        } catch (error) {
+            const dialog = new Adw.AlertDialog();
+            dialog.setHeading(`Could not launch ${app.name}`);
+            dialog.setBody(error instanceof Error ? error.message : String(error));
+            dialog.addResponse("ok", "_OK");
+            dialog.setDefaultResponse("ok");
+            dialog.setCloseResponse("ok");
+            dialog.present(window.current);
+        }
+    };
 
     return (
         <GtkScrolledWindow name="scrolled" vexpand hexpand>

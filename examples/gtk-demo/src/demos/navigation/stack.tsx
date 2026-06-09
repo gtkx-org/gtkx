@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkCheckButton, GtkImage, GtkSpinner, GtkStack, GtkStackPage, GtkStackSwitcher } from "@gtkx/react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import demoIconUri from "../../icons/org.gtk.Demo4.svg";
 import type { Demo } from "../types.js";
 import sourceCode from "./stack.tsx?raw";
@@ -11,7 +11,7 @@ import sourceCode from "./stack.tsx?raw";
  * Shows a stack with three pages and a GtkStackSwitcher.
  */
 const StackDemo = () => {
-    const demoIcon = useMemo<Gio.Icon>(() => Gio.FileIcon.new(Gio.fileNewForUri(demoIconUri)), []);
+    const demoIcon = Gio.FileIcon.new(Gio.fileNewForUri(demoIconUri));
     const [stack, setStack] = useState<Gtk.Stack | null>(null);
 
     return (

@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkButton, GtkGestureClick, GtkHeaderBar, GtkPicture } from "@gtkx/react";
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import nodeEditorSvgUri from "./org.gtk.gtk4.NodeEditor.Devel.svg";
 import sourceCode from "./paintable-svg.tsx?raw";
@@ -53,17 +53,17 @@ const usePaintableSvgContext = (): PaintableSvgContextValue => {
 const PaintableSvgProvider = ({ window, children }: DemoProviderProps) => {
     const [svg, setSvg] = useState<Gtk.Svg | null>(() => loadSvgFromFile(Gio.fileNewForUri(nodeEditorSvgUri)));
 
-    const handleOpen = useCallback(async () => {
+    const handleOpen = async () => {
         const file = await pickSvgFile(window.current);
         if (!file) return;
         const next = loadSvgFromFile(file);
         if (next) setSvg(next);
-    }, [window]);
+    };
 
-    const value = useMemo<PaintableSvgContextValue>(
-        () => ({ svg, handleOpen: () => void handleOpen() }),
-        [svg, handleOpen],
-    );
+    const value = {
+        svg,
+        handleOpen: () => void handleOpen(),
+    };
     return <PaintableSvgContext.Provider value={value}>{children}</PaintableSvgContext.Provider>;
 };
 
@@ -80,11 +80,11 @@ const PaintableSvgTitlebar = () => {
 const PaintableSvgDemo = () => {
     const { svg } = usePaintableSvgContext();
 
-    const handlePressed = useCallback(() => {
+    const handlePressed = () => {
         if (!svg) return;
         const state = svg.getState();
         svg.setState(state < 63 ? state + 1 : 0);
-    }, [svg]);
+    };
 
     return (
         <GtkPicture name="picture" paintable={svg} widthRequest={16} heightRequest={16}>

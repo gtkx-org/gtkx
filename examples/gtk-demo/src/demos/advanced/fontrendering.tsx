@@ -32,7 +32,7 @@ import {
     GtkShortcutController,
     GtkToggleButton,
 } from "@gtkx/react";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./fontrendering.tsx?raw";
 
@@ -541,84 +541,78 @@ const computeTextLayout = ({ cr, width, height, fontOptions, fontDesc, text, hin
 function useDrawTextMode(state: FontRenderingState) {
     const { fontDesc, text, hintStyle, antialias, hintMetrics } = state;
 
-    return useCallback(
-        (cr: Context, width: number, height: number) => {
-            cr.setSourceRgb(1, 1, 1);
-            cr.paint();
+    return (cr: Context, width: number, height: number) => {
+        cr.setSourceRgb(1, 1, 1);
+        cr.paint();
 
-            const fontOptions = createGridFontOptions(hintStyle, antialias, hintMetrics);
-            const { inkPixel, logicalRect, baseline, target } = computeTextLayout({
-                cr,
-                width,
-                height,
-                fontOptions,
-                fontDesc,
-                text,
-                hintMetrics,
-            });
+        const fontOptions = createGridFontOptions(hintStyle, antialias, hintMetrics);
+        const { inkPixel, logicalRect, baseline, target } = computeTextLayout({
+            cr,
+            width,
+            height,
+            fontOptions,
+            fontDesc,
+            text,
+            hintMetrics,
+        });
 
-            const surfaceWidth = inkPixel.width + 20;
-            const surfaceHeight = inkPixel.height + 20;
+        const surfaceWidth = inkPixel.width + 20;
+        const surfaceHeight = inkPixel.height + 20;
 
-            const ctx: DrawTextModeContext = {
-                cr,
-                width,
-                height,
-                state,
-                fontOptions,
-                target,
-                inkPixel,
-                logicalRect,
-                baseline,
-                surfaceWidth,
-                surfaceHeight,
-            };
-            const { small, scaledWidth, scaledHeight, offsetX, offsetY } = drawSmallSurface(ctx);
-            drawOverlays(ctx, { offsetX, offsetY, scaledWidth, scaledHeight });
-            small.finish();
-        },
-        [fontDesc, text, hintStyle, antialias, hintMetrics, state],
-    );
+        const ctx: DrawTextModeContext = {
+            cr,
+            width,
+            height,
+            state,
+            fontOptions,
+            target,
+            inkPixel,
+            logicalRect,
+            baseline,
+            surfaceWidth,
+            surfaceHeight,
+        };
+        const { small, scaledWidth, scaledHeight, offsetX, offsetY } = drawSmallSurface(ctx);
+        drawOverlays(ctx, { offsetX, offsetY, scaledWidth, scaledHeight });
+        small.finish();
+    };
 }
 
 function useDrawGridMode(state: FontRenderingState) {
     const { fontDesc, text, hintStyle, antialias, hintMetrics, scale } = state;
 
-    return useCallback(
-        (cr: Context, width: number, height: number) => {
-            const fontOptions = createGridFontOptions(hintStyle, antialias, hintMetrics);
-            const target = cr.getTarget();
-            const tmpSurface = Surface.createSimilar(target, Content.COLOR_ALPHA, 1, 1);
-            const tmpCr = Context.create(tmpSurface);
-            tmpCr.setFontOptions(fontOptions);
+    return (cr: Context, width: number, height: number) => {
+        const fontOptions = createGridFontOptions(hintStyle, antialias, hintMetrics);
+        const target = cr.getTarget();
+        const tmpSurface = Surface.createSimilar(target, Content.COLOR_ALPHA, 1, 1);
+        const tmpCr = Context.create(tmpSurface);
+        tmpCr.setFontOptions(fontOptions);
 
-            const context = PangoCairo.createContext(tmpCr);
-            PangoCairo.contextSetFontOptions(context, fontOptions);
-            context.setRoundGlyphPositions(hintMetrics);
+        const context = PangoCairo.createContext(tmpCr);
+        PangoCairo.contextSetFontOptions(context, fontOptions);
+        context.setRoundGlyphPositions(hintMetrics);
 
-            const layoutSetup = setupGridLayout(context, fontDesc, text);
-            if (!layoutSetup) return;
-            const { logicalRect, ch } = layoutSetup;
+        const layoutSetup = setupGridLayout(context, fontDesc, text);
+        if (!layoutSetup) return;
+        const { logicalRect, ch } = layoutSetup;
 
-            const surfaceWidth = Math.round((logicalRect.width * 3) / 2);
-            const surfaceHeight = logicalRect.height * 4;
-            const small = Surface.createSimilar(target, Content.COLOR_ALPHA, surfaceWidth, surfaceHeight);
-            const smallSetup = renderSmallSurface({ small, fontOptions, fontDesc, ch, hintMetrics });
-            if (!smallSetup) {
-                small.finish();
-                tmpSurface.finish();
-                return;
-            }
-
-            cr.setSourceRgb(1, 1, 1);
-            cr.paint();
-            paintSmallSurface({ cr, small, surfaceWidth, surfaceHeight, scale, width, height });
-
+        const surfaceWidth = Math.round((logicalRect.width * 3) / 2);
+        const surfaceHeight = logicalRect.height * 4;
+        const small = Surface.createSimilar(target, Content.COLOR_ALPHA, surfaceWidth, surfaceHeight);
+        const smallSetup = renderSmallSurface({ small, fontOptions, fontDesc, ch, hintMetrics });
+        if (!smallSetup) {
             small.finish();
             tmpSurface.finish();
-        },
-        [fontDesc, text, hintStyle, antialias, hintMetrics, scale],
-    );
+            return;
+        }
+
+        cr.setSourceRgb(1, 1, 1);
+        cr.paint();
+        paintSmallSurface({ cr, small, surfaceWidth, surfaceHeight, scale, width, height });
+
+        small.finish();
+        tmpSurface.finish();
+    };
 }
 
 const FontRenderingTitlebar = () => {
@@ -844,13 +838,13 @@ const FontRenderingProvider = ({ children }: DemoProviderProps) => {
     const drawGridMode = useDrawGridMode(state);
     const drawFunc = mode === "text" ? drawTextMode : drawGridMode;
 
-    const naturalSize = useMemo(() => {
+    const naturalSize = (() => {
         const inputs: MeasurementInputs = { text, fontDesc, hintStyle, antialias, hintMetrics, scale };
         return mode === "text" ? measureTextSurface(inputs) : measureGridSurface(inputs);
-    }, [mode, text, fontDesc, hintStyle, antialias, hintMetrics, scale]);
+    })();
 
-    const zoomIn = useCallback(() => setScale((s) => Math.min(32, s + 1)), [setScale]);
-    const zoomOut = useCallback(() => setScale((s) => Math.max(1, s - 1)), [setScale]);
+    const zoomIn = () => setScale((s) => Math.min(32, s + 1));
+    const zoomOut = () => setScale((s) => Math.max(1, s - 1));
 
     return (
         <FontRenderingContext.Provider value={{ state, drawFunc, zoomIn, zoomOut, naturalSize }}>

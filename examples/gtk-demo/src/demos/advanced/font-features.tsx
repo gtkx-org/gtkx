@@ -26,7 +26,7 @@ import {
     GtkViewport,
     useAdjustment,
 } from "@gtkx/react";
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./font-features.tsx?raw";
 
@@ -439,36 +439,25 @@ const buildWaterfallStyle = ({ fontDesc, wfSize, fontFeaturesString, fgColor, le
 function useFontFeaturesStyles(state: ReturnType<typeof useFontFeaturesState>) {
     const { fontDesc, fgColor, bgColor, size, letterSpacing, lineHeight, checkStates, radioStates } = state;
 
-    const fontFeaturesString = useMemo(
-        () => buildFontFeaturesString(checkStates, radioStates),
-        [checkStates, radioStates],
-    );
+    const fontFeaturesString = buildFontFeaturesString(checkStates, radioStates);
 
-    const bgStyle = useMemo(() => buildBgStyle(bgColor), [bgColor]);
+    const bgStyle = buildBgStyle(bgColor);
 
-    const previewStyle = useMemo(
-        () => buildPreviewStyle({ fontDesc, size, fgColor, letterSpacing, lineHeight }),
-        [fontDesc, size, fgColor, letterSpacing, lineHeight],
-    );
+    const previewStyle = buildPreviewStyle({ fontDesc, size, fgColor, letterSpacing, lineHeight });
 
-    const editStyle = useMemo(
-        () => buildEditStyle({ fontDesc, size, fontFeaturesString, fgColor, letterSpacing }),
-        [fontDesc, size, fontFeaturesString, fgColor, letterSpacing],
-    );
+    const editStyle = buildEditStyle({ fontDesc, size, fontFeaturesString, fgColor, letterSpacing });
 
-    const createWaterfallStyle = useCallback(
-        (wfSize: number) => buildWaterfallStyle({ fontDesc, wfSize, fontFeaturesString, fgColor, letterSpacing }),
-        [fontDesc, fontFeaturesString, fgColor, letterSpacing],
-    );
+    const createWaterfallStyle = (wfSize: number) =>
+        buildWaterfallStyle({ fontDesc, wfSize, fontFeaturesString, fgColor, letterSpacing });
 
-    const pangoFontFeaturesString = useMemo(() => {
+    const pangoFontFeaturesString = (() => {
         if (fontFeaturesString === "normal") return null;
         return fontFeaturesString.replaceAll('"', "").replaceAll(" 1", "=1").replaceAll(" 0", "=0");
-    }, [fontFeaturesString]);
+    })();
 
-    const settingsText = useMemo(() => pangoFontFeaturesString ?? "", [pangoFontFeaturesString]);
+    const settingsText = pangoFontFeaturesString ?? "";
 
-    const descriptionText = useMemo(() => fontDesc?.toString() ?? "Sans 14", [fontDesc]);
+    const descriptionText = fontDesc?.toString() ?? "Sans 14";
 
     return {
         fontFeaturesString,
@@ -485,46 +474,37 @@ function useFontFeaturesStyles(state: ReturnType<typeof useFontFeaturesState>) {
 function useFeatureHandlers(state: ReturnType<typeof useFontFeaturesState>) {
     const { setCheckStates, setRadioStates } = state;
 
-    const toggleCheck = useCallback(
-        (tag: string) => {
-            setCheckStates((prev) => {
-                const next = new Map(prev);
-                const current = next.get(tag) ?? "inconsistent";
-                if (current === "inconsistent") next.set(tag, "active");
-                else if (current === "active") next.set(tag, "inactive");
-                else next.set(tag, "active");
-                return next;
-            });
-        },
-        [setCheckStates],
-    );
+    const toggleCheck = (tag: string) => {
+        setCheckStates((prev) => {
+            const next = new Map(prev);
+            const current = next.get(tag) ?? "inconsistent";
+            if (current === "inconsistent") next.set(tag, "active");
+            else if (current === "active") next.set(tag, "inactive");
+            else next.set(tag, "active");
+            return next;
+        });
+    };
 
-    const resetToInconsistent = useCallback(
-        (tag: string) => {
-            setCheckStates((prev) => {
-                const next = new Map(prev);
-                next.set(tag, "inconsistent");
-                return next;
-            });
-        },
-        [setCheckStates],
-    );
+    const resetToInconsistent = (tag: string) => {
+        setCheckStates((prev) => {
+            const next = new Map(prev);
+            next.set(tag, "inconsistent");
+            return next;
+        });
+    };
 
-    const selectRadio = useCallback(
-        (groupTitle: string, tag: string) => {
-            setRadioStates((prev) => {
-                const next = new Map(prev);
-                next.set(groupTitle, tag);
-                return next;
-            });
-        },
-        [setRadioStates],
-    );
+    const selectRadio = (groupTitle: string, tag: string) => {
+        setRadioStates((prev) => {
+            const next = new Map(prev);
+            next.set(groupTitle, tag);
+            return next;
+        });
+    };
 
-    const resetFeatures = useCallback(() => {
+    const resetFeatures = () => {
         setCheckStates(createInitialCheckStates());
         setRadioStates(createInitialRadioStates());
-    }, [setCheckStates, setRadioStates]);
+    };
 
     return { toggleCheck, resetToInconsistent, selectRadio, resetFeatures };
 }
@@ -532,18 +512,18 @@ function useFeatureHandlers(state: ReturnType<typeof useFontFeaturesState>) {
 function useColorHandlers(state: ReturnType<typeof useFontFeaturesState>) {
     const { fgColor, bgColor, setFgColor, setBgColor, setSize, setLetterSpacing, setLineHeight } = state;
 
-    const swapColors = useCallback(() => {
+    const swapColors = () => {
         setFgColor(buildRgba(bgColor.red, bgColor.green, bgColor.blue, 1));
         setBgColor(buildRgba(fgColor.red, fgColor.green, fgColor.blue, 1));
-    }, [fgColor, bgColor, setFgColor, setBgColor]);
+    };
 
-    const resetBasic = useCallback(() => {
+    const resetBasic = () => {
         setSize(20);
         setLetterSpacing(0);
         setLineHeight(1);
         setFgColor(createDefaultFgColor());
         setBgColor(createDefaultBgColor());
-    }, [setSize, setLetterSpacing, setLineHeight, setFgColor, setBgColor]);
+    };
 
     return { swapColors, resetBasic };
 }
@@ -551,26 +531,23 @@ function useColorHandlers(state: ReturnType<typeof useFontFeaturesState>) {
 function useSampleHandlers(state: ReturnType<typeof useFontFeaturesState>) {
     const { sampleCounterRef, setPreviewText, editTextViewRef } = state;
 
-    const updatePreviewText = useCallback(
-        (text: string) => {
-            setPreviewText(text);
-            const tv = editTextViewRef.current;
-            if (tv) tv.getBuffer().setText(text, -1);
-        },
-        [setPreviewText, editTextViewRef],
-    );
+    const updatePreviewText = (text: string) => {
+        setPreviewText(text);
+        const tv = editTextViewRef.current;
+        if (tv) tv.getBuffer().setText(text, -1);
+    };
 
-    const handleAlphabet = useCallback(() => {
+    const handleAlphabet = () => {
         sampleCounterRef.current += 1;
         const idx = sampleCounterRef.current % ALPHABET_SAMPLES.length;
         updatePreviewText(ALPHABET_SAMPLES[idx] ?? "");
-    }, [sampleCounterRef, updatePreviewText]);
+    };
 
-    const handleParagraph = useCallback(() => {
+    const handleParagraph = () => {
         sampleCounterRef.current += 1;
         const idx = sampleCounterRef.current % PARAGRAPH_SAMPLES.length;
         updatePreviewText(PARAGRAPH_SAMPLES[idx] ?? "");
-    }, [sampleCounterRef, updatePreviewText]);
+    };
 
     return { handleAlphabet, handleParagraph };
 }
@@ -578,35 +555,26 @@ function useSampleHandlers(state: ReturnType<typeof useFontFeaturesState>) {
 function useEntryHandlers(state: ReturnType<typeof useFontFeaturesState>) {
     const { setSize, setLetterSpacing, setLineHeight } = state;
 
-    const handleSizeEntry = useCallback(
-        (entry: Gtk.Entry) => {
-            const val = Number.parseFloat(entry.getText());
-            if (Number.isFinite(val) && val >= 7 && val <= 100) {
-                setSize(val);
-            }
-        },
-        [setSize],
-    );
+    const handleSizeEntry = (entry: Gtk.Entry) => {
+        const val = Number.parseFloat(entry.getText());
+        if (Number.isFinite(val) && val >= 7 && val <= 100) {
+            setSize(val);
+        }
+    };
 
-    const handleLetterspacingEntry = useCallback(
-        (entry: Gtk.Entry) => {
-            const val = Number.parseFloat(entry.getText());
-            if (Number.isFinite(val) && val >= -1024 && val <= 8192) {
-                setLetterSpacing(val);
-            }
-        },
-        [setLetterSpacing],
-    );
+    const handleLetterspacingEntry = (entry: Gtk.Entry) => {
+        const val = Number.parseFloat(entry.getText());
+        if (Number.isFinite(val) && val >= -1024 && val <= 8192) {
+            setLetterSpacing(val);
+        }
+    };
 
-    const handleLineHeightEntry = useCallback(
-        (entry: Gtk.Entry) => {
-            const val = Number.parseFloat(entry.getText());
-            if (Number.isFinite(val) && val >= 0.75 && val <= 2.5) {
-                setLineHeight(val);
-            }
-        },
-        [setLineHeight],
-    );
+    const handleLineHeightEntry = (entry: Gtk.Entry) => {
+        const val = Number.parseFloat(entry.getText());
+        if (Number.isFinite(val) && val >= 0.75 && val <= 2.5) {
+            setLineHeight(val);
+        }
+    };
 
     return { handleSizeEntry, handleLetterspacingEntry, handleLineHeightEntry };
 }
@@ -616,10 +584,10 @@ function useFontFeaturesHandlers(state: ReturnType<typeof useFontFeaturesState>)
     const colorHandlers = useColorHandlers(state);
     const sampleHandlers = useSampleHandlers(state);
     const entryHandlers = useEntryHandlers(state);
-    const resetAll = useCallback(() => {
+    const resetAll = () => {
         colorHandlers.resetBasic();
         featureHandlers.resetFeatures();
-    }, [colorHandlers, featureHandlers]);
+    };
 
     return {
         ...featureHandlers,
@@ -658,7 +626,7 @@ function usePreviewAttributes(
     pangoFontFeaturesString: string | null,
     previewSelection: { start: number; end: number } | null,
 ): Pango.AttrList | null {
-    return useMemo(() => {
+    return (() => {
         if (!pangoFontFeaturesString) return null;
         const attrList = Pango.AttrList.new();
         const attr = Pango.attrFontFeaturesNew(pangoFontFeaturesString);
@@ -666,7 +634,7 @@ function usePreviewAttributes(
         attr.endIndex = previewSelection?.end ?? 0xffffffff;
         attrList.insert(attr);
         return attrList;
-    }, [pangoFontFeaturesString, previewSelection]);
+    })();
 }
 
 const FontFeaturesFontButton = ({ state }: { state: FontFeaturesState }) => {
@@ -1008,29 +976,20 @@ const FontFeaturesPreviewSettingsRow = ({
 function useViewModeToggleHandlers(state: FontFeaturesState) {
     const { previewText, setViewMode, savedTextRef } = state;
 
-    const handlePlainToggled = useCallback(
-        (btn: Gtk.ToggleButton) => {
-            if (btn.getActive()) setViewMode("plain");
-        },
-        [setViewMode],
-    );
+    const handlePlainToggled = (btn: Gtk.ToggleButton) => {
+        if (btn.getActive()) setViewMode("plain");
+    };
 
-    const handleWaterfallToggled = useCallback(
-        (btn: Gtk.ToggleButton) => {
-            if (btn.getActive()) setViewMode("waterfall");
-        },
-        [setViewMode],
-    );
+    const handleWaterfallToggled = (btn: Gtk.ToggleButton) => {
+        if (btn.getActive()) setViewMode("waterfall");
+    };
 
-    const handleEditToggled = useCallback(
-        (btn: Gtk.ToggleButton) => {
-            if (btn.getActive()) {
-                savedTextRef.current = previewText;
-                setViewMode("edit");
-            }
-        },
-        [previewText, savedTextRef, setViewMode],
-    );
+    const handleEditToggled = (btn: Gtk.ToggleButton) => {
+        if (btn.getActive()) {
+            savedTextRef.current = previewText;
+            setViewMode("edit");
+        }
+    };
 
     return { handlePlainToggled, handleWaterfallToggled, handleEditToggled };
 }
@@ -1146,7 +1105,11 @@ const FontFeaturesProvider = ({ children }: DemoProviderProps) => {
     const state = useFontFeaturesState();
     const styles = useFontFeaturesStyles(state);
     const handlers = useFontFeaturesHandlers(state);
-    const value = useMemo<FontFeaturesContextValue>(() => ({ state, styles, handlers }), [state, styles, handlers]);
+    const value = {
+        state,
+        styles,
+        handlers,
+    };
     return <FontFeaturesContext.Provider value={value}>{children}</FontFeaturesContext.Provider>;
 };
 

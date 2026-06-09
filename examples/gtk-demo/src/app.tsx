@@ -26,7 +26,7 @@ import {
     useApplication,
     useProperty,
 } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";
 import { DemoProvider, parseTitle, useDemo } from "./context/demo-context.js";
@@ -290,14 +290,14 @@ const useDemoWindows = () => {
     const [demoWindows, setDemoWindows] = useState<number[]>([]);
     const [nextWindowId, setNextWindowId] = useState(1);
 
-    const openWindow = useCallback(() => {
+    const openWindow = () => {
         setDemoWindows((prev) => [...prev, nextWindowId]);
         setNextWindowId((prev) => prev + 1);
-    }, [nextWindowId]);
+    };
 
-    const closeWindow = useCallback((id: number) => {
+    const closeWindow = (id: number) => {
         setDemoWindows((prev) => prev.filter((w) => w !== id));
-    }, []);
+    };
 
     return { demoWindows, openWindow, closeWindow };
 };
@@ -342,15 +342,15 @@ const MainWindow = () => {
 
     const windowTitle = currentDemo ? parseTitle(currentDemo.title).displayTitle : "GTK Demo";
 
-    const handleRun = useCallback(() => {
+    const handleRun = () => {
         if (!currentDemo) return;
         openWindow();
-    }, [currentDemo, openWindow]);
+    };
 
-    const handleKeyboardShortcuts = useCallback(() => {
+    const handleKeyboardShortcuts = () => {
         if (!activeWindow) return;
         showShortcutsDialog(activeWindow);
-    }, [activeWindow]);
+    };
 
     const titlebar = (
         <AppHeaderBar

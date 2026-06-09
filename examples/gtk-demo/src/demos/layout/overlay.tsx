@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkEntry, GtkGrid, GtkGridChild, GtkLabel, GtkOverlay, GtkOverlayChild } from "@gtkx/react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./overlay.tsx?raw";
 
@@ -13,13 +13,13 @@ import sourceCode from "./overlay.tsx?raw";
 const OverlayDemo = () => {
     const [value, setValue] = useState("");
 
-    const handleNumber = useCallback((num: number) => {
+    const handleNumber = (num: number) => {
         setValue(String(num));
-    }, []);
+    };
 
-    const handleEntryChanged = useCallback((entry: Gtk.Entry) => {
+    const handleEntryChanged = (entry: Gtk.Entry) => {
         setValue(entry.getText());
-    }, []);
+    };
 
     const buttons = [];
     for (let j = 0; j < 5; j++) {

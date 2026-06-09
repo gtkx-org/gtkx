@@ -4,7 +4,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { cssParserWarningQuark } from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import type { RefObject } from "react";
-import { useCallback, useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 
 const clearTags = (buffer: Gtk.TextBuffer) => {
     const startIter = buffer.getStartIter();
@@ -89,31 +89,28 @@ export function useCssEditor(defaultCss: string) {
     const errorTagRef = useRef<Gtk.TextTag | null>(null);
     const warningTagRef = useRef<Gtk.TextTag | null>(null);
 
-    const handleParsingError = useCallback(
-        (section: Gtk.CssSection, error: GLib.Error) =>
-            markParsingError({
-                textView: textViewRef.current,
-                section,
-                error,
-                warningTag: warningTagRef.current,
-                errorTag: errorTagRef.current,
-            }),
-        [],
-    );
-
-    const onBufferChanged = useCallback((buffer: Gtk.TextBuffer) => {
+    const onBufferChanged = (buffer: Gtk.TextBuffer) => {
         clearTags(buffer);
         const startIter = buffer.getStartIter();
         const endIter = buffer.getEndIter();
         const text = buffer.getText(startIter, endIter, false) ?? "";
         providerRef.current?.loadFromString(text);
-    }, []);
+    };
 
     useLayoutEffect(() => {
         const textView = textViewRef.current;
         if (!textView) return;
         const buffer = textView.getBuffer();
         if (!buffer) return;
+
+        const handleParsingError = (section: Gtk.CssSection, error: GLib.Error) =>
+            markParsingError({
+                textView: textViewRef.current,
+                section,
+                error,
+                warningTag: warningTagRef.current,
+                errorTag: errorTagRef.current,
+            });
 
         setupTags({ buffer, errorTagRef, warningTagRef });
         const cleanup = setupProvider({
@@ -123,7 +120,7 @@ export function useCssEditor(defaultCss: string) {
         });
         providerRef.current?.loadFromString(defaultCss);
         return cleanup;
-    }, [defaultCss, handleParsingError]);
+    }, [defaultCss]);
 
     return { textViewRef, onBufferChanged };
 }

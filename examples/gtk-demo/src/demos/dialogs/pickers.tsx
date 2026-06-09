@@ -12,7 +12,7 @@ import {
     GtkGridChild,
     GtkLabel,
 } from "@gtkx/react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./pickers.tsx?raw";
 
@@ -25,12 +25,12 @@ function useFilePickerState() {
     const [fileName, setFileName] = useState("None");
     const [isPdf, setIsPdf] = useState(false);
 
-    const setFile = useCallback((file: Gio.File) => {
+    const setFile = (file: Gio.File) => {
         setSelectedFile(file);
         setFileName(file.getBasename() ?? file.getUri() ?? "");
         const info = file.queryInfo("standard::content-type", 0, null);
         setIsPdf(info.getContentType() === "application/pdf");
-    }, []);
+    };
 
     return { selectedFile, setSelectedFile, fileName, setFileName, isPdf, setIsPdf, setFile };
 }
@@ -60,18 +60,15 @@ const launchFile = async (selectedFile: Gio.File | null, action: (launcher: Gtk.
 function useDropAndOpenHandlers(window: React.RefObject<Gtk.Window | null>, state: FilePickerState) {
     const { setFile, setSelectedFile, setFileName, setIsPdf } = state;
 
-    const handleFileDrop = useCallback(
-        (value: GObject.Value) => {
-            if (!GObject.typeCheckValueHolds(value, gfileType)) return false;
-            const file = value.getObject();
-            if (file && file instanceof Gio.File) {
-                setFile(file);
-                return true;
-            }
-            return false;
-        },
-        [setFile],
-    );
+    const handleFileDrop = (value: GObject.Value) => {
+        if (!GObject.typeCheckValueHolds(value, gfileType)) return false;
+        const file = value.getObject();
+        if (file && file instanceof Gio.File) {
+            setFile(file);
+            return true;
+        }
+        return false;
+    };
 
     const handleOpenFile = async () => {
         await runWithTimeout(async (cancellable) => {
@@ -94,23 +91,17 @@ function useDropAndOpenHandlers(window: React.RefObject<Gtk.Window | null>, stat
 function useFileLaunchHandlers(window: React.RefObject<Gtk.Window | null>, state: FilePickerState) {
     const { selectedFile, isPdf } = state;
 
-    const handleLaunchApp = useCallback(
-        () =>
-            launchFile(selectedFile, async (l) => {
-                await l.launch(window.current, null);
-            }),
-        [window, selectedFile],
-    );
+    const handleLaunchApp = () =>
+        launchFile(selectedFile, async (l) => {
+            await l.launch(window.current, null);
+        });
 
-    const handleOpenFolder = useCallback(
-        () =>
-            launchFile(selectedFile, async (l) => {
-                await l.openContainingFolder(window.current, null);
-            }),
-        [window, selectedFile],
-    );
+    const handleOpenFolder = () =>
+        launchFile(selectedFile, async (l) => {
+            await l.openContainingFolder(window.current, null);
+        });
 
-    const handlePrintFile = useCallback(async () => {
+    const handlePrintFile = async () => {
         if (!selectedFile || !isPdf) return;
         await runWithTimeout(async (cancellable) => {
             try {
@@ -120,16 +111,16 @@ function useFileLaunchHandlers(window: React.RefObject<Gtk.Window | null>, state
                 if (e instanceof Error) console.error(e.message);
             }
         });
-    }, [window, selectedFile, isPdf]);
+    };
 
-    const handleLaunchUri = useCallback(async () => {
+    const handleLaunchUri = async () => {
         try {
             const launcher = Gtk.UriLauncher.new("http://www.gtk.org");
             await launcher.launch(window.current, null);
         } catch (e) {
             if (e instanceof Error) console.error(e.message);
         }
-    }, [window]);
+    };
 
     return { handleLaunchApp, handleOpenFolder, handlePrintFile, handleLaunchUri };
 }

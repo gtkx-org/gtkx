@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { type AdjustmentConfig, GtkGrid, GtkGridChild, GtkLabel, GtkSpinButton, useAdjustment } from "@gtkx/react";
-import { useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./spinbutton.tsx?raw";
 
@@ -58,7 +58,7 @@ const handleTimeOutput = (spin: Gtk.SpinButton) => {
 };
 
 function useMonthSpinHandlers() {
-    const handleMonthInput = useCallback((spin: Gtk.SpinButton): [number, number] => {
+    const handleMonthInput = (spin: Gtk.SpinButton): [number, number] => {
         const text = spin.getText().toLowerCase();
         for (let i = 0; i < MONTHS.length; i++) {
             if (MONTHS[i]?.toLowerCase().startsWith(text)) {
@@ -66,14 +66,14 @@ function useMonthSpinHandlers() {
             }
         }
         return [GTK_INPUT_ERROR, 0];
-    }, []);
+    };
 
-    const handleMonthOutput = useCallback((spin: Gtk.SpinButton) => {
+    const handleMonthOutput = (spin: Gtk.SpinButton) => {
         const value = spin.getValue();
         const index = Math.round(value) - 1;
         spin.setText(MONTHS[index] ?? "January");
         return true;
-    }, []);
+    };
 
     return { handleMonthInput, handleMonthOutput };
 }

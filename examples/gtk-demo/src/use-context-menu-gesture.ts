@@ -1,6 +1,6 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { type RefObject, useCallback, useRef } from "react";
+import { type RefObject, useRef } from "react";
 
 /**
  * Wires a `GtkGestureClick` to fire `onContextMenu` on both the pointer and
@@ -46,21 +46,15 @@ export function useContextMenuGesture(options: ContextMenuGestureOptions): Conte
     const ref = useRef<Gtk.GestureClick | null>(null);
     const { onContextMenu } = options;
 
-    const onPressed = useCallback(
-        (_nPress: number, x: number, y: number) => {
-            const event = ref.current?.getCurrentEvent();
-            if (event?.triggersContextMenu()) onContextMenu(x, y);
-        },
-        [onContextMenu],
-    );
+    const onPressed = (_nPress: number, x: number, y: number) => {
+        const event = ref.current?.getCurrentEvent();
+        if (event?.triggersContextMenu()) onContextMenu(x, y);
+    };
 
-    const onReleased = useCallback(
-        (_nPress: number, x: number, y: number) => {
-            const event = ref.current?.getCurrentEvent();
-            if (event?.getEventType() === Gdk.EventType.TOUCH_END) onContextMenu(x, y);
-        },
-        [onContextMenu],
-    );
+    const onReleased = (_nPress: number, x: number, y: number) => {
+        const event = ref.current?.getCurrentEvent();
+        if (event?.getEventType() === Gdk.EventType.TOUCH_END) onContextMenu(x, y);
+    };
 
     return { ref, onPressed, onReleased };
 }

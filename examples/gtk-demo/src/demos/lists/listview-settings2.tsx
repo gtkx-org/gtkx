@@ -13,7 +13,7 @@ import {
     GtkToggleButton,
 } from "@gtkx/react";
 
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-settings2.tsx?raw";
 
@@ -213,33 +213,24 @@ const ListViewSettings2Provider = ({ children }: DemoProviderProps) => {
     const [searchMode, setSearchMode] = useState(false);
     const keysState = useRef(new Map<string, string>());
 
-    const handleSearchChanged = useCallback(
-        (entry: Gtk.SearchEntry) => setSearchText(entry.getText().toLowerCase()),
-        [],
-    );
+    const handleSearchChanged = (entry: Gtk.SearchEntry) => setSearchText(entry.getText().toLowerCase());
 
-    const handleStopSearch = useCallback(() => setSearchText(""), []);
+    const handleStopSearch = () => setSearchText("");
 
-    const filteredSchemaKeys = useMemo(() => filterSchemaKeys(searchText), [searchText]);
+    const filteredSchemaKeys = filterSchemaKeys(searchText);
 
-    const handleValueEdit = useCallback(
-        (key: KeyItem, entry: Gtk.Entry) => commitSettingValue(key, entry, keysState),
-        [],
-    );
+    const handleValueEdit = (key: KeyItem, entry: Gtk.Entry) => commitSettingValue(key, entry, keysState);
 
-    const value = useMemo<Settings2ContextValue>(
-        () => ({
-            searchMode,
-            setSearchMode,
-            setSearchText,
-            filteredSchemaKeys,
-            keysState,
-            handleSearchChanged,
-            handleStopSearch,
-            handleValueEdit,
-        }),
-        [searchMode, filteredSchemaKeys, handleSearchChanged, handleStopSearch, handleValueEdit],
-    );
+    const value = {
+        searchMode,
+        setSearchMode,
+        setSearchText,
+        filteredSchemaKeys,
+        keysState,
+        handleSearchChanged,
+        handleStopSearch,
+        handleValueEdit,
+    };
 
     return <Settings2Context.Provider value={value}>{children}</Settings2Context.Provider>;
 };

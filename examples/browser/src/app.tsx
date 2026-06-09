@@ -14,7 +14,7 @@ import {
     quit,
     WebKitWebView,
 } from "@gtkx/react";
-import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 
 const DEFAULT_URL = "https://gtkx.dev";
 
@@ -51,16 +51,13 @@ const useBrowserController = (webViewRef: RefObject<WebKit.WebView | null>) => {
         progress: 0,
     });
 
-    const setUrl = useCallback((url: string) => setState((s) => ({ ...s, url })), []);
+    const setUrl = (url: string) => setState((s) => ({ ...s, url }));
 
-    const navigate = useCallback(
-        (targetUrl: string) => {
-            webViewRef.current?.loadUri(normalizeUrl(targetUrl));
-        },
-        [webViewRef],
-    );
+    const navigate = (targetUrl: string) => {
+        webViewRef.current?.loadUri(normalizeUrl(targetUrl));
+    };
 
-    const handleLoadChanged = useCallback((loadEvent: WebKit.LoadEvent, webView: WebKit.WebView) => {
+    const handleLoadChanged = (loadEvent: WebKit.LoadEvent, webView: WebKit.WebView) => {
         setState((s) => ({
             ...s,
             canGoBack: webView.canGoBack(),
@@ -69,16 +66,13 @@ const useBrowserController = (webViewRef: RefObject<WebKit.WebView | null>) => {
             ...(loadEvent === WebKit.LoadEvent.COMMITTED && { url: webView.getUri() ?? s.url }),
             ...(loadEvent === WebKit.LoadEvent.FINISHED && { isLoading: false, progress: 1 }),
         }));
-    }, []);
+    };
 
-    const handleNotify = useCallback(
-        (pspec: GObject.ParamSpec) => {
-            const webView = webViewRef.current;
-            if (!webView || pspec.getName() !== "estimated-load-progress") return;
-            setState((s) => ({ ...s, progress: webView.getEstimatedLoadProgress() }));
-        },
-        [webViewRef],
-    );
+    const handleNotify = (pspec: GObject.ParamSpec) => {
+        const webView = webViewRef.current;
+        if (!webView || pspec.getName() !== "estimated-load-progress") return;
+        setState((s) => ({ ...s, progress: webView.getEstimatedLoadProgress() }));
+    };
 
     return { state, setUrl, navigate, handleLoadChanged, handleNotify };
 };

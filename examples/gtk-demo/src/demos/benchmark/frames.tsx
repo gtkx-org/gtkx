@@ -4,7 +4,7 @@ import * as Graphene from "@gtkx/gi/graphene";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import { GtkBox, GtkHeaderBar, GtkLabel } from "@gtkx/react";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./frames.tsx?raw";
 
@@ -94,11 +94,11 @@ function useFramesState() {
         return () => clearInterval(interval);
     }, [colorWidget]);
 
-    const fpsAttrs = useMemo(() => {
+    const fpsAttrs = (() => {
         const attrs = Pango.AttrList.new();
         attrs.insert(Pango.attrFontFeaturesNew("tnum=1"));
         return attrs;
-    }, []);
+    })();
 
     return { setColorWidget, fps, fpsAttrs };
 }

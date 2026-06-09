@@ -20,7 +20,7 @@ import {
     GtkStackPage,
     GtkToggleButton,
 } from "@gtkx/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./clipboard.tsx?raw";
 import { path as floppyBuddyPath } from "./floppybuddy.gif";
@@ -103,9 +103,9 @@ function useClipboardState() {
 type ClipboardState = ReturnType<typeof useClipboardState>;
 
 function useClipboardTextures() {
-    const portlandRoseTexture = useMemo(() => Gdk.Texture.newFromResource(portlandRosePath), []);
-    const floppyBuddyTexture = useMemo(() => Gdk.Texture.newFromResource(floppyBuddyPath), []);
-    const demo4LogoTexture = useMemo(() => Gdk.Texture.newFromResource(demo4LogoPath), []);
+    const portlandRoseTexture = Gdk.Texture.newFromResource(portlandRosePath);
+    const floppyBuddyTexture = Gdk.Texture.newFromResource(floppyBuddyPath);
+    const demo4LogoTexture = Gdk.Texture.newFromResource(demo4LogoPath);
     return { portlandRoseTexture, floppyBuddyTexture, demo4LogoTexture };
 }
 
@@ -134,17 +134,13 @@ function useClipboardChangedListener(setCanPaste: (canPaste: boolean) => void) {
 function useDragProviders(state: ClipboardState) {
     const { sourceText, sourceColor, selectedImage, sourceFile } = state;
 
-    const createTextDragProvider = useCallback(
-        () => Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.Type.STRING, (v) => v.setString(sourceText))),
-        [sourceText],
-    );
+    const createTextDragProvider = () =>
+        Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.Type.STRING, (v) => v.setString(sourceText)));
 
-    const createColorDragProvider = useCallback(
-        () => Gdk.ContentProvider.newForValue(GObject.buildValue(gdkRgbaType, (v) => v.setBoxed(sourceColor))),
-        [sourceColor],
-    );
+    const createColorDragProvider = () =>
+        Gdk.ContentProvider.newForValue(GObject.buildValue(gdkRgbaType, (v) => v.setBoxed(sourceColor)));
 
-    const createImageDragProvider = useCallback(() => {
+    const createImageDragProvider = () => {
         const path = imagePathForIndex(selectedImage);
         try {
             const texture = Gdk.Texture.newFromResource(path);
@@ -153,12 +149,12 @@ function useDragProviders(state: ClipboardState) {
             if (e instanceof Error) console.error(e.message);
             return null;
         }
-    }, [selectedImage]);
+    };
 
-    const createFileDragProvider = useCallback(() => {
+    const createFileDragProvider = () => {
         if (!sourceFile) return null;
         return Gdk.ContentProvider.newForValue(GObject.buildValue(gfileType, (v) => v.setObject(sourceFile)));
-    }, [sourceFile]);
+    };
 
     return { createTextDragProvider, createColorDragProvider, createImageDragProvider, createFileDragProvider };
 }
@@ -202,7 +198,7 @@ const copyFileToClipboard = (clipboard: Gdk.Clipboard, sourceFile: Gio.File) =>
 function useClipboardHandlers(state: ClipboardState, window: React.RefObject<Gtk.Window | null>) {
     const { sourceType, sourceText, sourceColor, selectedImage, sourceFile, setSourceFile, setPastedContent } = state;
 
-    const handleCopy = useCallback(() => {
+    const handleCopy = () => {
         const clipboard = getClipboard();
         if (!clipboard) return;
         if (sourceType === "Text") copyTextToClipboard(clipboard, sourceText);
@@ -210,9 +206,9 @@ function useClipboardHandlers(state: ClipboardState, window: React.RefObject<Gtk
         else if (sourceType === "Image") copyImageToClipboard(clipboard, selectedImage);
         else if ((sourceType === "File" || sourceType === "Folder") && sourceFile)
             copyFileToClipboard(clipboard, sourceFile);
-    }, [sourceType, sourceText, sourceColor, selectedImage, sourceFile]);
+    };
 
-    const handlePaste = useCallback(async () => {
+    const handlePaste = async () => {
         const clipboard = getClipboard();
         if (!clipboard) return;
         const formats = clipboard.getFormats();
@@ -225,22 +221,13 @@ function useClipboardHandlers(state: ClipboardState, window: React.RefObject<Gtk
         } catch (e) {
             if (e instanceof Error) console.error(e.message);
         }
-    }, [setPastedContent]);
+    };
 
-    const handleFileSelect = useCallback(
-        () => openFileDialog(window.current, "file", setSourceFile),
-        [window, setSourceFile],
-    );
+    const handleFileSelect = () => openFileDialog(window.current, "file", setSourceFile);
 
-    const handleFolderSelect = useCallback(
-        () => openFileDialog(window.current, "folder", setSourceFile),
-        [window, setSourceFile],
-    );
+    const handleFolderSelect = () => openFileDialog(window.current, "folder", setSourceFile);
 
-    const handleDrop = useCallback(
-        (value: GObject.Value) => handleClipboardDrop(value, setPastedContent),
-        [setPastedContent],
-    );
+    const handleDrop = (value: GObject.Value) => handleClipboardDrop(value, setPastedContent);
 
     return { handleCopy, handlePaste, handleFileSelect, handleFolderSelect, handleDrop };
 }

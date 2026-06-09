@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkCheckButton, GtkDropDown, GtkFrame, GtkLabel, GtkSizeGroup } from "@gtkx/react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./sizegroup.tsx?raw";
 
@@ -41,7 +41,7 @@ const SizeGroupDemo = () => {
     const [dashing, setDashing] = useState("Solid");
     const [lineEnd, setLineEnd] = useState("Square");
 
-    const handleToggle = useCallback((button: Gtk.CheckButton) => setGroupingEnabled(button.getActive()), []);
+    const handleToggle = (button: Gtk.CheckButton) => setGroupingEnabled(button.getActive());
 
     return (
         <GtkBox

@@ -13,7 +13,7 @@ import {
     GtkSwitch,
     useAdjustment,
 } from "@gtkx/react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./errorstates.tsx?raw";
 
@@ -49,43 +49,37 @@ type ErrorStatesState = ReturnType<typeof useErrorStatesState>;
 function useErrorStatesHandlers(state: ErrorStatesState) {
     const { detailsEntry, moreDetailsEntry, modeSwitch, levelScale, setMoreDetailsError, setShowError } = state;
 
-    const validateMoreDetails = useCallback(() => {
+    const validateMoreDetails = () => {
         const detailsText = detailsEntry?.getText() ?? "";
         const moreDetailsText = moreDetailsEntry?.getText() ?? "";
         setMoreDetailsError(moreDetailsText.length > 0 && detailsText.length === 0);
-    }, [detailsEntry, moreDetailsEntry, setMoreDetailsError]);
+    };
 
-    const handleDetailsChange = useCallback(() => validateMoreDetails(), [validateMoreDetails]);
-    const handleMoreDetailsChange = useCallback(() => validateMoreDetails(), [validateMoreDetails]);
+    const handleDetailsChange = () => validateMoreDetails();
+    const handleMoreDetailsChange = () => validateMoreDetails();
 
-    const handleLevelChange = useCallback(
-        (_value: number) => {
-            if (!modeSwitch || !levelScale) return;
-            const active = modeSwitch.getActive();
-            const switchState = modeSwitch.getState();
-            const value = levelScale.getValue();
-            if (active && !switchState && value > 50) {
-                setShowError(false);
-                modeSwitch.setState(true);
-            } else if (switchState && value <= 50) {
-                modeSwitch.setState(false);
-            }
-        },
-        [modeSwitch, levelScale, setShowError],
-    );
+    const handleLevelChange = (_value: number) => {
+        if (!modeSwitch || !levelScale) return;
+        const active = modeSwitch.getActive();
+        const switchState = modeSwitch.getState();
+        const value = levelScale.getValue();
+        if (active && !switchState && value > 50) {
+            setShowError(false);
+            modeSwitch.setState(true);
+        } else if (switchState && value <= 50) {
+            modeSwitch.setState(false);
+        }
+    };
 
-    const handleModeStateSet = useCallback(
-        (switchState: boolean, sw: Gtk.Switch) => {
-            if (!switchState || (levelScale && levelScale.getValue() > 50)) {
-                setShowError(false);
-                sw.setState(switchState);
-            } else {
-                setShowError(true);
-            }
-            return true;
-        },
-        [levelScale, setShowError],
-    );
+    const handleModeStateSet = (switchState: boolean, sw: Gtk.Switch) => {
+        if (!switchState || (levelScale && levelScale.getValue() > 50)) {
+            setShowError(false);
+            sw.setState(switchState);
+        } else {
+            setShowError(true);
+        }
+        return true;
+    };
 
     return { handleDetailsChange, handleMoreDetailsChange, handleLevelChange, handleModeStateSet };
 }

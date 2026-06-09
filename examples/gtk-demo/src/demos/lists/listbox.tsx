@@ -17,7 +17,7 @@ import {
     MenuItem,
     MenuSection,
 } from "@gtkx/react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { path as appleRedPath } from "../css/apple-red.png";
 import type { Demo } from "../types.js";
 import sourceCode from "./listbox.tsx?raw";
@@ -215,11 +215,11 @@ const MessageDetails = ({ message, expanded }: { message: Message; expanded: boo
 const MessageRow = ({ message, expanded, onToggleExpand, onFavorite, onReshare }: MessageRowProps) => {
     const extraButtonsRef = useRef<Gtk.Box>(null);
 
-    const handleStateFlagsChanged = useCallback((_previousFlags: Gtk.StateFlags, row: Gtk.Widget) => {
+    const handleStateFlagsChanged = (_previousFlags: Gtk.StateFlags, row: Gtk.Widget) => {
         const flags = row.getStateFlags();
         const visible = (flags & Gtk.StateFlags.PRELIGHT) !== 0 || (flags & Gtk.StateFlags.SELECTED) !== 0;
         extraButtonsRef.current?.setVisible(visible);
-    }, []);
+    };
 
     return (
         <GtkListBoxRow onStateFlagsChanged={handleStateFlagsChanged}>
@@ -246,32 +246,29 @@ const ListBoxDemo = () => {
     const [messages, setMessages] = useState(ALL_MESSAGES);
     const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
 
-    const sortedMessages = useMemo(() => [...messages].sort((a, b) => b.time - a.time), [messages]);
+    const sortedMessages = [...messages].sort((a, b) => b.time - a.time);
 
-    const handleToggleExpand = useCallback((id: number) => {
+    const handleToggleExpand = (id: number) => {
         setExpandedIds((prev) => {
             const next = new Set(prev);
             if (next.has(id)) next.delete(id);
             else next.add(id);
             return next;
         });
-    }, []);
+    };
 
-    const handleFavorite = useCallback((id: number) => {
+    const handleFavorite = (id: number) => {
         setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, nFavorites: m.nFavorites + 1 } : m)));
-    }, []);
+    };
 
-    const handleReshare = useCallback((id: number) => {
+    const handleReshare = (id: number) => {
         setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, nReshares: m.nReshares + 1 } : m)));
-    }, []);
+    };
 
-    const handleRowActivated = useCallback(
-        (row: Gtk.ListBoxRow) => {
-            const msg = sortedMessages[row.getIndex()];
-            if (msg) handleToggleExpand(msg.id);
-        },
-        [sortedMessages, handleToggleExpand],
-    );
+    const handleRowActivated = (row: Gtk.ListBoxRow) => {
+        const msg = sortedMessages[row.getIndex()];
+        if (msg) handleToggleExpand(msg.id);
+    };
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>

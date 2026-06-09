@@ -1,21 +1,17 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import type * as GtkSource from "@gtkx/gi/gtksource";
 import { GtkBox, GtkLabel, GtkScrolledWindow, GtkSourceView } from "@gtkx/react";
-import { useCallback } from "react";
 import { useDemo } from "../context/demo-context.js";
 
 export const SourceViewer = () => {
     const { currentDemo } = useDemo();
 
-    const handleRef = useCallback(
-        (view: GtkSource.View | null) => {
-            if (view && currentDemo?.sourceCode) {
-                const buffer = view.getBuffer();
-                buffer.setText(currentDemo.sourceCode, -1);
-            }
-        },
-        [currentDemo?.sourceCode],
-    );
+    const handleRef = (view: GtkSource.View | null) => {
+        if (view && currentDemo?.sourceCode) {
+            const buffer = view.getBuffer();
+            buffer.setText(currentDemo.sourceCode, -1);
+        }
+    };
 
     return (
         <GtkScrolledWindow vexpand hexpand>

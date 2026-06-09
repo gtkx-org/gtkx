@@ -12,7 +12,7 @@ import {
     GtkStackPage,
     GtkStackSwitcher,
 } from "@gtkx/react";
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import blendsPath from "./blends.png";
 import cmyPath from "./cmy.jpg";
@@ -203,15 +203,15 @@ const CssBlendmodesDemo = () => {
     const [stack, setStack] = useState<Gtk.Stack | null>(null);
     const [blendMode, setBlendMode] = useState("normal");
 
-    const blendCss = useMemo(() => createBlendCss(blendMode), [blendMode]);
+    const blendCss = createBlendCss(blendMode);
 
-    const handleRowActivated = useCallback((row: Gtk.ListBoxRow) => {
+    const handleRowActivated = (row: Gtk.ListBoxRow) => {
         const index = row.getIndex();
         const mode = BLEND_MODES[index];
         if (mode) setBlendMode(mode.id);
-    }, []);
+    };
 
-    const selectAndFocusNormalRow = useCallback((widget: Gtk.Widget) => {
+    const selectAndFocusNormalRow = (widget: Gtk.Widget) => {
         const listbox = widget as Gtk.ListBox;
         const normalIndex = BLEND_MODES.findIndex((m) => m.id === "normal");
         const row = listbox.getRowAtIndex(normalIndex);
@@ -219,7 +219,7 @@ const CssBlendmodesDemo = () => {
             listbox.selectRow(row);
             row.grabFocus();
         }
-    }, []);
+    };
 
     return (
         <GtkGrid

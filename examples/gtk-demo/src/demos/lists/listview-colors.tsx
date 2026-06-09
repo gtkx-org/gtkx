@@ -23,7 +23,7 @@ import {
     GtkToggleButton,
 } from "@gtkx/react";
 
-import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, memo, useContext, useEffect, useRef, useState } from "react";
 import { useLatest } from "../../use-latest.js";
 import type { Demo, DemoProviderProps } from "../types.js";
 import colorNamesRaw from "./color.names.txt?raw";
@@ -552,7 +552,7 @@ function useColorsState() {
         showSelectionInfo,
         setShowSelectionInfo,
         refillToken,
-        bumpRefillToken: useCallback(() => setRefillToken((t) => t + 1), []),
+        bumpRefillToken: () => setRefillToken((t) => t + 1),
     };
 }
 
@@ -561,29 +561,25 @@ type ColorsState = ReturnType<typeof useColorsState>;
 function useColorsComputed(state: ColorsState, models: ColorsModels) {
     const { displayFactory, bumpRefillToken } = state;
     const selectedColors = useSelectedColors(models.selection);
-    const averageColor = useMemo(() => calculateAverageColor(selectedColors), [selectedColors]);
+    const averageColor = calculateAverageColor(selectedColors);
     const showDetails = displayFactory === "everything";
     const gridCssClasses = displayFactory === "colors" ? COMPACT_CSS_CLASSES : EMPTY_CSS_CLASSES;
 
-    const handleRefill = useCallback(() => {
+    const handleRefill = () => {
         models.selection.unselectAll();
         bumpRefillToken();
-    }, [models, bumpRefillToken]);
+    };
 
-    const handleLimitChange = useCallback(
-        (id: string) => {
-            const limit = COLOR_LIMITS.find((l) => l.id === id);
-            if (limit) {
-                models.selection.unselectAll();
-                state.setColorLimit(limit.value);
-            }
-        },
-        [models, state],
-    );
+    const handleLimitChange = (id: string) => {
+        const limit = COLOR_LIMITS.find((l) => l.id === id);
+        if (limit) {
+            models.selection.unselectAll();
+            state.setColorLimit(limit.value);
+        }
+    };
 
-    const renderGridItem = useCallback(
-        (obj: GObject.Object) => <ColorGridItem item={(obj as ColorObject).colorItem} showDetails={showDetails} />,
-        [showDetails],
+    const renderGridItem = (obj: GObject.Object) => (
+        <ColorGridItem item={(obj as ColorObject).colorItem} showDetails={showDetails} />
     );
 
     return {
@@ -618,7 +614,11 @@ const ListViewColorsProvider = ({ children }: DemoProviderProps) => {
     const models = useColorsModels();
     useColorsSortMode(models, state.sortMode);
     const computed = useColorsComputed(state, models);
-    const value = useMemo<ColorsContextValue>(() => ({ state, models, computed }), [state, models, computed]);
+    const value = {
+        state,
+        models,
+        computed,
+    };
     return <ColorsContext.Provider value={value}>{children}</ColorsContext.Provider>;
 };
 

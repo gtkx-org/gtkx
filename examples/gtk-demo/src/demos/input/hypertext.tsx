@@ -16,7 +16,7 @@ import {
     GtkTextView,
 } from "@gtkx/react";
 import type { ReactNode } from "react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./hypertext.tsx?raw";
 
@@ -192,27 +192,24 @@ function useClickHandler(
     findLinkAtOffset: (offset: number) => number | null,
     setCurrentPage: (page: number) => void,
 ) {
-    return useCallback(
-        (_nPress: number, clickX: number, clickY: number) => {
-            const textView = textViewRef.current;
-            if (!textView) return;
-            const buffer = textView.getBuffer();
-            const [, startIter, endIter] = buffer.getSelectionBounds();
-            if (startIter.getOffset() !== endIter.getOffset()) return;
+    return (_nPress: number, clickX: number, clickY: number) => {
+        const textView = textViewRef.current;
+        if (!textView) return;
+        const buffer = textView.getBuffer();
+        const [, startIter, endIter] = buffer.getSelectionBounds();
+        if (startIter.getOffset() !== endIter.getOffset()) return;
 
-            const [bufferX, bufferY] = textView.windowToBufferCoords(
-                Gtk.TextWindowType.WIDGET,
-                Math.trunc(clickX),
-                Math.trunc(clickY),
-            );
-            const [result, iter] = textView.getIterAtPosition(bufferX, bufferY);
-            if (!result) return;
+        const [bufferX, bufferY] = textView.windowToBufferCoords(
+            Gtk.TextWindowType.WIDGET,
+            Math.trunc(clickX),
+            Math.trunc(clickY),
+        );
+        const [result, iter] = textView.getIterAtPosition(bufferX, bufferY);
+        if (!result) return;
 
-            const targetPage = findLinkAtOffset(iter.getOffset());
-            if (targetPage !== null) setCurrentPage(targetPage);
-        },
-        [textViewRef, findLinkAtOffset, setCurrentPage],
-    );
+        const targetPage = findLinkAtOffset(iter.getOffset());
+        if (targetPage !== null) setCurrentPage(targetPage);
+    };
 }
 
 function useMotionHandler(
@@ -220,31 +217,28 @@ function useMotionHandler(
     findLinkAtOffset: (offset: number) => number | null,
     hoveringRef: React.RefObject<boolean>,
 ) {
-    return useCallback(
-        (motionX: number, motionY: number) => {
-            const textView = textViewRef.current;
-            if (!textView) return;
-            const [bufferX, bufferY] = textView.windowToBufferCoords(
-                Gtk.TextWindowType.WIDGET,
-                Math.trunc(motionX),
-                Math.trunc(motionY),
-            );
-            const [result, iter] = textView.getIterAtPosition(bufferX, bufferY);
-            if (!result) {
-                if (hoveringRef.current) {
-                    textView.setCursor(Gdk.Cursor.newFromName("text", null));
-                    hoveringRef.current = false;
-                }
-                return;
+    return (motionX: number, motionY: number) => {
+        const textView = textViewRef.current;
+        if (!textView) return;
+        const [bufferX, bufferY] = textView.windowToBufferCoords(
+            Gtk.TextWindowType.WIDGET,
+            Math.trunc(motionX),
+            Math.trunc(motionY),
+        );
+        const [result, iter] = textView.getIterAtPosition(bufferX, bufferY);
+        if (!result) {
+            if (hoveringRef.current) {
+                textView.setCursor(Gdk.Cursor.newFromName("text", null));
+                hoveringRef.current = false;
             }
-            const overLink = findLinkAtOffset(iter.getOffset()) !== null;
-            if (overLink !== hoveringRef.current) {
-                hoveringRef.current = overLink;
-                textView.setCursor(Gdk.Cursor.newFromName(overLink ? "pointer" : "text", null));
-            }
-        },
-        [textViewRef, findLinkAtOffset, hoveringRef],
-    );
+            return;
+        }
+        const overLink = findLinkAtOffset(iter.getOffset()) !== null;
+        if (overLink !== hoveringRef.current) {
+            hoveringRef.current = overLink;
+            textView.setCursor(Gdk.Cursor.newFromName(overLink ? "pointer" : "text", null));
+        }
+    };
 }
 
 function useKeyPressHandler(
@@ -252,52 +246,43 @@ function useKeyPressHandler(
     findLinkAtOffset: (offset: number) => number | null,
     setCurrentPage: (page: number) => void,
 ) {
-    return useCallback(
-        (keyval: number) => {
-            if (keyval !== Gdk.KEY_Return && keyval !== Gdk.KEY_KP_Enter) return false;
-            const textView = textViewRef.current;
-            if (!textView) return false;
-            const buffer = textView.getBuffer();
-            const iter = buffer.getIterAtMark(buffer.getInsert());
-            const targetPage = findLinkAtOffset(iter.getOffset());
-            if (targetPage === null) return false;
-            setCurrentPage(targetPage);
-            return true;
-        },
-        [textViewRef, findLinkAtOffset, setCurrentPage],
-    );
+    return (keyval: number) => {
+        if (keyval !== Gdk.KEY_Return && keyval !== Gdk.KEY_KP_Enter) return false;
+        const textView = textViewRef.current;
+        if (!textView) return false;
+        const buffer = textView.getBuffer();
+        const iter = buffer.getIterAtMark(buffer.getInsert());
+        const targetPage = findLinkAtOffset(iter.getOffset());
+        if (targetPage === null) return false;
+        setCurrentPage(targetPage);
+        return true;
+    };
 }
 
 const HypertextDemo = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const textViewRef = useRef<Gtk.TextView | null>(null);
 
-    const getIconPaintable = useCallback((iconName: string, size: number): Gtk.IconPaintable | null => {
+    const getIconPaintable = (iconName: string, size: number): Gtk.IconPaintable | null => {
         const textView = textViewRef.current;
         if (!textView) return null;
         const display = textView.getDisplay();
         const theme = Gtk.IconTheme.getForDisplay(display);
         return theme.lookupIcon(iconName, null, size, 1, Gtk.TextDirection.LTR, Gtk.IconLookupFlags.PRELOAD);
-    }, []);
+    };
 
-    const sayWord = useCallback((word: string): void => {
+    const sayWord = (word: string): void => {
         spawn("espeak-ng", [word], { stdio: "ignore" });
-    }, []);
+    };
 
-    const { content, linkInfos } = useMemo(
-        () => buildPageContent(currentPage, getIconPaintable, sayWord),
-        [currentPage, getIconPaintable, sayWord],
-    );
+    const { content, linkInfos } = buildPageContent(currentPage, getIconPaintable, sayWord);
 
-    const findLinkAtOffset = useCallback(
-        (offset: number): number | null => {
-            for (const link of linkInfos) {
-                if (offset >= link.start && offset < link.end) return link.targetPage;
-            }
-            return null;
-        },
-        [linkInfos],
-    );
+    const findLinkAtOffset = (offset: number): number | null => {
+        for (const link of linkInfos) {
+            if (offset >= link.start && offset < link.end) return link.targetPage;
+        }
+        return null;
+    };
 
     const handlers = useHypertextHandlers(textViewRef, findLinkAtOffset, setCurrentPage);
 

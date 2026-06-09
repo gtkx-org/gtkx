@@ -10,7 +10,7 @@ import {
     GtkTextView,
     useAdjustment,
 } from "@gtkx/react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import { path as decor1Path } from "./decor1.png";
 import { path as decor2Path } from "./decor2.png";
@@ -20,8 +20,8 @@ const OverlayDecorativeDemo = () => {
     const [margin, setMargin] = useState(100);
     const marginAdjustment = useAdjustment({ value: margin, lower: 0, upper: 100, stepIncrement: 1, pageIncrement: 1 });
 
-    const decor1 = useMemo(() => Gdk.Texture.newFromResource(decor1Path), []);
-    const decor2 = useMemo(() => Gdk.Texture.newFromResource(decor2Path), []);
+    const decor1 = Gdk.Texture.newFromResource(decor1Path);
+    const decor2 = Gdk.Texture.newFromResource(decor2Path);
 
     return (
         <GtkOverlay name="overlay">

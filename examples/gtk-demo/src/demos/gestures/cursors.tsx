@@ -1,7 +1,6 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkListBox, GtkListBoxRow, GtkScrolledWindow } from "@gtkx/react";
-import { useMemo } from "react";
 import { useCssResource } from "../../use-css-resource.js";
 import type { Demo } from "../types.js";
 import { path as aliasPath } from "./cursors/alias_cursor.png";
@@ -157,7 +156,7 @@ const buildCursorTooltips = (info: CursorInfo): readonly [string, string, string
           ];
 
 const CursorPreview = ({ info }: { info: CursorInfo }) => {
-    const texture = useMemo(() => getCursorTexture(info), [info]);
+    const texture = getCursorTexture(info);
     return <GtkImage paintable={texture} />;
 };
 
@@ -166,8 +165,8 @@ const CursorFrame = ({ cursor, tooltip }: { cursor: Gdk.Cursor; tooltip: string 
 );
 
 const CursorRow = ({ info }: { info: CursorInfo }) => {
-    const cursors = useMemo(() => buildCursorVariants(info), [info]);
-    const tooltips = useMemo(() => buildCursorTooltips(info), [info]);
+    const cursors = buildCursorVariants(info);
+    const tooltips = buildCursorTooltips(info);
     return (
         <GtkListBoxRow activatable={false}>
             <GtkBox spacing={10} marginStart={10} marginEnd={10} marginTop={10} marginBottom={10}>

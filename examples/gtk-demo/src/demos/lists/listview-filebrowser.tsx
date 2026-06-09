@@ -13,7 +13,7 @@ import {
     GtkScrolledWindow,
 } from "@gtkx/react";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-filebrowser.tsx?raw";
 
@@ -174,21 +174,21 @@ const FilebrowserProvider = ({ children }: DemoProviderProps) => {
     const [viewMode, setViewMode] = useState<ViewMode>("list");
     const files = useDirectoryFiles(currentPath);
 
-    const navigateUp = useCallback(() => {
+    const navigateUp = () => {
         const file = Gio.fileNewForPath(currentPath);
         const parent = file.getParent();
         if (parent) setCurrentPath(parent.getPath() ?? "/");
-    }, [currentPath]);
+    };
 
-    const handleActivate = useCallback(
-        (position: number) => navigateInto(files[position], currentPath, setCurrentPath),
-        [files, currentPath],
-    );
+    const handleActivate = (position: number) => navigateInto(files[position], currentPath, setCurrentPath);
 
-    const value = useMemo<FilebrowserContextValue>(
-        () => ({ viewMode, setViewMode, files, handleActivate, navigateUp }),
-        [viewMode, files, handleActivate, navigateUp],
-    );
+    const value = {
+        viewMode,
+        setViewMode,
+        files,
+        handleActivate,
+        navigateUp,
+    };
 
     return <FilebrowserContext.Provider value={value}>{children}</FilebrowserContext.Provider>;
 };

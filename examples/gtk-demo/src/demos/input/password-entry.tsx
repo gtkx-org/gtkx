@@ -1,7 +1,7 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkHeaderBar, GtkPasswordEntry } from "@gtkx/react";
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { useDemo } from "../../context/demo-context.js";
 import type { Demo, DemoProps, DemoProviderProps } from "../types.js";
 import sourceCode from "./password-entry.tsx?raw";
@@ -26,18 +26,19 @@ const PasswordEntryProvider = ({ children }: DemoProviderProps) => {
 
     const passwordsMatch = password.length > 0 && password === confirm;
 
-    const handlePasswordNotify = useCallback((pspec: GObject.ParamSpec, self: Gtk.PasswordEntry) => {
+    const handlePasswordNotify = (pspec: GObject.ParamSpec, self: Gtk.PasswordEntry) => {
         if (pspec.getName() === "text") setPassword(self.getText() ?? "");
-    }, []);
+    };
 
-    const handleConfirmNotify = useCallback((pspec: GObject.ParamSpec, self: Gtk.PasswordEntry) => {
+    const handleConfirmNotify = (pspec: GObject.ParamSpec, self: Gtk.PasswordEntry) => {
         if (pspec.getName() === "text") setConfirm(self.getText() ?? "");
-    }, []);
+    };
 
-    const value = useMemo<PasswordEntryContextValue>(
-        () => ({ passwordsMatch, handlePasswordNotify, handleConfirmNotify }),
-        [passwordsMatch, handlePasswordNotify, handleConfirmNotify],
-    );
+    const value = {
+        passwordsMatch,
+        handlePasswordNotify,
+        handleConfirmNotify,
+    };
 
     return <PasswordEntryContext.Provider value={value}>{children}</PasswordEntryContext.Provider>;
 };

@@ -19,7 +19,7 @@ import {
     GtkSpinButton,
     useAdjustment,
 } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-selections.tsx?raw";
 
@@ -173,61 +173,52 @@ const appendSuggestionRow = (listBox: Gtk.ListBox, word: string, query: string):
     listBox.append(row);
 };
 
-const useRebuildSuggestionList = (refs: SuggestionRefs, words: string[]) =>
-    useCallback(
-        (text: string) => {
-            const popover = refs.popoverRef.current;
-            const listBox = refs.listBoxRef.current;
-            if (!popover || !listBox) return;
-            clearListBox(listBox);
-            if (text.length < 1) {
-                refs.suggestionsRef.current = [];
-                refs.selectedRef.current = -1;
-                popover.popdown();
-                return;
-            }
-            const lower = text.toLowerCase();
-            const matches = words.filter((w) => w.toLowerCase().includes(lower)).slice(0, 10);
-            refs.suggestionsRef.current = matches;
-            refs.selectedRef.current = -1;
-            if (matches.length === 0) {
-                popover.popdown();
-                return;
-            }
-            for (const word of matches) appendSuggestionRow(listBox, word, text);
-            popover.popup();
-        },
-        [refs, words],
-    );
-
-const useAcceptSuggestion = (refs: SuggestionRefs) =>
-    useCallback(() => {
-        const popover = refs.popoverRef.current;
-        const entry = refs.entryRef.current;
-        const matches = refs.suggestionsRef.current;
-        const idx = refs.selectedRef.current;
-        if (!popover || !entry || idx < 0 || idx >= matches.length) return false;
-        const word = matches[idx];
-        if (word === undefined) return false;
-        entry.setText(word);
-        entry.setPosition(-1);
+const useRebuildSuggestionList = (refs: SuggestionRefs, words: string[]) => (text: string) => {
+    const popover = refs.popoverRef.current;
+    const listBox = refs.listBoxRef.current;
+    if (!popover || !listBox) return;
+    clearListBox(listBox);
+    if (text.length < 1) {
+        refs.suggestionsRef.current = [];
+        refs.selectedRef.current = -1;
         popover.popdown();
-        return true;
-    }, [refs]);
+        return;
+    }
+    const lower = text.toLowerCase();
+    const matches = words.filter((w) => w.toLowerCase().includes(lower)).slice(0, 10);
+    refs.suggestionsRef.current = matches;
+    refs.selectedRef.current = -1;
+    if (matches.length === 0) {
+        popover.popdown();
+        return;
+    }
+    for (const word of matches) appendSuggestionRow(listBox, word, text);
+    popover.popup();
+};
 
-const useMoveSuggestion = (refs: SuggestionRefs) =>
-    useCallback(
-        (delta: number) => {
-            const listBox = refs.listBoxRef.current;
-            const matches = refs.suggestionsRef.current;
-            if (!listBox || matches.length === 0) return;
-            const next = (refs.selectedRef.current + delta + matches.length) % matches.length;
-            refs.selectedRef.current = next;
-            const row = listBox.getRowAtIndex(next);
-            if (row) listBox.selectRow(row);
-        },
-        [refs],
-    );
+const useAcceptSuggestion = (refs: SuggestionRefs) => () => {
+    const popover = refs.popoverRef.current;
+    const entry = refs.entryRef.current;
+    const matches = refs.suggestionsRef.current;
+    const idx = refs.selectedRef.current;
+    if (!popover || !entry || idx < 0 || idx >= matches.length) return false;
+    const word = matches[idx];
+    if (word === undefined) return false;
+    entry.setText(word);
+    entry.setPosition(-1);
+    popover.popdown();
+    return true;
+};
+
+const useMoveSuggestion = (refs: SuggestionRefs) => (delta: number) => {
+    const listBox = refs.listBoxRef.current;
+    const matches = refs.suggestionsRef.current;
+    if (!listBox || matches.length === 0) return;
+    const next = (refs.selectedRef.current + delta + matches.length) % matches.length;
+    refs.selectedRef.current = next;
+    const row = listBox.getRowAtIndex(next);
+    if (row) listBox.selectRow(row);
+};
 
 const buildSuggestionPopover = (entry: Gtk.Entry): { popover: Gtk.Popover; listBox: Gtk.ListBox } => {
     const popover = Gtk.Popover.new();
@@ -296,11 +287,8 @@ const SuggestionEntry = ({ words, placeholder, name }: { words: string[]; placeh
     const move = useMoveSuggestion(refs);
     const rebuild = useRebuildSuggestionList(refs, words);
     useSuggestionPopover(refs, accept);
-    const handleChanged = useCallback((entry: Gtk.Entry) => rebuild(entry.getText()), [rebuild]);
-    const handleKeyPressed = useCallback(
-        (keyval: number) => handleSuggestionKey(keyval, refs, move, accept),
-        [refs, move, accept],
-    );
+    const handleChanged = (entry: Gtk.Entry) => rebuild(entry.getText());
+    const handleKeyPressed = (keyval: number) => handleSuggestionKey(keyval, refs, move, accept);
     return (
         <GtkEntry ref={refs.entryRef} name={name} hexpand placeholderText={placeholder} onChanged={handleChanged}>
             <GtkEventControllerKey onKeyPressed={handleKeyPressed} />
@@ -492,12 +480,12 @@ const ListViewSelectionsDemo = () => {
         stepIncrement: 1,
     });
 
-    const handleFontSpinChanged = useCallback((val: number) => {
+    const handleFontSpinChanged = (val: number) => {
         const idx = Math.round(val);
         if (idx >= 0 && idx < getFontFamilies().length) {
             setFontIndex(idx);
         }
-    }, []);
+    };
 
     return (
         <GtkBox spacing={20} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>

@@ -16,7 +16,7 @@ import {
     GtkToggleButton,
 } from "@gtkx/react";
 
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-settings.tsx?raw";
 
@@ -154,25 +154,25 @@ function useListViewSettingsState() {
     const [keySearchActive, setKeySearchActive] = useState(false);
     const [keySearchText, setKeySearchText] = useState("");
 
-    const handleSchemaSelected = useCallback((ids: string[]) => {
+    const handleSchemaSelected = (ids: string[]) => {
         const nodeId = ids[0];
         if (!nodeId) return;
         setSelectedNodeId(nodeId);
         setKeyInfos(loadKeysForNode(nodeId));
-    }, []);
+    };
 
-    const filteredKeyInfos = useMemo(() => {
+    const filteredKeyInfos = (() => {
         if (!keySearchText) return keyInfos;
         const lower = keySearchText.toLowerCase();
         return keyInfos.filter((k) => k.name.toLowerCase().includes(lower));
-    }, [keyInfos, keySearchText]);
+    })();
 
-    const handleKeySearchChanged = useCallback((entry: Gtk.SearchEntry) => setKeySearchText(entry.getText()), []);
+    const handleKeySearchChanged = (entry: Gtk.SearchEntry) => setKeySearchText(entry.getText());
 
-    const handleStopSearch = useCallback(() => {
+    const handleStopSearch = () => {
         setKeySearchActive(false);
         setKeySearchText("");
-    }, []);
+    };
 
     return {
         selectedNodeId,
@@ -254,40 +254,37 @@ function useColumnViewVisibilityMenuRef(
     const teardownRef = useRef<(() => void) | null>(null);
     const columnsListenerRef = useRef<{ list: Gio.ListModel; callback: () => void } | null>(null);
 
-    const detachColumnsListener = useCallback(() => {
+    const detachColumnsListener = () => {
         const listener = columnsListenerRef.current;
         if (listener) {
             listener.list.off("items-changed", listener.callback);
             columnsListenerRef.current = null;
         }
-    }, []);
+    };
 
-    return useCallback(
-        (cv: Gtk.ColumnView | null) => {
-            forwardRef.current = cv;
-            teardownRef.current?.();
-            teardownRef.current = null;
-            detachColumnsListener();
+    return (cv: Gtk.ColumnView | null) => {
+        forwardRef.current = cv;
+        teardownRef.current?.();
+        teardownRef.current = null;
+        detachColumnsListener();
 
-            if (!cv) return;
+        if (!cv) return;
 
-            const tryInstall = () => {
-                const teardown = installVisibilityMenu(cv);
-                if (teardown) {
-                    teardownRef.current = teardown;
-                    detachColumnsListener();
-                }
-            };
+        const tryInstall = () => {
+            const teardown = installVisibilityMenu(cv);
+            if (teardown) {
+                teardownRef.current = teardown;
+                detachColumnsListener();
+            }
+        };
 
-            tryInstall();
-            if (teardownRef.current) return;
+        tryInstall();
+        if (teardownRef.current) return;
 
-            const columnsList = cv.getColumns();
-            columnsList.on("items-changed", tryInstall);
-            columnsListenerRef.current = { list: columnsList, callback: tryInstall };
-        },
-        [forwardRef, detachColumnsListener],
-    );
+        const columnsList = cv.getColumns();
+        columnsList.on("items-changed", tryInstall);
+        columnsListenerRef.current = { list: columnsList, callback: tryInstall };
+    };
 }
 
 interface CommitKeyInfoEditArgs {
@@ -443,16 +440,14 @@ const ListViewSettingsProvider = ({ children }: DemoProviderProps) => {
     const columnViewRef = useRef<Gtk.ColumnView | null>(null);
     const columnViewCallbackRef = useColumnViewVisibilityMenuRef(columnViewRef);
 
-    const handleValueEdit = useCallback(
-        (keyInfo: KeyInfo, newText: string, widget: Gtk.Widget) =>
-            commitKeyInfoEdit({ keyInfo, newText, widget, state }),
-        [state],
-    );
+    const handleValueEdit = (keyInfo: KeyInfo, newText: string, widget: Gtk.Widget) =>
+        commitKeyInfoEdit({ keyInfo, newText, widget, state });
 
-    const value = useMemo<SettingsContextValue>(
-        () => ({ state, columnViewRef: columnViewCallbackRef, handleValueEdit }),
-        [state, handleValueEdit, columnViewCallbackRef],
-    );
+    const value = {
+        state,
+        columnViewRef: columnViewCallbackRef,
+        handleValueEdit,
+    };
 
     return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 };
