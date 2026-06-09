@@ -71,6 +71,14 @@ const ConstraintLayoutMember = ({ id, child }: { id: string; child: WidgetChild 
 
 /** A React effect hook with the `useEffect`/`useLayoutEffect` call signature. */
 type EffectHook = (effect: EffectCallback, deps: readonly unknown[]) => void;
+type ContributionCleanupRef = { current: (() => void) | null };
+
+const cleanupContribution = (cleanupRef: ContributionCleanupRef): void => {
+    const cleanup = cleanupRef.current;
+    if (!cleanup) return;
+    cleanupRef.current = null;
+    cleanup();
+};
 
 /**
  * Runs `apply` against the enclosing layout through `useEffectHook`, re-applying
@@ -95,6 +103,25 @@ const useContribution = (
         const layout = layoutRef.current;
         if (!layout) return;
         return apply(layout);
+    }, deps);
+};
+
+const useDeferredContribution = (apply: (layout: Gtk.ConstraintLayout) => () => void, deps: readonly unknown[]): void => {
+    const layoutRef = useConstraintLayoutRef();
+    const cleanupRef = useRef<(() => void) | null>(null);
+
+    useLayoutEffect(() => {
+        return () => cleanupContribution(cleanupRef);
+    }, deps);
+
+    useEffect(() => {
+        const layout = layoutRef.current;
+        if (!layout) return;
+        const cleanup = apply(layout);
+        cleanupRef.current = cleanup;
+        return () => {
+            if (cleanupRef.current === cleanup) cleanupContribution(cleanupRef);
+        };
     }, deps);
 };
 
@@ -178,7 +205,7 @@ export const GtkConstraintLayout: ((props: GtkConstraintLayoutProps) => ReactNod
             return null;
         },
         Constraint: (props: ConstraintProps): ReactNode => {
-            useContribution(useEffect, (layout) => applyConstraint(layout, props), [
+            useDeferredContribution((layout) => applyConstraint(layout, props), [
                 props.target,
                 props.targetAttribute,
                 props.relation,
@@ -191,11 +218,7 @@ export const GtkConstraintLayout: ((props: GtkConstraintLayoutProps) => ReactNod
             return null;
         },
         Vfl: (props: ConstraintVflProps): ReactNode => {
-            useContribution(useEffect, (layout) => applyVfl(layout, props), [
-                props.lines,
-                props.hspacing,
-                props.vspacing,
-            ]);
+            useDeferredContribution((layout) => applyVfl(layout, props), [props.lines, props.hspacing, props.vspacing]);
             return null;
         },
     },

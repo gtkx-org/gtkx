@@ -390,7 +390,10 @@ const clickSourceButtonAfterDialog = async (
     await renderDemo(clipboardDemo);
     await switchSourceType(kind);
     const sourceButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: label })) as Gtk.Button;
-    await userEvent.click(sourceButton);
+    await act(async () => {
+        await userEvent.click(sourceButton);
+        await Promise.resolve();
+    });
 };
 
 describe("clipboardDemo file source selection", () => {

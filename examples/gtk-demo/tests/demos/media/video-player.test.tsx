@@ -1,6 +1,6 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, userEvent, waitFor } from "@gtkx/testing";
+import { act, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { videoPlayerDemo } from "../../../src/demos/media/video-player.js";
 import { renderDemo } from "../../test-utils.js";
@@ -108,7 +108,10 @@ describe("videoPlayerDemo video and actions", () => {
         try {
             await renderDemo(videoPlayerDemo);
             const openButton = (await screen.findByName("open-button")) as Gtk.Button;
-            await userEvent.click(openButton);
+            await act(async () => {
+                await userEvent.click(openButton);
+                await Promise.resolve();
+            });
             await waitFor(() => expect(openSpy).toHaveBeenCalled());
             await waitFor(() => expect(setFileSpy).toHaveBeenCalled());
         } finally {
@@ -124,7 +127,10 @@ describe("videoPlayerDemo video and actions", () => {
         try {
             await renderDemo(videoPlayerDemo);
             const openButton = (await screen.findByName("open-button")) as Gtk.Button;
-            await userEvent.click(openButton);
+            await act(async () => {
+                await userEvent.click(openButton);
+                await Promise.resolve();
+            });
             await waitFor(() => expect(errorSpy).toHaveBeenCalledWith("cancelled"));
         } finally {
             openSpy.mockRestore();

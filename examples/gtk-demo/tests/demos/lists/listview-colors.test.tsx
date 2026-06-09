@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, userEvent, waitFor } from "@gtkx/testing";
+import { act, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { listviewColorsDemo } from "../../../src/demos/lists/listview-colors.js";
 import { renderDemo } from "../../test-utils.js";
@@ -13,7 +13,7 @@ describe("listviewColorsDemo metadata", () => {
         expect(listviewColorsDemo.description.length).toBeGreaterThan(0);
         expect(Array.isArray(listviewColorsDemo.keywords)).toBe(true);
         expect(typeof listviewColorsDemo.sourceCode).toBe("string");
-        expect(listviewColorsDemo.defaultWidth).toBe(600);
+        expect(listviewColorsDemo.defaultWidth).toBe(800);
         expect(listviewColorsDemo.defaultHeight).toBe(400);
         expect(listviewColorsDemo.component).toBeTypeOf("function");
     });
@@ -100,7 +100,10 @@ describe("listviewColorsDemo header actions", () => {
     it("changes the display factory when the display dropdown selection changes", async () => {
         await renderDemo(listviewColorsDemo);
         const displayDropdown = (await screen.findByName("display-dropdown")) as Gtk.DropDown;
-        await userEvent.selectOptions(displayDropdown, 1);
+        await act(async () => {
+            await userEvent.selectOptions(displayDropdown, 1);
+            await Promise.resolve();
+        });
         await waitFor(() => expect(displayDropdown.getSelected()).toBe(1));
     });
 

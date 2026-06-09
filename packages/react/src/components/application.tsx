@@ -43,10 +43,12 @@ const useApplicationInstance = <T extends Gtk.Application>(
     ref: Ref<T | null> | undefined,
 ): readonly [Gtk.Application | null, (instance: T | null) => void] => {
     const [app, setApp] = useState<Gtk.Application | null>(null);
+    const [registeredApp, setRegisteredApp] = useState<Gtk.Application | null>(null);
 
     const captureApp = useCallback(
         (instance: T | null) => {
             setApp(instance);
+            if (!instance) setRegisteredApp(null);
             assignRef(ref, instance);
         },
         [ref],
@@ -54,11 +56,14 @@ const useApplicationInstance = <T extends Gtk.Application>(
 
     useLayoutEffect(() => {
         if (!app) return;
-        app.register(null);
+        const activateHandlerId = app.connect("activate", () => {});
+        if (!app.getIsRegistered()) app.register(null);
         app.activate();
+        setRegisteredApp(app);
+        return () => app.disconnect(activateHandlerId);
     }, [app]);
 
-    return [app, captureApp] as const;
+    return [registeredApp, captureApp] as const;
 };
 
 /**

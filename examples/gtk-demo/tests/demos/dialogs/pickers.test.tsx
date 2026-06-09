@@ -5,7 +5,7 @@ import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor } from "@gtkx/testing";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { pickersDemo } from "../../../src/demos/dialogs/pickers.js";
 import { renderDemo } from "../../test-utils.js";
 
@@ -151,12 +151,17 @@ describe("pickersDemo file-dependent handlers", () => {
     });
 
     it("enables the Print button and runs handlePrintFile after dropping a PDF GFile", async () => {
+        const printFileSpy = vi.spyOn(Gtk.PrintDialog.prototype, "printFile").mockResolvedValue(undefined);
         await renderDemo(pickersDemo);
         const selectFile = (await screen.findByName("select-file-button")) as Gtk.Button;
         await userEvent.drop(selectFile, makeFileValue(pdfPath));
         const printBtn = (await screen.findByName("print-button")) as Gtk.Button;
         await waitFor(() => expect(printBtn.getSensitive()).toBe(true));
-        await userEvent.click(printBtn);
-        await new Promise((resolve) => setTimeout(resolve, 250));
+        try {
+            await userEvent.click(printBtn);
+            await waitFor(() => expect(printFileSpy).toHaveBeenCalled());
+        } finally {
+            printFileSpy.mockRestore();
+        }
     });
 });

@@ -1327,6 +1327,7 @@ function useShadertoyRefs() {
     const glAreaRef = useRef<Gtk.GLArea | null>(null);
     const glStateRef = useRef<GLState | null>(null);
     const sourceViewRef = useRef<Gtk.TextView | null>(null);
+    const resolutionRef = useRef<[number, number, number]>([400, 300, 1]);
     const animRef = useRef<AnimState>({
         firstFrameTime: 0,
         firstFrame: 0,
@@ -1336,7 +1337,7 @@ function useShadertoyRefs() {
         mouse: [0, 0, 0, 0],
     });
     const tickIdRef = useRef<number | null>(null);
-    return { glAreaRef, glStateRef, sourceViewRef, animRef, tickIdRef };
+    return { glAreaRef, glStateRef, sourceViewRef, resolutionRef, animRef, tickIdRef };
 }
 
 interface CompileShadertoyArgs {
@@ -1668,13 +1669,7 @@ const ShadertoyControls = ({ onRun, onClear, onLoadPreset }: ShadertoyControlsPr
     />
 );
 
-function useShadertoyHandlers(
-    refs: ReturnType<typeof useShadertoyRefs>,
-    compiledCode: string,
-    setCompiledCode: (code: string) => void,
-) {
-    const [resolution, setResolution] = useState<[number, number, number]>([400, 300, 1]);
-
+function useShadertoyHandlers(refs: ReturnType<typeof useShadertoyRefs>, compiledCode: string) {
     const tickCallback = useShaderTickCallback(refs.animRef, refs.glAreaRef);
     const handleUnrealize = useCallback(() => releaseShaderState(refs.glStateRef), [refs.glStateRef]);
     const handleGLAreaRef = useShaderRefCallback(refs.glAreaRef, refs.tickIdRef, tickCallback);
@@ -1697,23 +1692,31 @@ function useShadertoyHandlers(
 
     const handleRender = useCallback(
         (_context: Gdk.GLContext, self: Gtk.GLArea) =>
-            renderShadertoy({ glStateRef: refs.glStateRef, animRef: refs.animRef, resolution, self, compiledCode }),
-        [resolution, compiledCode, refs.animRef, refs.glStateRef],
+            renderShadertoy({
+                glStateRef: refs.glStateRef,
+                animRef: refs.animRef,
+                resolution: refs.resolutionRef.current,
+                self,
+                compiledCode,
+            }),
+        [compiledCode, refs.animRef, refs.glStateRef, refs.resolutionRef],
     );
 
-    const handleResize = useCallback((width: number, height: number) => {
-        setResolution([width, height, 1]);
-        gl.viewport(0, 0, width, height);
-    }, []);
+    const handleResize = useCallback(
+        (width: number, height: number) => {
+            refs.resolutionRef.current = [width, height, 1];
+            gl.viewport(0, 0, width, height);
+        },
+        [refs.resolutionRef],
+    );
 
-    void setCompiledCode;
     return { handleUnrealize, handleGLAreaRef, handleRender, handleResize };
 }
 
 const ShadertoyDemo = () => {
     const refs = useShadertoyRefs();
     const [compiledCode, setCompiledCode] = useState(ALIEN_PLANET_SHADER);
-    const handlers = useShadertoyHandlers(refs, compiledCode, setCompiledCode);
+    const handlers = useShadertoyHandlers(refs, compiledCode);
     const dragHandlers = useShadertoyDrag(refs.glAreaRef, refs.animRef);
     const editorHandlers = useShadertoyEditor(refs.sourceViewRef, setCompiledCode);
 

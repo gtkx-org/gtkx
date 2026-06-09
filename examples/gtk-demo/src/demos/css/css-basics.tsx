@@ -16,7 +16,7 @@ const DEFAULT_CSS = `/* You can edit the text in this window to change the
 @import url("file://${resetCssPath}");
 
 /* Set a very futuristic style by default */
-.demo * {
+.demo textview {
   color: green;
   font-family: Monospace;
   border: 1px solid;
