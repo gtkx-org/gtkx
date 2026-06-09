@@ -37,7 +37,7 @@ const buttonStyle = css`
 `;
 ```
 
-## Variable Interpolation
+## Variable interpolation
 
 You can interpolate variables and props, like you would with Emotion:
 
@@ -56,7 +56,7 @@ const MyComponent = ({ isActive }: { isActive: boolean }) => {
 };
 ```
 
-### Global Application Styles
+### Global application styles
 
 For global styles, you can either use `injectGlobal` directly, or import a separate CSS file. The GTKX Vite plugin will take care of calling `injectGlobal` for you behind the scenes.
 

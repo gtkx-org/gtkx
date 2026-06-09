@@ -1,4 +1,4 @@
-# MCP Integration
+# MCP integration
 
 GTKX provides an MCP (Model Context Protocol) server that enables AI assistants to interact with your running GTK applications.
 
@@ -8,7 +8,7 @@ The `@gtkx/mcp` package exposes your application's widget tree and provides tool
 
 ## Setup
 
-### Claude Code Configuration
+### Claude Code configuration
 
 Add the MCP server to your Claude Code:
 
@@ -16,7 +16,7 @@ Add the MCP server to your Claude Code:
 claude mcp add gtkx --scope user npx @gtkx/mcp@latest
 ```
 
-### Running Your App
+### Running your app
 
 Start your application with the dev server:
 
@@ -32,7 +32,7 @@ The dev server automatically connects to the MCP server when available. You'll s
 
 The socket path uses `$XDG_RUNTIME_DIR` when available, falling back to `/tmp`.
 
-## Available Tools
+## Available tools
 
 The MCP server provides the following tools for AI assistants:
 
@@ -40,9 +40,12 @@ The MCP server provides the following tools for AI assistants:
 
 List all connected GTKX applications.
 
-**Parameters:** None
+| Parameter      | Type    | Required | Description                                                                              |
+| -------------- | ------- | -------- | ---------------------------------------------------------------------------------------- |
+| `waitForApps`  | boolean | No       | When true, wait for at least one app to register before returning. Useful while the app is still starting. |
+| `timeout`      | number  | No       | Timeout in milliseconds when `waitForApps` is true. Defaults to `10000`.                 |
 
-**Returns:** Array of connected apps with their IDs and PIDs.
+**Returns:** Array of connected apps with their application IDs and PIDs. Each entry also includes a `windows` array (window IDs and titles) when the app reports its windows.
 
 ### `gtkx_get_widget_tree`
 
@@ -122,7 +125,7 @@ Capture a screenshot of a window.
 
 **Returns:** Base64-encoded PNG image data.
 
-## Widget Serialization
+## Widget serialization
 
 Widgets are serialized with the following properties:
 

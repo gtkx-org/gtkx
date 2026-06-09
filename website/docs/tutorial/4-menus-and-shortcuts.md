@@ -1,15 +1,17 @@
-# 4. Menus & Shortcuts
+# 4. Menus & shortcuts
 
-Desktop apps need menus and keyboard shortcuts. GTKX provides declarative compound components for both.
+Desktop apps need menus and keyboard shortcuts. GTKX provides declarative components for both.
 
 ![Notes app after this chapter](./images/4-menus-and-shortcuts.png)
 
-## Adding a Menu
+The components below live inside the `NotesWindow` from [Chapter 1](./1-window-and-header-bar.md), still wrapped in `<AdwApplication>`.
 
-Attach a menu to a `GtkMenuButton` using `GtkMenuButton.MenuItem`, `GtkMenuButton.MenuSection`, and `GtkMenuButton.MenuSubmenu`:
+## Adding a menu
+
+Attach a menu to a `GtkMenuButton` using the standalone `MenuItem`, `MenuSection`, and `MenuSubmenu` components as its children:
 
 ```tsx
-import { GtkMenuButton } from "@gtkx/react";
+import { GtkMenuButton, MenuItem, MenuSection } from "@gtkx/react";
 
 <AdwHeaderBar
     packStart={
@@ -17,33 +19,33 @@ import { GtkMenuButton } from "@gtkx/react";
     }
     packEnd={
         <GtkMenuButton iconName="open-menu-symbolic" tooltipText="Main Menu">
-            <GtkMenuButton.MenuItem
+            <MenuItem
                 id="new"
                 label="New Note"
                 onActivate={addNote}
                 accels="<Control>n"
             />
-            <GtkMenuButton.MenuSection>
-                <GtkMenuButton.MenuItem
+            <MenuSection>
+                <MenuItem
                     id="preferences"
                     label="Preferences"
                     onActivate={() => setShowPreferences(true)}
                     accels="<Control>comma"
                 />
-                <GtkMenuButton.MenuItem
+                <MenuItem
                     id="shortcuts"
                     label="Keyboard Shortcuts"
                     onActivate={() => {}}
                     accels="<Control>question"
                 />
-            </GtkMenuButton.MenuSection>
-            <GtkMenuButton.MenuSection>
-                <GtkMenuButton.MenuItem
+            </MenuSection>
+            <MenuSection>
+                <MenuItem
                     id="about"
                     label="About Notes"
                     onActivate={() => setShowAbout(true)}
                 />
-            </GtkMenuButton.MenuSection>
+            </MenuSection>
         </GtkMenuButton>
     }
 />
@@ -57,15 +59,15 @@ The GNOME HIG has specific recommendations for primary menus:
 - Keep menus between 3–12 items, grouped by purpose
 :::
 
-### Menu Elements
+### Menu elements
 
 | Component | Purpose |
 |-----------|---------|
-| `GtkMenuButton.MenuItem` | A clickable menu item with `id`, `label`, `onActivate`, and optional `accels` |
-| `GtkMenuButton.MenuSection` | Groups items with a visual separator and optional `label` header |
-| `GtkMenuButton.MenuSubmenu` | A nested submenu with its own items |
+| `MenuItem` | A clickable menu item with `id`, `label`, `onActivate`, and optional `accels` |
+| `MenuSection` | Groups items with a visual separator and optional `label` header |
+| `MenuSubmenu` | A nested submenu with its own items |
 
-### Keyboard Accelerators
+### Keyboard accelerators
 
 The `accels` prop on `MenuItem` registers a global keyboard shortcut. GTK accelerator strings use angle brackets for modifiers:
 
@@ -76,69 +78,88 @@ The `accels` prop on `MenuItem` registers a global keyboard shortcut. GTK accele
 
 ## Submenus
 
-Nest `GtkMenuButton.MenuSubmenu` for hierarchical menus:
+Nest `MenuSubmenu` for hierarchical menus:
 
 ```tsx
+import { GtkMenuButton, MenuItem, MenuSection, MenuSubmenu } from "@gtkx/react";
+
 <GtkMenuButton label="File">
-    <GtkMenuButton.MenuItem id="new" label="New" onActivate={handleNew} />
-    <GtkMenuButton.MenuSubmenu label="Export As">
-        <GtkMenuButton.MenuItem id="export-txt" label="Plain Text" onActivate={exportTxt} />
-        <GtkMenuButton.MenuItem id="export-md" label="Markdown" onActivate={exportMd} />
-    </GtkMenuButton.MenuSubmenu>
-    <GtkMenuButton.MenuSection>
-        <GtkMenuButton.MenuItem id="quit" label="Quit" onActivate={quit} accels="<Control>q" />
-    </GtkMenuButton.MenuSection>
+    <MenuItem id="new" label="New" onActivate={handleNew} />
+    <MenuSubmenu label="Export As">
+        <MenuItem id="export-txt" label="Plain Text" onActivate={exportTxt} />
+        <MenuItem id="export-md" label="Markdown" onActivate={exportMd} />
+    </MenuSubmenu>
+    <MenuSection>
+        <MenuItem id="quit" label="Quit" onActivate={quit} accels="<Control>q" />
+    </MenuSection>
 </GtkMenuButton>
 ```
 
-## Application Menu Bar
+## Application menu bar
 
-For a traditional menu bar across the top of the window, place menus as siblings of the window and enable `showMenubar`:
+For a traditional menu bar across the top of the window, place a `Menu` in the application's `menubar` slot and enable `showMenubar` on the window:
 
 ```tsx
-<>
-    <GtkMenuButton.MenuSubmenu label="File">
-        <GtkMenuButton.MenuItem id="new" label="New" onActivate={addNote} accels="<Control>n" />
-        <GtkMenuButton.MenuSection>
-            <GtkMenuButton.MenuItem id="quit" label="Quit" onActivate={quit} accels="<Control>q" />
-        </GtkMenuButton.MenuSection>
-    </GtkMenuButton.MenuSubmenu>
+import { AdwApplication, AdwApplicationWindow, Menu, MenuItem, MenuSection, MenuSubmenu, quit } from "@gtkx/react";
 
+<AdwApplication
+    applicationId="com.example.notes"
+    menubar={
+        <Menu>
+            <MenuSubmenu label="File">
+                <MenuItem id="new" label="New" onActivate={addNote} accels="<Control>n" />
+                <MenuSection>
+                    <MenuItem id="quit" label="Quit" onActivate={quit} accels="<Control>q" />
+                </MenuSection>
+            </MenuSubmenu>
+        </Menu>
+    }
+>
     <AdwApplicationWindow title="Notes" showMenubar onClose={quit}>
         {/* ... */}
     </AdwApplicationWindow>
-</>
+</AdwApplication>
 ```
 
-## Keyboard Shortcuts
+## Keyboard shortcuts
 
-For shortcuts not tied to menus, use `GtkShortcutController` with `GtkShortcutController.Shortcut`:
+For shortcuts not tied to menus, place `GtkShortcut` elements inside a `GtkShortcutController`. Each shortcut pairs a `trigger` (a `Gtk.ShortcutTrigger`) with an `action` (a `Gtk.ShortcutAction`). Parse accelerator strings with `Gtk.ShortcutTrigger.parseString`, and build the action with `Gtk.CallbackAction.new`, whose callback returns `true` when it handles the event:
 
 ```tsx
-import { GtkShortcutController } from "@gtkx/react";
+import { GtkBox, GtkShortcut, GtkShortcutController } from "@gtkx/react";
 import * as Gtk from "@gtkx/gi/gtk";
 
 <GtkBox orientation={Gtk.Orientation.VERTICAL} focusable>
     <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-        <GtkShortcutController.Shortcut
-            trigger="<Control>n"
-            onActivate={addNote}
+        <GtkShortcut
+            trigger={Gtk.ShortcutTrigger.parseString("<Control>n")}
+            action={Gtk.CallbackAction.new(() => {
+                addNote();
+                return true;
+            })}
         />
-        <GtkShortcutController.Shortcut
-            trigger="<Control>f"
-            onActivate={() => setSearchMode(true)}
+        <GtkShortcut
+            trigger={Gtk.ShortcutTrigger.parseString("<Control>f")}
+            action={Gtk.CallbackAction.new(() => {
+                setSearchMode(true);
+                return true;
+            })}
         />
-        <GtkShortcutController.Shortcut
-            trigger="Delete"
-            onActivate={deleteSelected}
-            disabled={!selectedId}
+        <GtkShortcut
+            trigger={selectedId ? Gtk.ShortcutTrigger.parseString("Delete") : Gtk.NeverTrigger.get()}
+            action={Gtk.CallbackAction.new(() => {
+                deleteSelected();
+                return true;
+            })}
         />
     </GtkShortcutController>
     {/* ... */}
 </GtkBox>
 ```
 
-### Shortcut Scope
+To disable a shortcut, swap its trigger for `Gtk.NeverTrigger.get()`, as the `Delete` shortcut above does while no note is selected.
+
+### Shortcut scope
 
 The `scope` prop controls when shortcuts are active:
 
@@ -148,44 +169,62 @@ The `scope` prop controls when shortcuts are active:
 | `Gtk.ShortcutScope.MANAGED` | Managed by a parent `GtkShortcutManager` |
 | `Gtk.ShortcutScope.GLOBAL` | Active anywhere in the window |
 
-### Multiple Triggers
+### Multiple triggers
 
-Pass an array for multiple triggers on the same shortcut:
+Combine two triggers on the same shortcut with `Gtk.AlternativeTrigger.new`:
 
 ```tsx
-<GtkShortcutController.Shortcut
-    trigger={["F5", "<Control>r"]}
-    onActivate={refresh}
+<GtkShortcut
+    trigger={Gtk.AlternativeTrigger.new(
+        Gtk.ShortcutTrigger.parseString("F5"),
+        Gtk.ShortcutTrigger.parseString("<Control>r"),
+    )}
+    action={Gtk.CallbackAction.new(() => {
+        refresh();
+        return true;
+    })}
 />
 ```
 
-## Putting It Together
+## Putting it together
 
 Here's the Notes app header bar with both a menu button and keyboard shortcuts:
 
 ```tsx
 import {
+    AdwApplication,
     AdwApplicationWindow,
     AdwHeaderBar,
     AdwToolbarView,
     GtkButton,
     GtkMenuButton,
+    GtkShortcut,
     GtkShortcutController,
+    MenuItem,
+    MenuSection,
     quit,
 } from "@gtkx/react";
 import * as Gtk from "@gtkx/gi/gtk";
 
-export default function App() {
+function NotesWindow() {
     // ... state from previous chapters
 
     return (
         <AdwApplicationWindow title="Notes" defaultWidth={600} defaultHeight={500} onClose={quit}>
             <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-                <GtkShortcutController.Shortcut trigger="<Control>n" onActivate={addNote} />
-                <GtkShortcutController.Shortcut
-                    trigger="Delete"
-                    onActivate={deleteSelected}
-                    disabled={!selectedId}
+                <GtkShortcut
+                    trigger={Gtk.ShortcutTrigger.parseString("<Control>n")}
+                    action={Gtk.CallbackAction.new(() => {
+                        addNote();
+                        return true;
+                    })}
+                />
+                <GtkShortcut
+                    trigger={selectedId ? Gtk.ShortcutTrigger.parseString("Delete") : Gtk.NeverTrigger.get()}
+                    action={Gtk.CallbackAction.new(() => {
+                        deleteSelected();
+                        return true;
+                    })}
                 />
             </GtkShortcutController>
             <AdwToolbarView
@@ -200,27 +239,27 @@ export default function App() {
                         }
                         packEnd={
                             <GtkMenuButton iconName="open-menu-symbolic" tooltipText="Main Menu">
-                                <GtkMenuButton.MenuItem
+                                <MenuItem
                                     id="new"
                                     label="New Note"
                                     onActivate={addNote}
                                     accels="<Control>n"
                                 />
-                                <GtkMenuButton.MenuSection>
-                                    <GtkMenuButton.MenuItem
+                                <MenuSection>
+                                    <MenuItem
                                         id="preferences"
                                         label="Preferences"
                                         onActivate={() => setShowPreferences(true)}
                                         accels="<Control>comma"
                                     />
-                                </GtkMenuButton.MenuSection>
-                                <GtkMenuButton.MenuSection>
-                                    <GtkMenuButton.MenuItem
+                                </MenuSection>
+                                <MenuSection>
+                                    <MenuItem
                                         id="about"
                                         label="About Notes"
                                         onActivate={() => setShowAbout(true)}
                                     />
-                                </GtkMenuButton.MenuSection>
+                                </MenuSection>
                             </GtkMenuButton>
                         }
                     />
@@ -229,6 +268,14 @@ export default function App() {
                 {/* ... list from previous chapter */}
             </AdwToolbarView>
         </AdwApplicationWindow>
+    );
+}
+
+export function App() {
+    return (
+        <AdwApplication applicationId="com.example.notes">
+            <NotesWindow />
+        </AdwApplication>
     );
 }
 ```

@@ -34,7 +34,7 @@ Configure your test script in `package.json`:
 }
 ```
 
-## Basic Test
+## Basic test
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
@@ -58,7 +58,7 @@ describe("App", () => {
 });
 ```
 
-## Testing Hooks
+## Testing hooks
 
 Use `renderHook` to test custom React hooks in isolation:
 
@@ -92,7 +92,7 @@ describe("useCounter", () => {
 
 See the [renderHook API reference](/api/testing/functions/renderHook.md) for full details.
 
-## Querying by Widget State
+## Querying by widget state
 
 Role queries can filter by widget state like `pressed`, `expanded`, and `selected`:
 
@@ -127,7 +127,7 @@ describe("role state queries", () => {
 });
 ```
 
-## Waiting for Async Conditions
+## Waiting for async conditions
 
 Use `waitFor` to poll until an assertion passes, useful for testing async data loading or delayed UI updates:
 
@@ -159,7 +159,7 @@ describe("async", () => {
 });
 ```
 
-## Complete Example
+## Complete example
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";

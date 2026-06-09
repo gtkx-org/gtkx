@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="https://raw.githubusercontent.com/eugeniodepalo/gtkx/main/logo.svg" alt="GTKX" width="100" height="100">
+    <img src="https://raw.githubusercontent.com/gtkx-org/gtkx/main/logo.svg" alt="GTKX" width="100" height="100">
 </p>
 
 <h1 align="center">GTKX</h1>
@@ -10,7 +10,7 @@
 
 <p align="center">
     <a href="https://www.npmjs.com/package/@gtkx/react"><img src="https://img.shields.io/npm/v/@gtkx/react.svg" alt="npm version"></a>
-    <a href="https://github.com/gtkx-org/gtkx/actions"><img src="https://img.shields.io/github/actions/workflow/status/eugeniodepalo/gtkx/ci.yml" alt="CI"></a>
+    <a href="https://github.com/gtkx-org/gtkx/actions"><img src="https://img.shields.io/github/actions/workflow/status/gtkx-org/gtkx/ci.yml" alt="CI"></a>
     <a href="https://github.com/gtkx-org/gtkx/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MPL--2.0-blue.svg" alt="License"></a>
     <a href="https://github.com/gtkx-org/gtkx/discussions"><img src="https://img.shields.io/badge/discussions-GitHub-blue" alt="GitHub Discussions"></a>
 </p>
@@ -18,7 +18,7 @@
 ---
 
 <p align="center">
-    <img src="https://raw.githubusercontent.com/eugeniodepalo/gtkx/main/demo.gif" alt="GTKX Demo" width="100%">
+    <img src="https://raw.githubusercontent.com/gtkx-org/gtkx/main/demo.gif" alt="GTKX Demo" width="100%">
 </p>
 
 ---
@@ -35,7 +35,16 @@ GTKX is a modern framework for building native Linux applications using React an
 - **CSS-in-JS styling** — Easy styling with GTK CSS powered by Emotion
 - **Testing library** — Testing Library-inspired API for testing components and E2E
 
-## Quick Start
+## Prerequisites
+
+GTKX targets the Linux desktop and reads native GTK libraries at runtime. Before you start, make sure the toolchain is in place:
+
+- **GTK 4.22.x** and its development files, available on the system
+- **GObject-Introspection** with the GIR XML installed (the standard `/usr/share/gir-1.0` location, or any directory pointed at by `pkg-config --variable=girdir gobject-introspection-1.0`); codegen reads these GIR files to generate the TypeScript bindings
+- **Node.js >= 24**
+- **pnpm** as the package manager
+
+## Quick start
 
 ```bash
 npx @gtkx/cli create my-app

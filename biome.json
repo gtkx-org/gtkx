@@ -103,6 +103,12 @@
                     }
                 }
             }
+        },
+        {
+            "includes": ["website/.vitepress/**/*.vue"],
+            "linter": {
+                "enabled": false
+            }
         }
     ],
     "vcs": {

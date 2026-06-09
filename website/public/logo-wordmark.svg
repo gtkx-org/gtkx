@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 96" width="360" height="96" role="img" aria-label="GTKX">
+    <defs>
+        <linearGradient id="wmBg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#E03A3E" />
+            <stop offset="1" stop-color="#B81C25" />
+        </linearGradient>
+    </defs>
+    <rect x="4" y="8" width="80" height="80" rx="19" ry="19" fill="url(#wmBg)" />
+    <g transform="translate(4 8) scale(0.625)" fill="none" stroke="#FFFFFF" stroke-width="11" stroke-linecap="round">
+        <ellipse cx="64" cy="64" rx="42" ry="14" transform="rotate(45 64 64)" />
+        <ellipse cx="64" cy="64" rx="42" ry="14" transform="rotate(-45 64 64)" />
+    </g>
+    <text x="104" y="64" font-family="'Red Hat Display','Inter',system-ui,sans-serif" font-weight="800" font-size="56" letter-spacing="-2.2" fill="#15161B" dominant-baseline="middle">GTKX</text>
+</svg>

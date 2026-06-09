@@ -10,6 +10,8 @@ Distributing a GTKX application involves three steps:
 2. **Re-bundle for SEA** — convert the ESM output to CJS for Node.js Single Executable Applications
 3. **Package** with Flatpak, Snap, or distro-specific tools
 
+GTKX requires Node 24 or newer for development and building. The SEA bundle below targets the `node22` runtime, which is the Node version shipped by the Flatpak and Snap SDK extensions used to package the final binary.
+
 ## Bundle with `gtkx build`
 
 Run the production bundler to create a single minified ESM bundle:
@@ -77,9 +79,9 @@ await esbuild.build({
 
 The `native-shim` plugin replaces the `gtkx.node` import with a runtime loader that finds the native module relative to `process.execPath` — this is critical for SEA binaries where the bundle is embedded in the executable.
 
-## Single Executable Application (SEA)
+## Single executable application (SEA)
 
-### SEA Configuration
+### SEA configuration
 
 Create `sea-config.json`:
 
@@ -92,7 +94,7 @@ Create `sea-config.json`:
 }
 ```
 
-### Build Script
+### Build script
 
 ```bash
 #!/bin/bash
@@ -117,7 +119,7 @@ The final distribution includes:
 - `dist/gtkx.node` — The native GTK4 bindings
 - `dist/gschemas.compiled` — Compiled settings schemas (if using GSettings)
 
-## Flatpak Packaging
+## Flatpak packaging
 
 Flatpak is the recommended format for Linux desktop applications. The manifest builds the SEA binary inside the Flatpak sandbox using the Node.js SDK extension:
 
@@ -192,7 +194,7 @@ flatpak build-bundle \
     com.gtkx.tutorial
 ```
 
-## Snap Packaging
+## Snap packaging
 
 Snap is an alternative format, popular on Ubuntu:
 
@@ -220,14 +222,14 @@ parts:
 
 For complete Snap setup, see the [Snapcraft Documentation](https://snapcraft.io/docs).
 
-## What's Next?
+## What's next?
 
 Congratulations! You've built a complete Notes application that follows the [GNOME Human Interface Guidelines](https://developer.gnome.org/hig/), covering:
 
 - **Slot props** — `AdwToolbarView` `addTopBar`, `AdwHeaderBar` `packStart`, `titleWidget`, `popover`, and more
 - **CSS-in-JS styling** — `@gtkx/css` with GTK CSS variables
 - **Virtualized lists** — `GtkListView`, `GtkGridView`, and `GtkColumnView` with tree support
-- **Menus and shortcuts** — `GtkMenuButton.MenuItem` and `GtkShortcutController.Shortcut`
+- **Menus and shortcuts** — `MenuItem`, `MenuSection`, `MenuSubmenu`, and `GtkShortcut` inside a `GtkShortcutController`
 - **Navigation** — `AdwNavigationSplitView`, `AdwNavigationView`, `AdwViewStack`
 - **Search** — `GtkSearchBar` and `GtkSearchEntry` for filtering content
 - **Dialogs** — `AdwAlertDialog` and `AdwAboutDialog` with portals

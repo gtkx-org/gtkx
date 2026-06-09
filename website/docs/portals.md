@@ -1,4 +1,4 @@
-# Portals and Dialogs
+# Portals and dialogs
 
 GTKX supports rendering content outside the normal component tree using portals, most commonly for dialogs and popovers that need to be children of the active window.
 

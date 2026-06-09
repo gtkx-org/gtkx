@@ -1,52 +1,65 @@
-# 5. Navigation & Split Views
+# 5. Navigation & split views
 
 A notes app benefits from a sidebar for organizing notes into categories. Adwaita provides `AdwNavigationSplitView` for responsive sidebar/content layouts and `AdwViewStack` for tabbed views.
 
 ![Notes app after this chapter](./images/5-navigation.png)
 
-## Split View Layout
+The `NotesWindow` component below still lives inside the `<AdwApplication>` wrapper from [Chapter 1](./1-window-and-header-bar.md).
 
-`AdwNavigationSplitView` creates a two-pane layout with a sidebar and content area. Each pane is declared with an `AdwNavigationSplitView.Page` compound component:
+## Split view layout
+
+`AdwNavigationSplitView` creates a two-pane layout with a sidebar and content area. Each pane is an `AdwNavigationPage`, passed through the `sidebar` and `content` slot props:
 
 ```tsx
 import {
+    AdwApplication,
     AdwApplicationWindow,
     AdwHeaderBar,
+    AdwNavigationPage,
     AdwNavigationSplitView,
     AdwToolbarView,
-    GtkBox,
     GtkLabel,
     quit,
 } from "@gtkx/react";
 
-export default function App() {
+function NotesWindow() {
     return (
         <AdwApplicationWindow title="Notes" defaultWidth={800} defaultHeight={600} onClose={quit}>
             <AdwNavigationSplitView
                 sidebarWidthFraction={0.3}
                 minSidebarWidth={200}
                 maxSidebarWidth={350}
-            >
-                <AdwNavigationSplitView.Page id="sidebar" title="Notes">
-                    <AdwToolbarView addTopBar={<AdwHeaderBar />}>
-                        <GtkLabel label="Sidebar content" />
-                    </AdwToolbarView>
-                </AdwNavigationSplitView.Page>
-
-                <AdwNavigationSplitView.Page id="content" title="Editor">
-                    <AdwToolbarView addTopBar={<AdwHeaderBar />}>
-                        <GtkLabel label="Content area" />
-                    </AdwToolbarView>
-                </AdwNavigationSplitView.Page>
-            </AdwNavigationSplitView>
+                sidebar={
+                    <AdwNavigationPage title="Notes">
+                        <AdwToolbarView addTopBar={<AdwHeaderBar />}>
+                            <GtkLabel label="Sidebar content" />
+                        </AdwToolbarView>
+                    </AdwNavigationPage>
+                }
+                content={
+                    <AdwNavigationPage title="Editor">
+                        <AdwToolbarView addTopBar={<AdwHeaderBar />}>
+                            <GtkLabel label="Content area" />
+                        </AdwToolbarView>
+                    </AdwNavigationPage>
+                }
+            />
         </AdwApplicationWindow>
+    );
+}
+
+export function App() {
+    return (
+        <AdwApplication applicationId="com.example.notes">
+            <NotesWindow />
+        </AdwApplication>
     );
 }
 ```
 
 The split view automatically collapses to a single pane on narrow windows, with back-navigation to return to the sidebar.
 
-## Building the Sidebar
+## Building the sidebar
 
 Add category navigation using `GtkListBox` with Adwaita action rows:
 
@@ -103,14 +116,13 @@ const Sidebar = ({
 
 Notice the `addPrefix` and `addSuffix` props on `AdwActionRow` — these are slot props for placing widgets at the start and end of an action row.
 
-## Stack Navigation
+## Stack navigation
 
-For tabbed views within a pane, use `AdwViewStack` with `AdwViewStack.Page` and an `AdwViewSwitcher`:
+For tabbed views within a pane, use `AdwViewStack` with `AdwViewStackPage` and an `AdwViewSwitcher`. Control the active page with `visibleChildName`, and read changes through `onNotifyVisibleChildName`:
 
 ```tsx
-import { AdwHeaderBar, AdwToolbarView, AdwViewStack, AdwViewSwitcher } from "@gtkx/react";
+import { AdwHeaderBar, AdwToolbarView, AdwViewStack, AdwViewStackPage, AdwViewSwitcher } from "@gtkx/react";
 import * as Adw from "@gtkx/gi/adw";
-import * as Gtk from "@gtkx/gi/gtk";
 import { useState } from "react";
 
 const ContentPane = () => {
@@ -121,13 +133,17 @@ const ContentPane = () => {
         <AdwToolbarView
             addTopBar={<AdwHeaderBar titleWidget={<AdwViewSwitcher stack={stack} />} />}
         >
-            <AdwViewStack ref={setStack} page={page} onPageChanged={setPage}>
-                <AdwViewStack.Page id="list" title="List" iconName="view-list-symbolic">
+            <AdwViewStack
+                ref={setStack}
+                visibleChildName={page}
+                onNotifyVisibleChildName={(name) => setPage(name ?? "list")}
+            >
+                <AdwViewStackPage id="list" title="List" iconName="view-list-symbolic">
                     {/* Notes list from previous chapters */}
-                </AdwViewStack.Page>
-                <AdwViewStack.Page id="grid" title="Grid" iconName="view-grid-symbolic">
+                </AdwViewStackPage>
+                <AdwViewStackPage id="grid" title="Grid" iconName="view-grid-symbolic">
                     {/* Grid view of notes */}
-                </AdwViewStack.Page>
+                </AdwViewStackPage>
             </AdwViewStack>
         </AdwToolbarView>
     );
@@ -136,51 +152,48 @@ const ContentPane = () => {
 
 The `AdwViewSwitcher` automatically renders tabs that correspond to the stack pages. Link them via the `ref`/`stack` pattern shown above.
 
-## Stack-Based Navigation
+## Stack-based navigation
 
-For push/pop navigation (like navigating into a note detail view), use `AdwNavigationView`:
+For push/pop navigation (like navigating into a note detail view), use `AdwNavigationView` with `AdwNavigationPage` children. Each page carries a `tag`; the view pushes a page when it mounts and pops it when it unmounts. Drive the active page declaratively with `visiblePageTag`, and react to navigation through `onPushed` and `onPopped`:
 
 ```tsx
-import { AdwNavigationView } from "@gtkx/react";
+import { AdwHeaderBar, AdwNavigationPage, AdwNavigationView, AdwToolbarView } from "@gtkx/react";
 import { useState } from "react";
 
 const NotesBrowser = () => {
-    const [history, setHistory] = useState(["list"]);
-
-    const pushNote = (noteId: string) => {
-        setHistory([...history, `note-${noteId}`]);
-    };
-
-    const pop = () => {
-        setHistory(history.slice(0, -1));
-    };
+    const [selectedNote, setSelectedNote] = useState<Note | null>(null);
 
     return (
-        <AdwNavigationView history={history} onHistoryChanged={setHistory}>
-            <AdwNavigationView.Page id="list" title="Notes">
+        <AdwNavigationView
+            visiblePageTag={selectedNote ? `note-${selectedNote.id}` : "list"}
+            onPopped={() => setSelectedNote(null)}
+        >
+            <AdwNavigationPage tag="list" title="Notes">
                 <AdwToolbarView addTopBar={<AdwHeaderBar />}>
-                    {/* Notes list — onClick calls pushNote(id) */}
+                    {/* Notes list — onClick calls setSelectedNote(note) */}
                 </AdwToolbarView>
-            </AdwNavigationView.Page>
+            </AdwNavigationPage>
 
-            <AdwNavigationView.Page id={`note-${selectedNote?.id}`} title={selectedNote?.title ?? ""}>
-                <AdwToolbarView addTopBar={<AdwHeaderBar />}>
-                    {/* Note editor */}
-                </AdwToolbarView>
-            </AdwNavigationView.Page>
+            {selectedNote && (
+                <AdwNavigationPage tag={`note-${selectedNote.id}`} title={selectedNote.title}>
+                    <AdwToolbarView addTopBar={<AdwHeaderBar />}>
+                        {/* Note editor */}
+                    </AdwToolbarView>
+                </AdwNavigationPage>
+            )}
         </AdwNavigationView>
     );
 };
 ```
 
-The `AdwHeaderBar` inside a navigation page automatically shows a back button when there's history to pop.
+The `AdwHeaderBar` inside a navigation page automatically shows a back button when there's a page to pop. Pressing it fires `onPopped`, which clears `selectedNote` and unmounts the detail page.
 
-## Complete Layout
+## Complete layout
 
 Here's how the pieces fit together:
 
 ```tsx
-export default function App() {
+function NotesWindow() {
     const [notes] = useState<Note[]>([ /* ... */ ]);
     const [category, setCategory] = useState("all");
     const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -200,44 +213,51 @@ export default function App() {
                 sidebarWidthFraction={0.25}
                 minSidebarWidth={200}
                 maxSidebarWidth={300}
-            >
-                <AdwNavigationSplitView.Page id="sidebar" title="Notes">
-                    <AdwToolbarView
-                        addTopBar={
-                            <AdwHeaderBar
-                                packStart={
-                                    <GtkButton iconName="list-add-symbolic" tooltipText="New Note (Ctrl+N)" onClicked={addNote} />
-                                }
+                sidebar={
+                    <AdwNavigationPage title="Notes">
+                        <AdwToolbarView
+                            addTopBar={
+                                <AdwHeaderBar
+                                    packStart={
+                                        <GtkButton iconName="list-add-symbolic" tooltipText="New Note (Ctrl+N)" onClicked={addNote} />
+                                    }
+                                />
+                            }
+                        >
+                            <Sidebar
+                                noteCounts={{ all: notes.length, favorites: 0, recent: notes.length, trash: 0 }}
+                                onCategoryChanged={setCategory}
                             />
-                        }
-                    >
-                        <Sidebar
-                            noteCounts={{ all: notes.length, favorites: 0, recent: notes.length, trash: 0 }}
-                            onCategoryChanged={setCategory}
-                        />
-                    </AdwToolbarView>
-                </AdwNavigationSplitView.Page>
-
-                <AdwNavigationSplitView.Page
-                    id="content"
-                    title={selectedNote?.title ?? categoryTitles[category] ?? "Notes"}
-                >
-                    <AdwToolbarView
-                        addTopBar={
-                            <AdwHeaderBar
-                                packEnd={
-                                    <GtkMenuButton iconName="open-menu-symbolic" tooltipText="Main Menu">
-                                        {/* ... menu items */}
-                                    </GtkMenuButton>
-                                }
-                            />
-                        }
-                    >
-                        {/* Notes list filtered by category */}
-                    </AdwToolbarView>
-                </AdwNavigationSplitView.Page>
-            </AdwNavigationSplitView>
+                        </AdwToolbarView>
+                    </AdwNavigationPage>
+                }
+                content={
+                    <AdwNavigationPage title={selectedNote?.title ?? categoryTitles[category] ?? "Notes"}>
+                        <AdwToolbarView
+                            addTopBar={
+                                <AdwHeaderBar
+                                    packEnd={
+                                        <GtkMenuButton iconName="open-menu-symbolic" tooltipText="Main Menu">
+                                            {/* ... menu items */}
+                                        </GtkMenuButton>
+                                    }
+                                />
+                            }
+                        >
+                            {/* Notes list filtered by category */}
+                        </AdwToolbarView>
+                    </AdwNavigationPage>
+                }
+            />
         </AdwApplicationWindow>
+    );
+}
+
+export function App() {
+    return (
+        <AdwApplication applicationId="com.example.notes">
+            <NotesWindow />
+        </AdwApplication>
     );
 }
 ```
@@ -269,7 +289,7 @@ const searchEntryRef = useRef<Gtk.SearchEntry | null>(null);
 // Place the search bar below the header bar, inside the content area:
 <GtkSearchBar
     searchModeEnabled={searchMode}
-    onSearchModeChanged={setSearchMode}
+    onNotifySearchModeEnabled={(enabled) => setSearchMode(enabled ?? false)}
     keyCaptureWidget={searchEntryRef.current}
 >
     <GtkSearchEntry

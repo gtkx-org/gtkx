@@ -1,0 +1,27 @@
+/* Self-hosted Red Hat Display / Text / Mono (SIL Open Font License 1.1).
+   Variable Latin subset of the official Red Hat OSS family, vendored so the
+   docs build is hermetic and makes no third-party request at runtime. */
+
+@font-face {
+    font-family: "Red Hat Display";
+    font-style: normal;
+    font-weight: 500 900;
+    font-display: swap;
+    src: url("/fonts/red-hat-display.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Red Hat Text";
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url("/fonts/red-hat-text.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Red Hat Mono";
+    font-style: normal;
+    font-weight: 400 600;
+    font-display: swap;
+    src: url("/fonts/red-hat-mono.woff2") format("woff2");
+}

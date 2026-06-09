@@ -15,7 +15,7 @@ const prepareTypedocSidebar = (items: DefaultTheme.SidebarItem[]): DefaultTheme.
 export default defineConfig({
     title: "GTKX",
     description: "Linux application development for the modern age powered by GTK4 and React",
-    appearance: "force-dark",
+    appearance: true,
     vite: {
         plugins: [
             llmstxt({
@@ -41,7 +41,17 @@ export default defineConfig({
             }),
         ],
     },
-    head: [["link", { rel: "icon", href: "/favicon.svg" }]],
+    head: [
+        ["link", { rel: "icon", href: "/favicon.svg" }],
+        [
+            "script",
+            { id: "default-light-appearance" },
+            "try{if(!localStorage.getItem('vitepress-theme-appearance'))localStorage.setItem('vitepress-theme-appearance','light')}catch(e){}",
+        ],
+    ],
+    markdown: {
+        theme: { light: "one-dark-pro", dark: "one-dark-pro" },
+    },
     themeConfig: {
         logo: "/logo.svg",
         nav: [
@@ -64,30 +74,30 @@ export default defineConfig({
                     link: "/docs/introduction",
                 },
                 {
-                    text: "Getting Started",
+                    text: "Getting started",
                     link: "/docs/getting-started",
                 },
                 {
-                    text: "Core Concepts",
+                    text: "Core concepts",
                     collapsed: false,
                     items: [
-                        { text: "FFI Bindings", link: "/docs/ffi-bindings" },
+                        { text: "FFI bindings", link: "/docs/ffi-bindings" },
                         { text: "Styling and CSS", link: "/docs/styling" },
                         { text: "Portals", link: "/docs/portals" },
                         { text: "Testing", link: "/docs/testing" },
                     ],
                 },
                 {
-                    text: "Tutorial: Building a Notes App",
+                    text: "Tutorial: Building a notes app",
                     collapsed: false,
                     items: [
-                        { text: "1. Window & Header Bar", link: "/docs/tutorial/1-window-and-header-bar" },
+                        { text: "1. Window & header bar", link: "/docs/tutorial/1-window-and-header-bar" },
                         { text: "2. Styling with CSS-in-JS", link: "/docs/tutorial/2-styling" },
-                        { text: "3. Lists & Data", link: "/docs/tutorial/3-lists" },
-                        { text: "4. Menus & Shortcuts", link: "/docs/tutorial/4-menus-and-shortcuts" },
-                        { text: "5. Navigation & Split Views", link: "/docs/tutorial/5-navigation" },
-                        { text: "6. Dialogs & Animations", link: "/docs/tutorial/6-dialogs-and-animations" },
-                        { text: "7. Settings & Preferences", link: "/docs/tutorial/7-settings-and-preferences" },
+                        { text: "3. Lists & data", link: "/docs/tutorial/3-lists" },
+                        { text: "4. Menus & shortcuts", link: "/docs/tutorial/4-menus-and-shortcuts" },
+                        { text: "5. Navigation & split views", link: "/docs/tutorial/5-navigation" },
+                        { text: "6. Dialogs & animations", link: "/docs/tutorial/6-dialogs-and-animations" },
+                        { text: "7. Settings & preferences", link: "/docs/tutorial/7-settings-and-preferences" },
                         { text: "8. Deploying", link: "/docs/tutorial/8-deploying" },
                     ],
                 },
@@ -132,10 +142,6 @@ export default defineConfig({
         },
         editLink: {
             pattern: "https://github.com/gtkx-org/gtkx/edit/main/website/:path",
-        },
-        footer: {
-            message: '<img src="/logo.svg" alt="GTKX" class="footer-logo">',
-            copyright: `Copyright \u00A9 ${new Date().getFullYear()} the GTKX team`,
         },
     },
 });

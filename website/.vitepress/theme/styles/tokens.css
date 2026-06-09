@@ -1,0 +1,189 @@
+/* ============================================================
+   GTKX Design System — tokens
+   Crimson brand, warm-paper light surfaces, Adwaita-dark mapping.
+   The single source of truth consumed by vars.css and custom.css.
+   ============================================================ */
+
+:root {
+    /* ---- 1. Color primitives ---- */
+
+    /* Brand — Crimson (the GTKX accent) */
+    --gtkx-crimson-50: #fdecee;
+    --gtkx-crimson-100: #fbd3d7;
+    --gtkx-crimson-200: #f5a3ab;
+    --gtkx-crimson-300: #ec6b78;
+    --gtkx-crimson-400: #de3d4e;
+    --gtkx-crimson-500: #c8102e;
+    --gtkx-crimson-600: #a60a24;
+    --gtkx-crimson-700: #82081c;
+    --gtkx-crimson-800: #5e0614;
+    --gtkx-crimson-900: #3a040c;
+
+    /* Adwaita-inspired blue — links and code accents, never CTA */
+    --gtkx-blue-100: #dbe9fb;
+    --gtkx-blue-300: #6fa0ec;
+    --gtkx-blue-500: #1c71d8;
+    --gtkx-blue-700: #134d94;
+
+    /* Neutrals — warm, GNOME Adwaita-leaning */
+    --gtkx-ink-900: #15161b;
+    --gtkx-ink-800: #25272f;
+    --gtkx-ink-700: #3a3d47;
+    --gtkx-ink-600: #5b6473;
+    --gtkx-ink-500: #7a8392;
+    --gtkx-ink-400: #a0a7b3;
+    --gtkx-ink-300: #c4c9d1;
+    --gtkx-ink-200: #e2e4e9;
+    --gtkx-ink-100: #eef0f3;
+    --gtkx-ink-50: #f5f6f8;
+
+    --gtkx-paper: #faf8f5;
+    --gtkx-surface: #ffffff;
+    --gtkx-overlay: rgba(21, 22, 27, 0.55);
+
+    /* Semantic state */
+    --gtkx-success: #1f8a5b;
+    --gtkx-warning: #c97a0f;
+    --gtkx-danger: var(--gtkx-crimson-500);
+    --gtkx-info: var(--gtkx-blue-500);
+
+    /* Code surface */
+    --gtkx-code-bg: #14151b;
+    --gtkx-code-bg-2: #1d1f27;
+    --gtkx-code-line: #2a2d38;
+    --gtkx-code-fg: #e8eaf0;
+    --gtkx-code-dim: #8c93a4;
+    --gtkx-code-red: #ff6b7a;
+    --gtkx-code-blue: #8ab7ff;
+    --gtkx-code-green: #69d29a;
+    --gtkx-code-amber: #f2c26b;
+    --gtkx-code-purple: #c99cff;
+
+    /* ---- 2. Semantic color tokens (light) ---- */
+    --fg-1: var(--gtkx-ink-900);
+    --fg-2: var(--gtkx-ink-700);
+    --fg-3: var(--gtkx-ink-600);
+    --fg-dim: var(--gtkx-ink-500);
+    --fg-on-accent: #ffffff;
+
+    --bg-1: var(--gtkx-paper);
+    --bg-2: var(--gtkx-surface);
+    --bg-elevated: #ffffff;
+    --bg-sunken: var(--gtkx-ink-50);
+    --bg-tint-accent: var(--gtkx-crimson-50);
+
+    --border-1: var(--gtkx-ink-200);
+    --border-2: var(--gtkx-ink-100);
+    --border-strong: var(--gtkx-ink-300);
+    --focus-ring: rgba(200, 16, 46, 0.4);
+
+    --accent: var(--gtkx-crimson-500);
+    --accent-hover: var(--gtkx-crimson-400);
+    --accent-pressed: var(--gtkx-crimson-600);
+    --accent-soft: var(--gtkx-crimson-50);
+
+    --link: var(--gtkx-blue-500);
+    --link-hover: var(--gtkx-blue-700);
+
+    /* ---- 3. Typography primitives ---- */
+    --font-display: "Red Hat Display", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-body: "Red Hat Text", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "Red Hat Mono", "JetBrains Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
+
+    --fw-regular: 400;
+    --fw-medium: 500;
+    --fw-semibold: 600;
+    --fw-bold: 700;
+    --fw-display: 800;
+    --fw-display-black: 900;
+
+    --t-xs: 12px;
+    --t-sm: 13px;
+    --t-base: 15px;
+    --t-md: 17px;
+    --t-lg: 20px;
+    --t-xl: 24px;
+    --t-2xl: 30px;
+    --t-3xl: 38px;
+    --t-4xl: 48px;
+    --t-5xl: 60px;
+    --t-6xl: 76px;
+
+    --lh-tight: 1.1;
+    --lh-snug: 1.25;
+    --lh-normal: 1.45;
+    --lh-loose: 1.65;
+
+    --tr-tight: -0.022em;
+    --tr-snug: -0.012em;
+    --tr-normal: 0;
+    --tr-wide: 0.04em;
+    --tr-eyebrow: 0.18em;
+
+    /* ---- 4. Spacing (4px base) ---- */
+    --sp-0: 0;
+    --sp-1: 4px;
+    --sp-2: 8px;
+    --sp-3: 12px;
+    --sp-4: 16px;
+    --sp-5: 20px;
+    --sp-6: 24px;
+    --sp-7: 32px;
+    --sp-8: 40px;
+    --sp-9: 56px;
+    --sp-10: 80px;
+    --sp-11: 120px;
+
+    /* ---- 5. Radii (Adwaita defaults) ---- */
+    --r-xs: 3px;
+    --r-sm: 6px;
+    --r-md: 9px;
+    --r-lg: 12px;
+    --r-xl: 18px;
+    --r-2xl: 24px;
+    --r-pill: 9999px;
+
+    /* ---- 6. Elevation ---- */
+    --el-0: none;
+    --el-1: 0 1px 0 rgba(21, 22, 27, 0.04), 0 1px 2px rgba(21, 22, 27, 0.06);
+    --el-2: 0 2px 4px rgba(21, 22, 27, 0.06), 0 4px 12px rgba(21, 22, 27, 0.06);
+    --el-3: 0 8px 24px rgba(21, 22, 27, 0.1), 0 2px 6px rgba(21, 22, 27, 0.06);
+    --el-4: 0 24px 60px rgba(21, 22, 27, 0.18), 0 4px 12px rgba(21, 22, 27, 0.08);
+    --el-inset-1: inset 0 0 0 1px var(--border-1);
+    --el-inset-strong: inset 0 0 0 1px var(--border-strong);
+
+    /* ---- 7. Motion ---- */
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --ease-emphasized: cubic-bezier(0.2, 0, 0, 1.2);
+    --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+    --dur-1: 120ms;
+    --dur-2: 200ms;
+    --dur-3: 320ms;
+    --dur-4: 480ms;
+}
+
+/* ---- Dark mode (Adwaita dark surfaces). VitePress toggles .dark on <html>. ---- */
+.dark {
+    --fg-1: #f3f4f6;
+    --fg-2: #c7cad2;
+    --fg-3: #9da3ae;
+    --fg-dim: #7c8290;
+
+    --bg-1: #1b1c22;
+    --bg-2: #242630;
+    --bg-elevated: #2c2f3a;
+    --bg-sunken: #14151b;
+    --bg-tint-accent: rgba(222, 61, 78, 0.15);
+
+    --border-1: #353844;
+    --border-2: #2b2d38;
+    --border-strong: #444856;
+    --focus-ring: rgba(236, 107, 120, 0.45);
+
+    --accent: var(--gtkx-crimson-400);
+    --accent-hover: var(--gtkx-crimson-300);
+    --accent-pressed: var(--gtkx-crimson-500);
+    --accent-soft: rgba(222, 61, 78, 0.16);
+
+    --link: var(--gtkx-blue-300);
+}

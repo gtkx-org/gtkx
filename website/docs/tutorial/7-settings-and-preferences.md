@@ -1,46 +1,50 @@
-# 7. Settings & Preferences
+# 7. Settings & preferences
 
 ![Preferences dialog with settings rows](./images/7-settings-and-preferences.png)
 
 Most desktop apps need a preferences dialog. GTKX provides `useProperty` and `useSetting` hooks to reactively bind your UI to GObject properties and GSettings values.
 
-## Adding a Preferences Menu Item
+The components below live inside the `NotesWindow` from [Chapter 1](./1-window-and-header-bar.md), still wrapped in `<AdwApplication>`.
+
+## Adding a preferences menu item
 
 First, add a "Preferences" item to the menu button from [Chapter 4](./4-menus-and-shortcuts.md):
 
 ```tsx
+import { GtkMenuButton, MenuItem, MenuSection } from "@gtkx/react";
+
 <GtkMenuButton iconName="open-menu-symbolic" tooltipText="Main Menu">
-    <GtkMenuButton.MenuItem
+    <MenuItem
         id="new"
         label="New Note"
         onActivate={addNote}
         accels="<Control>n"
     />
-    <GtkMenuButton.MenuSection>
-        <GtkMenuButton.MenuItem
+    <MenuSection>
+        <MenuItem
             id="preferences"
             label="Preferences"
             onActivate={() => setShowPreferences(true)}
             accels="<Control>comma"
         />
-        <GtkMenuButton.MenuItem
+        <MenuItem
             id="shortcuts"
             label="Keyboard Shortcuts"
             onActivate={() => {}}
             accels="<Control>question"
         />
-    </GtkMenuButton.MenuSection>
-    <GtkMenuButton.MenuSection>
-        <GtkMenuButton.MenuItem
+    </MenuSection>
+    <MenuSection>
+        <MenuItem
             id="about"
             label="About Notes"
             onActivate={() => setShowAbout(true)}
         />
-    </GtkMenuButton.MenuSection>
+    </MenuSection>
 </GtkMenuButton>
 ```
 
-## Defining a GSettings Schema
+## Defining a GSettings schema
 
 GSettings needs a schema that declares your keys, their types, and default values. Create a `.gschema.xml` file in your project root — `gtkx dev` will compile it automatically:
 
@@ -68,7 +72,7 @@ GSettings needs a schema that declares your keys, their types, and default value
 </schemalist>
 ```
 
-## The Preferences Dialog
+## The preferences dialog
 
 Libadwaita provides a ready-made preferences window built from `AdwPreferencesWindow`, `AdwPreferencesPage`, and `AdwPreferencesGroup`. Show it as a portal on the active window:
 
@@ -81,6 +85,7 @@ import {
     AdwComboRow,
     AdwSpinRow,
     createPortal,
+    useAdjustment,
     useApplication,
     useProperty,
 } from "@gtkx/react";
@@ -88,6 +93,7 @@ import {
 const Preferences = ({ onClose }: { onClose: () => void }) => {
     const app = useApplication();
     const activeWindow = useProperty(app, "activeWindow");
+    const fontSizeAdjustment = useAdjustment({ value: 14, lower: 8, upper: 32, stepIncrement: 1 });
 
     if (!activeWindow) return null;
 
@@ -114,10 +120,7 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
                     <AdwSpinRow
                         title="Font Size"
                         subtitle="Base font size for the editor"
-                        value={14}
-                        lower={8}
-                        upper={32}
-                        stepIncrement={1}
+                        adjustment={fontSizeAdjustment}
                     />
                 </AdwPreferencesGroup>
             </AdwPreferencesPage>
@@ -127,7 +130,7 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
 };
 ```
 
-### Preferences Widgets
+### Preferences widgets
 
 | Component | Purpose |
 |-----------|---------|
@@ -138,7 +141,7 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
 | `AdwSpinRow` | A row with a numeric spin button |
 | `AdwComboRow` | A row with a dropdown selector |
 
-## Reading and Writing Settings with `useSetting`
+## Reading and writing settings with `useSetting`
 
 The `useSetting` hook subscribes to a GSettings key and returns a `[value, setValue]` tuple, similar to `useState`. When the setting changes (even from outside your app), the component re-renders automatically. Calling the setter writes the new value to GSettings.
 
@@ -152,7 +155,7 @@ function ThemeIndicator() {
 }
 ```
 
-### Supported Types
+### Supported types
 
 The third argument selects the GSettings getter/setter used to read and write the value:
 
@@ -164,7 +167,7 @@ The third argument selects the GSettings getter/setter used to read and write th
 | `"string"` | `string` | `getString()` / `setString()` |
 | `"strv"` | `string[]` | `getStrv()` / `setStrv()` |
 
-## Observing GObject Properties with `useProperty`
+## Observing GObject properties with `useProperty`
 
 The `useProperty` hook subscribes to any GObject property via the `notify::` signal. It returns the current value and re-renders whenever the property changes.
 
@@ -182,18 +185,30 @@ function WindowTitle() {
 
 The return type is inferred from the ES6 accessor on the object — `useProperty(app, "activeWindow")` returns `Gtk.Window | null` without any manual type annotation. When the first argument is `null` or `undefined`, the hook returns `undefined` and skips signal subscription, so you can safely chain calls without conditional hooks.
 
-### How It Works
+### How it works
 
 1. Reads the initial value synchronously via the ES6 accessor
 2. Connects to `notify::property-name` on the GObject
 3. On each notification, re-reads the property and updates React state
 4. Disconnects the signal on unmount or when inputs change
 
-## Wiring Preferences to Settings
+## Wiring preferences to settings
 
 Here's a complete preferences dialog that reads and writes GSettings values. The `useSetting` setter writes directly to GSettings, which fires the `changed` signal and keeps the UI in sync — even if the setting is changed externally (for example via `gsettings set` in a terminal or `dconf-editor`):
 
 ```tsx
+import {
+    AdwPreferencesGroup,
+    AdwPreferencesPage,
+    AdwPreferencesWindow,
+    AdwSpinRow,
+    AdwSwitchRow,
+    createPortal,
+    useAdjustment,
+    useApplication,
+    useProperty,
+    useSetting,
+} from "@gtkx/react";
 import schemaId from "../com.example.notes.gschema.xml";
 
 const Preferences = ({ onClose }: { onClose: () => void }) => {
@@ -203,6 +218,7 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
     const [compactMode, setCompactMode] = useSetting(schemaId, "compact-mode", "boolean");
     const [spellCheck, setSpellCheck] = useSetting(schemaId, "spell-check", "boolean");
     const [fontSize, setFontSize] = useSetting(schemaId, "font-size", "int");
+    const fontSizeAdjustment = useAdjustment({ value: fontSize, lower: 8, upper: 32, stepIncrement: 1 });
 
     if (!activeWindow) return null;
 
@@ -220,7 +236,7 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
                         title="Compact Mode"
                         subtitle="Use smaller spacing in the note list"
                         active={compactMode}
-                        onActiveChanged={setCompactMode}
+                        onNotifyActive={(active) => setCompactMode(active ?? false)}
                     />
                 </AdwPreferencesGroup>
                 <AdwPreferencesGroup title="Editor">
@@ -228,16 +244,13 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
                         title="Spell Check"
                         subtitle="Highlight spelling errors while typing"
                         active={spellCheck}
-                        onActiveChanged={setSpellCheck}
+                        onNotifyActive={(active) => setSpellCheck(active ?? false)}
                     />
                     <AdwSpinRow
                         title="Font Size"
                         subtitle="Base font size for the editor"
-                        value={fontSize}
-                        lower={8}
-                        upper={32}
-                        stepIncrement={1}
-                        onValueChanged={setFontSize}
+                        adjustment={fontSizeAdjustment}
+                        onNotifyValue={(value) => setFontSize(value ?? 8)}
                     />
                 </AdwPreferencesGroup>
             </AdwPreferencesPage>
@@ -251,15 +264,15 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
 GSettings requires a compiled schema installed on the system. Importing your `.gschema.xml` file directly (as shown above) triggers automatic compilation via the GTKX Vite plugin — no manual build step needed.
 :::
 
-## Applying Settings to the UI
+## Applying settings to the UI
 
-Settings are only useful if they change what the user sees. Read them in your top-level component with `useSetting` and pass the values down as props:
+Settings are only useful if they change what the user sees. Read them in your window component with `useSetting` and pass the values down as props. `NotesWindow` still renders inside the `<AdwApplication>` wrapper from [Chapter 1](./1-window-and-header-bar.md):
 
 ```tsx
 // app.tsx
 import schemaId from "./com.example.notes.gschema.xml";
 
-export function App() {
+function NotesWindow() {
     const [compactMode] = useSetting(schemaId, "compact-mode", "boolean");
     const [fontSize] = useSetting(schemaId, "font-size", "int");
 

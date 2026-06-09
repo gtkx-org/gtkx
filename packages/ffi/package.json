@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/ffi",
     "version": "0.21.0",
-    "description": "Generated TypeScript FFI bindings for GTKX",
+    "description": "Hand-written FFI runtime for GTKX: GObject lifecycle, GValue marshalling, signals, and the class registry the generated bindings call into",
     "keywords": [
         "gtkx",
         "gtk",

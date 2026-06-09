@@ -4,7 +4,9 @@ Now that you have a window with a header bar, let's add some notes and style the
 
 ![Notes app after this chapter](./images/2-styling.png)
 
-## Adding Note State
+The `NotesWindow` component below lives inside the `<AdwApplication>` wrapper introduced in [Chapter 1](./1-window-and-header-bar.md). The wrapper and `src/index.tsx` stay unchanged; only `NotesWindow` grows.
+
+## Adding note state
 
 First, add state management for notes:
 
@@ -18,7 +20,7 @@ interface Note {
     createdAt: Date;
 }
 
-export default function App() {
+function NotesWindow() {
     const [notes, setNotes] = useState<Note[]>([
         { id: "1", title: "Welcome", body: "Your first note!", createdAt: new Date() },
         { id: "2", title: "Shopping List", body: "Milk, eggs, bread", createdAt: new Date() },
@@ -74,12 +76,13 @@ const noteDate = css`
 
 GTK CSS uses `@` variables like `@card_bg_color` and `@window_fg_color` that automatically adapt to light/dark themes. The `alpha()` function adjusts opacity.
 
-## Rendering the Notes List
+## Rendering the notes list
 
 Put it all together:
 
 ```tsx
 import {
+    AdwApplication,
     AdwApplicationWindow,
     AdwHeaderBar,
     AdwStatusPage,
@@ -126,7 +129,7 @@ interface Note {
     createdAt: Date;
 }
 
-export default function App() {
+function NotesWindow() {
     const [notes, setNotes] = useState<Note[]>([
         { id: "1", title: "Welcome", body: "Your first note!", createdAt: new Date() },
         { id: "2", title: "Shopping List", body: "Milk, eggs, bread", createdAt: new Date() },
@@ -204,9 +207,17 @@ export default function App() {
         </AdwApplicationWindow>
     );
 }
+
+export function App() {
+    return (
+        <AdwApplication applicationId="com.example.notes">
+            <NotesWindow />
+        </AdwApplication>
+    );
+}
 ```
 
-## Dynamic Styles
+## Dynamic styles
 
 You can interpolate values into CSS strings, just like Emotion:
 
@@ -218,7 +229,7 @@ const noteCard = (isSelected: boolean) => css`
 `;
 ```
 
-## Global Styles
+## Global styles
 
 For app-wide styles, use `injectGlobal` or import a `.css` file:
 

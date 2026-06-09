@@ -1,10 +1,10 @@
-# 1. Window & Header Bar
+# 1. Window & header bar
 
 In this tutorial, you'll build a fully-featured Notes application from scratch. Each chapter introduces new GTKX concepts by adding functionality to the app. By the end, you'll have a polished, deployable desktop application.
 
 ![Notes app after this chapter](./images/1-window-and-header-bar.png)
 
-## Create the Project
+## Create the project
 
 Start by scaffolding a new project:
 
@@ -14,14 +14,34 @@ npx @gtkx/cli@latest create notes-app
 
 Choose your preferred package manager and enable testing when prompted.
 
-## The Application Window
+## The entry point
 
-Replace the generated `src/app.tsx` with an Adwaita-styled window:
+A GTKX app starts in `src/index.tsx`, which renders the root component. `render` takes a single argument — the element tree:
 
 ```tsx
-import { AdwApplicationWindow, AdwHeaderBar, AdwStatusPage, AdwToolbarView, quit } from "@gtkx/react";
+import { render } from "@gtkx/react";
+import { App } from "./app.js";
 
-export default function App() {
+render(<App />);
+```
+
+The `<App />` tree owns the GTK application. The `<AdwApplication>` component creates, registers, and activates the application for you, then publishes it through context so hooks like `useApplication` can read it. You never construct an `Adw.Application` or `Gtk.Application` yourself, and you never pass one to `render`.
+
+## The application window
+
+Replace the generated `src/app.tsx` with an Adwaita-styled window wrapped in `<AdwApplication>`:
+
+```tsx
+import {
+    AdwApplication,
+    AdwApplicationWindow,
+    AdwHeaderBar,
+    AdwStatusPage,
+    AdwToolbarView,
+    quit,
+} from "@gtkx/react";
+
+function NotesWindow() {
     return (
         <AdwApplicationWindow title="Notes" defaultWidth={600} defaultHeight={500} onClose={quit}>
             <AdwToolbarView addTopBar={<AdwHeaderBar />}>
@@ -35,13 +55,23 @@ export default function App() {
         </AdwApplicationWindow>
     );
 }
+
+export function App() {
+    return (
+        <AdwApplication applicationId="com.example.notes">
+            <NotesWindow />
+        </AdwApplication>
+    );
+}
 ```
 
-### Status Pages
+The window lives inside `<AdwApplication>`. Every later chapter keeps this structure: the inner `NotesWindow` component grows, while the `<AdwApplication>` wrapper stays exactly as shown here.
+
+### Status pages
 
 `AdwStatusPage` is the standard GNOME pattern for empty states and placeholder views. It displays a centered icon, title, and description — use it instead of manual label layouts.
 
-### Slot Props
+### Slot props
 
 Notice the `addTopBar` prop on `<AdwToolbarView>` — this is a **slot prop**. Instead of imperatively calling `toolbar.addTopBar(headerBar)`, you pass the widget through a JSX prop that accepts a React element. Slot props are auto-generated from GIR metadata and follow the pattern `parentMethodName={<Widget />}`.
 
@@ -60,12 +90,13 @@ Common slot props you'll see throughout this tutorial:
 | `GtkHeaderBar` `packStart` | Pack a widget at the start of a header bar |
 | `GtkHeaderBar` `packEnd` | Pack a widget at the end of a header bar |
 
-## Adding Header Bar Buttons
+## Adding header bar buttons
 
 Add a "New Note" button to the header bar:
 
 ```tsx
 import {
+    AdwApplication,
     AdwApplicationWindow,
     AdwHeaderBar,
     AdwStatusPage,
@@ -74,7 +105,7 @@ import {
     quit,
 } from "@gtkx/react";
 
-export default function App() {
+function NotesWindow() {
     return (
         <AdwApplicationWindow title="Notes" defaultWidth={600} defaultHeight={500} onClose={quit}>
             <AdwToolbarView
@@ -98,6 +129,14 @@ export default function App() {
                 />
             </AdwToolbarView>
         </AdwApplicationWindow>
+    );
+}
+
+export function App() {
+    return (
+        <AdwApplication applicationId="com.example.notes">
+            <NotesWindow />
+        </AdwApplication>
     );
 }
 ```

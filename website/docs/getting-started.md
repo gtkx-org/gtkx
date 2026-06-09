@@ -1,4 +1,4 @@
-# Getting Started
+# Getting started
 
 This guide walks you through creating your first GTKX application.
 
@@ -6,10 +6,10 @@ This guide walks you through creating your first GTKX application.
 
 Before you begin, ensure you have:
 
-- **Node.js 22+** — GTKX requires a modern Node.js runtime
+- **Node.js 24+** — GTKX requires a modern Node.js runtime
 - **GTK4 libraries** — The native GTK4 runtime libraries
 
-## Create a New Project
+## Create a new project
 
 The fastest way to start is with the GTKX CLI:
 
@@ -27,7 +27,7 @@ The CLI will prompt you for:
 
 After the prompts, the CLI creates your project and installs dependencies.
 
-## Project Structure
+## Project structure
 
 A new GTKX project has this structure:
 
@@ -43,16 +43,16 @@ my-app/
 └── tsconfig.json
 ```
 
-### Key Files
+### Key files
 
-**`src/app.tsx`** — The default app component (just an example, can be removed or renamed). It is provided as a named export `App`:
+**`src/app.tsx`** — The default app component (just an example, can be removed or renamed). The `App` component wraps the window in a `GtkApplication`, which owns the application and reads its `applicationId` from `import.meta.env.GTKX_APPLICATION_ID`. It is provided as both a named export `App` and the default export:
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, quit } from "@gtkx/react";
+import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, quit } from "@gtkx/react";
 import { useState } from "react";
 
-export const App = () => {
+const MainWindow = () => {
     const [count, setCount] = useState(0);
 
     return (
@@ -78,17 +78,23 @@ export const App = () => {
         </GtkApplicationWindow>
     );
 };
+
+export const App = () => (
+    <GtkApplication applicationId={import.meta.env.GTKX_APPLICATION_ID}>
+        <MainWindow />
+    </GtkApplication>
+);
+
+export default App;
 ```
 
-**`src/index.tsx`** — Application entry consumed by both `gtkx dev` and `gtkx build`. It constructs the `Gtk.Application` with the `applicationId` from `import.meta.env.GTKX_APPLICATION_ID` and renders `App` into it:
+**`src/index.tsx`** — Application entry consumed by both `gtkx dev` and `gtkx build`. It imports `App` and renders it with a single argument; the `GtkApplication` component inside `App` owns the application:
 
 ```tsx
-import * as Gtk from "@gtkx/gi/gtk";
 import { render } from "@gtkx/react";
 import { App } from "./app.js";
 
-const app = new Gtk.Application({ applicationId: import.meta.env.GTKX_APPLICATION_ID });
-render(<App />, app);
+render(<App />);
 ```
 
 **`gtkx.config.ts`** — Project configuration including the application identifier and optional flags:
@@ -102,7 +108,7 @@ export default defineConfig({
 });
 ```
 
-## Run the Development Server
+## Run the development server
 
 Start the development server with hot reload:
 
@@ -112,7 +118,7 @@ npm run dev
 
 This starts your application with Hot Module Replacement (HMR). When you edit your components, changes appear instantly without losing application state.
 
-## Build for Production
+## Build for production
 
 Bundle your application into a single minified file:
 
@@ -123,7 +129,7 @@ npm start
 
 This runs `gtkx build` to produce `dist/bundle.js` via Vite SSR mode, then `node dist/bundle.js` to run it.
 
-## Run Tests
+## Run tests
 
 If you enabled testing:
 
@@ -133,13 +139,13 @@ npm test
 
 Tests run in a real GTK environment using the `@gtkx/vitest` plugin, which automatically manages Xvfb displays for headless execution.
 
-## Understanding the Basics
+## Understanding the basics
 
-### Intrinsic Elements
+### Intrinsic elements
 
 Intrinsic elements are imported as constants from `@gtkx/react` and correspond to GTK widgets or event controllers. They accept props that map to GTK properties, signals, and child widgets.
 
-#### Widget Example
+#### Widget example
 
 ```tsx
 import { GtkButton, GtkEntry } from "@gtkx/react";
@@ -148,7 +154,7 @@ import { GtkButton, GtkEntry } from "@gtkx/react";
 <GtkEntry placeholderText="Type here" />
 ```
 
-#### Event Controller Example
+#### Event controller example
 
 ```tsx
 import { GtkBox, GtkLabel, GtkEventControllerMotion, GtkEventControllerKey } from "@gtkx/react";
@@ -176,7 +182,7 @@ const InteractiveBox = () => {
 };
 ```
 
-## What's Next?
+## What's next?
 
 - [FFI Bindings](./ffi-bindings.md) — Using GTK and GLib bindings
 - [Styling](./styling.md) — CSS-in-JS for GTK

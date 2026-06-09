@@ -1,8 +1,10 @@
-# 3. Lists & Data
+# 3. Lists & data
 
 The simple `map()` approach from the previous chapter works for a handful of notes, but won't scale. GTK provides virtualized list widgets that only render visible items. GTKX wraps these with a declarative API.
 
 ![Notes app after this chapter](./images/3-lists.png)
+
+These snippets slot into the `NotesWindow` component, which still lives inside the `<AdwApplication>` wrapper from [Chapter 1](./1-window-and-header-bar.md).
 
 ## GtkListView
 
@@ -40,7 +42,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 </GtkScrolledWindow>
 ```
 
-### Key Props
+### Key props
 
 - **`items`** — Array of `{ id: string, value: T }` objects. Each item must have a unique `id`.
 - **`renderItem`** — Callback that receives the item `value` and returns a React element.
@@ -48,12 +50,12 @@ import * as Gtk from "@gtkx/gi/gtk";
 - **`selectionMode`** — `NONE`, `SINGLE`, `BROWSE`, or `MULTIPLE`.
 - **`selected`** / **`onSelectionChanged`** — Controlled selection state as an array of IDs.
 
-## ColumnView for Tabular Data
+## ColumnView for tabular data
 
-For table-like layouts, use `GtkColumnView` with `GtkColumnView.Column` compound components:
+For table-like layouts, use `GtkColumnView` with `GtkColumnViewColumn` components:
 
 ```tsx
-import { GtkColumnView, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
+import { GtkColumnView, GtkColumnViewColumn, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import * as Gtk from "@gtkx/gi/gtk";
 
 const NotesTable = ({ notes }: { notes: Note[] }) => {
@@ -80,7 +82,7 @@ const NotesTable = ({ notes }: { notes: Note[] }) => {
                 }}
                 items={sorted.map((n) => ({ id: n.id, value: n }))}
             >
-                <GtkColumnView.Column
+                <GtkColumnViewColumn
                     id="title"
                     title="Title"
                     expand
@@ -90,7 +92,7 @@ const NotesTable = ({ notes }: { notes: Note[] }) => {
                         <GtkLabel label={note.title} halign={Gtk.Align.START} />
                     )}
                 />
-                <GtkColumnView.Column
+                <GtkColumnViewColumn
                     id="createdAt"
                     title="Created"
                     resizable
@@ -105,7 +107,7 @@ const NotesTable = ({ notes }: { notes: Note[] }) => {
 };
 ```
 
-## Tree Lists
+## Tree lists
 
 For hierarchical data, nest `children` arrays inside items. This works with `GtkListView` — no separate tree widget needed:
 

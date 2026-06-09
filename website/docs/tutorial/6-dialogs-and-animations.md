@@ -1,10 +1,12 @@
-# 6. Dialogs & Animations
+# 6. Dialogs & animations
 
 Let's add confirmation dialogs for destructive actions and smooth animations for a polished feel.
 
 ![Notes app with toggle group and animated cards](./images/6-dialogs-and-animations.png)
 
-## Confirmation Dialogs
+The components below live inside the `NotesWindow` from [Chapter 1](./1-window-and-header-bar.md), still wrapped in `<AdwApplication>`.
+
+## Confirmation dialogs
 
 Use `AdwAlertDialog` with the `responses` prop and `createPortal` to show it on the active window:
 
@@ -47,7 +49,7 @@ const DeleteConfirmation = ({
 };
 ```
 
-### Using the Dialog
+### Using the dialog
 
 ```tsx
 const [noteToDelete, setNoteToDelete] = useState<Note | null>(null);
@@ -80,7 +82,7 @@ const confirmDelete = () => {
 
 See the [Portals](../portals.md) guide for more details.
 
-## Toggle Groups
+## Toggle groups
 
 Let the user switch between list and grid views using `AdwToggleGroup` with the `toggles` prop:
 
@@ -89,7 +91,7 @@ import { AdwToggleGroup } from "@gtkx/react";
 
 <AdwToggleGroup
     activeName={viewMode}
-    onActiveChanged={(_index, name) => setViewMode(name ?? "list")}
+    onNotifyActiveName={(name) => setViewMode(name ?? "list")}
     toggles={[
         { id: "list", iconName: "view-list-symbolic", tooltip: "List view" },
         { id: "grid", iconName: "view-grid-symbolic", tooltip: "Grid view" },
@@ -99,7 +101,7 @@ import { AdwToggleGroup } from "@gtkx/react";
 
 The `toggles` prop accepts an array of toggle definitions with `id`, `label` or `iconName`, and optional `tooltip`.
 
-## Grid View
+## Grid view
 
 Use `GtkGridView` to render items in a multi-column grid. It shares the same data API as `GtkListView` — `items`, `renderItem`, `selected`, and `onSelectionChanged` all work identically:
 
@@ -135,7 +137,7 @@ import { GtkGridView, GtkListView, GtkScrolledWindow } from "@gtkx/react";
 - **`minColumns`** — Minimum number of columns (items wrap to the next row)
 - **`maxColumns`** — Maximum number of columns (prevents overly wide layouts)
 
-## Timed Animations
+## Timed animations
 
 Wrap a widget with `AdwTimedAnimation` to animate its properties over a fixed duration:
 
@@ -160,7 +162,7 @@ const NoteCard = ({ note }: { note: Note }) => (
 );
 ```
 
-### Animation Props
+### Animation props
 
 - **`initial`** — Starting values (set immediately on mount)
 - **`animate`** — Target values (animated toward)
@@ -175,7 +177,7 @@ Animatable properties: `opacity`, `translateX`, `translateY`, `scale`, `scaleX`,
 Animation components work with regular widget children. They cannot be used inside `GtkListView`'s `renderItem` — instead, animate the list container or use animations on views that are rendered directly in a `GtkBox`.
 :::
 
-## Spring Animations
+## Spring animations
 
 `AdwSpringAnimation` uses physics simulation for natural-feeling motion:
 
@@ -199,7 +201,7 @@ Spring parameters:
 - **`stiffness`** — Spring force (higher = snappier)
 - **`mass`** — Simulated mass (higher = more inertia, defaults to 1)
 
-## Animating on Prop Changes
+## Animating on prop changes
 
 When the `animate` prop changes, the animation automatically runs to the new values:
 
@@ -211,7 +213,7 @@ const [expanded, setExpanded] = useState(false);
 </AdwSpringAnimation>
 ```
 
-## Exit Animations
+## Exit animations
 
 Use the `exit` prop to animate when a component unmounts:
 
@@ -233,7 +235,7 @@ const NoteCard = ({ note }: { note: Note }) => (
 
 The widget stays mounted during the exit animation and is removed after it completes.
 
-## Skipping Initial Animation
+## Skipping initial animation
 
 Set `initial={false}` to start at the `animate` values without an entrance animation:
 
@@ -243,7 +245,7 @@ Set `initial={false}` to start at the `animate` values without an entrance anima
 </AdwTimedAnimation>
 ```
 
-## Animation Callbacks
+## Animation callbacks
 
 Monitor animation lifecycle:
 
@@ -258,7 +260,7 @@ Monitor animation lifecycle:
 </AdwSpringAnimation>
 ```
 
-## Toast Notifications
+## Toast notifications
 
 After a destructive action like deleting a note, show a toast notification with an undo option. Wrap the content area in `AdwToastOverlay` and create `Adw.Toast` objects imperatively:
 
@@ -277,7 +279,7 @@ const confirmDelete = () => {
     setNotes(notes.filter((n) => n.id !== deletedNote.id));
     setNoteToDelete(null);
 
-    const toast = new Adw.Toast(`"${deletedNote.title}" deleted`);
+    const toast = Adw.Toast.new(`"${deletedNote.title}" deleted`);
     toast.buttonLabel = "Undo";
     toast.connect("button-clicked", () => {
         setNotes((prev) => {
@@ -299,7 +301,7 @@ const confirmDelete = () => {
 The GNOME HIG recommends toasts for short-lived event messages and one-time notifications. For persistent states (like "offline mode"), use `AdwBanner` instead. Toasts with an undo button are the preferred pattern for destructive actions — they let users recover from mistakes without a confirmation dialog slowing them down.
 :::
 
-## About Dialog
+## About dialog
 
 Every GNOME app should have an About dialog, accessible from the primary menu. Use `AdwAboutDialog` to display app name, version, credits, and license:
 
@@ -336,7 +338,7 @@ Then wire it up from your menu:
 const [showAbout, setShowAbout] = useState(false);
 
 // In your menu:
-<GtkMenuButton.MenuItem id="about" label="About Notes" onActivate={() => setShowAbout(true)} />
+<MenuItem id="about" label="About Notes" onActivate={() => setShowAbout(true)} />
 
 // In your JSX:
 {showAbout && <About onClose={() => setShowAbout(false)} />}

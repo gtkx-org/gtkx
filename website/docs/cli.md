@@ -1,4 +1,4 @@
-# CLI Reference
+# CLI reference
 
 The GTKX CLI provides commands for creating and developing applications.
 
@@ -33,23 +33,26 @@ npx @gtkx/cli create [project-name]
 | Project name    | Directory name for your project | Lowercase, numbers, hyphens only         |
 | App ID          | Unique application identifier   | Reverse domain (e.g., `com.example.app`) |
 | Package manager | Dependency manager              | pnpm, npm, yarn                          |
-| Testing         | Include Vitest testing setup    | yes, no                                  |
-| Claude skills   | Add GTKX Claude skills          | yes, no                                  |
+| Testing         | Include testing setup (Vitest)  | yes, no                                  |
+| Claude Code skills | Include Claude Code skills    | yes, no                                  |
 
 **Generated Project:**
 
 ```
 project/
-├── .claude/ # Claude skills (if enabled)
-│ ├── skills/
-│ │ ├── EXAMPLES.md
-│ │ ├── SKILL.md
-│ │ └── WIDGETS.md
+├── .claude/ # Claude Code skills (if enabled)
+│ └── skills/
+│ └── developing-gtkx-apps/
+│ ├── SKILL.md
+│ ├── WIDGETS.md
+│ └── EXAMPLES.md
 ├── src/
-│ ├── app.tsx # Main component
-│ └── index.tsx # Default-export entry used by `gtkx dev` and `gtkx build`
+│ ├── app.tsx # Root component, wrapped in <GtkApplication>
+│ ├── index.tsx # Entry: calls render(<App />)
+│ └── gtkx-env.d.ts # Ambient types for import.meta.env
 ├── tests/ # Example test (if testing enabled)
 │ └── app.test.tsx
+├── gtkx.config.ts # GIR libraries + applicationId
 ├── package.json
 ├── tsconfig.json
 └── vitest.config.ts # Test configuration (if testing enabled)
@@ -57,7 +60,7 @@ project/
 
 ### `gtkx dev`
 
-Starts the development server with Hot Module Replacement.
+Starts the Vite development server with HMR and React Fast Refresh.
 
 ```bash
 npx gtkx dev [entry-file]
@@ -72,12 +75,47 @@ npx gtkx dev src/playground.tsx
 
 **Features:**
 
-- **Single-file output** — All dependencies inlined into one minified ESM bundle
-- **Vite-powered** — Uses Vite SSR mode for Node.js-targeted bundling
+- **Vite dev server** — Loads your entry through Vite in SSR module mode; no production bundle is written
+- **Fast Refresh** — Editing a React component refreshes it in place; non-component edits trigger a full process restart
+- **Config watch** — Editing `gtkx.config.ts` (for example the `libraries` list) regenerates the bindings and restarts the runner
 
-Static assets (images, SVGs, etc.) should be handled via Vite imports instead of `path.resolve` / `import.meta.dirname`.
+Before starting, `gtkx dev` runs a codegen preflight that refreshes the generated bindings when they are stale. Static assets (images, SVGs, etc.) should be handled via Vite imports instead of `path.resolve` / `import.meta.dirname`.
 
-### Generated npm Scripts
+### `gtkx build`
+
+Bundles the project for production.
+
+```bash
+npx gtkx build [entry-file] [--asset-base <path>]
+```
+
+**Example:**
+
+```bash
+npx gtkx build                              # uses src/index.tsx by default
+npx gtkx build src/index.tsx
+npx gtkx build --asset-base ../share/my-app
+```
+
+**Features:**
+
+- **Single-file output** — Vite's SSR build mode produces one minified ESM bundle at `dist/bundle.js` with all dependencies inlined
+- **Self-contained** — The native `.node` binary is copied next to the bundle as `dist/gtkx.node`, so the build runs with no `node_modules` dependency at runtime
+- **GResource assets** — When the project imports assets, a `gtkx.gresource` bundle is emitted next to the bundle and registered with GIO when the entry first loads
+
+The `--asset-base` option sets where asset imports resolve relative to the executable directory, for FHS-compliant packaging where assets live under a `share/` directory. Run the build with `node dist/bundle.js`.
+
+### `gtkx codegen`
+
+Regenerates the TypeScript bindings for the GIR libraries declared in `gtkx.config.ts`. `gtkx dev` and `gtkx build` run this as a preflight automatically, so you rarely invoke it directly.
+
+```bash
+npx gtkx codegen [--force] [--cwd <path>]
+```
+
+By default it regenerates only when the generated store is missing or its fingerprint is stale (a changed library set, GIR runtime, or `@gtkx/codegen` version). Pass `--force` to wipe the store and regenerate unconditionally — the recovery path for a corrupted store. `--cwd` sets the project root (defaults to the current working directory).
+
+### Generated npm scripts
 
 After `gtkx create`, your `package.json` includes:
 
@@ -86,20 +124,24 @@ After `gtkx create`, your `package.json` includes:
     "scripts": {
         "dev": "gtkx dev",
         "build": "gtkx build",
+        "typecheck": "tsc --noEmit",
         "start": "node dist/bundle.js",
         "test": "vitest"
     }
 }
 ```
 
-| Script          | Description                            |
-| --------------- | -------------------------------------- |
-| `npm run dev`   | Start development server               |
-| `npm run build` | Bundle for production via `gtkx build` |
-| `npm start`     | Run production bundle                  |
-| `npm test`      | Run tests (if configured)              |
+The `test` script is included only when testing is enabled.
 
-## React Compiler
+| Script            | Description                            |
+| ----------------- | -------------------------------------- |
+| `npm run dev`     | Start development server               |
+| `npm run build`   | Bundle for production via `gtkx build` |
+| `npm run typecheck` | Type-check the project with `tsc`    |
+| `npm start`       | Run production bundle                  |
+| `npm test`        | Run tests (if configured)              |
+
+## React compiler
 
 The [React Compiler](https://react.dev/learn/react-compiler) is enabled by default for every `gtkx dev`, `gtkx build`, and test run. It auto-memoizes your components and hooks at build time, so the reconciler commits fewer GTK property sets and signal reconnections per render — you get the benefit without hand-writing `useMemo`/`useCallback`.
 
