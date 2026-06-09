@@ -22,7 +22,7 @@
     },
     "devDependencies": {
         "@biomejs/biome": "^2.4.16",
-        "@types/node": "^25.9.1",
+        "@types/node": "^25.9.2",
         "@types/react": "^19.2.17",
         "@vitest/coverage-v8": "^4.1.8",
         "dependency-cruiser": "^17.4.3",
