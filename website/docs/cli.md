@@ -99,6 +99,31 @@ After `gtkx create`, your `package.json` includes:
 | `npm start`     | Run production bundle                  |
 | `npm test`      | Run tests (if configured)              |
 
+## React Compiler
+
+The [React Compiler](https://react.dev/learn/react-compiler) is enabled by default for every `gtkx dev`, `gtkx build`, and test run. It auto-memoizes your components and hooks at build time, so the reconciler commits fewer GTK property sets and signal reconnections per render — you get the benefit without hand-writing `useMemo`/`useCallback`.
+
+Compilation is scoped to your project's own `.ts`/`.tsx` source under the project root; dependencies in `node_modules` (which ship pre-compiled) are left untouched. The compiler targets React 19 and its `react/compiler-runtime` import resolves from your app's React dependency, so no extra setup is required.
+
+To tune or disable it, set `reactCompiler` in `gtkx.config.ts`:
+
+```ts
+import { defineConfig } from "@gtkx/cli";
+
+export default defineConfig({
+    libraries: ["Gtk-4.0"],
+    // Disable the compiler entirely:
+    reactCompiler: false,
+    // …or pass options:
+    // reactCompiler: { compilationMode: "annotation" },
+});
+```
+
+| Option            | Values                                          | Description                                                          |
+| ----------------- | ----------------------------------------------- | ------------------------------------------------------------------- |
+| `compilationMode` | `"infer"` `"syntax"` `"annotation"` `"all"`     | Which functions to optimize. Defaults to `"infer"`.                 |
+| `panicThreshold`  | `"none"` `"critical_errors"` `"all_errors"`     | How to react to code the compiler cannot safely optimize. Defaults to `"none"` (skip silently). |
+
 ## Programmatic API
 
 You can also use the CLI functions programmatically:

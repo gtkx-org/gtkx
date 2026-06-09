@@ -134,6 +134,95 @@ export type GtkxConfig = {
      * ```
      */
     arrayProps?: Record<string, Record<string, string>>;
+
+    /**
+     * Controls the React Compiler (`babel-plugin-react-compiler`), which
+     * auto-memoizes components and hooks at build time so the reconciler
+     * commits fewer GObject property sets and signal reconnections per render.
+     *
+     * Enabled by default for every `gtkx dev`, `gtkx build`, and test run: the
+     * compiler transforms the project's own `.ts`/`.tsx` source (files under
+     * the project root, excluding `node_modules`) with `target: "19"`, matching
+     * GTKX's required React version.
+     *
+     * Set to `false` to disable it, or pass an object to tune the compiler.
+     *
+     * @example
+     * ```ts
+     * reactCompiler: false,
+     * ```
+     *
+     * @example
+     * ```ts
+     * reactCompiler: { compilationMode: "annotation" },
+     * ```
+     */
+    reactCompiler?: boolean | ReactCompilerOptions;
+};
+
+/**
+ * The React Compiler `compilationMode`: which functions it attempts to
+ * optimize. `"infer"` (the compiler default) memoizes functions recognized as
+ * components or hooks; `"annotation"` only those marked with a `"use memo"`
+ * directive; `"all"` every top-level function; `"syntax"` only those using
+ * optimization-eligible syntax.
+ */
+export type ReactCompilerCompilationMode = "infer" | "syntax" | "annotation" | "all";
+
+/**
+ * The React Compiler `panicThreshold`: how it reacts to code it cannot safely
+ * optimize. `"none"` (the compiler default) silently skips such functions;
+ * `"critical_errors"` fails the build on critical diagnostics; `"all_errors"`
+ * fails on any diagnostic.
+ */
+export type ReactCompilerPanicThreshold = "none" | "critical_errors" | "all_errors";
+
+/**
+ * User-tunable subset of `babel-plugin-react-compiler` options exposed through
+ * {@link GtkxConfig.reactCompiler}. The compiler `target` is always `"19"`,
+ * matching GTKX's required React version, and is not configurable.
+ */
+export type ReactCompilerOptions = {
+    /**
+     * See {@link ReactCompilerCompilationMode}. Omit to let the compiler
+     * default (`"infer"`) apply.
+     */
+    compilationMode?: ReactCompilerCompilationMode;
+    /**
+     * See {@link ReactCompilerPanicThreshold}. Omit to let the compiler
+     * default (`"none"`) apply.
+     */
+    panicThreshold?: ReactCompilerPanicThreshold;
+};
+
+/**
+ * The fully resolved option object handed to `babel-plugin-react-compiler`,
+ * produced by {@link resolveReactCompilerOptions}.
+ */
+export type ResolvedReactCompilerOptions = ReactCompilerOptions & {
+    /** Pinned to GTKX's required React major. */
+    target: "19";
+};
+
+const REACT_COMPILER_TARGET = "19";
+
+/**
+ * Maps a {@link GtkxConfig.reactCompiler} setting to the option object passed
+ * to `babel-plugin-react-compiler`, or `null` when the compiler is disabled.
+ *
+ * `false` disables it; `undefined` and `true` enable it with defaults; an
+ * object enables it with the given overrides. The `target` is always forced
+ * to `"19"`.
+ *
+ * @param setting - The `reactCompiler` value from `gtkx.config.ts`
+ * @returns The resolved compiler options, or `null` when disabled
+ */
+export const resolveReactCompilerOptions = (
+    setting: GtkxConfig["reactCompiler"],
+): ResolvedReactCompilerOptions | null => {
+    if (setting === false) return null;
+    const overrides = setting === undefined || setting === true ? {} : setting;
+    return { ...overrides, target: REACT_COMPILER_TARGET };
 };
 
 const validateLibraryEntry = (library: unknown): void => {
@@ -250,6 +339,40 @@ const validateArrayProps = (
     }
 };
 
+const REACT_COMPILER_COMPILATION_MODES: readonly ReactCompilerCompilationMode[] = [
+    "infer",
+    "syntax",
+    "annotation",
+    "all",
+];
+
+const REACT_COMPILER_PANIC_THRESHOLDS: readonly ReactCompilerPanicThreshold[] = [
+    "none",
+    "critical_errors",
+    "all_errors",
+];
+
+const validateReactCompilerEnum = <T extends string>(
+    value: T | undefined,
+    allowed: readonly T[],
+    field: string,
+): void => {
+    if (value !== undefined && !allowed.includes(value)) {
+        throw new Error(
+            `gtkx.config.ts: invalid \`reactCompiler.${field}\` "${String(value)}" — must be one of ${allowed.join(", ")}`,
+        );
+    }
+};
+
+const validateReactCompiler = (reactCompiler: GtkxConfig["reactCompiler"]): void => {
+    if (reactCompiler === undefined || typeof reactCompiler === "boolean") return;
+    if (typeof reactCompiler !== "object" || reactCompiler === null || Array.isArray(reactCompiler)) {
+        throw new Error("gtkx.config.ts: `reactCompiler` must be a boolean or an options object");
+    }
+    validateReactCompilerEnum(reactCompiler.compilationMode, REACT_COMPILER_COMPILATION_MODES, "compilationMode");
+    validateReactCompilerEnum(reactCompiler.panicThreshold, REACT_COMPILER_PANIC_THRESHOLDS, "panicThreshold");
+};
+
 /**
  * Identity helper that lets users author a {@link GtkxConfig} with full
  * type-checking and IDE autocompletion.
@@ -277,6 +400,7 @@ export const defineConfig = (config: GtkxConfig): GtkxConfig => {
     validateSlotMap(config.widgetSlots, "widgetSlots");
     validateSlotMap(config.containerSlots, "containerSlots");
     validateArrayProps(config.arrayProps, "arrayProps");
+    validateReactCompiler(config.reactCompiler);
     return config;
 };
 

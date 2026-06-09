@@ -70,6 +70,8 @@
         "codegen": "node --conditions=source --import tsx src/cli.ts codegen --cwd ../.."
     },
     "dependencies": {
+        "@babel/core": "^7.29.7",
+        "@babel/preset-typescript": "^7.29.7",
         "@clack/prompts": "^1.5.1",
         "@gtkx/codegen": "workspace:*",
         "@gtkx/ffi": "workspace:*",
@@ -77,6 +79,7 @@
         "@gtkx/utils": "workspace:*",
         "@gtkx/vitest": "workspace:*",
         "@swc/core": "^1.15.40",
+        "babel-plugin-react-compiler": "^1.0.0",
         "c12": "^3.3.4",
         "citty": "^0.2.2",
         "ejs": "^6.0.1",
@@ -89,6 +92,7 @@
     },
     "devDependencies": {
         "@gtkx/testing": "workspace:*",
+        "@types/babel__core": "^7.20.5",
         "@types/ejs": "^3.1.5",
         "@types/react-refresh": "^0.14.7",
         "memfs": "^4.57.6"

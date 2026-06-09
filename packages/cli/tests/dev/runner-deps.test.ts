@@ -58,6 +58,7 @@ describe("defaultDevRunnerDeps (wiring)", () => {
             "gtkx:gsettings",
             "gtkx:gresources",
             "gtkx:assets",
+            "gtkx:react-compiler",
             "gtkx:swc-ssr-refresh",
             "gtkx:refresh",
             "gtkx:skip-react-dom-optimize",

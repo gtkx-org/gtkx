@@ -2,7 +2,12 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { GtkxConfigNotFoundError, loadApplicationId, loadGtkxConfig } from "../../src/codegen/config-loader.js";
+import {
+    GtkxConfigNotFoundError,
+    loadApplicationId,
+    loadGtkxConfig,
+    loadReactCompilerOptions,
+} from "../../src/codegen/config-loader.js";
 
 let cwd: string;
 
@@ -105,5 +110,47 @@ describe("loadApplicationId", () => {
     it("propagates validation errors from defineConfig", async () => {
         writeFileSync(join(cwd, "gtkx.config.ts"), `export default { applicationId: "not valid" };\n`);
         await expect(loadApplicationId(cwd)).rejects.toThrow(/invalid `applicationId`/);
+    });
+});
+
+describe("loadReactCompilerOptions", () => {
+    let cwd: string;
+
+    beforeEach(() => {
+        cwd = mkdtempSync(join(tmpdir(), "gtkx-load-react-compiler-"));
+    });
+
+    afterEach(() => {
+        rmSync(cwd, { recursive: true, force: true });
+    });
+
+    it("defaults to enabled with target 19 when the config omits reactCompiler", async () => {
+        writeFileSync(join(cwd, "gtkx.config.ts"), `export default { libraries: ["Gtk-4.0"] };\n`);
+        await expect(loadReactCompilerOptions(cwd)).resolves.toEqual({ target: "19" });
+    });
+
+    it("defaults to enabled when no config file exists", async () => {
+        await expect(loadReactCompilerOptions(cwd)).resolves.toEqual({ target: "19" });
+    });
+
+    it("returns null when disabled via config", async () => {
+        writeFileSync(join(cwd, "gtkx.config.ts"), `export default { reactCompiler: false };\n`);
+        await expect(loadReactCompilerOptions(cwd)).resolves.toBeNull();
+    });
+
+    it("merges configured options while forcing target 19", async () => {
+        writeFileSync(
+            join(cwd, "gtkx.config.ts"),
+            `export default { reactCompiler: { compilationMode: "annotation" } };\n`,
+        );
+        await expect(loadReactCompilerOptions(cwd)).resolves.toEqual({
+            target: "19",
+            compilationMode: "annotation",
+        });
+    });
+
+    it("propagates validation errors from defineConfig", async () => {
+        writeFileSync(join(cwd, "gtkx.config.ts"), `export default { reactCompiler: { compilationMode: "eager" } };\n`);
+        await expect(loadReactCompilerOptions(cwd)).rejects.toThrow(/invalid `reactCompiler\.compilationMode`/);
     });
 });

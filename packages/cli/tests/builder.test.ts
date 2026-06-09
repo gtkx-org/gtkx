@@ -71,7 +71,7 @@ describe("build (plugin order)", () => {
     beforeEach(resetBuildMocks);
     afterEach(restoreSpies);
 
-    it("registers all five gtkx vite plugins in order", async () => {
+    it("registers all six gtkx vite plugins in order", async () => {
         await build({ entry: "src/index.tsx" });
 
         const pluginNames = getViteConfig().plugins.map((p) => p?.name);
@@ -79,6 +79,7 @@ describe("build (plugin order)", () => {
             "gtkx:gsettings",
             "gtkx:gresources",
             "gtkx:assets",
+            "gtkx:react-compiler",
             "gtkx:built-url",
             "gtkx:native",
         ]);
@@ -94,6 +95,7 @@ describe("build (plugin order)", () => {
             "gtkx:gsettings",
             "gtkx:gresources",
             "gtkx:assets",
+            "gtkx:react-compiler",
             "gtkx:built-url",
             "gtkx:native",
         ]);

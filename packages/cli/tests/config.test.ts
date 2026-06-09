@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defineConfig, type GtkxConfig, isValidApplicationId } from "../src/config.js";
+import { defineConfig, type GtkxConfig, isValidApplicationId, resolveReactCompilerOptions } from "../src/config.js";
 import { isValidProjectName } from "../src/create/options.js";
 
 const defineUnknown = (config: unknown): GtkxConfig => defineConfig(config as GtkxConfig);
@@ -179,6 +179,67 @@ describe("defineConfig arrayProps validation", () => {
         expect(() => defineUnknown({ arrayProps: { MyAppChart: { series: 123 } } })).toThrow(
             /invalid `arrayProps\.MyAppChart\.series` item type "123"/,
         );
+    });
+});
+
+describe("defineConfig reactCompiler validation", () => {
+    it("accepts a boolean", () => {
+        expect(() => defineConfig({ reactCompiler: false })).not.toThrow();
+        expect(() => defineConfig({ reactCompiler: true })).not.toThrow();
+    });
+
+    it("accepts an options object", () => {
+        const config: GtkxConfig = {
+            reactCompiler: { compilationMode: "annotation", panicThreshold: "all_errors" },
+        };
+        expect(defineConfig(config)).toBe(config);
+    });
+
+    it("accepts a config that omits reactCompiler", () => {
+        expect(() => defineConfig({ libraries: ["Gtk-4.0"] })).not.toThrow();
+    });
+
+    it("rejects a non-boolean, non-object value", () => {
+        expect(() => defineUnknown({ reactCompiler: "yes" })).toThrow(
+            /`reactCompiler` must be a boolean or an options object/,
+        );
+    });
+
+    it("rejects an array value", () => {
+        expect(() => defineUnknown({ reactCompiler: [] })).toThrow(
+            /`reactCompiler` must be a boolean or an options object/,
+        );
+    });
+
+    it("rejects an invalid compilationMode", () => {
+        expect(() => defineUnknown({ reactCompiler: { compilationMode: "eager" } })).toThrow(
+            /invalid `reactCompiler\.compilationMode` "eager"/,
+        );
+    });
+
+    it("rejects an invalid panicThreshold", () => {
+        expect(() => defineUnknown({ reactCompiler: { panicThreshold: "warn" } })).toThrow(
+            /invalid `reactCompiler\.panicThreshold` "warn"/,
+        );
+    });
+});
+
+describe("resolveReactCompilerOptions", () => {
+    it("returns null when disabled", () => {
+        expect(resolveReactCompilerOptions(false)).toBeNull();
+    });
+
+    it("enables with target 19 by default", () => {
+        expect(resolveReactCompilerOptions(undefined)).toEqual({ target: "19" });
+        expect(resolveReactCompilerOptions(true)).toEqual({ target: "19" });
+    });
+
+    it("merges overrides while forcing target 19", () => {
+        expect(resolveReactCompilerOptions({ compilationMode: "all", panicThreshold: "none" })).toEqual({
+            target: "19",
+            compilationMode: "all",
+            panicThreshold: "none",
+        });
     });
 });
 

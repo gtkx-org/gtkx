@@ -1,7 +1,12 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadConfig } from "c12";
-import { defineConfig, type GtkxConfig } from "../config.js";
+import {
+    defineConfig,
+    type GtkxConfig,
+    type ResolvedReactCompilerOptions,
+    resolveReactCompilerOptions,
+} from "../config.js";
 
 /**
  * Outcome of loading a `gtkx.config.ts` file.
@@ -52,6 +57,29 @@ export const loadApplicationId = async (cwd: string): Promise<string | undefined
     } catch (error) {
         if (error instanceof GtkxConfigNotFoundError) {
             return undefined;
+        }
+        throw error;
+    }
+};
+
+/**
+ * Resolves the React Compiler options for a project from its `gtkx.config.ts`.
+ *
+ * Returns the option object passed to `babel-plugin-react-compiler`, or `null`
+ * when the compiler is disabled (`reactCompiler: false`). A missing config file
+ * yields the default-enabled options, so a project with no `gtkx.config.ts`
+ * still gets the compiler.
+ *
+ * @param cwd - Project root to search
+ * @returns The resolved compiler options, or `null` when disabled
+ */
+export const loadReactCompilerOptions = async (cwd: string): Promise<ResolvedReactCompilerOptions | null> => {
+    try {
+        const loaded = await loadGtkxConfig(cwd);
+        return resolveReactCompilerOptions(loaded.config.reactCompiler);
+    } catch (error) {
+        if (error instanceof GtkxConfigNotFoundError) {
+            return resolveReactCompilerOptions(undefined);
         }
         throw error;
     }
