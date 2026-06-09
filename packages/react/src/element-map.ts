@@ -48,9 +48,11 @@ export interface ElementMapping {
      * Attaches `child` to `parent`. Idempotent: re-invoked when a wrapper child's
      * own content or metadata changes, so it reconciles against any prior attach
      * recorded on `child.attachState`. `anchor` is the next sibling's backing
-     * instance for ordered insertion, or `null`/`undefined` to append.
+     * instance for ordered insertion, or `null`/`undefined` to append. `fresh`
+     * marks a child the reconciler has not attached before, so its backing widget
+     * is known to be unparented and the defensive unparent can be skipped.
      */
-    attach(child: Instance, parent: Instance, anchor?: BackingInstance | null): void;
+    attach(child: Instance, parent: Instance, anchor?: BackingInstance | null, fresh?: boolean): void;
     /** Reverses {@link attach}, removing `child` from `parent`. */
     detach(child: Instance, parent: Instance): void;
 }
@@ -579,9 +581,9 @@ const listItemChildMapping: ElementMapping = {
         child.backingInstance instanceof Gtk.Widget &&
         !(parent.backingInstance instanceof Gtk.Widget) &&
         isSingleChildContainer(parent.backingInstance),
-    attach: (child, parent) => {
+    attach: (child, parent, _anchor, fresh) => {
         if (child.backingInstance instanceof Gtk.Widget && isSingleChildContainer(parent.backingInstance)) {
-            unparentWidget(child.backingInstance);
+            if (fresh !== true) unparentWidget(child.backingInstance);
             parent.backingInstance.setChild(child.backingInstance);
         }
     },
@@ -622,8 +624,8 @@ function* gtkChildren(container: Gtk.Widget): IterableIterator<Gtk.Widget> {
     }
 }
 
-const appendWidget = (container: Gtk.Widget, widget: Gtk.Widget): void => {
-    if (isAppendable(container) || isAddable(container)) {
+const appendWidget = (container: Gtk.Widget, widget: Gtk.Widget, fresh: boolean): void => {
+    if (!fresh && (isAppendable(container) || isAddable(container))) {
         if (isAutowrap(container, widget)) detachAutowrapped(widget);
         else unparentWidget(widget);
     }
@@ -729,12 +731,12 @@ const removeWidget = (container: Gtk.Widget, widget: Gtk.Widget): void => {
 
 const widgetContainerMapping: ElementMapping = {
     matches: (child, parent) => childWidget(child) !== null && parent.backingInstance instanceof Gtk.Widget,
-    attach: (child, parent, anchor) => {
+    attach: (child, parent, anchor, fresh) => {
         const container = parent.backingInstance;
         const widget = childWidget(child);
         if (!(container instanceof Gtk.Widget) || !widget) return;
         if (anchor instanceof Gtk.Widget) insertWidgetBefore(parent, container, widget, anchor);
-        else appendWidget(container, widget);
+        else appendWidget(container, widget, fresh === true);
     },
     detach: (child, parent) => {
         const container = parent.backingInstance;
@@ -776,9 +778,16 @@ const resolveMapping = (child: Instance, parent: Instance): ElementMapping | und
  * @param child - The child instance being attached.
  * @param parent - The parent instance it attaches to.
  * @param anchor - The next sibling's backing instance, or `null` to append.
+ * @param fresh - Whether the child has not been attached before, so its backing
+ *   widget is known unparented and the defensive unparent can be skipped.
  */
-export const attachToParent = (child: Instance, parent: Instance, anchor?: BackingInstance | null): void => {
-    resolveMapping(child, parent)?.attach(child, parent, anchor);
+export const attachToParent = (
+    child: Instance,
+    parent: Instance,
+    anchor?: BackingInstance | null,
+    fresh?: boolean,
+): void => {
+    resolveMapping(child, parent)?.attach(child, parent, anchor, fresh);
 };
 
 /**

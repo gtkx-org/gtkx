@@ -205,12 +205,24 @@ const resolvePendingProperty = (
     return fallback.has ? { name, oldValue, newValue: fallback.value } : undefined;
 };
 
+/**
+ * Classifies each changed prop into a pending GObject signal connection or a
+ * pending property write.
+ *
+ * On first mount (`oldProps === null`) the backing GObject was just constructed
+ * through `g_object_new_with_properties`, which already wrote every plain
+ * property in the bag. The generic property writes are therefore skipped on
+ * mount — re-reading or re-setting a value construction already applied is pure
+ * FFI traffic — while signal connections, which construction never makes, are
+ * still collected.
+ */
 const collectGenericChanges = (
     context: ApplyContext,
     exclude: ((name: string) => boolean) | undefined,
 ): { pendingSignals: PendingSignal[]; pendingProperties: PendingProperty[] } => {
     const { container, oldProps, newProps, table, arrayProps } = context;
     const names = new Set([...Object.keys(oldProps ?? {}), ...Object.keys(newProps)]);
+    const constructionApplied = oldProps === null;
     const pendingSignals: PendingSignal[] = [];
     const pendingProperties: PendingProperty[] = [];
 
@@ -227,6 +239,7 @@ const collectGenericChanges = (
             pendingSignals.push({ signalName, newValue });
             continue;
         }
+        if (constructionApplied) continue;
         const pending = resolvePendingProperty(container, name, oldValue, newValue);
         if (pending) pendingProperties.push(pending);
     }

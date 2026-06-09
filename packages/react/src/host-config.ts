@@ -129,9 +129,10 @@ const maybeScheduleBufferRebuild = (parent: Instance, child: Instance): void => 
 };
 
 const appendChild = (parent: Instance, child: Instance): void => {
+    const fresh = child.parent === null;
     link(parent, child);
-    if (isWrapperInstance(child)) attachToParent(child, parent);
-    else if (!isWrapperInstance(parent)) attachToParent(child, parent);
+    if (isWrapperInstance(child)) attachToParent(child, parent, null, fresh);
+    else if (!isWrapperInstance(parent)) attachToParent(child, parent, null, fresh);
     if (isWrapperInstance(parent)) resyncWrapper(parent);
     maybeScheduleBufferRebuild(parent, child);
 };
