@@ -16,8 +16,8 @@ const stem = (relativePath: string): string => relativePath.replace(/\.(tsx|ts)$
 
 /**
  * Assembles the self-contained injected `@gtkx/react-jsx` unit: the generated
- * `jsx`/`internal`/`compounds`/`presence` modules plus a `package.json` and the
- * unit's own `node_modules` symlinks to `@gtkx/gi` and `react`.
+ * `jsx`/`internal`/`compounds` modules plus a `package.json` and the unit's own
+ * `node_modules` symlinks to `@gtkx/gi` and `react`.
  *
  * @param options - Resolved store/link/dependency paths
  * @param files - React pipeline output keyed by source filename
@@ -42,7 +42,6 @@ export const writeJsxStore = (options: JsxStoreOptions, files: ReadonlyMap<strin
                 "./jsx": { types: "./jsx.d.ts", default: "./jsx.js" },
                 "./compounds": { types: "./compounds.d.ts", default: "./compounds.js" },
                 "./internal": { types: "./internal.d.ts", default: "./internal.js" },
-                "./presence": { types: "./presence.d.ts", default: "./presence.js" },
             },
         },
         symlinks: [

@@ -213,25 +213,22 @@ const [expanded, setExpanded] = useState(false);
 
 ## Exit Animations
 
-Use the `exit` prop on a keyed animation wrapper rendered directly under a GTKX component:
+Use the `exit` prop to animate when a component unmounts:
 
 ```tsx
-<GtkBox>
-    {notes.map((note) => (
-        <AdwTimedAnimation
-            key={note.id}
-            initial={{ opacity: 0, translateY: -10 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            exit={{ opacity: 0, translateX: -50 }}
-            duration={200}
-            animateOnMount
-        >
-            <GtkBox cssClasses={[noteCard]}>
-                <GtkLabel label={note.title} />
-            </GtkBox>
-        </AdwTimedAnimation>
-    ))}
-</GtkBox>
+const NoteCard = ({ note }: { note: Note }) => (
+    <AdwTimedAnimation
+        initial={{ opacity: 0, translateY: -10 }}
+        animate={{ opacity: 1, translateY: 0 }}
+        exit={{ opacity: 0, translateX: -50 }}
+        duration={200}
+        animateOnMount
+    >
+        <GtkBox cssClasses={[noteCard]}>
+            <GtkLabel label={note.title} />
+        </GtkBox>
+    </AdwTimedAnimation>
+);
 ```
 
 The widget stays mounted during the exit animation and is removed after it completes.

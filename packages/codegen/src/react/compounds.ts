@@ -32,9 +32,9 @@ const wrapperElementConst = (name: string): string =>
 
 /**
  * Generates `compounds.tsx` source: a statically-compiled React component per
- * GObject node, a top-level surface wrapper per window/dialog/application class
- * (presented on mount, destroyed on unmount), and one flat component per
- * metadata-child kind (`GtkStackPage`, …).
+ * widget with slot or container-slot props, a top-level surface wrapper per
+ * window/dialog/application class (presented on mount, destroyed on unmount),
+ * and one flat component per metadata-child kind (`GtkStackPage`, …).
  *
  * Each slot compound destructures its slot and container-slot props, forwards
  * the rest to the host intrinsic, and wraps each non-null slot value in a
@@ -49,11 +49,12 @@ const wrapperElementConst = (name: string): string =>
  * `@gtkx/react` form an import cycle, so a HOC binding is only guaranteed
  * resolved once every module has evaluated; reading it at render time rather
  * than at module load keeps the wrapper correct regardless of evaluation order.
- * The host is a non-exported `${Name}Base` compound for top-level classes. A
- * host intrinsic is referenced through a module-local `${Name}Element = "Name"`
- * const so the JSX tag does not collide with the exported component of the same
- * name. Every generated component renders ordinary children through the private
- * automatic presence boundary.
+ * The host is a non-exported `${Name}Base` slot-compound when the class has
+ * slots, or the bare intrinsic element const otherwise. A host intrinsic is
+ * referenced through a module-local `${Name}Element = "Name"` const so the JSX
+ * tag does not collide with the exported component of the same name; non
+ * top-level widgets with no slots remain bare string-constant intrinsics in
+ * `jsx.ts`.
  *
  * @param repository - The loaded GIR repository
  * @param widgetSlotMap - Merged widget-slot names keyed by JSX element name
@@ -73,20 +74,18 @@ export const generateCompounds = (
         hocImports: new Set<TopLevelHoc>(),
     };
 
-    const virtuals = allVirtualSubcomponents();
-    const virtualNames = new Set(virtuals.map((virtual) => virtual.flatName));
-
     for (const candidate of collectReactNodeClasses(repository)) {
         const { glibName, klass, namespace } = candidate;
-        if (virtualNames.has(glibName)) continue;
         const slots = resolveInheritedSlots(widgetSlotMap, klass, namespace, repository);
         const containers = containerSlotMap[glibName] ?? [];
         const hoc = topLevelHoc(klass, namespace, repository);
+        if (hoc === undefined && slots.length === 0 && containers.length === 0) continue;
+
         exportLines.push(renderCompound({ glibName, slots, containers, hoc }, accumulator));
         exportedNames.add(glibName);
     }
 
-    for (const virtual of virtuals) {
+    for (const virtual of allVirtualSubcomponents()) {
         recordWrapperElement(accumulator);
         accumulator.virtualPropTypes.add(virtual.propsType);
         exportLines.push(renderVirtualSubcomponent(virtual));
@@ -165,10 +164,13 @@ const renderTopLevelCompound = (shape: TopLevelCompoundShape): string => {
     const componentPropsType =
         hoc === "createApplication" ? `Omit<${propsType}, "menubar"> & { menubar?: ReactNode }` : propsType;
     const annotation = `(props: ${componentPropsType}) => ReactNode`;
+    const hasSlots = slots.length > 0 || containers.length > 0;
+    const host = hasSlots ? `${glibName}Base` : `${glibName}Element`;
     const memo = `${toCamelCase(glibName)}Instance`;
     const lines: string[] = [];
-    const host = `${glibName}Base`;
-    lines.push(`const ${host} = ${renderComponentFunction(glibName, propsType, slots, containers)};`, "");
+    if (hasSlots) {
+        lines.push(`const ${host} = ${renderComponentFunction(glibName, propsType, slots, containers)};`, "");
+    }
     lines.push(
         `let ${memo}: (${annotation}) | undefined;`,
         `export const ${glibName}: ${annotation} = (props) => (${memo} ??= ${hoc}<${componentPropsType}>(${host}))(props);`,
@@ -188,16 +190,13 @@ const renderComponentFunction = (
         ...slots.map((slot) => renderSlotChild("slot", "propName", slot)),
         ...containers.map((container) => renderSlotChild("container-slot", "method", container)),
     ];
-    const presenceChildren = [
-        "            <AutoAnimatePresence>{children}</AutoAnimatePresence>",
-        ...slotChildren.map((child) => `            ${child}`),
-    ];
     return [
         `(props: ${propsType}): ReactNode => {`,
         `    const { ${destructured}, ...rest } = props;`,
         "    return (",
         `        <${host} {...rest}>`,
-        ...presenceChildren,
+        "            {children}",
+        ...slotChildren.map((child) => `            ${child}`),
         `        </${host}>`,
         "    );",
         "}",
@@ -254,10 +253,7 @@ const renderElementConsts = (accumulator: CompoundAccumulator): string =>
         .join("\n");
 
 const renderImportLines = (accumulator: CompoundAccumulator): readonly string[] => {
-    const lines = [
-        'import type { ReactNode } from "react";',
-        'import { AutoAnimatePresence } from "@gtkx/react-jsx/presence";',
-    ];
+    const lines = ['import type { ReactNode } from "react";'];
     const hocImports = [...accumulator.hocImports].sort((a, b) => a.localeCompare(b));
     if (hocImports.length > 0) {
         lines.push(`import { ${hocImports.join(", ")} } from "@gtkx/react";`);

@@ -106,15 +106,18 @@ const useContribution = (
     }, deps);
 };
 
-const useDeferredContribution = (apply: (layout: Gtk.ConstraintLayout) => () => void, deps: readonly unknown[]): void => {
+const useDeferredContribution = (
+    apply: (layout: Gtk.ConstraintLayout) => () => void,
+    deps: readonly unknown[],
+): void => {
     const layoutRef = useConstraintLayoutRef();
     const cleanupRef = useRef<(() => void) | null>(null);
+    const onCommitCleanup: EffectHook = useLayoutEffect;
+    const onPassiveApply: EffectHook = useEffect;
 
-    useLayoutEffect(() => {
-        return () => cleanupContribution(cleanupRef);
-    }, deps);
+    onCommitCleanup(() => () => cleanupContribution(cleanupRef), deps);
 
-    useEffect(() => {
+    onPassiveApply(() => {
         const layout = layoutRef.current;
         if (!layout) return;
         const cleanup = apply(layout);
@@ -205,16 +208,19 @@ export const GtkConstraintLayout: ((props: GtkConstraintLayoutProps) => ReactNod
             return null;
         },
         Constraint: (props: ConstraintProps): ReactNode => {
-            useDeferredContribution((layout) => applyConstraint(layout, props), [
-                props.target,
-                props.targetAttribute,
-                props.relation,
-                props.source,
-                props.sourceAttribute,
-                props.multiplier,
-                props.constant,
-                props.strength,
-            ]);
+            useDeferredContribution(
+                (layout) => applyConstraint(layout, props),
+                [
+                    props.target,
+                    props.targetAttribute,
+                    props.relation,
+                    props.source,
+                    props.sourceAttribute,
+                    props.multiplier,
+                    props.constant,
+                    props.strength,
+                ],
+            );
             return null;
         },
         Vfl: (props: ConstraintVflProps): ReactNode => {

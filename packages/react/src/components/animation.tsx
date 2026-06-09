@@ -1,23 +1,19 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { PRESENCE_CHILD_MARKER, usePresence } from "@gtkx/react-jsx/presence";
 import { Children, cloneElement, type ReactElement, type ReactNode, type Ref, useLayoutEffect, useRef } from "react";
 import type { AdwSpringAnimationProps, AdwTimedAnimationProps } from "../jsx.js";
 import { useMergedRefs } from "../use-merged-refs.js";
+import { usePresence } from "./animate-presence.js";
 import { useWidgetAnimation, type WidgetAnimationProps } from "./use-widget-animation.js";
 
 type WidgetChild = ReactElement<{ ref?: Ref<Gtk.Widget | null> }>;
-type AnimationComponent<P> = ((props: P) => ReactNode) & { readonly [PRESENCE_CHILD_MARKER]: true };
-
-const markPresenceChild = <P,>(component: (props: P) => ReactNode): AnimationComponent<P> =>
-    Object.assign(component, { [PRESENCE_CHILD_MARKER]: true as const });
 
 /**
  * Renders a single widget child and drives a CSS-rendered animation on it.
  *
  * Clones the child with a merged ref so the animation hook reaches the backing
  * widget while the child still attaches to its grandparent through normal
- * reconciliation. When a generated parent marks it as exiting, it plays the
- * `exit` animation and reports completion to the boundary.
+ * reconciliation. When wrapped in an `<AnimatePresence>` and marked as exiting,
+ * it plays the `exit` animation and reports completion to the boundary.
  *
  * @param props - The discriminated animation configuration.
  * @returns The cloned child with the animation hook attached.
@@ -35,11 +31,7 @@ const WidgetAnimation = (props: WidgetAnimationProps): ReactNode => {
 
     const exitStartedRef = useRef(false);
     useLayoutEffect(() => {
-        if (isPresent) {
-            exitStartedRef.current = false;
-            return;
-        }
-        if (exitStartedRef.current) return;
+        if (isPresent || exitStartedRef.current) return;
         exitStartedRef.current = true;
         handle.startAnimation(exit ?? {}, () => onExitComplete?.());
     }, [isPresent, exit, handle, onExitComplete]);
@@ -51,8 +43,8 @@ const WidgetAnimation = (props: WidgetAnimationProps): ReactNode => {
  * Animates a single child widget over a fixed duration with `Adw.TimedAnimation`.
  *
  * Drives the child's CSS-rendered `opacity` and `transform` from `initial` to
- * `animate`, optionally on mount. Give it a stable `key` when rendering it as a
- * direct child of a GTKX component to run `exit` before the child is removed.
+ * `animate`, optionally on mount. Place inside an `<AnimatePresence>` and give
+ * it a stable `key` to run the `exit` animation before the child is removed.
  *
  * @example
  * ```tsx
@@ -69,16 +61,16 @@ const WidgetAnimation = (props: WidgetAnimationProps): ReactNode => {
  * @param props - {@link AdwTimedAnimationProps} plus the single widget child.
  * @returns The animated child widget.
  */
-export const AdwTimedAnimation = markPresenceChild(
-    (props: AdwTimedAnimationProps): ReactNode => <WidgetAnimation kind="timed" {...props} />,
+export const AdwTimedAnimation = (props: AdwTimedAnimationProps): ReactNode => (
+    <WidgetAnimation kind="timed" {...props} />
 );
 
 /**
  * Animates a single child widget with spring physics via `Adw.SpringAnimation`.
  *
  * Drives the child's CSS-rendered `opacity` and `transform` from `initial` to
- * `animate`, optionally on mount. Give it a stable `key` when rendering it as a
- * direct child of a GTKX component to run `exit` before the child is removed.
+ * `animate`, optionally on mount. Place inside an `<AnimatePresence>` and give
+ * it a stable `key` to run the `exit` animation before the child is removed.
  *
  * @example
  * ```tsx
@@ -96,6 +88,6 @@ export const AdwTimedAnimation = markPresenceChild(
  * @param props - {@link AdwSpringAnimationProps} plus the single widget child.
  * @returns The animated child widget.
  */
-export const AdwSpringAnimation = markPresenceChild(
-    (props: AdwSpringAnimationProps): ReactNode => <WidgetAnimation kind="spring" {...props} />,
+export const AdwSpringAnimation = (props: AdwSpringAnimationProps): ReactNode => (
+    <WidgetAnimation kind="spring" {...props} />
 );

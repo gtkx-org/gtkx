@@ -1,6 +1,6 @@
 import * as Adw from "@gtkx/gi/adw";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { AdwSpringAnimation, AdwTimedAnimation, GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
+import { AdwSpringAnimation, AdwTimedAnimation, AnimatePresence, GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import React, { createRef, type ReactElement } from "react";
 import { describe, expect, it, type Mock, vi } from "vitest";
@@ -135,17 +135,19 @@ describe("AdwTimedAnimation / AdwSpringAnimation (4)", () => {
             function TestComponent({ show }: { show: boolean }) {
                 return (
                     <GtkBox>
-                        {show && (
-                            <AdwTimedAnimation
-                                key="fading"
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                duration={100}
-                                onAnimationComplete={onComplete}
-                            >
-                                <GtkLabel label="Fading" />
-                            </AdwTimedAnimation>
-                        )}
+                        <AnimatePresence>
+                            {show && (
+                                <AdwTimedAnimation
+                                    key="fading"
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    duration={100}
+                                    onAnimationComplete={onComplete}
+                                >
+                                    <GtkLabel label="Fading" />
+                                </AdwTimedAnimation>
+                            )}
+                        </AnimatePresence>
                     </GtkBox>
                 );
             }

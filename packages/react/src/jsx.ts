@@ -1074,6 +1074,7 @@ declare module "@gtkx/react-jsx/jsx" {
 
 export * from "@gtkx/react-jsx/compounds";
 export * from "@gtkx/react-jsx/jsx";
+export { AnimatePresence } from "./components/animate-presence.js";
 export { AdwSpringAnimation, AdwTimedAnimation } from "./components/animation.js";
 export { createApplication, withApplicationWindow } from "./components/application.js";
 export { GtkConstraintLayout } from "./components/constraint-layout.js";

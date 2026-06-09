@@ -2,9 +2,7 @@ import type { GirRepository } from "../gir/repository.js";
 import { generateCompounds } from "./compounds.js";
 import { generateInternal } from "./internal.js";
 import { generateJsx } from "./jsx.js";
-import { generatePresence } from "./presence.js";
 import { mergeArrayProps, mergeContainerSlots, mergeWidgetSlots } from "./slots.js";
-import { collectReactNodeClasses } from "./widgets.js";
 
 /**
  * User-supplied slot overrides from `gtkx.config.ts`, keyed by JSX element
@@ -20,8 +18,8 @@ export type UserSlots = {
 };
 
 /**
- * Produces the React generated files plus a summary widget count for the runner
- * result.
+ * Produces the three React generated files (`jsx.ts`, `internal.ts`,
+ * `compounds.tsx`) plus a summary widget count for the runner result.
  *
  * @param repository - The loaded GIR repository
  * @param userSlots - Widget- and container-slot overrides from `gtkx.config.ts`
@@ -36,13 +34,11 @@ export const generateReactFiles = (
     const compounds = generateCompounds(repository, widgetSlotMap, containerSlotMap);
     const jsx = generateJsx(repository, compounds.exportedNames, { widgetSlotMap, containerSlotMap, arrayPropMap });
     const internal = generateInternal(repository);
-    const presence = generatePresence();
     const files = new Map<string, string>([
         ["jsx.ts", jsx],
         ["internal.ts", internal],
         ["compounds.tsx", compounds.source],
-        ["presence.tsx", presence],
     ]);
-    const widgetCount = collectReactNodeClasses(repository).length;
+    const widgetCount = jsx.split("\n").filter((line) => line.startsWith("export const ")).length;
     return { files, widgetCount };
 };
