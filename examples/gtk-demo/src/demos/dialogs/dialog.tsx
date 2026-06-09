@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import { AdwAlertDialog } from "@gtkx/jsx/adw";
+import { GtkBox, GtkButton, GtkEntry, GtkGrid, GtkGridChild, GtkLabel, GtkSeparator } from "@gtkx/jsx/gtk";
 import { createPortal } from "@gtkx/react";
-import { AdwAlertDialog } from "@gtkx/react-gi/adw";
-import { GtkBox, GtkButton, GtkEntry, GtkGrid, GtkGridChild, GtkLabel, GtkSeparator } from "@gtkx/react-gi/gtk";
 import { useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./dialog.tsx?raw";

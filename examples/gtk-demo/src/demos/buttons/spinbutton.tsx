@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import { GtkGrid, GtkGridChild, GtkLabel, GtkSpinButton } from "@gtkx/jsx/gtk";
 import { type AdjustmentConfig, useAdjustment } from "@gtkx/react";
-import { GtkGrid, GtkGridChild, GtkLabel, GtkSpinButton } from "@gtkx/react-gi/gtk";
 import { useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./spinbutton.tsx?raw";

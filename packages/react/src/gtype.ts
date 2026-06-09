@@ -1,4 +1,4 @@
-/// <reference path="./virtual-gtkx-config.d.ts" />
+/// <reference types="@gtkx/config/virtual" />
 
 import { CONSTRUCT_ONLY_PROPS, DEFAULT_PROPS, SIGNALS } from "virtual:gtkx-config";
 import type { GType } from "@gtkx/gi/gobject";

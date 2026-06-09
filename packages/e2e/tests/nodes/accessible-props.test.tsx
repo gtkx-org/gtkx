@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkButton, GtkEntry, GtkLabel, GtkSwitch } from "@gtkx/react-gi/gtk";
+import { GtkButton, GtkEntry, GtkLabel, GtkSwitch } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef, useState } from "react";
 import { describe, expect, it } from "vitest";

@@ -1,9 +1,10 @@
+import type { ArrayPropRow, ElementMapRule } from "@gtkx/config";
 import { generateNamespaceModule } from "./ffi/pipeline.js";
-import { computeFingerprint } from "./fingerprint.js";
+import { computeFingerprint, serializeUserTables } from "./fingerprint.js";
 import { type GiNamespaceInput, type GiStoreOptions, writeGiStore } from "./gi-store.js";
 import { loadGirRepository } from "./gir/repository.js";
-import { generateReactGiFiles } from "./react/pipeline.js";
-import { type ReactGiStoreOptions, writeReactGiStore } from "./react-gi-store.js";
+import { type JsxStoreOptions, writeJsxStore } from "./jsx-store.js";
+import { generateJsxFiles } from "./react/pipeline.js";
 
 /**
  * Options for {@link CodegenRunner}.
@@ -14,15 +15,17 @@ export type CodegenRunnerOptions = {
     /** Directories searched for `.gir` files. */
     readonly girPath: readonly string[];
     /** Optional user widget-slot overrides keyed by JSX element name (setter semantics). */
-    readonly widgetSlots?: Readonly<Record<string, readonly string[]>>;
+    readonly slots?: Readonly<Record<string, readonly string[]>>;
     /** Optional user container-slot overrides keyed by JSX element name (append semantics). */
     readonly containerSlots?: Readonly<Record<string, readonly string[]>>;
-    /** Optional user array-prop overrides keyed by JSX element name then prop name to item-type name. */
-    readonly arrayProps?: Readonly<Record<string, Readonly<Record<string, string>>>>;
+    /** Optional user array-prop rows keyed by JSX element name then prop name. */
+    readonly arrayProps?: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>>;
+    /** Optional user attach rules merged after the built-in element-map rows. */
+    readonly elementMap?: readonly ElementMapRule[];
     /** Target for the injected `@gtkx/gi` bindings package. */
     readonly gi: GiStoreOptions;
-    /** Target for the injected `@gtkx/react-gi` package; React is skipped when omitted. */
-    readonly reactGi?: ReactGiStoreOptions;
+    /** Target for the injected `@gtkx/jsx` package; React is skipped when omitted. */
+    readonly jsx?: JsxStoreOptions;
 };
 
 /**
@@ -42,7 +45,7 @@ export type CodegenRunnerResult = {
  *
  * Loads the GIR repository, runs the FFI pipeline per namespace, runs the
  * React pipeline once, and materializes the self-contained `@gtkx/gi` (and
- * optional `@gtkx/react-gi`) packages into the project's `node_modules`.
+ * optional `@gtkx/jsx`) packages into the project's `node_modules`.
  *
  * @example
  * ```ts
@@ -71,20 +74,27 @@ export class CodegenRunner {
             namespaces.push({ directory: namespace.name.toLowerCase(), rawSource: source });
         }
         const libraries = [...this.options.libraries];
+        const userTables = serializeUserTables({
+            slots: this.options.slots,
+            containerSlots: this.options.containerSlots,
+            arrayProps: this.options.arrayProps,
+            elementMap: this.options.elementMap,
+        });
         writeGiStore(this.options.gi, namespaces, {
-            value: computeFingerprint(repository.girFiles, libraries),
+            value: computeFingerprint(repository.girFiles, libraries, userTables),
             girFiles: repository.girFiles,
             libraries,
         });
 
         let widgetCount = 0;
-        if (this.options.reactGi !== undefined) {
-            const reactPipeline = generateReactGiFiles(repository, {
-                widgetSlots: this.options.widgetSlots,
+        if (this.options.jsx !== undefined) {
+            const reactPipeline = generateJsxFiles(repository, {
+                slots: this.options.slots,
                 containerSlots: this.options.containerSlots,
                 arrayProps: this.options.arrayProps,
+                elementMap: this.options.elementMap,
             });
-            writeReactGiStore(this.options.reactGi, reactPipeline.namespaces, reactPipeline.metadata);
+            writeJsxStore(this.options.jsx, reactPipeline.namespaces, reactPipeline.metadata);
             widgetCount = reactPipeline.widgetCount;
         }
 

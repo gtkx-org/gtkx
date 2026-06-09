@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton } from "@gtkx/react-gi/gtk";
+import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 import { type ReactNode, useState } from "react";
 import { describe, expect, it } from "vitest";
 import { render, screen, userEvent, waitFor, waitForElementToBeRemoved } from "../src/index.js";

@@ -1,7 +1,7 @@
 import type * as Gdk from "@gtkx/gi/gdk";
-import * as gl from "@gtkx/gi/gl";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
+import * as gl from "@gtkx/gl";
 import {
     GtkAspectFrame,
     GtkBox,
@@ -12,7 +12,7 @@ import {
     GtkGraphicsOffload,
     GtkScrolledWindow,
     GtkTextView,
-} from "@gtkx/react-gi/gtk";
+} from "@gtkx/jsx/gtk";
 import { type RefCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./shadertoy.tsx?raw";

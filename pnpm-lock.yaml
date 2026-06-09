@@ -79,6 +79,9 @@ importers:
       '@gtkx/ffi':
         specifier: workspace:*
         version: link:../../packages/ffi
+      '@gtkx/gl':
+        specifier: workspace:*
+        version: link:../../packages/gl
       '@gtkx/react':
         specifier: workspace:*
         version: link:../../packages/react
@@ -120,6 +123,9 @@ importers:
 
   examples/tutorial:
     dependencies:
+      '@gtkx/animate':
+        specifier: workspace:*
+        version: link:../../packages/animate
       '@gtkx/css':
         specifier: workspace:*
         version: link:../../packages/css
@@ -140,6 +146,15 @@ importers:
         specifier: 1.0.0-alpha.6
         version: 1.0.0-alpha.6
 
+  packages/animate:
+    dependencies:
+      '@gtkx/react':
+        specifier: workspace:*
+        version: link:../react
+      react:
+        specifier: ^19
+        version: 19.2.7
+
   packages/cli:
     dependencies:
       '@babel/core':
@@ -154,6 +169,9 @@ importers:
       '@gtkx/codegen':
         specifier: workspace:*
         version: link:../codegen
+      '@gtkx/config':
+        specifier: workspace:*
+        version: link:../config
       '@gtkx/ffi':
         specifier: workspace:*
         version: link:../ffi
@@ -175,18 +193,12 @@ importers:
       babel-plugin-react-compiler:
         specifier: ^1.0.0
         version: 1.0.0
-      c12:
-        specifier: ^3.3.4
-        version: 3.3.4(magicast@0.5.3)
       citty:
         specifier: ^0.2.2
         version: 0.2.2
       ejs:
         specifier: ^6.0.1
         version: 6.0.1
-      jiti:
-        specifier: ^2.7.0
-        version: 2.7.0
       nypm:
         specifier: ^0.6.6
         version: 0.6.6
@@ -224,6 +236,9 @@ importers:
 
   packages/codegen:
     dependencies:
+      '@gtkx/config':
+        specifier: workspace:*
+        version: link:../config
       '@gtkx/utils':
         specifier: workspace:*
         version: link:../utils
@@ -237,6 +252,12 @@ importers:
       '@types/node':
         specifier: ^25.9.2
         version: 25.9.2
+
+  packages/config:
+    dependencies:
+      c12:
+        specifier: ^3.3.4
+        version: 3.3.4(magicast@0.5.3)
 
   packages/css:
     dependencies:
@@ -262,6 +283,9 @@ importers:
       '@codspeed/vitest-plugin':
         specifier: ^5.5.0
         version: 5.5.0(tinybench@2.9.0)(vite@8.0.16(@types/node@25.9.2)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.8)
+      '@gtkx/animate':
+        specifier: workspace:*
+        version: link:../animate
       '@gtkx/ffi':
         specifier: workspace:*
         version: link:../ffi
@@ -286,6 +310,16 @@ importers:
       '@gtkx/utils':
         specifier: workspace:*
         version: link:../utils
+    devDependencies:
+      '@gtkx/vitest':
+        specifier: workspace:*
+        version: link:../vitest
+
+  packages/gl:
+    dependencies:
+      '@gtkx/ffi':
+        specifier: workspace:*
+        version: link:../ffi
     devDependencies:
       '@gtkx/vitest':
         specifier: workspace:*
@@ -325,6 +359,9 @@ importers:
 
   packages/react:
     dependencies:
+      '@gtkx/config':
+        specifier: workspace:*
+        version: link:../config
       '@gtkx/ffi':
         specifier: workspace:*
         version: link:../ffi
@@ -367,6 +404,10 @@ importers:
   packages/utils: {}
 
   packages/vitest:
+    dependencies:
+      '@gtkx/config':
+        specifier: workspace:*
+        version: link:../config
     devDependencies:
       vitest:
         specifier: ^4.1.8

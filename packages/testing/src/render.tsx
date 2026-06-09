@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
+import { GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { ApplicationContext, reconciler, setReconcilerErrorHandler } from "@gtkx/react";
-import { GtkApplicationWindow } from "@gtkx/react-gi/gtk";
 import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
 import { bindQueries } from "./bind-queries.js";
@@ -31,10 +31,19 @@ const handleError = (error: unknown): void => {
     lastRenderError = error instanceof Error ? error : new Error(String(error));
 };
 
+/**
+ * The harness application's fixed id. Deliberately distinct from the
+ * project's `applicationId`: the application component under test defaults to
+ * the configured id, and two same-id `Gtk.Application` instances in one
+ * process collide on the D-Bus object path GTK derives from the id (breaking
+ * menubar export, among others).
+ */
+const TESTING_APPLICATION_ID = "org.gtkx.testing";
+
 const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.FiberRoot } => {
     if (!application) {
         application = new Gtk.Application({
-            applicationId: "org.gtkx.testing",
+            applicationId: TESTING_APPLICATION_ID,
             flags: Gio.ApplicationFlags.NON_UNIQUE,
         });
         application.register(null);

@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import { AdwAboutDialog } from "@gtkx/jsx/adw";
 import { createPortal, useApplication, useProperty } from "@gtkx/react";
-import { AdwAboutDialog } from "@gtkx/react-gi/adw";
 
 export const About = ({ onClose }: { onClose: () => void }) => {
     const app = useApplication();

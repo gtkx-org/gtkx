@@ -3,8 +3,8 @@ import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { createPortal, GtkMenuButton, MenuItem, MenuSection, quit, useApplication, useProperty } from "@gtkx/react";
-import { AdwAboutDialog } from "@gtkx/react-gi/adw";
+import { AdwAboutDialog } from "@gtkx/jsx/adw";
+import { GMenu, GMenuItem, GSimpleAction } from "@gtkx/jsx/gio";
 import {
     GtkApplication,
     GtkApplicationWindow,
@@ -12,6 +12,7 @@ import {
     GtkButton,
     GtkHeaderBar,
     GtkLabel,
+    GtkMenuButton,
     GtkNotebook,
     GtkNotebookPage,
     GtkScrolledWindow,
@@ -19,7 +20,8 @@ import {
     GtkShortcutController,
     GtkToggleButton,
     GtkWindow,
-} from "@gtkx/react-gi/gtk";
+} from "@gtkx/jsx/gtk";
+import { createPortal, quit, useApplication, useProperty } from "@gtkx/react";
 import { useEffect, useRef, useState } from "react";
 import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";
@@ -145,18 +147,9 @@ interface AppHeaderBarProps {
     searchMode: boolean;
     onRun: () => void;
     onSearchToggle: (value: boolean) => void;
-    onKeyboardShortcuts: () => void;
-    onAbout: () => void;
 }
 
-const AppHeaderBar = ({
-    hasDemo,
-    searchMode,
-    onRun,
-    onSearchToggle,
-    onKeyboardShortcuts,
-    onAbout,
-}: AppHeaderBarProps) => (
+const AppHeaderBar = ({ hasDemo, searchMode, onRun, onSearchToggle }: AppHeaderBarProps) => (
     <GtkHeaderBar
         packStart={
             <>
@@ -183,23 +176,18 @@ const AppHeaderBar = ({
                 iconName="open-menu-symbolic"
                 valign={Gtk.Align.CENTER}
                 focusOnClick={false}
-            >
-                <MenuSection>
-                    <MenuItem
-                        id="inspector"
-                        label="_Inspector"
-                        onActivate={() => Gtk.Window.setInteractiveDebugging(true)}
-                        accels="<Control><Shift>i"
-                    />
-                    <MenuItem
-                        id="shortcuts"
-                        label="_Keyboard Shortcuts"
-                        onActivate={onKeyboardShortcuts}
-                        accels="<Control>question"
-                    />
-                    <MenuItem id="about" label="_About GTK Demo" onActivate={onAbout} />
-                </MenuSection>
-            </GtkMenuButton>
+                menuModel={
+                    <GMenu>
+                        <GMenuItem section>
+                            <GMenu>
+                                <GMenuItem label="_Inspector" action="win.inspector" />
+                                <GMenuItem label="_Keyboard Shortcuts" action="win.shortcuts" />
+                                <GMenuItem label="_About GTK Demo" action="win.about" />
+                            </GMenu>
+                        </GMenuItem>
+                    </GMenu>
+                }
+            />
         }
     />
 );
@@ -352,8 +340,6 @@ const MainWindow = () => {
             searchMode={searchMode}
             onRun={handleRun}
             onSearchToggle={setSearchMode}
-            onKeyboardShortcuts={handleKeyboardShortcuts}
-            onAbout={() => setShowAbout(true)}
         />
     );
 
@@ -365,6 +351,13 @@ const MainWindow = () => {
             titlebar={titlebar}
             onClose={quit}
         >
+            <GSimpleAction
+                name="inspector"
+                onActivate={() => Gtk.Window.setInteractiveDebugging(true)}
+                accels="<Control><Shift>i"
+            />
+            <GSimpleAction name="shortcuts" onActivate={handleKeyboardShortcuts} accels="<Control>question" />
+            <GSimpleAction name="about" onActivate={() => setShowAbout(true)} />
             <MainWindowBody
                 searchMode={searchMode}
                 notebookPage={notebookPage}
@@ -399,7 +392,7 @@ export const Demo = () => {
 };
 
 export const App = () => (
-    <GtkApplication applicationId={import.meta.env.GTKX_APPLICATION_ID} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+    <GtkApplication flags={Gio.ApplicationFlags.NON_UNIQUE}>
         <Demo />
     </GtkApplication>
 );

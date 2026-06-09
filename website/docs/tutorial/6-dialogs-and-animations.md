@@ -142,7 +142,8 @@ import { GtkGridView, GtkListView, GtkScrolledWindow } from "@gtkx/react";
 Wrap a widget with `AdwTimedAnimation` to animate its properties over a fixed duration:
 
 ```tsx
-import { AdwTimedAnimation, GtkBox } from "@gtkx/react";
+import { AdwTimedAnimation } from "@gtkx/animate";
+import { GtkBox } from "@gtkx/jsx/gtk";
 import * as Adw from "@gtkx/gi/adw";
 
 const NoteCard = ({ note }: { note: Note }) => (
@@ -182,7 +183,8 @@ Animation components work with regular widget children. They cannot be used insi
 `AdwSpringAnimation` uses physics simulation for natural-feeling motion:
 
 ```tsx
-import { AdwSpringAnimation, GtkButton } from "@gtkx/react";
+import { AdwSpringAnimation } from "@gtkx/animate";
+import { GtkButton } from "@gtkx/jsx/gtk";
 
 <AdwSpringAnimation
     initial={{ scale: 0.8 }}

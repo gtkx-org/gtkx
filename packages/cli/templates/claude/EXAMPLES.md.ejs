@@ -7,10 +7,10 @@
 ```tsx
 // src/index.tsx
 import { render, quit } from "@gtkx/react";
-import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/react-gi/gtk";
+import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
 
 const App = () => (
-    <GtkApplication applicationId="com.example.hello">
+    <GtkApplication>
         <GtkApplicationWindow title="Hello" defaultWidth={400} defaultHeight={300} onClose={quit}>
             <GtkLabel label="Hello, World!" />
         </GtkApplicationWindow>
@@ -20,15 +20,15 @@ const App = () => (
 render(<App />);
 ```
 
-The entry calls `render` directly (similar to `createRoot().render()` in `react-dom`). The `<GtkApplication>` component constructs, registers, and activates the GTK application. `gtkx dev` restarts the Node process on entry-level changes so the top-level call only runs once per process life.
+The entry calls `render` directly (similar to `createRoot().render()` in `react-dom`). The `<GtkApplication>` component constructs, registers, and activates the GTK application, defaulting its `applicationId` to the one declared in `gtkx.config.ts`. `gtkx dev` restarts the Node process on entry-level changes so the top-level call only runs once per process life.
 
 ### Modern Adwaita App
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
 import { quit } from "@gtkx/react";
-import { AdwApplication, AdwApplicationWindow, AdwHeaderBar, AdwToolbarView, AdwWindowTitle, AdwStatusPage } from "@gtkx/react-gi/adw";
-import { GtkButton } from "@gtkx/react-gi/gtk";
+import { AdwApplication, AdwApplicationWindow, AdwHeaderBar, AdwToolbarView, AdwWindowTitle, AdwStatusPage } from "@gtkx/jsx/adw";
+import { GtkButton } from "@gtkx/jsx/gtk";
 
 const MainWindow = () => (
     <AdwApplicationWindow title="My App" defaultWidth={800} defaultHeight={600} onClose={quit}>
@@ -50,7 +50,7 @@ const MainWindow = () => (
 );
 
 export const App = () => (
-    <AdwApplication applicationId="com.example.myapp">
+    <AdwApplication>
         <MainWindow />
     </AdwApplication>
 );
@@ -64,7 +64,7 @@ export const App = () => (
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkEntry, GtkGrid, GtkLabel } from "@gtkx/react-gi/gtk";
+import { GtkBox, GtkButton, GtkEntry, GtkGrid, GtkLabel } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 
 const LoginForm = () => {
@@ -101,7 +101,7 @@ const LoginForm = () => {
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkEntry, GtkLabel, GtkScrolledWindow } from "@gtkx/react-gi/gtk";
+import { GtkBox, GtkButton, GtkEntry, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { useCallback, useState } from "react";
 
 interface Todo {
@@ -156,7 +156,7 @@ const TodoList = () => {
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkListView } from "@gtkx/react";
-import { GtkBox, GtkLabel, GtkPaned, GtkScrolledWindow, GtkStack } from "@gtkx/react-gi/gtk";
+import { GtkBox, GtkLabel, GtkPaned, GtkScrolledWindow, GtkStack } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 
 interface Page {
@@ -206,7 +206,7 @@ const SidebarNav = () => {
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
 import { quit } from "@gtkx/react";
-import { GtkApplicationWindow, GtkBox, GtkButton, GtkHeaderBar, GtkLabel, GtkStack } from "@gtkx/react-gi/gtk";
+import { GtkApplicationWindow, GtkBox, GtkButton, GtkHeaderBar, GtkLabel, GtkStack } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 
 const AppWithNavigation = () => {
@@ -249,8 +249,8 @@ const AppWithNavigation = () => {
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwPreferencesPage, AdwPreferencesGroup, AdwActionRow, AdwSwitchRow, AdwExpanderRow, AdwEntryRow } from "@gtkx/react-gi/adw";
-import { GtkImage, GtkScrolledWindow } from "@gtkx/react-gi/gtk";
+import { AdwPreferencesPage, AdwPreferencesGroup, AdwActionRow, AdwSwitchRow, AdwExpanderRow, AdwEntryRow } from "@gtkx/jsx/adw";
+import { GtkImage, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 
 const SettingsPage = () => {
@@ -294,7 +294,7 @@ const SettingsPage = () => {
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnView } from "@gtkx/react";
-import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/react-gi/gtk";
+import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { useMemo, useState } from "react";
 
 interface FileItem {
@@ -354,7 +354,7 @@ const FileTable = () => {
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkMenuButton, GtkPopoverMenu, quit } from "@gtkx/react";
-import { GtkBox, GtkLabel } from "@gtkx/react-gi/gtk";
+import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 
 const MenuDemo = () => {
@@ -397,8 +397,8 @@ const MenuDemo = () => {
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkListView } from "@gtkx/react";
-import { AdwSpinner } from "@gtkx/react-gi/adw";
-import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/react-gi/gtk";
+import { AdwSpinner } from "@gtkx/jsx/adw";
+import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { useEffect, useState } from "react";
 
 interface User {
@@ -461,7 +461,7 @@ const AsyncList = () => {
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkLabel } from "@gtkx/react-gi/gtk";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import type { ReactNode } from "react";
 
 interface CardProps {
@@ -502,8 +502,8 @@ const CardDemo = () => (
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
 import { quit } from "@gtkx/react";
-import { AdwApplicationWindow, AdwHeaderBar, AdwNavigationView, AdwToolbarView } from "@gtkx/react-gi/adw";
-import { GtkBox, GtkButton, GtkLabel } from "@gtkx/react-gi/gtk";
+import { AdwApplicationWindow, AdwHeaderBar, AdwNavigationView, AdwToolbarView } from "@gtkx/jsx/adw";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 
 const NavigationDemo = () => {
@@ -541,8 +541,8 @@ const NavigationDemo = () => {
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
 import { quit } from "@gtkx/react";
-import { AdwActionRow, AdwApplicationWindow, AdwHeaderBar, AdwNavigationSplitView, AdwToolbarView } from "@gtkx/react-gi/adw";
-import { GtkBox, GtkImage, GtkLabel, GtkListBox, GtkScrolledWindow } from "@gtkx/react-gi/gtk";
+import { AdwActionRow, AdwApplicationWindow, AdwHeaderBar, AdwNavigationSplitView, AdwToolbarView } from "@gtkx/jsx/adw";
+import { GtkBox, GtkImage, GtkLabel, GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 
 interface Item {
@@ -603,7 +603,7 @@ const SplitViewDemo = () => {
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkListView } from "@gtkx/react";
-import { GtkBox, GtkImage, GtkLabel, GtkScrolledWindow } from "@gtkx/react-gi/gtk";
+import { GtkBox, GtkImage, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 
 interface FileNode {
@@ -661,7 +661,7 @@ const FileBrowser = () => {
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkLabel, GtkStack } from "@gtkx/react-gi/gtk";
+import { GtkBox, GtkButton, GtkLabel, GtkStack } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 
 const StackNavigation = () => {
@@ -693,7 +693,7 @@ const StackNavigation = () => {
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwSpringAnimation } from "@gtkx/react";
-import { GtkBox, GtkButton, GtkLabel } from "@gtkx/react-gi/gtk";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 
 const AnimatedCard = () => {

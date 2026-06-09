@@ -1,3 +1,4 @@
+import * as GLib from "@gtkx/gi/glib";
 import { act as reactAct } from "react";
 
 declare global {
@@ -69,12 +70,56 @@ const withGlobalActEnvironment =
         }
     };
 
+const rawAct = withGlobalActEnvironment(reactAct as ActImplementation);
+
+const idleRoundTrip = (): Promise<void> =>
+    new Promise((resolve) => {
+        GLib.idleAdd(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            resolve();
+            return false;
+        });
+    });
+
+const macrotask = (): Promise<void> =>
+    new Promise((resolve) => {
+        setImmediate(resolve);
+    });
+
+const SETTLE_ROUNDS = 2;
+
+/**
+ * Awaits a few GLib main-loop round-trips, draining the JS task queue after
+ * each, so deferred framework work settles before the caller proceeds.
+ *
+ * Each round schedules a `GLib.PRIORITY_DEFAULT_IDLE` source — which fires
+ * only after pending layout and redraw — and then yields a macrotask turn so
+ * callbacks the round delivered (list and column cell binds, portal
+ * refreshes) run to completion. {@link act} already settles before returning;
+ * reach for this directly only after GTK calls made outside any helper.
+ */
+export const settle = async (): Promise<void> => {
+    for (let round = 0; round < SETTLE_ROUNDS; round++) {
+        await idleRoundTrip();
+        await macrotask();
+    }
+};
+
+const settleAfter = async <T>(result: T | PromiseLike<T>): Promise<T> => {
+    const value = await result;
+    await settle();
+    return value;
+};
+
 /**
  * GTK-flavored mirror of `@testing-library/react`'s `act`.
  *
- * Sets `IS_REACT_ACT_ENVIRONMENT` for the duration of the call and runs the
- * callback inside React's `act` scope. Detects whether the callback returns a
- * thenable and only keeps the act environment open across awaits when it does.
+ * Sets `IS_REACT_ACT_ENVIRONMENT` for the duration of the call, runs the
+ * callback inside React's `act` scope, and {@link settle}s within that scope
+ * before returning, so GTK-driven follow-up work — virtualized cells binding,
+ * portals re-rendering — lands inside the call instead of escaping the test's
+ * act tracking. A synchronous throw from the callback propagates
+ * synchronously. Every async helper in this package routes its mutations
+ * through this wrapper.
  *
  * @example
  * ```tsx
@@ -86,4 +131,4 @@ const withGlobalActEnvironment =
  * });
  * ```
  */
-export const act = withGlobalActEnvironment(reactAct as ActImplementation);
+export const act = <T>(callback: ActCallback<T>): PromiseLike<T> => rawAct(() => settleAfter(callback()));

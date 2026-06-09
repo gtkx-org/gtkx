@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import * as Gtk from "@gtkx/gi/gtk";
+import { GtkBox, GtkButton, GtkHeaderBar, GtkImage, GtkLabel } from "@gtkx/jsx/gtk";
 import { GtkGridView } from "@gtkx/react";
-import { GtkBox, GtkButton, GtkHeaderBar, GtkImage, GtkLabel } from "@gtkx/react-gi/gtk";
 import { createContext, useContext, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-minesweeper.tsx?raw";

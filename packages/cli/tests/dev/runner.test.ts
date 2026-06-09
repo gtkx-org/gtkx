@@ -47,6 +47,7 @@ type Harness = {
 const buildHarness = (
     overrides: Partial<{
         applicationId: string | null;
+        configuredApplicationId: string;
         isBoundary: (mod: Record<string, unknown>) => boolean;
     }> = {},
 ): Harness => {
@@ -73,6 +74,7 @@ const buildHarness = (
         createServer,
         whenStopped,
         getApplicationId: () => applicationId,
+        getConfiguredApplicationId: async () => overrides.configuredApplicationId,
         startMcpClient: startMcp,
         stopMcpClient: stopMcp,
         performRefresh,
@@ -159,7 +161,28 @@ describe("createDevRunner (MCP lifecycle)", () => {
         expect(messages.some((m) => m.includes("HMR enabled"))).toBe(true);
     });
 
+    it("registers under the configured applicationId when gtkx.config.ts declares one", async () => {
+        const harness = buildHarness({
+            applicationId: "com.example.override",
+            configuredApplicationId: "com.example.app",
+        });
+
+        await startRunner(harness);
+
+        expect(harness.startMcp).toHaveBeenCalledWith("com.example.app");
+        const messages = harness.log.mock.calls.map((c: unknown[]) => String(c[0]));
+        expect(messages.some((m) => m.includes("Connected application id: com.example.app"))).toBe(true);
+    });
+
     it("skips MCP startup when no Gio.Application is registered", async () => {
+        const harness = buildHarness({ applicationId: null, configuredApplicationId: "com.example.app" });
+
+        await startRunner(harness);
+
+        expect(harness.startMcp).not.toHaveBeenCalled();
+    });
+
+    it("skips MCP startup when no Gio.Application is registered and no config id is declared", async () => {
         const harness = buildHarness({ applicationId: null });
 
         await startRunner(harness);

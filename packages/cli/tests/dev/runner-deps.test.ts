@@ -1,4 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const hoisted = vi.hoisted(() => ({
     getDefault: vi.fn(() => null as { applicationId: string | null } | null),
@@ -87,6 +90,31 @@ describe("defaultDevRunnerDeps (getApplicationId)", () => {
         hoisted.getDefault.mockReturnValueOnce({ applicationId: null });
 
         expect(deps.getApplicationId()).toBeNull();
+    });
+});
+
+describe("defaultDevRunnerDeps (getConfiguredApplicationId)", () => {
+    let root: string;
+
+    beforeEach(() => {
+        root = mkdtempSync(join(tmpdir(), "gtkx-runner-config-"));
+    });
+
+    afterEach(() => {
+        rmSync(root, { recursive: true, force: true });
+    });
+
+    it("resolves the applicationId declared in gtkx.config.ts", async () => {
+        writeFileSync(join(root, "gtkx.config.ts"), 'export default { applicationId: "com.example.app" };\n');
+        const deps = defaultDevRunnerDeps();
+
+        await expect(deps.getConfiguredApplicationId(root)).resolves.toBe("com.example.app");
+    });
+
+    it("resolves undefined when no config file exists", async () => {
+        const deps = defaultDevRunnerDeps();
+
+        await expect(deps.getConfiguredApplicationId(root)).resolves.toBeUndefined();
     });
 });
 

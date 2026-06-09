@@ -1,5 +1,5 @@
+import { GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { ApplicationContext, useApplication } from "@gtkx/react";
-import { GtkApplicationWindow } from "@gtkx/react-gi/gtk";
 import { render } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 

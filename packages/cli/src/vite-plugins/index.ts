@@ -1,3 +1,4 @@
+import { createGtkxConfigLoader } from "@gtkx/config";
 import type { Plugin } from "vite";
 import { gtkxAssets } from "./assets.js";
 import { gtkxConfig } from "./config.js";
@@ -16,15 +17,20 @@ import { gtkxReactCompiler } from "./react-compiler.js";
  * spreads this set verbatim. The React Compiler runs first among the
  * JS-transforming plugins (`enforce: "pre"`), so each pipeline's own
  * JSX/TypeScript transform lowers its output afterward. `gtkxConfig`,
- * `gtkxResources`, and `gtkxReactCompiler` self-load their settings from
- * `gtkx.config.ts`, so no caller threads build-time configuration through.
+ * `gtkxResources`, and `gtkxReactCompiler` read their settings from
+ * `gtkx.config.ts` through one shared memoizing loader, so the pipeline
+ * loads the config file once and no caller threads build-time configuration
+ * through.
  *
  * @returns The ordered list of core GTKX plugins.
  */
-export const gtkxVitePlugins = (): Plugin[] => [
-    gtkxConfig(),
-    gtkxGSettings(),
-    gtkxResources(),
-    gtkxAssets(),
-    gtkxReactCompiler(),
-];
+export const gtkxVitePlugins = (): Plugin[] => {
+    const loadConfig = createGtkxConfigLoader();
+    return [
+        gtkxConfig(loadConfig),
+        gtkxGSettings(),
+        gtkxResources(loadConfig),
+        gtkxAssets(),
+        gtkxReactCompiler(loadConfig),
+    ];
+};

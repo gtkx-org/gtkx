@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { quit } from "@gtkx/react";
-import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/react-gi/gtk";
+import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 
 const MainWindow = () => {
@@ -31,7 +31,7 @@ const MainWindow = () => {
 };
 
 export const App = () => (
-    <GtkApplication applicationId={import.meta.env.GTKX_APPLICATION_ID}>
+    <GtkApplication>
         <MainWindow />
     </GtkApplication>
 );

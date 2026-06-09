@@ -4,7 +4,7 @@ import { transpileSource } from "./transpile.js";
 
 /**
  * Filesystem primitives shared by the injected-package assemblers
- * ({@link ../gi-store.js}, {@link ../react-gi-store.js}).
+ * ({@link ../gi-store.js}, {@link ../jsx-store.js}).
  */
 
 /**
@@ -42,15 +42,12 @@ export type StoreSymlink = {
  * Assembles a store in a fresh temp directory and atomically swaps it into
  * place: writes every file pair, the `package.json`, the bundled
  * `node_modules` symlinks, then promotes the temp tree and re-points the
- * visible alias. An optional {@link WriteStoreParams.validate} runs against the
- * temp root before any file is written, so a failure aborts before the store
- * goes live.
+ * visible alias.
  *
  * @param params - {@link WriteStoreParams}
  */
 export const writeStore = (params: WriteStoreParams): void => {
     const tmp = tempStoreFor(params.storeDir);
-    params.validate?.(tmp);
     for (const file of params.files) {
         writeFilePair(tmp, file.stem, file.fileName, file.source);
     }
@@ -78,8 +75,6 @@ export type WriteStoreParams = {
     readonly symlinks: readonly StoreSymlink[];
     /** Verbatim files (e.g. a fingerprint sentinel) written under the store root. */
     readonly rawFiles?: readonly { readonly relativePath: string; readonly content: string }[];
-    /** Optional in-memory validation run on the temp root before files are written. */
-    readonly validate?: (tmp: string) => void;
 };
 
 /**

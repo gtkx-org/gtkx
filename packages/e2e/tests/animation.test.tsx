@@ -1,7 +1,7 @@
+import { AdwSpringAnimation, AdwTimedAnimation, AnimatePresence } from "@gtkx/animate";
 import * as Adw from "@gtkx/gi/adw";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { AdwSpringAnimation, AdwTimedAnimation, AnimatePresence } from "@gtkx/react";
-import { GtkBox, GtkButton, GtkLabel } from "@gtkx/react-gi/gtk";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import React, { createRef, type ReactElement } from "react";
 import { describe, expect, it, type Mock, vi } from "vitest";

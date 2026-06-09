@@ -1,16 +1,6 @@
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
-    GtkGridView,
-    GtkListView,
-    GtkMenuButton,
-    MenuItem,
-    MenuSection,
-    quit,
-    useApplication,
-    useSetting,
-} from "@gtkx/react";
-import {
     AdwApplication,
     AdwApplicationWindow,
     AdwHeaderBar,
@@ -18,18 +8,22 @@ import {
     AdwNavigationSplitView,
     AdwStatusPage,
     AdwToastOverlay,
+    AdwToggle,
     AdwToggleGroup,
     AdwToolbarView,
-} from "@gtkx/react-gi/adw";
+} from "@gtkx/jsx/adw";
+import { GMenu, GMenuItem, GSimpleAction } from "@gtkx/jsx/gio";
 import {
     GtkBox,
     GtkButton,
+    GtkMenuButton,
     GtkScrolledWindow,
     GtkSearchBar,
     GtkSearchEntry,
     GtkShortcut,
     GtkShortcutController,
-} from "@gtkx/react-gi/gtk";
+} from "@gtkx/jsx/gtk";
+import { GtkGridView, GtkListView, quit, useApplication, useSetting } from "@gtkx/react";
 import { useRef, useState } from "react";
 import schemaId from "../com.gtkx.tutorial.gschema.xml";
 import { About } from "./components/about.js";
@@ -207,52 +201,34 @@ const showShortcutsDialog = (window: Gtk.Window): void => {
     dialog.present(window);
 };
 
-const MainMenu = ({
-    onAddNote,
-    onPreferences,
-    onAbout,
-}: {
-    onAddNote: () => void;
-    onPreferences: () => void;
-    onAbout: () => void;
-}) => {
-    const app = useApplication();
-
-    const onShortcuts = () => {
-        const window = app.getActiveWindow();
-        if (window) {
-            showShortcutsDialog(window);
+const MainMenu = () => (
+    <GtkMenuButton
+        iconName="open-menu-symbolic"
+        tooltipText="Main Menu"
+        menuModel={
+            <GMenu>
+                <GMenuItem label="New Note" action="win.new" />
+                <GMenuItem section>
+                    <GMenu>
+                        <GMenuItem label="Preferences" action="win.preferences" />
+                        <GMenuItem label="Keyboard Shortcuts" action="win.shortcuts" />
+                    </GMenu>
+                </GMenuItem>
+                <GMenuItem section>
+                    <GMenu>
+                        <GMenuItem label="About Notes" action="win.about" />
+                    </GMenu>
+                </GMenuItem>
+            </GMenu>
         }
-    };
-
-    return (
-        <GtkMenuButton iconName="open-menu-symbolic" tooltipText="Main Menu">
-            <MenuItem id="new" label="New Note" onActivate={onAddNote} accels="<Control>n" />
-            <MenuSection>
-                <MenuItem id="preferences" label="Preferences" onActivate={onPreferences} accels="<Control>comma" />
-                <MenuItem
-                    id="shortcuts"
-                    label="Keyboard Shortcuts"
-                    onActivate={onShortcuts}
-                    accels="<Control>question"
-                />
-            </MenuSection>
-            <MenuSection>
-                <MenuItem id="about" label="About Notes" onActivate={onAbout} />
-            </MenuSection>
-        </GtkMenuButton>
-    );
-};
+    />
+);
 
 const ViewModeToggle = ({ viewMode, onChange }: { viewMode: string; onChange: (name: string) => void }) => (
-    <AdwToggleGroup
-        activeName={viewMode}
-        onNotifyActiveName={(name) => onChange(name ?? "list")}
-        toggles={[
-            { id: "list", iconName: "view-list-symbolic", tooltip: "List View" },
-            { id: "grid", iconName: "view-grid-symbolic", tooltip: "Grid View" },
-        ]}
-    />
+    <AdwToggleGroup activeName={viewMode} onNotifyActiveName={(name) => onChange(name ?? "list")}>
+        <AdwToggle name="list" iconName="view-list-symbolic" tooltip="List View" />
+        <AdwToggle name="grid" iconName="view-grid-symbolic" tooltip="Grid View" />
+    </AdwToggleGroup>
 );
 
 interface ContentPageProps {
@@ -269,11 +245,8 @@ interface ContentPageProps {
     filteredNotes: Note[];
     compactMode: boolean | undefined;
     fontSize: number | undefined;
-    addNote: () => void;
     updateNote: (id: string, fields: Partial<Pick<Note, "title" | "body">>) => void;
     deleteSelected: () => void;
-    onPreferences: () => void;
-    onAbout: () => void;
     toastOverlayRef: React.RefObject<Adw.ToastOverlay | null>;
 }
 
@@ -286,9 +259,6 @@ const ContentHeaderBar = ({
     searchMode,
     setSearchMode,
     deleteSelected,
-    addNote,
-    onPreferences,
-    onAbout,
 }: Pick<
     ContentPageProps,
     | "selectedNote"
@@ -299,9 +269,6 @@ const ContentHeaderBar = ({
     | "searchMode"
     | "setSearchMode"
     | "deleteSelected"
-    | "addNote"
-    | "onPreferences"
-    | "onAbout"
 >) => (
     <AdwHeaderBar
         titleWidget={selectedNote ? undefined : <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />}
@@ -328,7 +295,7 @@ const ContentHeaderBar = ({
                 />
             </>
         }
-        packEnd={<MainMenu onAddNote={addNote} onPreferences={onPreferences} onAbout={onAbout} />}
+        packEnd={<MainMenu />}
     />
 );
 
@@ -569,7 +536,6 @@ const useDialogState = () => {
 interface AppBodyProps {
     notes: ReturnType<typeof useNotesState>;
     view: AppViewState;
-    dialogs: ReturnType<typeof useDialogState>;
     filteredNotes: Note[];
     compactMode: boolean | undefined;
     fontSize: number | undefined;
@@ -580,7 +546,6 @@ interface AppBodyProps {
 const AppBody = ({
     notes,
     view,
-    dialogs,
     filteredNotes,
     compactMode,
     fontSize,
@@ -616,11 +581,8 @@ const AppBody = ({
                 filteredNotes={filteredNotes}
                 compactMode={compactMode}
                 fontSize={fontSize}
-                addNote={notes.addNote}
                 updateNote={notes.updateNote}
                 deleteSelected={deleteSelected}
-                onPreferences={() => dialogs.setShowPreferences(true)}
-                onAbout={() => dialogs.setShowAbout(true)}
                 toastOverlayRef={toastOverlayRef}
             />
         }
@@ -644,9 +606,22 @@ function NotesWindow() {
     const deleteSelected = () => {
         if (notes.selectedNote) notes.setNoteToDelete(notes.selectedNote);
     };
+    const app = useApplication();
+    const onShortcuts = () => {
+        const window = app.getActiveWindow();
+        if (window) showShortcutsDialog(window);
+    };
 
     return (
         <AdwApplicationWindow title="Notes" defaultWidth={900} defaultHeight={600} onClose={quit}>
+            <GSimpleAction name="new" onActivate={notes.addNote} accels="<Control>n" />
+            <GSimpleAction
+                name="preferences"
+                onActivate={() => dialogs.setShowPreferences(true)}
+                accels="<Control>comma"
+            />
+            <GSimpleAction name="shortcuts" onActivate={onShortcuts} accels="<Control>question" />
+            <GSimpleAction name="about" onActivate={() => dialogs.setShowAbout(true)} />
             <AppShortcuts
                 selectedId={notes.selectedId}
                 addNote={notes.addNote}
@@ -657,7 +632,6 @@ function NotesWindow() {
             <AppBody
                 notes={notes}
                 view={view}
-                dialogs={dialogs}
                 filteredNotes={filteredNotes}
                 compactMode={compactMode}
                 fontSize={fontSize}
@@ -679,7 +653,7 @@ function NotesWindow() {
 
 export function App() {
     return (
-        <AdwApplication applicationId="com.gtkx.tutorial">
+        <AdwApplication>
             <NotesWindow />
         </AdwApplication>
     );

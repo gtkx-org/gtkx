@@ -1,7 +1,6 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkDropDown } from "@gtkx/react";
 import {
     GtkBox,
     GtkButton,
@@ -21,7 +20,8 @@ import {
     GtkShortcutController,
     GtkSwitch,
     GtkToggleButton,
-} from "@gtkx/react-gi/gtk";
+} from "@gtkx/jsx/gtk";
+import { GtkDropDown } from "@gtkx/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { isEditable } from "../src/editable.js";

@@ -89,8 +89,10 @@
         },
         {
             "includes": [
-                "packages/codegen/overlay/**",
+                "packages/codegen/src/templates/**",
+                "packages/ffi/src/cairo.ts",
                 "packages/ffi/src/gtype.ts",
+                "packages/ffi/src/listeners.ts",
                 "packages/ffi/src/value-marshal.ts",
                 "packages/ffi/src/signals.ts",
                 "packages/ffi/src/gobject/**",

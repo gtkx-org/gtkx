@@ -1,4 +1,4 @@
-import { GtkApplicationWindow } from "@gtkx/react-gi/gtk";
+import { GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { useRef } from "react";
 import { render } from "./render.js";
 import type { RenderHookOptions, RenderHookResult, WrapperComponent } from "./types.js";

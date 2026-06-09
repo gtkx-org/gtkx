@@ -14,7 +14,6 @@ import type * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import * as PangoCairo from "@gtkx/gi/pangocairo";
-import { GtkDrawingArea, GtkDropDown } from "@gtkx/react";
 import {
     GtkBox,
     GtkButton,
@@ -30,7 +29,8 @@ import {
     GtkShortcut,
     GtkShortcutController,
     GtkToggleButton,
-} from "@gtkx/react-gi/gtk";
+} from "@gtkx/jsx/gtk";
+import { GtkDrawingArea, GtkDropDown } from "@gtkx/react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./fontrendering.tsx?raw";

@@ -1,3 +1,4 @@
+import type { AddMethodRule, ArrayPropRow, ElementMapRule, PageMetaSetter, PropRule } from "@gtkx/config";
 import { quote, toCamelCase, toIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirEnum } from "../gir/enum.js";
@@ -10,8 +11,66 @@ import { implementedInterfaces, isReactNodeClass, iterateClassesWithGlibName, si
 type QualifiedSource = { readonly klass: GirClass; readonly namespaceName: string };
 
 /**
+ * The reconciler's data tables baked into the generated metadata module: the
+ * built-ins merged with the project's `gtkx.config.ts` rows, in the row
+ * shapes declared by `@gtkx/config`.
+ */
+export type RuntimeTables = {
+    /** Merged attach relationships, built-ins first. */
+    readonly elementMap: readonly ElementMapRule[];
+    /** Merged array-prop rows keyed by GLib type name, then prop name. */
+    readonly arrayProps: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>>;
+    /** Imperative and signal prop rules keyed by GLib type name. */
+    readonly propRules: Readonly<Record<string, readonly PropRule[]>>;
+    /** GLib type names of top-level surfaces. */
+    readonly topLevelTypes: readonly string[];
+    /** Page-add method priority rows for stack-like parents. */
+    readonly metaObjectAddMethods: Readonly<Record<string, readonly AddMethodRule[]>>;
+    /** Page-metadata setters applied to stack page handles. */
+    readonly pageMetaSetters: readonly PageMetaSetter[];
+    /** Merged widget-slot names keyed by JSX element name. */
+    readonly slots: Readonly<Record<string, readonly string[]>>;
+    /** Merged container-slot method names keyed by JSX element name. */
+    readonly containerSlots: Readonly<Record<string, readonly string[]>>;
+};
+
+const CONFIG_TYPES = "@gtkx/config";
+
+const renderTableConst = (name: string, annotation: string, value: unknown): string =>
+    `export const ${name}: ${annotation} = ${JSON.stringify(value, null, 4)};`;
+
+const renderRuntimeTables = (tables: RuntimeTables): readonly string[] => [
+    renderTableConst("ELEMENT_MAP", `ReadonlyArray<import("${CONFIG_TYPES}").ElementMapRule>`, tables.elementMap),
+    renderTableConst(
+        "ARRAY_PROPS",
+        `Readonly<Record<string, Readonly<Record<string, import("${CONFIG_TYPES}").ArrayPropRow>>>>`,
+        tables.arrayProps,
+    ),
+    renderTableConst(
+        "PROP_RULES",
+        `Readonly<Record<string, ReadonlyArray<import("${CONFIG_TYPES}").PropRule>>>`,
+        tables.propRules,
+    ),
+    renderTableConst("TOP_LEVEL_TYPES", "readonly string[]", tables.topLevelTypes),
+    renderTableConst(
+        "META_OBJECT_ADD_METHODS",
+        `Readonly<Record<string, ReadonlyArray<import("${CONFIG_TYPES}").AddMethodRule>>>`,
+        tables.metaObjectAddMethods,
+    ),
+    renderTableConst(
+        "PAGE_META_SETTERS",
+        `ReadonlyArray<import("${CONFIG_TYPES}").PageMetaSetter>`,
+        tables.pageMetaSetters,
+    ),
+    renderTableConst("SLOTS", "Readonly<Record<string, readonly string[]>>", tables.slots),
+    renderTableConst("CONTAINER_SLOTS", "Readonly<Record<string, readonly string[]>>", tables.containerSlots),
+];
+
+/**
  * Generates `metadata.ts` source — the merged `SIGNALS`, `CONSTRUCT_ONLY_PROPS`,
- * and `DEFAULT_PROPS` tables consumed by the React metadata resolver.
+ * and `DEFAULT_PROPS` tables consumed by the React metadata resolver, plus the
+ * reconciler's {@link RuntimeTables} (built-ins merged with the project's
+ * config rows).
  *
  * The tables are pure data keyed by GLib type name and carry no value imports
  * from any namespace, so the module loads no GObject library: it is delivered to
@@ -22,8 +81,9 @@ type QualifiedSource = { readonly klass: GirClass; readonly namespaceName: strin
  * prop to its default.
  *
  * @param repository - The loaded GIR repository
+ * @param tables - The merged reconciler tables to bake in
  */
-export const generateMetadata = (repository: GirRepository): string => {
+export const generateMetadata = (repository: GirRepository, tables: RuntimeTables): string => {
     const widgets = collectWidgets(repository);
     const signalsEntries = widgets.map(
         ({ glibName, signals }) => `    "${glibName}": ${renderSignalsObject(signals)},`,
@@ -39,6 +99,7 @@ export const generateMetadata = (repository: GirRepository): string => {
         `export const SIGNALS: Readonly<Record<string, Readonly<Record<string, string>>>> = {\n${signalsEntries.join("\n")}\n};`,
         `export const CONSTRUCT_ONLY_PROPS: Readonly<Record<string, ReadonlySet<string>>> = {\n${constructOnlyEntries.join("\n")}\n};`,
         `export const DEFAULT_PROPS: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {\n${defaultsEntries.join("\n")}\n};`,
+        ...renderRuntimeTables(tables),
     ].join("\n\n")}\n`;
 };
 

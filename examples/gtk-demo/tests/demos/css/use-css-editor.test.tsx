@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkScrolledWindow, GtkTextView } from "@gtkx/react-gi/gtk";
+import { GtkScrolledWindow, GtkTextView } from "@gtkx/jsx/gtk";
 import { act, render } from "@gtkx/testing";
 import { useEffect } from "react";
 import { describe, expect, it } from "vitest";

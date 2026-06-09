@@ -5,7 +5,6 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { useAdjustment } from "@gtkx/react";
 import {
     GtkBox,
     GtkButton,
@@ -22,7 +21,8 @@ import {
     GtkScale,
     GtkScrolledWindow,
     GtkSeparator,
-} from "@gtkx/react-gi/gtk";
+} from "@gtkx/jsx/gtk";
+import { useAdjustment } from "@gtkx/react";
 import { useEffect, useRef, useState } from "react";
 import { useContextMenuGesture } from "../../use-context-menu-gesture.js";
 import { useImperativeDragVisibility } from "../../use-imperative-drag-visibility.js";

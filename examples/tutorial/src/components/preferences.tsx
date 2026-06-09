@@ -1,11 +1,5 @@
+import { AdwPreferencesGroup, AdwPreferencesPage, AdwPreferencesWindow, AdwSpinRow, AdwSwitchRow } from "@gtkx/jsx/adw";
 import { createPortal, useAdjustment, useApplication, useProperty, useSetting } from "@gtkx/react";
-import {
-    AdwPreferencesGroup,
-    AdwPreferencesPage,
-    AdwPreferencesWindow,
-    AdwSpinRow,
-    AdwSwitchRow,
-} from "@gtkx/react-gi/adw";
 import schemaId from "../../com.gtkx.tutorial.gschema.xml";
 
 export const Preferences = ({ onClose }: { onClose: () => void }) => {

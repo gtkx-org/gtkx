@@ -1,4 +1,4 @@
-import { GtkScrolledWindow } from "@gtkx/react-gi/gtk";
+import { GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import type { ReactNode } from "react";
 
 /** Props for {@link ScrollWrapper}. */

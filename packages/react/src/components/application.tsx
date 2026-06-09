@@ -1,6 +1,6 @@
-/// <reference path="../virtual-gtkx-config.d.ts" />
+/// <reference types="@gtkx/config/virtual" />
 
-import { applicationId as configApplicationId } from "virtual:gtkx-config";
+import { config } from "virtual:gtkx-config";
 import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import {
@@ -14,15 +14,15 @@ import {
     useLayoutEffect,
     useState,
 } from "react";
-import type { MenuProps } from "../jsx.js";
 import { ApplicationContext, useApplication } from "../render.js";
 import { assignRef } from "../use-merged-refs.js";
+import { ActionScopeContext, APPLICATION_ACTION_SCOPE, WINDOW_ACTION_SCOPE } from "./internal/action-scope-context.js";
 import { withTopLevel } from "./top-level.js";
 
 /**
  * The concrete application instance type a props shape captures through its
  * `ref`, defaulting to `Gtk.Application` when the props expose no application
- * ref. Lets {@link createApplication} forward the caller's ref without widening
+ * ref. Lets {@link withApplication} forward the caller's ref without widening
  * an `Adw.Application` ref to `Gtk.Application`.
  *
  * @typeParam P - The application component prop shape.
@@ -92,17 +92,23 @@ const useApplicationMenubar = (app: Gtk.Application | null, menu: Gio.Menu | nul
 
 /**
  * Wraps children in the application context once the application is available,
- * so descendants observe a non-null context from {@link useApplication}.
+ * so descendants observe a non-null context from {@link useApplication}, and
+ * in the `"app"` action scope, so `<GSimpleAction>` children bind their
+ * accelerators under `app.<name>`.
  *
  * @param app - The activated application, or `null` before mount.
  * @param children - The application's child tree.
  */
 const ApplicationChildren = ({ app, children }: { app: Gtk.Application | null; children: ReactNode }): ReactNode =>
-    app && <ApplicationContext.Provider value={app}>{children}</ApplicationContext.Provider>;
+    app && (
+        <ApplicationContext.Provider value={app}>
+            <ActionScopeContext.Provider value={APPLICATION_ACTION_SCOPE}>{children}</ActionScopeContext.Provider>
+        </ApplicationContext.Provider>
+    );
 
 /**
- * The minimum prop shape {@link createApplication} requires: a child tree, an
- * optional `<Menu>` for the menubar slot, and an optional caller ref to the
+ * The minimum prop shape {@link withApplication} requires: a child tree, an
+ * optional `<GMenu>` for the menubar slot, and an optional caller ref to the
  * backing application.
  *
  * @typeParam T - The concrete application type captured through `ref`.
@@ -110,7 +116,7 @@ const ApplicationChildren = ({ app, children }: { app: Gtk.Application | null; c
 type ApplicationComponentProps<T extends Gtk.Application> = {
     /** The application's window tree. */
     children?: ReactNode;
-    /** A `<Menu>` whose built `Gio.Menu` is installed as the application menubar. */
+    /** A `<GMenu>` whose `Gio.Menu` is installed as the application menubar. */
     menubar?: ReactNode;
     /** Caller ref forwarded to the backing application. */
     ref?: Ref<T | null>;
@@ -120,15 +126,15 @@ type ApplicationComponentProps<T extends Gtk.Application> = {
  * Builds an application component for an application host element. The component
  * constructs the backing application from `applicationId`/`flags`, registers and
  * activates it, provides it to descendants through {@link ApplicationContext},
- * and installs a `<Menu>` passed to `menubar` once the application has
+ * and installs a `<GMenu>` passed to `menubar` once the application has
  * registered.
  *
  * @typeParam P - The component prop shape; its `ref` determines the captured
- *   application type and its `menubar` accepts a `<Menu>` element.
+ *   application type and its `menubar` accepts a `<GMenu>` element.
  * @param Element - The application host intrinsic to construct.
  * @returns A component that drives the application's lifecycle.
  */
-export const createApplication = <P extends ApplicationComponentProps<ApplicationOf<P>>>(
+export const withApplication = <P extends ApplicationComponentProps<ApplicationOf<P>>>(
     Element: ElementType,
 ): ((props: P) => ReactNode) => {
     return (props: P): ReactNode => {
@@ -137,8 +143,8 @@ export const createApplication = <P extends ApplicationComponentProps<Applicatio
         const [menu, setMenu] = useState<Gio.Menu | null>(null);
         useApplicationMenubar(app, menu);
         const hostProps =
-            configApplicationId !== undefined && (rest as { applicationId?: string }).applicationId === undefined
-                ? { ...rest, applicationId: configApplicationId }
+            config.applicationId !== undefined && (rest as { applicationId?: string }).applicationId === undefined
+                ? { ...rest, applicationId: config.applicationId }
                 : rest;
         return (
             <Element ref={captureApp} {...hostProps}>
@@ -157,7 +163,9 @@ export const createApplication = <P extends ApplicationComponentProps<Applicatio
  * The component reads the enclosing application from {@link useApplication} and
  * passes it as the window's construct-only `application` property, then drives
  * the surface lifecycle through {@link withTopLevel}: it presents the window on
- * mount and destroys it on unmount.
+ * mount and destroys it on unmount. Children render in the `"win"` action
+ * scope, so `<GSimpleAction>` children bind their accelerators under
+ * `win.<name>`.
  *
  * @typeParam P - The application-window prop shape.
  * @param Underlying - The window host intrinsic or slotted compound to render.
@@ -170,11 +178,15 @@ export const withApplicationWindow = <P extends { children?: ReactNode; ref?: Re
     const Surface = withTopLevel<P>(Underlying);
     return (props: P): ReactNode => {
         const application = useApplication();
-        return <Surface application={application} {...props} />;
+        return (
+            <Surface application={application} {...props}>
+                <ActionScopeContext.Provider value={WINDOW_ACTION_SCOPE}>{props.children}</ActionScopeContext.Provider>
+            </Surface>
+        );
     };
 };
 
 const renderMenubar = (menubar: ReactNode, setMenu: (menu: Gio.Menu | null) => void): ReactNode => {
-    if (!isValidElement<MenuProps & { ref?: Ref<Gio.Menu | null> }>(menubar)) return null;
+    if (!isValidElement<{ ref?: Ref<Gio.Menu | null> }>(menubar)) return null;
     return cloneElement(menubar, { ref: setMenu });
 };

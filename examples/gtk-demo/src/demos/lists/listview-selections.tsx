@@ -3,7 +3,6 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import * as PangoCairo from "@gtkx/gi/pangocairo";
-import { GtkDropDown, GtkMenuButton, useAdjustment } from "@gtkx/react";
 import {
     GtkBox,
     GtkButton,
@@ -12,11 +11,13 @@ import {
     GtkEventControllerKey,
     GtkImage,
     GtkLabel,
+    GtkMenuButton,
     GtkPopover,
     GtkScrolledWindow,
     GtkSeparator,
     GtkSpinButton,
-} from "@gtkx/react-gi/gtk";
+} from "@gtkx/jsx/gtk";
+import { GtkDropDown, useAdjustment } from "@gtkx/react";
 import { useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-selections.tsx?raw";

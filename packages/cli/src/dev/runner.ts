@@ -11,6 +11,7 @@ export type DevRunnerDeps = {
     createServer(config: InlineConfig): Promise<ViteDevServer>;
     whenStopped(): Promise<void>;
     getApplicationId(): string | null;
+    getConfiguredApplicationId(root: string): Promise<string | undefined>;
     startMcpClient(applicationId: string): Promise<unknown>;
     stopMcpClient(): void;
     performRefresh(): void;
@@ -28,8 +29,10 @@ type DevRunner = {
     /**
      * Starts the Vite dev server, registers file watchers, loads the user's
      * entry, and connects the MCP client when the entry registers a
-     * `Gio.Application`. Resolves once the runner is fully wired and HMR is
-     * active; never resolves if the entry triggers a process exit.
+     * `Gio.Application`. The client registers under the `applicationId` from
+     * `gtkx.config.ts` when one is declared, else under the live application's
+     * id. Resolves once the runner is fully wired and HMR is active; never
+     * resolves if the entry triggers a process exit.
      *
      * @param entryPath - Absolute path of the user's entry module.
      */
@@ -108,8 +111,9 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
         deps.log(`Loading entry: ${entryPath}`);
         await server.ssrLoadModule(entryPath);
 
-        const applicationId = deps.getApplicationId();
-        if (applicationId) {
+        const liveApplicationId = deps.getApplicationId();
+        if (liveApplicationId) {
+            const applicationId = (await deps.getConfiguredApplicationId(root)) ?? liveApplicationId;
             deps.log(`Connected application id: ${applicationId}`);
             await deps.startMcpClient(applicationId);
         } else {

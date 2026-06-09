@@ -1,7 +1,7 @@
 import type * as Adw from "@gtkx/gi/adw";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { AdwActionRow, AdwExpanderRow, AdwHeaderBar, AdwToolbarView } from "@gtkx/react-gi/adw";
-import { GtkButton, GtkHeaderBar, GtkLabel, GtkListBox } from "@gtkx/react-gi/gtk";
+import { AdwActionRow, AdwExpanderRow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
+import { GtkButton, GtkHeaderBar, GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";

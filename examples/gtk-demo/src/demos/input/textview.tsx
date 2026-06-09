@@ -3,7 +3,6 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
-import { GtkDropDown, useAdjustment } from "@gtkx/react";
 import {
     GtkButton,
     GtkEntry,
@@ -14,7 +13,8 @@ import {
     GtkTextPaintable,
     GtkTextTag,
     GtkTextView,
-} from "@gtkx/react-gi/gtk";
+} from "@gtkx/jsx/gtk";
+import { GtkDropDown, useAdjustment } from "@gtkx/react";
 import { type RefObject, useLayoutEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./textview.tsx?raw";

@@ -1,12 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import {
-    GtkCheckButton,
-    GtkHeaderBar,
-    GtkScrolledWindow,
-    GtkStack,
-    GtkStackPage,
-    GtkTextView,
-} from "@gtkx/react-gi/gtk";
+import { GtkCheckButton, GtkHeaderBar, GtkScrolledWindow, GtkStack, GtkStackPage, GtkTextView } from "@gtkx/jsx/gtk";
 import { createContext, useContext, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./markup.tsx?raw";

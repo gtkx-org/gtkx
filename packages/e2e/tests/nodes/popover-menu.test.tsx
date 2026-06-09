@@ -1,109 +1,87 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkMenuButton, GtkPopoverMenu, MenuItem, MenuSection } from "@gtkx/react";
+import { GMenu, GMenuItem, GSimpleAction } from "@gtkx/jsx/gio";
+import { GtkApplicationWindow, GtkMenuButton, GtkPopoverMenu } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-describe("render - PopoverMenu > PopoverMenuNode (1)", () => {
-    it("creates PopoverMenu widget", async () => {
+describe("render - PopoverMenu widget integration", () => {
+    it("creates a PopoverMenu widget", async () => {
         const ref = createRef<Gtk.PopoverMenu>();
-
         await render(<GtkPopoverMenu ref={ref} />);
-
         expect(ref.current).not.toBeNull();
     });
 
-    it("sets menu model", async () => {
-        const popoverRef = createRef<Gtk.PopoverMenu>();
-
+    it("installs the menuModel on a PopoverMenu", async () => {
+        const ref = createRef<Gtk.PopoverMenu>();
         await render(
-            <GtkPopoverMenu ref={popoverRef}>
-                <MenuItem id="item1" label="Item 1" onActivate={() => {}} />
-                <MenuItem id="item2" label="Item 2" onActivate={() => {}} />
-            </GtkPopoverMenu>,
+            <GtkPopoverMenu
+                ref={ref}
+                menuModel={
+                    <GMenu>
+                        <GMenuItem label="Item 1" action="win.item1" />
+                        <GMenuItem label="Item 2" action="win.item2" />
+                    </GMenu>
+                }
+            />,
         );
-
-        expect(popoverRef.current?.getMenuModel()?.getNItems()).toBeGreaterThan(0);
+        expect(ref.current?.getMenuModel()?.getNItems()).toBe(2);
     });
 
-    it("handles MenuButton parent", async () => {
-        const buttonRef = createRef<Gtk.MenuButton>();
-
+    it("installs the menuModel on a MenuButton", async () => {
+        const ref = createRef<Gtk.MenuButton>();
         await render(
-            <GtkMenuButton ref={buttonRef}>
-                <MenuItem id="opt1" label="Option 1" onActivate={() => {}} />
-                <MenuItem id="opt2" label="Option 2" onActivate={() => {}} />
-            </GtkMenuButton>,
+            <GtkMenuButton
+                ref={ref}
+                menuModel={
+                    <GMenu>
+                        <GMenuItem label="Option 1" action="win.opt1" />
+                        <GMenuItem label="Option 2" action="win.opt2" />
+                    </GMenu>
+                }
+            />,
         );
-
-        expect(buttonRef.current?.getMenuModel()?.getNItems()).toBeGreaterThan(0);
-    });
-
-    it("adds menu items", async () => {
-        const popoverRef = createRef<Gtk.PopoverMenu>();
-
-        await render(
-            <GtkPopoverMenu ref={popoverRef}>
-                <MenuItem id="first" label="First" onActivate={() => {}} />
-                <MenuItem id="second" label="Second" onActivate={() => {}} />
-                <MenuItem id="third" label="Third" onActivate={() => {}} />
-            </GtkPopoverMenu>,
-        );
-
-        expect(popoverRef.current?.getMenuModel()?.getNItems()).toBe(3);
+        expect(ref.current?.getMenuModel()?.getNItems()).toBe(2);
     });
 });
 
-describe("render - PopoverMenu > PopoverMenuNode (2)", () => {
-    it("handles menu item with action", async () => {
-        const popoverRef = createRef<Gtk.PopoverMenu>();
+describe("render - PopoverMenu actions", () => {
+    it("invokes a GSimpleAction referenced by a menu item", async () => {
+        const windowRef = createRef<Gtk.ApplicationWindow>();
         const onActivate = vi.fn();
 
         await render(
-            <GtkPopoverMenu ref={popoverRef}>
-                <MenuItem id="click" label="Click Me" onActivate={onActivate} />
-            </GtkPopoverMenu>,
+            <GtkApplicationWindow ref={windowRef}>
+                <GSimpleAction name="click" onActivate={onActivate} />
+                <GtkPopoverMenu
+                    menuModel={
+                        <GMenu>
+                            <GMenuItem label="Click Me" action="win.click" />
+                        </GMenu>
+                    }
+                />
+            </GtkApplicationWindow>,
         );
 
-        expect(popoverRef.current?.getMenuModel()?.getNItems()).toBe(1);
+        expect(windowRef.current?.activateAction("win.click", null)).toBe(true);
+        expect(onActivate).toHaveBeenCalledTimes(1);
     });
 
-    it("removes menu items", async () => {
-        const popoverRef = createRef<Gtk.PopoverMenu>();
+    it("removes a menu item's action when it unmounts", async () => {
+        const windowRef = createRef<Gtk.ApplicationWindow>();
 
-        function App({ items }: { items: string[] }) {
+        function App({ enabled }: { enabled: boolean }) {
             return (
-                <GtkPopoverMenu ref={popoverRef}>
-                    {items.map((label) => (
-                        <MenuItem key={label} id={label} label={label} onActivate={() => {}} />
-                    ))}
-                </GtkPopoverMenu>
+                <GtkApplicationWindow ref={windowRef}>
+                    {enabled && <GSimpleAction name="toggle" onActivate={() => {}} />}
+                </GtkApplicationWindow>
             );
         }
 
-        await render(<App items={["A", "B", "C"]} />);
-        expect(popoverRef.current?.getMenuModel()?.getNItems()).toBe(3);
+        await render(<App enabled={true} />);
+        expect(windowRef.current?.hasAction("toggle")).toBe(true);
 
-        await render(<App items={["A"]} />);
-        expect(popoverRef.current?.getMenuModel()?.getNItems()).toBe(1);
-    });
-});
-
-describe("render - PopoverMenu > PopoverMenuNode (3)", () => {
-    it("handles menu sections", async () => {
-        const popoverRef = createRef<Gtk.PopoverMenu>();
-
-        await render(
-            <GtkPopoverMenu ref={popoverRef}>
-                <MenuSection>
-                    <MenuItem id="s1item" label="Section 1 Item" onActivate={() => {}} />
-                </MenuSection>
-                <MenuSection>
-                    <MenuItem id="s2item" label="Section 2 Item" onActivate={() => {}} />
-                </MenuSection>
-            </GtkPopoverMenu>,
-        );
-
-        expect(popoverRef.current?.getMenuModel()).not.toBeNull();
+        await render(<App enabled={false} />);
+        expect(windowRef.current?.hasAction("toggle")).toBe(false);
     });
 });

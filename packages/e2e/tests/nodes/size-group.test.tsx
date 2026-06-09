@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import { GtkBox, GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
 import { GtkSizeGroup } from "@gtkx/react";
-import { GtkBox, GtkFrame, GtkLabel } from "@gtkx/react-gi/gtk";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";

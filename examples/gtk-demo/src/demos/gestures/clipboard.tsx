@@ -4,7 +4,6 @@ import * as Gio from "@gtkx/gi/gio";
 import type { GType } from "@gtkx/gi/gobject";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkDrawingArea, GtkDropDown } from "@gtkx/react";
 import {
     GtkBox,
     GtkButton,
@@ -18,7 +17,8 @@ import {
     GtkStack,
     GtkStackPage,
     GtkToggleButton,
-} from "@gtkx/react-gi/gtk";
+} from "@gtkx/jsx/gtk";
+import { GtkDrawingArea, GtkDropDown } from "@gtkx/react";
 import { useEffect, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./clipboard.tsx?raw";

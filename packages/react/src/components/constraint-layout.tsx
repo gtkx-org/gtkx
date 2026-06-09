@@ -1,12 +1,11 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import type { GtkConstraintLayoutProps } from "@gtkx/react-gi/gtk";
+import type { GtkConstraintLayoutProps } from "@gtkx/jsx/gtk";
 import {
     Children,
     cloneElement,
     type EffectCallback,
-    type ReactElement,
     type ReactNode,
-    type Ref,
+    useCallback,
     useEffect,
     useLayoutEffect,
     useRef,
@@ -22,13 +21,12 @@ import {
     useConstraintLayoutRef,
 } from "../use-constraint-layout.js";
 import { assignRef } from "../use-merged-refs.js";
+import { useChildWidgetRegistration, type WidgetChild } from "./internal/use-child-widget-registration.js";
 
 const GtkConstraintLayoutElement = "GtkConstraintLayout" as const;
 
 const MISSING_LAYOUT_MESSAGE =
     "<GtkConstraintLayout.Widget> must be a sibling of <GtkConstraintLayout> under the same widget parent";
-
-type WidgetChild = ReactElement<{ ref?: Ref<Gtk.Widget> }>;
 
 const layoutOf = (widget: Gtk.Widget): Gtk.ConstraintLayout | null => {
     const layout = widget.getParent()?.getLayoutManager();
@@ -49,22 +47,16 @@ const layoutOf = (widget: Gtk.Widget): Gtk.ConstraintLayout | null => {
  * @param child - The single widget element to register.
  */
 const ConstraintLayoutMember = ({ id, child }: { id: string; child: WidgetChild }): ReactNode => {
-    const widgetRef = useRef<Gtk.Widget | null>(null);
-    const childRef = child.props.ref;
-
-    const captureWidget = (widget: Gtk.Widget | null): void => {
-        widgetRef.current = widget;
-        assignRef(childRef, widget);
-    };
-
-    useLayoutEffect(() => {
-        const widget = widgetRef.current;
-        if (!widget) return;
-        const layout = layoutOf(widget);
-        if (!layout) throw new Error(MISSING_LAYOUT_MESSAGE);
-        registerConstraintTarget(layout, id, widget);
-        return () => unregisterConstraintTarget(layout, id);
-    }, [id]);
+    const register = useCallback(
+        (widget: Gtk.Widget) => {
+            const layout = layoutOf(widget);
+            if (!layout) throw new Error(MISSING_LAYOUT_MESSAGE);
+            registerConstraintTarget(layout, id, widget);
+            return () => unregisterConstraintTarget(layout, id);
+        },
+        [id],
+    );
+    const captureWidget = useChildWidgetRegistration(child, register);
 
     return cloneElement(child, { ref: captureWidget });
 };

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkHeaderBar, GtkLabel, GtkSearchBar, GtkSearchEntry, GtkToggleButton } from "@gtkx/react-gi/gtk";
+import { GtkBox, GtkHeaderBar, GtkLabel, GtkSearchBar, GtkSearchEntry, GtkToggleButton } from "@gtkx/jsx/gtk";
 import { createContext, useContext, useState } from "react";
 import type { Demo, DemoProps, DemoProviderProps } from "../types.js";
 import sourceCode from "./search-entry.tsx?raw";

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkShortcut, GtkShortcutController } from "@gtkx/react-gi/gtk";
+import { GtkBox, GtkShortcut, GtkShortcutController } from "@gtkx/jsx/gtk";
 import { act, render } from "@gtkx/testing";
 import { createRef, useState } from "react";
 import { describe, expect, it } from "vitest";

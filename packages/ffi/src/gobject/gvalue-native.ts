@@ -145,8 +145,9 @@ let variantClass: AnyClass | undefined;
  *
  * `GVariant` is a non-GObject fundamental with no registered `GType`, so the
  * registry cannot resolve its wrapper from a bare pointer the way it does for
- * GObjects. The generated `GLib` overlay registers the concrete class here so
- * the runtime can wrap variant payloads without importing generated code.
+ * GObjects. The `GObject.Value` override template registers the concrete class
+ * here so the runtime can wrap variant payloads without importing generated
+ * code.
  *
  * @param cls - The `GLib.Variant` wrapper class
  */

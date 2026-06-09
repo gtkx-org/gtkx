@@ -12,10 +12,10 @@ import { ModuleBuilder } from "./module.js";
  * path layout of the generated output.
  *
  * Generated bindings live in the `@gtkx/gi` package at `<ns>/<ns>.{js,d.ts}`,
- * with a per-namespace barrel at `<ns>/index.js` and the augment overlay at
- * `<ns>/augment/*.js`. The hand-written runtime is reached through the single
- * `@gtkx/ffi` barrel; sibling generated namespaces are reached relative to the
- * gi package root.
+ * with a per-namespace barrel at `<ns>/index.js` and the override templates at
+ * `<ns>/overrides/*.js`. The hand-written runtime is reached through the
+ * single `@gtkx/ffi` barrel; sibling generated namespaces are reached relative
+ * to the gi package root.
  */
 export class ModuleContext {
     public readonly module = new ModuleBuilder();
@@ -85,8 +85,8 @@ export class ModuleContext {
     addGObjectBootstrapImports(): void {
         if (this.namespace.name === "GObject") return;
         if (this.namespace.name === "GLib") return;
-        this.module.imports.addSideEffect("../gobject/augment/object.js");
-        this.module.imports.addSideEffect("../gobject/augment/value.js");
+        this.module.imports.addSideEffect("../gobject/overrides/object.js");
+        this.module.imports.addSideEffect("../gobject/overrides/value.js");
     }
 
     /**

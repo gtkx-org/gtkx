@@ -53,8 +53,6 @@ export interface Instance {
     readonly rootContainer: ContainerInfo;
     /** The signal store keyed on the root container. */
     readonly signalStore: SignalStore;
-    /** Callbacks run once when this instance's backing GObject is torn down. */
-    readonly teardown: Set<() => void>;
     /** Opaque per-instance attachment bookkeeping owned by the matched mapping. */
     attachState: unknown;
 }
@@ -90,7 +88,6 @@ const baseInstance = ({ type, kind, backingInstance, props, rootContainer }: Ins
     children: [],
     rootContainer,
     signalStore: getSignalStore(rootContainer),
-    teardown: new Set(),
     attachState: undefined,
 });
 
@@ -143,15 +140,3 @@ export const isWrapperInstance = (instance: Instance): boolean => instance.type 
 /** Whether `instance` is a metadata wrapper of the given `kind`. */
 export const isWrapperKind = (instance: Instance, kind: string): boolean =>
     instance.type === WRAPPER_NODE_ELEMENT && instance.kind === kind;
-
-/**
- * Registers a callback to run once when `instance`'s backing GObject is torn
- * down. Prop descriptors that allocate GTK resources beyond plain property sets
- * (registered actions, inserted action groups) use this to release them.
- *
- * @param instance - The instance whose teardown the callback joins.
- * @param callback - The teardown callback.
- */
-export const registerTeardown = (instance: Instance, callback: () => void): void => {
-    instance.teardown.add(callback);
-};

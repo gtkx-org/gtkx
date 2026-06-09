@@ -2,19 +2,26 @@ import { quote, toCamelCase } from "@gtkx/utils";
 import type { GirNamespace } from "../gir/namespace.js";
 import type { GirRepository } from "../gir/repository.js";
 import { type VirtualSubcomponent, virtualSubcomponentEntries } from "./compounds-meta.js";
-import type { ReactGiImports } from "./imports.js";
+import type { JsxImports } from "./imports.js";
 import { ancestorGlibNames, collectReactNodeClasses, type WidgetCandidate } from "./widgets.js";
 
 type CompoundAccumulator = {
     readonly elementNames: Set<string>;
-    readonly imports: ReactGiImports;
+    readonly imports: JsxImports;
 };
 
 /** The single JSX element name every metadata wrapper renders. */
 const WRAPPER_NODE_ELEMENT = "__GTKX_WRAPPER_NODE__";
 
-/** A `@gtkx/react` higher-order component that wraps a top-level surface host. */
-type TopLevelHoc = "withTopLevel" | "createApplication" | "withApplicationWindow";
+/** A `@gtkx/react` higher-order component that wraps a compound's host element. */
+type CompoundHoc =
+    | "withTopLevel"
+    | "withApplication"
+    | "withApplicationWindow"
+    | "withColorDialog"
+    | "withFontDialog"
+    | "withActionAccels"
+    | "withActionScope";
 
 /**
  * Records that the {@link WRAPPER_NODE_ELEMENT} sentinel const must be emitted.
@@ -30,7 +37,7 @@ const wrapperElementConst = (name: string): string =>
     name === WRAPPER_NODE_ELEMENT ? "WrapperNodeElement" : `${name}Element`;
 
 /**
- * Generates the compounds section of one namespace's `@gtkx/react-gi` module: a
+ * Generates the compounds section of one namespace's `@gtkx/jsx` module: a
  * statically-compiled React component per widget with slot or container-slot
  * props, a top-level surface wrapper per window/dialog/application class, and one
  * flat component per metadata-child kind whose parent lives in this namespace
@@ -53,7 +60,7 @@ export const generateCompoundsSection = (
     options: {
         readonly widgetSlotMap: Readonly<Record<string, readonly string[]>>;
         readonly containerSlotMap: Readonly<Record<string, readonly string[]>>;
-        readonly imports: ReactGiImports;
+        readonly imports: JsxImports;
         readonly excludeNames: ReadonlySet<string>;
     },
 ): { readonly source: string; readonly exportedNames: ReadonlySet<string> } => {
@@ -68,7 +75,7 @@ export const generateCompoundsSection = (
         const { glibName, klass, namespace } = candidate;
         const slots = resolveInheritedSlots(widgetSlotMap, klass, namespace, repository);
         const containers = containerSlotMap[glibName] ?? [];
-        const hoc = topLevelHoc(klass, namespace, repository);
+        const hoc = compoundHoc(klass, namespace, repository);
         if (hoc === undefined && slots.length === 0 && containers.length === 0) continue;
 
         exportLines.push(renderCompound({ glibName, slots, containers, hoc }, accumulator));
@@ -115,29 +122,34 @@ const virtualSubcomponentsForNamespace = (
 };
 
 /** The HOC precedence list, applied in order against a class's ancestry. */
-const TOP_LEVEL_RULES: readonly { readonly ancestors: readonly string[]; readonly hoc: TopLevelHoc }[] = [
-    { ancestors: ["GtkApplication"], hoc: "createApplication" },
+const COMPOUND_HOC_RULES: readonly { readonly ancestors: readonly string[]; readonly hoc: CompoundHoc }[] = [
+    { ancestors: ["GtkApplication"], hoc: "withApplication" },
     { ancestors: ["GtkApplicationWindow"], hoc: "withApplicationWindow" },
     { ancestors: ["GtkWindow", "AdwDialog"], hoc: "withTopLevel" },
+    { ancestors: ["GtkColorDialogButton"], hoc: "withColorDialog" },
+    { ancestors: ["GtkFontDialogButton"], hoc: "withFontDialog" },
+    { ancestors: ["GSimpleAction"], hoc: "withActionAccels" },
+    { ancestors: ["GSimpleActionGroup"], hoc: "withActionScope" },
 ];
 
 /**
- * Classifies a class as a top-level surface by its GLib-type ancestry, returning
- * the `@gtkx/react` HOC that wraps it, or `undefined` when it is not a top-level
- * surface. An application takes precedence over an application window, which
- * takes precedence over a plain window or Adwaita dialog.
+ * Classifies a class by its GLib-type ancestry, returning the `@gtkx/react`
+ * HOC that wraps its compound, or `undefined` when the class needs none. An
+ * application takes precedence over an application window, which takes
+ * precedence over a plain window or Adwaita dialog; the remaining rules wrap
+ * behavior-carrying hosts (dialog buttons, actions, action groups).
  *
  * @param klass - The class to classify
  * @param namespace - The namespace the class lives in
  * @param repository - The repository for cross-namespace parent lookups
  */
-const topLevelHoc = (
+const compoundHoc = (
     klass: WidgetCandidate["klass"],
     namespace: GirNamespace,
     repository: GirRepository,
-): TopLevelHoc | undefined => {
+): CompoundHoc | undefined => {
     const ancestry = new Set(ancestorGlibNames(klass, namespace, repository));
-    for (const rule of TOP_LEVEL_RULES) {
+    for (const rule of COMPOUND_HOC_RULES) {
         if (rule.ancestors.some((ancestor) => ancestry.has(ancestor))) return rule.hoc;
     }
     return undefined;
@@ -147,7 +159,7 @@ type CompoundShape = {
     readonly glibName: string;
     readonly slots: readonly string[];
     readonly containers: readonly string[];
-    readonly hoc: TopLevelHoc | undefined;
+    readonly hoc: CompoundHoc | undefined;
 };
 
 const renderCompound = (shape: CompoundShape, accumulator: CompoundAccumulator): string => {
@@ -161,21 +173,21 @@ const renderCompound = (shape: CompoundShape, accumulator: CompoundAccumulator):
         return `export const ${glibName} = ${renderComponentFunction(glibName, propsType, slots, containers)};`;
     }
     accumulator.imports.hocs.add(hoc);
-    return renderTopLevelCompound({ glibName, propsType, slots, containers, hoc });
+    return renderHocCompound({ glibName, propsType, slots, containers, hoc });
 };
 
-type TopLevelCompoundShape = {
+type HocCompoundShape = {
     readonly glibName: string;
     readonly propsType: string;
     readonly slots: readonly string[];
     readonly containers: readonly string[];
-    readonly hoc: TopLevelHoc;
+    readonly hoc: CompoundHoc;
 };
 
-const renderTopLevelCompound = (shape: TopLevelCompoundShape): string => {
+const renderHocCompound = (shape: HocCompoundShape): string => {
     const { glibName, propsType, slots, containers, hoc } = shape;
     const componentPropsType =
-        hoc === "createApplication" ? `Omit<${propsType}, "menubar"> & { menubar?: ReactNode }` : propsType;
+        hoc === "withApplication" ? `Omit<${propsType}, "menubar"> & { menubar?: ReactNode }` : propsType;
     const annotation = `(props: ${componentPropsType}) => ReactNode`;
     const hasSlots = slots.length > 0 || containers.length > 0;
     const host = hasSlots ? `${glibName}Base` : `${glibName}Element`;

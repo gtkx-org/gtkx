@@ -1,6 +1,6 @@
 import * as Adw from "@gtkx/gi/adw";
 import * as Pango from "@gtkx/gi/pango";
-import { GtkLabel } from "@gtkx/react-gi/gtk";
+import { GtkLabel } from "@gtkx/jsx/gtk";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./links.tsx?raw";
 

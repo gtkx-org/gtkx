@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { Menu, MenuItem, MenuSubmenu } from "@gtkx/react";
-import { GtkApplication, GtkApplicationWindow } from "@gtkx/react-gi/gtk";
+import { GMenu, GMenuItem } from "@gtkx/jsx/gio";
+import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
@@ -34,17 +34,21 @@ const renderApp = async (menubar: ReactNode): Promise<Gtk.Application> => {
 
 describe("render - Application", () => {
     describe("menubar slot", () => {
-        it("sets menubar from a Menu", async () => {
+        it("sets menubar from a GMenu", async () => {
             const app = await renderApp(
-                <Menu>
-                    <MenuSubmenu label="File">
-                        <MenuItem id="new" label="New" onActivate={() => {}} />
-                        <MenuItem id="open" label="Open" onActivate={() => {}} />
-                    </MenuSubmenu>
-                    <MenuSubmenu label="Edit">
-                        <MenuItem id="cut" label="Cut" onActivate={() => {}} />
-                    </MenuSubmenu>
-                </Menu>,
+                <GMenu>
+                    <GMenuItem label="File">
+                        <GMenu>
+                            <GMenuItem label="New" action="win.new" />
+                            <GMenuItem label="Open" action="win.open" />
+                        </GMenu>
+                    </GMenuItem>
+                    <GMenuItem label="Edit">
+                        <GMenu>
+                            <GMenuItem label="Cut" action="win.cut" />
+                        </GMenu>
+                    </GMenuItem>
+                </GMenu>,
             );
 
             const menubar = app.getMenubar();
@@ -52,15 +56,17 @@ describe("render - Application", () => {
             expect(menubar?.getNItems()).toBe(2);
         });
 
-        it("clears menubar when Menu is removed", async () => {
+        it("clears menubar when the GMenu is removed", async () => {
             const ref = createRef<Gtk.Application>();
             const appId = uniqueAppId();
             const fileMenu = (
-                <Menu>
-                    <MenuSubmenu label="File">
-                        <MenuItem id="new" label="New" onActivate={() => {}} />
-                    </MenuSubmenu>
-                </Menu>
+                <GMenu>
+                    <GMenuItem label="File">
+                        <GMenu>
+                            <GMenuItem label="New" action="win.new" />
+                        </GMenu>
+                    </GMenuItem>
+                </GMenu>
             );
 
             const { rerender } = await render(<MenubarApp appRef={ref} appId={appId} menubar={fileMenu} />, {
@@ -76,13 +82,15 @@ describe("render - Application", () => {
             const ref = createRef<Gtk.Application>();
             const appId = uniqueAppId();
             const fileMenu = (items: string[]): ReactNode => (
-                <Menu>
-                    <MenuSubmenu label="File">
-                        {items.map((label) => (
-                            <MenuItem key={label} id={label} label={label} onActivate={() => {}} />
-                        ))}
-                    </MenuSubmenu>
-                </Menu>
+                <GMenu>
+                    <GMenuItem label="File">
+                        <GMenu>
+                            {items.map((label) => (
+                                <GMenuItem key={label} label={label} action={`win.${label}`} />
+                            ))}
+                        </GMenu>
+                    </GMenuItem>
+                </GMenu>
             );
 
             const { rerender } = await render(

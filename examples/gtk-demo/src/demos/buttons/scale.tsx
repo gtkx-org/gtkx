@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import { GtkGrid, GtkGridChild, GtkLabel, GtkScale } from "@gtkx/jsx/gtk";
 import { useAdjustment } from "@gtkx/react";
-import { GtkGrid, GtkGridChild, GtkLabel, GtkScale } from "@gtkx/react-gi/gtk";
 import type { Demo } from "../types.js";
 import sourceCode from "./scale.tsx?raw";
 

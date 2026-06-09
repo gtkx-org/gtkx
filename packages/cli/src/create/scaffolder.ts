@@ -1,6 +1,6 @@
 import { join, resolve } from "node:path";
+import { isValidApplicationId } from "@gtkx/config";
 import { errorMessage, toUpperFirst } from "@gtkx/utils";
-import { isValidApplicationId } from "../config.js";
 import type { TemplateContext } from "../templates.js";
 import { isValidProjectName, type TestingOption } from "./options.js";
 
