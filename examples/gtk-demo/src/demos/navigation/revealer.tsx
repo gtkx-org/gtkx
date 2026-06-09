@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkGrid, GtkGridChild, GtkImage, GtkRevealer } from "@gtkx/react";
+import { GtkGrid, GtkGridChild, GtkImage, GtkRevealer } from "@gtkx/react-gi/gtk";
 import { useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./revealer.tsx?raw";

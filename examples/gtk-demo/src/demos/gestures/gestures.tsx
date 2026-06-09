@@ -1,7 +1,8 @@
 import type { Context } from "@gtkx/gi/cairo";
 import { Pattern } from "@gtkx/gi/cairo";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkDrawingArea, GtkGestureLongPress, GtkGestureRotate, GtkGestureSwipe, GtkGestureZoom } from "@gtkx/react";
+import { GtkDrawingArea } from "@gtkx/react";
+import { GtkGestureLongPress, GtkGestureRotate, GtkGestureSwipe, GtkGestureZoom } from "@gtkx/react-gi/gtk";
 import { useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./gestures.tsx?raw";

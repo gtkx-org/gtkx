@@ -1,4 +1,5 @@
-import { AdwActionRow, GtkImage, GtkLabel, GtkListBox, GtkScrolledWindow } from "@gtkx/react";
+import { AdwActionRow } from "@gtkx/react-gi/adw";
+import { GtkImage, GtkLabel, GtkListBox, GtkScrolledWindow } from "@gtkx/react-gi/gtk";
 import type { Category } from "../types.js";
 
 const categories: Category[] = [

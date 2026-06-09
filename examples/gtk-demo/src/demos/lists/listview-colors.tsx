@@ -5,14 +5,12 @@ import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
+import { GtkDrawingArea, GtkDropDown, GtkGridView } from "@gtkx/react";
 import {
     GtkBox,
     GtkButton,
-    GtkDrawingArea,
-    GtkDropDown,
     GtkGrid,
     GtkGridChild,
-    GtkGridView,
     GtkHeaderBar,
     GtkLabel,
     GtkOverlay,
@@ -21,7 +19,7 @@ import {
     GtkRevealer,
     GtkScrolledWindow,
     GtkToggleButton,
-} from "@gtkx/react";
+} from "@gtkx/react-gi/gtk";
 
 import { createContext, memo, useContext, useEffect, useRef, useState } from "react";
 import { useLatest } from "../../use-latest.js";

@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { generateReactFiles } from "../../src/react/pipeline.js";
+import { generateReactGiFiles } from "../../src/react/pipeline.js";
 import { transpileSource } from "../../src/transpile.js";
 import { ffiModules, repository } from "../helpers/repository.js";
 
-const reactPipeline = generateReactFiles(repository);
+const reactPipeline = generateReactGiFiles(repository);
+const sourceFor = (files: typeof reactPipeline, directory: string): string =>
+    files.namespaces.find((entry) => entry.directory === directory)?.source ?? "";
 
 describe("codegen FFI pipeline", () => {
     it("resolves the transitive dependency closure of Gtk and Adw", () => {
@@ -105,62 +107,76 @@ describe("codegen notify detail signals", () => {
 });
 
 describe("codegen React pipeline", () => {
-    it("emits the jsx, compounds, and internal files", () => {
-        const paths = [...reactPipeline.files.keys()].sort((a, b) => a.localeCompare(b));
-        expect(paths.length).toBe(3);
-        for (const source of reactPipeline.files.values()) {
+    it("emits a module per namespace plus the merged metadata", () => {
+        expect(reactPipeline.namespaces.length).toBeGreaterThan(0);
+        for (const { source } of reactPipeline.namespaces) {
             expect(source.length).toBeGreaterThan(0);
         }
+        expect(reactPipeline.metadata).toContain("export const SIGNALS");
+        expect(reactPipeline.metadata).toContain("export const CONSTRUCT_ONLY_PROPS");
+        expect(reactPipeline.metadata).toContain("export const DEFAULT_PROPS");
+    });
+
+    it("loads its own namespace as a side effect and never another", () => {
+        const gtk = sourceFor(reactPipeline, "gtk");
+        expect(gtk).toContain('import "@gtkx/gi/gtk";');
+        expect(gtk).not.toContain('import "@gtkx/gi/adw";');
+    });
+
+    it("imports a cross-namespace parent Props type from its react-gi module", () => {
+        const adw = sourceFor(reactPipeline, "adw");
+        expect(adw).toMatch(/import type \{[^}]*\} from "@gtkx\/react-gi\/gtk";/);
     });
 
     it("counts the widget intrinsics it emitted", () => {
         expect(reactPipeline.widgetCount).toBeGreaterThan(0);
     });
 
-    it("transpiles every generated React file", () => {
-        for (const [path, source] of reactPipeline.files) {
-            const { js, dts } = transpileSource(path, source);
+    it("transpiles every generated React module and the metadata", () => {
+        for (const { directory, source } of reactPipeline.namespaces) {
+            const { js, dts } = transpileSource(`${directory}/${directory}.tsx`, source);
             expect(js.length).toBeGreaterThan(0);
             expect(dts.length).toBeGreaterThan(0);
         }
+        const { js } = transpileSource("metadata.ts", reactPipeline.metadata);
+        expect(js.length).toBeGreaterThan(0);
     });
 
+    it("desugars a virtual subcomponent's slot into a positional wrapper child", () => {
+        const gtk = sourceFor(reactPipeline, "gtk");
+        expect(gtk).toContain("export const GtkNotebookPage");
+        expect(gtk).toContain('kind="tab-label"');
+        expect(gtk).toContain("tabLabel");
+        expect(gtk).not.toContain("GtkNotebookPageTab");
+    });
+});
+
+describe("codegen React pipeline (slot overrides)", () => {
     it("honours user-supplied widget-slot overrides", () => {
-        const overridden = generateReactFiles(repository, { widgetSlots: { GtkButton: ["child"] } });
-        const compoundsSource = overridden.files.get("compounds.tsx") ?? "";
-        expect(compoundsSource).toContain('kind="slot" propName="child"');
-        const { js } = transpileSource("compounds.tsx", compoundsSource);
+        const overridden = generateReactGiFiles(repository, { widgetSlots: { GtkButton: ["child"] } });
+        const gtk = sourceFor(overridden, "gtk");
+        expect(gtk).toContain('kind="slot" propName="child"');
+        const { js } = transpileSource("gtk/gtk.tsx", gtk);
         expect(js.length).toBeGreaterThan(0);
     });
 
     it("promotes a user-supplied container slot on a widget without built-in ones", () => {
-        const overridden = generateReactFiles(repository, { containerSlots: { GtkButton: ["addChild"] } });
-        const jsxSource = overridden.files.get("jsx.ts") ?? "";
-        const compoundsSource = overridden.files.get("compounds.tsx") ?? "";
-        expect(jsxSource).toContain("addChild?: ReactNode | null;");
-        expect(compoundsSource).toContain('kind="container-slot" method="addChild"');
-        const { js } = transpileSource("compounds.tsx", compoundsSource);
+        const overridden = generateReactGiFiles(repository, { containerSlots: { GtkButton: ["addChild"] } });
+        const gtk = sourceFor(overridden, "gtk");
+        expect(gtk).toContain("addChild?: ReactNode | null;");
+        expect(gtk).toContain('kind="container-slot" method="addChild"');
+        const { js } = transpileSource("gtk/gtk.tsx", gtk);
         expect(js.length).toBeGreaterThan(0);
     });
 
     it("promotes a user container slot on a plain GObject class", () => {
-        const overridden = generateReactFiles(repository, { containerSlots: { GApplication: ["addWindow"] } });
-        const compoundsSource = overridden.files.get("compounds.tsx") ?? "";
-        expect(compoundsSource).toContain("GApplicationProps");
-        expect(compoundsSource).toContain('kind="container-slot" method="addWindow"');
-        for (const [path, source] of overridden.files) {
-            const { js, dts } = transpileSource(path, source);
-            expect(js.length).toBeGreaterThan(0);
-            expect(dts.length).toBeGreaterThan(0);
-        }
-    });
-
-    it("desugars a virtual subcomponent's slot into a positional wrapper child", () => {
-        const compoundsSource = reactPipeline.files.get("compounds.tsx") ?? "";
-        expect(compoundsSource).toContain("export const GtkNotebookPage");
-        expect(compoundsSource).toContain('kind="tab-label"');
-        expect(compoundsSource).toContain("tabLabel");
-        expect(compoundsSource).not.toContain("GtkNotebookPageTab");
+        const overridden = generateReactGiFiles(repository, { containerSlots: { GApplication: ["addWindow"] } });
+        const gio = sourceFor(overridden, "gio");
+        expect(gio).toContain("GApplicationProps");
+        expect(gio).toContain('kind="container-slot" method="addWindow"');
+        const { js, dts } = transpileSource("gio/gio.tsx", gio);
+        expect(js.length).toBeGreaterThan(0);
+        expect(dts.length).toBeGreaterThan(0);
     });
 });
 
@@ -169,37 +185,34 @@ const interfaceBody = (jsxSource: string, glibName: string): string => {
     return block.slice(0, block.indexOf("\n}"));
 };
 
-const importBlockOf = (jsxSource: string): string => jsxSource.slice(0, jsxSource.indexOf("export const"));
-
 describe("codegen array props", () => {
     it("emits the built-in array-prop line and item-type import on its element", () => {
-        const jsxSource = reactPipeline.files.get("jsx.ts") ?? "";
-        expect(interfaceBody(jsxSource, "GtkScale")).toContain("marks?: ScaleMark[] | null;");
-        expect(jsxSource).toMatch(/import type \{[^}]*\} from "@gtkx\/react";/);
-        const importBlock = importBlockOf(jsxSource);
-        expect(importBlock).toContain("ScaleMark");
-        expect(importBlock).toContain("ToggleProps");
+        const gtk = sourceFor(reactPipeline, "gtk");
+        expect(interfaceBody(gtk, "GtkScale")).toContain("marks?: ScaleMark[] | null;");
+        expect(gtk).toMatch(/import type \{[^}]*\} from "@gtkx\/react";/);
+        expect(gtk).toContain("ScaleMark");
+        const adw = sourceFor(reactPipeline, "adw");
+        expect(adw).toContain("ToggleProps");
     });
 
     it("suppresses the raw GObject property of an array-prop name", () => {
-        const jsxSource = reactPipeline.files.get("jsx.ts") ?? "";
-        const dropTargetBody = interfaceBody(jsxSource, "GtkDropTarget");
+        const gtk = sourceFor(reactPipeline, "gtk");
+        const dropTargetBody = interfaceBody(gtk, "GtkDropTarget");
         expect(dropTargetBody).toContain("types?: DropTargetType[] | null;");
         expect(dropTargetBody).not.toContain("types?: GType[] | null;");
         expect(dropTargetBody).not.toContain("onNotifyTypes");
-        const { dts } = transpileSource("jsx.ts", jsxSource);
+        const { dts } = transpileSource("gtk/gtk.tsx", gtk);
         expect(dts).not.toContain("TS2717");
     });
 
     it("merges a user arrayProps entry with the built-ins, emitting its line and import", () => {
-        const overridden = generateReactFiles(repository, { arrayProps: { GtkScale: { marks: "ScaleMark" } } });
-        const jsxSource = overridden.files.get("jsx.ts") ?? "";
-        expect(interfaceBody(jsxSource, "GtkScale")).toContain("marks?: ScaleMark[] | null;");
-        expect(interfaceBody(jsxSource, "GtkCalendar")).toContain("markedDays?: CalendarMark[] | null;");
-        const importBlock = importBlockOf(jsxSource);
-        expect(importBlock).toContain('from "@gtkx/react";');
-        expect(importBlock).toContain("ScaleMark");
-        const { dts } = transpileSource("jsx.ts", jsxSource);
+        const overridden = generateReactGiFiles(repository, { arrayProps: { GtkScale: { marks: "ScaleMark" } } });
+        const gtk = sourceFor(overridden, "gtk");
+        expect(interfaceBody(gtk, "GtkScale")).toContain("marks?: ScaleMark[] | null;");
+        expect(interfaceBody(gtk, "GtkCalendar")).toContain("markedDays?: CalendarMark[] | null;");
+        expect(gtk).toContain('from "@gtkx/react";');
+        expect(gtk).toContain("ScaleMark");
+        const { dts } = transpileSource("gtk/gtk.tsx", gtk);
         expect(dts.length).toBeGreaterThan(0);
     });
 });

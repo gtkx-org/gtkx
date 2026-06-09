@@ -11,7 +11,8 @@ GTKX renders React components as native GTK4 widgets through a Rust FFI bridge.
 
 ```tsx
 // src/index.tsx
-import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, render, quit } from "@gtkx/react";
+import { render, quit } from "@gtkx/react";
+import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton } from "@gtkx/react-gi/gtk";
 import * as Gtk from "@gtkx/gi/gtk";
 
 const App = () => (

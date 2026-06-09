@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import type { GtkDrawingAreaProps } from "@gtkx/react-jsx/jsx";
+import type { GtkDrawingAreaProps } from "@gtkx/react-gi/gtk";
 import { type ReactNode, useLayoutEffect, useRef } from "react";
 import { useMergedRefs } from "../use-merged-refs.js";
 

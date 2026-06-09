@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkGrid, GtkGridChild } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkGrid, GtkGridChild } from "@gtkx/react-gi/gtk";
 import type { Demo } from "../types.js";
 import sourceCode from "./theming-style-classes.tsx?raw";
 

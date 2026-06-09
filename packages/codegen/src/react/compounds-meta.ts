@@ -82,20 +82,21 @@ const VIRTUAL_SUBCOMPONENTS: Readonly<Record<string, readonly VirtualSubcomponen
     GtkSourceView: TEXT_VIEW_SUBCOMPONENTS,
 });
 
-/**
- * Returns every distinct flat virtual subcomponent across all parents,
- * deduplicated by {@link VirtualSubcomponent.flatName} (the text anchor and
- * paintable are shared by both text-view kinds).
- */
-export const allVirtualSubcomponents = (): readonly VirtualSubcomponent[] => {
-    const seen = new Set<string>();
-    const result: VirtualSubcomponent[] = [];
-    for (const virtuals of Object.values(VIRTUAL_SUBCOMPONENTS)) {
-        for (const virtual of virtuals) {
-            if (seen.has(virtual.flatName)) continue;
-            seen.add(virtual.flatName);
-            result.push(virtual);
-        }
-    }
-    return result.sort((a, b) => a.flatName.localeCompare(b.flatName));
+/** A virtual subcomponent paired with the GLib type name of the parent it stands in for. */
+export type VirtualSubcomponentEntry = {
+    /** The parent widget's GLib type name (e.g. `"GtkStack"`). */
+    readonly parentGlibName: string;
+    /** The virtual subcomponent the parent contributes. */
+    readonly virtual: VirtualSubcomponent;
 };
+
+/**
+ * Returns every `(parentGlibName, virtual)` pair, in declaration order. A virtual
+ * shared by multiple parents (the text anchor/paintable) appears once per parent;
+ * callers that partition by namespace assign each distinct virtual to the first
+ * parent that contributes it.
+ */
+export const virtualSubcomponentEntries = (): readonly VirtualSubcomponentEntry[] =>
+    Object.entries(VIRTUAL_SUBCOMPONENTS).flatMap(([parentGlibName, virtuals]) =>
+        virtuals.map((virtual) => ({ parentGlibName, virtual })),
+    );

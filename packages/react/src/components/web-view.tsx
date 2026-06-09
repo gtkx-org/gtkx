@@ -1,5 +1,5 @@
 import type * as WebKit from "@gtkx/gi/webkit";
-import type { WebKitWebViewProps } from "@gtkx/react-jsx/jsx";
+import type { WebKitWebViewProps } from "@gtkx/react-gi/webkit";
 import { type ReactNode, useLayoutEffect, useRef } from "react";
 import { useMergedRefs } from "../use-merged-refs.js";
 

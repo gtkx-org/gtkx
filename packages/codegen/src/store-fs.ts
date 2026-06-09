@@ -4,7 +4,7 @@ import { transpileSource } from "./transpile.js";
 
 /**
  * Filesystem primitives shared by the injected-package assemblers
- * ({@link ../gi-store.js}, {@link ../jsx-store.js}).
+ * ({@link ../gi-store.js}, {@link ../react-gi-store.js}).
  */
 
 /**

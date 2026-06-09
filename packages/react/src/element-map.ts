@@ -11,11 +11,12 @@
  * child's own props/children and stashing per-attachment bookkeeping on
  * {@link Instance.attachState}.
  */
-import * as Adw from "@gtkx/gi/adw";
+import type * as Adw from "@gtkx/gi/adw";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { getColumnController, getColumnViewController } from "./components/internal/column-view-registry.js";
+import { isAdwDialog, isAdwViewStack } from "./gtype-predicates.js";
 import { type Instance, isWrapperInstance, isWrapperKind } from "./instance.js";
 import {
     type InsertableWidget,
@@ -74,7 +75,7 @@ const rescueFocus = (parent: BackingInstance, child: BackingInstance | undefined
 const childWidget = (instance: Instance): Gtk.Widget | null => {
     const widget = instance.backingInstance;
     if (!(widget instanceof Gtk.Widget)) return null;
-    if (widget instanceof Gtk.Window || widget instanceof Adw.Dialog) return null;
+    if (widget instanceof Gtk.Window || isAdwDialog(widget)) return null;
     return widget;
 };
 
@@ -192,7 +193,7 @@ const addStackPage = (stack: Gtk.Stack | Adw.ViewStack, widget: Gtk.Widget, prop
     const id = typeof props.id === "string" ? props.id : null;
     const title = typeof props.title === "string" ? props.title : null;
     const iconName = typeof props.iconName === "string" ? props.iconName : null;
-    if (stack instanceof Adw.ViewStack) {
+    if (isAdwViewStack(stack)) {
         if (title != null && iconName != null) return stack.addTitledWithIcon(widget, id, title, iconName);
         if (title != null) return stack.addTitled(widget, id, title);
         if (id != null) return stack.addNamed(widget, id);
@@ -244,7 +245,7 @@ const metaObjectMapping: ElementMapping = {
     matches: (child, parent) =>
         isWrapperKind(child, META_OBJECT_KIND) &&
         (parent.backingInstance instanceof Gtk.Stack ||
-            parent.backingInstance instanceof Adw.ViewStack ||
+            (parent.backingInstance !== undefined && isAdwViewStack(parent.backingInstance)) ||
             parent.backingInstance instanceof Gtk.Notebook),
     attach: (child, parent) => {
         const target = parent.backingInstance;
@@ -264,7 +265,7 @@ const metaObjectMapping: ElementMapping = {
         if (target instanceof Gtk.Notebook) {
             attachNotebookPage(target, widget, child);
             child.attachState = { widget, page: target };
-        } else if (target instanceof Gtk.Stack || target instanceof Adw.ViewStack) {
+        } else if (target instanceof Gtk.Stack || (target !== undefined && isAdwViewStack(target))) {
             const page = addStackPage(target, widget, child.props);
             applyPageMeta(page, child.props);
             child.attachState = { widget, page };
@@ -279,7 +280,7 @@ const metaObjectMapping: ElementMapping = {
             const pageNum = target.pageNum(state.widget);
             if (pageNum !== -1) target.removePage(pageNum);
         } else if (
-            (target instanceof Gtk.Stack || target instanceof Adw.ViewStack) &&
+            (target instanceof Gtk.Stack || (target !== undefined && isAdwViewStack(target))) &&
             isAttachedTo(state.widget, target)
         ) {
             target.remove(state.widget);
@@ -566,7 +567,8 @@ const columnViewColumnMapping: ElementMapping = {
 // --- Top-level surfaces ---
 
 const isTopLevel = (instance: Instance): boolean =>
-    instance.backingInstance instanceof Gtk.Window || instance.backingInstance instanceof Adw.Dialog;
+    instance.backingInstance instanceof Gtk.Window ||
+    (instance.backingInstance !== undefined && isAdwDialog(instance.backingInstance));
 
 const topLevelSkipMapping: ElementMapping = {
     matches: (child) => isTopLevel(child),

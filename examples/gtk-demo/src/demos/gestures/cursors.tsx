@@ -1,6 +1,6 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkListBox, GtkListBoxRow, GtkScrolledWindow } from "@gtkx/react";
+import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkListBox, GtkListBoxRow, GtkScrolledWindow } from "@gtkx/react-gi/gtk";
 import { useCssResource } from "../../use-css-resource.js";
 import type { Demo } from "../types.js";
 import { path as aliasPath } from "./cursors/alias_cursor.png";

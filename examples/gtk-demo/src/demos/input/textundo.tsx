@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkScrolledWindow, GtkTextView } from "@gtkx/react";
+import { GtkScrolledWindow, GtkTextView } from "@gtkx/react-gi/gtk";
 import type { Demo } from "../types.js";
 import sourceCode from "./textundo.tsx?raw";
 

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import type { GtkConstraintLayoutProps } from "@gtkx/react-jsx/jsx";
+import type { GtkConstraintLayoutProps } from "@gtkx/react-gi/gtk";
 import {
     Children,
     cloneElement,

@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkConstraintLayout } from "@gtkx/react";
+import { GtkConstraintLayout } from "@gtkx/react";
+import { GtkBox } from "@gtkx/react-gi/gtk";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";

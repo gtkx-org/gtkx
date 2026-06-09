@@ -1,6 +1,7 @@
-import * as Adw from "@gtkx/gi/adw";
+import type * as Adw from "@gtkx/gi/adw";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { type RefObject, useId, useLayoutEffect, useRef } from "react";
+import { requireClassByName } from "../gtype-predicates.js";
 import type { AdwSpringAnimationProps, AdwTimedAnimationProps, AnimatableProperties } from "../jsx.js";
 import {
     AnimationCssProvider,
@@ -28,7 +29,13 @@ const buildTimedAnimation = (
     props: AdwTimedAnimationProps,
 ): Adw.TimedAnimation => {
     const duration = props.duration ?? DEFAULT_TIMED_DURATION;
-    const animation = Adw.TimedAnimation.new(widget, 0, 1, duration, target);
+    const animation = (requireClassByName("AdwTimedAnimation") as typeof Adw.TimedAnimation).new(
+        widget,
+        0,
+        1,
+        duration,
+        target,
+    );
 
     if (props.easing !== undefined) animation.setEasing(props.easing);
     if (props.repeat !== undefined) animation.setRepeatCount(props.repeat);
@@ -47,8 +54,18 @@ const buildSpringAnimation = (
     const mass = props.mass ?? DEFAULT_SPRING_MASS;
     const stiffness = props.stiffness ?? DEFAULT_SPRING_STIFFNESS;
 
-    const springParams = Adw.SpringParams.new(damping, mass, stiffness);
-    const animation = Adw.SpringAnimation.new(widget, 0, 1, springParams, target);
+    const springParams = (requireClassByName("AdwSpringParams") as typeof Adw.SpringParams).new(
+        damping,
+        mass,
+        stiffness,
+    );
+    const animation = (requireClassByName("AdwSpringAnimation") as typeof Adw.SpringAnimation).new(
+        widget,
+        0,
+        1,
+        springParams,
+        target,
+    );
 
     if (props.initialVelocity !== undefined) animation.setInitialVelocity(props.initialVelocity);
     if (props.clamp !== undefined) animation.setClamp(props.clamp);
@@ -152,10 +169,12 @@ export class AnimationDriver {
 
         props.onAnimationStart?.();
 
-        const callback = Adw.CallbackAnimationTarget.new((progress: number) => {
-            this.currentValues = interpolate(from, to, progress);
-            this.cssProvider.write(this.currentValues);
-        });
+        const callback = (requireClassByName("AdwCallbackAnimationTarget") as typeof Adw.CallbackAnimationTarget).new(
+            (progress: number) => {
+                this.currentValues = interpolate(from, to, progress);
+                this.cssProvider.write(this.currentValues);
+            },
+        );
 
         const animation = buildAnimation(widget, callback, props);
         animation.connect("done", () => {

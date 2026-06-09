@@ -1,4 +1,4 @@
-import * as Adw from "@gtkx/gi/adw";
+import type * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     createContext,
@@ -10,6 +10,7 @@ import {
     useRef,
     useState,
 } from "react";
+import { isAdwDialog } from "../gtype-predicates.js";
 import { assignRef } from "../use-merged-refs.js";
 
 /** A top-level surface: a window or an Adwaita dialog. */
@@ -31,7 +32,7 @@ export const WindowContext = createContext<Gtk.Window | null>(null);
  * `Adw.Dialog` is presented against its parent window and force-closed.
  */
 const presentSurface = (surface: Surface, parent: Gtk.Window | null): (() => void) => {
-    if (surface instanceof Adw.Dialog) {
+    if (isAdwDialog(surface)) {
         surface.present(parent);
         return () => surface.forceClose();
     }

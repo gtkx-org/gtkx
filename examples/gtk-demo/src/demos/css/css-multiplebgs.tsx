@@ -1,14 +1,14 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import { GtkDrawingArea } from "@gtkx/react";
 import {
     GtkBox,
     GtkButton,
-    GtkDrawingArea,
     GtkOverlay,
     GtkOverlayChild,
     GtkPaned,
     GtkScrolledWindow,
     GtkTextView,
-} from "@gtkx/react";
+} from "@gtkx/react-gi/gtk";
 import type { Demo } from "../types.js";
 import brickUri from "./brick.png";
 import brick2Uri from "./brick2.png";

@@ -1,6 +1,7 @@
 import type * as Adw from "@gtkx/gi/adw";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { AdwApplicationWindow, GtkApplicationWindow, GtkLabel } from "@gtkx/react";
+import { AdwApplicationWindow } from "@gtkx/react-gi/adw";
+import { GtkApplicationWindow, GtkLabel } from "@gtkx/react-gi/gtk";
 import { render as baseRender } from "@gtkx/testing";
 import type { ReactNode } from "react";
 import { createRef } from "react";

@@ -50,7 +50,7 @@ export const findCodegenRoot = (projectRoot: string): string => {
  * Resolved locations for the codegen-owned injected packages.
  *
  * Codegen materializes `@gtkx/gi` (and, when React is present,
- * `@gtkx/react-jsx`) into a hidden `node_modules/.gtkx` store and exposes each
+ * `@gtkx/react-gi`) into a hidden `node_modules/.gtkx` store and exposes each
  * through a visible `node_modules/@gtkx/<name>` symlink. The injected packages
  * resolve `@gtkx/ffi`/`react` through their own bundled symlinks, so the real
  * directories of those runtime dependencies are resolved here too.
@@ -60,10 +60,10 @@ export type CodegenStore = {
     readonly giStoreDir: string;
     /** Visible `@gtkx/gi` alias symlink. */
     readonly giLinkDir: string;
-    /** Hidden store for the `@gtkx/react-jsx` unit. */
-    readonly jsxStoreDir: string;
-    /** Visible `@gtkx/react-jsx` alias symlink. */
-    readonly jsxLinkDir: string;
+    /** Hidden store for the `@gtkx/react-gi` package. */
+    readonly reactGiStoreDir: string;
+    /** Visible `@gtkx/react-gi` alias symlink. */
+    readonly reactGiLinkDir: string;
     /** Real directory of the installed `@gtkx/ffi`. */
     readonly realFfiDir: string;
     /** Real directory of the installed `@gtkx/native`. */
@@ -79,7 +79,7 @@ export type CodegenStore = {
 /**
  * The installed `@gtkx/react` package, whose real directory and version are
  * always resolved together: the version is copied onto the emitted
- * `@gtkx/react-jsx` unit.
+ * `@gtkx/react-gi` package.
  */
 export type CodegenReactPackage = {
     /** Real directory of the installed `@gtkx/react`. */
@@ -139,8 +139,8 @@ export const resolveCodegenStore = (projectRoot: string): CodegenStore => {
     return {
         giStoreDir: join(nodeModules, ".gtkx", "gi"),
         giLinkDir: join(nodeModules, "@gtkx", "gi"),
-        jsxStoreDir: join(nodeModules, ".gtkx", "jsx"),
-        jsxLinkDir: join(nodeModules, "@gtkx", "react-jsx"),
+        reactGiStoreDir: join(nodeModules, ".gtkx", "react-gi"),
+        reactGiLinkDir: join(nodeModules, "@gtkx", "react-gi"),
         realFfiDir: ffi.dir,
         realNativeDir: native.dir,
         ffiVersion: ffi.version,

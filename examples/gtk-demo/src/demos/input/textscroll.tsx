@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
+import { GtkBox, GtkScrolledWindow, GtkTextView } from "@gtkx/react-gi/gtk";
 import { useEffect, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./textscroll.tsx?raw";

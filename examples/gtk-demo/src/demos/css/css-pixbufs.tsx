@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkPaned, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
+import { GtkBox, GtkPaned, GtkScrolledWindow, GtkTextView } from "@gtkx/react-gi/gtk";
 import type { Demo } from "../types.js";
 import appleRedPath from "./apple-red.png";
 import backgroundPath from "./background.jpg";

@@ -1,11 +1,11 @@
-import {
-    GtkMenuButton as GtkMenuButtonCompound,
-    GtkPopoverMenuBar as GtkPopoverMenuBarCompound,
-    GtkPopoverMenu as GtkPopoverMenuCompound,
-} from "@gtkx/react-jsx/compounds";
-import type { GtkMenuButtonProps, GtkPopoverMenuBarProps, GtkPopoverMenuProps } from "@gtkx/react-jsx/jsx";
+import type { GtkMenuButtonProps, GtkPopoverMenuBarProps, GtkPopoverMenuProps } from "@gtkx/react-gi/gtk";
 import type { ReactNode } from "react";
 import { Menu } from "./menu.js";
+
+const GtkMenuButtonElement = "GtkMenuButton" as const;
+const GtkPopoverMenuElement = "GtkPopoverMenu" as const;
+const GtkPopoverMenuBarElement = "GtkPopoverMenuBar" as const;
+const WrapperNodeElement = "__GTKX_WRAPPER_NODE__" as const;
 
 /**
  * Resolves the menu slot value: an explicit `menuModel` takes precedence;
@@ -32,9 +32,23 @@ const resolveMenuSlot = (children: ReactNode, menuModel: ReactNode): ReactNode =
  *
  * @param props - Standard `Gtk.MenuButton` props.
  */
-export const GtkMenuButton = ({ children, menuModel, ...rest }: GtkMenuButtonProps): ReactNode => (
-    <GtkMenuButtonCompound menuModel={resolveMenuSlot(children, menuModel)} {...rest} />
-);
+export const GtkMenuButton = ({ children, menuModel, popover, ...rest }: GtkMenuButtonProps): ReactNode => {
+    const resolvedMenu = resolveMenuSlot(children, menuModel);
+    return (
+        <GtkMenuButtonElement {...rest}>
+            {resolvedMenu != null && (
+                <WrapperNodeElement kind="slot" propName="menuModel">
+                    {resolvedMenu}
+                </WrapperNodeElement>
+            )}
+            {popover != null && (
+                <WrapperNodeElement kind="slot" propName="popover">
+                    {popover}
+                </WrapperNodeElement>
+            )}
+        </GtkMenuButtonElement>
+    );
+};
 
 /**
  * Declarative wrapper for `Gtk.PopoverMenu`.
@@ -47,9 +61,18 @@ export const GtkMenuButton = ({ children, menuModel, ...rest }: GtkMenuButtonPro
  *
  * @param props - Standard `Gtk.PopoverMenu` props.
  */
-export const GtkPopoverMenu = ({ children, menuModel, ...rest }: GtkPopoverMenuProps): ReactNode => (
-    <GtkPopoverMenuCompound menuModel={resolveMenuSlot(children, menuModel)} {...rest} />
-);
+export const GtkPopoverMenu = ({ children, menuModel, ...rest }: GtkPopoverMenuProps): ReactNode => {
+    const resolvedMenu = resolveMenuSlot(children, menuModel);
+    return (
+        <GtkPopoverMenuElement {...rest}>
+            {resolvedMenu != null && (
+                <WrapperNodeElement kind="slot" propName="menuModel">
+                    {resolvedMenu}
+                </WrapperNodeElement>
+            )}
+        </GtkPopoverMenuElement>
+    );
+};
 
 /**
  * Declarative wrapper for `Gtk.PopoverMenuBar`.
@@ -62,6 +85,15 @@ export const GtkPopoverMenu = ({ children, menuModel, ...rest }: GtkPopoverMenuP
  *
  * @param props - Standard `Gtk.PopoverMenuBar` props.
  */
-export const GtkPopoverMenuBar = ({ children, menuModel, ...rest }: GtkPopoverMenuBarProps): ReactNode => (
-    <GtkPopoverMenuBarCompound menuModel={resolveMenuSlot(children, menuModel)} {...rest} />
-);
+export const GtkPopoverMenuBar = ({ children, menuModel, ...rest }: GtkPopoverMenuBarProps): ReactNode => {
+    const resolvedMenu = resolveMenuSlot(children, menuModel);
+    return (
+        <GtkPopoverMenuBarElement {...rest}>
+            {resolvedMenu != null && (
+                <WrapperNodeElement kind="slot" propName="menuModel">
+                    {resolvedMenu}
+                </WrapperNodeElement>
+            )}
+        </GtkPopoverMenuBarElement>
+    );
+};

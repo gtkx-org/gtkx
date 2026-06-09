@@ -1,4 +1,4 @@
-import { GtkBox, GtkButton, GtkHeaderBar, GtkSwitch, GtkTextView } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkHeaderBar, GtkSwitch, GtkTextView } from "@gtkx/react-gi/gtk";
 import type { Demo } from "../types.js";
 import sourceCode from "./headerbar.tsx?raw";
 

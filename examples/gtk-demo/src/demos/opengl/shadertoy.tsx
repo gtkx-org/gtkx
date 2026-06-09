@@ -12,7 +12,7 @@ import {
     GtkGraphicsOffload,
     GtkScrolledWindow,
     GtkTextView,
-} from "@gtkx/react";
+} from "@gtkx/react-gi/gtk";
 import { type RefCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./shadertoy.tsx?raw";

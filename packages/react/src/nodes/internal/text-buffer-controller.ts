@@ -1,10 +1,12 @@
 import type { SignalHandler } from "@gtkx/ffi";
 import type * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
-import * as GtkSource from "@gtkx/gi/gtksource";
+import type * as GtkSource from "@gtkx/gi/gtksource";
+import type { GtkTextViewProps } from "@gtkx/react-gi/gtk";
+import type { GtkSourceViewProps } from "@gtkx/react-gi/gtksource";
 import { scheduleFlush } from "../../commit-flush.js";
+import { isGtkSourceBuffer, isGtkSourceView, requireClassByName } from "../../gtype-predicates.js";
 import type { Instance } from "../../instance.js";
-import type { GtkSourceViewProps, GtkTextViewProps } from "../../jsx.js";
 import { hasChanged } from "./props.js";
 import { isAnchorWrapper, isBufferContentWrapper, isBufferTextWrapper, isPaintableWrapper } from "./text-wrapper.js";
 import { unparentWidget } from "./widget.js";
@@ -28,10 +30,18 @@ type SourceBufferProps = Pick<
 >;
 
 const resolveLanguage = (language: string | GtkSource.Language): GtkSource.Language | null =>
-    typeof language === "string" ? GtkSource.LanguageManager.getDefault().getLanguage(language) : language;
+    typeof language === "string"
+        ? (requireClassByName("GtkSourceLanguageManager") as typeof GtkSource.LanguageManager)
+              .getDefault()
+              .getLanguage(language)
+        : language;
 
 const resolveStyleScheme = (scheme: string | GtkSource.StyleScheme): GtkSource.StyleScheme | null =>
-    typeof scheme === "string" ? GtkSource.StyleSchemeManager.getDefault().getScheme(scheme) : scheme;
+    typeof scheme === "string"
+        ? (requireClassByName("GtkSourceStyleSchemeManager") as typeof GtkSource.StyleSchemeManager)
+              .getDefault()
+              .getScheme(scheme)
+        : scheme;
 
 /**
  * Owns the `Gtk.TextBuffer` of a single `Gtk.TextView` (or `GtkSource.View`),
@@ -108,7 +118,7 @@ export class TextBufferController {
      */
     public applySourceProps(oldProps: SourceBufferProps | null, newProps: SourceBufferProps): void {
         const buffer = this.ensureBuffer();
-        if (!(buffer instanceof GtkSource.Buffer)) return;
+        if (!isGtkSourceBuffer(buffer)) return;
 
         this.applySourceBufferProps(buffer, oldProps, newProps);
         this.applySourceSignals(oldProps, newProps);
@@ -135,7 +145,9 @@ export class TextBufferController {
     }
 
     private createBuffer(): Gtk.TextBuffer {
-        return this.view instanceof GtkSource.View ? new GtkSource.Buffer() : new Gtk.TextBuffer();
+        return isGtkSourceView(this.view)
+            ? new (requireClassByName("GtkSourceBuffer") as typeof GtkSource.Buffer)()
+            : new Gtk.TextBuffer();
     }
 
     private setExternalBuffer(buffer: Gtk.TextBuffer | null | undefined): void {

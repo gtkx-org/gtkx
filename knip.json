@@ -81,7 +81,7 @@
         ".gtkx/gi": {
             "entry": ["**/*.{js,d.ts}!"]
         },
-        ".gtkx/jsx": {
+        ".gtkx/react-gi": {
             "entry": ["**/*.js"]
         }
     }

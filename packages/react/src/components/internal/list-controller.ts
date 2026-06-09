@@ -1,9 +1,10 @@
-import * as Adw from "@gtkx/gi/adw";
+import type * as Adw from "@gtkx/gi/adw";
 import type * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { ReactNode } from "react";
 import { isInCommit, scheduleFlush } from "../../commit-flush.js";
+import { isAdwComboRow } from "../../gtype-predicates.js";
 import type { ListItem } from "../../jsx.js";
 import type { BoundItem } from "../../nodes/internal/bound-item.js";
 import { asLifecycleItem, connectFactoryLifecycle, UNBOUND_POSITION } from "../../nodes/internal/list-factory.js";
@@ -285,7 +286,7 @@ export class ListController {
 
     /** Whether this controller drives a dropdown-style widget. */
     public isDropDown(): boolean {
-        return this.widget instanceof Gtk.DropDown || this.widget instanceof Adw.ComboRow;
+        return this.widget instanceof Gtk.DropDown || isAdwComboRow(this.widget);
     }
 
     /** The estimated per-item size used to seed placeholder cells. */
@@ -510,7 +511,7 @@ export class ListController {
             const dropDownModel = this.modelController.hasSections()
                 ? (this.modelController.flattenModel as Gio.ListModel)
                 : (this.modelController.model as Gio.ListModel);
-            if (widget instanceof Gtk.DropDown || widget instanceof Adw.ComboRow) {
+            if (widget instanceof Gtk.DropDown || isAdwComboRow(widget)) {
                 widget.setModel(dropDownModel);
             }
             return;
@@ -528,7 +529,7 @@ export class ListController {
         const widget = this.widget;
         const model = this.props.model;
         if (!model) return;
-        if (widget instanceof Gtk.DropDown || widget instanceof Adw.ComboRow) {
+        if (widget instanceof Gtk.DropDown || isAdwComboRow(widget)) {
             widget.setModel(model);
             return;
         }
@@ -547,7 +548,7 @@ export class ListController {
             this.applyHeaderFactory(widget);
         } else if (widget instanceof Gtk.GridView) {
             widget.setFactory(this.factory);
-        } else if (widget instanceof Gtk.DropDown || widget instanceof Adw.ComboRow) {
+        } else if (widget instanceof Gtk.DropDown || isAdwComboRow(widget)) {
             widget.setFactory(this.factory);
             this.applyListAndHeaderFactories(widget);
         }

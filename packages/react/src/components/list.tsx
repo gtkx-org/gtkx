@@ -1,12 +1,7 @@
 import type * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
-import type {
-    AdwComboRowProps,
-    GtkColumnViewProps,
-    GtkDropDownProps,
-    GtkGridViewProps,
-    GtkListViewProps,
-} from "@gtkx/react-jsx/jsx";
+import type { AdwComboRowProps } from "@gtkx/react-gi/adw";
+import type { GtkColumnViewProps, GtkDropDownProps, GtkGridViewProps, GtkListViewProps } from "@gtkx/react-gi/gtk";
 import {
     createElement,
     type ReactNode,

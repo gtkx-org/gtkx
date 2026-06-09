@@ -72,14 +72,13 @@ const writeDefaultGiBarrels = (cwd: string) => {
     }
 };
 
-/** Materializes the jsx unit modules plus its visible alias. */
-const writeJsxStore = (cwd: string) => {
-    const dir = join(cwd, "node_modules", ".gtkx", "jsx");
-    mkdirSync(dir, { recursive: true });
-    for (const module of ["compounds.js", "internal.js", "jsx.js"]) {
-        writeFileSync(join(dir, module), "");
-    }
-    mkdirSync(join(cwd, "node_modules", "@gtkx", "react-jsx"), { recursive: true });
+/** Materializes the react-gi unit modules plus its visible alias. */
+const writeReactGiStore = (cwd: string) => {
+    const dir = join(cwd, "node_modules", ".gtkx", "react-gi");
+    mkdirSync(join(dir, "gtk"), { recursive: true });
+    writeFileSync(join(dir, "metadata.js"), "");
+    writeFileSync(join(dir, "gtk", "gtk.js"), "");
+    mkdirSync(join(cwd, "node_modules", "@gtkx", "react-gi"), { recursive: true });
 };
 
 const preflightLogs = async (cwd: string): Promise<string> => {
@@ -182,7 +181,7 @@ describe("preflightCodegen", () => {
         installReactStack(cwd);
         writeConfig(cwd);
         writeDefaultGiBarrels(cwd);
-        writeJsxStore(cwd);
+        writeReactGiStore(cwd);
         writeFingerprint(cwd);
 
         expect(await preflightLogs(cwd)).toBe("");
@@ -214,7 +213,7 @@ describe("ensureGenerated", () => {
         installReactStack(cwd);
         writeConfig(cwd);
         writeDefaultGiBarrels(cwd);
-        writeJsxStore(cwd);
+        writeReactGiStore(cwd);
         writeFingerprint(cwd);
 
         expect(await ensureGenerated(cwd)).toBe(false);
@@ -260,7 +259,7 @@ describe("ensureGenerated — store links", () => {
         installReactStack(cwd);
         writeConfig(cwd);
         writeDefaultGiBarrels(cwd);
-        writeJsxStore(cwd);
+        writeReactGiStore(cwd);
         rmSync(join(cwd, "node_modules", ".gtkx", "gi", "node_modules", "@gtkx", "ffi"), {
             recursive: true,
             force: true,
@@ -286,7 +285,7 @@ describe("ensureGenerated — fingerprint", () => {
         installReactStack(cwd);
         writeConfig(cwd);
         writeDefaultGiBarrels(cwd);
-        writeJsxStore(cwd);
+        writeReactGiStore(cwd);
     };
 
     it("regenerates when the fingerprint sentinel is absent", async () => {

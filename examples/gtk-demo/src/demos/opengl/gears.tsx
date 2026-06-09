@@ -1,16 +1,8 @@
 import type * as Gdk from "@gtkx/gi/gdk";
 import * as gl from "@gtkx/gi/gl";
 import * as Gtk from "@gtkx/gi/gtk";
-import {
-    GtkBox,
-    GtkFrame,
-    GtkGLArea,
-    GtkLabel,
-    GtkOverlay,
-    GtkOverlayChild,
-    GtkScale,
-    useAdjustment,
-} from "@gtkx/react";
+import { useAdjustment } from "@gtkx/react";
+import { GtkBox, GtkFrame, GtkGLArea, GtkLabel, GtkOverlay, GtkOverlayChild, GtkScale } from "@gtkx/react-gi/gtk";
 import { useEffect, useRef, useState } from "react";
 import { useLatest } from "../../use-latest.js";
 import type { Demo } from "../types.js";

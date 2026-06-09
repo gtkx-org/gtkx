@@ -1,3 +1,6 @@
+/// <reference path="../virtual-gtkx-config.d.ts" />
+
+import { applicationId as configApplicationId } from "virtual:gtkx-config";
 import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import {
@@ -133,8 +136,12 @@ export const createApplication = <P extends ApplicationComponentProps<Applicatio
         const [app, captureApp] = useApplicationInstance<ApplicationOf<P>>(ref);
         const [menu, setMenu] = useState<Gio.Menu | null>(null);
         useApplicationMenubar(app, menu);
+        const hostProps =
+            configApplicationId !== undefined && (rest as { applicationId?: string }).applicationId === undefined
+                ? { ...rest, applicationId: configApplicationId }
+                : rest;
         return (
-            <Element ref={captureApp} {...rest}>
+            <Element ref={captureApp} {...hostProps}>
                 <ApplicationChildren app={app}>
                     {renderMenubar(menubar, setMenu)}
                     {children}

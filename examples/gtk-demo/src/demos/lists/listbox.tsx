@@ -1,6 +1,7 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
+import { GtkMenuButton, MenuItem, MenuSection } from "@gtkx/react";
 import {
     GtkBox,
     GtkButton,
@@ -11,12 +12,9 @@ import {
     GtkLinkButton,
     GtkListBox,
     GtkListBoxRow,
-    GtkMenuButton,
     GtkRevealer,
     GtkScrolledWindow,
-    MenuItem,
-    MenuSection,
-} from "@gtkx/react";
+} from "@gtkx/react-gi/gtk";
 import { useRef, useState } from "react";
 import { path as appleRedPath } from "../css/apple-red.png";
 import type { Demo } from "../types.js";

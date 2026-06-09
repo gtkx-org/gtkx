@@ -1,6 +1,6 @@
-import * as Adw from "@gtkx/gi/adw";
 import type * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
+import { isAdwComboRow } from "../../gtype-predicates.js";
 import type { ListModelController } from "./list-model-controller.js";
 import type { SignalStore } from "./signal-store.js";
 
@@ -160,13 +160,13 @@ export class SelectionController {
     }
 
     private setDropDownSelected(position: number): void {
-        if (this.backingInstance instanceof Gtk.DropDown || this.backingInstance instanceof Adw.ComboRow) {
+        if (this.backingInstance instanceof Gtk.DropDown || isAdwComboRow(this.backingInstance)) {
             this.backingInstance.setSelected(position);
         }
     }
 
     private getDropDownSelected(): number {
-        if (this.backingInstance instanceof Gtk.DropDown || this.backingInstance instanceof Adw.ComboRow) {
+        if (this.backingInstance instanceof Gtk.DropDown || isAdwComboRow(this.backingInstance)) {
             return this.backingInstance.getSelected();
         }
         return -1;

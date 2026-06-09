@@ -1,5 +1,6 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
+import { useAdjustment } from "@gtkx/react";
 import {
     GtkOverlay,
     GtkOverlayChild,
@@ -8,8 +9,7 @@ import {
     GtkScrolledWindow,
     GtkTextTag,
     GtkTextView,
-    useAdjustment,
-} from "@gtkx/react";
+} from "@gtkx/react-gi/gtk";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import { path as decor1Path } from "./decor1.png";

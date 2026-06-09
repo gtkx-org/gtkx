@@ -61,11 +61,11 @@ const buildRunner = (
             realNativeDir: store.realNativeDir,
             version: store.ffiVersion,
         },
-        jsx:
+        reactGi:
             store.react !== null && store.realReactRuntimeDir !== null
                 ? {
-                      storeDir: store.jsxStoreDir,
-                      linkDir: store.jsxLinkDir,
+                      storeDir: store.reactGiStoreDir,
+                      linkDir: store.reactGiLinkDir,
                       giStoreDir: store.giStoreDir,
                       realReactRuntimeDir: store.realReactRuntimeDir,
                       realReactPackageDir: store.react.realDir,
@@ -80,7 +80,7 @@ const buildRunner = (
  * Loads `gtkx.config.ts`, resolves GIR search paths and the resolved library
  * list, locates the project's installed `@gtkx/ffi`/`@gtkx/react`, and delegates
  * to {@link CodegenRunner}, which materializes the injected `@gtkx/gi` (and,
- * when React is present, `@gtkx/react-jsx`) packages into `node_modules`.
+ * when React is present, `@gtkx/react-gi`) packages into `node_modules`.
  *
  * Always regenerates: the conditional {@link ensureGenerated} gate (used by the
  * turbo task and the `gtkx dev`/`gtkx build` preflight) owns the decision of
@@ -107,7 +107,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
     }
 
     if (options.force) {
-        for (const path of [store.giStoreDir, store.giLinkDir, store.jsxStoreDir, store.jsxLinkDir]) {
+        for (const path of [store.giStoreDir, store.giLinkDir, store.reactGiStoreDir, store.reactGiLinkDir]) {
             rmSync(path, { recursive: true, force: true });
         }
     }
@@ -129,10 +129,13 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
 };
 
 /**
- * Top-level `@gtkx/react-jsx` generated modules that must exist whenever React
- * bindings have been generated.
+ * `@gtkx/react-gi` modules that must exist whenever React bindings have been
+ * generated: the merged metadata module and the always-present `gtk` namespace
+ * module (Gtk is in the default library set). A per-namespace module's absence
+ * for a newly configured library is caught by the shared gi-store fingerprint,
+ * which regenerates both stores together.
  */
-const REACT_GENERATED_MODULES: readonly string[] = ["compounds.js", "internal.js", "jsx.js"];
+const REACT_GENERATED_MODULES: readonly string[] = ["metadata.js", join("gtk", "gtk.js")];
 
 /**
  * Absolute path to the generated barrel for a `Name-Version` GIR library
@@ -159,15 +162,16 @@ const giStoreLinksResolve = (giStoreDir: string): boolean =>
 
 /**
  * Returns true if the injected `@gtkx/gi` (or, when the React stack — both
- * `@gtkx/react` and the `react` runtime — is present, `@gtkx/react-jsx`)
+ * `@gtkx/react` and the `react` runtime — is present, `@gtkx/react-gi`)
  * package is missing a required module or its visible alias.
  *
  * Used by `gtkx dev`/`gtkx build` and by {@link ensureGenerated} to auto-run
  * codegen when the store is absent, partial, or a newly configured library has
- * not been generated. The jsx-freshness branch is gated on the same condition
- * {@link runCodegen} uses to emit the jsx unit — both the `@gtkx/react` package
- * and the `react` runtime resolving — so a project with `@gtkx/react` but no
- * `react` runtime does not wedge on a jsx unit that can never be produced.
+ * not been generated. The react-gi-freshness branch is gated on the same
+ * condition {@link runCodegen} uses to emit the react-gi unit — both the
+ * `@gtkx/react` package and the `react` runtime resolving — so a project with
+ * `@gtkx/react` but no `react` runtime does not wedge on a unit that can never
+ * be produced.
  * Beyond presence, it compares the gi store's fingerprint sentinel against the
  * current `@gtkx/codegen` version, resolved library set, and GIR file contents,
  * so a runtime bump or a codegen upgrade triggers a regeneration. A
@@ -194,8 +198,8 @@ const isCodegenNeeded = (cwd: string, config: GtkxConfig): boolean => {
             return true;
         }
         if (store.react !== null && store.realReactRuntimeDir !== null) {
-            if (!existsSync(store.jsxLinkDir)) return true;
-            if (REACT_GENERATED_MODULES.some((module) => !existsSync(join(store.jsxStoreDir, module)))) return true;
+            if (!existsSync(store.reactGiLinkDir)) return true;
+            if (REACT_GENERATED_MODULES.some((module) => !existsSync(join(store.reactGiStoreDir, module)))) return true;
         }
         return fingerprintStale(store.giStoreDir, libraries);
     } catch {
@@ -235,7 +239,7 @@ const fingerprintStale = (giStoreDir: string, libraries: readonly string[]): boo
  * shadow the shared root store.
  *
  * When a member shares the workspace root's store, a leftover member-local
- * `.gtkx` (or its `@gtkx/{gi,react-jsx}` symlinks) would resolve ahead of the
+ * `.gtkx` (or its `@gtkx/{gi,react-gi}` symlinks) would resolve ahead of the
  * root copy, reintroducing the duplicate-instance split this sharing avoids.
  *
  * @param memberDir - The workspace member whose shadowing store to prune
@@ -245,7 +249,7 @@ const pruneShadowingStore = (memberDir: string): void => {
     for (const path of [
         join(nodeModules, ".gtkx"),
         join(nodeModules, "@gtkx", "gi"),
-        join(nodeModules, "@gtkx", "react-jsx"),
+        join(nodeModules, "@gtkx", "react-gi"),
     ]) {
         rmSync(path, { recursive: true, force: true });
     }

@@ -1,6 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { ApplicationContext, GtkApplicationWindow, reconciler, setReconcilerErrorHandler } from "@gtkx/react";
+import { ApplicationContext, reconciler, setReconcilerErrorHandler } from "@gtkx/react";
+import { GtkApplicationWindow } from "@gtkx/react-gi/gtk";
 import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
 import { bindQueries } from "./bind-queries.js";

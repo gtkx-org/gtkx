@@ -55,6 +55,7 @@ describe("defaultDevRunnerDeps (wiring)", () => {
 
         const names = deps.plugins().map((p) => p.name);
         expect(names).toEqual([
+            "gtkx:config",
             "gtkx:gsettings",
             "gtkx:gresources",
             "gtkx:assets",

@@ -1,4 +1,5 @@
-import { AdwNavigationPage, GtkLabel } from "@gtkx/react";
+import { AdwNavigationPage } from "@gtkx/react-gi/adw";
+import { GtkLabel } from "@gtkx/react-gi/gtk";
 import type { ReactNode } from "react";
 
 /**

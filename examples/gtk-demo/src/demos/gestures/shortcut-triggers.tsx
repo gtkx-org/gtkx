@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkLabel, GtkListBox, GtkShortcut, GtkShortcutController } from "@gtkx/react";
+import { GtkLabel, GtkListBox, GtkShortcut, GtkShortcutController } from "@gtkx/react-gi/gtk";
 import type { Demo } from "../types.js";
 import sourceCode from "./shortcut-triggers.tsx?raw";
 

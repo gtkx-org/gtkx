@@ -2,8 +2,8 @@ import { generateNamespaceModule } from "./ffi/pipeline.js";
 import { computeFingerprint } from "./fingerprint.js";
 import { type GiNamespaceInput, type GiStoreOptions, writeGiStore } from "./gi-store.js";
 import { loadGirRepository } from "./gir/repository.js";
-import { type JsxStoreOptions, writeJsxStore } from "./jsx-store.js";
-import { generateReactFiles } from "./react/pipeline.js";
+import { generateReactGiFiles } from "./react/pipeline.js";
+import { type ReactGiStoreOptions, writeReactGiStore } from "./react-gi-store.js";
 
 /**
  * Options for {@link CodegenRunner}.
@@ -21,8 +21,8 @@ export type CodegenRunnerOptions = {
     readonly arrayProps?: Readonly<Record<string, Readonly<Record<string, string>>>>;
     /** Target for the injected `@gtkx/gi` bindings package. */
     readonly gi: GiStoreOptions;
-    /** Target for the injected `@gtkx/react-jsx` unit; React is skipped when omitted. */
-    readonly jsx?: JsxStoreOptions;
+    /** Target for the injected `@gtkx/react-gi` package; React is skipped when omitted. */
+    readonly reactGi?: ReactGiStoreOptions;
 };
 
 /**
@@ -42,7 +42,7 @@ export type CodegenRunnerResult = {
  *
  * Loads the GIR repository, runs the FFI pipeline per namespace, runs the
  * React pipeline once, and materializes the self-contained `@gtkx/gi` (and
- * optional `@gtkx/react-jsx`) packages into the project's `node_modules`.
+ * optional `@gtkx/react-gi`) packages into the project's `node_modules`.
  *
  * @example
  * ```ts
@@ -78,13 +78,13 @@ export class CodegenRunner {
         });
 
         let widgetCount = 0;
-        if (this.options.jsx !== undefined) {
-            const reactPipeline = generateReactFiles(repository, {
+        if (this.options.reactGi !== undefined) {
+            const reactPipeline = generateReactGiFiles(repository, {
                 widgetSlots: this.options.widgetSlots,
                 containerSlots: this.options.containerSlots,
                 arrayProps: this.options.arrayProps,
             });
-            writeJsxStore(this.options.jsx, reactPipeline.files);
+            writeReactGiStore(this.options.reactGi, reactPipeline.namespaces, reactPipeline.metadata);
             widgetCount = reactPipeline.widgetCount;
         }
 

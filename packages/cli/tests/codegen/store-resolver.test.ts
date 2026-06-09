@@ -29,8 +29,8 @@ describe("resolveCodegenStore", () => {
         const nodeModules = join(projectRoot, "node_modules");
         expect(store.giStoreDir).toBe(join(nodeModules, ".gtkx", "gi"));
         expect(store.giLinkDir).toBe(join(nodeModules, "@gtkx", "gi"));
-        expect(store.jsxStoreDir).toBe(join(nodeModules, ".gtkx", "jsx"));
-        expect(store.jsxLinkDir).toBe(join(nodeModules, "@gtkx", "react-jsx"));
+        expect(store.reactGiStoreDir).toBe(join(nodeModules, ".gtkx", "react-gi"));
+        expect(store.reactGiLinkDir).toBe(join(nodeModules, "@gtkx", "react-gi"));
     });
 
     it("resolves @gtkx/ffi's real directory and version", () => {

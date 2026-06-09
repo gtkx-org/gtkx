@@ -4,13 +4,12 @@ import * as Gio from "@gtkx/gi/gio";
 import type { GType } from "@gtkx/gi/gobject";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import { GtkDrawingArea, GtkDropDown } from "@gtkx/react";
 import {
     GtkBox,
     GtkButton,
     GtkColorDialogButton,
     GtkDragSource,
-    GtkDrawingArea,
-    GtkDropDown,
     GtkDropTarget,
     GtkEntry,
     GtkImage,
@@ -19,7 +18,7 @@ import {
     GtkStack,
     GtkStackPage,
     GtkToggleButton,
-} from "@gtkx/react";
+} from "@gtkx/react-gi/gtk";
 import { useEffect, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./clipboard.tsx?raw";

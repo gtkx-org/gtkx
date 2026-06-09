@@ -1,5 +1,6 @@
 import type * as Adw from "@gtkx/gi/adw";
-import { AdwNavigationPage, AdwNavigationView, GtkLabel } from "@gtkx/react";
+import { AdwNavigationPage, AdwNavigationView } from "@gtkx/react-gi/adw";
+import { GtkLabel } from "@gtkx/react-gi/gtk";
 import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";

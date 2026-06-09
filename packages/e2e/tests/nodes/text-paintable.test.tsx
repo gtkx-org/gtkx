@@ -1,6 +1,6 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkTextPaintable, GtkTextView } from "@gtkx/react";
+import { GtkTextPaintable, GtkTextView } from "@gtkx/react-gi/gtk";
 import { render } from "@gtkx/testing";
 import { createRef, useMemo } from "react";
 import { describe, expect, it } from "vitest";

@@ -1,4 +1,4 @@
-import { GtkLabel } from "@gtkx/react";
+import { GtkLabel } from "@gtkx/react-gi/gtk";
 import { screen } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import {

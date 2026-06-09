@@ -71,11 +71,12 @@ describe("build (plugin order)", () => {
     beforeEach(resetBuildMocks);
     afterEach(restoreSpies);
 
-    it("registers all six gtkx vite plugins in order", async () => {
+    it("registers all gtkx vite plugins in order", async () => {
         await build({ entry: "src/index.tsx" });
 
         const pluginNames = getViteConfig().plugins.map((p) => p?.name);
         expect(pluginNames).toEqual([
+            "gtkx:config",
             "gtkx:gsettings",
             "gtkx:gresources",
             "gtkx:assets",
@@ -92,6 +93,7 @@ describe("build (plugin order)", () => {
         const pluginNames = getViteConfig().plugins.map((p) => p?.name);
         expect(pluginNames[0]).toBe("user-plugin");
         expect(pluginNames.slice(1)).toEqual([
+            "gtkx:config",
             "gtkx:gsettings",
             "gtkx:gresources",
             "gtkx:assets",

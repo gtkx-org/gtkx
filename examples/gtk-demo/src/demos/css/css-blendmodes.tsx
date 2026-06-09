@@ -11,7 +11,7 @@ import {
     GtkStack,
     GtkStackPage,
     GtkStackSwitcher,
-} from "@gtkx/react";
+} from "@gtkx/react-gi/gtk";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import blendsPath from "./blends.png";

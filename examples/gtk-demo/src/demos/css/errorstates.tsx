@@ -1,8 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import { useAdjustment } from "@gtkx/react";
+import { AdwDialog, AdwHeaderBar, AdwToolbarView } from "@gtkx/react-gi/adw";
 import {
-    AdwDialog,
-    AdwHeaderBar,
-    AdwToolbarView,
     GtkEntry,
     GtkGrid,
     GtkGridChild,
@@ -11,8 +10,7 @@ import {
     GtkShortcut,
     GtkShortcutController,
     GtkSwitch,
-    useAdjustment,
-} from "@gtkx/react";
+} from "@gtkx/react-gi/gtk";
 import { useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./errorstates.tsx?raw";

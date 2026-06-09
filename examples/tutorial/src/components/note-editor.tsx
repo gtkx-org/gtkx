@@ -1,6 +1,6 @@
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkEntry, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
+import { GtkBox, GtkEntry, GtkScrolledWindow, GtkTextView } from "@gtkx/react-gi/gtk";
 import type { Note } from "../types.js";
 
 const titleEntry = css`

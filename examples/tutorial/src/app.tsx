@@ -1,6 +1,16 @@
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
+    GtkGridView,
+    GtkListView,
+    GtkMenuButton,
+    MenuItem,
+    MenuSection,
+    quit,
+    useApplication,
+    useSetting,
+} from "@gtkx/react";
+import {
     AdwApplication,
     AdwApplicationWindow,
     AdwHeaderBar,
@@ -10,22 +20,16 @@ import {
     AdwToastOverlay,
     AdwToggleGroup,
     AdwToolbarView,
+} from "@gtkx/react-gi/adw";
+import {
     GtkBox,
     GtkButton,
-    GtkGridView,
-    GtkListView,
-    GtkMenuButton,
     GtkScrolledWindow,
     GtkSearchBar,
     GtkSearchEntry,
     GtkShortcut,
     GtkShortcutController,
-    MenuItem,
-    MenuSection,
-    quit,
-    useApplication,
-    useSetting,
-} from "@gtkx/react";
+} from "@gtkx/react-gi/gtk";
 import { useRef, useState } from "react";
 import schemaId from "../com.gtkx.tutorial.gschema.xml";
 import { About } from "./components/about.js";

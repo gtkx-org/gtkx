@@ -2,16 +2,8 @@ import { homedir } from "node:os";
 import { css } from "@gtkx/css";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import {
-    GtkBox,
-    GtkButton,
-    GtkGridView,
-    GtkHeaderBar,
-    GtkImage,
-    GtkLabel,
-    GtkListView,
-    GtkScrolledWindow,
-} from "@gtkx/react";
+import { GtkGridView, GtkListView } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkHeaderBar, GtkImage, GtkLabel, GtkScrolledWindow } from "@gtkx/react-gi/gtk";
 
 import { createContext, useContext, useEffect, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";

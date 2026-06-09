@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkLabel, GtkNotebook, GtkNotebookPage } from "@gtkx/react";
+import { GtkLabel, GtkNotebook, GtkNotebookPage } from "@gtkx/react-gi/gtk";
 import type { ReactNode, RefObject } from "react";
 import type { ChildrenBuilder } from "./render-children.js";
 

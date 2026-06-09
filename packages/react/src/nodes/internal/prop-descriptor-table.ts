@@ -8,15 +8,17 @@
  * (walking the instance's GType ancestry) into the table the renderer's
  * `apply-props` consumes, sparing each widget a bespoke node subclass.
  */
-import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
+import type { GtkTextViewProps } from "@gtkx/react-gi/gtk";
+import type { GtkSourceViewProps } from "@gtkx/react-gi/gtksource";
 import { scheduleFlush } from "../../commit-flush.js";
 import { getColumnController } from "../../components/internal/column-view-registry.js";
 import { buildMenuModel, type MenuActionContext, type MenuEntry } from "../../components/internal/menu-model.js";
 import { collectTypeNameChain } from "../../gtype.js";
+import { isAdwToggleGroup, isAdwViewStack } from "../../gtype-predicates.js";
 import { type Instance, registerTeardown } from "../../instance.js";
-import type { ColumnViewColumnProps, GtkSourceViewProps, GtkTextViewProps } from "../../jsx.js";
+import type { ColumnViewColumnProps } from "../../jsx.js";
 import { type ImperativeHandler, imperative, type PropDescriptorTable, signal } from "./apply-props.js";
 import { getTextBufferController } from "./text-buffer-registry.js";
 
@@ -25,7 +27,7 @@ type DescriptorFactory = (instance: Instance) => PropDescriptorTable;
 
 const toggleGroupDescriptors: DescriptorFactory = (instance): PropDescriptorTable => {
     const group = instance.backingInstance;
-    if (!(group instanceof Adw.ToggleGroup)) return {};
+    if (!group || !isAdwToggleGroup(group)) return {};
     const applySelection = (): void => {
         const activeName = instance.props.activeName as string | null | undefined;
         if (activeName !== undefined) group.setActiveName(activeName);
@@ -40,7 +42,7 @@ const toggleGroupDescriptors: DescriptorFactory = (instance): PropDescriptorTabl
 
 const stackDescriptors: DescriptorFactory = (instance): PropDescriptorTable => {
     const stack = instance.backingInstance;
-    if (!(stack instanceof Gtk.Stack) && !(stack instanceof Adw.ViewStack)) return {};
+    if (!(stack instanceof Gtk.Stack) && !(stack !== undefined && isAdwViewStack(stack))) return {};
     return {
         page: imperative(
             () => {

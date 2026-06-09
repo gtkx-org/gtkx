@@ -3,16 +3,15 @@ import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
+import { createPortal, GtkMenuButton, MenuItem, MenuSection, quit, useApplication, useProperty } from "@gtkx/react";
+import { AdwAboutDialog } from "@gtkx/react-gi/adw";
 import {
-    AdwAboutDialog,
-    createPortal,
     GtkApplication,
     GtkApplicationWindow,
     GtkBox,
     GtkButton,
     GtkHeaderBar,
     GtkLabel,
-    GtkMenuButton,
     GtkNotebook,
     GtkNotebookPage,
     GtkScrolledWindow,
@@ -20,12 +19,7 @@ import {
     GtkShortcutController,
     GtkToggleButton,
     GtkWindow,
-    MenuItem,
-    MenuSection,
-    quit,
-    useApplication,
-    useProperty,
-} from "@gtkx/react";
+} from "@gtkx/react-gi/gtk";
 import { useEffect, useRef, useState } from "react";
 import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";

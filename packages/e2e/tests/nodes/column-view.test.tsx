@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkColumnView, GtkColumnViewColumn, GtkLabel } from "@gtkx/react";
+import { GtkColumnView, GtkColumnViewColumn } from "@gtkx/react";
+import { GtkLabel } from "@gtkx/react-gi/gtk";
 import { act, render } from "@gtkx/testing";
 import { createRef, useCallback, useMemo, useState } from "react";
 import { describe, expect, it, vi } from "vitest";

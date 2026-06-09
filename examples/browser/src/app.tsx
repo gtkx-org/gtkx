@@ -2,18 +2,9 @@ import { css } from "@gtkx/css";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as WebKit from "@gtkx/gi/webkit";
-import {
-    AdwApplication,
-    AdwApplicationWindow,
-    AdwHeaderBar,
-    AdwToolbarView,
-    GtkBox,
-    GtkButton,
-    GtkEntry,
-    GtkProgressBar,
-    quit,
-    WebKitWebView,
-} from "@gtkx/react";
+import { quit, WebKitWebView } from "@gtkx/react";
+import { AdwApplication, AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/react-gi/adw";
+import { GtkBox, GtkButton, GtkEntry, GtkProgressBar } from "@gtkx/react-gi/gtk";
 import { type RefObject, useEffect, useRef, useState } from "react";
 
 const DEFAULT_URL = "https://gtkx.dev";

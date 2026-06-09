@@ -10,18 +10,20 @@ import { implementedInterfaces, isReactNodeClass, iterateClassesWithGlibName, si
 type QualifiedSource = { readonly klass: GirClass; readonly namespaceName: string };
 
 /**
- * Generates `internal.ts` source — the `SIGNALS`, `CONSTRUCT_ONLY_PROPS`, and
- * `DEFAULT_PROPS` tables consumed by the React metadata resolver.
+ * Generates `metadata.ts` source — the merged `SIGNALS`, `CONSTRUCT_ONLY_PROPS`,
+ * and `DEFAULT_PROPS` tables consumed by the React metadata resolver.
  *
- * Walks every widget across every loaded namespace and emits one entry
- * per GLib type name. Signals are mapped from kebab-case to `onCamelCase`;
- * construct-only properties are surfaced as a `Set` for the runtime to
- * consult on mount; each settable property's GIR `default-value` is coerced to
- * a JS literal so the reconciler can reset a removed prop to its default.
+ * The tables are pure data keyed by GLib type name and carry no value imports
+ * from any namespace, so the module loads no GObject library: it is delivered to
+ * `@gtkx/react` through the `virtual:gtkx-config` Vite module. Signals are mapped
+ * from kebab-case to `onCamelCase`; construct-only properties are surfaced as a
+ * `Set` for the runtime to consult on mount; each settable property's GIR
+ * `default-value` is coerced to a JS literal so the reconciler can reset a removed
+ * prop to its default.
  *
  * @param repository - The loaded GIR repository
  */
-export const generateInternal = (repository: GirRepository): string => {
+export const generateMetadata = (repository: GirRepository): string => {
     const widgets = collectWidgets(repository);
     const signalsEntries = widgets.map(
         ({ glibName, signals }) => `    "${glibName}": ${renderSignalsObject(signals)},`,
@@ -33,11 +35,7 @@ export const generateInternal = (repository: GirRepository): string => {
         .filter(({ defaults }) => defaults.length > 0)
         .map(({ glibName, defaults }) => `    "${glibName}": ${renderDefaultsObject(defaults)},`);
 
-    const namespaces = [...new Set(widgets.map((widget) => widget.namespace))].sort((a, b) => a.localeCompare(b));
-    const preamble = namespaces.map((name) => `import "@gtkx/gi/${name.toLowerCase()}";`).join("\n");
-
     return `${[
-        preamble,
         `export const SIGNALS: Readonly<Record<string, Readonly<Record<string, string>>>> = {\n${signalsEntries.join("\n")}\n};`,
         `export const CONSTRUCT_ONLY_PROPS: Readonly<Record<string, ReadonlySet<string>>> = {\n${constructOnlyEntries.join("\n")}\n};`,
         `export const DEFAULT_PROPS: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {\n${defaultsEntries.join("\n")}\n};`,

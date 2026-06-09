@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkColumnView, GtkColumnViewColumn, GtkLabel, MenuItem, MenuSection, MenuSubmenu } from "@gtkx/react";
+import { GtkColumnView, GtkColumnViewColumn, MenuItem, MenuSection, MenuSubmenu } from "@gtkx/react";
+import { GtkLabel } from "@gtkx/react-gi/gtk";
 import { render } from "@gtkx/testing";
 import type { ComponentProps, ReactNode, RefObject } from "react";
 import { createRef, useCallback, useMemo, useState } from "react";

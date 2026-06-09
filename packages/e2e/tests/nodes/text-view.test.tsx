@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
-import { GtkButton, GtkTextAnchor, GtkTextTag, GtkTextView } from "@gtkx/react";
+import { GtkButton, GtkTextAnchor, GtkTextTag, GtkTextView } from "@gtkx/react-gi/gtk";
 import { render, screen } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";

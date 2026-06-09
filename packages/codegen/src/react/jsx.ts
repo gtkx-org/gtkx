@@ -1,65 +1,84 @@
 import { quote } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
+import type { GirNamespace } from "../gir/namespace.js";
 import { splitQualifiedName } from "../gir/qualified-name.js";
 import type { GirRepository } from "../gir/repository.js";
+import type { ReactGiImports } from "./imports.js";
 import { buildWidgetPropsEntries } from "./props.js";
 import { collectReactNodeClasses, type WidgetCandidate } from "./widgets.js";
 
+/** Merged JSX-surface maps keyed by JSX element name, threaded into {@link generateJsxSection}. */
+export type JsxSurfaceMaps = {
+    /** Widget-slot names keyed by JSX element name. */
+    readonly widgetSlotMap?: Readonly<Record<string, readonly string[]>>;
+    /** Container-slot methods keyed by JSX element name. */
+    readonly containerSlotMap?: Readonly<Record<string, readonly string[]>>;
+    /** Array props keyed by JSX element name then prop name to item-type name. */
+    readonly arrayPropMap?: Readonly<Record<string, Readonly<Record<string, string>>>>;
+};
+
 /**
- * Generates `jsx.ts` source — one `export const Name = "Name"` per JSX
- * intrinsic element (every GtkWidget descendant plus event controllers
- * and layout managers) that is NOT exported as a slot-widget compound,
- * plus an `export type NameProps` permissive prop bag per intrinsic and
- * a `WidgetSlotNames` index of every widget's allowed slot names.
+ * Generates the intrinsic/Props section of one namespace's `@gtkx/react-gi`
+ * module: one `export const Name = "Name"` per JSX intrinsic element NOT exported
+ * as a compound, an `export interface NameProps` per intrinsic, the synthetic
+ * `WidgetProps` base when this namespace owns the root of the prop chain, a
+ * `WidgetSlotNames` index, and the `React.JSX.IntrinsicElements` augmentation —
+ * each scoped to the target namespace's widgets.
  *
- * Compounds.ts owns its widgets' runtime exports. To prevent ambiguous
- * re-exports when consumers wildcard both `compounds.js` and `jsx.js`,
- * widgets covered by `excludeNames` are skipped here and the consumer
- * sees a single function-typed export from compounds instead of the
- * string-literal constant. Prop types are still emitted for every
- * widget — they live in the type namespace and never clash with
- * compounds.
+ * Parent-prop inheritance resolves against the full repository, so a widget whose
+ * parent lives in another namespace records a cross-namespace `Props` import into
+ * `imports`; same-namespace parents resolve locally. Every other import need
+ * (`react` builtins, GIR namespace aliases, shared item types) is accumulated
+ * into `imports` for the pipeline to render once.
  *
+ * @param targetNamespace - The namespace this module is generated for
  * @param repository - The loaded GIR repository
- * @param excludeNames - Widgets already exported by `compounds.ts`
- * @param maps - Merged widget-slot, container-slot, and array-prop maps keyed by JSX element name
+ * @param options - The compound-exported names to skip, the merged slot/array-prop
+ *   maps, and the shared import accumulator the section populates
  */
-export const generateJsx = (
+export const generateJsxSection = (
+    targetNamespace: GirNamespace,
     repository: GirRepository,
-    excludeNames: ReadonlySet<string> = new Set(),
-    maps: JsxSurfaceMaps = {},
+    options: {
+        readonly excludeNames: ReadonlySet<string>;
+        readonly maps: JsxSurfaceMaps;
+        readonly imports: ReactGiImports;
+    },
 ): string => {
-    const widgets = collectReactNodeClasses(repository);
+    const { excludeNames, maps, imports } = options;
+    const allWidgets = collectReactNodeClasses(repository);
+    const widgets = allWidgets.filter((entry) => entry.namespace.name === targetNamespace.name);
     const intrinsicWidgets = widgets.filter((entry) => !excludeNames.has(entry.glibName));
     const constLines = intrinsicWidgets.map(
         (entry) => `export const ${entry.glibName} = ${quote(entry.glibName)} as const;`,
     );
 
-    const widgetByGlibName = new Map(widgets.map((entry) => [entry.glibName, entry]));
+    const widgetByGlibName = new Map(allWidgets.map((entry) => [entry.glibName, entry]));
     const isWidgetAncestor = (candidate: GirClass): boolean => {
         const candidateGlib = candidate.glibTypeName ?? candidate.cType;
         return candidateGlib !== undefined && widgetByGlibName.has(candidateGlib);
     };
-    const namespaceImports = new Map<string, string>();
-    const referencedItemTypes = new Set<string>();
-    const propBlocks: string[] = ["export interface WidgetProps {\n    name?: string;\n}"];
-    for (const entry of widgets) {
-        propBlocks.push(
-            renderPropBlock(repository, entry, {
-                widgetSlotMap: maps.widgetSlotMap ?? {},
-                containerSlotMap: maps.containerSlotMap ?? {},
-                arrayPropMap: maps.arrayPropMap ?? {},
-                isWidgetAncestor,
-                widgetByGlibName,
-                namespaceImports,
-                referencedItemTypes,
-            }),
-        );
-    }
+    imports.reactBuiltins.add("ReactNode");
+    imports.reactBuiltins.add("Ref");
 
-    const body = [
-        renderImportLines(namespaceImports, referencedItemTypes).join("\n"),
-        "",
+    let needsWidgetPropsBase = false;
+    const propBlocks: string[] = [];
+    for (const entry of widgets) {
+        const { block, extendsBase } = renderPropBlock(repository, entry, {
+            widgetSlotMap: maps.widgetSlotMap ?? {},
+            containerSlotMap: maps.containerSlotMap ?? {},
+            arrayPropMap: maps.arrayPropMap ?? {},
+            isWidgetAncestor,
+            widgetByGlibName,
+            targetNamespaceName: targetNamespace.name,
+            imports,
+        });
+        if (extendsBase) needsWidgetPropsBase = true;
+        propBlocks.push(block);
+    }
+    if (needsWidgetPropsBase) propBlocks.unshift("export interface WidgetProps {\n    name?: string;\n}");
+
+    return [
         constLines.join("\n"),
         "",
         propBlocks.join("\n\n"),
@@ -68,17 +87,6 @@ export const generateJsx = (
         "",
         renderJsxAugmentation(widgets),
     ].join("\n");
-    return `${body}\n`;
-};
-
-/** Merged JSX-surface maps keyed by JSX element name, threaded into {@link generateJsx}. */
-type JsxSurfaceMaps = {
-    /** Widget-slot names keyed by JSX element name. */
-    readonly widgetSlotMap?: Readonly<Record<string, readonly string[]>>;
-    /** Container-slot methods keyed by JSX element name. */
-    readonly containerSlotMap?: Readonly<Record<string, readonly string[]>>;
-    /** Array props keyed by JSX element name then prop name to item-type name. */
-    readonly arrayPropMap?: Readonly<Record<string, Readonly<Record<string, string>>>>;
 };
 
 const renderSlotNamesLine = (
@@ -110,15 +118,15 @@ type RenderPropBlockContext = {
     readonly arrayPropMap: Readonly<Record<string, Readonly<Record<string, string>>>>;
     readonly isWidgetAncestor: (candidate: GirClass) => boolean;
     readonly widgetByGlibName: ReadonlyMap<string, WidgetCandidate>;
-    readonly namespaceImports: Map<string, string>;
-    readonly referencedItemTypes: Set<string>;
+    readonly targetNamespaceName: string;
+    readonly imports: ReactGiImports;
 };
 
 const renderPropBlock = (
     repository: GirRepository,
     entry: WidgetCandidate,
     context: RenderPropBlockContext,
-): string => {
+): { readonly block: string; readonly extendsBase: boolean } => {
     const slotPropNames = new Set(context.widgetSlotMap[entry.glibName] ?? []);
     const arrayProps = context.arrayPropMap[entry.glibName] ?? {};
     const { propLines, imports } = buildWidgetPropsEntries({
@@ -128,11 +136,11 @@ const renderPropBlock = (
         arrayPropNames: new Set(Object.keys(arrayProps)),
         isWidgetAncestor: context.isWidgetAncestor,
     });
-    for (const [namespace, alias] of imports) context.namespaceImports.set(namespace, alias);
-    context.namespaceImports.set(entry.namespace.name, entry.namespace.name);
+    for (const [namespace, alias] of imports) context.imports.giNamespaces.set(namespace, alias);
+    context.imports.giNamespaces.set(entry.namespace.name, entry.namespace.name);
     const widgetTypeRef = `${entry.namespace.name}.${entry.klass.name} | null`;
     const arrayPropLines = Object.entries(arrayProps).map(([propName, itemType]) => {
-        context.referencedItemTypes.add(itemType);
+        context.imports.sharedTypes.add(itemType);
         return `    ${propName}?: ${itemType}[] | null;`;
     });
     const ownerLines = [
@@ -142,34 +150,18 @@ const renderPropBlock = (
         ...(context.containerSlotMap[entry.glibName] ?? []).map((method) => `    ${method}?: ReactNode | null;`),
         ...arrayPropLines,
     ];
-    const parentExtends = resolveParentPropsExtension(repository, entry, context.widgetByGlibName);
+    const parentExtends = resolveParentPropsExtension(repository, entry, context);
     const selfDefault = `${entry.namespace.name}.${entry.klass.name}`;
-    return `export interface ${entry.glibName}Props<Self = ${selfDefault}> extends ${parentExtends} {\n${ownerLines.join("\n")}\n}`;
+    return {
+        block: `export interface ${entry.glibName}Props<Self = ${selfDefault}> extends ${parentExtends} {\n${ownerLines.join("\n")}\n}`,
+        extendsBase: parentExtends === "WidgetProps",
+    };
 };
-
-const renderImportLines = (
-    namespaceImports: ReadonlyMap<string, string>,
-    referencedItemTypes: ReadonlySet<string>,
-): readonly string[] => {
-    const lines = ['import type { ReactNode, Ref } from "react";'];
-    if (referencedItemTypes.size > 0) {
-        const names = [...referencedItemTypes].sort((a, b) => a.localeCompare(b));
-        lines.push(`import type { ${names.join(", ")} } from "@gtkx/react";`);
-    }
-    for (const [namespaceName, alias] of namespaceImports) {
-        if (namespaceName === "") continue;
-        const directory = namespaceName.toLowerCase();
-        lines.push(`import type * as ${alias} from "${ffiImportPath(directory)}";`);
-    }
-    return lines;
-};
-
-const ffiImportPath = (directory: string): string => `@gtkx/gi/${directory}`;
 
 const resolveParentPropsExtension = (
     repository: GirRepository,
     entry: WidgetCandidate,
-    widgetByGlibName: ReadonlyMap<string, WidgetCandidate>,
+    context: RenderPropBlockContext,
 ): string => {
     const parent = entry.klass.parent;
     if (parent === undefined) return "WidgetProps";
@@ -179,6 +171,13 @@ const resolveParentPropsExtension = (
     if (resolved.kind !== "class" && resolved.kind !== "interface") return "WidgetProps";
     const parentGlib = resolved.value.glibTypeName ?? resolved.value.cType;
     if (parentGlib === undefined) return "WidgetProps";
-    if (!widgetByGlibName.has(parentGlib)) return "WidgetProps";
+    if (!context.widgetByGlibName.has(parentGlib)) return "WidgetProps";
+    const parentNamespaceName = resolved.namespace.name;
+    if (parentNamespaceName !== context.targetNamespaceName) {
+        const directory = parentNamespaceName.toLowerCase();
+        const names = context.imports.crossNsProps.get(directory) ?? new Set<string>();
+        names.add(`${parentGlib}Props`);
+        context.imports.crossNsProps.set(directory, names);
+    }
     return `${parentGlib}Props<Self>`;
 };

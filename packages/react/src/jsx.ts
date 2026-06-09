@@ -980,27 +980,12 @@ export type AccessibleProps = {
     accessibleSetSize?: number;
 };
 
-declare module "@gtkx/react-jsx/jsx" {
+declare module "@gtkx/react-gi/gobject" {
     interface WidgetProps extends AccessibleProps {}
+}
 
+declare module "@gtkx/react-gi/gtk" {
     interface GtkTextViewProps extends TextBufferProps {}
-
-    interface GtkSourceViewProps extends TextBufferProps {
-        /** Language for syntax highlighting (ID string or Language object) */
-        language?: string | GtkSource.Language;
-        /** Color scheme for syntax highlighting (ID string or StyleScheme object) */
-        styleScheme?: string | GtkSource.StyleScheme;
-        /** Whether syntax highlighting is enabled */
-        highlightSyntax?: boolean;
-        /** Whether matching brackets are highlighted */
-        highlightMatchingBrackets?: boolean;
-        /** Whether the buffer has an implicit trailing newline */
-        implicitTrailingNewline?: boolean;
-        /** Callback fired when the cursor position changes */
-        onCursorMoved?: (() => void) | null;
-        /** Callback fired when the highlighted region is updated */
-        onHighlightUpdated?: ((start: Gtk.TextIter, end: Gtk.TextIter) => void) | null;
-    }
 
     interface GtkColumnViewProps {
         /** ID of the currently sorted column, or null for no sorting */
@@ -1014,8 +999,6 @@ declare module "@gtkx/react-jsx/jsx" {
     }
 
     interface GtkStackProps extends StackProps {}
-
-    interface AdwViewStackProps extends StackProps {}
 
     interface GtkWindowProps {
         /** Callback fired when the window close button is clicked */
@@ -1043,6 +1026,40 @@ declare module "@gtkx/react-jsx/jsx" {
         fontMap?: Pango.FontMap | null;
     }
 
+    interface GtkDragSourceProps {
+        /** Paintable to use as the drag icon */
+        icon?: Gdk.Paintable | null;
+        /** X offset of the hotspot within the drag icon */
+        iconHotX?: number;
+        /** Y offset of the hotspot within the drag icon */
+        iconHotY?: number;
+    }
+}
+
+declare module "@gtkx/react-gi/gtksource" {
+    interface GtkSourceViewProps extends TextBufferProps {
+        /** Language for syntax highlighting (ID string or Language object) */
+        language?: string | GtkSource.Language;
+        /** Color scheme for syntax highlighting (ID string or StyleScheme object) */
+        styleScheme?: string | GtkSource.StyleScheme;
+        /** Whether syntax highlighting is enabled */
+        highlightSyntax?: boolean;
+        /** Whether matching brackets are highlighted */
+        highlightMatchingBrackets?: boolean;
+        /** Whether the buffer has an implicit trailing newline */
+        implicitTrailingNewline?: boolean;
+        /** Callback fired when the cursor position changes */
+        onCursorMoved?: (() => void) | null;
+        /** Callback fired when the highlighted region is updated */
+        onHighlightUpdated?: ((start: Gtk.TextIter, end: Gtk.TextIter) => void) | null;
+    }
+}
+
+declare module "@gtkx/react-gi/adw" {
+    interface AdwViewStackProps extends StackProps {}
+}
+
+declare module "@gtkx/react-gi/gio" {
     interface GMenuProps {
         /**
          * @internal Menu structure collected by the `Menu` component and built by
@@ -1061,19 +1078,8 @@ declare module "@gtkx/react-jsx/jsx" {
          */
         menuActionContext?: MenuActionContext;
     }
-
-    interface GtkDragSourceProps {
-        /** Paintable to use as the drag icon */
-        icon?: Gdk.Paintable | null;
-        /** X offset of the hotspot within the drag icon */
-        iconHotX?: number;
-        /** Y offset of the hotspot within the drag icon */
-        iconHotY?: number;
-    }
 }
 
-export * from "@gtkx/react-jsx/compounds";
-export * from "@gtkx/react-jsx/jsx";
 export { AnimatePresence } from "./components/animate-presence.js";
 export { AdwSpringAnimation, AdwTimedAnimation } from "./components/animation.js";
 export { createApplication, withApplicationWindow } from "./components/application.js";

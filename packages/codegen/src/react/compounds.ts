@@ -1,14 +1,13 @@
 import { quote, toCamelCase } from "@gtkx/utils";
 import type { GirNamespace } from "../gir/namespace.js";
 import type { GirRepository } from "../gir/repository.js";
-import { allVirtualSubcomponents, type VirtualSubcomponent } from "./compounds-meta.js";
+import { type VirtualSubcomponent, virtualSubcomponentEntries } from "./compounds-meta.js";
+import type { ReactGiImports } from "./imports.js";
 import { ancestorGlibNames, collectReactNodeClasses, type WidgetCandidate } from "./widgets.js";
 
 type CompoundAccumulator = {
     readonly elementNames: Set<string>;
-    readonly compoundPropTypes: Set<string>;
-    readonly virtualPropTypes: Set<string>;
-    readonly hocImports: Set<TopLevelHoc>;
+    readonly imports: ReactGiImports;
 };
 
 /** The single JSX element name every metadata wrapper renders. */
@@ -31,50 +30,41 @@ const wrapperElementConst = (name: string): string =>
     name === WRAPPER_NODE_ELEMENT ? "WrapperNodeElement" : `${name}Element`;
 
 /**
- * Generates `compounds.tsx` source: a statically-compiled React component per
- * widget with slot or container-slot props, a top-level surface wrapper per
- * window/dialog/application class (presented on mount, destroyed on unmount),
- * and one flat component per metadata-child kind (`GtkStackPage`, …).
+ * Generates the compounds section of one namespace's `@gtkx/react-gi` module: a
+ * statically-compiled React component per widget with slot or container-slot
+ * props, a top-level surface wrapper per window/dialog/application class, and one
+ * flat component per metadata-child kind whose parent lives in this namespace
+ * (`GtkStackPage`, …).
  *
- * Each slot compound destructures its slot and container-slot props, forwards
- * the rest to the host intrinsic, and wraps each non-null slot value in a
- * `<WrapperNodeElement kind="slot">` (setter, target from `propName`) or
- * `<WrapperNodeElement kind="container-slot">` (append, target from `method`)
- * sentinel element. Each flat virtual component renders the same sentinel with
- * its generic kind and forwards its metadata props.
+ * Element-name consts the components render are emitted as module-local
+ * `${Name}Element = "Name"` bindings. HOC value imports, `react` builtins, and
+ * shared virtual prop types accumulate into `imports`; compound prop types resolve
+ * locally because the intrinsic section of the same module declares them.
  *
- * A top-level class is wrapped by a `@gtkx/react` HOC (`withTopLevel`,
- * `createApplication`, or `withApplicationWindow`) applied to its host lazily on
- * first render and memoized in a module-local binding. The generated module and
- * `@gtkx/react` form an import cycle, so a HOC binding is only guaranteed
- * resolved once every module has evaluated; reading it at render time rather
- * than at module load keeps the wrapper correct regardless of evaluation order.
- * The host is a non-exported `${Name}Base` slot-compound when the class has
- * slots, or the bare intrinsic element const otherwise. A host intrinsic is
- * referenced through a module-local `${Name}Element = "Name"` const so the JSX
- * tag does not collide with the exported component of the same name; non
- * top-level widgets with no slots remain bare string-constant intrinsics in
- * `jsx.ts`.
- *
+ * @param targetNamespace - The namespace this module is generated for
  * @param repository - The loaded GIR repository
- * @param widgetSlotMap - Merged widget-slot names keyed by JSX element name
- * @param containerSlotMap - Merged container-slot methods keyed by JSX element name
+ * @param options - The merged widget-slot and container-slot maps, the shared
+ *   import accumulator, and the widget names a hand-written `@gtkx/react`
+ *   component owns (skipped here)
  */
-export const generateCompounds = (
+export const generateCompoundsSection = (
+    targetNamespace: GirNamespace,
     repository: GirRepository,
-    widgetSlotMap: Readonly<Record<string, readonly string[]>>,
-    containerSlotMap: Readonly<Record<string, readonly string[]>>,
+    options: {
+        readonly widgetSlotMap: Readonly<Record<string, readonly string[]>>;
+        readonly containerSlotMap: Readonly<Record<string, readonly string[]>>;
+        readonly imports: ReactGiImports;
+        readonly excludeNames: ReadonlySet<string>;
+    },
 ): { readonly source: string; readonly exportedNames: ReadonlySet<string> } => {
+    const { widgetSlotMap, containerSlotMap, imports, excludeNames } = options;
     const exportedNames = new Set<string>();
     const exportLines: string[] = [];
-    const accumulator: CompoundAccumulator = {
-        elementNames: new Set<string>(),
-        compoundPropTypes: new Set<string>(),
-        virtualPropTypes: new Set<string>(),
-        hocImports: new Set<TopLevelHoc>(),
-    };
+    const accumulator: CompoundAccumulator = { elementNames: new Set<string>(), imports };
 
     for (const candidate of collectReactNodeClasses(repository)) {
+        if (candidate.namespace.name !== targetNamespace.name) continue;
+        if (excludeNames.has(candidate.glibName)) continue;
         const { glibName, klass, namespace } = candidate;
         const slots = resolveInheritedSlots(widgetSlotMap, klass, namespace, repository);
         const containers = containerSlotMap[glibName] ?? [];
@@ -85,20 +75,43 @@ export const generateCompounds = (
         exportedNames.add(glibName);
     }
 
-    for (const virtual of allVirtualSubcomponents()) {
+    for (const virtual of virtualSubcomponentsForNamespace(targetNamespace, repository)) {
         recordWrapperElement(accumulator);
-        accumulator.virtualPropTypes.add(virtual.propsType);
+        accumulator.imports.sharedTypes.add(virtual.propsType);
+        accumulator.imports.reactBuiltins.add("ReactNode");
         exportLines.push(renderVirtualSubcomponent(virtual));
         exportedNames.add(virtual.flatName);
     }
 
-    const sections = [
-        renderImportLines(accumulator).join("\n"),
-        renderElementConsts(accumulator),
-        exportLines.join("\n\n"),
-    ];
-    const source = `${sections.filter((section) => section.length > 0).join("\n\n")}\n`;
+    const sections = [renderElementConsts(accumulator), exportLines.join("\n\n")];
+    const source = sections.filter((section) => section.length > 0).join("\n\n");
     return { source, exportedNames };
+};
+
+/**
+ * Returns the virtual subcomponents whose standing-in parent widget belongs to
+ * the target namespace. Each distinct virtual is assigned to the first parent
+ * that contributes it (so a virtual shared by `GtkTextView` and `GtkSourceView`
+ * lands in `gtk`, the first parent), keeping it declared in exactly one module.
+ *
+ * @param targetNamespace - The namespace this module is generated for
+ * @param repository - The loaded GIR repository
+ */
+const virtualSubcomponentsForNamespace = (
+    targetNamespace: GirNamespace,
+    repository: GirRepository,
+): readonly VirtualSubcomponent[] => {
+    const namespaceByGlib = new Map(
+        collectReactNodeClasses(repository).map((entry) => [entry.glibName, entry.namespace.name]),
+    );
+    const seen = new Set<string>();
+    const result: VirtualSubcomponent[] = [];
+    for (const { parentGlibName, virtual } of virtualSubcomponentEntries()) {
+        if (seen.has(virtual.flatName)) continue;
+        seen.add(virtual.flatName);
+        if (namespaceByGlib.get(parentGlibName) === targetNamespace.name) result.push(virtual);
+    }
+    return result.sort((a, b) => a.flatName.localeCompare(b.flatName));
 };
 
 /** The HOC precedence list, applied in order against a class's ancestry. */
@@ -140,14 +153,14 @@ type CompoundShape = {
 const renderCompound = (shape: CompoundShape, accumulator: CompoundAccumulator): string => {
     const { glibName, slots, containers, hoc } = shape;
     const propsType = `${glibName}Props`;
-    accumulator.compoundPropTypes.add(propsType);
     accumulator.elementNames.add(glibName);
+    accumulator.imports.reactBuiltins.add("ReactNode");
     const hasSlots = slots.length > 0 || containers.length > 0;
     if (hasSlots) recordWrapperElement(accumulator);
     if (hoc === undefined) {
         return `export const ${glibName} = ${renderComponentFunction(glibName, propsType, slots, containers)};`;
     }
-    accumulator.hocImports.add(hoc);
+    accumulator.imports.hocs.add(hoc);
     return renderTopLevelCompound({ glibName, propsType, slots, containers, hoc });
 };
 
@@ -251,23 +264,6 @@ const renderElementConsts = (accumulator: CompoundAccumulator): string =>
         .sort((a, b) => a.localeCompare(b))
         .map((name) => `const ${wrapperElementConst(name)} = ${quote(name)} as const;`)
         .join("\n");
-
-const renderImportLines = (accumulator: CompoundAccumulator): readonly string[] => {
-    const lines = ['import type { ReactNode } from "react";'];
-    const hocImports = [...accumulator.hocImports].sort((a, b) => a.localeCompare(b));
-    if (hocImports.length > 0) {
-        lines.push(`import { ${hocImports.join(", ")} } from "@gtkx/react";`);
-    }
-    const compoundPropTypes = [...accumulator.compoundPropTypes].sort((a, b) => a.localeCompare(b));
-    if (compoundPropTypes.length > 0) {
-        lines.push(`import type { ${compoundPropTypes.join(", ")} } from "./jsx.js";`);
-    }
-    const virtualPropTypes = [...accumulator.virtualPropTypes].sort((a, b) => a.localeCompare(b));
-    if (virtualPropTypes.length > 0) {
-        lines.push(`import type { ${virtualPropTypes.join(", ")} } from "@gtkx/react";`);
-    }
-    return lines;
-};
 
 const resolveInheritedSlots = (
     widgetSlotMap: Readonly<Record<string, readonly string[]>>,

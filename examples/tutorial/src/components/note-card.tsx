@@ -1,7 +1,8 @@
 import { css } from "@gtkx/css";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwTimedAnimation, AnimatePresence, GtkBox, GtkLabel } from "@gtkx/react";
+import { AdwTimedAnimation, AnimatePresence } from "@gtkx/react";
+import { GtkBox, GtkLabel } from "@gtkx/react-gi/gtk";
 import type { Note } from "../types.js";
 
 const baseCard = css`

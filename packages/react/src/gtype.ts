@@ -1,6 +1,8 @@
+/// <reference path="./virtual-gtkx-config.d.ts" />
+
+import { CONSTRUCT_ONLY_PROPS, DEFAULT_PROPS, SIGNALS } from "virtual:gtkx-config";
 import type { GType } from "@gtkx/gi/gobject";
 import { typeName, typeParent } from "@gtkx/gi/gobject";
-import { CONSTRUCT_ONLY_PROPS, DEFAULT_PROPS, SIGNALS } from "@gtkx/react-jsx/internal";
 import { toKebabCase } from "@gtkx/utils";
 import type { BackingInstance } from "./types.js";
 

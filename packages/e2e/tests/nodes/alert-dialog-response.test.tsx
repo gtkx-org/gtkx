@@ -1,5 +1,5 @@
 import * as Adw from "@gtkx/gi/adw";
-import { AdwAlertDialog } from "@gtkx/react";
+import { AdwAlertDialog } from "@gtkx/react-gi/adw";
 import { render } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";

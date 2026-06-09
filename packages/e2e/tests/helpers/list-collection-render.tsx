@@ -1,4 +1,4 @@
-import { GtkLabel } from "@gtkx/react";
+import { GtkLabel } from "@gtkx/react-gi/gtk";
 import { screen } from "@gtkx/testing";
 import type { ReactNode } from "react";
 import { expect } from "vitest";

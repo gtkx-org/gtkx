@@ -14,10 +14,11 @@
  * suppression of the raw GObject prop of the same name — is owned by the codegen
  * `arrayProps` map, keyed by the same JSX element and prop names.
  */
-import * as Adw from "@gtkx/gi/adw";
+import type * as Adw from "@gtkx/gi/adw";
 import type { GType } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { collectTypeNameChain } from "./gtype.js";
+import { isAdwAlertDialog, isAdwToggleGroup, requireClassByName } from "./gtype-predicates.js";
 import type {
     AlertDialogResponseProps,
     CalendarMark,
@@ -100,11 +101,11 @@ export const ARRAY_PROPS: Readonly<Record<string, Readonly<Record<string, ArrayP
     AdwToggleGroup: {
         toggles: {
             clear: (target) => {
-                if (target instanceof Adw.ToggleGroup) target.removeAll();
+                if (isAdwToggleGroup(target)) target.removeAll();
             },
             add: (target, item) => {
-                if (!(target instanceof Adw.ToggleGroup)) return;
-                const toggle = new Adw.Toggle();
+                if (!isAdwToggleGroup(target)) return;
+                const toggle = new (requireClassByName("AdwToggle") as typeof Adw.Toggle)();
                 applyToggleProps(toggle, item as ToggleProps);
                 target.add(toggle);
             },
@@ -113,10 +114,10 @@ export const ARRAY_PROPS: Readonly<Record<string, Readonly<Record<string, ArrayP
     AdwAlertDialog: {
         responses: {
             remove: (target, item) => {
-                if (target instanceof Adw.AlertDialog) target.removeResponse((item as AlertDialogResponseProps).id);
+                if (isAdwAlertDialog(target)) target.removeResponse((item as AlertDialogResponseProps).id);
             },
             add: (target, item) => {
-                if (!(target instanceof Adw.AlertDialog)) return;
+                if (!isAdwAlertDialog(target)) return;
                 const response = item as AlertDialogResponseProps;
                 target.addResponse(response.id, response.label);
                 if (response.appearance !== undefined) target.setResponseAppearance(response.id, response.appearance);

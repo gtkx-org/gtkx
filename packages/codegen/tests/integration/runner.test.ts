@@ -44,27 +44,28 @@ describe("CodegenRunner", () => {
         expect(existsSync(gi.linkDir)).toBe(true);
     });
 
-    it("writes the jsx unit when jsx options are given", async () => {
-        const { root, gi } = giOptions("with-jsx");
+    it("writes the react-gi unit when reactGi options are given", async () => {
+        const { root, gi } = giOptions("with-react-gi");
         const realReactRuntimeDir = join(root, "fake-react");
         const realReactPackageDir = join(root, "fake-gtkx-react");
         mkdirSync(realReactRuntimeDir, { recursive: true });
         mkdirSync(realReactPackageDir, { recursive: true });
-        const jsx = {
-            storeDir: join(root, "node_modules", ".gtkx", "jsx"),
-            linkDir: join(root, "node_modules", "@gtkx", "react-jsx"),
+        const reactGi = {
+            storeDir: join(root, "node_modules", ".gtkx", "react-gi"),
+            linkDir: join(root, "node_modules", "@gtkx", "react-gi"),
             giStoreDir: gi.storeDir,
             realReactRuntimeDir,
             realReactPackageDir,
             version: "0.0.0",
         };
 
-        const result = await new CodegenRunner({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, gi, jsx }).run();
+        const result = await new CodegenRunner({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, gi, reactGi }).run();
 
         expect(result.widgets).toBeGreaterThan(0);
         expect(existsSync(join(gi.storeDir, "gtk", "gtk.js"))).toBe(true);
-        expect(readFileSync(join(jsx.storeDir, "jsx.js"), "utf8").length).toBeGreaterThan(0);
-        expect(existsSync(jsx.linkDir)).toBe(true);
+        expect(readFileSync(join(reactGi.storeDir, "gtk", "gtk.js"), "utf8").length).toBeGreaterThan(0);
+        expect(readFileSync(join(reactGi.storeDir, "metadata.js"), "utf8").length).toBeGreaterThan(0);
+        expect(existsSync(reactGi.linkDir)).toBe(true);
     });
 
     it("overwrites a pre-existing store on a second run", async () => {

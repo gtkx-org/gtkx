@@ -1,6 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkApplication, GtkApplicationWindow, Menu, MenuItem, MenuSubmenu } from "@gtkx/react";
+import { Menu, MenuItem, MenuSubmenu } from "@gtkx/react";
+import { GtkApplication, GtkApplicationWindow } from "@gtkx/react-gi/gtk";
 import { render } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";

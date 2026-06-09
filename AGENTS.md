@@ -65,7 +65,7 @@ The core runtime is four layers, top to bottom. A React tree mutation flows down
 
 ### Codegen and the `.gtkx` store
 
-`pnpm codegen` reads GIR XML (e.g. `/usr/share/gir-1.0/Gtk-4.0.gir`) for the libraries in `gtkx.config.ts` and emits two generated packages into `node_modules/.gtkx/`: `@gtkx/gi` (FFI classes, property getters/setters, `connect`/`emit` switches) and `@gtkx/react-jsx` (JSX intrinsic element types plus the `SIGNALS`, `CONSTRUCT_ONLY_PROPS`, and `DEFAULT_PROPS` tables the reconciler reads at runtime). App code imports widgets from `@gtkx/gi/gtk`; components from `@gtkx/react`. The pipeline entry is `packages/codegen/src/runner.ts` (`CodegenRunner`); per-namespace emission is in `packages/codegen/src/ffi/pipeline.ts`.
+`pnpm codegen` reads GIR XML (e.g. `/usr/share/gir-1.0/Gtk-4.0.gir`) for the libraries in `gtkx.config.ts` and emits two generated packages into `node_modules/.gtkx/`: `@gtkx/gi` (FFI classes, property getters/setters, `connect`/`emit` switches) and `@gtkx/react-gi` (one per-namespace module — `@gtkx/react-gi/gtk`, `/adw`, … — carrying that namespace's JSX intrinsic element types and components plus a `@gtkx/gi/<ns>` side-effect import, alongside one merged `@gtkx/react-gi/metadata` holding the `SIGNALS`, `CONSTRUCT_ONLY_PROPS`, and `DEFAULT_PROPS` tables). `@gtkx/react-gi` relates to `@gtkx/react` as `@gtkx/gi` relates to `@gtkx/ffi`: `@gtkx/react` is the namespace-agnostic runtime (`render`, `quit`, `AnimatePresence`, hooks, the reconciler, and the hand-written enhanced components), and each `@gtkx/react-gi/<ns>` builds on it. App code imports `render`/`quit`/`AnimatePresence` and enhanced components from `@gtkx/react`, intrinsics and namespace components from `@gtkx/react-gi/<ns>`, and widget enums/classes from `@gtkx/gi/<ns>`. The metadata reaches `@gtkx/react` through the `virtual:gtkx-config` module the gtkx Vite plugin serves, so importing only `@gtkx/react-gi/gtk` never loads Adwaita. The pipeline entry is `packages/codegen/src/runner.ts` (`CodegenRunner`); per-namespace FFI emission is in `packages/codegen/src/ffi/pipeline.ts`, React emission in `packages/codegen/src/react/pipeline.ts`.
 
 ## Packages
 
@@ -73,7 +73,7 @@ The core runtime is four layers, top to bottom. A React tree mutation flows down
 | --- | --- |
 | `@gtkx/native` | Rust napi-rs module: libffi call primitives, GLib thread + mailbox, toggle refs, freeze. |
 | `@gtkx/ffi` | FFI runtime: GObject lifecycle, marshalling, signals, class registry. Depends on native + utils. |
-| `@gtkx/codegen` | GIR-driven generator for `@gtkx/gi` and `@gtkx/react-jsx`. Depends on utils only. |
+| `@gtkx/codegen` | GIR-driven generator for `@gtkx/gi` and `@gtkx/react-gi`. Depends on utils only. |
 | `@gtkx/react` | React 19 reconciler, `render`, hooks (`useApplication`, `useProperty`, `useSetting`), portals. |
 | `@gtkx/css` | Emotion-based CSS-in-JS targeting `Gtk.CssProvider`. |
 | `@gtkx/cli` | `gtkx` binary: `create`, `codegen`, `dev` (Vite + Fast Refresh), `build`. |
@@ -89,7 +89,7 @@ Module boundaries are enforced by `.dependency-cruiser.cjs`: no cycles; `@gtkx/n
 
 - **Build ordering.** `native-build` and `pnpm codegen` must precede any TypeScript build of `ffi`, `react`, `testing`, `css`, or `cli`. Turbo handles this; a manual `tsc -b` in one package without it will fail to resolve `@gtkx/gi` or `native-binding.cjs`.
 - **Xvfb is required for any test touching GTK.** `@gtkx/vitest` spawns a per-worker Xvfb and D-Bus automatically; raw `cargo test` needs `xvfb-run -a`. Cargo tests are always `--test-threads=1` (single GLib main thread).
-- **The `.gtkx` store** (`node_modules/.gtkx`, with `gi` and `jsx` subdirectories) is where codegen writes the generated packages. `pnpm lint:all` creates a root-level `.gtkx` symlink pointing at it (`ln -sfn node_modules/.gtkx .gtkx`) so knip and depcruise can analyze them; that symlink is gitignored.
+- **The `.gtkx` store** (`node_modules/.gtkx`, with `gi` and `react-gi` subdirectories) is where codegen writes the generated packages. `pnpm lint:all` creates a root-level `.gtkx` symlink pointing at it (`ln -sfn node_modules/.gtkx .gtkx`) so knip and depcruise can analyze them; that symlink is gitignored.
 - **GTK 4.22.4 is the pinned target** (the CI image pins this exact bugfix release). Layout and text metrics are version-sensitive; snapshot tests assume this version (and `GSK_RENDERER=cairo`, software GL).
 - **TypeScript 6.0.3 is patched** (`patches/typescript@6.0.3.patch`); upgrading requires a new patch.
 - The `source` export condition resolves `@gtkx/*` to TypeScript source during build and test; tests run in the `forks` pool so each worker is a fresh process with one shared `@gtkx/ffi` identity.
@@ -139,4 +139,4 @@ const app = new Gtk.Application({ applicationId: "com.example.myapp" });
 render(<App />, app);
 ```
 
-`src/app.tsx` is the root component; intrinsic elements (`GtkApplicationWindow`, `GtkBox`, ...) are typed by the generated `@gtkx/react-jsx`. Widget enums and classes come from `@gtkx/gi/*`. See `examples/hello-world` for the canonical reference, and `examples/gtk-demo`, `examples/tutorial`, `examples/browser` for richer apps.
+`src/app.tsx` is the root component; intrinsic elements (`GtkApplicationWindow`, `GtkBox`, ...) and namespace components are imported from `@gtkx/react-gi/<ns>` (e.g. `@gtkx/react-gi/gtk`, `@gtkx/react-gi/adw`), enhanced components (`GtkColumnView`, `GtkMenuButton`, `AnimatePresence`, ...) from `@gtkx/react`, and widget enums and classes from `@gtkx/gi/<ns>`. See `examples/hello-world` for the canonical reference, and `examples/gtk-demo`, `examples/tutorial`, `examples/browser` for richer apps.

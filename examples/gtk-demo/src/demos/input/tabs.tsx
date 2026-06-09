@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
-import { GtkScrolledWindow, GtkTextView } from "@gtkx/react";
+import { GtkScrolledWindow, GtkTextView } from "@gtkx/react-gi/gtk";
 import type { Demo } from "../types.js";
 import sourceCode from "./tabs.tsx?raw";
 

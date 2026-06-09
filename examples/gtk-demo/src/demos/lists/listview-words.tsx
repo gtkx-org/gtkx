@@ -1,18 +1,18 @@
 import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import * as Gtk from "@gtkx/gi/gtk";
+import { GtkListView } from "@gtkx/react";
 import {
     GtkBox,
     GtkButton,
     GtkHeaderBar,
     GtkInscription,
-    GtkListView,
     GtkOverlay,
     GtkOverlayChild,
     GtkProgressBar,
     GtkScrolledWindow,
     GtkSearchEntry,
-} from "@gtkx/react";
+} from "@gtkx/react-gi/gtk";
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useDemo } from "../../context/demo-context.js";

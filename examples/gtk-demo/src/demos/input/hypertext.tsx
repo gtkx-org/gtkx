@@ -14,7 +14,7 @@ import {
     GtkTextPaintable,
     GtkTextTag,
     GtkTextView,
-} from "@gtkx/react";
+} from "@gtkx/react-gi/gtk";
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
 import type { Demo } from "../types.js";

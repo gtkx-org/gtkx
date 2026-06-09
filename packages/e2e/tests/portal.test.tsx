@@ -1,6 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import * as GtkEnums from "@gtkx/gi/gtk";
-import { createPortal, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, useApplication } from "@gtkx/react";
+import { createPortal, useApplication } from "@gtkx/react";
+import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/react-gi/gtk";
 import { render } from "@gtkx/testing";
 import { createRef, type ReactNode } from "react";
 import { describe, expect, it } from "vitest";

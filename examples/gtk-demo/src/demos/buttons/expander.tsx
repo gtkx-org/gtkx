@@ -9,7 +9,7 @@ import {
     GtkTextPaintable,
     GtkTextTag,
     GtkTextView,
-} from "@gtkx/react";
+} from "@gtkx/react-gi/gtk";
 import type { Demo } from "../types.js";
 import sourceCode from "./expander.tsx?raw";
 import { path as gtkLogoCursorPath } from "./gtk_logo_cursor.png";

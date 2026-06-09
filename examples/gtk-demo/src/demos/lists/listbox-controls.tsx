@@ -1,8 +1,8 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import { GtkDropDown, GtkSizeGroup, useAdjustment } from "@gtkx/react";
 import {
     GtkBox,
     GtkCheckButton,
-    GtkDropDown,
     GtkEntry,
     GtkImage,
     GtkLabel,
@@ -10,12 +10,10 @@ import {
     GtkListBoxRow,
     GtkScale,
     GtkScrolledWindow,
-    GtkSizeGroup,
     GtkSpinButton,
     GtkSwitch,
     GtkViewport,
-    useAdjustment,
-} from "@gtkx/react";
+} from "@gtkx/react-gi/gtk";
 import { type ReactNode, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listbox-controls.tsx?raw";

@@ -1,6 +1,6 @@
 import type * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwPreferencesGroup, AdwSpinRow, AdwSwitchRow } from "@gtkx/react";
+import { AdwPreferencesGroup, AdwSpinRow, AdwSwitchRow } from "@gtkx/react-gi/adw";
 import { act, render } from "@gtkx/testing";
 import { createRef, type ReactElement, type RefObject, useState } from "react";
 import { describe, expect, it, type Mock, vi } from "vitest";

@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkConstraintLayout, GtkGestureDrag } from "@gtkx/react";
+import { GtkConstraintLayout } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkGestureDrag } from "@gtkx/react-gi/gtk";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./constraints-interactive.tsx?raw";

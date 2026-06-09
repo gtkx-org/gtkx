@@ -1,5 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkColumnView, GtkColumnViewColumn, GtkGridView, GtkLabel, GtkListView, type ListItem } from "@gtkx/react";
+import { GtkColumnView, GtkColumnViewColumn, GtkGridView, GtkListView, type ListItem } from "@gtkx/react";
+import { GtkLabel } from "@gtkx/react-gi/gtk";
 import { render } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { ScrollWrapper } from "./scroll-wrapper.js";
