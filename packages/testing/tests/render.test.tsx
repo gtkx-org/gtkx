@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkApplicationWindow, GtkBox, GtkButton } from "@gtkx/jsx/gtk";
+import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { describe, expect, it } from "vitest";
 import { cleanup, render, type WrapperComponent } from "../src/index.js";
 
@@ -14,7 +14,7 @@ describe("render basics", () => {
         const { findByRole, findByText } = await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkButton label="First" />
-                Second
+                <GtkLabel label="Second" />
             </GtkBox>,
         );
 
@@ -32,7 +32,7 @@ describe("render basics", () => {
     });
 
     it("returns baseElement as the GTK Application by default", async () => {
-        const { baseElement } = await render("Test");
+        const { baseElement } = await render(<GtkLabel label="Test" />);
         expect(baseElement).toBeDefined();
         expect((baseElement as Gtk.Application).getApplicationId()).toMatch(/org\.gtkx\.testing/);
     });
@@ -71,10 +71,10 @@ describe("render wrapper", () => {
 
 describe("render lifecycle", () => {
     it("provides rerender function to update content", async () => {
-        const { findByText, rerender } = await render("Initial");
+        const { findByText, rerender } = await render(<GtkLabel label="Initial" />);
 
         await findByText("Initial");
-        await rerender("Updated");
+        await rerender(<GtkLabel label="Updated" />);
 
         const updatedLabel = await findByText("Updated");
         expect(updatedLabel).toBeDefined();
@@ -106,12 +106,12 @@ describe("cleanup", () => {
     });
 
     it("allows rendering again after cleanup", async () => {
-        const { findByText } = await render("First");
+        const { findByText } = await render(<GtkLabel label="First" />);
         await findByText("First");
 
         await cleanup();
 
-        const { findByText: findByText2 } = await render("Second");
+        const { findByText: findByText2 } = await render(<GtkLabel label="Second" />);
         const label = await findByText2("Second");
         expect(label).toBeDefined();
     });

@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import type * as GtkSource from "@gtkx/gi/gtksource";
+import * as GtkSource from "@gtkx/gi/gtksource";
 import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
-import { GtkSourceView } from "@gtkx/jsx/gtksource";
+import { GtkSourceBuffer, GtkSourceView } from "@gtkx/jsx/gtksource";
 import { useDemo } from "../context/demo-context.js";
 
 export const SourceViewer = () => {
@@ -28,9 +28,12 @@ export const SourceViewer = () => {
                     topMargin={20}
                     bottomMargin={20}
                     monospace
-                    language="typescript-jsx"
-                    styleScheme="Adwaita-dark"
-                />
+                >
+                    <GtkSourceBuffer
+                        language={GtkSource.LanguageManager.getDefault().getLanguage("typescript-jsx")}
+                        styleScheme={GtkSource.StyleSchemeManager.getDefault().getScheme("Adwaita-dark")}
+                    />
+                </GtkSourceView>
             ) : (
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

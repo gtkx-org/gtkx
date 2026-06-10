@@ -12,7 +12,9 @@ describe("render - NotebookPage > NotebookPageNode (1)", () => {
 
         await render(
             <GtkNotebook ref={notebookRef}>
-                <GtkNotebookPage label="Page 1">Content 1</GtkNotebookPage>
+                <GtkNotebookPage label="Page 1">
+                    <GtkLabel label="Content 1" />
+                </GtkNotebookPage>
             </GtkNotebook>,
         );
 
@@ -65,9 +67,15 @@ describe("render - NotebookPage > NotebookPageNode (2)", () => {
 
         await render(
             <GtkNotebook ref={notebookRef}>
-                <GtkNotebookPage label="Page 1">Content 1</GtkNotebookPage>
-                <GtkNotebookPage label="Page 2">Content 2</GtkNotebookPage>
-                <GtkNotebookPage label="Page 3">Content 3</GtkNotebookPage>
+                <GtkNotebookPage label="Page 1">
+                    <GtkLabel label="Content 1" />
+                </GtkNotebookPage>
+                <GtkNotebookPage label="Page 2">
+                    <GtkLabel label="Content 2" />
+                </GtkNotebookPage>
+                <GtkNotebookPage label="Page 3">
+                    <GtkLabel label="Content 3" />
+                </GtkNotebookPage>
             </GtkNotebook>,
         );
 

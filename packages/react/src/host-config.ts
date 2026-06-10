@@ -7,6 +7,7 @@ import type ReactReconciler from "react-reconciler";
 import { DiscreteEventPriority } from "react-reconciler/constants.js";
 import { beginCommit, endCommit, runCommitFlush } from "./commit-flush.js";
 import { attachToParent, detachFromParent, resyncWrapper } from "./element-map.js";
+import { classHasType } from "./gtype-predicates.js";
 import {
     createElementInstance,
     createRootInstance,
@@ -18,12 +19,12 @@ import {
 } from "./instance.js";
 import { applyAccessibleProps, isAccessibleProp } from "./nodes/internal/accessible.js";
 import { applyProps } from "./nodes/internal/apply-props.js";
+import { scheduleLabelTextRebuild } from "./nodes/internal/label-text-rebuild.js";
 import { scheduleMenuItemResnapshot } from "./nodes/internal/menu-attach.js";
-import { isBuffered } from "./nodes/internal/predicates.js";
 import { getPropDescriptors } from "./nodes/internal/prop-descriptor-table.js";
-import { BUFFER_TEXT_KIND } from "./nodes/internal/text-buffer-kinds.js";
-import { disposeTextBufferController, scheduleBufferRebuild } from "./nodes/internal/text-buffer-rebuild.js";
-import { isBufferContentWrapper } from "./nodes/internal/text-wrapper.js";
+import { scheduleBufferRebuild } from "./nodes/internal/text-buffer-rebuild.js";
+import { BUFFER_TEXT_KIND, LABEL_TEXT_KIND } from "./nodes/internal/text-kinds.js";
+import { isBufferContentWrapper, isLabelTextWrapper } from "./nodes/internal/text-wrapper.js";
 import { reportReconcilerError } from "./reconciler-error-sink.js";
 import type { BackingInstance, ContainerInfo, Props } from "./types.js";
 
@@ -36,8 +37,14 @@ globalThis.__GTKX_CONTAINER_NODE_CACHE__ ??= new WeakMap<ContainerInfo, Instance
 const containerNodeCache = globalThis.__GTKX_CONTAINER_NODE_CACHE__;
 
 type PublicInstance = Gtk.Widget | Gtk.Application;
+
+/**
+ * Tracks whether the elements being created sit inside a text-capable host:
+ * a `<GtkLabel>` (text children become label text) or a `<GtkTextBuffer>`
+ * (text children become buffer content). Text nodes outside both are invalid.
+ */
 type HostContext = {
-    insideTextBuffer?: boolean;
+    textHost?: "label" | "buffer";
 };
 
 type HostConfig = ReactReconciler.HostConfig<
@@ -124,10 +131,19 @@ const unlink = (parent: Instance, child: Instance): void => {
 const isBufferRelated = (instance: Instance): boolean =>
     isBufferContentWrapper(instance) ||
     instance.backingInstance instanceof Gtk.TextTag ||
-    instance.backingInstance instanceof Gtk.TextView;
+    instance.backingInstance instanceof Gtk.TextBuffer;
 
 const maybeScheduleBufferRebuild = (parent: Instance, child: Instance): void => {
     if (isBufferRelated(parent) || isBufferRelated(child)) scheduleBufferRebuild(parent);
+};
+
+const maybeScheduleLabelTextRebuild = (parent: Instance, child: Instance): void => {
+    if (isLabelTextWrapper(child)) scheduleLabelTextRebuild(parent);
+};
+
+const scheduleTextRebuilds = (parent: Instance, child: Instance): void => {
+    maybeScheduleBufferRebuild(parent, child);
+    maybeScheduleLabelTextRebuild(parent, child);
 };
 
 const appendChild = (parent: Instance, child: Instance): void => {
@@ -136,7 +152,7 @@ const appendChild = (parent: Instance, child: Instance): void => {
     if (isWrapperInstance(child)) attachToParent(child, parent, null, fresh);
     else if (!isWrapperInstance(parent)) attachToParent(child, parent, null, fresh);
     if (isWrapperInstance(parent)) resyncWrapper(parent);
-    maybeScheduleBufferRebuild(parent, child);
+    scheduleTextRebuilds(parent, child);
 };
 
 /**
@@ -158,11 +174,11 @@ const insertBefore = (parent: Instance, child: Instance, before: Instance): void
     if (isWrapperInstance(child)) attachToParent(child, parent);
     else if (!isWrapperInstance(parent)) attachToParent(child, parent, anchorBacking(before));
     if (isWrapperInstance(parent)) resyncWrapper(parent);
-    maybeScheduleBufferRebuild(parent, child);
+    scheduleTextRebuilds(parent, child);
 };
 
 const removeChild = (parent: Instance, child: Instance): void => {
-    maybeScheduleBufferRebuild(parent, child);
+    scheduleTextRebuilds(parent, child);
     if (isWrapperInstance(child) || !isWrapperInstance(parent)) detachFromParent(child, parent);
     unlink(parent, child);
     if (isWrapperInstance(parent)) resyncWrapper(parent);
@@ -187,16 +203,25 @@ const commitInstanceProps = (instance: Instance, oldProps: Props | null, newProp
         applyAccessibleProps(container, oldProps, newProps);
         applyProps(instance, oldProps, newProps, { table, exclude: isAccessibleProp });
     } else {
-        applyProps(instance, oldProps, newProps, { table, defaultBlockable: false });
+        applyProps(instance, oldProps, newProps, { table, defaultBlockable: container instanceof Gtk.TextBuffer });
     }
     if (container instanceof Gtk.TextTag) scheduleBufferRebuild(instance);
 };
 
 // --- Instance teardown ---
 
+/**
+ * Whether a deleted instance must actively detach from its parent. Widgets are
+ * detached by their own removal path, and a text buffer must not be: a deleted
+ * subtree's view releases its buffer during its own teardown, and the detach
+ * guard's `getBuffer()` would lazily create a fresh buffer on the disposed
+ * view.
+ */
+const needsDetachOnDelete = (backing: BackingInstance): boolean =>
+    !(backing instanceof Gtk.Widget) && !(backing instanceof Gtk.TextBuffer);
+
 const detachInstance = (instance: Instance): void => {
-    if (instance.backingInstance instanceof Gtk.TextView) disposeTextBufferController(instance.backingInstance);
-    if (instance.backingInstance && !(instance.backingInstance instanceof Gtk.Widget) && instance.parent) {
+    if (instance.backingInstance && needsDetachOnDelete(instance.backingInstance) && instance.parent) {
         detachFromParent(instance, instance.parent);
     }
     instance.signalStore.clear(instance);
@@ -257,17 +282,34 @@ const createSchedulingConfig = (): SchedulingConfig => ({
 
 type HostContextConfig = Pick<HostConfig, "getRootHostContext" | "getChildHostContext" | "shouldSetTextContent">;
 
+const EMPTY_CONTEXT: HostContext = {};
+const LABEL_CONTEXT: HostContext = { textHost: "label" };
+const BUFFER_CONTEXT: HostContext = { textHost: "buffer" };
+
+type TextHostKind = "label" | "buffer" | "tag" | null;
+
+const textHostKinds = new Map<string, TextHostKind>();
+
+const resolveTextHostKind = (type: string): TextHostKind => {
+    const cached = textHostKinds.get(type);
+    if (cached !== undefined) return cached;
+    const containerClass = resolveContainerClass(type);
+    let kind: TextHostKind = null;
+    if (classHasType(containerClass, "GtkLabel")) kind = "label";
+    else if (classHasType(containerClass, "GtkTextBuffer")) kind = "buffer";
+    else if (classHasType(containerClass, "GtkTextTag")) kind = "tag";
+    textHostKinds.set(type, kind);
+    return kind;
+};
+
 const createHostContextConfig = (): HostContextConfig => ({
-    getRootHostContext: () => ({}),
+    getRootHostContext: () => EMPTY_CONTEXT,
     getChildHostContext: (parentHostContext, type) => {
-        const containerClass = resolveContainerClass(type);
-        if ((containerClass && isBuffered(containerClass.prototype)) || type === "GtkTextTag") {
-            return { insideTextBuffer: true };
-        }
-        if (parentHostContext.insideTextBuffer) {
-            return {};
-        }
-        return parentHostContext;
+        const kind = resolveTextHostKind(type);
+        if (kind === "label") return LABEL_CONTEXT;
+        if (kind === "buffer") return BUFFER_CONTEXT;
+        if (kind === "tag" && parentHostContext.textHost === "buffer") return parentHostContext;
+        return parentHostContext.textHost === undefined ? parentHostContext : EMPTY_CONTEXT;
     },
     shouldSetTextContent: () => false,
 });
@@ -283,13 +325,15 @@ const createInstanceConfig = (): InstanceConfig => ({
             ? createWrapperInstance(typeof props.kind === "string" ? props.kind : "", props, rootContainer)
             : createElementInstance(type, props, rootContainer),
     createTextInstance: (text, rootContainer, hostContext) => {
-        if (hostContext.insideTextBuffer) {
+        if (hostContext.textHost === "buffer") {
             return createWrapperInstance(BUFFER_TEXT_KIND, { text }, rootContainer);
         }
-        const props = { label: text };
-        const instance = createElementInstance("GtkLabel", props, rootContainer);
-        withSignalsBlocked(instance, () => commitInstanceProps(instance, null, props));
-        return instance;
+        if (hostContext.textHost === "label") {
+            return createWrapperInstance(LABEL_TEXT_KIND, { text }, rootContainer);
+        }
+        throw new Error(
+            `Text strings must be rendered within a <GtkLabel> or <GtkTextBuffer> element; received ${JSON.stringify(text)}`,
+        );
     },
     appendInitialChild: (parent, child) => {
         appendChild(parent, child);
@@ -339,15 +383,10 @@ type CommitConfig = Pick<HostConfig, "commitUpdate" | "commitTextUpdate" | "prep
 const createCommitConfig = (): CommitConfig => ({
     commitUpdate: (instance, _type, oldProps, newProps) =>
         withSignalsBlocked(instance, () => commitInstanceProps(instance, oldProps, newProps)),
-    commitTextUpdate: (textInstance, oldText, newText) => {
-        if (isBufferContentWrapper(textInstance)) {
-            textInstance.props = { text: newText };
-            scheduleBufferRebuild(textInstance);
-            return;
-        }
-        withSignalsBlocked(textInstance, () =>
-            commitInstanceProps(textInstance, { label: oldText }, { label: newText }),
-        );
+    commitTextUpdate: (textInstance, _oldText, newText) => {
+        textInstance.props = { text: newText };
+        if (isBufferContentWrapper(textInstance)) scheduleBufferRebuild(textInstance);
+        else scheduleLabelTextRebuild(textInstance);
     },
     prepareForCommit: () => {
         beginCommit();

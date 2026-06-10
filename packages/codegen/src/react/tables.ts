@@ -57,6 +57,18 @@ export const BUILT_IN_ELEMENT_MAP: readonly ElementMapRule[] = [
         },
     },
     {
+        child: "GtkTextBuffer",
+        parentType: "GtkTextView",
+        verb: {
+            kind: "method",
+            attach: "setBuffer",
+            attachArgs: "child",
+            detach: "setBuffer",
+            detachArgs: "null",
+            detachGuard: { side: "parent", getter: "getBuffer" },
+        },
+    },
+    {
         child: "GSimpleAction",
         parentMethod: "addAction",
         verb: {

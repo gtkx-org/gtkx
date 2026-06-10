@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkPaned, GtkScrolledWindow, GtkTextView } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkPaned, GtkScrolledWindow, GtkTextBuffer, GtkTextView } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
 import appleRedPath from "./apple-red.png";
 import backgroundPath from "./background.jpg";
@@ -94,7 +94,7 @@ window.demo .view:selected {
 const WINDOW_CLASSES = ["demo"];
 
 const CssPixbufsDemo = () => {
-    const { textViewRef, onBufferChanged } = useCssEditor(DEFAULT_CSS);
+    const { textViewRef, onChanged } = useCssEditor(DEFAULT_CSS);
 
     return (
         <GtkPaned
@@ -103,8 +103,8 @@ const CssPixbufsDemo = () => {
             startChild={<GtkBox orientation={Gtk.Orientation.VERTICAL} />}
             endChild={
                 <GtkScrolledWindow name="scrolled">
-                    <GtkTextView name="text-view" ref={textViewRef} onBufferChanged={onBufferChanged}>
-                        {DEFAULT_CSS}
+                    <GtkTextView name="text-view" ref={textViewRef}>
+                        <GtkTextBuffer onChanged={onChanged}>{DEFAULT_CSS}</GtkTextBuffer>
                     </GtkTextView>
                 </GtkScrolledWindow>
             }

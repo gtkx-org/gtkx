@@ -1,6 +1,6 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkTextPaintable, GtkTextView } from "@gtkx/jsx/gtk";
+import { GtkTextBuffer, GtkTextPaintable, GtkTextView } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef, useMemo } from "react";
 import { describe, expect, it } from "vitest";
@@ -30,8 +30,10 @@ describe("render - TextPaintable", () => {
             const paintable = usePaintable();
             return (
                 <GtkTextView ref={ref}>
-                    Inline icon: {paintable ? <GtkTextPaintable paintable={paintable} /> : null}
-                    {" end"}
+                    <GtkTextBuffer>
+                        Inline icon: {paintable ? <GtkTextPaintable paintable={paintable} /> : null}
+                        {" end"}
+                    </GtkTextBuffer>
                 </GtkTextView>
             );
         };
@@ -48,7 +50,11 @@ describe("render - TextPaintable", () => {
     it("renders surrounding text without the paintable child", async () => {
         const ref = createRef<Gtk.TextView>();
 
-        await render(<GtkTextView ref={ref}>Plain text without paintable</GtkTextView>);
+        await render(
+            <GtkTextView ref={ref}>
+                <GtkTextBuffer>Plain text without paintable</GtkTextBuffer>
+            </GtkTextView>,
+        );
 
         const buffer = ref.current?.getBuffer();
         expect(getBufferText(buffer as Gtk.TextBuffer)).toContain("Plain text without paintable");

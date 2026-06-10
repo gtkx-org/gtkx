@@ -2,7 +2,7 @@ import type * as Adw from "@gtkx/gi/adw";
 import type * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import type { ReactNode } from "react";
+import { createElement, type ReactNode } from "react";
 import { isInCommit, scheduleFlush } from "../../commit-flush.js";
 import { isAdwComboRow } from "../../gtype-predicates.js";
 import type { ListItem } from "../../jsx.js";
@@ -686,8 +686,9 @@ export class ListController {
     private collectStandardBoundItems(resolveItem: (position: number) => unknown): BoundItem[] {
         const { renderItem, renderListItem } = this.props;
         const newBoundItems: BoundItem[] = [];
-        const stringifyItem = (item: unknown): string => (typeof item === "string" ? item : "");
-        const renderFn = renderItem ?? (this.isDropDown() ? stringifyItem : null);
+        const labelItem = (item: unknown): ReactNode =>
+            createElement("GtkLabel", { label: typeof item === "string" ? item : "" });
+        const renderFn = renderItem ?? (this.isDropDown() ? labelItem : null);
 
         if (renderFn !== null) {
             this.collectContainerBoundItems({

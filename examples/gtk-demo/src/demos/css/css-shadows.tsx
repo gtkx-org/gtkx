@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkPaned, GtkScrolledWindow, GtkTextView } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkPaned, GtkScrolledWindow, GtkTextBuffer, GtkTextView } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-shadows.tsx?raw";
 import cssviewCssPath from "./cssview.css?url";
@@ -52,7 +52,7 @@ window.demo button:active {
 const WINDOW_CLASSES = ["demo", "background"];
 
 const CssShadowsDemo = () => {
-    const { textViewRef, onBufferChanged } = useCssEditor(DEFAULT_CSS);
+    const { textViewRef, onChanged } = useCssEditor(DEFAULT_CSS);
 
     return (
         <GtkPaned
@@ -68,8 +68,8 @@ const CssShadowsDemo = () => {
             }
             endChild={
                 <GtkScrolledWindow>
-                    <GtkTextView name="text-view" ref={textViewRef} onBufferChanged={onBufferChanged}>
-                        {DEFAULT_CSS}
+                    <GtkTextView name="text-view" ref={textViewRef}>
+                        <GtkTextBuffer onChanged={onChanged}>{DEFAULT_CSS}</GtkTextBuffer>
                     </GtkTextView>
                 </GtkScrolledWindow>
             }

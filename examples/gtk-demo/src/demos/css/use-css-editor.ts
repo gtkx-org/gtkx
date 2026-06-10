@@ -89,7 +89,7 @@ export function useCssEditor(defaultCss: string) {
     const errorTagRef = useRef<Gtk.TextTag | null>(null);
     const warningTagRef = useRef<Gtk.TextTag | null>(null);
 
-    const onBufferChanged = (buffer: Gtk.TextBuffer) => {
+    const onChanged = (buffer: Gtk.TextBuffer) => {
         clearTags(buffer);
         const startIter = buffer.getStartIter();
         const endIter = buffer.getEndIter();
@@ -122,5 +122,5 @@ export function useCssEditor(defaultCss: string) {
         return cleanup;
     }, [defaultCss]);
 
-    return { textViewRef, onBufferChanged };
+    return { textViewRef, onChanged };
 }

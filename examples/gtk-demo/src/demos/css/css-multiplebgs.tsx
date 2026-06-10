@@ -6,6 +6,7 @@ import {
     GtkOverlayChild,
     GtkPaned,
     GtkScrolledWindow,
+    GtkTextBuffer,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
 import { GtkDrawingArea } from "@gtkx/react";
@@ -157,7 +158,7 @@ const DEFAULT_CSS = `/* You can edit the text in this window to change the
 const WINDOW_CLASSES = ["demo"];
 
 const CssMultiplebgsDemo = () => {
-    const { textViewRef, onBufferChanged } = useCssEditor(DEFAULT_CSS);
+    const { textViewRef, onChanged } = useCssEditor(DEFAULT_CSS);
 
     return (
         <GtkOverlay name="overlay">
@@ -178,8 +179,8 @@ const CssMultiplebgsDemo = () => {
                     startChild={<GtkBox />}
                     endChild={
                         <GtkScrolledWindow>
-                            <GtkTextView name="text-view" ref={textViewRef} onBufferChanged={onBufferChanged}>
-                                {DEFAULT_CSS}
+                            <GtkTextView name="text-view" ref={textViewRef}>
+                                <GtkTextBuffer onChanged={onChanged}>{DEFAULT_CSS}</GtkTextBuffer>
                             </GtkTextView>
                         </GtkScrolledWindow>
                     }

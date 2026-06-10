@@ -5,25 +5,18 @@
  *
  * A handful of widget props are neither plain GObject properties nor array
  * props: applying them is an imperative GTK call (`setVisibleChildName`) or a
- * refined signal connection. Almost all are serializable
+ * refined signal connection. All are serializable
  * {@link "@gtkx/config".PropRule} rows delivered by `virtual:gtkx-config` and
- * interpreted here; the text-buffer controller hookup for
- * `GtkTextView`/`GtkSourceView` is the designated hand-written exception (the
- * offset model stays code). {@link getPropDescriptors} merges the matching
- * entries (walking the instance's GType ancestry) into the table the
- * renderer's `apply-props` consumes, sparing each widget a bespoke node
- * subclass.
+ * interpreted here. {@link getPropDescriptors} merges the matching entries
+ * (walking the instance's GType ancestry) into the table the renderer's
+ * `apply-props` consumes, sparing each widget a bespoke node subclass.
  */
 import { PROP_RULES } from "virtual:gtkx-config";
 import type { PropCondition, PropRule, SetterPropGroup, SetterPropStep } from "@gtkx/config";
-import * as Gtk from "@gtkx/gi/gtk";
-import type { GtkTextViewProps } from "@gtkx/jsx/gtk";
-import type { GtkSourceViewProps } from "@gtkx/jsx/gtksource";
 import { collectTypeNameChain } from "../../gtype.js";
 import type { Instance } from "../../instance.js";
-import { type ImperativeHandler, imperative, type PropDescriptorTable, signal } from "./apply-props.js";
+import { imperative, type PropDescriptorTable, signal } from "./apply-props.js";
 import { callMethod } from "./reflect-call.js";
-import { getTextBufferController } from "./text-buffer-registry.js";
 
 /** Builds the descriptor set a single GType contributes to an instance. */
 type DescriptorFactory = (instance: Instance) => PropDescriptorTable;
@@ -81,48 +74,6 @@ const buildRuleTable = (instance: Instance, rules: readonly PropRule[]): PropDes
     return table;
 };
 
-const TEXT_VIEW_BUFFER_PROPS: readonly (keyof GtkTextViewProps)[] = [
-    "buffer",
-    "enableUndo",
-    "onBufferChanged",
-    "onTextInserted",
-    "onTextDeleted",
-    "onCanUndoChanged",
-    "onCanRedoChanged",
-];
-
-const SOURCE_VIEW_BUFFER_PROPS: readonly (keyof GtkSourceViewProps)[] = [
-    "language",
-    "styleScheme",
-    "highlightSyntax",
-    "highlightMatchingBrackets",
-    "implicitTrailingNewline",
-    "onCursorMoved",
-    "onHighlightUpdated",
-];
-
-const fillTable = (props: readonly string[], handler: ImperativeHandler): PropDescriptorTable => {
-    const table: PropDescriptorTable = {};
-    for (const prop of props) table[prop] = imperative(handler, { always: true });
-    return table;
-};
-
-const textViewDescriptors: DescriptorFactory = (instance): PropDescriptorTable => {
-    const view = instance.backingInstance;
-    if (!(view instanceof Gtk.TextView)) return {};
-    const controller = getTextBufferController(instance, view);
-    const apply: ImperativeHandler = (oldProps) => controller.applyProps(oldProps, instance.props);
-    return fillTable(TEXT_VIEW_BUFFER_PROPS, apply);
-};
-
-const sourceViewDescriptors: DescriptorFactory = (instance): PropDescriptorTable => {
-    const view = instance.backingInstance;
-    if (!(view instanceof Gtk.TextView)) return {};
-    const controller = getTextBufferController(instance, view);
-    const applySource: ImperativeHandler = (oldProps) => controller.applySourceProps(oldProps, instance.props);
-    return fillTable(SOURCE_VIEW_BUFFER_PROPS, applySource);
-};
-
 const buildDataFactories = (): Record<string, DescriptorFactory> => {
     const factories: Record<string, DescriptorFactory> = {};
     for (const [typeName, rules] of Object.entries(PROP_RULES)) {
@@ -135,11 +86,7 @@ const buildDataFactories = (): Record<string, DescriptorFactory> => {
  * Maps a GLib type name to the prop descriptors merged for any instance whose
  * GType ancestry includes that type.
  */
-const PROP_DESCRIPTOR_TABLE: Readonly<Record<string, DescriptorFactory>> = {
-    ...buildDataFactories(),
-    GtkTextView: textViewDescriptors,
-    GtkSourceView: sourceViewDescriptors,
-};
+const PROP_DESCRIPTOR_TABLE: Readonly<Record<string, DescriptorFactory>> = buildDataFactories();
 
 const tableCache = new WeakMap<Instance, PropDescriptorTable>();
 

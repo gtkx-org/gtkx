@@ -6,7 +6,6 @@ import type * as GObject from "@gtkx/gi/gobject";
 import type { GType } from "@gtkx/gi/gobject";
 import type * as Gsk from "@gtkx/gi/gsk";
 import type * as Gtk from "@gtkx/gi/gtk";
-import type * as GtkSource from "@gtkx/gi/gtksource";
 import type * as Pango from "@gtkx/gi/pango";
 import type { ReactNode } from "react";
 
@@ -19,9 +18,11 @@ import type { ReactNode } from "react";
  * @example
  * ```tsx
  * <GtkTextView>
- *     Click here: <GtkTextAnchor>
- *         <GtkButton label="Click me" />
- *     </GtkTextAnchor> to continue.
+ *     <GtkTextBuffer>
+ *         Click here: <GtkTextAnchor>
+ *             <GtkButton label="Click me" />
+ *         </GtkTextAnchor> to continue.
+ *     </GtkTextBuffer>
  * </GtkTextView>
  * ```
  */
@@ -50,7 +51,9 @@ export type TextPaintableProps = {
  * @example
  * ```tsx
  * <GtkTextView>
- *     Hello <GtkTextTag name="bold" weight={Pango.Weight.BOLD}>bold</GtkTextTag> world
+ *     <GtkTextBuffer>
+ *         Hello <GtkTextTag name="bold" weight={Pango.Weight.BOLD}>bold</GtkTextTag> world
+ *     </GtkTextBuffer>
  * </GtkTextView>
  * ```
  */
@@ -387,26 +390,6 @@ export type AlertDialogResponseProps = {
     appearance?: Adw.ResponseAppearance;
     /** Whether the response button is enabled */
     enabled?: boolean;
-};
-
-/**
- * Props shared by text buffer hosts (GtkTextView, GtkSourceView).
- *
- * Provides undo control and buffer mutation callbacks.
- */
-export type TextBufferProps = {
-    /** Whether undo/redo is enabled on the text buffer */
-    enableUndo?: boolean;
-    /** Callback fired when the buffer content changes */
-    onBufferChanged?: ((buffer: Gtk.TextBuffer) => void) | null;
-    /** Callback fired when text is inserted into the buffer */
-    onTextInserted?: ((buffer: Gtk.TextBuffer, offset: number, text: string) => void) | null;
-    /** Callback fired when text is deleted from the buffer */
-    onTextDeleted?: ((buffer: Gtk.TextBuffer, startOffset: number, endOffset: number) => void) | null;
-    /** Callback fired when the undo availability changes */
-    onCanUndoChanged?: ((canUndo: boolean) => void) | null;
-    /** Callback fired when the redo availability changes */
-    onCanRedoChanged?: ((canRedo: boolean) => void) | null;
 };
 
 /** @internal Shared layout/virtualization props applied to every list-view variant. */
@@ -788,8 +771,6 @@ declare module "@gtkx/jsx/gobject" {
 }
 
 declare module "@gtkx/jsx/gtk" {
-    interface GtkTextViewProps extends TextBufferProps {}
-
     interface GtkColumnViewProps {
         /** ID of the currently sorted column, or null for no sorting */
         sortColumn?: string | null;
@@ -836,25 +817,6 @@ declare module "@gtkx/jsx/gtk" {
         iconHotX?: number;
         /** Y offset of the hotspot within the drag icon */
         iconHotY?: number;
-    }
-}
-
-declare module "@gtkx/jsx/gtksource" {
-    interface GtkSourceViewProps extends TextBufferProps {
-        /** Language for syntax highlighting (ID string or Language object) */
-        language?: string | GtkSource.Language;
-        /** Color scheme for syntax highlighting (ID string or StyleScheme object) */
-        styleScheme?: string | GtkSource.StyleScheme;
-        /** Whether syntax highlighting is enabled */
-        highlightSyntax?: boolean;
-        /** Whether matching brackets are highlighted */
-        highlightMatchingBrackets?: boolean;
-        /** Whether the buffer has an implicit trailing newline */
-        implicitTrailingNewline?: boolean;
-        /** Callback fired when the cursor position changes */
-        onCursorMoved?: (() => void) | null;
-        /** Callback fired when the highlighted region is updated */
-        onHighlightUpdated?: ((start: Gtk.TextIter, end: Gtk.TextIter) => void) | null;
     }
 }
 

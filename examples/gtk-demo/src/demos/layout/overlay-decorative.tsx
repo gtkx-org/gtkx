@@ -6,6 +6,7 @@ import {
     GtkPicture,
     GtkScale,
     GtkScrolledWindow,
+    GtkTextBuffer,
     GtkTextTag,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
@@ -31,10 +32,12 @@ const OverlayDecorativeDemo = () => {
                 vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
             >
                 <GtkTextView name="text-view" hexpand vexpand leftMargin={Math.round(margin)}>
-                    <GtkTextTag name="top-margin" pixelsAboveLines={Math.round(margin)}>
-                        {"Dear"}
-                    </GtkTextTag>
-                    {" diary..."}
+                    <GtkTextBuffer>
+                        <GtkTextTag name="top-margin" pixelsAboveLines={Math.round(margin)}>
+                            {"Dear"}
+                        </GtkTextTag>
+                        {" diary..."}
+                    </GtkTextBuffer>
                 </GtkTextView>
             </GtkScrolledWindow>
             <GtkOverlayChild>

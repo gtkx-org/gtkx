@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
-import { GtkScrolledWindow, GtkTextView } from "@gtkx/jsx/gtk";
+import { GtkScrolledWindow, GtkTextBuffer, GtkTextView } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
 import sourceCode from "./tabs.tsx?raw";
 
@@ -28,7 +28,7 @@ const TabsDemo = () => {
                 rightMargin={20}
                 tabs={tabs}
             >
-                {"one\t2.0\tthree\nfour\t5.555\tsix\nseven\t88.88\tnine"}
+                <GtkTextBuffer>{"one\t2.0\tthree\nfour\t5.555\tsix\nseven\t88.88\tnine"}</GtkTextBuffer>
             </GtkTextView>
         </GtkScrolledWindow>
     );

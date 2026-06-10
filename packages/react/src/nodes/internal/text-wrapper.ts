@@ -1,5 +1,5 @@
 import type { Instance } from "../../instance.js";
-import { ANCHOR_KIND, BUFFER_TEXT_KIND, PAINTABLE_KIND } from "./text-buffer-kinds.js";
+import { ANCHOR_KIND, BUFFER_TEXT_KIND, LABEL_TEXT_KIND, PAINTABLE_KIND } from "./text-kinds.js";
 
 const isWrapperOfKind = (instance: Instance, kind: string): boolean =>
     instance.backingInstance === undefined && instance.kind === kind;
@@ -33,3 +33,10 @@ export const isAnchorWrapper = (instance: Instance): boolean => isWrapperOfKind(
  */
 export const isBufferContentWrapper = (instance: Instance): boolean =>
     isBufferTextWrapper(instance) || isPaintableWrapper(instance) || isAnchorWrapper(instance);
+
+/**
+ * Whether `instance` is a raw-text wrapper produced for a label's text content.
+ *
+ * @param instance - The candidate child instance.
+ */
+export const isLabelTextWrapper = (instance: Instance): boolean => isWrapperOfKind(instance, LABEL_TEXT_KIND);

@@ -11,6 +11,7 @@ import {
     GtkLevelBar,
     GtkScrolledWindow,
     GtkTextAnchor,
+    GtkTextBuffer,
     GtkTextPaintable,
     GtkTextTag,
     GtkTextView,
@@ -296,14 +297,13 @@ const HypertextDemo = () => {
                 leftMargin={20}
                 rightMargin={20}
                 pixelsBelowLines={10}
-                enableUndo
                 canFocus
                 focusable
             >
                 <GtkGestureClick button={1} onReleased={handlers.handleClick} />
                 <GtkEventControllerMotion onMotion={handlers.handleMotion} />
                 <GtkEventControllerKey onKeyPressed={handlers.handleKeyPress} />
-                {content}
+                <GtkTextBuffer enableUndo>{content}</GtkTextBuffer>
             </GtkTextView>
         </GtkScrolledWindow>
     );

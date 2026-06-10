@@ -1,6 +1,6 @@
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkEntry, GtkScrolledWindow, GtkTextView } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkEntry, GtkScrolledWindow, GtkTextBuffer, GtkTextView } from "@gtkx/jsx/gtk";
 import type { Note } from "../types.js";
 
 const titleEntry = css`
@@ -28,17 +28,17 @@ export const NoteEditor = ({
             onChanged={(self) => onUpdate({ title: self.text ?? "" })}
         />
         <GtkScrolledWindow vexpand>
-            <GtkTextView
-                wrapMode={Gtk.WrapMode.WORD_CHAR}
-                cssClasses={[bodyView]}
-                enableUndo
-                onBufferChanged={(buffer) => {
-                    const start = buffer.getStartIter();
-                    const end = buffer.getEndIter();
-                    onUpdate({ body: buffer.getText(start, end, false) ?? "" });
-                }}
-            >
-                {note.body}
+            <GtkTextView wrapMode={Gtk.WrapMode.WORD_CHAR} cssClasses={[bodyView]}>
+                <GtkTextBuffer
+                    enableUndo
+                    onChanged={(buffer) => {
+                        const start = buffer.getStartIter();
+                        const end = buffer.getEndIter();
+                        onUpdate({ body: buffer.getText(start, end, false) ?? "" });
+                    }}
+                >
+                    {note.body}
+                </GtkTextBuffer>
             </GtkTextView>
         </GtkScrolledWindow>
     </GtkBox>
