@@ -4,6 +4,7 @@ import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { createElement, type ReactNode } from "react";
 import { isInCommit, scheduleFlush } from "../../commit-flush.js";
+import { runDeferredFlush } from "../../deferred-flush.js";
 import { isAdwComboRow } from "../../gtype-predicates.js";
 import type { ListItem } from "../../jsx.js";
 import type { BoundItem } from "../../nodes/internal/bound-item.js";
@@ -279,7 +280,8 @@ export class ListController {
      * Requests a bound-item refresh after the current change settles.
      *
      * Inside a React commit the flush is queued onto the post-commit queue so it
-     * drains within the same `act` boundary; otherwise it defers to a microtask.
+     * drains within the same `act` boundary; otherwise it defers to a microtask
+     * that runs the flush through the installed deferred-flush wrapper.
      */
     public scheduleBoundItemsUpdate(): void {
         if (this.boundItemsUpdateScheduled) return;
@@ -287,7 +289,7 @@ export class ListController {
         if (isInCommit()) {
             scheduleFlush(this.flushBoundItemsUpdate);
         } else {
-            queueMicrotask(this.flushBoundItemsUpdate);
+            queueMicrotask(this.deferredBoundItemsFlush);
         }
     }
 
@@ -296,7 +298,8 @@ export class ListController {
      *
      * When a GTK factory binds during a React commit, the flush is queued onto
      * the post-commit queue so the rendered cells land within the same `act`
-     * boundary; outside a commit it defers to the macrotask queue.
+     * boundary; outside a commit it defers to a macrotask that runs the flush
+     * through the installed deferred-flush wrapper.
      */
     public queueBoundItemsUpdate(): void {
         if (this.detached || this.boundItemsUpdateScheduled) return;
@@ -304,9 +307,13 @@ export class ListController {
         if (isInCommit()) {
             scheduleFlush(this.flushBoundItemsUpdate);
         } else {
-            setImmediate(this.flushBoundItemsUpdate);
+            setImmediate(this.deferredBoundItemsFlush);
         }
     }
+
+    private readonly deferredBoundItemsFlush = (): void => {
+        runDeferredFlush(this.flushBoundItemsUpdate);
+    };
 
     private getItems(): ListItem[] {
         return this.props.items ?? [];
