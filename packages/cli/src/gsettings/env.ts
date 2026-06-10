@@ -26,21 +26,26 @@ export type SchemaEnvResult = {
  * @param rootDir - Absolute path of the project root
  * @returns Absolute file paths in deterministic (sorted) order
  */
+const readVisibleEntries = (dir: string): Dirent[] => {
+    try {
+        return readdirSync(dir, { withFileTypes: true }).filter((entry) => !entry.name.startsWith("."));
+    } catch {
+        return [];
+    }
+};
+
+const shouldDescend = (entry: Dirent): boolean => entry.isDirectory() && !SKIPPED_DIRECTORIES.has(entry.name);
+
+const isSchemaFile = (entry: Dirent): boolean => entry.isFile() && entry.name.endsWith(SCHEMA_SUFFIX);
+
 export const findSchemaFiles = (rootDir: string): string[] => {
     const found: string[] = [];
     const walk = (dir: string): void => {
-        let entries: Dirent[];
-        try {
-            entries = readdirSync(dir, { withFileTypes: true });
-        } catch {
-            return;
-        }
-        for (const entry of entries) {
-            if (entry.name.startsWith(".")) continue;
+        for (const entry of readVisibleEntries(dir)) {
             const full = join(dir, entry.name);
-            if (entry.isDirectory()) {
-                if (!SKIPPED_DIRECTORIES.has(entry.name)) walk(full);
-            } else if (entry.isFile() && entry.name.endsWith(SCHEMA_SUFFIX)) {
+            if (shouldDescend(entry)) {
+                walk(full);
+            } else if (isSchemaFile(entry)) {
                 found.push(full);
             }
         }

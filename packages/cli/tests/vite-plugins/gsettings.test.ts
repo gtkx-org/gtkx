@@ -26,7 +26,9 @@ const hasGlibCompileSchemas = (): boolean => {
 };
 
 const stubLoadContext = () => ({
-    error: (() => undefined) as unknown as (m: string) => never,
+    error: (message: string): never => {
+        throw new Error(message);
+    },
     emitFile: vi.fn(),
 });
 
@@ -127,7 +129,9 @@ describe("gtkxGSettings (load)", () => {
             rmSync(tmp, { recursive: true, force: true });
         }
     });
+});
 
+describe("gtkxGSettings (load errors)", () => {
     it("load reports an error when the file has no schemas", () => {
         if (!hasGlibCompileSchemas()) return;
 
@@ -139,13 +143,13 @@ describe("gtkxGSettings (load)", () => {
             const plugin = gtkxGSettings();
             (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
 
-            const errorMock = vi.fn(() => {
+            const errorMock = vi.fn<(message: string) => never>(() => {
                 throw new Error("emitted");
             });
 
             expect(() =>
                 (plugin.load as LoadHook).call(
-                    { error: errorMock as unknown as (m: string) => never, emitFile: vi.fn() },
+                    { error: errorMock, emitFile: vi.fn() },
                     `\0gtkx-gsettings:${schemaPath}`,
                 ),
             ).toThrow();
@@ -244,7 +248,9 @@ describe("gtkxGSettings (dev-mode load: fresh schema dir)", () => {
             (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
 
             const code = (plugin.load as LoadHook).call(stubLoadContext(), `\0gtkx-gsettings:${schemaPath}`) as string;
-            expect(code).toContain(`export const com_example_dev = { id: "com.example.dev", path: null, keys: keys_0 };`);
+            expect(code).toContain(
+                `export const com_example_dev = { id: "com.example.dev", path: null, keys: keys_0 };`,
+            );
             expect(code).toContain("export default com_example_dev;");
             expect(code).not.toContain("gtkx-gsettings-init");
 
