@@ -66,6 +66,6 @@
     },
     "devDependencies": {
         "@gtkx/vitest": "workspace:*",
-        "@napi-rs/cli": "^3.7.0"
+        "@napi-rs/cli": "^3.7.1"
     }
 }
