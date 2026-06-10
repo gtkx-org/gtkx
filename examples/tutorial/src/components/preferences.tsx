@@ -1,14 +1,14 @@
 import { AdwPreferencesGroup, AdwPreferencesPage, AdwPreferencesWindow, AdwSpinRow, AdwSwitchRow } from "@gtkx/jsx/adw";
 import { createPortal, useAdjustment, useApplication, useProperty, useSetting } from "@gtkx/react";
-import schemaId from "../../com.gtkx.tutorial.gschema.xml";
+import schema from "../../com.gtkx.tutorial.gschema.xml";
 
 export const Preferences = ({ onClose }: { onClose: () => void }) => {
     const app = useApplication();
     const activeWindow = useProperty(app, "activeWindow");
 
-    const [compactMode, setCompactMode] = useSetting(schemaId, "compact-mode", "boolean");
-    const [spellCheck, setSpellCheck] = useSetting(schemaId, "spell-check", "boolean");
-    const [fontSize, setFontSize] = useSetting(schemaId, "font-size", "int");
+    const [compactMode, setCompactMode] = useSetting(schema, "compact-mode");
+    const [spellCheck, setSpellCheck] = useSetting(schema, "spell-check");
+    const [fontSize, setFontSize] = useSetting(schema, "font-size");
     const fontSizeAdjustment = useAdjustment({ value: fontSize, lower: 8, upper: 32, stepIncrement: 1 });
 
     if (!activeWindow) return null;

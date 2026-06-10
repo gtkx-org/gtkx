@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { EventEmitter } from "node:events";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -10,7 +10,7 @@ import type { BuildEndHook, ResolveIdHook } from "./plugin-hook-types.js";
 
 type HandleHotUpdateHook = (this: unknown, ctx: { file: string; server: unknown }) => unknown;
 
-type ConfigResolvedHook = (config: { command: "build" | "serve" }) => void;
+type ConfigResolvedHook = (config: { command: "build" | "serve"; root?: string }) => void;
 type LoadHook = (
     this: { error: (message: string) => never; emitFile: (asset: unknown) => string },
     id: string,
@@ -114,9 +114,14 @@ describe("gtkxGSettings (load)", () => {
 
             const code = (plugin.load as LoadHook).call(stubLoadContext(), `\0gtkx-gsettings:${schemaPath}`) as string;
 
-            expect(code).toContain(`export default "com.example.alpha";`);
-            expect(code).toContain(`export const com_example_alpha = "com.example.alpha";`);
-            expect(code).toContain(`export const com_example_beta = "com.example.beta";`);
+            expect(code).toContain(
+                `export const com_example_alpha = { id: "com.example.alpha", path: null, keys: keys_0 };`,
+            );
+            expect(code).toContain(`const keys_0 = { "enabled": "b" };`);
+            expect(code).toContain(
+                `export const com_example_beta = { id: "com.example.beta", path: null, keys: keys_1 };`,
+            );
+            expect(code).toContain("export default com_example_alpha;");
             expect(code).toContain(`import "\\u0000gtkx-gsettings-init";`);
         } finally {
             rmSync(tmp, { recursive: true, force: true });
@@ -239,7 +244,8 @@ describe("gtkxGSettings (dev-mode load: fresh schema dir)", () => {
             (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
 
             const code = (plugin.load as LoadHook).call(stubLoadContext(), `\0gtkx-gsettings:${schemaPath}`) as string;
-            expect(code).toContain(`export default "com.example.dev";`);
+            expect(code).toContain(`export const com_example_dev = { id: "com.example.dev", path: null, keys: keys_0 };`);
+            expect(code).toContain("export default com_example_dev;");
             expect(code).not.toContain("gtkx-gsettings-init");
 
             expect(process.env.GSETTINGS_SCHEMA_DIR).toBeDefined();
@@ -371,6 +377,44 @@ describe("gtkxGSettings (configureServer)", () => {
 
             httpServer.emit("close");
             expect(existsSync(schemaDir)).toBe(false);
+        } finally {
+            rmSync(tmp, { recursive: true, force: true });
+        }
+    });
+});
+
+describe("gtkxGSettings (schema env emission)", () => {
+    it("emits the project env.d.ts when the resolved config has a root", () => {
+        const tmp = mkdtempSync(join(tmpdir(), "gtkx-gsettings-env-"));
+        try {
+            writeSchema(tmp, "com.example.envtest.gschema.xml", "com.example.envtest");
+
+            const plugin = gtkxGSettings();
+            (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve", root: tmp });
+
+            const envPath = join(tmp, "node_modules", ".gtkx", "env.d.ts");
+            expect(existsSync(envPath)).toBe(true);
+            expect(readFileSync(envPath, "utf-8")).toContain(`declare module "*/com.example.envtest.gschema.xml" {`);
+        } finally {
+            rmSync(tmp, { recursive: true, force: true });
+        }
+    });
+
+    it("refreshes the env.d.ts when the watcher reports schema file changes", () => {
+        const tmp = mkdtempSync(join(tmpdir(), "gtkx-gsettings-env-watch-"));
+        try {
+            const plugin = gtkxGSettings();
+            (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve", root: tmp });
+
+            const envPath = join(tmp, "node_modules", ".gtkx", "env.d.ts");
+            expect(readFileSync(envPath, "utf-8")).not.toContain("declare module");
+
+            const schemaPath = writeSchema(tmp, "com.example.added.gschema.xml", "com.example.added");
+            const watcher = new EventEmitter();
+            (plugin.configureServer as (server: unknown) => void).call(plugin, { httpServer: null, watcher });
+            watcher.emit("add", schemaPath);
+
+            expect(readFileSync(envPath, "utf-8")).toContain(`declare module "*/com.example.added.gschema.xml" {`);
         } finally {
             rmSync(tmp, { recursive: true, force: true });
         }

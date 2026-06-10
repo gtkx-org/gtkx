@@ -12,7 +12,7 @@ const hasGtkxConfig = (dir: string): boolean => CONFIG_FILENAMES.some((name) => 
  * a `pnpm-workspace.yaml` (pnpm) or a `workspaces` field in `package.json`
  * (npm, Yarn, Bun).
  */
-const isWorkspaceRoot = (dir: string): boolean => {
+export const isWorkspaceRoot = (dir: string): boolean => {
     if (existsSync(join(dir, "pnpm-workspace.yaml"))) return true;
     const packageJson = join(dir, "package.json");
     if (!existsSync(packageJson)) return false;

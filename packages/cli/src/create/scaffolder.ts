@@ -1,6 +1,7 @@
 import { join, resolve } from "node:path";
 import { isValidApplicationId } from "@gtkx/config";
 import { errorMessage, toUpperFirst } from "@gtkx/utils";
+import { renderEnvModule } from "../gsettings/render.js";
 import type { TemplateContext } from "../templates.js";
 import { isValidProjectName, type TestingOption } from "./options.js";
 
@@ -283,6 +284,12 @@ const installAllDependencies = async (deps: ScaffolderDeps, options: InstallAllO
     }
 };
 
+const writeInitialSchemaEnv = (deps: ScaffolderDeps, projectPath: string): void => {
+    const storeDir = join(projectPath, "node_modules", ".gtkx");
+    deps.fs.mkdirSync(storeDir, { recursive: true });
+    deps.fs.writeFileSync(join(storeDir, "env.d.ts"), renderEnvModule([]));
+};
+
 const initializeGitRepo = async (deps: ScaffolderDeps, projectPath: string): Promise<void> => {
     const spinner = deps.prompts.spinner();
     spinner.start("Initializing git repository...");
@@ -333,6 +340,7 @@ export const createScaffolder = (deps: ScaffolderDeps): Scaffolder => ({
             packageManager: resolved.packageManager,
             devDependencies: devDeps,
         });
+        writeInitialSchemaEnv(deps, projectPath);
         await initializeGitRepo(deps, projectPath);
 
         printNextSteps(deps, resolved);

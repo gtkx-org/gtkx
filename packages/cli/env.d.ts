@@ -159,8 +159,3 @@ declare module "*.avif" {
     export const path: string;
     export default resourceUri;
 }
-
-declare module "*.gschema.xml" {
-    const schemaId: string;
-    export default schemaId;
-}

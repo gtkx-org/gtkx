@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { defineCommand } from "citty";
-import { ensureGenerated, runCodegen } from "../codegen/run-codegen.js";
+import { ensureGenerated, runCodegen, syncSchemaEnv } from "../codegen/run-codegen.js";
 
 /**
  * `gtkx codegen` — regenerate the TypeScript bindings for the GIR libraries
@@ -39,6 +39,7 @@ export const codegen = defineCommand({
 
         const startedAt = Date.now();
         const result = await runCodegen({ cwd, force: true });
+        syncSchemaEnv(cwd);
 
         if (result.configFile) {
             console.log(`[gtkx] codegen: config=${result.configFile}`);
