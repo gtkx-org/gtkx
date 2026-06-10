@@ -49,7 +49,7 @@ project/
 ├── src/
 │ ├── app.tsx # Root component, wrapped in <GtkApplication>
 │ ├── index.tsx # Entry: calls render(<App />)
-│ └── gtkx-env.d.ts # Ambient types for import.meta.env
+│ └── gtkx-env.d.ts # Ambient types for asset imports
 ├── tests/ # Example test (if testing enabled)
 │ └── app.test.tsx
 ├── gtkx.config.ts # GIR libraries + applicationId

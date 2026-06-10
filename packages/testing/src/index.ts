@@ -36,7 +36,7 @@ export { getRoles, logRoles, prettyRoles } from "./role-helpers.js";
 export { logScreenshotPath, screen } from "./screen.js";
 export type { ScreenshotOptions } from "./screenshot.js";
 export { screenshot } from "./screenshot.js";
-export { act, settle } from "./timing.js";
+export { act } from "./timing.js";
 export type { Container } from "./traversal.js";
 export type {
     BoundQueries,

@@ -1,28 +1,35 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { getConfig } from "./config.js";
 import { timeoutError } from "./errors.js";
-import { getIsReactActEnvironment, setIsReactActEnvironment, settle } from "./timing.js";
+import { getIsReactActEnvironment, setIsReactActEnvironment } from "./timing.js";
 import type { WaitForOptions } from "./types.js";
 
 const DEFAULT_INTERVAL = 50;
 
 /**
- * Runs an async callback with `IS_REACT_ACT_ENVIRONMENT` cleared, then
- * {@link settle}s before restoring the previous flag value.
+ * Drains the JS microtask queue by yielding one `setTimeout(0)` round.
  *
- * Mirrors {@link https://github.com/testing-library/react-testing-library/blob/main/src/pure.js | RTL's `asyncWrapper`}, with the drain step widened from one
- * `setTimeout(0)` round to a full {@link settle}: GTK delivers virtualized
- * cell binds on its own frame pacing, so the GLib main loop gets a few
- * round-trips to flush the resulting portal re-renders while the act flag is
- * still off, and callers regain control with no framework work left to escape
- * their act tracking.
+ * Mirrors {@link https://github.com/testing-library/react-testing-library/blob/main/src/pure.js | RTL's `asyncWrapper`} drain step: any in-flight promises scheduled while
+ * `IS_REACT_ACT_ENVIRONMENT` was cleared get a chance to settle before the
+ * caller re-enters an act-tracked scope.
+ */
+const drainMicrotasks = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+
+/**
+ * Runs an async callback with `IS_REACT_ACT_ENVIRONMENT` cleared, draining the
+ * microtask queue once it resolves before restoring the previous flag value.
+ *
+ * Direct port of {@link https://github.com/testing-library/react-testing-library/blob/main/src/pure.js | RTL's `asyncWrapper`}; used by every async utility in this package so
+ * that polling code does not capture React state updates as part of an
+ * accidental act scope, and so callers regain control with a clean microtask
+ * queue.
  */
 const asyncWrapper = async <T>(callback: () => Promise<T>): Promise<T> => {
     const previousActEnvironment = getIsReactActEnvironment();
     setIsReactActEnvironment(false);
     try {
         const result = await callback();
-        await settle();
+        await drainMicrotasks();
         return result;
     } finally {
         setIsReactActEnvironment(previousActEnvironment);

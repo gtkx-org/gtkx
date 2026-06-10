@@ -1,19 +1,6 @@
 /// <reference types="vite/client" />
 /// <reference types="@gtkx/config/virtual" />
 
-interface ImportMetaEnv {
-    /**
-     * GLib application id declared by `applicationId` in `gtkx.config.ts`.
-     *
-     * Empty string when the project has not declared an application id.
-     */
-    readonly GTKX_APPLICATION_ID: string;
-}
-
-interface ImportMeta {
-    readonly env: ImportMetaEnv;
-}
-
 declare module "*.css?url" {
     const path: string;
     export default path;

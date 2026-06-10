@@ -163,8 +163,6 @@ The component-side defaulting already works; this phase is plumbing consolidatio
 - [x] **T1.5** Duplicate config loads collapsed: `gtkxVitePlugins()` creates one
       `createGtkxConfigLoader()` shared by `gtkxConfig`, `gtkxResources`, and
       `gtkxReactCompiler` (each still defaults to its own loader for standalone use).
-      `import.meta.env.GTKX_APPLICATION_ID` stays for asset resolution, derived from the same
-      load.
 - [x] **T1.6** Dev runner / MCP registration: a live `Gio.Application` still gates MCP startup,
       and the registered identity is the config `applicationId` when declared, else the live id
       (`getConfiguredApplicationId` on `DevRunnerDeps`).
