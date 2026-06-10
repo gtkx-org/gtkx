@@ -8,9 +8,10 @@ import {
     serializeUserTables,
 } from "@gtkx/codegen";
 import { type GtkxConfig, GtkxConfigNotFoundError, loadGtkxConfig } from "@gtkx/config";
+import { emitSchemaEnv } from "../gsettings/env.js";
 import { resolveGirPath } from "./gir-resolver.js";
 import { resolveLibraries } from "./library-resolver.js";
-import { type CodegenStore, findCodegenRoot, resolveCodegenStore } from "./store-resolver.js";
+import { type CodegenStore, findCodegenRoot, isWorkspaceRoot, resolveCodegenStore } from "./store-resolver.js";
 
 /**
  * Options for {@link runCodegen}.
@@ -243,24 +244,42 @@ const fingerprintStale = (giStoreDir: string, libraries: readonly string[], user
 };
 
 /**
- * Removes a workspace member's own generated store and aliases so they cannot
- * shadow the shared root store.
+ * Removes a workspace member's own generated binding packages and aliases so
+ * they cannot shadow the shared root store.
  *
- * When a member shares the workspace root's store, a leftover member-local
- * `.gtkx` (or its `@gtkx/{gi,jsx}` symlinks) would resolve ahead of the
- * root copy, reintroducing the duplicate-instance split this sharing avoids.
+ * When a member shares the workspace root's store, leftover member-local
+ * `.gtkx/{gi,jsx}` trees (or their `@gtkx/{gi,jsx}` symlinks) would resolve
+ * ahead of the root copy, reintroducing the duplicate-instance split this
+ * sharing avoids. The member's `.gtkx/env.d.ts` is app-local by design and
+ * stays in place.
  *
  * @param memberDir - The workspace member whose shadowing store to prune
  */
 const pruneShadowingStore = (memberDir: string): void => {
     const nodeModules = join(memberDir, "node_modules");
     for (const path of [
-        join(nodeModules, ".gtkx"),
+        join(nodeModules, ".gtkx", "gi"),
+        join(nodeModules, ".gtkx", "jsx"),
         join(nodeModules, "@gtkx", "gi"),
         join(nodeModules, "@gtkx", "jsx"),
     ]) {
         rmSync(path, { recursive: true, force: true });
     }
+};
+
+/**
+ * Regenerates the project's GSettings schema declaration file
+ * (`node_modules/.gtkx/env.d.ts`) for an app package root.
+ *
+ * Workspace roots are skipped: the schema declarations are app-local (each
+ * member's schemas type that member's imports), so emission only applies to
+ * the package the command runs in.
+ *
+ * @param cwd - The app package root
+ */
+export const syncSchemaEnv = (cwd: string): void => {
+    if (isWorkspaceRoot(cwd)) return;
+    emitSchemaEnv(cwd);
 };
 
 /**
@@ -295,7 +314,11 @@ const resolveCodegenContext = async (cwd: string): Promise<{ root: string; confi
  */
 export const ensureGenerated = async (cwd: string): Promise<boolean> => {
     const context = await resolveCodegenContext(cwd);
-    if (!context || !isCodegenNeeded(context.root, context.config)) {
+    if (!context) {
+        return false;
+    }
+    syncSchemaEnv(cwd);
+    if (!isCodegenNeeded(context.root, context.config)) {
         return false;
     }
     await runCodegen({ cwd: context.root });
@@ -317,7 +340,11 @@ export const preflightCodegen = async (cwd: string): Promise<void> => {
     }
 
     const context = await resolveCodegenContext(cwd);
-    if (context && isCodegenNeeded(context.root, context.config)) {
+    if (!context) {
+        return;
+    }
+    syncSchemaEnv(cwd);
+    if (isCodegenNeeded(context.root, context.config)) {
         console.log("[gtkx] generated bindings missing; running codegen...");
         await runCodegen({ cwd: context.root });
     }

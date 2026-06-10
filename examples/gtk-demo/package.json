@@ -7,7 +7,7 @@
     "type": "module",
     "scripts": {
         "build": "gtkx build",
-        "typecheck": "tsc -b --emitDeclarationOnly",
+        "typecheck": "gtkx codegen && tsc -b --emitDeclarationOnly",
         "dev": "gtkx dev",
         "start": "node dist/bundle.js",
         "test": "vitest run",

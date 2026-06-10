@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/codegen/run-codegen.js", () => ({
     preflightCodegen: vi.fn(async () => undefined),
     ensureGenerated: vi.fn(async () => true),
+    syncSchemaEnv: vi.fn(),
     runCodegen: vi.fn(async () => ({
         configFile: "/project/gtkx.config.ts",
         girPath: ["/usr/share/gir-1.0"],
@@ -13,11 +14,12 @@ vi.mock("../../src/codegen/run-codegen.js", () => ({
     })),
 }));
 
-import { ensureGenerated, runCodegen } from "../../src/codegen/run-codegen.js";
+import { ensureGenerated, runCodegen, syncSchemaEnv } from "../../src/codegen/run-codegen.js";
 import { codegen } from "../../src/commands/codegen.js";
 
 const runCodegenMock = vi.mocked(runCodegen);
 const ensureGeneratedMock = vi.mocked(ensureGenerated);
+const syncSchemaEnvMock = vi.mocked(syncSchemaEnv);
 
 type CodegenArgs = { force?: boolean; cwd?: string };
 type CommandRun = (ctx: { args: CodegenArgs }) => Promise<unknown>;
@@ -71,6 +73,7 @@ describe("codegen command (--force)", () => {
             cwd: expect.stringContaining("custom/dir"),
             force: true,
         });
+        expect(syncSchemaEnvMock).toHaveBeenCalledWith(expect.stringContaining("custom/dir"));
         expect(ensureGeneratedMock).not.toHaveBeenCalled();
 
         const logged = collectLogged(state.logSpy);

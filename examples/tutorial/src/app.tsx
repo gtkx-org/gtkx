@@ -25,7 +25,7 @@ import {
 } from "@gtkx/jsx/gtk";
 import { GtkGridView, GtkListView, quit, useApplication, useSetting } from "@gtkx/react";
 import { useRef, useState } from "react";
-import schemaId from "../com.gtkx.tutorial.gschema.xml";
+import schema from "../com.gtkx.tutorial.gschema.xml";
 import { About } from "./components/about.js";
 import { DeleteConfirmation } from "./components/delete-confirmation.js";
 import { NoteCard } from "./components/note-card.js";
@@ -590,8 +590,8 @@ const AppBody = ({
 );
 
 function NotesWindow() {
-    const [compactMode] = useSetting(schemaId, "compact-mode", "boolean");
-    const [fontSize] = useSetting(schemaId, "font-size", "int");
+    const [compactMode] = useSetting(schema, "compact-mode");
+    const [fontSize] = useSetting(schema, "font-size");
     const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
     const view = useAppViewState();
     const dialogs = useDialogState();

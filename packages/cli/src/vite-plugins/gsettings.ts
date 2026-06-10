@@ -2,11 +2,14 @@ import { execFileSync } from "node:child_process";
 import { copyFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
+import { errorMessage } from "@gtkx/utils";
 import type { ModuleNode, Plugin, ViteDevServer } from "vite";
+import { emitSchemaEnv } from "../gsettings/env.js";
+import { parseSchemaXml, SchemaParseError } from "../gsettings/parser.js";
+import { renderRuntimeModule } from "../gsettings/render.js";
 import { resolveCliTool } from "../internal/resolve-cli-tool.js";
 
 const SCHEMA_SUFFIX = ".gschema.xml";
-const SCHEMA_ID_RE = /<schema\s+id="([^"]+)"/g;
 const VIRTUAL_PREFIX = "\0gtkx-gsettings:";
 const VIRTUAL_INIT = "\0gtkx-gsettings-init";
 const SCHEMA_COMPILER = "glib-compile-schemas";
@@ -34,11 +37,13 @@ const compileSchemas = (dir: string): void => {
 /**
  * Vite plugin that compiles GSettings schemas when imported.
  *
- * Intercepts imports of `.gschema.xml` files. The import's default export
- * is the schema ID extracted from the XML, so downstream code can use it
- * directly with `useSetting`. When the file contains multiple `<schema>`
- * elements, each ID is also available as a named export (with dots
- * replaced by underscores).
+ * Intercepts imports of `.gschema.xml` files. Each schema in the file
+ * becomes a named export (its ID with dots replaced by underscores) holding
+ * a typed schema reference usable with `useSetting`; the first schema is
+ * also the default export. The matching ambient module types are generated
+ * into the project's `node_modules/.gtkx/env.d.ts`, which is kept fresh on
+ * dev-server start and whenever a `.gschema.xml` file is added, changed, or
+ * removed.
  *
  * **Dev mode:** Copies the schema to a temporary directory, runs
  * `glib-compile-schemas`, and sets `GSETTINGS_SCHEMA_DIR` so
@@ -52,12 +57,13 @@ const compileSchemas = (dir: string): void => {
  *
  * @example
  * ```ts
- * import schemaId from "./com.example.myapp.gschema.xml";
- * const [value, setValue] = useSetting(schemaId, "my-key", "string");
+ * import schema from "./com.example.myapp.gschema.xml";
+ * const [value, setValue] = useSetting(schema, "my-key");
  * ```
  */
 type PluginState = {
     schemaDir: string | null;
+    rootDir: string | null;
     isBuild: boolean;
     trackedSchemas: Map<string, string>;
     buildSchemas: Map<string, string>;
@@ -107,24 +113,13 @@ const renderInitModule = (): string =>
         `process.env.GSETTINGS_SCHEMA_DIR = existing ? bundleDir + ":" + existing : bundleDir;`,
     ].join("\n");
 
-const extractSchemaIds = (xml: string): string[] => {
-    const ids: string[] = [];
-    for (const match of xml.matchAll(SCHEMA_ID_RE)) {
-        if (match[1]) ids.push(match[1]);
+const syncSchemaEnv = (state: PluginState): void => {
+    if (state.rootDir === null) return;
+    try {
+        emitSchemaEnv(state.rootDir);
+    } catch (error) {
+        console.error(`[gtkx] Failed to generate GSettings schema types: ${errorMessage(error)}`);
     }
-    return ids;
-};
-
-const renderSchemaExports = (schemaIds: string[], isBuild: boolean): string => {
-    const exports = [`export default ${JSON.stringify(schemaIds[0])};`];
-    for (const schemaId of schemaIds) {
-        const exportName = schemaId.replaceAll(".", "_");
-        exports.push(`export const ${exportName} = ${JSON.stringify(schemaId)};`);
-    }
-    if (isBuild) {
-        return [`import ${JSON.stringify(VIRTUAL_INIT)};`, "", ...exports].join("\n");
-    }
-    return exports.join("\n");
 };
 
 const registerSchemaForMode = (state: PluginState, filePath: string, fileName: string, id: string): void => {
@@ -147,11 +142,17 @@ const loadSchemaModule = (ctx: PluginContext, state: PluginState, id: string): s
 
     registerSchemaForMode(state, filePath, fileName, id);
 
-    const schemaIds = extractSchemaIds(xml);
-    if (schemaIds.length === 0) {
+    let parsed: ReturnType<typeof parseSchemaXml>;
+    try {
+        parsed = parseSchemaXml(xml, fileName);
+    } catch (error) {
+        if (!(error instanceof SchemaParseError)) throw error;
+        ctx.error(error.message);
+    }
+    if (parsed.schemas.length === 0) {
         ctx.error(`No <schema id="..."> found in ${fileName}`);
     }
-    return renderSchemaExports(schemaIds, state.isBuild);
+    return renderRuntimeModule(parsed, state.isBuild ? VIRTUAL_INIT : null);
 };
 
 const emitCompiledSchemas = (ctx: PluginContext, state: PluginState): void => {
@@ -198,6 +199,7 @@ const handleSchemaHotUpdate = (state: PluginState, file: string, server: ViteDev
 export function gtkxGSettings(): Plugin {
     const state: PluginState = {
         schemaDir: null,
+        rootDir: null,
         isBuild: false,
         trackedSchemas: new Map(),
         buildSchemas: new Map(),
@@ -210,11 +212,18 @@ export function gtkxGSettings(): Plugin {
 
         configResolved(config) {
             state.isBuild = config.command === "build";
+            state.rootDir = typeof config.root === "string" ? config.root : null;
+            syncSchemaEnv(state);
         },
 
         configureServer(server) {
             server.httpServer?.once("close", () => releaseSchemaDir(state));
             server.watcher.once("close", () => releaseSchemaDir(state));
+            const refreshSchemaTypes = (file: string): void => {
+                if (file.endsWith(SCHEMA_SUFFIX)) syncSchemaEnv(state);
+            };
+            server.watcher.on("add", refreshSchemaTypes);
+            server.watcher.on("unlink", refreshSchemaTypes);
         },
 
         async resolveId(source, importer, options) {
@@ -245,6 +254,7 @@ export function gtkxGSettings(): Plugin {
         },
 
         handleHotUpdate({ file, server }) {
+            if (file.endsWith(SCHEMA_SUFFIX)) syncSchemaEnv(state);
             return handleSchemaHotUpdate(state, file, server);
         },
     };

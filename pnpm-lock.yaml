@@ -199,6 +199,9 @@ importers:
       ejs:
         specifier: ^6.0.1
         version: 6.0.1
+      fast-xml-parser:
+        specifier: ^5.8.0
+        version: 5.8.0
       nypm:
         specifier: ^0.6.6
         version: 0.6.6

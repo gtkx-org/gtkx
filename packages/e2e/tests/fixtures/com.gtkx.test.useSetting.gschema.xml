@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
+  <enum id="org.gtkx.test.WrapMode">
+    <value nick="none" value="0"/>
+    <value nick="word" value="1"/>
+    <value nick="char" value="2"/>
+  </enum>
   <schema id="com.gtkx.test.useSetting" path="/com/gtkx/test/useSetting/">
     <key name="enabled" type="b">
       <default>false</default>
@@ -20,6 +25,33 @@
     <key name="tags" type="as">
       <default>[]</default>
       <summary>Tag list</summary>
+    </key>
+    <key name="wrap-mode" enum="org.gtkx.test.WrapMode">
+      <default>'none'</default>
+      <summary>Wrap mode</summary>
+    </key>
+    <key name="theme" type="s">
+      <choices>
+        <choice value="default"/>
+        <choice value="light"/>
+        <choice value="dark"/>
+      </choices>
+      <default>'default'</default>
+      <summary>Theme</summary>
+    </key>
+    <key name="retries" type="u">
+      <default>3</default>
+      <summary>Retry count</summary>
+    </key>
+    <key name="window-size" type="(ii)">
+      <default>(800, 600)</default>
+      <summary>Window size</summary>
+    </key>
+  </schema>
+  <schema id="com.gtkx.test.useSetting.profile">
+    <key name="title" type="s">
+      <default>'untitled'</default>
+      <summary>Profile title</summary>
     </key>
   </schema>
 </schemalist>

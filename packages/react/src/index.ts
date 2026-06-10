@@ -7,7 +7,7 @@ export type { BackingInstance } from "./types.js";
 export { type AdjustmentConfig, useAdjustment } from "./use-adjustment.js";
 export { useMergedRefs } from "./use-merged-refs.js";
 export { useProperty } from "./use-property.js";
-export { useSetting } from "./use-setting.js";
+export { type RelocatableSchemaRef, type SchemaRef, useSetting } from "./use-setting.js";
 export {
     type SignalHandlerFor,
     type SignalHandlersOf,
