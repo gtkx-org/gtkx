@@ -18,7 +18,7 @@ import type { BuildEndHook, LoadHook, ResolveIdHook } from "./plugin-hook-types.
 
 type ConfigureServerHook = (this: unknown, server: unknown) => void;
 
-type ConfigHook = (config: { root?: string }) => Promise<{ assetsInclude: RegExp[]; define: Record<string, string> }>;
+type ConfigHook = (config: { root?: string }) => Promise<{ assetsInclude: RegExp[] }>;
 type ConfigResolvedHook = (config: { command: "build" | "serve"; root: string }) => void;
 
 type GresourcesPlugin = ReturnType<typeof gtkxResources>;
@@ -83,27 +83,6 @@ describe("gtkxResources (plugin shape)", () => {
         expect(regex.test("song.mp3")).toBe(true);
         expect(regex.test("font.woff2")).toBe(true);
         expect(regex.test("data.json")).toBe(false);
-    });
-});
-
-describe("gtkxResources (define)", () => {
-    setupTmpDir();
-
-    it("exposes the configured applicationId as import.meta.env.GTKX_APPLICATION_ID", async () => {
-        writeAppConfig(tmpDir, "org.gtk.Demo4");
-        const plugin = gtkxResources();
-        const result = await (plugin.config as ConfigHook).call(plugin, { root: tmpDir });
-        expect(result.define).toEqual({
-            "import.meta.env.GTKX_APPLICATION_ID": JSON.stringify("org.gtk.Demo4"),
-        });
-    });
-
-    it("defaults GTKX_APPLICATION_ID to the empty string when no config is present", async () => {
-        const plugin = gtkxResources();
-        const result = await (plugin.config as ConfigHook).call(plugin, { root: tmpDir });
-        expect(result.define).toEqual({
-            "import.meta.env.GTKX_APPLICATION_ID": JSON.stringify(""),
-        });
     });
 });
 

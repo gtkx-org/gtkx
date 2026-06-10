@@ -266,16 +266,13 @@ const refreshDevRegistration = async (server: ViteDevServer, state: PluginState)
 /**
  * Reads `applicationId` from the resolved `gtkx.config.ts`, fixes the plugin's
  * resource prefix from it, and returns the partial Vite config: the asset
- * matcher and the single `import.meta.env.GTKX_APPLICATION_ID` define.
+ * matcher.
  */
 const resolveResourceConfig = async (state: PluginState, config: UserConfig, loadConfig: GtkxConfigLoader) => {
     const { applicationId } = await loadConfig(config.root ?? process.cwd());
     state.prefix = deriveResourcePrefix(applicationId);
     return {
         assetsInclude: [ASSET_RE],
-        define: {
-            "import.meta.env.GTKX_APPLICATION_ID": JSON.stringify(applicationId ?? ""),
-        },
     };
 };
 

@@ -45,11 +45,12 @@ my-app/
 
 ### Key files
 
-**`src/app.tsx`** — The default app component (just an example, can be removed or renamed). The `App` component wraps the window in a `GtkApplication`, which owns the application and reads its `applicationId` from `import.meta.env.GTKX_APPLICATION_ID`. It is provided as both a named export `App` and the default export:
+**`src/app.tsx`** — The default app component (just an example, can be removed or renamed). The `App` component wraps the window in a `GtkApplication`, which owns the application and defaults its `applicationId` to the one declared in `gtkx.config.ts`. It is provided as both a named export `App` and the default export:
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, quit } from "@gtkx/react";
+import { quit } from "@gtkx/react";
+import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 
 const MainWindow = () => {
@@ -80,7 +81,7 @@ const MainWindow = () => {
 };
 
 export const App = () => (
-    <GtkApplication applicationId={import.meta.env.GTKX_APPLICATION_ID}>
+    <GtkApplication>
         <MainWindow />
     </GtkApplication>
 );

@@ -115,6 +115,15 @@ const emitChangeAndFlush = async (harness: Harness, file: string, ticks: number)
     }
 };
 
+const loggedMessages = (harness: Harness): string[] => harness.log.mock.calls.map((c: unknown[]) => String(c[0]));
+
+const startRunnerAndExpectMcpConnected = async (harness: Harness, applicationId: string): Promise<void> => {
+    await startRunner(harness);
+    expect(harness.startMcp).toHaveBeenCalledWith(applicationId);
+    const messages = loggedMessages(harness);
+    expect(messages.some((m) => m.includes(`Connected application id: ${applicationId}`))).toBe(true);
+};
+
 describe("createDevRunner (vite config)", () => {
     it("calls createServer with the resolved root, custom mode, supplied plugins, and ssr options", async () => {
         const harness = buildHarness();
@@ -153,12 +162,9 @@ describe("createDevRunner (MCP lifecycle)", () => {
     it("starts the MCP client when the entry registers a Gio.Application", async () => {
         const harness = buildHarness({ applicationId: "com.example.app" });
 
-        await startRunner(harness);
+        await startRunnerAndExpectMcpConnected(harness, "com.example.app");
 
-        expect(harness.startMcp).toHaveBeenCalledWith("com.example.app");
-        const messages = harness.log.mock.calls.map((c: unknown[]) => String(c[0]));
-        expect(messages.some((m) => m.includes("Connected application id: com.example.app"))).toBe(true);
-        expect(messages.some((m) => m.includes("HMR enabled"))).toBe(true);
+        expect(loggedMessages(harness).some((m) => m.includes("HMR enabled"))).toBe(true);
     });
 
     it("registers under the configured applicationId when gtkx.config.ts declares one", async () => {
@@ -167,11 +173,7 @@ describe("createDevRunner (MCP lifecycle)", () => {
             configuredApplicationId: "com.example.app",
         });
 
-        await startRunner(harness);
-
-        expect(harness.startMcp).toHaveBeenCalledWith("com.example.app");
-        const messages = harness.log.mock.calls.map((c: unknown[]) => String(c[0]));
-        expect(messages.some((m) => m.includes("Connected application id: com.example.app"))).toBe(true);
+        await startRunnerAndExpectMcpConnected(harness, "com.example.app");
     });
 
     it("skips MCP startup when no Gio.Application is registered", async () => {
@@ -188,8 +190,7 @@ describe("createDevRunner (MCP lifecycle)", () => {
         await startRunner(harness);
 
         expect(harness.startMcp).not.toHaveBeenCalled();
-        const messages = harness.log.mock.calls.map((c: unknown[]) => String(c[0]));
-        expect(messages.some((m) => m.includes("MCP client not started"))).toBe(true);
+        expect(loggedMessages(harness).some((m) => m.includes("MCP client not started"))).toBe(true);
     });
 
     it("tears down the dev server and MCP client when the runtime stops", async () => {
