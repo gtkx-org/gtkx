@@ -9,6 +9,15 @@ export { useMergedRefs } from "./use-merged-refs.js";
 export { useProperty } from "./use-property.js";
 export { useSetting } from "./use-setting.js";
 export {
+    type SignalHandlerFor,
+    type SignalHandlersOf,
+    type SignalNameOf,
+    type SignalTarget,
+    type UseSignalOptions,
+    useSignal,
+} from "./use-signal.js";
+export { type TickTarget, useTickCallback } from "./use-tick-callback.js";
+export {
     deleteAccessibleMetadata,
     getAccessibleMetadata,
     setAccessibleMetadata,

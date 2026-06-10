@@ -72,3 +72,31 @@ describe("disconnect", () => {
         expect(() => button.disconnect(handlerId)).not.toThrow();
     });
 });
+
+describe("addEventListener/removeEventListener", () => {
+    it("registers a handler that fires on emission", () => {
+        const button = new Gtk.Button();
+        const handler = vi.fn();
+        button.addEventListener("clicked", handler);
+        button.emit("clicked");
+        expect(handler).toHaveBeenCalledTimes(1);
+        button.removeEventListener("clicked", handler);
+    });
+
+    it("registers and removes handlers via callback identity", () => {
+        expectRemovableHandlerNeverFires((button, handler) => button.addEventListener("clicked", handler));
+    });
+
+    it("returns this for chaining", () => {
+        expectRegisterReturnsButton((button, handler) => button.addEventListener("clicked", handler));
+    });
+
+    it("removeEventListener removes a handler registered with on()", () => {
+        const button = new Gtk.Button();
+        const handler = vi.fn();
+        button.on("clicked", handler);
+        button.removeEventListener("clicked", handler);
+        button.emit("clicked");
+        expect(handler).not.toHaveBeenCalled();
+    });
+});

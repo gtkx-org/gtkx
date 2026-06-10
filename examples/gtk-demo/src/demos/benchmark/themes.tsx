@@ -4,7 +4,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import { GtkBox, GtkButton, GtkHeaderBar, GtkLabel, GtkToggleButton } from "@gtkx/jsx/gtk";
-import { createPortal } from "@gtkx/react";
+import { createPortal, useTickCallback } from "@gtkx/react";
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Demo, DemoProps, DemoProviderProps } from "../types.js";
 import sourceCode from "./themes.tsx?raw";
@@ -60,11 +60,7 @@ const applyNextTheme = (
 
 const FPS_POLL_MS = 500;
 
-function useThemesLifecycle(
-    window: React.RefObject<Gtk.Window | null>,
-    originalSettingsRef: OriginalSettingsRef,
-    tickIdRef: React.RefObject<number | null>,
-) {
+function useThemesLifecycle(originalSettingsRef: OriginalSettingsRef) {
     useLayoutEffect(() => {
         const settings = Gtk.Settings.getDefault();
         const styleManager = Adw.StyleManager.getDefault();
@@ -74,16 +70,8 @@ function useThemesLifecycle(
                 colorScheme: styleManager.getColorScheme(),
             };
         }
-        const win = window.current;
-
-        return () => {
-            if (win && tickIdRef.current !== null) {
-                win.removeTickCallback(tickIdRef.current);
-                tickIdRef.current = null;
-            }
-            restoreOriginalSettings(originalSettingsRef);
-        };
-    }, [window, originalSettingsRef, tickIdRef]);
+        return () => restoreOriginalSettings(originalSettingsRef);
+    }, [originalSettingsRef]);
 }
 
 const ThemesBody = ({ boxRef }: { boxRef: React.RefObject<Gtk.Box | null> }) => (
@@ -140,15 +128,15 @@ function useThemesCycling(window: React.RefObject<Gtk.Window | null>) {
     const [showWarning, setShowWarning] = useState(false);
     const fpsAttrs = useFpsAttrs();
     const themeIndexRef = useRef(0);
-    const tickIdRef = useRef<number | null>(null);
     const boxRef = useRef<Gtk.Box | null>(null);
     const originalSettingsRef = useRef<{ themeName: string; colorScheme: Adw.ColorScheme } | null>(null);
     const fpsRef = useRef("");
 
-    useThemesLifecycle(window, originalSettingsRef, tickIdRef);
+    useThemesLifecycle(originalSettingsRef);
 
-    const tickCallback = (_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean =>
-        applyNextTheme(window, themeIndexRef, frameClock, fpsRef);
+    useTickCallback(isRunning ? window : null, (_widget, frameClock) =>
+        applyNextTheme(window, themeIndexRef, frameClock, fpsRef),
+    );
 
     useEffect(() => {
         if (!isRunning) return;
@@ -157,18 +145,11 @@ function useThemesCycling(window: React.RefObject<Gtk.Window | null>) {
     }, [isRunning]);
 
     const startCycling = () => {
-        const win = window.current;
-        if (!win) return;
-        tickIdRef.current = win.addTickCallback(tickCallback);
+        if (!window.current) return;
         setIsRunning(true);
     };
 
     const stopCycling = () => {
-        const win = window.current;
-        if (win && tickIdRef.current !== null) {
-            win.removeTickCallback(tickIdRef.current);
-            tickIdRef.current = null;
-        }
         restoreOriginalSettings(originalSettingsRef);
         setIsRunning(false);
         fpsRef.current = "";

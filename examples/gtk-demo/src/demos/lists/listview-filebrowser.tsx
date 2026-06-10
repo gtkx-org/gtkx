@@ -3,9 +3,9 @@ import { css } from "@gtkx/css";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkHeaderBar, GtkImage, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
-import { GtkGridView, GtkListView } from "@gtkx/react";
+import { GtkGridView, GtkListView, useSignal } from "@gtkx/react";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-filebrowser.tsx?raw";
 
@@ -87,25 +87,15 @@ const ListItem = ({ item, mode }: { item: FileItem; mode: ViewMode }) => {
 
 function useDirectoryFiles(currentPath: string) {
     const [files, setFiles] = useState<FileItem[]>([]);
+    const dirList = useMemo(() => Gtk.DirectoryList.new(ATTRIBUTES, Gio.fileNewForPath(currentPath)), [currentPath]);
 
-    useEffect(() => {
-        const file = Gio.fileNewForPath(currentPath);
-        const dirList = Gtk.DirectoryList.new(ATTRIBUTES, file);
+    const refresh = () => {
+        if (dirList.isLoading()) return;
+        setFiles(sortFileItems(collectDirectoryItems(dirList)));
+    };
 
-        const refresh = () => {
-            if (dirList.isLoading()) return;
-            setFiles(sortFileItems(collectDirectoryItems(dirList)));
-        };
-
-        dirList.on("notify::loading", refresh);
-        dirList.on("items-changed", refresh);
-        refresh();
-
-        return () => {
-            dirList.off("notify::loading", refresh);
-            dirList.off("items-changed", refresh);
-        };
-    }, [currentPath]);
+    useSignal(dirList, "notify::loading", refresh, { immediate: true });
+    useSignal(dirList, "items-changed", refresh);
 
     return files;
 }

@@ -19,9 +19,9 @@ import {
     GtkScrolledWindow,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import { GtkDrawingArea, GtkDropDown, GtkGridView } from "@gtkx/react";
+import { GtkDrawingArea, GtkDropDown, GtkGridView, useSignal } from "@gtkx/react";
 
-import { createContext, memo, useContext, useEffect, useRef, useState } from "react";
+import { createContext, memo, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useLatest } from "../../use-latest.js";
 import type { Demo, DemoProviderProps } from "../types.js";
 import colorNamesRaw from "./color.names.txt?raw";
@@ -470,16 +470,14 @@ const formatItemCount = (count: number): string => `${count.toLocaleString("en-U
  * every `items-changed`.
  */
 function useStoreCountLabel(baseStore: Gio.ListStore, labelRef: React.RefObject<Gtk.Label | null>): void {
-    useEffect(() => {
-        const update = () => {
+    useSignal(
+        baseStore,
+        "items-changed",
+        () => {
             labelRef.current?.setLabel(formatItemCount(baseStore.getNItems()));
-        };
-        update();
-        baseStore.on("items-changed", update);
-        return () => {
-            baseStore.off("items-changed", update);
-        };
-    }, [baseStore, labelRef]);
+        },
+        { immediate: true },
+    );
 }
 
 /**
@@ -491,20 +489,17 @@ function useStoreProgressBar(
     colorLimit: ColorLimit,
     progressBarRef: React.RefObject<Gtk.ProgressBar | null>,
 ): void {
-    useEffect(() => {
-        const update = () => {
-            const bar = progressBarRef.current;
-            if (!bar) return;
-            const itemCount = baseStore.getNItems();
-            bar.setFraction(Math.min(1, itemCount / colorLimit));
-            bar.setVisible(itemCount > 0 && itemCount < colorLimit);
-        };
-        update();
-        baseStore.on("items-changed", update);
-        return () => {
-            baseStore.off("items-changed", update);
-        };
+    const update = useCallback(() => {
+        const bar = progressBarRef.current;
+        if (!bar) return;
+        const itemCount = baseStore.getNItems();
+        bar.setFraction(Math.min(1, itemCount / colorLimit));
+        bar.setVisible(itemCount > 0 && itemCount < colorLimit);
     }, [baseStore, colorLimit, progressBarRef]);
+    useSignal(baseStore, "items-changed", update, { immediate: true });
+    useEffect(() => {
+        update();
+    }, [update]);
 }
 
 function collectSelectedColors(selection: Gtk.MultiSelection): ColorItem[] {
@@ -522,14 +517,9 @@ function collectSelectedColors(selection: Gtk.MultiSelection): ColorItem[] {
 function useSelectedColors(selection: Gtk.MultiSelection): ColorItem[] {
     const [selectedColors, setSelectedColors] = useState<ColorItem[]>([]);
 
-    useEffect(() => {
-        const update = () => setSelectedColors(collectSelectedColors(selection));
-        selection.on("selection-changed", update);
-        update();
-        return () => {
-            selection.off("selection-changed", update);
-        };
-    }, [selection]);
+    useSignal(selection, "selection-changed", () => setSelectedColors(collectSelectedColors(selection)), {
+        immediate: true,
+    });
 
     return selectedColors;
 }

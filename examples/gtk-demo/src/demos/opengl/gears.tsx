@@ -2,7 +2,7 @@ import type * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as gl from "@gtkx/gl";
 import { GtkBox, GtkFrame, GtkGLArea, GtkLabel, GtkOverlay, GtkOverlayChild, GtkScale } from "@gtkx/jsx/gtk";
-import { useAdjustment } from "@gtkx/react";
+import { useAdjustment, useTickCallback } from "@gtkx/react";
 import { useEffect, useRef, useState } from "react";
 import { useLatest } from "../../use-latest.js";
 import type { Demo } from "../types.js";
@@ -488,7 +488,6 @@ type GearsState = ReturnType<typeof useGearsState>;
 interface GearsRefs {
     glAreaRef: React.RefObject<Gtk.GLArea | null>;
     glStateRef: React.RefObject<GLState | null>;
-    tickIdRef: React.RefObject<number | null>;
     firstFrameTimeRef: React.RefObject<number>;
     angleRef: React.RefObject<number>;
     viewRotXRef: React.RefObject<number>;
@@ -499,13 +498,12 @@ interface GearsRefs {
 function useGearsRefs(state: GearsState): GearsRefs {
     const glAreaRef = useRef<Gtk.GLArea | null>(null);
     const glStateRef = useRef<GLState | null>(null);
-    const tickIdRef = useRef<number | null>(null);
     const firstFrameTimeRef = useRef(0);
     const angleRef = useRef(0);
     const viewRotXRef = useLatest(state.viewRotX);
     const viewRotYRef = useLatest(state.viewRotY);
     const viewRotZRef = useLatest(state.viewRotZ);
-    return { glAreaRef, glStateRef, tickIdRef, firstFrameTimeRef, angleRef, viewRotXRef, viewRotYRef, viewRotZRef };
+    return { glAreaRef, glStateRef, firstFrameTimeRef, angleRef, viewRotXRef, viewRotYRef, viewRotZRef };
 }
 
 const sampleFps = (frameClock: Gdk.FrameClock, frameTime: number, fpsRef: React.RefObject<number>): void => {
@@ -523,7 +521,7 @@ const sampleFps = (frameClock: Gdk.FrameClock, frameTime: number, fpsRef: React.
 const FPS_POLL_MS = 500;
 
 function useGearsAnimation(refs: GearsRefs, fpsRef: React.RefObject<number>, setFps: (fps: number) => void) {
-    const tickCallback = (_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
+    useTickCallback(refs.glAreaRef, (_widget, frameClock) => {
         const frameTime = frameClock.getFrameTime();
         if (refs.firstFrameTimeRef.current === 0) {
             refs.firstFrameTimeRef.current = frameTime;
@@ -533,34 +531,12 @@ function useGearsAnimation(refs: GearsRefs, fpsRef: React.RefObject<number>, set
         refs.glAreaRef.current?.queueRender();
         sampleFps(frameClock, frameTime, fpsRef);
         return true;
-    };
-
-    const startAnimation = () => {
-        const glArea = refs.glAreaRef.current;
-        if (!glArea || refs.tickIdRef.current !== null) return;
-        refs.firstFrameTimeRef.current = 0;
-        refs.tickIdRef.current = glArea.addTickCallback(tickCallback);
-    };
+    });
 
     const handleGLAreaRef = (glArea: Gtk.GLArea | null) => {
-        if (refs.glAreaRef.current && refs.tickIdRef.current !== null) {
-            refs.glAreaRef.current.removeTickCallback(refs.tickIdRef.current);
-            refs.tickIdRef.current = null;
-        }
         refs.glAreaRef.current = glArea;
-        if (glArea) startAnimation();
+        refs.firstFrameTimeRef.current = 0;
     };
-
-    useEffect(
-        () => () => {
-            const glArea = refs.glAreaRef.current;
-            if (!glArea || refs.tickIdRef.current === null) return;
-            glArea.removeTickCallback(refs.tickIdRef.current);
-            refs.tickIdRef.current = null;
-            refs.firstFrameTimeRef.current = 0;
-        },
-        [refs],
-    );
 
     useEffect(() => {
         const interval = setInterval(() => setFps(fpsRef.current), FPS_POLL_MS);

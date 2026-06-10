@@ -68,11 +68,9 @@ const RevealerDemo = () => {
                         transitionDuration={TRANSITION_DURATION}
                         transitionType={config.transition}
                         revealChild={revealed[index]}
-                        onNotify={(pspec, self) => {
-                            if (pspec.getName() === "child-revealed") {
-                                if (!self.getMapped()) return;
-                                handleChildRevealed(index);
-                            }
+                        onNotifyChildRevealed={(_childRevealed, self) => {
+                            if (!self.getMapped()) return;
+                            handleChildRevealed(index);
                         }}
                     >
                         <GtkImage iconName="face-cool-symbolic" iconSize={Gtk.IconSize.LARGE} />

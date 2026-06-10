@@ -55,16 +55,16 @@ describe("configurePrintOperation", () => {
 
     it("registers a begin-print signal handler", () => {
         const printOp = configurePrintOperation("line one\nline two\nline three");
-        const handlerId = printOp.connect("begin-print", () => undefined);
-        expect(handlerId).toBeGreaterThan(0);
-        printOp.disconnect(handlerId);
+        const handler = () => undefined;
+        expect(printOp.on("begin-print", handler)).toBe(printOp);
+        printOp.off("begin-print", handler);
     });
 
     it("registers a draw-page signal handler that uses the configured Cairo print context", () => {
         const printOp = configurePrintOperation("line one\nline two\nline three");
-        const handlerId = printOp.connect("draw-page", () => undefined);
-        expect(handlerId).toBeGreaterThan(0);
-        printOp.disconnect(handlerId);
+        const handler = () => undefined;
+        expect(printOp.on("draw-page", handler)).toBe(printOp);
+        printOp.off("draw-page", handler);
     });
 
     it("sets the demo's points unit on the print operation", () => {
@@ -81,9 +81,9 @@ describe("configurePrintOperation export", () => {
         const beginPrint = vi.fn();
         const drawPage = vi.fn();
         const done = vi.fn();
-        printOp.connect("begin-print", beginPrint);
-        printOp.connect("draw-page", drawPage);
-        printOp.connect("done", done);
+        printOp.on("begin-print", beginPrint);
+        printOp.on("draw-page", drawPage);
+        printOp.on("done", done);
         printOp.setExportFilename(join(tempDir, "out.pdf"));
         printOp.run(Gtk.PrintOperationAction.EXPORT, null);
         await waitFor(() => expect(beginPrint).toHaveBeenCalled());
@@ -96,7 +96,7 @@ describe("configurePrintOperation export", () => {
         const longLine = "x".repeat(20000);
         const printOp = configurePrintOperation(`${longLine}\n${longLine}`);
         const drawPage = vi.fn();
-        printOp.connect("draw-page", drawPage);
+        printOp.on("draw-page", drawPage);
         printOp.setExportFilename(join(tempDir, "out-wide.pdf"));
         printOp.run(Gtk.PrintOperationAction.EXPORT, null);
         await waitFor(() => expect(drawPage).toHaveBeenCalledTimes(1));

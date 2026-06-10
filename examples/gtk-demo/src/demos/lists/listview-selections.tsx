@@ -11,6 +11,8 @@ import {
     GtkEventControllerKey,
     GtkImage,
     GtkLabel,
+    GtkListBox,
+    GtkListBoxRow,
     GtkMenuButton,
     GtkPopover,
     GtkScrolledWindow,
@@ -18,7 +20,7 @@ import {
     GtkSpinButton,
 } from "@gtkx/jsx/gtk";
 import { GtkDropDown, useAdjustment } from "@gtkx/react";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-selections.tsx?raw";
 
@@ -137,160 +139,103 @@ function highlightMatch(word: string, query: string): string {
     return `${before}<b>${match}</b>${after}`;
 }
 
-interface SuggestionRefs {
-    entryRef: React.RefObject<Gtk.Entry | null>;
-    popoverRef: React.RefObject<Gtk.Popover | null>;
-    listBoxRef: React.RefObject<Gtk.ListBox | null>;
-    suggestionsRef: React.RefObject<string[]>;
-    selectedRef: React.RefObject<number>;
-}
-
-const useSuggestionRefs = (): SuggestionRefs => ({
-    entryRef: useRef<Gtk.Entry | null>(null),
-    popoverRef: useRef<Gtk.Popover | null>(null),
-    listBoxRef: useRef<Gtk.ListBox | null>(null),
-    suggestionsRef: useRef<string[]>([]),
-    selectedRef: useRef<number>(-1),
-});
-
-const clearListBox = (listBox: Gtk.ListBox): void => {
-    let child = listBox.getFirstChild();
-    while (child) {
-        const next = child.getNextSibling();
-        listBox.remove(child);
-        child = next;
-    }
-};
-
-const appendSuggestionRow = (listBox: Gtk.ListBox, word: string, query: string): void => {
-    const row = Gtk.ListBoxRow.new();
-    const label = Gtk.Label.new(null);
-    label.setMarkup(highlightMatch(word, query));
-    label.setXalign(0);
-    label.setHexpand(true);
-    row.setChild(label);
-    listBox.append(row);
-};
-
-const useRebuildSuggestionList = (refs: SuggestionRefs, words: string[]) => (text: string) => {
-    const popover = refs.popoverRef.current;
-    const listBox = refs.listBoxRef.current;
-    if (!popover || !listBox) return;
-    clearListBox(listBox);
-    if (text.length < 1) {
-        refs.suggestionsRef.current = [];
-        refs.selectedRef.current = -1;
-        popover.popdown();
-        return;
-    }
+const findSuggestions = (words: string[], text: string): string[] => {
+    if (text.length < 1) return [];
     const lower = text.toLowerCase();
-    const matches = words.filter((w) => w.toLowerCase().includes(lower)).slice(0, 10);
-    refs.suggestionsRef.current = matches;
-    refs.selectedRef.current = -1;
-    if (matches.length === 0) {
-        popover.popdown();
-        return;
-    }
-    for (const word of matches) appendSuggestionRow(listBox, word, text);
-    popover.popup();
-};
-
-const useAcceptSuggestion = (refs: SuggestionRefs) => () => {
-    const popover = refs.popoverRef.current;
-    const entry = refs.entryRef.current;
-    const matches = refs.suggestionsRef.current;
-    const idx = refs.selectedRef.current;
-    if (!popover || !entry || idx < 0 || idx >= matches.length) return false;
-    const word = matches[idx];
-    if (word === undefined) return false;
-    entry.setText(word);
-    entry.setPosition(-1);
-    popover.popdown();
-    return true;
-};
-
-const useMoveSuggestion = (refs: SuggestionRefs) => (delta: number) => {
-    const listBox = refs.listBoxRef.current;
-    const matches = refs.suggestionsRef.current;
-    if (!listBox || matches.length === 0) return;
-    const next = (refs.selectedRef.current + delta + matches.length) % matches.length;
-    refs.selectedRef.current = next;
-    const row = listBox.getRowAtIndex(next);
-    if (row) listBox.selectRow(row);
-};
-
-const buildSuggestionPopover = (entry: Gtk.Entry): { popover: Gtk.Popover; listBox: Gtk.ListBox } => {
-    const popover = Gtk.Popover.new();
-    popover.setHasArrow(false);
-    popover.setPosition(Gtk.PositionType.BOTTOM);
-    popover.setAutohide(false);
-    const scrolled = Gtk.ScrolledWindow.new();
-    scrolled.setMaxContentHeight(400);
-    scrolled.setPropagateNaturalHeight(true);
-    scrolled.setPolicy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
-    const listBox = Gtk.ListBox.new();
-    listBox.setSelectionMode(Gtk.SelectionMode.BROWSE);
-    scrolled.setChild(listBox);
-    popover.setChild(scrolled);
-    popover.setParent(entry);
-    return { popover, listBox };
-};
-
-const useSuggestionPopover = (refs: SuggestionRefs, accept: () => boolean) => {
-    useEffect(() => {
-        const entry = refs.entryRef.current;
-        if (!entry) return;
-        const { popover, listBox } = buildSuggestionPopover(entry);
-        refs.popoverRef.current = popover;
-        refs.listBoxRef.current = listBox;
-        const onRowActivated = (_lb: Gtk.ListBox, row: Gtk.ListBoxRow) => {
-            refs.selectedRef.current = row.getIndex();
-            accept();
-        };
-        listBox.on("row-activated", onRowActivated);
-        return () => {
-            listBox.off("row-activated", onRowActivated);
-            popover.unparent();
-            refs.popoverRef.current = null;
-            refs.listBoxRef.current = null;
-        };
-    }, [refs, accept]);
-};
-
-const handleSuggestionKey = (
-    keyval: number,
-    refs: SuggestionRefs,
-    move: (delta: number) => void,
-    accept: () => boolean,
-): boolean => {
-    if (refs.suggestionsRef.current.length === 0) return false;
-    if (keyval === Gdk.KEY_Down) {
-        move(1);
-        return true;
-    }
-    if (keyval === Gdk.KEY_Up) {
-        move(-1);
-        return true;
-    }
-    if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) return accept();
-    if (keyval === Gdk.KEY_Escape) {
-        refs.popoverRef.current?.popdown();
-        return true;
-    }
-    return false;
+    return words.filter((word) => word.toLowerCase().includes(lower)).slice(0, 10);
 };
 
 const SuggestionEntry = ({ words, placeholder, name }: { words: string[]; placeholder: string; name?: string }) => {
-    const refs = useSuggestionRefs();
-    const accept = useAcceptSuggestion(refs);
-    const move = useMoveSuggestion(refs);
-    const rebuild = useRebuildSuggestionList(refs, words);
-    useSuggestionPopover(refs, accept);
-    const handleChanged = (entry: Gtk.Entry) => rebuild(entry.getText());
-    const handleKeyPressed = (keyval: number) => handleSuggestionKey(keyval, refs, move, accept);
+    const entryRef = useRef<Gtk.Entry | null>(null);
+    const popoverRef = useRef<Gtk.Popover | null>(null);
+    const listBoxRef = useRef<Gtk.ListBox | null>(null);
+    const [query, setQuery] = useState("");
+    const [selected, setSelected] = useState(-1);
+    const [open, setOpen] = useState(false);
+    const matches = findSuggestions(words, query);
+
+    const accept = (index: number): boolean => {
+        const entry = entryRef.current;
+        const word = matches[index];
+        if (!entry || word === undefined) return false;
+        entry.setText(word);
+        entry.setPosition(-1);
+        setOpen(false);
+        return true;
+    };
+
+    const move = (delta: number): void => {
+        if (matches.length === 0) return;
+        setSelected((current) => (current + delta + matches.length) % matches.length);
+    };
+
+    const handleChanged = (entry: Gtk.Entry): void => {
+        const text = entry.getText();
+        setQuery(text);
+        setSelected(-1);
+        setOpen(findSuggestions(words, text).length > 0);
+    };
+
+    const handleKeyPressed = (keyval: number): boolean => {
+        if (matches.length === 0) return false;
+        if (keyval === Gdk.KEY_Down) {
+            move(1);
+            return true;
+        }
+        if (keyval === Gdk.KEY_Up) {
+            move(-1);
+            return true;
+        }
+        if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) return accept(selected);
+        if (keyval === Gdk.KEY_Escape) {
+            setOpen(false);
+            return true;
+        }
+        return false;
+    };
+
+    useEffect(() => {
+        const popover = popoverRef.current;
+        if (!popover) return;
+        if (open) popover.popup();
+        else popover.popdown();
+    }, [open]);
+
+    useEffect(() => {
+        const listBox = listBoxRef.current;
+        if (!listBox || selected < 0) return;
+        const row = listBox.getRowAtIndex(selected);
+        if (row) listBox.selectRow(row);
+    }, [selected]);
+
     return (
-        <GtkEntry ref={refs.entryRef} name={name} hexpand placeholderText={placeholder} onChanged={handleChanged}>
+        <GtkEntry ref={entryRef} name={name} hexpand placeholderText={placeholder} onChanged={handleChanged}>
             <GtkEventControllerKey onKeyPressed={handleKeyPressed} />
+            <GtkPopover
+                ref={popoverRef}
+                hasArrow={false}
+                position={Gtk.PositionType.BOTTOM}
+                autohide={false}
+                onClosed={() => setOpen(false)}
+            >
+                <GtkScrolledWindow
+                    maxContentHeight={400}
+                    propagateNaturalHeight
+                    hscrollbarPolicy={Gtk.PolicyType.NEVER}
+                >
+                    <GtkListBox
+                        ref={listBoxRef}
+                        selectionMode={Gtk.SelectionMode.BROWSE}
+                        onRowActivated={(row) => accept(row.getIndex())}
+                    >
+                        {matches.map((word) => (
+                            <GtkListBoxRow key={`${query}:${word}`}>
+                                <GtkLabel label={highlightMatch(word, query)} useMarkup xalign={0} hexpand />
+                            </GtkListBoxRow>
+                        ))}
+                    </GtkListBox>
+                </GtkScrolledWindow>
+            </GtkPopover>
         </GtkEntry>
     );
 };
@@ -351,6 +296,21 @@ const TimesSectionedDropDown = () => {
     );
 };
 
+type Device = (typeof devices)[number];
+
+const renderDeviceRow = (label: string, renderDetails: (device: Device) => ReactNode) => {
+    const device = devices.find((d) => d.id === label);
+    if (!device) {
+        return <GtkLabel label={label} />;
+    }
+    return (
+        <GtkBox spacing={10}>
+            <GtkImage iconName={device.icon} />
+            {renderDetails(device)}
+        </GtkBox>
+    );
+};
+
 const DevicesDropDown = () => {
     const [selectedId, setSelectedId] = useState(devices[0]?.id ?? "");
 
@@ -358,34 +318,20 @@ const DevicesDropDown = () => {
         <GtkDropDown
             selectedId={selectedId}
             onSelectionChanged={setSelectedId}
-            renderItem={(label: string) => {
-                const device = devices.find((d) => d.id === label);
-                if (!device) {
-                    return <GtkLabel label={label} />;
-                }
-                return (
-                    <GtkBox spacing={10}>
-                        <GtkImage iconName={device.icon} />
-                        <GtkLabel label={device.title} xalign={0} hexpand />
-                    </GtkBox>
-                );
-            }}
-            renderListItem={(label: string) => {
-                const device = devices.find((d) => d.id === label);
-                if (!device) {
-                    return <GtkLabel label={label} />;
-                }
-                return (
-                    <GtkBox spacing={10}>
-                        <GtkImage iconName={device.icon} />
+            renderItem={(label: string) =>
+                renderDeviceRow(label, (device) => <GtkLabel label={device.title} xalign={0} hexpand />)
+            }
+            renderListItem={(label: string) =>
+                renderDeviceRow(label, (device) => (
+                    <>
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={2}>
                             <GtkLabel label={device.title} xalign={0} />
                             <GtkLabel label={device.description} xalign={0} cssClasses={["dim-label"]} />
                         </GtkBox>
                         <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1 : 0} />
-                    </GtkBox>
-                );
-            }}
+                    </>
+                ))
+            }
             items={devices.map((d) => ({ id: d.id, value: d.id }))}
         />
     );

@@ -262,6 +262,46 @@ Monitor animation lifecycle:
 </AdwSpringAnimation>
 ```
 
+## Custom animations with `useTickCallback`
+
+The animation components cover property transitions. For fully custom per-frame work — driving a `GtkDrawingArea`, sampling frame timings, running your own simulation — the `useTickCallback` hook registers a frame-clock tick on a widget and removes it automatically on unmount or when the target widget changes.
+
+The callback fires once per frame while the widget is mapped, receiving the widget and its `Gdk.FrameClock`. Return `true` to keep ticking or `false` to stop:
+
+```tsx
+import type * as Gtk from "@gtkx/gi/gtk";
+import { GtkDrawingArea, useTickCallback } from "@gtkx/react";
+import { useRef } from "react";
+
+const SpinningDial = () => {
+    const areaRef = useRef<Gtk.DrawingArea | null>(null);
+    const angleRef = useRef(0);
+
+    useTickCallback(areaRef, (widget, frameClock) => {
+        angleRef.current = frameClock.getFrameTime() / 1_000_000;
+        widget.queueDraw();
+        return true;
+    });
+
+    return (
+        <GtkDrawingArea
+            ref={areaRef}
+            contentWidth={100}
+            contentHeight={100}
+            render={(cr) => {
+                cr.translate(50, 50);
+                cr.rotate(angleRef.current);
+                cr.moveTo(0, 0);
+                cr.lineTo(0, -40);
+                cr.stroke();
+            }}
+        />
+    );
+};
+```
+
+The target may be the widget itself, a React ref to a JSX widget (the registration follows the ref, reattaching when a later commit replaces the widget), or `null`/`undefined` to keep the hook inactive. The latest callback is always invoked, so changing it between renders never re-registers the tick.
+
 ## Toast notifications
 
 After a destructive action like deleting a note, show a toast notification with an undo option. Wrap the content area in `AdwToastOverlay` and create `Adw.Toast` objects imperatively:
@@ -283,7 +323,7 @@ const confirmDelete = () => {
 
     const toast = Adw.Toast.new(`"${deletedNote.title}" deleted`);
     toast.buttonLabel = "Undo";
-    toast.connect("button-clicked", () => {
+    toast.once("button-clicked", () => {
         setNotes((prev) => {
             const restored = [...prev];
             restored.splice(deletedIndex, 0, deletedNote);

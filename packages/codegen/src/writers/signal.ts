@@ -9,7 +9,12 @@ import { splitQualifiedName } from "../gir/qualified-name.js";
 import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirSignal } from "../gir/signal.js";
 import type { GirTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
-import { collectInterfaceProperties, forEachAncestor, resolveImplementedInterface } from "./inheritance.js";
+import {
+    collectInterfaceProperties,
+    forEachAncestor,
+    resolveImplementedInterface,
+    resolvePrerequisiteReference,
+} from "./inheritance.js";
 import { planTrampolineArgs, renderTupleWriteback } from "./method.js";
 import { isBoxedCallerOut, isBoxedInout, isHandlePassing, renderHandlerParameters } from "./param-classify.js";
 import { renderTsType } from "./ts-type.js";
@@ -149,14 +154,15 @@ type SignalMapSpec = {
 
 /**
  * Renders an `export interface <Class><Suffix>` map, one entry per signal the
- * class introduces, extending the parent type's map so inherited signals resolve
- * through `keyof`. `renderEntry` renders each signal's value type — a handler
- * function for the handler map, an `{ args; result }` shape for the emit map.
+ * class introduces, extending the parent type's map (or, for an interface
+ * wrapper, its prerequisites' maps) so inherited signals resolve through
+ * `keyof`. `renderEntry` renders each signal's value type — a handler function
+ * for the handler map, an `{ args; result }` shape for the emit map.
  */
 const renderSignalMap = (spec: SignalMapSpec): string => {
     const { context, klass, className, parentlessExtendsObject, suffix, renderEntry } = spec;
-    const extendsRef = signalMapParentRef(context, klass, parentlessExtendsObject, suffix);
-    const extendsClause = extendsRef === undefined ? "" : ` extends ${extendsRef}`;
+    const extendsRefs = signalMapParentRefs(context, klass, parentlessExtendsObject, suffix);
+    const extendsClause = extendsRefs.length === 0 ? "" : ` extends ${extendsRefs.join(", ")}`;
     const signalEntries = collectClassSignals(context, klass).map(
         (collected) => `${quote(collected.signal.name)}: ${renderEntry(context, collected)};`,
     );
@@ -183,24 +189,32 @@ const renderNotifyDetailEntries = (context: ModuleContext, klass: GirClass, suff
 };
 
 /**
- * Resolves the `<Parent><Suffix>` reference a type's signal map extends: the
- * parent class's map (qualified across namespaces), the `GObject.Object` map for a
- * parentless interface wrapper, or `undefined` for the root `GObject.Object`.
+ * Resolves the `<Parent><Suffix>` references a type's signal map extends: the
+ * parent class's map (qualified across namespaces), the prerequisite types'
+ * maps for an interface wrapper — so a value typed as the interface stays
+ * assignable to its prerequisites despite the `__signals__` member — falling
+ * back to the `GObject.Object` map, or no reference for the root
+ * `GObject.Object`.
  */
-const signalMapParentRef = (
+const signalMapParentRefs = (
     context: ModuleContext,
     klass: GirClass,
     parentlessExtendsObject: boolean,
     suffix: string,
-): string | undefined => {
+): readonly string[] => {
     if (klass.parent !== undefined) {
         const { namespaceName, typeName } = splitQualifiedName(klass.parent, context.namespace.name);
         const name = `${toPascalCase(typeName)}${suffix}`;
-        if (namespaceName === context.namespace.name) return name;
-        return `${context.addCrossNamespaceImport(namespaceName)}.${name}`;
+        if (namespaceName === context.namespace.name) return [name];
+        return [`${context.addCrossNamespaceImport(namespaceName)}.${name}`];
     }
-    if (!parentlessExtendsObject) return undefined;
-    return gobjectObjectMapRef(context, suffix);
+    if (!parentlessExtendsObject) return [];
+    const prerequisiteRefs = klass.prerequisites
+        .map((name) => resolvePrerequisiteReference(context, name))
+        .filter((entry): entry is string => entry !== undefined)
+        .map((entry) => `${entry}${suffix}`);
+    if (prerequisiteRefs.length > 0) return prerequisiteRefs;
+    return [gobjectObjectMapRef(context, suffix)];
 };
 
 /**
@@ -219,32 +233,42 @@ const gobjectObjectMapRef = (context: ModuleContext, suffix: string): string => 
 
 /**
  * Renders the declaration-merged `interface <Class>` carrying the typed
- * `connect`/`emit`/`on`/`once`/`off` overloads. `connect`/`on`/`once`/`off` narrow
- * the handler off the `SignalHandlers` map; `emit` narrows its arguments and
- * result off the `SignalEmit` map, whose shape differs from a handler for
- * caller-allocated outs. `on`/`once`/`off` are omitted for the root
- * `GObject.Object`, whose untyped EventEmitter-style methods are declared by
+ * `connect`/`emit`/`on`/`once`/`off` overloads (with the
+ * `addEventListener`/`removeEventListener` aliases mirroring node-gtk) and the
+ * phantom `__signals__` member. `connect`/`on`/`once`/`off` and the aliases
+ * narrow the handler off the `SignalHandlers` map; `emit` narrows its
+ * arguments and result off the `SignalEmit` map, whose shape differs from a
+ * handler for caller-allocated outs. The EventEmitter-style methods are
+ * omitted for the root `GObject.Object`, whose untyped declarations live in
  * the hand-written override template; every subclass shadows them with typed
- * overloads.
+ * overloads. `__signals__` is an optional phantom member — never assigned at
+ * runtime — that associates the instance type with its handler map so generic
+ * consumers (e.g. `useSignal` in `@gtkx/react`) can resolve a type's signal
+ * names and handler signatures without overload inference.
  */
 const renderSignalConnectInterface = (className: string, isRootObject: boolean): string => {
     const map = `${className}${SIGNAL_HANDLERS_SUFFIX}`;
     const emitMap = `${className}${SIGNAL_EMIT_SUFFIX}`;
     const lines = [
+        `readonly __signals__?: ${map};`,
         `connect<K extends keyof ${map}>(signal: K, handler: ${map}[K], after?: boolean): number;`,
         `connect(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, after?: boolean): number;`,
         `emit<K extends keyof ${emitMap}>(sigName: K, ...args: ${emitMap}[K]["args"]): ${emitMap}[K]["result"];`,
         "emit(sigName: string, ...args: unknown[]): unknown;",
     ];
     if (!isRootObject) {
-        lines.push(
-            `on<K extends keyof ${map}>(signal: K, handler: ${map}[K], after?: boolean): this;`,
-            `on(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, after?: boolean): this;`,
-            `once<K extends keyof ${map}>(signal: K, handler: ${map}[K], after?: boolean): this;`,
-            `once(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, after?: boolean): this;`,
-            `off<K extends keyof ${map}>(signal: K, handler: ${map}[K]): this;`,
-            `off(signal: string, handler: ${SIGNAL_HANDLER_TYPE}): this;`,
-        );
+        for (const method of ["on", "once", "addEventListener"]) {
+            lines.push(
+                `${method}<K extends keyof ${map}>(signal: K, handler: ${map}[K], after?: boolean): this;`,
+                `${method}(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, after?: boolean): this;`,
+            );
+        }
+        for (const method of ["off", "removeEventListener"]) {
+            lines.push(
+                `${method}<K extends keyof ${map}>(signal: K, handler: ${map}[K]): this;`,
+                `${method}(signal: string, handler: ${SIGNAL_HANDLER_TYPE}): this;`,
+            );
+        }
     }
     return `export interface ${className} {\n${indent(lines.join("\n"), 1)}\n}`;
 };

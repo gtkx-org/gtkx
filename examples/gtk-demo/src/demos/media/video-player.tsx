@@ -2,6 +2,7 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkButton, GtkHeaderBar, GtkImage, GtkShortcut, GtkShortcutController, GtkVideo } from "@gtkx/jsx/gtk";
+import { useSignal } from "@gtkx/react";
 import { createContext, useContext, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import { path as bbbPngPath } from "./bbb.png";
@@ -43,6 +44,7 @@ const openVideoDialog = async (window: Gtk.Window | null, setVideoFile: (f: Gio.
 
 interface VideoPlayerContextValue {
     videoFile: Gio.File | null;
+    fullscreened: boolean;
     logoPaintable: Gdk.Texture;
     bbbPaintable: Gdk.Texture;
     handleOpen: () => void;
@@ -62,8 +64,13 @@ const useVideoPlayerContext = (): VideoPlayerContextValue => {
 
 const VideoPlayerProvider = ({ window, children }: DemoProviderProps) => {
     const [videoFile, setVideoFile] = useState<Gio.File | null>(null);
+    const [fullscreened, setFullscreened] = useState(false);
     const logoPaintable = Gdk.Texture.newFromResource(gtkLogoCursorPath);
     const bbbPaintable = Gdk.Texture.newFromResource(bbbPngPath);
+
+    useSignal(window, "notify::fullscreened", () => setFullscreened(window.current?.isFullscreen() ?? false), {
+        immediate: true,
+    });
 
     const handleOpen = () => {
         void openVideoDialog(window.current, setVideoFile);
@@ -81,6 +88,7 @@ const VideoPlayerProvider = ({ window, children }: DemoProviderProps) => {
 
     const value = {
         videoFile,
+        fullscreened,
         logoPaintable,
         bbbPaintable,
         handleOpen,
@@ -94,7 +102,7 @@ const VideoPlayerProvider = ({ window, children }: DemoProviderProps) => {
 };
 
 const VideoPlayerTitlebar = () => {
-    const { logoPaintable, bbbPaintable, handleOpen, handleLogo, handleBBB, handleFullscreen } =
+    const { fullscreened, logoPaintable, bbbPaintable, handleOpen, handleLogo, handleBBB, handleFullscreen } =
         useVideoPlayerContext();
     return (
         <GtkHeaderBar
@@ -112,7 +120,7 @@ const VideoPlayerTitlebar = () => {
             packEnd={
                 <GtkButton
                     name="fullscreen-button"
-                    iconName="view-fullscreen-symbolic"
+                    iconName={fullscreened ? "view-restore-symbolic" : "view-fullscreen-symbolic"}
                     accessibleLabel="Fullscreen"
                     onClicked={handleFullscreen}
                 />

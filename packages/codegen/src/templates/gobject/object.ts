@@ -57,6 +57,18 @@ declare module "@gtkx/gi/gobject/gobject.js" {
          */
         // biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
         off(sigName: string, callback: (...args: any[]) => any): Object;
+
+        /**
+         * Alias of {@link Object.on}, mirroring node-gtk's DOM-style surface.
+         */
+        // biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
+        addEventListener(sigName: string, callback: (...args: any[]) => any, after?: boolean): Object;
+
+        /**
+         * Alias of {@link Object.off}, mirroring node-gtk's DOM-style surface.
+         */
+        // biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
+        removeEventListener(sigName: string, callback: (...args: any[]) => any): Object;
     }
 }
 
@@ -106,3 +118,6 @@ function offImpl(this: GObjectWithConnect, sigName: string, callback: Listener):
     return this;
 }
 GObject.prototype.off = offImpl;
+
+GObject.prototype.addEventListener = onImpl;
+GObject.prototype.removeEventListener = offImpl;

@@ -1,6 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
+import { GMenu, GMenuItem, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
 import {
     GtkBox,
     GtkEditableLabel,
@@ -14,7 +15,7 @@ import {
 } from "@gtkx/jsx/gtk";
 import { GtkColumnView, GtkColumnViewColumn, GtkListView } from "@gtkx/react";
 
-import { createContext, useContext, useRef, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-settings.tsx?raw";
 
@@ -187,103 +188,41 @@ function useListViewSettingsState() {
 
 type ListViewSettingsState = ReturnType<typeof useListViewSettingsState>;
 
-const collectColumnsByTitle = (cv: Gtk.ColumnView): Map<string, Gtk.ColumnViewColumn> => {
-    const columnsList = cv.getColumns();
-    const nColumns = columnsList.getNItems();
-    const map = new Map<string, Gtk.ColumnViewColumn>();
-    for (let i = 0; i < nColumns; i++) {
-        const col = columnsList.getItem(i);
-        if (col instanceof Gtk.ColumnViewColumn) {
-            const title = col.getTitle();
-            if (title) map.set(title, col);
-        }
-    }
-    return map;
-};
+type ToggleableColumnId = "type" | "default" | "summary" | "description";
 
-const buildColumnVisibilityMenu = () => {
-    const section = new Gio.Menu();
-    section.append("Type", "columnview.show-type");
-    section.append("Default value", "columnview.show-default");
-    section.append("Summary", "columnview.show-summary");
-    section.append("Description", "columnview.show-description");
-    const menu = new Gio.Menu();
-    menu.appendSection(null, section);
-    return menu;
-};
-
-const buildColumnActionGroup = (cols: {
-    typeCol: Gtk.ColumnViewColumn;
-    defaultCol: Gtk.ColumnViewColumn;
-    summaryCol: Gtk.ColumnViewColumn;
-    descriptionCol: Gtk.ColumnViewColumn;
-}) => {
-    const actionGroup = new Gio.SimpleActionGroup();
-    actionGroup.addAction(Gio.PropertyAction.new("show-type", cols.typeCol, "visible"));
-    actionGroup.addAction(Gio.PropertyAction.new("show-default", cols.defaultCol, "visible"));
-    actionGroup.addAction(Gio.PropertyAction.new("show-summary", cols.summaryCol, "visible"));
-    actionGroup.addAction(Gio.PropertyAction.new("show-description", cols.descriptionCol, "visible"));
-    return actionGroup;
-};
-
-const installVisibilityMenu = (cv: Gtk.ColumnView): (() => void) | null => {
-    const columnsByTitle = collectColumnsByTitle(cv);
-    const typeCol = columnsByTitle.get("Type");
-    const defaultCol = columnsByTitle.get("Default");
-    const summaryCol = columnsByTitle.get("Summary");
-    const descriptionCol = columnsByTitle.get("Description");
-
-    if (!typeCol || !defaultCol || !summaryCol || !descriptionCol) return null;
-
-    const menu = buildColumnVisibilityMenu();
-    const actionGroup = buildColumnActionGroup({ typeCol, defaultCol, summaryCol, descriptionCol });
-    cv.insertActionGroup("columnview", actionGroup);
-
-    for (const col of [typeCol, defaultCol, summaryCol, descriptionCol]) {
-        col.setHeaderMenu(menu);
-    }
-
-    return () => cv.insertActionGroup("columnview", null);
-};
-
-function useColumnViewVisibilityMenuRef(
-    forwardRef: React.RefObject<Gtk.ColumnView | null>,
-): (cv: Gtk.ColumnView | null) => void {
-    const teardownRef = useRef<(() => void) | null>(null);
-    const columnsListenerRef = useRef<{ list: Gio.ListModel; callback: () => void } | null>(null);
-
-    const detachColumnsListener = () => {
-        const listener = columnsListenerRef.current;
-        if (listener) {
-            listener.list.off("items-changed", listener.callback);
-            columnsListenerRef.current = null;
-        }
-    };
-
-    return (cv: Gtk.ColumnView | null) => {
-        forwardRef.current = cv;
-        teardownRef.current?.();
-        teardownRef.current = null;
-        detachColumnsListener();
-
-        if (!cv) return;
-
-        const tryInstall = () => {
-            const teardown = installVisibilityMenu(cv);
-            if (teardown) {
-                teardownRef.current = teardown;
-                detachColumnsListener();
-            }
-        };
-
-        tryInstall();
-        if (teardownRef.current) return;
-
-        const columnsList = cv.getColumns();
-        columnsList.on("items-changed", tryInstall);
-        columnsListenerRef.current = { list: columnsList, callback: tryInstall };
-    };
+interface ToggleableColumnSpec {
+    id: ToggleableColumnId;
+    menuLabel: string;
+    action: string;
 }
+
+const TOGGLEABLE_COLUMNS: readonly ToggleableColumnSpec[] = [
+    { id: "type", menuLabel: "Type", action: "show-type" },
+    { id: "default", menuLabel: "Default value", action: "show-default" },
+    { id: "summary", menuLabel: "Summary", action: "show-summary" },
+    { id: "description", menuLabel: "Description", action: "show-description" },
+];
+
+type ColumnVisibility = Record<ToggleableColumnId, boolean>;
+
+const INITIAL_COLUMN_VISIBILITY: ColumnVisibility = {
+    type: true,
+    default: true,
+    summary: false,
+    description: false,
+};
+
+const columnVisibilityMenu = (
+    <GMenu>
+        <GMenuItem section>
+            <GMenu>
+                {TOGGLEABLE_COLUMNS.map((column) => (
+                    <GMenuItem key={column.id} label={column.menuLabel} action={`columnview.${column.action}`} />
+                ))}
+            </GMenu>
+        </GMenuItem>
+    </GMenu>
+);
 
 interface CommitKeyInfoEditArgs {
     keyInfo: KeyInfo;
@@ -340,7 +279,6 @@ const SchemaSidebar = ({ onSelectionChanged }: { onSelectionChanged: (ids: strin
 );
 
 interface SettingsColumnViewProps {
-    columnViewRef: (cv: Gtk.ColumnView | null) => void;
     keySearchActive: boolean;
     onSearchChanged: (entry: Gtk.SearchEntry) => void;
     onStopSearch: () => void;
@@ -349,79 +287,97 @@ interface SettingsColumnViewProps {
 }
 
 const SettingsColumnView = ({
-    columnViewRef,
     keySearchActive,
     onSearchChanged,
     onStopSearch,
     filteredKeyInfos,
     onValueEdit,
-}: SettingsColumnViewProps) => (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-        <GtkSearchBar name="search-bar" searchModeEnabled={keySearchActive}>
-            <GtkSearchEntry name="search-entry" onSearchChanged={onSearchChanged} onStopSearch={onStopSearch} />
-        </GtkSearchBar>
-        <GtkScrolledWindow hexpand vexpand>
-            <GtkColumnView
-                name="column-view"
-                ref={columnViewRef}
-                tabBehavior={Gtk.ListTabBehavior.CELL}
-                cssClasses={["data-table"]}
-                items={filteredKeyInfos.map((k) => ({ id: k.name, value: k }))}
-            >
-                <GtkColumnViewColumn
-                    id="name"
-                    title="Name"
-                    renderCell={(item: KeyInfo) => <GtkLabel label={item.name} xalign={0} />}
-                />
-                <GtkColumnViewColumn
-                    id="value"
-                    title="Value"
-                    resizable
-                    renderCell={(item: KeyInfo) => (
-                        <GtkEditableLabel
-                            text={item.value}
-                            onChanged={(label: Gtk.EditableLabel) => onValueEdit(item, label.getText(), label)}
-                        />
-                    )}
-                />
-                <GtkColumnViewColumn
-                    id="type"
-                    title="Type"
-                    resizable
-                    sortable
-                    renderCell={(item: KeyInfo) => <GtkLabel label={item.type} xalign={0} />}
-                />
-                <GtkColumnViewColumn
-                    id="default"
-                    title="Default"
-                    resizable
-                    expand
-                    renderCell={(item: KeyInfo) => <GtkLabel label={item.defaultValue} xalign={0} />}
-                />
-                <GtkColumnViewColumn
-                    id="summary"
-                    title="Summary"
-                    resizable
-                    visible={false}
-                    expand
-                    renderCell={(item: KeyInfo) => <GtkLabel label={item.summary} xalign={0} wrap />}
-                />
-                <GtkColumnViewColumn
-                    id="description"
-                    title="Description"
-                    resizable
-                    visible={false}
-                    expand
-                    renderCell={(item: KeyInfo) => <GtkLabel label={item.description} xalign={0} wrap />}
-                />
-            </GtkColumnView>
-        </GtkScrolledWindow>
-    </GtkBox>
-);
+}: SettingsColumnViewProps) => {
+    const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(INITIAL_COLUMN_VISIBILITY);
+    const toggleColumn = (id: ToggleableColumnId) => setColumnVisibility((prev) => ({ ...prev, [id]: !prev[id] }));
+
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <GtkSearchBar name="search-bar" searchModeEnabled={keySearchActive}>
+                <GtkSearchEntry name="search-entry" onSearchChanged={onSearchChanged} onStopSearch={onStopSearch} />
+            </GtkSearchBar>
+            <GtkScrolledWindow hexpand vexpand>
+                <GtkColumnView
+                    name="column-view"
+                    tabBehavior={Gtk.ListTabBehavior.CELL}
+                    cssClasses={["data-table"]}
+                    items={filteredKeyInfos.map((k) => ({ id: k.name, value: k }))}
+                >
+                    <GtkColumnViewColumn
+                        id="name"
+                        title="Name"
+                        renderCell={(item: KeyInfo) => <GtkLabel label={item.name} xalign={0} />}
+                    />
+                    <GtkColumnViewColumn
+                        id="value"
+                        title="Value"
+                        resizable
+                        renderCell={(item: KeyInfo) => (
+                            <GtkEditableLabel
+                                text={item.value}
+                                onChanged={(label: Gtk.EditableLabel) => onValueEdit(item, label.getText(), label)}
+                            />
+                        )}
+                    />
+                    <GtkColumnViewColumn
+                        id="type"
+                        title="Type"
+                        resizable
+                        sortable
+                        visible={columnVisibility.type}
+                        headerMenu={columnVisibilityMenu}
+                        renderCell={(item: KeyInfo) => <GtkLabel label={item.type} xalign={0} />}
+                    />
+                    <GtkColumnViewColumn
+                        id="default"
+                        title="Default"
+                        resizable
+                        expand
+                        visible={columnVisibility.default}
+                        headerMenu={columnVisibilityMenu}
+                        renderCell={(item: KeyInfo) => <GtkLabel label={item.defaultValue} xalign={0} />}
+                    />
+                    <GtkColumnViewColumn
+                        id="summary"
+                        title="Summary"
+                        resizable
+                        expand
+                        visible={columnVisibility.summary}
+                        headerMenu={columnVisibilityMenu}
+                        renderCell={(item: KeyInfo) => <GtkLabel label={item.summary} xalign={0} wrap />}
+                    />
+                    <GtkColumnViewColumn
+                        id="description"
+                        title="Description"
+                        resizable
+                        expand
+                        visible={columnVisibility.description}
+                        headerMenu={columnVisibilityMenu}
+                        renderCell={(item: KeyInfo) => <GtkLabel label={item.description} xalign={0} wrap />}
+                    />
+                    <GSimpleActionGroup prefix="columnview">
+                        {TOGGLEABLE_COLUMNS.map((column) => (
+                            <GSimpleAction
+                                key={column.id}
+                                name={column.action}
+                                state={GLib.Variant.newBoolean(columnVisibility[column.id])}
+                                onActivate={() => toggleColumn(column.id)}
+                            />
+                        ))}
+                    </GSimpleActionGroup>
+                </GtkColumnView>
+            </GtkScrolledWindow>
+        </GtkBox>
+    );
+};
 
 interface SettingsContextValue {
     state: ListViewSettingsState;
-    columnViewRef: (cv: Gtk.ColumnView | null) => void;
     handleValueEdit: (keyInfo: KeyInfo, newText: string, widget: Gtk.Widget) => void;
 }
 
@@ -435,15 +391,12 @@ const useSettingsContext = (): SettingsContextValue => {
 
 const ListViewSettingsProvider = ({ children }: DemoProviderProps) => {
     const state = useListViewSettingsState();
-    const columnViewRef = useRef<Gtk.ColumnView | null>(null);
-    const columnViewCallbackRef = useColumnViewVisibilityMenuRef(columnViewRef);
 
     const handleValueEdit = (keyInfo: KeyInfo, newText: string, widget: Gtk.Widget) =>
         commitKeyInfoEdit({ keyInfo, newText, widget, state });
 
     const value = {
         state,
-        columnViewRef: columnViewCallbackRef,
         handleValueEdit,
     };
 
@@ -470,7 +423,7 @@ const ListViewSettingsTitlebar = () => {
 };
 
 const ListViewSettingsDemo = () => {
-    const { state, columnViewRef, handleValueEdit } = useSettingsContext();
+    const { state, handleValueEdit } = useSettingsContext();
     return (
         <GtkPaned
             name="paned"
@@ -480,7 +433,6 @@ const ListViewSettingsDemo = () => {
             startChild={<SchemaSidebar onSelectionChanged={state.handleSchemaSelected} />}
             endChild={
                 <SettingsColumnView
-                    columnViewRef={columnViewRef}
                     keySearchActive={state.keySearchActive}
                     onSearchChanged={state.handleKeySearchChanged}
                     onStopSearch={state.handleStopSearch}

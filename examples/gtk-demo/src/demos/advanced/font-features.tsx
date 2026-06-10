@@ -26,7 +26,8 @@ import {
     GtkViewport,
 } from "@gtkx/jsx/gtk";
 import { useAdjustment } from "@gtkx/react";
-import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { Dispatch, RefObject, SetStateAction } from "react";
+import { createContext, useContext, useLayoutEffect, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./font-features.tsx?raw";
 
@@ -251,6 +252,11 @@ const PARAGRAPH_SAMPLES = [
 
 type ViewMode = "plain" | "waterfall" | "edit";
 
+interface PreviewSelection {
+    start: number;
+    end: number;
+}
+
 const buildRgba = (red: number, green: number, blue: number, alpha: number): Gdk.RGBA => {
     const rgba = new Gdk.RGBA();
     rgba.red = red;
@@ -301,7 +307,7 @@ function useFontFeaturesState() {
     const [lineHeight, setLineHeight] = useState(1);
     const [viewMode, setViewMode] = useState<ViewMode>("plain");
     const [previewText, setPreviewText] = useState(INITIAL_PREVIEW_TEXT);
-    const [previewSelection, setPreviewSelection] = useState<{ start: number; end: number } | null>(null);
+    const [previewSelection, setPreviewSelection] = useState<PreviewSelection | null>(null);
     const sampleCounterRef = useRef(0);
     const savedTextRef = useRef("");
     const previewLabelRef = useRef<Gtk.Label | null>(null);
@@ -472,7 +478,7 @@ function useFontFeaturesStyles(state: ReturnType<typeof useFontFeaturesState>) {
 }
 
 function useFeatureHandlers(state: ReturnType<typeof useFontFeaturesState>) {
-    const { setCheckStates, setRadioStates } = state;
+    const { setCheckStates, setRadioStates, previewLabelRef } = state;
 
     const toggleCheck = (tag: string) => {
         setCheckStates((prev) => {
@@ -502,6 +508,7 @@ function useFeatureHandlers(state: ReturnType<typeof useFontFeaturesState>) {
     };
 
     const resetFeatures = () => {
+        previewLabelRef.current?.selectRegion(0, 0);
         setCheckStates(createInitialCheckStates());
         setRadioStates(createInitialRadioStates());
     };
@@ -598,33 +605,38 @@ function useFontFeaturesHandlers(state: ReturnType<typeof useFontFeaturesState>)
     };
 }
 
+const UTF8_ENCODER = new TextEncoder();
+
+const charOffsetToByteOffset = (text: string, charOffset: number): number =>
+    UTF8_ENCODER.encode(Array.from(text).slice(0, charOffset).join("")).length;
+
+const readPreviewSelection = (label: Gtk.Label | null): PreviewSelection | null => {
+    if (!label) return null;
+    const [hasSelection, selectionStart, selectionEnd] = label.getSelectionBounds();
+    if (!hasSelection) return null;
+    const text = label.getText();
+    return {
+        start: charOffsetToByteOffset(text, selectionStart),
+        end: charOffsetToByteOffset(text, selectionEnd),
+    };
+};
+
+const isSameSelection = (a: PreviewSelection | null, b: PreviewSelection | null): boolean =>
+    a === b || (a !== null && b !== null && a.start === b.start && a.end === b.end);
+
 function usePreviewSelectionTracking(
-    previewLabelRef: React.RefObject<Gtk.Label | null>,
-    setPreviewSelection: (selection: { start: number; end: number } | null) => void,
+    previewLabelRef: RefObject<Gtk.Label | null>,
+    setPreviewSelection: Dispatch<SetStateAction<PreviewSelection | null>>,
 ) {
-    useEffect(() => {
-        const label = previewLabelRef.current;
-        if (!label) return;
-
-        const sync = () => {
-            const [hasSelection, selStart, selEnd] = label.getSelectionBounds();
-            setPreviewSelection(hasSelection ? { start: selStart, end: selEnd } : null);
-        };
-
-        sync();
-        label.on("notify::cursor-position", sync);
-        label.on("notify::selection-bound", sync);
-
-        return () => {
-            label.off("notify::cursor-position", sync);
-            label.off("notify::selection-bound", sync);
-        };
-    }, [previewLabelRef, setPreviewSelection]);
+    useLayoutEffect(() => {
+        const selection = readPreviewSelection(previewLabelRef.current);
+        setPreviewSelection((previous) => (isSameSelection(previous, selection) ? previous : selection));
+    });
 }
 
 function usePreviewAttributes(
     pangoFontFeaturesString: string | null,
-    previewSelection: { start: number; end: number } | null,
+    previewSelection: PreviewSelection | null,
 ): Pango.AttrList | null {
     return (() => {
         if (!pangoFontFeaturesString) return null;

@@ -64,12 +64,12 @@ describe("cssAccordionDemo", () => {
         await renderDemo(cssAccordionDemo);
         const button = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "This" })) as Gtk.Button;
         const clickHandler = vi.fn();
-        const handlerId = button.connect("clicked", clickHandler);
+        button.on("clicked", clickHandler);
         try {
             await userEvent.click(button);
             await waitFor(() => expect(clickHandler).toHaveBeenCalled());
         } finally {
-            button.disconnect(handlerId);
+            button.off("clicked", clickHandler);
         }
     });
 });

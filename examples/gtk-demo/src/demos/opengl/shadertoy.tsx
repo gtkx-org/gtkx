@@ -13,7 +13,8 @@ import {
     GtkScrolledWindow,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
-import { type RefCallback, useEffect, useRef, useState } from "react";
+import { useTickCallback } from "@gtkx/react";
+import { useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./shadertoy.tsx?raw";
 
@@ -1157,31 +1158,6 @@ function useShaderTickCallback(animRef: React.RefObject<AnimState>, glAreaRef: R
     };
 }
 
-function useShaderRefCallback(
-    glAreaRef: React.RefObject<Gtk.GLArea | null>,
-    tickIdRef: React.RefObject<number | null>,
-    tickCallback: (widget: Gtk.Widget, frameClock: Gdk.FrameClock) => boolean,
-) {
-    return (area: Gtk.GLArea | null) => {
-        if (glAreaRef.current && tickIdRef.current !== null) {
-            glAreaRef.current.removeTickCallback(tickIdRef.current);
-            tickIdRef.current = null;
-        }
-        glAreaRef.current = area;
-        if (area) tickIdRef.current = area.addTickCallback(tickCallback);
-    };
-}
-
-function useShaderCleanup(glAreaRef: React.RefObject<Gtk.GLArea | null>, tickIdRef: React.RefObject<number | null>) {
-    useEffect(() => {
-        return () => {
-            if (glAreaRef.current && tickIdRef.current !== null) {
-                glAreaRef.current.removeTickCallback(tickIdRef.current);
-            }
-        };
-    }, [glAreaRef, tickIdRef]);
-}
-
 const releaseShaderState = (glStateRef: React.RefObject<GLState | null>) => {
     const state = glStateRef.current;
     if (!state) return;
@@ -1286,12 +1262,10 @@ const ShaderPreview = ({ shaderCode }: { shaderCode: string }) => {
         frame: 0,
         mouse: [0, 0, 0, 0],
     });
-    const tickIdRef = useRef<number | null>(null);
     const resolutionRef = useRef<[number, number, number]>([64, 36, 1]);
 
     const tickCallback = useShaderTickCallback(animRef, glAreaRef);
-    const handleRef = useShaderRefCallback(glAreaRef, tickIdRef, tickCallback);
-    useShaderCleanup(glAreaRef, tickIdRef);
+    useTickCallback(glAreaRef, tickCallback);
     const handleUnrealize = () => releaseShaderState(glStateRef);
     const handleRender = (_context: Gdk.GLContext, self: Gtk.GLArea) =>
         renderShaderPreview({ glStateRef, animRef, resolutionRef, self, shaderCode });
@@ -1303,7 +1277,7 @@ const ShaderPreview = ({ shaderCode }: { shaderCode: string }) => {
 
     return (
         <GtkGLArea
-            ref={handleRef}
+            ref={glAreaRef}
             useEs
             onRender={handleRender}
             onResize={handleResize}
@@ -1327,8 +1301,7 @@ function useShadertoyRefs() {
         frame: 0,
         mouse: [0, 0, 0, 0],
     });
-    const tickIdRef = useRef<number | null>(null);
-    return { glAreaRef, glStateRef, sourceViewRef, resolutionRef, animRef, tickIdRef };
+    return { glAreaRef, glStateRef, sourceViewRef, resolutionRef, animRef };
 }
 
 interface CompileShadertoyArgs {
@@ -1543,7 +1516,7 @@ function useShadertoyEditor(
 }
 
 interface ShadertoyGLAreaPanelProps {
-    handleGLAreaRef: RefCallback<Gtk.GLArea>;
+    glAreaRef: React.RefObject<Gtk.GLArea | null>;
     handleRender: (context: Gdk.GLContext, self: Gtk.GLArea) => boolean;
     handleResize: (width: number, height: number) => void;
     handleUnrealize: () => void;
@@ -1551,7 +1524,7 @@ interface ShadertoyGLAreaPanelProps {
 }
 
 const ShadertoyGLAreaPanel = ({
-    handleGLAreaRef,
+    glAreaRef,
     handleRender,
     handleResize,
     handleUnrealize,
@@ -1561,7 +1534,7 @@ const ShadertoyGLAreaPanel = ({
         <GtkGraphicsOffload enabled={Gtk.GraphicsOffloadEnabled.ENABLED}>
             <GtkGLArea
                 name="shadertoy-gl-area"
-                ref={handleGLAreaRef}
+                ref={glAreaRef}
                 useEs
                 onRender={handleRender}
                 onResize={handleResize}
@@ -1650,9 +1623,8 @@ const ShadertoyControls = ({ onRun, onClear, onLoadPreset }: ShadertoyControlsPr
 
 function useShadertoyHandlers(refs: ReturnType<typeof useShadertoyRefs>, compiledCode: string) {
     const tickCallback = useShaderTickCallback(refs.animRef, refs.glAreaRef);
+    useTickCallback(refs.glAreaRef, tickCallback);
     const handleUnrealize = () => releaseShaderState(refs.glStateRef);
-    const handleGLAreaRef = useShaderRefCallback(refs.glAreaRef, refs.tickIdRef, tickCallback);
-    useShaderCleanup(refs.glAreaRef, refs.tickIdRef);
 
     useEffect(() => {
         compileShadertoyShader({
@@ -1677,7 +1649,7 @@ function useShadertoyHandlers(refs: ReturnType<typeof useShadertoyRefs>, compile
         gl.viewport(0, 0, width, height);
     };
 
-    return { handleUnrealize, handleGLAreaRef, handleRender, handleResize };
+    return { handleUnrealize, handleRender, handleResize };
 }
 
 const ShadertoyDemo = () => {
@@ -1697,7 +1669,7 @@ const ShadertoyDemo = () => {
             marginBottom={12}
         >
             <ShadertoyGLAreaPanel
-                handleGLAreaRef={handlers.handleGLAreaRef}
+                glAreaRef={refs.glAreaRef}
                 handleRender={handlers.handleRender}
                 handleResize={handlers.handleResize}
                 handleUnrealize={handlers.handleUnrealize}

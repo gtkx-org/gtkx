@@ -1,7 +1,8 @@
 import type * as WebKit from "@gtkx/gi/webkit";
 import type { WebKitWebViewProps } from "@gtkx/jsx/webkit";
-import { type ReactNode, useLayoutEffect, useRef } from "react";
+import { type ReactNode, useRef } from "react";
 import { useMergedRefs } from "../use-merged-refs.js";
+import { useSignal } from "../use-signal.js";
 
 const WebKitWebViewElement = "WebKitWebView" as const;
 
@@ -28,18 +29,12 @@ const WebKitWebViewElement = "WebKitWebView" as const;
  */
 export const WebKitWebView = ({ onLoadChanged, ref, children, ...rest }: WebKitWebViewProps): ReactNode => {
     const viewRef = useRef<WebKit.WebView | null>(null);
-    const onLoadChangedRef = useRef(onLoadChanged);
-    onLoadChangedRef.current = onLoadChanged;
     const mergedRef = useMergedRefs(viewRef, ref);
 
-    useLayoutEffect(() => {
+    useSignal(viewRef, "load-changed", (loadEvent: WebKit.LoadEvent) => {
         const view = viewRef.current;
-        if (!view) return;
-        const handlerId = view.connect("load-changed", (loadEvent: WebKit.LoadEvent) =>
-            onLoadChangedRef.current?.(loadEvent, view),
-        );
-        return () => view.disconnect(handlerId);
-    }, []);
+        if (view) onLoadChanged?.(loadEvent, view);
+    });
 
     return (
         <WebKitWebViewElement ref={mergedRef} {...rest}>
