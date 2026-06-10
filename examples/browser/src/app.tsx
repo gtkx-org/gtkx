@@ -1,5 +1,4 @@
 import { css } from "@gtkx/css";
-import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as WebKit from "@gtkx/gi/webkit";
 import { AdwApplication, AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
@@ -59,13 +58,11 @@ const useBrowserController = (webViewRef: RefObject<WebKit.WebView | null>) => {
         }));
     };
 
-    const handleNotify = (pspec: GObject.ParamSpec) => {
-        const webView = webViewRef.current;
-        if (!webView || pspec.getName() !== "estimated-load-progress") return;
-        setState((s) => ({ ...s, progress: webView.getEstimatedLoadProgress() }));
+    const handleEstimatedLoadProgress = (progress: number | null) => {
+        setState((s) => ({ ...s, progress: progress ?? s.progress }));
     };
 
-    return { state, setUrl, navigate, handleLoadChanged, handleNotify };
+    return { state, setUrl, navigate, handleLoadChanged, handleEstimatedLoadProgress };
 };
 
 const NavigationButtons = ({
@@ -101,7 +98,8 @@ const NavigationButtons = ({
 
 const BrowserWindow = () => {
     const webViewRef = useRef<WebKit.WebView | null>(null);
-    const { state, setUrl, navigate, handleLoadChanged, handleNotify } = useBrowserController(webViewRef);
+    const { state, setUrl, navigate, handleLoadChanged, handleEstimatedLoadProgress } =
+        useBrowserController(webViewRef);
     const { url, isLoading, canGoBack, canGoForward, progress } = state;
 
     useEffect(() => {
@@ -145,7 +143,7 @@ const BrowserWindow = () => {
                         vexpand
                         hexpand
                         onLoadChanged={handleLoadChanged}
-                        onNotify={handleNotify}
+                        onNotifyEstimatedLoadProgress={handleEstimatedLoadProgress}
                     />
                 </GtkBox>
             </AdwToolbarView>

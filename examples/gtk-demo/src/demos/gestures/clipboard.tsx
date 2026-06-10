@@ -18,8 +18,8 @@ import {
     GtkStackPage,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import { GtkDrawingArea, GtkDropDown } from "@gtkx/react";
-import { useEffect, useState } from "react";
+import { GtkDrawingArea, GtkDropDown, useProperty } from "@gtkx/react";
+import { useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./clipboard.tsx?raw";
 import { path as floppyBuddyPath } from "./floppybuddy.gif";
@@ -71,7 +71,6 @@ function useClipboardState() {
     const [selectedImage, setSelectedImage] = useState(0);
     const [sourceFile, setSourceFile] = useState<Gio.File | null>(null);
     const [pastedContent, setPastedContent] = useState<PastedContent>({ type: "" });
-    const [canPaste, setCanPaste] = useState(false);
 
     const canCopy =
         sourceType === "Text"
@@ -93,8 +92,6 @@ function useClipboardState() {
         setSourceFile,
         pastedContent,
         setPastedContent,
-        canPaste,
-        setCanPaste,
         canCopy,
     };
 }
@@ -116,19 +113,6 @@ const computeCanPaste = (formats: Gdk.ContentFormats): boolean =>
     formats.containGtype(gdkPaintableType) ||
     formats.containGtype(gfileType) ||
     formats.containMimeType("image/png");
-
-function useClipboardChangedListener(setCanPaste: (canPaste: boolean) => void) {
-    useEffect(() => {
-        const clipboard = getClipboard();
-        if (!clipboard) return;
-        const update = () => setCanPaste(computeCanPaste(clipboard.getFormats()));
-        update();
-        clipboard.on("changed", update);
-        return () => {
-            clipboard.off("changed", update);
-        };
-    }, [setCanPaste]);
-}
 
 function useDragProviders(state: ClipboardState) {
     const { sourceText, sourceColor, selectedImage, sourceFile } = state;
@@ -600,8 +584,8 @@ const ClipboardDemo = ({ window }: DemoProps) => {
     const textures = useClipboardTextures();
     const providers = useDragProviders(state);
     const clipboardHandlers = useClipboardHandlers(state, window);
-
-    useClipboardChangedListener(state.setCanPaste);
+    const formats = useProperty(getClipboard(), "formats");
+    const canPaste = formats ? computeCanPaste(formats) : false;
 
     return (
         <GtkBox
@@ -633,7 +617,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
 
             <ClipboardPasteSection
                 pastedContent={state.pastedContent}
-                canPaste={state.canPaste}
+                canPaste={canPaste}
                 onPaste={clipboardHandlers.handlePaste}
                 onDrop={clipboardHandlers.handleDrop}
             />

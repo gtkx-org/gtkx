@@ -10,7 +10,6 @@ import {
     ImageSurface,
     Surface,
 } from "@gtkx/gi/cairo";
-import type * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import * as PangoCairo from "@gtkx/gi/pangocairo";
@@ -30,7 +29,7 @@ import {
     GtkShortcutController,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import { GtkDrawingArea, GtkDropDown } from "@gtkx/react";
+import { GtkDrawingArea, GtkDropDown, useTickCallback } from "@gtkx/react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./fontrendering.tsx?raw";
@@ -38,30 +37,31 @@ import sourceCode from "./fontrendering.tsx?raw";
 const PANGO_SCALE = 1024;
 const DEFAULT_TEXT = "Fonts render";
 
-const enlargeGlyphWidths = (glyphString: Pango.GlyphString): void => {
+const updateGlyphGeometries = (
+    glyphString: Pango.GlyphString,
+    update: (geometry: Pango.GlyphGeometry, index: number) => void,
+): void => {
     const glyphs = glyphString.glyphs;
     for (let i = 0; i < 4; i++) {
         const info = glyphs[2 * i];
         if (!info) continue;
         const geometry = info.geometry;
-        geometry.width = Math.round((geometry.width * 3) / 2);
+        update(geometry, i);
         info.geometry = geometry;
     }
     glyphString.glyphs = glyphs;
 };
 
-const applyGlyphOffsets = (glyphString: Pango.GlyphString, row: number): void => {
-    const glyphs = glyphString.glyphs;
-    for (let i = 0; i < 4; i++) {
-        const info = glyphs[2 * i];
-        if (!info) continue;
-        const geometry = info.geometry;
-        geometry.xOffset = Math.round((i * PANGO_SCALE) / 4);
+const enlargeGlyphWidths = (glyphString: Pango.GlyphString): void =>
+    updateGlyphGeometries(glyphString, (geometry) => {
+        geometry.width = Math.round((geometry.width * 3) / 2);
+    });
+
+const applyGlyphOffsets = (glyphString: Pango.GlyphString, row: number): void =>
+    updateGlyphGeometries(glyphString, (geometry, index) => {
+        geometry.xOffset = Math.round((index * PANGO_SCALE) / 4);
         geometry.yOffset = Math.round((row * PANGO_SCALE) / 4);
-        info.geometry = geometry;
-    }
-    glyphString.glyphs = glyphs;
-};
+    });
 
 type Mode = "text" | "grid";
 
@@ -264,7 +264,6 @@ function useFontRenderingState() {
     const pixelAlphaRef = useRef(1);
     const outlineAlphaRef = useRef(0);
     const drawingAreaRef = useRef<Gtk.DrawingArea | null>(null);
-    const tickIdRef = useRef<number | null>(null);
 
     return {
         mode,
@@ -286,7 +285,6 @@ function useFontRenderingState() {
         pixelAlphaRef,
         outlineAlphaRef,
         drawingAreaRef,
-        tickIdRef,
     };
 }
 
@@ -299,12 +297,21 @@ const easeOutCubic = (t: number) => {
 
 const ANIMATION_DURATION_US = 500_000;
 
+interface OverlayAnimation {
+    startPixelAlpha: number;
+    startOutlineAlpha: number;
+    targetPixelAlpha: number;
+    targetOutlineAlpha: number;
+    startFrameTime: number | null;
+}
+
 function useOverlayAnimation(state: FontRenderingState) {
-    const { overlays, pixelAlphaRef, outlineAlphaRef, drawingAreaRef, tickIdRef } = state;
+    const { overlays, pixelAlphaRef, outlineAlphaRef, drawingAreaRef } = state;
+    const animationRef = useRef<OverlayAnimation | null>(null);
+    const [isAnimating, setIsAnimating] = useState(false);
 
     useEffect(() => {
-        const area = drawingAreaRef.current;
-        if (!area) return;
+        if (!drawingAreaRef.current) return;
 
         let targetPixelAlpha: number;
         if (overlays.showPixels && overlays.showOutlines) targetPixelAlpha = 0.5;
@@ -314,38 +321,44 @@ function useOverlayAnimation(state: FontRenderingState) {
 
         const startPixelAlpha = pixelAlphaRef.current;
         const startOutlineAlpha = outlineAlphaRef.current;
-        if (startPixelAlpha === targetPixelAlpha && startOutlineAlpha === targetOutlineAlpha) return;
-
-        if (tickIdRef.current !== null) {
-            area.removeTickCallback(tickIdRef.current);
-            tickIdRef.current = null;
+        if (startPixelAlpha === targetPixelAlpha && startOutlineAlpha === targetOutlineAlpha) {
+            animationRef.current = null;
+            setIsAnimating(false);
+            return;
         }
 
-        let startFrameTime: number | null = null;
-        tickIdRef.current = area.addTickCallback((_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
-            const frameTime = frameClock.getFrameTime();
-            startFrameTime ??= frameTime;
-            const t = Math.min((frameTime - startFrameTime) / ANIMATION_DURATION_US, 1);
-            const eased = easeOutCubic(t);
-
-            pixelAlphaRef.current = startPixelAlpha + (targetPixelAlpha - startPixelAlpha) * eased;
-            outlineAlphaRef.current = startOutlineAlpha + (targetOutlineAlpha - startOutlineAlpha) * eased;
-            area.queueDraw();
-
-            if (t >= 1) {
-                tickIdRef.current = null;
-                return false;
-            }
-            return true;
-        });
-
-        return () => {
-            if (tickIdRef.current !== null) {
-                area.removeTickCallback(tickIdRef.current);
-                tickIdRef.current = null;
-            }
+        animationRef.current = {
+            startPixelAlpha,
+            startOutlineAlpha,
+            targetPixelAlpha,
+            targetOutlineAlpha,
+            startFrameTime: null,
         };
-    }, [overlays.showPixels, overlays.showOutlines, pixelAlphaRef, outlineAlphaRef, drawingAreaRef, tickIdRef]);
+        setIsAnimating(true);
+    }, [overlays.showPixels, overlays.showOutlines, pixelAlphaRef, outlineAlphaRef, drawingAreaRef]);
+
+    useTickCallback(isAnimating ? drawingAreaRef : null, (widget, frameClock) => {
+        const animation = animationRef.current;
+        if (!animation) return false;
+
+        const frameTime = frameClock.getFrameTime();
+        animation.startFrameTime ??= frameTime;
+        const t = Math.min((frameTime - animation.startFrameTime) / ANIMATION_DURATION_US, 1);
+        const eased = easeOutCubic(t);
+
+        pixelAlphaRef.current =
+            animation.startPixelAlpha + (animation.targetPixelAlpha - animation.startPixelAlpha) * eased;
+        outlineAlphaRef.current =
+            animation.startOutlineAlpha + (animation.targetOutlineAlpha - animation.startOutlineAlpha) * eased;
+        widget.queueDraw();
+
+        if (t >= 1) {
+            animationRef.current = null;
+            setIsAnimating(false);
+            return false;
+        }
+        return true;
+    });
 }
 
 interface DrawTextModeContext {

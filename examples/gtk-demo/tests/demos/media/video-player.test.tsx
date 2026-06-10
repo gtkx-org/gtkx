@@ -74,12 +74,12 @@ describe("videoPlayerDemo video and actions", () => {
         await renderDemo(videoPlayerDemo);
         const handler = vi.fn();
         const fullscreenButton = (await screen.findByName("fullscreen-button")) as Gtk.Button;
-        const handlerId = fullscreenButton.connect("clicked", handler);
+        fullscreenButton.on("clicked", handler);
         try {
             await userEvent.click(fullscreenButton);
             await waitFor(() => expect(handler).toHaveBeenCalled());
         } finally {
-            fullscreenButton.disconnect(handlerId);
+            fullscreenButton.off("clicked", handler);
         }
     });
 
@@ -101,17 +101,21 @@ describe("videoPlayerDemo video and actions", () => {
         }
     });
 
+    const renderAndClickOpenButton = async () => {
+        await renderDemo(videoPlayerDemo);
+        const openButton = (await screen.findByName("open-button")) as Gtk.Button;
+        await act(async () => {
+            await userEvent.click(openButton);
+            await Promise.resolve();
+        });
+    };
+
     it("opens a Gtk.FileDialog when the Open button is activated", async () => {
         const setFileSpy = vi.spyOn(Gtk.Video.prototype, "setFile").mockImplementation(() => {});
         const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open");
         openSpy.mockResolvedValue(Gio.fileNewForPath("/tmp/fake-video.webm"));
         try {
-            await renderDemo(videoPlayerDemo);
-            const openButton = (await screen.findByName("open-button")) as Gtk.Button;
-            await act(async () => {
-                await userEvent.click(openButton);
-                await Promise.resolve();
-            });
+            await renderAndClickOpenButton();
             await waitFor(() => expect(openSpy).toHaveBeenCalled());
             await waitFor(() => expect(setFileSpy).toHaveBeenCalled());
         } finally {
@@ -125,12 +129,7 @@ describe("videoPlayerDemo video and actions", () => {
         const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open");
         openSpy.mockRejectedValue(new Error("cancelled"));
         try {
-            await renderDemo(videoPlayerDemo);
-            const openButton = (await screen.findByName("open-button")) as Gtk.Button;
-            await act(async () => {
-                await userEvent.click(openButton);
-                await Promise.resolve();
-            });
+            await renderAndClickOpenButton();
             await waitFor(() => expect(errorSpy).toHaveBeenCalledWith("cancelled"));
         } finally {
             openSpy.mockRestore();

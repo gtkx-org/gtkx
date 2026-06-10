@@ -42,7 +42,7 @@ describe("glareaDemo", () => {
         await renderDemo(glareaDemo);
         const glArea = (await screen.findByName("gl-area")) as Gtk.GLArea;
         const queueRenderSpy = vi.fn();
-        const id = glArea.connect("notify::queue-render", queueRenderSpy);
+        glArea.on("notify::queue-render", queueRenderSpy);
         try {
             const scales = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale[];
             const firstScale = scales[0] as Gtk.Scale;
@@ -50,7 +50,7 @@ describe("glareaDemo", () => {
             await fireEvent(firstScale, "value-changed");
             await waitFor(() => expect(firstScale.getValue()).toBe(45));
         } finally {
-            glArea.disconnect(id);
+            glArea.off("notify::queue-render", queueRenderSpy);
         }
     });
 

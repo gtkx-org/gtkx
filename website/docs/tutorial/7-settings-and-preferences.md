@@ -2,7 +2,7 @@
 
 ![Preferences dialog with settings rows](./images/7-settings-and-preferences.png)
 
-Most desktop apps need a preferences dialog. GTKX provides `useProperty` and `useSetting` hooks to reactively bind your UI to GObject properties and GSettings values.
+Most desktop apps need a preferences dialog. GTKX provides `useProperty`, `useSetting`, and `useSignal` hooks to reactively bind your UI to GObject properties, GSettings values, and signals.
 
 The components below live inside the `NotesWindow` from [Chapter 1](./1-window-and-header-bar.md), still wrapped in `<AdwApplication>`.
 
@@ -191,6 +191,52 @@ The return type is inferred from the ES6 accessor on the object — `useProperty
 2. Connects to `notify::property-name` on the GObject
 3. On each notification, re-reads the property and updates React state
 4. Disconnects the signal on unmount or when inputs change
+
+## Subscribing to signals with `useSignal`
+
+`useProperty` covers values backed by `notify::` signals. For everything else, the `useSignal` hook subscribes a callback to any GObject signal and unsubscribes automatically on unmount or when the target or signal name changes. It is meant for objects that live outside the widget tree — list models, selection models, providers — and for detailed signal names like `changed::font-size` that no generated prop covers. For widgets the tree owns, prefer the generated JSX `on*` props.
+
+```tsx
+import type * as Gio from "@gtkx/gi/gio";
+import * as Gtk from "@gtkx/gi/gtk";
+import { useSignal } from "@gtkx/react";
+import { useMemo, useState } from "react";
+
+function SelectionCounter({ store }: { store: Gio.ListStore }) {
+    const [count, setCount] = useState(0);
+    const selection = useMemo(() => new Gtk.MultiSelection({ model: store }), [store]);
+
+    useSignal(selection, "selection-changed", () => setCount(selection.getSelection().getSize()), {
+        immediate: true,
+    });
+
+    return <GtkLabel label={`${count} selected`} />;
+}
+```
+
+The handler receives the arguments the signal emits, without the trailing emitting-object argument that JSX `on*` props append. The latest handler is always invoked, so changing it between renders never resubscribes the signal.
+
+### Options
+
+- **`immediate`** — invokes the handler once, with no arguments, right after each (re)subscription. Useful for handlers that re-read state from the object, like the selection counter above: it shows the correct count from the first render instead of waiting for the first emission.
+- **`after`** — runs the handler after the signal's default class closure.
+
+### Refs as targets
+
+The target may also be a React ref to a JSX widget — the subscription follows the ref, reattaching when a later commit replaces the widget — or `null`/`undefined` to keep the hook inactive. Pass the ref to the widget's `ref` prop and to `useSignal`:
+
+```tsx
+const windowRef = useRef<Gtk.Window | null>(null);
+const [fullscreened, setFullscreened] = useState(false);
+
+useSignal(windowRef, "notify::fullscreened", () => {
+    setFullscreened(windowRef.current?.isFullscreen() ?? false);
+});
+```
+
+::: tip
+Unlike JSX `on*` props, a `useSignal` subscription also fires for changes React itself applies during a commit. That is one more reason to keep the generated `on*` props as the first choice for widgets the tree owns and reserve `useSignal` for objects outside it.
+:::
 
 ## Wiring preferences to settings
 

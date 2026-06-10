@@ -1,6 +1,7 @@
-import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
+import { GtkBox } from "@gtkx/jsx/gtk";
 import { GtkConstraintLayout } from "@gtkx/react";
 import type { Demo } from "../types.js";
+import { ConstraintChildButtons } from "./child-buttons.js";
 import sourceCode from "./constraints-vfl.tsx?raw";
 
 const VFL_CONSTRAINTS = [
@@ -15,15 +16,7 @@ const ConstraintsVflDemo = () => (
         <GtkConstraintLayout>
             <GtkConstraintLayout.Vfl lines={VFL_CONSTRAINTS} hspacing={8} vspacing={8} />
         </GtkConstraintLayout>
-        <GtkConstraintLayout.Widget id="button1">
-            <GtkButton name="button1" label="Child 1" />
-        </GtkConstraintLayout.Widget>
-        <GtkConstraintLayout.Widget id="button2">
-            <GtkButton name="button2" label="Child 2" />
-        </GtkConstraintLayout.Widget>
-        <GtkConstraintLayout.Widget id="button3">
-            <GtkButton name="button3" label="Child 3" />
-        </GtkConstraintLayout.Widget>
+        <ConstraintChildButtons />
     </GtkBox>
 );
 

@@ -3,8 +3,9 @@ import type * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import { cssParserWarningQuark } from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
+import { useSignal } from "@gtkx/react";
 import type { RefObject } from "react";
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 const clearTags = (buffer: Gtk.TextBuffer) => {
     const startIter = buffer.getStartIter();
@@ -56,45 +57,28 @@ const setupTags = ({ buffer, errorTagRef, warningTagRef }: SetupTagsArgs) => {
     warningTagRef.current = warningTag;
 };
 
-interface SetupProviderArgs {
-    providerRef: RefObject<Gtk.CssProvider | null>;
-    displayRef: RefObject<Gdk.Display | null>;
-    handleParsingError: (section: Gtk.CssSection, error: GLib.Error) => void;
-}
-
-const setupProvider = ({ providerRef, displayRef, handleParsingError }: SetupProviderArgs) => {
-    const provider = new Gtk.CssProvider();
-    providerRef.current = provider;
-
-    provider.on("parsing-error", handleParsingError);
-
-    const display = Gdk.DisplayManager.get().getDefaultDisplay();
-    displayRef.current = display;
-    if (display) Gtk.StyleContext.addProviderForDisplay(display, provider, 0xffffffff);
-
-    return () => {
-        if (providerRef.current) {
-            providerRef.current.off("parsing-error", handleParsingError);
-        }
-        if (displayRef.current && providerRef.current) {
-            Gtk.StyleContext.removeProviderForDisplay(displayRef.current, providerRef.current);
-        }
-    };
-};
-
 export function useCssEditor(defaultCss: string) {
     const textViewRef = useRef<Gtk.TextView | null>(null);
-    const providerRef = useRef<Gtk.CssProvider | null>(null);
-    const displayRef = useRef<Gdk.Display | null>(null);
+    const [provider] = useState(() => new Gtk.CssProvider());
     const errorTagRef = useRef<Gtk.TextTag | null>(null);
     const warningTagRef = useRef<Gtk.TextTag | null>(null);
+
+    useSignal(provider, "parsing-error", (section: Gtk.CssSection, error: GLib.Error) =>
+        markParsingError({
+            textView: textViewRef.current,
+            section,
+            error,
+            warningTag: warningTagRef.current,
+            errorTag: errorTagRef.current,
+        }),
+    );
 
     const onChanged = (buffer: Gtk.TextBuffer) => {
         clearTags(buffer);
         const startIter = buffer.getStartIter();
         const endIter = buffer.getEndIter();
         const text = buffer.getText(startIter, endIter, false) ?? "";
-        providerRef.current?.loadFromString(text);
+        provider.loadFromString(text);
     };
 
     useLayoutEffect(() => {
@@ -103,24 +87,16 @@ export function useCssEditor(defaultCss: string) {
         const buffer = textView.getBuffer();
         if (!buffer) return;
 
-        const handleParsingError = (section: Gtk.CssSection, error: GLib.Error) =>
-            markParsingError({
-                textView: textViewRef.current,
-                section,
-                error,
-                warningTag: warningTagRef.current,
-                errorTag: errorTagRef.current,
-            });
-
         setupTags({ buffer, errorTagRef, warningTagRef });
-        const cleanup = setupProvider({
-            providerRef,
-            displayRef,
-            handleParsingError,
-        });
-        providerRef.current?.loadFromString(defaultCss);
-        return cleanup;
-    }, [defaultCss]);
+
+        const display = Gdk.DisplayManager.get().getDefaultDisplay();
+        if (display) Gtk.StyleContext.addProviderForDisplay(display, provider, 0xffffffff);
+        provider.loadFromString(defaultCss);
+
+        return () => {
+            if (display) Gtk.StyleContext.removeProviderForDisplay(display, provider);
+        };
+    }, [defaultCss, provider]);
 
     return { textViewRef, onChanged };
 }

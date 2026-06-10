@@ -1,4 +1,4 @@
-import { toCamelCase, toIdentifier } from "@gtkx/utils";
+import { toCamelCase, toIdentifier, toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirProperty } from "../gir/property.js";
@@ -32,6 +32,25 @@ export const resolveImplementedInterface = (
     const resolved = context.repository.resolveNamed(namespaceName, typeName);
     if (resolved === undefined || resolved.kind !== "interface") return undefined;
     return { klass: resolved.value, namespaceName: resolved.namespace.name };
+};
+
+/**
+ * Resolves a `<prerequisite>` entry to the generated type reference it names —
+ * the local PascalCase name within the current namespace, or the
+ * cross-namespace `<Alias>.<Name>` form. Returns `undefined` when the name
+ * does not resolve to an emitted class or interface.
+ *
+ * @param context - The module context
+ * @param name - The (possibly cross-namespace) prerequisite name
+ */
+export const resolvePrerequisiteReference = (context: ModuleContext, name: string): string | undefined => {
+    const { namespaceName, typeName } = splitQualifiedName(name, context.namespace.name);
+    const resolved = context.repository.resolveNamed(namespaceName, typeName);
+    if (resolved === undefined) return undefined;
+    if (resolved.kind !== "interface" && resolved.kind !== "class") return undefined;
+    if (namespaceName === context.namespace.name) return toPascalCase(typeName);
+    const alias = context.addCrossNamespaceImport(namespaceName);
+    return `${alias}.${toPascalCase(typeName)}`;
 };
 
 /**

@@ -1,6 +1,6 @@
 import * as Gio from "@gtkx/gi/gio";
-import * as GObject from "@gtkx/gi/gobject";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSignal } from "./use-signal.js";
 
 type SettingTypeMap = {
     boolean: boolean;
@@ -76,15 +76,11 @@ export function useSetting<T extends SettingType>(
 
     useEffect(() => {
         setValue(getSetting(settings, key, type));
-
-        const handlerId = settings.connect(`changed::${key}`, () => {
-            setValue(getSetting(settings, key, type));
-        });
-
-        return () => {
-            GObject.signalHandlerDisconnect(settings, handlerId);
-        };
     }, [settings, key, type]);
+
+    useSignal(settings, `changed::${key}`, () => {
+        setValue(getSetting(settings, key, type));
+    });
 
     const set = useCallback(
         (newValue: SettingTypeMap[T]) => {

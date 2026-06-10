@@ -1,17 +1,25 @@
-import * as GObject from "@gtkx/gi/gobject";
+import type * as GObject from "@gtkx/gi/gobject";
 import { toKebabCase } from "@gtkx/utils";
 import { useEffect, useState } from "react";
+import { useSignal } from "./use-signal.js";
 
 type ReadableKey<T> = {
-    [K in keyof T]: K extends string ? (T[K] extends (...args: unknown[]) => unknown ? never : K) : never;
+    [K in keyof T]: K extends `__${string}__`
+        ? never
+        : K extends string
+          ? T[K] extends (...args: unknown[]) => unknown
+              ? never
+              : K
+          : never;
 }[keyof T];
 
 /**
  * Subscribes to a GObject property and returns its current value as React state.
  *
- * Connects to the `notify::property-name` signal on `obj` and re-renders
- * whenever the property changes. The initial value is read synchronously
- * at mount time. Disconnects automatically on unmount or when inputs change.
+ * Subscribes to the `notify::property-name` signal on `obj` via
+ * {@link useSignal} and re-renders whenever the property changes. The initial
+ * value is read synchronously at mount time. Unsubscribes automatically on
+ * unmount or when inputs change.
  *
  * When `obj` is `null` or `undefined`, the hook is inactive and returns
  * `undefined`. This allows safe usage with nullable objects without
@@ -33,24 +41,15 @@ export function useProperty<T extends GObject.Object, K extends ReadableKey<T>>(
     propertyName: K,
 ): T[K] | undefined {
     const [value, setValue] = useState<T[K] | undefined>(() => (obj ? obj[propertyName] : undefined));
+    const target: GObject.Object | null | undefined = obj;
 
     useEffect(() => {
-        if (!obj) {
-            setValue(undefined);
-            return;
-        }
-
-        setValue(obj[propertyName]);
-
-        const signal = `notify::${toKebabCase(propertyName)}`;
-        const handlerId = obj.connect(signal, () => {
-            setValue(obj[propertyName]);
-        });
-
-        return () => {
-            GObject.signalHandlerDisconnect(obj, handlerId);
-        };
+        setValue(obj ? obj[propertyName] : undefined);
     }, [obj, propertyName]);
+
+    useSignal(target, `notify::${toKebabCase(propertyName)}`, () => {
+        if (obj) setValue(obj[propertyName]);
+    });
 
     return value;
 }

@@ -163,7 +163,7 @@ const useNotesState = (toastOverlayRef: React.RefObject<Adw.ToastOverlay | null>
         setNotes((prev) => prev.map((n) => (n.id === deletedNote.id ? { ...n, deleted: true } : n)));
         const toast = Adw.Toast.new(`“${deletedNote.title}” moved to Trash`);
         toast.buttonLabel = "Undo";
-        toast.connect("button-clicked", () => restoreNote(deletedNote.id));
+        toast.once("button-clicked", () => restoreNote(deletedNote.id));
         toastOverlayRef.current?.addToast(toast);
     };
 

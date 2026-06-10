@@ -3,7 +3,6 @@ import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
-import { splitQualifiedName } from "../gir/qualified-name.js";
 import { qualifyFunction } from "../gir/qualify.js";
 import {
     appendMethodBinding,
@@ -16,7 +15,7 @@ import {
 } from "./callables.js";
 import { renderVfuncMetadata } from "./class-struct.js";
 import { renderGetTypeReference } from "./gtype-binding.js";
-import { resolveImplementedInterface } from "./inheritance.js";
+import { resolveImplementedInterface, resolvePrerequisiteReference } from "./inheritance.js";
 import { methodExportName } from "./method.js";
 import { renderPropertyAccessor } from "./property-accessor.js";
 import { appendNativeClassRegistration } from "./registration.js";
@@ -158,14 +157,4 @@ const resolveInterfaceParent = (context: ModuleContext): string => {
     if (context.namespace.name === "GObject") return "Object";
     const alias = context.addCrossNamespaceImport("GObject");
     return `${alias}.Object`;
-};
-
-const resolvePrerequisiteReference = (context: ModuleContext, name: string): string | undefined => {
-    const { namespaceName, typeName } = splitQualifiedName(name, context.namespace.name);
-    const resolved = context.repository.resolveNamed(namespaceName, typeName);
-    if (resolved === undefined) return undefined;
-    if (resolved.kind !== "interface" && resolved.kind !== "class") return undefined;
-    if (namespaceName === context.namespace.name) return toPascalCase(typeName);
-    const alias = context.addCrossNamespaceImport(namespaceName);
-    return `${alias}.${toPascalCase(typeName)}`;
 };
