@@ -1,21 +1,13 @@
 {
     "$schema": "https://turborepo.com/schema.json",
-    "extends": [
-        "//"
-    ],
+    "extends": ["//"],
     "tasks": {
         "build": {
-            "inputs": [
-                "$TURBO_DEFAULT$"
-            ]
+            "inputs": ["$TURBO_DEFAULT$"]
         },
         "typecheck": {
-            "dependsOn": [
-                "^build"
-            ],
-            "inputs": [
-                "$TURBO_DEFAULT$"
-            ]
+            "dependsOn": ["^build"],
+            "inputs": ["$TURBO_DEFAULT$"]
         }
     }
 }

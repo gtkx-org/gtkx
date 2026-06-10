@@ -101,7 +101,9 @@ describe("renderEnvModule (typing)", () => {
         expect(env).toContain("at(path: string): {");
         expect(env).not.toContain(`readonly path: string | null;\n        readonly keys`);
     });
+});
 
+describe("renderEnvModule (edge cases)", () => {
     it("renders only the header for an empty project", () => {
         const env = renderEnvModule([]);
 
