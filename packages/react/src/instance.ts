@@ -137,6 +137,19 @@ export const createRootInstance = (sentinel: ContainerInfo): Instance =>
 /** Whether `instance` is a metadata wrapper (vs. a real GObject or the root). */
 export const isWrapperInstance = (instance: Instance): boolean => instance.type === WRAPPER_NODE_ELEMENT;
 
+/**
+ * Returns the nearest instance, starting at `node` itself and walking the
+ * parent chain, that satisfies `matches` — or `null` when none does.
+ *
+ * @param node - The instance to start the walk from.
+ * @param matches - The predicate an ancestor must satisfy.
+ */
+export const closestInstance = (node: Instance, matches: (instance: Instance) => boolean): Instance | null => {
+    let current: Instance | null = node;
+    while (current !== null && !matches(current)) current = current.parent;
+    return current;
+};
+
 /** Whether `instance` is a metadata wrapper of the given `kind`. */
 export const isWrapperKind = (instance: Instance, kind: string): boolean =>
     instance.type === WRAPPER_NODE_ELEMENT && instance.kind === kind;

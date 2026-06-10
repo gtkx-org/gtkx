@@ -31,13 +31,13 @@ const buildNotebookFrom =
     );
 
 /**
- * Builds a {@link ChildrenBuilder} that renders a `GtkNotebook` whose pages use
- * their label string directly as their content.
+ * Builds a {@link ChildrenBuilder} that renders a `GtkNotebook` whose pages
+ * wrap a `GtkLabel` reading their label string.
  *
  * @param ref - Ref attached to the rendered `GtkNotebook`.
  */
 export const buildPlainNotebook = (ref: RefObject<Gtk.Notebook | null>): ChildrenBuilder<string> =>
-    buildNotebookFrom(ref, (label) => label);
+    buildNotebookFrom(ref, (label) => <GtkLabel label={label} />);
 
 /**
  * Builds a {@link ChildrenBuilder} that renders a `GtkNotebook` whose pages wrap

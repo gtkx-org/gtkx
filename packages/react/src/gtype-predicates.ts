@@ -1,7 +1,6 @@
 import { getNativeClassByName } from "@gtkx/ffi";
 import type * as Adw from "@gtkx/gi/adw";
 import type { GType } from "@gtkx/gi/gobject";
-import type * as GtkSource from "@gtkx/gi/gtksource";
 import type { AnyClass } from "@gtkx/utils";
 import { collectTypeNameChain } from "./gtype.js";
 
@@ -22,6 +21,18 @@ type GTyped = { readonly __gtype__: GType };
 export const hasType = (instance: GTyped, typeName: string): boolean =>
     collectTypeNameChain(instance.__gtype__).includes(typeName);
 
+/**
+ * Whether a registered class's GType ancestry contains `typeName`. The class
+ * registry stamps each class prototype with its resolved GType, so the check
+ * works without an instance — e.g. when classifying a JSX element type before
+ * construction.
+ *
+ * @param cls - The registered backing class to test, or `null`
+ * @param typeName - GLib type name to search the ancestry for
+ */
+export const classHasType = (cls: { readonly prototype: GTyped } | null, typeName: string): boolean =>
+    cls !== null && collectTypeNameChain(cls.prototype.__gtype__).includes(typeName);
+
 /** Whether `instance` is an `AdwDialog`. */
 export const isAdwDialog = <T extends GTyped>(instance: T): instance is T & Adw.Dialog =>
     hasType(instance, "AdwDialog");
@@ -29,14 +40,6 @@ export const isAdwDialog = <T extends GTyped>(instance: T): instance is T & Adw.
 /** Whether `instance` is an `AdwComboRow`. */
 export const isAdwComboRow = <T extends GTyped>(instance: T): instance is T & Adw.ComboRow =>
     hasType(instance, "AdwComboRow");
-
-/** Whether `instance` is a `GtkSourceBuffer`. */
-export const isGtkSourceBuffer = <T extends GTyped>(instance: T): instance is T & GtkSource.Buffer =>
-    hasType(instance, "GtkSourceBuffer");
-
-/** Whether `instance` is a `GtkSourceView`. */
-export const isGtkSourceView = <T extends GTyped>(instance: T): instance is T & GtkSource.View =>
-    hasType(instance, "GtkSourceView");
 
 /**
  * Resolves a registered GObject class by its GLib type name, throwing a clear

@@ -1,3 +1,4 @@
+import { GtkLabel } from "@gtkx/jsx/gtk";
 import type { ListItem } from "@gtkx/react";
 import { GtkListView } from "@gtkx/react";
 import { render } from "@gtkx/testing";
@@ -7,7 +8,7 @@ import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
 function App({ items }: { items: ListItem<string>[] }) {
     return (
         <ScrollWrapper>
-            <GtkListView items={items} renderItem={() => "Item"} />
+            <GtkListView items={items} renderItem={() => <GtkLabel label="Item" />} />
         </ScrollWrapper>
     );
 }

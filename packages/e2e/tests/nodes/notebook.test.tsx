@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkNotebook, GtkNotebookPage } from "@gtkx/jsx/gtk";
+import { GtkLabel, GtkNotebook, GtkNotebookPage } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -38,7 +38,9 @@ describe("render - Notebook (1)", () => {
 
             await render(
                 <GtkNotebook ref={notebookRef}>
-                    <GtkNotebookPage label="Tab 1">Page 1 Content</GtkNotebookPage>
+                    <GtkNotebookPage label="Tab 1">
+                        <GtkLabel label="Page 1 Content" />
+                    </GtkNotebookPage>
                 </GtkNotebook>,
             );
 
@@ -79,7 +81,9 @@ describe("render - Notebook (2)", () => {
             function App({ label }: { label: string }) {
                 return (
                     <GtkNotebook ref={notebookRef}>
-                        <GtkNotebookPage label={label}>Content</GtkNotebookPage>
+                        <GtkNotebookPage label={label}>
+                            <GtkLabel label="Content" />
+                        </GtkNotebookPage>
                     </GtkNotebook>
                 );
             }

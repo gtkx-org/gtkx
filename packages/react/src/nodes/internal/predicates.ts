@@ -29,11 +29,6 @@ type EditableWidget = Gtk.Widget & {
     getText: () => string;
 };
 
-type BufferedWidget = Gtk.Widget & {
-    getBuffer: () => Gtk.TextBuffer;
-    setBuffer: (buffer?: Gtk.TextBuffer | null) => void;
-};
-
 const hasMethod = (obj: unknown, name: string): obj is Gtk.Widget =>
     obj instanceof Gtk.Widget && name in obj && typeof Reflect.get(obj, name) === "function";
 
@@ -75,6 +70,3 @@ export const isInsertable = (obj: unknown): obj is InsertableWidget =>
 
 export const isEditable = (obj: unknown): obj is EditableWidget =>
     hasMethod(obj, "getPosition") && hasMethod(obj, "setPosition") && hasMethod(obj, "getText");
-
-export const isBuffered = (obj: unknown): obj is BufferedWidget =>
-    hasMethod(obj, "getBuffer") && hasMethod(obj, "setBuffer");

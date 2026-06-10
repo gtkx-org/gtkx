@@ -33,7 +33,7 @@ describe("render - Slot (1)", () => {
         const headerBarRef = createRef<Gtk.HeaderBar>();
 
         function App({ showTitle }: { showTitle: boolean }) {
-            return <GtkHeaderBar ref={headerBarRef} titleWidget={showTitle ? "Title" : undefined} />;
+            return <GtkHeaderBar ref={headerBarRef} titleWidget={showTitle ? <GtkLabel label="Title" /> : undefined} />;
         }
 
         await render(<App showTitle />);
@@ -85,7 +85,14 @@ describe("render - Slot (2)", () => {
         const popoverRef = createRef<Gtk.Popover>();
 
         await render(
-            <GtkMenuButton ref={menuButtonRef} popover={<GtkPopover ref={popoverRef}>Popover Content</GtkPopover>} />,
+            <GtkMenuButton
+                ref={menuButtonRef}
+                popover={
+                    <GtkPopover ref={popoverRef}>
+                        <GtkLabel label="Popover Content" />
+                    </GtkPopover>
+                }
+            />,
         );
 
         expect(menuButtonRef.current?.getPopover()).toBe(popoverRef.current);

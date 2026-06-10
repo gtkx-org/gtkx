@@ -202,6 +202,20 @@ describe("userEvent.tab", () => {
     });
 });
 
+const renderTwoItemListBox = async (selectionMode?: Gtk.SelectionMode): Promise<Gtk.Widget> => {
+    await render(
+        <GtkListBox selectionMode={selectionMode}>
+            <GtkListBoxRow>
+                <GtkLabel label="Item 1" />
+            </GtkListBoxRow>
+            <GtkListBoxRow>
+                <GtkLabel label="Item 2" />
+            </GtkListBoxRow>
+        </GtkListBox>,
+    );
+    return screen.findByRole(Gtk.AccessibleRole.LIST);
+};
+
 describe("userEvent.selectOptions", () => {
     it("selects option in dropdown by index", async () => {
         await render(
@@ -220,14 +234,7 @@ describe("userEvent.selectOptions", () => {
     });
 
     it("selects row in list box by index", async () => {
-        await render(
-            <GtkListBox>
-                <GtkListBoxRow>Item 1</GtkListBoxRow>
-                <GtkListBoxRow>Item 2</GtkListBoxRow>
-            </GtkListBox>,
-        );
-
-        const listBox = await screen.findByRole(Gtk.AccessibleRole.LIST);
+        const listBox = await renderTwoItemListBox();
         await userEvent.selectOptions(listBox, 0);
         expect((listBox as Gtk.ListBox).getSelectedRow()).not.toBeNull();
     });
@@ -260,14 +267,7 @@ describe("userEvent.selectOptions", () => {
 
 describe("userEvent.deselectOptions", () => {
     it("deselects row in list box", async () => {
-        await render(
-            <GtkListBox selectionMode={Gtk.SelectionMode.MULTIPLE}>
-                <GtkListBoxRow>Item 1</GtkListBoxRow>
-                <GtkListBoxRow>Item 2</GtkListBoxRow>
-            </GtkListBox>,
-        );
-
-        const listBox = await screen.findByRole(Gtk.AccessibleRole.LIST);
+        const listBox = await renderTwoItemListBox(Gtk.SelectionMode.MULTIPLE);
         await userEvent.selectOptions(listBox, [0, 1]);
         await userEvent.deselectOptions(listBox, 0);
         expect((listBox as Gtk.ListBox).getSelectedRows()).toHaveLength(1);

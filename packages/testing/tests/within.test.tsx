@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkFrame } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
 import { describe, expect, it } from "vitest";
 import { render, screen, within } from "../src/index.js";
 
@@ -27,9 +27,9 @@ describe("within scoping", () => {
         await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkFrame name="inner-frame" label="Inner">
-                    Inside
+                    <GtkLabel label="Inside" />
                 </GtkFrame>
-                Outside
+                <GtkLabel label="Outside" />
             </GtkBox>,
         );
 

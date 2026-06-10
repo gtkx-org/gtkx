@@ -3,27 +3,28 @@ import type { ReactNode } from "react";
 import { expect, vi } from "vitest";
 
 /**
- * Builds a text-buffer view (such as `GtkTextView` or `GtkSourceView`) with an
- * `onBufferChanged` callback wired up and the given text as children.
+ * Builds a text-buffer view (such as `GtkTextView` or `GtkSourceView`) whose
+ * buffer element has an `onChanged` callback wired up and the given text as
+ * children.
  *
- * @param onBufferChanged - Callback passed to the view's `onBufferChanged` prop.
- * @param text - Text rendered as the view's children.
+ * @param onChanged - Callback passed to the buffer element's `onChanged` prop.
+ * @param text - Text rendered as the buffer element's children.
  */
-export type BufferChangedViewBuilder = (onBufferChanged: () => void, text: string) => ReactNode;
+export type BufferChangedViewBuilder = (onChanged: () => void, text: string) => ReactNode;
 
 /**
  * Verifies that re-rendering a text-buffer view with new text does not invoke
- * its `onBufferChanged` callback, confirming that React reconciliation alone
- * never reports a user-facing buffer change.
+ * the buffer's `onChanged` callback, confirming that React reconciliation
+ * alone never reports a user-facing buffer change.
  *
- * @param build - Builds the view from an `onBufferChanged` callback and text.
+ * @param build - Builds the view from an `onChanged` callback and text.
  */
 export const expectNoBufferChangedOnReconcile = async (build: BufferChangedViewBuilder): Promise<void> => {
-    const onBufferChanged = vi.fn();
+    const onChanged = vi.fn();
 
-    const { rerender } = await render(build(onBufferChanged, "Initial"));
+    const { rerender } = await render(build(onChanged, "Initial"));
 
-    await rerender(build(onBufferChanged, "Updated"));
+    await rerender(build(onChanged, "Updated"));
 
-    expect(onBufferChanged).not.toHaveBeenCalled();
+    expect(onChanged).not.toHaveBeenCalled();
 };

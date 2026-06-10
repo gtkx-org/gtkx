@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkScrolledWindow, GtkTextView } from "@gtkx/jsx/gtk";
+import { GtkScrolledWindow, GtkTextBuffer, GtkTextView } from "@gtkx/jsx/gtk";
 import { act, render } from "@gtkx/testing";
 import { useEffect } from "react";
 import { describe, expect, it } from "vitest";
@@ -19,8 +19,8 @@ const Host = ({ defaultCss, onMount }: HostProps) => {
 
     return (
         <GtkScrolledWindow>
-            <GtkTextView ref={editor.textViewRef} onBufferChanged={editor.onBufferChanged}>
-                {defaultCss}
+            <GtkTextView ref={editor.textViewRef}>
+                <GtkTextBuffer onChanged={editor.onChanged}>{defaultCss}</GtkTextBuffer>
             </GtkTextView>
         </GtkScrolledWindow>
     );
@@ -28,21 +28,24 @@ const Host = ({ defaultCss, onMount }: HostProps) => {
 
 const DEFAULT_CSS = "window { color: red; }";
 
+const renderHost = async (defaultCss: string) => {
+    const captured: { tv: Gtk.TextView | null } = { tv: null };
+    await render(<Host defaultCss={defaultCss} onMount={(tv) => (captured.tv = tv)} />);
+    return captured.tv;
+};
+
 describe("useCssEditor buffer", () => {
     it("populates the text buffer with the supplied default css", async () => {
-        const captured: { tv: Gtk.TextView | null } = { tv: null };
-        await render(<Host defaultCss={DEFAULT_CSS} onMount={(tv) => (captured.tv = tv)} />);
-        expect(captured.tv).not.toBeNull();
-        if (!captured.tv) return;
-        const buffer = captured.tv.getBuffer();
+        const textView = await renderHost(DEFAULT_CSS);
+        expect(textView).not.toBeNull();
+        if (!textView) return;
+        const buffer = textView.getBuffer();
         const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
         expect(text).toBe(DEFAULT_CSS);
     });
 
     it("registers warning and error text tags on the buffer's tag table", async () => {
-        const captured: { tv: Gtk.TextView | null } = { tv: null };
-        await render(<Host defaultCss={DEFAULT_CSS} onMount={(tv) => (captured.tv = tv)} />);
-        const textView = captured.tv;
+        const textView = await renderHost(DEFAULT_CSS);
         expect(textView).not.toBeNull();
         if (!textView) return;
         const tagTable = textView.getBuffer().getTagTable();
@@ -53,9 +56,7 @@ describe("useCssEditor buffer", () => {
 
 describe("useCssEditor lifecycle", () => {
     it("updates the css provider when the buffer text changes and applies error tags on invalid css", async () => {
-        const captured: { tv: Gtk.TextView | null } = { tv: null };
-        await render(<Host defaultCss={DEFAULT_CSS} onMount={(tv) => (captured.tv = tv)} />);
-        const textView = captured.tv;
+        const textView = await renderHost(DEFAULT_CSS);
         expect(textView).not.toBeNull();
         if (!textView) return;
         const buffer = textView.getBuffer();

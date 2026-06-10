@@ -6,3 +6,6 @@ export const PAINTABLE_KIND = "text-paintable";
 
 /** Wrapper kind for a widget anchored into a text buffer. */
 export const ANCHOR_KIND = "text-anchor";
+
+/** Wrapper kind for a raw text run inside a label. */
+export const LABEL_TEXT_KIND = "label-text";

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkScrolledWindow, GtkTextView } from "@gtkx/jsx/gtk";
+import { GtkScrolledWindow, GtkTextBuffer, GtkTextView } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
 import sourceCode from "./textundo.tsx?raw";
 
@@ -21,9 +21,8 @@ const TextUndoDemo = () => {
                 rightMargin={20}
                 topMargin={20}
                 bottomMargin={20}
-                enableUndo
             >
-                {INITIAL_TEXT}
+                <GtkTextBuffer enableUndo>{INITIAL_TEXT}</GtkTextBuffer>
             </GtkTextView>
         </GtkScrolledWindow>
     );

@@ -10,7 +10,7 @@ import { renderChildren } from "../helpers/render-children.js";
 import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
 
 const noop = () => {};
-const cellRenderer = () => "Cell";
+const cellRenderer = () => <GtkLabel label="Cell" />;
 
 type ColumnExtra = Omit<ComponentProps<typeof GtkColumnViewColumn>, "id" | "title" | "renderCell">;
 
@@ -90,7 +90,7 @@ describe("render - ColumnViewColumn (1)", () => {
 
             await renderColumns(
                 columnViewRef,
-                <GtkColumnViewColumn id="expand" title="Expandable" expand={true} renderCell={() => "Cell"} />,
+                <GtkColumnViewColumn id="expand" title="Expandable" expand={true} renderCell={cellRenderer} />,
             );
 
             const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
@@ -106,7 +106,7 @@ describe("render - ColumnViewColumn (2)", () => {
 
             await renderColumns(
                 columnViewRef,
-                <GtkColumnViewColumn id="resize" title="Resizable" expand resizable renderCell={() => "Cell"} />,
+                <GtkColumnViewColumn id="resize" title="Resizable" expand resizable renderCell={cellRenderer} />,
             );
 
             const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
@@ -119,9 +119,24 @@ describe("render - ColumnViewColumn (2)", () => {
             await renderColumns(
                 columnViewRef,
                 <>
-                    <GtkColumnViewColumn id="col1" title="Column 1" expand renderCell={() => "Cell 1"} />
-                    <GtkColumnViewColumn id="col2" title="Column 2" expand renderCell={() => "Cell 2"} />
-                    <GtkColumnViewColumn id="col3" title="Column 3" expand renderCell={() => "Cell 3"} />
+                    <GtkColumnViewColumn
+                        id="col1"
+                        title="Column 1"
+                        expand
+                        renderCell={() => <GtkLabel label="Cell 1" />}
+                    />
+                    <GtkColumnViewColumn
+                        id="col2"
+                        title="Column 2"
+                        expand
+                        renderCell={() => <GtkLabel label="Cell 2" />}
+                    />
+                    <GtkColumnViewColumn
+                        id="col3"
+                        title="Column 3"
+                        expand
+                        renderCell={() => <GtkLabel label="Cell 3" />}
+                    />
                 </>,
             );
 
@@ -139,7 +154,7 @@ describe("render - ColumnViewColumn (3)", () => {
                 return (
                     <ScrollWrapper>
                         <GtkColumnView ref={columnViewRef}>
-                            <GtkColumnViewColumn id="col" title={title} expand renderCell={() => "Cell"} />
+                            <GtkColumnViewColumn id="col" title={title} expand renderCell={cellRenderer} />
                         </GtkColumnView>
                     </ScrollWrapper>
                 );

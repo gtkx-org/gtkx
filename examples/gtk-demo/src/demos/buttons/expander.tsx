@@ -6,6 +6,7 @@ import {
     GtkExpander,
     GtkLabel,
     GtkScrolledWindow,
+    GtkTextBuffer,
     GtkTextPaintable,
     GtkTextTag,
     GtkTextView,
@@ -62,10 +63,12 @@ const ExpanderDemo = () => {
                         topMargin={10}
                         bottomMargin={10}
                     >
-                        {DETAILS_TEXT}
-                        <GtkTextTag name="logo" pixelsAboveLines={200} justification={Gtk.Justification.RIGHT}>
-                            <GtkTextPaintable paintable={texture} />
-                        </GtkTextTag>
+                        <GtkTextBuffer>
+                            {DETAILS_TEXT}
+                            <GtkTextTag name="logo" pixelsAboveLines={200} justification={Gtk.Justification.RIGHT}>
+                                <GtkTextPaintable paintable={texture} />
+                            </GtkTextTag>
+                        </GtkTextBuffer>
                     </GtkTextView>
                 </GtkScrolledWindow>
             </GtkExpander>

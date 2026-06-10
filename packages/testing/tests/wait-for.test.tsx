@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { type ReactNode, useState } from "react";
 import { describe, expect, it } from "vitest";
 import { render, screen, userEvent, waitFor, waitForElementToBeRemoved } from "../src/index.js";
@@ -161,13 +161,13 @@ describe("waitForElementToBeRemoved timeout", () => {
 
 describe("waitForElementToBeRemoved error handling", () => {
     it("throws immediately if element is already removed", async () => {
-        await render("Test");
+        await render(<GtkLabel label="Test" />);
 
         await expect(waitForElementToBeRemoved(null as never)).rejects.toThrow("already removed");
     });
 
     it("throws if callback returns null initially", async () => {
-        await render("Test");
+        await render(<GtkLabel label="Test" />);
 
         await expect(waitForElementToBeRemoved(() => null)).rejects.toThrow("already removed");
     });

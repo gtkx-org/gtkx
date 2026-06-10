@@ -87,9 +87,11 @@ describe("findByRole matchers", () => {
     it("finds expander by label", async () => {
         const { container } = await render(
             <VBox>
-                <GtkExpander label="Collapsed">Content</GtkExpander>
+                <GtkExpander label="Collapsed">
+                    <GtkLabel label="Content" />
+                </GtkExpander>
                 <GtkExpander label="Expanded" expanded>
-                    Content
+                    <GtkLabel label="Content" />
                 </GtkExpander>
             </VBox>,
         );

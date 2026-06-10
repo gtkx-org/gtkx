@@ -1,4 +1,4 @@
-import { GtkScrolledWindow, GtkTextView } from "@gtkx/jsx/gtk";
+import { GtkScrolledWindow, GtkTextBuffer, GtkTextView } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-basics.tsx?raw";
 import resetCssPath from "./reset.css?url";
@@ -36,12 +36,12 @@ window.demo {
 const WINDOW_CLASSES = ["demo"];
 
 const CssBasicsDemo = () => {
-    const { textViewRef, onBufferChanged } = useCssEditor(DEFAULT_CSS);
+    const { textViewRef, onChanged } = useCssEditor(DEFAULT_CSS);
 
     return (
         <GtkScrolledWindow name="scrolled" hexpand vexpand>
-            <GtkTextView name="text-view" ref={textViewRef} onBufferChanged={onBufferChanged}>
-                {DEFAULT_CSS}
+            <GtkTextView name="text-view" ref={textViewRef}>
+                <GtkTextBuffer onChanged={onChanged}>{DEFAULT_CSS}</GtkTextBuffer>
             </GtkTextView>
         </GtkScrolledWindow>
     );

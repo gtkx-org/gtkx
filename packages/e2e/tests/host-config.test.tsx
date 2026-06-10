@@ -55,7 +55,11 @@ describe("host-config - children (2)", () => {
     describe("removing children", () => {
         it("removes child from parent", async () => {
             function App({ showChild }: { showChild: boolean }) {
-                return <GtkBox orientation={Gtk.Orientation.VERTICAL}>{showChild && "Removable"}</GtkBox>;
+                return (
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                        {showChild && <GtkLabel label="Removable" />}
+                    </GtkBox>
+                );
             }
 
             const { rerender } = await render(<App showChild={true} />);
@@ -69,7 +73,7 @@ describe("host-config - children (2)", () => {
 
         it("clears child on single-child widget", async () => {
             function App({ showChild }: { showChild: boolean }) {
-                return <GtkFrame>{showChild && "Child"}</GtkFrame>;
+                return <GtkFrame>{showChild && <GtkLabel label="Child" />}</GtkFrame>;
             }
 
             const { rerender } = await render(<App showChild={true} />);
@@ -243,16 +247,24 @@ describe("host-config - children (7)", () => {
 });
 
 describe("host-config - text instances (1)", () => {
-    it("renders string child as Label", async () => {
-        await render(<GtkBox orientation={Gtk.Orientation.VERTICAL}>Hello World</GtkBox>);
+    it("renders text inside a label", async () => {
+        await render(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkLabel>Hello World</GtkLabel>
+            </GtkBox>,
+        );
 
         const label = await screen.findByText("Hello World");
         expect(label).toBeDefined();
     });
 
-    it("updates Label text when string changes", async () => {
+    it("updates label text when string changes", async () => {
         function App({ text }: { text: string }) {
-            return <GtkBox orientation={Gtk.Orientation.VERTICAL}>{text}</GtkBox>;
+            return (
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkLabel>{text}</GtkLabel>
+                </GtkBox>
+            );
         }
 
         const { rerender } = await render(<App text="Initial" />);
@@ -277,7 +289,11 @@ describe("host-config - text instances (1)", () => {
     });
 
     it("handles unicode text", async () => {
-        await render(<GtkBox orientation={Gtk.Orientation.VERTICAL}>你好世界 🌍 مرحبا</GtkBox>);
+        await render(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkLabel>你好世界 🌍 مرحبا</GtkLabel>
+            </GtkBox>,
+        );
 
         const unicodeLabel = await screen.findByText("你好世界 🌍 مرحبا");
         expect(unicodeLabel).toBeDefined();
@@ -285,9 +301,13 @@ describe("host-config - text instances (1)", () => {
 });
 
 describe("host-config - text instances (2)", () => {
-    it("removes text instance when child removed", async () => {
+    it("clears label text when text child removed", async () => {
         function App({ showText }: { showText: boolean }) {
-            return <GtkBox orientation={Gtk.Orientation.VERTICAL}>{showText && "Removable Text"}</GtkBox>;
+            return (
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkLabel>{showText && "Removable Text"}</GtkLabel>
+                </GtkBox>
+            );
         }
 
         const { rerender } = await render(<App showText={true} />);
@@ -299,26 +319,32 @@ describe("host-config - text instances (2)", () => {
         expect(screen.queryByText("Removable Text")).toBeNull();
     });
 
-    it("handles multiple text children", async () => {
-        const boxRef = createRef<Gtk.Box>();
+    it("concatenates multiple text children in order", async () => {
+        const labelRef = createRef<Gtk.Label>();
 
         await render(
-            <GtkBox ref={boxRef} orientation={Gtk.Orientation.VERTICAL}>
+            <GtkLabel ref={labelRef}>
                 {"First"}
                 {"Second"}
                 {"Third"}
-            </GtkBox>,
+            </GtkLabel>,
         );
 
-        expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["First", "Second", "Third"]);
+        expect(labelRef.current?.getLabel()).toBe("FirstSecondThird");
     });
 
     it("finds text with regex patterns", async () => {
         await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                <GtkBox>{"Error: File not found"}</GtkBox>
-                <GtkBox>{"Warning: Low memory"}</GtkBox>
-                <GtkBox>{"Info: Process complete"}</GtkBox>
+                <GtkBox>
+                    <GtkLabel>{"Error: File not found"}</GtkLabel>
+                </GtkBox>
+                <GtkBox>
+                    <GtkLabel>{"Warning: Low memory"}</GtkLabel>
+                </GtkBox>
+                <GtkBox>
+                    <GtkLabel>{"Info: Process complete"}</GtkLabel>
+                </GtkBox>
             </GtkBox>,
         );
 
@@ -330,5 +356,19 @@ describe("host-config - text instances (2)", () => {
 
         const allMessages = await screen.findAllByText(/Error:|Warning:|Info:/);
         expect(allMessages).toHaveLength(3);
+    });
+});
+
+describe("host-config - text restrictions", () => {
+    it("throws for text outside a label or text buffer", async () => {
+        await expect(render(<GtkBox orientation={Gtk.Orientation.VERTICAL}>nope</GtkBox>)).rejects.toThrow(
+            /must be rendered within a <GtkLabel> or <GtkTextBuffer>/,
+        );
+    });
+
+    it("throws for text under a single-child widget", async () => {
+        await expect(render(<GtkFrame>nope</GtkFrame>)).rejects.toThrow(
+            /must be rendered within a <GtkLabel> or <GtkTextBuffer>/,
+        );
     });
 });

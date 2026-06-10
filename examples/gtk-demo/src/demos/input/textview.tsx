@@ -10,6 +10,7 @@ import {
     GtkScale,
     GtkScrolledWindow,
     GtkTextAnchor,
+    GtkTextBuffer,
     GtkTextPaintable,
     GtkTextTag,
     GtkTextView,
@@ -414,7 +415,7 @@ const TextViewDemo = () => {
     const textView1Ref = useRef<Gtk.TextView | null>(null);
     const textView2Ref = useRef<Gtk.TextView | null>(null);
     const easterEggWindowRef = useRef<Gtk.Window | null>(null);
-    const [sharedBuffer] = useState(() => new Gtk.TextBuffer());
+    const [sharedBuffer, setSharedBuffer] = useState<Gtk.TextBuffer | null>(null);
 
     const handleClickMe = () => {
         const tv = textView1Ref.current;
@@ -432,7 +433,7 @@ const TextViewDemo = () => {
 
     useLayoutEffect(() => {
         const tv2 = textView2Ref.current;
-        if (!tv2) return;
+        if (!tv2 || !sharedBuffer) return;
 
         const anchors = findChildAnchors(sharedBuffer);
         attachWidgetClones(tv2, anchors, () => {
@@ -457,23 +458,20 @@ const TextViewDemo = () => {
                     hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                     vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                 >
-                    <GtkTextView
-                        ref={textView1Ref}
-                        name="text-view-1"
-                        wrapMode={Gtk.WrapMode.WORD}
-                        buffer={sharedBuffer}
-                    >
-                        <TextViewIntroSection />
-                        <TextViewFontStylesSection />
-                        <TextViewColorsSection />
-                        <TextViewUnderlineRiseSection />
-                        <TextViewImagesSection iconPaintable={iconPaintable} nuclearPaintable={nuclearPaintable} />
-                        <TextViewSpacingSection />
-                        <TextViewEditabilitySection />
-                        <TextViewWrappingSection />
-                        <TextViewJustificationSection />
-                        <TextViewInternationalSection />
-                        <TextViewWidgetsSection onClickMe={handleClickMe} />
+                    <GtkTextView ref={textView1Ref} name="text-view-1" wrapMode={Gtk.WrapMode.WORD}>
+                        <GtkTextBuffer ref={setSharedBuffer}>
+                            <TextViewIntroSection />
+                            <TextViewFontStylesSection />
+                            <TextViewColorsSection />
+                            <TextViewUnderlineRiseSection />
+                            <TextViewImagesSection iconPaintable={iconPaintable} nuclearPaintable={nuclearPaintable} />
+                            <TextViewSpacingSection />
+                            <TextViewEditabilitySection />
+                            <TextViewWrappingSection />
+                            <TextViewJustificationSection />
+                            <TextViewInternationalSection />
+                            <TextViewWidgetsSection onClickMe={handleClickMe} />
+                        </GtkTextBuffer>
                     </GtkTextView>
                 </GtkScrolledWindow>
             }
@@ -482,12 +480,14 @@ const TextViewDemo = () => {
                     hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                     vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                 >
-                    <GtkTextView
-                        ref={textView2Ref}
-                        name="text-view-2"
-                        wrapMode={Gtk.WrapMode.WORD}
-                        buffer={sharedBuffer}
-                    />
+                    {sharedBuffer && (
+                        <GtkTextView
+                            ref={textView2Ref}
+                            name="text-view-2"
+                            wrapMode={Gtk.WrapMode.WORD}
+                            buffer={sharedBuffer}
+                        />
+                    )}
                 </GtkScrolledWindow>
             }
         />

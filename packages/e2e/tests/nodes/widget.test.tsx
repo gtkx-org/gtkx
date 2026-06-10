@@ -285,7 +285,7 @@ describe("widget - props (3)", () => {
 
             await render(
                 <GtkBox ref={ref} orientation={Gtk.Orientation.VERTICAL}>
-                    Child
+                    <GtkLabel label="Child" />
                 </GtkBox>,
             );
 
@@ -783,7 +783,12 @@ describe("widget - child management > GtkBox", () => {
     it("appends children", async () => {
         const boxRef = createRef<Gtk.Box>();
 
-        await render(<GtkBox ref={boxRef}>First Second</GtkBox>);
+        await render(
+            <GtkBox ref={boxRef}>
+                <GtkLabel label="First" />
+                <GtkLabel label="Second" />
+            </GtkBox>,
+        );
 
         expect(boxRef.current?.getFirstChild()).not.toBeNull();
         expect(boxRef.current?.getLastChild()).not.toBeNull();
