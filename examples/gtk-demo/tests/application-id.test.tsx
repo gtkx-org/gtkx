@@ -1,3 +1,4 @@
+import { applicationId } from "@gtkx/config/runtime";
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
@@ -7,7 +8,24 @@ import { expect, it } from "vitest";
 
 const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
 
-it("defaults the applicationId to the one declared in gtkx.config.ts", async () => {
+it("exposes the applicationId declared in gtkx.config.ts through @gtkx/config/runtime", () => {
+    expect(applicationId).toBe("org.gtkx.gtk-demo");
+});
+
+it("applies the applicationId passed explicitly", async () => {
+    const ref = createRef<Gtk.Application>();
+
+    await render(
+        <GtkApplication ref={ref} applicationId={applicationId} flags={APP_FLAGS}>
+            <GtkApplicationWindow defaultWidth={400} defaultHeight={300} />
+        </GtkApplication>,
+        { wrapper: false },
+    );
+
+    expect(ref.current?.applicationId).toBe("org.gtkx.gtk-demo");
+});
+
+it("leaves the applicationId unset when none is passed", async () => {
     const ref = createRef<Gtk.Application>();
 
     await render(
@@ -17,18 +35,5 @@ it("defaults the applicationId to the one declared in gtkx.config.ts", async () 
         { wrapper: false },
     );
 
-    expect(ref.current?.applicationId).toBe("org.gtkx.gtk-demo");
-});
-
-it("prefers an explicit applicationId prop over the configured one", async () => {
-    const ref = createRef<Gtk.Application>();
-
-    await render(
-        <GtkApplication ref={ref} applicationId="org.gtkx.explicit" flags={APP_FLAGS}>
-            <GtkApplicationWindow defaultWidth={400} defaultHeight={300} />
-        </GtkApplication>,
-        { wrapper: false },
-    );
-
-    expect(ref.current?.applicationId).toBe("org.gtkx.explicit");
+    expect(ref.current?.applicationId ?? null).toBeNull();
 });

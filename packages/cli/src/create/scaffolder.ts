@@ -96,7 +96,7 @@ export type Scaffolder = {
     run(options?: CreateOptions): Promise<void>;
 };
 
-const DEPENDENCIES = ["@gtkx/css", "@gtkx/ffi", "@gtkx/react", "react"];
+const DEPENDENCIES = ["@gtkx/config", "@gtkx/css", "@gtkx/ffi", "@gtkx/react", "react"];
 
 const DEV_DEPENDENCIES = ["@gtkx/cli", "@types/react", "typescript", "vite"];
 

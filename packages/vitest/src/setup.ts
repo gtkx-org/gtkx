@@ -4,6 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Readable } from "node:stream";
 
+declare global {
+    var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
+}
+
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
 const busDir = mkdtempSync(join(tmpdir(), "gtkx-dbus-"));
 const busConfigPath = join(busDir, "session.conf");
 const busSocketPath = join(busDir, "bus");

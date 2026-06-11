@@ -20,6 +20,7 @@ import {
     findByName,
     findByRole,
     findByText,
+    queryByText,
     render,
 } from "../src/index.js";
 
@@ -329,16 +330,20 @@ describe("findByRole(LABEL)", () => {
     });
 });
 
-describe("findByText joins adjacent labels with a space", () => {
-    it("inserts a space between sibling labels of the same parent", async () => {
+describe("findByText sibling labels", () => {
+    it("matches each sibling label individually, never the joined text", async () => {
         const { container } = await render(
             <VBox>
                 <GtkLabel label="Searching for:" />
                 <GtkLabel label="rocket" />
             </VBox>,
         );
-        const match = await findByText(container, "Searching for: rocket");
-        expect(match).toBeInstanceOf(Gtk.Widget);
+
+        const match = await findByText(container, "rocket");
+        expect(match).toBeInstanceOf(Gtk.Label);
+        expect((match as Gtk.Label).getLabel()).toBe("rocket");
+
+        expect(queryByText(container, "Searching for: rocket")).toBeNull();
     });
 });
 

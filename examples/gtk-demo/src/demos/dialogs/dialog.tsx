@@ -1,7 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import { GtkBox, GtkButton, GtkEntry, GtkGrid, GtkGridChild, GtkLabel, GtkSeparator } from "@gtkx/jsx/gtk";
-import { createPortal } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./dialog.tsx?raw";
@@ -66,22 +65,21 @@ const MessageDialog = ({
     target: Gtk.Window;
     clickCount: number;
     onClose: () => void;
-}) =>
-    createPortal(
-        <AdwAlertDialog
-            name="message-dialog"
-            heading="Test message"
-            body={clickCount === 1 ? "Has been shown once" : `Has been shown ${clickCount} times`}
-            defaultResponse="ok"
-            closeResponse="cancel"
-            onResponse={onClose}
-            responses={[
-                { id: "cancel", label: "_Cancel" },
-                { id: "ok", label: "_OK" },
-            ]}
-        />,
-        target,
-    );
+}) => (
+    <AdwAlertDialog
+        parent={target}
+        name="message-dialog"
+        heading="Test message"
+        body={clickCount === 1 ? "Has been shown once" : `Has been shown ${clickCount} times`}
+        defaultResponse="ok"
+        closeResponse="cancel"
+        onResponse={onClose}
+        responses={[
+            { id: "cancel", label: "_Cancel" },
+            { id: "ok", label: "_OK" },
+        ]}
+    />
+);
 
 interface InteractiveDialogProps {
     target: Gtk.Window;
@@ -102,8 +100,9 @@ const InteractiveDialog = ({
 }: InteractiveDialogProps) => {
     const [dialogEntry1Widget, setDialogEntry1Widget] = useState<Gtk.Entry | null>(null);
     const [dialogEntry2Widget, setDialogEntry2Widget] = useState<Gtk.Entry | null>(null);
-    return createPortal(
+    return (
         <AdwAlertDialog
+            parent={target}
             name="interactive-dialog"
             heading="Interactive Dialog"
             defaultResponse="ok"
@@ -146,8 +145,7 @@ const InteractiveDialog = ({
                 { id: "cancel", label: "_Cancel" },
                 { id: "ok", label: "_OK" },
             ]}
-        />,
-        target,
+        />
     );
 };
 

@@ -19,13 +19,16 @@ describe("renderGtkxConfigModule", () => {
         expect(source).toContain('export * from "@gtkx/jsx/metadata";');
     });
 
-    it("serializes the resolved config as a constant", () => {
+    it("serializes each resolved config field as a named constant", () => {
         const source = renderGtkxConfigModule(resolveGtkxConfig({ applicationId: "org.gtk.Demo4" }));
-        const configLine = source.split("\n").find((line) => line.startsWith("export const config = "));
-        expect(configLine).toBeDefined();
-        const parsed = JSON.parse(configLine?.slice("export const config = ".length, -1) ?? "");
-        expect(parsed.applicationId).toBe("org.gtk.Demo4");
-        expect(parsed.slots).toEqual({});
-        expect(parsed.elementMap).toEqual([]);
+        const lines = source.split("\n");
+        expect(lines).toContain('export const applicationId = "org.gtk.Demo4";');
+        expect(lines).toContain("export const slots = {};");
+        expect(lines).toContain("export const elementMap = [];");
+    });
+
+    it("serializes an unset applicationId as undefined", () => {
+        const source = renderGtkxConfigModule(resolveGtkxConfig({}));
+        expect(source.split("\n")).toContain("export const applicationId = undefined;");
     });
 });

@@ -74,10 +74,7 @@ const SearchEntryDemo = ({ window }: DemoProps) => {
                 marginTop={18}
                 marginBottom={18}
             >
-                <GtkBox spacing={10}>
-                    <GtkLabel label="Searching for:" xalign={0} />
-                    <GtkLabel label={searchText} />
-                </GtkBox>
+                <GtkLabel label={`Searching for: ${searchText}`} xalign={0} />
             </GtkBox>
         </GtkBox>
     );

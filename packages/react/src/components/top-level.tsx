@@ -1,14 +1,5 @@
-import * as Gtk from "@gtkx/gi/gtk";
-import {
-    createContext,
-    type ElementType,
-    type ReactNode,
-    type Ref,
-    useContext,
-    useLayoutEffect,
-    useRef,
-    useState,
-} from "react";
+import type * as Gtk from "@gtkx/gi/gtk";
+import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useRef, useState } from "react";
 import { type AdwDialogLike, isAdwDialog } from "../gtype-predicates.js";
 import { assignRef } from "../use-merged-refs.js";
 
@@ -16,19 +7,23 @@ import { assignRef } from "../use-merged-refs.js";
 type Surface = Gtk.Window | AdwDialogLike;
 
 /**
- * The nearest enclosing window. A child window reads it to set its transient-for
- * relationship; an `Adw.Dialog` presents against it. Each window component
- * provides itself to its subtree.
+ * The prop surface {@link withTopLevel} adds to an `Adw.Dialog` compound: the
+ * window the dialog is presented against, read once when the dialog mounts.
+ * Windows take no `parent`; a window's transient-for relationship is its
+ * regular `transientFor` property prop.
  */
-export const WindowContext = createContext<Gtk.Window | null>(null);
+export interface TopLevelParentProps {
+    /** The window the dialog is presented against, read at mount time. */
+    parent?: Gtk.Window | null;
+}
 
 /**
  * Presents `surface` and returns its teardown. A window is shown with
- * `present()` (transient for its enclosing window) and torn down with
- * `destroy()` after its default widget is cleared — a `Gtk.Window` holds its
- * default widget as a borrowed back-pointer GObject finalization could leave
- * dangling, so resetting it synchronously while still alive is required. An
- * `Adw.Dialog` is presented against its parent window and force-closed.
+ * `present()` and torn down with `destroy()` after its default widget is
+ * cleared — a `Gtk.Window` holds its default widget as a borrowed back-pointer
+ * GObject finalization could leave dangling, so resetting it synchronously
+ * while still alive is required. An `Adw.Dialog` is presented against the
+ * given parent window and force-closed.
  */
 const presentSurface = (surface: Surface, parent: Gtk.Window | null): (() => void) => {
     if (isAdwDialog(surface)) {
@@ -44,19 +39,19 @@ const presentSurface = (surface: Surface, parent: Gtk.Window | null): (() => voi
 
 /**
  * Drives the lifecycle of a top-level surface: captures its backing instance
- * through a callback ref, presents it once mounted, tears it down on unmount,
- * and exposes the window its subtree should observe through {@link WindowContext}.
+ * through a callback ref, presents it once mounted against the parent the
+ * props carried at that moment, and tears it down on unmount.
  *
  * @typeParam T - The concrete surface type the wrapped element backs.
  * @param externalRef - A caller ref to forward the surface to, or `undefined`.
- * @returns The capture ref to bind to the surface element and the window value
- *   its descendants observe.
+ * @param parent - The window an `Adw.Dialog` surface is presented against.
+ * @returns The capture ref to bind to the surface element.
  */
-export const useTopLevelSurface = <T extends Surface>(
+const useTopLevelSurface = <T extends Surface>(
     externalRef: Ref<T | null> | undefined,
-): { capture: (instance: T | null) => void; childWindow: Gtk.Window | null } => {
+    parent: Gtk.Window | null,
+): ((instance: T | null) => void) => {
     const [surface, setSurface] = useState<Surface | null>(null);
-    const parent = useContext(WindowContext);
     const parentRef = useRef(parent);
     parentRef.current = parent;
 
@@ -65,24 +60,20 @@ export const useTopLevelSurface = <T extends Surface>(
         return presentSurface(surface, parentRef.current);
     }, [surface]);
 
-    useLayoutEffect(() => {
-        if (surface instanceof Gtk.Window && parent) surface.setTransientFor(parent);
-    }, [surface, parent]);
-
-    const capture = (instance: T | null): void => {
+    return (instance: T | null): void => {
         setSurface(instance);
         assignRef(externalRef, instance);
     };
-
-    return { capture, childWindow: surface instanceof Gtk.Window ? surface : parent };
 };
 
 /**
  * Wraps a top-level surface element (a window/dialog intrinsic or its slotted
- * compound) into a component that presents the surface on mount, tears it down
- * on unmount, and provides its window to descendants through {@link WindowContext}.
- * Construct-only props and slot props pass straight through to the underlying
- * element; the caller's `ref` still receives the backing surface.
+ * compound) into a component that presents the surface on mount and tears it
+ * down on unmount. An `Adw.Dialog` compound additionally accepts
+ * {@link TopLevelParentProps.parent}, consumed at present time and never
+ * forwarded to the element; a window's `transientFor` passes through as a
+ * regular property prop. The caller's `ref` still receives the backing
+ * surface.
  *
  * @typeParam P - The wrapped element's prop shape.
  * @param Underlying - The intrinsic element name or slotted compound to render.
@@ -94,11 +85,11 @@ export const withTopLevel = <P extends { children?: ReactNode }>(
     const Element = Underlying;
     return (props: P): ReactNode => {
         const externalRef = (props as { ref?: Ref<Surface | null> }).ref;
-        const { capture, childWindow } = useTopLevelSurface(externalRef);
-        const { children, ...rest } = props;
+        const { children, parent, ...rest } = props as P & TopLevelParentProps;
+        const capture = useTopLevelSurface(externalRef, parent ?? null);
         return (
             <Element {...rest} ref={capture}>
-                <WindowContext.Provider value={childWindow}>{children}</WindowContext.Provider>
+                {children}
             </Element>
         );
     };

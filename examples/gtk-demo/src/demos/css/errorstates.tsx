@@ -238,12 +238,18 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
     );
 };
 
-const ErrorstatesDemo = ({ onClose }: DemoProps) => {
+const ErrorstatesDemo = ({ onClose, window }: DemoProps) => {
     const state = useErrorStatesState();
     const handlers = useErrorStatesHandlers(state);
 
     return (
-        <AdwDialog title="Error States" canClose followsContentSize onClosed={() => onClose?.()}>
+        <AdwDialog
+            parent={window.current}
+            title="Error States"
+            canClose
+            followsContentSize
+            onClosed={() => onClose?.()}
+        >
             <AdwToolbarView addTopBar={<AdwHeaderBar />}>
                 <GtkGrid
                     rowSpacing={10}

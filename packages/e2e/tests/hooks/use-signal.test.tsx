@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { type SignalTarget, useSignal } from "@gtkx/react";
+import { type GObjectTarget, useSignal } from "@gtkx/react";
 import { act, renderHook, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 
@@ -73,8 +73,8 @@ describe("useSignal (targets)", () => {
         const handler = vi.fn();
 
         const { rerender } = await renderHook(
-            ({ target }: { target: SignalTarget<Gtk.Button> }) => useSignal(target, "clicked", handler),
-            { initialProps: { target: ref as SignalTarget<Gtk.Button> } },
+            ({ target }: { target: GObjectTarget<Gtk.Button> }) => useSignal(target, "clicked", handler),
+            { initialProps: { target: ref as GObjectTarget<Gtk.Button> } },
         );
 
         await act(() => first.emit("clicked"));

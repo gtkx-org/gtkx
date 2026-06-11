@@ -1,3 +1,4 @@
+export { type ApplicationTeardown, setApplicationTeardown } from "./application-teardown.js";
 export { withActionAccels, withActionScope } from "./components/action.js";
 export { withApplication, withApplicationWindow } from "./components/application.js";
 export { type ConstraintLayoutProps, GtkConstraintLayout } from "./components/constraint-layout.js";
@@ -10,11 +11,11 @@ export {
     GtkListView,
 } from "./components/list.js";
 export { GMenu, type MenuProps } from "./components/menu.js";
-export { GtkSizeGroup } from "./components/size-group.js";
-export { withTopLevel } from "./components/top-level.js";
+export { type TopLevelParentProps, withTopLevel } from "./components/top-level.js";
 export { createWidgetComponent } from "./create-widget-component.js";
 export { type DeferredFlushWrapper, setDeferredFlushWrapper } from "./deferred-flush.js";
 export * from "./element-props.js";
+export type { GObjectTarget } from "./gobject-target.js";
 export { createPortal } from "./portal.js";
 export { reconciler } from "./reconciler.js";
 export { type ReconcilerErrorHandler, setReconcilerErrorHandler } from "./reconciler-error-sink.js";
@@ -28,11 +29,10 @@ export {
     type SignalHandlerFor,
     type SignalHandlersOf,
     type SignalNameOf,
-    type SignalTarget,
     type UseSignalOptions,
     useSignal,
 } from "./use-signal.js";
-export { type TickTarget, useTickCallback } from "./use-tick-callback.js";
+export { useTickCallback } from "./use-tick-callback.js";
 export {
     deleteAccessibleMetadata,
     getAccessibleMetadata,

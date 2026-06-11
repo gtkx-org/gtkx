@@ -131,6 +131,13 @@ const POSITION_TYPE_BOTTOM = 3;
  * these.
  */
 export const BUILT_IN_ARRAY_PROPS: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>> = {
+    GtkSizeGroup: {
+        widgets: {
+            itemType: "Gtk.Widget",
+            remove: { method: "removeWidget", args: [{ kind: "item" }] },
+            add: [{ method: "addWidget", args: [{ kind: "item" }] }],
+        },
+    },
     GtkScale: {
         marks: {
             itemType: "ScaleMark",

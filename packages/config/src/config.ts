@@ -67,8 +67,9 @@ export type GtkxConfig = {
     girPath?: string[];
 
     /**
-     * GLib application id used by the GResource pipeline and applied by the
-     * application component as the default for its `applicationId` prop.
+     * GLib application id used by the GResource pipeline and exposed to app
+     * code as the `applicationId` constant of `@gtkx/config/runtime`, ready
+     * to pass to the application component's `applicationId` prop.
      *
      * When set, asset imports resolve to `resource:///<prefix>/<rel>` where
      * `<prefix>` is derived from the id (`org.gtk.Demo4` → `/org/gtk/Demo4`)

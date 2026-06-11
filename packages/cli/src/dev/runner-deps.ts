@@ -3,6 +3,7 @@ import { whenStopped } from "@gtkx/ffi";
 import * as Gio from "@gtkx/gi/gio";
 import { createServer } from "vite";
 import { startMcpClient, stopMcpClient } from "../mcp/index.js";
+import { setTestingModuleLoader } from "../mcp/testing-loader.js";
 import { isReactRefreshBoundary, performRefresh } from "../refresh-runtime.js";
 import { gtkxVitePlugins } from "../vite-plugins/index.js";
 import { gtkxRefresh } from "../vite-plugins/react-refresh-runtime.js";
@@ -30,8 +31,17 @@ export const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     whenStopped,
     getApplicationId: () => Gio.Application.getDefault()?.applicationId ?? null,
     getConfiguredApplicationId: async (root: string) => (await loadResolvedGtkxConfig(root)).applicationId,
-    startMcpClient,
+    startMcpClient: (applicationId, loadAppModule) => {
+        setTestingModuleLoader(() => loadAppModule("@gtkx/testing") as Promise<typeof import("@gtkx/testing")>);
+        return startMcpClient(applicationId);
+    },
     stopMcpClient,
+    installApplicationTeardown: async (loadAppModule, onTeardown) => {
+        const react = (await loadAppModule("@gtkx/react")) as {
+            setApplicationTeardown(next: (() => void) | null): void;
+        };
+        react.setApplicationTeardown(onTeardown);
+    },
     performRefresh,
     isReactRefreshBoundary,
     plugins: () => [...gtkxVitePlugins(), swcSsrRefresh(), gtkxRefresh(), gtkxSkipReactDomOptimize()],

@@ -16,11 +16,11 @@ function touchControllers(button: Gtk.Button): void {
 }
 
 describe("observeControllers wrapper lifetime", () => {
-    it("diagnostic: whether observeControllers returns a cached, identity-tracked model", () => {
+    it("returns a cached, identity-tracked model", () => {
         const button = new Gtk.Button();
         const first = button.observeControllers();
         const second = button.observeControllers();
-        console.log(`[diag] observeControllers cached (first === second): ${first === second}`);
+        expect(second).toBe(first);
         expect(first.getNItems()).toBeGreaterThanOrEqual(0);
     });
 

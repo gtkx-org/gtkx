@@ -4,12 +4,12 @@
 export type RefreshFilterOptions = {
     /** File pattern to include — defaults to JS/TS source files. */
     include?: RegExp;
-    /** File pattern to exclude — defaults to `node_modules`. */
+    /** File pattern to exclude — defaults to `node_modules`, built `dist` output, and the generated `.gtkx` store. */
     exclude?: RegExp;
 };
 
 const defaultInclude = /\.[tj]sx?$/;
-const defaultExclude = /node_modules/;
+const defaultExclude = /node_modules|[/\\]dist[/\\]|[/\\]\.gtkx[/\\]/;
 
 export type ResolvedRefreshFilter = {
     include: RegExp;

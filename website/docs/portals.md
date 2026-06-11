@@ -1,26 +1,33 @@
-# Portals and dialogs
+# Portals
 
-GTKX supports rendering content outside the normal component tree using portals, most commonly for dialogs and popovers that need to be children of the active window.
+`createPortal` renders a component into a different GTK container, outside the normal component tree, while keeping it inside the same React tree for state and context.
+
+Dialogs do not need portals: `Adw.Dialog` components take a `parent` prop naming the window they are presented against, window components take the regular `transientFor` property prop, and neither attaches to the surrounding widget regardless of where it renders.
 
 ## createPortal
 
-Render a component into a different container—typically used for dialogs that need to appear as children of the active window:
+Render a component as a child of another widget — for example, into a container captured from a different part of the tree:
 
 ```tsx
-import { GtkAboutDialog, GtkButton } from "@gtkx/jsx/gtk";
-import { createPortal, useApplication, useProperty } from "@gtkx/react";
+import type * as Gtk from "@gtkx/gi/gtk";
+import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
+import { createPortal } from "@gtkx/react";
 import { useState } from "react";
 
-const MyComponent = () => {
-    const app = useApplication();
-    const [open, setOpen] = useState(false);
-    const activeWindow = useProperty(app, "activeWindow");
+const Status = ({ bar }: { bar: Gtk.Box | null }) => {
+    const [message] = useState("Ready");
+    return bar && createPortal(<GtkLabel label={message} />, bar);
+};
 
+const App = () => {
+    const [bar, setBar] = useState<Gtk.Box | null>(null);
     return (
         <>
-            <GtkButton label="Show Dialog" onClicked={() => setOpen(true)} />
-            {open && activeWindow && createPortal(<GtkAboutDialog programName="My App" />, activeWindow)}
+            <GtkBox ref={setBar} />
+            <Status bar={bar} />
         </>
     );
 };
 ```
+
+The portaled content participates in React state, context, and event handling exactly as if it were rendered in place; only its GTK parent differs.

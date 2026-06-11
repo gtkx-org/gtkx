@@ -57,6 +57,9 @@ importers:
 
   examples/browser:
     dependencies:
+      '@gtkx/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@gtkx/css':
         specifier: workspace:*
         version: link:../../packages/css
@@ -73,6 +76,9 @@ importers:
 
   examples/gtk-demo:
     dependencies:
+      '@gtkx/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@gtkx/css':
         specifier: workspace:*
         version: link:../../packages/css
@@ -110,6 +116,9 @@ importers:
 
   examples/hello-world:
     dependencies:
+      '@gtkx/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@gtkx/react':
         specifier: workspace:*
         version: link:../../packages/react
@@ -120,12 +129,18 @@ importers:
       '@gtkx/cli':
         specifier: workspace:*
         version: link:../../packages/cli
+      '@gtkx/testing':
+        specifier: workspace:*
+        version: link:../../packages/testing
 
   examples/tutorial:
     dependencies:
       '@gtkx/animate':
         specifier: workspace:*
         version: link:../../packages/animate
+      '@gtkx/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@gtkx/css':
         specifier: workspace:*
         version: link:../../packages/css

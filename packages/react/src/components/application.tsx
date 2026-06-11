@@ -1,6 +1,3 @@
-/// <reference types="@gtkx/config/virtual" />
-
-import { config } from "virtual:gtkx-config";
 import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import {
@@ -14,6 +11,7 @@ import {
     useLayoutEffect,
     useState,
 } from "react";
+import { runApplicationTeardown } from "../application-teardown.js";
 import { ApplicationContext, useApplication } from "../render.js";
 import { assignRef } from "../use-merged-refs.js";
 import { ActionScopeContext, APPLICATION_ACTION_SCOPE, WINDOW_ACTION_SCOPE } from "./internal/action-scope-context.js";
@@ -35,7 +33,8 @@ type ApplicationOf<P> = P extends { ref?: Ref<infer T | null> }
 
 /**
  * Captures an application instance through a callback ref, exposes it as state,
- * and registers and activates it once it exists.
+ * registers and activates it once it exists, and runs the application teardown
+ * when the component unmounts, stopping the GTK runtime by default.
  *
  * @typeParam T - The concrete application type (`Gtk.Application` or a subtype).
  * @param ref - Optional caller ref to forward the application to.
@@ -65,6 +64,8 @@ const useApplicationInstance = <T extends Gtk.Application>(
         setRegisteredApp(app);
         return () => app.disconnect(activateHandlerId);
     }, [app]);
+
+    useLayoutEffect(() => () => runApplicationTeardown(), []);
 
     return [registeredApp, captureApp] as const;
 };
@@ -142,12 +143,8 @@ export const withApplication = <P extends ApplicationComponentProps<ApplicationO
         const [app, captureApp] = useApplicationInstance<ApplicationOf<P>>(ref);
         const [menu, setMenu] = useState<Gio.Menu | null>(null);
         useApplicationMenubar(app, menu);
-        const hostProps =
-            config.applicationId !== undefined && (rest as { applicationId?: string }).applicationId === undefined
-                ? { ...rest, applicationId: config.applicationId }
-                : rest;
         return (
-            <Element ref={captureApp} {...hostProps}>
+            <Element ref={captureApp} {...rest}>
                 <ApplicationChildren app={app}>
                     {renderMenubar(menubar, setMenu)}
                     {children}

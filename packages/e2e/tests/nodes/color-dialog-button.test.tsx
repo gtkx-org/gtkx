@@ -15,14 +15,8 @@ const renderDialogSlot = async (dialog: ReactElement): Promise<Gtk.ColorDialog |
     return ref.current?.getDialog() ?? null;
 };
 
-const makeRgba = (red: number, green: number, blue: number, alpha: number): Gdk.RGBA => {
-    const rgba = new Gdk.RGBA();
-    rgba.red = red;
-    rgba.green = green;
-    rgba.blue = blue;
-    rgba.alpha = alpha;
-    return rgba;
-};
+const makeRgba = (red: number, green: number, blue: number, alpha: number): Gdk.RGBA =>
+    Object.assign(new Gdk.RGBA(), { red, green, blue, alpha });
 
 describe("render - ColorDialogButton > ColorDialogButtonNode (1)", () => {
     it("creates ColorDialogButton widget", async () => {

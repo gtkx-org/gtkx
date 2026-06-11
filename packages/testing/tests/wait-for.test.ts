@@ -96,8 +96,8 @@ describe("waitFor timeout", () => {
     });
 });
 
-const createMockWidget = (hasParent: boolean) => ({
-    getParent: () => (hasParent ? {} : null),
+const createMockWidget = (hasRoot: boolean) => ({
+    getRoot: () => (hasRoot ? {} : null),
 });
 
 describe("waitForElementToBeRemoved preconditions", () => {
@@ -118,13 +118,13 @@ describe("waitForElementToBeRemoved preconditions", () => {
 
 describe("waitForElementToBeRemoved success", () => {
     it("resolves when element is removed", async () => {
-        let hasParent = true;
+        let hasRoot = true;
         const element = {
-            getParent: () => (hasParent ? {} : null),
+            getRoot: () => (hasRoot ? {} : null),
         };
 
         setTimeout(() => {
-            hasParent = false;
+            hasRoot = false;
         }, 50);
 
         await expect(
@@ -133,7 +133,7 @@ describe("waitForElementToBeRemoved success", () => {
     });
 
     it("resolves when callback returns null", async () => {
-        let element: object | null = { getParent: () => ({}) };
+        let element: object | null = { getRoot: () => ({}) };
 
         setTimeout(() => {
             element = null;
@@ -144,10 +144,10 @@ describe("waitForElementToBeRemoved success", () => {
         ).resolves.toBeUndefined();
     });
 
-    it("handles getParent throwing error as removed", async () => {
+    it("handles getRoot throwing error as removed", async () => {
         let shouldThrow = false;
         const element = {
-            getParent: () => {
+            getRoot: () => {
                 if (shouldThrow) throw new Error("Widget destroyed");
                 return {};
             },

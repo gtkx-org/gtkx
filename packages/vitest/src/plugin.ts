@@ -27,7 +27,8 @@ import type { Plugin } from "vitest/config";
  * instance. `server.deps.inline` transforms every `@gtkx/*` runtime package and
  * the codegen-injected `@gtkx/gi`/`@gtkx/jsx` so their `@gtkx/ffi` imports
  * resolve to the one source-built runtime; a second copy from `dist` would split
- * the registries. `ssr.resolve.conditions` prefers each package's `source`
+ * the registries. `@gtkx/config` is inlined too, so its `runtime` entry's
+ * `virtual:gtkx-config` import resolves through this plugin instead of Node. `ssr.resolve.conditions` prefers each package's `source`
  * export so every bare `@gtkx/*` import (including `@gtkx/ffi`, reached only
  * through bare specifiers) loads its TypeScript source under one module
  * identity, which also lets V8 attribute coverage to `src` rather than the
@@ -73,7 +74,7 @@ const gtkx = (): Plugin => {
                     pool: "forks",
                     server: {
                         deps: {
-                            inline: [/@gtkx\/(ffi|gi|react|jsx|testing|css)/, /[/\\]\.gtkx[/\\]/],
+                            inline: [/@gtkx\/(config|ffi|gi|react|jsx|testing|css)/, /[/\\]\.gtkx[/\\]/],
                         },
                     },
                 },

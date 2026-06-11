@@ -33,10 +33,10 @@ const handleError = (error: unknown): void => {
 
 /**
  * The harness application's fixed id. Deliberately distinct from the
- * project's `applicationId`: the application component under test defaults to
- * the configured id, and two same-id `Gtk.Application` instances in one
- * process collide on the D-Bus object path GTK derives from the id (breaking
- * menubar export, among others).
+ * project's `applicationId`: a component under test may pass the configured
+ * id from `@gtkx/config/runtime`, and two same-id `Gtk.Application` instances
+ * in one process collide on the D-Bus object path GTK derives from the id
+ * (breaking menubar export, among others).
  */
 const TESTING_APPLICATION_ID = "org.gtkx.testing";
 

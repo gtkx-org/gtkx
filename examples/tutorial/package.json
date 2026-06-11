@@ -16,8 +16,9 @@
         "build:flatpak": "pnpm bundle:postject && bash flatpak/build.sh"
     },
     "dependencies": {
-        "@gtkx/css": "workspace:*",
         "@gtkx/animate": "workspace:*",
+        "@gtkx/config": "workspace:*",
+        "@gtkx/css": "workspace:*",
         "@gtkx/react": "workspace:*",
         "react": "^19.2.7"
     },

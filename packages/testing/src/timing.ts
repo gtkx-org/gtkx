@@ -1,4 +1,4 @@
-import { setDeferredFlushWrapper } from "@gtkx/react";
+import { setApplicationTeardown, setDeferredFlushWrapper } from "@gtkx/react";
 import * as React from "react";
 import { act as reactAct } from "react";
 
@@ -28,8 +28,6 @@ export const getIsReactActEnvironment = (): boolean | undefined => getGlobalThis
 export const setIsReactActEnvironment = (value: boolean | undefined): void => {
     getGlobalThis().IS_REACT_ACT_ENVIRONMENT = value;
 };
-
-setIsReactActEnvironment(true);
 
 type ActCallback<T> = () => T | PromiseLike<T>;
 type ActImplementation = <T>(callback: ActCallback<T>) => PromiseLike<T>;
@@ -112,3 +110,5 @@ setDeferredFlushWrapper((flush) => {
         flush();
     });
 });
+
+setApplicationTeardown(() => {});

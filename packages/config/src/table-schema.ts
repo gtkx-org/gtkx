@@ -144,7 +144,7 @@ export type ConstructStep = {
  * list applied only when the previous one was empty.
  */
 export type ArrayPropRow = {
-    /** Item-type name declared in the generated `Props` interface (an exported member of `@gtkx/react`). */
+    /** Item-type name declared in the generated `Props` interface: an exported member of `@gtkx/react`, or a qualified GIR type such as `Gtk.Widget`. */
     readonly itemType: string;
     /** Method removing every previously-applied element in one call. */
     readonly clear?: string;
@@ -167,7 +167,7 @@ export type ArrayPropRow = {
  * against it; when it becomes `null`/`undefined`, the `unset` steps run.
  */
 export type ObjectPropRow = {
-    /** Item-type name declared in the generated `Props` interface (an exported member of `@gtkx/react`). */
+    /** Item-type name declared in the generated `Props` interface: an exported member of `@gtkx/react`, or a qualified GIR type such as `Gtk.Widget`. */
     readonly itemType: string;
     /** Calls applying the current object's fields to the target. */
     readonly set: readonly CallStep[];

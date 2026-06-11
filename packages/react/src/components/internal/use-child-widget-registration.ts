@@ -10,9 +10,8 @@ export type WidgetChild = ReactElement<{ ref?: Ref<Gtk.Widget> }>;
  * any ref the child already carries) and registers it from a layout effect
  * once it exists.
  *
- * Shared by the membership-style markers (`<GtkSizeGroup.Widget>`,
- * `<GtkConstraintLayout.Widget>`) whose single child must be enrolled with a
- * registry keyed by its backing widget.
+ * Used by membership-style markers (`<GtkConstraintLayout.Widget>`) whose
+ * single child must be enrolled with a registry keyed by its backing widget.
  *
  * @param child - The single widget element whose backing widget is captured.
  * @param register - Registers the captured widget and returns the cleanup that

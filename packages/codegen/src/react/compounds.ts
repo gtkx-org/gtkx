@@ -56,20 +56,10 @@ export const generateCompoundsSection = (
     for (const candidate of collectReactNodeClasses(repository)) {
         if (candidate.namespace.name !== targetNamespace.name) continue;
         if (virtualNames.has(candidate.glibName)) continue;
-        const { glibName, klass, namespace } = candidate;
-        const wrapper = RUNTIME_COMPONENT_WRAPPERS[glibName];
-        if (wrapper !== undefined) {
-            exportLines.push(renderRuntimeWrapper(glibName, wrapper, imports));
-            exportedNames.add(glibName);
-            continue;
-        }
-        if (excludeNames.has(glibName)) continue;
-        const hoc = compoundHoc(klass, namespace, repository);
-        imports.hocs.add("createWidgetComponent");
-        imports.reactBuiltins.add("ReactNode");
-        if (hoc !== undefined) imports.hocs.add(hoc);
-        exportLines.push(renderCompound(glibName, hoc));
-        exportedNames.add(glibName);
+        const line = renderCandidateExport(candidate, repository, imports, excludeNames);
+        if (line === null) continue;
+        exportLines.push(line);
+        exportedNames.add(candidate.glibName);
     }
 
     for (const virtual of virtuals) {
@@ -195,7 +185,6 @@ const RUNTIME_COMPONENT_WRAPPERS: Readonly<Record<string, RuntimeComponentWrappe
     },
     GMenu: { kind: "typedProps" },
     GtkConstraintLayout: { kind: "reexport" },
-    GtkSizeGroup: { kind: "reexport" },
 };
 
 const renderRuntimeWrapper = (glibName: string, wrapper: RuntimeComponentWrapper, imports: JsxImports): string => {
@@ -211,6 +200,39 @@ const renderRuntimeWrapper = (glibName: string, wrapper: RuntimeComponentWrapper
     for (const sharedType of wrapper.sharedTypes) imports.sharedTypes.add(sharedType);
     const propsExpr = `Omit<${glibName}Props, ${wrapper.omitKeys}> & ${wrapper.controllerProps}`;
     return `export const ${glibName}: ${wrapper.genericParams}(props: ${propsExpr}) => ReactNode = ${alias};`;
+};
+
+/**
+ * Emits one candidate's component export: the typed wrapper line for a
+ * hand-written runtime component, the HOC-wrapped or plain
+ * `createWidgetComponent` line otherwise, or `null` when the candidate is
+ * excluded. Accumulates the HOC, builtin, and shared-type imports the line
+ * needs; an `Adw.Dialog` descendant additionally composes
+ * `TopLevelParentProps` into its component prop type.
+ *
+ * @param candidate - The widget class to emit
+ * @param repository - The repository for cross-namespace parent lookups
+ * @param imports - The shared import accumulator
+ * @param excludeNames - The widget names a hand-written component owns
+ */
+const renderCandidateExport = (
+    candidate: WidgetCandidate,
+    repository: GirRepository,
+    imports: JsxImports,
+    excludeNames: ReadonlySet<string>,
+): string | null => {
+    const { glibName, klass, namespace } = candidate;
+    const wrapper = RUNTIME_COMPONENT_WRAPPERS[glibName];
+    if (wrapper !== undefined) return renderRuntimeWrapper(glibName, wrapper, imports);
+    if (excludeNames.has(glibName)) return null;
+    const ancestry = new Set(ancestorGlibNames(klass, namespace, repository));
+    const hoc = compoundHoc(ancestry);
+    imports.hocs.add("createWidgetComponent");
+    imports.reactBuiltins.add("ReactNode");
+    if (hoc !== undefined) imports.hocs.add(hoc);
+    const isDialogSurface = hoc === "withTopLevel" && ancestry.has("AdwDialog");
+    if (isDialogSurface) imports.sharedTypes.add("TopLevelParentProps");
+    return renderCompound(glibName, hoc, isDialogSurface);
 };
 
 /** The HOC precedence list, applied in order against a class's ancestry. */
@@ -229,29 +251,26 @@ const COMPOUND_HOC_RULES: readonly { readonly ancestors: readonly string[]; read
  * precedence over a plain window or Adwaita dialog; the remaining rules wrap
  * behavior-carrying hosts (dialog buttons, actions, action groups).
  *
- * @param klass - The class to classify
- * @param namespace - The namespace the class lives in
- * @param repository - The repository for cross-namespace parent lookups
+ * @param ancestry - The GLib type names of the class and its ancestors
  */
-const compoundHoc = (
-    klass: WidgetCandidate["klass"],
-    namespace: GirNamespace,
-    repository: GirRepository,
-): CompoundHoc | undefined => {
-    const ancestry = new Set(ancestorGlibNames(klass, namespace, repository));
+const compoundHoc = (ancestry: ReadonlySet<string>): CompoundHoc | undefined => {
     for (const rule of COMPOUND_HOC_RULES) {
         if (rule.ancestors.some((ancestor) => ancestry.has(ancestor))) return rule.hoc;
     }
     return undefined;
 };
 
-const renderCompound = (glibName: string, hoc: CompoundHoc | undefined): string => {
+const renderCompound = (glibName: string, hoc: CompoundHoc | undefined, isDialogSurface: boolean): string => {
     const propsType = `${glibName}Props`;
     if (hoc === undefined) {
         return `export const ${glibName}: (props: ${propsType}) => ReactNode = createWidgetComponent<${propsType}>(${quote(glibName)});`;
     }
     const componentPropsType =
-        hoc === "withApplication" ? `Omit<${propsType}, "menubar"> & { menubar?: ReactNode }` : propsType;
+        hoc === "withApplication"
+            ? `Omit<${propsType}, "menubar"> & { menubar?: ReactNode }`
+            : isDialogSurface
+              ? `${propsType} & TopLevelParentProps`
+              : propsType;
     const annotation = `(props: ${componentPropsType}) => ReactNode`;
     const memo = `${toCamelCase(glibName)}Instance`;
     return [

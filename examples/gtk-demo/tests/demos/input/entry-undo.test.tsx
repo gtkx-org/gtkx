@@ -17,8 +17,8 @@ describe("entryUndoDemo", () => {
 
     it("renders the instructional label and entry widget", async () => {
         await renderDemo(entryUndoDemo);
-        const box = await screen.findByText("Use Control+z or Control+Shift+z to undo or redo changes");
-        expect(box).toBeInstanceOf(Gtk.Box);
+        const label = await screen.findByText("Use Control+z or Control+Shift+z to undo or redo changes");
+        expect(label).toBeInstanceOf(Gtk.Label);
         const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
         expect(entry).toBeInstanceOf(Gtk.Entry);
         expect(entry.getEnableUndo()).toBe(true);

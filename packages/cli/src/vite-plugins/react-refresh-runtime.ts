@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import type { Plugin } from "vite";
 import {
     type RefreshFilterOptions,
@@ -15,6 +16,11 @@ export function gtkxRefresh(options: GtkxRefreshOptions = {}): Plugin {
     return {
         name: "gtkx:refresh",
         enforce: "post",
+
+        resolveId(id) {
+            if (id !== refreshRuntimePath) return undefined;
+            return fileURLToPath(import.meta.resolve(refreshRuntimePath));
+        },
 
         transform(code, id, transformOptions) {
             if (!shouldTransformForRefresh(id, transformOptions, filter)) {

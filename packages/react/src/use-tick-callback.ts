@@ -1,26 +1,11 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { type RefObject, useLayoutEffect, useRef } from "react";
-
-/**
- * A tick source accepted by {@link useTickCallback}: the widget itself, a
- * React ref holding it (such as a `ref` to a JSX widget), or
- * `null`/`undefined` to keep the hook inactive.
- */
-export type TickTarget = Gtk.Widget | RefObject<Gtk.Widget | null> | null | undefined;
+import { type GObjectTarget, resolveGObjectTarget } from "./gobject-target.js";
 
 interface TickRegistration {
     readonly widget: Gtk.Widget;
     id: number | null;
 }
-
-const isWidget = (target: Gtk.Widget | RefObject<Gtk.Widget | null>): target is Gtk.Widget =>
-    typeof (target as Gtk.Widget).addTickCallback === "function";
-
-const resolveTarget = (target: TickTarget): Gtk.Widget | null => {
-    if (!target) return null;
-    if (isWidget(target)) return target;
-    return target.current;
-};
 
 const dropRegistration = (registrationRef: RefObject<TickRegistration | null>): void => {
     const registration = registrationRef.current;
@@ -55,13 +40,13 @@ const dropRegistration = (registrationRef: RefObject<TickRegistration | null>): 
  * });
  * ```
  */
-export function useTickCallback(target: TickTarget, callback: Gtk.TickCallback): void {
+export function useTickCallback(target: GObjectTarget<Gtk.Widget>, callback: Gtk.TickCallback): void {
     const callbackRef = useRef(callback);
     callbackRef.current = callback;
     const registrationRef = useRef<TickRegistration | null>(null);
 
     useLayoutEffect(() => {
-        const widget = resolveTarget(target);
+        const widget = resolveGObjectTarget(target);
         const registration = registrationRef.current;
         if (registration && registration.widget === widget) return;
         dropRegistration(registrationRef);

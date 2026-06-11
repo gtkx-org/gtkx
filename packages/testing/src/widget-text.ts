@@ -19,7 +19,7 @@ const getDefaultText = (widget: Gtk.Widget): string | null => {
     return null;
 };
 
-const collectLabels = (widget: Gtk.Widget, recursive: boolean): string[] => {
+const collectLabels = (widget: Gtk.Widget): string[] => {
     const labels: string[] = [];
     let child = widget.getFirstChild();
 
@@ -28,7 +28,7 @@ const collectLabels = (widget: Gtk.Widget, recursive: boolean): string[] => {
             const labelText = getLabelText(child);
             if (labelText) labels.push(labelText);
         }
-        if (recursive) labels.push(...collectLabels(child, true));
+        labels.push(...collectLabels(child));
         child = child.getNextSibling();
     }
 
@@ -38,16 +38,18 @@ const collectLabels = (widget: Gtk.Widget, recursive: boolean): string[] => {
 /**
  * Returns the text content of a widget, analogous to RTL's getNodeText.
  *
- * Collects direct child GtkLabel text (treated as text nodes) and joins
- * them into a single string. Widget properties like getLabel(), getTitle(),
- * getText() are NOT included — those are attributes, not text content.
+ * Only label-role widgets (`GtkLabel`, `GtkInscription`) carry text content —
+ * mirroring React Native, where text exists only inside `<Text>` — so a text
+ * query resolves to the label rendering the text. Every other widget,
+ * including buttons and containers, has no text content; find interactive
+ * widgets by role and accessible name instead.
  *
  * @param widget - The widget to extract text from
- * @returns The joined text content or null if none found
+ * @returns The label's text, or null for widgets that carry no text content
  */
 export const getWidgetText = (widget: Gtk.Widget): string | null => {
-    const childLabels = collectLabels(widget, false);
-    return childLabels.length > 0 ? childLabels.join(" ") : null;
+    if (widget.getAccessibleRole() !== Gtk.AccessibleRole.LABEL) return null;
+    return getLabelText(widget);
 };
 
 /**
@@ -94,7 +96,7 @@ export const getWidgetAccessibleName = (widget: Gtk.Widget): string | null => {
     const ownText = getDefaultText(widget);
     if (ownText) return ownText;
 
-    const childLabels = collectLabels(widget, true);
+    const childLabels = collectLabels(widget);
     return childLabels.length > 0 ? childLabels.join(" ") : null;
 };
 

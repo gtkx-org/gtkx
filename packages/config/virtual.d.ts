@@ -3,9 +3,10 @@
  * `renderGtkxConfigModule` and served by the gtkx Vite plugins
  * (`gtkx dev`/`gtkx build`) and the `@gtkx/vitest` plugin. The module
  * re-exports the codegen-derived metadata tables from the generated bindings
- * package and carries the project's resolved `gtkx.config.ts`. `gtkx build`
- * inlines the resolved module into the production bundle, so no plugin is
- * needed at runtime.
+ * package and carries each field of the project's resolved `gtkx.config.ts`
+ * as a named constant, re-exported verbatim by `@gtkx/config/runtime`.
+ * `gtkx build` inlines the resolved module into the production bundle, so no
+ * plugin is needed at runtime.
  *
  * Consumers pull this declaration in with
  * `/// <reference types="@gtkx/config/virtual" />`, so a TypeScript program
@@ -40,6 +41,24 @@ declare module "virtual:gtkx-config" {
     export const SLOTS: Readonly<Record<string, readonly string[]>>;
     /** Merged container-slot method names keyed by JSX element name. */
     export const CONTAINER_SLOTS: Readonly<Record<string, readonly string[]>>;
-    /** The project's resolved `gtkx.config.ts`. */
-    export const config: import("@gtkx/config").ResolvedGtkxConfig;
+    /** The configured library identifiers, the `"*"` wildcard, or `[]` when omitted. */
+    export const libraries: import("@gtkx/config").ResolvedGtkxConfig["libraries"];
+    /** Additional GIR search directories, or `[]` when omitted. */
+    export const girPath: import("@gtkx/config").ResolvedGtkxConfig["girPath"];
+    /** The GLib application id, or `undefined` when unset. */
+    export const applicationId: import("@gtkx/config").ResolvedGtkxConfig["applicationId"];
+    /** The user's widget-slot map, or `{}` when omitted. */
+    export const slots: import("@gtkx/config").ResolvedGtkxConfig["slots"];
+    /** The user's container-slot map, or `{}` when omitted. */
+    export const containerSlots: import("@gtkx/config").ResolvedGtkxConfig["containerSlots"];
+    /** The user's array-prop rows, or `{}` when omitted. */
+    export const arrayProps: import("@gtkx/config").ResolvedGtkxConfig["arrayProps"];
+    /** The user's object-prop rows, or `{}` when omitted. */
+    export const objectProps: import("@gtkx/config").ResolvedGtkxConfig["objectProps"];
+    /** The user's virtual-prop rows, or `{}` when omitted. */
+    export const virtualProps: import("@gtkx/config").ResolvedGtkxConfig["virtualProps"];
+    /** The user's element-map rows, or `[]` when omitted. */
+    export const elementMap: import("@gtkx/config").ResolvedGtkxConfig["elementMap"];
+    /** The resolved React Compiler options, or `null` when disabled. */
+    export const reactCompiler: import("@gtkx/config").ResolvedGtkxConfig["reactCompiler"];
 }
