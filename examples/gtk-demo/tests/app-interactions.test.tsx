@@ -58,7 +58,7 @@ describe("App about menu", () => {
     it("renders the about dialog after the About menu entry is activated", async () => {
         await render(<Demo />, { wrapper: false });
         const menuButton = (await screen.findByName("menu-button")) as Gtk.MenuButton;
-        await act(() => menuButton.activateAction("app.about", null));
+        await act(() => menuButton.activateAction("win.about", null));
         await waitFor(async () => {
             const dialogs = await screen.findAllByRole(Gtk.AccessibleRole.DIALOG);
             expect(dialogs.length).toBeGreaterThan(0);
@@ -93,7 +93,7 @@ describe("App keyboard shortcuts dialog", () => {
     it("opens the keyboard shortcuts dialog when the menu entry is activated", async () => {
         await render(<Demo />, { wrapper: false });
         const menuButton = (await screen.findByName("menu-button")) as Gtk.MenuButton;
-        await act(() => menuButton.activateAction("app.shortcuts", null));
+        await act(() => menuButton.activateAction("win.shortcuts", null));
         await waitFor(async () => {
             const dialogs = await screen.findAllByRole(Gtk.AccessibleRole.DIALOG);
             expect(dialogs.length).toBeGreaterThan(0);
@@ -107,7 +107,7 @@ describe("App inspector activation", () => {
         try {
             await render(<Demo />, { wrapper: false });
             const menuButton = (await screen.findByName("menu-button")) as Gtk.MenuButton;
-            await act(() => menuButton.activateAction("app.inspector", null));
+            await act(() => menuButton.activateAction("win.inspector", null));
             await waitFor(() => expect(debugSpy).toHaveBeenCalled());
         } finally {
             debugSpy.mockRestore();

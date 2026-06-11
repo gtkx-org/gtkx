@@ -223,8 +223,9 @@ const gobjectObjectMapRef = (context: ModuleContext, suffix: string): string => 
  * the handler off the `SignalHandlers` map; `emit` narrows its arguments and
  * result off the `SignalEmit` map, whose shape differs from a handler for
  * caller-allocated outs. `on`/`once`/`off` are omitted for the root
- * `GObject.Object`, whose untyped EventEmitter-style methods are declared by the
- * hand-written overlay; every subclass shadows them with typed overloads.
+ * `GObject.Object`, whose untyped EventEmitter-style methods are declared by
+ * the hand-written override template; every subclass shadows them with typed
+ * overloads.
  */
 const renderSignalConnectInterface = (className: string, isRootObject: boolean): string => {
     const map = `${className}${SIGNAL_HANDLERS_SUFFIX}`;

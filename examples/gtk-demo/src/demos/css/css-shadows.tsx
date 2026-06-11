@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkPaned, GtkScrolledWindow, GtkTextView } from "@gtkx/react-gi/gtk";
+import { GtkBox, GtkButton, GtkPaned, GtkScrolledWindow, GtkTextView } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-shadows.tsx?raw";
 import cssviewCssPath from "./cssview.css?url";

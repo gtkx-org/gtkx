@@ -2,8 +2,8 @@ import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
+import { GtkBox, GtkImage, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { GtkListView } from "@gtkx/react";
-import { GtkBox, GtkImage, GtkLabel, GtkScrolledWindow } from "@gtkx/react-gi/gtk";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./listview-applauncher.tsx?raw";
 

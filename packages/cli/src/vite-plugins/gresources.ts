@@ -2,8 +2,8 @@ import { execFileSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative } from "node:path";
+import { createGtkxConfigLoader, type GtkxConfigLoader } from "@gtkx/config";
 import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
-import { loadApplicationId } from "../codegen/config-loader.js";
 import { resolveCliTool } from "../internal/resolve-cli-tool.js";
 import { ASSET_PATH_RE, ASSET_RE } from "./asset-extensions.js";
 import { BUNDLE_FILENAME, escapeXml, OVERRIDE_SEPARATOR, VIRTUAL_INIT, VIRTUAL_PREFIX } from "./gresource-protocol.js";
@@ -264,12 +264,12 @@ const refreshDevRegistration = async (server: ViteDevServer, state: PluginState)
 };
 
 /**
- * Loads `applicationId` from `gtkx.config.ts`, fixes the plugin's resource
- * prefix from it, and returns the partial Vite config: the asset matcher and
- * the single `import.meta.env.GTKX_APPLICATION_ID` define.
+ * Reads `applicationId` from the resolved `gtkx.config.ts`, fixes the plugin's
+ * resource prefix from it, and returns the partial Vite config: the asset
+ * matcher and the single `import.meta.env.GTKX_APPLICATION_ID` define.
  */
-const resolveResourceConfig = async (state: PluginState, config: UserConfig) => {
-    const applicationId = await loadApplicationId(config.root ?? process.cwd());
+const resolveResourceConfig = async (state: PluginState, config: UserConfig, loadConfig: GtkxConfigLoader) => {
+    const { applicationId } = await loadConfig(config.root ?? process.cwd());
     state.prefix = deriveResourcePrefix(applicationId);
     return {
         assetsInclude: [ASSET_RE],
@@ -323,8 +323,11 @@ const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void 
  * override absolute and bypasses `<prefix>` (e.g.
  * `?resource=/css_multiplebgs/brick.png` →
  * `resource:///css_multiplebgs/brick.png`).
+ *
+ * @param loadConfig - Memoizing config loader, shared with the other gtkx
+ *   plugins by `gtkxVitePlugins` so the pipeline loads `gtkx.config.ts` once.
  */
-export function gtkxResources(): Plugin {
+export function gtkxResources(loadConfig: GtkxConfigLoader = createGtkxConfigLoader()): Plugin {
     const state: PluginState = {
         prefix: DEFAULT_RESOURCE_PREFIX,
         isBuild: false,
@@ -339,7 +342,7 @@ export function gtkxResources(): Plugin {
         enforce: "pre",
 
         config(config: UserConfig) {
-            return resolveResourceConfig(state, config);
+            return resolveResourceConfig(state, config, loadConfig);
         },
 
         configResolved(config: ResolvedConfig) {

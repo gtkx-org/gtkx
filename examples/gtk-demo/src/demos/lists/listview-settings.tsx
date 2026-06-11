@@ -1,7 +1,6 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkColumnView, GtkColumnViewColumn, GtkListView } from "@gtkx/react";
 import {
     GtkBox,
     GtkEditableLabel,
@@ -12,7 +11,8 @@ import {
     GtkSearchBar,
     GtkSearchEntry,
     GtkToggleButton,
-} from "@gtkx/react-gi/gtk";
+} from "@gtkx/jsx/gtk";
+import { GtkColumnView, GtkColumnViewColumn, GtkListView } from "@gtkx/react";
 
 import { createContext, useContext, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";

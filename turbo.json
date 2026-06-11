@@ -187,11 +187,9 @@
                 "scripts/**/*.ts",
                 "tests/**/*.ts",
                 "tests/**/*.tsx",
-                "overlay/**/*.ts",
                 "tsconfig.json",
                 "tsconfig.lib.json",
-                "tsconfig.test.json",
-                "overlay/tsconfig.json"
+                "tsconfig.test.json"
             ],
             "outputs": [],
             "outputLogs": "new-only"

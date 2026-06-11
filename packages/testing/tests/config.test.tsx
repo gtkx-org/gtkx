@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkLabel } from "@gtkx/react-gi/gtk";
+import { GtkLabel } from "@gtkx/jsx/gtk";
 import { afterEach, describe, expect, it } from "vitest";
 import { resetConfig } from "../src/config.js";
 import { configure, findByRole, getConfig, render } from "../src/index.js";

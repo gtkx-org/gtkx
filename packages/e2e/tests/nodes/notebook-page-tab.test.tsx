@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkLabel, GtkNotebook, GtkNotebookPage } from "@gtkx/react-gi/gtk";
+import { GtkBox, GtkLabel, GtkNotebook, GtkNotebookPage } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef, type ReactNode, type Ref } from "react";
 import { describe, expect, it } from "vitest";

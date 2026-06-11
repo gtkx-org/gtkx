@@ -1,8 +1,8 @@
 import type { Context } from "@gtkx/gi/cairo";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
+import { GtkButton, GtkFlowBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { GtkDrawingArea } from "@gtkx/react";
-import { GtkButton, GtkFlowBox, GtkScrolledWindow } from "@gtkx/react-gi/gtk";
 import type { Demo } from "../types.js";
 import sourceCode from "./flowbox.tsx?raw";
 

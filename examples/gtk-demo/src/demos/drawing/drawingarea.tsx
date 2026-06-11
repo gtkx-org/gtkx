@@ -1,7 +1,7 @@
 import { Content, Context, Format, ImageSurface, Operator, Surface } from "@gtkx/gi/cairo";
 import * as Gtk from "@gtkx/gi/gtk";
+import { GtkBox, GtkFrame, GtkGestureDrag, GtkLabel } from "@gtkx/jsx/gtk";
 import { GtkDrawingArea } from "@gtkx/react";
-import { GtkBox, GtkFrame, GtkGestureDrag, GtkLabel } from "@gtkx/react-gi/gtk";
 import { useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./drawingarea.tsx?raw";

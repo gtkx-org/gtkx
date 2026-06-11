@@ -1,7 +1,7 @@
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkFixed, GtkFixedChild, GtkFrame, GtkScrolledWindow } from "@gtkx/react-gi/gtk";
+import { GtkFixed, GtkFixedChild, GtkFrame, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { useCssResource } from "../../use-css-resource.js";
 import type { Demo } from "../types.js";
 import fixedCss from "./fixed.css?raw";

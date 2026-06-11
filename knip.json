@@ -15,13 +15,20 @@
             "entry": ["gtkx.config.ts"],
             "project": ["scripts/**/*.ts"]
         },
+        "packages/animate": {
+            "project": ["src/**/*.{ts,tsx}!"]
+        },
         "packages/cli": {
             "entry": ["src/global.d.ts!"],
             "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
         },
         "packages/codegen": {
             "includeEntryExports": true,
-            "project": ["src/**/*.ts!"]
+            "project": ["src/**/*.ts!", "!src/templates/**"]
+        },
+        "packages/config": {
+            "includeEntryExports": true,
+            "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/css": {
             "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
@@ -32,6 +39,9 @@
         },
         "packages/ffi": {
             "includeEntryExports": true,
+            "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
+        },
+        "packages/gl": {
             "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/mcp": {
@@ -81,7 +91,7 @@
         ".gtkx/gi": {
             "entry": ["**/*.{js,d.ts}!"]
         },
-        ".gtkx/react-gi": {
+        ".gtkx/jsx": {
             "entry": ["**/*.js"]
         }
     }

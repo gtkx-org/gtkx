@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import { GtkBox, GtkCheckButton, GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
 import { GtkDropDown, GtkSizeGroup } from "@gtkx/react";
-import { GtkBox, GtkCheckButton, GtkFrame, GtkLabel } from "@gtkx/react-gi/gtk";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./sizegroup.tsx?raw";

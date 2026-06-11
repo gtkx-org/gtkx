@@ -1,4 +1,4 @@
-import { GtkScrolledWindow, GtkTextView } from "@gtkx/react-gi/gtk";
+import { GtkScrolledWindow, GtkTextView } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-basics.tsx?raw";
 import resetCssPath from "./reset.css?url";

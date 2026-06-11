@@ -1,25 +1,14 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import {
-    Children,
-    cloneElement,
-    type ReactElement,
-    type ReactNode,
-    type Ref,
-    useContext,
-    useLayoutEffect,
-    useRef,
-} from "react";
+import { Children, cloneElement, type ReactNode, useCallback, useContext } from "react";
 import { WRAPPER_NODE_ELEMENT } from "../instance.js";
 import type { SizeGroupProps, SizeGroupWidgetProps } from "../jsx.js";
-import { assignRef } from "../use-merged-refs.js";
 import { SizeGroupContext, type SizeGroupRegistry, useSizeGroup } from "../use-size-group.js";
+import { useChildWidgetRegistration, type WidgetChild } from "./internal/use-child-widget-registration.js";
 
 const GtkSizeGroupElement = "GtkSizeGroup" as const;
 const WrapperNodeElement = WRAPPER_NODE_ELEMENT;
 
 const ORPHAN_MESSAGE = "GtkSizeGroup.Widget must be nested inside a GtkSizeGroup";
-
-type WidgetChild = ReactElement<{ ref?: Ref<Gtk.Widget> }>;
 
 /**
  * Registers a `<GtkSizeGroup.Widget>`'s single child with the enclosing group.
@@ -33,20 +22,14 @@ type WidgetChild = ReactElement<{ ref?: Ref<Gtk.Widget> }>;
  * @param child - The single widget element to group.
  */
 const SizeGroupMember = ({ registry, child }: { registry: SizeGroupRegistry; child: WidgetChild }): ReactNode => {
-    const widgetRef = useRef<Gtk.Widget | null>(null);
-    const childRef = child.props.ref;
-
-    const captureWidget = (widget: Gtk.Widget | null): void => {
-        widgetRef.current = widget;
-        assignRef(childRef, widget);
-    };
-
-    useLayoutEffect(() => {
-        const widget = widgetRef.current;
-        if (!widget) return;
-        registry.addMember(widget);
-        return () => registry.removeMember(widget);
-    }, [registry]);
+    const register = useCallback(
+        (widget: Gtk.Widget) => {
+            registry.addMember(widget);
+            return () => registry.removeMember(widget);
+        },
+        [registry],
+    );
+    const captureWidget = useChildWidgetRegistration(child, register);
 
     return <WrapperNodeElement kind="transparent">{cloneElement(child, { ref: captureWidget })}</WrapperNodeElement>;
 };

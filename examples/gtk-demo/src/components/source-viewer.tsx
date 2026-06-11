@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import type * as GtkSource from "@gtkx/gi/gtksource";
-import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/react-gi/gtk";
-import { GtkSourceView } from "@gtkx/react-gi/gtksource";
+import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import { GtkSourceView } from "@gtkx/jsx/gtksource";
 import { useDemo } from "../context/demo-context.js";
 
 export const SourceViewer = () => {

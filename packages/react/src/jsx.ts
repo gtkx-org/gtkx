@@ -9,116 +9,6 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import type * as GtkSource from "@gtkx/gi/gtksource";
 import type * as Pango from "@gtkx/gi/pango";
 import type { ReactNode } from "react";
-import type { MenuActionContext, MenuEntry } from "./components/internal/menu-model.js";
-
-/**
- * CSS properties that can be animated on a widget.
- *
- * All transforms are applied via GTK CSS and rendered through the widget's style context.
- */
-export type AnimatableProperties = {
-    /** Opacity from 0 (fully transparent) to 1 (fully opaque) */
-    opacity?: number;
-    /** Horizontal translation in pixels (positive moves right) */
-    translateX?: number;
-    /** Vertical translation in pixels (positive moves down) */
-    translateY?: number;
-    /** Uniform scale factor (1 = original size, 2 = double size) */
-    scale?: number;
-    /** Horizontal scale factor */
-    scaleX?: number;
-    /** Vertical scale factor */
-    scaleY?: number;
-    /** Rotation angle in degrees (positive rotates clockwise) */
-    rotate?: number;
-    /** Horizontal skew angle in degrees */
-    skewX?: number;
-    /** Vertical skew angle in degrees */
-    skewY?: number;
-};
-
-/** @internal */
-type AnimationBaseProps = {
-    /** Initial property values before animation starts, or `false` to skip initial state */
-    initial?: AnimatableProperties | false;
-    /** Target property values to animate towards */
-    animate?: AnimatableProperties;
-    /** Property values to animate to when the component unmounts */
-    exit?: AnimatableProperties;
-    /** Whether to animate from `initial` to `animate` when first mounted (default: false) */
-    animateOnMount?: boolean;
-    /** Callback fired when an animation begins */
-    onAnimationStart?: () => void;
-    /** Callback fired when an animation completes */
-    onAnimationComplete?: () => void;
-    /** The child widget to animate (must be a single GTK widget) */
-    children?: ReactNode;
-};
-
-/**
- * Props for a timed (duration-based) animation using Adw.TimedAnimation.
- *
- * @example
- * ```tsx
- * <AdwTimedAnimation
- *   initial={{ opacity: 0 }}
- *   animate={{ opacity: 1 }}
- *   duration={300}
- *   easing={Adw.Easing.EASE_OUT_CUBIC}
- *   animateOnMount
- * >
- *   <GtkLabel label="Fade in" />
- * </AdwTimedAnimation>
- * ```
- */
-export type AdwTimedAnimationProps = AnimationBaseProps & {
-    /** Animation duration in milliseconds (default: 300) */
-    duration?: number;
-    /** Easing function for the animation curve (default: EASE_OUT_CUBIC) */
-    easing?: Adw.Easing;
-    /** Delay before starting the animation in milliseconds */
-    delay?: number;
-    /** Number of times to repeat the animation (0 = no repeat, -1 = infinite) */
-    repeat?: number;
-    /** Whether to play the animation in reverse */
-    reverse?: boolean;
-    /** Whether to alternate direction on each repeat */
-    alternate?: boolean;
-};
-
-/**
- * Props for a spring (physics-based) animation using Adw.SpringAnimation.
- *
- * @example
- * ```tsx
- * <AdwSpringAnimation
- *   initial={{ scale: 0.9, opacity: 0 }}
- *   animate={{ scale: 1, opacity: 1 }}
- *   damping={0.8}
- *   stiffness={200}
- *   animateOnMount
- * >
- *   <GtkButton label="Spring in" />
- * </AdwSpringAnimation>
- * ```
- */
-export type AdwSpringAnimationProps = AnimationBaseProps & {
-    /** Damping ratio controlling oscillation decay (default: 1, critically damped) */
-    damping?: number;
-    /** Spring stiffness in N/m affecting animation speed (default: 100) */
-    stiffness?: number;
-    /** Virtual mass in kg affecting momentum (default: 1) */
-    mass?: number;
-    /** Initial velocity to apply at animation start */
-    initialVelocity?: number;
-    /** Whether to clamp the animation value to prevent overshooting */
-    clamp?: boolean;
-    /** Delay before starting the animation in milliseconds */
-    delay?: number;
-};
-
-/** Union of the timed and spring animation prop shapes. */
-export type AnimationProps = AdwTimedAnimationProps | AdwSpringAnimationProps;
 
 /**
  * Props for the TextAnchor virtual element.
@@ -425,14 +315,8 @@ export type ColumnViewColumnProps<T = unknown> = {
      * in uncontrolled mode. Specialize `T` to the appropriate type at the call site.
      */
     renderCell: (item: T) => ReactNode;
-    /** Menu entries (`<MenuItem>`, `<MenuSection>`, `<MenuSubmenu>`) for the column header context menu */
-    children?: ReactNode;
-    /**
-     * @internal The menu structure extracted from `children` by the
-     * `<GtkColumnViewColumn>` component and consumed by the reconciler to build
-     * the column's header menu. Not intended for direct use.
-     */
-    menuEntries?: MenuEntry[];
+    /** A `<GMenu>` shown as the column header's context menu. */
+    headerMenu?: ReactNode;
 };
 
 /**
@@ -476,56 +360,6 @@ export type StackPageProps = {
 };
 
 /**
- * Props for the `<Menu>` component.
- *
- * Assembles its {@link MenuItemProps}, {@link MenuSectionProps}, and
- * {@link MenuSubmenuProps} children into a `Gio.Menu` model placed in a host's
- * menu slot (`menuModel`, `menubar`, `headerMenu`).
- */
-export type MenuProps = {
-    /** Declarative menu entries: `<MenuItem>`, `<MenuSection>`, `<MenuSubmenu>`. */
-    children?: ReactNode;
-};
-
-/**
- * Props for the `<MenuItem>` menu entry.
- *
- * Declares one activatable item, backed by a `Gio.SimpleAction`.
- */
-export type MenuItemProps = {
-    /** Unique identifier for this menu item */
-    id: string;
-    /** Display label */
-    label: string;
-    /** Callback when the item is activated */
-    onActivate: () => void;
-    /** Keyboard accelerator(s) (e.g., "\<Control\>q") */
-    accels?: string | string[];
-};
-
-/**
- * Props for the `<MenuSection>` menu entry.
- *
- * Sections group related menu items with optional labels.
- */
-export type MenuSectionProps = {
-    /** Optional section header label */
-    label?: string;
-    /** Menu items in this section */
-    children?: ReactNode;
-};
-
-/**
- * Props for the `<MenuSubmenu>` menu entry.
- */
-export type MenuSubmenuProps = {
-    /** Submenu label */
-    label: string;
-    /** Menu items in this submenu */
-    children?: ReactNode;
-};
-
-/**
  * Props for children within an Overlay container.
  */
 export type OverlayChildProps = {
@@ -535,37 +369,6 @@ export type OverlayChildProps = {
     measure?: boolean;
     /** Whether to clip this overlay child to the main child bounds */
     clipOverlay?: boolean;
-};
-
-/**
- * Props for the Toggle virtual element.
- *
- * Used to declaratively add toggles to an AdwToggleGroup.
- *
- * @example
- * ```tsx
- * <AdwToggleGroup
- *     toggles={[
- *         { id: "view-list", iconName: "view-list-symbolic" },
- *         { id: "view-grid", iconName: "view-grid-symbolic" },
- *         { id: "view-flow", label: "Flow" },
- *     ]}
- * />
- * ```
- */
-export type ToggleProps = {
-    /** Optional identifier for accessing toggle by id instead of index */
-    id?: string | null;
-    /** Label text to display */
-    label?: string | null;
-    /** Icon name to display */
-    iconName?: string | null;
-    /** Tooltip text (supports Pango markup) */
-    tooltip?: string;
-    /** Whether the toggle is enabled */
-    enabled?: boolean;
-    /** Whether underline in label indicates mnemonic */
-    useUnderline?: boolean;
 };
 
 /**
@@ -980,11 +783,11 @@ export type AccessibleProps = {
     accessibleSetSize?: number;
 };
 
-declare module "@gtkx/react-gi/gobject" {
+declare module "@gtkx/jsx/gobject" {
     interface WidgetProps extends AccessibleProps {}
 }
 
-declare module "@gtkx/react-gi/gtk" {
+declare module "@gtkx/jsx/gtk" {
     interface GtkTextViewProps extends TextBufferProps {}
 
     interface GtkColumnViewProps {
@@ -1036,7 +839,7 @@ declare module "@gtkx/react-gi/gtk" {
     }
 }
 
-declare module "@gtkx/react-gi/gtksource" {
+declare module "@gtkx/jsx/gtksource" {
     interface GtkSourceViewProps extends TextBufferProps {
         /** Language for syntax highlighting (ID string or Language object) */
         language?: string | GtkSource.Language;
@@ -1055,35 +858,33 @@ declare module "@gtkx/react-gi/gtksource" {
     }
 }
 
-declare module "@gtkx/react-gi/adw" {
+declare module "@gtkx/jsx/adw" {
     interface AdwViewStackProps extends StackProps {}
 }
 
-declare module "@gtkx/react-gi/gio" {
-    interface GMenuProps {
-        /**
-         * @internal Menu structure collected by the `Menu` component and built by
-         * the reconciler into this `Gio.Menu`. Not intended for direct use.
-         */
-        menuEntries?: MenuEntry[];
-        /**
-         * @internal The application a built menu's accelerators bind on. Injected
-         * by the `Menu` component from the application context; not intended for
-         * direct use.
-         */
-        menuApplication?: Gtk.Application | null;
-        /**
-         * @internal An explicit action context for callers that own the action
-         * map (e.g. a column header menu). Not intended for direct use.
-         */
-        menuActionContext?: MenuActionContext;
+declare module "@gtkx/jsx/gio" {
+    interface GMenuItemProps {
+        /** The item's display label, with an underscore marking its mnemonic. */
+        label?: string;
+        /** The detailed action name the item triggers (e.g. `"win.about"`). */
+        action?: string;
+        /** Whether a single `<GMenu>` child links as a section rather than a submenu. */
+        section?: boolean;
+    }
+    interface GSimpleActionProps {
+        /** Keyboard accelerator(s) bound on the enclosing application (e.g. `"<Control>q"`). */
+        accels?: string | string[];
+    }
+    interface GSimpleActionGroupProps {
+        /** The action-name prefix the group installs under on its host widget. */
+        prefix?: string;
     }
 }
 
-export { AnimatePresence } from "./components/animate-presence.js";
-export { AdwSpringAnimation, AdwTimedAnimation } from "./components/animation.js";
-export { createApplication, withApplicationWindow } from "./components/application.js";
+export { withActionAccels, withActionScope } from "./components/action.js";
+export { withApplication, withApplicationWindow } from "./components/application.js";
 export { GtkConstraintLayout } from "./components/constraint-layout.js";
+export { withColorDialog, withFontDialog } from "./components/dialog-button.js";
 export { GtkDrawingArea } from "./components/drawing-area.js";
 export {
     AdwComboRow,
@@ -1093,8 +894,6 @@ export {
     GtkGridView,
     GtkListView,
 } from "./components/list.js";
-export { Menu, MenuItem, MenuSection, MenuSubmenu } from "./components/menu.js";
-export { GtkMenuButton, GtkPopoverMenu, GtkPopoverMenuBar } from "./components/menu-widgets.js";
 export { GtkSizeGroup } from "./components/size-group.js";
 export { withTopLevel } from "./components/top-level.js";
 export { WebKitWebView } from "./components/web-view.js";

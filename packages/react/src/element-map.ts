@@ -1,3 +1,5 @@
+/// <reference types="@gtkx/config/virtual" />
+
 /**
  * The reconciler's attach/detach table.
  *
@@ -11,13 +13,16 @@
  * child's own props/children and stashing per-attachment bookkeeping on
  * {@link Instance.attachState}.
  */
-import type * as Adw from "@gtkx/gi/adw";
+import { META_OBJECT_ADD_METHODS, PAGE_META_SETTERS, TOP_LEVEL_TYPES } from "virtual:gtkx-config";
+import type { AddMethodRule } from "@gtkx/config";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { getColumnController, getColumnViewController } from "./components/internal/column-view-registry.js";
-import { isAdwDialog, isAdwViewStack } from "./gtype-predicates.js";
+import { DATA_ATTACH_MAPPINGS } from "./attach-rules.js";
+import { collectTypeNameChain } from "./gtype.js";
+import { hasType } from "./gtype-predicates.js";
 import { type Instance, isWrapperInstance, isWrapperKind } from "./instance.js";
+import { menuItemMapping, menuLinkMapping } from "./nodes/internal/menu-attach.js";
 import {
     type InsertableWidget,
     isAddable,
@@ -28,6 +33,7 @@ import {
     isSingleChildContainer,
     type ReorderableWidget,
 } from "./nodes/internal/predicates.js";
+import { callMethod } from "./nodes/internal/reflect-call.js";
 import {
     attachChild,
     detachChild,
@@ -67,15 +73,18 @@ const rescueFocus = (parent: BackingInstance, child: BackingInstance | undefined
     if (focus && isDescendantOf(focus, child)) parent.grabFocus();
 };
 
+const isTopLevelSurface = (widget: BackingInstance): boolean =>
+    TOP_LEVEL_TYPES.some((typeName) => hasType(widget, typeName));
+
 /**
  * The widget a child instance contributes to its parent: its backing widget,
- * unless it is a top-level surface (windows and dialogs never attach as widget
- * children) or a non-widget GObject.
+ * unless it is a top-level surface (per the `TOP_LEVEL_TYPES` table — windows
+ * and dialogs never attach as widget children) or a non-widget GObject.
  */
 const childWidget = (instance: Instance): Gtk.Widget | null => {
     const widget = instance.backingInstance;
     if (!(widget instanceof Gtk.Widget)) return null;
-    if (widget instanceof Gtk.Window || isAdwDialog(widget)) return null;
+    if (isTopLevelSurface(widget)) return null;
     return widget;
 };
 
@@ -155,11 +164,6 @@ const containerSlotMapping: ElementMapping = {
     },
 };
 
-const invokeMethod = (target: object, method: string, arg: unknown): void => {
-    const fn = Reflect.get(target, method);
-    if (typeof fn === "function") Reflect.apply(fn, target, [arg]);
-};
-
 const invokeRequired = (target: object, method: string, arg: unknown): void => {
     const fn = Reflect.get(target, method);
     if (typeof fn !== "function") {
@@ -170,38 +174,45 @@ const invokeRequired = (target: object, method: string, arg: unknown): void => {
 
 // --- Meta object (single, Stack / ViewStack / Notebook page) ---
 
-const PAGE_META_SETTERS: readonly { setter: string; prop: string; fallback?: unknown; whenPresent?: boolean }[] = [
-    { setter: "setTitle", prop: "title", whenPresent: true },
-    { setter: "setIconName", prop: "iconName", whenPresent: true },
-    { setter: "setNeedsAttention", prop: "needsAttention", fallback: false },
-    { setter: "setVisible", prop: "visible", fallback: true },
-    { setter: "setUseUnderline", prop: "useUnderline", fallback: false },
-    { setter: "setBadgeNumber", prop: "badgeNumber", whenPresent: true },
-];
-
 const applyPageMeta = (page: object, props: Instance["props"]): void => {
     for (const { setter, prop, fallback, whenPresent } of PAGE_META_SETTERS) {
         if (typeof Reflect.get(page, setter) !== "function") continue;
         if (whenPresent && props[prop] === undefined) continue;
-        invokeMethod(page, setter, props[prop] ?? fallback);
+        callMethod(page, setter, [props[prop] ?? fallback]);
     }
 };
 
 type MetaState = { widget: Gtk.Widget; page: object };
 
-const addStackPage = (stack: Gtk.Stack | Adw.ViewStack, widget: Gtk.Widget, props: Instance["props"]): object => {
-    const id = typeof props.id === "string" ? props.id : null;
-    const title = typeof props.title === "string" ? props.title : null;
-    const iconName = typeof props.iconName === "string" ? props.iconName : null;
-    if (isAdwViewStack(stack)) {
-        if (title != null && iconName != null) return stack.addTitledWithIcon(widget, id, title, iconName);
-        if (title != null) return stack.addTitled(widget, id, title);
-        if (id != null) return stack.addNamed(widget, id);
-        return stack.add(widget);
+/**
+ * The page-add method rows matching `target`'s GType ancestry, or `null` when
+ * no `META_OBJECT_ADD_METHODS` entry applies.
+ */
+const metaAddRules = (target: BackingInstance | undefined): readonly AddMethodRule[] | null => {
+    if (!target) return null;
+    for (const typeName of collectTypeNameChain(target.__gtype__)) {
+        const rules = META_OBJECT_ADD_METHODS[typeName];
+        if (rules) return rules;
     }
-    if (title != null) return stack.addTitled(widget, id, title);
-    if (id != null) return stack.addNamed(widget, id);
-    return stack.addChild(widget);
+    return null;
+};
+
+const pagePropValue = (props: Instance["props"], key: string): string | null =>
+    typeof props[key] === "string" ? (props[key] as string) : null;
+
+const addStackPage = (
+    stack: BackingInstance,
+    rules: readonly AddMethodRule[],
+    widget: Gtk.Widget,
+    props: Instance["props"],
+): object | undefined => {
+    for (const rule of rules) {
+        if (!rule.requires.every((key) => pagePropValue(props, key) !== null)) continue;
+        const args = rule.args.map((arg) => (arg === "widget" ? widget : pagePropValue(props, arg)));
+        const page = callMethod(stack, rule.method, args);
+        return typeof page === "object" && page !== null ? page : undefined;
+    }
+    return undefined;
 };
 
 const notebookPosition = (marker: Instance): number | null => {
@@ -244,9 +255,7 @@ const attachNotebookPage = (notebook: Gtk.Notebook, widget: Gtk.Widget, marker: 
 const metaObjectMapping: ElementMapping = {
     matches: (child, parent) =>
         isWrapperKind(child, META_OBJECT_KIND) &&
-        (parent.backingInstance instanceof Gtk.Stack ||
-            (parent.backingInstance !== undefined && isAdwViewStack(parent.backingInstance)) ||
-            parent.backingInstance instanceof Gtk.Notebook),
+        (metaAddRules(parent.backingInstance) !== null || parent.backingInstance instanceof Gtk.Notebook),
     attach: (child, parent) => {
         const target = parent.backingInstance;
         const widget = trackedWidget(child);
@@ -265,11 +274,14 @@ const metaObjectMapping: ElementMapping = {
         if (target instanceof Gtk.Notebook) {
             attachNotebookPage(target, widget, child);
             child.attachState = { widget, page: target };
-        } else if (target instanceof Gtk.Stack || (target !== undefined && isAdwViewStack(target))) {
-            const page = addStackPage(target, widget, child.props);
-            applyPageMeta(page, child.props);
-            child.attachState = { widget, page };
+            return;
         }
+        const rules = metaAddRules(target);
+        if (!target || !rules) return;
+        const page = addStackPage(target, rules, widget, child.props);
+        if (!page) return;
+        applyPageMeta(page, child.props);
+        child.attachState = { widget, page };
     },
     detach: (child, parent) => {
         const state = child.attachState as MetaState | undefined;
@@ -280,10 +292,11 @@ const metaObjectMapping: ElementMapping = {
             const pageNum = target.pageNum(state.widget);
             if (pageNum !== -1) target.removePage(pageNum);
         } else if (
-            (target instanceof Gtk.Stack || (target !== undefined && isAdwViewStack(target))) &&
+            target instanceof Gtk.Widget &&
+            metaAddRules(target) !== null &&
             isAttachedTo(state.widget, target)
         ) {
-            target.remove(state.widget);
+            callMethod(target, "remove", [state.widget]);
         }
     },
 };
@@ -319,7 +332,7 @@ const applyGridLayoutChild = (layoutChild: Gtk.LayoutChild, props: Instance["pro
 const applyFixedLayoutChild = (layoutChild: Gtk.LayoutChild, props: Instance["props"]): void => {
     if (typeof Reflect.get(layoutChild, "setTransform") !== "function") return;
     const value = buildFixedTransform(props);
-    if (value) invokeMethod(layoutChild, "setTransform", value);
+    if (value) callMethod(layoutChild, "setTransform", [value]);
 };
 
 const applyLayoutChild = (
@@ -423,152 +436,10 @@ const transparentMapping: ElementMapping = {
     },
 };
 
-// --- Non-widget GObject children attached through a fixed relationship ---
-
-const eventControllerMapping: ElementMapping = {
-    matches: (child, parent) =>
-        child.backingInstance instanceof Gtk.EventController && parent.backingInstance instanceof Gtk.Widget,
-    attach: (child, parent) => {
-        if (child.backingInstance instanceof Gtk.EventController && parent.backingInstance instanceof Gtk.Widget) {
-            parent.backingInstance.addController(child.backingInstance);
-        }
-    },
-    detach: (child, parent) => {
-        if (
-            child.backingInstance instanceof Gtk.EventController &&
-            parent.backingInstance instanceof Gtk.Widget &&
-            child.backingInstance.getWidget() === parent.backingInstance
-        ) {
-            parent.backingInstance.removeController(child.backingInstance);
-        }
-    },
-};
-
-const layoutManagerMapping: ElementMapping = {
-    matches: (child, parent) =>
-        child.backingInstance instanceof Gtk.LayoutManager && parent.backingInstance instanceof Gtk.Widget,
-    attach: (child, parent) => {
-        if (child.backingInstance instanceof Gtk.LayoutManager && parent.backingInstance instanceof Gtk.Widget) {
-            parent.backingInstance.setLayoutManager(child.backingInstance);
-        }
-    },
-    detach: (child, parent) => {
-        if (
-            child.backingInstance instanceof Gtk.LayoutManager &&
-            parent.backingInstance instanceof Gtk.Widget &&
-            parent.backingInstance.getLayoutManager() === child.backingInstance
-        ) {
-            parent.backingInstance.setLayoutManager(null);
-        }
-    },
-};
-
-const shortcutMapping: ElementMapping = {
-    matches: (child, parent) =>
-        child.backingInstance instanceof Gtk.Shortcut && parent.backingInstance instanceof Gtk.ShortcutController,
-    attach: (child, parent) => {
-        if (child.backingInstance instanceof Gtk.Shortcut && parent.backingInstance instanceof Gtk.ShortcutController) {
-            parent.backingInstance.addShortcut(child.backingInstance);
-        }
-    },
-    detach: (child, parent) => {
-        if (child.backingInstance instanceof Gtk.Shortcut && parent.backingInstance instanceof Gtk.ShortcutController) {
-            parent.backingInstance.removeShortcut(child.backingInstance);
-        }
-    },
-};
-
-// --- Column view column (ordered, insertColumn / removeColumn) ---
-
-type ColumnAttachState = { view: Gtk.ColumnView; column: Gtk.ColumnViewColumn };
-
-/**
- * The index `column` currently occupies in `columnView`'s live column list, or
- * `-1` when it is not present.
- */
-const columnIndexOf = (columnView: Gtk.ColumnView, column: Gtk.ColumnViewColumn): number => {
-    const columns = columnView.getColumns();
-    const nItems = columns.getNItems();
-    for (let i = 0; i < nItems; i++) {
-        if (columns.getItem(i) === column) return i;
-    }
-    return -1;
-};
-
-/**
- * The position `column` should insert at to land before `anchor`, computed
- * against the live column list that must NOT contain `column` (a move removes it
- * first): the anchor's current index, or the end when there is no anchor or it
- * is not present, mirroring {@link findInsertPosition} over the column
- * `ListModel` rather than the widget children.
- */
-const columnInsertPosition = (columnView: Gtk.ColumnView, anchor: BackingInstance | null | undefined): number => {
-    const columns = columnView.getColumns();
-    const nItems = columns.getNItems();
-    if (anchor instanceof Gtk.ColumnViewColumn) {
-        for (let i = 0; i < nItems; i++) {
-            if (columns.getItem(i) === anchor) return i;
-        }
-    }
-    return nItems;
-};
-
-/**
- * Whether `column` already sits immediately before `anchor` (or last, when there
- * is no anchor) in the live column list, so a re-invoked attach can skip the
- * remove/insert.
- */
-const columnIsPlacedBefore = (
-    columnView: Gtk.ColumnView,
-    column: Gtk.ColumnViewColumn,
-    anchor: BackingInstance | null | undefined,
-): boolean => {
-    const index = columnIndexOf(columnView, column);
-    if (index < 0) return false;
-    if (anchor instanceof Gtk.ColumnViewColumn) return columnIndexOf(columnView, anchor) === index + 1;
-    return index === columnView.getColumns().getNItems() - 1;
-};
-
-const columnViewColumnMapping: ElementMapping = {
-    matches: (child, parent) =>
-        child.backingInstance instanceof Gtk.ColumnViewColumn && parent.backingInstance instanceof Gtk.ColumnView,
-    attach: (child, parent, anchor) => {
-        const column = child.backingInstance;
-        const columnView = parent.backingInstance;
-        if (!(column instanceof Gtk.ColumnViewColumn) || !(columnView instanceof Gtk.ColumnView)) return;
-        const state = child.attachState as ColumnAttachState | undefined;
-        const alreadyAttached = state?.view === columnView;
-        if (alreadyAttached) {
-            if (columnIsPlacedBefore(columnView, column, anchor)) return;
-            if (columnIndexOf(columnView, column) >= 0) columnView.removeColumn(column);
-        }
-        const position = columnInsertPosition(columnView, anchor);
-        columnView.insertColumn(position, column);
-        if (!alreadyAttached) {
-            child.attachState = { view: columnView, column };
-            const list = getColumnViewController(columnView);
-            if (list) getColumnController(column)?.register(list, columnView);
-        }
-        getColumnViewController(columnView)?.scheduleColumnSettle();
-    },
-    detach: (child, parent) => {
-        const column = child.backingInstance;
-        const columnView = parent.backingInstance;
-        const state = child.attachState as ColumnAttachState | undefined;
-        if (!(column instanceof Gtk.ColumnViewColumn) || !(columnView instanceof Gtk.ColumnView)) return;
-        if (state?.view !== columnView) return;
-        columnView.removeColumn(column);
-        getColumnController(column)?.unregister(columnView);
-        child.attachState = undefined;
-        getColumnViewController(columnView)?.scheduleColumnSettle();
-    },
-};
-
 // --- Top-level surfaces ---
 
 const isTopLevel = (instance: Instance): boolean =>
-    instance.backingInstance instanceof Gtk.Window ||
-    (instance.backingInstance !== undefined && isAdwDialog(instance.backingInstance));
+    instance.backingInstance !== undefined && isTopLevelSurface(instance.backingInstance);
 
 const topLevelSkipMapping: ElementMapping = {
     matches: (child) => isTopLevel(child),
@@ -761,10 +632,9 @@ export const ELEMENT_MAP: readonly ElementMapping[] = [
     layoutChildMapping,
     overlayMapping,
     transparentMapping,
-    eventControllerMapping,
-    layoutManagerMapping,
-    shortcutMapping,
-    columnViewColumnMapping,
+    ...DATA_ATTACH_MAPPINGS,
+    menuItemMapping,
+    menuLinkMapping,
     topLevelSkipMapping,
     listItemChildMapping,
     widgetContainerMapping,

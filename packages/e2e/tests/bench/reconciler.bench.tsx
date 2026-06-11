@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import type { ListItem } from "@gtkx/react";
-import { GtkBox, GtkLabel } from "@gtkx/react-gi/gtk";
 import { cleanup, render } from "@gtkx/testing";
 import { bench, describe } from "vitest";
 import { renderListView } from "../helpers/list-fixtures.js";

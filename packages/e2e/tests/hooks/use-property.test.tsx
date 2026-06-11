@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import { GtkLabel } from "@gtkx/jsx/gtk";
 import { useProperty } from "@gtkx/react";
-import { GtkLabel } from "@gtkx/react-gi/gtk";
 import { act, render, renderHook, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";

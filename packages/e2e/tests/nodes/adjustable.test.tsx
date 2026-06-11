@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import { GtkScale } from "@gtkx/jsx/gtk";
 import { type AdjustmentConfig, useAdjustment } from "@gtkx/react";
-import { GtkScale } from "@gtkx/react-gi/gtk";
 import { render, waitFor } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";

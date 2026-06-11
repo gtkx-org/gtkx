@@ -12,11 +12,11 @@ export type TranspiledFile = {
 };
 
 /**
- * The compiler options shared by the store's two TypeScript passes — the
- * single-file transpile here and the overlay type-check in `typecheck-store.ts`.
- * Each pass spreads these and adds its own emit/check-specific keys.
+ * The compiler options the store's single-file transpile passes share. The
+ * `.js` emit and the isolated `.d.ts` emit each spread these and add their own
+ * emit-specific keys.
  */
-export const baseCompilerOptions = (): ts.CompilerOptions => ({
+const baseCompilerOptions = (): ts.CompilerOptions => ({
     module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler,
     target: ts.ScriptTarget.ESNext,

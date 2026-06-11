@@ -17,6 +17,7 @@
     },
     "dependencies": {
         "@gtkx/css": "workspace:*",
+        "@gtkx/animate": "workspace:*",
         "@gtkx/react": "workspace:*",
         "react": "^19.2.7"
     },

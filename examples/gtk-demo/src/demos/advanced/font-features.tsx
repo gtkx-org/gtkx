@@ -2,7 +2,6 @@ import { css } from "@gtkx/css";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
-import { useAdjustment } from "@gtkx/react";
 import {
     GtkBox,
     GtkButton,
@@ -25,7 +24,8 @@ import {
     GtkTextView,
     GtkToggleButton,
     GtkViewport,
-} from "@gtkx/react-gi/gtk";
+} from "@gtkx/jsx/gtk";
+import { useAdjustment } from "@gtkx/react";
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./font-features.tsx?raw";

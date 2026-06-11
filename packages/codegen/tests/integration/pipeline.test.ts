@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { generateReactGiFiles } from "../../src/react/pipeline.js";
+import { generateJsxFiles } from "../../src/react/pipeline.js";
 import { transpileSource } from "../../src/transpile.js";
 import { ffiModules, repository } from "../helpers/repository.js";
 
-const reactPipeline = generateReactGiFiles(repository);
+const reactPipeline = generateJsxFiles(repository);
 const sourceFor = (files: typeof reactPipeline, directory: string): string =>
     files.namespaces.find((entry) => entry.directory === directory)?.source ?? "";
 
@@ -123,9 +123,9 @@ describe("codegen React pipeline", () => {
         expect(gtk).not.toContain('import "@gtkx/gi/adw";');
     });
 
-    it("imports a cross-namespace parent Props type from its react-gi module", () => {
+    it("imports a cross-namespace parent Props type from its jsx module", () => {
         const adw = sourceFor(reactPipeline, "adw");
-        expect(adw).toMatch(/import type \{[^}]*\} from "@gtkx\/react-gi\/gtk";/);
+        expect(adw).toMatch(/import type \{[^}]*\} from "@gtkx\/jsx\/gtk";/);
     });
 
     it("counts the widget intrinsics it emitted", () => {
@@ -153,7 +153,7 @@ describe("codegen React pipeline", () => {
 
 describe("codegen React pipeline (slot overrides)", () => {
     it("honours user-supplied widget-slot overrides", () => {
-        const overridden = generateReactGiFiles(repository, { widgetSlots: { GtkButton: ["child"] } });
+        const overridden = generateJsxFiles(repository, { slots: { GtkButton: ["child"] } });
         const gtk = sourceFor(overridden, "gtk");
         expect(gtk).toContain('kind="slot" propName="child"');
         const { js } = transpileSource("gtk/gtk.tsx", gtk);
@@ -161,7 +161,7 @@ describe("codegen React pipeline (slot overrides)", () => {
     });
 
     it("promotes a user-supplied container slot on a widget without built-in ones", () => {
-        const overridden = generateReactGiFiles(repository, { containerSlots: { GtkButton: ["addChild"] } });
+        const overridden = generateJsxFiles(repository, { containerSlots: { GtkButton: ["addChild"] } });
         const gtk = sourceFor(overridden, "gtk");
         expect(gtk).toContain("addChild?: ReactNode | null;");
         expect(gtk).toContain('kind="container-slot" method="addChild"');
@@ -170,7 +170,7 @@ describe("codegen React pipeline (slot overrides)", () => {
     });
 
     it("promotes a user container slot on a plain GObject class", () => {
-        const overridden = generateReactGiFiles(repository, { containerSlots: { GApplication: ["addWindow"] } });
+        const overridden = generateJsxFiles(repository, { containerSlots: { GApplication: ["addWindow"] } });
         const gio = sourceFor(overridden, "gio");
         expect(gio).toContain("GApplicationProps");
         expect(gio).toContain('kind="container-slot" method="addWindow"');
@@ -206,7 +206,9 @@ describe("codegen array props", () => {
     });
 
     it("merges a user arrayProps entry with the built-ins, emitting its line and import", () => {
-        const overridden = generateReactGiFiles(repository, { arrayProps: { GtkScale: { marks: "ScaleMark" } } });
+        const overridden = generateJsxFiles(repository, {
+            arrayProps: { GtkScale: { marks: { itemType: "ScaleMark", clear: "clearMarks" } } },
+        });
         const gtk = sourceFor(overridden, "gtk");
         expect(interfaceBody(gtk, "GtkScale")).toContain("marks?: ScaleMark[] | null;");
         expect(interfaceBody(gtk, "GtkCalendar")).toContain("markedDays?: CalendarMark[] | null;");
@@ -214,6 +216,49 @@ describe("codegen array props", () => {
         expect(gtk).toContain("ScaleMark");
         const { dts } = transpileSource("gtk/gtk.tsx", gtk);
         expect(dts.length).toBeGreaterThan(0);
+    });
+});
+
+describe("codegen runtime tables", () => {
+    it("bakes the reconciler tables into the metadata module", () => {
+        expect(reactPipeline.metadata).toContain("export const ELEMENT_MAP");
+        expect(reactPipeline.metadata).toContain('"child": "GtkEventController"');
+        expect(reactPipeline.metadata).toContain("export const ARRAY_PROPS");
+        expect(reactPipeline.metadata).toContain("export const PROP_RULES");
+        expect(reactPipeline.metadata).toContain("export const TOP_LEVEL_TYPES");
+        expect(reactPipeline.metadata).toContain("export const META_OBJECT_ADD_METHODS");
+        expect(reactPipeline.metadata).toContain("export const PAGE_META_SETTERS");
+        expect(reactPipeline.metadata).toContain("export const SLOTS");
+        expect(reactPipeline.metadata).toContain("export const CONTAINER_SLOTS");
+    });
+
+    it("appends user elementMap rows after the built-ins", () => {
+        const overridden = generateJsxFiles(repository, {
+            elementMap: [
+                {
+                    child: "MyAppGadget",
+                    parentType: "MyAppBoard",
+                    verb: {
+                        kind: "method",
+                        attach: "add",
+                        attachArgs: "child",
+                        detach: "remove",
+                        detachArgs: "child",
+                    },
+                },
+            ],
+        });
+        expect(overridden.metadata).toContain('"child": "MyAppGadget"');
+        expect(overridden.metadata.indexOf('"child": "GtkEventController"')).toBeLessThan(
+            overridden.metadata.indexOf('"child": "MyAppGadget"'),
+        );
+    });
+
+    it("bakes merged user array-prop rows into the metadata module", () => {
+        const overridden = generateJsxFiles(repository, {
+            arrayProps: { GtkScale: { marks: { itemType: "ScaleMark", clear: "clearAllMarks" } } },
+        });
+        expect(overridden.metadata).toContain('"clear": "clearAllMarks"');
     });
 });
 

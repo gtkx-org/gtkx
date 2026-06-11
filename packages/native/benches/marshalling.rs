@@ -3,8 +3,10 @@
 //! These exercise container decoding — pointer and per-element index math over
 //! a Rust-allocated buffer — with no GTK or `GLib` FFI, so they double as the
 //! Miri subset: deterministic, runner-independent, and free of any `dlopen`'d
-//! library. Under the CodSpeed runner the wall-clock harness is replaced by
+//! library. Under the `CodSpeed` runner the wall-clock harness is replaced by
 //! instruction counting, gating the per-element cost as the input grows.
+
+#![allow(clippy::significant_drop_tightening)]
 
 use std::ffi::c_void;
 

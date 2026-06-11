@@ -1,8 +1,8 @@
 import * as Gdk from "@gtkx/gi/gdk";
-import * as gl from "@gtkx/gi/gl";
 import * as Gtk from "@gtkx/gi/gtk";
+import * as gl from "@gtkx/gl";
+import { GtkBox, GtkButton, GtkGLArea, GtkLabel, GtkScale } from "@gtkx/jsx/gtk";
 import { useAdjustment } from "@gtkx/react";
-import { GtkBox, GtkButton, GtkGLArea, GtkLabel, GtkScale } from "@gtkx/react-gi/gtk";
 import { useRef, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./glarea.tsx?raw";

@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkApplicationWindow } from "@gtkx/react-gi/gtk";
+import { GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { type RenderResult, render } from "@gtkx/testing";
 import { type ComponentType, createRef, type ReactNode, type RefObject, useCallback, useState } from "react";
 import { expect } from "vitest";

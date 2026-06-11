@@ -1,5 +1,11 @@
 import { join } from "node:path";
 
+import {
+    createGtkxConfigLoader,
+    GTKX_CONFIG_VIRTUAL_ID,
+    RESOLVED_GTKX_CONFIG_VIRTUAL_ID,
+    renderGtkxConfigModule,
+} from "@gtkx/config";
 import type { Plugin } from "vitest/config";
 
 /**
@@ -11,9 +17,15 @@ import type { Plugin } from "vitest/config";
  * projects use the combined `gtkx()` from `@gtkx/cli/vitest`, which layers the
  * GResource/asset plugins on top of this one.
  *
+ * The plugin serves `virtual:gtkx-config` from the project's own
+ * `gtkx.config.ts`, loaded lazily on the module's first request so the
+ * combined `gtkx()` pipeline — whose `gtkx:config` plugin resolves the module
+ * first — never triggers a second load. A project without a config file
+ * receives the empty resolved config.
+ *
  * Two settings keep the GObject identity registries on a single `@gtkx/ffi`
  * instance. `server.deps.inline` transforms every `@gtkx/*` runtime package and
- * the codegen-injected `@gtkx/gi`/`@gtkx/react-gi` so their `@gtkx/ffi` imports
+ * the codegen-injected `@gtkx/gi`/`@gtkx/jsx` so their `@gtkx/ffi` imports
  * resolve to the one source-built runtime; a second copy from `dist` would split
  * the registries. `ssr.resolve.conditions` prefers each package's `source`
  * export so every bare `@gtkx/*` import (including `@gtkx/ffi`, reached only
@@ -34,26 +46,23 @@ import type { Plugin } from "vitest/config";
  * });
  * ```
  */
-/** The import specifier `@gtkx/react` reads its resolved configuration from. */
-const VIRTUAL_CONFIG_ID = "virtual:gtkx-config";
-
-/** Rollup-convention resolved id for {@link VIRTUAL_CONFIG_ID}. */
-const RESOLVED_VIRTUAL_CONFIG_ID = `\0${VIRTUAL_CONFIG_ID}`;
-
 const gtkx = (): Plugin => {
     const workerSetupPath = join(import.meta.dirname, "setup.js");
+    const loadConfig = createGtkxConfigLoader();
+    let root = process.cwd();
 
     return {
         name: "gtkx",
         resolveId(id) {
-            if (id === VIRTUAL_CONFIG_ID) return RESOLVED_VIRTUAL_CONFIG_ID;
+            if (id === GTKX_CONFIG_VIRTUAL_ID) return RESOLVED_GTKX_CONFIG_VIRTUAL_ID;
             return undefined;
         },
-        load(id) {
-            if (id !== RESOLVED_VIRTUAL_CONFIG_ID) return undefined;
-            return 'export * from "@gtkx/react-gi/metadata";\nexport const applicationId = undefined;\n';
+        async load(id) {
+            if (id !== RESOLVED_GTKX_CONFIG_VIRTUAL_ID) return undefined;
+            return renderGtkxConfigModule(await loadConfig(root));
         },
         config(config) {
+            root = config.root ?? process.cwd();
             const setupFiles = config.test?.setupFiles ?? [];
 
             return {
@@ -64,7 +73,7 @@ const gtkx = (): Plugin => {
                     pool: "forks",
                     server: {
                         deps: {
-                            inline: [/@gtkx\/(ffi|gi|react|react-gi|testing|css)/, /[/\\]\.gtkx[/\\]/],
+                            inline: [/@gtkx\/(ffi|gi|react|jsx|testing|css)/, /[/\\]\.gtkx[/\\]/],
                         },
                     },
                 },

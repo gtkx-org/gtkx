@@ -15,7 +15,7 @@ import {
     GtkLabel,
     GtkListBox,
     GtkSwitch,
-} from "@gtkx/react-gi/gtk";
+} from "@gtkx/jsx/gtk";
 import { render as baseRender, screen, userEvent, waitFor } from "@gtkx/testing";
 import type { ReactNode } from "react";
 import { createRef, useState } from "react";

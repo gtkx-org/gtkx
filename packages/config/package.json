@@ -1,0 +1,52 @@
+{
+    "name": "@gtkx/config",
+    "version": "0.21.0",
+    "description": "gtkx.config.ts schema, validation, and loader shared by the GTKX toolchain",
+    "keywords": [
+        "gtkx",
+        "gtk",
+        "gtk4",
+        "react",
+        "typescript",
+        "config",
+        "linux",
+        "desktop"
+    ],
+    "homepage": "https://gtkx.dev",
+    "bugs": {
+        "url": "https://github.com/gtkx-org/gtkx/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/gtkx-org/gtkx.git",
+        "directory": "packages/config"
+    },
+    "license": "MPL-2.0",
+    "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
+    "type": "module",
+    "exports": {
+        "./package.json": "./package.json",
+        ".": {
+            "source": "./src/index.ts",
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        },
+        "./virtual": {
+            "types": "./virtual.d.ts"
+        }
+    },
+    "sideEffects": false,
+    "files": [
+        "dist",
+        "src",
+        "virtual.d.ts"
+    ],
+    "scripts": {
+        "build": "tsc -b",
+        "test": "vitest run",
+        "typecheck": "tsc -b --emitDeclarationOnly"
+    },
+    "dependencies": {
+        "c12": "^3.3.4"
+    }
+}

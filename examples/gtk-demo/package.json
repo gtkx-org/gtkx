@@ -16,6 +16,7 @@
     "dependencies": {
         "@gtkx/css": "workspace:*",
         "@gtkx/ffi": "workspace:*",
+        "@gtkx/gl": "workspace:*",
         "@gtkx/react": "workspace:*",
         "react": "^19.2.7"
     },

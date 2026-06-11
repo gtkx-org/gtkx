@@ -1,5 +1,5 @@
 import { readdirSync } from "node:fs";
-import { GIR_NAMESPACE_PATTERN, type GtkxConfig, LIBRARIES_WILDCARD } from "../config.js";
+import { GIR_NAMESPACE_PATTERN, type GtkxConfig, LIBRARIES_WILDCARD } from "@gtkx/config";
 
 /**
  * GIR namespaces always generated, whether or not `gtkx.config.ts` lists

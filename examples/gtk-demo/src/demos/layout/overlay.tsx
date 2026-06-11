@@ -8,7 +8,7 @@ import {
     GtkLabel,
     GtkOverlay,
     GtkOverlayChild,
-} from "@gtkx/react-gi/gtk";
+} from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./overlay.tsx?raw";

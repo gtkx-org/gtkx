@@ -1,6 +1,6 @@
 import * as Adw from "@gtkx/gi/adw";
+import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import { createPortal, useApplication, useProperty } from "@gtkx/react";
-import { AdwAlertDialog } from "@gtkx/react-gi/adw";
 
 export const DeleteConfirmation = ({
     noteTitle,

@@ -1,6 +1,6 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkButton, GtkGestureClick, GtkHeaderBar, GtkPicture } from "@gtkx/react-gi/gtk";
+import { GtkButton, GtkGestureClick, GtkHeaderBar, GtkPicture } from "@gtkx/jsx/gtk";
 import { createContext, useContext, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import nodeEditorSvgUri from "./org.gtk.gtk4.NodeEditor.Devel.svg";

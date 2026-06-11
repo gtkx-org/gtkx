@@ -14,7 +14,6 @@ import { SignalStore } from "../../nodes/internal/signal-store.js";
 import { stableIdOf } from "../../nodes/internal/stable-id.js";
 import type { BackingInstance } from "../../types.js";
 import type { ColumnController } from "./column-controller.js";
-import { deleteColumnViewController, getColumnController } from "./column-view-registry.js";
 
 /** Renders one bound row; `row` carries tree state for hierarchical lists. */
 export type ListItemRenderer = (item: unknown, row?: Gtk.TreeListRow | null) => ReactNode;
@@ -160,27 +159,7 @@ export class ListController {
             this.selectionController.applySelection(this.props.selected ?? null);
             this.selectionController.applySelectedId(this.props.selectedId);
         }
-        if (isColumnView) this.adoptExistingColumns();
-    }
-
-    /**
-     * Registers the controllers of every column already inserted into the column
-     * view, then runs the settle so the model and sort apply once. Covers the
-     * initial mount, where the columns attach in the commit that builds the view
-     * before this controller settles and can be recorded.
-     */
-    private adoptExistingColumns(): void {
-        const columnView = this.widget;
-        if (!(columnView instanceof Gtk.ColumnView)) return;
-        const columns = columnView.getColumns();
-        const nItems = columns.getNItems();
-        for (let i = 0; i < nItems; i++) {
-            const column = columns.getItem(i);
-            if (column instanceof Gtk.ColumnViewColumn) {
-                getColumnController(column)?.register(this, columnView);
-            }
-        }
-        this.settleColumns();
+        if (isColumnView) this.settleColumns();
     }
 
     /**
@@ -223,7 +202,6 @@ export class ListController {
         this.modelController.detach();
         this.signals.clear(this.signalOwner);
         this.columns.clear();
-        if (this.widget instanceof Gtk.ColumnView) deleteColumnViewController(this.widget);
     }
 
     /** Registers a column controller so the controller can collect its cells. */

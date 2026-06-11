@@ -8,7 +8,7 @@ import {
     GtkLabel,
     GtkSwitch,
     GtkToggleButton,
-} from "@gtkx/react-gi/gtk";
+} from "@gtkx/jsx/gtk";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import {

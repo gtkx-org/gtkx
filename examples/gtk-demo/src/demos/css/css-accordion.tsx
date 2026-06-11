@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkFrame } from "@gtkx/react-gi/gtk";
+import { GtkBox, GtkButton, GtkFrame } from "@gtkx/jsx/gtk";
 import { useCssResource } from "../../use-css-resource.js";
 import type { Demo } from "../types.js";
 import accordionCss from "./css-accordion.css?raw";

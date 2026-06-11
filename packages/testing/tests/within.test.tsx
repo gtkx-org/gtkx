@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkFrame } from "@gtkx/react-gi/gtk";
+import { GtkBox, GtkButton, GtkFrame } from "@gtkx/jsx/gtk";
 import { describe, expect, it } from "vitest";
 import { render, screen, within } from "../src/index.js";
 

@@ -1,14 +1,20 @@
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkPopoverMenu, GtkPopoverMenuBar, MenuItem, MenuSection, MenuSubmenu } from "@gtkx/react";
+import { GMenu, GMenuItem } from "@gtkx/jsx/gio";
+import { GtkPopoverMenu, GtkPopoverMenuBar } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
-import { createRef, type ReactNode } from "react";
+import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
-
-const noop = () => {};
 
 const itemLabel = (model: Gio.MenuModel, index: number): string | null => {
     const variant = model.getItemAttributeValue(index, Gio.MENU_ATTRIBUTE_LABEL, null);
+    if (!variant) return null;
+    const [text] = variant.dupString();
+    return typeof text === "string" ? text : null;
+};
+
+const itemAction = (model: Gio.MenuModel, index: number): string | null => {
+    const variant = model.getItemAttributeValue(index, Gio.MENU_ATTRIBUTE_ACTION, null);
     if (!variant) return null;
     const [text] = variant.dupString();
     return typeof text === "string" ? text : null;
@@ -33,246 +39,220 @@ const requireLink = (model: Gio.MenuModel | null): Gio.MenuModel => {
 
 const renderPopoverMenu = async (children: ReactNode): Promise<Gio.MenuModel> => {
     const ref = createRef<Gtk.PopoverMenu>();
-    await render(<GtkPopoverMenu ref={ref}>{children}</GtkPopoverMenu>);
+    await render(<GtkPopoverMenu ref={ref} menuModel={<GMenu>{children}</GMenu>} />);
     return requireModel(ref.current);
 };
 
-describe("render - Menu (1)", () => {
-    describe("GtkPopoverMenu", () => {
-        it("creates PopoverMenu widget", async () => {
-            const model = await renderPopoverMenu(<MenuItem id="item1" label="Item 1" onActivate={noop} />);
+type MenuRef = RefObject<Gtk.PopoverMenu | null>;
 
-            expect(model.getNItems()).toBe(1);
-            expect(itemLabel(model, 0)).toBe("Item 1");
-        });
+const ItemListApp = ({ menuRef, items }: { menuRef: MenuRef; items: string[] }) => (
+    <GtkPopoverMenu
+        ref={menuRef}
+        menuModel={
+            <GMenu>
+                {items.map((label) => (
+                    <GMenuItem key={label} label={label} action={`win.${label.replace(/\s+/g, "")}`} />
+                ))}
+            </GMenu>
+        }
+    />
+);
 
-        it("rebuilds menu when children change", async () => {
-            const ref = createRef<Gtk.PopoverMenu>();
+const LabeledItemApp = ({ menuRef, label }: { menuRef: MenuRef; label: string }) => (
+    <GtkPopoverMenu
+        ref={menuRef}
+        menuModel={
+            <GMenu>
+                <GMenuItem label={label} action="win.item" />
+            </GMenu>
+        }
+    />
+);
 
-            function App({ items }: { items: string[] }) {
-                return (
-                    <GtkPopoverMenu ref={ref}>
-                        {items.map((label, i) => (
-                            <MenuItem key={label} id={`item${i}`} label={label} onActivate={noop} />
-                        ))}
-                    </GtkPopoverMenu>
-                );
-            }
+const RemovableItemApp = ({ menuRef, showItem }: { menuRef: MenuRef; showItem: boolean }) => (
+    <GtkPopoverMenu
+        ref={menuRef}
+        menuModel={<GMenu>{showItem && <GMenuItem label="Removable" action="win.r" />}</GMenu>}
+    />
+);
 
-            await render(<App items={["Item 1", "Item 2"]} />);
-            expect(requireModel(ref.current).getNItems()).toBe(2);
+describe("render - Menu items", () => {
+    it("adds a menu item with a label and detailed action", async () => {
+        const model = await renderPopoverMenu(<GMenuItem label="Item 1" action="win.item1" />);
 
-            await render(<App items={["Item 1", "Item 2", "Item 3"]} />);
+        expect(model.getNItems()).toBe(1);
+        expect(itemLabel(model, 0)).toBe("Item 1");
+        expect(itemAction(model, 0)).toBe("win.item1");
+    });
 
-            const model = requireModel(ref.current);
-            expect(model.getNItems()).toBe(3);
-            expect(itemLabel(model, 2)).toBe("Item 3");
-        });
+    it("inserts items in tree order and re-snapshots on change", async () => {
+        const ref = createRef<Gtk.PopoverMenu>();
+
+        await render(<ItemListApp menuRef={ref} items={["Item 1", "Item 2"]} />);
+        expect(requireModel(ref.current).getNItems()).toBe(2);
+
+        await render(<ItemListApp menuRef={ref} items={["Item 1", "Item 2", "Item 3"]} />);
+        const model = requireModel(ref.current);
+        expect(model.getNItems()).toBe(3);
+        expect(itemLabel(model, 2)).toBe("Item 3");
+    });
+
+    it("inserts a new item at its tree position, not the end", async () => {
+        const ref = createRef<Gtk.PopoverMenu>();
+
+        await render(<ItemListApp menuRef={ref} items={["A", "C"]} />);
+        await render(<ItemListApp menuRef={ref} items={["A", "B", "C"]} />);
+
+        const model = requireModel(ref.current);
+        expect(model.getNItems()).toBe(3);
+        expect(itemLabel(model, 0)).toBe("A");
+        expect(itemLabel(model, 1)).toBe("B");
+        expect(itemLabel(model, 2)).toBe("C");
+    });
+
+    it("reorders items by moving a single entry", async () => {
+        const ref = createRef<Gtk.PopoverMenu>();
+
+        await render(<ItemListApp menuRef={ref} items={["A", "B", "C"]} />);
+        await render(<ItemListApp menuRef={ref} items={["C", "A", "B"]} />);
+
+        const model = requireModel(ref.current);
+        expect([itemLabel(model, 0), itemLabel(model, 1), itemLabel(model, 2)]).toEqual(["C", "A", "B"]);
     });
 });
 
-describe("render - Menu (2)", () => {
-    describe("PopoverMenuBar", () => {
-        it("creates PopoverMenuBar widget", async () => {
-            const ref = createRef<Gtk.PopoverMenuBar>();
+describe("render - Menu item updates", () => {
+    it("updates a label when its prop changes", async () => {
+        const ref = createRef<Gtk.PopoverMenu>();
 
-            await render(
-                <GtkPopoverMenuBar ref={ref}>
-                    <MenuSubmenu label="File">
-                        <MenuItem id="new" label="New" onActivate={noop} />
-                    </MenuSubmenu>
-                </GtkPopoverMenuBar>,
-            );
+        await render(<LabeledItemApp menuRef={ref} label="Initial" />);
+        expect(itemLabel(requireModel(ref.current), 0)).toBe("Initial");
 
-            const model = requireModel(ref.current);
-            expect(model.getNItems()).toBe(1);
-            expect(itemLabel(model, 0)).toBe("File");
+        await render(<LabeledItemApp menuRef={ref} label="Updated" />);
+        expect(itemLabel(requireModel(ref.current), 0)).toBe("Updated");
+    });
 
-            const fileSubmenu = requireLink(submenuAt(model, 0));
-            expect(fileSubmenu.getNItems()).toBe(1);
-            expect(itemLabel(fileSubmenu, 0)).toBe("New");
-        });
+    it("removes an item when it unmounts", async () => {
+        const ref = createRef<Gtk.PopoverMenu>();
+
+        await render(<RemovableItemApp menuRef={ref} showItem={true} />);
+        expect(requireModel(ref.current).getNItems()).toBe(1);
+
+        await render(<RemovableItemApp menuRef={ref} showItem={false} />);
+        expect(requireModel(ref.current).getNItems()).toBe(0);
     });
 });
 
-describe("render - Menu (3)", () => {
-    describe("Menu.Item (1)", () => {
-        it("adds menu item with label", async () => {
-            const model = await renderPopoverMenu(<MenuItem id="test" label="Test Item" onActivate={noop} />);
+describe("render - Menu sections", () => {
+    it("links a child menu as a section", async () => {
+        const model = await renderPopoverMenu(
+            <GMenuItem section>
+                <GMenu>
+                    <GMenuItem label="Section Item 1" action="win.s1" />
+                    <GMenuItem label="Section Item 2" action="win.s2" />
+                </GMenu>
+            </GMenuItem>,
+        );
 
-            expect(model.getNItems()).toBe(1);
-            expect(itemLabel(model, 0)).toBe("Test Item");
-        });
+        expect(model.getNItems()).toBe(1);
+        const section = requireLink(sectionAt(model, 0));
+        expect(section.getNItems()).toBe(2);
+        expect(itemLabel(section, 0)).toBe("Section Item 1");
+        expect(itemLabel(section, 1)).toBe("Section Item 2");
+    });
 
-        it("sets keyboard accelerators via accels prop", async () => {
-            const model = await renderPopoverMenu(
-                <MenuItem id="save" label="Save" accels="<Control>s" onActivate={noop} />,
-            );
+    it("keeps a section header label on the linking item", async () => {
+        const model = await renderPopoverMenu(
+            <GMenuItem section label="Section Title">
+                <GMenu>
+                    <GMenuItem label="Item" action="win.i" />
+                </GMenu>
+            </GMenuItem>,
+        );
 
-            expect(model.getNItems()).toBe(1);
-            expect(itemLabel(model, 0)).toBe("Save");
-        });
-
-        it("updates label when prop changes", async () => {
-            const ref = createRef<Gtk.PopoverMenu>();
-
-            function App({ label }: { label: string }) {
-                return (
-                    <GtkPopoverMenu ref={ref}>
-                        <MenuItem id="item" label={label} onActivate={noop} />
-                    </GtkPopoverMenu>
-                );
-            }
-
-            await render(<App label="Initial" />);
-            expect(itemLabel(requireModel(ref.current), 0)).toBe("Initial");
-
-            await render(<App label="Updated" />);
-            expect(itemLabel(requireModel(ref.current), 0)).toBe("Updated");
-        });
+        expect(itemLabel(model, 0)).toBe("Section Title");
+        expect(requireLink(sectionAt(model, 0)).getNItems()).toBe(1);
     });
 });
 
-describe("render - Menu (4)", () => {
-    describe("Menu.Item (2)", () => {
-        it("cleans up action on unmount", async () => {
-            const ref = createRef<Gtk.PopoverMenu>();
+describe("render - Menu submenus", () => {
+    it("links a child menu as a submenu", async () => {
+        const ref = createRef<Gtk.PopoverMenuBar>();
+        await render(
+            <GtkPopoverMenuBar
+                ref={ref}
+                menuModel={
+                    <GMenu>
+                        <GMenuItem label="File">
+                            <GMenu>
+                                <GMenuItem label="New" action="win.new" />
+                                <GMenuItem label="Open" action="win.open" />
+                            </GMenu>
+                        </GMenuItem>
+                    </GMenu>
+                }
+            />,
+        );
 
-            function App({ showItem }: { showItem: boolean }) {
-                return (
-                    <GtkPopoverMenu ref={ref}>
-                        {showItem && <MenuItem id="removable" label="Removable" onActivate={noop} />}
-                    </GtkPopoverMenu>
-                );
-            }
+        const model = requireModel(ref.current);
+        expect(model.getNItems()).toBe(1);
+        expect(itemLabel(model, 0)).toBe("File");
 
-            await render(<App showItem={true} />);
-            expect(requireModel(ref.current).getNItems()).toBe(1);
-
-            await render(<App showItem={false} />);
-            expect(requireModel(ref.current).getNItems()).toBe(0);
-        });
+        const submenu = requireLink(submenuAt(model, 0));
+        expect(submenu.getNItems()).toBe(2);
+        expect(itemLabel(submenu, 0)).toBe("New");
+        expect(itemLabel(submenu, 1)).toBe("Open");
     });
-});
 
-describe("render - Menu (5)", () => {
-    describe("Menu.Section", () => {
-        it("creates menu section", async () => {
-            const model = await renderPopoverMenu(
-                <MenuSection>
-                    <MenuItem id="section1" label="Section Item 1" onActivate={noop} />
-                    <MenuItem id="section2" label="Section Item 2" onActivate={noop} />
-                </MenuSection>,
-            );
+    it("supports nested submenus", async () => {
+        const model = await renderPopoverMenu(
+            <GMenuItem label="File">
+                <GMenu>
+                    <GMenuItem label="Recent">
+                        <GMenu>
+                            <GMenuItem label="File 1" action="win.f1" />
+                            <GMenuItem label="File 2" action="win.f2" />
+                        </GMenu>
+                    </GMenuItem>
+                </GMenu>
+            </GMenuItem>,
+        );
 
-            expect(model.getNItems()).toBe(1);
+        const file = requireLink(submenuAt(model, 0));
+        expect(file.getNItems()).toBe(1);
+        expect(itemLabel(file, 0)).toBe("Recent");
 
-            const section = requireLink(sectionAt(model, 0));
-            expect(section.getNItems()).toBe(2);
-            expect(itemLabel(section, 0)).toBe("Section Item 1");
-            expect(itemLabel(section, 1)).toBe("Section Item 2");
-        });
-
-        it("adds items within section", async () => {
-            const model = await renderPopoverMenu(
-                <>
-                    <MenuSection>
-                        <MenuItem id="itemA" label="Item A" onActivate={noop} />
-                    </MenuSection>
-                    <MenuSection>
-                        <MenuItem id="itemB" label="Item B" onActivate={noop} />
-                    </MenuSection>
-                </>,
-            );
-
-            expect(model.getNItems()).toBe(2);
-
-            const first = requireLink(sectionAt(model, 0));
-            const second = requireLink(sectionAt(model, 1));
-            expect(itemLabel(first, 0)).toBe("Item A");
-            expect(itemLabel(second, 0)).toBe("Item B");
-        });
-
-        it("sets section label", async () => {
-            const model = await renderPopoverMenu(
-                <MenuSection label="Section Title">
-                    <MenuItem id="item" label="Item" onActivate={noop} />
-                </MenuSection>,
-            );
-
-            expect(itemLabel(model, 0)).toBe("Section Title");
-            expect(requireLink(sectionAt(model, 0)).getNItems()).toBe(1);
-        });
+        const recent = requireLink(submenuAt(file, 0));
+        expect(recent.getNItems()).toBe(2);
+        expect(itemLabel(recent, 0)).toBe("File 1");
+        expect(itemLabel(recent, 1)).toBe("File 2");
     });
-});
 
-describe("render - Menu (6)", () => {
-    describe("Menu.Submenu (1)", () => {
-        it("creates submenu", async () => {
-            const model = await renderPopoverMenu(
-                <MenuSubmenu label="File">
-                    <MenuItem id="new" label="New" onActivate={noop} />
-                    <MenuItem id="open" label="Open" onActivate={noop} />
-                </MenuSubmenu>,
+    it("adds items to a submenu as they mount", async () => {
+        const ref = createRef<Gtk.PopoverMenu>();
+
+        function App({ extra }: { extra: boolean }) {
+            return (
+                <GtkPopoverMenu
+                    ref={ref}
+                    menuModel={
+                        <GMenu>
+                            <GMenuItem label="Edit">
+                                <GMenu>
+                                    <GMenuItem label="Cut" action="win.cut" />
+                                    {extra && <GMenuItem label="Copy" action="win.copy" />}
+                                </GMenu>
+                            </GMenuItem>
+                        </GMenu>
+                    }
+                />
             );
+        }
 
-            expect(model.getNItems()).toBe(1);
-            expect(itemLabel(model, 0)).toBe("File");
+        await render(<App extra={false} />);
+        expect(requireLink(submenuAt(requireModel(ref.current), 0)).getNItems()).toBe(1);
 
-            const submenu = requireLink(submenuAt(model, 0));
-            expect(submenu.getNItems()).toBe(2);
-            expect(itemLabel(submenu, 0)).toBe("New");
-            expect(itemLabel(submenu, 1)).toBe("Open");
-        });
-
-        it("adds items within submenu", async () => {
-            const model = await renderPopoverMenu(
-                <MenuSubmenu label="Edit">
-                    <MenuItem id="cut" label="Cut" onActivate={noop} />
-                    <MenuItem id="copy" label="Copy" onActivate={noop} />
-                    <MenuItem id="paste" label="Paste" onActivate={noop} />
-                </MenuSubmenu>,
-            );
-
-            const submenu = requireLink(submenuAt(model, 0));
-            expect(submenu.getNItems()).toBe(3);
-        });
-
-        it("sets submenu label", async () => {
-            const model = await renderPopoverMenu(
-                <MenuSubmenu label="Help">
-                    <MenuItem id="about" label="About" onActivate={noop} />
-                </MenuSubmenu>,
-            );
-
-            expect(itemLabel(model, 0)).toBe("Help");
-            expect(requireLink(submenuAt(model, 0)).getNItems()).toBe(1);
-        });
-    });
-});
-
-describe("render - Menu (7)", () => {
-    describe("Menu.Submenu (2)", () => {
-        it("supports nested submenus", async () => {
-            const model = await renderPopoverMenu(
-                <MenuSubmenu label="File">
-                    <MenuSubmenu label="Recent">
-                        <MenuItem id="file1" label="File 1" onActivate={noop} />
-                        <MenuItem id="file2" label="File 2" onActivate={noop} />
-                    </MenuSubmenu>
-                </MenuSubmenu>,
-            );
-
-            expect(model.getNItems()).toBe(1);
-
-            const file = requireLink(submenuAt(model, 0));
-            expect(file.getNItems()).toBe(1);
-            expect(itemLabel(file, 0)).toBe("Recent");
-
-            const recent = requireLink(submenuAt(file, 0));
-            expect(recent.getNItems()).toBe(2);
-            expect(itemLabel(recent, 0)).toBe("File 1");
-            expect(itemLabel(recent, 1)).toBe("File 2");
-        });
+        await render(<App extra={true} />);
+        expect(requireLink(submenuAt(requireModel(ref.current), 0)).getNItems()).toBe(2);
     });
 });

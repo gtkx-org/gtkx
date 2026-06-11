@@ -2,7 +2,7 @@ import type * as Gdk from "@gtkx/gi/gdk";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkFixed, GtkFixedChild, GtkLabel, GtkScrolledWindow } from "@gtkx/react-gi/gtk";
+import { GtkFixed, GtkFixedChild, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { useEffect, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./fixed2.tsx?raw";

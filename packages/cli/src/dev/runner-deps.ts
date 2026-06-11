@@ -1,3 +1,4 @@
+import { loadResolvedGtkxConfig } from "@gtkx/config";
 import { whenStopped } from "@gtkx/ffi";
 import * as Gio from "@gtkx/gi/gio";
 import { createServer } from "vite";
@@ -17,8 +18,10 @@ import type { DevRunnerDeps } from "./runner.js";
  * factory file (`runner.ts`) can be imported in unit tests without
  * pulling the GTK FFI bindings into the test process.
  *
- * The GResource plugin self-loads `applicationId` from `gtkx.config.ts`, so
- * no build-time configuration is threaded through here.
+ * The gtkx Vite plugins read `gtkx.config.ts` through their own shared
+ * loader, so no build-time configuration is threaded through here;
+ * `getConfiguredApplicationId` resolves the config separately for the MCP
+ * registration identity.
  *
  * @returns The default {@link DevRunnerDeps} used by `main`.
  */
@@ -26,6 +29,7 @@ export const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     createServer,
     whenStopped,
     getApplicationId: () => Gio.Application.getDefault()?.applicationId ?? null,
+    getConfiguredApplicationId: async (root: string) => (await loadResolvedGtkxConfig(root)).applicationId,
     startMcpClient,
     stopMcpClient,
     performRefresh,

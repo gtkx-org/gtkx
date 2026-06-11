@@ -1,9 +1,10 @@
+import type { ArrayPropRow } from "@gtkx/config";
 import { quote } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import { splitQualifiedName } from "../gir/qualified-name.js";
 import type { GirRepository } from "../gir/repository.js";
-import type { ReactGiImports } from "./imports.js";
+import type { JsxImports } from "./imports.js";
 import { buildWidgetPropsEntries } from "./props.js";
 import { collectReactNodeClasses, type WidgetCandidate } from "./widgets.js";
 
@@ -13,12 +14,12 @@ export type JsxSurfaceMaps = {
     readonly widgetSlotMap?: Readonly<Record<string, readonly string[]>>;
     /** Container-slot methods keyed by JSX element name. */
     readonly containerSlotMap?: Readonly<Record<string, readonly string[]>>;
-    /** Array props keyed by JSX element name then prop name to item-type name. */
-    readonly arrayPropMap?: Readonly<Record<string, Readonly<Record<string, string>>>>;
+    /** Array-prop rows keyed by JSX element name then prop name. */
+    readonly arrayPropMap?: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>>;
 };
 
 /**
- * Generates the intrinsic/Props section of one namespace's `@gtkx/react-gi`
+ * Generates the intrinsic/Props section of one namespace's `@gtkx/jsx`
  * module: one `export const Name = "Name"` per JSX intrinsic element NOT exported
  * as a compound, an `export interface NameProps` per intrinsic, the synthetic
  * `WidgetProps` base when this namespace owns the root of the prop chain, a
@@ -42,7 +43,7 @@ export const generateJsxSection = (
     options: {
         readonly excludeNames: ReadonlySet<string>;
         readonly maps: JsxSurfaceMaps;
-        readonly imports: ReactGiImports;
+        readonly imports: JsxImports;
     },
 ): string => {
     const { excludeNames, maps, imports } = options;
@@ -115,11 +116,11 @@ const renderJsxAugmentation = (widgets: readonly WidgetCandidate[]): string =>
 type RenderPropBlockContext = {
     readonly widgetSlotMap: Readonly<Record<string, readonly string[]>>;
     readonly containerSlotMap: Readonly<Record<string, readonly string[]>>;
-    readonly arrayPropMap: Readonly<Record<string, Readonly<Record<string, string>>>>;
+    readonly arrayPropMap: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>>;
     readonly isWidgetAncestor: (candidate: GirClass) => boolean;
     readonly widgetByGlibName: ReadonlyMap<string, WidgetCandidate>;
     readonly targetNamespaceName: string;
-    readonly imports: ReactGiImports;
+    readonly imports: JsxImports;
 };
 
 const renderPropBlock = (
@@ -139,9 +140,9 @@ const renderPropBlock = (
     for (const [namespace, alias] of imports) context.imports.giNamespaces.set(namespace, alias);
     context.imports.giNamespaces.set(entry.namespace.name, entry.namespace.name);
     const widgetTypeRef = `${entry.namespace.name}.${entry.klass.name} | null`;
-    const arrayPropLines = Object.entries(arrayProps).map(([propName, itemType]) => {
-        context.imports.sharedTypes.add(itemType);
-        return `    ${propName}?: ${itemType}[] | null;`;
+    const arrayPropLines = Object.entries(arrayProps).map(([propName, row]) => {
+        context.imports.sharedTypes.add(row.itemType);
+        return `    ${propName}?: ${row.itemType}[] | null;`;
     });
     const ownerLines = [
         "    children?: ReactNode;",

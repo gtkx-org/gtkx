@@ -1,3 +1,4 @@
+import * as Gio from "@gtkx/gi/gio";
 import { typeName } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { freeze, unfreeze } from "@gtkx/native";
@@ -17,6 +18,7 @@ import {
 } from "./instance.js";
 import { applyAccessibleProps, isAccessibleProp } from "./nodes/internal/accessible.js";
 import { applyProps } from "./nodes/internal/apply-props.js";
+import { scheduleMenuItemResnapshot } from "./nodes/internal/menu-attach.js";
 import { isBuffered } from "./nodes/internal/predicates.js";
 import { getPropDescriptors } from "./nodes/internal/prop-descriptor-table.js";
 import { BUFFER_TEXT_KIND } from "./nodes/internal/text-buffer-kinds.js";
@@ -176,6 +178,10 @@ const commitInstanceProps = (instance: Instance, oldProps: Props | null, newProp
         return;
     }
     const container = instance.backingInstance;
+    if (container instanceof Gio.MenuItem) {
+        scheduleMenuItemResnapshot(instance);
+        return;
+    }
     const table = getPropDescriptors(instance);
     if (container instanceof Gtk.Widget) {
         applyAccessibleProps(container, oldProps, newProps);
@@ -189,8 +195,6 @@ const commitInstanceProps = (instance: Instance, oldProps: Props | null, newProp
 // --- Instance teardown ---
 
 const detachInstance = (instance: Instance): void => {
-    for (const callback of instance.teardown) callback();
-    instance.teardown.clear();
     if (instance.backingInstance instanceof Gtk.TextView) disposeTextBufferController(instance.backingInstance);
     if (instance.backingInstance && !(instance.backingInstance instanceof Gtk.Widget) && instance.parent) {
         detachFromParent(instance, instance.parent);

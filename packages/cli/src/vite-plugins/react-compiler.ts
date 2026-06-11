@@ -1,9 +1,13 @@
 import { transformAsync } from "@babel/core";
 import babelPresetTypescriptNs from "@babel/preset-typescript";
+import {
+    createGtkxConfigLoader,
+    type GtkxConfigLoader,
+    type ResolvedReactCompilerOptions,
+    resolveReactCompilerOptions,
+} from "@gtkx/config";
 import babelPluginReactCompilerNs from "babel-plugin-react-compiler";
 import type { Plugin, ResolvedConfig, UserConfig } from "vite";
-import { loadReactCompilerOptions } from "../codegen/config-loader.js";
-import { type ResolvedReactCompilerOptions, resolveReactCompilerOptions } from "../config.js";
 
 const babelPresetTypescript = babelPresetTypescriptNs.default ?? babelPresetTypescriptNs;
 const babelPluginReactCompiler = babelPluginReactCompilerNs.default ?? babelPluginReactCompilerNs;
@@ -49,9 +53,11 @@ const isProjectSource = (root: string, id: string): boolean => {
  * to files under the resolved Vite root, so workspace dependencies and
  * published packages — which ship pre-compiled — are never recompiled.
  *
+ * @param loadConfig - Memoizing config loader, shared with the other gtkx
+ *   plugins by `gtkxVitePlugins` so the pipeline loads `gtkx.config.ts` once.
  * @returns The `gtkx:react-compiler` Vite plugin.
  */
-export function gtkxReactCompiler(): Plugin {
+export function gtkxReactCompiler(loadConfig: GtkxConfigLoader = createGtkxConfigLoader()): Plugin {
     const state: ReactCompilerState = {
         root: "",
         options: resolveReactCompilerOptions(true),
@@ -62,7 +68,7 @@ export function gtkxReactCompiler(): Plugin {
         enforce: "pre",
 
         async config(config: UserConfig) {
-            state.options = await loadReactCompilerOptions(config.root ?? process.cwd());
+            state.options = (await loadConfig(config.root ?? process.cwd())).reactCompiler;
         },
 
         configResolved(config: ResolvedConfig) {

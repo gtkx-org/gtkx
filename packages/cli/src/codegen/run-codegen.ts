@@ -1,8 +1,13 @@
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { type CodegenFingerprint, CodegenRunner, computeFingerprint, FINGERPRINT_FILENAME } from "@gtkx/codegen";
-import type { GtkxConfig } from "../config.js";
-import { GtkxConfigNotFoundError, loadGtkxConfig } from "./config-loader.js";
+import {
+    type CodegenFingerprint,
+    CodegenRunner,
+    computeFingerprint,
+    FINGERPRINT_FILENAME,
+    serializeUserTables,
+} from "@gtkx/codegen";
+import { type GtkxConfig, GtkxConfigNotFoundError, loadGtkxConfig } from "@gtkx/config";
 import { resolveGirPath } from "./gir-resolver.js";
 import { resolveLibraries } from "./library-resolver.js";
 import { type CodegenStore, findCodegenRoot, resolveCodegenStore } from "./store-resolver.js";
@@ -46,14 +51,15 @@ const buildRunner = (
     store: CodegenStore,
     libraries: readonly string[],
     girPath: readonly string[],
-    slots: Pick<GtkxConfig, "widgetSlots" | "containerSlots" | "arrayProps">,
+    tables: Pick<GtkxConfig, "slots" | "containerSlots" | "arrayProps" | "elementMap">,
 ): CodegenRunner =>
     new CodegenRunner({
         libraries,
         girPath,
-        widgetSlots: slots.widgetSlots,
-        containerSlots: slots.containerSlots,
-        arrayProps: slots.arrayProps,
+        slots: tables.slots,
+        containerSlots: tables.containerSlots,
+        arrayProps: tables.arrayProps,
+        elementMap: tables.elementMap,
         gi: {
             storeDir: store.giStoreDir,
             linkDir: store.giLinkDir,
@@ -61,11 +67,11 @@ const buildRunner = (
             realNativeDir: store.realNativeDir,
             version: store.ffiVersion,
         },
-        reactGi:
+        jsx:
             store.react !== null && store.realReactRuntimeDir !== null
                 ? {
-                      storeDir: store.reactGiStoreDir,
-                      linkDir: store.reactGiLinkDir,
+                      storeDir: store.jsxStoreDir,
+                      linkDir: store.jsxLinkDir,
                       giStoreDir: store.giStoreDir,
                       realReactRuntimeDir: store.realReactRuntimeDir,
                       realReactPackageDir: store.react.realDir,
@@ -80,7 +86,7 @@ const buildRunner = (
  * Loads `gtkx.config.ts`, resolves GIR search paths and the resolved library
  * list, locates the project's installed `@gtkx/ffi`/`@gtkx/react`, and delegates
  * to {@link CodegenRunner}, which materializes the injected `@gtkx/gi` (and,
- * when React is present, `@gtkx/react-gi`) packages into `node_modules`.
+ * when React is present, `@gtkx/jsx`) packages into `node_modules`.
  *
  * Always regenerates: the conditional {@link ensureGenerated} gate (used by the
  * turbo task and the `gtkx dev`/`gtkx build` preflight) owns the decision of
@@ -107,15 +113,16 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
     }
 
     if (options.force) {
-        for (const path of [store.giStoreDir, store.giLinkDir, store.reactGiStoreDir, store.reactGiLinkDir]) {
+        for (const path of [store.giStoreDir, store.giLinkDir, store.jsxStoreDir, store.jsxLinkDir]) {
             rmSync(path, { recursive: true, force: true });
         }
     }
 
     const result = await buildRunner(store, libraries, girPath, {
-        widgetSlots: config.widgetSlots,
+        slots: config.slots,
         containerSlots: config.containerSlots,
         arrayProps: config.arrayProps,
+        elementMap: config.elementMap,
     }).run();
 
     return {
@@ -129,7 +136,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
 };
 
 /**
- * `@gtkx/react-gi` modules that must exist whenever React bindings have been
+ * `@gtkx/jsx` modules that must exist whenever React bindings have been
  * generated: the merged metadata module and the always-present `gtk` namespace
  * module (Gtk is in the default library set). A per-namespace module's absence
  * for a newly configured library is caught by the shared gi-store fingerprint,
@@ -162,13 +169,13 @@ const giStoreLinksResolve = (giStoreDir: string): boolean =>
 
 /**
  * Returns true if the injected `@gtkx/gi` (or, when the React stack — both
- * `@gtkx/react` and the `react` runtime — is present, `@gtkx/react-gi`)
+ * `@gtkx/react` and the `react` runtime — is present, `@gtkx/jsx`)
  * package is missing a required module or its visible alias.
  *
  * Used by `gtkx dev`/`gtkx build` and by {@link ensureGenerated} to auto-run
  * codegen when the store is absent, partial, or a newly configured library has
- * not been generated. The react-gi-freshness branch is gated on the same
- * condition {@link runCodegen} uses to emit the react-gi unit — both the
+ * not been generated. The jsx-freshness branch is gated on the same
+ * condition {@link runCodegen} uses to emit the jsx unit — both the
  * `@gtkx/react` package and the `react` runtime resolving — so a project with
  * `@gtkx/react` but no `react` runtime does not wedge on a unit that can never
  * be produced.
@@ -198,10 +205,10 @@ const isCodegenNeeded = (cwd: string, config: GtkxConfig): boolean => {
             return true;
         }
         if (store.react !== null && store.realReactRuntimeDir !== null) {
-            if (!existsSync(store.reactGiLinkDir)) return true;
-            if (REACT_GENERATED_MODULES.some((module) => !existsSync(join(store.reactGiStoreDir, module)))) return true;
+            if (!existsSync(store.jsxLinkDir)) return true;
+            if (REACT_GENERATED_MODULES.some((module) => !existsSync(join(store.jsxStoreDir, module)))) return true;
         }
-        return fingerprintStale(store.giStoreDir, libraries);
+        return fingerprintStale(store.giStoreDir, libraries, serializeUserTables(config));
     } catch {
         return true;
     }
@@ -209,14 +216,15 @@ const isCodegenNeeded = (cwd: string, config: GtkxConfig): boolean => {
 
 /**
  * Whether the gi store's fingerprint sentinel is absent or no longer matches the
- * current codegen version, library set, or GIR file contents. Recomputing from
- * the sentinel's recorded GIR file list re-reads those files but does not reload
- * or reparse the repository.
+ * current codegen version, library set, table-shaping config inputs, or GIR
+ * file contents. Recomputing from the sentinel's recorded GIR file list
+ * re-reads those files but does not reload or reparse the repository.
  *
  * @param giStoreDir - The hidden `@gtkx/gi` store directory
  * @param libraries - The currently-resolved library identifiers
+ * @param userTables - The current config's serialized table inputs
  */
-const fingerprintStale = (giStoreDir: string, libraries: readonly string[]): boolean => {
+const fingerprintStale = (giStoreDir: string, libraries: readonly string[], userTables: string): boolean => {
     const sentinelPath = join(giStoreDir, FINGERPRINT_FILENAME);
     if (!existsSync(sentinelPath)) return true;
     let sentinel: CodegenFingerprint;
@@ -228,7 +236,7 @@ const fingerprintStale = (giStoreDir: string, libraries: readonly string[]): boo
     const sortAlpha = (values: readonly string[]): string => [...values].sort((a, b) => a.localeCompare(b)).join(",");
     if (sortAlpha(sentinel.libraries) !== sortAlpha(libraries)) return true;
     try {
-        return computeFingerprint(sentinel.girFiles, sentinel.libraries) !== sentinel.value;
+        return computeFingerprint(sentinel.girFiles, sentinel.libraries, userTables) !== sentinel.value;
     } catch {
         return true;
     }
@@ -239,7 +247,7 @@ const fingerprintStale = (giStoreDir: string, libraries: readonly string[]): boo
  * shadow the shared root store.
  *
  * When a member shares the workspace root's store, a leftover member-local
- * `.gtkx` (or its `@gtkx/{gi,react-gi}` symlinks) would resolve ahead of the
+ * `.gtkx` (or its `@gtkx/{gi,jsx}` symlinks) would resolve ahead of the
  * root copy, reintroducing the duplicate-instance split this sharing avoids.
  *
  * @param memberDir - The workspace member whose shadowing store to prune
@@ -249,7 +257,7 @@ const pruneShadowingStore = (memberDir: string): void => {
     for (const path of [
         join(nodeModules, ".gtkx"),
         join(nodeModules, "@gtkx", "gi"),
-        join(nodeModules, "@gtkx", "react-gi"),
+        join(nodeModules, "@gtkx", "jsx"),
     ]) {
         rmSync(path, { recursive: true, force: true });
     }

@@ -1,41 +1,36 @@
+/// <reference types="@gtkx/config/virtual" />
+
 /**
- * The reconciler's array-prop table.
+ * The reconciler's array-prop interpreter.
  *
  * A handful of widget props take an array whose elements map to repeated GTK
- * calls (`addMark`, `addResponse`, `markDay`, …) rather than a single property
- * set. {@link ARRAY_PROPS} keys those by GLib type name then prop name, each
- * value describing how one element is added, an old element removed, or the
- * whole list cleared/replaced. `apply-props` walks an instance's GType ancestry,
- * and on array-identity change reconciles the previous elements against the
- * current ones through the matching descriptor.
+ * calls (`addMark`, `addResponse`, `markDay`, …) instead of a single property
+ * set. Each is one serializable {@link "@gtkx/config".ArrayPropRow}: the rows
+ * arrive merged through `virtual:gtkx-config` — codegen's built-ins overlaid
+ * with the project's `gtkx.config.ts` `arrayProps` rows — and this module
+ * compiles them into the descriptors `apply-props` reconciles with.
+ * `apply-props` walks an instance's GType ancestry, and on array-identity
+ * change reconciles the previous elements against the current ones through
+ * the matching descriptor.
  *
- * {@link ARRAY_PROPS} owns the runtime add/remove/clear behavior. The matching
- * JSX surface — the typed prop line in each generated `Props` interface and the
- * suppression of the raw GObject prop of the same name — is owned by the codegen
- * `arrayProps` map, keyed by the same JSX element and prop names.
+ * The rows also own the matching JSX surface: codegen types each prop as
+ * `prop?: ItemType[] | null;` from the same merged map and suppresses the raw
+ * GObject prop of the same name.
  */
-import type * as Adw from "@gtkx/gi/adw";
+import { ARRAY_PROPS as ARRAY_PROP_ROWS } from "virtual:gtkx-config";
+import type { ArrayPropRow, CallStep, ConstructStep, PresenceCondition } from "@gtkx/config";
 import type { GType } from "@gtkx/gi/gobject";
-import * as Gtk from "@gtkx/gi/gtk";
 import { collectTypeNameChain } from "./gtype.js";
-import { isAdwAlertDialog, isAdwToggleGroup, requireClassByName } from "./gtype-predicates.js";
-import type {
-    AlertDialogResponseProps,
-    CalendarMark,
-    CreditSection,
-    DropTargetType,
-    LevelBarOffset,
-    ScaleMark,
-    ToggleProps,
-} from "./jsx.js";
+import { requireClassByName } from "./gtype-predicates.js";
+import { callMethod } from "./nodes/internal/reflect-call.js";
 import type { BackingInstance } from "./types.js";
 
 /**
  * Describes how one array-valued prop reconciles its elements into GTK calls.
- * Apply order: `set` replaces the whole list in one call; otherwise old elements
- * are removed (`clear` once, else `remove` each) and new ones added (`add` each).
- * `appendOnce` marks an immutable list applied only when the previous one was
- * empty.
+ * Apply order: `set` replaces the whole list in one call; otherwise old
+ * elements are removed (`clear` once, else `remove` each) and new ones added
+ * (`add` each). `appendOnce` marks an immutable list applied only when the
+ * previous one was empty.
  */
 export interface ArrayPropDescriptor {
     /** Removes every previously-applied element in one call. */
@@ -50,99 +45,70 @@ export interface ArrayPropDescriptor {
     appendOnce?: boolean;
 }
 
-const applyToggleProps = (toggle: Adw.Toggle, props: ToggleProps): void => {
-    if (props.id != null) toggle.setName(props.id);
-    if (props.label != null) toggle.setLabel(props.label);
-    if (props.iconName != null) toggle.setIconName(props.iconName);
-    if (props.tooltip !== undefined) toggle.setTooltip(props.tooltip);
-    if (props.enabled !== undefined) toggle.setEnabled(props.enabled);
-    if (props.useUnderline !== undefined) toggle.setUseUnderline(props.useUnderline);
+const itemField = (item: unknown, path: string): unknown =>
+    typeof item === "object" && item !== null ? Reflect.get(item, path) : undefined;
+
+const satisfies = (value: unknown, condition: PresenceCondition): boolean =>
+    condition === "defined" ? value !== undefined : value != null;
+
+const resolveCallArg = (arg: CallStep["args"][number], item: unknown): unknown => {
+    if (arg.kind === "value") return arg.value;
+    if (arg.path === undefined) return item;
+    const value = itemField(item, arg.path);
+    return "fallback" in arg ? (value ?? arg.fallback) : value;
+};
+
+const runCallStep = (target: BackingInstance, step: CallStep, item: unknown): void => {
+    if (step.when && !satisfies(itemField(item, step.when.path), step.when.is)) return;
+    callMethod(
+        target,
+        step.method,
+        step.args.map((arg) => resolveCallArg(arg, item)),
+    );
+};
+
+const runConstructStep = (target: BackingInstance, step: ConstructStep, item: unknown): void => {
+    const constructed = new (requireClassByName(step.type) as new () => object)();
+    for (const setter of step.setters) {
+        const value = itemField(item, setter.path);
+        if (satisfies(value, setter.when)) callMethod(constructed, setter.method, [value]);
+    }
+    callMethod(target, step.attach, [constructed]);
+};
+
+const compileRow = (row: ArrayPropRow): ArrayPropDescriptor => {
+    const descriptor: ArrayPropDescriptor = {};
+    const { clear, remove, add, construct, set } = row;
+    if (set !== undefined) descriptor.set = (target, items) => callMethod(target, set, [items]);
+    if (row.appendOnce) descriptor.appendOnce = true;
+    if (clear !== undefined) descriptor.clear = (target) => callMethod(target, clear, []);
+    if (remove !== undefined) descriptor.remove = (target, item) => runCallStep(target, remove, item);
+    if (add !== undefined) {
+        descriptor.add = (target, item) => {
+            for (const step of add) runCallStep(target, step, item);
+        };
+    }
+    if (construct !== undefined) descriptor.add = (target, item) => runConstructStep(target, construct, item);
+    return descriptor;
+};
+
+const compileRows = (): Readonly<Record<string, Readonly<Record<string, ArrayPropDescriptor>>>> => {
+    const compiled: Record<string, Record<string, ArrayPropDescriptor>> = {};
+    for (const [typeName, props] of Object.entries(ARRAY_PROP_ROWS)) {
+        const entry: Record<string, ArrayPropDescriptor> = {};
+        for (const [prop, row] of Object.entries(props)) entry[prop] = compileRow(row);
+        compiled[typeName] = entry;
+    }
+    return compiled;
 };
 
 /**
- * Array props keyed by GLib type name, then by prop name. `apply-props` merges
- * the entries for every type in an instance's GType ancestry.
+ * The compiled array-prop descriptors keyed by GLib type name, then by prop
+ * name, from the merged rows delivered by `virtual:gtkx-config`.
+ * `apply-props` merges the entries for every type in an instance's GType
+ * ancestry.
  */
-export const ARRAY_PROPS: Readonly<Record<string, Readonly<Record<string, ArrayPropDescriptor>>>> = {
-    GtkScale: {
-        marks: {
-            clear: (target) => {
-                if (target instanceof Gtk.Scale) target.clearMarks();
-            },
-            add: (target, item) => {
-                if (!(target instanceof Gtk.Scale)) return;
-                const mark = item as ScaleMark;
-                target.addMark(mark.value, mark.position ?? Gtk.PositionType.BOTTOM, mark.label ?? null);
-            },
-        },
-    },
-    GtkLevelBar: {
-        offsets: {
-            remove: (target, item) => {
-                if (target instanceof Gtk.LevelBar) target.removeOffsetValue((item as LevelBarOffset).id);
-            },
-            add: (target, item) => {
-                if (!(target instanceof Gtk.LevelBar)) return;
-                const offset = item as LevelBarOffset;
-                target.addOffsetValue(offset.id, offset.value);
-            },
-        },
-    },
-    GtkCalendar: {
-        markedDays: {
-            clear: (target) => {
-                if (target instanceof Gtk.Calendar) target.clearMarks();
-            },
-            add: (target, item) => {
-                if (target instanceof Gtk.Calendar) target.markDay(item as CalendarMark);
-            },
-        },
-    },
-    AdwToggleGroup: {
-        toggles: {
-            clear: (target) => {
-                if (isAdwToggleGroup(target)) target.removeAll();
-            },
-            add: (target, item) => {
-                if (!isAdwToggleGroup(target)) return;
-                const toggle = new (requireClassByName("AdwToggle") as typeof Adw.Toggle)();
-                applyToggleProps(toggle, item as ToggleProps);
-                target.add(toggle);
-            },
-        },
-    },
-    AdwAlertDialog: {
-        responses: {
-            remove: (target, item) => {
-                if (isAdwAlertDialog(target)) target.removeResponse((item as AlertDialogResponseProps).id);
-            },
-            add: (target, item) => {
-                if (!isAdwAlertDialog(target)) return;
-                const response = item as AlertDialogResponseProps;
-                target.addResponse(response.id, response.label);
-                if (response.appearance !== undefined) target.setResponseAppearance(response.id, response.appearance);
-                if (response.enabled !== undefined) target.setResponseEnabled(response.id, response.enabled);
-            },
-        },
-    },
-    GtkDropTarget: {
-        types: {
-            set: (target, items) => {
-                if (target instanceof Gtk.DropTarget) target.setGtypes(items as DropTargetType[]);
-            },
-        },
-    },
-    GtkAboutDialog: {
-        creditSections: {
-            appendOnce: true,
-            add: (target, item) => {
-                if (!(target instanceof Gtk.AboutDialog)) return;
-                const section = item as CreditSection;
-                target.addCreditSection(section.name, section.people);
-            },
-        },
-    },
-};
+export const ARRAY_PROPS: Readonly<Record<string, Readonly<Record<string, ArrayPropDescriptor>>>> = compileRows();
 
 const arrayPropCache = new Map<GType, ReadonlyMap<string, ArrayPropDescriptor>>();
 

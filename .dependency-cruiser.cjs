@@ -7,17 +7,20 @@
  * Rule summary:
  *   1. `@gtkx/native` is the low-level transport layer. `@gtkx/ffi` is its
  *      primary consumer; `@gtkx/react` may also import it to bracket reconciler
- *      commits with `freeze`/`unfreeze`. `@gtkx/codegen` may reference it too:
- *      the generator logic via `import type { ... }` so it can emit binding
- *      signatures without dragging the native module into its runtime graph,
- *      and the augment overlay with runtime imports, since it is hand-written
- *      `@gtkx/gi` code that reaches the native transport layer directly.
+ *      commits with `freeze`/`unfreeze`. `@gtkx/codegen` may reference it only
+ *      via `import type { ... }` so it can emit binding signatures without
+ *      dragging the native module into its runtime graph; its override
+ *      templates reach the transport layer through `@gtkx/ffi` helpers.
  *   2. `@gtkx/mcp` is near-leaf: it may only depend on `@gtkx/utils` (which
  *      is itself a true leaf — no `@gtkx/*` deps). Any other `@gtkx/*`
  *      import would couple the MCP server to GTK runtime concerns.
  *   3. `@gtkx/utils` is the runtime-utilities leaf: it must not depend on
  *      any other `@gtkx/*` workspace package so every other package can
  *      pull it in safely.
+ *   4. `@gtkx/config` is the configuration leaf (`gtkx.config.ts` schema,
+ *      validation, loader). It must not depend on any other `@gtkx/*`
+ *      package: the cli depends on `@gtkx/vitest`, which loads the config,
+ *      so a workspace dependency here would close a cycle.
  *
  * The configuration is consumed via `pnpm depcruise` (see root package.json)
  * and runs as part of `pnpm lint:all`.
@@ -51,15 +54,25 @@ module.exports = {
             name: "codegen-native-type-only",
             severity: "error",
             comment:
-                "@gtkx/codegen's generator logic may reference @gtkx/native, but only with " +
-                "`import type`. A runtime import would couple the code generator to the native " +
-                "module. The augment overlay under overlay/ is exempt: it is hand-written " +
-                "@gtkx/gi runtime code that reaches @gtkx/native directly for low-level transport.",
-            from: { path: "^packages/codegen/(?!overlay/)" },
+                "@gtkx/codegen may reference @gtkx/native only with `import type`. A runtime " +
+                "import would couple the code generator to the native module; the override " +
+                "templates under src/templates reach the transport layer through @gtkx/ffi.",
+            from: { path: "^packages/codegen/" },
             to: {
                 path: "^(packages/native/|@gtkx/native(/|$))",
                 dependencyTypesNot: ["type-only"],
             },
+        },
+        {
+            name: "codegen-no-react",
+            severity: "error",
+            comment:
+                "@gtkx/codegen owns the built-in reconciler tables and delivers them to " +
+                "@gtkx/react through the generated @gtkx/jsx/metadata module. Importing " +
+                "@gtkx/react from the generator would invert that flow and load the component " +
+                "runtime, which depends on virtual:gtkx-config.",
+            from: { path: "^packages/codegen/" },
+            to: { path: "^packages/react/" },
         },
         {
             name: "mcp-only-utils-workspace-deps",
@@ -78,6 +91,16 @@ module.exports = {
                 "would block other packages from pulling it in safely.",
             from: { path: "^packages/utils/" },
             to: { path: "^(packages/(?!utils/)|@gtkx/(?!utils(/|$)))" },
+        },
+        {
+            name: "config-no-workspace-deps",
+            severity: "error",
+            comment:
+                "@gtkx/config is the configuration leaf consumed by the cli and the test " +
+                "packages. Any other @gtkx/* dependency would close a cycle through the " +
+                "toolchain: the cli depends on @gtkx/vitest, which loads the config.",
+            from: { path: "^packages/config/" },
+            to: { path: "^(packages/(?!config/)|@gtkx/(?!config(/|$)))" },
         },
     ],
     options: {

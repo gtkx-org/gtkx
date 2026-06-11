@@ -1,7 +1,7 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
-import { GtkMenuButton, MenuItem, MenuSection } from "@gtkx/react";
+import { GMenu, GMenuItem, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
 import {
     GtkBox,
     GtkButton,
@@ -12,9 +12,10 @@ import {
     GtkLinkButton,
     GtkListBox,
     GtkListBoxRow,
+    GtkMenuButton,
     GtkRevealer,
     GtkScrolledWindow,
-} from "@gtkx/react-gi/gtk";
+} from "@gtkx/jsx/gtk";
 import { useRef, useState } from "react";
 import { path as appleRedPath } from "../css/apple-red.png";
 import type { Demo } from "../types.js";
@@ -174,11 +175,25 @@ const MessageActions = ({
                 <GtkButton label="Reply" receivesDefault hasFrame={false} />
                 <GtkButton label="Reshare" receivesDefault hasFrame={false} onClicked={() => onReshare(message.id)} />
                 <GtkButton label="Favorite" receivesDefault hasFrame={false} onClicked={() => onFavorite(message.id)} />
-                <GtkMenuButton receivesDefault hasFrame={false} label="More...">
-                    <MenuSection>
-                        <MenuItem id="email-msg" label="Email message" onActivate={() => {}} />
-                        <MenuItem id="embed-msg" label="Embed message" onActivate={() => {}} />
-                    </MenuSection>
+                <GtkMenuButton
+                    receivesDefault
+                    hasFrame={false}
+                    label="More..."
+                    menuModel={
+                        <GMenu>
+                            <GMenuItem section>
+                                <GMenu>
+                                    <GMenuItem label="Email message" action="msg.email" />
+                                    <GMenuItem label="Embed message" action="msg.embed" />
+                                </GMenu>
+                            </GMenuItem>
+                        </GMenu>
+                    }
+                >
+                    <GSimpleActionGroup prefix="msg">
+                        <GSimpleAction name="email" onActivate={() => {}} />
+                        <GSimpleAction name="embed" onActivate={() => {}} />
+                    </GSimpleActionGroup>
                 </GtkMenuButton>
             </GtkBox>
         </GtkBox>
