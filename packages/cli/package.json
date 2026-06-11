@@ -95,7 +95,7 @@
         "@types/babel__core": "^7.20.5",
         "@types/ejs": "^3.1.5",
         "@types/react-refresh": "^0.14.7",
-        "memfs": "^4.57.6"
+        "memfs": "^4.57.7"
     },
     "peerDependencies": {
         "@gtkx/react": "workspace:*",
