@@ -8,8 +8,8 @@ use gtk4::prelude::StaticType as _;
 use native::NativeHandle;
 use native::ffi::FfiValue;
 use native::types::{
-    ArrayKind, ArrayType, BooleanType, FloatKind, HashTableEntryEncoder, HashTableType,
-    IntegerKind, Ownership, StringType, StructType, Type, VoidType,
+    ArrayKind, ArrayType, BooleanType, BoxedType, FloatKind, GObjectType, HashTableEntryEncoder,
+    HashTableType, IntegerKind, Ownership, StringType, StructType, Type, VoidType,
 };
 use native::types::{FfiDecoder, FfiEncoder, RawPtrCodec};
 use native::value::Value;
@@ -69,21 +69,21 @@ where
 fn encoder_from_type_boolean() {
     let ty = Type::Boolean(BooleanType);
     let encoder = HashTableEntryEncoder::from_type(&ty);
-    assert_eq!(encoder, Some(HashTableEntryEncoder::Boolean));
+    assert!(matches!(encoder, Some(HashTableEntryEncoder::Boolean)));
 }
 
 #[test]
 fn encoder_from_type_float() {
     let ty = Type::Float(FloatKind::F64);
     let encoder = HashTableEntryEncoder::from_type(&ty);
-    assert_eq!(encoder, Some(HashTableEntryEncoder::Float));
+    assert!(matches!(encoder, Some(HashTableEntryEncoder::Float)));
 }
 
 #[test]
 fn encoder_from_type_integer() {
     let ty = Type::Integer(IntegerKind::I32);
     let encoder = HashTableEntryEncoder::from_type(&ty);
-    assert_eq!(encoder, Some(HashTableEntryEncoder::Integer));
+    assert!(matches!(encoder, Some(HashTableEntryEncoder::Integer)));
 }
 
 #[test]
@@ -93,7 +93,7 @@ fn encoder_from_type_string() {
         length: None,
     });
     let encoder = HashTableEntryEncoder::from_type(&ty);
-    assert_eq!(encoder, Some(HashTableEntryEncoder::String));
+    assert!(matches!(encoder, Some(HashTableEntryEncoder::String)));
 }
 
 #[test]
@@ -102,7 +102,7 @@ fn boolean_encoder_uses_direct_hash_and_equal() {
 
     assert!(encoder.hash_func().is_some());
     assert!(encoder.equal_func().is_some());
-    assert!(encoder.free_func().is_none());
+    assert!(encoder.free_func().unwrap().is_none());
 }
 
 #[test]
@@ -111,7 +111,7 @@ fn float_encoder_uses_double_hash_and_equal() {
 
     assert!(encoder.hash_func().is_some());
     assert!(encoder.equal_func().is_some());
-    assert!(encoder.free_func().is_some());
+    assert!(encoder.free_func().unwrap().is_some());
 }
 
 #[test]
@@ -151,6 +151,7 @@ fn encode_float_value() {
 
     let ptr = encoder.encode(&value).expect("encoding should succeed");
 
+    // SAFETY: The encoder returned a live g_malloc'd f64 box.
     let stored_value = unsafe {
         *ptr.cast::<f64>()
             .as_ref()
@@ -158,6 +159,7 @@ fn encode_float_value() {
     };
     assert!((stored_value - std::f64::consts::PI).abs() < f64::EPSILON);
 
+    // SAFETY: Frees the allocation this test owns.
     unsafe { glib::ffi::g_free(ptr) };
 }
 
@@ -168,6 +170,7 @@ fn encode_float_negative() {
 
     let ptr = encoder.encode(&value).expect("encoding should succeed");
 
+    // SAFETY: The encoder returned a live g_malloc'd f64 box.
     let stored_value = unsafe {
         *ptr.cast::<f64>()
             .as_ref()
@@ -175,6 +178,7 @@ fn encode_float_negative() {
     };
     assert!((stored_value - (-123.456)).abs() < f64::EPSILON);
 
+    // SAFETY: Frees the allocation this test owns.
     unsafe { glib::ffi::g_free(ptr) };
 }
 
@@ -193,9 +197,9 @@ fn ptr_to_value_boolean_true() {
     let ty = Type::Boolean(BooleanType);
     let ptr = std::ptr::dangling_mut::<c_void>();
 
-    let value = ty
-        .ptr_to_value(ptr, "test")
-        .expect("decoding should succeed");
+    // SAFETY: BooleanType reinterprets the pointer value without
+    // dereferencing it.
+    let value = unsafe { ty.ptr_to_value(ptr, "test") }.expect("decoding should succeed");
 
     match value {
         Value::Boolean(true) => (),
@@ -208,9 +212,9 @@ fn ptr_to_value_boolean_false() {
     let ty = Type::Boolean(BooleanType);
     let ptr = std::ptr::null_mut::<c_void>();
 
-    let value = ty
-        .ptr_to_value(ptr, "test")
-        .expect("decoding should succeed");
+    // SAFETY: BooleanType reinterprets the pointer value without
+    // dereferencing it.
+    let value = unsafe { ty.ptr_to_value(ptr, "test") }.expect("decoding should succeed");
 
     match value {
         Value::Boolean(false) => (),
@@ -223,9 +227,9 @@ fn ptr_to_value_boolean_nonzero_is_true() {
     let ty = Type::Boolean(BooleanType);
     let ptr = 42isize as *mut c_void;
 
-    let value = ty
-        .ptr_to_value(ptr, "test")
-        .expect("decoding should succeed");
+    // SAFETY: BooleanType reinterprets the pointer value without
+    // dereferencing it.
+    let value = unsafe { ty.ptr_to_value(ptr, "test") }.expect("decoding should succeed");
 
     match value {
         Value::Boolean(true) => (),
@@ -237,21 +241,22 @@ fn ptr_to_value_boolean_nonzero_is_true() {
 fn ptr_to_value_float() {
     let ty = Type::Float(FloatKind::F64);
     let float_val: f64 = std::f64::consts::E;
+    // SAFETY: g_malloc aborts on failure, so the write targets a valid f64 slot.
     let ptr = unsafe {
         let mem = glib::ffi::g_malloc(std::mem::size_of::<f64>()) as *mut f64;
         *mem = float_val;
         mem as *mut c_void
     };
 
-    let value = ty
-        .ptr_to_value(ptr, "test")
-        .expect("decoding should succeed");
+    // SAFETY: `ptr` addresses a live g_malloc'd f64.
+    let value = unsafe { ty.ptr_to_value(ptr, "test") }.expect("decoding should succeed");
 
     match value {
         Value::Number(n) => assert!((n - std::f64::consts::E).abs() < f64::EPSILON),
         other => panic!("Expected Number, got {other:?}"),
     }
 
+    // SAFETY: Frees the allocation this test owns.
     unsafe { glib::ffi::g_free(ptr) };
 }
 
@@ -262,9 +267,9 @@ fn ptr_to_value_struct_null() {
         size: Some(16),
     });
 
-    let value = ty
-        .ptr_to_value(std::ptr::null_mut(), "test")
-        .expect("decoding should succeed");
+    // SAFETY: Null short-circuits before any read.
+    let value =
+        unsafe { ty.ptr_to_value(std::ptr::null_mut(), "test") }.expect("decoding should succeed");
 
     match value {
         Value::Null => (),
@@ -280,17 +285,18 @@ fn ptr_to_value_struct_non_null() {
             size: Some(16),
         });
 
+        // SAFETY: Allocating zeroed memory has no pointer preconditions.
         let ptr = unsafe { glib::ffi::g_malloc0(16) };
 
-        let value = ty
-            .ptr_to_value(ptr, "test")
-            .expect("decoding should succeed");
+        // SAFETY: `ptr` addresses a live 16-byte allocation.
+        let value = unsafe { ty.ptr_to_value(ptr, "test") }.expect("decoding should succeed");
 
         match value {
             Value::Object(_) => (),
             other => panic!("Expected Object, got {other:?}"),
         }
 
+        // SAFETY: Frees the allocation this test owns.
         unsafe { glib::ffi::g_free(ptr) };
     });
 }
@@ -460,9 +466,11 @@ fn hashtable_borrowed_does_not_free() {
             _ => panic!("Expected array"),
         }
 
+        // SAFETY: `hash_table` is a live GHashTable.
         let size = unsafe { glib::ffi::g_hash_table_size(hash_table) };
         assert_eq!(size, 2);
 
+        // SAFETY: Releases a reference this test owns on the live GHashTable.
         unsafe { glib::ffi::g_hash_table_unref(hash_table) };
     });
 }
@@ -488,10 +496,10 @@ fn float_memory_properly_freed_on_drop() {
 
 #[test]
 fn encoder_from_type_native_handle() {
-    assert_eq!(
+    assert!(matches!(
         HashTableEntryEncoder::from_type(&struct_type()),
-        Some(HashTableEntryEncoder::NativeHandle)
-    );
+        Some(HashTableEntryEncoder::NativeHandle(_))
+    ));
 }
 
 #[test]
@@ -502,29 +510,14 @@ fn encoder_from_type_ptr_array() {
 
 #[test]
 fn encoder_from_type_unsupported_returns_none() {
-    assert_eq!(
-        HashTableEntryEncoder::from_type(&Type::Void(VoidType)),
-        None
-    );
+    assert!(HashTableEntryEncoder::from_type(&Type::Void(VoidType)).is_none());
     let non_ptr_array = Type::Array(ArrayType {
         item_type: Box::new(Type::Integer(IntegerKind::I32)),
         kind: ArrayKind::Array,
         ownership: Ownership::Full,
         element_size: None,
     });
-    assert_eq!(HashTableEntryEncoder::from_type(&non_ptr_array), None);
-}
-
-#[test]
-fn encoder_partial_eq_compares_by_discriminant() {
-    assert_eq!(
-        HashTableEntryEncoder::PtrArray(Box::new(Type::Integer(IntegerKind::I32))),
-        HashTableEntryEncoder::PtrArray(Box::new(Type::Boolean(BooleanType)))
-    );
-    assert_ne!(
-        HashTableEntryEncoder::String,
-        HashTableEntryEncoder::Integer
-    );
+    assert!(HashTableEntryEncoder::from_type(&non_ptr_array).is_none());
 }
 
 #[test]
@@ -532,7 +525,7 @@ fn integer_encoder_hash_equal_and_free() {
     let encoder = HashTableEntryEncoder::Integer;
     assert!(encoder.hash_func().is_some());
     assert!(encoder.equal_func().is_some());
-    assert!(encoder.free_func().is_none());
+    assert!(encoder.free_func().unwrap().is_none());
 }
 
 #[test]
@@ -540,15 +533,38 @@ fn string_encoder_hash_equal_and_free() {
     let encoder = HashTableEntryEncoder::String;
     assert!(encoder.hash_func().is_some());
     assert!(encoder.equal_func().is_some());
-    assert!(encoder.free_func().is_some());
+    assert!(encoder.free_func().unwrap().is_some());
 }
 
 #[test]
 fn native_handle_encoder_hash_equal_and_free() {
-    let encoder = HashTableEntryEncoder::NativeHandle;
+    let encoder = HashTableEntryEncoder::NativeHandle(Box::new(struct_type()));
     assert!(encoder.hash_func().is_some());
     assert!(encoder.equal_func().is_some());
-    assert!(encoder.free_func().is_none());
+    assert!(encoder.free_func().unwrap().is_none());
+}
+
+#[test]
+fn full_gobject_encoder_installs_unref_destroy() {
+    let encoder = HashTableEntryEncoder::NativeHandle(Box::new(Type::GObject(GObjectType {
+        ownership: Ownership::Full,
+    })));
+    assert!(encoder.free_func().unwrap().is_some());
+}
+
+#[test]
+fn full_boxed_encoder_rejects_destroy() {
+    let encoder = HashTableEntryEncoder::NativeHandle(Box::new(Type::Boxed(BoxedType {
+        ownership: Ownership::Full,
+        type_name: "GdkRGBA".to_string(),
+        library: None,
+        get_type_fn: None,
+        free_fn: None,
+    })));
+    let err = encoder
+        .free_func()
+        .expect_err("full-ownership boxed elements must be rejected");
+    assert!(err.to_string().contains("unsupported"));
 }
 
 #[test]
@@ -556,7 +572,7 @@ fn ptr_array_encoder_hash_equal_and_free() {
     let encoder = HashTableEntryEncoder::PtrArray(Box::new(Type::Integer(IntegerKind::I32)));
     assert!(encoder.hash_func().is_some());
     assert!(encoder.equal_func().is_some());
-    assert!(encoder.free_func().is_some());
+    assert!(encoder.free_func().unwrap().is_some());
 }
 
 #[test]
@@ -565,6 +581,7 @@ fn encode_string_value_and_wrong_type() {
         let encoder = HashTableEntryEncoder::String;
         let ptr = encoder.encode(&Value::String("hi".to_string())).unwrap();
         assert!(!ptr.is_null());
+        // SAFETY: Frees the allocation this test owns.
         unsafe { glib::ffi::g_free(ptr) };
 
         assert!(encoder.encode(&Value::Number(1.0)).is_err());
@@ -583,7 +600,7 @@ fn encode_integer_value_and_wrong_type() {
 #[test]
 fn encode_native_handle_value_null_and_wrong_type() {
     common::run(|| {
-        let encoder = HashTableEntryEncoder::NativeHandle;
+        let encoder = HashTableEntryEncoder::NativeHandle(Box::new(struct_type()));
         let handle = boxed_handle();
         let ptr = encoder.encode(&Value::Object(handle.clone())).unwrap();
         assert_eq!(ptr, handle.ptr());
@@ -606,6 +623,7 @@ fn encode_ptr_array_value_with_objects_and_nulls() {
             ]))
             .unwrap();
         assert!(!ptr.is_null());
+        // SAFETY: Releases the reference this test owns on the live GPtrArray.
         unsafe { glib::ffi::g_ptr_array_unref(ptr as *mut glib::ffi::GPtrArray) };
     });
 }
@@ -732,14 +750,15 @@ fn hashtable_ptr_to_value_null_and_populated() {
             Ownership::Borrowed,
         );
 
-        let empty = ht_type.ptr_to_value(std::ptr::null_mut(), "ctx").unwrap();
+        // SAFETY: Null short-circuits before any read.
+        let empty = unsafe { ht_type.ptr_to_value(std::ptr::null_mut(), "ctx") }.unwrap();
         assert!(matches!(empty, Value::Array(items) if items.is_empty()));
 
         let hash_table = common::make_integer_hash_table(&[(1, 10)]);
-        let decoded = ht_type
-            .ptr_to_value(hash_table as *mut c_void, "ctx")
-            .unwrap();
+        // SAFETY: `hash_table` is a live GHashTable.
+        let decoded = unsafe { ht_type.ptr_to_value(hash_table as *mut c_void, "ctx") }.unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
+        // SAFETY: Releases a reference this test owns on the live GHashTable.
         unsafe { glib::ffi::g_hash_table_unref(hash_table) };
     });
 }
@@ -753,6 +772,7 @@ fn hashtable_decode_full_ownership_from_raw_ptr_unrefs() {
             Ownership::Full,
         );
         let hash_table = common::make_integer_hash_table(&[(3, 30)]);
+        // SAFETY: `hash_table` is a live GHashTable created by this test.
         unsafe {
             glib::ffi::g_hash_table_ref(hash_table);
         }
@@ -762,9 +782,11 @@ fn hashtable_decode_full_ownership_from_raw_ptr_unrefs() {
             .unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
 
+        // SAFETY: `hash_table` is a live GHashTable.
         let size = unsafe { glib::ffi::g_hash_table_size(hash_table) };
         assert_eq!(size, 1);
 
+        // SAFETY: Releases a reference this test owns on the live GHashTable.
         unsafe { glib::ffi::g_hash_table_unref(hash_table) };
     });
 }

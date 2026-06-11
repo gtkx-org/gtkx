@@ -55,10 +55,14 @@ fn decode_yields_undefined() {
 
 #[test]
 fn ptr_to_value_yields_undefined() {
-    let from_null = RawPtrCodec::ptr_to_value(&VoidType, std::ptr::null_mut(), "ctx").unwrap();
+    // SAFETY: VoidType never touches the pointer.
+    let from_null =
+        unsafe { RawPtrCodec::ptr_to_value(&VoidType, std::ptr::null_mut(), "ctx") }.unwrap();
     assert!(matches!(from_null, Value::Undefined));
 
-    let from_ptr = RawPtrCodec::ptr_to_value(&VoidType, 8 as *mut c_void, "ctx").unwrap();
+    // SAFETY: VoidType never touches the pointer.
+    let from_ptr =
+        unsafe { RawPtrCodec::ptr_to_value(&VoidType, 8 as *mut c_void, "ctx") }.unwrap();
     assert!(matches!(from_ptr, Value::Undefined));
 }
 
@@ -66,7 +70,8 @@ fn ptr_to_value_yields_undefined() {
 fn read_from_raw_ptr_yields_undefined() {
     let mut slot: usize = 42;
     let ptr = &mut slot as *mut usize as *const c_void;
-    let read = RawPtrCodec::read_from_raw_ptr(&VoidType, ptr, "ctx").unwrap();
+    // SAFETY: `ptr` addresses a live local; VoidType never reads it.
+    let read = unsafe { RawPtrCodec::read_from_raw_ptr(&VoidType, ptr, "ctx") }.unwrap();
     assert!(matches!(read, Value::Undefined));
 }
 
@@ -74,8 +79,10 @@ fn read_from_raw_ptr_yields_undefined() {
 fn write_return_to_raw_ptr_is_a_no_op() {
     let mut slot: usize = 99;
     let ret = &mut slot as *mut usize as *mut c_void;
-    RawPtrCodec::write_return_to_raw_ptr(&VoidType, ret, &Ok(Value::Undefined));
-    RawPtrCodec::write_return_to_raw_ptr(&VoidType, ret, &Err(()));
+    // SAFETY: `ret` addresses a writable local; VoidType never writes it.
+    unsafe { RawPtrCodec::write_return_to_raw_ptr(&VoidType, ret, &Ok(Value::Undefined)) };
+    // SAFETY: `ret` addresses a writable local; VoidType never writes it.
+    unsafe { RawPtrCodec::write_return_to_raw_ptr(&VoidType, ret, &Err(())) };
     assert_eq!(slot, 99);
 }
 

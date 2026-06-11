@@ -1,6 +1,6 @@
 mod common;
 
-use native::state::{GlibThread, GlibThreadState};
+use native::state::{GlibThread, GlibThreadState, RuntimePhase};
 
 #[test]
 fn gtk_thread_state_default_initializes_correctly() {
@@ -327,4 +327,59 @@ fn gtk_thread_join_reports_unknown_panic_payload() {
 fn gtk_thread_debug_format() {
     let debug_str = format!("{:?}", GlibThread::global());
     assert!(debug_str.contains("GlibThread"));
+}
+
+#[test]
+fn gtk_thread_phase_lifecycle_transitions() {
+    common::run(|| {
+        let thread = GlibThread::global();
+        thread.reset_phase_for_test();
+
+        assert_eq!(thread.phase(), RuntimePhase::New);
+        assert!(thread.begin_start().is_ok());
+        assert_eq!(thread.phase(), RuntimePhase::Running);
+
+        let double_start = thread.begin_start().expect_err("second init must fail");
+        assert!(double_start.contains("already running"));
+
+        assert!(thread.begin_stop().is_ok());
+        assert_eq!(thread.phase(), RuntimePhase::Stopped);
+
+        let double_stop = thread.begin_stop().expect_err("second stop must fail");
+        assert!(double_stop.contains("already-stopped"));
+
+        let restart = thread
+            .begin_start()
+            .expect_err("re-init after stop must fail");
+        assert!(restart.contains("cannot be reinitialized"));
+
+        thread.reset_phase_for_test();
+        assert_eq!(thread.phase(), RuntimePhase::New);
+    });
+}
+
+#[test]
+fn gtk_thread_abort_start_restores_new_phase() {
+    common::run(|| {
+        let thread = GlibThread::global();
+        thread.reset_phase_for_test();
+
+        assert!(thread.begin_start().is_ok());
+        thread.abort_start();
+        assert_eq!(thread.phase(), RuntimePhase::New);
+
+        assert!(thread.begin_start().is_ok());
+        thread.reset_phase_for_test();
+    });
+}
+
+#[test]
+fn gtk_thread_stop_before_init_fails() {
+    common::run(|| {
+        let thread = GlibThread::global();
+        thread.reset_phase_for_test();
+
+        let err = thread.begin_stop().expect_err("stop before init must fail");
+        assert!(err.contains("before init"));
+    });
 }

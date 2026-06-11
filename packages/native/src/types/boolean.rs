@@ -1,3 +1,4 @@
+use gtk4::glib::translate::IntoGlib as _;
 use libffi::middle as libffi;
 
 use super::prelude::*;
@@ -11,7 +12,7 @@ impl FfiEncoder for BooleanType {
             value::Value::Boolean(b) => *b,
             _ => anyhow::bail!("Expected a Boolean for boolean type, got {value:?}"),
         };
-        Ok(ffi::FfiValue::I32(i32::from(boolean)))
+        Ok(ffi::FfiValue::I32(boolean.into_glib()))
     }
 
     fn libffi_type(&self) -> libffi::Type {
@@ -24,6 +25,8 @@ impl FfiEncoder for BooleanType {
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::FfiValue> {
+        // SAFETY: The dispatch site built `cif` and `args` for this
+        // descriptor and resolved `ptr` from a loaded library symbol.
         Ok(ffi::FfiValue::I32(unsafe { cif.call::<i32>(ptr, args) }))
     }
 }
@@ -39,29 +42,46 @@ impl FfiDecoder for BooleanType {
 }
 
 impl RawPtrCodec for BooleanType {
-    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+    unsafe fn ptr_to_value(
+        &self,
+        ptr: *mut c_void,
+        _context: &str,
+    ) -> anyhow::Result<value::Value> {
         Ok(value::Value::Boolean(ptr as isize != 0))
     }
 
-    fn read_from_raw_ptr(
+    unsafe fn read_from_raw_ptr(
         &self,
         ptr: *const c_void,
         _context: &str,
     ) -> anyhow::Result<value::Value> {
+        // SAFETY: The caller guarantees `ptr` is a readable `gboolean`
+        // (i32) slot.
         let val = unsafe { *(ptr as *const i32) };
         Ok(value::Value::Boolean(val != 0))
     }
 
-    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+    /// Writes a `gboolean` trampoline return widened to `ffi_sarg`, per
+    /// libffi's closure contract for integral results narrower than a
+    /// register.
+    unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let val = matches!(value, Ok(value::Value::Boolean(true)));
-        unsafe { *(ret as *mut i32) = val as i32 };
+        // SAFETY: The caller guarantees `ret` is a writable 8-byte libffi
+        // return slot; the write is unaligned-tolerant.
+        unsafe { ret.cast::<i64>().write_unaligned(i64::from(val)) };
     }
 
-    fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
+    unsafe fn write_value_to_raw_ptr(
+        &self,
+        ptr: *mut c_void,
+        value: &value::Value,
+    ) -> anyhow::Result<()> {
         let value::Value::Boolean(b) = value else {
             anyhow::bail!("Expected a Boolean for boolean field write, got {value:?}");
         };
-        unsafe { *(ptr as *mut i32) = i32::from(*b) };
+        // SAFETY: The caller guarantees `ptr` is a writable `gboolean`
+        // (i32) slot.
+        unsafe { *(ptr as *mut i32) = (*b).into_glib() };
         Ok(())
     }
 }

@@ -42,17 +42,20 @@ impl Arg {
 
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
-        let obj: JsObject = unsafe { JsObject::from_napi_value(env.raw(), value.raw())? };
+        let obj: JsObject = crate::value::unknown_as_object(env, &value)?;
         let type_prop: Unknown<'_> = obj.get_named_property("type")?;
         let value_prop: Unknown<'_> = obj.get_named_property("value")?;
         let ty = Type::from_js_value(env, type_prop)?;
+        if !ty.can_be_argument_type() {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("'{ty}' cannot be used as a function argument type"),
+            ));
+        }
         let value = Value::from_js_value(env, value_prop)?;
 
-        let optional = obj
-            .get_named_property::<Option<bool>>("optional")
-            .ok()
-            .flatten()
-            .unwrap_or(false);
+        let optional =
+            crate::types::optional_descriptor_property::<bool>(&obj, "optional")?.unwrap_or(false);
 
         Ok(Self {
             ty,

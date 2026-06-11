@@ -13,6 +13,7 @@ use common::{param_spec_ref, param_spec_refcount, param_spec_unref};
 
 fn param_spec_ptr() -> *mut c_void {
     common::ensure_gtk_init();
+    // SAFETY: Creating a GParamSpec from static NUL-terminated literals has no pointer preconditions.
     unsafe {
         let param = glib::gobject_ffi::g_param_spec_boolean(
             c"managed-test".as_ptr(),
@@ -39,6 +40,7 @@ fn owned_fundamental(ptr: *mut c_void) -> NativeHandle {
 /// post-drop refcount can be read safely.
 fn borrowed_fundamental(ptr: *mut c_void) -> NativeHandle {
     let fundamental =
+        // SAFETY: The pointer addresses a live GParamSpec created by this test.
         unsafe { Fundamental::from_glib_none(ptr, Some(param_spec_ref), Some(param_spec_unref)) };
     NativeValue::Fundamental(fundamental).into()
 }
@@ -145,6 +147,7 @@ fn drop_owned_handle_on_creating_thread_releases_value() {
         drop(handle);
         assert_eq!(param_spec_refcount(ptr), initial_ref - 1);
 
+        // SAFETY: Releases a reference this test owns on the live GParamSpec.
         unsafe { param_spec_unref(ptr) };
     });
 }
@@ -183,6 +186,7 @@ fn a_drop_owned_handle_off_thread_routes_through_glib_idle() {
         }
 
         assert_eq!(param_spec_refcount(ptr), initial_ref - 1);
+        // SAFETY: Releases a reference this test owns on the live GParamSpec.
         unsafe { param_spec_unref(ptr) };
     });
 }
@@ -203,6 +207,7 @@ fn drop_owned_handle_off_thread_while_stopped_leaks_value() {
         .expect("dropping handle while stopped should not panic");
 
         mailbox.reset_for_test();
+        // SAFETY: Releases a reference this test owns on the live GParamSpec.
         unsafe { param_spec_unref(ptr) };
     });
 }

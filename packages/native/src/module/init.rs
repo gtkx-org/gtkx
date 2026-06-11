@@ -40,6 +40,10 @@ use crate::state::GlibThread;
 #[napi(catch_unwind)]
 #[cfg_attr(test, allow(dead_code))]
 pub fn init(env: Env) -> napi::Result<External<glib::MainLoop>> {
+    GlibThread::global()
+        .begin_start()
+        .map_err(|msg| napi::Error::new(napi::Status::GenericFailure, msg))?;
+
     let wake_js_fn = env.create_function_from_closure::<(), _, _>("gtkx_wake_js", |ctx| {
         Mailbox::global().process_node_pending(*ctx.env);
         Ok(())
@@ -98,6 +102,7 @@ pub fn init(env: Env) -> napi::Result<External<glib::MainLoop>> {
             }
         })
         .map_err(|err| {
+            GlibThread::global().abort_start();
             napi::Error::new(
                 napi::Status::GenericFailure,
                 format!("Error spawning GLib thread: {err}"),
@@ -107,9 +112,13 @@ pub fn init(env: Env) -> napi::Result<External<glib::MainLoop>> {
     GlibThread::global().set_handle(handle);
 
     let main_loop = rx.recv().map_err(|err| {
+        let glib_thread = GlibThread::global();
+        let panic_message = glib_thread.join();
+        let _ = glib_thread.begin_stop();
+        let cause = panic_message.unwrap_or_else(|| err.to_string());
         napi::Error::new(
             napi::Status::GenericFailure,
-            format!("Error starting GLib thread: {err}"),
+            format!("Error starting GLib thread: {cause}"),
         )
     })?;
 
@@ -141,6 +150,9 @@ impl UnhandledRejection {
     #[cfg_attr(test, allow(dead_code))]
     fn try_emit(env: &Env, msg: &str) -> Option<()> {
         let raw_env = env.raw();
+        // SAFETY: This runs on the JS thread with the live `env` of the
+        // current callback; every value passed between the napi calls was
+        // created under that same env.
         unsafe {
             let mut global = std::ptr::null_mut();
             (sys::napi_get_global(raw_env, &mut global) == sys::Status::napi_ok).then_some(())?;
@@ -183,6 +195,8 @@ impl UnhandledRejection {
 
     #[cfg_attr(test, allow(dead_code))]
     unsafe fn make_error_object(env: sys::napi_env, msg: &str) -> Option<sys::napi_value> {
+        // SAFETY: The caller passes the live env of the current JS-thread
+        // callback, and `msg` provides valid UTF-8 bytes for the string.
         unsafe {
             let mut msg_value = std::ptr::null_mut();
             let bytes = msg.as_bytes();
@@ -207,6 +221,8 @@ impl UnhandledRejection {
 
     #[cfg_attr(test, allow(dead_code))]
     unsafe fn make_resolved_promise(env: sys::napi_env) -> Option<sys::napi_value> {
+        // SAFETY: The caller passes the live env of the current JS-thread
+        // callback; the deferred and undefined values are created under it.
         unsafe {
             let mut deferred = std::ptr::null_mut();
             let mut promise = std::ptr::null_mut();

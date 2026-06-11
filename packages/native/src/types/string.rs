@@ -1,10 +1,24 @@
-use std::ffi::{CStr, CString, c_char};
+use std::ffi::{CString, c_char};
 
 use anyhow::bail;
 use gtk4::glib;
+use gtk4::glib::translate::ToGlibPtr;
 use napi::{Env, JsObject};
 
 use super::prelude::*;
+
+/// Duplicates `s` into a single `g_malloc`-owned, NUL-terminated C string the
+/// callee (or a transfer-full slot) takes ownership of.
+///
+/// Performs one allocation (`g_strndup`) instead of the `CString` + `g_strdup`
+/// pair. Interior NUL bytes are rejected up front so a JS string containing
+/// U+0000 surfaces as an error instead of being silently truncated.
+pub fn str_to_glib_full(s: &str) -> anyhow::Result<*mut c_char> {
+    if s.as_bytes().contains(&0) {
+        bail!("String contains an interior NUL byte");
+    }
+    Ok(ToGlibPtr::<*mut c_char>::to_glib_full(s))
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct StringType {
@@ -17,11 +31,8 @@ impl StringType {
     pub fn from_js_value(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let ownership = Ownership::from_js_value(obj, "string")?;
 
-        let length: Option<usize> = obj
-            .get_named_property::<Option<f64>>("length")
-            .ok()
-            .flatten()
-            .map(|n| n as usize);
+        let length: Option<usize> =
+            super::optional_descriptor_property::<f64>(obj, "length")?.map(|n| n as usize);
 
         Ok(Self { ownership, length })
     }
@@ -31,11 +42,14 @@ impl FfiEncoder for StringType {
     fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         match value {
             value::Value::String(s) => {
-                let cstring = CString::new(s.as_bytes())?;
                 if self.ownership.is_full() {
-                    let glib_ptr = unsafe { glib::ffi::g_strdup(cstring.as_ptr()) };
-                    Ok(ffi::FfiValue::Ptr(glib_ptr as *mut c_void))
+                    let glib_ptr = str_to_glib_full(s)? as *mut c_void;
+                    Ok(ffi::FfiValue::Storage(
+                        ffi::FfiStorage::unit(glib_ptr)
+                            .with_pending_transfer(glib_ptr, ffi::PendingRelease::GFree),
+                    ))
                 } else {
+                    let cstring = CString::new(s.as_bytes())?;
                     let ptr = cstring.as_ptr() as *mut c_void;
                     Ok(ffi::FfiValue::Storage(ffi::FfiStorage::new(
                         ptr,
@@ -57,10 +71,13 @@ impl FfiDecoder for StringType {
             return Ok(value::Value::Null);
         };
 
-        let c_str = unsafe { CStr::from_ptr(str_ptr as *const c_char) };
-        let string = c_str.to_string_lossy().into_owned();
+        // SAFETY: A non-null string return from the native call is a live
+        // NUL-terminated C string.
+        let string = unsafe { glib::GStr::from_ptr_lossy(str_ptr as *const c_char) }.to_string();
 
         if self.ownership.is_full() {
+            // SAFETY: A transfer-full return hands this decode the one
+            // owned allocation, released here exactly once after copying.
             unsafe { glib::ffi::g_free(str_ptr) };
         }
 
@@ -69,32 +86,45 @@ impl FfiDecoder for StringType {
 }
 
 impl RawPtrCodec for StringType {
-    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+    unsafe fn ptr_to_value(
+        &self,
+        ptr: *mut c_void,
+        _context: &str,
+    ) -> anyhow::Result<value::Value> {
         null_guarded(ptr, |ptr| {
-            let c_str = unsafe { CStr::from_ptr(ptr as *const c_char) };
-            Ok(value::Value::String(c_str.to_string_lossy().into_owned()))
+            // SAFETY: The caller guarantees the non-null `ptr` addresses a
+            // live NUL-terminated C string.
+            let string = unsafe { glib::GStr::from_ptr_lossy(ptr as *const c_char) }.to_string();
+            Ok(value::Value::String(string))
         })
     }
 
-    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+    unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let ptr = match value {
-            Ok(value::Value::String(s)) => CString::new(s.as_bytes())
-                .ok()
-                .map_or(std::ptr::null_mut(), |cs| unsafe {
-                    glib::ffi::g_strdup(cs.as_ptr()) as *mut c_void
-                }),
+            Ok(value::Value::String(s)) => {
+                str_to_glib_full(s).map_or(std::ptr::null_mut(), |p| p as *mut c_void)
+            }
             _ => std::ptr::null_mut(),
         };
+        // SAFETY: The caller guarantees `ret` is a writable pointer-sized
+        // return slot.
         unsafe { *(ret as *mut *mut c_void) = ptr };
     }
 
-    fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
+    unsafe fn write_value_to_raw_ptr(
+        &self,
+        ptr: *mut c_void,
+        value: &value::Value,
+    ) -> anyhow::Result<()> {
         match value {
             value::Value::String(s) => {
-                let c_string = CString::new(s.as_str())?;
-                let duped = unsafe { glib::ffi::g_strdup(c_string.as_ptr()) };
+                let duped = str_to_glib_full(s)?;
+                // SAFETY: The caller guarantees `ptr` is a writable
+                // pointer-sized slot; the write is unaligned-tolerant.
                 unsafe { (ptr as *mut *mut c_char).write_unaligned(duped) };
             }
+            // SAFETY: The caller guarantees `ptr` is a writable
+            // pointer-sized slot; the write is unaligned-tolerant.
             value::Value::Null | value::Value::Undefined => unsafe {
                 (ptr as *mut *const c_char).write_unaligned(std::ptr::null());
             },

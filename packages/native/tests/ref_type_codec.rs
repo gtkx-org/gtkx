@@ -16,7 +16,7 @@ use libffi::middle as libffi;
 use native::ffi::{self, FfiStorage, FfiStorageKind};
 use native::types::{
     ArrayKind, ArrayType, BooleanType, FfiDecoder, FloatKind, GObjectType, IntegerKind, Ownership,
-    RawPtrCodec, RefType, StringType, TaggedKind, TaggedType, Type,
+    RawPtrCodec, RefType, StringType, TaggedKind, TaggedType, Type, UnicharType, VoidType,
 };
 use native::value::Value;
 
@@ -27,8 +27,9 @@ fn string_type() -> StringType {
     }
 }
 
-fn ptr_storage(slot: Box<*mut c_void>) -> ffi::FfiValue {
-    let raw = slot.as_ref() as *const *mut c_void as *mut c_void;
+fn ptr_storage(inner: *mut c_void) -> ffi::FfiValue {
+    let mut slot: Vec<*mut c_void> = vec![inner];
+    let raw = slot.as_mut_ptr() as *mut c_void;
     ffi::FfiValue::Storage(FfiStorage::new(raw, FfiStorageKind::PtrStorage(slot)))
 }
 
@@ -142,8 +143,7 @@ fn decode_gobject_delegates_to_inner_decoder() {
     common::run(|| {
         let obj = glib::Object::new::<glib::Object>();
         let obj_ptr = obj.as_ptr() as *mut c_void;
-        let slot = Box::new(obj_ptr);
-        let storage = ptr_storage(slot);
+        let storage = ptr_storage(obj_ptr);
 
         let ref_type = RefType::new(Type::GObject(GObjectType {
             ownership: Ownership::Borrowed,
@@ -160,8 +160,7 @@ fn decode_gobject_delegates_to_inner_decoder() {
 fn decode_string_reads_via_decode_ref_string() {
     common::run(|| {
         let cstring = CString::new("ref-string").unwrap();
-        let slot = Box::new(cstring.as_ptr() as *mut c_void);
-        let storage = ptr_storage(slot);
+        let storage = ptr_storage(cstring.as_ptr() as *mut c_void);
 
         let ref_type = RefType::new(Type::String(string_type()));
         let decoded = ref_type
@@ -174,8 +173,7 @@ fn decode_string_reads_via_decode_ref_string() {
 #[test]
 fn decode_array_inner_bails_without_context() {
     common::run(|| {
-        let slot = Box::new(std::ptr::null_mut());
-        let storage = ptr_storage(slot);
+        let storage = ptr_storage(std::ptr::null_mut());
 
         let ref_type = u8_array_ref_type();
         assert!(ref_type.decode(&storage).is_err());
@@ -183,13 +181,55 @@ fn decode_array_inner_bails_without_context() {
 }
 
 #[test]
-fn decode_unsupported_inner_type_bails() {
+fn decode_boolean_reads_bool() {
     common::run(|| {
-        let slot = Box::new(std::ptr::null_mut());
-        let storage = ptr_storage(slot);
+        let mut value: i32 = 1;
+        let slot = &mut value as *mut i32 as *mut c_void;
+        let ffi_value = ffi::FfiValue::Storage(FfiStorage::new(slot, FfiStorageKind::Unit));
 
         let ref_type = RefType::new(Type::Boolean(BooleanType));
+        let decoded = ref_type
+            .decode(&ffi_value)
+            .expect("boolean ref decode should succeed");
+        assert!(matches!(decoded, Value::Boolean(true)));
+    });
+}
+
+#[test]
+fn decode_unichar_reads_string() {
+    common::run(|| {
+        let mut value: u32 = 'é' as u32;
+        let slot = &mut value as *mut u32 as *mut c_void;
+        let ffi_value = ffi::FfiValue::Storage(FfiStorage::new(slot, FfiStorageKind::Unit));
+
+        let ref_type = RefType::new(Type::Unichar(UnicharType));
+        let decoded = ref_type
+            .decode(&ffi_value)
+            .expect("unichar ref decode should succeed");
+        assert!(matches!(decoded, Value::String(s) if s == "é"));
+    });
+}
+
+#[test]
+fn decode_unsupported_inner_type_bails() {
+    common::run(|| {
+        let storage = ptr_storage(std::ptr::null_mut());
+
+        let ref_type = RefType::new(Type::Void(VoidType));
         assert!(ref_type.decode(&storage).is_err());
+    });
+}
+
+#[test]
+fn supports_inner_rejects_slotless_shapes() {
+    common::run(|| {
+        assert!(RefType::supports_inner(&Type::Integer(IntegerKind::I32)));
+        assert!(RefType::supports_inner(&Type::Boolean(BooleanType)));
+        assert!(RefType::supports_inner(&Type::Unichar(UnicharType)));
+        assert!(!RefType::supports_inner(&Type::Void(VoidType)));
+        assert!(!RefType::supports_inner(&Type::Ref(RefType::new(
+            Type::Integer(IntegerKind::I32)
+        ))));
     });
 }
 
@@ -224,8 +264,7 @@ fn decode_ref_string_null_storage_pointer_yields_null() {
 #[test]
 fn decode_ref_string_null_inner_pointer_yields_null() {
     common::run(|| {
-        let slot: Box<*mut c_void> = Box::new(std::ptr::null_mut());
-        let storage = ptr_storage(slot);
+        let storage = ptr_storage(std::ptr::null_mut());
 
         let ref_type = RefType::new(Type::String(string_type()));
         let decoded = ref_type
@@ -238,9 +277,9 @@ fn decode_ref_string_null_inner_pointer_yields_null() {
 #[test]
 fn decode_ref_string_full_ownership_frees_pointer() {
     common::run(|| {
+        // SAFETY: Duplicating a static NUL-terminated literal has no pointer preconditions.
         let owned = unsafe { glib::ffi::g_strdup(c"owned-ref".as_ptr()) };
-        let slot = Box::new(owned as *mut c_void);
-        let storage = ptr_storage(slot);
+        let storage = ptr_storage(owned as *mut c_void);
 
         let full_string = StringType {
             ownership: Ownership::Full,
@@ -309,8 +348,7 @@ fn decode_with_context_array_rejects_non_storage() {
 #[test]
 fn decode_with_context_array_ptr_storage_null_inner_yields_empty_array() {
     common::run(|| {
-        let slot: Box<*mut c_void> = Box::new(std::ptr::null_mut());
-        let storage = ptr_storage(slot);
+        let storage = ptr_storage(std::ptr::null_mut());
 
         let ref_type = u8_array_ref_type();
         let decoded = ref_type
@@ -323,9 +361,9 @@ fn decode_with_context_array_ptr_storage_null_inner_yields_empty_array() {
 #[test]
 fn decode_with_context_array_string_items_not_freed_by_ref() {
     common::run(|| {
+        // SAFETY: Allocating zeroed memory has no pointer preconditions.
         let inner = unsafe { glib::ffi::g_malloc0(std::mem::size_of::<*mut c_char>()) };
-        let slot = Box::new(inner);
-        let storage = ptr_storage(slot);
+        let storage = ptr_storage(inner);
 
         let array_type = ArrayType {
             item_type: Box::new(Type::String(string_type())),
@@ -344,9 +382,9 @@ fn decode_with_context_array_string_items_not_freed_by_ref() {
 #[test]
 fn decode_with_context_array_container_released_by_array_decoder() {
     common::run(|| {
+        // SAFETY: Allocating zeroed memory has no pointer preconditions.
         let inner = unsafe { glib::ffi::g_malloc0(std::mem::size_of::<*mut c_void>()) };
-        let slot = Box::new(inner);
-        let storage = ptr_storage(slot);
+        let storage = ptr_storage(inner);
 
         let array_type = ArrayType {
             item_type: Box::new(Type::GObject(GObjectType {
@@ -368,9 +406,9 @@ fn decode_with_context_array_container_released_by_array_decoder() {
 fn decode_with_context_garray_container_released_by_array_decoder() {
     common::run(|| {
         let g_array =
+            // SAFETY: Creating a GArray from size parameters has no pointer preconditions.
             unsafe { glib::ffi::g_array_sized_new(0, 0, std::mem::size_of::<u8>() as u32, 0) };
-        let slot = Box::new(g_array as *mut c_void);
-        let storage = ptr_storage(slot);
+        let storage = ptr_storage(g_array as *mut c_void);
 
         let array_type = ArrayType {
             item_type: Box::new(Type::Integer(IntegerKind::U8)),
@@ -389,9 +427,9 @@ fn decode_with_context_garray_container_released_by_array_decoder() {
 #[test]
 fn decode_with_context_array_non_string_items_freed_by_ref() {
     common::run(|| {
+        // SAFETY: Allocating zeroed memory has no pointer preconditions.
         let inner = unsafe { glib::ffi::g_malloc0(std::mem::size_of::<*mut c_void>()) };
-        let slot = Box::new(inner);
-        let storage = ptr_storage(slot);
+        let storage = ptr_storage(inner);
 
         let array_type = ArrayType {
             item_type: Box::new(Type::Integer(IntegerKind::U8)),
@@ -435,9 +473,11 @@ fn read_from_raw_ptr_null_inner_yields_null() {
     common::run(|| {
         let inner: *mut c_void = std::ptr::null_mut();
         let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
-        let value = ref_type
-            .read_from_raw_ptr(&inner as *const *mut c_void as *const c_void, "ctx")
-            .expect("read_from_raw_ptr should succeed");
+        // SAFETY: `inner` is a live local pointer-sized slot holding null.
+        let value = unsafe {
+            ref_type.read_from_raw_ptr(&inner as *const *mut c_void as *const c_void, "ctx")
+        }
+        .expect("read_from_raw_ptr should succeed");
         assert!(matches!(value, Value::Null));
     });
 }
@@ -450,9 +490,12 @@ fn read_from_raw_ptr_string_inner_reads_value() {
         let inner_slot: *mut c_void = &char_ptr as *const *mut c_void as *mut c_void;
 
         let ref_type = RefType::new(Type::String(string_type()));
-        let value = ref_type
-            .read_from_raw_ptr(&inner_slot as *const *mut c_void as *const c_void, "ctx")
-            .expect("read_from_raw_ptr should succeed");
+        // SAFETY: `inner_slot` is a live local pointer-sized slot whose
+        // target holds a live NUL-terminated string pointer.
+        let value = unsafe {
+            ref_type.read_from_raw_ptr(&inner_slot as *const *mut c_void as *const c_void, "ctx")
+        }
+        .expect("read_from_raw_ptr should succeed");
         assert!(matches!(value, Value::String(s) if s == "raw-ref"));
     });
 }

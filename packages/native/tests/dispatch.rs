@@ -167,6 +167,51 @@ fn run_freeze_loop_drains_until_unfrozen() {
 }
 
 #[test]
+fn run_freeze_loop_exits_when_stopped_while_frozen() {
+    common::run(|| {
+        drain_pending();
+        let mailbox = Mailbox::global();
+        let counter = Arc::new(AtomicUsize::new(0));
+
+        assert!(mailbox.freeze());
+
+        let counter_for_task = counter.clone();
+        mailbox.schedule_glib(Box::new(move || {
+            counter_for_task.fetch_add(1, Ordering::SeqCst);
+        }));
+
+        let stopper = std::thread::spawn(move || {
+            while counter.load(Ordering::SeqCst) == 0 {
+                std::thread::yield_now();
+            }
+            Mailbox::global().mark_stopped();
+        });
+
+        mailbox.run_freeze_loop();
+        stopper.join().expect("stopper thread should finish");
+
+        assert!(mailbox.is_stopped());
+
+        mailbox.unfreeze();
+        mailbox.reset_for_test();
+    });
+}
+
+#[test]
+fn unfreeze_without_freeze_does_not_wrap_depth() {
+    common::run(|| {
+        let mailbox = Mailbox::global();
+
+        mailbox.unfreeze();
+
+        assert!(mailbox.freeze());
+        assert!(!mailbox.freeze());
+        mailbox.unfreeze();
+        mailbox.unfreeze();
+    });
+}
+
+#[test]
 fn schedule_glib_inside_freeze_loop_skips_idle_source() {
     common::run(|| {
         drain_pending();
@@ -202,14 +247,16 @@ fn schedule_glib_inside_freeze_loop_skips_idle_source() {
 }
 
 #[test]
-fn glib_disconnected_error_display_and_debug() {
-    use native::dispatch::GlibDisconnectedError;
+fn glib_dispatch_error_display_and_debug() {
+    use native::dispatch::GlibDispatchError;
 
-    let error = GlibDisconnectedError;
-    assert_eq!(error.to_string(), "GLib thread disconnected");
+    let disconnected = GlibDispatchError::Disconnected;
+    assert_eq!(disconnected.to_string(), "GLib thread disconnected");
+    assert!(format!("{disconnected:?}").contains("Disconnected"));
 
-    let debug_str = format!("{error:?}");
-    assert!(debug_str.contains("GlibDisconnectedError"));
+    let panicked = GlibDispatchError::TaskPanicked("boom".to_owned());
+    assert_eq!(panicked.to_string(), "GLib task panicked: boom");
+    assert!(format!("{panicked:?}").contains("TaskPanicked"));
 }
 
 #[test]
@@ -269,12 +316,12 @@ fn dispatch_pending_from_depth_runs_nested_tasks() {
         let mailbox = Mailbox::global();
         let counter = Arc::new(AtomicUsize::new(0));
 
-        mailbox.enter_callback();
+        mailbox.enter_glib_callback();
         let counter_clone = counter.clone();
         mailbox.schedule_glib(Box::new(move || {
             counter_clone.fetch_add(1, Ordering::SeqCst);
         }));
-        mailbox.leave_callback();
+        mailbox.leave_glib_callback();
 
         assert!(mailbox.dispatch_pending_from_depth(1));
         assert_eq!(counter.load(Ordering::SeqCst), 1);
@@ -319,12 +366,12 @@ fn dispatch_pending_from_depth_runs_deeper_task_before_shallower_one() {
             order_top.lock().unwrap().push(0);
         }));
 
-        mailbox.enter_callback();
+        mailbox.enter_glib_callback();
         let order_nested = order.clone();
         mailbox.schedule_glib(Box::new(move || {
             order_nested.lock().unwrap().push(1);
         }));
-        mailbox.leave_callback();
+        mailbox.leave_glib_callback();
 
         assert!(mailbox.dispatch_pending_from_depth(1));
         assert_eq!(*order.lock().unwrap(), vec![1]);

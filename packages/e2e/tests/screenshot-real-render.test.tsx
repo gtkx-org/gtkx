@@ -11,7 +11,7 @@ setupRealRenderEnvironment();
 
 describe("screenshot outside the act environment", () => {
     it("captures a presented window rendered through the production render", async () => {
-        const windowRef = createRef<Gtk.Window>();
+        const windowRef = createRef<Gtk.ApplicationWindow>();
 
         render(
             <GtkApplication applicationId="org.gtkx.screenshot-real" flags={Gio.ApplicationFlags.NON_UNIQUE}>

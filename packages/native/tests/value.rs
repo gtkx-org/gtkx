@@ -43,6 +43,7 @@ fn gobject_transfer_none_does_not_take_ownership() {
         drop(result);
         assert_eq!(get_gobject_refcount(obj_ptr), initial_ref + 1);
 
+        // SAFETY: Releases a reference this test owns on the live GObject.
         unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
         assert_eq!(get_gobject_refcount(obj_ptr), initial_ref);
     });
@@ -54,6 +55,7 @@ fn gobject_full_transfer_keeps_pending_reference() {
         let obj = glib::Object::new::<glib::Object>();
         let obj_ptr = obj.as_ptr();
 
+        // SAFETY: Takes a reference on the live GObject; this test balances it itself.
         unsafe {
             glib::gobject_ffi::g_object_ref(obj_ptr);
         }
@@ -80,6 +82,7 @@ fn gobject_full_transfer_keeps_pending_reference() {
         drop(result);
         assert_eq!(get_gobject_refcount(obj_ptr), ref_before_transfer);
 
+        // SAFETY: Releases a reference this test owns on the live GObject.
         unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
         assert_eq!(get_gobject_refcount(obj_ptr), ref_before_transfer - 1);
     });
@@ -107,11 +110,13 @@ fn gobject_floating_ref_gets_sunk() {
         let obj = glib::Object::new::<glib::Object>();
         let obj_ptr = obj.as_ptr();
 
+        // SAFETY: `obj_ptr` is a live GObject this test owns; the forced floating state is consumed by the decode.
         unsafe {
             glib::gobject_ffi::g_object_ref(obj_ptr);
             glib::gobject_ffi::g_object_force_floating(obj_ptr);
         }
 
+        // SAFETY: `obj_ptr` is a live GObject.
         let is_floating_before = unsafe { glib::gobject_ffi::g_object_is_floating(obj_ptr) != 0 };
         assert!(is_floating_before);
 
@@ -125,6 +130,7 @@ fn gobject_floating_ref_gets_sunk() {
 
         assert!(result.is_ok());
 
+        // SAFETY: `obj_ptr` is a live GObject.
         let is_floating_after = unsafe { glib::gobject_ffi::g_object_is_floating(obj_ptr) != 0 };
         assert!(!is_floating_after);
     });
@@ -153,6 +159,7 @@ fn string_transfer_none_does_not_free() {
             panic!("Expected Value::String");
         }
 
+        // SAFETY: `c_string` is a live NUL-terminated local.
         let still_valid = unsafe { std::ffi::CStr::from_ptr(c_string.as_ptr()) };
         assert_eq!(still_valid.to_str().unwrap(), test_string);
     });
@@ -163,6 +170,7 @@ fn string_full_transfer_frees_memory() {
     common::run(|| {
         let test_string = "allocated string";
         let c_string = std::ffi::CString::new(test_string).unwrap();
+        // SAFETY: Duplicating a live NUL-terminated local has no other preconditions.
         let allocated_ptr = unsafe { glib::ffi::g_strdup(c_string.as_ptr()) };
 
         let string_type = StringType {
@@ -222,6 +230,7 @@ fn boxed_transfer_none_creates_copy() {
 
         assert!(common::is_valid_boxed_ptr(original_ptr, gtype));
 
+        // SAFETY: Frees the boxed allocation this test owns.
         unsafe {
             glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original_ptr);
         }
@@ -277,9 +286,11 @@ fn glist_transfer_none_does_not_free_list() {
 
         for _ in 0..3 {
             let obj = glib::Object::new::<glib::Object>();
+            // SAFETY: Takes a reference on the live GObject; this test balances it itself.
             unsafe {
                 glib::gobject_ffi::g_object_ref(obj.as_ptr());
             }
+            // SAFETY: Appending to a (possibly null) GList head only requires a valid element pointer.
             list = unsafe { glib::ffi::g_list_append(list, obj.as_ptr() as *mut c_void) };
         }
 
@@ -306,15 +317,19 @@ fn glist_transfer_none_does_not_free_list() {
 
         assert!(!list.is_null());
 
+        // SAFETY: `list` is a live GList built by this test.
         let length = unsafe { glib::ffi::g_list_length(list) };
         for index in 0..length {
+            // SAFETY: `list` is a live GList built by this test.
             let data = unsafe { glib::ffi::g_list_nth_data(list, index) };
             if !data.is_null() {
+                // SAFETY: Releases the reference this test took for the list element.
                 unsafe {
                     glib::gobject_ffi::g_object_unref(data as *mut glib::gobject_ffi::GObject);
                 }
             }
         }
+        // SAFETY: Frees the list this test owns.
         unsafe {
             glib::ffi::g_list_free(list);
         }
@@ -328,9 +343,11 @@ fn glist_full_transfer_frees_list() {
 
         for _ in 0..3 {
             let obj = glib::Object::new::<glib::Object>();
+            // SAFETY: Takes a reference on the live GObject; this test balances it itself.
             unsafe {
                 glib::gobject_ffi::g_object_ref(obj.as_ptr());
             }
+            // SAFETY: Appending to a (possibly null) GList head only requires a valid element pointer.
             list = unsafe { glib::ffi::g_list_append(list, obj.as_ptr() as *mut c_void) };
         }
 
@@ -424,6 +441,7 @@ fn strv_transfer_none_does_not_free() {
         }
 
         assert_eq!(
+            // SAFETY: The decoded StrV elements are live NUL-terminated strings.
             unsafe { std::ffi::CStr::from_ptr(strings[0].as_ptr()) }
                 .to_str()
                 .unwrap(),
@@ -435,9 +453,12 @@ fn strv_transfer_none_does_not_free() {
 #[test]
 fn strv_full_transfer_frees_strings() {
     common::run(|| {
+        // SAFETY: Duplicating a static NUL-terminated literal has no pointer preconditions.
         let s1 = unsafe { glib::ffi::g_strdup(c"hello".as_ptr()) };
+        // SAFETY: Duplicating a static NUL-terminated literal has no pointer preconditions.
         let s2 = unsafe { glib::ffi::g_strdup(c"world".as_ptr()) };
 
+        // SAFETY: g_malloc aborts on failure, so the three-slot buffer is writable; `s1` and `s2` are live duplicates.
         let strv = unsafe {
             let ptr = glib::ffi::g_malloc(3 * std::mem::size_of::<*mut i8>()) as *mut *mut i8;
             *ptr = s1;
@@ -473,6 +494,7 @@ fn strv_full_transfer_frees_strings() {
 #[test]
 fn from_cif_value_fundamental_gvariant_transfer_none() {
     common::run(|| {
+        // SAFETY: Creating and sinking a fresh GVariant has no pointer preconditions.
         let variant = unsafe {
             let ptr = glib::ffi::g_variant_new_int32(42);
             glib::ffi::g_variant_ref_sink(ptr);
@@ -497,6 +519,7 @@ fn from_cif_value_fundamental_gvariant_transfer_none() {
             panic!("Expected Value::Object");
         }
 
+        // SAFETY: Releases the reference this test owns on the live GVariant.
         unsafe {
             glib::ffi::g_variant_unref(variant);
         }
@@ -523,19 +546,24 @@ fn from_cif_value_fundamental_null() {
     });
 }
 
+/// Builds the scalar out-parameter slot a `Ref` scalar encode produces: an
+/// aligned `u64`-backed storage seeded with the scalar payload of `value`.
+fn scalar_slot_storage(value: &ffi::FfiValue) -> ffi::FfiValue {
+    let storage = ffi::FfiStorage::from(vec![0u64]);
+    // SAFETY: The storage is a live, aligned 8-byte slot.
+    unsafe { value.write_scalar_to(storage.ptr()) }.expect("scalar payload should write");
+    ffi::FfiValue::Storage(storage)
+}
+
 #[test]
 fn from_cif_value_ref_integer() {
     common::run(|| {
-        let int_value = ffi::FfiValue::I32(12345);
-        let ptr = int_value.as_raw_ptr();
-        let boxed_value = Box::new(int_value);
+        let cif_value = scalar_slot_storage(&ffi::FfiValue::I32(12345));
 
         let int_kind = native::types::IntegerKind::I32;
         let ref_type = native::types::RefType::new(Type::Integer(int_kind));
         let type_ = Type::Ref(ref_type);
 
-        let storage = ffi::FfiStorage::new(ptr, ffi::FfiStorageKind::BoxedValue(boxed_value));
-        let cif_value = ffi::FfiValue::Storage(storage);
         let result = type_.decode(&cif_value);
 
         assert!(result.is_ok());
@@ -550,16 +578,12 @@ fn from_cif_value_ref_integer() {
 #[test]
 fn from_cif_value_ref_float() {
     common::run(|| {
-        let float_value = ffi::FfiValue::F64(3.15625);
-        let ptr = float_value.as_raw_ptr();
-        let boxed_value = Box::new(float_value);
+        let cif_value = scalar_slot_storage(&ffi::FfiValue::F64(3.15625));
 
         let float_type = native::types::FloatKind::F64;
         let ref_type = native::types::RefType::new(Type::Float(float_type));
         let type_ = Type::Ref(ref_type);
 
-        let storage = ffi::FfiStorage::new(ptr, ffi::FfiStorageKind::BoxedValue(boxed_value));
-        let cif_value = ffi::FfiValue::Storage(storage);
         let result = type_.decode(&cif_value);
 
         assert!(result.is_ok());
@@ -577,8 +601,8 @@ fn from_cif_value_ref_gobject() {
         let obj = glib::Object::new::<glib::Object>();
         let obj_ptr = obj.as_ptr() as *mut c_void;
 
-        let ptr_storage: Box<*mut c_void> = Box::new(obj_ptr);
-        let storage_ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
+        let mut ptr_storage: Vec<*mut c_void> = vec![obj_ptr];
+        let storage_ptr = ptr_storage.as_mut_ptr() as *mut c_void;
         let storage =
             ffi::FfiStorage::new(storage_ptr, ffi::FfiStorageKind::PtrStorage(ptr_storage));
         let cif_value = ffi::FfiValue::Storage(storage);
@@ -602,8 +626,8 @@ fn from_cif_value_ref_gobject() {
 #[test]
 fn from_cif_value_ref_gobject_null_inner() {
     common::run(|| {
-        let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
-        let storage_ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
+        let mut ptr_storage: Vec<*mut c_void> = vec![std::ptr::null_mut()];
+        let storage_ptr = ptr_storage.as_mut_ptr() as *mut c_void;
         let storage =
             ffi::FfiStorage::new(storage_ptr, ffi::FfiStorageKind::PtrStorage(ptr_storage));
         let cif_value = ffi::FfiValue::Storage(storage);
@@ -626,8 +650,8 @@ fn from_cif_value_ref_boxed() {
         let gtype = gdk::RGBA::static_type();
         let boxed_ptr = common::allocate_test_boxed(gtype);
 
-        let ptr_storage: Box<*mut c_void> = Box::new(boxed_ptr);
-        let storage_ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
+        let mut ptr_storage: Vec<*mut c_void> = vec![boxed_ptr];
+        let storage_ptr = ptr_storage.as_mut_ptr() as *mut c_void;
         let storage =
             ffi::FfiStorage::new(storage_ptr, ffi::FfiStorageKind::PtrStorage(ptr_storage));
         let cif_value = ffi::FfiValue::Storage(storage);
@@ -644,6 +668,7 @@ fn from_cif_value_ref_boxed() {
         let result = type_.decode(&cif_value).expect("Ref<Boxed> decode failed");
         assert!(matches!(result, Value::Object(_)));
 
+        // SAFETY: Frees the boxed allocation this test owns.
         unsafe {
             glib::gobject_ffi::g_boxed_free(gtype.into_glib(), boxed_ptr);
         }
@@ -657,7 +682,9 @@ fn glist_with_string_items() {
         let s2 = std::ffi::CString::new("world").unwrap();
 
         let mut list: *mut glib::ffi::GList = std::ptr::null_mut();
+        // SAFETY: Appending to a (possibly null) GList head only requires a valid element pointer.
         list = unsafe { glib::ffi::g_list_append(list, s1.as_ptr() as *mut c_void) };
+        // SAFETY: Appending to a (possibly null) GList head only requires a valid element pointer.
         list = unsafe { glib::ffi::g_list_append(list, s2.as_ptr() as *mut c_void) };
 
         let string_type = StringType {
@@ -688,6 +715,7 @@ fn glist_with_string_items() {
             panic!("Expected Value::Array");
         }
 
+        // SAFETY: Frees the list this test owns.
         unsafe {
             glib::ffi::g_list_free(list);
         }
@@ -697,6 +725,7 @@ fn glist_with_string_items() {
 #[test]
 fn from_cif_value_struct_transfer_none_logs_warning() {
     common::run(|| {
+        // SAFETY: Allocating zeroed memory has no pointer preconditions.
         let struct_ptr = unsafe { glib::ffi::g_malloc0(16) };
 
         let struct_type = native::types::StructType {
@@ -714,6 +743,7 @@ fn from_cif_value_struct_transfer_none_logs_warning() {
             panic!("Expected Value::Object for struct");
         }
 
+        // SAFETY: Frees the allocation this test owns.
         unsafe {
             glib::ffi::g_free(struct_ptr);
         }
@@ -723,6 +753,7 @@ fn from_cif_value_struct_transfer_none_logs_warning() {
 #[test]
 fn from_cif_value_struct_full_transfer() {
     common::run(|| {
+        // SAFETY: Allocating zeroed memory has no pointer preconditions.
         let struct_ptr = unsafe { glib::ffi::g_malloc0(32) };
 
         let struct_type = native::types::StructType {
@@ -762,6 +793,7 @@ fn from_cif_value_struct_null_returns_null_value() {
 #[test]
 fn from_cif_value_struct_transfer_none_without_size_creates_unowned() {
     common::run(|| {
+        // SAFETY: Allocating zeroed memory has no pointer preconditions.
         let struct_ptr = unsafe { glib::ffi::g_malloc0(24) };
 
         let struct_type = native::types::StructType {
@@ -779,6 +811,7 @@ fn from_cif_value_struct_transfer_none_without_size_creates_unowned() {
             panic!("Expected Value::Object for struct");
         }
 
+        // SAFETY: Frees the allocation this test owns.
         unsafe {
             glib::ffi::g_free(struct_ptr);
         }
@@ -788,6 +821,7 @@ fn from_cif_value_struct_transfer_none_without_size_creates_unowned() {
 #[test]
 fn from_cif_value_struct_owned_without_size() {
     common::run(|| {
+        // SAFETY: Allocating zeroed memory has no pointer preconditions.
         let struct_ptr = unsafe { glib::ffi::g_malloc0(24) };
 
         let struct_type = native::types::StructType {

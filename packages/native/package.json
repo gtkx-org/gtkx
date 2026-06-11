@@ -51,7 +51,7 @@
         "artifacts": "napi artifacts",
         "build": "tsc -b && cp native-binding.cjs native-binding.d.cts dist/",
         "create-npm-dirs": "napi create-npm-dirs",
-        "lint": "cargo fmt --check && cargo clippy -- -D warnings",
+        "lint": "cargo fmt --check && cargo clippy --all-targets -- -D warnings",
         "native-bench": "cargo bench --bench marshalling",
         "native-build": "napi build --platform --release --js native-binding.cjs --dts native-binding.d.cts && cp native.linux-$(node -p \"process.arch\")-gnu.node npm/linux-$(node -p \"process.arch\")-gnu/",
         "native-coverage": "mkdir -p coverage && xvfb-run -a cargo +nightly llvm-cov --lcov --output-path coverage/native.lcov.info --fail-under-lines 100 --fail-under-functions 100 -- --test-threads=1",

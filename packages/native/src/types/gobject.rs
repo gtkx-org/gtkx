@@ -1,7 +1,11 @@
 use anyhow::bail;
 use gtk4::glib::{
     self,
-    translate::{FromGlibPtrNone as _, IntoGlibPtr},
+    prelude::StaticType as _,
+    translate::{
+        Borrowed, FromGlibPtrNone as _, IntoGlibPtr, ToGlibPtr, from_glib, from_glib_borrow,
+        from_glib_full,
+    },
 };
 use napi::{Env, JsObject};
 
@@ -23,6 +27,8 @@ use crate::toggle_ref;
 unsafe fn load_type_class(
     ptr: *mut glib::gobject_ffi::GObject,
 ) -> anyhow::Result<*mut glib::gobject_ffi::GTypeClass> {
+    // SAFETY: The caller guarantees `ptr` is a live GObject whose
+    // `g_type_instance` field is readable.
     let type_class = unsafe { (*ptr).g_type_instance.g_class };
     if type_class.is_null() {
         bail!("GObject has invalid type class (object may have been freed)");
@@ -34,15 +40,16 @@ unsafe fn load_type_class(
 ///
 /// The handle is a non-owning pointer carrier: a `GObject`'s lifetime is
 /// governed by its toggle reference (installed by `setWrapper` on first wrap)
-/// and its wrapper's finalizer, never by the handle. This normalizes the object
-/// so it carries exactly one pending owned reference that the install step will
-/// consume: a full transfer of a floating or `GInitiallyUnowned` object sinks
-/// the floating reference to claim it; a full transfer of a plain object keeps
-/// the caller's reference; a borrow takes a fresh reference and never sinks, so
-/// a still-floating object being wrapped from a `constructed` vfunc keeps its
-/// floating reference for the construction return to claim. For an object the
-/// registry already tracks, no toggle ref is installed; a full transfer is
-/// released here, sinking first when the object is still floating.
+/// and its wrapper's finalizer, never by the handle. Every decode normalizes
+/// the object so it carries exactly one pending owned reference, marked on the
+/// returned handle: a full transfer of a floating object sinks the floating
+/// reference to claim it; a full transfer of a plain object keeps the caller's
+/// reference; the first wrap of a non-floating `GInitiallyUnowned` adds an
+/// owned reference to an instance already sunk during construction; a borrow
+/// takes a fresh reference. The pending reference pins the object until its
+/// single consumer — the wrapper install, the existing-wrapper lookup, or the
+/// handle's drop — releases it, so a concurrent wrapper teardown can never
+/// finalize an object a crossing handle still refers to.
 ///
 /// # Safety
 ///
@@ -53,30 +60,30 @@ fn tracked_gobject_value(
     gobject_ptr: *mut glib::gobject_ffi::GObject,
     ownership: Ownership,
 ) -> anyhow::Result<value::Value> {
+    // SAFETY: The caller guarantees `gobject_ptr` is a live GObject.
     let type_class = unsafe { load_type_class(gobject_ptr)? };
-    let gtype = unsafe { (*type_class).g_type };
-    let is_initially_unowned = unsafe {
-        glib::gobject_ffi::g_type_is_a(gtype, glib::gobject_ffi::g_initially_unowned_get_type())
-            != 0
-    };
+    // SAFETY: `load_type_class` validated the class pointer as non-null, so
+    // its `g_type` field is readable.
+    let gtype: glib::Type = unsafe { from_glib((*type_class).g_type) };
+    let is_initially_unowned = gtype.is_a(glib::InitiallyUnowned::static_type());
+    // SAFETY: The caller guarantees `gobject_ptr` is a live GObject.
     let is_floating = unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
+    // SAFETY: The caller guarantees `gobject_ptr` is a live GObject and
+    // that this runs on the GLib thread, the qdata access contract.
+    let has_wrapper = unsafe { toggle_ref::has_wrapper(gobject_ptr) };
 
-    if unsafe { toggle_ref::has_wrapper(gobject_ptr) } {
-        if ownership.is_full() {
-            if is_floating {
-                unsafe { glib::gobject_ffi::g_object_ref_sink(gobject_ptr) };
-            }
-            unsafe { glib::gobject_ffi::g_object_unref(gobject_ptr) };
-        }
-    } else if ownership.is_full() {
-        if is_floating || is_initially_unowned {
+    if ownership.is_full() {
+        if is_floating || (!has_wrapper && is_initially_unowned) {
+            // SAFETY: The caller guarantees `gobject_ptr` is a live
+            // GObject.
             unsafe { glib::gobject_ffi::g_object_ref_sink(gobject_ptr) };
         }
     } else {
+        // SAFETY: The caller guarantees `gobject_ptr` is a live GObject.
         unsafe { glib::gobject_ffi::g_object_ref(gobject_ptr) };
     }
 
-    Ok(value::Value::Object(NativeHandle::borrowed_gobject(
+    Ok(value::Value::Object(NativeHandle::decoded_gobject(
         gobject_ptr.cast(),
     )))
 }
@@ -97,11 +104,28 @@ impl GObjectType {
 impl FfiEncoder for GObjectType {
     fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let ptr = value.object_ptr("GObject")?;
-        Ok(ffi::FfiValue::Ptr(self.ref_for_transfer(ptr)?))
+        // SAFETY: `ptr` came from a NativeHandle whose wrapper's toggle
+        // reference keeps the GObject alive for the duration of the encode.
+        let transferred = unsafe { self.ref_for_transfer(ptr)? };
+        if self.ownership.is_full() && !transferred.is_null() {
+            return Ok(full_transfer_storage(
+                transferred,
+                ffi::PendingRelease::ObjectUnref,
+            ));
+        }
+        Ok(ffi::FfiValue::Ptr(transferred))
     }
 
-    fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
+    fn transfer_release(&self) -> Option<ffi::PendingRelease> {
+        self.ownership
+            .is_full()
+            .then_some(ffi::PendingRelease::ObjectUnref)
+    }
+
+    unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
         if self.ownership.is_full() && !ptr.is_null() {
+            // SAFETY: The caller guarantees the non-null `ptr` addresses a
+            // live GObject, so taking a fresh reference is sound.
             let obj: glib::Object =
                 unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
             return Ok(
@@ -136,34 +160,61 @@ impl FfiDecoder for GObjectType {
 }
 
 impl RawPtrCodec for GObjectType {
-    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+    unsafe fn ptr_to_value(
+        &self,
+        ptr: *mut c_void,
+        _context: &str,
+    ) -> anyhow::Result<value::Value> {
         null_guarded(ptr, |ptr| {
             tracked_gobject_value(ptr as *mut glib::gobject_ffi::GObject, Ownership::Borrowed)
         })
     }
 
-    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        write_return_object_ptr(ret, value, |ptr| {
+    /// Writes a trampoline return honoring the declared transfer: a full
+    /// transfer hands the caller a fresh reference; a transfer-none return
+    /// writes the wrapper-held pointer unchanged, since the JS wrapper's
+    /// toggle reference guarantees the object's lifetime.
+    unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+        write_return_with_ownership(ret, value, self.ownership, |ptr| {
+            // SAFETY: `ptr` came from a JS wrapper's NativeHandle whose
+            // toggle reference keeps the GObject alive, so taking a fresh
+            // reference is sound.
             let obj: glib::Object =
                 unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
             IntoGlibPtr::<*mut glib::gobject_ffi::GObject>::into_glib_ptr(obj).cast::<c_void>()
         });
     }
 
-    fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
+    /// Swaps the `GObject` strong reference held by a field slot: acquires a
+    /// plain (never sinking) reference on the incoming object, writes the
+    /// slot, then releases the previous holder. Both pointers route through
+    /// the `Option` translate impls so a null on either side is absorbed.
+    unsafe fn write_value_to_raw_ptr(
+        &self,
+        ptr: *mut c_void,
+        value: &value::Value,
+    ) -> anyhow::Result<()> {
         let new_ptr = value.object_ptr("GObject field write")?;
+        // SAFETY: The caller guarantees `ptr` is a readable pointer-sized
+        // field slot; the read is unaligned-tolerant.
         let old_ptr = unsafe { (ptr as *const *mut c_void).read_unaligned() };
-        if !new_ptr.is_null() {
-            unsafe {
-                glib::gobject_ffi::g_object_ref(new_ptr as *mut glib::gobject_ffi::GObject);
-            }
-        }
-        unsafe { (ptr as *mut *mut c_void).write_unaligned(new_ptr) };
-        if !old_ptr.is_null() {
-            unsafe {
-                glib::gobject_ffi::g_object_unref(old_ptr as *mut glib::gobject_ffi::GObject);
-            }
-        }
+
+        // SAFETY: `new_ptr` came from a NativeHandle whose wrapper's toggle
+        // reference keeps the GObject alive; null is absorbed by the
+        // `Option` translate impl.
+        let borrowed_new: Borrowed<Option<glib::Object>> =
+            unsafe { from_glib_borrow(new_ptr as *mut glib::gobject_ffi::GObject) };
+        let owned_new: *mut glib::gobject_ffi::GObject = ToGlibPtr::to_glib_full(&*borrowed_new);
+
+        // SAFETY: The caller guarantees `ptr` is a writable pointer-sized
+        // field slot; the write is unaligned-tolerant.
+        unsafe { (ptr as *mut *mut c_void).write_unaligned(owned_new.cast()) };
+
+        // SAFETY: The slot held one strong reference to the previous object
+        // (or null), which this adoption releases exactly once.
+        let released: Option<glib::Object> =
+            unsafe { from_glib_full(old_ptr as *mut glib::gobject_ffi::GObject) };
+        drop(released);
         Ok(())
     }
 }

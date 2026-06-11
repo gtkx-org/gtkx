@@ -2,11 +2,13 @@
 
 Multi-agent memory-safety and code-quality audit of `packages/native` (audit date: 2026-06-10). Process: 10 independent reviewers produced 83 raw findings, deduplicated to 55, each adversarially verified against the code and the generated bindings. 41 findings confirmed (10 high, 14 medium, 17 low); 14 claims refuted (recorded at the end so they are not re-reported).
 
+**Resolution status (2026-06-11): all 41 findings and RS-T01 are fixed and verified** (cargo clippy `--all-targets` with pedantic+nursery, full xvfb cargo test suite, the aggregate 166-file vitest suite, AddressSanitizer, Miri, and the 100% llvm-cov gate all green). Three findings whose resolution shape differs from the headline prescription carry a `Resolution:` note inline. A follow-up multi-agent adversarial review of the full fix diff surfaced eleven additional defects (mostly in the newly introduced signal-closure and foreign-thread paths: array/hashtable signal parameters, closure thread pinning, a stale depth capture in the foreign-thread wait, deferred toggle-level reapplication, a binding-lookup teardown race, foreign-thread owned-value anchoring, and container-encode unwind leaks); every one is fixed and re-verified under the same gates.
+
 Categories across confirmed findings: 13 logic-bug, 11 memory-leak, 8 non-idiomatic, 5 undefined-behavior, 2 race-condition, 2 use-after-free.
 
 ## High severity (10)
 
-- [ ] **RS-001** · `src/dispatch.rs:195` · logic-bug — **stop() while frozen deadlocks both threads permanently: run_freeze_loop has no shutdown escape and mark_stopped never notifies freeze_wake**
+- [x] **RS-001** · `src/dispatch.rs:195` · logic-bug — **stop() while frozen deadlocks both threads permanently: run_freeze_loop has no shutdown escape and mark_stopped never notifies freeze_wake**
 
   run_freeze_loop exits only when freeze_depth reaches zero; it never consults the stopped flag, and mark_stopped wakes wake_js and wake_glib but not freeze_wake. If stop() is dispatched while freeze_depth > 0 (any unbalanced freeze: the React host config calls freeze() in prepareForCommit and unfreeze() in resetAfterCommit, so an error that skips resetAfterCommit leaves depth at 1; or any embedder calling the public freeze() export then stop()), the freeze loop itself drains the stop task — mark_stopped, the context drain, and main_loop.quit() all run inside the loop — and then parks forever in freeze_wake.wait() because unfreeze never arrives. The JS thread receives the stop result, returns from the wait, and blocks in GlibThread::join (state.rs:47-60) waiting for a GLib thread that will never exit. Both threads are parked in native waits: the process hangs, and even SIGINT cannot be serviced because the JS thread is blocked inside pthread_join, so only SIGKILL ends it. The next Ctrl+C/quit after an unbalanced freeze becomes a deterministic hard hang.
 
@@ -18,7 +20,7 @@ Categories across confirmed findings: 13 logic-bug, 11 memory-leak, 8 non-idioma
 
   </details>
 
-- [ ] **RS-002** · `src/dispatch/js_bridge.rs:156` · race-condition — **wait_for_node_result is unsound for off-GLib-thread trampolines: lost wakeups on shared wake_glib and GTK tasks drained on a foreign thread**
+- [x] **RS-002** · `src/dispatch/js_bridge.rs:156` · race-condition — **wait_for_node_result is unsound for off-GLib-thread trampolines: lost wakeups on shared wake_glib and GTK tasks drained on a foreign thread**
 
   wait_for_node_result assumes exactly one native thread ever waits on wake_glib (the GLib thread). Nothing in the trampoline path checks or asserts the calling thread, yet trampoline.rs:157 calls invoke_node_and_wait_with_cells from whatever thread the C library invokes the callback on. Libraries the runtime explicitly supports (arbitrary GIR libraries, including WebKit and GIO/GStreamer-style libraries that use worker threads) can emit connected signals or invoke async callbacks off the main thread. When that happens: (1) two threads (the GLib thread parked for one callback, the worker parked for another) wait concurrently on wake_glib, but WaitSignal (src/wait_signal.rs) is a single boolean permit with notify_one — a notification intended for waiter A can be consumed by waiter B, which rechecks its own empty channel and re-parks, leaving A parked with no future wakeup: the GLib main loop hangs indefinitely (app freeze). (2) While parked, the worker runs dispatch_pending_from_depth(callback_depth), which pops queued GLib tasks (GTK widget mutations pushed by the JS callback) and executes them inline on the worker thread — GTK4 API calls off the GLib thread, violating GTK's threading contract (undefined behavior: unsynchronized access to widget/renderer state).
 
@@ -30,7 +32,7 @@ Categories across confirmed findings: 13 logic-bug, 11 memory-leak, 8 non-idioma
 
   </details>
 
-- [ ] **RS-003** · `src/ffi/value.rs:107` · logic-bug — **FfiValue::as_raw_ptr returns the payload pointer for Storage and panics for Trampoline, corrupting memory for Ref<HashTable> and panicking on Ref<Trampoline>**
+- [x] **RS-003** · `src/ffi/value.rs:107` · logic-bug — **FfiValue::as_raw_ptr returns the payload pointer for Storage and panics for Trampoline, corrupting memory for Ref<HashTable> and panicking on Ref<Trampoline>**
 
   as_raw_ptr has inconsistent indirection semantics across variants: for numeric variants and Ptr it returns the address of the stored value (a slot the callee can write through), but for Storage it returns `storage.ptr()` — the payload pointer itself. Its only caller, RefType::encode's fallthrough arm (types/ref_type.rs:100-107), encodes the inner value and uses as_raw_ptr as the address of the out-parameter slot passed to C. The fallthrough arm is reached for every inner type not explicitly handled, which includes Type::HashTable and Type::Trampoline. For `t.ref(t.hashtable(...))` with a non-empty value, HashTableType::encode creates a live GHashTable and stores it as FfiStorage whose ptr IS the GHashTable*; as_raw_ptr hands that GHashTable* to the callee as if it were a GHashTable** slot, so the callee's out-write overwrites the first 8 bytes of the live GHashTable struct, and FfiStorage::drop then calls g_hash_table_unref on the corrupted table — heap corruption / undefined behavior. For `t.ref(t.trampoline(...))` with a callback value, the encoded inner is FfiValue::Trampoline and as_raw_ptr hits the `unreachable!` arm — the 'unreachable' claim is false — panicking the GLib thread on JS-controlled input; the panic is caught by dispatch_pending's catch_unwind, the result sender is dropped, and the blocked JS caller receives the misleading "GLib thread disconnected" while the already Box::into_raw'd TrampolineState leaks. This is an unsound contract of the public napi call API: a well-formed descriptor shape (GHashTable** out-params exist in GIR) silently corrupts memory instead of erroring. The conversion should be fallible or RefType::encode should reject these inner types at the descriptor-parsing boundary like can_be_return_type does for return slots.
 
@@ -50,7 +52,7 @@ Categories across confirmed findings: 13 logic-bug, 11 memory-leak, 8 non-idioma
 
   </details>
 
-- [ ] **RS-004** · `src/module/toggle_ref.rs:190` · use-after-free — **get_wrapper can call napi_get_reference_value on a napi_ref deleted by a concurrent toggle cleanup**
+- [x] **RS-004** · `src/module/toggle_ref.rs:190` · use-after-free — **get_wrapper can call napi_get_reference_value on a napi_ref deleted by a concurrent toggle cleanup**
 
   get_wrapper reads the wrapper's raw napi_ref address on the GLib thread, then dereferences it on the JS thread with napi_get_reference_value. Between those two steps the deferred toggle-ref cleanup for a just-collected wrapper can delete that exact napi_ref, because the JS thread's mailbox wait loop executes pending node tasks (including the OP_DELETE reference operation) BEFORE it consumes the dispatch result. napi_delete_reference frees the underlying v8impl::Reference allocation, so the subsequent napi_get_reference_value dereferences freed memory — a cross-thread use-after-free in the engine that can crash or corrupt the Node heap. The window is exactly the documented 'rebind window' (object handed back between wrapper collection and teardown), which the design treats as a supported state and the toggle-rebind tests show is an expected production state. The code only guards the benign weak-ref-resolves-to-null case, not deletion.
 
@@ -62,7 +64,7 @@ Categories across confirmed findings: 13 logic-bug, 11 memory-leak, 8 non-idioma
 
   </details>
 
-- [ ] **RS-005** · `src/toggle_ref.rs:282` · use-after-free — **Deferred wrapper cleanup can complete between decode/lookup and install, making install() steal a native holder's reference or operate on a freed GObject**
+- [x] **RS-005** · `src/toggle_ref.rs:282` · use-after-free — **Deferred wrapper cleanup can complete between decode/lookup and install, making install() steal a native holder's reference or operate on a freed GObject**
 
   install()'s fresh-bind branch unconditionally releases "the single pending owned reference the decode path left" (the trailing g_object_unref at line 310). But the decision of whether decode leaves a pending reference is made one or more GLib-thread hops earlier, in types/gobject.rs tracked_gobject_value, based on has_wrapper() at decode time. A wrapper teardown queued by schedule_cleanup runs as a separate DEFAULT_IDLE source and can execute between the decode and the install dispatch, clearing qdata and removing the toggle ref. install then sees an empty qdata slot, takes the fresh-bind path, and unrefs a reference that was never left pending — stealing a reference owned by another native holder (a container, a list store). The object is later finalized while that holder still points at it, producing a use-after-free in GTK. If the toggle ref was the object's last reference, the cleanup finalizes the object before install even runs, and install itself then dereferences freed memory in binding_ptr/is_gobject and refs/qdata-writes/unrefs a dangling pointer. The window is real: mailbox tasks run at Priority::HIGH_IDLE (dispatch.rs:235) while the cleanup idle runs at DEFAULT_IDLE, and the JS registry (packages/ffi/src/registry.ts resolveWrapper) performs three separate round trips (getWrapper, getInstanceGType, setWrapper) between decode and install. The rebind invariant documented at lines 47-56 covers cleanup-vs-cleanup and notify-vs-cleanup ordering, but the decode->JS->install sequence is not atomic with respect to the cleanup idle.
 
@@ -74,7 +76,9 @@ Categories across confirmed findings: 13 logic-bug, 11 memory-leak, 8 non-idioma
 
   </details>
 
-- [ ] **RS-006** · `src/types.rs:228` · non-idiomatic — **RawPtrCodec trait, numeric pointer helpers, and defer_oneshot_free are safe APIs that dereference or free arbitrary raw pointers, lint-suppressed instead of marked unsafe**
+- [x] **RS-006** · `src/types.rs:228` · non-idiomatic — **RawPtrCodec trait, numeric pointer helpers, and defer_oneshot_free are safe APIs that dereference or free arbitrary raw pointers, lint-suppressed instead of marked unsafe**
+
+  *Resolution:* the `RawPtrCodec` trait methods, `FfiEncoder::ref_for_transfer`, the numeric `read_ptr`/`write_ptr`/`read_slice` helpers, `defer_oneshot_free`, and `FieldLocation::resolve` are all `unsafe fn` with `# Safety` contracts, and every `#[allow(clippy::not_unsafe_ptr_arg_deref)]` in `src/` is gone. Two read-only refcount probes in `tests/common/mod.rs` keep their allows: they have over a hundred call sites across seven test files and dereference nothing the tests do not own.
 
   The public RawPtrCodec trait declares safe methods (read_from_raw_ptr, ptr_to_value, write_value_to_raw_ptr, write_return_to_raw_ptr) whose every implementation dereferences a caller-supplied raw pointer, and the inherent helpers IntegerKind::read_ptr/write_ptr/read_slice and FloatKind::read_ptr/write_ptr do the same. Safe code can invoke Type::read_from_raw_ptr(garbage, ...) and reach undefined behavior with zero `unsafe` at the call site, so the public contract is unsound. The codebase is aware of the issue and silences clippy at three sites (`#[allow(clippy::not_unsafe_ptr_arg_deref)]` on FundamentalType::ref_for_transfer, the ArrayType::ptr_to_value impl, and defer_oneshot_free) instead of marking the functions unsafe and documenting their contracts. defer_oneshot_free is the starkest case: a safe fn taking `*mut TrampolineState` that schedules Box::from_raw on it — calling it twice with the same pointer, or with any pointer not produced by Box::into_raw, is a double free / arbitrary free reachable from safe code, with the guarding invariant (the AtomicPtr::swap in handle_call) living entirely outside the function, while the neighboring TrampolineState::destroy performing the identical Box::from_raw is correctly declared `pub unsafe extern "C" fn` with a documented safety contract. FieldLocation::resolve compounds this by computing base.add(offset) (which requires the result to stay in-allocation) on a JS-supplied base+offset pair inside a safe fn. Idiomatic shape: declare the trait methods (or the whole trait) unsafe fn with # Safety sections, or accept NonNull/typed wrappers whose construction is the audited unsafe step.
 
@@ -90,7 +94,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-007** · `src/types/array.rs:235` · undefined-behavior — **Transfer-full zero-terminated array args ignore container ownership: callee frees the Rust Vec buffer, then FfiStorage frees it again**
+- [x] **RS-007** · `src/types/array.rs:235` · undefined-behavior — **Transfer-full zero-terminated array args ignore container ownership: callee frees the Rust Vec buffer, then FfiStorage frees it again**
 
   NullTerminatedArrayEncoder ignores the container's Ownership entirely (the parameter is named `_ownership` and never consulted), unlike GListEncoder/GSListEncoder/GArray/GByteArray encoders, which all gate freeing on `should_free = ownership.is_borrowed()`. For an array argument described as `{kind:"array", ownership:"full"}` (GIR transfer-full or transfer-container zero-terminated array in-param, e.g. g_environ_setenv's envp), the callee takes ownership of the buffer and will g_free/g_strfreev it — but that buffer is a Rust `Vec<*mut c_void>` allocation owned by `FfiStorageKind::StringArray`/`ObjectArray`, whose Drop also frees it. The result is a foreign free of a Rust allocation (allocator-contract UB) followed by a second free when the FfiValue drops after the call. With non-duped elements (`dup_elements == false`), the callee additionally frees the CString element allocations that the Vec<CString> drop frees again. The sibling encoders show transfer-full containers are an expected descriptor shape; only the plain-array path mishandles it.
 
@@ -102,7 +106,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-008** · `src/types/array.rs:1014` · memory-leak — **Transfer-full Sized/Fixed array return values never free the container buffer**
+- [x] **RS-008** · `src/types/array.rs:1014` · memory-leak — **Transfer-full Sized/Fixed array return values never free the container buffer**
 
   decode_sized_array decodes the elements but never consults self.ownership and never frees the buffer. Every other transfer-full container decode in this file frees its container (decode_null_terminated_ptr_array g_frees at 944-946, decode_garray unrefs at 871-876, decode_glist frees at 849-855, decode_gptrarray unrefs at 897-899). For length-prefixed arrays returned as out-parameters the wrapper RefType::decode_with_context compensates (ref_type.rs:213-221 g_frees the PtrStorage target), but for a sized array in the function's direct return slot there is no compensation: decode_with_context (lines 800-818) routes straight to decode_sized_array. Every call to a GIR function returning a transfer-full array sized by an out parameter — common GLib APIs such as g_base64_decode (returns guint8* with '(array length=out_len) (transfer full)') and g_convert — leaks the entire returned allocation on the happy path, once per invocation.
 
@@ -114,7 +118,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-009** · `src/types/ref_type.rs:100` · undefined-behavior — **C callee writes out-parameters through pointers derived from shared references (RefType encode fallthrough and null_ptr_storage)**
+- [x] **RS-009** · `src/types/ref_type.rs:100` · undefined-behavior — **C callee writes out-parameters through pointers derived from shared references (RefType encode fallthrough and null_ptr_storage)**
 
   Both out-parameter slot constructors hand the C callee a *mut pointer derived from a shared (&T) borrow of Rust-owned memory. The fallthrough arm of RefType::encode (every Ref<Integer/Float/Tagged/Boolean/Unichar> — the hot path of every scalar out-param call such as gtk_widget_measure) calls `ref_value.as_raw_ptr()`, which takes `&self` and returns `value as *const $ty as *mut c_void` pointers into the boxed FfiValue payload; null_ptr_storage casts `Box::as_ref()` (a `&*mut c_void`) to `*const` then `*mut`. Under Rust's aliasing model (Stacked/Tree Borrows) those pointers carry read-only provenance, so the callee's write into the Box allocation is UB even though it happens in foreign code — the allocation and pointer provenance are fully Rust-managed, and the compiler is entitled to assume the pointee is unchanged across the call, which would let the post-call read in decode be folded to the pre-call value. Additionally, the Box is moved by value after the pointer is derived (`FfiStorageKind::BoxedValue(ref_value)` / `FfiStorageKind::PtrStorage(ptr_storage)`), which under Stacked Borrows as implemented by Miri retags the Box and invalidates the derived pointer even for the subsequent read-back. CI cannot observe this: ci-miri.sh runs only the FFI-free miri_marshalling target, and the offending write happens inside the dlopen'd C library. The fix is mechanical: derive the pointer mutably (&mut/addr_of_mut! on the boxed payload, or UnsafeCell) after the storage reaches its final location.
 
@@ -126,7 +130,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-010** · `src/types/ref_type.rs:158` · logic-bug — **RefType::decode has no Boolean/Unichar arms, breaking generated out-param bindings**
+- [x] **RS-010** · `src/types/ref_type.rs:158` · logic-bug — **RefType::decode has no Boolean/Unichar arms, breaking generated out-param bindings**
 
   RefType::encode accepts Ref<Boolean> and Ref<Unichar> through its default branch (lines 99-108: any inner type not matched earlier is encoded via Arg::new + FfiValue::try_from into a BoxedValue slot), but RefType::decode's match (lines 137-162) only handles GObject/Boxed/Fundamental/Struct, Integer, Tagged, Float, String, and Array. Boolean and Unichar fall into the final arm and bail with 'Unsupported ref inner type for reading'. Generated bindings emit exactly these descriptors: node_modules/.gtkx/gi/gtk/gtk.js line 2511 has `{ type: t.ref(t.boolean) }` for g_action_group_query_action, and pango.js line 1275 has `{ type: t.ref(t.unichar) }` for pango_layout_set_markup_with_accel (also in gio, glib, gdk, gtksource, javascriptcore). The decode failure happens in CallRequest::collect_ref_updates AFTER the native call already executed, so the whole call surfaces as an error despite having run, and for g_action_group_query_action the transfer-full GVariant out-params the callee already wrote are never decoded and leak. The trampoline path is unaffected (seed_ref_cell and flush_out_cells use read_from_raw_ptr/write_value_to_raw_ptr, which Boolean and Unichar implement); the gap is exclusively the call-path FfiDecoder::decode.
 
@@ -140,7 +144,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
 ## Medium severity (14)
 
-- [ ] **RS-011** · `src/ffi/storage.rs:282` · undefined-behavior — **Inout array buffers are written by the callee through Vec::as_ptr-derived (read-only provenance) pointers**
+- [x] **RS-011** · `src/ffi/storage.rs:282` · undefined-behavior — **Inout array buffers are written by the callee through Vec::as_ptr-derived (read-only provenance) pointers**
 
   All numeric/float FfiStorage constructors record the buffer address with `vec.as_ptr() as *mut c_void` — a mutable pointer derived from a shared borrow of the Vec. For plain in-arguments this pointer is only read, which is fine; but for Ref<Array> inout parameters the native callee writes elements into the buffer through this pointer, which is undefined behavior under both Stacked Borrows and Tree Borrows (write through a pointer with shared/read-only provenance, no UnsafeCell). The decode path then reads the C-written contents back. The crate already demonstrates the correct idiom one layer up: the Ref<String> buffer at src/types/ref_type.rs:93 uses `buffer.as_mut_ptr()`. The Vec is owned (`from(vec: Vec<$ty>)`), so switching to `as_mut_ptr()` on a `mut vec` binding is a zero-cost fix. Miri cannot catch this because the write is performed by the foreign callee, which the miri_marshalling CI target cannot execute.
 
@@ -152,7 +156,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-012** · `src/managed/boxed.rs:144` · logic-bug — **Boxed::clone silently degrades from deep copy to non-owning alias for free_fn and gtype-less values, violating the Clone contract**
+- [x] **RS-012** · `src/managed/boxed.rs:144` · logic-bug — **Boxed::clone silently degrades from deep copy to non-owning alias for free_fn and gtype-less values, violating the Clone contract**
 
   NativeHandle::clone is documented as "duplicating the underlying NativeValue when owned" (managed.rs:85), but Boxed::clone fulfills that contract only for gtype-carrying values. For a custom-destructor boxed (free_fn set, e.g. a cairo_path_destroy-owned pointer) and for any owned gtype-less boxed (from_glib_full(None, ptr) struct transfers, or memcpy-copied from_glib_none_with_size values), clone returns owned:false with the same pointer — an alias whose validity silently depends on the source wrapper outliving it. The moment the owning original drops (free_fn(ptr) or g_free(ptr) on the GLib thread), the clone dangles, and any later as_ptr()/ptr() use is a use-after-free. Every current clone site (extract_handles and encode_handles in types/array.rs, decode_storage's ObjectArray readback, Ref::clone via ref_type.rs) happens to clone only borrowed handles built by Value::from_js_value, so no dereference of a dangling alias is reachable today; but the type derives Clone transitively through NativeValue (managed.rs:183) and Value (value.rs:200), so any new call path that clones an owned handle inherits the hazard invisibly, with no compiler or runtime diagnostic. The underlying modeling issue is that Boxed { owned, gtype: Option, free_fn: Option } makes destructor selection a product of three independent fields with invalid combinations representable; an explicit destructor enum plus an explicit alias()/borrow constructor would make the aliasing-clone case impossible to express accidentally.
 
@@ -164,7 +168,9 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-013** · `src/module/alloc.rs:40` · logic-bug — **alloc silently downgrades boxed allocations to plain-struct semantics when the GType is not yet registered**
+- [x] **RS-013** · `src/module/alloc.rs:40` · logic-bug — **alloc silently downgrades boxed allocations to plain-struct semantics when the GType is not yet registered**
+
+  *Resolution:* the registration-timing dependence is removed by deferring the decision to release time. `Boxed::from_alloc` binds boxed semantics immediately when the name already resolves, and otherwise records the name (`BoxedDestructor::GBoxedFreeByName`) and retries `Type::from_name` at drop — by then the type has registered iff anything ever used it, so a `GValue` gets `g_boxed_free` (running `g_value_unset`) while a plain C struct name that never names a GType gets `g_free`. A loud failure was rejected because generated bindings legitimately pass non-GType struct names (`cairo_matrix_t`, `GtkBorder` before GTK init) on hot paths.
 
   AllocRequest::execute resolves the JS-supplied type_name with glib::Type::from_name, which only finds types whose get_type has already run. If the type is not yet registered, the result is silently None and the allocation is wrapped as a plain struct (freed with g_free, cloned as a non-owning alias in Boxed::clone) instead of failing or registering the type. The same JS call therefore produces different ownership semantics depending on whether anything happened to register the GType first — timing-dependent behavior. The broader contract is also unvalidated: size is uncorrelated with the named type (a short alloc makes any later g_boxed_copy read out of bounds), and Drop runs the type's registered boxed free function on g_malloc0'd zeroed memory, which is undefined for boxed types whose free function is not a plain deallocation (e.g. refcounted boxed types such as GskTransform, where g_boxed_free → unref underflows a zero refcount).
 
@@ -176,7 +182,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-014** · `src/module/call.rs:62` · memory-leak — **Transfer-full argument encodes (g_strdup, g_boxed_copy, g_object_ref, ref_fn) leak on every call-setup failure because encoding runs before symbol resolution**
+- [x] **RS-014** · `src/module/call.rs:62` · memory-leak — **Transfer-full argument encodes (g_strdup, g_boxed_copy, g_object_ref, ref_fn) leak on every call-setup failure because encoding runs before symbol resolution**
 
   Encoders for Ownership::Full arguments pay the ownership transfer upfront — StringType g_strdup's, BoxedType makes a g_boxed_copy, GObjectType takes an extra g_object_ref via ref_for_transfer, FundamentalType calls the ref function — and return the result as a bare FfiValue::Ptr, which owns nothing and has no Drop (FfiStorage::drop only releases list/array/hashtable kinds). Ownership of the copy/reference is transferred only if the native call actually happens. In CallRequest::execute, argument encoding runs BEFORE library/symbol resolution and before call_cif: if a later argument fails to encode, if the library or symbol fails to resolve (typo, older GTK), or if call_cif bails, the `?` drops the Vec<FfiValue> and every transfer-full side effect leaks. Generated bindings do pass transfer-full string and object in-args (`{ type: t.string("full") }` appears in gtk.js, gsk.js, soup.js, glib.js), so a misspelled symbol or any bad sibling argument leaks one allocation per attempt; a leaked g_object_ref is particularly damaging because the GObject (e.g. a widget) can never be finalized. The design fix is type-level: ownership taken during encode should live in an owning storage variant (as FfiStorageKind already does for arrays with should_free) that releases on Drop and is disarmed only when the call succeeds.
 
@@ -188,7 +194,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-015** · `src/module/call.rs:94` · memory-leak — **Out-parameter GObject pending refs leak when return-value decoding or JS conversion fails after collect_ref_updates**
+- [x] **RS-015** · `src/module/call.rs:94` · memory-leak — **Out-parameter GObject pending refs leak when return-value decoding or JS conversion fails after collect_ref_updates**
 
   Decoding a GObject without an existing wrapper takes a pending g_object_ref (transfer-none) or keeps the caller's ref (transfer-full) that is only released when JavaScript later calls setWrapper and toggle_ref::install consumes it. In CallRequest::execute, ref updates for Ref-typed out-parameters are decoded before the return value; if the return decode then fails, the RefUpdate values — including Value::Object handles whose decode took that pending ref — are dropped (NativeHandle::borrowed_gobject has no Drop), and the ref leaks, keeping the GObject alive forever. The same protocol leaks in Mailbox::execute_callback when converting a later callback argument to JS fails after an earlier GObject argument was decoded with a pending ref.
 
@@ -200,7 +206,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-016** · `src/toggle_ref.rs:230` · race-condition — **Toggle notify firing on a non-GLib thread races the GLib-thread teardown and uses a freed napi_ref**
+- [x] **RS-016** · `src/toggle_ref.rs:230` · race-condition — **Toggle notify firing on a non-GLib thread races the GLib-thread teardown and uses a freed napi_ref**
 
   The teardown serialization invariant (module doc, lines 36-45) holds only because on_toggle_notify and the cleanup both run on the GLib thread. GLib gives no such guarantee: the toggle notify fires on whichever thread performs the boundary-crossing ref/unref, and libraries reachable through the generated bindings drop references on internal threads. GIO's GTask (behind every *_async API) can drop its final task reference on the worker-pool thread when the main-context completion callback finishes first; g_task_finalize then unrefs the task's source object on the pool thread. GDBus releases connection and message references on its private worker thread. If such an unref crosses the toggle boundary of a JS-wrapped object concurrently with that object's scheduled cleanup, on_toggle_notify reads the napi_ref from qdata before the cleanup clears the slot, the cleanup's OP_DELETE then frees the napi_ref on the JS thread, and the worker's invoke_ref_op makes apply_wrapper_ref_op call napi_reference_ref/unref on freed memory. A second consequence: invoke_node_and_wait called from the worker parks it in wait_for_node_result, whose dispatch_pending_from_depth drains GLib-bound mailbox tasks — executing queued GTK mutations on a foreign thread.
 
@@ -212,7 +218,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-017** · `src/toggle_ref.rs:287` · non-idiomatic — **Toggle-ref binding lifetime managed by hand-rolled Arc strong-count arithmetic on usize addresses**
+- [x] **RS-017** · `src/toggle_ref.rs:287` · non-idiomatic — **Toggle-ref binding lifetime managed by hand-rolled Arc strong-count arithmetic on usize addresses**
 
   WrapperBinding cells are kept alive by manually pairing Arc::into_raw/Arc::increment_strong_count/Arc::decrement_strong_count calls across three modules, with the cell address erased to a usize in FinalizeData and re-fabricated as *const WrapperBinding inside the cleanup closure. Every count adjustment must be balanced by inspection across install, schedule_cleanup, and the finalizer; a missed decrement leaks the cell forever and an extra one is a use-after-free, and nothing in the types enforces the pairing. WrapperBinding contains only atomics, so it is Send + Sync: FinalizeData could hold an Option<Arc<WrapperBinding>> directly, install could return a cloned Arc, and the glib::idle_add_once closure could capture the Arc by move — Drop would then manage every count, deleting all five manual count operations and the unsafe address round-trips. Only the qdata slot genuinely needs Arc::into_raw (one site instead of six).
 
@@ -224,7 +230,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-018** · `src/trampoline.rs:78` · non-idiomatic — **One SAFETY comment for roughly 300 unsafe blocks in a memory-safety-critical FFI crate**
+- [x] **RS-018** · `src/trampoline.rs:78` · non-idiomatic — **One SAFETY comment for roughly 300 unsafe blocks in a memory-safety-critical FFI crate**
 
   The crate's entire purpose is policing the JS/GLib memory boundary, and CI invests in ASAN and Miri runs, yet `grep -rn 'SAFETY' src/` finds exactly one justified unsafe block (src/state.rs:97). Module docs and # Safety sections on some unsafe fns are good, but the individual unsafe blocks — including genuinely subtle ones — carry no per-site justification, so a reviewer cannot tell which invariant each block relies on or verify it locally. The starkest example is the self-referential &'static fabrication in TrampolineState::create, which silently depends on Box heap stability and on the Drop order declared 30 lines away; others include the qdata Arc round-trips in toggle_ref.rs, the unaligned pointer-slot writes in types/raw_ptr.rs, and the Unknown::from_raw_unchecked conversions throughout the napi glue. Adopting the `// SAFETY:` convention (and optionally enabling clippy::undocumented_unsafe_blocks, which -D warnings does not cover because it is a restriction lint) is the idiomatic remedy.
 
@@ -236,7 +242,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-019** · `src/types/array.rs:720` · memory-leak — **GArray string elements are unconditionally g_strdup'd with no clear-func, leaking every string for borrowed and transfer-container arguments**
+- [x] **RS-019** · `src/types/array.rs:720` · memory-leak — **GArray string elements are unconditionally g_strdup'd with no clear-func, leaking every string for borrowed and transfer-container arguments**
 
   append_items_to_garray duplicates every string element regardless of the item type's ownership, and the GArray is created with g_array_sized_new and no g_array_set_clear_func; FfiStorage::drop_garray only calls g_array_unref, which frees the element segment but not the duplicated strings it points to. For a transfer-none GArray-of-strings argument (container borrowed, items borrowed) the drop frees the array buffer but every duplicated string leaks on every call — a happy-path leak. For transfer-container (container full, items borrowed) the callee frees only the array, again leaking every dup. The encoder for plain/null-terminated string arrays gets this right by gating the dup on the item ownership (`dup_elements = matches!(&*self.item_type, Type::String(s) if s.ownership.is_full())`, lines 573-574), and the GList path both gates the dup and frees duped elements with g_list_free_full; the GArray path does neither.
 
@@ -248,7 +254,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-020** · `src/types/array.rs:841` · memory-leak — **Container decode paths skip the transfer-full container free when an element decode fails (GList/GSList, GPtrArray, null-terminated, GArray, GHashTable)**
+- [x] **RS-020** · `src/types/array.rs:841` · memory-leak — **Container decode paths skip the transfer-full container free when an element decode fails (GList/GSList, GPtrArray, null-terminated, GArray, GHashTable)**
 
   All container decoders free or unref the transfer-full container only after every element decoded successfully; a mid-iteration element decode failure propagates with `?` and skips the container release. The container (and any transfer-full elements after the failure point) leaks; elements before the failure that were adopted with full ownership are also stranded in already-built Value objects that never reach JavaScript. The pattern repeats in five decoders: decode_glist/decode_gslist, decode_gptrarray, decode_null_terminated_ptr_array, decode_garray, and HashTableType::decode. Failure is reachable, for example, when a boxed element's free_fn symbol cannot be resolved (BoxedType::boxed_with_free_fn bails), a borrowed boxed element has no gtype and no size (Boxed::from_glib_none_with_size bails), or a GObject element's class pointer is invalid (load_type_class bails).
 
@@ -260,7 +266,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-021** · `src/types/gobject.rs:145` · memory-leak — **write_return_to_raw_ptr ignores transfer mode and always adds a reference/copy to callback return values**
+- [x] **RS-021** · `src/types/gobject.rs:145` · memory-leak — **write_return_to_raw_ptr ignores transfer mode and always adds a reference/copy to callback return values**
 
   GObjectType carries an Ownership field that decode honors, but write_return_to_raw_ptr — the path that writes a JS callback's return value into the native return slot of a trampoline — unconditionally takes a fresh reference (from_glib_none + into_glib_ptr). BoxedType::write_return_to_raw_ptr (src/types/boxed.rs:200-206) unconditionally g_boxed_copies, and FundamentalType (src/types/fundamental.rs:112-117) unconditionally calls ref_fn. For a callback, vfunc, or signal whose return is annotated transfer-none (e.g. GtkNotebook::create-window returns a transfer-none GtkNotebook*), the C emitter never releases the extra reference/copy, so every emission leaks one GObject reference (keeping the object alive past its intended lifetime) or one boxed copy outright.
 
@@ -272,7 +278,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-022** · `src/types/hashtable.rs:67` · logic-bug — **GHashTable element ownership transfer is half-implemented: owned refs without destroy funcs, and GPtrArray elements never transferred**
+- [x] **RS-022** · `src/types/hashtable.rs:67` · logic-bug — **GHashTable element ownership transfer is half-implemented: owned refs without destroy funcs, and GPtrArray elements never transferred**
 
   Two inconsistencies in element ownership. (1) encode_hashtable passes every key/value through key_type/value_type.ref_for_transfer, which for a full-ownership GObject takes a g_object_ref and for a full-ownership boxed makes a g_boxed_copy — but free_func() returns None for NativeHandle entries, so the table created by g_hash_table_new_full has no destroy notify for them. Whoever destroys the table (the callee for a transfer-full table, or FfiStorage::drop_hash_table for a borrowed one) frees only the table structure; the extra refs/copies taken at insert leak unconditionally. (2) The PtrArray value encoder receives the element item type but explicitly discards it (`Self::PtrArray(_item_type)`) and inserts raw handle pointers with no reference transfer; a callee that retains a transfer-full table holds GPtrArrays whose elements dangle once the JavaScript wrappers are collected and their toggle refs removed.
 
@@ -284,7 +290,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-023** · `src/types/hashtable.rs:172` · memory-leak — **encode_hashtable leaks the GHashTable, inserted entries, and the just-encoded key allocation on mid-loop errors**
+- [x] **RS-023** · `src/types/hashtable.rs:172` · memory-leak — **encode_hashtable leaks the GHashTable, inserted entries, and the just-encoded key allocation on mid-loop errors**
 
   encode_hashtable creates the table with g_hash_table_new_full and then iterates the tuples with `?` propagation. If a tuple is malformed (Self::tuple fails), a key or value fails to encode (e.g. a non-string in a string-keyed table), or ref_for_transfer fails, the function returns early and the table — plus all entries inserted so far — is never freed. Additionally, when the key encoder has already allocated (g_strdup for string keys, g_malloc for float keys) and the value encoder then fails, that key allocation was never inserted into the table and leaks even if the table were destroyed. The analogous array path shows the crate's own standard: encode_garray unrefs the partially built GArray on error (src/types/array.rs:750-753). The trigger is any JS-supplied hash table argument with one mistyped tuple, an ordinary user input error.
 
@@ -296,7 +302,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-024** · `src/types/trampoline.rs:128` · memory-leak — **Notified/Async/Forever trampoline state (libffi closure, TrampolineData, JsRef) leaks whenever the FFI call fails after argument encoding**
+- [x] **RS-024** · `src/types/trampoline.rs:128` · memory-leak — **Notified/Async/Forever trampoline state (libffi closure, TrampolineData, JsRef) leaks whenever the FFI call fails after argument encoding**
 
   For the Notified, Async, and Forever scopes, encode leaks the TrampolineState via Box::into_raw and stores no owning handle in the resulting FfiValue (`_owned_state` is None; only TrampolineScope::Call ties the state's lifetime to the FfiValue via `Some(state)`); TrampolineValue has no Drop impl, so reclamation relies on the native callee invoking the destroy notify (Notified), the one-shot firing (Async), or process lifetime (Forever). In CallRequest::execute, arguments are encoded before the symbol is resolved, so any failure between encode and a successful ffi_call — a later argument fails to encode (e.g. an out-of-range integer rejected by IntegerKind::check_range), the library or symbol fails to resolve (e.g. a symbol absent from the installed GTK version), or call_cif returns Err or panics (including the arg-count assert from the scope/hasDestroy mismatch) — drops the FfiValue::Trampoline without the native call ever happening. The libffi ffi_closure (executable memory page), the Box<TrampolineState>, the Box<TrampolineData>, and the Arc<JsRef<JsFunction>> inside it leak permanently; the napi reference pins the JavaScript callback function (and everything it captures) for the life of the process. Each occurrence leaks one full trampoline.
 
@@ -310,7 +316,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
 ## Low severity (17)
 
-- [ ] **RS-025** · `src/dispatch.rs:185` · logic-bug — **Unbalanced unfreeze wraps freeze_depth to usize::MAX, silently and permanently disabling commit freezing**
+- [x] **RS-025** · `src/dispatch.rs:185` · logic-bug — **Unbalanced unfreeze wraps freeze_depth to usize::MAX, silently and permanently disabling commit freezing**
 
   unfreeze performs an unguarded fetch_sub on freeze_depth. Atomic RMW operations wrap silently in all build profiles, so a single unpaired unfreeze() — an exported napi function callable directly from JS with no pairing enforcement — wraps the depth from 0 to usize::MAX. From then on freeze()'s outermost detection (fetch_add(1) == 0) can never report true again, so no freeze loop is ever started for any subsequent React commit: the GLib frame clock fires between individual mutations mid-commit, producing the exact intermediate-repaint artifacts the freeze mechanism exists to prevent, with no error or diagnostic anywhere. Every later freeze/unfreeze pair keeps the counter offset, so the corruption is permanent and invisible. Relatedly, freeze()'s error path (dispatch fails because the mailbox is stopped or the GLib thread died) leaves the already-incremented depth behind with no rollback, producing the same permanent desynchronization and feeding the stop()-while-frozen deadlock. An idiomatic guard is fetch_update with checked_sub (or a debug assertion plus error report) so misuse surfaces immediately.
 
@@ -322,7 +328,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-026** · `src/dispatch.rs:296` · logic-bug — **Panicking GLib task is reported to the blocked JS caller as GlibDisconnectedError, conflating a single failed task with a dead runtime**
+- [x] **RS-026** · `src/dispatch.rs:296` · logic-bug — **Panicking GLib task is reported to the blocked JS caller as GlibDisconnectedError, conflating a single failed task with a dead runtime**
 
   When a task dispatched via dispatch_to_glib_and_wait panics on the GLib thread, catch_unwind swallows the unwind and drops the task closure — including the captured mpsc Sender — so the JS thread blocked in wait_for_glib_result observes TryRecvError::Disconnected and receives GlibDisconnectedError, whose Display text is "GLib thread disconnected". The thread is in fact alive and healthy; only one task failed. The synchronous FFI call therefore rejects with a message indicating runtime death, while the real panic text arrives later and out-of-band via the unhandledRejection error reporter. JS-side callers (and the runtime's own stop/freeze paths, which map this same error) cannot distinguish a recoverable per-call failure from actual GLib-thread shutdown, which misdirects diagnosis of any panic in a marshalled call.
 
@@ -334,7 +340,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-027** · `src/module/call.rs:96` · memory-leak — **FFI call return-value decode failure leaks the transfer-full result**
+- [x] **RS-027** · `src/module/call.rs:96` · memory-leak — **FFI call return-value decode failure leaks the transfer-full result**
 
   CallRequest::execute performs the native call, then decodes the return value; if decoding fails, the function returns the error and the raw result is abandoned. For transfer-full return types (caller-owned strings, boxed values, GObjects) the returned pointer is never freed or unreffed, so every decode failure on an ownership-transferring call leaks the native allocation. The crate's own test demonstrates the leaking path: g_strdup's owned return is decoded with an out-of-bounds size index and the duplicated string is dropped on the floor.
 
@@ -346,7 +352,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-028** · `src/module/init.rs:42` · logic-bug — **init has no lifecycle guard: re-init after stop returns a dead runtime, and double init leaks the first GLib thread via set_handle's silent replace**
+- [x] **RS-028** · `src/module/init.rs:42` · logic-bug — **init has no lifecycle guard: re-init after stop returns a dead runtime, and double init leaks the first GLib thread via set_handle's silent replace**
 
   init never resets Mailbox::stopped, so calling init after stop spawns a fresh GLib thread and returns a valid-looking MainLoop handle while every subsequent dispatch is silently dropped by schedule_glib's stopped check, surfacing only as 'GLib thread disconnected' errors on each call — the runtime is unrecoverable despite init reporting success (Mailbox::reset_for_test exists but is test-only by its own doc). Calling init twice without stop — the double-module-load hazard the @gtkx/vitest plugin's single-module-identity inlining exists to prevent, reachable whenever two copies of the FFI package load the same .node binary — spawns a second OS thread running a second glib::MainLoop against the same default main context, and GlibThread::set_handle uses Option::replace, silently dropping the first thread's JoinHandle. stop()'s GlibThread::join then only joins the most recent thread, so shutdown returns while the first thread is still alive, contending ownership of the default GMainContext and holding GLib state past the point the runtime reports itself stopped. Neither sequence is detected or rejected.
 
@@ -358,7 +364,9 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-029** · `src/module/toggle_ref.rs:87` · non-idiomatic — **Pointers, GTypes, and opcodes cross the JS boundary as f64**
+- [x] **RS-029** · `src/module/toggle_ref.rs:87` · non-idiomatic — **Pointers, GTypes, and opcodes cross the JS boundary as f64**
+
+  *Resolution:* the opcode half is fully adopted — `RefOp` is a `#[repr(u32)]` enum, `apply_wrapper_ref_op` takes `op: u32` and dispatches through a compile-checked `match` on `RefOp::from_opcode` with the documented silent no-op fallback for unknown values. The `ref_ptr`/GType f64 transport is retained: switching to BigInt would change the JS-visible callback protocol and the `Value` IR for a hazard with no trigger on current Linux user-space layouts (the verifier's own assessment), so the exact-integer transport remains future work if 57-bit addressing becomes relevant.
 
   Raw napi_ref pointers, GType values, and reference-operation opcodes are all marshaled as f64, with float equality used to dispatch opcodes. An f64 represents integers exactly only up to 2^53; current Linux user-space addresses fit, but 57-bit virtual addressing (5-level paging) and tagged-pointer configurations can exceed that, at which point a pointer silently round-trips to a different address. napi-rs supports i64/u64/BigInt for exact integer transport, and the three opcodes (OP_WEAKEN/OP_STRENGTHEN/OP_DELETE defined as f64 consts 0.0/1.0/2.0) should be an enum with integer discriminants so the `op == OP_STRENGTHEN` float comparisons and the silent no-op fallback for unknown opcodes become a compile-checked match.
 
@@ -370,7 +378,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-030** · `src/toggle_ref.rs:276` · memory-leak — **install() consumes exactly one pending reference, leaking when one crossing decodes the same untracked GObject twice**
+- [x] **RS-030** · `src/toggle_ref.rs:276` · memory-leak — **install() consumes exactly one pending reference, leaking when one crossing decodes the same untracked GObject twice**
 
   The decode/install protocol leaves one pending owned reference per decode (types/gobject.rs:71-77 takes g_object_ref for every borrowed decode of an untracked object), but install releases exactly one reference per object, and the JS registry calls setWrapper only for the first wrapper (registry.ts resolveWrapper short-circuits on getWrapper). When a single JS<->GLib crossing carries the same untracked GObject pointer in two slots — an array return or callback argument list containing a duplicate, e.g. a Gio.ListStore holding the same item twice decoded in one batch, or a multi-argument signal delivering one object in two GObject-typed parameters — both decodes run on the GLib thread before any install, both observe has_wrapper()==false, and both take a pending reference. The single install consumes one; the second is never released, permanently pinning the object's refcount so it can never be finalized.
 
@@ -382,7 +390,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-031** · `src/trampoline.rs:243` · undefined-behavior — **Trampoline closure handler writes narrow integer returns without widening to ffi_arg, violating the libffi closure return contract**
+- [x] **RS-031** · `src/trampoline.rs:243` · undefined-behavior — **Trampoline closure handler writes narrow integer returns without widening to ffi_arg, violating the libffi closure return contract**
 
   libffi's closure contract requires the handler to store integral results narrower than ffi_arg as a full widened ffi_arg into the return slot. trampoline_handler types the slot as `&mut u64` (uninitialized memory supplied by the libffi closure stub) and delegates to write_return_to_raw_ptr, which for IntegerKind writes only the narrow type (`ptr.cast::<$ty>().write_unaligned(value as $ty)` — 1-4 of the 8 bytes), BooleanType writes a bare i32, and UnicharType a bare u32, leaving the rest of the slot as stack garbage. The CIF return type is the narrow libffi type (e.g. FFI_TYPE_SINT32 for the very common gboolean-returning signal callbacks such as GtkWindow::close-request). Current libffi unix64/aarch64 epilogues happen to do exact-width loads at offset 0, so this works on the supported little-endian targets, but it reads uninitialized bytes, and on big-endian 64-bit ports (e.g. s390x) the widened value's significant bytes live at the high addresses of the slot, so a JS callback returning gboolean/int delivers garbage to GTK. A latent ABI-contract violation in code that is otherwise platform-generic, invisible to ASan/Miri because the read happens inside libffi's assembly.
 
@@ -394,7 +402,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-032** · `src/types.rs:68` · non-idiomatic — **JS descriptor parsing swallows real errors via .ok().flatten() and error-discarding map_err**
+- [x] **RS-032** · `src/types.rs:68` · non-idiomatic — **JS descriptor parsing swallows real errors via .ok().flatten() and error-discarding map_err**
 
   Optional descriptor properties are read with `get_named_property::<Option<T>>(..).ok().flatten()`, which converts a type error (e.g. `elementSize: 'four'`, `optional: 'yes'`, or `optional: 1`) into a silent default instead of an InvalidArg error, and several required-property reads discard the underlying napi error and replace it with a generic 'property is required' message even when the property exists but is malformed. Both patterns hide the actual defect from the JS caller and make descriptor bugs in the generated bindings surface as misbehavior — wrongly-sized arrays, or a non-optional default that makes a legitimate null argument later fail encoding with an unrelated message (e.g. 'Expected a Number for integer type, got Null') pointing at the value instead of the malformed descriptor. Distinguishing absent (Ok(None)) from malformed (Err) and propagating the napi error with context is the idiomatic shape.
 
@@ -406,7 +414,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-033** · `src/types/array.rs:641` · undefined-behavior — **encode_garray copies a JS-controlled element size out of a fixed 8-byte stack buffer (out-of-bounds read)**
+- [x] **RS-033** · `src/types/array.rs:641` · undefined-behavior — **encode_garray copies a JS-controlled element size out of a fixed 8-byte stack buffer (out-of-bounds read)**
 
   encode_garray sizes the GArray with `self.element_size` when the JS descriptor supplies an `elementSize` override, taking precedence over the codec-derived per-item size (`self.element_size.or_else(|| self.item_element_size())`). The append helpers, however, stage each element in storage sized for the codec type only: append_integer_values_to_garray uses an 8-byte stack buffer, and the float/boolean/handle/string helpers pass the address of a 4-8 byte stack scalar. g_array_append_vals copies `len * element_size` bytes from the supplied address, so a descriptor declaring e.g. `{type:'array', kind:'garray', itemType:{type:'int32'}, elementSize: 64}` makes GLib read 56 bytes past the end of `buf` (and past the stack scalars in the other helpers) — an out-of-bounds read of stack memory, undefined behavior. The mismatch between the override and the staging-buffer size is never validated, in contrast with the crate's habit of validating JS-supplied layout data (validate_vfunc_offset, IntegerKind::check_range, ArrayType::validated_size).
 
@@ -418,7 +426,7 @@ Why it is a real non-idiomatic finding and not pedantry: the crate demonstrably 
 
   </details>
 
-- [ ] **RS-034** · `src/types/array.rs:774` · logic-bug — **Zero-terminated arrays of scalar elements are decoded as pointer arrays: wrong stride, guaranteed error, possible OOB read**
+- [x] **RS-034** · `src/types/array.rs:774` · logic-bug — **Zero-terminated arrays of scalar elements are decoded as pointer arrays: wrong stride, guaranteed error, possible OOB read**
 
   ArrayType::decode for ArrayKind::Array with a raw pointer routes every non-string item type to decode_null_terminated_ptr_array, which walks the buffer in pointer-sized (8-byte) strides and decodes each element as FfiValue::Ptr. For a zero-terminated array of i32/u32/boolean elements (which GIR does describe), the stride is wrong and IntegerKind::decode(FfiValue::Ptr) always bails ("Expected a numeric FfiValue"), so such returns can never be decoded; additionally the very first 8-byte read can run past the allocation of a short scalar array (an empty zero-terminated gint array is a 4-byte allocation, but `*ptr_array.offset(0)` reads 8 bytes). The transfer-full container free is also skipped because the error propagates before the g_free at line 944-946.
 
@@ -442,7 +450,7 @@ This is a genuine logic gap (decode contract broken for a type combination the e
 
   </details>
 
-- [ ] **RS-035** · `src/types/boxed.rs:265` · non-idiomatic — **expect() on invariants enforced at a distance in Boxed construction paths**
+- [x] **RS-035** · `src/types/boxed.rs:265` · non-idiomatic — **expect() on invariants enforced at a distance in Boxed construction paths**
 
   StructType::decode and StructType::ptr_to_value call `Boxed::from_glib_none_with_size(...).expect("... always succeeds")`, and BoxedType::boxed_with_free_fn does `self.free_fn.as_deref().expect("boxed_with_free_fn called without freeFn set")`. Each expect is currently correct, but the invariant lives in a different function: from_glib_none_with_size only fails when both gtype and size are None, and boxed_with_free_fn is only called behind free_fn.is_some() checks at two call sites. Any future edit to either side turns these into library panics. Encoding the invariant in the API removes the expects: an infallible `Boxed::copy_with_size(ptr: *mut c_void, size: usize) -> Boxed` constructor for the sized case, and passing the resolved `&str` free-fn name into boxed_with_free_fn as a parameter.
 
@@ -454,7 +462,7 @@ This is a genuine logic gap (decode contract broken for a type combination the e
 
   </details>
 
-- [ ] **RS-036** · `src/types/hashtable.rs:23` · non-idiomatic — **PartialEq for HashTableEntryEncoder compares only discriminants, equating PtrArray of different item types**
+- [x] **RS-036** · `src/types/hashtable.rs:23` · non-idiomatic — **PartialEq for HashTableEntryEncoder compares only discriminants, equating PtrArray of different item types**
 
   The manual PartialEq impl uses std::mem::discriminant, so PtrArray(Box::new(Integer)) compares equal to PtrArray(Box::new(Boolean)). An equality impl that ignores payload violates the expectation that == means structural equivalence and is a trap for future code that compares encoders to decide marshalling compatibility (two 'equal' encoders would produce differently-typed GPtrArrays). The impl exists only to serve test assertions. Idiomatic alternatives: derive PartialEq once Type can support it, expose a kind() discriminant accessor, or have tests use matches! (which several already do for the PtrArray case).
 
@@ -466,7 +474,7 @@ This is a genuine logic gap (decode contract broken for a type combination the e
 
   </details>
 
-- [ ] **RS-037** · `src/types/numeric.rs:118` · logic-bug — **Float encode silently converts a GObject handle's address into the f64 argument**
+- [x] **RS-037** · `src/types/numeric.rs:118` · logic-bug — **Float encode silently converts a GObject handle's address into the f64 argument**
 
   The impl_numeric_codecs macro's encode arm `value::Value::Object(handle) => handle.ptr_as_usize() as f64` exists for integer kinds (pointer-as-uintptr arguments) but the macro is also instantiated for FloatKind (line 347). FloatKind::checked_to_ffi_value performs no integrality check, so passing a GObject/boxed handle where a float32/float64 argument is expected silently encodes the wrapper's heap address (~1.4e14) as the floating-point argument instead of raising the type error every other mismatched Value variant gets. A JS-side argument-ordering mistake involving an object and a number therefore produces a garbage geometry/opacity value fed straight into GTK with no diagnostic, whereas the same mistake with a string fails loudly via the `_ => bail!` arm.
 
@@ -478,7 +486,7 @@ This is a genuine logic gap (decode contract broken for a type combination the e
 
   </details>
 
-- [ ] **RS-038** · `src/types/string.rs:79` · memory-leak — **Trampoline string returns always g_strdup, leaking for declared transfer-none callbacks**
+- [x] **RS-038** · `src/types/string.rs:79` · memory-leak — **Trampoline string returns always g_strdup, leaking for declared transfer-none callbacks**
 
   StringType::write_return_to_raw_ptr ignores self.ownership and unconditionally g_strdups the JS return value before writing the pointer into the closure's return slot. For a callback whose GIR return is transfer-none — generated bindings have these, e.g. the GTranslateFunc trampolines in node_modules/.gtkx/gi/glib/glib.js lines 2034 and 2059, `t.trampoline([t.string("borrowed"), t.uint64], t.string("borrowed"), ...)` used by g_option_*_set_translate_func — the native caller treats the returned pointer as borrowed and never frees it, so every invocation of the JS callback leaks one heap string. Duplication is the memory-safe choice for the borrowed case (a pointer into the decoded Rust String would dangle), but the codec carries the ownership field and could retain the duplicate (e.g. per-trampoline last-return slot freed on the next call or on destroy) instead of leaking it; a translate function invoked per displayed string leaks proportionally to UI activity.
 
@@ -490,7 +498,7 @@ This is a genuine logic gap (decode contract broken for a type combination the e
 
   </details>
 
-- [ ] **RS-039** · `src/types/void.rs:13` · logic-bug — **Void is accepted in argument position, emitting a void libffi arg type and a dangling unit pointer**
+- [x] **RS-039** · `src/types/void.rs:13` · logic-bug — **Void is accepted in argument position, emitting a void libffi arg type and a dangling unit pointer**
 
   Type::can_be_return_type rejects Trampoline/Ref in the return slot, but no counterpart rejects Void in argument position. VoidType::libffi_type returns libffi::Type::void() and its encode silently swallows any value into FfiValue::Ptr(null). A void-typed argument therefore flows into the CIF builder (module/call.rs:52-60) — ffi_prep_cif with a void argument type is outside libffi's API contract (argument types must be non-void) — and FfiValue::Void's libffi arg is `libffi::arg(&())` (ffi/value.rs:184), a pointer to a zero-sized temporary that libffi may read through. This is not hypothetical: the generated harfbuzz bindings pass `{ type: t.void }` as a real argument (node_modules/.gtkx/gi/harfbuzz/harfbuzz.js lines 611, 615, 635, ..., e.g. hb_font_funcs_set_font_h_extents_func), where an unresolvable callback type degraded to void, so the C function is invoked through a CIF whose argument classification is undefined and which omits the function's remaining parameters. A descriptor-boundary check mirroring can_be_return_type would turn this into a precise InvalidArg error.
 
@@ -502,7 +510,7 @@ This is a genuine logic gap (decode contract broken for a type combination the e
 
   </details>
 
-- [ ] **RS-040** · `src/value.rs:285` · logic-bug — **Value::from_js_value recurses without depth or cycle protection; cyclic JS input overflows the stack and aborts the process**
+- [x] **RS-040** · `src/value.rs:285` · logic-bug — **Value::from_js_value recurses without depth or cycle protection; cyclic JS input overflows the stack and aborts the process**
 
   Value::from_js_value recurses structurally: arrays recurse per element via map_js_array, and every non-array object is treated as a Ref whose `value` property is converted recursively (Ref::from_js_value -> Value::from_js_value). There is no depth limit and no cycle detection. A cyclic argument — `const a = []; a[0] = a;` passed as any array-typed argument value, or `const o = {}; o.value = o;` passed where a Ref is accepted — recurses until the native stack overflows. A stack overflow in native code aborts the whole Node.js process (it is not a catchable JS exception), so a single malformed argument from application code crashes the app instead of producing an InvalidArg error.
 
@@ -514,7 +522,7 @@ This is a genuine logic gap (decode contract broken for a type combination the e
 
   </details>
 
-- [ ] **RS-041** · `src/wait_signal.rs:1` · non-idiomatic — **wait_signal.rs and ffi/storage.rs lack the documentation the rest of the crate maintains**
+- [x] **RS-041** · `src/wait_signal.rs:1` · non-idiomatic — **wait_signal.rs and ffi/storage.rs lack the documentation the rest of the crate maintains**
 
   The crate's convention is thorough module-level doc comments plus doc comments on public items (dispatch.rs, toggle_ref.rs, managed.rs, etc. all carry detailed contracts). wait_signal.rs has zero documentation — no module doc and no item docs on WaitSignal, notify, or wait — despite the type's semantics being subtle (a consumed binary signal where wait clears the flag, single-waiter assumption via notify_one, lost-wakeup tolerance through the boolean). ffi/storage.rs similarly exposes FfiStorage, FfiStorageKind, and seven public *Data structs with should_free/elements_duped ownership flags whose meaning is documented nowhere, even though those flags decide which Drop path frees GLib memory. These are exactly the items whose contracts other modules depend on for soundness.
 
@@ -528,7 +536,7 @@ This is a genuine logic gap (decode contract broken for a type combination the e
 
 ## Tooling
 
-- [ ] **RS-T01** · `packages/native/package.json` — the `lint` script runs `cargo clippy -- -D warnings` without `--all-targets`, so benches and integration tests are never checked against the crate's `pedantic`/`nursery` lint levels. Add `--all-targets` (and fix whatever it surfaces) so the gap cannot reopen.
+- [x] **RS-T01** · `packages/native/package.json` — the `lint` script runs `cargo clippy -- -D warnings` without `--all-targets`, so benches and integration tests are never checked against the crate's `pedantic`/`nursery` lint levels. Add `--all-targets` (and fix whatever it surfaces) so the gap cannot reopen.
 
 ## Verified non-issues (14)
 

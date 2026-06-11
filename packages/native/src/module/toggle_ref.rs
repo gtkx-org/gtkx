@@ -16,6 +16,7 @@
 use std::ffi::c_void;
 use std::sync::Arc;
 
+use gtk4::glib;
 use napi::bindgen_prelude::*;
 use napi::{Env, JsFunction, JsObject, NapiRaw, NapiValue, sys};
 use napi_derive::napi;
@@ -25,17 +26,17 @@ use crate::managed::NativeHandle;
 use crate::toggle_ref;
 use crate::value::JsRef;
 
-/// Finalizer payload carried by a wrapper's napi reference: the addresses of the
-/// `GObject`, the `napi_ref`, and the object's `WrapperBinding` cell, plus the
-/// binding generation in effect when this wrapper was bound — all reconstituted
-/// on the `GLib` thread during teardown. [`set_wrapper`] fills `binding_addr` and
-/// `generation` from the value [`toggle_ref::install`] returns, so a finalizer
-/// that runs before that write (only on a shutdown dispatch failure) carries a
-/// zero `binding_addr` and merely deletes its reference.
+/// Finalizer payload carried by a wrapper's napi reference: the addresses of
+/// the `GObject` and the `napi_ref`, the finalizer's `Arc` clone of the
+/// object's `WrapperBinding` cell, and the binding generation in effect when
+/// this wrapper was bound. [`set_wrapper`] fills `binding` and `generation`
+/// from the value [`toggle_ref::install`] returns, so a finalizer that runs
+/// before that write (only on a shutdown dispatch failure) carries no binding
+/// and merely deletes its reference.
 struct FinalizeData {
     gobject_addr: usize,
     ref_addr: usize,
-    binding_addr: usize,
+    binding: Option<Arc<toggle_ref::WrapperBinding>>,
     generation: u64,
 }
 
@@ -48,9 +49,12 @@ unsafe extern "C" fn on_wrapper_finalize(
     finalize_data: *mut c_void,
     _finalize_hint: *mut c_void,
 ) {
-    let data = unsafe { Box::from_raw(finalize_data.cast::<FinalizeData>()) };
+    // SAFETY: `finalize_data` is the unique `Box::into_raw` pointer
+    // `set_wrapper` attached to this finalizer, which napi invokes exactly
+    // once.
+    let mut data = unsafe { Box::from_raw(finalize_data.cast::<FinalizeData>()) };
     toggle_ref::schedule_cleanup(
-        data.binding_addr,
+        data.binding.take(),
         data.generation,
         data.gobject_addr,
         data.ref_addr,
@@ -70,6 +74,8 @@ pub fn set_object_toggle_notify(env: Env, callback: Unknown<'_>) -> napi::Result
             "set_object_toggle_notify: callback must be a function",
         ));
     }
+    // SAFETY: `callback` is a live JS value from the current callback's
+    // `env`, verified to be a function just above.
     let func: JsFunction = unsafe { JsFunction::from_raw_unchecked(env.raw(), callback.raw()) };
     let func_ref = JsRef::from_js_value(&env, &func)?;
     toggle_ref::initialize(Arc::new(func_ref));
@@ -84,16 +90,24 @@ pub fn set_object_toggle_notify(env: Env, callback: Unknown<'_>) -> napi::Result
 #[napi(catch_unwind)]
 #[allow(clippy::unnecessary_wraps)]
 #[cfg_attr(test, allow(dead_code))]
-pub fn apply_wrapper_ref_op(env: Env, ref_ptr: f64, op: f64) -> napi::Result<()> {
+pub fn apply_wrapper_ref_op(env: Env, ref_ptr: f64, op: u32) -> napi::Result<()> {
     let raw_ref = ref_ptr as usize as sys::napi_ref;
     let mut count: u32 = 0;
+    // SAFETY: This runs on the JS thread owning `env`; a stale or deleted
+    // reference makes the napi call return a failure status, which is
+    // ignored by design.
     unsafe {
-        if op == toggle_ref::OP_STRENGTHEN {
-            sys::napi_reference_ref(env.raw(), raw_ref, &mut count);
-        } else if op == toggle_ref::OP_WEAKEN {
-            sys::napi_reference_unref(env.raw(), raw_ref, &mut count);
-        } else if op == toggle_ref::OP_DELETE {
-            sys::napi_delete_reference(env.raw(), raw_ref);
+        match toggle_ref::RefOp::from_opcode(op) {
+            Some(toggle_ref::RefOp::Strengthen) => {
+                sys::napi_reference_ref(env.raw(), raw_ref, &mut count);
+            }
+            Some(toggle_ref::RefOp::Weaken) => {
+                sys::napi_reference_unref(env.raw(), raw_ref, &mut count);
+            }
+            Some(toggle_ref::RefOp::Delete) => {
+                sys::napi_delete_reference(env.raw(), raw_ref);
+            }
+            None => {}
         }
     }
     Ok(())
@@ -103,10 +117,11 @@ pub fn apply_wrapper_ref_op(env: Env, ref_ptr: f64, op: f64) -> napi::Result<()>
 ///
 /// Creates a `napi_ref` plus a finalizer on `wrapper`, normalizes the reference
 /// to strong, then installs the toggle ref on the `GLib` thread — consuming the
-/// single pending owned reference the decode path left on the object. For a
-/// freshly created object with no other holder, the install's final unref fires
-/// the toggle notify synchronously, weakening the reference before this returns.
-/// A null `handle` pointer is rejected with `InvalidArg`.
+/// pending owned reference the decode path left on the object when `handle`
+/// still carries it. For a freshly created object with no other holder, the
+/// install's final unref fires the toggle notify synchronously, weakening the
+/// reference before this returns. A null `handle` pointer is rejected with
+/// `InvalidArg`.
 #[napi(catch_unwind)]
 #[cfg_attr(test, allow(dead_code))]
 pub fn set_wrapper(
@@ -125,11 +140,13 @@ pub fn set_wrapper(
     let data = Box::into_raw(Box::new(FinalizeData {
         gobject_addr,
         ref_addr: 0,
-        binding_addr: 0,
+        binding: None,
         generation: 0,
     }));
 
     let mut raw_ref: sys::napi_ref = std::ptr::null_mut();
+    // SAFETY: `wrapper` is a live object under the current callback's
+    // `env`, and `data` stays valid until the finalizer consumes it.
     let status = unsafe {
         sys::napi_add_finalizer(
             env.raw(),
@@ -141,15 +158,21 @@ pub fn set_wrapper(
         )
     };
     if status != sys::Status::napi_ok {
+        // SAFETY: The finalizer was never installed, so the unique
+        // `Box::into_raw` pointer is still unconsumed.
         drop(unsafe { Box::from_raw(data) });
         return Err(napi::Error::new(
             napi::Status::GenericFailure,
             "failed to add wrapper finalizer",
         ));
     }
+    // SAFETY: `data` stays a valid unique allocation until the finalizer
+    // consumes it, and the finalizer cannot run during this callback.
     unsafe { (*data).ref_addr = raw_ref as usize };
 
     let mut count: u32 = 0;
+    // SAFETY: `raw_ref` is the live reference napi_add_finalizer just
+    // created under the current callback's `env`.
     unsafe {
         sys::napi_reference_ref(env.raw(), raw_ref, &mut count);
         while count > 1 {
@@ -158,13 +181,23 @@ pub fn set_wrapper(
     }
 
     let ref_addr = raw_ref as usize;
-    let (binding_addr, generation) = Mailbox::global()
+    let consume_pending = handle.take_pending_gobject_ref();
+    let (binding, generation) = Mailbox::global()
+        // SAFETY: This closure runs on the GLib thread; the handle's
+        // pending reference (or the wrapper itself) keeps the GObject
+        // alive across the dispatch.
         .dispatch_to_glib_and_wait(env, move || unsafe {
-            toggle_ref::install(gobject_addr as *mut _, ref_addr as *mut c_void)
+            toggle_ref::install(
+                gobject_addr as *mut _,
+                ref_addr as *mut c_void,
+                consume_pending,
+            )
         })
         .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))?;
+    // SAFETY: `data` stays a valid unique allocation until the finalizer
+    // consumes it, and the finalizer cannot run during this callback.
     unsafe {
-        (*data).binding_addr = binding_addr;
+        (*data).binding = Some(binding);
         (*data).generation = generation;
     }
 
@@ -175,6 +208,10 @@ pub fn set_wrapper(
 /// or `undefined` when the object is untracked or its wrapper has already been
 /// collected. Reads the wrapper reference from qdata on the `GLib` thread, then
 /// resolves it to its JS value on the JS thread.
+///
+/// A live wrapper resolution consumes the pending decode reference `handle`
+/// carries: the wrapper install is the pending reference's other consumer, and
+/// a handle that resolves to an existing wrapper will never reach it.
 ///
 /// A null or non-`GObject` `handle` resolves to `undefined`: unlike
 /// [`set_wrapper`], this lookup needs no null guard because
@@ -188,6 +225,8 @@ pub fn get_wrapper<'env>(
     let gobject_addr = handle.ptr() as usize;
 
     let ref_addr: usize = Mailbox::global()
+        // SAFETY: This closure runs on the GLib thread, and wrapper_ref
+        // null-checks the address before touching qdata.
         .dispatch_to_glib_and_wait(*env, move || unsafe {
             toggle_ref::wrapper_ref(gobject_addr as *mut _) as usize
         })
@@ -196,13 +235,33 @@ pub fn get_wrapper<'env>(
     if ref_addr != 0 {
         let raw_ref = ref_addr as sys::napi_ref;
         let mut raw_value: sys::napi_value = std::ptr::null_mut();
+        // SAFETY: The binding holds the wrapper's live napi_ref, and this
+        // runs on the JS thread owning `env`.
         unsafe { sys::napi_get_reference_value(env.raw(), raw_ref, &mut raw_value) };
         if !raw_value.is_null() {
+            if handle.take_pending_gobject_ref() {
+                Mailbox::global()
+                    // SAFETY: The swapped flag held the one pending decode
+                    // reference, released exactly once on the GLib thread;
+                    // the live wrapper keeps the object alive afterward.
+                    .dispatch_to_glib_and_wait(*env, move || unsafe {
+                        glib::gobject_ffi::g_object_unref(
+                            gobject_addr as *mut glib::gobject_ffi::GObject,
+                        );
+                    })
+                    .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))?;
+            }
+            // SAFETY: `raw_value` is the live wrapper value just resolved
+            // under the current callback's `env`.
             return Ok(unsafe { Unknown::from_raw_unchecked(env.raw(), raw_value) });
         }
     }
 
     let mut undefined: sys::napi_value = std::ptr::null_mut();
+    // SAFETY: This runs on the JS thread with the live `env` of the
+    // current callback.
     unsafe { sys::napi_get_undefined(env.raw(), &mut undefined) };
+    // SAFETY: `undefined` was just produced under the current callback's
+    // `env`.
     Ok(unsafe { Unknown::from_raw_unchecked(env.raw(), undefined) })
 }

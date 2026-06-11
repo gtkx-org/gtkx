@@ -19,7 +19,7 @@ export type DevRunnerDeps = {
     stopMcpClient(): void;
     installApplicationTeardown(
         loadAppModule: (id: string) => Promise<Record<string, unknown>>,
-        onTeardown: () => void,
+        onTeardown: (runDefaultTeardown: () => void) => void,
     ): Promise<void>;
     performRefresh(): void;
     isReactRefreshBoundary(module: Record<string, unknown>): boolean;
@@ -64,6 +64,37 @@ const buildConfig = (root: string, plugins: Plugin[]): InlineConfig => ({
     ssr: { external: true, noExternal: [/^@gtkx\/(config|react|jsx|animate)(\/|$)/, /[/\\]\.gtkx[/\\]/] },
 });
 
+type RefreshTracker = {
+    performRefresh(): void;
+    isRefreshing(): boolean;
+};
+
+/**
+ * Wraps `performRefresh` so the runner can tell a refresh-induced application
+ * unmount apart from an organic quit. React flushes the sync work a refresh
+ * schedules on a microtask, so the refresh window stays open for one macrotask
+ * after the refresh call returns.
+ *
+ * @param performRefresh - The underlying Fast Refresh trigger.
+ * @returns The wrapped trigger and the window predicate.
+ */
+const createRefreshTracker = (performRefresh: () => void): RefreshTracker => {
+    let refreshing = false;
+    return {
+        performRefresh: () => {
+            refreshing = true;
+            try {
+                performRefresh();
+            } finally {
+                setTimeout(() => {
+                    refreshing = false;
+                }, 0);
+            }
+        },
+        isRefreshing: () => refreshing,
+    };
+};
+
 const requestReload = async (server: ViteDevServer, deps: DevRunnerDeps): Promise<never> => {
     deps.log("Full reload (process restart)");
     await server.close();
@@ -106,6 +137,9 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
         const root = process.cwd();
         const server = await deps.createServer(buildConfig(root, deps.plugins()));
 
+        const refreshTracker = createRefreshTracker(deps.performRefresh);
+        const refreshTrackingDeps: DevRunnerDeps = { ...deps, performRefresh: refreshTracker.performRefresh };
+
         let isShuttingDown = false;
         deps.whenStopped()
             .then(async () => {
@@ -119,7 +153,7 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
 
         server.watcher.on("change", (changedPath) => {
             if (isShuttingDown) return;
-            handleFileChange(server, deps, changedPath).catch((error) => {
+            handleFileChange(server, refreshTrackingDeps, changedPath).catch((error) => {
                 console.error("[gtkx] Hot reload failed:", error);
             });
         });
@@ -129,10 +163,14 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
 
         await deps.installApplicationTeardown(
             (id) => server.ssrLoadModule(id),
-            () => {
+            (runDefaultTeardown) => {
                 if (isShuttingDown) return;
-                deps.log("Application unmounted - restarting dev runner...");
-                deps.exit(RELOAD_EXIT_CODE);
+                if (refreshTracker.isRefreshing()) {
+                    deps.log("Application unmounted during Fast Refresh - restarting dev runner...");
+                    return deps.exit(RELOAD_EXIT_CODE);
+                }
+                deps.log("Application quit - stopping dev runner...");
+                runDefaultTeardown();
             },
         );
 

@@ -22,7 +22,6 @@ libloading = "0.9.0"
 libffi = "5.1.0"
 anyhow = "1.0.102"
 enum_dispatch = "0.3"
-send_wrapper = "0.6"
 
 [build-dependencies]
 napi-build = "2"
@@ -37,6 +36,7 @@ unexpected_cfgs = { level = "warn", check-cfg = [
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }
 nursery = { level = "warn", priority = -1 }
+undocumented_unsafe_blocks = "warn"
 module_name_repetitions = "allow"
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"

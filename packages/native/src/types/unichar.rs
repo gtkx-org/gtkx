@@ -44,28 +44,39 @@ impl FfiDecoder for UnicharType {
 }
 
 impl RawPtrCodec for UnicharType {
-    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+    unsafe fn ptr_to_value(
+        &self,
+        ptr: *mut c_void,
+        _context: &str,
+    ) -> anyhow::Result<value::Value> {
         let cp = ptr as usize as u32;
         let ch = char::from_u32(cp).unwrap_or('\u{FFFD}');
         Ok(value::Value::String(ch.to_string()))
     }
 
-    fn read_from_raw_ptr(
+    unsafe fn read_from_raw_ptr(
         &self,
         ptr: *const c_void,
         _context: &str,
     ) -> anyhow::Result<value::Value> {
+        // SAFETY: The caller guarantees `ptr` is a readable `gunichar`
+        // (u32) slot.
         let val = unsafe { *(ptr as *const u32) };
         let ch = char::from_u32(val).unwrap_or('\u{FFFD}');
         Ok(value::Value::String(ch.to_string()))
     }
 
-    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+    /// Writes a `gunichar` trampoline return widened to `ffi_arg`, per
+    /// libffi's closure contract for integral results narrower than a
+    /// register.
+    unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let val = match value {
             Ok(value::Value::String(s)) => s.chars().next().map_or(0, |c| c as u32),
             Ok(value::Value::Number(n)) => *n as u32,
             _ => 0,
         };
-        unsafe { *(ret as *mut u32) = val };
+        // SAFETY: The caller guarantees `ret` is a writable 8-byte libffi
+        // return slot; the write is unaligned-tolerant.
+        unsafe { ret.cast::<u64>().write_unaligned(u64::from(val)) };
     }
 }

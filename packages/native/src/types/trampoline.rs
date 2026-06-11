@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicPtr, Ordering};
+use std::sync::atomic::Ordering;
 
 use libffi::middle as libffi;
 use napi::{Env, JsObject};
@@ -48,22 +48,13 @@ impl TrampolineType {
         let (arg_types, return_type) =
             super::parse_trampoline_arg_and_return_types(env, obj, "trampoline")?;
 
-        let has_destroy = obj
-            .get_named_property::<Option<bool>>("hasDestroy")
-            .ok()
-            .flatten()
-            .unwrap_or(false);
+        let has_destroy =
+            super::optional_descriptor_property::<bool>(obj, "hasDestroy")?.unwrap_or(false);
 
-        let user_data_index = obj
-            .get_named_property::<Option<f64>>("userDataIndex")
-            .ok()
-            .flatten()
-            .map(|v| v as usize);
+        let user_data_index =
+            super::optional_descriptor_property::<f64>(obj, "userDataIndex")?.map(|v| v as usize);
 
-        let scope_prop: Option<String> = obj
-            .get_named_property::<Option<String>>("scope")
-            .ok()
-            .flatten();
+        let scope_prop: Option<String> = super::optional_descriptor_property(obj, "scope")?;
 
         let scope = match scope_prop {
             Some(s) => s
@@ -113,51 +104,40 @@ impl FfiEncoder for TrampolineType {
 
         let is_oneshot = self.scope == TrampolineScope::Async;
 
-        let data = TrampolineData {
-            js_func: callback.js_func.clone(),
-            arg_types: self.arg_types.clone(),
-            return_type: (*self.return_type).clone(),
-            user_data_index: self.user_data_index,
+        let data = TrampolineData::new(
+            callback.js_func.clone(),
+            self.arg_types.clone(),
+            (*self.return_type).clone(),
+            self.user_data_index,
             is_oneshot,
-            oneshot_state_ptr: AtomicPtr::new(std::ptr::null_mut()),
-        };
+        );
 
-        let state = TrampolineState::create(data);
+        let state = Box::new(TrampolineState::create(data));
         let fn_ptr = state.code_ptr;
 
         match self.scope {
-            TrampolineScope::Forever => {
-                let state_ptr = Box::into_raw(Box::new(state)) as *mut c_void;
-                Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue::new(
-                    fn_ptr, state_ptr, None, None,
-                )))
-            }
+            TrampolineScope::Forever => Ok(ffi::FfiValue::Trampoline(
+                ffi::TrampolineValue::new_armed(fn_ptr, None, state),
+            )),
             TrampolineScope::Notified => {
-                let state_ptr = Box::into_raw(Box::new(state)) as *mut c_void;
-                Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue::new(
+                Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue::new_armed(
                     fn_ptr,
-                    state_ptr,
                     Some(TrampolineState::destroy as *mut c_void),
-                    None,
+                    state,
                 )))
             }
             TrampolineScope::Async => {
-                let raw_ptr = Box::into_raw(Box::new(state));
-                unsafe {
-                    (*raw_ptr)
-                        .data_ref()
-                        .oneshot_state_ptr
-                        .store(raw_ptr, Ordering::Release);
-                }
-                Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue::new(
-                    fn_ptr,
-                    raw_ptr as *mut c_void,
-                    None,
-                    None,
+                let state_ptr =
+                    std::ptr::from_ref::<TrampolineState>(&state) as *mut TrampolineState;
+                state
+                    .data_ref()
+                    .oneshot_state_ptr
+                    .store(state_ptr, Ordering::Release);
+                Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue::new_armed(
+                    fn_ptr, None, state,
                 )))
             }
             TrampolineScope::Call => {
-                let state = Box::new(state);
                 let state_ptr = &*state as *const TrampolineState as *mut c_void;
                 Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue::new(
                     fn_ptr,

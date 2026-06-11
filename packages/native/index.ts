@@ -282,6 +282,40 @@ function toNativeVfunc(vfunc: RegisterClassVfuncDefinition): NativeVfuncDefiniti
 }
 
 /**
+ * Connects a JavaScript handler to a `GObject` signal through a native
+ * `GClosure`.
+ *
+ * GLib's closure marshaller delivers each signal parameter as a typed
+ * `GValue`; the native side converts them to JavaScript values using
+ * `argTypes` (one descriptor per closure parameter, instance first, with
+ * `ref`-typed entries exposed as mutable `{ value }` cells) and converts the
+ * handler's result into the signal's declared return type. Handler lifetime
+ * follows the connection: disconnecting the handler id or finalizing the
+ * emitter releases the JavaScript function automatically.
+ *
+ * @param handle - Native handle of the emitting object
+ * @param signal - Signal name, optionally carrying a `::detail` suffix
+ * @param argTypes - Closure parameter descriptors (instance first, no user-data slot)
+ * @param returnType - Handler return descriptor
+ * @param handler - Handler invoked with the marshalled arguments
+ * @param after - When true, run the handler after the default handler
+ * @returns The handler connection id
+ */
+// biome-ignore lint/complexity/useMaxParams: the wrapper mirrors the native connect primitive's positional arguments
+export function connectSignalClosure(
+    handle: NativeHandle,
+    signal: string,
+    argTypes: readonly Type[],
+    returnType: Type,
+    handler: (...args: unknown[]) => unknown,
+    after: boolean,
+): number {
+    const trampoline: TrampolineType = { type: "trampoline", argTypes: [...argTypes], returnType };
+    const wrapped = wrapUserCallback(handler, trampoline);
+    return native.connectSignalClosure(handle, signal, [...argTypes], returnType, wrapped, after) as number;
+}
+
+/**
  * Installs the JavaScript callback that applies a wrapper-reference operation,
  * invoked synchronously on the JS thread with `(refPtr, opcode)` whenever a
  * `GObject`'s toggle reference must flip its wrapper strong/weak or delete it.
@@ -347,4 +381,4 @@ export function unfreeze(): void {
     native.unfreeze();
 }
 
-export type { Arg, FfiValue, Type } from "./types.js";
+export type { Arg, FfiValue, TrampolineType, Type } from "./types.js";

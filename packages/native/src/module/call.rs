@@ -23,6 +23,7 @@
 use std::{ffi::c_void, sync::Arc};
 
 use anyhow::Context as _;
+use gtk4::glib;
 use libffi::middle as libffi;
 use napi::Env;
 use napi::bindgen_prelude::*;
@@ -33,7 +34,7 @@ use crate::{
     arg::Arg,
     ffi,
     state::GlibThreadState,
-    types::{FfiEncoder as _, Type},
+    types::{ArrayKind, FfiEncoder as _, Type},
     value::Value,
 };
 
@@ -50,7 +51,13 @@ impl ModuleRequest for CallRequest {
 
     fn execute(self) -> anyhow::Result<(Value, Vec<RefUpdate>)> {
         let mut arg_types: Vec<libffi::Type> = Vec::with_capacity(self.args.len() + 1);
-        for arg in &self.args {
+        for (i, arg) in self.args.iter().enumerate() {
+            anyhow::ensure!(
+                arg.ty.can_be_argument_type(),
+                "arg {i} of {}: '{}' cannot be used as a function argument type",
+                self.symbol_name,
+                arg.ty
+            );
             arg.ty.append_ffi_arg_types(&mut arg_types);
         }
 
@@ -75,6 +82,9 @@ impl ModuleRequest for CallRequest {
             ffi_value.append_libffi_args(&mut ffi_args);
         }
 
+        // SAFETY: The looked-up symbol is only stored as a code pointer
+        // here; the erased signature is never called through directly, and
+        // the library stays loaded for the process lifetime.
         let symbol_ptr = unsafe {
             GlibThreadState::with::<_, anyhow::Result<libffi::CodePtr>>(|state| {
                 let library = state.library(&self.library_name)?;
@@ -91,11 +101,20 @@ impl ModuleRequest for CallRequest {
             .call_cif(&cif, symbol_ptr, &ffi_args)
             .with_context(|| format!("calling {}", self.symbol_name))?;
 
-        let ref_updates = self.collect_ref_updates(&ffi_values)?;
+        for ffi_value in &ffi_values {
+            ffi_value.disarm_pending_transfer();
+        }
+
+        let ref_updates = self.collect_ref_updates(&ffi_values);
 
         let return_value =
             Value::from_ffi_value_with_args(&result, &self.result_type, &ffi_values, &self.args)
-                .with_context(|| format!("decoding return value of {}", self.symbol_name))?;
+                .with_context(|| format!("decoding return value of {}", self.symbol_name));
+
+        self.release_sized_array_return(&result);
+
+        let ref_updates = ref_updates?;
+        let return_value = return_value?;
         Ok((return_value, ref_updates))
     }
 
@@ -105,6 +124,35 @@ impl ModuleRequest for CallRequest {
 }
 
 impl CallRequest {
+    /// Frees the container of a transfer-full sized or fixed-size array
+    /// return value once its elements have been copied out.
+    ///
+    /// The decoder cannot perform this release itself: the same decode path
+    /// also reads caller-owned out-parameter buffers, whose containers must
+    /// not be freed. Running after the decode — error or not — also keeps a
+    /// failed element decode from leaking the container.
+    fn release_sized_array_return(&self, result: &ffi::FfiValue) {
+        let Type::Array(array_type) = &self.result_type else {
+            return;
+        };
+        if !array_type.ownership.is_full()
+            || !matches!(
+                array_type.kind,
+                ArrayKind::Sized { .. } | ArrayKind::Fixed { .. }
+            )
+        {
+            return;
+        }
+        if let ffi::FfiValue::Ptr(ptr) = result
+            && !ptr.is_null()
+        {
+            // SAFETY: A transfer-full sized/fixed array return hands this
+            // call the one owned container, released here exactly once
+            // after the decode copied the elements.
+            unsafe { glib::ffi::g_free(*ptr) };
+        }
+    }
+
     /// Collects the out-parameter write-backs for `Ref`-typed arguments.
     ///
     /// Excluded from coverage instrumentation: a `Value::Ref` carries an
@@ -165,12 +213,49 @@ mod napi_export {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{ArrayKind, ArrayType, IntegerKind, Ownership, RefType, StringType};
+    use crate::types::{ArrayType, IntegerKind, Ownership, RefType, StringType};
 
     use super::*;
 
     fn int_arg(value: f64) -> Arg {
         Arg::new(Type::Integer(IntegerKind::I32), Value::Number(value))
+    }
+
+    fn u8_array(kind: ArrayKind, ownership: Ownership) -> Type {
+        Type::Array(ArrayType {
+            item_type: Box::new(Type::Integer(IntegerKind::U8)),
+            kind,
+            ownership,
+            element_size: None,
+        })
+    }
+
+    #[test]
+    fn execute_decodes_and_releases_transfer_full_sized_array_return() {
+        let request = CallRequest {
+            library_name: "libglib-2.0.so.0".into(),
+            symbol_name: "g_memdup2".into(),
+            args: vec![
+                Arg::new(
+                    u8_array(ArrayKind::Array, Ownership::Borrowed),
+                    Value::Array(vec![
+                        Value::Number(1.0),
+                        Value::Number(2.0),
+                        Value::Number(3.0),
+                    ]),
+                ),
+                Arg::new(Type::Integer(IntegerKind::U64), Value::Number(3.0)),
+            ],
+            result_type: u8_array(ArrayKind::Sized { size_index: 1 }, Ownership::Full),
+        };
+        let (value, ref_updates) = request.execute().expect("g_memdup2 call should succeed");
+        assert!(ref_updates.is_empty());
+        let Value::Array(items) = value else {
+            panic!("expected array result")
+        };
+        assert_eq!(items.len(), 3);
+        assert!(matches!(items[0], Value::Number(n) if n == 1.0));
+        assert!(matches!(items[2], Value::Number(n) if n == 3.0));
     }
 
     #[test]
@@ -213,6 +298,23 @@ mod tests {
             .execute()
             .expect_err("encoding a string as an integer should fail");
         assert!(err.to_string().contains("encoding arg 0"));
+    }
+
+    #[test]
+    fn execute_fails_for_void_argument_type() {
+        let request = CallRequest {
+            library_name: "libglib-2.0.so.0".into(),
+            symbol_name: "g_random_int_range".into(),
+            args: vec![Arg::new(Type::Void(crate::types::VoidType), Value::Null)],
+            result_type: Type::Integer(IntegerKind::I32),
+        };
+        let err = request
+            .execute()
+            .expect_err("a void argument type should fail the call");
+        assert!(
+            err.to_string()
+                .contains("cannot be used as a function argument type")
+        );
     }
 
     #[test]

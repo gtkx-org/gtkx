@@ -15,13 +15,31 @@ import { stop } from "@gtkx/ffi";
 /** Tears down the GTK runtime after an application component unmounts. */
 export type ApplicationTeardown = () => void;
 
-const defaultTeardown: ApplicationTeardown = () => {
+/**
+ * The teardown installed when none has been set: schedules `stop` from
+ * `@gtkx/ffi` on a macrotask, letting the unmount commit finish before the
+ * main loop exits.
+ *
+ * Exported so a host that installs its own teardown via
+ * {@link setApplicationTeardown} can fall through to the stock behavior for
+ * the unmounts it does not handle itself.
+ *
+ * @example
+ * ```tsx
+ * import { defaultApplicationTeardown, setApplicationTeardown } from "@gtkx/react";
+ *
+ * setApplicationTeardown(() => {
+ *     if (!handledByHost()) defaultApplicationTeardown();
+ * });
+ * ```
+ */
+export const defaultApplicationTeardown: ApplicationTeardown = () => {
     setTimeout(() => {
         stop();
     }, 0);
 };
 
-let teardown: ApplicationTeardown = defaultTeardown;
+let teardown: ApplicationTeardown = defaultApplicationTeardown;
 
 /**
  * Installs the teardown run when an application component unmounts.
@@ -40,7 +58,7 @@ let teardown: ApplicationTeardown = defaultTeardown;
  * ```
  */
 export const setApplicationTeardown = (next: ApplicationTeardown | null): void => {
-    teardown = next ?? defaultTeardown;
+    teardown = next ?? defaultApplicationTeardown;
 };
 
 /**
