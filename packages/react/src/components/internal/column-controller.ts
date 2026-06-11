@@ -2,9 +2,27 @@ import * as Gtk from "@gtkx/gi/gtk";
 import type { ReactNode } from "react";
 import type { BoundItem } from "../../nodes/internal/bound-item.js";
 import { connectFactoryLifecycle, UNBOUND_POSITION } from "../../nodes/internal/list-factory.js";
-import type { ListController } from "./list-controller.js";
 
 const UNREGISTERED_ITEM_SIZE = { width: -1, height: -1 } as const;
+
+/**
+ * The structural surface of the list controller a column registers against:
+ * column membership, bound-item refresh scheduling, and the placeholder cell
+ * size. Declared here so the column controller never imports the list
+ * controller's module.
+ */
+export interface ColumnHost {
+    /** Adds the column to the host's settle and collection passes. */
+    addColumn(column: ColumnController): void;
+    /** Removes the column from the host. */
+    removeColumn(column: ColumnController): void;
+    /** Queues a bound-item refresh outside a commit. */
+    queueBoundItemsUpdate(): void;
+    /** Schedules a bound-item refresh aligned with the current commit. */
+    scheduleBoundItemsUpdate(): void;
+    /** The estimated per-item size used to seed placeholder cells. */
+    getEstimatedItemSize(): { width: number; height: number };
+}
 
 /** Renders one bound cell of the column from its row value. */
 type CellRenderer = (item: unknown) => ReactNode;
@@ -27,7 +45,7 @@ export class ColumnController {
     public readonly factory: Gtk.SignalListItemFactory;
     private readonly containers = new Map<Gtk.ListItem, number>();
     private readonly containerKeys = new Map<Gtk.ListItem, string>();
-    private list: ListController | null = null;
+    private list: ColumnHost | null = null;
     private renderCell: CellRenderer | null = null;
 
     /**
@@ -58,7 +76,7 @@ export class ColumnController {
      *
      * @param list - The enclosing column view's list controller.
      */
-    public register(list: ListController): void {
+    public register(list: ColumnHost): void {
         if (this.list === list) return;
         this.list = list;
         list.addColumn(this);

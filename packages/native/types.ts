@@ -1,4 +1,14 @@
-import type { NativeHandle } from "./index.js";
+import type * as native from "./native-binding.cjs";
+
+/**
+ * Opaque reference to a native pointer (GObject, Boxed, Fundamental, or struct).
+ *
+ * Values of this type are produced exclusively by the binding's primitives
+ * (`alloc`, `call`, etc.) and must never be constructed by user code. It is
+ * the napi `ExternalObject` wrapping a raw native pointer, so TypeScript
+ * treats it opaquely.
+ */
+export type NativeHandle = Parameters<typeof native.read>[0];
 
 /**
  * Union of all possible FFI return value types.

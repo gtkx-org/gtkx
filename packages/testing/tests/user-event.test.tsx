@@ -6,6 +6,7 @@ import {
     GtkButton,
     GtkCheckButton,
     GtkDragSource,
+    GtkDropDown,
     GtkDropTarget,
     GtkEntry,
     GtkGestureDrag,
@@ -21,7 +22,6 @@ import {
     GtkSwitch,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import { GtkDropDown } from "@gtkx/react";
 import type { ComponentProps, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { isEditable } from "../src/editable.js";

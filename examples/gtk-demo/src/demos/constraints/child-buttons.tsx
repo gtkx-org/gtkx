@@ -1,5 +1,4 @@
-import { GtkButton } from "@gtkx/jsx/gtk";
-import { GtkConstraintLayout } from "@gtkx/react";
+import { GtkButton, GtkConstraintLayout } from "@gtkx/jsx/gtk";
 import type { ReactNode } from "react";
 
 /**

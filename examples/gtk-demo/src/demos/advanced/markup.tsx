@@ -48,7 +48,7 @@ interface MarkupStackProps {
 const MarkupStack = ({ showSource, formattedViewRef, sourceViewRef, onFormattedRealized }: MarkupStackProps) => (
     <GtkStack
         name="markup-stack"
-        page={showSource ? "source" : "formatted"}
+        visibleChildName={showSource ? "source" : "formatted"}
         vexpand
         hexpand
         transitionType={Gtk.StackTransitionType.NONE}

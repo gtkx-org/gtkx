@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GMenu, GMenuItem, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
-import { GtkLabel } from "@gtkx/jsx/gtk";
-import { GtkColumnView, GtkColumnViewColumn } from "@gtkx/react";
+import { GMenu, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
+import { GtkColumnView, GtkColumnViewColumn, GtkLabel } from "@gtkx/jsx/gtk";
+import type { MenuEntry } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import type { ComponentProps, ReactNode, RefObject } from "react";
 import { createRef, useCallback, useMemo, useState } from "react";
@@ -33,25 +33,16 @@ const actionGroup = (prefix: string, specs: ActionSpec[]): ReactNode => (
     </GSimpleActionGroup>
 );
 
-/** A flat `<GMenu>` whose items reference `${prefix}.${id}` actions. */
-const flatMenu = (prefix: string, specs: ActionSpec[]): ReactNode => (
-    <GMenu>
-        {specs.map((spec) => (
-            <GMenuItem key={spec.id} label={spec.label} action={`${prefix}.${spec.id}`} />
-        ))}
-    </GMenu>
-);
+/** Leaf menu entries referencing `${prefix}.${id}` actions. */
+const menuEntries = (prefix: string, specs: ActionSpec[]): MenuEntry[] =>
+    specs.map((spec) => ({ label: spec.label, action: `${prefix}.${spec.id}` }));
 
-/** A `<GMenu>` of sections, each section a `<GMenuItem section>` over a child `<GMenu>`. */
+/** A flat `<GMenu>` whose items reference `${prefix}.${id}` actions. */
+const flatMenu = (prefix: string, specs: ActionSpec[]): ReactNode => <GMenu items={menuEntries(prefix, specs)} />;
+
+/** A `<GMenu>` of sections, each section grouping its specs' entries inline. */
 const sectionedMenu = (prefix: string, sections: ActionSpec[][]): ReactNode => (
-    <GMenu>
-        {sections.map((specs, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: sections are positional and stable
-            <GMenuItem key={index} section>
-                {flatMenu(prefix, specs)}
-            </GMenuItem>
-        ))}
-    </GMenu>
+    <GMenu items={sections.map((specs) => ({ section: menuEntries(prefix, specs) }))} />
 );
 
 const renderColumns = async (

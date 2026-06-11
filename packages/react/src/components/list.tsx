@@ -1,7 +1,4 @@
-import type * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
-import type { AdwComboRowProps } from "@gtkx/jsx/adw";
-import type { GtkColumnViewProps, GtkDropDownProps, GtkGridViewProps, GtkListViewProps } from "@gtkx/jsx/gtk";
 import {
     createElement,
     type ReactNode,
@@ -16,7 +13,13 @@ import {
 } from "react";
 import { onOrderedAttach } from "../attach-events.js";
 import { createWidgetComponent } from "../create-widget-component.js";
-import type { ColumnViewColumnProps, ColumnViewProps, DropDownProps, GridViewProps, ListViewProps } from "../jsx.js";
+import type {
+    ColumnViewColumnProps,
+    ColumnViewProps,
+    DropDownProps,
+    GridViewProps,
+    ListViewProps,
+} from "../element-props.js";
 import type { BoundItem } from "../nodes/internal/bound-item.js";
 import { createPortal } from "../portal.js";
 import { useMergedRefs } from "../use-merged-refs.js";
@@ -30,33 +33,6 @@ const GtkColumnViewElement = createWidgetComponent<Record<string, unknown>>("Gtk
 const GtkColumnViewColumnElement = createWidgetComponent<Record<string, unknown>>("GtkColumnViewColumn");
 const GtkDropDownElement = createWidgetComponent<Record<string, unknown>>("GtkDropDown");
 const AdwComboRowElement = createWidgetComponent<Record<string, unknown>>("AdwComboRow");
-
-type ListViewOwnKeys =
-    | "items"
-    | "model"
-    | "renderItem"
-    | "renderHeader"
-    | "autoexpand"
-    | "selected"
-    | "onSelectionChanged"
-    | "selectionMode"
-    | "estimatedItemHeight"
-    | "estimatedItemWidth";
-type DropDownOwnKeys =
-    | "items"
-    | "model"
-    | "renderItem"
-    | "renderListItem"
-    | "renderHeader"
-    | "selectedId"
-    | "onSelectionChanged";
-type ColumnViewOwnKeys = "items" | "model" | "renderHeader" | "selected" | "onSelectionChanged" | "selectionMode";
-
-type GenericListViewProps<T, S> = Omit<GtkListViewProps, ListViewOwnKeys> & ListViewProps<T, S>;
-type GenericGridViewProps<T> = Omit<GtkGridViewProps, ListViewOwnKeys> & GridViewProps<T>;
-type GenericDropDownProps<T, S> = Omit<GtkDropDownProps, DropDownOwnKeys> & DropDownProps<T, S>;
-type GenericComboRowProps<T, S> = Omit<AdwComboRowProps, DropDownOwnKeys> & DropDownProps<T, S>;
-type GenericColumnViewProps<T, S> = Omit<GtkColumnViewProps, ColumnViewOwnKeys> & ColumnViewProps<T, S>;
 
 /** The keys a list controller reads, used to split controller props from element props. */
 const CONTROLLER_KEYS = [
@@ -202,7 +178,7 @@ const useListElement = (
  * supporting single/multi selection, section headers, and tree expansion.
  */
 export function GtkListView<T = unknown, S = unknown>(
-    props: GenericListViewProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.ListView> },
+    props: ListViewProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.ListView> },
 ): ReactNode {
     return useListElement(GtkListViewElement, props as Record<string, unknown> & { ref?: Ref<Gtk.Widget> }).node;
 }
@@ -214,7 +190,7 @@ export function GtkListView<T = unknown, S = unknown>(
  * supporting single/multi selection.
  */
 export function GtkGridView<T = unknown>(
-    props: GenericGridViewProps<T> & { children?: ReactNode; ref?: Ref<Gtk.GridView> },
+    props: GridViewProps<T> & { children?: ReactNode; ref?: Ref<Gtk.GridView> },
 ): ReactNode {
     return useListElement(GtkGridViewElement, props as Record<string, unknown> & { ref?: Ref<Gtk.Widget> }).node;
 }
@@ -226,7 +202,7 @@ export function GtkGridView<T = unknown>(
  * item templates, separate list-item templates, and section headers.
  */
 export function GtkDropDown<T = unknown, S = unknown>(
-    props: GenericDropDownProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.DropDown> },
+    props: DropDownProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.DropDown> },
 ): ReactNode {
     return useListElement(GtkDropDownElement, props as Record<string, unknown> & { ref?: Ref<Gtk.Widget> }).node;
 }
@@ -239,7 +215,7 @@ export function GtkDropDown<T = unknown, S = unknown>(
  * section headers.
  */
 export function AdwComboRow<T = unknown, S = unknown>(
-    props: GenericComboRowProps<T, S> & { children?: ReactNode; ref?: Ref<Adw.ComboRow> },
+    props: DropDownProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.Widget> },
 ): ReactNode {
     return useListElement(AdwComboRowElement, props as Record<string, unknown> & { ref?: Ref<Gtk.Widget> }).node;
 }
@@ -258,7 +234,7 @@ export function AdwComboRow<T = unknown, S = unknown>(
  * @internal
  */
 function GtkColumnViewBase<T = unknown, S = unknown>(
-    props: GenericColumnViewProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.ColumnView> },
+    props: ColumnViewProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.ColumnView> },
 ): ReactNode {
     const { children, ...rest } = props as Record<string, unknown> & { children?: ReactNode };
     const { node, handle } = useListElement(

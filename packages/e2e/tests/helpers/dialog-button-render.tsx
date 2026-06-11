@@ -18,17 +18,18 @@ export interface DialogButtonWidget {
 
 /**
  * Renders a dialog-button widget through a caller-supplied factory, allowing
- * each test file to keep its own precisely typed intrinsic element while
- * sharing the dialog-property assertion sequences below.
+ * each test file to keep its own precisely typed dialog slot element while
+ * sharing the dialog-property assertion sequences below. The factory receives
+ * the props to spread onto the button's `dialog` slot element.
  */
 export type DialogButtonFactory<Widget extends DialogButtonWidget> = (
     ref: RefObject<Widget | null>,
-    props: { title?: string; modal?: boolean },
+    dialogProps: { title?: string; modal?: boolean },
 ) => ReactElement;
 
 /**
- * Renders the dialog-button widget twice with differing titles and asserts
- * that the backing dialog's title tracks the `title` prop on each render.
+ * Renders the dialog-button widget twice with differing dialog slot titles and
+ * asserts that `getDialog()` reflects the slot element's title on each render.
  */
 export const expectDialogTitleTracksProp = async <Widget extends DialogButtonWidget>(
     renderButton: DialogButtonFactory<Widget>,
@@ -47,8 +48,8 @@ export const expectDialogTitleTracksProp = async <Widget extends DialogButtonWid
 };
 
 /**
- * Renders the dialog-button widget with `modal={false}` and asserts that the
- * backing dialog reports a non-modal state.
+ * Renders the dialog-button widget with a `modal={false}` dialog slot element
+ * and asserts that `getDialog()` reports a non-modal state.
  */
 export const expectDialogModalProp = async <Widget extends DialogButtonWidget>(
     renderButton: DialogButtonFactory<Widget>,

@@ -1,6 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
-import { GtkConstraintLayout } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkConstraintLayout, GtkLabel } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import type { ReactNode, RefObject } from "react";
 import { expect } from "vitest";

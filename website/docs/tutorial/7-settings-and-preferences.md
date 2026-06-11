@@ -8,40 +8,40 @@ The components below live inside the `NotesWindow` from [Chapter 1](./1-window-a
 
 ## Adding a preferences menu item
 
-First, add a "Preferences" item to the menu button from [Chapter 4](./4-menus-and-shortcuts.md):
+First, add a "Preferences" entry to the menu from [Chapter 4](./4-menus-and-shortcuts.md), backed by a `win.preferences` action:
 
 ```tsx
-import { GtkMenuButton, MenuItem, MenuSection } from "@gtkx/react";
+import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
+import { GtkMenuButton } from "@gtkx/jsx/gtk";
 
-<GtkMenuButton iconName="open-menu-symbolic" tooltipText="Main Menu">
-    <MenuItem
-        id="new"
-        label="New Note"
-        onActivate={addNote}
-        accels="<Control>n"
-    />
-    <MenuSection>
-        <MenuItem
-            id="preferences"
-            label="Preferences"
-            onActivate={() => setShowPreferences(true)}
-            accels="<Control>comma"
+// In the window's addAction prop:
+<GSimpleAction
+    name="preferences"
+    onActivate={() => setShowPreferences(true)}
+    accels="<Control>comma"
+/>
+
+// In the header bar:
+<GtkMenuButton
+    iconName="open-menu-symbolic"
+    tooltipText="Main Menu"
+    menuModel={
+        <GMenu
+            items={[
+                { label: "New Note", action: "win.new" },
+                {
+                    section: [
+                        { label: "Preferences", action: "win.preferences" },
+                        { label: "Keyboard Shortcuts", action: "win.shortcuts" },
+                    ],
+                },
+                {
+                    section: [{ label: "About Notes", action: "win.about" }],
+                },
+            ]}
         />
-        <MenuItem
-            id="shortcuts"
-            label="Keyboard Shortcuts"
-            onActivate={() => {}}
-            accels="<Control>question"
-        />
-    </MenuSection>
-    <MenuSection>
-        <MenuItem
-            id="about"
-            label="About Notes"
-            onActivate={() => setShowAbout(true)}
-        />
-    </MenuSection>
-</GtkMenuButton>
+    }
+/>
 ```
 
 ## Defining a GSettings schema
@@ -81,14 +81,10 @@ import {
     AdwPreferencesGroup,
     AdwPreferencesPage,
     AdwPreferencesWindow,
-    AdwSwitchRow,
-    AdwComboRow,
     AdwSpinRow,
-    createPortal,
-    useAdjustment,
-    useApplication,
-    useProperty,
-} from "@gtkx/react";
+    AdwSwitchRow,
+} from "@gtkx/jsx/adw";
+import { createPortal, useAdjustment, useApplication, useProperty } from "@gtkx/react";
 
 const Preferences = ({ onClose }: { onClose: () => void }) => {
     const app = useApplication();
@@ -103,7 +99,10 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
             modal
             defaultWidth={500}
             defaultHeight={400}
-            onClose={onClose}
+            onCloseRequest={() => {
+                onClose();
+                return true;
+            }}
         >
             <AdwPreferencesPage title="General" iconName="preferences-system-symbolic">
                 <AdwPreferencesGroup title="Appearance">
@@ -130,6 +129,8 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
 };
 ```
 
+The `onCloseRequest` handler returns `true` to veto GTK's native close; calling `onClose` flips the `showPreferences` state off, so React unmounts the window.
+
 ### Preferences widgets
 
 | Component | Purpose |
@@ -145,6 +146,8 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
 
 The `useSetting` hook subscribes to a GSettings key and returns a `[value, setValue]` tuple, similar to `useState`. When the setting changes (even from outside your app), the component re-renders automatically. Calling the setter writes the new value to GSettings.
 
+The hook takes either a schema reference imported from a `.gschema.xml` file — in which case the key names and value types are checked against the schema — or a plain schema ID string for system schemas your project does not ship:
+
 ```tsx
 import { useSetting } from "@gtkx/react";
 
@@ -157,7 +160,7 @@ function ThemeIndicator() {
 
 ### Supported types
 
-The third argument selects the GSettings getter/setter used to read and write the value:
+With a schema ID string the keys cannot be checked, so a third argument selects the GSettings getter/setter used to read and write the value (a schema reference needs no type argument):
 
 | Type | Returns | GSettings Methods |
 |------|---------|-----------------|
@@ -249,21 +252,17 @@ import {
     AdwPreferencesWindow,
     AdwSpinRow,
     AdwSwitchRow,
-    createPortal,
-    useAdjustment,
-    useApplication,
-    useProperty,
-    useSetting,
-} from "@gtkx/react";
-import schemaId from "../com.example.notes.gschema.xml";
+} from "@gtkx/jsx/adw";
+import { createPortal, useAdjustment, useApplication, useProperty, useSetting } from "@gtkx/react";
+import schema from "../com.example.notes.gschema.xml";
 
 const Preferences = ({ onClose }: { onClose: () => void }) => {
     const app = useApplication();
     const activeWindow = useProperty(app, "activeWindow");
 
-    const [compactMode, setCompactMode] = useSetting(schemaId, "compact-mode", "boolean");
-    const [spellCheck, setSpellCheck] = useSetting(schemaId, "spell-check", "boolean");
-    const [fontSize, setFontSize] = useSetting(schemaId, "font-size", "int");
+    const [compactMode, setCompactMode] = useSetting(schema, "compact-mode");
+    const [spellCheck, setSpellCheck] = useSetting(schema, "spell-check");
+    const [fontSize, setFontSize] = useSetting(schema, "font-size");
     const fontSizeAdjustment = useAdjustment({ value: fontSize, lower: 8, upper: 32, stepIncrement: 1 });
 
     if (!activeWindow) return null;
@@ -274,7 +273,10 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
             modal
             defaultWidth={500}
             defaultHeight={400}
-            onClose={onClose}
+            onCloseRequest={() => {
+                onClose();
+                return true;
+            }}
         >
             <AdwPreferencesPage title="General" iconName="preferences-system-symbolic">
                 <AdwPreferencesGroup title="Appearance">
@@ -316,11 +318,11 @@ Settings are only useful if they change what the user sees. Read them in your wi
 
 ```tsx
 // app.tsx
-import schemaId from "./com.example.notes.gschema.xml";
+import schema from "./com.example.notes.gschema.xml";
 
 function NotesWindow() {
-    const [compactMode] = useSetting(schemaId, "compact-mode", "boolean");
-    const [fontSize] = useSetting(schemaId, "font-size", "int");
+    const [compactMode] = useSetting(schema, "compact-mode");
+    const [fontSize] = useSetting(schema, "font-size");
 
     // ... pass compactMode and fontSize to child components
     return (

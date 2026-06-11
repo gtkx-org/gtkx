@@ -31,6 +31,7 @@ export type {
     ConstructStep,
     ElementMapRule,
     MethodVerb,
+    ObjectPropRow,
     OrderedInsertVerb,
     PageMetaSetter,
     PresenceCondition,
@@ -40,5 +41,6 @@ export type {
     SetterPropStep,
     SignalPropRule,
     VerbArgs,
+    VirtualPropRow,
 } from "./table-schema.js";
 export { GTKX_CONFIG_VIRTUAL_ID, RESOLVED_GTKX_CONFIG_VIRTUAL_ID, renderGtkxConfigModule } from "./virtual.js";

@@ -75,6 +75,28 @@ module.exports = {
             to: { path: "^packages/react/" },
         },
         {
+            name: "react-no-jsx",
+            severity: "error",
+            comment:
+                "@gtkx/react is the namespace-agnostic runtime: the generated @gtkx/jsx " +
+                "modules depend on it, never the other way around — type-only imports " +
+                "included. Base prop shapes live in @gtkx/react and the generated Props " +
+                "interfaces extend them.",
+            from: { path: "^packages/react/" },
+            to: { path: "(^|/)node_modules/\\.gtkx/jsx/" },
+        },
+        {
+            name: "react-no-optional-gi",
+            severity: "error",
+            comment:
+                "@gtkx/react must stay loadable in a Gtk-only project: it may not import " +
+                "the optional namespaces (Adwaita, GtkSource, WebKit and its closure) even " +
+                "type-only. Optional-namespace richness lives in dedicated packages " +
+                "(@gtkx/animate) or in inert string-keyed table rows.",
+            from: { path: "^packages/react/" },
+            to: { path: "(^|/)node_modules/\\.gtkx/gi/(adw|gtksource|webkit|javascriptcore|soup)/" },
+        },
+        {
             name: "mcp-only-utils-workspace-deps",
             severity: "error",
             comment:
@@ -107,7 +129,7 @@ module.exports = {
         doNotFollow: { path: "node_modules" },
         exclude: {
             path: [
-                "node_modules",
+                "node_modules/(?!\\.gtkx/)",
                 "packages/[^/]+/dist/",
                 "packages/[^/]+/out-tsc/",
                 "packages/[^/]+/coverage/",
@@ -117,6 +139,7 @@ module.exports = {
             ],
         },
         tsConfig: { fileName: "tsconfig.json" },
+        tsPreCompilationDeps: true,
         enhancedResolveOptions: {
             exportsFields: ["exports"],
             conditionNames: ["source", "import", "require", "default"],

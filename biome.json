@@ -96,7 +96,7 @@
                 "packages/ffi/src/value-marshal.ts",
                 "packages/ffi/src/signals.ts",
                 "packages/ffi/src/gobject/**",
-                "packages/react/src/jsx.ts"
+                "packages/react/src/element-props.ts"
             ],
             "linter": {
                 "rules": {

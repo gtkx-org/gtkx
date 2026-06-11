@@ -12,10 +12,12 @@ import {
     AdwToggleGroup,
     AdwToolbarView,
 } from "@gtkx/jsx/adw";
-import { GMenu, GMenuItem, GSimpleAction } from "@gtkx/jsx/gio";
+import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
 import {
     GtkBox,
     GtkButton,
+    GtkGridView,
+    GtkListView,
     GtkMenuButton,
     GtkScrolledWindow,
     GtkSearchBar,
@@ -23,7 +25,7 @@ import {
     GtkShortcut,
     GtkShortcutController,
 } from "@gtkx/jsx/gtk";
-import { GtkGridView, GtkListView, quit, useApplication, useSetting } from "@gtkx/react";
+import { quit, useApplication, useSetting } from "@gtkx/react";
 import { useRef, useState } from "react";
 import schema from "../com.gtkx.tutorial.gschema.xml";
 import { About } from "./components/about.js";
@@ -206,20 +208,20 @@ const MainMenu = () => (
         iconName="open-menu-symbolic"
         tooltipText="Main Menu"
         menuModel={
-            <GMenu>
-                <GMenuItem label="New Note" action="win.new" />
-                <GMenuItem section>
-                    <GMenu>
-                        <GMenuItem label="Preferences" action="win.preferences" />
-                        <GMenuItem label="Keyboard Shortcuts" action="win.shortcuts" />
-                    </GMenu>
-                </GMenuItem>
-                <GMenuItem section>
-                    <GMenu>
-                        <GMenuItem label="About Notes" action="win.about" />
-                    </GMenu>
-                </GMenuItem>
-            </GMenu>
+            <GMenu
+                items={[
+                    { label: "New Note", action: "win.new" },
+                    {
+                        section: [
+                            { label: "Preferences", action: "win.preferences" },
+                            { label: "Keyboard Shortcuts", action: "win.shortcuts" },
+                        ],
+                    },
+                    {
+                        section: [{ label: "About Notes", action: "win.about" }],
+                    },
+                ]}
+            />
         }
     />
 );
@@ -642,7 +644,10 @@ function NotesWindow() {
             title="Notes"
             defaultWidth={900}
             defaultHeight={600}
-            onClose={quit}
+            onCloseRequest={() => {
+                quit();
+                return true;
+            }}
             addAction={<NotesWindowActions notes={notes} dialogs={dialogs} onShortcuts={onShortcuts} />}
             addController={
                 <AppShortcuts

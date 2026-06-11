@@ -1,6 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkImage, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
-import { GtkListView } from "@gtkx/react";
+import { GtkBox, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
 import rawWeatherData from "./listview_weather.txt?raw";
 import sourceCode from "./listview-weather.tsx?raw";

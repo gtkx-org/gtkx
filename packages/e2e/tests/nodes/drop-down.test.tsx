@@ -1,6 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkLabel } from "@gtkx/jsx/gtk";
-import { GtkDropDown } from "@gtkx/react";
+import { GtkDropDown, GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";

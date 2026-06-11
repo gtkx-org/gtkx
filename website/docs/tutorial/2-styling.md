@@ -87,12 +87,9 @@ import {
     AdwHeaderBar,
     AdwStatusPage,
     AdwToolbarView,
-    GtkBox,
-    GtkButton,
-    GtkLabel,
-    GtkScrolledWindow,
-    quit,
-} from "@gtkx/react";
+} from "@gtkx/jsx/adw";
+import { GtkBox, GtkButton, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import { quit } from "@gtkx/react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { css } from "@gtkx/css";
 import { useState } from "react";
@@ -147,7 +144,15 @@ function NotesWindow() {
     };
 
     return (
-        <AdwApplicationWindow title="Notes" defaultWidth={600} defaultHeight={500} onClose={quit}>
+        <AdwApplicationWindow
+            title="Notes"
+            defaultWidth={600}
+            defaultHeight={500}
+            onCloseRequest={() => {
+                quit();
+                return true;
+            }}
+        >
             <AdwToolbarView
                 addTopBar={
                     <AdwHeaderBar

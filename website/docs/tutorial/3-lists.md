@@ -11,7 +11,7 @@ These snippets slot into the `NotesWindow` component, which still lives inside t
 Replace the `map()` rendering with `GtkListView`:
 
 ```tsx
-import { GtkListView, GtkScrolledWindow } from "@gtkx/react";
+import { GtkListView, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import * as Gtk from "@gtkx/gi/gtk";
 
 <GtkScrolledWindow vexpand>
@@ -55,7 +55,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 For table-like layouts, use `GtkColumnView` with `GtkColumnViewColumn` components:
 
 ```tsx
-import { GtkColumnView, GtkColumnViewColumn, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
+import { GtkColumnView, GtkColumnViewColumn, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import * as Gtk from "@gtkx/gi/gtk";
 
 const NotesTable = ({ notes }: { notes: Note[] }) => {

@@ -5,8 +5,10 @@ import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkBox,
     GtkButton,
+    GtkColorDialog,
     GtkColorDialogButton,
     GtkDropTarget,
+    GtkFontDialog,
     GtkFontDialogButton,
     GtkGrid,
     GtkGridChild,
@@ -149,7 +151,7 @@ const ColorPickerRow = ({ colorWidget, setColorWidget }: ColorRowProps) => (
             />
         </GtkGridChild>
         <GtkGridChild column={1} row={0}>
-            <GtkColorDialogButton name="color-button" ref={setColorWidget} />
+            <GtkColorDialogButton name="color-button" ref={setColorWidget} dialog={<GtkColorDialog />} />
         </GtkGridChild>
     </>
 );
@@ -172,7 +174,7 @@ const FontPickerRow = ({ fontWidget, setFontWidget }: FontRowProps) => (
             />
         </GtkGridChild>
         <GtkGridChild column={1} row={1}>
-            <GtkFontDialogButton name="font-button" ref={setFontWidget} />
+            <GtkFontDialogButton name="font-button" ref={setFontWidget} dialog={<GtkFontDialog />} />
         </GtkGridChild>
     </>
 );

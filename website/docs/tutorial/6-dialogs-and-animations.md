@@ -11,7 +11,8 @@ The components below live inside the `NotesWindow` from [Chapter 1](./1-window-a
 Use `AdwAlertDialog` with the `responses` prop and `createPortal` to show it on the active window:
 
 ```tsx
-import { AdwAlertDialog, createPortal, useApplication, useProperty } from "@gtkx/react";
+import { AdwAlertDialog } from "@gtkx/jsx/adw";
+import { createPortal, useApplication, useProperty } from "@gtkx/react";
 import * as Adw from "@gtkx/gi/adw";
 import { useState } from "react";
 
@@ -84,29 +85,25 @@ See the [Portals](../portals.md) guide for more details.
 
 ## Toggle groups
 
-Let the user switch between list and grid views using `AdwToggleGroup` with the `toggles` prop:
+Let the user switch between list and grid views using `AdwToggleGroup` with `AdwToggle` children:
 
 ```tsx
-import { AdwToggleGroup } from "@gtkx/react";
+import { AdwToggle, AdwToggleGroup } from "@gtkx/jsx/adw";
 
-<AdwToggleGroup
-    activeName={viewMode}
-    onNotifyActiveName={(name) => setViewMode(name ?? "list")}
-    toggles={[
-        { id: "list", iconName: "view-list-symbolic", tooltip: "List view" },
-        { id: "grid", iconName: "view-grid-symbolic", tooltip: "Grid view" },
-    ]}
-/>
+<AdwToggleGroup activeName={viewMode} onNotifyActiveName={(name) => setViewMode(name ?? "list")}>
+    <AdwToggle name="list" iconName="view-list-symbolic" tooltip="List View" />
+    <AdwToggle name="grid" iconName="view-grid-symbolic" tooltip="Grid View" />
+</AdwToggleGroup>
 ```
 
-The `toggles` prop accepts an array of toggle definitions with `id`, `label` or `iconName`, and optional `tooltip`.
+Each `AdwToggle` carries a `name`, a `label` or `iconName`, and an optional `tooltip`. The group's `activeName` matches the active toggle's `name`.
 
 ## Grid view
 
 Use `GtkGridView` to render items in a multi-column grid. It shares the same data API as `GtkListView` — `items`, `renderItem`, `selected`, and `onSelectionChanged` all work identically:
 
 ```tsx
-import { GtkGridView, GtkListView, GtkScrolledWindow } from "@gtkx/react";
+import { GtkGridView, GtkListView, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 
 <GtkScrolledWindow vexpand>
     {viewMode === "list" ? (
@@ -270,7 +267,8 @@ The callback fires once per frame while the widget is mapped, receiving the widg
 
 ```tsx
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkDrawingArea, useTickCallback } from "@gtkx/react";
+import { GtkDrawingArea } from "@gtkx/jsx/gtk";
+import { useTickCallback } from "@gtkx/react";
 import { useRef } from "react";
 
 const SpinningDial = () => {
@@ -288,8 +286,8 @@ const SpinningDial = () => {
             ref={areaRef}
             contentWidth={100}
             contentHeight={100}
-            render={(cr) => {
-                cr.translate(50, 50);
+            drawFunc={(self, cr, width, height) => {
+                cr.translate(width / 2, height / 2);
                 cr.rotate(angleRef.current);
                 cr.moveTo(0, 0);
                 cr.lineTo(0, -40);
@@ -300,6 +298,8 @@ const SpinningDial = () => {
 };
 ```
 
+`GtkDrawingArea` draws through its `drawFunc` prop, with the GIR signature `(self, cr, width, height)`; changing the callback's identity queues a redraw.
+
 The target may be the widget itself, a React ref to a JSX widget (the registration follows the ref, reattaching when a later commit replaces the widget), or `null`/`undefined` to keep the hook inactive. The latest callback is always invoked, so changing it between renders never re-registers the tick.
 
 ## Toast notifications
@@ -308,7 +308,7 @@ After a destructive action like deleting a note, show a toast notification with 
 
 ```tsx
 import * as Adw from "@gtkx/gi/adw";
-import { AdwToastOverlay } from "@gtkx/react";
+import { AdwToastOverlay } from "@gtkx/jsx/adw";
 import { useRef } from "react";
 
 const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
@@ -349,7 +349,8 @@ Every GNOME app should have an About dialog, accessible from the primary menu. U
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwAboutDialog, createPortal, useApplication, useProperty } from "@gtkx/react";
+import { AdwAboutDialog } from "@gtkx/jsx/adw";
+import { createPortal, useApplication, useProperty } from "@gtkx/react";
 
 const About = ({ onClose }: { onClose: () => void }) => {
     const app = useApplication();
@@ -374,17 +375,19 @@ const About = ({ onClose }: { onClose: () => void }) => {
 };
 ```
 
-Then wire it up from your menu:
+Then wire it up from the `win.about` action declared in [Chapter 4](./4-menus-and-shortcuts.md):
 
 ```tsx
 const [showAbout, setShowAbout] = useState(false);
 
-// In your menu:
-<MenuItem id="about" label="About Notes" onActivate={() => setShowAbout(true)} />
+// In the window's addAction prop:
+<GSimpleAction name="about" onActivate={() => setShowAbout(true)} />
 
 // In your JSX:
 {showAbout && <About onClose={() => setShowAbout(false)} />}
 ```
+
+The menu entry `{ label: "About Notes", action: "win.about" }` triggers the action, which flips the state; the `About` component's `onClose` callback flips it back when the dialog closes.
 
 ## Next
 

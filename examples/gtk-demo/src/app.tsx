@@ -4,7 +4,7 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAboutDialog } from "@gtkx/jsx/adw";
-import { GMenu, GMenuItem, GSimpleAction } from "@gtkx/jsx/gio";
+import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
 import {
     GtkApplication,
     GtkApplicationWindow,
@@ -116,7 +116,10 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
                 cssClasses={currentDemo.windowCssClasses}
                 defaultWidget={defaultWidget}
                 titlebar={titlebar}
-                onClose={onClose}
+                onCloseRequest={() => {
+                    onClose();
+                    return true;
+                }}
             >
                 <DemoComponent onClose={onClose} window={windowRef} />
             </GtkWindow>
@@ -177,15 +180,17 @@ const AppHeaderBar = ({ hasDemo, searchMode, onRun, onSearchToggle }: AppHeaderB
                 valign={Gtk.Align.CENTER}
                 focusOnClick={false}
                 menuModel={
-                    <GMenu>
-                        <GMenuItem section>
-                            <GMenu>
-                                <GMenuItem label="_Inspector" action="win.inspector" />
-                                <GMenuItem label="_Keyboard Shortcuts" action="win.shortcuts" />
-                                <GMenuItem label="_About GTK Demo" action="win.about" />
-                            </GMenu>
-                        </GMenuItem>
-                    </GMenu>
+                    <GMenu
+                        items={[
+                            {
+                                section: [
+                                    { label: "_Inspector", action: "win.inspector" },
+                                    { label: "_Keyboard Shortcuts", action: "win.shortcuts" },
+                                    { label: "_About GTK Demo", action: "win.about" },
+                                ],
+                            },
+                        ]}
+                    />
                 }
             />
         }
@@ -360,7 +365,10 @@ const MainWindow = () => {
             defaultWidth={800}
             defaultHeight={600}
             titlebar={titlebar}
-            onClose={quit}
+            onCloseRequest={() => {
+                quit();
+                return true;
+            }}
             addAction={
                 <>
                     <GSimpleAction

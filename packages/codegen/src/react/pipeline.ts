@@ -1,9 +1,9 @@
-import type { ArrayPropRow, ElementMapRule } from "@gtkx/config";
+import type { ArrayPropRow, ElementMapRule, ObjectPropRow, VirtualPropRow } from "@gtkx/config";
 import type { GirNamespace } from "../gir/namespace.js";
 import type { GirRepository } from "../gir/repository.js";
 import { generateCompoundsSection } from "./compounds.js";
 import { emptyJsxImports, renderJsxImports } from "./imports.js";
-import { generateJsxSection } from "./jsx.js";
+import { generateJsxSection, type JsxSurfaceMaps } from "./jsx.js";
 import { generateMetadata } from "./metadata.js";
 import {
     BUILT_IN_PROP_RULES,
@@ -11,7 +11,9 @@ import {
     mergeArrayProps,
     mergeContainerSlots,
     mergeElementMap,
+    mergeObjectProps,
     mergeSlots,
+    mergeVirtualProps,
     PAGE_META_SETTERS,
     TOP_LEVEL_TYPES,
 } from "./tables.js";
@@ -28,32 +30,35 @@ export type UserTables = {
     readonly containerSlots?: Readonly<Record<string, readonly string[]>>;
     /** Array-prop rows keyed by JSX element name then camelCase prop name. */
     readonly arrayProps?: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>>;
+    /** Object-prop rows keyed by JSX element name then camelCase prop name. */
+    readonly objectProps?: Readonly<Record<string, Readonly<Record<string, ObjectPropRow>>>>;
+    /** Virtual-prop rows keyed by JSX element name then camelCase prop name. */
+    readonly virtualProps?: Readonly<Record<string, Readonly<Record<string, VirtualPropRow>>>>;
     /** Attach relationships merged after the built-in element-map rows. */
     readonly elementMap?: readonly ElementMapRule[];
 };
 
 /**
- * Widget names whose public element a hand-written enhanced component owns (a
- * controller-backed list or combo row, a Cairo drawing area in `@gtkx/react`;
- * the animation components in `@gtkx/animate`). A namespace module emits
- * neither an intrinsic const nor a compound for these — only the `Props`
- * interface and the JSX-element augmentation, which the hand-written component
- * renders against. The app imports the component from its owning package; the
- * namespace module stays free of a competing export.
+ * Names with no generated component: classes a hand-written enhanced
+ * component owns (a controller-backed list or combo row in `@gtkx/react`; the
+ * animation components in `@gtkx/animate`) plus classes that are not elements
+ * at all (`GMenuItem` — menu content is the `<GMenu>` `items` data prop). A
+ * namespace module emits only the `Props` interface and the JSX-element
+ * augmentation for these; the owning package exports the component, where one
+ * exists.
  */
 const RUNTIME_OWNED_WIDGETS: ReadonlySet<string> = new Set([
     "GtkColumnView",
     "GtkColumnViewColumn",
     "GtkConstraintLayout",
-    "GtkDrawingArea",
     "GtkDropDown",
     "GtkGridView",
     "GtkListView",
     "GtkSizeGroup",
+    "GMenuItem",
     "AdwComboRow",
     "AdwSpringAnimation",
     "AdwTimedAnimation",
-    "WebKitWebView",
 ]);
 
 /** One per-namespace `@gtkx/jsx` module: its directory and combined source. */
@@ -88,6 +93,8 @@ export const generateJsxFiles = (repository: GirRepository, userTables: UserTabl
     const widgetSlotMap = mergeSlots(userTables.slots);
     const containerSlotMap = mergeContainerSlots(userTables.containerSlots);
     const arrayPropMap = mergeArrayProps(userTables.arrayProps);
+    const objectPropMap = mergeObjectProps(userTables.objectProps);
+    const virtualPropMap = mergeVirtualProps(userTables.virtualProps);
 
     const namespacesWithWidgets = new Map<string, GirNamespace>();
     for (const entry of collectReactNodeClasses(repository)) {
@@ -101,6 +108,8 @@ export const generateJsxFiles = (repository: GirRepository, userTables: UserTabl
             widgetSlotMap,
             containerSlotMap,
             arrayPropMap,
+            objectPropMap,
+            virtualPropMap,
         });
         namespaces.push({ directory: namespace.name.toLowerCase(), source });
         widgetCount += count;
@@ -109,6 +118,8 @@ export const generateJsxFiles = (repository: GirRepository, userTables: UserTabl
     const metadata = generateMetadata(repository, {
         elementMap: mergeElementMap(userTables.elementMap),
         arrayProps: arrayPropMap,
+        objectProps: objectPropMap,
+        virtualProps: virtualPropMap,
         propRules: BUILT_IN_PROP_RULES,
         topLevelTypes: TOP_LEVEL_TYPES,
         metaObjectAddMethods: META_OBJECT_ADD_METHODS,
@@ -133,11 +144,7 @@ export const generateJsxFiles = (repository: GirRepository, userTables: UserTabl
 const generateJsxNamespace = (
     targetNamespace: GirNamespace,
     repository: GirRepository,
-    maps: {
-        readonly widgetSlotMap: Readonly<Record<string, readonly string[]>>;
-        readonly containerSlotMap: Readonly<Record<string, readonly string[]>>;
-        readonly arrayPropMap: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>>;
-    },
+    maps: Required<JsxSurfaceMaps>,
 ): { readonly source: string; readonly count: number } => {
     const imports = emptyJsxImports();
 

@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GMenu, GMenuItem, GSimpleAction } from "@gtkx/jsx/gio";
+import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkApplicationWindow, GtkMenuButton, GtkPopoverMenu } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
@@ -18,10 +18,12 @@ describe("render - PopoverMenu widget integration", () => {
             <GtkPopoverMenu
                 ref={ref}
                 menuModel={
-                    <GMenu>
-                        <GMenuItem label="Item 1" action="win.item1" />
-                        <GMenuItem label="Item 2" action="win.item2" />
-                    </GMenu>
+                    <GMenu
+                        items={[
+                            { label: "Item 1", action: "win.item1" },
+                            { label: "Item 2", action: "win.item2" },
+                        ]}
+                    />
                 }
             />,
         );
@@ -34,10 +36,12 @@ describe("render - PopoverMenu widget integration", () => {
             <GtkMenuButton
                 ref={ref}
                 menuModel={
-                    <GMenu>
-                        <GMenuItem label="Option 1" action="win.opt1" />
-                        <GMenuItem label="Option 2" action="win.opt2" />
-                    </GMenu>
+                    <GMenu
+                        items={[
+                            { label: "Option 1", action: "win.opt1" },
+                            { label: "Option 2", action: "win.opt2" },
+                        ]}
+                    />
                 }
             />,
         );
@@ -52,13 +56,7 @@ describe("render - PopoverMenu actions", () => {
 
         await render(
             <GtkApplicationWindow ref={windowRef} addAction={<GSimpleAction name="click" onActivate={onActivate} />}>
-                <GtkPopoverMenu
-                    menuModel={
-                        <GMenu>
-                            <GMenuItem label="Click Me" action="win.click" />
-                        </GMenu>
-                    }
-                />
+                <GtkPopoverMenu menuModel={<GMenu items={[{ label: "Click Me", action: "win.click" }]} />} />
             </GtkApplicationWindow>,
         );
 

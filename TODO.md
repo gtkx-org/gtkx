@@ -453,33 +453,70 @@ toggles and source view → native GObject children, dialog buttons and actions 
 compound HOCs, web view → generated signal prop). This phase completes the decoupling at the
 type level and makes optional libraries genuinely optional.
 
-- [ ] **T6.1** Delete `web-view.tsx`: the freeze loop precludes async-signal dispatch during
-      commits, so the generated `onLoadChanged` prop on the intrinsic `WebKitWebView` element
-      is equivalent to the HOC's direct connection. `examples/browser` migrates to the
-      intrinsic; the callback receives the GIR signal signature, with the view reachable
-      through a ref.
-- [ ] **T6.2** Invert the Props typing (goal 5): base prop shapes are declared in `@gtkx/react`
-      and the generated Props interfaces extend them; delete the five
-      `declare module "@gtkx/jsx/…"` blocks in `packages/react/src/jsx.ts` and every remaining
-      `@gtkx/jsx` / optional-`@gtkx/gi` type import from `@gtkx/react`
-      (`gtype-predicates.ts` annotations included; the `isAdwDialog`/`isAdwComboRow` predicates
-      stay registry-driven with structural return types).
-- [ ] **T6.3** Per D9: settle where `AdwComboRow` surfaces (`@gtkx/jsx/adw` re-export of the
-      `@gtkx/react` list component); update CLI templates and `claude/` skill snippets to the
-      final surface.
-- [ ] **T6.4** Enforcement in `.dependency-cruiser.cjs`: nothing under `packages/react/src` may
-      import `@gtkx/jsx` (type-only included) or `@gtkx/gi/{adw,gtksource,webkit}`; the
-      generated store (analyzed through the `.gtkx` symlink) may import `@gtkx/react`;
-      `@gtkx/animate` may import `@gtkx/gi/adw`.
-- [ ] **T6.5** Implement D4: `library-resolver.ts` stops force-merging `Adw-1`, `GtkSource-5`,
-      `WebKit-6.0`; only `Gtk-4.0` and its GIR-transitive closure remain mandatory. The repo
-      root and example configs list what they actually use; dev server reloads on
-      `gtkx.config.ts` library changes. `@gtkx/animate` documents that it requires `Adw-1` in
-      `libraries`.
+- [x] **T6.1** `web-view.tsx` deleted: `WebKitWebView` is a regular generated component whose
+      `onLoadChanged` signal prop carries the GIR signature; `examples/browser` imports it
+      from `@gtkx/jsx/webkit`.
+- [x] **T6.2** Props typing inverted (goal 5) — and most prop overrides deleted outright in
+      the demagic pass rather than inverted:
+      - The four `declare module "@gtkx/jsx/…"` blocks are gone. The surviving base shapes
+        live in `@gtkx/react` and the generated interfaces extend them through the
+        `BUILT_IN_PROPS_MIXINS` table (`AccessibleProps` on the synthetic `WidgetProps` root;
+        `MenuItemsProps` on `GMenu`; `ActionAccelsProps`/`ActionGroupPrefixProps` on the
+        action elements).
+      - Deleted as redundant with the generated GIR surface: the stack `page` alias (the
+        guarded data rule is rekeyed onto the real `visibleChildName` prop, which is also
+        construction-skipped so it never applies before pages exist), `onClose` (apps use the
+        generated `onCloseRequest` and return `true` to veto the native close), and the dead
+        `GtkDragSource` icon members.
+      - The dialog-button HOCs (`withColorDialog`/`withFontDialog`) are deleted: `dialog` is a
+        slot row and `GtkColorDialog`/`GtkFontDialog` are regular elements
+        (`dialog={<GtkColorDialog withAlpha />}` + `onNotifyRgba`/`onNotifyFontDesc`).
+      - Two new config families generalize the remaining cases: `objectProps` (one
+        object-valued prop driving CallSteps; first row: `GtkDragSource.icon` →
+        `setIcon(paintable, hotX, hotY)`) and `virtualProps` (a prop with no GObject property
+        backing forwarded to a setter, typed with a qualified GIR type, with an optional
+        `after` method; first row: `GtkDrawingArea.drawFunc` → `setDrawFunc` + `queueDraw`,
+        deleting `drawing-area.tsx`). Both flow through schema validation, the fingerprint,
+        the metadata bake, Props emission with raw-prop suppression, and generic
+        prop-descriptor interpreters.
+      - Menus are data: `<GMenu items={MenuEntry[]}>` rebuilds the value-snapshot `Gio.Menu`
+        wholesale from plain entries (`label`/`action`/`submenu`/`section`), replacing the
+        `<GMenuItem>` element and the entire incremental re-snapshot machinery
+        (`menu-attach.ts` deleted; `GMenuItem` has no component). Because the recursive entry
+        tree is not expressible in the table vocabulary, `items` is owned by a hand-written
+        `GMenu` runtime component in `@gtkx/react` — the same pattern as the list views — that
+        applies the entries from a layout effect with a deep-equality guard; the namespace
+        module wraps it with a typed export, and the reconciler's prop-descriptor layer stays
+        purely row-driven with no type-name special cases.
+      - Zero `@gtkx/jsx` and zero optional-`@gtkx/gi` imports remain in `@gtkx/react`:
+        `isAdwDialog`/`isAdwComboRow` return the structural `AdwDialogLike`/`AdwComboRowLike`
+        shapes, the runtime components type against react-owned controller shapes, and the
+        former `jsx.ts` is the import-free `element-props.ts` shape module (the component
+        re-exports moved to `index.ts`, killing every type-only cycle through it).
+- [x] **T6.3** D9 settled as the uniform surface: every element-like component imports from
+      `@gtkx/jsx/<ns>`. Codegen wraps the hand-written runtime components in typed
+      namespace-module exports (`RUNTIME_COMPONENT_WRAPPERS`: the list family and
+      `AdwComboRow` compose `Omit<GeneratedProps, ownKeys> & ControllerProps<T, S>`;
+      `GtkConstraintLayout`/`GtkSizeGroup` re-export verbatim). All examples, tests, docs,
+      and CLI templates import accordingly; `@gtkx/react` keeps `render`/`quit`/hooks/HOCs
+      and shared types as its public surface.
+- [x] **T6.4** `.dependency-cruiser.cjs` enforces the direction with
+      `tsPreCompilationDeps: true` (type-only imports included): `react-no-jsx` and
+      `react-no-optional-gi` ban `packages/react/src` edges into `node_modules/.gtkx/jsx` and
+      the optional `gi` namespaces (adw, gtksource, webkit, javascriptcore, soup); the store
+      subtree is un-excluded so the edges are visible. Enabling pre-compilation deps also
+      surfaced and removed every type-only cycle (`element-props.ts` extraction, the
+      `ElementMapping`/`ColumnHost` interface extractions, the native `NativeHandle` move).
+- [x] **T6.5** D4 implemented: `DEFAULT_LIBRARIES` is `["Gtk-4.0"]`; an explicit list is used
+      as given with `Gtk-4.0` added only when omitted. `examples/browser` lists `Adw-1`
+      explicitly; the other configs already declared what they use. The codegen runner
+      integration suite generates a Gtk-only jsx store end-to-end.
 
-Exit: an app with `libraries: ["Gtk-4.0"]` builds, typechecks, and runs with no Adw/GtkSource/
-WebKit bindings generated; `examples/browser` (WebKit) still works; `pnpm lint` (depcruise)
-enforces the one-way direction; `pnpm typecheck` passes with zero react→jsx imports.
+Exit (verified 2026-06-11): the codegen integration suite writes a Gtk-4.0-only store with no
+Adw/GtkSource/WebKit bindings; `examples/browser` (WebKit + Adw) builds and runs its suites;
+`pnpm lint` (depcruise 627 modules, type-only deps included) enforces the one-way direction
+with zero violations; full gates green — `pnpm build` 20/20, `pnpm test` 28/28 (e2e 671,
+gtk-demo 666, zero act warnings), `pnpm typecheck` 33/33, jscpd 0 clones.
 
 ## Phase 7 — Documentation, examples, and release verification
 

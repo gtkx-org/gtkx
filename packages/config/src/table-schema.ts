@@ -161,6 +161,38 @@ export type ArrayPropRow = {
 };
 
 /**
+ * One object-valued prop as data: the item-type name its generated `Props`
+ * line declares, plus the calls that apply the object's fields to the target.
+ * When the prop holds a value, the `set` steps run with arguments resolved
+ * against it; when it becomes `null`/`undefined`, the `unset` steps run.
+ */
+export type ObjectPropRow = {
+    /** Item-type name declared in the generated `Props` interface (an exported member of `@gtkx/react`). */
+    readonly itemType: string;
+    /** Calls applying the current object's fields to the target. */
+    readonly set: readonly CallStep[];
+    /** Calls resetting the target when the prop is cleared. */
+    readonly unset?: readonly CallStep[];
+};
+
+/**
+ * One virtual prop as data: a prop with no GObject property backing whose
+ * value is forwarded verbatim to a setter method. The generated `Props` line
+ * types it with the named GIR type (e.g. a GIR callback type), the setter is
+ * called with the value — `null` when the prop is cleared — and `after`
+ * optionally names a zero-argument method invoked after every set (e.g.
+ * `queueDraw` after installing a draw function).
+ */
+export type VirtualPropRow = {
+    /** Qualified GIR type the prop carries (e.g. `"Gtk.DrawingAreaDrawFunc"`). */
+    readonly type: string;
+    /** Method called on the target with the prop value, or `null` when cleared. */
+    readonly setter: string;
+    /** Zero-argument method invoked after every set. */
+    readonly after?: string;
+};
+
+/**
  * A condition on a prop's current value: `"defined"` passes for any value
  * except `undefined`, `"nonNull"` additionally rejects `null`, and
  * `"truthy"` requires a truthy value.
@@ -413,17 +445,73 @@ const validateArrayPropRow = (value: unknown, path: string): void => {
  * @param arrayProps - The `arrayProps` value from the config, or `undefined`
  */
 export const validateArrayPropRows = (arrayProps: unknown): void => {
-    if (arrayProps === undefined) return;
-    const map = requireRecord(arrayProps, "arrayProps");
+    validatePropRowMap(arrayProps, "arrayProps", validateArrayPropRow);
+};
+
+const validateObjectPropRow = (value: unknown, path: string): void => {
+    const row = requireRecord(value, path);
+    if (typeof row.itemType !== "string" || !ITEM_TYPE_NAME_PATTERN.test(row.itemType)) {
+        fail(`${path}.itemType`, `must be a PascalCase exported member of @gtkx/react (e.g. "DragSourceIcon")`);
+    }
+    if (!Array.isArray(row.set)) fail(`${path}.set`, "must be an array of call steps");
+    (row.set as unknown[]).forEach((step, index) => {
+        validateCallStep(step, `${path}.set[${index}]`);
+    });
+    if (row.unset !== undefined) {
+        if (!Array.isArray(row.unset)) fail(`${path}.unset`, "must be an array of call steps");
+        (row.unset as unknown[]).forEach((step, index) => {
+            validateCallStep(step, `${path}.unset[${index}]`);
+        });
+    }
+};
+
+/**
+ * Validates the `objectProps` rows declared in `gtkx.config.ts`, throwing a
+ * descriptive error naming the offending element, prop, and field.
+ *
+ * @param objectProps - The `objectProps` value from the config, or `undefined`
+ */
+export const validateObjectPropRows = (objectProps: unknown): void => {
+    validatePropRowMap(objectProps, "objectProps", validateObjectPropRow);
+};
+
+const QUALIFIED_TYPE_PATTERN = /^[A-Z][A-Za-z0-9]*\.[A-Z][A-Za-z0-9]*$/;
+
+const validateVirtualPropRow = (value: unknown, path: string): void => {
+    const row = requireRecord(value, path);
+    if (typeof row.type !== "string" || !QUALIFIED_TYPE_PATTERN.test(row.type)) {
+        fail(`${path}.type`, `must be a qualified GIR type (e.g. "Gtk.DrawingAreaDrawFunc")`);
+    }
+    requireMethodName(row.setter, `${path}.setter`);
+    if (row.after !== undefined) requireMethodName(row.after, `${path}.after`);
+};
+
+/**
+ * Validates the `virtualProps` rows declared in `gtkx.config.ts`, throwing a
+ * descriptive error naming the offending element, prop, and field.
+ *
+ * @param virtualProps - The `virtualProps` value from the config, or `undefined`
+ */
+export const validateVirtualPropRows = (virtualProps: unknown): void => {
+    validatePropRowMap(virtualProps, "virtualProps", validateVirtualPropRow);
+};
+
+const validatePropRowMap = (
+    value: unknown,
+    tableName: string,
+    validateRow: (row: unknown, path: string) => void,
+): void => {
+    if (value === undefined) return;
+    const map = requireRecord(value, tableName);
     for (const [jsxName, props] of Object.entries(map)) {
-        requireTypeName(jsxName, `arrayProps key "${jsxName}"`);
-        const propMap = requireRecord(props, `arrayProps.${jsxName}`);
+        requireTypeName(jsxName, `${tableName} key "${jsxName}"`);
+        const propMap = requireRecord(props, `${tableName}.${jsxName}`);
         if (Object.keys(propMap).length === 0) {
-            fail(`arrayProps.${jsxName}`, "must declare at least one prop");
+            fail(`${tableName}.${jsxName}`, "must declare at least one prop");
         }
         for (const [propName, row] of Object.entries(propMap)) {
-            requireMethodName(propName, `arrayProps.${jsxName} prop "${propName}"`);
-            validateArrayPropRow(row, `arrayProps.${jsxName}.${propName}`);
+            requireMethodName(propName, `${tableName}.${jsxName} prop "${propName}"`);
+            validateRow(row, `${tableName}.${jsxName}.${propName}`);
         }
     }
 };

@@ -1,4 +1,12 @@
-import type { AddMethodRule, ArrayPropRow, ElementMapRule, PageMetaSetter, PropRule } from "@gtkx/config";
+import type {
+    AddMethodRule,
+    ArrayPropRow,
+    ElementMapRule,
+    ObjectPropRow,
+    PageMetaSetter,
+    PropRule,
+    VirtualPropRow,
+} from "@gtkx/config";
 import { quote, toCamelCase, toIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirEnum } from "../gir/enum.js";
@@ -20,6 +28,10 @@ export type RuntimeTables = {
     readonly elementMap: readonly ElementMapRule[];
     /** Merged array-prop rows keyed by GLib type name, then prop name. */
     readonly arrayProps: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>>;
+    /** Merged object-prop rows keyed by GLib type name, then prop name. */
+    readonly objectProps: Readonly<Record<string, Readonly<Record<string, ObjectPropRow>>>>;
+    /** Merged virtual-prop rows keyed by GLib type name, then prop name. */
+    readonly virtualProps: Readonly<Record<string, Readonly<Record<string, VirtualPropRow>>>>;
     /** Imperative and signal prop rules keyed by GLib type name. */
     readonly propRules: Readonly<Record<string, readonly PropRule[]>>;
     /** GLib type names of top-level surfaces. */
@@ -45,6 +57,16 @@ const renderRuntimeTables = (tables: RuntimeTables): readonly string[] => [
         "ARRAY_PROPS",
         `Readonly<Record<string, Readonly<Record<string, import("${CONFIG_TYPES}").ArrayPropRow>>>>`,
         tables.arrayProps,
+    ),
+    renderTableConst(
+        "OBJECT_PROPS",
+        `Readonly<Record<string, Readonly<Record<string, import("${CONFIG_TYPES}").ObjectPropRow>>>>`,
+        tables.objectProps,
+    ),
+    renderTableConst(
+        "VIRTUAL_PROPS",
+        `Readonly<Record<string, Readonly<Record<string, import("${CONFIG_TYPES}").VirtualPropRow>>>>`,
+        tables.virtualProps,
     ),
     renderTableConst(
         "PROP_RULES",

@@ -1,4 +1,3 @@
-import type * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     createContext,
@@ -10,11 +9,11 @@ import {
     useRef,
     useState,
 } from "react";
-import { isAdwDialog } from "../gtype-predicates.js";
+import { type AdwDialogLike, isAdwDialog } from "../gtype-predicates.js";
 import { assignRef } from "../use-merged-refs.js";
 
 /** A top-level surface: a window or an Adwaita dialog. */
-type Surface = Gtk.Window | Adw.Dialog;
+type Surface = Gtk.Window | AdwDialogLike;
 
 /**
  * The nearest enclosing window. A child window reads it to set its transient-for

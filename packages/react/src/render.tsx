@@ -92,11 +92,18 @@ export type RenderHandle = {
  *
  * @example
  * ```tsx
- * import { GtkApplication, GtkApplicationWindow, render, quit } from "@gtkx/react";
+ * import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
+ * import { render, quit } from "@gtkx/react";
  *
  * const App = () => (
  *   <GtkApplication applicationId="com.example.myapp">
- *     <GtkApplicationWindow title="My App" onClose={quit}>
+ *     <GtkApplicationWindow
+ *       title="My App"
+ *       onCloseRequest={() => {
+ *         quit();
+ *         return true;
+ *       }}
+ *     >
  *       <GtkLabel label="Hello, GTKX!" />
  *     </GtkApplicationWindow>
  *   </GtkApplication>
@@ -152,15 +159,23 @@ export const render = (element: ReactNode): RenderHandle => {
  * Gracefully shuts down the GTK application.
  *
  * Unmounts every active render root, restores their reconciler error
- * handlers, and stops the GTK main loop. Typically used as the `onClose`
- * handler for the application window.
+ * handlers, and stops the GTK main loop. Typically called from the main
+ * window's `onCloseRequest` handler, returning `true` so GTK's native close
+ * is vetoed and the React tree controls the teardown.
  *
  * @example
  * ```tsx
+ * import { GtkApplicationWindow, GtkButton } from "@gtkx/jsx/gtk";
  * import { quit } from "@gtkx/react";
  *
  * const App = () => (
- *   <GtkApplicationWindow title="My App" onClose={quit}>
+ *   <GtkApplicationWindow
+ *     title="My App"
+ *     onCloseRequest={() => {
+ *       quit();
+ *       return true;
+ *     }}
+ *   >
  *     <GtkButton label="Quit" onClicked={quit} />
  *   </GtkApplicationWindow>
  * );

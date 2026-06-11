@@ -67,6 +67,19 @@ const runCallStep = (target: BackingInstance, step: CallStep, item: unknown): vo
     );
 };
 
+/**
+ * Runs a sequence of {@link "@gtkx/config".CallStep}s against `target`, with
+ * each step's arguments resolved from `item`'s fields. Shared by the
+ * array-prop and object-prop interpreters.
+ *
+ * @param target - The backing GObject the calls apply to.
+ * @param steps - The call steps to run, in order.
+ * @param item - The value the steps' `item` arguments resolve against.
+ */
+export const runCallSteps = (target: BackingInstance, steps: readonly CallStep[], item: unknown): void => {
+    for (const step of steps) runCallStep(target, step, item);
+};
+
 const runConstructStep = (target: BackingInstance, step: ConstructStep, item: unknown): void => {
     const constructed = new (requireClassByName(step.type) as new () => object)();
     for (const setter of step.setters) {

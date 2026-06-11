@@ -19,10 +19,10 @@ import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { DATA_ATTACH_MAPPINGS, findDataAttachMapping, promotedNestingGuardMapping } from "./attach-rules.js";
+import type { ElementMapping } from "./element-mapping.js";
 import { collectTypeNameChain } from "./gtype.js";
 import { hasType } from "./gtype-predicates.js";
 import { type Instance, isWrapperInstance, isWrapperKind } from "./instance.js";
-import { menuItemMapping, menuLinkMapping } from "./nodes/internal/menu-attach.js";
 import {
     type InsertableWidget,
     isAddable,
@@ -43,26 +43,6 @@ import {
     unparentWidget,
 } from "./nodes/internal/widget.js";
 import type { BackingInstance } from "./types.js";
-
-/**
- * One attach/detach rule. The reconciler applies the first entry in
- * {@link ELEMENT_MAP} whose {@link matches} holds for a `(child, parent)` pair.
- */
-export interface ElementMapping {
-    /** Whether this mapping governs attaching `child` to `parent`. */
-    matches(child: Instance, parent: Instance): boolean;
-    /**
-     * Attaches `child` to `parent`. Idempotent: re-invoked when a wrapper child's
-     * own content or metadata changes, so it reconciles against any prior attach
-     * recorded on `child.attachState`. `anchor` is the next sibling's backing
-     * instance for ordered insertion, or `null`/`undefined` to append. `fresh`
-     * marks a child the reconciler has not attached before, so its backing widget
-     * is known to be unparented and the defensive unparent can be skipped.
-     */
-    attach(child: Instance, parent: Instance, anchor?: BackingInstance | null, fresh?: boolean): void;
-    /** Reverses {@link attach}, removing `child` from `parent`. */
-    detach(child: Instance, parent: Instance): void;
-}
 
 const isRooted = (instance: BackingInstance): boolean =>
     instance instanceof Gtk.Widget ? instance.getRoot() !== null : true;
@@ -675,8 +655,6 @@ export const ELEMENT_MAP: readonly ElementMapping[] = [
     transparentMapping,
     promotedNestingGuardMapping,
     ...DATA_ATTACH_MAPPINGS,
-    menuItemMapping,
-    menuLinkMapping,
     topLevelSkipMapping,
     listItemChildMapping,
     widgetContainerMapping,

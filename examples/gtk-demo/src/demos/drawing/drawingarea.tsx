@@ -1,7 +1,6 @@
 import { Content, Context, Format, ImageSurface, Operator, Surface } from "@gtkx/gi/cairo";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkFrame, GtkGestureDrag, GtkLabel } from "@gtkx/jsx/gtk";
-import { GtkDrawingArea } from "@gtkx/react";
+import { GtkBox, GtkDrawingArea, GtkFrame, GtkGestureDrag, GtkLabel } from "@gtkx/jsx/gtk";
 import { useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./drawingarea.tsx?raw";
@@ -72,7 +71,7 @@ const draw3Circles = (
     cr.fill();
 };
 
-const drawKnockoutGroups = (cr: Context, width: number, height: number) => {
+const drawKnockoutGroups = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const radius = 0.5 * Math.min(width, height) - 10;
     const xc = width / 2;
     const yc = height / 2;
@@ -158,7 +157,7 @@ const ScribbleArea = ({ accessibleLabelledBy }: { accessibleLabelledBy?: Gtk.Wid
         surfaceRef.current = createSurface(width, height);
     };
 
-    const drawScribble = (cr: Context) => {
+    const drawScribble = (_self: Gtk.DrawingArea, cr: Context) => {
         if (surfaceRef.current) {
             cr.setSourceSurface(surfaceRef.current, 0, 0);
             cr.paint();
@@ -173,7 +172,7 @@ const ScribbleArea = ({ accessibleLabelledBy }: { accessibleLabelledBy?: Gtk.Wid
             ref={ref}
             contentWidth={100}
             contentHeight={100}
-            render={drawScribble}
+            drawFunc={drawScribble}
             onResize={handleResize}
             accessibleRole={Gtk.AccessibleRole.IMG}
             accessibleLabelledBy={accessibleLabelledBy}
@@ -206,7 +205,7 @@ const DrawingAreaDemo = () => {
             <GtkFrame name="knockout-frame" vexpand>
                 <GtkDrawingArea
                     name="knockout-area"
-                    render={drawKnockoutGroups}
+                    drawFunc={drawKnockoutGroups}
                     contentWidth={100}
                     contentHeight={100}
                     accessibleRole={Gtk.AccessibleRole.IMG}

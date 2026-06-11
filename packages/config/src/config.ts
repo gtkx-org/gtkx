@@ -1,4 +1,13 @@
-import { type ArrayPropRow, type ElementMapRule, validateArrayPropRows, validateElementMap } from "./table-schema.js";
+import {
+    type ArrayPropRow,
+    type ElementMapRule,
+    type ObjectPropRow,
+    type VirtualPropRow,
+    validateArrayPropRows,
+    validateElementMap,
+    validateObjectPropRows,
+    validateVirtualPropRows,
+} from "./table-schema.js";
 
 /**
  * Sentinel {@link GtkxConfig.libraries} value selecting every `.gir` file
@@ -38,11 +47,10 @@ export type GtkxConfig = {
      * the resolved GIR search path, keeping the newest version of each
      * namespace.
      *
-     * The namespaces `["Gtk-4.0", "Adw-1", "GtkSource-5", "WebKit-6.0"]` are
-     * always generated, since `@gtkx/react`'s built-in nodes depend on them.
-     * An explicit array is merged with this always-on set and deduplicated,
-     * not used in its place. When omitted, only the always-on set is
-     * generated.
+     * Only `Gtk-4.0` is mandatory: it is the default when `libraries` is
+     * omitted and is added to an explicit list that omits it. Every other
+     * namespace (libadwaita, GtkSource, WebKit, …) is generated exactly when
+     * listed.
      */
     libraries?: typeof LIBRARIES_WILDCARD | string[];
 
@@ -143,6 +151,55 @@ export type GtkxConfig = {
      * ```
      */
     arrayProps?: Record<string, Record<string, ArrayPropRow>>;
+
+    /**
+     * Additional object-valued props to expose on a widget's JSX surface,
+     * where the object's fields map to one or more GTK calls.
+     *
+     * Keys are PascalCase JSX element names; each value maps a camelCase prop
+     * name to an {@link ObjectPropRow}. The row's `itemType` must be an
+     * exported member of `@gtkx/react` — codegen type-imports it and emits
+     * `prop?: ItemType | null;` into the element's generated `Props`
+     * interface. When the prop holds a value the `set` calls run with
+     * arguments resolved against it; when it is cleared the `unset` calls
+     * run. Entries merge with the built-in object-prop rows.
+     *
+     * @example
+     * ```ts
+     * objectProps: {
+     *     MyAppCanvas: {
+     *         viewport: {
+     *             itemType: "CanvasViewport",
+     *             set: [{ method: "setViewport", args: [{ kind: "item", path: "x" }, { kind: "item", path: "y" }] }],
+     *         },
+     *     },
+     * }
+     * ```
+     */
+    objectProps?: Record<string, Record<string, ObjectPropRow>>;
+
+    /**
+     * Additional virtual props to expose on a widget's JSX surface: props with
+     * no GObject property backing whose value is forwarded verbatim to a
+     * setter method.
+     *
+     * Keys are PascalCase JSX element names; each value maps a camelCase prop
+     * name to a {@link VirtualPropRow}. The row's `type` is the qualified GIR
+     * type the generated `Props` line declares (typically a GIR callback
+     * type), `setter` is called with the value — `null` when the prop is
+     * cleared — and `after` optionally names a zero-argument method invoked
+     * after every set. Entries merge with the built-in virtual-prop rows.
+     *
+     * @example
+     * ```ts
+     * virtualProps: {
+     *     GtkListBox: {
+     *         sortFunc: { type: "Gtk.ListBoxSortFunc", setter: "setSortFunc" },
+     *     },
+     * }
+     * ```
+     */
+    virtualProps?: Record<string, Record<string, VirtualPropRow>>;
 
     /**
      * Additional attach relationships for the reconciler's element map, merged
@@ -388,6 +445,8 @@ export const defineConfig = (config: GtkxConfig): GtkxConfig => {
     validateSlotMap(config.slots, "slots");
     validateSlotMap(config.containerSlots, "containerSlots");
     validateArrayPropRows(config.arrayProps);
+    validateObjectPropRows(config.objectProps);
+    validateVirtualPropRows(config.virtualProps);
     validateElementMap(config.elementMap);
     validateReactCompiler(config.reactCompiler);
     return config;
@@ -413,6 +472,10 @@ export type ResolvedGtkxConfig = {
     readonly containerSlots: Readonly<Record<string, readonly string[]>>;
     /** The user's array-prop rows, or `{}` when omitted. */
     readonly arrayProps: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>>;
+    /** The user's object-prop rows, or `{}` when omitted. */
+    readonly objectProps: Readonly<Record<string, Readonly<Record<string, ObjectPropRow>>>>;
+    /** The user's virtual-prop rows, or `{}` when omitted. */
+    readonly virtualProps: Readonly<Record<string, Readonly<Record<string, VirtualPropRow>>>>;
     /** The user's element-map rows, or `[]` when omitted. */
     readonly elementMap: readonly ElementMapRule[];
     /** The resolved React Compiler options, or `null` when disabled. */
@@ -440,6 +503,8 @@ export const resolveGtkxConfig = (config: GtkxConfig): ResolvedGtkxConfig => ({
     slots: config.slots ?? {},
     containerSlots: config.containerSlots ?? {},
     arrayProps: config.arrayProps ?? {},
+    objectProps: config.objectProps ?? {},
+    virtualProps: config.virtualProps ?? {},
     elementMap: config.elementMap ?? [],
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
 });

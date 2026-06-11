@@ -2,18 +2,16 @@ import { readdirSync } from "node:fs";
 import { GIR_NAMESPACE_PATTERN, type GtkxConfig, LIBRARIES_WILDCARD } from "@gtkx/config";
 
 /**
- * GIR namespaces always generated, whether or not `gtkx.config.ts` lists
- * `libraries`.
+ * GIR namespaces generated when `gtkx.config.ts` omits `libraries`.
  *
- * GTK 4, libadwaita, GtkSource, and WebKit — the namespaces `@gtkx/react`'s
- * built-in widget nodes use: GtkSource at runtime (the SourceView node) and
- * WebKit in the node typings (the WebView node), so a project's generated
- * bindings always resolve both the reconciler's imports and its types. Their
- * transitive dependencies (GLib, GObject, Gio, Gdk, Pango, Cairo, …) are
- * resolved automatically from the GIR files on disk. Explicit `libraries` are
- * merged with this set rather than replacing it.
+ * Only GTK 4 is mandatory: `@gtkx/react` is namespace-agnostic, so optional
+ * namespaces (libadwaita, GtkSource, WebKit, …) are generated exactly when a
+ * project lists them. GTK's transitive dependencies (GLib, GObject, Gio, Gdk,
+ * Pango, Cairo, …) are resolved automatically from the GIR files on disk. An
+ * explicit `libraries` list replaces this default; `Gtk-4.0` is added when
+ * the list omits it, since the reconciler's widget handling requires it.
  */
-const DEFAULT_LIBRARIES: readonly string[] = ["Gtk-4.0", "Adw-1", "GtkSource-5", "WebKit-6.0"];
+const DEFAULT_LIBRARIES: readonly string[] = ["Gtk-4.0"];
 
 const GIR_FILE_SUFFIX = ".gir";
 
@@ -24,7 +22,7 @@ const GIR_FILE_SUFFIX = ".gir";
  * - omitted → {@link DEFAULT_LIBRARIES}
  * - `"*"` → every `.gir` discovered across `girPath`, keeping the newest
  *   version of each namespace
- * - an explicit array → merged with {@link DEFAULT_LIBRARIES}, deduplicated
+ * - an explicit array → as given, with `Gtk-4.0` added when omitted
  *
  * @param libraries - The validated `libraries` field from {@link GtkxConfig}
  * @param girPath - Resolved GIR search directories, used only to expand `"*"`
@@ -47,7 +45,8 @@ export const resolveLibraries = (libraries: GtkxConfig["libraries"], girPath: re
         return discovered;
     }
 
-    return [...new Set([...DEFAULT_LIBRARIES, ...libraries])];
+    const hasGtk = libraries.some((library) => library.startsWith("Gtk-"));
+    return [...new Set([...(hasGtk ? [] : DEFAULT_LIBRARIES), ...libraries])];
 };
 
 /**

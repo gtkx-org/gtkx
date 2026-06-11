@@ -34,8 +34,8 @@ export type WidgetPropsOptions = {
     readonly klass: GirClass;
     /** Property names that should be widened to `ReactNode` slot children. */
     readonly slotPropNames?: ReadonlySet<string>;
-    /** Property names whose raw GObject emission is suppressed in favor of an array-prop surface. */
-    readonly arrayPropNames?: ReadonlySet<string>;
+    /** Property names whose raw GObject emission is suppressed in favor of a data-prop surface (array, object, or virtual rows). */
+    readonly dataPropNames?: ReadonlySet<string>;
     /** Returns `true` when `candidate` already has its own widget Props interface. */
     readonly isWidgetAncestor?: (candidate: GirClass) => boolean;
 };
@@ -66,7 +66,7 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
         repository,
         klass,
         slotPropNames = new Set<string>(),
-        arrayPropNames = new Set<string>(),
+        dataPropNames = new Set<string>(),
         isWidgetAncestor = () => false,
     } = options;
     const imports = new Map<string, string>();
@@ -82,7 +82,7 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
         if (seen.has(jsName)) return;
         seen.add(jsName);
         if (isPropOverridden(ownerName, jsName)) return;
-        if (arrayPropNames.has(jsName)) return;
+        if (dataPropNames.has(jsName)) return;
         if (slotPropNames.has(jsName)) {
             propEntries.push(`${jsName}?: ReactNode | null;`);
             return;

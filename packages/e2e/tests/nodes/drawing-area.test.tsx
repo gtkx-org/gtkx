@@ -1,18 +1,15 @@
-import type * as cairo from "@gtkx/gi/cairo";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkDrawingArea } from "@gtkx/react";
+import { GtkDrawingArea } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
-type DrawFunc = (cr: cairo.Context, width: number, height: number, self: Gtk.DrawingArea) => void;
+const noopDraw: Gtk.DrawingAreaDrawFunc = () => {};
 
-const noopDraw: DrawFunc = () => {};
-
-const expectDefaultContentSize = async (drawFunc: DrawFunc | undefined) => {
+const expectDefaultContentSize = async (drawFunc: Gtk.DrawingAreaDrawFunc | undefined) => {
     const ref = createRef<Gtk.DrawingArea>();
 
-    await render(<GtkDrawingArea ref={ref} render={drawFunc} />);
+    await render(<GtkDrawingArea ref={ref} drawFunc={drawFunc} />);
 
     expect(ref.current).toBeInstanceOf(Gtk.DrawingArea);
     expect(ref.current?.getContentWidth()).toBe(0);
@@ -29,11 +26,11 @@ describe("render - DrawingArea > DrawingAreaNode (1)", () => {
         expect(ref.current).toBeInstanceOf(Gtk.DrawingArea);
     });
 
-    it("creates DrawingArea without render callback", async () => {
+    it("creates DrawingArea without a draw function", async () => {
         await expectDefaultContentSize(undefined);
     });
 
-    it("creates DrawingArea with render callback", async () => {
+    it("creates DrawingArea with a draw function", async () => {
         await expectDefaultContentSize(noopDraw);
     });
 
@@ -64,13 +61,13 @@ describe("render - DrawingArea > DrawingAreaNode (2)", () => {
         expect(ref.current?.getContentHeight()).toBe(100);
     });
 
-    it("updates render callback when prop changes", async () => {
+    it("updates draw function when prop changes", async () => {
         const ref = createRef<Gtk.DrawingArea>();
-        const drawFunc1: DrawFunc = () => {};
-        const drawFunc2: DrawFunc = () => {};
+        const drawFunc1: Gtk.DrawingAreaDrawFunc = () => {};
+        const drawFunc2: Gtk.DrawingAreaDrawFunc = () => {};
 
-        function App({ drawFunc }: { drawFunc: DrawFunc }) {
-            return <GtkDrawingArea ref={ref} render={drawFunc} />;
+        function App({ drawFunc }: { drawFunc: Gtk.DrawingAreaDrawFunc }) {
+            return <GtkDrawingArea ref={ref} drawFunc={drawFunc} />;
         }
 
         await render(<App drawFunc={drawFunc1} />);
@@ -84,13 +81,13 @@ describe("render - DrawingArea > DrawingAreaNode (2)", () => {
 });
 
 describe("render - DrawingArea > DrawingAreaNode (3)", () => {
-    it("sets widget properties alongside render", async () => {
+    it("sets widget properties alongside drawFunc", async () => {
         const ref = createRef<Gtk.DrawingArea>();
 
         await render(
             <GtkDrawingArea
                 ref={ref}
-                render={noopDraw}
+                drawFunc={noopDraw}
                 contentWidth={300}
                 contentHeight={200}
                 visible={true}

@@ -1,6 +1,7 @@
 import { getNativeClassByName } from "@gtkx/ffi";
-import type * as Adw from "@gtkx/gi/adw";
+import type * as Gio from "@gtkx/gi/gio";
 import type { GType } from "@gtkx/gi/gobject";
+import type * as Gtk from "@gtkx/gi/gtk";
 import type { AnyClass } from "@gtkx/utils";
 import { collectTypeNameChain } from "./gtype.js";
 
@@ -33,12 +34,45 @@ export const hasType = (instance: GTyped, typeName: string): boolean =>
 export const classHasType = (cls: { readonly prototype: GTyped } | null, typeName: string): boolean =>
     cls !== null && collectTypeNameChain(cls.prototype.__gtype__).includes(typeName);
 
+/**
+ * The structural surface of an `Adw.Dialog` that `@gtkx/react` drives:
+ * presenting against a parent widget and force-closing on unmount. Declared
+ * structurally so the runtime never references the optional Adwaita
+ * namespace, even at the type level.
+ */
+export interface AdwDialogLike extends GTyped {
+    /** Presents the dialog against `parent`, or detached when `null`. */
+    present(parent: Gtk.Widget | null): void;
+    /** Closes the dialog unconditionally, bypassing close-attempt handling. */
+    forceClose(): void;
+}
+
+/**
+ * The structural surface of an `Adw.ComboRow` the list controller drives: the
+ * model and the three item factories. Declared structurally so the runtime
+ * never references the optional Adwaita namespace, even at the type level.
+ */
+export interface AdwComboRowLike extends GTyped {
+    /** Replaces the row's item model. */
+    setModel(model: Gio.ListModel | null): void;
+    /** Replaces the factory rendering the row's selected item. */
+    setFactory(factory: Gtk.ListItemFactory | null): void;
+    /** Replaces the factory rendering the popup list's items. */
+    setListFactory(factory: Gtk.ListItemFactory | null): void;
+    /** Replaces the factory rendering the popup list's section headers. */
+    setHeaderFactory(factory: Gtk.ListItemFactory | null): void;
+    /** Selects the item at `position`. */
+    setSelected(position: number): void;
+    /** The selected item's position. */
+    getSelected(): number;
+}
+
 /** Whether `instance` is an `AdwDialog`. */
-export const isAdwDialog = <T extends GTyped>(instance: T): instance is T & Adw.Dialog =>
+export const isAdwDialog = <T extends GTyped>(instance: T): instance is T & AdwDialogLike =>
     hasType(instance, "AdwDialog");
 
 /** Whether `instance` is an `AdwComboRow`. */
-export const isAdwComboRow = <T extends GTyped>(instance: T): instance is T & Adw.ComboRow =>
+export const isAdwComboRow = <T extends GTyped>(instance: T): instance is T & AdwComboRowLike =>
     hasType(instance, "AdwComboRow");
 
 /**

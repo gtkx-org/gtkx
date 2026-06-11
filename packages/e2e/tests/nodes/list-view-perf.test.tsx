@@ -1,6 +1,5 @@
-import { GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkLabel, GtkListView } from "@gtkx/jsx/gtk";
 import type { ListItem } from "@gtkx/react";
-import { GtkListView } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { ScrollWrapper } from "../helpers/scroll-wrapper.js";

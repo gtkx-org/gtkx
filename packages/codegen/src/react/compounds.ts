@@ -16,8 +16,6 @@ type CompoundHoc =
     | "withTopLevel"
     | "withApplication"
     | "withApplicationWindow"
-    | "withColorDialog"
-    | "withFontDialog"
     | "withActionAccels"
     | "withActionScope";
 
@@ -57,8 +55,15 @@ export const generateCompoundsSection = (
 
     for (const candidate of collectReactNodeClasses(repository)) {
         if (candidate.namespace.name !== targetNamespace.name) continue;
-        if (excludeNames.has(candidate.glibName) || virtualNames.has(candidate.glibName)) continue;
+        if (virtualNames.has(candidate.glibName)) continue;
         const { glibName, klass, namespace } = candidate;
+        const wrapper = RUNTIME_COMPONENT_WRAPPERS[glibName];
+        if (wrapper !== undefined) {
+            exportLines.push(renderRuntimeWrapper(glibName, wrapper, imports));
+            exportedNames.add(glibName);
+            continue;
+        }
+        if (excludeNames.has(glibName)) continue;
         const hoc = compoundHoc(klass, namespace, repository);
         imports.hocs.add("createWidgetComponent");
         imports.reactBuiltins.add("ReactNode");
@@ -109,13 +114,110 @@ const virtualSubcomponentsForNamespace = (
     return result.sort((a, b) => a.flatName.localeCompare(b.flatName));
 };
 
+/** The shared own-keys of the list-view and grid-view controller prop shapes. */
+const LIST_VIEW_OWN_KEYS =
+    '"items" | "model" | "renderItem" | "renderHeader" | "autoexpand" | "selected" | "onSelectionChanged" | "selectionMode" | "estimatedItemHeight" | "estimatedItemWidth"';
+
+/** The own-keys of the drop-down and combo-row controller prop shape. */
+const DROP_DOWN_OWN_KEYS =
+    '"items" | "model" | "renderItem" | "renderListItem" | "renderHeader" | "selectedId" | "onSelectionChanged"';
+
+/** The own-keys of the column-view controller prop shape. */
+const COLUMN_VIEW_OWN_KEYS =
+    '"items" | "model" | "renderHeader" | "selected" | "onSelectionChanged" | "selectionMode" | "sortColumn" | "sortOrder" | "onSortChanged" | "estimatedRowHeight"';
+
+/** A typed namespace-module wrapper around a hand-written `@gtkx/react` runtime component. */
+type RuntimeComponentWrapper =
+    | { readonly kind: "reexport" }
+    | { readonly kind: "typedProps" }
+    | {
+          readonly kind: "typed";
+          /** The wrapper's generic parameter list (e.g. `"<T = unknown, S = unknown>"`). */
+          readonly genericParams: string;
+          /** Keys removed from the generated `Props` in the wrapper's surface. */
+          readonly omitKeys: string;
+          /** The `@gtkx/react` controller prop shape intersected in, with generics applied. */
+          readonly controllerProps: string;
+          /** The `@gtkx/react` type names the wrapper's surface imports. */
+          readonly sharedTypes: readonly string[];
+      };
+
+/**
+ * The hand-written `@gtkx/react` components re-exported with a fully typed
+ * surface by their namespace module, keyed by JSX element name. A `typed`
+ * entry composes the generated `Props` (own keys removed) with the runtime
+ * component's controller prop shape; a `reexport` entry forwards the
+ * component verbatim because its public typing is already complete in
+ * `@gtkx/react`.
+ */
+const RUNTIME_COMPONENT_WRAPPERS: Readonly<Record<string, RuntimeComponentWrapper>> = {
+    GtkListView: {
+        kind: "typed",
+        genericParams: "<T = unknown, S = unknown>",
+        omitKeys: LIST_VIEW_OWN_KEYS,
+        controllerProps: "ListViewProps<T, S>",
+        sharedTypes: ["ListViewProps"],
+    },
+    GtkGridView: {
+        kind: "typed",
+        genericParams: "<T = unknown>",
+        omitKeys: LIST_VIEW_OWN_KEYS,
+        controllerProps: "GridViewProps<T>",
+        sharedTypes: ["GridViewProps"],
+    },
+    GtkDropDown: {
+        kind: "typed",
+        genericParams: "<T = unknown, S = unknown>",
+        omitKeys: DROP_DOWN_OWN_KEYS,
+        controllerProps: "DropDownProps<T, S>",
+        sharedTypes: ["DropDownProps"],
+    },
+    AdwComboRow: {
+        kind: "typed",
+        genericParams: "<T = unknown, S = unknown>",
+        omitKeys: DROP_DOWN_OWN_KEYS,
+        controllerProps: "DropDownProps<T, S>",
+        sharedTypes: ["DropDownProps"],
+    },
+    GtkColumnView: {
+        kind: "typed",
+        genericParams: "<T = unknown, S = unknown>",
+        omitKeys: COLUMN_VIEW_OWN_KEYS,
+        controllerProps: "ColumnViewProps<T, S>",
+        sharedTypes: ["ColumnViewProps"],
+    },
+    GtkColumnViewColumn: {
+        kind: "typed",
+        genericParams: "<T = unknown>",
+        omitKeys: '"factory" | "sorter"',
+        controllerProps: "ColumnViewColumnProps<T>",
+        sharedTypes: ["ColumnViewColumnProps"],
+    },
+    GMenu: { kind: "typedProps" },
+    GtkConstraintLayout: { kind: "reexport" },
+    GtkSizeGroup: { kind: "reexport" },
+};
+
+const renderRuntimeWrapper = (glibName: string, wrapper: RuntimeComponentWrapper, imports: JsxImports): string => {
+    if (wrapper.kind === "reexport") {
+        return `export { ${glibName} } from "@gtkx/react";`;
+    }
+    const alias = `Runtime${glibName}`;
+    imports.hocs.add(`${glibName} as ${alias}`);
+    imports.reactBuiltins.add("ReactNode");
+    if (wrapper.kind === "typedProps") {
+        return `export const ${glibName}: (props: ${glibName}Props) => ReactNode = ${alias};`;
+    }
+    for (const sharedType of wrapper.sharedTypes) imports.sharedTypes.add(sharedType);
+    const propsExpr = `Omit<${glibName}Props, ${wrapper.omitKeys}> & ${wrapper.controllerProps}`;
+    return `export const ${glibName}: ${wrapper.genericParams}(props: ${propsExpr}) => ReactNode = ${alias};`;
+};
+
 /** The HOC precedence list, applied in order against a class's ancestry. */
 const COMPOUND_HOC_RULES: readonly { readonly ancestors: readonly string[]; readonly hoc: CompoundHoc }[] = [
     { ancestors: ["GtkApplication"], hoc: "withApplication" },
     { ancestors: ["GtkApplicationWindow"], hoc: "withApplicationWindow" },
     { ancestors: ["GtkWindow", "AdwDialog"], hoc: "withTopLevel" },
-    { ancestors: ["GtkColorDialogButton"], hoc: "withColorDialog" },
-    { ancestors: ["GtkFontDialogButton"], hoc: "withFontDialog" },
     { ancestors: ["GSimpleAction"], hoc: "withActionAccels" },
     { ancestors: ["GSimpleActionGroup"], hoc: "withActionScope" },
 ];

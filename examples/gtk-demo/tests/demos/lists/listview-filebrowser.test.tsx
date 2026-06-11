@@ -1,8 +1,15 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, screen, userEvent, within } from "@gtkx/testing";
+import { act, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewFilebrowserDemo } from "../../../src/demos/lists/listview-filebrowser.js";
 import { renderDemo } from "../../test-utils.js";
+
+const waitForPopulatedModel = async (grid: Gtk.GridView): Promise<number> =>
+    waitFor(() => {
+        const count = (grid.getModel() as Gtk.SelectionModel).getNItems();
+        expect(count).toBeGreaterThan(0);
+        return count;
+    });
 
 describe("listviewFilebrowserDemo", () => {
     it("exposes the expected metadata", () => {
@@ -73,8 +80,7 @@ describe("listviewFilebrowserDemo", () => {
         const upButton = (await screen.findByName("up-button")) as Gtk.Button;
         await userEvent.click(upButton);
         const grid = (await screen.findByName("files-grid")) as Gtk.GridView;
-        const model = grid.getModel();
-        expect((model as Gtk.SelectionModel).getNItems()).toBeGreaterThan(0);
+        await waitForPopulatedModel(grid);
     });
 
     it("switches to paged view mode (preserves horizontal orientation)", async () => {
@@ -88,10 +94,8 @@ describe("listviewFilebrowserDemo", () => {
     it("navigates into a directory when activate fires on a directory entry", async () => {
         await renderDemo(listviewFilebrowserDemo);
         const grid = (await screen.findByName("files-grid")) as Gtk.GridView;
-        const model = grid.getModel();
-        expect(model).not.toBeNull();
-        const beforeCount = (model as Gtk.SelectionModel).getNItems();
-        expect(beforeCount).toBeGreaterThan(0);
+        expect(grid.getModel()).not.toBeNull();
+        const beforeCount = await waitForPopulatedModel(grid);
         for (let i = 0; i < beforeCount; i++) {
             await userEvent.selectOptions(grid, i);
             await act(() => {
