@@ -99,6 +99,7 @@ pub(crate) fn parse_trampoline_arg_and_return_types(
 }
 
 mod array;
+mod blob;
 mod boolean;
 mod boxed;
 mod fundamental;
@@ -115,6 +116,7 @@ mod void;
 
 pub use array::ArrayKind;
 pub use array::ArrayType;
+pub use blob::BlobType;
 pub use boolean::BooleanType;
 pub use boxed::{BoxedFreeFn, BoxedType, StructType};
 pub use fundamental::FundamentalType;
@@ -351,6 +353,7 @@ pub enum Type {
     Struct(StructType),
     Fundamental(FundamentalType),
     Array(ArrayType),
+    Blob(BlobType),
     HashTable(HashTableType),
     Trampoline(TrampolineType),
     Ref(RefType),
@@ -374,6 +377,7 @@ impl std::fmt::Display for Type {
             Self::Struct(t) => write!(f, "Struct({})", t.ownership),
             Self::Fundamental(t) => write!(f, "Fundamental({})", t.unref_func),
             Self::Array(_) => write!(f, "Array"),
+            Self::Blob(_) => write!(f, "Blob"),
             Self::HashTable(_) => write!(f, "HashTable"),
             Self::Trampoline(_) => write!(f, "Trampoline"),
             Self::Ref(t) => write!(f, "Ref({})", t.inner_type),
@@ -416,6 +420,7 @@ impl Type {
             "boxed" => Ok(Self::Boxed(BoxedType::from_js_value(env, &obj)?)),
             "struct" => Ok(Self::Struct(StructType::from_js_value(env, &obj)?)),
             "array" => Ok(Self::Array(ArrayType::from_js_value(env, &obj)?)),
+            "blob" => Ok(Self::Blob(BlobType)),
             "hashtable" => Ok(Self::HashTable(HashTableType::from_js_value(env, &obj)?)),
             "trampoline" => Ok(Self::Trampoline(TrampolineType::from_js_value(env, &obj)?)),
             "ref" => Ok(Self::Ref(RefType::from_js_value(env, &obj)?)),
@@ -432,14 +437,14 @@ impl Type {
 
     /// Whether this type may occupy a function's return slot.
     ///
-    /// `Trampoline` and `Ref` describe argument-only shapes — a callback
-    /// handler or an out-parameter — and have no return-slot codec (their
-    /// [`FfiEncoder::call_cif`] implementations bail). Callers consult this at
-    /// the descriptor-parsing boundary to reject a malformed return type with a
-    /// precise `InvalidArg` error.
+    /// `Trampoline`, `Ref`, and `Blob` describe argument-only shapes — a
+    /// callback handler, an out-parameter, or a raw memory argument — and have
+    /// no return-slot codec (their [`FfiEncoder::call_cif`] implementations
+    /// bail). Callers consult this at the descriptor-parsing boundary to
+    /// reject a malformed return type with a precise `InvalidArg` error.
     #[must_use]
     pub fn can_be_return_type(&self) -> bool {
-        !matches!(self, Self::Trampoline(_) | Self::Ref(_))
+        !matches!(self, Self::Trampoline(_) | Self::Ref(_) | Self::Blob(_))
     }
 
     /// Whether this type may describe a function or callback argument.

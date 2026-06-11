@@ -10,10 +10,7 @@ use native::Boxed;
 #[test]
 fn from_glib_full_sets_owned_flag() {
     common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let ptr = common::allocate_test_boxed(gtype);
-
-        let boxed = Boxed::from_glib_full(Some(gtype), ptr);
+        let (boxed, _ptr) = common::owned_rgba_boxed();
 
         assert!(boxed.is_owned());
         assert!(!boxed.as_ptr().is_null());
@@ -84,9 +81,8 @@ fn from_glib_none_unknown_type_returns_error() {
 fn clone_creates_independent_copy() {
     common::run(|| {
         let gtype = gdk::RGBA::static_type();
-        let ptr = common::allocate_test_boxed(gtype);
+        let (boxed, _ptr) = common::owned_rgba_boxed();
 
-        let boxed = Boxed::from_glib_full(Some(gtype), ptr);
         let cloned = boxed.clone();
 
         assert!(cloned.is_owned());
@@ -102,10 +98,7 @@ fn clone_creates_independent_copy() {
 #[test]
 fn as_ptr_returns_correct_pointer() {
     common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let ptr = common::allocate_test_boxed(gtype);
-
-        let boxed = Boxed::from_glib_full(Some(gtype), ptr);
+        let (boxed, ptr) = common::owned_rgba_boxed();
 
         assert_eq!(boxed.as_ptr(), ptr);
     });
@@ -114,10 +107,7 @@ fn as_ptr_returns_correct_pointer() {
 #[test]
 fn drop_frees_owned_memory() {
     common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let ptr = common::allocate_test_boxed(gtype);
-
-        let boxed = Boxed::from_glib_full(Some(gtype), ptr);
+        let (boxed, _ptr) = common::owned_rgba_boxed();
         drop(boxed);
     });
 }
@@ -261,33 +251,145 @@ fn clone_without_gtype_shares_ownership() {
     });
 }
 
+/// Builds a null-pointer owned wrapper under `gtype` and asserts its clone is
+/// a borrowed null view carrying the same type.
+fn assert_null_boxed_clone_stays_null(gtype: Option<glib::Type>) {
+    let boxed = Boxed::from_glib_full(gtype, std::ptr::null_mut());
+
+    let cloned = boxed.clone();
+
+    assert!(cloned.as_ptr().is_null());
+    assert!(!cloned.is_owned());
+    assert_eq!(cloned.gtype(), boxed.gtype());
+    assert_eq!(cloned.gtype(), gtype);
+}
+
 #[test]
 fn clone_null_ptr_with_gtype_stays_null() {
-    common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let boxed = Boxed::from_glib_full(Some(gtype), std::ptr::null_mut());
-
-        let cloned = boxed.clone();
-
-        assert!(cloned.as_ptr().is_null());
-        assert!(!cloned.is_owned());
-        assert_eq!(cloned.gtype(), boxed.gtype());
-        assert_eq!(cloned.gtype(), Some(gtype));
-    });
+    common::run(|| assert_null_boxed_clone_stays_null(Some(gdk::RGBA::static_type())));
 }
 
 #[test]
 fn clone_null_ptr_without_gtype_stays_null() {
-    common::run(|| {
-        let boxed = Boxed::from_glib_full(None, std::ptr::null_mut());
+    common::run(|| assert_null_boxed_clone_stays_null(None));
+}
 
-        let cloned = boxed.clone();
+mod from_alloc {
+    use std::ffi::c_void;
+    use std::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 
-        assert!(cloned.as_ptr().is_null());
-        assert!(!cloned.is_owned());
-        assert_eq!(cloned.gtype(), boxed.gtype());
-        assert_eq!(cloned.gtype(), None);
-    });
+    use gtk4::glib;
+
+    use native::Boxed;
+
+    use super::common;
+
+    static BOXED_FREE_CALLS: AtomicUsize = AtomicUsize::new(0);
+    static LAST_BOXED_FREED_PTR: AtomicPtr<c_void> = AtomicPtr::new(std::ptr::null_mut());
+
+    const DEFERRED_ALLOC_SIZE: usize = 16;
+
+    /// Allocates a zeroed block of [`DEFERRED_ALLOC_SIZE`] bytes and wraps it
+    /// through `Boxed::from_alloc` under a type name with no registered
+    /// `GType`, asserting the wrapper defers its destructor decision: owned,
+    /// original pointer, no bound `GType`.
+    fn deferred_boxed(type_name: &str) -> (Boxed, *mut c_void) {
+        // SAFETY: Allocating zeroed memory has no pointer preconditions.
+        let ptr = unsafe { glib::ffi::g_malloc0(DEFERRED_ALLOC_SIZE) };
+        let name = glib::GString::from(type_name);
+        assert!(glib::Type::from_name(name.as_str()).is_none());
+
+        let boxed = Boxed::from_alloc(Some(name), ptr);
+
+        assert!(boxed.is_owned());
+        assert_eq!(boxed.as_ptr(), ptr);
+        assert_eq!(boxed.gtype(), None);
+        (boxed, ptr)
+    }
+
+    /// Copy function for the late-registered boxed type: duplicates the
+    /// fixed-size allocation its values are made of.
+    unsafe extern "C" fn late_boxed_copy(ptr: *mut c_void) -> *mut c_void {
+        // SAFETY: Every value of this type is a live allocation of
+        // DEFERRED_ALLOC_SIZE bytes, and g_malloc aborts on failure, so
+        // `dest` holds DEFERRED_ALLOC_SIZE writable bytes.
+        unsafe {
+            let dest = glib::ffi::g_malloc(DEFERRED_ALLOC_SIZE);
+            std::ptr::copy_nonoverlapping(ptr as *const u8, dest as *mut u8, DEFERRED_ALLOC_SIZE);
+            dest
+        }
+    }
+
+    /// Free function for the late-registered boxed type: records the call and
+    /// releases the allocation so leak detectors stay happy.
+    unsafe extern "C" fn late_boxed_free(ptr: *mut c_void) {
+        BOXED_FREE_CALLS.fetch_add(1, Ordering::SeqCst);
+        LAST_BOXED_FREED_PTR.store(ptr, Ordering::SeqCst);
+        // SAFETY: Frees the allocation handed to this destructor exactly once.
+        unsafe { glib::ffi::g_free(ptr) };
+    }
+
+    #[test]
+    fn unregistered_name_defers_destructor_and_g_frees() {
+        common::run(|| {
+            let (boxed, _ptr) = deferred_boxed("GtkxTestNeverRegisteredBoxed");
+            assert!(boxed.free_fn().is_none());
+
+            drop(boxed);
+            assert!(glib::Type::from_name("GtkxTestNeverRegisteredBoxed").is_none());
+        });
+    }
+
+    #[test]
+    fn missing_name_binds_plain_g_free_cleanup() {
+        common::run(|| {
+            // SAFETY: Allocating zeroed memory has no pointer preconditions.
+            let ptr = unsafe { glib::ffi::g_malloc0(DEFERRED_ALLOC_SIZE) };
+            let boxed = Boxed::from_alloc(None, ptr);
+            assert!(boxed.is_owned());
+            assert_eq!(boxed.as_ptr(), ptr);
+            assert_eq!(boxed.gtype(), None);
+        });
+    }
+
+    #[test]
+    fn registered_name_binds_boxed_semantics_immediately() {
+        common::run(|| {
+            use gtk4::prelude::StaticType as _;
+
+            let gtype = gtk4::gdk::RGBA::static_type();
+            let ptr = common::allocate_test_boxed(gtype);
+            let boxed = Boxed::from_alloc(Some(glib::GString::from(gtype.name())), ptr);
+            assert!(boxed.is_owned());
+            assert_eq!(boxed.gtype(), Some(gtype));
+        });
+    }
+
+    #[test]
+    fn name_registered_by_release_time_uses_g_boxed_free() {
+        common::run(|| {
+            let (boxed, ptr) = deferred_boxed("GtkxTestLateRegisteredBoxed");
+
+            // SAFETY: Registers a fresh boxed GType under a name unique to
+            // this test, with copy and free functions matching the type's
+            // allocation scheme.
+            let registered = unsafe {
+                glib::gobject_ffi::g_boxed_type_register_static(
+                    c"GtkxTestLateRegisteredBoxed".as_ptr(),
+                    Some(late_boxed_copy),
+                    Some(late_boxed_free),
+                )
+            };
+            assert_ne!(registered, 0);
+            assert!(glib::Type::from_name("GtkxTestLateRegisteredBoxed").is_some());
+
+            let calls_before = BOXED_FREE_CALLS.load(Ordering::SeqCst);
+            drop(boxed);
+
+            assert_eq!(BOXED_FREE_CALLS.load(Ordering::SeqCst), calls_before + 1);
+            assert_eq!(LAST_BOXED_FREED_PTR.load(Ordering::SeqCst), ptr);
+        });
+    }
 }
 
 mod free_fn {

@@ -74,6 +74,7 @@ const float64: Type = Object.freeze({ type: "float64" });
 const booleanT: Type = Object.freeze({ type: "boolean" });
 const voidT: Type = Object.freeze({ type: "void" });
 const unicharT: Type = Object.freeze({ type: "unichar" });
+const blobT: Type = Object.freeze({ type: "blob" });
 
 const stringT = (ownership: Ownership = "borrowed", length?: number): Type =>
     length === undefined ? { type: "string", ownership } : { type: "string", ownership, length };
@@ -233,6 +234,7 @@ export const t = {
     boolean: booleanT,
     void: voidT,
     unichar: unicharT,
+    blob: blobT,
     string: stringT,
     object: objectT,
     boxed: boxedT,

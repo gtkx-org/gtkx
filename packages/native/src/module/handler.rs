@@ -24,6 +24,10 @@ pub trait ModuleRequest: Sized + Send + 'static {
 
     /// Dispatches the request onto the `GLib` thread, blocks the JS thread
     /// until it completes, and converts the outcome into a JavaScript value.
+    ///
+    /// A failed request surfaces with its full anyhow context chain
+    /// (alternate formatting), so the JavaScript error names both the failing
+    /// operation and the root cause.
     fn dispatch(self, env: &Env) -> napi::Result<Unknown<'_>> {
         let result = dispatch::Mailbox::global()
             .dispatch_to_glib_and_wait(*env, move || self.execute())
@@ -31,7 +35,7 @@ pub trait ModuleRequest: Sized + Send + 'static {
             .map_err(|e| {
                 napi::Error::new(
                     napi::Status::GenericFailure,
-                    format!("Error during {}: {e}", Self::error_context()),
+                    format!("Error during {}: {e:#}", Self::error_context()),
                 )
             })?;
         result.to_js_response(env)

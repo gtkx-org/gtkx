@@ -218,6 +218,249 @@ impl Ref {
     }
 }
 
+/// Element kind of a JavaScript `ArrayBufferView`.
+///
+/// Mirrors the typed-array classes plus `DataView`, which views raw bytes
+/// without an element type. The kind decides which array element types a view
+/// may supply and how its element count converts to a byte length.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum BufferViewKind {
+    Int8,
+    Uint8,
+    Uint8Clamped,
+    Int16,
+    Uint16,
+    Int32,
+    Uint32,
+    Float32,
+    Float64,
+    BigInt64,
+    BigUint64,
+    DataView,
+}
+
+impl BufferViewKind {
+    /// Resolves a napi typed-array type tag to its view kind.
+    pub fn from_napi_typedarray_type(raw: sys::napi_typedarray_type) -> napi::Result<Self> {
+        match raw {
+            sys::TypedarrayType::int8_array => Ok(Self::Int8),
+            sys::TypedarrayType::uint8_array => Ok(Self::Uint8),
+            sys::TypedarrayType::uint8_clamped_array => Ok(Self::Uint8Clamped),
+            sys::TypedarrayType::int16_array => Ok(Self::Int16),
+            sys::TypedarrayType::uint16_array => Ok(Self::Uint16),
+            sys::TypedarrayType::int32_array => Ok(Self::Int32),
+            sys::TypedarrayType::uint32_array => Ok(Self::Uint32),
+            sys::TypedarrayType::float32_array => Ok(Self::Float32),
+            sys::TypedarrayType::float64_array => Ok(Self::Float64),
+            sys::TypedarrayType::bigint64_array => Ok(Self::BigInt64),
+            sys::TypedarrayType::biguint64_array => Ok(Self::BigUint64),
+            other => Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("Unsupported typed-array type tag: {other}"),
+            )),
+        }
+    }
+
+    /// The size in bytes of one element of a view of this kind.
+    #[must_use]
+    pub fn element_size(self) -> usize {
+        match self {
+            Self::Int8 | Self::Uint8 | Self::Uint8Clamped | Self::DataView => 1,
+            Self::Int16 | Self::Uint16 => 2,
+            Self::Int32 | Self::Uint32 | Self::Float32 => 4,
+            Self::Float64 | Self::BigInt64 | Self::BigUint64 => 8,
+        }
+    }
+}
+
+impl std::fmt::Display for BufferViewKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let name = match self {
+            Self::Int8 => "Int8Array",
+            Self::Uint8 => "Uint8Array",
+            Self::Uint8Clamped => "Uint8ClampedArray",
+            Self::Int16 => "Int16Array",
+            Self::Uint16 => "Uint16Array",
+            Self::Int32 => "Int32Array",
+            Self::Uint32 => "Uint32Array",
+            Self::Float32 => "Float32Array",
+            Self::Float64 => "Float64Array",
+            Self::BigInt64 => "BigInt64Array",
+            Self::BigUint64 => "BigUint64Array",
+            Self::DataView => "DataView",
+        };
+        write!(f, "{name}")
+    }
+}
+
+/// Zero-copy view over a JavaScript `ArrayBufferView`'s backing store.
+///
+/// Carries the view's data pointer (already offset to the view's first
+/// element), its extent, its element kind, and whether the backing buffer is
+/// a `SharedArrayBuffer`. Encoders hand the pointer to native code verbatim,
+/// so callee writes land directly in the JavaScript buffer.
+#[derive(Debug, Clone, Copy)]
+pub struct BufferView {
+    ptr: *mut c_void,
+    byte_length: usize,
+    length: usize,
+    kind: BufferViewKind,
+    shared: bool,
+}
+
+// SAFETY: The pointer is only dereferenced on the GLib thread while the JS
+// thread parks inside the same call's dispatch
+// (`Mailbox::dispatch_to_glib_and_wait`), so the backing store outlives every
+// native access through it, and V8 never relocates ArrayBuffer backing
+// stores.
+unsafe impl Send for BufferView {}
+// SAFETY: Shared access reads only the plain fields; see the Send
+// justification for the pointer's thread discipline.
+unsafe impl Sync for BufferView {}
+
+impl BufferView {
+    /// Wraps a backing-store window for FFI passthrough.
+    #[must_use]
+    pub fn new(
+        ptr: *mut c_void,
+        byte_length: usize,
+        length: usize,
+        kind: BufferViewKind,
+        shared: bool,
+    ) -> Self {
+        Self {
+            ptr,
+            byte_length,
+            length,
+            kind,
+            shared,
+        }
+    }
+
+    /// Address of the view's first element.
+    #[must_use]
+    pub fn ptr(&self) -> *mut c_void {
+        self.ptr
+    }
+
+    /// The view's extent in bytes.
+    #[must_use]
+    pub fn byte_length(&self) -> usize {
+        self.byte_length
+    }
+
+    /// The view's element count (equal to [`Self::byte_length`] for
+    /// `DataView`).
+    #[must_use]
+    pub fn length(&self) -> usize {
+        self.length
+    }
+
+    /// The view's element kind.
+    #[must_use]
+    pub fn kind(&self) -> BufferViewKind {
+        self.kind
+    }
+
+    /// Whether the backing buffer is a `SharedArrayBuffer`, which encoders
+    /// reject: another agent could mutate or grow it mid-call.
+    #[must_use]
+    pub fn is_shared(&self) -> bool {
+        self.shared
+    }
+}
+
+/// The [`napi::Env`]-bound constructors wrap live JavaScript views, so — like
+/// the other JS-reference conversions in this module — they are excluded from
+/// coverage instrumentation.
+#[cfg_attr(coverage_nightly, coverage(off))]
+impl BufferView {
+    fn from_typed_array(env: &Env, value: &Unknown<'_>) -> napi::Result<Self> {
+        let mut raw_kind: sys::napi_typedarray_type = sys::TypedarrayType::int8_array;
+        let mut length = 0usize;
+        let mut data = std::ptr::null_mut();
+        let mut array_buffer = std::ptr::null_mut();
+        let mut byte_offset = 0usize;
+        // SAFETY: `value` is a live JS value from the current callback's
+        // `env`, verified to be a typed array by the caller; napi fills the
+        // out slots, returning `data` already offset to the view's first
+        // element.
+        let status = unsafe {
+            sys::napi_get_typedarray_info(
+                env.raw(),
+                value.raw(),
+                &mut raw_kind,
+                &mut length,
+                &mut data,
+                &mut array_buffer,
+                &mut byte_offset,
+            )
+        };
+        check_napi_status(status, "Failed to read typed-array info")?;
+        let kind = BufferViewKind::from_napi_typedarray_type(raw_kind)?;
+        let shared = Self::buffer_is_shared(env, array_buffer)?;
+        Ok(Self::new(
+            data,
+            length * kind.element_size(),
+            length,
+            kind,
+            shared,
+        ))
+    }
+
+    fn from_data_view(env: &Env, value: &Unknown<'_>) -> napi::Result<Self> {
+        let mut byte_length = 0usize;
+        let mut data = std::ptr::null_mut();
+        let mut array_buffer = std::ptr::null_mut();
+        let mut byte_offset = 0usize;
+        // SAFETY: `value` is a live JS value from the current callback's
+        // `env`, verified to be a DataView by the caller; napi fills the out
+        // slots, returning `data` already offset to the view's first byte.
+        let status = unsafe {
+            sys::napi_get_dataview_info(
+                env.raw(),
+                value.raw(),
+                &mut byte_length,
+                &mut data,
+                &mut array_buffer,
+                &mut byte_offset,
+            )
+        };
+        check_napi_status(status, "Failed to read DataView info")?;
+        let shared = Self::buffer_is_shared(env, array_buffer)?;
+        Ok(Self::new(
+            data,
+            byte_length,
+            byte_length,
+            BufferViewKind::DataView,
+            shared,
+        ))
+    }
+
+    /// Whether `buffer` is a `SharedArrayBuffer`: napi reports the backing
+    /// buffer of every view, but `napi_is_arraybuffer` is true only for a
+    /// plain `ArrayBuffer`.
+    fn buffer_is_shared(env: &Env, buffer: sys::napi_value) -> napi::Result<bool> {
+        let mut is_array_buffer = false;
+        // SAFETY: `buffer` is the live backing-buffer value napi just
+        // produced under the current callback's `env`.
+        let status = unsafe { sys::napi_is_arraybuffer(env.raw(), buffer, &mut is_array_buffer) };
+        check_napi_status(status, "Failed to inspect a view's backing buffer")?;
+        Ok(!is_array_buffer)
+    }
+}
+
+/// Maps a non-ok napi status to an `Err` carrying `message`.
+#[cfg_attr(coverage_nightly, coverage(off))]
+fn check_napi_status(status: sys::napi_status, message: &str) -> napi::Result<()> {
+    if status == sys::Status::napi_ok {
+        Ok(())
+    } else {
+        Err(napi::Error::new(napi::Status::GenericFailure, message))
+    }
+}
+
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum Value {
@@ -228,6 +471,7 @@ pub enum Value {
     Null,
     Undefined,
     Array(Vec<Self>),
+    BufferView(BufferView),
     Callback(Callback),
     Ref(Ref),
 }
@@ -251,6 +495,26 @@ impl Value {
         }
     }
 
+    /// Extracts the string payload of a [`Value::String`], mapping every
+    /// other variant to `None`.
+    #[must_use]
+    pub fn as_string(&self) -> Option<&str> {
+        match self {
+            Self::String(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    /// Extracts the element slice of a [`Value::Array`], mapping every other
+    /// variant to `None`.
+    #[must_use]
+    pub fn as_array(&self) -> Option<&[Self]> {
+        match self {
+            Self::Array(items) => Some(items),
+            _ => None,
+        }
+    }
+
     pub fn object_ptr(&self, type_name: &str) -> anyhow::Result<*mut c_void> {
         match self {
             Self::Object(handle) => Ok(handle.ptr()),
@@ -259,6 +523,7 @@ impl Value {
             | Self::String(_)
             | Self::Boolean(_)
             | Self::Array(_)
+            | Self::BufferView(_)
             | Self::Callback(_)
             | Self::Ref(_) => {
                 anyhow::bail!("Expected an Object for {type_name} type, got {self:?}")
@@ -338,6 +603,10 @@ impl Value {
                     Ok(Self::Array(map_js_array(env, &arr, |env, item| {
                         Self::from_js_value_at_depth(env, item, depth + 1)
                     })?))
+                } else if value.is_typedarray()? {
+                    Ok(Self::BufferView(BufferView::from_typed_array(env, &value)?))
+                } else if value.is_dataview()? {
+                    Ok(Self::BufferView(BufferView::from_data_view(env, &value)?))
                 } else {
                     let r = Ref::from_js_value_at_depth(env, value, depth + 1)?;
                     Ok(Self::Ref(r))
@@ -404,7 +673,7 @@ impl Value {
                 let raw = napi::bindgen_prelude::Undefined::to_napi_value(env.raw(), ())?;
                 Ok(Unknown::from_raw_unchecked(env.raw(), raw))
             },
-            Self::Callback(_) | Self::Ref(_) => Err(napi::Error::new(
+            Self::BufferView(_) | Self::Callback(_) | Self::Ref(_) => Err(napi::Error::new(
                 napi::Status::InvalidArg,
                 format!("Unsupported Value type for JS conversion: {self:?}"),
             )),

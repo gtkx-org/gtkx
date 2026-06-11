@@ -3,13 +3,15 @@ mod common;
 use std::ffi::c_void;
 
 use gtk4::glib;
+use gtk4::prelude::ObjectType as _;
 use gtk4::prelude::StaticType as _;
 
 use native::NativeHandle;
 use native::ffi::FfiValue;
 use native::types::{
-    ArrayKind, ArrayType, BooleanType, BoxedType, FloatKind, GObjectType, HashTableEntryEncoder,
-    HashTableType, IntegerKind, Ownership, StringType, StructType, Type, VoidType,
+    ArrayKind, ArrayType, BooleanType, BoxedType, FloatKind, FundamentalType, GObjectType,
+    HashTableEntryEncoder, HashTableType, IntegerKind, Ownership, StringType, StructType, Type,
+    VoidType,
 };
 use native::types::{FfiDecoder, FfiEncoder, RawPtrCodec};
 use native::value::Value;
@@ -33,6 +35,63 @@ fn gptrarray_type() -> Type {
 fn boxed_handle() -> NativeHandle {
     let ptr = common::allocate_test_boxed(gtk4::gdk::RGBA::static_type());
     NativeHandle::borrowed(ptr)
+}
+
+fn full_boxed_type() -> Type {
+    Type::Boxed(BoxedType {
+        ownership: Ownership::Full,
+        type_name: "GdkRGBA".to_string(),
+        library: None,
+        get_type_fn: None,
+        free_fn: None,
+    })
+}
+
+fn borrowed_string_type() -> Type {
+    Type::String(StringType {
+        ownership: Ownership::Borrowed,
+        length: None,
+    })
+}
+
+fn full_gobject_type() -> Type {
+    Type::GObject(GObjectType {
+        ownership: Ownership::Full,
+    })
+}
+
+fn full_variant_fundamental_encoder(ref_func: &str, unref_func: &str) -> HashTableEntryEncoder {
+    HashTableEntryEncoder::NativeHandle(Box::new(Type::Fundamental(FundamentalType {
+        ownership: Ownership::Full,
+        library: "libglib-2.0.so.0".to_owned(),
+        ref_func: ref_func.to_owned(),
+        unref_func: unref_func.to_owned(),
+        type_name: Some("GVariant".to_owned()),
+    })))
+}
+
+fn param_spec_fundamental_type() -> Type {
+    Type::Fundamental(FundamentalType {
+        ownership: Ownership::Full,
+        library: "libgobject-2.0.so.0".to_owned(),
+        ref_func: "g_param_spec_ref".to_owned(),
+        unref_func: "g_param_spec_unref".to_owned(),
+        type_name: Some("GParam".to_owned()),
+    })
+}
+
+fn create_param_spec() -> *mut c_void {
+    // SAFETY: Creating a GParamSpec from static NUL-terminated literals has
+    // no pointer preconditions.
+    unsafe {
+        glib::gobject_ffi::g_param_spec_boolean(
+            c"ht-cov-param".as_ptr(),
+            c"HtCov".as_ptr(),
+            c"A hashtable coverage parameter".as_ptr(),
+            glib::ffi::GFALSE,
+            glib::gobject_ffi::G_PARAM_READABLE,
+        ) as *mut c_void
+    }
 }
 
 fn ht_type(key: Type, value: Type, ownership: Ownership) -> HashTableType {
@@ -554,17 +613,50 @@ fn full_gobject_encoder_installs_unref_destroy() {
 
 #[test]
 fn full_boxed_encoder_rejects_destroy() {
-    let encoder = HashTableEntryEncoder::NativeHandle(Box::new(Type::Boxed(BoxedType {
-        ownership: Ownership::Full,
-        type_name: "GdkRGBA".to_string(),
-        library: None,
-        get_type_fn: None,
-        free_fn: None,
-    })));
+    let encoder = HashTableEntryEncoder::NativeHandle(Box::new(full_boxed_type()));
     let err = encoder
         .free_func()
         .expect_err("full-ownership boxed elements must be rejected");
     assert!(err.to_string().contains("unsupported"));
+}
+
+#[test]
+fn full_fundamental_encoder_installs_unref_destroy() {
+    common::run(|| {
+        let encoder = full_variant_fundamental_encoder("g_variant_ref_sink", "g_variant_unref");
+        assert!(encoder.free_func().unwrap().is_some());
+    });
+}
+
+#[test]
+fn full_fundamental_encoder_without_ref_fn_installs_no_destroy() {
+    common::run(|| {
+        let encoder = full_variant_fundamental_encoder("", "");
+        assert!(encoder.free_func().unwrap().is_none());
+    });
+}
+
+#[test]
+fn full_fundamental_encoder_without_unref_fn_rejects_destroy() {
+    common::run(|| {
+        let encoder = full_variant_fundamental_encoder("g_variant_ref_sink", "");
+        let err = encoder
+            .free_func()
+            .expect_err("a ref function without an unref function must be rejected");
+        assert!(err.to_string().contains("declares no unref function"));
+    });
+}
+
+#[test]
+fn full_fundamental_encoder_with_unknown_ref_symbol_fails() {
+    common::run(|| {
+        let encoder =
+            full_variant_fundamental_encoder("gtkx_nonexistent_ref_symbol", "g_variant_unref");
+        let err = encoder
+            .free_func()
+            .expect_err("an unresolvable ref symbol must fail destroy resolution");
+        assert!(err.to_string().contains("Failed to find ref symbol"));
+    });
 }
 
 #[test]
@@ -843,5 +935,174 @@ fn boolean_roundtrip_preserves_values() {
         }
 
         assert!(found_true && found_false);
+    });
+}
+
+#[test]
+fn fundamental_value_unreffed_when_hashtable_storage_drops() {
+    common::run(|| {
+        let pspec = create_param_spec();
+        let before = common::param_spec_refcount(pspec);
+
+        let ht_type = ht_type(
+            Type::Integer(IntegerKind::I32),
+            param_spec_fundamental_type(),
+            Ownership::Borrowed,
+        );
+        let input = Value::Array(vec![Value::Array(vec![
+            Value::Number(1.0),
+            Value::Object(NativeHandle::borrowed(pspec)),
+        ])]);
+
+        let encoded = ht_type
+            .encode(&input, false)
+            .expect("encoding should succeed");
+        assert_eq!(common::param_spec_refcount(pspec), before + 1);
+
+        drop(encoded);
+        assert_eq!(common::param_spec_refcount(pspec), before);
+
+        // SAFETY: Releases the reference this test owns on the live GParamSpec.
+        unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
+    });
+}
+
+#[test]
+fn gobject_value_unreffed_when_hashtable_storage_drops() {
+    common::run(|| {
+        let obj = glib::Object::new::<glib::Object>();
+        let obj_ptr = obj.as_ptr();
+        let before = common::get_gobject_refcount(obj_ptr);
+
+        let ht_type = ht_type(
+            Type::Integer(IntegerKind::I32),
+            full_gobject_type(),
+            Ownership::Borrowed,
+        );
+        let input = Value::Array(vec![
+            Value::Array(vec![
+                Value::Number(1.0),
+                Value::Object(NativeHandle::borrowed(obj_ptr as *mut c_void)),
+            ]),
+            Value::Array(vec![Value::Number(2.0), Value::Null]),
+        ]);
+
+        let encoded = ht_type
+            .encode(&input, false)
+            .expect("encoding should succeed");
+        assert_eq!(common::get_gobject_refcount(obj_ptr), before + 1);
+
+        let FfiValue::Storage(storage) = &encoded else {
+            panic!("Expected Storage ffi value")
+        };
+        // SAFETY: `storage.ptr()` is the live GHashTable the encode built.
+        let size =
+            unsafe { glib::ffi::g_hash_table_size(storage.ptr() as *mut glib::ffi::GHashTable) };
+        assert_eq!(size, 2);
+
+        drop(encoded);
+        assert_eq!(common::get_gobject_refcount(obj_ptr), before);
+    });
+}
+
+#[test]
+fn hashtable_encode_value_error_releases_transferred_gobject_key() {
+    common::run(|| {
+        let obj = glib::Object::new::<glib::Object>();
+        let obj_ptr = obj.as_ptr();
+        let before = common::get_gobject_refcount(obj_ptr);
+
+        let ht_type = ht_type(
+            full_gobject_type(),
+            Type::Boolean(BooleanType),
+            Ownership::Full,
+        );
+        let input = Value::Array(vec![Value::Array(vec![
+            Value::Object(NativeHandle::borrowed(obj_ptr as *mut c_void)),
+            Value::Number(1.0),
+        ])]);
+
+        let err = ht_type
+            .encode(&input, false)
+            .expect_err("value encode must fail");
+        assert!(err.to_string().contains("Expected boolean in GHashTable"));
+        assert_eq!(common::get_gobject_refcount(obj_ptr), before);
+    });
+}
+
+#[test]
+fn hashtable_encode_value_error_frees_duplicated_string_key() {
+    common::run(|| {
+        let ht_type = ht_type(
+            borrowed_string_type(),
+            Type::Boolean(BooleanType),
+            Ownership::Full,
+        );
+        let input = Value::Array(vec![Value::Array(vec![
+            Value::String("orphaned-key".to_string()),
+            Value::Number(1.0),
+        ])]);
+
+        let err = ht_type
+            .encode(&input, false)
+            .expect_err("value encode must fail");
+        assert!(err.to_string().contains("Expected boolean in GHashTable"));
+    });
+}
+
+#[test]
+fn hashtable_encode_value_destroy_error_releases_string_key() {
+    common::run(|| {
+        let value_type = Type::Array(ArrayType {
+            item_type: Box::new(full_boxed_type()),
+            kind: ArrayKind::GPtrArray,
+            ownership: Ownership::Borrowed,
+            element_size: None,
+        });
+        let ht_type = ht_type(borrowed_string_type(), value_type, Ownership::Full);
+        let input = Value::Array(vec![Value::Array(vec![
+            Value::String("orphaned-key".to_string()),
+            Value::Array(vec![]),
+        ])]);
+
+        let err = ht_type
+            .encode(&input, false)
+            .expect_err("value destroy resolution must fail");
+        assert!(err.to_string().contains("unsupported"));
+    });
+}
+
+#[test]
+fn hashtable_encode_second_tuple_error_unwinds_inserted_entries() {
+    common::run(|| {
+        let inserted = glib::Object::new::<glib::Object>();
+        let inserted_ptr = inserted.as_ptr();
+        let failing = glib::Object::new::<glib::Object>();
+        let failing_ptr = failing.as_ptr();
+        let inserted_before = common::get_gobject_refcount(inserted_ptr);
+        let failing_before = common::get_gobject_refcount(failing_ptr);
+
+        let ht_type = ht_type(
+            full_gobject_type(),
+            Type::Boolean(BooleanType),
+            Ownership::Full,
+        );
+        let input = Value::Array(vec![
+            Value::Array(vec![
+                Value::Object(NativeHandle::borrowed(inserted_ptr as *mut c_void)),
+                Value::Boolean(true),
+            ]),
+            Value::Array(vec![
+                Value::Object(NativeHandle::borrowed(failing_ptr as *mut c_void)),
+                Value::Number(1.0),
+            ]),
+        ]);
+
+        let err = ht_type
+            .encode(&input, false)
+            .expect_err("second tuple must fail");
+        assert!(err.to_string().contains("Expected boolean in GHashTable"));
+        assert_eq!(common::get_gobject_refcount(inserted_ptr), inserted_before);
+        assert_eq!(common::get_gobject_refcount(failing_ptr), failing_before);
     });
 }

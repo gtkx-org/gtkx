@@ -9,7 +9,7 @@ use std::str::FromStr as _;
 
 use libffi::middle;
 use native::types::{
-    ArrayKind, ArrayType, BooleanType, BoxedType, FfiDecoder, FfiEncoder, FloatKind,
+    ArrayKind, ArrayType, BlobType, BooleanType, BoxedType, FfiDecoder, FfiEncoder, FloatKind,
     FundamentalType, GObjectType, HashTableType, IntegerKind, Ownership, RawPtrCodec, RefType,
     StringType, StructType, TrampolineType, Type, UnicharType, VoidType,
 };
@@ -197,6 +197,7 @@ fn type_display_renders_every_variant() {
         "Fundamental(g_object_unref)"
     );
     assert_eq!(Type::Array(array_type()).to_string(), "Array");
+    assert_eq!(Type::Blob(BlobType).to_string(), "Blob");
     assert_eq!(Type::HashTable(hashtable_type()).to_string(), "HashTable");
     assert_eq!(
         Type::Trampoline(trampoline_type()).to_string(),
@@ -216,6 +217,7 @@ fn can_be_return_type_accepts_value_shapes_and_rejects_argument_shapes() {
     assert!(Type::Tagged(common::enum_tagged()).can_be_return_type());
 
     assert!(!Type::Trampoline(trampoline_type()).can_be_return_type());
+    assert!(!Type::Blob(BlobType).can_be_return_type());
     let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
     assert!(!Type::Ref(ref_type).can_be_return_type());
 }

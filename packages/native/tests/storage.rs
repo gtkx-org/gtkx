@@ -1,13 +1,14 @@
 mod common;
 
-use std::ffi::{CString, c_void};
+use std::ffi::{CStr, CString, c_char, c_void};
 
 use gtk4::glib;
 use native::ffi::{
-    FfiStorage, FfiStorageKind, GArrayData, GListData, GSListData, HashTableData, StringGListData,
-    StringGSListData,
+    FfiStorage, FfiStorageKind, FfiValue, GArrayData, GListData, GSListData, HashTableData,
+    StringGListData, StringGSListData,
 };
-use native::types::IntegerKind;
+use native::types::{ArrayKind, ArrayType, IntegerKind, Ownership, StringType, Type};
+use native::value::Value;
 
 fn make_glist_one() -> *mut glib::ffi::GList {
     // SAFETY: Appending to a (possibly null) GList head only requires a valid element pointer.
@@ -86,6 +87,40 @@ fn hashtable_storage(handle: *mut glib::ffi::GHashTable, should_free: bool) -> F
         FfiStorageKind::HashTable(HashTableData {
             handle,
             should_free,
+        }),
+    )
+}
+
+fn string_glist_storage(
+    strings: Vec<CString>,
+    list_ptr: *mut glib::ffi::GList,
+    should_free: bool,
+    elements_duped: bool,
+) -> FfiStorage {
+    FfiStorage::new(
+        list_ptr as *mut c_void,
+        FfiStorageKind::StringGList(StringGListData {
+            strings,
+            list_ptr,
+            should_free,
+            elements_duped,
+        }),
+    )
+}
+
+fn string_gslist_storage(
+    strings: Vec<CString>,
+    list_ptr: *mut glib::ffi::GSList,
+    should_free: bool,
+    elements_duped: bool,
+) -> FfiStorage {
+    FfiStorage::new(
+        list_ptr as *mut c_void,
+        FfiStorageKind::StringGSList(StringGSListData {
+            strings,
+            list_ptr,
+            should_free,
+            elements_duped,
         }),
     )
 }
@@ -419,54 +454,31 @@ fn string_glist_storage_frees_duped_elements() {
         let strings = vec![CString::new("a").unwrap(), CString::new("b").unwrap()];
         let list = build_string_glist(&strings, true);
         {
-            let _storage = FfiStorage::new(
-                list as *mut c_void,
-                FfiStorageKind::StringGList(StringGListData {
-                    strings,
-                    list_ptr: list,
-                    should_free: true,
-                    elements_duped: true,
-                }),
-            );
+            let _storage = string_glist_storage(strings, list, true, true);
         }
     });
+}
+
+fn drop_borrowed_string_glist_storage(should_free: bool) -> *mut glib::ffi::GList {
+    let strings = vec![CString::new("a").unwrap()];
+    let list = build_string_glist(&strings, false);
+    {
+        let _storage = string_glist_storage(strings, list, should_free, false);
+    }
+    list
 }
 
 #[test]
 fn string_glist_storage_frees_shallow_when_not_duped() {
     common::run(|| {
-        let strings = vec![CString::new("a").unwrap()];
-        let list = build_string_glist(&strings, false);
-        {
-            let _storage = FfiStorage::new(
-                list as *mut c_void,
-                FfiStorageKind::StringGList(StringGListData {
-                    strings,
-                    list_ptr: list,
-                    should_free: true,
-                    elements_duped: false,
-                }),
-            );
-        }
+        drop_borrowed_string_glist_storage(true);
     });
 }
 
 #[test]
 fn string_glist_storage_keeps_when_not_freed() {
     common::run(|| {
-        let strings = vec![CString::new("a").unwrap()];
-        let list = build_string_glist(&strings, false);
-        {
-            let _storage = FfiStorage::new(
-                list as *mut c_void,
-                FfiStorageKind::StringGList(StringGListData {
-                    strings,
-                    list_ptr: list,
-                    should_free: false,
-                    elements_duped: false,
-                }),
-            );
-        }
+        let list = drop_borrowed_string_glist_storage(false);
         // SAFETY: Frees the list this test owns.
         unsafe { glib::ffi::g_list_free(list) };
     });
@@ -474,15 +486,7 @@ fn string_glist_storage_keeps_when_not_freed() {
 
 #[test]
 fn string_glist_storage_null_ptr_safe_on_drop() {
-    let _storage = FfiStorage::new(
-        std::ptr::null_mut(),
-        FfiStorageKind::StringGList(StringGListData {
-            strings: Vec::new(),
-            list_ptr: std::ptr::null_mut(),
-            should_free: true,
-            elements_duped: true,
-        }),
-    );
+    let _storage = string_glist_storage(Vec::new(), std::ptr::null_mut(), true, true);
 }
 
 fn build_string_gslist(strings: &[CString], dup: bool) -> *mut glib::ffi::GSList {
@@ -506,54 +510,31 @@ fn string_gslist_storage_frees_duped_elements() {
         let strings = vec![CString::new("a").unwrap(), CString::new("b").unwrap()];
         let list = build_string_gslist(&strings, true);
         {
-            let _storage = FfiStorage::new(
-                list as *mut c_void,
-                FfiStorageKind::StringGSList(StringGSListData {
-                    strings,
-                    list_ptr: list,
-                    should_free: true,
-                    elements_duped: true,
-                }),
-            );
+            let _storage = string_gslist_storage(strings, list, true, true);
         }
     });
+}
+
+fn drop_borrowed_string_gslist_storage(should_free: bool) -> *mut glib::ffi::GSList {
+    let strings = vec![CString::new("a").unwrap()];
+    let list = build_string_gslist(&strings, false);
+    {
+        let _storage = string_gslist_storage(strings, list, should_free, false);
+    }
+    list
 }
 
 #[test]
 fn string_gslist_storage_frees_shallow_when_not_duped() {
     common::run(|| {
-        let strings = vec![CString::new("a").unwrap()];
-        let list = build_string_gslist(&strings, false);
-        {
-            let _storage = FfiStorage::new(
-                list as *mut c_void,
-                FfiStorageKind::StringGSList(StringGSListData {
-                    strings,
-                    list_ptr: list,
-                    should_free: true,
-                    elements_duped: false,
-                }),
-            );
-        }
+        drop_borrowed_string_gslist_storage(true);
     });
 }
 
 #[test]
 fn string_gslist_storage_keeps_when_not_freed() {
     common::run(|| {
-        let strings = vec![CString::new("a").unwrap()];
-        let list = build_string_gslist(&strings, false);
-        {
-            let _storage = FfiStorage::new(
-                list as *mut c_void,
-                FfiStorageKind::StringGSList(StringGSListData {
-                    strings,
-                    list_ptr: list,
-                    should_free: false,
-                    elements_duped: false,
-                }),
-            );
-        }
+        let list = drop_borrowed_string_gslist_storage(false);
         // SAFETY: Frees the list this test owns.
         unsafe { glib::ffi::g_slist_free(list) };
     });
@@ -561,19 +542,94 @@ fn string_gslist_storage_keeps_when_not_freed() {
 
 #[test]
 fn string_gslist_storage_null_ptr_safe_on_drop() {
-    let _storage = FfiStorage::new(
-        std::ptr::null_mut(),
-        FfiStorageKind::StringGSList(StringGSListData {
-            strings: Vec::new(),
-            list_ptr: std::ptr::null_mut(),
-            should_free: true,
-            elements_duped: true,
-        }),
-    );
+    let _storage = string_gslist_storage(Vec::new(), std::ptr::null_mut(), true, true);
 }
 
 #[test]
 fn storage_debug_renders_kind() {
     let storage: FfiStorage = vec![1u8].into();
     assert!(format!("{storage:?}").contains("FfiStorage"));
+}
+
+fn string_full_item_array_type(kind: ArrayKind, container_ownership: Ownership) -> ArrayType {
+    ArrayType {
+        item_type: Box::new(Type::String(StringType {
+            ownership: Ownership::Full,
+            length: None,
+        })),
+        kind,
+        ownership: container_ownership,
+        element_size: None,
+    }
+}
+
+#[test]
+fn encode_empty_string_glist_full_container_arms_null_transfer_safe_on_drop() {
+    let ty = string_full_item_array_type(ArrayKind::GList, Ownership::Full);
+    let encoded = ty.encode(&Value::Array(Vec::new()), false).unwrap();
+    let FfiValue::Storage(storage) = &encoded else {
+        panic!("expected storage")
+    };
+    assert!(storage.ptr().is_null());
+    let FfiStorageKind::StringGList(data) = storage.kind() else {
+        panic!("expected string GList storage")
+    };
+    assert!(data.list_ptr.is_null());
+    assert!(!data.should_free);
+    assert!(data.elements_duped);
+    drop(encoded);
+}
+
+#[test]
+fn encode_string_array_element_transfer_frees_duplicates_when_call_never_happens() {
+    let ty = string_full_item_array_type(ArrayKind::Array, Ownership::Borrowed);
+    let val = Value::Array(vec![
+        Value::String("foo".to_string()),
+        Value::String("bar".to_string()),
+    ]);
+    let encoded = ty.encode(&val, false).unwrap();
+    let FfiValue::Storage(storage) = &encoded else {
+        panic!("expected storage")
+    };
+    let block = storage.ptr() as *mut *mut c_char;
+    // SAFETY: The staged block holds live NUL-terminated duplicates.
+    let first = unsafe { CStr::from_ptr(*block) };
+    // SAFETY: The staged block holds live NUL-terminated duplicates.
+    let second = unsafe { CStr::from_ptr(*block.add(1)) };
+    assert_eq!(first.to_str().unwrap(), "foo");
+    assert_eq!(second.to_str().unwrap(), "bar");
+    // SAFETY: The staged block is a live three-slot block ending in NULL.
+    assert!(unsafe { (*block.add(2)).is_null() });
+    drop(encoded);
+}
+
+#[test]
+fn encode_gbytearray_full_ownership_unrefs_when_call_never_happens() {
+    common::run(|| {
+        let ty = ArrayType {
+            item_type: Box::new(Type::Integer(IntegerKind::U8)),
+            kind: ArrayKind::GByteArray,
+            ownership: Ownership::Full,
+            element_size: None,
+        };
+        let val = Value::Array(vec![Value::Number(7.0), Value::Number(8.0)]);
+        let encoded = ty.encode(&val, false).unwrap();
+        let FfiValue::Storage(storage) = &encoded else {
+            panic!("expected storage")
+        };
+        assert!(matches!(storage.kind(), FfiStorageKind::GByteArray(None)));
+        let byte_array = storage.ptr() as *mut glib::ffi::GByteArray;
+        // SAFETY: `byte_array` is the live array the encode created; the
+        // extra reference keeps it alive past the storage's release.
+        unsafe { glib::ffi::g_byte_array_ref(byte_array) };
+        drop(encoded);
+        // SAFETY: The reference taken above keeps the array live for the
+        // field reads, and releasing that reference frees it.
+        unsafe {
+            assert_eq!((*byte_array).len, 2);
+            assert_eq!(*(*byte_array).data, 7);
+            assert_eq!(*(*byte_array).data.add(1), 8);
+            glib::ffi::g_byte_array_unref(byte_array);
+        }
+    });
 }

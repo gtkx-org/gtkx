@@ -9,9 +9,9 @@ use native::NativeHandle;
 use native::arg::Arg;
 use native::ffi::{FfiStorageKind, FfiValue, GArrayData};
 use native::types::{
-    ArrayKind, ArrayType, BooleanType, FfiDecoder, FfiEncoder, FloatKind, GObjectType, IntegerKind,
-    Ownership, RawPtrCodec, RefType, StringType, StructType, TaggedKind, TaggedType, Type,
-    VoidType,
+    ArrayKind, ArrayType, BooleanType, FfiDecoder, FfiEncoder, FloatKind, FundamentalType,
+    GObjectType, IntegerKind, Ownership, RawPtrCodec, RefType, StringType, StructType, TaggedKind,
+    TaggedType, Type, VoidType,
 };
 use native::value::Value;
 
@@ -56,28 +56,38 @@ fn gobject_item_type(ownership: Ownership) -> Type {
     Type::GObject(GObjectType { ownership })
 }
 
+fn unresolvable_fundamental_item_type() -> Type {
+    Type::Fundamental(FundamentalType {
+        ownership: Ownership::Full,
+        library: "libgobject-2.0.so.0".to_owned(),
+        ref_func: "no_such_array_ref_symbol_12345".to_owned(),
+        unref_func: "g_param_spec_unref".to_owned(),
+        type_name: Some("GParam".to_owned()),
+    })
+}
+
 fn gobject_refcount(ptr: *mut std::ffi::c_void) -> u32 {
     // SAFETY: The test holds a live reference to the object for the whole
     // read.
     unsafe { (*(ptr as *mut gtk4::glib::gobject_ffi::GObject)).ref_count }
 }
 
-#[test]
-fn encode_glist_handles_full_ownership_releases_when_call_never_happens() {
+fn new_gobject() -> (glib::Object, *mut c_void) {
+    let obj = glib::Object::new::<glib::Object>();
+    let ptr = glib::translate::ToGlibPtr::<*mut glib::gobject_ffi::GObject>::to_glib_none(&obj).0
+        as *mut c_void;
+    (obj, ptr)
+}
+
+/// Encodes one full-ownership `GObject` element into the given container
+/// shape, asserting the encode acquires exactly one reference and that
+/// dropping the encoded value without a disarm releases it again.
+fn assert_full_element_container_releases_on_drop(kind: ArrayKind, container: Ownership) {
     common::run(|| {
-        let obj = gtk4::glib::Object::new::<gtk4::glib::Object>();
-        let obj_ptr =
-            gtk4::glib::translate::ToGlibPtr::<*mut gtk4::glib::gobject_ffi::GObject>::to_glib_none(
-                &obj,
-            )
-            .0 as *mut std::ffi::c_void;
+        let (_obj, obj_ptr) = new_gobject();
         let before = gobject_refcount(obj_ptr);
 
-        let ty = array_type(
-            gobject_item_type(Ownership::Full),
-            ArrayKind::GList,
-            Ownership::Full,
-        );
+        let ty = array_type(gobject_item_type(Ownership::Full), kind, container);
         let val = Value::Array(vec![Value::Object(NativeHandle::borrowed(obj_ptr))]);
         let encoded = ty.encode(&val, false).unwrap();
         assert_eq!(gobject_refcount(obj_ptr), before + 1);
@@ -87,15 +97,37 @@ fn encode_glist_handles_full_ownership_releases_when_call_never_happens() {
     });
 }
 
+/// Encodes one borrowed string element into a transfer-full list container,
+/// asserting the storage retains the caller-owned `CString` and arms only the
+/// spine for release on drop.
+fn assert_string_list_full_container_borrowed_elements_releases_spine(kind: ArrayKind) {
+    common::run(|| {
+        let ty = array_type(string_item_type(Ownership::Borrowed), kind, Ownership::Full);
+        let val = Value::Array(vec![Value::String("kept".to_string())]);
+        let encoded = ty.encode(&val, false).unwrap();
+        let FfiValue::Storage(storage) = &encoded else {
+            panic!("expected storage")
+        };
+        let (elements_duped, retained) = match storage.kind() {
+            FfiStorageKind::StringGList(data) => (data.elements_duped, data.strings.len()),
+            FfiStorageKind::StringGSList(data) => (data.elements_duped, data.strings.len()),
+            other => panic!("expected string list storage, got {other:?}"),
+        };
+        assert!(!elements_duped);
+        assert_eq!(retained, 1);
+        drop(encoded);
+    });
+}
+
+#[test]
+fn encode_glist_handles_full_ownership_releases_when_call_never_happens() {
+    assert_full_element_container_releases_on_drop(ArrayKind::GList, Ownership::Full);
+}
+
 #[test]
 fn encode_glist_handles_full_ownership_transfers_to_callee_when_disarmed() {
     common::run(|| {
-        let obj = gtk4::glib::Object::new::<gtk4::glib::Object>();
-        let obj_ptr =
-            gtk4::glib::translate::ToGlibPtr::<*mut gtk4::glib::gobject_ffi::GObject>::to_glib_none(
-                &obj,
-            )
-            .0 as *mut std::ffi::c_void;
+        let (_obj, obj_ptr) = new_gobject();
         let before = gobject_refcount(obj_ptr);
 
         let ty = array_type(
@@ -125,12 +157,7 @@ fn encode_glist_handles_full_ownership_transfers_to_callee_when_disarmed() {
 #[test]
 fn encode_glist_handles_releases_acquired_elements_when_later_element_is_null() {
     common::run(|| {
-        let obj = gtk4::glib::Object::new::<gtk4::glib::Object>();
-        let obj_ptr =
-            gtk4::glib::translate::ToGlibPtr::<*mut gtk4::glib::gobject_ffi::GObject>::to_glib_none(
-                &obj,
-            )
-            .0 as *mut std::ffi::c_void;
+        let (_obj, obj_ptr) = new_gobject();
         let before = gobject_refcount(obj_ptr);
 
         let ty = array_type(
@@ -1789,5 +1816,210 @@ fn trait_methods_delegate_to_inherent_implementations() {
             unsafe { RawPtrCodec::ptr_to_value(&ptr_ty, data.as_mut_ptr() as *mut c_void, "ctx") }
                 .unwrap();
         assert!(matches!(from_ptr, Value::Array(items) if items.len() == 1));
+    });
+}
+
+#[test]
+fn encode_string_array_dup_elements_failure_frees_earlier_duplicates() {
+    let ty = array_type(
+        string_item_type(Ownership::Full),
+        ArrayKind::Array,
+        Ownership::Borrowed,
+    );
+    let val = Value::Array(vec![Value::String("first".to_string()), Value::Number(2.0)]);
+    let err = ty
+        .encode(&val, false)
+        .expect_err("a non-string element after a duplicated one must fail");
+    assert!(err.to_string().contains("Expected a String"));
+}
+
+#[test]
+fn encode_pointer_array_borrowed_container_full_elements_releases_when_call_never_happens() {
+    assert_full_element_container_releases_on_drop(ArrayKind::Array, Ownership::Borrowed);
+}
+
+#[test]
+fn encode_glist_handles_borrowed_container_full_elements_releases_when_call_never_happens() {
+    assert_full_element_container_releases_on_drop(ArrayKind::GList, Ownership::Borrowed);
+}
+
+#[test]
+fn encode_gslist_handles_borrowed_container_full_elements_releases_when_call_never_happens() {
+    assert_full_element_container_releases_on_drop(ArrayKind::GSList, Ownership::Borrowed);
+}
+
+#[test]
+fn encode_gslist_handles_full_ownership_releases_when_call_never_happens() {
+    assert_full_element_container_releases_on_drop(ArrayKind::GSList, Ownership::Full);
+}
+
+#[test]
+fn encode_glist_handles_fails_and_unwinds_when_element_transfer_fails() {
+    common::run(|| {
+        // SAFETY: Creating a GParamSpec from static NUL-terminated literals
+        // has no pointer preconditions.
+        let pspec = unsafe {
+            glib::gobject_ffi::g_param_spec_boolean(
+                c"array-codec-cov".as_ptr(),
+                c"Cov".as_ptr(),
+                c"A coverage parameter".as_ptr(),
+                glib::ffi::GFALSE,
+                glib::gobject_ffi::G_PARAM_READABLE,
+            ) as *mut c_void
+        };
+        let before = common::param_spec_refcount(pspec);
+
+        let ty = array_type(
+            unresolvable_fundamental_item_type(),
+            ArrayKind::GList,
+            Ownership::Full,
+        );
+        let val = Value::Array(vec![Value::Object(NativeHandle::borrowed(pspec))]);
+        let err = ty
+            .encode(&val, false)
+            .expect_err("an unresolvable element ref function must fail the transfer");
+        assert!(err.to_string().contains("Failed to find ref symbol"));
+        assert_eq!(common::param_spec_refcount(pspec), before);
+
+        // SAFETY: Releases the reference this test owns on the live
+        // GParamSpec.
+        unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
+    });
+}
+
+#[test]
+fn encode_glist_strings_full_container_full_elements_releases_when_call_never_happens() {
+    common::run(|| {
+        let ty = array_type(
+            string_item_type(Ownership::Full),
+            ArrayKind::GList,
+            Ownership::Full,
+        );
+        let val = Value::Array(vec![
+            Value::String("a".to_string()),
+            Value::String("b".to_string()),
+        ]);
+        let encoded = ty.encode(&val, false).unwrap();
+        let FfiValue::Storage(storage) = &encoded else {
+            panic!("expected storage")
+        };
+        let FfiStorageKind::StringGList(data) = storage.kind() else {
+            panic!("expected string glist storage")
+        };
+        assert!(data.elements_duped);
+        assert!(!data.should_free);
+        // SAFETY: The encoded list head is a live node whose data pointer is
+        // a live NUL-terminated duplicate.
+        let first = unsafe { std::ffi::CStr::from_ptr((*data.list_ptr).data as *const c_char) };
+        assert_eq!(first.to_str().unwrap(), "a");
+        drop(encoded);
+    });
+}
+
+#[test]
+fn encode_glist_strings_full_container_borrowed_elements_releases_spine_when_call_never_happens() {
+    assert_string_list_full_container_borrowed_elements_releases_spine(ArrayKind::GList);
+}
+
+#[test]
+fn encode_gslist_strings_full_container_borrowed_elements_releases_spine_when_call_never_happens() {
+    assert_string_list_full_container_borrowed_elements_releases_spine(ArrayKind::GSList);
+}
+
+#[test]
+fn encode_string_array_borrowed_rejects_interior_nul() {
+    common::run(|| {
+        let ty = array_type(
+            string_item_type(Ownership::Borrowed),
+            ArrayKind::Array,
+            Ownership::Borrowed,
+        );
+        let val = Value::Array(vec![Value::String("a\0b".to_string())]);
+        let err = ty
+            .encode(&val, false)
+            .expect_err("interior NUL should fail to encode");
+        assert!(err.to_string().contains("interior NUL"));
+    });
+}
+
+#[test]
+fn encode_string_array_full_container_borrowed_elements_rejects_non_string() {
+    let ty = array_type(
+        string_item_type(Ownership::Borrowed),
+        ArrayKind::Array,
+        Ownership::Full,
+    );
+    let err = ty
+        .encode(&Value::Array(vec![Value::Number(1.0)]), false)
+        .expect_err("a non-string element must fail extraction");
+    assert!(err.to_string().contains("Expected a String"));
+}
+
+#[test]
+fn encode_gbytearray_full_ownership_releases_when_call_never_happens() {
+    common::run(|| {
+        let ty = array_type(
+            Type::Integer(IntegerKind::U8),
+            ArrayKind::GByteArray,
+            Ownership::Full,
+        );
+        let val = Value::Array(vec![Value::Number(1.0), Value::Number(2.0)]);
+        let encoded = ty.encode(&val, false).unwrap();
+        let FfiValue::Storage(storage) = &encoded else {
+            panic!("expected storage")
+        };
+        assert!(!storage.ptr().is_null());
+        assert!(matches!(storage.kind(), FfiStorageKind::GByteArray(None)));
+        drop(encoded);
+    });
+}
+
+/// Borrowed string elements install a slot-dereferencing clear function, so
+/// the storage drop releases both the duplicated strings and the spine.
+#[test]
+fn encode_garray_borrowed_strings_installs_clear_func_and_roundtrips() {
+    common::run(|| {
+        let ty = array_type(
+            string_item_type(Ownership::Borrowed),
+            ArrayKind::GArray,
+            Ownership::Borrowed,
+        );
+        let val = Value::Array(vec![
+            Value::String("hello".to_string()),
+            Value::String("world".to_string()),
+        ]);
+        let encoded = ty.encode(&val, false).unwrap();
+        let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+            panic!("expected array")
+        };
+        assert!(matches!(items.first(), Some(Value::String(s)) if s == "hello"));
+        assert!(matches!(items.get(1), Some(Value::String(s)) if s == "world"));
+        drop(encoded);
+    });
+}
+
+#[test]
+fn decode_zero_terminated_scalar_array_full_ownership_frees_buffer() {
+    common::run(|| {
+        let ty = array_type(
+            Type::Integer(IntegerKind::I32),
+            ArrayKind::Array,
+            Ownership::Full,
+        );
+        // SAFETY: g_malloc0 aborts on failure, so the four i32 slots are
+        // writable; the final slot stays zero as the terminator.
+        let buffer = unsafe {
+            let mem = glib::ffi::g_malloc0(size_of::<i32>() * 4) as *mut i32;
+            *mem = 7;
+            *mem.add(1) = 8;
+            *mem.add(2) = 9;
+            mem
+        };
+        let Value::Array(items) = ty.decode(&FfiValue::Ptr(buffer as *mut c_void)).unwrap() else {
+            panic!("expected array")
+        };
+        assert_eq!(items.len(), 3);
+        assert!(matches!(items[0], Value::Number(n) if n == 7.0));
+        assert!(matches!(items[2], Value::Number(n) if n == 9.0));
     });
 }

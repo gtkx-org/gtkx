@@ -226,13 +226,13 @@ GLib container/transfer/introspection concepts with no GL analog. Reused wholesa
 
 ## 6. Phase 0: native prerequisites (before the generator is useful)
 
-- [ ] **TypedArray detection** in `Value::from_js_value` (`packages/native/src/value.rs`) +
+- [x] **TypedArray detection** in `Value::from_js_value` (`packages/native/src/value.rs`) +
       fast path in `ArrayType::encode` (`packages/native/src/types/array.rs`): pass backing
       store pointer + byteLength directly, both directions (in-params and out write-back).
       Reject SharedArrayBuffer-backed views at encode.
-- [ ] **`t.blob` descriptor** in `@gtkx/ffi` helpers + native `BlobType`: view ⇒ pointer,
+- [x] **`t.blob` descriptor** in `@gtkx/ffi` helpers + native `BlobType`: view ⇒ pointer,
       number ⇒ usize address/offset, null ⇒ NULL.
-- [ ] Both must clear the `packages/native` gates: 100% llvm-cov line/function coverage,
+- [x] Both must clear the `packages/native` gates: 100% llvm-cov line/function coverage,
       ASan (`scripts/ci-asan.sh`), Miri (`scripts/ci-miri.sh`) over the new marshalling paths.
 - [ ] Later (severable): prepared-call handles (cache parsed types + CIF + resolved symbol),
       BigInt u64, `glMapBufferRange` memcpy primitive, epoxy indirect-resolver mode.

@@ -43,6 +43,51 @@ fn assert_slot_holds_copy_then_free(slot: *mut c_void, original: *mut c_void, gt
     }
 }
 
+fn rgba_boxed_alloc() -> (glib::Type, *mut c_void) {
+    let gtype = gdk::RGBA::static_type();
+    (gtype, common::allocate_test_boxed(gtype))
+}
+
+fn free_rgba(gtype: glib::Type, ptr: *mut c_void) {
+    // SAFETY: Frees the boxed allocation this test owns.
+    unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), ptr) };
+}
+
+fn object_value_of(ptr: *mut c_void) -> Value {
+    Value::Object(NativeHandle::borrowed(ptr))
+}
+
+fn encode_rgba(ownership: Ownership, ptr: *mut c_void) -> ffi::FfiValue {
+    boxed(ownership)
+        .encode(&object_value_of(ptr), false)
+        .expect("encode should succeed")
+}
+
+/// Writes `value` into a null-initialized slot through
+/// `write_return_to_raw_ptr` and returns the written pointer.
+fn write_return_into_slot<C: RawPtrCodec>(codec: &C, value: &Result<Value, ()>) -> *mut c_void {
+    let mut slot: *mut c_void = std::ptr::null_mut();
+    // SAFETY: `slot` is a writable local pointer-sized slot.
+    unsafe { codec.write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, value) };
+    slot
+}
+
+/// Writes `value` into a slot seeded with `initial` through
+/// `write_value_to_raw_ptr`, asserting success, and returns the written
+/// pointer.
+fn write_value_into_slot<C: RawPtrCodec>(
+    codec: &C,
+    initial: *mut c_void,
+    value: &Value,
+) -> *mut c_void {
+    let mut slot: *mut c_void = initial;
+    // SAFETY: `slot` is a writable local pointer-sized slot whose seed value
+    // satisfies the per-test ownership contract.
+    unsafe { codec.write_value_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, value) }
+        .expect("write_value_to_raw_ptr should succeed");
+    slot
+}
+
 #[test]
 fn gtype_resolves_from_registered_name() {
     common::run(|| {
@@ -111,12 +156,9 @@ fn gtype_with_missing_symbol_reports_error_and_yields_none() {
 #[test]
 fn encode_full_copies_to_distinct_pointer() {
     common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = common::allocate_test_boxed(gtype);
+        let (gtype, original) = rgba_boxed_alloc();
 
-        let encoded = boxed(Ownership::Full)
-            .encode(&Value::Object(NativeHandle::borrowed(original)), false)
-            .expect("full encode should succeed");
+        let encoded = encode_rgba(Ownership::Full, original);
         encoded.disarm_pending_transfer();
         let ffi::FfiValue::Storage(storage) = &encoded else {
             panic!("expected Storage ffi value");
@@ -126,48 +168,35 @@ fn encode_full_copies_to_distinct_pointer() {
         assert_ne!(copied, original);
         assert!(common::is_valid_boxed_ptr(copied, gtype));
 
-        // SAFETY: Frees the boxed allocations this test owns.
-        unsafe {
-            glib::gobject_ffi::g_boxed_free(gtype.into_glib(), copied);
-            glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original);
-        }
+        free_rgba(gtype, copied);
+        free_rgba(gtype, original);
     });
 }
 
 #[test]
 fn encode_full_releases_copy_when_call_never_happens() {
     common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = common::allocate_test_boxed(gtype);
+        let (gtype, original) = rgba_boxed_alloc();
 
-        let encoded = boxed(Ownership::Full)
-            .encode(&Value::Object(NativeHandle::borrowed(original)), false)
-            .expect("full encode should succeed");
+        let encoded = encode_rgba(Ownership::Full, original);
         drop(encoded);
 
-        // SAFETY: Frees the boxed allocation this test owns.
-        unsafe {
-            glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original);
-        }
+        free_rgba(gtype, original);
     });
 }
 
 #[test]
 fn encode_borrowed_keeps_same_pointer() {
     common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = common::allocate_test_boxed(gtype);
+        let (gtype, original) = rgba_boxed_alloc();
 
-        let encoded = boxed(Ownership::Borrowed)
-            .encode(&Value::Object(NativeHandle::borrowed(original)), false)
-            .expect("borrowed encode should succeed");
+        let encoded = encode_rgba(Ownership::Borrowed, original);
         let ffi::FfiValue::Ptr(ptr) = encoded else {
             panic!("expected Ptr ffi value");
         };
         assert_eq!(ptr, original);
 
-        // SAFETY: Frees the boxed allocation this test owns.
-        unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original) };
+        free_rgba(gtype, original);
     });
 }
 
@@ -184,8 +213,7 @@ fn encode_full_null_pointer_stays_null() {
 #[test]
 fn ref_for_transfer_full_copies_to_distinct_pointer() {
     common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = common::allocate_test_boxed(gtype);
+        let (gtype, original) = rgba_boxed_alloc();
 
         // SAFETY: `original` addresses a live boxed GdkRGBA.
         let copied = unsafe { boxed(Ownership::Full).ref_for_transfer(original) }
@@ -193,27 +221,22 @@ fn ref_for_transfer_full_copies_to_distinct_pointer() {
         assert!(!copied.is_null());
         assert_ne!(copied, original);
 
-        // SAFETY: Frees the boxed allocations this test owns.
-        unsafe {
-            glib::gobject_ffi::g_boxed_free(gtype.into_glib(), copied);
-            glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original);
-        }
+        free_rgba(gtype, copied);
+        free_rgba(gtype, original);
     });
 }
 
 #[test]
 fn ref_for_transfer_borrowed_returns_same_pointer() {
     common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = common::allocate_test_boxed(gtype);
+        let (gtype, original) = rgba_boxed_alloc();
 
         // SAFETY: `original` addresses a live boxed GdkRGBA.
         let returned = unsafe { boxed(Ownership::Borrowed).ref_for_transfer(original) }
             .expect("ref_for_transfer should succeed");
         assert_eq!(returned, original);
 
-        // SAFETY: Frees the boxed allocation this test owns.
-        unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original) };
+        free_rgba(gtype, original);
     });
 }
 
@@ -230,8 +253,7 @@ fn ref_for_transfer_full_null_is_noop() {
 #[test]
 fn decode_full_dups_owned_boxed() {
     common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = common::allocate_test_boxed(gtype);
+        let (_gtype, original) = rgba_boxed_alloc();
 
         let decoded = boxed(Ownership::Full)
             .decode(&ffi::FfiValue::Ptr(original))
@@ -244,8 +266,7 @@ fn decode_full_dups_owned_boxed() {
 #[test]
 fn decode_borrowed_copies_boxed() {
     common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = common::allocate_test_boxed(gtype);
+        let (gtype, original) = rgba_boxed_alloc();
 
         let decoded = boxed(Ownership::Borrowed)
             .decode(&ffi::FfiValue::Ptr(original))
@@ -253,8 +274,7 @@ fn decode_borrowed_copies_boxed() {
         assert!(matches!(decoded, Value::Object(_)));
         drop(decoded);
 
-        // SAFETY: Frees the boxed allocation this test owns.
-        unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original) };
+        free_rgba(gtype, original);
     });
 }
 
@@ -291,8 +311,7 @@ fn decode_null_yields_null() {
 #[test]
 fn ptr_to_value_wraps_boxed() {
     common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = common::allocate_test_boxed(gtype);
+        let (gtype, original) = rgba_boxed_alloc();
 
         // SAFETY: `original` addresses a live boxed GdkRGBA.
         let value = unsafe { boxed(Ownership::Borrowed).ptr_to_value(original, "ctx") }
@@ -300,8 +319,7 @@ fn ptr_to_value_wraps_boxed() {
         assert!(matches!(value, Value::Object(_)));
         drop(value);
 
-        // SAFETY: Frees the boxed allocation this test owns.
-        unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original) };
+        free_rgba(gtype, original);
     });
 }
 
@@ -318,8 +336,7 @@ fn ptr_to_value_null_yields_null() {
 #[test]
 fn ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
     common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = common::allocate_test_boxed(gtype);
+        let (gtype, original) = rgba_boxed_alloc();
 
         for ownership in [Ownership::Borrowed, Ownership::Full] {
             // SAFETY: `original` addresses a live boxed GdkRGBA.
@@ -337,16 +354,14 @@ fn ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
             assert!(common::is_valid_boxed_ptr(original, gtype));
         }
 
-        // SAFETY: Frees the boxed allocation this test owns.
-        unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original) };
+        free_rgba(gtype, original);
     });
 }
 
 #[test]
 fn read_from_raw_ptr_dereferences_slot() {
     common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = common::allocate_test_boxed(gtype);
+        let (gtype, original) = rgba_boxed_alloc();
         let slot: *mut c_void = original;
 
         // SAFETY: `slot` is a live local pointer-sized slot holding a live
@@ -359,24 +374,16 @@ fn read_from_raw_ptr_dereferences_slot() {
         assert!(matches!(value, Value::Object(_)));
         drop(value);
 
-        // SAFETY: Frees the boxed allocation this test owns.
-        unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original) };
+        free_rgba(gtype, original);
     });
 }
 
 #[test]
 fn write_return_to_raw_ptr_full_transfer_copies_boxed() {
     common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = common::allocate_test_boxed(gtype);
+        let (gtype, original) = rgba_boxed_alloc();
 
-        let mut slot: *mut c_void = std::ptr::null_mut();
-        let value: Result<Value, ()> = Ok(Value::Object(NativeHandle::borrowed(original)));
-        // SAFETY: `slot` is a writable local pointer-sized slot.
-        unsafe {
-            boxed(Ownership::Full)
-                .write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &value);
-        }
+        let slot = write_return_into_slot(&boxed(Ownership::Full), &Ok(object_value_of(original)));
 
         assert_slot_holds_copy_then_free(slot, original, gtype);
     });
@@ -385,20 +392,13 @@ fn write_return_to_raw_ptr_full_transfer_copies_boxed() {
 #[test]
 fn write_return_to_raw_ptr_borrowed_writes_same_pointer() {
     common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = common::allocate_test_boxed(gtype);
+        let (gtype, original) = rgba_boxed_alloc();
 
-        let mut slot: *mut c_void = std::ptr::null_mut();
-        let value: Result<Value, ()> = Ok(Value::Object(NativeHandle::borrowed(original)));
-        // SAFETY: `slot` is a writable local pointer-sized slot.
-        unsafe {
-            boxed(Ownership::Borrowed)
-                .write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &value);
-        }
+        let slot =
+            write_return_into_slot(&boxed(Ownership::Borrowed), &Ok(object_value_of(original)));
 
         assert_eq!(slot, original);
-        // SAFETY: Frees the boxed allocation this test owns.
-        unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original) };
+        free_rgba(gtype, original);
     });
 }
 
@@ -419,19 +419,13 @@ fn write_return_to_raw_ptr_err_writes_null() {
 #[test]
 fn write_value_to_raw_ptr_writes_boxed() {
     common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = common::allocate_test_boxed(gtype);
+        let (gtype, original) = rgba_boxed_alloc();
 
-        let mut slot: *mut c_void = std::ptr::null_mut();
-        // SAFETY: `slot` is a writable local pointer-sized slot and
-        // `original` addresses a live boxed GdkRGBA.
-        unsafe {
-            boxed(Ownership::Borrowed).write_value_to_raw_ptr(
-                &mut slot as *mut *mut c_void as *mut c_void,
-                &Value::Object(NativeHandle::borrowed(original)),
-            )
-        }
-        .expect("write_value_to_raw_ptr should succeed");
+        let slot = write_value_into_slot(
+            &boxed(Ownership::Borrowed),
+            std::ptr::null_mut(),
+            &object_value_of(original),
+        );
         assert_slot_holds_copy_then_free(slot, original, gtype);
     });
 }
@@ -440,9 +434,6 @@ fn write_value_to_raw_ptr_writes_boxed() {
 fn write_value_to_raw_ptr_falls_back_when_gtype_unresolvable() {
     common::run(|| {
         let target: u64 = 0xAA55;
-        let handle = NativeHandle::borrowed(&target as *const u64 as *mut c_void);
-
-        let mut slot: *mut c_void = std::ptr::null_mut();
         let unknown = BoxedType {
             ownership: Ownership::Borrowed,
             type_name: "GtypeUnknownBoxed".to_owned(),
@@ -451,15 +442,11 @@ fn write_value_to_raw_ptr_falls_back_when_gtype_unresolvable() {
             free_fn: None,
         };
 
-        // SAFETY: `slot` is a writable local pointer-sized slot; the
-        // unresolvable gtype path only stores the pointer value.
-        unsafe {
-            unknown.write_value_to_raw_ptr(
-                &mut slot as *mut *mut c_void as *mut c_void,
-                &Value::Object(handle),
-            )
-        }
-        .expect("write_value_to_raw_ptr should succeed");
+        let slot = write_value_into_slot(
+            &unknown,
+            std::ptr::null_mut(),
+            &object_value_of(&target as *const u64 as *mut c_void),
+        );
         assert_eq!(slot, &target as *const u64 as *mut c_void);
     });
 }
@@ -467,16 +454,11 @@ fn write_value_to_raw_ptr_falls_back_when_gtype_unresolvable() {
 #[test]
 fn write_value_to_raw_ptr_writes_null_when_src_is_null() {
     common::run(|| {
-        let mut slot: *mut c_void = std::ptr::null_mut();
-        // SAFETY: `slot` is a writable local pointer-sized slot; a null
-        // source stores null without copying.
-        unsafe {
-            boxed(Ownership::Borrowed).write_value_to_raw_ptr(
-                &mut slot as *mut *mut c_void as *mut c_void,
-                &Value::Object(NativeHandle::borrowed(std::ptr::null_mut())),
-            )
-        }
-        .expect("write_value_to_raw_ptr should succeed");
+        let slot = write_value_into_slot(
+            &boxed(Ownership::Borrowed),
+            std::ptr::null_mut(),
+            &object_value_of(std::ptr::null_mut()),
+        );
         assert!(slot.is_null());
     });
 }
@@ -484,29 +466,20 @@ fn write_value_to_raw_ptr_writes_null_when_src_is_null() {
 #[test]
 fn write_value_to_raw_ptr_frees_previous_pointer_in_slot() {
     common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = common::allocate_test_boxed(gtype);
+        let (gtype, original) = rgba_boxed_alloc();
         let previous = common::allocate_test_boxed(gtype);
 
-        let mut slot: *mut c_void = previous;
-        // SAFETY: `slot` is a writable local pointer-sized slot owning the
-        // live boxed `previous`, and `original` is a live boxed GdkRGBA.
-        unsafe {
-            boxed(Ownership::Borrowed).write_value_to_raw_ptr(
-                &mut slot as *mut *mut c_void as *mut c_void,
-                &Value::Object(NativeHandle::borrowed(original)),
-            )
-        }
-        .expect("write_value_to_raw_ptr should succeed");
+        let slot = write_value_into_slot(
+            &boxed(Ownership::Borrowed),
+            previous,
+            &object_value_of(original),
+        );
         assert!(!slot.is_null());
         assert_ne!(slot, original);
         assert_ne!(slot, previous);
 
-        // SAFETY: Frees the boxed allocations this test owns.
-        unsafe {
-            glib::gobject_ffi::g_boxed_free(gtype.into_glib(), slot);
-            glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original);
-        }
+        free_rgba(gtype, slot);
+        free_rgba(gtype, original);
     });
 }
 
@@ -662,42 +635,31 @@ fn struct_ptr_to_value_without_size_wraps_unowned() {
 #[test]
 fn struct_write_return_to_raw_ptr_writes_pointer() {
     common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = common::allocate_test_boxed(gtype);
+        let (gtype, original) = rgba_boxed_alloc();
 
-        let mut slot: *mut c_void = std::ptr::null_mut();
-        let value: Result<Value, ()> = Ok(Value::Object(NativeHandle::borrowed(original)));
-        // SAFETY: `slot` is a writable local pointer-sized slot.
-        unsafe {
-            struct_type(Ownership::Borrowed, None)
-                .write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &value);
-        }
+        let slot = write_return_into_slot(
+            &struct_type(Ownership::Borrowed, None),
+            &Ok(object_value_of(original)),
+        );
         assert_eq!(slot, original);
 
-        // SAFETY: Frees the boxed allocation this test owns.
-        unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original) };
+        free_rgba(gtype, original);
     });
 }
 
 #[test]
 fn struct_write_value_to_raw_ptr_writes_pointer() {
     common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = common::allocate_test_boxed(gtype);
+        let (gtype, original) = rgba_boxed_alloc();
 
-        let mut slot: *mut c_void = std::ptr::null_mut();
-        // SAFETY: `slot` is a writable local pointer-sized slot.
-        unsafe {
-            struct_type(Ownership::Borrowed, None).write_value_to_raw_ptr(
-                &mut slot as *mut *mut c_void as *mut c_void,
-                &Value::Object(NativeHandle::borrowed(original)),
-            )
-        }
-        .expect("struct write_value_to_raw_ptr should succeed");
+        let slot = write_value_into_slot(
+            &struct_type(Ownership::Borrowed, None),
+            std::ptr::null_mut(),
+            &object_value_of(original),
+        );
         assert_eq!(slot, original);
 
-        // SAFETY: Frees the boxed allocation this test owns.
-        unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original) };
+        free_rgba(gtype, original);
     });
 }
 
@@ -706,18 +668,12 @@ fn struct_write_value_to_raw_ptr_with_size_copies_into_dst() {
     common::run(|| {
         let src: u64 = 0xDEAD_BEEF_DEAD_BEEF;
         let mut dst: u64 = 0;
-        let mut slot: *mut c_void = &mut dst as *mut u64 as *mut c_void;
 
-        // SAFETY: `slot` is a writable local pointer-sized slot whose
-        // target `dst` and source `src` are live local u64s.
-        unsafe {
-            struct_type(Ownership::Borrowed, Some(std::mem::size_of::<u64>()))
-                .write_value_to_raw_ptr(
-                    &mut slot as *mut *mut c_void as *mut c_void,
-                    &Value::Object(NativeHandle::borrowed(&src as *const u64 as *mut c_void)),
-                )
-        }
-        .expect("struct write_value_to_raw_ptr should succeed");
+        let slot = write_value_into_slot(
+            &struct_type(Ownership::Borrowed, Some(std::mem::size_of::<u64>())),
+            &mut dst as *mut u64 as *mut c_void,
+            &object_value_of(&src as *const u64 as *mut c_void),
+        );
 
         assert_eq!(dst, src);
         assert_eq!(slot, &mut dst as *mut u64 as *mut c_void);
@@ -727,18 +683,11 @@ fn struct_write_value_to_raw_ptr_with_size_copies_into_dst() {
 #[test]
 fn struct_write_value_to_raw_ptr_with_size_writes_null_for_null_src() {
     common::run(|| {
-        let mut slot: *mut c_void = 7 as *mut c_void;
-
-        // SAFETY: `slot` is a writable local pointer-sized slot; a null
-        // source stores null without copying.
-        unsafe {
-            struct_type(Ownership::Borrowed, Some(std::mem::size_of::<u64>()))
-                .write_value_to_raw_ptr(
-                    &mut slot as *mut *mut c_void as *mut c_void,
-                    &Value::Object(NativeHandle::borrowed(std::ptr::null_mut())),
-                )
-        }
-        .expect("struct write_value_to_raw_ptr should succeed");
+        let slot = write_value_into_slot(
+            &struct_type(Ownership::Borrowed, Some(std::mem::size_of::<u64>())),
+            7 as *mut c_void,
+            &object_value_of(std::ptr::null_mut()),
+        );
 
         assert!(slot.is_null());
     });
@@ -788,83 +737,68 @@ mod free_fn {
         }
     }
 
+    /// Allocates 16 zeroed bytes and asserts the value `wrap` produces
+    /// aliases the allocation. A full wrapper adopts the allocation and
+    /// releases it via the resolved free function on drop (leak detectors
+    /// would surface a missed free); a borrowed wrapper leaves ownership
+    /// with the test, which then frees it.
+    fn assert_free_fn_wrapper_aliases(
+        ownership: Ownership,
+        wrap: impl FnOnce(&BoxedType, *mut c_void) -> Value,
+    ) {
+        // SAFETY: Allocating zeroed memory has no pointer preconditions.
+        let ptr = unsafe { glib::ffi::g_malloc0(16) };
+
+        let value = wrap(&boxed_with_free_fn(ownership), ptr);
+        let Value::Object(handle) = &value else {
+            panic!("expected Object value");
+        };
+        assert_eq!(handle.ptr(), ptr);
+        drop(value);
+
+        if ownership.is_borrowed() {
+            // SAFETY: Frees the allocation this test owns.
+            unsafe { glib::ffi::g_free(ptr) };
+        }
+    }
+
+    fn decode_wrapper(descriptor: &BoxedType, ptr: *mut c_void) -> Value {
+        descriptor
+            .decode(&ffi::FfiValue::Ptr(ptr))
+            .expect("decode with freeFn should succeed")
+    }
+
+    fn ptr_to_value_wrapper(descriptor: &BoxedType, ptr: *mut c_void) -> Value {
+        // SAFETY: `ptr` addresses a live 16-byte allocation.
+        unsafe { descriptor.ptr_to_value(ptr, "ctx") }
+            .expect("ptr_to_value with freeFn should succeed")
+    }
+
     #[test]
     fn decode_full_with_free_fn_owns_pointer() {
         common::run(|| {
-            // g_malloc0 + g_free is a balanced pair via the freeFn hook.
-            // SAFETY: Allocating zeroed memory has no pointer preconditions.
-            let ptr = unsafe { glib::ffi::g_malloc0(16) };
-
-            let decoded = boxed_with_free_fn(Ownership::Full)
-                .decode(&ffi::FfiValue::Ptr(ptr))
-                .expect("full decode with freeFn should succeed");
-            let Value::Object(handle) = &decoded else {
-                panic!("expected Object value");
-            };
-            assert_eq!(handle.ptr(), ptr);
-            // Drop runs the resolved g_free under the GLib thread; if it
-            // didn't, leak detectors and miri would surface the missed
-            // free in CI coverage runs.
-            drop(decoded);
+            assert_free_fn_wrapper_aliases(Ownership::Full, decode_wrapper);
         });
     }
 
     #[test]
     fn decode_borrowed_with_free_fn_wraps_without_owning() {
         common::run(|| {
-            // SAFETY: Allocating zeroed memory has no pointer preconditions.
-            let ptr = unsafe { glib::ffi::g_malloc0(16) };
-
-            let decoded = boxed_with_free_fn(Ownership::Borrowed)
-                .decode(&ffi::FfiValue::Ptr(ptr))
-                .expect("borrowed decode with freeFn should succeed");
-            let Value::Object(handle) = &decoded else {
-                panic!("expected Object value");
-            };
-            assert_eq!(handle.ptr(), ptr);
-            // Dropping the borrowed wrapper must NOT call free_fn; the
-            // caller still owns the allocation and frees it manually.
-            drop(decoded);
-
-            // SAFETY: Frees the allocation this test owns.
-            unsafe { glib::ffi::g_free(ptr) };
+            assert_free_fn_wrapper_aliases(Ownership::Borrowed, decode_wrapper);
         });
     }
 
     #[test]
     fn ptr_to_value_full_with_free_fn_owns_pointer() {
         common::run(|| {
-            // SAFETY: Allocating zeroed memory has no pointer preconditions.
-            let ptr = unsafe { glib::ffi::g_malloc0(16) };
-
-            // SAFETY: `ptr` addresses a live 16-byte allocation.
-            let value = unsafe { boxed_with_free_fn(Ownership::Full).ptr_to_value(ptr, "ctx") }
-                .expect("ptr_to_value with freeFn should succeed");
-            let Value::Object(handle) = &value else {
-                panic!("expected Object value");
-            };
-            assert_eq!(handle.ptr(), ptr);
-            drop(value);
+            assert_free_fn_wrapper_aliases(Ownership::Full, ptr_to_value_wrapper);
         });
     }
 
     #[test]
     fn ptr_to_value_borrowed_with_free_fn_wraps_without_owning() {
         common::run(|| {
-            // SAFETY: Allocating zeroed memory has no pointer preconditions.
-            let ptr = unsafe { glib::ffi::g_malloc0(16) };
-
-            // SAFETY: `ptr` addresses a live 16-byte allocation.
-            let value = unsafe { boxed_with_free_fn(Ownership::Borrowed).ptr_to_value(ptr, "ctx") }
-                .expect("ptr_to_value with freeFn should succeed");
-            let Value::Object(handle) = &value else {
-                panic!("expected Object value");
-            };
-            assert_eq!(handle.ptr(), ptr);
-            drop(value);
-
-            // SAFETY: Frees the allocation this test owns.
-            unsafe { glib::ffi::g_free(ptr) };
+            assert_free_fn_wrapper_aliases(Ownership::Borrowed, ptr_to_value_wrapper);
         });
     }
 

@@ -251,3 +251,17 @@ impl<'a> From<&'a FfiValue> for libffi::Arg<'a> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn disarm_pending_transfer_covers_every_variant_shape() {
+        let trampoline =
+            TrampolineValue::new(std::ptr::null_mut(), std::ptr::null_mut(), None, None);
+        FfiValue::Trampoline(trampoline).disarm_pending_transfer();
+        FfiValue::I32(1).disarm_pending_transfer();
+        FfiValue::Storage(FfiStorage::unit(std::ptr::null_mut())).disarm_pending_transfer();
+    }
+}

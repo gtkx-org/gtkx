@@ -98,26 +98,6 @@ impl HashTableEntryEncoder {
         }
     }
 
-    /// Releases an encode-stage allocation for an entry that never reached
-    /// `ref_for_transfer` — the duplicated string, the malloc'd float box, or
-    /// the built pointer array.
-    fn release_unowned(&self, ptr: *mut c_void) {
-        if ptr.is_null() {
-            return;
-        }
-        match self {
-            // SAFETY: For these shapes `encode` produced one g_malloc'd
-            // allocation that nothing else owns yet.
-            Self::String | Self::Float => unsafe { glib::ffi::g_free(ptr) },
-            // SAFETY: `encode` produced the GPtrArray with one reference
-            // that nothing else owns yet.
-            Self::PtrArray(_) => unsafe {
-                glib::ffi::g_ptr_array_unref(ptr as *mut glib::ffi::GPtrArray);
-            },
-            Self::Integer | Self::Boolean | Self::NativeHandle(_) => {}
-        }
-    }
-
     pub fn encode(&self, val: &value::Value) -> anyhow::Result<*mut c_void> {
         match self {
             Self::String => {
@@ -256,6 +236,13 @@ impl HashTableType {
         }
     }
 
+    /// Builds the `GHashTable` an encode hands to the call.
+    ///
+    /// The per-entry `ref_for_transfer` calls propagate errors with a plain
+    /// `?`: they cannot fail, because the only fallible implementation is
+    /// `FundamentalType`'s symbol lookup, and resolving the destroy notifies
+    /// up front already performed — and cached — that same lookup for the
+    /// key and value types before any entry is prepared.
     fn encode_hashtable(
         &self,
         tuples: &[value::Value],
@@ -283,13 +270,7 @@ impl HashTableType {
                 // SAFETY: `key_ptr` was just produced by the entry encoder,
                 // so it is null, a packed scalar, or a live allocation of
                 // the key type.
-                let key_ptr = match unsafe { self.key_type.ref_for_transfer(key_ptr) } {
-                    Ok(transferred) => transferred,
-                    Err(err) => {
-                        key_encoder.release_unowned(key_ptr);
-                        return Err(err);
-                    }
-                };
+                let key_ptr = unsafe { self.key_type.ref_for_transfer(key_ptr)? };
 
                 let val_ptr = match value_encoder.encode(val) {
                     Ok(encoded) => encoded,
@@ -301,14 +282,7 @@ impl HashTableType {
                 // SAFETY: `val_ptr` was just produced by the entry encoder,
                 // so it is null, a packed scalar, or a live allocation of
                 // the value type.
-                let val_ptr = match unsafe { self.value_type.ref_for_transfer(val_ptr) } {
-                    Ok(transferred) => transferred,
-                    Err(err) => {
-                        value_encoder.release_unowned(val_ptr);
-                        release_transferred(key_free, key_ptr);
-                        return Err(err);
-                    }
-                };
+                let val_ptr = unsafe { self.value_type.ref_for_transfer(val_ptr)? };
 
                 // SAFETY: `hash_table` is the live table created above,
                 // and the entry pointers carry the ownership its destroy

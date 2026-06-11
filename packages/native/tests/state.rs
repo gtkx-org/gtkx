@@ -103,6 +103,23 @@ fn resolve_gtype_resolves_known_get_type_function() {
 }
 
 #[test]
+fn resolve_gtype_caches_repeated_resolutions() {
+    common::run(|| {
+        GlibThreadState::with(|state| {
+            let first = state
+                .resolve_gtype("libgtk-4.so.1", "gtk_button_get_type")
+                .expect("first resolution should succeed");
+            let second = state
+                .resolve_gtype("libgtk-4.so.1", "gtk_button_get_type")
+                .expect("cached resolution should succeed");
+
+            assert_ne!(first, gtk4::glib::Type::INVALID);
+            assert_eq!(first, second);
+        });
+    });
+}
+
+#[test]
 fn resolve_gtype_missing_symbol_returns_error() {
     common::run(|| {
         let err = GlibThreadState::with(|state| {
@@ -273,6 +290,25 @@ fn gtk_thread_set_handle_then_join_collects_thread() {
 
     let result = GlibThread::global().join();
     assert!(result.is_none());
+}
+
+#[test]
+fn gtk_thread_set_handle_replacing_unjoined_handle_keeps_replacement() {
+    common::run(|| {
+        let previous_hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(|_| {}));
+        let first = std::thread::spawn(|| {});
+        let second = std::thread::spawn(|| {
+            std::panic::panic_any("replacement handle payload");
+        });
+        GlibThread::global().set_handle(first);
+        GlibThread::global().set_handle(second);
+        let result = GlibThread::global().join();
+        std::panic::set_hook(previous_hook);
+
+        assert_eq!(result.as_deref(), Some("replacement handle payload"));
+        assert!(GlibThread::global().join().is_none());
+    });
 }
 
 #[test]

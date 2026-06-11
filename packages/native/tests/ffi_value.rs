@@ -1,8 +1,24 @@
+//! Tests for [`native::ffi::FfiValue`] and [`native::ffi::TrampolineValue`].
+//!
+//! The armed-trampoline tests build a real [`TrampolineState`] around an inert
+//! [`JsRef`]: in a `cargo test` process the napi-sys dyn-symbols stubs report
+//! success without allocating a reference, so the state's JS handle is a
+//! harmless null token while its libffi closure and pending-transfer lifetime
+//! protocol are fully live. The [`napi::JsFunction`] compat type those handles
+//! require is deprecated upstream, hence the file-level allow.
+
+#![allow(deprecated)]
+
 mod common;
 
 use std::ffi::c_void;
+use std::sync::Arc;
 
+use napi::{Env, JsFunction, NapiValue as _};
 use native::ffi::{FfiStorage, FfiValue, TrampolineValue};
+use native::trampoline::{TrampolineData, TrampolineState};
+use native::types::{Type, VoidType};
+use native::value::JsRef;
 
 fn trampoline_value(destroy: bool) -> TrampolineValue {
     let destroy_ptr = if destroy {
@@ -16,6 +32,92 @@ fn trampoline_value(destroy: bool) -> TrampolineValue {
         destroy_ptr,
         None,
     )
+}
+
+fn js_func_ref() -> Arc<JsRef<JsFunction>> {
+    let env = Env::from_raw(std::ptr::null_mut());
+    // SAFETY: The null env and value are never dereferenced; the napi-sys
+    // stubs active in a `cargo test` process treat them as opaque tokens.
+    let func =
+        unsafe { JsFunction::from_raw_unchecked(std::ptr::null_mut(), std::ptr::null_mut()) };
+    Arc::new(JsRef::from_js_value(&env, &func).expect("stubbed reference creation should succeed"))
+}
+
+fn armed_trampoline_value(
+    destroy_ptr: Option<*mut c_void>,
+) -> (TrampolineValue, Arc<JsRef<JsFunction>>) {
+    let js_func = js_func_ref();
+    let data = TrampolineData::new(
+        Arc::clone(&js_func),
+        Vec::new(),
+        Type::Void(VoidType),
+        None,
+        false,
+    );
+    let state = Box::new(TrampolineState::create(data));
+    let fn_ptr = state.code_ptr;
+    (
+        TrampolineValue::new_armed(fn_ptr, destroy_ptr, state),
+        js_func,
+    )
+}
+
+/// Releases a state the value handed over on disarm, mirroring the callee's
+/// destroy-notify protocol, and asserts the state stays alive until then.
+fn release_handed_over_state(state_ptr: *mut c_void, js_func: &Arc<JsRef<JsFunction>>) {
+    assert_eq!(Arc::strong_count(js_func), 2);
+    // SAFETY: Disarm handed the boxed state over to the callee's lifetime
+    // protocol; this test acts as the callee and releases it through the
+    // production destroy notify exactly once.
+    unsafe { TrampolineState::destroy(state_ptr) };
+    assert_eq!(Arc::strong_count(js_func), 1);
+}
+
+#[test]
+fn new_armed_exposes_state_and_closure_pointers() {
+    let destroy_ptr = TrampolineState::destroy as *mut c_void;
+    let (tv, _js_func) = armed_trampoline_value(Some(destroy_ptr));
+    assert!(!tv.fn_ptr().is_null());
+    assert!(!tv.state_ptr().is_null());
+    assert_eq!(tv.destroy_ptr(), Some(destroy_ptr));
+    // SAFETY: The armed state stays alive inside `tv`, so its address held
+    // in `state_ptr` is dereferenceable for a shared read.
+    let state = unsafe { &*(tv.state_ptr() as *const TrampolineState) };
+    assert_eq!(state.code_ptr, tv.fn_ptr());
+}
+
+#[test]
+fn armed_state_drops_with_value_when_call_never_happens() {
+    let (tv, js_func) = armed_trampoline_value(None);
+    assert_eq!(Arc::strong_count(&js_func), 2);
+    drop(tv);
+    assert_eq!(Arc::strong_count(&js_func), 1);
+}
+
+#[test]
+fn disarm_pending_transfer_hands_state_over_and_is_idempotent() {
+    let (tv, js_func) = armed_trampoline_value(Some(TrampolineState::destroy as *mut c_void));
+    let state_ptr = tv.state_ptr();
+    tv.disarm_pending_transfer();
+    tv.disarm_pending_transfer();
+    drop(tv);
+    release_handed_over_state(state_ptr, &js_func);
+}
+
+#[test]
+fn ffi_value_disarm_pending_transfer_routes_to_trampoline() {
+    let (tv, js_func) = armed_trampoline_value(None);
+    let state_ptr = tv.state_ptr();
+    let value = FfiValue::Trampoline(tv);
+    value.disarm_pending_transfer();
+    drop(value);
+    release_handed_over_state(state_ptr, &js_func);
+}
+
+#[test]
+fn ffi_value_disarm_pending_transfer_is_a_noop_for_scalars() {
+    FfiValue::I32(7).disarm_pending_transfer();
+    FfiValue::F64(1.5).disarm_pending_transfer();
 }
 
 #[test]

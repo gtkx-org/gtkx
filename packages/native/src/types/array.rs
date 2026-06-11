@@ -10,6 +10,7 @@ use super::string::str_to_glib_full;
 use crate::arg::Arg;
 use crate::ffi::{FfiStorage, FfiStorageKind};
 use crate::types::{FloatKind, IntegerKind, Type};
+use crate::value::BufferViewKind;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -183,11 +184,36 @@ impl ItemCodec {
             Type::String(_) => Self::String,
             Type::Void(_)
             | Type::Array(_)
+            | Type::Blob(_)
             | Type::HashTable(_)
             | Type::Trampoline(_)
             | Type::Ref(_)
             | Type::Unichar(_) => return None,
         })
+    }
+
+    /// Whether a view of `view_kind` supplies elements of exactly this
+    /// codec's native representation, making zero-copy passthrough sound.
+    fn accepts_buffer_view(self, view_kind: BufferViewKind) -> bool {
+        match self {
+            Self::Integer(kind) | Self::Tagged(kind) => matches!(
+                (kind, view_kind),
+                (IntegerKind::I8, BufferViewKind::Int8)
+                    | (
+                        IntegerKind::U8,
+                        BufferViewKind::Uint8 | BufferViewKind::Uint8Clamped
+                    )
+                    | (IntegerKind::I16, BufferViewKind::Int16)
+                    | (IntegerKind::U16, BufferViewKind::Uint16)
+                    | (IntegerKind::I32, BufferViewKind::Int32)
+                    | (IntegerKind::U32, BufferViewKind::Uint32)
+                    | (IntegerKind::I64, BufferViewKind::BigInt64)
+                    | (IntegerKind::U64, BufferViewKind::BigUint64)
+            ),
+            Self::Float(FloatKind::F32) => view_kind == BufferViewKind::Float32,
+            Self::Float(FloatKind::F64) => view_kind == BufferViewKind::Float64,
+            Self::Boolean | Self::Pointer | Self::String => false,
+        }
     }
 
     /// The size in bytes of one element in a contiguous buffer.
@@ -389,6 +415,18 @@ fn release_acquired(acquired: Vec<ffi::PendingTransfer>) {
     for entry in acquired {
         entry.release_now();
     }
+}
+
+/// `GArray` clear function for string elements.
+///
+/// `GArray` invokes its clear function with the address of the element slot,
+/// not the element value, so the slot is dereferenced once before freeing the
+/// GLib-allocated string it holds.
+unsafe extern "C" fn free_garray_string_element(slot: glib::ffi::gpointer) {
+    // SAFETY: GArray invokes this clear function with the address of one
+    // pointer-sized element slot holding a GLib-allocated string the encode
+    // duplicated and still owns.
+    unsafe { glib::ffi::g_free(*(slot as *mut glib::ffi::gpointer)) };
 }
 
 /// Groups per-element releases with the container's own release into the one
@@ -755,6 +793,7 @@ impl ArrayType {
     pub fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let array = match val {
             value::Value::Array(arr) => arr,
+            value::Value::BufferView(view) => return self.encode_buffer_view(view),
             value::Value::Null | value::Value::Undefined if optional => {
                 return Ok(ffi::FfiValue::Ptr(std::ptr::null_mut()));
             }
@@ -819,6 +858,50 @@ impl ArrayType {
                 encoder.encode_handles(&handles, &self.item_type, self.ownership)
             }
         }
+    }
+
+    /// Encodes an `ArrayBufferView` argument zero-copy: validates the view
+    /// against this array's shape and hands its backing-store pointer to the
+    /// call, so the callee reads from — and writes into — the JavaScript
+    /// buffer directly. Sound because the JS thread parks for the duration of
+    /// the call, keeping the backing store alive.
+    fn encode_buffer_view(&self, view: &value::BufferView) -> anyhow::Result<ffi::FfiValue> {
+        anyhow::ensure!(
+            !view.is_shared(),
+            "SharedArrayBuffer-backed views cannot cross the FFI boundary"
+        );
+        anyhow::ensure!(
+            self.ownership.is_borrowed(),
+            "A transfer-full array argument cannot be encoded from an ArrayBufferView: the callee would free the JavaScript buffer"
+        );
+        match self.kind {
+            ArrayKind::Array | ArrayKind::Sized { .. } => {}
+            ArrayKind::Fixed { size } => {
+                anyhow::ensure!(
+                    view.length() == size,
+                    "Expected a view of exactly {size} elements for a fixed-size array, got {}",
+                    view.length()
+                );
+            }
+            ArrayKind::GList
+            | ArrayKind::GSList
+            | ArrayKind::GPtrArray
+            | ArrayKind::GArray
+            | ArrayKind::GByteArray => {
+                bail!(
+                    "{:?} arrays cannot be encoded from an ArrayBufferView; only contiguous arrays support zero-copy passthrough",
+                    self.kind
+                );
+            }
+        }
+        let codec = self.item_codec("array")?;
+        anyhow::ensure!(
+            codec.accepts_buffer_view(view.kind()),
+            "A {} cannot supply {} array elements",
+            view.kind(),
+            self.item_type
+        );
+        Ok(ffi::FfiValue::Ptr(view.ptr()))
     }
 
     fn encode_gbytearray(&self, array: &[value::Value]) -> anyhow::Result<ffi::FfiValue> {
@@ -968,7 +1051,10 @@ impl ArrayType {
                     // SAFETY: `g_array` is the live GArray the caller
                     // created.
                     unsafe {
-                        glib::ffi::g_array_set_clear_func(g_array, Some(glib::ffi::g_free));
+                        glib::ffi::g_array_set_clear_func(
+                            g_array,
+                            Some(free_garray_string_element),
+                        );
                     }
                 }
                 let mut acquired = Vec::new();

@@ -40,18 +40,19 @@ impl RefType {
 
     /// Whether `inner` describes a shape `Ref` can carry as an out-parameter.
     ///
-    /// `HashTable`, `Trampoline`, `Void`, and nested `Ref` have no
+    /// `HashTable`, `Trampoline`, `Void`, `Blob`, and nested `Ref` have no
     /// out-parameter slot representation: a hash table encodes to its payload
     /// pointer (not a writable slot), a trampoline encodes to multiple libffi
-    /// arguments, and void/nested refs describe no storable value. Both the
-    /// descriptor-parsing boundary and [`FfiEncoder::encode`] consult this so
-    /// a malformed descriptor surfaces as a precise error instead of
-    /// corrupting memory.
+    /// arguments, a blob is an argument-only raw memory window with no
+    /// decodable result, and void/nested refs describe no storable value.
+    /// Both the descriptor-parsing boundary and [`FfiEncoder::encode`]
+    /// consult this so a malformed descriptor surfaces as a precise error
+    /// instead of corrupting memory.
     #[must_use]
     pub fn supports_inner(inner: &Type) -> bool {
         !matches!(
             inner,
-            Type::HashTable(_) | Type::Trampoline(_) | Type::Void(_) | Type::Ref(_)
+            Type::HashTable(_) | Type::Trampoline(_) | Type::Void(_) | Type::Blob(_) | Type::Ref(_)
         )
     }
 }
@@ -332,5 +333,46 @@ impl RefType {
 
             value::Value::String(string)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{FloatKind, IntegerKind};
+
+    fn slot_storage(encoded: &ffi::FfiValue) -> &FfiStorage {
+        ref_storage_or_null(encoded, "scalar out slot")
+            .expect("scalar out slot should be a Storage value")
+            .expect("scalar out slot should be non-null")
+    }
+
+    #[test]
+    fn scalar_out_slot_seeds_integer_payload() {
+        let slot = RefType::scalar_out_slot(&ffi::FfiValue::I32(7))
+            .expect("i32 payload should produce a slot");
+        let storage = slot_storage(&slot);
+        // SAFETY: The slot's storage is a live, aligned 8-byte allocation,
+        // wide enough for an i32 read.
+        let seeded = unsafe { IntegerKind::I32.read_ptr(storage.ptr() as *const u8) };
+        assert_eq!(seeded, 7.0);
+    }
+
+    #[test]
+    fn scalar_out_slot_seeds_float_payload() {
+        let slot = RefType::scalar_out_slot(&ffi::FfiValue::F64(1.5))
+            .expect("f64 payload should produce a slot");
+        let storage = slot_storage(&slot);
+        // SAFETY: The slot's storage is a live, aligned 8-byte allocation,
+        // wide enough for an f64 read.
+        let seeded = unsafe { FloatKind::F64.read_ptr(storage.ptr() as *const u8) };
+        assert_eq!(seeded, 1.5);
+    }
+
+    #[test]
+    fn scalar_out_slot_rejects_payload_less_value() {
+        let error = RefType::scalar_out_slot(&ffi::FfiValue::Ptr(std::ptr::null_mut()))
+            .expect_err("a pointer value has no scalar payload");
+        assert!(error.to_string().contains("has no scalar payload"));
     }
 }

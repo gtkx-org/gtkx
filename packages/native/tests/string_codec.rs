@@ -7,7 +7,7 @@ use std::ffi::{CStr, CString, c_char, c_void};
 use gtk4::glib;
 
 use native::ffi;
-use native::types::{FfiDecoder, FfiEncoder, Ownership, RawPtrCodec, StringType};
+use native::types::{FfiDecoder, FfiEncoder, Ownership, RawPtrCodec, StringType, str_to_glib_full};
 use native::value::Value;
 
 fn borrowed() -> StringType {
@@ -81,6 +81,24 @@ fn encode_null_yields_null_pointer() {
             .encode(&Value::Undefined, false)
             .expect("undefined encode should succeed");
         assert!(matches!(encoded, ffi::FfiValue::Ptr(p) if p.is_null()));
+    });
+}
+
+#[test]
+fn str_to_glib_full_rejects_interior_nul() {
+    common::run(|| {
+        let error = str_to_glib_full("a\0b").expect_err("interior NUL should be rejected");
+        assert!(error.to_string().contains("interior NUL"));
+    });
+}
+
+#[test]
+fn encode_full_rejects_interior_nul() {
+    common::run(|| {
+        let error = full()
+            .encode(&Value::String("a\0b".to_owned()), false)
+            .expect_err("full encode should reject interior NUL");
+        assert!(error.to_string().contains("interior NUL"));
     });
 }
 
@@ -215,30 +233,21 @@ fn write_value_to_raw_ptr_writes_string() {
     });
 }
 
+fn assert_write_value_to_raw_ptr_writes_null(value: &Value) {
+    let mut slot: *const c_char = std::ptr::dangling::<c_char>();
+    // SAFETY: `slot` is a writable local pointer-sized slot.
+    unsafe {
+        borrowed().write_value_to_raw_ptr(&mut slot as *mut *const c_char as *mut c_void, value)
+    }
+    .expect("write should succeed");
+    assert!(slot.is_null());
+}
+
 #[test]
 fn write_value_to_raw_ptr_writes_null() {
     common::run(|| {
-        let mut slot: *const c_char = std::ptr::dangling::<c_char>();
-        // SAFETY: `slot` is a writable local pointer-sized slot.
-        unsafe {
-            borrowed().write_value_to_raw_ptr(
-                &mut slot as *mut *const c_char as *mut c_void,
-                &Value::Null,
-            )
-        }
-        .expect("write null should succeed");
-        assert!(slot.is_null());
-
-        let mut slot: *const c_char = std::ptr::dangling::<c_char>();
-        // SAFETY: `slot` is a writable local pointer-sized slot.
-        unsafe {
-            borrowed().write_value_to_raw_ptr(
-                &mut slot as *mut *const c_char as *mut c_void,
-                &Value::Undefined,
-            )
-        }
-        .expect("write undefined should succeed");
-        assert!(slot.is_null());
+        assert_write_value_to_raw_ptr_writes_null(&Value::Null);
+        assert_write_value_to_raw_ptr_writes_null(&Value::Undefined);
     });
 }
 

@@ -30,19 +30,21 @@ impl ModuleRequest for AllocRequest {
     type Output = NativeHandle;
 
     fn execute(self) -> anyhow::Result<NativeHandle> {
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
-        let ptr = unsafe { g_malloc0(self.size) };
-
-        if ptr.is_null() {
-            let type_desc = self.type_name.as_deref().unwrap_or("plain struct");
-            anyhow::bail!("Failed to allocate memory for {type_desc}");
-        }
-
         let type_name = self
             .type_name
             .map(glib::GString::from_string_checked)
             .transpose()
             .map_err(|err| anyhow::anyhow!("invalid alloc type name: {err}"))?;
+
+        // SAFETY: Allocating zeroed memory has no pointer preconditions.
+        let ptr = unsafe { g_malloc0(self.size) };
+
+        if ptr.is_null() {
+            let type_desc = type_name
+                .as_ref()
+                .map_or("plain struct", |name| name.as_str());
+            anyhow::bail!("Failed to allocate memory for {type_desc}");
+        }
 
         let boxed = Boxed::from_alloc(type_name, ptr);
         Ok(NativeValue::Boxed(boxed).into())
@@ -121,6 +123,30 @@ mod tests {
             .execute()
             .expect_err("zero-size allocation should fail");
         assert!(err.to_string().contains("plain struct"));
+    }
+
+    #[test]
+    fn execute_allocates_boxed_type_with_unregistered_name() {
+        let request = AllocRequest {
+            size: 24,
+            type_name: Some("GtkxAllocUnregisteredName".into()),
+        };
+        let handle = request
+            .execute()
+            .expect("unregistered-name alloc should succeed");
+        assert!(!handle.ptr().is_null());
+    }
+
+    #[test]
+    fn execute_fails_for_type_name_with_interior_nul() {
+        let request = AllocRequest {
+            size: 16,
+            type_name: Some("Gdk\0RGBA".into()),
+        };
+        let err = request
+            .execute()
+            .expect_err("a type name with an interior NUL should fail");
+        assert!(err.to_string().contains("invalid alloc type name"));
     }
 
     #[test]

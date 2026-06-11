@@ -213,7 +213,8 @@ mod napi_export {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{ArrayType, IntegerKind, Ownership, RefType, StringType};
+    use crate::types::{ArrayType, BlobType, IntegerKind, Ownership, RefType, StringType};
+    use crate::value::{BufferView, BufferViewKind};
 
     use super::*;
 
@@ -230,32 +231,117 @@ mod tests {
         })
     }
 
-    #[test]
-    fn execute_decodes_and_releases_transfer_full_sized_array_return() {
-        let request = CallRequest {
+    fn string_type(ownership: Ownership) -> StringType {
+        StringType {
+            ownership,
+            length: None,
+        }
+    }
+
+    fn borrowed_string_arg(value: &str) -> Arg {
+        Arg::new(
+            Type::String(string_type(Ownership::Borrowed)),
+            Value::String(value.into()),
+        )
+    }
+
+    fn g_memdup2_request(data: Value) -> CallRequest {
+        CallRequest {
             library_name: "libglib-2.0.so.0".into(),
             symbol_name: "g_memdup2".into(),
             args: vec![
-                Arg::new(
-                    u8_array(ArrayKind::Array, Ownership::Borrowed),
-                    Value::Array(vec![
-                        Value::Number(1.0),
-                        Value::Number(2.0),
-                        Value::Number(3.0),
-                    ]),
-                ),
+                Arg::new(u8_array(ArrayKind::Array, Ownership::Borrowed), data),
                 Arg::new(Type::Integer(IntegerKind::U64), Value::Number(3.0)),
             ],
             result_type: u8_array(ArrayKind::Sized { size_index: 1 }, Ownership::Full),
+        }
+    }
+
+    #[test]
+    fn execute_decodes_transfer_full_null_terminated_array_return() {
+        let request = CallRequest {
+            library_name: "libglib-2.0.so.0".into(),
+            symbol_name: "g_strsplit".into(),
+            args: vec![
+                borrowed_string_arg("a,b"),
+                borrowed_string_arg(","),
+                Arg::new(Type::Integer(IntegerKind::I32), Value::Number(-1.0)),
+            ],
+            result_type: Type::Array(ArrayType {
+                item_type: Box::new(Type::String(string_type(Ownership::Full))),
+                kind: ArrayKind::Array,
+                ownership: Ownership::Full,
+                element_size: None,
+            }),
         };
+        let (value, ref_updates) = request.execute().expect("g_strsplit call should succeed");
+        assert!(ref_updates.is_empty());
+        let items = value.as_array().expect("expected array result");
+        let parts: Vec<&str> = items.iter().filter_map(Value::as_string).collect();
+        assert_eq!(parts, vec!["a", "b"]);
+    }
+
+    #[test]
+    fn execute_decodes_and_releases_transfer_full_sized_array_return() {
+        let request = g_memdup2_request(Value::Array(vec![
+            Value::Number(1.0),
+            Value::Number(2.0),
+            Value::Number(3.0),
+        ]));
         let (value, ref_updates) = request.execute().expect("g_memdup2 call should succeed");
         assert!(ref_updates.is_empty());
-        let Value::Array(items) = value else {
-            panic!("expected array result")
-        };
+        let items = value.as_array().expect("expected array result");
         assert_eq!(items.len(), 3);
         assert!(matches!(items[0], Value::Number(n) if n == 1.0));
         assert!(matches!(items[2], Value::Number(n) if n == 3.0));
+    }
+
+    #[test]
+    fn execute_passes_buffer_view_data_to_the_callee() {
+        let mut data: Vec<u8> = vec![7, 8, 9];
+        let view = BufferView::new(
+            data.as_mut_ptr().cast(),
+            data.len(),
+            data.len(),
+            BufferViewKind::Uint8,
+            false,
+        );
+        let request = g_memdup2_request(Value::BufferView(view));
+        let (value, ref_updates) = request.execute().expect("g_memdup2 call should succeed");
+        assert!(ref_updates.is_empty());
+        let items = value.as_array().expect("expected array result");
+        let copied: Vec<f64> = items.iter().filter_map(Value::as_number).collect();
+        assert_eq!(copied, vec![7.0, 8.0, 9.0]);
+    }
+
+    #[test]
+    fn execute_writes_callee_output_into_a_blob_view() {
+        let mut out = vec![0u8; 6];
+        let view = BufferView::new(
+            out.as_mut_ptr().cast(),
+            out.len(),
+            out.len(),
+            BufferViewKind::Uint8,
+            false,
+        );
+        let request = CallRequest {
+            library_name: "libglib-2.0.so.0".into(),
+            symbol_name: "g_unichar_to_utf8".into(),
+            args: vec![
+                Arg::new(
+                    Type::Integer(IntegerKind::U32),
+                    Value::Number(0x00E9 as f64),
+                ),
+                Arg::new(Type::Blob(BlobType), Value::BufferView(view)),
+            ],
+            result_type: Type::Integer(IntegerKind::I32),
+        };
+        let (value, ref_updates) = request
+            .execute()
+            .expect("g_unichar_to_utf8 call should succeed");
+        assert!(ref_updates.is_empty());
+        assert_eq!(value.as_number(), Some(2.0));
+        assert_eq!(&out[..2], &[0xC3, 0xA9]);
     }
 
     #[test]

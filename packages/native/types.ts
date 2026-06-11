@@ -71,6 +71,8 @@ export type ArrayType = {
     fixedSize?: number;
 };
 
+type BlobType = { type: "blob" };
+
 export type HashTableType = {
     type: "hashtable";
     keyType: Type;
@@ -118,6 +120,7 @@ export type Type =
     | StructType
     | FundamentalType
     | ArrayType
+    | BlobType
     | HashTableType
     | RefType
     | TrampolineType

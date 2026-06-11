@@ -1,6 +1,8 @@
 mod common;
 
 use std::ffi::c_void;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 
 use gtk4::glib;
@@ -9,7 +11,21 @@ use gtk4::prelude::ObjectType as _;
 use native::dispatch::Mailbox;
 use native::managed::{Fundamental, NativeHandle, NativeValue};
 
-use common::{param_spec_ref, param_spec_refcount, param_spec_unref};
+use common::{get_gobject_refcount, param_spec_ref, param_spec_refcount, param_spec_unref};
+
+/// Pumps the global default `MainContext` until `done` reports true, bounded
+/// so a missing dispatch leaves the calling test's assertions to fail.
+fn pump_default_context_until(done: impl Fn() -> bool) {
+    let context = glib::MainContext::default();
+    for _ in 0..1000 {
+        if done() {
+            return;
+        }
+        if !context.iteration(false) {
+            thread::yield_now();
+        }
+    }
+}
 
 fn param_spec_ptr() -> *mut c_void {
     common::ensure_gtk_init();
@@ -158,10 +174,72 @@ fn drop_borrowed_handle_is_noop() {
     drop(handle);
 }
 
-/// Named with a leading `a_` so libtest's alphabetical ordering runs it first:
-/// `gtk4::init` acquires the global default `MainContext` for whichever thread
-/// calls it first, and the `idle_add_once` source the off-thread drop posts can
-/// only be dispatched from that same thread's main context.
+/// Named with a leading `a_` so libtest's alphabetical ordering runs it before
+/// `a_drop_owned_handle_off_thread_routes_through_glib_idle` and therefore
+/// before any test that initializes GTK: `gtk4::init` permanently acquires the
+/// global default `MainContext` for its calling thread, after which no other
+/// test thread can dispatch sources attached to that context. Holding the
+/// serial guard directly keeps GTK uninitialized, leaving the context unowned
+/// so this test's thread can dispatch the sentinel idle source that proves no
+/// release was queued for the consumed pending reference.
+#[test]
+fn a_consumed_decoded_handle_drop_releases_nothing() {
+    let _guard = common::serial_guard();
+    let obj = glib::Object::new::<glib::Object>();
+    let obj_ptr = obj.as_ptr();
+    // SAFETY: Takes the decode protocol's pending reference on the live GObject.
+    unsafe { glib::gobject_ffi::g_object_ref(obj_ptr) };
+    let initial_ref = get_gobject_refcount(obj_ptr);
+
+    let handle = NativeHandle::decoded_gobject(obj_ptr as *mut c_void);
+    assert!(handle.take_pending_gobject_ref());
+    drop(handle);
+
+    let sentinel = Arc::new(AtomicBool::new(false));
+    let sentinel_in_idle = Arc::clone(&sentinel);
+    glib::idle_add_once(move || sentinel_in_idle.store(true, Ordering::SeqCst));
+    pump_default_context_until(|| sentinel.load(Ordering::SeqCst));
+
+    assert!(sentinel.load(Ordering::SeqCst));
+    assert_eq!(get_gobject_refcount(obj_ptr), initial_ref);
+
+    // SAFETY: Releases the pending reference this test consumed by winning
+    // take_pending_gobject_ref on the live GObject.
+    unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
+    assert_eq!(get_gobject_refcount(obj_ptr), initial_ref - 1);
+}
+
+/// Named with a leading `a_` so libtest's alphabetical ordering runs it before
+/// `a_drop_owned_handle_off_thread_routes_through_glib_idle` and therefore
+/// before any test that initializes GTK: `gtk4::init` permanently acquires the
+/// global default `MainContext` for its calling thread, after which no other
+/// test thread can dispatch sources attached to that context. Holding the
+/// serial guard directly keeps GTK uninitialized, leaving the context unowned
+/// so this test's thread can dispatch the idle source through which the drop
+/// releases the unconsumed pending reference.
+#[test]
+fn a_decoded_handle_drop_releases_unconsumed_pending_ref() {
+    let _guard = common::serial_guard();
+    let obj = glib::Object::new::<glib::Object>();
+    let obj_ptr = obj.as_ptr();
+    // SAFETY: Takes the decode protocol's pending reference on the live GObject.
+    unsafe { glib::gobject_ffi::g_object_ref(obj_ptr) };
+    let initial_ref = get_gobject_refcount(obj_ptr);
+
+    let handle = NativeHandle::decoded_gobject(obj_ptr as *mut c_void);
+    drop(handle);
+
+    pump_default_context_until(|| get_gobject_refcount(obj_ptr) == initial_ref - 1);
+
+    assert_eq!(get_gobject_refcount(obj_ptr), initial_ref - 1);
+}
+
+/// Named with a leading `a_` so libtest's alphabetical ordering makes it the
+/// first test to initialize GTK (the decoded-handle tests sorting before it
+/// hold the serial guard without touching GTK): `gtk4::init` acquires the
+/// global default `MainContext` for whichever thread calls it first, and the
+/// `idle_add_once` source the off-thread drop posts can only be dispatched
+/// from that same thread's main context.
 #[test]
 fn a_drop_owned_handle_off_thread_routes_through_glib_idle() {
     common::run(|| {
@@ -175,15 +253,7 @@ fn a_drop_owned_handle_off_thread_routes_through_glib_idle() {
         .join()
         .expect("dropping handle off-thread should not panic");
 
-        let context = glib::MainContext::default();
-        for _ in 0..1000 {
-            if param_spec_refcount(ptr) == initial_ref - 1 {
-                break;
-            }
-            if !context.iteration(false) {
-                thread::yield_now();
-            }
-        }
+        pump_default_context_until(|| param_spec_refcount(ptr) == initial_ref - 1);
 
         assert_eq!(param_spec_refcount(ptr), initial_ref - 1);
         // SAFETY: Releases a reference this test owns on the live GParamSpec.
@@ -209,6 +279,39 @@ fn drop_owned_handle_off_thread_while_stopped_leaks_value() {
         mailbox.reset_for_test();
         // SAFETY: Releases a reference this test owns on the live GParamSpec.
         unsafe { param_spec_unref(ptr) };
+    });
+}
+
+#[test]
+fn take_pending_gobject_ref_consumes_marker_once() {
+    common::run(|| {
+        let obj = glib::Object::new::<glib::Object>();
+        let handle = NativeHandle::decoded_gobject(obj.as_ptr() as *mut c_void);
+
+        assert!(handle.take_pending_gobject_ref());
+        assert!(!handle.take_pending_gobject_ref());
+    });
+}
+
+#[test]
+fn take_pending_gobject_ref_without_marker_returns_false() {
+    common::run(|| {
+        let obj = glib::Object::new::<glib::Object>();
+        let handle = NativeHandle::borrowed_gobject(obj.as_ptr() as *mut c_void);
+
+        assert!(!handle.take_pending_gobject_ref());
+    });
+}
+
+#[test]
+fn clones_share_pending_gobject_ref_marker() {
+    common::run(|| {
+        let obj = glib::Object::new::<glib::Object>();
+        let handle = NativeHandle::decoded_gobject(obj.as_ptr() as *mut c_void);
+        let cloned = handle.clone();
+
+        assert!(cloned.take_pending_gobject_ref());
+        assert!(!handle.take_pending_gobject_ref());
     });
 }
 
