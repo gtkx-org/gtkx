@@ -58,14 +58,10 @@ const runtimeKeysFor = (schema: ParsedSchema): string => {
  * default export.
  *
  * @param file - The parsed schema file
- * @param initImport - Module specifier to side-effect-import first (the build-mode init module), or `null`
  * @returns The module source
  */
-export const renderRuntimeModule = (file: ParsedSchemaFile, initImport: string | null): string => {
+export const renderRuntimeModule = (file: ParsedSchemaFile): string => {
     const lines: string[] = [];
-    if (initImport !== null) {
-        lines.push(`import ${JSON.stringify(initImport)};`, "");
-    }
     file.schemas.forEach((schema, index) => {
         const keysName = `keys_${index}`;
         const id = JSON.stringify(schema.id);

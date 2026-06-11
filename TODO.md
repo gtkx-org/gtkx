@@ -520,15 +520,32 @@ gtk-demo 666, zero act warnings), `pnpm typecheck` 33/33, jscpd 0 clones.
 
 ## Phase 7 — Documentation, examples, and release verification
 
-- [ ] **T7.1** Rewrite website docs for the final import model (`@gtkx/react` namespace-agnostic
-      runtime, `@gtkx/jsx/<ns>` intrinsics + namespace components per D9, `@gtkx/gi/<ns>`
-      classes): `getting-started.md` is stale today (imports intrinsics from `@gtkx/react`); the
-      tutorial's menus/shortcuts and gestures pages change with Phase 5.
-- [ ] **T7.2** Refresh `AGENTS.md`/`CLAUDE.md` (architecture section, `.gtkx` store layout,
-      per-namespace entrypoints, conventions), README, and TypeDoc coverage for every new public
-      export (`@gtkx/config`, schema types, ffi helper modules, `@gtkx/react/<ns>`
-      entrypoints).
-- [ ] **T7.3** Full gate: `pnpm install && pnpm codegen && pnpm build && pnpm test:all &&
-      pnpm typecheck && pnpm lint && pnpm coverage && pnpm docs`; `scripts/ci-asan.sh` and
-      `ci-miri.sh` (ffi gained marshalling-adjacent code in Phase 3); CodSpeed run for the
-      Phase 4/5 reconciler changes; build and launch every example via `gtkx build`.
+- [x] **T7.1** Website docs verified against the final import model. The Phase 5/6 doc sweeps
+      had already rewritten `getting-started.md`, the tutorial, and `testing.md`; the final
+      audit found one gap (`portals.md` example missing its `@gtkx/jsx/gtk` element imports)
+      and no stale API anywhere else — every `@gtkx/react` import in the docs is
+      runtime-only (`render`, `quit`, hooks, `createPortal`).
+- [x] **T7.2** `CLAUDE.md` is a symlink to `AGENTS.md`, which was refreshed through the
+      phases (architecture, store layout, the uniform import model, the config families).
+      No `@gtkx/react/<ns>` entrypoints exist — D9 settled on the uniform `@gtkx/jsx/<ns>`
+      surface instead. TypeDoc gained the `@gtkx/animate` package (config entry + sidebar);
+      `ConstraintLayoutProps` is exported and the new internal building-block types are
+      listed in `intentionallyNotExported`.
+- [x] **T7.3** Full battery green (run 2026-06-11): build 20/20, `test:all` 1984 tests in
+      162 files, typecheck 33/33, lint clean (biome, knip ×2, depcruise 628 modules),
+      coverage (TS v8 + Rust llvm-cov at the 100% line/function thresholds), docs (TypeDoc ×5
+      + VitePress), `ci-asan.sh` (599 native tests under AddressSanitizer), `ci-miri.sh`,
+      and the reconciler benchmarks execute under the CodSpeed vitest plugin (measurement
+      upload is CI's). All four examples build and run headless (Xvfb + D-Bus session,
+      12-second soak) with no criticals. The launch gate surfaced two real defects, both
+      fixed:
+      - The production bundle set `GSETTINGS_SCHEMA_DIR` from a module evaluated after the
+        `@gtkx/gi` side-effect imports, but GTK's initialization snapshots GLib's default
+        schema source first, so a `useSetting` app aborted at startup
+        (`Settings schema … is not installed`). The gsettings plugin now prepends the env
+        assignment as an output banner that runs before any bundled module, and the virtual
+        init module is gone.
+      - `AdwToggleGroup` applied `activeName`/`active` at construction, before its toggles
+        attach (`Adwaita-CRITICAL … such a toggle does not exist`); both are now in
+        `CONSTRUCTION_SKIP_PROPS`, applied post-attach by the existing prop rule like the
+        stack `visibleChildName`.

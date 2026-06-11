@@ -7,6 +7,7 @@ GTKX supports rendering content outside the normal component tree using portals,
 Render a component into a different container—typically used for dialogs that need to appear as children of the active window:
 
 ```tsx
+import { GtkAboutDialog, GtkButton } from "@gtkx/jsx/gtk";
 import { createPortal, useApplication, useProperty } from "@gtkx/react";
 import { useState } from "react";
 

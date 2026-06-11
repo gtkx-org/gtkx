@@ -1,5 +1,6 @@
 import { type DefaultTheme, defineConfig } from "vitepress";
 import llmstxt from "vitepress-plugin-llms";
+import animateSidebar from "../api/animate/typedoc-sidebar.json" with { type: "json" };
 import cssSidebar from "../api/css/typedoc-sidebar.json" with { type: "json" };
 import ffiSidebar from "../api/ffi/typedoc-sidebar.json" with { type: "json" };
 import reactSidebar from "../api/react/typedoc-sidebar.json" with { type: "json" };
@@ -116,6 +117,12 @@ export default defineConfig({
                     link: "/api/react/",
                     collapsed: false,
                     items: prepareTypedocSidebar(reactSidebar as DefaultTheme.SidebarItem[]),
+                },
+                {
+                    text: "@gtkx/animate",
+                    link: "/api/animate/",
+                    collapsed: true,
+                    items: prepareTypedocSidebar(animateSidebar as DefaultTheme.SidebarItem[]),
                 },
                 {
                     text: "@gtkx/css",

@@ -39,7 +39,7 @@ const ENUM_SCHEMA = `<schemalist>
 
 describe("renderRuntimeModule", () => {
     it("renders fixed-path schemas as refs with a null path and a default export", () => {
-        const code = renderRuntimeModule(parse(FIXED_SCHEMA), null);
+        const code = renderRuntimeModule(parse(FIXED_SCHEMA));
 
         expect(code).toContain(`const keys_0 = { "enabled": "b", "size": "(ii)" };`);
         expect(code).toContain(`export const com_example_app = { id: "com.example.app", path: null, keys: keys_0 };`);
@@ -47,7 +47,7 @@ describe("renderRuntimeModule", () => {
     });
 
     it("renders relocatable schemas with an at(path) binder", () => {
-        const code = renderRuntimeModule(parse(RELOCATABLE_SCHEMA), null);
+        const code = renderRuntimeModule(parse(RELOCATABLE_SCHEMA));
 
         expect(code).toContain(
             `export const com_example_profile = { id: "com.example.profile", keys: keys_0, at: (path) => ({ id: "com.example.profile", path, keys: keys_0 }) };`,
@@ -55,17 +55,11 @@ describe("renderRuntimeModule", () => {
     });
 
     it("maps enum and flags keys to their dispatch kinds", () => {
-        const code = renderRuntimeModule(parse(ENUM_SCHEMA), null);
+        const code = renderRuntimeModule(parse(ENUM_SCHEMA));
 
         expect(code).toContain(`"mode": "enum"`);
         expect(code).toContain(`"sides": "flags"`);
         expect(code).toContain(`"style": "s"`);
-    });
-
-    it("prepends the init import when one is given", () => {
-        const code = renderRuntimeModule(parse(FIXED_SCHEMA), "\0gtkx-gsettings-init");
-
-        expect(code.startsWith(`import "\\u0000gtkx-gsettings-init";`)).toBe(true);
     });
 });
 

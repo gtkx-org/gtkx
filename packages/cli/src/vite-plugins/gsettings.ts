@@ -11,9 +11,25 @@ import { resolveCliTool } from "../internal/resolve-cli-tool.js";
 
 const SCHEMA_SUFFIX = ".gschema.xml";
 const VIRTUAL_PREFIX = "\0gtkx-gsettings:";
-const VIRTUAL_INIT = "\0gtkx-gsettings-init";
 const SCHEMA_COMPILER = "glib-compile-schemas";
 const SCHEMA_COMPILE_TIMEOUT_MS = 30_000;
+
+/**
+ * Banner prepended to the production bundle so `GSETTINGS_SCHEMA_DIR` points
+ * at the bundle's directory (where `gschemas.compiled` is emitted) before any
+ * bundled module evaluates. GTK's own initialization snapshots GLib's default
+ * schema source on first use, so setting the variable from within the module
+ * graph would be too late: the `@gtkx/gi` side-effect imports initialize GTK
+ * ahead of application code.
+ */
+const SCHEMA_ENV_BANNER = [
+    `process.env.GSETTINGS_SCHEMA_DIR = [`,
+    `    decodeURIComponent(new URL(".", import.meta.url).pathname),`,
+    `    process.env.GSETTINGS_SCHEMA_DIR,`,
+    `]`,
+    `    .filter(Boolean)`,
+    `    .join(":");`,
+].join("\n");
 
 const removeTempDir = (dir: string): void => {
     rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
@@ -103,16 +119,6 @@ const compileSchemaDir = (state: PluginState): void => {
     process.env.GSETTINGS_SCHEMA_DIR = existing ? `${state.schemaDir}:${existing}` : state.schemaDir;
 };
 
-const renderInitModule = (): string =>
-    [
-        `import { dirname } from "node:path";`,
-        `import { fileURLToPath } from "node:url";`,
-        ``,
-        `const bundleDir = dirname(fileURLToPath(import.meta.url));`,
-        `const existing = process.env.GSETTINGS_SCHEMA_DIR;`,
-        `process.env.GSETTINGS_SCHEMA_DIR = existing ? bundleDir + ":" + existing : bundleDir;`,
-    ].join("\n");
-
 const syncSchemaEnv = (state: PluginState): void => {
     if (state.rootDir === null) return;
     try {
@@ -152,7 +158,7 @@ const loadSchemaModule = (ctx: PluginContext, state: PluginState, id: string): s
     if (parsed.schemas.length === 0) {
         ctx.error(`No <schema id="..."> found in ${fileName}`);
     }
-    return renderRuntimeModule(parsed, state.isBuild ? VIRTUAL_INIT : null);
+    return renderRuntimeModule(parsed);
 };
 
 const emitCompiledSchemas = (ctx: PluginContext, state: PluginState): void => {
@@ -196,6 +202,16 @@ const handleSchemaHotUpdate = (state: PluginState, file: string, server: ViteDev
     return undefined;
 };
 
+const watchSchemaFiles = (state: PluginState, server: ViteDevServer): void => {
+    server.httpServer?.once("close", () => releaseSchemaDir(state));
+    server.watcher.once("close", () => releaseSchemaDir(state));
+    const refreshSchemaTypes = (file: string): void => {
+        if (file.endsWith(SCHEMA_SUFFIX)) syncSchemaEnv(state);
+    };
+    server.watcher.on("add", refreshSchemaTypes);
+    server.watcher.on("unlink", refreshSchemaTypes);
+};
+
 export function gtkxGSettings(): Plugin {
     const state: PluginState = {
         schemaDir: null,
@@ -217,17 +233,17 @@ export function gtkxGSettings(): Plugin {
         },
 
         configureServer(server) {
-            server.httpServer?.once("close", () => releaseSchemaDir(state));
-            server.watcher.once("close", () => releaseSchemaDir(state));
-            const refreshSchemaTypes = (file: string): void => {
-                if (file.endsWith(SCHEMA_SUFFIX)) syncSchemaEnv(state);
-            };
-            server.watcher.on("add", refreshSchemaTypes);
-            server.watcher.on("unlink", refreshSchemaTypes);
+            watchSchemaFiles(state, server);
+        },
+
+        outputOptions(options) {
+            if (!state.isBuild) return;
+            const existing = options.banner;
+            if (typeof existing === "function") return;
+            return { ...options, banner: existing ? `${SCHEMA_ENV_BANNER}\n${existing}` : SCHEMA_ENV_BANNER };
         },
 
         async resolveId(source, importer, options) {
-            if (source === VIRTUAL_INIT) return VIRTUAL_INIT;
             if (!source.endsWith(SCHEMA_SUFFIX)) return;
 
             const resolved = await this.resolve(source, importer, {
@@ -240,7 +256,6 @@ export function gtkxGSettings(): Plugin {
         },
 
         load(id) {
-            if (id === VIRTUAL_INIT) return renderInitModule();
             if (!id.startsWith(VIRTUAL_PREFIX)) return;
             return loadSchemaModule(this, state, id);
         },
