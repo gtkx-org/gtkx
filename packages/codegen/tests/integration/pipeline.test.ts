@@ -155,7 +155,8 @@ describe("codegen React pipeline (slot overrides)", () => {
     it("honours user-supplied widget-slot overrides", () => {
         const overridden = generateJsxFiles(repository, { slots: { GtkButton: ["child"] } });
         const gtk = sourceFor(overridden, "gtk");
-        expect(gtk).toContain('kind="slot" propName="child"');
+        expect(interfaceBody(gtk, "GtkButton")).toContain("child?: ReactNode | null;");
+        expect(overridden.metadata).toMatch(/"GtkButton": \[\s*"child"\s*\]/);
         const { js } = transpileSource("gtk/gtk.tsx", gtk);
         expect(js.length).toBeGreaterThan(0);
     });
@@ -164,7 +165,7 @@ describe("codegen React pipeline (slot overrides)", () => {
         const overridden = generateJsxFiles(repository, { containerSlots: { GtkButton: ["addChild"] } });
         const gtk = sourceFor(overridden, "gtk");
         expect(gtk).toContain("addChild?: ReactNode | null;");
-        expect(gtk).toContain('kind="container-slot" method="addChild"');
+        expect(overridden.metadata).toMatch(/"GtkButton": \[\s*"addChild"\s*\]/);
         const { js } = transpileSource("gtk/gtk.tsx", gtk);
         expect(js.length).toBeGreaterThan(0);
     });
@@ -173,7 +174,8 @@ describe("codegen React pipeline (slot overrides)", () => {
         const overridden = generateJsxFiles(repository, { containerSlots: { GApplication: ["addWindow"] } });
         const gio = sourceFor(overridden, "gio");
         expect(gio).toContain("GApplicationProps");
-        expect(gio).toContain('kind="container-slot" method="addWindow"');
+        expect(gio).toContain("addWindow?: ReactNode | null;");
+        expect(overridden.metadata).toMatch(/"GApplication": \[\s*"addWindow"\s*\]/);
         const { js, dts } = transpileSource("gio/gio.tsx", gio);
         expect(js.length).toBeGreaterThan(0);
         expect(dts.length).toBeGreaterThan(0);

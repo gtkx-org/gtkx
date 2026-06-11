@@ -1,3 +1,4 @@
+export { createWidgetComponent } from "./create-widget-component.js";
 export { type DeferredFlushWrapper, setDeferredFlushWrapper } from "./deferred-flush.js";
 export * from "./jsx.js";
 export { createPortal } from "./portal.js";

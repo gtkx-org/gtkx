@@ -123,36 +123,46 @@ import { AdwApplication, AdwApplicationWindow, Menu, MenuItem, MenuSection, Menu
 
 ## Keyboard shortcuts
 
-For shortcuts not tied to menus, place `GtkShortcut` elements inside a `GtkShortcutController`. Each shortcut pairs a `trigger` (a `Gtk.ShortcutTrigger`) with an `action` (a `Gtk.ShortcutAction`). Parse accelerator strings with `Gtk.ShortcutTrigger.parseString`, and build the action with `Gtk.CallbackAction.new`, whose callback returns `true` when it handles the event:
+For shortcuts not tied to menus, pass `GtkShortcut` elements through a `GtkShortcutController`'s `addShortcut` prop, and attach the controller through the widget's `addController` prop. Each shortcut pairs a `trigger` (a `Gtk.ShortcutTrigger`) with an `action` (a `Gtk.ShortcutAction`). Parse accelerator strings with `Gtk.ShortcutTrigger.parseString`, and build the action with `Gtk.CallbackAction.new`, whose callback returns `true` when it handles the event:
 
 ```tsx
 import { GtkBox, GtkShortcut, GtkShortcutController } from "@gtkx/react";
 import * as Gtk from "@gtkx/gi/gtk";
 
-<GtkBox orientation={Gtk.Orientation.VERTICAL} focusable>
-    <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-        <GtkShortcut
-            trigger={Gtk.ShortcutTrigger.parseString("<Control>n")}
-            action={Gtk.CallbackAction.new(() => {
-                addNote();
-                return true;
-            })}
+<GtkBox
+    orientation={Gtk.Orientation.VERTICAL}
+    focusable
+    addController={
+        <GtkShortcutController
+            scope={Gtk.ShortcutScope.GLOBAL}
+            addShortcut={
+                <>
+                    <GtkShortcut
+                        trigger={Gtk.ShortcutTrigger.parseString("<Control>n")}
+                        action={Gtk.CallbackAction.new(() => {
+                            addNote();
+                            return true;
+                        })}
+                    />
+                    <GtkShortcut
+                        trigger={Gtk.ShortcutTrigger.parseString("<Control>f")}
+                        action={Gtk.CallbackAction.new(() => {
+                            setSearchMode(true);
+                            return true;
+                        })}
+                    />
+                    <GtkShortcut
+                        trigger={selectedId ? Gtk.ShortcutTrigger.parseString("Delete") : Gtk.NeverTrigger.get()}
+                        action={Gtk.CallbackAction.new(() => {
+                            deleteSelected();
+                            return true;
+                        })}
+                    />
+                </>
+            }
         />
-        <GtkShortcut
-            trigger={Gtk.ShortcutTrigger.parseString("<Control>f")}
-            action={Gtk.CallbackAction.new(() => {
-                setSearchMode(true);
-                return true;
-            })}
-        />
-        <GtkShortcut
-            trigger={selectedId ? Gtk.ShortcutTrigger.parseString("Delete") : Gtk.NeverTrigger.get()}
-            action={Gtk.CallbackAction.new(() => {
-                deleteSelected();
-                return true;
-            })}
-        />
-    </GtkShortcutController>
+    }
+>
     {/* ... */}
 </GtkBox>
 ```
@@ -165,7 +175,7 @@ The `scope` prop controls when shortcuts are active:
 
 | Scope | Behavior |
 |-------|----------|
-| `Gtk.ShortcutScope.LOCAL` | Only when the parent widget is focused |
+| `Gtk.ShortcutScope.LOCAL` | Only when the widget carrying the controller is focused |
 | `Gtk.ShortcutScope.MANAGED` | Managed by a parent `GtkShortcutManager` |
 | `Gtk.ShortcutScope.GLOBAL` | Active anywhere in the window |
 
@@ -210,23 +220,35 @@ function NotesWindow() {
     // ... state from previous chapters
 
     return (
-        <AdwApplicationWindow title="Notes" defaultWidth={600} defaultHeight={500} onClose={quit}>
-            <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-                <GtkShortcut
-                    trigger={Gtk.ShortcutTrigger.parseString("<Control>n")}
-                    action={Gtk.CallbackAction.new(() => {
-                        addNote();
-                        return true;
-                    })}
+        <AdwApplicationWindow
+            title="Notes"
+            defaultWidth={600}
+            defaultHeight={500}
+            onClose={quit}
+            addController={
+                <GtkShortcutController
+                    scope={Gtk.ShortcutScope.GLOBAL}
+                    addShortcut={
+                        <>
+                            <GtkShortcut
+                                trigger={Gtk.ShortcutTrigger.parseString("<Control>n")}
+                                action={Gtk.CallbackAction.new(() => {
+                                    addNote();
+                                    return true;
+                                })}
+                            />
+                            <GtkShortcut
+                                trigger={selectedId ? Gtk.ShortcutTrigger.parseString("Delete") : Gtk.NeverTrigger.get()}
+                                action={Gtk.CallbackAction.new(() => {
+                                    deleteSelected();
+                                    return true;
+                                })}
+                            />
+                        </>
+                    }
                 />
-                <GtkShortcut
-                    trigger={selectedId ? Gtk.ShortcutTrigger.parseString("Delete") : Gtk.NeverTrigger.get()}
-                    action={Gtk.CallbackAction.new(() => {
-                        deleteSelected();
-                        return true;
-                    })}
-                />
-            </GtkShortcutController>
+            }
+        >
             <AdwToolbarView
                 addTopBar={
                     <AdwHeaderBar

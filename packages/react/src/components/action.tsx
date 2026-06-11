@@ -49,7 +49,7 @@ export const withActionAccels = <P extends ActionAccelsProps>(Element: ElementTy
 
 /** The prop shape {@link withActionScope} reads from its host element. */
 type ActionScopeProps = {
-    /** The action-name prefix the group installs under on its host widget. */
+    /** The action-name prefix the group installs under on the widget whose `insertActionGroup` prop carries it. */
     prefix?: string;
     /** The group's `<GSimpleAction>` children. */
     children?: ReactNode;
@@ -59,7 +59,8 @@ type ActionScopeProps = {
  * Builds an action-group component that provides its `prefix` as the action
  * scope for `<GSimpleAction>` children, so their `accels` bind under the
  * group's detailed action names. The `prefix` prop also stays on the host
- * element, where the element map's `insertActionGroup` verb reads it.
+ * element, where the element map's `insertActionGroup` verb reads it when the
+ * group is passed through a widget's `insertActionGroup` prop.
  *
  * @typeParam P - The action-group component prop shape.
  * @param Element - The action-group host intrinsic to render.

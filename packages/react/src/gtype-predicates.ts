@@ -5,7 +5,7 @@ import type { AnyClass } from "@gtkx/utils";
 import { collectTypeNameChain } from "./gtype.js";
 
 /** The minimal shape every GObject instance carries: its resolved GLib type. */
-type GTyped = { readonly __gtype__: GType };
+export type GTyped = { readonly __gtype__: GType };
 
 /**
  * Whether `instance`'s GType ancestry contains `typeName`.

@@ -733,26 +733,32 @@ const Canvas = () => {
 };
 ```
 
-Changing the `render` callback reference automatically queues a redraw. Add a `GtkGestureDrag` child for interactive drawing.
+Changing the `render` callback reference automatically queues a redraw. Attach a `GtkGestureDrag` through the `addController` prop for interactive drawing.
 
 ## Event Controllers
 
-Event controllers are added as children to any widget. They are auto-generated from GTK's introspection data.
+Event controllers attach through any widget's `addController` prop (wrap several in a fragment). They are auto-generated from GTK's introspection data.
 
 ```tsx
-<GtkBox focusable>
-    <GtkEventControllerMotion
-        onEnter={(x, y) => console.log("Entered at", x, y)}
-        onMotion={(x, y) => setPosition({ x, y })}
-        onLeave={() => console.log("Left")}
-    />
-    <GtkEventControllerKey
-        onKeyPressed={(keyval, keycode, state) => {
-            console.log("Key pressed:", keyval);
-            return false;
-        }}
-    />
-    <GtkGestureClick onPressed={(nPress, x, y) => console.log("Clicked")} />
+<GtkBox
+    focusable
+    addController={
+        <>
+            <GtkEventControllerMotion
+                onEnter={(x, y) => console.log("Entered at", x, y)}
+                onMotion={(x, y) => setPosition({ x, y })}
+                onLeave={() => console.log("Left")}
+            />
+            <GtkEventControllerKey
+                onKeyPressed={(keyval, keycode, state) => {
+                    console.log("Key pressed:", keyval);
+                    return false;
+                }}
+            />
+            <GtkGestureClick onPressed={(nPress, x, y) => console.log("Clicked")} />
+        </>
+    }
+>
     <GtkLabel label="Hover or type here" />
 </GtkBox>
 ```
@@ -813,20 +819,43 @@ Text content is provided as direct children. Use `GtkTextView.Tag` for formattin
 
 ## Keyboard Shortcuts
 
-Attach shortcuts with `<GtkShortcutController>` and `GtkShortcutController.Shortcut`:
+Pass `<GtkShortcut>` elements through a `<GtkShortcutController>`'s `addShortcut` prop, and attach the controller through the widget's `addController` prop. Each shortcut pairs a `trigger` (`Gtk.ShortcutTrigger.parseString`) with an `action` (`Gtk.CallbackAction.new`, returning `true` when handled):
 
 ```tsx
-<GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} focusable>
-    <GtkShortcutController scope={Gtk.ShortcutScope.LOCAL}>
-        <GtkShortcutController.Shortcut trigger="<Control>equal" onActivate={() => setCount((c) => c + 1)} />
-        <GtkShortcutController.Shortcut trigger="<Control>minus" onActivate={() => setCount((c) => c - 1)} />
-    </GtkShortcutController>
+<GtkBox
+    orientation={Gtk.Orientation.VERTICAL}
+    spacing={12}
+    focusable
+    addController={
+        <GtkShortcutController
+            scope={Gtk.ShortcutScope.LOCAL}
+            addShortcut={
+                <>
+                    <GtkShortcut
+                        trigger={Gtk.ShortcutTrigger.parseString("<Control>equal")}
+                        action={Gtk.CallbackAction.new(() => {
+                            setCount((c) => c + 1);
+                            return true;
+                        })}
+                    />
+                    <GtkShortcut
+                        trigger={Gtk.ShortcutTrigger.parseString("<Control>minus")}
+                        action={Gtk.CallbackAction.new(() => {
+                            setCount((c) => c - 1);
+                            return true;
+                        })}
+                    />
+                </>
+            }
+        />
+    }
+>
     <GtkLabel label={`Count: ${count}`} />
 </GtkBox>
 ```
 
-**Scopes:** `LOCAL` (widget focus), `MANAGED` (parent managed), `GLOBAL` (window-wide)
+**Scopes:** `LOCAL` (attached widget focus), `MANAGED` (parent managed), `GLOBAL` (window-wide)
 
-**Trigger syntax:** `<Control>s`, `<Control><Shift>s`, `<Alt>F4`, `<Primary>q`, `F5`
+**Trigger strings for `parseString`:** `<Control>s`, `<Control><Shift>s`, `<Alt>F4`, `<Primary>q`, `F5`
 
-**Multiple triggers:** `trigger={["F5", "<Control>r"]}`
+**Multiple triggers:** combine with `Gtk.AlternativeTrigger.new(triggerA, triggerB)`

@@ -24,7 +24,7 @@ interface ActionSpec {
     onActivate?: () => void;
 }
 
-/** A `<GSimpleActionGroup>` installed on the column view under `prefix`. */
+/** A `<GSimpleActionGroup>` installed on the column view's scroll container under `prefix`. */
 const actionGroup = (prefix: string, specs: ActionSpec[]): ReactNode => (
     <GSimpleActionGroup prefix={prefix}>
         {specs.map((spec) => (
@@ -54,9 +54,13 @@ const sectionedMenu = (prefix: string, sections: ActionSpec[][]): ReactNode => (
     </GMenu>
 );
 
-const renderColumns = async (columnViewRef: RefObject<Gtk.ColumnView | null>, columns: ReactNode): Promise<void> => {
+const renderColumns = async (
+    columnViewRef: RefObject<Gtk.ColumnView | null>,
+    columns: ReactNode,
+    actionGroups?: ReactNode,
+): Promise<void> => {
     await render(
-        <ScrollWrapper>
+        <ScrollWrapper insertActionGroup={actionGroups}>
             <GtkColumnView ref={columnViewRef}>{columns}</GtkColumnView>
         </ScrollWrapper>,
     );
@@ -64,6 +68,43 @@ const renderColumns = async (columnViewRef: RefObject<Gtk.ColumnView | null>, co
 
 const getColumn = (columnView: Gtk.ColumnView, index: number): Gtk.ColumnViewColumn => {
     return columnView.getColumns().getItem(index) as Gtk.ColumnViewColumn;
+};
+
+/** Asserts each column's header menu item count, where `null` expects no header menu at all. */
+const expectHeaderMenuItemCounts = (
+    columnViewRef: RefObject<Gtk.ColumnView | null>,
+    expectedCounts: (number | null)[],
+): void => {
+    const columnView = columnViewRef.current as Gtk.ColumnView;
+    expectedCounts.forEach((expectedCount, index) => {
+        const headerMenu = getColumn(columnView, index).getHeaderMenu();
+        if (expectedCount === null) {
+            expect(headerMenu).toBeNull();
+        } else {
+            expect(headerMenu?.getNItems()).toBe(expectedCount);
+        }
+    });
+};
+
+const ROLE_SORT_HIDE_MENU = sectionedMenu("role", [
+    [{ id: "sort-asc", label: "Sort Ascending" }],
+    [{ id: "hide", label: "Hide Column" }],
+]);
+
+const renderNameAndRoleColumns = async (
+    columnViewRef: RefObject<Gtk.ColumnView | null>,
+    nameMenu: ReactNode,
+    roleMenu: ReactNode,
+    actionGroups?: ReactNode,
+): Promise<void> => {
+    await renderColumns(
+        columnViewRef,
+        <>
+            <DefaultColumn id="name" title="Name" headerMenu={nameMenu} />
+            <DefaultColumn id="role" title="Role" headerMenu={roleMenu} />
+        </>,
+        actionGroups,
+    );
 };
 
 describe("render - ColumnViewColumn (1)", () => {
@@ -364,10 +405,7 @@ describe("render - ColumnViewColumn (8)", () => {
                 </>,
             );
 
-            const columnView = columnViewRef.current as Gtk.ColumnView;
-            expect(getColumn(columnView, 0).getHeaderMenu()?.getNItems()).toBe(1);
-            expect(getColumn(columnView, 1).getHeaderMenu()?.getNItems()).toBe(2);
-            expect(getColumn(columnView, 2).getHeaderMenu()).toBeNull();
+            expectHeaderMenuItemCounts(columnViewRef, [1, 2, null]);
         });
     });
 });
@@ -431,11 +469,16 @@ const buildSortActions = (
     { id: "sort-clear", label: "Clear Sort", onActivate: () => onSort(null, Gtk.SortType.ASCENDING) },
 ];
 
-const ShowcaseColumns = ({ sortActions }: { sortActions: (column: ShowcaseSortColumn) => ActionSpec[] }) => (
+const ShowcaseActionGroups = ({ sortActions }: { sortActions: (column: ShowcaseSortColumn) => ActionSpec[] }) => (
     <>
         {actionGroup("name", sortActions("name"))}
         {actionGroup("role", [...sortActions("role"), { id: "hide", label: "Hide Column" }])}
         {actionGroup("salary", [...sortActions("salary"), { id: "hide", label: "Hide Column" }])}
+    </>
+);
+
+const ShowcaseColumns = ({ sortActions }: { sortActions: (column: ShowcaseSortColumn) => ActionSpec[] }) => (
+    <>
         <GtkColumnViewColumn
             id="name"
             title="Name"
@@ -479,7 +522,7 @@ function ShowcaseSortableApp({ columnViewRef }: { columnViewRef: RefObject<Gtk.C
     );
 
     return (
-        <ScrollWrapper>
+        <ScrollWrapper insertActionGroup={<ShowcaseActionGroups sortActions={sortActions} />}>
             <GtkColumnView
                 ref={columnViewRef}
                 estimatedRowHeight={48}
@@ -500,10 +543,7 @@ describe("render - ColumnViewColumn (10) > header menu showcase", () => {
 
         await render(<ShowcaseSortableApp columnViewRef={columnViewRef} />);
 
-        const columnView = columnViewRef.current as Gtk.ColumnView;
-        expect(getColumn(columnView, 0).getHeaderMenu()?.getNItems()).toBe(1);
-        expect(getColumn(columnView, 1).getHeaderMenu()?.getNItems()).toBe(2);
-        expect(getColumn(columnView, 2).getHeaderMenu()?.getNItems()).toBe(2);
+        expectHeaderMenuItemCounts(columnViewRef, [1, 2, 2]);
     });
 });
 
@@ -516,8 +556,13 @@ describe("render - ColumnViewColumn (11)", () => {
             const roleSortAsc = vi.fn();
             const roleHide = vi.fn();
 
-            await renderColumns(
+            await renderNameAndRoleColumns(
                 columnViewRef,
+                flatMenu("name", [
+                    { id: "sort-asc", label: "Sort Ascending" },
+                    { id: "sort-desc", label: "Sort Descending" },
+                ]),
+                ROLE_SORT_HIDE_MENU,
                 <>
                     {actionGroup("name", [
                         { id: "sort-asc", label: "Sort Ascending", onActivate: nameSortAsc },
@@ -527,22 +572,6 @@ describe("render - ColumnViewColumn (11)", () => {
                         { id: "sort-asc", label: "Sort Ascending", onActivate: roleSortAsc },
                         { id: "hide", label: "Hide Column", onActivate: roleHide },
                     ])}
-                    <DefaultColumn
-                        id="name"
-                        title="Name"
-                        headerMenu={flatMenu("name", [
-                            { id: "sort-asc", label: "Sort Ascending" },
-                            { id: "sort-desc", label: "Sort Descending" },
-                        ])}
-                    />
-                    <DefaultColumn
-                        id="role"
-                        title="Role"
-                        headerMenu={sectionedMenu("role", [
-                            [{ id: "sort-asc", label: "Sort Ascending" }],
-                            [{ id: "hide", label: "Hide Column" }],
-                        ])}
-                    />
                 </>,
             );
 
@@ -568,29 +597,16 @@ describe("render - ColumnViewColumn (12)", () => {
         it("exposes header menu items with prefixed action names", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
-            await renderColumns(
+            await renderNameAndRoleColumns(
                 columnViewRef,
-                <>
-                    <DefaultColumn
-                        id="name"
-                        title="Name"
-                        headerMenu={sectionedMenu("name", [
-                            [
-                                { id: "sort-asc", label: "Sort Ascending" },
-                                { id: "sort-desc", label: "Sort Descending" },
-                                { id: "sort-clear", label: "Clear Sort" },
-                            ],
-                        ])}
-                    />
-                    <DefaultColumn
-                        id="role"
-                        title="Role"
-                        headerMenu={sectionedMenu("role", [
-                            [{ id: "sort-asc", label: "Sort Ascending" }],
-                            [{ id: "hide", label: "Hide Column" }],
-                        ])}
-                    />
-                </>,
+                sectionedMenu("name", [
+                    [
+                        { id: "sort-asc", label: "Sort Ascending" },
+                        { id: "sort-desc", label: "Sort Descending" },
+                        { id: "sort-clear", label: "Clear Sort" },
+                    ],
+                ]),
+                ROLE_SORT_HIDE_MENU,
             );
 
             const columnView = columnViewRef.current as Gtk.ColumnView;

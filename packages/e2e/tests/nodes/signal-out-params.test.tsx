@@ -6,7 +6,7 @@ import * as GtkSource from "@gtkx/gi/gtksource";
 import { GtkBox, GtkLabel, GtkOverlay, GtkOverlayChild, GtkSpinButton, GtkText } from "@gtkx/jsx/gtk";
 import { GtkSourceView } from "@gtkx/jsx/gtksource";
 import { act, render, waitFor } from "@gtkx/testing";
-import { createRef } from "react";
+import { type ComponentProps, createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 const FALSE = 0;
@@ -14,50 +14,42 @@ const GTK_INPUT_ERROR = -1;
 
 const makeAdjustment = () => Gtk.Adjustment.new(0, 0, 1000, 1, 10, 0);
 
+const renderSpinButton = async (onInput?: ComponentProps<typeof GtkSpinButton>["onInput"]): Promise<Gtk.SpinButton> => {
+    const spinRef = createRef<Gtk.SpinButton>();
+    await render(<GtkSpinButton ref={spinRef} adjustment={makeAdjustment()} onInput={onInput} />);
+    return spinRef.current as Gtk.SpinButton;
+};
+
+const setTextAndUpdate = async (spin: Gtk.SpinButton, text: string): Promise<void> => {
+    await act(() => spin.setText(text));
+    await act(() => spin.update());
+};
+
 describe("signal out-parameters - GtkSpinButton::input (pure out)", () => {
     it("writes the handler's tuple out-value back through the new_value pointer", async () => {
-        const spinRef = createRef<Gtk.SpinButton>();
+        const spin = await renderSpinButton((spinButton) => {
+            const parsed = Number.parseInt(spinButton.getText().replace(/[^0-9]/g, ""), 10);
+            return Number.isNaN(parsed) ? [GTK_INPUT_ERROR, 0] : [1, parsed];
+        });
 
-        await render(
-            <GtkSpinButton
-                ref={spinRef}
-                adjustment={makeAdjustment()}
-                onInput={(spin) => {
-                    const parsed = Number.parseInt(spin.getText().replace(/[^0-9]/g, ""), 10);
-                    return Number.isNaN(parsed) ? [GTK_INPUT_ERROR, 0] : [1, parsed];
-                }}
-            />,
-        );
-
-        const spin = spinRef.current as Gtk.SpinButton;
-        await act(() => spin.setText("value: 042"));
-        await act(() => spin.update());
+        await setTextAndUpdate(spin, "value: 042");
 
         expect(spin.getValue()).toBe(42);
     });
 
     it("falls back to GTK's default parsing when the handler returns the not-handled primary", async () => {
-        const spinRef = createRef<Gtk.SpinButton>();
+        const spin = await renderSpinButton(() => [FALSE, 0]);
 
-        await render(<GtkSpinButton ref={spinRef} adjustment={makeAdjustment()} onInput={() => [FALSE, 0]} />);
-
-        const spin = spinRef.current as Gtk.SpinButton;
-        await act(() => spin.setText("55"));
-        await act(() => spin.update());
+        await setTextAndUpdate(spin, "55");
 
         expect(spin.getValue()).toBe(55);
     });
 
     it("round-trips the tuple out-value through a direct FFI connect", async () => {
-        const spinRef = createRef<Gtk.SpinButton>();
-
-        await render(<GtkSpinButton ref={spinRef} adjustment={makeAdjustment()} />);
-
-        const spin = spinRef.current as Gtk.SpinButton;
+        const spin = await renderSpinButton();
         spin.connect("input", () => [1, 256]);
 
-        await act(() => spin.setText("anything"));
-        await act(() => spin.update());
+        await setTextAndUpdate(spin, "anything");
 
         expect(spin.getValue()).toBe(256);
     });
@@ -127,22 +119,14 @@ describe("signal out-parameters - GtkOverlay::get-child-position (caller-allocat
 
 describe("signal emit() - reads out-values and return back", () => {
     it("returns the [return, out] tuple when emitting a pure-out signal", async () => {
-        const spinRef = createRef<Gtk.SpinButton>();
-
-        await render(<GtkSpinButton ref={spinRef} adjustment={makeAdjustment()} />);
-
-        const spin = spinRef.current as Gtk.SpinButton;
+        const spin = await renderSpinButton();
         spin.connect("input", () => [1, 256]);
 
         expect(spin.emit("input")).toEqual([1, 256]);
     });
 
     it("returns the non-void return value when emitting a signal with no out-parameters", async () => {
-        const spinRef = createRef<Gtk.SpinButton>();
-
-        await render(<GtkSpinButton ref={spinRef} adjustment={makeAdjustment()} />);
-
-        const spin = spinRef.current as Gtk.SpinButton;
+        const spin = await renderSpinButton();
         spin.connect("output", () => true);
 
         expect(spin.emit("output")).toBe(true);

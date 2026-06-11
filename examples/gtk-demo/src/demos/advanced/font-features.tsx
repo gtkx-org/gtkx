@@ -900,9 +900,8 @@ const FeatureGroupBox = ({
                       active={checkStates.get(tag) === "active"}
                       inconsistent={checkStates.get(tag) === "inconsistent"}
                       onToggled={() => onToggleCheck(tag)}
-                  >
-                      <GtkGestureClick button={3} onPressed={() => onResetToInconsistent(tag)} />
-                  </GtkCheckButton>
+                      addController={<GtkGestureClick button={3} onPressed={() => onResetToInconsistent(tag)} />}
+                  />
               ))}
     </GtkBox>
 );
@@ -1159,39 +1158,44 @@ const FontFeaturesDemo = () => {
     }, [state.viewMode, state.editTextViewRef, state.editScrolledWindowRef]);
 
     return (
-        <>
-            <GtkShortcutController scope={Gtk.ShortcutScope.MANAGED}>
-                <GtkShortcut
-                    trigger={Gtk.ShortcutTrigger.parseString("Escape")}
-                    action={Gtk.CallbackAction.new(() => {
-                        if (state.viewMode !== "edit") return false;
-                        const tv = state.editTextViewRef.current;
-                        if (tv) {
-                            const buffer = tv.getBuffer();
-                            buffer.setText(state.savedTextRef.current, -1);
-                        }
-                        state.setPreviewText(state.savedTextRef.current);
-                        state.setViewMode("plain");
-                        return true;
-                    })}
+        <GtkBox
+            ref={state.containerRef}
+            addController={
+                <GtkShortcutController
+                    scope={Gtk.ShortcutScope.MANAGED}
+                    addShortcut={
+                        <GtkShortcut
+                            trigger={Gtk.ShortcutTrigger.parseString("Escape")}
+                            action={Gtk.CallbackAction.new(() => {
+                                if (state.viewMode !== "edit") return false;
+                                const tv = state.editTextViewRef.current;
+                                if (tv) {
+                                    const buffer = tv.getBuffer();
+                                    buffer.setText(state.savedTextRef.current, -1);
+                                }
+                                state.setPreviewText(state.savedTextRef.current);
+                                state.setViewMode("plain");
+                                return true;
+                            })}
+                        />
+                    }
                 />
-            </GtkShortcutController>
-            <GtkBox ref={state.containerRef}>
-                <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                    <GtkViewport cssClasses={["view"]}>
-                        <FontFeaturesSidebar state={state} handlers={handlers} />
-                    </GtkViewport>
-                </GtkScrolledWindow>
+            }
+        >
+            <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
+                <GtkViewport cssClasses={["view"]}>
+                    <FontFeaturesSidebar state={state} handlers={handlers} />
+                </GtkViewport>
+            </GtkScrolledWindow>
 
-                <FontFeaturesPreview
-                    state={state}
-                    styles={styles}
-                    handlers={handlers}
-                    stackPage={stackPage}
-                    previewAttributes={previewAttributes}
-                />
-            </GtkBox>
-        </>
+            <FontFeaturesPreview
+                state={state}
+                styles={styles}
+                handlers={handlers}
+                stackPage={stackPage}
+                previewAttributes={previewAttributes}
+            />
+        </GtkBox>
     );
 };
 

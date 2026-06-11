@@ -133,36 +133,39 @@ const GesturesDemo = () => {
             contentWidth={400}
             contentHeight={400}
             render={drawFunc}
-        >
-            <GtkGestureSwipe propagationPhase={Gtk.PropagationPhase.BUBBLE} onSwipe={handlers.handleSwipe} />
-            <GtkGestureSwipe
-                propagationPhase={Gtk.PropagationPhase.BUBBLE}
-                nPoints={3}
-                onBegin={(_sequence, self) => {
-                    if (_sequence !== null) self.setState(Gtk.EventSequenceState.DENIED);
-                }}
-                onSwipe={handlers.handleSwipe}
-            />
-            <GtkGestureLongPress
-                propagationPhase={Gtk.PropagationPhase.BUBBLE}
-                onPressed={handlers.handleLongPressPressed}
-                onEnd={handlers.handleLongPressEnd}
-            />
-            <GtkGestureRotate
-                propagationPhase={Gtk.PropagationPhase.BUBBLE}
-                ref={(g: Gtk.GestureRotate | null) => {
-                    rotateRef.current = g;
-                }}
-                onAngleChanged={queueDraw}
-            />
-            <GtkGestureZoom
-                propagationPhase={Gtk.PropagationPhase.BUBBLE}
-                ref={(g: Gtk.GestureZoom | null) => {
-                    zoomRef.current = g;
-                }}
-                onScaleChanged={queueDraw}
-            />
-        </GtkDrawingArea>
+            addController={
+                <>
+                    <GtkGestureSwipe propagationPhase={Gtk.PropagationPhase.BUBBLE} onSwipe={handlers.handleSwipe} />
+                    <GtkGestureSwipe
+                        propagationPhase={Gtk.PropagationPhase.BUBBLE}
+                        nPoints={3}
+                        onBegin={(_sequence, self) => {
+                            if (_sequence !== null) self.setState(Gtk.EventSequenceState.DENIED);
+                        }}
+                        onSwipe={handlers.handleSwipe}
+                    />
+                    <GtkGestureLongPress
+                        propagationPhase={Gtk.PropagationPhase.BUBBLE}
+                        onPressed={handlers.handleLongPressPressed}
+                        onEnd={handlers.handleLongPressEnd}
+                    />
+                    <GtkGestureRotate
+                        propagationPhase={Gtk.PropagationPhase.BUBBLE}
+                        ref={(g: Gtk.GestureRotate | null) => {
+                            rotateRef.current = g;
+                        }}
+                        onAngleChanged={queueDraw}
+                    />
+                    <GtkGestureZoom
+                        propagationPhase={Gtk.PropagationPhase.BUBBLE}
+                        ref={(g: Gtk.GestureZoom | null) => {
+                            zoomRef.current = g;
+                        }}
+                        onScaleChanged={queueDraw}
+                    />
+                </>
+            }
+        />
     );
 };
 

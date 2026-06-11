@@ -26,7 +26,7 @@ import { useChildWidgetRegistration, type WidgetChild } from "./internal/use-chi
 const GtkConstraintLayoutElement = "GtkConstraintLayout" as const;
 
 const MISSING_LAYOUT_MESSAGE =
-    "<GtkConstraintLayout.Widget> must be a sibling of <GtkConstraintLayout> under the same widget parent";
+    "<GtkConstraintLayout.Widget> must be a child of the widget whose layoutManager prop carries the <GtkConstraintLayout>";
 
 const layoutOf = (widget: Gtk.Widget): Gtk.ConstraintLayout | null => {
     const layout = widget.getParent()?.getLayoutManager();
@@ -35,13 +35,13 @@ const layoutOf = (widget: Gtk.Widget): Gtk.ConstraintLayout | null => {
 
 /**
  * Registers a `<GtkConstraintLayout.Widget>`'s single child with the constraint
- * layout installed on the wrapper's grandparent.
+ * layout installed as the layout manager of the widget the child attaches to.
  *
  * The child's widget is captured through a callback ref merged with any ref the
  * child already carries, then registered under `id` from a layout effect and
- * unregistered on cleanup. Throws when the grandparent host has no constraint
- * layout, mirroring the requirement that the marker be a sibling of a
- * `<GtkConstraintLayout>`.
+ * unregistered on cleanup. Throws when the host widget has no constraint
+ * layout, mirroring the requirement that the marker be a child of the widget
+ * whose `layoutManager` prop carries the `<GtkConstraintLayout>`.
  *
  * @param id - The id the wrapped widget is registered under.
  * @param child - The single widget element to register.
@@ -123,13 +123,13 @@ const useDeferredContribution = (
 /**
  * Declarative wrapper for `Gtk.ConstraintLayout`.
  *
- * The layout manager installs itself on the host widget through the generic
- * non-widget self-attach path, and its live instance is shared with the
- * sub-components that declare the solver:
+ * The layout manager is passed through the host widget's `layoutManager` prop,
+ * and its live instance is shared with the sub-components that declare the
+ * solver:
  *
- * - `<GtkConstraintLayout.Widget id>` wraps a single widget transparently (it
- *   appears in the GTK tree at the wrapper's grandparent) and registers the
- *   widget under `id` so constraints can reference it.
+ * - `<GtkConstraintLayout.Widget id>` wraps a single widget transparently as a
+ *   regular child of the host widget and registers the widget under `id` so
+ *   constraints can reference it.
  * - `<GtkConstraintLayout.Guide id>` adds a spacer `Gtk.ConstraintGuide`,
  *   registered under `id`.
  * - `<GtkConstraintLayout.Constraint>` declares one solver row, resolving its
@@ -138,10 +138,13 @@ const useDeferredContribution = (
  *
  * @example
  * ```tsx
- * <GtkBox>
- *   <GtkConstraintLayout>
- *     <GtkConstraintLayout.Constraint target="a" targetAttribute={A.WIDTH} source="b" sourceAttribute={A.WIDTH} />
- *   </GtkConstraintLayout>
+ * <GtkBox
+ *   layoutManager={
+ *     <GtkConstraintLayout>
+ *       <GtkConstraintLayout.Constraint target="a" targetAttribute={A.WIDTH} source="b" sourceAttribute={A.WIDTH} />
+ *     </GtkConstraintLayout>
+ *   }
+ * >
  *   <GtkConstraintLayout.Widget id="a"><GtkLabel label="A" /></GtkConstraintLayout.Widget>
  *   <GtkConstraintLayout.Widget id="b"><GtkLabel label="B" /></GtkConstraintLayout.Widget>
  * </GtkBox>
@@ -150,8 +153,8 @@ const useDeferredContribution = (
 export const GtkConstraintLayout: ((props: GtkConstraintLayoutProps) => ReactNode) & {
     /**
      * Wraps a single widget that participates in constraints, registering it
-     * under `id`. Transparent in the GTK tree: the widget attaches to the
-     * wrapper's grandparent (the host that owns the layout).
+     * under `id`. Transparent in the GTK tree: the widget attaches to the host
+     * whose `layoutManager` prop carries the layout.
      */
     Widget: (props: ConstraintLayoutWidgetProps) => ReactNode;
     /**
@@ -161,7 +164,7 @@ export const GtkConstraintLayout: ((props: GtkConstraintLayoutProps) => ReactNod
     Guide: (props: ConstraintGuideProps) => ReactNode;
     /**
      * Declares one solver row. `target`/`source` reference ids registered by
-     * sibling `<Widget>`/`<Guide>` markers, or `"super"` / omitted for the
+     * `<Widget>`/`<Guide>` markers, or `"super"` / omitted for the
      * layout-owning widget.
      */
     Constraint: (props: ConstraintProps) => ReactNode;

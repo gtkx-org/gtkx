@@ -206,9 +206,14 @@ const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWid
                     accessibleLabel="Select File"
                     accessibleHasPopup
                     onClicked={() => void handlers.handleOpenFile()}
-                >
-                    <GtkDropTarget types={[gfileType]} actions={Gdk.DragAction.COPY} onDrop={handlers.handleFileDrop} />
-                </GtkButton>
+                    addController={
+                        <GtkDropTarget
+                            types={[gfileType]}
+                            actions={Gdk.DragAction.COPY}
+                            onDrop={handlers.handleFileDrop}
+                        />
+                    }
+                />
                 <GtkButton
                     name="open-file-button"
                     iconName="system-run-symbolic"

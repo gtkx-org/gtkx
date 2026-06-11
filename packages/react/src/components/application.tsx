@@ -164,8 +164,8 @@ export const withApplication = <P extends ApplicationComponentProps<ApplicationO
  * passes it as the window's construct-only `application` property, then drives
  * the surface lifecycle through {@link withTopLevel}: it presents the window on
  * mount and destroys it on unmount. Children render in the `"win"` action
- * scope, so `<GSimpleAction>` children bind their accelerators under
- * `win.<name>`.
+ * scope, and `<GSimpleAction>` elements passed to the window's `addAction`
+ * prop install on the window's action map under `win.<name>`.
  *
  * @typeParam P - The application-window prop shape.
  * @param Underlying - The window host intrinsic or slotted compound to render.

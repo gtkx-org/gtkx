@@ -51,8 +51,7 @@ describe("render - PopoverMenu actions", () => {
         const onActivate = vi.fn();
 
         await render(
-            <GtkApplicationWindow ref={windowRef}>
-                <GSimpleAction name="click" onActivate={onActivate} />
+            <GtkApplicationWindow ref={windowRef} addAction={<GSimpleAction name="click" onActivate={onActivate} />}>
                 <GtkPopoverMenu
                     menuModel={
                         <GMenu>
@@ -72,9 +71,10 @@ describe("render - PopoverMenu actions", () => {
 
         function App({ enabled }: { enabled: boolean }) {
             return (
-                <GtkApplicationWindow ref={windowRef}>
-                    {enabled && <GSimpleAction name="toggle" onActivate={() => {}} />}
-                </GtkApplicationWindow>
+                <GtkApplicationWindow
+                    ref={windowRef}
+                    addAction={enabled && <GSimpleAction name="toggle" onActivate={() => {}} />}
+                />
             );
         }
 

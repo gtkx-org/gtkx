@@ -11,6 +11,8 @@ export interface ScrollWrapperProps {
     maxContentHeight?: number;
     /** Minimum content width in pixels (default 200). */
     minContentWidth?: number;
+    /** `<GSimpleActionGroup>` element(s) installed on the scroll container. */
+    insertActionGroup?: ReactNode;
 }
 
 /**
@@ -22,11 +24,13 @@ export const ScrollWrapper = ({
     minContentHeight = 200,
     maxContentHeight,
     minContentWidth = 200,
+    insertActionGroup,
 }: ScrollWrapperProps): ReactNode => (
     <GtkScrolledWindow
         minContentHeight={minContentHeight}
         maxContentHeight={maxContentHeight}
         minContentWidth={minContentWidth}
+        insertActionGroup={insertActionGroup}
     >
         {children}
     </GtkScrolledWindow>

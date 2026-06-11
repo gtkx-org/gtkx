@@ -468,12 +468,17 @@ const shortcut = (accelerator: string, run: () => void, enabled = true) => (
 );
 
 const AppShortcuts = ({ selectedId, addNote, deleteSelected, setSearchMode, setSelectedId }: AppShortcutsProps) => (
-    <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-        {shortcut("<Control>n", addNote)}
-        {shortcut("Delete", deleteSelected, Boolean(selectedId))}
-        {shortcut("<Control>f", () => setSearchMode(true))}
-        {shortcut("Escape", () => setSelectedId(null), Boolean(selectedId))}
-    </GtkShortcutController>
+    <GtkShortcutController
+        scope={Gtk.ShortcutScope.GLOBAL}
+        addShortcut={
+            <>
+                {shortcut("<Control>n", addNote)}
+                {shortcut("Delete", deleteSelected, Boolean(selectedId))}
+                {shortcut("<Control>f", () => setSearchMode(true))}
+                {shortcut("Escape", () => setSelectedId(null), Boolean(selectedId))}
+            </>
+        }
+    />
 );
 
 interface AppModalsProps {
@@ -589,6 +594,33 @@ const AppBody = ({
     />
 );
 
+const useNotesWindowHandlers = (notes: ReturnType<typeof useNotesState>) => {
+    const app = useApplication();
+    const deleteSelected = () => {
+        if (notes.selectedNote) notes.setNoteToDelete(notes.selectedNote);
+    };
+    const onShortcuts = () => {
+        const window = app.getActiveWindow();
+        if (window) showShortcutsDialog(window);
+    };
+    return { deleteSelected, onShortcuts };
+};
+
+interface NotesWindowActionsProps {
+    notes: ReturnType<typeof useNotesState>;
+    dialogs: ReturnType<typeof useDialogState>;
+    onShortcuts: () => void;
+}
+
+const NotesWindowActions = ({ notes, dialogs, onShortcuts }: NotesWindowActionsProps) => (
+    <>
+        <GSimpleAction name="new" onActivate={notes.addNote} accels="<Control>n" />
+        <GSimpleAction name="preferences" onActivate={() => dialogs.setShowPreferences(true)} accels="<Control>comma" />
+        <GSimpleAction name="shortcuts" onActivate={onShortcuts} accels="<Control>question" />
+        <GSimpleAction name="about" onActivate={() => dialogs.setShowAbout(true)} />
+    </>
+);
+
 function NotesWindow() {
     const [compactMode] = useSetting(schema, "compact-mode");
     const [fontSize] = useSetting(schema, "font-size");
@@ -603,32 +635,25 @@ function NotesWindow() {
         trashedNotes: notes.trashedNotes,
         favoriteNotes: notes.favoriteNotes,
     });
-    const deleteSelected = () => {
-        if (notes.selectedNote) notes.setNoteToDelete(notes.selectedNote);
-    };
-    const app = useApplication();
-    const onShortcuts = () => {
-        const window = app.getActiveWindow();
-        if (window) showShortcutsDialog(window);
-    };
+    const { deleteSelected, onShortcuts } = useNotesWindowHandlers(notes);
 
     return (
-        <AdwApplicationWindow title="Notes" defaultWidth={900} defaultHeight={600} onClose={quit}>
-            <GSimpleAction name="new" onActivate={notes.addNote} accels="<Control>n" />
-            <GSimpleAction
-                name="preferences"
-                onActivate={() => dialogs.setShowPreferences(true)}
-                accels="<Control>comma"
-            />
-            <GSimpleAction name="shortcuts" onActivate={onShortcuts} accels="<Control>question" />
-            <GSimpleAction name="about" onActivate={() => dialogs.setShowAbout(true)} />
-            <AppShortcuts
-                selectedId={notes.selectedId}
-                addNote={notes.addNote}
-                deleteSelected={deleteSelected}
-                setSearchMode={view.setSearchMode}
-                setSelectedId={notes.setSelectedId}
-            />
+        <AdwApplicationWindow
+            title="Notes"
+            defaultWidth={900}
+            defaultHeight={600}
+            onClose={quit}
+            addAction={<NotesWindowActions notes={notes} dialogs={dialogs} onShortcuts={onShortcuts} />}
+            addController={
+                <AppShortcuts
+                    selectedId={notes.selectedId}
+                    addNote={notes.addNote}
+                    deleteSelected={deleteSelected}
+                    setSearchMode={view.setSearchMode}
+                    setSelectedId={notes.setSelectedId}
+                />
+            }
+        >
             <AppBody
                 notes={notes}
                 view={view}

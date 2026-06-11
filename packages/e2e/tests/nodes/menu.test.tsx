@@ -58,6 +58,15 @@ const ItemListApp = ({ menuRef, items }: { menuRef: MenuRef; items: string[] }) 
     />
 );
 
+const renderItemListTransition = async (initialItems: string[], updatedItems: string[]): Promise<Gio.MenuModel> => {
+    const ref = createRef<Gtk.PopoverMenu>();
+
+    await render(<ItemListApp menuRef={ref} items={initialItems} />);
+    await render(<ItemListApp menuRef={ref} items={updatedItems} />);
+
+    return requireModel(ref.current);
+};
+
 const LabeledItemApp = ({ menuRef, label }: { menuRef: MenuRef; label: string }) => (
     <GtkPopoverMenu
         ref={menuRef}
@@ -98,12 +107,8 @@ describe("render - Menu items", () => {
     });
 
     it("inserts a new item at its tree position, not the end", async () => {
-        const ref = createRef<Gtk.PopoverMenu>();
+        const model = await renderItemListTransition(["A", "C"], ["A", "B", "C"]);
 
-        await render(<ItemListApp menuRef={ref} items={["A", "C"]} />);
-        await render(<ItemListApp menuRef={ref} items={["A", "B", "C"]} />);
-
-        const model = requireModel(ref.current);
         expect(model.getNItems()).toBe(3);
         expect(itemLabel(model, 0)).toBe("A");
         expect(itemLabel(model, 1)).toBe("B");
@@ -111,12 +116,8 @@ describe("render - Menu items", () => {
     });
 
     it("reorders items by moving a single entry", async () => {
-        const ref = createRef<Gtk.PopoverMenu>();
+        const model = await renderItemListTransition(["A", "B", "C"], ["C", "A", "B"]);
 
-        await render(<ItemListApp menuRef={ref} items={["A", "B", "C"]} />);
-        await render(<ItemListApp menuRef={ref} items={["C", "A", "B"]} />);
-
-        const model = requireModel(ref.current);
         expect([itemLabel(model, 0), itemLabel(model, 1), itemLabel(model, 2)]).toEqual(["C", "A", "B"]);
     });
 });

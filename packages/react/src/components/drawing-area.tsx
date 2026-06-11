@@ -1,9 +1,10 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { GtkDrawingAreaProps } from "@gtkx/jsx/gtk";
 import { type ReactNode, useLayoutEffect, useRef } from "react";
+import { createWidgetComponent } from "../create-widget-component.js";
 import { useMergedRefs } from "../use-merged-refs.js";
 
-const GtkDrawingAreaElement = "GtkDrawingArea" as const;
+const GtkDrawingAreaElement = createWidgetComponent<Omit<GtkDrawingAreaProps, "render">>("GtkDrawingArea");
 
 /**
  * Declarative wrapper for `Gtk.DrawingArea`.

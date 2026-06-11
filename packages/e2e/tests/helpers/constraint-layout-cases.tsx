@@ -1,8 +1,29 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { GtkConstraintLayout } from "@gtkx/react";
+import { render } from "@gtkx/testing";
 import type { ReactNode, RefObject } from "react";
 import { expect } from "vitest";
+
+/**
+ * Renders a `GtkBox` whose `layoutManager` prop carries a `<GtkConstraintLayout>`
+ * holding `markers`, with the registered widgets as the box's children.
+ *
+ * @param boxRef - Ref capturing the host `GtkBox`.
+ * @param markers - `Constraint`/`Guide`/`Vfl` markers placed inside the layout.
+ * @param children - `GtkConstraintLayout.Widget` markers rendered as box children.
+ */
+export const renderConstraintBox = async (
+    boxRef: RefObject<Gtk.Box | null>,
+    markers: ReactNode,
+    children?: ReactNode,
+): Promise<void> => {
+    await render(
+        <GtkBox ref={boxRef} layoutManager={<GtkConstraintLayout>{markers}</GtkConstraintLayout>}>
+            {children}
+        </GtkBox>,
+    );
+};
 
 /**
  * Reads the {@link Gtk.ConstraintLayout} installed as the layout manager of the

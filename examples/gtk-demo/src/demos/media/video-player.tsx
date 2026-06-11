@@ -132,18 +132,26 @@ const VideoPlayerTitlebar = () => {
 const VideoPlayerDemo = () => {
     const { videoFile, handleToggleFullscreen } = useVideoPlayerContext();
     return (
-        <>
-            <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-                <GtkShortcut
-                    trigger={Gtk.ShortcutTrigger.parseString("F11")}
-                    action={Gtk.CallbackAction.new(() => {
-                        handleToggleFullscreen();
-                        return true;
-                    })}
+        <GtkVideo
+            name="video"
+            file={videoFile}
+            autoplay
+            graphicsOffload={Gtk.GraphicsOffloadEnabled.ENABLED}
+            addController={
+                <GtkShortcutController
+                    scope={Gtk.ShortcutScope.GLOBAL}
+                    addShortcut={
+                        <GtkShortcut
+                            trigger={Gtk.ShortcutTrigger.parseString("F11")}
+                            action={Gtk.CallbackAction.new(() => {
+                                handleToggleFullscreen();
+                                return true;
+                            })}
+                        />
+                    }
                 />
-            </GtkShortcutController>
-            <GtkVideo name="video" file={videoFile} autoplay graphicsOffload={Gtk.GraphicsOffloadEnabled.ENABLED} />
-        </>
+            }
+        />
     );
 };
 

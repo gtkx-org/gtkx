@@ -209,8 +209,14 @@ const SuggestionEntry = ({ words, placeholder, name }: { words: string[]; placeh
     }, [selected]);
 
     return (
-        <GtkEntry ref={entryRef} name={name} hexpand placeholderText={placeholder} onChanged={handleChanged}>
-            <GtkEventControllerKey onKeyPressed={handleKeyPressed} />
+        <GtkEntry
+            ref={entryRef}
+            name={name}
+            hexpand
+            placeholderText={placeholder}
+            onChanged={handleChanged}
+            addController={<GtkEventControllerKey onKeyPressed={handleKeyPressed} />}
+        >
             <GtkPopover
                 ref={popoverRef}
                 hasArrow={false}

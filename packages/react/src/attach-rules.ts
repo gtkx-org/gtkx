@@ -22,7 +22,7 @@
  * the widget-container fallback) stay hand-written in `element-map`; this
  * table covers the stateless verbs.
  */
-import { ELEMENT_MAP } from "virtual:gtkx-config";
+import { CONTAINER_SLOTS, ELEMENT_MAP, SLOTS } from "virtual:gtkx-config";
 import type { ElementMapRule, MethodVerb, OrderedInsertVerb, VerbArgs } from "@gtkx/config";
 import { notifyOrderedAttach } from "./attach-events.js";
 import type { ElementMapping } from "./element-map.js";
@@ -192,8 +192,84 @@ const buildOrderedInsertMapping = (rule: ElementMapRule, verb: OrderedInsertVerb
 const buildRuleMapping = (rule: ElementMapRule): ElementMapping =>
     rule.verb.kind === "method" ? buildMethodMapping(rule, rule.verb) : buildOrderedInsertMapping(rule, rule.verb);
 
+type CompiledRule = { readonly rule: ElementMapRule; readonly mapping: ElementMapping };
+
+const COMPILED_RULES: readonly CompiledRule[] = ELEMENT_MAP.map((rule) => ({
+    rule,
+    mapping: buildRuleMapping(rule),
+}));
+
 /**
  * The attach mappings compiled from the merged element-map rows delivered by
  * `virtual:gtkx-config`, in table order.
  */
-export const DATA_ATTACH_MAPPINGS: readonly ElementMapping[] = ELEMENT_MAP.map(buildRuleMapping);
+export const DATA_ATTACH_MAPPINGS: readonly ElementMapping[] = COMPILED_RULES.map(({ mapping }) => mapping);
+
+const findCompiledRule = (child: Instance, parent: Instance): CompiledRule | undefined =>
+    COMPILED_RULES.find(({ mapping }) => mapping.matches(child, parent));
+
+/**
+ * The first compiled element-map rule whose row matches the `(child, parent)`
+ * pair, or `undefined` when none does. The container-slot interpreter uses
+ * this to attach and detach a slot's GObject children through the row's verbs
+ * (`addController`/`removeController`, …) instead of widget unparenting.
+ *
+ * @param child - The child instance being attached or detached.
+ * @param parent - The parent instance it targets.
+ */
+export const findDataAttachMapping = (child: Instance, parent: Instance): ElementMapping | undefined =>
+    findCompiledRule(child, parent)?.mapping;
+
+const SETTER_PREFIX = "set";
+
+const propertyNameForSetter = (method: string): string | null =>
+    method.startsWith(SETTER_PREFIX) && method.length > SETTER_PREFIX.length
+        ? method.charAt(SETTER_PREFIX.length).toLowerCase() + method.slice(SETTER_PREFIX.length + 1)
+        : null;
+
+/**
+ * The slot or container-slot prop that covers `rule` on `parent`, or `null`
+ * when the relationship has no prop surface: a container-slot prop shares the
+ * verb's attach method name; a slot prop is the property a `set<Prop>` attach
+ * method writes.
+ */
+const promotedPropFor = (rule: ElementMapRule, parent: Instance): string | null => {
+    if (rule.verb.kind !== "method") return null;
+    const backing = parent.backingInstance;
+    if (!backing) return null;
+    const attach = rule.verb.attach;
+    const setterProp = propertyNameForSetter(attach);
+    for (const typeName of collectTypeNameChain(backing.__gtype__)) {
+        if (CONTAINER_SLOTS[typeName]?.includes(attach)) return attach;
+        if (setterProp !== null && SLOTS[typeName]?.includes(setterProp)) return setterProp;
+    }
+    return null;
+};
+
+const displayName = (instance: Instance): string =>
+    instance.backingInstance
+        ? (collectTypeNameChain(instance.backingInstance.__gtype__)[0] ?? instance.type)
+        : instance.type;
+
+/**
+ * Rejects direct child nesting for relationships promoted to slot or
+ * container-slot props. Placed ahead of the data-rule mappings in the element
+ * map, it matches exactly when a data rule would attach the pair AND a prop
+ * covers that rule on the parent, and throws an error naming the prop.
+ * Relationships without a prop surface (a `GtkTextBuffer` under a text view,
+ * project-declared `elementMap` rows) keep attaching as children.
+ */
+export const promotedNestingGuardMapping: ElementMapping = {
+    matches: (child, parent) => {
+        const compiled = findCompiledRule(child, parent);
+        return compiled !== undefined && promotedPropFor(compiled.rule, parent) !== null;
+    },
+    attach: (child, parent) => {
+        const compiled = findCompiledRule(child, parent);
+        const prop = compiled ? promotedPropFor(compiled.rule, parent) : null;
+        throw new Error(
+            `<${displayName(child)}> cannot be a child of <${displayName(parent)}>: pass it through the \`${prop}\` prop instead.`,
+        );
+    },
+    detach: () => {},
+};

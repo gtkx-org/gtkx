@@ -210,13 +210,18 @@ const shortcut = (accelerator: string, run: () => void) => (
 );
 
 const AppShortcuts = ({ onSearchToggle, onKeyboardShortcuts, onNotebookNext, onNotebookPrev }: AppShortcutsProps) => (
-    <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-        {shortcut("<Control>f", onSearchToggle)}
-        {shortcut("<Control><Shift>i", () => Gtk.Window.setInteractiveDebugging(true))}
-        {shortcut("<Control>question", onKeyboardShortcuts)}
-        {shortcut("<Control>Page_Down", onNotebookNext)}
-        {shortcut("<Control>Page_Up", onNotebookPrev)}
-    </GtkShortcutController>
+    <GtkShortcutController
+        scope={Gtk.ShortcutScope.GLOBAL}
+        addShortcut={
+            <>
+                {shortcut("<Control>f", onSearchToggle)}
+                {shortcut("<Control><Shift>i", () => Gtk.Window.setInteractiveDebugging(true))}
+                {shortcut("<Control>question", onKeyboardShortcuts)}
+                {shortcut("<Control>Page_Down", onNotebookNext)}
+                {shortcut("<Control>Page_Up", onNotebookPrev)}
+            </>
+        }
+    />
 );
 
 interface AppNotebookProps {
@@ -301,13 +306,19 @@ const MainWindowBody = ({
     onNotebookPageChange,
     onSearchChanged,
 }: MainWindowBodyProps) => (
-    <GtkBox name="main-window-body" vexpand hexpand>
-        <AppShortcuts
-            onSearchToggle={onSearchToggle}
-            onKeyboardShortcuts={onKeyboardShortcuts}
-            onNotebookNext={() => onNotebookPageChange(Math.min(notebookPage + 1, 1))}
-            onNotebookPrev={() => onNotebookPageChange(Math.max(notebookPage - 1, 0))}
-        />
+    <GtkBox
+        name="main-window-body"
+        vexpand
+        hexpand
+        addController={
+            <AppShortcuts
+                onSearchToggle={onSearchToggle}
+                onKeyboardShortcuts={onKeyboardShortcuts}
+                onNotebookNext={() => onNotebookPageChange(Math.min(notebookPage + 1, 1))}
+                onNotebookPrev={() => onNotebookPageChange(Math.max(notebookPage - 1, 0))}
+            />
+        }
+    >
         <Sidebar searchMode={searchMode} onSearchChanged={onSearchChanged} />
         <AppNotebook page={notebookPage} onSwitchPage={onNotebookPageChange} />
     </GtkBox>
@@ -350,14 +361,18 @@ const MainWindow = () => {
             defaultHeight={600}
             titlebar={titlebar}
             onClose={quit}
+            addAction={
+                <>
+                    <GSimpleAction
+                        name="inspector"
+                        onActivate={() => Gtk.Window.setInteractiveDebugging(true)}
+                        accels="<Control><Shift>i"
+                    />
+                    <GSimpleAction name="shortcuts" onActivate={handleKeyboardShortcuts} accels="<Control>question" />
+                    <GSimpleAction name="about" onActivate={() => setShowAbout(true)} />
+                </>
+            }
         >
-            <GSimpleAction
-                name="inspector"
-                onActivate={() => Gtk.Window.setInteractiveDebugging(true)}
-                accels="<Control><Shift>i"
-            />
-            <GSimpleAction name="shortcuts" onActivate={handleKeyboardShortcuts} accels="<Control>question" />
-            <GSimpleAction name="about" onActivate={() => setShowAbout(true)} />
             <MainWindowBody
                 searchMode={searchMode}
                 notebookPage={notebookPage}
