@@ -1,19 +1,21 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GMenu, GMenuItem, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
+import { GMenu, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
 import {
     GtkBox,
+    GtkColumnView,
+    GtkColumnViewColumn,
     GtkEditableLabel,
     GtkHeaderBar,
     GtkLabel,
+    GtkListView,
     GtkPaned,
     GtkScrolledWindow,
     GtkSearchBar,
     GtkSearchEntry,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import { GtkColumnView, GtkColumnViewColumn, GtkListView } from "@gtkx/react";
 
 import { createContext, useContext, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
@@ -213,15 +215,16 @@ const INITIAL_COLUMN_VISIBILITY: ColumnVisibility = {
 };
 
 const columnVisibilityMenu = (
-    <GMenu>
-        <GMenuItem section>
-            <GMenu>
-                {TOGGLEABLE_COLUMNS.map((column) => (
-                    <GMenuItem key={column.id} label={column.menuLabel} action={`columnview.${column.action}`} />
-                ))}
-            </GMenu>
-        </GMenuItem>
-    </GMenu>
+    <GMenu
+        items={[
+            {
+                section: TOGGLEABLE_COLUMNS.map((column) => ({
+                    label: column.menuLabel,
+                    action: `columnview.${column.action}`,
+                })),
+            },
+        ]}
+    />
 );
 
 interface CommitKeyInfoEditArgs {

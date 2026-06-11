@@ -3,7 +3,7 @@ import { Pattern } from "@gtkx/gi/cairo";
 import type * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import * as PangoCairo from "@gtkx/gi/pangocairo";
-import { GtkDrawingArea } from "@gtkx/react";
+import { GtkDrawingArea } from "@gtkx/jsx/gtk";
 import { useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./textmask.tsx?raw";
@@ -11,7 +11,7 @@ import sourceCode from "./textmask.tsx?raw";
 const TextmaskDemo = () => {
     const drawingAreaRef = useRef<Gtk.DrawingArea>(null);
 
-    const drawFunc = (cr: Context, width: number, height: number) => {
+    const drawFunc = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         cr.save();
 
         const widget = drawingAreaRef.current;
@@ -45,7 +45,7 @@ const TextmaskDemo = () => {
         cr.restore();
     };
 
-    return <GtkDrawingArea name="textmask-area" ref={drawingAreaRef} render={drawFunc} />;
+    return <GtkDrawingArea name="textmask-area" ref={drawingAreaRef} drawFunc={drawFunc} />;
 };
 
 export const textmaskDemo: Demo = {

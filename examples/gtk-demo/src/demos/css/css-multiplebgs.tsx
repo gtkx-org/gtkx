@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkBox,
     GtkButton,
+    GtkDrawingArea,
     GtkOverlay,
     GtkOverlayChild,
     GtkPaned,
@@ -9,7 +10,6 @@ import {
     GtkTextBuffer,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
-import { GtkDrawingArea } from "@gtkx/react";
 import type { Demo } from "../types.js";
 import brickUri from "./brick.png";
 import brick2Uri from "./brick2.png";

@@ -12,14 +12,22 @@ GTKX renders React components as native GTK4 widgets through a Rust FFI bridge.
 ```tsx
 // src/index.tsx
 import { render, quit } from "@gtkx/react";
-import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton } from "@gtkx/jsx/gtk";
+import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import * as Gtk from "@gtkx/gi/gtk";
 
 const App = () => (
     <GtkApplication>
-        <GtkApplicationWindow title="My App" defaultWidth={800} defaultHeight={600} onClose={quit}>
+        <GtkApplicationWindow
+            title="My App"
+            defaultWidth={800}
+            defaultHeight={600}
+            onCloseRequest={() => {
+                quit();
+                return true;
+            }}
+        >
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                Hello, GTKX!
+                <GtkLabel label="Hello, GTKX!" />
                 <GtkButton label="Quit" onClicked={quit} />
             </GtkBox>
         </GtkApplicationWindow>
@@ -55,24 +63,17 @@ GTK signals map to `on<SignalName>` props: `clicked` → `onClicked`, `toggled` 
 
 ### Widget Slots
 
-Some widgets require children in specific slots. The idiomatic form is a prop on the widget; the compound wrapper synthesizes the underlying `<Slot>` for you:
+Some widgets place children in specific slots. A slot is a plain prop on the widget element that accepts a React element; the value replaces the slot's single child:
 
 ```tsx
 <GtkPaned startChild={<Sidebar />} endChild={<Content />} />
 ```
 
-When no compound prop fits, fall back to the bare `<Slot>` intrinsic (no import needed — it is a JSX intrinsic, and `id` is the only prop):
-
-```tsx
-<GtkPaned>
-    <Slot id="startChild"><Sidebar /></Slot>
-    <Slot id="endChild"><Content /></Slot>
-</GtkPaned>
-```
+A project can expose additional widget-typed properties as slots through the `slots` map in `gtkx.config.ts`.
 
 ### Container Slots (HeaderBar, ActionBar, ToolbarView, ActionRow, ExpanderRow)
 
-Packing slots are also plain props on the compound widget (`packStart=`, `packEnd=`, `addTopBar=`, `addPrefix=`, …):
+Packing slots are also plain props on the widget element (`packStart=`, `packEnd=`, `addTopBar=`, `addPrefix=`, …); each child is appended via the parent method the prop is named after (wrap several in a fragment):
 
 ```tsx
 <GtkHeaderBar
@@ -81,18 +82,11 @@ Packing slots are also plain props on the compound widget (`packStart=`, `packEn
 />
 ```
 
-The bare `<ContainerSlot>` intrinsic is the escape hatch — its `id` is the parent method name used to append the child:
-
-```tsx
-<GtkHeaderBar>
-    <ContainerSlot id="packStart"><GtkButton iconName="go-previous-symbolic" /></ContainerSlot>
-    <ContainerSlot id="packEnd"><GtkMenuButton iconName="open-menu-symbolic" /></ContainerSlot>
-</GtkHeaderBar>
-```
+A project can expose additional append methods as container slots through the `containerSlots` map in `gtkx.config.ts`.
 
 ### Animations
 
-Animations are first-class components, picked by physics model: `AdwSpringAnimation` (damping/stiffness/mass) or `AdwTimedAnimation` (duration/easing). Import the name from `@gtkx/react`.
+Animations are first-class components, picked by physics model: `AdwSpringAnimation` (damping/stiffness/mass) or `AdwTimedAnimation` (duration/easing). Import the name from `@gtkx/animate`.
 
 ```tsx
 <AdwSpringAnimation

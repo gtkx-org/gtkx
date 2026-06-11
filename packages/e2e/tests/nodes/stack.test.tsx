@@ -152,7 +152,7 @@ describe("render - Stack (4)", () => {
             const stackRef = createRef<Gtk.Stack>();
 
             await render(
-                <GtkStack ref={stackRef} page="page2">
+                <GtkStack ref={stackRef} visibleChildName="page2">
                     <GtkStackPage id="page1">
                         <GtkLabel label="Page 1 Content" />
                     </GtkStackPage>
@@ -170,7 +170,7 @@ describe("render - Stack (4)", () => {
 
             function App({ pages }: { pages: string[] }) {
                 return (
-                    <GtkStack ref={stackRef} page="target">
+                    <GtkStack ref={stackRef} visibleChildName="target">
                         {pages.map((name) => (
                             <GtkStackPage key={name} id={name}>
                                 <GtkLabel label={name} />
@@ -199,7 +199,7 @@ describe("render - Stack (5)", () => {
             function NavigableStack() {
                 const [page] = useState("page1");
                 return (
-                    <GtkStack ref={stackRef} page={page}>
+                    <GtkStack ref={stackRef} visibleChildName={page}>
                         <GtkStackPage id="page1">
                             <GtkLabel label="First Page" />
                         </GtkStackPage>
@@ -219,7 +219,7 @@ describe("render - Stack (5)", () => {
             const stackRef = createRef<Gtk.Stack>();
 
             await render(
-                <GtkStack ref={stackRef} page="settings">
+                <GtkStack ref={stackRef} visibleChildName="settings">
                     <GtkStackPage id="home">
                         <GtkLabel label="Welcome Home" />
                     </GtkStackPage>

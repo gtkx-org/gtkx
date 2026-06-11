@@ -6,9 +6,11 @@ import {
     GtkBox,
     GtkButton,
     GtkCheckButton,
+    GtkColorDialog,
     GtkColorDialogButton,
     GtkEntry,
     GtkExpander,
+    GtkFontDialog,
     GtkFontDialogButton,
     GtkGestureClick,
     GtkGrid,
@@ -654,12 +656,12 @@ const FontFeaturesFontButton = ({ state }: { state: FontFeaturesState }) => {
     return (
         <GtkFontDialogButton
             fontDesc={fontDesc ?? undefined}
-            onFontDescChanged={(desc) => {
+            dialog={<GtkFontDialog />}
+            onNotifyFontDesc={(desc) => {
+                if (!desc) return;
                 setFontDesc(desc);
-                if (desc) {
-                    const newSize = desc.getSize() / Pango.SCALE;
-                    if (newSize > 0) setSize(newSize);
-                }
+                const newSize = desc.getSize() / Pango.SCALE;
+                if (newSize > 0) setSize(newSize);
             }}
             receivesDefault
             level={Gtk.FontLevel.FACE}
@@ -726,14 +728,24 @@ const FontFeaturesColorRows = ({ state, handlers }: { state: FontFeaturesState; 
                 <GtkLabel label="Foreground" xalign={0} valign={Gtk.Align.BASELINE} />
             </GtkGridChild>
             <GtkGridChild column={1} row={3}>
-                <GtkColorDialogButton rgba={fgColor} onRgbaChanged={setFgColor} valign={Gtk.Align.BASELINE} />
+                <GtkColorDialogButton
+                    rgba={fgColor}
+                    dialog={<GtkColorDialog />}
+                    onNotifyRgba={(value) => value && setFgColor(value)}
+                    valign={Gtk.Align.BASELINE}
+                />
             </GtkGridChild>
 
             <GtkGridChild column={0} row={4}>
                 <GtkLabel label="Background" xalign={0} valign={Gtk.Align.BASELINE} />
             </GtkGridChild>
             <GtkGridChild column={1} row={4}>
-                <GtkColorDialogButton rgba={bgColor} onRgbaChanged={setBgColor} valign={Gtk.Align.BASELINE} />
+                <GtkColorDialogButton
+                    rgba={bgColor}
+                    dialog={<GtkColorDialog />}
+                    onNotifyRgba={(value) => value && setBgColor(value)}
+                    valign={Gtk.Align.BASELINE}
+                />
             </GtkGridChild>
 
             <GtkGridChild column={2} row={3} rowSpan={2}>
@@ -1078,7 +1090,7 @@ const FontFeaturesPreview = ({ state, styles, handlers, stackPage, previewAttrib
             propagateNaturalHeight
             cssClasses={[styles.bgStyle]}
         >
-            <GtkStack name="stack" page={stackPage}>
+            <GtkStack name="stack" visibleChildName={stackPage}>
                 <GtkStackPage id="label">
                     <FontFeaturesPreviewLabel state={state} styles={styles} attributes={previewAttributes} />
                 </GtkStackPage>

@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { Children, cloneElement, type ReactNode, useCallback, useContext } from "react";
+import { Children, cloneElement, createElement, type ReactNode, useCallback, useContext } from "react";
+import type { SizeGroupProps, SizeGroupWidgetProps } from "../element-props.js";
 import { WRAPPER_NODE_ELEMENT } from "../instance.js";
-import type { SizeGroupProps, SizeGroupWidgetProps } from "../jsx.js";
 import { SizeGroupContext, type SizeGroupRegistry, useSizeGroup } from "../use-size-group.js";
 import { useChildWidgetRegistration, type WidgetChild } from "./internal/use-child-widget-registration.js";
 
@@ -66,7 +66,7 @@ export const GtkSizeGroup = Object.assign(
         const { sizeGroupRef, registry } = useSizeGroup();
         return (
             <>
-                <GtkSizeGroupElement ref={sizeGroupRef} mode={props.mode} />
+                {createElement(GtkSizeGroupElement, { ref: sizeGroupRef, mode: props.mode })}
                 <SizeGroupContext.Provider value={registry}>{props.children}</SizeGroupContext.Provider>
             </>
         );

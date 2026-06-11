@@ -22,6 +22,12 @@ declare module "virtual:gtkx-config" {
     export const ELEMENT_MAP: readonly import("@gtkx/config").ElementMapRule[];
     /** Merged array-prop rows keyed by GLib type name, then prop name. */
     export const ARRAY_PROPS: Readonly<Record<string, Readonly<Record<string, import("@gtkx/config").ArrayPropRow>>>>;
+    /** Merged object-prop rows keyed by GLib type name, then prop name. */
+    export const OBJECT_PROPS: Readonly<Record<string, Readonly<Record<string, import("@gtkx/config").ObjectPropRow>>>>;
+    /** Merged virtual-prop rows keyed by GLib type name, then prop name. */
+    export const VIRTUAL_PROPS: Readonly<
+        Record<string, Readonly<Record<string, import("@gtkx/config").VirtualPropRow>>>
+    >;
     /** Imperative and signal prop rules keyed by GLib type name. */
     export const PROP_RULES: Readonly<Record<string, readonly import("@gtkx/config").PropRule[]>>;
     /** GLib type names of top-level surfaces (windows and dialogs). */

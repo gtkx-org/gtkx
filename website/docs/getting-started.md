@@ -57,7 +57,15 @@ const MainWindow = () => {
     const [count, setCount] = useState(0);
 
     return (
-        <GtkApplicationWindow title="My App" defaultWidth={400} defaultHeight={300} onClose={quit}>
+        <GtkApplicationWindow
+            title="My App"
+            defaultWidth={400}
+            defaultHeight={300}
+            onCloseRequest={() => {
+                quit();
+                return true;
+            }}
+        >
             <GtkBox
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={20}
@@ -144,14 +152,14 @@ Tests run in a real GTK environment using the `@gtkx/vitest` plugin, which autom
 
 ### Intrinsic elements
 
-Intrinsic elements are imported as constants from `@gtkx/react` and correspond to GTK widgets or event controllers. They accept props that map to GTK properties, signals, and child widgets.
+Intrinsic elements are imported as constants from `@gtkx/jsx/<ns>` (e.g. `@gtkx/jsx/gtk`, `@gtkx/jsx/adw`) and correspond to GTK widgets or event controllers. They accept props that map to GTK properties, signals, and child widgets.
 
 #### Widget example
 
 ```tsx
-import { GtkButton, GtkEntry } from "@gtkx/react";
+import { GtkButton, GtkEntry } from "@gtkx/jsx/gtk";
 
-<GtkButton>Click me</GtkButton>
+<GtkButton label="Click me" />
 <GtkEntry placeholderText="Type here" />
 ```
 
@@ -160,7 +168,7 @@ import { GtkButton, GtkEntry } from "@gtkx/react";
 Event controllers and gestures attach through the widget's `addController` prop (wrap several in a fragment):
 
 ```tsx
-import { GtkBox, GtkLabel, GtkEventControllerMotion, GtkEventControllerKey } from "@gtkx/react";
+import { GtkBox, GtkLabel, GtkEventControllerMotion, GtkEventControllerKey } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 
 const InteractiveBox = () => {

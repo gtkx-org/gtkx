@@ -7,6 +7,7 @@ import {
     GtkBox,
     GtkButton,
     GtkCheckButton,
+    GtkDropDown,
     GtkEntry,
     GtkEventControllerKey,
     GtkImage,
@@ -19,7 +20,7 @@ import {
     GtkSeparator,
     GtkSpinButton,
 } from "@gtkx/jsx/gtk";
-import { GtkDropDown, useAdjustment } from "@gtkx/react";
+import { useAdjustment } from "@gtkx/react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-selections.tsx?raw";

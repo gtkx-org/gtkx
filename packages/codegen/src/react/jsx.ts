@@ -1,4 +1,4 @@
-import type { ArrayPropRow } from "@gtkx/config";
+import type { ArrayPropRow, ObjectPropRow, VirtualPropRow } from "@gtkx/config";
 import { quote } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
@@ -6,6 +6,7 @@ import { splitQualifiedName } from "../gir/qualified-name.js";
 import type { GirRepository } from "../gir/repository.js";
 import type { JsxImports } from "./imports.js";
 import { buildWidgetPropsEntries } from "./props.js";
+import { BUILT_IN_PROPS_MIXINS, WIDGET_BASE_PROPS_MIXINS } from "./tables.js";
 import { collectReactNodeClasses, type WidgetCandidate } from "./widgets.js";
 
 /** Merged JSX-surface maps keyed by JSX element name, threaded into {@link generateJsxSection}. */
@@ -16,6 +17,10 @@ export type JsxSurfaceMaps = {
     readonly containerSlotMap?: Readonly<Record<string, readonly string[]>>;
     /** Array-prop rows keyed by JSX element name then prop name. */
     readonly arrayPropMap?: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>>;
+    /** Object-prop rows keyed by JSX element name then prop name. */
+    readonly objectPropMap?: Readonly<Record<string, Readonly<Record<string, ObjectPropRow>>>>;
+    /** Virtual-prop rows keyed by JSX element name then prop name. */
+    readonly virtualPropMap?: Readonly<Record<string, Readonly<Record<string, VirtualPropRow>>>>;
 };
 
 /**
@@ -69,6 +74,8 @@ export const generateJsxSection = (
             widgetSlotMap: maps.widgetSlotMap ?? {},
             containerSlotMap: maps.containerSlotMap ?? {},
             arrayPropMap: maps.arrayPropMap ?? {},
+            objectPropMap: maps.objectPropMap ?? {},
+            virtualPropMap: maps.virtualPropMap ?? {},
             isWidgetAncestor,
             widgetByGlibName,
             targetNamespaceName: targetNamespace.name,
@@ -77,7 +84,12 @@ export const generateJsxSection = (
         if (extendsBase) needsWidgetPropsBase = true;
         propBlocks.push(block);
     }
-    if (needsWidgetPropsBase) propBlocks.unshift("export interface WidgetProps {\n    name?: string;\n}");
+    if (needsWidgetPropsBase) {
+        for (const mixin of WIDGET_BASE_PROPS_MIXINS) imports.sharedTypes.add(mixin);
+        propBlocks.unshift(
+            `export interface WidgetProps extends ${WIDGET_BASE_PROPS_MIXINS.join(", ")} {\n    name?: string;\n}`,
+        );
+    }
 
     return [constLines.join("\n"), "", propBlocks.join("\n\n"), "", renderJsxAugmentation(widgets)].join("\n");
 };
@@ -93,10 +105,7 @@ const renderJsxAugmentation = (widgets: readonly WidgetCandidate[]): string =>
         "}",
     ].join("\n");
 
-type RenderPropBlockContext = {
-    readonly widgetSlotMap: Readonly<Record<string, readonly string[]>>;
-    readonly containerSlotMap: Readonly<Record<string, readonly string[]>>;
-    readonly arrayPropMap: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>>;
+type RenderPropBlockContext = Required<JsxSurfaceMaps> & {
     readonly isWidgetAncestor: (candidate: GirClass) => boolean;
     readonly widgetByGlibName: ReadonlyMap<string, WidgetCandidate>;
     readonly targetNamespaceName: string;
@@ -110,11 +119,13 @@ const renderPropBlock = (
 ): { readonly block: string; readonly extendsBase: boolean } => {
     const slotPropNames = new Set(context.widgetSlotMap[entry.glibName] ?? []);
     const arrayProps = context.arrayPropMap[entry.glibName] ?? {};
+    const objectProps = context.objectPropMap[entry.glibName] ?? {};
+    const virtualProps = context.virtualPropMap[entry.glibName] ?? {};
     const { propLines, imports } = buildWidgetPropsEntries({
         repository,
         klass: entry.klass,
         slotPropNames,
-        arrayPropNames: new Set(Object.keys(arrayProps)),
+        dataPropNames: new Set([...Object.keys(arrayProps), ...Object.keys(objectProps), ...Object.keys(virtualProps)]),
         isWidgetAncestor: context.isWidgetAncestor,
     });
     for (const [namespace, alias] of imports) context.imports.giNamespaces.set(namespace, alias);
@@ -124,17 +135,31 @@ const renderPropBlock = (
         context.imports.sharedTypes.add(row.itemType);
         return `    ${propName}?: ${row.itemType}[] | null;`;
     });
+    const objectPropLines = Object.entries(objectProps).map(([propName, row]) => {
+        context.imports.sharedTypes.add(row.itemType);
+        return `    ${propName}?: ${row.itemType} | null;`;
+    });
+    const virtualPropLines = Object.entries(virtualProps).map(([propName, row]) => {
+        const [namespace] = row.type.split(".");
+        if (namespace) context.imports.giNamespaces.set(namespace, namespace);
+        return `    ${propName}?: ${row.type} | null;`;
+    });
     const ownerLines = [
         "    children?: ReactNode;",
         `    ref?: Ref<${widgetTypeRef}>;`,
         ...propLines.map((line) => `    ${line}`),
         ...(context.containerSlotMap[entry.glibName] ?? []).map((method) => `    ${method}?: ReactNode | null;`),
         ...arrayPropLines,
+        ...objectPropLines,
+        ...virtualPropLines,
     ];
     const parentExtends = resolveParentPropsExtension(repository, entry, context);
+    const mixins = BUILT_IN_PROPS_MIXINS[entry.glibName] ?? [];
+    for (const mixin of mixins) context.imports.sharedTypes.add(mixin);
+    const extendsClause = [parentExtends, ...mixins].join(", ");
     const selfDefault = `${entry.namespace.name}.${entry.klass.name}`;
     return {
-        block: `export interface ${entry.glibName}Props<Self = ${selfDefault}> extends ${parentExtends} {\n${ownerLines.join("\n")}\n}`,
+        block: `export interface ${entry.glibName}Props<Self = ${selfDefault}> extends ${extendsClause} {\n${ownerLines.join("\n")}\n}`,
         extendsBase: parentExtends === "WidgetProps",
     };
 };

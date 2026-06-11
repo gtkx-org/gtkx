@@ -1,8 +1,7 @@
 import type { Context } from "@gtkx/gi/cairo";
 import { Pattern } from "@gtkx/gi/cairo";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkGestureLongPress, GtkGestureRotate, GtkGestureSwipe, GtkGestureZoom } from "@gtkx/jsx/gtk";
-import { GtkDrawingArea } from "@gtkx/react";
+import { GtkDrawingArea, GtkGestureLongPress, GtkGestureRotate, GtkGestureSwipe, GtkGestureZoom } from "@gtkx/jsx/gtk";
 import { useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./gestures.tsx?raw";
@@ -116,7 +115,7 @@ const GesturesDemo = () => {
 
     const handlers = useGesturesHandlers(gestureStateRef, queueDraw);
 
-    const drawFunc = (cr: Context, width: number, height: number) => {
+    const drawFunc = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         drawGestures(cr, {
             width,
             height,
@@ -132,7 +131,7 @@ const GesturesDemo = () => {
             ref={drawingAreaRef}
             contentWidth={400}
             contentHeight={400}
-            render={drawFunc}
+            drawFunc={drawFunc}
             addController={
                 <>
                     <GtkGestureSwipe propagationPhase={Gtk.PropagationPhase.BUBBLE} onSwipe={handlers.handleSwipe} />

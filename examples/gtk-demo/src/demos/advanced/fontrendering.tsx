@@ -17,7 +17,10 @@ import {
     GtkBox,
     GtkButton,
     GtkCheckButton,
+    GtkDrawingArea,
+    GtkDropDown,
     GtkEntry,
+    GtkFontDialog,
     GtkFontDialogButton,
     GtkGrid,
     GtkGridChild,
@@ -29,7 +32,7 @@ import {
     GtkShortcutController,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import { GtkDrawingArea, GtkDropDown, useTickCallback } from "@gtkx/react";
+import { useTickCallback } from "@gtkx/react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./fontrendering.tsx?raw";
@@ -553,7 +556,7 @@ const computeTextLayout = ({ cr, width, height, fontOptions, fontDesc, text, hin
 function useDrawTextMode(state: FontRenderingState) {
     const { fontDesc, text, hintStyle, antialias, hintMetrics } = state;
 
-    return (cr: Context, width: number, height: number) => {
+    return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         cr.setSourceRgb(1, 1, 1);
         cr.paint();
 
@@ -593,7 +596,7 @@ function useDrawTextMode(state: FontRenderingState) {
 function useDrawGridMode(state: FontRenderingState) {
     const { fontDesc, text, hintStyle, antialias, hintMetrics, scale } = state;
 
-    return (cr: Context, width: number, height: number) => {
+    return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         const fontOptions = createGridFontOptions(hintStyle, antialias, hintMetrics);
         const target = cr.getTarget();
         const tmpSurface = Surface.createSimilar(target, Content.COLOR_ALPHA, 1, 1);
@@ -691,7 +694,11 @@ const FontRenderingTextRow = ({ state }: { state: FontRenderingState }) => {
                 <GtkLabel label="Font" xalign={1} marginStart={10} cssClasses={["dim-label"]} />
             </GtkGridChild>
             <GtkGridChild column={2} row={1}>
-                <GtkFontDialogButton fontDesc={fontDesc} onFontDescChanged={setFontDesc} />
+                <GtkFontDialogButton
+                    fontDesc={fontDesc}
+                    dialog={<GtkFontDialog />}
+                    onNotifyFontDesc={(value) => value && setFontDesc(value)}
+                />
             </GtkGridChild>
         </>
     );
@@ -826,7 +833,7 @@ const FontRenderingZoomButtons = ({
 
 interface FontRenderingContextValue {
     state: FontRenderingState;
-    drawFunc: (cr: Context, width: number, height: number) => void;
+    drawFunc: (self: Gtk.DrawingArea, cr: Context, width: number, height: number) => void;
     zoomIn: () => void;
     zoomOut: () => void;
     naturalSize: { width: number; height: number };
@@ -902,7 +909,7 @@ const FontRenderingDemo = () => {
                 <GtkDrawingArea
                     name="image"
                     ref={state.drawingAreaRef}
-                    render={drawFunc}
+                    drawFunc={drawFunc}
                     contentWidth={naturalSize.width}
                     contentHeight={naturalSize.height}
                     hexpand

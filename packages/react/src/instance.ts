@@ -25,11 +25,16 @@ export const WRAPPER_NODE_ELEMENT = "__GTKX_WRAPPER_NODE__";
 export const ROOT_TYPE = "__GTKX_ROOT__";
 
 /**
- * Props withheld from a widget's constructor because their JSX form is not the
- * GObject property's value type (a prop descriptor sets the real value after
- * construction). Keyed by GLib type name.
+ * Props withheld from a widget's constructor and applied by a prop descriptor
+ * after construction instead — either because their JSX form is not the
+ * GObject property's value type, or because the property is only valid once
+ * children are attached (`visibleChildName` names a page the stack does not
+ * hold yet at construction). Keyed by GLib type name.
  */
-export const CONSTRUCTION_SKIP_PROPS: Readonly<Record<string, readonly string[]>> = {};
+export const CONSTRUCTION_SKIP_PROPS: Readonly<Record<string, readonly string[]>> = {
+    GtkStack: ["visibleChildName"],
+    AdwViewStack: ["visibleChildName"],
+};
 
 /**
  * One reconciler instance. A real element has a `backingInstance` and no `kind`;

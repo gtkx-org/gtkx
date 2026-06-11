@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { createContext, type RefObject, useContext, useRef } from "react";
-import type { ConstraintGuideProps, ConstraintProps, ConstraintVflProps } from "./jsx.js";
+import type { ConstraintGuideProps, ConstraintProps, ConstraintVflProps } from "./element-props.js";
 import {
     registerConstraintTarget,
     resolveConstraintTarget,

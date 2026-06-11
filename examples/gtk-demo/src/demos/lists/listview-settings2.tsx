@@ -6,12 +6,12 @@ import {
     GtkEntry,
     GtkHeaderBar,
     GtkLabel,
+    GtkListView,
     GtkScrolledWindow,
     GtkSearchBar,
     GtkSearchEntry,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import { GtkListView } from "@gtkx/react";
 
 import { createContext, useContext, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";

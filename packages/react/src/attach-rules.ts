@@ -9,7 +9,7 @@
  * GTK methods to call. The rows arrive merged through `virtual:gtkx-config` —
  * codegen's built-ins followed by the project's `gtkx.config.ts` `elementMap`
  * rows. A single generic interpreter turns each row into an
- * {@link "./element-map".ElementMapping}, so these relationships carry no
+ * {@link "./element-mapping".ElementMapping}, so these relationships carry no
  * bespoke `attach`/`detach` code.
  *
  * Two verb shapes are interpreted: `method` verbs make one attach and one
@@ -25,7 +25,7 @@
 import { CONTAINER_SLOTS, ELEMENT_MAP, SLOTS } from "virtual:gtkx-config";
 import type { ElementMapRule, MethodVerb, OrderedInsertVerb, VerbArgs } from "@gtkx/config";
 import { notifyOrderedAttach } from "./attach-events.js";
-import type { ElementMapping } from "./element-map.js";
+import type { ElementMapping } from "./element-mapping.js";
 import { collectTypeNameChain } from "./gtype.js";
 import type { Instance } from "./instance.js";
 import { callMethod } from "./nodes/internal/reflect-call.js";
@@ -183,7 +183,7 @@ const buildOrderedInsertMapping = (rule: ElementMapRule, verb: OrderedInsertVerb
 });
 
 /**
- * Compiles one element-map rule into an {@link "./element-map".ElementMapping}.
+ * Compiles one element-map rule into an {@link "./element-mapping".ElementMapping}.
  * The returned mapping's `attach`/`detach` are the generic interpreter bound
  * to the row's data, never relationship-specific code.
  *

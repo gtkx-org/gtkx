@@ -1,5 +1,4 @@
-import { GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
-import { GtkColumnView, GtkColumnViewColumn } from "@gtkx/react";
+import { GtkColumnView, GtkColumnViewColumn, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import type { ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";

@@ -14,7 +14,16 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
     if (!activeWindow) return null;
 
     return createPortal(
-        <AdwPreferencesWindow title="Preferences" modal defaultWidth={500} defaultHeight={400} onClose={onClose}>
+        <AdwPreferencesWindow
+            title="Preferences"
+            modal
+            defaultWidth={500}
+            defaultHeight={400}
+            onCloseRequest={() => {
+                onClose();
+                return true;
+            }}
+        >
             <AdwPreferencesPage title="General" iconName="preferences-system-symbolic">
                 <AdwPreferencesGroup title="Appearance">
                     <AdwSwitchRow

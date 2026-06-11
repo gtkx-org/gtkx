@@ -1,6 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox } from "@gtkx/jsx/gtk";
-import { GtkConstraintLayout } from "@gtkx/react";
+import { GtkBox, GtkConstraintLayout } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
 import { ConstraintChildButtons } from "./child-buttons.js";
 import sourceCode from "./constraints.tsx?raw";

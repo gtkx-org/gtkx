@@ -7,8 +7,11 @@ import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkBox,
     GtkButton,
+    GtkColorDialog,
     GtkColorDialogButton,
     GtkDragSource,
+    GtkDrawingArea,
+    GtkDropDown,
     GtkDropTarget,
     GtkEntry,
     GtkImage,
@@ -18,7 +21,7 @@ import {
     GtkStackPage,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import { GtkDrawingArea, GtkDropDown, useProperty } from "@gtkx/react";
+import { useProperty } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./clipboard.tsx?raw";
@@ -350,7 +353,7 @@ const ClipboardSourceSection = ({
             onSelectionChanged={(id) => state.setSourceType(id as SourceType)}
             items={SOURCE_TYPES.map((type) => ({ id: type, value: type }))}
         />
-        <GtkStack name="source-stack" page={state.sourceType} vexpand>
+        <GtkStack name="source-stack" visibleChildName={state.sourceType} vexpand>
             <SourcePageText state={state} createTextDragProvider={providers.createTextDragProvider} />
             <SourcePageColor state={state} createColorDragProvider={providers.createColorDragProvider} />
             <SourcePageImage
@@ -407,9 +410,12 @@ const SourcePageColor = ({
         <GtkColorDialogButton
             name="color-button"
             rgba={state.sourceColor}
+            dialog={<GtkColorDialog />}
             valign={Gtk.Align.CENTER}
             accessibleLabel="Color Drag Source"
-            onRgbaChanged={(rgba) => state.setSourceColor(buildRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha))}
+            onNotifyRgba={(rgba) =>
+                rgba && state.setSourceColor(buildRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha))
+            }
             addController={<GtkDragSource onPrepare={createColorDragProvider} actions={Gdk.DragAction.COPY} />}
         />
     </GtkStackPage>
@@ -536,7 +542,7 @@ const ClipboardPasteSection = ({ pastedContent, canPaste, onPaste, onDrop }: Cli
         <GtkLabel name="paste-type-label" label={pastedContent.type} xalign={0} />
         <GtkStack
             name="paste-stack"
-            page={pastedContent.type || "Empty"}
+            visibleChildName={pastedContent.type || "Empty"}
             halign={Gtk.Align.END}
             valign={Gtk.Align.CENTER}
         >
@@ -570,7 +576,7 @@ const ClipboardPasteSection = ({ pastedContent, canPaste, onPaste, onDrop }: Cli
                     contentHeight={32}
                     halign={Gtk.Align.END}
                     valign={Gtk.Align.CENTER}
-                    render={(cr, w, h) => {
+                    drawFunc={(_self, cr, w, h) => {
                         const c = pastedContent.color;
                         if (c) drawColorSwatch(cr, w, h, c);
                     }}

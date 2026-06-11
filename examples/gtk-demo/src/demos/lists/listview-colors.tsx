@@ -8,8 +8,11 @@ import * as Pango from "@gtkx/gi/pango";
 import {
     GtkBox,
     GtkButton,
+    GtkDrawingArea,
+    GtkDropDown,
     GtkGrid,
     GtkGridChild,
+    GtkGridView,
     GtkHeaderBar,
     GtkLabel,
     GtkOverlay,
@@ -19,7 +22,7 @@ import {
     GtkScrolledWindow,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import { GtkDrawingArea, GtkDropDown, GtkGridView, useSignal } from "@gtkx/react";
+import { useSignal } from "@gtkx/react";
 
 import { createContext, memo, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useLatest } from "../../use-latest.js";
@@ -225,7 +228,9 @@ const ColorGridItem = memo(({ item, showDetails }: { item: ColorItem; showDetail
                 <GtkDrawingArea
                     contentWidth={48}
                     contentHeight={48}
-                    render={(cr, w, h) => drawColorSwatch(cr, { width: w, height: h, r: item.r, g: item.g, b: item.b })}
+                    drawFunc={(_self, cr, w, h) =>
+                        drawColorSwatch(cr, { width: w, height: h, r: item.r, g: item.g, b: item.b })
+                    }
                 />
                 <GtkLabel
                     label={`<b>${item.name}</b>`}
@@ -252,7 +257,9 @@ const ColorGridItem = memo(({ item, showDetails }: { item: ColorItem; showDetail
         <GtkDrawingArea
             contentWidth={32}
             contentHeight={32}
-            render={(cr, w, h) => drawColorSwatch(cr, { width: w, height: h, r: item.r, g: item.g, b: item.b })}
+            drawFunc={(_self, cr, w, h) =>
+                drawColorSwatch(cr, { width: w, height: h, r: item.r, g: item.g, b: item.b })
+            }
         />
     );
 });
@@ -261,7 +268,7 @@ const renderSelectionItem = (item: ColorItem) => (
     <GtkDrawingArea
         contentWidth={8}
         contentHeight={8}
-        render={(cr, w, h) => {
+        drawFunc={(_self, cr, w, h) => {
             drawColorSwatch(cr, { width: w, height: h, r: item.r, g: item.g, b: item.b });
         }}
     />
@@ -306,7 +313,7 @@ const SelectionInfoPanel = ({
                 <GtkDrawingArea
                     contentWidth={32}
                     contentHeight={32}
-                    render={(cr, w, h) =>
+                    drawFunc={(_self, cr, w, h) =>
                         drawColorSwatch(cr, {
                             width: w,
                             height: h,

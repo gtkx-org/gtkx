@@ -1,7 +1,7 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
-import { GMenu, GMenuItem, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
+import { GMenu, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
 import {
     GtkBox,
     GtkButton,
@@ -180,14 +180,16 @@ const MessageActions = ({
                     hasFrame={false}
                     label="More..."
                     menuModel={
-                        <GMenu>
-                            <GMenuItem section>
-                                <GMenu>
-                                    <GMenuItem label="Email message" action="msg.email" />
-                                    <GMenuItem label="Embed message" action="msg.embed" />
-                                </GMenu>
-                            </GMenuItem>
-                        </GMenu>
+                        <GMenu
+                            items={[
+                                {
+                                    section: [
+                                        { label: "Email message", action: "msg.email" },
+                                        { label: "Embed message", action: "msg.embed" },
+                                    ],
+                                },
+                            ]}
+                        />
                     }
                     insertActionGroup={
                         <GSimpleActionGroup prefix="msg">

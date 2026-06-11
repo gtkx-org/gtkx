@@ -1,16 +1,22 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import type { GtkConstraintLayoutProps } from "@gtkx/jsx/gtk";
 import {
     Children,
     cloneElement,
+    createElement,
     type EffectCallback,
     type ReactNode,
+    type Ref,
     useCallback,
     useEffect,
     useLayoutEffect,
     useRef,
 } from "react";
-import type { ConstraintGuideProps, ConstraintLayoutWidgetProps, ConstraintProps, ConstraintVflProps } from "../jsx.js";
+import type {
+    ConstraintGuideProps,
+    ConstraintLayoutWidgetProps,
+    ConstraintProps,
+    ConstraintVflProps,
+} from "../element-props.js";
 import { registerConstraintTarget, unregisterConstraintTarget } from "../nodes/internal/constraint-target-registry.js";
 import {
     applyConstraint,
@@ -24,6 +30,17 @@ import { assignRef } from "../use-merged-refs.js";
 import { useChildWidgetRegistration, type WidgetChild } from "./internal/use-child-widget-registration.js";
 
 const GtkConstraintLayoutElement = "GtkConstraintLayout" as const;
+
+/**
+ * Props for the `GtkConstraintLayout` declarative wrapper: the solver markers
+ * as children plus an optional ref to the live layout manager.
+ */
+export type ConstraintLayoutProps = {
+    /** The `Constraint`/`Guide`/`Vfl` markers declaring the solver. */
+    children?: ReactNode;
+    /** Ref to the live `Gtk.ConstraintLayout`. */
+    ref?: Ref<Gtk.ConstraintLayout | null>;
+};
 
 const MISSING_LAYOUT_MESSAGE =
     "<GtkConstraintLayout.Widget> must be a child of the widget whose layoutManager prop carries the <GtkConstraintLayout>";
@@ -150,7 +167,7 @@ const useDeferredContribution = (
  * </GtkBox>
  * ```
  */
-export const GtkConstraintLayout: ((props: GtkConstraintLayoutProps) => ReactNode) & {
+export const GtkConstraintLayout: ((props: ConstraintLayoutProps) => ReactNode) & {
     /**
      * Wraps a single widget that participates in constraints, registering it
      * under `id`. Transparent in the GTK tree: the widget attaches to the host
@@ -171,7 +188,7 @@ export const GtkConstraintLayout: ((props: GtkConstraintLayoutProps) => ReactNod
     /** Parses a Visual Format Language description into solver rows. */
     Vfl: (props: ConstraintVflProps) => ReactNode;
 } = Object.assign(
-    ({ children, ref, ...rest }: GtkConstraintLayoutProps): ReactNode => {
+    ({ children, ref }: ConstraintLayoutProps): ReactNode => {
         const layoutRef = useConstraintLayout();
         const mergedRef = (layout: Gtk.ConstraintLayout | null): void => {
             layoutRef.current = layout;
@@ -179,7 +196,7 @@ export const GtkConstraintLayout: ((props: GtkConstraintLayoutProps) => ReactNod
         };
         return (
             <>
-                <GtkConstraintLayoutElement ref={mergedRef} {...rest} />
+                {createElement(GtkConstraintLayoutElement, { ref: mergedRef })}
                 <ConstraintLayoutContext.Provider value={layoutRef}>{children}</ConstraintLayoutContext.Provider>
             </>
         );

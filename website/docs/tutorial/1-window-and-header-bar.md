@@ -38,12 +38,20 @@ import {
     AdwHeaderBar,
     AdwStatusPage,
     AdwToolbarView,
-    quit,
-} from "@gtkx/react";
+} from "@gtkx/jsx/adw";
+import { quit } from "@gtkx/react";
 
 function NotesWindow() {
     return (
-        <AdwApplicationWindow title="Notes" defaultWidth={600} defaultHeight={500} onClose={quit}>
+        <AdwApplicationWindow
+            title="Notes"
+            defaultWidth={600}
+            defaultHeight={500}
+            onCloseRequest={() => {
+                quit();
+                return true;
+            }}
+        >
             <AdwToolbarView addTopBar={<AdwHeaderBar />}>
                 <AdwStatusPage
                     vexpand
@@ -66,6 +74,8 @@ export function App() {
 ```
 
 The window lives inside `<AdwApplication>`. Every later chapter keeps this structure: the inner `NotesWindow` component grows, while the `<AdwApplication>` wrapper stays exactly as shown here.
+
+The `onCloseRequest` handler runs when the user clicks the window's close button. Returning `true` vetoes GTK's native close so your React code controls what happens — here it calls `quit()` to shut the application down. The same pattern drives secondary windows from state: set the state to `false` and return `true`, and React unmounts the window.
 
 ### Status pages
 
@@ -101,13 +111,21 @@ import {
     AdwHeaderBar,
     AdwStatusPage,
     AdwToolbarView,
-    GtkButton,
-    quit,
-} from "@gtkx/react";
+} from "@gtkx/jsx/adw";
+import { GtkButton } from "@gtkx/jsx/gtk";
+import { quit } from "@gtkx/react";
 
 function NotesWindow() {
     return (
-        <AdwApplicationWindow title="Notes" defaultWidth={600} defaultHeight={500} onClose={quit}>
+        <AdwApplicationWindow
+            title="Notes"
+            defaultWidth={600}
+            defaultHeight={500}
+            onCloseRequest={() => {
+                quit();
+                return true;
+            }}
+        >
             <AdwToolbarView
                 addTopBar={
                     <AdwHeaderBar

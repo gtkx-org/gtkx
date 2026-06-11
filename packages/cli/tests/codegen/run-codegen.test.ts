@@ -16,10 +16,7 @@ vi.mock("@gtkx/codegen", () => ({
 }));
 
 /** Writes a fingerprint sentinel whose recomputed value matches the mock. */
-const writeFingerprint = (
-    cwd: string,
-    libraries: readonly string[] = ["Gtk-4.0", "Adw-1", "GtkSource-5", "WebKit-6.0"],
-) => {
+const writeFingerprint = (cwd: string, libraries: readonly string[] = ["Gtk-4.0"]) => {
     writeFileSync(
         join(cwd, "node_modules", ".gtkx", "gi", ".codegen-fingerprint.json"),
         JSON.stringify({ value: "test-fingerprint", girFiles: [], libraries }),

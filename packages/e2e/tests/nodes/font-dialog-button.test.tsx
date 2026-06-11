@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
-import { GtkFontDialogButton } from "@gtkx/jsx/gtk";
+import { GtkFontDialog, GtkFontDialogButton } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -10,7 +10,7 @@ describe("render - FontDialogButton > FontDialogButtonNode (1)", () => {
     it("creates FontDialogButton widget", async () => {
         const ref = createRef<Gtk.FontDialogButton>();
 
-        await render(<GtkFontDialogButton ref={ref} />);
+        await render(<GtkFontDialogButton ref={ref} dialog={<GtkFontDialog />} />);
 
         expect(ref.current?.getDialog()).not.toBeNull();
         expect(ref.current?.getLevel()).toBe(Gtk.FontLevel.FONT);
@@ -52,21 +52,23 @@ describe("render - FontDialogButton > FontDialogButtonNode (2)", () => {
     it("sets dialog title", async () => {
         const ref = createRef<Gtk.FontDialogButton>();
 
-        await render(<GtkFontDialogButton ref={ref} title="Select Font" />);
+        await render(<GtkFontDialogButton ref={ref} dialog={<GtkFontDialog title="Select Font" />} />);
 
         expect(ref.current).not.toBeNull();
         const dialog = ref.current?.getDialog();
         expect(dialog?.getTitle()).toBe("Select Font");
     });
 
-    it("updates dialog title when prop changes", async () => {
-        await expectDialogTitleTracksProp<Gtk.FontDialogButton>((ref, props) => (
-            <GtkFontDialogButton ref={ref} {...props} />
+    it("updates dialog title when the slot element changes", async () => {
+        await expectDialogTitleTracksProp<Gtk.FontDialogButton>((ref, dialogProps) => (
+            <GtkFontDialogButton ref={ref} dialog={<GtkFontDialog {...dialogProps} />} />
         ));
     });
 
     it("sets dialog modal property", async () => {
-        await expectDialogModalProp<Gtk.FontDialogButton>((ref, props) => <GtkFontDialogButton ref={ref} {...props} />);
+        await expectDialogModalProp<Gtk.FontDialogButton>((ref, dialogProps) => (
+            <GtkFontDialogButton ref={ref} dialog={<GtkFontDialog {...dialogProps} />} />
+        ));
     });
 
     it("sets useFont property", async () => {

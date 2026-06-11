@@ -1,6 +1,20 @@
+export { withActionAccels, withActionScope } from "./components/action.js";
+export { withApplication, withApplicationWindow } from "./components/application.js";
+export { GtkConstraintLayout } from "./components/constraint-layout.js";
+export {
+    AdwComboRow,
+    GtkColumnView,
+    GtkColumnViewColumn,
+    GtkDropDown,
+    GtkGridView,
+    GtkListView,
+} from "./components/list.js";
+export { GMenu, type MenuProps } from "./components/menu.js";
+export { GtkSizeGroup } from "./components/size-group.js";
+export { withTopLevel } from "./components/top-level.js";
 export { createWidgetComponent } from "./create-widget-component.js";
 export { type DeferredFlushWrapper, setDeferredFlushWrapper } from "./deferred-flush.js";
-export * from "./jsx.js";
+export * from "./element-props.js";
 export { createPortal } from "./portal.js";
 export { reconciler } from "./reconciler.js";
 export { type ReconcilerErrorHandler, setReconcilerErrorHandler } from "./reconciler-error-sink.js";

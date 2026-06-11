@@ -6,13 +6,13 @@ import {
     GtkButton,
     GtkHeaderBar,
     GtkInscription,
+    GtkListView,
     GtkOverlay,
     GtkOverlayChild,
     GtkProgressBar,
     GtkScrolledWindow,
     GtkSearchEntry,
 } from "@gtkx/jsx/gtk";
-import { GtkListView } from "@gtkx/react";
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useDemo } from "../../context/demo-context.js";

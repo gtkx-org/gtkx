@@ -50,6 +50,10 @@ export type UserTableInputs = {
     readonly containerSlots?: Readonly<Record<string, readonly string[]>>;
     /** The config's `arrayProps` rows, or `undefined`. */
     readonly arrayProps?: unknown;
+    /** The config's `objectProps` rows, or `undefined`. */
+    readonly objectProps?: unknown;
+    /** The config's `virtualProps` rows, or `undefined`. */
+    readonly virtualProps?: unknown;
     /** The config's `elementMap` rows, or `undefined`. */
     readonly elementMap?: unknown;
 };
@@ -67,6 +71,8 @@ export const serializeUserTables = (tables: UserTableInputs): string =>
             slots: tables.slots ?? {},
             containerSlots: tables.containerSlots ?? {},
             arrayProps: tables.arrayProps ?? {},
+            objectProps: tables.objectProps ?? {},
+            virtualProps: tables.virtualProps ?? {},
             elementMap: tables.elementMap ?? [],
         }),
     );

@@ -14,7 +14,15 @@
  * `"AdwAlertDialog"`, …) are inert in projects that never load those
  * namespaces: no instance ever carries the GType, so the row never matches.
  */
-import type { AddMethodRule, ArrayPropRow, ElementMapRule, PageMetaSetter, PropRule } from "@gtkx/config";
+import type {
+    AddMethodRule,
+    ArrayPropRow,
+    ElementMapRule,
+    ObjectPropRow,
+    PageMetaSetter,
+    PropRule,
+    VirtualPropRow,
+} from "@gtkx/config";
 
 /**
  * Built-in attach relationships, interpreted by the reconciler's element map.
@@ -212,12 +220,59 @@ export const BUILT_IN_ARRAY_PROPS: Readonly<Record<string, Readonly<Record<strin
     },
 };
 
+/**
+ * Built-in object-prop rows keyed by JSX element name, then prop name. Each
+ * row carries the item-type name its generated `Props` line declares (an
+ * exported member of `@gtkx/react`) and the calls applying or clearing the
+ * value. Project rows from `gtkx.config.ts` (`objectProps`) merge over these.
+ */
+export const BUILT_IN_OBJECT_PROPS: Readonly<Record<string, Readonly<Record<string, ObjectPropRow>>>> = {
+    GtkDragSource: {
+        icon: {
+            itemType: "DragSourceIcon",
+            set: [
+                {
+                    method: "setIcon",
+                    args: [
+                        { kind: "item", path: "paintable" },
+                        { kind: "item", path: "hotX", fallback: 0 },
+                        { kind: "item", path: "hotY", fallback: 0 },
+                    ],
+                },
+            ],
+            unset: [
+                {
+                    method: "setIcon",
+                    args: [
+                        { kind: "value", value: null },
+                        { kind: "value", value: 0 },
+                        { kind: "value", value: 0 },
+                    ],
+                },
+            ],
+        },
+    },
+};
+
+/**
+ * Built-in virtual-prop rows keyed by JSX element name, then prop name. Each
+ * row types a prop with a qualified GIR type and forwards its value to a
+ * setter — `null` when cleared — optionally followed by a zero-argument
+ * method. Project rows from `gtkx.config.ts` (`virtualProps`) merge over
+ * these.
+ */
+export const BUILT_IN_VIRTUAL_PROPS: Readonly<Record<string, Readonly<Record<string, VirtualPropRow>>>> = {
+    GtkDrawingArea: {
+        drawFunc: { type: "Gtk.DrawingAreaDrawFunc", setter: "setDrawFunc", after: "queueDraw" },
+    },
+};
+
 const STACK_PAGE_RULE: PropRule = {
     kind: "setters",
     always: true,
     props: [
         {
-            prop: "page",
+            prop: "visibleChildName",
             call: "setVisibleChildName",
             when: "truthy",
             skipWhenGetterEquals: "getVisibleChildName",
@@ -255,7 +310,6 @@ export const BUILT_IN_PROP_RULES: Readonly<Record<string, readonly PropRule[]>> 
             ],
         },
     ],
-    GtkWindow: [{ kind: "signal", prop: "onClose", signal: "close-request", noArgs: true, returnValue: true }],
 };
 
 /**
@@ -308,6 +362,8 @@ export const PAGE_META_SETTERS: readonly PageMetaSetter[] = [
 export const BUILT_IN_SLOTS: Readonly<Record<string, readonly string[]>> = Object.freeze({
     GtkWidget: ["layoutManager"],
     GtkWindow: ["titlebar"],
+    GtkColorDialogButton: ["dialog"],
+    GtkFontDialogButton: ["dialog"],
     AdwWindow: ["content"],
     AdwApplicationWindow: ["content"],
     AdwAlertDialog: ["extraChild"],
@@ -355,6 +411,26 @@ export const BUILT_IN_CONTAINER_SLOTS: Readonly<Record<string, readonly string[]
     GtkHeaderBar: ["packStart", "packEnd"],
 });
 
+/**
+ * Hand-written `@gtkx/react` prop shapes mixed into generated `Props`
+ * interfaces, keyed by JSX element name. Each value is a type name exported
+ * by `@gtkx/react`; the generated interface adds it to its `extends` clause
+ * and the module imports it. This is the inverse of a module augmentation:
+ * the base shapes are declared once in `@gtkx/react` and the generated
+ * surface extends them, never the other way around.
+ */
+export const BUILT_IN_PROPS_MIXINS: Readonly<Record<string, readonly string[]>> = Object.freeze({
+    GMenu: ["MenuItemsProps"],
+    GSimpleAction: ["ActionAccelsProps"],
+    GSimpleActionGroup: ["ActionGroupPrefixProps"],
+});
+
+/**
+ * `@gtkx/react` prop shapes the synthetic `WidgetProps` root extends, mixed
+ * into every generated widget through the `Props` inheritance chain.
+ */
+export const WIDGET_BASE_PROPS_MIXINS: readonly string[] = Object.freeze(["AccessibleProps"]);
+
 const mergeSlotMap = (
     builtIn: Readonly<Record<string, readonly string[]>>,
     userSlots: Readonly<Record<string, readonly string[]>> | undefined,
@@ -395,6 +471,22 @@ export const mergeContainerSlots = (
     userContainerSlots: Readonly<Record<string, readonly string[]>> | undefined,
 ): Readonly<Record<string, readonly string[]>> => mergeSlotMap(BUILT_IN_CONTAINER_SLOTS, userContainerSlots);
 
+const mergePropRowMap = <Row>(
+    builtIn: Readonly<Record<string, Readonly<Record<string, Row>>>>,
+    userRows: Readonly<Record<string, Readonly<Record<string, Row>>>> | undefined,
+): Readonly<Record<string, Readonly<Record<string, Row>>>> => {
+    const result: Record<string, Readonly<Record<string, Row>>> = {};
+    for (const [key, props] of Object.entries(builtIn)) {
+        result[key] = { ...props };
+    }
+    if (userRows !== undefined) {
+        for (const [key, props] of Object.entries(userRows)) {
+            result[key] = { ...result[key], ...props };
+        }
+    }
+    return result;
+};
+
 /**
  * Merges the built-in array-prop rows with a project's `arrayProps` map: per
  * element, the project's prop-to-row object is spread over the built-in one,
@@ -404,18 +496,30 @@ export const mergeContainerSlots = (
  */
 export const mergeArrayProps = (
     userArrayProps: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>> | undefined,
-): Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>> => {
-    const result: Record<string, Readonly<Record<string, ArrayPropRow>>> = {};
-    for (const [key, props] of Object.entries(BUILT_IN_ARRAY_PROPS)) {
-        result[key] = { ...props };
-    }
-    if (userArrayProps !== undefined) {
-        for (const [key, props] of Object.entries(userArrayProps)) {
-            result[key] = { ...result[key], ...props };
-        }
-    }
-    return result;
-};
+): Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>> =>
+    mergePropRowMap(BUILT_IN_ARRAY_PROPS, userArrayProps);
+
+/**
+ * Merges the built-in object-prop rows with a project's `objectProps` map,
+ * with the same per-element spread semantics as {@link mergeArrayProps}.
+ *
+ * @param userObjectProps - The project's `objectProps` map, or `undefined`
+ */
+export const mergeObjectProps = (
+    userObjectProps: Readonly<Record<string, Readonly<Record<string, ObjectPropRow>>>> | undefined,
+): Readonly<Record<string, Readonly<Record<string, ObjectPropRow>>>> =>
+    mergePropRowMap(BUILT_IN_OBJECT_PROPS, userObjectProps);
+
+/**
+ * Merges the built-in virtual-prop rows with a project's `virtualProps` map,
+ * with the same per-element spread semantics as {@link mergeArrayProps}.
+ *
+ * @param userVirtualProps - The project's `virtualProps` map, or `undefined`
+ */
+export const mergeVirtualProps = (
+    userVirtualProps: Readonly<Record<string, Readonly<Record<string, VirtualPropRow>>>> | undefined,
+): Readonly<Record<string, Readonly<Record<string, VirtualPropRow>>>> =>
+    mergePropRowMap(BUILT_IN_VIRTUAL_PROPS, userVirtualProps);
 
 /**
  * Merges the built-in element-map rows with a project's `elementMap` rows,

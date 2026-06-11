@@ -3,7 +3,8 @@ import * as Gtk from "@gtkx/gi/gtk";
 import * as WebKit from "@gtkx/gi/webkit";
 import { AdwApplication, AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
 import { GtkBox, GtkButton, GtkEntry, GtkProgressBar } from "@gtkx/jsx/gtk";
-import { quit, WebKitWebView } from "@gtkx/react";
+import { WebKitWebView } from "@gtkx/jsx/webkit";
+import { quit } from "@gtkx/react";
 import { type RefObject, useEffect, useRef, useState } from "react";
 
 const DEFAULT_URL = "https://gtkx.dev";
@@ -107,7 +108,15 @@ const BrowserWindow = () => {
     }, [navigate]);
 
     return (
-        <AdwApplicationWindow title="GTKX Browser" defaultWidth={1024} defaultHeight={768} onClose={quit}>
+        <AdwApplicationWindow
+            title="GTKX Browser"
+            defaultWidth={1024}
+            defaultHeight={768}
+            onCloseRequest={() => {
+                quit();
+                return true;
+            }}
+        >
             <AdwToolbarView
                 addTopBar={
                     <AdwHeaderBar

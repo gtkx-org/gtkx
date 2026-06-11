@@ -98,7 +98,7 @@ Role queries can filter by widget state like `pressed`, `expanded`, and `selecte
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkExpander, GtkToggleButton } from "@gtkx/react";
+import { GtkExpander, GtkToggleButton } from "@gtkx/jsx/gtk";
 import { cleanup, render, screen } from "@gtkx/testing";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -132,7 +132,7 @@ describe("role state queries", () => {
 Use `waitFor` to poll until an assertion passes, useful for testing async data loading or delayed UI updates:
 
 ```tsx
-import { GtkLabel } from "@gtkx/react";
+import { GtkLabel } from "@gtkx/jsx/gtk";
 import { cleanup, render, screen, waitFor } from "@gtkx/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { useEffect, useState } from "react";

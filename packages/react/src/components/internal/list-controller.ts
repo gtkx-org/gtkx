@@ -1,12 +1,11 @@
-import type * as Adw from "@gtkx/gi/adw";
 import type * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { createElement, type ReactNode } from "react";
 import { isInCommit, scheduleFlush } from "../../commit-flush.js";
 import { runDeferredFlush } from "../../deferred-flush.js";
-import { isAdwComboRow } from "../../gtype-predicates.js";
-import type { ListItem } from "../../jsx.js";
+import type { ListItem } from "../../element-props.js";
+import { type AdwComboRowLike, isAdwComboRow } from "../../gtype-predicates.js";
 import type { BoundItem } from "../../nodes/internal/bound-item.js";
 import { asLifecycleItem, connectFactoryLifecycle, UNBOUND_POSITION } from "../../nodes/internal/list-factory.js";
 import { ListModelController } from "../../nodes/internal/list-model-controller.js";
@@ -14,7 +13,7 @@ import { SelectionController } from "../../nodes/internal/selection-controller.j
 import { SignalStore } from "../../nodes/internal/signal-store.js";
 import { stableIdOf } from "../../nodes/internal/stable-id.js";
 import type { BackingInstance } from "../../types.js";
-import type { ColumnController } from "./column-controller.js";
+import type { ColumnController, ColumnHost } from "./column-controller.js";
 
 /** Renders one bound row; `row` carries tree state for hierarchical lists. */
 export type ListItemRenderer = (item: unknown, row?: Gtk.TreeListRow | null) => ReactNode;
@@ -74,7 +73,7 @@ export interface ListControllerProps {
  * unmount. Whenever the visible bound items change the controller invokes the
  * `requestRerender` callback so the component re-renders its portals.
  */
-export class ListController {
+export class ListController implements ColumnHost {
     private readonly modelController = new ListModelController({
         getItems: () => this.getItems(),
         getAutoexpand: () => this.getAutoexpand(),
@@ -545,7 +544,7 @@ export class ListController {
         }
     }
 
-    private applyListAndHeaderFactories(widget: Gtk.DropDown | Adw.ComboRow): void {
+    private applyListAndHeaderFactories(widget: Gtk.DropDown | AdwComboRowLike): void {
         if (this.listFactory) widget.setListFactory(this.listFactory);
         if (this.headerFactory) widget.setHeaderFactory(this.headerFactory);
     }

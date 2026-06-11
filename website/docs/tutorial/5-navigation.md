@@ -18,13 +18,21 @@ import {
     AdwNavigationPage,
     AdwNavigationSplitView,
     AdwToolbarView,
-    GtkLabel,
-    quit,
-} from "@gtkx/react";
+} from "@gtkx/jsx/adw";
+import { GtkLabel } from "@gtkx/jsx/gtk";
+import { quit } from "@gtkx/react";
 
 function NotesWindow() {
     return (
-        <AdwApplicationWindow title="Notes" defaultWidth={800} defaultHeight={600} onClose={quit}>
+        <AdwApplicationWindow
+            title="Notes"
+            defaultWidth={800}
+            defaultHeight={600}
+            onCloseRequest={() => {
+                quit();
+                return true;
+            }}
+        >
             <AdwNavigationSplitView
                 sidebarWidthFraction={0.3}
                 minSidebarWidth={200}
@@ -64,13 +72,8 @@ The split view automatically collapses to a single pane on narrow windows, with 
 Add category navigation using `GtkListBox` with Adwaita action rows:
 
 ```tsx
-import {
-    AdwActionRow,
-    GtkImage,
-    GtkLabel,
-    GtkListBox,
-    GtkScrolledWindow,
-} from "@gtkx/react";
+import { AdwActionRow } from "@gtkx/jsx/adw";
+import { GtkImage, GtkLabel, GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 
 interface Category {
     id: string;
@@ -121,7 +124,7 @@ Notice the `addPrefix` and `addSuffix` props on `AdwActionRow` — these are slo
 For tabbed views within a pane, use `AdwViewStack` with `AdwViewStackPage` and an `AdwViewSwitcher`. Control the active page with `visibleChildName`, and read changes through `onNotifyVisibleChildName`:
 
 ```tsx
-import { AdwHeaderBar, AdwToolbarView, AdwViewStack, AdwViewStackPage, AdwViewSwitcher } from "@gtkx/react";
+import { AdwHeaderBar, AdwToolbarView, AdwViewStack, AdwViewStackPage, AdwViewSwitcher } from "@gtkx/jsx/adw";
 import * as Adw from "@gtkx/gi/adw";
 import { useState } from "react";
 
@@ -157,7 +160,7 @@ The `AdwViewSwitcher` automatically renders tabs that correspond to the stack pa
 For push/pop navigation (like navigating into a note detail view), use `AdwNavigationView` with `AdwNavigationPage` children. Each page carries a `tag`; the view pushes a page when it mounts and pops it when it unmounts. Drive the active page declaratively with `visiblePageTag`, and react to navigation through `onPushed` and `onPopped`:
 
 ```tsx
-import { AdwHeaderBar, AdwNavigationPage, AdwNavigationView, AdwToolbarView } from "@gtkx/react";
+import { AdwHeaderBar, AdwNavigationPage, AdwNavigationView, AdwToolbarView } from "@gtkx/jsx/adw";
 import { useState } from "react";
 
 const NotesBrowser = () => {
@@ -208,7 +211,15 @@ function NotesWindow() {
     };
 
     return (
-        <AdwApplicationWindow title="Notes" defaultWidth={900} defaultHeight={600} onClose={quit}>
+        <AdwApplicationWindow
+            title="Notes"
+            defaultWidth={900}
+            defaultHeight={600}
+            onCloseRequest={() => {
+                quit();
+                return true;
+            }}
+        >
             <AdwNavigationSplitView
                 sidebarWidthFraction={0.25}
                 minSidebarWidth={200}
@@ -237,9 +248,11 @@ function NotesWindow() {
                             addTopBar={
                                 <AdwHeaderBar
                                     packEnd={
-                                        <GtkMenuButton iconName="open-menu-symbolic" tooltipText="Main Menu">
-                                            {/* ... menu items */}
-                                        </GtkMenuButton>
+                                        <GtkMenuButton
+                                            iconName="open-menu-symbolic"
+                                            tooltipText="Main Menu"
+                                            menuModel={<GMenu items={[/* ... menu entries */]} />}
+                                        />
                                     }
                                 />
                             }
@@ -267,7 +280,7 @@ export function App() {
 Most content-centric GNOME apps provide search. `GtkSearchBar` slides into view when activated and connects to a `GtkSearchEntry`:
 
 ```tsx
-import { GtkButton, GtkSearchBar, GtkSearchEntry } from "@gtkx/react";
+import { GtkButton, GtkSearchBar, GtkSearchEntry } from "@gtkx/jsx/gtk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { useRef, useState } from "react";
 

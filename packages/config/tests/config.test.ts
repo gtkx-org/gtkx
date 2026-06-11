@@ -499,6 +499,8 @@ describe("resolveGtkxConfig", () => {
             slots: {},
             containerSlots: {},
             arrayProps: {},
+            objectProps: {},
+            virtualProps: {},
             elementMap: [],
             reactCompiler: { target: "19" },
         });
@@ -512,6 +514,17 @@ describe("resolveGtkxConfig", () => {
             slots: { MyAppFooBar: ["content"] },
             containerSlots: { MyAppHeaderBar: ["packStart"] },
             arrayProps: { MyAppChart: { series: { itemType: "ChartSeries", clear: "clearSeries" } } },
+            objectProps: {
+                MyAppCanvas: {
+                    viewport: {
+                        itemType: "CanvasViewport",
+                        set: [{ method: "setViewport", args: [{ kind: "item" }] }],
+                    },
+                },
+            },
+            virtualProps: {
+                MyAppList: { sortFunc: { type: "MyApp.ListSortFunc", setter: "setSortFunc" } },
+            },
             elementMap: [
                 {
                     child: "MyAppGadget",

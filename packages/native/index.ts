@@ -1,5 +1,5 @@
 import * as native from "./native-binding.cjs";
-import type { Arg, ArrayType, FfiValue, HashTableType, RefType, TrampolineType, Type } from "./types.js";
+import type { Arg, ArrayType, FfiValue, HashTableType, NativeHandle, RefType, TrampolineType, Type } from "./types.js";
 
 type NativeVfuncDefinition = {
     readonly byteOffset: number;
@@ -18,15 +18,7 @@ type NativeRegisterClassOptions = {
     readonly interfaceVfuncs?: readonly NativeInterfaceVfuncsDefinition[];
 };
 
-/**
- * Opaque reference to a native pointer (GObject, Boxed, Fundamental, or struct).
- *
- * Values of this type are produced exclusively by the functions in this
- * module ({@link alloc}, {@link call}, etc.) and must never be constructed by
- * user code. It is the napi `ExternalObject` wrapping a raw native pointer, so
- * TypeScript treats it opaquely.
- */
-export type NativeHandle = Parameters<typeof native.read>[0];
+export type { NativeHandle } from "./types.js";
 
 /**
  * Opaque reference to the `GLib` main loop spawned at module load, produced by

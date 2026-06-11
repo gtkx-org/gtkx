@@ -1,5 +1,3 @@
-import type * as Adw from "@gtkx/gi/adw";
-import type * as cairo from "@gtkx/gi/cairo";
 import type * as Gdk from "@gtkx/gi/gdk";
 import type * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
@@ -346,7 +344,7 @@ export type NotebookPageProps = {
 export type StackPageProps = {
     /** Content to place in the stack page */
     children?: ReactNode;
-    /** Unique identifier for this page (used with page prop) */
+    /** Unique identifier for this page (matches the stack's `visibleChildName`) */
     id?: string;
     /** Display title shown in stack switchers */
     title?: string;
@@ -386,8 +384,8 @@ export type AlertDialogResponseProps = {
     id: string;
     /** Button label text */
     label: string;
-    /** Visual appearance of the response button */
-    appearance?: Adw.ResponseAppearance;
+    /** Visual appearance of the response button (`Adw.ResponseAppearance`: 0 default, 1 suggested, 2 destructive) */
+    appearance?: 0 | 1 | 2;
     /** Whether the response button is enabled */
     enabled?: boolean;
 };
@@ -486,6 +484,18 @@ export type GridViewProps<T = unknown> = ListViewSharedProps &
           }
     );
 
+/** @internal Sorting and virtualization props shared by both column-view modes. */
+type ColumnViewSortProps = {
+    /** ID of the currently sorted column, or null for no sorting */
+    sortColumn?: string | null;
+    /** Sort direction (ascending or descending) */
+    sortOrder?: Gtk.SortType | null;
+    /** Callback fired when the sort column or order changes */
+    onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null;
+    /** Estimated row height in pixels for virtualization */
+    estimatedRowHeight?: number | null;
+};
+
 /**
  * Props for the `GtkColumnView` compound component.
  *
@@ -494,27 +504,29 @@ export type GridViewProps<T = unknown> = ListViewSharedProps &
  * data in a `Gtk.SingleSelection`/`Gtk.MultiSelection` and the column view delegates
  * selection to it.
  */
-export type ColumnViewProps<T = unknown, S = unknown> =
-    | (ListViewControlledSelectionProps & {
-          /** Data items to display in the column view */
-          items?: ListItem<T, S>[];
-          /** Function to render section headers when items contain section entries */
-          renderHeader?: ((item: S) => ReactNode) | null;
-          model?: never;
-      })
-    | {
-          /**
-           * Uncontrolled mode: hands the given `Gio.ListModel` straight to the widget. The
-           * caller owns the model lifecycle and must wrap data in a `Gtk.SingleSelection` or
-           * `Gtk.MultiSelection` so the widget receives a `Gtk.SelectionModel`.
-           */
-          model: Gio.ListModel;
-          items?: never;
-          renderHeader?: never;
-          selected?: never;
-          onSelectionChanged?: never;
-          selectionMode?: never;
-      };
+export type ColumnViewProps<T = unknown, S = unknown> = ColumnViewSortProps &
+    (
+        | (ListViewControlledSelectionProps & {
+              /** Data items to display in the column view */
+              items?: ListItem<T, S>[];
+              /** Function to render section headers when items contain section entries */
+              renderHeader?: ((item: S) => ReactNode) | null;
+              model?: never;
+          })
+        | {
+              /**
+               * Uncontrolled mode: hands the given `Gio.ListModel` straight to the widget. The
+               * caller owns the model lifecycle and must wrap data in a `Gtk.SingleSelection` or
+               * `Gtk.MultiSelection` so the widget receives a `Gtk.SelectionModel`.
+               */
+              model: Gio.ListModel;
+              items?: never;
+              renderHeader?: never;
+              selected?: never;
+              onSelectionChanged?: never;
+              selectionMode?: never;
+          }
+    );
 
 /**
  * Props shared by single-selection dropdown widgets (GtkDropDown, AdwComboRow).
@@ -553,18 +565,63 @@ export type DropDownProps<T = unknown, S = unknown> =
       };
 
 /**
- * Props shared by dialog button widgets (GtkColorDialogButton, GtkFontDialogButton).
+ * The drag icon installed on a `GtkDragSource` through its `icon` object
+ * prop, applied via `setIcon(paintable, hotX, hotY)`.
  */
-export type DialogButtonProps = {
-    /** Title for the chooser dialog */
-    title?: string;
-    /** Whether the dialog is modal */
-    modal?: boolean;
+export type DragSourceIcon = {
+    /** Paintable to use as the drag icon */
+    paintable: Gdk.Paintable;
+    /** X offset of the hotspot within the drag icon (default: 0) */
+    hotX?: number;
+    /** Y offset of the hotspot within the drag icon (default: 0) */
+    hotY?: number;
 };
 
-type StackProps = {
-    /** ID of the currently visible page */
-    page?: string | null;
+/**
+ * One entry of a `<GMenu>`'s `items` data: a leaf item with a label and a
+ * detailed action, a submenu carrying nested entries, or a section grouping
+ * entries inline. `Gio.Menu` is a value-snapshot model, so the menu's content
+ * is declared as plain data and rebuilt from it whenever `items` changes.
+ */
+export type MenuEntry = {
+    /** The entry's display label, with an underscore marking its mnemonic. Optional for sections. */
+    label?: string;
+    /** The detailed action name a leaf entry triggers (e.g. `"win.about"`, `"app.open::doc1"`). */
+    action?: string;
+    /** Nested entries rendered as this entry's submenu. */
+    submenu?: readonly MenuEntry[];
+    /** Entries grouped as an inline section (with this entry's `label` as the section heading). */
+    section?: readonly MenuEntry[];
+};
+
+/**
+ * The `items` data prop of a `<GMenu>` element, mixed into its generated
+ * `Props`. The menu's content is rebuilt from the entries whenever the array
+ * changes.
+ */
+export type MenuItemsProps = {
+    /** The menu's entries, in order. */
+    items?: readonly MenuEntry[] | null;
+};
+
+/**
+ * The `accels` prop of a `<GSimpleAction>` element, mixed into its generated
+ * `Props`. Accelerators bind on the enclosing application under the action's
+ * scope (`app.`, `win.`, or an action group's prefix).
+ */
+export type ActionAccelsProps = {
+    /** Keyboard accelerator(s) bound on the enclosing application (e.g. `"<Control>q"`). */
+    accels?: string | string[];
+};
+
+/**
+ * The `prefix` prop of a `<GSimpleActionGroup>` element, mixed into its
+ * generated `Props`. The `insertActionGroup` attach rule reads it when
+ * installing the group on its host widget.
+ */
+export type ActionGroupPrefixProps = {
+    /** The action-name prefix the group installs under on its host widget. */
+    prefix?: string;
 };
 
 /**
@@ -765,97 +822,3 @@ export type AccessibleProps = {
     accessibleRowSpan?: number;
     accessibleSetSize?: number;
 };
-
-declare module "@gtkx/jsx/gobject" {
-    interface WidgetProps extends AccessibleProps {}
-}
-
-declare module "@gtkx/jsx/gtk" {
-    interface GtkColumnViewProps {
-        /** ID of the currently sorted column, or null for no sorting */
-        sortColumn?: string | null;
-        /** Sort direction (ascending or descending) */
-        sortOrder?: Gtk.SortType | null;
-        /** Callback fired when the sort column or order changes */
-        onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null;
-        /** Estimated row height in pixels for virtualization */
-        estimatedRowHeight?: number | null;
-    }
-
-    interface GtkStackProps extends StackProps {}
-
-    interface GtkWindowProps {
-        /** Callback fired when the window close button is clicked */
-        onClose?: (() => void) | null;
-    }
-
-    interface GtkDrawingAreaProps {
-        /** Render function called when the drawing area needs to be redrawn. Changing this reference automatically queues a redraw. */
-        render?: ((cr: cairo.Context, width: number, height: number, self: Gtk.DrawingArea) => void) | null;
-    }
-
-    interface GtkColorDialogButtonProps extends DialogButtonProps {
-        /** Callback fired when the selected color changes */
-        onRgbaChanged?: ((rgba: Gdk.RGBA) => void) | null;
-        /** Whether to show an alpha (opacity) channel */
-        withAlpha?: boolean;
-    }
-
-    interface GtkFontDialogButtonProps extends DialogButtonProps {
-        /** Callback fired when the selected font changes */
-        onFontDescChanged?: ((fontDesc: Pango.FontDescription) => void) | null;
-        /** Filter to restrict which fonts are shown in the dialog */
-        filter?: Gtk.Filter | null;
-        /** Custom font map to select fonts from */
-        fontMap?: Pango.FontMap | null;
-    }
-
-    interface GtkDragSourceProps {
-        /** Paintable to use as the drag icon */
-        icon?: Gdk.Paintable | null;
-        /** X offset of the hotspot within the drag icon */
-        iconHotX?: number;
-        /** Y offset of the hotspot within the drag icon */
-        iconHotY?: number;
-    }
-}
-
-declare module "@gtkx/jsx/adw" {
-    interface AdwViewStackProps extends StackProps {}
-}
-
-declare module "@gtkx/jsx/gio" {
-    interface GMenuItemProps {
-        /** The item's display label, with an underscore marking its mnemonic. */
-        label?: string;
-        /** The detailed action name the item triggers (e.g. `"win.about"`). */
-        action?: string;
-        /** Whether a single `<GMenu>` child links as a section rather than a submenu. */
-        section?: boolean;
-    }
-    interface GSimpleActionProps {
-        /** Keyboard accelerator(s) bound on the enclosing application (e.g. `"<Control>q"`). */
-        accels?: string | string[];
-    }
-    interface GSimpleActionGroupProps {
-        /** The action-name prefix the group installs under on its host widget. */
-        prefix?: string;
-    }
-}
-
-export { withActionAccels, withActionScope } from "./components/action.js";
-export { withApplication, withApplicationWindow } from "./components/application.js";
-export { GtkConstraintLayout } from "./components/constraint-layout.js";
-export { withColorDialog, withFontDialog } from "./components/dialog-button.js";
-export { GtkDrawingArea } from "./components/drawing-area.js";
-export {
-    AdwComboRow,
-    GtkColumnView,
-    GtkColumnViewColumn,
-    GtkDropDown,
-    GtkGridView,
-    GtkListView,
-} from "./components/list.js";
-export { GtkSizeGroup } from "./components/size-group.js";
-export { withTopLevel } from "./components/top-level.js";
-export { WebKitWebView } from "./components/web-view.js";

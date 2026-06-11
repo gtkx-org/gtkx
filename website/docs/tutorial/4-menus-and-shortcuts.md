@@ -8,45 +8,53 @@ The components below live inside the `NotesWindow` from [Chapter 1](./1-window-a
 
 ## Adding a menu
 
-Attach a menu to a `GtkMenuButton` using the standalone `MenuItem`, `MenuSection`, and `MenuSubmenu` components as its children:
+Menus are data. A `<GMenu>` element (from `@gtkx/jsx/gio`) takes an `items` array of `MenuEntry` objects — `{ label?, action?, submenu?, section? }`, exported by `@gtkx/react` — and each leaf entry triggers a named action. Declare the actions as `<GSimpleAction>` elements (also from `@gtkx/jsx/gio`) through the window's `addAction` prop, then pass the menu to a `GtkMenuButton` through its `menuModel` prop:
 
 ```tsx
-import { GtkMenuButton, MenuItem, MenuSection } from "@gtkx/react";
+import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
+import { GtkButton, GtkMenuButton } from "@gtkx/jsx/gtk";
 
+// On the window — actions install under the "win." scope:
+<AdwApplicationWindow
+    title="Notes"
+    addAction={
+        <>
+            <GSimpleAction name="new" onActivate={addNote} accels="<Control>n" />
+            <GSimpleAction name="preferences" onActivate={() => setShowPreferences(true)} accels="<Control>comma" />
+            <GSimpleAction name="shortcuts" onActivate={() => {}} accels="<Control>question" />
+            <GSimpleAction name="about" onActivate={() => setShowAbout(true)} />
+        </>
+    }
+>
+    {/* ... */}
+</AdwApplicationWindow>
+
+// In the header bar — the menu references the actions by name:
 <AdwHeaderBar
     packStart={
         <GtkButton iconName="list-add-symbolic" tooltipText="New Note (Ctrl+N)" onClicked={addNote} />
     }
     packEnd={
-        <GtkMenuButton iconName="open-menu-symbolic" tooltipText="Main Menu">
-            <MenuItem
-                id="new"
-                label="New Note"
-                onActivate={addNote}
-                accels="<Control>n"
-            />
-            <MenuSection>
-                <MenuItem
-                    id="preferences"
-                    label="Preferences"
-                    onActivate={() => setShowPreferences(true)}
-                    accels="<Control>comma"
+        <GtkMenuButton
+            iconName="open-menu-symbolic"
+            tooltipText="Main Menu"
+            menuModel={
+                <GMenu
+                    items={[
+                        { label: "New Note", action: "win.new" },
+                        {
+                            section: [
+                                { label: "Preferences", action: "win.preferences" },
+                                { label: "Keyboard Shortcuts", action: "win.shortcuts" },
+                            ],
+                        },
+                        {
+                            section: [{ label: "About Notes", action: "win.about" }],
+                        },
+                    ]}
                 />
-                <MenuItem
-                    id="shortcuts"
-                    label="Keyboard Shortcuts"
-                    onActivate={() => {}}
-                    accels="<Control>question"
-                />
-            </MenuSection>
-            <MenuSection>
-                <MenuItem
-                    id="about"
-                    label="About Notes"
-                    onActivate={() => setShowAbout(true)}
-                />
-            </MenuSection>
-        </GtkMenuButton>
+            }
+        />
     }
 />
 ```
@@ -59,17 +67,20 @@ The GNOME HIG has specific recommendations for primary menus:
 - Keep menus between 3–12 items, grouped by purpose
 :::
 
-### Menu elements
+### MenuEntry fields
 
-| Component | Purpose |
+| Field | Purpose |
 |-----------|---------|
-| `MenuItem` | A clickable menu item with `id`, `label`, `onActivate`, and optional `accels` |
-| `MenuSection` | Groups items with a visual separator and optional `label` header |
-| `MenuSubmenu` | A nested submenu with its own items |
+| `label` | The entry's display label; an underscore marks its mnemonic |
+| `action` | The detailed action name a leaf entry triggers (e.g. `"win.about"`) |
+| `submenu` | Nested `MenuEntry[]` rendered as this entry's submenu |
+| `section` | `MenuEntry[]` grouped as an inline section, with `label` as the heading |
+
+`Gio.Menu` is a value-snapshot model, so the menu's content is declared as plain data and rebuilt whenever the `items` array changes — drive dynamic menus by computing a new array.
 
 ### Keyboard accelerators
 
-The `accels` prop on `MenuItem` registers a global keyboard shortcut. GTK accelerator strings use angle brackets for modifiers:
+The `accels` prop on `GSimpleAction` registers a global keyboard shortcut for the action. GTK accelerator strings use angle brackets for modifiers:
 
 - `"<Control>n"` — Ctrl+N
 - `"<Control><Shift>z"` — Ctrl+Shift+Z
@@ -78,44 +89,67 @@ The `accels` prop on `MenuItem` registers a global keyboard shortcut. GTK accele
 
 ## Submenus
 
-Nest `MenuSubmenu` for hierarchical menus:
+Nest entries under `submenu` for hierarchical menus:
 
 ```tsx
-import { GtkMenuButton, MenuItem, MenuSection, MenuSubmenu } from "@gtkx/react";
+import { GMenu } from "@gtkx/jsx/gio";
+import { GtkMenuButton } from "@gtkx/jsx/gtk";
 
-<GtkMenuButton label="File">
-    <MenuItem id="new" label="New" onActivate={handleNew} />
-    <MenuSubmenu label="Export As">
-        <MenuItem id="export-txt" label="Plain Text" onActivate={exportTxt} />
-        <MenuItem id="export-md" label="Markdown" onActivate={exportMd} />
-    </MenuSubmenu>
-    <MenuSection>
-        <MenuItem id="quit" label="Quit" onActivate={quit} accels="<Control>q" />
-    </MenuSection>
-</GtkMenuButton>
+<GtkMenuButton
+    label="File"
+    menuModel={
+        <GMenu
+            items={[
+                { label: "New", action: "win.new" },
+                {
+                    label: "Export As",
+                    submenu: [
+                        { label: "Plain Text", action: "win.export-txt" },
+                        { label: "Markdown", action: "win.export-md" },
+                    ],
+                },
+                { section: [{ label: "Quit", action: "app.quit" }] },
+            ]}
+        />
+    }
+/>
 ```
 
 ## Application menu bar
 
-For a traditional menu bar across the top of the window, place a `Menu` in the application's `menubar` slot and enable `showMenubar` on the window:
+For a traditional menu bar across the top of the window, place a `<GMenu>` in the application's `menubar` slot and enable `showMenubar` on the window. Actions declared as direct children of the application install under the `app.` scope:
 
 ```tsx
-import { AdwApplication, AdwApplicationWindow, Menu, MenuItem, MenuSection, MenuSubmenu, quit } from "@gtkx/react";
+import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
+import { quit } from "@gtkx/react";
 
 <AdwApplication
     applicationId="com.example.notes"
     menubar={
-        <Menu>
-            <MenuSubmenu label="File">
-                <MenuItem id="new" label="New" onActivate={addNote} accels="<Control>n" />
-                <MenuSection>
-                    <MenuItem id="quit" label="Quit" onActivate={quit} accels="<Control>q" />
-                </MenuSection>
-            </MenuSubmenu>
-        </Menu>
+        <GMenu
+            items={[
+                {
+                    label: "File",
+                    submenu: [
+                        { label: "New", action: "win.new" },
+                        { section: [{ label: "Quit", action: "app.quit" }] },
+                    ],
+                },
+            ]}
+        />
     }
 >
-    <AdwApplicationWindow title="Notes" showMenubar onClose={quit}>
+    <GSimpleAction name="quit" onActivate={quit} accels="<Control>q" />
+    <AdwApplicationWindow
+        title="Notes"
+        showMenubar
+        addAction={<GSimpleAction name="new" onActivate={addNote} accels="<Control>n" />}
+        onCloseRequest={() => {
+            quit();
+            return true;
+        }}
+    >
         {/* ... */}
     </AdwApplicationWindow>
 </AdwApplication>
@@ -126,7 +160,7 @@ import { AdwApplication, AdwApplicationWindow, Menu, MenuItem, MenuSection, Menu
 For shortcuts not tied to menus, pass `GtkShortcut` elements through a `GtkShortcutController`'s `addShortcut` prop, and attach the controller through the widget's `addController` prop. Each shortcut pairs a `trigger` (a `Gtk.ShortcutTrigger`) with an `action` (a `Gtk.ShortcutAction`). Parse accelerator strings with `Gtk.ShortcutTrigger.parseString`, and build the action with `Gtk.CallbackAction.new`, whose callback returns `true` when it handles the event:
 
 ```tsx
-import { GtkBox, GtkShortcut, GtkShortcutController } from "@gtkx/react";
+import { GtkBox, GtkShortcut, GtkShortcutController } from "@gtkx/jsx/gtk";
 import * as Gtk from "@gtkx/gi/gtk";
 
 <GtkBox
@@ -206,14 +240,10 @@ import {
     AdwApplicationWindow,
     AdwHeaderBar,
     AdwToolbarView,
-    GtkButton,
-    GtkMenuButton,
-    GtkShortcut,
-    GtkShortcutController,
-    MenuItem,
-    MenuSection,
-    quit,
-} from "@gtkx/react";
+} from "@gtkx/jsx/adw";
+import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
+import { GtkButton, GtkMenuButton, GtkShortcut, GtkShortcutController } from "@gtkx/jsx/gtk";
+import { quit } from "@gtkx/react";
 import * as Gtk from "@gtkx/gi/gtk";
 
 function NotesWindow() {
@@ -224,27 +254,28 @@ function NotesWindow() {
             title="Notes"
             defaultWidth={600}
             defaultHeight={500}
-            onClose={quit}
+            onCloseRequest={() => {
+                quit();
+                return true;
+            }}
+            addAction={
+                <>
+                    <GSimpleAction name="new" onActivate={addNote} accels="<Control>n" />
+                    <GSimpleAction name="preferences" onActivate={() => setShowPreferences(true)} accels="<Control>comma" />
+                    <GSimpleAction name="about" onActivate={() => setShowAbout(true)} />
+                </>
+            }
             addController={
                 <GtkShortcutController
                     scope={Gtk.ShortcutScope.GLOBAL}
                     addShortcut={
-                        <>
-                            <GtkShortcut
-                                trigger={Gtk.ShortcutTrigger.parseString("<Control>n")}
-                                action={Gtk.CallbackAction.new(() => {
-                                    addNote();
-                                    return true;
-                                })}
-                            />
-                            <GtkShortcut
-                                trigger={selectedId ? Gtk.ShortcutTrigger.parseString("Delete") : Gtk.NeverTrigger.get()}
-                                action={Gtk.CallbackAction.new(() => {
-                                    deleteSelected();
-                                    return true;
-                                })}
-                            />
-                        </>
+                        <GtkShortcut
+                            trigger={selectedId ? Gtk.ShortcutTrigger.parseString("Delete") : Gtk.NeverTrigger.get()}
+                            action={Gtk.CallbackAction.new(() => {
+                                deleteSelected();
+                                return true;
+                            })}
+                        />
                     }
                 />
             }
@@ -260,29 +291,25 @@ function NotesWindow() {
                             />
                         }
                         packEnd={
-                            <GtkMenuButton iconName="open-menu-symbolic" tooltipText="Main Menu">
-                                <MenuItem
-                                    id="new"
-                                    label="New Note"
-                                    onActivate={addNote}
-                                    accels="<Control>n"
-                                />
-                                <MenuSection>
-                                    <MenuItem
-                                        id="preferences"
-                                        label="Preferences"
-                                        onActivate={() => setShowPreferences(true)}
-                                        accels="<Control>comma"
+                            <GtkMenuButton
+                                iconName="open-menu-symbolic"
+                                tooltipText="Main Menu"
+                                menuModel={
+                                    <GMenu
+                                        items={[
+                                            { label: "New Note", action: "win.new" },
+                                            {
+                                                section: [
+                                                    { label: "Preferences", action: "win.preferences" },
+                                                ],
+                                            },
+                                            {
+                                                section: [{ label: "About Notes", action: "win.about" }],
+                                            },
+                                        ]}
                                     />
-                                </MenuSection>
-                                <MenuSection>
-                                    <MenuItem
-                                        id="about"
-                                        label="About Notes"
-                                        onActivate={() => setShowAbout(true)}
-                                    />
-                                </MenuSection>
-                            </GtkMenuButton>
+                                }
+                            />
                         }
                     />
                 }
