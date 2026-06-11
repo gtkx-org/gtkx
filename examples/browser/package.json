@@ -12,6 +12,7 @@
         "start": "node dist/bundle.js"
     },
     "dependencies": {
+        "@gtkx/config": "workspace:*",
         "@gtkx/css": "workspace:*",
         "@gtkx/react": "workspace:*",
         "react": "^19.2.7"

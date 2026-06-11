@@ -4,22 +4,10 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { quit, render, useApplication } from "@gtkx/react";
 import { Component, createRef, type ReactNode } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { setupRealRenderEnvironment } from "./helpers/real-render-environment.js";
 
-declare global {
-    var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
-}
-
-let previousActEnvironment: boolean | undefined;
-
-beforeEach(() => {
-    previousActEnvironment = globalThis.IS_REACT_ACT_ENVIRONMENT;
-    globalThis.IS_REACT_ACT_ENVIRONMENT = false;
-});
-
-afterEach(() => {
-    globalThis.IS_REACT_ACT_ENVIRONMENT = previousActEnvironment;
-});
+setupRealRenderEnvironment();
 
 describe("render and quit", () => {
     it("logs caught render errors via console.error and registers the app", async () => {

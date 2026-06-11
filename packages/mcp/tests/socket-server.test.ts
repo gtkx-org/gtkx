@@ -128,6 +128,16 @@ describe("SocketServer lifecycle", () => {
         const client = await connectClient(socketCtx.socketPath);
         client.destroy();
     });
+
+    it("refuses to start while another live server owns the socket path", async () => {
+        await socketCtx.server.start();
+
+        const second = new SocketServer(new ConnectionRegistry(), socketCtx.socketPath);
+        await expect(second.start()).rejects.toThrow(/already owns/);
+
+        const client = await connectClient(socketCtx.socketPath);
+        client.destroy();
+    });
 });
 
 describe("SocketServer connections", () => {

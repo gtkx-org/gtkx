@@ -1,3 +1,4 @@
+import { applicationId } from "@gtkx/config/runtime";
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as WebKit from "@gtkx/gi/webkit";
@@ -161,7 +162,7 @@ const BrowserWindow = () => {
 };
 
 export const App = () => (
-    <AdwApplication>
+    <AdwApplication applicationId={applicationId}>
         <BrowserWindow />
     </AdwApplication>
 );

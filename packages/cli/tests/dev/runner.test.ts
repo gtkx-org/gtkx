@@ -38,6 +38,7 @@ type Harness = {
     stopMcp: ReturnType<typeof vi.fn>;
     performRefresh: ReturnType<typeof vi.fn>;
     isBoundary: ReturnType<typeof vi.fn>;
+    installAppTeardown: ReturnType<typeof vi.fn>;
     log: ReturnType<typeof vi.fn>;
     exit: ReturnType<typeof vi.fn>;
     plugins: Plugin[];
@@ -64,6 +65,7 @@ const buildHarness = (
     const whenStopped = vi.fn<DevRunnerDeps["whenStopped"]>(() => new Promise<void>(() => {}));
     const startMcp = vi.fn<DevRunnerDeps["startMcpClient"]>(async () => undefined);
     const stopMcp = vi.fn<DevRunnerDeps["stopMcpClient"]>();
+    const installAppTeardown = vi.fn<DevRunnerDeps["installApplicationTeardown"]>(async () => undefined);
     const performRefresh = vi.fn<DevRunnerDeps["performRefresh"]>();
     const isBoundary = vi.fn<DevRunnerDeps["isReactRefreshBoundary"]>((mod) =>
         overrides.isBoundary ? overrides.isBoundary(mod) : mod.__isBoundary === true,
@@ -77,6 +79,7 @@ const buildHarness = (
         getConfiguredApplicationId: async () => overrides.configuredApplicationId,
         startMcpClient: startMcp,
         stopMcpClient: stopMcp,
+        installApplicationTeardown: installAppTeardown,
         performRefresh,
         isReactRefreshBoundary: isBoundary,
         plugins: () => plugins,
@@ -91,6 +94,7 @@ const buildHarness = (
         whenStopped,
         startMcp,
         stopMcp,
+        installAppTeardown,
         performRefresh,
         isBoundary,
         log,
@@ -119,7 +123,7 @@ const loggedMessages = (harness: Harness): string[] => harness.log.mock.calls.ma
 
 const startRunnerAndExpectMcpConnected = async (harness: Harness, applicationId: string): Promise<void> => {
     await startRunner(harness);
-    expect(harness.startMcp).toHaveBeenCalledWith(applicationId);
+    expect(harness.startMcp).toHaveBeenCalledWith(applicationId, expect.any(Function));
     const messages = loggedMessages(harness);
     expect(messages.some((m) => m.includes(`Connected application id: ${applicationId}`))).toBe(true);
 };
@@ -136,7 +140,10 @@ describe("createDevRunner (vite config)", () => {
         expect(config.appType).toBe("custom");
         expect(config.server).toEqual({ middlewareMode: true });
         expect(config.optimizeDeps).toEqual({ noDiscovery: true, include: [] });
-        expect(config.ssr).toEqual({ external: true });
+        expect(config.ssr).toEqual({
+            external: true,
+            noExternal: [/^@gtkx\/(config|react|jsx|animate)(\/|$)/, /[/\\]\.gtkx[/\\]/],
+        });
         const names = (config.plugins as Array<{ name: string }>).map((p) => p.name);
         expect(names).toEqual([
             "gtkx:gsettings",
@@ -155,6 +162,20 @@ describe("createDevRunner (entry loading)", () => {
         await startRunner(harness);
 
         expect(harness.server.ssrLoadModule).toHaveBeenCalledWith(ENTRY);
+    });
+});
+
+describe("createDevRunner (application teardown)", () => {
+    it("installs a teardown that restarts the runner via the reload exit code", async () => {
+        const harness = buildHarness({ applicationId: "com.example.app" });
+
+        await startRunner(harness);
+
+        expect(harness.installAppTeardown).toHaveBeenCalledTimes(1);
+        const [, onTeardown] = harness.installAppTeardown.mock.calls[0] as [unknown, () => void];
+        onTeardown();
+        expect(harness.exit).toHaveBeenCalledWith(RELOAD_EXIT_CODE);
+        expect(loggedMessages(harness).some((m) => m.includes("restarting dev runner"))).toBe(true);
     });
 });
 

@@ -54,7 +54,6 @@ const RUNTIME_OWNED_WIDGETS: ReadonlySet<string> = new Set([
     "GtkDropDown",
     "GtkGridView",
     "GtkListView",
-    "GtkSizeGroup",
     "GMenuItem",
     "AdwComboRow",
     "AdwSpringAnimation",

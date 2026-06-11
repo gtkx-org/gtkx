@@ -24,7 +24,6 @@ describe("ListView performance", () => {
         await rerender(<App items={few} />);
         const elapsed = performance.now() - start;
 
-        console.log(`Filter ${n} → ${few.length}: ${elapsed.toFixed(0)}ms`);
         expect(elapsed).toBeLessThan(4000);
     });
 });

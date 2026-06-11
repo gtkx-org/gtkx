@@ -1,5 +1,5 @@
 import { AdwPreferencesGroup, AdwPreferencesPage, AdwPreferencesWindow, AdwSpinRow, AdwSwitchRow } from "@gtkx/jsx/adw";
-import { createPortal, useAdjustment, useApplication, useProperty, useSetting } from "@gtkx/react";
+import { useAdjustment, useApplication, useProperty, useSetting } from "@gtkx/react";
 import schema from "../../com.gtkx.tutorial.gschema.xml";
 
 export const Preferences = ({ onClose }: { onClose: () => void }) => {
@@ -13,9 +13,10 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
 
     if (!activeWindow) return null;
 
-    return createPortal(
+    return (
         <AdwPreferencesWindow
             title="Preferences"
+            transientFor={activeWindow}
             modal
             defaultWidth={500}
             defaultHeight={400}
@@ -48,7 +49,6 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
                     />
                 </AdwPreferencesGroup>
             </AdwPreferencesPage>
-        </AdwPreferencesWindow>,
-        activeWindow,
+        </AdwPreferencesWindow>
     );
 };

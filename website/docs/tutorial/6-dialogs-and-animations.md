@@ -8,11 +8,11 @@ The components below live inside the `NotesWindow` from [Chapter 1](./1-window-a
 
 ## Confirmation dialogs
 
-Use `AdwAlertDialog` with the `responses` prop and `createPortal` to show it on the active window:
+Use `AdwAlertDialog` with the `responses` prop, passing the window it is presented against as `parent`:
 
 ```tsx
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
-import { createPortal, useApplication, useProperty } from "@gtkx/react";
+import { useApplication, useProperty } from "@gtkx/react";
 import * as Adw from "@gtkx/gi/adw";
 import { useState } from "react";
 
@@ -30,8 +30,9 @@ const DeleteConfirmation = ({
 
     if (!activeWindow) return null;
 
-    return createPortal(
+    return (
         <AdwAlertDialog
+            parent={activeWindow}
             heading="Delete Note?"
             body={`"${noteTitle}" will be permanently deleted.`}
             responses={[
@@ -44,8 +45,7 @@ const DeleteConfirmation = ({
                 if (id === "delete") onConfirm();
                 else onCancel();
             }}
-        />,
-        activeWindow,
+        />
     );
 };
 ```
@@ -77,11 +77,11 @@ const confirmDelete = () => {
 )}
 ```
 
-### Portals
+### Dialog parenting
 
-`createPortal` renders a component as a child of a different GTK widget, outside the normal React tree. This is necessary for dialogs, which GTK requires to be children of a window — not nested deep inside other widgets.
+A dialog names the window it belongs to explicitly: `Adw.Dialog` components take a `parent` prop, read once when the dialog is presented, and window components (`AdwPreferencesWindow`, plain `GtkWindow`s) take the regular `transientFor` property prop. Dialogs render anywhere in the tree — they never attach to the surrounding widget — so no portal is involved.
 
-See the [Portals](../portals.md) guide for more details.
+See the [Portals](../portals.md) guide for rendering into a different GTK container.
 
 ## Toggle groups
 
@@ -350,7 +350,7 @@ Every GNOME app should have an About dialog, accessible from the primary menu. U
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAboutDialog } from "@gtkx/jsx/adw";
-import { createPortal, useApplication, useProperty } from "@gtkx/react";
+import { useApplication, useProperty } from "@gtkx/react";
 
 const About = ({ onClose }: { onClose: () => void }) => {
     const app = useApplication();
@@ -358,8 +358,9 @@ const About = ({ onClose }: { onClose: () => void }) => {
 
     if (!activeWindow) return null;
 
-    return createPortal(
+    return (
         <AdwAboutDialog
+            parent={activeWindow}
             applicationName="Notes"
             applicationIcon="document-edit-symbolic"
             version="0.1.0"
@@ -369,8 +370,7 @@ const About = ({ onClose }: { onClose: () => void }) => {
             licenseType={Gtk.License.MIT_X11}
             developers={["GTKX Contributors"]}
             onClosed={onClose}
-        />,
-        activeWindow,
+        />
     );
 };
 ```

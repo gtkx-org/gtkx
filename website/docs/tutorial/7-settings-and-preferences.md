@@ -84,7 +84,7 @@ import {
     AdwSpinRow,
     AdwSwitchRow,
 } from "@gtkx/jsx/adw";
-import { createPortal, useAdjustment, useApplication, useProperty } from "@gtkx/react";
+import { useAdjustment, useApplication, useProperty } from "@gtkx/react";
 
 const Preferences = ({ onClose }: { onClose: () => void }) => {
     const app = useApplication();
@@ -93,9 +93,10 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
 
     if (!activeWindow) return null;
 
-    return createPortal(
+    return (
         <AdwPreferencesWindow
             title="Preferences"
+            transientFor={activeWindow}
             modal
             defaultWidth={500}
             defaultHeight={400}
@@ -123,13 +124,12 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
                     />
                 </AdwPreferencesGroup>
             </AdwPreferencesPage>
-        </AdwPreferencesWindow>,
-        activeWindow,
+        </AdwPreferencesWindow>
     );
 };
 ```
 
-The `onCloseRequest` handler returns `true` to veto GTK's native close; calling `onClose` flips the `showPreferences` state off, so React unmounts the window.
+The `onCloseRequest` handler returns `true` to veto GTK's native close; calling `onClose` flips the `showPreferences` state off, so React unmounts the window. `transientFor` keeps the preferences window stacked above the main window, and `modal` blocks interaction with it.
 
 ### Preferences widgets
 
@@ -186,7 +186,7 @@ function WindowTitle() {
 }
 ```
 
-The return type is inferred from the ES6 accessor on the object — `useProperty(app, "activeWindow")` returns `Gtk.Window | null` without any manual type annotation. When the first argument is `null` or `undefined`, the hook returns `undefined` and skips signal subscription, so you can safely chain calls without conditional hooks.
+The return type is inferred from the ES6 accessor on the object — `useProperty(app, "activeWindow")` returns `Gtk.Window | null` without any manual type annotation. The target may also be a React ref to a JSX widget, like `useSignal` and `useTickCallback`: the subscription follows the ref, reattaching when a later commit replaces the widget. When the target is or resolves to `null`/`undefined`, the hook returns `undefined` and skips signal subscription, so you can safely chain calls without conditional hooks.
 
 ### How it works
 
@@ -253,7 +253,7 @@ import {
     AdwSpinRow,
     AdwSwitchRow,
 } from "@gtkx/jsx/adw";
-import { createPortal, useAdjustment, useApplication, useProperty, useSetting } from "@gtkx/react";
+import { useAdjustment, useApplication, useProperty, useSetting } from "@gtkx/react";
 import schema from "../com.example.notes.gschema.xml";
 
 const Preferences = ({ onClose }: { onClose: () => void }) => {
@@ -267,9 +267,10 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
 
     if (!activeWindow) return null;
 
-    return createPortal(
+    return (
         <AdwPreferencesWindow
             title="Preferences"
+            transientFor={activeWindow}
             modal
             defaultWidth={500}
             defaultHeight={400}
@@ -302,8 +303,7 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
                     />
                 </AdwPreferencesGroup>
             </AdwPreferencesPage>
-        </AdwPreferencesWindow>,
-        activeWindow,
+        </AdwPreferencesWindow>
     );
 };
 ```

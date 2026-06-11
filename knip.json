@@ -78,7 +78,8 @@
         },
         "examples/hello-world": {
             "entry": ["src/index.tsx!", "src/gtkx-env.d.ts!", "gtkx.config.ts!"],
-            "project": ["src/**/*.{ts,tsx}!"]
+            "project": ["src/**/*.{ts,tsx}!"],
+            "ignoreDependencies": ["@gtkx/testing"]
         },
         "examples/tutorial": {
             "entry": ["src/index.tsx!", "src/gtkx-env.d.ts!", "gtkx.config.ts!"],

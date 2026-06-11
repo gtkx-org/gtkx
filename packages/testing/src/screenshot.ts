@@ -10,13 +10,16 @@ const bytesToBase64 = (bytes: number[]): string => {
 const DEFAULT_SCREENSHOT_TIMEOUT = 100;
 const DEFAULT_SCREENSHOT_INTERVAL = 10;
 
+const describeWidgetState = (widget: Gtk.Widget): string =>
+    `realized=${widget.getRealized()} mapped=${widget.getMapped()} visible=${widget.getVisible()}`;
+
 const captureSnapshot = (widget: Gtk.Widget): ScreenshotResult => {
     const paintable = new Gtk.WidgetPaintable({ widget });
     const width = paintable.getIntrinsicWidth();
     const height = paintable.getIntrinsicHeight();
 
     if (width <= 0 || height <= 0) {
-        throw new Error("Widget has no size: ensure it is realized and visible");
+        throw new Error(`Widget has no size: ensure it is realized and visible (${describeWidgetState(widget)})`);
     }
 
     const snapshot = new Gtk.Snapshot();
@@ -24,7 +27,7 @@ const captureSnapshot = (widget: Gtk.Widget): ScreenshotResult => {
     const renderNode = snapshot.toNode();
 
     if (!renderNode) {
-        throw new Error("Widget produced no render content");
+        throw new Error(`Widget produced no render content (${describeWidgetState(widget)})`);
     }
 
     const display = widget.getDisplay();

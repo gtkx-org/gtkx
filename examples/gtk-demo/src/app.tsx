@@ -1,4 +1,5 @@
 import * as path from "node:path/posix";
+import { applicationId } from "@gtkx/config/runtime";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
@@ -21,7 +22,7 @@ import {
     GtkToggleButton,
     GtkWindow,
 } from "@gtkx/jsx/gtk";
-import { createPortal, quit, useApplication, useProperty } from "@gtkx/react";
+import { quit, useApplication, useProperty } from "@gtkx/react";
 import { useEffect, useRef, useState } from "react";
 import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";
@@ -104,10 +105,11 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
 
     const titlebar = DemoTitlebar ? <DemoTitlebar onClose={onClose} window={windowRef} /> : undefined;
 
-    return createPortal(
+    return (
         <DemoStateProvider window={windowRef} onClose={onClose}>
             <GtkWindow
                 ref={windowRef}
+                transientFor={activeWindow}
                 title={windowTitle ?? currentDemo.windowTitle ?? displayTitle}
                 defaultWidth={currentDemo.defaultWidth ?? -1}
                 defaultHeight={currentDemo.defaultHeight ?? -1}
@@ -123,8 +125,7 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
             >
                 <DemoComponent onClose={onClose} window={windowRef} />
             </GtkWindow>
-        </DemoStateProvider>,
-        activeWindow,
+        </DemoStateProvider>
     );
 };
 
@@ -261,22 +262,21 @@ interface AboutDialogProps {
     onClose: () => void;
 }
 
-const AboutDialog = ({ activeWindow, onClose }: AboutDialogProps) =>
-    createPortal(
-        <AdwAboutDialog
-            applicationName="GTK Demo"
-            applicationIcon={applicationIconName}
-            version="0.14.0"
-            copyright="© 2026 The GTKX Team"
-            website="https://gtkx.dev"
-            comments="Program to demonstrate GTKX widgets"
-            developerName="The GTKX Team"
-            developers={["The GTKX Team"]}
-            licenseType={Gtk.License.MPL_2_0}
-            onClosed={onClose}
-        />,
-        activeWindow,
-    );
+const AboutDialog = ({ activeWindow, onClose }: AboutDialogProps) => (
+    <AdwAboutDialog
+        parent={activeWindow}
+        applicationName="GTK Demo"
+        applicationIcon={applicationIconName}
+        version="0.14.0"
+        copyright="© 2026 The GTKX Team"
+        website="https://gtkx.dev"
+        comments="Program to demonstrate GTKX widgets"
+        developerName="The GTKX Team"
+        developers={["The GTKX Team"]}
+        licenseType={Gtk.License.MPL_2_0}
+        onClosed={onClose}
+    />
+);
 
 const useDemoWindows = () => {
     const [demoWindows, setDemoWindows] = useState<number[]>([]);
@@ -415,7 +415,7 @@ export const Demo = () => {
 };
 
 export const App = () => (
-    <GtkApplication flags={Gio.ApplicationFlags.NON_UNIQUE}>
+    <GtkApplication applicationId={applicationId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
         <Demo />
     </GtkApplication>
 );

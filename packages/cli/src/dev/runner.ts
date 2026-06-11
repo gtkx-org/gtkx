@@ -12,8 +12,15 @@ export type DevRunnerDeps = {
     whenStopped(): Promise<void>;
     getApplicationId(): string | null;
     getConfiguredApplicationId(root: string): Promise<string | undefined>;
-    startMcpClient(applicationId: string): Promise<unknown>;
+    startMcpClient(
+        applicationId: string,
+        loadAppModule: (id: string) => Promise<Record<string, unknown>>,
+    ): Promise<unknown>;
     stopMcpClient(): void;
+    installApplicationTeardown(
+        loadAppModule: (id: string) => Promise<Record<string, unknown>>,
+        onTeardown: () => void,
+    ): Promise<void>;
     performRefresh(): void;
     isReactRefreshBoundary(module: Record<string, unknown>): boolean;
     plugins(): Plugin[];
@@ -39,13 +46,22 @@ type DevRunner = {
     run(entryPath: string): Promise<void>;
 };
 
+/**
+ * The dev server's inline Vite config. SSR externalizes every dependency so
+ * the FFI runtime, the generated `@gtkx/gi` store, and the native module load
+ * through Node under a single module identity — except the packages that
+ * import `virtual:gtkx-config` or `@gtkx/react`: those run through Vite's
+ * pipeline, where the `gtkx:config` plugin serves the virtual module and the
+ * one transformed `@gtkx/react` instance is shared by app code, the generated
+ * `@gtkx/jsx` modules, and `@gtkx/animate`.
+ */
 const buildConfig = (root: string, plugins: Plugin[]): InlineConfig => ({
     root,
     appType: "custom",
     plugins,
     server: { middlewareMode: true },
     optimizeDeps: { noDiscovery: true, include: [] },
-    ssr: { external: true },
+    ssr: { external: true, noExternal: [/^@gtkx\/(config|react|jsx|animate)(\/|$)/, /[/\\]\.gtkx[/\\]/] },
 });
 
 const requestReload = async (server: ViteDevServer, deps: DevRunnerDeps): Promise<never> => {
@@ -111,11 +127,20 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
         deps.log(`Loading entry: ${entryPath}`);
         await server.ssrLoadModule(entryPath);
 
+        await deps.installApplicationTeardown(
+            (id) => server.ssrLoadModule(id),
+            () => {
+                if (isShuttingDown) return;
+                deps.log("Application unmounted - restarting dev runner...");
+                deps.exit(RELOAD_EXIT_CODE);
+            },
+        );
+
         const liveApplicationId = deps.getApplicationId();
         if (liveApplicationId) {
             const applicationId = (await deps.getConfiguredApplicationId(root)) ?? liveApplicationId;
             deps.log(`Connected application id: ${applicationId}`);
-            await deps.startMcpClient(applicationId);
+            await deps.startMcpClient(applicationId, (id) => server.ssrLoadModule(id));
         } else {
             deps.log("Entry did not call render() — MCP client not started.");
         }

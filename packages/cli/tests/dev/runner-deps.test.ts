@@ -7,6 +7,7 @@ const hoisted = vi.hoisted(() => ({
     getDefault: vi.fn(() => null as { applicationId: string | null } | null),
     startMcpClient: vi.fn(async () => undefined),
     stopMcpClient: vi.fn(),
+    setTestingModuleLoader: vi.fn(),
     whenStopped: vi.fn(() => new Promise<void>(() => {})),
     performRefresh: vi.fn(),
     isReactRefreshBoundary: vi.fn(() => false),
@@ -30,6 +31,10 @@ vi.mock("../../src/mcp/index.js", () => ({
     stopMcpClient: hoisted.stopMcpClient,
 }));
 
+vi.mock("../../src/mcp/testing-loader.js", () => ({
+    setTestingModuleLoader: hoisted.setTestingModuleLoader,
+}));
+
 vi.mock("../../src/refresh-runtime.js", () => ({
     isReactRefreshBoundary: hoisted.isReactRefreshBoundary,
     performRefresh: hoisted.performRefresh,
@@ -47,10 +52,35 @@ describe("defaultDevRunnerDeps (wiring)", () => {
 
         expect(deps.createServer).toBe(hoisted.createServer);
         expect(deps.whenStopped).toBe(hoisted.whenStopped);
-        expect(deps.startMcpClient).toBe(hoisted.startMcpClient);
         expect(deps.stopMcpClient).toBe(hoisted.stopMcpClient);
         expect(deps.performRefresh).toBe(hoisted.performRefresh);
         expect(deps.isReactRefreshBoundary).toBe(hoisted.isReactRefreshBoundary);
+    });
+
+    it("installs an app-graph testing-module loader before starting the MCP client", async () => {
+        const deps = defaultDevRunnerDeps();
+        const loadAppModule = vi.fn(async () => ({}));
+
+        await deps.startMcpClient("com.example.app", loadAppModule);
+
+        expect(hoisted.setTestingModuleLoader).toHaveBeenCalledTimes(1);
+        expect(hoisted.startMcpClient).toHaveBeenCalledWith("com.example.app");
+
+        const installedLoader = hoisted.setTestingModuleLoader.mock.calls[0]?.[0] as () => Promise<unknown>;
+        await installedLoader();
+        expect(loadAppModule).toHaveBeenCalledWith("@gtkx/testing");
+    });
+
+    it("installs the application teardown through the app-graph @gtkx/react module", async () => {
+        const deps = defaultDevRunnerDeps();
+        const setApplicationTeardown = vi.fn();
+        const loadAppModule = vi.fn(async () => ({ setApplicationTeardown }));
+        const onTeardown = (): undefined => undefined;
+
+        await deps.installApplicationTeardown(loadAppModule, onTeardown);
+
+        expect(loadAppModule).toHaveBeenCalledWith("@gtkx/react");
+        expect(setApplicationTeardown).toHaveBeenCalledWith(onTeardown);
     });
 
     it("assembles the plugin list in the documented order", () => {

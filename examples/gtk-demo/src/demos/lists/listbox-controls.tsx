@@ -16,38 +16,39 @@ import {
     GtkViewport,
 } from "@gtkx/jsx/gtk";
 import { useAdjustment } from "@gtkx/react";
-import { type ReactNode, useRef, useState } from "react";
+import { type ReactNode, type Ref, useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listbox-controls.tsx?raw";
 
 interface LabeledRowProps {
     labelText: string;
+    labelRef?: Ref<Gtk.Label | null>;
     useUnderline?: boolean;
     activatable?: boolean;
     mnemonicWidget?: Gtk.Widget | null;
     children: ReactNode;
 }
 
-const LabeledRow = ({ labelText, useUnderline, activatable, mnemonicWidget, children }: LabeledRowProps) => (
+const LabeledRow = ({ labelText, labelRef, useUnderline, activatable, mnemonicWidget, children }: LabeledRowProps) => (
     <GtkListBoxRow selectable={false} activatable={activatable}>
         <GtkBox>
-            <GtkSizeGroup.Widget>
-                <GtkLabel
-                    label={labelText}
-                    useUnderline={useUnderline}
-                    mnemonicWidget={mnemonicWidget ?? null}
-                    xalign={0}
-                    halign={Gtk.Align.START}
-                    valign={Gtk.Align.CENTER}
-                    hexpand
-                />
-            </GtkSizeGroup.Widget>
+            <GtkLabel
+                ref={labelRef}
+                label={labelText}
+                useUnderline={useUnderline}
+                mnemonicWidget={mnemonicWidget ?? null}
+                xalign={0}
+                halign={Gtk.Align.START}
+                valign={Gtk.Align.CENTER}
+                hexpand
+            />
             {children}
         </GtkBox>
     </GtkListBoxRow>
 );
 
 interface Group1ListProps {
+    labelRef: Ref<Gtk.Label | null>;
     switchRef: React.RefObject<Gtk.Switch | null>;
     checkRef: React.RefObject<Gtk.CheckButton | null>;
     imageRef: React.RefObject<Gtk.Image | null>;
@@ -60,6 +61,7 @@ interface Group1ListProps {
 }
 
 const Group1List = ({
+    labelRef,
     switchRef,
     checkRef,
     imageRef,
@@ -76,7 +78,7 @@ const Group1List = ({
         cssClasses={["rich-list", "boxed-list"]}
         onRowActivated={onRowActivated}
     >
-        <LabeledRow labelText="Switch" mnemonicWidget={switchRef.current}>
+        <LabeledRow labelText="Switch" labelRef={labelRef} mnemonicWidget={switchRef.current}>
             <GtkSwitch
                 name="switch"
                 ref={switchRef}
@@ -89,7 +91,7 @@ const Group1List = ({
                 }}
             />
         </LabeledRow>
-        <LabeledRow labelText="Check" mnemonicWidget={checkRef.current}>
+        <LabeledRow labelText="Check" labelRef={labelRef} mnemonicWidget={checkRef.current}>
             <GtkCheckButton
                 name="check"
                 ref={checkRef}
@@ -101,7 +103,7 @@ const Group1List = ({
                 onToggled={() => setCheckActive((prev) => !prev)}
             />
         </LabeledRow>
-        <LabeledRow labelText="Click here!" mnemonicWidget={imageRef.current}>
+        <LabeledRow labelText="Click here!" labelRef={labelRef} mnemonicWidget={imageRef.current}>
             <GtkImage
                 name="click-here-image"
                 ref={imageRef}
@@ -117,12 +119,12 @@ const Group1List = ({
     </GtkListBox>
 );
 
-const Group2List = () => {
+const Group2List = ({ labelRef }: { labelRef: Ref<Gtk.Label | null> }) => {
     const scaleAdjustment = useAdjustment({ value: 50, upper: 100, stepIncrement: 1, pageIncrement: 10 });
     const spinAdjustment = useAdjustment({ value: 50, upper: 100, stepIncrement: 1, pageIncrement: 10 });
     return (
         <GtkListBox name="group-2-list" selectionMode={Gtk.SelectionMode.NONE} cssClasses={["rich-list", "boxed-list"]}>
-            <LabeledRow labelText="_Scale" useUnderline activatable={false}>
+            <LabeledRow labelText="_Scale" labelRef={labelRef} useUnderline activatable={false}>
                 <GtkScale
                     name="scale"
                     halign={Gtk.Align.END}
@@ -132,7 +134,7 @@ const Group2List = () => {
                     adjustment={scaleAdjustment}
                 />
             </LabeledRow>
-            <LabeledRow labelText="S_pinbutton" useUnderline activatable={false}>
+            <LabeledRow labelText="S_pinbutton" labelRef={labelRef} useUnderline activatable={false}>
                 <GtkSpinButton
                     name="spin"
                     halign={Gtk.Align.END}
@@ -140,7 +142,7 @@ const Group2List = () => {
                     adjustment={spinAdjustment}
                 />
             </LabeledRow>
-            <LabeledRow labelText="_Dropdown" useUnderline activatable={false}>
+            <LabeledRow labelText="_Dropdown" labelRef={labelRef} useUnderline activatable={false}>
                 <GtkDropDown
                     name="dropdown"
                     halign={Gtk.Align.END}
@@ -153,7 +155,7 @@ const Group2List = () => {
                     ]}
                 />
             </LabeledRow>
-            <LabeledRow labelText="_Entry" useUnderline activatable={false}>
+            <LabeledRow labelText="_Entry" labelRef={labelRef} useUnderline activatable={false}>
                 <GtkEntry name="entry" halign={Gtk.Align.END} valign={Gtk.Align.CENTER} placeholderText="Type here…" />
             </LabeledRow>
         </GtkListBox>
@@ -164,10 +166,19 @@ const ListBoxControlsDemo = () => {
     const [switchActive, setSwitchActive] = useState(false);
     const [checkActive, setCheckActive] = useState(true);
     const [imageOpacity, setImageOpacity] = useState(0);
+    const [groupedLabels, setGroupedLabels] = useState<Gtk.Label[]>([]);
 
     const switchRef = useRef<Gtk.Switch | null>(null);
     const checkRef = useRef<Gtk.CheckButton | null>(null);
     const imageRef = useRef<Gtk.Image | null>(null);
+
+    const collectLabel = useCallback((label: Gtk.Label | null) => {
+        if (!label) return;
+        setGroupedLabels((current) => [...current, label]);
+        return () => {
+            setGroupedLabels((current) => current.filter((grouped) => grouped !== label));
+        };
+    }, []);
 
     const handleRowActivated = (row: Gtk.ListBoxRow) => {
         const sw = switchRef.current;
@@ -188,29 +199,23 @@ const ListBoxControlsDemo = () => {
                     marginTop={30}
                     marginBottom={30}
                 >
-                    <GtkSizeGroup mode={Gtk.SizeGroupMode.HORIZONTAL}>
-                        <GtkLabel label="Group 1" xalign={0} marginBottom={10} cssClasses={["title-2"]} />
-                        <Group1List
-                            switchRef={switchRef}
-                            checkRef={checkRef}
-                            imageRef={imageRef}
-                            switchActive={switchActive}
-                            setSwitchActive={setSwitchActive}
-                            checkActive={checkActive}
-                            setCheckActive={setCheckActive}
-                            imageOpacity={imageOpacity}
-                            onRowActivated={handleRowActivated}
-                        />
+                    <GtkSizeGroup mode={Gtk.SizeGroupMode.HORIZONTAL} widgets={groupedLabels} />
+                    <GtkLabel label="Group 1" xalign={0} marginBottom={10} cssClasses={["title-2"]} />
+                    <Group1List
+                        labelRef={collectLabel}
+                        switchRef={switchRef}
+                        checkRef={checkRef}
+                        imageRef={imageRef}
+                        switchActive={switchActive}
+                        setSwitchActive={setSwitchActive}
+                        checkActive={checkActive}
+                        setCheckActive={setCheckActive}
+                        imageOpacity={imageOpacity}
+                        onRowActivated={handleRowActivated}
+                    />
 
-                        <GtkLabel
-                            label="Group 2"
-                            xalign={0}
-                            marginTop={30}
-                            marginBottom={10}
-                            cssClasses={["title-2"]}
-                        />
-                        <Group2List />
-                    </GtkSizeGroup>
+                    <GtkLabel label="Group 2" xalign={0} marginTop={30} marginBottom={10} cssClasses={["title-2"]} />
+                    <Group2List labelRef={collectLabel} />
                 </GtkBox>
             </GtkViewport>
         </GtkScrolledWindow>

@@ -1,3 +1,4 @@
+import { applicationId } from "@gtkx/config/runtime";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
@@ -683,7 +684,7 @@ function NotesWindow() {
 
 export function App() {
     return (
-        <AdwApplication>
+        <AdwApplication applicationId={applicationId}>
             <NotesWindow />
         </AdwApplication>
     );

@@ -131,14 +131,22 @@ const renderPropBlock = (
     for (const [namespace, alias] of imports) context.imports.giNamespaces.set(namespace, alias);
     context.imports.giNamespaces.set(entry.namespace.name, entry.namespace.name);
     const widgetTypeRef = `${entry.namespace.name}.${entry.klass.name} | null`;
-    const arrayPropLines = Object.entries(arrayProps).map(([propName, row]) => {
-        context.imports.sharedTypes.add(row.itemType);
-        return `    ${propName}?: ${row.itemType}[] | null;`;
-    });
-    const objectPropLines = Object.entries(objectProps).map(([propName, row]) => {
-        context.imports.sharedTypes.add(row.itemType);
-        return `    ${propName}?: ${row.itemType} | null;`;
-    });
+    const resolveItemType = (itemType: string): string => {
+        const dotIndex = itemType.indexOf(".");
+        if (dotIndex === -1) {
+            context.imports.sharedTypes.add(itemType);
+        } else {
+            const namespace = itemType.slice(0, dotIndex);
+            context.imports.giNamespaces.set(namespace, namespace);
+        }
+        return itemType;
+    };
+    const arrayPropLines = Object.entries(arrayProps).map(
+        ([propName, row]) => `    ${propName}?: ${resolveItemType(row.itemType)}[] | null;`,
+    );
+    const objectPropLines = Object.entries(objectProps).map(
+        ([propName, row]) => `    ${propName}?: ${resolveItemType(row.itemType)} | null;`,
+    );
     const virtualPropLines = Object.entries(virtualProps).map(([propName, row]) => {
         const [namespace] = row.type.split(".");
         if (namespace) context.imports.giNamespaces.set(namespace, namespace);

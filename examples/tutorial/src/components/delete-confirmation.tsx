@@ -1,6 +1,6 @@
 import * as Adw from "@gtkx/gi/adw";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
-import { createPortal, useApplication, useProperty } from "@gtkx/react";
+import { useApplication, useProperty } from "@gtkx/react";
 
 export const DeleteConfirmation = ({
     noteTitle,
@@ -16,10 +16,11 @@ export const DeleteConfirmation = ({
 
     if (!activeWindow) return null;
 
-    return createPortal(
+    return (
         <AdwAlertDialog
+            parent={activeWindow}
             heading="Delete Note?"
-            body={`\u201c${noteTitle}\u201d will be permanently deleted.`}
+            body={`“${noteTitle}” will be permanently deleted.`}
             responses={[
                 { id: "cancel", label: "Cancel" },
                 { id: "delete", label: "Delete", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
@@ -30,7 +31,6 @@ export const DeleteConfirmation = ({
                 if (id === "delete") onConfirm();
                 else onCancel();
             }}
-        />,
-        activeWindow,
+        />
     );
 };

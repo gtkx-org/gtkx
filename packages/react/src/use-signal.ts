@@ -1,6 +1,7 @@
 import type { SignalHandler } from "@gtkx/ffi";
-import * as GObject from "@gtkx/gi/gobject";
+import type * as GObject from "@gtkx/gi/gobject";
 import { type RefObject, useLayoutEffect, useRef } from "react";
+import { type GObjectTarget, resolveGObjectTarget } from "./gobject-target.js";
 
 type AnySignalHandler = { handler(...args: unknown[]): unknown }["handler"];
 
@@ -42,13 +43,6 @@ export type SignalHandlerFor<T extends GObject.Object, S extends string> = S ext
       : AnySignalHandler;
 
 /**
- * A signal source accepted by {@link useSignal}: the object itself, a React
- * ref holding it (such as a `ref` to a JSX widget), or `null`/`undefined` to
- * keep the hook inactive.
- */
-export type SignalTarget<T extends GObject.Object> = T | RefObject<T | null> | null | undefined;
-
-/**
  * Options controlling how {@link useSignal} subscribes its handler.
  */
 export interface UseSignalOptions {
@@ -71,14 +65,6 @@ interface SignalSubscription {
     readonly after: boolean;
     readonly listener: SignalHandler;
 }
-
-type ResolvableTarget = GObject.Object | { readonly current: GObject.Object | null } | null | undefined;
-
-const resolveTarget = (target: ResolvableTarget): GObject.Object | null => {
-    if (!target) return null;
-    if (target instanceof GObject.Object) return target;
-    return target.current;
-};
 
 const dropSubscription = (subscriptionRef: RefObject<SignalSubscription | null>): void => {
     const subscription = subscriptionRef.current;
@@ -129,13 +115,13 @@ const dropSubscription = (subscriptionRef: RefObject<SignalSubscription | null>)
  * ```
  */
 export function useSignal<T extends GObject.Object, S extends SignalNameOf<T>>(
-    target: SignalTarget<T>,
+    target: GObjectTarget<T>,
     signal: S,
     handler: SignalHandlerFor<T, S>,
     options?: UseSignalOptions,
 ): void;
 export function useSignal(
-    target: ResolvableTarget,
+    target: GObjectTarget<GObject.Object>,
     signal: string,
     handler: AnySignalHandler,
     options?: UseSignalOptions,
@@ -147,7 +133,7 @@ export function useSignal(
     const immediate = options?.immediate ?? false;
 
     useLayoutEffect(() => {
-        const obj = resolveTarget(target);
+        const obj = resolveGObjectTarget(target);
         const subscription = subscriptionRef.current;
         if (
             subscription &&

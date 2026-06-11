@@ -1,192 +1,114 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkFrame, GtkLabel, GtkSizeGroup } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
-import { createRef } from "react";
+import { createRef, type RefObject, useState } from "react";
 import { describe, expect, it } from "vitest";
 
-describe("render - GtkSizeGroup wiring", () => {
-    it("registers wrapped widgets with the size group", async () => {
+const definedWidgets = (widgets: readonly (Gtk.Widget | null)[]): Gtk.Widget[] =>
+    widgets.filter((widget): widget is Gtk.Widget => widget !== null);
+
+const GroupedLabels = ({
+    groupRef,
+    count,
+    mode,
+}: {
+    groupRef: RefObject<Gtk.SizeGroup | null>;
+    count: 0 | 1 | 2;
+    mode?: Gtk.SizeGroupMode;
+}) => {
+    const [labelA, setLabelA] = useState<Gtk.Label | null>(null);
+    const [labelB, setLabelB] = useState<Gtk.Label | null>(null);
+    const widgets = definedWidgets([count >= 1 ? labelA : null, count >= 2 ? labelB : null]);
+    return (
+        <GtkBox>
+            <GtkSizeGroup ref={groupRef} mode={mode} widgets={widgets} />
+            <GtkLabel ref={setLabelA} label="A" />
+            <GtkLabel ref={setLabelB} label="B" />
+        </GtkBox>
+    );
+};
+
+const renderGroupOfTwo = async () => {
+    const groupRef = createRef<Gtk.SizeGroup>();
+    const { rerender } = await render(<GroupedLabels groupRef={groupRef} count={2} />);
+    expect(groupRef.current?.getWidgets()).toHaveLength(2);
+    return { groupRef, rerender };
+};
+
+describe("GtkSizeGroup widgets prop", () => {
+    it("adds the widgets passed in the array", async () => {
+        await renderGroupOfTwo();
+    });
+
+    it("removes a widget when it leaves the array", async () => {
+        const { groupRef, rerender } = await renderGroupOfTwo();
+
+        await rerender(<GroupedLabels groupRef={groupRef} count={1} />);
+        expect(groupRef.current?.getWidgets()).toHaveLength(1);
+    });
+
+    it("clears membership when the array empties", async () => {
+        const { groupRef, rerender } = await renderGroupOfTwo();
+
+        await rerender(<GroupedLabels groupRef={groupRef} count={0} />);
+        expect(groupRef.current?.getWidgets()).toHaveLength(0);
+    });
+});
+
+describe("GtkSizeGroup mode", () => {
+    it("applies and updates the mode prop", async () => {
+        const groupRef = createRef<Gtk.SizeGroup>();
+
+        const { rerender } = await render(
+            <GroupedLabels groupRef={groupRef} count={2} mode={Gtk.SizeGroupMode.HORIZONTAL} />,
+        );
+        expect(groupRef.current?.getMode()).toBe(Gtk.SizeGroupMode.HORIZONTAL);
+
+        await rerender(<GroupedLabels groupRef={groupRef} count={2} mode={Gtk.SizeGroupMode.BOTH} />);
+        expect(groupRef.current?.getMode()).toBe(Gtk.SizeGroupMode.BOTH);
+    });
+});
+
+describe("GtkSizeGroup across subtrees", () => {
+    it("groups widgets living in separate containers", async () => {
+        const groupRef = createRef<Gtk.SizeGroup>();
         const labelARef = createRef<Gtk.Label>();
         const labelBRef = createRef<Gtk.Label>();
 
-        await render(
-            <GtkSizeGroup mode={Gtk.SizeGroupMode.HORIZONTAL}>
+        const App = () => {
+            const [labelA, setLabelA] = useState<Gtk.Label | null>(null);
+            const [labelB, setLabelB] = useState<Gtk.Label | null>(null);
+            const captureA = (label: Gtk.Label | null): void => {
+                labelARef.current = label;
+                setLabelA(label);
+            };
+            const captureB = (label: Gtk.Label | null): void => {
+                labelBRef.current = label;
+                setLabelB(label);
+            };
+            return (
                 <GtkBox>
-                    <GtkSizeGroup.Widget>
-                        <GtkLabel ref={labelARef} label="A" />
-                    </GtkSizeGroup.Widget>
-                    <GtkSizeGroup.Widget>
-                        <GtkLabel ref={labelBRef} label="B" />
-                    </GtkSizeGroup.Widget>
-                </GtkBox>
-            </GtkSizeGroup>,
-        );
-
-        expect(labelARef.current).not.toBeNull();
-        expect(labelBRef.current).not.toBeNull();
-
-        const groupedParent = labelARef.current?.getParent();
-        expect(groupedParent).not.toBeNull();
-        expect(labelBRef.current?.getParent()).toBe(groupedParent);
-    });
-
-    it("attaches wrapped widgets to the grandparent in the GTK tree", async () => {
-        const boxRef = createRef<Gtk.Box>();
-        const labelRef = createRef<Gtk.Label>();
-
-        await render(
-            <GtkBox ref={boxRef}>
-                <GtkSizeGroup mode={Gtk.SizeGroupMode.HORIZONTAL}>
-                    <GtkSizeGroup.Widget>
-                        <GtkLabel ref={labelRef} label="Inside" />
-                    </GtkSizeGroup.Widget>
-                </GtkSizeGroup>
-            </GtkBox>,
-        );
-
-        expect(labelRef.current?.getParent()).toBe(boxRef.current);
-    });
-
-    it("groups widgets across separate subtrees", async () => {
-        const labelARef = createRef<Gtk.Label>();
-        const labelBRef = createRef<Gtk.Label>();
-
-        await render(
-            <GtkBox>
-                <GtkSizeGroup mode={Gtk.SizeGroupMode.HORIZONTAL}>
+                    <GtkSizeGroup
+                        ref={groupRef}
+                        mode={Gtk.SizeGroupMode.HORIZONTAL}
+                        widgets={definedWidgets([labelA, labelB])}
+                    />
                     <GtkFrame label="Frame A">
-                        <GtkSizeGroup.Widget>
-                            <GtkLabel ref={labelARef} label="A" />
-                        </GtkSizeGroup.Widget>
+                        <GtkLabel ref={captureA} label="A" />
                     </GtkFrame>
                     <GtkFrame label="Frame B">
-                        <GtkSizeGroup.Widget>
-                            <GtkLabel ref={labelBRef} label="B" />
-                        </GtkSizeGroup.Widget>
+                        <GtkLabel ref={captureB} label="B" />
                     </GtkFrame>
-                </GtkSizeGroup>
-            </GtkBox>,
-        );
+                </GtkBox>
+            );
+        };
 
-        expect(labelARef.current?.getParent()?.constructor.name).toContain("Frame");
-        expect(labelBRef.current?.getParent()?.constructor.name).toContain("Frame");
+        await render(<App />);
+
+        const widgets = groupRef.current?.getWidgets() ?? [];
+        expect(widgets).toHaveLength(2);
+        expect(widgets).toContain(labelARef.current);
+        expect(widgets).toContain(labelBRef.current);
         expect(labelARef.current?.getParent()).not.toBe(labelBRef.current?.getParent());
-    });
-});
-
-describe("render - GtkSizeGroup lifecycle", () => {
-    it("updates the size group mode when the prop changes", async () => {
-        const labelRef = createRef<Gtk.Label>();
-
-        function App({ mode }: { mode: Gtk.SizeGroupMode }) {
-            return (
-                <GtkSizeGroup mode={mode}>
-                    <GtkBox>
-                        <GtkSizeGroup.Widget>
-                            <GtkLabel ref={labelRef} label="A" />
-                        </GtkSizeGroup.Widget>
-                    </GtkBox>
-                </GtkSizeGroup>
-            );
-        }
-
-        const { rerender } = await render(<App mode={Gtk.SizeGroupMode.HORIZONTAL} />);
-        expect(labelRef.current).not.toBeNull();
-
-        await rerender(<App mode={Gtk.SizeGroupMode.NONE} />);
-        expect(labelRef.current).not.toBeNull();
-
-        await rerender(<App mode={Gtk.SizeGroupMode.BOTH} />);
-        expect(labelRef.current).not.toBeNull();
-    });
-
-    it("unmounts wrapped widgets cleanly", async () => {
-        const persistRef = createRef<Gtk.Label>();
-        const conditionalRef = createRef<Gtk.Label>();
-
-        function App({ showConditional }: { showConditional: boolean }) {
-            return (
-                <GtkSizeGroup mode={Gtk.SizeGroupMode.HORIZONTAL}>
-                    <GtkBox>
-                        <GtkSizeGroup.Widget>
-                            <GtkLabel ref={persistRef} label="Persist" />
-                        </GtkSizeGroup.Widget>
-                        {showConditional && (
-                            <GtkSizeGroup.Widget>
-                                <GtkLabel ref={conditionalRef} label="Conditional" />
-                            </GtkSizeGroup.Widget>
-                        )}
-                    </GtkBox>
-                </GtkSizeGroup>
-            );
-        }
-
-        const { rerender } = await render(<App showConditional={true} />);
-        expect(persistRef.current).not.toBeNull();
-        expect(conditionalRef.current).not.toBeNull();
-
-        await rerender(<App showConditional={false} />);
-        expect(persistRef.current).not.toBeNull();
-        expect(conditionalRef.current).toBeNull();
-    });
-});
-
-describe("render - GtkSizeGroup nesting", () => {
-    it("uses the innermost SizeGroup when ancestors are nested", async () => {
-        const innerARef = createRef<Gtk.Label>();
-        const innerBRef = createRef<Gtk.Label>();
-        const outerOnlyRef = createRef<Gtk.Label>();
-
-        await render(
-            <GtkSizeGroup mode={Gtk.SizeGroupMode.HORIZONTAL}>
-                <GtkBox>
-                    <GtkSizeGroup.Widget>
-                        <GtkLabel ref={outerOnlyRef} label="Outer Only" />
-                    </GtkSizeGroup.Widget>
-                    <GtkSizeGroup mode={Gtk.SizeGroupMode.VERTICAL}>
-                        <GtkBox>
-                            <GtkSizeGroup.Widget>
-                                <GtkLabel ref={innerARef} label="Inner A" />
-                            </GtkSizeGroup.Widget>
-                            <GtkSizeGroup.Widget>
-                                <GtkLabel ref={innerBRef} label="Inner B" />
-                            </GtkSizeGroup.Widget>
-                        </GtkBox>
-                    </GtkSizeGroup>
-                </GtkBox>
-            </GtkSizeGroup>,
-        );
-
-        expect(outerOnlyRef.current).not.toBeNull();
-        expect(innerARef.current).not.toBeNull();
-        expect(innerBRef.current).not.toBeNull();
-    });
-
-    it("defaults to horizontal mode when no mode prop is given", async () => {
-        const labelRef = createRef<Gtk.Label>();
-
-        await render(
-            <GtkSizeGroup>
-                <GtkBox>
-                    <GtkSizeGroup.Widget>
-                        <GtkLabel ref={labelRef} label="Default" />
-                    </GtkSizeGroup.Widget>
-                </GtkBox>
-            </GtkSizeGroup>,
-        );
-
-        expect(labelRef.current).not.toBeNull();
-    });
-
-    it("throws when GtkSizeGroup.Widget has no SizeGroup ancestor", async () => {
-        await expect(
-            render(
-                <GtkBox>
-                    <GtkSizeGroup.Widget>
-                        <GtkLabel label="Orphan" />
-                    </GtkSizeGroup.Widget>
-                </GtkBox>,
-            ),
-        ).rejects.toThrow(/GtkSizeGroup\.Widget must be nested inside a GtkSizeGroup/);
     });
 });

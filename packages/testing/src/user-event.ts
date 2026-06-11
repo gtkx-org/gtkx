@@ -75,14 +75,31 @@ export type TabOptions = {
     shift?: boolean;
 };
 
+const findClickableAncestor = (widget: Gtk.Widget): Gtk.Widget | null => {
+    let current = widget.getParent();
+    while (current) {
+        if (current instanceof Gtk.Button || findExistingController(current, Gtk.GestureClick) !== null) {
+            return current;
+        }
+        current = current.getParent();
+    }
+    return null;
+};
+
 const click = async (widget: Gtk.Widget): Promise<void> => {
     if (widget instanceof Gtk.Button) {
         await emitClickSequence(widget, 1);
         return;
     }
-    await act(() => {
-        widget.activate();
-    });
+    if (widget.getAccessibleRole() !== Gtk.AccessibleRole.LABEL) {
+        let activated = false;
+        await act(() => {
+            activated = widget.activate();
+        });
+        if (activated) return;
+    }
+    const target = findClickableAncestor(widget);
+    if (target) await emitClickSequence(target, 1);
 };
 
 const emitClickSequence = async (widget: Gtk.Widget, nPress: number): Promise<void> => {
@@ -683,6 +700,12 @@ export const userEvent = {
      * signal fires immediately rather than behind GtkButton's unconditional
      * 250ms keyboard-activation timeout, which races test wait windows under
      * load.
+     *
+     * A widget that handles neither — a label inside a button, say —
+     * resolves upward to the nearest ancestor that is a button or carries a
+     * click gesture, mirroring how a click on text reaches the enclosing
+     * control's handler in the DOM and in React Native. So
+     * `click(getByText("Save"))` activates the button that renders the text.
      */
     click,
     /**

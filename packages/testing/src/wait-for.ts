@@ -92,8 +92,7 @@ const isElementRemoved = (widget: Gtk.Widget | null): boolean => {
     if (widget === null) return true;
 
     try {
-        const parent = widget.getParent();
-        return parent === null;
+        return widget.getRoot() === null;
     } catch {
         return true;
     }
@@ -102,7 +101,10 @@ const isElementRemoved = (widget: Gtk.Widget | null): boolean => {
 /**
  * Waits for a widget to be removed from the widget tree.
  *
- * Polls until the widget no longer has a parent or no longer exists.
+ * Polls until the widget no longer belongs to a root — the GTK analog of no
+ * longer being contained in the document — or no longer exists. A widget
+ * detached together with an ancestor counts as removed even though it keeps
+ * its direct parent.
  *
  * @param elementOrCallback - Element or function returning widget to watch
  * @param options - Timeout and interval configuration
