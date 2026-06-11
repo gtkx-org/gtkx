@@ -87,9 +87,13 @@ const PaintableSvgDemo = () => {
     };
 
     return (
-        <GtkPicture name="picture" paintable={svg} widthRequest={16} heightRequest={16}>
-            <GtkGestureClick onPressed={handlePressed} />
-        </GtkPicture>
+        <GtkPicture
+            name="picture"
+            paintable={svg}
+            widthRequest={16}
+            heightRequest={16}
+            addController={<GtkGestureClick onPressed={handlePressed} />}
+        />
     );
 };
 

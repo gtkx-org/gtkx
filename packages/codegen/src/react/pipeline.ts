@@ -142,8 +142,6 @@ const generateJsxNamespace = (
     const imports = emptyJsxImports();
 
     const compounds = generateCompoundsSection(targetNamespace, repository, {
-        widgetSlotMap: maps.widgetSlotMap,
-        containerSlotMap: maps.containerSlotMap,
         imports,
         excludeNames: RUNTIME_OWNED_WIDGETS,
     });
@@ -153,6 +151,7 @@ const generateJsxNamespace = (
     const body = [renderJsxImports(targetNamespace.name.toLowerCase(), imports), "", jsxSection];
     if (compounds.source.length > 0) body.push("", compounds.source);
 
-    const count = jsxSection.split("\n").filter((line) => line.startsWith("export const ")).length;
+    const count =
+        compounds.exportedNames.size + jsxSection.split("\n").filter((line) => line.startsWith("export const ")).length;
     return { source: `${body.join("\n")}\n`, count };
 };

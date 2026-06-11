@@ -301,10 +301,12 @@ export const PAGE_META_SETTERS: readonly PageMetaSetter[] = [
 /**
  * Built-in widget-typed properties exposed as JSX child slots (typed as
  * `ReactNode`, setter semantics), keyed by JSX element name with camelCase
- * property-name values. Project entries from `gtkx.config.ts` (`slots`)
- * merge into this map.
+ * property-name values. Entries apply to the named type and its whole GType
+ * subtree — `GtkWidget`'s `layoutManager` is a slot on every widget. Project
+ * entries from `gtkx.config.ts` (`slots`) merge into this map.
  */
 export const BUILT_IN_SLOTS: Readonly<Record<string, readonly string[]>> = Object.freeze({
+    GtkWidget: ["layoutManager"],
     GtkWindow: ["titlebar"],
     AdwWindow: ["content"],
     AdwApplicationWindow: ["content"],
@@ -335,10 +337,15 @@ export const BUILT_IN_SLOTS: Readonly<Record<string, readonly string[]>> = Objec
  * Built-in container-slot method names — the camelCase GTK methods that
  * append a child onto the widget — keyed by JSX element name. Each method
  * name doubles as a `ReactNode` prop on the compound and as the
- * `<ContainerSlot id="…">` identifier the reconciler dispatches to. Project
- * entries from `gtkx.config.ts` (`containerSlots`) merge into this map.
+ * `<ContainerSlot id="…">` identifier the reconciler dispatches to. Entries
+ * apply to the named type and its whole GType subtree — `GtkWidget`'s
+ * `addController` is a prop on every widget. Project entries from
+ * `gtkx.config.ts` (`containerSlots`) merge into this map.
  */
 export const BUILT_IN_CONTAINER_SLOTS: Readonly<Record<string, readonly string[]>> = Object.freeze({
+    GtkWidget: ["addController", "insertActionGroup"],
+    GtkShortcutController: ["addShortcut"],
+    GtkApplicationWindow: ["addAction"],
     AdwActionRow: ["addPrefix", "addSuffix"],
     AdwEntryRow: ["addPrefix", "addSuffix"],
     AdwExpanderRow: ["addPrefix", "addSuffix", "addRow", "addAction"],

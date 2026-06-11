@@ -22,9 +22,9 @@ export type JsxSurfaceMaps = {
  * Generates the intrinsic/Props section of one namespace's `@gtkx/jsx`
  * module: one `export const Name = "Name"` per JSX intrinsic element NOT exported
  * as a compound, an `export interface NameProps` per intrinsic, the synthetic
- * `WidgetProps` base when this namespace owns the root of the prop chain, a
- * `WidgetSlotNames` index, and the `React.JSX.IntrinsicElements` augmentation —
- * each scoped to the target namespace's widgets.
+ * `WidgetProps` base when this namespace owns the root of the prop chain, and
+ * the `React.JSX.IntrinsicElements` augmentation — each scoped to the target
+ * namespace's widgets.
  *
  * Parent-prop inheritance resolves against the full repository, so a widget whose
  * parent lives in another namespace records a cross-namespace `Props` import into
@@ -79,27 +79,7 @@ export const generateJsxSection = (
     }
     if (needsWidgetPropsBase) propBlocks.unshift("export interface WidgetProps {\n    name?: string;\n}");
 
-    return [
-        constLines.join("\n"),
-        "",
-        propBlocks.join("\n\n"),
-        "",
-        renderSlotNamesLine(widgets, maps.widgetSlotMap ?? {}),
-        "",
-        renderJsxAugmentation(widgets),
-    ].join("\n");
-};
-
-const renderSlotNamesLine = (
-    widgets: readonly WidgetCandidate[],
-    widgetSlotMap: Readonly<Record<string, readonly string[]>>,
-): string => {
-    const slotEntries = widgets.map((entry) => {
-        const slots = widgetSlotMap[entry.glibName] ?? [];
-        const slotType = slots.length === 0 ? "string" : slots.map((slot) => quote(slot)).join(" | ");
-        return `    readonly ${quote(entry.glibName)}: ${slotType}`;
-    });
-    return `export type WidgetSlotNames = {\n${slotEntries.join(";\n")};\n};`;
+    return [constLines.join("\n"), "", propBlocks.join("\n\n"), "", renderJsxAugmentation(widgets)].join("\n");
 };
 
 const renderJsxAugmentation = (widgets: readonly WidgetCandidate[]): string =>

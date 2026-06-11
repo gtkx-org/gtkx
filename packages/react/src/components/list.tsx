@@ -15,6 +15,7 @@ import {
     useState,
 } from "react";
 import { onOrderedAttach } from "../attach-events.js";
+import { createWidgetComponent } from "../create-widget-component.js";
 import type { ColumnViewColumnProps, ColumnViewProps, DropDownProps, GridViewProps, ListViewProps } from "../jsx.js";
 import type { BoundItem } from "../nodes/internal/bound-item.js";
 import { createPortal } from "../portal.js";
@@ -23,13 +24,12 @@ import { ColumnController } from "./internal/column-controller.js";
 import { ColumnViewContext } from "./internal/column-view-context.js";
 import { ListController, type ListControllerProps } from "./internal/list-controller.js";
 
-const GtkListViewElement = "GtkListView" as const;
-const GtkGridViewElement = "GtkGridView" as const;
-const GtkColumnViewElement = "GtkColumnView" as const;
-const GtkColumnViewColumnElement = "GtkColumnViewColumn" as const;
-const GtkDropDownElement = "GtkDropDown" as const;
-const AdwComboRowElement = "AdwComboRow" as const;
-const WrapperNodeElement = "__GTKX_WRAPPER_NODE__" as const;
+const GtkListViewElement = createWidgetComponent<Record<string, unknown>>("GtkListView");
+const GtkGridViewElement = createWidgetComponent<Record<string, unknown>>("GtkGridView");
+const GtkColumnViewElement = createWidgetComponent<Record<string, unknown>>("GtkColumnView");
+const GtkColumnViewColumnElement = createWidgetComponent<Record<string, unknown>>("GtkColumnViewColumn");
+const GtkDropDownElement = createWidgetComponent<Record<string, unknown>>("GtkDropDown");
+const AdwComboRowElement = createWidgetComponent<Record<string, unknown>>("AdwComboRow");
 
 type ListViewOwnKeys =
     | "items"
@@ -169,13 +169,13 @@ const renderPortals = (boundItems: BoundItem[], headerBoundItems: BoundItem[]): 
  * emits the element plus its portals, so the only per-component difference is the
  * element name, the public prop type, and the optional column scope.
  *
- * @param elementType - The intrinsic element name to render.
+ * @param elementType - The element's slot-splitting host component to render.
  * @param props - The merged public props, including an optional caller ref.
  * @param scope - Renders the element's children from the live handle (column view).
  * @returns The rendered node plus the live handle.
  */
 const useListElement = (
-    elementType: string,
+    elementType: (props: Record<string, unknown>) => ReactNode,
     props: Record<string, unknown> & { ref?: Ref<Gtk.Widget>; children?: ReactNode },
     scope?: (handle: ListHandle) => ReactNode,
 ): { node: ReactNode; handle: ListHandle } => {
@@ -294,23 +294,18 @@ export const GtkColumnViewColumn: <T = unknown>(props: ColumnViewColumnProps<T>)
 /**
  * Declares one column of a `GtkColumnView`.
  *
- * Renders the real `GtkColumnViewColumn` intrinsic element carrying the
- * column's GObject props, constructing the cell factory it is built with and
- * the optional sorter as regular construct props. The cell renderer and the
- * column-view registration are owned here: the component registers its
+ * Renders the real `GtkColumnViewColumn` element carrying the column's GObject
+ * props, constructing the cell factory it is built with and the optional
+ * sorter as regular construct props. The cell renderer and the column-view
+ * registration are owned here: the component registers its
  * {@link ColumnController} on the list controller shared through the
  * column-view context, routes `renderCell` changes to it, and unregisters on
- * unmount. An optional `headerMenu` `<GMenu>` lands in the column's
- * `headerMenu` slot.
+ * unmount. An optional `headerMenu` `<GMenu>` flows through the element's
+ * `headerMenu` slot prop.
  *
  * @param props - The column definition and optional header menu.
  */
-function ColumnViewColumn<T = unknown>({
-    headerMenu,
-    renderCell,
-    sortable,
-    ...rest
-}: ColumnViewColumnProps<T>): ReactNode {
+function ColumnViewColumn<T = unknown>({ renderCell, sortable, ...rest }: ColumnViewColumnProps<T>): ReactNode {
     const list = useContext(ColumnViewContext);
     const controllerRef = useRef<ColumnController | null>(null);
     controllerRef.current ??= new ColumnController();
@@ -330,11 +325,9 @@ function ColumnViewColumn<T = unknown>({
 
     useEffect(() => () => controller.teardown(), [controller]);
 
-    return createElement(
-        GtkColumnViewColumnElement,
-        { ...rest, factory: controller.factory, sorter: sortable === true ? sorterRef.current : null },
-        headerMenu != null
-            ? createElement(WrapperNodeElement, { kind: "slot", propName: "headerMenu" }, headerMenu)
-            : null,
-    );
+    return createElement(GtkColumnViewColumnElement, {
+        ...rest,
+        factory: controller.factory,
+        sorter: sortable === true ? sorterRef.current : null,
+    });
 }

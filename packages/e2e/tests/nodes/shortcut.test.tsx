@@ -11,11 +11,19 @@ describe("render - Shortcut (1)", () => {
         const controllerRef = createRef<Gtk.ShortcutController>();
 
         await render(
-            <GtkBox>
-                <GtkShortcutController ref={controllerRef}>
-                    <GtkShortcut trigger={Gtk.ShortcutTrigger.parseString("<Control>s")} action={callbackAction()} />
-                </GtkShortcutController>
-            </GtkBox>,
+            <GtkBox
+                addController={
+                    <GtkShortcutController
+                        ref={controllerRef}
+                        addShortcut={
+                            <GtkShortcut
+                                trigger={Gtk.ShortcutTrigger.parseString("<Control>s")}
+                                action={callbackAction()}
+                            />
+                        }
+                    />
+                }
+            />,
         );
 
         const controller = controllerRef.current;
@@ -36,11 +44,14 @@ describe("render - Shortcut (1)", () => {
         const controllerRef = createRef<Gtk.ShortcutController>();
 
         await render(
-            <GtkBox>
-                <GtkShortcutController ref={controllerRef}>
-                    <GtkShortcut trigger={trigger} action={callbackAction()} />
-                </GtkShortcutController>
-            </GtkBox>,
+            <GtkBox
+                addController={
+                    <GtkShortcutController
+                        ref={controllerRef}
+                        addShortcut={<GtkShortcut trigger={trigger} action={callbackAction()} />}
+                    />
+                }
+            />,
         );
 
         expect(controllerRef.current?.getNItems() ?? 0).toBe(1);
@@ -54,30 +65,31 @@ describe("render - Shortcut (2)", () => {
         const Harness = () => {
             const [show, setShow] = useState(true);
             return (
-                <GtkBox>
-                    <GtkShortcutController ref={controllerRef}>
-                        {show && (
-                            <GtkShortcut
-                                trigger={Gtk.ShortcutTrigger.parseString("<Control>s")}
-                                action={Gtk.CallbackAction.new(() => {
-                                    setShow(false);
-                                    return true;
-                                })}
-                            />
-                        )}
-                    </GtkShortcutController>
-                </GtkBox>
+                <GtkBox
+                    addController={
+                        <GtkShortcutController
+                            ref={controllerRef}
+                            addShortcut={
+                                show && (
+                                    <GtkShortcut
+                                        trigger={Gtk.ShortcutTrigger.parseString("<Control>s")}
+                                        action={Gtk.CallbackAction.new(() => {
+                                            setShow(false);
+                                            return true;
+                                        })}
+                                    />
+                                )
+                            }
+                        />
+                    }
+                />
             );
         };
 
         const { rerender } = await render(<Harness />);
         expect(controllerRef.current?.getNItems() ?? 0).toBe(1);
 
-        const Empty = () => (
-            <GtkBox>
-                <GtkShortcutController ref={controllerRef} />
-            </GtkBox>
-        );
+        const Empty = () => <GtkBox addController={<GtkShortcutController ref={controllerRef} />} />;
         await rerender(<Empty />);
 
         expect(controllerRef.current?.getNItems() ?? 0).toBe(0);
@@ -93,14 +105,23 @@ describe("render - Shortcut (3)", () => {
             const [disabled, setDisabled] = useState(false);
             updateDisabled = setDisabled;
             return (
-                <GtkBox>
-                    <GtkShortcutController ref={controllerRef}>
-                        <GtkShortcut
-                            trigger={disabled ? Gtk.NeverTrigger.get() : Gtk.ShortcutTrigger.parseString("<Control>s")}
-                            action={callbackAction()}
+                <GtkBox
+                    addController={
+                        <GtkShortcutController
+                            ref={controllerRef}
+                            addShortcut={
+                                <GtkShortcut
+                                    trigger={
+                                        disabled
+                                            ? Gtk.NeverTrigger.get()
+                                            : Gtk.ShortcutTrigger.parseString("<Control>s")
+                                    }
+                                    action={callbackAction()}
+                                />
+                            }
                         />
-                    </GtkShortcutController>
-                </GtkBox>
+                    }
+                />
             );
         };
 

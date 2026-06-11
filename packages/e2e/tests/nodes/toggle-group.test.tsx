@@ -16,6 +16,25 @@ const buildToggleGroup = (ref: RefObject<Adw.ToggleGroup | null>) => (toggles: T
     </AdwToggleGroup>
 );
 
+const LIST_GRID_TOGGLES = (
+    <>
+        <AdwToggle name="list" label="List" />
+        <AdwToggle name="grid" label="Grid" />
+    </>
+);
+
+const clickToggleAndExpectActive = async (
+    ref: RefObject<Adw.ToggleGroup | null>,
+    name: string,
+    activeIndex: number,
+): Promise<void> => {
+    const toggle = await screen.findByRole(Gtk.AccessibleRole.RADIO, { name });
+    await userEvent.click(toggle);
+    await waitFor(() => {
+        expect(ref.current?.getActive()).toBe(activeIndex);
+    });
+};
+
 describe("render - ToggleGroup (1)", () => {
     describe("ToggleGroupNode (1)", () => {
         it("creates ToggleGroup widget without toggles", async () => {
@@ -130,38 +149,17 @@ describe("render - ToggleGroup (4)", () => {
         it("clicks toggle to activate it", async () => {
             const ref = createRef<Adw.ToggleGroup>();
 
-            await render(
-                <AdwToggleGroup ref={ref}>
-                    <AdwToggle name="list" label="List" />
-                    <AdwToggle name="grid" label="Grid" />
-                </AdwToggleGroup>,
-            );
+            await render(<AdwToggleGroup ref={ref}>{LIST_GRID_TOGGLES}</AdwToggleGroup>);
 
-            const listToggle = await screen.findByRole(Gtk.AccessibleRole.RADIO, { name: "List" });
-            await userEvent.click(listToggle);
-
-            await waitFor(() => {
-                expect(ref.current?.getActive()).toBe(0);
-            });
+            await clickToggleAndExpectActive(ref, "List", 0);
         });
 
         it("switches between toggles", async () => {
             const ref = createRef<Adw.ToggleGroup>();
 
-            await render(
-                <AdwToggleGroup ref={ref}>
-                    <AdwToggle name="list" label="List" />
-                    <AdwToggle name="grid" label="Grid" />
-                </AdwToggleGroup>,
-            );
+            await render(<AdwToggleGroup ref={ref}>{LIST_GRID_TOGGLES}</AdwToggleGroup>);
 
-            const gridToggle = await screen.findByRole(Gtk.AccessibleRole.RADIO, { name: "Grid" });
-
-            await userEvent.click(gridToggle);
-
-            await waitFor(() => {
-                expect(ref.current?.getActive()).toBe(1);
-            });
+            await clickToggleAndExpectActive(ref, "Grid", 1);
         });
     });
 });
@@ -170,24 +168,14 @@ describe("render - ToggleGroup (6)", () => {
     describe("uncontrolled selection", () => {
         it("preserves the clicked selection across an unrelated re-render", async () => {
             const ref = createRef<Adw.ToggleGroup>();
-            const toggles = (
-                <>
-                    <AdwToggle name="list" label="List" />
-                    <AdwToggle name="grid" label="Grid" />
-                </>
-            );
 
-            const { rerender } = await render(<AdwToggleGroup ref={ref}>{toggles}</AdwToggleGroup>);
+            const { rerender } = await render(<AdwToggleGroup ref={ref}>{LIST_GRID_TOGGLES}</AdwToggleGroup>);
 
-            const gridToggle = await screen.findByRole(Gtk.AccessibleRole.RADIO, { name: "Grid" });
-            await userEvent.click(gridToggle);
-            await waitFor(() => {
-                expect(ref.current?.getActive()).toBe(1);
-            });
+            await clickToggleAndExpectActive(ref, "Grid", 1);
 
             await rerender(
                 <AdwToggleGroup ref={ref} cssClasses={["flat"]}>
-                    {toggles}
+                    {LIST_GRID_TOGGLES}
                 </AdwToggleGroup>,
             );
 

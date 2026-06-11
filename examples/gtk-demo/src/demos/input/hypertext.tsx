@@ -149,9 +149,11 @@ const buildDefinitionPage = ({ title, phonetic, definition, sayWord }: Definitio
             </GtkTextTag>
             {" / "}
             <GtkTextAnchor key="speaker">
-                <GtkImage iconName="audio-volume-high-symbolic" cursor={Gdk.Cursor.newFromName("pointer", null)}>
-                    <GtkGestureClick onPressed={() => sayWord(title)} />
-                </GtkImage>
+                <GtkImage
+                    iconName="audio-volume-high-symbolic"
+                    cursor={Gdk.Cursor.newFromName("pointer", null)}
+                    addController={<GtkGestureClick onPressed={() => sayWord(title)} />}
+                />
             </GtkTextAnchor>
         </GtkTextTag>,
     );
@@ -299,10 +301,14 @@ const HypertextDemo = () => {
                 pixelsBelowLines={10}
                 canFocus
                 focusable
+                addController={
+                    <>
+                        <GtkGestureClick button={1} onReleased={handlers.handleClick} />
+                        <GtkEventControllerMotion onMotion={handlers.handleMotion} />
+                        <GtkEventControllerKey onKeyPressed={handlers.handleKeyPress} />
+                    </>
+                }
             >
-                <GtkGestureClick button={1} onReleased={handlers.handleClick} />
-                <GtkEventControllerMotion onMotion={handlers.handleMotion} />
-                <GtkEventControllerKey onKeyPressed={handlers.handleKeyPress} />
                 <GtkTextBuffer enableUndo>{content}</GtkTextBuffer>
             </GtkTextView>
         </GtkScrolledWindow>

@@ -391,9 +391,8 @@ const SourcePageText = ({
             valign={Gtk.Align.CENTER}
             accessibleLabel="Text Drag Source"
             onChanged={(entry) => state.setSourceText(entry.getText())}
-        >
-            <GtkDragSource onPrepare={createTextDragProvider} actions={Gdk.DragAction.COPY} />
-        </GtkEntry>
+            addController={<GtkDragSource onPrepare={createTextDragProvider} actions={Gdk.DragAction.COPY} />}
+        />
     </GtkStackPage>
 );
 
@@ -411,9 +410,8 @@ const SourcePageColor = ({
             valign={Gtk.Align.CENTER}
             accessibleLabel="Color Drag Source"
             onRgbaChanged={(rgba) => state.setSourceColor(buildRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha))}
-        >
-            <GtkDragSource onPrepare={createColorDragProvider} actions={Gdk.DragAction.COPY} />
-        </GtkColorDialogButton>
+            addController={<GtkDragSource onPrepare={createColorDragProvider} actions={Gdk.DragAction.COPY} />}
+        />
     </GtkStackPage>
 );
 
@@ -474,9 +472,11 @@ const ImageToggle = ({ name, buttonLabel, imageLabel, index, state, paintable, c
         onToggled={(btn) => {
             if (btn.getActive()) state.setSelectedImage(index);
         }}
+        addController={
+            createProvider ? <GtkDragSource onPrepare={createProvider} actions={Gdk.DragAction.COPY} /> : null
+        }
     >
         <GtkImage accessibleLabel={imageLabel} paintable={paintable} cssClasses={["large-icons"]} />
-        {createProvider ? <GtkDragSource onPrepare={createProvider} actions={Gdk.DragAction.COPY} /> : null}
     </GtkToggleButton>
 );
 
@@ -490,13 +490,19 @@ interface SourcePageFileProps {
 
 const SourcePageFile = ({ id, label, state, onClick, createFileDragProvider }: SourcePageFileProps) => (
     <GtkStackPage id={id}>
-        <GtkButton valign={Gtk.Align.CENTER} accessibleLabel={label} onClicked={() => void onClick()}>
+        <GtkButton
+            valign={Gtk.Align.CENTER}
+            accessibleLabel={label}
+            onClicked={() => void onClick()}
+            addController={
+                <GtkDragSource
+                    onPrepare={createFileDragProvider}
+                    actions={Gdk.DragAction.COPY}
+                    propagationPhase={Gtk.PropagationPhase.CAPTURE}
+                />
+            }
+        >
             <GtkLabel label={state.sourceFile ? (state.sourceFile.getPath() ?? "—") : "—"} xalign={0} ellipsize={1} />
-            <GtkDragSource
-                onPrepare={createFileDragProvider}
-                actions={Gdk.DragAction.COPY}
-                propagationPhase={Gtk.PropagationPhase.CAPTURE}
-            />
         </GtkButton>
     </GtkStackPage>
 );
@@ -509,12 +515,17 @@ interface ClipboardPasteSectionProps {
 }
 
 const ClipboardPasteSection = ({ pastedContent, canPaste, onPaste, onDrop }: ClipboardPasteSectionProps) => (
-    <GtkBox name="paste-box" spacing={12}>
-        <GtkDropTarget
-            types={[gdkTextureType, gdkPaintableType, gfileType, gdkRgbaType, GObject.Type.STRING]}
-            actions={Gdk.DragAction.COPY}
-            onDrop={onDrop}
-        />
+    <GtkBox
+        name="paste-box"
+        spacing={12}
+        addController={
+            <GtkDropTarget
+                types={[gdkTextureType, gdkPaintableType, gfileType, gdkRgbaType, GObject.Type.STRING]}
+                actions={Gdk.DragAction.COPY}
+                onDrop={onDrop}
+            />
+        }
+    >
         <GtkButton
             label="_Paste"
             useUnderline

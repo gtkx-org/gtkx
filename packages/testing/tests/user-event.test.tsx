@@ -22,7 +22,7 @@ import {
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
 import { GtkDropDown } from "@gtkx/react";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { isEditable } from "../src/editable.js";
 import { render, screen, userEvent, waitFor } from "../src/index.js";
@@ -38,11 +38,7 @@ const expectEditableText = (entry: Gtk.Widget, expected: string): void => {
 };
 
 const renderGesturedLabel = async (name: string, label: string, gesture: ReactNode): Promise<Gtk.Widget> => {
-    await render(
-        <GtkLabel name={name} label={label}>
-            {gesture}
-        </GtkLabel>,
-    );
+    await render(<GtkLabel name={name} label={label} addController={gesture} />);
     return screen.findByName(name);
 };
 
@@ -435,16 +431,26 @@ describe("userEvent.drag", () => {
     });
 });
 
+const renderDropZone = async (
+    name: string,
+    label: string,
+    gtype: number,
+    onDrop: ComponentProps<typeof GtkDropTarget>["onDrop"],
+): Promise<Gtk.Widget> => {
+    await render(
+        <GtkLabel
+            name={name}
+            label={label}
+            addController={<GtkDropTarget types={[gtype]} actions={Gdk.DragAction.COPY} onDrop={onDrop} />}
+        />,
+    );
+    return screen.findByName(name);
+};
+
 describe("userEvent.drop", () => {
     it("emits drop on the widget's DropTarget with a string payload", async () => {
         const handleDrop = vi.fn().mockReturnValue(true);
-        await render(
-            <GtkLabel name="drop-zone" label="Drop here">
-                <GtkDropTarget types={[GObject.Type.STRING]} actions={Gdk.DragAction.COPY} onDrop={handleDrop} />
-            </GtkLabel>,
-        );
-
-        const target = await screen.findByName("drop-zone");
+        const target = await renderDropZone("drop-zone", "Drop here", GObject.Type.STRING, handleDrop);
         await userEvent.drop(target, "payload", { x: 10, y: 20 });
 
         expect(handleDrop).toHaveBeenCalledTimes(1);
@@ -456,13 +462,7 @@ describe("userEvent.drop", () => {
 
     it("auto-marshals numeric payloads", async () => {
         const handleDrop = vi.fn().mockReturnValue(true);
-        await render(
-            <GtkLabel name="number-zone" label="Drop a number">
-                <GtkDropTarget types={[GObject.Type.DOUBLE]} actions={Gdk.DragAction.COPY} onDrop={handleDrop} />
-            </GtkLabel>,
-        );
-
-        const target = await screen.findByName("number-zone");
+        const target = await renderDropZone("number-zone", "Drop a number", GObject.Type.DOUBLE, handleDrop);
         await userEvent.drop(target, 42);
 
         const [value] = handleDrop.mock.calls[0] ?? [];
@@ -471,13 +471,7 @@ describe("userEvent.drop", () => {
 
     it("auto-marshals boolean payloads", async () => {
         const handleDrop = vi.fn().mockReturnValue(true);
-        await render(
-            <GtkLabel name="bool-zone" label="Drop a flag">
-                <GtkDropTarget types={[GObject.Type.BOOLEAN]} actions={Gdk.DragAction.COPY} onDrop={handleDrop} />
-            </GtkLabel>,
-        );
-
-        const target = await screen.findByName("bool-zone");
+        const target = await renderDropZone("bool-zone", "Drop a flag", GObject.Type.BOOLEAN, handleDrop);
         await userEvent.drop(target, true);
 
         const [value] = handleDrop.mock.calls[0] ?? [];
@@ -488,13 +482,7 @@ describe("userEvent.drop", () => {
 describe("userEvent.drop — value passthrough and errors", () => {
     it("forwards a pre-built GObject.Value unchanged", async () => {
         const handleDrop = vi.fn().mockReturnValue(true);
-        await render(
-            <GtkLabel name="value-zone" label="Drop a value">
-                <GtkDropTarget types={[GObject.Type.STRING]} actions={Gdk.DragAction.COPY} onDrop={handleDrop} />
-            </GtkLabel>,
-        );
-
-        const target = await screen.findByName("value-zone");
+        const target = await renderDropZone("value-zone", "Drop a value", GObject.Type.STRING, handleDrop);
         const value = new GObject.Value();
         value.init(GObject.Type.STRING);
         value.setString("preserved");
@@ -517,12 +505,22 @@ describe("userEvent.dragAndDrop", () => {
         const handleDrop = vi.fn().mockReturnValue(true);
         await render(
             <GtkBox>
-                <GtkLabel name="drag-source" label="Drag me">
-                    <GtkDragSource actions={Gdk.DragAction.COPY} />
-                </GtkLabel>
-                <GtkLabel name="drop-target" label="Drop here">
-                    <GtkDropTarget types={[GObject.Type.STRING]} actions={Gdk.DragAction.COPY} onDrop={handleDrop} />
-                </GtkLabel>
+                <GtkLabel
+                    name="drag-source"
+                    label="Drag me"
+                    addController={<GtkDragSource actions={Gdk.DragAction.COPY} />}
+                />
+                <GtkLabel
+                    name="drop-target"
+                    label="Drop here"
+                    addController={
+                        <GtkDropTarget
+                            types={[GObject.Type.STRING]}
+                            actions={Gdk.DragAction.COPY}
+                            onDrop={handleDrop}
+                        />
+                    }
+                />
             </GtkBox>,
         );
 
@@ -538,9 +536,17 @@ describe("userEvent.dragAndDrop", () => {
         await render(
             <GtkBox>
                 <GtkLabel name="not-a-source" label="No source" />
-                <GtkLabel name="drop-target" label="Drop here">
-                    <GtkDropTarget types={[GObject.Type.STRING]} actions={Gdk.DragAction.COPY} onDrop={() => true} />
-                </GtkLabel>
+                <GtkLabel
+                    name="drop-target"
+                    label="Drop here"
+                    addController={
+                        <GtkDropTarget
+                            types={[GObject.Type.STRING]}
+                            actions={Gdk.DragAction.COPY}
+                            onDrop={() => true}
+                        />
+                    }
+                />
             </GtkBox>,
         );
 
@@ -550,42 +556,37 @@ describe("userEvent.dragAndDrop", () => {
     });
 });
 
+const renderShortcutHost = async (trigger: Gtk.ShortcutTrigger, onActivate: () => boolean): Promise<Gtk.Widget> => {
+    await render(
+        <GtkBox
+            name="host"
+            addController={
+                <GtkShortcutController
+                    scope={Gtk.ShortcutScope.GLOBAL}
+                    addShortcut={<GtkShortcut trigger={trigger} action={Gtk.CallbackAction.new(onActivate)} />}
+                />
+            }
+        >
+            <GtkLabel label="anchor" />
+        </GtkBox>,
+    );
+    return screen.findByName("host");
+};
+
 describe("userEvent.keyboard — shortcut dispatch", () => {
     it("activates a KeyvalTrigger shortcut when the matching key is pressed", async () => {
         const onActivate = vi.fn(() => true);
-        await render(
-            <GtkBox name="host">
-                <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-                    <GtkShortcut
-                        trigger={Gtk.ShortcutTrigger.parseString("F5")}
-                        action={Gtk.CallbackAction.new(onActivate)}
-                    />
-                </GtkShortcutController>
-                <GtkLabel label="anchor" />
-            </GtkBox>,
-        );
-        const host = (await screen.findByName("host")) as Gtk.Widget;
+        const host = await renderShortcutHost(Gtk.ShortcutTrigger.parseString("F5"), onActivate);
         await userEvent.keyboard(host, "{F5}");
         expect(onActivate).toHaveBeenCalled();
     });
 
     it("activates an AlternativeTrigger shortcut from either side", async () => {
         const onActivate = vi.fn(() => true);
-        await render(
-            <GtkBox name="host">
-                <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-                    <GtkShortcut
-                        trigger={Gtk.AlternativeTrigger.new(
-                            Gtk.ShortcutTrigger.parseString("F6"),
-                            Gtk.ShortcutTrigger.parseString("F7"),
-                        )}
-                        action={Gtk.CallbackAction.new(onActivate)}
-                    />
-                </GtkShortcutController>
-                <GtkLabel label="anchor" />
-            </GtkBox>,
+        const host = await renderShortcutHost(
+            Gtk.AlternativeTrigger.new(Gtk.ShortcutTrigger.parseString("F6"), Gtk.ShortcutTrigger.parseString("F7")),
+            onActivate,
         );
-        const host = (await screen.findByName("host")) as Gtk.Widget;
         await userEvent.keyboard(host, "{F6}");
         await userEvent.keyboard(host, "{F7}");
         expect(onActivate).toHaveBeenCalledTimes(2);
@@ -593,18 +594,7 @@ describe("userEvent.keyboard — shortcut dispatch", () => {
 
     it("does not activate any shortcut when the key does not match", async () => {
         const onActivate = vi.fn(() => true);
-        await render(
-            <GtkBox name="host">
-                <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-                    <GtkShortcut
-                        trigger={Gtk.ShortcutTrigger.parseString("F8")}
-                        action={Gtk.CallbackAction.new(onActivate)}
-                    />
-                </GtkShortcutController>
-                <GtkLabel label="anchor" />
-            </GtkBox>,
-        );
-        const host = (await screen.findByName("host")) as Gtk.Widget;
+        const host = await renderShortcutHost(Gtk.ShortcutTrigger.parseString("F8"), onActivate);
         await userEvent.keyboard(host, "{F9}");
         expect(onActivate).not.toHaveBeenCalled();
     });

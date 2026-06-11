@@ -12,22 +12,36 @@ const logAction = (message: string): Gtk.ShortcutAction =>
 const ShortcutTriggersDemo = () => {
     return (
         <GtkListBox name="list-box" marginTop={6} marginBottom={6} marginStart={6} marginEnd={6}>
-            <GtkLabel name="label-ctrl-g" label="Press Ctrl-G">
-                <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-                    <GtkShortcut
-                        trigger={Gtk.ShortcutTrigger.parseString("<Control>g")}
-                        action={logAction("activated Press Ctrl-G")}
+            <GtkLabel
+                name="label-ctrl-g"
+                label="Press Ctrl-G"
+                addController={
+                    <GtkShortcutController
+                        scope={Gtk.ShortcutScope.GLOBAL}
+                        addShortcut={
+                            <GtkShortcut
+                                trigger={Gtk.ShortcutTrigger.parseString("<Control>g")}
+                                action={logAction("activated Press Ctrl-G")}
+                            />
+                        }
                     />
-                </GtkShortcutController>
-            </GtkLabel>
-            <GtkLabel name="label-x" label="Press X">
-                <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
-                    <GtkShortcut
-                        trigger={Gtk.ShortcutTrigger.parseString("x")}
-                        action={logAction("activated Press X")}
+                }
+            />
+            <GtkLabel
+                name="label-x"
+                label="Press X"
+                addController={
+                    <GtkShortcutController
+                        scope={Gtk.ShortcutScope.GLOBAL}
+                        addShortcut={
+                            <GtkShortcut
+                                trigger={Gtk.ShortcutTrigger.parseString("x")}
+                                action={logAction("activated Press X")}
+                            />
+                        }
                     />
-                </GtkShortcutController>
-            </GtkLabel>
+                }
+            />
         </GtkListBox>
     );
 };

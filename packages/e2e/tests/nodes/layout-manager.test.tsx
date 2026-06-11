@@ -9,9 +9,10 @@ describe("render - LayoutManagerNode wiring", () => {
         const boxRef = createRef<Gtk.Box>();
 
         await render(
-            <GtkBox ref={boxRef}>
-                <GtkBoxLayout orientation={Gtk.Orientation.VERTICAL} spacing={12} />
-            </GtkBox>,
+            <GtkBox
+                ref={boxRef}
+                layoutManager={<GtkBoxLayout orientation={Gtk.Orientation.VERTICAL} spacing={12} />}
+            />,
         );
 
         const layout = boxRef.current?.getLayoutManager();
@@ -23,11 +24,7 @@ describe("render - LayoutManagerNode wiring", () => {
     it("attaches a GtkGridLayout to the host widget", async () => {
         const boxRef = createRef<Gtk.Box>();
 
-        await render(
-            <GtkBox ref={boxRef}>
-                <GtkGridLayout columnSpacing={6} rowSpacing={4} />
-            </GtkBox>,
-        );
+        await render(<GtkBox ref={boxRef} layoutManager={<GtkGridLayout columnSpacing={6} rowSpacing={4} />} />);
 
         const layout = boxRef.current?.getLayoutManager();
         expect(layout).toBeInstanceOf(Gtk.GridLayout);
@@ -38,11 +35,7 @@ describe("render - LayoutManagerNode wiring", () => {
     it("attaches a GtkFixedLayout to the host widget", async () => {
         const boxRef = createRef<Gtk.Box>();
 
-        await render(
-            <GtkBox ref={boxRef}>
-                <GtkFixedLayout />
-            </GtkBox>,
-        );
+        await render(<GtkBox ref={boxRef} layoutManager={<GtkFixedLayout />} />);
 
         expect(boxRef.current?.getLayoutManager()).toBeInstanceOf(Gtk.FixedLayout);
     });
@@ -53,11 +46,7 @@ describe("render - LayoutManagerNode lifecycle", () => {
         const boxRef = createRef<Gtk.Box>();
 
         function App({ spacing }: { spacing: number }) {
-            return (
-                <GtkBox ref={boxRef}>
-                    <GtkBoxLayout spacing={spacing} />
-                </GtkBox>
-            );
+            return <GtkBox ref={boxRef} layoutManager={<GtkBoxLayout spacing={spacing} />} />;
         }
 
         const { rerender } = await render(<App spacing={4} />);
@@ -71,7 +60,7 @@ describe("render - LayoutManagerNode lifecycle", () => {
         const boxRef = createRef<Gtk.Box>();
 
         function App({ show }: { show: boolean }) {
-            return <GtkBox ref={boxRef}>{show && <GtkBoxLayout spacing={8} />}</GtkBox>;
+            return <GtkBox ref={boxRef} layoutManager={show && <GtkBoxLayout spacing={8} />} />;
         }
 
         const { rerender } = await render(<App show={true} />);
@@ -86,7 +75,7 @@ describe("render - LayoutManagerNode lifecycle", () => {
         const boxRef = createRef<Gtk.Box>();
 
         function App({ useGrid }: { useGrid: boolean }) {
-            return <GtkBox ref={boxRef}>{useGrid ? <GtkGridLayout /> : <GtkBoxLayout spacing={4} />}</GtkBox>;
+            return <GtkBox ref={boxRef} layoutManager={useGrid ? <GtkGridLayout /> : <GtkBoxLayout spacing={4} />} />;
         }
 
         const { rerender } = await render(<App useGrid={false} />);
@@ -104,8 +93,7 @@ describe("render - GtkGridChild against a generic widget with GridLayout", () =>
         const labelBRef = createRef<Gtk.Label>();
 
         await render(
-            <GtkBox ref={boxRef}>
-                <GtkGridLayout />
+            <GtkBox ref={boxRef} layoutManager={<GtkGridLayout />}>
                 <GtkGridChild column={0} row={0}>
                     <GtkLabel ref={labelARef} label="A" />
                 </GtkGridChild>

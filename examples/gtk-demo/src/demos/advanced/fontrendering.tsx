@@ -869,42 +869,50 @@ const FontRenderingDemo = () => {
     const { state, drawFunc, zoomIn, zoomOut, naturalSize } = useFontRendering();
 
     return (
-        <>
-            <GtkShortcutController scope={Gtk.ShortcutScope.MANAGED}>
-                <GtkShortcut
-                    trigger={Gtk.ShortcutTrigger.parseString("<Control>plus")}
-                    action={Gtk.CallbackAction.new(() => {
-                        zoomIn();
-                        return true;
-                    })}
+        <GtkBox
+            orientation={Gtk.Orientation.VERTICAL}
+            vexpand
+            addController={
+                <GtkShortcutController
+                    scope={Gtk.ShortcutScope.MANAGED}
+                    addShortcut={
+                        <>
+                            <GtkShortcut
+                                trigger={Gtk.ShortcutTrigger.parseString("<Control>plus")}
+                                action={Gtk.CallbackAction.new(() => {
+                                    zoomIn();
+                                    return true;
+                                })}
+                            />
+                            <GtkShortcut
+                                trigger={Gtk.ShortcutTrigger.parseString("<Control>minus")}
+                                action={Gtk.CallbackAction.new(() => {
+                                    zoomOut();
+                                    return true;
+                                })}
+                            />
+                        </>
+                    }
                 />
-                <GtkShortcut
-                    trigger={Gtk.ShortcutTrigger.parseString("<Control>minus")}
-                    action={Gtk.CallbackAction.new(() => {
-                        zoomOut();
-                        return true;
-                    })}
+            }
+        >
+            <FontRenderingControls state={state} onZoomIn={zoomIn} onZoomOut={zoomOut} />
+            <GtkSeparator />
+            <GtkScrolledWindow hexpand vexpand propagateNaturalHeight>
+                <GtkDrawingArea
+                    name="image"
+                    ref={state.drawingAreaRef}
+                    render={drawFunc}
+                    contentWidth={naturalSize.width}
+                    contentHeight={naturalSize.height}
+                    hexpand
+                    vexpand
+                    halign={Gtk.Align.CENTER}
+                    valign={Gtk.Align.CENTER}
+                    accessibleLabel="Font rendering example"
                 />
-            </GtkShortcutController>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
-                <FontRenderingControls state={state} onZoomIn={zoomIn} onZoomOut={zoomOut} />
-                <GtkSeparator />
-                <GtkScrolledWindow hexpand vexpand propagateNaturalHeight>
-                    <GtkDrawingArea
-                        name="image"
-                        ref={state.drawingAreaRef}
-                        render={drawFunc}
-                        contentWidth={naturalSize.width}
-                        contentHeight={naturalSize.height}
-                        hexpand
-                        vexpand
-                        halign={Gtk.Align.CENTER}
-                        valign={Gtk.Align.CENTER}
-                        accessibleLabel="Font rendering example"
-                    />
-                </GtkScrolledWindow>
-            </GtkBox>
-        </>
+            </GtkScrolledWindow>
+        </GtkBox>
     );
 };
 

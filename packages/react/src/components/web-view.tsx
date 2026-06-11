@@ -1,10 +1,11 @@
 import type * as WebKit from "@gtkx/gi/webkit";
 import type { WebKitWebViewProps } from "@gtkx/jsx/webkit";
 import { type ReactNode, useRef } from "react";
+import { createWidgetComponent } from "../create-widget-component.js";
 import { useMergedRefs } from "../use-merged-refs.js";
 import { useSignal } from "../use-signal.js";
 
-const WebKitWebViewElement = "WebKitWebView" as const;
+const WebKitWebViewElement = createWidgetComponent<Omit<WebKitWebViewProps, "onLoadChanged">>("WebKitWebView");
 
 /**
  * Declarative wrapper for `WebKit.WebView`.

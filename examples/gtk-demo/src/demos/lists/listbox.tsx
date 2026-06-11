@@ -189,12 +189,13 @@ const MessageActions = ({
                             </GMenuItem>
                         </GMenu>
                     }
-                >
-                    <GSimpleActionGroup prefix="msg">
-                        <GSimpleAction name="email" onActivate={() => {}} />
-                        <GSimpleAction name="embed" onActivate={() => {}} />
-                    </GSimpleActionGroup>
-                </GtkMenuButton>
+                    insertActionGroup={
+                        <GSimpleActionGroup prefix="msg">
+                            <GSimpleAction name="email" onActivate={() => {}} />
+                            <GSimpleAction name="embed" onActivate={() => {}} />
+                        </GSimpleActionGroup>
+                    }
+                />
             </GtkBox>
         </GtkBox>
     </GtkGridChild>

@@ -1541,13 +1541,14 @@ const ShadertoyGLAreaPanel = ({
                 onUnrealize={handleUnrealize}
                 hexpand
                 vexpand
-            >
-                <GtkGestureDrag
-                    onDragBegin={dragHandlers.handleDragBegin}
-                    onDragUpdate={dragHandlers.handleDragUpdate}
-                    onDragEnd={dragHandlers.handleDragEnd}
-                />
-            </GtkGLArea>
+                addController={
+                    <GtkGestureDrag
+                        onDragBegin={dragHandlers.handleDragBegin}
+                        onDragUpdate={dragHandlers.handleDragUpdate}
+                        onDragEnd={dragHandlers.handleDragEnd}
+                    />
+                }
+            />
         </GtkGraphicsOffload>
     </GtkAspectFrame>
 );

@@ -381,43 +381,66 @@ clones across react/config/codegen/cli.
 Builds on Phase 4's tables: a containerSlot prop is a table row; the compound layer renders the
 prop value into the existing `container-slot` wrapper.
 
-- [ ] **T5.1** Generalize the container-slot interpreter in `element-map.ts` from `Gtk.Widget`
-      children to GObject children: collect backing instances, detach through the row's verb
-      (`removeController`, …) instead of `unparentWidget`, keep fragment support, ordering, and
-      idempotent re-attach.
-- [ ] **T5.2** Promote the `ATTACH_RULES` relationships to widget-level containerSlot props:
-      `addController` on every widget; `layoutManager` as a widget slot (setter semantics);
-      `addShortcut` on `GtkShortcutController`; `addAction` on action-map elements
-      (`GtkApplication`, windows); `insertActionGroup` on every widget (elements keep their
-      `prefix` prop). Naming follows the GTK method, matching `packStart`/`addPrefix`.
-- [ ] **T5.3** Component emission strategy: replace per-widget generated component bodies with a
-      generic factory in `@gtkx/react` (e.g. `createWidgetComponent(elementName)`) that reads the
-      merged slot tables and turns element-valued props into wrapper children. Codegen emits one
-      line per element plus its Props type. This also advances goals 4 and 5 (generated code is
-      pure data + runtime-helper calls).
-- [ ] **T5.4** Remove the child-nesting attach path for the promoted relationships: nesting a
-      controller as a child becomes a dev-mode error naming the prop to use.
-- [ ] **T5.5** Keep as children per D8: stack/notebook pages, grid/fixed layout children, overlay
-      children, `GtkColumnViewColumn`, `GMenu`/`GMenuItem`, transparent wrappers, text kinds.
-- [ ] **T5.6** Migrate all usage sites: examples (~50 files with inline controllers/gestures),
-      `packages/e2e` tests, `packages/testing` helpers, website docs and tutorial.
-- [ ] **T5.7** `GtkTextBuffer`/`GtkSourceBuffer` become regular elements. A `buffer` slot row
-      (setter semantics, like `layoutManager`) attaches a buffer child — or slot prop — to any
-      `GtkTextView`; content children (text runs, `GtkTextTag`, anchors, paintables) nest under
-      the buffer element; a view with no buffer element keeps its native lazily-created buffer
-      with content children directly under the view, both paths sharing the rebuild. The buffer
-      props and signals are the generated GIR surface (`language`, `styleScheme`,
-      `highlightSyntax`, `enableUndo`, `onCursorMoved`, `onHighlightUpdated`, `onInsertText`,
-      …): `language`/`styleScheme` take the GObjects, callbacks receive GIR signatures, and
-      property observation goes through `useProperty`. The text-buffer portions of the
-      `jsx.ts` gtk/gtksource augmentations (offset-convenience callbacks, string-typed
-      `language`/`styleScheme`) are deleted with them. `TextBufferController` sheds every
-      GtkSource reference (`resolveLanguage`, `resolveStyleScheme`, `applySourceProps`, buffer
-      construction, the `isGtkSource*` predicates) and keeps only the Gtk-only content rebuild;
-      `source-viewer.tsx` and its test migrate (text child instead of `ref` + `setText`).
+- [x] **T5.1** The container-slot interpreter in `element-map.ts` handles GObject children: it
+      tracks wrapper child instances, attaches each through the first matching element-map data
+      rule (`addController`, `insertActionGroup` with the child's `prefix`, `addShortcut`,
+      `addAction`) or the wrapper's method for plain widgets, and detaches through the rule's
+      verb (falling back to `unparentWidget` for rule-less widgets). Fragment support, ordering,
+      and idempotent re-attach kept (`attachState` now stores instances).
+- [x] **T5.2** Promoted: `addController` and `insertActionGroup` on `GtkWidget` (every widget
+      inherits them), `addShortcut` on `GtkShortcutController`, `addAction` on
+      `GtkApplicationWindow`, and `layoutManager` as a `GtkWidget` slot (setter semantics, raw
+      property + notify suppressed). Slot tables are subtree-scoped: a row keyed by a type
+      applies to its whole GType subtree. `GtkApplication` is deliberately NOT promoted —
+      app-level actions render into the application container, which has no JSX element to
+      carry a prop, so they stay children (as do `GSimpleAction` children of
+      `GSimpleActionGroup`). Naming follows the GTK method.
+- [x] **T5.3** `createWidgetComponent(elementName)` in `@gtkx/react` resolves an element's slot
+      surface at first render by walking the registered class's GType ancestry (`classHasType`)
+      against the merged `SLOTS`/`CONTAINER_SLOTS` from `virtual:gtkx-config`, splits slot- and
+      container-slot props into metadata wrapper children, and forwards the rest to the
+      intrinsic. Codegen emits one annotated line per element
+      (`export const GtkButton: (props: GtkButtonProps) => ReactNode =
+      createWidgetComponent<GtkButtonProps>("GtkButton")`), HOC-wrapped where classified;
+      per-widget component bodies, intrinsic consts, and the unused `WidgetSlotNames` type are
+      gone. Virtual subcomponents (`GtkStackPage`, …) still own their names. Hand-written
+      enhanced components (`GtkDrawingArea`, the list family, `WebKitWebView`) render their
+      hosts through the same factory, so promoted props work on them too; `ColumnViewColumn`
+      dropped its manual `headerMenu` wrapper in the process.
+- [x] **T5.4** A promoted-nesting guard mapping sits ahead of the data rules: when a data rule
+      matches a `(child, parent)` pair AND a slot/containerSlot prop covers that rule on the
+      parent's GType chain (container slots match the verb's attach method; slots match the
+      property a `set<Prop>` attach method writes), attaching throws
+      `<X> cannot be a child of <Y>: pass it through the \`prop\` prop instead.` Relationships
+      without a prop surface — `GtkTextBuffer` under a text view, project `elementMap` rows —
+      keep attaching as children.
+- [x] **T5.5** Kept as children per D8: stack/notebook pages, grid/fixed layout children,
+      overlay children, `GtkColumnViewColumn`, `GMenu`/`GMenuItem`, transparent wrappers, text
+      kinds.
+- [x] **T5.6** All usage sites migrated: 21 gtk-demo files + the tutorial app (controllers,
+      shortcuts, constraint layouts, window actions, action groups), 7 e2e suites + helpers,
+      `@gtkx/testing` user-event tests, website docs (getting-started, tutorial 4 and 8), the
+      CLI's `WIDGETS.md.ejs` template, and the `@gtkx/react` JSDoc examples.
+      `MISSING_LAYOUT_MESSAGE` reworded for the `layoutManager` prop shape. Two defects found
+      and fixed en route: (1) a layout-child wrapper attached while the host still carried its
+      default layout manager never bound — the `layoutManager` slot write now re-runs the
+      parent's layout-child wrapper attaches (`resyncLayoutChildWrappers`); (2) enhanced
+      components spread `{...rest}` onto raw intrinsics and dropped promoted props — fixed by
+      rendering their hosts through `createWidgetComponent`.
+- [x] **T5.7** `GtkTextBuffer`/`GtkSourceBuffer` are regular elements: a built-in method-verb
+      row (`setBuffer`/`setBuffer(null)` with a parent `getBuffer` detach guard) attaches a
+      buffer child to any `GtkTextView`; content (text runs, `GtkTextTag`, anchors, paintables)
+      nests under the buffer element, and bare text children are otherwise allowed only in
+      labels. The buffer props and signals are the generated GIR surface; the `TextBufferProps`
+      and gtksource `jsx.ts` augmentations, the view-level buffer prop rules, the GtkSource
+      references in `TextBufferController`, and the `isGtkSource*` predicates are deleted;
+      `source-viewer.tsx` and the source-view/text-view suites migrated.
 
-Exit: `grep` over examples finds no controller/layout-manager/action elements nested as children;
-gtk-demo gesture, hypertext, and source-viewer flows work; e2e suite green.
+Exit (verified 2026-06-11): `grep` over examples finds no controller/layout-manager/action
+elements nested as children; gtk-demo gesture, constraint, hypertext, and source-viewer flows
+work (gtk-demo 666/666); full gates green — `pnpm build` 20/20, `pnpm test` 28/28 (e2e 671,
+zero act warnings), `pnpm typecheck` 33/33, `pnpm lint` clean (biome, knip ×2, depcruise 605
+modules).
 
 ## Phase 6 — Goals 4 + 5: type decoupling; optional libraries genuinely optional
 

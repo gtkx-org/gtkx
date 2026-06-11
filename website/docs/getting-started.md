@@ -157,6 +157,8 @@ import { GtkButton, GtkEntry } from "@gtkx/react";
 
 #### Event controller example
 
+Event controllers and gestures attach through the widget's `addController` prop (wrap several in a fragment):
+
 ```tsx
 import { GtkBox, GtkLabel, GtkEventControllerMotion, GtkEventControllerKey } from "@gtkx/react";
 import { useState } from "react";
@@ -165,18 +167,24 @@ const InteractiveBox = () => {
     const [position, setPosition] = useState({ x: 0, y: 0 });
 
     return (
-        <GtkBox focusable>
-            <GtkEventControllerMotion
-                onEnter={(x, y) => console.log("Entered at", x, y)}
-                onMotion={(x, y) => setPosition({ x, y })}
-                onLeave={() => console.log("Left")}
-            />
-            <GtkEventControllerKey
-                onKeyPressed={(keyval) => {
-                    console.log("Key:", keyval);
-                    return false;
-                }}
-            />
+        <GtkBox
+            focusable
+            addController={
+                <>
+                    <GtkEventControllerMotion
+                        onEnter={(x, y) => console.log("Entered at", x, y)}
+                        onMotion={(x, y) => setPosition({ x, y })}
+                        onLeave={() => console.log("Left")}
+                    />
+                    <GtkEventControllerKey
+                        onKeyPressed={(keyval) => {
+                            console.log("Key:", keyval);
+                            return false;
+                        }}
+                    />
+                </>
+            }
+        >
             <GtkLabel label={`Position: ${Math.round(position.x)}, ${Math.round(position.y)}`} />
         </GtkBox>
     );

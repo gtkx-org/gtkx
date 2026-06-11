@@ -307,6 +307,18 @@ const SettingsColumnView = ({
                     tabBehavior={Gtk.ListTabBehavior.CELL}
                     cssClasses={["data-table"]}
                     items={filteredKeyInfos.map((k) => ({ id: k.name, value: k }))}
+                    insertActionGroup={
+                        <GSimpleActionGroup prefix="columnview">
+                            {TOGGLEABLE_COLUMNS.map((column) => (
+                                <GSimpleAction
+                                    key={column.id}
+                                    name={column.action}
+                                    state={GLib.Variant.newBoolean(columnVisibility[column.id])}
+                                    onActivate={() => toggleColumn(column.id)}
+                                />
+                            ))}
+                        </GSimpleActionGroup>
+                    }
                 >
                     <GtkColumnViewColumn
                         id="name"
@@ -360,16 +372,6 @@ const SettingsColumnView = ({
                         headerMenu={columnVisibilityMenu}
                         renderCell={(item: KeyInfo) => <GtkLabel label={item.description} xalign={0} wrap />}
                     />
-                    <GSimpleActionGroup prefix="columnview">
-                        {TOGGLEABLE_COLUMNS.map((column) => (
-                            <GSimpleAction
-                                key={column.id}
-                                name={column.action}
-                                state={GLib.Variant.newBoolean(columnVisibility[column.id])}
-                                onActivate={() => toggleColumn(column.id)}
-                            />
-                        ))}
-                    </GSimpleActionGroup>
                 </GtkColumnView>
             </GtkScrolledWindow>
         </GtkBox>

@@ -18,7 +18,7 @@ import type { AddMethodRule } from "@gtkx/config";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { DATA_ATTACH_MAPPINGS } from "./attach-rules.js";
+import { DATA_ATTACH_MAPPINGS, findDataAttachMapping, promotedNestingGuardMapping } from "./attach-rules.js";
 import { collectTypeNameChain } from "./gtype.js";
 import { hasType } from "./gtype-predicates.js";
 import { type Instance, isWrapperInstance, isWrapperKind } from "./instance.js";
@@ -114,12 +114,24 @@ const wrapperChildWidgets = (marker: Instance): Gtk.Widget[] => {
     return widgets;
 };
 
-const sameWidgets = (a: readonly Gtk.Widget[], b: readonly Gtk.Widget[]): boolean =>
-    a.length === b.length && a.every((widget, index) => widget === b[index]);
-
 // --- Slot (single, property setter) ---
 
 type SlotState = { prop: string; value: BackingInstance };
+
+const LAYOUT_MANAGER_PROP = "layoutManager";
+
+/**
+ * Re-attaches the parent's layout-child wrappers after its layout manager
+ * changes. Slot wrappers attach after the regular children, so a layout-child
+ * wrapper appended while the host still carried its default layout manager
+ * found no grid or fixed layout to bind to; re-running its attach resolves it
+ * against the layout the slot just installed.
+ */
+const resyncLayoutChildWrappers = (parent: Instance): void => {
+    for (const sibling of parent.children) {
+        if (isWrapperKind(sibling, "layout-child")) attachToParent(sibling, parent);
+    }
+};
 
 const slotMapping: ElementMapping = {
     matches: (child, parent) => isWrapperKind(child, "slot") && parent.backingInstance !== undefined,
@@ -132,6 +144,7 @@ const slotMapping: ElementMapping = {
         if (state && state.value === value) return;
         Reflect.set(target, prop, value ?? null);
         child.attachState = value ? { prop, value } : undefined;
+        if (prop === LAYOUT_MANAGER_PROP) resyncLayoutChildWrappers(parent);
     },
     detach: (child, parent) => {
         const state = child.attachState as SlotState | undefined;
@@ -145,21 +158,49 @@ const slotMapping: ElementMapping = {
 
 // --- Container slot (multi, method append) ---
 
+const wrapperChildInstances = (marker: Instance): Instance[] =>
+    marker.children.filter((child) => child.backingInstance !== undefined);
+
+const sameInstances = (a: readonly Instance[], b: readonly Instance[]): boolean =>
+    a.length === b.length && a.every((instance, index) => instance === b[index]);
+
+const attachContainerSlotChild = (instance: Instance, parent: Instance, method: string): void => {
+    const mapping = findDataAttachMapping(instance, parent);
+    if (mapping) {
+        mapping.attach(instance, parent);
+        return;
+    }
+    const target = parent.backingInstance;
+    if (target) invokeRequired(target, method, instance.backingInstance);
+};
+
+const detachContainerSlotChild = (instance: Instance, parent: Instance): void => {
+    const mapping = findDataAttachMapping(instance, parent);
+    if (mapping) {
+        mapping.detach(instance, parent);
+        return;
+    }
+    const widget = instance.backingInstance;
+    if (widget instanceof Gtk.Widget) unparentWidget(widget);
+};
+
 const containerSlotMapping: ElementMapping = {
     matches: (child, parent) => isWrapperKind(child, "container-slot") && parent.backingInstance !== undefined,
     attach: (child, parent) => {
         const method = child.props.method;
         const target = parent.backingInstance;
         if (typeof method !== "string" || !target) return;
-        const desired = wrapperChildWidgets(child);
-        const prev = (child.attachState as Gtk.Widget[] | undefined) ?? [];
-        if (sameWidgets(prev, desired)) return;
-        for (const widget of prev) unparentWidget(widget);
-        for (const widget of desired) invokeRequired(target, method, widget);
+        const desired = wrapperChildInstances(child);
+        const prev = (child.attachState as Instance[] | undefined) ?? [];
+        if (sameInstances(prev, desired)) return;
+        for (const instance of prev) detachContainerSlotChild(instance, parent);
+        for (const instance of desired) attachContainerSlotChild(instance, parent, method);
         child.attachState = desired;
     },
-    detach: (child) => {
-        for (const widget of (child.attachState as Gtk.Widget[] | undefined) ?? []) unparentWidget(widget);
+    detach: (child, parent) => {
+        for (const instance of (child.attachState as Instance[] | undefined) ?? []) {
+            detachContainerSlotChild(instance, parent);
+        }
         child.attachState = undefined;
     },
 };
@@ -632,6 +673,7 @@ export const ELEMENT_MAP: readonly ElementMapping[] = [
     layoutChildMapping,
     overlayMapping,
     transparentMapping,
+    promotedNestingGuardMapping,
     ...DATA_ATTACH_MAPPINGS,
     menuItemMapping,
     menuLinkMapping,

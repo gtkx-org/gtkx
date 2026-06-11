@@ -598,7 +598,7 @@ export type SizeGroupWidgetProps = {
  * Props for `<GtkConstraintLayout.Constraint>`.
  *
  * Declares one row in the constraint solver. `target` and `source` reference
- * ids registered by sibling `<GtkConstraintLayout.Widget id="…">` wrappers
+ * ids registered by `<GtkConstraintLayout.Widget id="…">` wrappers
  * or `<GtkConstraintLayout.Guide id="…">` markers; either may be omitted or
  * set to `"super"` to mean the widget owning the layout. The underlying
  * `Gtk.Constraint` is immutable, so the reconciler re-creates it on every
@@ -653,7 +653,7 @@ export type ConstraintGuideProps = {
  * Props for `<GtkConstraintLayout.Vfl>`.
  *
  * Wraps `Gtk.ConstraintLayout.addConstraintsFromDescription`. The marker builds
- * the `views` map automatically from sibling `<GtkConstraintLayout.Widget>`
+ * the `views` map automatically from `<GtkConstraintLayout.Widget>`
  * registrations plus any `<Guide>` ids on the same layout.
  */
 export type ConstraintVflProps = {
@@ -669,10 +669,10 @@ export type ConstraintVflProps = {
  * Props for `<GtkConstraintLayout.Widget>`.
  *
  * Wraps a single widget that participates in constraints. The wrapper is
- * transparent in the GTK tree — the wrapped widget attaches to the
- * grandparent — but registers `id → widget` on the sibling
- * `<GtkConstraintLayout>`. `<Constraint>` and `<Vfl>` markers then resolve
- * `id` references against that registry.
+ * transparent in the GTK tree — the wrapped widget attaches to the host
+ * widget — and registers `id → widget` on the `<GtkConstraintLayout>` carried
+ * by the host's `layoutManager` prop. `<Constraint>` and `<Vfl>` markers then
+ * resolve `id` references against that registry.
  */
 export type ConstraintLayoutWidgetProps = {
     /** Identifier used by Constraint/Vfl markers to reference this widget */

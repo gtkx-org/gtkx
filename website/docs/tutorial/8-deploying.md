@@ -229,7 +229,7 @@ Congratulations! You've built a complete Notes application that follows the [GNO
 - **Slot props** — `AdwToolbarView` `addTopBar`, `AdwHeaderBar` `packStart`, `titleWidget`, `popover`, and more
 - **CSS-in-JS styling** — `@gtkx/css` with GTK CSS variables
 - **Virtualized lists** — `GtkListView`, `GtkGridView`, and `GtkColumnView` with tree support
-- **Menus and shortcuts** — `MenuItem`, `MenuSection`, `MenuSubmenu`, and `GtkShortcut` inside a `GtkShortcutController`
+- **Menus and shortcuts** — `MenuItem`, `MenuSection`, `MenuSubmenu`, and `GtkShortcut` through a `GtkShortcutController`'s `addShortcut` prop
 - **Navigation** — `AdwNavigationSplitView`, `AdwNavigationView`, `AdwViewStack`
 - **Search** — `GtkSearchBar` and `GtkSearchEntry` for filtering content
 - **Dialogs** — `AdwAlertDialog` and `AdwAboutDialog` with portals
