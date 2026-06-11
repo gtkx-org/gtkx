@@ -1,6 +1,6 @@
 export { withActionAccels, withActionScope } from "./components/action.js";
 export { withApplication, withApplicationWindow } from "./components/application.js";
-export { GtkConstraintLayout } from "./components/constraint-layout.js";
+export { type ConstraintLayoutProps, GtkConstraintLayout } from "./components/constraint-layout.js";
 export {
     AdwComboRow,
     GtkColumnView,

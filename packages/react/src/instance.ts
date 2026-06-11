@@ -34,6 +34,7 @@ export const ROOT_TYPE = "__GTKX_ROOT__";
 export const CONSTRUCTION_SKIP_PROPS: Readonly<Record<string, readonly string[]>> = {
     GtkStack: ["visibleChildName"],
     AdwViewStack: ["visibleChildName"],
+    AdwToggleGroup: ["activeName", "active"],
 };
 
 /**

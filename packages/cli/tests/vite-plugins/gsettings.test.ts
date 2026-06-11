@@ -40,6 +40,16 @@ const callResolveIdGsettings = async (
     return (plugin.resolveId as ResolveIdHook).call({ resolve }, source);
 };
 
+const callOutputOptions = (
+    plugin: ReturnType<typeof gtkxGSettings>,
+    options: Record<string, unknown>,
+): Record<string, unknown> | undefined => {
+    const hook = plugin.outputOptions;
+    const handler = typeof hook === "function" ? hook : hook?.handler;
+    if (!handler) return undefined;
+    return (Reflect.apply(handler, {}, [options]) ?? undefined) as Record<string, unknown> | undefined;
+};
+
 describe("gtkxGSettings (plugin shape and init)", () => {
     it("returns a plugin with the expected name and pre-enforce", () => {
         const plugin = gtkxGSettings();
@@ -47,22 +57,22 @@ describe("gtkxGSettings (plugin shape and init)", () => {
         expect(plugin.enforce).toBe("pre");
     });
 
-    it("loads the virtual init module with bundleDir bootstrap code", () => {
+    it("prepends the schema-env banner to build output options", () => {
         const plugin = gtkxGSettings();
         (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
-        const result = (plugin.load as LoadHook).call(stubLoadContext(), "\0gtkx-gsettings-init");
-        expect(typeof result).toBe("string");
-        expect(result).toContain("GSETTINGS_SCHEMA_DIR");
-        expect(result).toContain("import.meta.url");
+        const result = callOutputOptions(plugin, {});
+        expect(result?.banner).toContain("GSETTINGS_SCHEMA_DIR");
+        expect(result?.banner).toContain("import.meta.url");
+    });
+
+    it("leaves output options untouched outside build mode", () => {
+        const plugin = gtkxGSettings();
+        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
+        expect(callOutputOptions(plugin, {})).toBeUndefined();
     });
 });
 
 describe("gtkxGSettings (resolveId)", () => {
-    it("resolveId returns the virtual init id directly", async () => {
-        const result = await callResolveIdGsettings(() => Promise.resolve({ id: "" }), "\0gtkx-gsettings-init");
-        expect(result).toBe("\0gtkx-gsettings-init");
-    });
-
     it("resolveId ignores non-schema ids", async () => {
         const result = await callResolveIdGsettings(() => Promise.resolve({ id: "" }), "./some.module.ts");
         expect(result).toBeUndefined();
@@ -124,7 +134,6 @@ describe("gtkxGSettings (load)", () => {
                 `export const com_example_beta = { id: "com.example.beta", path: null, keys: keys_1 };`,
             );
             expect(code).toContain("export default com_example_alpha;");
-            expect(code).toContain(`import "\\u0000gtkx-gsettings-init";`);
         } finally {
             rmSync(tmp, { recursive: true, force: true });
         }
