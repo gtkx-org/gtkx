@@ -43,7 +43,7 @@ use crate::dispatch::Mailbox;
 use crate::error_reporter::NativeErrorReporter;
 use crate::managed::NativeHandle;
 use crate::trampoline::{flush_out_cells, seed_ref_cell};
-use crate::types::{RawPtrCodec as _, Type, str_to_glib_full};
+use crate::types::{RawPtrCodec as _, Type, lossless_f64, str_to_glib_full};
 use crate::value::{JsRef, Value, map_js_array};
 
 /// Everything one signal closure needs to marshal an emission into JS.
@@ -209,6 +209,7 @@ fn gvalue_to_ir(
         Type::Integer(_) | Type::Float(_) | Type::Tagged(_) => {
             scalar_from_gvalue(value).map(Value::Number)
         }
+        Type::BigInt(_) => bigint_from_gvalue(value).map(Value::BigInt),
         Type::Unichar(_) => {
             // SAFETY: A unichar signal parameter is marshalled as
             // G_TYPE_UINT.
@@ -287,6 +288,27 @@ fn pointer_from_gvalue(value: &glib::Value) -> anyhow::Result<*mut c_void> {
     }
 }
 
+/// Reads a 64-bit-capable scalar signal parameter as an exact IR bigint,
+/// keyed on the value's fundamental type. Narrower promoted widths are
+/// accepted so a bigint-declared parameter marshalled as `G_TYPE_INT` /
+/// `G_TYPE_UINT` still converts.
+fn bigint_from_gvalue(value: &glib::Value) -> anyhow::Result<i128> {
+    let (raw, fundamental) = raw_and_fundamental(value);
+    // SAFETY: Each getter matches the fundamental type GLib stored in the
+    // value, per the match arm.
+    unsafe {
+        match fundamental {
+            glib::Type::I32 => Ok(i128::from(gobject_ffi::g_value_get_int(raw))),
+            glib::Type::U32 => Ok(i128::from(gobject_ffi::g_value_get_uint(raw))),
+            glib::Type::I_LONG => Ok(i128::from(gobject_ffi::g_value_get_long(raw))),
+            glib::Type::U_LONG => Ok(i128::from(gobject_ffi::g_value_get_ulong(raw))),
+            glib::Type::I64 => Ok(i128::from(gobject_ffi::g_value_get_int64(raw))),
+            glib::Type::U64 => Ok(i128::from(gobject_ffi::g_value_get_uint64(raw))),
+            other => bail!("signal closure: unsupported bigint value type {other}"),
+        }
+    }
+}
+
 /// Reads a scalar signal parameter as an IR number, keyed on the value's
 /// fundamental type (signal marshalling promotes small integer widths to
 /// `G_TYPE_INT`/`G_TYPE_UINT`).
@@ -302,10 +324,22 @@ fn scalar_from_gvalue(value: &glib::Value) -> anyhow::Result<f64> {
             glib::Type::BOOL => Ok(f64::from(gobject_ffi::g_value_get_boolean(raw))),
             glib::Type::I32 => Ok(f64::from(gobject_ffi::g_value_get_int(raw))),
             glib::Type::U32 => Ok(f64::from(gobject_ffi::g_value_get_uint(raw))),
-            glib::Type::I_LONG => Ok(gobject_ffi::g_value_get_long(raw) as f64),
-            glib::Type::U_LONG => Ok(gobject_ffi::g_value_get_ulong(raw) as f64),
-            glib::Type::I64 => Ok(gobject_ffi::g_value_get_int64(raw) as f64),
-            glib::Type::U64 => Ok(gobject_ffi::g_value_get_uint64(raw) as f64),
+            glib::Type::I_LONG => lossless_f64(
+                i128::from(gobject_ffi::g_value_get_long(raw)),
+                "signal argument",
+            ),
+            glib::Type::U_LONG => lossless_f64(
+                i128::from(gobject_ffi::g_value_get_ulong(raw)),
+                "signal argument",
+            ),
+            glib::Type::I64 => lossless_f64(
+                i128::from(gobject_ffi::g_value_get_int64(raw)),
+                "signal argument",
+            ),
+            glib::Type::U64 => lossless_f64(
+                i128::from(gobject_ffi::g_value_get_uint64(raw)),
+                "signal argument",
+            ),
             glib::Type::F32 => Ok(f64::from(gobject_ffi::g_value_get_float(raw))),
             glib::Type::F64 => Ok(gobject_ffi::g_value_get_double(raw)),
             glib::Type::ENUM => Ok(f64::from(gobject_ffi::g_value_get_enum(raw))),
@@ -313,6 +347,15 @@ fn scalar_from_gvalue(value: &glib::Value) -> anyhow::Result<f64> {
             other => bail!("signal closure: unsupported scalar value type {other}"),
         }
     }
+}
+
+/// Narrows a handler's 64-bit-capable integer return to the width the
+/// signal's `GValue` setter takes, failing instead of wrapping when the
+/// value is out of range. `target` names the `GLib` type in the error.
+fn narrowed_return<T: TryFrom<i128>>(value: i128, target: &str) -> anyhow::Result<T> {
+    T::try_from(value).map_err(|_| {
+        anyhow::anyhow!("signal closure: return value {value} is out of range for {target}")
+    })
 }
 
 /// Converts the JS handler's return value into a [`glib::Value`] of the
@@ -337,6 +380,13 @@ fn ir_to_gvalue(
         }
     };
 
+    let wide_int = |value: &Value| -> anyhow::Result<i128> {
+        match value {
+            Value::BigInt(v) => Ok(*v),
+            other => Ok(number(other)? as i128),
+        }
+    };
+
     // SAFETY: Each setter matches the fundamental type the value was
     // initialized with, per the match arm.
     unsafe {
@@ -350,13 +400,17 @@ fn ir_to_gvalue(
             glib::Type::I32 => gobject_ffi::g_value_set_int(raw, number(value)? as i32),
             glib::Type::U32 => gobject_ffi::g_value_set_uint(raw, number(value)? as u32),
             glib::Type::I_LONG => {
-                gobject_ffi::g_value_set_long(raw, number(value)? as std::ffi::c_long);
+                gobject_ffi::g_value_set_long(raw, narrowed_return(wide_int(value)?, "long")?);
             }
             glib::Type::U_LONG => {
-                gobject_ffi::g_value_set_ulong(raw, number(value)? as std::ffi::c_ulong);
+                gobject_ffi::g_value_set_ulong(raw, narrowed_return(wide_int(value)?, "ulong")?);
             }
-            glib::Type::I64 => gobject_ffi::g_value_set_int64(raw, number(value)? as i64),
-            glib::Type::U64 => gobject_ffi::g_value_set_uint64(raw, number(value)? as u64),
+            glib::Type::I64 => {
+                gobject_ffi::g_value_set_int64(raw, narrowed_return(wide_int(value)?, "int64")?);
+            }
+            glib::Type::U64 => {
+                gobject_ffi::g_value_set_uint64(raw, narrowed_return(wide_int(value)?, "uint64")?);
+            }
             glib::Type::F32 => gobject_ffi::g_value_set_float(raw, number(value)? as f32),
             glib::Type::F64 => gobject_ffi::g_value_set_double(raw, number(value)?),
             glib::Type::ENUM => gobject_ffi::g_value_set_enum(raw, number(value)? as i32),

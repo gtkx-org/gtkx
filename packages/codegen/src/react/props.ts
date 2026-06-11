@@ -38,12 +38,24 @@ export type WidgetPropsOptions = {
     readonly dataPropNames?: ReadonlySet<string>;
     /** Returns `true` when `candidate` already has its own widget Props interface. */
     readonly isWidgetAncestor?: (candidate: GirClass) => boolean;
+    /** Qualified `Namespace.Alias` names surfaced as `bigint`. */
+    readonly bigintAliases?: ReadonlySet<string>;
+};
+
+/**
+ * Everything the prop-type renderers need beyond the type reference itself:
+ * the repository for named-type resolution, the import accumulator the
+ * rendering populates, and the bigint alias allowlist.
+ */
+type PropTypeRenderContext = {
+    readonly repository: GirRepository;
+    readonly imports: Map<string, string>;
+    readonly bigintAliases: ReadonlySet<string>;
 };
 
 type SignalRenderOptions = {
-    readonly repository: GirRepository;
+    readonly types: PropTypeRenderContext;
     readonly signal: GirSignal;
-    readonly imports: Map<string, string>;
     readonly selfType: string;
     readonly owningNamespace: string;
 };
@@ -68,8 +80,10 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
         slotPropNames = new Set<string>(),
         dataPropNames = new Set<string>(),
         isWidgetAncestor = () => false,
+        bigintAliases = new Set<string>(),
     } = options;
     const imports = new Map<string, string>();
+    const types: PropTypeRenderContext = { repository, imports, bigintAliases };
     const propEntries: string[] = [];
     const seen = new Set<string>();
 
@@ -88,7 +102,7 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
             return;
         }
         const qualified = qualifyTypeRef(property.type, owningNamespace);
-        const tsType = renderReactPropType(repository, qualified, false, imports);
+        const tsType = renderReactPropType(types, qualified, false);
         propEntries.push(`${jsName}?: ${tsType} | null;`);
         propEntries.push(`onNotify${toUpperFirst(jsName)}?: ((value: ${tsType} | null, self: Self) => void) | null;`);
     };
@@ -98,9 +112,8 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
         if (seen.has(handlerName)) return;
         seen.add(handlerName);
         const signature = renderSignalHandler({
-            repository,
+            types,
             signal,
-            imports,
             selfType: "Self",
             owningNamespace,
         });
@@ -197,11 +210,11 @@ const isPropOverridden = (ownerName: string, propName: string): boolean => {
 };
 
 const renderSignalHandler = (options: SignalRenderOptions): string => {
-    const { repository, signal, imports, selfType, owningNamespace } = options;
+    const { types, signal, selfType, owningNamespace } = options;
     const visible = signal.parameters.filter((parameter) => !parameter.isVarargs);
     const params = [
         ...renderHandlerParameters(signal.parameters, owningNamespace, (ref, nullable) =>
-            renderReactPropType(repository, ref, nullable, imports),
+            renderReactPropType(types, ref, nullable),
         ),
         `self: ${selfType}`,
     ];
@@ -222,18 +235,16 @@ const renderSignalHandler = (options: SignalRenderOptions): string => {
  * @param visible - The signal's non-varargs parameters
  */
 const renderSignalReturnType = (options: SignalRenderOptions, visible: readonly GirParameter[]): string => {
-    const { repository, signal, imports, owningNamespace } = options;
+    const { types, signal, owningNamespace } = options;
     const qualifiedReturn = qualifyTypeRef(signal.returnValue.type, owningNamespace);
-    const baseReturn = renderReactPropType(repository, qualifiedReturn, signal.returnValue.nullable, imports);
+    const baseReturn = renderReactPropType(types, qualifiedReturn, signal.returnValue.nullable);
     const outTypes = visible
         .filter(
             (parameter) =>
                 isOutParameter(parameter) ||
-                (isInoutParameter(parameter) && isScalarRef(repository, owningNamespace, parameter.type)),
+                (isInoutParameter(parameter) && isScalarRef(types.repository, owningNamespace, parameter.type)),
         )
-        .map((parameter) =>
-            renderReactPropType(repository, qualifyTypeRef(parameter.type, owningNamespace), false, imports),
-        );
+        .map((parameter) => renderReactPropType(types, qualifyTypeRef(parameter.type, owningNamespace), false));
     if (outTypes.length === 0) {
         return baseReturn === "void" ? "void" : `${baseReturn} | undefined`;
     }
@@ -245,42 +256,43 @@ const renderSignalReturnType = (options: SignalRenderOptions, visible: readonly 
     return `[${outTypes.join(", ")}]`;
 };
 
-const reactTarget = (repository: GirRepository, imports: Map<string, string>): TsTypeTarget => ({
+const reactTarget = (context: PropTypeRenderContext): TsTypeTarget => ({
     containerStyle: "record",
     callbackType: "(...args: unknown[]) => unknown",
     byteArrayAsNumber: false,
-    renderNamed: (ref) => namedTsType(repository, ref, imports),
+    renderNamed: (ref) => namedTsType(context, ref),
 });
 
 const renderReactPropType = (
-    repository: GirRepository,
+    context: PropTypeRenderContext,
     ref: GirTypeRef | undefined,
     isNullable: boolean,
-    imports: Map<string, string>,
 ): string => {
-    const base = renderBaseTypeFor(reactTarget(repository, imports), ref);
+    const base = renderBaseTypeFor(reactTarget(context), ref);
     return isNullable ? `${base} | null` : base;
 };
 
-const namedTsType = (repository: GirRepository, ref: NamedTypeRef, imports: Map<string, string>): string => {
+const namedTsType = (context: PropTypeRenderContext, ref: NamedTypeRef): string => {
     const namespaceName = ref.namespaceName;
     if (namespaceName === undefined) {
         return ref.typeName;
     }
-    const resolved = repository.resolveNamed(namespaceName, ref.typeName);
+    const resolved = context.repository.resolveNamed(namespaceName, ref.typeName);
     if (resolved === undefined) {
-        imports.set(namespaceName, namespaceName);
+        context.imports.set(namespaceName, namespaceName);
         return `${namespaceName}.${ref.typeName}`;
     }
     if (resolved.kind === "callback") return "(...args: unknown[]) => unknown";
     if (resolved.kind === "alias") {
+        if (context.bigintAliases.has(`${namespaceName}.${ref.typeName}`)) return "bigint";
         if (resolved.target === undefined) return "number";
-        return namedTsType(
-            repository,
-            { kind: "named", namespaceName: resolved.namespace.name, typeName: resolved.target, cType: undefined },
-            imports,
-        );
+        return namedTsType(context, {
+            kind: "named",
+            namespaceName: resolved.namespace.name,
+            typeName: resolved.target,
+            cType: undefined,
+        });
     }
-    imports.set(namespaceName, namespaceName);
+    context.imports.set(namespaceName, namespaceName);
     return `${namespaceName}.${ref.typeName}`;
 };

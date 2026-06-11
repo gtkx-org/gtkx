@@ -223,6 +223,24 @@ export type GtkxConfig = {
     elementMap?: ElementMapRule[];
 
     /**
+     * Additional GIR aliases whose generated surface is `bigint` instead of
+     * `number`, as qualified `Namespace.Alias` names.
+     *
+     * Use this for 64-bit GIR aliases whose values can exceed the 2^53 range
+     * JavaScript numbers represent exactly. Listed aliases must alias a
+     * 64-bit integer GIR type (`gint64`/`guint64`); codegen rejects anything
+     * else. Entries merge with the built-in defaults `"Gst.ClockTime"` and
+     * `"Gst.ClockTimeDiff"` (GStreamer nanosecond clock times), which are
+     * inert unless the aliasing namespace is generated.
+     *
+     * @example
+     * ```ts
+     * bigintAliases: ["MyLib.DeviceAddress"],
+     * ```
+     */
+    bigintAliases?: string[];
+
+    /**
      * Controls the React Compiler (`babel-plugin-react-compiler`), which
      * auto-memoizes components and hooks at build time so the reconciler
      * commits fewer GObject property sets and signal reconnections per render.
@@ -385,6 +403,22 @@ const validateSlotMap = (slotMap: Record<string, string[]> | undefined, optionNa
     }
 };
 
+const BIGINT_ALIAS_PATTERN = /^[A-Za-z][A-Za-z0-9]*\.[A-Za-z_][A-Za-z0-9_]*$/;
+
+const validateBigintAliases = (bigintAliases: GtkxConfig["bigintAliases"]): void => {
+    if (bigintAliases === undefined) return;
+    if (!Array.isArray(bigintAliases)) {
+        throw new Error("gtkx.config.ts: `bigintAliases` must be an array of qualified alias names if provided");
+    }
+    for (const alias of bigintAliases) {
+        if (typeof alias !== "string" || !BIGINT_ALIAS_PATTERN.test(alias)) {
+            throw new Error(
+                `gtkx.config.ts: invalid \`bigintAliases\` entry "${String(alias)}" — must be a qualified GIR alias name (e.g. "Gst.ClockTime")`,
+            );
+        }
+    }
+};
+
 const REACT_COMPILER_COMPILATION_MODES: readonly ReactCompilerCompilationMode[] = [
     "infer",
     "syntax",
@@ -449,6 +483,7 @@ export const defineConfig = (config: GtkxConfig): GtkxConfig => {
     validateObjectPropRows(config.objectProps);
     validateVirtualPropRows(config.virtualProps);
     validateElementMap(config.elementMap);
+    validateBigintAliases(config.bigintAliases);
     validateReactCompiler(config.reactCompiler);
     return config;
 };
@@ -479,6 +514,8 @@ export type ResolvedGtkxConfig = {
     readonly virtualProps: Readonly<Record<string, Readonly<Record<string, VirtualPropRow>>>>;
     /** The user's element-map rows, or `[]` when omitted. */
     readonly elementMap: readonly ElementMapRule[];
+    /** The user's bigint alias names, or `[]` when omitted. */
+    readonly bigintAliases: readonly string[];
     /** The resolved React Compiler options, or `null` when disabled. */
     readonly reactCompiler: ResolvedReactCompilerOptions | null;
 };
@@ -507,6 +544,7 @@ export const resolveGtkxConfig = (config: GtkxConfig): ResolvedGtkxConfig => ({
     objectProps: config.objectProps ?? {},
     virtualProps: config.virtualProps ?? {},
     elementMap: config.elementMap ?? [],
+    bigintAliases: config.bigintAliases ?? [],
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
 });
 

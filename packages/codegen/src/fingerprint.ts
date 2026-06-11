@@ -56,6 +56,8 @@ export type UserTableInputs = {
     readonly virtualProps?: unknown;
     /** The config's `elementMap` rows, or `undefined`. */
     readonly elementMap?: unknown;
+    /** The config's `bigintAliases` entries, or `undefined`. */
+    readonly bigintAliases?: readonly string[];
 };
 
 /**
@@ -74,6 +76,7 @@ export const serializeUserTables = (tables: UserTableInputs): string =>
             objectProps: tables.objectProps ?? {},
             virtualProps: tables.virtualProps ?? {},
             elementMap: tables.elementMap ?? [],
+            bigintAliases: [...(tables.bigintAliases ?? [])].sort((a, b) => a.localeCompare(b)),
         }),
     );
 

@@ -203,8 +203,8 @@ impl FfiValue {
             Self::U16(v) => Ok(*v as f64),
             Self::I32(v) => Ok(*v as f64),
             Self::U32(v) => Ok(*v as f64),
-            Self::I64(v) => Ok(*v as f64),
-            Self::U64(v) => Ok(*v as f64),
+            Self::I64(v) => crate::types::lossless_f64(i128::from(*v), "call result"),
+            Self::U64(v) => crate::types::lossless_f64(i128::from(*v), "call result"),
             Self::F32(v) => Ok(*v as f64),
             Self::F64(v) => Ok(*v),
             Self::Ptr(_) | Self::Storage(_) | Self::Trampoline(_) | Self::Void => {

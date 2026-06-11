@@ -1,4 +1,5 @@
 import type { ArrayPropRow, ElementMapRule, ObjectPropRow, VirtualPropRow } from "@gtkx/config";
+import { mergeBigIntAliases } from "./bigint-aliases.js";
 import { generateNamespaceModule } from "./ffi/pipeline.js";
 import { computeFingerprint, serializeUserTables } from "./fingerprint.js";
 import { type GiNamespaceInput, type GiStoreOptions, writeGiStore } from "./gi-store.js";
@@ -26,6 +27,8 @@ export type CodegenRunnerOptions = {
     readonly virtualProps?: Readonly<Record<string, Readonly<Record<string, VirtualPropRow>>>>;
     /** Optional user attach rules merged after the built-in element-map rows. */
     readonly elementMap?: readonly ElementMapRule[];
+    /** Optional qualified `Namespace.Alias` names surfaced as `bigint`, merged with the built-ins. */
+    readonly bigintAliases?: readonly string[];
     /** Target for the injected `@gtkx/gi` bindings package. */
     readonly gi: GiStoreOptions;
     /** Target for the injected `@gtkx/jsx` package; React is skipped when omitted. */
@@ -71,10 +74,11 @@ export class CodegenRunner {
     async run(): Promise<CodegenRunnerResult> {
         const start = Date.now();
         const repository = loadGirRepository(this.options.libraries, this.options.girPath);
+        const bigintAliases = mergeBigIntAliases(this.options.bigintAliases);
 
         const namespaces: GiNamespaceInput[] = [];
         for (const namespace of repository.namespaces.values()) {
-            const { source } = generateNamespaceModule(namespace, repository);
+            const { source } = generateNamespaceModule(namespace, repository, bigintAliases);
             namespaces.push({ directory: namespace.name.toLowerCase(), rawSource: source });
         }
         const libraries = [...this.options.libraries];
@@ -85,6 +89,7 @@ export class CodegenRunner {
             objectProps: this.options.objectProps,
             virtualProps: this.options.virtualProps,
             elementMap: this.options.elementMap,
+            bigintAliases: this.options.bigintAliases,
         };
         writeGiStore(this.options.gi, namespaces, {
             value: computeFingerprint(repository.girFiles, libraries, serializeUserTables(tables)),
@@ -94,7 +99,7 @@ export class CodegenRunner {
 
         let widgetCount = 0;
         if (this.options.jsx !== undefined) {
-            const reactPipeline = generateJsxFiles(repository, tables);
+            const reactPipeline = generateJsxFiles(repository, { ...tables, bigintAliases });
             writeJsxStore(this.options.jsx, reactPipeline.namespaces, reactPipeline.metadata);
             widgetCount = reactPipeline.widgetCount;
         }

@@ -33,3 +33,25 @@ macro_rules! arg_only_call_cif {
     };
 }
 pub(super) use arg_only_call_cif;
+
+/// Stamps the [`super::FfiEncoder::libffi_type`] and
+/// [`super::FfiEncoder::call_cif`] overrides for a codec whose ABI
+/// representation is the [`super::IntegerKind`] returned by its `$wire`
+/// accessor, delegating both to that kind's own encoder.
+macro_rules! integer_wire_encoder {
+    ($wire:ident) => {
+        fn libffi_type(&self) -> ::libffi::middle::Type {
+            FfiEncoder::libffi_type(&self.$wire())
+        }
+
+        fn call_cif(
+            &self,
+            cif: &::libffi::middle::Cif,
+            ptr: ::libffi::middle::CodePtr,
+            args: &[::libffi::middle::Arg],
+        ) -> ::anyhow::Result<crate::ffi::FfiValue> {
+            FfiEncoder::call_cif(&self.$wire(), cif, ptr, args)
+        }
+    };
+}
+pub(super) use integer_wire_encoder;

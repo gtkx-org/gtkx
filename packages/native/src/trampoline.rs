@@ -279,6 +279,7 @@ pub(crate) fn seed_ref_cell(inner_ptr: *mut c_void, inner_type: &Type) -> Value 
     }
     match inner_type {
         Type::Integer(_)
+        | Type::BigInt(_)
         | Type::Float(_)
         | Type::Tagged(_)
         | Type::Boolean(_)

@@ -1,4 +1,5 @@
 import { quote } from "@gtkx/utils";
+import { bigintAliasCategory } from "../bigint-aliases.js";
 import type { ModuleContext } from "../dsl/context.js";
 import { joinArgs } from "../dsl/emit.js";
 import { callbackFromNode, type GirCallback } from "../gir/callback.js";
@@ -238,6 +239,13 @@ const namedExpression = (context: ModuleContext, ref: NamedTypeRef, ownership: "
     const resolved = context.repository.resolveNamed(namespaceName, ref.typeName);
     if (resolved === undefined) {
         return `t.object(${quote(ownership)})`;
+    }
+    if (resolved.kind === "alias") {
+        const qualifiedName = `${namespaceName}.${ref.typeName}`;
+        if (context.bigintAliases.has(qualifiedName)) {
+            const category = bigintAliasCategory(qualifiedName, resolved.targetRef);
+            return category === "int64" ? "t.bigint64" : "t.biguint64";
+        }
     }
     return expressionForResolved(context, resolved, ownership);
 };

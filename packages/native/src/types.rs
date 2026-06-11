@@ -9,6 +9,7 @@
 //! ```text
 //! Type
 //! ├── Integer(IntegerKind)    - Sized integers (i8..i64, u8..u64)
+//! ├── BigInt(BigIntKind)      - 64-bit integers surfaced to JS as bigint
 //! ├── Float(FloatKind)        - Floating point (f32, f64)
 //! ├── Tagged(TaggedType)      - Enums and flags (GType-tagged integers)
 //! ├── String(StringType)      - UTF-8 strings (owned or borrowed)
@@ -99,6 +100,7 @@ pub(crate) fn parse_trampoline_arg_and_return_types(
 }
 
 mod array;
+mod bigint;
 mod blob;
 mod boolean;
 mod boxed;
@@ -116,6 +118,7 @@ mod void;
 
 pub use array::ArrayKind;
 pub use array::ArrayType;
+pub use bigint::BigIntKind;
 pub use blob::BlobType;
 pub use boolean::BooleanType;
 pub use boxed::{BoxedFreeFn, BoxedType, StructType};
@@ -128,6 +131,8 @@ pub use string::{StringType, str_to_glib_full};
 pub use trampoline::{TrampolineScope, TrampolineType};
 pub use unichar::UnicharType;
 pub use void::VoidType;
+
+pub(crate) use numeric::lossless_f64;
 
 /// Lifecycle of a value crossing the FFI boundary.
 ///
@@ -343,6 +348,7 @@ impl<T: FfiEncoder + FfiDecoder + RawPtrCodec> FfiCodec for T {}
 #[non_exhaustive]
 pub enum Type {
     Integer(IntegerKind),
+    BigInt(BigIntKind),
     Float(FloatKind),
     Tagged(TaggedType),
     String(StringType),
@@ -364,6 +370,7 @@ impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Integer(kind) => write!(f, "Integer({kind:?})"),
+            Self::BigInt(kind) => write!(f, "BigInt({kind:?})"),
             Self::Float(kind) => write!(f, "Float({kind:?})"),
             Self::Tagged(t) => match t.kind {
                 TaggedKind::Enum => write!(f, "Enum({})", t.get_type_fn),
@@ -401,6 +408,8 @@ impl Type {
             "uint32" => Ok(Self::Integer(IntegerKind::U32)),
             "int64" => Ok(Self::Integer(IntegerKind::I64)),
             "uint64" => Ok(Self::Integer(IntegerKind::U64)),
+            "bigint64" => Ok(Self::BigInt(BigIntKind::I64)),
+            "biguint64" => Ok(Self::BigInt(BigIntKind::U64)),
             "float32" => Ok(Self::Float(FloatKind::F32)),
             "float64" => Ok(Self::Float(FloatKind::F64)),
             "enum" => Ok(Self::Tagged(TaggedType::from_js_value(

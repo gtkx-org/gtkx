@@ -21,13 +21,15 @@ import { emitInterface } from "../writers/interface.js";
  *
  * @param namespace - The namespace to emit
  * @param repository - The full repository (for cross-namespace lookups)
+ * @param bigintAliases - Qualified `Namespace.Alias` names surfaced as `bigint`
  * @returns The relative output path and the TypeScript source string
  */
 export const generateNamespaceModule = (
     namespace: GirNamespace,
     repository: GirRepository,
+    bigintAliases: ReadonlySet<string> = new Set(),
 ): { readonly path: string; readonly source: string } => {
-    const context = new ModuleContext(namespace, repository);
+    const context = new ModuleContext(namespace, repository, bigintAliases);
     context.addGObjectBootstrapImports();
 
     for (const enumeration of namespace.enums) {

@@ -465,6 +465,7 @@ fn check_napi_status(status: sys::napi_status, message: &str) -> napi::Result<()
 #[non_exhaustive]
 pub enum Value {
     Number(f64),
+    BigInt(i128),
     String(String),
     Boolean(bool),
     Object(NativeHandle),
@@ -520,6 +521,7 @@ impl Value {
             Self::Object(handle) => Ok(handle.ptr()),
             Self::Null | Self::Undefined => Ok(std::ptr::null_mut()),
             Self::Number(_)
+            | Self::BigInt(_)
             | Self::String(_)
             | Self::Boolean(_)
             | Self::Array(_)
@@ -582,6 +584,19 @@ impl Value {
             }
             ValueType::Null => Ok(Self::Null),
             ValueType::Undefined => Ok(Self::Undefined),
+            ValueType::BigInt => {
+                // SAFETY: `value` is a live JS value from the current
+                // callback's `env`, type-checked as a bigint just above.
+                let big = unsafe { BigInt::from_napi_value(env.raw(), value.raw())? };
+                let (int, lossless) = big.get_i128();
+                if !lossless {
+                    return Err(napi::Error::new(
+                        napi::Status::InvalidArg,
+                        "BigInt value exceeds the supported 128-bit range",
+                    ));
+                }
+                Ok(Self::BigInt(int))
+            }
             ValueType::External => {
                 // SAFETY: `value` is a live JS value from the current
                 // callback's `env`, type-checked as an external just
@@ -626,6 +641,12 @@ impl Value {
             // live `env` of the current JS-thread callback.
             Self::Number(n) => unsafe {
                 let raw = f64::to_napi_value(env.raw(), n)?;
+                Ok(Unknown::from_raw_unchecked(env.raw(), raw))
+            },
+            // SAFETY: The raw value is created and rewrapped under the
+            // live `env` of the current JS-thread callback.
+            Self::BigInt(v) => unsafe {
+                let raw = i128::to_napi_value(env.raw(), v)?;
                 Ok(Unknown::from_raw_unchecked(env.raw(), raw))
             },
             // SAFETY: The raw value is created and rewrapped under the

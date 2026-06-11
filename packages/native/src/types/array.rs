@@ -183,6 +183,7 @@ impl ItemCodec {
             }
             Type::String(_) => Self::String,
             Type::Void(_)
+            | Type::BigInt(_)
             | Type::Array(_)
             | Type::Blob(_)
             | Type::HashTable(_)
@@ -746,7 +747,15 @@ impl ArrayType {
             return Ok(Vec::new());
         }
         let values = match codec {
-            ItemCodec::Integer(kind) | ItemCodec::Tagged(kind) => {
+            ItemCodec::Integer(kind) => {
+                // SAFETY: The caller guarantees `data` addresses `len`
+                // contiguous elements of the resolved item codec.
+                unsafe { kind.read_slice_checked(data, len, "array element") }?
+                    .into_iter()
+                    .map(value::Value::Number)
+                    .collect()
+            }
+            ItemCodec::Tagged(kind) => {
                 // SAFETY: The caller guarantees `data` addresses `len`
                 // contiguous elements of the resolved item codec.
                 unsafe { kind.read_slice(data, len) }

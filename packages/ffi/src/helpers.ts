@@ -69,6 +69,8 @@ const int32: Type = Object.freeze({ type: "int32" });
 const uint32: Type = Object.freeze({ type: "uint32" });
 const int64: Type = Object.freeze({ type: "int64" });
 const uint64: Type = Object.freeze({ type: "uint64" });
+const bigint64: Type = Object.freeze({ type: "bigint64" });
+const biguint64: Type = Object.freeze({ type: "biguint64" });
 const float32: Type = Object.freeze({ type: "float32" });
 const float64: Type = Object.freeze({ type: "float64" });
 const booleanT: Type = Object.freeze({ type: "boolean" });
@@ -229,6 +231,8 @@ export const t = {
     uint32,
     int64,
     uint64,
+    bigint64,
+    biguint64,
     float32,
     float64,
     boolean: booleanT,

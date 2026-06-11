@@ -165,12 +165,12 @@ macro_rules! impl_numeric_codecs {
             unsafe fn read_from_raw_ptr(
                 &self,
                 ptr: *const c_void,
-                _context: &str,
+                context: &str,
             ) -> anyhow::Result<value::Value> {
                 // SAFETY: The caller guarantees `ptr` is readable at this
                 // kind's width.
                 Ok(value::Value::Number(unsafe {
-                    self.read_ptr(ptr as *const u8)
+                    self.read_ptr_checked(ptr as *const u8, context)?
                 }))
             }
 
@@ -208,7 +208,23 @@ macro_rules! impl_numeric_codecs {
     };
 }
 
-const MAX_SAFE_INTEGER: f64 = 9_007_199_254_740_992.0;
+/// The largest magnitude (2^53) a JavaScript number represents exactly as an
+/// integer, shared by the inbound range checks and the outbound loss guards.
+pub const MAX_SAFE_INTEGER_I128: i128 = 9_007_199_254_740_992;
+
+const MAX_SAFE_INTEGER: f64 = MAX_SAFE_INTEGER_I128 as f64;
+
+/// Converts a 64-bit-sourced integer to the exact `f64` JavaScript number it
+/// becomes, failing when the magnitude exceeds 2^53 and the conversion would
+/// round. `context` names the crossing site in the error.
+pub fn lossless_f64(value: i128, context: &str) -> anyhow::Result<f64> {
+    if !(-MAX_SAFE_INTEGER_I128..=MAX_SAFE_INTEGER_I128).contains(&value) {
+        bail!(
+            "{context}: value {value} exceeds the 2^53 range JavaScript numbers represent exactly; use a bigint descriptor (t.bigint64/t.biguint64) for this slot"
+        );
+    }
+    Ok(value as f64)
+}
 
 impl IntegerKind {
     #[must_use]
@@ -261,16 +277,67 @@ impl IntegerKind {
         storage.as_numeric_slice(self)
     }
 
-    pub fn ptr_to_value_raw(self, ptr: *mut c_void) -> value::Value {
+    /// Reads `length` contiguous elements as the exact JavaScript numbers
+    /// they become, failing when a 64-bit element exceeds 2^53.
+    ///
+    /// # Safety
+    ///
+    /// Same contract as [`Self::read_slice`].
+    pub unsafe fn read_slice_checked(
+        self,
+        ptr: *const u8,
+        length: usize,
+        context: &str,
+    ) -> anyhow::Result<Vec<f64>> {
+        // SAFETY: The caller guarantees `ptr` addresses `length` readable,
+        // aligned elements of this kind.
+        unsafe {
+            match self {
+                Self::I64 => std::slice::from_raw_parts(ptr.cast::<i64>(), length)
+                    .iter()
+                    .map(|&v| lossless_f64(i128::from(v), context))
+                    .collect(),
+                Self::U64 => std::slice::from_raw_parts(ptr.cast::<u64>(), length)
+                    .iter()
+                    .map(|&v| lossless_f64(i128::from(v), context))
+                    .collect(),
+                other => Ok(other.read_slice(ptr, length)),
+            }
+        }
+    }
+
+    /// Reads the integer at `ptr` as the exact JavaScript number it becomes,
+    /// failing for 64-bit values whose magnitude exceeds 2^53.
+    ///
+    /// # Safety
+    ///
+    /// `ptr` must be valid for a read of this kind's width.
+    pub(crate) unsafe fn read_ptr_checked(
+        self,
+        ptr: *const u8,
+        context: &str,
+    ) -> anyhow::Result<f64> {
+        // SAFETY: The caller guarantees `ptr` is readable at this kind's
+        // width; the reads are unaligned-tolerant.
+        unsafe {
+            match self {
+                Self::I64 => lossless_f64(i128::from(ptr.cast::<i64>().read_unaligned()), context),
+                Self::U64 => lossless_f64(i128::from(ptr.cast::<u64>().read_unaligned()), context),
+                other => Ok(other.read_ptr(ptr)),
+            }
+        }
+    }
+
+    pub fn ptr_to_value_raw(self, ptr: *mut c_void, context: &str) -> anyhow::Result<value::Value> {
         let number = match self {
             Self::I8 | Self::I16 => ptr as isize as f64,
             Self::U8 | Self::U16 => ptr as usize as f64,
             Self::I32 => ptr as i32 as f64,
             Self::U32 => ptr as u32 as f64,
-            Self::I64 => ptr as i64 as f64,
-            Self::U64 => ptr as u64 as f64,
+            Self::I64 => lossless_f64(i128::from(ptr as i64), context)?,
+            Self::U64 => lossless_f64(i128::from(ptr as u64), context)?,
         };
-        value::Value::Number(number)
+        Ok(value::Value::Number(number))
     }
 
     /// Extracts the numeric payload an integer argument encodes. Object
@@ -316,12 +383,8 @@ impl IntegerKind {
 impl_numeric_codecs!(
     IntegerKind,
     "integer",
-    unsafe fn ptr_to_value(
-        &self,
-        ptr: *mut c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        Ok(self.ptr_to_value_raw(ptr))
+    unsafe fn ptr_to_value(&self, ptr: *mut c_void, context: &str) -> anyhow::Result<value::Value> {
+        self.ptr_to_value_raw(ptr, context)
     }
 );
 
@@ -432,6 +495,25 @@ impl FloatKind {
         value::Value::Number(unsafe { self.read_ptr(ptr as *const u8) })
     }
 
+    /// Reads the float at `ptr` as an `f64`; the conversion is exact for both
+    /// widths, so unlike the integer counterpart no range failure exists. The
+    /// `Result` wrapping mirrors [`IntegerKind::read_ptr_checked`] so the
+    /// shared codec macro can call both uniformly.
+    ///
+    /// # Safety
+    ///
+    /// `ptr` must be valid for a read of this kind's width.
+    #[allow(clippy::unnecessary_wraps)]
+    pub(crate) unsafe fn read_ptr_checked(
+        self,
+        ptr: *const u8,
+        _context: &str,
+    ) -> anyhow::Result<f64> {
+        // SAFETY: The caller guarantees `ptr` is readable at this kind's
+        // width.
+        Ok(unsafe { self.read_ptr(ptr) })
+    }
+
     /// Extracts the numeric payload a float argument encodes. Unlike the
     /// integer counterpart, object handles are rejected: a pointer address has
     /// no floating-point interpretation, and accepting one would feed a heap
@@ -524,6 +606,12 @@ impl TaggedType {
         })
     }
 
+    /// The integer kind this tag marshals as, which the codec delegates
+    /// ABI-level work to.
+    fn wire_kind(&self) -> IntegerKind {
+        self.storage
+    }
+
     #[cfg(debug_assertions)]
     fn resolve_gtype(&self) -> anyhow::Result<glib::Type> {
         crate::state::GlibThreadState::with(|state| {
@@ -561,18 +649,7 @@ impl FfiEncoder for TaggedType {
         Ok(result)
     }
 
-    fn libffi_type(&self) -> libffi::Type {
-        self.storage.ffi_type()
-    }
-
-    fn call_cif(
-        &self,
-        cif: &libffi::Cif,
-        ptr: libffi::CodePtr,
-        args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::FfiValue> {
-        FfiEncoder::call_cif(&self.storage, cif, ptr, args)
-    }
+    integer_wire_encoder!(wire_kind);
 }
 
 impl FfiDecoder for TaggedType {
@@ -582,12 +659,8 @@ impl FfiDecoder for TaggedType {
 }
 
 impl RawPtrCodec for TaggedType {
-    unsafe fn ptr_to_value(
-        &self,
-        ptr: *mut c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        Ok(self.storage.ptr_to_value_raw(ptr))
+    unsafe fn ptr_to_value(&self, ptr: *mut c_void, context: &str) -> anyhow::Result<value::Value> {
+        self.storage.ptr_to_value_raw(ptr, context)
     }
 
     unsafe fn read_from_raw_ptr(

@@ -199,6 +199,30 @@ function newFromUint64(value: number): GValue {
     return initValue(Type.UINT64, (v) => v.setUint64(value));
 }
 
+const g_value_set_int64_big = t.fn(
+    LIBGOBJECT,
+    "g_value_set_int64",
+    [{ type: GVALUE_BORROWED }, { type: t.bigint64 }],
+    t.void,
+);
+
+const g_value_set_uint64_big = t.fn(
+    LIBGOBJECT,
+    "g_value_set_uint64",
+    [{ type: GVALUE_BORROWED }, { type: t.biguint64 }],
+    t.void,
+);
+
+/** Creates a `GValue` initialized with a signed 64-bit integer from a bigint. */
+function newFromBigInt64(value: bigint | number): GValue {
+    return initValue(Type.INT64, (v) => g_value_set_int64_big(getHandle(v), value));
+}
+
+/** Creates a `GValue` initialized with an unsigned 64-bit integer from a bigint. */
+function newFromBigUint64(value: bigint | number): GValue {
+    return initValue(Type.UINT64, (v) => g_value_set_uint64_big(getHandle(v), value));
+}
+
 /** Creates a `GValue` initialized with a single-precision float. */
 function newFromFloat(value: number): GValue {
     return initValue(Type.FLOAT, (v) => v.setFloat(value));
@@ -305,6 +329,10 @@ function newFromIntegerFfi(ffiTypeName: string, value: unknown): GValue {
             return newFromInt64(value as number);
         case "uint64":
             return newFromUint64(value as number);
+        case "bigint64":
+            return newFromBigInt64(value as bigint | number);
+        case "biguint64":
+            return newFromBigUint64(value as bigint | number);
         default:
             throw new Error(`newFromIntegerFfi: not an integer type '${ffiTypeName}'`);
     }
@@ -359,6 +387,8 @@ export function valueFromFfi(ffiType: FfiType, value: unknown): GValue {
         case "uint32":
         case "int64":
         case "uint64":
+        case "bigint64":
+        case "biguint64":
             return newFromIntegerFfi(ffiType.type, value);
         case "float32":
             return newFromFloat(value as number);
@@ -405,8 +435,10 @@ function gTypeFromFfi(ffiType: FfiType): GType {
         case "uint32":
             return Type.UINT;
         case "int64":
+        case "bigint64":
             return Type.INT64;
         case "uint64":
+        case "biguint64":
             return Type.UINT64;
         case "float32":
             return Type.FLOAT;

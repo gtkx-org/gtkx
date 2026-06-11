@@ -214,7 +214,9 @@ fn integer_checked_to_ffi_storage_accepts_and_rejects() {
 #[test]
 fn integer_ptr_to_value_raw_round_trips() {
     for kind in INTEGER_KINDS {
-        let value = kind.ptr_to_value_raw(8 as *mut c_void);
+        let value = kind
+            .ptr_to_value_raw(8 as *mut c_void, "test")
+            .expect("a small pointer payload converts losslessly");
         assert!(matches!(value, value::Value::Number(n) if n == 8.0));
     }
 }
@@ -576,8 +578,8 @@ fn integer_codec_covers_every_kind() {
         for kind in INTEGER_KINDS {
             kind.checked_to_ffi_value(1.0).unwrap();
             assert!(matches!(
-                kind.ptr_to_value_raw(4 as *mut c_void),
-                Value::Number(_)
+                kind.ptr_to_value_raw(4 as *mut c_void, "test"),
+                Ok(Value::Number(_))
             ));
 
             let encoded = FfiEncoder::encode(&kind, &Value::Number(1.0), false).unwrap();
@@ -633,4 +635,82 @@ fn float_codec_covers_every_kind() {
             unsafe { RawPtrCodec::ptr_to_value(&kind, std::ptr::null_mut(), "c") }.unwrap();
         }
     });
+}
+
+#[test]
+fn u64_read_beyond_2_53_errors_instead_of_rounding() {
+    let stored: u64 = 9_007_199_254_740_993;
+    let ptr = std::ptr::from_ref(&stored).cast::<c_void>();
+    // SAFETY: `ptr` addresses a live local u64.
+    let err = unsafe { RawPtrCodec::read_from_raw_ptr(&IntegerKind::U64, ptr, "test read") }
+        .expect_err("a u64 beyond 2^53 must not round silently");
+    assert!(err.to_string().contains("2^53"));
+    assert!(err.to_string().contains("test read"));
+}
+
+#[test]
+fn i64_read_beyond_negative_2_53_errors_instead_of_rounding() {
+    let stored: i64 = -9_007_199_254_740_993;
+    let ptr = std::ptr::from_ref(&stored).cast::<c_void>();
+    // SAFETY: `ptr` addresses a live local i64.
+    let err = unsafe { RawPtrCodec::read_from_raw_ptr(&IntegerKind::I64, ptr, "test read") }
+        .expect_err("an i64 beyond -2^53 must not round silently");
+    assert!(err.to_string().contains("2^53"));
+}
+
+#[test]
+fn u64_read_at_2_53_still_converts() {
+    let stored: u64 = 9_007_199_254_740_992;
+    let ptr = std::ptr::from_ref(&stored).cast::<c_void>();
+    // SAFETY: `ptr` addresses a live local u64.
+    let value = unsafe { RawPtrCodec::read_from_raw_ptr(&IntegerKind::U64, ptr, "test read") }
+        .expect("2^53 itself is exactly representable");
+    assert!(matches!(value, Value::Number(n) if n == 9_007_199_254_740_992.0));
+}
+
+#[test]
+fn u64_pointer_payload_beyond_2_53_errors() {
+    let err = IntegerKind::U64
+        .ptr_to_value_raw(usize::MAX as *mut c_void, "test pointer")
+        .expect_err("a u64 pointer payload beyond 2^53 must not round silently");
+    assert!(err.to_string().contains("2^53"));
+}
+
+#[test]
+fn i64_pointer_payload_of_all_bits_set_is_minus_one() {
+    let value = IntegerKind::I64
+        .ptr_to_value_raw(usize::MAX as *mut c_void, "test pointer")
+        .expect("-1 is exactly representable");
+    assert!(matches!(value, Value::Number(n) if n == -1.0));
+}
+
+#[test]
+fn ffi_value_to_number_guards_64_bit_payloads() {
+    let err = ffi::FfiValue::U64(u64::MAX)
+        .to_number()
+        .expect_err("u64::MAX must not round silently");
+    assert!(err.to_string().contains("2^53"));
+
+    let err = ffi::FfiValue::I64(i64::MIN)
+        .to_number()
+        .expect_err("i64::MIN must not round silently");
+    assert!(err.to_string().contains("2^53"));
+
+    assert_eq!(ffi::FfiValue::U64(42).to_number().unwrap(), 42.0);
+}
+
+#[test]
+fn u64_slice_read_beyond_2_53_errors() {
+    let data: [u64; 2] = [1, 9_007_199_254_740_993];
+    // SAFETY: `data` is a live local array of 2 elements.
+    let err = unsafe { IntegerKind::U64.read_slice_checked(data.as_ptr().cast(), 2, "test slice") }
+        .expect_err("a 64-bit element beyond 2^53 must not round silently");
+    assert!(err.to_string().contains("2^53"));
+
+    let small: [u64; 2] = [1, 2];
+    // SAFETY: `small` is a live local array of 2 elements.
+    let values =
+        unsafe { IntegerKind::U64.read_slice_checked(small.as_ptr().cast(), 2, "test slice") }
+            .expect("small 64-bit elements convert exactly");
+    assert_eq!(values, vec![1.0, 2.0]);
 }

@@ -16,7 +16,7 @@ export type NativeHandle = Parameters<typeof native.read>[0];
  * Returned by `call()` and `read()` where the concrete type
  * depends on the type descriptor passed to the function.
  */
-export type FfiValue = NativeHandle | number | string | boolean | FfiValue[] | null | undefined;
+export type FfiValue = NativeHandle | number | bigint | string | boolean | FfiValue[] | null | undefined;
 
 type Int8Type = { type: "int8" };
 type Uint8Type = { type: "uint8" };
@@ -26,6 +26,8 @@ type Int32Type = { type: "int32" };
 type Uint32Type = { type: "uint32" };
 type Int64Type = { type: "int64" };
 type Uint64Type = { type: "uint64" };
+type BigInt64Type = { type: "bigint64" };
+type BigUint64Type = { type: "biguint64" };
 
 type Float32Type = { type: "float32" };
 type Float64Type = { type: "float64" };
@@ -109,6 +111,8 @@ export type Type =
     | Uint32Type
     | Int64Type
     | Uint64Type
+    | BigInt64Type
+    | BigUint64Type
     | Float32Type
     | Float64Type
     | EnumType

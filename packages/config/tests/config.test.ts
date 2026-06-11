@@ -429,6 +429,28 @@ describe("defineConfig elementMap verb validation", () => {
     });
 });
 
+describe("defineConfig bigintAliases validation", () => {
+    it("accepts qualified alias names", () => {
+        expect(() => defineConfig({ bigintAliases: ["Gst.ClockTime", "MyLib.DeviceAddress"] })).not.toThrow();
+    });
+
+    it("accepts an omitted field", () => {
+        expect(() => defineConfig({})).not.toThrow();
+    });
+
+    it("rejects a non-array value", () => {
+        expect(() => defineUnknown({ bigintAliases: "Gst.ClockTime" })).toThrow(/`bigintAliases` must be an array/);
+    });
+
+    it("rejects an unqualified entry", () => {
+        expect(() => defineUnknown({ bigintAliases: ["ClockTime"] })).toThrow(/qualified GIR alias name/);
+    });
+
+    it("rejects a non-string entry", () => {
+        expect(() => defineUnknown({ bigintAliases: [42] })).toThrow(/qualified GIR alias name/);
+    });
+});
+
 describe("defineConfig reactCompiler validation", () => {
     it("accepts a boolean", () => {
         expect(() => defineConfig({ reactCompiler: false })).not.toThrow();
@@ -502,6 +524,7 @@ describe("resolveGtkxConfig", () => {
             objectProps: {},
             virtualProps: {},
             elementMap: [],
+            bigintAliases: [],
             reactCompiler: { target: "19" },
         });
     });
@@ -532,6 +555,7 @@ describe("resolveGtkxConfig", () => {
                     verb: { kind: "method", attach: "add", attachArgs: "child", detach: "remove", detachArgs: "child" },
                 },
             ],
+            bigintAliases: ["Gst.ClockTime"],
             reactCompiler: { compilationMode: "annotation" },
         };
         expect(resolveGtkxConfig(configured)).toEqual({

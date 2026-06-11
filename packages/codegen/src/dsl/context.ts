@@ -23,10 +23,12 @@ export class ModuleContext {
     /**
      * @param namespace - The namespace this module corresponds to
      * @param repository - The repository containing every loaded namespace
+     * @param bigintAliases - Qualified `Namespace.Alias` names surfaced as `bigint`
      */
     constructor(
         public readonly namespace: GirNamespace,
         public readonly repository: GirRepository,
+        public readonly bigintAliases: ReadonlySet<string> = new Set(),
     ) {}
 
     /**

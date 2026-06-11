@@ -275,17 +275,32 @@ impl FfiStorage {
     }
 
     pub fn as_numeric_slice(&self, int_kind: IntegerKind) -> anyhow::Result<Vec<f64>> {
-        macro_rules! dispatch {
-            ($($variant:ident : $ty:ident : $vec_variant:ident),+ $(,)?) => {
-                match (&self.kind, int_kind) {
-                    $((FfiStorageKind::$vec_variant(v), IntegerKind::$variant) => {
-                        Ok(v.iter().map(|&x| x as f64).collect())
-                    }),+
-                    _ => anyhow::bail!("FfiStorage does not match integer kind {:?}", int_kind),
+        match (&self.kind, int_kind) {
+            (FfiStorageKind::I64Vec(v), IntegerKind::I64) => v
+                .iter()
+                .map(|&x| crate::types::lossless_f64(i128::from(x), "array element"))
+                .collect(),
+            (FfiStorageKind::U64Vec(v), IntegerKind::U64) => v
+                .iter()
+                .map(|&x| crate::types::lossless_f64(i128::from(x), "array element"))
+                .collect(),
+            _ => {
+                macro_rules! dispatch {
+                    ($($variant:ident : $ty:ident : $vec_variant:ident),+ $(,)?) => {
+                        match (&self.kind, int_kind) {
+                            $((FfiStorageKind::$vec_variant(v), IntegerKind::$variant) => {
+                                Ok(v.iter().map(|&x| x as f64).collect())
+                            }),+
+                            _ => anyhow::bail!(
+                                "FfiStorage does not match integer kind {:?}",
+                                int_kind
+                            ),
+                        }
+                    };
                 }
-            };
+                with_integer_kinds!(dispatch)
+            }
         }
-        with_integer_kinds!(dispatch)
     }
 
     pub fn as_f32_slice(&self) -> anyhow::Result<&[f32]> {

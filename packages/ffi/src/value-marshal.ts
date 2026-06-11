@@ -84,6 +84,21 @@ const g_value_get_boxed_strv = t.fn(
     t.array(t.string("borrowed")),
 );
 
+const g_value_get_int64_big = t.fn(LIBGOBJECT, "g_value_get_int64", [{ type: GVALUE_BORROWED }], t.bigint64);
+
+const g_value_get_uint64_big = t.fn(LIBGOBJECT, "g_value_get_uint64", [{ type: GVALUE_BORROWED }], t.biguint64);
+
+/**
+ * Reads a 64-bit `GValue` payload as a `bigint` when the property's FFI
+ * descriptor declares a bigint representation, or `undefined` when it does
+ * not and the fundamental-keyed {@link valueToJS} path applies.
+ */
+function bigintValueToJS(ffiType: FfiType, value: GValue): bigint | undefined {
+    if (ffiType.type === "bigint64") return g_value_get_int64_big(getHandle(value)) as bigint;
+    if (ffiType.type === "biguint64") return g_value_get_uint64_big(getHandle(value)) as bigint;
+    return undefined;
+}
+
 const valueGetStrv = (value: object): string[] => (g_value_get_boxed_strv(getHandle(value)) as string[] | null) ?? [];
 
 const valueFromFundamental = (value: GValueReader, fundamental: GType): unknown => {
@@ -158,7 +173,7 @@ const g_object_set_property = t.fn(LIBGOBJECT, "g_object_set_property", [...PROP
 export function getObjectProperty(obj: object, propertyName: string, ffiType: FfiType): unknown {
     const value = emptyValueFromFfi(ffiType);
     g_object_get_property(getHandle(obj), propertyName, getHandle(value));
-    return valueToJS(value);
+    return bigintValueToJS(ffiType, value) ?? valueToJS(value);
 }
 
 /**
