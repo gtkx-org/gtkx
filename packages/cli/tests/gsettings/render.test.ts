@@ -61,6 +61,21 @@ describe("renderRuntimeModule", () => {
         expect(code).toContain(`"sides": "flags"`);
         expect(code).toContain(`"style": "s"`);
     });
+
+    it("escapes line separators when embedding strings into generated code", () => {
+        const keyName = "line\u2028sep\u2029key";
+        const xml = `<schemalist>
+    <schema id="com.example.app" path="/com/example/app/">
+        <key name="${keyName}" type="s"><default>''</default></key>
+    </schema>
+</schemalist>`;
+
+        const code = renderRuntimeModule(parse(xml));
+
+        expect(code).toContain(String.raw`"line\u2028sep\u2029key"`);
+        expect(code).not.toContain("\u2028");
+        expect(code).not.toContain("\u2029");
+    });
 });
 
 describe("renderEnvModule (typing)", () => {

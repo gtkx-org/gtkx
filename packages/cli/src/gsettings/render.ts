@@ -17,9 +17,24 @@ const VARIANT_FALLBACK_TS_TYPE = `import("@gtkx/gi/glib").Variant`;
 const ENUM_KIND = "enum";
 const FLAGS_KIND = "flags";
 
+/**
+ * Serializes `value` as a string literal safe to embed in generated source.
+ *
+ * `JSON.stringify` leaves the U+2028/U+2029 line separators raw — JSON
+ * permits them, but inside generated code they must appear escaped — so they
+ * are rewritten to their escape sequences.
+ *
+ * @param value - The string to serialize
+ * @returns The escaped string literal, including quotes
+ */
+const toJsStringLiteral = (value: string): string =>
+    JSON.stringify(value)
+        .replace(/\u2028/g, "\\u2028")
+        .replace(/\u2029/g, "\\u2029");
+
 const exportNameFor = (schemaId: string): string => schemaId.replaceAll(".", "_");
 
-const unionOf = (values: readonly string[]): string => values.map((value) => JSON.stringify(value)).join(" | ");
+const unionOf = (values: readonly string[]): string => values.map(toJsStringLiteral).join(" | ");
 
 const tsTypeForKey = (key: ParsedKey, file: ParsedSchemaFile): string => {
     if (key.enumId !== null) {
@@ -43,7 +58,9 @@ const runtimeKindForKey = (key: ParsedKey): string => {
 };
 
 const runtimeKeysFor = (schema: ParsedSchema): string => {
-    const entries = schema.keys.map((key) => `${JSON.stringify(key.name)}: ${JSON.stringify(runtimeKindForKey(key))}`);
+    const entries = schema.keys.map(
+        (key) => `${toJsStringLiteral(key.name)}: ${toJsStringLiteral(runtimeKindForKey(key))}`,
+    );
     return `{ ${entries.join(", ")} }`;
 };
 
@@ -64,7 +81,7 @@ export const renderRuntimeModule = (file: ParsedSchemaFile): string => {
     const lines: string[] = [];
     file.schemas.forEach((schema, index) => {
         const keysName = `keys_${index}`;
-        const id = JSON.stringify(schema.id);
+        const id = toJsStringLiteral(schema.id);
         lines.push(`const ${keysName} = ${runtimeKeysFor(schema)};`);
         if (schema.path === null) {
             lines.push(
@@ -105,7 +122,7 @@ const renderKeysType = (name: string, schema: ParsedSchema, file: ParsedSchemaFi
         if (key.summary !== null) {
             lines.push(`        /** ${sanitizeSummary(key.summary)} */`);
         }
-        lines.push(`        ${JSON.stringify(key.name)}: ${tsTypeForKey(key, file)};`);
+        lines.push(`        ${toJsStringLiteral(key.name)}: ${tsTypeForKey(key, file)};`);
     }
     lines.push("    };");
     return lines;
@@ -123,7 +140,7 @@ const renderSchemaConst = (schema: ParsedSchema, interfaceName: string): string[
     if (schema.path !== null) {
         return [
             `    const ${exportName}: {`,
-            `        readonly id: ${JSON.stringify(schema.id)};`,
+            `        readonly id: ${toJsStringLiteral(schema.id)};`,
             ...boundRefTypeLines(interfaceName, "        ").slice(1),
             "    };",
         ];
