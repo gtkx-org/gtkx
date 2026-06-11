@@ -21,7 +21,9 @@ fn struct_type() -> StructType {
 
 #[test]
 fn null_guarded_short_circuits_null_pointer() {
-    let decoded = RawPtrCodec::ptr_to_value(&struct_type(), std::ptr::null_mut(), "ctx").unwrap();
+    // SAFETY: Null short-circuits before any read.
+    let decoded =
+        unsafe { RawPtrCodec::ptr_to_value(&struct_type(), std::ptr::null_mut(), "ctx") }.unwrap();
     assert!(matches!(decoded, Value::Null));
 }
 
@@ -29,7 +31,8 @@ fn null_guarded_short_circuits_null_pointer() {
 fn null_guarded_runs_decode_for_non_null_pointer() {
     let source: u64 = 0xDEAD_BEEF;
     let ptr = &source as *const u64 as *mut c_void;
-    let decoded = RawPtrCodec::ptr_to_value(&struct_type(), ptr, "ctx").unwrap();
+    // SAFETY: `ptr` addresses a live local u64.
+    let decoded = unsafe { RawPtrCodec::ptr_to_value(&struct_type(), ptr, "ctx") }.unwrap();
     assert!(matches!(decoded, Value::Object(_)));
 }
 
@@ -41,7 +44,11 @@ fn write_object_ptr_writes_object_pointer() {
     let mut slot: *mut c_void = std::ptr::null_mut();
     let slot_ptr = &mut slot as *mut *mut c_void as *mut c_void;
 
-    RawPtrCodec::write_value_to_raw_ptr(&struct_type(), slot_ptr, &Value::Object(handle)).unwrap();
+    // SAFETY: `slot_ptr` addresses a writable local pointer-sized slot.
+    unsafe {
+        RawPtrCodec::write_value_to_raw_ptr(&struct_type(), slot_ptr, &Value::Object(handle))
+    }
+    .unwrap();
     assert_eq!(slot, &target as *const u64 as *mut c_void);
 }
 
@@ -50,7 +57,8 @@ fn write_object_ptr_writes_null_for_null_value() {
     let mut slot: *mut c_void = 7 as *mut c_void;
     let slot_ptr = &mut slot as *mut *mut c_void as *mut c_void;
 
-    RawPtrCodec::write_value_to_raw_ptr(&struct_type(), slot_ptr, &Value::Null).unwrap();
+    // SAFETY: `slot_ptr` addresses a writable local pointer-sized slot.
+    unsafe { RawPtrCodec::write_value_to_raw_ptr(&struct_type(), slot_ptr, &Value::Null) }.unwrap();
     assert!(slot.is_null());
 }
 
@@ -59,7 +67,10 @@ fn write_object_ptr_rejects_non_object_value() {
     let mut slot: *mut c_void = std::ptr::null_mut();
     let slot_ptr = &mut slot as *mut *mut c_void as *mut c_void;
 
-    let err = RawPtrCodec::write_value_to_raw_ptr(&struct_type(), slot_ptr, &Value::Number(1.0));
+    // SAFETY: `slot_ptr` addresses a writable local pointer-sized slot.
+    let err = unsafe {
+        RawPtrCodec::write_value_to_raw_ptr(&struct_type(), slot_ptr, &Value::Number(1.0))
+    };
     assert!(err.is_err());
 }
 
@@ -68,7 +79,8 @@ fn write_return_object_ptr_writes_null_for_error() {
     let mut slot: *mut c_void = 9 as *mut c_void;
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
 
-    RawPtrCodec::write_return_to_raw_ptr(&struct_type(), ret, &Err(()));
+    // SAFETY: `ret` addresses a writable local pointer-sized slot.
+    unsafe { RawPtrCodec::write_return_to_raw_ptr(&struct_type(), ret, &Err(())) };
     assert!(slot.is_null());
 }
 
@@ -80,7 +92,14 @@ fn write_return_object_ptr_transfers_non_null_pointer() {
     let mut slot: *mut c_void = std::ptr::null_mut();
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
 
-    RawPtrCodec::write_return_to_raw_ptr(&struct_type(), ret, &Ok(value::Value::Object(handle)));
+    // SAFETY: `ret` addresses a writable local pointer-sized slot.
+    unsafe {
+        RawPtrCodec::write_return_to_raw_ptr(
+            &struct_type(),
+            ret,
+            &Ok(value::Value::Object(handle)),
+        );
+    }
     assert_eq!(slot, &target as *const u64 as *mut c_void);
 }
 
@@ -89,6 +108,7 @@ fn write_return_object_ptr_writes_null_for_non_object_ok() {
     let mut slot: *mut c_void = 11 as *mut c_void;
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
 
-    RawPtrCodec::write_return_to_raw_ptr(&struct_type(), ret, &Ok(Value::Number(3.0)));
+    // SAFETY: `ret` addresses a writable local pointer-sized slot.
+    unsafe { RawPtrCodec::write_return_to_raw_ptr(&struct_type(), ret, &Ok(Value::Number(3.0))) };
     assert!(slot.is_null());
 }

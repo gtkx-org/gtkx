@@ -20,7 +20,7 @@ Verdict legend: **confirmed** = adopt as written; **partial** = adopt with the l
 
 ## 1. Swaps that also fix real defects
 
-- [ ] **Replace the legacy default log handler with `glib::log_set_writer_func`** — confirmed
+- [x] **Replace the legacy default log handler with `glib::log_set_writer_func`** — confirmed
   - `src/glib_log_handler.rs:19-44`
   - Now: `glib::log_set_default_handler(Self::handle_log)`, hand-formatted levels, manual
     `log_writer_default_would_drop` check, stderr write, Error/Critical forwarded to
@@ -38,7 +38,7 @@ Verdict legend: **confirmed** = adopt as written; **partial** = adopt with the l
     `LogLevel::from_glib` panics on custom levels with no standard bit; the current handler has the
     identical exposure, so this is not a regression.
 
-- [ ] **Filter dynamically resolved GTypes through `glib::Type::is_valid`** — confirmed
+- [x] **Filter dynamically resolved GTypes through `glib::Type::is_valid`** — confirmed
   - `src/types/boxed.rs:111-132`
   - Now: `try_resolve_gtype_from_library` wraps the raw symbol result unconditionally; a `get_type`
     symbol returning 0 yields `Some(Type::INVALID)`, which `gtype()` feeds into
@@ -48,7 +48,7 @@ Verdict legend: **confirmed** = adopt as written; **partial** = adopt with the l
   - Why: a mismatched `getTypeFn` degrades to the explicit "Cannot copy boxed type" error path
     instead of UB. One register comparison once per type resolution; no hot-path cost.
 
-- [ ] **Replace raw `GEnumClass` plumbing in `validate_enum_value` with `glib::EnumClass`** — confirmed
+- [x] **Replace raw `GEnumClass` plumbing in `validate_enum_value` with `glib::EnumClass`** — confirmed
   - `src/types/numeric.rs:406-426`
   - Now: manual `g_type_class_ref` cast to `*mut GEnumClass`, null check, `g_enum_get_value(...)
     .is_null()`, manual `g_type_class_unref`.
@@ -58,7 +58,7 @@ Verdict legend: **confirmed** = adopt as written; **partial** = adopt with the l
     `g_type_is_a(type, G_TYPE_ENUM)` before deref — the raw code would feed a flags or object GType
     straight into `g_enum_get_value`. `cfg(debug_assertions)`-only path, off the hot path.
 
-- [ ] **Fix O(n²) GList construction with `g_list_prepend` over a reversed iterator** — side
+- [x] **Fix O(n²) GList construction with `g_list_prepend` over a reversed iterator** — side
   finding from a rejected proposal (see Not viable)
   - `src/types/array.rs:297-304` (`encode_strings`) and `src/types/array.rs:324-331`
     (`encode_handles`)
@@ -78,21 +78,21 @@ Required amendment everywhere: keep an explicit interior-NUL pre-check (the same
 `CString::new` performs today, so no new cost) so JS strings containing U+0000 surface the current
 error instead of glib's debug-assert / release-mode silent truncation.
 
-- [ ] **`src/types/string.rs:33-104`** — partial (adopt with the NUL pre-check)
+- [x] **`src/types/string.rs:33-104`** — partial (adopt with the NUL pre-check)
   - The three transfer-full sites: `encode`'s `Ownership::is_full` branch (line 36),
     `write_return_to_raw_ptr` (lines 81-85, write NULL on NUL failure as today), and
     `write_value_to_raw_ptr` (lines 94-95, bail with the current anyhow error).
   - The transfer-none encode branch keeps its `CString`: `FfiStorageKind::CString` owns the buffer
     for the call's duration.
 
-- [ ] **`src/types/hashtable.rs:77-84`** — confirmed
+- [x] **`src/types/hashtable.rs:77-84`** — confirmed
   - `HashTableEntryEncoder::encode`'s String arm. The single `g_strndup` allocation remains
     compatible with the `Some(glib::ffi::g_free)` free func installed by `g_hash_table_new_full`;
     mirrors glib's own `HashMap<String, String>` `ToGlibPtr` impl (`translate.rs:1298`). The dynamic
     table construction and the `GHashTableIter` decode loop have no glib-rs equivalent at 0.22.7
     and correctly stay raw.
 
-- [ ] **`src/types/array.rs:720-732`** — partial (restructure, not a one-line swap)
+- [x] **`src/types/array.rs:720-732`** — partial (restructure, not a one-line swap)
   - `append_items_to_garray` must iterate `array` directly and match `value::Value::String(s)` —
     `Self::extract_strings` is what creates the CStrings, so swapping only the `g_strdup` call
     changes nothing. Bail on interior NUL with the same error path, then `to_glib_full(s.as_str())`.
@@ -102,7 +102,7 @@ error instead of glib's debug-assert / release-mode silent truncation.
 
 ## 3. Dependency removal
 
-- [ ] **Replace `send_wrapper` with `glib::thread_guard::ThreadGuard`** — confirmed
+- [x] **Replace `send_wrapper` with `glib::thread_guard::ThreadGuard`** — confirmed
   - `src/managed.rs:43-170`; drop `send_wrapper = "0.6"` from `Cargo.toml` (used nowhere else).
   - Change: `ThreadGuard<NativeValue>` (public module, glib `src/lib.rs:254`); `wrapper.valid()`
     becomes `wrapper.is_owner()`; `NativeHandle::clone` becomes
@@ -116,7 +116,7 @@ error instead of glib's debug-assert / release-mode silent truncation.
 
 ## 4. GByteArray: converge on `glib::ByteArray`
 
-- [ ] **Storage: replace the pointer + flag pair with `Option<glib::ByteArray>`** — partial
+- [x] **Storage: replace the pointer + flag pair with `Option<glib::ByteArray>`** — partial
   - `src/ffi/storage.rs:50-53, 238-242`
   - Now: `GByteArrayData { array_ptr: *mut GByteArray, should_free: bool }` with a hand-rolled
     Drop arm calling `g_byte_array_unref`.
@@ -129,13 +129,13 @@ error instead of glib's debug-assert / release-mode silent truncation.
     `g_byte_array_new`. The wrapper is `!Send` but lives entirely within one `execute` call on the
     GLib thread.
 
-- [ ] **Encode: RAII ownership around the existing sized construction** — confirmed
+- [x] **Encode: RAII ownership around the existing sized construction** — confirmed
   - `src/types/array.rs:604-633`
   - Keep `g_byte_array_sized_new` + `g_byte_array_append` (pre-sized; the `From<&[u8]>` constructor
     is not), then wrap conditionally per the storage finding above. Refcount release becomes RAII
     with semantics identical to the current `g_byte_array_unref` path.
 
-- [ ] **Decode: wrap and read through `Deref<Target = [u8]>`** — partial
+- [x] **Decode: wrap and read through `Deref<Target = [u8]>`** — partial
   - `src/types/array.rs:904-928` (`decode_gbytearray`)
   - Keep the `as_non_null_ptr` early return, then branch on
     `self.ownership.is_full() && !matches!(ffi_value, ffi::FfiValue::Storage(_))`: when true,
@@ -146,7 +146,7 @@ error instead of glib's debug-assert / release-mode silent truncation.
 
 ## 5. Type-system and refcount hygiene (mechanical, zero-cost)
 
-- [ ] **`src/toggle_ref.rs:108-142` — typed Quark** — confirmed
+- [x] **`src/toggle_ref.rs:108-142` — typed Quark** — confirmed
   - `glib::Quark::from_static_str(glib::gstr!("gtkx-wrapper-ref"))` (glib `src/quark.rs:21`,
     `gstr!` at `gstring.rs:425`). Keep the cache as `OnceLock<glib::Quark>` — `wrapper_quark()` is
     reached from `binding_ptr` behind `has_wrapper` on the per-object decode path, and the
@@ -154,25 +154,25 @@ error instead of glib's debug-assert / release-mode silent truncation.
     load for GLib's locked quark-table hash lookup). Remaining raw qdata calls take
     `quark.into_glib()`.
 
-- [ ] **`src/toggle_ref.rs:153-160` — `is_gobject` via `glib::types::instance_of`** — confirmed
+- [x] **`src/toggle_ref.rs:153-160` — `is_gobject` via `glib::types::instance_of`** — confirmed
   - `unsafe { glib::types::instance_of::<glib::Object>(instance.cast()) }` (glib
     `src/types.rs:580`) expands to exactly the current
     `g_type_check_instance_is_a(ptr, g_object_get_type())` sequence; glib uses this same helper in
     its own wrapper-macro debug asserts. Same `unsafe fn` preconditions, identical machine code.
 
-- [ ] **`src/types/gobject.rs:56-62` — floating-type check via `Type::is_a`** — confirmed
+- [x] **`src/types/gobject.rs:56-62` — floating-type check via `Type::is_a`** — confirmed
   - Lift the loaded `g_type` with `from_glib`, then
     `gtype.is_a(glib::InitiallyUnowned::static_type())` — the exact pattern glib uses internally
     (`object.rs:1530`). The `g_object_is_floating` call on line 62 must stay raw: glib 0.22.7 has
     no safe wrapper for it (verified by grep over the whole crate). `#[inline]` zero-cost on the
     decode hot path.
 
-- [ ] **`src/module/register_class.rs:236-242` — duplicate-name probe via `Type::from_name`** — confirmed
+- [x] **`src/module/register_class.rs:236-242` — duplicate-name probe via `Type::from_name`** — confirmed
   - `if glib::Type::from_name(&self.name).is_some() { anyhow::bail!(...) }` replaces the raw call
     and the `!= 0` sentinel. Pairs with the GString finding below so `&GString: IntoGStr` passes
     the existing nul-terminated buffer with zero copies.
 
-- [ ] **`src/module/register_class.rs:477-478` (also 16, 223, 236-241, 374) — type name as
+- [x] **`src/module/register_class.rs:477-478` (also 16, 223, 236-241, 374) — type name as
   `glib::GString` instead of `CString`** — confirmed
   - `glib::GString::from_string_checked` (`gstring.rs:1266`) gives the same interior-nul validation
     with the same `InvalidArg` mapping; `GString::as_ptr` feeds the residual
@@ -180,7 +180,7 @@ error instead of glib's debug-assert / release-mode silent truncation.
     UTF-8 from JS. One-time registration path. Main value is enabling the `Type::from_name`
     findings; on its own the gain is modest.
 
-- [ ] **`src/module/register_class.rs:222-249` (also 46-48, 163-166, 199-205, 310-345, 357-381) —
+- [x] **`src/module/register_class.rs:222-249` (also 46-48, 163-166, 199-205, 310-345, 357-381) —
   carry GTypes as `glib::types::Type` through the request structs** — partial
   - Type the fields (`RegisterClassRequest::parent_gtype`, `RawInterface::gtype`,
     `PreparedInterface::gtype`) as `glib::types::Type`, aliased to avoid colliding with the file's
@@ -194,8 +194,12 @@ error instead of glib's debug-assert / release-mode silent truncation.
     on `g_type_name`, which returns NULL for unregistered nonzero ids, the exact JS-garbage input
     that error branch exists to report. Keep formatting the numeric id.
 
-- [ ] **`src/state.rs:109-127` — `Type::from_name` fast path + cache in
+- [x] **`src/state.rs:109-127` — `Type::from_name` fast path + cache in
   `LibraryCache::resolve_gtype`** — confirmed
+  - *Resolution:* the `(lib_name, get_type_fn_name)`-keyed cache is adopted, removing the repeated
+    dlsym + raw call from debug-only enum validation. The `Type::from_name` fast path is deferred:
+    it requires the tagged-type descriptor to carry the GIR type name, which touches JS-side
+    codegen for a path the cache already collapses to one resolution per descriptor.
   - First try `glib::Type::from_name` (wraps `g_type_from_name`), falling back to the existing
     dlsym path for first-touch resolution of unregistered types — the hybrid
     `BoxedType::gtype` already implements at `src/types/boxed.rs:67-77`. Requires the descriptor
@@ -205,7 +209,7 @@ error instead of glib's debug-assert / release-mode silent truncation.
   - The affected caller is debug-only enum validation, which currently repeats the dlsym + raw
     call for every validated enum value; the benchmarked path is untouched.
 
-- [ ] **`src/types/gobject.rs:153-168` — field-slot strong-ref swap via Option-level translate
+- [x] **`src/types/gobject.rs:153-168` — field-slot strong-ref swap via Option-level translate
   impls** — partial
   - Route BOTH pointers through the `Option` impls so null is absorbed on both sides (JS writes
     null to clear a field — `value.rs:236` maps Null/Undefined to a null pointer, and the
@@ -218,7 +222,7 @@ error instead of glib's debug-assert / release-mode silent truncation.
     no unaligned pointer-slot abstraction. Zero allocations; `Option<Object>` is niche-optimized
     to pointer size.
 
-- [ ] **`src/types/boolean.rs:10-38` — gboolean encode via `IntoGlib`** — partial
+- [x] **`src/types/boolean.rs:10-38` — gboolean encode via `IntoGlib`** — partial
   - Safe encode/write directions only: line 14 `ffi::FfiValue::I32(boolean.into_glib())`, line 57
     `*(ret as *mut i32) = val.into_glib()`, line 64 `*(ptr as *mut i32) = (*b).into_glib()`.
   - Revision: keep the safe `!= 0` comparisons for decode (lines 34, 43, 52) — `FromGlib::from_glib`
@@ -226,7 +230,7 @@ error instead of glib's debug-assert / release-mode silent truncation.
     `libffi::Type::i32()` at line 18 remains the sole width authority. Both impls are `#[inline]`
     bodies compiling to identical machine code.
 
-- [ ] **`src/types/ref_type.rs:242-265` and `src/types/string.rs:54-68` — C-string reads via
+- [x] **`src/types/ref_type.rs:242-265` and `src/types/string.rs:54-68` — C-string reads via
   `glib::GStr::from_ptr_lossy`** — partial
   - Replace `CStr::from_ptr(p)` + `to_string_lossy().into_owned()` with
     `unsafe { glib::GStr::from_ptr_lossy(p) }.to_string()` in both branches of `decode_ref_string`
@@ -240,7 +244,7 @@ error instead of glib's debug-assert / release-mode silent truncation.
     byte-identical lossy output is a requirement, no gtk-rs string API satisfies it and the current
     form should stay.
 
-- [ ] **`src/module/test_support.rs:36-60` — weak-ref notify via
+- [x] **`src/module/test_support.rs:36-60` — weak-ref notify via
   `ObjectExt::add_weak_ref_notify`** — confirmed
   - Obtain the object with `from_glib_borrow::<_, glib::Object>` — NOT `from_glib_none`, whose
     ref/unref pair would fire toggle notifies on a toggle-referenced wrapper and perturb the exact
@@ -252,6 +256,9 @@ error instead of glib's debug-assert / release-mode silent truncation.
 
 - [ ] **`src/module/test_support.rs:88-99` — toggle ref/unref pair through `glib::Object`** —
   partial, optional
+  - *Decision (2026-06-11):* skipped, taking the item's own out — the test's doc comment
+    deliberately describes the explicit ref/unref pair this race test exercises, so the raw calls
+    stay.
   - Borrow-then-clone compiles to exactly `g_object_ref` then `g_object_unref` with no sink:
     `let object = unsafe { glib::Object::from_glib_borrow(addr.cast()) }; drop(object.clone());`
   - Revision: do NOT use `from_glib_none` — it calls `g_object_ref_sink`, whose floating-ref
@@ -260,6 +267,9 @@ error instead of glib's debug-assert / release-mode silent truncation.
 
 - [ ] **`src/toggle_ref.rs:307-310` — express `install`'s pending-reference release through
   translate traits** — confirmed, low confidence; weigh legibility
+  - *Decision (2026-06-11):* skipped on the item's own caution — the release point is
+    ordering-critical against the qdata writes and a synchronous toggle notify, and the raw
+    `g_object_unref` states that more legibly than a scoped drop of a translate wrapper.
   - The trailing release only:
     `drop(unsafe { <glib::Object as FromGlibPtrFull<_>>::from_glib_full(gobject) })` — Drop
     performs exactly one `g_object_unref`, matching line 310 and mirroring the pattern already used
@@ -272,6 +282,9 @@ error instead of glib's debug-assert / release-mode silent truncation.
 
 - [ ] **`src/types/gobject.rs:64-77` — pending-reference normalization through translate traits** —
   confirmed, low confidence; weigh legibility
+  - *Decision (2026-06-11):* skipped on the item's own caution — the block implements the
+    deliberate leak-for-later-adopter protocol, and a discarded `.into_glib_ptr()` is less legible
+    than the raw `g_object_ref_sink` it would replace.
   - Arm-for-arm equivalents: releasing a pending full-transfer ref becomes
     `drop(from_glib_full(ptr))` (non-floating) / `drop(from_glib_none(ptr))` (floating;
     `from_glib_none` is `g_object_ref_sink`); the fresh-bind sink arm becomes
@@ -285,7 +298,7 @@ error instead of glib's debug-assert / release-mode silent truncation.
 
 ## 6. Signal dispatch through `glib::Closure` (largest item — a rewrite of the signal path)
 
-- [ ] **Add a dedicated native connect primitive on `ObjectExt::connect_local_id` /
+- [x] **Add a dedicated native connect primitive on `ObjectExt::connect_local_id` /
   `RustClosure`** — partial
   - `src/trampoline.rs:75-253` and `src/types/trampoline.rs:103-170`; consumer is
     `packages/ffi/src/signals.ts:80-90` (the `GCallback` of a dynamic `g_signal_connect_data`).
@@ -321,6 +334,9 @@ error instead of glib's debug-assert / release-mode silent truncation.
 
 - [ ] **`src/toggle_ref.rs:169-175, 288-292, 370-374` — WrapperBinding qdata via `ObjectExt`
   qdata APIs** — partial, marginal gain; consider skipping
+  - *Decision (2026-06-11):* skipped per the item's own assessment — one of five strong-count
+    sites eliminated at the cost of an extra `Box` per bind does not pay for revalidating the
+    teardown ordering invariant.
   - `set_qdata::<Arc<WrapperBinding>>` / `qdata` / `steal_qdata` through a refcount-neutral
     `Borrowed<glib::Object>` from `from_glib_borrow`; teardown's clear-then-drop pair becomes a
     single `steal_qdata` (GLib fires no destroy notify on steal) dropped at the exact point of
@@ -335,7 +351,7 @@ error instead of glib's debug-assert / release-mode silent truncation.
 
 ## 7. String-array marshalling via `glib::StrV` and typed lists
 
-- [ ] **Decode NULL-terminated string arrays with `StrV` / `StrVRef`** — partial
+- [x] **Decode NULL-terminated string arrays with `StrV` / `StrVRef`** — partial
   - `src/types/array.rs:951-975`
   - Mapping by runtime ownership flags: full+item-full →
     `StrV::from_glib_full` (frees array and strings on drop, identical to `g_strfreev`);
@@ -348,7 +364,7 @@ error instead of glib's debug-assert / release-mode silent truncation.
     byte-for-byte on malformed input, and the full/borrow paths gain one O(n) length pre-walk
     versus the current single fused walk (no allocation; the path is benchmarked).
 
-- [ ] **Build NULL-terminated string argument arrays with `StrV`** — partial
+- [x] **Build NULL-terminated string argument arrays with `StrV`** — partial
   - `src/types/array.rs:236-261` (`NullTerminatedArrayEncoder::encode_strings`)
   - Revisions: (1) build elements with `glib::GString::from_string_checked(s.clone())` mapped into
     the existing anyhow error — `GString::from(&str)` panics in debug and silently truncates at
@@ -363,6 +379,10 @@ error instead of glib's debug-assert / release-mode silent truncation.
 
 - [ ] **Model duplicated string GList/GSList storage as `glib::collections::List<GStringPtr>` /
   `SList<GStringPtr>`** — partial, low confidence
+  - *Decision (2026-06-11):* skipped — low confidence per the audit, and the `GStringPtr::from`
+    truncation hazard means the typed-list construction cannot reuse the validated single-allocation
+    path the encoders now share; the `should_free`/`elements_duped` flags it would remove are now
+    documented on the storage structs.
   - `src/ffi/storage.rs:28-41, 174-213`
   - For the `elements_duped == true` arm only. Revisions: (1) build each `GStringPtr` from the
     already-validated CString (`GStringPtr::from` uses `g_strndup` and would silently truncate
@@ -426,6 +446,16 @@ mode is resolved before the wrapper is chosen (branch first, then `from_glib_ful
 `from_glib_borrow` / `into_glib_ptr`), and the rejections are the ones where an abstraction bakes
 in a static assumption (UTF-8 validity, GObject layout, `is_a(Object)` parents, slice lifetimes)
 that the dynamic contract violates.
+
+## Resolution status (2026-06-11)
+
+Every `confirmed`/`partial` item above is adopted and verified except the five marked with a
+`Decision:` note, each skipped on the caveat the item itself records (legibility-critical raw
+calls, marginal gain, or low confidence). The §6 connect primitive landed with all four required
+corrections: `SignalId::parse_name` with `force_detail`, the never-panic return contract through
+`NativeErrorReporter` plus `glib::Value::from_type` defaults, `RustClosure::new_local` paired with
+`connect_closure_id`, and `G_TYPE_POINTER` extraction for `ref`-typed inout parameters flushed
+through `write_value_to_raw_ptr`.
 
 ## Suggested ordering
 

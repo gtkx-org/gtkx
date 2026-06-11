@@ -4,28 +4,33 @@ use std::ffi::{CString, c_void};
 
 use gtk4::glib;
 use native::ffi::{
-    FfiStorage, FfiStorageKind, GArrayData, GByteArrayData, GListData, GSListData, HashTableData,
-    StringGListData, StringGSListData,
+    FfiStorage, FfiStorageKind, GArrayData, GListData, GSListData, HashTableData, StringGListData,
+    StringGSListData,
 };
 use native::types::IntegerKind;
 
 fn make_glist_one() -> *mut glib::ffi::GList {
+    // SAFETY: Appending to a (possibly null) GList head only requires a valid element pointer.
     unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(1)) }
 }
 
 fn make_gslist_one() -> *mut glib::ffi::GSList {
+    // SAFETY: Appending to a (possibly null) GSList head only requires a valid element pointer.
     unsafe { glib::ffi::g_slist_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(1)) }
 }
 
 fn make_g_array() -> *mut glib::ffi::GArray {
+    // SAFETY: Creating a GArray from size parameters has no pointer preconditions.
     unsafe { glib::ffi::g_array_sized_new(0, 0, size_of::<i32>() as u32, 0) }
 }
 
 fn make_g_byte_array() -> *mut glib::ffi::GByteArray {
+    // SAFETY: Creating an empty GByteArray has no pointer preconditions.
     unsafe { glib::ffi::g_byte_array_sized_new(0) }
 }
 
 fn make_hash_table() -> *mut glib::ffi::GHashTable {
+    // SAFETY: Creating a GHashTable from hash/equal function pointers has no pointer preconditions.
     unsafe {
         glib::ffi::g_hash_table_new_full(
             Some(glib::ffi::g_direct_hash),
@@ -69,13 +74,10 @@ fn garray_storage(array_ptr: *mut glib::ffi::GArray, should_free: bool) -> FfiSt
 }
 
 fn gbytearray_storage(array_ptr: *mut glib::ffi::GByteArray, should_free: bool) -> FfiStorage {
-    FfiStorage::new(
-        array_ptr as *mut c_void,
-        FfiStorageKind::GByteArray(GByteArrayData {
-            array_ptr,
-            should_free,
-        }),
-    )
+    let owned: Option<glib::ByteArray> =
+        // SAFETY: The fresh GByteArray's one reference is adopted by the wrapper.
+        should_free.then(|| unsafe { glib::translate::from_glib_full(array_ptr) });
+    FfiStorage::new(array_ptr as *mut c_void, FfiStorageKind::GByteArray(owned))
 }
 
 fn hashtable_storage(handle: *mut glib::ffi::GHashTable, should_free: bool) -> FfiStorage {
@@ -93,12 +95,14 @@ fn hashtable_storage_unrefs_on_drop() {
     common::run(|| {
         let hash_table = make_hash_table();
 
+        // SAFETY: `hash_table` is the live table created above; the extra reference balances the storage's release.
         unsafe { glib::ffi::g_hash_table_ref(hash_table) };
 
         {
             let _storage = hashtable_storage(hash_table, true);
         }
 
+        // SAFETY: Releases a reference this test owns on the live GHashTable.
         unsafe { glib::ffi::g_hash_table_unref(hash_table) };
     });
 }
@@ -244,14 +248,9 @@ fn drop_no_op_kinds_do_not_crash() {
     drop(cstring);
     let buffer = FfiStorage::new(std::ptr::null_mut(), FfiStorageKind::Buffer(vec![1u8]));
     drop(buffer);
-    let boxed = FfiStorage::new(
-        std::ptr::null_mut(),
-        FfiStorageKind::BoxedValue(Box::new(native::ffi::FfiValue::Void)),
-    );
-    drop(boxed);
     let ptr_storage = FfiStorage::new(
         std::ptr::null_mut(),
-        FfiStorageKind::PtrStorage(Box::new(std::ptr::null_mut())),
+        FfiStorageKind::PtrStorage(vec![std::ptr::null_mut()]),
     );
     drop(ptr_storage);
 }
@@ -273,8 +272,10 @@ fn glist_storage_keeps_when_not_freed() {
         {
             let _storage = glist_storage(list, false);
         }
+        // SAFETY: `list` is the live GList built by this test.
         let len = unsafe { glib::ffi::g_list_length(list) };
         assert_eq!(len, 1);
+        // SAFETY: Frees the list this test owns.
         unsafe { glib::ffi::g_list_free(list) };
     });
 }
@@ -308,6 +309,7 @@ fn gslist_storage_keeps_when_not_freed() {
         {
             let _storage = gslist_storage(list, false);
         }
+        // SAFETY: Frees the list this test owns.
         unsafe { glib::ffi::g_slist_free(list) };
     });
 }
@@ -341,6 +343,7 @@ fn garray_storage_keeps_when_not_freed() {
         {
             let _storage = garray_storage(array, false);
         }
+        // SAFETY: Releases the reference this test owns on the live GArray.
         unsafe { glib::ffi::g_array_unref(array) };
     });
 }
@@ -373,19 +376,14 @@ fn gbytearray_storage_keeps_when_not_freed() {
         {
             let _storage = gbytearray_storage(array, false);
         }
+        // SAFETY: Releases the reference this test owns on the live GByteArray.
         unsafe { glib::ffi::g_byte_array_unref(array) };
     });
 }
 
 #[test]
-fn gbytearray_storage_null_ptr_safe_on_drop() {
-    let _storage = FfiStorage::new(
-        std::ptr::null_mut(),
-        FfiStorageKind::GByteArray(GByteArrayData {
-            array_ptr: std::ptr::null_mut(),
-            should_free: true,
-        }),
-    );
+fn gbytearray_storage_without_ownership_safe_on_drop() {
+    let _storage = FfiStorage::new(std::ptr::null_mut(), FfiStorageKind::GByteArray(None));
 }
 
 #[test]
@@ -395,6 +393,7 @@ fn hashtable_storage_keeps_when_not_freed() {
         {
             let _storage = hashtable_storage(hash_table, false);
         }
+        // SAFETY: Releases a reference this test owns on the live GHashTable.
         unsafe { glib::ffi::g_hash_table_unref(hash_table) };
     });
 }
@@ -403,10 +402,12 @@ fn build_string_glist(strings: &[CString], dup: bool) -> *mut glib::ffi::GList {
     let mut list: *mut glib::ffi::GList = std::ptr::null_mut();
     for s in strings {
         let ptr = if dup {
+            // SAFETY: Duplicating a live NUL-terminated local has no other preconditions.
             unsafe { glib::ffi::g_strdup(s.as_ptr()) as *mut c_void }
         } else {
             s.as_ptr() as *mut c_void
         };
+        // SAFETY: Appending to a (possibly null) GList head only requires a valid element pointer.
         list = unsafe { glib::ffi::g_list_append(list, ptr) };
     }
     list
@@ -466,6 +467,7 @@ fn string_glist_storage_keeps_when_not_freed() {
                 }),
             );
         }
+        // SAFETY: Frees the list this test owns.
         unsafe { glib::ffi::g_list_free(list) };
     });
 }
@@ -487,10 +489,12 @@ fn build_string_gslist(strings: &[CString], dup: bool) -> *mut glib::ffi::GSList
     let mut list: *mut glib::ffi::GSList = std::ptr::null_mut();
     for s in strings.iter().rev() {
         let ptr = if dup {
+            // SAFETY: Duplicating a live NUL-terminated local has no other preconditions.
             unsafe { glib::ffi::g_strdup(s.as_ptr()) as *mut c_void }
         } else {
             s.as_ptr() as *mut c_void
         };
+        // SAFETY: Prepending to a (possibly null) GSList head only requires a valid element pointer.
         list = unsafe { glib::ffi::g_slist_prepend(list, ptr) };
     }
     list
@@ -550,6 +554,7 @@ fn string_gslist_storage_keeps_when_not_freed() {
                 }),
             );
         }
+        // SAFETY: Frees the list this test owns.
         unsafe { glib::ffi::g_slist_free(list) };
     });
 }

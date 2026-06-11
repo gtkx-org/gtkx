@@ -13,11 +13,13 @@
 //! [`RegisterClassRequest::query_parent_gtype`], [`RegisterClassRequest::validate_vfunc_offset`])
 //! is exercised directly by tests.
 
-use std::ffi::{CString, c_char, c_void};
+use std::ffi::{c_char, c_void};
 use std::sync::Arc;
-use std::sync::atomic::AtomicPtr;
 
-use gtk4::glib::gobject_ffi;
+use gtk4::glib::{
+    self, gobject_ffi,
+    translate::{FromGlib as _, IntoGlib as _},
+};
 use napi::bindgen_prelude::*;
 use napi::{Env, JsFunction, JsObject, NapiValue as _};
 use napi_derive::napi;
@@ -44,7 +46,7 @@ struct RawVfunc {
 /// new class inherits from its parent.
 #[cfg_attr(test, allow(dead_code))]
 struct RawInterface {
-    gtype: usize,
+    gtype: glib::Type,
     vfuncs: Vec<RawVfunc>,
 }
 
@@ -52,7 +54,7 @@ impl RawVfunc {
     #[cfg_attr(test, allow(dead_code))]
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn from_js_value(env: &Env, item: Unknown<'_>) -> napi::Result<Self> {
-        let obj = unsafe { JsObject::from_napi_value(env.raw(), item.raw())? };
+        let obj = crate::value::unknown_as_object(env, &item)?;
         let byte_offset: f64 = obj.get_named_property("byteOffset")?;
         if byte_offset < 0.0 {
             return Err(napi::Error::new(
@@ -69,6 +71,8 @@ impl RawVfunc {
                 "register_class: vfunc 'fn' must be a function",
             ));
         }
+        // SAFETY: `handler_prop` is a live JS value from the current
+        // callback's `env`, verified to be a function just above.
         let handler: JsFunction =
             unsafe { JsFunction::from_raw_unchecked(env.raw(), handler_prop.raw()) };
 
@@ -93,14 +97,7 @@ impl RawVfunc {
             arg_types,
             return_type,
         } = self;
-        let data = TrampolineData {
-            js_func,
-            arg_types,
-            return_type,
-            user_data_index: None,
-            is_oneshot: false,
-            oneshot_state_ptr: AtomicPtr::new(std::ptr::null_mut()),
-        };
+        let data = TrampolineData::new(js_func, arg_types, return_type, None, false);
         let state = Box::new(TrampolineState::create(data));
         let code_ptr = state.code_ptr;
         PreparedVfunc {
@@ -112,12 +109,17 @@ impl RawVfunc {
 }
 
 impl RawInterface {
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     #[cfg_attr(test, allow(dead_code))]
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn from_js_value(env: &Env, item: Unknown<'_>) -> napi::Result<Self> {
-        let obj = unsafe { JsObject::from_napi_value(env.raw(), item.raw())? };
-        let gtype = obj.get_named_property::<f64>("gtype")? as usize;
-        if gtype == 0 {
+        let obj = crate::value::unknown_as_object(env, &item)?;
+        // SAFETY: Converting a numeric GType value has no pointer
+        // preconditions; validity is checked just below.
+        let gtype = unsafe {
+            glib::Type::from_glib(obj.get_named_property::<f64>("gtype")? as glib::ffi::GType)
+        };
+        if !gtype.is_valid() {
             return Err(napi::Error::new(
                 napi::Status::InvalidArg,
                 "register_class: interface gtype must be non-zero",
@@ -161,7 +163,7 @@ struct PreparedVfunc {
 /// own copy of the inherited interface vtable by [`PreparedInterface::install`].
 #[cfg_attr(test, allow(dead_code))]
 struct PreparedInterface {
-    gtype: usize,
+    gtype: glib::Type,
     vfuncs: Vec<PreparedVfunc>,
 }
 
@@ -173,6 +175,9 @@ impl PreparedVfunc {
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn install_all(vtable_base: *mut c_void, vfuncs: Vec<Self>) {
         for vfunc in vfuncs {
+            // SAFETY: The request validated each byte offset against the
+            // queried class size and pointer alignment, so the slot lies
+            // within the live vtable GLib allocated for the new type.
             unsafe {
                 let slot = vtable_base
                     .cast::<u8>()
@@ -196,11 +201,15 @@ impl PreparedInterface {
     #[cfg_attr(test, allow(dead_code))]
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn install(self, class_ptr: *mut c_void) {
-        let iface_vtable = unsafe { gobject_ffi::g_type_interface_peek(class_ptr, self.gtype) };
+        // SAFETY: `class_ptr` is the live class structure returned by
+        // `g_type_class_ref`, the receiver `g_type_interface_peek`
+        // requires.
+        let iface_vtable =
+            unsafe { gobject_ffi::g_type_interface_peek(class_ptr, self.gtype.into_glib()) };
         if iface_vtable.is_null() {
             NativeErrorReporter::global().report_str(&format!(
                 "register_class: registered type does not conform to interface {:#x}",
-                self.gtype
+                self.gtype.into_glib()
             ));
             return;
         }
@@ -214,14 +223,17 @@ unsafe extern "C" fn class_init_trampoline(g_class: *mut c_void, class_data: *mu
     if class_data.is_null() {
         return;
     }
+    // SAFETY: `class_data` is the unique `Box::into_raw` pointer the
+    // registration stored in GTypeInfo, and class_init runs exactly once
+    // per static type.
     let vfuncs = unsafe { Box::from_raw(class_data.cast::<Vec<PreparedVfunc>>()) };
     PreparedVfunc::install_all(g_class, *vfuncs);
 }
 
 #[cfg_attr(test, allow(dead_code))]
 struct RegisterClassRequest {
-    name: CString,
-    parent_gtype: usize,
+    name: glib::GString,
+    parent_gtype: glib::Type,
     vfuncs: Vec<RawVfunc>,
     interfaces: Vec<RawInterface>,
 }
@@ -229,20 +241,20 @@ struct RegisterClassRequest {
 impl RegisterClassRequest {
     #[cfg_attr(test, allow(dead_code))]
     fn query_parent_gtype(&self) -> anyhow::Result<gobject_ffi::GTypeQuery> {
-        if self.parent_gtype == 0 {
+        if !self.parent_gtype.is_valid() {
             anyhow::bail!("parent gtype is invalid (G_TYPE_INVALID)");
         }
 
-        let existing = unsafe { gobject_ffi::g_type_from_name(self.name.as_ptr()) };
-        if existing != 0 {
-            anyhow::bail!(
-                "GType name '{}' is already registered",
-                self.name.to_string_lossy()
-            );
+        if glib::Type::from_name(&self.name).is_some() {
+            anyhow::bail!("GType name '{}' is already registered", self.name);
         }
 
+        // SAFETY: GTypeQuery is a plain C struct for which all-zero bytes
+        // are a valid (empty) representation.
         let mut query: gobject_ffi::GTypeQuery = unsafe { std::mem::zeroed() };
-        unsafe { gobject_ffi::g_type_query(self.parent_gtype, &mut query) };
+        // SAFETY: `query` is a live local out-parameter, and the gtype is
+        // a plain value.
+        unsafe { gobject_ffi::g_type_query(self.parent_gtype.into_glib(), &mut query) };
         if query.type_ == 0 {
             anyhow::bail!("parent gtype could not be queried");
         }
@@ -289,7 +301,7 @@ impl RegisterClassRequest {
         }
 
         for iface in &self.interfaces {
-            if iface.gtype == 0 {
+            if !iface.gtype.is_valid() {
                 anyhow::bail!("interface gtype is invalid (G_TYPE_INVALID)");
             }
             for vfunc in &iface.vfuncs {
@@ -308,7 +320,7 @@ impl RegisterClassRequest {
     #[cfg_attr(test, allow(dead_code))]
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn register_type(
-        parent_gtype: usize,
+        parent_gtype: glib::Type,
         name_ptr: *const c_char,
         class_vfuncs_ptr: *mut c_void,
         interfaces: Vec<PreparedInterface>,
@@ -328,14 +340,21 @@ impl RegisterClassRequest {
             value_table: std::ptr::null(),
         };
 
-        let new_gtype =
-            unsafe { gobject_ffi::g_type_register_static(parent_gtype, name_ptr, &info, 0) };
+        // SAFETY: `name_ptr` is the caller's live NUL-terminated GString
+        // and `info` is a fully initialized local GTypeInfo.
+        let new_gtype = unsafe {
+            gobject_ffi::g_type_register_static(parent_gtype.into_glib(), name_ptr, &info, 0)
+        };
 
         if new_gtype == 0 {
+            // SAFETY: Registration failed, so class_init never ran and the
+            // unique `Box::into_raw` pointer is still unconsumed.
             drop(unsafe { Box::from_raw(class_vfuncs_ptr.cast::<Vec<PreparedVfunc>>()) });
             anyhow::bail!("g_type_register_static returned G_TYPE_INVALID");
         }
 
+        // SAFETY: `new_gtype` was just returned as a valid registered
+        // type.
         let class_ptr = unsafe { gobject_ffi::g_type_class_ref(new_gtype) };
 
         for iface in interfaces {
@@ -401,6 +420,8 @@ fn parse_js_array<T>(
             format!("register_class: expected an array of {description}"),
         ));
     }
+    // SAFETY: `prop` is a live JS value from the current callback's
+    // `env`, verified to be an array just above.
     let arr: Array = unsafe { Array::from_napi_value(env.raw(), prop.raw())? };
     map_js_array(env, &arr, convert)
 }
@@ -474,12 +495,18 @@ mod napi_export {
         parent_gtype: f64,
         options: Option<JsObject>,
     ) -> napi::Result<Unknown<'_>> {
-        let name = CString::new(name)
-            .map_err(|err| napi::Error::new(napi::Status::InvalidArg, err.to_string()))?;
+        let name = glib::GString::from_string_checked(name).map_err(|err| {
+            napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("register_class: invalid type name: {err}"),
+            )
+        })?;
         let (vfuncs, interfaces) = parse_register_options(env, options)?;
         RegisterClassRequest {
             name,
-            parent_gtype: parent_gtype as usize,
+            // SAFETY: Converting a numeric GType value has no pointer
+            // preconditions; the request validates it before use.
+            parent_gtype: unsafe { glib::Type::from_glib(parent_gtype as glib::ffi::GType) },
             vfuncs,
             interfaces,
         }
@@ -492,7 +519,6 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     use gtk4::glib;
-    use gtk4::glib::translate::IntoGlib as _;
     use gtk4::prelude::StaticType as _;
 
     use super::*;
@@ -502,13 +528,13 @@ mod tests {
 
     static TYPE_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-    fn unique_name(prefix: &str) -> CString {
+    fn unique_name(prefix: &str) -> glib::GString {
         let id = TYPE_COUNTER.fetch_add(1, Ordering::Relaxed);
-        CString::new(format!("{prefix}{id}")).unwrap()
+        glib::GString::from_string_checked(format!("{prefix}{id}")).unwrap()
     }
 
-    fn object_parent_gtype() -> usize {
-        glib::Object::static_type().into_glib()
+    fn object_parent_gtype() -> glib::Type {
+        glib::Object::static_type()
     }
 
     #[test]
@@ -532,7 +558,7 @@ mod tests {
     fn query_parent_gtype_rejects_invalid_parent() {
         let request = RegisterClassRequest {
             name: unique_name("GtkxTestInvalidParent"),
-            parent_gtype: 0,
+            parent_gtype: glib::Type::INVALID,
             vfuncs: vec![],
             interfaces: vec![],
         };
@@ -546,7 +572,7 @@ mod tests {
     fn query_parent_gtype_rejects_non_classed_parent() {
         let request = RegisterClassRequest {
             name: unique_name("GtkxTestNonClassedParent"),
-            parent_gtype: glib::Type::I64.into_glib(),
+            parent_gtype: glib::Type::I64,
             vfuncs: vec![],
             interfaces: vec![],
         };

@@ -23,6 +23,8 @@ pub(super) fn write_object_ptr(
     label: &str,
 ) -> anyhow::Result<()> {
     let obj_ptr = value.object_ptr(label)?;
+    // SAFETY: The codec's caller guarantees `ptr` is a writable
+    // pointer-sized slot; the write is unaligned-tolerant.
     unsafe { (ptr as *mut *mut c_void).write_unaligned(obj_ptr) };
     Ok(())
 }
@@ -43,7 +45,42 @@ pub(super) fn write_return_object_ptr<F>(
 {
     let ptr = value::Value::result_to_ptr(value);
     let owned = if ptr.is_null() { ptr } else { transfer(ptr) };
+    // SAFETY: The codec's caller guarantees `ret` is a writable
+    // pointer-sized return slot; the write is unaligned-tolerant.
     unsafe { (ret as *mut *mut c_void).write_unaligned(owned) };
+}
+
+/// Writes a return pointer honoring the declared transfer mode: a borrowed
+/// (transfer-none) return writes the wrapper-held pointer unchanged, while a
+/// full transfer passes it through `acquire`, which produces the caller's own
+/// reference or copy.
+pub(super) fn write_return_with_ownership<F>(
+    ret: *mut c_void,
+    value: &std::result::Result<value::Value, ()>,
+    ownership: super::Ownership,
+    acquire: F,
+) where
+    F: FnOnce(*mut c_void) -> *mut c_void,
+{
+    write_return_object_ptr(ret, value, |ptr| {
+        if ownership.is_borrowed() {
+            ptr
+        } else {
+            acquire(ptr)
+        }
+    });
+}
+
+/// Wraps a transfer-full encoded pointer in storage that releases it through
+/// `release` unless the call completes and disarms the transfer — the shared
+/// shape of every pointer codec's full-ownership encode arm.
+pub(super) fn full_transfer_storage(
+    ptr: *mut c_void,
+    release: crate::ffi::PendingRelease,
+) -> crate::ffi::FfiValue {
+    crate::ffi::FfiValue::Storage(
+        crate::ffi::FfiStorage::unit(ptr).with_pending_transfer(ptr, release),
+    )
 }
 
 /// Decodes `ptr` to a [`value::Value`], short-circuiting a null pointer to

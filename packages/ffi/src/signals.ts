@@ -5,14 +5,14 @@
  * their own signals. The `emit` path marshals arguments into `GValue`s and
  * dispatches `g_signal_emitv` entirely in generated code; the `connect` path
  * resolves the per-signal trampoline and delegates to {@link connectSignal},
- * the thin wrapper this module provides around the non-introspectable
- * `g_signal_connect_data`.
+ * the thin wrapper this module provides around the native `GClosure` connect
+ * primitive.
  */
 
-import type { Type } from "@gtkx/native";
-import { LIBGOBJECT } from "./gtype.js";
+import type { TrampolineType } from "@gtkx/native";
+import { connectSignalClosure } from "@gtkx/native";
 import { getHandle } from "./handles.js";
-import { call, t } from "./helpers.js";
+import { t } from "./helpers.js";
 
 /** A user-supplied signal handler. */
 export type SignalHandler = (...args: unknown[]) => unknown;
@@ -55,12 +55,17 @@ export function signalDetailQuark(signal: string): number {
 }
 
 /**
- * Connects a wrapped handler to a signal through `g_signal_connect_data`.
+ * Connects a wrapped handler to a signal through a native `GClosure`.
  *
- * A thin wrapper around the non-introspectable `g_signal_connect_data`: the
- * generated `connect` switch resolves the signal's typed trampoline and the
- * handler-marshalling closure, then hands both here. The full detailed signal
- * name (including any `::detail` suffix) is passed through unchanged.
+ * The generated `connect` switch resolves the signal's typed trampoline
+ * descriptor and the handler-marshalling closure, then hands both here. The
+ * full detailed signal name (including any `::detail` suffix) is passed
+ * through unchanged; the trampoline's user-data slot is dropped, since a
+ * closure connection carries its state in the `GClosure` itself. GLib's
+ * marshaller delivers the parameters as typed `GValue`s and takes ownership
+ * of the handler's return through the signal's return `GValue`, and
+ * disconnecting (or finalizing the emitter) releases the handler
+ * automatically.
  *
  * @param instance - The emitting object whose native handle receives the connection
  * @param signal - The signal name, optionally carrying a `::detail` suffix
@@ -69,23 +74,14 @@ export function signalDetailQuark(signal: string): number {
  * @param after - When true, run the handler after the default handler
  * @returns The handler connection id
  */
-// biome-ignore lint/complexity/useMaxParams: the wrapper mirrors g_signal_connect_data's positional arguments
+// biome-ignore lint/complexity/useMaxParams: the wrapper mirrors the native connect primitive's positional arguments
 export function connectSignal(
     instance: object,
     signal: string,
-    trampoline: Type,
+    trampoline: TrampolineType,
     handler: SignalHandler,
     after: boolean,
 ): number {
-    return call(
-        LIBGOBJECT,
-        "g_signal_connect_data",
-        [
-            { type: t.object("borrowed"), value: getHandle(instance) },
-            { type: t.string("borrowed"), value: signal },
-            { type: trampoline, value: handler },
-            { type: t.uint32, value: after ? 1 : 0 },
-        ],
-        t.uint64,
-    ) as number;
+    const closureArgTypes = trampoline.argTypes.filter((_, index) => index !== trampoline.userDataIndex);
+    return connectSignalClosure(getHandle(instance), signal, closureArgTypes, trampoline.returnType, handler, after);
 }

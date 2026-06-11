@@ -1,3 +1,4 @@
+use std::cell::Cell;
 use std::ffi::c_void;
 
 use libffi::middle as libffi;
@@ -29,6 +30,7 @@ pub struct TrampolineValue {
     state_ptr: *mut c_void,
     destroy_ptr: Option<*mut c_void>,
     _owned_state: Option<Box<TrampolineState>>,
+    armed_state: Cell<Option<Box<TrampolineState>>>,
 }
 
 impl TrampolineValue {
@@ -44,6 +46,39 @@ impl TrampolineValue {
             state_ptr,
             destroy_ptr,
             _owned_state: owned_state,
+            armed_state: Cell::new(None),
+        }
+    }
+
+    /// Builds a trampoline value whose state's ownership is pending transfer
+    /// to the native callee.
+    ///
+    /// The state stays armed and drops with the value — freeing the libffi
+    /// closure, the captured data, and its JS reference — unless the native
+    /// call actually happens and [`Self::disarm_pending_transfer`] hands the
+    /// state over to the callee's lifetime protocol (a destroy notify, the
+    /// one-shot self-free, or process lifetime).
+    #[must_use]
+    pub fn new_armed(
+        fn_ptr: *mut c_void,
+        destroy_ptr: Option<*mut c_void>,
+        state: Box<TrampolineState>,
+    ) -> Self {
+        let state_ptr = std::ptr::from_ref::<TrampolineState>(&state) as *mut c_void;
+        Self {
+            fn_ptr,
+            state_ptr,
+            destroy_ptr,
+            _owned_state: None,
+            armed_state: Cell::new(Some(state)),
+        }
+    }
+
+    /// Hands the armed state to the native callee once the call has actually
+    /// happened. From here the callee's lifetime protocol owns the state.
+    pub fn disarm_pending_transfer(&self) {
+        if let Some(state) = self.armed_state.take() {
+            let _ = Box::into_raw(state);
         }
     }
 
@@ -90,28 +125,59 @@ macro_rules! ffi_numeric_with {
 }
 
 impl FfiValue {
-    #[must_use]
-    pub fn as_raw_ptr(&self) -> *mut c_void {
+    /// Hands any armed transfer-full ownership to the callee once the native
+    /// call has actually happened. See
+    /// [`FfiStorage::disarm_pending_transfer`] and
+    /// [`TrampolineValue::disarm_pending_transfer`].
+    pub fn disarm_pending_transfer(&self) {
         match self {
-            Self::U8(value) => value as *const u8 as *mut c_void,
-            Self::I8(value) => value as *const i8 as *mut c_void,
-            Self::U16(value) => value as *const u16 as *mut c_void,
-            Self::I16(value) => value as *const i16 as *mut c_void,
-            Self::U32(value) => value as *const u32 as *mut c_void,
-            Self::I32(value) => value as *const i32 as *mut c_void,
-            Self::U64(value) => value as *const u64 as *mut c_void,
-            Self::I64(value) => value as *const i64 as *mut c_void,
-            Self::F32(value) => value as *const f32 as *mut c_void,
-            Self::F64(value) => value as *const f64 as *mut c_void,
-            Self::Ptr(ptr) => ptr as *const *mut c_void as *mut c_void,
-            Self::Storage(storage) => storage.ptr(),
-            Self::Trampoline(_) => {
-                unreachable!(
-                    "Trampoline should not be converted to a single pointer - it requires special handling via append_libffi_args"
-                )
-            }
-            Self::Void => std::ptr::null_mut(),
+            Self::Storage(storage) => storage.disarm_pending_transfer(),
+            Self::Trampoline(trampoline) => trampoline.disarm_pending_transfer(),
+            _ => {}
         }
+    }
+
+    /// Writes the scalar payload of an inline numeric variant into the
+    /// out-parameter slot at `slot`, the seed value a `Ref` scalar
+    /// out-parameter carries into a native call.
+    ///
+    /// Pointer-, storage-, trampoline-, and void-shaped values have no scalar
+    /// payload and are rejected with an error.
+    ///
+    /// # Safety
+    ///
+    /// `slot` must be valid for writes of at least the payload's size. No
+    /// alignment is required; the write is unaligned.
+    pub unsafe fn write_scalar_to(&self, slot: *mut c_void) -> anyhow::Result<()> {
+        // SAFETY: The caller guarantees `slot` is writable at the payload's
+        // size; every write below is unaligned-tolerant. The arms differ
+        // only in payload width.
+        match self {
+            // SAFETY: See the match-level comment.
+            Self::U8(value) => unsafe { slot.cast::<u8>().write_unaligned(*value) },
+            // SAFETY: See the match-level comment.
+            Self::I8(value) => unsafe { slot.cast::<i8>().write_unaligned(*value) },
+            // SAFETY: See the match-level comment.
+            Self::U16(value) => unsafe { slot.cast::<u16>().write_unaligned(*value) },
+            // SAFETY: See the match-level comment.
+            Self::I16(value) => unsafe { slot.cast::<i16>().write_unaligned(*value) },
+            // SAFETY: See the match-level comment.
+            Self::U32(value) => unsafe { slot.cast::<u32>().write_unaligned(*value) },
+            // SAFETY: See the match-level comment.
+            Self::I32(value) => unsafe { slot.cast::<i32>().write_unaligned(*value) },
+            // SAFETY: See the match-level comment.
+            Self::U64(value) => unsafe { slot.cast::<u64>().write_unaligned(*value) },
+            // SAFETY: See the match-level comment.
+            Self::I64(value) => unsafe { slot.cast::<i64>().write_unaligned(*value) },
+            // SAFETY: See the match-level comment.
+            Self::F32(value) => unsafe { slot.cast::<f32>().write_unaligned(*value) },
+            // SAFETY: See the match-level comment.
+            Self::F64(value) => unsafe { slot.cast::<f64>().write_unaligned(*value) },
+            Self::Ptr(_) | Self::Storage(_) | Self::Trampoline(_) | Self::Void => {
+                anyhow::bail!("{self:?} has no scalar payload for an out-parameter slot")
+            }
+        }
+        Ok(())
     }
 
     pub fn as_ptr(&self, type_name: &str) -> anyhow::Result<*mut c_void> {

@@ -25,10 +25,14 @@ impl ModuleRequest for GetInstanceGtypeRequest {
             return Ok(0);
         }
         let instance = self.instance_addr as *mut gobject_ffi::GTypeInstance;
+        // SAFETY: The non-zero address came from a live NativeHandle whose
+        // wrapper keeps the instance alive.
         let g_class = unsafe { (*instance).g_class };
         if g_class.is_null() {
             return Ok(0);
         }
+        // SAFETY: The class pointer was just verified non-null and belongs
+        // to the live instance.
         let gtype = unsafe { (*g_class).g_type };
         Ok(gtype as u64)
     }
@@ -92,6 +96,8 @@ mod tests {
 
     #[test]
     fn get_instance_gtype_returns_zero_for_instance_without_class() {
+        // SAFETY: GTypeInstance is a plain C struct of pointers, for which
+        // all-zero bytes are a valid (null-class) representation.
         let mut instance: gobject_ffi::GTypeInstance = unsafe { std::mem::zeroed() };
         let request = GetInstanceGtypeRequest {
             instance_addr: std::ptr::addr_of_mut!(instance) as usize,

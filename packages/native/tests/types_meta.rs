@@ -30,6 +30,49 @@ fn ownership_default_is_borrowed() {
 }
 
 #[test]
+fn transfer_release_matches_codec_ownership() {
+    common::run(|| {
+        use native::ffi::PendingRelease;
+        use native::types::{BoxedType, FfiEncoder as _, GObjectType, StructType};
+
+        let full_object = GObjectType {
+            ownership: Ownership::Full,
+        };
+        assert!(matches!(
+            full_object.transfer_release(),
+            Some(PendingRelease::ObjectUnref)
+        ));
+        let borrowed_object = GObjectType {
+            ownership: Ownership::Borrowed,
+        };
+        assert!(borrowed_object.transfer_release().is_none());
+
+        let full_boxed = BoxedType {
+            ownership: Ownership::Full,
+            type_name: "GdkRGBA".to_string(),
+            library: None,
+            get_type_fn: None,
+            free_fn: None,
+        };
+        assert!(matches!(
+            full_boxed.transfer_release(),
+            Some(PendingRelease::BoxedFree(_))
+        ));
+        let borrowed_boxed = BoxedType {
+            ownership: Ownership::Borrowed,
+            ..full_boxed
+        };
+        assert!(borrowed_boxed.transfer_release().is_none());
+
+        let plain_struct = StructType {
+            ownership: Ownership::Full,
+            size: None,
+        };
+        assert!(plain_struct.transfer_release().is_none());
+    });
+}
+
+#[test]
 fn ownership_display_renders_all_variants() {
     assert_eq!(Ownership::Full.to_string(), "full");
     assert_eq!(Ownership::Borrowed.to_string(), "borrowed");
@@ -191,25 +234,33 @@ fn ffi_decoder_decode_with_context_default_delegates_to_decode() {
 
 #[test]
 fn raw_ptr_codec_ptr_to_value_default_bails() {
-    assert!(RawPtrCodec::ptr_to_value(&trampoline_type(), 8 as *mut c_void, "ctx").is_err());
+    assert!(
+        // SAFETY: The default implementation bails before any read.
+        unsafe { RawPtrCodec::ptr_to_value(&trampoline_type(), 8 as *mut c_void, "ctx") }.is_err()
+    );
 }
 
 #[test]
 fn raw_ptr_codec_read_from_raw_ptr_default_dereferences_then_bails() {
     let mut inner: *mut c_void = 8 as *mut c_void;
     let ptr = &mut inner as *mut *mut c_void as *const c_void;
-    assert!(RawPtrCodec::read_from_raw_ptr(&trampoline_type(), ptr, "ctx").is_err());
+    // SAFETY: `ptr` addresses a live local pointer-sized slot.
+    assert!(unsafe { RawPtrCodec::read_from_raw_ptr(&trampoline_type(), ptr, "ctx") }.is_err());
 }
 
 #[test]
 fn raw_ptr_codec_write_return_to_raw_ptr_default_writes_null() {
     let mut slot: *mut c_void = 9 as *mut c_void;
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
-    RawPtrCodec::write_return_to_raw_ptr(&trampoline_type(), ret, &Ok(Value::Number(1.0)));
+    // SAFETY: `ret` addresses a writable local pointer-sized slot.
+    unsafe {
+        RawPtrCodec::write_return_to_raw_ptr(&trampoline_type(), ret, &Ok(Value::Number(1.0)));
+    }
     assert!(slot.is_null());
 
     slot = 9 as *mut c_void;
-    RawPtrCodec::write_return_to_raw_ptr(&trampoline_type(), ret, &Err(()));
+    // SAFETY: `ret` addresses a writable local pointer-sized slot.
+    unsafe { RawPtrCodec::write_return_to_raw_ptr(&trampoline_type(), ret, &Err(())) };
     assert!(slot.is_null());
 }
 
@@ -218,7 +269,11 @@ fn raw_ptr_codec_write_value_to_raw_ptr_default_bails() {
     let mut slot: *mut c_void = std::ptr::null_mut();
     let ptr = &mut slot as *mut *mut c_void as *mut c_void;
     assert!(
-        RawPtrCodec::write_value_to_raw_ptr(&trampoline_type(), ptr, &Value::Number(1.0)).is_err()
+        // SAFETY: The default implementation bails before any write.
+        unsafe {
+            RawPtrCodec::write_value_to_raw_ptr(&trampoline_type(), ptr, &Value::Number(1.0))
+        }
+        .is_err()
     );
 }
 
@@ -239,7 +294,8 @@ fn ffi_encoder_defaults_cover_pointer_typed_codec() {
     FfiEncoder::append_ffi_arg_types(&st, &mut arg_types);
     assert_eq!(arg_types.len(), 1);
 
-    let transferred = FfiEncoder::ref_for_transfer(&st, 16 as *mut c_void).unwrap();
+    // SAFETY: The default implementation returns the pointer untouched.
+    let transferred = unsafe { FfiEncoder::ref_for_transfer(&st, 16 as *mut c_void) }.unwrap();
     assert_eq!(transferred, 16 as *mut c_void);
 
     let cif = middle::Cif::new(Vec::new(), middle::Type::pointer());

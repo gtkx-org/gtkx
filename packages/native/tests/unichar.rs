@@ -71,12 +71,18 @@ fn decode_reads_codepoint_and_rejects_invalid() {
 
 #[test]
 fn ptr_to_value_decodes_codepoint_and_replaces_invalid() {
+    // SAFETY: UnicharType reinterprets the pointer value without
+    // dereferencing it.
     let valid =
-        RawPtrCodec::ptr_to_value(&UnicharType, 'X' as usize as *mut c_void, "ctx").unwrap();
+        unsafe { RawPtrCodec::ptr_to_value(&UnicharType, 'X' as usize as *mut c_void, "ctx") }
+            .unwrap();
     assert!(matches!(valid, Value::String(ref s) if s == "X"));
 
+    // SAFETY: UnicharType reinterprets the pointer value without
+    // dereferencing it.
     let invalid =
-        RawPtrCodec::ptr_to_value(&UnicharType, 0x0011_0000 as *mut c_void, "ctx").unwrap();
+        unsafe { RawPtrCodec::ptr_to_value(&UnicharType, 0x0011_0000 as *mut c_void, "ctx") }
+            .unwrap();
     assert!(matches!(invalid, Value::String(ref s) if s == "\u{FFFD}"));
 }
 
@@ -84,34 +90,50 @@ fn ptr_to_value_decodes_codepoint_and_replaces_invalid() {
 fn read_from_raw_ptr_decodes_codepoint_and_replaces_invalid() {
     let valid_slot: u32 = 'M' as u32;
     let valid_ptr = &valid_slot as *const u32 as *const c_void;
-    let read = RawPtrCodec::read_from_raw_ptr(&UnicharType, valid_ptr, "ctx").unwrap();
+    // SAFETY: `valid_ptr` addresses a live local u32.
+    let read = unsafe { RawPtrCodec::read_from_raw_ptr(&UnicharType, valid_ptr, "ctx") }.unwrap();
     assert!(matches!(read, Value::String(ref s) if s == "M"));
 
     let invalid_slot: u32 = 0x0011_0000;
     let invalid_ptr = &invalid_slot as *const u32 as *const c_void;
-    let read_invalid = RawPtrCodec::read_from_raw_ptr(&UnicharType, invalid_ptr, "ctx").unwrap();
+    // SAFETY: `invalid_ptr` addresses a live local u32.
+    let read_invalid =
+        unsafe { RawPtrCodec::read_from_raw_ptr(&UnicharType, invalid_ptr, "ctx") }.unwrap();
     assert!(matches!(read_invalid, Value::String(ref s) if s == "\u{FFFD}"));
 }
 
 #[test]
 fn write_return_to_raw_ptr_writes_string_number_and_default() {
-    let mut slot: u32 = 9;
-    let ret = &mut slot as *mut u32 as *mut c_void;
+    let mut slot: u64 = 9;
+    let ret = &mut slot as *mut u64 as *mut c_void;
 
-    RawPtrCodec::write_return_to_raw_ptr(&UnicharType, ret, &Ok(Value::String("Kkk".to_owned())));
-    assert_eq!(slot, 'K' as u32);
+    // SAFETY: `ret` addresses a writable local 8-byte slot.
+    unsafe {
+        RawPtrCodec::write_return_to_raw_ptr(
+            &UnicharType,
+            ret,
+            &Ok(Value::String("Kkk".to_owned())),
+        );
+    }
+    assert_eq!(slot, u64::from('K' as u32));
 
-    RawPtrCodec::write_return_to_raw_ptr(&UnicharType, ret, &Ok(Value::String(String::new())));
+    // SAFETY: `ret` addresses a writable local 8-byte slot.
+    unsafe {
+        RawPtrCodec::write_return_to_raw_ptr(&UnicharType, ret, &Ok(Value::String(String::new())));
+    }
     assert_eq!(slot, 0);
 
-    RawPtrCodec::write_return_to_raw_ptr(&UnicharType, ret, &Ok(Value::Number(70.0)));
+    // SAFETY: `ret` addresses a writable local 8-byte slot.
+    unsafe { RawPtrCodec::write_return_to_raw_ptr(&UnicharType, ret, &Ok(Value::Number(70.0))) };
     assert_eq!(slot, 70);
 
-    RawPtrCodec::write_return_to_raw_ptr(&UnicharType, ret, &Err(()));
+    // SAFETY: `ret` addresses a writable local 8-byte slot.
+    unsafe { RawPtrCodec::write_return_to_raw_ptr(&UnicharType, ret, &Err(())) };
     assert_eq!(slot, 0);
 
-    slot = 5;
-    RawPtrCodec::write_return_to_raw_ptr(&UnicharType, ret, &Ok(Value::Boolean(true)));
+    slot = u64::MAX;
+    // SAFETY: `ret` addresses a writable local 8-byte slot.
+    unsafe { RawPtrCodec::write_return_to_raw_ptr(&UnicharType, ret, &Ok(Value::Boolean(true))) };
     assert_eq!(slot, 0);
 }
 

@@ -6,7 +6,10 @@
 
 pub(super) use std::ffi::c_void;
 
-pub(super) use super::raw_ptr::{null_guarded, write_object_ptr, write_return_object_ptr};
+pub(super) use super::raw_ptr::{
+    full_transfer_storage, null_guarded, write_object_ptr, write_return_object_ptr,
+    write_return_with_ownership,
+};
 pub(super) use super::{FfiDecoder, FfiEncoder, Ownership, RawPtrCodec};
 pub(super) use crate::{ffi, value};
 

@@ -1,4 +1,8 @@
-export { type ApplicationTeardown, setApplicationTeardown } from "./application-teardown.js";
+export {
+    type ApplicationTeardown,
+    defaultApplicationTeardown,
+    setApplicationTeardown,
+} from "./application-teardown.js";
 export { withActionAccels, withActionScope } from "./components/action.js";
 export { withApplication, withApplicationWindow } from "./components/application.js";
 export { type ConstraintLayoutProps, GtkConstraintLayout } from "./components/constraint-layout.js";

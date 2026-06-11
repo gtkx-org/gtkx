@@ -1,4 +1,4 @@
-import { type Arg, call as nativeCall, type Type } from "@gtkx/native";
+import { type Arg, call as nativeCall, type TrampolineType, type Type } from "@gtkx/native";
 
 export { alloc, call, read, write } from "@gtkx/native";
 
@@ -193,8 +193,8 @@ type TrampolineOptions = {
     scope?: TrampolineScope;
 };
 
-const trampolineT = (argTypes: Type[], returnType: Type, options?: TrampolineOptions): Type => {
-    const result: Type = { type: "trampoline", argTypes, returnType };
+const trampolineT = (argTypes: Type[], returnType: Type, options?: TrampolineOptions): TrampolineType => {
+    const result: TrampolineType = { type: "trampoline", argTypes, returnType };
     if (options?.hasDestroy !== undefined) result.hasDestroy = options.hasDestroy;
     if (options?.userDataIndex !== undefined) result.userDataIndex = options.userDataIndex;
     if (options?.scope !== undefined) result.scope = options.scope;

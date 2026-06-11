@@ -45,11 +45,17 @@ struct FieldLocation {
 impl FieldLocation {
     /// Resolves the field's address, failing when the owning handle holds a
     /// null pointer.
+    ///
+    /// # Safety
+    ///
+    /// `base_addr` plus `offset` must stay within one live allocation.
     #[cfg_attr(test, allow(dead_code))]
-    fn resolve(&self) -> anyhow::Result<*mut c_void> {
+    unsafe fn resolve(&self) -> anyhow::Result<*mut c_void> {
         if self.base_addr == 0 {
             anyhow::bail!("NativeHandle has a null pointer");
         }
+        // SAFETY: The caller guarantees the offset address stays within the
+        // allocation `base_addr` points into.
         Ok(unsafe { (self.base_addr as *mut u8).add(self.offset) as *mut c_void })
     }
 }
@@ -64,8 +70,12 @@ impl ModuleRequest for ReadRequest {
     type Output = Value;
 
     fn execute(self) -> anyhow::Result<Value> {
-        let field_ptr = self.location.resolve()?.cast_const();
-        self.field_type.read_from_raw_ptr(field_ptr, "field read")
+        // SAFETY: The location came from a live NativeHandle and a
+        // descriptor-declared field offset within its allocation.
+        let field_ptr = unsafe { self.location.resolve()? }.cast_const();
+        // SAFETY: The resolved field address is valid for the declared
+        // field type's read.
+        unsafe { self.field_type.read_from_raw_ptr(field_ptr, "field read") }
     }
 
     fn error_context() -> &'static str {
@@ -84,9 +94,15 @@ impl ModuleRequest for WriteRequest {
     type Output = ();
 
     fn execute(self) -> anyhow::Result<()> {
-        let field_ptr = self.location.resolve()?;
-        self.field_type
-            .write_value_to_raw_ptr(field_ptr, &self.value)
+        // SAFETY: The location came from a live NativeHandle and a
+        // descriptor-declared field offset within its allocation.
+        let field_ptr = unsafe { self.location.resolve()? };
+        // SAFETY: The resolved field address is valid for the declared
+        // field type's write.
+        unsafe {
+            self.field_type
+                .write_value_to_raw_ptr(field_ptr, &self.value)
+        }
     }
 
     fn error_context() -> &'static str {
@@ -159,7 +175,8 @@ mod tests {
             base_addr,
             offset: 8,
         };
-        let resolved = location.resolve().expect("resolve should succeed");
+        // SAFETY: Offset 8 stays within the 32-byte local buffer.
+        let resolved = unsafe { location.resolve() }.expect("resolve should succeed");
         assert_eq!(resolved as usize, base_addr + 8);
     }
 
@@ -169,7 +186,8 @@ mod tests {
             base_addr: 0,
             offset: 0,
         };
-        let err = location.resolve().expect_err("null base should fail");
+        // SAFETY: A zero base fails before any address arithmetic.
+        let err = unsafe { location.resolve() }.expect_err("null base should fail");
         assert!(err.to_string().contains("null pointer"));
     }
 

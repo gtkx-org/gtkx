@@ -39,8 +39,9 @@ export const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     installApplicationTeardown: async (loadAppModule, onTeardown) => {
         const react = (await loadAppModule("@gtkx/react")) as {
             setApplicationTeardown(next: (() => void) | null): void;
+            defaultApplicationTeardown(): void;
         };
-        react.setApplicationTeardown(onTeardown);
+        react.setApplicationTeardown(() => onTeardown(react.defaultApplicationTeardown));
     },
     performRefresh,
     isReactRefreshBoundary,

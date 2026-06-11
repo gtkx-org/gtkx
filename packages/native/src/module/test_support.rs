@@ -12,10 +12,11 @@
 
 #![cfg_attr(coverage_nightly, coverage(off))]
 
-use std::ffi::c_void;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use gtk4::glib;
+use gtk4::glib::prelude::ObjectExt as _;
+use gtk4::glib::translate::from_glib_borrow;
 use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
@@ -31,29 +32,27 @@ static FINALIZE_COUNT: AtomicU64 = AtomicU64::new(0);
 /// completed on the `GLib` thread.
 static TOGGLE_PENDING: AtomicU64 = AtomicU64::new(0);
 
-/// `GWeakNotify` that records a finalization without re-entering JavaScript, so
-/// it is safe to fire from inside `g_object_unref` on the `GLib` thread.
-unsafe extern "C" fn on_finalize(
-    _data: *mut c_void,
-    _where_the_object_was: *mut glib::gobject_ffi::GObject,
-) {
-    FINALIZE_COUNT.fetch_add(1, Ordering::SeqCst);
-}
-
-/// Installs a weak ref on the `GObject` behind `handle` whose notify increments
+/// Installs a weak-ref notify on the `GObject` behind `handle` that increments
 /// the global finalize counter, letting a test assert the object is freed
-/// exactly once when its wrapper is collected.
+/// exactly once when its wrapper is collected. The notify records the
+/// finalization without re-entering JavaScript, so it is safe to fire from
+/// inside `g_object_unref` on the `GLib` thread. The returned notify handle is
+/// deliberately dropped: it carries no disconnect-on-drop, so the notify stays
+/// installed for the object's lifetime.
 #[napi(catch_unwind)]
 #[cfg_attr(test, allow(dead_code))]
 pub fn watch_object_finalize(env: Env, handle: &External<NativeHandle>) -> napi::Result<()> {
     let addr = handle.ptr() as usize;
     Mailbox::global()
-        .dispatch_to_glib_and_wait(env, move || unsafe {
-            glib::gobject_ffi::g_object_weak_ref(
-                addr as *mut glib::gobject_ffi::GObject,
-                Some(on_finalize),
-                std::ptr::null_mut(),
-            );
+        .dispatch_to_glib_and_wait(env, move || {
+            // SAFETY: `addr` came from a live NativeHandle whose wrapper's
+            // toggle reference keeps the GObject alive across this
+            // GLib-thread task.
+            let object: glib::translate::Borrowed<glib::Object> =
+                unsafe { from_glib_borrow(addr as *mut glib::gobject_ffi::GObject) };
+            object.add_weak_ref_notify(|| {
+                FINALIZE_COUNT.fetch_add(1, Ordering::SeqCst);
+            });
         })
         .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))?;
     Ok(())
@@ -88,6 +87,9 @@ pub fn drive_toggle_from_thread(
     std::thread::spawn(move || {
         for _ in 0..iterations {
             Mailbox::global().schedule_glib(Box::new(move || {
+                // SAFETY: `addr` came from a live NativeHandle the test
+                // keeps alive while driving; the pair nets the reference
+                // count back to its starting value.
                 unsafe {
                     let object = addr as *mut glib::gobject_ffi::GObject;
                     glib::gobject_ffi::g_object_ref(object);

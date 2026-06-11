@@ -71,18 +71,24 @@ describe("defaultDevRunnerDeps (wiring)", () => {
         expect(loadAppModule).toHaveBeenCalledWith("@gtkx/testing");
     });
 
-    it("installs the application teardown through the app-graph @gtkx/react module", async () => {
+    it("installs a teardown that passes the app-graph default teardown to the runner callback", async () => {
         const deps = defaultDevRunnerDeps();
         const setApplicationTeardown = vi.fn();
-        const loadAppModule = vi.fn(async () => ({ setApplicationTeardown }));
-        const onTeardown = (): undefined => undefined;
+        const defaultApplicationTeardown = vi.fn();
+        const loadAppModule = vi.fn(async () => ({ setApplicationTeardown, defaultApplicationTeardown }));
+        const onTeardown = vi.fn();
 
         await deps.installApplicationTeardown(loadAppModule, onTeardown);
 
         expect(loadAppModule).toHaveBeenCalledWith("@gtkx/react");
-        expect(setApplicationTeardown).toHaveBeenCalledWith(onTeardown);
+        expect(setApplicationTeardown).toHaveBeenCalledTimes(1);
+        const installed = setApplicationTeardown.mock.calls[0]?.[0] as () => void;
+        installed();
+        expect(onTeardown).toHaveBeenCalledWith(defaultApplicationTeardown);
     });
+});
 
+describe("defaultDevRunnerDeps (plugins)", () => {
     it("assembles the plugin list in the documented order", () => {
         const deps = defaultDevRunnerDeps();
 

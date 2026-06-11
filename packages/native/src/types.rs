@@ -45,9 +45,26 @@ use napi::{Env, JsObject};
 
 use crate::{ffi, value};
 
+/// Reads an optional descriptor property, distinguishing an absent property
+/// (`Ok(None)`) from a present-but-malformed one, which surfaces as an
+/// `InvalidArg` error naming the property instead of silently defaulting.
+#[cfg_attr(coverage_nightly, coverage(off))]
+pub(crate) fn optional_descriptor_property<T: FromNapiValue + ValidateNapiValue>(
+    obj: &JsObject,
+    name: &str,
+) -> napi::Result<Option<T>> {
+    obj.get_named_property::<Option<T>>(name).map_err(|e| {
+        napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("invalid '{name}' descriptor property: {e}"),
+        )
+    })
+}
+
 /// Parses the `argTypes` and `returnType` properties of a [`TrampolineType`]
-/// descriptor. Returns the parsed argument types and return type, or a JS type
-/// error referencing `kind` (e.g. `"trampoline"`).
+/// descriptor. Returns the parsed argument types and return type. An absent
+/// `returnType` is reported as required; a present-but-malformed one
+/// propagates its own parse error.
 #[cfg_attr(coverage_nightly, coverage(off))]
 pub(crate) fn parse_trampoline_arg_and_return_types(
     env: &Env,
@@ -61,16 +78,22 @@ pub(crate) fn parse_trampoline_arg_and_return_types(
             format!("'argTypes' property is required for {kind} types"),
         ));
     }
+    // SAFETY: `arg_types_prop` is a live JS value from the current
+    // callback's `env`, verified to be an array just above.
     let arg_types_arr: Array = unsafe { Array::from_napi_value(env.raw(), arg_types_prop.raw())? };
     let arg_types = crate::value::map_js_array(env, &arg_types_arr, Type::from_js_value)?;
 
     let return_type_prop: Unknown<'_> = obj.get_named_property("returnType")?;
-    let return_type = Box::new(Type::from_js_value(env, return_type_prop).map_err(|_| {
-        napi::Error::new(
+    if matches!(
+        return_type_prop.get_type()?,
+        napi::ValueType::Undefined | napi::ValueType::Null
+    ) {
+        return Err(napi::Error::new(
             napi::Status::InvalidArg,
             format!("'returnType' property is required for {kind} types"),
-        )
-    })?);
+        ));
+    }
+    let return_type = Box::new(Type::from_js_value(env, return_type_prop)?);
 
     Ok((arg_types, return_type))
 }
@@ -99,7 +122,7 @@ pub use gobject::GObjectType;
 pub use hashtable::{HashTableEntryEncoder, HashTableType};
 pub use numeric::{FloatKind, IntegerKind, TaggedKind, TaggedType};
 pub use ref_type::RefType;
-pub use string::StringType;
+pub use string::{StringType, str_to_glib_full};
 pub use trampoline::{TrampolineScope, TrampolineType};
 pub use unichar::UnicharType;
 pub use void::VoidType;
@@ -145,10 +168,8 @@ impl Ownership {
             )
         };
 
-        let ownership = obj
-            .get_named_property::<Option<String>>("ownership")
-            .map_err(|_| missing())?
-            .ok_or_else(missing)?;
+        let ownership =
+            optional_descriptor_property::<String>(obj, "ownership")?.ok_or_else(missing)?;
 
         ownership
             .parse()
@@ -183,6 +204,14 @@ impl std::str::FromStr for Ownership {
 pub trait FfiEncoder {
     fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue>;
 
+    /// The release pairing the ownership one [`Self::ref_for_transfer`] call
+    /// acquires for a non-null pointer, or `None` for an identity hand-over
+    /// with nothing to release. Container encoders use it to unwind or arm
+    /// the per-element ownership they acquire.
+    fn transfer_release(&self) -> Option<ffi::PendingRelease> {
+        None
+    }
+
     fn libffi_type(&self) -> libffi::Type {
         libffi::Type::pointer()
     }
@@ -197,12 +226,22 @@ pub trait FfiEncoder {
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::FfiValue> {
+        // SAFETY: The dispatch site built `cif` and `args` from this
+        // descriptor's own types and resolved `ptr` from a loaded library
+        // symbol, so the call matches the native signature.
         Ok(ffi::FfiValue::Ptr(unsafe {
             cif.call::<*mut c_void>(ptr, args)
         }))
     }
 
-    fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
+    /// Acquires the ownership a transfer-full slot takes over `ptr` (a ref, a
+    /// boxed copy, …), returning the pointer the callee will adopt.
+    ///
+    /// # Safety
+    ///
+    /// `ptr` must be null or a pointer to a live instance of this codec's
+    /// type.
+    unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
         Ok(ptr)
     }
 }
@@ -230,26 +269,65 @@ pub trait RawPtrCodec {
     /// dereferencing once and delegating to [`ptr_to_value`]. Pointer-typed
     /// codecs (string/gobject/boxed/struct/fundamental) inherit this default;
     /// scalar codecs override with a direct read.
-    fn read_from_raw_ptr(&self, ptr: *const c_void, context: &str) -> anyhow::Result<value::Value> {
+    ///
+    /// # Safety
+    ///
+    /// `ptr` must be valid for a read of this codec's slot representation (a
+    /// pointer-sized slot for the default implementation).
+    unsafe fn read_from_raw_ptr(
+        &self,
+        ptr: *const c_void,
+        context: &str,
+    ) -> anyhow::Result<value::Value> {
+        // SAFETY: The caller guarantees `ptr` is a readable pointer-sized
+        // slot.
         let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
-        self.ptr_to_value(inner_ptr, context)
+        // SAFETY: The dereferenced pointer is the value the slot carries for
+        // this codec, satisfying `ptr_to_value`'s validity requirement.
+        unsafe { self.ptr_to_value(inner_ptr, context) }
     }
 
-    fn write_return_to_raw_ptr(
+    /// Writes a trampoline return value into the libffi closure return slot.
+    ///
+    /// # Safety
+    ///
+    /// `ret` must be valid for this codec's write at its return-slot
+    /// representation size.
+    unsafe fn write_return_to_raw_ptr(
         &self,
         ret: *mut c_void,
         value: &std::result::Result<value::Value, ()>,
     ) {
         let _ = value;
+        // SAFETY: The caller guarantees `ret` is a writable pointer-sized
+        // return slot.
         unsafe { *(ret as *mut *mut c_void) = std::ptr::null_mut() };
     }
 
-    fn ptr_to_value(&self, ptr: *mut c_void, context: &str) -> anyhow::Result<value::Value> {
+    /// Decodes the value `ptr` represents — a dereference for pointer-typed
+    /// codecs, a reinterpretation of the pointer value itself for scalars.
+    ///
+    /// # Safety
+    ///
+    /// `ptr` must be null or valid for this codec's read at its
+    /// representation size.
+    unsafe fn ptr_to_value(&self, ptr: *mut c_void, context: &str) -> anyhow::Result<value::Value> {
         let _ = (ptr, context);
         bail!("This type cannot be read from pointer")
     }
 
-    fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
+    /// Writes `value` into the slot at `ptr` using this codec's
+    /// representation.
+    ///
+    /// # Safety
+    ///
+    /// `ptr` must be valid for this codec's write at its representation
+    /// size.
+    unsafe fn write_value_to_raw_ptr(
+        &self,
+        ptr: *mut c_void,
+        value: &value::Value,
+    ) -> anyhow::Result<()> {
         let _ = (ptr, value);
         bail!("This type cannot be written to a raw pointer")
     }
@@ -307,7 +385,7 @@ impl std::fmt::Display for Type {
 impl Type {
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
-        let obj: JsObject = unsafe { JsObject::from_napi_value(env.raw(), value.raw())? };
+        let obj: JsObject = crate::value::unknown_as_object(env, &value)?;
         let ty: String = obj.get_named_property("type")?;
 
         match ty.as_str() {
@@ -362,6 +440,18 @@ impl Type {
     #[must_use]
     pub fn can_be_return_type(&self) -> bool {
         !matches!(self, Self::Trampoline(_) | Self::Ref(_))
+    }
+
+    /// Whether this type may describe a function or callback argument.
+    ///
+    /// `Void` describes the absence of a value: it has no argument encoding,
+    /// and a `void` entry in a libffi argument list is outside libffi's API
+    /// contract, corrupting the call frame classification of every following
+    /// parameter. Callers consult this at the descriptor-parsing boundary to
+    /// reject a malformed argument type with a precise `InvalidArg` error.
+    #[must_use]
+    pub fn can_be_argument_type(&self) -> bool {
+        !matches!(self, Self::Void(_))
     }
 }
 

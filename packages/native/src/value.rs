@@ -48,7 +48,12 @@ pub struct JsRef<T> {
     _marker: PhantomData<T>,
 }
 
+// SAFETY: The contained napi_ref is an opaque token off the JS thread;
+// only `get_value` dereferences it, on the JS thread, and Drop routes the
+// deletion back there through the mailbox.
 unsafe impl<T> Send for JsRef<T> {}
+// SAFETY: Shared access never dereferences the raw pointers off the JS
+// thread; see the Send justification above.
 unsafe impl<T> Sync for JsRef<T> {}
 
 #[cfg_attr(coverage_nightly, coverage(off))]
@@ -75,8 +80,12 @@ impl<T: NapiRaw + NapiValue> JsRef<T> {
     /// Creates a reference that keeps `value` alive so it can outlive the JS
     /// call and be resolved later, possibly from another thread.
     pub fn from_js_value(env: &Env, value: &T) -> napi::Result<Self> {
+        // SAFETY: `value` is a live JS value from the current callback's
+        // `env`.
         let raw_value = unsafe { value.raw() };
         let mut raw_ref = std::ptr::null_mut();
+        // SAFETY: This runs on the JS thread owning `env`, and `raw_value`
+        // was just produced under it.
         unsafe {
             let status = sys::napi_create_reference(env.raw(), raw_value, 1, &mut raw_ref);
             if status != sys::Status::napi_ok {
@@ -97,6 +106,8 @@ impl<T: NapiRaw + NapiValue> JsRef<T> {
     /// Resolves the reference back to its JavaScript value on the JS thread.
     pub fn get_value(&self, env: &Env) -> napi::Result<T> {
         let mut raw_value = std::ptr::null_mut();
+        // SAFETY: This runs on the JS thread owning `env`, and `self.raw`
+        // is the live reference created alongside it.
         unsafe {
             let status = sys::napi_get_reference_value(env.raw(), self.raw, &mut raw_value);
             if status != sys::Status::napi_ok {
@@ -131,6 +142,8 @@ impl Callback {
     }
 
     pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
+        // SAFETY: `value` is a live JS value from the current callback's
+        // `env`, dispatched here for the function value type.
         let func: JsFunction = unsafe { JsFunction::from_raw_unchecked(env.raw(), value.raw()) };
         let func_ref = JsRef::from_js_value(env, &func)?;
         Ok(Self::new(Arc::new(func_ref)))
@@ -138,6 +151,8 @@ impl Callback {
 
     pub fn to_js_value<'env>(&self, env: &'env Env) -> napi::Result<Unknown<'env>> {
         let func = self.js_func.get_value(env)?;
+        // SAFETY: `func` is the live function just resolved under the
+        // current callback's `env`.
         Ok(unsafe { Unknown::from_raw_unchecked(env.raw(), func.raw()) })
     }
 }
@@ -188,9 +203,15 @@ impl Ref {
     }
 
     pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
+        Self::from_js_value_at_depth(env, value, 0)
+    }
+
+    fn from_js_value_at_depth(env: &Env, value: Unknown<'_>, depth: usize) -> napi::Result<Self> {
+        // SAFETY: `value` is a live JS value from the current callback's
+        // `env`, dispatched here for the object value type.
         let obj: JsObject = unsafe { JsObject::from_raw_unchecked(env.raw(), value.raw()) };
         let value_prop: Unknown<'_> = obj.get_named_property("value")?;
-        let inner = Value::from_js_value(env, value_prop)?;
+        let inner = Value::from_js_value_at_depth(env, value_prop, depth)?;
         let js_obj_ref = JsRef::from_js_value(env, &obj)?;
 
         Ok(Self::new(inner, Arc::new(js_obj_ref)))
@@ -256,24 +277,50 @@ impl Value {
 
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
+        Self::from_js_value_at_depth(env, value, 0)
+    }
+
+    /// Recursive worker behind [`Self::from_js_value`], carrying the nesting
+    /// depth so cyclic JS input (an array containing itself, a ref cell whose
+    /// `value` is itself) surfaces as `InvalidArg` instead of overflowing the
+    /// native stack and aborting the process.
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn from_js_value_at_depth(env: &Env, value: Unknown<'_>, depth: usize) -> napi::Result<Self> {
+        const MAX_VALUE_DEPTH: usize = 64;
+        if depth >= MAX_VALUE_DEPTH {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                "value nesting exceeds the supported depth; is the input cyclic?",
+            ));
+        }
+
         let value_type = value.get_type()?;
 
         match value_type {
             ValueType::Number => {
+                // SAFETY: `value` is a live JS value from the current
+                // callback's `env`, type-checked as a number just above.
                 let n = unsafe { f64::from_napi_value(env.raw(), value.raw())? };
                 Ok(Self::Number(n))
             }
             ValueType::String => {
+                // SAFETY: `value` is a live JS value from the current
+                // callback's `env`, type-checked as a string just above.
                 let s = unsafe { String::from_napi_value(env.raw(), value.raw())? };
                 Ok(Self::String(s))
             }
             ValueType::Boolean => {
+                // SAFETY: `value` is a live JS value from the current
+                // callback's `env`, type-checked as a boolean just above.
                 let b = unsafe { bool::from_napi_value(env.raw(), value.raw())? };
                 Ok(Self::Boolean(b))
             }
             ValueType::Null => Ok(Self::Null),
             ValueType::Undefined => Ok(Self::Undefined),
             ValueType::External => {
+                // SAFETY: `value` is a live JS value from the current
+                // callback's `env`, type-checked as an external just
+                // above.
                 let external_ref =
                     unsafe { <&External<NativeHandle>>::from_napi_value(env.raw(), value.raw())? };
                 Ok(Self::Object(NativeHandle::borrowed(external_ref.ptr())))
@@ -284,10 +331,15 @@ impl Value {
             }
             ValueType::Object => {
                 if value.is_array()? {
+                    // SAFETY: `value` is a live JS value from the current
+                    // callback's `env`, verified to be an array just
+                    // above.
                     let arr: Array = unsafe { Array::from_napi_value(env.raw(), value.raw())? };
-                    Ok(Self::Array(map_js_array(env, &arr, Self::from_js_value)?))
+                    Ok(Self::Array(map_js_array(env, &arr, |env, item| {
+                        Self::from_js_value_at_depth(env, item, depth + 1)
+                    })?))
                 } else {
-                    let r = Ref::from_js_value(env, value)?;
+                    let r = Ref::from_js_value_at_depth(env, value, depth + 1)?;
                     Ok(Self::Ref(r))
                 }
             }
@@ -301,18 +353,26 @@ impl Value {
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn to_js_value(self, env: &Env) -> napi::Result<Unknown<'_>> {
         match self {
+            // SAFETY: The raw value is created and rewrapped under the
+            // live `env` of the current JS-thread callback.
             Self::Number(n) => unsafe {
                 let raw = f64::to_napi_value(env.raw(), n)?;
                 Ok(Unknown::from_raw_unchecked(env.raw(), raw))
             },
+            // SAFETY: The raw value is created and rewrapped under the
+            // live `env` of the current JS-thread callback.
             Self::String(s) => unsafe {
                 let raw = String::to_napi_value(env.raw(), s)?;
                 Ok(Unknown::from_raw_unchecked(env.raw(), raw))
             },
+            // SAFETY: The raw value is created and rewrapped under the
+            // live `env` of the current JS-thread callback.
             Self::Boolean(b) => unsafe {
                 let raw = bool::to_napi_value(env.raw(), b)?;
                 Ok(Unknown::from_raw_unchecked(env.raw(), raw))
             },
+            // SAFETY: The raw value is created and rewrapped under the
+            // live `env` of the current JS-thread callback.
             Self::Object(handle) => unsafe {
                 let size_hint = handle.size_hint();
                 let external = External::new_with_size_hint(handle, size_hint);
@@ -325,15 +385,21 @@ impl Value {
                     let js_item = item.to_js_value(env)?;
                     js_array.set(i as u32, js_item)?;
                 }
+                // SAFETY: The raw value is created and rewrapped under the
+                // live `env` of the current JS-thread callback.
                 unsafe {
                     let raw = Array::to_napi_value(env.raw(), js_array)?;
                     Ok(Unknown::from_raw_unchecked(env.raw(), raw))
                 }
             }
+            // SAFETY: The raw value is created and rewrapped under the
+            // live `env` of the current JS-thread callback.
             Self::Null => unsafe {
                 let raw = napi::bindgen_prelude::Null::to_napi_value(env.raw(), Null)?;
                 Ok(Unknown::from_raw_unchecked(env.raw(), raw))
             },
+            // SAFETY: The raw value is created and rewrapped under the
+            // live `env` of the current JS-thread callback.
             Self::Undefined => unsafe {
                 let raw = napi::bindgen_prelude::Undefined::to_napi_value(env.raw(), ())?;
                 Ok(Unknown::from_raw_unchecked(env.raw(), raw))
@@ -344,6 +410,16 @@ impl Value {
             )),
         }
     }
+}
+
+/// Reinterprets `value`, an object-shaped JS value from the current
+/// callback's `env`, as a [`JsObject`] — the shared prologue of every
+/// descriptor parser.
+#[cfg_attr(coverage_nightly, coverage(off))]
+pub(crate) fn unknown_as_object(env: &Env, value: &Unknown<'_>) -> napi::Result<JsObject> {
+    // SAFETY: `value` is a live JS value from the current callback's `env`,
+    // so reinterpreting its raw handle as an object is sound.
+    unsafe { JsObject::from_napi_value(env.raw(), value.raw()) }
 }
 
 /// Maps each element of a JavaScript array through `convert`, collecting the

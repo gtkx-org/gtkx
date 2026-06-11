@@ -60,12 +60,16 @@ fn ffi_value_debug_renders_variant() {
 }
 
 #[test]
-fn as_raw_ptr_scalar_variants_point_to_payload() {
+fn write_scalar_to_writes_every_numeric_variant() {
     macro_rules! check {
         ($variant:ident, $value:expr, $ty:ty) => {{
+            let mut slot: u64 = 0;
+            let slot_ptr = &mut slot as *mut u64 as *mut c_void;
             let v = FfiValue::$variant($value);
-            let ptr = std::ptr::NonNull::new(v.as_raw_ptr()).expect("payload pointer is non-null");
-            let read = unsafe { *(ptr.as_ptr() as *const $ty) };
+            // SAFETY: `slot_ptr` addresses a writable local 8-byte slot.
+            unsafe { v.write_scalar_to(slot_ptr) }.expect("scalar write should succeed");
+            // SAFETY: The slot is a live local just written.
+            let read = unsafe { *(slot_ptr as *const $ty) };
             assert_eq!(read, $value);
         }};
     }
@@ -82,32 +86,24 @@ fn as_raw_ptr_scalar_variants_point_to_payload() {
 }
 
 #[test]
-fn as_raw_ptr_ptr_variant_dereferences_to_inner() {
-    let inner = std::ptr::without_provenance_mut::<c_void>(0x1234);
-    let v = FfiValue::Ptr(inner);
-    let ptr = std::ptr::NonNull::new(v.as_raw_ptr()).expect("payload pointer is non-null");
-    let read = unsafe { *(ptr.as_ptr() as *const *mut c_void) };
-    assert_eq!(read, inner);
-}
+fn write_scalar_to_rejects_pointer_shaped_variants() {
+    let mut slot: u64 = 0;
+    let slot_ptr = &mut slot as *mut u64 as *mut c_void;
 
-#[test]
-fn as_raw_ptr_storage_returns_storage_ptr() {
-    let storage: FfiStorage = vec![1u8, 2, 3].into();
-    let storage_ptr = storage.ptr();
-    let v = FfiValue::Storage(storage);
-    assert_eq!(v.as_raw_ptr(), storage_ptr);
-}
-
-#[test]
-fn as_raw_ptr_void_is_null() {
-    assert!(FfiValue::Void.as_raw_ptr().is_null());
-}
-
-#[test]
-#[should_panic(expected = "Trampoline should not be converted to a single pointer")]
-fn as_raw_ptr_trampoline_panics() {
-    let v = FfiValue::Trampoline(trampoline_value(false));
-    let _ = v.as_raw_ptr();
+    let storage: FfiStorage = vec![1u8].into();
+    let rejected = [
+        FfiValue::Ptr(std::ptr::null_mut()),
+        FfiValue::Storage(storage),
+        FfiValue::Trampoline(trampoline_value(false)),
+        FfiValue::Void,
+    ];
+    for v in &rejected {
+        // SAFETY: Pointer-shaped variants bail before any write.
+        let err = unsafe { v.write_scalar_to(slot_ptr) }
+            .expect_err("pointer-shaped variants have no scalar payload");
+        assert!(err.to_string().contains("no scalar payload"));
+    }
+    assert_eq!(slot, 0);
 }
 
 #[test]

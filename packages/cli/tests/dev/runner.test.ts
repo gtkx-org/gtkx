@@ -165,17 +165,91 @@ describe("createDevRunner (entry loading)", () => {
     });
 });
 
+type OnTeardown = (runDefaultTeardown: () => void) => void;
+
+const installedTeardown = (harness: Harness): OnTeardown => {
+    expect(harness.installAppTeardown).toHaveBeenCalledTimes(1);
+    const [, onTeardown] = harness.installAppTeardown.mock.calls[0] as [unknown, OnTeardown];
+    return onTeardown;
+};
+
+const emitBoundaryChange = async (harness: Harness, file: string): Promise<void> => {
+    harness.server.moduleGraph.getModuleById.mockReturnValueOnce({ id: file, importers: new Set() });
+    harness.server.ssrLoadModule.mockResolvedValueOnce({ __isBoundary: true });
+    await emitChangeAndFlush(harness, file, 2);
+};
+
 describe("createDevRunner (application teardown)", () => {
-    it("installs a teardown that restarts the runner via the reload exit code", async () => {
+    it("runs the default teardown when the application unmounts outside a refresh pass", async () => {
         const harness = buildHarness({ applicationId: "com.example.app" });
+        const runDefault = vi.fn();
 
         await startRunner(harness);
+        installedTeardown(harness)(runDefault);
 
-        expect(harness.installAppTeardown).toHaveBeenCalledTimes(1);
-        const [, onTeardown] = harness.installAppTeardown.mock.calls[0] as [unknown, () => void];
-        onTeardown();
+        expect(runDefault).toHaveBeenCalledTimes(1);
+        expect(harness.exit).not.toHaveBeenCalled();
+        expect(loggedMessages(harness).some((m) => m.includes("Application quit"))).toBe(true);
+    });
+
+    it("restarts the runner when the application unmounts during a refresh pass", async () => {
+        const harness = buildHarness({ applicationId: "com.example.app" });
+        const runDefault = vi.fn();
+
+        await startRunner(harness);
+        const onTeardown = installedTeardown(harness);
+        harness.performRefresh.mockImplementationOnce(() => onTeardown(runDefault));
+        await emitBoundaryChange(harness, "/x/y.ts");
+
         expect(harness.exit).toHaveBeenCalledWith(RELOAD_EXIT_CODE);
+        expect(runDefault).not.toHaveBeenCalled();
         expect(loggedMessages(harness).some((m) => m.includes("restarting dev runner"))).toBe(true);
+    });
+
+    it("restarts the runner when the refresh-induced unmount flushes on a microtask", async () => {
+        const harness = buildHarness({ applicationId: "com.example.app" });
+        const runDefault = vi.fn();
+
+        await startRunner(harness);
+        const onTeardown = installedTeardown(harness);
+        harness.performRefresh.mockImplementationOnce(() => {
+            queueMicrotask(() => onTeardown(runDefault));
+        });
+        await emitBoundaryChange(harness, "/x/y.ts");
+
+        expect(harness.exit).toHaveBeenCalledWith(RELOAD_EXIT_CODE);
+        expect(runDefault).not.toHaveBeenCalled();
+    });
+});
+
+describe("createDevRunner (teardown outside a refresh pass)", () => {
+    it("treats an unmount after the refresh window has closed as a quit", async () => {
+        const harness = buildHarness({ applicationId: "com.example.app" });
+        const runDefault = vi.fn();
+
+        await startRunner(harness);
+        const onTeardown = installedTeardown(harness);
+        await emitBoundaryChange(harness, "/x/y.ts");
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        onTeardown(runDefault);
+
+        expect(runDefault).toHaveBeenCalledTimes(1);
+        expect(harness.exit).not.toHaveBeenCalled();
+    });
+
+    it("ignores application unmounts while the runtime is shutting down", async () => {
+        const harness = buildHarness({ applicationId: "com.example.app" });
+        const runDefault = vi.fn();
+        const { promise: whenStoppedPromise, resolve: resolveStopped } = Promise.withResolvers<void>();
+        harness.whenStopped.mockReturnValueOnce(whenStoppedPromise);
+
+        await startRunner(harness);
+        resolveStopped();
+        await flushTick();
+        installedTeardown(harness)(runDefault);
+
+        expect(runDefault).not.toHaveBeenCalled();
+        expect(harness.exit).not.toHaveBeenCalled();
     });
 });
 

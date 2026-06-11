@@ -30,6 +30,7 @@ impl ModuleRequest for AllocRequest {
     type Output = NativeHandle;
 
     fn execute(self) -> anyhow::Result<NativeHandle> {
+        // SAFETY: Allocating zeroed memory has no pointer preconditions.
         let ptr = unsafe { g_malloc0(self.size) };
 
         if ptr.is_null() {
@@ -37,9 +38,13 @@ impl ModuleRequest for AllocRequest {
             anyhow::bail!("Failed to allocate memory for {type_desc}");
         }
 
-        let gtype = self.type_name.as_ref().and_then(glib::Type::from_name);
+        let type_name = self
+            .type_name
+            .map(glib::GString::from_string_checked)
+            .transpose()
+            .map_err(|err| anyhow::anyhow!("invalid alloc type name: {err}"))?;
 
-        let boxed = Boxed::from_glib_full(gtype, ptr);
+        let boxed = Boxed::from_alloc(type_name, ptr);
         Ok(NativeValue::Boxed(boxed).into())
     }
 

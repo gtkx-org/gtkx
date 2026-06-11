@@ -32,9 +32,13 @@ pub fn freeze(env: Env) -> napi::Result<()> {
             m.run_freeze_loop();
         }));
 
-        mailbox
-            .wait_for_glib_result(env, &rx)
-            .map_err(|err| napi::Error::new(napi::Status::GenericFailure, err.to_string()))?;
+        if let Err(err) = mailbox.wait_for_glib_result(env, &rx) {
+            mailbox.unfreeze();
+            return Err(napi::Error::new(
+                napi::Status::GenericFailure,
+                err.to_string(),
+            ));
+        }
     }
 
     Ok(())
