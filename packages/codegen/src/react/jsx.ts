@@ -11,8 +11,6 @@ import { collectReactNodeClasses, type WidgetCandidate } from "./widgets.js";
 
 /** Merged JSX-surface maps keyed by JSX element name, threaded into {@link generateJsxSection}. */
 export type JsxSurfaceMaps = {
-    /** Widget-slot names keyed by JSX element name. */
-    readonly widgetSlotMap?: Readonly<Record<string, readonly string[]>>;
     /** Container-slot methods keyed by JSX element name. */
     readonly containerSlotMap?: Readonly<Record<string, readonly string[]>>;
     /** Array-prop rows keyed by JSX element name then prop name. */
@@ -70,10 +68,10 @@ export const generateJsxSection = (
     imports.reactBuiltins.add("Ref");
 
     let needsWidgetPropsBase = false;
+    let needsReactElement = false;
     const propBlocks: string[] = [];
     for (const entry of widgets) {
-        const { block, extendsBase } = renderPropBlock(repository, entry, {
-            widgetSlotMap: maps.widgetSlotMap ?? {},
+        const { block, extendsBase, slotPropNames } = renderPropBlock(repository, entry, {
             containerSlotMap: maps.containerSlotMap ?? {},
             arrayPropMap: maps.arrayPropMap ?? {},
             objectPropMap: maps.objectPropMap ?? {},
@@ -85,8 +83,10 @@ export const generateJsxSection = (
             imports,
         });
         if (extendsBase) needsWidgetPropsBase = true;
+        if (slotPropNames.length > 0) needsReactElement = true;
         propBlocks.push(block);
     }
+    if (needsReactElement) imports.reactBuiltins.add("ReactElement");
     if (needsWidgetPropsBase) {
         for (const mixin of WIDGET_BASE_PROPS_MIXINS) imports.sharedTypes.add(mixin);
         propBlocks.unshift(
@@ -119,15 +119,14 @@ const renderPropBlock = (
     repository: GirRepository,
     entry: WidgetCandidate,
     context: RenderPropBlockContext,
-): { readonly block: string; readonly extendsBase: boolean } => {
-    const slotPropNames = new Set(context.widgetSlotMap[entry.glibName] ?? []);
+): { readonly block: string; readonly extendsBase: boolean; readonly slotPropNames: readonly string[] } => {
     const arrayProps = context.arrayPropMap[entry.glibName] ?? {};
     const objectProps = context.objectPropMap[entry.glibName] ?? {};
     const virtualProps = context.virtualPropMap[entry.glibName] ?? {};
-    const { propLines, imports } = buildWidgetPropsEntries({
+    const { propLines, imports, slotPropNames } = buildWidgetPropsEntries({
         repository,
         klass: entry.klass,
-        slotPropNames,
+        namespace: entry.namespace,
         dataPropNames: new Set([...Object.keys(arrayProps), ...Object.keys(objectProps), ...Object.keys(virtualProps)]),
         isWidgetAncestor: context.isWidgetAncestor,
         bigintAliases: context.bigintAliases,
@@ -173,6 +172,7 @@ const renderPropBlock = (
     return {
         block: `export interface ${entry.glibName}Props<Self = ${selfDefault}> extends ${extendsClause} {\n${ownerLines.join("\n")}\n}`,
         extendsBase: parentExtends === "WidgetProps",
+        slotPropNames,
     };
 };
 

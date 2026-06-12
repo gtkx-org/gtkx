@@ -131,11 +131,12 @@ it("performs the hero editor scene", async () => {
                         highlightCurrentLine
                         topMargin={8}
                         leftMargin={8}
-                    >
-                        <GtkSourceBuffer ref={bufferRef} language={tsLanguage} styleScheme={darkScheme}>
-                            {originalSource}
-                        </GtkSourceBuffer>
-                    </GtkSourceView>
+                        buffer={
+                            <GtkSourceBuffer ref={bufferRef} language={tsLanguage} styleScheme={darkScheme}>
+                                {originalSource}
+                            </GtkSourceBuffer>
+                        }
+                    />
                 </GtkScrolledWindow>
             </AdwToolbarView>
         </AdwApplicationWindow>,

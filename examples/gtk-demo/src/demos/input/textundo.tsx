@@ -21,9 +21,8 @@ const TextUndoDemo = () => {
                 rightMargin={20}
                 topMargin={20}
                 bottomMargin={20}
-            >
-                <GtkTextBuffer enableUndo>{INITIAL_TEXT}</GtkTextBuffer>
-            </GtkTextView>
+                buffer={<GtkTextBuffer enableUndo>{INITIAL_TEXT}</GtkTextBuffer>}
+            />
         </GtkScrolledWindow>
     );
 };

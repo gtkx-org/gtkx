@@ -85,25 +85,6 @@ export type GtkxConfig = {
     applicationId?: string;
 
     /**
-     * Additional widget-typed properties to expose as renderable JSX child
-     * slots (typed as `ReactNode`) with setter semantics — the value replaces
-     * the slot's single child — instead of as plain widget-reference props.
-     *
-     * Keys are JSX element names (e.g. `"GtkWindow"`, `"AdwFooBar"`); values
-     * are camelCase property names. Entries merge with the built-in slot map,
-     * so consumer-provided GIRs can opt their own widget-typed properties
-     * into the slot-mounting pipeline without patching the codegen package.
-     *
-     * @example
-     * ```ts
-     * slots: {
-     *     MyAppFooBar: ["content"],
-     * }
-     * ```
-     */
-    slots?: Record<string, string[]>;
-
-    /**
      * Additional container methods to expose as renderable JSX child slots
      * (typed as `ReactNode`) with append semantics — each child is appended via
      * the named method instead of replacing a single value.
@@ -477,7 +458,6 @@ export const defineConfig = (config: GtkxConfig): GtkxConfig => {
     validateLibraries(config.libraries);
     validateGirPath(config.girPath);
     validateApplicationId(config.applicationId);
-    validateSlotMap(config.slots, "slots");
     validateSlotMap(config.containerSlots, "containerSlots");
     validateArrayPropRows(config.arrayProps);
     validateObjectPropRows(config.objectProps);
@@ -502,8 +482,6 @@ export type ResolvedGtkxConfig = {
     readonly girPath: readonly string[];
     /** The GLib application id, or `undefined` when unset. */
     readonly applicationId: string | undefined;
-    /** The user's widget-slot map, or `{}` when omitted. */
-    readonly slots: Readonly<Record<string, readonly string[]>>;
     /** The user's container-slot map, or `{}` when omitted. */
     readonly containerSlots: Readonly<Record<string, readonly string[]>>;
     /** The user's array-prop rows, or `{}` when omitted. */
@@ -538,7 +516,6 @@ export const resolveGtkxConfig = (config: GtkxConfig): ResolvedGtkxConfig => ({
     libraries: config.libraries ?? [],
     girPath: config.girPath ?? [],
     applicationId: config.applicationId,
-    slots: config.slots ?? {},
     containerSlots: config.containerSlots ?? {},
     arrayProps: config.arrayProps ?? {},
     objectProps: config.objectProps ?? {},

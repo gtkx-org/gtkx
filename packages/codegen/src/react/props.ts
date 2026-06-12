@@ -11,7 +11,7 @@ import type { GirTypeRef, NamedTypeRef } from "../gir/type-ref.js";
 import { renderHandlerParameters } from "../writers/param-classify.js";
 import { renderBaseTypeFor, type TsTypeTarget } from "../writers/ts-type.js";
 import { isScalarRef } from "../writers/value.js";
-import { signalHandlerName } from "./widgets.js";
+import { classExposesMethod, isReactNodeClass, signalHandlerName } from "./widgets.js";
 
 /**
  * Rendered prop entries for a single widget's Props interface, together
@@ -22,6 +22,14 @@ export type WidgetPropsEntries = {
     readonly propLines: readonly string[];
     /** Cross-namespace imports the writer must add to the surrounding module. */
     readonly imports: ReadonlyMap<string, string>;
+    /**
+     * The widget's own GObject-class properties widened to also accept a
+     * `ReactElement`, in declaration order. The reconciler routes these slots
+     * by value at runtime (a JSX element mounts as a subtree, an instance is
+     * set directly), so this list only drives the `ReactElement` import; no
+     * runtime slot table is emitted.
+     */
+    readonly slotPropNames: readonly string[];
 };
 
 /**
@@ -32,8 +40,8 @@ export type WidgetPropsOptions = {
     readonly repository: GirRepository;
     /** The widget class whose props bag is being built. */
     readonly klass: GirClass;
-    /** Property names that should be widened to `ReactNode` slot children. */
-    readonly slotPropNames?: ReadonlySet<string>;
+    /** The namespace the widget class lives in, for ancestry method probes. */
+    readonly namespace: GirNamespace;
     /** Property names whose raw GObject emission is suppressed in favor of a data-prop surface (array, object, or virtual rows). */
     readonly dataPropNames?: ReadonlySet<string>;
     /** Returns `true` when `candidate` already has its own widget Props interface. */
@@ -77,7 +85,7 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
     const {
         repository,
         klass,
-        slotPropNames = new Set<string>(),
+        namespace,
         dataPropNames = new Set<string>(),
         isWidgetAncestor = () => false,
         bigintAliases = new Set<string>(),
@@ -85,6 +93,7 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
     const imports = new Map<string, string>();
     const types: PropTypeRenderContext = { repository, imports, bigintAliases };
     const propEntries: string[] = [];
+    const slotPropNames: string[] = [];
     const seen = new Set<string>();
 
     const ownerName = klass.glibTypeName ?? klass.cType ?? klass.name;
@@ -97,13 +106,14 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
         seen.add(jsName);
         if (isPropOverridden(ownerName, jsName)) return;
         if (dataPropNames.has(jsName)) return;
-        if (slotPropNames.has(jsName)) {
-            propEntries.push(`${jsName}?: ReactNode | null;`);
-            return;
-        }
         const qualified = qualifyTypeRef(property.type, owningNamespace);
         const tsType = renderReactPropType(types, qualified, false);
-        propEntries.push(`${jsName}?: ${tsType} | null;`);
+        if (isSlotProperty(repository, klass, namespace, property, owningNamespace, jsName)) {
+            propEntries.push(`${jsName}?: ${tsType} | ReactElement | null;`);
+            slotPropNames.push(jsName);
+            return;
+        }
+        if (isSettableProperty(property)) propEntries.push(`${jsName}?: ${tsType} | null;`);
         propEntries.push(`onNotify${toUpperFirst(jsName)}?: ((value: ${tsType} | null, self: Self) => void) | null;`);
     };
 
@@ -122,7 +132,73 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
 
     visitClassAndAncestors({ repository, klass, selfNamespace, isWidgetAncestor }, acceptProperty, acceptSignal);
 
-    return { propLines: propEntries, imports };
+    return { propLines: propEntries, imports, slotPropNames };
+};
+
+/**
+ * Whether `ref` names a class that descends from `GObject.Object` (so it is a
+ * valid JSX intrinsic the reconciler can mount). Interfaces, boxed/record
+ * types, aliases, and primitives all resolve to `false` — only an instantiable
+ * GObject class is renderable as a slot subtree.
+ *
+ * @param repository - The loaded GIR repository
+ * @param ref - The property's type reference
+ * @param owningNamespace - The namespace unqualified references resolve against
+ */
+const resolvesToGObjectClass = (
+    repository: GirRepository,
+    ref: GirTypeRef | undefined,
+    owningNamespace: string,
+): boolean => {
+    if (ref?.kind !== "named") return false;
+    const resolved = repository.resolveNamed(ref.namespaceName ?? owningNamespace, ref.typeName);
+    if (resolved === undefined || resolved.kind !== "class") return false;
+    return isReactNodeClass(resolved.value, resolved.namespace, repository);
+};
+
+/**
+ * Whether `property` can be assigned through the React prop surface. A
+ * `writable`, `construct`, or `construct-only` property reaches its GObject
+ * through the accessor setter or the construction GValue record; a read-only
+ * property (a getter with no setter, e.g. `GtkWidget:parent`) cannot, so it is
+ * omitted from the settable surface and exposed only through its generated
+ * `onNotify<Prop>` change handler.
+ *
+ * @param property - The GIR property to classify.
+ */
+const isSettableProperty = (property: GirProperty): boolean =>
+    property.writable || property.construct || property.constructOnly;
+
+/**
+ * Whether `property` is exposed as a renderable slot: a settable
+ * (writable, non-construct-only) property whose value is a GObject class,
+ * widened to `Class | ReactElement | false | null` so app code can mount a JSX
+ * subtree or pass an instance.
+ *
+ * The single-child `child` property is excluded — single-child containers
+ * already mount their one child by nesting it (the reconciler's
+ * `isSingleChildContainer` fallback, recognized here by the `set_child`
+ * method), so widening it would mint a redundant second way to set the child.
+ *
+ * @param repository - The loaded GIR repository
+ * @param klass - The widget class whose Props bag is being built
+ * @param namespace - The namespace `klass` lives in
+ * @param property - The candidate property
+ * @param owningNamespace - The namespace the property's type resolves against
+ * @param jsName - The property's camelCase JS name
+ */
+const isSlotProperty = (
+    repository: GirRepository,
+    klass: GirClass,
+    namespace: GirNamespace,
+    property: GirProperty,
+    owningNamespace: string,
+    jsName: string,
+): boolean => {
+    if (!property.writable || property.constructOnly) return false;
+    if (!resolvesToGObjectClass(repository, property.type, owningNamespace)) return false;
+    if (jsName === "child" && classExposesMethod(klass, namespace, repository, "set_child")) return false;
+    return true;
 };
 
 type WalkContext = {

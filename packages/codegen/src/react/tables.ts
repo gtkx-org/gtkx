@@ -360,43 +360,6 @@ export const PAGE_META_SETTERS: readonly PageMetaSetter[] = [
 ];
 
 /**
- * Built-in widget-typed properties exposed as JSX child slots (typed as
- * `ReactNode`, setter semantics), keyed by JSX element name with camelCase
- * property-name values. Entries apply to the named type and its whole GType
- * subtree — `GtkWidget`'s `layoutManager` is a slot on every widget. Project
- * entries from `gtkx.config.ts` (`slots`) merge into this map.
- */
-export const BUILT_IN_SLOTS: Readonly<Record<string, readonly string[]>> = Object.freeze({
-    GtkWidget: ["layoutManager"],
-    GtkWindow: ["titlebar"],
-    GtkColorDialogButton: ["dialog"],
-    GtkFontDialogButton: ["dialog"],
-    AdwWindow: ["content"],
-    AdwApplicationWindow: ["content"],
-    AdwAlertDialog: ["extraChild"],
-    AdwBottomSheet: ["bottomBar", "content", "sheet"],
-    GtkCenterBox: ["centerWidget", "endWidget", "startWidget"],
-    GtkColumnViewColumn: ["headerMenu"],
-    GtkExpander: ["labelWidget"],
-    AdwFlap: ["content", "flap", "separator"],
-    GtkFrame: ["labelWidget"],
-    GtkHeaderBar: ["titleWidget"],
-    AdwHeaderBar: ["titleWidget"],
-    GtkMenuButton: ["menuModel", "popover"],
-    AdwMessageDialog: ["extraChild"],
-    AdwNavigationSplitView: ["content", "sidebar"],
-    AdwOverlaySplitView: ["content", "sidebar"],
-    GtkPaned: ["endChild", "startChild"],
-    GtkPopoverMenu: ["menuModel"],
-    GtkPopoverMenuBar: ["menuModel"],
-    AdwPreferencesGroup: ["headerSuffix"],
-    AdwPreferencesPage: ["banner"],
-    AdwSplitButton: ["popover"],
-    AdwTabBar: ["endActionWidget", "startActionWidget"],
-    AdwToolbarView: ["content"],
-});
-
-/**
  * Built-in container-slot method names — the camelCase GTK methods that
  * append a child onto the widget — keyed by JSX element name. Each method
  * name doubles as a `ReactNode` prop on the compound and as the
@@ -457,20 +420,10 @@ const mergeSlotMap = (
 };
 
 /**
- * Merges the built-in widget slots with a project's `slots` map: an
- * overridden element becomes the union of both sources with duplicates
+ * Merges the built-in container slots with a project's `containerSlots` map:
+ * an overridden element becomes the union of both sources with duplicates
  * removed and a stable alphabetical sort; untouched elements keep their
  * built-in declaration order.
- *
- * @param userSlots - The project's `slots` map, or `undefined`
- */
-export const mergeSlots = (
-    userSlots: Readonly<Record<string, readonly string[]>> | undefined,
-): Readonly<Record<string, readonly string[]>> => mergeSlotMap(BUILT_IN_SLOTS, userSlots);
-
-/**
- * Merges the built-in container slots with a project's `containerSlots` map,
- * with the same union semantics as {@link mergeSlots}.
  *
  * @param userContainerSlots - The project's `containerSlots` map, or `undefined`
  */

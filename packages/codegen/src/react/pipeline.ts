@@ -12,7 +12,6 @@ import {
     mergeContainerSlots,
     mergeElementMap,
     mergeObjectProps,
-    mergeSlots,
     mergeVirtualProps,
     PAGE_META_SETTERS,
     TOP_LEVEL_TYPES,
@@ -24,8 +23,6 @@ import { collectReactNodeClasses } from "./widgets.js";
  * name, merged with the built-in rows from `./tables`.
  */
 export type UserTables = {
-    /** Widget-typed properties to surface as setter-semantics `ReactNode` slots. */
-    readonly slots?: Readonly<Record<string, readonly string[]>>;
     /** Container methods to surface as append-semantics `ReactNode` slots. */
     readonly containerSlots?: Readonly<Record<string, readonly string[]>>;
     /** Array-prop rows keyed by JSX element name then camelCase prop name. */
@@ -91,7 +88,6 @@ export type JsxFiles = {
  * @param userTables - Table overrides from `gtkx.config.ts`, merged with the built-ins
  */
 export const generateJsxFiles = (repository: GirRepository, userTables: UserTables = {}): JsxFiles => {
-    const widgetSlotMap = mergeSlots(userTables.slots);
     const containerSlotMap = mergeContainerSlots(userTables.containerSlots);
     const arrayPropMap = mergeArrayProps(userTables.arrayProps);
     const objectPropMap = mergeObjectProps(userTables.objectProps);
@@ -106,7 +102,6 @@ export const generateJsxFiles = (repository: GirRepository, userTables: UserTabl
     let widgetCount = 0;
     for (const namespace of [...namespacesWithWidgets.values()].sort((a, b) => a.name.localeCompare(b.name))) {
         const { source, count } = generateJsxNamespace(namespace, repository, {
-            widgetSlotMap,
             containerSlotMap,
             arrayPropMap,
             objectPropMap,
@@ -126,7 +121,6 @@ export const generateJsxFiles = (repository: GirRepository, userTables: UserTabl
         topLevelTypes: TOP_LEVEL_TYPES,
         metaObjectAddMethods: META_OBJECT_ADD_METHODS,
         pageMetaSetters: PAGE_META_SETTERS,
-        slots: widgetSlotMap,
         containerSlots: containerSlotMap,
     });
 

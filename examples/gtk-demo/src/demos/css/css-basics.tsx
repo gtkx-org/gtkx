@@ -40,9 +40,11 @@ const CssBasicsDemo = () => {
 
     return (
         <GtkScrolledWindow name="scrolled" hexpand vexpand>
-            <GtkTextView name="text-view" ref={textViewRef}>
-                <GtkTextBuffer onChanged={onChanged}>{DEFAULT_CSS}</GtkTextBuffer>
-            </GtkTextView>
+            <GtkTextView
+                name="text-view"
+                ref={textViewRef}
+                buffer={<GtkTextBuffer onChanged={onChanged}>{DEFAULT_CSS}</GtkTextBuffer>}
+            />
         </GtkScrolledWindow>
     );
 };

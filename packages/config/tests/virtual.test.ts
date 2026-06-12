@@ -23,7 +23,7 @@ describe("renderGtkxConfigModule", () => {
         const source = renderGtkxConfigModule(resolveGtkxConfig({ applicationId: "org.gtk.Demo4" }));
         const lines = source.split("\n");
         expect(lines).toContain('export const applicationId = "org.gtk.Demo4";');
-        expect(lines).toContain("export const slots = {};");
+        expect(lines).toContain("export const containerSlots = {};");
         expect(lines).toContain("export const elementMap = [];");
     });
 

@@ -20,8 +20,10 @@ import { unparentWidget } from "./widget.js";
  * by the owner's signal store.
  *
  * Anchored widgets need a view to attach to; the controller resolves the
- * enclosing `Gtk.TextView` from the buffer element's parent at rebuild time
- * and skips widget attachment when the buffer is rendered without one.
+ * enclosing `Gtk.TextView` from the buffer element's nearest backing ancestor
+ * at rebuild time — stepping over the slot wrapper when the buffer is mounted
+ * through a `buffer={...}` prop — and skips widget attachment when the buffer
+ * is rendered without a view.
  */
 export class TextBufferController {
     private managesContent = false;
@@ -45,7 +47,9 @@ export class TextBufferController {
     }
 
     private resolveView(): Gtk.TextView | null {
-        const backing = this.owner.parent?.backingInstance;
+        let ancestor = this.owner.parent;
+        while (ancestor && ancestor.backingInstance === undefined) ancestor = ancestor.parent;
+        const backing = ancestor?.backingInstance;
         return backing instanceof Gtk.TextView ? backing : null;
     }
 

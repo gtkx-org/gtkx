@@ -60,7 +60,7 @@ describe("render - LayoutManagerNode lifecycle", () => {
         const boxRef = createRef<Gtk.Box>();
 
         function App({ show }: { show: boolean }) {
-            return <GtkBox ref={boxRef} layoutManager={show && <GtkBoxLayout spacing={8} />} />;
+            return <GtkBox ref={boxRef} layoutManager={show ? <GtkBoxLayout spacing={8} /> : null} />;
         }
 
         const { rerender } = await render(<App show={true} />);

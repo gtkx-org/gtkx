@@ -28,12 +28,13 @@ export const SourceViewer = () => {
                     topMargin={20}
                     bottomMargin={20}
                     monospace
-                >
-                    <GtkSourceBuffer
-                        language={GtkSource.LanguageManager.getDefault().getLanguage("typescript-jsx")}
-                        styleScheme={GtkSource.StyleSchemeManager.getDefault().getScheme("Adwaita-dark")}
-                    />
-                </GtkSourceView>
+                    buffer={
+                        <GtkSourceBuffer
+                            language={GtkSource.LanguageManager.getDefault().getLanguage("typescript-jsx")}
+                            styleScheme={GtkSource.StyleSchemeManager.getDefault().getScheme("Adwaita-dark")}
+                        />
+                    }
+                />
             ) : (
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

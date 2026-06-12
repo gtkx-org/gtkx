@@ -62,14 +62,15 @@ const ExpanderDemo = () => {
                         rightMargin={10}
                         topMargin={10}
                         bottomMargin={10}
-                    >
-                        <GtkTextBuffer>
-                            {DETAILS_TEXT}
-                            <GtkTextTag name="logo" pixelsAboveLines={200} justification={Gtk.Justification.RIGHT}>
-                                <GtkTextPaintable paintable={texture} />
-                            </GtkTextTag>
-                        </GtkTextBuffer>
-                    </GtkTextView>
+                        buffer={
+                            <GtkTextBuffer>
+                                {DETAILS_TEXT}
+                                <GtkTextTag name="logo" pixelsAboveLines={200} justification={Gtk.Justification.RIGHT}>
+                                    <GtkTextPaintable paintable={texture} />
+                                </GtkTextTag>
+                            </GtkTextBuffer>
+                        }
+                    />
                 </GtkScrolledWindow>
             </GtkExpander>
         </GtkBox>

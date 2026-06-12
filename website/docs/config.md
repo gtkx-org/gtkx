@@ -26,7 +26,6 @@ export default defineConfig({
 | `girPath` | `string[]` | `[]` | Additional directories to search for `.gir` files, prepended to the default probe chain. Resolved relative to the project root. |
 | `applicationId` | `string` | `undefined` | GLib application id, validated against `g_application_id_is_valid` (e.g. `"org.example.MyApp"`). Used by the GResource pipeline and exposed to app code as the `applicationId` export of `@gtkx/config/runtime`. |
 | `reactCompiler` | `boolean \| ReactCompilerOptions` | `true` | Controls the [React Compiler](./cli.md#react-compiler), enabled by default for every `gtkx dev`, `gtkx build`, and test run. `false` disables it; an object tunes `compilationMode` and `panicThreshold`. |
-| `slots` | `Record<string, string[]>` | `{}` | Additional widget-typed properties to expose as single-child JSX slots with setter semantics, keyed by JSX element name. Merged with the built-in slot map. |
 | `containerSlots` | `Record<string, string[]>` | `{}` | Additional container methods to expose as JSX slots with append semantics (e.g. `"packStart"`), keyed by JSX element name. Merged with the built-in container-slot map. |
 | `arrayProps` | `Record<string, Record<string, ArrayPropRow>>` | `{}` | Additional array-valued props where each element maps to repeated GTK calls instead of a single property set. Merged with the built-in array-prop rows. |
 | `objectProps` | `Record<string, Record<string, ObjectPropRow>>` | `{}` | Additional object-valued props whose fields map to one or more GTK calls. Merged with the built-in object-prop rows. |
@@ -39,8 +38,9 @@ A few details worth knowing:
 - **`libraries`** — only `Gtk-4.0` is mandatory: it is the default when `libraries` is omitted, and it is added to an explicit list that omits it. Every other namespace (libadwaita, GtkSource, WebKit, …) is generated exactly when listed.
 - **`applicationId`** — when set, asset imports resolve to `resource:///<prefix>/<rel>` where `<prefix>` is derived from the id (`org.gtk.Demo4` → `/org/gtk/Demo4`). When omitted, the GResource pipeline falls back to the prefix `/gtkx/app`.
 - **`reactCompiler`** — the option values and their defaults are documented in the [CLI reference](./cli.md#react-compiler).
+- **Single-child slots are automatic** — there is no `slots` option. Every settable GObject-class property (`titlebar`, `content`, `popover`, `menuModel`, a text view's `buffer`, …) already accepts a JSX subtree by value, so `<GtkWindow titlebar={<GtkHeaderBar />} />` works for any namespace's widgets with no configuration. The single-child `child` property stays a nested child rather than a redundant prop.
 
-The seven table fields (`slots` through `bigintAliases`) are extension points: their rows merge with the built-ins that already cover GTK, Adwaita, and the other supported namespaces, so projects generating bindings for their own GIR libraries can opt custom widgets into the reconciler's pipelines without patching the codegen package. The row types (`ArrayPropRow`, `ObjectPropRow`, `VirtualPropRow`, `ElementMapRule`) are exported from `@gtkx/config`.
+The six table fields (`containerSlots` through `bigintAliases`) are extension points: their rows merge with the built-ins that already cover GTK, Adwaita, and the other supported namespaces, so projects generating bindings for their own GIR libraries can opt custom widgets into the reconciler's pipelines without patching the codegen package. The row types (`ArrayPropRow`, `ObjectPropRow`, `VirtualPropRow`, `ElementMapRule`) are exported from `@gtkx/config`.
 
 ::: details Extension field examples
 
@@ -50,9 +50,6 @@ import { defineConfig } from "@gtkx/cli";
 
 export default defineConfig({
     libraries: ["Gtk-4.0"],
-    slots: {
-        MyAppFooBar: ["content"],
-    },
     containerSlots: {
         MyAppHeaderBar: ["packStart", "packEnd"],
     },
@@ -113,7 +110,7 @@ export function App() {
 
 `NotesWindow` is the tutorial's root window component, defined alongside `App` in the same file.
 
-Under the hood, `@gtkx/config/runtime` re-exports the `virtual:gtkx-config` module verbatim. The gtkx Vite plugins serve that module during `gtkx dev` and `gtkx build`, and the `@gtkx/vitest` plugin serves it under tests, so the same imports work in every pipeline; `gtkx build` inlines the resolved module into the production bundle. Each field of the resolved config is a named constant — frozen at build time, identical on every import: `libraries`, `girPath`, `applicationId`, `slots`, `containerSlots`, `arrayProps`, `objectProps`, `virtualProps`, `elementMap`, `bigintAliases`, and `reactCompiler`, with every optional field normalized to its documented default (`applicationId` stays `undefined` when unset).
+Under the hood, `@gtkx/config/runtime` re-exports the `virtual:gtkx-config` module verbatim. The gtkx Vite plugins serve that module during `gtkx dev` and `gtkx build`, and the `@gtkx/vitest` plugin serves it under tests, so the same imports work in every pipeline; `gtkx build` inlines the resolved module into the production bundle. Each field of the resolved config is a named constant — frozen at build time, identical on every import: `libraries`, `girPath`, `applicationId`, `containerSlots`, `arrayProps`, `objectProps`, `virtualProps`, `elementMap`, `bigintAliases`, and `reactCompiler`, with every optional field normalized to its documented default (`applicationId` stays `undefined` when unset).
 
 ::: warning
 The values are snapshots of `gtkx.config.ts` taken at build time. Changing the config file does not affect an already-built bundle; rebuild (or let the `gtkx dev` config watch restart the app) to pick up new values.

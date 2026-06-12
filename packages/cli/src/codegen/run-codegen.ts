@@ -54,13 +54,12 @@ const buildRunner = (
     girPath: readonly string[],
     tables: Pick<
         GtkxConfig,
-        "slots" | "containerSlots" | "arrayProps" | "objectProps" | "virtualProps" | "elementMap" | "bigintAliases"
+        "containerSlots" | "arrayProps" | "objectProps" | "virtualProps" | "elementMap" | "bigintAliases"
     >,
 ): CodegenRunner =>
     new CodegenRunner({
         libraries,
         girPath,
-        slots: tables.slots,
         containerSlots: tables.containerSlots,
         arrayProps: tables.arrayProps,
         objectProps: tables.objectProps,
@@ -126,7 +125,6 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
     }
 
     const result = await buildRunner(store, libraries, girPath, {
-        slots: config.slots,
         containerSlots: config.containerSlots,
         arrayProps: config.arrayProps,
         objectProps: config.objectProps,

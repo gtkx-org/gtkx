@@ -19,9 +19,10 @@ const Host = ({ defaultCss, onMount }: HostProps) => {
 
     return (
         <GtkScrolledWindow>
-            <GtkTextView ref={editor.textViewRef}>
-                <GtkTextBuffer onChanged={editor.onChanged}>{defaultCss}</GtkTextBuffer>
-            </GtkTextView>
+            <GtkTextView
+                ref={editor.textViewRef}
+                buffer={<GtkTextBuffer onChanged={editor.onChanged}>{defaultCss}</GtkTextBuffer>}
+            />
         </GtkScrolledWindow>
     );
 };

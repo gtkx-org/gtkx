@@ -29,12 +29,15 @@ describe("render - TextPaintable", () => {
         const Harness = () => {
             const paintable = usePaintable();
             return (
-                <GtkTextView ref={ref}>
-                    <GtkTextBuffer>
-                        Inline icon: {paintable ? <GtkTextPaintable paintable={paintable} /> : null}
-                        {" end"}
-                    </GtkTextBuffer>
-                </GtkTextView>
+                <GtkTextView
+                    ref={ref}
+                    buffer={
+                        <GtkTextBuffer>
+                            Inline icon: {paintable ? <GtkTextPaintable paintable={paintable} /> : null}
+                            {" end"}
+                        </GtkTextBuffer>
+                    }
+                />
             );
         };
 
@@ -50,11 +53,7 @@ describe("render - TextPaintable", () => {
     it("renders surrounding text without the paintable child", async () => {
         const ref = createRef<Gtk.TextView>();
 
-        await render(
-            <GtkTextView ref={ref}>
-                <GtkTextBuffer>Plain text without paintable</GtkTextBuffer>
-            </GtkTextView>,
-        );
+        await render(<GtkTextView ref={ref} buffer={<GtkTextBuffer>Plain text without paintable</GtkTextBuffer>} />);
 
         const buffer = ref.current?.getBuffer();
         expect(getBufferText(buffer as Gtk.TextBuffer)).toContain("Plain text without paintable");

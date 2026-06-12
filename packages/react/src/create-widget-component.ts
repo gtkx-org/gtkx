@@ -5,30 +5,27 @@
  *
  * A generated namespace module emits one line per element —
  * `export const GtkButton = createWidgetComponent("GtkButton")` — instead of
- * a per-widget component body. The factory resolves the element's slot
- * surface at first render by walking its registered class's GType ancestry
- * against the merged `SLOTS`/`CONTAINER_SLOTS` tables from
- * `virtual:gtkx-config`, then renders element-valued props as the metadata
- * wrapper children the reconciler's element map interprets: slot props become
- * `kind="slot"` wrappers (setter semantics), container-slot props become
- * `kind="container-slot"` wrappers (append semantics through the named
- * method).
+ * a per-widget component body. The factory routes each prop by its value: a
+ * prop holding a JSX element mounts as a `kind="slot"` wrapper the reconciler's
+ * element map sets on the GObject property of the same name (setter semantics),
+ * while a constructed GObject instance, a primitive, or `null` is forwarded
+ * verbatim as a plain prop — a direct property set the reconciler already makes.
+ * Container-slot props (the append-method names in `CONTAINER_SLOTS`, resolved
+ * at first render against the element's GType ancestry) become
+ * `kind="container-slot"` wrappers (append semantics through the named method).
+ *
+ * Slot-ness is therefore decided by value, not by a generated table: any
+ * GObject-class prop accepts a JSX subtree without being enumerated anywhere.
  */
-import { CONTAINER_SLOTS, SLOTS } from "virtual:gtkx-config";
+import { CONTAINER_SLOTS } from "virtual:gtkx-config";
 import { getNativeClassByName } from "@gtkx/ffi";
-import { createElement, type ReactNode } from "react";
+import { createElement, isValidElement, type ReactNode } from "react";
 import { classHasType, type GTyped } from "./gtype-predicates.js";
 import { WRAPPER_NODE_ELEMENT } from "./instance.js";
 
-type SlotSurface = {
-    readonly slotSet: ReadonlySet<string>;
-    readonly containerSet: ReadonlySet<string>;
-    readonly names: readonly string[];
-};
+const EMPTY_CONTAINER_SLOTS: ReadonlySet<string> = new Set();
 
-const EMPTY_SURFACE: SlotSurface = { slotSet: new Set(), containerSet: new Set(), names: [] };
-
-const surfaceCache = new Map<string, SlotSurface>();
+const containerSlotCache = new Map<string, ReadonlySet<string>>();
 
 const collectInherited = (
     table: Readonly<Record<string, readonly string[]>>,
@@ -44,24 +41,26 @@ const collectInherited = (
     return collected;
 };
 
-const buildSlotSurface = (cls: { readonly prototype: GTyped }): SlotSurface => {
-    const slots = collectInherited(SLOTS, cls);
-    const containerSlots = collectInherited(CONTAINER_SLOTS, cls);
-    return { slotSet: new Set(slots), containerSet: new Set(containerSlots), names: [...slots, ...containerSlots] };
-};
-
-const resolveSlotSurface = (elementName: string): SlotSurface => {
-    const cached = surfaceCache.get(elementName);
+const resolveContainerSlots = (elementName: string): ReadonlySet<string> => {
+    const cached = containerSlotCache.get(elementName);
     if (cached) return cached;
     const cls = getNativeClassByName(elementName) as { readonly prototype: GTyped } | null;
-    const surface = cls ? buildSlotSurface(cls) : EMPTY_SURFACE;
-    surfaceCache.set(elementName, surface);
-    return surface;
+    const set = cls ? new Set(collectInherited(CONTAINER_SLOTS, cls)) : EMPTY_CONTAINER_SLOTS;
+    containerSlotCache.set(elementName, set);
+    return set;
 };
 
-const hasAnySlotProp = (props: object, surface: SlotSurface): boolean => {
-    for (const name of surface.names) {
-        if (name in props) return true;
+/**
+ * Whether `props` carries anything the factory must lift out of the plain prop
+ * bag: a container-slot prop, or a prop whose value is a JSX element (a slot
+ * subtree). When neither is present every prop is a direct GObject set and the
+ * props pass through to the intrinsic element untouched.
+ */
+const needsSplit = (props: object, containerSet: ReadonlySet<string>): boolean => {
+    for (const [name, value] of Object.entries(props)) {
+        if (name === "children") continue;
+        if (containerSet.has(name)) return true;
+        if (isValidElement(value)) return true;
     }
     return false;
 };
@@ -72,26 +71,13 @@ type SplitProps = {
     readonly children: ReactNode;
 };
 
-const splitProps = (props: object, surface: SlotSurface): SplitProps => {
+const splitProps = (props: object, containerSet: ReadonlySet<string>): SplitProps => {
     const rest: Record<string, unknown> = {};
     const wrappers: ReactNode[] = [];
     let children: ReactNode = null;
-    const { slotSet, containerSet } = surface;
     for (const [name, value] of Object.entries(props)) {
         if (name === "children") {
             children = value as ReactNode;
-            continue;
-        }
-        if (slotSet.has(name)) {
-            if (value != null) {
-                wrappers.push(
-                    createElement(
-                        WRAPPER_NODE_ELEMENT,
-                        { kind: "slot", propName: name, key: `slot:${name}` },
-                        value as ReactNode,
-                    ),
-                );
-            }
             continue;
         }
         if (containerSet.has(name)) {
@@ -106,6 +92,16 @@ const splitProps = (props: object, surface: SlotSurface): SplitProps => {
             }
             continue;
         }
+        if (isValidElement(value)) {
+            wrappers.push(
+                createElement(
+                    WRAPPER_NODE_ELEMENT,
+                    { kind: "slot", propName: name, key: `slot:${name}` },
+                    value as ReactNode,
+                ),
+            );
+            continue;
+        }
         rest[name] = value;
     }
     return { rest, wrappers, children };
@@ -114,22 +110,23 @@ const splitProps = (props: object, surface: SlotSurface): SplitProps => {
 /**
  * Builds the component for one generated JSX element.
  *
- * The component splits the element's slot and container-slot props (resolved
- * from the merged tables against the element's GType ancestry) into metadata
- * wrapper children rendered after the regular children, and forwards every
- * other prop to the intrinsic element. When none of the element's slot props
- * are present, the props pass through to the intrinsic element unchanged.
+ * The component lifts element-valued props into `kind="slot"` wrapper children
+ * and container-slot props into `kind="container-slot"` wrapper children
+ * (resolved from `CONTAINER_SLOTS` against the element's GType ancestry),
+ * rendering both after the regular children, and forwards every other prop to
+ * the intrinsic element. When nothing needs lifting, the props pass through to
+ * the intrinsic element unchanged.
  *
  * @typeParam P - The element's generated `Props` shape.
  * @param elementName - The GLib type name the component renders (e.g. `"GtkButton"`).
  * @returns The element's component.
  */
 export const createWidgetComponent = <P extends object>(elementName: string): ((props: P) => ReactNode) => {
-    let surface: SlotSurface | null = null;
+    let containerSet: ReadonlySet<string> | null = null;
     return (props: P): ReactNode => {
-        surface ??= resolveSlotSurface(elementName);
-        if (!hasAnySlotProp(props, surface)) return createElement(elementName, props);
-        const { rest, wrappers, children } = splitProps(props, surface);
+        containerSet ??= resolveContainerSlots(elementName);
+        if (!needsSplit(props, containerSet)) return createElement(elementName, props);
+        const { rest, wrappers, children } = splitProps(props, containerSet);
         return createElement(elementName, rest, children, ...wrappers);
     };
 };

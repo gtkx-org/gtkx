@@ -3,7 +3,7 @@ import { GMenu, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
 import { GtkColumnView, GtkColumnViewColumn, GtkLabel } from "@gtkx/jsx/gtk";
 import type { MenuEntry } from "@gtkx/react";
 import { render } from "@gtkx/testing";
-import type { ComponentProps, ReactNode, RefObject } from "react";
+import type { ComponentProps, ReactElement, ReactNode, RefObject } from "react";
 import { createRef, useCallback, useMemo, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderChildren } from "../helpers/render-children.js";
@@ -38,10 +38,10 @@ const menuEntries = (prefix: string, specs: ActionSpec[]): MenuEntry[] =>
     specs.map((spec) => ({ label: spec.label, action: `${prefix}.${spec.id}` }));
 
 /** A flat `<GMenu>` whose items reference `${prefix}.${id}` actions. */
-const flatMenu = (prefix: string, specs: ActionSpec[]): ReactNode => <GMenu items={menuEntries(prefix, specs)} />;
+const flatMenu = (prefix: string, specs: ActionSpec[]): ReactElement => <GMenu items={menuEntries(prefix, specs)} />;
 
 /** A `<GMenu>` of sections, each section grouping its specs' entries inline. */
-const sectionedMenu = (prefix: string, sections: ActionSpec[][]): ReactNode => (
+const sectionedMenu = (prefix: string, sections: ActionSpec[][]): ReactElement => (
     <GMenu items={sections.map((specs) => ({ section: menuEntries(prefix, specs) }))} />
 );
 
@@ -84,8 +84,8 @@ const ROLE_SORT_HIDE_MENU = sectionedMenu("role", [
 
 const renderNameAndRoleColumns = async (
     columnViewRef: RefObject<Gtk.ColumnView | null>,
-    nameMenu: ReactNode,
-    roleMenu: ReactNode,
+    nameMenu: ReactElement,
+    roleMenu: ReactElement,
     actionGroups?: ReactNode,
 ): Promise<void> => {
     await renderColumns(

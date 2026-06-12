@@ -308,9 +308,8 @@ const HypertextDemo = () => {
                         <GtkEventControllerKey onKeyPressed={handlers.handleKeyPress} />
                     </>
                 }
-            >
-                <GtkTextBuffer enableUndo>{content}</GtkTextBuffer>
-            </GtkTextView>
+                buffer={<GtkTextBuffer enableUndo>{content}</GtkTextBuffer>}
+            />
         </GtkScrolledWindow>
     );
 };

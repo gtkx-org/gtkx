@@ -31,14 +31,20 @@ const OverlayDecorativeDemo = () => {
                 hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                 vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
             >
-                <GtkTextView name="text-view" hexpand vexpand leftMargin={Math.round(margin)}>
-                    <GtkTextBuffer>
-                        <GtkTextTag name="top-margin" pixelsAboveLines={Math.round(margin)}>
-                            {"Dear"}
-                        </GtkTextTag>
-                        {" diary..."}
-                    </GtkTextBuffer>
-                </GtkTextView>
+                <GtkTextView
+                    name="text-view"
+                    hexpand
+                    vexpand
+                    leftMargin={Math.round(margin)}
+                    buffer={
+                        <GtkTextBuffer>
+                            <GtkTextTag name="top-margin" pixelsAboveLines={Math.round(margin)}>
+                                {"Dear"}
+                            </GtkTextTag>
+                            {" diary..."}
+                        </GtkTextBuffer>
+                    }
+                />
             </GtkScrolledWindow>
             <GtkOverlayChild>
                 <GtkPicture

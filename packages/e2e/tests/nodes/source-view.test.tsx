@@ -13,11 +13,7 @@ const getScheme = (id: string): GtkSource.StyleScheme | null => GtkSource.StyleS
 const buildLanguageSourceView = (
     ref: RefObject<GtkSource.View | null>,
     language: GtkSource.Language | null,
-): ReactNode => (
-    <GtkSourceView ref={ref}>
-        <GtkSourceBuffer language={language}>code</GtkSourceBuffer>
-    </GtkSourceView>
-);
+): ReactNode => <GtkSourceView ref={ref} buffer={<GtkSourceBuffer language={language}>code</GtkSourceBuffer>} />;
 
 const renderJsLanguageSourceView = async (ref: RefObject<GtkSource.View | null>) => {
     const { rerender } = await render(buildLanguageSourceView(ref, getLanguage("js")));
@@ -40,11 +36,7 @@ describe("render - SourceView (1)", () => {
         it("sets initial text content via buffer children", async () => {
             const ref = createRef<GtkSource.View>();
 
-            await render(
-                <GtkSourceView ref={ref}>
-                    <GtkSourceBuffer>Hello World</GtkSourceBuffer>
-                </GtkSourceView>,
-            );
+            await render(<GtkSourceView ref={ref} buffer={<GtkSourceBuffer>Hello World</GtkSourceBuffer>} />);
 
             const buffer = getSourceBuffer(ref);
             expect(buffer).not.toBeNull();
@@ -63,11 +55,7 @@ describe("render - SourceView (1)", () => {
             const ref = createRef<GtkSource.View>();
 
             function App({ text }: { text: string }) {
-                return (
-                    <GtkSourceView ref={ref}>
-                        <GtkSourceBuffer>{text}</GtkSourceBuffer>
-                    </GtkSourceView>
-                );
+                return <GtkSourceView ref={ref} buffer={<GtkSourceBuffer>{text}</GtkSourceBuffer>} />;
             }
 
             const { rerender } = await render(<App text="Initial" />);
@@ -90,9 +78,7 @@ describe("render - SourceView (2)", () => {
             const ref = createRef<GtkSource.View>();
 
             await render(
-                <GtkSourceView ref={ref}>
-                    <GtkSourceBuffer enableUndo={enableUndo}>Content</GtkSourceBuffer>
-                </GtkSourceView>,
+                <GtkSourceView ref={ref} buffer={<GtkSourceBuffer enableUndo={enableUndo}>Content</GtkSourceBuffer>} />,
             );
 
             const buffer = getSourceBuffer(ref);
@@ -104,9 +90,7 @@ describe("render - SourceView (2)", () => {
             const onNotifyCanUndo = vi.fn();
 
             await render(
-                <GtkSourceView ref={ref}>
-                    <GtkSourceBuffer enableUndo onNotifyCanUndo={onNotifyCanUndo} />
-                </GtkSourceView>,
+                <GtkSourceView ref={ref} buffer={<GtkSourceBuffer enableUndo onNotifyCanUndo={onNotifyCanUndo} />} />,
             );
 
             const buffer = getSourceBuffer(ref);
@@ -129,9 +113,7 @@ describe("render - SourceView (3)", () => {
             const onNotifyCanRedo = vi.fn();
 
             await render(
-                <GtkSourceView ref={ref}>
-                    <GtkSourceBuffer enableUndo onNotifyCanRedo={onNotifyCanRedo} />
-                </GtkSourceView>,
+                <GtkSourceView ref={ref} buffer={<GtkSourceBuffer enableUndo onNotifyCanRedo={onNotifyCanRedo} />} />,
             );
 
             const buffer = getSourceBuffer(ref);
@@ -154,9 +136,10 @@ describe("render - SourceView (4)", () => {
             const ref = createRef<GtkSource.View>();
 
             await render(
-                <GtkSourceView ref={ref}>
-                    <GtkSourceBuffer language={getLanguage("js")}>const x = 1;</GtkSourceBuffer>
-                </GtkSourceView>,
+                <GtkSourceView
+                    ref={ref}
+                    buffer={<GtkSourceBuffer language={getLanguage("js")}>const x = 1;</GtkSourceBuffer>}
+                />,
             );
 
             const buffer = getSourceBuffer(ref);
@@ -168,9 +151,10 @@ describe("render - SourceView (4)", () => {
             const ref = createRef<GtkSource.View>();
 
             await render(
-                <GtkSourceView ref={ref}>
-                    <GtkSourceBuffer styleScheme={getScheme("classic")}>text</GtkSourceBuffer>
-                </GtkSourceView>,
+                <GtkSourceView
+                    ref={ref}
+                    buffer={<GtkSourceBuffer styleScheme={getScheme("classic")}>text</GtkSourceBuffer>}
+                />,
             );
 
             const buffer = getSourceBuffer(ref);
@@ -185,11 +169,7 @@ describe("render - SourceView (5)", () => {
         it("sets highlightSyntax property", async () => {
             const ref = createRef<GtkSource.View>();
 
-            await render(
-                <GtkSourceView ref={ref}>
-                    <GtkSourceBuffer highlightSyntax>text</GtkSourceBuffer>
-                </GtkSourceView>,
-            );
+            await render(<GtkSourceView ref={ref} buffer={<GtkSourceBuffer highlightSyntax>text</GtkSourceBuffer>} />);
 
             const buffer = getSourceBuffer(ref);
             expect(buffer.getHighlightSyntax()).toBe(true);
@@ -199,11 +179,14 @@ describe("render - SourceView (5)", () => {
             const ref = createRef<GtkSource.View>();
 
             await render(
-                <GtkSourceView ref={ref}>
-                    <GtkSourceBuffer language={getLanguage("js")} highlightSyntax={false}>
-                        const x = 1;
-                    </GtkSourceBuffer>
-                </GtkSourceView>,
+                <GtkSourceView
+                    ref={ref}
+                    buffer={
+                        <GtkSourceBuffer language={getLanguage("js")} highlightSyntax={false}>
+                            const x = 1;
+                        </GtkSourceBuffer>
+                    }
+                />,
             );
 
             const buffer = getSourceBuffer(ref);
@@ -218,9 +201,10 @@ describe("render - SourceView (7)", () => {
             const ref = createRef<GtkSource.View>();
 
             await render(
-                <GtkSourceView ref={ref}>
-                    <GtkSourceBuffer highlightMatchingBrackets={false}>()</GtkSourceBuffer>
-                </GtkSourceView>,
+                <GtkSourceView
+                    ref={ref}
+                    buffer={<GtkSourceBuffer highlightMatchingBrackets={false}>()</GtkSourceBuffer>}
+                />,
             );
 
             const buffer = getSourceBuffer(ref);
@@ -230,11 +214,7 @@ describe("render - SourceView (7)", () => {
         it("highlightMatchingBrackets defaults to true", async () => {
             const ref = createRef<GtkSource.View>();
 
-            await render(
-                <GtkSourceView ref={ref}>
-                    <GtkSourceBuffer>()</GtkSourceBuffer>
-                </GtkSourceView>,
-            );
+            await render(<GtkSourceView ref={ref} buffer={<GtkSourceBuffer>()</GtkSourceBuffer>} />);
 
             const buffer = getSourceBuffer(ref);
             expect(buffer.getHighlightMatchingBrackets()).toBe(true);
@@ -244,9 +224,10 @@ describe("render - SourceView (7)", () => {
             const ref = createRef<GtkSource.View>();
 
             await render(
-                <GtkSourceView ref={ref}>
-                    <GtkSourceBuffer implicitTrailingNewline={false}>no newline</GtkSourceBuffer>
-                </GtkSourceView>,
+                <GtkSourceView
+                    ref={ref}
+                    buffer={<GtkSourceBuffer implicitTrailingNewline={false}>no newline</GtkSourceBuffer>}
+                />,
             );
 
             const buffer = getSourceBuffer(ref);
@@ -257,9 +238,10 @@ describe("render - SourceView (7)", () => {
             const ref = createRef<GtkSource.View>();
 
             await render(
-                <GtkSourceView ref={ref}>
-                    <GtkSourceBuffer implicitTrailingNewline>with newline</GtkSourceBuffer>
-                </GtkSourceView>,
+                <GtkSourceView
+                    ref={ref}
+                    buffer={<GtkSourceBuffer implicitTrailingNewline>with newline</GtkSourceBuffer>}
+                />,
             );
 
             const buffer = getSourceBuffer(ref);
@@ -274,11 +256,7 @@ describe("render - SourceView (8)", () => {
             const ref = createRef<GtkSource.View>();
             const onChanged = vi.fn();
 
-            await render(
-                <GtkSourceView ref={ref}>
-                    <GtkSourceBuffer onChanged={onChanged} />
-                </GtkSourceView>,
-            );
+            await render(<GtkSourceView ref={ref} buffer={<GtkSourceBuffer onChanged={onChanged} />} />);
 
             const buffer = getSourceBuffer(ref);
             buffer.setText("New text", -1);
@@ -290,9 +268,7 @@ describe("render - SourceView (8)", () => {
 
         it("does not call onChanged during React reconciliation", async () => {
             await expectNoBufferChangedOnReconcile((onChanged, text) => (
-                <GtkSourceView>
-                    <GtkSourceBuffer onChanged={onChanged}>{text}</GtkSourceBuffer>
-                </GtkSourceView>
+                <GtkSourceView buffer={<GtkSourceBuffer onChanged={onChanged}>{text}</GtkSourceBuffer>} />
             ));
         });
     });
@@ -305,9 +281,10 @@ describe("render - SourceView (9)", () => {
             const onCursorMoved = vi.fn();
 
             await render(
-                <GtkSourceView ref={ref}>
-                    <GtkSourceBuffer onCursorMoved={onCursorMoved}>Some text here</GtkSourceBuffer>
-                </GtkSourceView>,
+                <GtkSourceView
+                    ref={ref}
+                    buffer={<GtkSourceBuffer onCursorMoved={onCursorMoved}>Some text here</GtkSourceBuffer>}
+                />,
             );
 
             const buffer = getSourceBuffer(ref);
@@ -324,11 +301,14 @@ describe("render - SourceView (9)", () => {
             const onHighlightUpdated = vi.fn();
 
             await render(
-                <GtkSourceView ref={ref}>
-                    <GtkSourceBuffer language={getLanguage("js")} onHighlightUpdated={onHighlightUpdated}>
-                        const x = 1;
-                    </GtkSourceBuffer>
-                </GtkSourceView>,
+                <GtkSourceView
+                    ref={ref}
+                    buffer={
+                        <GtkSourceBuffer language={getLanguage("js")} onHighlightUpdated={onHighlightUpdated}>
+                            const x = 1;
+                        </GtkSourceBuffer>
+                    }
+                />,
             );
 
             const buffer = getSourceBuffer(ref);
@@ -349,9 +329,10 @@ describe("render - SourceView (10)", () => {
 
             function App({ hasCallback }: { hasCallback: boolean }) {
                 return (
-                    <GtkSourceView ref={ref}>
-                        <GtkSourceBuffer onChanged={hasCallback ? onChanged : undefined} />
-                    </GtkSourceView>
+                    <GtkSourceView
+                        ref={ref}
+                        buffer={<GtkSourceBuffer onChanged={hasCallback ? onChanged : undefined} />}
+                    />
                 );
             }
 
@@ -392,9 +373,7 @@ describe("render - SourceView (11)", () => {
 
             function App({ scheme }: { scheme: GtkSource.StyleScheme | null }) {
                 return (
-                    <GtkSourceView ref={ref}>
-                        <GtkSourceBuffer styleScheme={scheme}>code</GtkSourceBuffer>
-                    </GtkSourceView>
+                    <GtkSourceView ref={ref} buffer={<GtkSourceBuffer styleScheme={scheme}>code</GtkSourceBuffer>} />
                 );
             }
 

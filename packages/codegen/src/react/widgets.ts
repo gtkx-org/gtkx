@@ -122,17 +122,17 @@ export const ancestorGlibNames = (
     return names;
 };
 
-const descendsFrom = (
+const someAncestor = (
     klass: GirClass,
     namespace: GirNamespace,
     repository: GirRepository,
-    matches: (glibName: string) => boolean,
+    predicate: (klass: GirClass, glibName: string) => boolean,
 ): boolean => {
     let currentClass: GirClass | undefined = klass;
     let currentNamespace: GirNamespace | undefined = namespace;
     while (currentClass !== undefined && currentNamespace !== undefined) {
         const glibName = currentClass.glibTypeName ?? currentClass.cType ?? "";
-        if (matches(glibName)) return true;
+        if (predicate(currentClass, glibName)) return true;
         if (currentClass.parent === undefined) return false;
         const next = resolveParentClass(repository, currentClass.parent, currentNamespace);
         if (next === undefined) return false;
@@ -141,6 +141,32 @@ const descendsFrom = (
     }
     return false;
 };
+
+const descendsFrom = (
+    klass: GirClass,
+    namespace: GirNamespace,
+    repository: GirRepository,
+    matches: (glibName: string) => boolean,
+): boolean => someAncestor(klass, namespace, repository, (_klass, glibName) => matches(glibName));
+
+/**
+ * Whether `klass` or any ancestor declares a method named `methodName`,
+ * mirroring the reconciler's duck-typed method probes (e.g.
+ * `isSingleChildContainer`'s `set_child` check). Used to recognize the
+ * single-child container relationship at codegen time so its `child` property
+ * stays a nested child rather than being widened into a redundant slot.
+ *
+ * @param klass - The class to start from
+ * @param namespace - The namespace the class lives in
+ * @param repository - The repository for cross-namespace parent lookups
+ * @param methodName - The GIR (snake_case) method name to look for
+ */
+export const classExposesMethod = (
+    klass: GirClass,
+    namespace: GirNamespace,
+    repository: GirRepository,
+    methodName: string,
+): boolean => someAncestor(klass, namespace, repository, (current) => current.methods.some((m) => m.name === methodName));
 
 /**
  * Decides whether a `<class>` is a React reconciler node — any instantiable

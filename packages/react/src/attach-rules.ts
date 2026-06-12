@@ -22,7 +22,7 @@
  * the widget-container fallback) stay hand-written in `element-map`; this
  * table covers the stateless verbs.
  */
-import { CONTAINER_SLOTS, ELEMENT_MAP, SLOTS } from "virtual:gtkx-config";
+import { CONTAINER_SLOTS, ELEMENT_MAP } from "virtual:gtkx-config";
 import type { ElementMapRule, MethodVerb, OrderedInsertVerb, VerbArgs } from "@gtkx/config";
 import type { GType } from "@gtkx/gi/gobject";
 import { notifyOrderedAttach } from "./attach-events.js";
@@ -266,9 +266,12 @@ const propertyNameForSetter = (method: string): string | null =>
 
 /**
  * The slot or container-slot prop that covers `rule` on `parent`, or `null`
- * when the relationship has no prop surface: a container-slot prop shares the
- * verb's attach method name; a slot prop is the property a `set<Prop>` attach
- * method writes.
+ * when the relationship has no prop surface. A `set<Prop>` attach method writes
+ * a GObject-class property, which is always a value-driven slot, so it promotes
+ * to that `<prop>` (e.g. `setBuffer` → `buffer`, `setLayoutManager` →
+ * `layoutManager`). Any other attach method promotes only when it is a declared
+ * container-slot method on `parent`; add/insert methods that are not (e.g.
+ * `AdwToggleGroup.add`) have no prop surface and keep attaching as children.
  */
 const promotedPropFor = (rule: ElementMapRule, parent: Instance): string | null => {
     if (rule.verb.kind !== "method") return null;
@@ -276,9 +279,9 @@ const promotedPropFor = (rule: ElementMapRule, parent: Instance): string | null 
     if (!backing) return null;
     const attach = rule.verb.attach;
     const setterProp = propertyNameForSetter(attach);
+    if (setterProp !== null) return setterProp;
     for (const typeName of collectTypeNameChain(backing.__gtype__)) {
         if (CONTAINER_SLOTS[typeName]?.includes(attach)) return attach;
-        if (setterProp !== null && SLOTS[typeName]?.includes(setterProp)) return setterProp;
     }
     return null;
 };
@@ -293,8 +296,9 @@ const displayName = (instance: Instance): string =>
  * container-slot props. Placed ahead of the data-rule mappings in the element
  * map, it matches exactly when a data rule would attach the pair AND a prop
  * covers that rule on the parent, and throws an error naming the prop.
- * Relationships without a prop surface (a `GtkTextBuffer` under a text view,
- * project-declared `elementMap` rows) keep attaching as children.
+ * Relationships without a prop surface (an add/insert method that is not a
+ * declared container slot, such as `AdwToggleGroup.add`) keep attaching as
+ * children.
  */
 export const promotedNestingGuardMapping: ElementMapping = {
     matches: memoizeByGTypePair((child, parent) => {

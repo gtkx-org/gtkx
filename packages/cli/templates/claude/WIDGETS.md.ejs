@@ -838,21 +838,24 @@ The `onNotifySearchModeEnabled` callback fires when search mode changes (e.g., u
 
 ## TextView / SourceView
 
-Text content lives in an explicit `GtkTextBuffer` element rendered as the view's child. Text nodes are allowed only inside `GtkLabel` and buffer elements. Use `GtkTextTag` for formatting and `GtkTextAnchor` for embedded widgets.
+Text content lives in an explicit `GtkTextBuffer` element passed through the view's `buffer` prop. Text nodes are allowed only inside `GtkLabel` and buffer elements. Use `GtkTextTag` for formatting and `GtkTextAnchor` for embedded widgets.
 
 ```tsx
-<GtkTextView wrapMode={Gtk.WrapMode.WORD}>
-    <GtkTextBuffer
-        enableUndo
-        onChanged={(buffer) => {
-            const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
-            console.log(text);
-        }}
-    >
-        Normal text, <GtkTextTag id="bold" weight={Pango.Weight.BOLD}>bold</GtkTextTag>, and
-        <GtkTextAnchor><GtkButton label="Click" /></GtkTextAnchor> inline.
-    </GtkTextBuffer>
-</GtkTextView>
+<GtkTextView
+    wrapMode={Gtk.WrapMode.WORD}
+    buffer={
+        <GtkTextBuffer
+            enableUndo
+            onChanged={(buffer) => {
+                const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
+                console.log(text);
+            }}
+        >
+            Normal text, <GtkTextTag id="bold" weight={Pango.Weight.BOLD}>bold</GtkTextTag>, and
+            <GtkTextAnchor><GtkButton label="Click" /></GtkTextAnchor> inline.
+        </GtkTextBuffer>
+    }
+/>
 ```
 
 **GtkTextBuffer props:** `enableUndo`, `onChanged`, `onInsertText`, `onDeleteRange`, `onNotifyCanUndo`, `onNotifyCanRedo`
@@ -869,15 +872,20 @@ Text content lives in an explicit `GtkTextBuffer` element rendered as the view's
 import * as GtkSource from "@gtkx/gi/gtksource";
 import { GtkSourceBuffer, GtkSourceView } from "@gtkx/jsx/gtksource";
 
-<GtkSourceView showLineNumbers highlightCurrentLine monospace>
-    <GtkSourceBuffer
-        language={GtkSource.LanguageManager.getDefault().getLanguage("typescript-jsx")}
-        styleScheme={GtkSource.StyleSchemeManager.getDefault().getScheme("Adwaita-dark")}
-        onChanged={(buffer) => setCode(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false))}
-    >
-        {code}
-    </GtkSourceBuffer>
-</GtkSourceView>
+<GtkSourceView
+    showLineNumbers
+    highlightCurrentLine
+    monospace
+    buffer={
+        <GtkSourceBuffer
+            language={GtkSource.LanguageManager.getDefault().getLanguage("typescript-jsx")}
+            styleScheme={GtkSource.StyleSchemeManager.getDefault().getScheme("Adwaita-dark")}
+            onChanged={(buffer) => setCode(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false))}
+        >
+            {code}
+        </GtkSourceBuffer>
+    }
+/>
 ```
 
 **GtkSourceBuffer additional props:** `language`, `styleScheme`, `highlightSyntax`, `highlightMatchingBrackets`, `implicitTrailingNewline`, `onCursorMoved`, `onHighlightUpdated`

@@ -151,14 +151,25 @@ describe("codegen React pipeline", () => {
     });
 });
 
-describe("codegen React pipeline (slot overrides)", () => {
-    it("honours user-supplied widget-slot overrides", () => {
-        const overridden = generateJsxFiles(repository, { slots: { GtkButton: ["child"] } });
-        const gtk = sourceFor(overridden, "gtk");
-        expect(interfaceBody(gtk, "GtkButton")).toContain("child?: ReactNode | null;");
-        expect(overridden.metadata).toMatch(/"GtkButton": \[\s*"child"\s*\]/);
-        const { js } = transpileSource("gtk/gtk.tsx", gtk);
-        expect(js.length).toBeGreaterThan(0);
+describe("codegen React pipeline (auto-derived slots)", () => {
+    it("widens a settable GObject-class property into a ReactElement slot", () => {
+        const gtk = sourceFor(reactPipeline, "gtk");
+        expect(interfaceBody(gtk, "GtkWindow")).toContain("titlebar?: Gtk.Widget | ReactElement | null;");
+    });
+
+    it("widens a text view's buffer into a ReactElement slot", () => {
+        const gtk = sourceFor(reactPipeline, "gtk");
+        expect(interfaceBody(gtk, "GtkTextView")).toContain("buffer?: Gtk.TextBuffer | ReactElement | null;");
+    });
+
+    it("keeps the single-child `child` property a plain widget reference, not a slot", () => {
+        const body = interfaceBody(sourceFor(reactPipeline, "gtk"), "GtkButton");
+        expect(body).toContain("child?: Gtk.Widget | null;");
+        expect(body).not.toContain("child?: Gtk.Widget | ReactElement");
+    });
+
+    it("emits no runtime slot table", () => {
+        expect(reactPipeline.metadata).not.toContain("export const SLOTS");
     });
 
     it("promotes a user-supplied container slot on a widget without built-in ones", () => {
@@ -221,6 +232,22 @@ describe("codegen array props", () => {
     });
 });
 
+describe("codegen read-only props", () => {
+    it("omits the settable line for a read-only property but keeps its notify handler", () => {
+        const gtk = sourceFor(reactPipeline, "gtk");
+        const widgetBody = interfaceBody(gtk, "GtkWidget");
+        expect(widgetBody).not.toContain("parent?: Gtk.Widget | null;");
+        expect(widgetBody).toContain("onNotifyParent?:");
+    });
+
+    it("keeps the settable line for a writable property", () => {
+        const gtk = sourceFor(reactPipeline, "gtk");
+        const widgetBody = interfaceBody(gtk, "GtkWidget");
+        expect(widgetBody).toContain("opacity?: number | null;");
+        expect(widgetBody).toContain("onNotifyOpacity?:");
+    });
+});
+
 describe("codegen runtime tables", () => {
     it("bakes the reconciler tables into the metadata module", () => {
         expect(reactPipeline.metadata).toContain("export const ELEMENT_MAP");
@@ -230,7 +257,6 @@ describe("codegen runtime tables", () => {
         expect(reactPipeline.metadata).toContain("export const TOP_LEVEL_TYPES");
         expect(reactPipeline.metadata).toContain("export const META_OBJECT_ADD_METHODS");
         expect(reactPipeline.metadata).toContain("export const PAGE_META_SETTERS");
-        expect(reactPipeline.metadata).toContain("export const SLOTS");
         expect(reactPipeline.metadata).toContain("export const CONTAINER_SLOTS");
     });
 

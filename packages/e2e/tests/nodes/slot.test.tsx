@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkHeaderBar, GtkLabel, GtkMenuButton, GtkPaned, GtkPopover } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
@@ -27,6 +27,15 @@ describe("render - Slot (1)", () => {
 
     it("calls setSlotName(widget) on parent", async () => {
         await expectPanedStartChild("Start Content");
+    });
+
+    it("accepts a constructed widget instance through a slot prop", async () => {
+        const headerBarRef = createRef<Gtk.HeaderBar>();
+        const title = new Gtk.Label({ label: "Imperative Title" });
+
+        await render(<GtkHeaderBar ref={headerBarRef} titleWidget={title} />);
+
+        expect(headerBarRef.current?.getTitleWidget()).toBe(title);
     });
 
     it("clears slot when child removed", async () => {

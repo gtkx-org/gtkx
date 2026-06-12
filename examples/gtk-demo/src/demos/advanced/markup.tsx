@@ -84,9 +84,8 @@ const MarkupStack = ({ showSource, formattedViewRef, sourceViewRef, onFormattedR
                     wrapMode={Gtk.WrapMode.WORD}
                     leftMargin={10}
                     rightMargin={10}
-                >
-                    <GtkTextBuffer>{SAMPLE_MARKUP}</GtkTextBuffer>
-                </GtkTextView>
+                    buffer={<GtkTextBuffer>{SAMPLE_MARKUP}</GtkTextBuffer>}
+                />
             </GtkScrolledWindow>
         </GtkStackPage>
     </GtkStack>

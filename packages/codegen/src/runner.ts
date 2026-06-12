@@ -15,8 +15,6 @@ export type CodegenRunnerOptions = {
     readonly libraries: readonly string[];
     /** Directories searched for `.gir` files. */
     readonly girPath: readonly string[];
-    /** Optional user widget-slot overrides keyed by JSX element name (setter semantics). */
-    readonly slots?: Readonly<Record<string, readonly string[]>>;
     /** Optional user container-slot overrides keyed by JSX element name (append semantics). */
     readonly containerSlots?: Readonly<Record<string, readonly string[]>>;
     /** Optional user array-prop rows keyed by JSX element name then prop name. */
@@ -83,7 +81,6 @@ export class CodegenRunner {
         }
         const libraries = [...this.options.libraries];
         const tables = {
-            slots: this.options.slots,
             containerSlots: this.options.containerSlots,
             arrayProps: this.options.arrayProps,
             objectProps: this.options.objectProps,

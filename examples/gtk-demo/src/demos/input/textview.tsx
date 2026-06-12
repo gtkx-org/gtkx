@@ -459,21 +459,29 @@ const TextViewDemo = () => {
                     hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                     vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                 >
-                    <GtkTextView ref={textView1Ref} name="text-view-1" wrapMode={Gtk.WrapMode.WORD}>
-                        <GtkTextBuffer ref={setSharedBuffer}>
-                            <TextViewIntroSection />
-                            <TextViewFontStylesSection />
-                            <TextViewColorsSection />
-                            <TextViewUnderlineRiseSection />
-                            <TextViewImagesSection iconPaintable={iconPaintable} nuclearPaintable={nuclearPaintable} />
-                            <TextViewSpacingSection />
-                            <TextViewEditabilitySection />
-                            <TextViewWrappingSection />
-                            <TextViewJustificationSection />
-                            <TextViewInternationalSection />
-                            <TextViewWidgetsSection onClickMe={handleClickMe} />
-                        </GtkTextBuffer>
-                    </GtkTextView>
+                    <GtkTextView
+                        ref={textView1Ref}
+                        name="text-view-1"
+                        wrapMode={Gtk.WrapMode.WORD}
+                        buffer={
+                            <GtkTextBuffer ref={setSharedBuffer}>
+                                <TextViewIntroSection />
+                                <TextViewFontStylesSection />
+                                <TextViewColorsSection />
+                                <TextViewUnderlineRiseSection />
+                                <TextViewImagesSection
+                                    iconPaintable={iconPaintable}
+                                    nuclearPaintable={nuclearPaintable}
+                                />
+                                <TextViewSpacingSection />
+                                <TextViewEditabilitySection />
+                                <TextViewWrappingSection />
+                                <TextViewJustificationSection />
+                                <TextViewInternationalSection />
+                                <TextViewWidgetsSection onClickMe={handleClickMe} />
+                            </GtkTextBuffer>
+                        }
+                    />
                 </GtkScrolledWindow>
             }
             endChild={

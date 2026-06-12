@@ -28,18 +28,22 @@ export const NoteEditor = ({
             onChanged={(self) => onUpdate({ title: self.text ?? "" })}
         />
         <GtkScrolledWindow vexpand>
-            <GtkTextView wrapMode={Gtk.WrapMode.WORD_CHAR} cssClasses={[bodyView]}>
-                <GtkTextBuffer
-                    enableUndo
-                    onChanged={(buffer) => {
-                        const start = buffer.getStartIter();
-                        const end = buffer.getEndIter();
-                        onUpdate({ body: buffer.getText(start, end, false) ?? "" });
-                    }}
-                >
-                    {note.body}
-                </GtkTextBuffer>
-            </GtkTextView>
+            <GtkTextView
+                wrapMode={Gtk.WrapMode.WORD_CHAR}
+                cssClasses={[bodyView]}
+                buffer={
+                    <GtkTextBuffer
+                        enableUndo
+                        onChanged={(buffer) => {
+                            const start = buffer.getStartIter();
+                            const end = buffer.getEndIter();
+                            onUpdate({ body: buffer.getText(start, end, false) ?? "" });
+                        }}
+                    >
+                        {note.body}
+                    </GtkTextBuffer>
+                }
+            />
         </GtkScrolledWindow>
     </GtkBox>
 );

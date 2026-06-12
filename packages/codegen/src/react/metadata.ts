@@ -40,8 +40,6 @@ export type RuntimeTables = {
     readonly metaObjectAddMethods: Readonly<Record<string, readonly AddMethodRule[]>>;
     /** Page-metadata setters applied to stack page handles. */
     readonly pageMetaSetters: readonly PageMetaSetter[];
-    /** Merged widget-slot names keyed by JSX element name. */
-    readonly slots: Readonly<Record<string, readonly string[]>>;
     /** Merged container-slot method names keyed by JSX element name. */
     readonly containerSlots: Readonly<Record<string, readonly string[]>>;
 };
@@ -84,7 +82,6 @@ const renderRuntimeTables = (tables: RuntimeTables): readonly string[] => [
         `ReadonlyArray<import("${CONFIG_TYPES}").PageMetaSetter>`,
         tables.pageMetaSetters,
     ),
-    renderTableConst("SLOTS", "Readonly<Record<string, readonly string[]>>", tables.slots),
     renderTableConst("CONTAINER_SLOTS", "Readonly<Record<string, readonly string[]>>", tables.containerSlots),
 ];
 

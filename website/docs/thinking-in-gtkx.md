@@ -117,7 +117,7 @@ In the DOM, any element accepts text children. In GTKX, text children are valid 
 Text strings must be rendered within a <GtkLabel> or <GtkTextBuffer> element
 ```
 
-`<GtkLabel>{count} notes</GtkLabel>` works; `<GtkBox>Hello</GtkBox>` does not — wrap the text in a label. Editable text lives in an explicit `<GtkTextBuffer>` under a `GtkTextView`:
+`<GtkLabel>{count} notes</GtkLabel>` works; `<GtkBox>Hello</GtkBox>` does not — wrap the text in a label. Editable text lives in an explicit `<GtkTextBuffer>` passed to a `GtkTextView` through its `buffer` prop:
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
@@ -125,18 +125,21 @@ import { GtkScrolledWindow, GtkTextBuffer, GtkTextView } from "@gtkx/jsx/gtk";
 
 const BodyEditor = ({ body, onBodyChanged }: { body: string; onBodyChanged: (body: string) => void }) => (
     <GtkScrolledWindow vexpand>
-        <GtkTextView wrapMode={Gtk.WrapMode.WORD_CHAR}>
-            <GtkTextBuffer
-                enableUndo
-                onChanged={(buffer) => {
-                    const start = buffer.getStartIter();
-                    const end = buffer.getEndIter();
-                    onBodyChanged(buffer.getText(start, end, false) ?? "");
-                }}
-            >
-                {body}
-            </GtkTextBuffer>
-        </GtkTextView>
+        <GtkTextView
+            wrapMode={Gtk.WrapMode.WORD_CHAR}
+            buffer={
+                <GtkTextBuffer
+                    enableUndo
+                    onChanged={(buffer) => {
+                        const start = buffer.getStartIter();
+                        const end = buffer.getEndIter();
+                        onBodyChanged(buffer.getText(start, end, false) ?? "");
+                    }}
+                >
+                    {body}
+                </GtkTextBuffer>
+            }
+        />
     </GtkScrolledWindow>
 );
 ```

@@ -37,8 +37,6 @@ declare module "virtual:gtkx-config" {
     export const META_OBJECT_ADD_METHODS: Readonly<Record<string, readonly import("@gtkx/config").AddMethodRule[]>>;
     /** Page-metadata setters applied to stack page handles. */
     export const PAGE_META_SETTERS: readonly import("@gtkx/config").PageMetaSetter[];
-    /** Merged widget-slot property names keyed by JSX element name. */
-    export const SLOTS: Readonly<Record<string, readonly string[]>>;
     /** Merged container-slot method names keyed by JSX element name. */
     export const CONTAINER_SLOTS: Readonly<Record<string, readonly string[]>>;
     /** The configured library identifiers, the `"*"` wildcard, or `[]` when omitted. */
@@ -47,8 +45,6 @@ declare module "virtual:gtkx-config" {
     export const girPath: import("@gtkx/config").ResolvedGtkxConfig["girPath"];
     /** The GLib application id, or `undefined` when unset. */
     export const applicationId: import("@gtkx/config").ResolvedGtkxConfig["applicationId"];
-    /** The user's widget-slot map, or `{}` when omitted. */
-    export const slots: import("@gtkx/config").ResolvedGtkxConfig["slots"];
     /** The user's container-slot map, or `{}` when omitted. */
     export const containerSlots: import("@gtkx/config").ResolvedGtkxConfig["containerSlots"];
     /** The user's array-prop rows, or `{}` when omitted. */
