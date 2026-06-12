@@ -68,5 +68,7 @@ try {
     writeFileSync(changelogPath, renderPage(published));
     console.log(`Changelog generated with ${published.length} release(s).`);
 } catch (error) {
-    console.log(`Changelog skipped: ${error instanceof Error ? error.message : error}; keeping the committed fallback.`);
+    console.log(
+        `Changelog skipped: ${error instanceof Error ? error.message : error}; keeping the committed fallback.`,
+    );
 }

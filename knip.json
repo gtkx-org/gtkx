@@ -2,13 +2,15 @@
     "$schema": "https://unpkg.com/knip@6/schema.json",
     "ignoreExportsUsedInFile": true,
     "ignoreBinaries": [
+        "dbus-run-session",
         "espeak-ng",
         "ffmpeg",
         "glib-compile-resources",
         "glib-compile-schemas",
         "import",
         "pkg-config",
-        "setpriv"
+        "setpriv",
+        "Xvfb"
     ],
     "ignoreWorkspaces": ["packages/native/npm/*"],
     "workspaces": {

@@ -108,7 +108,7 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
         if (dataPropNames.has(jsName)) return;
         const qualified = qualifyTypeRef(property.type, owningNamespace);
         const tsType = renderReactPropType(types, qualified, false);
-        if (isSlotProperty(repository, klass, namespace, property, owningNamespace, jsName)) {
+        if (isSlotProperty({ repository, klass, namespace }, property, owningNamespace, jsName)) {
             propEntries.push(`${jsName}?: ${tsType} | ReactElement | null;`);
             slotPropNames.push(jsName);
             return;
@@ -169,35 +169,38 @@ const resolvesToGObjectClass = (
 const isSettableProperty = (property: GirProperty): boolean =>
     property.writable || property.construct || property.constructOnly;
 
+/** The widget being emitted, supplying ancestry lookups for slot eligibility. */
+type SlotOwner = {
+    /** The loaded GIR repository. */
+    readonly repository: GirRepository;
+    /** The widget class whose Props bag is being built. */
+    readonly klass: GirClass;
+    /** The namespace `klass` lives in. */
+    readonly namespace: GirNamespace;
+};
+
 /**
  * Whether `property` is exposed as a renderable slot: a settable
  * (writable, non-construct-only) property whose value is a GObject class,
- * widened to `Class | ReactElement | false | null` so app code can mount a JSX
- * subtree or pass an instance.
+ * widened to `Class | ReactElement | null` so app code can mount a JSX subtree
+ * or pass an instance.
  *
  * The single-child `child` property is excluded — single-child containers
  * already mount their one child by nesting it (the reconciler's
  * `isSingleChildContainer` fallback, recognized here by the `set_child`
  * method), so widening it would mint a redundant second way to set the child.
  *
- * @param repository - The loaded GIR repository
- * @param klass - The widget class whose Props bag is being built
- * @param namespace - The namespace `klass` lives in
+ * @param owner - The widget being emitted
  * @param property - The candidate property
  * @param owningNamespace - The namespace the property's type resolves against
  * @param jsName - The property's camelCase JS name
  */
-const isSlotProperty = (
-    repository: GirRepository,
-    klass: GirClass,
-    namespace: GirNamespace,
-    property: GirProperty,
-    owningNamespace: string,
-    jsName: string,
-): boolean => {
+const isSlotProperty = (owner: SlotOwner, property: GirProperty, owningNamespace: string, jsName: string): boolean => {
     if (!property.writable || property.constructOnly) return false;
-    if (!resolvesToGObjectClass(repository, property.type, owningNamespace)) return false;
-    if (jsName === "child" && classExposesMethod(klass, namespace, repository, "set_child")) return false;
+    if (!resolvesToGObjectClass(owner.repository, property.type, owningNamespace)) return false;
+    if (jsName === "child" && classExposesMethod(owner.klass, owner.namespace, owner.repository, "set_child")) {
+        return false;
+    }
     return true;
 };
 

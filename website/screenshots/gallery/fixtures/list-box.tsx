@@ -1,5 +1,5 @@
-import { AdwActionRow } from "@gtkx/jsx/adw";
 import * as Gtk from "@gtkx/gi/gtk";
+import { AdwActionRow } from "@gtkx/jsx/adw";
 import { GtkImage, GtkListBox, GtkSwitch } from "@gtkx/jsx/gtk";
 
 export const Demo = () => (

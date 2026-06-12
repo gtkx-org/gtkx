@@ -61,11 +61,9 @@ const startFixtureServer = (): Promise<Server> => {
 
 const startXvfb = (): Promise<{ xvfb: ChildProcess; display: string }> =>
     new Promise((resolveDisplay, reject) => {
-        const xvfb = spawn(
-            "Xvfb",
-            ["-displayfd", "1", "-screen", "0", `${SCREEN_WIDTH}x${SCREEN_HEIGHT}x24`],
-            { stdio: ["ignore", "pipe", "ignore"] },
-        );
+        const xvfb = spawn("Xvfb", ["-displayfd", "1", "-screen", "0", `${SCREEN_WIDTH}x${SCREEN_HEIGHT}x24`], {
+            stdio: ["ignore", "pipe", "ignore"],
+        });
         let buffer = "";
         const timer = setTimeout(() => {
             xvfb.kill();

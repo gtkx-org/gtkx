@@ -166,7 +166,8 @@ export const classExposesMethod = (
     namespace: GirNamespace,
     repository: GirRepository,
     methodName: string,
-): boolean => someAncestor(klass, namespace, repository, (current) => current.methods.some((m) => m.name === methodName));
+): boolean =>
+    someAncestor(klass, namespace, repository, (current) => current.methods.some((m) => m.name === methodName));
 
 /**
  * Decides whether a `<class>` is a React reconciler node — any instantiable

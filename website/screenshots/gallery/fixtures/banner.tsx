@@ -1,5 +1,5 @@
-import { AdwBanner } from "@gtkx/jsx/adw";
 import * as Gtk from "@gtkx/gi/gtk";
+import { AdwBanner } from "@gtkx/jsx/adw";
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 
 export const Demo = () => (

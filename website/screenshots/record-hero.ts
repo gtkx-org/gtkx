@@ -122,15 +122,11 @@ try {
         { stdio: ["ignore", "ignore", "inherit"] },
     );
 
-    editorStage = spawn(
-        "pnpm",
-        ["exec", "vitest", "run", "--config", "screenshots/vitest.hero.config.ts"],
-        {
-            cwd: WEBSITE_DIR,
-            stdio: ["ignore", "inherit", "inherit"],
-            env: { ...process.env, GTKX_XVFB_SCREEN: "800x900x24" },
-        },
-    );
+    editorStage = spawn("pnpm", ["exec", "vitest", "run", "--config", "screenshots/vitest.hero.config.ts"], {
+        cwd: WEBSITE_DIR,
+        stdio: ["ignore", "inherit", "inherit"],
+        env: { ...process.env, GTKX_XVFB_SCREEN: "800x900x24" },
+    });
 
     const stageExit = await new Promise<number | null>((resolveExit) =>
         editorStage?.once("exit", (code) => resolveExit(code)),
@@ -189,22 +185,72 @@ execFileSync("ffmpeg", compose, { stdio: ["ignore", "inherit", "inherit"] });
 
 execFileSync(
     "ffmpeg",
-    ["-y", "-loglevel", "error", "-i", join(OUT_DIR, "hero-master.mkv"), "-c:v", "libvpx-vp9", "-crf", "38", "-b:v", "0", "-an", join(MEDIA_DIR, "hero-demo.webm")],
+    [
+        "-y",
+        "-loglevel",
+        "error",
+        "-i",
+        join(OUT_DIR, "hero-master.mkv"),
+        "-c:v",
+        "libvpx-vp9",
+        "-crf",
+        "38",
+        "-b:v",
+        "0",
+        "-an",
+        join(MEDIA_DIR, "hero-demo.webm"),
+    ],
     { stdio: ["ignore", "inherit", "inherit"] },
 );
 execFileSync(
     "ffmpeg",
-    ["-y", "-loglevel", "error", "-i", join(OUT_DIR, "hero-master.mkv"), "-c:v", "libx264", "-crf", "22", "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-an", join(MEDIA_DIR, "hero-demo.mp4")],
+    [
+        "-y",
+        "-loglevel",
+        "error",
+        "-i",
+        join(OUT_DIR, "hero-master.mkv"),
+        "-c:v",
+        "libx264",
+        "-crf",
+        "22",
+        "-pix_fmt",
+        "yuv420p",
+        "-movflags",
+        "+faststart",
+        "-an",
+        join(MEDIA_DIR, "hero-demo.mp4"),
+    ],
     { stdio: ["ignore", "inherit", "inherit"] },
 );
 execFileSync(
     "ffmpeg",
-    ["-y", "-loglevel", "error", "-ss", "9", "-i", join(OUT_DIR, "hero-master.mkv"), "-frames:v", "1", join(OUT_DIR, "hero-demo-poster.png")],
+    [
+        "-y",
+        "-loglevel",
+        "error",
+        "-ss",
+        "9",
+        "-i",
+        join(OUT_DIR, "hero-master.mkv"),
+        "-frames:v",
+        "1",
+        join(OUT_DIR, "hero-demo-poster.png"),
+    ],
     { stdio: ["ignore", "inherit", "inherit"] },
 );
 execFileSync(
     "ffmpeg",
-    ["-y", "-loglevel", "error", "-i", join(OUT_DIR, "hero-master.mkv"), "-vf", "fps=12,scale=1280:-1:flags=lanczos,palettegen", join(OUT_DIR, "palette.png")],
+    [
+        "-y",
+        "-loglevel",
+        "error",
+        "-i",
+        join(OUT_DIR, "hero-master.mkv"),
+        "-vf",
+        "fps=12,scale=1280:-1:flags=lanczos,palettegen",
+        join(OUT_DIR, "palette.png"),
+    ],
     { stdio: ["ignore", "inherit", "inherit"] },
 );
 execFileSync(

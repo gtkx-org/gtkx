@@ -124,6 +124,16 @@
             "linter": {
                 "enabled": false
             }
+        },
+        {
+            "includes": ["packages/*/tests/**", "website/screenshots/**"],
+            "linter": {
+                "rules": {
+                    "complexity": {
+                        "noExcessiveLinesPerFunction": "off"
+                    }
+                }
+            }
         }
     ],
     "vcs": {

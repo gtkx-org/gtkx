@@ -59,7 +59,9 @@ const processMaster = async (masterPath: string, destinationDir: string): Promis
     const name = `${basename(masterPath, ".png")}.webp`;
 
     if (encoded.byteLength > HARD_BUDGET_BYTES) {
-        throw new Error(`${name} is ${Math.round(encoded.byteLength / 1024)}KB, over the ${HARD_BUDGET_BYTES / 1024}KB budget`);
+        throw new Error(
+            `${name} is ${Math.round(encoded.byteLength / 1024)}KB, over the ${HARD_BUDGET_BYTES / 1024}KB budget`,
+        );
     }
 
     writeFileSync(join(destinationDir, name), encoded);

@@ -1,5 +1,5 @@
-import { AdwStatusPage } from "@gtkx/jsx/adw";
 import * as Gtk from "@gtkx/gi/gtk";
+import { AdwStatusPage } from "@gtkx/jsx/adw";
 import { GtkButton } from "@gtkx/jsx/gtk";
 
 export const Demo = () => (
