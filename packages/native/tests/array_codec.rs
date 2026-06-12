@@ -225,6 +225,25 @@ fn ptr_to_value_sized_reads_explicit_length() {
 }
 
 #[test]
+fn ptr_to_value_sized_reads_tagged_elements_without_range_guard() {
+    let ty = array_type(
+        tagged_item_type(),
+        ArrayKind::Sized { size_index: 1 },
+        Ownership::Borrowed,
+    );
+    let data: Vec<i32> = vec![0, 1, 2];
+    // SAFETY: `data` provides three contiguous i32 elements, matching the
+    // tagged item's i32 storage.
+    let value =
+        unsafe { ty.ptr_to_value_sized(data.as_ptr() as *mut std::ffi::c_void, 3) }.unwrap();
+    let Value::Array(items) = value else {
+        panic!("expected array")
+    };
+    assert_eq!(items.len(), 3);
+    assert!(matches!(items[2], Value::Number(n) if n == 2.0));
+}
+
+#[test]
 fn array_kind_from_str_parses_every_variant() {
     assert_eq!("array".parse::<ArrayKind>().unwrap(), ArrayKind::Array);
     assert_eq!("glist".parse::<ArrayKind>().unwrap(), ArrayKind::GList);

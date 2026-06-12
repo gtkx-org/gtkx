@@ -9,9 +9,9 @@ use std::str::FromStr as _;
 
 use libffi::middle;
 use native::types::{
-    ArrayKind, ArrayType, BlobType, BooleanType, BoxedType, FfiDecoder, FfiEncoder, FloatKind,
-    FundamentalType, GObjectType, HashTableType, IntegerKind, Ownership, RawPtrCodec, RefType,
-    StringType, StructType, TrampolineType, Type, UnicharType, VoidType,
+    ArrayKind, ArrayType, BigIntKind, BlobType, BooleanType, BoxedType, FfiDecoder, FfiEncoder,
+    FloatKind, FundamentalType, GObjectType, HashTableType, IntegerKind, Ownership, RawPtrCodec,
+    RefType, StringType, StructType, TrampolineType, Type, UnicharType, VoidType,
 };
 use native::value::Value;
 use native::{ffi, value};
@@ -177,6 +177,7 @@ fn trampoline_type() -> TrampolineType {
 #[test]
 fn type_display_renders_every_variant() {
     assert_eq!(Type::Integer(IntegerKind::I32).to_string(), "Integer(I32)");
+    assert_eq!(Type::BigInt(BigIntKind::I64).to_string(), "BigInt(I64)");
     assert_eq!(Type::Float(FloatKind::F64).to_string(), "Float(F64)");
     assert_eq!(
         Type::Tagged(common::enum_tagged()).to_string(),

@@ -714,3 +714,19 @@ fn u64_slice_read_beyond_2_53_errors() {
             .expect("small 64-bit elements convert exactly");
     assert_eq!(values, vec![1.0, 2.0]);
 }
+
+#[test]
+fn i64_slice_read_checked_converts_small_and_rejects_beyond_2_53() {
+    let small: [i64; 3] = [-7, 0, 7];
+    // SAFETY: `small` is a live local array of 3 elements.
+    let values =
+        unsafe { IntegerKind::I64.read_slice_checked(small.as_ptr().cast(), 3, "test slice") }
+            .expect("small 64-bit elements convert exactly");
+    assert_eq!(values, vec![-7.0, 0.0, 7.0]);
+
+    let big: [i64; 1] = [-9_007_199_254_740_993];
+    // SAFETY: `big` is a live local array of 1 element.
+    let err = unsafe { IntegerKind::I64.read_slice_checked(big.as_ptr().cast(), 1, "test slice") }
+        .expect_err("a 64-bit element beyond -2^53 must not round silently");
+    assert!(err.to_string().contains("2^53"));
+}

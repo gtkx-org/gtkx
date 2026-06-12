@@ -197,20 +197,14 @@ mod tests {
     fn encode_accepts_bigint_beyond_2_53() {
         let value = value::Value::BigInt(i128::from(u64::MAX));
         let encoded = BigIntKind::U64.encode(&value, false).expect("encode");
-        match encoded {
-            ffi::FfiValue::U64(v) => assert_eq!(v, u64::MAX),
-            other => panic!("expected U64, got {other:?}"),
-        }
+        assert!(matches!(encoded, ffi::FfiValue::U64(v) if v == u64::MAX));
     }
 
     #[test]
     fn encode_accepts_small_integral_numbers() {
         let value = value::Value::Number(42.0);
         let encoded = BigIntKind::I64.encode(&value, false).expect("encode");
-        match encoded {
-            ffi::FfiValue::I64(v) => assert_eq!(v, 42),
-            other => panic!("expected I64, got {other:?}"),
-        }
+        assert!(matches!(encoded, ffi::FfiValue::I64(42)));
     }
 
     #[test]
@@ -250,10 +244,7 @@ mod tests {
         let encoded = BigIntKind::I64
             .encode(&value::Value::Null, true)
             .expect("encode");
-        match encoded {
-            ffi::FfiValue::I64(v) => assert_eq!(v, 0),
-            other => panic!("expected I64, got {other:?}"),
-        }
+        assert!(matches!(encoded, ffi::FfiValue::I64(0)));
     }
 
     #[test]
@@ -261,10 +252,7 @@ mod tests {
         let decoded = BigIntKind::U64
             .decode(&ffi::FfiValue::U64(u64::MAX))
             .expect("decode");
-        match decoded {
-            value::Value::BigInt(v) => assert_eq!(v, i128::from(u64::MAX)),
-            other => panic!("expected BigInt, got {other:?}"),
-        }
+        assert!(matches!(decoded, value::Value::BigInt(v) if v == i128::from(u64::MAX)));
     }
 
     #[test]
@@ -288,10 +276,7 @@ mod tests {
             let read = BigIntKind::U64
                 .read_from_raw_ptr(slot.as_ptr().cast(), "test")
                 .expect("read");
-            match read {
-                value::Value::BigInt(v) => assert_eq!(v, big),
-                other => panic!("expected BigInt, got {other:?}"),
-            }
+            assert!(matches!(read, value::Value::BigInt(v) if v == big));
         }
     }
 
@@ -313,9 +298,79 @@ mod tests {
         // SAFETY: ptr_to_value reinterprets the pointer value itself and
         // never dereferences it.
         let value = unsafe { BigIntKind::U64.ptr_to_value(ptr, "test") }.expect("convert");
-        match value {
-            value::Value::BigInt(v) => assert_eq!(v, 0x1234),
-            other => panic!("expected BigInt, got {other:?}"),
+        assert!(matches!(value, value::Value::BigInt(v) if v == 0x1234));
+    }
+
+    #[test]
+    fn encode_rejects_non_numeric_value() {
+        let err = BigIntKind::I64
+            .encode(&value::Value::Boolean(true), false)
+            .expect_err("non-numeric");
+        assert!(err.to_string().contains("Expected a BigInt"));
+    }
+
+    #[test]
+    fn encode_rejects_bigint_beyond_i64() {
+        let value = value::Value::BigInt(i128::from(i64::MAX) + 1);
+        let err = BigIntKind::I64.encode(&value, false).expect_err("overflow");
+        assert!(err.to_string().contains("out of range for bigint64"));
+    }
+
+    #[test]
+    fn ffi_type_and_from_cover_both_kinds() {
+        for kind in [BigIntKind::I64, BigIntKind::U64] {
+            assert_eq!(
+                kind.ffi_type().as_raw_ptr(),
+                libffi::Type::from(kind).as_raw_ptr()
+            );
         }
+    }
+
+    #[test]
+    fn decode_i64_produces_exact_bigint() {
+        let decoded = BigIntKind::I64
+            .decode(&ffi::FfiValue::I64(i64::MIN))
+            .expect("decode");
+        assert!(matches!(decoded, value::Value::BigInt(v) if v == i128::from(i64::MIN)));
+    }
+
+    #[test]
+    fn field_write_then_read_round_trips_i64() {
+        let mut slot = [0u8; 8];
+        let big = i128::from(i64::MIN);
+        // SAFETY: The local 8-byte buffer is valid for this kind's write and
+        // read.
+        unsafe {
+            BigIntKind::I64
+                .write_value_to_raw_ptr(slot.as_mut_ptr().cast(), &value::Value::BigInt(big))
+                .expect("write");
+            let read = BigIntKind::I64
+                .read_from_raw_ptr(slot.as_ptr().cast(), "test")
+                .expect("read");
+            assert!(matches!(read, value::Value::BigInt(v) if v == big));
+        }
+    }
+
+    #[test]
+    fn write_return_i64_clamps_invalid_values_to_zero() {
+        let mut slot = [0xFFu8; 8];
+        // SAFETY: The local 8-byte buffer is a valid stand-in for the libffi
+        // return slot.
+        unsafe {
+            BigIntKind::I64.write_return_to_raw_ptr(
+                slot.as_mut_ptr().cast(),
+                &Ok(value::Value::BigInt(i128::from(i64::MAX) + 1)),
+            );
+        }
+        assert_eq!(slot, [0u8; 8]);
+    }
+
+    #[test]
+    fn ptr_to_value_i64_reinterprets_pointer_bits() {
+        let ptr = usize::MAX as *mut std::ffi::c_void;
+        // SAFETY: ptr_to_value reinterprets the pointer value itself and
+        // never dereferences it.
+        let value = unsafe { BigIntKind::I64.ptr_to_value(ptr, "test") }.expect("convert");
+        assert!(matches!(value, value::Value::BigInt(v) if v == -1));
     }
 }
