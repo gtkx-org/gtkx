@@ -24,6 +24,7 @@ export const resolveNotifySignal = (propName: string): string | null => {
 };
 
 const typeNameChainCache = new Map<GType, readonly string[]>();
+const typeNameSetCache = new Map<GType, ReadonlySet<string>>();
 const signalCache = new Map<GType, Map<string, string | null>>();
 const constructOnlyCache = new Map<GType, Map<string, boolean>>();
 const defaultPropCache = new Map<GType, Map<string, DefaultPropLookup>>();
@@ -51,6 +52,23 @@ export const collectTypeNameChain = (gtype: GType): readonly string[] => {
 
     typeNameChainCache.set(gtype, chain);
     return chain;
+};
+
+/**
+ * Whether `name` appears in `gtype`'s ancestry. Backed by a per-GType set of
+ * the names {@link collectTypeNameChain} returns, so repeated membership tests
+ * cost one hash lookup.
+ *
+ * @param gtype - the GLib type whose ancestry to test
+ * @param name - the GLib type name to look for
+ */
+export const typeChainIncludes = (gtype: GType, name: string): boolean => {
+    let names = typeNameSetCache.get(gtype);
+    if (!names) {
+        names = new Set(collectTypeNameChain(gtype));
+        typeNameSetCache.set(gtype, names);
+    }
+    return names.has(name);
 };
 
 const memoize = <T>(

@@ -24,20 +24,16 @@
  */
 import { CONTAINER_SLOTS, ELEMENT_MAP, SLOTS } from "virtual:gtkx-config";
 import type { ElementMapRule, MethodVerb, OrderedInsertVerb, VerbArgs } from "@gtkx/config";
+import type { GType } from "@gtkx/gi/gobject";
 import { notifyOrderedAttach } from "./attach-events.js";
 import type { ElementMapping } from "./element-mapping.js";
-import { collectTypeNameChain } from "./gtype.js";
+import { collectTypeNameChain, typeChainIncludes } from "./gtype.js";
 import type { Instance } from "./instance.js";
 import { callMethod } from "./nodes/internal/reflect-call.js";
 import type { BackingInstance } from "./types.js";
 
 /** Whether `name` appears in `instance`'s GType ancestry. */
-const hasType = (instance: BackingInstance, name: string): boolean => {
-    for (const typeName of collectTypeNameChain(instance.__gtype__)) {
-        if (typeName === name) return true;
-    }
-    return false;
-};
+const hasType = (instance: BackingInstance, name: string): boolean => typeChainIncludes(instance.__gtype__, name);
 
 const exposesMethod = (instance: BackingInstance, method: string): boolean =>
     typeof Reflect.get(instance, method) === "function";
@@ -49,6 +45,38 @@ const ruleMatches = (rule: ElementMapRule, child: Instance, parent: Instance): b
     if (rule.parentType !== undefined) return hasType(parentBacking, rule.parentType);
     if (rule.parentMethod !== undefined) return exposesMethod(parentBacking, rule.parentMethod);
     return false;
+};
+
+/**
+ * Memoizes a `(child, parent)` predicate or lookup by the pair's backing
+ * GTypes. A rule match depends only on the GType ancestries and the methods a
+ * backing class's prototype exposes, all fixed per GType, so a pair's result
+ * never changes once computed. Pairs missing a backing instance resolve to
+ * `absent` and are never cached.
+ *
+ * @param compute - the per-pair computation to memoize
+ * @param absent - the value returned when either side has no backing instance
+ */
+const memoizeByGTypePair = <T>(
+    compute: (child: Instance, parent: Instance) => T,
+    absent: T,
+): ((child: Instance, parent: Instance) => T) => {
+    const cache = new Map<GType, Map<GType, T>>();
+    return (child, parent) => {
+        const childType = child.backingInstance?.__gtype__;
+        const parentType = parent.backingInstance?.__gtype__;
+        if (childType === undefined || parentType === undefined) return absent;
+        let perParent = cache.get(childType);
+        if (!perParent) {
+            perParent = new Map();
+            cache.set(childType, perParent);
+        }
+        const cached = perParent.get(parentType);
+        if (cached !== undefined) return cached;
+        const result = compute(child, parent);
+        perParent.set(parentType, result);
+        return result;
+    };
 };
 
 /** Resolves a verb's argument list, or `null` when the shape cannot be satisfied. */
@@ -88,8 +116,10 @@ const guardHolds = (verb: MethodVerb, child: Instance, parent: Instance): boolea
     return typeof getter === "function" && Reflect.apply(getter, subject, []) === counterpart;
 };
 
-const buildMethodMapping = (rule: ElementMapRule, verb: MethodVerb): ElementMapping => ({
-    matches: (child, parent) => ruleMatches(rule, child, parent),
+type RuleMatcher = (child: Instance, parent: Instance) => boolean;
+
+const buildMethodMapping = (verb: MethodVerb, matches: RuleMatcher): ElementMapping => ({
+    matches,
     attach: (child, parent) => {
         const args = resolveArgs(verb.attachArgs, child);
         if (args) callVerb(parent, verb.attach, args);
@@ -154,8 +184,8 @@ const isPlacedBefore = (
 
 type OrderedInsertState = { parent: BackingInstance };
 
-const buildOrderedInsertMapping = (rule: ElementMapRule, verb: OrderedInsertVerb): ElementMapping => ({
-    matches: (child, parent) => ruleMatches(rule, child, parent),
+const buildOrderedInsertMapping = (verb: OrderedInsertVerb, matches: RuleMatcher): ElementMapping => ({
+    matches,
     attach: (child, parent, anchor) => {
         const childBacking = child.backingInstance;
         const parentBacking = parent.backingInstance;
@@ -185,12 +215,17 @@ const buildOrderedInsertMapping = (rule: ElementMapRule, verb: OrderedInsertVerb
 /**
  * Compiles one element-map rule into an {@link "./element-mapping".ElementMapping}.
  * The returned mapping's `attach`/`detach` are the generic interpreter bound
- * to the row's data, never relationship-specific code.
+ * to the row's data, never relationship-specific code; its `matches` is the
+ * row predicate memoized per GType pair through {@link memoizeByGTypePair}.
  *
  * @param rule - The data row to interpret.
  */
-const buildRuleMapping = (rule: ElementMapRule): ElementMapping =>
-    rule.verb.kind === "method" ? buildMethodMapping(rule, rule.verb) : buildOrderedInsertMapping(rule, rule.verb);
+const buildRuleMapping = (rule: ElementMapRule): ElementMapping => {
+    const matches = memoizeByGTypePair((child, parent) => ruleMatches(rule, child, parent), false);
+    return rule.verb.kind === "method"
+        ? buildMethodMapping(rule.verb, matches)
+        : buildOrderedInsertMapping(rule.verb, matches);
+};
 
 type CompiledRule = { readonly rule: ElementMapRule; readonly mapping: ElementMapping };
 
@@ -205,8 +240,10 @@ const COMPILED_RULES: readonly CompiledRule[] = ELEMENT_MAP.map((rule) => ({
  */
 export const DATA_ATTACH_MAPPINGS: readonly ElementMapping[] = COMPILED_RULES.map(({ mapping }) => mapping);
 
-const findCompiledRule = (child: Instance, parent: Instance): CompiledRule | undefined =>
-    COMPILED_RULES.find(({ mapping }) => mapping.matches(child, parent));
+const findCompiledRule = memoizeByGTypePair<CompiledRule | null>(
+    (child, parent) => COMPILED_RULES.find(({ mapping }) => mapping.matches(child, parent)) ?? null,
+    null,
+);
 
 /**
  * The first compiled element-map rule whose row matches the `(child, parent)`
@@ -260,10 +297,10 @@ const displayName = (instance: Instance): string =>
  * project-declared `elementMap` rows) keep attaching as children.
  */
 export const promotedNestingGuardMapping: ElementMapping = {
-    matches: (child, parent) => {
+    matches: memoizeByGTypePair((child, parent) => {
         const compiled = findCompiledRule(child, parent);
-        return compiled !== undefined && promotedPropFor(compiled.rule, parent) !== null;
-    },
+        return compiled !== null && promotedPropFor(compiled.rule, parent) !== null;
+    }, false),
     attach: (child, parent) => {
         const compiled = findCompiledRule(child, parent);
         const prop = compiled ? promotedPropFor(compiled.rule, parent) : null;

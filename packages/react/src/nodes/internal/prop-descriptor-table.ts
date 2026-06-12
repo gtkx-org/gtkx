@@ -23,14 +23,12 @@ import type {
     SetterPropStep,
     VirtualPropRow,
 } from "@gtkx/config";
+import type { GType } from "@gtkx/gi/gobject";
 import { runCallSteps } from "../../array-props.js";
 import { collectTypeNameChain } from "../../gtype.js";
 import type { Instance } from "../../instance.js";
 import { imperative, type PropDescriptorTable, signal } from "./apply-props.js";
 import { callMethod } from "./reflect-call.js";
-
-/** Builds the descriptor set a single GType contributes to an instance. */
-type DescriptorFactory = (instance: Instance) => PropDescriptorTable;
 
 const satisfiesCondition = (value: unknown, condition: PropCondition | undefined): boolean => {
     if (condition === undefined) return true;
@@ -70,8 +68,7 @@ const addSetterGroup = (table: PropDescriptorTable, instance: Instance, group: S
     }
 };
 
-const buildRuleTable = (instance: Instance, rules: readonly PropRule[]): PropDescriptorTable => {
-    const table: PropDescriptorTable = {};
+const addRuleRows = (table: PropDescriptorTable, instance: Instance, rules: readonly PropRule[]): void => {
     for (const rule of rules) {
         if (rule.kind === "setters") {
             addSetterGroup(table, instance, rule);
@@ -82,7 +79,6 @@ const buildRuleTable = (instance: Instance, rules: readonly PropRule[]): PropDes
             returnValue: rule.returnValue,
         });
     }
-    return table;
 };
 
 const objectPropDescriptor = (instance: Instance, prop: string, row: ObjectPropRow): PropDescriptorTable[string] =>
@@ -107,7 +103,7 @@ const virtualPropDescriptor = (instance: Instance, prop: string, row: VirtualPro
 
 type TableBuilder = (instance: Instance, table: PropDescriptorTable) => void;
 
-const buildDataFactories = (): Record<string, DescriptorFactory> => {
+const buildTypeNameBuilders = (): Record<string, readonly TableBuilder[]> => {
     const builders: Record<string, TableBuilder[]> = {};
     const push = (typeName: string, builder: TableBuilder): void => {
         const typeBuilders = builders[typeName] ?? [];
@@ -116,7 +112,7 @@ const buildDataFactories = (): Record<string, DescriptorFactory> => {
     };
     for (const [typeName, rules] of Object.entries(PROP_RULES)) {
         push(typeName, (instance, table) => {
-            Object.assign(table, buildRuleTable(instance, rules));
+            addRuleRows(table, instance, rules);
         });
     }
     for (const [typeName, props] of Object.entries(OBJECT_PROPS)) {
@@ -129,42 +125,51 @@ const buildDataFactories = (): Record<string, DescriptorFactory> => {
             for (const [prop, row] of Object.entries(props)) table[prop] = virtualPropDescriptor(instance, prop, row);
         });
     }
-    const factories: Record<string, DescriptorFactory> = {};
-    for (const [typeName, typeBuilders] of Object.entries(builders)) {
-        factories[typeName] = (instance) => {
-            const table: PropDescriptorTable = {};
-            for (const builder of typeBuilders) builder(instance, table);
-            return table;
-        };
-    }
-    return factories;
+    return builders;
 };
 
 /**
- * Maps a GLib type name to the prop descriptors merged for any instance whose
- * GType ancestry includes that type.
+ * Maps a GLib type name to the table builders that type contributes to any
+ * instance whose GType ancestry includes it.
  */
-const PROP_DESCRIPTOR_TABLE: Readonly<Record<string, DescriptorFactory>> = buildDataFactories();
+const BUILDERS_BY_TYPE_NAME: Readonly<Record<string, readonly TableBuilder[]>> = buildTypeNameBuilders();
+
+const buildersByGType = new Map<GType, readonly TableBuilder[]>();
+
+/**
+ * Resolves the table builders a GType's full ancestry contributes, ordered
+ * least-derived first so a more derived type's rows overwrite an ancestor's
+ * when both name the same prop. Cached per GType.
+ */
+const getBuilders = (gtype: GType): readonly TableBuilder[] => {
+    const cached = buildersByGType.get(gtype);
+    if (cached) return cached;
+    const builders: TableBuilder[] = [];
+    for (const typeName of collectTypeNameChain(gtype).toReversed()) {
+        const typeBuilders = BUILDERS_BY_TYPE_NAME[typeName];
+        if (typeBuilders) builders.push(...typeBuilders);
+    }
+    buildersByGType.set(gtype, builders);
+    return builders;
+};
 
 const tableCache = new WeakMap<Instance, PropDescriptorTable>();
 
 /**
  * Returns the signal/imperative prop descriptors for `instance`, merged across
  * its backing GObject's GType ancestry (most-derived entries win). Cached per
- * instance, since each factory closes over the instance.
+ * instance, since each descriptor closes over the instance; the builder list
+ * itself is cached per GType.
  *
  * @param instance - The reconciler instance whose descriptors to resolve.
  */
 export const getPropDescriptors = (instance: Instance): PropDescriptorTable => {
     const cached = tableCache.get(instance);
     if (cached) return cached;
-    let table: PropDescriptorTable = {};
+    const table: PropDescriptorTable = {};
     const backing = instance.backingInstance;
     if (backing) {
-        for (const typeName of collectTypeNameChain(backing.__gtype__)) {
-            const factory = PROP_DESCRIPTOR_TABLE[typeName];
-            if (factory) table = { ...factory(instance), ...table };
-        }
+        for (const builder of getBuilders(backing.__gtype__)) builder(instance, table);
     }
     tableCache.set(instance, table);
     return table;

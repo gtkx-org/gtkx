@@ -173,8 +173,7 @@ static BINDING_LOOKUP_LOCK: Mutex<()> = Mutex::new(());
 /// Applies a strong/weak level to the wrapper's `napi_ref`, issuing the
 /// counted reference operation only when the level actually changes.
 fn apply_wrapper_level(binding: &WrapperBinding, ref_ptr: *mut c_void, strong: bool) {
-    let bisect_skip_guard = std::env::var_os("GTKX_BISECT_NO_LEVEL_GUARD").is_some();
-    if binding.wrapper_strong.swap(strong, Ordering::AcqRel) == strong && !bisect_skip_guard {
+    if binding.wrapper_strong.swap(strong, Ordering::AcqRel) == strong {
         return;
     }
     let op = if strong {

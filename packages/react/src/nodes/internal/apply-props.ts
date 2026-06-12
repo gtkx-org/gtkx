@@ -221,27 +221,35 @@ const collectGenericChanges = (
     exclude: ((name: string) => boolean) | undefined,
 ): { pendingSignals: PendingSignal[]; pendingProperties: PendingProperty[] } => {
     const { container, oldProps, newProps, table, arrayProps } = context;
-    const names = new Set([...Object.keys(oldProps ?? {}), ...Object.keys(newProps)]);
     const constructionApplied = oldProps === null;
     const pendingSignals: PendingSignal[] = [];
     const pendingProperties: PendingProperty[] = [];
 
-    for (const name of names) {
-        if (name === "children" || name in table || arrayProps.has(name) || exclude?.(name)) continue;
-        if (isConstructOnlyProp(container, name)) continue;
+    const collect = (name: string): void => {
+        if (name === "children" || name in table || arrayProps.has(name) || exclude?.(name)) return;
+        if (isConstructOnlyProp(container, name)) return;
 
         const oldValue = oldProps?.[name];
         const newValue = newProps[name];
-        if (propsEqual(oldValue, newValue)) continue;
+        if (propsEqual(oldValue, newValue)) return;
 
         const signalName = resolveSignal(container, name);
         if (signalName) {
             pendingSignals.push({ signalName, newValue });
-            continue;
+            return;
         }
-        if (constructionApplied) continue;
+        if (constructionApplied) return;
         const pending = resolvePendingProperty(container, name, oldValue, newValue);
         if (pending) pendingProperties.push(pending);
+    };
+
+    if (oldProps) {
+        for (const name in oldProps) collect(name);
+        for (const name in newProps) {
+            if (!(name in oldProps)) collect(name);
+        }
+    } else {
+        for (const name in newProps) collect(name);
     }
 
     return { pendingSignals, pendingProperties };
