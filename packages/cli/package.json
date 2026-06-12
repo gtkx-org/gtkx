@@ -84,7 +84,7 @@
         "citty": "^0.2.2",
         "ejs": "^6.0.1",
         "fast-xml-parser": "^5.8.0",
-        "nypm": "^0.6.6",
+        "nypm": "^0.6.7",
         "react-refresh": "^0.18.0",
         "tinyexec": "^1.2.4",
         "typescript": "^6.0.3",
