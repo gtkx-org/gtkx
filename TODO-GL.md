@@ -128,13 +128,13 @@ nothing that varies in practice.
 
 ### Packaging
 
-- [ ] Generator runs as a repo-level script (dev-time), emitting `packages/gl/src/`; output is
+- [x] Generator runs as a repo-level script (dev-time), emitting `packages/gl/src/`; output is
       committed and reviewed like any source change. No `gtkx.config.ts` section, no store
       wiring, no fingerprint coupling, no per-app codegen cost.
-- [ ] Vendor `packages/codegen/registry/gl.xml` (pinned commit + Apache-2.0 license text).
-- [ ] Selection fixed at `api=gl, version=4.6, profile=core` (657 commands / 1,367 enums).
+- [x] Vendor `packages/codegen/registry/gl.xml` (pinned commit + Apache-2.0 license text).
+- [x] Selection fixed at `api=gl, version=4.6, profile=core` (657 commands / 1,367 enums).
       Revisit per-app selection only if api/version/profile choice genuinely varies per app.
-- [ ] Replacing 44 WebGL-flavored exports with the generated surface is a semver event for a
+- [x] Replacing 44 WebGL-flavored exports with the generated surface is a semver event for a
       published package — version it deliberately.
 
 ### Generator (new `packages/codegen/src/khronos/`, ~650 lines total)
@@ -182,35 +182,35 @@ GLib container/transfer/introspection concepts with no GL analog. Reused wholesa
 
 ### Transforms and grafts (the agreed design)
 
-- [ ] Six annotation-driven transforms only: prefix strip (`glClearColor` → `clearColor`,
+- [x] Six annotation-driven transforms only: prefix strip (`glClearColor` → `clearColor`,
       `GL_COLOR_BUFFER_BIT` → `COLOR_BUFFER_BIT`, keep prefix for digit-leading names), the
       scalar table, string codecs, `len`-array codecs, out-`Ref` codecs, `t.blob`. Nothing
       per-command; unclassifiable shapes fail at codegen time.
-- [ ] **Curated byte-offset table** (one small data table, pinned-registry safe): the
+- [x] **Curated byte-offset table** (one small data table, pinned-registry safe): the
       `glVertexAttribPointer`/`glVertexAttribIPointer`/`glVertexAttribLPointer` `pointer`
       params and the `glDraw*Elements*`/indirect families' `indices` params are typed as
       plain `number` byte offsets — never `ArrayBufferView`. Removes the worst raw-GL footgun
       (a typed array silently becoming a dangling client pointer at a draw call). Reserve
       `t.blob` for genuine data params.
-- [ ] **Derived singulars**: `createBuffer(): number` / `deleteBuffer(name)` generated
+- [x] **Derived singulars**: `createBuffer(): number` / `deleteBuffer(name)` generated
       mechanically from the `n` + `len="n"` + `class` annotations on the gen/delete plural
       commands. Data-driven, zero hand lists; preserves the ergonomics every consumer uses.
-- [ ] **Single-valued object-query carve-out**: generate `glGetShaderiv`/`glGetProgramiv`/
+- [x] **Single-valued object-query carve-out**: generate `glGetShaderiv`/`glGetProgramiv`/
       `glGetBufferParameteriv` (and family) despite their `len="COMPSIZE(pname)"` — they are
       the info-log workflow's prerequisite. The general `COMPSIZE(pname)` *out* rule stays an
       exclusion (it is what makes `glGetIntegerv(GL_VIEWPORT)` a heap-corruption hazard).
-- [ ] **Hand-written companion module** inside `packages/gl` (not generated): info-log helpers
+- [x] **Hand-written companion module** inside `packages/gl` (not generated): info-log helpers
       (`getShaderInfoLog(shader): string` with the two-call dance), `debugMessageCallback`
       wrapper forcing `GL_DEBUG_OUTPUT_SYNCHRONOUS`, sync helpers. Keeps the existing test
       contract for cold paths.
-- [ ] **Generator-time assertion** that generated and hand-written export name sets are
+- [x] **Generator-time assertion** that generated and hand-written export name sets are
       disjoint (a star-export collision drops exports silently in ESM), plus an
       exclusion-count report in the codegen output.
-- [ ] Enum groups → open type aliases; bitmask groups stay OR-composable `number`. Handles
+- [x] Enum groups → open type aliases; bitmask groups stay OR-composable `number`. Handles
       stay plain `number` (no branding — `class` covers only 860 of 10,953 params).
-- [ ] Aliases: no folding logic; emit the names the selected sets require, each binding its
+- [x] Aliases: no folding logic; emit the names the selected sets require, each binding its
       own symbol (the loader stack resolves both).
-- [ ] JSDoc synthesized per export: verbatim C prototype, per-param registry metadata
+- [x] JSDoc synthesized per export: verbatim C prototype, per-param registry metadata
       (`group`/`len`/`class`), providing feature/extension, Khronos refpage link. gl.xml
       carries no prose; the generator invents none.
 
@@ -223,6 +223,21 @@ GLib container/transfer/introspection concepts with no GL analog. Reused wholesa
 | `glMapBufferRange` bulk access | no native memcpy primitive | `bufferSubData`/`getBufferSubData` (both usable via `t.blob`) |
 | `T*` outs with `len="COMPSIZE(pname)"` except the single-valued carve-out | not machine-evaluable; vector forms corrupt memory | per-need additions |
 | `gles1`, `glsc2` | no consumer; GTK never creates such contexts | — |
+
+### Implementation notes (Phases 1–2, shipped)
+
+- The selection resolves to **656 commands / 1,363 enums** against the vendored registry
+  (commit `77ccc142`, two independent implementations agree); the section-2 numbers came from
+  a different counting. 612 commands are emitted, 27 singulars derived, 44 excluded with
+  reasons, and `GL_TIMEOUT_IGNORED` is the only skipped enum.
+- Out-parameters follow the `@gtkx/gi` convention instead of the `Ref<T>` cells in the type
+  table above: outputs are dropped from the signature, marshalled through internal cells, and
+  returned — bare for a single output with a `void` C return, otherwise as a tuple of the
+  wrapped C return followed by each output (`getShaderiv(shader, pname): GLint`,
+  `genBuffers(n): GLuint[]`, `getShaderSource(shader, bufSize): [GLsizei, string]`).
+- The GL contract suite pins a desktop context via `setAllowedApis(Gdk.GLAPI.GL)` (GTK
+  otherwise negotiates GLES 3.2 under Xvfb; llvmpipe serves 4.5 core) and fails hard when no
+  context is available, replacing the silent-skip gate.
 
 ## 6. Phase 0: native prerequisites (before the generator is useful)
 
@@ -267,19 +282,19 @@ GLib container/transfer/introspection concepts with no GL analog. Reused wholesa
 
 ## 8. Open decisions
 
-- [ ] Confirm the dev-time-generation packaging model (vs per-app `.gtkx` store generation —
+- [x] Confirm the dev-time-generation packaging model (vs per-app `.gtkx` store generation —
       the rejected alternative needs: config `gl:` section + validators, `store-resolver.ts`
       third store, `run-codegen.ts` wipe/staleness/prune updates, fingerprint sentinel,
       vitest inline-regex `gl` entry, knip `.gtkx/gl` entry, registry in the npm tarball).
-- [ ] API contract: accept the call-site break (positional `uniform4f`, 5-arg
+- [x] API contract: accept the call-site break (positional `uniform4f`, 5-arg
       `vertexAttribPointer` + offset, explicit-size `bufferData(target, byteLength, view, usage)`,
       `Ref` cells where no carve-out applies) and the semver bump it implies.
-- [ ] Naming: `clearColor` (prefix-stripped, matches every existing call site) vs verbatim
+- [x] Naming: `clearColor` (prefix-stripped, matches every existing call site) vs verbatim
       `glClearColor`. Note `useProgram` keeps tripping Biome's hook lint at call sites.
-- [ ] Whether GLES 3.2 signatures ship at launch or desktop-only suffices.
-- [ ] BigInt/u64 policy timing; branded handles ruled out for v1 (retrofitting later is
+- [x] Whether GLES 3.2 signatures ship at launch or desktop-only suffices.
+- [x] BigInt/u64 policy timing; branded handles ruled out for v1 (retrofitting later is
       breaking — accept that).
-- [ ] Docs: GL guide page under `website/docs/` + sidebar entry; whether the generated package
+- [x] Docs: GL guide page under `website/docs/` + sidebar entry; whether the generated package
       joins TypeDoc (precedent: generated packages are excluded).
 
 ## 9. Phased plan (~2 weeks total)

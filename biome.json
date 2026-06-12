@@ -88,6 +88,19 @@
             }
         },
         {
+            "includes": ["packages/gl/src/generated/**"],
+            "linter": {
+                "rules": {
+                    "complexity": {
+                        "useMaxParams": "off"
+                    },
+                    "style": {
+                        "useNamingConvention": "off"
+                    }
+                }
+            }
+        },
+        {
             "includes": [
                 "packages/codegen/src/templates/**",
                 "packages/ffi/src/cairo.ts",

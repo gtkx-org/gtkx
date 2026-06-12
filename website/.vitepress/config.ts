@@ -85,6 +85,7 @@ export default defineConfig({
                         { text: "FFI bindings", link: "/docs/ffi-bindings" },
                         { text: "Styling and CSS", link: "/docs/styling" },
                         { text: "Portals", link: "/docs/portals" },
+                        { text: "OpenGL", link: "/docs/opengl" },
                         { text: "Testing", link: "/docs/testing" },
                     ],
                 },

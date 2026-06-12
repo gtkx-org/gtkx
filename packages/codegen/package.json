@@ -38,6 +38,7 @@
     ],
     "scripts": {
         "build": "tsc -b",
+        "codegen:gl": "node --import tsx scripts/generate-gl.ts && biome check --write ../gl/src/generated",
         "test": "vitest run",
         "typecheck": "tsc -b --emitDeclarationOnly"
     },

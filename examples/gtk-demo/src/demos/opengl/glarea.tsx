@@ -5,6 +5,7 @@ import { GtkBox, GtkButton, GtkGLArea, GtkLabel, GtkScale } from "@gtkx/jsx/gtk"
 import { useAdjustment } from "@gtkx/react";
 import { useRef, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
+import { bufferFloatData, setShaderSource } from "./gl-helpers.js";
 import sourceCode from "./glarea.tsx?raw";
 
 const VERTEX_SHADER_GL = `#version 330
@@ -89,7 +90,7 @@ const createRotationMatrix = (rx: number, ry: number, rz: number): number[] => {
 
 const compileShader = (type: number, source: string, name: string): number => {
     const shader = gl.createShader(type);
-    gl.shaderSource(shader, source);
+    setShaderSource(shader, source);
     gl.compileShader(shader);
     if (!gl.getShaderiv(shader, gl.COMPILE_STATUS)) {
         const log = gl.getShaderInfoLog(shader);
@@ -133,11 +134,11 @@ const initGL = (api: Gdk.GLAPI): GLState => {
 
     const vbo = gl.genBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-    gl.bufferData(gl.ARRAY_BUFFER, VERTEX_DATA, gl.STATIC_DRAW);
+    bufferFloatData(gl.ARRAY_BUFFER, VERTEX_DATA, gl.STATIC_DRAW);
 
-    gl.vertexAttribPointer(0, { size: 4, type: gl.FLOAT, normalized: false, stride: 8 * 4, offset: 0 });
+    gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 8 * 4, 0);
     gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(1, { size: 4, type: gl.FLOAT, normalized: false, stride: 8 * 4, offset: 4 * 4 });
+    gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 8 * 4, 4 * 4);
     gl.enableVertexAttribArray(1);
 
     const mvpLocation = gl.getUniformLocation(program, "mvp");

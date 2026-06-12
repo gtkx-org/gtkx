@@ -24,7 +24,7 @@
         },
         "packages/codegen": {
             "includeEntryExports": true,
-            "project": ["src/**/*.ts!", "!src/templates/**"]
+            "project": ["src/**/*.ts!", "scripts/**/*.ts!", "!src/templates/**"]
         },
         "packages/config": {
             "includeEntryExports": true,

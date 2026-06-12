@@ -16,6 +16,7 @@ import {
 import { useTickCallback } from "@gtkx/react";
 import { useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
+import { bufferFloatData, setShaderSource } from "./gl-helpers.js";
 import sourceCode from "./shadertoy.tsx?raw";
 
 const VERTEX_SHADER_SOURCE =
@@ -1169,11 +1170,11 @@ const releaseShaderState = (glStateRef: React.RefObject<GLState | null>) => {
 
 const compileShaderProgram = (shaderCode: string): GLState => {
     const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-    gl.shaderSource(vertexShader, buildVertexSource());
+    setShaderSource(vertexShader, buildVertexSource());
     gl.compileShader(vertexShader);
 
     const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-    gl.shaderSource(fragmentShader, buildFragmentSource(shaderCode));
+    setShaderSource(fragmentShader, buildFragmentSource(shaderCode));
     gl.compileShader(fragmentShader);
 
     const program = gl.createProgram();
@@ -1191,7 +1192,7 @@ const compileShaderProgram = (shaderCode: string): GLState => {
 
     const vbo = gl.genBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-    gl.bufferData(gl.ARRAY_BUFFER, QUAD_VERTICES, gl.STATIC_DRAW);
+    bufferFloatData(gl.ARRAY_BUFFER, QUAD_VERTICES, gl.STATIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER, 0);
     gl.bindVertexArray(0);
 
@@ -1220,11 +1221,11 @@ const drawShaderFrame = (state: GLState, anim: AnimState, res: [number, number, 
     if (state.uniforms.time >= 0) gl.uniform1f(state.uniforms.time, anim.time);
     if (state.uniforms.timedelta >= 0) gl.uniform1f(state.uniforms.timedelta, anim.timedelta);
     if (state.uniforms.frame >= 0) gl.uniform1i(state.uniforms.frame, anim.frame);
-    if (state.uniforms.mouse >= 0) gl.uniform4f(state.uniforms.mouse, { v0: 0, v1: 0, v2: 0, v3: 0 });
+    if (state.uniforms.mouse >= 0) gl.uniform4f(state.uniforms.mouse, 0, 0, 0, 0);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, state.vbo);
     gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, { size: 4, type: gl.FLOAT, normalized: false, stride: 0, offset: 0 });
+    gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 0, 0);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
@@ -1343,7 +1344,7 @@ const compileShadertoyShader = ({ glAreaRef, glStateRef, animRef, imageShader }:
 
 const compileShadertoyFragment = (area: Gtk.GLArea, imageShader: string): number | null => {
     const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-    gl.shaderSource(fragmentShader, buildFragmentSource(imageShader));
+    setShaderSource(fragmentShader, buildFragmentSource(imageShader));
     gl.compileShader(fragmentShader);
     if (gl.getShaderiv(fragmentShader, gl.COMPILE_STATUS) === 0) {
         const log = gl.getShaderInfoLog(fragmentShader);
@@ -1356,7 +1357,7 @@ const compileShadertoyFragment = (area: Gtk.GLArea, imageShader: string): number
 
 const compileShadertoyVertex = (): number | null => {
     const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-    gl.shaderSource(vertexShader, buildVertexSource());
+    setShaderSource(vertexShader, buildVertexSource());
     gl.compileShader(vertexShader);
     if (gl.getShaderiv(vertexShader, gl.COMPILE_STATUS) === 0) {
         gl.deleteShader(vertexShader);
@@ -1431,16 +1432,11 @@ const drawShadertoyFrame = (state: GLState, anim: AnimState, resolution: [number
     if (state.uniforms.timedelta >= 0) gl.uniform1f(state.uniforms.timedelta, anim.timedelta);
     if (state.uniforms.frame >= 0) gl.uniform1i(state.uniforms.frame, anim.frame);
     if (state.uniforms.mouse >= 0)
-        gl.uniform4f(state.uniforms.mouse, {
-            v0: anim.mouse[0],
-            v1: anim.mouse[1],
-            v2: anim.mouse[2],
-            v3: anim.mouse[3],
-        });
+        gl.uniform4f(state.uniforms.mouse, anim.mouse[0], anim.mouse[1], anim.mouse[2], anim.mouse[3]);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, state.vbo);
     gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, { size: 4, type: gl.FLOAT, normalized: false, stride: 0, offset: 0 });
+    gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 0, 0);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 

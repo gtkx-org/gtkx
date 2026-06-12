@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLatest } from "../../use-latest.js";
 import type { Demo } from "../types.js";
 import sourceCode from "./gears.tsx?raw";
+import { bufferFloatData, setShaderSource } from "./gl-helpers.js";
 
 const VERTEX_SHADER = `#version 300 es
 precision highp float;
@@ -335,11 +336,11 @@ const GEAR_PARAMS = [
 
 const createGearsProgram = (): number => {
     const vs = gl.createShader(gl.VERTEX_SHADER);
-    gl.shaderSource(vs, VERTEX_SHADER);
+    setShaderSource(vs, VERTEX_SHADER);
     gl.compileShader(vs);
 
     const fs = gl.createShader(gl.FRAGMENT_SHADER);
-    gl.shaderSource(fs, FRAGMENT_SHADER);
+    setShaderSource(fs, FRAGMENT_SHADER);
     gl.compileShader(fs);
 
     const program = gl.createProgram();
@@ -377,7 +378,7 @@ const createGearBuffers = () => {
         });
         const vbo = gl.genBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-        gl.bufferData(gl.ARRAY_BUFFER, gear.vertices, gl.STATIC_DRAW);
+        bufferFloatData(gl.ARRAY_BUFFER, gear.vertices, gl.STATIC_DRAW);
         gearVbos.push(vbo);
         gearGeoms.push(gear);
     }
@@ -389,7 +390,7 @@ function initGL(): GLState {
     const program = createGearsProgram();
     const uniforms = collectUniforms(program);
 
-    gl.uniform4f(uniforms.lightSourcePosition, { v0: 5, v1: 5, v2: 10, v3: 1 });
+    gl.uniform4f(uniforms.lightSourcePosition, 5, 5, 10, 1);
 
     const vao = gl.genVertexArray();
     gl.bindVertexArray(vao);
@@ -423,16 +424,11 @@ function drawGear(params: DrawGearParams) {
     const normalMatrix = mat4Transpose(mat4Invert(modelView));
     gl.uniformMatrix4fv(uniforms.normalMatrix, 1, false, normalMatrix);
 
-    gl.uniform4f(uniforms.materialColor, {
-        v0: color[0] ?? 0,
-        v1: color[1] ?? 0,
-        v2: color[2] ?? 0,
-        v3: color[3] ?? 0,
-    });
+    gl.uniform4f(uniforms.materialColor, color[0] ?? 0, color[1] ?? 0, color[2] ?? 0, color[3] ?? 0);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-    gl.vertexAttribPointer(0, { size: 3, type: gl.FLOAT, normalized: false, stride: 6 * 4, offset: 0 });
-    gl.vertexAttribPointer(1, { size: 3, type: gl.FLOAT, normalized: false, stride: 6 * 4, offset: 3 * 4 });
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 6 * 4, 0);
+    gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 6 * 4, 3 * 4);
     gl.enableVertexAttribArray(0);
     gl.enableVertexAttribArray(1);
 
