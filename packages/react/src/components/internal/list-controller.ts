@@ -387,7 +387,7 @@ export class ListController implements ColumnHost {
     private onFactoryBind(obj: GObject.Object, isTree: boolean): void {
         const listItem = this.lifecycleListItem(obj);
         if (!listItem) return;
-        const position = listItem.getPosition();
+        const position = this.resolveBindPosition(listItem);
 
         if (isTree) {
             this.bindTreeListItem(listItem, position);
@@ -396,6 +396,20 @@ export class ListController implements ColumnHost {
         }
 
         this.queueBoundItemsUpdate();
+    }
+
+    /**
+     * Resolves the flat position a factory binding addresses. Dropdown-like
+     * widgets resolve through the bound object's identity because
+     * `Adw.ComboRow` binds its selected-item display without assigning the
+     * list item a position, leaving `getPosition()` stuck at `0`.
+     */
+    private resolveBindPosition(listItem: Gtk.ListItem): number {
+        const position = listItem.getPosition();
+        if (!this.isDropDown() || this.isUncontrolled()) return position;
+        const item = listItem.getItem();
+        if (!item) return position;
+        return this.modelController.positionOf(item) ?? position;
     }
 
     private bindTreeListItem(listItem: Gtk.ListItem, position: number): void {

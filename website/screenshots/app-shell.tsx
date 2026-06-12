@@ -1,6 +1,5 @@
-import { AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/react";
+import { AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
 import type { ReactNode } from "react";
-import { noop } from "./data";
 
 export interface AppShellProps {
     title?: string;
@@ -8,6 +7,7 @@ export interface AppShellProps {
     height?: number;
     headerStart?: ReactNode;
     headerEnd?: ReactNode;
+    actions?: ReactNode;
     children: ReactNode;
 }
 
@@ -17,9 +17,10 @@ export const AppShell = ({
     height = 500,
     headerStart,
     headerEnd,
+    actions,
     children,
 }: AppShellProps) => (
-    <AdwApplicationWindow title={title} defaultWidth={width} defaultHeight={height} onClose={noop}>
+    <AdwApplicationWindow title={title} defaultWidth={width} defaultHeight={height} addAction={actions}>
         <AdwToolbarView
             addTopBar={
                 <AdwHeaderBar packStart={headerStart ? headerStart : null} packEnd={headerEnd ? headerEnd : null} />

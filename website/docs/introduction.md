@@ -1,34 +1,86 @@
-# Introduction
+# What is GTKX?
 
-Developing native applications for Linux has traditionally been a complex and repetitive process, requiring imperative UI management, complex state synchronization, slow feedback loop, and a limited ecosystem of libraries. GTKX addresses these challenges by providing a React reconciler that renders to GTK4 widgets, and runs natively on vanilla Node.js thanks to a custom Rust/napi-rs native module. This allows you to leverage the immense ecosystem of React/Node.js libraries and tools while building rich, native applications that integrate seamlessly with the Linux desktop.
+GTKX is native Linux application development for the modern age: React 19 and TypeScript on one side, real GTK4 and Libadwaita widgets on the other, and vanilla Node.js underneath. There is no Electron and no WebView — a custom React reconciler renders your components directly to GObject widgets through a Rust native module, so what you ship is a genuine GTK application with the full npm ecosystem behind it.
 
-## What you get
+This is what a GTKX app looks like:
 
-- **Familiar React API** — Build your UI with the component model and hooks you already know
-- **Native performance** — Runs on vanilla Node.js ensuring maximum compatibility with the NPM ecosystem
-- **TypeScript support** — Full type safety with auto-generated bindings for GTK4 and many GLib libraries
-- **Rich GTK ecosystem** — Access to the full range of GTK4 widgets and GLib/GObject libraries, including Adwaita
-- **Fast development** — HMR powered by Vite for a smooth development experience
-- **Easy styling** — Style your application with GTK CSS using Emotion's CSS-in-JS API
-- **Testing tools** — Testing Library-inspired API for testing components and end-to-end scenarios
+```tsx
+// src/app.tsx
+import { applicationId } from "@gtkx/config/runtime";
+import * as Gtk from "@gtkx/gi/gtk";
+import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { quit } from "@gtkx/react";
+import { useState } from "react";
+
+const MainWindow = () => {
+    const [count, setCount] = useState(0);
+
+    return (
+        <GtkApplicationWindow
+            title="My App"
+            defaultWidth={400}
+            defaultHeight={300}
+            onCloseRequest={() => {
+                quit();
+                return true;
+            }}
+        >
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} valign={Gtk.Align.CENTER}>
+                <GtkLabel label={`Count: ${count}`} cssClasses={["title-2"]} />
+                <GtkButton
+                    label="Increment"
+                    onClicked={() => setCount((c) => c + 1)}
+                    cssClasses={["suggested-action", "pill"]}
+                />
+            </GtkBox>
+        </GtkApplicationWindow>
+    );
+};
+
+export const App = () => (
+    <GtkApplication applicationId={applicationId}>
+        <MainWindow />
+    </GtkApplication>
+);
+```
+
+The same model scales to full applications. This is the Notes app you build in the [tutorial](/docs/tutorial/1-window-and-header-bar) — Libadwaita navigation, menus, shortcuts, dialogs, and settings, all in React:
+
+![The tutorial Notes app](/media/notes-light.webp){.light-only}
+![The tutorial Notes app](/media/notes-dark.webp){.dark-only}
 
 ## How it works
 
-GTKX uses a multi-layer architecture to bridge the gap between React and GTK:
+GTKX is a stack of small layers. A state update at the top becomes a widget call at the bottom:
 
 ```
-Your app (JSX intrinsic elements)
+Your app (JSX)
  ↓
 @gtkx/react (reconciler)
  ↓
-@gtkx/gi (generated TypeScript bindings)
+@gtkx/gi (generated bindings)
  ↓
-@gtkx/ffi (runtime + GValue/GType)
+@gtkx/ffi (runtime)
  ↓
 @gtkx/native (Rust/napi-rs/libffi)
  ↓
-GTK4/GLib (native libraries)
+GTK4/GLib
 ```
+
+- **Your app (JSX)** — Ordinary React components composing elements imported from `@gtkx/jsx/gtk`, `@gtkx/jsx/adw`, and the other namespace modules.
+- **`@gtkx/react`** — A `react-reconciler` host config that maps every tree operation onto instances wrapping real GObject widgets, batching each commit so it appears atomic to GTK.
+- **`@gtkx/gi`** — TypeScript classes, property accessors, and signal tables for every library you declare in `gtkx.config.ts`, generated from GObject Introspection (GIR) data.
+- **`@gtkx/ffi`** — The hand-written runtime the generated bindings call into: GObject construction, value marshalling, signal connection, and object identity.
+- **`@gtkx/native`** — A Rust napi-rs module exposing libffi call primitives, with all GTK work running on a dedicated GLib thread that the JS thread talks to through a mailbox.
+- **GTK4/GLib** — The system libraries themselves, resolved by symbol; the widgets on screen are the same ones every GNOME app uses.
+
+## Real React, the whole toolkit, modern tooling
+
+GTKX runs the real React 19 — hooks, Suspense, concurrent rendering, the component model you already know. The reconciler renders to GTK widgets the way `react-dom` renders to DOM nodes, and because the runtime is plain Node.js, the npm ecosystem comes along: data fetching, state management, validation, and anything else you already depend on works unchanged.
+
+The bindings cover the entire GTK4 and Libadwaita surface, generated from the same GObject Introspection data the toolkit publishes. Every class, property, signal, and enum is fully typed, so your editor autocompletes GTK as confidently as it autocompletes the DOM. The same pipeline reaches beyond Gtk and Adw — WebKit, GtkSourceView, Gio, Pango, and more — by adding a line to `gtkx.config.ts`.
+
+The toolchain is the one you expect from a modern web project. `gtkx dev` gives you Vite-powered HMR that preserves application state across edits, `@gtkx/testing` and `@gtkx/vitest` run Testing Library-style tests against real widgets under Xvfb, `@gtkx/css` compiles Emotion-style CSS-in-JS to GTK CSS, and the built-in [MCP server](/docs/mcp) lets AI agents inspect the live widget tree, click, type, and take screenshots of your running app.
 
 ## Who is this for?
 
@@ -41,10 +93,10 @@ GTKX is a good fit if you:
 
 GTKX may not be the best choice if you:
 
-- Need cross-platform support (Windows, macOS) — GTKX targets Linux exclusively
+- Need cross-platform support (Windows, macOS) — GTKX targets Linux exclusively, and that tradeoff is deliberate: one platform, done properly, with real native widgets
 
-## What's next?
+## Where to next
 
-Ready to get started? Head to the [Getting Started](./getting-started.md) guide to create your first GTKX application.
-
-Want to see what's possible? Check out the [gtk-demo example](https://github.com/gtkx-org/gtkx/tree/main/examples/gtk-demo) for a comprehensive widget gallery.
+- [Getting started](/docs/getting-started) — scaffold a project with the CLI and run it with HMR in a few minutes
+- [Tutorial](/docs/tutorial/1-window-and-header-bar) — build the Notes app above, step by step, from a window to a packaged release
+- [Widget gallery](/docs/gallery/) — browse the GTK4 and Libadwaita widgets with live code for each

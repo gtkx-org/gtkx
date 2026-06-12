@@ -295,6 +295,30 @@ export class ListModelController {
         return null;
     }
 
+    /**
+     * Resolves a model object's flat position in the model the widget displays
+     * (the flatten model when sections are present, the plain model otherwise).
+     *
+     * Position-less factory bindings rely on this: `Adw.ComboRow` binds its
+     * selected-item display through the row factory without assigning the list
+     * item a position, so the bound object's identity is the only way back to
+     * the item data.
+     *
+     * @param item - The model object delivered by the factory binding
+     * @returns The flat position, or `null` when the object is not in the model
+     */
+    public positionOf(item: GObject.Object): number | null {
+        const model = this.hasSections() ? this.flattenModel : this.model;
+        if (!model) return null;
+        const nItems = model.getNItems();
+        for (let i = 0; i < nItems; i++) {
+            if (model.getItem(i) === item) {
+                return i;
+            }
+        }
+        return null;
+    }
+
     private syncSectionModel(): void {
         if (!this.model) return;
 

@@ -13,7 +13,7 @@ const DEFAULT_SCREENSHOT_INTERVAL = 10;
 const describeWidgetState = (widget: Gtk.Widget): string =>
     `realized=${widget.getRealized()} mapped=${widget.getMapped()} visible=${widget.getVisible()}`;
 
-const captureSnapshot = (widget: Gtk.Widget): ScreenshotResult => {
+const captureSnapshot = (widget: Gtk.Widget, scale: number): ScreenshotResult => {
     const paintable = new Gtk.WidgetPaintable({ widget });
     const width = paintable.getIntrinsicWidth();
     const height = paintable.getIntrinsicHeight();
@@ -23,6 +23,7 @@ const captureSnapshot = (widget: Gtk.Widget): ScreenshotResult => {
     }
 
     const snapshot = new Gtk.Snapshot();
+    snapshot.scale(scale, scale);
     paintable.snapshot(snapshot, width, height);
     const renderNode = snapshot.toNode();
 
@@ -50,8 +51,8 @@ const captureSnapshot = (widget: Gtk.Widget): ScreenshotResult => {
         return {
             data: bytesToBase64(data),
             mimeType: "image/png",
-            width,
-            height,
+            width: Math.round(width * scale),
+            height: Math.round(height * scale),
         };
     } finally {
         renderer.unrealize();
@@ -61,7 +62,16 @@ const captureSnapshot = (widget: Gtk.Widget): ScreenshotResult => {
 /**
  * Options for capturing widget screenshots.
  */
-export type ScreenshotOptions = Pick<WaitForOptions, "timeout" | "interval">;
+export type ScreenshotOptions = Pick<WaitForOptions, "timeout" | "interval"> & {
+    /**
+     * Supersampling factor applied while rasterizing the widget. The widget is
+     * laid out at its logical size and painted at `scale` times that size, so
+     * text and strokes render crisply in the enlarged output (e.g. `2` yields a
+     * 2x-resolution capture suitable for high-DPI documentation imagery).
+     * Defaults to `1`.
+     */
+    scale?: number;
+};
 
 /**
  * Captures a screenshot of a GTK widget as a PNG image.
@@ -86,7 +96,13 @@ export type ScreenshotOptions = Pick<WaitForOptions, "timeout" | "interval">;
  * ```
  */
 export const screenshot = async (widget: Gtk.Widget, options?: ScreenshotOptions): Promise<ScreenshotResult> => {
-    return waitFor(() => captureSnapshot(widget), {
+    const scale = options?.scale ?? 1;
+
+    if (!Number.isFinite(scale) || scale <= 0) {
+        throw new Error(`Screenshot scale must be a positive number, got ${scale}`);
+    }
+
+    return waitFor(() => captureSnapshot(widget, scale), {
         timeout: options?.timeout ?? DEFAULT_SCREENSHOT_TIMEOUT,
         interval: options?.interval ?? DEFAULT_SCREENSHOT_INTERVAL,
         onTimeout: (error) => {

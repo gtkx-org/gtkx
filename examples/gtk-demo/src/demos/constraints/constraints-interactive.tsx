@@ -8,7 +8,7 @@ import sourceCode from "./constraints-interactive.tsx?raw";
 const A = Gtk.ConstraintAttribute;
 
 const ConstraintsInteractive = () => {
-    const [dividerOffset, setDividerOffset] = useState(0);
+    const [dividerOffset, setDividerOffset] = useState<number | null>(null);
 
     return (
         <GtkBox
@@ -24,12 +24,14 @@ const ConstraintsInteractive = () => {
                         sourceAttribute={A.NONE}
                         constant={0}
                     />
-                    <GtkConstraintLayout.Constraint
-                        target="divider"
-                        targetAttribute={A.LEFT}
-                        sourceAttribute={A.LEFT}
-                        constant={dividerOffset}
-                    />
+                    {dividerOffset === null ? null : (
+                        <GtkConstraintLayout.Constraint
+                            target="divider"
+                            targetAttribute={A.LEFT}
+                            sourceAttribute={A.LEFT}
+                            constant={dividerOffset}
+                        />
+                    )}
                     <GtkConstraintLayout.Constraint
                         target="button1"
                         targetAttribute={A.START}

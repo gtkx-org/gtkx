@@ -1,60 +1,64 @@
 # 2. Styling with CSS-in-JS
 
-Now that you have a window with a header bar, let's add some notes and style them using `@gtkx/css`.
+Now that you have a window with a header bar, you'll add some notes and style them as cards with `@gtkx/css`.
 
-![Notes app after this chapter](./images/2-styling.png)
+![Notes app after this chapter](./images/2-styling-light.webp){.light-only}
+![Notes app after this chapter](./images/2-styling-dark.webp){.dark-only}
 
-The `NotesWindow` component below lives inside the `<AdwApplication>` wrapper introduced in [Chapter 1](./1-window-and-header-bar.md). The wrapper and `src/index.tsx` stay unchanged; only `NotesWindow` grows.
+The `NotesWindow` component below lives inside the `<AdwApplication>` wrapper introduced in [Chapter 1](./1-window-and-header-bar.md). The wrapper and `src/index.tsx` stay unchanged; only `NotesWindow` in `src/app.tsx` grows.
 
 ## Adding note state
 
-First, add state management for notes:
+Declare the `Note` shape at module level in `src/app.tsx`:
 
 ```tsx
-import { useState } from "react";
-
 interface Note {
     id: string;
     title: string;
     body: string;
     createdAt: Date;
 }
+```
 
-function NotesWindow() {
-    const [notes, setNotes] = useState<Note[]>([
-        { id: "1", title: "Welcome", body: "Your first note!", createdAt: new Date() },
-        { id: "2", title: "Shopping List", body: "Milk, eggs, bread", createdAt: new Date() },
-        { id: "3", title: "Meeting Notes", body: "Discuss project timeline and deliverables", createdAt: new Date() },
-    ]);
+Inside `NotesWindow`, hold the notes in state and add a creation handler:
 
-    const addNote = () => {
-        const note: Note = {
-            id: crypto.randomUUID(),
-            title: "Untitled",
-            body: "",
-            createdAt: new Date(),
-        };
-        setNotes([note, ...notes]);
+```tsx
+const [notes, setNotes] = useState<Note[]>([
+    { id: "1", title: "Welcome", body: "Your first note!", createdAt: new Date() },
+    { id: "2", title: "Shopping List", body: "Milk, eggs, bread", createdAt: new Date() },
+    { id: "3", title: "Meeting Notes", body: "Discuss project timeline and deliverables", createdAt: new Date() },
+]);
+
+const addNote = () => {
+    const note: Note = {
+        id: crypto.randomUUID(),
+        title: "Untitled",
+        body: "",
+        createdAt: new Date(),
     };
-
-    // ... rest of the component
-}
+    setNotes((prev) => [note, ...prev]);
+};
 ```
 
 ## Styling with `@gtkx/css`
 
-The `css` function from `@gtkx/css` generates a unique class name that you pass to `cssClasses`:
+The `css` function from `@gtkx/css` generates a unique class name that you pass to `cssClasses`. Define the styles at module level in `src/app.tsx`:
 
 ```tsx
 import { css } from "@gtkx/css";
 
 const noteCard = css`
-    background: alpha(@card_bg_color, 0.8);
+    background: @card_bg_color;
     border-radius: 12px;
     padding: 16px;
+    box-shadow:
+        0 1px 4px alpha(black, 0.15),
+        0 0 0 1px alpha(black, 0.08);
 
     &:hover {
-        background: @card_bg_color;
+        box-shadow:
+            0 2px 8px alpha(black, 0.2),
+            0 0 0 1px alpha(black, 0.1);
     }
 `;
 
@@ -74,13 +78,19 @@ const noteDate = css`
 `;
 ```
 
-GTK CSS uses `@` variables like `@card_bg_color` and `@window_fg_color` that automatically adapt to light/dark themes. The `alpha()` function adjusts opacity.
+GTK CSS uses `@`-named colors like `@card_bg_color` and `@window_fg_color` that automatically adapt to the light and dark themes, and an `alpha()` function that adjusts a color's opacity. The card pairs a solid `@card_bg_color` background with a layered `box-shadow`, so cards read as elevated surfaces in both themes — hovering deepens the shadow.
+
+::: tip Watch the terminal for rejected styles
+GTKX logs a `[gtkx/css]` warning whenever GTK rejects a CSS rule, so check the terminal first if a style fails to apply.
+:::
 
 ## Rendering the notes list
 
-Put it all together:
+Put it all together — here is the complete `src/app.tsx` after this chapter:
 
 ```tsx
+import { css } from "@gtkx/css";
+import * as Gtk from "@gtkx/gi/gtk";
 import {
     AdwApplication,
     AdwApplicationWindow,
@@ -90,17 +100,20 @@ import {
 } from "@gtkx/jsx/adw";
 import { GtkBox, GtkButton, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { quit } from "@gtkx/react";
-import * as Gtk from "@gtkx/gi/gtk";
-import { css } from "@gtkx/css";
 import { useState } from "react";
 
 const noteCard = css`
-    background: alpha(@card_bg_color, 0.8);
+    background: @card_bg_color;
     border-radius: 12px;
     padding: 16px;
+    box-shadow:
+        0 1px 4px alpha(black, 0.15),
+        0 0 0 1px alpha(black, 0.08);
 
     &:hover {
-        background: @card_bg_color;
+        box-shadow:
+            0 2px 8px alpha(black, 0.2),
+            0 0 0 1px alpha(black, 0.1);
     }
 `;
 
@@ -140,7 +153,7 @@ function NotesWindow() {
             body: "",
             createdAt: new Date(),
         };
-        setNotes([note, ...notes]);
+        setNotes((prev) => [note, ...prev]);
     };
 
     return (
@@ -224,19 +237,20 @@ export function App() {
 
 ## Dynamic styles
 
-You can interpolate values into CSS strings, just like Emotion:
+You can interpolate values into CSS strings, just like Emotion — identical styles reuse the same class name. In `src/app.tsx`, turn `noteTitle` into a function of the font size:
 
 ```tsx
-const noteCard = (isSelected: boolean) => css`
-    background: ${isSelected ? "@accent_bg_color" : "alpha(@card_bg_color, 0.8)"};
-    border-radius: 12px;
-    padding: 16px;
+const noteTitle = (fontSize: number) => css`
+    font-weight: bold;
+    font-size: ${fontSize}px;
 `;
 ```
 
+Pass the result the same way: `cssClasses={[noteTitle(14)]}`. In [Chapter 7](./7-settings-and-preferences.md), the app wires this value to a user preference so the card text resizes live.
+
 ## Global styles
 
-For app-wide styles, use `injectGlobal` or import a `.css` file:
+For app-wide styles, use `injectGlobal` from any module your entry imports — or import a plain `.css` file and let the GTKX Vite plugin apply it for you:
 
 ```tsx
 import { injectGlobal } from "@gtkx/css";
@@ -250,4 +264,14 @@ injectGlobal`
 
 ## Next
 
-In the [next chapter](./3-lists.md), you'll replace the simple `map()` rendering with virtualized `GtkListView` for efficient scrolling with large datasets.
+In the [next chapter](./3-lists.md), you'll replace the simple `map()` rendering with a virtualized `GtkListView` for efficient scrolling with large datasets.
+
+## Checkpoint
+
+You should now:
+
+- have three seed notes held in React state and rendered as rounded cards in a scrollable column;
+- see the cards drawn as elevated surfaces that adapt to the light and dark themes, with a deeper shadow on hover;
+- be able to press the header bar's "+" button and watch a new note appear at the top of the list.
+
+The complete app this tutorial builds lives at [examples/tutorial](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial).

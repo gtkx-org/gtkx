@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkScrolledWindow } from "@gtkx/react";
-import { AppShell } from "../app-shell";
-import { NoteCardComponent, sampleNotes } from "../data";
+import { GtkBox, GtkButton, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import { AppShell } from "../app-shell.js";
+import { NoteCardComponent, sampleNotes } from "../data.js";
 
 export const Chapter2 = () => (
     <AppShell headerStart={<GtkButton iconName="list-add-symbolic" />}>

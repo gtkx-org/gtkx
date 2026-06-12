@@ -2,7 +2,8 @@
 
 A notes app benefits from a sidebar for organizing notes into categories. Adwaita provides `AdwNavigationSplitView` for responsive sidebar/content layouts and `AdwViewStack` for tabbed views.
 
-![Notes app after this chapter](./images/5-navigation.png)
+![Notes app after this chapter](./images/5-navigation-light.webp){.light-only}
+![Notes app after this chapter](./images/5-navigation-dark.webp){.dark-only}
 
 The `NotesWindow` component below still lives inside the `<AdwApplication>` wrapper from [Chapter 1](./1-window-and-header-bar.md).
 
@@ -119,7 +120,7 @@ const Sidebar = ({
 
 Notice the `addPrefix` and `addSuffix` props on `AdwActionRow` — these are slot props for placing widgets at the start and end of an action row.
 
-## Stack navigation
+## Tabbed views
 
 For tabbed views within a pane, use `AdwViewStack` with `AdwViewStackPage` and an `AdwViewSwitcher`. Control the active page with `visibleChildName`, and read changes through `onNotifyVisibleChildName`:
 
@@ -155,7 +156,7 @@ const ContentPane = () => {
 
 The `AdwViewSwitcher` automatically renders tabs that correspond to the stack pages. Link them via the `ref`/`stack` pattern shown above.
 
-## Stack-based navigation
+## Push navigation
 
 For push/pop navigation (like navigating into a note detail view), use `AdwNavigationView` with `AdwNavigationPage` children. Each page carries a `tag`; the view pushes a page when it mounts and pops it when it unmounts. Drive the active page declaratively with `visiblePageTag`, and react to navigation through `onPushed` and `onPopped`:
 
@@ -339,3 +340,11 @@ When the list is empty, show a search-specific `AdwStatusPage`:
 ## Next
 
 In the [next chapter](./6-dialogs-and-animations.md), you'll add confirmation dialogs and smooth animations.
+
+## Checkpoint
+
+- You should now have a split-view layout whose sidebar lists categories with icon, title, and count rows.
+- You should see the content pane's title follow the selected category or note, and the layout collapse gracefully on narrow windows.
+- You should be able to toggle search with the header-bar button and watch the list filter as you type.
+
+The complete app this tutorial builds lives at [examples/tutorial](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial).

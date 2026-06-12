@@ -4,7 +4,10 @@
         "module": "ESNext",
         "moduleResolution": "bundler",
         "strict": true,
-        "skipLibCheck": true
+        "skipLibCheck": true,
+        "noEmit": true,
+        "allowImportingTsExtensions": true
     },
-    "include": [".vitepress/**/*.ts", "scripts/**/*.ts"]
+    "include": [".vitepress/**/*.ts", "scripts/**/*.ts"],
+    "references": [{ "path": "./tsconfig.screenshots.json" }]
 }

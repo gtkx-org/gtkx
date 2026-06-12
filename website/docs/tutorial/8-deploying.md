@@ -2,6 +2,9 @@
 
 Your Notes app is complete. Let's package it for distribution as a native Linux application.
 
+![The finished Notes app with its About dialog](./images/8-deploying-light.webp){.light-only}
+![The finished Notes app with its About dialog](./images/8-deploying-dark.webp){.dark-only}
+
 ## Overview
 
 Distributing a GTKX application involves three steps:
@@ -240,3 +243,11 @@ Congratulations! You've built a complete Notes application that follows the [GNO
 - **Deployment** — SEA bundling, Flatpak, and Snap packaging
 
 Explore the [API Reference](/api/react/) for the complete API surface, or check out the [CLI Reference](../cli.md) and [MCP Integration](../mcp.md) docs.
+
+## Checkpoint
+
+- You should now have a single-file production bundle from `gtkx build`, with the native module and compiled schemas beside it.
+- You should be able to produce a self-contained executable through the SEA re-bundle and build script.
+- You should be able to package the result as a Flatpak (or Snap) and install it like any other GNOME app.
+
+The complete app this tutorial builds lives at [examples/tutorial](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial).

@@ -2,7 +2,8 @@
 
 Let's add confirmation dialogs for destructive actions and smooth animations for a polished feel.
 
-![Notes app with toggle group and animated cards](./images/6-dialogs-and-animations.png)
+![Notes app with toggle group and animated cards](./images/6-dialogs-and-animations-light.webp){.light-only}
+![Notes app with toggle group and animated cards](./images/6-dialogs-and-animations-dark.webp){.dark-only}
 
 The components below live inside the `NotesWindow` from [Chapter 1](./1-window-and-header-bar.md), still wrapped in `<AdwApplication>`.
 
@@ -389,6 +390,16 @@ const [showAbout, setShowAbout] = useState(false);
 
 The menu entry `{ label: "About Notes", action: "win.about" }` triggers the action, which flips the state; the `About` component's `onClose` callback flips it back when the dialog closes.
 
+For alert-dialog response details, the async file/color/font pickers, and the two parenting models, see the [Dialogs guide](/docs/guides/dialogs).
+
 ## Next
 
 In the [next chapter](./7-settings-and-preferences.md), you'll add a preferences dialog that reads and writes system settings.
+
+## Checkpoint
+
+- You should now have a delete confirmation backed by `AdwAlertDialog`, presented and dismissed purely through React state.
+- You should see note cards animate in on mount and slide out on delete, with a toast offering undo.
+- You should be able to switch between list and grid views with the toggle group in the header bar.
+
+The complete app this tutorial builds lives at [examples/tutorial](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial).

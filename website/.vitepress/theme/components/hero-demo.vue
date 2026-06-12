@@ -5,7 +5,7 @@ const count = ref(0);
 
 const code = [
     '<span class="cm">// app.tsx</span>',
-    '<span class="kw">import</span> { <span class="ty">GtkButton</span>, <span class="ty">GtkLabel</span> } <span class="kw">from</span> <span class="st">"@gtkx/react"</span>;',
+    '<span class="kw">import</span> { <span class="ty">GtkBox</span>, <span class="ty">GtkButton</span>, <span class="ty">GtkLabel</span> } <span class="kw">from</span> <span class="st">"@gtkx/jsx/gtk"</span>;',
     '<span class="kw">import</span> { useState } <span class="kw">from</span> <span class="st">"react"</span>;',
     "",
     '<span class="kw">export const</span> <span class="fn">App</span> = () =&gt; {',
@@ -32,9 +32,15 @@ const code = [
             <div class="adw-window-header">
                 <div class="adw-window-title">Hello GTKX</div>
                 <div class="adw-window-controls">
-                    <span class="adw-window-dot" />
-                    <span class="adw-window-dot" />
-                    <span class="adw-window-dot" />
+                    <span class="adw-window-control" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="9" height="9" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="5" y1="19" x2="19" y2="19" /></svg>
+                    </span>
+                    <span class="adw-window-control" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="1" /></svg>
+                    </span>
+                    <span class="adw-window-control" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="9" height="9" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>
+                    </span>
                 </div>
             </div>
             <div class="adw-window-body">

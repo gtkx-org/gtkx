@@ -1,3 +1,4 @@
 .vitepress/dist
 .vitepress/cache
 api
+screenshots/out

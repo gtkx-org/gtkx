@@ -2,12 +2,31 @@
 
 This guide walks you through creating your first GTKX application.
 
-## Prerequisites
+## Install system dependencies
 
-Before you begin, ensure you have:
+GTKX renders to real GTK widgets and generates its TypeScript bindings from the GObject Introspection (GIR) XML on your system, so the GTK4, libadwaita, and gobject-introspection development files must be installed before you create a project. The development packages install the GIR XML under `/usr/share/gir-1.0`, which is where codegen reads it.
 
-- **Node.js 24+** — GTKX requires a modern Node.js runtime
-- **GTK4 libraries** — The native GTK4 runtime libraries
+::: code-group
+
+```bash [Ubuntu / Debian]
+sudo apt install libgtk-4-dev libadwaita-1-dev libgirepository1.0-dev gobject-introspection
+```
+
+```bash [Fedora]
+sudo dnf install gtk4-devel libadwaita-devel gobject-introspection-devel
+```
+
+```bash [Arch]
+sudo pacman -S gtk4 libadwaita gobject-introspection
+```
+
+:::
+
+GTKX requires **GTK 4.22 or newer** and **Node.js 24 or newer**. Verify your GTK version with:
+
+```bash
+pkg-config --modversion gtk4
+```
 
 ## Create a new project
 
@@ -20,12 +39,12 @@ npx @gtkx/cli@latest create my-app
 The CLI will prompt you for:
 
 - **Project name** — lowercase letters, numbers, and hyphens
-- **App ID** — reverse domain notation (e.g., `com.example.myapp`)
+- **Application ID** — reverse domain notation (e.g., `com.example.myapp`)
 - **Package manager** — pnpm (recommended), npm, or yarn
 - **Testing** — whether to include Vitest testing setup
-- **Claude Skills** — optional helper files for AI code generation
+- **Claude Code skills** — optional helper files for AI code generation
 
-After the prompts, the CLI creates your project and installs dependencies.
+After the prompts, the CLI creates your project, installs dependencies, and initializes a git repository.
 
 ## Project structure
 
@@ -35,12 +54,14 @@ A new GTKX project has this structure:
 my-app/
 ├── src/
 │ ├── app.tsx # Main application component
-│ └── index.tsx # Entry that mounts the app, used by `gtkx dev` and `gtkx build`
+│ ├── index.tsx # Entry that mounts the app, used by `gtkx dev` and `gtkx build`
+│ └── gtkx-env.d.ts # Type references for the generated bindings
 ├── tests/
-│ └── app.test.tsx # Example test
+│ └── app.test.tsx # Example test (with testing enabled)
 ├── gtkx.config.ts
 ├── package.json
-└── tsconfig.json
+├── tsconfig.json
+└── vitest.config.ts # Vitest setup (with testing enabled)
 ```
 
 ### Key files
@@ -107,14 +128,14 @@ import { App } from "./app.js";
 render(<App />);
 ```
 
-**`gtkx.config.ts`** — Project configuration including the application identifier and optional flags:
+**`gtkx.config.ts`** — Project configuration: the GIR libraries to generate bindings for and the application identifier:
 
 ```ts
 import { defineConfig } from "@gtkx/cli";
 
 export default defineConfig({
-    applicationId: "com.example.myapp",
     libraries: ["Gtk-4.0", "Adw-1"],
+    applicationId: "com.example.myapp",
 });
 ```
 
@@ -122,9 +143,21 @@ export default defineConfig({
 
 Start the development server with hot reload:
 
-```bash
+::: code-group
+
+```bash [npm]
 npm run dev
 ```
+
+```bash [pnpm]
+pnpm dev
+```
+
+```bash [yarn]
+yarn dev
+```
+
+:::
 
 This starts your application with Hot Module Replacement (HMR). When you edit your components, changes appear instantly without losing application state.
 
@@ -132,10 +165,24 @@ This starts your application with Hot Module Replacement (HMR). When you edit yo
 
 Bundle your application into a single minified file:
 
-```bash
+::: code-group
+
+```bash [npm]
 npm run build
 npm start
 ```
+
+```bash [pnpm]
+pnpm build
+pnpm start
+```
+
+```bash [yarn]
+yarn build
+yarn start
+```
+
+:::
 
 This runs `gtkx build` to produce `dist/bundle.js` via Vite SSR mode, then `node dist/bundle.js` to run it.
 
@@ -143,66 +190,43 @@ This runs `gtkx build` to produce `dist/bundle.js` via Vite SSR mode, then `node
 
 If you enabled testing:
 
-```bash
+::: code-group
+
+```bash [npm]
 npm test
 ```
 
+```bash [pnpm]
+pnpm test
+```
+
+```bash [yarn]
+yarn test
+```
+
+:::
+
 Tests run in a real GTK environment using the `@gtkx/vitest` plugin, which automatically manages Xvfb displays for headless execution.
 
-## Understanding the basics
+::: tip
+Headless test runs need Xvfb installed: `sudo apt install xvfb` on Ubuntu/Debian, `sudo dnf install xorg-x11-server-Xvfb` on Fedora.
+:::
 
-### Intrinsic elements
+Next, read [Thinking in GTKX](/docs/thinking-in-gtkx) to learn how React trees become GTK widgets and how props map to properties, signals, and children.
 
-Intrinsic elements are imported as constants from `@gtkx/jsx/<ns>` (e.g. `@gtkx/jsx/gtk`, `@gtkx/jsx/adw`) and correspond to GTK widgets or event controllers. They accept props that map to GTK properties, signals, and child widgets.
+## Troubleshooting
 
-#### Widget example
+**Codegen cannot find a `.gir` file.** Errors mentioning a missing `Gtk-4.0.gir` or `Adw-1.gir` mean the GIR XML is not installed. It ships with the development packages listed under [Install system dependencies](#install-system-dependencies); install them and rerun. Codegen reads `/usr/share/gir-1.0`, or any directory reported by `pkg-config --variable=girdir gobject-introspection-1.0`.
 
-```tsx
-import { GtkButton, GtkEntry } from "@gtkx/jsx/gtk";
+**GTK is older than 4.22.** Run `pkg-config --modversion gtk4`. GTKX targets GTK 4.22; older releases lack APIs the generated bindings call. Upgrade to a distribution release that ships GTK 4.22 or newer.
 
-<GtkButton label="Click me" />
-<GtkEntry placeholderText="Type here" />
-```
+**Node.js is older than 24.** Run `node --version`; it must report v24 or later. Install a current release through your distribution or a version manager.
 
-#### Event controller example
+**Wayland or X11.** GTKX apps run on both. GTK picks the session's display backend automatically; set `GDK_BACKEND=wayland` or `GDK_BACKEND=x11` to select one explicitly.
 
-Event controllers and gestures attach through the widget's `addController` prop (wrap several in a fragment):
+## Where to next
 
-```tsx
-import { GtkBox, GtkLabel, GtkEventControllerMotion, GtkEventControllerKey } from "@gtkx/jsx/gtk";
-import { useState } from "react";
-
-const InteractiveBox = () => {
-    const [position, setPosition] = useState({ x: 0, y: 0 });
-
-    return (
-        <GtkBox
-            focusable
-            addController={
-                <>
-                    <GtkEventControllerMotion
-                        onEnter={(x, y) => console.log("Entered at", x, y)}
-                        onMotion={(x, y) => setPosition({ x, y })}
-                        onLeave={() => console.log("Left")}
-                    />
-                    <GtkEventControllerKey
-                        onKeyPressed={(keyval) => {
-                            console.log("Key:", keyval);
-                            return false;
-                        }}
-                    />
-                </>
-            }
-        >
-            <GtkLabel label={`Position: ${Math.round(position.x)}, ${Math.round(position.y)}`} />
-        </GtkBox>
-    );
-};
-```
-
-## What's next?
-
-- [FFI Bindings](./ffi-bindings.md) — Using GTK and GLib bindings
-- [Styling](./styling.md) — CSS-in-JS for GTK
-- [Testing](./testing.md) — Testing your components
-- [Tutorial](./tutorial/1-window-and-header-bar.md) — Build a complete Notes app step by step
+- [Thinking in GTKX](/docs/thinking-in-gtkx) — How GTKX maps React onto GTK
+- [Tutorial](/docs/tutorial/1-window-and-header-bar) — Build a complete Notes app step by step
+- [Styling](/docs/styling) — CSS-in-JS for GTK
+- [Testing](/docs/testing) — Testing your components

@@ -169,15 +169,27 @@ export const withApplication = <P extends ApplicationComponentProps<ApplicationO
  * @returns A component that injects the application and drives the window's
  *   lifecycle.
  */
-export const withApplicationWindow = <P extends { children?: ReactNode; ref?: Ref<Gtk.Window | null> }>(
+export const withApplicationWindow = <
+    P extends { children?: ReactNode; addAction?: ReactNode; ref?: Ref<Gtk.Window | null> },
+>(
     Underlying: ElementType,
 ): ((props: P) => ReactNode) => {
-    const Surface = withTopLevel<P>(Underlying);
+    type SurfaceProps = Omit<P, "children" | "addAction"> & {
+        application: ReturnType<typeof useApplication>;
+        children?: ReactNode;
+        addAction?: ReactNode;
+    };
+    const Surface = withTopLevel<SurfaceProps>(Underlying);
     return (props: P): ReactNode => {
         const application = useApplication();
+        const { addAction, children, ...rest } = props;
+        const scopedAddAction =
+            addAction === undefined ? undefined : (
+                <ActionScopeContext.Provider value={WINDOW_ACTION_SCOPE}>{addAction}</ActionScopeContext.Provider>
+            );
         return (
-            <Surface application={application} {...props}>
-                <ActionScopeContext.Provider value={WINDOW_ACTION_SCOPE}>{props.children}</ActionScopeContext.Provider>
+            <Surface application={application} {...rest} addAction={scopedAddAction}>
+                <ActionScopeContext.Provider value={WINDOW_ACTION_SCOPE}>{children}</ActionScopeContext.Provider>
             </Surface>
         );
     };

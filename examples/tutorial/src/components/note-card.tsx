@@ -6,11 +6,16 @@ import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import type { Note } from "../types.js";
 
 const baseCard = css`
-    background: alpha(@card_bg_color, 0.8);
+    background: @card_bg_color;
     border-radius: 12px;
+    box-shadow:
+        0 1px 4px alpha(black, 0.15),
+        0 0 0 1px alpha(black, 0.08);
 
     &:hover {
-        background: @card_bg_color;
+        box-shadow:
+            0 2px 8px alpha(black, 0.2),
+            0 0 0 1px alpha(black, 0.1);
     }
 `;
 

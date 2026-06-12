@@ -9,14 +9,44 @@ import { getGtkCache } from "./cache.js";
  */
 type CssClassName = string & { __brand: "css" };
 
+const AT_RULE_KEYWORDS = new Set([
+    "binding-set",
+    "charset",
+    "define-color",
+    "document",
+    "font-face",
+    "import",
+    "keyframes",
+    "media",
+    "namespace",
+    "page",
+    "supports",
+]);
+const AT_IDENTIFIER_PATTERN = /@([A-Za-z_][\w-]*)/g;
+const NAMED_COLOR_TOKEN = "gtkx-named-color__";
+const NAMED_COLOR_TOKEN_PATTERN = /gtkx-named-color__([\w-]+)/g;
+
+/**
+ * Shields GTK named-color references (`@theme_bg_color`, `@accent_bg_color`,
+ * …) from stylis, which parses any `@identifier` as a CSS at-rule and drops
+ * the declaration carrying it. Real at-rules (`@keyframes`, `@media`,
+ * GTK's `@define-color`, …) pass through untouched.
+ */
+const escapeNamedColors = (input: string): string =>
+    input.replace(AT_IDENTIFIER_PATTERN, (match, name: string) =>
+        AT_RULE_KEYWORDS.has(name) ? match : `${NAMED_COLOR_TOKEN}${name}`,
+    );
+
+const restoreNamedColors = (rule: string): string => rule.replace(NAMED_COLOR_TOKEN_PATTERN, "@$1");
+
 const insertRules = (input: string): void => {
     const sheet = getGtkCache().sheet;
     serialize(
-        compile(input),
+        compile(escapeNamedColors(input)),
         middleware([
             stringify,
             rulesheet((rule) => {
-                sheet.insert(rule);
+                sheet.insert(restoreNamedColors(rule));
             }),
         ]),
     );

@@ -234,6 +234,56 @@ describe("stylis pipeline correctness", () => {
         insertSpy.mockRestore();
     });
 
+    it("preserves declarations carrying GTK named colors", () => {
+        const className = css`
+            background: @card_bg_color;
+            color: alpha(@window_fg_color, 0.6);
+            box-shadow: 0 0 0 1px alpha(@accent_bg_color, 0.4);
+            border-radius: 12px;
+        `;
+
+        const rules = insertSpy.mock.calls.map((call) => call[0] as string);
+        const rule = rules.find((r) => r.startsWith(`.${className}`));
+        expect(rule).toBeDefined();
+        expect(rule).toContain("background:@card_bg_color;");
+        expect(rule).toContain("color:alpha(@window_fg_color, 0.6);");
+        expect(rule).toContain("box-shadow:0 0 0 1px alpha(@accent_bg_color, 0.4);");
+        expect(rule).toContain("border-radius:12px;");
+        expect(rule).not.toContain("gtkx-named-color__");
+    });
+
+    it("preserves named colors inside nested selectors", () => {
+        const className = css`
+            background: @card_bg_color;
+
+            &:hover {
+                background: @accent_bg_color;
+            }
+        `;
+
+        const rules = insertSpy.mock.calls.map((call) => call[0] as string);
+        const hoverRule = rules.find((rule) => rule.startsWith(`.${className}:hover`));
+        expect(hoverRule).toBeDefined();
+        expect(hoverRule).toContain("background:@accent_bg_color;");
+    });
+
+    it("keeps real at-rules intact alongside named colors", () => {
+        const keyframes = css`
+            color: @theme_fg_color;
+            @keyframes gtkx-test-spin {
+                to {
+                    color: @accent_bg_color;
+                }
+            }
+        `;
+
+        const rules = insertSpy.mock.calls.map((call) => call[0] as string);
+        expect(rules.find((rule) => rule.startsWith(`.${keyframes}`))).toContain("color:@theme_fg_color;");
+        const keyframesRule = rules.find((rule) => rule.startsWith("@keyframes"));
+        expect(keyframesRule).toBeDefined();
+        expect(keyframesRule).toContain("color:@accent_bg_color;");
+    });
+
     it("scopes @media at-rules around the generated class selector", () => {
         const className = css`
             color: red;

@@ -52,15 +52,26 @@ pnpm --filter website typedoc
 
 `scripts/typedoc.ts` clears `api/` and runs TypeDoc once per package listed in `typedoc.config.ts`: `@gtkx/react`, `@gtkx/css`, `@gtkx/testing`, and `@gtkx/ffi`. Each package contributes its `src/index.ts` entry point and its `tsconfig.lib.json`. Shared options live in `typedoc.json`, which loads `typedoc-plugin-markdown` and `typedoc-vitepress-theme` to emit Markdown and a per-package `typedoc-sidebar.json`. `.vitepress/config.ts` imports those sidebar files to build the `/api/` navigation, so the site config expects `api/` to be present at build time.
 
-## Screenshots
+## Visual assets
 
-The tutorial images under `docs/tutorial/images/` are captured by rendering real GTK4 components and screenshotting them:
+Every image the site serves is generated from real GTKX renders. One command regenerates the full still-image set:
 
 ```bash
-pnpm --filter website screenshots
+pnpm --filter website assets
 ```
 
-This runs `vitest run --config screenshots/vitest.config.ts`. The Vitest config applies the `@gtkx/vitest` plugin, which provisions a per-worker Xvfb and D-Bus, so a display is set up automatically. `screenshots/capture.test.tsx` renders each chapter component from `screenshots/chapters/`, forces the Adwaita dark color scheme, and writes one PNG per chapter into `docs/tutorial/images/`. Most chapters use `@gtkx/testing`'s `screen.screenshot()`; chapters that show a popover or a separate window capture the whole display with ImageMagick's `import`, which must be installed on the machine running the step. Regenerate these images whenever a tutorial chapter's UI changes.
+That chains four steps, each runnable on its own:
+
+| Script | What it does |
+| --- | --- |
+| `screenshots` | Runs `vitest run --config screenshots/vitest.config.ts` under the `@gtkx/vitest` plugin (per-worker Xvfb and D-Bus, 2200x1600 screen, `GDK_SCALE=2`). `capture.test.tsx` captures the 8 tutorial chapters and `gallery.test.tsx` captures every widget-gallery fixture, each in both the light and the dark Adwaita color scheme, writing lossless 2x masters into `screenshots/out/`. Chapter 4 (open menu popover) grabs the whole display with ffmpeg, falling back to ImageMagick's `import`. |
+| `assets:apps` | `capture-apps.ts` runs each built example app (`pnpm build` first) inside its own Xvfb with a private D-Bus session, in both color schemes via `ADW_DEBUG_COLOR_SCHEME`, and grabs the display with ffmpeg into `screenshots/out/showcase/`. The browser app loads a deterministic local fixture page. |
+| `assets:images` | `postprocess.ts` (sharp) trims display grabs to the window, applies the rounded-corner alpha mask, encodes WebP under a size budget, and copies the deliverables to `docs/tutorial/images/`, `docs/gallery/images/`, and `public/media/`. |
+| `assets:og` | `og.ts` (satori + sharp) renders the Open Graph card, the GitHub social preview, and the hero video end card from the design tokens, the logo, and the captured Notes screenshot. |
+
+Naming convention: theme pairs are `{name}-light.webp` / `{name}-dark.webp`; the docs reference them with the `{.light-only}` / `{.dark-only}` markdown attributes.
+
+The motion assets are a separate, local-only step (`assets:video`, `record-hero.ts`) because they need ffmpeg, xdotool, and a terminal emulator on top of the headless stack; see the script header for the storyboard. Regenerate stills whenever the tutorial UI, the example apps, the gallery fixtures, or the branding change. For byte-stable output across machines, run the capture inside the pinned CI image (`ghcr.io/gtkx-org/gtkx-ci`).
 
 ## Layout
 

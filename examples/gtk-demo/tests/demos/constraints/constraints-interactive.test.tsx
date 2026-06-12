@@ -1,10 +1,9 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, userEvent } from "@gtkx/testing";
+import { userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { constraintsInteractiveDemo } from "../../../src/demos/constraints/constraints-interactive.js";
 import { renderDemo } from "../../test-utils.js";
-
-const findContainerBox = async (): Promise<Gtk.Box> => (await screen.findByName("container")) as Gtk.Box;
+import { expectChildButtonLabels, findChildButtons, findContainerLayout } from "./constraint-helpers.js";
 
 const findDividerLeftConstant = (layout: Gtk.ConstraintLayout): number | null => {
     const observer = layout.observeConstraints();
@@ -35,27 +34,32 @@ describe("constraintsInteractiveDemo metadata", () => {
 describe("constraintsInteractiveDemo content", () => {
     it("renders three button children with the expected labels", async () => {
         await renderDemo(constraintsInteractiveDemo);
-        const child1 = (await screen.findByName("button1")) as Gtk.Button;
-        const child2 = (await screen.findByName("button2")) as Gtk.Button;
-        const child3 = (await screen.findByName("button3")) as Gtk.Button;
-        expect(child1.getLabel()).toBe("Child 1");
-        expect(child2.getLabel()).toBe("Child 2");
-        expect(child3.getLabel()).toBe("Child 3");
+        await expectChildButtonLabels();
     });
 });
 
 describe("constraintsInteractiveDemo dragging", () => {
-    it("updates the divider LEFT constraint constant when the user drags", async () => {
+    it("leaves the divider unpinned until the user drags", async () => {
         await renderDemo(constraintsInteractiveDemo);
-        const box = await findContainerBox();
-        const layout = box.getLayoutManager() as Gtk.ConstraintLayout;
-        const before = findDividerLeftConstant(layout);
-        expect(before).not.toBeNull();
+        const { box, layout } = await findContainerLayout();
+        expect(findDividerLeftConstant(layout)).toBeNull();
 
         await userEvent.drag(box, 30, 0);
 
-        const after = findDividerLeftConstant(layout);
-        expect(after).not.toBeNull();
-        expect(after).not.toEqual(before);
+        await waitFor(() => expect(findDividerLeftConstant(layout)).not.toBeNull());
+    });
+
+    it("re-solves the layout against the dragged divider position", async () => {
+        await renderDemo(constraintsInteractiveDemo);
+        const { box, layout } = await findContainerLayout();
+        const { button1 } = await findChildButtons();
+
+        await userEvent.drag(box, 130, 0);
+
+        await waitFor(() => {
+            const dividerLeft = findDividerLeftConstant(layout);
+            expect(dividerLeft).not.toBeNull();
+            expect(button1.getAllocatedWidth()).toBe((dividerLeft as number) - 8);
+        });
     });
 });

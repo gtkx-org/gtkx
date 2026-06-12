@@ -1,6 +1,7 @@
 # 7. Settings & preferences
 
-![Preferences dialog with settings rows](./images/7-settings-and-preferences.png)
+![Preferences dialog with settings rows](./images/7-settings-and-preferences-light.webp){.light-only}
+![Preferences dialog with settings rows](./images/7-settings-and-preferences-dark.webp){.dark-only}
 
 Most desktop apps need a preferences dialog. GTKX provides `useProperty`, `useSetting`, and `useSignal` hooks to reactively bind your UI to GObject properties, GSettings values, and signals.
 
@@ -361,6 +362,16 @@ const NoteCard = ({ note, compact, fontSize }: NoteCardProps) => {
 
 Because `useSetting` re-renders the component when the value changes, toggling a preference in the dialog updates the entire app instantly.
 
+Every hook used in this chapter — and the rest of the family — is covered in depth in the [Hooks guide](/docs/guides/hooks).
+
 ## Next
 
 In the [final chapter](./8-deploying.md), you'll package the Notes app for distribution.
+
+## Checkpoint
+
+- You should now have a preferences dialog built from `AdwPreferencesWindow`, pages, groups, and rows.
+- You should see settings persist across app restarts through the GSettings schema you defined.
+- You should be able to bind any GObject property or signal into React state with `useProperty` and `useSignal`.
+
+The complete app this tutorial builds lives at [examples/tutorial](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial).

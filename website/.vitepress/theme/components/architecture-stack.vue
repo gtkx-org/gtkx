@@ -2,7 +2,8 @@
 const layers = [
     { name: "Your app", sub: "JSX intrinsic elements", tone: "paper" },
     { name: "@gtkx/react", sub: "Reconciler", tone: "paper" },
-    { name: "@gtkx/ffi", sub: "TypeScript bindings", tone: "paper" },
+    { name: "@gtkx/gi", sub: "Generated TypeScript bindings", tone: "paper" },
+    { name: "@gtkx/ffi", sub: "FFI runtime", tone: "paper" },
     { name: "@gtkx/native", sub: "Rust napi-rs · libffi", tone: "ink" },
     { name: "GTK4 · GLib · Adwaita", sub: "Native libraries", tone: "accent" },
 ];
@@ -13,15 +14,15 @@ const layers = [
         <div class="gtkx-arch-inner">
             <div class="gtkx-arch-intro">
                 <div class="gtkx-eyebrow">How it works</div>
-                <h2 class="gtkx-arch-title">Five layers, one tree.</h2>
+                <h2 class="gtkx-arch-title">One tree, all the way down.</h2>
                 <p class="gtkx-arch-lead">
-                    JSX flows down through the reconciler to typed FFI bindings, into the native module, and out to real
-                    GTK4 widgets. Signals travel back up the same path.
+                    JSX flows down through the reconciler to generated, typed bindings, through the FFI runtime into the
+                    native module, and out to real GTK4 widgets. Signals travel back up the same path.
                 </p>
                 <ul class="gtkx-arch-bullets">
                     <li>
-                        <b>Type-safe end to end.</b> The FFI layer regenerates from GIR, so widget props are typed by
-                        their real GTK definition.
+                        <b>Type-safe end to end.</b> The bindings regenerate from GObject Introspection, so widget props
+                        are typed by their real GTK definition.
                     </li>
                     <li>
                         <b>HMR everywhere.</b> Vite watches your TSX. Edits land in the running app without losing window

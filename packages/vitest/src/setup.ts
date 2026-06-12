@@ -44,7 +44,8 @@ const spawnWorkerChild = (command: string, args: string[], stdio: StdioOptions):
     return child;
 };
 
-const xvfb = spawnWorkerChild("Xvfb", ["-displayfd", "1", "-screen", "0", "1024x768x24"], ["ignore", "pipe", "pipe"]);
+const xvfbScreen = process.env.GTKX_XVFB_SCREEN ?? "1024x768x24";
+const xvfb = spawnWorkerChild("Xvfb", ["-displayfd", "1", "-screen", "0", xvfbScreen], ["ignore", "pipe", "pipe"]);
 spawnWorkerChild("dbus-daemon", [`--config-file=${busConfigPath}`], "ignore");
 
 process.env.DBUS_SESSION_BUS_ADDRESS = `unix:path=${busSocketPath}`;

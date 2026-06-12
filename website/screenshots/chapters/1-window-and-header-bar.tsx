@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
-import { AppShell } from "../app-shell";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { AppShell } from "../app-shell.js";
 
 export const Chapter1 = () => (
     <AppShell headerStart={<GtkButton iconName="list-add-symbolic" />}>

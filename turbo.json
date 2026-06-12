@@ -185,6 +185,8 @@
                 "src/**/*.d.ts",
                 "src/**/*.js",
                 "scripts/**/*.ts",
+                "screenshots/**/*.ts",
+                "screenshots/**/*.tsx",
                 "tests/**/*.ts",
                 "tests/**/*.tsx",
                 "tsconfig.json",

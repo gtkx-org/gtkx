@@ -1,18 +1,15 @@
-import { execFileSync } from "node:child_process";
 import { copyFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { errorMessage } from "@gtkx/utils";
 import type { ModuleNode, Plugin, ViteDevServer } from "vite";
+import { compileSchemas } from "../gsettings/compile.js";
 import { emitSchemaEnv } from "../gsettings/env.js";
 import { parseSchemaXml, SchemaParseError } from "../gsettings/parser.js";
 import { renderRuntimeModule } from "../gsettings/render.js";
-import { resolveCliTool } from "../internal/resolve-cli-tool.js";
 
 const SCHEMA_SUFFIX = ".gschema.xml";
 const VIRTUAL_PREFIX = "\0gtkx-gsettings:";
-const SCHEMA_COMPILER = "glib-compile-schemas";
-const SCHEMA_COMPILE_TIMEOUT_MS = 30_000;
 
 /**
  * Banner prepended to the production bundle so `GSETTINGS_SCHEMA_DIR` points
@@ -33,21 +30,6 @@ const SCHEMA_ENV_BANNER = [
 
 const removeTempDir = (dir: string): void => {
     rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
-};
-
-const compileSchemas = (dir: string): void => {
-    try {
-        execFileSync(resolveCliTool(SCHEMA_COMPILER), [dir], {
-            stdio: ["ignore", "pipe", "pipe"],
-            timeout: SCHEMA_COMPILE_TIMEOUT_MS,
-            encoding: "utf-8",
-        });
-    } catch (error) {
-        const stderr = (error as { stderr?: string }).stderr ?? "";
-        const stdout = (error as { stdout?: string }).stdout ?? "";
-        const details = [stderr, stdout].filter(Boolean).join("\n").trim();
-        throw new Error(`glib-compile-schemas failed for ${dir}${details ? `:\n${details}` : ""}`, { cause: error });
-    }
 };
 
 /**
@@ -93,6 +75,11 @@ type PluginContext = {
 
 const ensureSchemaDir = (state: PluginState): string => {
     if (!state.schemaDir) {
+        const runnerDir = process.env.GTKX_DEV_SCHEMA_DIR;
+        if (runnerDir) {
+            state.schemaDir = runnerDir;
+            return runnerDir;
+        }
         const dir = mkdtempSync(join(tmpdir(), "gtkx-schemas-"));
         state.schemaDir = dir;
         const cleanup = (): void => removeTempDir(dir);
@@ -104,8 +91,8 @@ const ensureSchemaDir = (state: PluginState): string => {
 
 const releaseSchemaDir = (state: PluginState): void => {
     if (!state.schemaDir) return;
-    removeTempDir(state.schemaDir);
     if (state.cleanupProcessExit) {
+        removeTempDir(state.schemaDir);
         process.removeListener("exit", state.cleanupProcessExit);
         state.cleanupProcessExit = null;
     }
@@ -116,6 +103,7 @@ const compileSchemaDir = (state: PluginState): void => {
     if (!state.schemaDir) return;
     compileSchemas(state.schemaDir);
     const existing = process.env.GSETTINGS_SCHEMA_DIR;
+    if (existing?.split(":").includes(state.schemaDir)) return;
     process.env.GSETTINGS_SCHEMA_DIR = existing ? `${state.schemaDir}:${existing}` : state.schemaDir;
 };
 

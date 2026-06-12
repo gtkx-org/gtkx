@@ -55,6 +55,31 @@ describe("screen screenshot capture", () => {
     });
 });
 
+const decodePngSize = (base64Data: string): { width: number; height: number } => {
+    const bytes = Buffer.from(base64Data, "base64");
+    return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+};
+
+describe("screen screenshot scale", () => {
+    it("supersamples the capture by the requested factor", async () => {
+        await render(<GtkLabel label="Scaled" />);
+
+        const base = await screen.screenshot(0);
+        const scaled = await screen.screenshot(0, { scale: 2 });
+
+        expect(scaled.width).toBe(base.width * 2);
+        expect(scaled.height).toBe(base.height * 2);
+        expect(decodePngSize(scaled.data)).toEqual({ width: scaled.width, height: scaled.height });
+        expect(decodePngSize(base.data)).toEqual({ width: base.width, height: base.height });
+    });
+
+    it("rejects a non-positive scale", async () => {
+        await render(<GtkLabel label="Invalid scale" />);
+
+        await expect(screen.screenshot(0, { scale: 0 })).rejects.toThrow(/positive number/);
+    });
+});
+
 describe("screen screenshot selectors", () => {
     it("captures a window matching a title substring", async () => {
         await render(<GtkLabel label="Titled" />, {

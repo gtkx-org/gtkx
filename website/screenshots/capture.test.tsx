@@ -1,39 +1,67 @@
 import { execFileSync } from "node:child_process";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import * as Adw from "@gtkx/gi/adw";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { cleanup, render, screen } from "@gtkx/testing";
 import type { ReactElement } from "react";
 import { afterEach, describe, it } from "vitest";
-import { Chapter1 } from "./chapters/1-window-and-header-bar";
-import { Chapter2 } from "./chapters/2-styling";
-import { Chapter3 } from "./chapters/3-lists";
-import { Chapter4 } from "./chapters/4-menus-and-shortcuts";
-import { Chapter5 } from "./chapters/5-navigation";
-import { Chapter6 } from "./chapters/6-dialogs-and-animations";
-import { Chapter7 } from "./chapters/7-settings-and-preferences";
+import { Chapter1 } from "./chapters/1-window-and-header-bar.js";
+import { Chapter2 } from "./chapters/2-styling.js";
+import { Chapter3 } from "./chapters/3-lists.js";
+import { Chapter4 } from "./chapters/4-menus-and-shortcuts.js";
+import { Chapter5 } from "./chapters/5-navigation.js";
+import { Chapter6 } from "./chapters/6-dialogs-and-animations.js";
+import { Chapter7 } from "./chapters/7-settings-and-preferences.js";
+import { Chapter8 } from "./chapters/8-deploying.js";
+import { setTheme, THEMES } from "./theme.js";
 
-let darkModeSet = false;
-const ensureDarkMode = () => {
-    if (!darkModeSet) {
-        Adw.StyleManager.getDefault().setColorScheme(Adw.ColorScheme.FORCE_DARK);
-        darkModeSet = true;
-    }
+const OUT_DIR = resolve(import.meta.dirname, "out/tutorial");
+const SCALE = 2;
+
+mkdirSync(OUT_DIR, { recursive: true });
+
+const saveSnapshot = async (filename: string, windowTitle?: string) => {
+    const result = await screen.screenshot(windowTitle, { scale: SCALE });
+    writeFileSync(resolve(OUT_DIR, filename), Buffer.from(result.data, "base64"));
 };
 
-const IMAGES_DIR = resolve(import.meta.dirname, "../docs/tutorial/images");
+const displayGrabSize = (process.env.GTKX_XVFB_SCREEN ?? "1024x768x24").split("x").slice(0, 2).join("x");
 
-const saveScreenshot = async (filename: string) => {
-    ensureDarkMode();
-    const result = await screen.screenshot();
-    writeFileSync(resolve(IMAGES_DIR, filename), Buffer.from(result.data, "base64"));
+const grabWithFfmpeg = (path: string) => {
+    execFileSync("ffmpeg", [
+        "-y",
+        "-loglevel",
+        "error",
+        "-f",
+        "x11grab",
+        "-draw_mouse",
+        "0",
+        "-video_size",
+        displayGrabSize,
+        "-i",
+        process.env.DISPLAY ?? ":0",
+        "-frames:v",
+        "1",
+        path,
+    ]);
 };
+
+const grabWithImageMagick = (path: string) => {
+    execFileSync("import", ["-window", "root", `png:${path}`]);
+};
+
+const isMissingBinary = (error: unknown): boolean =>
+    error instanceof Error && "code" in error && error.code === "ENOENT";
 
 const saveDisplayScreenshot = async (filename: string) => {
-    ensureDarkMode();
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    execFileSync("import", ["-window", "root", "-trim", "+repage", `png:${resolve(IMAGES_DIR, filename)}`]);
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 200));
+    const path = resolve(OUT_DIR, filename);
+    try {
+        grabWithFfmpeg(path);
+    } catch (error) {
+        if (!isMissingBinary(error)) throw error;
+        grabWithImageMagick(path);
+    }
 };
 
 interface ChapterDef {
@@ -41,6 +69,7 @@ interface ChapterDef {
     description: string;
     Component: () => ReactElement;
     capture: "screen" | "display";
+    windowTitle?: string;
     setup?: () => Promise<void>;
 }
 
@@ -69,7 +98,18 @@ const chapters: ChapterDef[] = [
         slug: "7-settings-and-preferences",
         description: "settings and preferences",
         Component: Chapter7,
-        capture: "display",
+        capture: "screen",
+        windowTitle: "Preferences",
+    },
+    {
+        slug: "8-deploying",
+        description: "deploying",
+        Component: Chapter8,
+        capture: "screen",
+        setup: async () => {
+            await screen.findByText("1.0.0");
+            await new Promise((resolveDelay) => setTimeout(resolveDelay, 300));
+        },
     },
 ];
 
@@ -78,12 +118,19 @@ describe("Tutorial Screenshots", () => {
         await cleanup();
     });
 
-    for (const { slug, description, Component, capture, setup } of chapters) {
-        it(`captures chapter ${slug.split("-", 1)[0]}: ${description}`, async () => {
-            await render(<Component />, { wrapper: false });
-            await setup?.();
-            const save = capture === "display" ? saveDisplayScreenshot : saveScreenshot;
-            await save(`${slug}.png`);
-        });
+    for (const theme of THEMES) {
+        for (const { slug, description, Component, capture, windowTitle, setup } of chapters) {
+            it(`captures chapter ${slug.split("-", 1)[0]}: ${description} (${theme})`, async () => {
+                setTheme(theme);
+                await render(<Component />, { wrapper: false });
+                await setup?.();
+                const filename = `${slug}-${theme}.png`;
+                if (capture === "display") {
+                    await saveDisplayScreenshot(filename);
+                } else {
+                    await saveSnapshot(filename, windowTitle);
+                }
+            });
+        }
     }
 });

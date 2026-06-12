@@ -5,10 +5,18 @@
     "type": "module",
     "scripts": {
         "typedoc": "node scripts/typedoc.ts",
-        "docs": "pnpm typedoc && vitepress build",
+        "changelog": "node scripts/changelog.ts",
+        "gallery": "node scripts/gallery.ts",
+        "docs": "pnpm typedoc && pnpm changelog && pnpm gallery && vitepress build",
         "dev": "vitepress dev",
         "preview": "vitepress preview",
-        "screenshots": "vitest run --config screenshots/vitest.config.ts"
+        "screenshots": "GTKX_XVFB_SCREEN=2200x1600x24 GDK_SCALE=2 vitest run --config screenshots/vitest.config.ts",
+        "assets:apps": "node screenshots/capture-apps.ts",
+        "assets:images": "node screenshots/postprocess.ts",
+        "assets:og": "node screenshots/og.ts",
+        "assets:video": "node screenshots/record-hero.ts",
+        "assets": "pnpm screenshots && pnpm assets:apps && pnpm assets:images && pnpm assets:og",
+        "typecheck": "tsc -b tsconfig.screenshots.json --emitDeclarationOnly"
     },
     "devDependencies": {
         "@gtkx/css": "workspace:*",
@@ -16,10 +24,13 @@
         "@gtkx/testing": "workspace:*",
         "@gtkx/vitest": "workspace:*",
         "react": "^19.2.7",
+        "satori": "^0.26.0",
+        "sharp": "^0.35.1",
         "typedoc": "^0.28.19",
         "typedoc-plugin-markdown": "^4.12.0",
         "typedoc-vitepress-theme": "^1.1.3",
         "vitepress": "^1.6.4",
-        "vitepress-plugin-llms": "^1.13.1"
+        "vitepress-plugin-llms": "^1.13.1",
+        "vitest": "^4.1.8"
     }
 }

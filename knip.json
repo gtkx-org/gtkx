@@ -3,6 +3,7 @@
     "ignoreExportsUsedInFile": true,
     "ignoreBinaries": [
         "espeak-ng",
+        "ffmpeg",
         "glib-compile-resources",
         "glib-compile-schemas",
         "import",

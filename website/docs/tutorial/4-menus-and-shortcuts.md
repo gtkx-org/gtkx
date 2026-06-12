@@ -2,7 +2,8 @@
 
 Desktop apps need menus and keyboard shortcuts. GTKX provides declarative components for both.
 
-![Notes app after this chapter](./images/4-menus-and-shortcuts.png)
+![Notes app after this chapter](./images/4-menus-and-shortcuts-light.webp){.light-only}
+![Notes app after this chapter](./images/4-menus-and-shortcuts-dark.webp){.dark-only}
 
 The components below live inside the `NotesWindow` from [Chapter 1](./1-window-and-header-bar.md), still wrapped in `<AdwApplication>`.
 
@@ -329,6 +330,16 @@ export function App() {
 }
 ```
 
+For context menus, menu bars rendered as widgets, and action groups with custom prefixes, see the [Menus, actions & shortcuts guide](/docs/guides/menus-and-actions).
+
 ## Next
 
 In the [next chapter](./5-navigation.md), you'll add a sidebar with categories and split-view navigation.
+
+## Checkpoint
+
+- You should now have a primary menu in the header bar whose entries trigger `win.`-scoped actions.
+- You should see accelerators like Ctrl+N rendered next to their menu items, and pressing them should fire the actions.
+- You should be able to add window-level shortcuts with `GtkShortcutController`, including conditionally disabled ones via `Gtk.NeverTrigger`.
+
+The complete app this tutorial builds lives at [examples/tutorial](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial).

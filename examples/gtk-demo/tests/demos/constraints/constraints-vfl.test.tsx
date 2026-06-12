@@ -3,15 +3,23 @@ import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { constraintsVflDemo } from "../../../src/demos/constraints/constraints-vfl.js";
 import { renderDemo } from "../../test-utils.js";
+import {
+    type ChildButtons,
+    collectConstraints,
+    expectChildButtonLabels,
+    findChildButtons,
+} from "./constraint-helpers.js";
 
-const collectConstraints = (layout: Gtk.ConstraintLayout): Gtk.Constraint[] => {
-    const observer = layout.observeConstraints();
-    const constraints: Gtk.Constraint[] = [];
-    for (let i = 0; i < observer.getNItems(); i++) {
-        const item = observer.getItem(i);
-        if (item instanceof Gtk.Constraint) constraints.push(item);
-    }
-    return constraints;
+interface VflContext extends ChildButtons {
+    constraints: Gtk.Constraint[];
+}
+
+const renderVflDemo = async (): Promise<VflContext> => {
+    await renderDemo(constraintsVflDemo);
+    const buttons = await findChildButtons();
+    const box = (await screen.findByName("container")) as Gtk.Box;
+    const layout = box.getLayoutManager() as Gtk.ConstraintLayout;
+    return { ...buttons, constraints: collectConstraints(layout) };
 };
 
 describe("constraintsVflDemo", () => {
@@ -33,29 +41,16 @@ describe("constraintsVflDemo", () => {
 
     it("renders the three child buttons of the VFL demo", async () => {
         await renderDemo(constraintsVflDemo);
-        const child1 = (await screen.findByName("button1")) as Gtk.Button;
-        const child2 = (await screen.findByName("button2")) as Gtk.Button;
-        const child3 = (await screen.findByName("button3")) as Gtk.Button;
-        expect(child1.getLabel()).toBe("Child 1");
-        expect(child2.getLabel()).toBe("Child 2");
-        expect(child3.getLabel()).toBe("Child 3");
+        await expectChildButtonLabels();
     });
 
     it("emits one constraint per non-trivial VFL clause", async () => {
-        await renderDemo(constraintsVflDemo);
-        const box = (await screen.findByName("container")) as Gtk.Box;
-        const layout = box.getLayoutManager() as Gtk.ConstraintLayout;
-        const constraints = collectConstraints(layout);
+        const { constraints } = await renderVflDemo();
         expect(constraints.length).toBeGreaterThanOrEqual(10);
     });
 
     it("includes a width-equality constraint between button1 and button2", async () => {
-        await renderDemo(constraintsVflDemo);
-        const button1 = (await screen.findByName("button1")) as Gtk.Button;
-        const button2 = (await screen.findByName("button2")) as Gtk.Button;
-        const box = (await screen.findByName("container")) as Gtk.Box;
-        const layout = box.getLayoutManager() as Gtk.ConstraintLayout;
-        const constraints = collectConstraints(layout);
+        const { button1, button2, constraints } = await renderVflDemo();
 
         const equality = constraints.find((c) => {
             const target = c.getTarget();
@@ -69,12 +64,7 @@ describe("constraintsVflDemo", () => {
     });
 
     it("includes a height-equality constraint pairing button3 with button1", async () => {
-        await renderDemo(constraintsVflDemo);
-        const button1 = (await screen.findByName("button1")) as Gtk.Button;
-        const button3 = (await screen.findByName("button3")) as Gtk.Button;
-        const box = (await screen.findByName("container")) as Gtk.Box;
-        const layout = box.getLayoutManager() as Gtk.ConstraintLayout;
-        const constraints = collectConstraints(layout);
+        const { button1, button3, constraints } = await renderVflDemo();
 
         const equality = constraints.find((c) => {
             const target = c.getTarget();
@@ -89,12 +79,7 @@ describe("constraintsVflDemo", () => {
     });
 
     it("includes a 12-pixel spacing constraint between button1 and button2", async () => {
-        await renderDemo(constraintsVflDemo);
-        const button1 = (await screen.findByName("button1")) as Gtk.Button;
-        const button2 = (await screen.findByName("button2")) as Gtk.Button;
-        const box = (await screen.findByName("container")) as Gtk.Box;
-        const layout = box.getLayoutManager() as Gtk.ConstraintLayout;
-        const constraints = collectConstraints(layout);
+        const { button1, button2, constraints } = await renderVflDemo();
 
         const spacing = constraints.find((c) => {
             const target = c.getTarget();

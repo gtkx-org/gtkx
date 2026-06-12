@@ -9,6 +9,7 @@ import { quit } from "@gtkx/react";
 import { type RefObject, useEffect, useRef, useState } from "react";
 
 const DEFAULT_URL = "https://gtkx.dev";
+const START_URL = process.argv[2] ?? DEFAULT_URL;
 
 const urlBarStyle = css`
     min-width: 400px;
@@ -36,7 +37,7 @@ interface BrowserState {
 
 const useBrowserController = (webViewRef: RefObject<WebKit.WebView | null>) => {
     const [state, setState] = useState<BrowserState>({
-        url: DEFAULT_URL,
+        url: START_URL,
         isLoading: false,
         canGoBack: false,
         canGoForward: false,
@@ -103,10 +104,12 @@ const BrowserWindow = () => {
     const { state, setUrl, navigate, handleLoadChanged, handleEstimatedLoadProgress } =
         useBrowserController(webViewRef);
     const { url, isLoading, canGoBack, canGoForward, progress } = state;
+    const navigateRef = useRef(navigate);
+    navigateRef.current = navigate;
 
     useEffect(() => {
-        navigate(DEFAULT_URL);
-    }, [navigate]);
+        navigateRef.current(START_URL);
+    }, []);
 
     return (
         <AdwApplicationWindow

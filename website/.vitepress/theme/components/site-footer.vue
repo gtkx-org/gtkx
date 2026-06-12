@@ -28,6 +28,7 @@ const columns = [
         title: "Community",
         links: [
             { text: "GitHub", href: repo },
+            { text: "Releases", href: `${repo}/releases` },
             { text: "Discussions", href: `${repo}/discussions` },
             { text: "Issues", href: `${repo}/issues` },
             { text: "Code of conduct", href: `${repo}/blob/main/CODE_OF_CONDUCT.md` },
@@ -54,7 +55,7 @@ const year = new Date().getFullYear();
                 <GtkxMark :size="36" />
                 <div>
                     <div class="gtkx-footer-brand-name">GTKX</div>
-                    <div class="gtkx-footer-brand-tag">Linux application development for the modern age.</div>
+                    <div class="gtkx-footer-brand-tag">Native Linux application development for the modern age.</div>
                 </div>
             </div>
             <div class="gtkx-footer-cols">

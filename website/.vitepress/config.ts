@@ -1,10 +1,15 @@
-import { type DefaultTheme, defineConfig } from "vitepress";
+import { type DefaultTheme, defineConfig, type HeadConfig } from "vitepress";
 import llmstxt from "vitepress-plugin-llms";
 import animateSidebar from "../api/animate/typedoc-sidebar.json" with { type: "json" };
 import cssSidebar from "../api/css/typedoc-sidebar.json" with { type: "json" };
 import ffiSidebar from "../api/ffi/typedoc-sidebar.json" with { type: "json" };
 import reactSidebar from "../api/react/typedoc-sidebar.json" with { type: "json" };
 import testingSidebar from "../api/testing/typedoc-sidebar.json" with { type: "json" };
+
+const SITE_URL = "https://gtkx.dev";
+const SITE_TITLE = "GTKX — Native Linux application development for the modern age";
+const SITE_DESCRIPTION =
+    "Native Linux application development for the modern age. React 19 renders to real GTK4 and Libadwaita widgets on Node.js — no Electron, no WebView.";
 
 const prepareTypedocSidebar = (items: DefaultTheme.SidebarItem[]): DefaultTheme.SidebarItem[] =>
     items.map((item) => {
@@ -15,12 +20,15 @@ const prepareTypedocSidebar = (items: DefaultTheme.SidebarItem[]): DefaultTheme.
 
 export default defineConfig({
     title: "GTKX",
-    description: "Linux application development for the modern age powered by GTK4 and React",
+    description: SITE_DESCRIPTION,
     appearance: true,
+    sitemap: {
+        hostname: SITE_URL,
+    },
     vite: {
         plugins: [
             llmstxt({
-                domain: "https://gtkx.dev",
+                domain: SITE_URL,
                 ignoreFiles: ["api/**/*"],
                 customLLMsTxtTemplate: `# {title}
 
@@ -44,12 +52,32 @@ export default defineConfig({
     },
     head: [
         ["link", { rel: "icon", href: "/favicon.svg" }],
+        ["meta", { property: "og:type", content: "website" }],
+        ["meta", { property: "og:site_name", content: "GTKX" }],
+        ["meta", { property: "og:title", content: SITE_TITLE }],
+        ["meta", { property: "og:description", content: SITE_DESCRIPTION }],
+        ["meta", { property: "og:image", content: `${SITE_URL}/og/og-home.png` }],
+        ["meta", { property: "og:image:width", content: "1200" }],
+        ["meta", { property: "og:image:height", content: "630" }],
+        ["meta", { name: "twitter:card", content: "summary_large_image" }],
+        ["meta", { name: "twitter:title", content: SITE_TITLE }],
+        ["meta", { name: "twitter:description", content: SITE_DESCRIPTION }],
+        ["meta", { name: "twitter:image", content: `${SITE_URL}/og/og-home.png` }],
+        ["meta", { name: "theme-color", content: "#c8102e" }],
         [
             "script",
             { id: "default-light-appearance" },
             "try{if(!localStorage.getItem('vitepress-theme-appearance'))localStorage.setItem('vitepress-theme-appearance','light')}catch(e){}",
         ],
     ],
+    transformPageData(pageData) {
+        const canonical = `${SITE_URL}/${pageData.relativePath.replace(/(^|\/)index\.md$/, "$1").replace(/\.md$/, "")}`;
+        const head: HeadConfig[] = [
+            ["link", { rel: "canonical", href: canonical }],
+            ["meta", { property: "og:url", content: canonical }],
+        ];
+        pageData.frontmatter.head = [...(pageData.frontmatter.head ?? []), ...head];
+    },
     markdown: {
         theme: { light: "one-dark-pro", dark: "one-dark-pro" },
     },
@@ -59,12 +87,27 @@ export default defineConfig({
             {
                 text: "Docs",
                 link: "/docs/introduction",
-                activeMatch: "^/docs/",
+                activeMatch: "^/docs/(?!tutorial|gallery|changelog)",
+            },
+            {
+                text: "Tutorial",
+                link: "/docs/tutorial/1-window-and-header-bar",
+                activeMatch: "^/docs/tutorial/",
+            },
+            {
+                text: "Gallery",
+                link: "/docs/gallery/",
+                activeMatch: "^/docs/gallery/",
             },
             {
                 text: "API",
                 link: "/api/react/",
                 activeMatch: "^/api/",
+            },
+            {
+                text: "Changelog",
+                link: "/docs/changelog",
+                activeMatch: "^/docs/changelog",
             },
         ],
         socialLinks: [{ icon: "github", link: "https://github.com/gtkx-org/gtkx" }],
@@ -72,21 +115,11 @@ export default defineConfig({
             "/docs/": [
                 {
                     text: "Introduction",
-                    link: "/docs/introduction",
-                },
-                {
-                    text: "Getting started",
-                    link: "/docs/getting-started",
-                },
-                {
-                    text: "Core concepts",
                     collapsed: false,
                     items: [
-                        { text: "FFI bindings", link: "/docs/ffi-bindings" },
-                        { text: "Styling and CSS", link: "/docs/styling" },
-                        { text: "Portals", link: "/docs/portals" },
-                        { text: "OpenGL", link: "/docs/opengl" },
-                        { text: "Testing", link: "/docs/testing" },
+                        { text: "What is GTKX?", link: "/docs/introduction" },
+                        { text: "Getting started", link: "/docs/getting-started" },
+                        { text: "Thinking in GTKX", link: "/docs/thinking-in-gtkx" },
                     ],
                 },
                 {
@@ -104,11 +137,44 @@ export default defineConfig({
                     ],
                 },
                 {
+                    text: "Guides",
+                    collapsed: false,
+                    items: [
+                        { text: "Windows & application lifecycle", link: "/docs/guides/windows" },
+                        { text: "Hooks", link: "/docs/guides/hooks" },
+                        { text: "Lists & tables", link: "/docs/guides/lists" },
+                        { text: "Menus, actions & shortcuts", link: "/docs/guides/menus-and-actions" },
+                        { text: "Dialogs", link: "/docs/guides/dialogs" },
+                        { text: "Styling and CSS", link: "/docs/styling" },
+                        { text: "Portals", link: "/docs/portals" },
+                        { text: "OpenGL", link: "/docs/guides/opengl" },
+                        { text: "Testing", link: "/docs/testing" },
+                    ],
+                },
+                {
+                    text: "Widget gallery",
+                    collapsed: true,
+                    items: [
+                        { text: "Overview", link: "/docs/gallery/" },
+                        { text: "Layout & containers", link: "/docs/gallery/layout" },
+                        { text: "Controls & input", link: "/docs/gallery/controls" },
+                        { text: "Lists, tables & navigation", link: "/docs/gallery/lists-navigation" },
+                        { text: "Adwaita & feedback", link: "/docs/gallery/adwaita" },
+                    ],
+                },
+                {
+                    text: "Concepts",
+                    collapsed: true,
+                    items: [{ text: "Architecture & FFI bindings", link: "/docs/ffi-bindings" }],
+                },
+                {
                     text: "Reference",
                     collapsed: true,
                     items: [
                         { text: "CLI", link: "/docs/cli" },
+                        { text: "Configuration", link: "/docs/config" },
                         { text: "MCP", link: "/docs/mcp" },
+                        { text: "Changelog", link: "/docs/changelog" },
                     ],
                 },
             ],

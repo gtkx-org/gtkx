@@ -1,17 +1,7 @@
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/gi/gtk";
-import {
-    AdwActionRow,
-    AdwHeaderBar,
-    AdwNavigationSplitView,
-    AdwToolbarView,
-    GtkBox,
-    GtkButton,
-    GtkImage,
-    GtkLabel,
-    GtkListBox,
-    GtkScrolledWindow,
-} from "@gtkx/react";
+import { AdwActionRow, AdwHeaderBar, AdwNavigationPage, AdwToolbarView } from "@gtkx/jsx/adw";
+import { GtkBox, GtkButton, GtkImage, GtkLabel, GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 
 export interface Note {
     id: string;
@@ -45,12 +35,17 @@ const categories = [
 ];
 
 const noteCard = css`
-    background: alpha(@card_bg_color, 0.8);
+    background: @card_bg_color;
     border-radius: 12px;
     padding: 16px;
+    box-shadow:
+        0 1px 4px alpha(black, 0.15),
+        0 0 0 1px alpha(black, 0.08);
 
     &:hover {
-        background: @card_bg_color;
+        box-shadow:
+            0 2px 8px alpha(black, 0.2),
+            0 0 0 1px alpha(black, 0.1);
     }
 `;
 
@@ -80,7 +75,7 @@ export const NoteCardComponent = ({ note }: { note: Note }) => (
 export const noop = () => {};
 
 export const NotesSidebarPage = () => (
-    <AdwNavigationSplitView.Page id="sidebar" title="Notes">
+    <AdwNavigationPage title="Notes">
         <AdwToolbarView addTopBar={<AdwHeaderBar packStart={<GtkButton iconName="list-add-symbolic" />} />}>
             <GtkScrolledWindow vexpand>
                 <GtkListBox cssClasses={["navigation-sidebar"]}>
@@ -95,5 +90,5 @@ export const NotesSidebarPage = () => (
                 </GtkListBox>
             </GtkScrolledWindow>
         </AdwToolbarView>
-    </AdwNavigationSplitView.Page>
+    </AdwNavigationPage>
 );
