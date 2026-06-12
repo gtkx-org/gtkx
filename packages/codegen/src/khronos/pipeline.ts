@@ -236,37 +236,37 @@ const inSlot = (name: string, tsType: string, descriptor: string): EmittedIn => 
     descriptor,
 });
 
-const buildInSlot = (options: BuildSlotOptions, name: string, use: (alias: string) => string): EmittedIn => {
+const buildInSlot = (options: BuildSlotOptions, name: string, track: (alias: string) => string): EmittedIn => {
     const { command, index, plan } = options;
     const param = command.params[index];
     if (param === undefined) throw new Error(`Parameter index ${index} out of range on ${command.name}`);
     switch (plan.kind) {
         case "scalar":
-            return inSlot(name, use(scalarAliasOrGroup(plan.scalar, param.group)), `{ type: ${plan.scalar.tExpr} }`);
+            return inSlot(name, track(scalarAliasOrGroup(plan.scalar, param.group)), `{ type: ${plan.scalar.tExpr} }`);
         case "boolean":
             return inSlot(name, "boolean", "{ type: t.boolean }");
         case "sync":
-            return inSlot(name, use("GLsync"), `{ type: t.struct("borrowed") }`);
+            return inSlot(name, track("GLsync"), `{ type: t.struct("borrowed") }`);
         case "string-in":
             return inSlot(name, "string", `{ type: t.string("borrowed") }`);
         case "string-array-in":
             return inSlot(name, "readonly string[]", `{ type: t.array(t.string("borrowed")) }`);
         case "array-in": {
-            use(scalarAliasOrGroup(plan.scalar, param.group));
+            track(scalarAliasOrGroup(plan.scalar, param.group));
             return inSlot(name, arrayInTsType(plan.scalar, param.group), `{ type: t.array(${plan.scalar.tExpr}) }`);
         }
         case "blob":
-            return inSlot(name, `ArrayBufferView | ${use("GLintptr")} | null`, "{ type: t.blob }");
+            return inSlot(name, `ArrayBufferView | ${track("GLintptr")} | null`, "{ type: t.blob }");
         case "byte-offset":
-            return inSlot(name, use("GLintptr"), "{ type: t.uint64 }");
+            return inSlot(name, track("GLintptr"), "{ type: t.uint64 }");
         case "byte-offset-array":
-            return inSlot(name, `readonly ${use("GLintptr")}[]`, "{ type: t.array(t.uint64) }");
+            return inSlot(name, `readonly ${track("GLintptr")}[]`, "{ type: t.array(t.uint64) }");
         default:
             throw new Error(`Plan kind ${plan.kind} is not an input parameter`);
     }
 };
 
-const buildOutSlot = (options: BuildSlotOptions, use: (alias: string) => string): EmittedOut => {
+const buildOutSlot = (options: BuildSlotOptions, track: (alias: string) => string): EmittedOut => {
     const { command, index, plan, outIndex } = options;
     const param = command.params[index];
     if (param === undefined) throw new Error(`Parameter index ${index} out of range on ${command.name}`);
@@ -277,7 +277,7 @@ const buildOutSlot = (options: BuildSlotOptions, use: (alias: string) => string)
                 out: true,
                 cellName,
                 seed: `const ${cellName} = { value: 0 };`,
-                tsType: use(scalarAliasOrGroup(plan.scalar, param.group)),
+                tsType: track(scalarAliasOrGroup(plan.scalar, param.group)),
                 descriptor: `{ type: t.ref(${plan.scalar.tExpr}) }`,
                 docName: param.name,
                 docCType: param.cType,
@@ -289,7 +289,7 @@ const buildOutSlot = (options: BuildSlotOptions, use: (alias: string) => string)
                 out: true,
                 cellName,
                 seed: `const ${cellName} = { value: new Array<number>(${lenIdentifier}).fill(0) };`,
-                tsType: `${use(plan.scalar.tsAlias)}[]`,
+                tsType: `${track(plan.scalar.tsAlias)}[]`,
                 descriptor: `{ type: t.ref(t.sizedArray(${plan.scalar.tExpr}, ${sizeIndex})) }`,
                 docName: param.name,
                 docCType: param.cType,
@@ -300,7 +300,7 @@ const buildOutSlot = (options: BuildSlotOptions, use: (alias: string) => string)
                 out: true,
                 cellName,
                 seed: `const ${cellName} = { value: new Array<number>(${plan.length}).fill(0) };`,
-                tsType: `${use(plan.scalar.tsAlias)}[]`,
+                tsType: `${track(plan.scalar.tsAlias)}[]`,
                 descriptor: `{ type: t.ref(t.fixedArray(${plan.scalar.tExpr}, ${plan.length})) }`,
                 docName: param.name,
                 docCType: param.cType,
@@ -330,7 +330,7 @@ const buildSlots = (
     plan: CommandPlan & { readonly ok: true },
     usedTypes: Set<string>,
 ): { slots: EmittedSlot[]; ins: EmittedIn[]; outs: EmittedOut[] } => {
-    const use = (alias: string): string => {
+    const track = (alias: string): string => {
         usedTypes.add(alias);
         return alias;
     };
@@ -348,11 +348,11 @@ const buildSlots = (
             usedTypes,
         };
         if (isOutPlan(paramPlan)) {
-            const slot = buildOutSlot(options, use);
+            const slot = buildOutSlot(options, track);
             slots.push(slot);
             outs.push(slot);
         } else {
-            const slot = buildInSlot(options, toIdentifier(param.name), use);
+            const slot = buildInSlot(options, toIdentifier(param.name), track);
             slots.push(slot);
             ins.push(slot);
         }
@@ -371,7 +371,7 @@ const buildEmittedReturn = (
     returnGroup: string | undefined,
     usedTypes: Set<string>,
 ): EmittedReturn => {
-    const use = (alias: string): string => {
+    const track = (alias: string): string => {
         usedTypes.add(alias);
         return alias;
     };
@@ -379,7 +379,7 @@ const buildEmittedReturn = (
         case "void":
             return { tsType: "void", descriptor: "t.void" };
         case "scalar": {
-            const alias = use(scalarAliasOrGroup(plan.scalar, returnGroup));
+            const alias = track(scalarAliasOrGroup(plan.scalar, returnGroup));
             return { tsType: alias, descriptor: plan.scalar.tExpr, expr: (call) => `${call} as ${alias}` };
         }
         case "boolean":
@@ -387,10 +387,10 @@ const buildEmittedReturn = (
         case "string":
             return { tsType: "string", descriptor: `t.string("borrowed")`, expr: (call) => `${call} as string` };
         case "sync":
-            return { tsType: use("GLsync"), descriptor: `t.struct("borrowed")`, expr: (call) => `${call} as GLsync` };
+            return { tsType: track("GLsync"), descriptor: `t.struct("borrowed")`, expr: (call) => `${call} as GLsync` };
         case "opaque-pointer":
             return {
-                tsType: use("GLpointer"),
+                tsType: track("GLpointer"),
                 descriptor: `t.struct("borrowed")`,
                 expr: (call) => `${call} as GLpointer`,
             };
@@ -532,7 +532,7 @@ const scalarPrefixSlots = (
     plan: CommandPlan & { readonly ok: true },
     usedTypes: Set<string>,
 ): EmittedIn[] | undefined => {
-    const use = (alias: string): string => {
+    const track = (alias: string): string => {
         usedTypes.add(alias);
         return alias;
     };
@@ -546,7 +546,7 @@ const scalarPrefixSlots = (
             buildInSlot(
                 { command: plan.command, index, plan: paramPlan, outIndex: 0, usedTypes },
                 toIdentifier(param.name),
-                use,
+                track,
             ),
         );
     }
@@ -818,7 +818,7 @@ const assertExportNamesDisjoint = (
     const companionCollisions = [...exportNames.keys()].filter((name) => companionExports.has(name));
     if (companionCollisions.length > 0) {
         throw new Error(
-            `Companion module exports collide with generated exports: ${companionCollisions.sort().join(", ")}`,
+            `Companion module exports collide with generated exports: ${companionCollisions.sort((a, b) => a.localeCompare(b)).join(", ")}`,
         );
     }
 };

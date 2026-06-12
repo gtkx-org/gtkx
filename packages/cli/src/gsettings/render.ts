@@ -28,9 +28,7 @@ const FLAGS_KIND = "flags";
  * @returns The escaped string literal, including quotes
  */
 const toJsStringLiteral = (value: string): string =>
-    JSON.stringify(value)
-        .replace(/\u2028/g, "\\u2028")
-        .replace(/\u2029/g, "\\u2029");
+    JSON.stringify(value).replaceAll("\u2028", "\\u2028").replaceAll("\u2029", "\\u2029");
 
 const exportNameFor = (schemaId: string): string => schemaId.replaceAll(".", "_");
 

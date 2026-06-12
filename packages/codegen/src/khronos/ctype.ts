@@ -67,7 +67,7 @@ export const parseCType = (cType: string): ParsedCType => {
     const pointers = (cType.match(/\*/g) ?? []).length;
     const constData = /(^|\s)const(\s|\*)/.test(` ${cType} `) && pointers > 0;
     const base = cType
-        .replace(/\*/g, " ")
+        .replaceAll("*", " ")
         .split(/\s+/)
         .filter((token) => token.length > 0 && token !== "const" && token !== "struct")
         .join(" ");
