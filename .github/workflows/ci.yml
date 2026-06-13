@@ -214,7 +214,7 @@ jobs:
       - name: Build the native addon under AddressSanitizer and run its suite
         uses: ./.github/actions/run-in-container
         with:
-          command: scripts/ci-asan.sh
+          command: pnpm asan
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
 
@@ -235,12 +235,12 @@ jobs:
       - name: Run Miri over the FFI-free marshalling subset
         uses: ./.github/actions/run-in-container
         with:
-          command: scripts/ci-miri.sh
+          command: pnpm miri
           mount-cargo-cache: "true"
 
   # The benches need the image's pinned GTK runtime, and that image is now
   # Ubuntu-based — the platform the CodSpeed runner supports — so the runner runs
-  # directly inside the container (scripts/ci-bench.sh) and uploads over OIDC.
+  # directly inside the container (pnpm bench) and uploads over OIDC.
   # One `codspeed run` wraps both the Rust and TypeScript suites as a single
   # report; run-in-container forwards the OIDC token and GitHub context it needs.
   bench:
@@ -272,7 +272,7 @@ jobs:
         uses: ./.github/actions/run-in-container
         with:
           install: "false"
-          command: scripts/ci-bench.sh
+          command: pnpm bench
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
           seccomp-unconfined: "true"
