@@ -1,5 +1,5 @@
 import { call, type NativeHandle, read } from "../../index.js";
-import type { Type } from "../../types.js";
+import type { NativeType } from "../../types.js";
 
 const GOBJECT_REF_COUNT_OFFSET = 8;
 
@@ -120,7 +120,7 @@ export function connectSignalReturning(
     obj: unknown,
     signalName: string,
     callback: (...args: unknown[]) => void,
-    returnType: Type,
+    returnType: NativeType,
 ): unknown {
     return call(
         GOBJECT_LIB,
@@ -148,7 +148,7 @@ export function connectSignalTrampoline(
     obj: unknown,
     signalName: string,
     callback: (...args: unknown[]) => void,
-    options: { argTypes: Type[]; userDataIndex: number; hasDestroy?: boolean } = {
+    options: { argTypes: NativeType[]; userDataIndex: number; hasDestroy?: boolean } = {
         argTypes: [{ type: "gobject", ownership: "borrowed" }, { type: "uint64" }],
         userDataIndex: 1,
         hasDestroy: true,

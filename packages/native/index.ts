@@ -1,10 +1,10 @@
 import * as native from "./native-binding.cjs";
-import type { Arg, ArrayType, FfiValue, HashTableType, NativeHandle, RefType, TrampolineType, Type } from "./types.js";
+import type { NativeArg, ArrayType, NativeValue, HashTableType, NativeHandle, RefType, TrampolineType, NativeType } from "./types.js";
 
 type NativeVfuncDefinition = {
     readonly byteOffset: number;
-    readonly argTypes: readonly Type[];
-    readonly returnType: Type;
+    readonly argTypes: readonly NativeType[];
+    readonly returnType: NativeType;
     readonly fn: (...args: unknown[]) => unknown;
 };
 
@@ -26,11 +26,11 @@ export type { NativeHandle } from "./types.js";
  */
 type MainLoopHandle = ReturnType<typeof native.init>;
 
-function isHandleType(type: Type): boolean {
+function isHandleType(type: NativeType): boolean {
     return type.type === "gobject" || type.type === "boxed" || type.type === "struct" || type.type === "fundamental";
 }
 
-function unwrapValue(value: unknown, type: Type): unknown {
+function unwrapValue(value: unknown, type: NativeType): unknown {
     if (value === null || value === undefined) return value;
 
     if (isHandleType(type)) return value;
@@ -78,7 +78,7 @@ function wrapUserCallback(value: unknown, type: TrampolineType): unknown {
     };
 }
 
-function wrapValue(value: unknown, type: Type): unknown {
+function wrapValue(value: unknown, type: NativeType): unknown {
     if (value === null || value === undefined) return value;
 
     if (isHandleType(type)) return value;
@@ -113,7 +113,7 @@ function rewrapRefArg(ref: { value: unknown }, type: RefType): void {
  * @param returnType - Expected return type
  * @returns The function return value
  */
-export function call(library: string, symbol: string, args: Arg[], returnType: Type): FfiValue {
+export function call(library: string, symbol: string, args: NativeArg[], returnType: NativeType): NativeValue {
     const unwrapped = args.map((arg) => ({
         ...arg,
         value: unwrapValue(arg.value, arg.type),
@@ -127,7 +127,7 @@ export function call(library: string, symbol: string, args: Arg[], returnType: T
         }
     }
 
-    return wrapValue(result, returnType) as FfiValue;
+    return wrapValue(result, returnType) as NativeValue;
 }
 
 /**
@@ -158,9 +158,9 @@ export function stop(): void {
  * @param offset - Byte offset from the handle pointer
  * @returns The read value
  */
-export function read(handle: NativeHandle, type: Type, offset: number): FfiValue {
+export function read(handle: NativeHandle, type: NativeType, offset: number): NativeValue {
     const result = native.read(handle, type, offset);
-    return wrapValue(result, type) as FfiValue;
+    return wrapValue(result, type) as NativeValue;
 }
 
 /**
@@ -171,7 +171,7 @@ export function read(handle: NativeHandle, type: Type, offset: number): FfiValue
  * @param offset - Byte offset from the handle pointer
  * @param value - Value to write
  */
-export function write(handle: NativeHandle, type: Type, offset: number, value: unknown): void {
+export function write(handle: NativeHandle, type: NativeType, offset: number, value: unknown): void {
     native.write(handle, type, offset, unwrapValue(value, type));
 }
 
@@ -210,9 +210,9 @@ export type RegisterClassVfuncDefinition = {
     /** Byte offset of the vfunc slot within the class struct. */
     readonly byteOffset: number;
     /** FFI argument types matching the vfunc signature. */
-    readonly argTypes: readonly Type[];
+    readonly argTypes: readonly NativeType[];
     /** FFI return type matching the vfunc signature. */
-    readonly returnType: Type;
+    readonly returnType: NativeType;
     /** Implementation invoked on each vfunc call. */
     readonly fn: (...args: unknown[]) => unknown;
 };
@@ -305,8 +305,8 @@ function toNativeVfunc(vfunc: RegisterClassVfuncDefinition): NativeVfuncDefiniti
 export function connectSignalClosure(
     handle: NativeHandle,
     signal: string,
-    argTypes: readonly Type[],
-    returnType: Type,
+    argTypes: readonly NativeType[],
+    returnType: NativeType,
     handler: (...args: unknown[]) => unknown,
     after: boolean,
 ): number {
@@ -381,4 +381,4 @@ export function unfreeze(): void {
     native.unfreeze();
 }
 
-export type { Arg, FfiValue, TrampolineType, Type } from "./types.js";
+export type { NativeArg as Arg, NativeValue as FfiValue, TrampolineType, NativeType as Type } from "./types.js";
