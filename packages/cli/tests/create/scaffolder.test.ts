@@ -9,6 +9,7 @@ import {
     type PackageManager,
     type ScaffolderDeps,
 } from "../../src/create/scaffolder.js";
+import type { TemplateContext } from "../../src/templates.js";
 
 const TEST_DIR = "/test-workspace";
 const TEMPLATES_DIR = join(import.meta.dirname, "..", "..", "templates");
@@ -28,11 +29,13 @@ type Harness = {
     gitShouldThrow: boolean;
     notes: Array<{ message: string; title: string }>;
     logs: { info: string[]; error: string[] };
-    exit: ReturnType<typeof vi.fn>;
+    exit: ReturnType<typeof vi.fn<(code: number) => void>>;
     detectedPm: PackageManager | undefined;
 };
 
-const renderRealTemplate = (templateName: string, context: Record<string, unknown>): string => {
+type ScaffolderFs = ScaffolderDeps["fs"];
+
+const renderRealTemplate = (templateName: string, context: TemplateContext): string => {
     const templateContent = readFileSync(join(TEMPLATES_DIR, templateName), "utf-8");
     return ejs.render(templateContent, context);
 };
@@ -42,59 +45,66 @@ const buildHarness = (overrides: Partial<Omit<Harness, "deps">> = {}): Harness =
     const gitCalls: string[] = [];
     const notes: Array<{ message: string; title: string }> = [];
     const logs = { info: [] as string[], error: [] as string[] };
-    const harness: Harness = {
+    const state = {
         installs,
         installShouldThrow: false,
         gitCalls,
         gitShouldThrow: false,
         notes,
         logs,
-        exit: vi.fn(((_code: number) => undefined) as unknown as never),
-        detectedPm: undefined,
-        deps: null as unknown as ScaffolderDeps,
+        exit: vi.fn<(code: number) => void>(),
+        detectedPm: undefined as PackageManager | undefined,
         ...overrides,
     };
-    const memfsAsAny = vol as unknown as ScaffolderDeps["fs"];
-    harness.deps = {
-        cwd: () => TEST_DIR,
-        fs: {
-            existsSync: (p: string) => memfsAsAny.existsSync(p),
-            mkdirSync: (p: string, opts) => memfsAsAny.mkdirSync(p, opts),
-            writeFileSync: (p: string, content: string) => memfsAsAny.writeFileSync(p, content),
+    const exit: ScaffolderDeps["exit"] = (code) => {
+        state.exit(code);
+        return undefined as never;
+    };
+    const fs: ScaffolderFs = {
+        existsSync: (p) => vol.existsSync(p),
+        mkdirSync: (p, opts) => {
+            vol.mkdirSync(p, opts);
         },
+        writeFileSync: (p, content) => {
+            vol.writeFileSync(p, content);
+        },
+    };
+    const deps: ScaffolderDeps = {
+        cwd: () => TEST_DIR,
+        fs,
         prompts: {
-            intro: (() => undefined) as unknown as ScaffolderDeps["prompts"]["intro"],
-            note: ((message: string, title?: string) => {
-                notes.push({ message, title: title ?? "" });
-            }) as unknown as ScaffolderDeps["prompts"]["note"],
-            cancel: (() => undefined) as unknown as ScaffolderDeps["prompts"]["cancel"],
-            text: (() => Promise.resolve("")) as unknown as ScaffolderDeps["prompts"]["text"],
-            select: (() => Promise.resolve(undefined)) as unknown as ScaffolderDeps["prompts"]["select"],
-            confirm: (() => Promise.resolve(true)) as unknown as ScaffolderDeps["prompts"]["confirm"],
-            isCancel: ((_value: unknown) => false) as unknown as ScaffolderDeps["prompts"]["isCancel"],
+            intro: () => undefined,
+            note: (message, title) => {
+                state.notes.push({ message: message ?? "", title: title ?? "" });
+            },
+            cancel: () => undefined,
+            text: () => Promise.resolve(""),
+            select: <Value>() => Promise.resolve(undefined as Value),
+            confirm: () => Promise.resolve(true),
+            isCancel: (_value): _value is symbol => false,
             spinner: () => ({ start: () => undefined, stop: () => undefined }),
             log: {
-                info: (message: string) => {
-                    logs.info.push(message);
+                info: (message) => {
+                    state.logs.info.push(message);
                 },
-                error: (message: string) => {
-                    logs.error.push(message);
+                error: (message) => {
+                    state.logs.error.push(message);
                 },
             },
         },
         render: renderRealTemplate,
         install: async (opts) => {
-            installs.push(opts);
-            if (harness.installShouldThrow) throw new Error("install failed");
+            state.installs.push(opts);
+            if (state.installShouldThrow) throw new Error("install failed");
         },
-        gitInit: async (cwd: string) => {
-            gitCalls.push(cwd);
-            if (harness.gitShouldThrow) throw new Error("git failed");
+        gitInit: async (cwd) => {
+            state.gitCalls.push(cwd);
+            if (state.gitShouldThrow) throw new Error("git failed");
         },
-        detectPackageManager: async () => harness.detectedPm,
-        exit: harness.exit as unknown as (code: number) => never,
+        detectPackageManager: async () => state.detectedPm,
+        exit,
     };
-    return harness;
+    return { ...state, deps };
 };
 
 const defaultOptions = (overrides: Partial<CreateOptions> = {}): CreateOptions => ({
@@ -311,10 +321,8 @@ describe("createScaffolder (prompting cancellations)", () => {
 
     it("calls the exit hook when the user cancels a prompt", async () => {
         const harness = buildHarness();
-        harness.deps.prompts.isCancel = ((value: unknown) =>
-            value === "__CANCEL__") as unknown as ScaffolderDeps["prompts"]["isCancel"];
-        harness.deps.prompts.text = (() =>
-            Promise.resolve("__CANCEL__")) as unknown as ScaffolderDeps["prompts"]["text"];
+        harness.deps.prompts.isCancel = (value): value is symbol => value === "__CANCEL__";
+        harness.deps.prompts.text = () => Promise.resolve("__CANCEL__");
 
         const scaffolder = createScaffolder(harness.deps);
         await scaffolder.run({
@@ -330,10 +338,10 @@ describe("createScaffolder (prompting cancellations)", () => {
     it("uses the detected package manager as the prompt initial value when none is supplied", async () => {
         const calls: Array<{ initialValue?: PackageManager }> = [];
         const harness = buildHarness({ detectedPm: "yarn" });
-        harness.deps.prompts.select = ((opts: { initialValue?: PackageManager }) => {
-            calls.push(opts);
-            return Promise.resolve(opts.initialValue);
-        }) as unknown as ScaffolderDeps["prompts"]["select"];
+        harness.deps.prompts.select = <Value>(opts: { initialValue?: Value }) => {
+            calls.push({ initialValue: opts.initialValue as PackageManager });
+            return Promise.resolve(opts.initialValue as Value);
+        };
 
         const scaffolder = createScaffolder(harness.deps);
         await scaffolder.run({ name: "test-app", applicationId: "org.test.app", testing: "none", claudeSkills: false });

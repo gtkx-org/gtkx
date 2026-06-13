@@ -1,13 +1,7 @@
-import type { ChildProcess } from "node:child_process";
-import { fork } from "node:child_process";
 import { EventEmitter } from "node:events";
 import type { FSWatcher } from "node:fs";
 import { watch as watchFs } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("node:child_process", () => ({
-    fork: vi.fn(),
-}));
 
 vi.mock("node:fs", async (importActual) => {
     const actual = await importActual<typeof import("node:fs")>();
@@ -15,32 +9,47 @@ vi.mock("node:fs", async (importActual) => {
 });
 
 import { RELOAD_EXIT_CODE } from "../../src/dev/protocol.js";
-import { runDevSupervisor } from "../../src/dev/supervisor.js";
+import { type ForkRunner, runDevSupervisor, type SupervisedChild } from "../../src/dev/supervisor.js";
 
 const flushMicrotasks = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
 
-const forkMock = vi.mocked(fork);
 const watchMock = vi.mocked(watchFs);
 
-type FakeChild = EventEmitter & { killed: boolean; kill: ReturnType<typeof vi.fn> };
+type FakeChild = SupervisedChild &
+    EventEmitter & {
+        killed: boolean;
+        pid: number | undefined;
+        exitCode: number | null;
+        kill: ReturnType<typeof vi.fn<(signal?: number | NodeJS.Signals) => boolean>>;
+    };
 
 function createFakeChild(): FakeChild {
-    const child = new EventEmitter() as FakeChild;
-    child.killed = false;
-    child.kill = vi.fn((_signal?: NodeJS.Signals) => {
-        child.killed = true;
-        return true;
+    const child: FakeChild = Object.assign(new EventEmitter(), {
+        killed: false,
+        pid: undefined as number | undefined,
+        exitCode: null as number | null,
+        kill: vi.fn<(signal?: number | NodeJS.Signals) => boolean>((_signal) => {
+            child.killed = true;
+            return true;
+        }),
     });
     return child;
 }
 
+const forkMock = vi.fn<ForkRunner>();
+
 /**
- * Stubs the next `fork()` with a fresh fake child and returns it, so tests
- * never repeat the `ChildProcess` test-double cast at each call site.
+ * Injects {@link forkMock} into {@link runDevSupervisor}, so each test drives the
+ * supervisor through a deterministic fork factory instead of the real
+ * `node:child_process` fork.
  */
+const startWithForkMock = (entry: string, watch?: Parameters<typeof runDevSupervisor>[1]): void => {
+    runDevSupervisor(entry, watch, forkMock).catch(() => undefined);
+};
+
 function queueChild(): FakeChild {
     const child = createFakeChild();
-    forkMock.mockReturnValueOnce(child as unknown as ChildProcess);
+    forkMock.mockReturnValueOnce(child);
     return child;
 }
 
@@ -71,22 +80,24 @@ function captureConfigWatcher(): { fireConfigChange: () => void } {
     return { fireConfigChange: () => fire() };
 }
 
+type SignalListener = ReturnType<typeof process.listeners>[number];
+
 type SupervisorContext = {
     logSpy: ReturnType<typeof vi.spyOn>;
     exitSpy: ReturnType<typeof vi.spyOn>;
-    prevSigInt: NodeJS.Signals[] | undefined;
-    prevSigTerm: NodeJS.Signals[] | undefined;
-    prevSigHup: NodeJS.Signals[] | undefined;
+    prevSigInt: SignalListener[] | undefined;
+    prevSigTerm: SignalListener[] | undefined;
+    prevSigHup: SignalListener[] | undefined;
 };
 
 const cleanupSignalListeners = (
     name: "SIGINT" | "SIGTERM" | "SIGHUP",
-    previous: NodeJS.Signals[] | undefined,
+    previous: SignalListener[] | undefined,
 ): void => {
-    const current = process.listeners(name) as unknown as NodeJS.Signals[];
+    const current = process.listeners(name);
     for (const listener of current) {
         if (!previous?.includes(listener)) {
-            process.removeListener(name, listener as never);
+            process.removeListener(name, listener);
         }
     }
 };
@@ -97,9 +108,9 @@ const setupSupervisorCtx = (): SupervisorContext => {
         vi.clearAllMocks();
         ctx.logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
         ctx.exitSpy = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
-        ctx.prevSigInt = process.listeners("SIGINT") as unknown as NodeJS.Signals[];
-        ctx.prevSigTerm = process.listeners("SIGTERM") as unknown as NodeJS.Signals[];
-        ctx.prevSigHup = process.listeners("SIGHUP") as unknown as NodeJS.Signals[];
+        ctx.prevSigInt = process.listeners("SIGINT");
+        ctx.prevSigTerm = process.listeners("SIGTERM");
+        ctx.prevSigHup = process.listeners("SIGHUP");
     });
     afterEach(() => {
         ctx.logSpy.mockRestore();
@@ -113,7 +124,7 @@ const setupSupervisorCtx = (): SupervisorContext => {
 
 const startSupervisor = async (entry = "/abs/src/main.tsx"): Promise<FakeChild> => {
     const child = queueChild();
-    runDevSupervisor(entry).catch(() => undefined);
+    startWithForkMock(entry);
     await Promise.resolve();
     return child;
 };
@@ -263,8 +274,8 @@ describe("runDevSupervisor (signal forwarding — force kill)", () => {
     it("force-kills the child via SIGKILL on a second SIGINT", async () => {
         const processKillSpy = vi.spyOn(process, "kill").mockImplementation((() => true) as never);
         const child = await startSupervisor();
-        (child as unknown as { pid: number }).pid = 12345;
-        (child as unknown as { exitCode: number | null }).exitCode = null;
+        child.pid = 12345;
+        child.exitCode = null;
 
         process.emit("SIGINT", "SIGINT");
         await flushMicrotasks();
@@ -286,10 +297,10 @@ describe("runDevSupervisor (config watch)", () => {
     ): Promise<{ child: FakeChild; fireConfigChange: () => void }> => {
         const child = queueChild();
         const { fireConfigChange } = captureConfigWatcher();
-        runDevSupervisor("/proj/src/index.tsx", {
+        startWithForkMock("/proj/src/index.tsx", {
             paths: ["/proj/gtkx.config.ts"],
             regenerate,
-        }).catch(() => undefined);
+        });
         await Promise.resolve();
         return { child, fireConfigChange };
     };

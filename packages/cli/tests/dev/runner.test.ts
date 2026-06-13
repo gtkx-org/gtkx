@@ -1,29 +1,29 @@
 import { EventEmitter } from "node:events";
-import type { Plugin, ViteDevServer } from "vite";
+import type { Plugin } from "vite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RELOAD_EXIT_CODE } from "../../src/dev/protocol.js";
-import { createDevRunner, type DevRunnerDeps } from "../../src/dev/runner.js";
+import { createDevRunner, type DevRunnerDeps, type DevServer } from "../../src/dev/runner.js";
 import { main } from "../../src/dev/runner-main.js";
 
-type FakeServer = {
-    close: ReturnType<typeof vi.fn>;
+type FakeServer = DevServer & {
+    close: ReturnType<typeof vi.fn<DevServer["close"]>>;
     moduleGraph: {
-        getModuleById: ReturnType<typeof vi.fn>;
-        invalidateModule: ReturnType<typeof vi.fn>;
+        getModuleById: ReturnType<typeof vi.fn<DevServer["moduleGraph"]["getModuleById"]>>;
+        invalidateModule: ReturnType<typeof vi.fn<DevServer["moduleGraph"]["invalidateModule"]>>;
     };
-    ssrLoadModule: ReturnType<typeof vi.fn>;
+    ssrLoadModule: ReturnType<typeof vi.fn<DevServer["ssrLoadModule"]>>;
     watcher: EventEmitter;
 };
 
 const createFakeServer = (overrides: Partial<FakeServer> = {}): FakeServer => {
     const watcher = new EventEmitter();
     return {
-        close: vi.fn(async () => undefined),
+        close: vi.fn<DevServer["close"]>(async () => undefined),
         moduleGraph: {
-            getModuleById: vi.fn(),
-            invalidateModule: vi.fn(),
+            getModuleById: vi.fn<DevServer["moduleGraph"]["getModuleById"]>(),
+            invalidateModule: vi.fn<DevServer["moduleGraph"]["invalidateModule"]>(),
         },
-        ssrLoadModule: vi.fn(async () => ({})),
+        ssrLoadModule: vi.fn<DevServer["ssrLoadModule"]>(async () => ({})),
         watcher,
         ...overrides,
     };
@@ -61,7 +61,7 @@ const buildHarness = (
         { name: "gtkx:skip-react-dom-optimize" },
     ] as Plugin[];
     const applicationId = overrides.applicationId ?? null;
-    const createServer = vi.fn<DevRunnerDeps["createServer"]>(async () => server as unknown as ViteDevServer);
+    const createServer = vi.fn<DevRunnerDeps["createServer"]>(async () => server);
     const whenStopped = vi.fn<DevRunnerDeps["whenStopped"]>(() => new Promise<void>(() => {}));
     const startMcp = vi.fn<DevRunnerDeps["startMcpClient"]>(async () => undefined);
     const stopMcp = vi.fn<DevRunnerDeps["stopMcpClient"]>();
@@ -174,7 +174,7 @@ const installedTeardown = (harness: Harness): OnTeardown => {
 };
 
 const emitBoundaryChange = async (harness: Harness, file: string): Promise<void> => {
-    harness.server.moduleGraph.getModuleById.mockReturnValueOnce({ id: file, importers: new Set() });
+    harness.server.moduleGraph.getModuleById.mockReturnValueOnce({ importers: new Set<object>() });
     harness.server.ssrLoadModule.mockResolvedValueOnce({ __isBoundary: true });
     await emitChangeAndFlush(harness, file, 2);
 };
@@ -350,7 +350,7 @@ describe("createDevRunner (file watcher dispatch)", () => {
 
     it("requests a full reload via exit(RELOAD_EXIT_CODE) when the new module is not a boundary", async () => {
         const harness = buildHarness();
-        const module = { id: "/x/y.ts", importers: new Set() };
+        const module = { id: "/x/y.ts", importers: new Set<object>() };
 
         await startRunner(harness);
 

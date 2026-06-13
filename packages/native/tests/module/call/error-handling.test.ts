@@ -50,7 +50,7 @@ describe("call - error handling - type errors", () => {
                 "gtk_label_new",
                 [
                     {
-                        type: { type: "invalid_type" } as unknown as { type: "string"; ownership: "borrowed" },
+                        type: { type: "invalid_type" as "int8" },
                         value: "Test",
                     },
                 ],

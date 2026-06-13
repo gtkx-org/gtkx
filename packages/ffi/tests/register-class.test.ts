@@ -44,7 +44,7 @@ describe("registerClass — registration", () => {
         class NotANativeObject {}
 
         expect(() =>
-            registerClass(NotANativeObject as unknown as Parameters<typeof registerClass>[0], {
+            registerClass(NotANativeObject as Parameters<typeof registerClass>[0], {
                 gtypeName: uniqueName("ShouldNotRegister"),
             }),
         ).toThrow(/must extend a registered native class/);

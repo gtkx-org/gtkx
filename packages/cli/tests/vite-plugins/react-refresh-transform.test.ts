@@ -1,17 +1,30 @@
+import type { Plugin } from "vite";
 import { describe, expect, it } from "vitest";
 import { swcSsrRefresh } from "../../src/vite-plugins/react-refresh-transform.js";
 
-type TransformResult = { code: string; map?: unknown } | undefined;
+type TransformHook = Extract<Plugin["transform"], (...args: never[]) => unknown>;
+type TransformContext = ThisParameterType<TransformHook>;
+type TransformOptions = Parameters<TransformHook>[2];
+type TransformResult = { code: string; map?: unknown } | null | undefined;
 
 type TransformFn = (code: string, id: string, options?: { ssr?: boolean }) => Promise<TransformResult>;
 
+const normalizeResult = (result: Awaited<ReturnType<TransformHook>>): TransformResult => {
+    if (!result || typeof result === "string" || typeof result.code !== "string") return undefined;
+    return { code: result.code, map: result.map };
+};
+
 const getTransform = (plugin: ReturnType<typeof swcSsrRefresh>): TransformFn => {
-    const transform = plugin.transform;
-    if (typeof transform !== "function") {
-        throw new Error("plugin.transform must be a function");
+    const hook = plugin.transform;
+    const handler = typeof hook === "function" ? hook : hook?.handler;
+    if (typeof handler !== "function") {
+        throw new Error("plugin.transform must provide a handler function");
     }
-    return ((code: string, id: string, options?: { ssr?: boolean }) =>
-        (transform as unknown as TransformFn).call(plugin as never, code, id, options)) as TransformFn;
+    const context = {} as TransformContext;
+    return async (code, id, options) => {
+        const hookOptions = options as TransformOptions;
+        return normalizeResult(await handler.call(context, code, id, hookOptions));
+    };
 };
 
 describe("swcSsrRefresh", () => {

@@ -19,7 +19,15 @@ const preflightMock = vi.mocked(preflightCodegen);
 const resolveConfigWatchMock = vi.mocked(resolveConfigWatch);
 const runDevSupervisorMock = vi.mocked(runDevSupervisor);
 
-type CommandRun<Args extends Record<string, unknown>> = (ctx: { args: Args }) => Promise<unknown>;
+type DevRun = NonNullable<typeof dev.run>;
+type DevContext = Parameters<DevRun>[0];
+
+const runDev = (entry?: string): Promise<unknown> => {
+    const run = dev.run;
+    if (!run) throw new Error("dev command has no run handler");
+    const args = { entry } as DevContext["args"];
+    return Promise.resolve(run({ rawArgs: [], args, cmd: dev }));
+};
 
 describe("dev command", () => {
     beforeEach(() => {
@@ -31,9 +39,7 @@ describe("dev command", () => {
     });
 
     it("runs preflight codegen and hands off to the supervisor with the resolved entry", async () => {
-        const run = dev.run as unknown as CommandRun<{ entry?: string }>;
-
-        await run({ args: { entry: "src/main.tsx" } });
+        await runDev("src/main.tsx");
 
         expect(preflightMock).toHaveBeenCalledOnce();
         expect(resolveConfigWatchMock).toHaveBeenCalledOnce();
@@ -44,9 +50,7 @@ describe("dev command", () => {
     });
 
     it("uses src/index.tsx as the default entry when no positional is supplied", async () => {
-        const run = dev.run as unknown as CommandRun<{ entry?: string }>;
-
-        await run({ args: {} });
+        await runDev();
 
         const [entryPath] = runDevSupervisorMock.mock.calls[0] ?? [];
         expect(entryPath).toMatch(/src\/index\.tsx$/);

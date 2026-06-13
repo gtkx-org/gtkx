@@ -1,4 +1,4 @@
-import { type ChildProcess, fork } from "node:child_process";
+import { fork as nodeFork } from "node:child_process";
 import { type FSWatcher, watch as watchFs } from "node:fs";
 import { basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,6 +8,33 @@ import { RELOAD_EXIT_CODE } from "./protocol.js";
 const DEV_RUNNER_URL = new URL("../../bin/gtkx-dev-runner.js", import.meta.url);
 const FORCE_KILL_TIMEOUT_MS = 5000;
 const CONFIG_DEBOUNCE_MS = 150;
+
+/**
+ * The forked dev-runner process, narrowed to the members the supervisor reads
+ * and the `exit` event it listens for. Node's `ChildProcess` is assignable to
+ * this, so {@link runDevSupervisor} keeps forking the real process while tests
+ * inject a structural double with no cast.
+ */
+export type SupervisedChild = {
+    killed: boolean;
+    readonly pid?: number | undefined;
+    readonly exitCode: number | null;
+    kill(signal?: number | NodeJS.Signals): boolean;
+    on(event: "exit", listener: (code: number | null, signal: NodeJS.Signals | null) => void): void;
+    once(event: "exit", listener: (code: number | null, signal: NodeJS.Signals | null) => void): void;
+};
+
+/**
+ * Forks the dev-runner module. Production wires this to `node:child_process`'s
+ * `fork`; tests inject a deterministic factory that returns a fake child.
+ *
+ * @param modulePath - Absolute path of the dev-runner module to fork.
+ * @param args - Process arguments for the forked runner.
+ * @returns The forked child, narrowed to {@link SupervisedChild}.
+ */
+export type ForkRunner = (modulePath: string, args: readonly string[]) => SupervisedChild;
+
+const defaultForkRunner: ForkRunner = (modulePath, args) => nodeFork(modulePath, [...args], { stdio: "inherit" });
 
 /**
  * Lets `gtkx dev` regenerate bindings and restart the runner when the project's
@@ -30,19 +57,20 @@ type SupervisorState = {
     readonly entryPath: string;
     readonly watch: DevWatch | undefined;
     readonly watchers: FSWatcher[];
-    child: ChildProcess | null;
+    readonly fork: ForkRunner;
+    child: SupervisedChild | null;
     shuttingDown: boolean;
     restarting: boolean;
     capturedChildExit: number | undefined;
 };
 
-const forwardSignal = (child: ChildProcess, signal: NodeJS.Signals): void => {
+const forwardSignal = (child: SupervisedChild, signal: NodeJS.Signals): void => {
     if (!child.killed) {
         child.kill(signal);
     }
 };
 
-const forceKillChild = (child: ChildProcess | null): void => {
+const forceKillChild = (child: SupervisedChild | null): void => {
     if (!child?.pid || child.exitCode !== null || child.killed) return;
     try {
         process.kill(child.pid, "SIGKILL");
@@ -55,7 +83,7 @@ const forceKillChild = (child: ChildProcess | null): void => {
  * flight, capture the code during shutdown, otherwise exit the supervisor.
  */
 const launch = (state: SupervisorState): void => {
-    const child = fork(state.runnerPath, [state.entryPath], { stdio: "inherit" });
+    const child = state.fork(state.runnerPath, [state.entryPath]);
     state.child = child;
     child.on("exit", (code, signal) => {
         state.child = null;
@@ -177,13 +205,19 @@ const installShutdown = (state: SupervisorState): void => {
  *
  * @param entryPath - Absolute path of the user's entry module.
  * @param watch - Optional config-watch descriptor for regenerate-and-restart.
+ * @param fork - Forks the dev-runner module; defaults to `node:child_process`.
  */
-export const runDevSupervisor = async (entryPath: string, watch?: DevWatch): Promise<never> => {
+export const runDevSupervisor = async (
+    entryPath: string,
+    watch?: DevWatch,
+    fork: ForkRunner = defaultForkRunner,
+): Promise<never> => {
     const state: SupervisorState = {
         runnerPath: fileURLToPath(DEV_RUNNER_URL),
         entryPath,
         watch,
         watchers: [],
+        fork,
         child: null,
         shuttingDown: false,
         restarting: false,

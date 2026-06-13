@@ -9,8 +9,6 @@ import { createApp } from "../../src/create.js";
 
 const createAppMock = vi.mocked(createApp);
 
-type CommandRun<Args extends Record<string, unknown>> = (ctx: { args: Args }) => Promise<unknown>;
-
 type CreateArgs = {
     name?: string;
     "application-id"?: string;
@@ -19,22 +17,28 @@ type CreateArgs = {
     "claude-skills"?: boolean;
 };
 
+type CreateRun = NonNullable<typeof create.run>;
+type CreateContext = Parameters<CreateRun>[0];
+
+const runCreate = (overrides: CreateArgs): Promise<unknown> => {
+    const handler = create.run;
+    if (!handler) throw new Error("create command has no run handler");
+    const args = { ...overrides } as CreateContext["args"];
+    return Promise.resolve(handler({ rawArgs: [], args, cmd: create }));
+};
+
 describe("create", () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
     it("delegates to createApp with normalized options", async () => {
-        const run = create.run as unknown as CommandRun<CreateArgs>;
-
-        await run({
-            args: {
-                name: "my-app",
-                "application-id": "com.example.myapp",
-                pm: "pnpm",
-                testing: "vitest",
-                "claude-skills": true,
-            },
+        await runCreate({
+            name: "my-app",
+            "application-id": "com.example.myapp",
+            pm: "pnpm",
+            testing: "vitest",
+            "claude-skills": true,
         });
 
         expect(createAppMock).toHaveBeenCalledWith({
@@ -47,9 +51,7 @@ describe("create", () => {
     });
 
     it("passes undefined for unspecified flags", async () => {
-        const run = create.run as unknown as CommandRun<CreateArgs>;
-
-        await run({ args: {} });
+        await runCreate({});
 
         expect(createAppMock).toHaveBeenCalledWith({
             name: undefined,

@@ -1,0 +1,14 @@
+language js
+
+// A cast through `unknown` means the type model is wrong, and a
+// definite-assignment `!` hides an uninitialized declaration instead of
+// expressing the invariant. Biome's built-in noNonNullAssertion only covers
+// the postfix `x!` expression, so these two forms need a plugin.
+or {
+    `$x as unknown as $t` where {
+        register_diagnostic(span = $x, message = "Do not cast through `unknown`; fix the types or the abstraction instead.")
+    },
+    `$prop!: $type` where {
+        register_diagnostic(span = $prop, message = "Do not use the definite-assignment `!`; initialize through the constructor, a factory, or control flow.")
+    }
+}

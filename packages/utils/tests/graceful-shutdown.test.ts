@@ -92,7 +92,7 @@ describe("installGracefulShutdown — async + force-kill behaviour", () => {
     const fixture = installFixture();
 
     it("awaits an async onSignal before exiting", async () => {
-        let resolveSignal!: () => void;
+        let resolveSignal: () => void = () => {};
         const onSignal = vi.fn().mockReturnValue(new Promise<void>((res) => (resolveSignal = res)));
         const handle = installGracefulShutdown({ onSignal });
 

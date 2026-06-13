@@ -22,9 +22,15 @@ const ensureGeneratedMock = vi.mocked(ensureGenerated);
 const syncSchemaEnvMock = vi.mocked(syncSchemaEnv);
 
 type CodegenArgs = { force?: boolean; cwd?: string };
-type CommandRun = (ctx: { args: CodegenArgs }) => Promise<unknown>;
+type CodegenRun = NonNullable<typeof codegen.run>;
+type CodegenContext = Parameters<CodegenRun>[0];
 
-const run = (args: CodegenArgs): Promise<unknown> => (codegen.run as unknown as CommandRun)({ args });
+const run = (overrides: CodegenArgs): Promise<unknown> => {
+    const handler = codegen.run;
+    if (!handler) throw new Error("codegen command has no run handler");
+    const args = { force: false, ...overrides } as CodegenContext["args"];
+    return Promise.resolve(handler({ rawArgs: [], args, cmd: codegen }));
+};
 
 type LogState = { logSpy: ReturnType<typeof vi.spyOn> };
 

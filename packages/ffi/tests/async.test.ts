@@ -2,7 +2,10 @@ import { getHandle, promisify, setHandle } from "@gtkx/ffi";
 import type { NativeHandle } from "@gtkx/native";
 import { describe, expect, it } from "vitest";
 
-const handle = (id: number): NativeHandle => ({ id }) as unknown as NativeHandle;
+const handle = (id: number): NativeHandle => {
+    const token: object = { id };
+    return token as NativeHandle;
+};
 
 describe("promisify", () => {
     it("forwards leading args, the resolved cancellable and the callback to the async fn", () => {

@@ -22,10 +22,13 @@ describe("createModuleRegistration", () => {
 
 describe("isReactRefreshBoundary", () => {
     it("returns true when the module value itself is a likely component", () => {
-        const Component = function MyComponent() {
-            return null;
-        };
-        expect(isReactRefreshBoundary(Component as unknown as Record<string, unknown>)).toBe(true);
+        const Component = Object.assign(
+            function MyComponent() {
+                return null;
+            },
+            {} as Record<string, unknown>,
+        );
+        expect(isReactRefreshBoundary(Component)).toBe(true);
     });
 
     it("returns false for a module exporting a non-component value", () => {

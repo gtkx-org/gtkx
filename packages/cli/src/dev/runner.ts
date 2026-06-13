@@ -1,5 +1,42 @@
-import type { InlineConfig, Plugin, ViteDevServer } from "vite";
+import type { InlineConfig, Plugin } from "vite";
 import { RELOAD_EXIT_CODE } from "./protocol.js";
+
+/**
+ * A module the runner invalidates. The runner only ever hands a module back to
+ * {@link DevServerModuleGraph.invalidateModule}, so no members are required.
+ */
+type DevServerModule = object;
+
+/**
+ * The changed module the runner resolves from a path: it is invalidatable and
+ * exposes the importing modules the runner cascades the invalidation to.
+ */
+type DevServerChangedModule = DevServerModule & {
+    readonly importers: Iterable<DevServerModule>;
+};
+
+/**
+ * The dev server's module graph, narrowed to the lookups and invalidations the
+ * runner performs on a file change.
+ */
+type DevServerModuleGraph = {
+    getModuleById(id: string): DevServerChangedModule | undefined;
+    invalidateModule(module: DevServerModule): void;
+};
+
+/**
+ * The dev server, narrowed to the members the runner uses. Vite's full
+ * `ViteDevServer` is assignable to this, so production keeps passing the real
+ * server while tests supply a structural double with no cast.
+ */
+export type DevServer = {
+    close(): Promise<void>;
+    moduleGraph: DevServerModuleGraph;
+    ssrLoadModule(id: string): Promise<Record<string, unknown>>;
+    watcher: {
+        on(event: "change", listener: (changedPath: string) => void): void;
+    };
+};
 
 /**
  * Collaborators the dev runner uses to talk to the outside world.
@@ -8,7 +45,7 @@ import { RELOAD_EXIT_CODE } from "./protocol.js";
  * inject deterministic mocks via {@link createDevRunner}.
  */
 export type DevRunnerDeps = {
-    createServer(config: InlineConfig): Promise<ViteDevServer>;
+    createServer(config: InlineConfig): Promise<DevServer>;
     whenStopped(): Promise<void>;
     getApplicationId(): string | null;
     getConfiguredApplicationId(root: string): Promise<string | undefined>;
@@ -95,13 +132,13 @@ const createRefreshTracker = (performRefresh: () => void): RefreshTracker => {
     };
 };
 
-const requestReload = async (server: ViteDevServer, deps: DevRunnerDeps): Promise<never> => {
+const requestReload = async (server: DevServer, deps: DevRunnerDeps): Promise<never> => {
     deps.log("Full reload (process restart)");
     await server.close();
     return deps.exit(RELOAD_EXIT_CODE);
 };
 
-const handleFileChange = async (server: ViteDevServer, deps: DevRunnerDeps, changedPath: string): Promise<void> => {
+const handleFileChange = async (server: DevServer, deps: DevRunnerDeps, changedPath: string): Promise<void> => {
     const module = server.moduleGraph.getModuleById(changedPath);
     if (!module) return;
 
@@ -112,7 +149,7 @@ const handleFileChange = async (server: ViteDevServer, deps: DevRunnerDeps, chan
         server.moduleGraph.invalidateModule(importer);
     }
 
-    const newMod = (await server.ssrLoadModule(changedPath)) as Record<string, unknown>;
+    const newMod = await server.ssrLoadModule(changedPath);
     if (deps.isReactRefreshBoundary(newMod)) {
         deps.log("Fast refreshing...");
         deps.performRefresh();
