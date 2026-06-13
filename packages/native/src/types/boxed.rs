@@ -32,9 +32,9 @@ pub struct BoxedType {
     pub free_fn: Option<String>,
 }
 
-impl BoxedType {
+impl FromDescriptor for BoxedType {
     #[cfg_attr(coverage_nightly, coverage(off))]
-    pub fn from_js_value(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
+    fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let ownership = Ownership::from_js_value(obj, "boxed")?;
 
         let type_name: String = obj.get_named_property("innerType")?;
@@ -53,7 +53,9 @@ impl BoxedType {
             free_fn,
         })
     }
+}
 
+impl BoxedType {
     #[must_use]
     pub fn gtype(&self) -> Option<glib::Type> {
         glib::Type::from_name(&self.type_name).or_else(|| {
@@ -206,7 +208,7 @@ impl RawPtrCodec for BoxedType {
         ptr: *mut c_void,
         _context: &str,
     ) -> anyhow::Result<value::Value> {
-        null_guarded(ptr, |ptr| {
+        self.null_guarded(ptr, |ptr| {
             if self.free_fn.is_some() {
                 return Ok(boxed_value(Boxed::from_ptr_unowned(ptr)));
             }
@@ -218,7 +220,7 @@ impl RawPtrCodec for BoxedType {
     /// transfer hands the caller its own boxed copy; a transfer-none return
     /// writes the wrapper-owned pointer unchanged.
     unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        write_return_with_ownership(ret, value, self.ownership, |ptr| {
+        self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
             // SAFETY: `ptr` came from a NativeHandle wrapping a live boxed
             // value of `gtype`, the type `g_boxed_copy` requires.
             self.gtype().map_or(ptr, |gtype| unsafe {
@@ -264,9 +266,9 @@ pub struct StructType {
     pub size: Option<usize>,
 }
 
-impl StructType {
+impl FromDescriptor for StructType {
     #[cfg_attr(coverage_nightly, coverage(off))]
-    pub fn from_js_value(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
+    fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let ownership = Ownership::from_js_value(obj, "struct")?;
 
         let size: Option<usize> =
@@ -307,7 +309,7 @@ impl RawPtrCodec for StructType {
         ptr: *mut c_void,
         _context: &str,
     ) -> anyhow::Result<value::Value> {
-        null_guarded(ptr, |ptr| {
+        self.null_guarded(ptr, |ptr| {
             let boxed = self.size.map_or_else(
                 || Boxed::from_ptr_unowned(ptr),
                 |size| Boxed::copy_with_size(ptr, size),

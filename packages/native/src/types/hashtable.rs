@@ -210,9 +210,9 @@ pub struct HashTableType {
     pub ownership: Ownership,
 }
 
-impl HashTableType {
+impl FromDescriptor for HashTableType {
     #[cfg_attr(coverage_nightly, coverage(off))]
-    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
+    fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let key_type_value: Unknown<'_> = obj.get_named_property("keyType")?;
         let key_type = Type::from_js_value(env, key_type_value)?;
 
@@ -227,7 +227,9 @@ impl HashTableType {
             ownership,
         })
     }
+}
 
+impl HashTableType {
     fn tuple(value: &value::Value) -> anyhow::Result<(&value::Value, &value::Value)> {
         match value {
             value::Value::Array(arr) if arr.len() == 2 => Ok((&arr[0], &arr[1])),

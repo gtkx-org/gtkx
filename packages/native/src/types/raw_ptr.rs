@@ -50,27 +50,6 @@ pub(super) fn write_return_object_ptr<F>(
     unsafe { (ret as *mut *mut c_void).write_unaligned(owned) };
 }
 
-/// Writes a return pointer honoring the declared transfer mode: a borrowed
-/// (transfer-none) return writes the wrapper-held pointer unchanged, while a
-/// full transfer passes it through `acquire`, which produces the caller's own
-/// reference or copy.
-pub(super) fn write_return_with_ownership<F>(
-    ret: *mut c_void,
-    value: &std::result::Result<value::Value, ()>,
-    ownership: super::Ownership,
-    acquire: F,
-) where
-    F: FnOnce(*mut c_void) -> *mut c_void,
-{
-    write_return_object_ptr(ret, value, |ptr| {
-        if ownership.is_borrowed() {
-            ptr
-        } else {
-            acquire(ptr)
-        }
-    });
-}
-
 /// Wraps a transfer-full encoded pointer in storage that releases it through
 /// `release` unless the call completes and disarms the transfer — the shared
 /// shape of every pointer codec's full-ownership encode arm.
@@ -81,19 +60,4 @@ pub(super) fn full_transfer_storage(
     crate::ffi::FfiValue::Storage(
         crate::ffi::FfiStorage::unit(ptr).with_pending_transfer(ptr, release),
     )
-}
-
-/// Decodes `ptr` to a [`value::Value`], short-circuiting a null pointer to
-/// [`value::Value::Null`].
-///
-/// `decode` runs only for a non-null pointer and receives it unchanged. This
-/// is the shared prologue of the pointer-typed `ptr_to_value` implementations.
-pub(super) fn null_guarded<F>(ptr: *mut c_void, decode: F) -> anyhow::Result<value::Value>
-where
-    F: FnOnce(*mut c_void) -> anyhow::Result<value::Value>,
-{
-    if ptr.is_null() {
-        return Ok(value::Value::Null);
-    }
-    decode(ptr)
 }

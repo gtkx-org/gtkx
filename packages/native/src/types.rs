@@ -312,10 +312,63 @@ pub trait RawPtrCodec {
         let _ = (ptr, value);
         bail!("This type cannot be written to a raw pointer")
     }
+
+    /// Decodes `ptr` to a [`value::Value`], short-circuiting a null pointer to
+    /// [`value::Value::Null`].
+    ///
+    /// `decode` runs only for a non-null pointer and receives it unchanged.
+    /// This is the shared prologue of the pointer-typed [`Self::ptr_to_value`]
+    /// implementations.
+    #[allow(clippy::unused_self)]
+    fn null_guarded<F>(&self, ptr: *mut c_void, decode: F) -> anyhow::Result<value::Value>
+    where
+        F: FnOnce(*mut c_void) -> anyhow::Result<value::Value>,
+    {
+        if ptr.is_null() {
+            return Ok(value::Value::Null);
+        }
+        decode(ptr)
+    }
+
+    /// Writes a return pointer honoring the declared transfer mode: a borrowed
+    /// (transfer-none) return writes the wrapper-held pointer unchanged, while a
+    /// full transfer passes it through `acquire`, which produces the caller's
+    /// own reference or copy.
+    #[allow(clippy::unused_self)]
+    fn write_return_with_ownership<F>(
+        &self,
+        ret: *mut c_void,
+        value: &std::result::Result<value::Value, ()>,
+        ownership: Ownership,
+        acquire: F,
+    ) where
+        F: FnOnce(*mut c_void) -> *mut c_void,
+    {
+        raw_ptr::write_return_object_ptr(ret, value, |ptr| {
+            if ownership.is_borrowed() {
+                ptr
+            } else {
+                acquire(ptr)
+            }
+        });
+    }
 }
 
 pub trait FfiCodec: FfiEncoder + FfiDecoder + RawPtrCodec {}
 impl<T: FfiEncoder + FfiDecoder + RawPtrCodec> FfiCodec for T {}
+
+/// Parses a codec descriptor — a `{ type, … }` JavaScript object — into its
+/// FFI codec.
+///
+/// Every pointer, container, and string codec the [`Type::from_js_value`]
+/// dispatch constructs implements this, so each codec owns its descriptor
+/// parsing in one place behind a shared protocol. [`TaggedType`] is the one
+/// exception: it needs an extra [`TaggedKind`] discriminant and keeps a bespoke
+/// constructor.
+pub(crate) trait FromDescriptor: Sized {
+    #[allow(clippy::trivially_copy_pass_by_ref)]
+    fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self>;
+}
 
 #[enum_dispatch(FfiEncoder, FfiDecoder, RawPtrCodec)]
 #[derive(Debug, Clone)]
@@ -396,19 +449,21 @@ impl Type {
                 &obj,
                 TaggedKind::Flags,
             )?)),
-            "string" => Ok(Self::String(StringType::from_js_value(env, &obj)?)),
+            "string" => Ok(Self::String(StringType::from_descriptor(env, &obj)?)),
             "boolean" => Ok(Self::Boolean(BooleanType)),
             "void" => Ok(Self::Void(VoidType)),
-            "gobject" => Ok(Self::GObject(GObjectType::from_js_value(env, &obj)?)),
-            "boxed" => Ok(Self::Boxed(BoxedType::from_js_value(env, &obj)?)),
-            "struct" => Ok(Self::Struct(StructType::from_js_value(env, &obj)?)),
-            "array" => Ok(Self::Array(ArrayType::from_js_value(env, &obj)?)),
+            "gobject" => Ok(Self::GObject(GObjectType::from_descriptor(env, &obj)?)),
+            "boxed" => Ok(Self::Boxed(BoxedType::from_descriptor(env, &obj)?)),
+            "struct" => Ok(Self::Struct(StructType::from_descriptor(env, &obj)?)),
+            "array" => Ok(Self::Array(ArrayType::from_descriptor(env, &obj)?)),
             "blob" => Ok(Self::Blob(BlobType)),
-            "hashtable" => Ok(Self::HashTable(HashTableType::from_js_value(env, &obj)?)),
-            "trampoline" => Ok(Self::Trampoline(TrampolineType::from_js_value(env, &obj)?)),
-            "ref" => Ok(Self::Ref(RefType::from_js_value(env, &obj)?)),
+            "hashtable" => Ok(Self::HashTable(HashTableType::from_descriptor(env, &obj)?)),
+            "trampoline" => Ok(Self::Trampoline(TrampolineType::from_descriptor(
+                env, &obj,
+            )?)),
+            "ref" => Ok(Self::Ref(RefType::from_descriptor(env, &obj)?)),
             "unichar" => Ok(Self::Unichar(UnicharType)),
-            "fundamental" => Ok(Self::Fundamental(FundamentalType::from_js_value(
+            "fundamental" => Ok(Self::Fundamental(FundamentalType::from_descriptor(
                 env, &obj,
             )?)),
             other => Err(napi::Error::new(

@@ -28,8 +28,8 @@ pub enum RuntimePhase {
     Stopped,
 }
 
-impl RuntimePhase {
-    fn from_u8(value: u8) -> Self {
+impl From<u8> for RuntimePhase {
+    fn from(value: u8) -> Self {
         match value {
             0 => Self::New,
             1 => Self::Running,
@@ -56,7 +56,7 @@ impl GlibThread {
 
     /// Returns the current lifecycle phase.
     pub fn phase(&self) -> RuntimePhase {
-        RuntimePhase::from_u8(self.phase.load(Ordering::Acquire))
+        RuntimePhase::from(self.phase.load(Ordering::Acquire))
     }
 
     /// Transitions `New → Running`. Fails when the runtime is already running
@@ -70,7 +70,7 @@ impl GlibThread {
             Ordering::Acquire,
         ) {
             Ok(_) => Ok(()),
-            Err(current) => Err(match RuntimePhase::from_u8(current) {
+            Err(current) => Err(match RuntimePhase::from(current) {
                 RuntimePhase::Running => {
                     "init called while the GLib runtime is already running".to_owned()
                 }
@@ -95,7 +95,7 @@ impl GlibThread {
             Ordering::Acquire,
         ) {
             Ok(_) => Ok(()),
-            Err(current) => Err(match RuntimePhase::from_u8(current) {
+            Err(current) => Err(match RuntimePhase::from(current) {
                 RuntimePhase::New => "stop called before init".to_owned(),
                 _ => "stop called on an already-stopped runtime".to_owned(),
             }),

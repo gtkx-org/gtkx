@@ -69,10 +69,7 @@ fn buffer_view_kind_resolves_every_napi_tag() {
         (TypedarrayType::biguint64_array, BufferViewKind::BigUint64),
     ];
     for (tag, kind) in expectations {
-        assert_eq!(
-            BufferViewKind::from_napi_typedarray_type(tag).unwrap(),
-            kind
-        );
+        assert_eq!(BufferViewKind::try_from(tag).unwrap(), kind);
     }
 }
 

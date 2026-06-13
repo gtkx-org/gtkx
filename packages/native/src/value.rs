@@ -234,9 +234,11 @@ pub enum BufferViewKind {
     DataView,
 }
 
-impl BufferViewKind {
+impl TryFrom<sys::napi_typedarray_type> for BufferViewKind {
+    type Error = napi::Error;
+
     /// Resolves a napi typed-array type tag to its view kind.
-    pub fn from_napi_typedarray_type(raw: sys::napi_typedarray_type) -> napi::Result<Self> {
+    fn try_from(raw: sys::napi_typedarray_type) -> napi::Result<Self> {
         match raw {
             sys::TypedarrayType::int8_array => Ok(Self::Int8),
             sys::TypedarrayType::uint8_array => Ok(Self::Uint8),
@@ -255,7 +257,9 @@ impl BufferViewKind {
             )),
         }
     }
+}
 
+impl BufferViewKind {
     /// The size in bytes of one element of a view of this kind.
     #[must_use]
     pub fn element_size(self) -> usize {
@@ -392,7 +396,7 @@ impl BufferView {
             )
         };
         check_napi_status(status, "Failed to read typed-array info")?;
-        let kind = BufferViewKind::from_napi_typedarray_type(raw_kind)?;
+        let kind = BufferViewKind::try_from(raw_kind)?;
         let shared = Self::buffer_is_shared(env, array_buffer)?;
         Ok(Self::new(
             data,

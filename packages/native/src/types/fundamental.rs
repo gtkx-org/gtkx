@@ -19,9 +19,9 @@ pub struct FundamentalType {
     pub type_name: Option<String>,
 }
 
-impl FundamentalType {
+impl FromDescriptor for FundamentalType {
     #[cfg_attr(coverage_nightly, coverage(off))]
-    pub fn from_js_value(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
+    fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let ownership = Ownership::from_js_value(obj, "fundamental")?;
 
         let library: String = obj.get_named_property("library")?;
@@ -40,7 +40,9 @@ impl FundamentalType {
             type_name,
         })
     }
+}
 
+impl FundamentalType {
     pub fn lookup_fns(&self) -> anyhow::Result<(Option<RefFn>, Option<UnrefFn>)> {
         GlibThreadState::with(|state| {
             state.lookup_fundamental_fns(&self.library, &self.ref_func, &self.unref_func)
@@ -127,7 +129,7 @@ impl RawPtrCodec for FundamentalType {
         ptr: *mut c_void,
         _context: &str,
     ) -> anyhow::Result<value::Value> {
-        null_guarded(ptr, |ptr| {
+        self.null_guarded(ptr, |ptr| {
             let (ref_fn, unref_fn) = self.lookup_fns()?;
             // SAFETY: The caller guarantees the non-null `ptr` addresses a
             // live instance of the fundamental type, so taking a reference
@@ -143,7 +145,7 @@ impl RawPtrCodec for FundamentalType {
     /// transfer hands the caller a fresh reference; a transfer-none return
     /// writes the wrapper-held pointer unchanged.
     unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        write_return_with_ownership(ret, value, self.ownership, |ptr| {
+        self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
             match self.lookup_fns() {
                 // SAFETY: `ptr` came from a NativeHandle wrapping a live
                 // instance of the fundamental type `ref_fn` expects.

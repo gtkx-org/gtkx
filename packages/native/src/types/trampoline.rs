@@ -42,9 +42,9 @@ pub struct TrampolineType {
     pub scope: TrampolineScope,
 }
 
-impl TrampolineType {
+impl FromDescriptor for TrampolineType {
     #[cfg_attr(coverage_nightly, coverage(off))]
-    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
+    fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let (arg_types, return_type) =
             super::parse_trampoline_arg_and_return_types(env, obj, "trampoline")?;
 

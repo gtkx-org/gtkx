@@ -22,21 +22,6 @@ impl RefType {
         }
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
-    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let inner_type_value: Unknown<'_> = obj.get_named_property("innerType")?;
-        let inner_type = Type::from_js_value(env, inner_type_value)?;
-
-        if !Self::supports_inner(&inner_type) {
-            return Err(napi::Error::new(
-                napi::Status::InvalidArg,
-                format!("'{inner_type}' cannot be used as a Ref inner type"),
-            ));
-        }
-
-        Ok(Self::new(inner_type))
-    }
-
     /// Whether `inner` describes a shape `Ref` can carry as an out-parameter.
     ///
     /// `HashTable`, `Trampoline`, `Void`, `Blob`, and nested `Ref` have no
@@ -53,6 +38,23 @@ impl RefType {
             inner,
             Type::HashTable(_) | Type::Trampoline(_) | Type::Void(_) | Type::Blob(_) | Type::Ref(_)
         )
+    }
+}
+
+impl FromDescriptor for RefType {
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let inner_type_value: Unknown<'_> = obj.get_named_property("innerType")?;
+        let inner_type = Type::from_js_value(env, inner_type_value)?;
+
+        if !Self::supports_inner(&inner_type) {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("'{inner_type}' cannot be used as a Ref inner type"),
+            ));
+        }
+
+        Ok(Self::new(inner_type))
     }
 }
 

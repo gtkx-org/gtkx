@@ -70,7 +70,7 @@ fn tracked_gobject_value(
     let is_floating = unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
     // SAFETY: The caller guarantees `gobject_ptr` is a live GObject and
     // that this runs on the GLib thread, the qdata access contract.
-    let has_wrapper = unsafe { toggle_ref::has_wrapper(gobject_ptr) };
+    let has_wrapper = unsafe { toggle_ref::WrapperRegistry::global().has_wrapper(gobject_ptr) };
 
     if ownership.is_full() {
         if is_floating || (!has_wrapper && is_initially_unowned) {
@@ -93,9 +93,9 @@ pub struct GObjectType {
     pub ownership: Ownership,
 }
 
-impl GObjectType {
+impl FromDescriptor for GObjectType {
     #[cfg_attr(coverage_nightly, coverage(off))]
-    pub fn from_js_value(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
+    fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let ownership = Ownership::from_js_value(obj, "gobject")?;
         Ok(Self { ownership })
     }
@@ -165,7 +165,7 @@ impl RawPtrCodec for GObjectType {
         ptr: *mut c_void,
         _context: &str,
     ) -> anyhow::Result<value::Value> {
-        null_guarded(ptr, |ptr| {
+        self.null_guarded(ptr, |ptr| {
             tracked_gobject_value(ptr as *mut glib::gobject_ffi::GObject, Ownership::Borrowed)
         })
     }
@@ -175,7 +175,7 @@ impl RawPtrCodec for GObjectType {
     /// writes the wrapper-held pointer unchanged, since the JS wrapper's
     /// toggle reference guarantees the object's lifetime.
     unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        write_return_with_ownership(ret, value, self.ownership, |ptr| {
+        self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
             // SAFETY: `ptr` came from a JS wrapper's NativeHandle whose
             // toggle reference keeps the GObject alive, so taking a fresh
             // reference is sound.

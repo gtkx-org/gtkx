@@ -25,9 +25,9 @@ pub struct StringType {
     pub length: Option<usize>,
 }
 
-impl StringType {
+impl FromDescriptor for StringType {
     #[cfg_attr(coverage_nightly, coverage(off))]
-    pub fn from_js_value(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
+    fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let ownership = Ownership::from_js_value(obj, "string")?;
 
         let length: Option<usize> =
@@ -90,7 +90,7 @@ impl RawPtrCodec for StringType {
         ptr: *mut c_void,
         _context: &str,
     ) -> anyhow::Result<value::Value> {
-        null_guarded(ptr, |ptr| {
+        self.null_guarded(ptr, |ptr| {
             // SAFETY: The caller guarantees the non-null `ptr` addresses a
             // live NUL-terminated C string.
             let string = unsafe { glib::GStr::from_ptr_lossy(ptr as *const c_char) }.to_string();

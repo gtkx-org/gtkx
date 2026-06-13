@@ -52,9 +52,9 @@ pub struct ArrayType {
     pub element_size: Option<usize>,
 }
 
-impl ArrayType {
+impl FromDescriptor for ArrayType {
     #[cfg_attr(coverage_nightly, coverage(off))]
-    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
+    fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let item_type_value: Unknown<'_> = obj.get_named_property("itemType")?;
         let item_type = Type::from_js_value(env, item_type_value)?;
 

@@ -52,7 +52,7 @@ unsafe extern "C" fn on_wrapper_finalize(
     // `set_wrapper` attached to this finalizer, which napi invokes exactly
     // once.
     let mut data = unsafe { Box::from_raw(finalize_data.cast::<FinalizeData>()) };
-    toggle_ref::schedule_cleanup(
+    toggle_ref::WrapperRegistry::global().schedule_cleanup(
         data.binding.take(),
         data.generation,
         data.gobject_addr,
@@ -77,7 +77,7 @@ pub fn set_object_toggle_notify(env: Env, callback: Unknown<'_>) -> napi::Result
     // `env`, verified to be a function just above.
     let func: JsFunction = unsafe { JsFunction::from_raw_unchecked(env.raw(), callback.raw()) };
     let func_ref = JsRef::from_js_value(&env, &func)?;
-    toggle_ref::initialize(Arc::new(func_ref));
+    toggle_ref::WrapperRegistry::global().initialize(Arc::new(func_ref));
     Ok(())
 }
 
@@ -96,17 +96,17 @@ pub fn apply_wrapper_ref_op(env: Env, ref_ptr: f64, op: u32) -> napi::Result<()>
     // reference makes the napi call return a failure status, which is
     // ignored by design.
     unsafe {
-        match toggle_ref::RefOp::from_opcode(op) {
-            Some(toggle_ref::RefOp::Strengthen) => {
+        match toggle_ref::RefOp::try_from(op) {
+            Ok(toggle_ref::RefOp::Strengthen) => {
                 sys::napi_reference_ref(env.raw(), raw_ref, &mut count);
             }
-            Some(toggle_ref::RefOp::Weaken) => {
+            Ok(toggle_ref::RefOp::Weaken) => {
                 sys::napi_reference_unref(env.raw(), raw_ref, &mut count);
             }
-            Some(toggle_ref::RefOp::Delete) => {
+            Ok(toggle_ref::RefOp::Delete) => {
                 sys::napi_delete_reference(env.raw(), raw_ref);
             }
-            None => {}
+            Err(()) => {}
         }
     }
     Ok(())
@@ -186,7 +186,7 @@ pub fn set_wrapper(
         // pending reference (or the wrapper itself) keeps the GObject
         // alive across the dispatch.
         .dispatch_to_glib_and_wait(env, move || unsafe {
-            toggle_ref::install(
+            toggle_ref::WrapperRegistry::global().install(
                 gobject_addr as *mut _,
                 ref_addr as *mut c_void,
                 consume_pending,
@@ -227,7 +227,7 @@ pub fn get_wrapper<'env>(
         // SAFETY: This closure runs on the GLib thread, and wrapper_ref
         // null-checks the address before touching qdata.
         .dispatch_to_glib_and_wait(*env, move || unsafe {
-            toggle_ref::wrapper_ref(gobject_addr as *mut _) as usize
+            toggle_ref::WrapperRegistry::global().wrapper_ref(gobject_addr as *mut _) as usize
         })
         .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))?;
 
