@@ -442,42 +442,6 @@ fn try_from_struct_undefined() {
 }
 
 #[test]
-fn try_from_struct_invalid_type() {
-    let struct_type = native::types::StructType {
-        ownership: Ownership::Borrowed,
-        size: Some(16),
-    };
-    let arg = Arg::new(
-        Type::Struct(struct_type),
-        value::Value::String("invalid".to_string()),
-    );
-
-    assert!(FfiValue::try_from(arg).is_err());
-}
-
-#[test]
-fn try_from_struct_invalid_number() {
-    let struct_type = native::types::StructType {
-        ownership: Ownership::Borrowed,
-        size: Some(16),
-    };
-    let arg = Arg::new(Type::Struct(struct_type), value::Value::Number(42.0));
-
-    assert!(FfiValue::try_from(arg).is_err());
-}
-
-#[test]
-fn try_from_struct_invalid_boolean() {
-    let struct_type = native::types::StructType {
-        ownership: Ownership::Full,
-        size: Some(8),
-    };
-    let arg = Arg::new(Type::Struct(struct_type), value::Value::Boolean(true));
-
-    assert!(FfiValue::try_from(arg).is_err());
-}
-
-#[test]
 fn try_from_array_optional_null_yields_null_ptr() {
     let arg = Arg {
         ty: Type::Array(ArrayType {

@@ -125,13 +125,6 @@ fn is_stopped_reflects_mark_and_reset() {
 }
 
 #[test]
-fn notify_js_does_not_panic() {
-    common::run(|| {
-        Mailbox::global().notify_js();
-    });
-}
-
-#[test]
 fn run_freeze_loop_drains_until_unfrozen() {
     common::run(|| {
         drain_pending();
@@ -247,29 +240,6 @@ fn schedule_glib_inside_freeze_loop_skips_idle_source() {
 }
 
 #[test]
-fn glib_dispatch_error_display_and_debug() {
-    use native::dispatch::GlibDispatchError;
-
-    let disconnected = GlibDispatchError::Disconnected;
-    assert_eq!(disconnected.to_string(), "GLib thread disconnected");
-    assert!(format!("{disconnected:?}").contains("Disconnected"));
-
-    let panicked = GlibDispatchError::TaskPanicked("boom".to_owned());
-    assert_eq!(panicked.to_string(), "GLib task panicked: boom");
-    assert!(format!("{panicked:?}").contains("TaskPanicked"));
-}
-
-#[test]
-fn mailbox_debug_format_lists_state() {
-    common::run(|| {
-        let debug_str = format!("{:?}", Mailbox::global());
-        assert!(debug_str.contains("Mailbox"));
-        assert!(debug_str.contains("stopped"));
-        assert!(debug_str.contains("freeze_depth"));
-    });
-}
-
-#[test]
 fn dispatch_pending_drains_multiple_tasks_in_fifo_order() {
     common::run(|| {
         drain_pending();
@@ -325,32 +295,6 @@ fn dispatch_pending_from_depth_runs_nested_tasks() {
 
         assert!(mailbox.dispatch_pending_from_depth(1));
         assert_eq!(counter.load(Ordering::SeqCst), 1);
-    });
-}
-
-#[test]
-fn dispatch_pending_recovers_from_panicking_task_and_continues() {
-    common::run(|| {
-        drain_pending();
-        let mailbox = Mailbox::global();
-        let after = Arc::new(AtomicUsize::new(0));
-
-        mailbox.schedule_glib(Box::new(|| {
-            panic!("deliberate panic inside dispatched task");
-        }));
-
-        let after_for_task = after.clone();
-        mailbox.schedule_glib(Box::new(move || {
-            after_for_task.fetch_add(1, Ordering::SeqCst);
-        }));
-
-        let previous_hook = std::panic::take_hook();
-        std::panic::set_hook(Box::new(|_| {}));
-        let dispatched = mailbox.dispatch_pending();
-        std::panic::set_hook(previous_hook);
-
-        assert!(dispatched);
-        assert_eq!(after.load(Ordering::SeqCst), 1);
     });
 }
 

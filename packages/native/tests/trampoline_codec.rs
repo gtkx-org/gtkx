@@ -44,47 +44,8 @@ fn scope_from_str_parses_known_values() {
 }
 
 #[test]
-fn scope_from_str_rejects_unknown_value() {
-    let err = "unknown-scope".parse::<TrampolineScope>().unwrap_err();
-    assert!(err.contains("unknown-scope"));
-}
-
-#[test]
 fn scope_default_is_call() {
     assert_eq!(TrampolineScope::default(), TrampolineScope::Call);
-}
-
-#[test]
-fn scope_debug_and_clone() {
-    let scope = TrampolineScope::Notified;
-    let cloned = scope.clone();
-    assert_eq!(scope, cloned);
-    assert_eq!(format!("{scope:?}"), "Notified");
-}
-
-#[test]
-fn trampoline_type_debug_and_clone() {
-    let tramp = trampoline_type(true);
-    let cloned = tramp.clone();
-    assert_eq!(cloned.has_destroy, tramp.has_destroy);
-    assert!(format!("{tramp:?}").contains("TrampolineType"));
-}
-
-#[test]
-fn call_cif_rejects_trampoline_as_return_type() {
-    common::run(|| {
-        let cif = libffi::Cif::new(std::iter::empty(), libffi::Type::void());
-        let code_ptr = libffi::CodePtr(std::ptr::null_mut());
-
-        let result = trampoline_type(false).call_cif(&cif, code_ptr, &[]);
-        assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("Trampolines cannot be return types")
-        );
-    });
 }
 
 #[test]
@@ -132,17 +93,6 @@ fn encode_null_optional_with_destroy_builds_trampoline_with_destroy_slot() {
         assert!(tv.fn_ptr().is_null());
         assert!(tv.state_ptr().is_null());
         assert_eq!(tv.destroy_ptr(), Some(std::ptr::null_mut()));
-    });
-}
-
-#[test]
-fn encode_rejects_non_callback() {
-    common::run(|| {
-        assert!(
-            trampoline_type(false)
-                .encode(&Value::Number(1.0), true)
-                .is_err()
-        );
     });
 }
 

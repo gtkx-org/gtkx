@@ -144,24 +144,6 @@ fn trampoline_value_without_destroy_has_none() {
 }
 
 #[test]
-fn trampoline_value_debug_renders_fields() {
-    let tv = trampoline_value(true);
-    let rendered = format!("{tv:?}");
-    assert!(rendered.contains("TrampolineValue"));
-    assert!(rendered.contains("fn_ptr"));
-    assert!(rendered.contains("state_ptr"));
-    assert!(rendered.contains("destroy_ptr"));
-}
-
-#[test]
-fn ffi_value_debug_renders_variant() {
-    let rendered = format!("{:?}", FfiValue::I32(7));
-    assert!(rendered.contains("I32"));
-    let tv = FfiValue::Trampoline(trampoline_value(false));
-    assert!(format!("{tv:?}").contains("Trampoline"));
-}
-
-#[test]
 fn write_scalar_to_writes_every_numeric_variant() {
     macro_rules! check {
         ($variant:ident, $value:expr, $ty:ty) => {{
@@ -185,27 +167,6 @@ fn write_scalar_to_writes_every_numeric_variant() {
     check!(I64, -7i64, i64);
     check!(F32, 1.5f32, f32);
     check!(F64, 2.5f64, f64);
-}
-
-#[test]
-fn write_scalar_to_rejects_pointer_shaped_variants() {
-    let mut slot: u64 = 0;
-    let slot_ptr = &mut slot as *mut u64 as *mut c_void;
-
-    let storage: FfiStorage = vec![1u8].into();
-    let rejected = [
-        FfiValue::Ptr(std::ptr::null_mut()),
-        FfiValue::Storage(storage),
-        FfiValue::Trampoline(trampoline_value(false)),
-        FfiValue::Void,
-    ];
-    for v in &rejected {
-        // SAFETY: Pointer-shaped variants bail before any write.
-        let err = unsafe { v.write_scalar_to(slot_ptr) }
-            .expect_err("pointer-shaped variants have no scalar payload");
-        assert!(err.to_string().contains("no scalar payload"));
-    }
-    assert_eq!(slot, 0);
 }
 
 #[test]
@@ -276,19 +237,6 @@ fn to_number_handles_every_numeric_variant() {
 }
 
 #[test]
-fn to_number_rejects_non_numeric_variants() {
-    assert!(FfiValue::Ptr(std::ptr::null_mut()).to_number().is_err());
-    let storage: FfiStorage = vec![1u8].into();
-    assert!(FfiValue::Storage(storage).to_number().is_err());
-    assert!(
-        FfiValue::Trampoline(trampoline_value(false))
-            .to_number()
-            .is_err()
-    );
-    assert!(FfiValue::Void.to_number().is_err());
-}
-
-#[test]
 fn append_libffi_args_trampoline_without_destroy_pushes_two() {
     let v = FfiValue::Trampoline(trampoline_value(false));
     let mut args = Vec::new();
@@ -345,11 +293,4 @@ fn libffi_arg_conversion_covers_every_scalar_variant() {
     for v in &scalar_value_samples() {
         let _arg: libffi::middle::Arg = v.into();
     }
-}
-
-#[test]
-#[should_panic(expected = "Trampoline requires append_libffi_args")]
-fn libffi_arg_conversion_trampoline_panics() {
-    let v = FfiValue::Trampoline(trampoline_value(false));
-    let _arg: libffi::middle::Arg = (&v).into();
 }

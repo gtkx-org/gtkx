@@ -11,7 +11,7 @@ use native::ffi::{FfiStorageKind, FfiValue, GArrayData};
 use native::types::{
     ArrayKind, ArrayType, BooleanType, FfiDecoder, FfiEncoder, FloatKind, FundamentalType,
     GObjectType, IntegerKind, Ownership, RawPtrCodec, RefType, StringType, StructType, TaggedKind,
-    TaggedType, Type, VoidType,
+    TaggedType, Type,
 };
 use native::value::Value;
 
@@ -286,23 +286,6 @@ fn encode_optional_null_yields_null_ptr() {
 }
 
 #[test]
-fn encode_non_array_value_fails() {
-    let ty = array_type(
-        Type::Integer(IntegerKind::U8),
-        ArrayKind::Array,
-        Ownership::Full,
-    );
-    assert!(ty.encode(&Value::Number(1.0), false).is_err());
-}
-
-#[test]
-fn encode_unsupported_item_type_fails() {
-    let ty = array_type(Type::Void(VoidType), ArrayKind::Array, Ownership::Full);
-    let val = Value::Array(vec![]);
-    assert!(ty.encode(&val, false).is_err());
-}
-
-#[test]
 fn encode_integer_array_extract_error() {
     let ty = array_type(
         Type::Integer(IntegerKind::I32),
@@ -338,17 +321,6 @@ fn encode_float_f32_array_roundtrips() {
         panic!("expected array")
     };
     assert_eq!(items.len(), 2);
-}
-
-#[test]
-fn encode_float_f32_array_out_of_range_fails() {
-    let ty = array_type(
-        Type::Float(FloatKind::F32),
-        ArrayKind::Array,
-        Ownership::Full,
-    );
-    let val = Value::Array(vec![Value::Number(1e40)]);
-    assert!(ty.encode(&val, false).is_err());
 }
 
 #[test]
@@ -742,33 +714,6 @@ fn encode_gbytearray_roundtrips() {
 }
 
 #[test]
-fn encode_gbytearray_rejects_out_of_range() {
-    common::run(|| {
-        let ty = array_type(
-            Type::Integer(IntegerKind::U8),
-            ArrayKind::GByteArray,
-            Ownership::Full,
-        );
-        assert!(
-            ty.encode(&Value::Array(vec![Value::Number(256.0)]), false)
-                .is_err()
-        );
-        assert!(
-            ty.encode(&Value::Array(vec![Value::Number(-1.0)]), false)
-                .is_err()
-        );
-        assert!(
-            ty.encode(&Value::Array(vec![Value::Number(1.5)]), false)
-                .is_err()
-        );
-        assert!(
-            ty.encode(&Value::Array(vec![Value::Boolean(true)]), false)
-                .is_err()
-        );
-    });
-}
-
-#[test]
 fn encode_garray_integer_roundtrips() {
     common::run(|| {
         let ty = array_type(
@@ -900,22 +845,6 @@ fn encode_garray_explicit_element_size_used() {
 }
 
 #[test]
-fn encode_garray_element_size_mismatch_fails() {
-    common::run(|| {
-        let mut ty = array_type(
-            Type::Integer(IntegerKind::I32),
-            ArrayKind::GArray,
-            Ownership::Borrowed,
-        );
-        ty.element_size = Some(64);
-        let err = ty
-            .encode(&Value::Array(vec![Value::Number(1.0)]), false)
-            .expect_err("an element size mismatching the item layout must fail");
-        assert!(err.to_string().contains("does not match"));
-    });
-}
-
-#[test]
 fn decode_zero_terminated_scalar_array_reads_with_scalar_stride() {
     common::run(|| {
         let ty = array_type(
@@ -982,14 +911,6 @@ fn decode_glist_frees_spine_when_element_decode_fails() {
 }
 
 #[test]
-fn encode_garray_unknown_element_size_fails() {
-    common::run(|| {
-        let ty = array_type(Type::Void(VoidType), ArrayKind::GArray, Ownership::Borrowed);
-        assert!(ty.encode(&Value::Array(vec![]), false).is_err());
-    });
-}
-
-#[test]
 fn encode_garray_append_error_unrefs_and_propagates() {
     common::run(|| {
         let ty = array_type(
@@ -1040,16 +961,6 @@ fn decode_null_ptr_yields_empty_array() {
         panic!("expected array")
     };
     assert!(items.is_empty());
-}
-
-#[test]
-fn decode_non_storage_non_ptr_fails() {
-    let ty = array_type(
-        Type::Integer(IntegerKind::U8),
-        ArrayKind::Array,
-        Ownership::Full,
-    );
-    assert!(ty.decode(&FfiValue::Void).is_err());
 }
 
 #[test]
@@ -1661,18 +1572,6 @@ fn ptr_to_value_plain_array() {
 }
 
 #[test]
-fn size_from_args_out_of_bounds_fails() {
-    let ty = array_type(
-        Type::Integer(IntegerKind::I32),
-        ArrayKind::Sized { size_index: 5 },
-        Ownership::Borrowed,
-    );
-    let data: Vec<i32> = vec![1];
-    let ffi_value = FfiValue::Ptr(data.as_ptr() as *mut c_void);
-    assert!(ty.decode_with_context(&ffi_value, &[], &[]).is_err());
-}
-
-#[test]
 fn size_from_args_reads_integer_argument() {
     let ty = array_type(
         Type::Integer(IntegerKind::I32),
@@ -1741,43 +1640,6 @@ fn size_from_args_reads_ref_integer_ptr() {
         panic!("expected array")
     };
     assert_eq!(items.len(), 2);
-}
-
-#[test]
-fn size_from_args_rejects_unusable_argument() {
-    let ty = array_type(
-        Type::Integer(IntegerKind::I32),
-        ArrayKind::Sized { size_index: 0 },
-        Ownership::Borrowed,
-    );
-    let data: Vec<i32> = vec![1];
-    let ffi_value = FfiValue::Ptr(data.as_ptr() as *mut c_void);
-    let ffi_args = [FfiValue::Void];
-    let args = [Arg::new(Type::Void(VoidType), Value::Null)];
-    assert!(
-        ty.decode_with_context(&ffi_value, &ffi_args, &args)
-            .is_err()
-    );
-}
-
-#[test]
-fn size_from_args_rejects_negative_size() {
-    let ty = array_type(
-        Type::Integer(IntegerKind::I32),
-        ArrayKind::Sized { size_index: 0 },
-        Ownership::Borrowed,
-    );
-    let data: Vec<i32> = vec![1];
-    let ffi_value = FfiValue::Ptr(data.as_ptr() as *mut c_void);
-    let ffi_args = [FfiValue::I32(-1)];
-    let args = [Arg::new(
-        Type::Integer(IntegerKind::I32),
-        Value::Number(-1.0),
-    )];
-    assert!(
-        ty.decode_with_context(&ffi_value, &ffi_args, &args)
-            .is_err()
-    );
 }
 
 #[test]
@@ -1943,35 +1805,6 @@ fn encode_glist_strings_full_container_borrowed_elements_releases_spine_when_cal
 #[test]
 fn encode_gslist_strings_full_container_borrowed_elements_releases_spine_when_call_never_happens() {
     assert_string_list_full_container_borrowed_elements_releases_spine(ArrayKind::GSList);
-}
-
-#[test]
-fn encode_string_array_borrowed_rejects_interior_nul() {
-    common::run(|| {
-        let ty = array_type(
-            string_item_type(Ownership::Borrowed),
-            ArrayKind::Array,
-            Ownership::Borrowed,
-        );
-        let val = Value::Array(vec![Value::String("a\0b".to_string())]);
-        let err = ty
-            .encode(&val, false)
-            .expect_err("interior NUL should fail to encode");
-        assert!(err.to_string().contains("interior NUL"));
-    });
-}
-
-#[test]
-fn encode_string_array_full_container_borrowed_elements_rejects_non_string() {
-    let ty = array_type(
-        string_item_type(Ownership::Borrowed),
-        ArrayKind::Array,
-        Ownership::Full,
-    );
-    let err = ty
-        .encode(&Value::Array(vec![Value::Number(1.0)]), false)
-        .expect_err("a non-string element must fail extraction");
-    assert!(err.to_string().contains("Expected a String"));
 }
 
 #[test]

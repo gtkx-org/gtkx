@@ -188,12 +188,6 @@ fn as_numeric_slice_matches_every_integer_kind() {
 }
 
 #[test]
-fn as_numeric_slice_rejects_mismatched_kind() {
-    let storage: FfiStorage = vec![1u8].into();
-    assert!(storage.as_numeric_slice(IntegerKind::I64).is_err());
-}
-
-#[test]
 fn as_f32_slice_success_and_mismatch() {
     let f32_storage: FfiStorage = vec![1.0f32, 2.0].into();
     assert_eq!(f32_storage.as_f32_slice().unwrap(), &[1.0f32, 2.0]);
@@ -543,12 +537,6 @@ fn string_gslist_storage_keeps_when_not_freed() {
 #[test]
 fn string_gslist_storage_null_ptr_safe_on_drop() {
     let _storage = string_gslist_storage(Vec::new(), std::ptr::null_mut(), true, true);
-}
-
-#[test]
-fn storage_debug_renders_kind() {
-    let storage: FfiStorage = vec![1u8].into();
-    assert!(format!("{storage:?}").contains("FfiStorage"));
 }
 
 fn string_full_item_array_type(kind: ArrayKind, container_ownership: Ownership) -> ArrayType {

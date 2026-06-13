@@ -1,9 +1,9 @@
 use std::ffi::c_void;
 
 use libffi::middle;
+use native::ffi;
 use native::types::{BooleanType, FfiDecoder, FfiEncoder, RawPtrCodec};
 use native::value::Value;
-use native::{ffi, value};
 
 extern "C" fn ret_true() -> i32 {
     1
@@ -139,10 +139,4 @@ fn write_value_to_raw_ptr_writes_boolean_and_rejects_other() {
         unsafe { RawPtrCodec::write_value_to_raw_ptr(&BooleanType, ptr, &Value::Number(1.0)) }
             .is_err()
     );
-}
-
-#[test]
-fn debug_impl_renders() {
-    let _ = value::Value::Boolean(true);
-    assert!(format!("{BooleanType:?}").contains("BooleanType"));
 }

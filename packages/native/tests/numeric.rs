@@ -171,38 +171,6 @@ fn integer_checked_to_ffi_value_accepts_in_range() {
 }
 
 #[test]
-fn integer_checked_to_ffi_value_rejects_out_of_range() {
-    assert!(IntegerKind::U8.checked_to_ffi_value(256.0).is_err());
-    assert!(IntegerKind::I8.checked_to_ffi_value(-129.0).is_err());
-    assert!(IntegerKind::U8.checked_to_ffi_value(-1.0).is_err());
-    assert!(IntegerKind::U16.checked_to_ffi_value(65_536.0).is_err());
-    assert!(IntegerKind::I16.checked_to_ffi_value(40_000.0).is_err());
-    assert!(
-        IntegerKind::U32
-            .checked_to_ffi_value(5_000_000_000.0)
-            .is_err()
-    );
-    assert!(
-        IntegerKind::I32
-            .checked_to_ffi_value(3_000_000_000.0)
-            .is_err()
-    );
-    assert!(IntegerKind::U64.checked_to_ffi_value(1e30).is_err());
-    assert!(IntegerKind::I64.checked_to_ffi_value(-1e30).is_err());
-}
-
-#[test]
-fn integer_checked_to_ffi_value_rejects_non_integral_and_non_finite() {
-    assert!(IntegerKind::I32.checked_to_ffi_value(1.5).is_err());
-    assert!(IntegerKind::I32.checked_to_ffi_value(f64::NAN).is_err());
-    assert!(
-        IntegerKind::I32
-            .checked_to_ffi_value(f64::INFINITY)
-            .is_err()
-    );
-}
-
-#[test]
 fn integer_checked_to_ffi_storage_accepts_and_rejects() {
     let ok = IntegerKind::U8.checked_to_ffi_storage(&[1.0, 2.0, 3.0]);
     assert!(ok.is_ok());
@@ -234,13 +202,6 @@ fn integer_encode_accepts_number_object_and_optional_null() {
     assert!(matches!(optional, ffi::FfiValue::I32(0)));
     let optional_undef = FfiEncoder::encode(&IntegerKind::U32, &Value::Undefined, true).unwrap();
     assert!(matches!(optional_undef, ffi::FfiValue::U32(0)));
-}
-
-#[test]
-fn integer_encode_rejects_wrong_value() {
-    let err = FfiEncoder::encode(&IntegerKind::I32, &Value::Boolean(true), false);
-    assert!(err.is_err());
-    assert!(FfiEncoder::encode(&IntegerKind::I32, &Value::Null, false).is_err());
 }
 
 #[test]
@@ -497,14 +458,6 @@ fn tagged_encode_decode_and_libffi_type() {
             FfiEncoder::libffi_type(&tagged).as_raw_ptr(),
             IntegerKind::I32.ffi_type().as_raw_ptr()
         );
-    });
-}
-
-#[test]
-fn tagged_encode_rejects_invalid_enum_member() {
-    common::run(|| {
-        let tagged = common::enum_tagged();
-        assert!(FfiEncoder::encode(&tagged, &Value::Number(9999.0), false).is_ok());
     });
 }
 

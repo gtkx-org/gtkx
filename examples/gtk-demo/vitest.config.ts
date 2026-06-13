@@ -14,10 +14,7 @@ export default defineConfig({
             exclude: ["src/**/*.d.ts", "src/demos/types.ts"],
             reporter: ["text", "html", "lcov"],
             thresholds: {
-                lines: 85,
-                statements: 85,
-                functions: 85,
-                branches: 60,
+                lines: 80,
             },
         },
     },

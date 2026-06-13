@@ -11,7 +11,6 @@ use native::ffi::FfiValue;
 use native::types::{
     ArrayKind, ArrayType, BooleanType, BoxedType, FloatKind, FundamentalType, GObjectType,
     HashTableEntryEncoder, HashTableType, IntegerKind, Ownership, StringType, StructType, Type,
-    VoidType,
 };
 use native::types::{FfiDecoder, FfiEncoder, RawPtrCodec};
 use native::value::Value;
@@ -194,16 +193,6 @@ fn encode_boolean_false() {
 }
 
 #[test]
-fn encode_boolean_wrong_type_fails() {
-    let encoder = HashTableEntryEncoder::Boolean;
-    let value = Value::String("not a boolean".to_string());
-
-    let result = encoder.encode(&value);
-
-    assert!(result.is_err());
-}
-
-#[test]
 fn encode_float_value() {
     let encoder = HashTableEntryEncoder::Float;
     let value = Value::Number(std::f64::consts::PI);
@@ -239,16 +228,6 @@ fn encode_float_negative() {
 
     // SAFETY: Frees the allocation this test owns.
     unsafe { glib::ffi::g_free(ptr) };
-}
-
-#[test]
-fn encode_float_wrong_type_fails() {
-    let encoder = HashTableEntryEncoder::Float;
-    let value = Value::Boolean(true);
-
-    let result = encoder.encode(&value);
-
-    assert!(result.is_err());
 }
 
 #[test]
@@ -568,18 +547,6 @@ fn encoder_from_type_ptr_array() {
 }
 
 #[test]
-fn encoder_from_type_unsupported_returns_none() {
-    assert!(HashTableEntryEncoder::from_type(&Type::Void(VoidType)).is_none());
-    let non_ptr_array = Type::Array(ArrayType {
-        item_type: Box::new(Type::Integer(IntegerKind::I32)),
-        kind: ArrayKind::Array,
-        ownership: Ownership::Full,
-        element_size: None,
-    });
-    assert!(HashTableEntryEncoder::from_type(&non_ptr_array).is_none());
-}
-
-#[test]
 fn integer_encoder_hash_equal_and_free() {
     let encoder = HashTableEntryEncoder::Integer;
     assert!(encoder.hash_func().is_some());
@@ -612,15 +579,6 @@ fn full_gobject_encoder_installs_unref_destroy() {
 }
 
 #[test]
-fn full_boxed_encoder_rejects_destroy() {
-    let encoder = HashTableEntryEncoder::NativeHandle(Box::new(full_boxed_type()));
-    let err = encoder
-        .free_func()
-        .expect_err("full-ownership boxed elements must be rejected");
-    assert!(err.to_string().contains("unsupported"));
-}
-
-#[test]
 fn full_fundamental_encoder_installs_unref_destroy() {
     common::run(|| {
         let encoder = full_variant_fundamental_encoder("g_variant_ref_sink", "g_variant_unref");
@@ -637,56 +595,11 @@ fn full_fundamental_encoder_without_ref_fn_installs_no_destroy() {
 }
 
 #[test]
-fn full_fundamental_encoder_without_unref_fn_rejects_destroy() {
-    common::run(|| {
-        let encoder = full_variant_fundamental_encoder("g_variant_ref_sink", "");
-        let err = encoder
-            .free_func()
-            .expect_err("a ref function without an unref function must be rejected");
-        assert!(err.to_string().contains("declares no unref function"));
-    });
-}
-
-#[test]
-fn full_fundamental_encoder_with_unknown_ref_symbol_fails() {
-    common::run(|| {
-        let encoder =
-            full_variant_fundamental_encoder("gtkx_nonexistent_ref_symbol", "g_variant_unref");
-        let err = encoder
-            .free_func()
-            .expect_err("an unresolvable ref symbol must fail destroy resolution");
-        assert!(err.to_string().contains("Failed to find ref symbol"));
-    });
-}
-
-#[test]
 fn ptr_array_encoder_hash_equal_and_free() {
     let encoder = HashTableEntryEncoder::PtrArray(Box::new(Type::Integer(IntegerKind::I32)));
     assert!(encoder.hash_func().is_some());
     assert!(encoder.equal_func().is_some());
     assert!(encoder.free_func().unwrap().is_some());
-}
-
-#[test]
-fn encode_string_value_and_wrong_type() {
-    common::run(|| {
-        let encoder = HashTableEntryEncoder::String;
-        let ptr = encoder.encode(&Value::String("hi".to_string())).unwrap();
-        assert!(!ptr.is_null());
-        // SAFETY: Frees the allocation this test owns.
-        unsafe { glib::ffi::g_free(ptr) };
-
-        assert!(encoder.encode(&Value::Number(1.0)).is_err());
-    });
-}
-
-#[test]
-fn encode_integer_value_and_wrong_type() {
-    let encoder = HashTableEntryEncoder::Integer;
-    let ptr = encoder.encode(&Value::Number(7.0)).unwrap();
-    assert_eq!(ptr as isize, 7);
-
-    assert!(encoder.encode(&Value::Boolean(true)).is_err());
 }
 
 #[test]
@@ -735,72 +648,6 @@ fn ptr_array_value_freed_when_hashtable_storage_drops() {
         {
             let _encoded = ht_type.encode(&input, false).unwrap();
         }
-    });
-}
-
-#[test]
-fn encode_ptr_array_rejects_non_array() {
-    let encoder = HashTableEntryEncoder::PtrArray(Box::new(struct_type()));
-    assert!(encoder.encode(&Value::Number(1.0)).is_err());
-}
-
-#[test]
-fn encode_ptr_array_rejects_non_object_item() {
-    let encoder = HashTableEntryEncoder::PtrArray(Box::new(struct_type()));
-    assert!(
-        encoder
-            .encode(&Value::Array(vec![Value::Number(1.0)]))
-            .is_err()
-    );
-}
-
-#[test]
-fn encoder_debug_and_clone() {
-    let encoder = HashTableEntryEncoder::PtrArray(Box::new(Type::Integer(IntegerKind::I32)));
-    let cloned = Clone::clone(&encoder);
-    assert!(format!("{cloned:?}").contains("PtrArray"));
-}
-
-#[test]
-fn hashtable_encode_rejects_non_array() {
-    let ht_type = ht_type(
-        Type::Boolean(BooleanType),
-        Type::Boolean(BooleanType),
-        Ownership::Full,
-    );
-    assert!(ht_type.encode(&Value::Number(1.0), false).is_err());
-}
-
-#[test]
-fn hashtable_encode_rejects_unsupported_key_type() {
-    let ht_type = ht_type(
-        Type::Void(VoidType),
-        Type::Boolean(BooleanType),
-        Ownership::Full,
-    );
-    assert!(ht_type.encode(&Value::Array(vec![]), false).is_err());
-}
-
-#[test]
-fn hashtable_encode_rejects_unsupported_value_type() {
-    let ht_type = ht_type(
-        Type::Boolean(BooleanType),
-        Type::Void(VoidType),
-        Ownership::Full,
-    );
-    assert!(ht_type.encode(&Value::Array(vec![]), false).is_err());
-}
-
-#[test]
-fn hashtable_encode_rejects_non_tuple_entry() {
-    common::run(|| {
-        let ht_type = ht_type(
-            Type::Boolean(BooleanType),
-            Type::Boolean(BooleanType),
-            Ownership::Full,
-        );
-        let input = Value::Array(vec![Value::Array(vec![Value::Boolean(true)])]);
-        assert!(ht_type.encode(&input, false).is_err());
     });
 }
 

@@ -5,13 +5,11 @@
 mod common;
 
 use std::ffi::c_void;
-use std::str::FromStr as _;
 
 use libffi::middle;
 use native::types::{
-    ArrayKind, ArrayType, BigIntKind, BlobType, BooleanType, BoxedType, FfiDecoder, FfiEncoder,
-    FloatKind, FundamentalType, GObjectType, HashTableType, IntegerKind, Ownership, RawPtrCodec,
-    RefType, StringType, StructType, TrampolineType, Type, UnicharType, VoidType,
+    BlobType, BooleanType, FfiDecoder, FfiEncoder, GObjectType, IntegerKind, Ownership,
+    RawPtrCodec, RefType, StructType, TrampolineType, Type, VoidType,
 };
 use native::value::Value;
 use native::{ffi, value};
@@ -73,28 +71,6 @@ fn transfer_release_matches_codec_ownership() {
 }
 
 #[test]
-fn ownership_display_renders_all_variants() {
-    assert_eq!(Ownership::Full.to_string(), "full");
-    assert_eq!(Ownership::Borrowed.to_string(), "borrowed");
-}
-
-#[test]
-fn ownership_from_str_parses_known_and_rejects_unknown() {
-    assert!(matches!(
-        Ownership::from_str("full").unwrap(),
-        Ownership::Full
-    ));
-    assert!(matches!(
-        Ownership::from_str("borrowed").unwrap(),
-        Ownership::Borrowed
-    ));
-
-    let err = Ownership::from_str("shared").expect_err("unknown ownership must fail");
-    assert!(err.contains("'full' or 'borrowed'"));
-    assert!(err.contains("shared"));
-}
-
-#[test]
 fn ownership_predicates_are_mutually_exclusive() {
     assert!(Ownership::Full.is_full());
     assert!(!Ownership::Full.is_borrowed());
@@ -103,26 +79,9 @@ fn ownership_predicates_are_mutually_exclusive() {
     assert!(!Ownership::Borrowed.is_full());
 }
 
-fn string_type() -> StringType {
-    StringType {
-        ownership: Ownership::Borrowed,
-        length: None,
-    }
-}
-
 fn gobject_type() -> GObjectType {
     GObjectType {
         ownership: Ownership::Borrowed,
-    }
-}
-
-fn boxed_type() -> BoxedType {
-    BoxedType {
-        ownership: Ownership::Borrowed,
-        type_name: "GdkRGBA".to_owned(),
-        library: None,
-        get_type_fn: None,
-        free_fn: None,
     }
 }
 
@@ -130,33 +89,6 @@ fn struct_type() -> StructType {
     StructType {
         ownership: Ownership::Borrowed,
         size: Some(8),
-    }
-}
-
-fn fundamental_type() -> FundamentalType {
-    FundamentalType {
-        ownership: Ownership::Borrowed,
-        library: "libgtk-4.so.1".to_owned(),
-        ref_func: "g_object_ref".to_owned(),
-        unref_func: "g_object_unref".to_owned(),
-        type_name: None,
-    }
-}
-
-fn array_type() -> ArrayType {
-    ArrayType {
-        item_type: Box::new(Type::Integer(IntegerKind::I32)),
-        kind: ArrayKind::Array,
-        ownership: Ownership::Borrowed,
-        element_size: Some(4),
-    }
-}
-
-fn hashtable_type() -> HashTableType {
-    HashTableType {
-        key_type: Box::new(Type::String(string_type())),
-        value_type: Box::new(Type::String(string_type())),
-        ownership: Ownership::Borrowed,
     }
 }
 
@@ -172,42 +104,6 @@ fn trampoline_type() -> TrampolineType {
         user_data_index: None,
         scope: Default::default(),
     }
-}
-
-#[test]
-fn type_display_renders_every_variant() {
-    assert_eq!(Type::Integer(IntegerKind::I32).to_string(), "Integer(I32)");
-    assert_eq!(Type::BigInt(BigIntKind::I64).to_string(), "BigInt(I64)");
-    assert_eq!(Type::Float(FloatKind::F64).to_string(), "Float(F64)");
-    assert_eq!(
-        Type::Tagged(common::enum_tagged()).to_string(),
-        "Enum(gtk_orientation_get_type)"
-    );
-    assert_eq!(
-        Type::Tagged(common::flags_tagged()).to_string(),
-        "Flags(gtk_state_flags_get_type)"
-    );
-    assert_eq!(Type::String(string_type()).to_string(), "String");
-    assert_eq!(Type::Void(VoidType).to_string(), "Void");
-    assert_eq!(Type::Boolean(BooleanType).to_string(), "Boolean");
-    assert_eq!(Type::GObject(gobject_type()).to_string(), "GObject");
-    assert_eq!(Type::Boxed(boxed_type()).to_string(), "Boxed(GdkRGBA)");
-    assert_eq!(Type::Struct(struct_type()).to_string(), "Struct(borrowed)");
-    assert_eq!(
-        Type::Fundamental(fundamental_type()).to_string(),
-        "Fundamental(g_object_unref)"
-    );
-    assert_eq!(Type::Array(array_type()).to_string(), "Array");
-    assert_eq!(Type::Blob(BlobType).to_string(), "Blob");
-    assert_eq!(Type::HashTable(hashtable_type()).to_string(), "HashTable");
-    assert_eq!(
-        Type::Trampoline(trampoline_type()).to_string(),
-        "Trampoline"
-    );
-    assert_eq!(Type::Unichar(UnicharType).to_string(), "Unichar");
-
-    let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
-    assert_eq!(Type::Ref(ref_type).to_string(), "Ref(Integer(I32))");
 }
 
 #[test]

@@ -112,7 +112,7 @@ module.exports = {
                 "packages/native/(target|npm)/",
             ],
         },
-        tsConfig: { fileName: "tsconfig.json" },
+        tsConfig: { fileName: "tsconfig.base.json" },
         tsPreCompilationDeps: true,
         enhancedResolveOptions: {
             exportsFields: ["exports"],

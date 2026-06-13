@@ -115,16 +115,6 @@ fn borrowed_handle_with_null_pointer() {
 }
 
 #[test]
-fn debug_format_marks_owned_handle() {
-    let ptr = param_spec_ptr();
-    let handle = owned_fundamental(ptr);
-
-    let debug_str = format!("{handle:?}");
-    assert!(debug_str.contains("NativeHandle"));
-    assert!(debug_str.contains("owned: true"));
-}
-
-#[test]
 fn clone_owned_handle_preserves_pointer() {
     common::run(|| {
         let ptr = param_spec_ptr();
@@ -313,20 +303,6 @@ fn clones_share_pending_gobject_ref_marker() {
         assert!(cloned.take_pending_gobject_ref());
         assert!(!handle.take_pending_gobject_ref());
     });
-}
-
-#[test]
-fn native_value_debug_and_clone() {
-    let ptr = param_spec_ptr();
-    let value = NativeValue::Fundamental(Fundamental::from_glib_full(
-        ptr,
-        Some(param_spec_ref),
-        Some(param_spec_unref),
-    ));
-
-    let cloned = value.clone();
-    assert_eq!(format!("{value:?}"), format!("{cloned:?}"));
-    assert!(format!("{cloned:?}").contains("Fundamental"));
 }
 
 #[test]

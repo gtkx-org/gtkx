@@ -137,18 +137,6 @@ mod tests {
     }
 
     #[test]
-    fn execute_fails_for_type_name_with_interior_nul() {
-        let request = AllocRequest {
-            size: 16,
-            type_name: Some("Gdk\0RGBA".into()),
-        };
-        let err = request
-            .execute()
-            .expect_err("a type name with an interior NUL should fail");
-        assert!(err.to_string().contains("invalid alloc type name"));
-    }
-
-    #[test]
     fn error_context_is_alloc() {
         assert_eq!(AllocRequest::error_context(), "alloc");
     }

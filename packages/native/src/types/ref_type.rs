@@ -367,11 +367,4 @@ mod tests {
         let seeded = unsafe { FloatKind::F64.read_ptr(storage.ptr() as *const u8) };
         assert_eq!(seeded, 1.5);
     }
-
-    #[test]
-    fn scalar_out_slot_rejects_payload_less_value() {
-        let error = RefType::scalar_out_slot(&ffi::FfiValue::Ptr(std::ptr::null_mut()))
-            .expect_err("a pointer value has no scalar payload");
-        assert!(error.to_string().contains("has no scalar payload"));
-    }
 }

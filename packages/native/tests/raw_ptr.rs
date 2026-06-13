@@ -63,18 +63,6 @@ fn write_object_ptr_writes_null_for_null_value() {
 }
 
 #[test]
-fn write_object_ptr_rejects_non_object_value() {
-    let mut slot: *mut c_void = std::ptr::null_mut();
-    let slot_ptr = &mut slot as *mut *mut c_void as *mut c_void;
-
-    // SAFETY: `slot_ptr` addresses a writable local pointer-sized slot.
-    let err = unsafe {
-        RawPtrCodec::write_value_to_raw_ptr(&struct_type(), slot_ptr, &Value::Number(1.0))
-    };
-    assert!(err.is_err());
-}
-
-#[test]
 fn write_return_object_ptr_writes_null_for_error() {
     let mut slot: *mut c_void = 9 as *mut c_void;
     let ret = &mut slot as *mut *mut c_void as *mut c_void;

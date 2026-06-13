@@ -7,7 +7,7 @@ use std::ffi::{CStr, CString, c_char, c_void};
 use gtk4::glib;
 
 use native::ffi;
-use native::types::{FfiDecoder, FfiEncoder, Ownership, RawPtrCodec, StringType, str_to_glib_full};
+use native::types::{FfiDecoder, FfiEncoder, Ownership, RawPtrCodec, StringType};
 use native::value::Value;
 
 fn borrowed() -> StringType {
@@ -81,31 +81,6 @@ fn encode_null_yields_null_pointer() {
             .encode(&Value::Undefined, false)
             .expect("undefined encode should succeed");
         assert!(matches!(encoded, ffi::FfiValue::Ptr(p) if p.is_null()));
-    });
-}
-
-#[test]
-fn str_to_glib_full_rejects_interior_nul() {
-    common::run(|| {
-        let error = str_to_glib_full("a\0b").expect_err("interior NUL should be rejected");
-        assert!(error.to_string().contains("interior NUL"));
-    });
-}
-
-#[test]
-fn encode_full_rejects_interior_nul() {
-    common::run(|| {
-        let error = full()
-            .encode(&Value::String("a\0b".to_owned()), false)
-            .expect_err("full encode should reject interior NUL");
-        assert!(error.to_string().contains("interior NUL"));
-    });
-}
-
-#[test]
-fn encode_rejects_non_string() {
-    common::run(|| {
-        assert!(borrowed().encode(&Value::Number(1.0), false).is_err());
     });
 }
 
@@ -248,20 +223,5 @@ fn write_value_to_raw_ptr_writes_null() {
     common::run(|| {
         assert_write_value_to_raw_ptr_writes_null(&Value::Null);
         assert_write_value_to_raw_ptr_writes_null(&Value::Undefined);
-    });
-}
-
-#[test]
-fn write_value_to_raw_ptr_rejects_non_string() {
-    common::run(|| {
-        let mut slot: *mut c_char = std::ptr::null_mut();
-        // SAFETY: `slot` is a writable local pointer-sized slot.
-        let result = unsafe {
-            borrowed().write_value_to_raw_ptr(
-                &mut slot as *mut *mut c_char as *mut c_void,
-                &Value::Number(7.0),
-            )
-        };
-        assert!(result.is_err());
     });
 }

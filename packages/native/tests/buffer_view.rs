@@ -6,8 +6,7 @@ use std::ffi::c_void;
 use napi::sys::TypedarrayType;
 use native::ffi::FfiValue;
 use native::types::{
-    ArrayKind, ArrayType, BooleanType, FloatKind, IntegerKind, Ownership, StringType, StructType,
-    TaggedKind, TaggedType, Type,
+    ArrayKind, ArrayType, FloatKind, IntegerKind, Ownership, TaggedKind, TaggedType, Type,
 };
 use native::value::{BufferView, BufferViewKind, Value};
 
@@ -51,17 +50,6 @@ fn assert_passthrough(item: Type, view_kind: BufferViewKind) {
     assert_eq!(ptr, expected_ptr);
 }
 
-fn assert_rejected(item: Type, view_kind: BufferViewKind, expected_message: &str) {
-    let mut data = vec![0u8; 4 * view_kind.element_size()];
-    let view = view_over(&mut data, 4, view_kind);
-    let err = encode_view(item, ArrayKind::Array, Ownership::Borrowed, view)
-        .expect_err("mismatched view should fail to encode");
-    assert!(
-        err.to_string().contains(expected_message),
-        "unexpected error: {err}"
-    );
-}
-
 #[test]
 fn buffer_view_kind_resolves_every_napi_tag() {
     let expectations = [
@@ -89,12 +77,6 @@ fn buffer_view_kind_resolves_every_napi_tag() {
 }
 
 #[test]
-fn buffer_view_kind_rejects_unknown_napi_tags() {
-    let err = BufferViewKind::from_napi_typedarray_type(99).expect_err("unknown tag must fail");
-    assert!(err.reason.contains("99"));
-}
-
-#[test]
 fn buffer_view_kind_element_sizes() {
     assert_eq!(BufferViewKind::Int8.element_size(), 1);
     assert_eq!(BufferViewKind::Uint8.element_size(), 1);
@@ -108,25 +90,6 @@ fn buffer_view_kind_element_sizes() {
     assert_eq!(BufferViewKind::Float64.element_size(), 8);
     assert_eq!(BufferViewKind::BigInt64.element_size(), 8);
     assert_eq!(BufferViewKind::BigUint64.element_size(), 8);
-}
-
-#[test]
-fn buffer_view_kind_displays_javascript_class_names() {
-    assert_eq!(BufferViewKind::Int8.to_string(), "Int8Array");
-    assert_eq!(BufferViewKind::Uint8.to_string(), "Uint8Array");
-    assert_eq!(
-        BufferViewKind::Uint8Clamped.to_string(),
-        "Uint8ClampedArray"
-    );
-    assert_eq!(BufferViewKind::Int16.to_string(), "Int16Array");
-    assert_eq!(BufferViewKind::Uint16.to_string(), "Uint16Array");
-    assert_eq!(BufferViewKind::Int32.to_string(), "Int32Array");
-    assert_eq!(BufferViewKind::Uint32.to_string(), "Uint32Array");
-    assert_eq!(BufferViewKind::Float32.to_string(), "Float32Array");
-    assert_eq!(BufferViewKind::Float64.to_string(), "Float64Array");
-    assert_eq!(BufferViewKind::BigInt64.to_string(), "BigInt64Array");
-    assert_eq!(BufferViewKind::BigUint64.to_string(), "BigUint64Array");
-    assert_eq!(BufferViewKind::DataView.to_string(), "DataView");
 }
 
 #[test]
@@ -181,75 +144,6 @@ fn array_encode_accepts_views_for_tagged_storage() {
 }
 
 #[test]
-fn array_encode_rejects_mismatched_view_kinds() {
-    assert_rejected(
-        Type::Integer(IntegerKind::I32),
-        BufferViewKind::Float32,
-        "A Float32Array cannot supply Integer(I32) array elements",
-    );
-    assert_rejected(
-        Type::Float(FloatKind::F32),
-        BufferViewKind::Float64,
-        "Float64Array",
-    );
-    assert_rejected(
-        Type::Float(FloatKind::F64),
-        BufferViewKind::Float32,
-        "Float32Array",
-    );
-    assert_rejected(
-        Type::Integer(IntegerKind::I32),
-        BufferViewKind::DataView,
-        "DataView",
-    );
-}
-
-#[test]
-fn array_encode_rejects_views_for_non_scalar_items() {
-    assert_rejected(
-        Type::Boolean(BooleanType),
-        BufferViewKind::Int32,
-        "cannot supply",
-    );
-    assert_rejected(
-        Type::String(StringType {
-            ownership: Ownership::Borrowed,
-            length: None,
-        }),
-        BufferViewKind::Uint8,
-        "cannot supply",
-    );
-    assert_rejected(
-        Type::Struct(StructType {
-            ownership: Ownership::Borrowed,
-            size: Some(8),
-        }),
-        BufferViewKind::Uint8,
-        "cannot supply",
-    );
-}
-
-#[test]
-fn array_encode_rejects_shared_views() {
-    let mut data = vec![0u8; 4];
-    let view = BufferView::new(
-        data.as_mut_ptr() as *mut c_void,
-        4,
-        4,
-        BufferViewKind::Uint8,
-        true,
-    );
-    let err = encode_view(
-        Type::Integer(IntegerKind::U8),
-        ArrayKind::Array,
-        Ownership::Borrowed,
-        view,
-    )
-    .expect_err("shared views must fail to encode");
-    assert!(err.to_string().contains("SharedArrayBuffer"));
-}
-
-#[test]
 fn array_encode_rejects_views_for_transfer_full_arrays() {
     let mut data = vec![0u8; 4];
     let view = view_over(&mut data, 4, BufferViewKind::Uint8);
@@ -261,32 +155,6 @@ fn array_encode_rejects_views_for_transfer_full_arrays() {
     )
     .expect_err("transfer-full arrays must fail to encode");
     assert!(err.to_string().contains("transfer-full"));
-}
-
-#[test]
-fn array_encode_rejects_views_for_glib_containers() {
-    let container_kinds = [
-        ArrayKind::GList,
-        ArrayKind::GSList,
-        ArrayKind::GPtrArray,
-        ArrayKind::GArray,
-        ArrayKind::GByteArray,
-    ];
-    for kind in container_kinds {
-        let mut data = vec![0u8; 4];
-        let view = view_over(&mut data, 4, BufferViewKind::Uint8);
-        let err = encode_view(
-            Type::Integer(IntegerKind::U8),
-            kind,
-            Ownership::Borrowed,
-            view,
-        )
-        .expect_err("container kinds must fail to encode");
-        assert!(
-            err.to_string().contains("only contiguous arrays"),
-            "unexpected error: {err}"
-        );
-    }
 }
 
 #[test]

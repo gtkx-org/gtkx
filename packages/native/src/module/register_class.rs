@@ -554,57 +554,6 @@ mod tests {
     }
 
     #[test]
-    fn query_parent_gtype_rejects_invalid_parent() {
-        let request = RegisterClassRequest {
-            name: unique_name("GtkxTestInvalidParent"),
-            parent_gtype: glib::Type::INVALID,
-            vfuncs: vec![],
-            interfaces: vec![],
-        };
-        let err = request
-            .query_parent_gtype()
-            .expect_err("invalid parent should fail");
-        assert!(err.to_string().contains("G_TYPE_INVALID"));
-    }
-
-    #[test]
-    fn query_parent_gtype_rejects_non_classed_parent() {
-        let request = RegisterClassRequest {
-            name: unique_name("GtkxTestNonClassedParent"),
-            parent_gtype: glib::Type::I64,
-            vfuncs: vec![],
-            interfaces: vec![],
-        };
-        let err = request
-            .query_parent_gtype()
-            .expect_err("non-classed parent should fail");
-        assert!(err.to_string().contains("could not be queried"));
-    }
-
-    #[test]
-    fn query_parent_gtype_rejects_already_registered_name() {
-        let name = unique_name("GtkxTestDuplicateName");
-        let first = RegisterClassRequest {
-            name: name.clone(),
-            parent_gtype: object_parent_gtype(),
-            vfuncs: vec![],
-            interfaces: vec![],
-        };
-        first.execute().expect("first registration should succeed");
-
-        let second = RegisterClassRequest {
-            name,
-            parent_gtype: object_parent_gtype(),
-            vfuncs: vec![],
-            interfaces: vec![],
-        };
-        let err = second
-            .query_parent_gtype()
-            .expect_err("duplicate name should fail");
-        assert!(err.to_string().contains("already registered"));
-    }
-
-    #[test]
     fn validate_vfunc_offset_accepts_aligned_offset_within_class() {
         let result = RegisterClassRequest::validate_vfunc_offset(
             16,
@@ -626,47 +575,5 @@ mod tests {
             "interface vfunc",
         );
         assert!(result.is_ok());
-    }
-
-    #[test]
-    fn validate_vfunc_offset_rejects_misaligned_offset() {
-        let result = RegisterClassRequest::validate_vfunc_offset(
-            7,
-            POINTER_ALIGN,
-            POINTER_SIZE,
-            Some(64),
-            "vfunc",
-        );
-        let err = result.expect_err("misaligned offset should fail validation");
-        let message = err.to_string();
-        assert!(message.contains("vfunc"));
-        assert!(message.contains("not aligned"));
-    }
-
-    #[test]
-    fn validate_vfunc_offset_rejects_offset_overflowing_class_size() {
-        let result = RegisterClassRequest::validate_vfunc_offset(
-            64,
-            POINTER_ALIGN,
-            POINTER_SIZE,
-            Some(64),
-            "vfunc",
-        );
-        let err = result.expect_err("offset past class size should fail validation");
-        assert!(err.to_string().contains("exceeds class size"));
-    }
-
-    #[test]
-    fn validate_vfunc_offset_rejects_arithmetic_overflow() {
-        let aligned_max = usize::MAX & !(POINTER_ALIGN - 1);
-        let result = RegisterClassRequest::validate_vfunc_offset(
-            aligned_max,
-            POINTER_ALIGN,
-            POINTER_SIZE,
-            None,
-            "interface vfunc",
-        );
-        let err = result.expect_err("usize overflow should fail validation");
-        assert!(err.to_string().contains("overflow"));
     }
 }

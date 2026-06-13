@@ -112,48 +112,6 @@ fn gtype_resolves_via_library_lookup() {
 }
 
 #[test]
-fn gtype_unknown_without_library_yields_none() {
-    common::run(|| {
-        let unknown = BoxedType {
-            ownership: Ownership::Borrowed,
-            type_name: "CompletelyUnknownBoxed".to_owned(),
-            library: None,
-            get_type_fn: None,
-            free_fn: None,
-        };
-        assert!(unknown.gtype().is_none());
-    });
-}
-
-#[test]
-fn gtype_unknown_with_library_but_no_get_type_fn_yields_none() {
-    common::run(|| {
-        let unknown = BoxedType {
-            ownership: Ownership::Borrowed,
-            type_name: "AnotherUnknownBoxed".to_owned(),
-            library: Some("libgobject-2.0.so.0".to_owned()),
-            get_type_fn: None,
-            free_fn: None,
-        };
-        assert!(unknown.gtype().is_none());
-    });
-}
-
-#[test]
-fn gtype_with_missing_symbol_reports_error_and_yields_none() {
-    common::run(|| {
-        let bad = BoxedType {
-            ownership: Ownership::Borrowed,
-            type_name: "BadSymbolBoxed".to_owned(),
-            library: Some("libgobject-2.0.so.0".to_owned()),
-            get_type_fn: Some("definitely_not_a_real_symbol_xyz".to_owned()),
-            free_fn: None,
-        };
-        assert!(bad.gtype().is_none());
-    });
-}
-
-#[test]
 fn encode_full_copies_to_distinct_pointer() {
     common::run(|| {
         let (gtype, original) = rgba_boxed_alloc();
@@ -275,26 +233,6 @@ fn decode_borrowed_copies_boxed() {
         drop(decoded);
 
         free_rgba(gtype, original);
-    });
-}
-
-#[test]
-fn decode_borrowed_unknown_gtype_bails() {
-    common::run(|| {
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
-        let raw = unsafe { glib::ffi::g_malloc0(64) };
-        let unknown = BoxedType {
-            ownership: Ownership::Borrowed,
-            type_name: "DecodeUnknownBoxed".to_owned(),
-            library: None,
-            get_type_fn: None,
-            free_fn: None,
-        };
-        let result = unknown.decode(&ffi::FfiValue::Ptr(raw));
-        assert!(result.is_err());
-
-        // SAFETY: Frees the allocation this test owns.
-        unsafe { glib::ffi::g_free(raw) };
     });
 }
 

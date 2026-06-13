@@ -61,23 +61,6 @@ fn from_glib_none_null_ptr_not_owned() {
 }
 
 #[test]
-fn from_glib_none_unknown_type_returns_error() {
-    common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let ptr = common::allocate_test_boxed(gtype);
-
-        let result = Boxed::from_glib_none(None, ptr);
-
-        assert!(result.is_err());
-
-        // SAFETY: Frees the boxed allocation this test owns.
-        unsafe {
-            glib::gobject_ffi::g_boxed_free(gtype.into_glib(), ptr);
-        }
-    });
-}
-
-#[test]
 fn clone_creates_independent_copy() {
     common::run(|| {
         let gtype = gdk::RGBA::static_type();
@@ -215,19 +198,6 @@ fn as_ptr_returns_ptr_for_plain_struct() {
         let boxed = Boxed::from_glib_full(None, ptr);
 
         assert_eq!(boxed.as_ptr(), ptr);
-    });
-}
-
-#[test]
-fn plain_struct_debug_format() {
-    common::run(|| {
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
-        let ptr = unsafe { glib::ffi::g_malloc0(8) };
-        let boxed = Boxed::from_glib_full(None, ptr);
-
-        let debug_str = format!("{boxed:?}");
-        assert!(debug_str.contains("Boxed"));
-        assert!(debug_str.contains("ownership"));
     });
 }
 

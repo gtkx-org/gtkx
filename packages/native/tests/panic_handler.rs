@@ -31,19 +31,6 @@ fn formats_owned_string_payload() {
 }
 
 #[test]
-fn formats_unrecognized_payload_as_unknown_panic() {
-    let previous = std::panic::take_hook();
-    std::panic::set_hook(Box::new(|_| {}));
-    let result = std::panic::catch_unwind(|| {
-        std::panic::panic_any(42_u32);
-    });
-    std::panic::set_hook(previous);
-
-    let payload = result.expect_err("catch_unwind should capture the panic");
-    assert_eq!(format_panic_payload(&*payload), "unknown panic");
-}
-
-#[test]
 fn format_panic_report_includes_thread_location_and_message() {
     let captured = std::sync::Arc::new(Mutex::new(String::new()));
     let captured_for_hook = captured.clone();

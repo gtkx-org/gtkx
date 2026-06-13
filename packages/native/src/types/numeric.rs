@@ -1,5 +1,4 @@
 use anyhow::bail;
-#[cfg(debug_assertions)]
 use libffi::middle as libffi;
 use napi::{Env, JsObject};
 

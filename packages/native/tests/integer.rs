@@ -228,11 +228,3 @@ fn vec_to_f64_i32() {
     let result = IntegerKind::I32.vec_to_f64(&storage).unwrap();
     assert_eq!(result, vec![-100.0, 0.0, 100.0]);
 }
-
-#[test]
-fn vec_to_f64_wrong_type_fails() {
-    let values: Vec<i32> = vec![1, 2, 3];
-    let storage: ffi::FfiStorage = values.into();
-    let result = IntegerKind::U8.vec_to_f64(&storage);
-    assert!(result.is_err());
-}

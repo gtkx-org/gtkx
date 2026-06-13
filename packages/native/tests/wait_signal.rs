@@ -73,10 +73,3 @@ fn wait_blocks_until_another_thread_notifies() {
     waiter.join().expect("waiter thread should finish");
     assert!(woke.load(Ordering::SeqCst));
 }
-
-#[test]
-fn debug_format_includes_type_name() {
-    let signal = WaitSignal::new();
-    let debug_str = format!("{signal:?}");
-    assert!(debug_str.contains("WaitSignal"));
-}

@@ -3,9 +3,9 @@ mod common;
 use std::ffi::c_void;
 
 use libffi::middle;
+use native::ffi;
 use native::types::{FfiDecoder, FfiEncoder, RawPtrCodec, UnicharType};
 use native::value::Value;
-use native::{ffi, value};
 
 extern "C" fn ret_codepoint() -> u32 {
     'Z' as u32
@@ -135,10 +135,4 @@ fn write_return_to_raw_ptr_writes_string_number_and_default() {
     // SAFETY: `ret` addresses a writable local 8-byte slot.
     unsafe { RawPtrCodec::write_return_to_raw_ptr(&UnicharType, ret, &Ok(Value::Boolean(true))) };
     assert_eq!(slot, 0);
-}
-
-#[test]
-fn debug_impl_renders() {
-    let _ = value::Value::String("c".to_owned());
-    assert!(format!("{UnicharType:?}").contains("UnicharType"));
 }

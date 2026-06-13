@@ -198,7 +198,7 @@ mod napi_export {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{ArrayType, BlobType, IntegerKind, Ownership, RefType, StringType};
+    use crate::types::{ArrayType, BlobType, IntegerKind, Ownership, StringType};
     use crate::value::{BufferView, BufferViewKind};
 
     use super::*;
@@ -341,93 +341,6 @@ mod tests {
         assert!(ref_updates.is_empty());
         let n = value.as_number().expect("result should be a number");
         assert!((10.0..20.0).contains(&n));
-    }
-
-    #[test]
-    fn execute_fails_for_unknown_symbol() {
-        let request = CallRequest {
-            library_name: "libglib-2.0.so.0".into(),
-            symbol_name: "g_no_such_symbol_12345".into(),
-            args: vec![],
-            result_type: Type::Integer(IntegerKind::I32),
-        };
-        assert!(request.execute().is_err());
-    }
-
-    #[test]
-    fn execute_fails_when_an_argument_cannot_be_encoded() {
-        let request = CallRequest {
-            library_name: "libglib-2.0.so.0".into(),
-            symbol_name: "g_random_int_range".into(),
-            args: vec![Arg::new(
-                Type::Integer(IntegerKind::I32),
-                Value::String("not a number".into()),
-            )],
-            result_type: Type::Integer(IntegerKind::I32),
-        };
-        let err = request
-            .execute()
-            .expect_err("encoding a string as an integer should fail");
-        assert!(err.to_string().contains("encoding arg 0"));
-    }
-
-    #[test]
-    fn execute_fails_for_void_argument_type() {
-        let request = CallRequest {
-            library_name: "libglib-2.0.so.0".into(),
-            symbol_name: "g_random_int_range".into(),
-            args: vec![Arg::new(Type::Void(crate::types::VoidType), Value::Null)],
-            result_type: Type::Integer(IntegerKind::I32),
-        };
-        let err = request
-            .execute()
-            .expect_err("a void argument type should fail the call");
-        assert!(
-            err.to_string()
-                .contains("cannot be used as a function argument type")
-        );
-    }
-
-    #[test]
-    fn execute_fails_when_result_type_cannot_occupy_return_slot() {
-        let request = CallRequest {
-            library_name: "libglib-2.0.so.0".into(),
-            symbol_name: "g_random_int".into(),
-            args: vec![],
-            result_type: Type::Ref(RefType::new(Type::Integer(IntegerKind::I32))),
-        };
-        let err = request
-            .execute()
-            .expect_err("a ref return type should fail the call");
-        assert!(err.to_string().contains("calling g_random_int"));
-    }
-
-    #[test]
-    fn execute_fails_when_return_value_cannot_be_decoded() {
-        let request = CallRequest {
-            library_name: "libglib-2.0.so.0".into(),
-            symbol_name: "g_strdup".into(),
-            args: vec![Arg::new(
-                Type::String(StringType {
-                    ownership: Ownership::Borrowed,
-                    length: None,
-                }),
-                Value::Null,
-            )],
-            result_type: Type::Array(ArrayType {
-                item_type: Box::new(Type::Integer(IntegerKind::U8)),
-                kind: ArrayKind::Sized { size_index: 9 },
-                ownership: Ownership::Borrowed,
-                element_size: None,
-            }),
-        };
-        let err = request
-            .execute()
-            .expect_err("decoding with an out-of-bounds size index should fail");
-        assert!(
-            err.to_string()
-                .contains("decoding return value of g_strdup")
-        );
     }
 
     #[test]

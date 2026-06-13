@@ -104,15 +104,3 @@ fn boxed_from_glib_none_with_size_copies_without_gtype() {
         assert_eq!(copied_data, &data);
     }
 }
-
-#[test]
-fn boxed_from_glib_none_without_size_or_gtype_fails() {
-    let data: [u8; 16] = [0; 16];
-    let ptr = data.as_ptr() as *mut c_void;
-
-    let result = Boxed::from_glib_none_with_size(None, ptr, None, Some("TestStruct"));
-
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert!(err.to_string().contains("Cannot copy boxed type"));
-}

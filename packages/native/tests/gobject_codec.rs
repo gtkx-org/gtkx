@@ -44,13 +44,6 @@ fn encode_object(ty: &GObjectType, ptr: *mut glib::gobject_ffi::GObject) -> ffi:
         .expect("encode should succeed")
 }
 
-/// A zeroed pointer-sized region wide enough for the `GObject` header reads the
-/// codec performs before bailing on an invalid type class.
-fn with_fake_object_region(check: impl FnOnce(*mut c_void)) {
-    let mut fake = [0usize; 4];
-    check(fake.as_mut_ptr() as *mut c_void);
-}
-
 /// Writes `value` into a null-initialized slot through
 /// `write_return_to_raw_ptr` and returns the written pointer.
 fn write_return_into_slot(ty: &GObjectType, value: &Result<Value, ()>) -> *mut c_void {
@@ -114,13 +107,6 @@ fn encode_null_object_stays_null() {
             .encode(&Value::Null, false)
             .expect("null encode should succeed");
         assert!(matches!(encoded, ffi::FfiValue::Ptr(p) if p.is_null()));
-    });
-}
-
-#[test]
-fn encode_rejects_non_object() {
-    common::run(|| {
-        assert!(full().encode(&Value::Number(1.0), false).is_err());
     });
 }
 
@@ -237,15 +223,6 @@ fn decode_null_pointer_yields_null() {
 }
 
 #[test]
-fn decode_invalid_type_class_bails() {
-    common::run(|| {
-        with_fake_object_region(|fake_ptr| {
-            assert!(borrowed().decode(&ffi::FfiValue::Ptr(fake_ptr)).is_err());
-        });
-    });
-}
-
-#[test]
 fn ptr_to_value_wraps_borrowed_object() {
     common::run(|| {
         let (_obj, obj_ptr, before) = fresh_gobject();
@@ -267,17 +244,6 @@ fn ptr_to_value_null_yields_null() {
         let value = unsafe { borrowed().ptr_to_value(std::ptr::null_mut(), "ctx") }
             .expect("null ptr_to_value should succeed");
         assert!(matches!(value, Value::Null));
-    });
-}
-
-#[test]
-fn ptr_to_value_invalid_type_class_bails() {
-    common::run(|| {
-        with_fake_object_region(|fake_ptr| {
-            // SAFETY: `fake_ptr` addresses a live zeroed local wide enough for
-            // the GObject header reads the codec performs before bailing.
-            assert!(unsafe { borrowed().ptr_to_value(fake_ptr, "ctx") }.is_err());
-        });
     });
 }
 

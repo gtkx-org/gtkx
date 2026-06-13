@@ -2,9 +2,9 @@ use std::ffi::c_void;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use libffi::middle;
+use native::ffi;
 use native::types::{FfiDecoder, FfiEncoder, RawPtrCodec, VoidType};
 use native::value::Value;
-use native::{ffi, value};
 
 static CALLED: AtomicBool = AtomicBool::new(false);
 
@@ -84,10 +84,4 @@ fn write_return_to_raw_ptr_is_a_no_op() {
     // SAFETY: `ret` addresses a writable local; VoidType never writes it.
     unsafe { RawPtrCodec::write_return_to_raw_ptr(&VoidType, ret, &Err(())) };
     assert_eq!(slot, 99);
-}
-
-#[test]
-fn debug_impl_renders() {
-    let _ = value::Value::Undefined;
-    assert!(format!("{VoidType:?}").contains("VoidType"));
 }

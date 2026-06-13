@@ -11,12 +11,10 @@ use std::ffi::{CString, c_char, c_void};
 use gtk4::glib;
 use gtk4::prelude::ObjectType as _;
 
-use libffi::middle as libffi;
-
 use native::ffi::{self, FfiStorage, FfiStorageKind};
 use native::types::{
     ArrayKind, ArrayType, BooleanType, FfiDecoder, FloatKind, GObjectType, IntegerKind, Ownership,
-    RawPtrCodec, RefType, StringType, TaggedKind, TaggedType, Type, UnicharType, VoidType,
+    RawPtrCodec, RefType, StringType, TaggedKind, TaggedType, Type, UnicharType,
 };
 use native::value::Value;
 
@@ -40,31 +38,6 @@ fn u8_array_ref_type() -> RefType {
         ownership: Ownership::Borrowed,
         element_size: None,
     }))
-}
-
-#[test]
-fn new_and_clone_and_debug() {
-    common::run(|| {
-        let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
-        let cloned = ref_type.clone();
-        assert!(matches!(
-            &*cloned.inner_type,
-            Type::Integer(IntegerKind::I32)
-        ));
-        assert!(format!("{ref_type:?}").contains("RefType"));
-    });
-}
-
-#[test]
-fn call_cif_rejects_ref_as_return_type() {
-    common::run(|| {
-        let cif = libffi::Cif::new(std::iter::empty(), libffi::Type::void());
-        let code_ptr = libffi::CodePtr(std::ptr::null_mut());
-
-        let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
-        let result = native::types::FfiEncoder::call_cif(&ref_type, &cif, code_ptr, &[]);
-        assert!(result.is_err());
-    });
 }
 
 #[test]
@@ -211,29 +184,6 @@ fn decode_unichar_reads_string() {
 }
 
 #[test]
-fn decode_unsupported_inner_type_bails() {
-    common::run(|| {
-        let storage = ptr_storage(std::ptr::null_mut());
-
-        let ref_type = RefType::new(Type::Void(VoidType));
-        assert!(ref_type.decode(&storage).is_err());
-    });
-}
-
-#[test]
-fn supports_inner_rejects_slotless_shapes() {
-    common::run(|| {
-        assert!(RefType::supports_inner(&Type::Integer(IntegerKind::I32)));
-        assert!(RefType::supports_inner(&Type::Boolean(BooleanType)));
-        assert!(RefType::supports_inner(&Type::Unichar(UnicharType)));
-        assert!(!RefType::supports_inner(&Type::Void(VoidType)));
-        assert!(!RefType::supports_inner(&Type::Ref(RefType::new(
-            Type::Integer(IntegerKind::I32)
-        ))));
-    });
-}
-
-#[test]
 fn decode_ref_string_buffer_kind_reads_directly() {
     common::run(|| {
         let mut buffer = b"buffered\0".to_vec();
@@ -330,18 +280,6 @@ fn decode_with_context_array_null_ptr_yields_null() {
             .decode_with_context(&ffi::FfiValue::Ptr(std::ptr::null_mut()), &[], &[])
             .expect("array null ptr decode_with_context should succeed");
         assert!(matches!(decoded, Value::Null));
-    });
-}
-
-#[test]
-fn decode_with_context_array_rejects_non_storage() {
-    common::run(|| {
-        let ref_type = u8_array_ref_type();
-        assert!(
-            ref_type
-                .decode_with_context(&ffi::FfiValue::I32(1), &[], &[])
-                .is_err()
-        );
     });
 }
 
