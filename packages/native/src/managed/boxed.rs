@@ -2,7 +2,7 @@ use std::ffi::c_void;
 use std::rc::Rc;
 
 use anyhow::bail;
-use gtk4::glib::{self, translate::IntoGlib as _};
+use glib::translate::IntoGlib as _;
 
 use crate::types::BoxedFreeFn;
 

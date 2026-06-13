@@ -1,5 +1,4 @@
 use anyhow::bail;
-use gtk4::glib;
 use napi::bindgen_prelude::*;
 use napi::{Env, JsObject};
 

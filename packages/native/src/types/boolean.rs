@@ -1,4 +1,4 @@
-use gtk4::glib::translate::IntoGlib as _;
+use glib::translate::IntoGlib as _;
 use libffi::middle as libffi;
 
 use super::prelude::*;

@@ -1,6 +1,5 @@
 use anyhow::bail;
 #[cfg(debug_assertions)]
-use gtk4::glib;
 use libffi::middle as libffi;
 use napi::{Env, JsObject};
 

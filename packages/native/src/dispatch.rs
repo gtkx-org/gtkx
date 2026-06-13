@@ -44,11 +44,11 @@ mod js_bridge;
 use std::collections::VecDeque;
 use std::panic::{self, AssertUnwindSafe};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, OnceLock, mpsc};
+use std::sync::{Arc, OnceLock, mpsc};
 
-use gtk4::glib;
 use napi::threadsafe_function::ThreadsafeFunction;
 use napi::{JsFunction, Status, sys};
+use parking_lot::Mutex;
 
 use crate::error_reporter::NativeErrorReporter;
 use crate::panic_handler::format_panic_payload;
@@ -230,10 +230,7 @@ impl Mailbox {
 
     fn push_glib_task(&self, task: GlibTask) {
         let depth = self.callback_depth.load(Ordering::Acquire);
-        self.glib_inbox
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .push_back((depth, task));
+        self.glib_inbox.lock().push_back((depth, task));
         if self.freeze_loop_active.load(Ordering::Acquire) {
             self.freeze_wake.notify();
         }
@@ -318,10 +315,7 @@ impl Mailbox {
 
         loop {
             let task = {
-                let mut inbox = self
-                    .glib_inbox
-                    .lock()
-                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                let mut inbox = self.glib_inbox.lock();
                 inbox
                     .iter()
                     .position(|(depth, _)| *depth >= min_depth)

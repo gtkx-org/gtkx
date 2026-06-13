@@ -16,7 +16,7 @@
 use std::ffi::{c_char, c_void};
 use std::sync::Arc;
 
-use gtk4::glib::{
+use glib::{
     self, gobject_ffi,
     translate::{FromGlib as _, IntoGlib as _},
 };
@@ -518,7 +518,6 @@ mod napi_export {
 mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
-    use gtk4::glib;
     use gtk4::prelude::StaticType as _;
 
     use super::*;

@@ -3,11 +3,12 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
+use std::sync::OnceLock;
 use std::sync::atomic::{AtomicU8, Ordering};
-use std::sync::{Mutex, OnceLock};
 use std::thread::JoinHandle;
 
 use libloading::os::unix::{Library, RTLD_GLOBAL, RTLD_NOW};
+use parking_lot::Mutex;
 
 use crate::error_reporter::NativeErrorReporter;
 use crate::managed::{RefFn, UnrefFn};
@@ -108,11 +109,7 @@ impl GlibThread {
     }
 
     pub fn set_handle(&self, handle: JoinHandle<()>) {
-        let previous = self
-            .handle
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .replace(handle);
+        let previous = self.handle.lock().replace(handle);
         if previous.is_some() {
             NativeErrorReporter::global()
                 .report_str("GLib thread handle replaced while a previous thread was unjoined");
@@ -120,11 +117,7 @@ impl GlibThread {
     }
 
     pub fn join(&self) -> Option<String> {
-        let handle = self
-            .handle
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .take();
+        let handle = self.handle.lock().take();
 
         if let Some(handle) = handle
             && let Err(payload) = handle.join()
@@ -142,7 +135,7 @@ pub struct LibraryCache {
     libraries: ManuallyDrop<HashMap<String, Library>>,
     /// Resolved `GType`s keyed by `(library, get_type_fn)`, so repeated
     /// resolutions of the same descriptor skip the dlsym round trip.
-    gtypes: HashMap<(String, String), gtk4::glib::Type>,
+    gtypes: HashMap<(String, String), glib::Type>,
 }
 
 impl std::fmt::Debug for LibraryCache {
@@ -189,10 +182,10 @@ impl LibraryCache {
         &mut self,
         lib_name: &str,
         get_type_fn_name: &str,
-    ) -> anyhow::Result<gtk4::glib::Type> {
-        use gtk4::glib::translate::FromGlib as _;
+    ) -> anyhow::Result<glib::Type> {
+        use glib::translate::FromGlib as _;
 
-        type GetTypeFn = unsafe extern "C" fn() -> gtk4::glib::ffi::GType;
+        type GetTypeFn = unsafe extern "C" fn() -> glib::ffi::GType;
 
         let key = (lib_name.to_owned(), get_type_fn_name.to_owned());
         if let Some(cached) = self.gtypes.get(&key) {
@@ -214,7 +207,7 @@ impl LibraryCache {
         let gtype_raw = unsafe { func() };
         // SAFETY: `gtype_raw` came from the type's own `get_type`
         // function, so it is a valid GType value.
-        let gtype = unsafe { gtk4::glib::Type::from_glib(gtype_raw) };
+        let gtype = unsafe { glib::Type::from_glib(gtype_raw) };
         self.gtypes.insert(key, gtype);
         Ok(gtype)
     }
@@ -364,7 +357,7 @@ impl GlibThreadState {
         &mut self,
         lib_name: &str,
         get_type_fn_name: &str,
-    ) -> anyhow::Result<gtk4::glib::Type> {
+    ) -> anyhow::Result<glib::Type> {
         self.libs.resolve_gtype(lib_name, get_type_fn_name)
     }
 

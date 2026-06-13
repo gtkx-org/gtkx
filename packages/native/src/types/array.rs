@@ -1,7 +1,6 @@
 use std::ffi::{CString, c_char};
 
 use anyhow::bail;
-use gtk4::glib;
 use napi::bindgen_prelude::*;
 use napi::{Env, JsObject};
 

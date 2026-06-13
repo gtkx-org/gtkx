@@ -16,7 +16,6 @@
 use std::ffi::c_void;
 use std::sync::Arc;
 
-use gtk4::glib;
 use napi::bindgen_prelude::*;
 use napi::{Env, JsFunction, JsObject, NapiRaw, NapiValue, sys};
 use napi_derive::napi;

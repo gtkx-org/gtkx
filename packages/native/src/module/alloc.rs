@@ -11,8 +11,7 @@
 //! - **Plain structs** (without `type_name)`: Memory is allocated with `g_malloc0`
 //!   and freed with `g_free` on drop.
 
-use gtk4::glib;
-use gtk4::glib::ffi::g_malloc0;
+use glib::ffi::g_malloc0;
 use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;

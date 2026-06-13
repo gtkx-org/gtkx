@@ -83,11 +83,11 @@
 
 use std::ffi::c_void;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, OnceLock};
 
-use gtk4::glib;
-use gtk4::glib::translate::IntoGlib as _;
+use glib::translate::IntoGlib as _;
 use napi::JsFunction;
+use parking_lot::Mutex;
 
 use crate::dispatch::Mailbox;
 use crate::error_reporter::NativeErrorReporter;
@@ -239,9 +239,7 @@ unsafe fn binding_ptr(gobject: *mut glib::gobject_ffi::GObject) -> *const Wrappe
 ///
 /// `gobject` must be null or a valid pointer to a live `GTypeInstance`.
 unsafe fn binding_arc(gobject: *mut glib::gobject_ffi::GObject) -> Option<Arc<WrapperBinding>> {
-    let _serialized = BINDING_LOOKUP_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _serialized = BINDING_LOOKUP_LOCK.lock();
     // SAFETY: The caller's contract for `gobject` carries over to
     // binding_ptr.
     let ptr = unsafe { binding_ptr(gobject) };
@@ -508,9 +506,7 @@ pub(crate) fn schedule_cleanup(
         let gobject = gobject_addr as *mut glib::gobject_ffi::GObject;
         binding.generation.store(0, Ordering::Relaxed);
         {
-            let _serialized = BINDING_LOOKUP_LOCK
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            let _serialized = BINDING_LOOKUP_LOCK.lock();
             // SAFETY: The generation match proves this wrapper is the live
             // binding, so its reused toggle ref keeps `gobject` alive; the
             // qdata slot holds exactly one raw Arc count, reclaimed here

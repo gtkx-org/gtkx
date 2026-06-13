@@ -43,19 +43,13 @@ impl Mailbox {
 
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn push_node_task(&self, task: NodeTask) {
-        self.node_inbox
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .push_back(task);
+        self.node_inbox.lock().push_back(task);
         self.wake_js.notify();
     }
 
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn pop_node_task(&self) -> Option<NodeTask> {
-        self.node_inbox
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .pop_front()
+        self.node_inbox.lock().pop_front()
     }
 
     #[cfg_attr(coverage_nightly, coverage(off))]
@@ -167,7 +161,7 @@ impl Mailbox {
         capture_result: bool,
         out_cell_indices: Vec<usize>,
     ) -> anyhow::Result<super::NodeCallbackResult> {
-        let glib_initiated = gtk4::glib::MainContext::default().is_owner();
+        let glib_initiated = glib::MainContext::default().is_owner();
         let wait_depth = glib_initiated.then(|| {
             // The depth counts GLib-initiated callbacks currently executing
             // on the JS thread. Those execute only while this GLib thread is

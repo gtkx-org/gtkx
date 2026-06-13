@@ -1,5 +1,5 @@
 use anyhow::bail;
-use gtk4::glib::{
+use glib::{
     self,
     prelude::StaticType as _,
     translate::{

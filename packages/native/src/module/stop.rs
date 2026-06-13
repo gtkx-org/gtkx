@@ -17,7 +17,6 @@
 
 #![cfg_attr(coverage_nightly, coverage(off))]
 
-use gtk4::glib;
 use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;

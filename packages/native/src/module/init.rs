@@ -19,7 +19,6 @@ use std::panic::{self, AssertUnwindSafe};
 use std::sync::Arc;
 use std::sync::mpsc;
 
-use gtk4::glib;
 use napi::Env;
 use napi::bindgen_prelude::*;
 use napi::sys;

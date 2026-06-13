@@ -17,7 +17,6 @@ use std::sync::atomic::{AtomicPtr, Ordering};
 
 use ::libffi::low as libffi_low;
 use ::libffi::middle as libffi;
-use gtk4::glib;
 use napi::JsFunction;
 
 use crate::dispatch::Mailbox;

@@ -11,12 +11,8 @@
 //! would steal each other's wakeups. Each [`crate::dispatch::Mailbox`] wait
 //! loop therefore owns its signal exclusively — `wake_js` is waited on only by
 //! the JS thread, `wake_glib` and `freeze_wake` only by the `GLib` thread.
-//!
-//! Lock poisoning is deliberately swallowed (`PoisonError::into_inner`): the
-//! protected state is a plain `bool` with no invariant a panicking thread
-//! could have broken mid-update.
 
-use std::sync::{Condvar, Mutex};
+use parking_lot::{Condvar, Mutex};
 
 /// A consumable binary wake permit coordinating one waiter with its notifiers.
 #[derive(Debug)]
@@ -46,10 +42,7 @@ impl WaitSignal {
     /// permit.
     pub fn notify(&self) {
         {
-            let mut notified = self
-                .state
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            let mut notified = self.state.lock();
             *notified = true;
         }
         self.condvar.notify_one();
@@ -59,15 +52,9 @@ impl WaitSignal {
     /// immediately when a notify already landed, so a wakeup raced against
     /// parking is never lost.
     pub fn wait(&self) {
-        let mut notified = self
-            .state
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut notified = self.state.lock();
         while !*notified {
-            notified = self
-                .condvar
-                .wait(notified)
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            self.condvar.wait(&mut notified);
         }
         *notified = false;
     }

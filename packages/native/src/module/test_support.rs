@@ -14,9 +14,8 @@
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use gtk4::glib;
-use gtk4::glib::prelude::ObjectExt as _;
-use gtk4::glib::translate::from_glib_borrow;
+use glib::prelude::ObjectExt as _;
+use glib::translate::from_glib_borrow;
 use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;

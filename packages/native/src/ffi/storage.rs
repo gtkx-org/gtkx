@@ -11,8 +11,7 @@
 use std::cell::Cell;
 use std::ffi::c_void;
 
-use gtk4::glib;
-use gtk4::glib::translate::IntoGlib as _;
+use glib::translate::IntoGlib as _;
 
 use crate::managed::UnrefFn;
 use crate::types::IntegerKind;

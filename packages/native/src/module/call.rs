@@ -9,7 +9,6 @@
 use std::{ffi::c_void, sync::Arc};
 
 use anyhow::Context as _;
-use gtk4::glib;
 use libffi::middle as libffi;
 use napi::Env;
 use napi::bindgen_prelude::*;

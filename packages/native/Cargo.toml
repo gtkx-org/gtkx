@@ -16,12 +16,12 @@ harness = false
 [dependencies]
 napi = { version = "3", features = ["napi8", "anyhow", "compat-mode"] }
 napi-derive = "3"
-gtk4 = "0.11.3"
 glib = { version = "0.22", features = ["v2_68"] }
 libloading = "0.9.0"
 libffi = "5.1.0"
 anyhow = "1.0.102"
 enum_dispatch = "0.3"
+parking_lot = "0.12"
 
 [build-dependencies]
 napi-build = "2"
@@ -56,3 +56,4 @@ cast_ptr_alignment = "allow"
 
 [dev-dependencies]
 codspeed-criterion-compat = "4.7.0"
+gtk4 = "0.11.3"

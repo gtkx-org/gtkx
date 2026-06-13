@@ -25,8 +25,7 @@ use std::mem::ManuallyDrop;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use gtk4::glib;
-use gtk4::glib::thread_guard::ThreadGuard;
+use glib::thread_guard::ThreadGuard;
 
 use crate::dispatch::Mailbox;
 

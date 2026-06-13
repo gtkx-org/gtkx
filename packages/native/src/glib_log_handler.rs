@@ -15,7 +15,7 @@
 
 use std::sync::OnceLock;
 
-use gtk4::glib::{self, LogLevel, LogWriterOutput};
+use glib::{LogLevel, LogWriterOutput};
 
 use crate::error_reporter::NativeErrorReporter;
 

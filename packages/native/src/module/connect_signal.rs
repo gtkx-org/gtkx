@@ -29,7 +29,7 @@ use std::ffi::c_void;
 use std::sync::Arc;
 
 use anyhow::bail;
-use gtk4::glib::{
+use glib::{
     self, gobject_ffi,
     subclass::SignalId,
     translate::{IntoGlib as _, ToGlibPtr, ToGlibPtrMut, from_glib, from_glib_borrow},

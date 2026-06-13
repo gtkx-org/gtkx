@@ -1,8 +1,7 @@
 use std::ffi::{CString, c_char};
 
 use anyhow::bail;
-use gtk4::glib;
-use gtk4::glib::translate::ToGlibPtr;
+use glib::translate::ToGlibPtr;
 use napi::{Env, JsObject};
 
 use super::prelude::*;

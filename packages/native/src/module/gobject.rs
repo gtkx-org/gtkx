@@ -4,7 +4,7 @@
 //! not need to traverse the `GTypeInstance` → `GTypeClass` → `GObjectClass`
 //! chain through several individual FFI dispatches.
 
-use gtk4::glib::gobject_ffi;
+use glib::gobject_ffi;
 use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
@@ -66,8 +66,7 @@ mod napi_export {
 
 #[cfg(test)]
 mod tests {
-    use gtk4::glib;
-    use gtk4::glib::translate::{IntoGlib as _, ToGlibPtr as _};
+    use glib::translate::{IntoGlib as _, ToGlibPtr as _};
     use gtk4::prelude::StaticType as _;
 
     use super::*;

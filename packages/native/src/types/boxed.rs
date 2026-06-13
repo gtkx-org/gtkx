@@ -6,7 +6,7 @@
 //! descriptors that handle encoding/decoding these types for FFI calls.
 
 use anyhow::bail;
-use gtk4::glib::{
+use glib::{
     self,
     translate::{FromGlib as _, IntoGlib as _},
 };
