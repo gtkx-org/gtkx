@@ -2,19 +2,7 @@
     "$schema": "https://turborepo.com/schema.json",
     "globalDependencies": ["tsconfig.base.json", "tsconfig.lib.json", "tsconfig.app.json", "tsconfig.test.json"],
     "globalEnv": ["NODE_VERSION", "GTK4_VERSION", "VERSION"],
-    "globalPassThroughEnv": [
-        "TURBO_TOKEN",
-        "TURBO_TEAM",
-        "DISPLAY",
-        "WAYLAND_DISPLAY",
-        "XDG_RUNTIME_DIR",
-        "XAUTHORITY",
-        "DBUS_SESSION_BUS_ADDRESS",
-        "GDK_BACKEND",
-        "GDK_DISABLE",
-        "GSK_RENDERER",
-        "LIBGL_ALWAYS_SOFTWARE"
-    ],
+    "globalPassThroughEnv": ["TURBO_TOKEN", "TURBO_TEAM"],
     "tasks": {
         "//#lint:all": {
             "dependsOn": ["@gtkx/cli#build", "@gtkx/vitest#build"],
@@ -154,6 +142,7 @@
                 "screenshots/**/*.tsx",
                 "tests/**/*.ts",
                 "tests/**/*.tsx",
+                "vitest.config.ts",
                 "tsconfig.json",
                 "tsconfig.lib.json",
                 "tsconfig.test.json"

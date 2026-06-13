@@ -1,3 +1,4 @@
+/// <reference path="../babel-modules.d.ts" />
 import { transformAsync } from "@babel/core";
 import babelPresetTypescriptNs from "@babel/preset-typescript";
 import {
