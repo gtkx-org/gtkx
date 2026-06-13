@@ -17,7 +17,7 @@ pub(super) use crate::{ffi, value};
 /// `"{kind} cannot be return types"`.
 ///
 /// `Trampoline` and `Ref` are argument-only shapes. The dispatch
-/// site in [`crate::module::call`] rejects them through
+/// site in `module::call` rejects them through
 /// [`super::Type::can_be_return_type`] before they would ever reach
 /// `call_cif`, so this body is the unreachable defensive branch.
 macro_rules! arg_only_call_cif {

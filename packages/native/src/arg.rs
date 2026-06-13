@@ -4,12 +4,6 @@
 //! argument to an FFI function call. Arguments are parsed from JavaScript
 //! objects containing `type`, `value`, and optional `optional` properties.
 //!
-//! ## Structure
-//!
-//! ```text
-//! { type: TypeDescriptor, value: any, optional?: boolean }
-//! ```
-//!
 //! The `optional` flag allows null/undefined values for otherwise required types,
 //! converting them to appropriate defaults (null pointers, zero values).
 

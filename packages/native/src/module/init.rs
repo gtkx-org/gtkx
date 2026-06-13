@@ -2,18 +2,12 @@
 //!
 //! The [`init`] function spawns a dedicated `GLib` thread that runs a plain
 //! `glib::MainLoop`. The loop reference is exposed to JavaScript as a
-//! [`NativeHandle`] wrapping a `GMainLoop` boxed value, allowing the JS layer
+//! [`crate::managed::NativeHandle`] wrapping a `GMainLoop` boxed value, allowing the JS layer
 //! to terminate it via `g_main_loop_quit` through the standard FFI dispatch.
 //!
-//! ## Startup Sequence
-//!
-//! 1. Wire up the wake and error-reporter threadsafe functions
-//! 2. Spawn a new OS thread that runs the `GLib` main loop
-//! 3. Build a [`NativeHandle`] for the loop and post a `glib::idle_add_once`
-//!    barrier that fires on the first iteration to confirm liveness
-//! 4. Block the JS thread on the barrier; once unblocked, return the handle
-//! 5. The loop runs until JS calls `stop`, which dispatches a final task to
-//!    drain pending finalizers and quit the loop
+//! Before returning the handle, the JS thread blocks on a `glib::idle_add_once`
+//! barrier that fires on the loop's first iteration, so the handle is handed back
+//! only once the loop is confirmed live.
 //!
 //! Every function here wires threadsafe functions to a live [`napi::Env`] and
 //! spawns the `GLib` thread, so the module is excluded from coverage

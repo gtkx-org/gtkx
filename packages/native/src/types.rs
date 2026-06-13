@@ -4,35 +4,9 @@
 //! all values that can flow through the FFI boundary. Types are parsed from
 //! JavaScript objects and converted to libffi types for native calls.
 //!
-//! ## Type Hierarchy
-//!
-//! ```text
-//! Type
-//! ├── Integer(IntegerKind)    - Sized integers (i8..i64, u8..u64)
-//! ├── BigInt(BigIntKind)      - 64-bit integers surfaced to JS as bigint
-//! ├── Float(FloatKind)        - Floating point (f32, f64)
-//! ├── Tagged(TaggedType)      - Enums and flags (GType-tagged integers)
-//! ├── String(StringType)      - UTF-8 strings (owned or borrowed)
-//! ├── Void(VoidType)          - Void return / no value
-//! ├── Boolean(BooleanType)    - Boolean values
-//! ├── GObject(GObjectType)    - GObject instances
-//! ├── Boxed(BoxedType)        - GObject boxed types (e.g., GdkRGBA)
-//! ├── Struct(StructType)      - Plain C structs passed by pointer
-//! ├── Fundamental(FundamentalType) - Fundamental types (GVariant, GParamSpec, etc.)
-//! ├── Array(ArrayType)        - Arrays, GLists, GSLists
-//! ├── HashTable(HashTableType) - GHashTables
-//! ├── Trampoline(TrampolineType) - JavaScript callbacks invoked from native
-//! ├── Ref(RefType)            - Pointers to values (out parameters)
-//! └── Unichar(UnicharType)    - Unicode code points
-//! ```
-//!
-//! ## Ownership
-//!
-//! Many types have an `ownership` field using the [`Ownership`] enum:
-//! - **`Ownership::Full`**: Caller takes ownership, responsible for freeing
-//! - **`Ownership::Borrowed`**: Caller receives a reference, must not free
-//!
-//! This is critical for correct memory management across the FFI boundary.
+//! Many types carry an `ownership` field ([`Ownership`]), which governs memory
+//! management across the boundary: `Full` means the caller takes ownership and
+//! must free, `Borrowed` means the caller receives a reference and must not.
 //!
 //! [`Ownership`]: Ownership
 
@@ -273,7 +247,7 @@ pub trait FfiDecoder {
 #[enum_dispatch]
 pub trait RawPtrCodec {
     /// Reads a value from a `*const T**` (a pointer-to-pointer location), by
-    /// dereferencing once and delegating to [`ptr_to_value`]. Pointer-typed
+    /// dereferencing once and delegating to [`Self::ptr_to_value`]. Pointer-typed
     /// codecs (string/gobject/boxed/struct/fundamental) inherit this default;
     /// scalar codecs override with a direct read.
     ///

@@ -1,27 +1,7 @@
 //! Field access for boxed/structured memory.
 //!
-//! This module provides read and write access to fields in boxed types at given
-//! byte offsets. This enables JavaScript to access struct fields that aren't
-//! exposed via GTK property accessors.
-//!
-//! ## Read Types
-//!
-//! - `Integer` (all sizes and signs)
-//! - `Float` (f32, f64)
-//! - `Boolean`
-//! - `String` (as pointer to C string)
-//! - `GObject` (as pointer to object)
-//! - `Boxed` (as pointer to boxed value)
-//! - `Fundamental` (as pointer to fundamental value)
-//! - `Struct` (as pointer to struct, copied with known size)
-//!
-//! ## Write Types
-//!
-//! - `Integer` (all sizes and signs)
-//! - `Float` (f32, f64)
-//! - `Boolean`
-//! - `String` (copies via `g_strdup`)
-//! - `GObject` / `Boxed` / `Struct` / `Fundamental` (writes pointer value)
+//! Reads and writes fields in boxed types at given byte offsets, so JavaScript
+//! can reach struct fields that GTK property accessors do not expose.
 
 use std::ffi::c_void;
 

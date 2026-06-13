@@ -1,6 +1,4 @@
 //! napi-rs module exports for FFI operations.
-//!
-//! This module contains all the functions exported to JavaScript via napi-rs.
 
 mod alloc;
 mod call;

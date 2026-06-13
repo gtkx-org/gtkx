@@ -1,22 +1,7 @@
 //! # GTKX Native Module
 //!
-//! napi-rs based native module providing FFI bindings between JavaScript and GLib/GObject-based libraries.
-//! This is the core bridge that enables JavaScript to call into any GLib/GObject-based native library.
-//!
-//! ## Exported Functions
-//!
-//! | Function | Purpose |
-//! |----------|---------|
-//! | `init` | Spawn the `GLib` thread, run a `MainLoop`, and return its handle |
-//! | `stop` | Quit the `GLib` main loop and drain pending finalizers |
-//! | `call` | Execute FFI function call to native library |
-//! | `alloc` | Allocate memory for boxed types |
-//! | `read` | Read field from boxed/struct memory |
-//! | `write` | Write primitive field to boxed memory (constructor initialization) |
-//! | `setWrapper` | Bind a JS wrapper to a `GObject` via a toggle reference |
-//! | `getWrapper` | Resolve the JS wrapper a `GObject` already owns |
-//! | `freeze` | Freeze tick callbacks during React commit (prevents intermediate repaints) |
-//! | `unfreeze` | Unfreeze tick callbacks and allow a single repaint |
+//! napi-rs based native module bridging JavaScript and GLib/GObject-based
+//! libraries, so JavaScript can call into any GLib/GObject-based native library.
 //!
 //! ## Architecture
 //!
@@ -33,13 +18,6 @@
 //! depth in effect when it was enqueued, and a thread parked inside a callback
 //! drains only the tasks nested at or below that depth.
 //!
-//! ## Core Types
-//!
-//! - `Value`: Central data interchange type (JS ↔ CIF ↔ `GLib`)
-//! - `NativeValue`: Managed wrapper for `GObject`, Boxed, and Fundamental instances
-//! - `Type`: Type system describing all FFI-compatible types
-//! - `ffi::FfiValue`: Low-level libffi argument representation
-//!
 //! ## napi-rs compatibility types
 //!
 //! Cross-thread JavaScript reference storage (`napi::Ref<JsFunction>`,
@@ -50,6 +28,7 @@
 //! `Send + Sync` reference type for the typed surface.
 
 #![allow(deprecated)]
+#![allow(rustdoc::private_intra_doc_links)]
 #![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 #[macro_use]

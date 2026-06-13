@@ -1,6 +1,6 @@
 //! Memory allocation for boxed types and plain structs.
 //!
-//! The [`alloc`] function allocates zeroed memory for structured/boxed types
+//! The `alloc` function allocates zeroed memory for structured/boxed types
 //! on the `GLib` thread. This is used to create instances of GTK structs like
 //! `GdkRGBA`, `GtkTextIter`, etc. that need to be populated field-by-field.
 //!

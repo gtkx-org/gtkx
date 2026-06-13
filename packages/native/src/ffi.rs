@@ -1,13 +1,8 @@
 //! FFI value encoding and decoding.
 //!
-//! This module provides the infrastructure for converting between JavaScript values
-//! and FFI-compatible representations. It handles encoding values for native calls
-//! and decoding return values back to JavaScript.
-//!
-//! # Key Components
-//!
-//! - [`FfiValue`]: Raw FFI-compatible value representation
-//! - [`FfiStorage`]: Temporary storage for FFI call arguments
+//! Converts between JavaScript values and FFI-compatible representations:
+//! encoding values for native calls and decoding return values back to
+//! JavaScript.
 
 mod storage;
 mod value;

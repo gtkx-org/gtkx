@@ -1,6 +1,6 @@
 //! Signal connection through a `GClosure`.
 //!
-//! [`connect_signal_closure`] is the dedicated connect primitive for the
+//! `connect_signal_closure` is the dedicated connect primitive for the
 //! signal consumer (`@gtkx/ffi`'s `connectSignal`). Where the generic libffi
 //! trampoline reads raw ABI argument slots, a signal connection made here
 //! receives each parameter as a typed [`glib::Value`] from `GLib`'s own

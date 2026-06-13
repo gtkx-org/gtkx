@@ -527,7 +527,7 @@ pub(crate) fn schedule_cleanup(
             }
         }
         invoke_ref_op(ref_ptr, RefOp::Delete);
-        // SAFETY: The toggle ref being removed is the one `install` added
+        // SAFETY: The toggle ref being removed is the one [`install`] added
         // for this binding and still holds the object alive; removal may
         // finalize the object, after which nothing here touches it.
         unsafe {

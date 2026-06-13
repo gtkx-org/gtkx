@@ -8,29 +8,11 @@
 //! [`NativeHandle::borrowed_gobject`] handles and their lifetime is governed by
 //! a toggle reference (see [`crate::toggle_ref`]).
 //!
-//! ## Key Types
-//!
-//! - [`NativeValue`]: Enum wrapping a Boxed or Fundamental instance
-//! - [`NativeHandle`]: Handle returned to JavaScript via [`napi::bindgen_prelude::External`],
-//!   either owning a [`NativeValue`] or borrowing a raw pointer
-//! - [`Boxed`]: `GObject` boxed type wrapper with copy/free semantics
-//! - [`Fundamental`]: `GLib` fundamental type wrapper with ref/unref semantics
-//!
-//! ## Lifecycle (owned handles)
-//!
-//! 1. Native code creates a [`NativeValue`] on the `GLib` thread.
-//! 2. [`NativeValue`] is wrapped in [`NativeHandle`] via `From`, capturing the
-//!    pointer address and storing the value in a
-//!    [`glib::thread_guard::ThreadGuard`] anchored to the `GLib` thread.
-//! 3. [`NativeHandle`] is wrapped in `napi::bindgen_prelude::External` and returned to JavaScript.
-//! 4. When JS garbage collects the external value, napi-rs calls the
-//!    [`NativeHandle`]'s [`Drop`] impl, which routes the drop back to the
-//!    `GLib` thread via `glib::idle_add_once`.
-//! 5. On the `GLib` thread, the underlying boxed copy or fundamental unref is
-//!    released.
-//!
-//! At shutdown ([`Mailbox::is_stopped`]) the handle's value is intentionally
-//! leaked via [`std::mem::forget`] to avoid post-shutdown teardown crashes.
+//! An off-thread drop of an owned handle routes back to the `GLib` thread via
+//! `glib::idle_add_once` so the boxed copy or fundamental unref releases on the
+//! thread that owns it. At shutdown ([`Mailbox::is_stopped`]) the handle's value
+//! is intentionally leaked via [`std::mem::forget`] to avoid post-shutdown
+//! teardown crashes.
 
 mod boxed;
 mod fundamental;
@@ -195,7 +177,7 @@ impl NativeHandle {
     /// Used when JavaScript already owns the underlying value via a live
     /// `napi::bindgen_prelude::External<NativeHandle>` and we only need the pointer
     /// for the duration of a single FFI call. A borrowed handle has no
-    /// [`SendWrapper`] and is therefore safe to clone or drop on any thread.
+    /// [`ThreadGuard`] and is therefore safe to clone or drop on any thread.
     #[must_use]
     pub fn borrowed(ptr: *mut c_void) -> Self {
         Self {
@@ -255,7 +237,7 @@ impl NativeHandle {
     /// Returns the raw native pointer.
     ///
     /// The pointer is recorded at construction and is readable from any thread
-    /// without engaging the [`SendWrapper`] thread check. May be null for
+    /// without engaging the [`ThreadGuard`] thread check. May be null for
     /// borrowed handles wrapping a null pointer.
     #[must_use]
     pub fn ptr(&self) -> *mut c_void {
@@ -345,7 +327,7 @@ impl NativeHandle {
     /// Approximate external-memory size for this handle. Borrowed handles
     /// carry no native allocation of their own and report zero. The value is
     /// cached at construction so it can be read from any thread without
-    /// engaging the [`SendWrapper`] thread check.
+    /// engaging the [`ThreadGuard`] thread check.
     #[must_use]
     pub fn size_hint(&self) -> usize {
         self.size_hint

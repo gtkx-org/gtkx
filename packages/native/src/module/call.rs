@@ -1,24 +1,10 @@
 //! FFI function call execution.
 //!
-//! This module implements [`call`], which executes native function calls via
-//! libffi. This is the core mechanism for invoking GTK and `GLib` functions from
-//! JavaScript.
+//! The `call` function invokes GTK and `GLib` functions from JavaScript via libffi.
 //!
-//! ## Call Flow
-//!
-//! 1. Parse library name, symbol name, arguments, and return type from JS
-//! 2. Convert arguments to [`ffi::FfiValue`] representations
-//! 3. Build a libffi CIF (Call Interface) with proper type signatures
-//! 4. Load the library and resolve the symbol on the `GLib` thread
-//! 5. Execute the FFI call with proper type dispatching
-//! 6. Convert the result back to a [`Value`] for JavaScript
-//! 7. Update any `Ref` type out-parameters with modified values
-//!
-//! ## Callbacks
-//!
-//! Special handling is required for callback arguments (`AsyncReady`, Destroy,
-//! `DrawFunc`). These expand to multiple FFI arguments: the callback function
-//! pointer, user data, and optionally a destroy notify.
+//! Callback arguments (`AsyncReady`, Destroy, `DrawFunc`) need special handling:
+//! each expands to multiple FFI arguments — the callback function pointer, user
+//! data, and optionally a destroy notify.
 
 use std::{ffi::c_void, sync::Arc};
 

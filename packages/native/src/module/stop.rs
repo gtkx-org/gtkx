@@ -3,17 +3,9 @@
 //! The [`stop`] function tears the runtime down in a single GLib-thread task
 //! that runs while the main loop is still iterating, so any pending finalizer
 //! work scheduled by [`crate::managed::NativeHandle`]'s drop runs before the
-//! loop exits.
-//!
-//! ## Shutdown Sequence
-//!
-//! 1. Mark the mailbox stopped, fencing further JS-side cleanup schedules.
-//!    Subsequent JS-thread drops of [`crate::managed::NativeHandle`] hit the
-//!    [`std::mem::forget`] branch instead of queuing onto a dying main loop.
-//! 2. Drain all pending sources on the default main context, running queued
-//!    cleanup callbacks while the `GLib` main loop is still alive.
-//! 3. Quit the main loop, allowing `main_loop.run()` on the spawned thread to
-//!    return.
+//! loop exits. It marks the mailbox stopped (fencing further JS-side cleanup
+//! schedules), drains all pending sources on the default main context while the
+//! loop is still alive, then quits the loop.
 //!
 //! JS handles that GC after the mark-stopped fence are intentionally leaked
 //! via [`std::mem::forget`] — running `GLib` finalizers after the main loop

@@ -5,12 +5,6 @@
 //! JavaScript types via napi-rs and to/from FFI-compatible representations
 //! via the [`ffi`] module.
 //!
-//! The [`Value`] enum supports all types that can be passed through the FFI:
-//! - Primitives: numbers, strings, booleans
-//! - Objects: `GObjects`, boxed types, structs
-//! - Callbacks: JavaScript functions invocable from native code
-//! - Arrays and references
-//!
 //! [`JsRef`], [`Callback`], [`Ref`], and the [`napi::Env`]-bound conversions
 //! ([`Value::from_js_value`], [`Value::to_js_value`], [`map_js_array`]) wrap
 //! live JavaScript references, so they are excluded from coverage
