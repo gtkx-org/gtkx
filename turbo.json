@@ -1,6 +1,6 @@
 {
     "$schema": "https://turborepo.com/schema.json",
-    "globalDependencies": ["tsconfig.base.json", "tsconfig.lib.json", "tsconfig.test.json", "biome.json"],
+    "globalDependencies": ["tsconfig.base.json", "tsconfig.lib.json", "tsconfig.app.json", "tsconfig.test.json"],
     "globalEnv": ["NODE_VERSION", "GTK4_VERSION", "VERSION"],
     "globalPassThroughEnv": [
         "TURBO_TOKEN",
@@ -73,12 +73,6 @@
             ],
             "outputs": ["coverage/**"],
             "outputLogs": "new-only"
-        },
-        "lint": {
-            "inputs": ["Cargo.toml", "Cargo.lock", "build.rs", "src/**/*.rs", "tests/**/*.rs"],
-            "outputs": [],
-            "outputLogs": "new-only",
-            "passThroughEnv": ["RUSTUP_TOOLCHAIN"]
         },
         "@gtkx/native#lint": {
             "dependsOn": ["native-build"],
