@@ -21,7 +21,7 @@
         "typecheck": "turbo typecheck --filter=!gtkx"
     },
     "devDependencies": {
-        "@biomejs/biome": "^2.4.16",
+        "@biomejs/biome": "^2.5.0",
         "@types/node": "^25.9.3",
         "@types/react": "^19.2.17",
         "@vitest/coverage-v8": "^4.1.8",
