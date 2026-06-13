@@ -11,9 +11,6 @@ allowBuilds:
   '@swc/core': true
   esbuild: true
 
-patchedDependencies:
-  typescript@6.0.3: patches/typescript@6.0.3.patch
-
 overrides:
   '@docsearch/css': ^3.9.0
   '@docsearch/js': ^3.9.0
