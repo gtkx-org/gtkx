@@ -143,10 +143,6 @@ html .VPHome {
     text-align: center;
 }
 
-.gtkx-features-heading .gtkx-section-title {
-    margin-bottom: 4px;
-}
-
 /* ---- Shared marketing section headers ---- */
 .gtkx-section-title {
     margin: 12px 0 16px;
@@ -158,6 +154,10 @@ html .VPHome {
     line-height: var(--lh-tight);
     letter-spacing: -0.015em;
     color: var(--fg-1);
+}
+
+.gtkx-section-title--tight {
+    margin-bottom: 4px;
 }
 
 .gtkx-section-lead {

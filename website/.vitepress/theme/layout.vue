@@ -29,7 +29,7 @@ const { Layout } = DefaultTheme;
             <CodeWalkthrough />
             <div class="gtkx-features-heading">
                 <div class="gtkx-eyebrow">What you get</div>
-                <h2 class="gtkx-section-title">Everything native. Everything modern.</h2>
+                <h2 class="gtkx-section-title gtkx-section-title--tight">Everything native. Everything modern.</h2>
             </div>
         </template>
         <template #home-features-after>
