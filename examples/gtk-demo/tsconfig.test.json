@@ -1,8 +1,6 @@
 {
     "extends": "../../tsconfig.test.json",
-    "compilerOptions": {
-        "types": ["node", "@gtkx/cli/env"]
-    },
+    "include": ["tests/**/*.ts", "tests/**/*.tsx", "src/gtkx-env.d.ts"],
     "references": [
         {
             "path": "./tsconfig.app.json"
