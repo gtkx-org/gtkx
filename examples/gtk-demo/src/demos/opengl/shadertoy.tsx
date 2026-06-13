@@ -1214,7 +1214,6 @@ const drawShaderFrame = (state: GLState, anim: AnimState, res: [number, number, 
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
     gl.useProgram(state.program);
 
     if (state.uniforms.resolution >= 0) gl.uniform3f(state.uniforms.resolution, res[0], res[1], res[2]);
@@ -1231,7 +1230,6 @@ const drawShaderFrame = (state: GLState, anim: AnimState, res: [number, number, 
 
     gl.disableVertexAttribArray(0);
     gl.bindBuffer(gl.ARRAY_BUFFER, 0);
-    // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
     gl.useProgram(0);
 };
 
@@ -1423,7 +1421,6 @@ const drawShadertoyFrame = (state: GLState, anim: AnimState, resolution: [number
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
     gl.useProgram(state.program);
 
     if (state.uniforms.resolution >= 0)
@@ -1442,7 +1439,6 @@ const drawShadertoyFrame = (state: GLState, anim: AnimState, resolution: [number
 
     gl.disableVertexAttribArray(0);
     gl.bindBuffer(gl.ARRAY_BUFFER, 0);
-    // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
     gl.useProgram(0);
 };
 

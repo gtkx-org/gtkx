@@ -100,7 +100,6 @@ const useListController = (controllerProps: ListControllerProps): ListHandle => 
         appliedFirstUpdate.current = false;
     }
 
-    // biome-ignore lint/correctness/useExhaustiveDependencies: widget re-attaches the controller built from it in render
     useLayoutEffect(() => {
         const controller = controllerRef.current;
         if (!controller) return;

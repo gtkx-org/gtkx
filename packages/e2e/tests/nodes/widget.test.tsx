@@ -799,7 +799,6 @@ describe("widget - child management > GtkBox", () => {
             return (
                 <GtkBox ref={boxRef}>
                     {Array.from({ length: count }, (_, i) => (
-                        // biome-ignore lint/suspicious/noArrayIndexKey: Test intentionally uses index keys
                         <GtkLabel key={`label-${i}`} label={`Label ${i}`} />
                     ))}
                 </GtkBox>

@@ -174,7 +174,6 @@ const renderGLArea = ({ glStateRef, rotationX, rotationY, rotationZ }: RenderGLA
     gl.clearColor(0.5, 0.5, 0.5, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
     gl.useProgram(state.program);
     gl.uniformMatrix4fv(state.mvpLocation, 1, false, mvp);
 
@@ -182,7 +181,6 @@ const renderGLArea = ({ glStateRef, rotationX, rotationY, rotationZ }: RenderGLA
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.bindVertexArray(0);
 
-    // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
     gl.useProgram(0);
     gl.flush();
 

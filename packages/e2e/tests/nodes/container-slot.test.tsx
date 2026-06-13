@@ -99,7 +99,6 @@ describe("render - ContainerSlot (2)", () => {
                             ref={rowRef}
                             title="Test Row"
                             addSuffix={Array.from({ length: count }, (_, i) => (
-                                // biome-ignore lint/suspicious/noArrayIndexKey: Test fixture with stable items
                                 <GtkLabel key={`suffix-label-${i}`} ref={labelRefs[i]} label={`Label ${i}`} />
                             ))}
                         />

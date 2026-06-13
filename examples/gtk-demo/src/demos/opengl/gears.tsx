@@ -352,7 +352,6 @@ const createGearsProgram = (): number => {
     gl.deleteShader(vs);
     gl.deleteShader(fs);
 
-    // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
     gl.useProgram(program);
     return program;
 };
@@ -623,13 +622,11 @@ function useGearsRender(refs: GearsRefs, setError: (e: string) => void) {
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.bindVertexArray(state.vao);
-        // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
         gl.useProgram(state.program);
 
         const transform = computeViewTransform(refs);
         drawAllGears(state, transform, projection, refs.angleRef.current);
 
-        // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
         gl.useProgram(0);
         gl.bindVertexArray(0);
         return true;
