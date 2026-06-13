@@ -57,7 +57,7 @@ const ruleMatches = (rule: ElementMapRule, child: Instance, parent: Instance): b
  * @param compute - the per-pair computation to memoize
  * @param absent - the value returned when either side has no backing instance
  */
-const memoizeByGTypePair = <T>(
+const memoizeByGtypePair = <T>(
     compute: (child: Instance, parent: Instance) => T,
     absent: T,
 ): ((child: Instance, parent: Instance) => T) => {
@@ -216,12 +216,12 @@ const buildOrderedInsertMapping = (verb: OrderedInsertVerb, matches: RuleMatcher
  * Compiles one element-map rule into an {@link "./element-mapping".ElementMapping}.
  * The returned mapping's `attach`/`detach` are the generic interpreter bound
  * to the row's data, never relationship-specific code; its `matches` is the
- * row predicate memoized per GType pair through {@link memoizeByGTypePair}.
+ * row predicate memoized per GType pair through {@link memoizeByGtypePair}.
  *
  * @param rule - The data row to interpret.
  */
 const buildRuleMapping = (rule: ElementMapRule): ElementMapping => {
-    const matches = memoizeByGTypePair((child, parent) => ruleMatches(rule, child, parent), false);
+    const matches = memoizeByGtypePair((child, parent) => ruleMatches(rule, child, parent), false);
     return rule.verb.kind === "method"
         ? buildMethodMapping(rule.verb, matches)
         : buildOrderedInsertMapping(rule.verb, matches);
@@ -240,7 +240,7 @@ const COMPILED_RULES: readonly CompiledRule[] = ELEMENT_MAP.map((rule) => ({
  */
 export const DATA_ATTACH_MAPPINGS: readonly ElementMapping[] = COMPILED_RULES.map(({ mapping }) => mapping);
 
-const findCompiledRule = memoizeByGTypePair<CompiledRule | null>(
+const findCompiledRule = memoizeByGtypePair<CompiledRule | null>(
     (child, parent) => COMPILED_RULES.find(({ mapping }) => mapping.matches(child, parent)) ?? null,
     null,
 );
@@ -301,7 +301,7 @@ const displayName = (instance: Instance): string =>
  * children.
  */
 export const promotedNestingGuardMapping: ElementMapping = {
-    matches: memoizeByGTypePair((child, parent) => {
+    matches: memoizeByGtypePair((child, parent) => {
         const compiled = findCompiledRule(child, parent);
         return compiled !== null && promotedPropFor(compiled.rule, parent) !== null;
     }, false),

@@ -1,7 +1,7 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import { toKebabCase } from "@gtkx/utils";
 import { useState } from "react";
-import { type GObjectTarget, resolveGObjectTarget } from "./gobject-target.js";
+import { type GObjectTarget, resolveGobjectTarget } from "./gobject-target.js";
 import { useSignal } from "./use-signal.js";
 
 type ReadableKey<T> = {
@@ -49,7 +49,7 @@ export function useProperty<T extends GObject.Object, K extends ReadableKey<T>>(
     target: GObjectTarget<T>,
     propertyName: K,
 ): T[K] | undefined {
-    const obj = resolveGObjectTarget(target);
+    const obj = resolveGobjectTarget(target);
     const [value, setValue] = useState<T[K] | undefined>(() => (obj ? obj[propertyName] : undefined));
     const signalTarget: GObjectTarget<GObject.Object> = target;
 
@@ -57,7 +57,7 @@ export function useProperty<T extends GObject.Object, K extends ReadableKey<T>>(
         signalTarget,
         `notify::${toKebabCase(propertyName)}`,
         () => {
-            const current = resolveGObjectTarget(target);
+            const current = resolveGobjectTarget(target);
             if (current) setValue(current[propertyName]);
         },
         { immediate: true },

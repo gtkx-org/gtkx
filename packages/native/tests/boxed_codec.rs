@@ -374,7 +374,7 @@ fn write_value_to_raw_ptr_falls_back_when_gtype_unresolvable() {
         let target: u64 = 0xAA55;
         let unknown = BoxedType {
             ownership: Ownership::Borrowed,
-            type_name: "GtypeUnknownBoxed".to_owned(),
+            type_name: "GTypeUnknownBoxed".to_owned(),
             library: None,
             get_type_fn: None,
             free_fn: None,

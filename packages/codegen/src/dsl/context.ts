@@ -57,9 +57,9 @@ export class ModuleContext {
         this.module.imports.addNamed("@gtkx/native", name, true);
     }
 
-    /** Adds the canonical `constructGObjectInstance` import from `@gtkx/ffi`. */
-    addConstructGObjectInstanceImport(): void {
-        this.module.imports.addNamed("@gtkx/ffi", "constructGObjectInstance");
+    /** Adds the canonical `constructGobjectInstance` import from `@gtkx/ffi`. */
+    addConstructGobjectInstanceImport(): void {
+        this.module.imports.addNamed("@gtkx/ffi", "constructGobjectInstance");
     }
 
     /** Adds the `valueFromFfi` import from `@gtkx/ffi`. */
@@ -84,7 +84,7 @@ export class ModuleContext {
      * touches `Value.prototype` before `gobject.js` has finished defining
      * `Value`. Other namespaces install the override on first import.
      */
-    addGObjectBootstrapImports(): void {
+    addGobjectBootstrapImports(): void {
         if (this.namespace.name === "GObject") return;
         if (this.namespace.name === "GLib") return;
         this.module.imports.addSideEffect("../gobject/overrides/object.js");

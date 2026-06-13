@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { type RefObject, useLayoutEffect, useRef } from "react";
-import { type GObjectTarget, resolveGObjectTarget } from "./gobject-target.js";
+import { type GObjectTarget, resolveGobjectTarget } from "./gobject-target.js";
 
 interface TickRegistration {
     readonly widget: Gtk.Widget;
@@ -46,7 +46,7 @@ export function useTickCallback(target: GObjectTarget<Gtk.Widget>, callback: Gtk
     const registrationRef = useRef<TickRegistration | null>(null);
 
     useLayoutEffect(() => {
-        const widget = resolveGObjectTarget(target);
+        const widget = resolveGobjectTarget(target);
         const registration = registrationRef.current;
         if (registration && registration.widget === widget) return;
         dropRegistration(registrationRef);

@@ -12,7 +12,7 @@ import type { AnyClass } from "@gtkx/utils";
 import { G_TYPE_INVALID, type GType } from "./gtype.js";
 import { registerVfuncRegistry, type VfuncRegistry } from "./handles.js";
 import { registerInterfaceVfuncRegistry } from "./register-class.js";
-import { setClassGType, setInterfaceGType } from "./registry.js";
+import { setClassGtype, setInterfaceGtype } from "./registry.js";
 
 /**
  * The kind of native type being registered, selecting which identity registry
@@ -56,9 +56,9 @@ export function registerNativeClass(cls: AnyClass, descriptor: NativeClassDescri
     const gtype: GType = descriptor.gtype ? Number(descriptor.gtype()) : G_TYPE_INVALID;
 
     if (descriptor.role === "interface") {
-        setInterfaceGType(cls, gtype);
+        setInterfaceGtype(cls, gtype);
     } else {
-        setClassGType(cls, gtype);
+        setClassGtype(cls, gtype);
     }
 
     if (descriptor.vfuncs) {

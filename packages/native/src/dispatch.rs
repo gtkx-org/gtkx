@@ -54,6 +54,7 @@ use parking_lot::Mutex;
 use crate::dispatch::wait_signal::WaitSignal;
 use crate::error_reporter::NativeErrorReporter;
 use crate::panic_handler::format_panic_payload;
+use crate::toggle_ref::RefOp;
 use crate::value::{JsRef, Value};
 
 type GlibTask = Box<dyn FnOnce() + Send + 'static>;
@@ -85,6 +86,18 @@ struct NodeCallback {
 enum NodeTask {
     Callback(NodeCallback),
     DeleteReference(JsReference),
+    /// A wrapper-reference operation to apply on the JS thread: strengthen,
+    /// weaken, or delete the wrapper `napi_ref` at `ref_ptr`. Carries the same
+    /// `glib_initiated` flag and result channel as [`NodeCallback`] so a toggle
+    /// notify firing on the `GLib` thread blocks, with full re-entrancy, until
+    /// the operation completes. `glib_initiated` participates in the callback
+    /// nesting depth exactly as a callback does.
+    WrapperRefOp {
+        ref_ptr: usize,
+        op: RefOp,
+        result_tx: mpsc::Sender<anyhow::Result<()>>,
+        glib_initiated: bool,
+    },
 }
 
 #[derive(Debug)]

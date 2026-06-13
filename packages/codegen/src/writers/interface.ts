@@ -68,7 +68,7 @@ const renderInterfaceMembers = (context: ModuleContext, iface: GirClass, callabl
         context,
         className,
         callables,
-        hasGType: true,
+        hasGtype: true,
         wrap: "interface",
     });
     appendPrerequisiteMethods(context, iface, members, claimedNames);

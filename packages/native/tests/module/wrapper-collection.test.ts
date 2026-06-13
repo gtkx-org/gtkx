@@ -1,5 +1,5 @@
-import { beforeAll, describe, expect, it } from "vitest";
-import { applyWrapperRefOp, getWrapper, type NativeHandle, setObjectToggleNotify, setWrapper } from "../../index.js";
+import { describe, expect, it } from "vitest";
+import { getWrapper, type NativeHandle, setWrapper } from "../../index.js";
 import { finalizeCount, watchObjectFinalize } from "./native-test-support.js";
 import { boxAppend, boxRemove, createBox, createLabel, forceGC, getRefCount } from "./utils.js";
 
@@ -32,12 +32,6 @@ function bindWrapper(handle: NativeHandle, tag: string): WeakRef<object> {
     setWrapper(handle, wrapper);
     return new WeakRef(wrapper);
 }
-
-beforeAll(() => {
-    setObjectToggleNotify((refPtr, op) => {
-        applyWrapperRefOp(refPtr, op);
-    });
-});
 
 describe("wrapper identity and reference counting", () => {
     it("keeps a strongly-held wrapper alive across GC and preserves identity", async () => {

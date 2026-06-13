@@ -309,7 +309,7 @@ export type PlainTypeMembersOptions = {
     readonly className: string;
     readonly callables: Callables;
     /** Whether to prepend `declare __gtype__: number;`. */
-    readonly hasGType: boolean;
+    readonly hasGtype: boolean;
     /** How static constructors lift their result to a wrapper. */
     readonly wrap: ConstructorWrap;
 };
@@ -327,9 +327,9 @@ export type PlainTypeMembersOptions = {
 export const renderPlainTypeMembers = (
     options: PlainTypeMembersOptions,
 ): { readonly members: string[]; readonly claimedNames: Set<string> } => {
-    const { context, className, callables, hasGType, wrap } = options;
+    const { context, className, callables, hasGtype, wrap } = options;
     const members: string[] = [];
-    if (hasGType) members.push("declare __gtype__: number;");
+    if (hasGtype) members.push("declare __gtype__: number;");
     const claimedNames = new Set<string>();
     members.push(...renderStaticHead(context, callables, className, wrap));
     members.push(...renderPlainInstanceMethods(context, callables.methods, claimedNames));

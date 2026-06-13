@@ -2,7 +2,6 @@
 
 mod alloc;
 mod call;
-mod connect_signal;
 mod field;
 mod freeze;
 mod gobject;

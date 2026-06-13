@@ -18,6 +18,7 @@ use super::{
 };
 use crate::error_reporter::NativeErrorReporter;
 use crate::panic_handler::format_panic_payload;
+use crate::toggle_ref::RefOp;
 use crate::value::{JsRef, Value};
 
 /// One non-blocking poll of a result channel: `Ok(Some)` on a delivered
@@ -124,35 +125,12 @@ impl Mailbox {
     }
 
     /// Pushes a JS callback onto the node inbox and blocks the calling thread
-    /// until JS produces a result. On the `GLib` thread, drains GLib-bound
-    /// tasks pushed by the executing JS callback while blocked, so re-entrant
-    /// `JS → GLib → JS` calls progress.
-    #[cfg_attr(coverage_nightly, coverage(off))]
-    pub fn invoke_node_and_wait(
-        &self,
-        callback: &Arc<JsRef<JsFunction>>,
-        args: Vec<Value>,
-        capture_result: bool,
-    ) -> anyhow::Result<Value> {
-        let (value, _) =
-            self.invoke_node_and_wait_with_cells(callback, args, capture_result, Vec::new())?;
-        Ok(value)
-    }
-
-    /// Like [`Self::invoke_node_and_wait`] but, for each index in
-    /// `out_cell_indices`, passes that argument to JS wrapped in a mutable
-    /// `{ value }` cell and reads the cell's `value` back after the callback
-    /// returns. Used by the trampoline path to flush signal out-parameters the
-    /// handler wrote into their cells.
-    ///
-    /// Native libraries can invoke a callback trampoline on a thread of their
-    /// own (a `GLib.Thread` body, a `Gio.Task` pool worker), so the wait path
-    /// is chosen by thread: the `GLib` thread takes the re-entrant
-    /// [`Self::wait_for_node_result`] loop, while any other thread parks on
-    /// its private result channel. A foreign waiter must never touch the
-    /// `GLib` wait machinery — the shared wake permit holds a single permit
-    /// (two parked threads would steal each other's wakeups), and draining
-    /// GLib-bound tasks would execute GTK mutations off the `GLib` thread.
+    /// until JS produces a result. For each index in `out_cell_indices`, passes
+    /// that argument to JS wrapped in a mutable `{ value }` cell and reads the
+    /// cell's `value` back after the callback returns — the trampoline path uses
+    /// this to flush signal out-parameters the handler wrote into their cells.
+    /// On the `GLib` thread, drains GLib-bound tasks pushed by the executing JS
+    /// callback while blocked, so re-entrant `JS → GLib → JS` calls progress.
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn invoke_node_and_wait_with_cells(
         &self,
@@ -161,17 +139,7 @@ impl Mailbox {
         capture_result: bool,
         out_cell_indices: Vec<usize>,
     ) -> anyhow::Result<super::NodeCallbackResult> {
-        let glib_initiated = glib::MainContext::default().is_owner();
-        let wait_depth = glib_initiated.then(|| {
-            // The depth counts GLib-initiated callbacks currently executing
-            // on the JS thread. Those execute only while this GLib thread is
-            // parked in an enclosing wait, so the value read here is exactly
-            // this thread's own wait nesting and cannot change before the
-            // pushed callback runs at that level plus one.
-            self.callback_depth
-                .load(std::sync::atomic::Ordering::Acquire)
-                + 1
-        });
+        let (glib_initiated, wait_depth) = self.node_wait_setup();
         let (tx, rx) = mpsc::channel();
 
         self.push_node_task(NodeTask::Callback(NodeCallback {
@@ -184,14 +152,78 @@ impl Mailbox {
         }));
 
         self.wake_node_thread();
+        self.wait_node(&rx, wait_depth)
+    }
 
+    /// Applies a wrapper-reference operation on the JS thread — strengthen,
+    /// weaken, or delete the wrapper `napi_ref` at `ref_ptr` — blocking the
+    /// calling thread until it completes.
+    ///
+    /// A toggle notify fires this from the `GLib` thread, often while that
+    /// thread is already parked mid-install. The wait is the same depth-aware,
+    /// re-entrant one [`Self::invoke_node_and_wait_with_cells`] uses, so the
+    /// napi reference call — which must run on the JS thread — is serviced even
+    /// by a JS thread parked in an enclosing wait.
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    pub fn apply_wrapper_ref_op_and_wait(&self, ref_ptr: usize, op: RefOp) -> anyhow::Result<()> {
+        let (glib_initiated, wait_depth) = self.node_wait_setup();
+        let (tx, rx) = mpsc::channel();
+
+        self.push_node_task(NodeTask::WrapperRefOp {
+            ref_ptr,
+            op,
+            result_tx: tx,
+            glib_initiated,
+        });
+
+        self.wake_node_thread();
+        self.wait_node(&rx, wait_depth)
+    }
+
+    /// Computes the re-entrancy parameters for a blocking node task: whether the
+    /// `GLib` thread initiated it (so it joins the callback nesting depth) and,
+    /// when so, the depth its result wait runs at.
+    ///
+    /// The depth counts GLib-initiated callbacks currently executing on the JS
+    /// thread. Those execute only while this `GLib` thread is parked in an
+    /// enclosing wait, so the value read here is exactly this thread's own wait
+    /// nesting and cannot change before the pushed task runs at that level plus
+    /// one.
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn node_wait_setup(&self) -> (bool, Option<usize>) {
+        let glib_initiated = glib::MainContext::default().is_owner();
+        let wait_depth = glib_initiated.then(|| {
+            self.callback_depth
+                .load(std::sync::atomic::Ordering::Acquire)
+                + 1
+        });
+        (glib_initiated, wait_depth)
+    }
+
+    /// Blocks the calling thread until the pushed node task delivers its result
+    /// on `rx`.
+    ///
+    /// Native libraries can invoke a trampoline on a thread of their own (a
+    /// `GLib.Thread` body, a `Gio.Task` pool worker), so the wait path is chosen
+    /// by thread: the `GLib` thread takes the re-entrant
+    /// [`Self::wait_for_node_result`] loop at `wait_depth`, while any other
+    /// thread parks on its private result channel. A foreign waiter must never
+    /// touch the `GLib` wait machinery — the shared wake permit holds a single
+    /// permit (two parked threads would steal each other's wakeups), and
+    /// draining GLib-bound tasks would execute GTK mutations off the `GLib`
+    /// thread.
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn wait_node<R>(
+        &self,
+        rx: &mpsc::Receiver<anyhow::Result<R>>,
+        wait_depth: Option<usize>,
+    ) -> anyhow::Result<R> {
         let Some(depth) = wait_depth else {
             return rx
                 .recv()
                 .unwrap_or_else(|_| Err(anyhow::anyhow!("JS callback channel disconnected")));
         };
-
-        self.wait_for_node_result(&rx, depth)
+        self.wait_for_node_result(rx, depth)
     }
 
     /// Blocks the `GLib` thread until the node callback at `callback_depth`
@@ -201,11 +233,11 @@ impl Mailbox {
     /// Must run only on the `GLib` thread: it parks on the single-permit
     /// `wake_glib` signal and executes GLib-bound tasks inline.
     #[cfg_attr(coverage_nightly, coverage(off))]
-    fn wait_for_node_result(
+    fn wait_for_node_result<R>(
         &self,
-        rx: &mpsc::Receiver<anyhow::Result<NodeCallbackResult>>,
+        rx: &mpsc::Receiver<anyhow::Result<R>>,
         callback_depth: usize,
-    ) -> anyhow::Result<NodeCallbackResult> {
+    ) -> anyhow::Result<R> {
         loop {
             self.dispatch_pending_from_depth(callback_depth);
 
@@ -219,10 +251,10 @@ impl Mailbox {
         }
     }
 
-    /// Drains all currently-queued node callbacks and invokes them in JS.
-    /// Intended to run on the JS thread, either from the wake TSFN scheduled by
-    /// [`Mailbox::invoke_node_and_wait`] or from the wait loop in
-    /// [`Mailbox::wait_for_glib_result`].
+    /// Drains all currently-queued node tasks and runs them on the JS thread,
+    /// invoking callbacks and applying wrapper-reference operations. Intended to
+    /// run on the JS thread, either from the wake TSFN a pushed task scheduled or
+    /// from the wait loop in [`Mailbox::wait_for_glib_result`].
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn process_node_pending(&self, env: Env) {
         while let Some(task) = self.pop_node_task() {
@@ -256,6 +288,53 @@ impl Mailbox {
                     self.wake_glib.notify();
                 }
                 NodeTask::DeleteReference(reference) => reference.delete_on_js_thread(),
+                NodeTask::WrapperRefOp {
+                    ref_ptr,
+                    op,
+                    result_tx,
+                    glib_initiated,
+                } => {
+                    if glib_initiated {
+                        self.enter_glib_callback();
+                    }
+                    Self::apply_ref_op(&env, ref_ptr, op);
+                    if glib_initiated {
+                        self.leave_glib_callback();
+                    }
+                    if result_tx.send(Ok(())).is_err() {
+                        NativeErrorReporter::global().report_str(
+                            "Wrapper reference operation completed but result channel was closed",
+                        );
+                    }
+                    self.wake_glib.notify();
+                }
+            }
+        }
+    }
+
+    /// Applies one `napi_reference_*` operation to the wrapper reference at
+    /// `ref_ptr`, on the JS thread that owns `env`. A stale or already-deleted
+    /// reference makes the napi call return a failure status, which is ignored
+    /// by design — a teardown racing a stale notify must not crash.
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn apply_ref_op(env: &Env, ref_ptr: usize, op: RefOp) {
+        use napi::sys;
+
+        let raw_ref = ref_ptr as sys::napi_ref;
+        let mut count: u32 = 0;
+        // SAFETY: This runs on the JS thread owning `env`; a stale or deleted
+        // reference yields a failure status that is ignored by design.
+        unsafe {
+            match op {
+                RefOp::Strengthen => {
+                    sys::napi_reference_ref(env.raw(), raw_ref, &mut count);
+                }
+                RefOp::Weaken => {
+                    sys::napi_reference_unref(env.raw(), raw_ref, &mut count);
+                }
+                RefOp::Delete => {
+                    sys::napi_delete_reference(env.raw(), raw_ref);
+                }
             }
         }
     }

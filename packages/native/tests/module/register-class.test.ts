@@ -10,20 +10,20 @@ const uniqueName = (prefix: string): string => `${prefix}NativeTest${process.pid
 describe("registerClass", () => {
     it("registers a new GType derived from GObject", () => {
         const name = uniqueName("GtkxNativeBare");
-        const gobjectGType = typeFromName("GObject");
+        const gobjectGtype = typeFromName("GObject");
 
-        const newGType = registerClass(name, gobjectGType);
+        const newGtype = registerClass(name, gobjectGtype);
 
-        expect(newGType).toBeGreaterThan(0);
-        expect(newGType).toBe(typeFromName(name));
+        expect(newGtype).toBeGreaterThan(0);
+        expect(newGtype).toBe(typeFromName(name));
     });
 
     it("rejects registering the same GType name twice", () => {
         const name = uniqueName("GtkxNativeDuplicate");
-        const gobjectGType = typeFromName("GObject");
+        const gobjectGtype = typeFromName("GObject");
 
-        expect(registerClass(name, gobjectGType)).toBeGreaterThan(0);
-        expect(() => registerClass(name, gobjectGType)).toThrow();
+        expect(registerClass(name, gobjectGtype)).toBeGreaterThan(0);
+        expect(() => registerClass(name, gobjectGtype)).toThrow();
     });
 
     it("returns zero for a GType name that has not been registered", () => {
@@ -33,23 +33,23 @@ describe("registerClass", () => {
     it("accepts inherited-interface entries through the options builder", () => {
         createLabel("Init");
         const name = uniqueName("GtkxNativeInterfaceVfuncs");
-        const widgetGType = typeFromName("GtkWidget");
-        const buildableGType = typeFromName("GtkBuildable");
-        expect(widgetGType).toBeGreaterThan(0);
-        expect(buildableGType).toBeGreaterThan(0);
+        const widgetGtype = typeFromName("GtkWidget");
+        const buildableGtype = typeFromName("GtkBuildable");
+        expect(widgetGtype).toBeGreaterThan(0);
+        expect(buildableGtype).toBeGreaterThan(0);
 
-        const newGType = registerClass(name, widgetGType, {
-            interfaceVfuncs: [{ gtype: buildableGType, vfuncs: [] }],
+        const newGtype = registerClass(name, widgetGtype, {
+            interfaceVfuncs: [{ gtype: buildableGtype, vfuncs: [] }],
         });
 
-        expect(newGType).toBeGreaterThan(0);
+        expect(newGtype).toBeGreaterThan(0);
 
         const stillImplementsBuildable = call(
             GOBJECT_LIB,
             "g_type_is_a",
             [
-                { type: UINT64, value: newGType },
-                { type: UINT64, value: buildableGType },
+                { type: UINT64, value: newGtype },
+                { type: UINT64, value: buildableGtype },
             ],
             { type: "boolean" },
         );

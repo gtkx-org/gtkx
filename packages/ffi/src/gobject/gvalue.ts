@@ -9,7 +9,7 @@ import {
     typeName,
 } from "../gtype.js";
 import { getHandle } from "../handles.js";
-import { call, type Type as FfiType, getInstanceGType, type NativeHandle, read, t } from "../native.js";
+import { call, type Type as FfiType, getInstanceGtype, type NativeHandle, read, t } from "../native.js";
 import { getNativeClass, getNativeObject } from "../registry.js";
 import { GValue } from "./gvalue-native.js";
 import { Type } from "./types.js";
@@ -23,12 +23,12 @@ const g_value_set_boxed_strv = t.fn(
     t.void,
 );
 
-let cachedStrvGType: GType | undefined;
+let cachedStrvGtype: GType | undefined;
 
 /** Resolves and caches the `GStrv` (`gchar**`) boxed `GType`. */
-export function getStrvGType(): GType {
-    cachedStrvGType ??= gtypeFromFfi(g_strv_get_type());
-    return cachedStrvGType;
+export function getStrvGtype(): GType {
+    cachedStrvGtype ??= gtypeFromFfi(g_strv_get_type());
+    return cachedStrvGtype;
 }
 
 function initValue(gtype: GType, populate: (v: GValue) => void): GValue {
@@ -114,7 +114,7 @@ export function setStaticBoxed(value: object, boxed: object): void {
  */
 export function outBoxedFromFfi(ffiType: FfiType, boxed: object): GValue {
     const value = new GValue();
-    value.init(resolveBoxedGType(ffiType));
+    value.init(resolveBoxedGtype(ffiType));
     setBoxed(value, boxed);
     return value;
 }
@@ -132,7 +132,7 @@ export function outBoxedFromFfi(ffiType: FfiType, boxed: object): GValue {
  */
 export function inoutBoxedFromFfi(ffiType: FfiType, boxed: object): GValue {
     const value = new GValue();
-    value.init(resolveBoxedGType(ffiType));
+    value.init(resolveBoxedGtype(ffiType));
     setStaticBoxed(value, boxed);
     return value;
 }
@@ -248,7 +248,7 @@ function newFromString(value: string | null): GValue {
 export function valueFromObject(value: object | null): GValue {
     const v = new GValue();
     if (value) {
-        const gtype: GType = getInstanceGType(getHandle(value));
+        const gtype: GType = getInstanceGtype(getHandle(value));
         v.init(gtype);
     } else {
         v.init(Type.OBJECT);
@@ -264,7 +264,7 @@ function newFromBoxed(value: object, gtype: GType): GValue {
 
 /** Creates a `GValue` initialized with a `GStrv` from a JS string array. */
 function newFromStrv(value: string[]): GValue {
-    return initValue(getStrvGType(), (v) => g_value_set_boxed_strv(getHandle(v), value));
+    return initValue(getStrvGtype(), (v) => g_value_set_boxed_strv(getHandle(v), value));
 }
 
 /** Creates a `GValue` initialized with a `GVariant`. */
@@ -282,7 +282,7 @@ function newFromFlags(gtype: GType, value: number): GValue {
     return initValue(gtype, (v) => v.setFlags(value));
 }
 
-function resolveBoxedGType(ffiType: FfiType): GType {
+function resolveBoxedGtype(ffiType: FfiType): GType {
     if (ffiType.type === "boxed") {
         if (ffiType.getTypeFn && ffiType.library) {
             return gtypeFromFfi(call(ffiType.library, ffiType.getTypeFn, [], t.uint64));
@@ -300,7 +300,7 @@ function resolveBoxedGType(ffiType: FfiType): GType {
         }
         throw new Error(`Cannot resolve gtype for fundamental type without a typeName`);
     }
-    throw new Error(`resolveBoxedGType: unsupported FFI type '${ffiType.type}'`);
+    throw new Error(`resolveBoxedGtype: unsupported FFI type '${ffiType.type}'`);
 }
 
 type FfiEnumOrFlagsType = Extract<FfiType, { type: "enum" | "flags" }>;
@@ -356,7 +356,7 @@ function newFromFundamentalFfi(ffiType: FfiFundamentalType, value: unknown): GVa
     if (ffiType.typeName === "GVariant") {
         return newFromVariant(value as object);
     }
-    const gtype = resolveBoxedGType(ffiType);
+    const gtype = resolveBoxedGtype(ffiType);
     const marshaller = getFundamentalMarshallers().get(typeFundamental(gtype));
     if (marshaller) return marshaller.to(gtype, value);
     return newFromBoxed(value as object, gtype);
@@ -397,7 +397,7 @@ export function valueFromFfi(ffiType: FfiType, value: unknown): GValue {
         case "gobject":
             return valueFromObject(value as object | null);
         case "boxed":
-            return newFromBoxed(value as object, resolveBoxedGType(ffiType));
+            return newFromBoxed(value as object, resolveBoxedGtype(ffiType));
         case "array":
             return newFromArrayFfi(ffiType, value);
         case "fundamental":
@@ -420,7 +420,7 @@ function emptyValue(gtype: GType): GValue {
  *
  * @param ffiType - The FFI type descriptor (rendered statically by codegen).
  */
-function gTypeFromFfi(ffiType: FfiType): GType {
+function gtypeFromFfiType(ffiType: FfiType): GType {
     switch (ffiType.type) {
         case "boolean":
             return Type.BOOLEAN;
@@ -450,11 +450,11 @@ function gTypeFromFfi(ffiType: FfiType): GType {
         case "flags":
             return gtypeFromFfi(call(ffiType.library, ffiType.getTypeFn, [], t.uint64));
         case "boxed":
-            return resolveBoxedGType(ffiType);
+            return resolveBoxedGtype(ffiType);
         case "fundamental":
-            return ffiType.typeName === "GVariant" ? Type.VARIANT : resolveBoxedGType(ffiType);
+            return ffiType.typeName === "GVariant" ? Type.VARIANT : resolveBoxedGtype(ffiType);
         case "array":
-            if (ffiType.itemType.type === "string" && ffiType.kind === "array") return getStrvGType();
+            if (ffiType.itemType.type === "string" && ffiType.kind === "array") return getStrvGtype();
             throw new Error(`emptyValueFromFfi: unsupported array type ${ffiType.kind} of ${ffiType.itemType.type}`);
         default:
             throw new Error(`emptyValueFromFfi: unsupported FFI type '${(ffiType as { type: string }).type}'`);
@@ -470,7 +470,7 @@ function gTypeFromFfi(ffiType: FfiType): GType {
  * @param ffiType - The property's FFI type descriptor.
  */
 export function emptyValueFromFfi(ffiType: FfiType): GValue {
-    return emptyValue(gTypeFromFfi(ffiType));
+    return emptyValue(gtypeFromFfiType(ffiType));
 }
 
 /**

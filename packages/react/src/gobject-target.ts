@@ -31,7 +31,7 @@ export type GObjectTarget<T extends GObject.Object> = T | RefObject<T | null> | 
  * @param target - The target to resolve.
  * @returns The resolved object, or `null` when the target is inactive.
  */
-export const resolveGObjectTarget = <T extends GObject.Object>(target: GObjectTarget<T>): T | null => {
+export const resolveGobjectTarget = <T extends GObject.Object>(target: GObjectTarget<T>): T | null => {
     if (!target) return null;
     if (target instanceof GObject.Object) return target;
     return target.current;

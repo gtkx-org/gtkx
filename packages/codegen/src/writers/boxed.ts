@@ -66,7 +66,7 @@ const renderBoxedMembers = (
         context,
         className,
         callables,
-        hasGType: boxed.glibGetType !== undefined,
+        hasGtype: boxed.glibGetType !== undefined,
         wrap: "boxed",
     });
     members.unshift(renderBoxedConstructor(context, boxed, className));

@@ -17,7 +17,7 @@ const callGetType = (lib: string, fn: string): GType => {
     }
     return result;
 };
-const gdkRgbaGType = (): GType => callGetType("libgtk-4.so.1", "gdk_rgba_get_type");
+const gdkRgbaGtype = (): GType => callGetType("libgtk-4.so.1", "gdk_rgba_get_type");
 
 const makeRgba = (red: number, green: number, blue: number, alpha: number): Gdk.RGBA =>
     new (Gdk.RGBA as new (props: object) => Gdk.RGBA)({ red, green, blue, alpha });
@@ -25,7 +25,7 @@ const makeRgba = (red: number, green: number, blue: number, alpha: number): Gdk.
 describe("Value boxed accessors", () => {
     it("round-trips a boxed instance through setBoxed and getBoxed", () => {
         const value = new Value();
-        value.init(gdkRgbaGType());
+        value.init(gdkRgbaGtype());
         value.setBoxed(makeRgba(0.5, 0.25, 0.75, 1.0));
 
         const extracted = value.getBoxed<Gdk.RGBA>();
@@ -45,7 +45,7 @@ describe("Value boxed accessors", () => {
 
     it("getBoxed returns null when setBoxed was given null", () => {
         const value = new Value();
-        value.init(gdkRgbaGType());
+        value.init(gdkRgbaGtype());
         value.setBoxed(null);
         expect(value.getBoxed()).toBeNull();
     });
@@ -93,7 +93,7 @@ describe("valueToJS extra coverage", () => {
 
     it("returns a Gdk.RGBA wrapper when reading a boxed value", () => {
         const v = new Value();
-        v.init(gdkRgbaGType());
+        v.init(gdkRgbaGtype());
         v.setBoxed(makeRgba(0.1, 0.2, 0.3, 1.0));
         expect(valueToJS(v)).toBeInstanceOf(Gdk.RGBA);
     });
@@ -174,12 +174,12 @@ describe("valueFromFfi — objects and boxed", () => {
             },
             makeRgba(0, 0, 0, 1),
         );
-        expect(valueGetType(v)).toBe(gdkRgbaGType());
+        expect(valueGetType(v)).toBe(gdkRgbaGtype());
     });
 
     it("builds a boxed value when only innerType is provided", () => {
         const v = valueFromFfi({ type: "boxed", ownership: "borrowed", innerType: "GdkRGBA" }, makeRgba(0, 0, 0, 1));
-        expect(valueGetType(v)).toBe(gdkRgbaGType());
+        expect(valueGetType(v)).toBe(gdkRgbaGtype());
     });
 
     it("throws for boxed types with an unresolvable innerType", () => {
@@ -322,7 +322,7 @@ describe("emptyValueFromFfi — GType resolution from an FFI descriptor", () => 
     });
 
     it("resolves boxed and variant-fundamental descriptors", () => {
-        expect(gtypeOfEmpty(gdkRgbaFfi)).toBe(gdkRgbaGType());
+        expect(gtypeOfEmpty(gdkRgbaFfi)).toBe(gdkRgbaGtype());
         expect(gtypeOfEmpty(variantFfi)).toBe(Type.VARIANT);
     });
 

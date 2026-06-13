@@ -1,12 +1,6 @@
-import { beforeAll, describe, expect, it } from "vitest";
-import { applyWrapperRefOp, getWrapper, type NativeHandle, setObjectToggleNotify, setWrapper } from "../../index.js";
+import { describe, expect, it } from "vitest";
+import { getWrapper, type NativeHandle, setWrapper } from "../../index.js";
 import { createLabel, getRefCount } from "./utils.js";
-
-beforeAll(() => {
-    setObjectToggleNotify((refPtr, op) => {
-        applyWrapperRefOp(refPtr, op);
-    });
-});
 
 describe("toggle-ref rebind", () => {
     it("reuses a single toggle ref and tracks the latest wrapper across rebinds", () => {

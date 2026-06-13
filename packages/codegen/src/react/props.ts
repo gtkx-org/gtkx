@@ -145,7 +145,7 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
  * @param ref - The property's type reference
  * @param owningNamespace - The namespace unqualified references resolve against
  */
-const resolvesToGObjectClass = (
+const resolvesToGobjectClass = (
     repository: GirRepository,
     ref: GirTypeRef | undefined,
     owningNamespace: string,
@@ -197,7 +197,7 @@ type SlotOwner = {
  */
 const isSlotProperty = (owner: SlotOwner, property: GirProperty, owningNamespace: string, jsName: string): boolean => {
     if (!property.writable || property.constructOnly) return false;
-    if (!resolvesToGObjectClass(owner.repository, property.type, owningNamespace)) return false;
+    if (!resolvesToGobjectClass(owner.repository, property.type, owningNamespace)) return false;
     if (jsName === "child" && classExposesMethod(owner.klass, owner.namespace, owner.repository, "set_child")) {
         return false;
     }

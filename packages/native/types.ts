@@ -1,5 +1,4 @@
 import type { ExternalObject } from "./native-binding.cjs";
-import type * as native from "./native-binding.cjs";
 
 /**
  * Opaque reference to a native pointer (GObject, Boxed, Fundamental, or struct).
@@ -9,7 +8,7 @@ import type * as native from "./native-binding.cjs";
  * the napi `ExternalObject` wrapping a raw native pointer, so TypeScript
  * treats it opaquely.
  */
-export type NativeHandle = ExternalObject<unknown>
+export type NativeHandle = ExternalObject<unknown>;
 
 /**
  * Union of all possible native return value types.

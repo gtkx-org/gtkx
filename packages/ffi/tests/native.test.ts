@@ -6,7 +6,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
 import { instanceIsA } from "./helpers.js";
 
-const orientableGType = (): GType => typeFromName("GtkOrientable");
+const orientableGtype = (): GType => typeFromName("GtkOrientable");
 
 const FILE_ERROR_DOMAIN = 0xbe1;
 const FILE_ERROR_NOENT = 5;
@@ -98,20 +98,20 @@ describe("createErrorDomain", () => {
 describe("instanceIsA", () => {
     it("returns true when the instance derives from the requested GType", () => {
         const box = new Gtk.Box();
-        const widgetGType = typeFromName("GtkWidget");
+        const widgetGtype = typeFromName("GtkWidget");
 
-        expect(instanceIsA(getHandle(box), widgetGType)).toBe(true);
+        expect(instanceIsA(getHandle(box), widgetGtype)).toBe(true);
     });
 
     it("returns true when the instance implements an interface GType", () => {
         const box = new Gtk.Box();
 
-        expect(instanceIsA(getHandle(box), orientableGType())).toBe(true);
+        expect(instanceIsA(getHandle(box), orientableGtype())).toBe(true);
     });
 
     it("returns false when the instance does not derive from the requested GType", () => {
         const label = new Gtk.Label({ label: "Test" });
 
-        expect(instanceIsA(getHandle(label), orientableGType())).toBe(false);
+        expect(instanceIsA(getHandle(label), orientableGtype())).toBe(false);
     });
 });

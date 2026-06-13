@@ -1,7 +1,7 @@
 import type { SignalHandler } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/gi/gobject";
 import { type RefObject, useLayoutEffect, useRef } from "react";
-import { type GObjectTarget, resolveGObjectTarget } from "./gobject-target.js";
+import { type GObjectTarget, resolveGobjectTarget } from "./gobject-target.js";
 
 type AnySignalHandler = { handler(...args: unknown[]): unknown }["handler"];
 
@@ -134,7 +134,7 @@ export function useSignal(
     const immediate = options?.immediate ?? false;
 
     useLayoutEffect(() => {
-        const obj = resolveGObjectTarget(target);
+        const obj = resolveGobjectTarget(target);
         const subscription = subscriptionRef.current;
         if (
             subscription &&

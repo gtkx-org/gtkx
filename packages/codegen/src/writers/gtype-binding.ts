@@ -27,7 +27,7 @@ export const renderGetTypeReference = (
 ): string | undefined => {
     if (getType === "intern" || getType === "") {
         if (glibTypeName === undefined) return undefined;
-        appendGTypeFromNameBinding(context);
+        appendGtypeFromNameBinding(context);
         return `() => ${TYPE_FROM_NAME_BINDING}(${quote(glibTypeName)})`;
     }
     appendGetTypeBinding(context, getType);
@@ -40,7 +40,7 @@ const appendGetTypeBinding = (context: ModuleContext, getType: string): void => 
     context.module.appendBinding(`const ${getType} = ${expression};`, getType);
 };
 
-const appendGTypeFromNameBinding = (context: ModuleContext): void => {
+const appendGtypeFromNameBinding = (context: ModuleContext): void => {
     const expression =
         `t.fn(${quote(TYPE_FROM_NAME_LIB)}, ${quote(TYPE_FROM_NAME_BINDING)}, ` +
         `[{ type: t.string("borrowed") }], t.uint64)`;

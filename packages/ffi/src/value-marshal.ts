@@ -22,7 +22,7 @@ import {
     type GValueReader,
     getBoxed,
     getFundamentalMarshallers,
-    getStrvGType,
+    getStrvGtype,
     valueFromFfi,
     valueGetType,
 } from "./gobject/gvalue.js";
@@ -136,7 +136,7 @@ const getPointerValue = (handle: NativeHandle): null => {
 export function valueToJS(value: GValueReader): unknown {
     const gtype = valueGetType(value);
 
-    if (gtype === getStrvGType()) return valueGetStrv(value);
+    if (gtype === getStrvGtype()) return valueGetStrv(value);
 
     const fundamental = typeFundamental(gtype);
     const fundamentalValue = valueFromFundamental(value, fundamental);

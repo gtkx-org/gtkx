@@ -14,8 +14,8 @@ const gtypeOf = (library: string, getTypeFn: string): GType => {
     return result;
 };
 
-const enumGType = (): GType => gtypeOf("libgtk-4.so.1", "gtk_align_get_type");
-const flagsGType = (): GType => gtypeOf("libgobject-2.0.so.0", "g_binding_flags_get_type");
+const enumGtype = (): GType => gtypeOf("libgtk-4.so.1", "gtk_align_get_type");
+const flagsGtype = (): GType => gtypeOf("libgobject-2.0.so.0", "g_binding_flags_get_type");
 
 const initialized = (gtype: GType): GValue => {
     const value = new GValue();
@@ -119,13 +119,13 @@ describe("GValue string", () => {
 
 describe("GValue enum and flags", () => {
     it("round-trips an enum payload", () => {
-        const value = initialized(enumGType());
+        const value = initialized(enumGtype());
         value.setEnum(Gtk.Align.CENTER);
         expect(value.getEnum()).toBe(Gtk.Align.CENTER);
     });
 
     it("round-trips a flags bitmask", () => {
-        const value = initialized(flagsGType());
+        const value = initialized(flagsGtype());
         value.setFlags(3);
         expect(value.getFlags()).toBe(3);
     });

@@ -1,5 +1,14 @@
 import * as native from "./native-binding.cjs";
-import type { NativeArg, ArrayType, NativeValue, HashTableType, NativeHandle, RefType, TrampolineType, NativeType } from "./types.js";
+import type {
+    ArrayType,
+    HashTableType,
+    NativeArg,
+    NativeHandle,
+    NativeType,
+    NativeValue,
+    RefType,
+    TrampolineType,
+} from "./types.js";
 
 type NativeVfuncDefinition = {
     readonly byteOffset: number;
@@ -194,7 +203,7 @@ export function alloc(size: number, glibTypeName?: string): NativeHandle {
  *
  * @param handle - Handle to a live GObject-compatible instance
  */
-export function getInstanceGType(handle: NativeHandle): number {
+export function getInstanceGtype(handle: NativeHandle): number {
     return native.getInstanceGtype(handle) as number;
 }
 
@@ -243,7 +252,7 @@ export type RegisterClassVfuncOptions = {
 };
 
 /**
- * Registers a new `GType` derived from `parentGType` under `name`.
+ * Registers a new `GType` derived from `parentGtype` under `name`.
  *
  * Wraps `g_type_register_static`, sizing the new class so it matches the
  * parent's class and instance struct sizes. Class vfunc overrides are installed
@@ -253,13 +262,13 @@ export type RegisterClassVfuncOptions = {
  * the JS class registry) lives in `@gtkx/ffi`'s `registerClass`.
  *
  * @param name - Globally-unique GType name (must not already be registered)
- * @param parentGType - Numeric GType of the parent class
+ * @param parentGtype - Numeric GType of the parent class
  * @param options - Optional class and inherited-interface vfunc overrides
  * @returns Numeric GType of the newly registered subclass
  */
-export function registerClass(name: string, parentGType: number, options?: RegisterClassVfuncOptions): number {
+export function registerClass(name: string, parentGtype: number, options?: RegisterClassVfuncOptions): number {
     const nativeOptions = options ? buildNativeOptions(options) : undefined;
-    return native.registerClass(name, parentGType, nativeOptions) as number;
+    return native.registerClass(name, parentGtype, nativeOptions) as number;
 }
 
 function buildNativeOptions(options: RegisterClassVfuncOptions): NativeRegisterClassOptions {
@@ -279,66 +288,6 @@ function toNativeVfunc(vfunc: RegisterClassVfuncDefinition): NativeVfuncDefiniti
         returnType: vfunc.returnType,
         fn: vfunc.fn,
     };
-}
-
-/**
- * Connects a JavaScript handler to a `GObject` signal through a native
- * `GClosure`.
- *
- * GLib's closure marshaller delivers each signal parameter as a typed
- * `GValue`; the native side converts them to JavaScript values using
- * `argTypes` (one descriptor per closure parameter, instance first, with
- * `ref`-typed entries exposed as mutable `{ value }` cells) and converts the
- * handler's result into the signal's declared return type. Handler lifetime
- * follows the connection: disconnecting the handler id or finalizing the
- * emitter releases the JavaScript function automatically.
- *
- * @param handle - Native handle of the emitting object
- * @param signal - Signal name, optionally carrying a `::detail` suffix
- * @param argTypes - Closure parameter descriptors (instance first, no user-data slot)
- * @param returnType - Handler return descriptor
- * @param handler - Handler invoked with the marshalled arguments
- * @param after - When true, run the handler after the default handler
- * @returns The handler connection id
- */
-// biome-ignore lint/complexity/useMaxParams: the wrapper mirrors the native connect primitive's positional arguments
-export function connectSignalClosure(
-    handle: NativeHandle,
-    signal: string,
-    argTypes: readonly NativeType[],
-    returnType: NativeType,
-    handler: (...args: unknown[]) => unknown,
-    after: boolean,
-): number {
-    const trampoline: TrampolineType = { type: "trampoline", argTypes: [...argTypes], returnType };
-    const wrapped = wrapUserCallback(handler, trampoline);
-    return native.connectSignalClosure(handle, signal, [...argTypes], returnType, wrapped, after) as number;
-}
-
-/**
- * Installs the JavaScript callback that applies a wrapper-reference operation,
- * invoked synchronously on the JS thread with `(refPtr, opcode)` whenever a
- * `GObject`'s toggle reference must flip its wrapper strong/weak or delete it.
- *
- * Installed once at startup by `@gtkx/ffi`. The `refPtr` is forwarded verbatim
- * to {@link applyWrapperRefOp}; the opcode meanings are an internal native
- * detail callers never interpret.
- *
- * @param callback - Receives `(refPtr, opcode)` for each reference operation
- */
-export function setObjectToggleNotify(callback: (refPtr: number, op: number) => void): void {
-    native.setObjectToggleNotify(callback);
-}
-
-/**
- * Applies one wrapper-reference operation requested by the toggle-notify
- * callback. Runs on the JS thread, where every napi reference call must happen.
- *
- * @param refPtr - The wrapper reference pointer, as delivered to the toggle callback
- * @param op - The opcode delivered alongside `refPtr`
- */
-export function applyWrapperRefOp(refPtr: number, op: number): void {
-    native.applyWrapperRefOp(refPtr, op);
 }
 
 /**
@@ -381,4 +330,4 @@ export function unfreeze(): void {
     native.unfreeze();
 }
 
-export type { NativeArg as Arg, NativeValue as FfiValue, TrampolineType, NativeType as Type } from "./types.js";
+export type { NativeArg as Arg, NativeType as Type, NativeValue as FfiValue, TrampolineType } from "./types.js";

@@ -134,7 +134,7 @@ const buildTypeNameBuilders = (): Record<string, readonly TableBuilder[]> => {
  */
 const BUILDERS_BY_TYPE_NAME: Readonly<Record<string, readonly TableBuilder[]>> = buildTypeNameBuilders();
 
-const buildersByGType = new Map<GType, readonly TableBuilder[]>();
+const buildersByGtype = new Map<GType, readonly TableBuilder[]>();
 
 /**
  * Resolves the table builders a GType's full ancestry contributes, ordered
@@ -142,14 +142,14 @@ const buildersByGType = new Map<GType, readonly TableBuilder[]>();
  * when both name the same prop. Cached per GType.
  */
 const getBuilders = (gtype: GType): readonly TableBuilder[] => {
-    const cached = buildersByGType.get(gtype);
+    const cached = buildersByGtype.get(gtype);
     if (cached) return cached;
     const builders: TableBuilder[] = [];
     for (const typeName of collectTypeNameChain(gtype).toReversed()) {
         const typeBuilders = BUILDERS_BY_TYPE_NAME[typeName];
         if (typeBuilders) builders.push(...typeBuilders);
     }
-    buildersByGType.set(gtype, builders);
+    buildersByGtype.set(gtype, builders);
     return builders;
 };
 

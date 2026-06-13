@@ -1,12 +1,9 @@
 //! napi exports for `GObject` toggle-reference wrapper tracking.
 //!
-//! [`set_object_toggle_notify`] installs the JS callback that flips a wrapper
-//! reference strong/weak (or deletes it) by opcode. [`set_wrapper`] binds a
-//! freshly created JavaScript wrapper to its `GObject`: it creates a `napi_ref`
-//! plus a finalizer on the wrapper, then installs the toggle ref on the `GLib`
-//! thread. [`get_wrapper`] resolves the existing wrapper for an object the
-//! registry already tracks. [`apply_wrapper_ref_op`] performs the actual
-//! `napi_reference_*` call the toggle callback requests.
+//! [`set_wrapper`] binds a freshly created JavaScript wrapper to its `GObject`:
+//! it creates a `napi_ref` plus a finalizer on the wrapper, then installs the
+//! toggle ref on the `GLib` thread. [`get_wrapper`] resolves the existing
+//! wrapper for an object the registry already tracks.
 //!
 //! Each export either creates napi references or dispatches `GObject` work to
 //! the `GLib` thread, so the module is excluded from coverage instrumentation.
@@ -17,13 +14,12 @@ use std::ffi::c_void;
 use std::sync::Arc;
 
 use napi::bindgen_prelude::*;
-use napi::{Env, JsFunction, JsObject, NapiRaw, NapiValue, sys};
+use napi::{Env, JsObject, NapiRaw, sys};
 use napi_derive::napi;
 
 use crate::dispatch::Mailbox;
 use crate::managed::NativeHandle;
 use crate::toggle_ref;
-use crate::value::JsRef;
 
 /// Finalizer payload carried by a wrapper's napi reference: the addresses of
 /// the `GObject` and the `napi_ref`, the finalizer's `Arc` clone of the
@@ -58,58 +54,6 @@ unsafe extern "C" fn on_wrapper_finalize(
         data.gobject_addr,
         data.ref_addr,
     );
-}
-
-/// Installs the JavaScript reference-operation callback invoked, on the JS
-/// thread, with `(refPtr, opcode)` whenever the binding must flip a wrapper
-/// reference strong/weak or delete it. A non-function `callback` is rejected
-/// with `InvalidArg`.
-#[napi(catch_unwind)]
-#[cfg_attr(test, allow(dead_code))]
-pub fn set_object_toggle_notify(env: Env, callback: Unknown<'_>) -> napi::Result<()> {
-    if !matches!(callback.get_type()?, napi::ValueType::Function) {
-        return Err(napi::Error::new(
-            napi::Status::InvalidArg,
-            "set_object_toggle_notify: callback must be a function",
-        ));
-    }
-    // SAFETY: `callback` is a live JS value from the current callback's
-    // `env`, verified to be a function just above.
-    let func: JsFunction = unsafe { JsFunction::from_raw_unchecked(env.raw(), callback.raw()) };
-    let func_ref = JsRef::from_js_value(&env, &func)?;
-    toggle_ref::WrapperRegistry::global().initialize(Arc::new(func_ref));
-    Ok(())
-}
-
-/// Applies one `napi_reference_*` operation to `ref_ptr` by opcode. Only the
-/// three known opcodes act; any other value is a no-op rather than a silent
-/// deletion, so a stray call cannot destroy a wrapper reference. A stale or
-/// already-deleted reference yields a benign failure status that is ignored, so
-/// teardown ordering never crashes.
-#[napi(catch_unwind)]
-#[allow(clippy::unnecessary_wraps)]
-#[cfg_attr(test, allow(dead_code))]
-pub fn apply_wrapper_ref_op(env: Env, ref_ptr: f64, op: u32) -> napi::Result<()> {
-    let raw_ref = ref_ptr as usize as sys::napi_ref;
-    let mut count: u32 = 0;
-    // SAFETY: This runs on the JS thread owning `env`; a stale or deleted
-    // reference makes the napi call return a failure status, which is
-    // ignored by design.
-    unsafe {
-        match toggle_ref::RefOp::try_from(op) {
-            Ok(toggle_ref::RefOp::Strengthen) => {
-                sys::napi_reference_ref(env.raw(), raw_ref, &mut count);
-            }
-            Ok(toggle_ref::RefOp::Weaken) => {
-                sys::napi_reference_unref(env.raw(), raw_ref, &mut count);
-            }
-            Ok(toggle_ref::RefOp::Delete) => {
-                sys::napi_delete_reference(env.raw(), raw_ref);
-            }
-            Err(()) => {}
-        }
-    }
-    Ok(())
 }
 
 /// Binds `wrapper` to the `GObject` behind `handle`, installing the toggle ref.

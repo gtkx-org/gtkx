@@ -78,15 +78,15 @@ const memoize = <T>(
     compute: (typeNames: readonly string[]) => T,
 ): T => {
     const gtype = instance.__gtype__;
-    let perGType = cache.get(gtype);
-    if (!perGType) {
-        perGType = new Map();
-        cache.set(gtype, perGType);
+    let perGtype = cache.get(gtype);
+    if (!perGtype) {
+        perGtype = new Map();
+        cache.set(gtype, perGtype);
     }
-    const cached = perGType.get(key);
+    const cached = perGtype.get(key);
     if (cached !== undefined) return cached;
     const result = compute(collectTypeNameChain(gtype));
-    perGType.set(key, result);
+    perGtype.set(key, result);
     return result;
 };
 

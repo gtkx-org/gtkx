@@ -1,5 +1,5 @@
 /**
- * Tracks the wrapper currently being constructed by {@link constructGObjectInstance}.
+ * Tracks the wrapper currently being constructed by {@link constructGobjectInstance}.
  *
  * GObject fires class vfuncs synchronously from inside `g_object_new`, so a
  * subclass that overrides `constructed` runs JavaScript while the wrapper
@@ -9,7 +9,7 @@
  * `Object.create(cls.prototype)`, producing a second wrapper that skips JS
  * class field initializers and is invisible to user code.
  *
- * `constructGObjectInstance` writes the wrapper here for the duration of
+ * `constructGobjectInstance` writes the wrapper here for the duration of
  * `g_object_new`, save-and-restore so nested constructions stack. The identity
  * lookup in `getNativeObject` reads this slot first and adopts the in-flight
  * wrapper instead of synthesizing a new one.

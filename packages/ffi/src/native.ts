@@ -15,7 +15,7 @@ import type { AnyClass } from "@gtkx/utils";
 import { getNativeObject } from "./registry.js";
 
 export type { NativeHandle, Type } from "@gtkx/native";
-export { getInstanceGType } from "@gtkx/native";
+export { getInstanceGtype } from "@gtkx/native";
 
 /**
  * Structural shape of a thrown GLib `GError` boxed wrapper.

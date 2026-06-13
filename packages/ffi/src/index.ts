@@ -23,7 +23,7 @@ export * from "./gtype.js";
 export * from "./lifecycle.js";
 export * from "./listeners.js";
 export type { ErrorDomain } from "./native.js";
-export { constructGObjectInstance } from "./object.js";
+export { constructGobjectInstance } from "./object.js";
 export { registerClass } from "./register-class.js";
 export { getNativeClassByName, wrapHandle } from "./registry.js";
 export * from "./runtime.js";

@@ -6,7 +6,7 @@ import {
 import type { AnyClass } from "@gtkx/utils";
 import { G_TYPE_INVALID, type GType, typeInterfaces } from "./gtype.js";
 import { getParentClass, getVfuncRegistry, type NativeHandle } from "./handles.js";
-import { getClassGType, getNativeObject, setClassGType } from "./registry.js";
+import { getClassGtype, getNativeObject, setClassGtype } from "./registry.js";
 
 /**
  * Generated descriptor of a vtable vfunc slot. Codegen emits one per vfunc on
@@ -81,8 +81,8 @@ export function registerClass<T extends AnyClass>(klass: T, options: RegisterCla
         throw new TypeError(`registerClass: ${klass.name} must extend a registered native class`);
     }
 
-    const parentGType = resolveParentGType(klass);
-    if (parentGType === G_TYPE_INVALID) {
+    const parentGtype = resolveParentGtype(klass);
+    if (parentGtype === G_TYPE_INVALID) {
         throw new Error(`registerClass: ${klass.name} parent GType is invalid (G_TYPE_INVALID)`);
     }
 
@@ -93,11 +93,11 @@ export function registerClass<T extends AnyClass>(klass: T, options: RegisterCla
 
     const classVfuncs = discoverClassVfuncs(klass);
     const claimedMethodNames = new Set(classVfuncs.map((vfunc) => vfunc.methodName));
-    const interfaceBindings = discoverInheritedInterfaceVfuncs(klass, parentGType, claimedMethodNames);
+    const interfaceBindings = discoverInheritedInterfaceVfuncs(klass, parentGtype, claimedMethodNames);
 
     const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings);
-    const newGType: GType = nativeRegisterClass(name, parentGType, nativeOptions);
-    setClassGType(klass, newGType);
+    const newGtype: GType = nativeRegisterClass(name, parentGtype, nativeOptions);
+    setClassGtype(klass, newGtype);
 
     return klass;
 }
@@ -105,16 +105,16 @@ export function registerClass<T extends AnyClass>(klass: T, options: RegisterCla
 function hasRegisteredAncestor(klass: AnyClass): boolean {
     let current: AnyClass | null = getParentClass(klass);
     while (current) {
-        if (getClassGType(current) !== G_TYPE_INVALID) return true;
+        if (getClassGtype(current) !== G_TYPE_INVALID) return true;
         current = getParentClass(current);
     }
     return false;
 }
 
-function resolveParentGType(klass: AnyClass): GType {
+function resolveParentGtype(klass: AnyClass): GType {
     let current = getParentClass(klass);
     while (current) {
-        const gtype = getClassGType(current);
+        const gtype = getClassGtype(current);
         if (gtype !== G_TYPE_INVALID) return gtype;
         current = getParentClass(current);
     }
@@ -176,14 +176,14 @@ function wrapVfunc(fn: VfuncFn, argTypes: RegisterClassVfuncDefinition["argTypes
  */
 function discoverInheritedInterfaceVfuncs(
     klass: AnyClass,
-    parentGType: GType,
+    parentGtype: GType,
     claimedMethodNames: ReadonlySet<string>,
 ): InterfaceVfuncBinding[] {
     const bindings: InterfaceVfuncBinding[] = [];
-    for (const interfaceGType of typeInterfaces(parentGType)) {
-        const vfuncs = discoverInterfaceVfuncs(klass, interfaceGType, claimedMethodNames);
+    for (const interfaceGtype of typeInterfaces(parentGtype)) {
+        const vfuncs = discoverInterfaceVfuncs(klass, interfaceGtype, claimedMethodNames);
         if (vfuncs.length > 0) {
-            bindings.push({ gtype: interfaceGType, vfuncs });
+            bindings.push({ gtype: interfaceGtype, vfuncs });
         }
     }
     return bindings;
@@ -191,10 +191,10 @@ function discoverInheritedInterfaceVfuncs(
 
 function discoverInterfaceVfuncs(
     klass: AnyClass,
-    interfaceGType: GType,
+    interfaceGtype: GType,
     claimedMethodNames: ReadonlySet<string>,
 ): DiscoveredInterfaceVfunc[] {
-    const vfuncRegistry = interfaceVfuncRegistryByGType.get(interfaceGType);
+    const vfuncRegistry = interfaceVfuncRegistryByGtype.get(interfaceGtype);
     if (!vfuncRegistry) return [];
     const proto = (klass as { prototype: Record<string, VfuncFn> }).prototype;
     const result: DiscoveredInterfaceVfunc[] = [];
@@ -229,7 +229,7 @@ function findClassVfuncDescriptor(klass: AnyClass, methodName: string): VfuncDes
     return null;
 }
 
-const interfaceVfuncRegistryByGType = new Map<GType, Readonly<Record<string, unknown>>>();
+const interfaceVfuncRegistryByGtype = new Map<GType, Readonly<Record<string, unknown>>>();
 
 /**
  * Registers a runtime mapping from an interface `GType` to its generated
@@ -239,7 +239,7 @@ const interfaceVfuncRegistryByGType = new Map<GType, Readonly<Record<string, unk
  */
 export function registerInterfaceVfuncRegistry(gtype: GType, vfuncRegistry: Readonly<Record<string, unknown>>): void {
     if (gtype === G_TYPE_INVALID) return;
-    interfaceVfuncRegistryByGType.set(gtype, vfuncRegistry);
+    interfaceVfuncRegistryByGtype.set(gtype, vfuncRegistry);
 }
 
 function toNativeOptions(

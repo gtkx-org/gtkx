@@ -453,7 +453,7 @@ const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): str
         statements.push(`${refs.signalEmitv}(${values}, ${lookup}, ${detail});`);
     } else {
         statements.push(`const returnValue = new ${refs.Value}();`);
-        statements.push(`returnValue.init(${renderReturnGType(context, returnRef)});`);
+        statements.push(`returnValue.init(${renderReturnGtype(context, returnRef)});`);
         statements.push(`${refs.signalEmitv}(${values}, ${lookup}, ${detail}, returnValue);`);
     }
     statements.push(renderEmitReturn(context, isVoid, outReads));
@@ -688,9 +688,9 @@ const renderOutParamInvoke = (
     return `(handler, args) => {\n    ${body}\n}`;
 };
 
-const renderReturnGType = (context: ModuleContext, ref: GirTypeRef): string => {
+const renderReturnGtype = (context: ModuleContext, ref: GirTypeRef): string => {
     if (ref.kind === "primitive") {
-        return `${typeFromNameReference(context)}(${quote(primitiveGTypeName(ref.category))})`;
+        return `${typeFromNameReference(context)}(${quote(primitiveGtypeName(ref.category))})`;
     }
     if (ref.kind === "named") {
         const owner = ref.namespaceName ?? context.namespace.name;
@@ -736,7 +736,7 @@ const typeFromNameReference = (context: ModuleContext): string => {
     return `${alias}.typeFromName`;
 };
 
-const primitiveGTypeName = (category: PrimitiveTypeRef["category"]): string => {
+const primitiveGtypeName = (category: PrimitiveTypeRef["category"]): string => {
     switch (category) {
         case "boolean":
             return "gboolean";

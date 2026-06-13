@@ -13,11 +13,11 @@ use super::handler::ModuleRequest;
 use crate::managed::NativeHandle;
 
 #[cfg_attr(test, allow(dead_code))]
-struct GetInstanceGtypeRequest {
+struct GetInstanceGTypeRequest {
     instance_addr: usize,
 }
 
-impl ModuleRequest for GetInstanceGtypeRequest {
+impl ModuleRequest for GetInstanceGTypeRequest {
     type Output = u64;
 
     fn execute(self) -> anyhow::Result<u64> {
@@ -44,7 +44,7 @@ impl ModuleRequest for GetInstanceGtypeRequest {
 
 /// napi export shim for `GObject` metadata access. Excluded from coverage
 /// instrumentation: it dispatches through a live [`napi::Env`]. The
-/// [`GetInstanceGtypeRequest`] `execute` logic it dispatches is exercised
+/// [`GetInstanceGTypeRequest`] `execute` logic it dispatches is exercised
 /// directly by tests.
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[allow(clippy::wildcard_imports)]
@@ -57,7 +57,7 @@ mod napi_export {
         env: &'env Env,
         handle: &External<NativeHandle>,
     ) -> napi::Result<Unknown<'env>> {
-        GetInstanceGtypeRequest {
+        GetInstanceGTypeRequest {
             instance_addr: handle.ptr_as_usize(),
         }
         .dispatch(env)
@@ -79,7 +79,7 @@ mod tests {
     #[test]
     fn get_instance_gtype_returns_real_gtype() {
         let object = glib::Object::new::<glib::Object>();
-        let request = GetInstanceGtypeRequest {
+        let request = GetInstanceGTypeRequest {
             instance_addr: object_addr(&object),
         };
         let gtype = request.execute().expect("gtype query should succeed");
@@ -88,7 +88,7 @@ mod tests {
 
     #[test]
     fn get_instance_gtype_returns_zero_for_null_instance() {
-        let request = GetInstanceGtypeRequest { instance_addr: 0 };
+        let request = GetInstanceGTypeRequest { instance_addr: 0 };
         let gtype = request.execute().expect("null instance should be Ok(0)");
         assert_eq!(gtype, 0);
     }
@@ -98,7 +98,7 @@ mod tests {
         // SAFETY: GTypeInstance is a plain C struct of pointers, for which
         // all-zero bytes are a valid (null-class) representation.
         let mut instance: gobject_ffi::GTypeInstance = unsafe { std::mem::zeroed() };
-        let request = GetInstanceGtypeRequest {
+        let request = GetInstanceGTypeRequest {
             instance_addr: std::ptr::addr_of_mut!(instance) as usize,
         };
         let gtype = request
@@ -110,7 +110,7 @@ mod tests {
     #[test]
     fn get_instance_gtype_error_context_is_stable() {
         assert_eq!(
-            GetInstanceGtypeRequest::error_context(),
+            GetInstanceGTypeRequest::error_context(),
             "get_instance_gtype"
         );
     }

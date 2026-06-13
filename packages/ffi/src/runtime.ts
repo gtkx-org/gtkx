@@ -9,7 +9,7 @@
  * import header compact and decouples generated code from the internal
  * module layout of `@gtkx/ffi`.
  *
- * `constructGObjectInstance` is deliberately *not* re-exported here. It lives
+ * `constructGobjectInstance` is deliberately *not* re-exported here. It lives
  * in `./object.js`, which transitively imports back into this barrel via
  * `./gobject/gvalue.js`. Re-exporting it would close an import cycle through
  * the barrel and impose a load-order constraint on every export below.

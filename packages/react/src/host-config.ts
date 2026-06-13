@@ -71,7 +71,7 @@ export type ReconcilerInstance = ReactReconciler.Reconciler<
     PublicInstance
 >;
 
-const hasGType = (container: ContainerInfo): container is BackingInstance =>
+const hasGtype = (container: ContainerInfo): container is BackingInstance =>
     // biome-ignore lint/style/useNamingConvention: GObject phantom-type key
     typeof (container as { __gtype__?: unknown }).__gtype__ === "number";
 
@@ -79,7 +79,7 @@ const getOrCreateContainerNode = (container: ContainerInfo): Instance => {
     let node = containerNodeCache.get(container);
 
     if (!node) {
-        if (!hasGType(container)) {
+        if (!hasGtype(container)) {
             node = createRootInstance(container);
         } else {
             const runtimeName = typeName(container.__gtype__);

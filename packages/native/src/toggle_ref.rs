@@ -23,15 +23,16 @@
 //! The notify fires on whichever thread performs the ref/unref — the `GLib`
 //! thread in this binding — and the refcount flip must run on the JavaScript
 //! thread (every `napi_reference_*` call requires the JS thread). The flip is
-//! therefore routed through [`Mailbox::invoke_node_and_wait`], the same
+//! therefore routed through [`Mailbox::apply_wrapper_ref_op_and_wait`], the same
 //! synchronous re-entrant path signal trampolines use, so it completes before
 //! the triggering `GLib` operation returns and no GC window can open.
 //!
 //! All qdata reads and writes happen on the `GLib` thread; all `napi_reference_*`
 //! calls happen on the JS thread. The two are bridged by passing the opaque
-//! `napi_ref` pointer across as a `usize`, exactly as [`JsRef`] does. Every path
-//! here either touches qdata on the `GLib` thread or drives a JS callback, so
-//! the module is excluded from coverage instrumentation.
+//! `napi_ref` pointer across as a `usize`, exactly as [`crate::value::JsRef`]
+//! does. Every path here either touches qdata on the `GLib` thread or schedules
+//! a wrapper-reference operation on the JS thread, so the module is excluded
+//! from coverage instrumentation.
 //!
 //! # Teardown serialization invariant
 //!
@@ -88,40 +89,20 @@ use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, OnceLock};
 
 use glib::translate::IntoGlib as _;
-use napi::JsFunction;
 use parking_lot::Mutex;
 
 use crate::dispatch::Mailbox;
 use crate::error_reporter::NativeErrorReporter;
-use crate::value::{JsRef, Value};
 
-/// Reference operation applied to a wrapper's `napi_ref` on the JS thread,
-/// crossing the boundary as its integer discriminant.
+/// Reference operation applied to a wrapper's `napi_ref` on the JS thread.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
 pub enum RefOp {
     /// Decrement the wrapper reference to weak (collectable).
-    Weaken = 0,
+    Weaken,
     /// Increment the wrapper reference to strong (pinned).
-    Strengthen = 1,
+    Strengthen,
     /// Delete the wrapper reference once its object is being torn down.
-    Delete = 2,
-}
-
-impl TryFrom<u32> for RefOp {
-    type Error = ();
-
-    /// Resolves an opcode received from JavaScript, or `Err(())` for an unknown
-    /// value — the deliberate no-op fallback, so a stray call can never
-    /// destroy a wrapper reference.
-    fn try_from(op: u32) -> Result<Self, Self::Error> {
-        match op {
-            0 => Ok(Self::Weaken),
-            1 => Ok(Self::Strengthen),
-            2 => Ok(Self::Delete),
-            _ => Err(()),
-        }
-    }
+    Delete,
 }
 
 /// Per-object binding state, stored in qdata and reached off the object by a
@@ -161,16 +142,11 @@ pub(crate) struct WrapperBinding {
 /// Process-global registry binding each tracked `GObject` to its JavaScript
 /// wrapper through a toggle reference.
 ///
-/// Holds the single JS reference-operation callback, the qdata quark under which
-/// every tracked object stores its [`WrapperBinding`] cell, and the lock that
-/// serializes foreign-thread binding lookups against teardown.
+/// Holds the qdata quark under which every tracked object stores its
+/// [`WrapperBinding`] cell, and the lock that serializes foreign-thread binding
+/// lookups against teardown.
 #[derive(Debug)]
 pub struct WrapperRegistry {
-    /// The single JavaScript callback that applies a reference operation by
-    /// opcode. Installed once via the `setObjectToggleNotify` napi export.
-    /// Invoked synchronously on the JS thread through
-    /// [`Mailbox::invoke_node_and_wait`].
-    toggle_cb: OnceLock<Arc<JsRef<JsFunction>>>,
     /// Quark under which each tracked `GObject` stores its [`WrapperBinding`]
     /// cell.
     quark: OnceLock<glib::Quark>,
@@ -189,16 +165,9 @@ impl WrapperRegistry {
     /// Returns the global registry, initializing it on first access.
     pub fn global() -> &'static Self {
         REGISTRY.get_or_init(|| Self {
-            toggle_cb: OnceLock::new(),
             quark: OnceLock::new(),
             lookup_lock: Mutex::new(()),
         })
-    }
-
-    /// Installs the JavaScript reference-operation callback. Called once at
-    /// startup; later calls are ignored to keep the singleton write-once.
-    pub fn initialize(&self, callback: Arc<JsRef<JsFunction>>) {
-        let _ = self.toggle_cb.set(callback);
     }
 
     fn quark(&self) -> glib::Quark {
@@ -209,7 +178,7 @@ impl WrapperRegistry {
 
     /// Applies a strong/weak level to the wrapper's `napi_ref`, issuing the
     /// counted reference operation only when the level actually changes.
-    fn apply_wrapper_level(&self, binding: &WrapperBinding, ref_ptr: *mut c_void, strong: bool) {
+    fn apply_wrapper_level(binding: &WrapperBinding, ref_ptr: *mut c_void, strong: bool) {
         if binding.wrapper_strong.swap(strong, Ordering::AcqRel) == strong {
             return;
         }
@@ -218,7 +187,7 @@ impl WrapperRegistry {
         } else {
             RefOp::Weaken
         };
-        self.invoke_ref_op(ref_ptr, op);
+        Self::invoke_ref_op(ref_ptr, op);
     }
 
     /// Reads the [`WrapperBinding`] cell stored in `gobject`'s qdata, or null
@@ -314,21 +283,14 @@ impl WrapperRegistry {
 
     /// Drives one reference operation on the JS thread, blocking the `GLib`
     /// thread until it completes. A no-op once the mailbox is stopped or before
-    /// the callback is installed, so shutdown leaks the reference rather than
-    /// touching a dead runtime.
-    fn invoke_ref_op(&self, ref_ptr: *mut c_void, op: RefOp) {
+    /// the runtime's JS thread is live, so shutdown leaks the reference rather
+    /// than touching a dead runtime.
+    fn invoke_ref_op(ref_ptr: *mut c_void, op: RefOp) {
         let mailbox = Mailbox::global();
-        if mailbox.is_stopped() {
+        if mailbox.is_stopped() || !mailbox.is_started() {
             return;
         }
-        let Some(callback) = self.toggle_cb.get() else {
-            return;
-        };
-        let args = vec![
-            Value::Number(ref_ptr as usize as f64),
-            Value::Number(f64::from(op as u32)),
-        ];
-        if let Err(error) = mailbox.invoke_node_and_wait(callback, args, false) {
+        if let Err(error) = mailbox.apply_wrapper_ref_op_and_wait(ref_ptr as usize, op) {
             NativeErrorReporter::global().report(&error.context(
                 "toggle-reference operation failed; wrapper lifetime state may be inconsistent",
             ));
@@ -457,12 +419,12 @@ impl WrapperRegistry {
             let ref_ptr = ref_addr as *mut c_void;
 
             let Some(binding) = binding else {
-                self.invoke_ref_op(ref_ptr, RefOp::Delete);
+                Self::invoke_ref_op(ref_ptr, RefOp::Delete);
                 return;
             };
 
             if binding.generation.load(Ordering::Relaxed) != generation {
-                self.invoke_ref_op(ref_ptr, RefOp::Delete);
+                Self::invoke_ref_op(ref_ptr, RefOp::Delete);
                 return;
             }
 
@@ -485,7 +447,7 @@ impl WrapperRegistry {
                     drop(Arc::from_raw(Arc::as_ptr(&binding)));
                 }
             }
-            self.invoke_ref_op(ref_ptr, RefOp::Delete);
+            Self::invoke_ref_op(ref_ptr, RefOp::Delete);
             // SAFETY: The toggle ref being removed is the one [`Self::install`]
             // added for this binding and still holds the object alive; removal
             // may finalize the object, after which nothing here touches it.
@@ -549,7 +511,7 @@ unsafe extern "C" fn on_toggle_notify(
         if ref_ptr.is_null() {
             return;
         }
-        registry.apply_wrapper_level(binding, ref_ptr, is_last_ref == 0);
+        WrapperRegistry::apply_wrapper_level(binding, ref_ptr, is_last_ref == 0);
         return;
     }
 
@@ -572,6 +534,6 @@ unsafe extern "C" fn on_toggle_notify(
         // SAFETY: A non-zero generation means the binding's toggle ref
         // still holds the object alive on this GLib thread.
         let ref_count = unsafe { (*gobject).ref_count };
-        WrapperRegistry::global().apply_wrapper_level(&binding, ref_ptr, ref_count > 1);
+        WrapperRegistry::apply_wrapper_level(&binding, ref_ptr, ref_count > 1);
     }));
 }

@@ -68,7 +68,7 @@ export const renderConstructorPropsInterface = (context: ModuleContext, klass: G
  *
  * The parentless root of a GObject hierarchy gets the canonical base
  * constructor that hands the assembled `GValue` record to
- * `constructGObjectInstance`. A class that introduces constructable props gets
+ * `constructGobjectInstance`. A class that introduces constructable props gets
  * a constructor that destructures and translates those props into `GValue`s,
  * spreads the untranslated remainder, and forwards everything to `super`. A
  * class that introduces no props gets no constructor and inherits its nearest
@@ -95,9 +95,9 @@ export const renderClassConstructor = (
 const GVALUE_RECORD = "Record<string, GValue | undefined>";
 
 const renderRootConstructor = (context: ModuleContext): string => {
-    context.addConstructGObjectInstanceImport();
+    context.addConstructGobjectInstanceImport();
     context.addRuntimeImport("GValue");
-    const body = "constructGObjectInstance(this, props);";
+    const body = "constructGobjectInstance(this, props);";
     return `constructor(props: ${GVALUE_RECORD} = {}) {\n${indent(body, 1)}\n}`;
 };
 

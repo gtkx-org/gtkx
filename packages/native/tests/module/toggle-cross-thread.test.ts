@@ -1,5 +1,5 @@
-import { beforeAll, describe, expect, it } from "vitest";
-import { applyWrapperRefOp, getWrapper, type NativeHandle, setObjectToggleNotify, setWrapper } from "../../index.js";
+import { describe, expect, it } from "vitest";
+import { getWrapper, type NativeHandle, setWrapper } from "../../index.js";
 import {
     driveToggleFromThread,
     finalizeCount,
@@ -9,12 +9,6 @@ import {
 import { createLabel, forceGC, getRefCount } from "./utils.js";
 
 describe("toggle references under cross-thread churn", () => {
-    beforeAll(() => {
-        setObjectToggleNotify((refPtr, op) => {
-            applyWrapperRefOp(refPtr, op);
-        });
-    });
-
     it("keeps wrapper identity and refcount stable while toggle notifies race GC", async () => {
         const label = createLabel("Churned") as NativeHandle;
         const wrapper = { tag: "churned" };

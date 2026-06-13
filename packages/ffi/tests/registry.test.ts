@@ -5,16 +5,16 @@ import { typeFromName } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { AnyClass } from "@gtkx/utils";
 import { describe, expect, it } from "vitest";
-import { findNativeClass, getNativeClass, setClassGType } from "../src/registry.js";
+import { findNativeClass, getNativeClass, setClassGtype } from "../src/registry.js";
 
 const INVALID_GTYPE: GType = 0;
 
-describe("setClassGType", () => {
+describe("setClassGtype", () => {
     it("registers a class by GType", () => {
         class TestClass {}
-        const fakeGType: GType = 123456789;
-        setClassGType(TestClass as AnyClass, fakeGType);
-        expect(findNativeClass(fakeGType)).toBe(TestClass);
+        const fakeGtype: GType = 123456789;
+        setClassGtype(TestClass as AnyClass, fakeGtype);
+        expect(findNativeClass(fakeGtype)).toBe(TestClass);
     });
 
     it("allows getNativeObject to find registered types", () => {

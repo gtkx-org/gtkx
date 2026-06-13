@@ -5,7 +5,7 @@ import { GVALUE_BORROWED, GVALUE_SIZE, LIBGOBJECT } from "./gtype.js";
 import { getHandle, setHandle, tryGetHandle } from "./handles.js";
 import { t } from "./helpers.js";
 import { setPendingConstruction } from "./pending-construction.js";
-import { getClassGType } from "./registry.js";
+import { getClassGtype } from "./registry.js";
 
 /**
  * Canonical "new GObject with properties" implementation.
@@ -26,7 +26,7 @@ import { getClassGType } from "./registry.js";
  * @param instance - The wrapper being constructed; its leaf class supplies the GType
  * @param props - GIR-name-keyed record of `GValue`s (plus ignored extras)
  */
-export function constructGObjectInstance(instance: object, props: Record<string, unknown>): void {
+export function constructGobjectInstance(instance: object, props: Record<string, unknown>): void {
     const names: string[] = [];
     const values: NativeHandle[] = [];
     for (const key in props) {
@@ -37,7 +37,7 @@ export function constructGObjectInstance(instance: object, props: Record<string,
         }
     }
 
-    const gtype = getClassGType(instance.constructor as AnyClass);
+    const gtype = getClassGtype(instance.constructor as AnyClass);
     const previous = setPendingConstruction(instance);
     let handle: NativeHandle;
     try {

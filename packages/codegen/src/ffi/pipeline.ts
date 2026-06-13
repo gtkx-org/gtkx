@@ -30,7 +30,7 @@ export const generateNamespaceModule = (
     bigintAliases: ReadonlySet<string> = new Set(),
 ): { readonly path: string; readonly source: string } => {
     const context = new ModuleContext(namespace, repository, bigintAliases);
-    context.addGObjectBootstrapImports();
+    context.addGobjectBootstrapImports();
 
     for (const enumeration of namespace.enums) {
         emitEnum(context, enumeration);

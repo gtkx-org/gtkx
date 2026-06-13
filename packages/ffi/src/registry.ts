@@ -1,19 +1,10 @@
-import {
-    applyWrapperRefOp,
-    getInstanceGType,
-    getWrapper,
-    type NativeHandle,
-    setObjectToggleNotify,
-    setWrapper,
-} from "@gtkx/native";
+import { getInstanceGtype, getWrapper, type NativeHandle, setWrapper } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { G_TYPE_INVALID, type GType, typeFromName, typeIsA, typeParent } from "./gtype.js";
 import { type GTyped, setHandle, tryGetHandle } from "./handles.js";
 import { getPendingConstruction } from "./pending-construction.js";
 
-setObjectToggleNotify((refPtr, op) => applyWrapperRefOp(refPtr, op));
-
-let gobjectGType: GType = G_TYPE_INVALID;
+let gobjectGtype: GType = G_TYPE_INVALID;
 
 /**
  * Whether `gtype` is a `GObject` descendant, as opposed to another
@@ -22,16 +13,16 @@ let gobjectGType: GType = G_TYPE_INVALID;
  * one. The `GObject` fundamental type is resolved lazily and memoized, since it
  * is registered by the time any instance crosses the boundary.
  */
-function isGObjectType(gtype: GType): boolean {
-    if (gobjectGType === G_TYPE_INVALID) {
-        gobjectGType = typeFromName("GObject");
+function isGobjectType(gtype: GType): boolean {
+    if (gobjectGtype === G_TYPE_INVALID) {
+        gobjectGtype = typeFromName("GObject");
     }
-    return gobjectGType !== G_TYPE_INVALID && typeIsA(gtype, gobjectGType);
+    return gobjectGtype !== G_TYPE_INVALID && typeIsA(gtype, gobjectGtype);
 }
 
 const classRegistry = new Map<GType, AnyClass>();
 const gtypeByClass = new WeakMap<AnyClass, GType>();
-const interfaceGTypeByClass = new WeakMap<AnyClass, GType>();
+const interfaceGtypeByClass = new WeakMap<AnyClass, GType>();
 
 /**
  * Records the GLib type identifier of a native class in the identity registry.
@@ -44,7 +35,7 @@ const interfaceGTypeByClass = new WeakMap<AnyClass, GType>();
  * @param cls - The native class to register
  * @param gtype - The GLib type identifier for the class
  */
-export function setClassGType(cls: AnyClass, gtype: GType): void {
+export function setClassGtype(cls: AnyClass, gtype: GType): void {
     if (gtype !== G_TYPE_INVALID) {
         classRegistry.set(gtype, cls);
         gtypeByClass.set(cls, gtype);
@@ -64,9 +55,9 @@ export function setClassGType(cls: AnyClass, gtype: GType): void {
  * @param cls - The interface wrapper class
  * @param gtype - The GLib interface type identifier
  */
-export function setInterfaceGType(cls: AnyClass, gtype: GType): void {
+export function setInterfaceGtype(cls: AnyClass, gtype: GType): void {
     if (gtype !== G_TYPE_INVALID) {
-        interfaceGTypeByClass.set(cls, gtype);
+        interfaceGtypeByClass.set(cls, gtype);
         (cls.prototype as GTyped).__gtype__ = gtype;
     }
 }
@@ -75,17 +66,17 @@ export function setInterfaceGType(cls: AnyClass, gtype: GType): void {
  * Returns the GLib type identifier registered for `cls`, or the invalid
  * GType (`0`) when the class has not been registered (e.g. boxed value types).
  */
-export function getClassGType(cls: AnyClass): GType {
+export function getClassGtype(cls: AnyClass): GType {
     return gtypeByClass.get(cls) ?? G_TYPE_INVALID;
 }
 
 /**
  * Returns the GLib interface type identifier registered for `cls` via
- * {@link setInterfaceGType}, or the invalid GType (`0`) when `cls` is
+ * {@link setInterfaceGtype}, or the invalid GType (`0`) when `cls` is
  * not a registered interface wrapper.
  */
-function getInterfaceGType(cls: AnyClass): GType {
-    return interfaceGTypeByClass.get(cls) ?? G_TYPE_INVALID;
+function getInterfaceGtype(cls: AnyClass): GType {
+    return interfaceGtypeByClass.get(cls) ?? G_TYPE_INVALID;
 }
 
 /**
@@ -146,14 +137,14 @@ export function getNativeClassByName(name: string): AnyClass | null {
  * @param accept - Predicate deciding whether a registered ancestor is a match
  * @returns The first accepted ancestor class, or null when none qualifies
  */
-function walkParentChain(gtype: GType, accept: (parentGType: GType, parentCls: AnyClass) => boolean): AnyClass | null {
-    let currentGType = gtype;
-    while (currentGType !== G_TYPE_INVALID) {
-        const parentGType = typeParent(currentGType);
-        if (parentGType === G_TYPE_INVALID) break;
-        const parentCls = getNativeClass(parentGType);
-        if (parentCls && accept(parentGType, parentCls)) return parentCls;
-        currentGType = parentGType;
+function walkParentChain(gtype: GType, accept: (parentGtype: GType, parentCls: AnyClass) => boolean): AnyClass | null {
+    let currentGtype = gtype;
+    while (currentGtype !== G_TYPE_INVALID) {
+        const parentGtype = typeParent(currentGtype);
+        if (parentGtype === G_TYPE_INVALID) break;
+        const parentCls = getNativeClass(parentGtype);
+        if (parentCls && accept(parentGtype, parentCls)) return parentCls;
+        currentGtype = parentGtype;
     }
 
     return null;
@@ -174,27 +165,27 @@ export function findNativeClass(gtype: GType): AnyClass | null {
 
 /**
  * Finds the registered class to wrap a handle of runtime type `gtype` that is
- * known to implement `interfaceGType`.
+ * known to implement `interfaceGtype`.
  *
  * Returns the class registered for `gtype` itself when present. Otherwise
  * walks the parent chain and returns the closest registered ancestor that
- * also conforms to `interfaceGType`, ensuring the resulting wrapper carries
+ * also conforms to `interfaceGtype`, ensuring the resulting wrapper carries
  * the interface's methods. Ancestors that are registered but do not implement
  * the interface (e.g. a bare `GObject` base) are skipped. Returns null when no
  * such class is registered, in which case callers fall back to the interface
  * wrapper class itself.
  *
  * @param gtype - The runtime GLib type identifier of the instance
- * @param interfaceGType - The GLib interface type the instance implements
+ * @param interfaceGtype - The GLib interface type the instance implements
  * @returns The resolved class, or null when none is registered
  */
-function findNativeClassForInterface(gtype: GType, interfaceGType: GType): AnyClass | null {
+function findNativeClassForInterface(gtype: GType, interfaceGtype: GType): AnyClass | null {
     const exact = getNativeClass(gtype);
     if (exact) return exact;
 
-    if (interfaceGType === G_TYPE_INVALID) return null;
+    if (interfaceGtype === G_TYPE_INVALID) return null;
 
-    return walkParentChain(gtype, (parentGType) => typeIsA(parentGType, interfaceGType));
+    return walkParentChain(gtype, (parentGtype) => typeIsA(parentGtype, interfaceGtype));
 }
 
 /**
@@ -210,21 +201,21 @@ function findNativeClassForInterface(gtype: GType, interfaceGType: GType): AnyCl
  * @param handle - The live native handle to resolve
  * @param resolveClass - Maps the runtime `GType` to the wrapper class to use
  */
-function resolveWrapper(handle: NativeHandle, resolveClass: (runtimeGType: GType) => AnyClass): object {
+function resolveWrapper(handle: NativeHandle, resolveClass: (runtimeGtype: GType) => AnyClass): object {
     const existing = getWrapper(handle);
     if (existing) return existing;
 
-    const runtimeGType: GType = getInstanceGType(handle);
-    if (runtimeGType === G_TYPE_INVALID) {
+    const runtimeGtype: GType = getInstanceGtype(handle);
+    if (runtimeGtype === G_TYPE_INVALID) {
         throw new Error("Cannot resolve runtime GLib type from handle");
     }
 
-    const cls = resolveClass(runtimeGType);
+    const cls = resolveClass(runtimeGtype);
     const adopted = tryAdoptPendingConstruction(handle, cls);
     if (adopted) return adopted;
 
     const instance = wrapHandle(cls, handle) as GTyped;
-    if (isGObjectType(runtimeGType)) {
+    if (isGobjectType(runtimeGtype)) {
         setWrapper(handle, instance);
     }
     return instance;
@@ -270,10 +261,10 @@ export function getNativeObject(handle: NativeHandle | null | undefined, targetT
         return wrapHandle(targetType, handle);
     }
 
-    return resolveWrapper(handle, (runtimeGType) => {
-        const cls = findNativeClass(runtimeGType);
+    return resolveWrapper(handle, (runtimeGtype) => {
+        const cls = findNativeClass(runtimeGtype);
         if (!cls) {
-            throw new Error(`Expected registered GLib type, got gtype ${String(runtimeGType)}`);
+            throw new Error(`Expected registered GLib type, got gtype ${String(runtimeGtype)}`);
         }
         return cls;
     });
@@ -326,8 +317,8 @@ export function getNativeObjectAsInterface<T extends NativeHandle | null | undef
 
     if (handle === null || handle === undefined) return null as Result;
 
-    return resolveWrapper(handle, (runtimeGType) => {
-        const interfaceGType = getInterfaceGType(interfaceClass);
-        return findNativeClassForInterface(runtimeGType, interfaceGType) ?? interfaceClass;
+    return resolveWrapper(handle, (runtimeGtype) => {
+        const interfaceGtype = getInterfaceGtype(interfaceClass);
+        return findNativeClassForInterface(runtimeGtype, interfaceGtype) ?? interfaceClass;
     }) as Result;
 }
