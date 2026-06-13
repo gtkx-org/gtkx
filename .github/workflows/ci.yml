@@ -176,7 +176,7 @@ jobs:
           mount-pnpm-store: "true"
           extra-env: NODE_OPTIONS
 
-  consumer-smoke:
+  publish-test:
     needs: [changes, image]
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest

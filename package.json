@@ -17,7 +17,6 @@
         "publish-test": "node scripts/publish-test.ts",
         "release": "node scripts/publish.ts",
         "test": "turbo test --filter=!gtkx",
-        "test:all": "vitest run",
         "typecheck": "turbo typecheck --filter=!gtkx"
     },
     "devDependencies": {

@@ -17,54 +17,12 @@
     ],
     "tasks": {
         "//#lint:all": {
-            "dependsOn": [
-                "@gtkx/cli#build",
-                "@gtkx/codegen#build",
-                "@gtkx/css#build",
-                "@gtkx/ffi#build",
-                "@gtkx/mcp#build",
-                "@gtkx/native#build",
-                "@gtkx/react#build",
-                "@gtkx/testing#build",
-                "@gtkx/vitest#build"
-            ],
+            "dependsOn": ["@gtkx/cli#build", "@gtkx/vitest#build"],
             "inputs": ["**/*.ts", "**/*.tsx", "**/package.json", "biome.json", "knip.json", ".dependency-cruiser.cjs"],
             "outputLogs": "new-only"
         },
-        "//#test:all": {
-            "dependsOn": [
-                "@gtkx/cli#build",
-                "@gtkx/codegen#build",
-                "@gtkx/css#build",
-                "@gtkx/ffi#build",
-                "@gtkx/mcp#build",
-                "@gtkx/native#build",
-                "@gtkx/native#native-build",
-                "@gtkx/react#build",
-                "@gtkx/testing#build",
-                "@gtkx/vitest#build"
-            ],
-            "inputs": [
-                "vitest.config.ts",
-                "packages/*/vitest.config.ts",
-                "packages/*/src/**/*.{ts,tsx}",
-                "packages/*/tests/**/*.{ts,tsx}"
-            ],
-            "outputLogs": "new-only"
-        },
         "//#coverage:all": {
-            "dependsOn": [
-                "@gtkx/cli#build",
-                "@gtkx/codegen#build",
-                "@gtkx/css#build",
-                "@gtkx/ffi#build",
-                "@gtkx/mcp#build",
-                "@gtkx/native#build",
-                "@gtkx/native#native-build",
-                "@gtkx/react#build",
-                "@gtkx/testing#build",
-                "@gtkx/vitest#build"
-            ],
+            "dependsOn": ["@gtkx/vitest#build", "@gtkx/native#native-build", "@gtkx/cli#codegen"],
             "inputs": [
                 "vitest.config.ts",
                 "packages/*/vitest.config.ts",
