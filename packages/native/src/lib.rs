@@ -47,6 +47,5 @@ pub mod toggle_ref;
 pub mod trampoline;
 pub mod types;
 pub mod value;
-pub mod wait_signal;
 
 pub use managed::{Boxed, Fundamental, NativeHandle, NativeValue};

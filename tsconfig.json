@@ -1,0 +1,5 @@
+{
+    "extends": "./tsconfig.base.json",
+    "include": ["scripts", "vitest.config.ts", "gtkx.config.ts"],
+    "references": []
+}

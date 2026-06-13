@@ -40,6 +40,7 @@
 //! result from the dying main loop.
 
 mod js_bridge;
+pub mod wait_signal;
 
 use std::collections::VecDeque;
 use std::panic::{self, AssertUnwindSafe};
@@ -50,10 +51,10 @@ use napi::threadsafe_function::ThreadsafeFunction;
 use napi::{JsFunction, Status, sys};
 use parking_lot::Mutex;
 
+use crate::dispatch::wait_signal::WaitSignal;
 use crate::error_reporter::NativeErrorReporter;
 use crate::panic_handler::format_panic_payload;
 use crate::value::{JsRef, Value};
-use crate::wait_signal::WaitSignal;
 
 type GlibTask = Box<dyn FnOnce() + Send + 'static>;
 

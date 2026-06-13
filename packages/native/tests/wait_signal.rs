@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
 
-use native::wait_signal::WaitSignal;
+use native::dispatch::wait_signal::WaitSignal;
 
 #[test]
 fn new_creates_unsignalled_state() {
