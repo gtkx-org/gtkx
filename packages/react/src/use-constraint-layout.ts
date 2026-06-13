@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { createContext, type RefObject, useContext, useRef } from "react";
+import { type Context, createContext, type RefObject, useContext, useRef } from "react";
 import type { ConstraintGuideProps, ConstraintProps, ConstraintVflProps } from "./element-props.js";
 import {
     registerConstraintTarget,
@@ -21,7 +21,8 @@ const unknownIdMessage = (role: string, id: string): string =>
  * `<Guide>` children. A `null` value means the marker is not enclosed by a
  * provider.
  */
-export const ConstraintLayoutContext = createContext<RefObject<Gtk.ConstraintLayout | null> | null>(null);
+export const ConstraintLayoutContext: Context<RefObject<Gtk.ConstraintLayout | null> | null> =
+    createContext<RefObject<Gtk.ConstraintLayout | null> | null>(null);
 
 /**
  * Owns the ref a `<GtkConstraintLayout>` provider binds to its backing

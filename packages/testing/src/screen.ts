@@ -6,7 +6,7 @@ import { bindQueries } from "./bind-queries.js";
 import { prettyWidget } from "./pretty-widget.js";
 import { logRoles } from "./role-helpers.js";
 import { screenshot as captureScreenshot, type ScreenshotOptions } from "./screenshot.js";
-import type { ScreenshotResult } from "./types.js";
+import type { BoundQueries, ScreenshotResult } from "./types.js";
 
 let currentRoot: Gtk.Application | null = null;
 
@@ -101,14 +101,18 @@ const boundQueries = bindQueries(getRoot);
  * @see {@link render} for rendering components
  * @see {@link within} for scoped queries
  */
-export const screen = {
+export const screen: BoundQueries & {
+    debug: () => void;
+    logRoles: () => void;
+    screenshot: (selector?: WindowSelector, options?: ScreenshotOptions) => Promise<ScreenshotResult>;
+} = {
     ...boundQueries,
     /** Print the widget tree to console for debugging */
-    debug: () => {
+    debug: (): void => {
         console.log(prettyWidget(getRoot()));
     },
     /** Log all accessible roles to console for debugging */
-    logRoles: () => {
+    logRoles: (): void => {
         logRoles(getRoot());
     },
     /**

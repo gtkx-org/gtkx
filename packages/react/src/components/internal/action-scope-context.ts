@@ -1,4 +1,4 @@
-import { createContext } from "react";
+import { type Context, createContext } from "react";
 
 /**
  * The action-name scope a `<GSimpleAction>` binds its accelerators under: the
@@ -21,4 +21,4 @@ export const WINDOW_ACTION_SCOPE: ActionScope = { prefix: "win" };
  * their `accels` bind under the right detailed action name — `null` outside
  * any action map.
  */
-export const ActionScopeContext = createContext<ActionScope | null>(null);
+export const ActionScopeContext: Context<ActionScope | null> = createContext<ActionScope | null>(null);

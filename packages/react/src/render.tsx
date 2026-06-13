@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { createContext, type ReactNode, useContext } from "react";
+import { type Context, createContext, type ReactNode, useContext } from "react";
 import { getSignalStore } from "./nodes/internal/signal-store.js";
 import { reconciler } from "./reconciler.js";
 import { type ReconcilerErrorHandler, setReconcilerErrorHandler } from "./reconciler-error-sink.js";
@@ -20,7 +20,7 @@ import { type ReconcilerErrorHandler, setReconcilerErrorHandler } from "./reconc
  * };
  * ```
  */
-export const ApplicationContext = createContext<Gtk.Application | null>(null);
+export const ApplicationContext: Context<Gtk.Application | null> = createContext<Gtk.Application | null>(null);
 
 /**
  * Hook to access the GTK Application instance.

@@ -401,7 +401,7 @@ export const createMcpServer = (options: CreateMcpServerOptions): McpServerHandl
  * Bootstraps the GTKX MCP server: builds it, installs the shared graceful
  * shutdown helper, and awaits the listening socket.
  */
-export async function main() {
+export async function main(): Promise<void> {
     const server = createMcpServer({ version });
     installGracefulShutdown({
         onSignal: () => server.stop(),

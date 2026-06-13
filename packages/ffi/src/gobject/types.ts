@@ -1,3 +1,4 @@
+import type { GType } from "../gtype.js";
 import * as fundamental from "./fundamental-types.js";
 
 /**
@@ -17,7 +18,32 @@ import * as fundamental from "./fundamental-types.js";
  * console.log(Type.STRING); // GType for gchararray
  * ```
  */
-export const Type = Object.freeze({
+export const Type: Readonly<{
+    INVALID: GType;
+    NONE: GType;
+    INTERFACE: GType;
+    CHAR: GType;
+    UCHAR: GType;
+    BOOLEAN: GType;
+    INT: GType;
+    UINT: GType;
+    LONG: GType;
+    ULONG: GType;
+    INT64: GType;
+    UINT64: GType;
+    ENUM: GType;
+    FLAGS: GType;
+    FLOAT: GType;
+    DOUBLE: GType;
+    STRING: GType;
+    POINTER: GType;
+    BOXED: GType;
+    PARAM: GType;
+    OBJECT: GType;
+    GTYPE: GType;
+    VARIANT: GType;
+    UNICHAR: GType;
+}> = Object.freeze({
     INVALID: fundamental.TYPE_INVALID,
     NONE: fundamental.TYPE_NONE,
     INTERFACE: fundamental.TYPE_INTERFACE,

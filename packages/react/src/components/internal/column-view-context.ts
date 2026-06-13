@@ -1,4 +1,4 @@
-import { createContext } from "react";
+import { type Context, createContext } from "react";
 import type { ListController } from "./list-controller.js";
 
 /**
@@ -7,4 +7,4 @@ import type { ListController } from "./list-controller.js";
  * registers its own {@link "./column-controller".ColumnController} the moment
  * the list controller exists — `null` until the column view's widget settles.
  */
-export const ColumnViewContext = createContext<ListController | null>(null);
+export const ColumnViewContext: Context<ListController | null> = createContext<ListController | null>(null);

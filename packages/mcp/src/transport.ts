@@ -140,7 +140,7 @@ export class JsonStreamTransport extends EventEmitter<JsonStreamTransportEvents>
      * @throws {McpError} If the peer returned an error or the request timed
      *   out (`ipcTimeoutError`).
      */
-    sendRequest<T = unknown>(method: string, params?: unknown, timeoutMs = this.defaultTimeout): Promise<T> {
+    sendRequest<T = unknown>(method: string, params?: unknown, timeoutMs: number = this.defaultTimeout): Promise<T> {
         return new Promise<T>((resolve, reject) => {
             if (!this.writer.writable) {
                 reject(new TransportClosedError());

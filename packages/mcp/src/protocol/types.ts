@@ -5,7 +5,14 @@ import { z } from "zod";
 /**
  * Zod schema for validating IPC requests.
  */
-export const IpcRequestSchema = z.object({
+export const IpcRequestSchema: z.ZodObject<
+    {
+        id: z.ZodString;
+        method: z.ZodString;
+        params: z.ZodOptional<z.ZodUnknown>;
+    },
+    z.core.$strip
+> = z.object({
     id: z.string(),
     method: z.string(),
     params: z.unknown().optional(),
@@ -19,7 +26,10 @@ export type IpcRequest = z.infer<typeof IpcRequestSchema>;
 /**
  * Zod schema for validating IPC errors.
  */
-const IpcErrorSchema = z.object({
+const IpcErrorSchema: z.ZodObject<
+    { code: z.ZodNumber; message: z.ZodString; data: z.ZodOptional<z.ZodUnknown> },
+    z.core.$strip
+> = z.object({
     code: z.number(),
     message: z.string(),
     data: z.unknown().optional(),
@@ -28,7 +38,14 @@ const IpcErrorSchema = z.object({
 /**
  * Zod schema for validating IPC responses.
  */
-export const IpcResponseSchema = z.object({
+export const IpcResponseSchema: z.ZodObject<
+    {
+        id: z.ZodString;
+        result: z.ZodOptional<z.ZodUnknown>;
+        error: z.ZodOptional<typeof IpcErrorSchema>;
+    },
+    z.core.$strip
+> = z.object({
     id: z.string(),
     result: z.unknown().optional(),
     error: IpcErrorSchema.optional(),
@@ -74,7 +91,13 @@ export type AppInfo = {
 };
 
 /** Zod schema for app registration parameters. */
-export const RegisterParamsSchema = z.object({
+export const RegisterParamsSchema: z.ZodObject<
+    {
+        applicationId: z.ZodString;
+        pid: z.ZodNumber;
+    },
+    z.core.$strip
+> = z.object({
     applicationId: z.string(),
     pid: z.number(),
 });
@@ -109,4 +132,4 @@ const getRuntimeDir = (): string => process.env.XDG_RUNTIME_DIR ?? tmpdir();
 /**
  * Default path for the MCP socket file.
  */
-export const DEFAULT_SOCKET_PATH = join(getRuntimeDir(), "gtkx-mcp.sock");
+export const DEFAULT_SOCKET_PATH: string = join(getRuntimeDir(), "gtkx-mcp.sock");

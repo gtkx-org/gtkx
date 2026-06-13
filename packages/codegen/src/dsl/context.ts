@@ -18,7 +18,7 @@ import { ModuleBuilder } from "./module.js";
  * to the gi package root.
  */
 export class ModuleContext {
-    public readonly module = new ModuleBuilder();
+    public readonly module: ModuleBuilder = new ModuleBuilder();
 
     /**
      * @param namespace - The namespace this module corresponds to

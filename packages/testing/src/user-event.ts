@@ -688,7 +688,28 @@ const dragAndDrop = async (
  * });
  * ```
  */
-export const userEvent = {
+export const userEvent: {
+    click: typeof click;
+    dblClick: typeof dblClick;
+    tripleClick: typeof tripleClick;
+    tab: typeof tab;
+    type: typeof type;
+    clear: typeof clear;
+    selectOptions: typeof selectOptions;
+    deselectOptions: typeof deselectOptions;
+    hover: typeof hover;
+    unhover: typeof unhover;
+    keyboard: typeof keyboard;
+    pointer: typeof pointer;
+    rotate: typeof rotate;
+    zoom: typeof zoom;
+    swipe: typeof swipe;
+    longPress: typeof longPress;
+    drag: typeof drag;
+    drop: typeof drop;
+    dragAndDrop: typeof dragAndDrop;
+    setup: () => UserEventInstance;
+} = {
     /**
      * Activates a widget.
      *

@@ -221,7 +221,61 @@ const trampolineT = (argTypes: Type[], returnType: Type, options?: TrampolineOpt
  * );
  * ```
  */
-export const t = {
+/**
+ * Shape of the {@link t} namespace: the `fn` binding factory plus every
+ * FFI type-descriptor constant and factory used to build `Arg` and return
+ * descriptors for hand-written and generated bindings.
+ */
+type T = {
+    readonly fn: (
+        library: string,
+        symbol: string,
+        argTypes: ReadonlyArray<{ type: Type; optional?: boolean }>,
+        returnType: Type,
+    ) => (...values: unknown[]) => unknown;
+    readonly int8: Type;
+    readonly uint8: Type;
+    readonly int16: Type;
+    readonly uint16: Type;
+    readonly int32: Type;
+    readonly uint32: Type;
+    readonly int64: Type;
+    readonly uint64: Type;
+    readonly bigint64: Type;
+    readonly biguint64: Type;
+    readonly float32: Type;
+    readonly float64: Type;
+    readonly boolean: Type;
+    readonly void: Type;
+    readonly unichar: Type;
+    readonly blob: Type;
+    readonly string: (ownership?: Ownership, length?: number) => Type;
+    readonly object: (ownership?: Ownership) => Type;
+    readonly boxed: (
+        innerType: string,
+        ownership?: Ownership,
+        library?: string,
+        getTypeFn?: string,
+        freeFn?: string,
+    ) => Type;
+    readonly struct: (ownership?: Ownership, size?: number) => Type;
+    readonly fundamental: (library: string, refFn: string, unrefFn: string, options?: FundamentalOptions) => Type;
+    readonly ref: (innerType: Type) => Type;
+    readonly hashTable: (keyType: Type, valueType: Type, ownership?: Ownership) => Type;
+    readonly enum: (library: string, getTypeFn: string, signed: boolean) => Type;
+    readonly flags: (library: string, getTypeFn: string, signed: boolean) => Type;
+    readonly array: (itemType: Type, kind?: ArrayKind, ownership?: Ownership, options?: ArrayOptions) => Type;
+    readonly list: (itemType: Type, ownership?: Ownership) => Type;
+    readonly slist: (itemType: Type, ownership?: Ownership) => Type;
+    readonly ptrArray: (itemType: Type, ownership?: Ownership) => Type;
+    readonly garray: (itemType: Type, ownership?: Ownership, elementSize?: number) => Type;
+    readonly byteArray: (ownership?: Ownership) => Type;
+    readonly sizedArray: (itemType: Type, sizeParamIndex: number, ownership?: Ownership, elementSize?: number) => Type;
+    readonly fixedArray: (itemType: Type, fixedSize: number, ownership?: Ownership, elementSize?: number) => Type;
+    readonly trampoline: (argTypes: Type[], returnType: Type, options?: TrampolineOptions) => TrampolineType;
+};
+
+export const t: T = {
     fn,
     int8,
     uint8,

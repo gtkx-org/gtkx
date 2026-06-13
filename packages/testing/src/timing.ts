@@ -86,7 +86,7 @@ const withGlobalActEnvironment =
  * });
  * ```
  */
-export const act = withGlobalActEnvironment(reactAct as ActImplementation);
+export const act: ActImplementation = withGlobalActEnvironment(reactAct as ActImplementation);
 
 const hasActQueue = (value: unknown): value is { actQueue: unknown } =>
     typeof value === "object" && value !== null && "actQueue" in value;

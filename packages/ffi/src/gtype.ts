@@ -10,6 +10,7 @@
  * runtime self-contained.
  */
 
+import type { Type } from "@gtkx/native";
 import { t } from "./helpers.js";
 
 /**
@@ -35,7 +36,7 @@ export const GVALUE_SIZE = 24;
  * `g_value_*` and `g_object_*_property` call passes for a `GValue *` whose
  * ownership stays with the caller.
  */
-export const GVALUE_BORROWED = t.boxed("GValue", "borrowed", LIBGOBJECT, "g_value_get_type");
+export const GVALUE_BORROWED: Type = t.boxed("GValue", "borrowed", LIBGOBJECT, "g_value_get_type");
 
 /**
  * The invalid GType sentinel (`G_TYPE_INVALID`), the numeric `0` the GObject

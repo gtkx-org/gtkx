@@ -2,6 +2,7 @@
     "extends": "./tsconfig.base.json",
     "compilerOptions": {
         "customConditions": ["source"],
+        "isolatedDeclarations": true,
         "rootDir": "${configDir}/src",
         "outDir": "${configDir}/dist"
     },
