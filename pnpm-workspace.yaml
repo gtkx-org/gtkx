@@ -11,12 +11,6 @@ allowBuilds:
   '@swc/core': true
   esbuild: true
 
-onlyBuiltDependencies:
-  - "@swc/core"
-  - core-js
-  - core-js-pure
-  - esbuild
-
 patchedDependencies:
   typescript@6.0.3: patches/typescript@6.0.3.patch
 
