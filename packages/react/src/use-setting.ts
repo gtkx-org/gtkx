@@ -36,6 +36,7 @@ export interface SchemaRef<K extends object = Record<string, unknown>> {
     /** Per-key dispatch tags: a GVariant type string, `"enum"`, or `"flags"`. */
     readonly keys: { readonly [P in keyof K]: string };
     /** Phantom member carrying the key-to-value-type mapping; never set at runtime. */
+    // biome-ignore lint/style/useNamingConvention: GObject phantom-type key
     readonly __keys__?: K;
 }
 
@@ -59,6 +60,7 @@ export interface RelocatableSchemaRef<K extends object = Record<string, unknown>
     /** Per-key dispatch tags: a GVariant type string, `"enum"`, or `"flags"`. */
     readonly keys: { readonly [P in keyof K]: string };
     /** Phantom member carrying the key-to-value-type mapping; never set at runtime. */
+    // biome-ignore lint/style/useNamingConvention: GObject phantom-type key
     readonly __keys__?: K;
     /**
      * Binds the relocatable schema to a concrete instance path.

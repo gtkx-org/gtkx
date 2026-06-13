@@ -7,6 +7,99 @@ import sourceCode from "./constraints-interactive.tsx?raw";
 
 const A = Gtk.ConstraintAttribute;
 
+const renderDividerConstraints = (dividerOffset: number | null) => (
+    <>
+        <GtkConstraintLayout.Guide id="divider" />
+        <GtkConstraintLayout.Constraint
+            target="divider"
+            targetAttribute={A.WIDTH}
+            sourceAttribute={A.NONE}
+            constant={0}
+        />
+        {dividerOffset === null ? null : (
+            <GtkConstraintLayout.Constraint
+                target="divider"
+                targetAttribute={A.LEFT}
+                sourceAttribute={A.LEFT}
+                constant={dividerOffset}
+            />
+        )}
+    </>
+);
+
+const renderHorizontalConstraints = () => (
+    <>
+        <GtkConstraintLayout.Constraint
+            target="button1"
+            targetAttribute={A.START}
+            sourceAttribute={A.START}
+            constant={8}
+        />
+        <GtkConstraintLayout.Constraint
+            target="button1"
+            targetAttribute={A.END}
+            source="divider"
+            sourceAttribute={A.START}
+        />
+        <GtkConstraintLayout.Constraint
+            target="button2"
+            targetAttribute={A.START}
+            source="divider"
+            sourceAttribute={A.END}
+        />
+        <GtkConstraintLayout.Constraint
+            target="button2"
+            targetAttribute={A.END}
+            sourceAttribute={A.END}
+            constant={-8}
+        />
+        <GtkConstraintLayout.Constraint
+            target="button3"
+            targetAttribute={A.START}
+            sourceAttribute={A.START}
+            constant={8}
+        />
+        <GtkConstraintLayout.Constraint
+            target="button3"
+            targetAttribute={A.END}
+            source="divider"
+            sourceAttribute={A.START}
+        />
+    </>
+);
+
+const renderVerticalConstraints = () => (
+    <>
+        <GtkConstraintLayout.Constraint target="button1" targetAttribute={A.TOP} sourceAttribute={A.TOP} constant={8} />
+        <GtkConstraintLayout.Constraint
+            target="button2"
+            targetAttribute={A.TOP}
+            source="button1"
+            sourceAttribute={A.BOTTOM}
+        />
+        <GtkConstraintLayout.Constraint
+            target="button3"
+            targetAttribute={A.TOP}
+            source="button2"
+            sourceAttribute={A.BOTTOM}
+        />
+        <GtkConstraintLayout.Constraint
+            target="button3"
+            targetAttribute={A.BOTTOM}
+            sourceAttribute={A.BOTTOM}
+            constant={-8}
+        />
+    </>
+);
+
+const renderLayout = (dividerOffset: number | null) => (
+    <GtkConstraintLayout>
+        {renderDividerConstraints(dividerOffset)}
+        {renderHorizontalConstraints()}
+        {renderVerticalConstraints()}
+    </GtkConstraintLayout>
+);
+
 const ConstraintsInteractive = () => {
     const [dividerOffset, setDividerOffset] = useState<number | null>(null);
 
@@ -15,85 +108,7 @@ const ConstraintsInteractive = () => {
             name="container"
             hexpand
             vexpand
-            layoutManager={
-                <GtkConstraintLayout>
-                    <GtkConstraintLayout.Guide id="divider" />
-                    <GtkConstraintLayout.Constraint
-                        target="divider"
-                        targetAttribute={A.WIDTH}
-                        sourceAttribute={A.NONE}
-                        constant={0}
-                    />
-                    {dividerOffset === null ? null : (
-                        <GtkConstraintLayout.Constraint
-                            target="divider"
-                            targetAttribute={A.LEFT}
-                            sourceAttribute={A.LEFT}
-                            constant={dividerOffset}
-                        />
-                    )}
-                    <GtkConstraintLayout.Constraint
-                        target="button1"
-                        targetAttribute={A.START}
-                        sourceAttribute={A.START}
-                        constant={8}
-                    />
-                    <GtkConstraintLayout.Constraint
-                        target="button1"
-                        targetAttribute={A.END}
-                        source="divider"
-                        sourceAttribute={A.START}
-                    />
-                    <GtkConstraintLayout.Constraint
-                        target="button2"
-                        targetAttribute={A.START}
-                        source="divider"
-                        sourceAttribute={A.END}
-                    />
-                    <GtkConstraintLayout.Constraint
-                        target="button2"
-                        targetAttribute={A.END}
-                        sourceAttribute={A.END}
-                        constant={-8}
-                    />
-                    <GtkConstraintLayout.Constraint
-                        target="button3"
-                        targetAttribute={A.START}
-                        sourceAttribute={A.START}
-                        constant={8}
-                    />
-                    <GtkConstraintLayout.Constraint
-                        target="button3"
-                        targetAttribute={A.END}
-                        source="divider"
-                        sourceAttribute={A.START}
-                    />
-                    <GtkConstraintLayout.Constraint
-                        target="button1"
-                        targetAttribute={A.TOP}
-                        sourceAttribute={A.TOP}
-                        constant={8}
-                    />
-                    <GtkConstraintLayout.Constraint
-                        target="button2"
-                        targetAttribute={A.TOP}
-                        source="button1"
-                        sourceAttribute={A.BOTTOM}
-                    />
-                    <GtkConstraintLayout.Constraint
-                        target="button3"
-                        targetAttribute={A.TOP}
-                        source="button2"
-                        sourceAttribute={A.BOTTOM}
-                    />
-                    <GtkConstraintLayout.Constraint
-                        target="button3"
-                        targetAttribute={A.BOTTOM}
-                        sourceAttribute={A.BOTTOM}
-                        constant={-8}
-                    />
-                </GtkConstraintLayout>
-            }
+            layoutManager={renderLayout(dividerOffset)}
             addController={
                 <GtkGestureDrag
                     onDragUpdate={(offsetX, _offsetY, self) => {

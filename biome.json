@@ -23,7 +23,9 @@
                 "useExportType": "error",
                 "useConsistentArrayType": {
                     "level": "error",
-                    "options": { "syntax": "shorthand" }
+                    "options": {
+                        "syntax": "shorthand"
+                    }
                 },
                 "useFilenamingConvention": {
                     "level": "error",
@@ -38,20 +40,34 @@
                         "strictCase": false,
                         "requireAscii": true,
                         "conventions": [
-                            { "selector": { "kind": "typeParameter" }, "match": "T?[A-Z][a-zA-Z0-9]*" },
-                            { "selector": { "kind": "enumMember" }, "formats": ["CONSTANT_CASE", "PascalCase"] },
                             {
-                                "selector": { "kind": "objectLiteralProperty" },
-                                "match": "\\$?\\$?_?_?[a-zA-Z][a-zA-Z0-9_]*_?_?\\$?\\$?",
+                                "selector": {
+                                    "kind": "typeParameter"
+                                },
+                                "match": "T?[A-Z][a-zA-Z0-9]*"
+                            },
+                            {
+                                "selector": {
+                                    "kind": "enumMember"
+                                },
+                                "formats": ["CONSTANT_CASE", "PascalCase"]
+                            },
+                            {
+                                "selector": {
+                                    "kind": "objectLiteralProperty"
+                                },
                                 "formats": ["camelCase", "PascalCase", "CONSTANT_CASE"]
                             },
                             {
-                                "selector": { "kind": "typeProperty" },
-                                "match": "\\$?\\$?_?_?[a-zA-Z][a-zA-Z0-9_]*_?_?\\$?\\$?",
+                                "selector": {
+                                    "kind": "typeProperty"
+                                },
                                 "formats": ["camelCase", "PascalCase", "CONSTANT_CASE"]
                             },
                             {
-                                "selector": { "kind": "typeAlias" },
+                                "selector": {
+                                    "kind": "typeAlias"
+                                },
                                 "formats": ["PascalCase"]
                             }
                         ]
@@ -77,21 +93,6 @@
             }
         },
         {
-            "includes": ["examples/gtk-demo/**"],
-            "linter": {
-                "rules": {
-                    "complexity": {
-                        "noExcessiveCognitiveComplexity": "off",
-                        "noExcessiveLinesPerFunction": "off",
-                        "useMaxParams": "off"
-                    },
-                    "style": {
-                        "useNamingConvention": "off"
-                    }
-                }
-            }
-        },
-        {
             "includes": ["packages/gl/src/generated/**"],
             "linter": {
                 "rules": {
@@ -112,8 +113,7 @@
                 "packages/ffi/src/listeners.ts",
                 "packages/ffi/src/value-marshal.ts",
                 "packages/ffi/src/signals.ts",
-                "packages/ffi/src/gobject/**",
-                "packages/react/src/element-props.ts"
+                "packages/ffi/src/gobject/**"
             ],
             "linter": {
                 "rules": {
@@ -130,7 +130,7 @@
             }
         },
         {
-            "includes": ["packages/*/tests/**", "website/screenshots/**"],
+            "includes": ["**/tests/**", "website/screenshots/**"],
             "linter": {
                 "rules": {
                     "complexity": {

@@ -6,6 +6,7 @@ import type { AnyClass } from "@gtkx/utils";
 import { collectTypeNameChain } from "./gtype.js";
 
 /** The minimal shape every GObject instance carries: its resolved GLib type. */
+// biome-ignore lint/style/useNamingConvention: GObject phantom-type key
 export type GTyped = { readonly __gtype__: GType };
 
 /**

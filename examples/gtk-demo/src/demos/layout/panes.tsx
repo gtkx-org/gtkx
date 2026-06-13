@@ -7,6 +7,20 @@ import sourceCode from "./panes.tsx?raw";
  * Paned Widgets demo matching the official GTK gtk-demo.
  * Shows nested horizontal and vertical panes with simple labels.
  */
+const renderLabel = (label: string) => (
+    <GtkLabel label={label} marginStart={4} marginEnd={4} marginTop={4} marginBottom={4} hexpand vexpand />
+);
+
+const renderInnerPaned = () => (
+    <GtkPaned
+        name="panes-inner"
+        shrinkStartChild={false}
+        shrinkEndChild={false}
+        startChild={renderLabel("Hi there")}
+        endChild={renderLabel("Hello")}
+    />
+);
+
 const PanesDemo = () => (
     <GtkBox
         name="panes-root"
@@ -23,46 +37,8 @@ const PanesDemo = () => (
                 orientation={Gtk.Orientation.VERTICAL}
                 shrinkStartChild={false}
                 shrinkEndChild={false}
-                startChild={
-                    <GtkPaned
-                        name="panes-inner"
-                        shrinkStartChild={false}
-                        shrinkEndChild={false}
-                        startChild={
-                            <GtkLabel
-                                label="Hi there"
-                                marginStart={4}
-                                marginEnd={4}
-                                marginTop={4}
-                                marginBottom={4}
-                                hexpand
-                                vexpand
-                            />
-                        }
-                        endChild={
-                            <GtkLabel
-                                label="Hello"
-                                marginStart={4}
-                                marginEnd={4}
-                                marginTop={4}
-                                marginBottom={4}
-                                hexpand
-                                vexpand
-                            />
-                        }
-                    />
-                }
-                endChild={
-                    <GtkLabel
-                        label="Goodbye"
-                        marginStart={4}
-                        marginEnd={4}
-                        marginTop={4}
-                        marginBottom={4}
-                        hexpand
-                        vexpand
-                    />
-                }
+                startChild={renderInnerPaned()}
+                endChild={renderLabel("Goodbye")}
             />
         </GtkFrame>
     </GtkBox>

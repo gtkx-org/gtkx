@@ -729,8 +729,10 @@ export type WrapperNodeElementProps = {
 
 declare global {
     namespace React {
+        // biome-ignore lint/style/useNamingConvention: JSX global augmentation, name fixed by React
         namespace JSX {
             interface IntrinsicElements {
+                // biome-ignore lint/style/useNamingConvention: internal sentinel intrinsic element
                 __GTKX_WRAPPER_NODE__: WrapperNodeElementProps;
             }
         }

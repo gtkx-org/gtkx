@@ -256,6 +256,7 @@ const emitBuildBundle = (
 const refreshDevRegistration = async (server: ViteDevServer, state: PluginState): Promise<void> => {
     ensureDevBundle(state);
     try {
+        // biome-ignore lint/style/useNamingConvention: Fast Refresh module hook injected by the React plugin
         const mod = (await server.ssrLoadModule(VIRTUAL_INIT)) as { __refresh?: () => void };
         mod.__refresh?.();
     } catch (error) {

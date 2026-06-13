@@ -40,12 +40,14 @@ describe("isReactRefreshBoundary", () => {
     });
 
     it("returns false when only __esModule is present", () => {
+        // biome-ignore lint/style/useNamingConvention: module-shape marker exercised by the test
         expect(isReactRefreshBoundary({ __esModule: true })).toBe(false);
     });
 
     it("returns true when all named exports are PascalCase functions", () => {
         const ComponentA = () => null;
         const ComponentB = () => null;
+        // biome-ignore lint/style/useNamingConvention: module-shape marker exercised by the test
         expect(isReactRefreshBoundary({ __esModule: true, ComponentA, ComponentB })).toBe(true);
     });
 
@@ -55,12 +57,14 @@ describe("isReactRefreshBoundary", () => {
     });
 
     it("recognizes React.memo-wrapped components", () => {
+        // biome-ignore lint/style/useNamingConvention: React element brand exercised by the test
         const memoized = (() => null) as { (): null; $$typeof?: symbol };
         memoized.$$typeof = Symbol.for("react.memo");
         expect(isReactRefreshBoundary({ wrapped: memoized })).toBe(true);
     });
 
     it("recognizes React.forwardRef-wrapped components", () => {
+        // biome-ignore lint/style/useNamingConvention: React element brand exercised by the test
         const forwarded = (() => null) as { (): null; $$typeof?: symbol };
         forwarded.$$typeof = Symbol.for("react.forward_ref");
         expect(isReactRefreshBoundary({ wrapped: forwarded })).toBe(true);

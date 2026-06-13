@@ -146,14 +146,83 @@ const findSuggestions = (words: string[], text: string): string[] => {
     return words.filter((word) => word.toLowerCase().includes(lower)).slice(0, 10);
 };
 
-const SuggestionEntry = ({ words, placeholder, name }: { words: string[]; placeholder: string; name?: string }) => {
-    const entryRef = useRef<Gtk.Entry | null>(null);
-    const popoverRef = useRef<Gtk.Popover | null>(null);
-    const listBoxRef = useRef<Gtk.ListBox | null>(null);
-    const [query, setQuery] = useState("");
-    const [selected, setSelected] = useState(-1);
-    const [open, setOpen] = useState(false);
-    const matches = findSuggestions(words, query);
+interface SuggestionEntryViewProps {
+    name?: string;
+    placeholder: string;
+    query: string;
+    matches: string[];
+    entryRef: React.RefObject<Gtk.Entry | null>;
+    popoverRef: React.RefObject<Gtk.Popover | null>;
+    listBoxRef: React.RefObject<Gtk.ListBox | null>;
+    onChanged: (entry: Gtk.Entry) => void;
+    onKeyPressed: (keyval: number) => boolean;
+    onClosed: () => void;
+    onRowActivated: (index: number) => boolean;
+}
+
+const renderSuggestionEntry = ({
+    name,
+    placeholder,
+    query,
+    matches,
+    entryRef,
+    popoverRef,
+    listBoxRef,
+    onChanged,
+    onKeyPressed,
+    onClosed,
+    onRowActivated,
+}: SuggestionEntryViewProps) => (
+    <GtkEntry
+        ref={entryRef}
+        name={name}
+        hexpand
+        placeholderText={placeholder}
+        onChanged={onChanged}
+        addController={<GtkEventControllerKey onKeyPressed={onKeyPressed} />}
+    >
+        <GtkPopover
+            ref={popoverRef}
+            hasArrow={false}
+            position={Gtk.PositionType.BOTTOM}
+            autohide={false}
+            onClosed={onClosed}
+        >
+            <GtkScrolledWindow maxContentHeight={400} propagateNaturalHeight hscrollbarPolicy={Gtk.PolicyType.NEVER}>
+                <GtkListBox
+                    ref={listBoxRef}
+                    selectionMode={Gtk.SelectionMode.BROWSE}
+                    onRowActivated={(row) => onRowActivated(row.getIndex())}
+                >
+                    {matches.map((word) => (
+                        <GtkListBoxRow key={`${query}:${word}`}>
+                            <GtkLabel label={highlightMatch(word, query)} useMarkup xalign={0} hexpand />
+                        </GtkListBoxRow>
+                    ))}
+                </GtkListBox>
+            </GtkScrolledWindow>
+        </GtkPopover>
+    </GtkEntry>
+);
+
+interface SuggestionHandlerDeps {
+    words: string[];
+    matches: string[];
+    selected: number;
+    entryRef: React.RefObject<Gtk.Entry | null>;
+    setQuery: (value: string) => void;
+    setSelected: (updater: (current: number) => number) => void;
+    setOpen: (value: boolean) => void;
+}
+
+interface SuggestionHandlers {
+    accept: (index: number) => boolean;
+    handleChanged: (entry: Gtk.Entry) => void;
+    handleKeyPressed: (keyval: number) => boolean;
+}
+
+const createSuggestionHandlers = (deps: SuggestionHandlerDeps): SuggestionHandlers => {
+    const { words, matches, selected, entryRef, setQuery, setSelected, setOpen } = deps;
 
     const accept = (index: number): boolean => {
         const entry = entryRef.current;
@@ -173,7 +242,7 @@ const SuggestionEntry = ({ words, placeholder, name }: { words: string[]; placeh
     const handleChanged = (entry: Gtk.Entry): void => {
         const text = entry.getText();
         setQuery(text);
-        setSelected(-1);
+        setSelected(() => -1);
         setOpen(findSuggestions(words, text).length > 0);
     };
 
@@ -195,6 +264,27 @@ const SuggestionEntry = ({ words, placeholder, name }: { words: string[]; placeh
         return false;
     };
 
+    return { accept, handleChanged, handleKeyPressed };
+};
+
+const SuggestionEntry = ({ words, placeholder, name }: { words: string[]; placeholder: string; name?: string }) => {
+    const entryRef = useRef<Gtk.Entry | null>(null);
+    const popoverRef = useRef<Gtk.Popover | null>(null);
+    const listBoxRef = useRef<Gtk.ListBox | null>(null);
+    const [query, setQuery] = useState("");
+    const [selected, setSelected] = useState(-1);
+    const [open, setOpen] = useState(false);
+    const matches = findSuggestions(words, query);
+    const { accept, handleChanged, handleKeyPressed } = createSuggestionHandlers({
+        words,
+        matches,
+        selected,
+        entryRef,
+        setQuery,
+        setSelected,
+        setOpen,
+    });
+
     useEffect(() => {
         const popover = popoverRef.current;
         if (!popover) return;
@@ -209,42 +299,19 @@ const SuggestionEntry = ({ words, placeholder, name }: { words: string[]; placeh
         if (row) listBox.selectRow(row);
     }, [selected]);
 
-    return (
-        <GtkEntry
-            ref={entryRef}
-            name={name}
-            hexpand
-            placeholderText={placeholder}
-            onChanged={handleChanged}
-            addController={<GtkEventControllerKey onKeyPressed={handleKeyPressed} />}
-        >
-            <GtkPopover
-                ref={popoverRef}
-                hasArrow={false}
-                position={Gtk.PositionType.BOTTOM}
-                autohide={false}
-                onClosed={() => setOpen(false)}
-            >
-                <GtkScrolledWindow
-                    maxContentHeight={400}
-                    propagateNaturalHeight
-                    hscrollbarPolicy={Gtk.PolicyType.NEVER}
-                >
-                    <GtkListBox
-                        ref={listBoxRef}
-                        selectionMode={Gtk.SelectionMode.BROWSE}
-                        onRowActivated={(row) => accept(row.getIndex())}
-                    >
-                        {matches.map((word) => (
-                            <GtkListBoxRow key={`${query}:${word}`}>
-                                <GtkLabel label={highlightMatch(word, query)} useMarkup xalign={0} hexpand />
-                            </GtkListBoxRow>
-                        ))}
-                    </GtkListBox>
-                </GtkScrolledWindow>
-            </GtkPopover>
-        </GtkEntry>
-    );
+    return renderSuggestionEntry({
+        name,
+        placeholder,
+        query,
+        matches,
+        entryRef,
+        popoverRef,
+        listBoxRef,
+        onChanged: handleChanged,
+        onKeyPressed: handleKeyPressed,
+        onClosed: () => setOpen(false),
+        onRowActivated: accept,
+    });
 };
 
 const renderSelectableTimeItem = (label: string, selectedId: string) => (

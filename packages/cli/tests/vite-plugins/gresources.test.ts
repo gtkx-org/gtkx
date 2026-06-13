@@ -278,6 +278,7 @@ type FakeServer = {
 
 const createFakeServer = (refresh: ReturnType<typeof vi.fn>): FakeServer => ({
     watcher: new EventEmitter(),
+    // biome-ignore lint/style/useNamingConvention: Fast Refresh module hook exercised by the test
     ssrLoadModule: vi.fn(async () => ({ __refresh: refresh })),
 });
 

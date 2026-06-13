@@ -423,13 +423,15 @@ function useColorsInitialFill(
     }
 }
 
-function useColorsRefill(
-    models: ColorsModels,
-    gridView: Gtk.GridView | null,
-    colorLimit: ColorLimit,
-    sortModeRef: React.RefObject<SortMode>,
-    refillToken: number,
-): void {
+interface ColorsRefillOptions {
+    models: ColorsModels;
+    gridView: Gtk.GridView | null;
+    colorLimit: ColorLimit;
+    sortModeRef: React.RefObject<SortMode>;
+    refillToken: number;
+}
+
+function useColorsRefill({ models, gridView, colorLimit, sortModeRef, refillToken }: ColorsRefillOptions): void {
     useEffect(() => {
         if (!gridView || refillToken === 0) return;
         models.baseStore.removeAll();
@@ -682,7 +684,7 @@ const ColorsGridOverlay = () => {
     const sortModeRef = useLatest(state.sortMode);
     useColorsInitialFill(models, state.colorLimit, sortModeRef);
     useColorsLimitFill(models, state.colorLimit, sortModeRef);
-    useColorsRefill(models, gridView, state.colorLimit, sortModeRef, state.refillToken);
+    useColorsRefill({ models, gridView, colorLimit: state.colorLimit, sortModeRef, refillToken: state.refillToken });
     useStoreProgressBar(models.baseStore, state.colorLimit, progressBarRef);
 
     return (

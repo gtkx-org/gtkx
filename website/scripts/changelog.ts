@@ -6,9 +6,12 @@ const changelogPath = resolve(website, "docs/changelog.md");
 
 interface Release {
     name: string | null;
+    // biome-ignore lint/style/useNamingConvention: GitHub API response field
     tag_name: string;
+    // biome-ignore lint/style/useNamingConvention: GitHub API response field
     published_at: string | null;
     body: string | null;
+    // biome-ignore lint/style/useNamingConvention: GitHub API response field
     html_url: string;
     draft: boolean;
     prerelease: boolean;

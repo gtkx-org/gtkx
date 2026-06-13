@@ -12,6 +12,7 @@ export type { NativeHandle } from "@gtkx/native";
  */
 export interface GTyped {
     /** Runtime GType of the underlying GObject or boxed instance. */
+    // biome-ignore lint/style/useNamingConvention: GObject phantom-type key read off instances
     __gtype__: GType;
 }
 

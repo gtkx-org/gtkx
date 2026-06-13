@@ -329,6 +329,34 @@ const MainWindowBody = ({
     </GtkBox>
 );
 
+interface MainWindowTitlebarProps {
+    hasDemo: boolean;
+    searchMode: boolean;
+    onRun: () => void;
+    onSearchToggle: (value: boolean) => void;
+}
+
+const renderMainWindowTitlebar = ({ hasDemo, searchMode, onRun, onSearchToggle }: MainWindowTitlebarProps) => (
+    <AppHeaderBar hasDemo={hasDemo} searchMode={searchMode} onRun={onRun} onSearchToggle={onSearchToggle} />
+);
+
+interface MainWindowActionsProps {
+    onKeyboardShortcuts: () => void;
+    onShowAbout: () => void;
+}
+
+const renderMainWindowActions = ({ onKeyboardShortcuts, onShowAbout }: MainWindowActionsProps) => (
+    <>
+        <GSimpleAction
+            name="inspector"
+            onActivate={() => Gtk.Window.setInteractiveDebugging(true)}
+            accels="<Control><Shift>i"
+        />
+        <GSimpleAction name="shortcuts" onActivate={onKeyboardShortcuts} accels="<Control>question" />
+        <GSimpleAction name="about" onActivate={onShowAbout} />
+    </>
+);
+
 const MainWindow = () => {
     const { currentDemo, setSearchQuery } = useDemo();
     const [searchMode, setSearchMode] = useState(false);
@@ -350,36 +378,25 @@ const MainWindow = () => {
         showShortcutsDialog(activeWindow);
     };
 
-    const titlebar = (
-        <AppHeaderBar
-            hasDemo={!!currentDemo?.component}
-            searchMode={searchMode}
-            onRun={handleRun}
-            onSearchToggle={setSearchMode}
-        />
-    );
-
     return (
         <GtkApplicationWindow
             title={windowTitle}
             defaultWidth={800}
             defaultHeight={600}
-            titlebar={titlebar}
+            titlebar={renderMainWindowTitlebar({
+                hasDemo: !!currentDemo?.component,
+                searchMode,
+                onRun: handleRun,
+                onSearchToggle: setSearchMode,
+            })}
             onCloseRequest={() => {
                 quit();
                 return true;
             }}
-            addAction={
-                <>
-                    <GSimpleAction
-                        name="inspector"
-                        onActivate={() => Gtk.Window.setInteractiveDebugging(true)}
-                        accels="<Control><Shift>i"
-                    />
-                    <GSimpleAction name="shortcuts" onActivate={handleKeyboardShortcuts} accels="<Control>question" />
-                    <GSimpleAction name="about" onActivate={() => setShowAbout(true)} />
-                </>
-            }
+            addAction={renderMainWindowActions({
+                onKeyboardShortcuts: handleKeyboardShortcuts,
+                onShowAbout: () => setShowAbout(true),
+            })}
         >
             <MainWindowBody
                 searchMode={searchMode}

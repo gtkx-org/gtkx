@@ -17,13 +17,17 @@ globalThis.$RefreshSig$ = () => (type: unknown) => type;
  * @internal
  */
 export function createModuleRegistration(moduleId: string): {
+    // biome-ignore lint/style/useNamingConvention: React Fast Refresh runtime global, name fixed by the React refresh API
     $RefreshReg$: (type: ComponentType, id: string) => void;
+    // biome-ignore lint/style/useNamingConvention: React Fast Refresh runtime global, name fixed by the React refresh API
     $RefreshSig$: typeof RefreshRuntime.createSignatureFunctionForTransform;
 } {
     return {
+        // biome-ignore lint/style/useNamingConvention: React Fast Refresh runtime global, name fixed by the React refresh API
         $RefreshReg$: (type: ComponentType, id: string) => {
             RefreshRuntime.register(type, `${moduleId} ${id}`);
         },
+        // biome-ignore lint/style/useNamingConvention: React Fast Refresh runtime global, name fixed by the React refresh API
         $RefreshSig$: RefreshRuntime.createSignatureFunctionForTransform,
     };
 }
@@ -33,6 +37,7 @@ function isLikelyComponentType(value: unknown): boolean {
         return false;
     }
 
+    // biome-ignore lint/style/useNamingConvention: React element brand, name fixed by React
     const func = value as { $$typeof?: symbol };
 
     if (func.$$typeof === Symbol.for("react.memo") || func.$$typeof === Symbol.for("react.forward_ref")) {

@@ -175,6 +175,7 @@ const installedTeardown = (harness: Harness): OnTeardown => {
 
 const emitBoundaryChange = async (harness: Harness, file: string): Promise<void> => {
     harness.server.moduleGraph.getModuleById.mockReturnValueOnce({ importers: new Set<object>() });
+    // biome-ignore lint/style/useNamingConvention: React Refresh boundary marker exercised by the test
     harness.server.ssrLoadModule.mockResolvedValueOnce({ __isBoundary: true });
     await emitChangeAndFlush(harness, file, 2);
 };
@@ -338,6 +339,7 @@ describe("createDevRunner (file watcher dispatch)", () => {
         await startRunner(harness);
 
         harness.server.moduleGraph.getModuleById.mockReturnValueOnce(module);
+        // biome-ignore lint/style/useNamingConvention: React Refresh boundary marker exercised by the test
         harness.server.ssrLoadModule.mockResolvedValueOnce({ __isBoundary: true });
 
         await emitChangeAndFlush(harness, "/x/y.ts", 2);

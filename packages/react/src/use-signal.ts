@@ -13,6 +13,7 @@ type AnySignalHandlers = Record<string, AnySignalHandler>;
  * generated class. Falls back to an open map (any name, any handler) when the
  * type carries no association.
  */
+// biome-ignore lint/style/useNamingConvention: GObject phantom-type key
 export type SignalHandlersOf<T extends GObject.Object> = T extends { readonly __signals__?: infer H }
     ? unknown extends H
         ? AnySignalHandlers

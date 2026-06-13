@@ -204,6 +204,7 @@ async function createUserToken(): Promise<string> {
 function registryEnv(userConfig: string): NodeJS.ProcessEnv {
     const env: NodeJS.ProcessEnv = {
         ...process.env,
+        // biome-ignore lint/style/useNamingConvention: npm config environment variable name
         npm_config_registry: REGISTRY,
         NPM_CONFIG_USERCONFIG: userConfig,
     };

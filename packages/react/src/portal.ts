@@ -34,6 +34,7 @@ import type { BackingInstance } from "./types.js";
  * runtime portal structure with its public type.
  */
 type PortalElement = {
+    // biome-ignore lint/style/useNamingConvention: React element brand, name fixed by React
     $$typeof: symbol;
     key: string | null;
     children: ReactNode;
@@ -43,6 +44,7 @@ type PortalElement = {
 
 export const createPortal = (children: ReactNode, container: BackingInstance, key?: string | null): ReactPortal => {
     const portal: PortalElement = {
+        // biome-ignore lint/style/useNamingConvention: React element brand, name fixed by React
         $$typeof: Symbol.for("react.portal"),
         key: key ?? null,
         children,

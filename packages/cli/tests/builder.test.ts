@@ -143,6 +143,7 @@ describe("build (define and rolldown)", () => {
     it("merges user-supplied define entries while forcing NODE_ENV to production", async () => {
         await build({
             entry: "src/index.tsx",
+            // biome-ignore lint/style/useNamingConvention: Vite define global, name fixed by the build
             vite: { define: { __APP_VERSION__: JSON.stringify("1.2.3") } },
         });
 
