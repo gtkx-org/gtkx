@@ -4,15 +4,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const hoisted = vi.hoisted(() => ({
-    listToplevels: vi.fn(() => [] as unknown[]),
-    getDefault: vi.fn(() => null as unknown),
-}));
+const hoisted = vi.hoisted(() => {
+    class FakeApplication {}
+    return {
+        listToplevels: vi.fn(() => [] as unknown[]),
+        getDefault: vi.fn(() => null as unknown),
+        FakeApplication,
+    };
+});
 
 vi.mock("@gtkx/gi/gtk", () => ({
     AccessibleRole: {} as Record<string, number>,
     Window: { listToplevels: hoisted.listToplevels },
-    Application: class {},
+    Application: hoisted.FakeApplication,
 }));
 
 vi.mock("@gtkx/gi/gio", () => ({
@@ -165,6 +169,35 @@ describe("McpClient incoming requests", () => {
         warnSpy.mockRestore();
         client.disconnect();
     });
+
+    it("dispatches an inbound request and returns its result when the app is initialized", async () => {
+        hoisted.getDefault.mockReturnValue(new hoisted.FakeApplication());
+        const client = await connectAndRegister(ctx);
+
+        ctx.sockets[0]?.write(`${JSON.stringify({ id: "req-ok", method: "app.getWindows" })}\n`);
+
+        await waitFor(() => ctx.received[0]?.length === 2);
+        const [, responseLine] = parseLines(ctx.received[0] ?? []);
+        expect(responseLine?.id).toBe("req-ok");
+        expect((responseLine?.result as { windows: unknown[] }).windows).toEqual([]);
+
+        client.disconnect();
+    });
+
+    it("returns a structured error code when dispatch throws an McpError", async () => {
+        hoisted.getDefault.mockReturnValue(new hoisted.FakeApplication());
+        const client = await connectAndRegister(ctx);
+
+        ctx.sockets[0]?.write(`${JSON.stringify({ id: "req-bad", method: "does.not.exist" })}\n`);
+
+        await waitFor(() => ctx.received[0]?.length === 2);
+        const [, responseLine] = parseLines(ctx.received[0] ?? []);
+        expect(responseLine?.id).toBe("req-bad");
+        expect(typeof (responseLine?.error as { code: number }).code).toBe("number");
+        expect((responseLine?.error as { message: string }).message).toMatch(/does\.not\.exist/);
+
+        client.disconnect();
+    });
 });
 
 describe("McpClient.disconnect", () => {
@@ -185,5 +218,39 @@ describe("McpClient.disconnect", () => {
         client.disconnect();
 
         await expect(connectPromise).rejects.toThrow(/disconnected before connection registered/);
+    });
+});
+
+describe("McpClient connection failures", () => {
+    it("rejects connect() and cancels the reconnect timer when the socket is unavailable", async () => {
+        const client = new McpClient({
+            socketPath: join(tmpdir(), "mcp-client-missing", "sock"),
+            applicationId: "com.test.app",
+        });
+
+        await expect(client.connect()).rejects.toThrow();
+
+        client.disconnect();
+    });
+
+    it("rejects connect() when the server refuses registration", async () => {
+        const { client, connectPromise, registerLine } = await beginRegistration(ctx);
+
+        ctx.sockets[0]?.write(`${JSON.stringify({ id: registerLine?.id, error: { code: -1, message: "refused" } })}\n`);
+
+        await expect(connectPromise).rejects.toThrow();
+
+        client.disconnect();
+    });
+
+    it("schedules a reconnect when the server drops an established connection", async () => {
+        const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+        const client = await connectAndRegister(ctx);
+
+        ctx.sockets[0]?.destroy();
+        await waitFor(() => logSpy.mock.calls.some((call) => String(call[0]).includes("Disconnected")));
+
+        logSpy.mockRestore();
+        client.disconnect();
     });
 });
