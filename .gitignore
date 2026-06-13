@@ -1,19 +1,12 @@
-.gtkx
-.turbo
+.env
+.turbo/
 *.log
 *.tsbuildinfo
-coverage
-dist
-gschemas.compiled
-node_modules
-out-tsc
+/.gtkx
+/.pnpm-store/
+/CLAUDE.md
+coverage/
+dist/
+node_modules/
+out-tsc/
 packages/**/README.md
-.pnpm-store
-.claude/
-CLAUDE.md
-
-# Local secrets
-.env
-
-# Scratch / working notes
-.tmp/
