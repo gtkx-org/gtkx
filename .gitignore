@@ -7,6 +7,7 @@
 /CLAUDE.md
 coverage/
 dist/
+gschemas.compiled
 node_modules/
 out-tsc/
 packages/**/README.md
