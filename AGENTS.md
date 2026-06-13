@@ -110,7 +110,8 @@ Enforced by Biome:
 Project policy (not caught by Biome):
 
 - **Never use `as unknown as` casts**, for any reason. If one seems necessary, the type model is wrong — fix the types or the abstraction.
-- **No inline comments.** Clarify through naming and structure. JSDoc and module-level blocks are the exception; all public exports require full JSDoc (`@param`, `@returns`, `@example`).
+- **Comments explain *why*, never *what*.** Code that restates what the next line does is noise — delete it and clarify through naming and structure instead. A comment is justified only when intent is not evident from the code itself: a non-obvious constraint, a workaround, a deliberate trade-off, the reason a path exists. No inline comments otherwise. This applies equally to file and config headers: a block that describes what the file *is*, or what a tool or library it uses does (facts evident from the filename, the import, or the tool's own docs) earns nothing — drop it. Keep a header only for project-specific intent a reader could not infer from the file's own context.
+- **JSDoc is for the public API surface.** "Public" means reachable by framework users (exported from a package's published entry points), not merely `export`ed from some internal module. Those exports require full JSDoc (`@param`, `@returns`, `@example`); internal exports do not, and should follow the why-not-what rule above.
 - Documentation describes what the code does now — never its history, prior state, or what it replaced. That record lives in git.
 - **DRY:** after a change, detect duplication with the `jscpd` skill and resolve it with `dry-refactoring`.
 

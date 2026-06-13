@@ -1,31 +1,3 @@
-/**
- * dependency-cruiser configuration.
- *
- * Enforces architectural boundaries between workspace packages that cannot be
- * expressed through package.json dependencies alone.
- *
- * Rule summary:
- *   1. `@gtkx/native` is the low-level transport layer. `@gtkx/ffi` is its
- *      primary consumer; `@gtkx/react` may also import it to bracket reconciler
- *      commits with `freeze`/`unfreeze`. `@gtkx/codegen` may reference it only
- *      via `import type { ... }` so it can emit binding signatures without
- *      dragging the native module into its runtime graph; its override
- *      templates reach the transport layer through `@gtkx/ffi` helpers.
- *   2. `@gtkx/mcp` is near-leaf: it may only depend on `@gtkx/utils` (which
- *      is itself a true leaf — no `@gtkx/*` deps). Any other `@gtkx/*`
- *      import would couple the MCP server to GTK runtime concerns.
- *   3. `@gtkx/utils` is the runtime-utilities leaf: it must not depend on
- *      any other `@gtkx/*` workspace package so every other package can
- *      pull it in safely.
- *   4. `@gtkx/config` is the configuration leaf (`gtkx.config.ts` schema,
- *      validation, loader). It must not depend on any other `@gtkx/*`
- *      package: the cli depends on `@gtkx/vitest`, which loads the config,
- *      so a workspace dependency here would close a cycle.
- *
- * The configuration is consumed via `pnpm depcruise` (see root package.json)
- * and runs as part of `pnpm lint:all`.
- */
-
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
     forbidden: [
@@ -35,7 +7,7 @@ module.exports = {
             comment:
                 "Modules must not depend on each other directly or transitively. " +
                 "Circular dependencies cause unpredictable load order, break tree-shaking, " +
-                "and tend to point at a missing seam in the design.",
+                "and usually indicate a missing boundary in the design.",
             from: {},
             to: { circular: true },
         },
@@ -43,10 +15,11 @@ module.exports = {
             name: "native-only-from-ffi",
             severity: "error",
             comment:
-                "@gtkx/native is the low-level transport and GObject identity layer. " +
-                "Only @gtkx/ffi and @gtkx/react may import it — react brackets reconciler " +
-                "commits with native's freeze/unfreeze. @gtkx/codegen is permitted type-only " +
-                "imports (handled by the codegen-native-type-only rule).",
+                "@gtkx/native is the Rust napi-rs addon — the low-level FFI transport between " +
+                "JavaScript and GTK. Only @gtkx/ffi (which wraps it) and @gtkx/react (which " +
+                "calls its freeze()/unfreeze() to batch a reconciler commit before GTK repaints) " +
+                "may import it at runtime. @gtkx/codegen is allowed type-only imports — see the " +
+                "codegen-native-type-only rule.",
             from: { path: "^packages/(?!(ffi|codegen|native|react)/)" },
             to: { path: "^(packages/native/|@gtkx/native(/|$))" },
         },
@@ -54,9 +27,10 @@ module.exports = {
             name: "codegen-native-type-only",
             severity: "error",
             comment:
-                "@gtkx/codegen may reference @gtkx/native only with `import type`. A runtime " +
-                "import would couple the code generator to the native module; the override " +
-                "templates under src/templates reach the transport layer through @gtkx/ffi.",
+                "@gtkx/codegen may reference @gtkx/native only with `import type`. The generator " +
+                "emits binding signatures that name native's types, but a runtime import would " +
+                "pull the native addon into the generator process. At runtime the override " +
+                "templates under src/templates reach native through @gtkx/ffi instead.",
             from: { path: "^packages/codegen/" },
             to: {
                 path: "^(packages/native/|@gtkx/native(/|$))",
@@ -67,10 +41,10 @@ module.exports = {
             name: "codegen-no-react",
             severity: "error",
             comment:
-                "@gtkx/codegen owns the built-in reconciler tables and delivers them to " +
-                "@gtkx/react through the generated @gtkx/jsx/metadata module. Importing " +
-                "@gtkx/react from the generator would invert that flow and load the component " +
-                "runtime, which depends on virtual:gtkx-config.",
+                "@gtkx/codegen must not import @gtkx/react. Data flows one way: codegen produces " +
+                "the reconciler tables and ships them to react through the generated " +
+                "@gtkx/jsx/metadata module. Importing react here would reverse that flow and load " +
+                "the component runtime — which needs virtual:gtkx-config — inside the generator.",
             from: { path: "^packages/codegen/" },
             to: { path: "^packages/react/" },
         },
@@ -78,10 +52,10 @@ module.exports = {
             name: "react-no-jsx",
             severity: "error",
             comment:
-                "@gtkx/react is the namespace-agnostic runtime: the generated @gtkx/jsx " +
-                "modules depend on it, never the other way around — type-only imports " +
-                "included. Base prop shapes live in @gtkx/react and the generated Props " +
-                "interfaces extend them.",
+                "@gtkx/react must not import the generated @gtkx/jsx modules, type-only included. " +
+                "The dependency runs one way: react defines the base prop shapes and the generated " +
+                "@gtkx/jsx Props interfaces extend them. This keeps react independent of any " +
+                "specific GI namespace so it loads in any project.",
             from: { path: "^packages/react/" },
             to: { path: "(^|/)node_modules/\\.gtkx/jsx/" },
         },
@@ -89,10 +63,11 @@ module.exports = {
             name: "react-no-optional-gi",
             severity: "error",
             comment:
-                "@gtkx/react must stay loadable in a Gtk-only project: it may not import " +
-                "the optional namespaces (Adwaita, GtkSource, WebKit and its closure) even " +
-                "type-only. Optional-namespace richness lives in dedicated packages " +
-                "(@gtkx/animate) or in inert string-keyed table rows.",
+                "@gtkx/react must load in a project that has only GTK installed, so it may not " +
+                "import the optional namespaces (Adwaita, GtkSource, WebKit, JavaScriptCore, Soup), " +
+                "even type-only. Where it must handle their widgets it refers to them by GLib type " +
+                "name — a string resolved at runtime, see gtype-predicates.ts. Richer " +
+                "optional-namespace support lives in dedicated packages such as @gtkx/animate.",
             from: { path: "^packages/react/" },
             to: { path: "(^|/)node_modules/\\.gtkx/gi/(adw|gtksource|webkit|javascriptcore|soup)/" },
         },
@@ -100,8 +75,9 @@ module.exports = {
             name: "mcp-only-utils-workspace-deps",
             severity: "error",
             comment:
-                "@gtkx/mcp is near-leaf: it may import only @gtkx/utils. Any other " +
-                "@gtkx/* workspace dep would couple the MCP server to GTK runtime concerns.",
+                "@gtkx/mcp may import only one workspace package, @gtkx/utils. It is a standalone " +
+                "server that drives running GTKX apps over a socket; depending on any other " +
+                "@gtkx/* package would pull the GTK runtime into the server process.",
             from: { path: "^packages/mcp/" },
             to: { path: "^(packages/(?!(mcp|utils)/)|@gtkx/(?!(mcp|utils)(/|$)))" },
         },
@@ -109,8 +85,8 @@ module.exports = {
             name: "utils-no-workspace-deps",
             severity: "error",
             comment:
-                "@gtkx/utils is the runtime-utilities leaf. Any other @gtkx/* dependency " +
-                "would block other packages from pulling it in safely.",
+                "@gtkx/utils must not depend on any other @gtkx/* package. Nearly every package " +
+                "imports it, so a workspace dependency here would risk an import cycle.",
             from: { path: "^packages/utils/" },
             to: { path: "^(packages/(?!utils/)|@gtkx/(?!utils(/|$)))" },
         },
@@ -118,9 +94,9 @@ module.exports = {
             name: "config-no-workspace-deps",
             severity: "error",
             comment:
-                "@gtkx/config is the configuration leaf consumed by the cli and the test " +
-                "packages. Any other @gtkx/* dependency would close a cycle through the " +
-                "toolchain: the cli depends on @gtkx/vitest, which loads the config.",
+                "@gtkx/config must not depend on any other @gtkx/* package. The cli and the test " +
+                "packages load it, and the cli also depends on @gtkx/vitest — which loads config " +
+                "too — so a workspace dependency here would close a cycle through the toolchain.",
             from: { path: "^packages/config/" },
             to: { path: "^(packages/(?!config/)|@gtkx/(?!config(/|$)))" },
         },
@@ -134,8 +110,6 @@ module.exports = {
                 "packages/[^/]+/out-tsc/",
                 "packages/[^/]+/coverage/",
                 "packages/native/(target|npm)/",
-                "examples/",
-                "website/",
             ],
         },
         tsConfig: { fileName: "tsconfig.json" },
