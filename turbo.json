@@ -32,6 +32,19 @@
             "outputs": ["coverage/**"],
             "outputLogs": "new-only"
         },
+        "//#test:all": {
+            "dependsOn": ["@gtkx/cli#build", "@gtkx/vitest#build", "@gtkx/native#native-build"],
+            "inputs": [
+                "vitest.config.ts",
+                "packages/*/vitest.config.ts",
+                "packages/*/src/**/*.{ts,tsx}",
+                "packages/*/tests/**/*.{ts,tsx}",
+                "examples/gtk-demo/vitest.config.ts",
+                "examples/gtk-demo/src/**/*.{ts,tsx}",
+                "examples/gtk-demo/tests/**/*.{ts,tsx}"
+            ],
+            "outputLogs": "new-only"
+        },
         "@gtkx/native#lint": {
             "dependsOn": ["native-build"],
             "inputs": ["Cargo.toml", "Cargo.lock", "build.rs", "src/**/*.rs", "tests/**/*.rs"],
@@ -105,9 +118,9 @@
             "outputLogs": "new-only",
             "passThroughEnv": ["RUSTUP_TOOLCHAIN", "CARGO_INCREMENTAL", "CARGO_NET_RETRY"]
         },
-        "native-test": {
+        "@gtkx/native#test": {
             "dependsOn": ["native-build"],
-            "inputs": ["Cargo.toml", "src/**/*.rs"],
+            "inputs": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs"],
             "outputs": [],
             "outputLogs": "new-only",
             "passThroughEnv": ["RUSTUP_TOOLCHAIN"]
@@ -146,11 +159,6 @@
                 "tsconfig.test.json"
             ],
             "outputs": [],
-            "outputLogs": "new-only"
-        },
-        "test": {
-            "dependsOn": ["^build", "native-test", "@gtkx/cli#codegen"],
-            "inputs": ["vitest.config.ts", "src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],
             "outputLogs": "new-only"
         },
         "bench": {

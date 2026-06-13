@@ -10,7 +10,6 @@
         "typecheck": "gtkx codegen && tsc -b --emitDeclarationOnly",
         "dev": "gtkx dev",
         "start": "node dist/bundle.js",
-        "test": "vitest run",
         "coverage": "vitest run --coverage"
     },
     "dependencies": {

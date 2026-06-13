@@ -6,7 +6,6 @@
     "scripts": {
         "bench": "vitest bench --run --config vitest.bench.config.ts",
         "build": "tsc -b",
-        "test": "vitest run",
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "devDependencies": {

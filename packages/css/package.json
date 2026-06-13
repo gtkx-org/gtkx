@@ -41,7 +41,6 @@
     ],
     "scripts": {
         "build": "tsc -b",
-        "test": "vitest run",
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "dependencies": {

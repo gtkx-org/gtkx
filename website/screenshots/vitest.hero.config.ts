@@ -4,6 +4,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
     plugins: [gtkx()],
     test: {
+        bail: 1,
         include: ["**/hero-editor.stage.tsx"],
         testTimeout: 60_000,
     },
