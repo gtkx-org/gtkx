@@ -5,7 +5,7 @@
         "forceConsistentCasingInFileNames": true,
         "incremental": true,
         "jsx": "react-jsx",
-        "lib": ["ESNext"],
+        "lib": ["es2025"],
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
         "noUncheckedIndexedAccess": true,
@@ -16,7 +16,7 @@
         "skipLibCheck": true,
         "sourceMap": true,
         "strict": true,
-        "target": "ESNext",
+        "target": "es2025",
         "types": ["node"],
         "verbatimModuleSyntax": true
     }
