@@ -3,19 +3,31 @@
     "include": [],
     "references": [
         {
-            "path": "packages/css/tsconfig.json"
+            "path": "packages/animate/tsconfig.json"
         },
         {
-            "path": "packages/ffi/tsconfig.json"
+            "path": "packages/cli/tsconfig.json"
         },
         {
             "path": "packages/codegen/tsconfig.json"
         },
         {
-            "path": "packages/mcp/tsconfig.json"
+            "path": "packages/config/tsconfig.json"
         },
         {
-            "path": "packages/utils/tsconfig.json"
+            "path": "packages/css/tsconfig.json"
+        },
+        {
+            "path": "packages/e2e/tsconfig.json"
+        },
+        {
+            "path": "packages/ffi/tsconfig.json"
+        },
+        {
+            "path": "packages/gl/tsconfig.json"
+        },
+        {
+            "path": "packages/mcp/tsconfig.json"
         },
         {
             "path": "packages/native/tsconfig.json"
@@ -27,10 +39,7 @@
             "path": "packages/testing/tsconfig.json"
         },
         {
-            "path": "packages/cli/tsconfig.json"
-        },
-        {
-            "path": "packages/e2e/tsconfig.json"
+            "path": "packages/utils/tsconfig.json"
         },
         {
             "path": "packages/vitest/tsconfig.json"
