@@ -23,6 +23,18 @@ const cairo_image_surface_get_format = fn(LIB, "cairo_image_surface_get_format",
 const cairo_image_surface_get_stride = fn(LIB, "cairo_image_surface_get_stride", [{ type: SURFACE_T_NONE }], INT_TYPE);
 
 export class ImageSurface extends Surface {
+    /**
+     * Allocates an image surface of the given pixel `format` and dimensions.
+     *
+     * @param format - The pixel format of the surface
+     * @param width - Width of the surface in pixels
+     * @param height - Height of the surface in pixels
+     */
+    constructor(format: Format, width: number, height: number) {
+        super();
+        setHandle(this, cairo_image_surface_create(format, width, height) as NativeHandle);
+    }
+
     static create(format: Format, width: number, height: number): ImageSurface {
         return wrapHandle(ImageSurface, cairo_image_surface_create(format, width, height) as NativeHandle);
     }

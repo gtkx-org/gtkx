@@ -33,6 +33,7 @@ import {
     SURFACE_T_NONE,
     TEXT_EXTENTS_T,
     type TextExtents,
+    write,
 } from "@gtkx/ffi/cairo";
 import type {
     Antialias,
@@ -90,6 +91,7 @@ declare module "@gtkx/gi/cairo/cairo.js" {
         getLineCap(): LineCap;
         setLineJoin(lineJoin: LineJoin): void;
         getLineJoin(): LineJoin;
+        setDash(dashes: number[], offset: number): void;
         getDashCount(): number;
         getDash(): { dashes: number[]; offset: number };
         setMiterLimit(limit: number): void;
@@ -403,12 +405,27 @@ Context.prototype.getLineJoin = function (): LineJoin {
     return cairo_get_line_join(getHandle(this)) as LineJoin;
 };
 
+const DOUBLE_BUFFER_T = t.boxed("double[]", "borrowed", LIB);
+
+const cairo_set_dash = fn(
+    LIB,
+    "cairo_set_dash",
+    [{ type: CAIRO_T }, { type: DOUBLE_BUFFER_T }, { type: INT_TYPE }, { type: DOUBLE_TYPE }],
+    t.void,
+);
+Context.prototype.setDash = function (dashes: number[], offset: number): void {
+    const dashBuf = alloc(dashes.length * 8, "double[]");
+    for (let i = 0; i < dashes.length; i++) {
+        write(dashBuf, DOUBLE_TYPE, i * 8, dashes[i]);
+    }
+    cairo_set_dash(getHandle(this), dashBuf, dashes.length, offset);
+};
+
 const cairo_get_dash_count = fn(LIB, "cairo_get_dash_count", [{ type: CAIRO_T }], INT_TYPE);
 Context.prototype.getDashCount = function (): number {
     return cairo_get_dash_count(getHandle(this)) as number;
 };
 
-const DOUBLE_BUFFER_T = t.boxed("double[]", "borrowed", LIB);
 const cairo_get_dash = fn(
     LIB,
     "cairo_get_dash",

@@ -1,4 +1,4 @@
-import { getHandle, t, wrapHandle } from "@gtkx/ffi";
+import { getHandle, setHandle, t } from "@gtkx/ffi";
 import type { NativeHandle } from "@gtkx/ffi/cairo";
 import { FONT_OPTIONS_T, FONT_OPTIONS_T_FULL, INT_TYPE, LIB, STRING_BORROWED, STRING_FULL } from "@gtkx/ffi/cairo";
 import type { Antialias, HintMetrics, HintStyle, Status, SubpixelOrder } from "@gtkx/gi/cairo/cairo.js";
@@ -22,10 +22,23 @@ declare module "@gtkx/gi/cairo/cairo.js" {
 }
 
 const cairo_font_options_create = fn(LIB, "cairo_font_options_create", [], FONT_OPTIONS_T_FULL);
+const cairo_font_options_copy = fn(LIB, "cairo_font_options_copy", [{ type: FONT_OPTIONS_T }], FONT_OPTIONS_T_FULL);
 
 class FontOptionsImpl extends FontOptions {
+    /**
+     * Allocates a font options object. With no argument, a fresh default-valued
+     * object is created; passing `other` produces an independent copy of it.
+     *
+     * @param other - Optional font options to copy
+     */
+    constructor(other?: FontOptions) {
+        super();
+        const handle = other === undefined ? cairo_font_options_create() : cairo_font_options_copy(getHandle(other));
+        setHandle(this, handle as NativeHandle);
+    }
+
     static create(): FontOptionsImpl {
-        return wrapHandle(FontOptionsImpl, cairo_font_options_create() as NativeHandle);
+        return new FontOptionsImpl();
     }
 }
 

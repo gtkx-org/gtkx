@@ -1,4 +1,4 @@
-import { getHandle, registerNativeClass, t, wrapHandle } from "@gtkx/ffi";
+import { getHandle, registerNativeClass, setHandle, t, wrapHandle } from "@gtkx/ffi";
 import { alloc, DOUBLE_REF, DOUBLE_TYPE, INT_TYPE, LIB, MATRIX_T, type NativeHandle } from "@gtkx/ffi/cairo";
 import type { Status } from "@gtkx/gi/cairo/cairo.js";
 
@@ -61,6 +61,20 @@ const cairo_matrix_init_rotate = fn(
     [{ type: MATRIX_T }, { type: DOUBLE_TYPE }],
     t.void,
 );
+const cairo_matrix_init = fn(
+    LIB,
+    "cairo_matrix_init",
+    [
+        { type: MATRIX_T },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+    ],
+    t.void,
+);
 
 /**
  * Cairo affine transformation matrix backed by the `cairo_matrix_t` C struct.
@@ -70,6 +84,24 @@ const cairo_matrix_init_rotate = fn(
  * mutated in place by the prototype methods.
  */
 export class Matrix {
+    /**
+     * Allocates a matrix initialized to the components `(xx, yx, xy, yy, x0, y0)`,
+     * where `(xx, yx, xy, yy)` is the linear transformation and `(x0, y0)` the
+     * translation.
+     *
+     * @param xx - Component `xx` of the affine transformation
+     * @param yx - Component `yx` of the affine transformation
+     * @param xy - Component `xy` of the affine transformation
+     * @param yy - Component `yy` of the affine transformation
+     * @param x0 - Translation in the X direction
+     * @param y0 - Translation in the Y direction
+     */
+    constructor(xx: number, yx: number, xy: number, yy: number, x0: number, y0: number) {
+        const handle = alloc(48, "cairo_matrix_t");
+        setHandle(this, handle);
+        cairo_matrix_init(handle, xx, yx, xy, yy, x0, y0);
+    }
+
     /**
      * Applies a translation to the transformation in `this` by `(tx, ty)`.
      */

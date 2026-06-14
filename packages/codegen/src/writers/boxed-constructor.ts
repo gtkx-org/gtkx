@@ -54,7 +54,11 @@ export const renderBoxedConstructorPropsInterface = (
  * The constructor allocates zero-filled native memory of the struct's size and
  * writes each provided field at its byte offset, threading bitfield members
  * through a read-modify-write into their shared storage word. Opaque records
- * have no known layout, so their constructor throws.
+ * have no known layout, so their constructor throws. A record carrying a `GType`
+ * but no introspectable fields (size zero) gets a no-op constructor: there is
+ * nothing to allocate by layout, and its handle is supplied by a factory helper,
+ * `wrapHandle`, or a subclass that allocates through a type-specific call after
+ * `super()`.
  *
  * @param context - The module context
  * @param boxed - The boxed record
@@ -64,9 +68,12 @@ export const renderBoxedConstructor = (context: ModuleContext, boxed: GirBoxed, 
     if (isOpaque(boxed)) {
         return `constructor() {\n${indent(`throw new Error(${quote(`Cannot construct ${className}: opaque boxed type with no known layout`)});`, 1)}\n}`;
     }
+    const { slots, size } = computeBoxedFieldSlots(context, boxed.fields, boxed.isUnion);
+    if (size === 0) {
+        return `constructor(props: ${className}ConstructorProps = {}) {}`;
+    }
     context.addNativeImport("alloc");
     context.addRuntimeImport("setHandle");
-    const { slots, size } = computeBoxedFieldSlots(context, boxed.fields, boxed.isUnion);
     const statements = [`const handle = alloc(${allocArgs(boxed, size).join(", ")});`];
     for (const entry of slots) {
         if (!isWritableFieldSlot(entry)) continue;

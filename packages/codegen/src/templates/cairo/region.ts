@@ -1,4 +1,4 @@
-import { getHandle, t, wrapHandle } from "@gtkx/ffi";
+import { getHandle, setHandle, t, wrapHandle } from "@gtkx/ffi";
 import { alloc, INT_TYPE, LIB, type NativeHandle, RECT_INT_T, REGION_T, REGION_T_NONE, write } from "@gtkx/ffi/cairo";
 import type { RegionOverlap, Status } from "@gtkx/gi/cairo/cairo.js";
 import { RectangleInt, Region } from "@gtkx/gi/cairo/cairo.js";
@@ -39,8 +39,22 @@ const cairo_region_create_rectangles = fn(
 );
 
 class RegionImpl extends Region {
+    /**
+     * Creates a region containing the single rectangle `rect`.
+     *
+     * @param rect - The rectangle the region covers
+     */
+    constructor(rect: RectangleInt) {
+        super();
+        setHandle(this, cairo_region_create_rectangle(getHandle(rect)) as NativeHandle);
+    }
+
     static empty(): Region {
         return wrapHandle(RegionImpl, cairo_region_create() as NativeHandle);
+    }
+
+    static copy(original: Region): Region {
+        return wrapHandle(RegionImpl, cairo_region_copy(getHandle(original)) as NativeHandle);
     }
 
     static forRectangle(rect: RectangleInt): Region {

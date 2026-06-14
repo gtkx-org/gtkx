@@ -11,10 +11,13 @@ import {
     ImageSurface,
     LineCap,
     LineJoin,
+    Matrix,
     MeshPattern,
     Operator,
     Pattern,
     PatternType,
+    RecordingSurface,
+    RectangleInt,
     Region,
     Status,
     SubpixelOrder,
@@ -32,6 +35,13 @@ const createTestContext = (): Context => {
 };
 
 describe("Matrix", () => {
+    it("constructs from explicit components", () => {
+        const m = new Matrix(1, 0, 0, 1, 5, 7);
+        const p = m.transformPoint(0, 0);
+        expect(p.x).toBeCloseTo(5);
+        expect(p.y).toBeCloseTo(7);
+    });
+
     it("creates an identity matrix", () => {
         const m = Pattern.createLinear(0, 0, 1, 1).getMatrix();
         const p = m.transformPoint(5, 7);
@@ -325,6 +335,15 @@ describe("Context — line settings", () => {
         const dash = ctx.getDash();
         expect(dash.dashes).toHaveLength(0);
         expect(dash.offset).toBe(0);
+    });
+
+    it("sets and reads back a dash pattern", () => {
+        const ctx = createTestContext();
+        ctx.setDash([5, 3], 1);
+        expect(ctx.getDashCount()).toBe(2);
+        const dash = ctx.getDash();
+        expect(dash.dashes).toEqual([5, 3]);
+        expect(dash.offset).toBeCloseTo(1);
     });
 
     it("sets and gets miter limit", () => {
@@ -814,6 +833,19 @@ describe("FontOptions — create", () => {
         const options = FontOptions.create();
         expect(options).not.toBeNull();
     });
+
+    it("constructs a fresh instance via new", () => {
+        const options = new FontOptions();
+        expect(options).toBeInstanceOf(FontOptions);
+    });
+
+    it("copies an existing instance via new", () => {
+        const original = new FontOptions();
+        original.setHintStyle(HintStyle.FULL);
+        const copy = new FontOptions(original);
+        expect(copy.getHintStyle()).toBe(HintStyle.FULL);
+        expect(copy.equal(original)).toBe(true);
+    });
 });
 
 describe("FontOptions — settings", () => {
@@ -908,7 +940,7 @@ describe("Surface — createSimilar", () => {
 describe("Surface — createForRectangle", () => {
     it("creates a sub-surface", () => {
         const surface = createTestSurface();
-        const sub = Surface.createForRectangle(surface, { x: 10, y: 10, width: 50, height: 50 });
+        const sub = Surface.createForRectangle(surface, 10, 10, 50, 50);
         expect(sub).toBeInstanceOf(Surface);
     });
 });
@@ -975,6 +1007,13 @@ describe("ImageSurface", () => {
         const surface = ImageSurface.create(Format.ARGB32, 100, 50);
         expect(surface).toBeInstanceOf(Surface);
         expect(surface).toBeInstanceOf(ImageSurface);
+    });
+
+    it("constructs via new", () => {
+        const surface = new ImageSurface(Format.ARGB32, 64, 32);
+        expect(surface).toBeInstanceOf(ImageSurface);
+        expect(surface.getWidth()).toBe(64);
+        expect(surface.getHeight()).toBe(32);
     });
 
     it("gets width", () => {
@@ -1065,5 +1104,31 @@ describe("Region", () => {
     it("creates empty region from empty array", () => {
         const region = Region.createRectangles([]);
         expect(region.isEmpty()).toBe(true);
+    });
+
+    it("constructs from a rectangle via new", () => {
+        const region = new Region(new RectangleInt({ x: 0, y: 0, width: 10, height: 10 }));
+        expect(region.numRectangles()).toBe(1);
+        expect(region.isEmpty()).toBe(false);
+    });
+
+    it("copies a region via the static copy", () => {
+        const region = new Region(new RectangleInt({ x: 0, y: 0, width: 10, height: 10 }));
+        const copy = Region.copy(region);
+        expect(copy.numRectangles()).toBe(1);
+        expect(copy.equal(region)).toBe(true);
+    });
+});
+
+describe("RecordingSurface", () => {
+    it("constructs an unbounded surface via new", () => {
+        const surface = new RecordingSurface(Content.COLOR_ALPHA);
+        expect(surface).toBeInstanceOf(RecordingSurface);
+        expect(surface.status()).toBe(Status.SUCCESS);
+    });
+
+    it("constructs a bounded surface and reports its extents", () => {
+        const surface = new RecordingSurface(Content.COLOR_ALPHA, { x: 0, y: 0, width: 100, height: 50 });
+        expect(surface.getExtents()).toEqual({ x: 0, y: 0, width: 100, height: 50 });
     });
 });

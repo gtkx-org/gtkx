@@ -462,15 +462,8 @@ export class MeshPattern extends Pattern {
     /**
      * Sets the RGBA color of a corner of the current patch.
      */
-    setCornerColorRgba(cornerNum: number, color: RgbaColor): void {
-        cairo_mesh_pattern_set_corner_color_rgba(
-            getHandle(this),
-            cornerNum,
-            color.red,
-            color.green,
-            color.blue,
-            color.alpha,
-        );
+    setCornerColorRgba(cornerNum: number, red: number, green: number, blue: number, alpha: number): void {
+        cairo_mesh_pattern_set_corner_color_rgba(getHandle(this), cornerNum, red, green, blue, alpha);
     }
 
     /**

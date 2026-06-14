@@ -1,4 +1,4 @@
-import { getHandle, t, wrapHandle } from "@gtkx/ffi";
+import { getHandle, setHandle, t } from "@gtkx/ffi";
 import {
     alloc,
     DOUBLE_REF,
@@ -49,11 +49,13 @@ export class RecordingSurface extends Surface {
     /**
      * Allocates a recording surface for the given content type, optionally
      * bounded by `extents`.
+     *
+     * @param content - The content type captured by the surface
+     * @param extents - Optional bounding rectangle in user space; omit for an
+     *   unbounded surface
      */
-    static create(
-        content: Content,
-        extents?: { x: number; y: number; width: number; height: number },
-    ): RecordingSurface {
+    constructor(content: Content, extents?: { x: number; y: number; width: number; height: number }) {
+        super();
         let handle: NativeHandle;
         if (extents) {
             const rect = alloc(32, "cairo_rectangle_t");
@@ -65,7 +67,22 @@ export class RecordingSurface extends Surface {
         } else {
             handle = cairo_recording_surface_create_unbounded(content, 0) as NativeHandle;
         }
-        return wrapHandle(RecordingSurface, handle);
+        setHandle(this, handle);
+    }
+
+    /**
+     * Allocates a recording surface for the given content type, optionally
+     * bounded by `extents`.
+     *
+     * @param content - The content type captured by the surface
+     * @param extents - Optional bounding rectangle in user space; omit for an
+     *   unbounded surface
+     */
+    static create(
+        content: Content,
+        extents?: { x: number; y: number; width: number; height: number },
+    ): RecordingSurface {
+        return new RecordingSurface(content, extents);
     }
 
     /**
