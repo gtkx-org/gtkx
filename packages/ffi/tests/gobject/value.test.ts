@@ -6,9 +6,10 @@ import { ParamFlags, paramSpecBoolean, typeFromName, Value } from "@gtkx/gi/gobj
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
 import "@gtkx/gi/gobject";
-import { t, valueFromFfi, valueFromObject, valueGetType, valueToJS } from "@gtkx/ffi";
+import { t } from "@gtkx/ffi";
 import { call } from "@gtkx/native";
-import { emptyValueFromFfi } from "../../src/gobject/gvalue.js";
+import { emptyValueFromFfi, valueFromFfi, valueFromObject, valueGetType } from "../../src/gobject/gvalue.js";
+import { valueToJS } from "../../src/value-marshal.js";
 
 const callGetType = (lib: string, fn: string): GType => {
     const result = call(lib, fn, [], { type: "uint64" });

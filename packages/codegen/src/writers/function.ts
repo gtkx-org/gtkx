@@ -1,64 +1,28 @@
 import { quote } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
-import { arrayLiteral, indent, joinArgs } from "../dsl/emit.js";
+import { arrayLiteral, indent } from "../dsl/emit.js";
 import { namespaceFunctionExportName } from "../dsl/identifier.js";
 import type { GirFunction } from "../gir/function.js";
 import type { GirNamespace } from "../gir/namespace.js";
-import type { GirParameter } from "../gir/parameter.js";
 import { callableReferencesClassStruct } from "./class-struct-record.js";
-import { renderMethodBody, renderMethodReturnType, renderMethodSignature } from "./method.js";
-import { closureAndDestroyIndices, needsRefArg, passesHandleInPlace } from "./param-classify.js";
-import { renderFfiType, renderSelfFfiType, renderTrampolineType } from "./value.js";
+import {
+    planCallArgs,
+    renderMethodBody,
+    renderMethodReturnType,
+    renderMethodSignature,
+    renderReturnDescriptor,
+} from "./method.js";
 
 /**
- * Renders the FFI argument list for a callable, as a TypeScript array
- * literal suitable as the third argument to `t.fn(...)`.
- *
- * Includes the instance parameter (if any), every regular parameter, and
- * the implicit `GError**` ref when `throws=1`.
- *
- * @param context - The module context
- * @param fn - The callable
- */
-const renderArgsLiteral = (context: ModuleContext, fn: GirFunction): string => {
-    const args: string[] = [];
-    const instanceOffset = fn.instance === undefined ? 0 : 1;
-    if (fn.instance !== undefined) {
-        context.addRuntimeImport("t");
-        args.push(`{ type: ${renderSelfFfiType(context, fn.instance)} }`);
-    }
-    const closureIndices = closureAndDestroyIndices(fn);
-    fn.parameters.forEach((parameter, index) => {
-        if (parameter.isVarargs) return;
-        if (closureIndices.has(index)) return;
-        const optional = parameter.direction === "in" && (parameter.nullable || parameter.optional);
-        args.push(argLiteral(context, parameter, optional, instanceOffset));
-    });
-    if (fn.throws) {
-        context.addRuntimeImport("t");
-        args.push(`{ type: t.ref(t.boxed("GError", "full", "libgobject-2.0.so.0", "g_error_get_type")) }`);
-    }
-    return arrayLiteral(args);
-};
-
-const argLiteral = (
-    context: ModuleContext,
-    parameter: GirParameter,
-    optional: boolean,
-    instanceOffset: number,
-): string => {
-    const trampoline = renderTrampolineType(context, parameter.type, parameter);
-    const transfer = passesHandleInPlace(context, parameter) ? "none" : parameter.transferOwnership;
-    const inner = trampoline ?? renderFfiType(context, parameter.type, transfer, instanceOffset);
-    const refWrapped = needsRefArg(context, parameter);
-    const expression = refWrapped ? `t.ref(${inner})` : inner;
-    return optional && !refWrapped ? `{ type: ${expression}, optional: true }` : `{ type: ${expression} }`;
-};
-
-/**
- * Renders the `t.fn(library, symbol, args, returnType)` expression for a
- * callable. Returns `undefined` when the callable cannot be bound (no C
+ * Renders the `ffiCall(library, symbol, params, return, options?)` expression
+ * for a callable. Returns `undefined` when the callable cannot be bound (no C
  * identifier or missing namespace shared-library).
+ *
+ * The parameter array carries each argument's FFI type and its role (out,
+ * inout, or a caller-allocated raw out), the return descriptor carries the
+ * primary return's FFI type and wrapper class, and a throwing callable adds the
+ * `throws` option; the bound callable owns out-parameter tupling, `GError`
+ * handling, and result wrapping at call time.
  *
  * @param context - The module context
  * @param fn - The callable
@@ -67,19 +31,16 @@ export const renderFnExpression = (context: ModuleContext, fn: GirFunction): str
     if (fn.cIdentifier === undefined) return undefined;
     const library = context.namespace.sharedLibrary;
     if (library === undefined) return undefined;
+    context.addRuntimeImport("ffiCall");
     context.addRuntimeImport("t");
-    const args = renderArgsLiteral(context, fn);
-    const returnType = renderFfiType(
-        context,
-        fn.returnValue.type,
-        fn.returnValue.transferOwnership,
-        fn.instance === undefined ? 0 : 1,
-    );
-    return `t.fn(${joinArgs([quote(library), quote(fn.cIdentifier), args, returnType])})`;
+    const params = planCallArgs(context, fn).map((arg) => arg.paramLiteral);
+    const ret = renderReturnDescriptor(context, fn);
+    const options = fn.throws ? `, { throws: () => ${context.qualify("GLib", "Error")} }` : "";
+    return `ffiCall(${quote(library)}, ${quote(fn.cIdentifier)}, ${arrayLiteral(params)}, ${ret}${options})`;
 };
 
 /**
- * Emits both the bound `const fooBinding = t.fn(...)` and the
+ * Emits both the bound `const fooBinding = ffiCall(...)` and the
  * `export function camelName(...)` wrapper for a namespace-level callable.
  *
  * Silently skipped when {@link renderFnExpression} cannot bind the callable

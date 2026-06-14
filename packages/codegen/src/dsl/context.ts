@@ -57,21 +57,6 @@ export class ModuleContext {
         this.module.imports.addNamed("@gtkx/native", name, true);
     }
 
-    /** Adds the canonical `constructGobjectInstance` import from `@gtkx/ffi`. */
-    addConstructGobjectInstanceImport(): void {
-        this.module.imports.addNamed("@gtkx/ffi", "constructGobjectInstance");
-    }
-
-    /** Adds the `valueFromFfi` import from `@gtkx/ffi`. */
-    addValueFromFfiImport(): void {
-        this.module.imports.addNamed("@gtkx/ffi", "valueFromFfi");
-    }
-
-    /** Adds the `valueFromFfiOptional` import from `@gtkx/ffi`. */
-    addValueFromFfiOptionalImport(): void {
-        this.module.imports.addNamed("@gtkx/ffi", "valueFromFfiOptional");
-    }
-
     /**
      * Adds the canonical side-effect imports for `gobject/object.js` and
      * `gobject/value.js`.

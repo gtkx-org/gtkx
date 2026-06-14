@@ -203,8 +203,8 @@ export function alloc(size: number, glibTypeName?: string): NativeHandle {
  *
  * @param handle - Handle to a live GObject-compatible instance
  */
-export function getInstanceGtype(handle: NativeHandle): number {
-    return native.getInstanceGtype(handle) as number;
+export function getGobjectGtype(handle: NativeHandle): number {
+    return native.getGobjectGtype(handle) as number;
 }
 
 /**

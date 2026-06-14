@@ -140,23 +140,6 @@ export const passesHandleInPlace = (context: ModuleContext, parameter: GirParame
     );
 };
 
-/**
- * Whether a parameter is passed to the FFI binding as a `t.ref(...)` cell.
- *
- * Pure out parameters marshal through a `{ value }` ref cell the native layer
- * writes into. Inout parameters do too — except handle-passing ones (see
- * {@link passesHandleInPlace}), which are passed by their existing handle and
- * mutated in place. Caller-allocated outs pass a pre-built handle and are
- * excluded.
- *
- * @param context - The module context
- * @param parameter - The parameter to test
- */
-export const needsRefArg = (context: ModuleContext, parameter: GirParameter): boolean => {
-    if (parameter.direction !== "out" && parameter.direction !== "inout") return false;
-    return !passesHandleInPlace(context, parameter);
-};
-
 const resolveNamedParam = (context: ModuleContext, parameter: GirParameter) => {
     if (parameter.type === undefined || parameter.type.kind !== "named") return undefined;
     return context.repository.resolveNamed(

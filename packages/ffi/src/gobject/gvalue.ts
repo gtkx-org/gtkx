@@ -9,7 +9,7 @@ import {
     typeName,
 } from "../gtype.js";
 import { getHandle } from "../handles.js";
-import { call, type Type as FfiType, getInstanceGtype, type NativeHandle, read, t } from "../native.js";
+import { call, type Type as FfiType, getGobjectGtype, type NativeHandle, read, t } from "../native.js";
 import { getNativeClass, getNativeObject } from "../registry.js";
 import { GValue } from "./gvalue-native.js";
 import { Type } from "./types.js";
@@ -66,7 +66,7 @@ function boxedTypeName(gtype: GType): string {
  * @param value - The `GValue` (any object backed by a `GValue` handle).
  * @param boxed - The boxed wrapper to store, or `null`.
  */
-export function setBoxed(value: object, boxed: object | null): void {
+export function setGvalueBoxed(value: object, boxed: object | null): void {
     call(
         LIBGOBJECT,
         "g_value_set_boxed",
@@ -107,7 +107,7 @@ export function setStaticBoxed(value: object, boxed: object): void {
  * Builds a `G_TYPE_BOXED` `GValue` holding a copy of `boxed`, for emitting a
  * signal whose caller-allocated out-parameter a handler fills. The handler
  * mutates the value's owned copy in place; the generated `emit` reads that copy
- * back through {@link getBoxed} after `g_signal_emitv` returns.
+ * back through {@link getGvalueBoxed} after `g_signal_emitv` returns.
  *
  * @param ffiType - The boxed FFI descriptor naming the value's `GType`.
  * @param boxed - The freshly allocated wrapper whose contents seed the copy.
@@ -115,7 +115,7 @@ export function setStaticBoxed(value: object, boxed: object): void {
 export function outBoxedFromFfi(ffiType: FfiType, boxed: object): GValue {
     const value = new GValue();
     value.init(resolveBoxedGtype(ffiType));
-    setBoxed(value, boxed);
+    setGvalueBoxed(value, boxed);
     return value;
 }
 
@@ -146,7 +146,7 @@ export function inoutBoxedFromFfi(ffiType: FfiType, boxed: object): GValue {
  *   type or the boxed pointer is NULL.
  * @throws if the boxed `GType` has no registered wrapper class.
  */
-export function getBoxed(value: object): object | null {
+export function getGvalueBoxed(value: object): object | null {
     const gtype = valueGetType(value);
     if (typeFundamental(gtype) !== Type.BOXED) {
         return null;
@@ -248,7 +248,7 @@ function newFromString(value: string | null): GValue {
 export function valueFromObject(value: object | null): GValue {
     const v = new GValue();
     if (value) {
-        const gtype: GType = getInstanceGtype(getHandle(value));
+        const gtype: GType = getGobjectGtype(getHandle(value));
         v.init(gtype);
     } else {
         v.init(Type.OBJECT);
@@ -259,7 +259,7 @@ export function valueFromObject(value: object | null): GValue {
 
 /** Creates a `GValue` initialized with a boxed value of the given `GType`. */
 function newFromBoxed(value: object, gtype: GType): GValue {
-    return initValue(gtype, (v) => setBoxed(v, value));
+    return initValue(gtype, (v) => setGvalueBoxed(v, value));
 }
 
 /** Creates a `GValue` initialized with a `GStrv` from a JS string array. */

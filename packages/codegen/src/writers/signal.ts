@@ -8,7 +8,7 @@ import type { GirProperty } from "../gir/property.js";
 import { splitQualifiedName } from "../gir/qualified-name.js";
 import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirSignal } from "../gir/signal.js";
-import type { GirTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
+import type { GirTypeRef } from "../gir/type-ref.js";
 import {
     collectInterfaceProperties,
     forEachAncestor,
@@ -33,13 +33,6 @@ type CollectedSignal = {
     readonly namespaceName: string;
 };
 
-/** The generated marshalling references a class's inline `emit` switch uses. */
-type GObjectRefs = {
-    readonly Value: string;
-    readonly signalEmitv: string;
-    readonly signalLookup: string;
-};
-
 /**
  * Renders the `connect` and `emit` instance methods for a class that owns or
  * inherits-by-interface at least one signal.
@@ -47,7 +40,7 @@ type GObjectRefs = {
  * Each method is a `switch` over the type's own signals, keyed by the bare
  * signal name `signalBaseName` strips any `::detail` suffix down to. `connect`
  * resolves the per-signal trampoline, wraps the handler, and hands it to the
- * thin `connectSignal` wrapper around the non-introspectable
+ * thin `connectGobjectSignal` wrapper around the non-introspectable
  * `g_signal_connect_data`. `emit` marshals the arguments into `GValue`s with
  * `valueFromFfi`, resolves the signal id via the generated `signalLookup` and
  * the detail quark from the name's `::detail` suffix via `signalDetailQuark`,
@@ -66,7 +59,7 @@ export const renderSignalMembers = (context: ModuleContext, klass: GirClass): re
     if (signals.length === 0) return [];
     const isRootObject = context.namespace.name === "GObject" && klass.name === "Object";
 
-    context.addRuntimeImport("connectSignal");
+    context.addRuntimeImport("connectGobjectSignal");
     context.addRuntimeImport("signalBaseName");
     context.addRuntimeImport("t");
 
@@ -290,7 +283,7 @@ const renderSignalHandlerType = (context: ModuleContext, collected: CollectedSig
 
 /**
  * Assembles a signal's result type from its primary return and out-value types,
- * following the tuple convention {@link renderEmitReturn} reads back: a single
+ * following the tuple convention `emitGobjectSignal` assembles: a single
  * value alone, `[primary, ...outs]` when both are present, the lone out alone, or
  * an out-only tuple. `optOut` adds `| undefined` for the value-only handler case,
  * where a handler may decline to produce a result; `emit` passes `false`, since it
@@ -371,7 +364,7 @@ const renderSignalEmitEntry = (context: ModuleContext, collected: CollectedSigna
 /**
  * Renders one `connect` switch case: it resolves the signal's typed trampoline,
  * wraps the user handler with the per-signal in-parameter marshalling closure,
- * and dispatches `g_signal_connect_data` through {@link connectSignal} with the
+ * and dispatches `g_signal_connect_data` through {@link connectGobjectSignal} with the
  * full detailed signal name.
  */
 const renderConnectCase = (context: ModuleContext, collected: CollectedSignal): string => {
@@ -380,28 +373,21 @@ const renderConnectCase = (context: ModuleContext, collected: CollectedSignal): 
     const body = [
         `const invoke = ${invoke};`,
         "const handlerWrapper = (...args: unknown[]): unknown => invoke(handler, args);",
-        `return connectSignal(this, signal, ${trampoline}, handlerWrapper, after ?? false);`,
+        `return connectGobjectSignal(this, signal, ${trampoline}, handlerWrapper, after ?? false);`,
     ].join("\n");
     return `case ${quote(signal.name)}: {\n${indent(body, 1)}\n}`;
 };
 
 /**
- * Renders one `emit` switch case. In-parameters marshal into `GValue`s with
- * `valueFromFfi`; out- and scalar-inout parameters marshal into pointer-backed
- * cells via `outValueFromFfi`; a caller-allocated boxed out-parameter is
- * allocated here and copied into a `G_TYPE_BOXED` `GValue` by `outBoxedFromFfi`
- * so the handler reached through `g_signal_emitv` fills the value's owned copy,
- * which `getBoxed` reads back after emission; a boxed inout-parameter shares the
- * caller's wrapper in place through `inoutBoxedFromFfi` (`g_value_set_static_boxed`),
- * so the handler's mutation lands on the caller's object directly and surfaces
- * through that wrapper rather than the return tuple. After emission the case
- * returns the signal's result — the non-void return value (via `valueToJS`)
- * together with every out value — using the same tuple convention
- * {@link renderResultType} describes for handlers. Out-parameters consume
- * no emit argument; in- and inout-parameters do. A caller-allocated
- * out-parameter that is not a boxed record — a raw buffer, or a class with no
- * boxed `GType` — throws, since `outBoxedFromFfi` has no `GType` to resolve for
- * it.
+ * Renders one `emit` switch case: it describes each parameter's emission role —
+ * a plain in-value, a scalar inout cell, a caller-allocated boxed out, or a
+ * boxed inout shared in place — and hands the descriptors to
+ * {@link emitGobjectSignal}, which marshals the `GValue` array, resolves the
+ * signal id and detail, dispatches `g_signal_emitv`, and assembles the result.
+ * Out-parameters consume no emit argument; in- and inout-parameters do. A
+ * caller-allocated out-parameter that is not a boxed record — a raw buffer, or a
+ * class with no boxed `GType` — throws, since the emit path has no `GType` to
+ * source its storage.
  */
 const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): string => {
     const { signal, namespaceName } = collected;
@@ -409,83 +395,32 @@ const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): str
     if (params.some((parameter) => isCallerAllocatedOut(parameter) && !isBoxedCallerOut(context, parameter))) {
         return renderUnsupportedEmitCase(signal);
     }
-    context.addValueFromFfiImport();
-    context.addRuntimeImport("signalDetailQuark");
-    const refs = gobjectRefs(context);
+    context.addRuntimeImport("emitGobjectSignal");
 
-    const preStatements: string[] = [];
-    const valueExprs: string[] = [];
-    const outReads: string[] = [];
     let argIndex = 0;
-    params.forEach((parameter, index) => {
+    const argLiterals = params.map((parameter) => {
         const ffi = renderFfiType(context, qualifyTypeRef(parameter.type, namespaceName), parameter.transferOwnership);
-        const cell = `_out${index}`;
-        if (isOutParameter(parameter) || isCellInout(context, parameter)) {
-            context.addRuntimeImport("outValueFromFfi");
-            const seed = isOutParameter(parameter) ? "" : `, args[${argIndex++}]`;
-            preStatements.push(`const ${cell} = outValueFromFfi(${ffi}${seed});`);
-            valueExprs.push(`${cell}.value`);
-            outReads.push(`${cell}.read()`);
-        } else if (isCallerAllocatedOut(parameter)) {
-            context.addRuntimeImport("outBoxedFromFfi");
-            context.addRuntimeImport("getBoxed");
-            preStatements.push(
-                `const ${cell} = outBoxedFromFfi(${ffi}, ${renderCallerOutAllocation(context, parameter, namespaceName)});`,
-            );
-            valueExprs.push(cell);
-            outReads.push(`getBoxed(${cell})`);
-        } else if (isBoxedInout(context, parameter)) {
-            context.addRuntimeImport("inoutBoxedFromFfi");
-            valueExprs.push(`inoutBoxedFromFfi(${ffi}, args[${argIndex++}])`);
-        } else {
-            valueExprs.push(`valueFromFfi(${ffi}, args[${argIndex++}])`);
+        if (isOutParameter(parameter)) {
+            return `{ ffi: ${ffi}, role: "out" }`;
         }
+        if (isCellInout(context, parameter)) {
+            return `{ ffi: ${ffi}, role: "inout", value: args[${argIndex++}] }`;
+        }
+        if (isCallerAllocatedOut(parameter)) {
+            return `{ ffi: ${ffi}, role: "boxedOut", value: ${renderCallerOutAllocation(context, parameter, namespaceName)} }`;
+        }
+        if (isBoxedInout(context, parameter)) {
+            return `{ ffi: ${ffi}, role: "boxedInout", value: args[${argIndex++}] }`;
+        }
+        return `{ ffi: ${ffi}, value: args[${argIndex++}] }`;
     });
 
-    const values = `[${['valueFromFfi(t.object("full"), this)', ...valueExprs].join(", ")}]`;
-    const lookup = `${refs.signalLookup}(${quote(signal.name)}, this.__gtype__)`;
     const returnRef = qualifyTypeRef(signal.returnValue.type, namespaceName);
     const isVoid = returnRef === undefined || omitsPrimaryReturn(returnRef, signal);
+    const returnArg = isVoid ? "" : `, ${renderFfiType(context, returnRef, signal.returnValue.transferOwnership)}`;
+    const body = `return emitGobjectSignal(this, sigName, [${argLiterals.join(", ")}]${returnArg});`;
 
-    const detail = `signalDetailQuark(sigName)`;
-    const statements = [...preStatements];
-    if (isVoid) {
-        statements.push(`${refs.signalEmitv}(${values}, ${lookup}, ${detail});`);
-    } else {
-        statements.push(`const returnValue = new ${refs.Value}();`);
-        statements.push(`returnValue.init(${renderReturnGtype(context, returnRef)});`);
-        statements.push(`${refs.signalEmitv}(${values}, ${lookup}, ${detail}, returnValue);`);
-    }
-    statements.push(renderEmitReturn(context, isVoid, outReads));
-
-    return `case ${quote(signal.name)}: {\n${indent(statements.join("\n"), 1)}\n}`;
-};
-
-/**
- * Renders an `emit` case's `return` statement following the tuple convention
- * {@link renderResultType} encodes: a non-void return alone, a single
- * out-cell alone, or `[primary?, ...outs]` when both are present.
- *
- * @param context - The module context
- * @param isVoid - Whether the signal's return type is void
- * @param outReads - Per-out-cell `read()` expressions in declaration order
- */
-const renderEmitReturn = (context: ModuleContext, isVoid: boolean, outReads: readonly string[]): string => {
-    let primary: string | undefined;
-    if (!isVoid) {
-        context.addRuntimeImport("valueToJS");
-        primary = "valueToJS(returnValue)";
-    }
-    if (outReads.length === 0) {
-        return primary === undefined ? "return;" : `return ${primary};`;
-    }
-    if (primary !== undefined) {
-        return `return [${[primary, ...outReads].join(", ")}];`;
-    }
-    if (outReads.length === 1) {
-        return `return ${outReads[0]};`;
-    }
-    return `return [${outReads.join(", ")}];`;
+    return `case ${quote(signal.name)}: {\n${indent(body, 1)}\n}`;
 };
 
 /**
@@ -516,20 +451,6 @@ const renderCallerOutAllocation = (context: ModuleContext, parameter: GirParamet
     }
     const owner = type.namespaceName ?? namespaceName;
     return `new ${context.qualify(owner, type.typeName)}()`;
-};
-
-/**
- * Resolves the `GObject` marshalling references the inline `emit` switch needs.
- * Within the `GObject` namespace the generated `Value`, `signalEmitv`, and
- * `signalLookup` are local; elsewhere they are reached through the cross-
- * namespace `GObject` alias.
- */
-const gobjectRefs = (context: ModuleContext): GObjectRefs => {
-    if (context.namespace.name === "GObject") {
-        return { Value: "Value", signalEmitv: "signalEmitv", signalLookup: "signalLookup" };
-    }
-    const alias = context.addCrossNamespaceImport("GObject");
-    return { Value: `${alias}.Value`, signalEmitv: `${alias}.signalEmitv`, signalLookup: `${alias}.signalLookup` };
 };
 
 /**
@@ -688,31 +609,6 @@ const renderOutParamInvoke = (
     return `(handler, args) => {\n    ${body}\n}`;
 };
 
-const renderReturnGtype = (context: ModuleContext, ref: GirTypeRef): string => {
-    if (ref.kind === "primitive") {
-        return `${typeFromNameReference(context)}(${quote(primitiveGtypeName(ref.category))})`;
-    }
-    if (ref.kind === "named") {
-        const owner = ref.namespaceName ?? context.namespace.name;
-        const resolved = context.repository.resolveNamed(owner, ref.typeName);
-        if (resolved !== undefined && resolved.kind === "enum") {
-            context.addNativeImport("call");
-            context.addRuntimeImport("t");
-            const lib = resolved.namespace.sharedLibrary ?? "";
-            const getter = resolved.value.glibGetType ?? "";
-            return `call(${quote(lib)}, ${quote(getter)}, [], t.uint64)`;
-        }
-        if (
-            resolved !== undefined &&
-            (resolved.kind === "class" || resolved.kind === "interface" || resolved.kind === "boxed")
-        ) {
-            const glibTypeName = glibTypeNameOf(resolved.value) ?? ref.typeName;
-            return `${typeFromNameReference(context)}(${quote(glibTypeName)})`;
-        }
-    }
-    return `${typeFromNameReference(context)}("GObject")`;
-};
-
 const isVoidRef = (ref: GirTypeRef | undefined): boolean =>
     ref === undefined || (ref.kind === "primitive" && ref.category === "void");
 
@@ -724,43 +620,3 @@ const isVoidRef = (ref: GirTypeRef | undefined): boolean =>
  */
 const omitsPrimaryReturn = (returnRef: GirTypeRef | undefined, signal: GirSignal): boolean =>
     isVoidRef(returnRef) || signal.returnValue.skip;
-
-const glibTypeNameOf = (value: {
-    readonly glibTypeName?: string | undefined;
-    readonly cType?: string | undefined;
-}): string | undefined => value.glibTypeName ?? value.cType;
-
-const typeFromNameReference = (context: ModuleContext): string => {
-    if (context.namespace.name === "GObject") return "typeFromName";
-    const alias = context.addCrossNamespaceImport("GObject");
-    return `${alias}.typeFromName`;
-};
-
-const primitiveGtypeName = (category: PrimitiveTypeRef["category"]): string => {
-    switch (category) {
-        case "boolean":
-            return "gboolean";
-        case "int8":
-        case "int16":
-        case "int32":
-            return "gint";
-        case "uint8":
-        case "uint16":
-        case "uint32":
-        case "unichar":
-            return "guint";
-        case "int64":
-            return "gint64";
-        case "uint64":
-        case "pointer":
-            return "guint64";
-        case "float32":
-            return "gfloat";
-        case "float64":
-            return "gdouble";
-        case "string":
-            return "gchararray";
-        case "void":
-            return "void";
-    }
-};

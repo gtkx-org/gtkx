@@ -91,14 +91,19 @@ export const renderClassConstructor = (
     return renderTranslatingConstructor(context, props, className);
 };
 
-/** The forwarding record of marshalled `GValue`s a constructor hands to `super`. */
-const GVALUE_RECORD = "Record<string, GValue | undefined>";
+/**
+ * The forwarding record a constructor hands to `super`: each property it
+ * introduces as a `[ffiType, value]` marshalling instruction keyed by GIR name,
+ * spread alongside the still-raw `...rest` bound for ancestor constructors. The
+ * root constructor marshals the instructions; raw `...rest` entries pass through
+ * untouched until the ancestor that introduces them.
+ */
+const PROPS_RECORD = "Record<string, unknown>";
 
 const renderRootConstructor = (context: ModuleContext): string => {
-    context.addConstructGobjectInstanceImport();
-    context.addRuntimeImport("GValue");
-    const body = "constructGobjectInstance(this, props);";
-    return `constructor(props: ${GVALUE_RECORD} = {}) {\n${indent(body, 1)}\n}`;
+    context.addRuntimeImport("newGobjectWithProperties");
+    const body = "newGobjectWithProperties(this, props);";
+    return `constructor(props: ${PROPS_RECORD} = {}) {\n${indent(body, 1)}\n}`;
 };
 
 const renderTranslatingConstructor = (
@@ -106,16 +111,15 @@ const renderTranslatingConstructor = (
     props: readonly GirProperty[],
     className: string,
 ): string => {
-    context.addValueFromFfiOptionalImport();
-    context.addRuntimeImport("GValue");
+    context.addRuntimeImport("t");
     const destructured = props.map((property) => toIdentifier(toCamelCase(property.name)));
     const pattern = `{ ${[...destructured, "...rest"].join(", ")} }`;
     const entries = props.map(
         (property) =>
-            `${quote(property.name)}: valueFromFfiOptional(${renderFfiType(context, property.type, property.transferOwnership)}, ${toIdentifier(toCamelCase(property.name))}),`,
+            `${quote(property.name)}: [${renderFfiType(context, property.type, property.transferOwnership)}, ${toIdentifier(toCamelCase(property.name))}],`,
     );
     const recordLiteral = `{\n${indent(entries.join("\n"), 1)}\n}`;
-    const lines = [`const props: ${GVALUE_RECORD} = ${recordLiteral};`, "super({ ...props, ...rest });"];
+    const lines = [`const props: ${PROPS_RECORD} = ${recordLiteral};`, "super({ ...props, ...rest });"];
     const body = lines.join("\n");
     return `constructor(${pattern}: ${className}ConstructorProps = {}) {\n${indent(body, 1)}\n}`;
 };

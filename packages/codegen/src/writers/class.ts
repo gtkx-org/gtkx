@@ -83,7 +83,7 @@ const renderClassMembers = (
     const constructorBlock = renderClassConstructor(context, klass, className, hasParent);
     if (constructorBlock !== undefined) members.push(constructorBlock);
     const claimedNames = new Set<string>();
-    members.push(...renderStaticHead(context, callables, className, "gobject"));
+    members.push(...renderStaticHead(context, callables, className));
     const inherited = collectInheritedMethods(context, klass);
     const methodByName = indexMethodsByName(callables.methods);
     appendInstanceMethods({

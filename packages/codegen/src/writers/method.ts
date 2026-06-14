@@ -1,9 +1,9 @@
-import { toCamelCase } from "@gtkx/utils";
+import { quote, toCamelCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import type { GirFunction } from "../gir/function.js";
 import { type GirParameter, isCallerAllocatedOut, isInoutParameter, isOutParameter } from "../gir/parameter.js";
 import { qualifyTypeRef } from "../gir/qualify.js";
-import type { GirTypeRef, NamedTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
+import type { GirTypeRef } from "../gir/type-ref.js";
 import {
     arrayLengthSources,
     closureAndDestroyIndices,
@@ -12,10 +12,18 @@ import {
     isCollectibleCallerOut,
     isHandlePassing,
     parameterIdentifier,
+    passesHandleInPlace,
 } from "./param-classify.js";
-import { handleCast, wrapReturnValue } from "./return-wrap.js";
+import { resolveWrapClass, wrapReturnValue } from "./return-wrap.js";
 import { renderTsType } from "./ts-type.js";
-import { isCellInout, type ResolvedCallback, resolveCallbackType } from "./value.js";
+import {
+    isCellInout,
+    type ResolvedCallback,
+    renderFfiType,
+    renderSelfFfiType,
+    renderTrampolineType,
+    resolveCallbackType,
+} from "./value.js";
 
 /**
  * Returns the camelCased JS export name for a callable's method or static.
@@ -111,43 +119,6 @@ const isVoidReturn = (fn: GirFunction): boolean => {
 const omitsPrimaryReturn = (fn: GirFunction): boolean => isVoidReturn(fn) || fn.returnValue.skip;
 
 /**
- * Optional override for the wrapper produced for the primary return value.
- *
- * Constructors use this to force the result to be wrapped as the owning
- * class even when the GIR `<return-value>` is typed as a parent class.
- */
-type ReturnOverride =
-    | {
-          /**
-           * Resolve the wrapper from the value's runtime GLib type, so a
-           * constructor that hands back a subclass instance (e.g.
-           * `ShortcutTrigger.parseString` returning a `KeyvalTrigger`) keeps
-           * its concrete class and identity registration.
-           */
-          readonly via: "gobject";
-      }
-    | {
-          /** Local interface identifier to fall back to when no registered class conforms. */
-          readonly className: string;
-          /**
-           * Resolve the wrapper from the runtime type, walking to the closest
-           * registered ancestor that still implements the interface and falling
-           * back to the interface class itself — the path interface-typed values
-           * take so a private implementation type still exposes the interface.
-           */
-          readonly via: "interface";
-      }
-    | {
-          /** Local class identifier to pass as the second argument of `getNativeObject`. */
-          readonly className: string;
-          /**
-           * Wrap as the exact value-type class. Boxed records carry no runtime
-           * GObject type instance, so the class must be supplied explicitly.
-           */
-          readonly via: "boxed";
-      };
-
-/**
  * Renders the JS body of a promisified `*_async` method that delegates to
  * the runtime's `promisify` helper.
  *
@@ -160,7 +131,7 @@ type ReturnOverride =
  * @param context - The module context
  * @param asyncFn - The `*_async` callable
  * @param finishMember - The camelCase JS name of the companion `*_finish` method
- * @param bindingExpression - Expression that evaluates to the bound async `t.fn` callable
+ * @param bindingExpression - Expression that evaluates to the bound async callable
  */
 export const renderPromisifiedBody = (
     context: ModuleContext,
@@ -250,279 +221,194 @@ const isCallbackParameter = (context: ModuleContext, parameter: GirParameter): b
 };
 
 /**
- * Renders the JS body of a method or static that dispatches `binding(...)`
- * and returns the appropriately wrapped result.
- *
- * Handles instance vs. static dispatch, optional handle coercion on
- * inbound named-type parameters, out-parameter ref construction with
- * tuple return, `GError` ref + `checkError`, and return-value wrapping
- * via `getNativeObject` / `getNativeObjectAsInterface` for object and
- * boxed results.
- *
- * @param context - The module context
- * @param fn - The callable
- * @param bindingExpression - Expression that evaluates to the bound `t.fn` callable
- * @param isStatic - `true` for static methods, constructors, or namespace functions
- * @param returnAs - Optional override for the primary return wrapping class
+ * Options accepted by {@link renderMethodBody}.
  */
-type OutRef = {
-    readonly name: string;
-    readonly type: GirTypeRef | undefined;
-    readonly nullable: boolean;
-    readonly raw?: boolean;
-    /**
-     * The cell backs an array's folded `length` companion: it is allocated and
-     * passed to the FFI so the native marshaller can size the array, but it is
-     * dropped from the surfaced return tuple.
-     */
-    readonly consumed?: boolean;
-};
-
-type BodyBuilder = {
-    readonly callArgs: string[];
-    readonly setup: string[];
-    readonly outRefs: OutRef[];
-};
-
 export type WriteMethodBodyOptions = {
-    /** Bound `t.fn` callable expression to invoke. */
+    /** Bound `ffiCall` callable expression to invoke. */
     readonly bindingExpression: string;
     /** True for static methods, constructors, or namespace functions. */
     readonly isStatic: boolean;
-    /** Optional override for the primary return wrapping class. */
-    readonly returnAs?: ReturnOverride;
+    /**
+     * Overrides the cast applied to the call result — a constructor narrows it
+     * to its owning class even when the GIR `<return-value>` is a parent type.
+     */
+    readonly returnTypeOverride?: string;
 };
 
+/**
+ * Renders the JS body of a method or static: it assembles the call's input
+ * values and dispatches the bound {@link ffiCall} callable, which owns
+ * out-parameter tupling, `GError` handling, and result wrapping. The result is
+ * asserted to the rendered return type; a void callable with no out-parameters
+ * is a bare statement.
+ *
+ * @param context - The module context
+ * @param fn - The callable
+ * @param options - {@link WriteMethodBodyOptions}
+ */
 export const renderMethodBody = (context: ModuleContext, fn: GirFunction, options: WriteMethodBodyOptions): string => {
-    const { bindingExpression, isStatic, returnAs } = options;
-    const builder: BodyBuilder = { callArgs: [], setup: [], outRefs: [] };
-    if (!isStatic && fn.instance !== undefined) {
-        context.addRuntimeImport("getHandle");
-        builder.callArgs.push("getHandle(this)");
-    }
-    collectParameterArgs(context, fn, builder);
-    const errorRef = appendErrorRef(fn, builder);
-    const callExpression = `${bindingExpression}(${builder.callArgs.join(", ")})`;
-    const lines: string[] = [...builder.setup];
-    const returnsValue = !omitsPrimaryReturn(fn);
-    lines.push(returnsValue ? `const __result = ${callExpression};` : `${callExpression};`);
-    if (errorRef !== undefined) {
-        context.addRuntimeImport("checkError");
-        lines.push(`checkError(${errorRef}, ${context.qualify("GLib", "Error")});`);
-    }
-    const primary = returnsValue ? wrapPrimary(context, fn, "__result", returnAs) : undefined;
-    appendReturn(context, lines, primary, builder.outRefs);
-    return lines.join("\n");
+    const { bindingExpression, returnTypeOverride } = options;
+    const inputs = planCallArgs(context, fn)
+        .map((arg) => arg.inputExpr)
+        .filter((expression): expression is string => expression !== undefined);
+    const callExpression = `${bindingExpression}(${inputs.join(", ")})`;
+    const annotation = returnTypeOverride ?? renderMethodReturnType(context, fn);
+    return annotation === "void" ? `${callExpression};` : `return ${callExpression} as ${annotation};`;
 };
 
-const collectParameterArgs = (context: ModuleContext, fn: GirFunction, builder: BodyBuilder): void => {
+/**
+ * One positional argument of a call: the `ffiCall` parameter descriptor the
+ * binding carries, paired with the input expression the body passes (absent for
+ * a pure-out the runtime allocates).
+ */
+type CallArgPlan = {
+    readonly paramLiteral: string;
+    readonly inputExpr: string | undefined;
+};
+
+type FfiParamOptions = {
+    readonly role?: "out" | "inout" | "rawOut";
+    readonly wrapClass?: string;
+    readonly consumed?: boolean;
+    readonly optional?: boolean;
+};
+
+const ffiParamLiteral = (ffiExpr: string, options: FfiParamOptions): string => {
+    const parts = [`type: ${ffiExpr}`];
+    if (options.role !== undefined) parts.push(`role: ${quote(options.role)}`);
+    if (options.wrapClass !== undefined) parts.push(`wrapClass: () => ${options.wrapClass}`);
+    if (options.consumed === true) parts.push("consumed: true");
+    if (options.optional === true) parts.push("optional: true");
+    return `{ ${parts.join(", ")} }`;
+};
+
+/**
+ * Renders the `{ type, wrapClass? }` return descriptor an {@link ffiCall}
+ * binding carries: the FFI type of the primary return and, for an interface,
+ * boxed, struct, or fundamental value, its pre-resolved wrapper class.
+ *
+ * @param context - The module context
+ * @param fn - The callable
+ */
+export const renderReturnDescriptor = (context: ModuleContext, fn: GirFunction): string => {
+    const instanceOffset = fn.instance === undefined ? 0 : 1;
+    const ffi = renderFfiType(context, fn.returnValue.type, fn.returnValue.transferOwnership, instanceOffset);
+    const wrapClass = resolveWrapClass(context, fn.returnValue.type);
+    return wrapClass === undefined ? `{ type: ${ffi} }` : `{ type: ${ffi}, wrapClass: () => ${wrapClass} }`;
+};
+
+/**
+ * Plans a callable's positional arguments for both the {@link ffiCall} binding
+ * and the method body.
+ *
+ * Each FFI argument — the instance receiver, every regular parameter, the
+ * out/inout cells, the caller-allocated outs, and folded array-length
+ * companions — yields its binding descriptor and the body input expression that
+ * feeds it. Pure out-parameters carry no input: the runtime allocates and reads
+ * their cell. Closure, destroy, and `<varargs>` slots are folded into a
+ * callback's trampoline descriptor and excluded.
+ *
+ * @param context - The module context
+ * @param fn - The callable
+ */
+export const planCallArgs = (context: ModuleContext, fn: GirFunction): CallArgPlan[] => {
+    const plan: CallArgPlan[] = [];
+    if (fn.instance !== undefined) {
+        context.addRuntimeImport("getHandle");
+        plan.push({
+            paramLiteral: `{ type: ${renderSelfFfiType(context, fn.instance)} }`,
+            inputExpr: "getHandle(this)",
+        });
+    }
+    const instanceOffset = fn.instance === undefined ? 0 : 1;
     const lengthFor = arrayLengthSources(fn);
     const closureIndices = closureAndDestroyIndices(fn);
     const folded = foldedLengthIndices(fn);
     fn.parameters.forEach((parameter, index) => {
         if (parameter.isVarargs) return;
+        if (closureIndices.has(index)) return;
         if (isOutParameter(parameter)) {
-            appendOutRef({ context, parameter, index, folded, builder });
+            plan.push(planOutParam(context, parameter, instanceOffset, folded.has(index)));
             return;
         }
         if (isCallerAllocatedOut(parameter)) {
-            appendCallerAllocatedOut(context, parameter, builder);
+            plan.push(planCallerOut(context, parameter, instanceOffset));
             return;
         }
         if (isInoutParameter(parameter)) {
-            appendInoutParameter({ context, parameter, index, folded, builder });
+            plan.push(planInoutParam(context, parameter, { index, instanceOffset, consumed: folded.has(index) }));
             return;
         }
         const sourceIndex = lengthFor.get(index);
         if (sourceIndex !== undefined) {
             const source = fn.parameters[sourceIndex];
-            if (source !== undefined) {
-                builder.callArgs.push(`${parameterIdentifier(source, sourceIndex)}.length`);
-                return;
-            }
-        }
-        if (closureIndices.has(index)) {
+            const ffi = renderFfiType(context, parameter.type, parameter.transferOwnership, instanceOffset);
+            plan.push({
+                paramLiteral: ffiParamLiteral(ffi, {}),
+                inputExpr: source === undefined ? "0" : `${parameterIdentifier(source, sourceIndex)}.length`,
+            });
             return;
         }
-        builder.callArgs.push(parameterCallExpression(context, parameter, index));
+        plan.push(planInParam(context, parameter, index, instanceOffset));
     });
+    return plan;
 };
 
-type AppendOutRefOptions = {
-    readonly context: ModuleContext;
-    readonly parameter: GirParameter;
-    readonly index: number;
-    readonly folded: ReadonlySet<number>;
-    readonly builder: BodyBuilder;
-};
-
-const appendOutRef = (options: AppendOutRefOptions): void => {
-    const { context, parameter, builder } = options;
-    const refName = `out${builder.outRefs.length}`;
-    builder.setup.push(`const ${refName}: { value: unknown } = { value: ${outRefInitial(context, parameter.type)} };`);
-    registerRefArg(options, refName);
-};
-
-/**
- * The initial value seeded into a pure-out `{ value }` ref cell.
- *
- * The native marshaller encodes the cell's current value against the ref's
- * inner FFI type before the call, so the seed must be assignable to that
- * type: numeric and pointer cells seed `0`, booleans `false`, strings `""`,
- * and object/boxed cells `null`.
- */
-const outRefInitial = (context: ModuleContext, ref: GirTypeRef | undefined): string => {
-    if (ref === undefined) return "null";
-    switch (ref.kind) {
-        case "primitive":
-            return primitiveInitial(ref.category);
-        case "named":
-            return namedInitial(context, ref);
-        case "array":
-        case "list":
-        case "hashtable":
-        case "callback":
-        case "varargs":
-            return "null";
-    }
-};
-
-const primitiveInitial = (category: PrimitiveTypeRef["category"]): string => {
-    switch (category) {
-        case "boolean":
-            return "false";
-        case "string":
-            return '""';
-        case "void":
-            return "null";
-        default:
-            return "0";
-    }
-};
-
-const namedInitial = (context: ModuleContext, ref: NamedTypeRef): string => {
-    const owner = ref.namespaceName ?? context.namespace.name;
-    const resolved = context.repository.resolveNamed(owner, ref.typeName);
-    if (resolved === undefined) return "null";
-    if (resolved.kind === "enum") return "0";
-    if (resolved.kind === "alias") {
-        const qualified = qualifyTypeRef(resolved.targetRef, resolved.namespace.name);
-        return qualified === undefined ? "null" : outRefInitial(context, qualified);
-    }
-    return "null";
-};
-
-const appendInoutRef = (options: AppendOutRefOptions): void => {
-    const { context, parameter, index, builder } = options;
-    const refName = `inout${builder.outRefs.length}`;
-    builder.setup.push(
-        `const ${refName}: { value: unknown } = { value: ${parameterCallExpression(context, parameter, index)} };`,
-    );
-    registerRefArg(options, refName);
-};
-
-const appendInoutParameter = (options: AppendOutRefOptions): void => {
-    const { context, parameter } = options;
-    if (parameter.type !== undefined && isHandlePassing(context, parameter.type)) {
-        appendInoutHandle(options);
-    } else {
-        appendInoutRef(options);
-    }
-};
-
-const appendInoutHandle = (options: AppendOutRefOptions): void => {
-    const { context, parameter, index, folded, builder } = options;
-    builder.callArgs.push(parameterCallExpression(context, parameter, index));
-    builder.outRefs.push({
-        name: parameterIdentifier(parameter, index),
-        type: parameter.type,
-        nullable: parameter.nullable,
-        raw: true,
-        consumed: folded.has(index),
-    });
-};
-
-const registerRefArg = (options: AppendOutRefOptions, refName: string): void => {
-    const { parameter, index, folded, builder } = options;
-    builder.callArgs.push(refName);
-    builder.outRefs.push({
-        name: refName,
-        type: parameter.type,
-        nullable: parameter.nullable,
-        consumed: folded.has(index),
-    });
-};
-
-const appendCallerAllocatedOut = (context: ModuleContext, parameter: GirParameter, builder: BodyBuilder): void => {
-    const allocated = allocateCallerOut(context, parameter, builder.outRefs.length);
-    if (allocated === undefined) {
-        builder.callArgs.push("undefined");
-        return;
-    }
-    builder.setup.push(allocated.setup);
-    builder.callArgs.push(allocated.callArg);
-    builder.outRefs.push({
-        name: allocated.returnExpression,
-        type: parameter.type,
-        nullable: parameter.nullable,
-        raw: true,
-    });
-};
-
-const appendErrorRef = (fn: GirFunction, builder: BodyBuilder): string | undefined => {
-    if (!fn.throws) return undefined;
-    const errorRef = "__error";
-    builder.setup.push(`const ${errorRef} = { value: null };`);
-    builder.callArgs.push(errorRef);
-    return errorRef;
-};
-
-const appendReturn = (
+const planOutParam = (
     context: ModuleContext,
-    lines: string[],
-    primary: string | undefined,
-    outRefs: readonly OutRef[],
-): void => {
-    const surfaced = outRefs.filter((ref) => ref.consumed !== true);
-    if (surfaced.length === 0) {
-        if (primary !== undefined) lines.push(`return ${primary};`);
-        return;
-    }
-    const outExpressions = surfaced.map((ref) =>
-        ref.raw === true
-            ? ref.name
-            : wrapReturnValue(context, {
-                  ref: ref.type,
-                  nullable: false,
-                  valueExpression: `${ref.name}.value`,
-              }),
-    );
-    if (primary !== undefined) {
-        lines.push(`return [${primary}, ${outExpressions.join(", ")}];`);
-        return;
-    }
-    if (outExpressions.length === 1) {
-        lines.push(`return ${outExpressions[0]};`);
-        return;
-    }
-    lines.push(`return [${outExpressions.join(", ")}];`);
+    parameter: GirParameter,
+    instanceOffset: number,
+    consumed: boolean,
+): CallArgPlan => {
+    const ffi = renderFfiType(context, parameter.type, parameter.transferOwnership, instanceOffset);
+    const wrapClass = resolveWrapClass(context, parameter.type);
+    return { paramLiteral: ffiParamLiteral(ffi, { role: "out", wrapClass, consumed }), inputExpr: undefined };
 };
 
-const allocateCallerOut = (
+const planCallerOut = (context: ModuleContext, parameter: GirParameter, instanceOffset: number): CallArgPlan => {
+    const ffi = renderFfiType(context, parameter.type, "none", instanceOffset);
+    if (parameter.type?.kind === "named" && isCollectibleCallerOut(context, parameter)) {
+        context.addRuntimeImport("getHandle");
+        const owner = parameter.type.namespaceName ?? context.namespace.name;
+        const classExpression = context.qualify(owner, parameter.type.typeName);
+        return { paramLiteral: ffiParamLiteral(ffi, { role: "rawOut" }), inputExpr: `new ${classExpression}()` };
+    }
+    return { paramLiteral: ffiParamLiteral(ffi, {}), inputExpr: "undefined" };
+};
+
+const planInoutParam = (
+    context: ModuleContext,
+    parameter: GirParameter,
+    options: { readonly index: number; readonly instanceOffset: number; readonly consumed: boolean },
+): CallArgPlan => {
+    const { index, instanceOffset, consumed } = options;
+    if (passesHandleInPlace(context, parameter)) {
+        const ffi = renderFfiType(context, parameter.type, "none", instanceOffset);
+        return {
+            paramLiteral: ffiParamLiteral(ffi, { role: "rawOut", consumed }),
+            inputExpr: parameterIdentifier(parameter, index),
+        };
+    }
+    const ffi = renderFfiType(context, parameter.type, parameter.transferOwnership, instanceOffset);
+    const wrapClass = resolveWrapClass(context, parameter.type);
+    return {
+        paramLiteral: ffiParamLiteral(ffi, { role: "inout", wrapClass, consumed }),
+        inputExpr: parameterCallExpression(context, parameter, index),
+    };
+};
+
+const planInParam = (
     context: ModuleContext,
     parameter: GirParameter,
     index: number,
-): { readonly setup: string; readonly callArg: string; readonly returnExpression: string } | undefined => {
-    if (parameter.type === undefined || parameter.type.kind !== "named") return undefined;
-    if (!isCollectibleCallerOut(context, parameter)) return undefined;
-    const owner = parameter.type.namespaceName ?? context.namespace.name;
-    const local = `__out${index}`;
-    const classExpression = context.qualify(owner, parameter.type.typeName);
-    context.addRuntimeImport("getHandle");
+    instanceOffset: number,
+): CallArgPlan => {
+    const trampoline = renderTrampolineType(context, parameter.type, parameter);
+    const ffi = trampoline ?? renderFfiType(context, parameter.type, parameter.transferOwnership, instanceOffset);
+    const optional = parameter.nullable || parameter.optional;
     return {
-        setup: `const ${local} = new ${classExpression}();`,
-        callArg: `getHandle(${local})`,
-        returnExpression: local,
+        paramLiteral: ffiParamLiteral(ffi, { optional }),
+        inputExpr: parameterCallExpression(context, parameter, index),
     };
 };
 
@@ -665,30 +551,4 @@ export const renderTupleWriteback = (
         });
     }
     return lines.join("\n    ");
-};
-
-const wrapPrimary = (
-    context: ModuleContext,
-    fn: GirFunction,
-    valueExpression: string,
-    returnAs: ReturnOverride | undefined,
-): string => {
-    if (returnAs !== undefined) {
-        const handle = handleCast(context, valueExpression, false);
-        if (returnAs.via === "gobject") {
-            context.addRuntimeImport("getNativeObject");
-            return `getNativeObject(${handle})`;
-        }
-        if (returnAs.via === "boxed") {
-            context.addRuntimeImport("getNativeObject");
-            return `getNativeObject(${handle}, ${returnAs.className})`;
-        }
-        context.addRuntimeImport("getNativeObjectAsInterface");
-        return `getNativeObjectAsInterface(${handle}, ${returnAs.className})`;
-    }
-    return wrapReturnValue(context, {
-        ref: fn.returnValue.type,
-        nullable: fn.returnValue.nullable,
-        valueExpression,
-    });
 };

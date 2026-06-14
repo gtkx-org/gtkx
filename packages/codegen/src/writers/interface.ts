@@ -69,7 +69,6 @@ const renderInterfaceMembers = (context: ModuleContext, iface: GirClass, callabl
         className,
         callables,
         hasGtype: true,
-        wrap: "interface",
     });
     appendPrerequisiteMethods(context, iface, members, claimedNames);
     const methodByName = indexMethodsByName(callables.methods);

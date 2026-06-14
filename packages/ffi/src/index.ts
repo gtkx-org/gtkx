@@ -8,6 +8,15 @@
  * `./runtime.js` and re-exported here, keeping `@gtkx/ffi` a single
  * transparent helper specifier.
  *
+ * The call convention is the higher-level surface generated code targets:
+ * `ffiCall` dispatches a callable with out-parameter tupling, `GError`
+ * handling, and result wrapping; `emitGobjectSignal`/`connectGobjectSignal`
+ * own signal emission and connection; `newGobjectWithProperties`,
+ * `getGobjectProperty`/`setGobjectProperty`, and `getGvalueBoxed`/`setGvalueBoxed`
+ * cover construction, property access, and boxed `GValue` payloads. The
+ * `GValue` marshalling primitives those build on stay internal; raw handles
+ * are lifted to typed wrappers by `getNativeObject`/`getNativeObjectAsInterface`.
+ *
  * Low-level transport primitives (`alloc`, `call`, `read`, `write`) and the
  * native handle and FFI-descriptor types are not surfaced here; generated
  * bindings import those straight from `@gtkx/native`, leaving `@gtkx/ffi` the
@@ -16,16 +25,16 @@
  */
 
 export * from "./gobject/fundamental-types.js";
-export { getBoxed, setBoxed, valueGetType } from "./gobject/gvalue.js";
-export { GValue, setVariantClass } from "./gobject/gvalue-native.js";
+export { getGvalueBoxed, setGvalueBoxed } from "./gobject/gvalue.js";
+export { setVariantClass } from "./gobject/gvalue-native.js";
 export { Type } from "./gobject/types.js";
 export * from "./gtype.js";
 export * from "./lifecycle.js";
 export * from "./listeners.js";
 export type { ErrorDomain } from "./native.js";
-export { constructGobjectInstance } from "./object.js";
+export { newGobjectWithProperties } from "./object.js";
 export { registerClass } from "./register-class.js";
 export { getNativeClassByName, wrapHandle } from "./registry.js";
 export * from "./runtime.js";
 export type { SignalHandler } from "./signals.js";
-export * from "./value-marshal.js";
+export { getGobjectProperty, setGobjectProperty } from "./value-marshal.js";

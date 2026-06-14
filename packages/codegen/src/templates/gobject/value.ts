@@ -12,7 +12,7 @@
  * This module supplies the concrete class via {@link setVariantClass}.
  */
 
-import { getBoxed, setBoxed, setVariantClass } from "@gtkx/ffi";
+import { getGvalueBoxed, setGvalueBoxed, setVariantClass } from "@gtkx/ffi";
 import { Variant } from "@gtkx/gi/glib/glib.js";
 import { type GType, Value } from "@gtkx/gi/gobject/gobject.js";
 
@@ -42,9 +42,9 @@ export const buildValue = (gtype: GType, populate: (value: Value) => void): Valu
 };
 
 Value.prototype.getBoxed = function <T = unknown>(this: Value): T {
-    return getBoxed(this) as T;
+    return getGvalueBoxed(this) as T;
 };
 
 Value.prototype.setBoxed = function (this: Value, boxed: object | null): void {
-    setBoxed(this, boxed);
+    setGvalueBoxed(this, boxed);
 };

@@ -91,7 +91,7 @@ const renderPropertyFfiType = (context: ModuleContext, property: GirProperty): s
 
 /**
  * Renders the generic getter body for a property with no typed C accessor: a
- * `getObjectProperty` call carrying the property's statically-rendered FFI type,
+ * `getGobjectProperty` call carrying the property's statically-rendered FFI type,
  * which inits a matching `GValue`, reads it via `g_object_get_property`, and
  * unmarshals the result. No runtime param-spec introspection.
  *
@@ -100,14 +100,14 @@ const renderPropertyFfiType = (context: ModuleContext, property: GirProperty): s
  * @param tsType - The accessor's TypeScript type
  */
 const renderGenericGetBody = (context: ModuleContext, property: GirProperty, tsType: string): string => {
-    context.addRuntimeImport("getObjectProperty");
+    context.addRuntimeImport("getGobjectProperty");
     context.addRuntimeImport("t");
-    return `return getObjectProperty(this, ${quote(property.name)}, ${renderPropertyFfiType(context, property)}) as ${tsType};`;
+    return `return getGobjectProperty(this, ${quote(property.name)}, ${renderPropertyFfiType(context, property)}) as ${tsType};`;
 };
 
 /**
  * Renders the generic setter body for a property with no typed C accessor: a
- * `setObjectProperty` call carrying the property's statically-rendered FFI type,
+ * `setGobjectProperty` call carrying the property's statically-rendered FFI type,
  * which marshals the value into a matching `GValue` and dispatches
  * `g_object_set_property`. No runtime param-spec introspection.
  *
@@ -115,9 +115,9 @@ const renderGenericGetBody = (context: ModuleContext, property: GirProperty, tsT
  * @param property - The property being written
  */
 const renderGenericSetBody = (context: ModuleContext, property: GirProperty): string => {
-    context.addRuntimeImport("setObjectProperty");
+    context.addRuntimeImport("setGobjectProperty");
     context.addRuntimeImport("t");
-    return `setObjectProperty(this, ${quote(property.name)}, ${renderPropertyFfiType(context, property)}, value);`;
+    return `setGobjectProperty(this, ${quote(property.name)}, ${renderPropertyFfiType(context, property)}, value);`;
 };
 
 /**
@@ -137,7 +137,7 @@ type GetterBodyOptions = {
  * The property type follows the setter's parameter (what callers may assign),
  * so a getter whose own GIR nullability differs is narrowed to it with a single
  * assertion; matching nullability needs no cast. Properties with no typed
- * getter read through the generic `getObjectProperty` path, marshalling a
+ * getter read through the generic `getGobjectProperty` path, marshalling a
  * `GValue` of the property's statically-rendered FFI type.
  *
  * @param options - {@link GetterBodyOptions}

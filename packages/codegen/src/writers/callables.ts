@@ -74,31 +74,20 @@ export const emitBindings = (context: ModuleContext, callables: Callables): void
 };
 
 /**
- * How a type's static `<constructor>` factories wrap their result:
- *
- * - `"gobject"` — resolve the wrapper from the runtime GLib type (a class).
- * - `"interface"` — resolve the runtime type, falling back to the closest
- *   registered ancestor that implements the interface, then the interface itself.
- * - `"boxed"` — wrap as the exact value-type class (boxed records).
- */
-export type ConstructorWrap = "gobject" | "interface" | "boxed";
-
-/**
  * Renders a `static <name>(...): Owner` factory method for a GIR `<constructor>`.
  *
  * Returns `undefined` for non-introspectable, shadowed, identifier-less, or
- * `constructor`-named entries.
+ * `constructor`-named entries. The result is asserted to `ownerClassName`; the
+ * bound `ffiCall` lifts the raw handle to its concrete runtime wrapper.
  *
  * @param context - The module context
  * @param callable - The GIR constructor callable
  * @param ownerClassName - The local class name that wraps the result
- * @param wrap - How the result is lifted to its JavaScript wrapper
  */
 const renderConstructorStatic = (
     context: ModuleContext,
     callable: GirFunction,
     ownerClassName: string,
-    wrap: ConstructorWrap,
 ): string | undefined => {
     if (!isEmittableCallable(context, callable)) return undefined;
     const name = constructorMemberName(callable.name);
@@ -109,7 +98,7 @@ const renderConstructorStatic = (
     const body = renderMethodBody(context, callable, {
         bindingExpression: cIdentifier,
         isStatic: true,
-        returnAs: wrap === "gobject" ? { via: "gobject" } : { via: wrap, className: ownerClassName },
+        returnTypeOverride: ownerClassName,
     });
     return `static ${name}(${signature}): ${ownerClassName} {\n${indent(body, 1)}\n}`;
 };
@@ -258,17 +247,15 @@ const constructorMemberName = (girName: string): string | undefined => {
  * @param context - The module context
  * @param callables - The class's emittable callables
  * @param ownerClassName - The local PascalCase class name
- * @param wrap - How static constructors lift their result to a wrapper
  */
 export const renderStaticHead = (
     context: ModuleContext,
     callables: Callables,
     ownerClassName: string,
-    wrap: ConstructorWrap,
 ): readonly string[] => {
     const blocks: string[] = [];
     for (const callable of callables.constructors) {
-        const block = renderConstructorStatic(context, callable, ownerClassName, wrap);
+        const block = renderConstructorStatic(context, callable, ownerClassName);
         if (block !== undefined) blocks.push(block);
     }
     for (const callable of callables.functions) {
@@ -310,8 +297,6 @@ export type PlainTypeMembersOptions = {
     readonly callables: Callables;
     /** Whether to prepend `declare __gtype__: number;`. */
     readonly hasGtype: boolean;
-    /** How static constructors lift their result to a wrapper. */
-    readonly wrap: ConstructorWrap;
 };
 
 /**
@@ -327,11 +312,11 @@ export type PlainTypeMembersOptions = {
 export const renderPlainTypeMembers = (
     options: PlainTypeMembersOptions,
 ): { readonly members: string[]; readonly claimedNames: Set<string> } => {
-    const { context, className, callables, hasGtype, wrap } = options;
+    const { context, className, callables, hasGtype } = options;
     const members: string[] = [];
     if (hasGtype) members.push("declare __gtype__: number;");
     const claimedNames = new Set<string>();
-    members.push(...renderStaticHead(context, callables, className, wrap));
+    members.push(...renderStaticHead(context, callables, className));
     members.push(...renderPlainInstanceMethods(context, callables.methods, claimedNames));
     const methodByName = indexMethodsByName(callables.methods);
     appendShadowedAliases({ context, methods: callables.methods, methodByName, members, claimedNames });

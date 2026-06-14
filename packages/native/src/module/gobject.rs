@@ -13,11 +13,11 @@ use super::handler::ModuleRequest;
 use crate::managed::NativeHandle;
 
 #[cfg_attr(test, allow(dead_code))]
-struct GetInstanceGTypeRequest {
+struct GetGobjectGtypeRequest {
     instance_addr: usize,
 }
 
-impl ModuleRequest for GetInstanceGTypeRequest {
+impl ModuleRequest for GetGobjectGtypeRequest {
     type Output = u64;
 
     fn execute(self) -> anyhow::Result<u64> {
@@ -38,13 +38,13 @@ impl ModuleRequest for GetInstanceGTypeRequest {
     }
 
     fn error_context() -> &'static str {
-        "get_instance_gtype"
+        "get_gobject_gtype"
     }
 }
 
 /// napi export shim for `GObject` metadata access. Excluded from coverage
 /// instrumentation: it dispatches through a live [`napi::Env`]. The
-/// [`GetInstanceGTypeRequest`] `execute` logic it dispatches is exercised
+/// [`GetGobjectGtypeRequest`] `execute` logic it dispatches is exercised
 /// directly by tests.
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[allow(clippy::wildcard_imports)]
@@ -53,11 +53,11 @@ mod napi_export {
 
     #[napi(catch_unwind)]
     #[cfg_attr(test, allow(dead_code))]
-    pub fn get_instance_gtype<'env>(
+    pub fn get_gobject_gtype<'env>(
         env: &'env Env,
         handle: &External<NativeHandle>,
     ) -> napi::Result<Unknown<'env>> {
-        GetInstanceGTypeRequest {
+        GetGobjectGtypeRequest {
             instance_addr: handle.ptr_as_usize(),
         }
         .dispatch(env)
@@ -77,9 +77,9 @@ mod tests {
     }
 
     #[test]
-    fn get_instance_gtype_returns_real_gtype() {
+    fn get_gobject_gtype_returns_real_gtype() {
         let object = glib::Object::new::<glib::Object>();
-        let request = GetInstanceGTypeRequest {
+        let request = GetGobjectGtypeRequest {
             instance_addr: object_addr(&object),
         };
         let gtype = request.execute().expect("gtype query should succeed");
@@ -87,18 +87,18 @@ mod tests {
     }
 
     #[test]
-    fn get_instance_gtype_returns_zero_for_null_instance() {
-        let request = GetInstanceGTypeRequest { instance_addr: 0 };
+    fn get_gobject_gtype_returns_zero_for_null_instance() {
+        let request = GetGobjectGtypeRequest { instance_addr: 0 };
         let gtype = request.execute().expect("null instance should be Ok(0)");
         assert_eq!(gtype, 0);
     }
 
     #[test]
-    fn get_instance_gtype_returns_zero_for_instance_without_class() {
+    fn get_gobject_gtype_returns_zero_for_instance_without_class() {
         // SAFETY: GTypeInstance is a plain C struct of pointers, for which
         // all-zero bytes are a valid (null-class) representation.
         let mut instance: gobject_ffi::GTypeInstance = unsafe { std::mem::zeroed() };
-        let request = GetInstanceGTypeRequest {
+        let request = GetGobjectGtypeRequest {
             instance_addr: std::ptr::addr_of_mut!(instance) as usize,
         };
         let gtype = request
@@ -108,10 +108,7 @@ mod tests {
     }
 
     #[test]
-    fn get_instance_gtype_error_context_is_stable() {
-        assert_eq!(
-            GetInstanceGTypeRequest::error_context(),
-            "get_instance_gtype"
-        );
+    fn get_gobject_gtype_error_context_is_stable() {
+        assert_eq!(GetGobjectGtypeRequest::error_context(), "get_gobject_gtype");
     }
 }

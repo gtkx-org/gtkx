@@ -176,3 +176,53 @@ const wrapResolved = (context: ModuleContext, resolved: ResolvedNamed, options: 
                 : wrapReturnValue(context, { ref: resolved.targetRef, nullable, valueExpression });
     }
 };
+
+/**
+ * Resolves the pre-resolved wrapper class `ffiCall` needs to lift a value of
+ * `ref`, or `undefined` when the value's FFI descriptor already carries enough
+ * identity to wrap it.
+ *
+ * A plain object (`getNativeObject` self-resolves from the runtime GLib type),
+ * a primitive, an enum, and a hash table need no class. An interface supplies
+ * its fallback wrapper class, a boxed record its exact class. A collection
+ * resolves its element's class, applied per element. This is the data-driven
+ * counterpart of the class argument {@link wrapReturnValue} emits inline for the
+ * trampoline and field paths.
+ *
+ * @param context - The module context
+ * @param ref - The value's GIR type reference
+ * @returns The qualified wrapper-class expression, or `undefined`
+ */
+export const resolveWrapClass = (context: ModuleContext, ref: GirTypeRef | undefined): string | undefined => {
+    if (ref === undefined) return undefined;
+    switch (ref.kind) {
+        case "primitive":
+        case "hashtable":
+        case "callback":
+        case "varargs":
+            return undefined;
+        case "named":
+            return namedWrapClass(context, ref);
+        case "array":
+            return resolveWrapClass(context, ref.element);
+        case "list":
+            return ref.flavor === "gbytearray" ? undefined : resolveWrapClass(context, ref.element);
+    }
+};
+
+const namedWrapClass = (context: ModuleContext, ref: NamedTypeRef): string | undefined => {
+    const owner = ref.namespaceName ?? context.namespace.name;
+    const resolved = context.repository.resolveNamed(owner, ref.typeName);
+    if (resolved === undefined) return undefined;
+    switch (resolved.kind) {
+        case "interface":
+        case "boxed":
+            return context.qualify(owner, ref.typeName);
+        case "alias":
+            return resolveWrapClass(context, resolved.targetRef);
+        case "class":
+        case "enum":
+        case "callback":
+            return undefined;
+    }
+};

@@ -1,4 +1,4 @@
-import { getInstanceGtype, getWrapper, type NativeHandle, setWrapper } from "@gtkx/native";
+import { getGobjectGtype, getWrapper, type NativeHandle, setWrapper } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { G_TYPE_INVALID, type GType, typeFromName, typeIsA, typeParent } from "./gtype.js";
 import { type GTyped, setHandle, tryGetHandle } from "./handles.js";
@@ -205,7 +205,7 @@ function resolveWrapper(handle: NativeHandle, resolveClass: (runtimeGtype: GType
     const existing = getWrapper(handle);
     if (existing) return existing;
 
-    const runtimeGtype: GType = getInstanceGtype(handle);
+    const runtimeGtype: GType = getGobjectGtype(handle);
     if (runtimeGtype === G_TYPE_INVALID) {
         throw new Error("Cannot resolve runtime GLib type from handle");
     }

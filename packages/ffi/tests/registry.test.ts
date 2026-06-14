@@ -1,11 +1,17 @@
-import { getHandle, getNativeObject, getNativeObjectAsInterface } from "@gtkx/ffi";
+import { getHandle } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/gi/gdk";
 import type { GType } from "@gtkx/gi/gobject";
 import { typeFromName } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { AnyClass } from "@gtkx/utils";
 import { describe, expect, it } from "vitest";
-import { findNativeClass, getNativeClass, setClassGtype } from "../src/registry.js";
+import {
+    findNativeClass,
+    getNativeClass,
+    getNativeObject,
+    getNativeObjectAsInterface,
+    setClassGtype,
+} from "../src/registry.js";
 
 const INVALID_GTYPE: GType = 0;
 

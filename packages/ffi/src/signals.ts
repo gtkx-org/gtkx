@@ -4,7 +4,7 @@
  * Generated classes implement `connect` and `emit` as `switch` statements over
  * their own signals. The `emit` path marshals arguments into `GValue`s and
  * dispatches `g_signal_emitv` entirely in generated code; the `connect` path
- * resolves the per-signal trampoline and delegates to {@link connectSignal},
+ * resolves the per-signal trampoline and delegates to {@link connectGobjectSignal},
  * the thin wrapper this module provides around the non-introspectable
  * `g_signal_connect_data`.
  */
@@ -74,7 +74,7 @@ export function signalDetailQuark(signal: string): number {
  * @returns The handler connection id
  */
 // biome-ignore lint/complexity/useMaxParams: the wrapper mirrors g_signal_connect_data's positional arguments
-export function connectSignal(
+export function connectGobjectSignal(
     instance: object,
     signal: string,
     trampoline: TrampolineType,

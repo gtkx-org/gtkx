@@ -113,6 +113,7 @@
                 "packages/ffi/src/listeners.ts",
                 "packages/ffi/src/value-marshal.ts",
                 "packages/ffi/src/signals.ts",
+                "packages/ffi/src/emit-signal.ts",
                 "packages/ffi/src/gobject/**"
             ],
             "linter": {

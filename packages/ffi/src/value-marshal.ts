@@ -1,27 +1,21 @@
 /**
- * Internal `GValue` marshalling surface.
+ * `GValue` property-access marshalling.
  *
- * Converting a JavaScript value into a `GValue` — and back out — is a gtkx
- * runtime concern. These functions back the
- * signal-emission and property-access paths; they are consumed only by other
- * `packages/ffi` modules (and the generated bindings) and are not part of any
- * public namespace surface. They build on the hand-written {@link GValue}
- * wrapper, keeping the runtime independent of generated code.
- *
- * The forward builders ({@link valueFromFfi}, {@link valueFromObject}) live in
- * `./gobject/gvalue.js` and are re-exported here so the whole marshalling
- * vocabulary reads under one `value<Source>` stem; this module adds the
- * omitted-prop guard {@link valueFromFfiOptional}, the property accessors
- * {@link getObjectProperty} / {@link setObjectProperty}, and the reverse
- * direction {@link valueToJS}.
+ * Reading and writing a GObject property through a statically-known FFI type is
+ * a gtkx runtime concern: {@link getGobjectProperty} and
+ * {@link setGobjectProperty} are the accessors the generated property getters
+ * and setters call. The reverse-direction {@link valueToJS} and the signal
+ * out-parameter builder {@link outValueFromFfi} back the emission path and are
+ * consumed only by other `packages/ffi` modules. All build on the hand-written
+ * {@link GValue} wrapper, keeping the runtime independent of generated code.
  */
 
 import type { Type as FfiType, NativeHandle } from "@gtkx/native";
 import {
     emptyValueFromFfi,
     type GValueReader,
-    getBoxed,
     getFundamentalMarshallers,
+    getGvalueBoxed,
     getStrvGtype,
     valueFromFfi,
     valueGetType,
@@ -31,25 +25,6 @@ import { Type } from "./gobject/types.js";
 import { type GType, GVALUE_BORROWED, LIBGOBJECT, typeFundamental, typeName } from "./gtype.js";
 import { getHandle } from "./handles.js";
 import { alloc, read, t, write } from "./native.js";
-
-export { inoutBoxedFromFfi, outBoxedFromFfi, valueFromObject } from "./gobject/gvalue.js";
-export { valueFromFfi };
-
-/**
- * Like {@link valueFromFfi}, but returns `undefined` when `value` is
- * `undefined` (an omitted property) instead of marshalling it.
- *
- * Generated GObject constructors call this for each prop they translate, then
- * spread the results into the record handed up the `super(...)` chain. The
- * canonical constructor keeps only the entries that produced a `GValue`, so an
- * omitted prop is naturally dropped while an explicit `null` still marshals.
- *
- * @param ffiType - The FFI type descriptor.
- * @param value - The JS value to convert, or `undefined` to skip.
- */
-export function valueFromFfiOptional(ffiType: FfiType, value: unknown): GValue | undefined {
-    return value === undefined ? undefined : valueFromFfi(ffiType, value);
-}
 
 /** Storage size, in bytes, of a single out-parameter cell (a pointer or any scalar). */
 const OUT_PARAM_STORAGE_SIZE = 8;
@@ -143,7 +118,7 @@ export function valueToJS(value: GValueReader): unknown {
     if (fundamentalValue !== undefined) return fundamentalValue;
 
     if (fundamental === Type.POINTER) return getPointerValue(getHandle(value));
-    if (fundamental === Type.BOXED) return getBoxed(value);
+    if (fundamental === Type.BOXED) return getGvalueBoxed(value);
 
     throw new Error(`Unsupported GType for valueToJS: ${typeName(gtype) ?? String(gtype)}`);
 }
@@ -170,7 +145,7 @@ const g_object_set_property = t.fn(LIBGOBJECT, "g_object_set_property", [...PROP
  * @param propertyName - The property name (kebab-case GIR name).
  * @param ffiType - The property's FFI type descriptor.
  */
-export function getObjectProperty(obj: object, propertyName: string, ffiType: FfiType): unknown {
+export function getGobjectProperty(obj: object, propertyName: string, ffiType: FfiType): unknown {
     const value = emptyValueFromFfi(ffiType);
     g_object_get_property(getHandle(obj), propertyName, getHandle(value));
     return bigintValueToJS(ffiType, value) ?? valueToJS(value);
@@ -190,6 +165,6 @@ export function getObjectProperty(obj: object, propertyName: string, ffiType: Ff
  * @param ffiType - The property's FFI type descriptor.
  * @param jsValue - The JS value to set.
  */
-export function setObjectProperty(obj: object, propertyName: string, ffiType: FfiType, jsValue: unknown): void {
+export function setGobjectProperty(obj: object, propertyName: string, ffiType: FfiType, jsValue: unknown): void {
     g_object_set_property(getHandle(obj), propertyName, getHandle(valueFromFfi(ffiType, jsValue)));
 }
