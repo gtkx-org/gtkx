@@ -130,12 +130,26 @@ function ownInstanceMethodNames(klass: AnyClass): string[] {
     });
 }
 
+/**
+ * GObject class-struct vtable slots that fire during `g_object_new`, before the
+ * wrapper's handle is linked. gtkx does not route these to JavaScript: a
+ * subclass runs construct-time logic in its constructor, after `super(...)`,
+ * where the handle is already live. An override of one is rejected rather than
+ * silently dispatched to a half-built wrapper.
+ */
+const UNSUPPORTED_CONSTRUCT_VFUNCS: ReadonlySet<string> = new Set(["constructed", "setProperty", "getProperty"]);
+
 function discoverClassVfuncs(klass: AnyClass): DiscoveredClassVfunc[] {
     const proto = (klass as { prototype: Record<string, VfuncFn> }).prototype;
     const result: DiscoveredClassVfunc[] = [];
     for (const methodName of ownInstanceMethodNames(klass)) {
         const descriptor = findClassVfuncDescriptor(klass, methodName);
         if (!descriptor) continue;
+        if (UNSUPPORTED_CONSTRUCT_VFUNCS.has(methodName)) {
+            throw new Error(
+                `registerClass: overriding the GObject construct-time vtable slot '${methodName}' is not supported; run construct-time initialization in the subclass constructor, after super(...), instead`,
+            );
+        }
         const fn = proto[methodName];
         if (!fn) continue;
         result.push({ ...descriptor, methodName, fn: wrapVfunc(fn, descriptor.argTypes) });

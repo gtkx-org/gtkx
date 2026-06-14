@@ -73,7 +73,6 @@ export function signalDetailQuark(signal: string): number {
  * @param after - When true, run the handler after the default handler
  * @returns The handler connection id
  */
-// biome-ignore lint/complexity/useMaxParams: the wrapper mirrors g_signal_connect_data's positional arguments
 export function connectGobjectSignal(
     instance: object,
     signal: string,

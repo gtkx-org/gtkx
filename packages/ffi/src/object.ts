@@ -2,9 +2,8 @@ import { call, type Type as FfiType, type NativeHandle, setWrapper } from "@gtkx
 import type { AnyClass } from "@gtkx/utils";
 import { valueFromFfi } from "./gobject/gvalue.js";
 import { GVALUE_BORROWED, GVALUE_SIZE, LIBGOBJECT } from "./gtype.js";
-import { getHandle, setHandle, tryGetHandle } from "./handles.js";
+import { getHandle, setHandle } from "./handles.js";
 import { t } from "./helpers.js";
-import { setPendingConstruction } from "./pending-construction.js";
 import { getClassGtype } from "./registry.js";
 
 /**
@@ -79,10 +78,13 @@ const isMarshalEntry = (entry: unknown): entry is MarshalEntry => {
  * `g_object_new_with_properties`; every other entry is ignored. An instruction
  * whose value is `undefined` (an omitted optional prop) is dropped.
  *
- * The pending-construction guard lets a `constructed` vfunc that fires
- * synchronously during allocation adopt this wrapper instead of spawning a
- * second one; the toggle reference installed by `setWrapper` then makes
- * every future handle for this object round-trip to the same JS wrapper.
+ * The freshly allocated handle is linked to the wrapper and registered with a
+ * toggle reference (`setWrapper`), so every future handle for this object
+ * round-trips to the same JS wrapper. Construct-time initialization for a
+ * subclass belongs in its constructor, after `super(...)` — where the handle is
+ * already live; gtkx does not route GObject construct-time vtable slots
+ * (`constructed`, `set_property`, `get_property`) to JavaScript, so no synchronous
+ * vfunc observes the wrapper before construction completes.
  *
  * @param instance - The wrapper being constructed; its leaf class supplies the GType
  * @param props - GIR-name-keyed marshalling instructions (plus ignored extras)
@@ -100,26 +102,18 @@ export function newGobjectWithProperties(instance: object, props: Record<string,
     }
 
     const gtype = getClassGtype(instance.constructor as AnyClass);
-    const previous = setPendingConstruction(instance);
-    let handle: NativeHandle;
-    try {
-        handle = call(
-            LIBGOBJECT,
-            "g_object_new_with_properties",
-            [
-                { type: t.uint64, value: gtype },
-                { type: t.uint32, value: names.length },
-                { type: t.sizedArray(t.string("borrowed"), 1, "borrowed"), value: names },
-                { type: t.sizedArray(GVALUE_BORROWED, 1, "borrowed", GVALUE_SIZE), value: values },
-            ],
-            t.object("full"),
-        ) as NativeHandle;
-    } finally {
-        setPendingConstruction(previous);
-    }
+    const handle = call(
+        LIBGOBJECT,
+        "g_object_new_with_properties",
+        [
+            { type: t.uint64, value: gtype },
+            { type: t.uint32, value: names.length },
+            { type: t.sizedArray(t.string("borrowed"), 1, "borrowed"), value: names },
+            { type: t.sizedArray(GVALUE_BORROWED, 1, "borrowed", GVALUE_SIZE), value: values },
+        ],
+        t.object("full"),
+    ) as NativeHandle;
 
-    if (tryGetHandle(instance) === undefined) {
-        setHandle(instance, handle);
-        setWrapper(handle, instance);
-    }
+    setHandle(instance, handle);
+    setWrapper(handle, instance);
 }

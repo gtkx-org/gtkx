@@ -63,33 +63,16 @@ describe("registerClass — registration", () => {
 describe("registerClass — vfunc dispatch", () => {
     it("auto-discovers a class vfunc override from a subclass method", () => {
         const name = uniqueName("GtkxVfuncSubclass");
-        class CustomObject extends GObject {
-            setProperty(): void {}
+        class CustomWidget extends Gtk.Widget {
+            snapshot(): void {}
         }
 
-        registerClass(CustomObject, { gtypeName: name });
+        registerClass(CustomWidget, { gtypeName: name });
 
         const customGtype = typeFromName(name);
         expect(customGtype).not.toBe(0);
         const instance = GObject.newv(customGtype, []);
-        expect(instance).toBeDefined();
-    });
-
-    it("invokes the auto-discovered class vfunc trampoline when GObject dispatches the slot", () => {
-        const name = uniqueName("GtkxVfuncInvocationSubclass");
-        const constructedCalls: string[] = [];
-        class CustomObject extends GObject {
-            constructed(): void {
-                constructedCalls.push("constructed invoked");
-            }
-        }
-
-        registerClass(CustomObject, { gtypeName: name });
-
-        const customGtype = typeFromName(name);
-        GObject.newv(customGtype, []);
-
-        expect(constructedCalls).toEqual(["constructed invoked"]);
+        expect(instance).toBeInstanceOf(CustomWidget);
     });
 
     it("auto-discovers and dispatches a vfunc override for an interface inherited from the parent", () => {
@@ -141,70 +124,48 @@ describe("registerClass — vfunc self argument convention", () => {
     });
 });
 
-describe("registerClass — construction identity", () => {
-    it("delivers the same wrapper to a synchronous vfunc and to user code after `new`", () => {
-        const name = uniqueName("GtkxConstructIdentity");
-        let constructedThis: object | null = null;
-
+describe("registerClass — construct-time vtable slots", () => {
+    it("rejects overriding the `constructed` slot", () => {
+        const name = uniqueName("GtkxConstructedRejected");
         class CustomObject extends GObject {
-            constructed(): void {
-                constructedThis = this;
-            }
+            constructed(): void {}
         }
 
-        registerClass(CustomObject, { gtypeName: name });
-
-        const instance = new CustomObject({});
-
-        expect(constructedThis).toBe(instance);
+        expect(() => registerClass(CustomObject, { gtypeName: name })).toThrow(
+            /construct-time vtable slot 'constructed'/,
+        );
     });
 
-    it("makes class field initializers visible on the wrapper after construction returns", () => {
-        const name = uniqueName("GtkxConstructFieldVisibility");
-
+    it("rejects overriding the `setProperty` slot", () => {
+        const name = uniqueName("GtkxSetPropertyRejected");
         class CustomObject extends GObject {
-            counter = 0;
-
-            constructed(): void {
-                this.counter = (this.counter ?? 0) + 1;
-            }
+            setProperty(): void {}
         }
 
-        registerClass(CustomObject, { gtypeName: name });
-
-        const instance = new CustomObject({});
-
-        expect(instance.counter).toBe(0);
+        expect(() => registerClass(CustomObject, { gtypeName: name })).toThrow(
+            /construct-time vtable slot 'setProperty'/,
+        );
     });
 });
 
-describe("registerClass — nested construction", () => {
-    it("preserves identity when one constructed vfunc instantiates another type", () => {
-        const outerName = uniqueName("GtkxConstructOuter");
-        const innerName = uniqueName("GtkxConstructInner");
-        let innerThis: object | null = null;
-        let outerThis: object | null = null;
-        let nestedInstance: object | null = null;
+describe("registerClass — construct-time initialization", () => {
+    it("runs initialization from the subclass constructor with a live handle", () => {
+        const name = uniqueName("GtkxConstructorInit");
 
-        class InnerObject extends GObject {
-            constructed(): void {
-                innerThis = this;
+        class CustomObject extends GObject {
+            initialized = false;
+
+            constructor() {
+                super({});
+                this.initialized = true;
             }
         }
-        registerClass(InnerObject, { gtypeName: innerName });
 
-        class OuterObject extends GObject {
-            constructed(): void {
-                outerThis = this;
-                nestedInstance = new InnerObject({});
-            }
-        }
-        registerClass(OuterObject, { gtypeName: outerName });
+        registerClass(CustomObject, { gtypeName: name });
 
-        const outer = new OuterObject({});
+        const instance = new CustomObject();
 
-        expect(outerThis).toBe(outer);
-        expect(innerThis).toBe(nestedInstance);
-        expect(outerThis).not.toBe(innerThis);
+        expect(instance.initialized).toBe(true);
+        expect(getHandle(instance)).toBeDefined();
     });
 });

@@ -36,7 +36,8 @@ class ColorWidget extends Gtk.Widget {
     private time2 = 0;
     private t = 0;
 
-    constructed(): void {
+    constructor(props: ConstructorParameters<typeof Gtk.Widget>[0] = {}) {
+        super(props);
         this.setHexpand(true);
         this.setVexpand(true);
         this.addTickCallback((widget, frameClock) => {

@@ -1,8 +1,7 @@
 import { getGobjectGtype, getWrapper, type NativeHandle, setWrapper } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { G_TYPE_INVALID, type GType, typeFromName, typeIsA, typeParent } from "./gtype.js";
-import { type GTyped, setHandle, tryGetHandle } from "./handles.js";
-import { getPendingConstruction } from "./pending-construction.js";
+import { type GTyped, setHandle } from "./handles.js";
 
 let gobjectGtype: GType = G_TYPE_INVALID;
 
@@ -211,9 +210,6 @@ function resolveWrapper(handle: NativeHandle, resolveClass: (runtimeGtype: GType
     }
 
     const cls = resolveClass(runtimeGtype);
-    const adopted = tryAdoptPendingConstruction(handle, cls);
-    if (adopted) return adopted;
-
     const instance = wrapHandle(cls, handle) as GTyped;
     if (isGobjectType(runtimeGtype)) {
         setWrapper(handle, instance);
@@ -268,26 +264,6 @@ export function getNativeObject(handle: NativeHandle | null | undefined, targetT
         }
         return cls;
     });
-}
-
-/**
- * If a wrapper is mid-construction and matches `cls` exactly, claim it for
- * `handle` and register it. Returns the adopted wrapper or `null` when no
- * legitimate adoption applies.
- *
- * The match must be exact rather than `instanceof` because adoption installs
- * the supplied handle on the wrapper: a class-mismatched adoption would bind a
- * subclass wrapper to a base-class handle and break identity for any later
- * lookup of the genuine subclass instance.
- */
-function tryAdoptPendingConstruction(handle: NativeHandle, cls: AnyClass): GTyped | null {
-    const pending = getPendingConstruction();
-    if (!pending) return null;
-    if (pending.constructor !== cls) return null;
-    if (tryGetHandle(pending) !== undefined) return null;
-    setHandle(pending, handle);
-    setWrapper(handle, pending as GTyped);
-    return pending as GTyped;
 }
 
 /**
