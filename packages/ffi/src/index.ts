@@ -4,9 +4,7 @@
  * Surfaces the hand-written runtime helpers the generated `@gtkx/gi` bindings
  * and their override templates import at module-load and call time, plus the
  * narrow surface internal packages (`@gtkx/react`, `@gtkx/testing`) consume
- * directly. The helper subset generated code depends on is aggregated in
- * `./runtime.js` and re-exported here, keeping `@gtkx/ffi` a single
- * transparent helper specifier.
+ * directly.
  *
  * The call convention is the higher-level surface generated code targets:
  * `ffiCall` dispatches a callable with out-parameter tupling, `GError`
@@ -25,17 +23,32 @@
  * helpers live behind the `@gtkx/ffi/cairo` subpath for the same reason.
  */
 
-export * from "./gobject/fundamental-types.js";
-export { getGvalueBoxed, setGvalueBoxed } from "./gobject/gvalue.js";
-export { setVariantClass } from "./gobject/gvalue-native.js";
-export { Type } from "./gobject/types.js";
+export { promisify } from "./async.js";
+export { ffiCall } from "./call.js";
+export { checkError, createErrorDomain, type ErrorDomain } from "./error.js";
+export {
+    getGobjectProperty,
+    getGvalueBoxed,
+    newGobjectWithProperties,
+    setGobjectProperty,
+    setGvalueBoxed,
+    setVariantClass,
+    wrapFfiValue,
+} from "./gobject.js";
 export * from "./gtype.js";
+export { t } from "./helpers.js";
 export * from "./lifecycle.js";
-export * from "./listeners.js";
-export type { ErrorDomain } from "./native.js";
-export { newGobjectWithProperties } from "./object.js";
 export { registerClass } from "./register-class.js";
-export { getNativeClassByName, wrapHandle } from "./registry.js";
-export * from "./runtime.js";
-export type { SignalHandler } from "./signals.js";
-export { getGobjectProperty, setGobjectProperty } from "./value-marshal.js";
+export { registerNativeClass } from "./register-native-class.js";
+export { getHandle, getNativeClassByName, setHandle, tryGetHandle, wrapHandle } from "./registry.js";
+export {
+    connectGobjectSignal,
+    disconnectSignalHandler,
+    emitGobjectSignal,
+    findListenerHandlerId,
+    type Listener,
+    type SignalHandler,
+    signalBaseName,
+    trackListener,
+    untrackListener,
+} from "./signal.js";

@@ -1,21 +1,15 @@
 /**
- * Native error handling and the consolidated FFI helper re-export.
+ * Error-domain machinery for generated throwing callables.
  *
- * Re-exports the `@gtkx/native` primitives and the `t` binding/type helpers
- * from `./helpers.js` under a single specifier hand-written bindings import
- * from, and defines the error-domain machinery that generated throwing
- * callables use to surface `GError` failures as `instanceof`-discriminable
- * thrown values.
+ * Surfaces a `GError` failure as an `instanceof`-discriminable thrown value:
+ * the catch site reads the live boxed error's `domain`, `code`, and `message`
+ * and matches it against a generated error-domain enum, without `@gtkx/ffi`
+ * depending on the generated `GLib.Error` class.
  */
-
-export { alloc, call, read, t, write } from "./helpers.js";
 
 import type { NativeHandle } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { getNativeObject } from "./registry.js";
-
-export type { NativeHandle, Type } from "@gtkx/native";
-export { getGobjectGtype } from "@gtkx/native";
 
 /**
  * Structural shape of a thrown GLib `GError` boxed wrapper.

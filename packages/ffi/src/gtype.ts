@@ -10,7 +10,7 @@
  * runtime self-contained.
  */
 
-import type { Type } from "@gtkx/native";
+import type { Type as FfiType } from "@gtkx/native";
 import { t } from "./helpers.js";
 
 /**
@@ -36,7 +36,7 @@ export const GVALUE_SIZE = 24;
  * `g_value_*` and `g_object_*_property` call passes for a `GValue *` whose
  * ownership stays with the caller.
  */
-export const GVALUE_BORROWED: Type = t.boxed("GValue", "borrowed", LIBGOBJECT, "g_value_get_type");
+export const GVALUE_BORROWED: FfiType = t.boxed("GValue", "borrowed", LIBGOBJECT, "g_value_get_type");
 
 /**
  * The invalid GType sentinel (`G_TYPE_INVALID`), the numeric `0` the GObject
@@ -137,3 +137,201 @@ export function typeFundamental(type: GType): GType {
 export function typeName(type: GType): string | null {
     return (g_type_name(type) as string | null) ?? null;
 }
+
+/**
+ * GObject fundamental type constants.
+ *
+ * The GObject type system exposes a fixed set of fundamental `GType`
+ * identifiers (`TYPE_INT`, `TYPE_STRING`, `TYPE_OBJECT`, ...). They have no
+ * GIR backing, so the gtkx FFI resolves each one at runtime from
+ * `g_type_from_name` and re-exports it under its `TYPE_*` name.
+ */
+
+/**
+ * The fundamental `GType` of an uninitialized or invalid value.
+ */
+export const TYPE_INVALID: GType = typeFromName("void");
+
+/**
+ * The fundamental `GType` denoting the absence of a typed value.
+ */
+export const TYPE_NONE: GType = typeFromName("void");
+
+/**
+ * The fundamental `GType` from which all interface types are derived.
+ */
+export const TYPE_INTERFACE: GType = typeFromName("GInterface");
+
+/**
+ * The fundamental `GType` of a signed 8-bit integer (`gchar`).
+ */
+export const TYPE_CHAR: GType = typeFromName("gchar");
+
+/**
+ * The fundamental `GType` of an unsigned 8-bit integer (`guchar`).
+ */
+export const TYPE_UCHAR: GType = typeFromName("guchar");
+
+/**
+ * The fundamental `GType` of a boolean value.
+ */
+export const TYPE_BOOLEAN: GType = typeFromName("gboolean");
+
+/**
+ * The fundamental `GType` of a signed integer (`gint`).
+ */
+export const TYPE_INT: GType = typeFromName("gint");
+
+/**
+ * The fundamental `GType` of an unsigned integer (`guint`).
+ */
+export const TYPE_UINT: GType = typeFromName("guint");
+
+/**
+ * The fundamental `GType` of a signed long integer (`glong`).
+ */
+export const TYPE_LONG: GType = typeFromName("glong");
+
+/**
+ * The fundamental `GType` of an unsigned long integer (`gulong`).
+ */
+export const TYPE_ULONG: GType = typeFromName("gulong");
+
+/**
+ * The fundamental `GType` of a signed 64-bit integer (`gint64`).
+ */
+export const TYPE_INT64: GType = typeFromName("gint64");
+
+/**
+ * The fundamental `GType` of an unsigned 64-bit integer (`guint64`).
+ */
+export const TYPE_UINT64: GType = typeFromName("guint64");
+
+/**
+ * The fundamental `GType` from which all enumeration types are derived.
+ */
+export const TYPE_ENUM: GType = typeFromName("GEnum");
+
+/**
+ * The fundamental `GType` from which all flags types are derived.
+ */
+export const TYPE_FLAGS: GType = typeFromName("GFlags");
+
+/**
+ * The fundamental `GType` of a single-precision float (`gfloat`).
+ */
+export const TYPE_FLOAT: GType = typeFromName("gfloat");
+
+/**
+ * The fundamental `GType` of a double-precision float (`gdouble`).
+ */
+export const TYPE_DOUBLE: GType = typeFromName("gdouble");
+
+/**
+ * The fundamental `GType` of a string (`gchararray`).
+ */
+export const TYPE_STRING: GType = typeFromName("gchararray");
+
+/**
+ * The fundamental `GType` of an untyped pointer (`gpointer`).
+ */
+export const TYPE_POINTER: GType = typeFromName("gpointer");
+
+/**
+ * The fundamental `GType` from which all boxed types are derived.
+ */
+export const TYPE_BOXED: GType = typeFromName("GBoxed");
+
+/**
+ * The fundamental `GType` from which all `GParamSpec` types are derived.
+ */
+export const TYPE_PARAM: GType = typeFromName("GParam");
+
+/**
+ * The fundamental `GType` from which all `GObject` types are derived.
+ */
+export const TYPE_OBJECT: GType = typeFromName("GObject");
+
+/**
+ * The fundamental `GType` representing a `GType` identifier itself.
+ */
+export const TYPE_GTYPE: GType = typeFromName("GType");
+
+/**
+ * The fundamental `GType` of a `GVariant` value.
+ */
+export const TYPE_VARIANT: GType = typeFromName("GVariant");
+
+/**
+ * The fundamental `GType` of a Unicode code point, mapped to `guint`.
+ */
+export const TYPE_UNICHAR: GType = typeFromName("guint");
+
+/**
+ * Fundamental GLib type constants, addressed by short member name.
+ *
+ * Each member aliases the matching `TYPE_*` constant from
+ * {@link ./fundamental-types}, the single source of truth for fundamental
+ * `GType` resolution. Both spellings — `Type.STRING` and `TYPE_STRING` — name
+ * the identical value and expose the identical member set.
+ *
+ * Names a `GValue`'s fundamental type when initializing or inspecting one.
+ *
+ * @example
+ * ```ts
+ * import { Type } from "@gtkx/ffi";
+ *
+ * console.log(Type.STRING); // GType for gchararray
+ * ```
+ */
+export const Type: Readonly<{
+    INVALID: GType;
+    NONE: GType;
+    INTERFACE: GType;
+    CHAR: GType;
+    UCHAR: GType;
+    BOOLEAN: GType;
+    INT: GType;
+    UINT: GType;
+    LONG: GType;
+    ULONG: GType;
+    INT64: GType;
+    UINT64: GType;
+    ENUM: GType;
+    FLAGS: GType;
+    FLOAT: GType;
+    DOUBLE: GType;
+    STRING: GType;
+    POINTER: GType;
+    BOXED: GType;
+    PARAM: GType;
+    OBJECT: GType;
+    GTYPE: GType;
+    VARIANT: GType;
+    UNICHAR: GType;
+}> = Object.freeze({
+    INVALID: TYPE_INVALID,
+    NONE: TYPE_NONE,
+    INTERFACE: TYPE_INTERFACE,
+    CHAR: TYPE_CHAR,
+    UCHAR: TYPE_UCHAR,
+    BOOLEAN: TYPE_BOOLEAN,
+    INT: TYPE_INT,
+    UINT: TYPE_UINT,
+    LONG: TYPE_LONG,
+    ULONG: TYPE_ULONG,
+    INT64: TYPE_INT64,
+    UINT64: TYPE_UINT64,
+    ENUM: TYPE_ENUM,
+    FLAGS: TYPE_FLAGS,
+    FLOAT: TYPE_FLOAT,
+    DOUBLE: TYPE_DOUBLE,
+    STRING: TYPE_STRING,
+    POINTER: TYPE_POINTER,
+    BOXED: TYPE_BOXED,
+    PARAM: TYPE_PARAM,
+    OBJECT: TYPE_OBJECT,
+    GTYPE: TYPE_GTYPE,
+    VARIANT: TYPE_VARIANT,
+    UNICHAR: TYPE_UNICHAR,
+});

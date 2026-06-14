@@ -5,8 +5,14 @@ import {
 } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { G_TYPE_INVALID, type GType, typeInterfaces } from "./gtype.js";
-import { getParentClass, getVfuncRegistry, type NativeHandle } from "./handles.js";
-import { getClassGtype, getNativeObject, setClassGtype } from "./registry.js";
+import {
+    getClassGtype,
+    getNativeObject,
+    getParentClass,
+    getVfuncRegistry,
+    type NativeHandle,
+    setClassGtype,
+} from "./registry.js";
 
 /**
  * Generated descriptor of a vtable vfunc slot. Codegen emits one per vfunc on

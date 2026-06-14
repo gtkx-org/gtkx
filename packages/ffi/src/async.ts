@@ -10,7 +10,7 @@
  */
 
 import type { NativeHandle } from "@gtkx/native";
-import { setHandle, tryGetHandle } from "./handles.js";
+import { setHandle, tryGetHandle } from "./registry.js";
 
 /**
  * Wraps the raw `GAsyncResult*` handle delivered to a `GAsyncReadyCallback`

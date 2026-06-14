@@ -10,9 +10,8 @@
 
 import type { AnyClass } from "@gtkx/utils";
 import { G_TYPE_INVALID, type GType } from "./gtype.js";
-import { registerVfuncRegistry, type VfuncRegistry } from "./handles.js";
 import { registerInterfaceVfuncRegistry } from "./register-class.js";
-import { setClassGtype, setInterfaceGtype } from "./registry.js";
+import { registerVfuncRegistry, setClassGtype, setInterfaceGtype, type VfuncRegistry } from "./registry.js";
 
 /**
  * The kind of native type being registered, selecting which identity registry

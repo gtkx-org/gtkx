@@ -18,10 +18,10 @@
 
 import { type Arg, type Type as FfiType, type NativeHandle, call as nativeCall } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
-import { getHandle } from "./handles.js";
+import { checkError, type GError } from "./error.js";
+import { wrapFfiValue } from "./gobject.js";
 import { t } from "./helpers.js";
-import { checkError, type GError } from "./native.js";
-import { wrapFfiValue } from "./wrap-value.js";
+import { getHandle } from "./registry.js";
 
 /**
  * How a parameter participates in a call beyond a plain input:
