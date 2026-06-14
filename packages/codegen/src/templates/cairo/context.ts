@@ -55,54 +55,16 @@ const { fn } = t;
 
 export type { FontExtents, TextExtents } from "@gtkx/ffi/cairo";
 
-/**
- * Three absolute control points of a cubic Bézier segment, used by
- * {@link Context.curveTo}.
- */
-export type BezierCurve = {
-    x1: number;
-    y1: number;
-    x2: number;
-    y2: number;
-    x3: number;
-    y3: number;
-};
-
-/**
- * Three relative control points of a cubic Bézier segment, used by
- * {@link Context.relCurveTo}.
- */
-export type RelativeBezierCurve = {
-    dx1: number;
-    dy1: number;
-    dx2: number;
-    dy2: number;
-    dx3: number;
-    dy3: number;
-};
-
-/**
- * Center, radius, and angular span shared by {@link Context.arc} and
- * {@link Context.arcNegative}.
- */
-export type ArcParams = {
-    xc: number;
-    yc: number;
-    radius: number;
-    angle1: number;
-    angle2: number;
-};
-
 declare module "@gtkx/gi/cairo/cairo.js" {
     interface Context {
         moveTo(x: number, y: number): void;
         lineTo(x: number, y: number): void;
         relMoveTo(dx: number, dy: number): void;
         relLineTo(dx: number, dy: number): void;
-        relCurveTo(curve: RelativeBezierCurve): void;
-        curveTo(curve: BezierCurve): void;
-        arc(params: ArcParams): void;
-        arcNegative(params: ArcParams): void;
+        relCurveTo(dx1: number, dy1: number, dx2: number, dy2: number, dx3: number, dy3: number): void;
+        curveTo(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): void;
+        arc(xc: number, yc: number, radius: number, angle1: number, angle2: number): void;
+        arcNegative(xc: number, yc: number, radius: number, angle1: number, angle2: number): void;
         rectangle(x: number, y: number, width: number, height: number): void;
         closePath(): void;
         newPath(): void;
@@ -129,7 +91,7 @@ declare module "@gtkx/gi/cairo/cairo.js" {
         setLineJoin(lineJoin: LineJoin): void;
         getLineJoin(): LineJoin;
         getDashCount(): number;
-        getDash(): [number[], number];
+        getDash(): { dashes: number[]; offset: number };
         setMiterLimit(limit: number): void;
         getMiterLimit(): number;
         setTolerance(tolerance: number): void;
@@ -164,13 +126,13 @@ declare module "@gtkx/gi/cairo/cairo.js" {
         getTarget(): Surface;
         setSourceSurface(surface: Surface, x: number, y: number): void;
         hasCurrentPoint(): boolean;
-        getCurrentPoint(): [number, number] | null;
+        getCurrentPoint(): { x: number; y: number } | null;
         getSource(): Pattern;
 
-        strokeExtents(): [number, number, number, number];
-        fillExtents(): [number, number, number, number];
-        clipExtents(): [number, number, number, number];
-        pathExtents(): [number, number, number, number];
+        strokeExtents(): { x1: number; y1: number; x2: number; y2: number };
+        fillExtents(): { x1: number; y1: number; x2: number; y2: number };
+        clipExtents(): { x1: number; y1: number; x2: number; y2: number };
+        pathExtents(): { x1: number; y1: number; x2: number; y2: number };
         inStroke(x: number, y: number): boolean;
         inFill(x: number, y: number): boolean;
         inClip(x: number, y: number): boolean;
@@ -183,10 +145,10 @@ declare module "@gtkx/gi/cairo/cairo.js" {
         getMatrix(): CairoMatrix;
         transform(matrix: CairoMatrix): void;
         identityMatrix(): void;
-        userToDevice(x: number, y: number): [number, number];
-        userToDeviceDistance(dx: number, dy: number): [number, number];
-        deviceToUser(x: number, y: number): [number, number];
-        deviceToUserDistance(dx: number, dy: number): [number, number];
+        userToDevice(x: number, y: number): { x: number; y: number };
+        userToDeviceDistance(dx: number, dy: number): { dx: number; dy: number };
+        deviceToUser(x: number, y: number): { x: number; y: number };
+        deviceToUserDistance(dx: number, dy: number): { dx: number; dy: number };
 
         status(): Status;
         getReferenceCount(): number;
@@ -247,7 +209,14 @@ const cairo_rel_curve_to = fn(
     ],
     t.void,
 );
-Context.prototype.relCurveTo = function ({ dx1, dy1, dx2, dy2, dx3, dy3 }: RelativeBezierCurve): void {
+Context.prototype.relCurveTo = function (
+    dx1: number,
+    dy1: number,
+    dx2: number,
+    dy2: number,
+    dx3: number,
+    dy3: number,
+): void {
     cairo_rel_curve_to(getHandle(this), dx1, dy1, dx2, dy2, dx3, dy3);
 };
 
@@ -265,7 +234,7 @@ const cairo_curve_to = fn(
     ],
     t.void,
 );
-Context.prototype.curveTo = function ({ x1, y1, x2, y2, x3, y3 }: BezierCurve): void {
+Context.prototype.curveTo = function (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): void {
     cairo_curve_to(getHandle(this), x1, y1, x2, y2, x3, y3);
 };
 
@@ -282,7 +251,7 @@ const cairo_arc = fn(
     ],
     t.void,
 );
-Context.prototype.arc = function ({ xc, yc, radius, angle1, angle2 }: ArcParams): void {
+Context.prototype.arc = function (xc: number, yc: number, radius: number, angle1: number, angle2: number): void {
     cairo_arc(getHandle(this), xc, yc, radius, angle1, angle2);
 };
 
@@ -299,7 +268,13 @@ const cairo_arc_negative = fn(
     ],
     t.void,
 );
-Context.prototype.arcNegative = function ({ xc, yc, radius, angle1, angle2 }: ArcParams): void {
+Context.prototype.arcNegative = function (
+    xc: number,
+    yc: number,
+    radius: number,
+    angle1: number,
+    angle2: number,
+): void {
     cairo_arc_negative(getHandle(this), xc, yc, radius, angle1, angle2);
 };
 
@@ -440,10 +415,10 @@ const cairo_get_dash = fn(
     [{ type: CAIRO_T }, { type: DOUBLE_BUFFER_T }, { type: DOUBLE_REF }],
     t.void,
 );
-Context.prototype.getDash = function (): [number[], number] {
+Context.prototype.getDash = function (): { dashes: number[]; offset: number } {
     const count = this.getDashCount();
     if (count === 0) {
-        return [[], 0];
+        return { dashes: [], offset: 0 };
     }
     const dashBuf = alloc(count * 8, "double[]");
     const offsetRef = { value: 0 };
@@ -452,7 +427,7 @@ Context.prototype.getDash = function (): [number[], number] {
     for (let i = 0; i < count; i++) {
         dashes.push(read(dashBuf, DOUBLE_TYPE, i * 8) as number);
     }
-    return [dashes, offsetRef.value];
+    return { dashes, offset: offsetRef.value };
 };
 
 const cairo_set_miter_limit = fn(LIB, "cairo_set_miter_limit", [{ type: CAIRO_T }, { type: DOUBLE_TYPE }], t.void);
@@ -627,14 +602,14 @@ const cairo_get_current_point = fn(
     [{ type: CAIRO_T }, { type: DOUBLE_REF }, { type: DOUBLE_REF }],
     t.void,
 );
-Context.prototype.getCurrentPoint = function (): [number, number] | null {
+Context.prototype.getCurrentPoint = function (): { x: number; y: number } | null {
     if (!this.hasCurrentPoint()) {
         return null;
     }
     const xRef = { value: 0 };
     const yRef = { value: 0 };
     cairo_get_current_point(getHandle(this), xRef, yRef);
-    return [xRef.value, yRef.value];
+    return { x: xRef.value, y: yRef.value };
 };
 
 const cairo_get_source = fn(LIB, "cairo_get_source", [{ type: CAIRO_T }], PATTERN_T_NONE);
@@ -654,28 +629,31 @@ const cairo_fill_extents = fn(LIB, "cairo_fill_extents", EXTENTS_ARGS, t.void);
 const cairo_clip_extents = fn(LIB, "cairo_clip_extents", EXTENTS_ARGS, t.void);
 const cairo_path_extents = fn(LIB, "cairo_path_extents", EXTENTS_ARGS, t.void);
 
-const getExtents = (ctx: Context, boundFn: (...args: unknown[]) => unknown): [number, number, number, number] => {
+const getExtents = (
+    ctx: Context,
+    boundFn: (...args: unknown[]) => unknown,
+): { x1: number; y1: number; x2: number; y2: number } => {
     const x1Ref = { value: 0 };
     const y1Ref = { value: 0 };
     const x2Ref = { value: 0 };
     const y2Ref = { value: 0 };
     boundFn(getHandle(ctx), x1Ref, y1Ref, x2Ref, y2Ref);
-    return [x1Ref.value, y1Ref.value, x2Ref.value, y2Ref.value];
+    return { x1: x1Ref.value, y1: y1Ref.value, x2: x2Ref.value, y2: y2Ref.value };
 };
 
-Context.prototype.strokeExtents = function (): [number, number, number, number] {
+Context.prototype.strokeExtents = function (): { x1: number; y1: number; x2: number; y2: number } {
     return getExtents(this, cairo_stroke_extents);
 };
 
-Context.prototype.fillExtents = function (): [number, number, number, number] {
+Context.prototype.fillExtents = function (): { x1: number; y1: number; x2: number; y2: number } {
     return getExtents(this, cairo_fill_extents);
 };
 
-Context.prototype.clipExtents = function (): [number, number, number, number] {
+Context.prototype.clipExtents = function (): { x1: number; y1: number; x2: number; y2: number } {
     return getExtents(this, cairo_clip_extents);
 };
 
-Context.prototype.pathExtents = function (): [number, number, number, number] {
+Context.prototype.pathExtents = function (): { x1: number; y1: number; x2: number; y2: number } {
     return getExtents(this, cairo_path_extents);
 };
 
@@ -810,20 +788,24 @@ const coordTransform = (
     return [aRef.value, bRef.value];
 };
 
-Context.prototype.userToDevice = function (x: number, y: number): [number, number] {
-    return coordTransform(this, cairo_user_to_device, x, y);
+Context.prototype.userToDevice = function (x: number, y: number): { x: number; y: number } {
+    const [px, py] = coordTransform(this, cairo_user_to_device, x, y);
+    return { x: px, y: py };
 };
 
-Context.prototype.userToDeviceDistance = function (dx: number, dy: number): [number, number] {
-    return coordTransform(this, cairo_user_to_device_distance, dx, dy);
+Context.prototype.userToDeviceDistance = function (dx: number, dy: number): { dx: number; dy: number } {
+    const [ddx, ddy] = coordTransform(this, cairo_user_to_device_distance, dx, dy);
+    return { dx: ddx, dy: ddy };
 };
 
-Context.prototype.deviceToUser = function (x: number, y: number): [number, number] {
-    return coordTransform(this, cairo_device_to_user, x, y);
+Context.prototype.deviceToUser = function (x: number, y: number): { x: number; y: number } {
+    const [px, py] = coordTransform(this, cairo_device_to_user, x, y);
+    return { x: px, y: py };
 };
 
-Context.prototype.deviceToUserDistance = function (dx: number, dy: number): [number, number] {
-    return coordTransform(this, cairo_device_to_user_distance, dx, dy);
+Context.prototype.deviceToUserDistance = function (dx: number, dy: number): { dx: number; dy: number } {
+    const [ddx, ddy] = coordTransform(this, cairo_device_to_user_distance, dx, dy);
+    return { dx: ddx, dy: ddy };
 };
 
 const cairo_status = fn(LIB, "cairo_status", [{ type: CAIRO_T }], INT_TYPE);
@@ -981,7 +963,7 @@ Context.prototype.appendPath = function (data: PathData[]): void {
                 this.lineTo(item.x, item.y);
                 break;
             case "curveTo":
-                this.curveTo({ x1: item.x1, y1: item.y1, x2: item.x2, y2: item.y2, x3: item.x3, y3: item.y3 });
+                this.curveTo(item.x1, item.y1, item.x2, item.y2, item.x3, item.y3);
                 break;
             case "closePath":
                 this.closePath();

@@ -118,6 +118,9 @@
             ],
             "linter": {
                 "rules": {
+                    "complexity": {
+                        "useMaxParams": "off"
+                    },
                     "style": {
                         "useNamingConvention": "off"
                     }

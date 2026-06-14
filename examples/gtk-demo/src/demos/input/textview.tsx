@@ -38,7 +38,7 @@ function createNuclearTexture(): Gdk.Texture {
     cr.setLineWidth(1.5);
     cr.setSourceRgba(0, 0, 0, 1);
 
-    cr.arc({ xc: cx, yc: cy, radius: r * 0.15, angle1: 0, angle2: 2 * Math.PI });
+    cr.arc(cx, cy, r * 0.15, 0, 2 * Math.PI);
     cr.fill();
 
     for (let i = 0; i < 3; i++) {
@@ -48,7 +48,7 @@ function createNuclearTexture(): Gdk.Texture {
         cr.rotate(orbAngle);
         cr.scale(1, 0.35);
         cr.newPath();
-        cr.arc({ xc: 0, yc: 0, radius: r * 0.85, angle1: 0, angle2: 2 * Math.PI });
+        cr.arc(0, 0, r * 0.85, 0, 2 * Math.PI);
         cr.restore();
         cr.stroke();
     }

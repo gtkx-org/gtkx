@@ -99,7 +99,7 @@ const drawRotateZoom = (
 
 const drawLongPress = (cr: Context, width: number, height: number) => {
     cr.save();
-    cr.arc({ xc: width / 2, yc: height / 2, radius: 50, angle1: 0, angle2: 2 * Math.PI });
+    cr.arc(width / 2, height / 2, 50, 0, 2 * Math.PI);
     cr.setSourceRgba(0, 1, 0, 0.5);
     cr.stroke();
     cr.restore();

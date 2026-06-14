@@ -12,7 +12,7 @@ const ovalPath = (cr: Context, { xc, yc, xr, yr }: { xc: number; yc: number; xr:
     cr.translate(xc, yc);
     cr.scale(1, yr / xr);
     cr.moveTo(xr, 0);
-    cr.arc({ xc: 0, yc: 0, radius: xr, angle1: 0, angle2: 2 * Math.PI });
+    cr.arc(0, 0, xr, 0, 2 * Math.PI);
     cr.closePath();
     cr.restore();
 };

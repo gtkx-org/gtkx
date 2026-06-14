@@ -53,42 +53,10 @@ const readRgba = (
     return { red: redRef.value, green: greenRef.value, blue: blueRef.value, alpha: alphaRef.value };
 };
 
-/**
- * Three control points of a cubic Bézier segment for {@link MeshPattern.curveTo}.
- */
-export type BezierCurve = {
-    x1: number;
-    y1: number;
-    x2: number;
-    y2: number;
-    x3: number;
-    y3: number;
-};
-
-/**
- * Offset/RGBA tuple for {@link Pattern.addColorStopRgba}.
- */
-export type ColorStopRgba = {
-    offset: number;
-} & RgbaColor;
-
-/**
- * Centres and radii of the two circles defining a radial gradient. See
- * {@link Pattern.createRadial}.
- */
-export type RadialCircles = {
-    cx0: number;
-    cy0: number;
-    radius0: number;
-    cx1: number;
-    cy1: number;
-    radius1: number;
-};
-
 declare module "@gtkx/gi/cairo/cairo.js" {
     interface Pattern {
         addColorStopRgb(offset: number, red: number, green: number, blue: number): void;
-        addColorStopRgba(stop: ColorStopRgba): void;
+        addColorStopRgba(offset: number, red: number, green: number, blue: number, alpha: number): void;
         getColorStopCount(): number;
         getColorStopRgba(index: number): { offset: number; red: number; green: number; blue: number; alpha: number };
         getRgba(): { red: number; green: number; blue: number; alpha: number };
@@ -107,7 +75,14 @@ declare module "@gtkx/gi/cairo/cairo.js" {
         function createRgb(red: number, green: number, blue: number): Pattern;
         function createRgba(red: number, green: number, blue: number, alpha: number): Pattern;
         function createLinear(x0: number, y0: number, x1: number, y1: number): LinearPattern;
-        function createRadial(circles: RadialCircles): RadialPattern;
+        function createRadial(
+            cx0: number,
+            cy0: number,
+            radius0: number,
+            cx1: number,
+            cy1: number,
+            radius1: number,
+        ): RadialPattern;
         function createMesh(): MeshPattern;
         function createForSurface(surface: Surface): Pattern;
     }
@@ -142,7 +117,13 @@ const cairo_pattern_add_color_stop_rgba = fn(
     ],
     t.void,
 );
-Pattern.prototype.addColorStopRgba = function ({ offset, red, green, blue, alpha }: ColorStopRgba): void {
+Pattern.prototype.addColorStopRgba = function (
+    offset: number,
+    red: number,
+    green: number,
+    blue: number,
+    alpha: number,
+): void {
     cairo_pattern_add_color_stop_rgba(getHandle(this), offset, red, green, blue, alpha);
 };
 
@@ -460,8 +441,8 @@ export class MeshPattern extends Pattern {
     /**
      * Adds a cubic Bézier segment to the current patch.
      */
-    curveTo(curve: BezierCurve): void {
-        cairo_mesh_pattern_curve_to(getHandle(this), curve.x1, curve.y1, curve.x2, curve.y2, curve.x3, curve.y3);
+    curveTo(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): void {
+        cairo_mesh_pattern_curve_to(getHandle(this), x1, y1, x2, y2, x3, y3);
     }
 
     /**
@@ -532,7 +513,7 @@ type PatternStatic = {
     createRgb(red: number, green: number, blue: number): Pattern;
     createRgba(red: number, green: number, blue: number, alpha: number): Pattern;
     createLinear(x0: number, y0: number, x1: number, y1: number): LinearPattern;
-    createRadial(circles: RadialCircles): RadialPattern;
+    createRadial(cx0: number, cy0: number, radius0: number, cx1: number, cy1: number, radius1: number): RadialPattern;
     createMesh(): MeshPattern;
     createForSurface(surface: Surface): Pattern;
 };
@@ -582,7 +563,14 @@ const cairo_pattern_create_radial = fn(
     ],
     PATTERN_T,
 );
-PatternWithStatics.createRadial = ({ cx0, cy0, radius0, cx1, cy1, radius1 }: RadialCircles): RadialPattern => {
+PatternWithStatics.createRadial = (
+    cx0: number,
+    cy0: number,
+    radius0: number,
+    cx1: number,
+    cy1: number,
+    radius1: number,
+): RadialPattern => {
     return wrapHandle(RadialPattern, cairo_pattern_create_radial(cx0, cy0, radius0, cx1, cy1, radius1) as NativeHandle);
 };
 
