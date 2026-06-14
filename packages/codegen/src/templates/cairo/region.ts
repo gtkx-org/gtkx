@@ -1,4 +1,4 @@
-import { getHandle, getNativeObject, t, wrapHandle } from "@gtkx/ffi";
+import { getHandle, t, wrapHandle } from "@gtkx/ffi";
 import { alloc, INT_TYPE, LIB, type NativeHandle, RECT_INT_T, REGION_T, REGION_T_NONE, write } from "@gtkx/ffi/cairo";
 import type { RegionOverlap, Status } from "@gtkx/gi/cairo/cairo.js";
 import { RectangleInt, Region } from "@gtkx/gi/cairo/cairo.js";
@@ -61,7 +61,7 @@ class RegionImpl extends Region {
             offset += 16;
         }
         const ptr = cairo_region_create_rectangles(buf, rects.length) as NativeHandle;
-        return getNativeObject(ptr, Region) as Region;
+        return wrapHandle(Region, ptr) as Region;
     }
 }
 
@@ -69,7 +69,7 @@ export { RegionImpl as Region };
 
 const cairo_region_copy = fn(LIB, "cairo_region_copy", [{ type: REGION_T_NONE }], REGION_T);
 Region.prototype.copy = function (): Region {
-    return getNativeObject(cairo_region_copy(getHandle(this)) as NativeHandle, Region) as Region;
+    return wrapHandle(Region, cairo_region_copy(getHandle(this)) as NativeHandle) as Region;
 };
 
 const cairo_region_status = fn(LIB, "cairo_region_status", [{ type: REGION_T_NONE }], INT_TYPE);

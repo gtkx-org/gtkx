@@ -39,6 +39,14 @@ export class ModuleContext {
     }
 
     /**
+     * Hoists an FFI type-descriptor expression to a deduplicated module-level
+     * `const`, returning its identifier (see {@link ModuleBuilder.hoistFfiType}).
+     */
+    hoistFfiType(expression: string): string {
+        return this.module.hoistFfiType(expression);
+    }
+
+    /**
      * Adds a named import from the low-level `@gtkx/native` runtime.
      *
      * The transport primitives (`alloc`, `call`, `read`, `write`) live in

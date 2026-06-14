@@ -21,6 +21,7 @@ export class ModuleBuilder {
     public readonly imports: ImportsBuilder = new ImportsBuilder();
     private readonly bindings: string[] = [];
     private readonly bindingNames = new Set<string>();
+    private readonly hoistedFfiTypes = new Map<string, string>();
     private readonly declarations: string[] = [];
     private readonly registrations: string[] = [];
 
@@ -41,6 +42,25 @@ export class ModuleBuilder {
             this.bindingNames.add(name);
         }
         this.bindings.push(code);
+    }
+
+    /**
+     * Hoists an FFI type-descriptor expression to a deduplicated module-level
+     * `const`, returning its identifier. Lets a per-call wrapping site reference
+     * a descriptor built once at module load rather than re-allocating it on
+     * every call — e.g. a signal handler's argument wrappers, which run on every
+     * emission. Identical expressions share one binding.
+     *
+     * @param expression - The `t.*` descriptor expression to hoist
+     * @returns The identifier of the hoisted binding
+     */
+    hoistFfiType(expression: string): string {
+        const existing = this.hoistedFfiTypes.get(expression);
+        if (existing !== undefined) return existing;
+        const name = `_ffi${this.hoistedFfiTypes.size}`;
+        this.hoistedFfiTypes.set(expression, name);
+        this.appendBinding(`const ${name} = ${expression};`, name);
+        return name;
     }
 
     /**

@@ -21,5 +21,5 @@ export { getHandle, setHandle, tryGetHandle } from "./handles.js";
 export { t } from "./helpers.js";
 export { checkError, createErrorDomain } from "./native.js";
 export { registerNativeClass } from "./register-native-class.js";
-export { getNativeObject, getNativeObjectAsInterface } from "./registry.js";
 export { connectGobjectSignal, signalBaseName } from "./signals.js";
+export { wrapFfiValue } from "./wrap-value.js";

@@ -1,26 +1,19 @@
 import type { ModuleContext } from "../dsl/context.js";
-import type { ResolvedNamed } from "../gir/repository.js";
 import type { GirTypeRef, NamedTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
-import { renderTsType } from "./ts-type.js";
+import { renderFfiType } from "./value.js";
 
 /**
- * Lifting raw FFI call results into their typed JavaScript form: objects to
- * their runtime-registered wrappers, boxed values to typed wrappers,
- * collections per element, and primitives with the appropriate coercion.
- * Shared by method-body return handling, signal/callback argument marshalling,
- * and boxed field accessors.
+ * Lifting raw FFI values into their typed JavaScript form for the per-call
+ * sites — signal/callback handler arguments and boxed field getters.
+ *
+ * Object, interface, boxed, collection, and hash-table values route through the
+ * runtime {@link wrapFfiValue}, driven by an FFI descriptor this hoists to a
+ * module-level const (built once, so the wrap allocates nothing per call). That
+ * keeps the registry wrappers (`getNativeObject` / `getNativeObjectAsInterface`)
+ * internal to `@gtkx/ffi`. Primitives, enums, and callbacks coerce inline,
+ * leaving the hot scalar path free of an extra call. The method-return path
+ * wraps inside `ffiCall` instead, via its return descriptor.
  */
-
-/**
- * Casts a raw FFI call result to a native handle so the registry wrappers
- * (`getNativeObject` / `getNativeObjectAsInterface`) accept it. The cast widens
- * to `NativeHandle | null` for a GIR-nullable value so the wrapper result type
- * stays nullable, matching the declared return.
- */
-export const handleCast = (context: ModuleContext, valueExpression: string, nullable: boolean): string => {
-    context.addNativeTypeImport("NativeHandle");
-    return `${valueExpression} as NativeHandle${nullable ? " | null" : ""}`;
-};
 
 /**
  * Inputs for {@link wrapReturnValue}.
@@ -34,10 +27,10 @@ export type WrapReturnOptions = {
 /**
  * Wraps a raw FFI value into its typed JavaScript form.
  *
- * Objects resolve to their runtime-registered wrapper, interfaces to the
- * interface wrapper, boxed values to a typed wrapper, collections recurse per
- * element, and primitives pass through with the appropriate coercion. Shared
- * by return-value handling and signal-handler argument marshalling.
+ * Primitives, enums, and callbacks coerce inline; everything that needs a
+ * registry wrapper (objects, interfaces, boxed records, collections, hash
+ * tables) routes through {@link wrapFfiValue} with a hoisted FFI descriptor and,
+ * where the descriptor lacks the identity, a pre-resolved wrapper class.
  *
  * @param context - The module context
  * @param options - {@link WrapReturnOptions}
@@ -45,83 +38,52 @@ export type WrapReturnOptions = {
 export const wrapReturnValue = (context: ModuleContext, options: WrapReturnOptions): string => {
     const { ref, nullable, valueExpression } = options;
     if (ref === undefined) return valueExpression;
-    switch (ref.kind) {
-        case "primitive":
-            return wrapPrimitive(ref, nullable, valueExpression);
-        case "named":
-            return wrapNamed(context, ref, valueExpression, nullable);
-        case "array":
-            return wrapCollection(context, ref.element, valueExpression, nullable);
-        case "list":
-            return ref.flavor === "gbytearray"
-                ? `(${valueExpression} as number[]${nullable ? " | null" : ""})`
-                : wrapCollection(context, ref.element, valueExpression, nullable);
-        case "hashtable":
-            return nullable
-                ? `(${valueExpression} === null ? null : new globalThis.Map(${valueExpression} as Iterable<readonly [unknown, unknown]>))`
-                : `new globalThis.Map(${valueExpression} as Iterable<readonly [unknown, unknown]>)`;
-        case "callback":
-        case "varargs":
-            return `(${valueExpression} as unknown[])`;
+    if (ref.kind === "primitive") return wrapPrimitive(ref, nullable, valueExpression);
+    if (ref.kind === "callback" || ref.kind === "varargs") return `(${valueExpression} as unknown[])`;
+    if (ref.kind === "named") {
+        const inline = wrapNamedInline(context, ref, nullable, valueExpression);
+        if (inline !== undefined) return inline;
     }
+    return wrapViaFfiValue(context, ref, valueExpression);
 };
 
 /**
- * Wraps a collection return value, mapping each element through the runtime
- * wrapper its type requires.
- *
- * The native layer hands collection returns back as arrays of raw element
- * values; object, interface, and boxed elements must be lifted into their
- * typed JavaScript wrappers (matching the per-element wrapping a scalar
- * return of the same type receives) while primitive and enum elements pass
- * through untouched.
+ * The inline wrap for a named type needing no registry wrapper — an enum (a
+ * number), a callback (passthrough), or an alias resolving to one — or
+ * `undefined` for a class/interface/boxed type, which routes through
+ * {@link wrapViaFfiValue} instead.
  */
-const wrapCollection = (
+const wrapNamedInline = (
     context: ModuleContext,
-    element: GirTypeRef | undefined,
-    valueExpression: string,
+    ref: NamedTypeRef,
     nullable: boolean,
-): string => {
-    const itemExpression = collectionItemWrap(context, element);
-    if (itemExpression === undefined) {
-        const elementTs = element === undefined ? "unknown" : renderTsType(context, element, false);
-        return `(${valueExpression} as ${elementTs}[]${nullable ? " | null" : ""})`;
+    valueExpression: string,
+): string | undefined => {
+    const owner = ref.namespaceName ?? context.namespace.name;
+    const resolved = context.repository.resolveNamed(owner, ref.typeName);
+    if (resolved === undefined) return undefined;
+    if (resolved.kind === "enum") return `(${valueExpression} as number)`;
+    if (resolved.kind === "callback") return valueExpression;
+    if (resolved.kind === "alias") {
+        return resolved.targetRef === undefined
+            ? valueExpression
+            : wrapReturnValue(context, { ref: resolved.targetRef, nullable, valueExpression });
     }
-    return nullable
-        ? `((${valueExpression} as unknown[] | null)?.map((item) => ${itemExpression}) ?? null)`
-        : `(${valueExpression} as unknown[]).map((item) => ${itemExpression})`;
+    return undefined;
 };
 
-const collectionItemWrap = (context: ModuleContext, element: GirTypeRef | undefined): string | undefined => {
-    if (element === undefined || element.kind !== "named") return undefined;
-    const owner = element.namespaceName ?? context.namespace.name;
-    const resolved = context.repository.resolveNamed(owner, element.typeName);
-    if (resolved === undefined) {
-        context.addRuntimeImport("getNativeObject");
-        return `getNativeObject(${handleCast(context, "item", false)})`;
-    }
-    switch (resolved.kind) {
-        case "class":
-        case "boxed":
-            context.addRuntimeImport("getNativeObject");
-            return `getNativeObject(${handleCast(context, "item", false)})`;
-        case "interface": {
-            context.addRuntimeImport("getNativeObjectAsInterface");
-            return `getNativeObjectAsInterface(${handleCast(context, "item", false)}, ${context.qualify(owner, element.typeName)})`;
-        }
-        case "alias":
-            return resolved.target === undefined
-                ? undefined
-                : collectionItemWrap(context, {
-                      kind: "named",
-                      namespaceName: resolved.namespace.name,
-                      typeName: resolved.target,
-                      cType: undefined,
-                  });
-        case "enum":
-        case "callback":
-            return undefined;
-    }
+/**
+ * Routes a value through the runtime {@link wrapFfiValue}, hoisting its FFI
+ * descriptor to a module-level const so the wrap allocates nothing per call.
+ * Ownership is irrelevant to wrapping, so the descriptor is rendered borrowed.
+ */
+const wrapViaFfiValue = (context: ModuleContext, ref: GirTypeRef, valueExpression: string): string => {
+    context.addRuntimeImport("wrapFfiValue");
+    const descriptor = context.hoistFfiType(renderFfiType(context, ref, "none"));
+    const wrapClass = resolveWrapClass(context, ref);
+    return wrapClass === undefined
+        ? `wrapFfiValue(${descriptor}, ${valueExpression})`
+        : `wrapFfiValue(${descriptor}, ${valueExpression}, ${wrapClass})`;
 };
 
 const wrapPrimitive = (ref: PrimitiveTypeRef, nullable: boolean, valueExpression: string): string => {
@@ -132,62 +94,16 @@ const wrapPrimitive = (ref: PrimitiveTypeRef, nullable: boolean, valueExpression
     return `(${valueExpression} as number)`;
 };
 
-const wrapNamed = (context: ModuleContext, ref: NamedTypeRef, valueExpression: string, nullable: boolean): string => {
-    const owner = ref.namespaceName ?? context.namespace.name;
-    const resolved = context.repository.resolveNamed(owner, ref.typeName);
-    if (resolved === undefined) {
-        context.addRuntimeImport("getNativeObject");
-        return `getNativeObject(${handleCast(context, valueExpression, nullable)})`;
-    }
-    return wrapResolved(context, resolved, { namespaceName: owner, typeName: ref.typeName, valueExpression, nullable });
-};
-
-type WrapResolvedOptions = {
-    readonly namespaceName: string;
-    readonly typeName: string;
-    readonly valueExpression: string;
-    readonly nullable: boolean;
-};
-
-const wrapResolved = (context: ModuleContext, resolved: ResolvedNamed, options: WrapResolvedOptions): string => {
-    const { namespaceName, typeName, valueExpression, nullable } = options;
-    switch (resolved.kind) {
-        case "class": {
-            context.addRuntimeImport("getNativeObject");
-            return `getNativeObject(${handleCast(context, valueExpression, nullable)})`;
-        }
-        case "interface": {
-            const classExpression = context.qualify(namespaceName, typeName);
-            context.addRuntimeImport("getNativeObjectAsInterface");
-            return `getNativeObjectAsInterface(${handleCast(context, valueExpression, nullable)}, ${classExpression})`;
-        }
-        case "boxed": {
-            const classExpression = context.qualify(namespaceName, typeName);
-            context.addRuntimeImport("getNativeObject");
-            return `getNativeObject(${handleCast(context, valueExpression, nullable)}, ${classExpression})`;
-        }
-        case "enum":
-            return `(${valueExpression} as number)`;
-        case "callback":
-            return valueExpression;
-        case "alias":
-            return resolved.targetRef === undefined
-                ? valueExpression
-                : wrapReturnValue(context, { ref: resolved.targetRef, nullable, valueExpression });
-    }
-};
-
 /**
- * Resolves the pre-resolved wrapper class `ffiCall` needs to lift a value of
- * `ref`, or `undefined` when the value's FFI descriptor already carries enough
- * identity to wrap it.
+ * Resolves the pre-resolved wrapper class {@link wrapFfiValue} needs to lift a
+ * value of `ref`, or `undefined` when the value's FFI descriptor already carries
+ * enough identity to wrap it.
  *
- * A plain object (`getNativeObject` self-resolves from the runtime GLib type),
- * a primitive, an enum, and a hash table need no class. An interface supplies
- * its fallback wrapper class, a boxed record its exact class. A collection
- * resolves its element's class, applied per element. This is the data-driven
- * counterpart of the class argument {@link wrapReturnValue} emits inline for the
- * trampoline and field paths.
+ * A plain object (`getNativeObject` self-resolves from the runtime GLib type), a
+ * primitive, an enum, and a hash table need no class. An interface supplies its
+ * fallback wrapper class, a boxed record its exact class. A collection resolves
+ * its element's class, applied per element. Used both for the `ffiCall` return
+ * descriptor and the per-call `wrapFfiValue` sites.
  *
  * @param context - The module context
  * @param ref - The value's GIR type reference
