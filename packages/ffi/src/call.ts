@@ -11,7 +11,7 @@
  * values, splices the out-cells the native marshaller writes through, runs
  * {@link checkError} when the callable throws, and assembles the
  * `[primary, ...outs]` result, wrapping each slot through the descriptor-driven
- * {@link wrapFfiValue}. The wrapping needs no per-call type analysis: the FFI
+ * {@link wrapValue}. The wrapping needs no per-call type analysis: the FFI
  * descriptor's `type` decides the strategy and a pre-resolved class is supplied
  * only for the kinds whose descriptor carries no recoverable identity.
  */
@@ -19,7 +19,7 @@
 import { type Arg, type Type as FfiType, type NativeHandle, call as nativeCall } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { checkError, type GError } from "./error.js";
-import { wrapFfiValue } from "./gobject.js";
+import { wrapValue } from "./gobject.js";
 import { t } from "./helpers.js";
 import { getHandle } from "./registry.js";
 
@@ -118,7 +118,7 @@ const seedForOutCell = (ffiType: FfiType): unknown => {
 
 const assembleResult = (surfaced: readonly SurfacedOut[], primary: unknown, hasPrimary: boolean): unknown => {
     const outs = surfaced.map((slot) =>
-        slot.cell === undefined ? slot.raw : wrapFfiValue(slot.param.type, slot.cell.value, slot.param.wrapClass?.()),
+        slot.cell === undefined ? slot.raw : wrapValue(slot.param.type, slot.cell.value, slot.param.wrapClass?.()),
     );
     if (hasPrimary) {
         return outs.length === 0 ? primary : [primary, ...outs];
@@ -210,7 +210,7 @@ export function ffiCall(
             checkError(errorCell, errorClass());
         }
 
-        const primary = hasPrimary ? wrapFfiValue(ret.type, rawResult, ret.wrapClass?.()) : undefined;
+        const primary = hasPrimary ? wrapValue(ret.type, rawResult, ret.wrapClass?.()) : undefined;
         return assembleResult(surfaced, primary, hasPrimary);
     };
 }

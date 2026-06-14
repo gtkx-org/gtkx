@@ -6,7 +6,7 @@ const { fn } = t;
 
 export const allocMatrix = (): { handle: NativeHandle; obj: Matrix } => {
     const handle = alloc(48, "cairo_matrix_t");
-    const obj = wrapHandle(Matrix, handle);
+    const obj = wrapHandle(handle, Matrix);
     return { handle, obj };
 };
 

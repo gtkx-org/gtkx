@@ -85,7 +85,7 @@ ScaledFontWithStatics.create = (
         getHandle(ctm),
         getHandle(options),
     ) as NativeHandle;
-    return wrapHandle(ScaledFont, ptr) as ScaledFont;
+    return wrapHandle(ptr, ScaledFont) as ScaledFont;
 };
 
 const cairo_scaled_font_status = fn(LIB, "cairo_scaled_font_status", [{ type: SCALED_FONT_T_NONE }], INT_TYPE);
@@ -137,7 +137,7 @@ const cairo_scaled_font_get_font_face = fn(
     FONT_FACE_T_NONE,
 );
 ScaledFont.prototype.getFontFace = function (): FontFace {
-    return wrapHandle(FontFace, cairo_scaled_font_get_font_face(getHandle(this)) as NativeHandle) as FontFace;
+    return wrapHandle(cairo_scaled_font_get_font_face(getHandle(this)) as NativeHandle, FontFace) as FontFace;
 };
 
 const cairo_scaled_font_get_font_options = fn(

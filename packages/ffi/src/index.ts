@@ -12,9 +12,9 @@
  * own signal emission and connection; `newGobjectWithProperties`,
  * `getGobjectProperty`/`setGobjectProperty`, and `getGvalueBoxed`/`setGvalueBoxed`
  * cover construction, property access, and boxed `GValue` payloads, and
- * `wrapFfiValue` lifts a raw native value to its typed wrapper from an FFI
- * descriptor. The `GValue` marshalling primitives and the registry wrappers
- * (`getNativeObject`/`getNativeObjectAsInterface`) those build on stay internal.
+ * `wrapValue` lifts a raw native value to its typed wrapper from an FFI
+ * descriptor, and `wrapHandle` does the same from a known class. The `GValue`
+ * marshalling primitives those build on stay internal.
  *
  * Low-level transport primitives (`alloc`, `call`, `read`, `write`) and the
  * native handle and FFI-descriptor types are not surfaced here; generated
@@ -33,7 +33,7 @@ export {
     setGobjectProperty,
     setGvalueBoxed,
     setVariantClass,
-    wrapFfiValue,
+    wrapValue,
 } from "./gobject.js";
 export * from "./gtype.js";
 export { t } from "./helpers.js";

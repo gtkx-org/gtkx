@@ -68,7 +68,7 @@ const cairo_surface_create_similar = fn(
     SURFACE_T,
 );
 SurfaceWithStatics.createSimilar = (other: Surface, content: Content, width: number, height: number): Surface => {
-    return wrapHandle(Surface, cairo_surface_create_similar(getHandle(other), content, width, height) as NativeHandle);
+    return wrapHandle(cairo_surface_create_similar(getHandle(other), content, width, height) as NativeHandle, Surface);
 };
 
 const cairo_surface_create_similar_image = fn(
@@ -79,8 +79,8 @@ const cairo_surface_create_similar_image = fn(
 );
 SurfaceWithStatics.createSimilarImage = (other: Surface, format: Format, width: number, height: number): Surface => {
     return wrapHandle(
-        Surface,
         cairo_surface_create_similar_image(getHandle(other), format, width, height) as NativeHandle,
+        Surface,
     );
 };
 
@@ -104,8 +104,8 @@ SurfaceWithStatics.createForRectangle = (
     height: number,
 ): Surface => {
     return wrapHandle(
-        Surface,
         cairo_surface_create_for_rectangle(getHandle(target), x, y, width, height) as NativeHandle,
+        Surface,
     );
 };
 

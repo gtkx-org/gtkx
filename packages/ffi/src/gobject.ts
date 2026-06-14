@@ -4,7 +4,7 @@
  * Owns GObject construction (`newGobjectWithProperties`), the hand-written
  * `GValue` container and its bidirectional marshalling (JavaScript values to
  * and from a `GValue` via FFI type descriptors), GObject property get/set, and
- * `wrapFfiValue` — the single descriptor-driven lift from a raw native value to
+ * `wrapValue` — the single descriptor-driven lift from a raw native value to
  * its typed JavaScript wrapper. Every GObject and `GValue` symbol is bound
  * through raw FFI so the runtime carries no dependency on the generated
  * `GObject` namespace.
@@ -34,15 +34,7 @@ import {
     typeName,
 } from "./gtype.js";
 import { t } from "./helpers.js";
-import {
-    getClassGtype,
-    getHandle,
-    getNativeClass,
-    getNativeObject,
-    getNativeObjectAsInterface,
-    setHandle,
-    tryGetHandle,
-} from "./registry.js";
+import { getClassGtype, getHandle, getNativeClass, setHandle, tryGetHandle, wrapHandle } from "./registry.js";
 
 /**
  * A property-marshalling instruction: the property's FFI type paired with the
@@ -303,7 +295,7 @@ export function getGvalueBoxed(value: object): object | null {
         [{ type: GVALUE_BORROWED, value: getHandle(value) }],
         t.boxed(boxedTypeName(gtype), "full", LIBGOBJECT),
     );
-    return ptr === null ? null : getNativeObject(ptr as NativeHandle, cls);
+    return ptr === null ? null : wrapHandle(ptr as NativeHandle, cls);
 }
 
 /** Creates a `GValue` initialized with a boolean. */
@@ -932,13 +924,13 @@ export class GValue {
         g_value_set_object(getHandle(this), tryGetHandle(value));
     }
     getObject(): object | null {
-        return getNativeObject(g_value_get_object(getHandle(this)) as NativeHandle | null);
+        return wrapHandle(g_value_get_object(getHandle(this)) as NativeHandle | null);
     }
     setParam(value: object | null): void {
         g_value_set_param(getHandle(this), tryGetHandle(value));
     }
     getParam(): object | null {
-        return getNativeObject(g_value_get_param(getHandle(this)) as NativeHandle | null);
+        return wrapHandle(g_value_get_param(getHandle(this)) as NativeHandle | null);
     }
     setVariant(value: object | null): void {
         g_value_set_variant(getHandle(this), tryGetHandle(value));
@@ -949,7 +941,7 @@ export class GValue {
         if (variantClass === undefined) {
             throw new Error("GValue.getVariant: GLib.Variant wrapper class is not registered");
         }
-        return getNativeObject(result, variantClass);
+        return wrapHandle(result, variantClass);
     }
 }
 
@@ -1123,7 +1115,7 @@ const wrapCollection = (ffiType: ArrayFfiType, value: unknown, elementClass: Any
     if (value === null) return null;
     if (ffiType.kind === "gbytearray") return value;
     if (!isWrappedKind(ffiType.itemType)) return value;
-    return (value as unknown[]).map((item) => wrapFfiValue(ffiType.itemType, item, elementClass));
+    return (value as unknown[]).map((item) => wrapValue(ffiType.itemType, item, elementClass));
 };
 
 /**
@@ -1136,20 +1128,15 @@ const wrapCollection = (ffiType: ArrayFfiType, value: unknown, elementClass: Any
  *   GObjects, primitives, enums, flags, and strings.
  * @returns The wrapped JavaScript value.
  */
-export function wrapFfiValue(ffiType: FfiType, value: unknown, targetClass?: AnyClass): unknown {
+export function wrapValue(ffiType: FfiType, value: unknown, targetClass?: AnyClass): unknown {
     switch (ffiType.type) {
         case "boolean":
             return Boolean(value);
         case "gobject":
-            return targetClass === undefined
-                ? getNativeObject(value as NativeHandle | null)
-                : getNativeObjectAsInterface(value as NativeHandle | null, targetClass);
         case "boxed":
         case "struct":
         case "fundamental":
-            return targetClass === undefined
-                ? getNativeObject(value as NativeHandle | null)
-                : getNativeObject(value as NativeHandle | null, targetClass);
+            return wrapHandle(value as NativeHandle | null, targetClass);
         case "array":
             return wrapCollection(ffiType, value, targetClass);
         case "hashtable":

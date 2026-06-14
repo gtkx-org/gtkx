@@ -595,7 +595,7 @@ Context.prototype.copyPage = function (): void {
 
 const cairo_get_target = fn(LIB, "cairo_get_target", [{ type: CAIRO_T }], SURFACE_T_NONE);
 Context.prototype.getTarget = function (): Surface {
-    return wrapHandle(Surface, cairo_get_target(getHandle(this)) as NativeHandle) as Surface;
+    return wrapHandle(cairo_get_target(getHandle(this)) as NativeHandle, Surface) as Surface;
 };
 
 const cairo_set_source_surface = fn(
@@ -631,7 +631,7 @@ Context.prototype.getCurrentPoint = function (): { x: number; y: number } | null
 
 const cairo_get_source = fn(LIB, "cairo_get_source", [{ type: CAIRO_T }], PATTERN_T_NONE);
 Context.prototype.getSource = function (): Pattern {
-    return wrapHandle(Pattern, cairo_get_source(getHandle(this)) as NativeHandle) as Pattern;
+    return wrapHandle(cairo_get_source(getHandle(this)) as NativeHandle, Pattern) as Pattern;
 };
 
 const EXTENTS_ARGS = [
@@ -877,7 +877,7 @@ Context.prototype.pushGroupWithContent = function (content: Content): void {
 
 const cairo_pop_group = fn(LIB, "cairo_pop_group", [{ type: CAIRO_T }], PATTERN_T);
 Context.prototype.popGroup = function (): Pattern {
-    return wrapHandle(Pattern, cairo_pop_group(getHandle(this)) as NativeHandle) as Pattern;
+    return wrapHandle(cairo_pop_group(getHandle(this)) as NativeHandle, Pattern) as Pattern;
 };
 
 const cairo_pop_group_to_source = fn(LIB, "cairo_pop_group_to_source", [{ type: CAIRO_T }], t.void);
@@ -887,7 +887,7 @@ Context.prototype.popGroupToSource = function (): void {
 
 const cairo_get_group_target = fn(LIB, "cairo_get_group_target", [{ type: CAIRO_T }], SURFACE_T_NONE);
 Context.prototype.getGroupTarget = function (): Surface {
-    return wrapHandle(Surface, cairo_get_group_target(getHandle(this)) as NativeHandle) as Surface;
+    return wrapHandle(cairo_get_group_target(getHandle(this)) as NativeHandle, Surface) as Surface;
 };
 
 const cairo_set_font_face = fn(LIB, "cairo_set_font_face", [{ type: CAIRO_T }, { type: FONT_FACE_T_NONE }], t.void);
@@ -897,7 +897,7 @@ Context.prototype.setFontFace = function (fontFace: FontFace): void {
 
 const cairo_get_font_face = fn(LIB, "cairo_get_font_face", [{ type: CAIRO_T }], FONT_FACE_T_NONE);
 Context.prototype.getFontFace = function (): FontFace {
-    return wrapHandle(FontFace, cairo_get_font_face(getHandle(this)) as NativeHandle) as FontFace;
+    return wrapHandle(cairo_get_font_face(getHandle(this)) as NativeHandle, FontFace) as FontFace;
 };
 
 const cairo_set_font_matrix = fn(LIB, "cairo_set_font_matrix", [{ type: CAIRO_T }, { type: MATRIX_T }], t.void);
@@ -924,7 +924,7 @@ Context.prototype.setScaledFont = function (scaledFont: ScaledFont): void {
 
 const cairo_get_scaled_font = fn(LIB, "cairo_get_scaled_font", [{ type: CAIRO_T }], SCALED_FONT_T_NONE);
 Context.prototype.getScaledFont = function (): ScaledFont {
-    return wrapHandle(ScaledFont, cairo_get_scaled_font(getHandle(this)) as NativeHandle) as ScaledFont;
+    return wrapHandle(cairo_get_scaled_font(getHandle(this)) as NativeHandle, ScaledFont) as ScaledFont;
 };
 
 const cairo_show_glyphs = fn(
@@ -998,7 +998,7 @@ const cairo_create = fn(LIB, "cairo_create", [{ type: SURFACE_T_NONE }], CAIRO_T
 
 class ContextImpl extends Context {
     static create(surface: Surface): ContextImpl {
-        return wrapHandle(ContextImpl, cairo_create(getHandle(surface)) as NativeHandle);
+        return wrapHandle(cairo_create(getHandle(surface)) as NativeHandle, ContextImpl);
     }
 }
 

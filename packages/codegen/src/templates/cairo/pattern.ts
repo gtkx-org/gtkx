@@ -520,7 +520,7 @@ const cairo_pattern_create_rgb = fn(
     PATTERN_T,
 );
 PatternWithStatics.createRgb = (red: number, green: number, blue: number): Pattern => {
-    return wrapHandle(Pattern, cairo_pattern_create_rgb(red, green, blue) as NativeHandle);
+    return wrapHandle(cairo_pattern_create_rgb(red, green, blue) as NativeHandle, Pattern);
 };
 
 const cairo_pattern_create_rgba = fn(
@@ -530,7 +530,7 @@ const cairo_pattern_create_rgba = fn(
     PATTERN_T,
 );
 PatternWithStatics.createRgba = (red: number, green: number, blue: number, alpha: number): Pattern => {
-    return wrapHandle(Pattern, cairo_pattern_create_rgba(red, green, blue, alpha) as NativeHandle);
+    return wrapHandle(cairo_pattern_create_rgba(red, green, blue, alpha) as NativeHandle, Pattern);
 };
 
 const cairo_pattern_create_linear = fn(
@@ -540,7 +540,7 @@ const cairo_pattern_create_linear = fn(
     PATTERN_T,
 );
 PatternWithStatics.createLinear = (x0: number, y0: number, x1: number, y1: number): LinearPattern => {
-    return wrapHandle(LinearPattern, cairo_pattern_create_linear(x0, y0, x1, y1) as NativeHandle);
+    return wrapHandle(cairo_pattern_create_linear(x0, y0, x1, y1) as NativeHandle, LinearPattern);
 };
 
 const cairo_pattern_create_radial = fn(
@@ -564,12 +564,12 @@ PatternWithStatics.createRadial = (
     cy1: number,
     radius1: number,
 ): RadialPattern => {
-    return wrapHandle(RadialPattern, cairo_pattern_create_radial(cx0, cy0, radius0, cx1, cy1, radius1) as NativeHandle);
+    return wrapHandle(cairo_pattern_create_radial(cx0, cy0, radius0, cx1, cy1, radius1) as NativeHandle, RadialPattern);
 };
 
 const cairo_pattern_create_mesh = fn(LIB, "cairo_pattern_create_mesh", [], PATTERN_T);
 PatternWithStatics.createMesh = (): MeshPattern => {
-    return wrapHandle(MeshPattern, cairo_pattern_create_mesh() as NativeHandle);
+    return wrapHandle(cairo_pattern_create_mesh() as NativeHandle, MeshPattern);
 };
 
 const cairo_pattern_create_for_surface = fn(
@@ -579,5 +579,5 @@ const cairo_pattern_create_for_surface = fn(
     PATTERN_T,
 );
 PatternWithStatics.createForSurface = (surface: Surface): Pattern => {
-    return wrapHandle(Pattern, cairo_pattern_create_for_surface(getHandle(surface)) as NativeHandle);
+    return wrapHandle(cairo_pattern_create_for_surface(getHandle(surface)) as NativeHandle, Pattern);
 };

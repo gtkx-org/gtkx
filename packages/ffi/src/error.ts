@@ -9,7 +9,7 @@
 
 import type { NativeHandle } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
-import { getNativeObject } from "./registry.js";
+import { wrapHandle } from "./registry.js";
 
 /**
  * Structural shape of a thrown GLib `GError` boxed wrapper.
@@ -43,7 +43,7 @@ export interface GError {
  */
 export function checkError(error: { value: NativeHandle | null }, errorClass: AnyClass<GError>): void {
     if (error.value !== null) {
-        const gerror = getNativeObject(error.value, errorClass);
+        const gerror = wrapHandle(error.value, errorClass);
         const carrier = new Error(gerror.message);
         Error.captureStackTrace?.(carrier, checkError);
         Object.defineProperty(gerror, "stack", {

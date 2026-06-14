@@ -7,11 +7,11 @@ import type { AnyClass } from "@gtkx/utils";
 import { G_TYPE_INVALID, type GType, typeInterfaces } from "./gtype.js";
 import {
     getClassGtype,
-    getNativeObject,
     getParentClass,
     getVfuncRegistry,
     type NativeHandle,
     setClassGtype,
+    wrapHandle,
 } from "./registry.js";
 
 /**
@@ -178,7 +178,7 @@ function wrapVfunc(fn: VfuncFn, argTypes: RegisterClassVfuncDefinition["argTypes
             if (arg == null) return arg;
             const argType = argTypes[i] as { type?: string } | undefined;
             if (argType?.type === "gobject") {
-                return getNativeObject(arg as NativeHandle);
+                return wrapHandle(arg as NativeHandle);
             }
             return arg;
         });

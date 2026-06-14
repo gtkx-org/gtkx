@@ -7,9 +7,9 @@ import { renderFfiType } from "./value.js";
  * sites — signal/callback handler arguments and boxed field getters.
  *
  * Object, interface, boxed, collection, and hash-table values route through the
- * runtime {@link wrapFfiValue}, driven by an FFI descriptor this hoists to a
+ * runtime {@link wrapValue}, driven by an FFI descriptor this hoists to a
  * module-level const (built once, so the wrap allocates nothing per call). That
- * keeps the registry wrappers (`getNativeObject` / `getNativeObjectAsInterface`)
+ * keeps the registry resolution (`wrapHandle` and the identity cache it consults)
  * internal to `@gtkx/ffi`. Primitives, enums, and callbacks coerce inline,
  * leaving the hot scalar path free of an extra call. The method-return path
  * wraps inside `ffiCall` instead, via its return descriptor.
@@ -29,7 +29,7 @@ export type WrapReturnOptions = {
  *
  * Primitives, enums, and callbacks coerce inline; everything that needs a
  * registry wrapper (objects, interfaces, boxed records, collections, hash
- * tables) routes through {@link wrapFfiValue} with a hoisted FFI descriptor and,
+ * tables) routes through {@link wrapValue} with a hoisted FFI descriptor and,
  * where the descriptor lacks the identity, a pre-resolved wrapper class.
  *
  * @param context - The module context
@@ -73,17 +73,17 @@ const wrapNamedInline = (
 };
 
 /**
- * Routes a value through the runtime {@link wrapFfiValue}, hoisting its FFI
+ * Routes a value through the runtime {@link wrapValue}, hoisting its FFI
  * descriptor to a module-level const so the wrap allocates nothing per call.
  * Ownership is irrelevant to wrapping, so the descriptor is rendered borrowed.
  */
 const wrapViaFfiValue = (context: ModuleContext, ref: GirTypeRef, valueExpression: string): string => {
-    context.addRuntimeImport("wrapFfiValue");
+    context.addRuntimeImport("wrapValue");
     const descriptor = context.hoistFfiType(renderFfiType(context, ref, "none"));
     const wrapClass = resolveWrapClass(context, ref);
     return wrapClass === undefined
-        ? `wrapFfiValue(${descriptor}, ${valueExpression})`
-        : `wrapFfiValue(${descriptor}, ${valueExpression}, ${wrapClass})`;
+        ? `wrapValue(${descriptor}, ${valueExpression})`
+        : `wrapValue(${descriptor}, ${valueExpression}, ${wrapClass})`;
 };
 
 const wrapPrimitive = (ref: PrimitiveTypeRef, nullable: boolean, valueExpression: string): string => {
@@ -95,15 +95,15 @@ const wrapPrimitive = (ref: PrimitiveTypeRef, nullable: boolean, valueExpression
 };
 
 /**
- * Resolves the pre-resolved wrapper class {@link wrapFfiValue} needs to lift a
+ * Resolves the pre-resolved wrapper class {@link wrapValue} needs to lift a
  * value of `ref`, or `undefined` when the value's FFI descriptor already carries
  * enough identity to wrap it.
  *
- * A plain object (`getNativeObject` self-resolves from the runtime GLib type), a
+ * A plain object (`wrapHandle` self-resolves it from the runtime GLib type), a
  * primitive, an enum, and a hash table need no class. An interface supplies its
  * fallback wrapper class, a boxed record its exact class. A collection resolves
  * its element's class, applied per element. Used both for the `ffiCall` return
- * descriptor and the per-call `wrapFfiValue` sites.
+ * descriptor and the per-call `wrapValue` sites.
  *
  * @param context - The module context
  * @param ref - The value's GIR type reference

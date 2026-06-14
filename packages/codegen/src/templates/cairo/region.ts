@@ -50,15 +50,15 @@ class RegionImpl extends Region {
     }
 
     static empty(): Region {
-        return wrapHandle(RegionImpl, cairo_region_create() as NativeHandle);
+        return wrapHandle(cairo_region_create() as NativeHandle, RegionImpl);
     }
 
     static copy(original: Region): Region {
-        return wrapHandle(RegionImpl, cairo_region_copy(getHandle(original)) as NativeHandle);
+        return wrapHandle(cairo_region_copy(getHandle(original)) as NativeHandle, RegionImpl);
     }
 
     static forRectangle(rect: RectangleInt): Region {
-        return wrapHandle(RegionImpl, cairo_region_create_rectangle(getHandle(rect)) as NativeHandle);
+        return wrapHandle(cairo_region_create_rectangle(getHandle(rect)) as NativeHandle, RegionImpl);
     }
 
     static createRectangles(rects: Array<{ x: number; y: number; width: number; height: number }>): Region {
@@ -75,7 +75,7 @@ class RegionImpl extends Region {
             offset += 16;
         }
         const ptr = cairo_region_create_rectangles(buf, rects.length) as NativeHandle;
-        return wrapHandle(Region, ptr) as Region;
+        return wrapHandle(ptr, Region) as Region;
     }
 }
 
@@ -83,7 +83,7 @@ export { RegionImpl as Region };
 
 const cairo_region_copy = fn(LIB, "cairo_region_copy", [{ type: REGION_T_NONE }], REGION_T);
 Region.prototype.copy = function (): Region {
-    return wrapHandle(Region, cairo_region_copy(getHandle(this)) as NativeHandle) as Region;
+    return wrapHandle(cairo_region_copy(getHandle(this)) as NativeHandle, Region) as Region;
 };
 
 const cairo_region_status = fn(LIB, "cairo_region_status", [{ type: REGION_T_NONE }], INT_TYPE);

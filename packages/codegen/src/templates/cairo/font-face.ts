@@ -142,7 +142,7 @@ const cairo_toy_font_face_create = fn(
     FONT_FACE_T,
 );
 FontFaceWithStatics.create = (family: string, slant: FontSlant, weight: FontWeight): ToyFontFace => {
-    return wrapHandle(ToyFontFace, cairo_toy_font_face_create(family, slant, weight) as NativeHandle);
+    return wrapHandle(cairo_toy_font_face_create(family, slant, weight) as NativeHandle, ToyFontFace);
 };
 
 const cairo_ft_font_face_create_for_ft_face = fn(
@@ -152,7 +152,7 @@ const cairo_ft_font_face_create_for_ft_face = fn(
     FONT_FACE_T,
 );
 FontFaceWithStatics.createForFtFace = (face: NativeHandle, loadFlags: number): FtFontFace => {
-    return wrapHandle(FtFontFace, cairo_ft_font_face_create_for_ft_face(face, loadFlags) as NativeHandle);
+    return wrapHandle(cairo_ft_font_face_create_for_ft_face(face, loadFlags) as NativeHandle, FtFontFace);
 };
 
 const cairo_ft_font_face_create_for_pattern = fn(
@@ -162,5 +162,5 @@ const cairo_ft_font_face_create_for_pattern = fn(
     FONT_FACE_T,
 );
 FontFaceWithStatics.createForPattern = (pattern: NativeHandle): FtFontFace => {
-    return wrapHandle(FtFontFace, cairo_ft_font_face_create_for_pattern(pattern) as NativeHandle);
+    return wrapHandle(cairo_ft_font_face_create_for_pattern(pattern) as NativeHandle, FtFontFace);
 };

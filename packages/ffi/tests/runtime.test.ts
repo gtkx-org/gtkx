@@ -18,7 +18,7 @@ const EXPECTED_RUNTIME_EXPORTS = [
     "createErrorDomain",
     "registerNativeClass",
     "signalBaseName",
-    "wrapFfiValue",
+    "wrapValue",
 ] as const;
 
 const NATIVE_TRANSPORT_PRIMITIVES = ["alloc", "call", "read", "write", "freeze", "unfreeze"] as const;
@@ -32,8 +32,6 @@ const PRIVATE_MARSHALLING_INTERNALS = [
     "outBoxedFromFfi",
     "inoutBoxedFromFfi",
     "signalDetailQuark",
-    "getNativeObject",
-    "getNativeObjectAsInterface",
     "GValue",
 ] as const;
 

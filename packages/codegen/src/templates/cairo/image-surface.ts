@@ -36,7 +36,7 @@ export class ImageSurface extends Surface {
     }
 
     static create(format: Format, width: number, height: number): ImageSurface {
-        return wrapHandle(ImageSurface, cairo_image_surface_create(format, width, height) as NativeHandle);
+        return wrapHandle(cairo_image_surface_create(format, width, height) as NativeHandle, ImageSurface);
     }
 
     static createFromPng(filename: string): ImageSurface {
