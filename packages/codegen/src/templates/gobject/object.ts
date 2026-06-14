@@ -1,11 +1,41 @@
-import {
-    disconnectSignalHandler,
-    findListenerHandlerId,
-    type Listener,
-    trackListener,
-    untrackListener,
-} from "@gtkx/ffi";
+import { disconnectSignalHandler } from "@gtkx/ffi";
 import { Object as GObject } from "@gtkx/gi/gobject/gobject.js";
+
+/** A signal callback tracked by the listener table. */
+// biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
+type Listener = (...args: any[]) => any;
+
+/**
+ * Maps each `(instance, signal, handler)` to its `connect` handler id, backing
+ * the EventEmitter-style `on`/`once`/`off` so `off` can disconnect by callback
+ * reference. This bookkeeping is local to the `on`/`off` surface, not an FFI
+ * primitive, so it lives with the override rather than in `@gtkx/ffi`.
+ */
+const listenerTable = new WeakMap<object, Map<string, Map<Listener, number>>>();
+
+const trackListener = (instance: object, signal: string, handler: Listener, handlerId: number): void => {
+    let bySignal = listenerTable.get(instance);
+    if (!bySignal) {
+        bySignal = new Map();
+        listenerTable.set(instance, bySignal);
+    }
+    let byHandler = bySignal.get(signal);
+    if (!byHandler) {
+        byHandler = new Map();
+        bySignal.set(signal, byHandler);
+    }
+    byHandler.set(handler, handlerId);
+};
+
+const findListenerHandlerId = (instance: object, signal: string, handler: Listener): number | undefined =>
+    listenerTable.get(instance)?.get(signal)?.get(handler);
+
+const untrackListener = (instance: object, signal: string, handler: Listener): void => {
+    const bySignal = listenerTable.get(instance);
+    const byHandler = bySignal?.get(signal);
+    byHandler?.delete(handler);
+    if (byHandler?.size === 0) bySignal?.delete(signal);
+};
 
 declare module "@gtkx/gi/gobject/gobject.js" {
     interface Object {

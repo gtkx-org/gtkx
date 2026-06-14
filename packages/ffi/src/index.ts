@@ -45,10 +45,6 @@ export {
     connectGobjectSignal,
     disconnectSignalHandler,
     emitGobjectSignal,
-    findListenerHandlerId,
-    type Listener,
     type SignalHandler,
     signalBaseName,
-    trackListener,
-    untrackListener,
 } from "./signal.js";
