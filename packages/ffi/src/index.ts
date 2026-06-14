@@ -25,7 +25,7 @@
 
 export { promisify } from "./async.js";
 export { ffiCall } from "./call.js";
-export { checkError, createErrorDomain, type ErrorDomain } from "./error.js";
+export { createErrorDomain, type ErrorDomain } from "./error.js";
 export {
     getGobjectProperty,
     getGvalueBoxed,

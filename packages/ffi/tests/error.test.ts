@@ -1,9 +1,10 @@
-import { checkError, createErrorDomain, getHandle } from "@gtkx/ffi";
+import { getHandle } from "@gtkx/ffi";
 import { FileError, Error as GError, quarkFromString } from "@gtkx/gi/glib";
 import type { GType } from "@gtkx/gi/gobject";
 import { typeFromName } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
+import { checkError, createErrorDomain } from "../src/error.js";
 import { instanceIsA } from "./helpers.js";
 
 const orientableGtype = (): GType => typeFromName("GtkOrientable");

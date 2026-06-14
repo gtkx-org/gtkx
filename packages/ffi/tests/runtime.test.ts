@@ -15,7 +15,6 @@ const EXPECTED_RUNTIME_EXPORTS = [
     "setHandle",
     "tryGetHandle",
     "t",
-    "checkError",
     "createErrorDomain",
     "registerNativeClass",
     "signalBaseName",
