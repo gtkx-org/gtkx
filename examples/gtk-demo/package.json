@@ -25,7 +25,7 @@
         "@gtkx/cli": "workspace:*",
         "@gtkx/native": "workspace:*",
         "@gtkx/testing": "workspace:*",
-        "@vitest/coverage-v8": "^4.1.8",
+        "@vitest/coverage-v8": "^4.1.9",
         "vite": "^8.0.16",
         "vitest": "^4.1.8"
     }

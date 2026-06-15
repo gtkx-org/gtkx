@@ -24,7 +24,7 @@
         "@biomejs/biome": "^2.5.0",
         "@types/node": "^25.9.3",
         "@types/react": "^19.2.17",
-        "@vitest/coverage-v8": "^4.1.8",
+        "@vitest/coverage-v8": "^4.1.9",
         "dependency-cruiser": "^17.4.3",
         "knip": "^6.16.1",
         "react": "^19.2.7",
