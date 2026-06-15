@@ -31,6 +31,6 @@
         "typedoc-vitepress-theme": "^1.1.3",
         "vitepress": "^1.6.4",
         "vitepress-plugin-llms": "^1.13.1",
-        "vitest": "^4.1.8"
+        "vitest": "^4.1.9"
     }
 }

@@ -46,7 +46,7 @@
         "@gtkx/config": "workspace:*"
     },
     "devDependencies": {
-        "vitest": "^4.1.8"
+        "vitest": "^4.1.9"
     },
     "peerDependencies": {
         "vitest": ">=4"
