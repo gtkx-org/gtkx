@@ -39,8 +39,8 @@ export * from "./gtype.js";
 export { t } from "./helpers.js";
 export * from "./lifecycle.js";
 export { registerClass } from "./register-class.js";
-export { registerNativeClass } from "./register-native-class.js";
-export { getHandle, getNativeClass, setHandle, tryGetHandle, wrapHandle } from "./registry.js";
+export { registerWrapperClass } from "./register-wrapper-class.js";
+export { getHandle, getWrapperClass, setHandle, tryGetHandle, wrapHandle } from "./registry.js";
 export {
     connectGobjectSignal,
     emitGobjectSignal,

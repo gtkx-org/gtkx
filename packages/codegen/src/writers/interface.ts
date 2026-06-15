@@ -18,7 +18,7 @@ import { renderGetTypeReference } from "./gtype-binding.js";
 import { resolveImplementedInterface, resolvePrerequisiteReference } from "./inheritance.js";
 import { methodExportName } from "./method.js";
 import { renderPropertyAccessor } from "./property-accessor.js";
-import { appendNativeClassRegistration } from "./registration.js";
+import { appendWrapperClassRegistration } from "./registration.js";
 import { renderSignalDeclarations, renderSignalMembers } from "./signal.js";
 
 /**
@@ -144,7 +144,7 @@ const appendInterfaceRegistrations = (context: ModuleContext, iface: GirClass, c
         iface.glibGetType === undefined
             ? undefined
             : renderGetTypeReference(context, iface.glibGetType, iface.glibTypeName);
-    appendNativeClassRegistration(context, {
+    appendWrapperClassRegistration(context, {
         className,
         role: "interface",
         getTypeRef,

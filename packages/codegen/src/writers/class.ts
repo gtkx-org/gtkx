@@ -24,7 +24,7 @@ import { collectInterfaceProperties, forEachAncestor, resolveImplementedInterfac
 import { methodExportName, renderPromisifiedBody, renderPromisifiedSignature } from "./method.js";
 import { inputParameters } from "./param-classify.js";
 import { renderPropertyAccessor } from "./property-accessor.js";
-import { appendNativeClassRegistration } from "./registration.js";
+import { appendWrapperClassRegistration } from "./registration.js";
 import { renderRuntimeOverride } from "./runtime-override.js";
 import { renderSignalDeclarations, renderSignalMembers } from "./signal.js";
 import { renderTsType } from "./ts-type.js";
@@ -189,7 +189,7 @@ const appendClassRegistrations = (context: ModuleContext, klass: GirClass, class
         klass.glibGetType === undefined
             ? undefined
             : renderGetTypeReference(context, klass.glibGetType, klass.glibTypeName);
-    appendNativeClassRegistration(context, {
+    appendWrapperClassRegistration(context, {
         className,
         role: "class",
         getTypeRef,

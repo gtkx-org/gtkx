@@ -18,7 +18,7 @@
  * GObject-class prop accepts a JSX subtree without being enumerated anywhere.
  */
 import { CONTAINER_SLOTS } from "virtual:gtkx-config";
-import { getNativeClass, typeFromName } from "@gtkx/ffi";
+import { getWrapperClass, typeFromName } from "@gtkx/ffi";
 import { createElement, isValidElement, type ReactNode } from "react";
 import { classHasType, type GTyped } from "./gtype-predicates.js";
 import { WRAPPER_NODE_ELEMENT } from "./instance.js";
@@ -44,7 +44,7 @@ const collectInherited = (
 const resolveContainerSlots = (elementName: string): ReadonlySet<string> => {
     const cached = containerSlotCache.get(elementName);
     if (cached) return cached;
-    const cls = getNativeClass(typeFromName(elementName)) as { readonly prototype: GTyped } | null;
+    const cls = getWrapperClass(typeFromName(elementName)) as { readonly prototype: GTyped } | null;
     const set = cls ? new Set(collectInherited(CONTAINER_SLOTS, cls)) : EMPTY_CONTAINER_SLOTS;
     containerSlotCache.set(elementName, set);
     return set;

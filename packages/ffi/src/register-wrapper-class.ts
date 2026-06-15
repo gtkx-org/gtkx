@@ -2,7 +2,7 @@
  * Unified module-load registration entry point for generated FFI bindings.
  *
  * Every generated wrapper type — GObject class, interface, or boxed record —
- * registers itself with a single {@link registerNativeClass} call carrying one
+ * registers itself with a single {@link registerWrapperClass} call carrying one
  * descriptor. The descriptor bundles the runtime `GType` and vtable vfunc
  * descriptors; this module resolves the shared `GType` once and fans the
  * pieces out to the individual runtime registries.
@@ -14,21 +14,21 @@ import { registerInterfaceVfuncRegistry } from "./register-class.js";
 import { registerVfuncRegistry, setClassGtype, setInterfaceGtype, type VfuncRegistry } from "./registry.js";
 
 /**
- * The kind of native type being registered, selecting which identity registry
+ * The kind of wrapper type being registered, selecting which identity registry
  * the resolved `GType` lands in and whether vtable descriptors also register an
  * interface vfunc mapping.
  */
-type NativeClassRole = "class" | "interface" | "boxed";
+type WrapperClassRole = "class" | "interface" | "boxed";
 
 /**
- * Everything {@link registerNativeClass} needs to register one native type.
+ * Everything {@link registerWrapperClass} needs to register one wrapper type.
  *
  * All fields beyond `role` are optional: a boxed record without a `GType`
  * omits `gtype`, and a type with no overridable vtable slots omits `vfuncs`.
  */
-export type NativeClassDescriptor = {
+export type WrapperClassDescriptor = {
     /** Whether the type is a class, an interface, or a boxed record. */
-    readonly role: NativeClassRole;
+    readonly role: WrapperClassRole;
     /**
      * Resolves the runtime `GType`. Invoked exactly once at registration; the
      * resolved value is shared across every registry. Typed loosely because
@@ -41,7 +41,7 @@ export type NativeClassDescriptor = {
 };
 
 /**
- * Registers a generated native type from a single descriptor.
+ * Registers a generated wrapper type from a single descriptor.
  *
  * Called automatically by generated bindings, once per type at module load.
  * Resolves the descriptor's `GType` a single time and records it in the
@@ -51,7 +51,7 @@ export type NativeClassDescriptor = {
  * @param cls - The generated wrapper class
  * @param descriptor - The bundled registration metadata
  */
-export function registerNativeClass(cls: AnyClass, descriptor: NativeClassDescriptor): void {
+export function registerWrapperClass(cls: AnyClass, descriptor: WrapperClassDescriptor): void {
     const gtype: GType = descriptor.gtype ? Number(descriptor.gtype()) : G_TYPE_INVALID;
 
     if (descriptor.role === "interface") {

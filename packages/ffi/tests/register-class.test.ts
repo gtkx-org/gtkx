@@ -2,7 +2,7 @@ import { getHandle, registerClass } from "@gtkx/ffi";
 import { Object as GObject, typeFromName, typeName, typeParent } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
-import { findNativeClass } from "../src/registry.js";
+import { findWrapperClass } from "../src/registry.js";
 import { instanceIsA } from "./helpers.js";
 
 let suffix = 0;
@@ -21,14 +21,14 @@ describe("registerClass — registration", () => {
         expect(typeName(typeParent(gtype))).toBe("GtkLabel");
     });
 
-    it("registers the JS class so findNativeClass resolves to it for the new GType", () => {
+    it("registers the JS class so findWrapperClass resolves to it for the new GType", () => {
         const name = uniqueName("GtkxResolvableSubclass");
         class CustomButton extends Gtk.Button {}
 
         registerClass(CustomButton, { gtypeName: name });
 
         const newGtype = typeFromName(name);
-        expect(findNativeClass(newGtype)).toBe(CustomButton);
+        expect(findWrapperClass(newGtype)).toBe(CustomButton);
     });
 
     it("falls back to klass.name when no gtypeName option is supplied", () => {
@@ -40,14 +40,14 @@ describe("registerClass — registration", () => {
         expect(typeFromName(dynamicName)).not.toBe(0);
     });
 
-    it("rejects classes that do not extend a registered native class", () => {
+    it("rejects classes that do not extend a registered wrapper class", () => {
         class NotANativeObject {}
 
         expect(() =>
             registerClass(NotANativeObject as Parameters<typeof registerClass>[0], {
                 gtypeName: uniqueName("ShouldNotRegister"),
             }),
-        ).toThrow(/must extend a registered native class/);
+        ).toThrow(/must extend a registered wrapper class/);
     });
 
     it("rejects a name that is already registered with the type system", () => {

@@ -9,7 +9,7 @@ import { ImportsBuilder } from "./imports.js";
  * 2. *Declarations* — the class bodies, free function exports, enums,
  *    constants.
  * 3. *Registrations* — the trailing block of module-load side-effect
- *    statements: `registerNativeClass(...)` registrations plus namespace
+ *    statements: `registerWrapperClass(...)` registrations plus namespace
  *    `init()` / `finalize` bootstrap calls.
  *
  * Keeping the three buckets independent removes ordering constraints
@@ -74,7 +74,7 @@ export class ModuleBuilder {
 
     /**
      * Appends a trailing module-load side-effect statement: a
-     * `registerNativeClass(…)` registration or a namespace `init()` /
+     * `registerWrapperClass(…)` registration or a namespace `init()` /
      * `finalize` bootstrap call.
      *
      * @param code - The source fragment, without a trailing newline

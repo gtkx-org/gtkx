@@ -1,4 +1,4 @@
-import { getNativeClass, typeFromName } from "@gtkx/ffi";
+import { getWrapperClass, typeFromName } from "@gtkx/ffi";
 import type * as Gio from "@gtkx/gi/gio";
 import type { GType } from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
@@ -90,7 +90,7 @@ export const isAdwComboRow = <T extends GTyped>(instance: T): instance is T & Ad
  * @throws {Error} when the class is not registered (its namespace was not imported)
  */
 export const requireClassByName = (typeName: string): AnyClass => {
-    const cls = getNativeClass(typeFromName(typeName));
+    const cls = getWrapperClass(typeFromName(typeName));
     if (!cls) {
         throw new Error(
             `${typeName} is not registered. Import its @gtkx/jsx namespace module (e.g. \`import "@gtkx/jsx/adw"\`) before use.`,

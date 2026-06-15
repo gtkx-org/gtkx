@@ -5,7 +5,7 @@ import { typeFromName } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { AnyClass } from "@gtkx/utils";
 import { describe, expect, it } from "vitest";
-import { findNativeClass, getNativeClass, setClassGtype, wrapHandle } from "../src/registry.js";
+import { findWrapperClass, getWrapperClass, setClassGtype, wrapHandle } from "../src/registry.js";
 
 const INVALID_GTYPE: GType = 0;
 
@@ -14,7 +14,7 @@ describe("setClassGtype", () => {
         class TestClass {}
         const fakeGtype: GType = 123456789;
         setClassGtype(TestClass as AnyClass, fakeGtype);
-        expect(findNativeClass(fakeGtype)).toBe(TestClass);
+        expect(findWrapperClass(fakeGtype)).toBe(TestClass);
     });
 
     it("allows wrapHandle to find registered types", () => {
@@ -24,19 +24,19 @@ describe("setClassGtype", () => {
     });
 });
 
-describe("findNativeClass", () => {
+describe("findWrapperClass", () => {
     it("returns exact match when type is registered", () => {
-        const cls = findNativeClass(typeFromName("GtkButton"));
+        const cls = findWrapperClass(typeFromName("GtkButton"));
         expect(cls).toBe(Gtk.Button);
     });
 
     it("walks hierarchy to find a registered parent class", () => {
-        const cls = findNativeClass(typeFromName("GtkButton"));
+        const cls = findWrapperClass(typeFromName("GtkButton"));
         expect(cls).not.toBeNull();
     });
 
     it("returns null for an unregistered type via exact lookup", () => {
-        const cls = getNativeClass(INVALID_GTYPE);
+        const cls = getWrapperClass(INVALID_GTYPE);
         expect(cls).toBeNull();
     });
 });

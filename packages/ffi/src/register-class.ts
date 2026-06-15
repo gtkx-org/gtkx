@@ -62,7 +62,7 @@ type InterfaceVfuncBinding = {
 };
 
 /**
- * Registers a JavaScript subclass of a generated native class as a real
+ * Registers a JavaScript subclass of a generated wrapper class as a real
  * `GType` derived from the parent class's `GType`.
  *
  * The parent class's `GType` is resolved automatically from the prototype
@@ -84,7 +84,7 @@ type InterfaceVfuncBinding = {
  */
 export function registerClass<T extends AnyClass>(klass: T, options: RegisterClassOptions = {}): T {
     if (!hasRegisteredAncestor(klass)) {
-        throw new TypeError(`registerClass: ${klass.name} must extend a registered native class`);
+        throw new TypeError(`registerClass: ${klass.name} must extend a registered wrapper class`);
     }
 
     const parentGtype = resolveParentGtype(klass);

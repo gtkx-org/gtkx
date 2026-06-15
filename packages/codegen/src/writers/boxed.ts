@@ -7,7 +7,7 @@ import { computeBoxedFieldSlots } from "./boxed-layout.js";
 import { type Callables, dedupeCallables, emitBindings, renderPlainTypeMembers } from "./callables.js";
 import { isClassStructRecord } from "./class-struct-record.js";
 import { renderGetTypeReference } from "./gtype-binding.js";
-import { appendNativeClassRegistration } from "./registration.js";
+import { appendWrapperClassRegistration } from "./registration.js";
 
 /**
  * Emits a class declaration plus optional boxed registration for a
@@ -49,7 +49,7 @@ export const emitBoxed = (context: ModuleContext, boxed: GirBoxed): void => {
         boxed.glibGetType === undefined
             ? undefined
             : renderGetTypeReference(context, boxed.glibGetType, boxed.glibTypeName);
-    appendNativeClassRegistration(context, {
+    appendWrapperClassRegistration(context, {
         className,
         role: "boxed",
         getTypeRef,

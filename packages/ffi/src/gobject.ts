@@ -34,7 +34,7 @@ import {
     typeName,
 } from "./gtype.js";
 import { t } from "./helpers.js";
-import { getClassGtype, getHandle, getNativeClass, setHandle, tryGetHandle, wrapHandle } from "./registry.js";
+import { getClassGtype, getHandle, getWrapperClass, setHandle, tryGetHandle, wrapHandle } from "./registry.js";
 
 /**
  * A property-marshalling instruction: the property's FFI type paired with the
@@ -285,7 +285,7 @@ export function getGvalueBoxed(value: object): object | null {
     if (typeFundamental(gtype) !== Type.BOXED) {
         return null;
     }
-    const cls = getNativeClass(gtype);
+    const cls = getWrapperClass(gtype);
     if (!cls) {
         throw new Error(`No registered class for boxed GType '${typeName(gtype) ?? String(gtype)}'`);
     }

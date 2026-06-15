@@ -23,14 +23,14 @@ const gtypeByClass = new WeakMap<AnyClass, GType>();
 const interfaceGtypeByClass = new WeakMap<AnyClass, GType>();
 
 /**
- * Records the GLib type identifier of a native class in the identity registry.
+ * Records the GLib type identifier of a wrapper class in the identity registry.
  *
- * Invoked by `registerNativeClass` once it has resolved the class's `GType`,
+ * Invoked by `registerWrapperClass` once it has resolved the class's `GType`,
  * and by `registerClass` for runtime-registered subclasses. The recorded
  * mapping lets {@link wrapHandle} resolve a raw native pointer back to its
  * JavaScript wrapper class.
  *
- * @param cls - The native class to register
+ * @param cls - The wrapper class to register
  * @param gtype - The GLib type identifier for the class
  */
 export function setClassGtype(cls: AnyClass, gtype: GType): void {
@@ -45,7 +45,7 @@ export function setClassGtype(cls: AnyClass, gtype: GType): void {
  * Records the GLib interface type identifier for a generated interface
  * wrapper class.
  *
- * Invoked by `registerNativeClass` for interface roles. The recorded `GType`
+ * Invoked by `registerWrapperClass` for interface roles. The recorded `GType`
  * lets {@link wrapHandle} pick the most derived registered
  * class that still conforms to the interface when the runtime type is an
  * unregistered private implementation.
@@ -124,7 +124,7 @@ export function wrapHandle(handle: NativeHandle | null | undefined, cls?: AnyCla
     if (handle === null || handle === undefined) return null;
     if (cls === undefined) {
         return resolveWrapper(handle, (runtimeGtype) => {
-            const resolved = findNativeClass(runtimeGtype);
+            const resolved = findWrapperClass(runtimeGtype);
             if (!resolved) {
                 throw new Error(`Expected registered GLib type, got gtype ${String(runtimeGtype)}`);
             }
@@ -135,7 +135,7 @@ export function wrapHandle(handle: NativeHandle | null | undefined, cls?: AnyCla
     if (interfaceGtype !== G_TYPE_INVALID) {
         return resolveWrapper(
             handle,
-            (runtimeGtype) => findNativeClassForInterface(runtimeGtype, interfaceGtype) ?? cls,
+            (runtimeGtype) => findWrapperClassForInterface(runtimeGtype, interfaceGtype) ?? cls,
         );
     }
     return instantiate(cls, handle);
@@ -153,10 +153,10 @@ export function wrapHandle(handle: NativeHandle | null | undefined, cls?: AnyCla
  * @returns The registered class, or `null` if none is registered for `gtype`.
  * @example
  * ```ts
- * const ButtonClass = getNativeClass(typeFromName("GtkButton"));
+ * const ButtonClass = getWrapperClass(typeFromName("GtkButton"));
  * ```
  */
-export function getNativeClass(gtype: GType): AnyClass | null {
+export function getWrapperClass(gtype: GType): AnyClass | null {
     return classRegistry.get(gtype) ?? null;
 }
 
@@ -177,7 +177,7 @@ function walkParentChain(gtype: GType, accept: (parentGtype: GType, parentCls: A
     while (currentGtype !== G_TYPE_INVALID) {
         const parentGtype = typeParent(currentGtype);
         if (parentGtype === G_TYPE_INVALID) break;
-        const parentCls = getNativeClass(parentGtype);
+        const parentCls = getWrapperClass(parentGtype);
         if (parentCls && accept(parentGtype, parentCls)) return parentCls;
         currentGtype = parentGtype;
     }
@@ -186,7 +186,7 @@ function walkParentChain(gtype: GType, accept: (parentGtype: GType, parentCls: A
 }
 
 /**
- * Finds a native class by walking the type hierarchy.
+ * Finds a wrapper class by walking the type hierarchy.
  *
  * If the exact type is not registered, walks up the parent chain
  * until a registered type is found.
@@ -194,8 +194,8 @@ function walkParentChain(gtype: GType, accept: (parentGtype: GType, parentCls: A
  * @param gtype - The GLib type identifier to start from
  * @returns The closest registered parent class, or null
  */
-export function findNativeClass(gtype: GType): AnyClass | null {
-    return getNativeClass(gtype) ?? walkParentChain(gtype, () => true);
+export function findWrapperClass(gtype: GType): AnyClass | null {
+    return getWrapperClass(gtype) ?? walkParentChain(gtype, () => true);
 }
 
 /**
@@ -214,8 +214,8 @@ export function findNativeClass(gtype: GType): AnyClass | null {
  * @param interfaceGtype - The GLib interface type the instance implements
  * @returns The resolved class, or null when none is registered
  */
-function findNativeClassForInterface(gtype: GType, interfaceGtype: GType): AnyClass | null {
-    const exact = getNativeClass(gtype);
+function findWrapperClassForInterface(gtype: GType, interfaceGtype: GType): AnyClass | null {
+    const exact = getWrapperClass(gtype);
     if (exact) return exact;
 
     if (interfaceGtype === G_TYPE_INVALID) return null;
@@ -267,7 +267,7 @@ export interface GTyped {
 }
 
 /**
- * Returns the superclass of a native wrapper class, or `null` when `cls` is a
+ * Returns the superclass of a wrapper class, or `null` when `cls` is a
  * root class whose prototype is `Function.prototype` (the JavaScript class
  * hierarchy root). Encapsulates the single boundary where a prototype-chain
  * walk over generated classes meets the untyped function root, so callers can
