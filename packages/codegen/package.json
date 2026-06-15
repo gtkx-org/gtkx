@@ -45,7 +45,7 @@
     "dependencies": {
         "@gtkx/config": "workspace:*",
         "@gtkx/utils": "workspace:*",
-        "fast-xml-parser": "^5.8.0",
+        "fast-xml-parser": "^5.9.0",
         "typescript": "^6.0.3"
     },
     "devDependencies": {
