@@ -158,7 +158,7 @@ export class AnimationDriver {
         });
 
         const animation = buildAnimation(widget, callback, props);
-        animation.connect("done", () => {
+        animation.on("done", () => {
             this.currentValues = { ...to };
             this.currentAnimation = null;
             this.propsRef.current.onAnimationComplete?.();

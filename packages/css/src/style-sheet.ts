@@ -19,7 +19,7 @@ export class StyleSheet {
         if (this.provider) return;
         const { provider, display } = Gtk.registerProviderForDefaultDisplay();
         this.provider = provider;
-        provider.connect("parsing-error", (section, error) => {
+        provider.on("parsing-error", (section, error) => {
             console.warn(`[gtkx/css] GTK rejected CSS at ${section.toString()}: ${error.message}`);
         });
         if (!display) this.registerWhenDisplayOpens(provider);

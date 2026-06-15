@@ -31,28 +31,28 @@ export function connectFactoryLifecycle<T extends ListLifecycleItem>(
 ): void {
     const { containers, containerKeys, getPosition, onBoundItemsChanged, onSetup, isDetached } = options;
 
-    factory.connect("setup", (obj: GObject.Object) => {
+    factory.on("setup", (obj: GObject.Object) => {
         const item = asLifecycleItem<T>(obj);
         containers.set(item, UNBOUND_POSITION);
         containerKeys.set(item, stableIdOf(item));
         onSetup?.(item);
     });
 
-    factory.connect("bind", (obj: GObject.Object) => {
+    factory.on("bind", (obj: GObject.Object) => {
         if (isDetached?.()) return;
         const item = asLifecycleItem<T>(obj);
         containers.set(item, getPosition(item));
         onBoundItemsChanged();
     });
 
-    factory.connect("unbind", (obj: GObject.Object) => {
+    factory.on("unbind", (obj: GObject.Object) => {
         if (isDetached?.()) return;
         const item = asLifecycleItem<T>(obj);
         containers.set(item, UNBOUND_POSITION);
         onBoundItemsChanged();
     });
 
-    factory.connect("teardown", (obj: GObject.Object) => {
+    factory.on("teardown", (obj: GObject.Object) => {
         const item = asLifecycleItem<T>(obj);
         containers.delete(item);
         containerKeys.delete(item);

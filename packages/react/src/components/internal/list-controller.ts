@@ -342,10 +342,10 @@ export class ListController implements ColumnHost {
         this.factory = new Gtk.SignalListItemFactory();
         const isTree = this.modelController.isTreeMode();
 
-        this.factory.connect("setup", (obj: GObject.Object) => this.onFactorySetup(obj, isTree));
-        this.factory.connect("bind", (obj: GObject.Object) => this.onFactoryBind(obj, isTree));
-        this.factory.connect("unbind", (obj: GObject.Object) => this.onFactoryUnbind(obj, isTree));
-        this.factory.connect("teardown", (obj: GObject.Object) => this.onFactoryTeardown(obj, isTree));
+        this.factory.on("setup", (obj: GObject.Object) => this.onFactorySetup(obj, isTree));
+        this.factory.on("bind", (obj: GObject.Object) => this.onFactoryBind(obj, isTree));
+        this.factory.on("unbind", (obj: GObject.Object) => this.onFactoryUnbind(obj, isTree));
+        this.factory.on("teardown", (obj: GObject.Object) => this.onFactoryTeardown(obj, isTree));
 
         if (this.props.renderListItem && this.isDropDown()) {
             this.setupListFactory();

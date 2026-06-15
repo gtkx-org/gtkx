@@ -1,40 +1,9 @@
+import { offSignal, onceSignal, onSignal } from "@gtkx/ffi";
 import { Object as GObject, signalHandlerDisconnect } from "../gobject.js";
 
-/** A signal callback tracked by the listener table. */
+/** A signal callback passed to the EventEmitter-style methods. */
 // biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
 type Listener = (...args: any[]) => any;
-
-/**
- * Maps each `(instance, signal, handler)` to its `connect` handler id, backing
- * the EventEmitter-style `on`/`once`/`off` so `off` can disconnect by callback
- * reference. This bookkeeping is local to the `on`/`off` surface, not an FFI
- * primitive, so it lives with the override rather than in `@gtkx/ffi`.
- */
-const listenerTable = new WeakMap<object, Map<string, Map<Listener, number>>>();
-
-const trackListener = (instance: object, signal: string, handler: Listener, handlerId: number): void => {
-    let bySignal = listenerTable.get(instance);
-    if (!bySignal) {
-        bySignal = new Map();
-        listenerTable.set(instance, bySignal);
-    }
-    let byHandler = bySignal.get(signal);
-    if (!byHandler) {
-        byHandler = new Map();
-        bySignal.set(signal, byHandler);
-    }
-    byHandler.set(handler, handlerId);
-};
-
-const findListenerHandlerId = (instance: object, signal: string, handler: Listener): number | undefined =>
-    listenerTable.get(instance)?.get(signal)?.get(handler);
-
-const untrackListener = (instance: object, signal: string, handler: Listener): void => {
-    const bySignal = listenerTable.get(instance);
-    const byHandler = bySignal?.get(signal);
-    byHandler?.delete(handler);
-    if (byHandler?.size === 0) bySignal?.delete(signal);
-};
 
 declare module "../gobject.js" {
     interface Object {
@@ -117,33 +86,19 @@ GObject.prototype.disconnect = function disconnect(handlerId: number): void {
 };
 
 function onImpl(this: GObjectWithConnect, sigName: string, callback: Listener, after?: boolean): GObject {
-    const handlerId = this.connect(sigName, callback, after);
-    trackListener(this, sigName, callback, handlerId);
+    onSignal(this, sigName, callback, after);
     return this;
 }
 GObject.prototype.on = onImpl;
 
 function onceImpl(this: GObjectWithConnect, sigName: string, callback: Listener, after?: boolean): GObject {
-    let handlerId = 0;
-    const wrapped: Listener = (...args: unknown[]) => {
-        untrackListener(this, sigName, wrapped);
-        untrackListener(this, sigName, callback);
-        this.disconnect(handlerId);
-        return callback(...args);
-    };
-    handlerId = this.connect(sigName, wrapped, after);
-    trackListener(this, sigName, wrapped, handlerId);
-    trackListener(this, sigName, callback, handlerId);
+    onceSignal(this, sigName, callback, after);
     return this;
 }
 GObject.prototype.once = onceImpl;
 
 function offImpl(this: GObjectWithConnect, sigName: string, callback: Listener): GObject {
-    const handlerId = findListenerHandlerId(this, sigName, callback);
-    if (handlerId !== undefined) {
-        this.disconnect(handlerId);
-        untrackListener(this, sigName, callback);
-    }
+    offSignal(this, sigName, callback);
     return this;
 }
 GObject.prototype.off = offImpl;

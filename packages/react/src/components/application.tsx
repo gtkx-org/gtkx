@@ -58,11 +58,14 @@ const useApplicationInstance = <T extends Gtk.Application>(
 
     useLayoutEffect(() => {
         if (!app) return;
-        const activateHandlerId = app.connect("activate", () => {});
+        const onActivate = (): void => {};
+        app.on("activate", onActivate);
         if (!app.getIsRegistered()) app.register(null);
         app.activate();
         setRegisteredApp(app);
-        return () => app.disconnect(activateHandlerId);
+        return () => {
+            app.off("activate", onActivate);
+        };
     }, [app]);
 
     useLayoutEffect(() => () => runApplicationTeardown(), []);

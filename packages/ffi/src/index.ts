@@ -44,6 +44,9 @@ export { getHandle, getNativeClassByName, setHandle, tryGetHandle, wrapHandle } 
 export {
     connectGobjectSignal,
     emitGobjectSignal,
+    offSignal,
+    onceSignal,
+    onSignal,
     type SignalHandler,
     signalBaseName,
 } from "./signal.js";

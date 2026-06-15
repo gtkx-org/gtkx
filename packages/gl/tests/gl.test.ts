@@ -70,7 +70,7 @@ beforeAll(async () => {
     window.setChild(glArea);
 
     const glReady = await new Promise<boolean>((resolve) => {
-        glArea.connect("realize", () => {
+        glArea.on("realize", () => {
             glArea.makeCurrent();
             resolve(!glArea.getError());
         });

@@ -1,5 +1,5 @@
 import type { SignalHandler } from "@gtkx/ffi";
-import * as GObject from "@gtkx/gi/gobject";
+import type * as GObject from "@gtkx/gi/gobject";
 
 export type { SignalHandler };
 
@@ -28,10 +28,10 @@ export interface SignalBinding {
 }
 
 export class SignalStore {
-    private readonly ownerHandlers: Map<object, Map<GObject.Object, Map<string, number>>> = new Map();
+    private readonly ownerHandlers: Map<object, Map<GObject.Object, Map<string, SignalHandler>>> = new Map();
     private blockDepth = 0;
 
-    private getObjectMap(owner: object, obj: GObject.Object): Map<string, number> {
+    private getObjectMap(owner: object, obj: GObject.Object): Map<string, SignalHandler> {
         let ownerMap = this.ownerHandlers.get(owner);
         if (!ownerMap) {
             ownerMap = new Map();
@@ -67,10 +67,10 @@ export class SignalStore {
     private disconnect(owner: object, obj: GObject.Object, signal: string): void {
         const ownerMap = this.ownerHandlers.get(owner);
         const objMap = ownerMap?.get(obj);
-        const handlerId = objMap?.get(signal);
+        const wrappedHandler = objMap?.get(signal);
 
-        if (handlerId !== undefined) {
-            GObject.signalHandlerDisconnect(obj, handlerId);
+        if (wrappedHandler !== undefined) {
+            obj.off(signal, wrappedHandler);
             objMap?.delete(signal);
             if (objMap?.size === 0) {
                 ownerMap?.delete(obj);
@@ -81,8 +81,8 @@ export class SignalStore {
     private connect(binding: SignalBinding & { handler: SignalHandler; blockable: boolean }): void {
         const { owner, obj, signal, handler, blockable } = binding;
         const wrappedHandler = this.wrapHandler(handler, signal, obj, blockable);
-        const handlerId = obj.connect(signal, wrappedHandler);
-        this.getObjectMap(owner, obj).set(signal, handlerId);
+        obj.on(signal, wrappedHandler);
+        this.getObjectMap(owner, obj).set(signal, wrappedHandler);
     }
 
     public set(binding: SignalBinding): void {
@@ -99,8 +99,8 @@ export class SignalStore {
 
         if (ownerMap) {
             for (const [obj, objMap] of ownerMap) {
-                for (const handlerId of objMap.values()) {
-                    GObject.signalHandlerDisconnect(obj, handlerId);
+                for (const [signal, wrappedHandler] of objMap) {
+                    obj.off(signal, wrappedHandler);
                 }
             }
 
