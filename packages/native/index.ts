@@ -1,14 +1,5 @@
 import * as native from "./native-binding.cjs";
-import type {
-    ArrayType,
-    HashTableType,
-    NativeArg,
-    NativeHandle,
-    NativeType,
-    NativeValue,
-    RefType,
-    TrampolineType,
-} from "./types.js";
+import type { NativeArg, NativeHandle, NativeType, NativeValue } from "./types.js";
 
 type NativeVfuncDefinition = {
     readonly byteOffset: number;
@@ -35,81 +26,6 @@ export type { NativeHandle } from "./types.js";
  */
 type MainLoopHandle = ReturnType<typeof native.init>;
 
-function isHandleType(type: NativeType): boolean {
-    return type.type === "gobject" || type.type === "boxed" || type.type === "struct" || type.type === "fundamental";
-}
-
-function unwrapValue(value: unknown, type: NativeType): unknown {
-    if (value === null || value === undefined) return value;
-
-    if (isHandleType(type)) return value;
-
-    switch (type.type) {
-        case "array":
-            return unwrapArray(value, type);
-        case "hashtable":
-            return unwrapHashTable(value, type);
-        case "ref":
-            return unwrapRefArg(value as { value: unknown }, type);
-        case "trampoline":
-            return wrapUserCallback(value, type);
-        default:
-            return value;
-    }
-}
-
-function unwrapArray(value: unknown, type: ArrayType): unknown {
-    if (!Array.isArray(value)) return value;
-    return value.map((item) => unwrapValue(item, type.itemType));
-}
-
-function unwrapHashTable(value: unknown, type: HashTableType): unknown {
-    if (!Array.isArray(value)) return value;
-    return value.map((entry) => {
-        if (!Array.isArray(entry) || entry.length !== 2) return entry;
-        return [unwrapValue(entry[0], type.keyType), unwrapValue(entry[1], type.valueType)];
-    });
-}
-
-function unwrapRefArg(ref: { value: unknown }, type: RefType): { value: unknown } {
-    ref.value = unwrapValue(ref.value, type.innerType);
-    return ref;
-}
-
-function wrapUserCallback(value: unknown, type: TrampolineType): unknown {
-    if (typeof value !== "function") return value;
-    const userCb = value as (...args: unknown[]) => unknown;
-    const { argTypes, returnType } = type;
-    return (...args: unknown[]) => {
-        const wrappedArgs = args.map((arg, i) => wrapValue(arg, argTypes[i] ?? { type: "void" }));
-        const result = userCb(...wrappedArgs);
-        return unwrapValue(result, returnType);
-    };
-}
-
-function wrapValue(value: unknown, type: NativeType): unknown {
-    if (value === null || value === undefined) return value;
-
-    if (isHandleType(type)) return value;
-
-    switch (type.type) {
-        case "array":
-            return Array.isArray(value) ? value.map((item) => wrapValue(item, type.itemType)) : value;
-        case "hashtable":
-            if (!Array.isArray(value)) return value;
-            return value.map((entry) => {
-                if (!Array.isArray(entry) || entry.length !== 2) return entry;
-                return [wrapValue(entry[0], type.keyType), wrapValue(entry[1], type.valueType)];
-            });
-        default:
-            return value;
-    }
-}
-
-function rewrapRefArg(ref: { value: unknown }, type: RefType): void {
-    ref.value = wrapValue(ref.value, type.innerType);
-}
-
 /**
  * Makes a low-level FFI call to a native library.
  *
@@ -123,20 +39,7 @@ function rewrapRefArg(ref: { value: unknown }, type: RefType): void {
  * @returns The function return value
  */
 export function call(library: string, symbol: string, args: NativeArg[], returnType: NativeType): NativeValue {
-    const unwrapped = args.map((arg) => ({
-        ...arg,
-        value: unwrapValue(arg.value, arg.type),
-    }));
-
-    const result = native.call(library, symbol, unwrapped, returnType);
-
-    for (const arg of args) {
-        if (arg.type.type === "ref") {
-            rewrapRefArg(arg.value as { value: unknown }, arg.type);
-        }
-    }
-
-    return wrapValue(result, returnType) as NativeValue;
+    return native.call(library, symbol, args, returnType) as NativeValue;
 }
 
 /**
@@ -168,8 +71,7 @@ export function stop(): void {
  * @returns The read value
  */
 export function read(handle: NativeHandle, type: NativeType, offset: number): NativeValue {
-    const result = native.read(handle, type, offset);
-    return wrapValue(result, type) as NativeValue;
+    return native.read(handle, type, offset) as NativeValue;
 }
 
 /**
@@ -181,7 +83,7 @@ export function read(handle: NativeHandle, type: NativeType, offset: number): Na
  * @param value - Value to write
  */
 export function write(handle: NativeHandle, type: NativeType, offset: number, value: unknown): void {
-    native.write(handle, type, offset, unwrapValue(value, type));
+    native.write(handle, type, offset, value);
 }
 
 /**
