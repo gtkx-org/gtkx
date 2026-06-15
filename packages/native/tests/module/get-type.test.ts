@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { getGobjectGtype, type NativeHandle } from "../../index.js";
+import { getType, type NativeHandle } from "../../index.js";
 import { createLabel, typeFromName } from "./utils.js";
 
-describe("getGobjectGtype", () => {
+describe("getType", () => {
     it("returns the runtime GType of a GtkLabel instance", () => {
         const label = createLabel("Test") as NativeHandle;
-        const gtype = getGobjectGtype(label);
+        const gtype = getType(label);
 
         expect(gtype).toBeGreaterThan(0);
         expect(gtype).toBe(typeFromName("GtkLabel"));

@@ -40,6 +40,19 @@ export const namespaceFunctionExportName = (
 export const aliasExportName = (namespaceName: string, aliasName: string): string =>
     namespaceName === "GObject" && aliasName === "Type" ? "GType" : aliasName;
 
+/**
+ * Derives the module-level binding-const name for a native C symbol.
+ *
+ * The C identifier (`g_object_ref`, `gtk_widget_show`) is camelCased to the
+ * variable name the generated `const … = t.fn(...)` binding declares and its
+ * call sites reference (`gObjectRef`, `gtkWidgetShow`), so every binding follows
+ * the same casing as the rest of the generated surface. The result is escaped so
+ * it never collides with a reserved word.
+ *
+ * @param cIdentifier - The C symbol identifier from GIR
+ */
+export const bindingIdentifier = (cIdentifier: string): string => toIdentifier(toCamelCase(cIdentifier));
+
 const stripLongestPrefix = (input: string, prefixes: readonly string[]): string => {
     let best = "";
     for (const prefix of prefixes) {

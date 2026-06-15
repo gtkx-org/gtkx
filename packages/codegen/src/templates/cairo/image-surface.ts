@@ -5,37 +5,37 @@ import { Surface } from "../cairo.js";
 
 const { bind } = t;
 
-const cairo_image_surface_create = bind(
+const cairoImageSurfaceCreate = bind(
     "libcairo.so.2",
     "cairo_image_surface_create",
     [{ type: t.int32 }, { type: t.int32 }, { type: t.int32 }],
     t.boxed("CairoSurface", "full", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
 );
-const cairo_image_surface_create_from_png = bind(
+const cairoImageSurfaceCreateFromPng = bind(
     "libcairo.so.2",
     "cairo_image_surface_create_from_png",
     [{ type: t.string("full") }],
     t.boxed("CairoSurface", "full", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
 );
-const cairo_image_surface_get_width = bind(
+const cairoImageSurfaceGetWidth = bind(
     "libcairo.so.2",
     "cairo_image_surface_get_width",
     [{ type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") }],
     t.int32,
 );
-const cairo_image_surface_get_height = bind(
+const cairoImageSurfaceGetHeight = bind(
     "libcairo.so.2",
     "cairo_image_surface_get_height",
     [{ type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") }],
     t.int32,
 );
-const cairo_image_surface_get_format = bind(
+const cairoImageSurfaceGetFormat = bind(
     "libcairo.so.2",
     "cairo_image_surface_get_format",
     [{ type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") }],
     t.int32,
 );
-const cairo_image_surface_get_stride = bind(
+const cairoImageSurfaceGetStride = bind(
     "libcairo.so.2",
     "cairo_image_surface_get_stride",
     [{ type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") }],
@@ -52,34 +52,34 @@ export class ImageSurface extends Surface {
      */
     constructor(format: Format, width: number, height: number) {
         super();
-        setHandle(this, cairo_image_surface_create(format, width, height) as NativeHandle);
+        setHandle(this, cairoImageSurfaceCreate(format, width, height) as NativeHandle);
     }
 
     static create(format: Format, width: number, height: number): ImageSurface {
-        return wrapHandle(cairo_image_surface_create(format, width, height) as NativeHandle, ImageSurface);
+        return wrapHandle(cairoImageSurfaceCreate(format, width, height) as NativeHandle, ImageSurface);
     }
 
     static createFromPng(filename: string): ImageSurface {
-        const ptr = cairo_image_surface_create_from_png(filename) as NativeHandle;
+        const ptr = cairoImageSurfaceCreateFromPng(filename) as NativeHandle;
         const surface = Object.create(ImageSurface.prototype) as ImageSurface;
         setHandle(surface, ptr);
         return surface;
     }
 
     getWidth(): number {
-        return cairo_image_surface_get_width(getHandle(this)) as number;
+        return cairoImageSurfaceGetWidth(getHandle(this)) as number;
     }
 
     getHeight(): number {
-        return cairo_image_surface_get_height(getHandle(this)) as number;
+        return cairoImageSurfaceGetHeight(getHandle(this)) as number;
     }
 
     getFormat(): Format {
-        return cairo_image_surface_get_format(getHandle(this)) as Format;
+        return cairoImageSurfaceGetFormat(getHandle(this)) as Format;
     }
 
     getStride(): number {
-        return cairo_image_surface_get_stride(getHandle(this)) as number;
+        return cairoImageSurfaceGetStride(getHandle(this)) as number;
     }
 
     getData(): Uint8Array {

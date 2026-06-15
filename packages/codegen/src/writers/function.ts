@@ -1,7 +1,7 @@
 import { quote } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { arrayLiteral, indent } from "../dsl/emit.js";
-import { namespaceFunctionExportName } from "../dsl/identifier.js";
+import { bindingIdentifier, namespaceFunctionExportName } from "../dsl/identifier.js";
 import type { GirFunction } from "../gir/function.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import { callableReferencesClassStruct } from "./class-struct-record.js";
@@ -55,11 +55,12 @@ export const emitNamespaceFunction = (context: ModuleContext, fn: GirFunction): 
     if (callableReferencesClassStruct(context, fn)) return;
     const expression = renderFnExpression(context, fn);
     if (expression === undefined) return;
-    const bindingName = fn.cIdentifier;
-    if (bindingName === undefined) return;
-    context.module.appendBinding(`const ${bindingName} = ${expression};`, bindingName);
+    const cIdentifier = fn.cIdentifier;
+    if (cIdentifier === undefined) return;
+    const bindingName = bindingIdentifier(cIdentifier);
+    context.module.appendBinding(`const ${bindingName} = ${expression};`, cIdentifier);
 
-    const exportName = namespaceFunctionExportName(bindingName, fn.name, context.namespace.cSymbolPrefixes);
+    const exportName = namespaceFunctionExportName(cIdentifier, fn.name, context.namespace.cSymbolPrefixes);
     const signature = renderMethodSignature(context, fn);
     const returnType = renderMethodReturnType(context, fn);
     const body = renderMethodBody(context, fn, { bindingExpression: bindingName, isStatic: true });

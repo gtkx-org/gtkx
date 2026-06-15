@@ -40,7 +40,7 @@ export const signalBaseName = (signal: string): string => {
     return detailIndex === -1 ? signal : signal.slice(0, detailIndex);
 };
 
-const g_quark_from_string = t.bind(
+const gQuarkFromString = t.bind(
     "libgobject-2.0.so.0,libglib-2.0.so.0",
     "g_quark_from_string",
     [{ type: t.string("borrowed") }],
@@ -61,7 +61,7 @@ const g_quark_from_string = t.bind(
 export function signalDetailQuark(signal: string): number {
     const detailIndex = signal.indexOf("::");
     if (detailIndex === -1) return 0;
-    return g_quark_from_string(signal.slice(detailIndex + 2)) as number;
+    return gQuarkFromString(signal.slice(detailIndex + 2)) as number;
 }
 
 /**
@@ -83,6 +83,7 @@ export function signalDetailQuark(signal: string): number {
  * @param after - When true, run the handler after the default handler
  * @returns The handler connection id
  */
+// biome-ignore lint/complexity/useMaxParams: mirrors the positional arguments g_signal_connect_data takes after the symbol
 export function connectGobjectSignal(
     instance: object,
     signal: string,
@@ -209,7 +210,7 @@ export function offSignal(instance: SignalConnectable, signal: string, handler: 
 
 const GVALUE_INLINE: FfiType = t.boxed("GValue", "borrowed", LIBGOBJECT, "g_value_get_type");
 
-const g_signal_emitv = t.bind(
+const gSignalEmitv = t.bind(
     LIBGOBJECT,
     "g_signal_emitv",
     [
@@ -221,7 +222,7 @@ const g_signal_emitv = t.bind(
     t.void,
 );
 
-const g_signal_lookup = t.bind(
+const gSignalLookup = t.bind(
     LIBGOBJECT,
     "g_signal_lookup",
     [{ type: t.string("borrowed") }, { type: t.uint64 }],
@@ -283,7 +284,7 @@ export function emitGobjectSignal(
     returnFfi?: FfiType,
 ): unknown {
     const gtype: GType = (instance as GTyped).__gtype__;
-    const signalId = g_signal_lookup(signalBaseName(sigName), gtype) as number;
+    const signalId = gSignalLookup(signalBaseName(sigName), gtype) as number;
     const detail = signalDetailQuark(sigName);
 
     const values: GValue[] = [valueFromFfi(t.object("full"), instance)];
@@ -319,9 +320,9 @@ export function emitGobjectSignal(
     const handles = values.map(getHandle);
     if (returnFfi !== undefined) {
         const returnValue = emptyValueFromFfi(returnFfi);
-        g_signal_emitv(handles, signalId, detail, getHandle(returnValue));
+        gSignalEmitv(handles, signalId, detail, getHandle(returnValue));
         return assembleResult(valueToJS(returnValue), true, reads);
     }
-    g_signal_emitv(handles, signalId, detail, undefined);
+    gSignalEmitv(handles, signalId, detail, undefined);
     return assembleResult(undefined, false, reads);
 }

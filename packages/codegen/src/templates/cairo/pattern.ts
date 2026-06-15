@@ -68,7 +68,7 @@ declare module "../cairo.js" {
     }
 }
 
-const cairo_pattern_add_color_stop_rgb = bind(
+const cairoPatternAddColorStopRgb = bind(
     "libcairo.so.2",
     "cairo_pattern_add_color_stop_rgb",
     [
@@ -81,10 +81,10 @@ const cairo_pattern_add_color_stop_rgb = bind(
     t.void,
 );
 Pattern.prototype.addColorStopRgb = function (offset: number, red: number, green: number, blue: number): void {
-    cairo_pattern_add_color_stop_rgb(getHandle(this), offset, red, green, blue);
+    cairoPatternAddColorStopRgb(getHandle(this), offset, red, green, blue);
 };
 
-const cairo_pattern_add_color_stop_rgba = bind(
+const cairoPatternAddColorStopRgba = bind(
     "libcairo.so.2",
     "cairo_pattern_add_color_stop_rgba",
     [
@@ -104,10 +104,10 @@ Pattern.prototype.addColorStopRgba = function (
     blue: number,
     alpha: number,
 ): void {
-    cairo_pattern_add_color_stop_rgba(getHandle(this), offset, red, green, blue, alpha);
+    cairoPatternAddColorStopRgba(getHandle(this), offset, red, green, blue, alpha);
 };
 
-const cairo_pattern_get_color_stop_count = bind(
+const cairoPatternGetColorStopCount = bind(
     "libcairo.so.2",
     "cairo_pattern_get_color_stop_count",
     [
@@ -118,11 +118,11 @@ const cairo_pattern_get_color_stop_count = bind(
 );
 Pattern.prototype.getColorStopCount = function (): number {
     const countRef = { value: 0 };
-    cairo_pattern_get_color_stop_count(getHandle(this), countRef);
+    cairoPatternGetColorStopCount(getHandle(this), countRef);
     return countRef.value;
 };
 
-const cairo_pattern_get_color_stop_rgba = bind(
+const cairoPatternGetColorStopRgba = bind(
     "libcairo.so.2",
     "cairo_pattern_get_color_stop_rgba",
     [
@@ -148,7 +148,7 @@ Pattern.prototype.getColorStopRgba = function (index: number): {
     const greenRef = { value: 0 };
     const blueRef = { value: 0 };
     const alphaRef = { value: 0 };
-    cairo_pattern_get_color_stop_rgba(getHandle(this), index, offsetRef, redRef, greenRef, blueRef, alphaRef);
+    cairoPatternGetColorStopRgba(getHandle(this), index, offsetRef, redRef, greenRef, blueRef, alphaRef);
     return {
         offset: offsetRef.value,
         red: redRef.value,
@@ -158,7 +158,7 @@ Pattern.prototype.getColorStopRgba = function (index: number): {
     };
 };
 
-const cairo_pattern_get_rgba = bind(
+const cairoPatternGetRgba = bind(
     "libcairo.so.2",
     "cairo_pattern_get_rgba",
     [
@@ -171,20 +171,20 @@ const cairo_pattern_get_rgba = bind(
     t.int32,
 );
 Pattern.prototype.getRgba = function (): RgbaColor {
-    return readRgba((red, green, blue, alpha) => cairo_pattern_get_rgba(getHandle(this), red, green, blue, alpha));
+    return readRgba((red, green, blue, alpha) => cairoPatternGetRgba(getHandle(this), red, green, blue, alpha));
 };
 
-const cairo_pattern_status = bind(
+const cairoPatternStatus = bind(
     "libcairo.so.2",
     "cairo_pattern_status",
     [{ type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") }],
     t.int32,
 );
 Pattern.prototype.status = function (): Status {
-    return cairo_pattern_status(getHandle(this)) as Status;
+    return cairoPatternStatus(getHandle(this)) as Status;
 };
 
-const cairo_pattern_set_extend = bind(
+const cairoPatternSetExtend = bind(
     "libcairo.so.2",
     "cairo_pattern_set_extend",
     [
@@ -194,20 +194,20 @@ const cairo_pattern_set_extend = bind(
     t.void,
 );
 Pattern.prototype.setExtend = function (extend: Extend): void {
-    cairo_pattern_set_extend(getHandle(this), extend);
+    cairoPatternSetExtend(getHandle(this), extend);
 };
 
-const cairo_pattern_get_extend = bind(
+const cairoPatternGetExtend = bind(
     "libcairo.so.2",
     "cairo_pattern_get_extend",
     [{ type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") }],
     t.int32,
 );
 Pattern.prototype.getExtend = function (): Extend {
-    return cairo_pattern_get_extend(getHandle(this)) as Extend;
+    return cairoPatternGetExtend(getHandle(this)) as Extend;
 };
 
-const cairo_pattern_set_filter = bind(
+const cairoPatternSetFilter = bind(
     "libcairo.so.2",
     "cairo_pattern_set_filter",
     [
@@ -217,20 +217,20 @@ const cairo_pattern_set_filter = bind(
     t.void,
 );
 Pattern.prototype.setFilter = function (filter: Filter): void {
-    cairo_pattern_set_filter(getHandle(this), filter);
+    cairoPatternSetFilter(getHandle(this), filter);
 };
 
-const cairo_pattern_get_filter = bind(
+const cairoPatternGetFilter = bind(
     "libcairo.so.2",
     "cairo_pattern_get_filter",
     [{ type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") }],
     t.int32,
 );
 Pattern.prototype.getFilter = function (): Filter {
-    return cairo_pattern_get_filter(getHandle(this)) as Filter;
+    return cairoPatternGetFilter(getHandle(this)) as Filter;
 };
 
-const cairo_pattern_set_matrix = bind(
+const cairoPatternSetMatrix = bind(
     "libcairo.so.2",
     "cairo_pattern_set_matrix",
     [
@@ -240,10 +240,10 @@ const cairo_pattern_set_matrix = bind(
     t.void,
 );
 Pattern.prototype.setMatrix = function (matrix: CairoMatrix): void {
-    cairo_pattern_set_matrix(getHandle(this), getHandle(matrix));
+    cairoPatternSetMatrix(getHandle(this), getHandle(matrix));
 };
 
-const cairo_pattern_get_matrix = bind(
+const cairoPatternGetMatrix = bind(
     "libcairo.so.2",
     "cairo_pattern_get_matrix",
     [
@@ -254,31 +254,31 @@ const cairo_pattern_get_matrix = bind(
 );
 Pattern.prototype.getMatrix = function (): CairoMatrix {
     const { handle, obj } = allocMatrix();
-    cairo_pattern_get_matrix(getHandle(this), handle);
+    cairoPatternGetMatrix(getHandle(this), handle);
     return obj;
 };
 
-const cairo_pattern_get_type = bind(
+const cairoPatternGetType = bind(
     "libcairo.so.2",
     "cairo_pattern_get_type",
     [{ type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") }],
     t.int32,
 );
 Pattern.prototype.getType = function (): PatternType {
-    return cairo_pattern_get_type(getHandle(this)) as PatternType;
+    return cairoPatternGetType(getHandle(this)) as PatternType;
 };
 
-const cairo_pattern_get_reference_count = bind(
+const cairoPatternGetReferenceCount = bind(
     "libcairo.so.2",
     "cairo_pattern_get_reference_count",
     [{ type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") }],
     t.int32,
 );
 Pattern.prototype.getReferenceCount = function (): number {
-    return cairo_pattern_get_reference_count(getHandle(this)) as number;
+    return cairoPatternGetReferenceCount(getHandle(this)) as number;
 };
 
-const cairo_pattern_get_linear_points = bind(
+const cairoPatternGetLinearPoints = bind(
     "libcairo.so.2",
     "cairo_pattern_get_linear_points",
     [
@@ -290,7 +290,7 @@ const cairo_pattern_get_linear_points = bind(
     ],
     t.int32,
 );
-const cairo_pattern_get_radial_circles = bind(
+const cairoPatternGetRadialCircles = bind(
     "libcairo.so.2",
     "cairo_pattern_get_radial_circles",
     [
@@ -304,19 +304,19 @@ const cairo_pattern_get_radial_circles = bind(
     ],
     t.int32,
 );
-const cairo_mesh_pattern_begin_patch = bind(
+const cairoMeshPatternBeginPatch = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_begin_patch",
     [{ type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") }],
     t.void,
 );
-const cairo_mesh_pattern_end_patch = bind(
+const cairoMeshPatternEndPatch = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_end_patch",
     [{ type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") }],
     t.void,
 );
-const cairo_mesh_pattern_move_to = bind(
+const cairoMeshPatternMoveTo = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_move_to",
     [
@@ -326,7 +326,7 @@ const cairo_mesh_pattern_move_to = bind(
     ],
     t.void,
 );
-const cairo_mesh_pattern_line_to = bind(
+const cairoMeshPatternLineTo = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_line_to",
     [
@@ -336,7 +336,7 @@ const cairo_mesh_pattern_line_to = bind(
     ],
     t.void,
 );
-const cairo_mesh_pattern_curve_to = bind(
+const cairoMeshPatternCurveTo = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_curve_to",
     [
@@ -350,7 +350,7 @@ const cairo_mesh_pattern_curve_to = bind(
     ],
     t.void,
 );
-const cairo_mesh_pattern_set_control_point = bind(
+const cairoMeshPatternSetControlPoint = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_set_control_point",
     [
@@ -361,7 +361,7 @@ const cairo_mesh_pattern_set_control_point = bind(
     ],
     t.void,
 );
-const cairo_mesh_pattern_set_corner_color_rgb = bind(
+const cairoMeshPatternSetCornerColorRgb = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_set_corner_color_rgb",
     [
@@ -373,7 +373,7 @@ const cairo_mesh_pattern_set_corner_color_rgb = bind(
     ],
     t.void,
 );
-const cairo_mesh_pattern_set_corner_color_rgba = bind(
+const cairoMeshPatternSetCornerColorRgba = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_set_corner_color_rgba",
     [
@@ -386,7 +386,7 @@ const cairo_mesh_pattern_set_corner_color_rgba = bind(
     ],
     t.void,
 );
-const cairo_mesh_pattern_get_patch_count = bind(
+const cairoMeshPatternGetPatchCount = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_get_patch_count",
     [
@@ -395,7 +395,7 @@ const cairo_mesh_pattern_get_patch_count = bind(
     ],
     t.int32,
 );
-const cairo_mesh_pattern_get_path = bind(
+const cairoMeshPatternGetPath = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_get_path",
     [
@@ -404,7 +404,7 @@ const cairo_mesh_pattern_get_path = bind(
     ],
     t.boxed("cairo_path_t", "full", "libcairo.so.2", undefined, "cairo_path_destroy"),
 );
-const cairo_mesh_pattern_get_control_point = bind(
+const cairoMeshPatternGetControlPoint = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_get_control_point",
     [
@@ -416,7 +416,7 @@ const cairo_mesh_pattern_get_control_point = bind(
     ],
     t.int32,
 );
-const cairo_mesh_pattern_get_corner_color_rgba = bind(
+const cairoMeshPatternGetCornerColorRgba = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_get_corner_color_rgba",
     [
@@ -443,7 +443,7 @@ export class LinearPattern extends Pattern {
         const y0Ref = { value: 0 };
         const x1Ref = { value: 0 };
         const y1Ref = { value: 0 };
-        cairo_pattern_get_linear_points(getHandle(this), x0Ref, y0Ref, x1Ref, y1Ref);
+        cairoPatternGetLinearPoints(getHandle(this), x0Ref, y0Ref, x1Ref, y1Ref);
         return { x0: x0Ref.value, y0: y0Ref.value, x1: x1Ref.value, y1: y1Ref.value };
     }
 }
@@ -462,7 +462,7 @@ export class RadialPattern extends Pattern {
         const x1Ref = { value: 0 };
         const y1Ref = { value: 0 };
         const r1Ref = { value: 0 };
-        cairo_pattern_get_radial_circles(getHandle(this), x0Ref, y0Ref, r0Ref, x1Ref, y1Ref, r1Ref);
+        cairoPatternGetRadialCircles(getHandle(this), x0Ref, y0Ref, r0Ref, x1Ref, y1Ref, r1Ref);
         return {
             x0: x0Ref.value,
             y0: y0Ref.value,
@@ -482,56 +482,56 @@ export class MeshPattern extends Pattern {
      * Begins a new patch in the mesh pattern.
      */
     beginPatch(): void {
-        cairo_mesh_pattern_begin_patch(getHandle(this));
+        cairoMeshPatternBeginPatch(getHandle(this));
     }
 
     /**
      * Completes the current patch in the mesh pattern.
      */
     endPatch(): void {
-        cairo_mesh_pattern_end_patch(getHandle(this));
+        cairoMeshPatternEndPatch(getHandle(this));
     }
 
     /**
      * Defines the first point of the current patch.
      */
     moveTo(x: number, y: number): void {
-        cairo_mesh_pattern_move_to(getHandle(this), x, y);
+        cairoMeshPatternMoveTo(getHandle(this), x, y);
     }
 
     /**
      * Adds a line segment to the current patch.
      */
     lineTo(x: number, y: number): void {
-        cairo_mesh_pattern_line_to(getHandle(this), x, y);
+        cairoMeshPatternLineTo(getHandle(this), x, y);
     }
 
     /**
      * Adds a cubic Bézier segment to the current patch.
      */
     curveTo(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): void {
-        cairo_mesh_pattern_curve_to(getHandle(this), x1, y1, x2, y2, x3, y3);
+        cairoMeshPatternCurveTo(getHandle(this), x1, y1, x2, y2, x3, y3);
     }
 
     /**
      * Sets an internal control point of the current patch.
      */
     setControlPoint(pointNum: number, x: number, y: number): void {
-        cairo_mesh_pattern_set_control_point(getHandle(this), pointNum, x, y);
+        cairoMeshPatternSetControlPoint(getHandle(this), pointNum, x, y);
     }
 
     /**
      * Sets the RGB color of a corner of the current patch.
      */
     setCornerColorRgb(cornerNum: number, red: number, green: number, blue: number): void {
-        cairo_mesh_pattern_set_corner_color_rgb(getHandle(this), cornerNum, red, green, blue);
+        cairoMeshPatternSetCornerColorRgb(getHandle(this), cornerNum, red, green, blue);
     }
 
     /**
      * Sets the RGBA color of a corner of the current patch.
      */
     setCornerColorRgba(cornerNum: number, red: number, green: number, blue: number, alpha: number): void {
-        cairo_mesh_pattern_set_corner_color_rgba(getHandle(this), cornerNum, red, green, blue, alpha);
+        cairoMeshPatternSetCornerColorRgba(getHandle(this), cornerNum, red, green, blue, alpha);
     }
 
     /**
@@ -539,7 +539,7 @@ export class MeshPattern extends Pattern {
      */
     getPatchCount(): number {
         const countRef = { value: 0 };
-        cairo_mesh_pattern_get_patch_count(getHandle(this), countRef);
+        cairoMeshPatternGetPatchCount(getHandle(this), countRef);
         return countRef.value;
     }
 
@@ -547,7 +547,7 @@ export class MeshPattern extends Pattern {
      * Returns the path defining the boundary of patch `patchNum`.
      */
     getPath(patchNum: number): PathData[] {
-        return parsePath(cairo_mesh_pattern_get_path(getHandle(this), patchNum) as NativeHandle);
+        return parsePath(cairoMeshPatternGetPath(getHandle(this), patchNum) as NativeHandle);
     }
 
     /**
@@ -556,7 +556,7 @@ export class MeshPattern extends Pattern {
     getControlPoint(patchNum: number, pointNum: number): { x: number; y: number } {
         const xRef = { value: 0 };
         const yRef = { value: 0 };
-        cairo_mesh_pattern_get_control_point(getHandle(this), patchNum, pointNum, xRef, yRef);
+        cairoMeshPatternGetControlPoint(getHandle(this), patchNum, pointNum, xRef, yRef);
         return { x: xRef.value, y: yRef.value };
     }
 
@@ -565,7 +565,7 @@ export class MeshPattern extends Pattern {
      */
     getCornerColorRgba(patchNum: number, cornerNum: number): RgbaColor {
         return readRgba((red, green, blue, alpha) =>
-            cairo_mesh_pattern_get_corner_color_rgba(getHandle(this), patchNum, cornerNum, red, green, blue, alpha),
+            cairoMeshPatternGetCornerColorRgba(getHandle(this), patchNum, cornerNum, red, green, blue, alpha),
         );
     }
 }
@@ -581,37 +581,37 @@ type PatternStatic = {
 
 const PatternWithStatics = Pattern as typeof Pattern & PatternStatic;
 
-const cairo_pattern_create_rgb = bind(
+const cairoPatternCreateRgb = bind(
     "libcairo.so.2",
     "cairo_pattern_create_rgb",
     [{ type: t.float64 }, { type: t.float64 }, { type: t.float64 }],
     t.boxed("CairoPattern", "full", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
 );
 PatternWithStatics.createRgb = (red: number, green: number, blue: number): Pattern => {
-    return wrapHandle(cairo_pattern_create_rgb(red, green, blue) as NativeHandle, Pattern);
+    return wrapHandle(cairoPatternCreateRgb(red, green, blue) as NativeHandle, Pattern);
 };
 
-const cairo_pattern_create_rgba = bind(
+const cairoPatternCreateRgba = bind(
     "libcairo.so.2",
     "cairo_pattern_create_rgba",
     [{ type: t.float64 }, { type: t.float64 }, { type: t.float64 }, { type: t.float64 }],
     t.boxed("CairoPattern", "full", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
 );
 PatternWithStatics.createRgba = (red: number, green: number, blue: number, alpha: number): Pattern => {
-    return wrapHandle(cairo_pattern_create_rgba(red, green, blue, alpha) as NativeHandle, Pattern);
+    return wrapHandle(cairoPatternCreateRgba(red, green, blue, alpha) as NativeHandle, Pattern);
 };
 
-const cairo_pattern_create_linear = bind(
+const cairoPatternCreateLinear = bind(
     "libcairo.so.2",
     "cairo_pattern_create_linear",
     [{ type: t.float64 }, { type: t.float64 }, { type: t.float64 }, { type: t.float64 }],
     t.boxed("CairoPattern", "full", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
 );
 PatternWithStatics.createLinear = (x0: number, y0: number, x1: number, y1: number): LinearPattern => {
-    return wrapHandle(cairo_pattern_create_linear(x0, y0, x1, y1) as NativeHandle, LinearPattern);
+    return wrapHandle(cairoPatternCreateLinear(x0, y0, x1, y1) as NativeHandle, LinearPattern);
 };
 
-const cairo_pattern_create_radial = bind(
+const cairoPatternCreateRadial = bind(
     "libcairo.so.2",
     "cairo_pattern_create_radial",
     [
@@ -632,25 +632,25 @@ PatternWithStatics.createRadial = (
     cy1: number,
     radius1: number,
 ): RadialPattern => {
-    return wrapHandle(cairo_pattern_create_radial(cx0, cy0, radius0, cx1, cy1, radius1) as NativeHandle, RadialPattern);
+    return wrapHandle(cairoPatternCreateRadial(cx0, cy0, radius0, cx1, cy1, radius1) as NativeHandle, RadialPattern);
 };
 
-const cairo_pattern_create_mesh = bind(
+const cairoPatternCreateMesh = bind(
     "libcairo.so.2",
     "cairo_pattern_create_mesh",
     [],
     t.boxed("CairoPattern", "full", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
 );
 PatternWithStatics.createMesh = (): MeshPattern => {
-    return wrapHandle(cairo_pattern_create_mesh() as NativeHandle, MeshPattern);
+    return wrapHandle(cairoPatternCreateMesh() as NativeHandle, MeshPattern);
 };
 
-const cairo_pattern_create_for_surface = bind(
+const cairoPatternCreateForSurface = bind(
     "libcairo.so.2",
     "cairo_pattern_create_for_surface",
     [{ type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") }],
     t.boxed("CairoPattern", "full", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
 );
 PatternWithStatics.createForSurface = (surface: Surface): Pattern => {
-    return wrapHandle(cairo_pattern_create_for_surface(getHandle(surface)) as NativeHandle, Pattern);
+    return wrapHandle(cairoPatternCreateForSurface(getHandle(surface)) as NativeHandle, Pattern);
 };

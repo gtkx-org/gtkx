@@ -1,6 +1,7 @@
 import { toCamelCase, toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
+import { bindingIdentifier } from "../dsl/identifier.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import { splitQualifiedName } from "../gir/qualified-name.js";
@@ -228,7 +229,7 @@ const renderPromisifiedMember = (
     if (cIdentifier === undefined) return undefined;
     const { signature, returnType } = renderPromisifiedSignature(context, callable, finishFn);
     const finishMember = methodExportName(finishFn);
-    const body = renderPromisifiedBody(context, callable, finishMember, cIdentifier);
+    const body = renderPromisifiedBody(context, callable, finishMember, bindingIdentifier(cIdentifier));
     return `${name}(${signature}): ${returnType} {\n${indent(body, 1)}\n}`;
 };
 

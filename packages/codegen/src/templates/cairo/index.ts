@@ -7,11 +7,11 @@ import "./overrides/surface.js";
 export type { CairoGlyph, CairoTextCluster, PathData } from "./overrides/context.js";
 export {
     Context,
-    cairoVersion,
-    cairoVersionString,
     type FontExtents,
     statusToString,
     type TextExtents,
+    version,
+    versionString,
 } from "./overrides/context.js";
 export { FtFontFace, ToyFontFace } from "./overrides/font-face.js";
 export { FontOptions } from "./overrides/font-options.js";

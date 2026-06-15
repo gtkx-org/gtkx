@@ -51,22 +51,22 @@ export const GVALUE_BORROWED: FfiType = t.boxed("GValue", "borrowed", LIBGOBJECT
  */
 export const gtypeFromFfi: (value: unknown) => GType = Number;
 
-const g_type_from_name = t.bind(LIBGOBJECT, "g_type_from_name", [{ type: t.string("borrowed") }], t.uint64);
+const gTypeFromName = t.bind(LIBGOBJECT, "g_type_from_name", [{ type: t.string("borrowed") }], t.uint64);
 
-const g_type_is_a = t.bind(LIBGOBJECT, "g_type_is_a", [{ type: t.uint64 }, { type: t.uint64 }], t.boolean);
+const gTypeIsA = t.bind(LIBGOBJECT, "g_type_is_a", [{ type: t.uint64 }, { type: t.uint64 }], t.boolean);
 
-const g_type_parent = t.bind(LIBGOBJECT, "g_type_parent", [{ type: t.uint64 }], t.uint64);
+const gTypeParent = t.bind(LIBGOBJECT, "g_type_parent", [{ type: t.uint64 }], t.uint64);
 
-const g_type_interfaces = t.bind(
+const gTypeInterfaces = t.bind(
     LIBGOBJECT,
     "g_type_interfaces",
     [{ type: t.uint64 }, { type: t.ref(t.uint32) }],
     t.sizedArray(t.uint64, 1, "full"),
 );
 
-const g_type_fundamental = t.bind(LIBGOBJECT, "g_type_fundamental", [{ type: t.uint64 }], t.uint64);
+const gTypeFundamental = t.bind(LIBGOBJECT, "g_type_fundamental", [{ type: t.uint64 }], t.uint64);
 
-const g_type_name = t.bind(LIBGOBJECT, "g_type_name", [{ type: t.uint64 }], t.string("borrowed"));
+const gTypeName = t.bind(LIBGOBJECT, "g_type_name", [{ type: t.uint64 }], t.string("borrowed"));
 
 /**
  * Tests whether `type` is a descendant of `isAType`, or — when `isAType` is
@@ -76,7 +76,7 @@ const g_type_name = t.bind(LIBGOBJECT, "g_type_name", [{ type: t.uint64 }], t.st
  * @param isAType - The ancestor class or interface GType
  */
 export function typeIsA(type: GType, isAType: GType): boolean {
-    return g_type_is_a(type, isAType) as boolean;
+    return gTypeIsA(type, isAType) as boolean;
 }
 
 /**
@@ -86,7 +86,7 @@ export function typeIsA(type: GType, isAType: GType): boolean {
  * @param type - The GType whose parent to resolve
  */
 export function typeParent(type: GType): GType {
-    return g_type_parent(type) as GType;
+    return gTypeParent(type) as GType;
 }
 
 /**
@@ -96,7 +96,7 @@ export function typeParent(type: GType): GType {
  */
 export function typeInterfaces(type: GType): GType[] {
     const nInterfacesRef = { value: 0 };
-    return g_type_interfaces(type, nInterfacesRef) as GType[];
+    return gTypeInterfaces(type, nInterfacesRef) as GType[];
 }
 
 /**
@@ -107,7 +107,7 @@ export function typeInterfaces(type: GType): GType[] {
  * @param name - GLib type name (e.g. `"GtkButton"`)
  */
 export function typeFromName(name: string): GType {
-    return g_type_from_name(name) as GType;
+    return gTypeFromName(name) as GType;
 }
 
 /**
@@ -118,7 +118,7 @@ export function typeFromName(name: string): GType {
  * @param type - The GType whose fundamental to resolve
  */
 export function typeFundamental(type: GType): GType {
-    return g_type_fundamental(type) as GType;
+    return gTypeFundamental(type) as GType;
 }
 
 /**
@@ -128,7 +128,7 @@ export function typeFundamental(type: GType): GType {
  * @param type - The GType whose name to resolve
  */
 export function typeName(type: GType): string | null {
-    return (g_type_name(type) as string | null) ?? null;
+    return (gTypeName(type) as string | null) ?? null;
 }
 
 /**

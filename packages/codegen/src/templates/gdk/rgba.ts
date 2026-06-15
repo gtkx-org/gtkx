@@ -28,4 +28,5 @@ export const RGBA: typeof GeneratedRGBA & { create: typeof create } = Object.ass
 /**
  * An instance of the `Gdk.RGBA` boxed type.
  */
+// biome-ignore lint/style/useNamingConvention: mirrors the GIR `Gdk.RGBA` boxed type name
 export type RGBA = GeneratedRGBA;

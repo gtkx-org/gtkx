@@ -10,31 +10,31 @@ export const allocMatrix = (): { handle: NativeHandle; obj: Matrix } => {
     return { handle, obj };
 };
 
-const cairo_matrix_translate = bind(
+const cairoMatrixTranslate = bind(
     "libcairo.so.2",
     "cairo_matrix_translate",
     [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }, { type: t.float64 }, { type: t.float64 }],
     t.void,
 );
-const cairo_matrix_scale = bind(
+const cairoMatrixScale = bind(
     "libcairo.so.2",
     "cairo_matrix_scale",
     [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }, { type: t.float64 }, { type: t.float64 }],
     t.void,
 );
-const cairo_matrix_rotate = bind(
+const cairoMatrixRotate = bind(
     "libcairo.so.2",
     "cairo_matrix_rotate",
     [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }, { type: t.float64 }],
     t.void,
 );
-const cairo_matrix_invert = bind(
+const cairoMatrixInvert = bind(
     "libcairo.so.2",
     "cairo_matrix_invert",
     [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }],
     t.int32,
 );
-const cairo_matrix_multiply = bind(
+const cairoMatrixMultiply = bind(
     "libcairo.so.2",
     "cairo_matrix_multiply",
     [
@@ -44,7 +44,7 @@ const cairo_matrix_multiply = bind(
     ],
     t.void,
 );
-const cairo_matrix_transform_point = bind(
+const cairoMatrixTransformPoint = bind(
     "libcairo.so.2",
     "cairo_matrix_transform_point",
     [
@@ -54,7 +54,7 @@ const cairo_matrix_transform_point = bind(
     ],
     t.void,
 );
-const cairo_matrix_transform_distance = bind(
+const cairoMatrixTransformDistance = bind(
     "libcairo.so.2",
     "cairo_matrix_transform_distance",
     [
@@ -64,31 +64,31 @@ const cairo_matrix_transform_distance = bind(
     ],
     t.void,
 );
-const cairo_matrix_init_identity = bind(
+const cairoMatrixInitIdentity = bind(
     "libcairo.so.2",
     "cairo_matrix_init_identity",
     [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }],
     t.void,
 );
-const cairo_matrix_init_translate = bind(
+const cairoMatrixInitTranslate = bind(
     "libcairo.so.2",
     "cairo_matrix_init_translate",
     [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }, { type: t.float64 }, { type: t.float64 }],
     t.void,
 );
-const cairo_matrix_init_scale = bind(
+const cairoMatrixInitScale = bind(
     "libcairo.so.2",
     "cairo_matrix_init_scale",
     [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }, { type: t.float64 }, { type: t.float64 }],
     t.void,
 );
-const cairo_matrix_init_rotate = bind(
+const cairoMatrixInitRotate = bind(
     "libcairo.so.2",
     "cairo_matrix_init_rotate",
     [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }, { type: t.float64 }],
     t.void,
 );
-const cairo_matrix_init = bind(
+const cairoMatrixInit = bind(
     "libcairo.so.2",
     "cairo_matrix_init",
     [
@@ -126,35 +126,35 @@ export class Matrix {
     constructor(xx: number, yx: number, xy: number, yy: number, x0: number, y0: number) {
         const handle = alloc(48, "cairo_matrix_t");
         setHandle(this, handle);
-        cairo_matrix_init(handle, xx, yx, xy, yy, x0, y0);
+        cairoMatrixInit(handle, xx, yx, xy, yy, x0, y0);
     }
 
     /**
      * Applies a translation to the transformation in `this` by `(tx, ty)`.
      */
     translate(tx: number, ty: number): void {
-        cairo_matrix_translate(getHandle(this), tx, ty);
+        cairoMatrixTranslate(getHandle(this), tx, ty);
     }
 
     /**
      * Applies scaling by `(sx, sy)` to the transformation in `this`.
      */
     scale(sx: number, sy: number): void {
-        cairo_matrix_scale(getHandle(this), sx, sy);
+        cairoMatrixScale(getHandle(this), sx, sy);
     }
 
     /**
      * Applies a rotation by `radians` to the transformation in `this`.
      */
     rotate(radians: number): void {
-        cairo_matrix_rotate(getHandle(this), radians);
+        cairoMatrixRotate(getHandle(this), radians);
     }
 
     /**
      * Inverts the transformation in `this`, returning the resulting status.
      */
     invert(): Status {
-        return cairo_matrix_invert(getHandle(this)) as Status;
+        return cairoMatrixInvert(getHandle(this)) as Status;
     }
 
     /**
@@ -163,7 +163,7 @@ export class Matrix {
     transformPoint(x: number, y: number): { x: number; y: number } {
         const xRef = { value: x };
         const yRef = { value: y };
-        cairo_matrix_transform_point(getHandle(this), xRef, yRef);
+        cairoMatrixTransformPoint(getHandle(this), xRef, yRef);
         return { x: xRef.value, y: yRef.value };
     }
 
@@ -173,7 +173,7 @@ export class Matrix {
     transformDistance(dx: number, dy: number): { dx: number; dy: number } {
         const dxRef = { value: dx };
         const dyRef = { value: dy };
-        cairo_matrix_transform_distance(getHandle(this), dxRef, dyRef);
+        cairoMatrixTransformDistance(getHandle(this), dxRef, dyRef);
         return { dx: dxRef.value, dy: dyRef.value };
     }
 
@@ -182,7 +182,7 @@ export class Matrix {
      */
     static initIdentity(): Matrix {
         const { handle, obj } = allocMatrix();
-        cairo_matrix_init_identity(handle);
+        cairoMatrixInitIdentity(handle);
         return obj;
     }
 
@@ -191,7 +191,7 @@ export class Matrix {
      */
     static initTranslate(tx: number, ty: number): Matrix {
         const { handle, obj } = allocMatrix();
-        cairo_matrix_init_translate(handle, tx, ty);
+        cairoMatrixInitTranslate(handle, tx, ty);
         return obj;
     }
 
@@ -200,7 +200,7 @@ export class Matrix {
      */
     static initScale(sx: number, sy: number): Matrix {
         const { handle, obj } = allocMatrix();
-        cairo_matrix_init_scale(handle, sx, sy);
+        cairoMatrixInitScale(handle, sx, sy);
         return obj;
     }
 
@@ -209,7 +209,7 @@ export class Matrix {
      */
     static initRotate(radians: number): Matrix {
         const { handle, obj } = allocMatrix();
-        cairo_matrix_init_rotate(handle, radians);
+        cairoMatrixInitRotate(handle, radians);
         return obj;
     }
 
@@ -218,7 +218,7 @@ export class Matrix {
      */
     static multiply(a: Matrix, b: Matrix): Matrix {
         const { handle, obj } = allocMatrix();
-        cairo_matrix_multiply(handle, getHandle(a), getHandle(b));
+        cairoMatrixMultiply(handle, getHandle(a), getHandle(b));
         return obj;
     }
 }

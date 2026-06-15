@@ -6,19 +6,19 @@ import { Surface } from "../cairo.js";
 const { bind } = t;
 const RECT_T = t.boxed("cairo_rectangle_t", "borrowed", "libcairo.so.2");
 
-const cairo_recording_surface_create_extents = bind(
+const cairoRecordingSurfaceCreateExtents = bind(
     "libcairo.so.2",
     "cairo_recording_surface_create",
     [{ type: t.int32 }, { type: RECT_T }],
     t.boxed("CairoSurface", "full", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
 );
-const cairo_recording_surface_create_unbounded = bind(
+const cairoRecordingSurfaceCreateUnbounded = bind(
     "libcairo.so.2",
     "cairo_recording_surface_create",
     [{ type: t.int32 }, { type: t.uint64 }],
     t.boxed("CairoSurface", "full", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
 );
-const cairo_recording_surface_ink_extents = bind(
+const cairoRecordingSurfaceInkExtents = bind(
     "libcairo.so.2",
     "cairo_recording_surface_ink_extents",
     [
@@ -30,7 +30,7 @@ const cairo_recording_surface_ink_extents = bind(
     ],
     t.void,
 );
-const cairo_recording_surface_get_extents = bind(
+const cairoRecordingSurfaceGetExtents = bind(
     "libcairo.so.2",
     "cairo_recording_surface_get_extents",
     [
@@ -61,9 +61,9 @@ export class RecordingSurface extends Surface {
             write(rect, t.float64, 8, extents.y);
             write(rect, t.float64, 16, extents.width);
             write(rect, t.float64, 24, extents.height);
-            handle = cairo_recording_surface_create_extents(content, rect) as NativeHandle;
+            handle = cairoRecordingSurfaceCreateExtents(content, rect) as NativeHandle;
         } else {
-            handle = cairo_recording_surface_create_unbounded(content, 0) as NativeHandle;
+            handle = cairoRecordingSurfaceCreateUnbounded(content, 0) as NativeHandle;
         }
         setHandle(this, handle);
     }
@@ -91,7 +91,7 @@ export class RecordingSurface extends Surface {
         const y0Ref = { value: 0 };
         const widthRef = { value: 0 };
         const heightRef = { value: 0 };
-        cairo_recording_surface_ink_extents(getHandle(this), x0Ref, y0Ref, widthRef, heightRef);
+        cairoRecordingSurfaceInkExtents(getHandle(this), x0Ref, y0Ref, widthRef, heightRef);
         return { x0: x0Ref.value, y0: y0Ref.value, width: widthRef.value, height: heightRef.value };
     }
 
@@ -101,7 +101,7 @@ export class RecordingSurface extends Surface {
      */
     getExtents(): { x: number; y: number; width: number; height: number } | null {
         const rect = alloc(32, "cairo_rectangle_t");
-        const result = cairo_recording_surface_get_extents(getHandle(this), rect) as boolean;
+        const result = cairoRecordingSurfaceGetExtents(getHandle(this), rect) as boolean;
         if (!result) return null;
         return {
             x: read(rect, t.float64, 0) as number,

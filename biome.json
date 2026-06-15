@@ -106,20 +106,11 @@
             }
         },
         {
-            "includes": [
-                "packages/codegen/src/templates/**",
-                "packages/ffi/src/cairo.ts",
-                "packages/ffi/src/gtype.ts",
-                "packages/ffi/src/gobject.ts",
-                "packages/ffi/src/signal.ts"
-            ],
+            "includes": ["packages/codegen/src/templates/**"],
             "linter": {
                 "rules": {
                     "complexity": {
                         "useMaxParams": "off"
-                    },
-                    "style": {
-                        "useNamingConvention": "off"
                     }
                 }
             }

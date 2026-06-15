@@ -1,6 +1,7 @@
 import { toCamelCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
+import { bindingIdentifier } from "../dsl/identifier.js";
 import type { GirFunction } from "../gir/function.js";
 import { callableReferencesClassStruct } from "./class-struct-record.js";
 import { renderFnExpression } from "./function.js";
@@ -50,7 +51,7 @@ export const appendMethodBinding = (context: ModuleContext, method: GirFunction)
     if (callableReferencesClassStruct(context, method)) return;
     const expression = renderFnExpression(context, method);
     if (expression === undefined) return;
-    context.module.appendBinding(`const ${method.cIdentifier} = ${expression};`, method.cIdentifier);
+    context.module.appendBinding(`const ${bindingIdentifier(method.cIdentifier)} = ${expression};`, method.cIdentifier);
 };
 
 /**
@@ -69,7 +70,10 @@ export const emitBindings = (context: ModuleContext, callables: Callables): void
         if (callableReferencesClassStruct(context, callable)) continue;
         const expression = renderFnExpression(context, callable);
         if (expression === undefined) continue;
-        context.module.appendBinding(`const ${callable.cIdentifier} = ${expression};`, callable.cIdentifier);
+        context.module.appendBinding(
+            `const ${bindingIdentifier(callable.cIdentifier)} = ${expression};`,
+            callable.cIdentifier,
+        );
     }
 };
 
@@ -96,7 +100,7 @@ const renderConstructorStatic = (
     if (cIdentifier === undefined) return undefined;
     const signature = renderMethodSignature(context, callable);
     const body = renderMethodBody(context, callable, {
-        bindingExpression: cIdentifier,
+        bindingExpression: bindingIdentifier(cIdentifier),
         isStatic: true,
         returnTypeOverride: ownerClassName,
     });
@@ -119,7 +123,10 @@ const renderStaticMember = (context: ModuleContext, callable: GirFunction): stri
     if (name === "constructor") return undefined;
     const signature = renderMethodSignature(context, callable);
     const returnType = renderMethodReturnType(context, callable);
-    const body = renderMethodBody(context, callable, { bindingExpression: cIdentifier, isStatic: true });
+    const body = renderMethodBody(context, callable, {
+        bindingExpression: bindingIdentifier(cIdentifier),
+        isStatic: true,
+    });
     return `static ${name}(${signature}): ${returnType} {\n${indent(body, 1)}\n}`;
 };
 
@@ -149,7 +156,10 @@ export const renderInstanceMethod = (
     if (override !== undefined) return override;
     const signature = renderMethodSignature(context, callable);
     const returnType = renderMethodReturnType(context, callable);
-    const body = renderMethodBody(context, callable, { bindingExpression: cIdentifier, isStatic: false });
+    const body = renderMethodBody(context, callable, {
+        bindingExpression: bindingIdentifier(cIdentifier),
+        isStatic: false,
+    });
     return `${name}(${signature}): ${returnType} {\n${indent(body, 1)}\n}`;
 };
 
@@ -174,7 +184,10 @@ const renderInstanceAlias = (
     if (aliasName === "constructor") return undefined;
     const signature = renderMethodSignature(context, shadower);
     const returnType = renderMethodReturnType(context, shadower);
-    const body = renderMethodBody(context, shadower, { bindingExpression: shadower.cIdentifier, isStatic: false });
+    const body = renderMethodBody(context, shadower, {
+        bindingExpression: bindingIdentifier(shadower.cIdentifier),
+        isStatic: false,
+    });
     return `${aliasName}(${signature}): ${returnType} {\n${indent(body, 1)}\n}`;
 };
 

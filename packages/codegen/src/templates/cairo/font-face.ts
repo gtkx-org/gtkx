@@ -21,61 +21,61 @@ declare module "../cairo.js" {
     }
 }
 
-const cairo_font_face_status = bind(
+const cairoFontFaceStatus = bind(
     "libcairo.so.2",
     "cairo_font_face_status",
     [{ type: t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type") }],
     t.int32,
 );
 FontFace.prototype.status = function (): Status {
-    return cairo_font_face_status(getHandle(this)) as Status;
+    return cairoFontFaceStatus(getHandle(this)) as Status;
 };
 
-const cairo_font_face_get_type = bind(
+const cairoFontFaceGetType = bind(
     "libcairo.so.2",
     "cairo_font_face_get_type",
     [{ type: t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type") }],
     t.int32,
 );
 FontFace.prototype.getType = function (): FontType {
-    return cairo_font_face_get_type(getHandle(this)) as FontType;
+    return cairoFontFaceGetType(getHandle(this)) as FontType;
 };
 
-const cairo_font_face_get_reference_count = bind(
+const cairoFontFaceGetReferenceCount = bind(
     "libcairo.so.2",
     "cairo_font_face_get_reference_count",
     [{ type: t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type") }],
     t.int32,
 );
 FontFace.prototype.getReferenceCount = function (): number {
-    return cairo_font_face_get_reference_count(getHandle(this)) as number;
+    return cairoFontFaceGetReferenceCount(getHandle(this)) as number;
 };
 
-const cairo_toy_font_face_get_family = bind(
+const cairoToyFontFaceGetFamily = bind(
     "libcairo.so.2",
     "cairo_toy_font_face_get_family",
     [{ type: t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type") }],
     t.string("borrowed"),
 );
-const cairo_toy_font_face_get_slant = bind(
+const cairoToyFontFaceGetSlant = bind(
     "libcairo.so.2",
     "cairo_toy_font_face_get_slant",
     [{ type: t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type") }],
     t.int32,
 );
-const cairo_toy_font_face_get_weight = bind(
+const cairoToyFontFaceGetWeight = bind(
     "libcairo.so.2",
     "cairo_toy_font_face_get_weight",
     [{ type: t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type") }],
     t.int32,
 );
-const cairo_ft_font_face_get_synthesize = bind(
+const cairoFtFontFaceGetSynthesize = bind(
     "libcairo.so.2",
     "cairo_ft_font_face_get_synthesize",
     [{ type: t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type") }],
     t.int32,
 );
-const cairo_ft_font_face_set_synthesize = bind(
+const cairoFtFontFaceSetSynthesize = bind(
     "libcairo.so.2",
     "cairo_ft_font_face_set_synthesize",
     [
@@ -84,7 +84,7 @@ const cairo_ft_font_face_set_synthesize = bind(
     ],
     t.void,
 );
-const cairo_ft_font_face_unset_synthesize = bind(
+const cairoFtFontFaceUnsetSynthesize = bind(
     "libcairo.so.2",
     "cairo_ft_font_face_unset_synthesize",
     [
@@ -102,21 +102,21 @@ export class ToyFontFace extends FontFace {
      * Returns the font family name.
      */
     getFamily(): string {
-        return cairo_toy_font_face_get_family(getHandle(this)) as string;
+        return cairoToyFontFaceGetFamily(getHandle(this)) as string;
     }
 
     /**
      * Returns the font slant.
      */
     getSlant(): FontSlant {
-        return cairo_toy_font_face_get_slant(getHandle(this)) as FontSlant;
+        return cairoToyFontFaceGetSlant(getHandle(this)) as FontSlant;
     }
 
     /**
      * Returns the font weight.
      */
     getWeight(): FontWeight {
-        return cairo_toy_font_face_get_weight(getHandle(this)) as FontWeight;
+        return cairoToyFontFaceGetWeight(getHandle(this)) as FontWeight;
     }
 }
 
@@ -129,21 +129,21 @@ export class FtFontFace extends FontFace {
      * Returns the synthesis flags applied to the font.
      */
     getSynthesize(): number {
-        return cairo_ft_font_face_get_synthesize(getHandle(this)) as number;
+        return cairoFtFontFaceGetSynthesize(getHandle(this)) as number;
     }
 
     /**
      * Enables the given synthesis flags on the font.
      */
     setSynthesize(synthFlags: number): void {
-        cairo_ft_font_face_set_synthesize(getHandle(this), synthFlags);
+        cairoFtFontFaceSetSynthesize(getHandle(this), synthFlags);
     }
 
     /**
      * Disables the given synthesis flags on the font.
      */
     unsetSynthesize(synthFlags: number): void {
-        cairo_ft_font_face_unset_synthesize(getHandle(this), synthFlags);
+        cairoFtFontFaceUnsetSynthesize(getHandle(this), synthFlags);
     }
 }
 
@@ -155,32 +155,32 @@ type FontFaceStatic = {
 
 const FontFaceWithStatics = FontFace as typeof FontFace & FontFaceStatic;
 
-const cairo_toy_font_face_create = bind(
+const cairoToyFontFaceCreate = bind(
     "libcairo.so.2",
     "cairo_toy_font_face_create",
     [{ type: t.string("full") }, { type: t.int32 }, { type: t.int32 }],
     t.boxed("CairoFontFace", "full", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type"),
 );
 FontFaceWithStatics.create = (family: string, slant: FontSlant, weight: FontWeight): ToyFontFace => {
-    return wrapHandle(cairo_toy_font_face_create(family, slant, weight) as NativeHandle, ToyFontFace);
+    return wrapHandle(cairoToyFontFaceCreate(family, slant, weight) as NativeHandle, ToyFontFace);
 };
 
-const cairo_ft_font_face_create_for_ft_face = bind(
+const cairoFtFontFaceCreateForFtFace = bind(
     "libcairo.so.2",
     "cairo_ft_font_face_create_for_ft_face",
     [{ type: FT_FACE_T }, { type: t.int32 }],
     t.boxed("CairoFontFace", "full", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type"),
 );
 FontFaceWithStatics.createForFtFace = (face: NativeHandle, loadFlags: number): FtFontFace => {
-    return wrapHandle(cairo_ft_font_face_create_for_ft_face(face, loadFlags) as NativeHandle, FtFontFace);
+    return wrapHandle(cairoFtFontFaceCreateForFtFace(face, loadFlags) as NativeHandle, FtFontFace);
 };
 
-const cairo_ft_font_face_create_for_pattern = bind(
+const cairoFtFontFaceCreateForPattern = bind(
     "libcairo.so.2",
     "cairo_ft_font_face_create_for_pattern",
     [{ type: FC_PATTERN_T }],
     t.boxed("CairoFontFace", "full", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type"),
 );
 FontFaceWithStatics.createForPattern = (pattern: NativeHandle): FtFontFace => {
-    return wrapHandle(cairo_ft_font_face_create_for_pattern(pattern) as NativeHandle, FtFontFace);
+    return wrapHandle(cairoFtFontFaceCreateForPattern(pattern) as NativeHandle, FtFontFace);
 };

@@ -1,7 +1,8 @@
 import { quote } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
+import { bindingIdentifier } from "../dsl/identifier.js";
 
-const TYPE_FROM_NAME_BINDING = "g_type_from_name";
+const TYPE_FROM_NAME_SYMBOL = "g_type_from_name";
 const TYPE_FROM_NAME_LIB = "libgobject-2.0.so.0";
 
 /**
@@ -28,21 +29,24 @@ export const renderGtypeExpression = (
     if (getType === "intern" || getType === "") {
         if (glibTypeName === undefined) return undefined;
         appendGtypeFromNameBinding(context);
-        return `Number(${TYPE_FROM_NAME_BINDING}(${quote(glibTypeName)}))`;
+        return `Number(${bindingIdentifier(TYPE_FROM_NAME_SYMBOL)}(${quote(glibTypeName)}))`;
     }
     appendGetTypeBinding(context, getType);
-    return `Number(${getType}())`;
+    return `Number(${bindingIdentifier(getType)}())`;
 };
 
 const appendGetTypeBinding = (context: ModuleContext, getType: string): void => {
     const lib = context.namespace.sharedLibrary ?? "";
     const expression = `t.bind(${quote(lib)}, ${quote(getType)}, [], t.uint64)`;
-    context.module.appendBinding(`const ${getType} = ${expression};`, getType);
+    context.module.appendBinding(`const ${bindingIdentifier(getType)} = ${expression};`, getType);
 };
 
 const appendGtypeFromNameBinding = (context: ModuleContext): void => {
     const expression =
-        `t.bind(${quote(TYPE_FROM_NAME_LIB)}, ${quote(TYPE_FROM_NAME_BINDING)}, ` +
+        `t.bind(${quote(TYPE_FROM_NAME_LIB)}, ${quote(TYPE_FROM_NAME_SYMBOL)}, ` +
         `[{ type: t.string("borrowed") }], t.uint64)`;
-    context.module.appendBinding(`const ${TYPE_FROM_NAME_BINDING} = ${expression};`, TYPE_FROM_NAME_BINDING);
+    context.module.appendBinding(
+        `const ${bindingIdentifier(TYPE_FROM_NAME_SYMBOL)} = ${expression};`,
+        TYPE_FROM_NAME_SYMBOL,
+    );
 };
