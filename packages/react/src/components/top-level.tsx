@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useRef, useState } from "react";
-import { type AdwDialogLike, isAdwDialog } from "../gtype-predicates.js";
-import { assignRef } from "../use-merged-refs.js";
+import { assignRef } from "../hooks/use-merged-refs.js";
+import { type AdwDialogLike, isAdwDialog } from "../utils/gtype-predicates.js";
 
 /** A top-level surface: a window or an Adwaita dialog. */
 type Surface = Gtk.Window | AdwDialogLike;

@@ -11,10 +11,10 @@ import {
     useLayoutEffect,
     useState,
 } from "react";
-import { quitApplicationLifecycle, runApplicationLifecycle } from "../application-lifecycle.js";
-import { ApplicationContext, useApplication } from "../render.js";
-import { assignRef } from "../use-merged-refs.js";
-import { ActionScopeContext, APPLICATION_ACTION_SCOPE, WINDOW_ACTION_SCOPE } from "./internal/action-scope-context.js";
+import { ApplicationContext, useApplication } from "../hooks/use-application.js";
+import { assignRef } from "../hooks/use-merged-refs.js";
+import { quitApplicationLifecycle, runApplicationLifecycle } from "../utils/application-lifecycle.js";
+import { ActionScopeContext, APPLICATION_ACTION_SCOPE, WINDOW_ACTION_SCOPE } from "./action-scope-context.js";
 import { withTopLevel } from "./top-level.js";
 
 /**

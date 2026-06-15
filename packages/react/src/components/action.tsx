@@ -1,6 +1,6 @@
 import { createElement, type ElementType, type ReactNode, useContext, useEffect, useMemo } from "react";
-import { ApplicationContext } from "../render.js";
-import { type ActionScope, ActionScopeContext } from "./internal/action-scope-context.js";
+import { ApplicationContext } from "../hooks/use-application.js";
+import { type ActionScope, ActionScopeContext } from "./action-scope-context.js";
 
 const toAccels = (accels: unknown): string[] => {
     if (typeof accels === "string") return [accels];

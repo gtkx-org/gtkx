@@ -11,28 +11,28 @@ import {
     useRef,
     useState,
 } from "react";
-import { onOrderedAttach } from "../attach-events.js";
-import { createWidgetComponent } from "../create-widget-component.js";
+import { useMergedRefs } from "../hooks/use-merged-refs.js";
+import { onOrderedAttach } from "../reconciler/attach-events.js";
+import type { BoundItem } from "../reconciler/bound-item.js";
+import { createPortal } from "../reconciler/portal.js";
+import { createElementComponent } from "../utils/create-element-component.js";
 import type {
     ColumnViewColumnProps,
     ColumnViewProps,
     DropDownProps,
     GridViewProps,
     ListViewProps,
-} from "../element-props.js";
-import type { BoundItem } from "../nodes/internal/bound-item.js";
-import { createPortal } from "../portal.js";
-import { useMergedRefs } from "../use-merged-refs.js";
-import { ColumnController } from "./internal/column-controller.js";
-import { ColumnViewContext } from "./internal/column-view-context.js";
-import { ListController, type ListControllerProps } from "./internal/list-controller.js";
+} from "../utils/element-props.js";
+import { ColumnController } from "./column-controller.js";
+import { ColumnViewContext } from "./column-view-context.js";
+import { ListController, type ListControllerProps } from "./list-controller.js";
 
-const GtkListViewElement = createWidgetComponent<Record<string, unknown>>("GtkListView");
-const GtkGridViewElement = createWidgetComponent<Record<string, unknown>>("GtkGridView");
-const GtkColumnViewElement = createWidgetComponent<Record<string, unknown>>("GtkColumnView");
-const GtkColumnViewColumnElement = createWidgetComponent<Record<string, unknown>>("GtkColumnViewColumn");
-const GtkDropDownElement = createWidgetComponent<Record<string, unknown>>("GtkDropDown");
-const AdwComboRowElement = createWidgetComponent<Record<string, unknown>>("AdwComboRow");
+const GtkListViewElement = createElementComponent<Record<string, unknown>>("GtkListView");
+const GtkGridViewElement = createElementComponent<Record<string, unknown>>("GtkGridView");
+const GtkColumnViewElement = createElementComponent<Record<string, unknown>>("GtkColumnView");
+const GtkColumnViewColumnElement = createElementComponent<Record<string, unknown>>("GtkColumnViewColumn");
+const GtkDropDownElement = createElementComponent<Record<string, unknown>>("GtkDropDown");
+const AdwComboRowElement = createElementComponent<Record<string, unknown>>("AdwComboRow");
 
 /** The keys a list controller reads, used to split controller props from element props. */
 const CONTROLLER_KEYS = [

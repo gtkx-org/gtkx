@@ -11,13 +11,7 @@ import {
     useLayoutEffect,
     useRef,
 } from "react";
-import type {
-    ConstraintGuideProps,
-    ConstraintLayoutWidgetProps,
-    ConstraintProps,
-    ConstraintVflProps,
-} from "../element-props.js";
-import { registerConstraintTarget, unregisterConstraintTarget } from "../nodes/internal/constraint-target-registry.js";
+import { useChildWidgetRegistration, type WidgetChild } from "../hooks/use-child-widget-registration.js";
 import {
     applyConstraint,
     applyGuide,
@@ -25,9 +19,15 @@ import {
     ConstraintLayoutContext,
     useConstraintLayout,
     useConstraintLayoutRef,
-} from "../use-constraint-layout.js";
-import { assignRef } from "../use-merged-refs.js";
-import { useChildWidgetRegistration, type WidgetChild } from "./internal/use-child-widget-registration.js";
+} from "../hooks/use-constraint-layout.js";
+import { assignRef } from "../hooks/use-merged-refs.js";
+import { registerConstraintTarget, unregisterConstraintTarget } from "../reconciler/constraint-target-registry.js";
+import type {
+    ConstraintGuideProps,
+    ConstraintLayoutWidgetProps,
+    ConstraintProps,
+    ConstraintVflProps,
+} from "../utils/element-props.js";
 
 const GtkConstraintLayoutElement = "GtkConstraintLayout" as const;
 

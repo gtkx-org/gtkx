@@ -6,7 +6,7 @@ import { bench, describe } from "vitest";
 /**
  * Depths grown geometrically so an instruction-count gate (CodSpeed) sees a
  * flat per-level slope for the work that scales with ancestry depth — the
- * GType-ancestry slot walks in `createWidgetComponent` and per-level
+ * GType-ancestry slot walks in `createElementComponent` and per-level
  * attach-rule resolution — where the wide-mount bench in
  * `reconciler.bench.tsx` only scales sibling count.
  */

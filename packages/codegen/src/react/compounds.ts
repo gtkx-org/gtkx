@@ -21,7 +21,7 @@ type CompoundHoc =
 
 /**
  * Generates the compounds section of one namespace's `@gtkx/jsx` module: one
- * `createWidgetComponent` line per element — the `@gtkx/react` factory
+ * `createElementComponent` line per element — the `@gtkx/react` factory
  * resolves the element's slot surface at runtime from the merged tables in
  * `virtual:gtkx-config` — wrapped in the matching `@gtkx/react` HOC for
  * behavior-carrying hosts (windows, applications, dialog buttons, actions),
@@ -205,7 +205,7 @@ const renderRuntimeWrapper = (glibName: string, wrapper: RuntimeComponentWrapper
 /**
  * Emits one candidate's component export: the typed wrapper line for a
  * hand-written runtime component, the HOC-wrapped or plain
- * `createWidgetComponent` line otherwise, or `null` when the candidate is
+ * `createElementComponent` line otherwise, or `null` when the candidate is
  * excluded. Accumulates the HOC, builtin, and shared-type imports the line
  * needs; an `Adw.Dialog` descendant additionally composes
  * `TopLevelParentProps` into its component prop type.
@@ -227,7 +227,7 @@ const renderCandidateExport = (
     if (excludeNames.has(glibName)) return null;
     const ancestry = new Set(ancestorGlibNames(klass, namespace, repository));
     const hoc = compoundHoc(ancestry);
-    imports.hocs.add("createWidgetComponent");
+    imports.hocs.add("createElementComponent");
     imports.reactBuiltins.add("ReactNode");
     if (hoc !== undefined) imports.hocs.add(hoc);
     const isDialogSurface = hoc === "withTopLevel" && ancestry.has("AdwDialog");
@@ -263,7 +263,7 @@ const compoundHoc = (ancestry: ReadonlySet<string>): CompoundHoc | undefined => 
 const renderCompound = (glibName: string, hoc: CompoundHoc | undefined, isDialogSurface: boolean): string => {
     const propsType = `${glibName}Props`;
     if (hoc === undefined) {
-        return `export const ${glibName}: (props: ${propsType}) => ReactNode = createWidgetComponent<${propsType}>(${quote(glibName)});`;
+        return `export const ${glibName}: (props: ${propsType}) => ReactNode = createElementComponent<${propsType}>(${quote(glibName)});`;
     }
     const componentPropsType =
         hoc === "withApplication"
@@ -275,7 +275,7 @@ const renderCompound = (glibName: string, hoc: CompoundHoc | undefined, isDialog
     const memo = `${toCamelCase(glibName)}Instance`;
     return [
         `let ${memo}: (${annotation}) | undefined;`,
-        `export const ${glibName}: ${annotation} = (props) => (${memo} ??= ${hoc}<${componentPropsType}>(createWidgetComponent<${componentPropsType}>(${quote(glibName)})))(props);`,
+        `export const ${glibName}: ${annotation} = (props) => (${memo} ??= ${hoc}<${componentPropsType}>(createElementComponent<${componentPropsType}>(${quote(glibName)})))(props);`,
     ].join("\n");
 };
 

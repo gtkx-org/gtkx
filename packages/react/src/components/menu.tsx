@@ -1,11 +1,11 @@
 import type * as Gio from "@gtkx/gi/gio";
 import { createElement, type ReactNode, type Ref, useLayoutEffect, useRef } from "react";
-import { createWidgetComponent } from "../create-widget-component.js";
-import type { MenuEntry } from "../element-props.js";
-import { useMergedRefs } from "../use-merged-refs.js";
-import { applyMenuItems, menuItemsEqual } from "./internal/menu-items.js";
+import { useMergedRefs } from "../hooks/use-merged-refs.js";
+import { createElementComponent } from "../utils/create-element-component.js";
+import type { MenuEntry } from "../utils/element-props.js";
+import { applyMenuItems, menuItemsEqual } from "./menu-items.js";
 
-const GMenuElement = createWidgetComponent<Record<string, unknown>>("GMenu");
+const GMenuElement = createElementComponent<Record<string, unknown>>("GMenu");
 
 /**
  * Props for the {@link GMenu} runtime component: the menu's content as plain
