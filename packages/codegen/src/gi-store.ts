@@ -10,7 +10,7 @@ import { type StoreOptions, writeStore } from "./store-fs.js";
  *
  * Templates are raw `.ts` assets authored against the EMITTED store layout
  * (`./<ns>.js` for the generated sibling, `./overrides/<name>.js` for sibling
- * templates, `@gtkx/ffi` / `@gtkx/ffi/cairo` for the runtime); they are
+ * templates, `@gtkx/ffi` and `@gtkx/native` for the runtime); they are
  * embedded as text, never compiled as part of the codegen package itself.
  * The path resolves the same way whether codegen runs from `src/` (tsx) or
  * `dist/`, since `src/templates/` ships with the package next to `dist/`.

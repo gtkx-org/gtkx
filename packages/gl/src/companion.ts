@@ -32,7 +32,7 @@ const readInfoLog = (symbol: string, id: GLuint, query: LengthQuery): string => 
     if (length <= 0) return "";
     const written = { value: 0 };
     const log = { value: "" };
-    t.fn(
+    t.bind(
         LIB,
         symbol,
         [
@@ -103,7 +103,7 @@ export type DebugMessageCallback = (
     message: string,
 ) => void;
 
-const glDebugMessageCallbackBinding = t.fn(
+const glDebugMessageCallbackBinding = t.bind(
     LIB,
     "glDebugMessageCallback",
     [

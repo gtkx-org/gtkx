@@ -6,10 +6,10 @@ const TYPE_FROM_NAME_LIB = "libgobject-2.0.so.0";
 
 /**
  * Renders the JS expression that resolves a class's `GType`, appending any
- * required `t.fn` bindings to the module.
+ * required `t.bind` bindings to the module.
  *
  * For regular get-type symbols (`g_object_get_type`, `g_array_get_type`, …)
- * the helper appends a `t.fn(...)` binding for the symbol and returns the bare
+ * the helper appends a `t.bind(...)` binding for the symbol and returns the bare
  * function reference (`g_object_get_type`), which the runtime invokes once. For
  * the GIR sentinel `"intern"` — used on `GVariant` and a few other types whose
  * `GType` is registered intrinsically — it appends a binding for
@@ -36,13 +36,13 @@ export const renderGetTypeReference = (
 
 const appendGetTypeBinding = (context: ModuleContext, getType: string): void => {
     const lib = context.namespace.sharedLibrary ?? "";
-    const expression = `t.fn(${quote(lib)}, ${quote(getType)}, [], t.uint64)`;
+    const expression = `t.bind(${quote(lib)}, ${quote(getType)}, [], t.uint64)`;
     context.module.appendBinding(`const ${getType} = ${expression};`, getType);
 };
 
 const appendGtypeFromNameBinding = (context: ModuleContext): void => {
     const expression =
-        `t.fn(${quote(TYPE_FROM_NAME_LIB)}, ${quote(TYPE_FROM_NAME_BINDING)}, ` +
+        `t.bind(${quote(TYPE_FROM_NAME_LIB)}, ${quote(TYPE_FROM_NAME_BINDING)}, ` +
         `[{ type: t.string("borrowed") }], t.uint64)`;
     context.module.appendBinding(`const ${TYPE_FROM_NAME_BINDING} = ${expression};`, TYPE_FROM_NAME_BINDING);
 };

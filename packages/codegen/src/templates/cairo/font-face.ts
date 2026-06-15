@@ -1,12 +1,11 @@
 import { getHandle, t, wrapHandle } from "@gtkx/ffi";
-import type { NativeHandle } from "@gtkx/ffi/cairo";
-import { FONT_FACE_T, FONT_FACE_T_NONE, INT_TYPE, LIB, STRING_BORROWED, STRING_FULL } from "@gtkx/ffi/cairo";
+import type { NativeHandle } from "@gtkx/native";
 import type { FontSlant, FontType, FontWeight, Status } from "../cairo.js";
 import { FontFace } from "../cairo.js";
 
-const { fn } = t;
-const FC_PATTERN_T = t.boxed("FcPattern", "borrowed", LIB);
-const FT_FACE_T = t.boxed("FT_Face", "borrowed", LIB);
+const { bind } = t;
+const FC_PATTERN_T = t.boxed("FcPattern", "borrowed", "libcairo.so.2");
+const FT_FACE_T = t.boxed("FT_Face", "borrowed", "libcairo.so.2");
 
 declare module "../cairo.js" {
     interface FontFace {
@@ -22,55 +21,76 @@ declare module "../cairo.js" {
     }
 }
 
-const cairo_font_face_status = fn(LIB, "cairo_font_face_status", [{ type: FONT_FACE_T_NONE }], INT_TYPE);
+const cairo_font_face_status = bind(
+    "libcairo.so.2",
+    "cairo_font_face_status",
+    [{ type: t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type") }],
+    t.int32,
+);
 FontFace.prototype.status = function (): Status {
     return cairo_font_face_status(getHandle(this)) as Status;
 };
 
-const cairo_font_face_get_type = fn(LIB, "cairo_font_face_get_type", [{ type: FONT_FACE_T_NONE }], INT_TYPE);
+const cairo_font_face_get_type = bind(
+    "libcairo.so.2",
+    "cairo_font_face_get_type",
+    [{ type: t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type") }],
+    t.int32,
+);
 FontFace.prototype.getType = function (): FontType {
     return cairo_font_face_get_type(getHandle(this)) as FontType;
 };
 
-const cairo_font_face_get_reference_count = fn(
-    LIB,
+const cairo_font_face_get_reference_count = bind(
+    "libcairo.so.2",
     "cairo_font_face_get_reference_count",
-    [{ type: FONT_FACE_T_NONE }],
-    INT_TYPE,
+    [{ type: t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type") }],
+    t.int32,
 );
 FontFace.prototype.getReferenceCount = function (): number {
     return cairo_font_face_get_reference_count(getHandle(this)) as number;
 };
 
-const cairo_toy_font_face_get_family = fn(
-    LIB,
+const cairo_toy_font_face_get_family = bind(
+    "libcairo.so.2",
     "cairo_toy_font_face_get_family",
-    [{ type: FONT_FACE_T_NONE }],
-    STRING_BORROWED,
+    [{ type: t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type") }],
+    t.string("borrowed"),
 );
-const cairo_toy_font_face_get_slant = fn(LIB, "cairo_toy_font_face_get_slant", [{ type: FONT_FACE_T_NONE }], INT_TYPE);
-const cairo_toy_font_face_get_weight = fn(
-    LIB,
+const cairo_toy_font_face_get_slant = bind(
+    "libcairo.so.2",
+    "cairo_toy_font_face_get_slant",
+    [{ type: t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type") }],
+    t.int32,
+);
+const cairo_toy_font_face_get_weight = bind(
+    "libcairo.so.2",
     "cairo_toy_font_face_get_weight",
-    [{ type: FONT_FACE_T_NONE }],
-    INT_TYPE,
+    [{ type: t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type") }],
+    t.int32,
 );
-const cairo_ft_font_face_get_synthesize = fn(
-    LIB,
+const cairo_ft_font_face_get_synthesize = bind(
+    "libcairo.so.2",
     "cairo_ft_font_face_get_synthesize",
-    [{ type: FONT_FACE_T_NONE }],
-    INT_TYPE,
+    [{ type: t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type") }],
+    t.int32,
 );
-const cairo_ft_font_face_set_synthesize = fn(
-    LIB,
+const cairo_ft_font_face_set_synthesize = bind(
+    "libcairo.so.2",
     "cairo_ft_font_face_set_synthesize",
-    [{ type: FONT_FACE_T_NONE }, { type: INT_TYPE }],
+    [
+        { type: t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type") },
+        { type: t.int32 },
+    ],
     t.void,
 );
-const cairo_ft_font_face_unset_synthesize = fn(
-    LIB,
+const cairo_ft_font_face_unset_synthesize = bind(
+    "libcairo.so.2",
     "cairo_ft_font_face_unset_synthesize",
-    [{ type: FONT_FACE_T_NONE }, { type: INT_TYPE }],
+    [
+        { type: t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type") },
+        { type: t.int32 },
+    ],
     t.void,
 );
 
@@ -135,31 +155,31 @@ type FontFaceStatic = {
 
 const FontFaceWithStatics = FontFace as typeof FontFace & FontFaceStatic;
 
-const cairo_toy_font_face_create = fn(
-    LIB,
+const cairo_toy_font_face_create = bind(
+    "libcairo.so.2",
     "cairo_toy_font_face_create",
-    [{ type: STRING_FULL }, { type: INT_TYPE }, { type: INT_TYPE }],
-    FONT_FACE_T,
+    [{ type: t.string("full") }, { type: t.int32 }, { type: t.int32 }],
+    t.boxed("CairoFontFace", "full", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type"),
 );
 FontFaceWithStatics.create = (family: string, slant: FontSlant, weight: FontWeight): ToyFontFace => {
     return wrapHandle(cairo_toy_font_face_create(family, slant, weight) as NativeHandle, ToyFontFace);
 };
 
-const cairo_ft_font_face_create_for_ft_face = fn(
-    LIB,
+const cairo_ft_font_face_create_for_ft_face = bind(
+    "libcairo.so.2",
     "cairo_ft_font_face_create_for_ft_face",
-    [{ type: FT_FACE_T }, { type: INT_TYPE }],
-    FONT_FACE_T,
+    [{ type: FT_FACE_T }, { type: t.int32 }],
+    t.boxed("CairoFontFace", "full", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type"),
 );
 FontFaceWithStatics.createForFtFace = (face: NativeHandle, loadFlags: number): FtFontFace => {
     return wrapHandle(cairo_ft_font_face_create_for_ft_face(face, loadFlags) as NativeHandle, FtFontFace);
 };
 
-const cairo_ft_font_face_create_for_pattern = fn(
-    LIB,
+const cairo_ft_font_face_create_for_pattern = bind(
+    "libcairo.so.2",
     "cairo_ft_font_face_create_for_pattern",
     [{ type: FC_PATTERN_T }],
-    FONT_FACE_T,
+    t.boxed("CairoFontFace", "full", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type"),
 );
 FontFaceWithStatics.createForPattern = (pattern: NativeHandle): FtFontFace => {
     return wrapHandle(cairo_ft_font_face_create_for_pattern(pattern) as NativeHandle, FtFontFace);

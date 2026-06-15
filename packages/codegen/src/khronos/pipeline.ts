@@ -497,7 +497,7 @@ const renderCommand = (
     if (hasStringOut) {
         const body = [
             ...seeds,
-            `const binding = t.fn(LIB, "${command.name}", ${descriptors}, ${returned.descriptor});`,
+            `const binding = t.bind(LIB, "${command.name}", ${descriptors}, ${returned.descriptor});`,
             ...returnStatements(`binding(${argNames})`, returned, outs),
         ]
             .map((line) => `    ${line}`)
@@ -508,7 +508,7 @@ const renderCommand = (
         };
     }
     const bindingName = command.name;
-    const binding = `const ${bindingName} = t.fn(LIB, "${command.name}", ${descriptors}, ${returned.descriptor});`;
+    const binding = `const ${bindingName} = t.bind(LIB, "${command.name}", ${descriptors}, ${returned.descriptor});`;
     const body = [...seeds, ...returnStatements(`${bindingName}(${argNames})`, returned, outs)]
         .map((line) => `    ${line}`)
         .join("\n");
@@ -595,7 +595,7 @@ const deriveGenSingular = (
     );
     return {
         exportName,
-        binding: `const ${bindingName} = t.fn(LIB, "${plan.command.name}", ${renderDescriptorList(descriptors)}, t.void);`,
+        binding: `const ${bindingName} = t.bind(LIB, "${plan.command.name}", ${renderDescriptorList(descriptors)}, t.void);`,
         declaration: `${jsDoc}\nexport function ${exportName}(${signature}): ${outPlan.scalar.tsAlias} {\n${body}\n}`,
     };
 };

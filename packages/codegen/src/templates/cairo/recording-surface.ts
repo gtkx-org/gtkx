@@ -1,44 +1,42 @@
 import { getHandle, setHandle, t } from "@gtkx/ffi";
-import {
-    alloc,
-    DOUBLE_REF,
-    DOUBLE_TYPE,
-    INT_TYPE,
-    LIB,
-    type NativeHandle,
-    read,
-    SURFACE_T,
-    SURFACE_T_NONE,
-    write,
-} from "@gtkx/ffi/cairo";
+import { alloc, type NativeHandle, read, write } from "@gtkx/native";
 import type { Content } from "../cairo.js";
 import { Surface } from "../cairo.js";
 
-const { fn } = t;
-const RECT_T = t.boxed("cairo_rectangle_t", "borrowed", LIB);
+const { bind } = t;
+const RECT_T = t.boxed("cairo_rectangle_t", "borrowed", "libcairo.so.2");
 
-const cairo_recording_surface_create_extents = fn(
-    LIB,
+const cairo_recording_surface_create_extents = bind(
+    "libcairo.so.2",
     "cairo_recording_surface_create",
-    [{ type: INT_TYPE }, { type: RECT_T }],
-    SURFACE_T,
+    [{ type: t.int32 }, { type: RECT_T }],
+    t.boxed("CairoSurface", "full", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
 );
-const cairo_recording_surface_create_unbounded = fn(
-    LIB,
+const cairo_recording_surface_create_unbounded = bind(
+    "libcairo.so.2",
     "cairo_recording_surface_create",
-    [{ type: INT_TYPE }, { type: t.uint64 }],
-    SURFACE_T,
+    [{ type: t.int32 }, { type: t.uint64 }],
+    t.boxed("CairoSurface", "full", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
 );
-const cairo_recording_surface_ink_extents = fn(
-    LIB,
+const cairo_recording_surface_ink_extents = bind(
+    "libcairo.so.2",
     "cairo_recording_surface_ink_extents",
-    [{ type: SURFACE_T_NONE }, { type: DOUBLE_REF }, { type: DOUBLE_REF }, { type: DOUBLE_REF }, { type: DOUBLE_REF }],
+    [
+        { type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") },
+        { type: t.ref(t.float64) },
+        { type: t.ref(t.float64) },
+        { type: t.ref(t.float64) },
+        { type: t.ref(t.float64) },
+    ],
     t.void,
 );
-const cairo_recording_surface_get_extents = fn(
-    LIB,
+const cairo_recording_surface_get_extents = bind(
+    "libcairo.so.2",
     "cairo_recording_surface_get_extents",
-    [{ type: SURFACE_T_NONE }, { type: RECT_T }],
+    [
+        { type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") },
+        { type: RECT_T },
+    ],
     t.boolean,
 );
 
@@ -59,10 +57,10 @@ export class RecordingSurface extends Surface {
         let handle: NativeHandle;
         if (extents) {
             const rect = alloc(32, "cairo_rectangle_t");
-            write(rect, DOUBLE_TYPE, 0, extents.x);
-            write(rect, DOUBLE_TYPE, 8, extents.y);
-            write(rect, DOUBLE_TYPE, 16, extents.width);
-            write(rect, DOUBLE_TYPE, 24, extents.height);
+            write(rect, t.float64, 0, extents.x);
+            write(rect, t.float64, 8, extents.y);
+            write(rect, t.float64, 16, extents.width);
+            write(rect, t.float64, 24, extents.height);
             handle = cairo_recording_surface_create_extents(content, rect) as NativeHandle;
         } else {
             handle = cairo_recording_surface_create_unbounded(content, 0) as NativeHandle;
@@ -106,10 +104,10 @@ export class RecordingSurface extends Surface {
         const result = cairo_recording_surface_get_extents(getHandle(this), rect) as boolean;
         if (!result) return null;
         return {
-            x: read(rect, DOUBLE_TYPE, 0) as number,
-            y: read(rect, DOUBLE_TYPE, 8) as number,
-            width: read(rect, DOUBLE_TYPE, 16) as number,
-            height: read(rect, DOUBLE_TYPE, 24) as number,
+            x: read(rect, t.float64, 0) as number,
+            y: read(rect, t.float64, 8) as number,
+            width: read(rect, t.float64, 16) as number,
+            height: read(rect, t.float64, 24) as number,
         };
     }
 }

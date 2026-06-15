@@ -4,7 +4,7 @@ export { alloc, call, read, write } from "@gtkx/native";
 
 /**
  * Shapes a call or signal result from its surfaced out-values and primary
- * return, following the tuple convention shared by `ffiCall` and signal
+ * return, following the tuple convention shared by `t.fn` and signal
  * emission: a lone `primary` when there are no outs, the single out when there
  * is no primary, or `[primary, ...outs]` when both are present.
  *
@@ -41,7 +41,13 @@ type ArrayKind = "array" | "glist" | "gslist" | "gptrarray" | "garray" | "gbytea
 type TrampolineScope = "call" | "notified" | "async" | "forever";
 
 /**
- * Binds a native function symbol once and returns a callable that dispatches it.
+ * Binds a native function symbol once and returns a callable that dispatches it,
+ * returning the raw marshaled result with no wrapping.
+ *
+ * Exposed as `t.bind`. GObject bindings use the sugared `t.fn` (which adds
+ * out-parameter tupling, `GError` handling, and result wrapping); low-level
+ * non-GObject bindings and the runtime's own type-system and `GValue`
+ * marshalling use `t.bind` for the unwrapped native result.
  *
  * Captures the library, symbol, and a pre-built `Arg` array in a closure so
  * the descriptor objects are allocated once at module load. Each invocation
@@ -52,16 +58,13 @@ type TrampolineScope = "call" | "notified" | "async" | "forever";
  * dispatching, so trampolines that re-enter the same binding during signal
  * emission cannot observe a partially-marshaled state.
  *
- * Most code should use the generated bindings in `@gtkx/ffi` instead of
- * calling this directly.
- *
  * @param library - Library name (e.g., "libgtk-4.so.1")
  * @param symbol - Function symbol name
  * @param argTypes - Argument type descriptors in positional order
  * @param returnType - Expected return type descriptor
  * @returns A function that, given argument values, dispatches the FFI call
  */
-const fn = (
+const bind = (
     library: string,
     symbol: string,
     argTypes: ReadonlyArray<{ type: Type; optional?: boolean }>,
@@ -225,29 +228,26 @@ const trampolineT = (argTypes: Type[], returnType: Type, options?: TrampolineOpt
 };
 
 /**
- * Type helpers and `fn` binding factory for FFI bindings.
+ * The raw `bind` binder plus the FFI type-descriptor helpers: every descriptor
+ * constant and factory used to build the `Arg` and return descriptors that
+ * bindings pass to `bind` (and, once the sugared layer adds it, to `t.fn`).
  *
- * Most code should use the generated bindings in `@gtkx/ffi` instead.
- * This namespace exists to keep hand-written bindings (and generated code)
- * compact and free of inline type-descriptor object literals.
+ * Keeps hand-written and generated bindings compact and free of inline
+ * type-descriptor object literals.
  *
  * @example
  * ```tsx
- * const gtk_button_set_label = t.fn(
- *     "libgtk-4.so.1",
- *     "gtk_button_set_label",
- *     [{ type: t.object("borrowed") }, { type: t.string("borrowed") }],
- *     t.void,
- * );
+ * const labelArg = { type: t.string("borrowed") };
+ * const surfaceReturn = t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2");
  * ```
  */
 /**
- * Shape of the {@link t} namespace: the `fn` binding factory plus every
- * FFI type-descriptor constant and factory used to build `Arg` and return
+ * Shape of the {@link t} namespace: the raw `bind` binder plus every FFI
+ * type-descriptor constant and factory used to build `Arg` and return
  * descriptors for hand-written and generated bindings.
  */
 type T = {
-    readonly fn: (
+    readonly bind: (
         library: string,
         symbol: string,
         argTypes: ReadonlyArray<{ type: Type; optional?: boolean }>,
@@ -296,7 +296,7 @@ type T = {
 };
 
 export const t: T = {
-    fn,
+    bind,
     int8,
     uint8,
     int16,

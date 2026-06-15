@@ -58,22 +58,22 @@ export const G_TYPE_INVALID: GType = 0;
  */
 export const gtypeFromFfi: (value: unknown) => GType = Number;
 
-const g_type_from_name = t.fn(LIBGOBJECT, "g_type_from_name", [{ type: t.string("borrowed") }], t.uint64);
+const g_type_from_name = t.bind(LIBGOBJECT, "g_type_from_name", [{ type: t.string("borrowed") }], t.uint64);
 
-const g_type_is_a = t.fn(LIBGOBJECT, "g_type_is_a", [{ type: t.uint64 }, { type: t.uint64 }], t.boolean);
+const g_type_is_a = t.bind(LIBGOBJECT, "g_type_is_a", [{ type: t.uint64 }, { type: t.uint64 }], t.boolean);
 
-const g_type_parent = t.fn(LIBGOBJECT, "g_type_parent", [{ type: t.uint64 }], t.uint64);
+const g_type_parent = t.bind(LIBGOBJECT, "g_type_parent", [{ type: t.uint64 }], t.uint64);
 
-const g_type_interfaces = t.fn(
+const g_type_interfaces = t.bind(
     LIBGOBJECT,
     "g_type_interfaces",
     [{ type: t.uint64 }, { type: t.ref(t.uint32) }],
     t.sizedArray(t.uint64, 1, "full"),
 );
 
-const g_type_fundamental = t.fn(LIBGOBJECT, "g_type_fundamental", [{ type: t.uint64 }], t.uint64);
+const g_type_fundamental = t.bind(LIBGOBJECT, "g_type_fundamental", [{ type: t.uint64 }], t.uint64);
 
-const g_type_name = t.fn(LIBGOBJECT, "g_type_name", [{ type: t.uint64 }], t.string("borrowed"));
+const g_type_name = t.bind(LIBGOBJECT, "g_type_name", [{ type: t.uint64 }], t.string("borrowed"));
 
 /**
  * Tests whether `type` is a descendant of `isAType`, or — when `isAType` is

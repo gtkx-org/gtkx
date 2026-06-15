@@ -2,7 +2,6 @@ import * as runtime from "@gtkx/ffi";
 import { describe, expect, it } from "vitest";
 
 const EXPECTED_RUNTIME_EXPORTS = [
-    "ffiCall",
     "emitGobjectSignal",
     "connectGobjectSignal",
     "newGobjectWithProperties",

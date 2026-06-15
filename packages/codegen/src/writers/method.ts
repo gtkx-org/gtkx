@@ -224,7 +224,7 @@ const isCallbackParameter = (context: ModuleContext, parameter: GirParameter): b
  * Options accepted by {@link renderMethodBody}.
  */
 export type WriteMethodBodyOptions = {
-    /** Bound `ffiCall` callable expression to invoke. */
+    /** Bound `t.fn` callable expression to invoke. */
     readonly bindingExpression: string;
     /** True for static methods, constructors, or namespace functions. */
     readonly isStatic: boolean;
@@ -237,7 +237,7 @@ export type WriteMethodBodyOptions = {
 
 /**
  * Renders the JS body of a method or static: it assembles the call's input
- * values and dispatches the bound {@link ffiCall} callable, which owns
+ * values and dispatches the bound {@link t.fn} callable, which owns
  * out-parameter tupling, `GError` handling, and result wrapping. The result is
  * asserted to the rendered return type; a void callable with no out-parameters
  * is a bare statement.
@@ -257,7 +257,7 @@ export const renderMethodBody = (context: ModuleContext, fn: GirFunction, option
 };
 
 /**
- * One positional argument of a call: the `ffiCall` parameter descriptor the
+ * One positional argument of a call: the `t.fn` parameter descriptor the
  * binding carries, paired with the input expression the body passes (absent for
  * a pure-out the runtime allocates).
  */
@@ -267,7 +267,8 @@ type CallArgPlan = {
 };
 
 type FfiParamOptions = {
-    readonly role?: "out" | "inout" | "rawOut";
+    readonly role?: "out" | "inout";
+    readonly callerAllocates?: boolean;
     readonly wrapClass?: string;
     readonly consumed?: boolean;
     readonly optional?: boolean;
@@ -276,6 +277,7 @@ type FfiParamOptions = {
 const ffiParamLiteral = (ffiExpr: string, options: FfiParamOptions): string => {
     const parts = [`type: ${ffiExpr}`];
     if (options.role !== undefined) parts.push(`role: ${quote(options.role)}`);
+    if (options.callerAllocates === true) parts.push("callerAllocates: true");
     if (options.wrapClass !== undefined) parts.push(`wrapClass: () => ${options.wrapClass}`);
     if (options.consumed === true) parts.push("consumed: true");
     if (options.optional === true) parts.push("optional: true");
@@ -283,7 +285,7 @@ const ffiParamLiteral = (ffiExpr: string, options: FfiParamOptions): string => {
 };
 
 /**
- * Renders the `{ type, wrapClass? }` return descriptor an {@link ffiCall}
+ * Renders the `{ type, wrapClass? }` return descriptor an {@link t.fn}
  * binding carries: the FFI type of the primary return and, for an interface,
  * boxed, struct, or fundamental value, its pre-resolved wrapper class.
  *
@@ -298,7 +300,7 @@ export const renderReturnDescriptor = (context: ModuleContext, fn: GirFunction):
 };
 
 /**
- * Plans a callable's positional arguments for both the {@link ffiCall} binding
+ * Plans a callable's positional arguments for both the {@link t.fn} binding
  * and the method body.
  *
  * Each FFI argument — the instance receiver, every regular parameter, the
@@ -371,7 +373,10 @@ const planCallerOut = (context: ModuleContext, parameter: GirParameter, instance
         context.addRuntimeImport("getHandle");
         const owner = parameter.type.namespaceName ?? context.namespace.name;
         const classExpression = context.qualify(owner, parameter.type.typeName);
-        return { paramLiteral: ffiParamLiteral(ffi, { role: "rawOut" }), inputExpr: `new ${classExpression}()` };
+        return {
+            paramLiteral: ffiParamLiteral(ffi, { role: "out", callerAllocates: true }),
+            inputExpr: `new ${classExpression}()`,
+        };
     }
     return { paramLiteral: ffiParamLiteral(ffi, {}), inputExpr: "undefined" };
 };
@@ -385,7 +390,7 @@ const planInoutParam = (
     if (passesHandleInPlace(context, parameter)) {
         const ffi = renderFfiType(context, parameter.type, "none", instanceOffset);
         return {
-            paramLiteral: ffiParamLiteral(ffi, { role: "rawOut", consumed }),
+            paramLiteral: ffiParamLiteral(ffi, { role: "inout", callerAllocates: true, consumed }),
             inputExpr: parameterIdentifier(parameter, index),
         };
     }

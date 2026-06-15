@@ -7,7 +7,7 @@
  * directly.
  *
  * The call convention is the higher-level surface generated code targets:
- * `ffiCall` dispatches a callable with out-parameter tupling, `GError`
+ * `t.fn` dispatches a callable with out-parameter tupling, `GError`
  * handling, and result wrapping; `emitGobjectSignal`/`connectGobjectSignal`
  * own signal emission and connection; `newGobjectWithProperties`,
  * `getGobjectProperty`/`setGobjectProperty`, and `getGvalueBoxed`/`setGvalueBoxed`
@@ -19,12 +19,11 @@
  * Low-level transport primitives (`alloc`, `call`, `read`, `write`) and the
  * native handle and FFI-descriptor types are not surfaced here; generated
  * bindings import those straight from `@gtkx/native`, leaving `@gtkx/ffi` the
- * home of higher-level runtime helpers only. The non-introspectable cairo
- * helpers live behind the `@gtkx/ffi/cairo` subpath for the same reason.
+ * home of higher-level runtime helpers only.
  */
 
 export { promisify } from "./async.js";
-export { ffiCall } from "./call.js";
+export { t } from "./call.js";
 export { createErrorDomain, type ErrorDomain } from "./error.js";
 export {
     getGobjectProperty,
@@ -36,7 +35,6 @@ export {
     wrapValue,
 } from "./gobject.js";
 export * from "./gtype.js";
-export { t } from "./helpers.js";
 export * from "./lifecycle.js";
 export { registerClass } from "./register-class.js";
 export { registerWrapperClass } from "./register-wrapper-class.js";

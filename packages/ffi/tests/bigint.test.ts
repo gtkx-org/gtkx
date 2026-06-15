@@ -4,9 +4,9 @@ import { describe, expect, it } from "vitest";
 
 const GLIB = "libglib-2.0.so.0";
 
-const formatSize = t.fn(GLIB, "g_format_size", [{ type: t.biguint64 }], t.string("full"));
+const formatSize = t.bind(GLIB, "g_format_size", [{ type: t.biguint64 }], t.string("full"));
 
-const asciiStrtoull = t.fn(
+const asciiStrtoull = t.bind(
     GLIB,
     "g_ascii_strtoull",
     [{ type: t.string("borrowed") }, { type: t.uint64 }, { type: t.uint32 }],

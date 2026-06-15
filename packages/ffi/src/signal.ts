@@ -40,7 +40,7 @@ export const signalBaseName = (signal: string): string => {
     return detailIndex === -1 ? signal : signal.slice(0, detailIndex);
 };
 
-const g_quark_from_string = t.fn(
+const g_quark_from_string = t.bind(
     "libgobject-2.0.so.0,libglib-2.0.so.0",
     "g_quark_from_string",
     [{ type: t.string("borrowed") }],
@@ -209,7 +209,7 @@ export function offSignal(instance: SignalConnectable, signal: string, handler: 
 
 const GVALUE_INLINE: FfiType = t.boxed("GValue", "borrowed", LIBGOBJECT, "g_value_get_type");
 
-const g_signal_emitv = t.fn(
+const g_signal_emitv = t.bind(
     LIBGOBJECT,
     "g_signal_emitv",
     [
@@ -221,7 +221,7 @@ const g_signal_emitv = t.fn(
     t.void,
 );
 
-const g_signal_lookup = t.fn(
+const g_signal_lookup = t.bind(
     LIBGOBJECT,
     "g_signal_lookup",
     [{ type: t.string("borrowed") }, { type: t.uint64 }],

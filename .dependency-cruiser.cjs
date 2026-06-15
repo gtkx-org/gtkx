@@ -16,22 +16,25 @@ module.exports = {
             severity: "error",
             comment:
                 "@gtkx/native is the Rust napi-rs addon — the low-level FFI transport between " +
-                "JavaScript and GTK. Only @gtkx/ffi (which wraps it) and @gtkx/react (which " +
-                "calls its freeze()/unfreeze() to batch a reconciler commit before GTK repaints) " +
-                "may import it at runtime. @gtkx/codegen is allowed type-only imports — see the " +
+                "JavaScript and GTK. @gtkx/ffi (which wraps it), @gtkx/gl (hand-written low-level " +
+                "OpenGL bindings with no GObject layer), and @gtkx/react (which calls its " +
+                "freeze()/unfreeze() to batch a reconciler commit before GTK repaints) may import " +
+                "it at runtime. @gtkx/codegen is allowed type-only imports — see the " +
                 "codegen-native-type-only rule.",
-            from: { path: "^packages/(?!(ffi|codegen|native|react)/)" },
+            from: { path: "^packages/(?!(ffi|codegen|gl|native|react)/)" },
             to: { path: "^(packages/native/|@gtkx/native(/|$))" },
         },
         {
             name: "codegen-native-type-only",
             severity: "error",
             comment:
-                "@gtkx/codegen may reference @gtkx/native only with `import type`. The generator " +
-                "emits binding signatures that name native's types, but a runtime import would " +
-                "pull the native addon into the generator process. At runtime the override " +
-                "templates under src/templates reach native through @gtkx/ffi instead.",
-            from: { path: "^packages/codegen/" },
+                "@gtkx/codegen may reference @gtkx/native only with `import type`, except the " +
+                "override templates under src/templates. The generator emits binding signatures " +
+                "that name native's types, but a runtime import would pull the native addon into " +
+                "the generator process. The templates are exempt: they are embedded verbatim into " +
+                "@gtkx/gi and run there, where importing the native addon at runtime is expected " +
+                "(the cairo overrides bind their own non-introspectable calls through it).",
+            from: { path: "^packages/codegen/", pathNot: "^packages/codegen/src/templates/" },
             to: {
                 path: "^(packages/native/|@gtkx/native(/|$))",
                 dependencyTypesNot: ["type-only"],

@@ -7,14 +7,14 @@ const ABC_MD5 = "900150983cd24fb0d6963f7d28e17f72";
 const E_ACUTE = 0xe9;
 const E_ACUTE_UTF8 = [0xc3, 0xa9];
 
-const computeChecksumForData = t.fn(
+const computeChecksumForData = t.bind(
     GLIB,
     "g_compute_checksum_for_data",
     [{ type: t.int32 }, { type: t.array(t.uint8) }, { type: t.uint64 }],
     t.string("full"),
 );
 
-const unicharToUtf8 = t.fn(GLIB, "g_unichar_to_utf8", [{ type: t.uint32 }, { type: t.blob }], t.int32);
+const unicharToUtf8 = t.bind(GLIB, "g_unichar_to_utf8", [{ type: t.uint32 }, { type: t.blob }], t.int32);
 
 describe("ArrayBufferView array arguments", () => {
     it("passes a typed array's bytes to the callee zero-copy", () => {

@@ -78,7 +78,7 @@ export const emitBindings = (context: ModuleContext, callables: Callables): void
  *
  * Returns `undefined` for non-introspectable, shadowed, identifier-less, or
  * `constructor`-named entries. The result is asserted to `ownerClassName`; the
- * bound `ffiCall` lifts the raw handle to its concrete runtime wrapper.
+ * bound `t.fn` lifts the raw handle to its concrete runtime wrapper.
  *
  * @param context - The module context
  * @param callable - The GIR constructor callable

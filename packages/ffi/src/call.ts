@@ -1,12 +1,12 @@
 /**
- * The call convention generated bindings dispatch through: a sugar over the
- * native `call` primitive that owns out-parameter tupling, `GError` handling,
- * and result wrapping.
+ * The call convention generated bindings dispatch through, exposed as `t.fn`:
+ * a sugar over the native `call` primitive that owns out-parameter tupling,
+ * `GError` handling, and result wrapping.
  *
  * A callable's full shape — its argument types, which positions are out- or
  * inout-parameters, whether it throws, and how its result is wrapped — is
- * captured once by {@link ffiCall} at module load, mirroring the bind-once
- * discipline of `t.fn`: the native argument array is built a single time and
+ * captured once by {@link ffiFn} at module load, mirroring the bind-once
+ * discipline of the raw binder: the native argument array is built a single time and
  * only the per-call out-cells allocate. The returned invoker takes the input
  * values, splices the out-cells the native marshaller writes through, runs
  * {@link checkError} when the callable throws, and assembles the
@@ -20,30 +20,39 @@ import { type Arg, type Type as FfiType, type NativeHandle, call as nativeCall }
 import type { AnyClass } from "@gtkx/utils";
 import { checkError, type GError } from "./error.js";
 import { wrapValue } from "./gobject.js";
-import { t, tupleResult } from "./helpers.js";
+import { t as descriptors, tupleResult } from "./helpers.js";
 import { getHandle } from "./registry.js";
 
 /**
- * How a parameter participates in a call beyond a plain input:
+ * The out-direction a parameter participates in beyond a plain input:
  *
  * - `"out"` — the native layer writes the result through a `{ value }` cell
  *   this call allocates; the read-back value joins the result tuple.
  * - `"inout"` — a scalar cell seeded from the input value, read back after.
- * - `"rawOut"` — a caller-allocated wrapper (a caller-out class/boxed, or an
- *   inout passed by handle in place): the input wrapper's handle is the
- *   argument, and the wrapper itself joins the result tuple unwrapped.
+ *
+ * Either direction may pair with {@link FfiFnParam.callerAllocates}, which
+ * passes the caller's own wrapper by handle in place of allocating a cell.
  */
-type OutRole = "out" | "inout" | "rawOut";
+type OutRole = "out" | "inout";
 
 /**
  * One positional argument of a callable, in C-signature order (the instance
  * receiver included). A plain input omits `role`.
  */
-export type FfiCallParam = {
+export type FfiFnParam = {
     /** The argument's FFI type — the inner type for an out/inout cell. */
     readonly type: FfiType;
-    /** How the parameter participates beyond a plain input. */
+    /** The out/inout direction the parameter participates in beyond a plain input. */
     readonly role?: OutRole;
+    /**
+     * Whether the caller allocates the out/inout wrapper. The input wrapper's
+     * handle is passed as the argument — the native call fills its backing
+     * memory in place — and the same wrapper joins the result tuple unwrapped,
+     * in place of the runtime allocating a `{ value }` cell and re-wrapping the
+     * read-back. Set for a caller-out class/boxed and for an inout passed by
+     * handle in place.
+     */
+    readonly callerAllocates?: boolean;
     /**
      * Resolves the wrapper class for an interface/boxed/struct/fundamental out
      * value. A thunk, not the class itself: the binding is a module-level
@@ -65,19 +74,19 @@ export type FfiCallParam = {
 };
 
 /** The return value of a callable. A `t.void` type denotes no primary result. */
-export type FfiCallReturn = {
+export type FfiFnReturn = {
     /** The return value's FFI type. */
     readonly type: FfiType;
-    /** Resolves the wrapper class for an interface/boxed/struct/fundamental return (a call-time thunk; see {@link FfiCallParam.wrapClass}). */
+    /** Resolves the wrapper class for an interface/boxed/struct/fundamental return (a call-time thunk; see {@link FfiFnParam.wrapClass}). */
     readonly wrapClass?: () => AnyClass;
 };
 
 /** Optional call-shape configuration. */
-export type FfiCallOptions = {
+export type FfiFnOptions = {
     /**
      * Resolves the GLib `Error` wrapper class. When present, the implicit
      * `GError**` out-parameter is appended and {@link checkError} runs after the
-     * call. A call-time thunk, like {@link FfiCallParam.wrapClass}, so a binding
+     * call. A call-time thunk, like {@link FfiFnParam.wrapClass}, so a binding
      * declared before the namespace's `Error` class avoids the temporal dead zone.
      */
     readonly throws?: () => AnyClass<GError>;
@@ -85,9 +94,11 @@ export type FfiCallOptions = {
 
 type OutCell = { value: unknown };
 
-type SurfacedOut = { readonly param: FfiCallParam; readonly cell?: OutCell; readonly raw?: unknown };
+type SurfacedOut = { readonly param: FfiFnParam; readonly cell?: OutCell; readonly raw?: unknown };
 
-const GERROR_REF: FfiType = t.ref(t.boxed("GError", "full", "libgobject-2.0.so.0", "g_error_get_type"));
+const GERROR_REF: FfiType = descriptors.ref(
+    descriptors.boxed("GError", "full", "libgobject-2.0.so.0", "g_error_get_type"),
+);
 
 /**
  * The value a pure-out `{ value }` cell is seeded with before the call. The
@@ -126,12 +137,17 @@ const assembleResult = (surfaced: readonly SurfacedOut[], primary: unknown, hasP
     );
 
 /**
- * Binds one positional argument's value for a call: seeds an out-cell, seeds an
- * inout cell from the input, coerces a raw-out wrapper to its handle, or passes
- * a plain input through — recording any surfaced out and returning how many
- * inputs were consumed (`0` for a pure out, `1` otherwise).
+ * Binds one positional argument's value for a call: coerces a caller-allocated
+ * wrapper to its handle, seeds an out-cell, seeds an inout cell from the input,
+ * or passes a plain input through — recording any surfaced out and returning how
+ * many inputs were consumed (`0` for a pure out, `1` otherwise).
  */
-const bindArg = (param: FfiCallParam, arg: Arg, input: unknown, surfaced: SurfacedOut[]): number => {
+const bindArg = (param: FfiFnParam, arg: Arg, input: unknown, surfaced: SurfacedOut[]): number => {
+    if (param.callerAllocates === true) {
+        arg.value = input == null ? input : getHandle(input as object);
+        if (param.consumed !== true) surfaced.push({ param, raw: input });
+        return 1;
+    }
     switch (param.role) {
         case "out": {
             arg.value = { value: seedForOutCell(param.type) };
@@ -142,11 +158,6 @@ const bindArg = (param: FfiCallParam, arg: Arg, input: unknown, surfaced: Surfac
             const cell: OutCell = { value: input };
             arg.value = cell;
             if (param.consumed !== true) surfaced.push({ param, cell });
-            return 1;
-        }
-        case "rawOut": {
-            arg.value = input == null ? input : getHandle(input as object);
-            if (param.consumed !== true) surfaced.push({ param, raw: input });
             return 1;
         }
         default:
@@ -166,17 +177,17 @@ const bindArg = (param: FfiCallParam, arg: Arg, input: unknown, surfaced: Surfac
  * @returns An invoker taking the input values and returning the wrapped result
  *   (a lone value, or a `[primary, ...outs]` tuple when out-parameters surface).
  */
-// biome-ignore lint/complexity/useMaxParams: mirrors the t.fn (library, symbol, args, return) binding shape with added call-shape options
-export function ffiCall(
+// biome-ignore lint/complexity/useMaxParams: mirrors the raw binder's (library, symbol, args, return) shape with added call-shape options
+function ffiFn(
     library: string,
     symbol: string,
-    params: readonly FfiCallParam[],
-    ret: FfiCallReturn,
-    options: FfiCallOptions = {},
+    params: readonly FfiFnParam[],
+    ret: FfiFnReturn,
+    options: FfiFnOptions = {},
 ): (...inputs: unknown[]) => unknown {
     const args: Arg[] = params.map((param) => {
-        if (param.role === "out" || param.role === "inout") {
-            return { type: t.ref(param.type), value: undefined };
+        if ((param.role === "out" || param.role === "inout") && param.callerAllocates !== true) {
+            return { type: descriptors.ref(param.type), value: undefined };
         }
         return param.optional === true
             ? { type: param.type, value: undefined, optional: true }
@@ -211,3 +222,15 @@ export function ffiCall(
         return assembleResult(surfaced, primary, hasPrimary);
     };
 }
+
+/**
+ * The binding factory the generated `@gtkx/gi` bindings and their override
+ * templates call: every FFI type-descriptor helper, plus `fn` — the sugared
+ * binder ({@link ffiFn}) that adds out-parameter tupling, `GError` handling, and
+ * result wrapping over the native `call`.
+ *
+ * This is the `t` the package barrel exports. The raw binder the runtime's own
+ * type-system and `GValue` marshalling use stays internal and is never surfaced
+ * here, so binding code outside the runtime only ever reaches the sugared `t.fn`.
+ */
+export const t: typeof descriptors & { readonly fn: typeof ffiFn } = Object.freeze({ ...descriptors, fn: ffiFn });

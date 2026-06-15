@@ -1,8 +1,8 @@
 import { getHandle, registerWrapperClass, setHandle, t, wrapHandle } from "@gtkx/ffi";
-import { alloc, DOUBLE_REF, DOUBLE_TYPE, INT_TYPE, LIB, MATRIX_T, type NativeHandle } from "@gtkx/ffi/cairo";
+import { alloc, type NativeHandle } from "@gtkx/native";
 import type { Status } from "../cairo.js";
 
-const { fn } = t;
+const { bind } = t;
 
 export const allocMatrix = (): { handle: NativeHandle; obj: Matrix } => {
     const handle = alloc(48, "cairo_matrix_t");
@@ -10,68 +10,95 @@ export const allocMatrix = (): { handle: NativeHandle; obj: Matrix } => {
     return { handle, obj };
 };
 
-const cairo_matrix_translate = fn(
-    LIB,
+const cairo_matrix_translate = bind(
+    "libcairo.so.2",
     "cairo_matrix_translate",
-    [{ type: MATRIX_T }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }, { type: t.float64 }, { type: t.float64 }],
     t.void,
 );
-const cairo_matrix_scale = fn(
-    LIB,
+const cairo_matrix_scale = bind(
+    "libcairo.so.2",
     "cairo_matrix_scale",
-    [{ type: MATRIX_T }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }, { type: t.float64 }, { type: t.float64 }],
     t.void,
 );
-const cairo_matrix_rotate = fn(LIB, "cairo_matrix_rotate", [{ type: MATRIX_T }, { type: DOUBLE_TYPE }], t.void);
-const cairo_matrix_invert = fn(LIB, "cairo_matrix_invert", [{ type: MATRIX_T }], INT_TYPE);
-const cairo_matrix_multiply = fn(
-    LIB,
+const cairo_matrix_rotate = bind(
+    "libcairo.so.2",
+    "cairo_matrix_rotate",
+    [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }, { type: t.float64 }],
+    t.void,
+);
+const cairo_matrix_invert = bind(
+    "libcairo.so.2",
+    "cairo_matrix_invert",
+    [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }],
+    t.int32,
+);
+const cairo_matrix_multiply = bind(
+    "libcairo.so.2",
     "cairo_matrix_multiply",
-    [{ type: MATRIX_T }, { type: MATRIX_T }, { type: MATRIX_T }],
+    [
+        { type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") },
+        { type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") },
+        { type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") },
+    ],
     t.void,
 );
-const cairo_matrix_transform_point = fn(
-    LIB,
+const cairo_matrix_transform_point = bind(
+    "libcairo.so.2",
     "cairo_matrix_transform_point",
-    [{ type: MATRIX_T }, { type: DOUBLE_REF }, { type: DOUBLE_REF }],
+    [
+        { type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") },
+        { type: t.ref(t.float64) },
+        { type: t.ref(t.float64) },
+    ],
     t.void,
 );
-const cairo_matrix_transform_distance = fn(
-    LIB,
+const cairo_matrix_transform_distance = bind(
+    "libcairo.so.2",
     "cairo_matrix_transform_distance",
-    [{ type: MATRIX_T }, { type: DOUBLE_REF }, { type: DOUBLE_REF }],
+    [
+        { type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") },
+        { type: t.ref(t.float64) },
+        { type: t.ref(t.float64) },
+    ],
     t.void,
 );
-const cairo_matrix_init_identity = fn(LIB, "cairo_matrix_init_identity", [{ type: MATRIX_T }], t.void);
-const cairo_matrix_init_translate = fn(
-    LIB,
+const cairo_matrix_init_identity = bind(
+    "libcairo.so.2",
+    "cairo_matrix_init_identity",
+    [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }],
+    t.void,
+);
+const cairo_matrix_init_translate = bind(
+    "libcairo.so.2",
     "cairo_matrix_init_translate",
-    [{ type: MATRIX_T }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }, { type: t.float64 }, { type: t.float64 }],
     t.void,
 );
-const cairo_matrix_init_scale = fn(
-    LIB,
+const cairo_matrix_init_scale = bind(
+    "libcairo.so.2",
     "cairo_matrix_init_scale",
-    [{ type: MATRIX_T }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }, { type: t.float64 }, { type: t.float64 }],
     t.void,
 );
-const cairo_matrix_init_rotate = fn(
-    LIB,
+const cairo_matrix_init_rotate = bind(
+    "libcairo.so.2",
     "cairo_matrix_init_rotate",
-    [{ type: MATRIX_T }, { type: DOUBLE_TYPE }],
+    [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }, { type: t.float64 }],
     t.void,
 );
-const cairo_matrix_init = fn(
-    LIB,
+const cairo_matrix_init = bind(
+    "libcairo.so.2",
     "cairo_matrix_init",
     [
-        { type: MATRIX_T },
-        { type: DOUBLE_TYPE },
-        { type: DOUBLE_TYPE },
-        { type: DOUBLE_TYPE },
-        { type: DOUBLE_TYPE },
-        { type: DOUBLE_TYPE },
-        { type: DOUBLE_TYPE },
+        { type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") },
+        { type: t.float64 },
+        { type: t.float64 },
+        { type: t.float64 },
+        { type: t.float64 },
+        { type: t.float64 },
+        { type: t.float64 },
     ],
     t.void,
 );

@@ -1,39 +1,22 @@
 import { getHandle, t, wrapHandle } from "@gtkx/ffi";
+import { alloc, type NativeHandle, read } from "@gtkx/native";
+import type { FontOptions, FontType, Status, TextClusterFlags } from "../cairo.js";
+import { FontFace, ScaledFont } from "../cairo.js";
 import {
-    alloc,
     allocGlyphBuffer,
     type CairoGlyph,
     type CairoTextCluster,
-    CLUSTER_BUF_T,
-    DOUBLE_TYPE,
-    FONT_EXTENTS_T,
-    FONT_FACE_T_NONE,
-    FONT_OPTIONS_T,
     type FontExtents,
-    GLYPH_BUF_T,
-    INT_REF,
-    INT_TYPE,
-    LIB,
-    MATRIX_T,
-    type NativeHandle,
-    read,
     readFontExtents,
     readTextExtents,
-    SCALED_FONT_T,
-    SCALED_FONT_T_NONE,
-    STRING_FULL,
-    TEXT_EXTENTS_T,
     type TextExtents,
-    ULONG_TYPE,
-} from "@gtkx/ffi/cairo";
-import type { FontOptions, FontType, Status, TextClusterFlags } from "../cairo.js";
-import { FontFace, ScaledFont } from "../cairo.js";
+} from "./context.js";
 import { FontOptions as FontOptionsConstructor } from "./font-options.js";
 import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";
 
-const { fn } = t;
-const GLYPH_BUF_REF = t.ref(GLYPH_BUF_T);
-const CLUSTER_BUF_REF = t.ref(CLUSTER_BUF_T);
+const { bind } = t;
+const GLYPH_BUF_REF = t.ref(t.boxed("cairo_glyph_t", "borrowed", "libcairo.so.2"));
+const CLUSTER_BUF_REF = t.ref(t.boxed("cairo_text_cluster_t", "borrowed", "libcairo.so.2"));
 
 declare module "../cairo.js" {
     interface ScaledFont {
@@ -66,11 +49,23 @@ type ScaledFontStatic = {
 
 const ScaledFontWithStatics = ScaledFont as typeof ScaledFont & ScaledFontStatic;
 
-const cairo_scaled_font_create = fn(
-    LIB,
+const cairo_scaled_font_create = bind(
+    "libcairo.so.2",
     "cairo_scaled_font_create",
-    [{ type: FONT_FACE_T_NONE }, { type: MATRIX_T }, { type: MATRIX_T }, { type: FONT_OPTIONS_T }],
-    SCALED_FONT_T,
+    [
+        { type: t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type") },
+        { type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") },
+        { type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") },
+        {
+            type: t.boxed(
+                "CairoFontOptions",
+                "borrowed",
+                "libcairo-gobject.so.2",
+                "cairo_gobject_font_options_get_type",
+            ),
+        },
+    ],
+    t.boxed("CairoScaledFont", "full", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type"),
 );
 
 ScaledFontWithStatics.create = (
@@ -88,15 +83,23 @@ ScaledFontWithStatics.create = (
     return wrapHandle(ptr, ScaledFont) as ScaledFont;
 };
 
-const cairo_scaled_font_status = fn(LIB, "cairo_scaled_font_status", [{ type: SCALED_FONT_T_NONE }], INT_TYPE);
+const cairo_scaled_font_status = bind(
+    "libcairo.so.2",
+    "cairo_scaled_font_status",
+    [{ type: t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type") }],
+    t.int32,
+);
 ScaledFont.prototype.status = function (): Status {
     return cairo_scaled_font_status(getHandle(this)) as Status;
 };
 
-const cairo_scaled_font_extents = fn(
-    LIB,
+const cairo_scaled_font_extents = bind(
+    "libcairo.so.2",
     "cairo_scaled_font_extents",
-    [{ type: SCALED_FONT_T_NONE }, { type: FONT_EXTENTS_T }],
+    [
+        { type: t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type") },
+        { type: t.boxed("cairo_font_extents_t", "borrowed", "libcairo.so.2") },
+    ],
     t.void,
 );
 ScaledFont.prototype.extents = function (): FontExtents {
@@ -105,10 +108,14 @@ ScaledFont.prototype.extents = function (): FontExtents {
     return readFontExtents(ext);
 };
 
-const cairo_scaled_font_text_extents = fn(
-    LIB,
+const cairo_scaled_font_text_extents = bind(
+    "libcairo.so.2",
     "cairo_scaled_font_text_extents",
-    [{ type: SCALED_FONT_T_NONE }, { type: STRING_FULL }, { type: TEXT_EXTENTS_T }],
+    [
+        { type: t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type") },
+        { type: t.string("full") },
+        { type: t.boxed("cairo_text_extents_t", "borrowed", "libcairo.so.2") },
+    ],
     t.void,
 );
 ScaledFont.prototype.textExtents = function (text: string): TextExtents {
@@ -117,10 +124,15 @@ ScaledFont.prototype.textExtents = function (text: string): TextExtents {
     return readTextExtents(ext);
 };
 
-const cairo_scaled_font_glyph_extents = fn(
-    LIB,
+const cairo_scaled_font_glyph_extents = bind(
+    "libcairo.so.2",
     "cairo_scaled_font_glyph_extents",
-    [{ type: SCALED_FONT_T_NONE }, { type: GLYPH_BUF_T }, { type: INT_TYPE }, { type: TEXT_EXTENTS_T }],
+    [
+        { type: t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type") },
+        { type: t.boxed("cairo_glyph_t", "borrowed", "libcairo.so.2") },
+        { type: t.int32 },
+        { type: t.boxed("cairo_text_extents_t", "borrowed", "libcairo.so.2") },
+    ],
     t.void,
 );
 ScaledFont.prototype.glyphExtents = function (glyphs: Array<{ index: number; x: number; y: number }>): TextExtents {
@@ -130,20 +142,30 @@ ScaledFont.prototype.glyphExtents = function (glyphs: Array<{ index: number; x: 
     return readTextExtents(ext);
 };
 
-const cairo_scaled_font_get_font_face = fn(
-    LIB,
+const cairo_scaled_font_get_font_face = bind(
+    "libcairo.so.2",
     "cairo_scaled_font_get_font_face",
-    [{ type: SCALED_FONT_T_NONE }],
-    FONT_FACE_T_NONE,
+    [{ type: t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type") }],
+    t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type"),
 );
 ScaledFont.prototype.getFontFace = function (): FontFace {
     return wrapHandle(cairo_scaled_font_get_font_face(getHandle(this)) as NativeHandle, FontFace) as FontFace;
 };
 
-const cairo_scaled_font_get_font_options = fn(
-    LIB,
+const cairo_scaled_font_get_font_options = bind(
+    "libcairo.so.2",
     "cairo_scaled_font_get_font_options",
-    [{ type: SCALED_FONT_T_NONE }, { type: FONT_OPTIONS_T }],
+    [
+        { type: t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type") },
+        {
+            type: t.boxed(
+                "CairoFontOptions",
+                "borrowed",
+                "libcairo-gobject.so.2",
+                "cairo_gobject_font_options_get_type",
+            ),
+        },
+    ],
     t.void,
 );
 ScaledFont.prototype.getFontOptions = function (): FontOptions {
@@ -152,22 +174,31 @@ ScaledFont.prototype.getFontOptions = function (): FontOptions {
     return options;
 };
 
-const cairo_scaled_font_get_font_matrix = fn(
-    LIB,
+const cairo_scaled_font_get_font_matrix = bind(
+    "libcairo.so.2",
     "cairo_scaled_font_get_font_matrix",
-    [{ type: SCALED_FONT_T_NONE }, { type: MATRIX_T }],
+    [
+        { type: t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type") },
+        { type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") },
+    ],
     t.void,
 );
-const cairo_scaled_font_get_ctm = fn(
-    LIB,
+const cairo_scaled_font_get_ctm = bind(
+    "libcairo.so.2",
     "cairo_scaled_font_get_ctm",
-    [{ type: SCALED_FONT_T_NONE }, { type: MATRIX_T }],
+    [
+        { type: t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type") },
+        { type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") },
+    ],
     t.void,
 );
-const cairo_scaled_font_get_scale_matrix = fn(
-    LIB,
+const cairo_scaled_font_get_scale_matrix = bind(
+    "libcairo.so.2",
     "cairo_scaled_font_get_scale_matrix",
-    [{ type: SCALED_FONT_T_NONE }, { type: MATRIX_T }],
+    [
+        { type: t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type") },
+        { type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") },
+    ],
     t.void,
 );
 
@@ -189,16 +220,21 @@ ScaledFont.prototype.getScaleMatrix = function (): CairoMatrix {
     return readMatrixVia(this, cairo_scaled_font_get_scale_matrix);
 };
 
-const cairo_scaled_font_get_type = fn(LIB, "cairo_scaled_font_get_type", [{ type: SCALED_FONT_T_NONE }], INT_TYPE);
+const cairo_scaled_font_get_type = bind(
+    "libcairo.so.2",
+    "cairo_scaled_font_get_type",
+    [{ type: t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type") }],
+    t.int32,
+);
 ScaledFont.prototype.getType = function (): FontType {
     return cairo_scaled_font_get_type(getHandle(this)) as FontType;
 };
 
-const cairo_scaled_font_get_reference_count = fn(
-    LIB,
+const cairo_scaled_font_get_reference_count = bind(
+    "libcairo.so.2",
     "cairo_scaled_font_get_reference_count",
-    [{ type: SCALED_FONT_T_NONE }],
-    INT_TYPE,
+    [{ type: t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type") }],
+    t.int32,
 );
 ScaledFont.prototype.getReferenceCount = function (): number {
     return cairo_scaled_font_get_reference_count(getHandle(this)) as number;
@@ -210,25 +246,35 @@ declare module "../cairo.js" {
     }
 }
 
-const cairo_scaled_font_text_to_glyphs = fn(
-    LIB,
+const cairo_scaled_font_text_to_glyphs = bind(
+    "libcairo.so.2",
     "cairo_scaled_font_text_to_glyphs",
     [
-        { type: SCALED_FONT_T_NONE },
-        { type: DOUBLE_TYPE },
-        { type: DOUBLE_TYPE },
-        { type: STRING_FULL },
-        { type: INT_TYPE },
+        { type: t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type") },
+        { type: t.float64 },
+        { type: t.float64 },
+        { type: t.string("full") },
+        { type: t.int32 },
         { type: GLYPH_BUF_REF },
-        { type: INT_REF },
+        { type: t.ref(t.int32) },
         { type: CLUSTER_BUF_REF },
-        { type: INT_REF },
-        { type: INT_REF },
+        { type: t.ref(t.int32) },
+        { type: t.ref(t.int32) },
     ],
-    INT_TYPE,
+    t.int32,
 );
-const cairo_glyph_free = fn(LIB, "cairo_glyph_free", [{ type: GLYPH_BUF_T }], t.void);
-const cairo_text_cluster_free = fn(LIB, "cairo_text_cluster_free", [{ type: CLUSTER_BUF_T }], t.void);
+const cairo_glyph_free = bind(
+    "libcairo.so.2",
+    "cairo_glyph_free",
+    [{ type: t.boxed("cairo_glyph_t", "borrowed", "libcairo.so.2") }],
+    t.void,
+);
+const cairo_text_cluster_free = bind(
+    "libcairo.so.2",
+    "cairo_text_cluster_free",
+    [{ type: t.boxed("cairo_text_cluster_t", "borrowed", "libcairo.so.2") }],
+    t.void,
+);
 
 ScaledFont.prototype.textToGlyphs = function (
     x: number,
@@ -267,9 +313,9 @@ ScaledFont.prototype.textToGlyphs = function (
         for (let i = 0; i < numGlyphs; i++) {
             const offset = i * 24;
             glyphs.push({
-                index: read(glyphsBuf, ULONG_TYPE, offset) as number,
-                x: read(glyphsBuf, DOUBLE_TYPE, offset + 8) as number,
-                y: read(glyphsBuf, DOUBLE_TYPE, offset + 16) as number,
+                index: read(glyphsBuf, t.uint64, offset) as number,
+                x: read(glyphsBuf, t.float64, offset + 8) as number,
+                y: read(glyphsBuf, t.float64, offset + 16) as number,
             });
         }
     }
@@ -279,8 +325,8 @@ ScaledFont.prototype.textToGlyphs = function (
         for (let i = 0; i < numClusters; i++) {
             const offset = i * 8;
             clusters.push({
-                numBytes: read(clustersBuf, INT_TYPE, offset) as number,
-                numGlyphs: read(clustersBuf, INT_TYPE, offset + 4) as number,
+                numBytes: read(clustersBuf, t.int32, offset) as number,
+                numGlyphs: read(clustersBuf, t.int32, offset + 4) as number,
             });
         }
     }

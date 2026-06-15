@@ -12,7 +12,7 @@ import { renderFfiType } from "./value.js";
  * keeps the registry resolution (`wrapHandle` and the identity cache it consults)
  * internal to `@gtkx/ffi`. Primitives, enums, and callbacks coerce inline,
  * leaving the hot scalar path free of an extra call. The method-return path
- * wraps inside `ffiCall` instead, via its return descriptor.
+ * wraps inside `t.fn` instead, via its return descriptor.
  */
 
 /**
@@ -102,7 +102,7 @@ const wrapPrimitive = (ref: PrimitiveTypeRef, nullable: boolean, valueExpression
  * A plain object (`wrapHandle` self-resolves it from the runtime GLib type), a
  * primitive, an enum, and a hash table need no class. An interface supplies its
  * fallback wrapper class, a boxed record its exact class. A collection resolves
- * its element's class, applied per element. Used both for the `ffiCall` return
+ * its element's class, applied per element. Used both for the `t.fn` return
  * descriptor and the per-call `wrapValue` sites.
  *
  * @param context - The module context

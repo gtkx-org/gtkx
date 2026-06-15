@@ -14,12 +14,12 @@ import {
 } from "./method.js";
 
 /**
- * Renders the `ffiCall(library, symbol, params, return, options?)` expression
+ * Renders the `t.fn(library, symbol, params, return, options?)` expression
  * for a callable. Returns `undefined` when the callable cannot be bound (no C
  * identifier or missing namespace shared-library).
  *
- * The parameter array carries each argument's FFI type and its role (out,
- * inout, or a caller-allocated raw out), the return descriptor carries the
+ * The parameter array carries each argument's FFI type and its role (out or
+ * inout, optionally caller-allocated), the return descriptor carries the
  * primary return's FFI type and wrapper class, and a throwing callable adds the
  * `throws` option; the bound callable owns out-parameter tupling, `GError`
  * handling, and result wrapping at call time.
@@ -31,16 +31,15 @@ export const renderFnExpression = (context: ModuleContext, fn: GirFunction): str
     if (fn.cIdentifier === undefined) return undefined;
     const library = context.namespace.sharedLibrary;
     if (library === undefined) return undefined;
-    context.addRuntimeImport("ffiCall");
     context.addRuntimeImport("t");
     const params = planCallArgs(context, fn).map((arg) => arg.paramLiteral);
     const ret = renderReturnDescriptor(context, fn);
     const options = fn.throws ? `, { throws: () => ${context.qualify("GLib", "Error")} }` : "";
-    return `ffiCall(${quote(library)}, ${quote(fn.cIdentifier)}, ${arrayLiteral(params)}, ${ret}${options})`;
+    return `t.fn(${quote(library)}, ${quote(fn.cIdentifier)}, ${arrayLiteral(params)}, ${ret}${options})`;
 };
 
 /**
- * Emits both the bound `const fooBinding = ffiCall(...)` and the
+ * Emits both the bound `const fooBinding = t.fn(...)` and the
  * `export function camelName(...)` wrapper for a namespace-level callable.
  *
  * Silently skipped when {@link renderFnExpression} cannot bind the callable
