@@ -20,7 +20,7 @@
  * isolated-declarations regression fails generation instead of landing in the
  * committed output.
  */
-import { toIdentifier } from "@gtkx/utils";
+import { toCamelCase, toIdentifier } from "@gtkx/utils";
 import { ModuleBuilder } from "../dsl/module.js";
 import { transpileSource } from "../transpile.js";
 import {
@@ -154,14 +154,22 @@ const GENERATED_HEADER = `/**
 
 const lowerFirst = (name: string): string => name.charAt(0).toLowerCase() + name.slice(1);
 
+/**
+ * Shapes a GL name into a camelCase identifier: folds the `i_v`/`num_groups_x`
+ * underscores Khronos uses into camel humps so the result is valid camelCase
+ * (`getTransformFeedbacki_v` → `getTransformFeedbackiV`), then guards against
+ * reserved words.
+ */
+const toCamelIdentifier = (name: string): string => toIdentifier(toCamelCase(name));
+
 const commandExportName = (name: string): string => {
     const stripped = name.startsWith("gl") ? lowerFirst(name.slice(2)) : name;
-    return /^[0-9]/.test(stripped) ? name : toIdentifier(stripped);
+    return /^[0-9]/.test(stripped) ? name : toCamelIdentifier(stripped);
 };
 
 const enumExportName = (name: string): string => {
     const stripped = name.startsWith("GL_") ? name.slice(3) : name;
-    return /^[0-9]/.test(stripped) ? name : toIdentifier(stripped);
+    return /^[0-9]/.test(stripped) ? name : toIdentifier(stripped.toUpperCase());
 };
 
 const singularize = (plural: string): string =>
@@ -284,7 +292,7 @@ const buildOutSlot = (options: BuildSlotOptions, track: (alias: string) => strin
             };
         case "ref-array-out": {
             const sizeIndex = paramIndexByName(command, plan.lenParamName);
-            const lenIdentifier = toIdentifier(plan.lenParamName);
+            const lenIdentifier = toCamelIdentifier(plan.lenParamName);
             return {
                 out: true,
                 cellName,
@@ -311,7 +319,7 @@ const buildOutSlot = (options: BuildSlotOptions, track: (alias: string) => strin
                 cellName,
                 seed: `const ${cellName} = { value: "" };`,
                 tsType: "string",
-                descriptor: `{ type: t.ref(t.string("borrowed", ${toIdentifier(plan.lenParamName)})) }`,
+                descriptor: `{ type: t.ref(t.string("borrowed", ${toCamelIdentifier(plan.lenParamName)})) }`,
                 docName: param.name,
                 docCType: param.cType,
             };
@@ -352,7 +360,7 @@ const buildSlots = (
             slots.push(slot);
             outs.push(slot);
         } else {
-            const slot = buildInSlot(options, toIdentifier(param.name), track);
+            const slot = buildInSlot(options, toCamelIdentifier(param.name), track);
             slots.push(slot);
             ins.push(slot);
         }
@@ -405,7 +413,7 @@ const formatPrototype = (command: GlCommand): string => {
 };
 
 const inParamDocLine = (command: GlCommand, slot: EmittedIn): string => {
-    const param = command.params.find((candidate) => toIdentifier(candidate.name) === slot.name);
+    const param = command.params.find((candidate) => toCamelIdentifier(candidate.name) === slot.name);
     if (param === undefined) return ` * @param ${slot.name}`;
     const notes: string[] = [`\`${param.cType}\``];
     if (param.group !== undefined) notes.push(`group \`${param.group}\``);
@@ -507,7 +515,7 @@ const renderCommand = (
             declaration: `${jsDoc}\nexport function ${exportName}(${signature}): ${tsReturn} {\n${body}\n}`,
         };
     }
-    const bindingName = command.name;
+    const bindingName = toCamelIdentifier(command.name);
     const binding = `const ${bindingName} = t.bind(LIB, "${command.name}", ${descriptors}, ${returned.descriptor});`;
     const body = [...seeds, ...returnStatements(`${bindingName}(${argNames})`, returned, outs)]
         .map((line) => `    ${line}`)
@@ -545,7 +553,7 @@ const scalarPrefixSlots = (
         prefix.push(
             buildInSlot(
                 { command: plan.command, index, plan: paramPlan, outIndex: 0, usedTypes },
-                toIdentifier(param.name),
+                toCamelIdentifier(param.name),
                 track,
             ),
         );

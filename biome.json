@@ -93,20 +93,7 @@
             }
         },
         {
-            "includes": ["packages/gl/src/generated/**"],
-            "linter": {
-                "rules": {
-                    "complexity": {
-                        "useMaxParams": "off"
-                    },
-                    "style": {
-                        "useNamingConvention": "off"
-                    }
-                }
-            }
-        },
-        {
-            "includes": ["packages/codegen/src/templates/**"],
+            "includes": ["packages/gl/src/generated/**", "packages/codegen/src/templates/**"],
             "linter": {
                 "rules": {
                     "complexity": {

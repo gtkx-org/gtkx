@@ -1829,14 +1829,14 @@ const glGetTextureSubImage = t.bind(
     t.void,
 );
 
-const glGetTransformFeedbacki_v = t.bind(
+const glGetTransformFeedbackiV = t.bind(
     LIB,
     "glGetTransformFeedbacki_v",
     [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
     t.void,
 );
 
-const glGetTransformFeedbacki64_v = t.bind(
+const glGetTransformFeedbacki64V = t.bind(
     LIB,
     "glGetTransformFeedbacki64_v",
     [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int64) }],
@@ -6533,13 +6533,13 @@ export function disableVertexAttribArray(index: GLuint): void {
  *
  * Provided by `GL_VERSION_4_3`.
  *
- * @param num_groups_x - `GLuint`
- * @param num_groups_y - `GLuint`
- * @param num_groups_z - `GLuint`
+ * @param numGroupsX - `GLuint`
+ * @param numGroupsY - `GLuint`
+ * @param numGroupsZ - `GLuint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDispatchCompute.xhtml
  */
-export function dispatchCompute(num_groups_x: GLuint, num_groups_y: GLuint, num_groups_z: GLuint): void {
-    glDispatchCompute(num_groups_x, num_groups_y, num_groups_z);
+export function dispatchCompute(numGroupsX: GLuint, numGroupsY: GLuint, numGroupsZ: GLuint): void {
+    glDispatchCompute(numGroupsX, numGroupsY, numGroupsZ);
 }
 
 /**
@@ -8815,9 +8815,9 @@ export function getTextureSubImage(
  * @returns `param` (`GLint *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetTransformFeedbacki_v.xhtml
  */
-export function getTransformFeedbacki_v(xfb: GLuint, pname: TransformFeedbackPName, index: GLuint): GLint {
+export function getTransformFeedbackiV(xfb: GLuint, pname: TransformFeedbackPName, index: GLuint): GLint {
     const out0 = { value: 0 };
-    glGetTransformFeedbacki_v(xfb, pname, index, out0);
+    glGetTransformFeedbackiV(xfb, pname, index, out0);
     return out0.value;
 }
 
@@ -8832,9 +8832,9 @@ export function getTransformFeedbacki_v(xfb: GLuint, pname: TransformFeedbackPNa
  * @returns `param` (`GLint64 *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetTransformFeedbacki64_v.xhtml
  */
-export function getTransformFeedbacki64_v(xfb: GLuint, pname: TransformFeedbackPName, index: GLuint): GLint64 {
+export function getTransformFeedbacki64V(xfb: GLuint, pname: TransformFeedbackPName, index: GLuint): GLint64 {
     const out0 = { value: 0 };
-    glGetTransformFeedbacki64_v(xfb, pname, index, out0);
+    glGetTransformFeedbacki64V(xfb, pname, index, out0);
     return out0.value;
 }
 

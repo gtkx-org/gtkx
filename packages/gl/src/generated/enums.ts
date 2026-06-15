@@ -814,28 +814,28 @@ export const DOUBLE = 0x140a;
 export const DOUBLE_MAT2 = 0x8f46;
 
 /** `GL_DOUBLE_MAT2x3` — provided by `GL_VERSION_4_0`. Groups: `UniformType`, `AttributeType`. */
-export const DOUBLE_MAT2x3 = 0x8f49;
+export const DOUBLE_MAT2X3 = 0x8f49;
 
 /** `GL_DOUBLE_MAT2x4` — provided by `GL_VERSION_4_0`. Groups: `UniformType`, `AttributeType`. */
-export const DOUBLE_MAT2x4 = 0x8f4a;
+export const DOUBLE_MAT2X4 = 0x8f4a;
 
 /** `GL_DOUBLE_MAT3` — provided by `GL_VERSION_4_0`. Groups: `AttributeType`, `UniformType`. */
 export const DOUBLE_MAT3 = 0x8f47;
 
 /** `GL_DOUBLE_MAT3x2` — provided by `GL_VERSION_4_0`. Groups: `UniformType`, `AttributeType`. */
-export const DOUBLE_MAT3x2 = 0x8f4b;
+export const DOUBLE_MAT3X2 = 0x8f4b;
 
 /** `GL_DOUBLE_MAT3x4` — provided by `GL_VERSION_4_0`. Groups: `UniformType`, `AttributeType`. */
-export const DOUBLE_MAT3x4 = 0x8f4c;
+export const DOUBLE_MAT3X4 = 0x8f4c;
 
 /** `GL_DOUBLE_MAT4` — provided by `GL_VERSION_4_0`. Groups: `AttributeType`, `UniformType`. */
 export const DOUBLE_MAT4 = 0x8f48;
 
 /** `GL_DOUBLE_MAT4x2` — provided by `GL_VERSION_4_0`. Groups: `UniformType`, `AttributeType`. */
-export const DOUBLE_MAT4x2 = 0x8f4d;
+export const DOUBLE_MAT4X2 = 0x8f4d;
 
 /** `GL_DOUBLE_MAT4x3` — provided by `GL_VERSION_4_0`. Groups: `UniformType`, `AttributeType`. */
-export const DOUBLE_MAT4x3 = 0x8f4e;
+export const DOUBLE_MAT4X3 = 0x8f4e;
 
 /** `GL_DOUBLE_VEC2` — provided by `GL_VERSION_4_0`. Groups: `AttributeType`, `UniformType`. */
 export const DOUBLE_VEC2 = 0x8ffc;
@@ -979,28 +979,28 @@ export const FLOAT_32_UNSIGNED_INT_24_8_REV = 0x8dad;
 export const FLOAT_MAT2 = 0x8b5a;
 
 /** `GL_FLOAT_MAT2x3` — provided by `GL_VERSION_2_1`. Groups: `AttributeType`, `UniformType`. */
-export const FLOAT_MAT2x3 = 0x8b65;
+export const FLOAT_MAT2X3 = 0x8b65;
 
 /** `GL_FLOAT_MAT2x4` — provided by `GL_VERSION_2_1`. Groups: `AttributeType`, `UniformType`. */
-export const FLOAT_MAT2x4 = 0x8b66;
+export const FLOAT_MAT2X4 = 0x8b66;
 
 /** `GL_FLOAT_MAT3` — provided by `GL_VERSION_2_0`. Groups: `AttributeType`, `UniformType`. */
 export const FLOAT_MAT3 = 0x8b5b;
 
 /** `GL_FLOAT_MAT3x2` — provided by `GL_VERSION_2_1`. Groups: `AttributeType`, `UniformType`. */
-export const FLOAT_MAT3x2 = 0x8b67;
+export const FLOAT_MAT3X2 = 0x8b67;
 
 /** `GL_FLOAT_MAT3x4` — provided by `GL_VERSION_2_1`. Groups: `AttributeType`, `UniformType`. */
-export const FLOAT_MAT3x4 = 0x8b68;
+export const FLOAT_MAT3X4 = 0x8b68;
 
 /** `GL_FLOAT_MAT4` — provided by `GL_VERSION_2_0`. Groups: `AttributeType`, `UniformType`. */
 export const FLOAT_MAT4 = 0x8b5c;
 
 /** `GL_FLOAT_MAT4x2` — provided by `GL_VERSION_2_1`. Groups: `AttributeType`, `UniformType`. */
-export const FLOAT_MAT4x2 = 0x8b69;
+export const FLOAT_MAT4X2 = 0x8b69;
 
 /** `GL_FLOAT_MAT4x3` — provided by `GL_VERSION_2_1`. Groups: `AttributeType`, `UniformType`. */
-export const FLOAT_MAT4x3 = 0x8b6a;
+export const FLOAT_MAT4X3 = 0x8b6a;
 
 /** `GL_FLOAT_VEC2` — provided by `GL_VERSION_2_0`. Groups: `AttributeType`, `UniformType`. */
 export const FLOAT_VEC2 = 0x8b50;
