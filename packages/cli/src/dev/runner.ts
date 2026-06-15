@@ -46,7 +46,6 @@ export type DevServer = {
  */
 export type DevRunnerDeps = {
     createServer(config: InlineConfig): Promise<DevServer>;
-    whenStopped(): Promise<void>;
     getApplicationId(): string | null;
     getConfiguredApplicationId(root: string): Promise<string | undefined>;
     startMcpClient(
@@ -54,9 +53,9 @@ export type DevRunnerDeps = {
         loadAppModule: (id: string) => Promise<Record<string, unknown>>,
     ): Promise<unknown>;
     stopMcpClient(): void;
-    installApplicationTeardown(
+    installApplicationLifecycle(
         loadAppModule: (id: string) => Promise<Record<string, unknown>>,
-        onTeardown: (runDefaultTeardown: () => void) => void,
+        onQuit: (runDefaultQuit: () => void) => void,
     ): Promise<void>;
     performRefresh(): void;
     isReactRefreshBoundary(module: Record<string, unknown>): boolean;
@@ -178,15 +177,6 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
         const refreshTrackingDeps: DevRunnerDeps = { ...deps, performRefresh: refreshTracker.performRefresh };
 
         let isShuttingDown = false;
-        deps.whenStopped()
-            .then(async () => {
-                isShuttingDown = true;
-                deps.stopMcpClient();
-                await server.close();
-            })
-            .catch((error: unknown) => {
-                console.error("[gtkx-dev-runner] Error closing server:", error);
-            });
 
         server.watcher.on("change", (changedPath) => {
             if (isShuttingDown) return;
@@ -198,16 +188,21 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
         deps.log(`Loading entry: ${entryPath}`);
         await server.ssrLoadModule(entryPath);
 
-        await deps.installApplicationTeardown(
+        await deps.installApplicationLifecycle(
             (id) => server.ssrLoadModule(id),
-            (runDefaultTeardown) => {
+            (runDefaultQuit) => {
                 if (isShuttingDown) return;
                 if (refreshTracker.isRefreshing()) {
                     deps.log("Application unmounted during Fast Refresh - restarting dev runner...");
                     return deps.exit(RELOAD_EXIT_CODE);
                 }
+                isShuttingDown = true;
                 deps.log("Application quit - stopping dev runner...");
-                runDefaultTeardown();
+                runDefaultQuit();
+                deps.stopMcpClient();
+                server.close().catch((error: unknown) => {
+                    console.error("[gtkx-dev-runner] Error closing server:", error);
+                });
             },
         );
 

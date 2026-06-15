@@ -11,7 +11,7 @@ import {
     useLayoutEffect,
     useState,
 } from "react";
-import { runApplicationTeardown } from "../application-teardown.js";
+import { quitApplicationLifecycle, runApplicationLifecycle } from "../application-lifecycle.js";
 import { ApplicationContext, useApplication } from "../render.js";
 import { assignRef } from "../use-merged-refs.js";
 import { ActionScopeContext, APPLICATION_ACTION_SCOPE, WINDOW_ACTION_SCOPE } from "./internal/action-scope-context.js";
@@ -33,8 +33,8 @@ type ApplicationOf<P> = P extends { ref?: Ref<infer T | null> }
 
 /**
  * Captures an application instance through a callback ref, exposes it as state,
- * registers and activates it once it exists, and runs the application teardown
- * when the component unmounts, stopping the GTK runtime by default.
+ * registers and activates it once it exists, starts driving its run loop, and
+ * quits it when the component unmounts, stopping the GTK runtime by default.
  *
  * @typeParam T - The concrete application type (`Gtk.Application` or a subtype).
  * @param ref - Optional caller ref to forward the application to.
@@ -63,12 +63,12 @@ const useApplicationInstance = <T extends Gtk.Application>(
         if (!app.getIsRegistered()) app.register(null);
         app.activate();
         setRegisteredApp(app);
+        runApplicationLifecycle(app);
         return () => {
             app.off("activate", onActivate);
+            quitApplicationLifecycle(app);
         };
     }, [app]);
-
-    useLayoutEffect(() => () => runApplicationTeardown(), []);
 
     return [registeredApp, captureApp] as const;
 };

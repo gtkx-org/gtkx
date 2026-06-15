@@ -12,10 +12,10 @@ import * as GLib from "@gtkx/gi/glib";
 
 ## Running an application
 
-The GLib main loop runs on a dedicated thread that starts as soon as `@gtkx/ffi` is loaded, so a plain (non-React) application keeps the loop alive without you running it yourself. Drive the application through `register` and `activate` and build your widgets in the `activate` handler:
+The GLib main loop runs on a dedicated thread that starts as soon as `@gtkx/ffi` is loaded, but importing `@gtkx/ffi` does not, on its own, keep the process alive — a Node.js process that never runs an application exits cleanly once its work is done. Drive the application through `register` and `activate`, build your widgets in the `activate` handler, and call `runApplication` to keep the loop alive for the application's lifetime (the equivalent of `Gio.Application.run`):
 
 ```tsx
-import { stop } from "@gtkx/ffi";
+import { quitApplication, runApplication } from "@gtkx/ffi";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 
@@ -27,7 +27,7 @@ const app = new Gtk.Application({
 app.on("activate", () => {
     const window = new Gtk.ApplicationWindow({ application: app, title: "Hello" });
     window.on("close-request", () => {
-        void stop();
+        quitApplication(app);
         return false;
     });
     window.present();
@@ -35,11 +35,12 @@ app.on("activate", () => {
 
 app.register(null);
 app.activate();
+runApplication(app);
 ```
 
-Do **not** call `Gio.Application.run`: it blocks the JavaScript thread for the lifetime of the application, which prevents Node.js from servicing timers, promises, and — most importantly — signal handlers.
+Do **not** call `Gio.Application.run`: it blocks the JavaScript thread for the lifetime of the application, which prevents Node.js from servicing timers, promises, and — most importantly — signal handlers. `runApplication` keeps the process alive without blocking.
 
-`SIGINT` (Ctrl+C), `SIGTERM`, and `SIGHUP` are handled automatically: the runtime routes the signal through `stop` to quit the main loop and drain finalizers before exiting with the signal's conventional code. To shut down from code, import `stop` from `@gtkx/ffi` and call `stop()` directly. Embedders that own process signals can suppress the handlers by setting `GTKX_DISABLE_SHUTDOWN_HANDLERS=1`.
+`runApplication` installs `SIGINT` (Ctrl+C), `SIGTERM`, and `SIGHUP` handlers that quit the application through `quitApplication`, so the loop stops and the process exits cleanly. To shut down from code, call `quitApplication(app)` directly. Embedders that own process signals can suppress the handlers by setting `GTKX_DISABLE_SHUTDOWN_HANDLERS=1`. To run code during shutdown — before native dispatch tears down — register a callback with `onExit`.
 
 ## Async methods
 

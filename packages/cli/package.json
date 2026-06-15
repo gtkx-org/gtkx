@@ -74,7 +74,6 @@
         "@clack/prompts": "^1.5.1",
         "@gtkx/codegen": "workspace:*",
         "@gtkx/config": "workspace:*",
-        "@gtkx/ffi": "workspace:*",
         "@gtkx/mcp": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "@gtkx/vitest": "workspace:*",

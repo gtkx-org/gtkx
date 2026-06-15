@@ -71,14 +71,14 @@ export const emitNamespaceFunction = (context: ModuleContext, fn: GirFunction): 
 
 /**
  * Emits a namespace's self-bootstrap statements as module-load side effects:
- * a call to its zero-argument `init` entry point and a `whenStopped`
- * registration for its zero-argument `finalize` entry point.
+ * a call to its zero-argument `init` entry point and an `onExit` registration
+ * for its zero-argument `finalize` entry point.
  *
  * GTK-style libraries expose top-level `init`/`finalize` functions (`gtk_init`,
  * `adw_init`, `gtk_source_finalize`, …). Calling `init()` as the module is
  * imported initializes the library's runtime before any of its types are
  * touched — without it a `Gdk` display lookup can run before `gtk_init`.
- * Deferring `finalize` to `whenStopped` runs it during shutdown.
+ * Registering `finalize` with `onExit` runs it during shutdown.
  *
  * @param context - The module context
  * @param namespace - The namespace being generated
@@ -91,8 +91,8 @@ export const emitNamespaceBootstrap = (context: ModuleContext, namespace: GirNam
         if (fn.name === "init") {
             context.module.appendRegistration(`${exportName}();`);
         } else if (fn.name === "finalize") {
-            context.addRuntimeImport("whenStopped");
-            context.module.appendRegistration(`whenStopped().then(${exportName});`);
+            context.addRuntimeImport("onExit");
+            context.module.appendRegistration(`onExit(${exportName});`);
         }
     }
 };

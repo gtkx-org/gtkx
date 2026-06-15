@@ -71,11 +71,11 @@ handle.unmount();
 ```
 
 `quit()` unmounts every active root — the `render(null)` counterpart to `render`. Unmounting a tree that contains a
-`GtkApplication` or `AdwApplication` runs the application teardown, which stops the GTK runtime by default, so the
-process exits once the roots are gone.
+`GtkApplication` or `AdwApplication` quits the application, which stops the GTK runtime by default, so the process
+exits once the roots are gone.
 
 ::: tip
-A tree without an application component keeps the runtime alive. Stop it explicitly with `stop` from `@gtkx/ffi` —
+A non-React application keeps the loop alive with `runApplication` and stops it with `quitApplication` —
 see [FFI bindings](../ffi-bindings.md#running-an-application).
 :::
 
@@ -247,22 +247,23 @@ changes, so the dialog always presents against the window that is currently acti
 
 ## Shutdown
 
-`SIGINT` (Ctrl+C), `SIGTERM`, and `SIGHUP` are handled for you: the runtime routes the signal through `stop` from
-`@gtkx/ffi`, quits the main loop, drains finalizers, and exits with the signal's conventional code. A second `SIGINT`
-forces an immediate exit.
+A running application installs `SIGINT` (Ctrl+C), `SIGTERM`, and `SIGHUP` handlers for you: the signal quits the
+application, the main loop stops, and the process exits cleanly. A second `SIGINT` forces an immediate exit. The
+`GtkApplication`/`AdwApplication` components register these handlers on your behalf; a non-React application registers
+them by calling `runApplication`.
 
 Embedders that own process signals can opt out by setting `GTKX_DISABLE_SHUTDOWN_HANDLERS=1` in the environment
 before the process loads `@gtkx/ffi`.
 
-To run code when the runtime begins shutting down — whichever path triggered it — use `whenStopped`:
+To run code during shutdown — before native dispatch is torn down — register a callback with `onExit`:
 
 ```tsx
-import { whenStopped } from "@gtkx/ffi";
+import { onExit } from "@gtkx/ffi";
 
-whenStopped().then(() => {
+onExit(() => {
     console.log("Runtime stopping");
 });
 ```
 
-The promise settles exactly once, before native dispatch is torn down, making it the right place to release resources
-tied to the runtime's lifetime.
+Callbacks run synchronously, in registration order, when the process exits, making this the right place to release
+resources tied to the runtime's lifetime.

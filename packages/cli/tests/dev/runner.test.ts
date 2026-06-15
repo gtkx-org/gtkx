@@ -33,12 +33,11 @@ type Harness = {
     deps: DevRunnerDeps;
     server: FakeServer;
     createServer: ReturnType<typeof vi.fn>;
-    whenStopped: ReturnType<typeof vi.fn>;
     startMcp: ReturnType<typeof vi.fn>;
     stopMcp: ReturnType<typeof vi.fn>;
     performRefresh: ReturnType<typeof vi.fn>;
     isBoundary: ReturnType<typeof vi.fn>;
-    installAppTeardown: ReturnType<typeof vi.fn>;
+    installAppLifecycle: ReturnType<typeof vi.fn>;
     log: ReturnType<typeof vi.fn>;
     exit: ReturnType<typeof vi.fn>;
     plugins: Plugin[];
@@ -62,10 +61,9 @@ const buildHarness = (
     ] as Plugin[];
     const applicationId = overrides.applicationId ?? null;
     const createServer = vi.fn<DevRunnerDeps["createServer"]>(async () => server);
-    const whenStopped = vi.fn<DevRunnerDeps["whenStopped"]>(() => new Promise<void>(() => {}));
     const startMcp = vi.fn<DevRunnerDeps["startMcpClient"]>(async () => undefined);
     const stopMcp = vi.fn<DevRunnerDeps["stopMcpClient"]>();
-    const installAppTeardown = vi.fn<DevRunnerDeps["installApplicationTeardown"]>(async () => undefined);
+    const installAppLifecycle = vi.fn<DevRunnerDeps["installApplicationLifecycle"]>(async () => undefined);
     const performRefresh = vi.fn<DevRunnerDeps["performRefresh"]>();
     const isBoundary = vi.fn<DevRunnerDeps["isReactRefreshBoundary"]>((mod) =>
         overrides.isBoundary ? overrides.isBoundary(mod) : mod.__isBoundary === true,
@@ -74,12 +72,11 @@ const buildHarness = (
     const exit = vi.fn<DevRunnerDeps["exit"]>((() => undefined) as never);
     const deps: DevRunnerDeps = {
         createServer,
-        whenStopped,
         getApplicationId: () => applicationId,
         getConfiguredApplicationId: async () => overrides.configuredApplicationId,
         startMcpClient: startMcp,
         stopMcpClient: stopMcp,
-        installApplicationTeardown: installAppTeardown,
+        installApplicationLifecycle: installAppLifecycle,
         performRefresh,
         isReactRefreshBoundary: isBoundary,
         plugins: () => plugins,
@@ -91,10 +88,9 @@ const buildHarness = (
         plugins,
         applicationId,
         createServer,
-        whenStopped,
         startMcp,
         stopMcp,
-        installAppTeardown,
+        installAppLifecycle,
         performRefresh,
         isBoundary,
         log,
@@ -165,12 +161,12 @@ describe("createDevRunner (entry loading)", () => {
     });
 });
 
-type OnTeardown = (runDefaultTeardown: () => void) => void;
+type OnQuit = (runDefaultQuit: () => void) => void;
 
-const installedTeardown = (harness: Harness): OnTeardown => {
-    expect(harness.installAppTeardown).toHaveBeenCalledTimes(1);
-    const [, onTeardown] = harness.installAppTeardown.mock.calls[0] as [unknown, OnTeardown];
-    return onTeardown;
+const installedQuit = (harness: Harness): OnQuit => {
+    expect(harness.installAppLifecycle).toHaveBeenCalledTimes(1);
+    const [, onQuit] = harness.installAppLifecycle.mock.calls[0] as [unknown, OnQuit];
+    return onQuit;
 };
 
 const emitBoundaryChange = async (harness: Harness, file: string): Promise<void> => {
@@ -180,59 +176,72 @@ const emitBoundaryChange = async (harness: Harness, file: string): Promise<void>
     await emitChangeAndFlush(harness, file, 2);
 };
 
-describe("createDevRunner (application teardown)", () => {
-    it("runs the default teardown when the application unmounts outside a refresh pass", async () => {
+describe("createDevRunner (application quit)", () => {
+    it("runs the default quit and tears down the server when the application unmounts outside a refresh pass", async () => {
         const harness = buildHarness({ applicationId: "com.example.app" });
         const runDefault = vi.fn();
 
         await startRunner(harness);
-        installedTeardown(harness)(runDefault);
+        installedQuit(harness)(runDefault);
 
         expect(runDefault).toHaveBeenCalledTimes(1);
+        expect(harness.stopMcp).toHaveBeenCalled();
+        expect(harness.server.close).toHaveBeenCalled();
         expect(harness.exit).not.toHaveBeenCalled();
         expect(loggedMessages(harness).some((m) => m.includes("Application quit"))).toBe(true);
     });
 
-    it("restarts the runner when the application unmounts during a refresh pass", async () => {
+    it("logs an error when closing the server fails on quit", async () => {
+        const harness = buildHarness({ applicationId: "com.example.app" });
+        const error = new Error("close failed");
+        harness.server.close = vi.fn<DevServer["close"]>(async () => {
+            throw error;
+        });
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+        await startRunner(harness);
+        installedQuit(harness)(vi.fn());
+        await flushTick();
+
+        expect(errorSpy).toHaveBeenCalledWith("[gtkx-dev-runner] Error closing server:", error);
+        errorSpy.mockRestore();
+    });
+
+    const expectRefreshRestart = async (schedule: (fireQuit: () => void) => void): Promise<Harness> => {
         const harness = buildHarness({ applicationId: "com.example.app" });
         const runDefault = vi.fn();
 
         await startRunner(harness);
-        const onTeardown = installedTeardown(harness);
-        harness.performRefresh.mockImplementationOnce(() => onTeardown(runDefault));
+        const onQuit = installedQuit(harness);
+        harness.performRefresh.mockImplementationOnce(() => schedule(() => onQuit(runDefault)));
         await emitBoundaryChange(harness, "/x/y.ts");
 
         expect(harness.exit).toHaveBeenCalledWith(RELOAD_EXIT_CODE);
         expect(runDefault).not.toHaveBeenCalled();
+        return harness;
+    };
+
+    it("restarts the runner when the application unmounts during a refresh pass", async () => {
+        const harness = await expectRefreshRestart((fireQuit) => fireQuit());
+
         expect(loggedMessages(harness).some((m) => m.includes("restarting dev runner"))).toBe(true);
     });
 
     it("restarts the runner when the refresh-induced unmount flushes on a microtask", async () => {
-        const harness = buildHarness({ applicationId: "com.example.app" });
-        const runDefault = vi.fn();
-
-        await startRunner(harness);
-        const onTeardown = installedTeardown(harness);
-        harness.performRefresh.mockImplementationOnce(() => {
-            queueMicrotask(() => onTeardown(runDefault));
-        });
-        await emitBoundaryChange(harness, "/x/y.ts");
-
-        expect(harness.exit).toHaveBeenCalledWith(RELOAD_EXIT_CODE);
-        expect(runDefault).not.toHaveBeenCalled();
+        await expectRefreshRestart((fireQuit) => queueMicrotask(fireQuit));
     });
 });
 
-describe("createDevRunner (teardown outside a refresh pass)", () => {
+describe("createDevRunner (quit outside a refresh pass)", () => {
     it("treats an unmount after the refresh window has closed as a quit", async () => {
         const harness = buildHarness({ applicationId: "com.example.app" });
         const runDefault = vi.fn();
 
         await startRunner(harness);
-        const onTeardown = installedTeardown(harness);
+        const onQuit = installedQuit(harness);
         await emitBoundaryChange(harness, "/x/y.ts");
         await new Promise((resolve) => setTimeout(resolve, 0));
-        onTeardown(runDefault);
+        onQuit(runDefault);
 
         expect(runDefault).toHaveBeenCalledTimes(1);
         expect(harness.exit).not.toHaveBeenCalled();
@@ -240,16 +249,16 @@ describe("createDevRunner (teardown outside a refresh pass)", () => {
 
     it("ignores application unmounts while the runtime is shutting down", async () => {
         const harness = buildHarness({ applicationId: "com.example.app" });
-        const runDefault = vi.fn();
-        const { promise: whenStoppedPromise, resolve: resolveStopped } = Promise.withResolvers<void>();
-        harness.whenStopped.mockReturnValueOnce(whenStoppedPromise);
+        const firstQuit = vi.fn();
+        const secondQuit = vi.fn();
 
         await startRunner(harness);
-        resolveStopped();
-        await flushTick();
-        installedTeardown(harness)(runDefault);
+        const onQuit = installedQuit(harness);
+        onQuit(firstQuit);
+        onQuit(secondQuit);
 
-        expect(runDefault).not.toHaveBeenCalled();
+        expect(firstQuit).toHaveBeenCalledTimes(1);
+        expect(secondQuit).not.toHaveBeenCalled();
         expect(harness.exit).not.toHaveBeenCalled();
     });
 });
@@ -289,15 +298,12 @@ describe("createDevRunner (MCP lifecycle)", () => {
         expect(loggedMessages(harness).some((m) => m.includes("MCP client not started"))).toBe(true);
     });
 
-    it("tears down the dev server and MCP client when the runtime stops", async () => {
+    it("tears down the dev server and MCP client when the application quits", async () => {
         const harness = buildHarness();
-        const { promise: whenStoppedPromise, resolve: resolveStopped } = Promise.withResolvers<void>();
-        harness.whenStopped.mockReturnValueOnce(whenStoppedPromise);
 
         await startRunner(harness);
 
-        resolveStopped();
-        await flushTick();
+        installedQuit(harness)(vi.fn());
 
         expect(harness.stopMcp).toHaveBeenCalled();
         expect(harness.server.close).toHaveBeenCalled();

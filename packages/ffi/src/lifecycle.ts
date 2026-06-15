@@ -3,55 +3,27 @@ import { type GracefulShutdownHandle, installGracefulShutdown } from "@gtkx/util
 
 const KEEP_ALIVE_INTERVAL = 2147483647;
 
-let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
-let stopped = false;
+/**
+ * The minimal application surface {@link runApplication} and
+ * {@link quitApplication} drive: any `Gio.Application` (or subtype) satisfies
+ * it. Kept structural so `@gtkx/ffi` need not depend on the generated
+ * `@gtkx/gi` bindings.
+ */
+export type RunnableApplication = {
+    /** Releases the application's hold on the GTK main loop. */
+    quit(): void;
+};
 
-const { promise: stoppedPromise, resolve: resolveStopped } = Promise.withResolvers<void>();
+const shutdownCallbacks: (() => void)[] = [];
+let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
+let shutdownHandle: GracefulShutdownHandle | null = null;
+let stopped = false;
 
 const keepAlive = (): void => {
     keepAliveTimeout = setTimeout(keepAlive, KEEP_ALIVE_INTERVAL);
 };
 
-/**
- * Resolves when the GTK runtime begins shutting down.
- *
- * The returned promise settles exactly once, when {@link stop} is called and
- * before native dispatch is torn down. Generated namespace modules register
- * their library finalizers on it; application code may also use it to release
- * resources tied to the runtime's lifetime, such as a dev server.
- *
- * @example
- * ```tsx
- * import { whenStopped } from "@gtkx/ffi";
- *
- * whenStopped().then(() => {
- *   console.log("Runtime stopping");
- * });
- * ```
- *
- * @see {@link stop}
- */
-export const whenStopped = (): Promise<void> => stoppedPromise;
-
-/**
- * Shuts down the GTK runtime.
- *
- * Resolves the {@link whenStopped} promise so registered library finalizers
- * run, awaits them, then stops native dispatch and clears the keep-alive timer
- * so the Node.js process can exit cleanly. Subsequent calls are no-ops. Once
- * stopped, no further FFI calls may be made.
- *
- * @see {@link whenStopped}
- */
-export const stop = async (): Promise<void> => {
-    if (stopped) return;
-    stopped = true;
-
-    resolveStopped();
-    await stoppedPromise;
-
-    nativeStop();
-
+const clearKeepAlive = (): void => {
     if (keepAliveTimeout) {
         clearTimeout(keepAliveTimeout);
         keepAliveTimeout = null;
@@ -59,26 +31,98 @@ export const stop = async (): Promise<void> => {
 };
 
 /**
- * Installs `SIGINT`/`SIGTERM`/`SIGHUP` handlers that shut the runtime down by
- * routing the signal through {@link stop}.
+ * Registers a callback to run during shutdown, before native dispatch is torn
+ * down.
+ *
+ * Generated namespace modules register their library finalizers here; callbacks
+ * run synchronously, in registration order, when the Node.js process exits.
+ * Application code may also use it to release resources tied to the runtime's
+ * lifetime.
+ *
+ * @param callback - The shutdown callback to run before native dispatch stops.
+ *
+ * @example
+ * ```tsx
+ * import { onExit } from "@gtkx/ffi";
+ *
+ * onExit(() => {
+ *   console.log("Runtime stopping");
+ * });
+ * ```
+ */
+export const onExit = (callback: () => void): void => {
+    shutdownCallbacks.push(callback);
+};
+
+const stop = (): void => {
+    if (stopped) return;
+    stopped = true;
+
+    for (const callback of shutdownCallbacks) callback();
+
+    nativeStop();
+    clearKeepAlive();
+};
+
+process.on("exit", stop);
+
+/**
+ * Starts driving an application's run loop, mirroring `Gio.Application.run`.
+ *
+ * Keeps the Node.js event loop alive so the GLib main loop on the dedicated
+ * native thread keeps iterating, and — unless `GTKX_DISABLE_SHUTDOWN_HANDLERS`
+ * is set to `"1"` — installs `SIGINT`/`SIGTERM`/`SIGHUP` handlers that quit the
+ * application through {@link quitApplication}. Importing `@gtkx/ffi` alone does
+ * not keep the process alive: only a running application does, so a process
+ * that never calls this exits cleanly once its work is done.
  *
  * The GLib main loop runs on a dedicated thread, so the Node.js event loop
- * stays responsive and these handlers fire on the JS thread. A plain
- * (non-React) CLI app therefore quits its loop cleanly on Ctrl+C, provided it
- * drives the application through `activate` rather than blocking the JS thread
- * in `Gio.Application.run`. The first signal drains finalizers and quits the
- * loop before the process exits with the signal's conventional code; a second
- * `SIGINT` forces an immediate exit.
+ * stays responsive and the signal handlers fire on the JS thread. `@gtkx/react`
+ * calls this when an application component mounts; a plain (non-React) CLI app
+ * calls it after constructing and activating its application.
  *
- * Called automatically when this module loads unless
- * `GTKX_DISABLE_SHUTDOWN_HANDLERS` is set to `"1"`.
+ * @param application - The application whose run loop to drive.
  *
- * @see {@link stop}
+ * @see {@link quitApplication}
+ *
+ * @example
+ * ```tsx
+ * import { runApplication } from "@gtkx/ffi";
+ *
+ * runApplication(app);
+ * ```
  */
-const installShutdownHandlers = (): GracefulShutdownHandle => installGracefulShutdown({ onSignal: () => stop() });
+export const runApplication = (application: RunnableApplication): void => {
+    if (keepAliveTimeout === null) keepAlive();
+    if (shutdownHandle === null && process.env.GTKX_DISABLE_SHUTDOWN_HANDLERS !== "1") {
+        shutdownHandle = installGracefulShutdown({ onSignal: () => quitApplication(application) });
+    }
+};
 
-if (process.env.GTKX_DISABLE_SHUTDOWN_HANDLERS !== "1") {
-    installShutdownHandlers();
-}
-
-keepAlive();
+/**
+ * Quits a running application, mirroring `Gio.Application.quit`.
+ *
+ * Releases the application's hold on the GTK main loop, stops keeping the
+ * Node.js event loop alive, and removes the shutdown signal handlers installed
+ * by {@link runApplication}. Once nothing else holds the event loop the process
+ * exits cleanly, at which point the callbacks registered with {@link onExit}
+ * run and native dispatch is torn down. `@gtkx/react` calls this when an
+ * application component unmounts.
+ *
+ * @param application - The application to quit.
+ *
+ * @see {@link runApplication}
+ *
+ * @example
+ * ```tsx
+ * import { quitApplication } from "@gtkx/ffi";
+ *
+ * quitApplication(app);
+ * ```
+ */
+export const quitApplication = (application: RunnableApplication): void => {
+    application.quit();
+    clearKeepAlive();
+    shutdownHandle?.uninstall();
+    shutdownHandle = null;
+};

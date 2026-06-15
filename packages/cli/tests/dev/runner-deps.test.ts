@@ -8,14 +8,9 @@ const hoisted = vi.hoisted(() => ({
     startMcpClient: vi.fn(async () => undefined),
     stopMcpClient: vi.fn(),
     setTestingModuleLoader: vi.fn(),
-    whenStopped: vi.fn(() => new Promise<void>(() => {})),
     performRefresh: vi.fn(),
     isReactRefreshBoundary: vi.fn(() => false),
     createServer: vi.fn(async () => ({}) as unknown),
-}));
-
-vi.mock("@gtkx/ffi", () => ({
-    whenStopped: hoisted.whenStopped,
 }));
 
 vi.mock("@gtkx/gi/gio", () => ({
@@ -51,7 +46,6 @@ describe("defaultDevRunnerDeps (wiring)", () => {
         const deps = defaultDevRunnerDeps();
 
         expect(deps.createServer).toBe(hoisted.createServer);
-        expect(deps.whenStopped).toBe(hoisted.whenStopped);
         expect(deps.stopMcpClient).toBe(hoisted.stopMcpClient);
         expect(deps.performRefresh).toBe(hoisted.performRefresh);
         expect(deps.isReactRefreshBoundary).toBe(hoisted.isReactRefreshBoundary);
@@ -71,20 +65,25 @@ describe("defaultDevRunnerDeps (wiring)", () => {
         expect(loadAppModule).toHaveBeenCalledWith("@gtkx/testing");
     });
 
-    it("installs a teardown that passes the app-graph default teardown to the runner callback", async () => {
+    it("installs a lifecycle whose quit forwards the app-graph default quit to the runner callback", async () => {
         const deps = defaultDevRunnerDeps();
-        const setApplicationTeardown = vi.fn();
-        const defaultApplicationTeardown = vi.fn();
-        const loadAppModule = vi.fn(async () => ({ setApplicationTeardown, defaultApplicationTeardown }));
-        const onTeardown = vi.fn();
+        const setApplicationLifecycle = vi.fn();
+        const defaultApplicationLifecycle = { quit: vi.fn() };
+        const loadAppModule = vi.fn(async () => ({ setApplicationLifecycle, defaultApplicationLifecycle }));
+        const onQuit = vi.fn();
 
-        await deps.installApplicationTeardown(loadAppModule, onTeardown);
+        await deps.installApplicationLifecycle(loadAppModule, onQuit);
 
         expect(loadAppModule).toHaveBeenCalledWith("@gtkx/react");
-        expect(setApplicationTeardown).toHaveBeenCalledTimes(1);
-        const installed = setApplicationTeardown.mock.calls[0]?.[0] as () => void;
-        installed();
-        expect(onTeardown).toHaveBeenCalledWith(defaultApplicationTeardown);
+        expect(setApplicationLifecycle).toHaveBeenCalledTimes(1);
+        const installed = setApplicationLifecycle.mock.calls[0]?.[0] as { quit: (application: unknown) => void };
+        const app = { quit: vi.fn() };
+        installed.quit(app);
+
+        expect(onQuit).toHaveBeenCalledTimes(1);
+        const runDefaultQuit = onQuit.mock.calls[0]?.[0] as () => void;
+        runDefaultQuit();
+        expect(defaultApplicationLifecycle.quit).toHaveBeenCalledWith(app);
     });
 });
 

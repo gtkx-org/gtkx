@@ -1,4 +1,4 @@
-import { setApplicationTeardown, setDeferredFlushWrapper } from "@gtkx/react";
+import { setApplicationLifecycle, setDeferredFlushWrapper } from "@gtkx/react";
 import * as React from "react";
 import { act as reactAct } from "react";
 
@@ -111,4 +111,4 @@ setDeferredFlushWrapper((flush) => {
     });
 });
 
-setApplicationTeardown(() => {});
+setApplicationLifecycle({ run: () => {}, quit: () => {} });

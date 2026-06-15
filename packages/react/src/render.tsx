@@ -67,9 +67,9 @@ export type RenderHandle = {
     /**
      * Unmounts the tree, restores the reconciler error handler captured at
      * mount time, and frees the container. When the tree contains a
-     * {@link GtkApplication} or {@link AdwApplication}, its unmount runs the
-     * application teardown, which stops the GTK runtime by default. Calling
-     * twice is a no-op.
+     * {@link GtkApplication} or {@link AdwApplication}, its unmount quits the
+     * application, which stops the GTK runtime by default. Calling twice is a
+     * no-op.
      */
     unmount(): void;
 };
@@ -162,13 +162,11 @@ export const render = (element: ReactNode): RenderHandle => {
  *
  * Unmounts every active render root and restores their reconciler error
  * handlers — the `render(null)` counterpart to {@link render}. Unmounting a
- * tree that contains a {@link GtkApplication} or {@link AdwApplication} runs
- * the application teardown, which stops the GTK runtime by default, so the
- * process exits once the roots are gone. A tree without an application
- * component keeps the runtime alive; stop it explicitly with `stop` from
- * `@gtkx/ffi`. Typically called from the main window's `onCloseRequest`
- * handler, returning `true` so GTK's native close is vetoed and the React
- * tree controls the teardown.
+ * tree that contains a {@link GtkApplication} or {@link AdwApplication} quits
+ * the application, which stops the GTK runtime by default, so the process exits
+ * once the roots are gone. Typically called from the main window's
+ * `onCloseRequest` handler, returning `true` so GTK's native close is vetoed
+ * and the React tree controls the teardown.
  *
  * @example
  * ```tsx

@@ -181,9 +181,6 @@ importers:
       '@gtkx/config':
         specifier: workspace:*
         version: link:../config
-      '@gtkx/ffi':
-        specifier: workspace:*
-        version: link:../ffi
       '@gtkx/mcp':
         specifier: workspace:*
         version: link:../mcp

@@ -1,5 +1,4 @@
 import { loadResolvedGtkxConfig } from "@gtkx/config";
-import { whenStopped } from "@gtkx/ffi";
 import * as Gio from "@gtkx/gi/gio";
 import { createServer } from "vite";
 import { startMcpClient, stopMcpClient } from "../mcp/index.js";
@@ -28,7 +27,6 @@ import type { DevRunnerDeps } from "./runner.js";
  */
 export const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     createServer,
-    whenStopped,
     getApplicationId: () => Gio.Application.getDefault()?.applicationId ?? null,
     getConfiguredApplicationId: async (root: string) => (await loadResolvedGtkxConfig(root)).applicationId,
     startMcpClient: (applicationId, loadAppModule) => {
@@ -36,12 +34,14 @@ export const defaultDevRunnerDeps = (): DevRunnerDeps => ({
         return startMcpClient(applicationId);
     },
     stopMcpClient,
-    installApplicationTeardown: async (loadAppModule, onTeardown) => {
+    installApplicationLifecycle: async (loadAppModule, onQuit) => {
         const react = (await loadAppModule("@gtkx/react")) as {
-            setApplicationTeardown(next: (() => void) | null): void;
-            defaultApplicationTeardown(): void;
+            setApplicationLifecycle(next: { quit(application: unknown): void } | null): void;
+            defaultApplicationLifecycle: { quit(application: unknown): void };
         };
-        react.setApplicationTeardown(() => onTeardown(react.defaultApplicationTeardown));
+        react.setApplicationLifecycle({
+            quit: (application) => onQuit(() => react.defaultApplicationLifecycle.quit(application)),
+        });
     },
     performRefresh,
     isReactRefreshBoundary,
