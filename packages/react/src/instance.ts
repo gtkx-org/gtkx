@@ -8,7 +8,7 @@
  * prop diffing in `apply-props`; the reconciler ({@link "./host-config"}) only
  * manages the children array and routes commits to those tables.
  */
-import { getNativeClassByName } from "@gtkx/ffi";
+import { getNativeClass, typeFromName } from "@gtkx/ffi";
 import { omit } from "@gtkx/utils";
 import { createContainerWithProperties } from "./nodes/internal/construct.js";
 import { getSignalStore, type SignalStore } from "./nodes/internal/signal-store.js";
@@ -70,7 +70,7 @@ export interface Instance {
  * @param type - JSX intrinsic element name, e.g. `"GtkButton"`.
  */
 export const resolveContainerClass = (type: string): BackingInstanceClass | null =>
-    getNativeClassByName(type) as BackingInstanceClass | null;
+    getNativeClass(typeFromName(type)) as BackingInstanceClass | null;
 
 const constructBacking = (type: string, props: Props): BackingInstance => {
     const skip = CONSTRUCTION_SKIP_PROPS[type];

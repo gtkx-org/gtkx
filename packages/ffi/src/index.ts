@@ -40,7 +40,7 @@ export { t } from "./helpers.js";
 export * from "./lifecycle.js";
 export { registerClass } from "./register-class.js";
 export { registerNativeClass } from "./register-native-class.js";
-export { getHandle, getNativeClassByName, setHandle, tryGetHandle, wrapHandle } from "./registry.js";
+export { getHandle, getNativeClass, setHandle, tryGetHandle, wrapHandle } from "./registry.js";
 export {
     connectGobjectSignal,
     emitGobjectSignal,

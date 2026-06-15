@@ -142,30 +142,22 @@ export function wrapHandle(handle: NativeHandle | null | undefined, cls?: AnyCla
 }
 
 /**
- * Gets a registered class by its GLib type identifier.
+ * Gets the registered wrapper class for a GLib type identifier.
  *
- * @param gtype - The GLib type identifier
- * @returns The registered class, or null if not found
+ * When starting from a GLib type name (such as a JSX intrinsic-element name),
+ * resolve it to a `GType` with {@link typeFromName} first; an unregistered or
+ * unknown type yields `null`, so callers operating on free-form names can treat
+ * a missing class as "not a GLib type".
+ *
+ * @param gtype - The GLib type identifier.
+ * @returns The registered class, or `null` if none is registered for `gtype`.
+ * @example
+ * ```ts
+ * const ButtonClass = getNativeClass(typeFromName("GtkButton"));
+ * ```
  */
 export function getNativeClass(gtype: GType): AnyClass | null {
     return classRegistry.get(gtype) ?? null;
-}
-
-/**
- * Looks up the registered native class for a GLib type name.
- *
- * Resolves the runtime `GType` for `name` via `g_type_from_name` and returns
- * the class registered under it. Returns `null` when `name` is not a
- * registered GLib type — useful when callers operate on free-form strings
- * (such as JSX intrinsic-element names) where the input may legitimately
- * refer to a non-GLib element.
- *
- * @param name - GLib type name, e.g. `"GtkButton"` or a custom subclass
- *   name passed as `gtypeName` to {@link registerClass}.
- */
-export function getNativeClassByName(name: string): AnyClass | null {
-    const gtype = typeFromName(name);
-    return gtype === G_TYPE_INVALID ? null : getNativeClass(gtype);
 }
 
 /**

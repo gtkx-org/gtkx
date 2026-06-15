@@ -1,4 +1,4 @@
-import { getNativeClassByName } from "@gtkx/ffi";
+import { getNativeClass, typeFromName } from "@gtkx/ffi";
 import type { BackingInstance, Props } from "../../types.js";
 
 /**
@@ -14,7 +14,7 @@ import type { BackingInstance, Props } from "../../types.js";
  *   up, all others are ignored at construction
  */
 export function createContainerWithProperties(typeName: string, props: Props): BackingInstance {
-    const cls = getNativeClassByName(typeName);
+    const cls = getNativeClass(typeFromName(typeName));
     if (!cls) {
         throw new Error(`createContainerWithProperties: no registered class for GLib type '${typeName}'`);
     }
