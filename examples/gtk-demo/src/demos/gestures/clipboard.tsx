@@ -111,7 +111,7 @@ function useClipboardTextures() {
 const getClipboard = () => Gdk.Display.getDefault()?.getClipboard() ?? null;
 
 const computeCanPaste = (formats: Gdk.ContentFormats): boolean =>
-    formats.containGtype(GObject.Type.STRING) ||
+    formats.containGtype(GObject.TYPE_STRING) ||
     formats.containGtype(gdkRgbaType) ||
     formats.containGtype(gdkPaintableType) ||
     formats.containGtype(gfileType) ||
@@ -121,7 +121,7 @@ function useDragProviders(state: ClipboardState) {
     const { sourceText, sourceColor, selectedImage, sourceFile } = state;
 
     const createTextDragProvider = () =>
-        Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.Type.STRING, (v) => v.setString(sourceText)));
+        Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.TYPE_STRING, (v) => v.setString(sourceText)));
 
     const createColorDragProvider = () =>
         Gdk.ContentProvider.newForValue(GObject.buildValue(gdkRgbaType, (v) => v.setBoxed(sourceColor)));
@@ -153,7 +153,7 @@ const imagePathForIndex = (index: number) => {
 const copyTextToClipboard = (clipboard: Gdk.Clipboard, sourceText: string) =>
     setClipboardValue(
         clipboard,
-        GObject.buildValue(GObject.Type.STRING, (v) => v.setString(sourceText)),
+        GObject.buildValue(GObject.TYPE_STRING, (v) => v.setString(sourceText)),
     );
 
 const copyColorToClipboard = (clipboard: Gdk.Clipboard, sourceColor: Gdk.RGBA) =>
@@ -276,7 +276,7 @@ const tryPasteText = async (
     formats: Gdk.ContentFormats,
     setPastedContent: SetPastedContent,
 ): Promise<boolean> => {
-    if (!formats.containGtype(GObject.Type.STRING)) return false;
+    if (!formats.containGtype(GObject.TYPE_STRING)) return false;
     const text = await clipboard.readTextAsync(null);
     if (text === null) return false;
     setPastedContent({ type: "Text", text });
@@ -298,7 +298,7 @@ const openFileDialog = async (
 };
 
 const handleObjectDrop = (value: GObject.Value, setPastedContent: SetPastedContent): boolean => {
-    if (!GObject.typeCheckValueHolds(value, GObject.Type.OBJECT)) return false;
+    if (!GObject.typeCheckValueHolds(value, GObject.TYPE_OBJECT)) return false;
     const obj = value.getObject();
     if (!obj) return false;
     if (GObject.typeIsA(obj.__gtype__, gdkPaintableType)) {
@@ -321,7 +321,7 @@ const handleColorDrop = (value: GObject.Value, setPastedContent: SetPastedConten
 };
 
 const handleTextDrop = (value: GObject.Value, setPastedContent: SetPastedContent): boolean => {
-    if (!GObject.typeCheckValueHolds(value, GObject.Type.STRING)) return false;
+    if (!GObject.typeCheckValueHolds(value, GObject.TYPE_STRING)) return false;
     const text = value.getString();
     if (!text) return false;
     setPastedContent({ type: "Text", text });
@@ -582,7 +582,7 @@ const ClipboardPasteSection = ({ pastedContent, canPaste, onPaste, onDrop }: Cli
         spacing={12}
         addController={
             <GtkDropTarget
-                types={[gdkTextureType, gdkPaintableType, gfileType, gdkRgbaType, GObject.Type.STRING]}
+                types={[gdkTextureType, gdkPaintableType, gfileType, gdkRgbaType, GObject.TYPE_STRING]}
                 actions={Gdk.DragAction.COPY}
                 onDrop={onDrop}
             />

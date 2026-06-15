@@ -170,7 +170,7 @@ function ColorSwatch({ color }: Readonly<{ color: string }>) {
 
 function CssPatternSwatch({ id, cssClass }: Readonly<{ id: string; cssClass: string }>) {
     const createClassProvider = () => {
-        return Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.Type.STRING, (v) => v.setString(cssClass)));
+        return Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.TYPE_STRING, (v) => v.setString(cssClass)));
     };
 
     return (
@@ -340,7 +340,7 @@ function useItemEditHandlers(args: DndHandlerArgs) {
     const { setItems } = args;
 
     const createContentProvider = (itemId: string) =>
-        Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.Type.STRING, (v) => v.setString(itemId)));
+        Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.TYPE_STRING, (v) => v.setString(itemId)));
 
     const toggleEditing = (itemId: string) =>
         args.setEditState(args.contextMenu?.itemId === itemId ? null : { itemId });
@@ -522,7 +522,7 @@ const DndItem = ({ item, dnd }: { item: CanvasItem; dnd: DndState }) => {
                             actions={Gdk.DragAction.MOVE}
                         />
                         <GtkDropTarget
-                            types={[gdkRgbaType, GObject.Type.STRING]}
+                            types={[gdkRgbaType, GObject.TYPE_STRING]}
                             actions={Gdk.DragAction.COPY}
                             onMotion={() => Gdk.DragAction.COPY}
                             onDrop={(value: GObject.Value) => handlers.handleItemColorDrop(item.id, value)}
@@ -630,7 +630,7 @@ const DndTrashZone = ({ boxRef, trashHovering, setTrashHovering, handleTrashDrop
                 ]}
                 addController={
                     <GtkDropTarget
-                        types={[GObject.Type.STRING]}
+                        types={[GObject.TYPE_STRING]}
                         actions={Gdk.DragAction.MOVE}
                         onEnter={() => {
                             setTrashHovering(true);
@@ -691,7 +691,7 @@ const DndDemo = () => {
                 addController={
                     <>
                         <GtkDropTarget
-                            types={[GObject.Type.STRING]}
+                            types={[GObject.TYPE_STRING]}
                             actions={Gdk.DragAction.MOVE}
                             onMotion={() => Gdk.DragAction.MOVE}
                             onDrop={(value: GObject.Value, dropX: number, dropY: number) =>

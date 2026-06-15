@@ -39,13 +39,6 @@ export const GVALUE_SIZE = 24;
 export const GVALUE_BORROWED: FfiType = t.boxed("GValue", "borrowed", LIBGOBJECT, "g_value_get_type");
 
 /**
- * The invalid GType sentinel (`G_TYPE_INVALID`), the numeric `0` the GObject
- * type system reserves for "no type". Returned by type-resolution helpers
- * when a class, parent, or instance has no associated GType.
- */
-export const G_TYPE_INVALID: GType = 0;
-
-/**
  * Narrows a marshaled FFI result to a `GType`.
  *
  * A `g_*_get_type` FFI call yields its numeric `gsize` as an untyped
@@ -148,12 +141,17 @@ export function typeName(type: GType): string | null {
  */
 
 /**
- * The fundamental `GType` of an uninitialized or invalid value.
+ * The invalid `GType` sentinel — the numeric `0` the GObject type system
+ * reserves for "no type". Type-resolution helpers (`typeFromName`,
+ * `typeParent`, …) return it when a class, parent, or instance has no
+ * associated `GType`.
  */
-export const TYPE_INVALID: GType = typeFromName("void");
+export const TYPE_INVALID: GType = 0;
 
 /**
  * The fundamental `GType` denoting the absence of a typed value.
+ *
+ * @public
  */
 export const TYPE_NONE: GType = typeFromName("void");
 
@@ -254,6 +252,8 @@ export const TYPE_OBJECT: GType = typeFromName("GObject");
 
 /**
  * The fundamental `GType` representing a `GType` identifier itself.
+ *
+ * @public
  */
 export const TYPE_GTYPE: GType = typeFromName("GType");
 
@@ -264,74 +264,7 @@ export const TYPE_VARIANT: GType = typeFromName("GVariant");
 
 /**
  * The fundamental `GType` of a Unicode code point, mapped to `guint`.
+ *
+ * @public
  */
 export const TYPE_UNICHAR: GType = typeFromName("guint");
-
-/**
- * Fundamental GLib type constants, addressed by short member name.
- *
- * Each member aliases the matching `TYPE_*` constant from
- * {@link ./fundamental-types}, the single source of truth for fundamental
- * `GType` resolution. Both spellings — `Type.STRING` and `TYPE_STRING` — name
- * the identical value and expose the identical member set.
- *
- * Names a `GValue`'s fundamental type when initializing or inspecting one.
- *
- * @example
- * ```ts
- * import { Type } from "@gtkx/ffi";
- *
- * console.log(Type.STRING); // GType for gchararray
- * ```
- */
-export const Type: Readonly<{
-    INVALID: GType;
-    NONE: GType;
-    INTERFACE: GType;
-    CHAR: GType;
-    UCHAR: GType;
-    BOOLEAN: GType;
-    INT: GType;
-    UINT: GType;
-    LONG: GType;
-    ULONG: GType;
-    INT64: GType;
-    UINT64: GType;
-    ENUM: GType;
-    FLAGS: GType;
-    FLOAT: GType;
-    DOUBLE: GType;
-    STRING: GType;
-    POINTER: GType;
-    BOXED: GType;
-    PARAM: GType;
-    OBJECT: GType;
-    GTYPE: GType;
-    VARIANT: GType;
-    UNICHAR: GType;
-}> = Object.freeze({
-    INVALID: TYPE_INVALID,
-    NONE: TYPE_NONE,
-    INTERFACE: TYPE_INTERFACE,
-    CHAR: TYPE_CHAR,
-    UCHAR: TYPE_UCHAR,
-    BOOLEAN: TYPE_BOOLEAN,
-    INT: TYPE_INT,
-    UINT: TYPE_UINT,
-    LONG: TYPE_LONG,
-    ULONG: TYPE_ULONG,
-    INT64: TYPE_INT64,
-    UINT64: TYPE_UINT64,
-    ENUM: TYPE_ENUM,
-    FLAGS: TYPE_FLAGS,
-    FLOAT: TYPE_FLOAT,
-    DOUBLE: TYPE_DOUBLE,
-    STRING: TYPE_STRING,
-    POINTER: TYPE_POINTER,
-    BOXED: TYPE_BOXED,
-    PARAM: TYPE_PARAM,
-    OBJECT: TYPE_OBJECT,
-    GTYPE: TYPE_GTYPE,
-    VARIANT: TYPE_VARIANT,
-    UNICHAR: TYPE_UNICHAR,
-});

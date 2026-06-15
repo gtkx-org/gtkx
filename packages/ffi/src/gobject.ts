@@ -22,13 +22,31 @@ import {
 } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import {
-    G_TYPE_INVALID,
     type GType,
     GVALUE_BORROWED,
     GVALUE_SIZE,
     gtypeFromFfi,
     LIBGOBJECT,
-    Type,
+    TYPE_BOOLEAN,
+    TYPE_BOXED,
+    TYPE_CHAR,
+    TYPE_DOUBLE,
+    TYPE_ENUM,
+    TYPE_FLAGS,
+    TYPE_FLOAT,
+    TYPE_INT,
+    TYPE_INT64,
+    TYPE_INVALID,
+    TYPE_LONG,
+    TYPE_OBJECT,
+    TYPE_PARAM,
+    TYPE_POINTER,
+    TYPE_STRING,
+    TYPE_UCHAR,
+    TYPE_UINT,
+    TYPE_UINT64,
+    TYPE_ULONG,
+    TYPE_VARIANT,
     typeFromName,
     typeFundamental,
     typeName,
@@ -282,7 +300,7 @@ export function inoutBoxedFromFfi(ffiType: FfiType, boxed: object): GValue {
  */
 export function getGvalueBoxed(value: object): object | null {
     const gtype = valueGetType(value);
-    if (typeFundamental(gtype) !== Type.BOXED) {
+    if (typeFundamental(gtype) !== TYPE_BOXED) {
         return null;
     }
     const cls = getWrapperClass(gtype);
@@ -300,37 +318,37 @@ export function getGvalueBoxed(value: object): object | null {
 
 /** Creates a `GValue` initialized with a boolean. */
 function newFromBoolean(value: boolean): GValue {
-    return initValue(Type.BOOLEAN, (v) => v.setBoolean(value));
+    return initValue(TYPE_BOOLEAN, (v) => v.setBoolean(value));
 }
 
 /** Creates a `GValue` initialized with a signed 32-bit integer. */
 function newFromInt(value: number): GValue {
-    return initValue(Type.INT, (v) => v.setInt(value));
+    return initValue(TYPE_INT, (v) => v.setInt(value));
 }
 
 /** Creates a `GValue` initialized with an unsigned 32-bit integer. */
 function newFromUint(value: number): GValue {
-    return initValue(Type.UINT, (v) => v.setUint(value));
+    return initValue(TYPE_UINT, (v) => v.setUint(value));
 }
 
 /** Creates a `GValue` initialized with a signed long integer. */
 function newFromLong(value: number): GValue {
-    return initValue(Type.LONG, (v) => v.setLong(value));
+    return initValue(TYPE_LONG, (v) => v.setLong(value));
 }
 
 /** Creates a `GValue` initialized with an unsigned long integer. */
 function newFromUlong(value: number): GValue {
-    return initValue(Type.ULONG, (v) => v.setUlong(value));
+    return initValue(TYPE_ULONG, (v) => v.setUlong(value));
 }
 
 /** Creates a `GValue` initialized with a signed 64-bit integer. */
 function newFromInt64(value: number): GValue {
-    return initValue(Type.INT64, (v) => v.setInt64(value));
+    return initValue(TYPE_INT64, (v) => v.setInt64(value));
 }
 
 /** Creates a `GValue` initialized with an unsigned 64-bit integer. */
 function newFromUint64(value: number): GValue {
-    return initValue(Type.UINT64, (v) => v.setUint64(value));
+    return initValue(TYPE_UINT64, (v) => v.setUint64(value));
 }
 
 const g_value_set_int64_big = t.bind(
@@ -349,27 +367,27 @@ const g_value_set_uint64_big = t.bind(
 
 /** Creates a `GValue` initialized with a signed 64-bit integer from a bigint. */
 function newFromBigInt64(value: bigint | number): GValue {
-    return initValue(Type.INT64, (v) => g_value_set_int64_big(getHandle(v), value));
+    return initValue(TYPE_INT64, (v) => g_value_set_int64_big(getHandle(v), value));
 }
 
 /** Creates a `GValue` initialized with an unsigned 64-bit integer from a bigint. */
 function newFromBigUint64(value: bigint | number): GValue {
-    return initValue(Type.UINT64, (v) => g_value_set_uint64_big(getHandle(v), value));
+    return initValue(TYPE_UINT64, (v) => g_value_set_uint64_big(getHandle(v), value));
 }
 
 /** Creates a `GValue` initialized with a single-precision float. */
 function newFromFloat(value: number): GValue {
-    return initValue(Type.FLOAT, (v) => v.setFloat(value));
+    return initValue(TYPE_FLOAT, (v) => v.setFloat(value));
 }
 
 /** Creates a `GValue` initialized with a double-precision float. */
 function newFromDouble(value: number): GValue {
-    return initValue(Type.DOUBLE, (v) => v.setDouble(value));
+    return initValue(TYPE_DOUBLE, (v) => v.setDouble(value));
 }
 
 /** Creates a `GValue` initialized with a string (or `null`). */
 function newFromString(value: string | null): GValue {
-    return initValue(Type.STRING, (v) => v.setString(value));
+    return initValue(TYPE_STRING, (v) => v.setString(value));
 }
 
 /**
@@ -385,7 +403,7 @@ export function valueFromObject(value: object | null): GValue {
         const gtype: GType = getGobjectGtype(getHandle(value));
         v.init(gtype);
     } else {
-        v.init(Type.OBJECT);
+        v.init(TYPE_OBJECT);
     }
     v.setObject(value);
     return v;
@@ -403,7 +421,7 @@ function newFromStrv(value: string[]): GValue {
 
 /** Creates a `GValue` initialized with a `GVariant`. */
 function newFromVariant(value: object): GValue {
-    return initValue(Type.VARIANT, (v) => v.setVariant(value));
+    return initValue(TYPE_VARIANT, (v) => v.setVariant(value));
 }
 
 /** Creates a `GValue` initialized with an enum payload of the given `GType`. */
@@ -422,7 +440,7 @@ function resolveBoxedGtype(ffiType: FfiType): GType {
             return gtypeFromFfi(call(ffiType.library, ffiType.getTypeFn, [], t.uint64));
         }
         const gtype = typeFromName(ffiType.innerType);
-        if (gtype === G_TYPE_INVALID) {
+        if (gtype === TYPE_INVALID) {
             throw new Error(`Cannot resolve gtype for boxed type '${ffiType.innerType}'`);
         }
         return gtype;
@@ -430,7 +448,7 @@ function resolveBoxedGtype(ffiType: FfiType): GType {
     if (ffiType.type === "fundamental") {
         if (ffiType.typeName) {
             const gtype = typeFromName(ffiType.typeName);
-            if (gtype !== G_TYPE_INVALID) return gtype;
+            if (gtype !== TYPE_INVALID) return gtype;
         }
         throw new Error(`Cannot resolve gtype for fundamental type without a typeName`);
     }
@@ -443,7 +461,7 @@ type FfiFundamentalType = Extract<FfiType, { type: "fundamental" }>;
 
 function newFromEnumOrFlagsFfi(ffiType: FfiEnumOrFlagsType, value: unknown): GValue {
     const gtype = gtypeFromFfi(call(ffiType.library, ffiType.getTypeFn, [], t.uint64));
-    if (ffiType.type === "flags" || typeFundamental(gtype) === Type.FLAGS) {
+    if (ffiType.type === "flags" || typeFundamental(gtype) === TYPE_FLAGS) {
         return newFromFlags(gtype, value as number);
     }
     return newFromEnum(gtype, value as number);
@@ -549,44 +567,45 @@ function emptyValue(gtype: GType): GValue {
 /**
  * Resolves the concrete `GType` an FFI type descriptor denotes, the inverse of
  * the type half of {@link valueFromFfi}. Primitive descriptors map to their
- * fundamental {@link Type}; enum/flags and boxed/fundamental descriptors resolve
- * their registered `GType`; a string-array descriptor resolves `GStrv`.
+ * fundamental `GType` (a `TYPE_*` constant); enum/flags and boxed/fundamental
+ * descriptors resolve their registered `GType`; a string-array descriptor
+ * resolves `GStrv`.
  *
  * @param ffiType - The FFI type descriptor (rendered statically by codegen).
  */
 function gtypeFromFfiType(ffiType: FfiType): GType {
     switch (ffiType.type) {
         case "boolean":
-            return Type.BOOLEAN;
+            return TYPE_BOOLEAN;
         case "string":
-            return Type.STRING;
+            return TYPE_STRING;
         case "int8":
         case "int16":
         case "int32":
-            return Type.INT;
+            return TYPE_INT;
         case "uint8":
         case "uint16":
         case "uint32":
-            return Type.UINT;
+            return TYPE_UINT;
         case "int64":
         case "bigint64":
-            return Type.INT64;
+            return TYPE_INT64;
         case "uint64":
         case "biguint64":
-            return Type.UINT64;
+            return TYPE_UINT64;
         case "float32":
-            return Type.FLOAT;
+            return TYPE_FLOAT;
         case "float64":
-            return Type.DOUBLE;
+            return TYPE_DOUBLE;
         case "gobject":
-            return Type.OBJECT;
+            return TYPE_OBJECT;
         case "enum":
         case "flags":
             return gtypeFromFfi(call(ffiType.library, ffiType.getTypeFn, [], t.uint64));
         case "boxed":
             return resolveBoxedGtype(ffiType);
         case "fundamental":
-            return ffiType.typeName === "GVariant" ? Type.VARIANT : resolveBoxedGtype(ffiType);
+            return ffiType.typeName === "GVariant" ? TYPE_VARIANT : resolveBoxedGtype(ffiType);
         case "array":
             if (ffiType.itemType.type === "string" && ffiType.kind === "array") return getStrvGtype();
             throw new Error(`emptyValueFromFfi: unsupported array type ${ffiType.kind} of ${ffiType.itemType.type}`);
@@ -653,29 +672,29 @@ let fundamentalMarshallers: Map<GType, FundamentalMarshaller> | undefined;
  * an existing one is marshalled — is a one-line edit here rather than a change
  * spread across parallel write and read structures.
  *
- * Built lazily because every key is a {@link Type} member whose GType is
- * itself resolved on first access.
+ * Built lazily because every key is a `TYPE_*` fundamental constant whose GType
+ * is itself resolved on first access.
  */
 export function getFundamentalMarshallers(): Map<GType, FundamentalMarshaller> {
     fundamentalMarshallers ??= new Map<GType, FundamentalMarshaller>([
-        [Type.BOOLEAN, { to: (_g, v) => newFromBoolean(v as boolean), from: (v) => v.getBoolean() }],
-        [Type.INT, { to: (_g, v) => newFromInt(v as number), from: (v) => v.getInt() }],
-        [Type.UINT, { to: (_g, v) => newFromUint(v as number), from: (v) => v.getUint() }],
-        [Type.LONG, { to: (_g, v) => newFromLong(v as number), from: (v) => v.getLong() }],
-        [Type.ULONG, { to: (_g, v) => newFromUlong(v as number), from: (v) => v.getUlong() }],
-        [Type.INT64, { to: (_g, v) => newFromInt64(v as number), from: (v) => v.getInt64() }],
-        [Type.UINT64, { to: (_g, v) => newFromUint64(v as number), from: (v) => v.getUint64() }],
-        [Type.FLOAT, { to: (_g, v) => newFromFloat(v as number), from: (v) => v.getFloat() }],
-        [Type.DOUBLE, { to: (_g, v) => newFromDouble(v as number), from: (v) => v.getDouble() }],
-        [Type.STRING, { to: (_g, v) => newFromString(v as string | null), from: (v) => v.getString() }],
-        [Type.CHAR, { to: (g, v) => initValue(g, (val) => val.setSchar(v as number)), from: (v) => v.getSchar() }],
-        [Type.UCHAR, { to: (g, v) => initValue(g, (val) => val.setUchar(v as number)), from: (v) => v.getUchar() }],
-        [Type.ENUM, { to: (g, v) => newFromEnum(g, v as number), from: (v) => v.getEnum() }],
-        [Type.FLAGS, { to: (g, v) => newFromFlags(g, v as number), from: (v) => v.getFlags() }],
-        [Type.OBJECT, { to: (_g, v) => valueFromObject(v as object | null), from: (v) => v.getObject() }],
-        [Type.VARIANT, { to: (_g, v) => newFromVariant(v as object), from: (v) => v.getVariant() }],
+        [TYPE_BOOLEAN, { to: (_g, v) => newFromBoolean(v as boolean), from: (v) => v.getBoolean() }],
+        [TYPE_INT, { to: (_g, v) => newFromInt(v as number), from: (v) => v.getInt() }],
+        [TYPE_UINT, { to: (_g, v) => newFromUint(v as number), from: (v) => v.getUint() }],
+        [TYPE_LONG, { to: (_g, v) => newFromLong(v as number), from: (v) => v.getLong() }],
+        [TYPE_ULONG, { to: (_g, v) => newFromUlong(v as number), from: (v) => v.getUlong() }],
+        [TYPE_INT64, { to: (_g, v) => newFromInt64(v as number), from: (v) => v.getInt64() }],
+        [TYPE_UINT64, { to: (_g, v) => newFromUint64(v as number), from: (v) => v.getUint64() }],
+        [TYPE_FLOAT, { to: (_g, v) => newFromFloat(v as number), from: (v) => v.getFloat() }],
+        [TYPE_DOUBLE, { to: (_g, v) => newFromDouble(v as number), from: (v) => v.getDouble() }],
+        [TYPE_STRING, { to: (_g, v) => newFromString(v as string | null), from: (v) => v.getString() }],
+        [TYPE_CHAR, { to: (g, v) => initValue(g, (val) => val.setSchar(v as number)), from: (v) => v.getSchar() }],
+        [TYPE_UCHAR, { to: (g, v) => initValue(g, (val) => val.setUchar(v as number)), from: (v) => v.getUchar() }],
+        [TYPE_ENUM, { to: (g, v) => newFromEnum(g, v as number), from: (v) => v.getEnum() }],
+        [TYPE_FLAGS, { to: (g, v) => newFromFlags(g, v as number), from: (v) => v.getFlags() }],
+        [TYPE_OBJECT, { to: (_g, v) => valueFromObject(v as object | null), from: (v) => v.getObject() }],
+        [TYPE_VARIANT, { to: (_g, v) => newFromVariant(v as object), from: (v) => v.getVariant() }],
         [
-            Type.PARAM,
+            TYPE_PARAM,
             { to: (g, v) => initValue(g, (val) => val.setParam(v as object | null)), from: (v) => v.getParam() },
         ],
     ]);
@@ -820,23 +839,6 @@ const g_value_set_variant = t.bind(
 );
 const g_value_get_variant = t.bind(LIBGOBJECT, "g_value_get_variant", [{ type: GVALUE_BORROWED }], VARIANT_FUNDAMENTAL);
 
-let variantClass: AnyClass | undefined;
-
-/**
- * Supplies the `GLib.Variant` wrapper class used by {@link GValue.getVariant}.
- *
- * `GVariant` is a non-GObject fundamental with no registered `GType`, so the
- * registry cannot resolve its wrapper from a bare pointer the way it does for
- * GObjects. The `GObject.Value` override template registers the concrete class
- * here so the runtime can wrap variant payloads without importing generated
- * code.
- *
- * @param cls - The `GLib.Variant` wrapper class
- */
-export function setVariantClass(cls: AnyClass): void {
-    variantClass = cls;
-}
-
 /**
  * Low-level wrapper over a freshly allocated `GValue` struct.
  *
@@ -958,10 +960,11 @@ export class GValue {
     getVariant(): object | null {
         const result = g_value_get_variant(getHandle(this)) as NativeHandle | null;
         if (result === null) return null;
-        if (variantClass === undefined) {
+        const cls = getWrapperClass(TYPE_VARIANT);
+        if (cls === null) {
             throw new Error("GValue.getVariant: GLib.Variant wrapper class is not registered");
         }
-        return wrapHandle(result, variantClass);
+        return wrapHandle(result, cls);
     }
 }
 
@@ -986,7 +989,7 @@ export function outValueFromFfi(innerFfi: FfiType, initial?: unknown): { value: 
     write(storage, t.uint64, 0, 0);
     if (initial !== undefined) write(storage, innerFfi, 0, initial);
     const value = new GValue();
-    value.init(Type.POINTER);
+    value.init(TYPE_POINTER);
     setGValuePointer(value, storage);
     return { value, read: () => read(storage, innerFfi, 0) };
 }
@@ -1056,8 +1059,8 @@ export function valueToJS(value: GValueReader): unknown {
     const fundamentalValue = valueFromFundamental(value, fundamental);
     if (fundamentalValue !== undefined) return fundamentalValue;
 
-    if (fundamental === Type.POINTER) return getPointerValue(getHandle(value));
-    if (fundamental === Type.BOXED) return getGvalueBoxed(value);
+    if (fundamental === TYPE_POINTER) return getPointerValue(getHandle(value));
+    if (fundamental === TYPE_BOXED) return getGvalueBoxed(value);
 
     throw new Error(`Unsupported GType for valueToJS: ${typeName(gtype) ?? String(gtype)}`);
 }

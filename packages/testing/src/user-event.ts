@@ -29,16 +29,16 @@ const wrapValue = (content: DropContent): GObject.Value => {
     if (content instanceof GObject.Value) return content;
     const value = new GObject.Value();
     if (typeof content === "string") {
-        value.init(GObject.Type.STRING);
+        value.init(GObject.TYPE_STRING);
         value.setString(content);
         return value;
     }
     if (typeof content === "boolean") {
-        value.init(GObject.Type.BOOLEAN);
+        value.init(GObject.TYPE_BOOLEAN);
         value.setBoolean(content);
         return value;
     }
-    value.init(GObject.Type.DOUBLE);
+    value.init(GObject.TYPE_DOUBLE);
     value.setDouble(content);
     return value;
 };

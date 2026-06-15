@@ -2,68 +2,43 @@
  * Unified module-load registration entry point for generated FFI bindings.
  *
  * Every generated wrapper type — GObject class, interface, or boxed record —
- * registers itself with a single {@link registerWrapperClass} call carrying one
- * descriptor. The descriptor bundles the runtime `GType` and vtable vfunc
- * descriptors; this module resolves the shared `GType` once and fans the
- * pieces out to the individual runtime registries.
+ * registers itself with a single {@link registerWrapperClass} call. The kind of
+ * registration is derived from the runtime `GType` it passes: an interface
+ * `GType` (one whose fundamental is `G_TYPE_INTERFACE`) records an interface
+ * mapping, every other `GType` records a class mapping.
  */
 
 import type { AnyClass } from "@gtkx/utils";
-import { G_TYPE_INVALID, type GType } from "./gtype.js";
+import { type GType, TYPE_INTERFACE, typeFundamental } from "./gtype.js";
 import { registerInterfaceVfuncRegistry } from "./register-class.js";
 import { registerVfuncRegistry, setClassGtype, setInterfaceGtype, type VfuncRegistry } from "./registry.js";
 
 /**
- * The kind of wrapper type being registered, selecting which identity registry
- * the resolved `GType` lands in and whether vtable descriptors also register an
- * interface vfunc mapping.
- */
-type WrapperClassRole = "class" | "interface" | "boxed";
-
-/**
- * Everything {@link registerWrapperClass} needs to register one wrapper type.
- *
- * All fields beyond `role` are optional: a boxed record without a `GType`
- * omits `gtype`, and a type with no overridable vtable slots omits `vfuncs`.
- */
-export type WrapperClassDescriptor = {
-    /** Whether the type is a class, an interface, or a boxed record. */
-    readonly role: WrapperClassRole;
-    /**
-     * Resolves the runtime `GType`. Invoked exactly once at registration; the
-     * resolved value is shared across every registry. Typed loosely because
-     * generated bindings expose `t.fn(...)` closures whose return type is
-     * broader than `number`.
-     */
-    readonly gtype?: () => unknown;
-    /** Overridable vtable slot descriptors, absent when none are marshallable. */
-    readonly vfuncs?: VfuncRegistry;
-};
-
-/**
- * Registers a generated wrapper type from a single descriptor.
+ * Registers a generated wrapper type from its runtime `GType`.
  *
  * Called automatically by generated bindings, once per type at module load.
- * Resolves the descriptor's `GType` a single time and records it in the
- * appropriate identity registry, then registers any vfunc metadata the
- * descriptor carries.
+ * Whether the `GType` is an interface is read from its fundamental type, so the
+ * caller passes no separate role: an interface `GType` records an interface
+ * mapping (and, with `vfuncs`, an interface vfunc registry); any other `GType`
+ * records a class mapping. The `vfuncs` map, when present, registers the type's
+ * overridable vtable slots.
  *
  * @param cls - The generated wrapper class
- * @param descriptor - The bundled registration metadata
+ * @param gtype - The runtime `GType` of the wrapper type
+ * @param vfuncs - Overridable vtable slot descriptors, when the type has any
  */
-export function registerWrapperClass(cls: AnyClass, descriptor: WrapperClassDescriptor): void {
-    const gtype: GType = descriptor.gtype ? Number(descriptor.gtype()) : G_TYPE_INVALID;
-
-    if (descriptor.role === "interface") {
+export function registerWrapperClass(cls: AnyClass, gtype: GType, vfuncs?: VfuncRegistry): void {
+    if (typeFundamental(gtype) === TYPE_INTERFACE) {
         setInterfaceGtype(cls, gtype);
-    } else {
-        setClassGtype(cls, gtype);
+        if (vfuncs) {
+            registerVfuncRegistry(cls, vfuncs);
+            registerInterfaceVfuncRegistry(gtype, vfuncs);
+        }
+        return;
     }
 
-    if (descriptor.vfuncs) {
-        registerVfuncRegistry(cls, descriptor.vfuncs);
-        if (descriptor.role === "interface") {
-            registerInterfaceVfuncRegistry(gtype, descriptor.vfuncs);
-        }
+    setClassGtype(cls, gtype);
+    if (vfuncs) {
+        registerVfuncRegistry(cls, vfuncs);
     }
 }

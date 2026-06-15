@@ -23,7 +23,7 @@ const findController = <T extends Gtk.EventController>(
 
 const makeStringValue = (s: string): GObject.Value => {
     const v = new GObject.Value();
-    v.init(GObject.Type.STRING);
+    v.init(GObject.TYPE_STRING);
     v.setString(s);
     return v;
 };

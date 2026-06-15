@@ -450,7 +450,7 @@ const renderDropZone = async (
 describe("userEvent.drop", () => {
     it("emits drop on the widget's DropTarget with a string payload", async () => {
         const handleDrop = vi.fn().mockReturnValue(true);
-        const target = await renderDropZone("drop-zone", "Drop here", GObject.Type.STRING, handleDrop);
+        const target = await renderDropZone("drop-zone", "Drop here", GObject.TYPE_STRING, handleDrop);
         await userEvent.drop(target, "payload", { x: 10, y: 20 });
 
         expect(handleDrop).toHaveBeenCalledTimes(1);
@@ -462,7 +462,7 @@ describe("userEvent.drop", () => {
 
     it("auto-marshals numeric payloads", async () => {
         const handleDrop = vi.fn().mockReturnValue(true);
-        const target = await renderDropZone("number-zone", "Drop a number", GObject.Type.DOUBLE, handleDrop);
+        const target = await renderDropZone("number-zone", "Drop a number", GObject.TYPE_DOUBLE, handleDrop);
         await userEvent.drop(target, 42);
 
         const [value] = handleDrop.mock.calls[0] ?? [];
@@ -471,7 +471,7 @@ describe("userEvent.drop", () => {
 
     it("auto-marshals boolean payloads", async () => {
         const handleDrop = vi.fn().mockReturnValue(true);
-        const target = await renderDropZone("bool-zone", "Drop a flag", GObject.Type.BOOLEAN, handleDrop);
+        const target = await renderDropZone("bool-zone", "Drop a flag", GObject.TYPE_BOOLEAN, handleDrop);
         await userEvent.drop(target, true);
 
         const [value] = handleDrop.mock.calls[0] ?? [];
@@ -482,9 +482,9 @@ describe("userEvent.drop", () => {
 describe("userEvent.drop — value passthrough and errors", () => {
     it("forwards a pre-built GObject.Value unchanged", async () => {
         const handleDrop = vi.fn().mockReturnValue(true);
-        const target = await renderDropZone("value-zone", "Drop a value", GObject.Type.STRING, handleDrop);
+        const target = await renderDropZone("value-zone", "Drop a value", GObject.TYPE_STRING, handleDrop);
         const value = new GObject.Value();
-        value.init(GObject.Type.STRING);
+        value.init(GObject.TYPE_STRING);
         value.setString("preserved");
         await userEvent.drop(target, value);
 
@@ -515,7 +515,7 @@ describe("userEvent.dragAndDrop", () => {
                     label="Drop here"
                     addController={
                         <GtkDropTarget
-                            types={[GObject.Type.STRING]}
+                            types={[GObject.TYPE_STRING]}
                             actions={Gdk.DragAction.COPY}
                             onDrop={handleDrop}
                         />
@@ -541,7 +541,7 @@ describe("userEvent.dragAndDrop", () => {
                     label="Drop here"
                     addController={
                         <GtkDropTarget
-                            types={[GObject.Type.STRING]}
+                            types={[GObject.TYPE_STRING]}
                             actions={Gdk.DragAction.COPY}
                             onDrop={() => true}
                         />

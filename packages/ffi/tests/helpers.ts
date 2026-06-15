@@ -1,4 +1,4 @@
-import { G_TYPE_INVALID, typeIsA } from "@gtkx/ffi";
+import { TYPE_INVALID, typeIsA } from "@gtkx/ffi";
 import type { GType } from "@gtkx/gi/gobject";
 import { getGobjectGtype, type NativeHandle } from "@gtkx/native";
 
@@ -13,6 +13,6 @@ import { getGobjectGtype, type NativeHandle } from "@gtkx/native";
  */
 export function instanceIsA(handle: NativeHandle, gtype: GType): boolean {
     const instanceGtype: GType = getGobjectGtype(handle);
-    if (instanceGtype === G_TYPE_INVALID) return false;
+    if (instanceGtype === TYPE_INVALID) return false;
     return typeIsA(instanceGtype, gtype);
 }

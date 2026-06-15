@@ -6,7 +6,7 @@ import { renderBoxedFieldAccessor } from "./boxed-field-accessor.js";
 import { computeBoxedFieldSlots } from "./boxed-layout.js";
 import { type Callables, dedupeCallables, emitBindings, renderPlainTypeMembers } from "./callables.js";
 import { isClassStructRecord } from "./class-struct-record.js";
-import { renderGetTypeReference } from "./gtype-binding.js";
+import { renderGtypeExpression } from "./gtype-binding.js";
 import { appendWrapperClassRegistration } from "./registration.js";
 
 /**
@@ -45,14 +45,13 @@ export const emitBoxed = (context: ModuleContext, boxed: GirBoxed): void => {
     context.module.appendDeclaration(`export class ${className} {\n${body}\n}`);
     context.module.appendDeclaration(renderBoxedConstructorPropsInterface(context, boxed, className));
 
-    const getTypeRef =
+    const gtypeExpr =
         boxed.glibGetType === undefined
             ? undefined
-            : renderGetTypeReference(context, boxed.glibGetType, boxed.glibTypeName);
+            : renderGtypeExpression(context, boxed.glibGetType, boxed.glibTypeName);
     appendWrapperClassRegistration(context, {
         className,
-        role: "boxed",
-        getTypeRef,
+        gtypeExpr,
     });
 };
 

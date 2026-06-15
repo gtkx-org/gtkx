@@ -31,7 +31,6 @@ export {
     newGobjectWithProperties,
     setGobjectProperty,
     setGvalueBoxed,
-    setVariantClass,
     wrapValue,
 } from "./gobject.js";
 export * from "./gtype.js";

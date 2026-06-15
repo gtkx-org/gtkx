@@ -25,7 +25,7 @@ const getDefaultClipboard = (): Gdk.Clipboard => {
 const populateClipboardString = async (text: string): Promise<void> => {
     const clipboard = getDefaultClipboard();
     const value = new GObject.Value();
-    value.init(GObject.Type.STRING);
+    value.init(GObject.TYPE_STRING);
     value.setString(text);
     await act(() => clipboard.set(value));
 };
@@ -74,14 +74,14 @@ const makeFileValue = (path: string): GObject.Value => {
 
 const makeIntValue = (n: number): GObject.Value => {
     const value = new GObject.Value();
-    value.init(GObject.Type.INT);
+    value.init(GObject.TYPE_INT);
     value.setInt(n);
     return value;
 };
 
 const makeStringValue = (text: string): GObject.Value => {
     const value = new GObject.Value();
-    value.init(GObject.Type.STRING);
+    value.init(GObject.TYPE_STRING);
     value.setString(text);
     return value;
 };
@@ -216,7 +216,7 @@ describe("clipboardDemo Copy button populates the clipboard", () => {
         const copyButton = await findButtonByLabel("_Copy");
         await userEvent.click(copyButton);
         await waitFor(() => {
-            expect(getDefaultClipboard().getFormats().containGtype(GObject.Type.STRING)).toBe(true);
+            expect(getDefaultClipboard().getFormats().containGtype(GObject.TYPE_STRING)).toBe(true);
         });
     });
 

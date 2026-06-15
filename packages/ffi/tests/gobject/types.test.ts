@@ -1,56 +1,76 @@
-import { Type } from "@gtkx/gi/gobject";
+import {
+    TYPE_BOOLEAN,
+    TYPE_BOXED,
+    TYPE_CHAR,
+    TYPE_DOUBLE,
+    TYPE_ENUM,
+    TYPE_FLAGS,
+    TYPE_FLOAT,
+    TYPE_GTYPE,
+    TYPE_INT,
+    TYPE_INT64,
+    TYPE_INTERFACE,
+    TYPE_INVALID,
+    TYPE_LONG,
+    TYPE_NONE,
+    TYPE_OBJECT,
+    TYPE_PARAM,
+    TYPE_POINTER,
+    TYPE_STRING,
+    TYPE_UCHAR,
+    TYPE_UINT,
+    TYPE_UINT64,
+    TYPE_ULONG,
+    TYPE_UNICHAR,
+    TYPE_VARIANT,
+} from "@gtkx/ffi";
 import { describe, expect, it } from "vitest";
 
-const ZERO_VALUED_FUNDAMENTALS = ["INVALID", "NONE"] as const;
+const NONZERO_FUNDAMENTALS: readonly (readonly [string, number])[] = [
+    ["NONE", TYPE_NONE],
+    ["INTERFACE", TYPE_INTERFACE],
+    ["CHAR", TYPE_CHAR],
+    ["UCHAR", TYPE_UCHAR],
+    ["BOOLEAN", TYPE_BOOLEAN],
+    ["INT", TYPE_INT],
+    ["UINT", TYPE_UINT],
+    ["LONG", TYPE_LONG],
+    ["ULONG", TYPE_ULONG],
+    ["INT64", TYPE_INT64],
+    ["UINT64", TYPE_UINT64],
+    ["ENUM", TYPE_ENUM],
+    ["FLAGS", TYPE_FLAGS],
+    ["FLOAT", TYPE_FLOAT],
+    ["DOUBLE", TYPE_DOUBLE],
+    ["STRING", TYPE_STRING],
+    ["POINTER", TYPE_POINTER],
+    ["BOXED", TYPE_BOXED],
+    ["PARAM", TYPE_PARAM],
+    ["OBJECT", TYPE_OBJECT],
+    ["GTYPE", TYPE_GTYPE],
+    ["VARIANT", TYPE_VARIANT],
+    ["UNICHAR", TYPE_UNICHAR],
+];
 
-const NONZERO_FUNDAMENTALS = [
-    "INTERFACE",
-    "CHAR",
-    "UCHAR",
-    "BOOLEAN",
-    "INT",
-    "UINT",
-    "LONG",
-    "ULONG",
-    "INT64",
-    "UINT64",
-    "ENUM",
-    "FLAGS",
-    "FLOAT",
-    "DOUBLE",
-    "STRING",
-    "POINTER",
-    "BOXED",
-    "PARAM",
-    "OBJECT",
-    "VARIANT",
-] as const;
-
-describe("Type", () => {
-    it.each(ZERO_VALUED_FUNDAMENTALS)("resolves %s to a GType value", (name) => {
-        expect(typeof Type[name]).toBe("number");
+describe("fundamental GType constants", () => {
+    it("resolves TYPE_INVALID to the zero sentinel", () => {
+        expect(TYPE_INVALID).toBe(0);
     });
 
-    it.each(NONZERO_FUNDAMENTALS)("resolves %s to a nonzero GType", (name) => {
-        expect(Type[name]).toBeGreaterThan(0);
+    it.each(NONZERO_FUNDAMENTALS)("resolves TYPE_%s to a nonzero GType", (_name, gtype) => {
+        expect(gtype).toBeGreaterThan(0);
     });
 
-    it("returns the same value on subsequent accesses", () => {
-        const first = Type.STRING;
-        const second = Type.STRING;
-        expect(first).toBe(second);
-    });
-
-    it("returns distinct values for different types", () => {
+    it("resolves distinct fundamentals to distinct GTypes", () => {
         const types = new Set([
-            Type.BOOLEAN,
-            Type.INT,
-            Type.UINT,
-            Type.FLOAT,
-            Type.DOUBLE,
-            Type.STRING,
-            Type.OBJECT,
-            Type.BOXED,
+            TYPE_BOOLEAN,
+            TYPE_INT,
+            TYPE_UINT,
+            TYPE_FLOAT,
+            TYPE_DOUBLE,
+            TYPE_STRING,
+            TYPE_OBJECT,
+            TYPE_BOXED,
         ]);
         expect(types.size).toBe(8);
     });

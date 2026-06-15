@@ -1,4 +1,4 @@
-import { getHandle, registerWrapperClass, setHandle, t, wrapHandle } from "@gtkx/ffi";
+import { getHandle, setHandle, t, wrapHandle } from "@gtkx/ffi";
 import { alloc, type NativeHandle } from "@gtkx/native";
 import type { Status } from "../cairo.js";
 
@@ -222,5 +222,3 @@ export class Matrix {
         return obj;
     }
 }
-
-registerWrapperClass(Matrix, { role: "boxed" });

@@ -1,7 +1,4 @@
-import { Type } from "@gtkx/ffi";
-
 export {
-    G_TYPE_INVALID,
     TYPE_BOOLEAN,
     TYPE_BOXED,
     TYPE_CHAR,
@@ -30,4 +27,3 @@ export {
 export * from "./gobject.js";
 export * from "./overrides/object.js";
 export * from "./overrides/value.js";
-export { Type };

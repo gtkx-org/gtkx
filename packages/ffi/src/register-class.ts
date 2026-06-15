@@ -4,7 +4,7 @@ import {
     type RegisterClassVfuncOptions,
 } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
-import { G_TYPE_INVALID, type GType, typeInterfaces } from "./gtype.js";
+import { type GType, TYPE_INVALID, typeInterfaces } from "./gtype.js";
 import {
     getClassGtype,
     getParentClass,
@@ -88,8 +88,8 @@ export function registerClass<T extends AnyClass>(klass: T, options: RegisterCla
     }
 
     const parentGtype = resolveParentGtype(klass);
-    if (parentGtype === G_TYPE_INVALID) {
-        throw new Error(`registerClass: ${klass.name} parent GType is invalid (G_TYPE_INVALID)`);
+    if (parentGtype === TYPE_INVALID) {
+        throw new Error(`registerClass: ${klass.name} parent GType is invalid (TYPE_INVALID)`);
     }
 
     const name = options.gtypeName ?? klass.name;
@@ -111,7 +111,7 @@ export function registerClass<T extends AnyClass>(klass: T, options: RegisterCla
 function hasRegisteredAncestor(klass: AnyClass): boolean {
     let current: AnyClass | null = getParentClass(klass);
     while (current) {
-        if (getClassGtype(current) !== G_TYPE_INVALID) return true;
+        if (getClassGtype(current) !== TYPE_INVALID) return true;
         current = getParentClass(current);
     }
     return false;
@@ -121,10 +121,10 @@ function resolveParentGtype(klass: AnyClass): GType {
     let current = getParentClass(klass);
     while (current) {
         const gtype = getClassGtype(current);
-        if (gtype !== G_TYPE_INVALID) return gtype;
+        if (gtype !== TYPE_INVALID) return gtype;
         current = getParentClass(current);
     }
-    return G_TYPE_INVALID;
+    return TYPE_INVALID;
 }
 
 function ownInstanceMethodNames(klass: AnyClass): string[] {
@@ -258,7 +258,7 @@ const interfaceVfuncRegistryByGtype = new Map<GType, Readonly<Record<string, unk
  * interface at module load.
  */
 export function registerInterfaceVfuncRegistry(gtype: GType, vfuncRegistry: Readonly<Record<string, unknown>>): void {
-    if (gtype === G_TYPE_INVALID) return;
+    if (gtype === TYPE_INVALID) return;
     interfaceVfuncRegistryByGtype.set(gtype, vfuncRegistry);
 }
 

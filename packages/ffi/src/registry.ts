@@ -1,8 +1,8 @@
 import { getGobjectGtype, getWrapper, type NativeHandle, setWrapper } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
-import { G_TYPE_INVALID, type GType, typeFromName, typeIsA, typeParent } from "./gtype.js";
+import { type GType, TYPE_INVALID, typeFromName, typeIsA, typeParent } from "./gtype.js";
 
-let gobjectGtype: GType = G_TYPE_INVALID;
+let gobjectGtype: GType = TYPE_INVALID;
 
 /**
  * Whether `gtype` is a `GObject` descendant, as opposed to another
@@ -12,10 +12,10 @@ let gobjectGtype: GType = G_TYPE_INVALID;
  * is registered by the time any instance crosses the boundary.
  */
 function isGobjectType(gtype: GType): boolean {
-    if (gobjectGtype === G_TYPE_INVALID) {
+    if (gobjectGtype === TYPE_INVALID) {
         gobjectGtype = typeFromName("GObject");
     }
-    return gobjectGtype !== G_TYPE_INVALID && typeIsA(gtype, gobjectGtype);
+    return gobjectGtype !== TYPE_INVALID && typeIsA(gtype, gobjectGtype);
 }
 
 const classRegistry = new Map<GType, AnyClass>();
@@ -34,7 +34,7 @@ const interfaceGtypeByClass = new WeakMap<AnyClass, GType>();
  * @param gtype - The GLib type identifier for the class
  */
 export function setClassGtype(cls: AnyClass, gtype: GType): void {
-    if (gtype !== G_TYPE_INVALID) {
+    if (gtype !== TYPE_INVALID) {
         classRegistry.set(gtype, cls);
         gtypeByClass.set(cls, gtype);
         (cls.prototype as GTyped).__gtype__ = gtype;
@@ -54,7 +54,7 @@ export function setClassGtype(cls: AnyClass, gtype: GType): void {
  * @param gtype - The GLib interface type identifier
  */
 export function setInterfaceGtype(cls: AnyClass, gtype: GType): void {
-    if (gtype !== G_TYPE_INVALID) {
+    if (gtype !== TYPE_INVALID) {
         interfaceGtypeByClass.set(cls, gtype);
         (cls.prototype as GTyped).__gtype__ = gtype;
     }
@@ -65,7 +65,7 @@ export function setInterfaceGtype(cls: AnyClass, gtype: GType): void {
  * GType (`0`) when the class has not been registered (e.g. boxed value types).
  */
 export function getClassGtype(cls: AnyClass): GType {
-    return gtypeByClass.get(cls) ?? G_TYPE_INVALID;
+    return gtypeByClass.get(cls) ?? TYPE_INVALID;
 }
 
 /**
@@ -74,7 +74,7 @@ export function getClassGtype(cls: AnyClass): GType {
  * not a registered interface wrapper.
  */
 function getInterfaceGtype(cls: AnyClass): GType {
-    return interfaceGtypeByClass.get(cls) ?? G_TYPE_INVALID;
+    return interfaceGtypeByClass.get(cls) ?? TYPE_INVALID;
 }
 
 function instantiate<T extends object>(cls: AnyClass<T>, handle: NativeHandle): T {
@@ -132,7 +132,7 @@ export function wrapHandle(handle: NativeHandle | null | undefined, cls?: AnyCla
         });
     }
     const interfaceGtype = getInterfaceGtype(cls);
-    if (interfaceGtype !== G_TYPE_INVALID) {
+    if (interfaceGtype !== TYPE_INVALID) {
         return resolveWrapper(
             handle,
             (runtimeGtype) => findWrapperClassForInterface(runtimeGtype, interfaceGtype) ?? cls,
@@ -174,9 +174,9 @@ export function getWrapperClass(gtype: GType): AnyClass | null {
  */
 function walkParentChain(gtype: GType, accept: (parentGtype: GType, parentCls: AnyClass) => boolean): AnyClass | null {
     let currentGtype = gtype;
-    while (currentGtype !== G_TYPE_INVALID) {
+    while (currentGtype !== TYPE_INVALID) {
         const parentGtype = typeParent(currentGtype);
-        if (parentGtype === G_TYPE_INVALID) break;
+        if (parentGtype === TYPE_INVALID) break;
         const parentCls = getWrapperClass(parentGtype);
         if (parentCls && accept(parentGtype, parentCls)) return parentCls;
         currentGtype = parentGtype;
@@ -218,7 +218,7 @@ function findWrapperClassForInterface(gtype: GType, interfaceGtype: GType): AnyC
     const exact = getWrapperClass(gtype);
     if (exact) return exact;
 
-    if (interfaceGtype === G_TYPE_INVALID) return null;
+    if (interfaceGtype === TYPE_INVALID) return null;
 
     return walkParentChain(gtype, (parentGtype) => typeIsA(parentGtype, interfaceGtype));
 }
@@ -240,7 +240,7 @@ function resolveWrapper(handle: NativeHandle, resolveClass: (runtimeGtype: GType
     if (existing) return existing;
 
     const runtimeGtype: GType = getGobjectGtype(handle);
-    if (runtimeGtype === G_TYPE_INVALID) {
+    if (runtimeGtype === TYPE_INVALID) {
         throw new Error("Cannot resolve runtime GLib type from handle");
     }
 
