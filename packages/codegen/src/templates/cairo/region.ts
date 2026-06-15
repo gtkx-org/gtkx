@@ -1,12 +1,12 @@
 import { getHandle, setHandle, t, wrapHandle } from "@gtkx/ffi";
 import { alloc, INT_TYPE, LIB, type NativeHandle, RECT_INT_T, REGION_T, REGION_T_NONE, write } from "@gtkx/ffi/cairo";
-import type { RegionOverlap, Status } from "@gtkx/gi/cairo/cairo.js";
-import { RectangleInt, Region } from "@gtkx/gi/cairo/cairo.js";
+import type { RegionOverlap, Status } from "../cairo.js";
+import { RectangleInt, Region } from "../cairo.js";
 
 const { fn } = t;
 const RECT_INT_ARRAY_T = t.boxed("cairo_rectangle_int_t[]", "borrowed", LIB);
 
-declare module "@gtkx/gi/cairo/cairo.js" {
+declare module "../cairo.js" {
     interface Region {
         copy(): Region;
         status(): Status;

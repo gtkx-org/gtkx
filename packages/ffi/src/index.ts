@@ -43,7 +43,6 @@ export { registerNativeClass } from "./register-native-class.js";
 export { getHandle, getNativeClassByName, setHandle, tryGetHandle, wrapHandle } from "./registry.js";
 export {
     connectGobjectSignal,
-    disconnectSignalHandler,
     emitGobjectSignal,
     type SignalHandler,
     signalBaseName,

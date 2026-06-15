@@ -14,14 +14,7 @@ import {
     parsePath,
     SURFACE_T_NONE,
 } from "@gtkx/ffi/cairo";
-import {
-    type Extend,
-    type Filter,
-    Pattern,
-    type PatternType,
-    type Status,
-    type Surface,
-} from "@gtkx/gi/cairo/cairo.js";
+import { type Extend, type Filter, Pattern, type PatternType, type Status, type Surface } from "../cairo.js";
 import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";
 
 const { fn } = t;
@@ -53,7 +46,7 @@ const readRgba = (
     return { red: redRef.value, green: greenRef.value, blue: blueRef.value, alpha: alphaRef.value };
 };
 
-declare module "@gtkx/gi/cairo/cairo.js" {
+declare module "../cairo.js" {
     interface Pattern {
         addColorStopRgb(offset: number, red: number, green: number, blue: number): void;
         addColorStopRgba(offset: number, red: number, green: number, blue: number, alpha: number): void;

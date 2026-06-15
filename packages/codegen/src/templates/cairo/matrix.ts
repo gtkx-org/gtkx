@@ -1,6 +1,6 @@
 import { getHandle, registerNativeClass, setHandle, t, wrapHandle } from "@gtkx/ffi";
 import { alloc, DOUBLE_REF, DOUBLE_TYPE, INT_TYPE, LIB, MATRIX_T, type NativeHandle } from "@gtkx/ffi/cairo";
-import type { Status } from "@gtkx/gi/cairo/cairo.js";
+import type { Status } from "../cairo.js";
 
 const { fn } = t;
 

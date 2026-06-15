@@ -11,15 +11,15 @@ import {
     SURFACE_T,
     SURFACE_T_NONE,
 } from "@gtkx/ffi/cairo";
-import type { Content, Format, RectangleInt, Status, SurfaceType } from "@gtkx/gi/cairo/cairo.js";
-import { Surface } from "@gtkx/gi/cairo/cairo.js";
+import type { Content, Format, RectangleInt, Status, SurfaceType } from "../cairo.js";
+import { Surface } from "../cairo.js";
 import { FontOptions } from "./font-options.js";
 import { ImageSurface } from "./image-surface.js";
 
 const { fn } = t;
 const DEVICE_T_NONE = t.boxed("CairoDevice", "borrowed", LIB);
 
-declare module "@gtkx/gi/cairo/cairo.js" {
+declare module "../cairo.js" {
     interface Surface {
         writeToPng(filename: string): Status;
         status(): Status;

@@ -26,8 +26,8 @@ import {
     type TextExtents,
     ULONG_TYPE,
 } from "@gtkx/ffi/cairo";
-import type { FontOptions, FontType, Status, TextClusterFlags } from "@gtkx/gi/cairo/cairo.js";
-import { FontFace, ScaledFont } from "@gtkx/gi/cairo/cairo.js";
+import type { FontOptions, FontType, Status, TextClusterFlags } from "../cairo.js";
+import { FontFace, ScaledFont } from "../cairo.js";
 import { FontOptions as FontOptionsConstructor } from "./font-options.js";
 import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";
 
@@ -35,7 +35,7 @@ const { fn } = t;
 const GLYPH_BUF_REF = t.ref(GLYPH_BUF_T);
 const CLUSTER_BUF_REF = t.ref(CLUSTER_BUF_T);
 
-declare module "@gtkx/gi/cairo/cairo.js" {
+declare module "../cairo.js" {
     interface ScaledFont {
         status(): Status;
         extents(): FontExtents;
@@ -204,7 +204,7 @@ ScaledFont.prototype.getReferenceCount = function (): number {
     return cairo_scaled_font_get_reference_count(getHandle(this)) as number;
 };
 
-declare module "@gtkx/gi/cairo/cairo.js" {
+declare module "../cairo.js" {
     interface ScaledFont {
         textToGlyphs(x: number, y: number, text: string): [CairoGlyph[], CairoTextCluster[], TextClusterFlags];
     }

@@ -3,6 +3,26 @@ import { type Arg, call as nativeCall, type TrampolineType, type Type } from "@g
 export { alloc, call, read, write } from "@gtkx/native";
 
 /**
+ * Shapes a call or signal result from its surfaced out-values and primary
+ * return, following the tuple convention shared by `ffiCall` and signal
+ * emission: a lone `primary` when there are no outs, the single out when there
+ * is no primary, or `[primary, ...outs]` when both are present.
+ *
+ * @param outs - The surfaced out-values, in declaration order.
+ * @param primary - The primary return value, used only when `hasPrimary`.
+ * @param hasPrimary - Whether the callable has a non-void return.
+ * @returns The assembled result.
+ */
+export const tupleResult = (outs: readonly unknown[], primary: unknown, hasPrimary: boolean): unknown => {
+    if (hasPrimary) {
+        return outs.length === 0 ? primary : [primary, ...outs];
+    }
+    if (outs.length === 0) return undefined;
+    if (outs.length === 1) return outs[0];
+    return outs;
+};
+
+/**
  * Lifetime of a value crossing the FFI boundary.
  *
  * - `"full"` — caller takes ownership of the original pointer (GIR

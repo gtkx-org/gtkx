@@ -10,7 +10,7 @@ import {
     valueToJS,
 } from "./gobject.js";
 import { type GType, GVALUE_BORROWED, LIBGOBJECT } from "./gtype.js";
-import { call, t } from "./helpers.js";
+import { call, t, tupleResult } from "./helpers.js";
 import { type GTyped, getHandle } from "./registry.js";
 
 /**
@@ -150,15 +150,12 @@ export type EmitArg = {
     readonly value?: unknown;
 };
 
-const assembleResult = (primary: unknown, hasPrimary: boolean, reads: readonly (() => unknown)[]): unknown => {
-    const outs = reads.map((read) => read());
-    if (hasPrimary) {
-        return outs.length === 0 ? primary : [primary, ...outs];
-    }
-    if (outs.length === 0) return undefined;
-    if (outs.length === 1) return outs[0];
-    return outs;
-};
+const assembleResult = (primary: unknown, hasPrimary: boolean, reads: readonly (() => unknown)[]): unknown =>
+    tupleResult(
+        reads.map((read) => read()),
+        primary,
+        hasPrimary,
+    );
 
 /**
  * Emits a GObject signal and returns its result.
@@ -224,19 +221,3 @@ export function emitGobjectSignal(
     g_signal_emitv(handles, signalId, detail, undefined);
     return assembleResult(undefined, false, reads);
 }
-const g_signal_handler_disconnect = t.fn(
-    LIBGOBJECT,
-    "g_signal_handler_disconnect",
-    [{ type: t.object("borrowed") }, { type: t.uint64 }],
-    t.void,
-);
-
-/**
- * Disconnects a signal handler by id.
- *
- * @param instance - The GObject wrapper the handler is connected on.
- * @param handlerId - The handler id returned by `connect`/`on`/`once`.
- */
-export const disconnectSignalHandler = (instance: object, handlerId: number): void => {
-    g_signal_handler_disconnect(getHandle(instance), handlerId);
-};

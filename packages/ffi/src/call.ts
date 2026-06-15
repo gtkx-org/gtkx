@@ -20,7 +20,7 @@ import { type Arg, type Type as FfiType, type NativeHandle, call as nativeCall }
 import type { AnyClass } from "@gtkx/utils";
 import { checkError, type GError } from "./error.js";
 import { wrapValue } from "./gobject.js";
-import { t } from "./helpers.js";
+import { t, tupleResult } from "./helpers.js";
 import { getHandle } from "./registry.js";
 
 /**
@@ -116,17 +116,14 @@ const seedForOutCell = (ffiType: FfiType): unknown => {
     }
 };
 
-const assembleResult = (surfaced: readonly SurfacedOut[], primary: unknown, hasPrimary: boolean): unknown => {
-    const outs = surfaced.map((slot) =>
-        slot.cell === undefined ? slot.raw : wrapValue(slot.param.type, slot.cell.value, slot.param.wrapClass?.()),
+const assembleResult = (surfaced: readonly SurfacedOut[], primary: unknown, hasPrimary: boolean): unknown =>
+    tupleResult(
+        surfaced.map((slot) =>
+            slot.cell === undefined ? slot.raw : wrapValue(slot.param.type, slot.cell.value, slot.param.wrapClass?.()),
+        ),
+        primary,
+        hasPrimary,
     );
-    if (hasPrimary) {
-        return outs.length === 0 ? primary : [primary, ...outs];
-    }
-    if (outs.length === 0) return undefined;
-    if (outs.length === 1) return outs[0];
-    return outs;
-};
 
 /**
  * Binds one positional argument's value for a call: seeds an out-cell, seeds an

@@ -47,8 +47,8 @@ import type {
     Operator,
     Status,
     TextClusterFlags,
-} from "@gtkx/gi/cairo/cairo.js";
-import { Context, FontFace, Pattern, ScaledFont, Surface } from "@gtkx/gi/cairo/cairo.js";
+} from "../cairo.js";
+import { Context, FontFace, Pattern, ScaledFont, Surface } from "../cairo.js";
 import { FontOptions as FontOptionsConstructor } from "./font-options.js";
 import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";
 
@@ -56,7 +56,7 @@ const { fn } = t;
 
 export type { FontExtents, TextExtents } from "@gtkx/ffi/cairo";
 
-declare module "@gtkx/gi/cairo/cairo.js" {
+declare module "../cairo.js" {
     interface Context {
         moveTo(x: number, y: number): void;
         lineTo(x: number, y: number): void;
@@ -835,7 +835,7 @@ Context.prototype.getReferenceCount = function (): number {
     return cairo_get_reference_count(getHandle(this)) as number;
 };
 
-declare module "@gtkx/gi/cairo/cairo.js" {
+declare module "../cairo.js" {
     interface Context {
         pushGroup(): void;
         pushGroupWithContent(content: Content): void;
@@ -1004,7 +1004,7 @@ class ContextImpl extends Context {
 
 export { ContextImpl as Context };
 
-declare module "@gtkx/gi/cairo/cairo.js" {
+declare module "../cairo.js" {
     interface Context {
         tagBegin(tagName: string, attributes: string): void;
         tagEnd(tagName: string): void;

@@ -1,7 +1,7 @@
 import { getHandle, setHandle, t, wrapHandle } from "@gtkx/ffi";
 import { call, INT_TYPE, LIB, type NativeHandle, read, STRING_FULL, SURFACE_T, SURFACE_T_NONE } from "@gtkx/ffi/cairo";
-import type { Format } from "@gtkx/gi/cairo/cairo.js";
-import { Surface } from "@gtkx/gi/cairo/cairo.js";
+import type { Format } from "../cairo.js";
+import { Surface } from "../cairo.js";
 
 const { fn } = t;
 

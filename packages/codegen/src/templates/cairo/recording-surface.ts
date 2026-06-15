@@ -11,8 +11,8 @@ import {
     SURFACE_T_NONE,
     write,
 } from "@gtkx/ffi/cairo";
-import type { Content } from "@gtkx/gi/cairo/cairo.js";
-import { Surface } from "@gtkx/gi/cairo/cairo.js";
+import type { Content } from "../cairo.js";
+import { Surface } from "../cairo.js";
 
 const { fn } = t;
 const RECT_T = t.boxed("cairo_rectangle_t", "borrowed", LIB);

@@ -75,10 +75,6 @@ const collectStoreSources = (
             fileName: `${directory}/${directory}.ts`,
             source: rawSource,
         });
-        exportsMap[`./${directory}/${directory}.js`] = {
-            types: `./${directory}/${directory}.d.ts`,
-            default: `./${directory}/${directory}.js`,
-        };
         for (const file of templateFiles(directory)) {
             collected.push({
                 stem: `${directory}/overrides/${file.slice(0, -".ts".length)}`,

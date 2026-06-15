@@ -1,5 +1,4 @@
-import { disconnectSignalHandler } from "@gtkx/ffi";
-import { Object as GObject } from "@gtkx/gi/gobject/gobject.js";
+import { Object as GObject, signalHandlerDisconnect } from "../gobject.js";
 
 /** A signal callback tracked by the listener table. */
 // biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
@@ -37,7 +36,7 @@ const untrackListener = (instance: object, signal: string, handler: Listener): v
     if (byHandler?.size === 0) bySignal?.delete(signal);
 };
 
-declare module "@gtkx/gi/gobject/gobject.js" {
+declare module "../gobject.js" {
     interface Object {
         /**
          * Runtime GType of the underlying GObject, stamped onto every instance
@@ -114,7 +113,7 @@ type GObjectWithConnect = GObject & {
 };
 
 GObject.prototype.disconnect = function disconnect(handlerId: number): void {
-    disconnectSignalHandler(this, handlerId);
+    signalHandlerDisconnect(this, handlerId);
 };
 
 function onImpl(this: GObjectWithConnect, sigName: string, callback: Listener, after?: boolean): GObject {

@@ -1,12 +1,12 @@
 import { getHandle, setHandle, t } from "@gtkx/ffi";
 import type { NativeHandle } from "@gtkx/ffi/cairo";
 import { FONT_OPTIONS_T, FONT_OPTIONS_T_FULL, INT_TYPE, LIB, STRING_BORROWED, STRING_FULL } from "@gtkx/ffi/cairo";
-import type { Antialias, HintMetrics, HintStyle, Status, SubpixelOrder } from "@gtkx/gi/cairo/cairo.js";
-import { FontOptions } from "@gtkx/gi/cairo/cairo.js";
+import type { Antialias, HintMetrics, HintStyle, Status, SubpixelOrder } from "../cairo.js";
+import { FontOptions } from "../cairo.js";
 
 const { fn } = t;
 
-declare module "@gtkx/gi/cairo/cairo.js" {
+declare module "../cairo.js" {
     interface FontOptions {
         setHintStyle(hintStyle: HintStyle): void;
         getHintStyle(): HintStyle;
@@ -144,7 +144,7 @@ FontOptions.prototype.merge = function (other: FontOptions): void {
     cairo_font_options_merge(getHandle(this), getHandle(other));
 };
 
-declare module "@gtkx/gi/cairo/cairo.js" {
+declare module "../cairo.js" {
     interface FontOptions {
         status(): Status;
         hash(): number;

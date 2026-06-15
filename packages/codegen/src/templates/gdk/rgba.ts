@@ -6,7 +6,7 @@
  * with it via `Object.assign`.
  */
 
-import { RGBA as GeneratedRGBA } from "@gtkx/gi/gdk/gdk.js";
+import { RGBA as GeneratedRGBA } from "../gdk.js";
 
 /**
  * Constructs an {@link RGBA} from a textual color specification.

@@ -1,5 +1,5 @@
-import { type Display, DisplayManager } from "@gtkx/gi/gdk/gdk.js";
-import { CssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION, StyleContext } from "@gtkx/gi/gtk/gtk.js";
+import { type Display, DisplayManager } from "../../gdk/gdk.js";
+import { CssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION, StyleContext } from "../gtk.js";
 
 /** A freshly created `CssProvider` paired with the default display it registered on. */
 export type DisplayProvider = {

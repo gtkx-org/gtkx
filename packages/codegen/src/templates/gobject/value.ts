@@ -13,8 +13,8 @@
  */
 
 import { getGvalueBoxed, setGvalueBoxed, setVariantClass } from "@gtkx/ffi";
-import { Variant } from "@gtkx/gi/glib/glib.js";
-import { type GType, Value } from "@gtkx/gi/gobject/gobject.js";
+import { Variant } from "../../glib/glib.js";
+import { type GType, Value } from "../gobject.js";
 
 setVariantClass(Variant);
 

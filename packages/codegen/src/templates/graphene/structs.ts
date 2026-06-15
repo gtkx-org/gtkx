@@ -6,7 +6,7 @@
  * the GIR-generated struct augmented with it via `Object.assign`.
  */
 
-import { Point as GeneratedPoint, Rect as GeneratedRect, Size as GeneratedSize } from "@gtkx/gi/graphene/graphene.js";
+import { Point as GeneratedPoint, Rect as GeneratedRect, Size as GeneratedSize } from "../graphene.js";
 
 /**
  * Constructs a {@link Point} at the given coordinates.

@@ -1,14 +1,14 @@
 import { getHandle, t, wrapHandle } from "@gtkx/ffi";
 import type { NativeHandle } from "@gtkx/ffi/cairo";
 import { FONT_FACE_T, FONT_FACE_T_NONE, INT_TYPE, LIB, STRING_BORROWED, STRING_FULL } from "@gtkx/ffi/cairo";
-import type { FontSlant, FontType, FontWeight, Status } from "@gtkx/gi/cairo/cairo.js";
-import { FontFace } from "@gtkx/gi/cairo/cairo.js";
+import type { FontSlant, FontType, FontWeight, Status } from "../cairo.js";
+import { FontFace } from "../cairo.js";
 
 const { fn } = t;
 const FC_PATTERN_T = t.boxed("FcPattern", "borrowed", LIB);
 const FT_FACE_T = t.boxed("FT_Face", "borrowed", LIB);
 
-declare module "@gtkx/gi/cairo/cairo.js" {
+declare module "../cairo.js" {
     interface FontFace {
         status(): Status;
         getType(): FontType;
