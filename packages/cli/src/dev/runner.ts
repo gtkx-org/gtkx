@@ -57,6 +57,8 @@ export type DevRunnerDeps = {
         loadAppModule: (id: string) => Promise<Record<string, unknown>>,
         onQuit: (runDefaultQuit: () => void) => void,
     ): Promise<void>;
+    installShutdownHandlers(onSignal: () => void | Promise<void>): void;
+    quitDefaultApplication(): void;
     performRefresh(): void;
     isReactRefreshBoundary(module: Record<string, unknown>): boolean;
     plugins(): Plugin[];
@@ -177,6 +179,19 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
         const refreshTrackingDeps: DevRunnerDeps = { ...deps, performRefresh: refreshTracker.performRefresh };
 
         let isShuttingDown = false;
+        const shutdown = async (quitApplication: () => void): Promise<void> => {
+            if (isShuttingDown) return;
+            isShuttingDown = true;
+            quitApplication();
+            deps.stopMcpClient();
+            await server.close();
+        };
+
+        deps.installShutdownHandlers(async () => {
+            if (isShuttingDown) return;
+            deps.log("Received shutdown signal - stopping dev runner...");
+            await shutdown(() => deps.quitDefaultApplication());
+        });
 
         server.watcher.on("change", (changedPath) => {
             if (isShuttingDown) return;
@@ -196,11 +211,8 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
                     deps.log("Application unmounted during Fast Refresh - restarting dev runner...");
                     return deps.exit(RELOAD_EXIT_CODE);
                 }
-                isShuttingDown = true;
                 deps.log("Application quit - stopping dev runner...");
-                runDefaultQuit();
-                deps.stopMcpClient();
-                server.close().catch((error: unknown) => {
+                shutdown(runDefaultQuit).catch((error: unknown) => {
                     console.error("[gtkx-dev-runner] Error closing server:", error);
                 });
             },

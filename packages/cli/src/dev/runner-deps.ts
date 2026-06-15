@@ -1,5 +1,7 @@
 import { loadResolvedGtkxConfig } from "@gtkx/config";
+import { quitApplication } from "@gtkx/ffi";
 import * as Gio from "@gtkx/gi/gio";
+import { installGracefulShutdown } from "@gtkx/utils";
 import { createServer } from "vite";
 import { startMcpClient, stopMcpClient } from "../mcp/index.js";
 import { setTestingModuleLoader } from "../mcp/testing-loader.js";
@@ -42,6 +44,13 @@ export const defaultDevRunnerDeps = (): DevRunnerDeps => ({
         react.setApplicationLifecycle({
             quit: (application) => onQuit(() => react.defaultApplicationLifecycle.quit(application)),
         });
+    },
+    installShutdownHandlers: (onSignal) => {
+        installGracefulShutdown({ onSignal });
+    },
+    quitDefaultApplication: () => {
+        const application = Gio.Application.getDefault();
+        if (application) quitApplication(application);
     },
     performRefresh,
     isReactRefreshBoundary,

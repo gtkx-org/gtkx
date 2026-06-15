@@ -1,5 +1,4 @@
 import { stop as nativeStop } from "@gtkx/native";
-import { type GracefulShutdownHandle, installGracefulShutdown } from "@gtkx/utils";
 
 const KEEP_ALIVE_INTERVAL = 2147483647;
 
@@ -10,25 +9,20 @@ const KEEP_ALIVE_INTERVAL = 2147483647;
  * `@gtkx/gi` bindings.
  */
 export type RunnableApplication = {
-    /** Releases the application's hold on the GTK main loop. */
-    quit(): void;
+    /** Whether the application has been registered with the session bus. */
+    getIsRegistered(): boolean;
+    /** Registers the application; the cancellable is always `null` here. */
+    register(cancellable: null): boolean;
+    /** Emits the application's `activate` signal. */
+    activate(): void;
+    /** Connects a handler to the application's `activate` or `shutdown` signal. */
+    on(signal: "activate" | "shutdown", handler: () => void): unknown;
+    /** Emits the application's `shutdown` signal. */
+    emit(signal: "shutdown"): void;
 };
 
 const shutdownCallbacks: (() => void)[] = [];
-let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
-let shutdownHandle: GracefulShutdownHandle | null = null;
 let stopped = false;
-
-const keepAlive = (): void => {
-    keepAliveTimeout = setTimeout(keepAlive, KEEP_ALIVE_INTERVAL);
-};
-
-const clearKeepAlive = (): void => {
-    if (keepAliveTimeout) {
-        clearTimeout(keepAliveTimeout);
-        keepAliveTimeout = null;
-    }
-};
 
 /**
  * Registers a callback to run during shutdown, before native dispatch is torn
@@ -61,27 +55,25 @@ const stop = (): void => {
     for (const callback of shutdownCallbacks) callback();
 
     nativeStop();
-    clearKeepAlive();
 };
 
 process.on("exit", stop);
 
 /**
- * Starts driving an application's run loop, mirroring `Gio.Application.run`.
+ * Runs an application, mirroring `Gio.Application.run`.
  *
- * Keeps the Node.js event loop alive so the GLib main loop on the dedicated
- * native thread keeps iterating, and — unless `GTKX_DISABLE_SHUTDOWN_HANDLERS`
- * is set to `"1"` — installs `SIGINT`/`SIGTERM`/`SIGHUP` handlers that quit the
- * application through {@link quitApplication}. Importing `@gtkx/ffi` alone does
- * not keep the process alive: only a running application does, so a process
- * that never calls this exits cleanly once its work is done.
+ * Registers and activates the application, then holds the Node.js event loop
+ * alive for as long as the application is running so the GLib main loop on the
+ * dedicated native thread keeps iterating. The keep-alive starts on the
+ * application's `activate` signal and is released on its `shutdown` signal, so
+ * the process stays alive exactly as long as the application does and exits
+ * cleanly once it shuts down. Importing `@gtkx/ffi` alone does not keep the
+ * process alive: only a running application does.
  *
- * The GLib main loop runs on a dedicated thread, so the Node.js event loop
- * stays responsive and the signal handlers fire on the JS thread. `@gtkx/react`
- * calls this when an application component mounts; a plain (non-React) CLI app
- * calls it after constructing and activating its application.
+ * `@gtkx/react` calls this when an application component mounts; a plain
+ * (non-React) CLI app calls it after constructing its application.
  *
- * @param application - The application whose run loop to drive.
+ * @param application - The application to run.
  *
  * @see {@link quitApplication}
  *
@@ -93,21 +85,33 @@ process.on("exit", stop);
  * ```
  */
 export const runApplication = (application: RunnableApplication): void => {
-    if (keepAliveTimeout === null) keepAlive();
-    if (shutdownHandle === null && process.env.GTKX_DISABLE_SHUTDOWN_HANDLERS !== "1") {
-        shutdownHandle = installGracefulShutdown({ onSignal: () => quitApplication(application) });
-    }
+    let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const scheduleKeepAlive = (): void => {
+        keepAliveTimeout = setTimeout(scheduleKeepAlive, KEEP_ALIVE_INTERVAL);
+    };
+
+    application.on("activate", () => {
+        if (keepAliveTimeout === null) scheduleKeepAlive();
+    });
+    application.on("shutdown", () => {
+        if (keepAliveTimeout === null) return;
+        clearTimeout(keepAliveTimeout);
+        keepAliveTimeout = null;
+    });
+
+    if (!application.getIsRegistered()) application.register(null);
+    application.activate();
 };
 
 /**
  * Quits a running application, mirroring `Gio.Application.quit`.
  *
- * Releases the application's hold on the GTK main loop, stops keeping the
- * Node.js event loop alive, and removes the shutdown signal handlers installed
- * by {@link runApplication}. Once nothing else holds the event loop the process
- * exits cleanly, at which point the callbacks registered with {@link onExit}
- * run and native dispatch is torn down. `@gtkx/react` calls this when an
- * application component unmounts.
+ * Emits the application's `shutdown` signal, which releases the keep-alive
+ * installed by {@link runApplication}. Once nothing else holds the event loop
+ * the process exits cleanly, at which point the callbacks registered with
+ * {@link onExit} run and native dispatch is torn down. `@gtkx/react` calls this
+ * when an application component unmounts.
  *
  * @param application - The application to quit.
  *
@@ -121,8 +125,5 @@ export const runApplication = (application: RunnableApplication): void => {
  * ```
  */
 export const quitApplication = (application: RunnableApplication): void => {
-    application.quit();
-    clearKeepAlive();
-    shutdownHandle?.uninstall();
-    shutdownHandle = null;
+    application.emit("shutdown");
 };

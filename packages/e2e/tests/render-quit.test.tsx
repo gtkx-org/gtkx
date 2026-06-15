@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
-import { quit, render, setApplicationLifecycle, useApplication } from "@gtkx/react";
+import { quit, render, useApplication } from "@gtkx/react";
 import { Component, createRef, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { setupRealRenderEnvironment } from "./helpers/real-render-environment.js";
@@ -11,8 +11,6 @@ setupRealRenderEnvironment();
 describe("render and quit", () => {
     it("logs caught render errors via console.error and registers the app", async () => {
         const appRef = createRef<Gtk.Application>();
-        const quitHandler = vi.fn();
-        setApplicationLifecycle({ run: () => {}, quit: quitHandler });
         const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
         const Boom = (): null => {
@@ -63,9 +61,12 @@ describe("render and quit", () => {
         expect(app?.getIsRegistered()).toBe(true);
         expect(resolvedApp).toBe(app);
 
+        const shutdownHandler = vi.fn();
+        app?.on("shutdown", shutdownHandler);
+
         quit();
         await new Promise((resolve) => setTimeout(resolve, 100));
 
-        expect(quitHandler).toHaveBeenCalledTimes(1);
+        expect(shutdownHandler).toHaveBeenCalledTimes(1);
     });
 });

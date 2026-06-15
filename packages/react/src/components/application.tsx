@@ -58,14 +58,9 @@ const useApplicationInstance = <T extends Gtk.Application>(
 
     useLayoutEffect(() => {
         if (!app) return;
-        const onActivate = (): void => {};
-        app.on("activate", onActivate);
-        if (!app.getIsRegistered()) app.register(null);
-        app.activate();
-        setRegisteredApp(app);
         runApplicationLifecycle(app);
+        setRegisteredApp(app);
         return () => {
-            app.off("activate", onActivate);
             quitApplicationLifecycle(app);
         };
     }, [app]);

@@ -1,4 +1,4 @@
-import { setApplicationLifecycle, setDeferredFlushWrapper } from "@gtkx/react";
+import { type RunnableApplication, setApplicationLifecycle, setDeferredFlushWrapper } from "@gtkx/react";
 import * as React from "react";
 import { act as reactAct } from "react";
 
@@ -111,4 +111,18 @@ setDeferredFlushWrapper((flush) => {
     });
 });
 
-setApplicationLifecycle({ run: () => {}, quit: () => {} });
+/**
+ * Registers and activates application components but installs neither the
+ * keep-alive nor the `shutdown` teardown the production lifecycle uses: the
+ * test worker shares one GTK runtime across many per-test applications, so a
+ * keep-alive would block the worker from terminating and emitting `shutdown`
+ * on one application would tear the shared runtime down for the next test.
+ */
+setApplicationLifecycle({
+    run: (application: RunnableApplication) => {
+        application.on("activate", () => {});
+        if (!application.getIsRegistered()) application.register(null);
+        application.activate();
+    },
+    quit: () => {},
+});

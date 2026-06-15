@@ -1,26 +1,35 @@
 import * as Gio from "@gtkx/gi/gio";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
-import { render, setApplicationLifecycle } from "@gtkx/react";
+import { render } from "@gtkx/react";
+import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { setupRealRenderEnvironment } from "./helpers/real-render-environment.js";
 
 setupRealRenderEnvironment();
 
 describe("RenderHandle.unmount", () => {
-    it("quits the application when the unmounted tree contains the application component", async () => {
-        const quit = vi.fn();
-        setApplicationLifecycle({ run: () => {}, quit });
-
+    it("shuts the application down when the unmounted tree contains the application component", async () => {
+        const appRef = createRef<Gtk.Application>();
         const handle = render(
-            <GtkApplication applicationId="org.gtkx.render-unmount" flags={Gio.ApplicationFlags.NON_UNIQUE}>
+            <GtkApplication
+                ref={appRef}
+                applicationId="org.gtkx.render-unmount"
+                flags={Gio.ApplicationFlags.NON_UNIQUE}
+            >
                 <GtkApplicationWindow defaultWidth={50} defaultHeight={50} />
             </GtkApplication>,
         );
         await new Promise((resolve) => setTimeout(resolve, 0));
 
+        const app = appRef.current;
+        if (!app) throw new Error("application was not captured");
+        const shutdownHandler = vi.fn();
+        app.on("shutdown", shutdownHandler);
+
         handle.unmount();
         await new Promise((resolve) => setTimeout(resolve, 100));
 
-        expect(quit).toHaveBeenCalledTimes(1);
+        expect(shutdownHandler).toHaveBeenCalledTimes(1);
     });
 });

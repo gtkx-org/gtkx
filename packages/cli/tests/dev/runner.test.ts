@@ -38,6 +38,8 @@ type Harness = {
     performRefresh: ReturnType<typeof vi.fn>;
     isBoundary: ReturnType<typeof vi.fn>;
     installAppLifecycle: ReturnType<typeof vi.fn>;
+    installShutdownHandlers: ReturnType<typeof vi.fn>;
+    quitDefaultApp: ReturnType<typeof vi.fn>;
     log: ReturnType<typeof vi.fn>;
     exit: ReturnType<typeof vi.fn>;
     plugins: Plugin[];
@@ -64,6 +66,8 @@ const buildHarness = (
     const startMcp = vi.fn<DevRunnerDeps["startMcpClient"]>(async () => undefined);
     const stopMcp = vi.fn<DevRunnerDeps["stopMcpClient"]>();
     const installAppLifecycle = vi.fn<DevRunnerDeps["installApplicationLifecycle"]>(async () => undefined);
+    const installShutdownHandlers = vi.fn<DevRunnerDeps["installShutdownHandlers"]>();
+    const quitDefaultApp = vi.fn<DevRunnerDeps["quitDefaultApplication"]>();
     const performRefresh = vi.fn<DevRunnerDeps["performRefresh"]>();
     const isBoundary = vi.fn<DevRunnerDeps["isReactRefreshBoundary"]>((mod) =>
         overrides.isBoundary ? overrides.isBoundary(mod) : mod.__isBoundary === true,
@@ -77,6 +81,8 @@ const buildHarness = (
         startMcpClient: startMcp,
         stopMcpClient: stopMcp,
         installApplicationLifecycle: installAppLifecycle,
+        installShutdownHandlers,
+        quitDefaultApplication: quitDefaultApp,
         performRefresh,
         isReactRefreshBoundary: isBoundary,
         plugins: () => plugins,
@@ -91,6 +97,8 @@ const buildHarness = (
         startMcp,
         stopMcp,
         installAppLifecycle,
+        installShutdownHandlers,
+        quitDefaultApp,
         performRefresh,
         isBoundary,
         log,
@@ -167,6 +175,14 @@ const installedQuit = (harness: Harness): OnQuit => {
     expect(harness.installAppLifecycle).toHaveBeenCalledTimes(1);
     const [, onQuit] = harness.installAppLifecycle.mock.calls[0] as [unknown, OnQuit];
     return onQuit;
+};
+
+type OnSignal = () => void | Promise<void>;
+
+const installedSignalHandler = (harness: Harness): OnSignal => {
+    expect(harness.installShutdownHandlers).toHaveBeenCalledTimes(1);
+    const [onSignal] = harness.installShutdownHandlers.mock.calls[0] as [OnSignal];
+    return onSignal;
 };
 
 const emitBoundaryChange = async (harness: Harness, file: string): Promise<void> => {
@@ -260,6 +276,30 @@ describe("createDevRunner (quit outside a refresh pass)", () => {
         expect(firstQuit).toHaveBeenCalledTimes(1);
         expect(secondQuit).not.toHaveBeenCalled();
         expect(harness.exit).not.toHaveBeenCalled();
+    });
+});
+
+describe("createDevRunner (signal shutdown)", () => {
+    it("quits the default application and tears down the server on a shutdown signal", async () => {
+        const harness = buildHarness({ applicationId: "com.example.app" });
+
+        await startRunner(harness);
+        await installedSignalHandler(harness)();
+
+        expect(harness.quitDefaultApp).toHaveBeenCalledTimes(1);
+        expect(harness.stopMcp).toHaveBeenCalled();
+        expect(harness.server.close).toHaveBeenCalled();
+    });
+
+    it("ignores a shutdown signal once the runtime is already shutting down", async () => {
+        const harness = buildHarness({ applicationId: "com.example.app" });
+
+        await startRunner(harness);
+        const onSignal = installedSignalHandler(harness);
+        await onSignal();
+        await onSignal();
+
+        expect(harness.quitDefaultApp).toHaveBeenCalledTimes(1);
     });
 });
 

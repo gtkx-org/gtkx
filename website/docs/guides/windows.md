@@ -247,13 +247,11 @@ changes, so the dialog always presents against the window that is currently acti
 
 ## Shutdown
 
-A running application installs `SIGINT` (Ctrl+C), `SIGTERM`, and `SIGHUP` handlers for you: the signal quits the
-application, the main loop stops, and the process exits cleanly. A second `SIGINT` forces an immediate exit. The
-`GtkApplication`/`AdwApplication` components register these handlers on your behalf; a non-React application registers
-them by calling `runApplication`.
-
-Embedders that own process signals can opt out by setting `GTKX_DISABLE_SHUTDOWN_HANDLERS=1` in the environment
-before the process loads `@gtkx/ffi`.
+Unmounting the application — through `quit()` or the main window's `onCloseRequest` — quits the GTK application and
+stops the runtime, so the process exits cleanly. Under `gtkx dev`, the dev server also installs `SIGINT` (Ctrl+C),
+`SIGTERM`, and `SIGHUP` handlers that quit the running application, so Ctrl+C shuts the app down gracefully. The
+runtime itself installs no signal handlers; a standalone build that wants to trap signals installs its own handler
+(for example with `installGracefulShutdown` from `@gtkx/utils`) that calls `quitApplication` from `@gtkx/ffi`.
 
 To run code during shutdown — before native dispatch is torn down — register a callback with `onExit`:
 

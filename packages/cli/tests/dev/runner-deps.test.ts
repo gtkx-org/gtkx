@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const hoisted = vi.hoisted(() => ({
     getDefault: vi.fn(() => null as { applicationId: string | null } | null),
+    quitApplication: vi.fn(),
+    installGracefulShutdown: vi.fn(),
     startMcpClient: vi.fn(async () => undefined),
     stopMcpClient: vi.fn(),
     setTestingModuleLoader: vi.fn(),
@@ -15,6 +17,15 @@ const hoisted = vi.hoisted(() => ({
 
 vi.mock("@gtkx/gi/gio", () => ({
     Application: { getDefault: hoisted.getDefault },
+}));
+
+vi.mock("@gtkx/ffi", () => ({
+    quitApplication: hoisted.quitApplication,
+}));
+
+vi.mock("@gtkx/utils", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@gtkx/utils")>()),
+    installGracefulShutdown: hoisted.installGracefulShutdown,
 }));
 
 vi.mock("vite", () => ({
@@ -125,6 +136,41 @@ describe("defaultDevRunnerDeps (getApplicationId)", () => {
         hoisted.getDefault.mockReturnValueOnce({ applicationId: null });
 
         expect(deps.getApplicationId()).toBeNull();
+    });
+});
+
+describe("defaultDevRunnerDeps (shutdown wiring)", () => {
+    beforeEach(() => {
+        hoisted.quitApplication.mockReset();
+        hoisted.installGracefulShutdown.mockReset();
+    });
+
+    it("routes shutdown handlers through installGracefulShutdown", () => {
+        const deps = defaultDevRunnerDeps();
+        const onSignal = vi.fn();
+
+        deps.installShutdownHandlers(onSignal);
+
+        expect(hoisted.installGracefulShutdown).toHaveBeenCalledWith({ onSignal });
+    });
+
+    it("quits the live default application", () => {
+        const deps = defaultDevRunnerDeps();
+        const application = { applicationId: "com.example.app" };
+        hoisted.getDefault.mockReturnValueOnce(application);
+
+        deps.quitDefaultApplication();
+
+        expect(hoisted.quitApplication).toHaveBeenCalledWith(application);
+    });
+
+    it("does nothing when no default application is registered", () => {
+        const deps = defaultDevRunnerDeps();
+        hoisted.getDefault.mockReturnValueOnce(null);
+
+        deps.quitDefaultApplication();
+
+        expect(hoisted.quitApplication).not.toHaveBeenCalled();
     });
 });
 

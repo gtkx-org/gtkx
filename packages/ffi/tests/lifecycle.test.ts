@@ -8,84 +8,97 @@ vi.mock("@gtkx/native", async (importOriginal) => {
     return { ...actual, stop: nativeMock.stop };
 });
 
-const sigintListenerCount = (): number => process.listenerCount("SIGINT");
+type FakeApplication = {
+    registerCalls: number;
+    activateCalls: number;
+    getIsRegistered(): boolean;
+    register(cancellable: null): boolean;
+    activate(): void;
+    on(signal: "activate" | "shutdown", handler: () => void): unknown;
+    emit(signal: "activate" | "shutdown"): void;
+};
 
-const withShutdownHandlersEnabled = async (body: () => void | Promise<void>): Promise<void> => {
-    const previous = process.env.GTKX_DISABLE_SHUTDOWN_HANDLERS;
-    delete process.env.GTKX_DISABLE_SHUTDOWN_HANDLERS;
-    try {
-        await body();
-    } finally {
-        process.env.GTKX_DISABLE_SHUTDOWN_HANDLERS = previous;
-    }
+const createFakeApplication = (): FakeApplication => {
+    const handlers: Record<"activate" | "shutdown", (() => void)[]> = { activate: [], shutdown: [] };
+    let registered = false;
+    return {
+        registerCalls: 0,
+        activateCalls: 0,
+        getIsRegistered: () => registered,
+        register(_cancellable: null) {
+            this.registerCalls++;
+            registered = true;
+            return true;
+        },
+        activate() {
+            this.activateCalls++;
+            this.emit("activate");
+        },
+        on(signal, handler) {
+            handlers[signal].push(handler);
+            return undefined;
+        },
+        emit(signal) {
+            for (const handler of handlers[signal]) handler();
+        },
+    };
 };
 
 describe("runApplication and quitApplication", () => {
-    it("quits the application even when no run is in progress", () => {
-        let calls = 0;
-        const app = { quit: () => calls++ };
-
-        quitApplication(app);
-
-        expect(calls).toBe(1);
-    });
-
-    it("skips signal handlers when GTKX_DISABLE_SHUTDOWN_HANDLERS is set", () => {
-        const before = sigintListenerCount();
-        const app = { quit: () => undefined };
-
-        runApplication(app);
-
-        expect(sigintListenerCount()).toBe(before);
-
-        quitApplication(app);
-    });
-
-    it("installs signal handlers on run and removes them on quit", async () => {
-        await withShutdownHandlersEnabled(() => {
-            const before = sigintListenerCount();
-            let quitCalls = 0;
-            const app = { quit: () => quitCalls++ };
+    it("registers, activates, and holds the loop alive until shutdown", () => {
+        vi.useFakeTimers();
+        try {
+            const app = createFakeApplication();
+            const before = vi.getTimerCount();
 
             runApplication(app);
-            expect(sigintListenerCount()).toBe(before + 1);
+
+            expect(app.registerCalls).toBe(1);
+            expect(app.activateCalls).toBe(1);
+            expect(app.getIsRegistered()).toBe(true);
+            expect(vi.getTimerCount()).toBe(before + 1);
 
             quitApplication(app);
-            expect(sigintListenerCount()).toBe(before);
-            expect(quitCalls).toBe(1);
-        });
-    });
-
-    it("installs a single handler set across repeated runs", async () => {
-        await withShutdownHandlersEnabled(() => {
-            const before = sigintListenerCount();
-            const app = { quit: () => undefined };
-
-            runApplication(app);
-            runApplication(app);
-            expect(sigintListenerCount()).toBe(before + 1);
+            expect(vi.getTimerCount()).toBe(before);
 
             quitApplication(app);
-            expect(sigintListenerCount()).toBe(before);
-        });
+            expect(vi.getTimerCount()).toBe(before);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
-    it("quits the running application when a shutdown signal arrives", async () => {
-        await withShutdownHandlersEnabled(async () => {
-            const before = sigintListenerCount();
-            const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
-            let quitCalls = 0;
-            const app = { quit: () => quitCalls++ };
+    it("does not re-register an already-registered application", () => {
+        vi.useFakeTimers();
+        try {
+            const app = createFakeApplication();
+            app.register(null);
 
             runApplication(app);
-            process.emit("SIGINT", "SIGINT");
-            await new Promise((resolve) => setTimeout(resolve, 0));
 
-            expect(quitCalls).toBe(1);
-            expect(sigintListenerCount()).toBe(before);
-            expect(exitSpy).toHaveBeenCalledWith(130);
-            exitSpy.mockRestore();
-        });
+            expect(app.registerCalls).toBe(1);
+
+            quitApplication(app);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("keeps a single keepalive when the application activates again", () => {
+        vi.useFakeTimers();
+        try {
+            const app = createFakeApplication();
+            const before = vi.getTimerCount();
+
+            runApplication(app);
+            app.activate();
+
+            expect(vi.getTimerCount()).toBe(before + 1);
+
+            quitApplication(app);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 });
 

@@ -12,7 +12,7 @@ import * as GLib from "@gtkx/gi/glib";
 
 ## Running an application
 
-The GLib main loop runs on a dedicated thread that starts as soon as `@gtkx/ffi` is loaded, but importing `@gtkx/ffi` does not, on its own, keep the process alive — a Node.js process that never runs an application exits cleanly once its work is done. Drive the application through `register` and `activate`, build your widgets in the `activate` handler, and call `runApplication` to keep the loop alive for the application's lifetime (the equivalent of `Gio.Application.run`):
+The GLib main loop runs on a dedicated thread that starts as soon as `@gtkx/ffi` is loaded, but importing `@gtkx/ffi` does not, on its own, keep the process alive — a Node.js process that never runs an application exits cleanly once its work is done. Build your widgets in the `activate` handler and call `runApplication` to run the application (the equivalent of `Gio.Application.run`): it registers and activates the application, then holds the process alive until the application shuts down.
 
 ```tsx
 import { quitApplication, runApplication } from "@gtkx/ffi";
@@ -33,14 +33,12 @@ app.on("activate", () => {
     window.present();
 });
 
-app.register(null);
-app.activate();
 runApplication(app);
 ```
 
 Do **not** call `Gio.Application.run`: it blocks the JavaScript thread for the lifetime of the application, which prevents Node.js from servicing timers, promises, and — most importantly — signal handlers. `runApplication` keeps the process alive without blocking.
 
-`runApplication` installs `SIGINT` (Ctrl+C), `SIGTERM`, and `SIGHUP` handlers that quit the application through `quitApplication`, so the loop stops and the process exits cleanly. To shut down from code, call `quitApplication(app)` directly. Embedders that own process signals can suppress the handlers by setting `GTKX_DISABLE_SHUTDOWN_HANDLERS=1`. To run code during shutdown — before native dispatch tears down — register a callback with `onExit`.
+`runApplication` holds the process alive from the application's `activate` signal until its `shutdown` signal; `quitApplication(app)` emits `shutdown`, releasing the hold so the process exits cleanly once nothing else keeps the loop busy. `@gtkx/ffi` itself installs no signal handlers: a standalone application that wants `SIGINT` (Ctrl+C) to shut down cleanly installs its own handler — for example with `installGracefulShutdown` from `@gtkx/utils` — that calls `quitApplication(app)`. The `gtkx dev` server installs such a handler for you. To run code during shutdown — before native dispatch tears down — register a callback with `onExit`.
 
 ## Async methods
 
