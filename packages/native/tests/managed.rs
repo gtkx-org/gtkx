@@ -252,13 +252,13 @@ fn a_drop_owned_handle_off_thread_routes_through_glib_idle() {
 }
 
 #[test]
-fn drop_owned_handle_off_thread_while_stopped_leaks_value() {
+fn drop_owned_handle_off_thread_while_not_running_leaks_value() {
     common::run(|| {
         let ptr = param_spec_ptr();
         let handle = owned_fundamental(ptr);
 
         let mailbox = Mailbox::global();
-        mailbox.mark_stopped();
+        mailbox.mark_not_running();
 
         thread::spawn(move || {
             drop(handle);

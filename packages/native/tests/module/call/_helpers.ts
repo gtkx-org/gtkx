@@ -1,8 +1,8 @@
 import { call } from "../../../index.js";
-import type { NativeType } from "../../../types.js";
+import type { Type, Value } from "../../../types.js";
 import { BOOLEAN, GOBJECT_BORROWED, GTK_LIB, VOID } from "../utils.js";
 
-export function setLabelSelectable(label: unknown, value: boolean): void {
+export function setLabelSelectable(label: Value, value: boolean): void {
     call(
         GTK_LIB,
         "gtk_label_set_selectable",
@@ -14,11 +14,11 @@ export function setLabelSelectable(label: unknown, value: boolean): void {
     );
 }
 
-export function getLabelSelectable(label: unknown): boolean {
+export function getLabelSelectable(label: Value): boolean {
     return call(GTK_LIB, "gtk_label_get_selectable", [{ type: GOBJECT_BORROWED, value: label }], BOOLEAN) as boolean;
 }
 
-export function setAndGetLabelMaxWidthChars(label: unknown, type: NativeType, value: number): number {
+export function setAndGetLabelMaxWidthChars(label: Value, type: Type, value: number): number {
     call(
         GTK_LIB,
         "gtk_label_set_max_width_chars",

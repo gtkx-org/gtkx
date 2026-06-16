@@ -10,7 +10,7 @@
  * `GObject` namespace.
  */
 
-import { alloc, call, type Type as FfiType, getType, type NativeHandle, read, setWrapper, write } from "@gtkx/native";
+import { alloc, call, type Type as FfiType, getType, type Handle, read, setWrapper, write } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import {
     type GType,
@@ -130,7 +130,7 @@ const isMarshalEntry = (entry: unknown): entry is MarshalEntry => {
  */
 export function newGobjectWithProperties(instance: object, props: Record<string, unknown>): void {
     const names: string[] = [];
-    const values: NativeHandle[] = [];
+    const values: Handle[] = [];
     for (const key in props) {
         const entry = props[key];
         if (!isMarshalEntry(entry)) continue;
@@ -151,7 +151,7 @@ export function newGobjectWithProperties(instance: object, props: Record<string,
             { type: t.sizedArray(GVALUE_BORROWED, 1, "borrowed", GVALUE_SIZE), value: values },
         ],
         t.object("full"),
-    ) as NativeHandle;
+    ) as Handle;
 
     setHandle(instance, handle);
     setWrapper(handle, instance);
@@ -304,7 +304,7 @@ export function getGvalueBoxed(value: object): object | null {
         [{ type: GVALUE_BORROWED, value: getHandle(value) }],
         t.boxed(boxedTypeName(gtype), "full", LIBGOBJECT),
     );
-    return ptr === null ? null : wrapHandle(ptr as NativeHandle, cls);
+    return ptr === null ? null : wrapHandle(ptr as Handle, cls);
 }
 
 /** Creates a `GValue` initialized with a boolean. */
@@ -711,7 +711,7 @@ const gValueSetPointer = t.bind(
  * @param value - The `G_TYPE_POINTER`-initialized value to populate.
  * @param pointer - Handle whose backing memory the payload points at.
  */
-export const setGValuePointer = (value: GValue, pointer: NativeHandle): void => {
+export const setGValuePointer = (value: GValue, pointer: Handle): void => {
     gValueSetPointer(getHandle(value), pointer);
 };
 
@@ -907,19 +907,19 @@ export class GValue {
         gValueSetObject(getHandle(this), tryGetHandle(value));
     }
     getObject(): object | null {
-        return wrapHandle(gValueGetObject(getHandle(this)) as NativeHandle | null);
+        return wrapHandle(gValueGetObject(getHandle(this)) as Handle | null);
     }
     setParam(value: object | null): void {
         gValueSetParam(getHandle(this), tryGetHandle(value));
     }
     getParam(): object | null {
-        return wrapHandle(gValueGetParam(getHandle(this)) as NativeHandle | null);
+        return wrapHandle(gValueGetParam(getHandle(this)) as Handle | null);
     }
     setVariant(value: object | null): void {
         gValueSetVariant(getHandle(this), tryGetHandle(value));
     }
     getVariant(): object | null {
-        const result = gValueGetVariant(getHandle(this)) as NativeHandle | null;
+        const result = gValueGetVariant(getHandle(this)) as Handle | null;
         if (result === null) return null;
         const cls = getWrapperClass(TYPE_VARIANT);
         if (cls === null) {
@@ -984,7 +984,7 @@ const valueFromFundamental = (value: GValueReader, fundamental: GType): unknown 
     return marshaller ? marshaller.from(value) : undefined;
 };
 
-const getPointerValue = (handle: NativeHandle): null => {
+const getPointerValue = (handle: Handle): null => {
     const ptr = read(handle, t.uint64, 8) as number;
     if (ptr !== 0) {
         throw new Error("G_TYPE_POINTER non-null values cannot be marshalled to JS");
@@ -1120,7 +1120,7 @@ export function wrapValue(ffiType: FfiType, value: unknown, targetClass?: AnyCla
         case "boxed":
         case "struct":
         case "fundamental":
-            return wrapHandle(value as NativeHandle | null, targetClass);
+            return wrapHandle(value as Handle | null, targetClass);
         case "array":
             return wrapCollection(ffiType, value, targetClass);
         case "hashtable":

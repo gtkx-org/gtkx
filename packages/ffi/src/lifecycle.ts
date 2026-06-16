@@ -1,4 +1,4 @@
-import { stop as nativeStop } from "@gtkx/native";
+import { quit as nativeQuit } from "@gtkx/native";
 
 const KEEP_ALIVE_INTERVAL = 2147483647;
 
@@ -22,7 +22,7 @@ export type RunnableApplication = {
 };
 
 const shutdownCallbacks: (() => void)[] = [];
-let stopped = false;
+let hasQuit = false;
 
 /**
  * Registers a callback to run during shutdown, before native dispatch is torn
@@ -40,7 +40,7 @@ let stopped = false;
  * import { onExit } from "@gtkx/ffi";
  *
  * onExit(() => {
- *   console.log("Runtime stopping");
+ *   console.log("Runtime quitting, cleaning up...");
  * });
  * ```
  */
@@ -48,16 +48,16 @@ export const onExit = (callback: () => void): void => {
     shutdownCallbacks.push(callback);
 };
 
-const stop = (): void => {
-    if (stopped) return;
-    stopped = true;
+const quit = (): void => {
+    if (hasQuit) return;
+    hasQuit = true;
 
     for (const callback of shutdownCallbacks) callback();
 
-    nativeStop();
+    nativeQuit();
 };
 
-process.on("exit", stop);
+process.on("exit", quit);
 
 /**
  * Runs an application, mirroring `Gio.Application.run`.

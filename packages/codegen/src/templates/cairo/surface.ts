@@ -1,5 +1,5 @@
 import { getHandle, setHandle, t, wrapHandle } from "@gtkx/ffi";
-import type { NativeHandle } from "@gtkx/native";
+import type { Handle } from "@gtkx/native";
 import type { Content, Format, RectangleInt, Status, SurfaceType } from "../cairo.js";
 import { Surface } from "../cairo.js";
 import { FontOptions } from "./font-options.js";
@@ -14,7 +14,7 @@ declare module "../cairo.js" {
         status(): Status;
         finish(): void;
         flush(): void;
-        getDevice(): NativeHandle | null;
+        getDevice(): Handle | null;
         getFontOptions(): FontOptions;
         getContent(): Content;
         markDirty(): void;
@@ -62,7 +62,7 @@ const cairoSurfaceCreateSimilar = bind(
     t.boxed("CairoSurface", "full", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
 );
 SurfaceWithStatics.createSimilar = (other: Surface, content: Content, width: number, height: number): Surface => {
-    return wrapHandle(cairoSurfaceCreateSimilar(getHandle(other), content, width, height) as NativeHandle, Surface);
+    return wrapHandle(cairoSurfaceCreateSimilar(getHandle(other), content, width, height) as Handle, Surface);
 };
 
 const cairoSurfaceCreateSimilarImage = bind(
@@ -77,7 +77,7 @@ const cairoSurfaceCreateSimilarImage = bind(
     t.boxed("CairoSurface", "full", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
 );
 SurfaceWithStatics.createSimilarImage = (other: Surface, format: Format, width: number, height: number): Surface => {
-    return wrapHandle(cairoSurfaceCreateSimilarImage(getHandle(other), format, width, height) as NativeHandle, Surface);
+    return wrapHandle(cairoSurfaceCreateSimilarImage(getHandle(other), format, width, height) as Handle, Surface);
 };
 
 const cairoSurfaceCreateForRectangle = bind(
@@ -99,7 +99,7 @@ SurfaceWithStatics.createForRectangle = (
     width: number,
     height: number,
 ): Surface => {
-    return wrapHandle(cairoSurfaceCreateForRectangle(getHandle(target), x, y, width, height) as NativeHandle, Surface);
+    return wrapHandle(cairoSurfaceCreateForRectangle(getHandle(target), x, y, width, height) as Handle, Surface);
 };
 
 const cairoSurfaceWriteToPng = bind(
@@ -151,8 +151,8 @@ const cairoSurfaceGetDevice = bind(
     [{ type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") }],
     DEVICE_T_NONE,
 );
-Surface.prototype.getDevice = function (): NativeHandle | null {
-    return cairoSurfaceGetDevice(getHandle(this)) as NativeHandle | null;
+Surface.prototype.getDevice = function (): Handle | null {
+    return cairoSurfaceGetDevice(getHandle(this)) as Handle | null;
 };
 
 const cairoSurfaceGetFontOptions = bind(
@@ -379,7 +379,7 @@ const cairoSurfaceMapToImage = bind(
     t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
 );
 Surface.prototype.mapToImage = function (extents: RectangleInt): Surface {
-    const ptr = cairoSurfaceMapToImage(getHandle(this), getHandle(extents)) as NativeHandle;
+    const ptr = cairoSurfaceMapToImage(getHandle(this), getHandle(extents)) as Handle;
     const surface = Object.create(ImageSurface.prototype) as ImageSurface;
     setHandle(surface, ptr);
     return surface;

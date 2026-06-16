@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { call } from "../../../index.js";
+import { call, type Value } from "../../../index.js";
 import { appendLabelAndExpectRefIncrement, expectNoLeakCreatingLabels } from "../call-gobject-string-helpers.js";
 import {
     boxAppend,
@@ -220,7 +220,7 @@ describe("call - gobject types - memory leaks container remove", () => {
     it("does not leak when removing GObject from container", () => {
         const box = createBox();
         const boxRefCount = getRefCount(box);
-        const labels: unknown[] = [];
+        const labels: Value[] = [];
 
         for (let i = 0; i < 50; i++) {
             const label = createLabel(`Label ${i}`);

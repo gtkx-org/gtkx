@@ -1,5 +1,5 @@
 import { getHandle, setHandle, t } from "@gtkx/ffi";
-import type { NativeHandle } from "@gtkx/native";
+import type { Handle } from "@gtkx/native";
 import type { Antialias, HintMetrics, HintStyle, Status, SubpixelOrder } from "../cairo.js";
 import { FontOptions } from "../cairo.js";
 
@@ -43,7 +43,7 @@ class FontOptionsImpl extends FontOptions {
     constructor(other?: FontOptions) {
         super();
         const handle = other === undefined ? cairoFontOptionsCreate() : cairoFontOptionsCopy(getHandle(other));
-        setHandle(this, handle as NativeHandle);
+        setHandle(this, handle as Handle);
     }
 
     static create(): FontOptionsImpl {

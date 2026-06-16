@@ -1,5 +1,5 @@
 import { getHandle, setHandle, t, wrapHandle } from "@gtkx/ffi";
-import { call, type NativeHandle, read } from "@gtkx/native";
+import { call, type Handle, read } from "@gtkx/native";
 import type { Format } from "../cairo.js";
 import { Surface } from "../cairo.js";
 
@@ -52,15 +52,15 @@ export class ImageSurface extends Surface {
      */
     constructor(format: Format, width: number, height: number) {
         super();
-        setHandle(this, cairoImageSurfaceCreate(format, width, height) as NativeHandle);
+        setHandle(this, cairoImageSurfaceCreate(format, width, height) as Handle);
     }
 
     static create(format: Format, width: number, height: number): ImageSurface {
-        return wrapHandle(cairoImageSurfaceCreate(format, width, height) as NativeHandle, ImageSurface);
+        return wrapHandle(cairoImageSurfaceCreate(format, width, height) as Handle, ImageSurface);
     }
 
     static createFromPng(filename: string): ImageSurface {
-        const ptr = cairoImageSurfaceCreateFromPng(filename) as NativeHandle;
+        const ptr = cairoImageSurfaceCreateFromPng(filename) as Handle;
         const surface = Object.create(ImageSurface.prototype) as ImageSurface;
         setHandle(surface, ptr);
         return surface;
@@ -103,7 +103,7 @@ export class ImageSurface extends Surface {
                 },
             ],
             t.struct("borrowed", totalBytes),
-        ) as NativeHandle | null;
+        ) as Handle | null;
         if (ptr === null) return new Uint8Array(0);
         const result = new Uint8Array(totalBytes);
         for (let i = 0; i < totalBytes; i++) {

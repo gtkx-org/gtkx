@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { getWrapper, type NativeHandle, setWrapper } from "../../index.js";
+import { getWrapper, type Handle, setWrapper } from "../../index.js";
 import { createLabel, getRefCount } from "./utils.js";
 
 describe("toggle-ref rebind", () => {
     it("reuses a single toggle ref and tracks the latest wrapper across rebinds", () => {
-        const label = createLabel("Rebind") as NativeHandle;
+        const label = createLabel("Rebind") as Handle;
 
         const first = { gen: 1 };
         setWrapper(label, first);

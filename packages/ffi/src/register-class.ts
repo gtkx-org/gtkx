@@ -1,7 +1,7 @@
 import {
     registerClass as nativeRegisterClass,
-    type RegisterClassVfuncDefinition,
-    type RegisterClassVfuncOptions,
+    type RegisterClassOptions as NativeRegisterClassOptions,
+    type RegisterClassVfunc as NativeRegisterClassVfunc,
 } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { type GType, TYPE_INVALID, typeInterfaces } from "./gtype.js";
@@ -9,7 +9,7 @@ import {
     getClassGtype,
     getParentClass,
     getVfuncRegistry,
-    type NativeHandle,
+    type Handle,
     setClassGtype,
     wrapHandle,
 } from "./registry.js";
@@ -29,8 +29,8 @@ type VfuncDescriptor<K extends "class" | "interface" = "class" | "interface"> = 
     readonly className: string;
     readonly vfuncName: string;
     readonly byteOffset: number;
-    readonly argTypes: RegisterClassVfuncDefinition["argTypes"];
-    readonly returnType: RegisterClassVfuncDefinition["returnType"];
+    readonly argTypes: NativeRegisterClassVfunc["argTypes"];
+    readonly returnType: NativeRegisterClassVfunc["returnType"];
 };
 
 /**
@@ -44,7 +44,7 @@ export type RegisterClassOptions = {
     readonly gtypeName?: string;
 };
 
-type VfuncFn = RegisterClassVfuncDefinition["fn"];
+type VfuncFn = NativeRegisterClassVfunc["fn"];
 
 type DiscoveredClassVfunc = VfuncDescriptor<"class"> & {
     readonly methodName: string;
@@ -165,20 +165,20 @@ function discoverClassVfuncs(klass: AnyClass): DiscoveredClassVfunc[] {
 
 /**
  * Wraps a JS-side vfunc implementation so the native trampoline can hand it
- * raw `ExternalObject<NativeHandle>` arguments and the user code receives
+ * raw `ExternalObject<Handle>` arguments and the user code receives
  * fully-typed JS wrappers. The first object-typed argument — the GObject
  * `self` for any instance vfunc — is bound as `this` and is NOT forwarded
  * positionally, so subclass authors receive only the remaining vfunc
  * arguments and can write `this.setLayoutManager(...)` exactly the way they
  * would in any other instance method.
  */
-function wrapVfunc(fn: VfuncFn, argTypes: RegisterClassVfuncDefinition["argTypes"]): VfuncFn {
+function wrapVfunc(fn: VfuncFn, argTypes: NativeRegisterClassVfunc["argTypes"]): VfuncFn {
     return ((...rawArgs: unknown[]) => {
         const wrapped: unknown[] = rawArgs.map((arg, i) => {
             if (arg == null) return arg;
             const argType = argTypes[i] as { type?: string } | undefined;
             if (argType?.type === "gobject") {
-                return wrapHandle(arg as NativeHandle);
+                return wrapHandle(arg as Handle);
             }
             return arg;
         });
@@ -265,7 +265,7 @@ export function registerInterfaceVfuncRegistry(gtype: GType, vfuncRegistry: Read
 function toNativeOptions(
     classVfuncs: readonly DiscoveredClassVfunc[],
     interfaceBindings: readonly InterfaceVfuncBinding[],
-): RegisterClassVfuncOptions | undefined {
+): NativeRegisterClassOptions | undefined {
     const hasInterfaces = interfaceBindings.length > 0;
     const hasClassVfuncs = classVfuncs.length > 0;
     if (!hasClassVfuncs && !hasInterfaces) {
@@ -273,6 +273,6 @@ function toNativeOptions(
     }
     return {
         vfuncs: hasClassVfuncs ? classVfuncs : undefined,
-        interfaceVfuncs: hasInterfaces ? interfaceBindings : undefined,
-    };
+        interfaces: hasInterfaces ? interfaceBindings : undefined,
+    } as NativeRegisterClassOptions;
 }

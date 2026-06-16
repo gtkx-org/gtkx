@@ -10,7 +10,7 @@
 //!
 //! An off-thread drop of an owned handle routes back to the `GLib` thread via
 //! `glib::idle_add_once` so the boxed copy or fundamental unref releases on the
-//! thread that owns it. At shutdown ([`Mailbox::is_stopped`]) the handle's value
+//! thread that owns it. At shutdown ([`Mailbox::is_not_started`]) the handle's value
 //! is intentionally leaked via [`std::mem::forget`] to avoid post-shutdown
 //! teardown crashes.
 
@@ -79,7 +79,7 @@ impl AnchoredValue {
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn new(value: NativeValue) -> Self {
         let on_foreign_thread =
-            Mailbox::global().is_started() && !glib::MainContext::default().is_owner();
+            Mailbox::global().is_running() && !glib::MainContext::default().is_owner();
         if on_foreign_thread {
             Self::Transferable(TransferableValue(ManuallyDrop::new(value)))
         } else {
@@ -262,7 +262,7 @@ impl Drop for NativeHandle {
         if let Some(flag) = self.pending_gobject_ref.take()
             && Arc::strong_count(&flag) == 1
             && flag.swap(false, Ordering::AcqRel)
-            && !Mailbox::global().is_stopped()
+            && !Mailbox::global().is_not_running()
         {
             let gobject_addr = self.ptr;
             // SAFETY: The swapped flag held the one pending decode
@@ -278,7 +278,7 @@ impl Drop for NativeHandle {
         };
         if wrapper.droppable_here() {
             drop(wrapper);
-        } else if Mailbox::global().is_stopped() {
+        } else if Mailbox::global().is_not_running() {
             std::mem::forget(wrapper);
         } else {
             glib::idle_add_once(move || drop(wrapper));

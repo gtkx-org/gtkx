@@ -1,4 +1,4 @@
-import { type Arg, call as nativeCall, type TrampolineType, type Type } from "@gtkx/native";
+import { type Arg, call as nativeCall, type TrampolineType, type Type, type Value } from "@gtkx/native";
 
 export { alloc, call, read, write } from "@gtkx/native";
 
@@ -78,7 +78,7 @@ const bind = (
     return (...values) => {
         let i = 0;
         for (const arg of args) {
-            arg.value = values[i++];
+            arg.value = values[i++] as Value;
         }
         return nativeCall(library, symbol, args, returnType);
     };

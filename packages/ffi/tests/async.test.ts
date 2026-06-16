@@ -1,10 +1,10 @@
 import { getHandle, promisify, setHandle } from "@gtkx/ffi";
-import type { NativeHandle } from "@gtkx/native";
+import type { Handle } from "@gtkx/native";
 import { describe, expect, it } from "vitest";
 
-const handle = (id: number): NativeHandle => {
+const handle = (id: number): Handle => {
     const token: object = { id };
-    return token as NativeHandle;
+    return token as Handle;
 };
 
 describe("promisify", () => {
@@ -12,7 +12,7 @@ describe("promisify", () => {
         const calls: unknown[][] = [];
         const asyncFn = (...args: unknown[]): void => {
             calls.push(args);
-            const callback = args[args.length - 1] as (source: NativeHandle, result: NativeHandle) => void;
+            const callback = args[args.length - 1] as (source: Handle, result: Handle) => void;
             callback(handle(1), handle(2));
         };
 
@@ -32,7 +32,7 @@ describe("promisify", () => {
         let captured: unknown[] = [];
         const asyncFn = (...args: unknown[]): void => {
             captured = args;
-            (args[args.length - 1] as (source: NativeHandle, result: NativeHandle) => void)(handle(1), handle(2));
+            (args[args.length - 1] as (source: Handle, result: Handle) => void)(handle(1), handle(2));
         };
 
         return promisify(asyncFn, () => 0, undefined, { leading: ["lead"], trailing: ["progress"] }).then(() => {
@@ -44,7 +44,7 @@ describe("promisify", () => {
     it("passes a wrapped GAsyncResult whose handle is the raw callback pointer", () => {
         const rawResult = handle(7);
         const asyncFn = (...args: unknown[]): void => {
-            (args[args.length - 1] as (source: NativeHandle, result: NativeHandle) => void)(handle(1), rawResult);
+            (args[args.length - 1] as (source: Handle, result: Handle) => void)(handle(1), rawResult);
         };
 
         return promisify(asyncFn, (result: object) => getHandle(result), undefined, { leading: [] }).then(
@@ -57,7 +57,7 @@ describe("promisify", () => {
     it("rejects with the error thrown by the finish callable", () => {
         const failure = new Error("boom");
         const asyncFn = (...args: unknown[]): void => {
-            (args[args.length - 1] as (source: NativeHandle, result: NativeHandle) => void)(handle(1), handle(2));
+            (args[args.length - 1] as (source: Handle, result: Handle) => void)(handle(1), handle(2));
         };
 
         return expect(

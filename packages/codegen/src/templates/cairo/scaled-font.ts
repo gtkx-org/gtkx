@@ -1,5 +1,5 @@
 import { getHandle, t, wrapHandle } from "@gtkx/ffi";
-import { alloc, type NativeHandle, read } from "@gtkx/native";
+import { alloc, type Handle, read } from "@gtkx/native";
 import type { FontOptions, FontType, Status, TextClusterFlags } from "../cairo.js";
 import { FontFace, ScaledFont } from "../cairo.js";
 import {
@@ -79,7 +79,7 @@ ScaledFontWithStatics.create = (
         getHandle(fontMatrix),
         getHandle(ctm),
         getHandle(options),
-    ) as NativeHandle;
+    ) as Handle;
     return wrapHandle(ptr, ScaledFont) as ScaledFont;
 };
 
@@ -149,7 +149,7 @@ const cairoScaledFontGetFontFace = bind(
     t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type"),
 );
 ScaledFont.prototype.getFontFace = function (): FontFace {
-    return wrapHandle(cairoScaledFontGetFontFace(getHandle(this)) as NativeHandle, FontFace) as FontFace;
+    return wrapHandle(cairoScaledFontGetFontFace(getHandle(this)) as Handle, FontFace) as FontFace;
 };
 
 const cairoScaledFontGetFontOptions = bind(
@@ -283,9 +283,9 @@ ScaledFont.prototype.textToGlyphs = function (
 ): [CairoGlyph[], CairoTextCluster[], TextClusterFlags] {
     const utf8 = new TextEncoder().encode(text);
 
-    const glyphsRef: { value: NativeHandle | null } = { value: null };
+    const glyphsRef: { value: Handle | null } = { value: null };
     const numGlyphsRef = { value: 0 };
-    const clustersRef: { value: NativeHandle | null } = { value: null };
+    const clustersRef: { value: Handle | null } = { value: null };
     const numClustersRef = { value: 0 };
     const clusterFlagsRef = { value: 0 };
 

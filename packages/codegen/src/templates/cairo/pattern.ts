@@ -1,5 +1,5 @@
 import { getHandle, t, wrapHandle } from "@gtkx/ffi";
-import type { NativeHandle } from "@gtkx/native";
+import type { Handle } from "@gtkx/native";
 import { type Extend, type Filter, Pattern, type PatternType, type Status, type Surface } from "../cairo.js";
 import { type PathData, parsePath } from "./context.js";
 import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";
@@ -547,7 +547,7 @@ export class MeshPattern extends Pattern {
      * Returns the path defining the boundary of patch `patchNum`.
      */
     getPath(patchNum: number): PathData[] {
-        return parsePath(cairoMeshPatternGetPath(getHandle(this), patchNum) as NativeHandle);
+        return parsePath(cairoMeshPatternGetPath(getHandle(this), patchNum) as Handle);
     }
 
     /**
@@ -588,7 +588,7 @@ const cairoPatternCreateRgb = bind(
     t.boxed("CairoPattern", "full", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
 );
 PatternWithStatics.createRgb = (red: number, green: number, blue: number): Pattern => {
-    return wrapHandle(cairoPatternCreateRgb(red, green, blue) as NativeHandle, Pattern);
+    return wrapHandle(cairoPatternCreateRgb(red, green, blue) as Handle, Pattern);
 };
 
 const cairoPatternCreateRgba = bind(
@@ -598,7 +598,7 @@ const cairoPatternCreateRgba = bind(
     t.boxed("CairoPattern", "full", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
 );
 PatternWithStatics.createRgba = (red: number, green: number, blue: number, alpha: number): Pattern => {
-    return wrapHandle(cairoPatternCreateRgba(red, green, blue, alpha) as NativeHandle, Pattern);
+    return wrapHandle(cairoPatternCreateRgba(red, green, blue, alpha) as Handle, Pattern);
 };
 
 const cairoPatternCreateLinear = bind(
@@ -608,7 +608,7 @@ const cairoPatternCreateLinear = bind(
     t.boxed("CairoPattern", "full", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
 );
 PatternWithStatics.createLinear = (x0: number, y0: number, x1: number, y1: number): LinearPattern => {
-    return wrapHandle(cairoPatternCreateLinear(x0, y0, x1, y1) as NativeHandle, LinearPattern);
+    return wrapHandle(cairoPatternCreateLinear(x0, y0, x1, y1) as Handle, LinearPattern);
 };
 
 const cairoPatternCreateRadial = bind(
@@ -632,7 +632,7 @@ PatternWithStatics.createRadial = (
     cy1: number,
     radius1: number,
 ): RadialPattern => {
-    return wrapHandle(cairoPatternCreateRadial(cx0, cy0, radius0, cx1, cy1, radius1) as NativeHandle, RadialPattern);
+    return wrapHandle(cairoPatternCreateRadial(cx0, cy0, radius0, cx1, cy1, radius1) as Handle, RadialPattern);
 };
 
 const cairoPatternCreateMesh = bind(
@@ -642,7 +642,7 @@ const cairoPatternCreateMesh = bind(
     t.boxed("CairoPattern", "full", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
 );
 PatternWithStatics.createMesh = (): MeshPattern => {
-    return wrapHandle(cairoPatternCreateMesh() as NativeHandle, MeshPattern);
+    return wrapHandle(cairoPatternCreateMesh() as Handle, MeshPattern);
 };
 
 const cairoPatternCreateForSurface = bind(
@@ -652,5 +652,5 @@ const cairoPatternCreateForSurface = bind(
     t.boxed("CairoPattern", "full", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
 );
 PatternWithStatics.createForSurface = (surface: Surface): Pattern => {
-    return wrapHandle(cairoPatternCreateForSurface(getHandle(surface)) as NativeHandle, Pattern);
+    return wrapHandle(cairoPatternCreateForSurface(getHandle(surface)) as Handle, Pattern);
 };

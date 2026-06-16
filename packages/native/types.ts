@@ -1,5 +1,7 @@
 import type { ExternalObject } from "./native-binding.cjs";
 
+type AnyValue = Handle | number | bigint | string | boolean | Map<AnyValue, AnyValue> | null | undefined;
+
 /**
  * Opaque reference to a native pointer (GObject, Boxed, Fundamental, or struct).
  *
@@ -8,7 +10,7 @@ import type { ExternalObject } from "./native-binding.cjs";
  * the napi `ExternalObject` wrapping a raw native pointer, so TypeScript
  * treats it opaquely.
  */
-export type NativeHandle = ExternalObject<unknown>;
+export type Handle = ExternalObject<unknown>;
 
 /**
  * Union of all possible native return value types.
@@ -16,31 +18,42 @@ export type NativeHandle = ExternalObject<unknown>;
  * Returned by `call()` and `read()` where the concrete type
  * depends on the type descriptor passed to the function.
  */
-export type NativeValue = NativeHandle | number | bigint | string | boolean | NativeValue[] | null | undefined;
+export type Value = Ref | AnyValue | Value[] | ((...args: Value[]) => Value);
 
-type Int8Type = { type: "int8" };
-type Uint8Type = { type: "uint8" };
-type Int16Type = { type: "int16" };
-type Uint16Type = { type: "uint16" };
-type Int32Type = { type: "int32" };
-type Uint32Type = { type: "uint32" };
-type Int64Type = { type: "int64" };
-type Uint64Type = { type: "uint64" };
-type BigInt64Type = { type: "bigint64" };
-type BigUint64Type = { type: "biguint64" };
-type Float32Type = { type: "float32" };
-type Float64Type = { type: "float64" };
-type EnumType = { type: "enum"; library: string; getTypeFn: string; signed: boolean };
-type FlagsType = { type: "flags"; library: string; getTypeFn: string; signed: boolean };
-type BooleanType = { type: "boolean" };
-type Ownership = "full" | "borrowed" | "none";
-type StringType = { type: "string"; ownership: Ownership; length?: number };
-type GObjectType = { type: "gobject"; ownership: Ownership };
-type UnicharType = { type: "unichar" };
-type VoidType = { type: "void" };
-type BlobType = { type: "blob" };
+/**
+ * Out-parameter reference to a native value.
+ *
+ * Used for FFI calls that return values via out-parameters. The `value` field
+ * is populated by the FFI call and read by the caller. The `value` may be
+ * `null` or `undefined` if the out-parameter was not populated.
+ */
+export type Ref = { value: Value | null };
 
-type BoxedType = {
+export type Int8Type = { type: "int8" };
+export type Uint8Type = { type: "uint8" };
+export type Int16Type = { type: "int16" };
+export type Uint16Type = { type: "uint16" };
+export type Int32Type = { type: "int32" };
+export type Uint32Type = { type: "uint32" };
+export type Int64Type = { type: "int64" };
+export type Uint64Type = { type: "uint64" };
+export type BigInt64Type = { type: "bigint64" };
+export type BigUint64Type = { type: "biguint64" };
+export type Float32Type = { type: "float32" };
+export type Float64Type = { type: "float64" };
+export type EnumType = { type: "enum"; library: string; getTypeFn: string; signed: boolean };
+export type FlagsType = { type: "flags"; library: string; getTypeFn: string; signed: boolean };
+export type BooleanType = { type: "boolean" };
+export type Ownership = "full" | "borrowed" | "none";
+export type StringType = { type: "string"; ownership: Ownership; length?: number };
+export type GObjectType = { type: "gobject"; ownership: Ownership; typeName?: string };
+export type UnicharType = { type: "unichar" };
+export type VoidType = { type: "void" };
+export type BlobType = { type: "blob" };
+export type StructType = { type: "struct"; ownership: Ownership; size?: number };
+export type RefType = { type: "ref"; innerType: Type };
+
+export type BoxedType = {
     type: "boxed";
     ownership: Ownership;
     innerType: string;
@@ -49,9 +62,8 @@ type BoxedType = {
     freeFn?: string;
 };
 
-type StructType = { type: "struct"; ownership: Ownership; size?: number };
 
-type FundamentalType = {
+export type FundamentalType = {
     type: "fundamental";
     ownership: Ownership;
     library: string;
@@ -60,11 +72,10 @@ type FundamentalType = {
     typeName?: string;
 };
 
-export type RefType = { type: "ref"; innerType: NativeType };
 
 export type ArrayType = {
     type: "array";
-    itemType: NativeType;
+    itemType: Type;
     kind: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "gbytearray" | "sized" | "fixed";
     ownership: Ownership;
     elementSize?: number;
@@ -74,15 +85,15 @@ export type ArrayType = {
 
 export type HashTableType = {
     type: "hashtable";
-    keyType: NativeType;
-    valueType: NativeType;
+    keyType: Type;
+    valueType: Type;
     ownership: Ownership;
 };
 
 export type TrampolineType = {
     type: "trampoline";
-    argTypes: NativeType[];
-    returnType: NativeType;
+    argTypes: Type[];
+    returnType: Type;
     hasDestroy?: boolean;
     userDataIndex?: number;
     scope?: "call" | "notified" | "async" | "forever";
@@ -93,7 +104,7 @@ export type TrampolineType = {
  *
  * Describes how to marshal values between JavaScript and native code.
  */
-export type NativeType =
+export type Type =
     | Int8Type
     | Uint8Type
     | Int16Type
@@ -123,15 +134,64 @@ export type NativeType =
     | VoidType;
 
 /**
+ * Type descriptor for a native value.
+ *
+ * Describes how to marshal a value between JavaScript and native code.
+ */
+export type ArgType = {
+    /** The argument's type descriptor. */
+    type: Type;
+    /** Whether the argument is optional (can be omitted) or required. Defaults to `false`. */
+    optional?: boolean;
+}
+
+/**
  * An argument for an FFI call.
  *
  * Combines a value with its type information for marshaling.
  */
-export type NativeArg = {
-    /** Type descriptor for marshaling */
-    type: NativeType;
+export type Arg = ArgType & {
     /** The argument value */
-    value: unknown;
-    /** Whether the argument can be null/undefined */
-    optional?: boolean;
+    value: Value;
+};
+
+
+/**
+ * Virtual function override installed into a registered class's vtable.
+ *
+ * `byteOffset` is the offset (in bytes) of the function pointer slot inside
+ * the class struct relative to the class struct base; the JavaScript function
+ * is wrapped in a libffi trampoline whose generated C function pointer is
+ * written at that offset during class initialization.
+ */
+export type RegisterClassVfunc = {
+    /** Byte offset of the vfunc slot within the class struct. */
+    byteOffset: number;
+    /** FFI argument types matching the vfunc signature. */
+    argTypes: Type[];
+    /** FFI return type matching the vfunc signature. */
+    returnType: Type;
+    /** Implementation invoked on each vfunc call. */
+    fn: (...args: Value[]) => Value;
+};
+
+/**
+ * Vfunc overrides targeting one interface that the registered class inherits
+ * from its parent.
+ *
+ * `gtype` is the GType of the inherited interface. `vfuncs` are the overrides,
+ * with `byteOffset` relative to the interface struct base (not the class
+ * struct). Each vfunc is wrapped in a libffi trampoline whose function pointer
+ * is written into the new class's own copy of the inherited interface vtable.
+ */
+export type RegisterClassInterface = {
+    /** GType of the inherited interface whose vfuncs are overridden. */
+    gtype: number;
+    /** Vfunc overrides relative to the interface struct base. */
+    vfuncs: RegisterClassVfunc[];
+};
+
+export type RegisterClassOptions = {
+    vfuncs?: RegisterClassVfunc[];
+    interfaces?: RegisterClassInterface[];
 };

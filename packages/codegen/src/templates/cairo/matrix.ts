@@ -1,10 +1,10 @@
 import { getHandle, setHandle, t, wrapHandle } from "@gtkx/ffi";
-import { alloc, type NativeHandle } from "@gtkx/native";
+import { alloc, type Handle } from "@gtkx/native";
 import type { Status } from "../cairo.js";
 
 const { bind } = t;
 
-export const allocMatrix = (): { handle: NativeHandle; obj: Matrix } => {
+export const allocMatrix = (): { handle: Handle; obj: Matrix } => {
     const handle = alloc(48, "cairo_matrix_t");
     const obj = wrapHandle(handle, Matrix);
     return { handle, obj };

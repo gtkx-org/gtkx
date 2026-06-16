@@ -9,7 +9,7 @@
  * than being inlined into every generated wrapper.
  */
 
-import type { NativeHandle } from "@gtkx/native";
+import type { Handle } from "@gtkx/native";
 import { setHandle, tryGetHandle } from "./registry.js";
 
 /**
@@ -23,7 +23,7 @@ import { setHandle, tryGetHandle } from "./registry.js";
  * module and serve no purpose, since the result object is transient and never
  * surfaces to callers.
  */
-const wrapAsyncResult = (rawResult: NativeHandle): object => {
+const wrapAsyncResult = (rawResult: Handle): object => {
     const result: object = {};
     setHandle(result, rawResult);
     return result;
@@ -86,7 +86,7 @@ export const promisify = <R, TResult>(
             ...args.leading,
             tryGetHandle(cancellable),
             ...(args.trailing ?? []),
-            (_source: NativeHandle, rawResult: NativeHandle) => {
+            (_source: Handle, rawResult: Handle) => {
                 try {
                     resolve(finish(wrapAsyncResult(rawResult) as TResult));
                 } catch (error) {

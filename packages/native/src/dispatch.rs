@@ -34,7 +34,7 @@
 //!
 //! ## Lifecycle
 //!
-//! [`Mailbox::mark_stopped`] is set during the orchestrated shutdown task,
+//! [`Mailbox::mark_not_started`] is set during the orchestrated shutdown task,
 //! after which new tasks are silently dropped so callers blocked in
 //! [`Mailbox::dispatch_to_glib_and_wait`] do not deadlock waiting on a
 //! result from the dying main loop.
@@ -141,7 +141,7 @@ pub struct Mailbox {
 
     wake_js_tsfn: OnceLock<Arc<WakeJsTsfn>>,
 
-    stopped: AtomicBool,
+    running: AtomicBool,
 
     freeze_depth: AtomicUsize,
     freeze_loop_active: AtomicBool,
@@ -151,7 +151,7 @@ pub struct Mailbox {
 impl std::fmt::Debug for Mailbox {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Mailbox")
-            .field("stopped", &self.stopped)
+            .field("running", &self.running)
             .field("freeze_depth", &self.freeze_depth)
             .finish_non_exhaustive()
     }
@@ -173,31 +173,36 @@ impl Mailbox {
             wake_js: WaitSignal::new(),
             wake_glib: WaitSignal::new(),
             wake_js_tsfn: OnceLock::new(),
-            stopped: AtomicBool::new(false),
+            running: AtomicBool::new(true),
             freeze_depth: AtomicUsize::new(0),
             freeze_loop_active: AtomicBool::new(false),
             freeze_wake: WaitSignal::new(),
         }
     }
 
-    /// Marks the mailbox as shut down. Subsequent `dispatch_to_glib*` calls become no-ops.
-    pub fn mark_stopped(&self) {
-        self.stopped.store(true, Ordering::Release);
+    /// Marks the mailbox as not running. Subsequent `dispatch_to_glib*` calls become no-ops.
+    pub fn mark_not_running(&self) {
+        self.running.store(false, Ordering::Release);
         self.wake_js.notify();
         self.wake_glib.notify();
         self.freeze_wake.notify();
     }
 
-    /// Clears the stopped flag so the mailbox accepts tasks again. Intended
+    /// Clears the not running flag so the mailbox accepts tasks again. Intended
     /// for tests that need to restore the mailbox to a fresh state after
     /// exercising the shutdown path.
     pub fn reset_for_test(&self) {
-        self.stopped.store(false, Ordering::Release);
+        self.running.store(true, Ordering::Release);
     }
 
-    /// Returns whether the mailbox has been shut down.
-    pub fn is_stopped(&self) -> bool {
-        self.stopped.load(Ordering::Acquire)
+    /// Returns whether the mailbox is not running.
+    pub fn is_not_running(&self) -> bool {
+        !self.running.load(Ordering::Acquire)
+    }
+
+    /// Returns whether the mailbox is running.
+    pub fn is_running(&self) -> bool {
+        self.running.load(Ordering::Acquire)
     }
 
     /// Increments the freeze depth. Returns true if this was the outermost call.
@@ -225,7 +230,7 @@ impl Mailbox {
     }
 
     /// Drains all currently-queued `GLib` tasks until [`Self::unfreeze`] resets
-    /// the freeze depth to zero or [`Self::mark_stopped`] shuts the mailbox
+    /// the freeze depth to zero or [`Self::mark_not_running`] shuts the mailbox
     /// down. Runs on the `GLib` thread without yielding to the `GLib` main
     /// loop, preventing the frame clock from firing between individual
     /// mutations during a React commit.
@@ -233,7 +238,7 @@ impl Mailbox {
         self.freeze_loop_active.store(true, Ordering::Release);
         loop {
             self.dispatch_pending();
-            if self.freeze_depth.load(Ordering::Acquire) == 0 || self.is_stopped() {
+            if self.freeze_depth.load(Ordering::Acquire) == 0 || self.is_not_running() {
                 break;
             }
             self.freeze_wake.wait();
@@ -256,7 +261,7 @@ impl Mailbox {
     /// main loop's idle source, by the freeze loop, or by another thread's
     /// wait loop dispatching pending tasks.
     pub fn schedule_glib(&self, task: Box<dyn FnOnce() + Send + 'static>) {
-        if self.stopped.load(Ordering::Acquire) {
+        if !self.running.load(Ordering::Acquire) {
             return;
         }
 
@@ -275,7 +280,7 @@ impl Mailbox {
     /// Whether the runtime has been initialized with a live JS thread — set
     /// when `init()` installs the wake threadsafe function. False in a plain
     /// `cargo test` process, where no Node.js runtime exists.
-    pub fn is_started(&self) -> bool {
+    pub fn is_initialized(&self) -> bool {
         self.wake_js_tsfn.get().is_some()
     }
 

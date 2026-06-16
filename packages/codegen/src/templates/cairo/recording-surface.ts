@@ -1,5 +1,5 @@
 import { getHandle, setHandle, t } from "@gtkx/ffi";
-import { alloc, type NativeHandle, read, write } from "@gtkx/native";
+import { alloc, type Handle, read, write } from "@gtkx/native";
 import type { Content } from "../cairo.js";
 import { Surface } from "../cairo.js";
 
@@ -54,16 +54,16 @@ export class RecordingSurface extends Surface {
      */
     constructor(content: Content, extents?: { x: number; y: number; width: number; height: number }) {
         super();
-        let handle: NativeHandle;
+        let handle: Handle;
         if (extents) {
             const rect = alloc(32, "cairo_rectangle_t");
             write(rect, t.float64, 0, extents.x);
             write(rect, t.float64, 8, extents.y);
             write(rect, t.float64, 16, extents.width);
             write(rect, t.float64, 24, extents.height);
-            handle = cairoRecordingSurfaceCreateExtents(content, rect) as NativeHandle;
+            handle = cairoRecordingSurfaceCreateExtents(content, rect) as Handle;
         } else {
-            handle = cairoRecordingSurfaceCreateUnbounded(content, 0) as NativeHandle;
+            handle = cairoRecordingSurfaceCreateUnbounded(content, 0) as Handle;
         }
         setHandle(this, handle);
     }

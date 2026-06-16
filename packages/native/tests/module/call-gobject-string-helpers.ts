@@ -1,13 +1,14 @@
 import { expect } from "vitest";
 import { boxAppend, createBox, createLabel, getRefCount, startMemoryMeasurement } from "./utils.js";
+import type { Value } from "../../types.js";
 
 /**
  * The box, the appended label, and the label's reference count captured before
  * the append.
  */
 export type AppendedLabelRefCount = {
-    box: unknown;
-    label: unknown;
+    box: Value;
+    label: Value;
     initialRefCount: number;
 };
 

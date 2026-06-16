@@ -1,6 +1,6 @@
 import { TYPE_INVALID, typeIsA } from "@gtkx/ffi";
 import type { GType } from "@gtkx/gi/gobject";
-import { getType, type NativeHandle } from "@gtkx/native";
+import { getType, type Handle } from "@gtkx/native";
 
 /**
  * Tests whether a `GTypeInstance`-compatible handle is an instance of `gtype`.
@@ -11,7 +11,7 @@ import { getType, type NativeHandle } from "@gtkx/native";
  * @param handle - Handle to a live GObject-compatible instance
  * @param gtype - GType identifier of the target type
  */
-export function instanceIsA(handle: NativeHandle, gtype: GType): boolean {
+export function instanceIsA(handle: Handle, gtype: GType): boolean {
     const instanceGtype: GType = getType(handle);
     if (instanceGtype === TYPE_INVALID) return false;
     return typeIsA(instanceGtype, gtype);

@@ -267,20 +267,20 @@ fn gtk_thread_phase_lifecycle_transitions() {
         thread.reset_phase_for_test();
 
         assert_eq!(thread.phase(), RuntimePhase::New);
-        assert!(thread.begin_start().is_ok());
+        assert!(thread.begin_init().is_ok());
         assert_eq!(thread.phase(), RuntimePhase::Running);
 
-        let double_start = thread.begin_start().expect_err("second init must fail");
+        let double_start = thread.begin_init().expect_err("second init must fail");
         assert!(double_start.contains("already running"));
 
-        assert!(thread.begin_stop().is_ok());
-        assert_eq!(thread.phase(), RuntimePhase::Stopped);
+        assert!(thread.begin_quit().is_ok());
+        assert_eq!(thread.phase(), RuntimePhase::NotRunning);
 
-        let double_stop = thread.begin_stop().expect_err("second stop must fail");
+        let double_stop = thread.begin_quit().expect_err("second stop must fail");
         assert!(double_stop.contains("already-stopped"));
 
         let restart = thread
-            .begin_start()
+            .begin_init()
             .expect_err("re-init after stop must fail");
         assert!(restart.contains("cannot be reinitialized"));
 
@@ -295,11 +295,11 @@ fn gtk_thread_abort_start_restores_new_phase() {
         let thread = GlibThread::global();
         thread.reset_phase_for_test();
 
-        assert!(thread.begin_start().is_ok());
-        thread.abort_start();
+        assert!(thread.begin_init().is_ok());
+        thread.abort_init();
         assert_eq!(thread.phase(), RuntimePhase::New);
 
-        assert!(thread.begin_start().is_ok());
+        assert!(thread.begin_init().is_ok());
         thread.reset_phase_for_test();
     });
 }

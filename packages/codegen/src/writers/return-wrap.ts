@@ -1,6 +1,6 @@
 import type { ModuleContext } from "../dsl/context.js";
 import type { GirTypeRef, NamedTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
-import { renderFfiType } from "./value.js";
+import { boxedNeedsFallbackClass, renderFfiType } from "./value.js";
 
 /**
  * Lifting raw FFI values into their typed JavaScript form for the per-call
@@ -95,19 +95,22 @@ const wrapPrimitive = (ref: PrimitiveTypeRef, nullable: boolean, valueExpression
 };
 
 /**
- * Resolves the pre-resolved wrapper class {@link wrapValue} needs to lift a
- * value of `ref`, or `undefined` when the value's FFI descriptor already carries
- * enough identity to wrap it.
+ * Resolves the fallback wrapper class {@link wrapValue} needs to lift a value of
+ * `ref`, or `undefined` when the value's FFI descriptor carries enough `GType`
+ * identity to recover its class on its own.
  *
- * A plain object (`wrapHandle` self-resolves it from the runtime GLib type), a
- * primitive, an enum, and a hash table need no class. An interface supplies its
- * fallback wrapper class, a boxed record its exact class. A collection resolves
- * its element's class, applied per element. Used both for the `t.fn` return
+ * Almost every kind self-resolves: an object off its runtime GLib type (its
+ * descriptor names an interface when one is needed), a boxed record or named
+ * fundamental through the `GType` its descriptor identifies, and primitives,
+ * enums, and hash tables need no class at all. Only the kinds whose descriptor
+ * carries no recoverable identity supply a fallback — a plain `struct` and a
+ * GType-less fundamental such as `GAsyncQueue`. A collection resolves its
+ * element's fallback, applied per element. Used both for the `t.fn` return
  * descriptor and the per-call `wrapValue` sites.
  *
  * @param context - The module context
  * @param ref - The value's GIR type reference
- * @returns The qualified wrapper-class expression, or `undefined`
+ * @returns The qualified fallback-class expression, or `undefined`
  */
 export const resolveWrapClass = (context: ModuleContext, ref: GirTypeRef | undefined): string | undefined => {
     if (ref === undefined) return undefined;
@@ -131,11 +134,11 @@ const namedWrapClass = (context: ModuleContext, ref: NamedTypeRef): string | und
     const resolved = context.repository.resolveNamed(owner, ref.typeName);
     if (resolved === undefined) return undefined;
     switch (resolved.kind) {
-        case "interface":
         case "boxed":
-            return context.qualify(owner, ref.typeName);
+            return boxedNeedsFallbackClass(resolved.value) ? context.qualify(owner, ref.typeName) : undefined;
         case "alias":
             return resolveWrapClass(context, resolved.targetRef);
+        case "interface":
         case "class":
         case "enum":
         case "callback":

@@ -7,7 +7,7 @@
  * depending on the generated `GLib.Error` class.
  */
 
-import type { NativeHandle } from "@gtkx/native";
+import type { Handle } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { wrapHandle } from "./registry.js";
 
@@ -41,7 +41,7 @@ export interface GError {
  * @param error - Out-parameter ref populated by the FFI call
  * @param errorClass - The GLib `Error` wrapper class
  */
-export function checkError(error: { value: NativeHandle | null }, errorClass: AnyClass<GError>): void {
+export function checkError(error: { value: Handle | null }, errorClass: AnyClass<GError>): void {
     if (error.value !== null) {
         const gerror = wrapHandle(error.value, errorClass);
         const carrier = new Error(gerror.message);

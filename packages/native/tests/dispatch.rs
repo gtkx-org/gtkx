@@ -51,7 +51,7 @@ fn schedule_glib_drops_task_when_stopped() {
     common::run(|| {
         drain_pending();
         let mailbox = Mailbox::global();
-        mailbox.mark_stopped();
+        mailbox.mark_not_running();
 
         let counter = Arc::new(AtomicUsize::new(0));
         let counter_clone = counter.clone();
@@ -110,17 +110,17 @@ fn a_schedule_glib_idle_source_dispatches_through_global_main_context() {
 }
 
 #[test]
-fn is_stopped_reflects_mark_and_reset() {
+fn is_not_running_reflects_mark_and_reset() {
     common::run(|| {
         let mailbox = Mailbox::global();
 
-        assert!(!mailbox.is_stopped());
+        assert!(!mailbox.is_not_running());
 
-        mailbox.mark_stopped();
-        assert!(mailbox.is_stopped());
+        mailbox.mark_not_running();
+        assert!(mailbox.is_not_running());
 
         mailbox.reset_for_test();
-        assert!(!mailbox.is_stopped());
+        assert!(!mailbox.is_not_running());
     });
 }
 
@@ -177,13 +177,13 @@ fn run_freeze_loop_exits_when_stopped_while_frozen() {
             while counter.load(Ordering::SeqCst) == 0 {
                 std::thread::yield_now();
             }
-            Mailbox::global().mark_stopped();
+            Mailbox::global().mark_not_running();
         });
 
         mailbox.run_freeze_loop();
         stopper.join().expect("stopper thread should finish");
 
-        assert!(mailbox.is_stopped());
+        assert!(mailbox.is_not_running());
 
         mailbox.unfreeze();
         mailbox.reset_for_test();

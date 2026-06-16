@@ -1,4 +1,4 @@
-import type { Type as FfiType, TrampolineType } from "@gtkx/native";
+import type { Type as FfiType, TrampolineType, Value } from "@gtkx/native";
 import {
     emptyValueFromFfi,
     type GValue,
@@ -97,7 +97,7 @@ export function connectGobjectSignal(
         [
             { type: t.object("borrowed"), value: getHandle(instance) },
             { type: t.string("borrowed"), value: signal },
-            { type: trampoline, value: handler },
+            { type: trampoline, value: handler as Value },
             { type: t.uint32, value: after ? 1 : 0 },
         ],
         t.uint64,

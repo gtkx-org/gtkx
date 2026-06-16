@@ -1,4 +1,4 @@
-import { call, stop as nativeStop } from "../../index.js";
+import { call, quit as nativeStop } from "../../index.js";
 
 const KEEP_ALIVE_INTERVAL = 2147483647;
 

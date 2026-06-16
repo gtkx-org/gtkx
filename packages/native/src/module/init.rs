@@ -34,7 +34,7 @@ use crate::state::GlibThread;
 #[cfg_attr(test, allow(dead_code))]
 pub fn init(env: Env) -> napi::Result<External<glib::MainLoop>> {
     GlibThread::global()
-        .begin_start()
+        .begin_init()
         .map_err(|msg| napi::Error::new(napi::Status::GenericFailure, msg))?;
 
     let wake_js_fn = env.create_function_from_closure::<(), _, _>("gtkx_wake_js", |ctx| {
@@ -95,7 +95,7 @@ pub fn init(env: Env) -> napi::Result<External<glib::MainLoop>> {
             }
         })
         .map_err(|err| {
-            GlibThread::global().abort_start();
+            GlibThread::global().abort_init();
             napi::Error::new(
                 napi::Status::GenericFailure,
                 format!("Error spawning GLib thread: {err}"),
@@ -107,7 +107,7 @@ pub fn init(env: Env) -> napi::Result<External<glib::MainLoop>> {
     let main_loop = rx.recv().map_err(|err| {
         let glib_thread = GlibThread::global();
         let panic_message = glib_thread.join();
-        let _ = glib_thread.begin_stop();
+        let _ = glib_thread.begin_quit();
         let cause = panic_message.unwrap_or_else(|| err.to_string());
         napi::Error::new(
             napi::Status::GenericFailure,

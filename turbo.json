@@ -61,7 +61,7 @@
             "outputLogs": "new-only"
         },
         "@gtkx/cli#codegen": {
-            "dependsOn": ["@gtkx/native#native-build", "@gtkx/native#build"],
+            "dependsOn": ["@gtkx/native#native-build"],
             "cache": false
         },
         "@gtkx/ffi#build": {
@@ -131,7 +131,7 @@
             "cache": false
         },
         "typecheck": {
-            "dependsOn": ["@gtkx/cli#codegen", "@gtkx/native#build"],
+            "dependsOn": ["@gtkx/cli#codegen"],
             "inputs": [
                 "src/**/*.ts",
                 "src/**/*.tsx",

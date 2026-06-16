@@ -1,4 +1,4 @@
-import { getType, getWrapper, type NativeHandle, setWrapper } from "@gtkx/native";
+import { getType, getWrapper, type Handle, setWrapper } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { type GType, TYPE_INVALID, typeFromName, typeIsA, typeParent } from "./gtype.js";
 
@@ -77,7 +77,7 @@ function getInterfaceGtype(cls: AnyClass): GType {
     return interfaceGtypeByClass.get(cls) ?? TYPE_INVALID;
 }
 
-function instantiate<T extends object>(cls: AnyClass<T>, handle: NativeHandle): T {
+function instantiate<T extends object>(cls: AnyClass<T>, handle: Handle): T {
     const instance = Object.create(cls.prototype) as T;
     setHandle(instance, handle);
     return instance;
@@ -112,15 +112,15 @@ function instantiate<T extends object>(cls: AnyClass<T>, handle: NativeHandle): 
  * const rgba = wrapHandle(rgbaHandle, Gdk.RGBA);        // value type, fresh
  * ```
  */
-export function wrapHandle<T extends object>(handle: NativeHandle, cls: AnyClass<T>): T;
-export function wrapHandle<T extends object>(handle: NativeHandle | null | undefined, cls: AnyClass<T>): T | null;
+export function wrapHandle<T extends object>(handle: Handle, cls: AnyClass<T>): T;
+export function wrapHandle<T extends object>(handle: Handle | null | undefined, cls: AnyClass<T>): T | null;
 export function wrapHandle(handle: null | undefined, cls?: AnyClass): null;
-export function wrapHandle<T extends object = GTyped>(handle: NativeHandle, cls?: AnyClass): T;
+export function wrapHandle<T extends object = GTyped>(handle: Handle, cls?: AnyClass): T;
 export function wrapHandle<T extends object = GTyped>(
-    handle: NativeHandle | null | undefined,
+    handle: Handle | null | undefined,
     cls?: AnyClass,
 ): T | null;
-export function wrapHandle(handle: NativeHandle | null | undefined, cls?: AnyClass): object | null {
+export function wrapHandle(handle: Handle | null | undefined, cls?: AnyClass): object | null {
     if (handle === null || handle === undefined) return null;
     if (cls === undefined) {
         return resolveWrapper(handle, (runtimeGtype) => {
@@ -235,7 +235,7 @@ function findWrapperClassForInterface(gtype: GType, interfaceGtype: GType): AnyC
  * @param handle - The live native handle to resolve
  * @param resolveClass - Maps the runtime `GType` to the wrapper class to use
  */
-function resolveWrapper(handle: NativeHandle, resolveClass: (runtimeGtype: GType) => AnyClass): object {
+function resolveWrapper(handle: Handle, resolveClass: (runtimeGtype: GType) => AnyClass): object {
     const existing = getWrapper(handle);
     if (existing) return existing;
 
@@ -252,7 +252,7 @@ function resolveWrapper(handle: NativeHandle, resolveClass: (runtimeGtype: GType
     return instance;
 }
 
-export type { NativeHandle } from "@gtkx/native";
+export type { Handle } from "@gtkx/native";
 
 /**
  * Structural shape of any wrapped native instance once construction or
@@ -278,14 +278,14 @@ export function getParentClass(cls: AnyClass): AnyClass | null {
     return typeof parent === "function" && parent !== Function.prototype ? (parent as AnyClass) : null;
 }
 
-const handleMap = new WeakMap<object, NativeHandle>();
+const handleMap = new WeakMap<object, Handle>();
 
 /**
  * Returns the native handle associated with `instance`. Throws when the object
  * has not been linked to a handle.
  *
  */
-export function getHandle(instance: object): NativeHandle {
+export function getHandle(instance: object): Handle {
     const handle = handleMap.get(instance);
     if (handle === undefined) {
         const name = (instance as { constructor?: { name?: string } }).constructor?.name ?? "object";
@@ -300,7 +300,7 @@ export function getHandle(instance: object): NativeHandle {
  * caller cannot guarantee that the object has been fully constructed.
  *
  */
-export function tryGetHandle(instance: object | null | undefined): NativeHandle | undefined {
+export function tryGetHandle(instance: object | null | undefined): Handle | undefined {
     return instance == null ? undefined : handleMap.get(instance);
 }
 
@@ -308,7 +308,7 @@ export function tryGetHandle(instance: object | null | undefined): NativeHandle 
  * Associates a native handle with `instance`.
  *
  */
-export function setHandle(instance: object, handle: NativeHandle): void {
+export function setHandle(instance: object, handle: Handle): void {
     handleMap.set(instance, handle);
 }
 

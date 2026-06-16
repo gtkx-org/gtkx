@@ -1,5 +1,5 @@
 import { expect } from "vitest";
-import { alloc, type NativeHandle, read, write } from "../../index.js";
+import { alloc, type Handle, read, write } from "../../index.js";
 import { FLOAT32, INT32 } from "./utils.js";
 
 const BOXED_SIZE = 16;
@@ -27,21 +27,21 @@ export type RgbaChannels = {
 /**
  * Allocates a zeroed `GdkRectangle` boxed value backed by GDK memory.
  */
-export function allocRectangle(): NativeHandle {
+export function allocRectangle(): Handle {
     return alloc(BOXED_SIZE, "GdkRectangle");
 }
 
 /**
  * Allocates a zeroed `GdkRGBA` boxed value backed by GDK memory.
  */
-export function allocRgba(): NativeHandle {
+export function allocRgba(): Handle {
     return alloc(BOXED_SIZE, "GdkRGBA");
 }
 
 /**
  * Writes the four signed 32-bit `GdkRectangle` fields from `fields`.
  */
-export function writeRectangleFields(rect: NativeHandle, fields: RectangleFields): void {
+export function writeRectangleFields(rect: Handle, fields: RectangleFields): void {
     write(rect, INT32, 0, fields.x);
     write(rect, INT32, 4, fields.y);
     write(rect, INT32, 8, fields.width);
@@ -51,7 +51,7 @@ export function writeRectangleFields(rect: NativeHandle, fields: RectangleFields
 /**
  * Reads the four signed 32-bit `GdkRectangle` fields back as an object.
  */
-export function readRectangleFields(rect: NativeHandle): RectangleFields {
+export function readRectangleFields(rect: Handle): RectangleFields {
     return {
         x: read(rect, INT32, 0) as number,
         y: read(rect, INT32, 4) as number,
@@ -64,7 +64,7 @@ export function readRectangleFields(rect: NativeHandle): RectangleFields {
  * Reads the four `GdkRectangle` fields and asserts each one equals the matching
  * value in `expected`.
  */
-export function expectRectangleFields(rect: NativeHandle, expected: RectangleFields): void {
+export function expectRectangleFields(rect: Handle, expected: RectangleFields): void {
     const fields = readRectangleFields(rect);
 
     expect(fields.x).toBe(expected.x);
@@ -76,7 +76,7 @@ export function expectRectangleFields(rect: NativeHandle, expected: RectangleFie
 /**
  * Writes the four 32-bit floating-point `GdkRGBA` channels from `channels`.
  */
-export function writeRgbaChannels(rgba: NativeHandle, channels: RgbaChannels): void {
+export function writeRgbaChannels(rgba: Handle, channels: RgbaChannels): void {
     write(rgba, FLOAT32, 0, channels.red);
     write(rgba, FLOAT32, 4, channels.green);
     write(rgba, FLOAT32, 8, channels.blue);
@@ -86,7 +86,7 @@ export function writeRgbaChannels(rgba: NativeHandle, channels: RgbaChannels): v
 /**
  * Reads the four 32-bit floating-point `GdkRGBA` channels back as an object.
  */
-export function readRgbaChannels(rgba: NativeHandle): RgbaChannels {
+export function readRgbaChannels(rgba: Handle): RgbaChannels {
     return {
         red: read(rgba, FLOAT32, 0) as number,
         green: read(rgba, FLOAT32, 4) as number,

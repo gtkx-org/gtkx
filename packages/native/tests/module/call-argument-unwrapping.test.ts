@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { call, type NativeHandle } from "../../index.js";
+import { call, type Handle } from "../../index.js";
 import { createLabel, GOBJECT_BORROWED, STRING, VOID } from "./utils.js";
 
 describe("call argument unwrapping", () => {
-    it("forwards a NativeHandle argument to a function expecting an object pointer", () => {
-        const label = createLabel("Test") as NativeHandle;
+    it("forwards a Handle argument to a function expecting an object pointer", () => {
+        const label = createLabel("Test") as Handle;
 
         call(
             "libgtk-4.so.1",

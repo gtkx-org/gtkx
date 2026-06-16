@@ -19,13 +19,13 @@ thread_local! {
 }
 
 /// Lifecycle phase of the `GLib` runtime, tracked by [`GlibThread`] so `init`
-/// and `stop` can reject out-of-order calls instead of silently producing a
+/// and `quit` can reject out-of-order calls instead of silently producing a
 /// dead runtime or a leaked OS thread.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RuntimePhase {
     New,
     Running,
-    Stopped,
+    NotRunning,
 }
 
 impl From<u8> for RuntimePhase {
@@ -33,7 +33,7 @@ impl From<u8> for RuntimePhase {
         match value {
             0 => Self::New,
             1 => Self::Running,
-            _ => Self::Stopped,
+            _ => Self::NotRunning,
         }
     }
 }
@@ -60,9 +60,9 @@ impl GlibThread {
     }
 
     /// Transitions `New → Running`. Fails when the runtime is already running
-    /// or has been stopped — the runtime cannot be initialized twice or
+    /// or has been quit — the runtime cannot be initialized twice or
     /// reinitialized after shutdown.
-    pub fn begin_start(&self) -> Result<(), String> {
+    pub fn begin_init(&self) -> Result<(), String> {
         match self.phase.compare_exchange(
             RuntimePhase::New as u8,
             RuntimePhase::Running as u8,
@@ -74,30 +74,30 @@ impl GlibThread {
                 RuntimePhase::Running => {
                     "init called while the GLib runtime is already running".to_owned()
                 }
-                _ => "the GLib runtime cannot be reinitialized after stop".to_owned(),
+                _ => "the GLib runtime cannot be reinitialized after quit".to_owned(),
             }),
         }
     }
 
     /// Rolls back `Running → New` when startup fails before the `GLib` thread
     /// is spawned.
-    pub fn abort_start(&self) {
+    pub fn abort_init(&self) {
         self.phase.store(RuntimePhase::New as u8, Ordering::Release);
     }
 
-    /// Transitions `Running → Stopped`. Fails when the runtime was never
-    /// started or has already been stopped.
-    pub fn begin_stop(&self) -> Result<(), String> {
+    /// Transitions `Running → NotRunning`. Fails when the runtime was never
+    /// initialized or has already been quit.
+    pub fn begin_quit(&self) -> Result<(), String> {
         match self.phase.compare_exchange(
             RuntimePhase::Running as u8,
-            RuntimePhase::Stopped as u8,
+            RuntimePhase::NotRunning as u8,
             Ordering::AcqRel,
             Ordering::Acquire,
         ) {
             Ok(_) => Ok(()),
             Err(current) => Err(match RuntimePhase::from(current) {
-                RuntimePhase::New => "stop called before init".to_owned(),
-                _ => "stop called on an already-stopped runtime".to_owned(),
+                RuntimePhase::New => "quit called before init".to_owned(),
+                _ => "quit called on an already-quit runtime".to_owned(),
             }),
         }
     }

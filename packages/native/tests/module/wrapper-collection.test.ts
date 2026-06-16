@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getWrapper, type NativeHandle, setWrapper } from "../../index.js";
+import { getWrapper, type Handle, setWrapper } from "../../index.js";
 import { finalizeCount, watchObjectFinalize } from "./native-test-support.js";
 import { boxAppend, boxRemove, createBox, createLabel, forceGC, getRefCount } from "./utils.js";
 
@@ -27,7 +27,7 @@ async function gcUntil(predicate: () => boolean, maxRounds = 100): Promise<boole
  * `WeakRef` to it, so the wrapper is unreachable from the caller — a strong
  * local would otherwise pin it past garbage collection in an async test body.
  */
-function bindWrapper(handle: NativeHandle, tag: string): WeakRef<object> {
+function bindWrapper(handle: Handle, tag: string): WeakRef<object> {
     const wrapper = { tag };
     setWrapper(handle, wrapper);
     return new WeakRef(wrapper);
@@ -36,7 +36,7 @@ function bindWrapper(handle: NativeHandle, tag: string): WeakRef<object> {
 describe("wrapper identity and reference counting", () => {
     it("keeps a strongly-held wrapper alive across GC and preserves identity", async () => {
         const box = createBox();
-        const label = createLabel("Held") as NativeHandle;
+        const label = createLabel("Held") as Handle;
         let wrapper: { tag: string } | null = { tag: "held" };
         const weak = new WeakRef(wrapper);
 
@@ -54,7 +54,7 @@ describe("wrapper identity and reference counting", () => {
 
     it("flips the wrapper strong and weak as the object gains and loses holders", () => {
         const box = createBox();
-        const label = createLabel("Toggling") as NativeHandle;
+        const label = createLabel("Toggling") as Handle;
         const wrapper = { tag: "toggling" };
 
         setWrapper(label, wrapper);
@@ -72,7 +72,7 @@ describe("wrapper identity and reference counting", () => {
 
 describe("wrapper collection and double-free", () => {
     it("collects a wrapper with no other holder once its JS reference is dropped", async () => {
-        const label = createLabel("Collectable") as NativeHandle;
+        const label = createLabel("Collectable") as Handle;
         const weak = bindWrapper(label, "collectable");
 
         expect(getRefCount(label)).toBe(1);
@@ -84,7 +84,7 @@ describe("wrapper collection and double-free", () => {
 
     it("frees the underlying GObject exactly once when its wrapper is collected", async () => {
         const before = finalizeCount();
-        const label = createLabel("Freed") as NativeHandle;
+        const label = createLabel("Freed") as Handle;
         watchObjectFinalize(label);
 
         const weak = bindWrapper(label, "freed");

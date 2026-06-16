@@ -16,7 +16,7 @@
  * only for the kinds whose descriptor carries no recoverable identity.
  */
 
-import { type Arg, type Type as FfiType, type NativeHandle, call as nativeCall } from "@gtkx/native";
+import { type Arg, type Type as FfiType, type Handle, call as nativeCall, type Value } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { checkError, type GError } from "./error.js";
 import { wrapValue } from "./gobject.js";
@@ -150,18 +150,18 @@ const bindArg = (param: FfiFnParam, arg: Arg, input: unknown, surfaced: Surfaced
     }
     switch (param.role) {
         case "out": {
-            arg.value = { value: seedForOutCell(param.type) };
+            arg.value = { value: seedForOutCell(param.type) as Value };
             if (param.consumed !== true) surfaced.push({ param, cell: arg.value as OutCell });
             return 0;
         }
         case "inout": {
-            const cell: OutCell = { value: input };
-            arg.value = cell;
+            const cell: OutCell = { value: input }
+            arg.value = cell as Value;
             if (param.consumed !== true) surfaced.push({ param, cell });
             return 1;
         }
         default:
-            arg.value = input;
+            arg.value = input as Value;
             return 1;
     }
 };
@@ -205,7 +205,7 @@ function ffiFn(
             if (arg !== undefined) inputIndex += bindArg(param, arg, inputs[inputIndex], surfaced);
         });
 
-        let errorCell: { value: NativeHandle | null } | undefined;
+        let errorCell: { value: Handle | null } | undefined;
         if (errorArgIndex >= 0) {
             errorCell = { value: null };
             const errorArg = args[errorArgIndex];

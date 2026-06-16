@@ -1,30 +1,7 @@
 import * as native from "./native-binding.cjs";
-import type { NativeArg, NativeHandle, NativeType, NativeValue } from "./types.js";
+import type { Arg, Handle, RegisterClassOptions, Type, Value } from "./types.js";
 
-type NativeVfuncDefinition = {
-    readonly byteOffset: number;
-    readonly argTypes: readonly NativeType[];
-    readonly returnType: NativeType;
-    readonly fn: (...args: unknown[]) => unknown;
-};
-
-type NativeInterfaceVfuncsDefinition = {
-    readonly gtype: number;
-    readonly vfuncs: readonly NativeVfuncDefinition[];
-};
-
-type NativeRegisterClassOptions = {
-    readonly vfuncs?: readonly NativeVfuncDefinition[];
-    readonly interfaceVfuncs?: readonly NativeInterfaceVfuncsDefinition[];
-};
-
-export type { NativeHandle } from "./types.js";
-
-/**
- * Opaque reference to the `GLib` main loop spawned at module load, produced by
- * `native.init` and consumed by `native.stop`.
- */
-type MainLoopHandle = ReturnType<typeof native.init>;
+export * from "./types.js";
 
 /**
  * Makes a low-level FFI call to a native library.
@@ -38,16 +15,16 @@ type MainLoopHandle = ReturnType<typeof native.init>;
  * @param returnType - Expected return type
  * @returns The function return value
  */
-export function call(library: string, symbol: string, args: NativeArg[], returnType: NativeType): NativeValue {
-    return native.call(library, symbol, args, returnType) as NativeValue;
+export function call(library: string, symbol: string, args: Arg[], returnType: Type): Value {
+    return native.call(library, symbol, args, returnType) as Value;
 }
 
 /**
  * Handle to the `GLib` main loop spawned automatically when this module is
- * first loaded. Stored so {@link stop} can quit the loop without callers
+ * first loaded. Stored so {@link quit} can quit the loop without callers
  * having to thread the handle through.
  */
-let mainLoopHandle: MainLoopHandle | null = native.init();
+let mainLoopHandle: Handle | null = native.init();
 
 /**
  * Quits the `GLib` main loop spawned at module load.
@@ -56,9 +33,9 @@ let mainLoopHandle: MainLoopHandle | null = native.init();
  * terminates cleanly. Subsequent calls are no-ops. Most code should rely on
  * `@gtkx/ffi`'s lifecycle wrapper instead of calling this directly.
  */
-export function stop(): void {
+export function quit(): void {
     if (!mainLoopHandle) return;
-    native.stop(mainLoopHandle);
+    native.quit(mainLoopHandle);
     mainLoopHandle = null;
 }
 
@@ -70,8 +47,8 @@ export function stop(): void {
  * @param offset - Byte offset from the handle pointer
  * @returns The read value
  */
-export function read(handle: NativeHandle, type: NativeType, offset: number): NativeValue {
-    return native.read(handle, type, offset) as NativeValue;
+export function read(handle: Handle, type: Type, offset: number): Value {
+    return native.read(handle, type, offset) as Value;
 }
 
 /**
@@ -82,7 +59,7 @@ export function read(handle: NativeHandle, type: NativeType, offset: number): Na
  * @param offset - Byte offset from the handle pointer
  * @param value - Value to write
  */
-export function write(handle: NativeHandle, type: NativeType, offset: number, value: unknown): void {
+export function write(handle: Handle, type: Type, offset: number, value: unknown): void {
     native.write(handle, type, offset, value);
 }
 
@@ -93,8 +70,8 @@ export function write(handle: NativeHandle, type: NativeType, offset: number, va
  * @param glibTypeName - GLib type name for boxed types (optional for plain structs)
  * @returns Native handle to allocated memory
  */
-export function alloc(size: number, glibTypeName?: string): NativeHandle {
-    return native.alloc(size, glibTypeName) as NativeHandle;
+export function alloc(size: number, glibTypeName?: string): Handle {
+    return native.alloc(size, glibTypeName) as Handle;
 }
 
 /**
@@ -105,53 +82,9 @@ export function alloc(size: number, glibTypeName?: string): NativeHandle {
  *
  * @param handle - Handle to a live GObject-compatible instance
  */
-export function getType(handle: NativeHandle): number {
+export function getType(handle: Handle): number {
     return native.getType(handle) as number;
 }
-
-/**
- * Virtual function override installed into a registered class's vtable.
- *
- * `byteOffset` is the offset (in bytes) of the function pointer slot inside
- * the class struct relative to the class struct base; the JavaScript function
- * is wrapped in a libffi trampoline whose generated C function pointer is
- * written at that offset during class initialization.
- */
-export type RegisterClassVfuncDefinition = {
-    /** Byte offset of the vfunc slot within the class struct. */
-    readonly byteOffset: number;
-    /** FFI argument types matching the vfunc signature. */
-    readonly argTypes: readonly NativeType[];
-    /** FFI return type matching the vfunc signature. */
-    readonly returnType: NativeType;
-    /** Implementation invoked on each vfunc call. */
-    readonly fn: (...args: unknown[]) => unknown;
-};
-
-/**
- * Vfunc overrides targeting one interface that the registered class inherits
- * from its parent.
- *
- * `gtype` is the GType of the inherited interface. `vfuncs` are the overrides,
- * with `byteOffset` relative to the interface struct base (not the class
- * struct). Each vfunc is wrapped in a libffi trampoline whose function pointer
- * is written into the new class's own copy of the inherited interface vtable.
- */
-type RegisterClassInterfaceVfuncsDefinition = {
-    /** GType of the inherited interface whose vfuncs are overridden. */
-    readonly gtype: number;
-    /** Vfunc overrides relative to the interface struct base. */
-    readonly vfuncs: readonly RegisterClassVfuncDefinition[];
-};
-
-/**
- * Optional payload for {@link registerClass} carrying class vfunc overrides and
- * inherited-interface vfunc overrides.
- */
-export type RegisterClassVfuncOptions = {
-    readonly vfuncs?: readonly RegisterClassVfuncDefinition[];
-    readonly interfaceVfuncs?: readonly RegisterClassInterfaceVfuncsDefinition[];
-};
 
 /**
  * Registers a new `GType` derived from `parentGtype` under `name`.
@@ -168,28 +101,8 @@ export type RegisterClassVfuncOptions = {
  * @param options - Optional class and inherited-interface vfunc overrides
  * @returns Numeric GType of the newly registered subclass
  */
-export function registerClass(name: string, parentGtype: number, options?: RegisterClassVfuncOptions): number {
-    const nativeOptions = options ? buildNativeOptions(options) : undefined;
-    return native.registerClass(name, parentGtype, nativeOptions) as number;
-}
-
-function buildNativeOptions(options: RegisterClassVfuncOptions): NativeRegisterClassOptions {
-    return {
-        vfuncs: options.vfuncs?.map(toNativeVfunc),
-        interfaceVfuncs: options.interfaceVfuncs?.map((iface) => ({
-            gtype: iface.gtype,
-            vfuncs: iface.vfuncs.map(toNativeVfunc),
-        })),
-    };
-}
-
-function toNativeVfunc(vfunc: RegisterClassVfuncDefinition): NativeVfuncDefinition {
-    return {
-        byteOffset: vfunc.byteOffset,
-        argTypes: [...vfunc.argTypes],
-        returnType: vfunc.returnType,
-        fn: vfunc.fn,
-    };
+export function registerClass(name: string, parentGtype: number, options?: RegisterClassOptions): number {
+    return native.registerClass(name, parentGtype, options) as number;
 }
 
 /**
@@ -200,7 +113,7 @@ function toNativeVfunc(vfunc: RegisterClassVfuncDefinition): NativeVfuncDefiniti
  * @param handle - A handle produced by this module
  * @param wrapper - The JavaScript wrapper object to bind
  */
-export function setWrapper(handle: NativeHandle, wrapper: object): void {
+export function setWrapper(handle: Handle, wrapper: object): void {
     native.setWrapper(handle, wrapper);
 }
 
@@ -211,8 +124,8 @@ export function setWrapper(handle: NativeHandle, wrapper: object): void {
  *
  * @param handle - A handle produced by this module
  */
-export function getWrapper(handle: NativeHandle): object | null {
-    return (native.getWrapper(handle) as object | undefined) ?? null;
+export function getWrapper(handle: Handle): object | null {
+    return native.getWrapper(handle) ?? null;
 }
 
 /**
@@ -231,5 +144,3 @@ export function freeze(): void {
 export function unfreeze(): void {
     native.unfreeze();
 }
-
-export type { NativeArg as Arg, NativeType as Type, NativeValue as FfiValue, TrampolineType } from "./types.js";

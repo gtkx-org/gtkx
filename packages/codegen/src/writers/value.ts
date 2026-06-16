@@ -297,6 +297,9 @@ const classOrInterfaceExpression = (
 ): string => {
     const cls = resolved.value;
     if (cls.glibRefFunc === undefined || cls.glibUnrefFunc === undefined) {
+        if (resolved.kind === "interface" && cls.glibTypeName !== undefined) {
+            return `t.object(${joinArgs([quote(ownership), quote(cls.glibTypeName)])})`;
+        }
         return `t.object(${quote(ownership)})`;
     }
     return renderFundamental({
@@ -375,11 +378,45 @@ export const renderSelfFfiType = (context: ModuleContext, instance: GirParameter
     return `t.object("borrowed")`;
 };
 
-const isReferenceableBoxed = (boxed: Extract<ResolvedNamed, { kind: "boxed" }>["value"]): boolean => {
+type ResolvedBoxed = Extract<ResolvedNamed, { kind: "boxed" }>["value"];
+
+/**
+ * The ref/unref function pair a boxed record marshals through, drawn in
+ * precedence order from its GLib ref/unref funcs, its copy/free funcs, then the
+ * intrinsic funcs keyed by its GLib type name. A record with both halves present
+ * renders as a `t.fundamental`; one with neither renders as `t.boxed` (when it
+ * has a `get-type`) or a plain `t.struct`.
+ */
+const boxedRefPair = (boxed: ResolvedBoxed): { readonly refFunc: string | undefined; readonly unrefFunc: string | undefined } => {
+    const intrinsic =
+        boxed.glibTypeName === undefined ? undefined : INTRINSIC_FUNDAMENTAL_FUNCS.get(boxed.glibTypeName);
+    return {
+        refFunc: boxed.glibRefFunc ?? boxed.copyFunc ?? intrinsic?.ref,
+        unrefFunc: boxed.glibUnrefFunc ?? boxed.freeFunc ?? intrinsic?.unref,
+    };
+};
+
+const isReferenceableBoxed = (boxed: ResolvedBoxed): boolean => {
     const hasRefPair =
         (boxed.glibRefFunc ?? boxed.copyFunc) !== undefined && (boxed.glibUnrefFunc ?? boxed.freeFunc) !== undefined;
     const hasIntrinsic = boxed.glibTypeName !== undefined && INTRINSIC_FUNDAMENTAL_FUNCS.has(boxed.glibTypeName);
     return hasRefPair || hasIntrinsic || boxed.glibGetType !== undefined;
+};
+
+/**
+ * Whether a boxed record's FFI descriptor carries no `GType` identity the
+ * runtime can resolve a wrapper class from, so the binding must pass an explicit
+ * `wrapClass` fallback. True for a plain `t.struct` (no copy/free pair, no
+ * `get-type`) and for a `t.fundamental` with no registered GLib type name (e.g.
+ * `GAsyncQueue`); false for a `t.boxed` (resolved through its `get-type`) and a
+ * named `t.fundamental` (resolved through its type name).
+ *
+ * @param boxed - The resolved boxed record.
+ */
+export const boxedNeedsFallbackClass = (boxed: ResolvedBoxed): boolean => {
+    const { refFunc, unrefFunc } = boxedRefPair(boxed);
+    if (refFunc !== undefined && unrefFunc !== undefined) return boxed.glibTypeName === undefined;
+    return boxed.glibGetType === undefined;
 };
 
 const boxedExpression = (
@@ -387,10 +424,7 @@ const boxedExpression = (
     ownership: "borrowed" | "full",
 ): string => {
     const boxed = resolved.value;
-    const intrinsic =
-        boxed.glibTypeName === undefined ? undefined : INTRINSIC_FUNDAMENTAL_FUNCS.get(boxed.glibTypeName);
-    const refFunc = boxed.glibRefFunc ?? boxed.copyFunc ?? intrinsic?.ref;
-    const unrefFunc = boxed.glibUnrefFunc ?? boxed.freeFunc ?? intrinsic?.unref;
+    const { refFunc, unrefFunc } = boxedRefPair(boxed);
     if (refFunc !== undefined && unrefFunc !== undefined) {
         const lib = resolved.namespace.sharedLibrary ?? "";
         return renderFundamental({ lib, refFunc, unrefFunc, glibTypeName: boxed.glibTypeName, ownership });

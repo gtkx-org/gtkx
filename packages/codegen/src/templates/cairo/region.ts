@@ -1,5 +1,5 @@
 import { getHandle, setHandle, t, wrapHandle } from "@gtkx/ffi";
-import { alloc, type NativeHandle, write } from "@gtkx/native";
+import { alloc, type Handle, write } from "@gtkx/native";
 import type { RegionOverlap, Status } from "../cairo.js";
 import { RectangleInt, Region } from "../cairo.js";
 
@@ -56,19 +56,19 @@ class RegionImpl extends Region {
      */
     constructor(rect: RectangleInt) {
         super();
-        setHandle(this, cairoRegionCreateRectangle(getHandle(rect)) as NativeHandle);
+        setHandle(this, cairoRegionCreateRectangle(getHandle(rect)) as Handle);
     }
 
     static empty(): Region {
-        return wrapHandle(cairoRegionCreate() as NativeHandle, RegionImpl);
+        return wrapHandle(cairoRegionCreate() as Handle, RegionImpl);
     }
 
     static copy(original: Region): Region {
-        return wrapHandle(cairoRegionCopy(getHandle(original)) as NativeHandle, RegionImpl);
+        return wrapHandle(cairoRegionCopy(getHandle(original)) as Handle, RegionImpl);
     }
 
     static forRectangle(rect: RectangleInt): Region {
-        return wrapHandle(cairoRegionCreateRectangle(getHandle(rect)) as NativeHandle, RegionImpl);
+        return wrapHandle(cairoRegionCreateRectangle(getHandle(rect)) as Handle, RegionImpl);
     }
 
     static createRectangles(rects: Array<{ x: number; y: number; width: number; height: number }>): Region {
@@ -84,7 +84,7 @@ class RegionImpl extends Region {
             write(buf, t.int32, offset + 12, rect.height);
             offset += 16;
         }
-        const ptr = cairoRegionCreateRectangles(buf, rects.length) as NativeHandle;
+        const ptr = cairoRegionCreateRectangles(buf, rects.length) as Handle;
         return wrapHandle(ptr, Region) as Region;
     }
 }
@@ -98,7 +98,7 @@ const cairoRegionCopy = bind(
     t.boxed("CairoRegion", "full", "libcairo-gobject.so.2", "cairo_gobject_region_get_type"),
 );
 Region.prototype.copy = function (): Region {
-    return wrapHandle(cairoRegionCopy(getHandle(this)) as NativeHandle, Region) as Region;
+    return wrapHandle(cairoRegionCopy(getHandle(this)) as Handle, Region) as Region;
 };
 
 const cairoRegionStatus = bind(

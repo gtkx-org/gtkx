@@ -39,7 +39,7 @@ describe("registerClass", () => {
         expect(buildableGtype).toBeGreaterThan(0);
 
         const newGtype = registerClass(name, widgetGtype, {
-            interfaceVfuncs: [{ gtype: buildableGtype, vfuncs: [] }],
+            interfaces: [{ gtype: buildableGtype, vfuncs: [] }],
         });
 
         expect(newGtype).toBeGreaterThan(0);

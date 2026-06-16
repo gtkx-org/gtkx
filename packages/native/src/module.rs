@@ -8,6 +8,6 @@ mod gobject;
 pub(crate) mod handler;
 mod init;
 mod register_class;
-mod stop;
+mod quit;
 mod test_support;
 mod toggle_ref;

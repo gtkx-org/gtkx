@@ -282,12 +282,12 @@ impl WrapperRegistry {
     }
 
     /// Drives one reference operation on the JS thread, blocking the `GLib`
-    /// thread until it completes. A no-op once the mailbox is stopped or before
+    /// thread until it completes. A no-op once the mailbox is not running or before
     /// the runtime's JS thread is live, so shutdown leaks the reference rather
     /// than touching a dead runtime.
     fn invoke_ref_op(ref_ptr: *mut c_void, op: RefOp) {
         let mailbox = Mailbox::global();
-        if mailbox.is_stopped() || !mailbox.is_started() {
+        if mailbox.is_not_running() || !mailbox.is_initialized() {
             return;
         }
         if let Err(error) = mailbox.apply_wrapper_ref_op_and_wait(ref_ptr as usize, op) {
@@ -412,7 +412,7 @@ impl WrapperRegistry {
         gobject_addr: usize,
         ref_addr: usize,
     ) {
-        if Mailbox::global().is_stopped() {
+        if Mailbox::global().is_not_running() {
             return;
         }
         glib::idle_add_once(move || {
