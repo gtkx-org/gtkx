@@ -1,23 +1,22 @@
 /**
  * The call convention generated bindings dispatch through, exposed as `t.fn`:
- * a sugar over the native `call` primitive that owns out-parameter tupling,
- * `GError` handling, and result wrapping.
+ * a thin sugar over `t.bind` that adds out-parameter tupling, `GError` handling,
+ * and result wrapping.
  *
- * A callable's full shape — its argument types, which positions are out- or
- * inout-parameters, whether it throws, and how its result is wrapped — is
- * compiled once by {@link ffiFn} at module load, mirroring the bind-once
- * discipline of the raw binder: the native argument array is built a single time
- * and each parameter becomes a step that refills its slot, so only the per-call
- * out-cells allocate. The returned invoker walks the steps to fill the arguments
- * and collect the surfaced out-readers, runs {@link checkError} when the callable
- * throws, and tuples the wrapped out-values with the wrapped primary return
- * through the descriptor-driven {@link wrapValue}. The wrapping needs no per-call
- * type analysis: the FFI descriptor's `type` decides the strategy and a
- * pre-resolved class is supplied only for the kinds whose descriptor carries no
- * recoverable identity.
+ * {@link ffiFn} resolves the callable's argument types once — wrapping each
+ * runtime-allocated out- or inout-parameter in a `ref` and appending the
+ * implicit `GError**` slot when the callable throws — and binds them through
+ * `t.bind`, which owns the reused native argument array and the `call` dispatch.
+ * Each invocation maps the input values to the native values `bind` expects,
+ * seeding a fresh `{ value }` cell for every runtime-allocated out- or
+ * inout-parameter, runs {@link checkError} when the callable throws, then tuples
+ * the wrapped primary return with the surfaced out-values. The out-wrapping
+ * needs no per-call type analysis: each surfaced value carries the FFI `type`
+ * that decides its strategy, plus a pre-resolved class only for the kinds whose
+ * descriptor carries no recoverable identity.
  */
 
-import { type Arg, type Handle, call as nativeCall, type Ref, type Type, type Value } from "@gtkx/native";
+import type { Handle, Ref, Type, Value } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { checkError } from "./error.js";
 import { wrapValue } from "./gobject.js";
@@ -93,67 +92,53 @@ const GERROR_REF: Type = descriptors.ref(
     descriptors.boxed("GError", "full", "libgobject-2.0.so.0", "g_error_get_type"),
 );
 
-/** A deferred read of one surfaced out-value, evaluated after the native call has written its cell. */
-type OutReader = () => unknown;
-
-/** Fills one argument's value from the call inputs and appends any surfaced out-value reader. */
-type ArgStep = (inputs: readonly unknown[], outs: OutReader[]) => void;
+/**
+ * A surfaced out-value held until the native call has run, then assembled into
+ * the result tuple. A caller-allocated argument surfaces the `wrapper` it was
+ * passed, unchanged; a runtime-allocated out- or inout-parameter surfaces its
+ * `cell`'s filled value, lifted through {@link wrapValue} under its FFI `type`
+ * (with a pre-resolved `wrapperClass` for the kinds that need one).
+ */
+type SurfacedOut =
+    | { readonly wrapper: unknown }
+    | { readonly cell: Ref; readonly type: Type; readonly wrapperClass?: AnyClass };
 
 /**
- * Whether a parameter draws a value from the input list. Every kind does except
- * a runtime-allocated pure out, whose cell the call allocates with no input.
+ * Resolves a caller-allocated argument's wrapper to the native handle passed in
+ * its place, leaving a nullish wrapper untouched.
  */
-const takesInput = (param: ArgType): boolean => !(param.direction === "out" && param.callerAllocates !== true);
+const toHandle = (wrapper: unknown): Value => (wrapper == null ? (wrapper as Value) : getHandle(wrapper as object));
 
 /**
- * Builds the reusable native {@link Arg} for a parameter, allocated once at bind
- * time and refilled per call: an out/inout cell the runtime allocates is wrapped
- * in a `ref` of the inner type; every other argument carries its type directly.
+ * Maps a call's input values onto the native values `t.bind` expects, in
+ * C-signature order: a caller-allocated wrapper to its handle, a runtime
+ * out/inout to a fresh `{ value }` cell (seeded from the input for an inout),
+ * and a plain input straight through. Alongside, it collects the
+ * {@link SurfacedOut}s a non-`consumed` out- or inout-parameter contributes to
+ * the result tuple.
  */
-const argFor = (param: ArgType): Arg => {
-    if ((param.direction === "out" || param.direction === "inout") && param.callerAllocates !== true) {
-        return { type: descriptors.ref(param.type), value: undefined };
+const prepareCall = (
+    params: readonly ArgType[],
+    inputs: readonly unknown[],
+): { readonly values: Value[]; readonly surfaced: SurfacedOut[] } => {
+    const values: Value[] = [];
+    const surfaced: SurfacedOut[] = [];
+    let cursor = 0;
+    for (const param of params) {
+        const surfaces = param.consumed !== true;
+        if (param.callerAllocates === true) {
+            const wrapper = inputs[cursor++];
+            values.push(toHandle(wrapper));
+            if (surfaces) surfaced.push({ wrapper });
+        } else if (param.direction !== undefined) {
+            const cell: Ref = { value: param.direction === "inout" ? (inputs[cursor++] as Value) : null };
+            values.push(cell);
+            if (surfaces) surfaced.push({ cell, type: param.type, wrapperClass: param.wrapperClass });
+        } else {
+            values.push(inputs[cursor++] as Value);
+        }
     }
-    return { type: param.type, value: undefined };
-};
-
-/**
- * Compiles a parameter into its per-call {@link ArgStep}, resolving the
- * parameter shape once at bind time so the call path is a straight walk of the
- * compiled steps. A caller-allocated wrapper passes by handle and surfaces
- * itself unwrapped; a pure out allocates a fresh `{ value: null }` cell the
- * native marshaller sizes from the ref's inner type and the callee fills; an
- * inout seeds the cell from its input; a plain input passes straight through. A
- * non-`consumed` out/inout surfaces its read-back wrapped through
- * {@link wrapValue}.
- */
-const compileArg = (param: ArgType, arg: Arg, inputIndex: number): ArgStep => {
-    const surfaces = param.consumed !== true;
-    if (param.callerAllocates === true) {
-        return (inputs, outs) => {
-            const input = inputs[inputIndex];
-            arg.value = input == null ? input : getHandle(input as object);
-            if (surfaces) outs.push(() => input);
-        };
-    }
-    const { type, wrapperClass } = param;
-    if (param.direction === "out") {
-        return (_, outs) => {
-            const cell: Ref = { value: null };
-            arg.value = cell;
-            if (surfaces) outs.push(() => wrapValue(type, cell.value, wrapperClass));
-        };
-    }
-    if (param.direction === "inout") {
-        return (inputs, outs) => {
-            const cell: Ref = { value: inputs[inputIndex] as Value };
-            arg.value = cell;
-            if (surfaces) outs.push(() => wrapValue(type, cell.value, wrapperClass));
-        };
-    }
-    return (inputs) => {
-        arg.value = inputs[inputIndex] as Value;
-    };
+    return { values, surfaced };
 };
 
 /**
@@ -175,28 +160,27 @@ function ffiFn(
     ret: ValueType,
     options: FfiFnOptions = {},
 ): (...inputs: unknown[]) => unknown {
-    const compiled = params.map((param, index) => {
-        const arg = argFor(param);
-        return { arg, step: compileArg(param, arg, params.slice(0, index).filter(takesInput).length) };
-    });
-    const args: Arg[] = compiled.map((entry) => entry.arg);
-    const errorArg: Arg | undefined = options.throws === true ? { type: GERROR_REF, value: undefined } : undefined;
-    if (errorArg !== undefined) args.push(errorArg);
+    const argTypes: { type: Type }[] = params.map((param) => ({
+        type:
+            param.direction !== undefined && param.callerAllocates !== true ? descriptors.ref(param.type) : param.type,
+    }));
+    if (options.throws === true) argTypes.push({ type: GERROR_REF });
+    const invoke = descriptors.bind(library, symbol, argTypes, ret.type);
     const hasPrimary = ret.type.type !== "void";
 
     return (...inputs) => {
-        const outs: OutReader[] = [];
-        for (const { step } of compiled) step(inputs, outs);
-        const errorCell: { value: Handle | null } | undefined = errorArg === undefined ? undefined : { value: null };
-        if (errorArg !== undefined) errorArg.value = errorCell;
-        const rawResult = nativeCall(library, symbol, args, ret.type);
+        const { values, surfaced } = prepareCall(params, inputs);
+        const errorCell: { value: Handle | null } | undefined = options.throws === true ? { value: null } : undefined;
+        if (errorCell !== undefined) values.push(errorCell);
+
+        const rawResult = invoke(...values);
         if (errorCell !== undefined) checkError(errorCell);
+
         const primary = hasPrimary ? wrapValue(ret.type, rawResult, ret.wrapperClass) : undefined;
-        return tupleResult(
-            outs.map((read) => read()),
-            primary,
-            hasPrimary,
+        const outs = surfaced.map((out) =>
+            "cell" in out ? wrapValue(out.type, out.cell.value, out.wrapperClass) : out.wrapper,
         );
+        return tupleResult(outs, primary, hasPrimary);
     };
 }
 
