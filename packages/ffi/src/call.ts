@@ -33,17 +33,17 @@ import { getHandle } from "./registry.js";
  * Either direction may pair with {@link FfiFnParam.callerAllocates}, which
  * passes the caller's own wrapper by handle in place of allocating a cell.
  */
-type OutRole = "out" | "inout";
+type FfiFnParamDirection = "out" | "inout";
 
 /**
  * One positional argument of a callable, in C-signature order (the instance
- * receiver included). A plain input omits `role`.
+ * receiver included). A plain input omits `direction`.
  */
 export type FfiFnParam = {
     /** The argument's FFI type — the inner type for an out/inout cell. */
     readonly type: FfiType;
     /** The out/inout direction the parameter participates in beyond a plain input. */
-    readonly role?: OutRole;
+    readonly direction?: FfiFnParamDirection;
     /**
      * Whether the caller allocates the out/inout wrapper. The input wrapper's
      * handle is passed as the argument — the native call fills its backing
@@ -147,7 +147,7 @@ const bindArg = (param: FfiFnParam, arg: Arg, input: unknown, surfaced: Surfaced
         if (param.consumed !== true) surfaced.push({ param, raw: input });
         return 1;
     }
-    switch (param.role) {
+    switch (param.direction) {
         case "out": {
             arg.value = { value: seedForOutCell(param.type) as Value };
             if (param.consumed !== true) surfaced.push({ param, cell: arg.value as OutCell });
@@ -185,7 +185,7 @@ function ffiFn(
     options: FfiFnOptions = {},
 ): (...inputs: unknown[]) => unknown {
     const args: Arg[] = params.map((param) => {
-        if ((param.role === "out" || param.role === "inout") && param.callerAllocates !== true) {
+        if ((param.direction === "out" || param.direction === "inout") && param.callerAllocates !== true) {
             return { type: descriptors.ref(param.type), value: undefined };
         }
         return param.optional === true

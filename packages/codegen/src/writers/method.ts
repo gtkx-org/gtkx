@@ -267,7 +267,7 @@ type CallArgPlan = {
 };
 
 type FfiParamOptions = {
-    readonly role?: "out" | "inout";
+    readonly direction?: "out" | "inout";
     readonly callerAllocates?: boolean;
     readonly wrapClass?: string;
     readonly consumed?: boolean;
@@ -276,7 +276,7 @@ type FfiParamOptions = {
 
 const ffiParamLiteral = (ffiExpr: string, options: FfiParamOptions): string => {
     const parts = [`type: ${ffiExpr}`];
-    if (options.role !== undefined) parts.push(`role: ${quote(options.role)}`);
+    if (options.direction !== undefined) parts.push(`direction: ${quote(options.direction)}`);
     if (options.callerAllocates === true) parts.push("callerAllocates: true");
     if (options.wrapClass !== undefined) parts.push(`wrapClass: () => ${options.wrapClass}`);
     if (options.consumed === true) parts.push("consumed: true");
@@ -364,7 +364,7 @@ const planOutParam = (
 ): CallArgPlan => {
     const ffi = renderFfiType(context, parameter.type, parameter.transferOwnership, instanceOffset);
     const wrapClass = resolveWrapClass(context, parameter.type);
-    return { paramLiteral: ffiParamLiteral(ffi, { role: "out", wrapClass, consumed }), inputExpr: undefined };
+    return { paramLiteral: ffiParamLiteral(ffi, { direction: "out", wrapClass, consumed }), inputExpr: undefined };
 };
 
 const planCallerOut = (context: ModuleContext, parameter: GirParameter, instanceOffset: number): CallArgPlan => {
@@ -374,7 +374,7 @@ const planCallerOut = (context: ModuleContext, parameter: GirParameter, instance
         const owner = parameter.type.namespaceName ?? context.namespace.name;
         const classExpression = context.qualify(owner, parameter.type.typeName);
         return {
-            paramLiteral: ffiParamLiteral(ffi, { role: "out", callerAllocates: true }),
+            paramLiteral: ffiParamLiteral(ffi, { direction: "out", callerAllocates: true }),
             inputExpr: `new ${classExpression}()`,
         };
     }
@@ -390,14 +390,14 @@ const planInoutParam = (
     if (passesHandleInPlace(context, parameter)) {
         const ffi = renderFfiType(context, parameter.type, "none", instanceOffset);
         return {
-            paramLiteral: ffiParamLiteral(ffi, { role: "inout", callerAllocates: true, consumed }),
+            paramLiteral: ffiParamLiteral(ffi, { direction: "inout", callerAllocates: true, consumed }),
             inputExpr: parameterIdentifier(parameter, index),
         };
     }
     const ffi = renderFfiType(context, parameter.type, parameter.transferOwnership, instanceOffset);
     const wrapClass = resolveWrapClass(context, parameter.type);
     return {
-        paramLiteral: ffiParamLiteral(ffi, { role: "inout", wrapClass, consumed }),
+        paramLiteral: ffiParamLiteral(ffi, { direction: "inout", wrapClass, consumed }),
         inputExpr: parameterCallExpression(context, parameter, index),
     };
 };

@@ -18,8 +18,8 @@ import {
  * for a callable. Returns `undefined` when the callable cannot be bound (no C
  * identifier or missing namespace shared-library).
  *
- * The parameter array carries each argument's FFI type and its role (out or
- * inout, optionally caller-allocated), the return descriptor carries the
+ * The parameter array carries each argument's FFI type and its direction (out
+ * or inout, optionally caller-allocated), the return descriptor carries the
  * primary return's FFI type and wrapper class, and a throwing callable adds the
  * `throws` option; the bound callable owns out-parameter tupling, `GError`
  * handling, and result wrapping at call time.
