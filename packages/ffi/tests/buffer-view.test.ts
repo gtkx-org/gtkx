@@ -10,11 +10,11 @@ const E_ACUTE_UTF8 = [0xc3, 0xa9];
 const computeChecksumForData = t.bind(
     GLIB,
     "g_compute_checksum_for_data",
-    [{ type: t.int32 }, { type: t.array(t.uint8) }, { type: t.uint64 }],
+    [t.int32, t.array(t.uint8), t.uint64],
     t.string("full"),
 );
 
-const unicharToUtf8 = t.bind(GLIB, "g_unichar_to_utf8", [{ type: t.uint32 }, { type: t.blob }], t.int32);
+const unicharToUtf8 = t.bind(GLIB, "g_unichar_to_utf8", [t.uint32, t.blob], t.int32);
 
 describe("ArrayBufferView array arguments", () => {
     it("passes a typed array's bytes to the callee zero-copy", () => {

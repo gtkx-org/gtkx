@@ -42,9 +42,7 @@ const appendGetTypeBinding = (context: ModuleContext, getType: string): void => 
 };
 
 const appendGtypeFromNameBinding = (context: ModuleContext): void => {
-    const expression =
-        `t.bind(${quote(TYPE_FROM_NAME_LIB)}, ${quote(TYPE_FROM_NAME_SYMBOL)}, ` +
-        `[{ type: t.string("borrowed") }], t.uint64)`;
+    const expression = `t.bind(${quote(TYPE_FROM_NAME_LIB)}, ${quote(TYPE_FROM_NAME_SYMBOL)}, [t.string("borrowed")], t.uint64)`;
     context.module.appendBinding(
         `const ${bindingIdentifier(TYPE_FROM_NAME_SYMBOL)} = ${expression};`,
         TYPE_FROM_NAME_SYMBOL,

@@ -8,37 +8,37 @@ const { bind } = t;
 const cairoImageSurfaceCreate = bind(
     "libcairo.so.2",
     "cairo_image_surface_create",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.int32 }],
+    [t.int32, t.int32, t.int32],
     t.boxed("CairoSurface", "full", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
 );
 const cairoImageSurfaceCreateFromPng = bind(
     "libcairo.so.2",
     "cairo_image_surface_create_from_png",
-    [{ type: t.string("full") }],
+    [t.string("full")],
     t.boxed("CairoSurface", "full", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
 );
 const cairoImageSurfaceGetWidth = bind(
     "libcairo.so.2",
     "cairo_image_surface_get_width",
-    [{ type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") }],
+    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type")],
     t.int32,
 );
 const cairoImageSurfaceGetHeight = bind(
     "libcairo.so.2",
     "cairo_image_surface_get_height",
-    [{ type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") }],
+    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type")],
     t.int32,
 );
 const cairoImageSurfaceGetFormat = bind(
     "libcairo.so.2",
     "cairo_image_surface_get_format",
-    [{ type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") }],
+    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type")],
     t.int32,
 );
 const cairoImageSurfaceGetStride = bind(
     "libcairo.so.2",
     "cairo_image_surface_get_stride",
-    [{ type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") }],
+    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type")],
     t.int32,
 );
 

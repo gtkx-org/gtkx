@@ -76,22 +76,22 @@ export const lazyGtype = (name: string): (() => GType) => {
     };
 };
 
-const gTypeFromName = t.bind(LIBGOBJECT, "g_type_from_name", [{ type: t.string("borrowed") }], t.uint64);
+const gTypeFromName = t.bind(LIBGOBJECT, "g_type_from_name", [t.string("borrowed")], t.uint64);
 
-const gTypeIsA = t.bind(LIBGOBJECT, "g_type_is_a", [{ type: t.uint64 }, { type: t.uint64 }], t.boolean);
+const gTypeIsA = t.bind(LIBGOBJECT, "g_type_is_a", [t.uint64, t.uint64], t.boolean);
 
-const gTypeParent = t.bind(LIBGOBJECT, "g_type_parent", [{ type: t.uint64 }], t.uint64);
+const gTypeParent = t.bind(LIBGOBJECT, "g_type_parent", [t.uint64], t.uint64);
 
 const gTypeInterfaces = t.bind(
     LIBGOBJECT,
     "g_type_interfaces",
-    [{ type: t.uint64 }, { type: t.ref(t.uint32) }],
+    [t.uint64, t.ref(t.uint32)],
     t.sizedArray(t.uint64, 1, "full"),
 );
 
-const gTypeFundamental = t.bind(LIBGOBJECT, "g_type_fundamental", [{ type: t.uint64 }], t.uint64);
+const gTypeFundamental = t.bind(LIBGOBJECT, "g_type_fundamental", [t.uint64], t.uint64);
 
-const gTypeName = t.bind(LIBGOBJECT, "g_type_name", [{ type: t.uint64 }], t.string("borrowed"));
+const gTypeName = t.bind(LIBGOBJECT, "g_type_name", [t.uint64], t.string("borrowed"));
 
 /**
  * Tests whether `type` is a descendant of `isAType`, or — when `isAType` is

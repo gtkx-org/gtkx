@@ -170,7 +170,7 @@ const gStrvGetType = t.bind(LIBGOBJECT, "g_strv_get_type", [], t.uint64);
 const gValueSetBoxedStrv = t.bind(
     LIBGOBJECT,
     "g_value_set_boxed",
-    [{ type: GVALUE_BORROWED }, { type: t.array(t.string("borrowed")) }],
+    [GVALUE_BORROWED, t.array(t.string("borrowed"))],
     t.void,
 );
 
@@ -349,19 +349,9 @@ function newFromUint64(value: number): GValue {
     return initValue(TYPE_UINT64, (v) => v.setUint64(value));
 }
 
-const gValueSetInt64Big = t.bind(
-    LIBGOBJECT,
-    "g_value_set_int64",
-    [{ type: GVALUE_BORROWED }, { type: t.bigint64 }],
-    t.void,
-);
+const gValueSetInt64Big = t.bind(LIBGOBJECT, "g_value_set_int64", [GVALUE_BORROWED, t.bigint64], t.void);
 
-const gValueSetUint64Big = t.bind(
-    LIBGOBJECT,
-    "g_value_set_uint64",
-    [{ type: GVALUE_BORROWED }, { type: t.biguint64 }],
-    t.void,
-);
+const gValueSetUint64Big = t.bind(LIBGOBJECT, "g_value_set_uint64", [GVALUE_BORROWED, t.biguint64], t.void);
 
 /** Creates a `GValue` initialized with a signed 64-bit integer from a bigint. */
 function newFromBigInt64(value: bigint | number): GValue {
@@ -699,13 +689,8 @@ export function getFundamentalMarshallers(): Map<GType, FundamentalMarshaller> {
     return fundamentalMarshallers;
 }
 
-const gValueInit = t.bind(LIBGOBJECT, "g_value_init", [{ type: GVALUE_BORROWED }, { type: t.uint64 }], t.void);
-const gValueSetPointer = t.bind(
-    LIBGOBJECT,
-    "g_value_set_pointer",
-    [{ type: GVALUE_BORROWED }, { type: t.uint64 }],
-    t.void,
-);
+const gValueInit = t.bind(LIBGOBJECT, "g_value_init", [GVALUE_BORROWED, t.uint64], t.void);
+const gValueSetPointer = t.bind(LIBGOBJECT, "g_value_set_pointer", [GVALUE_BORROWED, t.uint64], t.void);
 
 /**
  * Stores `pointer`'s raw address as `value`'s `G_TYPE_POINTER` payload. `value`
@@ -722,90 +707,50 @@ export const setGValuePointer = (value: GValue, pointer: Handle): void => {
     gValueSetPointer(getHandle(value), pointer);
 };
 
-const gValueSetBoolean = t.bind(
-    LIBGOBJECT,
-    "g_value_set_boolean",
-    [{ type: GVALUE_BORROWED }, { type: t.boolean }],
-    t.void,
-);
-const gValueGetBoolean = t.bind(LIBGOBJECT, "g_value_get_boolean", [{ type: GVALUE_BORROWED }], t.boolean);
-const gValueSetInt = t.bind(LIBGOBJECT, "g_value_set_int", [{ type: GVALUE_BORROWED }, { type: t.int32 }], t.void);
-const gValueGetInt = t.bind(LIBGOBJECT, "g_value_get_int", [{ type: GVALUE_BORROWED }], t.int32);
-const gValueSetUint = t.bind(LIBGOBJECT, "g_value_set_uint", [{ type: GVALUE_BORROWED }, { type: t.uint32 }], t.void);
-const gValueGetUint = t.bind(LIBGOBJECT, "g_value_get_uint", [{ type: GVALUE_BORROWED }], t.uint32);
-const gValueSetLong = t.bind(LIBGOBJECT, "g_value_set_long", [{ type: GVALUE_BORROWED }, { type: t.int64 }], t.void);
-const gValueGetLong = t.bind(LIBGOBJECT, "g_value_get_long", [{ type: GVALUE_BORROWED }], t.int64);
-const gValueSetUlong = t.bind(LIBGOBJECT, "g_value_set_ulong", [{ type: GVALUE_BORROWED }, { type: t.uint64 }], t.void);
-const gValueGetUlong = t.bind(LIBGOBJECT, "g_value_get_ulong", [{ type: GVALUE_BORROWED }], t.uint64);
-const gValueSetInt64 = t.bind(LIBGOBJECT, "g_value_set_int64", [{ type: GVALUE_BORROWED }, { type: t.int64 }], t.void);
-const gValueGetInt64 = t.bind(LIBGOBJECT, "g_value_get_int64", [{ type: GVALUE_BORROWED }], t.int64);
-const gValueSetUint64 = t.bind(
-    LIBGOBJECT,
-    "g_value_set_uint64",
-    [{ type: GVALUE_BORROWED }, { type: t.uint64 }],
-    t.void,
-);
-const gValueGetUint64 = t.bind(LIBGOBJECT, "g_value_get_uint64", [{ type: GVALUE_BORROWED }], t.uint64);
-const gValueSetFloat = t.bind(
-    LIBGOBJECT,
-    "g_value_set_float",
-    [{ type: GVALUE_BORROWED }, { type: t.float32 }],
-    t.void,
-);
-const gValueGetFloat = t.bind(LIBGOBJECT, "g_value_get_float", [{ type: GVALUE_BORROWED }], t.float32);
-const gValueSetDouble = t.bind(
-    LIBGOBJECT,
-    "g_value_set_double",
-    [{ type: GVALUE_BORROWED }, { type: t.float64 }],
-    t.void,
-);
-const gValueGetDouble = t.bind(LIBGOBJECT, "g_value_get_double", [{ type: GVALUE_BORROWED }], t.float64);
-const gValueSetString = t.bind(
-    LIBGOBJECT,
-    "g_value_set_string",
-    [{ type: GVALUE_BORROWED }, { type: t.string("borrowed") }],
-    t.void,
-);
-const gValueGetString = t.bind(LIBGOBJECT, "g_value_get_string", [{ type: GVALUE_BORROWED }], t.string("borrowed"));
-const gValueSetSchar = t.bind(LIBGOBJECT, "g_value_set_schar", [{ type: GVALUE_BORROWED }, { type: t.int8 }], t.void);
-const gValueGetSchar = t.bind(LIBGOBJECT, "g_value_get_schar", [{ type: GVALUE_BORROWED }], t.int8);
-const gValueSetUchar = t.bind(LIBGOBJECT, "g_value_set_uchar", [{ type: GVALUE_BORROWED }, { type: t.uint8 }], t.void);
-const gValueGetUchar = t.bind(LIBGOBJECT, "g_value_get_uchar", [{ type: GVALUE_BORROWED }], t.uint8);
-const gValueSetEnum = t.bind(LIBGOBJECT, "g_value_set_enum", [{ type: GVALUE_BORROWED }, { type: t.int32 }], t.void);
-const gValueGetEnum = t.bind(LIBGOBJECT, "g_value_get_enum", [{ type: GVALUE_BORROWED }], t.int32);
-const gValueSetFlags = t.bind(LIBGOBJECT, "g_value_set_flags", [{ type: GVALUE_BORROWED }, { type: t.uint32 }], t.void);
-const gValueGetFlags = t.bind(LIBGOBJECT, "g_value_get_flags", [{ type: GVALUE_BORROWED }], t.uint32);
-const gValueSetObject = t.bind(
-    LIBGOBJECT,
-    "g_value_set_object",
-    [{ type: GVALUE_BORROWED }, { type: t.object("borrowed") }],
-    t.void,
-);
-const gValueGetObject = t.bind(LIBGOBJECT, "g_value_get_object", [{ type: GVALUE_BORROWED }], t.object("borrowed"));
+const gValueSetBoolean = t.bind(LIBGOBJECT, "g_value_set_boolean", [GVALUE_BORROWED, t.boolean], t.void);
+const gValueGetBoolean = t.bind(LIBGOBJECT, "g_value_get_boolean", [GVALUE_BORROWED], t.boolean);
+const gValueSetInt = t.bind(LIBGOBJECT, "g_value_set_int", [GVALUE_BORROWED, t.int32], t.void);
+const gValueGetInt = t.bind(LIBGOBJECT, "g_value_get_int", [GVALUE_BORROWED], t.int32);
+const gValueSetUint = t.bind(LIBGOBJECT, "g_value_set_uint", [GVALUE_BORROWED, t.uint32], t.void);
+const gValueGetUint = t.bind(LIBGOBJECT, "g_value_get_uint", [GVALUE_BORROWED], t.uint32);
+const gValueSetLong = t.bind(LIBGOBJECT, "g_value_set_long", [GVALUE_BORROWED, t.int64], t.void);
+const gValueGetLong = t.bind(LIBGOBJECT, "g_value_get_long", [GVALUE_BORROWED], t.int64);
+const gValueSetUlong = t.bind(LIBGOBJECT, "g_value_set_ulong", [GVALUE_BORROWED, t.uint64], t.void);
+const gValueGetUlong = t.bind(LIBGOBJECT, "g_value_get_ulong", [GVALUE_BORROWED], t.uint64);
+const gValueSetInt64 = t.bind(LIBGOBJECT, "g_value_set_int64", [GVALUE_BORROWED, t.int64], t.void);
+const gValueGetInt64 = t.bind(LIBGOBJECT, "g_value_get_int64", [GVALUE_BORROWED], t.int64);
+const gValueSetUint64 = t.bind(LIBGOBJECT, "g_value_set_uint64", [GVALUE_BORROWED, t.uint64], t.void);
+const gValueGetUint64 = t.bind(LIBGOBJECT, "g_value_get_uint64", [GVALUE_BORROWED], t.uint64);
+const gValueSetFloat = t.bind(LIBGOBJECT, "g_value_set_float", [GVALUE_BORROWED, t.float32], t.void);
+const gValueGetFloat = t.bind(LIBGOBJECT, "g_value_get_float", [GVALUE_BORROWED], t.float32);
+const gValueSetDouble = t.bind(LIBGOBJECT, "g_value_set_double", [GVALUE_BORROWED, t.float64], t.void);
+const gValueGetDouble = t.bind(LIBGOBJECT, "g_value_get_double", [GVALUE_BORROWED], t.float64);
+const gValueSetString = t.bind(LIBGOBJECT, "g_value_set_string", [GVALUE_BORROWED, t.string("borrowed")], t.void);
+const gValueGetString = t.bind(LIBGOBJECT, "g_value_get_string", [GVALUE_BORROWED], t.string("borrowed"));
+const gValueSetSchar = t.bind(LIBGOBJECT, "g_value_set_schar", [GVALUE_BORROWED, t.int8], t.void);
+const gValueGetSchar = t.bind(LIBGOBJECT, "g_value_get_schar", [GVALUE_BORROWED], t.int8);
+const gValueSetUchar = t.bind(LIBGOBJECT, "g_value_set_uchar", [GVALUE_BORROWED, t.uint8], t.void);
+const gValueGetUchar = t.bind(LIBGOBJECT, "g_value_get_uchar", [GVALUE_BORROWED], t.uint8);
+const gValueSetEnum = t.bind(LIBGOBJECT, "g_value_set_enum", [GVALUE_BORROWED, t.int32], t.void);
+const gValueGetEnum = t.bind(LIBGOBJECT, "g_value_get_enum", [GVALUE_BORROWED], t.int32);
+const gValueSetFlags = t.bind(LIBGOBJECT, "g_value_set_flags", [GVALUE_BORROWED, t.uint32], t.void);
+const gValueGetFlags = t.bind(LIBGOBJECT, "g_value_get_flags", [GVALUE_BORROWED], t.uint32);
+const gValueSetObject = t.bind(LIBGOBJECT, "g_value_set_object", [GVALUE_BORROWED, t.object("borrowed")], t.void);
+const gValueGetObject = t.bind(LIBGOBJECT, "g_value_get_object", [GVALUE_BORROWED], t.object("borrowed"));
 
 const PARAM_FUNDAMENTAL = t.fundamental(LIBGOBJECT, "g_param_spec_ref", "g_param_spec_unref", {
     ownership: "borrowed",
     typeName: "GParam",
 });
-const gValueSetParam = t.bind(
-    LIBGOBJECT,
-    "g_value_set_param",
-    [{ type: GVALUE_BORROWED }, { type: PARAM_FUNDAMENTAL }],
-    t.void,
-);
-const gValueGetParam = t.bind(LIBGOBJECT, "g_value_get_param", [{ type: GVALUE_BORROWED }], PARAM_FUNDAMENTAL);
+const gValueSetParam = t.bind(LIBGOBJECT, "g_value_set_param", [GVALUE_BORROWED, PARAM_FUNDAMENTAL], t.void);
+const gValueGetParam = t.bind(LIBGOBJECT, "g_value_get_param", [GVALUE_BORROWED], PARAM_FUNDAMENTAL);
 
 const VARIANT_FUNDAMENTAL = t.fundamental("libgobject-2.0.so.0,libglib-2.0.so.0", "g_variant_ref", "g_variant_unref", {
     ownership: "borrowed",
     typeName: "GVariant",
 });
-const gValueSetVariant = t.bind(
-    LIBGOBJECT,
-    "g_value_set_variant",
-    [{ type: GVALUE_BORROWED }, { type: VARIANT_FUNDAMENTAL }],
-    t.void,
-);
-const gValueGetVariant = t.bind(LIBGOBJECT, "g_value_get_variant", [{ type: GVALUE_BORROWED }], VARIANT_FUNDAMENTAL);
+const gValueSetVariant = t.bind(LIBGOBJECT, "g_value_set_variant", [GVALUE_BORROWED, VARIANT_FUNDAMENTAL], t.void);
+const gValueGetVariant = t.bind(LIBGOBJECT, "g_value_get_variant", [GVALUE_BORROWED], VARIANT_FUNDAMENTAL);
 
 /**
  * Low-level wrapper over a freshly allocated `GValue` struct.
@@ -962,16 +907,11 @@ export function outValueFromFfi(innerFfi: FfiType, initial?: unknown): { value: 
     return { value, read: () => read(storage, innerFfi, 0) };
 }
 
-const gValueGetBoxedStrv = t.bind(
-    LIBGOBJECT,
-    "g_value_get_boxed",
-    [{ type: GVALUE_BORROWED }],
-    t.array(t.string("borrowed")),
-);
+const gValueGetBoxedStrv = t.bind(LIBGOBJECT, "g_value_get_boxed", [GVALUE_BORROWED], t.array(t.string("borrowed")));
 
-const gValueGetInt64Big = t.bind(LIBGOBJECT, "g_value_get_int64", [{ type: GVALUE_BORROWED }], t.bigint64);
+const gValueGetInt64Big = t.bind(LIBGOBJECT, "g_value_get_int64", [GVALUE_BORROWED], t.bigint64);
 
-const gValueGetUint64Big = t.bind(LIBGOBJECT, "g_value_get_uint64", [{ type: GVALUE_BORROWED }], t.biguint64);
+const gValueGetUint64Big = t.bind(LIBGOBJECT, "g_value_get_uint64", [GVALUE_BORROWED], t.biguint64);
 
 /**
  * Reads a 64-bit `GValue` payload as a `bigint` when the property's FFI
@@ -1033,11 +973,7 @@ export function valueToJS(value: GValueReader): unknown {
     throw new Error(`Unsupported GType for valueToJS: ${typeName(gtype) ?? String(gtype)}`);
 }
 
-const PROPERTY_CALL_ARGS = [
-    { type: t.object("borrowed") },
-    { type: t.string("borrowed") },
-    { type: GVALUE_BORROWED },
-] as const;
+const PROPERTY_CALL_ARGS = [t.object("borrowed"), t.string("borrowed"), GVALUE_BORROWED] as const;
 
 const gObjectGetProperty = t.bind(LIBGOBJECT, "g_object_get_property", [...PROPERTY_CALL_ARGS], t.void);
 const gObjectSetProperty = t.bind(LIBGOBJECT, "g_object_set_property", [...PROPERTY_CALL_ARGS], t.void);

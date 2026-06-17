@@ -132,21 +132,13 @@ export type Type =
     | VoidType;
 
 /**
- * Type descriptor for a native value.
- *
- * Describes how to marshal a value between JavaScript and native code.
- */
-export type ArgType = {
-    /** The argument's type descriptor. */
-    type: Type;
-};
-
-/**
  * An argument for an FFI call.
  *
  * Combines a value with its type information for marshaling.
  */
-export type Arg = ArgType & {
+export type Arg = {
+    /** The argument's type descriptor. */
+    type: Type;
     /** The argument value */
     value: Value;
 };

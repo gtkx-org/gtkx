@@ -3,20 +3,20 @@
  * a thin sugar over `t.bind` that adds out-parameter tupling, `GError` handling,
  * and result wrapping.
  *
- * {@link ffiFn} resolves the callable's argument types once — wrapping each
+ * {@link fn} resolves the callable's native argument types once — wrapping each
  * runtime-allocated out- or inout-parameter in a `ref` and appending the
  * implicit `GError**` slot when the callable throws — and binds them through
  * `t.bind`, which owns the reused native argument array and the `call` dispatch.
- * Each invocation maps the input values to the native values `bind` expects,
- * seeding a fresh `{ value }` cell for every runtime-allocated out- or
- * inout-parameter, runs {@link checkError} when the callable throws, then tuples
- * the wrapped primary return with the surfaced out-values. The out-wrapping
- * needs no per-call type analysis: each surfaced value carries the FFI `type`
- * that decides its strategy, plus a pre-resolved class only for the kinds whose
- * descriptor carries no recoverable identity.
+ * Each invocation maps its inputs to the native values `bind` expects — a fresh
+ * `{ value }` cell for a runtime-allocated out- or inout-parameter, the handle
+ * for a caller-allocated wrapper, the value itself otherwise — runs
+ * {@link checkError} when the callable throws, then tuples the wrapped primary
+ * return with the surfaced out-values read back from those same cells. A
+ * caller-allocated out surfaces the wrapper it was passed, unchanged; every
+ * other surfaced value is lifted through {@link wrapValue} under its FFI `type`.
  */
 
-import type { Handle, Ref, Type, Value } from "@gtkx/native";
+import type { Type as NativeType, Ref, Value } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { checkError } from "./error.js";
 import { wrapValue } from "./gobject.js";
@@ -41,9 +41,9 @@ type ArgDirection = "out" | "inout";
  * return and by each out-direction argument — anywhere a native value is read
  * back and wrapped. A `t.void` type denotes no value.
  */
-export type ValueType = {
+export type Type = {
     /** The value's FFI type. */
-    readonly type: Type;
+    readonly type: NativeType;
     /**
      * The wrapper class the value is lifted into, supplied only for the kinds
      * whose FFI descriptor carries no recoverable identity — a plain struct or a
@@ -55,10 +55,10 @@ export type ValueType = {
 
 /**
  * One positional argument of a callable, in C-signature order (the instance
- * receiver included): a {@link ValueType} extended with the argument-slot
+ * receiver included): a {@link Type} extended with the argument-slot
  * flags. A plain input omits `direction`.
  */
-export type ArgType = ValueType & {
+export type ArgType = Type & {
     /** The out/inout direction the argument participates in beyond a plain input. */
     readonly direction?: ArgDirection;
     /**
@@ -79,7 +79,7 @@ export type ArgType = ValueType & {
 };
 
 /** Optional call-shape configuration. */
-export type FfiFnOptions = {
+export type FnOptions = {
     /**
      * Whether the callable has an implicit trailing `GError**` out-parameter.
      * When `true`, that parameter is appended and {@link checkError} runs after
@@ -88,57 +88,73 @@ export type FfiFnOptions = {
     readonly throws?: boolean;
 };
 
-const GERROR_REF: Type = descriptors.ref(
+const GERROR_REF: NativeType = descriptors.ref(
     descriptors.boxed("GError", "full", "libgobject-2.0.so.0", "g_error_get_type"),
 );
 
 /**
- * A surfaced out-value held until the native call has run, then assembled into
- * the result tuple. A caller-allocated argument surfaces the `wrapper` it was
- * passed, unchanged; a runtime-allocated out- or inout-parameter surfaces its
- * `cell`'s filled value, lifted through {@link wrapValue} under its FFI `type`
- * (with a pre-resolved `wrapperClass` for the kinds that need one).
+ * Resolves the native argument types `t.bind` is bound with: a runtime-allocated
+ * out- or inout-parameter wrapped in a `ref` so the native layer writes through
+ * it, the implicit trailing `GError**` ref appended when the callable throws,
+ * every other argument's type passed through unchanged.
  */
-type SurfacedOut =
-    | { readonly wrapper: unknown }
-    | { readonly cell: Ref; readonly type: Type; readonly wrapperClass?: AnyClass };
+const toNativeArgTypes = (argTypes: readonly ArgType[], throws: boolean): NativeType[] => {
+    const nativeArgTypes = argTypes.map((argType) =>
+        argType.direction !== undefined && argType.callerAllocates !== true
+            ? descriptors.ref(argType.type)
+            : argType.type,
+    );
+    if (throws) nativeArgTypes.push(GERROR_REF);
+    return nativeArgTypes;
+};
 
 /**
- * Resolves a caller-allocated argument's wrapper to the native handle passed in
- * its place, leaving a nullish wrapper untouched.
+ * Maps a call's inputs onto the native values, in C-signature order: a
+ * caller-allocated wrapper to its handle, a runtime out- or inout-parameter to a
+ * fresh `{ value }` cell (seeded from the input for an inout, which the native
+ * call fills), a plain input straight through.
  */
-const toHandle = (wrapper: unknown): Value => (wrapper == null ? (wrapper as Value) : getHandle(wrapper as object));
-
-/**
- * Maps a call's input values onto the native values `t.bind` expects, in
- * C-signature order: a caller-allocated wrapper to its handle, a runtime
- * out/inout to a fresh `{ value }` cell (seeded from the input for an inout),
- * and a plain input straight through. Alongside, it collects the
- * {@link SurfacedOut}s a non-`consumed` out- or inout-parameter contributes to
- * the result tuple.
- */
-const prepareCall = (
-    params: readonly ArgType[],
-    inputs: readonly unknown[],
-): { readonly values: Value[]; readonly surfaced: SurfacedOut[] } => {
-    const values: Value[] = [];
-    const surfaced: SurfacedOut[] = [];
+const toNativeValues = (argTypes: readonly ArgType[], inputs: readonly unknown[]): Value[] => {
+    const nativeValues: Value[] = [];
     let cursor = 0;
-    for (const param of params) {
-        const surfaces = param.consumed !== true;
-        if (param.callerAllocates === true) {
+    for (const argType of argTypes) {
+        if (argType.callerAllocates === true) {
             const wrapper = inputs[cursor++];
-            values.push(toHandle(wrapper));
-            if (surfaces) surfaced.push({ wrapper });
-        } else if (param.direction !== undefined) {
-            const cell: Ref = { value: param.direction === "inout" ? (inputs[cursor++] as Value) : null };
-            values.push(cell);
-            if (surfaces) surfaced.push({ cell, type: param.type, wrapperClass: param.wrapperClass });
+            nativeValues.push(wrapper == null ? wrapper : getHandle(wrapper as object));
+        } else if (argType.direction !== undefined) {
+            nativeValues.push({ value: argType.direction === "inout" ? (inputs[cursor++] as Value) : null });
         } else {
-            values.push(inputs[cursor++] as Value);
+            nativeValues.push(inputs[cursor++] as Value);
         }
     }
-    return { values, surfaced };
+    return nativeValues;
+};
+
+/**
+ * Reads the surfaced out-values back after the call, in declaration order: a
+ * caller-allocated argument yields the original wrapper it was passed (a fresh
+ * wrapper would alias the same boxed pointer), a runtime out- or inout-parameter
+ * yields its cell's filled value lifted through {@link wrapValue}. A `consumed`
+ * out and a plain input contribute nothing.
+ */
+const toOutputs = (
+    argTypes: readonly ArgType[],
+    inputs: readonly unknown[],
+    nativeValues: readonly Value[],
+): unknown[] => {
+    const outputs: unknown[] = [];
+    let cursor = 0;
+    argTypes.forEach((argType, index) => {
+        const consumesInput = !(argType.direction === "out" && argType.callerAllocates !== true);
+        const input = consumesInput ? inputs[cursor++] : undefined;
+        if (argType.direction === undefined || argType.consumed === true) return;
+        outputs.push(
+            argType.callerAllocates === true
+                ? input
+                : wrapValue(argType.type, (nativeValues[index] as Ref).value, argType.wrapperClass),
+        );
+    });
+    return outputs;
 };
 
 /**
@@ -146,52 +162,43 @@ const prepareCall = (
  *
  * @param library - The shared library name.
  * @param symbol - The C function symbol.
- * @param params - The positional arguments in C-signature order.
- * @param ret - The return value descriptor.
+ * @param argTypes - The positional arguments in C-signature order.
+ * @param returnType - The return value descriptor.
  * @param options - Optional call-shape configuration.
  * @returns An invoker taking the input values and returning the wrapped result
  *   (a lone value, or a `[primary, ...outs]` tuple when out-parameters surface).
  */
 // biome-ignore lint/complexity/useMaxParams: mirrors the raw binder's (library, symbol, args, return) shape with added call-shape options
-function ffiFn(
+function fn(
     library: string,
     symbol: string,
-    params: readonly ArgType[],
-    ret: ValueType,
-    options: FfiFnOptions = {},
+    argTypes: readonly ArgType[],
+    returnType: Type,
+    options: FnOptions = {},
 ): (...inputs: unknown[]) => unknown {
-    const argTypes: { type: Type }[] = params.map((param) => ({
-        type:
-            param.direction !== undefined && param.callerAllocates !== true ? descriptors.ref(param.type) : param.type,
-    }));
-    if (options.throws === true) argTypes.push({ type: GERROR_REF });
-    const invoke = descriptors.bind(library, symbol, argTypes, ret.type);
-    const hasPrimary = ret.type.type !== "void";
+    const nativeArgTypes = toNativeArgTypes(argTypes, options.throws === true);
+    const nativeFn = descriptors.bind(library, symbol, nativeArgTypes, returnType.type);
+    const hasPrimary = returnType.type.type !== "void";
 
     return (...inputs) => {
-        const { values, surfaced } = prepareCall(params, inputs);
-        const errorCell: { value: Handle | null } | undefined = options.throws === true ? { value: null } : undefined;
-        if (errorCell !== undefined) values.push(errorCell);
-
-        const rawResult = invoke(...values);
+        const nativeValues = toNativeValues(argTypes, inputs);
+        const errorCell: Ref | undefined = options.throws === true ? { value: null } : undefined;
+        if (errorCell !== undefined) nativeValues.push(errorCell);
+        const nativeResult = nativeFn(...nativeValues);
         if (errorCell !== undefined) checkError(errorCell);
-
-        const primary = hasPrimary ? wrapValue(ret.type, rawResult, ret.wrapperClass) : undefined;
-        const outs = surfaced.map((out) =>
-            "cell" in out ? wrapValue(out.type, out.cell.value, out.wrapperClass) : out.wrapper,
-        );
-        return tupleResult(outs, primary, hasPrimary);
+        const primary = hasPrimary ? wrapValue(returnType.type, nativeResult, returnType.wrapperClass) : undefined;
+        return tupleResult(toOutputs(argTypes, inputs, nativeValues), primary, hasPrimary);
     };
 }
 
 /**
  * The binding factory the generated `@gtkx/gi` bindings and their override
  * templates call: every FFI type-descriptor helper, plus `fn` — the sugared
- * binder ({@link ffiFn}) that adds out-parameter tupling, `GError` handling, and
+ * binder ({@link fn}) that adds out-parameter tupling, `GError` handling, and
  * result wrapping over the native `call`.
  *
  * This is the `t` the package barrel exports. The raw binder the runtime's own
  * type-system and `GValue` marshalling use stays internal and is never surfaced
  * here, so binding code outside the runtime only ever reaches the sugared `t.fn`.
  */
-export const t: typeof descriptors & { readonly fn: typeof ffiFn } = Object.freeze({ ...descriptors, fn: ffiFn });
+export const t: typeof descriptors & { fn: typeof fn } = Object.freeze({ ...descriptors, fn });

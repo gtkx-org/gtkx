@@ -72,11 +72,11 @@ const cairoPatternAddColorStopRgb = bind(
     "libcairo.so.2",
     "cairo_pattern_add_color_stop_rgb",
     [
-        { type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
+        t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
+        t.float64,
+        t.float64,
+        t.float64,
+        t.float64,
     ],
     t.void,
 );
@@ -88,12 +88,12 @@ const cairoPatternAddColorStopRgba = bind(
     "libcairo.so.2",
     "cairo_pattern_add_color_stop_rgba",
     [
-        { type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
+        t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
+        t.float64,
+        t.float64,
+        t.float64,
+        t.float64,
+        t.float64,
     ],
     t.void,
 );
@@ -110,10 +110,7 @@ Pattern.prototype.addColorStopRgba = function (
 const cairoPatternGetColorStopCount = bind(
     "libcairo.so.2",
     "cairo_pattern_get_color_stop_count",
-    [
-        { type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") },
-        { type: t.ref(t.int32) },
-    ],
+    [t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"), t.ref(t.int32)],
     t.int32,
 );
 Pattern.prototype.getColorStopCount = function (): number {
@@ -126,13 +123,13 @@ const cairoPatternGetColorStopRgba = bind(
     "libcairo.so.2",
     "cairo_pattern_get_color_stop_rgba",
     [
-        { type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") },
-        { type: t.int32 },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
+        t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
+        t.int32,
+        t.ref(t.float64),
+        t.ref(t.float64),
+        t.ref(t.float64),
+        t.ref(t.float64),
+        t.ref(t.float64),
     ],
     t.int32,
 );
@@ -162,11 +159,11 @@ const cairoPatternGetRgba = bind(
     "libcairo.so.2",
     "cairo_pattern_get_rgba",
     [
-        { type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
+        t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
+        t.ref(t.float64),
+        t.ref(t.float64),
+        t.ref(t.float64),
+        t.ref(t.float64),
     ],
     t.int32,
 );
@@ -177,7 +174,7 @@ Pattern.prototype.getRgba = function (): RgbaColor {
 const cairoPatternStatus = bind(
     "libcairo.so.2",
     "cairo_pattern_status",
-    [{ type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") }],
+    [t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type")],
     t.int32,
 );
 Pattern.prototype.status = function (): Status {
@@ -187,10 +184,7 @@ Pattern.prototype.status = function (): Status {
 const cairoPatternSetExtend = bind(
     "libcairo.so.2",
     "cairo_pattern_set_extend",
-    [
-        { type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") },
-        { type: t.int32 },
-    ],
+    [t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"), t.int32],
     t.void,
 );
 Pattern.prototype.setExtend = function (extend: Extend): void {
@@ -200,7 +194,7 @@ Pattern.prototype.setExtend = function (extend: Extend): void {
 const cairoPatternGetExtend = bind(
     "libcairo.so.2",
     "cairo_pattern_get_extend",
-    [{ type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") }],
+    [t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type")],
     t.int32,
 );
 Pattern.prototype.getExtend = function (): Extend {
@@ -210,10 +204,7 @@ Pattern.prototype.getExtend = function (): Extend {
 const cairoPatternSetFilter = bind(
     "libcairo.so.2",
     "cairo_pattern_set_filter",
-    [
-        { type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") },
-        { type: t.int32 },
-    ],
+    [t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"), t.int32],
     t.void,
 );
 Pattern.prototype.setFilter = function (filter: Filter): void {
@@ -223,7 +214,7 @@ Pattern.prototype.setFilter = function (filter: Filter): void {
 const cairoPatternGetFilter = bind(
     "libcairo.so.2",
     "cairo_pattern_get_filter",
-    [{ type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") }],
+    [t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type")],
     t.int32,
 );
 Pattern.prototype.getFilter = function (): Filter {
@@ -234,8 +225,8 @@ const cairoPatternSetMatrix = bind(
     "libcairo.so.2",
     "cairo_pattern_set_matrix",
     [
-        { type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") },
-        { type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") },
+        t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
+        t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2"),
     ],
     t.void,
 );
@@ -247,8 +238,8 @@ const cairoPatternGetMatrix = bind(
     "libcairo.so.2",
     "cairo_pattern_get_matrix",
     [
-        { type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") },
-        { type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") },
+        t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
+        t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2"),
     ],
     t.void,
 );
@@ -261,7 +252,7 @@ Pattern.prototype.getMatrix = function (): CairoMatrix {
 const cairoPatternGetType = bind(
     "libcairo.so.2",
     "cairo_pattern_get_type",
-    [{ type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") }],
+    [t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type")],
     t.int32,
 );
 Pattern.prototype.getType = function (): PatternType {
@@ -271,7 +262,7 @@ Pattern.prototype.getType = function (): PatternType {
 const cairoPatternGetReferenceCount = bind(
     "libcairo.so.2",
     "cairo_pattern_get_reference_count",
-    [{ type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") }],
+    [t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type")],
     t.int32,
 );
 Pattern.prototype.getReferenceCount = function (): number {
@@ -282,11 +273,11 @@ const cairoPatternGetLinearPoints = bind(
     "libcairo.so.2",
     "cairo_pattern_get_linear_points",
     [
-        { type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
+        t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
+        t.ref(t.float64),
+        t.ref(t.float64),
+        t.ref(t.float64),
+        t.ref(t.float64),
     ],
     t.int32,
 );
@@ -294,35 +285,35 @@ const cairoPatternGetRadialCircles = bind(
     "libcairo.so.2",
     "cairo_pattern_get_radial_circles",
     [
-        { type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
+        t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
+        t.ref(t.float64),
+        t.ref(t.float64),
+        t.ref(t.float64),
+        t.ref(t.float64),
+        t.ref(t.float64),
+        t.ref(t.float64),
     ],
     t.int32,
 );
 const cairoMeshPatternBeginPatch = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_begin_patch",
-    [{ type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") }],
+    [t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type")],
     t.void,
 );
 const cairoMeshPatternEndPatch = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_end_patch",
-    [{ type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") }],
+    [t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type")],
     t.void,
 );
 const cairoMeshPatternMoveTo = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_move_to",
     [
-        { type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") },
-        { type: t.float64 },
-        { type: t.float64 },
+        t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
+        t.float64,
+        t.float64,
     ],
     t.void,
 );
@@ -330,9 +321,9 @@ const cairoMeshPatternLineTo = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_line_to",
     [
-        { type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") },
-        { type: t.float64 },
-        { type: t.float64 },
+        t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
+        t.float64,
+        t.float64,
     ],
     t.void,
 );
@@ -340,13 +331,13 @@ const cairoMeshPatternCurveTo = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_curve_to",
     [
-        { type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
+        t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
+        t.float64,
+        t.float64,
+        t.float64,
+        t.float64,
+        t.float64,
+        t.float64,
     ],
     t.void,
 );
@@ -354,10 +345,10 @@ const cairoMeshPatternSetControlPoint = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_set_control_point",
     [
-        { type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") },
-        { type: t.int32 },
-        { type: t.float64 },
-        { type: t.float64 },
+        t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
+        t.int32,
+        t.float64,
+        t.float64,
     ],
     t.void,
 );
@@ -365,11 +356,11 @@ const cairoMeshPatternSetCornerColorRgb = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_set_corner_color_rgb",
     [
-        { type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") },
-        { type: t.int32 },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
+        t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
+        t.int32,
+        t.float64,
+        t.float64,
+        t.float64,
     ],
     t.void,
 );
@@ -377,42 +368,36 @@ const cairoMeshPatternSetCornerColorRgba = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_set_corner_color_rgba",
     [
-        { type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") },
-        { type: t.int32 },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
+        t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
+        t.int32,
+        t.float64,
+        t.float64,
+        t.float64,
+        t.float64,
     ],
     t.void,
 );
 const cairoMeshPatternGetPatchCount = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_get_patch_count",
-    [
-        { type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") },
-        { type: t.ref(t.int32) },
-    ],
+    [t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"), t.ref(t.int32)],
     t.int32,
 );
 const cairoMeshPatternGetPath = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_get_path",
-    [
-        { type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") },
-        { type: t.int32 },
-    ],
+    [t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"), t.int32],
     t.boxed("cairo_path_t", "full", "libcairo.so.2", undefined, "cairo_path_destroy"),
 );
 const cairoMeshPatternGetControlPoint = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_get_control_point",
     [
-        { type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
+        t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
+        t.int32,
+        t.int32,
+        t.ref(t.float64),
+        t.ref(t.float64),
     ],
     t.int32,
 );
@@ -420,13 +405,13 @@ const cairoMeshPatternGetCornerColorRgba = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_get_corner_color_rgba",
     [
-        { type: t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type") },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
+        t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
+        t.int32,
+        t.int32,
+        t.ref(t.float64),
+        t.ref(t.float64),
+        t.ref(t.float64),
+        t.ref(t.float64),
     ],
     t.int32,
 );
@@ -584,7 +569,7 @@ const PatternWithStatics = Pattern as typeof Pattern & PatternStatic;
 const cairoPatternCreateRgb = bind(
     "libcairo.so.2",
     "cairo_pattern_create_rgb",
-    [{ type: t.float64 }, { type: t.float64 }, { type: t.float64 }],
+    [t.float64, t.float64, t.float64],
     t.boxed("CairoPattern", "full", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
 );
 PatternWithStatics.createRgb = (red: number, green: number, blue: number): Pattern => {
@@ -594,7 +579,7 @@ PatternWithStatics.createRgb = (red: number, green: number, blue: number): Patte
 const cairoPatternCreateRgba = bind(
     "libcairo.so.2",
     "cairo_pattern_create_rgba",
-    [{ type: t.float64 }, { type: t.float64 }, { type: t.float64 }, { type: t.float64 }],
+    [t.float64, t.float64, t.float64, t.float64],
     t.boxed("CairoPattern", "full", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
 );
 PatternWithStatics.createRgba = (red: number, green: number, blue: number, alpha: number): Pattern => {
@@ -604,7 +589,7 @@ PatternWithStatics.createRgba = (red: number, green: number, blue: number, alpha
 const cairoPatternCreateLinear = bind(
     "libcairo.so.2",
     "cairo_pattern_create_linear",
-    [{ type: t.float64 }, { type: t.float64 }, { type: t.float64 }, { type: t.float64 }],
+    [t.float64, t.float64, t.float64, t.float64],
     t.boxed("CairoPattern", "full", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
 );
 PatternWithStatics.createLinear = (x0: number, y0: number, x1: number, y1: number): LinearPattern => {
@@ -614,14 +599,7 @@ PatternWithStatics.createLinear = (x0: number, y0: number, x1: number, y1: numbe
 const cairoPatternCreateRadial = bind(
     "libcairo.so.2",
     "cairo_pattern_create_radial",
-    [
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
-    ],
+    [t.float64, t.float64, t.float64, t.float64, t.float64, t.float64],
     t.boxed("CairoPattern", "full", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
 );
 PatternWithStatics.createRadial = (
@@ -648,7 +626,7 @@ PatternWithStatics.createMesh = (): MeshPattern => {
 const cairoPatternCreateForSurface = bind(
     "libcairo.so.2",
     "cairo_pattern_create_for_surface",
-    [{ type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") }],
+    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type")],
     t.boxed("CairoPattern", "full", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
 );
 PatternWithStatics.createForSurface = (surface: Surface): Pattern => {

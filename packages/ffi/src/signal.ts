@@ -43,7 +43,7 @@ export const signalBaseName = (signal: string): string => {
 const gQuarkFromString = t.bind(
     "libgobject-2.0.so.0,libglib-2.0.so.0",
     "g_quark_from_string",
-    [{ type: t.string("borrowed") }],
+    [t.string("borrowed")],
     t.uint32,
 );
 
@@ -213,21 +213,11 @@ const GVALUE_INLINE: FfiType = t.boxed("GValue", "borrowed", LIBGOBJECT, "g_valu
 const gSignalEmitv = t.bind(
     LIBGOBJECT,
     "g_signal_emitv",
-    [
-        { type: t.array(GVALUE_INLINE, "array", "borrowed", { elementSize: 24 }) },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: GVALUE_BORROWED },
-    ],
+    [t.array(GVALUE_INLINE, "array", "borrowed", { elementSize: 24 }), t.uint32, t.uint32, GVALUE_BORROWED],
     t.void,
 );
 
-const gSignalLookup = t.bind(
-    LIBGOBJECT,
-    "g_signal_lookup",
-    [{ type: t.string("borrowed") }, { type: t.uint64 }],
-    t.uint32,
-);
+const gSignalLookup = t.bind(LIBGOBJECT, "g_signal_lookup", [t.string("borrowed"), t.uint64], t.uint32);
 
 /**
  * How a signal parameter is marshalled into its emission `GValue` beyond a

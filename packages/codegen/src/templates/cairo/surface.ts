@@ -54,10 +54,10 @@ const cairoSurfaceCreateSimilar = bind(
     "libcairo.so.2",
     "cairo_surface_create_similar",
     [
-        { type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
+        t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+        t.int32,
+        t.int32,
+        t.int32,
     ],
     t.boxed("CairoSurface", "full", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
 );
@@ -69,10 +69,10 @@ const cairoSurfaceCreateSimilarImage = bind(
     "libcairo.so.2",
     "cairo_surface_create_similar_image",
     [
-        { type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
+        t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+        t.int32,
+        t.int32,
+        t.int32,
     ],
     t.boxed("CairoSurface", "full", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
 );
@@ -84,11 +84,11 @@ const cairoSurfaceCreateForRectangle = bind(
     "libcairo.so.2",
     "cairo_surface_create_for_rectangle",
     [
-        { type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
+        t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+        t.float64,
+        t.float64,
+        t.float64,
+        t.float64,
     ],
     t.boxed("CairoSurface", "full", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
 );
@@ -105,10 +105,7 @@ SurfaceWithStatics.createForRectangle = (
 const cairoSurfaceWriteToPng = bind(
     "libcairo.so.2",
     "cairo_surface_write_to_png",
-    [
-        { type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") },
-        { type: t.string("full") },
-    ],
+    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"), t.string("full")],
     t.int32,
 );
 Surface.prototype.writeToPng = function (filename: string): Status {
@@ -118,7 +115,7 @@ Surface.prototype.writeToPng = function (filename: string): Status {
 const cairoSurfaceStatus = bind(
     "libcairo.so.2",
     "cairo_surface_status",
-    [{ type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") }],
+    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type")],
     t.int32,
 );
 Surface.prototype.status = function (): Status {
@@ -128,7 +125,7 @@ Surface.prototype.status = function (): Status {
 const cairoSurfaceFinish = bind(
     "libcairo.so.2",
     "cairo_surface_finish",
-    [{ type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") }],
+    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type")],
     t.void,
 );
 Surface.prototype.finish = function (): void {
@@ -138,7 +135,7 @@ Surface.prototype.finish = function (): void {
 const cairoSurfaceFlush = bind(
     "libcairo.so.2",
     "cairo_surface_flush",
-    [{ type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") }],
+    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type")],
     t.void,
 );
 Surface.prototype.flush = function (): void {
@@ -148,7 +145,7 @@ Surface.prototype.flush = function (): void {
 const cairoSurfaceGetDevice = bind(
     "libcairo.so.2",
     "cairo_surface_get_device",
-    [{ type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") }],
+    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type")],
     DEVICE_T_NONE,
 );
 Surface.prototype.getDevice = function (): Handle | null {
@@ -159,15 +156,8 @@ const cairoSurfaceGetFontOptions = bind(
     "libcairo.so.2",
     "cairo_surface_get_font_options",
     [
-        { type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") },
-        {
-            type: t.boxed(
-                "CairoFontOptions",
-                "borrowed",
-                "libcairo-gobject.so.2",
-                "cairo_gobject_font_options_get_type",
-            ),
-        },
+        t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+        t.boxed("CairoFontOptions", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type"),
     ],
     t.void,
 );
@@ -180,7 +170,7 @@ Surface.prototype.getFontOptions = function (): FontOptions {
 const cairoSurfaceGetContent = bind(
     "libcairo.so.2",
     "cairo_surface_get_content",
-    [{ type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") }],
+    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type")],
     t.int32,
 );
 Surface.prototype.getContent = function (): Content {
@@ -190,7 +180,7 @@ Surface.prototype.getContent = function (): Content {
 const cairoSurfaceMarkDirty = bind(
     "libcairo.so.2",
     "cairo_surface_mark_dirty",
-    [{ type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") }],
+    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type")],
     t.void,
 );
 Surface.prototype.markDirty = function (): void {
@@ -201,11 +191,11 @@ const cairoSurfaceMarkDirtyRectangle = bind(
     "libcairo.so.2",
     "cairo_surface_mark_dirty_rectangle",
     [
-        { type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
+        t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+        t.int32,
+        t.int32,
+        t.int32,
+        t.int32,
     ],
     t.void,
 );
@@ -217,9 +207,9 @@ const cairoSurfaceSetDeviceOffset = bind(
     "libcairo.so.2",
     "cairo_surface_set_device_offset",
     [
-        { type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") },
-        { type: t.float64 },
-        { type: t.float64 },
+        t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+        t.float64,
+        t.float64,
     ],
     t.void,
 );
@@ -231,9 +221,9 @@ const cairoSurfaceGetDeviceOffset = bind(
     "libcairo.so.2",
     "cairo_surface_get_device_offset",
     [
-        { type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
+        t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+        t.ref(t.float64),
+        t.ref(t.float64),
     ],
     t.void,
 );
@@ -248,9 +238,9 @@ const cairoSurfaceGetDeviceScale = bind(
     "libcairo.so.2",
     "cairo_surface_get_device_scale",
     [
-        { type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
+        t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+        t.ref(t.float64),
+        t.ref(t.float64),
     ],
     t.void,
 );
@@ -265,9 +255,9 @@ const cairoSurfaceSetDeviceScale = bind(
     "libcairo.so.2",
     "cairo_surface_set_device_scale",
     [
-        { type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") },
-        { type: t.float64 },
-        { type: t.float64 },
+        t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+        t.float64,
+        t.float64,
     ],
     t.void,
 );
@@ -279,9 +269,9 @@ const cairoSurfaceSetFallbackResolution = bind(
     "libcairo.so.2",
     "cairo_surface_set_fallback_resolution",
     [
-        { type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") },
-        { type: t.float64 },
-        { type: t.float64 },
+        t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+        t.float64,
+        t.float64,
     ],
     t.void,
 );
@@ -293,9 +283,9 @@ const cairoSurfaceGetFallbackResolution = bind(
     "libcairo.so.2",
     "cairo_surface_get_fallback_resolution",
     [
-        { type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
+        t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+        t.ref(t.float64),
+        t.ref(t.float64),
     ],
     t.void,
 );
@@ -309,7 +299,7 @@ Surface.prototype.getFallbackResolution = function (): { xPixelsPerInch: number;
 const cairoSurfaceGetType = bind(
     "libcairo.so.2",
     "cairo_surface_get_type",
-    [{ type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") }],
+    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type")],
     t.int32,
 );
 Surface.prototype.getType = function (): SurfaceType {
@@ -319,7 +309,7 @@ Surface.prototype.getType = function (): SurfaceType {
 const cairoSurfaceGetReferenceCount = bind(
     "libcairo.so.2",
     "cairo_surface_get_reference_count",
-    [{ type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") }],
+    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type")],
     t.int32,
 );
 Surface.prototype.getReferenceCount = function (): number {
@@ -329,7 +319,7 @@ Surface.prototype.getReferenceCount = function (): number {
 const cairoSurfaceCopyPage = bind(
     "libcairo.so.2",
     "cairo_surface_copy_page",
-    [{ type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") }],
+    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type")],
     t.void,
 );
 Surface.prototype.copyPage = function (): void {
@@ -339,7 +329,7 @@ Surface.prototype.copyPage = function (): void {
 const cairoSurfaceShowPage = bind(
     "libcairo.so.2",
     "cairo_surface_show_page",
-    [{ type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") }],
+    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type")],
     t.void,
 );
 Surface.prototype.showPage = function (): void {
@@ -349,7 +339,7 @@ Surface.prototype.showPage = function (): void {
 const cairoSurfaceHasShowTextGlyphs = bind(
     "libcairo.so.2",
     "cairo_surface_has_show_text_glyphs",
-    [{ type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") }],
+    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type")],
     t.boolean,
 );
 Surface.prototype.hasShowTextGlyphs = function (): boolean {
@@ -359,10 +349,7 @@ Surface.prototype.hasShowTextGlyphs = function (): boolean {
 const cairoSurfaceSupportsMimeType = bind(
     "libcairo.so.2",
     "cairo_surface_supports_mime_type",
-    [
-        { type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") },
-        { type: t.string("full") },
-    ],
+    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"), t.string("full")],
     t.boolean,
 );
 Surface.prototype.supportsMimeType = function (mimeType: string): boolean {
@@ -373,8 +360,8 @@ const cairoSurfaceMapToImage = bind(
     "libcairo.so.2",
     "cairo_surface_map_to_image",
     [
-        { type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") },
-        { type: t.boxed("cairo_rectangle_int_t", "borrowed", "libcairo.so.2") },
+        t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+        t.boxed("cairo_rectangle_int_t", "borrowed", "libcairo.so.2"),
     ],
     t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
 );
@@ -389,8 +376,8 @@ const cairoSurfaceUnmapImage = bind(
     "libcairo.so.2",
     "cairo_surface_unmap_image",
     [
-        { type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") },
-        { type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") },
+        t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+        t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
     ],
     t.void,
 );

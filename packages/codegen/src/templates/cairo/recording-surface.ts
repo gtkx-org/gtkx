@@ -9,34 +9,31 @@ const RECT_T = t.boxed("cairo_rectangle_t", "borrowed", "libcairo.so.2");
 const cairoRecordingSurfaceCreateExtents = bind(
     "libcairo.so.2",
     "cairo_recording_surface_create",
-    [{ type: t.int32 }, { type: RECT_T }],
+    [t.int32, RECT_T],
     t.boxed("CairoSurface", "full", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
 );
 const cairoRecordingSurfaceCreateUnbounded = bind(
     "libcairo.so.2",
     "cairo_recording_surface_create",
-    [{ type: t.int32 }, { type: t.uint64 }],
+    [t.int32, t.uint64],
     t.boxed("CairoSurface", "full", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
 );
 const cairoRecordingSurfaceInkExtents = bind(
     "libcairo.so.2",
     "cairo_recording_surface_ink_extents",
     [
-        { type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
+        t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+        t.ref(t.float64),
+        t.ref(t.float64),
+        t.ref(t.float64),
+        t.ref(t.float64),
     ],
     t.void,
 );
 const cairoRecordingSurfaceGetExtents = bind(
     "libcairo.so.2",
     "cairo_recording_surface_get_extents",
-    [
-        { type: t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type") },
-        { type: RECT_T },
-    ],
+    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"), RECT_T],
     t.boolean,
 );
 

@@ -250,25 +250,25 @@ const buildInSlot = (options: BuildSlotOptions, name: string, track: (alias: str
     if (param === undefined) throw new Error(`Parameter index ${index} out of range on ${command.name}`);
     switch (plan.kind) {
         case "scalar":
-            return inSlot(name, track(scalarAliasOrGroup(plan.scalar, param.group)), `{ type: ${plan.scalar.tExpr} }`);
+            return inSlot(name, track(scalarAliasOrGroup(plan.scalar, param.group)), `${plan.scalar.tExpr}`);
         case "boolean":
-            return inSlot(name, "boolean", "{ type: t.boolean }");
+            return inSlot(name, "boolean", "t.boolean");
         case "sync":
-            return inSlot(name, track("GLsync"), `{ type: t.struct("borrowed") }`);
+            return inSlot(name, track("GLsync"), `t.struct("borrowed")`);
         case "string-in":
-            return inSlot(name, "string", `{ type: t.string("borrowed") }`);
+            return inSlot(name, "string", `t.string("borrowed")`);
         case "string-array-in":
-            return inSlot(name, "readonly string[]", `{ type: t.array(t.string("borrowed")) }`);
+            return inSlot(name, "readonly string[]", `t.array(t.string("borrowed"))`);
         case "array-in": {
             track(scalarAliasOrGroup(plan.scalar, param.group));
-            return inSlot(name, arrayInTsType(plan.scalar, param.group), `{ type: t.array(${plan.scalar.tExpr}) }`);
+            return inSlot(name, arrayInTsType(plan.scalar, param.group), `t.array(${plan.scalar.tExpr})`);
         }
         case "blob":
-            return inSlot(name, `ArrayBufferView | ${track("GLintptr")} | null`, "{ type: t.blob }");
+            return inSlot(name, `ArrayBufferView | ${track("GLintptr")} | null`, "t.blob");
         case "byte-offset":
-            return inSlot(name, track("GLintptr"), "{ type: t.uint64 }");
+            return inSlot(name, track("GLintptr"), "t.uint64");
         case "byte-offset-array":
-            return inSlot(name, `readonly ${track("GLintptr")}[]`, "{ type: t.array(t.uint64) }");
+            return inSlot(name, `readonly ${track("GLintptr")}[]`, "t.array(t.uint64)");
         default:
             throw new Error(`Plan kind ${plan.kind} is not an input parameter`);
     }
@@ -286,7 +286,7 @@ const buildOutSlot = (options: BuildSlotOptions, track: (alias: string) => strin
                 cellName,
                 seed: `const ${cellName} = { value: 0 };`,
                 tsType: track(scalarAliasOrGroup(plan.scalar, param.group)),
-                descriptor: `{ type: t.ref(${plan.scalar.tExpr}) }`,
+                descriptor: `t.ref(${plan.scalar.tExpr})`,
                 docName: param.name,
                 docCType: param.cType,
             };
@@ -298,7 +298,7 @@ const buildOutSlot = (options: BuildSlotOptions, track: (alias: string) => strin
                 cellName,
                 seed: `const ${cellName} = { value: new Array<number>(${lenIdentifier}).fill(0) };`,
                 tsType: `${track(plan.scalar.tsAlias)}[]`,
-                descriptor: `{ type: t.ref(t.sizedArray(${plan.scalar.tExpr}, ${sizeIndex})) }`,
+                descriptor: `t.ref(t.sizedArray(${plan.scalar.tExpr}, ${sizeIndex}))`,
                 docName: param.name,
                 docCType: param.cType,
             };
@@ -309,7 +309,7 @@ const buildOutSlot = (options: BuildSlotOptions, track: (alias: string) => strin
                 cellName,
                 seed: `const ${cellName} = { value: new Array<number>(${plan.length}).fill(0) };`,
                 tsType: `${track(plan.scalar.tsAlias)}[]`,
-                descriptor: `{ type: t.ref(t.fixedArray(${plan.scalar.tExpr}, ${plan.length})) }`,
+                descriptor: `t.ref(t.fixedArray(${plan.scalar.tExpr}, ${plan.length}))`,
                 docName: param.name,
                 docCType: param.cType,
             };
@@ -319,7 +319,7 @@ const buildOutSlot = (options: BuildSlotOptions, track: (alias: string) => strin
                 cellName,
                 seed: `const ${cellName} = { value: "" };`,
                 tsType: "string",
-                descriptor: `{ type: t.ref(t.string("borrowed", ${toCamelIdentifier(plan.lenParamName)})) }`,
+                descriptor: `t.ref(t.string("borrowed", ${toCamelIdentifier(plan.lenParamName)}))`,
                 docName: param.name,
                 docCType: param.cType,
             };
@@ -582,8 +582,8 @@ const deriveGenSingular = (
     const bindingName = `${plan.command.name}Single`;
     const descriptors = [
         ...prefix.map((slot) => slot.descriptor),
-        `{ type: ${countPlan.scalar.tExpr} }`,
-        `{ type: t.ref(${outPlan.scalar.tExpr}) }`,
+        `${countPlan.scalar.tExpr}`,
+        `t.ref(${outPlan.scalar.tExpr})`,
     ];
     usedTypes.add(outPlan.scalar.tsAlias);
     const signature = prefix.map((slot) => `${slot.name}: ${slot.tsType}`).join(", ");

@@ -7,7 +7,7 @@
  * depending on the generated `GLib.Error` class.
  */
 
-import type { Handle } from "@gtkx/native";
+import type { Handle, Ref } from "@gtkx/native";
 import { getErrorGtype } from "./gtype.js";
 import { getWrapperClass, wrapHandle } from "./registry.js";
 
@@ -41,13 +41,13 @@ export interface GError {
  *
  * @param error - Out-parameter ref populated by the FFI call
  */
-export function checkError(error: { value: Handle | null }): void {
+export function checkError(error: Ref): void {
     if (error.value !== null) {
         const errorClass = getWrapperClass(getErrorGtype());
         if (errorClass === null) {
             throw new Error("checkError: the GLib Error wrapper class is not registered");
         }
-        const gerror = wrapHandle<GError>(error.value, errorClass);
+        const gerror = wrapHandle<GError>(error.value as Handle, errorClass);
         const carrier = new Error(gerror.message);
         Error.captureStackTrace?.(carrier, checkError);
         Object.defineProperty(gerror, "stack", {

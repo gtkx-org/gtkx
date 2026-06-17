@@ -32,17 +32,12 @@ const readInfoLog = (symbol: string, id: GLuint, query: LengthQuery): string => 
     if (length <= 0) return "";
     const written = { value: 0 };
     const log = { value: "" };
-    t.bind(
-        LIB,
-        symbol,
-        [
-            { type: t.uint32 },
-            { type: t.int32 },
-            { type: t.ref(t.int32) },
-            { type: t.ref(t.string("borrowed", length)) },
-        ],
-        t.void,
-    )(id, length, written, log);
+    t.bind(LIB, symbol, [t.uint32, t.int32, t.ref(t.int32), t.ref(t.string("borrowed", length))], t.void)(
+        id,
+        length,
+        written,
+        log,
+    );
     return log.value;
 };
 
@@ -107,13 +102,10 @@ const glDebugMessageCallbackBinding = t.bind(
     LIB,
     "glDebugMessageCallback",
     [
-        {
-            type: t.trampoline(
-                [t.uint32, t.uint32, t.uint32, t.uint32, t.int32, t.string("borrowed"), t.uint64],
-                t.void,
-                { userDataIndex: 6, scope: "forever" },
-            ),
-        },
+        t.trampoline([t.uint32, t.uint32, t.uint32, t.uint32, t.int32, t.string("borrowed"), t.uint64], t.void, {
+            userDataIndex: 6,
+            scope: "forever",
+        }),
     ],
     t.void,
 );

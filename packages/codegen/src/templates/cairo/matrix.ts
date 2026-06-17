@@ -13,92 +13,84 @@ export const allocMatrix = (): { handle: Handle; obj: Matrix } => {
 const cairoMatrixTranslate = bind(
     "libcairo.so.2",
     "cairo_matrix_translate",
-    [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }, { type: t.float64 }, { type: t.float64 }],
+    [t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2"), t.float64, t.float64],
     t.void,
 );
 const cairoMatrixScale = bind(
     "libcairo.so.2",
     "cairo_matrix_scale",
-    [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }, { type: t.float64 }, { type: t.float64 }],
+    [t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2"), t.float64, t.float64],
     t.void,
 );
 const cairoMatrixRotate = bind(
     "libcairo.so.2",
     "cairo_matrix_rotate",
-    [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }, { type: t.float64 }],
+    [t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2"), t.float64],
     t.void,
 );
 const cairoMatrixInvert = bind(
     "libcairo.so.2",
     "cairo_matrix_invert",
-    [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }],
+    [t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2")],
     t.int32,
 );
 const cairoMatrixMultiply = bind(
     "libcairo.so.2",
     "cairo_matrix_multiply",
     [
-        { type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") },
-        { type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") },
-        { type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") },
+        t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2"),
+        t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2"),
+        t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2"),
     ],
     t.void,
 );
 const cairoMatrixTransformPoint = bind(
     "libcairo.so.2",
     "cairo_matrix_transform_point",
-    [
-        { type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
-    ],
+    [t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2"), t.ref(t.float64), t.ref(t.float64)],
     t.void,
 );
 const cairoMatrixTransformDistance = bind(
     "libcairo.so.2",
     "cairo_matrix_transform_distance",
-    [
-        { type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") },
-        { type: t.ref(t.float64) },
-        { type: t.ref(t.float64) },
-    ],
+    [t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2"), t.ref(t.float64), t.ref(t.float64)],
     t.void,
 );
 const cairoMatrixInitIdentity = bind(
     "libcairo.so.2",
     "cairo_matrix_init_identity",
-    [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }],
+    [t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2")],
     t.void,
 );
 const cairoMatrixInitTranslate = bind(
     "libcairo.so.2",
     "cairo_matrix_init_translate",
-    [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }, { type: t.float64 }, { type: t.float64 }],
+    [t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2"), t.float64, t.float64],
     t.void,
 );
 const cairoMatrixInitScale = bind(
     "libcairo.so.2",
     "cairo_matrix_init_scale",
-    [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }, { type: t.float64 }, { type: t.float64 }],
+    [t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2"), t.float64, t.float64],
     t.void,
 );
 const cairoMatrixInitRotate = bind(
     "libcairo.so.2",
     "cairo_matrix_init_rotate",
-    [{ type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") }, { type: t.float64 }],
+    [t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2"), t.float64],
     t.void,
 );
 const cairoMatrixInit = bind(
     "libcairo.so.2",
     "cairo_matrix_init",
     [
-        { type: t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2") },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
+        t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2"),
+        t.float64,
+        t.float64,
+        t.float64,
+        t.float64,
+        t.float64,
+        t.float64,
     ],
     t.void,
 );
