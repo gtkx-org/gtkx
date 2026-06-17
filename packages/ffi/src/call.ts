@@ -16,15 +16,7 @@
  * only for the kinds whose descriptor carries no recoverable identity.
  */
 
-import {
-    type Arg,
-    type Handle,
-    type ArgType as NativeArgType,
-    call as nativeCall,
-    type Ref,
-    type Type,
-    type Value,
-} from "@gtkx/native";
+import { type Arg, type Handle, call as nativeCall, type Ref, type Type, type Value } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { checkError } from "./error.js";
 import { wrapValue } from "./gobject.js";
@@ -44,12 +36,29 @@ import { getHandle } from "./registry.js";
 type ArgDirection = "out" | "inout";
 
 /**
- * One positional argument of a callable, in C-signature order (the instance
- * receiver included): the native argument descriptor (`type`, `optional`)
- * extended with the call convention's out-parameter metadata. A plain input
- * omits `direction`.
+ * An FFI value's marshalling identity: its type descriptor paired with the
+ * wrapper class its produced value is lifted into. Carried by a callable's
+ * return and by each out-direction argument — anywhere a native value is read
+ * back and wrapped. A `t.void` type denotes no value.
  */
-export type ArgType = Readonly<NativeArgType> & {
+export type ValueType = {
+    /** The value's FFI type. */
+    readonly type: Type;
+    /**
+     * Resolves the wrapper class for an interface/boxed/struct/fundamental
+     * value. A thunk, not the class itself: the binding is a module-level
+     * constant evaluated before the namespace's class declarations, so a direct
+     * reference would hit the temporal dead zone; resolution defers to call time.
+     */
+    readonly wrapClass?: () => AnyClass;
+};
+
+/**
+ * One positional argument of a callable, in C-signature order (the instance
+ * receiver included): a {@link ValueType} extended with the argument-slot
+ * flags. A plain input omits `direction`.
+ */
+export type ArgType = ValueType & {
     /** The out/inout direction the argument participates in beyond a plain input. */
     readonly direction?: ArgDirection;
     /**
@@ -62,26 +71,16 @@ export type ArgType = Readonly<NativeArgType> & {
      */
     readonly callerAllocates?: boolean;
     /**
-     * Resolves the wrapper class for an interface/boxed/struct/fundamental out
-     * value. A thunk, not the class itself: the binding is a module-level
-     * constant evaluated before the namespace's class declarations, so a direct
-     * reference would hit the temporal dead zone; resolution defers to call time.
-     */
-    readonly wrapClass?: () => AnyClass;
-    /**
      * Whether the out-parameter is dropped from the surfaced tuple. An array's
      * folded `length` companion is allocated and passed so the native
      * marshaller can size the array, but it carries nothing a caller needs.
      */
     readonly consumed?: boolean;
-};
-
-/** The return value of a callable. A `t.void` type denotes no primary result. */
-export type FfiFnReturn = {
-    /** The return value's FFI type. */
-    readonly type: Type;
-    /** Resolves the wrapper class for an interface/boxed/struct/fundamental return (a call-time thunk; see {@link ArgType.wrapClass}). */
-    readonly wrapClass?: () => AnyClass;
+    /**
+     * Whether a nullable input may be omitted: the native marshaller then
+     * encodes an absent value as a NULL pointer rather than rejecting it.
+     */
+    readonly optional?: boolean;
 };
 
 /** Optional call-shape configuration. */
@@ -183,7 +182,7 @@ function ffiFn(
     library: string,
     symbol: string,
     params: readonly ArgType[],
-    ret: FfiFnReturn,
+    ret: ValueType,
     options: FfiFnOptions = {},
 ): (...inputs: unknown[]) => unknown {
     const args: Arg[] = params.map((param) => {
