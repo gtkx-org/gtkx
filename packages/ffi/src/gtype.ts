@@ -11,7 +11,7 @@
  */
 
 import type { Type as FfiType } from "@gtkx/native";
-import { t } from "./helpers.js";
+import { t } from "./descriptors.js";
 
 /**
  * A GLib type identifier — the `GType` integer the GObject type system

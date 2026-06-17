@@ -12,6 +12,7 @@
 
 import { alloc, call, type Type as FfiType, getType, type Handle, read, setWrapper, write } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
+import { t } from "./descriptors.js";
 import {
     type GType,
     GVALUE_BORROWED,
@@ -42,7 +43,6 @@ import {
     typeFundamental,
     typeName,
 } from "./gtype.js";
-import { t } from "./helpers.js";
 import {
     getClassGtype,
     getHandle,

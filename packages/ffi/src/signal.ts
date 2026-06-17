@@ -1,4 +1,5 @@
 import type { Type as FfiType, TrampolineType, Value } from "@gtkx/native";
+import { call, t, tupleResult } from "./descriptors.js";
 import {
     emptyValueFromFfi,
     type GValue,
@@ -10,7 +11,6 @@ import {
     valueToJS,
 } from "./gobject.js";
 import { type GType, GVALUE_BORROWED, LIBGOBJECT } from "./gtype.js";
-import { call, t, tupleResult } from "./helpers.js";
 import { type GTyped, getHandle } from "./registry.js";
 
 /**

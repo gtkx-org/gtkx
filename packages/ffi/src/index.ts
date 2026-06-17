@@ -23,7 +23,6 @@
  */
 
 export { promisify } from "./async.js";
-export { t } from "./call.js";
 export { createErrorDomain, type ErrorDomain } from "./error.js";
 export {
     getGobjectProperty,
@@ -34,6 +33,7 @@ export {
     wrapValue,
 } from "./gobject.js";
 export * from "./gtype.js";
+export { t } from "./helpers.js";
 export * from "./lifecycle.js";
 export { registerClass } from "./register-class.js";
 export { registerWrapperClass } from "./register-wrapper-class.js";

@@ -1,0 +1,331 @@
+import { type Arg, call as nativeCall, type TrampolineType, type Type, type Value } from "@gtkx/native";
+
+export { alloc, call, read, write } from "@gtkx/native";
+
+/**
+ * Shapes a call or signal result from its surfaced out-values and primary
+ * return, following the tuple convention shared by `t.fn` and signal
+ * emission: a lone `primary` when there are no outs, the single out when there
+ * is no primary, or `[primary, ...outs]` when both are present.
+ *
+ * @param outs - The surfaced out-values, in declaration order.
+ * @param primary - The primary return value, used only when `hasPrimary`.
+ * @param hasPrimary - Whether the callable has a non-void return.
+ * @returns The assembled result.
+ */
+export const tupleResult = (outs: readonly unknown[], primary: unknown, hasPrimary: boolean): unknown => {
+    if (hasPrimary) {
+        return outs.length === 0 ? primary : [primary, ...outs];
+    }
+    if (outs.length === 0) return undefined;
+    if (outs.length === 1) return outs[0];
+    return outs;
+};
+
+/**
+ * Lifetime of a value crossing the FFI boundary.
+ *
+ * - `"full"` — caller takes ownership of the original pointer (GIR
+ *   `transfer full`). The wrapper invokes the type-specific destructor on
+ *   drop.
+ * - `"borrowed"` — defensive-copy mode: the underlying value's lifetime is
+ *   uncertain, so the codec makes a copy / reference (`g_boxed_copy`,
+ *   `g_object_ref`, `g_strdup`) and owns the copy.
+ */
+type Ownership = "full" | "borrowed";
+
+/** Container shape for array-like FFI types. */
+type ArrayKind = "array" | "glist" | "gslist" | "gptrarray" | "garray" | "gbytearray" | "sized" | "fixed";
+
+/** Lifetime of a callback trampoline. */
+type TrampolineScope = "call" | "notified" | "async" | "forever";
+
+/**
+ * Binds a native function symbol once and returns a callable that dispatches it,
+ * returning the raw marshaled result with no wrapping.
+ *
+ * Exposed as `t.bind`. GObject bindings use the sugared `t.fn` (which adds
+ * out-parameter tupling, `GError` handling, and result wrapping); low-level
+ * non-GObject bindings and the runtime's own type-system and `GValue`
+ * marshalling use `t.bind` for the unwrapped native result.
+ *
+ * Captures the library, symbol, and a pre-built `Arg` array in a closure so
+ * the descriptor objects are allocated once at module load. Each invocation
+ * mutates only the per-arg `value` slot before dispatching, making calls
+ * allocation-free on the hot path.
+ *
+ * Reentrancy is safe: native marshals all argument values up-front before
+ * dispatching, so trampolines that re-enter the same binding during signal
+ * emission cannot observe a partially-marshaled state.
+ *
+ * @param library - Library name (e.g., "libgtk-4.so.1")
+ * @param symbol - Function symbol name
+ * @param argTypes - Argument type descriptors in positional order
+ * @param returnType - Expected return type descriptor
+ * @returns A function that, given argument values, dispatches the FFI call
+ */
+const bind = (
+    library: string,
+    symbol: string,
+    argTypes: Type[],
+    returnType: Type,
+): ((...values: unknown[]) => unknown) => {
+    const args: Arg[] = argTypes.map((argType) => ({ type: argType, value: undefined }));
+    return (...values) => {
+        let i = 0;
+        for (const arg of args) {
+            arg.value = values[i++] as Value;
+        }
+        return nativeCall(library, symbol, args, returnType);
+    };
+};
+
+const int8: Type = Object.freeze({ type: "int8" });
+const uint8: Type = Object.freeze({ type: "uint8" });
+const int16: Type = Object.freeze({ type: "int16" });
+const uint16: Type = Object.freeze({ type: "uint16" });
+const int32: Type = Object.freeze({ type: "int32" });
+const uint32: Type = Object.freeze({ type: "uint32" });
+const int64: Type = Object.freeze({ type: "int64" });
+const uint64: Type = Object.freeze({ type: "uint64" });
+const bigint64: Type = Object.freeze({ type: "bigint64" });
+const biguint64: Type = Object.freeze({ type: "biguint64" });
+const float32: Type = Object.freeze({ type: "float32" });
+const float64: Type = Object.freeze({ type: "float64" });
+const booleanT: Type = Object.freeze({ type: "boolean" });
+const voidT: Type = Object.freeze({ type: "void" });
+const unicharT: Type = Object.freeze({ type: "unichar" });
+const blobT: Type = Object.freeze({ type: "blob" });
+
+const stringT = (ownership: Ownership = "borrowed", length?: number): Type =>
+    length === undefined ? { type: "string", ownership } : { type: "string", ownership, length };
+
+const objectT = (ownership: Ownership = "borrowed", typeName?: string): Type =>
+    typeName === undefined ? { type: "gobject", ownership } : { type: "gobject", ownership, typeName };
+
+// biome-ignore lint/complexity/useMaxParams: positional descriptor mirrors the native BoxedType fields and is the format generated bindings emit
+const boxedT = (
+    innerType: string,
+    ownership: Ownership = "borrowed",
+    library?: string,
+    getTypeFn?: string,
+    freeFn?: string,
+): Type => {
+    const result: Type = { type: "boxed", ownership, innerType };
+    if (library !== undefined) result.library = library;
+    if (getTypeFn !== undefined) result.getTypeFn = getTypeFn;
+    if (freeFn !== undefined) result.freeFn = freeFn;
+    return result;
+};
+
+const structT = (ownership: Ownership = "borrowed", size?: number): Type => {
+    const result: Type = { type: "struct", ownership };
+    if (size !== undefined) result.size = size;
+    return result;
+};
+
+/** Optional configuration for {@link t.fundamental}. */
+type FundamentalOptions = {
+    /** Owned (`"full"`) or borrowed (`"borrowed"`) value. */
+    ownership?: Ownership;
+    /** Fundamental GType name (e.g., `"GBytes"`). */
+    typeName?: string;
+};
+
+const fundamentalT = (library: string, refFn: string, unrefFn: string, options: FundamentalOptions = {}): Type => {
+    const ownership = options.ownership ?? "borrowed";
+    const result: Type = { type: "fundamental", ownership, library, refFn, unrefFn };
+    if (options.typeName !== undefined) result.typeName = options.typeName;
+    return result;
+};
+
+const refT = (innerType: Type): Type => ({ type: "ref", innerType });
+
+const hashTableT = (keyType: Type, valueType: Type, ownership: Ownership = "borrowed"): Type => ({
+    type: "hashtable",
+    keyType,
+    valueType,
+    ownership,
+});
+
+const enumT = (library: string, getTypeFn: string, signed: boolean): Type => ({
+    type: "enum",
+    library,
+    getTypeFn,
+    signed,
+});
+
+const flagsT = (library: string, getTypeFn: string, signed: boolean): Type => ({
+    type: "flags",
+    library,
+    getTypeFn,
+    signed,
+});
+
+/** Optional sizing metadata for array-like FFI descriptors. */
+type ArrayOptions = {
+    /** Size of each element in bytes (used for `garray`). */
+    elementSize?: number;
+    /** Index of the parameter carrying the array length (used for `sized`). */
+    sizeParamIndex?: number;
+    /** Compile-time known length (used for `fixed`). */
+    fixedSize?: number;
+};
+
+const arrayT = (
+    itemType: Type,
+    kind: ArrayKind = "array",
+    ownership: Ownership = "borrowed",
+    options?: ArrayOptions,
+): Type => {
+    const result: Type = { type: "array", itemType, kind, ownership };
+    if (options?.elementSize !== undefined) result.elementSize = options.elementSize;
+    if (options?.sizeParamIndex !== undefined) result.sizeParamIndex = options.sizeParamIndex;
+    if (options?.fixedSize !== undefined) result.fixedSize = options.fixedSize;
+    return result;
+};
+
+const list = (itemType: Type, ownership: Ownership = "borrowed"): Type => arrayT(itemType, "glist", ownership);
+
+const slist = (itemType: Type, ownership: Ownership = "borrowed"): Type => arrayT(itemType, "gslist", ownership);
+
+const ptrArray = (itemType: Type, ownership: Ownership = "borrowed"): Type => arrayT(itemType, "gptrarray", ownership);
+
+const garray = (itemType: Type, ownership: Ownership = "borrowed", elementSize?: number): Type =>
+    arrayT(itemType, "garray", ownership, elementSize === undefined ? undefined : { elementSize });
+
+const byteArray = (ownership: Ownership = "borrowed"): Type => arrayT(uint8, "gbytearray", ownership);
+
+const sizedArray = (
+    itemType: Type,
+    sizeParamIndex: number,
+    ownership: Ownership = "borrowed",
+    elementSize?: number,
+): Type => arrayT(itemType, "sized", ownership, { sizeParamIndex, elementSize });
+
+const fixedArray = (itemType: Type, fixedSize: number, ownership: Ownership = "borrowed", elementSize?: number): Type =>
+    arrayT(itemType, "fixed", ownership, { fixedSize, elementSize });
+
+/** Optional configuration for a trampoline FFI descriptor. */
+type TrampolineOptions = {
+    /** Whether the call has a paired destroy-notify parameter. */
+    hasDestroy?: boolean;
+    /** Index of the user-data parameter passed to the callback. */
+    userDataIndex?: number;
+    /** Lifetime of the callback. */
+    scope?: TrampolineScope;
+};
+
+const trampolineT = (argTypes: Type[], returnType: Type, options?: TrampolineOptions): TrampolineType => {
+    const result: TrampolineType = { type: "trampoline", argTypes, returnType };
+    if (options?.hasDestroy !== undefined) result.hasDestroy = options.hasDestroy;
+    if (options?.userDataIndex !== undefined) result.userDataIndex = options.userDataIndex;
+    if (options?.scope !== undefined) result.scope = options.scope;
+    return result;
+};
+
+/**
+ * The raw `bind` binder plus the FFI type-descriptor helpers: every descriptor
+ * constant and factory used to build the `Arg` and return descriptors that
+ * bindings pass to `bind` (and, once the sugared layer adds it, to `t.fn`).
+ *
+ * Keeps hand-written and generated bindings compact and free of inline
+ * type-descriptor object literals.
+ *
+ * @example
+ * ```tsx
+ * const labelArg = { type: t.string("borrowed") };
+ * const surfaceReturn = t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2");
+ * ```
+ */
+/**
+ * Shape of the {@link t} namespace: the raw `bind` binder plus every FFI
+ * type-descriptor constant and factory used to build `Arg` and return
+ * descriptors for hand-written and generated bindings.
+ */
+type T = {
+    readonly bind: (
+        library: string,
+        symbol: string,
+        argTypes: Type[],
+        returnType: Type,
+    ) => (...values: unknown[]) => unknown;
+    readonly int8: Type;
+    readonly uint8: Type;
+    readonly int16: Type;
+    readonly uint16: Type;
+    readonly int32: Type;
+    readonly uint32: Type;
+    readonly int64: Type;
+    readonly uint64: Type;
+    readonly bigint64: Type;
+    readonly biguint64: Type;
+    readonly float32: Type;
+    readonly float64: Type;
+    readonly boolean: Type;
+    readonly void: Type;
+    readonly unichar: Type;
+    readonly blob: Type;
+    readonly string: (ownership?: Ownership, length?: number) => Type;
+    readonly object: (ownership?: Ownership, typeName?: string) => Type;
+    readonly boxed: (
+        innerType: string,
+        ownership?: Ownership,
+        library?: string,
+        getTypeFn?: string,
+        freeFn?: string,
+    ) => Type;
+    readonly struct: (ownership?: Ownership, size?: number) => Type;
+    readonly fundamental: (library: string, refFn: string, unrefFn: string, options?: FundamentalOptions) => Type;
+    readonly ref: (innerType: Type) => Type;
+    readonly hashTable: (keyType: Type, valueType: Type, ownership?: Ownership) => Type;
+    readonly enum: (library: string, getTypeFn: string, signed: boolean) => Type;
+    readonly flags: (library: string, getTypeFn: string, signed: boolean) => Type;
+    readonly array: (itemType: Type, kind?: ArrayKind, ownership?: Ownership, options?: ArrayOptions) => Type;
+    readonly list: (itemType: Type, ownership?: Ownership) => Type;
+    readonly slist: (itemType: Type, ownership?: Ownership) => Type;
+    readonly ptrArray: (itemType: Type, ownership?: Ownership) => Type;
+    readonly garray: (itemType: Type, ownership?: Ownership, elementSize?: number) => Type;
+    readonly byteArray: (ownership?: Ownership) => Type;
+    readonly sizedArray: (itemType: Type, sizeParamIndex: number, ownership?: Ownership, elementSize?: number) => Type;
+    readonly fixedArray: (itemType: Type, fixedSize: number, ownership?: Ownership, elementSize?: number) => Type;
+    readonly trampoline: (argTypes: Type[], returnType: Type, options?: TrampolineOptions) => TrampolineType;
+};
+
+export const t: T = {
+    bind,
+    int8,
+    uint8,
+    int16,
+    uint16,
+    int32,
+    uint32,
+    int64,
+    uint64,
+    bigint64,
+    biguint64,
+    float32,
+    float64,
+    boolean: booleanT,
+    void: voidT,
+    unichar: unicharT,
+    blob: blobT,
+    string: stringT,
+    object: objectT,
+    boxed: boxedT,
+    struct: structT,
+    fundamental: fundamentalT,
+    ref: refT,
+    hashTable: hashTableT,
+    enum: enumT,
+    flags: flagsT,
+    array: arrayT,
+    list,
+    slist,
+    ptrArray,
+    garray,
+    byteArray,
+    sizedArray,
+    fixedArray,
+    trampoline: trampolineT,
+} as const;
