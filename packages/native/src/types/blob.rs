@@ -34,7 +34,7 @@ impl BlobType {
 }
 
 impl FfiEncoder for BlobType {
-    fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::FfiValue> {
         match value {
             value::Value::BufferView(view) => {
                 anyhow::ensure!(

@@ -554,7 +554,7 @@ fn string_full_item_array_type(kind: ArrayKind, container_ownership: Ownership) 
 #[test]
 fn encode_empty_string_glist_full_container_arms_null_transfer_safe_on_drop() {
     let ty = string_full_item_array_type(ArrayKind::GList, Ownership::Full);
-    let encoded = ty.encode(&Value::Array(Vec::new()), false).unwrap();
+    let encoded = ty.encode(&Value::Array(Vec::new())).unwrap();
     let FfiValue::Storage(storage) = &encoded else {
         panic!("expected storage")
     };
@@ -575,7 +575,7 @@ fn encode_string_array_element_transfer_frees_duplicates_when_call_never_happens
         Value::String("foo".to_string()),
         Value::String("bar".to_string()),
     ]);
-    let encoded = ty.encode(&val, false).unwrap();
+    let encoded = ty.encode(&val).unwrap();
     let FfiValue::Storage(storage) = &encoded else {
         panic!("expected storage")
     };
@@ -601,7 +601,7 @@ fn encode_gbytearray_full_ownership_unrefs_when_call_never_happens() {
             element_size: None,
         };
         let val = Value::Array(vec![Value::Number(7.0), Value::Number(8.0)]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         let FfiValue::Storage(storage) = &encoded else {
             panic!("expected storage")
         };

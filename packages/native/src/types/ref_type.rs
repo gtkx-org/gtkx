@@ -60,7 +60,7 @@ impl FromDescriptor for RefType {
 
 impl FfiEncoder for RefType {
     #[cfg_attr(coverage_nightly, coverage(off))]
-    fn encode(&self, val: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+    fn encode(&self, val: &value::Value) -> anyhow::Result<ffi::FfiValue> {
         anyhow::ensure!(
             Self::supports_inner(&self.inner_type),
             "'{}' cannot be used as a Ref inner type",
@@ -87,7 +87,7 @@ impl FfiEncoder for RefType {
             }
             Type::Array(array_type) => match &*ref_val.value {
                 value::Value::Array(arr) if !arr.is_empty() => {
-                    let encoded = array_type.encode(&ref_val.value, false)?;
+                    let encoded = array_type.encode(&ref_val.value)?;
                     match encoded {
                         ffi::FfiValue::Storage(storage) => Ok(ffi::FfiValue::Storage(storage)),
                         _ => bail!("Expected Storage from array encode for Ref<Array>"),

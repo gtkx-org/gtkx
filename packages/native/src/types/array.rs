@@ -112,8 +112,8 @@ impl FromDescriptor for ArrayType {
 }
 
 impl FfiEncoder for ArrayType {
-    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        Self::encode(self, value, optional)
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::FfiValue> {
+        Self::encode(self, value)
     }
 }
 
@@ -798,11 +798,11 @@ impl ArrayType {
         Ok(values)
     }
 
-    pub fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+    pub fn encode(&self, val: &value::Value) -> anyhow::Result<ffi::FfiValue> {
         let array = match val {
             value::Value::Array(arr) => arr,
             value::Value::BufferView(view) => return self.encode_buffer_view(view),
-            value::Value::Null | value::Value::Undefined if optional => {
+            value::Value::Null | value::Value::Undefined => {
                 return Ok(ffi::FfiValue::Ptr(std::ptr::null_mut()));
             }
             _ => bail!("Expected an Array for array type, got {val:?}"),

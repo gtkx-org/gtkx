@@ -113,7 +113,6 @@ const glDebugMessageCallbackBinding = t.bind(
                 t.void,
                 { userDataIndex: 6, scope: "forever" },
             ),
-            optional: true,
         },
     ],
     t.void,

@@ -271,7 +271,6 @@ type FfiParamOptions = {
     readonly callerAllocates?: boolean;
     readonly wrapperClass?: string;
     readonly consumed?: boolean;
-    readonly optional?: boolean;
 };
 
 const ffiParamLiteral = (ffiExpr: string, options: FfiParamOptions): string => {
@@ -280,7 +279,6 @@ const ffiParamLiteral = (ffiExpr: string, options: FfiParamOptions): string => {
     if (options.callerAllocates === true) parts.push("callerAllocates: true");
     if (options.wrapperClass !== undefined) parts.push(`wrapperClass: ${options.wrapperClass}`);
     if (options.consumed === true) parts.push("consumed: true");
-    if (options.optional === true) parts.push("optional: true");
     return `{ ${parts.join(", ")} }`;
 };
 
@@ -410,9 +408,8 @@ const planInParam = (
 ): CallArgPlan => {
     const trampoline = renderTrampolineType(context, parameter.type, parameter);
     const ffi = trampoline ?? renderFfiType(context, parameter.type, parameter.transferOwnership, instanceOffset);
-    const optional = parameter.nullable || parameter.optional;
     return {
-        paramLiteral: ffiParamLiteral(ffi, { optional }),
+        paramLiteral: ffiParamLiteral(ffi, {}),
         inputExpr: parameterCallExpression(context, parameter, index),
     };
 };

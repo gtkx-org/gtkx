@@ -7,11 +7,11 @@ use super::prelude::*;
 pub struct UnicharType;
 
 impl FfiEncoder for UnicharType {
-    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::FfiValue> {
         let cp = match value {
             value::Value::String(s) => s.chars().next().map_or(0, |c| c as u32),
             value::Value::Number(n) => *n as u32,
-            value::Value::Null | value::Value::Undefined if optional => 0,
+            value::Value::Null | value::Value::Undefined => 0,
             _ => anyhow::bail!("Expected a string for unichar type, got {value:?}"),
         };
         Ok(ffi::FfiValue::U32(cp))

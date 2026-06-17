@@ -77,11 +77,6 @@ export type ArgType = ValueType & {
      * marshaller can size the array, but it carries nothing a caller needs.
      */
     readonly consumed?: boolean;
-    /**
-     * Whether a nullable input may be omitted: the native marshaller then
-     * encodes an absent value as a NULL pointer rather than rejecting it.
-     */
-    readonly optional?: boolean;
 };
 
 /** Optional call-shape configuration. */
@@ -119,9 +114,7 @@ const argFor = (param: ArgType): Arg => {
     if ((param.direction === "out" || param.direction === "inout") && param.callerAllocates !== true) {
         return { type: descriptors.ref(param.type), value: undefined };
     }
-    return param.optional === true
-        ? { type: param.type, value: undefined, optional: true }
-        : { type: param.type, value: undefined };
+    return { type: param.type, value: undefined };
 };
 
 /**

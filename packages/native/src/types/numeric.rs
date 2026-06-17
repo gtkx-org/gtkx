@@ -125,12 +125,8 @@ with_integer_kinds!(impl_integer_kind_dispatch);
 macro_rules! impl_numeric_codecs {
     ($kind:ty, $label:literal, $ptr_to_value:item) => {
         impl FfiEncoder for $kind {
-            fn encode(
-                &self,
-                value: &value::Value,
-                optional: bool,
-            ) -> anyhow::Result<ffi::FfiValue> {
-                let number = Self::number_from_value(value, optional)?;
+            fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::FfiValue> {
+                let number = Self::number_from_value(value)?;
                 self.checked_to_ffi_value(number)
             }
 
@@ -341,11 +337,11 @@ impl IntegerKind {
     /// Extracts the numeric payload an integer argument encodes. Object
     /// handles are accepted and marshal as pointer-sized integers, the numeric
     /// representation of pointer-valued arguments.
-    fn number_from_value(value: &value::Value, optional: bool) -> anyhow::Result<f64> {
+    fn number_from_value(value: &value::Value) -> anyhow::Result<f64> {
         match value {
             value::Value::Number(n) => Ok(*n),
             value::Value::Object(handle) => Ok(handle.ptr_as_usize() as f64),
-            value::Value::Null | value::Value::Undefined if optional => Ok(0.0),
+            value::Value::Null | value::Value::Undefined => Ok(0.0),
             _ => bail!("Expected a Number for integer type, got {value:?}"),
         }
     }
@@ -516,10 +512,10 @@ impl FloatKind {
     /// integer counterpart, object handles are rejected: a pointer address has
     /// no floating-point interpretation, and accepting one would feed a heap
     /// address into the native call as a geometry or opacity value.
-    fn number_from_value(value: &value::Value, optional: bool) -> anyhow::Result<f64> {
+    fn number_from_value(value: &value::Value) -> anyhow::Result<f64> {
         match value {
             value::Value::Number(n) => Ok(*n),
-            value::Value::Null | value::Value::Undefined if optional => Ok(0.0),
+            value::Value::Null | value::Value::Undefined => Ok(0.0),
             _ => bail!("Expected a Number for float type, got {value:?}"),
         }
     }
@@ -636,8 +632,8 @@ impl TaggedType {
 }
 
 impl FfiEncoder for TaggedType {
-    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        let result = FfiEncoder::encode(&self.storage, value, optional)?;
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::FfiValue> {
+        let result = FfiEncoder::encode(&self.storage, value)?;
         #[cfg(debug_assertions)]
         if self.kind == TaggedKind::Enum
             && let value::Value::Number(n) = value

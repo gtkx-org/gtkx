@@ -206,7 +206,7 @@ fn ffi_encoder_defaults_cover_pointer_typed_codec() {
 #[test]
 fn type_enum_dispatch_routes_codec_traits() {
     let ty = Type::Boolean(BooleanType);
-    let encoded = FfiEncoder::encode(&ty, &value::Value::Boolean(true), false).unwrap();
+    let encoded = FfiEncoder::encode(&ty, &value::Value::Boolean(true)).unwrap();
     assert!(matches!(encoded, ffi::FfiValue::I32(1)));
     let decoded = FfiDecoder::decode(&ty, &ffi::FfiValue::I32(0)).unwrap();
     assert!(matches!(decoded, value::Value::Boolean(false)));

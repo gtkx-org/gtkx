@@ -57,7 +57,7 @@ impl ModuleRequest for CallRequest {
             .enumerate()
             .map(|(i, arg)| {
                 arg.ty
-                    .encode(&arg.value, arg.optional)
+                    .encode(&arg.value)
                     .with_context(|| format!("encoding arg {} of {}", i, self.symbol_name))
             })
             .collect::<anyhow::Result<Vec<ffi::FfiValue>>>()?;

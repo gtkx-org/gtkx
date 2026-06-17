@@ -2,7 +2,7 @@
 //! [`native::types::TrampolineType`] and [`native::types::TrampolineScope`].
 //!
 //! `TrampolineType::encode` is excluded from coverage, but executing the
-//! excluded `encode` with a null optional value still drives the non-excluded
+//! excluded `encode` with a null value still drives the non-excluded
 //! `build_null_ffi_value`.
 
 mod common;
@@ -67,11 +67,11 @@ fn append_ffi_arg_types_with_destroy_pushes_three_pointers() {
 }
 
 #[test]
-fn encode_null_optional_without_destroy_builds_trampoline() {
+fn encode_null_without_destroy_builds_trampoline() {
     common::run(|| {
         let encoded = trampoline_type(false)
-            .encode(&Value::Null, true)
-            .expect("optional null encode should succeed");
+            .encode(&Value::Null)
+            .expect("null encode should build the null trampoline");
         let ffi::FfiValue::Trampoline(tv) = encoded else {
             panic!("expected Trampoline ffi value");
         };
@@ -82,11 +82,11 @@ fn encode_null_optional_without_destroy_builds_trampoline() {
 }
 
 #[test]
-fn encode_null_optional_with_destroy_builds_trampoline_with_destroy_slot() {
+fn encode_null_with_destroy_builds_trampoline_with_destroy_slot() {
     common::run(|| {
         let encoded = trampoline_type(true)
-            .encode(&Value::Undefined, true)
-            .expect("optional undefined encode should succeed");
+            .encode(&Value::Undefined)
+            .expect("undefined encode should build the null trampoline");
         let ffi::FfiValue::Trampoline(tv) = encoded else {
             panic!("expected Trampoline ffi value");
         };
@@ -97,8 +97,16 @@ fn encode_null_optional_with_destroy_builds_trampoline_with_destroy_slot() {
 }
 
 #[test]
-fn encode_rejects_null_when_not_optional() {
+fn encode_null_builds_null_trampoline() {
     common::run(|| {
-        assert!(trampoline_type(false).encode(&Value::Null, false).is_err());
+        let encoded = trampoline_type(false)
+            .encode(&Value::Null)
+            .expect("null encode should build the null trampoline");
+        let ffi::FfiValue::Trampoline(tv) = encoded else {
+            panic!("expected Trampoline ffi value");
+        };
+        assert!(tv.fn_ptr().is_null());
+        assert!(tv.state_ptr().is_null());
+        assert!(tv.destroy_ptr().is_none());
     });
 }

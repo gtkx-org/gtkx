@@ -130,7 +130,6 @@ fn try_from_integer_optional_null() {
     let arg = Arg {
         ty: Type::Integer(IntegerKind::I32),
         value: value::Value::Null,
-        optional: true,
     };
 
     let v = expect_variant!(arg, I32);
@@ -451,7 +450,6 @@ fn try_from_array_optional_null_yields_null_ptr() {
             element_size: None,
         }),
         value: value::Value::Null,
-        optional: true,
     };
 
     match FfiValue::try_from(arg).unwrap() {

@@ -28,7 +28,7 @@ fn full() -> StringType {
 fn encode_borrowed_keeps_string_in_storage() {
     common::run(|| {
         let encoded = borrowed()
-            .encode(&Value::String("hello".to_owned()), false)
+            .encode(&Value::String("hello".to_owned()))
             .expect("borrowed encode should succeed");
         let ffi::FfiValue::Storage(storage) = encoded else {
             panic!("expected Storage ffi value");
@@ -43,7 +43,7 @@ fn encode_borrowed_keeps_string_in_storage() {
 fn encode_full_duplicates_into_glib_string() {
     common::run(|| {
         let encoded = full()
-            .encode(&Value::String("owned".to_owned()), false)
+            .encode(&Value::String("owned".to_owned()))
             .expect("full encode should succeed");
         encoded.disarm_pending_transfer();
         let ffi::FfiValue::Storage(storage) = &encoded else {
@@ -63,7 +63,7 @@ fn encode_full_duplicates_into_glib_string() {
 fn encode_full_releases_duplicate_when_call_never_happens() {
     common::run(|| {
         let encoded = full()
-            .encode(&Value::String("owned".to_owned()), false)
+            .encode(&Value::String("owned".to_owned()))
             .expect("full encode should succeed");
         drop(encoded);
     });
@@ -73,12 +73,12 @@ fn encode_full_releases_duplicate_when_call_never_happens() {
 fn encode_null_yields_null_pointer() {
     common::run(|| {
         let encoded = borrowed()
-            .encode(&Value::Null, false)
+            .encode(&Value::Null)
             .expect("null encode should succeed");
         assert!(matches!(encoded, ffi::FfiValue::Ptr(p) if p.is_null()));
 
         let encoded = borrowed()
-            .encode(&Value::Undefined, false)
+            .encode(&Value::Undefined)
             .expect("undefined encode should succeed");
         assert!(matches!(encoded, ffi::FfiValue::Ptr(p) if p.is_null()));
     });

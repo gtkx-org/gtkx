@@ -14,10 +14,10 @@ extern "C" fn ret_void() {
 
 #[test]
 fn encode_always_yields_null_pointer() {
-    let encoded = FfiEncoder::encode(&VoidType, &Value::Undefined, false).unwrap();
+    let encoded = FfiEncoder::encode(&VoidType, &Value::Undefined).unwrap();
     assert!(matches!(encoded, ffi::FfiValue::Ptr(p) if p.is_null()));
 
-    let encoded_other = FfiEncoder::encode(&VoidType, &Value::Number(1.0), true).unwrap();
+    let encoded_other = FfiEncoder::encode(&VoidType, &Value::Number(1.0)).unwrap();
     assert!(matches!(encoded_other, ffi::FfiValue::Ptr(p) if p.is_null()));
 }
 

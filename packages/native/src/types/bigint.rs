@@ -54,7 +54,7 @@ impl BigIntKind {
     /// values pass through exactly; `Number` values are accepted for
     /// ergonomics under the same integrality and 2^53 constraints the
     /// number-represented integer kinds enforce.
-    fn int_from_value(self, value: &value::Value, optional: bool) -> anyhow::Result<i128> {
+    fn int_from_value(self, value: &value::Value) -> anyhow::Result<i128> {
         match value {
             value::Value::BigInt(v) => Ok(*v),
             value::Value::Number(n) => {
@@ -70,7 +70,7 @@ impl BigIntKind {
                 }
                 Ok(*n as i128)
             }
-            value::Value::Null | value::Value::Undefined if optional => Ok(0),
+            value::Value::Null | value::Value::Undefined => Ok(0),
             _ => bail!("Expected a BigInt for {} type, got {value:?}", self.label()),
         }
     }
@@ -109,8 +109,8 @@ impl BigIntKind {
 }
 
 impl FfiEncoder for BigIntKind {
-    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        let int = self.int_from_value(value, optional)?;
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::FfiValue> {
+        let int = self.int_from_value(value)?;
         self.checked_to_ffi_value(int)
     }
 
@@ -160,7 +160,7 @@ impl RawPtrCodec for BigIntKind {
         let int = value
             .as_ref()
             .ok()
-            .and_then(|v| self.int_from_value(v, false).ok())
+            .and_then(|v| self.int_from_value(v).ok())
             .unwrap_or(0);
         let ffi_value = self
             .checked_to_ffi_value(int)
@@ -175,7 +175,7 @@ impl RawPtrCodec for BigIntKind {
         ptr: *mut c_void,
         value: &value::Value,
     ) -> anyhow::Result<()> {
-        let int = self.int_from_value(value, false)?;
+        let int = self.int_from_value(value)?;
         let ffi_value = self.checked_to_ffi_value(int)?;
         // SAFETY: The caller guarantees `ptr` is writable at this kind's
         // 8-byte width.
@@ -196,22 +196,20 @@ mod tests {
     #[test]
     fn encode_accepts_bigint_beyond_2_53() {
         let value = value::Value::BigInt(i128::from(u64::MAX));
-        let encoded = BigIntKind::U64.encode(&value, false).expect("encode");
+        let encoded = BigIntKind::U64.encode(&value).expect("encode");
         assert!(matches!(encoded, ffi::FfiValue::U64(v) if v == u64::MAX));
     }
 
     #[test]
     fn encode_accepts_small_integral_numbers() {
         let value = value::Value::Number(42.0);
-        let encoded = BigIntKind::I64.encode(&value, false).expect("encode");
+        let encoded = BigIntKind::I64.encode(&value).expect("encode");
         assert!(matches!(encoded, ffi::FfiValue::I64(42)));
     }
 
     #[test]
     fn optional_null_encodes_as_zero() {
-        let encoded = BigIntKind::I64
-            .encode(&value::Value::Null, true)
-            .expect("encode");
+        let encoded = BigIntKind::I64.encode(&value::Value::Null).expect("encode");
         assert!(matches!(encoded, ffi::FfiValue::I64(0)));
     }
 

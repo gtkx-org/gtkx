@@ -226,7 +226,6 @@ export function setGvalueBoxed(value: object, boxed: object | null): void {
             {
                 type: t.boxed(boxedTypeName(valueGetType(value)), "borrowed", LIBGOBJECT),
                 value: boxed === null ? null : getHandle(boxed),
-                optional: true,
             },
         ],
         t.void,
@@ -764,7 +763,7 @@ const gValueGetDouble = t.bind(LIBGOBJECT, "g_value_get_double", [{ type: GVALUE
 const gValueSetString = t.bind(
     LIBGOBJECT,
     "g_value_set_string",
-    [{ type: GVALUE_BORROWED }, { type: t.string("borrowed"), optional: true }],
+    [{ type: GVALUE_BORROWED }, { type: t.string("borrowed") }],
     t.void,
 );
 const gValueGetString = t.bind(LIBGOBJECT, "g_value_get_string", [{ type: GVALUE_BORROWED }], t.string("borrowed"));
@@ -779,7 +778,7 @@ const gValueGetFlags = t.bind(LIBGOBJECT, "g_value_get_flags", [{ type: GVALUE_B
 const gValueSetObject = t.bind(
     LIBGOBJECT,
     "g_value_set_object",
-    [{ type: GVALUE_BORROWED }, { type: t.object("borrowed"), optional: true }],
+    [{ type: GVALUE_BORROWED }, { type: t.object("borrowed") }],
     t.void,
 );
 const gValueGetObject = t.bind(LIBGOBJECT, "g_value_get_object", [{ type: GVALUE_BORROWED }], t.object("borrowed"));
@@ -791,7 +790,7 @@ const PARAM_FUNDAMENTAL = t.fundamental(LIBGOBJECT, "g_param_spec_ref", "g_param
 const gValueSetParam = t.bind(
     LIBGOBJECT,
     "g_value_set_param",
-    [{ type: GVALUE_BORROWED }, { type: PARAM_FUNDAMENTAL, optional: true }],
+    [{ type: GVALUE_BORROWED }, { type: PARAM_FUNDAMENTAL }],
     t.void,
 );
 const gValueGetParam = t.bind(LIBGOBJECT, "g_value_get_param", [{ type: GVALUE_BORROWED }], PARAM_FUNDAMENTAL);
@@ -803,7 +802,7 @@ const VARIANT_FUNDAMENTAL = t.fundamental("libgobject-2.0.so.0,libglib-2.0.so.0"
 const gValueSetVariant = t.bind(
     LIBGOBJECT,
     "g_value_set_variant",
-    [{ type: GVALUE_BORROWED }, { type: VARIANT_FUNDAMENTAL, optional: true }],
+    [{ type: GVALUE_BORROWED }, { type: VARIANT_FUNDAMENTAL }],
     t.void,
 );
 const gValueGetVariant = t.bind(LIBGOBJECT, "g_value_get_variant", [{ type: GVALUE_BORROWED }], VARIANT_FUNDAMENTAL);

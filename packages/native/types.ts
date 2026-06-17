@@ -139,8 +139,6 @@ export type Type =
 export type ArgType = {
     /** The argument's type descriptor. */
     type: Type;
-    /** Whether the argument is optional (can be omitted) or required. Defaults to `false`. */
-    optional?: boolean;
 };
 
 /**

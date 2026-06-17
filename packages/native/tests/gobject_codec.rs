@@ -40,7 +40,7 @@ fn object_value_of(ptr: *mut glib::gobject_ffi::GObject) -> Value {
 }
 
 fn encode_object(ty: &GObjectType, ptr: *mut glib::gobject_ffi::GObject) -> ffi::FfiValue {
-    ty.encode(&object_value_of(ptr), false)
+    ty.encode(&object_value_of(ptr))
         .expect("encode should succeed")
 }
 
@@ -104,7 +104,7 @@ fn encode_borrowed_does_not_change_refcount() {
 fn encode_null_object_stays_null() {
     common::run(|| {
         let encoded = full()
-            .encode(&Value::Null, false)
+            .encode(&Value::Null)
             .expect("null encode should succeed");
         assert!(matches!(encoded, ffi::FfiValue::Ptr(p) if p.is_null()));
     });

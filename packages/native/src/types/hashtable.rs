@@ -323,10 +323,10 @@ impl HashTableType {
 }
 
 impl FfiEncoder for HashTableType {
-    fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+    fn encode(&self, val: &value::Value) -> anyhow::Result<ffi::FfiValue> {
         let tuples = match val {
             value::Value::Array(arr) => arr,
-            value::Value::Null | value::Value::Undefined if optional => {
+            value::Value::Null | value::Value::Undefined => {
                 return Ok(ffi::FfiValue::Ptr(std::ptr::null_mut()));
             }
             _ => bail!("Expected an Array of tuples for GHashTable type, got {val:?}"),

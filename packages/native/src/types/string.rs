@@ -38,7 +38,7 @@ impl FromDescriptor for StringType {
 }
 
 impl FfiEncoder for StringType {
-    fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::FfiValue> {
         match value {
             value::Value::String(s) => {
                 if self.ownership.is_full() {

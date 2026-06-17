@@ -102,7 +102,7 @@ impl FromDescriptor for GObjectType {
 }
 
 impl FfiEncoder for GObjectType {
-    fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::FfiValue> {
         let ptr = value.object_ptr("GObject")?;
         // SAFETY: `ptr` came from a NativeHandle whose wrapper's toggle
         // reference keeps the GObject alive for the duration of the encode.

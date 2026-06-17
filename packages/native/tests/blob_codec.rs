@@ -9,7 +9,7 @@ use native::types::{BlobType, FfiDecoder, FfiEncoder as _, Type};
 use native::value::{BufferView, BufferViewKind, Value};
 
 fn encode(value: &Value) -> anyhow::Result<FfiValue> {
-    BlobType.encode(value, false)
+    BlobType.encode(value)
 }
 
 fn encoded_address(value: &Value) -> usize {

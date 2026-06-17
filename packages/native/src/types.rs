@@ -183,7 +183,7 @@ impl std::str::FromStr for Ownership {
 
 #[enum_dispatch]
 pub trait FfiEncoder {
-    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue>;
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::FfiValue>;
 
     /// The release pairing the ownership one [`Self::ref_for_transfer`] call
     /// acquires for a non-null pointer, or `None` for an identity hand-over

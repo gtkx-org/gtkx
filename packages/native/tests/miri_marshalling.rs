@@ -78,7 +78,7 @@ fn buffer_view_array_passthrough_shares_the_backing_store() {
     };
 
     let encoded = array_type
-        .encode(&Value::BufferView(view), false)
+        .encode(&Value::BufferView(view))
         .expect("view encode");
     let ptr = encoded_ptr(&encoded);
     assert_eq!(ptr, buffer.as_mut_ptr() as *mut c_void);
@@ -101,7 +101,7 @@ fn blob_view_passthrough_reads_and_writes_the_backing_store() {
     );
 
     let encoded = BlobType
-        .encode(&Value::BufferView(view), false)
+        .encode(&Value::BufferView(view))
         .expect("blob encode");
     let ptr = encoded_ptr(&encoded);
     assert_eq!(ptr, buffer.as_mut_ptr() as *mut c_void);

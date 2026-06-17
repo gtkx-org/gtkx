@@ -102,7 +102,7 @@ fn ht_type(key: Type, value: Type, ownership: Ownership) -> HashTableType {
 }
 
 fn roundtrip(ht: &HashTableType, input: &Value) -> Value {
-    let encoded = ht.encode(input, false).expect("encoding should succeed");
+    let encoded = ht.encode(input).expect("encoding should succeed");
     ht.decode(&encoded).expect("decoding should succeed")
 }
 
@@ -475,7 +475,7 @@ fn hashtable_null_optional() {
         );
 
         let encoded = ht_type
-            .encode(&Value::Null, true)
+            .encode(&Value::Null)
             .expect("encoding should succeed");
 
         match encoded {
@@ -646,7 +646,7 @@ fn ptr_array_value_freed_when_hashtable_storage_drops() {
             Value::Array(vec![Value::Object(boxed_handle())]),
         ])]);
         {
-            let _encoded = ht_type.encode(&input, false).unwrap();
+            let _encoded = ht_type.encode(&input).unwrap();
         }
     });
 }
@@ -663,7 +663,7 @@ fn hashtable_encode_propagates_key_encoder_error() {
             Value::Number(1.0),
             Value::Boolean(true),
         ])]);
-        assert!(ht_type.encode(&input, false).is_err());
+        assert!(ht_type.encode(&input).is_err());
     });
 }
 
@@ -801,9 +801,7 @@ fn fundamental_value_unreffed_when_hashtable_storage_drops() {
             Value::Object(NativeHandle::borrowed(pspec)),
         ])]);
 
-        let encoded = ht_type
-            .encode(&input, false)
-            .expect("encoding should succeed");
+        let encoded = ht_type.encode(&input).expect("encoding should succeed");
         assert_eq!(common::param_spec_refcount(pspec), before + 1);
 
         drop(encoded);
@@ -834,9 +832,7 @@ fn gobject_value_unreffed_when_hashtable_storage_drops() {
             Value::Array(vec![Value::Number(2.0), Value::Null]),
         ]);
 
-        let encoded = ht_type
-            .encode(&input, false)
-            .expect("encoding should succeed");
+        let encoded = ht_type.encode(&input).expect("encoding should succeed");
         assert_eq!(common::get_gobject_refcount(obj_ptr), before + 1);
 
         let FfiValue::Storage(storage) = &encoded else {
@@ -869,9 +865,7 @@ fn hashtable_encode_value_error_releases_transferred_gobject_key() {
             Value::Number(1.0),
         ])]);
 
-        let err = ht_type
-            .encode(&input, false)
-            .expect_err("value encode must fail");
+        let err = ht_type.encode(&input).expect_err("value encode must fail");
         assert!(err.to_string().contains("Expected boolean in GHashTable"));
         assert_eq!(common::get_gobject_refcount(obj_ptr), before);
     });
@@ -890,9 +884,7 @@ fn hashtable_encode_value_error_frees_duplicated_string_key() {
             Value::Number(1.0),
         ])]);
 
-        let err = ht_type
-            .encode(&input, false)
-            .expect_err("value encode must fail");
+        let err = ht_type.encode(&input).expect_err("value encode must fail");
         assert!(err.to_string().contains("Expected boolean in GHashTable"));
     });
 }
@@ -913,7 +905,7 @@ fn hashtable_encode_value_destroy_error_releases_string_key() {
         ])]);
 
         let err = ht_type
-            .encode(&input, false)
+            .encode(&input)
             .expect_err("value destroy resolution must fail");
         assert!(err.to_string().contains("unsupported"));
     });
@@ -945,9 +937,7 @@ fn hashtable_encode_second_tuple_error_unwinds_inserted_entries() {
             ]),
         ]);
 
-        let err = ht_type
-            .encode(&input, false)
-            .expect_err("second tuple must fail");
+        let err = ht_type.encode(&input).expect_err("second tuple must fail");
         assert!(err.to_string().contains("Expected boolean in GHashTable"));
         assert_eq!(common::get_gobject_refcount(inserted_ptr), inserted_before);
         assert_eq!(common::get_gobject_refcount(failing_ptr), failing_before);

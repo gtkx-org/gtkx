@@ -70,11 +70,7 @@ const bind = (
     argTypes: readonly ArgType[],
     returnType: Type,
 ): ((...values: unknown[]) => unknown) => {
-    const args: Arg[] = argTypes.map((argType) =>
-        argType.optional
-            ? { type: argType.type, value: undefined, optional: true }
-            : { type: argType.type, value: undefined },
-    );
+    const args: Arg[] = argTypes.map((argType) => ({ type: argType.type, value: undefined }));
     return (...values) => {
         let i = 0;
         for (const arg of args) {
@@ -251,7 +247,7 @@ type T = {
     readonly bind: (
         library: string,
         symbol: string,
-        argTypes: ReadonlyArray<{ type: Type; optional?: boolean }>,
+        argTypes: ReadonlyArray<{ type: Type }>,
         returnType: Type,
     ) => (...values: unknown[]) => unknown;
     readonly int8: Type;

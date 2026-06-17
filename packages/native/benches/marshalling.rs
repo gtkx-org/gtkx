@@ -89,7 +89,7 @@ fn bench_encode_contiguous(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
             b.iter(|| {
                 let encoded = array_type
-                    .encode(black_box(&values), false)
+                    .encode(black_box(&values))
                     .expect("contiguous encode");
                 black_box(encoded);
             });
@@ -118,9 +118,7 @@ fn bench_encode_view_passthrough(c: &mut Criterion) {
         };
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
             b.iter(|| {
-                let encoded = array_type
-                    .encode(black_box(&value), false)
-                    .expect("view encode");
+                let encoded = array_type.encode(black_box(&value)).expect("view encode");
                 black_box(encoded);
             });
         });
@@ -142,9 +140,7 @@ fn bench_blob_encode_passthrough(c: &mut Criterion) {
         let value = Value::BufferView(view);
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
             b.iter(|| {
-                let encoded = BlobType
-                    .encode(black_box(&value), false)
-                    .expect("blob encode");
+                let encoded = BlobType.encode(black_box(&value)).expect("blob encode");
                 black_box(encoded);
             });
         });
@@ -176,7 +172,7 @@ fn bench_encode_string(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
             b.iter(|| {
                 let encoded = string_type
-                    .encode(black_box(&value), false)
+                    .encode(black_box(&value))
                     .expect("string encode");
                 black_box(encoded);
             });

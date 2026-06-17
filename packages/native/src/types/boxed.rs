@@ -137,7 +137,7 @@ impl BoxedType {
 pub type BoxedFreeFn = unsafe extern "C" fn(*mut c_void);
 
 impl FfiEncoder for BoxedType {
-    fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::FfiValue> {
         let ptr = value.object_ptr("Boxed object")?;
 
         if self.ownership.is_full()
@@ -279,7 +279,7 @@ impl FromDescriptor for StructType {
 }
 
 impl FfiEncoder for StructType {
-    fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::FfiValue> {
         let ptr = value.object_ptr("Struct object")?;
         Ok(ffi::FfiValue::Ptr(ptr))
     }

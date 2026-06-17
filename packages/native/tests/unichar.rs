@@ -13,28 +13,29 @@ extern "C" fn ret_codepoint() -> u32 {
 
 #[test]
 fn encode_accepts_string_number_and_optional_null() {
-    let from_string =
-        FfiEncoder::encode(&UnicharType, &Value::String("Aaa".to_owned()), false).unwrap();
+    let from_string = FfiEncoder::encode(&UnicharType, &Value::String("Aaa".to_owned())).unwrap();
     assert!(matches!(from_string, ffi::FfiValue::U32(c) if c == 'A' as u32));
 
-    let from_empty =
-        FfiEncoder::encode(&UnicharType, &Value::String(String::new()), false).unwrap();
+    let from_empty = FfiEncoder::encode(&UnicharType, &Value::String(String::new())).unwrap();
     assert!(matches!(from_empty, ffi::FfiValue::U32(0)));
 
-    let from_number = FfiEncoder::encode(&UnicharType, &Value::Number(66.0), false).unwrap();
+    let from_number = FfiEncoder::encode(&UnicharType, &Value::Number(66.0)).unwrap();
     assert!(matches!(from_number, ffi::FfiValue::U32(66)));
 
-    let optional_null = FfiEncoder::encode(&UnicharType, &Value::Null, true).unwrap();
+    let optional_null = FfiEncoder::encode(&UnicharType, &Value::Null).unwrap();
     assert!(matches!(optional_null, ffi::FfiValue::U32(0)));
 
-    let optional_undef = FfiEncoder::encode(&UnicharType, &Value::Undefined, true).unwrap();
+    let optional_undef = FfiEncoder::encode(&UnicharType, &Value::Undefined).unwrap();
     assert!(matches!(optional_undef, ffi::FfiValue::U32(0)));
 }
 
 #[test]
-fn encode_rejects_wrong_value_and_non_optional_null() {
-    assert!(FfiEncoder::encode(&UnicharType, &Value::Boolean(true), false).is_err());
-    assert!(FfiEncoder::encode(&UnicharType, &Value::Null, false).is_err());
+fn encode_rejects_wrong_value_and_encodes_null_as_zero() {
+    assert!(FfiEncoder::encode(&UnicharType, &Value::Boolean(true)).is_err());
+    assert!(matches!(
+        FfiEncoder::encode(&UnicharType, &Value::Null).unwrap(),
+        ffi::FfiValue::U32(0)
+    ));
 }
 
 #[test]

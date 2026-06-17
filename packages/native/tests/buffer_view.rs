@@ -35,7 +35,7 @@ fn encode_view(
     ownership: Ownership,
     view: BufferView,
 ) -> anyhow::Result<FfiValue> {
-    array_of(item, kind, ownership).encode(&Value::BufferView(view), false)
+    array_of(item, kind, ownership).encode(&Value::BufferView(view))
 }
 
 fn assert_passthrough(item: Type, view_kind: BufferViewKind) {

@@ -89,7 +89,7 @@ fn assert_full_element_container_releases_on_drop(kind: ArrayKind, container: Ow
 
         let ty = array_type(gobject_item_type(Ownership::Full), kind, container);
         let val = Value::Array(vec![Value::Object(NativeHandle::borrowed(obj_ptr))]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         assert_eq!(gobject_refcount(obj_ptr), before + 1);
 
         drop(encoded);
@@ -104,7 +104,7 @@ fn assert_string_list_full_container_borrowed_elements_releases_spine(kind: Arra
     common::run(|| {
         let ty = array_type(string_item_type(Ownership::Borrowed), kind, Ownership::Full);
         let val = Value::Array(vec![Value::String("kept".to_string())]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         let FfiValue::Storage(storage) = &encoded else {
             panic!("expected storage")
         };
@@ -136,7 +136,7 @@ fn encode_glist_handles_full_ownership_transfers_to_callee_when_disarmed() {
             Ownership::Full,
         );
         let val = Value::Array(vec![Value::Object(NativeHandle::borrowed(obj_ptr))]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         encoded.disarm_pending_transfer();
 
         let FfiValue::Storage(storage) = &encoded else {
@@ -169,7 +169,7 @@ fn encode_glist_handles_releases_acquired_elements_when_later_element_is_null() 
             Value::Object(NativeHandle::borrowed(obj_ptr)),
             Value::Object(NativeHandle::borrowed(std::ptr::null_mut())),
         ]);
-        assert!(ty.encode(&val, false).is_err());
+        assert!(ty.encode(&val).is_err());
         assert_eq!(gobject_refcount(obj_ptr), before);
     });
 }
@@ -183,7 +183,7 @@ fn encode_gslist_strings_full_container_releases_when_call_never_happens() {
             Ownership::Full,
         );
         let val = Value::Array(vec![Value::String("foo".to_string())]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         drop(encoded);
     });
 }
@@ -197,7 +197,7 @@ fn encode_garray_full_ownership_adopted_strings_release_when_call_never_happens(
             Ownership::Full,
         );
         let val = Value::Array(vec![Value::String("foo".to_string())]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         drop(encoded);
     });
 }
@@ -275,11 +275,11 @@ fn encode_optional_null_yields_null_ptr() {
         ArrayKind::Array,
         Ownership::Full,
     );
-    match ty.encode(&Value::Null, true).unwrap() {
+    match ty.encode(&Value::Null).unwrap() {
         FfiValue::Ptr(ptr) => assert!(ptr.is_null()),
         other => panic!("expected null ptr, got {other:?}"),
     }
-    match ty.encode(&Value::Undefined, true).unwrap() {
+    match ty.encode(&Value::Undefined).unwrap() {
         FfiValue::Ptr(ptr) => assert!(ptr.is_null()),
         other => panic!("expected null ptr, got {other:?}"),
     }
@@ -293,14 +293,14 @@ fn encode_integer_array_extract_error() {
         Ownership::Full,
     );
     let val = Value::Array(vec![Value::Boolean(true)]);
-    assert!(ty.encode(&val, false).is_err());
+    assert!(ty.encode(&val).is_err());
 }
 
 #[test]
 fn encode_tagged_array_roundtrips_through_storage() {
     let ty = array_type(tagged_item_type(), ArrayKind::Array, Ownership::Full);
     let val = Value::Array(vec![Value::Number(0.0), Value::Number(1.0)]);
-    let encoded = ty.encode(&val, false).unwrap();
+    let encoded = ty.encode(&val).unwrap();
     let decoded = ty.decode(&encoded).unwrap();
     let Value::Array(items) = decoded else {
         panic!("expected array")
@@ -316,7 +316,7 @@ fn encode_float_f32_array_roundtrips() {
         Ownership::Full,
     );
     let val = Value::Array(vec![Value::Number(1.5), Value::Number(2.5)]);
-    let encoded = ty.encode(&val, false).unwrap();
+    let encoded = ty.encode(&val).unwrap();
     let Value::Array(items) = ty.decode(&encoded).unwrap() else {
         panic!("expected array")
     };
@@ -331,7 +331,7 @@ fn encode_float_f64_array_roundtrips() {
         Ownership::Full,
     );
     let val = Value::Array(vec![Value::Number(1.25)]);
-    let encoded = ty.encode(&val, false).unwrap();
+    let encoded = ty.encode(&val).unwrap();
     let Value::Array(items) = ty.decode(&encoded).unwrap() else {
         panic!("expected array")
     };
@@ -346,7 +346,7 @@ fn encode_boolean_array_roundtrips() {
         Ownership::Full,
     );
     let val = Value::Array(vec![Value::Boolean(true), Value::Boolean(false)]);
-    let encoded = ty.encode(&val, false).unwrap();
+    let encoded = ty.encode(&val).unwrap();
     let Value::Array(items) = ty.decode(&encoded).unwrap() else {
         panic!("expected array")
     };
@@ -361,7 +361,7 @@ fn encode_boolean_array_extract_error() {
         Ownership::Full,
     );
     let val = Value::Array(vec![Value::Number(1.0)]);
-    assert!(ty.encode(&val, false).is_err());
+    assert!(ty.encode(&val).is_err());
 }
 
 #[test]
@@ -372,7 +372,7 @@ fn encode_string_array_extract_error() {
         Ownership::Full,
     );
     let val = Value::Array(vec![Value::Number(1.0)]);
-    assert!(ty.encode(&val, false).is_err());
+    assert!(ty.encode(&val).is_err());
 }
 
 #[test]
@@ -386,7 +386,7 @@ fn encode_string_array_full_ownership_transfers_glib_container() {
         Value::String("foo".to_string()),
         Value::String("bar".to_string()),
     ]);
-    let encoded = ty.encode(&val, false).unwrap();
+    let encoded = ty.encode(&val).unwrap();
     encoded.disarm_pending_transfer();
     let FfiValue::Storage(storage) = &encoded else {
         panic!("expected storage")
@@ -414,7 +414,7 @@ fn encode_string_array_full_ownership_releases_when_call_never_happens() {
         Ownership::Full,
     );
     let val = Value::Array(vec![Value::String("foo".to_string())]);
-    let encoded = ty.encode(&val, false).unwrap();
+    let encoded = ty.encode(&val).unwrap();
     drop(encoded);
 }
 
@@ -426,7 +426,7 @@ fn encode_string_array_borrowed_container_and_elements_roundtrips() {
         Ownership::Borrowed,
     );
     let val = Value::Array(vec![Value::String("foo".to_string())]);
-    let encoded = ty.encode(&val, false).unwrap();
+    let encoded = ty.encode(&val).unwrap();
     let FfiValue::Storage(storage) = &encoded else {
         panic!("expected storage")
     };
@@ -446,7 +446,7 @@ fn encode_string_array_element_transfer_hands_over_duplicates() {
         Ownership::Borrowed,
     );
     let val = Value::Array(vec![Value::String("foo".to_string())]);
-    let encoded = ty.encode(&val, false).unwrap();
+    let encoded = ty.encode(&val).unwrap();
     encoded.disarm_pending_transfer();
     let FfiValue::Storage(storage) = &encoded else {
         panic!("expected storage")
@@ -473,7 +473,7 @@ fn encode_string_array_borrowed_keeps_elements() {
         Ownership::Full,
     );
     let val = Value::Array(vec![Value::String("foo".to_string())]);
-    let encoded = ty.encode(&val, false).unwrap();
+    let encoded = ty.encode(&val).unwrap();
     let Value::Array(items) = ty.decode(&encoded).unwrap() else {
         panic!("expected array")
     };
@@ -486,7 +486,7 @@ fn encode_pointer_array_with_element_size_copies_into_buffer() {
     ty.element_size = Some(size_of::<gtk4::gdk::ffi::GdkRGBA>());
     let handle = boxed_handle();
     let val = Value::Array(vec![Value::Object(handle)]);
-    let encoded = ty.encode(&val, false).unwrap();
+    let encoded = ty.encode(&val).unwrap();
     assert!(matches!(encoded, FfiValue::Storage(_)));
 }
 
@@ -497,21 +497,21 @@ fn encode_pointer_array_with_element_size_rejects_null_handle() {
     let val = Value::Array(vec![Value::Object(NativeHandle::borrowed(
         std::ptr::null_mut(),
     ))]);
-    assert!(ty.encode(&val, false).is_err());
+    assert!(ty.encode(&val).is_err());
 }
 
 #[test]
 fn encode_pointer_array_extract_error() {
     let ty = array_type(struct_item_type(), ArrayKind::Array, Ownership::Full);
     let val = Value::Array(vec![Value::Number(1.0)]);
-    assert!(ty.encode(&val, false).is_err());
+    assert!(ty.encode(&val).is_err());
 }
 
 #[test]
 fn encode_pointer_array_full_ownership_transfers_glib_container() {
     let ty = array_type(struct_item_type(), ArrayKind::Array, Ownership::Full);
     let val = Value::Array(vec![Value::Object(boxed_handle())]);
-    let encoded = ty.encode(&val, false).unwrap();
+    let encoded = ty.encode(&val).unwrap();
     encoded.disarm_pending_transfer();
     let FfiValue::Storage(storage) = &encoded else {
         panic!("expected storage")
@@ -536,7 +536,7 @@ fn encode_pointer_array_full_ownership_transfers_glib_container() {
 fn encode_pointer_array_null_terminated_with_handles() {
     let ty = array_type(struct_item_type(), ArrayKind::Array, Ownership::Borrowed);
     let val = Value::Array(vec![Value::Object(boxed_handle())]);
-    let encoded = ty.encode(&val, false).unwrap();
+    let encoded = ty.encode(&val).unwrap();
     let FfiValue::Storage(storage) = encoded else {
         panic!("expected storage")
     };
@@ -550,7 +550,7 @@ fn encode_pointer_array_null_terminated_with_handles() {
 #[test]
 fn encode_pointer_array_null_terminated_empty_has_sentinel() {
     let ty = array_type(struct_item_type(), ArrayKind::Array, Ownership::Borrowed);
-    let encoded = ty.encode(&Value::Array(vec![]), false).unwrap();
+    let encoded = ty.encode(&Value::Array(vec![])).unwrap();
     let FfiValue::Storage(storage) = encoded else {
         panic!("expected storage")
     };
@@ -567,7 +567,7 @@ fn encode_pointer_array_null_terminated_rejects_null_handle() {
     let val = Value::Array(vec![Value::Object(NativeHandle::borrowed(
         std::ptr::null_mut(),
     ))]);
-    assert!(ty.encode(&val, false).is_err());
+    assert!(ty.encode(&val).is_err());
 }
 
 #[test]
@@ -582,7 +582,7 @@ fn encode_glist_strings_full_ownership_dups_elements() {
             Value::String("a".to_string()),
             Value::String("b".to_string()),
         ]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         assert!(matches!(encoded, FfiValue::Storage(_)));
     });
 }
@@ -599,7 +599,7 @@ fn encode_glist_strings_borrowed_roundtrips() {
             Value::String("a".to_string()),
             Value::String("b".to_string()),
         ]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         let Value::Array(items) = ty.decode(&encoded).unwrap() else {
             panic!("expected array")
         };
@@ -612,7 +612,7 @@ fn encode_glist_handles_roundtrips() {
     common::run(|| {
         let ty = array_type(struct_item_type(), ArrayKind::GList, Ownership::Borrowed);
         let val = Value::Array(vec![Value::Object(boxed_handle())]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         let Value::Array(items) = ty.decode(&encoded).unwrap() else {
             panic!("expected array")
         };
@@ -627,7 +627,7 @@ fn encode_glist_handles_rejects_null() {
         let val = Value::Array(vec![Value::Object(NativeHandle::borrowed(
             std::ptr::null_mut(),
         ))]);
-        assert!(ty.encode(&val, false).is_err());
+        assert!(ty.encode(&val).is_err());
     });
 }
 
@@ -643,7 +643,7 @@ fn encode_gslist_strings_full_ownership_dups_elements() {
             Value::String("x".to_string()),
             Value::String("y".to_string()),
         ]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         assert!(matches!(encoded, FfiValue::Storage(_)));
     });
 }
@@ -660,7 +660,7 @@ fn encode_gslist_strings_borrowed_roundtrips() {
             Value::String("x".to_string()),
             Value::String("y".to_string()),
         ]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         let Value::Array(items) = ty.decode(&encoded).unwrap() else {
             panic!("expected array")
         };
@@ -673,7 +673,7 @@ fn encode_gslist_handles_roundtrips() {
     common::run(|| {
         let ty = array_type(struct_item_type(), ArrayKind::GSList, Ownership::Borrowed);
         let val = Value::Array(vec![Value::Object(boxed_handle())]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         let Value::Array(items) = ty.decode(&encoded).unwrap() else {
             panic!("expected array")
         };
@@ -688,7 +688,7 @@ fn encode_gslist_handles_rejects_null() {
         let val = Value::Array(vec![Value::Object(NativeHandle::borrowed(
             std::ptr::null_mut(),
         ))]);
-        assert!(ty.encode(&val, false).is_err());
+        assert!(ty.encode(&val).is_err());
     });
 }
 
@@ -705,7 +705,7 @@ fn encode_gbytearray_roundtrips() {
             Value::Number(2.0),
             Value::Number(255.0),
         ]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         let Value::Array(items) = ty.decode(&encoded).unwrap() else {
             panic!("expected array")
         };
@@ -722,7 +722,7 @@ fn encode_garray_integer_roundtrips() {
             Ownership::Borrowed,
         );
         let val = Value::Array(vec![Value::Number(10.0), Value::Number(-20.0)]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         let Value::Array(items) = ty.decode(&encoded).unwrap() else {
             panic!("expected array")
         };
@@ -739,7 +739,7 @@ fn encode_garray_float_f32_roundtrips() {
             Ownership::Borrowed,
         );
         let val = Value::Array(vec![Value::Number(1.5)]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         let Value::Array(items) = ty.decode(&encoded).unwrap() else {
             panic!("expected array")
         };
@@ -756,7 +756,7 @@ fn encode_garray_float_f64_roundtrips() {
             Ownership::Borrowed,
         );
         let val = Value::Array(vec![Value::Number(2.75)]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         let Value::Array(items) = ty.decode(&encoded).unwrap() else {
             panic!("expected array")
         };
@@ -773,7 +773,7 @@ fn encode_garray_boolean_roundtrips() {
             Ownership::Borrowed,
         );
         let val = Value::Array(vec![Value::Boolean(true), Value::Boolean(false)]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         let Value::Array(items) = ty.decode(&encoded).unwrap() else {
             panic!("expected array")
         };
@@ -786,7 +786,7 @@ fn encode_garray_tagged_roundtrips() {
     common::run(|| {
         let ty = array_type(tagged_item_type(), ArrayKind::GArray, Ownership::Borrowed);
         let val = Value::Array(vec![Value::Number(1.0)]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         assert!(matches!(encoded, FfiValue::Storage(_)));
     });
 }
@@ -796,7 +796,7 @@ fn encode_garray_handles_roundtrips() {
     common::run(|| {
         let ty = array_type(struct_item_type(), ArrayKind::GArray, Ownership::Borrowed);
         let val = Value::Array(vec![Value::Object(boxed_handle())]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         let Value::Array(items) = ty.decode(&encoded).unwrap() else {
             panic!("expected array")
         };
@@ -811,7 +811,7 @@ fn encode_garray_handles_rejects_null() {
         let val = Value::Array(vec![Value::Object(NativeHandle::borrowed(
             std::ptr::null_mut(),
         ))]);
-        assert!(ty.encode(&val, false).is_err());
+        assert!(ty.encode(&val).is_err());
     });
 }
 
@@ -824,7 +824,7 @@ fn encode_garray_strings_roundtrips() {
             Ownership::Borrowed,
         );
         let val = Value::Array(vec![Value::String("hello".to_string())]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         assert!(matches!(encoded, FfiValue::Storage(_)));
     });
 }
@@ -839,7 +839,7 @@ fn encode_garray_explicit_element_size_used() {
         );
         ty.element_size = Some(size_of::<i32>());
         let val = Value::Array(vec![Value::Number(7.0)]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         assert!(matches!(encoded, FfiValue::Storage(_)));
     });
 }
@@ -919,7 +919,7 @@ fn encode_garray_append_error_unrefs_and_propagates() {
             Ownership::Borrowed,
         );
         let val = Value::Array(vec![Value::Boolean(true)]);
-        assert!(ty.encode(&val, false).is_err());
+        assert!(ty.encode(&val).is_err());
     });
 }
 
@@ -927,7 +927,7 @@ fn encode_garray_append_error_unrefs_and_propagates() {
 fn encode_gptrarray_uses_null_terminated_layout() {
     let ty = array_type(struct_item_type(), ArrayKind::GPtrArray, Ownership::Full);
     let val = Value::Array(vec![Value::Object(boxed_handle())]);
-    let encoded = ty.encode(&val, false).unwrap();
+    let encoded = ty.encode(&val).unwrap();
     assert!(matches!(encoded, FfiValue::Storage(_)));
 }
 
@@ -939,10 +939,7 @@ fn decode_integer_array_from_storage() {
         Ownership::Full,
     );
     let encoded = ty
-        .encode(
-            &Value::Array(vec![Value::Number(1.0), Value::Number(2.0)]),
-            false,
-        )
+        .encode(&Value::Array(vec![Value::Number(1.0), Value::Number(2.0)]))
         .unwrap();
     let Value::Array(items) = ty.decode(&encoded).unwrap() else {
         panic!("expected array")
@@ -1447,7 +1444,7 @@ fn decode_storage_string_elements() {
         Ownership::Full,
     );
     let encoded = ty
-        .encode(&Value::Array(vec![Value::String("z".to_string())]), false)
+        .encode(&Value::Array(vec![Value::String("z".to_string())]))
         .unwrap();
     let Value::Array(items) = ty.decode(&encoded).unwrap() else {
         panic!("expected array")
@@ -1459,7 +1456,7 @@ fn decode_storage_string_elements() {
 fn decode_storage_pointer_elements() {
     let ty = array_type(struct_item_type(), ArrayKind::Array, Ownership::Full);
     let encoded = ty
-        .encode(&Value::Array(vec![Value::Object(boxed_handle())]), false)
+        .encode(&Value::Array(vec![Value::Object(boxed_handle())]))
         .unwrap();
     let Value::Array(items) = ty.decode(&encoded).unwrap() else {
         panic!("expected array")
@@ -1665,7 +1662,7 @@ fn size_from_args_ref_null_ptr_falls_through_to_error() {
 #[test]
 fn item_codec_resolves_pointer_kinds() {
     let ty = array_type(struct_item_type(), ArrayKind::Array, Ownership::Full);
-    let encoded = ty.encode(&Value::Array(vec![]), false).unwrap();
+    let encoded = ty.encode(&Value::Array(vec![])).unwrap();
     assert!(matches!(encoded, FfiValue::Storage(_)));
 }
 
@@ -1678,8 +1675,7 @@ fn trait_methods_delegate_to_inherent_implementations() {
             Ownership::Borrowed,
         );
 
-        let encoded =
-            FfiEncoder::encode(&ty, &Value::Array(vec![Value::Number(1.0)]), false).unwrap();
+        let encoded = FfiEncoder::encode(&ty, &Value::Array(vec![Value::Number(1.0)])).unwrap();
         let decoded = FfiDecoder::decode(&ty, &encoded).unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
 
@@ -1709,7 +1705,7 @@ fn encode_string_array_dup_elements_failure_frees_earlier_duplicates() {
     );
     let val = Value::Array(vec![Value::String("first".to_string()), Value::Number(2.0)]);
     let err = ty
-        .encode(&val, false)
+        .encode(&val)
         .expect_err("a non-string element after a duplicated one must fail");
     assert!(err.to_string().contains("Expected a String"));
 }
@@ -1757,7 +1753,7 @@ fn encode_glist_handles_fails_and_unwinds_when_element_transfer_fails() {
         );
         let val = Value::Array(vec![Value::Object(NativeHandle::borrowed(pspec))]);
         let err = ty
-            .encode(&val, false)
+            .encode(&val)
             .expect_err("an unresolvable element ref function must fail the transfer");
         assert!(err.to_string().contains("Failed to find ref symbol"));
         assert_eq!(common::param_spec_refcount(pspec), before);
@@ -1780,7 +1776,7 @@ fn encode_glist_strings_full_container_full_elements_releases_when_call_never_ha
             Value::String("a".to_string()),
             Value::String("b".to_string()),
         ]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         let FfiValue::Storage(storage) = &encoded else {
             panic!("expected storage")
         };
@@ -1816,7 +1812,7 @@ fn encode_gbytearray_full_ownership_releases_when_call_never_happens() {
             Ownership::Full,
         );
         let val = Value::Array(vec![Value::Number(1.0), Value::Number(2.0)]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         let FfiValue::Storage(storage) = &encoded else {
             panic!("expected storage")
         };
@@ -1840,7 +1836,7 @@ fn encode_garray_borrowed_strings_installs_clear_func_and_roundtrips() {
             Value::String("hello".to_string()),
             Value::String("world".to_string()),
         ]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         let Value::Array(items) = ty.decode(&encoded).unwrap() else {
             panic!("expected array")
         };

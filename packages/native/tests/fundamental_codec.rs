@@ -68,7 +68,7 @@ fn fundamental_with_unresolvable_symbols(ownership: Ownership) -> FundamentalTyp
 
 fn encode_param_spec(codec: &FundamentalType, pspec: *mut c_void) -> ffi::FfiValue {
     codec
-        .encode(&Value::Object(NativeHandle::borrowed(pspec)), false)
+        .encode(&Value::Object(NativeHandle::borrowed(pspec)))
         .expect("encode should succeed")
 }
 
@@ -165,7 +165,7 @@ fn encode_borrowed_keeps_refcount() {
 fn encode_full_null_pointer_stays_null() {
     common::run(|| {
         let encoded = fundamental(Ownership::Full)
-            .encode(&Value::Null, false)
+            .encode(&Value::Null)
             .expect("null encode should succeed");
         assert!(matches!(encoded, ffi::FfiValue::Ptr(p) if p.is_null()));
     });

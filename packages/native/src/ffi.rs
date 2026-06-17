@@ -20,6 +20,6 @@ impl TryFrom<Arg> for FfiValue {
     type Error = anyhow::Error;
 
     fn try_from(arg: Arg) -> anyhow::Result<Self> {
-        arg.ty.encode(&arg.value, arg.optional)
+        arg.ty.encode(&arg.value)
     }
 }

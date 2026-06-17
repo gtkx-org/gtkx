@@ -91,12 +91,12 @@ impl FfiEncoder for TrampolineType {
     }
 
     #[cfg_attr(coverage_nightly, coverage(off))]
-    fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+    fn encode(&self, val: &value::Value) -> anyhow::Result<ffi::FfiValue> {
         use anyhow::bail;
 
         let callback = match val {
             value::Value::Callback(callback) => callback,
-            value::Value::Null | value::Value::Undefined if optional => {
+            value::Value::Null | value::Value::Undefined => {
                 return Ok(self.build_null_ffi_value());
             }
             _ => bail!("Expected a Callback for trampoline type, got {val:?}"),

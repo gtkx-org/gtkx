@@ -69,7 +69,7 @@ impl FundamentalType {
 }
 
 impl FfiEncoder for FundamentalType {
-    fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::FfiValue> {
         let ptr = value.object_ptr("Fundamental")?;
 
         if self.ownership.is_full() && !ptr.is_null() {

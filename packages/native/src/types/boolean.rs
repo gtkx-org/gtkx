@@ -7,7 +7,7 @@ use super::prelude::*;
 pub struct BooleanType;
 
 impl FfiEncoder for BooleanType {
-    fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::FfiValue> {
         let boolean = match value {
             value::Value::Boolean(b) => *b,
             _ => anyhow::bail!("Expected a Boolean for boolean type, got {value:?}"),

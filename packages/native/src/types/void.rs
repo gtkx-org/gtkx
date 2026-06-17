@@ -6,7 +6,7 @@ use super::prelude::*;
 pub struct VoidType;
 
 impl FfiEncoder for VoidType {
-    fn encode(&self, _value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+    fn encode(&self, _value: &value::Value) -> anyhow::Result<ffi::FfiValue> {
         Ok(ffi::FfiValue::Ptr(std::ptr::null_mut()))
     }
 

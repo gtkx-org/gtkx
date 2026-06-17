@@ -191,16 +191,16 @@ fn integer_ptr_to_value_raw_round_trips() {
 
 #[test]
 fn integer_encode_accepts_number_object_and_optional_null() {
-    let encoded = FfiEncoder::encode(&IntegerKind::I32, &Value::Number(7.0), false).unwrap();
+    let encoded = FfiEncoder::encode(&IntegerKind::I32, &Value::Number(7.0)).unwrap();
     assert!(matches!(encoded, ffi::FfiValue::I32(7)));
 
     let handle = native::NativeHandle::borrowed(16 as *mut c_void);
-    let from_object = FfiEncoder::encode(&IntegerKind::I64, &Value::Object(handle), false).unwrap();
+    let from_object = FfiEncoder::encode(&IntegerKind::I64, &Value::Object(handle)).unwrap();
     assert!(matches!(from_object, ffi::FfiValue::I64(16)));
 
-    let optional = FfiEncoder::encode(&IntegerKind::I32, &Value::Null, true).unwrap();
+    let optional = FfiEncoder::encode(&IntegerKind::I32, &Value::Null).unwrap();
     assert!(matches!(optional, ffi::FfiValue::I32(0)));
-    let optional_undef = FfiEncoder::encode(&IntegerKind::U32, &Value::Undefined, true).unwrap();
+    let optional_undef = FfiEncoder::encode(&IntegerKind::U32, &Value::Undefined).unwrap();
     assert!(matches!(optional_undef, ffi::FfiValue::U32(0)));
 }
 
@@ -393,10 +393,10 @@ fn float_ptr_to_value_raw_handles_null_and_value() {
 #[test]
 fn float_codec_encode_decode_and_raw_ptr() {
     for kind in [FloatKind::F32, FloatKind::F64] {
-        let encoded = FfiEncoder::encode(&kind, &Value::Number(2.5), false).unwrap();
+        let encoded = FfiEncoder::encode(&kind, &Value::Number(2.5)).unwrap();
         assert!(FfiDecoder::decode(&kind, &encoded).is_ok());
-        assert!(FfiEncoder::encode(&kind, &Value::Null, true).is_ok());
-        assert!(FfiEncoder::encode(&kind, &Value::Boolean(true), false).is_err());
+        assert!(FfiEncoder::encode(&kind, &Value::Null).is_ok());
+        assert!(FfiEncoder::encode(&kind, &Value::Boolean(true)).is_err());
         assert_eq!(
             FfiEncoder::libffi_type(&kind).as_raw_ptr(),
             kind.ffi_type().as_raw_ptr()
@@ -450,7 +450,7 @@ fn float_call_cif_invokes_native_functions() {
 fn tagged_encode_decode_and_libffi_type() {
     common::run(|| {
         let tagged = common::enum_tagged();
-        let encoded = FfiEncoder::encode(&tagged, &Value::Number(1.0), false).unwrap();
+        let encoded = FfiEncoder::encode(&tagged, &Value::Number(1.0)).unwrap();
         assert!(matches!(encoded, ffi::FfiValue::I32(1)));
         let decoded = FfiDecoder::decode(&tagged, &ffi::FfiValue::I32(1)).unwrap();
         assert!(matches!(decoded, Value::Number(n) if n == 1.0));
@@ -535,7 +535,7 @@ fn integer_codec_covers_every_kind() {
                 Ok(Value::Number(_))
             ));
 
-            let encoded = FfiEncoder::encode(&kind, &Value::Number(1.0), false).unwrap();
+            let encoded = FfiEncoder::encode(&kind, &Value::Number(1.0)).unwrap();
             FfiDecoder::decode(&kind, &encoded).unwrap();
 
             let mut slot = [0u8; 8];
@@ -573,7 +573,7 @@ fn float_codec_covers_every_kind() {
                 Value::Number(_)
             ));
 
-            let encoded = FfiEncoder::encode(&kind, &Value::Number(1.0), false).unwrap();
+            let encoded = FfiEncoder::encode(&kind, &Value::Number(1.0)).unwrap();
             FfiDecoder::decode(&kind, &encoded).unwrap();
 
             let ptr = slot.as_mut_ptr().cast::<c_void>();

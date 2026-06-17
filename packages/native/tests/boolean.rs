@@ -15,13 +15,13 @@ extern "C" fn ret_false() -> i32 {
 
 #[test]
 fn encode_accepts_boolean_and_rejects_other() {
-    let encoded = FfiEncoder::encode(&BooleanType, &Value::Boolean(true), false).unwrap();
+    let encoded = FfiEncoder::encode(&BooleanType, &Value::Boolean(true)).unwrap();
     assert!(matches!(encoded, ffi::FfiValue::I32(1)));
 
-    let encoded_false = FfiEncoder::encode(&BooleanType, &Value::Boolean(false), false).unwrap();
+    let encoded_false = FfiEncoder::encode(&BooleanType, &Value::Boolean(false)).unwrap();
     assert!(matches!(encoded_false, ffi::FfiValue::I32(0)));
 
-    let err = FfiEncoder::encode(&BooleanType, &Value::Number(1.0), false);
+    let err = FfiEncoder::encode(&BooleanType, &Value::Number(1.0));
     assert!(err.is_err());
 }
 
