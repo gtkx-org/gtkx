@@ -14,7 +14,7 @@ import {
     parameterIdentifier,
     passesHandleInPlace,
 } from "./param-classify.js";
-import { resolveWrapClass, wrapReturnValue } from "./return-wrap.js";
+import { resolveWrapperClass, wrapReturnValue } from "./return-wrap.js";
 import { renderTsType } from "./ts-type.js";
 import {
     isCellInout,
@@ -269,7 +269,7 @@ type CallArgPlan = {
 type FfiParamOptions = {
     readonly direction?: "out" | "inout";
     readonly callerAllocates?: boolean;
-    readonly wrapClass?: string;
+    readonly wrapperClass?: string;
     readonly consumed?: boolean;
     readonly optional?: boolean;
 };
@@ -278,14 +278,14 @@ const ffiParamLiteral = (ffiExpr: string, options: FfiParamOptions): string => {
     const parts = [`type: ${ffiExpr}`];
     if (options.direction !== undefined) parts.push(`direction: ${quote(options.direction)}`);
     if (options.callerAllocates === true) parts.push("callerAllocates: true");
-    if (options.wrapClass !== undefined) parts.push(`wrapClass: () => ${options.wrapClass}`);
+    if (options.wrapperClass !== undefined) parts.push(`wrapperClass: ${options.wrapperClass}`);
     if (options.consumed === true) parts.push("consumed: true");
     if (options.optional === true) parts.push("optional: true");
     return `{ ${parts.join(", ")} }`;
 };
 
 /**
- * Renders the `{ type, wrapClass? }` return descriptor an {@link t.fn}
+ * Renders the `{ type, wrapperClass? }` return descriptor an {@link t.fn}
  * binding carries: the FFI type of the primary return and, for an interface,
  * boxed, struct, or fundamental value, its pre-resolved wrapper class.
  *
@@ -295,8 +295,8 @@ const ffiParamLiteral = (ffiExpr: string, options: FfiParamOptions): string => {
 export const renderReturnDescriptor = (context: ModuleContext, fn: GirFunction): string => {
     const instanceOffset = fn.instance === undefined ? 0 : 1;
     const ffi = renderFfiType(context, fn.returnValue.type, fn.returnValue.transferOwnership, instanceOffset);
-    const wrapClass = resolveWrapClass(context, fn.returnValue.type);
-    return wrapClass === undefined ? `{ type: ${ffi} }` : `{ type: ${ffi}, wrapClass: () => ${wrapClass} }`;
+    const wrapperClass = resolveWrapperClass(context, fn.returnValue.type);
+    return wrapperClass === undefined ? `{ type: ${ffi} }` : `{ type: ${ffi}, wrapperClass: ${wrapperClass} }`;
 };
 
 /**
@@ -363,8 +363,8 @@ const planOutParam = (
     consumed: boolean,
 ): CallArgPlan => {
     const ffi = renderFfiType(context, parameter.type, parameter.transferOwnership, instanceOffset);
-    const wrapClass = resolveWrapClass(context, parameter.type);
-    return { paramLiteral: ffiParamLiteral(ffi, { direction: "out", wrapClass, consumed }), inputExpr: undefined };
+    const wrapperClass = resolveWrapperClass(context, parameter.type);
+    return { paramLiteral: ffiParamLiteral(ffi, { direction: "out", wrapperClass, consumed }), inputExpr: undefined };
 };
 
 const planCallerOut = (context: ModuleContext, parameter: GirParameter, instanceOffset: number): CallArgPlan => {
@@ -395,9 +395,9 @@ const planInoutParam = (
         };
     }
     const ffi = renderFfiType(context, parameter.type, parameter.transferOwnership, instanceOffset);
-    const wrapClass = resolveWrapClass(context, parameter.type);
+    const wrapperClass = resolveWrapperClass(context, parameter.type);
     return {
-        paramLiteral: ffiParamLiteral(ffi, { direction: "inout", wrapClass, consumed }),
+        paramLiteral: ffiParamLiteral(ffi, { direction: "inout", wrapperClass, consumed }),
         inputExpr: parameterCallExpression(context, parameter, index),
     };
 };

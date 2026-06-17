@@ -45,12 +45,12 @@ export type ValueType = {
     /** The value's FFI type. */
     readonly type: Type;
     /**
-     * Resolves the wrapper class for an interface/boxed/struct/fundamental
-     * value. A thunk, not the class itself: the binding is a module-level
-     * constant evaluated before the namespace's class declarations, so a direct
-     * reference would hit the temporal dead zone; resolution defers to call time.
+     * The wrapper class the value is lifted into, supplied only for the kinds
+     * whose FFI descriptor carries no recoverable identity — a plain struct or a
+     * GType-less fundamental. Every other kind self-resolves its class from the
+     * descriptor's runtime `GType`, leaving this undefined.
      */
-    readonly wrapClass?: () => AnyClass;
+    readonly wrapperClass?: AnyClass;
 };
 
 /**
@@ -129,7 +129,7 @@ const seedForOutCell = (ffiType: Type): Value => {
 const assembleResult = (surfaced: readonly SurfacedOut[], primary: unknown, hasPrimary: boolean): unknown =>
     tupleResult(
         surfaced.map((slot) =>
-            slot.cell === undefined ? slot.raw : wrapValue(slot.param.type, slot.cell.value, slot.param.wrapClass?.()),
+            slot.cell === undefined ? slot.raw : wrapValue(slot.param.type, slot.cell.value, slot.param.wrapperClass),
         ),
         primary,
         hasPrimary,
@@ -218,7 +218,7 @@ function ffiFn(
             checkError(errorCell);
         }
 
-        const primary = hasPrimary ? wrapValue(ret.type, rawResult, ret.wrapClass?.()) : undefined;
+        const primary = hasPrimary ? wrapValue(ret.type, rawResult, ret.wrapperClass) : undefined;
         return assembleResult(surfaced, primary, hasPrimary);
     };
 }

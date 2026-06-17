@@ -3,18 +3,21 @@ import { ImportsBuilder } from "./imports.js";
 /**
  * Accumulator for one generated TypeScript module's source.
  *
- * Writers append code in three logical phases:
+ * Writers append code in three logical phases, stitched in this output order:
  *
- * 1. *Bindings* — the `const fn_name = t.fn(...)` block at the top.
- * 2. *Declarations* — the class bodies, free function exports, enums,
+ * 1. *Declarations* — the class bodies, free function exports, enums,
  *    constants.
+ * 2. *Bindings* — the `const fn_name = t.fn(...)` block. It follows the
+ *    declarations so a binding's `wrapperClass` can name a wrapper class by
+ *    direct reference; the classes' own method bodies reach back to the
+ *    bindings only when invoked, after the module has fully loaded.
  * 3. *Registrations* — the trailing block of module-load side-effect
  *    statements: `registerWrapperClass(...)` registrations plus namespace
  *    `init()` / `finalize` bootstrap calls.
  *
  * Keeping the three buckets independent removes ordering constraints
- * between writers and lets {@link emit} stitch a final source string with
- * the same shape every generated file uses today.
+ * between writers and lets {@link toSource} stitch a final source string with
+ * the same shape every generated file uses.
  */
 export class ModuleBuilder {
     /** Imports manifest the writers feed into. */
@@ -84,15 +87,15 @@ export class ModuleBuilder {
     }
 
     /**
-     * Renders the full TypeScript source: imports, bindings, declarations,
+     * Renders the full TypeScript source: imports, declarations, bindings,
      * registrations — separated by a single blank line.
      */
     toSource(): string {
         const sections: string[] = [];
         const importsBlock = this.imports.toSource();
         if (importsBlock.length > 0) sections.push(importsBlock.trimEnd());
-        if (this.bindings.length > 0) sections.push(this.bindings.join("\n\n"));
         if (this.declarations.length > 0) sections.push(this.declarations.join("\n\n"));
+        if (this.bindings.length > 0) sections.push(this.bindings.join("\n\n"));
         if (this.registrations.length > 0) sections.push(this.registrations.join("\n\n"));
         return `${sections.join("\n\n")}\n`;
     }

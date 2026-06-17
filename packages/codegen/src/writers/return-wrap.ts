@@ -80,10 +80,10 @@ const wrapNamedInline = (
 const wrapViaFfiValue = (context: ModuleContext, ref: GirTypeRef, valueExpression: string): string => {
     context.addRuntimeImport("wrapValue");
     const descriptor = context.hoistFfiType(renderFfiType(context, ref, "none"));
-    const wrapClass = resolveWrapClass(context, ref);
-    return wrapClass === undefined
+    const wrapperClass = resolveWrapperClass(context, ref);
+    return wrapperClass === undefined
         ? `wrapValue(${descriptor}, ${valueExpression})`
-        : `wrapValue(${descriptor}, ${valueExpression}, ${wrapClass})`;
+        : `wrapValue(${descriptor}, ${valueExpression}, ${wrapperClass})`;
 };
 
 const wrapPrimitive = (ref: PrimitiveTypeRef, nullable: boolean, valueExpression: string): string => {
@@ -112,7 +112,7 @@ const wrapPrimitive = (ref: PrimitiveTypeRef, nullable: boolean, valueExpression
  * @param ref - The value's GIR type reference
  * @returns The qualified fallback-class expression, or `undefined`
  */
-export const resolveWrapClass = (context: ModuleContext, ref: GirTypeRef | undefined): string | undefined => {
+export const resolveWrapperClass = (context: ModuleContext, ref: GirTypeRef | undefined): string | undefined => {
     if (ref === undefined) return undefined;
     switch (ref.kind) {
         case "primitive":
@@ -121,15 +121,15 @@ export const resolveWrapClass = (context: ModuleContext, ref: GirTypeRef | undef
         case "varargs":
             return undefined;
         case "named":
-            return namedWrapClass(context, ref);
+            return namedWrapperClass(context, ref);
         case "array":
-            return resolveWrapClass(context, ref.element);
+            return resolveWrapperClass(context, ref.element);
         case "list":
-            return ref.flavor === "gbytearray" ? undefined : resolveWrapClass(context, ref.element);
+            return ref.flavor === "gbytearray" ? undefined : resolveWrapperClass(context, ref.element);
     }
 };
 
-const namedWrapClass = (context: ModuleContext, ref: NamedTypeRef): string | undefined => {
+const namedWrapperClass = (context: ModuleContext, ref: NamedTypeRef): string | undefined => {
     const owner = ref.namespaceName ?? context.namespace.name;
     const resolved = context.repository.resolveNamed(owner, ref.typeName);
     if (resolved === undefined) return undefined;
@@ -137,7 +137,7 @@ const namedWrapClass = (context: ModuleContext, ref: NamedTypeRef): string | und
         case "boxed":
             return boxedNeedsFallbackClass(resolved.value) ? context.qualify(owner, ref.typeName) : undefined;
         case "alias":
-            return resolveWrapClass(context, resolved.targetRef);
+            return resolveWrapperClass(context, resolved.targetRef);
         case "interface":
         case "class":
         case "enum":

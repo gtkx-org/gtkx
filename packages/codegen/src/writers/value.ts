@@ -408,7 +408,7 @@ const isReferenceableBoxed = (boxed: ResolvedBoxed): boolean => {
 /**
  * Whether a boxed record's FFI descriptor carries no `GType` identity the
  * runtime can resolve a wrapper class from, so the binding must pass an explicit
- * `wrapClass` fallback. True for a plain `t.struct` (no copy/free pair, no
+ * `wrapperClass` fallback. True for a plain `t.struct` (no copy/free pair, no
  * `get-type`) and for a `t.fundamental` with no registered GLib type name (e.g.
  * `GAsyncQueue`); false for a `t.boxed` (resolved through its `get-type`) and a
  * named `t.fundamental` (resolved through its type name).

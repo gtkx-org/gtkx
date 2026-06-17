@@ -16,7 +16,7 @@ import { emitInterface } from "../writers/interface.js";
  *
  * Walks the namespace's declared enums, boxeds, classes, interfaces,
  * callbacks, functions, constants, and aliases, dispatching to the
- * per-construct writers in `writers/`: bindings first, declarations second,
+ * per-construct writers in `writers/`: declarations first, bindings second,
  * registrations trailing.
  *
  * @param namespace - The namespace to emit
