@@ -8,8 +8,8 @@
  */
 
 import type { Handle } from "@gtkx/native";
-import type { AnyClass } from "@gtkx/utils";
-import { wrapHandle } from "./registry.js";
+import { getErrorGtype } from "./gtype.js";
+import { getWrapperClass, wrapHandle } from "./registry.js";
 
 /**
  * Structural shape of a thrown GLib `GError` boxed wrapper.
@@ -30,20 +30,24 @@ export interface GError {
 /**
  * Throws the failing `GError` when a `GError` out-parameter holds an error.
  *
- * Generated bindings for throwing callables pass the populated error ref and
- * the GLib `Error` wrapper class. The raw `GError` wrapper is thrown directly,
- * so the catch site reads its `domain`, `code`, and `message` off the live
- * boxed value and discriminates it with `instanceof` against a generated
- * error-domain enum. A JavaScript stack trace pointing at the call site is
- * attached before throwing so failures remain debuggable even though the
- * boxed `GError` is not a JavaScript `Error`. A no-op when the ref is empty.
+ * The GLib `Error` wrapper class is resolved from the registry by the boxed
+ * `GError` `GType`, so generated bindings pass only the populated error ref. The
+ * raw `GError` wrapper is thrown directly, so the catch site reads its `domain`,
+ * `code`, and `message` off the live boxed value and discriminates it with
+ * `instanceof` against a generated error-domain enum. A JavaScript stack trace
+ * pointing at the call site is attached before throwing so failures remain
+ * debuggable even though the boxed `GError` is not a JavaScript `Error`. A no-op
+ * when the ref is empty.
  *
  * @param error - Out-parameter ref populated by the FFI call
- * @param errorClass - The GLib `Error` wrapper class
  */
-export function checkError(error: { value: Handle | null }, errorClass: AnyClass<GError>): void {
+export function checkError(error: { value: Handle | null }): void {
     if (error.value !== null) {
-        const gerror = wrapHandle(error.value, errorClass);
+        const errorClass = getWrapperClass(getErrorGtype());
+        if (errorClass === null) {
+            throw new Error("checkError: the GLib Error wrapper class is not registered");
+        }
+        const gerror = wrapHandle<GError>(error.value, errorClass);
         const carrier = new Error(gerror.message);
         Error.captureStackTrace?.(carrier, checkError);
         Object.defineProperty(gerror, "stack", {

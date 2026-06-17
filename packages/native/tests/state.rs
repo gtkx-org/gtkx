@@ -276,12 +276,12 @@ fn gtk_thread_phase_lifecycle_transitions() {
         assert!(thread.begin_quit().is_ok());
         assert_eq!(thread.phase(), RuntimePhase::NotRunning);
 
-        let double_stop = thread.begin_quit().expect_err("second stop must fail");
-        assert!(double_stop.contains("already-stopped"));
+        let double_quit = thread.begin_quit().expect_err("second quit must fail");
+        assert!(double_quit.contains("already-quit"));
 
         let restart = thread
             .begin_init()
-            .expect_err("re-init after stop must fail");
+            .expect_err("re-init after quit must fail");
         assert!(restart.contains("cannot be reinitialized"));
 
         thread.reset_phase_for_test();

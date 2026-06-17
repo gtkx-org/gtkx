@@ -18,7 +18,7 @@
 
 import { type Arg, type Type as FfiType, type Handle, call as nativeCall, type Value } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
-import { checkError, type GError } from "./error.js";
+import { checkError } from "./error.js";
 import { wrapValue } from "./gobject.js";
 import { t as descriptors, tupleResult } from "./helpers.js";
 import { getHandle } from "./registry.js";
@@ -84,12 +84,11 @@ export type FfiFnReturn = {
 /** Optional call-shape configuration. */
 export type FfiFnOptions = {
     /**
-     * Resolves the GLib `Error` wrapper class. When present, the implicit
-     * `GError**` out-parameter is appended and {@link checkError} runs after the
-     * call. A call-time thunk, like {@link FfiFnParam.wrapClass}, so a binding
-     * declared before the namespace's `Error` class avoids the temporal dead zone.
+     * Whether the callable has an implicit trailing `GError**` out-parameter.
+     * When `true`, that parameter is appended and {@link checkError} runs after
+     * the call, throwing the populated `GError`.
      */
-    readonly throws?: () => AnyClass<GError>;
+    readonly throws?: boolean;
 };
 
 type OutCell = { value: unknown };
@@ -155,7 +154,7 @@ const bindArg = (param: FfiFnParam, arg: Arg, input: unknown, surfaced: Surfaced
             return 0;
         }
         case "inout": {
-            const cell: OutCell = { value: input }
+            const cell: OutCell = { value: input };
             arg.value = cell as Value;
             if (param.consumed !== true) surfaced.push({ param, cell });
             return 1;
@@ -193,8 +192,8 @@ function ffiFn(
             ? { type: param.type, value: undefined, optional: true }
             : { type: param.type, value: undefined };
     });
-    const errorClass = options.throws;
-    const errorArgIndex = errorClass === undefined ? -1 : args.push({ type: GERROR_REF, value: undefined }) - 1;
+    const throws = options.throws === true;
+    const errorArgIndex = throws ? args.push({ type: GERROR_REF, value: undefined }) - 1 : -1;
     const hasPrimary = ret.type.type !== "void";
 
     return (...inputs) => {
@@ -214,8 +213,8 @@ function ffiFn(
 
         const rawResult = nativeCall(library, symbol, args, ret.type);
 
-        if (errorCell !== undefined && errorClass !== undefined) {
-            checkError(errorCell, errorClass());
+        if (errorCell !== undefined) {
+            checkError(errorCell);
         }
 
         const primary = hasPrimary ? wrapValue(ret.type, rawResult, ret.wrapClass?.()) : undefined;

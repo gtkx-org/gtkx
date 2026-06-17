@@ -21,6 +21,7 @@ function isGobjectType(gtype: GType): boolean {
 const classRegistry = new Map<GType, AnyClass>();
 const gtypeByClass = new WeakMap<AnyClass, GType>();
 const interfaceGtypeByClass = new WeakMap<AnyClass, GType>();
+const interfaceClassByGtype = new Map<GType, AnyClass>();
 
 /**
  * Records the GLib type identifier of a wrapper class in the identity registry.
@@ -56,8 +57,23 @@ export function setClassGtype(cls: AnyClass, gtype: GType): void {
 export function setInterfaceGtype(cls: AnyClass, gtype: GType): void {
     if (gtype !== TYPE_INVALID) {
         interfaceGtypeByClass.set(cls, gtype);
+        interfaceClassByGtype.set(gtype, cls);
         (cls.prototype as GTyped).__gtype__ = gtype;
     }
+}
+
+/**
+ * Returns the generated interface wrapper class registered for the interface
+ * `GType`, or `null` when no interface is registered under it. Lets a value
+ * lift resolve an interface return to its wrapper class from the `GType` its
+ * FFI descriptor names, so the wrapper carries the interface's methods even when
+ * the runtime instance is a private, unregistered implementation.
+ *
+ * @param gtype - The GLib interface type identifier.
+ * @returns The registered interface wrapper class, or `null`.
+ */
+export function getInterfaceWrapperClass(gtype: GType): AnyClass | null {
+    return interfaceClassByGtype.get(gtype) ?? null;
 }
 
 /**
@@ -116,10 +132,7 @@ export function wrapHandle<T extends object>(handle: Handle, cls: AnyClass<T>): 
 export function wrapHandle<T extends object>(handle: Handle | null | undefined, cls: AnyClass<T>): T | null;
 export function wrapHandle(handle: null | undefined, cls?: AnyClass): null;
 export function wrapHandle<T extends object = GTyped>(handle: Handle, cls?: AnyClass): T;
-export function wrapHandle<T extends object = GTyped>(
-    handle: Handle | null | undefined,
-    cls?: AnyClass,
-): T | null;
+export function wrapHandle<T extends object = GTyped>(handle: Handle | null | undefined, cls?: AnyClass): T | null;
 export function wrapHandle(handle: Handle | null | undefined, cls?: AnyClass): object | null {
     if (handle === null || handle === undefined) return null;
     if (cls === undefined) {

@@ -62,7 +62,6 @@ export type BoxedType = {
     freeFn?: string;
 };
 
-
 export type FundamentalType = {
     type: "fundamental";
     ownership: Ownership;
@@ -71,7 +70,6 @@ export type FundamentalType = {
     unrefFn: string;
     typeName?: string;
 };
-
 
 export type ArrayType = {
     type: "array";
@@ -143,7 +141,7 @@ export type ArgType = {
     type: Type;
     /** Whether the argument is optional (can be omitted) or required. Defaults to `false`. */
     optional?: boolean;
-}
+};
 
 /**
  * An argument for an FFI call.
@@ -154,7 +152,6 @@ export type Arg = ArgType & {
     /** The argument value */
     value: Value;
 };
-
 
 /**
  * Virtual function override installed into a registered class's vtable.

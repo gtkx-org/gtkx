@@ -7,7 +7,7 @@ mod freeze;
 mod gobject;
 pub(crate) mod handler;
 mod init;
-mod register_class;
 mod quit;
+mod register_class;
 mod test_support;
 mod toggle_ref;

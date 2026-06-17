@@ -136,7 +136,7 @@ export function connectSignalReturning(
                     hasDestroy: true,
                     userDataIndex: 1,
                 },
-                value: callback as ((...args: Value[]) => Value),
+                value: callback as (...args: Value[]) => Value,
             },
             { type: INT32, value: 0 },
         ],
@@ -168,7 +168,7 @@ export function connectSignalTrampoline(
                     hasDestroy: options.hasDestroy ?? true,
                     userDataIndex: options.userDataIndex,
                 },
-                value: callback as ((...args: Value[]) => Value)
+                value: callback as (...args: Value[]) => Value,
             },
             { type: INT32, value: 0 },
         ],

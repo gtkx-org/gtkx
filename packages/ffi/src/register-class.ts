@@ -1,18 +1,11 @@
 import {
-    registerClass as nativeRegisterClass,
     type RegisterClassOptions as NativeRegisterClassOptions,
     type RegisterClassVfunc as NativeRegisterClassVfunc,
+    registerClass as nativeRegisterClass,
 } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { type GType, TYPE_INVALID, typeInterfaces } from "./gtype.js";
-import {
-    getClassGtype,
-    getParentClass,
-    getVfuncRegistry,
-    type Handle,
-    setClassGtype,
-    wrapHandle,
-} from "./registry.js";
+import { getClassGtype, getParentClass, getVfuncRegistry, type Handle, setClassGtype, wrapHandle } from "./registry.js";
 
 /**
  * Generated descriptor of a vtable vfunc slot. Codegen emits one per vfunc on

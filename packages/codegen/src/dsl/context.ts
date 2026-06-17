@@ -96,15 +96,19 @@ export class ModuleContext {
      * that depend on values still mid-initialization, which would deadlock the
      * import graph.
      *
-     * For non-foundational namespaces a side-effect import is recorded
-     * alongside the wildcard so the foreign module loads even when its alias
-     * appears only in type positions. The wildcard alias is type-stripped out
-     * of the emitted `.js` whenever it is never read as a value, which would
-     * otherwise drop the foreign module from the runtime graph and skip its
-     * eager `*_get_type` registrations. The side-effect import survives type
-     * stripping and pins the module in place. The foundational `gobject` and
-     * `glib` wildcards are always read as values (enums, base classes) and so
-     * are never stripped, needing no side-effect pin.
+     * For non-foundational namespaces a side-effect import of the same
+     * `index.js` barrel is recorded alongside the wildcard so the foreign
+     * module loads even when its alias appears only in type positions. The
+     * wildcard alias is type-stripped out of the emitted `.js` whenever it is
+     * never read as a value, which would otherwise drop the foreign module from
+     * the runtime graph and skip both its eager `*_get_type` registrations and
+     * its prototype augmentations. The side-effect import survives type
+     * stripping and pins the barrel in place; pinning the barrel rather than the
+     * bare generated module keeps a type-only reference from registering a
+     * wrapper class whose override-supplied methods never loaded. The
+     * foundational `gobject` and `glib` wildcards are always read as values
+     * (enums, base classes) and so are never stripped, needing no side-effect
+     * pin.
      *
      * @param namespaceName - The other namespace (e.g. `"GLib"`)
      */
@@ -113,7 +117,7 @@ export class ModuleContext {
         const directory = namespaceName.toLowerCase();
         const isFoundational = directory === "gobject" || directory === "glib";
         const path = isFoundational ? `../${directory}/${directory}.js` : `../${directory}/index.js`;
-        if (!isFoundational) this.module.imports.addSideEffect(`../${directory}/${directory}.js`);
+        if (!isFoundational) this.module.imports.addSideEffect(path);
         this.module.imports.addNamespace(path, namespaceName);
         return namespaceName;
     }

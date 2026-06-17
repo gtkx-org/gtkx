@@ -1,11 +1,11 @@
 import { onExit, quitApplication, runApplication } from "@gtkx/ffi";
 import { describe, expect, it, vi } from "vitest";
 
-const nativeMock = vi.hoisted(() => ({ stop: vi.fn() }));
+const nativeMock = vi.hoisted(() => ({ quit: vi.fn() }));
 
 vi.mock("@gtkx/native", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@gtkx/native")>();
-    return { ...actual, stop: nativeMock.stop };
+    return { ...actual, quit: nativeMock.quit };
 });
 
 type FakeApplication = {
@@ -109,10 +109,10 @@ describe("onExit", () => {
 
         process.emit("exit", 0);
         expect(count).toBe(1);
-        expect(nativeMock.stop).toHaveBeenCalledTimes(1);
+        expect(nativeMock.quit).toHaveBeenCalledTimes(1);
 
         process.emit("exit", 0);
         expect(count).toBe(1);
-        expect(nativeMock.stop).toHaveBeenCalledTimes(1);
+        expect(nativeMock.quit).toHaveBeenCalledTimes(1);
     });
 });

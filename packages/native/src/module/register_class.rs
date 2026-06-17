@@ -467,12 +467,8 @@ fn parse_register_options(
     };
 
     let vfuncs = parse_array_property(env, &options, "vfuncs", RawVfunc::from_js_value)?;
-    let interfaces = parse_array_property(
-        env,
-        &options,
-        "interfaceVfuncs",
-        RawInterface::from_js_value,
-    )?;
+    let interfaces =
+        parse_array_property(env, &options, "interfaces", RawInterface::from_js_value)?;
 
     Ok((vfuncs, interfaces))
 }

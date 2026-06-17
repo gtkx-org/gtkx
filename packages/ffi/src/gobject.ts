@@ -43,7 +43,15 @@ import {
     typeName,
 } from "./gtype.js";
 import { t } from "./helpers.js";
-import { getClassGtype, getHandle, getWrapperClass, setHandle, tryGetHandle, wrapHandle } from "./registry.js";
+import {
+    getClassGtype,
+    getHandle,
+    getInterfaceWrapperClass,
+    getWrapperClass,
+    setHandle,
+    tryGetHandle,
+    wrapHandle,
+} from "./registry.js";
 
 /**
  * A property-marshalling instruction: the property's FFI type paired with the
@@ -1102,14 +1110,68 @@ const wrapCollection = (ffiType: ArrayFfiType, value: unknown, elementClass: Any
     return (value as unknown[]).map((item) => wrapValue(ffiType.itemType, item, elementClass));
 };
 
+type GObjectFfiType = Extract<FfiType, { type: "gobject" }>;
+
+const interfaceClassByDescriptor = new WeakMap<FfiType, AnyClass>();
+
+/**
+ * Lifts a `GObject` value. A descriptor naming an interface resolves that
+ * interface's wrapper class from the registry — caching it per descriptor — so
+ * the wrapper carries the interface's methods even when the runtime instance is
+ * a private, unregistered implementation; a concrete-class or untyped descriptor
+ * self-resolves from the handle's runtime `GType`. An explicit `targetClass`
+ * takes precedence.
+ */
+const wrapGObjectValue = (
+    ffiType: GObjectFfiType,
+    value: Handle | null,
+    targetClass: AnyClass | undefined,
+): object | null => {
+    if (targetClass !== undefined) return wrapHandle(value, targetClass);
+    if (ffiType.typeName === undefined) return wrapHandle(value, undefined);
+    let cls = interfaceClassByDescriptor.get(ffiType);
+    if (cls === undefined) {
+        const resolved = getInterfaceWrapperClass(typeFromName(ffiType.typeName));
+        if (resolved === null) return wrapHandle(value, undefined);
+        interfaceClassByDescriptor.set(ffiType, resolved);
+        cls = resolved;
+    }
+    return wrapHandle(value, cls);
+};
+
+const boxedGtypeByDescriptor = new WeakMap<FfiType, GType>();
+
+/**
+ * Lifts a boxed or named-fundamental value whose FFI descriptor identifies its
+ * `GType`, resolving the wrapper class from the registry and caching the
+ * resolved `GType` per descriptor so the lookup is paid once per binding. When
+ * the binding supplies an explicit fallback class — a plain struct, or a
+ * fundamental with no registered GLib type name — that class is used directly.
+ */
+const wrapBoxedValue = (ffiType: FfiType, value: Handle | null, targetClass: AnyClass | undefined): object | null => {
+    if (value === null) return null;
+    if (targetClass !== undefined) return wrapHandle(value, targetClass);
+    let gtype = boxedGtypeByDescriptor.get(ffiType);
+    if (gtype === undefined) {
+        gtype = resolveBoxedGtype(ffiType);
+        boxedGtypeByDescriptor.set(ffiType, gtype);
+    }
+    const cls = getWrapperClass(gtype);
+    if (cls === null) {
+        throw new Error(`wrapValue: no registered wrapper class for boxed GType '${typeName(gtype) ?? String(gtype)}'`);
+    }
+    return wrapHandle(value, cls);
+};
+
 /**
  * Lifts a raw FFI value into its typed JavaScript form.
  *
  * @param ffiType - The value's FFI type descriptor.
  * @param value - The raw value the native call produced.
- * @param targetClass - The wrapper class for an interface, boxed, struct, or
- *   fundamental value, or the element wrapper for a collection. Omitted for
- *   GObjects, primitives, enums, flags, and strings.
+ * @param targetClass - The fallback wrapper class for a plain struct or a
+ *   GType-less fundamental, or the element wrapper for a collection. Omitted for
+ *   GObjects and boxed or named-fundamental values, which self-resolve from their
+ *   descriptor's `GType`, and for primitives, enums, flags, and strings.
  * @returns The wrapped JavaScript value.
  */
 export function wrapValue(ffiType: FfiType, value: unknown, targetClass?: AnyClass): unknown {
@@ -1117,10 +1179,12 @@ export function wrapValue(ffiType: FfiType, value: unknown, targetClass?: AnyCla
         case "boolean":
             return Boolean(value);
         case "gobject":
-        case "boxed":
+            return wrapGObjectValue(ffiType, value as Handle | null, targetClass);
         case "struct":
-        case "fundamental":
             return wrapHandle(value as Handle | null, targetClass);
+        case "boxed":
+        case "fundamental":
+            return wrapBoxedValue(ffiType, value as Handle | null, targetClass);
         case "array":
             return wrapCollection(ffiType, value, targetClass);
         case "hashtable":

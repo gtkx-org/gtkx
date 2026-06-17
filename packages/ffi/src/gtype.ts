@@ -51,6 +51,31 @@ export const GVALUE_BORROWED: FfiType = t.boxed("GValue", "borrowed", LIBGOBJECT
  */
 export const gtypeFromFfi: (value: unknown) => GType = Number;
 
+/**
+ * Builds a resolver that looks a `GType` up by name on first call and caches the
+ * result for every call thereafter.
+ *
+ * For a type whose `GType` is not available at module evaluation — a lazily
+ * registered boxed type whose name the type system does not know until its
+ * registration function has run — this defers the {@link typeFromName} lookup to
+ * first use rather than module load.
+ *
+ * @param name - The GLib type name to resolve (e.g. `"GError"`).
+ * @returns A function returning the cached `GType`.
+ * @example
+ * ```ts
+ * const getErrorGtype = lazyGtype("GError");
+ * const gtype = getErrorGtype();
+ * ```
+ */
+export const lazyGtype = (name: string): (() => GType) => {
+    let cached: GType | undefined;
+    return () => {
+        cached ??= typeFromName(name);
+        return cached;
+    };
+};
+
 const gTypeFromName = t.bind(LIBGOBJECT, "g_type_from_name", [{ type: t.string("borrowed") }], t.uint64);
 
 const gTypeIsA = t.bind(LIBGOBJECT, "g_type_is_a", [{ type: t.uint64 }, { type: t.uint64 }], t.boolean);
@@ -261,6 +286,23 @@ export const TYPE_GTYPE: GType = typeFromName("GType");
  * The fundamental `GType` of a `GVariant` value.
  */
 export const TYPE_VARIANT: GType = typeFromName("GVariant");
+
+/**
+ * Resolves and caches the boxed `GType` of a GLib `GError`.
+ *
+ * `GError` is a lazily registered boxed type rather than a fundamental, so its
+ * name is unknown to the type system at module load. Resolution is deferred to
+ * first use, which only happens once a live `GError` is being wrapped — by which
+ * point the GLib bindings have registered the type and {@link typeFromName}
+ * resolves it.
+ *
+ * @returns The `GError` boxed `GType`.
+ * @example
+ * ```ts
+ * const errorClass = getWrapperClass(getErrorGtype());
+ * ```
+ */
+export const getErrorGtype: () => GType = lazyGtype("GError");
 
 /**
  * The fundamental `GType` of a Unicode code point, mapped to `guint`.

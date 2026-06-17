@@ -387,7 +387,9 @@ type ResolvedBoxed = Extract<ResolvedNamed, { kind: "boxed" }>["value"];
  * renders as a `t.fundamental`; one with neither renders as `t.boxed` (when it
  * has a `get-type`) or a plain `t.struct`.
  */
-const boxedRefPair = (boxed: ResolvedBoxed): { readonly refFunc: string | undefined; readonly unrefFunc: string | undefined } => {
+const boxedRefPair = (
+    boxed: ResolvedBoxed,
+): { readonly refFunc: string | undefined; readonly unrefFunc: string | undefined } => {
     const intrinsic =
         boxed.glibTypeName === undefined ? undefined : INTRINSIC_FUNDAMENTAL_FUNCS.get(boxed.glibTypeName);
     return {

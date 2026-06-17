@@ -16,7 +16,7 @@ const gerrorIn = (domain: number): GError => GError.newLiteral(domain, FILE_ERRO
 
 describe("checkError", () => {
     it("does nothing when the error ref is empty", () => {
-        expect(() => checkError({ value: null }, GError)).not.toThrow();
+        expect(() => checkError({ value: null })).not.toThrow();
     });
 
     it("throws the raw GError when the ref is populated", () => {
@@ -24,7 +24,7 @@ describe("checkError", () => {
 
         let thrown: unknown;
         try {
-            checkError(ref, GError);
+            checkError(ref);
         } catch (error) {
             thrown = error;
         }
@@ -37,7 +37,7 @@ describe("checkError", () => {
 
         let thrown: GError | undefined;
         try {
-            checkError(ref, GError);
+            checkError(ref);
         } catch (error) {
             if (error instanceof GError) thrown = error;
         }
@@ -52,7 +52,7 @@ describe("checkError", () => {
 
         let stack: string | undefined;
         try {
-            checkError(ref, GError);
+            checkError(ref);
         } catch (error) {
             if (typeof error === "object" && error !== null && "stack" in error && typeof error.stack === "string") {
                 stack = error.stack;

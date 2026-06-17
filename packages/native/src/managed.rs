@@ -79,7 +79,7 @@ impl AnchoredValue {
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn new(value: NativeValue) -> Self {
         let on_foreign_thread =
-            Mailbox::global().is_running() && !glib::MainContext::default().is_owner();
+            Mailbox::global().is_initialized() && !glib::MainContext::default().is_owner();
         if on_foreign_thread {
             Self::Transferable(TransferableValue(ManuallyDrop::new(value)))
         } else {

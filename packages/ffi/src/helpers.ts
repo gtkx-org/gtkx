@@ -104,7 +104,8 @@ const blobT: Type = Object.freeze({ type: "blob" });
 const stringT = (ownership: Ownership = "borrowed", length?: number): Type =>
     length === undefined ? { type: "string", ownership } : { type: "string", ownership, length };
 
-const objectT = (ownership: Ownership = "borrowed"): Type => ({ type: "gobject", ownership });
+const objectT = (ownership: Ownership = "borrowed", typeName?: string): Type =>
+    typeName === undefined ? { type: "gobject", ownership } : { type: "gobject", ownership, typeName };
 
 // biome-ignore lint/complexity/useMaxParams: positional descriptor mirrors the native BoxedType fields and is the format generated bindings emit
 const boxedT = (
@@ -270,7 +271,7 @@ type T = {
     readonly unichar: Type;
     readonly blob: Type;
     readonly string: (ownership?: Ownership, length?: number) => Type;
-    readonly object: (ownership?: Ownership) => Type;
+    readonly object: (ownership?: Ownership, typeName?: string) => Type;
     readonly boxed: (
         innerType: string,
         ownership?: Ownership,
