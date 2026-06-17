@@ -128,11 +128,14 @@ impl FfiEncoder for RefType {
                     FfiStorageKind::Buffer(buffer),
                 )))
             }
-            _ => {
-                let ref_arg = Arg::new(*self.inner_type.clone(), *ref_val.value.clone());
-                let encoded = ffi::FfiValue::try_from(ref_arg)?;
-                Self::scalar_out_slot(&encoded)
-            }
+            _ => match &*ref_val.value {
+                value::Value::Null | value::Value::Undefined => Ok(Self::zeroed_scalar_slot()),
+                _ => {
+                    let ref_arg = Arg::new(*self.inner_type.clone(), *ref_val.value.clone());
+                    let encoded = ffi::FfiValue::try_from(ref_arg)?;
+                    Self::scalar_out_slot(&encoded)
+                }
+            },
         }
     }
 
@@ -303,6 +306,13 @@ impl RefType {
         Ok(ffi::FfiValue::Storage(storage))
     }
 
+    /// Builds a zero-initialized scalar out-parameter slot for a pure out whose
+    /// cell carries no seed value — the callee overwrites it, so the initial
+    /// payload only has to be a valid, aligned slot of sufficient width.
+    fn zeroed_scalar_slot() -> ffi::FfiValue {
+        ffi::FfiValue::Storage(FfiStorage::from(vec![0u64]))
+    }
+
     fn decode_ref_string(storage: &FfiStorage, string_type: &super::StringType) -> value::Value {
         if storage.ptr().is_null() {
             return value::Value::Null;
@@ -368,5 +378,15 @@ mod tests {
         // wide enough for an f64 read.
         let seeded = unsafe { FloatKind::F64.read_ptr(storage.ptr() as *const u8) };
         assert_eq!(seeded, 1.5);
+    }
+
+    #[test]
+    fn zeroed_scalar_slot_is_zero_initialized() {
+        let slot = RefType::zeroed_scalar_slot();
+        let storage = slot_storage(&slot);
+        // SAFETY: The slot's storage is a live, aligned 8-byte allocation,
+        // wide enough for an i32 read.
+        let seeded = unsafe { IntegerKind::I32.read_ptr(storage.ptr() as *const u8) };
+        assert_eq!(seeded, 0.0);
     }
 }
