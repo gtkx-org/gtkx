@@ -1,4 +1,4 @@
-import { type Arg, call as nativeCall, type TrampolineType, type Type, type Value } from "@gtkx/native";
+import { type Arg, type ArgType, call as nativeCall, type TrampolineType, type Type, type Value } from "@gtkx/native";
 
 export { alloc, call, read, write } from "@gtkx/native";
 
@@ -67,7 +67,7 @@ type TrampolineScope = "call" | "notified" | "async" | "forever";
 const bind = (
     library: string,
     symbol: string,
-    argTypes: ReadonlyArray<{ type: Type; optional?: boolean }>,
+    argTypes: readonly ArgType[],
     returnType: Type,
 ): ((...values: unknown[]) => unknown) => {
     const args: Arg[] = argTypes.map((argType) =>

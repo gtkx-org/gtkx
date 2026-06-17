@@ -16,7 +16,15 @@
  * only for the kinds whose descriptor carries no recoverable identity.
  */
 
-import { type Arg, type Type as FfiType, type Handle, call as nativeCall, type Value } from "@gtkx/native";
+import {
+    type Arg,
+    type Handle,
+    type ArgType as NativeArgType,
+    call as nativeCall,
+    type Ref,
+    type Type,
+    type Value,
+} from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { checkError } from "./error.js";
 import { wrapValue } from "./gobject.js";
@@ -24,26 +32,26 @@ import { t as descriptors, tupleResult } from "./helpers.js";
 import { getHandle } from "./registry.js";
 
 /**
- * The out-direction a parameter participates in beyond a plain input:
+ * The out-direction an argument participates in beyond a plain input:
  *
  * - `"out"` — the native layer writes the result through a `{ value }` cell
  *   this call allocates; the read-back value joins the result tuple.
  * - `"inout"` — a scalar cell seeded from the input value, read back after.
  *
- * Either direction may pair with {@link FfiFnParam.callerAllocates}, which
+ * Either direction may pair with {@link ArgType.callerAllocates}, which
  * passes the caller's own wrapper by handle in place of allocating a cell.
  */
-type FfiFnParamDirection = "out" | "inout";
+type ArgDirection = "out" | "inout";
 
 /**
  * One positional argument of a callable, in C-signature order (the instance
- * receiver included). A plain input omits `direction`.
+ * receiver included): the native argument descriptor (`type`, `optional`)
+ * extended with the call convention's out-parameter metadata. A plain input
+ * omits `direction`.
  */
-export type FfiFnParam = {
-    /** The argument's FFI type — the inner type for an out/inout cell. */
-    readonly type: FfiType;
-    /** The out/inout direction the parameter participates in beyond a plain input. */
-    readonly direction?: FfiFnParamDirection;
+export type ArgType = Readonly<NativeArgType> & {
+    /** The out/inout direction the argument participates in beyond a plain input. */
+    readonly direction?: ArgDirection;
     /**
      * Whether the caller allocates the out/inout wrapper. The input wrapper's
      * handle is passed as the argument — the native call fills its backing
@@ -66,18 +74,13 @@ export type FfiFnParam = {
      * marshaller can size the array, but it carries nothing a caller needs.
      */
     readonly consumed?: boolean;
-    /**
-     * Whether a nullable input may be omitted: the native marshaller then
-     * encodes an absent value as a NULL pointer rather than rejecting it.
-     */
-    readonly optional?: boolean;
 };
 
 /** The return value of a callable. A `t.void` type denotes no primary result. */
 export type FfiFnReturn = {
     /** The return value's FFI type. */
-    readonly type: FfiType;
-    /** Resolves the wrapper class for an interface/boxed/struct/fundamental return (a call-time thunk; see {@link FfiFnParam.wrapClass}). */
+    readonly type: Type;
+    /** Resolves the wrapper class for an interface/boxed/struct/fundamental return (a call-time thunk; see {@link ArgType.wrapClass}). */
     readonly wrapClass?: () => AnyClass;
 };
 
@@ -91,11 +94,9 @@ export type FfiFnOptions = {
     readonly throws?: boolean;
 };
 
-type OutCell = { value: unknown };
+type SurfacedOut = { readonly param: ArgType; readonly cell?: Ref; readonly raw?: unknown };
 
-type SurfacedOut = { readonly param: FfiFnParam; readonly cell?: OutCell; readonly raw?: unknown };
-
-const GERROR_REF: FfiType = descriptors.ref(
+const GERROR_REF: Type = descriptors.ref(
     descriptors.boxed("GError", "full", "libgobject-2.0.so.0", "g_error_get_type"),
 );
 
@@ -105,7 +106,7 @@ const GERROR_REF: FfiType = descriptors.ref(
  * seed must be assignable to it: booleans `false`, strings `""`, pointer-shaped
  * values `null`, and every numeric, enum, or flags cell `0`.
  */
-const seedForOutCell = (ffiType: FfiType): unknown => {
+const seedForOutCell = (ffiType: Type): Value => {
     switch (ffiType.type) {
         case "boolean":
             return false;
@@ -141,7 +142,7 @@ const assembleResult = (surfaced: readonly SurfacedOut[], primary: unknown, hasP
  * or passes a plain input through — recording any surfaced out and returning how
  * many inputs were consumed (`0` for a pure out, `1` otherwise).
  */
-const bindArg = (param: FfiFnParam, arg: Arg, input: unknown, surfaced: SurfacedOut[]): number => {
+const bindArg = (param: ArgType, arg: Arg, input: unknown, surfaced: SurfacedOut[]): number => {
     if (param.callerAllocates === true) {
         arg.value = input == null ? input : getHandle(input as object);
         if (param.consumed !== true) surfaced.push({ param, raw: input });
@@ -149,13 +150,14 @@ const bindArg = (param: FfiFnParam, arg: Arg, input: unknown, surfaced: Surfaced
     }
     switch (param.direction) {
         case "out": {
-            arg.value = { value: seedForOutCell(param.type) as Value };
-            if (param.consumed !== true) surfaced.push({ param, cell: arg.value as OutCell });
+            const cell: Ref = { value: seedForOutCell(param.type) };
+            arg.value = cell;
+            if (param.consumed !== true) surfaced.push({ param, cell });
             return 0;
         }
         case "inout": {
-            const cell: OutCell = { value: input };
-            arg.value = cell as Value;
+            const cell: Ref = { value: input as Value };
+            arg.value = cell;
             if (param.consumed !== true) surfaced.push({ param, cell });
             return 1;
         }
@@ -180,7 +182,7 @@ const bindArg = (param: FfiFnParam, arg: Arg, input: unknown, surfaced: Surfaced
 function ffiFn(
     library: string,
     symbol: string,
-    params: readonly FfiFnParam[],
+    params: readonly ArgType[],
     ret: FfiFnReturn,
     options: FfiFnOptions = {},
 ): (...inputs: unknown[]) => unknown {
