@@ -38,14 +38,11 @@ type AsyncStartFn = (...args: unknown[]) => void;
 
 /**
  * The companion `*_finish` callable, already bound to its owner when the
- * async operation is an instance method.
- *
- * `TResult` is the concrete `GAsyncResult` wrapper the `*_finish` member
- * declares (e.g. `Gio.AsyncResult`); inferring it from the supplied callable
- * lets a typed `*_finish` flow through {@link promisify} without widening its
- * parameter.
+ * async operation is an instance method. It receives the wrapped
+ * `GAsyncResult` and returns the operation's result; generated callers
+ * declare the concrete result type, so the runtime treats it opaquely.
  */
-type AsyncFinishFn<R, TResult> = (result: TResult) => R;
+type AsyncFinishFn = (result: object) => unknown;
 
 /**
  * Positional native arguments threaded through {@link promisify} into the
@@ -67,28 +64,26 @@ export type PromisifyArgs = {
  * `finish` applied to the wrapped `GAsyncResult`, rejecting when `finish`
  * throws (typically a `GError`).
  *
- * @typeParam R - The resolved value type, i.e. the `*_finish` return type.
- * @typeParam TResult - The `GAsyncResult` wrapper type the `*_finish` member accepts.
  * @param asyncFn - The native `*_async` start callable.
  * @param finish - The companion `*_finish` callable; bound to its owner for instance methods.
  * @param cancellable - The optional `GCancellable`, or `null`/`undefined` when the operation takes none.
  * @param args - The leading and (optional) trailing native arguments to splice around the `GCancellable*` slot.
  * @returns A promise resolving with the `*_finish` result.
  */
-export const promisify = <R, TResult>(
+export const promisify = (
     asyncFn: AsyncStartFn,
-    finish: AsyncFinishFn<R, TResult>,
+    finish: AsyncFinishFn,
     cancellable: object | null | undefined,
     args: PromisifyArgs,
-): Promise<R> =>
-    new Promise<R>((resolve, reject) => {
+): Promise<unknown> =>
+    new Promise((resolve, reject) => {
         asyncFn(
             ...args.leading,
             tryGetHandle(cancellable),
             ...(args.trailing ?? []),
             (_source: Handle, rawResult: Handle) => {
                 try {
-                    resolve(finish(wrapAsyncResult(rawResult) as TResult));
+                    resolve(finish(wrapAsyncResult(rawResult)));
                 } catch (error) {
                     reject(error);
                 }
