@@ -1,4 +1,4 @@
-export type { RunnableApplication } from "@gtkx/ffi";
+export type { GApplication } from "@gtkx/ffi";
 export { withActionAccels, withActionScope } from "./components/action.js";
 export { withApplication, withApplicationWindow } from "./components/application.js";
 export { type ConstraintLayoutProps, GtkConstraintLayout } from "./components/constraint-layout.js";

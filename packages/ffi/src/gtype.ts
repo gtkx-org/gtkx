@@ -10,7 +10,7 @@
  * runtime self-contained.
  */
 
-import type { Type as FfiType } from "@gtkx/native";
+import { LIBGOBJECT } from "./constants.js";
 import { t } from "./descriptors.js";
 
 /**
@@ -23,33 +23,26 @@ import { t } from "./descriptors.js";
 export type GType = number;
 
 /**
- * Shared-object name of libgobject, home of every `g_type_*`, `g_value_*`,
- * and `g_object_*` symbol bound across the runtime and value layer.
+ * Structural shape of a wrapped native instance once construction or
+ * `wrapHandle` has stamped its runtime GLib type onto it. Every GObject and
+ * boxed wrapper produced by `@gtkx/ffi` satisfies it; consumers that need an
+ * instance's runtime `GType` read it through this type.
  */
-export const LIBGOBJECT = "libgobject-2.0.so.0";
-
-/** Size of a `GValue` struct in bytes — a fixed GObject ABI fact. */
-export const GVALUE_SIZE = 24;
-
-/**
- * FFI descriptor for a borrowed `GValue` pointer argument: the shape every
- * `g_value_*` and `g_object_*_property` call passes for a `GValue *` whose
- * ownership stays with the caller.
- */
-export const GVALUE_BORROWED: FfiType = t.boxed("GValue", "borrowed", LIBGOBJECT, "g_value_get_type");
+export type GTyped = {
+    /** Runtime `GType` of the underlying GObject or boxed instance. */
+    // biome-ignore lint/style/useNamingConvention: GObject phantom-type key read off instances
+    readonly __gtype__: GType;
+};
 
 /**
- * Narrows a marshaled FFI result to a `GType`.
+ * Tests whether `value` is a wrapped native instance carrying a runtime
+ * `GType` — an object exposing a numeric `__gtype__`.
  *
- * A `g_*_get_type` FFI call yields its numeric `gsize` as an untyped
- * marshaled value; this helper coerces it to a number and brands it as the
- * `GType` it is at runtime. It is the single sanctioned conversion point
- * from a raw FFI result to a `GType`.
- *
- * @param value - The marshaled FFI result of a type-resolution call.
- * @returns The result as a `GType`.
+ * @param value - The value to test.
+ * @returns `true` when `value` exposes a numeric `__gtype__`.
  */
-export const gtypeFromFfi: (value: unknown) => GType = Number;
+export const isGtyped = (value: unknown): value is GTyped =>
+    typeof value === "object" && value !== null && "__gtype__" in value && typeof value.__gtype__ === "number";
 
 /**
  * Builds a resolver that looks a `GType` up by name on first call and caches the
@@ -77,10 +70,10 @@ export const lazyGtype = (name: string): (() => GType) => {
 };
 
 const gTypeFromName = t.bind(LIBGOBJECT, "g_type_from_name", [t.string("borrowed")], t.uint64);
-
 const gTypeIsA = t.bind(LIBGOBJECT, "g_type_is_a", [t.uint64, t.uint64], t.boolean);
-
 const gTypeParent = t.bind(LIBGOBJECT, "g_type_parent", [t.uint64], t.uint64);
+const gTypeFundamental = t.bind(LIBGOBJECT, "g_type_fundamental", [t.uint64], t.uint64);
+const gTypeName = t.bind(LIBGOBJECT, "g_type_name", [t.uint64], t.string("borrowed"));
 
 const gTypeInterfaces = t.bind(
     LIBGOBJECT,
@@ -88,10 +81,6 @@ const gTypeInterfaces = t.bind(
     [t.uint64, t.ref(t.uint32)],
     t.sizedArray(t.uint64, 1, "full"),
 );
-
-const gTypeFundamental = t.bind(LIBGOBJECT, "g_type_fundamental", [t.uint64], t.uint64);
-
-const gTypeName = t.bind(LIBGOBJECT, "g_type_name", [t.uint64], t.string("borrowed"));
 
 /**
  * Tests whether `type` is a descendant of `isAType`, or — when `isAType` is
@@ -155,15 +144,6 @@ export function typeFundamental(type: GType): GType {
 export function typeName(type: GType): string | null {
     return (gTypeName(type) as string | null) ?? null;
 }
-
-/**
- * GObject fundamental type constants.
- *
- * The GObject type system exposes a fixed set of fundamental `GType`
- * identifiers (`TYPE_INT`, `TYPE_STRING`, `TYPE_OBJECT`, ...). They have no
- * GIR backing, so the gtkx FFI resolves each one at runtime from
- * `g_type_from_name` and re-exports it under its `TYPE_*` name.
- */
 
 /**
  * The invalid `GType` sentinel — the numeric `0` the GObject type system
@@ -288,25 +268,13 @@ export const TYPE_GTYPE: GType = typeFromName("GType");
 export const TYPE_VARIANT: GType = typeFromName("GVariant");
 
 /**
- * Resolves and caches the boxed `GType` of a GLib `GError`.
- *
- * `GError` is a lazily registered boxed type rather than a fundamental, so its
- * name is unknown to the type system at module load. Resolution is deferred to
- * first use, which only happens once a live `GError` is being wrapped — by which
- * point the GLib bindings have registered the type and {@link typeFromName}
- * resolves it.
- *
- * @returns The `GError` boxed `GType`.
- * @example
- * ```ts
- * const errorClass = getWrapperClass(getErrorGtype());
- * ```
- */
-export const getErrorGtype: () => GType = lazyGtype("GError");
-
-/**
  * The fundamental `GType` of a Unicode code point, mapped to `guint`.
  *
  * @public
  */
 export const TYPE_UNICHAR: GType = typeFromName("guint");
+
+/**
+ * Resolves and caches the boxed `GType` of a GLib `GError`.
+ */
+export const getErrorGtype: () => GType = lazyGtype("GError");

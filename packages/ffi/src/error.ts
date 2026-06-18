@@ -8,7 +8,7 @@
  */
 
 import type { Handle, Ref } from "@gtkx/native";
-import { getErrorGtype } from "./gtype.js";
+import { getErrorGtype, isGtyped } from "./gtype.js";
 import { getWrapperClass, wrapHandle } from "./registry.js";
 
 /**
@@ -59,8 +59,7 @@ export function checkError(error: Ref): void {
     }
 }
 
-const isGError = (value: unknown): value is GError =>
-    typeof value === "object" && value !== null && "domain" in value && typeof value.domain === "number";
+const isGError = (value: unknown): value is GError => isGtyped(value) && value.__gtype__ === getErrorGtype();
 
 /**
  * An error-domain enum: a frozen member map that also acts as the right-hand

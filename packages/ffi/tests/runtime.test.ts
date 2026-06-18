@@ -32,7 +32,6 @@ const PRIVATE_MARSHALLING_INTERNALS = [
     "outBoxedFromFfi",
     "inoutBoxedFromFfi",
     "signalDetailQuark",
-    "GValue",
 ] as const;
 
 describe("runtime barrel", () => {

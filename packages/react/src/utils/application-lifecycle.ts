@@ -11,7 +11,7 @@
  * neither keep the loop alive nor quit the application.
  */
 
-import { quitApplication, type RunnableApplication, runApplication } from "@gtkx/ffi";
+import { quitApplication, type GApplication, runApplication } from "@gtkx/ffi";
 
 /**
  * The lifecycle an application component drives: `run` when it mounts and `quit`
@@ -19,9 +19,9 @@ import { quitApplication, type RunnableApplication, runApplication } from "@gtkx
  */
 export type ApplicationLifecycle = {
     /** Starts driving the application's run loop. */
-    run(application: RunnableApplication): void;
+    run(application: GApplication): void;
     /** Quits the application's run loop. */
-    quit(application: RunnableApplication): void;
+    quit(application: GApplication): void;
 };
 
 /**
@@ -77,7 +77,7 @@ export const setApplicationLifecycle = (next: Partial<ApplicationLifecycle> | nu
  *
  * @param application - The backing application.
  */
-export const runApplicationLifecycle = (application: RunnableApplication): void => {
+export const runApplicationLifecycle = (application: GApplication): void => {
     lifecycle.run(application);
 };
 
@@ -86,6 +86,6 @@ export const runApplicationLifecycle = (application: RunnableApplication): void 
  *
  * @param application - The backing application.
  */
-export const quitApplicationLifecycle = (application: RunnableApplication): void => {
+export const quitApplicationLifecycle = (application: GApplication): void => {
     lifecycle.quit(application);
 };

@@ -9,9 +9,9 @@
  */
 
 import { call, type Type as FfiType, type Handle, type Value } from "@gtkx/native";
+import { GVALUE_SIZE, GVALUE_T, LIBGOBJECT } from "./constants.js";
 import { t } from "./descriptors.js";
-import { type GType, GVALUE_BORROWED, GVALUE_SIZE, LIBGOBJECT } from "./gtype.js";
-import { getHandle } from "./registry.js";
+import type { GType } from "./gtype.js";
 import { valueFromFfi } from "./value-marshal.js";
 
 /**
@@ -20,7 +20,7 @@ import { valueFromFfi } from "./value-marshal.js";
  * per property it introduces, keyed by the property's GIR name, and threads it
  * up the `super(...)` chain to the root constructor.
  */
-type PropertyMarshalling = readonly [FfiType, Value];
+type Property = readonly [FfiType, Value];
 
 /**
  * Constructs a GObject of `gtype` from a marshalled property record and returns
@@ -45,13 +45,14 @@ type PropertyMarshalling = readonly [FfiType, Value];
  * @param props - GIR-name-keyed marshalling instructions.
  * @returns The freshly allocated handle, owned by the caller.
  */
-export function newGobjectWithProperties(gtype: GType, props: Record<string, PropertyMarshalling>): Handle {
+export function newGobjectWithProperties(gtype: GType, props: Record<string, Property>): Handle {
     const names: string[] = [];
     const values: Handle[] = [];
+
     for (const [name, [ffiType, value]] of Object.entries(props)) {
         if (value === undefined) continue;
         names.push(name);
-        values.push(getHandle(valueFromFfi(ffiType, value)));
+        values.push(valueFromFfi(ffiType, value));
     }
 
     return call(
@@ -61,7 +62,7 @@ export function newGobjectWithProperties(gtype: GType, props: Record<string, Pro
             { type: t.uint64, value: gtype },
             { type: t.uint32, value: names.length },
             { type: t.sizedArray(t.string("borrowed"), 1, "borrowed"), value: names },
-            { type: t.sizedArray(GVALUE_BORROWED, 1, "borrowed", GVALUE_SIZE), value: values },
+            { type: t.sizedArray(GVALUE_T, 1, "borrowed", GVALUE_SIZE), value: values },
         ],
         t.object("full"),
     ) as Handle;

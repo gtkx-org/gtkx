@@ -18,7 +18,7 @@
 
 import type { Type as NativeType, Ref, Value } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
-import { t as descriptors, tupleResult } from "./descriptors.js";
+import { t as descriptors } from "./descriptors.js";
 import { checkError } from "./error.js";
 import { getHandle } from "./registry.js";
 import { wrapValue } from "./wrap-value.js";
@@ -86,6 +86,26 @@ export type FnOptions = {
      * the call, throwing the populated `GError`.
      */
     readonly throws?: boolean;
+};
+
+/**
+ * Shapes a call or signal result from its surfaced out-values and primary
+ * return, following the tuple convention shared by `t.fn` and signal
+ * emission: a lone `primary` when there are no outs, the single out when there
+ * is no primary, or `[primary, ...outs]` when both are present.
+ *
+ * @param outs - The surfaced out-values, in declaration order.
+ * @param primary - The primary return value, used only when `hasPrimary`.
+ * @param hasPrimary - Whether the callable has a non-void return.
+ * @returns The assembled result.
+ */
+export const tupleResult = (outs: readonly unknown[], primary: unknown, hasPrimary: boolean): unknown => {
+    if (hasPrimary) {
+        return outs.length === 0 ? primary : [primary, ...outs];
+    }
+    if (outs.length === 0) return undefined;
+    if (outs.length === 1) return outs[0];
+    return outs;
 };
 
 /**

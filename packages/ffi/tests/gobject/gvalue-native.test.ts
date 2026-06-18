@@ -18,8 +18,45 @@ import {
 } from "@gtkx/ffi";
 import * as GLib from "@gtkx/gi/glib";
 import { ParamFlags, paramSpecBoolean } from "@gtkx/gi/gobject";
-import { call } from "@gtkx/native";
-import { GValue } from "../../src/gvalue.js";
+import { call, type Handle } from "@gtkx/native";
+import {
+    newGValue,
+    valueGetBoolean,
+    valueGetDouble,
+    valueGetEnum,
+    valueGetFlags,
+    valueGetFloat,
+    valueGetInt,
+    valueGetInt64,
+    valueGetLong,
+    valueGetObject,
+    valueGetParam,
+    valueGetSchar,
+    valueGetString,
+    valueGetUchar,
+    valueGetUint,
+    valueGetUint64,
+    valueGetUlong,
+    valueGetVariant,
+    valueInit,
+    valueSetBoolean,
+    valueSetDouble,
+    valueSetEnum,
+    valueSetFlags,
+    valueSetFloat,
+    valueSetInt,
+    valueSetInt64,
+    valueSetLong,
+    valueSetObject,
+    valueSetParam,
+    valueSetSchar,
+    valueSetString,
+    valueSetUchar,
+    valueSetUint,
+    valueSetUint64,
+    valueSetUlong,
+    valueSetVariant,
+} from "../../src/gvalue.js";
 import "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
@@ -35,117 +72,117 @@ const gtypeOf = (library: string, getTypeFn: string): GType => {
 const enumGtype = (): GType => gtypeOf("libgtk-4.so.1", "gtk_align_get_type");
 const flagsGtype = (): GType => gtypeOf("libgobject-2.0.so.0", "g_binding_flags_get_type");
 
-const initialized = (gtype: GType): GValue => {
-    const value = new GValue();
-    value.init(gtype);
+const initialized = (gtype: GType): Handle => {
+    const value = newGValue();
+    valueInit(value, gtype);
     return value;
 };
 
 describe("GValue boolean", () => {
     it("round-trips true and false", () => {
         const value = initialized(TYPE_BOOLEAN);
-        value.setBoolean(true);
-        expect(value.getBoolean()).toBe(true);
-        value.setBoolean(false);
-        expect(value.getBoolean()).toBe(false);
+        valueSetBoolean(value, true);
+        expect(valueGetBoolean(value)).toBe(true);
+        valueSetBoolean(value, false);
+        expect(valueGetBoolean(value)).toBe(false);
     });
 });
 
 describe("GValue signed and unsigned integers", () => {
     it("round-trips an int", () => {
         const value = initialized(TYPE_INT);
-        value.setInt(-42);
-        expect(value.getInt()).toBe(-42);
+        valueSetInt(value, -42);
+        expect(valueGetInt(value)).toBe(-42);
     });
 
     it("round-trips a uint", () => {
         const value = initialized(TYPE_UINT);
-        value.setUint(4_000_000_000);
-        expect(value.getUint()).toBe(4_000_000_000);
+        valueSetUint(value, 4_000_000_000);
+        expect(valueGetUint(value)).toBe(4_000_000_000);
     });
 
     it("round-trips a long", () => {
         const value = initialized(TYPE_LONG);
-        value.setLong(123_456);
-        expect(value.getLong()).toBe(123_456);
+        valueSetLong(value, 123_456);
+        expect(valueGetLong(value)).toBe(123_456);
     });
 
     it("round-trips a ulong", () => {
         const value = initialized(TYPE_ULONG);
-        value.setUlong(654_321);
-        expect(value.getUlong()).toBe(654_321);
+        valueSetUlong(value, 654_321);
+        expect(valueGetUlong(value)).toBe(654_321);
     });
 
     it("round-trips an int64", () => {
         const value = initialized(TYPE_INT64);
-        value.setInt64(-9_007_199_254_740_991);
-        expect(value.getInt64()).toBe(-9_007_199_254_740_991);
+        valueSetInt64(value, -9_007_199_254_740_991);
+        expect(valueGetInt64(value)).toBe(-9_007_199_254_740_991);
     });
 
     it("round-trips a uint64", () => {
         const value = initialized(TYPE_UINT64);
-        value.setUint64(9_007_199_254_740_991);
-        expect(value.getUint64()).toBe(9_007_199_254_740_991);
+        valueSetUint64(value, 9_007_199_254_740_991);
+        expect(valueGetUint64(value)).toBe(9_007_199_254_740_991);
     });
 
     it("round-trips a schar", () => {
         const value = initialized(TYPE_CHAR);
-        value.setSchar(-12);
-        expect(value.getSchar()).toBe(-12);
+        valueSetSchar(value, -12);
+        expect(valueGetSchar(value)).toBe(-12);
     });
 
     it("round-trips a uchar", () => {
         const value = initialized(TYPE_UCHAR);
-        value.setUchar(200);
-        expect(value.getUchar()).toBe(200);
+        valueSetUchar(value, 200);
+        expect(valueGetUchar(value)).toBe(200);
     });
 });
 
 describe("GValue floating point", () => {
     it("round-trips a float within tolerance", () => {
         const value = initialized(TYPE_FLOAT);
-        value.setFloat(1.5);
-        expect(value.getFloat()).toBeCloseTo(1.5, 3);
+        valueSetFloat(value, 1.5);
+        expect(valueGetFloat(value)).toBeCloseTo(1.5, 3);
     });
 
     it("round-trips a double", () => {
         const value = initialized(TYPE_DOUBLE);
-        value.setDouble(Math.PI);
-        expect(value.getDouble()).toBeCloseTo(Math.PI);
+        valueSetDouble(value, Math.PI);
+        expect(valueGetDouble(value)).toBeCloseTo(Math.PI);
     });
 });
 
 describe("GValue string", () => {
     it("round-trips a non-empty string", () => {
         const value = initialized(TYPE_STRING);
-        value.setString("hello");
-        expect(value.getString()).toBe("hello");
+        valueSetString(value, "hello");
+        expect(valueGetString(value)).toBe("hello");
     });
 
     it("round-trips an empty string", () => {
         const value = initialized(TYPE_STRING);
-        value.setString("");
-        expect(value.getString()).toBe("");
+        valueSetString(value, "");
+        expect(valueGetString(value)).toBe("");
     });
 
     it("round-trips a null string as null", () => {
         const value = initialized(TYPE_STRING);
-        value.setString(null);
-        expect(value.getString()).toBeNull();
+        valueSetString(value, null);
+        expect(valueGetString(value)).toBeNull();
     });
 });
 
 describe("GValue enum and flags", () => {
     it("round-trips an enum payload", () => {
         const value = initialized(enumGtype());
-        value.setEnum(Gtk.Align.CENTER);
-        expect(value.getEnum()).toBe(Gtk.Align.CENTER);
+        valueSetEnum(value, Gtk.Align.CENTER);
+        expect(valueGetEnum(value)).toBe(Gtk.Align.CENTER);
     });
 
     it("round-trips a flags bitmask", () => {
         const value = initialized(flagsGtype());
-        value.setFlags(3);
-        expect(value.getFlags()).toBe(3);
+        valueSetFlags(value, 3);
+        expect(valueGetFlags(value)).toBe(3);
     });
 });
 
@@ -153,14 +190,14 @@ describe("GValue object", () => {
     it("round-trips a live GObject returning the same wrapper", () => {
         const label = new Gtk.Label({ label: "hello" });
         const value = initialized(TYPE_OBJECT);
-        value.setObject(label);
-        expect(value.getObject()).toBe(label);
+        valueSetObject(value, label);
+        expect(valueGetObject(value)).toBe(label);
     });
 
     it("round-trips a null object", () => {
         const value = initialized(TYPE_OBJECT);
-        value.setObject(null);
-        expect(value.getObject()).toBeNull();
+        valueSetObject(value, null);
+        expect(valueGetObject(value)).toBeNull();
     });
 });
 
@@ -168,16 +205,16 @@ describe("GValue param", () => {
     it("round-trips a ParamSpec to an equivalent wrapper", () => {
         const spec = paramSpecBoolean("flag", "Flag", "A flag", false, ParamFlags.READABLE);
         const value = initialized(TYPE_PARAM);
-        value.setParam(spec);
-        const roundTripped = value.getParam() as typeof spec | null;
+        valueSetParam(value, spec);
+        const roundTripped = valueGetParam(value) as typeof spec | null;
         expect(roundTripped).not.toBeNull();
         expect(roundTripped?.getName()).toBe(spec.getName());
     });
 
     it("round-trips a null param", () => {
         const value = initialized(TYPE_PARAM);
-        value.setParam(null);
-        expect(value.getParam()).toBeNull();
+        valueSetParam(value, null);
+        expect(valueGetParam(value)).toBeNull();
     });
 });
 
@@ -185,9 +222,9 @@ describe("GValue variant", () => {
     it("round-trips a GLib.Variant preserving its payload", () => {
         const variant = GLib.Variant.newString("payload");
         const value = initialized(TYPE_VARIANT);
-        value.setVariant(variant);
+        valueSetVariant(value, variant);
 
-        const extracted = value.getVariant();
+        const extracted = valueGetVariant(value);
         expect(extracted).toBeInstanceOf(GLib.Variant);
         const [text] = (extracted as GLib.Variant).getString();
         expect(text).toBe("payload");
@@ -195,7 +232,7 @@ describe("GValue variant", () => {
 
     it("returns null for an unset variant", () => {
         const value = initialized(TYPE_VARIANT);
-        value.setVariant(null);
-        expect(value.getVariant()).toBeNull();
+        valueSetVariant(value, null);
+        expect(valueGetVariant(value)).toBeNull();
     });
 });

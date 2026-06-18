@@ -1,15 +1,16 @@
-import type { Type as FfiType, TrampolineType, Value } from "@gtkx/native";
-import { call, t, tupleResult } from "./descriptors.js";
-import { type GType, GVALUE_BORROWED, LIBGOBJECT } from "./gtype.js";
-import type { GValue } from "./gvalue.js";
-import { type GTyped, getHandle } from "./registry.js";
+import type { Type as FfiType, Handle, TrampolineType, Value } from "@gtkx/native";
+import { GVALUE_SIZE, GVALUE_T, LIBGOBJECT } from "./constants.js";
+import { call, t } from "./descriptors.js";
+import type { GType, GTyped } from "./gtype.js";
+import { tupleResult } from "./helpers.js";
+import { getHandle } from "./registry.js";
 import {
     emptyValueFromFfi,
-    getGvalueBoxed,
     inoutBoxedFromFfi,
     outBoxedFromFfi,
     outValueFromFfi,
     valueFromFfi,
+    valueGetBoxed,
     valueToJS,
 } from "./value-marshal.js";
 
@@ -208,12 +209,10 @@ export function offSignal(instance: SignalConnectable, signal: string, handler: 
     }
 }
 
-const GVALUE_INLINE: FfiType = t.boxed("GValue", "borrowed", LIBGOBJECT, "g_value_get_type");
-
 const gSignalEmitv = t.bind(
     LIBGOBJECT,
     "g_signal_emitv",
-    [t.array(GVALUE_INLINE, "array", "borrowed", { elementSize: 24 }), t.uint32, t.uint32, GVALUE_BORROWED],
+    [t.array(GVALUE_T, "array", "borrowed", { elementSize: GVALUE_SIZE }), t.uint32, t.uint32, GVALUE_T],
     t.void,
 );
 
@@ -277,7 +276,7 @@ export function emitGobjectSignal(
     const signalId = gSignalLookup(signalBaseName(sigName), gtype) as number;
     const detail = signalDetailQuark(sigName);
 
-    const values: GValue[] = [valueFromFfi(t.object("full"), instance)];
+    const values: Handle[] = [valueFromFfi(t.object("full"), instance)];
     const reads: (() => unknown)[] = [];
     for (const arg of args) {
         switch (arg.role) {
@@ -296,7 +295,7 @@ export function emitGobjectSignal(
             case "boxedOut": {
                 const value = outBoxedFromFfi(arg.ffi, arg.value as object);
                 values.push(value);
-                reads.push(() => getGvalueBoxed(value));
+                reads.push(() => valueGetBoxed(value));
                 break;
             }
             case "boxedInout":
@@ -307,12 +306,11 @@ export function emitGobjectSignal(
         }
     }
 
-    const handles = values.map(getHandle);
     if (returnFfi !== undefined) {
         const returnValue = emptyValueFromFfi(returnFfi);
-        gSignalEmitv(handles, signalId, detail, getHandle(returnValue));
+        gSignalEmitv(values, signalId, detail, returnValue);
         return assembleResult(valueToJS(returnValue), true, reads);
     }
-    gSignalEmitv(handles, signalId, detail, undefined);
+    gSignalEmitv(values, signalId, detail, undefined);
     return assembleResult(undefined, false, reads);
 }

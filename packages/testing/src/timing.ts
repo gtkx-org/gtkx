@@ -1,4 +1,4 @@
-import { type RunnableApplication, setApplicationLifecycle, setDeferredFlushWrapper } from "@gtkx/react";
+import { type GApplication, setApplicationLifecycle, setDeferredFlushWrapper } from "@gtkx/react";
 import * as React from "react";
 import { act as reactAct } from "react";
 
@@ -119,7 +119,7 @@ setDeferredFlushWrapper((flush) => {
  * on one application would tear the shared runtime down for the next test.
  */
 setApplicationLifecycle({
-    run: (application: RunnableApplication) => {
+    run: (application: GApplication) => {
         application.on("activate", () => {});
         if (!application.getIsRegistered()) application.register(null);
         application.activate();

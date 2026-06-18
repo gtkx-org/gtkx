@@ -1,6 +1,6 @@
 import { getType, getWrapper, type Handle, setWrapper } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
-import { type GType, TYPE_INVALID, typeFromName, typeIsA, typeParent } from "./gtype.js";
+import { type GType, type GTyped, TYPE_INVALID, typeFromName, typeIsA, typeParent } from "./gtype.js";
 
 let gobjectGtype: GType = TYPE_INVALID;
 
@@ -24,6 +24,14 @@ const interfaceGtypeByClass = new WeakMap<AnyClass, GType>();
 const interfaceClassByGtype = new Map<GType, AnyClass>();
 
 /**
+ * Stamps a wrapper class's `GType` onto its prototype, the one sanctioned
+ * mutation of the otherwise read-only `__gtype__` every instance reads.
+ */
+function stampGtype(cls: AnyClass, gtype: GType): void {
+    (cls.prototype as { -readonly [K in keyof GTyped]: GTyped[K] }).__gtype__ = gtype;
+}
+
+/**
  * Records the GLib type identifier of a wrapper class in the identity registry.
  *
  * Invoked by `registerWrapperClass` once it has resolved the class's `GType`,
@@ -38,7 +46,7 @@ export function setClassGtype(cls: AnyClass, gtype: GType): void {
     if (gtype !== TYPE_INVALID) {
         classRegistry.set(gtype, cls);
         gtypeByClass.set(cls, gtype);
-        (cls.prototype as GTyped).__gtype__ = gtype;
+        stampGtype(cls, gtype);
     }
 }
 
@@ -58,7 +66,7 @@ export function setInterfaceGtype(cls: AnyClass, gtype: GType): void {
     if (gtype !== TYPE_INVALID) {
         interfaceGtypeByClass.set(cls, gtype);
         interfaceClassByGtype.set(gtype, cls);
-        (cls.prototype as GTyped).__gtype__ = gtype;
+        stampGtype(cls, gtype);
     }
 }
 
@@ -278,18 +286,6 @@ function resolveWrapper(handle: Handle, resolveClass: (runtimeGtype: GType) => A
 }
 
 export type { Handle } from "@gtkx/native";
-
-/**
- * Structural shape of any wrapped native instance once construction or
- * `wrapHandle` has stamped its runtime GLib type onto it. Every GObject and
- * boxed wrapper produced by `@gtkx/ffi` satisfies this interface; consumers
- * that need the runtime `GType` of an instance read it through this type.
- */
-export interface GTyped {
-    /** Runtime GType of the underlying GObject or boxed instance. */
-    // biome-ignore lint/style/useNamingConvention: GObject phantom-type key read off instances
-    __gtype__: GType;
-}
 
 /**
  * Returns the superclass of a wrapper class, or `null` when `cls` is a

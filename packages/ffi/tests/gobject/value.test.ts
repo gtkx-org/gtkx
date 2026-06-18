@@ -19,9 +19,22 @@ import { ParamFlags, paramSpecBoolean, typeFromName, Value } from "@gtkx/gi/gobj
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
 import "@gtkx/gi/gobject";
-import { t } from "@gtkx/ffi";
+import { getHandle, t } from "@gtkx/ffi";
 import { call } from "@gtkx/native";
-import { valueGetType } from "../../src/gvalue.js";
+import {
+    valueGetBoolean,
+    valueGetDouble,
+    valueGetEnum,
+    valueGetFlags,
+    valueGetFloat,
+    valueGetInt,
+    valueGetInt64,
+    valueGetObject,
+    valueGetString,
+    valueGetType,
+    valueGetUint,
+    valueGetUint64,
+} from "../../src/gvalue.js";
 import { emptyValueFromFfi, valueFromFfi, valueFromObject, valueToJS } from "../../src/value-marshal.js";
 
 const callGetType = (lib: string, fn: string): GType => {
@@ -69,12 +82,12 @@ describe("valueFromObject", () => {
     it("creates a GValue holding a GObject", () => {
         const label = new Gtk.Label({ label: "test" });
         const v = valueFromObject(label);
-        expect(v.getObject()).not.toBeNull();
+        expect(valueGetObject(v)).not.toBeNull();
     });
 
     it("creates a GValue holding null", () => {
         const v = valueFromObject(null);
-        expect(v.getObject()).toBeNull();
+        expect(valueGetObject(v)).toBeNull();
     });
 });
 
@@ -96,52 +109,52 @@ describe("valueToJS extra coverage", () => {
     it("returns null when reading a default-initialized G_TYPE_POINTER", () => {
         const v = new Value();
         v.init(TYPE_POINTER);
-        expect(valueToJS(v)).toBeNull();
+        expect(valueToJS(getHandle(v))).toBeNull();
     });
 
     it("returns an empty array when reading an unset GStrv value", () => {
         const v = new Value();
         v.init(typeFromName("GStrv"));
-        expect(valueToJS(v)).toEqual([]);
+        expect(valueToJS(getHandle(v))).toEqual([]);
     });
 
     it("returns a Gdk.RGBA wrapper when reading a boxed value", () => {
         const v = new Value();
         v.init(gdkRgbaGtype());
         v.setBoxed(makeRgba(0.1, 0.2, 0.3, 1.0));
-        expect(valueToJS(v)).toBeInstanceOf(Gdk.RGBA);
+        expect(valueToJS(getHandle(v))).toBeInstanceOf(Gdk.RGBA);
     });
 });
 
 describe("valueFromFfi — primitives", () => {
     it("builds a boolean value", () => {
-        expect(valueFromFfi({ type: "boolean" }, true).getBoolean()).toBe(true);
+        expect(valueGetBoolean(valueFromFfi({ type: "boolean" }, true))).toBe(true);
     });
 
     it("builds a string value", () => {
-        expect(valueFromFfi({ type: "string", ownership: "borrowed" }, "hi").getString()).toBe("hi");
+        expect(valueGetString(valueFromFfi({ type: "string", ownership: "borrowed" }, "hi"))).toBe("hi");
     });
 
     it("builds an int value for int8/int16/int32 descriptors", () => {
-        expect(valueFromFfi({ type: "int8" }, -1).getInt()).toBe(-1);
-        expect(valueFromFfi({ type: "int16" }, 100).getInt()).toBe(100);
-        expect(valueFromFfi({ type: "int32" }, 2000).getInt()).toBe(2000);
+        expect(valueGetInt(valueFromFfi({ type: "int8" }, -1))).toBe(-1);
+        expect(valueGetInt(valueFromFfi({ type: "int16" }, 100))).toBe(100);
+        expect(valueGetInt(valueFromFfi({ type: "int32" }, 2000))).toBe(2000);
     });
 
     it("builds a uint value for uint8/uint16/uint32 descriptors", () => {
-        expect(valueFromFfi({ type: "uint8" }, 1).getUint()).toBe(1);
-        expect(valueFromFfi({ type: "uint16" }, 200).getUint()).toBe(200);
-        expect(valueFromFfi({ type: "uint32" }, 4000).getUint()).toBe(4000);
+        expect(valueGetUint(valueFromFfi({ type: "uint8" }, 1))).toBe(1);
+        expect(valueGetUint(valueFromFfi({ type: "uint16" }, 200))).toBe(200);
+        expect(valueGetUint(valueFromFfi({ type: "uint32" }, 4000))).toBe(4000);
     });
 
     it("builds int64 and uint64 values", () => {
-        expect(valueFromFfi({ type: "int64" }, 42).getInt64()).toBe(42);
-        expect(valueFromFfi({ type: "uint64" }, 84).getUint64()).toBe(84);
+        expect(valueGetInt64(valueFromFfi({ type: "int64" }, 42))).toBe(42);
+        expect(valueGetUint64(valueFromFfi({ type: "uint64" }, 84))).toBe(84);
     });
 
     it("builds float and double values", () => {
-        expect(valueFromFfi({ type: "float32" }, 1.5).getFloat()).toBeCloseTo(1.5, 3);
-        expect(valueFromFfi({ type: "float64" }, Math.PI).getDouble()).toBeCloseTo(Math.PI);
+        expect(valueGetFloat(valueFromFfi({ type: "float32" }, 1.5))).toBeCloseTo(1.5, 3);
+        expect(valueGetDouble(valueFromFfi({ type: "float64" }, Math.PI))).toBeCloseTo(Math.PI);
     });
 });
 
@@ -151,7 +164,7 @@ describe("valueFromFfi — enums and flags", () => {
             { type: "enum", library: "libgtk-4.so.1", getTypeFn: "gtk_align_get_type", signed: false },
             Gtk.Align.CENTER,
         );
-        expect(v.getEnum()).toBe(Gtk.Align.CENTER);
+        expect(valueGetEnum(v)).toBe(Gtk.Align.CENTER);
     });
 
     it("builds a flags value from a flags-fundamental enum descriptor", () => {
@@ -159,7 +172,7 @@ describe("valueFromFfi — enums and flags", () => {
             { type: "enum", library: "libgobject-2.0.so.0", getTypeFn: "g_binding_flags_get_type", signed: false },
             3,
         );
-        expect(v.getFlags()).toBe(3);
+        expect(valueGetFlags(v)).toBe(3);
     });
 
     it("builds a flags value from a flags descriptor", () => {
@@ -167,14 +180,14 @@ describe("valueFromFfi — enums and flags", () => {
             { type: "flags", library: "libgobject-2.0.so.0", getTypeFn: "g_binding_flags_get_type", signed: false },
             5,
         );
-        expect(v.getFlags()).toBe(5);
+        expect(valueGetFlags(v)).toBe(5);
     });
 });
 
 describe("valueFromFfi — objects and boxed", () => {
     it("builds a gobject value", () => {
         const label = new Gtk.Label({ label: "x" });
-        expect(valueFromFfi({ type: "gobject", ownership: "borrowed" }, label).getObject()).not.toBeNull();
+        expect(valueGetObject(valueFromFfi({ type: "gobject", ownership: "borrowed" }, label))).not.toBeNull();
     });
 
     it("builds a boxed value via getTypeFn resolution", () => {

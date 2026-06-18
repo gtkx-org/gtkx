@@ -8,7 +8,7 @@ const KEEP_ALIVE_INTERVAL = 2147483647;
  * it. Kept structural so `@gtkx/ffi` need not depend on the generated
  * `@gtkx/gi` bindings.
  */
-export type RunnableApplication = {
+export type GApplication = {
     /** Whether the application has been registered with the session bus. */
     getIsRegistered(): boolean;
     /** Registers the application; the cancellable is always `null` here. */
@@ -84,7 +84,7 @@ process.on("exit", quit);
  * runApplication(app);
  * ```
  */
-export const runApplication = (application: RunnableApplication): void => {
+export const runApplication = (application: GApplication): void => {
     let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const scheduleKeepAlive = (): void => {
@@ -124,6 +124,6 @@ export const runApplication = (application: RunnableApplication): void => {
  * quitApplication(app);
  * ```
  */
-export const quitApplication = (application: RunnableApplication): void => {
+export const quitApplication = (application: GApplication): void => {
     application.emit("shutdown");
 };

@@ -1,26 +1,36 @@
-import { type Arg, call as nativeCall, type TrampolineType, type Type, type Value } from "@gtkx/native";
+import {
+    type Arg,
+    type ArrayType,
+    type BigInt64Type,
+    type BigUint64Type,
+    type BlobType,
+    type BooleanType,
+    type BoxedType,
+    call,
+    type EnumType,
+    type FlagsType,
+    type Float32Type,
+    type Float64Type,
+    type FundamentalType,
+    type HashTableType,
+    type Int8Type,
+    type Int16Type,
+    type Int32Type,
+    type Int64Type,
+    type RefType,
+    type StructType,
+    type TrampolineType,
+    type Type,
+    type Uint8Type,
+    type Uint16Type,
+    type Uint32Type,
+    type Uint64Type,
+    type UnicharType,
+    type Value,
+    type VoidType,
+} from "@gtkx/native";
 
 export { alloc, call, read, write } from "@gtkx/native";
-
-/**
- * Shapes a call or signal result from its surfaced out-values and primary
- * return, following the tuple convention shared by `t.fn` and signal
- * emission: a lone `primary` when there are no outs, the single out when there
- * is no primary, or `[primary, ...outs]` when both are present.
- *
- * @param outs - The surfaced out-values, in declaration order.
- * @param primary - The primary return value, used only when `hasPrimary`.
- * @param hasPrimary - Whether the callable has a non-void return.
- * @returns The assembled result.
- */
-export const tupleResult = (outs: readonly unknown[], primary: unknown, hasPrimary: boolean): unknown => {
-    if (hasPrimary) {
-        return outs.length === 0 ? primary : [primary, ...outs];
-    }
-    if (outs.length === 0) return undefined;
-    if (outs.length === 1) return outs[0];
-    return outs;
-};
 
 /**
  * Lifetime of a value crossing the FFI boundary.
@@ -76,26 +86,26 @@ const bind = (
         for (const arg of args) {
             arg.value = values[i++] as Value;
         }
-        return nativeCall(library, symbol, args, returnType);
+        return call(library, symbol, args, returnType);
     };
 };
 
-const int8: Type = Object.freeze({ type: "int8" });
-const uint8: Type = Object.freeze({ type: "uint8" });
-const int16: Type = Object.freeze({ type: "int16" });
-const uint16: Type = Object.freeze({ type: "uint16" });
-const int32: Type = Object.freeze({ type: "int32" });
-const uint32: Type = Object.freeze({ type: "uint32" });
-const int64: Type = Object.freeze({ type: "int64" });
-const uint64: Type = Object.freeze({ type: "uint64" });
-const bigint64: Type = Object.freeze({ type: "bigint64" });
-const biguint64: Type = Object.freeze({ type: "biguint64" });
-const float32: Type = Object.freeze({ type: "float32" });
-const float64: Type = Object.freeze({ type: "float64" });
-const booleanT: Type = Object.freeze({ type: "boolean" });
-const voidT: Type = Object.freeze({ type: "void" });
-const unicharT: Type = Object.freeze({ type: "unichar" });
-const blobT: Type = Object.freeze({ type: "blob" });
+const int8: Int8Type = Object.freeze({ type: "int8" });
+const uint8: Uint8Type = Object.freeze({ type: "uint8" });
+const int16: Int16Type = Object.freeze({ type: "int16" });
+const uint16: Uint16Type = Object.freeze({ type: "uint16" });
+const int32: Int32Type = Object.freeze({ type: "int32" });
+const uint32: Uint32Type = Object.freeze({ type: "uint32" });
+const int64: Int64Type = Object.freeze({ type: "int64" });
+const uint64: Uint64Type = Object.freeze({ type: "uint64" });
+const bigint64: BigInt64Type = Object.freeze({ type: "bigint64" });
+const biguint64: BigUint64Type = Object.freeze({ type: "biguint64" });
+const float32: Float32Type = Object.freeze({ type: "float32" });
+const float64: Float64Type = Object.freeze({ type: "float64" });
+const booleanT: BooleanType = Object.freeze({ type: "boolean" });
+const voidT: VoidType = Object.freeze({ type: "void" });
+const unicharT: UnicharType = Object.freeze({ type: "unichar" });
+const blobT: BlobType = Object.freeze({ type: "blob" });
 
 const stringT = (ownership: Ownership = "borrowed", length?: number): Type =>
     length === undefined ? { type: "string", ownership } : { type: "string", ownership, length };
@@ -110,16 +120,16 @@ const boxedT = (
     library?: string,
     getTypeFn?: string,
     freeFn?: string,
-): Type => {
-    const result: Type = { type: "boxed", ownership, innerType };
+): BoxedType => {
+    const result: BoxedType = { type: "boxed", ownership, innerType };
     if (library !== undefined) result.library = library;
     if (getTypeFn !== undefined) result.getTypeFn = getTypeFn;
     if (freeFn !== undefined) result.freeFn = freeFn;
     return result;
 };
 
-const structT = (ownership: Ownership = "borrowed", size?: number): Type => {
-    const result: Type = { type: "struct", ownership };
+const structT = (ownership: Ownership = "borrowed", size?: number): StructType => {
+    const result: StructType = { type: "struct", ownership };
     if (size !== undefined) result.size = size;
     return result;
 };
@@ -132,30 +142,35 @@ type FundamentalOptions = {
     typeName?: string;
 };
 
-const fundamentalT = (library: string, refFn: string, unrefFn: string, options: FundamentalOptions = {}): Type => {
+const fundamentalT = (
+    library: string,
+    refFn: string,
+    unrefFn: string,
+    options: FundamentalOptions = {},
+): FundamentalType => {
     const ownership = options.ownership ?? "borrowed";
-    const result: Type = { type: "fundamental", ownership, library, refFn, unrefFn };
+    const result: FundamentalType = { type: "fundamental", ownership, library, refFn, unrefFn };
     if (options.typeName !== undefined) result.typeName = options.typeName;
     return result;
 };
 
-const refT = (innerType: Type): Type => ({ type: "ref", innerType });
+const refT = (innerType: Type): RefType => ({ type: "ref", innerType });
 
-const hashTableT = (keyType: Type, valueType: Type, ownership: Ownership = "borrowed"): Type => ({
+const hashTableT = (keyType: Type, valueType: Type, ownership: Ownership = "borrowed"): HashTableType => ({
     type: "hashtable",
     keyType,
     valueType,
     ownership,
 });
 
-const enumT = (library: string, getTypeFn: string, signed: boolean): Type => ({
+const enumT = (library: string, getTypeFn: string, signed: boolean): EnumType => ({
     type: "enum",
     library,
     getTypeFn,
     signed,
 });
 
-const flagsT = (library: string, getTypeFn: string, signed: boolean): Type => ({
+const flagsT = (library: string, getTypeFn: string, signed: boolean): FlagsType => ({
     type: "flags",
     library,
     getTypeFn,
@@ -177,34 +192,39 @@ const arrayT = (
     kind: ArrayKind = "array",
     ownership: Ownership = "borrowed",
     options?: ArrayOptions,
-): Type => {
-    const result: Type = { type: "array", itemType, kind, ownership };
+): ArrayType => {
+    const result: ArrayType = { type: "array", itemType, kind, ownership };
     if (options?.elementSize !== undefined) result.elementSize = options.elementSize;
     if (options?.sizeParamIndex !== undefined) result.sizeParamIndex = options.sizeParamIndex;
     if (options?.fixedSize !== undefined) result.fixedSize = options.fixedSize;
     return result;
 };
 
-const list = (itemType: Type, ownership: Ownership = "borrowed"): Type => arrayT(itemType, "glist", ownership);
+const list = (itemType: Type, ownership: Ownership = "borrowed"): ArrayType => arrayT(itemType, "glist", ownership);
 
-const slist = (itemType: Type, ownership: Ownership = "borrowed"): Type => arrayT(itemType, "gslist", ownership);
+const slist = (itemType: Type, ownership: Ownership = "borrowed"): ArrayType => arrayT(itemType, "gslist", ownership);
 
-const ptrArray = (itemType: Type, ownership: Ownership = "borrowed"): Type => arrayT(itemType, "gptrarray", ownership);
+const ptrArray = (itemType: Type, ownership: Ownership = "borrowed"): ArrayType =>
+    arrayT(itemType, "gptrarray", ownership);
 
-const garray = (itemType: Type, ownership: Ownership = "borrowed", elementSize?: number): Type =>
+const garray = (itemType: Type, ownership: Ownership = "borrowed", elementSize?: number): ArrayType =>
     arrayT(itemType, "garray", ownership, elementSize === undefined ? undefined : { elementSize });
 
-const byteArray = (ownership: Ownership = "borrowed"): Type => arrayT(uint8, "gbytearray", ownership);
+const byteArray = (ownership: Ownership = "borrowed"): ArrayType => arrayT(uint8, "gbytearray", ownership);
 
 const sizedArray = (
     itemType: Type,
     sizeParamIndex: number,
     ownership: Ownership = "borrowed",
     elementSize?: number,
-): Type => arrayT(itemType, "sized", ownership, { sizeParamIndex, elementSize });
+): ArrayType => arrayT(itemType, "sized", ownership, { sizeParamIndex, elementSize });
 
-const fixedArray = (itemType: Type, fixedSize: number, ownership: Ownership = "borrowed", elementSize?: number): Type =>
-    arrayT(itemType, "fixed", ownership, { fixedSize, elementSize });
+const fixedArray = (
+    itemType: Type,
+    fixedSize: number,
+    ownership: Ownership = "borrowed",
+    elementSize?: number,
+): ArrayType => arrayT(itemType, "fixed", ownership, { fixedSize, elementSize });
 
 /** Optional configuration for a trampoline FFI descriptor. */
 type TrampolineOptions = {
@@ -274,21 +294,31 @@ type T = {
         library?: string,
         getTypeFn?: string,
         freeFn?: string,
-    ) => Type;
-    readonly struct: (ownership?: Ownership, size?: number) => Type;
-    readonly fundamental: (library: string, refFn: string, unrefFn: string, options?: FundamentalOptions) => Type;
-    readonly ref: (innerType: Type) => Type;
-    readonly hashTable: (keyType: Type, valueType: Type, ownership?: Ownership) => Type;
-    readonly enum: (library: string, getTypeFn: string, signed: boolean) => Type;
-    readonly flags: (library: string, getTypeFn: string, signed: boolean) => Type;
-    readonly array: (itemType: Type, kind?: ArrayKind, ownership?: Ownership, options?: ArrayOptions) => Type;
-    readonly list: (itemType: Type, ownership?: Ownership) => Type;
-    readonly slist: (itemType: Type, ownership?: Ownership) => Type;
-    readonly ptrArray: (itemType: Type, ownership?: Ownership) => Type;
-    readonly garray: (itemType: Type, ownership?: Ownership, elementSize?: number) => Type;
-    readonly byteArray: (ownership?: Ownership) => Type;
-    readonly sizedArray: (itemType: Type, sizeParamIndex: number, ownership?: Ownership, elementSize?: number) => Type;
-    readonly fixedArray: (itemType: Type, fixedSize: number, ownership?: Ownership, elementSize?: number) => Type;
+    ) => BoxedType;
+    readonly struct: (ownership?: Ownership, size?: number) => StructType;
+    readonly fundamental: (
+        library: string,
+        refFn: string,
+        unrefFn: string,
+        options?: FundamentalOptions,
+    ) => FundamentalType;
+    readonly ref: (innerType: Type) => RefType;
+    readonly hashTable: (keyType: Type, valueType: Type, ownership?: Ownership) => HashTableType;
+    readonly enum: (library: string, getTypeFn: string, signed: boolean) => EnumType;
+    readonly flags: (library: string, getTypeFn: string, signed: boolean) => FlagsType;
+    readonly array: (itemType: Type, kind?: ArrayKind, ownership?: Ownership, options?: ArrayOptions) => ArrayType;
+    readonly list: (itemType: Type, ownership?: Ownership) => ArrayType;
+    readonly slist: (itemType: Type, ownership?: Ownership) => ArrayType;
+    readonly ptrArray: (itemType: Type, ownership?: Ownership) => ArrayType;
+    readonly garray: (itemType: Type, ownership?: Ownership, elementSize?: number) => ArrayType;
+    readonly byteArray: (ownership?: Ownership) => ArrayType;
+    readonly sizedArray: (
+        itemType: Type,
+        sizeParamIndex: number,
+        ownership?: Ownership,
+        elementSize?: number,
+    ) => ArrayType;
+    readonly fixedArray: (itemType: Type, fixedSize: number, ownership?: Ownership, elementSize?: number) => ArrayType;
     readonly trampoline: (argTypes: Type[], returnType: Type, options?: TrampolineOptions) => TrampolineType;
 };
 
