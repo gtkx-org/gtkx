@@ -1139,8 +1139,8 @@ interface AnimState {
 function useShaderTickCallback(animRef: React.RefObject<AnimState>, glAreaRef: React.RefObject<Gtk.GLArea | null>) {
     return (_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
         const anim = animRef.current;
-        const frame = frameClock.getFrameCounter();
-        const frameTime = frameClock.getFrameTime();
+        const frame = Number(frameClock.getFrameCounter());
+        const frameTime = Number(frameClock.getFrameTime());
 
         if (anim.firstFrameTime === 0) {
             anim.firstFrameTime = frameTime;

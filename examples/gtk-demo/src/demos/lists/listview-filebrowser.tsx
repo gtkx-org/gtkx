@@ -120,7 +120,7 @@ const collectDirectoryItems = (dirList: Gtk.DirectoryList): FileItem[] => {
                 name: obj.getName(),
                 displayName: obj.getDisplayName(),
                 isDirectory: obj.getFileType() === Gio.FileType.DIRECTORY,
-                size: obj.getSize(),
+                size: Number(obj.getSize()),
                 icon: obj.getIcon(),
                 contentType: obj.getContentType(),
             });

@@ -149,9 +149,9 @@ describe("toGvalue — primitives", () => {
         expect(valueGetUint(toGvalue({ type: "uint32" }, 4000))).toBe(4000);
     });
 
-    it("builds int64 and uint64 values", () => {
-        expect(valueGetInt64(toGvalue({ type: "int64" }, 42))).toBe(42);
-        expect(valueGetUint64(toGvalue({ type: "uint64" }, 84))).toBe(84);
+    it("builds int64 and uint64 values as bigint", () => {
+        expect(valueGetInt64(toGvalue({ type: "bigint64" }, 42n))).toBe(42n);
+        expect(valueGetUint64(toGvalue({ type: "biguint64" }, 84n))).toBe(84n);
     });
 
     it("builds float and double values", () => {

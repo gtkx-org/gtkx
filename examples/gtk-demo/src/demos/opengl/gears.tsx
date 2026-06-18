@@ -502,14 +502,14 @@ function useGearsRefs(state: GearsState): GearsRefs {
 }
 
 const sampleFps = (frameClock: Gdk.FrameClock, frameTime: number, fpsRef: React.RefObject<number>): void => {
-    const frame = frameClock.getFrameCounter();
-    const historyStart = frameClock.getHistoryStart();
+    const frame = Number(frameClock.getFrameCounter());
+    const historyStart = Number(frameClock.getHistoryStart());
     if (frame % 60 !== 0) return;
     const historyLen = frame - historyStart;
     if (historyLen <= 0) return;
-    const previousTimings = frameClock.getTimings(frame - historyLen);
+    const previousTimings = frameClock.getTimings(BigInt(frame - historyLen));
     if (!previousTimings) return;
-    const previousFrameTime = previousTimings.getFrameTime();
+    const previousFrameTime = Number(previousTimings.getFrameTime());
     fpsRef.current = (1_000_000 * historyLen) / (frameTime - previousFrameTime);
 };
 
@@ -517,7 +517,7 @@ const FPS_POLL_MS = 500;
 
 function useGearsAnimation(refs: GearsRefs, fpsRef: React.RefObject<number>, setFps: (fps: number) => void) {
     useTickCallback(refs.glAreaRef, (_widget, frameClock) => {
-        const frameTime = frameClock.getFrameTime();
+        const frameTime = Number(frameClock.getFrameTime());
         if (refs.firstFrameTimeRef.current === 0) {
             refs.firstFrameTimeRef.current = frameTime;
             return true;

@@ -344,7 +344,7 @@ function useOverlayAnimation(state: FontRenderingState) {
         const animation = animationRef.current;
         if (!animation) return false;
 
-        const frameTime = frameClock.getFrameTime();
+        const frameTime = Number(frameClock.getFrameTime());
         animation.startFrameTime ??= frameTime;
         const t = Math.min((frameTime - animation.startFrameTime) / ANIMATION_DURATION_US, 1);
         const eased = easeOutCubic(t);

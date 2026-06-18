@@ -89,16 +89,16 @@ describe("GValue signed and unsigned integers", () => {
         expect(valueGetUint(value)).toBe(4_000_000_000);
     });
 
-    it("round-trips an int64", () => {
+    it("round-trips an int64 beyond the safe-integer range", () => {
         const value = initialized(TYPE_INT64);
-        valueSetInt64(value, -9_007_199_254_740_991);
-        expect(valueGetInt64(value)).toBe(-9_007_199_254_740_991);
+        valueSetInt64(value, -9_223_372_036_854_775_808n);
+        expect(valueGetInt64(value)).toBe(-9_223_372_036_854_775_808n);
     });
 
-    it("round-trips a uint64", () => {
+    it("round-trips a uint64 beyond the safe-integer range", () => {
         const value = initialized(TYPE_UINT64);
-        valueSetUint64(value, 9_007_199_254_740_991);
-        expect(valueGetUint64(value)).toBe(9_007_199_254_740_991);
+        valueSetUint64(value, 18_446_744_073_709_551_615n);
+        expect(valueGetUint64(value)).toBe(18_446_744_073_709_551_615n);
     });
 });
 

@@ -18,6 +18,8 @@ export type PrimitiveCategory =
     | "uint32"
     | "int64"
     | "uint64"
+    | "bigint64"
+    | "biguint64"
     | "float32"
     | "float64"
     | "string"
@@ -41,6 +43,8 @@ export const PRIMITIVE_SIZE: Readonly<Record<PrimitiveCategory, number>> = Objec
     uint32: 4,
     int64: 8,
     uint64: 8,
+    bigint64: 8,
+    biguint64: 8,
     float32: 4,
     float64: 8,
     string: 8,
@@ -69,21 +73,21 @@ const PRIMITIVE_BY_NAME: ReadonlyMap<string, PrimitiveCategory> = new Map([
     ["uint16", "uint16"],
     ["int32", "int32"],
     ["uint32", "uint32"],
-    ["int64", "int64"],
-    ["uint64", "uint64"],
+    ["int64", "bigint64"],
+    ["uint64", "biguint64"],
     ["guint", "uint32"],
     ["guint32", "uint32"],
-    ["glong", "int64"],
-    ["gint64", "int64"],
-    ["long", "int64"],
+    ["glong", "bigint64"],
+    ["gint64", "bigint64"],
+    ["long", "bigint64"],
     ["gssize", "int64"],
     ["gintptr", "int64"],
-    ["gulong", "uint64"],
-    ["guint64", "uint64"],
+    ["gulong", "biguint64"],
+    ["guint64", "biguint64"],
     ["gsize", "uint64"],
     ["guintptr", "uint64"],
     ["GType", "uint64"],
-    ["time_t", "int64"],
+    ["time_t", "bigint64"],
     ["pid_t", "int32"],
     ["uid_t", "uint32"],
     ["gid_t", "uint32"],
@@ -129,6 +133,8 @@ export const PRIMITIVE_TS_TYPE: Readonly<Record<PrimitiveCategory, string>> = Ob
     uint32: "number",
     int64: "number",
     uint64: "number",
+    bigint64: "bigint",
+    biguint64: "bigint",
     float32: "number",
     float64: "number",
     string: "string",

@@ -52,10 +52,7 @@ const buildRunner = (
     store: CodegenStore,
     libraries: readonly string[],
     girPath: readonly string[],
-    tables: Pick<
-        GtkxConfig,
-        "containerSlots" | "arrayProps" | "objectProps" | "virtualProps" | "elementMap" | "bigintAliases"
-    >,
+    tables: Pick<GtkxConfig, "containerSlots" | "arrayProps" | "objectProps" | "virtualProps" | "elementMap">,
 ): CodegenRunner =>
     new CodegenRunner({
         libraries,
@@ -65,7 +62,6 @@ const buildRunner = (
         objectProps: tables.objectProps,
         virtualProps: tables.virtualProps,
         elementMap: tables.elementMap,
-        bigintAliases: tables.bigintAliases,
         gi: {
             storeDir: store.giStoreDir,
             linkDir: store.giLinkDir,
@@ -130,7 +126,6 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
         objectProps: config.objectProps,
         virtualProps: config.virtualProps,
         elementMap: config.elementMap,
-        bigintAliases: config.bigintAliases,
     }).run();
 
     return {

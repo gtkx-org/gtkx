@@ -41,7 +41,7 @@ class ColorWidget extends Gtk.Widget {
         this.setHexpand(true);
         this.setVexpand(true);
         this.addTickCallback((widget, frameClock) => {
-            const time = frameClock.getFrameTime();
+            const time = Number(frameClock.getFrameTime());
             if (time >= this.time2) {
                 this.time2 = time + TIME_SPAN_US;
                 this.color1 = this.color2;

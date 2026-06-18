@@ -301,7 +301,7 @@ describe("render - ListView - selection (7) > selectionMode + selected together"
         });
 
         const selection = (ref.current.getModel() as Gtk.MultiSelection).getSelection();
-        expect(selection.getSize()).toBe(2);
+        expect(selection.getSize()).toBe(2n);
         expect(selection.contains(0)).toBe(true);
         expect(selection.contains(2)).toBe(true);
     });

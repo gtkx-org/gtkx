@@ -19,8 +19,6 @@ export type JsxSurfaceMaps = {
     readonly objectPropMap?: Readonly<Record<string, Readonly<Record<string, ObjectPropRow>>>>;
     /** Virtual-prop rows keyed by JSX element name then prop name. */
     readonly virtualPropMap?: Readonly<Record<string, Readonly<Record<string, VirtualPropRow>>>>;
-    /** Qualified `Namespace.Alias` names surfaced as `bigint`. */
-    readonly bigintAliases?: ReadonlySet<string>;
 };
 
 /**
@@ -76,7 +74,6 @@ export const generateJsxSection = (
             arrayPropMap: maps.arrayPropMap ?? {},
             objectPropMap: maps.objectPropMap ?? {},
             virtualPropMap: maps.virtualPropMap ?? {},
-            bigintAliases: maps.bigintAliases ?? new Set(),
             isWidgetAncestor,
             widgetByGlibName,
             targetNamespaceName: targetNamespace.name,
@@ -129,7 +126,6 @@ const renderPropBlock = (
         namespace: entry.namespace,
         dataPropNames: new Set([...Object.keys(arrayProps), ...Object.keys(objectProps), ...Object.keys(virtualProps)]),
         isWidgetAncestor: context.isWidgetAncestor,
-        bigintAliases: context.bigintAliases,
     });
     for (const [namespace, alias] of imports) context.imports.giNamespaces.set(namespace, alias);
     context.imports.giNamespaces.set(entry.namespace.name, entry.namespace.name);

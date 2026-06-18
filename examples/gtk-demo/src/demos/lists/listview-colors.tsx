@@ -513,7 +513,7 @@ function useStoreProgressBar(
 
 function collectSelectedColors(selection: Gtk.MultiSelection): ColorItem[] {
     const bitset = selection.getSelection();
-    const size = bitset.getSize();
+    const size = Number(bitset.getSize());
     const out: ColorItem[] = new Array(size);
     for (let i = 0; i < size; i++) {
         const position = bitset.getNth(i);

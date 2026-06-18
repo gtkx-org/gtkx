@@ -80,10 +80,10 @@ const gValueSetInt = t.bind(LIBGOBJECT, "g_value_set_int", [GVALUE_T, t.int32], 
 const gValueGetInt = t.bind(LIBGOBJECT, "g_value_get_int", [GVALUE_T], t.int32);
 const gValueSetUint = t.bind(LIBGOBJECT, "g_value_set_uint", [GVALUE_T, t.uint32], t.void);
 const gValueGetUint = t.bind(LIBGOBJECT, "g_value_get_uint", [GVALUE_T], t.uint32);
-const gValueSetInt64 = t.bind(LIBGOBJECT, "g_value_set_int64", [GVALUE_T, t.int64], t.void);
-const gValueGetInt64 = t.bind(LIBGOBJECT, "g_value_get_int64", [GVALUE_T], t.int64);
-const gValueSetUint64 = t.bind(LIBGOBJECT, "g_value_set_uint64", [GVALUE_T, t.uint64], t.void);
-const gValueGetUint64 = t.bind(LIBGOBJECT, "g_value_get_uint64", [GVALUE_T], t.uint64);
+const gValueSetInt64 = t.bind(LIBGOBJECT, "g_value_set_int64", [GVALUE_T, t.bigint64], t.void);
+const gValueGetInt64 = t.bind(LIBGOBJECT, "g_value_get_int64", [GVALUE_T], t.bigint64);
+const gValueSetUint64 = t.bind(LIBGOBJECT, "g_value_set_uint64", [GVALUE_T, t.biguint64], t.void);
+const gValueGetUint64 = t.bind(LIBGOBJECT, "g_value_get_uint64", [GVALUE_T], t.biguint64);
 const gValueSetFloat = t.bind(LIBGOBJECT, "g_value_set_float", [GVALUE_T, t.float32], t.void);
 const gValueGetFloat = t.bind(LIBGOBJECT, "g_value_get_float", [GVALUE_T], t.float32);
 const gValueSetDouble = t.bind(LIBGOBJECT, "g_value_set_double", [GVALUE_T, t.float64], t.void);
@@ -123,14 +123,14 @@ export const valueSetUint = (value: Handle, v: number): void => {
     gValueSetUint(value, v);
 };
 export const valueGetUint = (value: Handle): number => gValueGetUint(value) as number;
-export const valueSetInt64 = (value: Handle, v: number): void => {
+export const valueSetInt64 = (value: Handle, v: bigint | number): void => {
     gValueSetInt64(value, v);
 };
-export const valueGetInt64 = (value: Handle): number => gValueGetInt64(value) as number;
-export const valueSetUint64 = (value: Handle, v: number): void => {
+export const valueGetInt64 = (value: Handle): bigint => gValueGetInt64(value) as bigint;
+export const valueSetUint64 = (value: Handle, v: bigint | number): void => {
     gValueSetUint64(value, v);
 };
-export const valueGetUint64 = (value: Handle): number => gValueGetUint64(value) as number;
+export const valueGetUint64 = (value: Handle): bigint => gValueGetUint64(value) as bigint;
 export const valueSetFloat = (value: Handle, v: number): void => {
     gValueSetFloat(value, v);
 };
@@ -171,20 +171,6 @@ export const valueGetVariant = (value: Handle): object | null => {
     }
     return wrapHandle(result, cls);
 };
-
-const gValueSetInt64Big = t.bind(LIBGOBJECT, "g_value_set_int64", [GVALUE_T, t.bigint64], t.void);
-const gValueGetInt64Big = t.bind(LIBGOBJECT, "g_value_get_int64", [GVALUE_T], t.bigint64);
-const gValueSetUint64Big = t.bind(LIBGOBJECT, "g_value_set_uint64", [GVALUE_T, t.biguint64], t.void);
-const gValueGetUint64Big = t.bind(LIBGOBJECT, "g_value_get_uint64", [GVALUE_T], t.biguint64);
-
-const valueSetInt64Big = (value: Handle, v: bigint | number): void => {
-    gValueSetInt64Big(value, v);
-};
-export const valueGetInt64Big = (value: Handle): bigint => gValueGetInt64Big(value) as bigint;
-const valueSetUint64Big = (value: Handle, v: bigint | number): void => {
-    gValueSetUint64Big(value, v);
-};
-export const valueGetUint64Big = (value: Handle): bigint => gValueGetUint64Big(value) as bigint;
 
 const gStrvGetType = t.bind(LIBGOBJECT, "g_strv_get_type", [], t.uint64);
 let cachedStrvGtype: GType | undefined;
@@ -396,11 +382,12 @@ const getPointerValue = (value: Handle): null => {
 
 /**
  * Writes `jsValue` into the already-typed `GValue` handle, dispatching on the
- * `GType`'s fundamental. The FFI descriptor disambiguates the cases the
- * fundamental cannot: a `bigint64`/`biguint64` descriptor selects the bigint
- * accessor over the number one, and a string-array descriptor selects the
- * `GStrv` setter over the generic boxed setter. Fundamentals {@link gtypeFromFfiType}
- * never resolves to (`LONG`/`ULONG`/`CHAR`/`UCHAR`) are absent by construction.
+ * `GType`'s fundamental. A 64-bit integer is written through the bigint
+ * accessor, which accepts a `bigint` or a `number`. The FFI descriptor
+ * disambiguates the one case the fundamental cannot: a string-array descriptor
+ * selects the `GStrv` setter over the generic boxed setter. Fundamentals
+ * {@link gtypeFromFfiType} never resolves to (`LONG`/`ULONG`/`CHAR`/`UCHAR`) are
+ * absent by construction.
  */
 function setGvaluePayload(value: Handle, gtype: GType, ffiType: FfiType, jsValue: unknown): void {
     switch (typeFundamental(gtype)) {
@@ -414,12 +401,10 @@ function setGvaluePayload(value: Handle, gtype: GType, ffiType: FfiType, jsValue
             valueSetUint(value, jsValue as number);
             break;
         case TYPE_INT64:
-            if (ffiType.type === "bigint64") valueSetInt64Big(value, jsValue as bigint | number);
-            else valueSetInt64(value, jsValue as number);
+            valueSetInt64(value, jsValue as bigint | number);
             break;
         case TYPE_UINT64:
-            if (ffiType.type === "biguint64") valueSetUint64Big(value, jsValue as bigint | number);
-            else valueSetUint64(value, jsValue as number);
+            valueSetUint64(value, jsValue as bigint | number);
             break;
         case TYPE_FLOAT:
             valueSetFloat(value, jsValue as number);

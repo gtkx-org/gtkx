@@ -13,7 +13,7 @@ import { call, type Type as FfiType, type Handle, type Value } from "@gtkx/nativ
 import { GVALUE_SIZE, GVALUE_T, LIBGOBJECT } from "./constants.js";
 import { t } from "./descriptors.js";
 import type { GType } from "./gtype.js";
-import { emptyValueFromFfi, fromGvalue, toGvalue, valueGetInt64Big, valueGetUint64Big } from "./gvalue.js";
+import { emptyValueFromFfi, fromGvalue, toGvalue } from "./gvalue.js";
 import { getHandle } from "./registry.js";
 
 /**
@@ -76,17 +76,6 @@ const gObjectGetProperty = t.bind(LIBGOBJECT, "g_object_get_property", [...PROPE
 const gObjectSetProperty = t.bind(LIBGOBJECT, "g_object_set_property", [...PROPERTY_CALL_ARGS], t.void);
 
 /**
- * Reads a 64-bit `GValue` payload as a `bigint` when the property's FFI
- * descriptor declares a bigint representation, or `undefined` when the
- * fundamental-keyed {@link fromGvalue} path applies instead.
- */
-function bigintPropertyValue(ffiType: FfiType, value: Handle): bigint | undefined {
-    if (ffiType.type === "bigint64") return valueGetInt64Big(value);
-    if (ffiType.type === "biguint64") return valueGetUint64Big(value);
-    return undefined;
-}
-
-/**
  * Reads a GObject property into a plain JavaScript value through a
  * statically-known FFI type descriptor.
  *
@@ -102,7 +91,7 @@ function bigintPropertyValue(ffiType: FfiType, value: Handle): bigint | undefine
 export function getGobjectProperty(obj: object, propertyName: string, ffiType: FfiType): unknown {
     const value = emptyValueFromFfi(ffiType);
     gObjectGetProperty(getHandle(obj), propertyName, value);
-    return bigintPropertyValue(ffiType, value) ?? fromGvalue(value);
+    return fromGvalue(value);
 }
 
 /**

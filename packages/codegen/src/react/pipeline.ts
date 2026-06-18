@@ -33,8 +33,6 @@ export type UserTables = {
     readonly virtualProps?: Readonly<Record<string, Readonly<Record<string, VirtualPropRow>>>>;
     /** Attach relationships merged after the built-in element-map rows. */
     readonly elementMap?: readonly ElementMapRule[];
-    /** Merged qualified `Namespace.Alias` names surfaced as `bigint`. */
-    readonly bigintAliases?: ReadonlySet<string>;
 };
 
 /**
@@ -106,7 +104,6 @@ export const generateJsxFiles = (repository: GirRepository, userTables: UserTabl
             arrayPropMap,
             objectPropMap,
             virtualPropMap,
-            bigintAliases: userTables.bigintAliases ?? new Set(),
         });
         namespaces.push({ directory: namespace.name.toLowerCase(), source });
         widgetCount += count;

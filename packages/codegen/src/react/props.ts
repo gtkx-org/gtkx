@@ -46,19 +46,16 @@ export type WidgetPropsOptions = {
     readonly dataPropNames?: ReadonlySet<string>;
     /** Returns `true` when `candidate` already has its own widget Props interface. */
     readonly isWidgetAncestor?: (candidate: GirClass) => boolean;
-    /** Qualified `Namespace.Alias` names surfaced as `bigint`. */
-    readonly bigintAliases?: ReadonlySet<string>;
 };
 
 /**
  * Everything the prop-type renderers need beyond the type reference itself:
- * the repository for named-type resolution, the import accumulator the
- * rendering populates, and the bigint alias allowlist.
+ * the repository for named-type resolution and the import accumulator the
+ * rendering populates.
  */
 type PropTypeRenderContext = {
     readonly repository: GirRepository;
     readonly imports: Map<string, string>;
-    readonly bigintAliases: ReadonlySet<string>;
 };
 
 type SignalRenderOptions = {
@@ -82,16 +79,9 @@ type ParentRef = { readonly klass: GirClass; readonly namespaceName: string };
  * @param options - {@link WidgetPropsOptions}
  */
 export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetPropsEntries => {
-    const {
-        repository,
-        klass,
-        namespace,
-        dataPropNames = new Set<string>(),
-        isWidgetAncestor = () => false,
-        bigintAliases = new Set<string>(),
-    } = options;
+    const { repository, klass, namespace, dataPropNames = new Set<string>(), isWidgetAncestor = () => false } = options;
     const imports = new Map<string, string>();
-    const types: PropTypeRenderContext = { repository, imports, bigintAliases };
+    const types: PropTypeRenderContext = { repository, imports };
     const propEntries: string[] = [];
     const slotPropNames: string[] = [];
     const seen = new Set<string>();
@@ -363,14 +353,9 @@ const namedTsType = (context: PropTypeRenderContext, ref: NamedTypeRef): string 
     }
     if (resolved.kind === "callback") return "(...args: unknown[]) => unknown";
     if (resolved.kind === "alias") {
-        if (context.bigintAliases.has(`${namespaceName}.${ref.typeName}`)) return "bigint";
-        if (resolved.target === undefined) return "number";
-        return namedTsType(context, {
-            kind: "named",
-            namespaceName: resolved.namespace.name,
-            typeName: resolved.target,
-            cType: undefined,
-        });
+        return resolved.targetRef === undefined
+            ? "number"
+            : renderBaseTypeFor(reactTarget(context), resolved.targetRef);
     }
     context.imports.set(namespaceName, namespaceName);
     return `${namespaceName}.${ref.typeName}`;

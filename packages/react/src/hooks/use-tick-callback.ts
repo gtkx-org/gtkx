@@ -34,7 +34,7 @@ const dropRegistration = (registrationRef: RefObject<TickRegistration | null>): 
  * ```tsx
  * const areaRef = useRef<Gtk.DrawingArea | null>(null);
  * useTickCallback(areaRef, (widget, frameClock) => {
- *     setAngle(frameClock.getFrameTime() / 1_000_000);
+ *     setAngle(Number(frameClock.getFrameTime()) / 1_000_000);
  *     widget.queueDraw();
  *     return true;
  * });

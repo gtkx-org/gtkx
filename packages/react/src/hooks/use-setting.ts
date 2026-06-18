@@ -89,6 +89,12 @@ const expectNumber = (value: unknown): number => {
     return value;
 };
 
+const expectBigInt = (value: unknown): bigint => {
+    if (typeof value === "bigint") return value;
+    if (typeof value === "number") return BigInt(value);
+    throw settingTypeError("a bigint", value);
+};
+
 const expectString = (value: unknown): string => {
     if (typeof value !== "string") throw settingTypeError("a string", value);
     return value;
@@ -132,11 +138,11 @@ const ACCESSORS: Record<string, SettingAccessor | undefined> = {
     },
     x: {
         read: (settings, key) => settings.getInt64(key),
-        write: (settings, key, value) => settings.setInt64(key, expectNumber(value)),
+        write: (settings, key, value) => settings.setInt64(key, expectBigInt(value)),
     },
     t: {
         read: (settings, key) => settings.getUint64(key),
-        write: (settings, key, value) => settings.setUint64(key, expectNumber(value)),
+        write: (settings, key, value) => settings.setUint64(key, expectBigInt(value)),
     },
     d: {
         read: (settings, key) => settings.getDouble(key),

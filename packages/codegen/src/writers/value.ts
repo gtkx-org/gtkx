@@ -1,10 +1,10 @@
 import { quote } from "@gtkx/utils";
-import { bigintAliasCategory } from "../bigint-aliases.js";
 import type { ModuleContext } from "../dsl/context.js";
 import { joinArgs } from "../dsl/emit.js";
 import { callbackFromNode, type GirCallback } from "../gir/callback.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import { type GirParameter, isInoutParameter, isOutParameter, type ParameterTransfer } from "../gir/parameter.js";
+import type { PrimitiveCategory } from "../gir/primitives.js";
 import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirRepository, ResolvedNamed } from "../gir/repository.js";
 import type { ArrayTypeRef, GirTypeRef, NamedTypeRef } from "../gir/type-ref.js";
@@ -209,25 +209,7 @@ const LIST_HELPERS: Readonly<Record<"glist" | "gslist" | "gptrarray" | "garray" 
     gbytearray: "byteArray",
 };
 
-const primitiveExpression = (
-    category:
-        | "void"
-        | "boolean"
-        | "int8"
-        | "uint8"
-        | "int16"
-        | "uint16"
-        | "int32"
-        | "uint32"
-        | "int64"
-        | "uint64"
-        | "float32"
-        | "float64"
-        | "string"
-        | "unichar"
-        | "pointer",
-    ownership: "borrowed" | "full",
-): string => {
+const primitiveExpression = (category: PrimitiveCategory, ownership: "borrowed" | "full"): string => {
     if (category === "void") return "t.void";
     if (category === "string") return `t.string(${quote(ownership)})`;
     if (category === "pointer") return "t.uint64";
@@ -239,13 +221,6 @@ const namedExpression = (context: ModuleContext, ref: NamedTypeRef, ownership: "
     const resolved = context.repository.resolveNamed(namespaceName, ref.typeName);
     if (resolved === undefined) {
         return `t.object(${quote(ownership)})`;
-    }
-    if (resolved.kind === "alias") {
-        const qualifiedName = `${namespaceName}.${ref.typeName}`;
-        if (context.bigintAliases.has(qualifiedName)) {
-            const category = bigintAliasCategory(qualifiedName, resolved.targetRef);
-            return category === "int64" ? "t.bigint64" : "t.biguint64";
-        }
     }
     return expressionForResolved(context, resolved, ownership);
 };

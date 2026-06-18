@@ -43,7 +43,7 @@ const Fixed2Demo = () => {
         const fixed = fixedRef.current;
         const label = labelRef.current;
         if (!fixed || !label) return true;
-        const now = frameClock.getFrameTime();
+        const now = Number(frameClock.getFrameTime());
         startTimeRef.current ??= now;
         const duration = (now - startTimeRef.current) / 1_000_000;
         const transform = computeFixedTransform(duration, label, fixed) ?? null;
