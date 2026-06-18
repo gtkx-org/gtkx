@@ -21,7 +21,8 @@ import { describe, expect, it } from "vitest";
 import "@gtkx/gi/gobject";
 import { t } from "@gtkx/ffi";
 import { call } from "@gtkx/native";
-import { emptyValueFromFfi, valueFromFfi, valueFromObject, valueGetType, valueToJS } from "../../src/gobject.js";
+import { valueGetType } from "../../src/gvalue.js";
+import { emptyValueFromFfi, valueFromFfi, valueFromObject, valueToJS } from "../../src/value-marshal.js";
 
 const callGetType = (lib: string, fn: string): GType => {
     const result = call(lib, fn, [], { type: "uint64" });

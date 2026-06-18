@@ -5,13 +5,13 @@ import type { BackingInstance, Props } from "./types.js";
  * Instantiates the backing GObject of a reconciler element, widget or not.
  *
  * Resolves the registered wrapper class for the GLib type and constructs it
- * with the camelCase JSX prop bag. The generated constructor translates each
- * known property into a `GValue` and ignores everything else (signal
- * handlers, children, refs), so the bag can be passed through verbatim.
+ * with `props`, which the caller has already narrowed to the construct-time
+ * GObject properties — children, signal handlers, accessible metadata, array
+ * props, and descriptor-driven props removed. The generated constructor
+ * marshals each into a `GValue` for `g_object_new_with_properties`.
  *
  * @param typeName - GLib type name (e.g. `"GtkLabel"`)
- * @param props - React prop bag; only construct-time properties are picked
- *   up, all others are ignored at construction
+ * @param props - The construct-time GObject properties to set.
  */
 export function createContainerWithProperties(typeName: string, props: Props): BackingInstance {
     const cls = getWrapperClass(typeFromName(typeName));

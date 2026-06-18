@@ -1,6 +1,6 @@
 /// <reference types="@gtkx/config/virtual" />
 
-import { CONSTRUCT_ONLY_PROPS, DEFAULT_PROPS, SIGNALS } from "virtual:gtkx-config";
+import { CONSTRUCT_ONLY_PROPS, CONSTRUCT_PROPS, DEFAULT_PROPS, SIGNALS } from "virtual:gtkx-config";
 import type { GType } from "@gtkx/gi/gobject";
 import { typeName, typeParent } from "@gtkx/gi/gobject";
 import { toKebabCase } from "@gtkx/utils";
@@ -28,6 +28,7 @@ const typeNameSetCache = new Map<GType, ReadonlySet<string>>();
 const signalCache = new Map<GType, Map<string, string | null>>();
 const constructOnlyCache = new Map<GType, Map<string, boolean>>();
 const defaultPropCache = new Map<GType, Map<string, DefaultPropLookup>>();
+const constructablePropsCache = new Map<GType, ReadonlySet<string>>();
 
 /**
  * Returns a GLib type's ancestry as type names, most-derived first.
@@ -88,6 +89,27 @@ const memoize = <T>(
     const result = compute(collectTypeNameChain(gtype));
     perGtype.set(key, result);
     return result;
+};
+
+/**
+ * The camelCase names of every construct-time GObject property a GType accepts —
+ * the writable, construct, and construct-only properties its generated
+ * constructor marshals — merged across its full ancestry. Used to narrow a JSX
+ * prop bag to what `g_object_new_with_properties` can set, so children, signal
+ * handlers, and framework-only props never reach construction. Cached per GType.
+ *
+ * @param gtype - the GLib type whose constructable property names to resolve
+ */
+export const collectConstructableProps = (gtype: GType): ReadonlySet<string> => {
+    const cached = constructablePropsCache.get(gtype);
+    if (cached) return cached;
+    const names = new Set<string>();
+    for (const name of collectTypeNameChain(gtype)) {
+        const set = CONSTRUCT_PROPS[name];
+        if (set) for (const prop of set) names.add(prop);
+    }
+    constructablePropsCache.set(gtype, names);
+    return names;
 };
 
 export const isConstructOnlyProp = (instance: BackingInstance, key: string): boolean =>

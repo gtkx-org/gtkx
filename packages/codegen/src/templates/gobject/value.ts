@@ -4,7 +4,7 @@
  * `g_value_get_boxed` and `g_value_set_boxed` exchange a type-erased
  * `gpointer`, which codegen cannot marshal — it emits throwing stubs in their
  * place. These overrides install working implementations backed by the
- * registry-aware boxed marshalling in `./gvalue.js`.
+ * registry-aware boxed marshalling `@gtkx/ffi` exposes.
  */
 
 import { getGvalueBoxed, setGvalueBoxed } from "@gtkx/ffi";

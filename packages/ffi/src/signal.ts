@@ -1,17 +1,17 @@
 import type { Type as FfiType, TrampolineType, Value } from "@gtkx/native";
 import { call, t, tupleResult } from "./descriptors.js";
+import { type GType, GVALUE_BORROWED, LIBGOBJECT } from "./gtype.js";
+import type { GValue } from "./gvalue.js";
+import { type GTyped, getHandle } from "./registry.js";
 import {
     emptyValueFromFfi,
-    type GValue,
     getGvalueBoxed,
     inoutBoxedFromFfi,
     outBoxedFromFfi,
     outValueFromFfi,
     valueFromFfi,
     valueToJS,
-} from "./gobject.js";
-import { type GType, GVALUE_BORROWED, LIBGOBJECT } from "./gtype.js";
-import { type GTyped, getHandle } from "./registry.js";
+} from "./value-marshal.js";
 
 /**
  * Runtime signal-connection wrapper for generated FFI bindings.

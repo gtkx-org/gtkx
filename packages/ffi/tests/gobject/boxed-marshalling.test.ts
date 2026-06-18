@@ -1,7 +1,7 @@
 import { t } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/gi/gdk";
 import { describe, expect, it } from "vitest";
-import { getGvalueBoxed, inoutBoxedFromFfi, outBoxedFromFfi } from "../../src/gobject.js";
+import { getGvalueBoxed, inoutBoxedFromFfi, outBoxedFromFfi } from "../../src/value-marshal.js";
 
 describe("boxed GValue marshalling — caller-allocated out copies, inout shares", () => {
     const rectangleFfi = t.boxed("GdkRectangle", "borrowed", "libgtk-4.so.1", "gdk_rectangle_get_type");

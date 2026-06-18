@@ -17,6 +17,8 @@ declare module "virtual:gtkx-config" {
     export const SIGNALS: Readonly<Record<string, Readonly<Record<string, string>>>>;
     /** Per-GLib-type-name set of construct-only camelCase property names. */
     export const CONSTRUCT_ONLY_PROPS: Readonly<Record<string, ReadonlySet<string>>>;
+    /** Per-GLib-type-name set of constructable (writable/construct/construct-only) camelCase property names. */
+    export const CONSTRUCT_PROPS: Readonly<Record<string, ReadonlySet<string>>>;
     /** Per-GLib-type-name map of settable property names to their GIR default value. */
     export const DEFAULT_PROPS: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
     /** Merged attach relationships: codegen's built-ins, then the config's `elementMap` rows. */

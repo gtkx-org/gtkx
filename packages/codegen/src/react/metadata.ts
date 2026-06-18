@@ -87,9 +87,9 @@ const renderRuntimeTables = (tables: RuntimeTables): readonly string[] => [
 
 /**
  * Generates `metadata.ts` source — the merged `SIGNALS`, `CONSTRUCT_ONLY_PROPS`,
- * and `DEFAULT_PROPS` tables consumed by the React metadata resolver, plus the
- * reconciler's {@link RuntimeTables} (built-ins merged with the project's
- * config rows).
+ * `CONSTRUCT_PROPS`, and `DEFAULT_PROPS` tables consumed by the React metadata
+ * resolver, plus the reconciler's {@link RuntimeTables} (built-ins merged with
+ * the project's config rows).
  *
  * The tables are pure data keyed by GLib type name and carry no value imports
  * from any namespace, so the module loads no GObject library: it is delivered to
@@ -110,6 +110,9 @@ export const generateMetadata = (repository: GirRepository, tables: RuntimeTable
     const constructOnlyEntries = widgets
         .filter(({ constructOnly }) => constructOnly.length > 0)
         .map(({ glibName, constructOnly }) => `    "${glibName}": new Set([${constructOnly.map(quote).join(",")}]),`);
+    const constructableEntries = widgets
+        .filter(({ constructable }) => constructable.length > 0)
+        .map(({ glibName, constructable }) => `    "${glibName}": new Set([${constructable.map(quote).join(",")}]),`);
     const defaultsEntries = widgets
         .filter(({ defaults }) => defaults.length > 0)
         .map(({ glibName, defaults }) => `    "${glibName}": ${renderDefaultsObject(defaults)},`);
@@ -117,6 +120,7 @@ export const generateMetadata = (repository: GirRepository, tables: RuntimeTable
     return `${[
         `export const SIGNALS: Readonly<Record<string, Readonly<Record<string, string>>>> = {\n${signalsEntries.join("\n")}\n};`,
         `export const CONSTRUCT_ONLY_PROPS: Readonly<Record<string, ReadonlySet<string>>> = {\n${constructOnlyEntries.join("\n")}\n};`,
+        `export const CONSTRUCT_PROPS: Readonly<Record<string, ReadonlySet<string>>> = {\n${constructableEntries.join("\n")}\n};`,
         `export const DEFAULT_PROPS: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {\n${defaultsEntries.join("\n")}\n};`,
         ...renderRuntimeTables(tables),
     ].join("\n\n")}\n`;
@@ -127,6 +131,7 @@ type WidgetEntry = {
     readonly namespace: string;
     readonly signals: ReadonlyArray<readonly [string, string]>;
     readonly constructOnly: readonly string[];
+    readonly constructable: readonly string[];
     readonly defaults: ReadonlyArray<readonly [string, string]>;
 };
 
@@ -147,6 +152,7 @@ const collectWidgets = (repository: GirRepository): readonly WidgetEntry[] => {
             namespace: namespace.name,
             signals: collectSignals(sources),
             constructOnly: collectConstructOnly(sources),
+            constructable: collectConstructable(sources),
             defaults: collectDefaultProps(repository, qualifiedSources),
         });
     }
@@ -167,12 +173,23 @@ const collectSignals = (sources: readonly GirClass[]): ReadonlyArray<readonly [s
     return signals;
 };
 
-const collectConstructOnly = (sources: readonly GirClass[]): readonly string[] => {
+/**
+ * Collects the camelCase names of the properties a class introduces — its own
+ * and its implemented interfaces' — that `keep` selects. Each name is considered
+ * once, nearest source winning.
+ *
+ * @param sources - The class and its implemented interfaces.
+ * @param keep - Predicate selecting which properties to include.
+ */
+const collectPropNames = (
+    sources: readonly GirClass[],
+    keep: (property: GirProperty) => boolean,
+): readonly string[] => {
     const seen = new Set<string>();
     const names: string[] = [];
     for (const source of sources) {
         for (const property of source.properties) {
-            if (!property.constructOnly || !property.introspectable) continue;
+            if (!keep(property)) continue;
             const jsName = toIdentifier(toCamelCase(property.name));
             if (seen.has(jsName)) continue;
             seen.add(jsName);
@@ -181,6 +198,23 @@ const collectConstructOnly = (sources: readonly GirClass[]): readonly string[] =
     }
     return names;
 };
+
+/** The construct-only camelCase property names a class introduces. */
+const collectConstructOnly = (sources: readonly GirClass[]): readonly string[] =>
+    collectPropNames(sources, (property) => property.constructOnly && property.introspectable);
+
+/**
+ * The camelCase names of every constructable property a class introduces — its
+ * own and its implemented interfaces', that are writable, construct, or
+ * construct-only — mirroring exactly the props the generated constructor
+ * destructures and marshals through `g_object_new_with_properties`. The
+ * reconciler narrows a JSX prop bag to this set before constructing, so only
+ * real GObject properties reach construction.
+ *
+ * @param sources - The class and its implemented interfaces.
+ */
+const collectConstructable = (sources: readonly GirClass[]): readonly string[] =>
+    collectPropNames(sources, (property) => property.writable || property.construct || property.constructOnly);
 
 const renderSignalsObject = (entries: ReadonlyArray<readonly [string, string]>): string => {
     if (entries.length === 0) return "{}";

@@ -24,14 +24,7 @@
 
 export { promisify } from "./async.js";
 export { createErrorDomain, type ErrorDomain } from "./error.js";
-export {
-    getGobjectProperty,
-    getGvalueBoxed,
-    newGobjectWithProperties,
-    setGobjectProperty,
-    setGvalueBoxed,
-    wrapValue,
-} from "./gobject.js";
+export { newGobjectWithProperties } from "./gobject.js";
 export * from "./gtype.js";
 export { t } from "./helpers.js";
 export * from "./lifecycle.js";
@@ -47,3 +40,5 @@ export {
     type SignalHandler,
     signalBaseName,
 } from "./signal.js";
+export { getGobjectProperty, getGvalueBoxed, setGobjectProperty, setGvalueBoxed } from "./value-marshal.js";
+export { wrapValue } from "./wrap-value.js";

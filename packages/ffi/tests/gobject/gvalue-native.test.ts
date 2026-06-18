@@ -19,7 +19,7 @@ import {
 import * as GLib from "@gtkx/gi/glib";
 import { ParamFlags, paramSpecBoolean } from "@gtkx/gi/gobject";
 import { call } from "@gtkx/native";
-import { GValue } from "../../src/gobject.js";
+import { GValue } from "../../src/gvalue.js";
 import "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";

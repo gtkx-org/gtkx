@@ -20,8 +20,8 @@ import type { Type as NativeType, Ref, Value } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { t as descriptors, tupleResult } from "./descriptors.js";
 import { checkError } from "./error.js";
-import { wrapValue } from "./gobject.js";
 import { getHandle } from "./registry.js";
+import { wrapValue } from "./wrap-value.js";
 
 /**
  * The out-direction an argument participates in beyond a plain input:

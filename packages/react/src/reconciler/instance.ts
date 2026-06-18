@@ -9,7 +9,9 @@
  * manages the children array and routes commits to those tables.
  */
 import { getWrapperClass, typeFromName } from "@gtkx/ffi";
+import type { GType } from "@gtkx/gi/gobject";
 import { omit } from "@gtkx/utils";
+import { collectConstructableProps } from "../utils/gtype.js";
 import { createContainerWithProperties } from "./construct.js";
 import { getSignalStore, type SignalStore } from "./signal-store.js";
 import type { BackingInstance, BackingInstanceClass, ContainerInfo, Props } from "./types.js";
@@ -72,9 +74,31 @@ export interface Instance {
 export const resolveContainerClass = (type: string): BackingInstanceClass | null =>
     getWrapperClass(typeFromName(type)) as BackingInstanceClass | null;
 
+/**
+ * Narrows a JSX prop bag to the construct-time GObject properties
+ * `g_object_new_with_properties` accepts: it keeps only the props codegen marks
+ * constructable for the type, dropping everything the reconciler applies through
+ * another path — children, the element's `ref`/`key`, signal handlers,
+ * accessible metadata, array props, and framework-only props such as a slot's
+ * `prefix`. What remains is exactly the set the generated constructor marshals,
+ * so construction never receives a non-property.
+ *
+ * @param gtype - The GLib type being constructed.
+ * @param props - The JSX prop bag, after construction-skip removal.
+ */
+const pickConstructProps = (gtype: GType, props: Props): Props => {
+    const constructable = collectConstructableProps(gtype);
+    const result: Props = {};
+    for (const name in props) {
+        if (constructable.has(name)) result[name] = props[name];
+    }
+    return result;
+};
+
 const constructBacking = (type: string, props: Props): BackingInstance => {
+    const gtype = typeFromName(type);
     const skip = CONSTRUCTION_SKIP_PROPS[type];
-    return createContainerWithProperties(type, skip ? omit(props, skip) : props);
+    return createContainerWithProperties(type, pickConstructProps(gtype, skip ? omit(props, skip) : props));
 };
 
 type InstanceSeed = {
