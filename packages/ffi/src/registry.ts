@@ -85,6 +85,18 @@ export function getClassGtype(cls: AnyClass): GType {
 }
 
 /**
+ * Returns the GLib type identifier of `instance`'s leaf class, or the invalid
+ * GType (`0`) when that class has not been registered. The generated root
+ * constructor calls this to resolve the GType to construct before linking the
+ * resulting handle to the wrapper.
+ *
+ * @param instance - The wrapper whose leaf class supplies the GType.
+ */
+export function getInstanceGtype(instance: object): GType {
+    return getClassGtype(instance.constructor as AnyClass);
+}
+
+/**
  * Returns the GLib interface type identifier registered for `cls` via
  * {@link setInterfaceGtype}, or the invalid GType (`0`) when `cls` is
  * not a registered interface wrapper.

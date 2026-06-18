@@ -11,6 +11,7 @@ const EXPECTED_RUNTIME_EXPORTS = [
     "setGvalueBoxed",
     "promisify",
     "getHandle",
+    "getInstanceGtype",
     "setHandle",
     "tryGetHandle",
     "t",

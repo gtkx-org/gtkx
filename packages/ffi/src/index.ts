@@ -30,7 +30,7 @@ export { t } from "./helpers.js";
 export * from "./lifecycle.js";
 export { registerClass } from "./register-class.js";
 export { registerWrapperClass } from "./register-wrapper-class.js";
-export { getHandle, getWrapperClass, setHandle, tryGetHandle, wrapHandle } from "./registry.js";
+export { getHandle, getInstanceGtype, getWrapperClass, setHandle, tryGetHandle, wrapHandle } from "./registry.js";
 export {
     connectGobjectSignal,
     emitGobjectSignal,

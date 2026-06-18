@@ -67,8 +67,9 @@ export const renderConstructorPropsInterface = (context: ModuleContext, klass: G
  * Renders the constructor for a class, or `undefined` when none is needed.
  *
  * The parentless root of a GObject hierarchy gets the canonical base
- * constructor that hands the assembled marshalling record to
- * `newGobjectWithProperties`. A class that introduces constructable props gets
+ * constructor: it hands the assembled marshalling record to
+ * `newGobjectWithProperties` and links the returned handle to the wrapper. A
+ * class that introduces constructable props gets
  * a constructor that destructures and translates those props into `GValue`s,
  * spreads the untranslated remainder, and forwards everything to `super`. A
  * class that introduces no props gets no constructor and inherits its nearest
@@ -101,8 +102,15 @@ export const renderClassConstructor = (
 const PROPS_RECORD = "Record<string, unknown>";
 
 const renderRootConstructor = (context: ModuleContext): string => {
+    context.addRuntimeImport("getInstanceGtype");
     context.addRuntimeImport("newGobjectWithProperties");
-    const body = "newGobjectWithProperties(this, props);";
+    context.addRuntimeImport("setHandle");
+    context.addNativeImport("setWrapper");
+    const body = [
+        "const handle = newGobjectWithProperties(getInstanceGtype(this), props);",
+        "setHandle(this, handle);",
+        "setWrapper(handle, this);",
+    ].join("\n");
     return `constructor(props: ${PROPS_RECORD} = {}) {\n${indent(body, 1)}\n}`;
 };
 
