@@ -13,7 +13,8 @@
  * `getGobjectProperty`/`setGobjectProperty`, and `getGvalueBoxed`/`setGvalueBoxed`
  * cover construction, property access, and boxed `GValue` payloads, and
  * `wrapValue` lifts a raw native value to its typed wrapper from an FFI
- * descriptor, and `wrapHandle` does the same from a known class. The `GValue`
+ * descriptor, while `wrapHandle` does the same from a known class and
+ * `wrapInterfaceHandle` from a known interface `GType`. The `GValue`
  * marshalling primitives those build on stay internal.
  *
  * Low-level transport primitives (`alloc`, `call`, `read`, `write`) and the
@@ -30,7 +31,15 @@ export { getGvalueBoxed, setGvalueBoxed } from "./gvalue.js";
 export * from "./lifecycle.js";
 export { registerClass } from "./register-class.js";
 export { registerWrapperClass } from "./register-wrapper-class.js";
-export { getHandle, getInstanceGtype, getWrapperClass, setHandle, tryGetHandle, wrapHandle } from "./registry.js";
+export {
+    getHandle,
+    getInstanceGtype,
+    getWrapperClass,
+    setHandle,
+    tryGetHandle,
+    wrapHandle,
+    wrapInterfaceHandle,
+} from "./registry.js";
 export {
     connectGobjectSignal,
     emitGobjectSignal,

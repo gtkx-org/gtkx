@@ -5,7 +5,7 @@ import { typeFromName } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { AnyClass } from "@gtkx/utils";
 import { describe, expect, it } from "vitest";
-import { findWrapperClass, getWrapperClass, setClassGtype, wrapHandle } from "../src/registry.js";
+import { findWrapperClass, getWrapperClass, setClassGtype, wrapHandle, wrapInterfaceHandle } from "../src/registry.js";
 
 const INVALID_GTYPE: GType = 0n;
 
@@ -108,23 +108,25 @@ describe("wrapHandle — boxed types", () => {
     });
 });
 
-describe("wrapHandle — interfaces", () => {
+describe("wrapInterfaceHandle — interfaces", () => {
+    const orientableGtype = typeFromName("GtkOrientable");
+
     it("returns interface instance when object implements it", () => {
         const box = new Gtk.Box();
-        const orientable = wrapHandle(getHandle(box), Gtk.Orientable);
+        const orientable = wrapInterfaceHandle(getHandle(box), orientableGtype);
         expect(orientable).not.toBeNull();
     });
 
     it("allows calling interface methods on returned instance", () => {
         const box = new Gtk.Box();
-        const orientable = wrapHandle(getHandle(box), Gtk.Orientable);
+        const orientable = wrapInterfaceHandle<Gtk.Orientable>(getHandle(box), orientableGtype);
         expect(orientable).not.toBeNull();
         expect(typeof orientable?.setOrientation).toBe("function");
     });
 
     it("returns null for null/undefined handle", () => {
-        expect(wrapHandle(null, Gtk.Orientable)).toBeNull();
-        expect(wrapHandle(undefined, Gtk.Orientable)).toBeNull();
+        expect(wrapInterfaceHandle(null, orientableGtype)).toBeNull();
+        expect(wrapInterfaceHandle(undefined, orientableGtype)).toBeNull();
     });
 
     it("instantiates concrete registered class when handle is unseen", () => {

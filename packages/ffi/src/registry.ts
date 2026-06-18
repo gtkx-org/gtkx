@@ -1,6 +1,6 @@
 import { getType, getWrapper, type Handle, setWrapper } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
-import { type GType, type GTyped, TYPE_INVALID, typeFromName, typeIsA, typeParent } from "./gtype.js";
+import { type GType, type GTyped, TYPE_INVALID, typeFromName, typeIsA, typeName, typeParent } from "./gtype.js";
 
 let gobjectGtype: GType = TYPE_INVALID;
 
@@ -20,8 +20,6 @@ function isGobjectType(gtype: GType): boolean {
 
 const classRegistry = new Map<GType, AnyClass>();
 const gtypeByClass = new WeakMap<AnyClass, GType>();
-const interfaceGtypeByClass = new WeakMap<AnyClass, GType>();
-const interfaceClassByGtype = new Map<GType, AnyClass>();
 
 /**
  * Stamps a wrapper class's `GType` onto its prototype, the one sanctioned
@@ -34,10 +32,13 @@ function stampGtype(cls: AnyClass, gtype: GType): void {
 /**
  * Records the GLib type identifier of a wrapper class in the identity registry.
  *
- * Invoked by `registerWrapperClass` once it has resolved the class's `GType`,
- * and by `registerClass` for runtime-registered subclasses. The recorded
- * mapping lets {@link wrapHandle} resolve a raw native pointer back to its
- * JavaScript wrapper class.
+ * Invoked by `registerWrapperClass` for every generated wrapper type — concrete
+ * class, boxed record, or interface — and by `registerClass` for
+ * runtime-registered subclasses. Concrete and interface `GType`s share the one
+ * registry because their key spaces are disjoint: the recorded mapping lets
+ * {@link wrapHandle} resolve a raw native pointer back to its JavaScript wrapper
+ * class, and {@link wrapInterfaceHandle} resolve an interface's own wrapper class
+ * as the fallback for an unregistered private implementation.
  *
  * @param cls - The wrapper class to register
  * @param gtype - The GLib type identifier for the class
@@ -48,40 +49,6 @@ export function setClassGtype(cls: AnyClass, gtype: GType): void {
         gtypeByClass.set(cls, gtype);
         stampGtype(cls, gtype);
     }
-}
-
-/**
- * Records the GLib interface type identifier for a generated interface
- * wrapper class.
- *
- * Invoked by `registerWrapperClass` for interface roles. The recorded `GType`
- * lets {@link wrapHandle} pick the most derived registered
- * class that still conforms to the interface when the runtime type is an
- * unregistered private implementation.
- *
- * @param cls - The interface wrapper class
- * @param gtype - The GLib interface type identifier
- */
-export function setInterfaceGtype(cls: AnyClass, gtype: GType): void {
-    if (gtype !== TYPE_INVALID) {
-        interfaceGtypeByClass.set(cls, gtype);
-        interfaceClassByGtype.set(gtype, cls);
-        stampGtype(cls, gtype);
-    }
-}
-
-/**
- * Returns the generated interface wrapper class registered for the interface
- * `GType`, or `null` when no interface is registered under it. Lets a value
- * lift resolve an interface return to its wrapper class from the `GType` its
- * FFI descriptor names, so the wrapper carries the interface's methods even when
- * the runtime instance is a private, unregistered implementation.
- *
- * @param gtype - The GLib interface type identifier.
- * @returns The registered interface wrapper class, or `null`.
- */
-export function getInterfaceWrapperClass(gtype: GType): AnyClass | null {
-    return interfaceClassByGtype.get(gtype) ?? null;
 }
 
 /**
@@ -104,15 +71,6 @@ export function getInstanceGtype(instance: object): GType {
     return getClassGtype(instance.constructor as AnyClass);
 }
 
-/**
- * Returns the GLib interface type identifier registered for `cls` via
- * {@link setInterfaceGtype}, or the invalid GType (`0`) when `cls` is
- * not a registered interface wrapper.
- */
-function getInterfaceGtype(cls: AnyClass): GType {
-    return interfaceGtypeByClass.get(cls) ?? TYPE_INVALID;
-}
-
 function instantiate<T extends object>(cls: AnyClass<T>, handle: Handle): T {
     const instance = Object.create(cls.prototype) as T;
     setHandle(instance, handle);
@@ -127,24 +85,23 @@ function instantiate<T extends object>(cls: AnyClass<T>, handle: Handle): T {
  *   pointer, the registered class resolved, and the single identity-tracked
  *   canonical wrapper returned, so the same pointer always yields the same
  *   (`===`) instance. Throws when the runtime type has no registered class.
- * - **an interface wrapper class** — likewise a `GObject`, but resolved to the
- *   most-derived registered class implementing that interface (falling back to
- *   `cls`), so the wrapper carries the interface's methods.
  * - **a concrete class** — a value type (boxed, struct, opaque) whose handle has
  *   no readable runtime type: a fresh wrapper of `cls`, no identity tracking, a
  *   new instance per call.
+ *
+ * For an interface-typed value, whose runtime implementation may be a private,
+ * unregistered class, use {@link wrapInterfaceHandle} instead.
  *
  * A null/undefined handle yields `null`. The wrapper bypasses the class
  * constructor (no allocation or field initialization).
  *
  * @param handle - The native handle, or null/undefined
- * @param cls - A value-type or interface wrapper class; omitted to resolve a
- *   `GObject` from its runtime type
+ * @param cls - A value-type wrapper class; omitted to resolve a `GObject` from
+ *   its runtime type
  *
  * @example
  * ```tsx
  * const widget = wrapHandle<Gtk.Widget>(widgetHandle); // GObject, identity-tracked
- * const file = wrapHandle(fileHandle, Gio.File);       // interface, resolved
  * const rgba = wrapHandle(rgbaHandle, Gdk.RGBA);        // value type, fresh
  * ```
  */
@@ -164,14 +121,41 @@ export function wrapHandle(handle: Handle | null | undefined, cls?: AnyClass): o
             return resolved;
         });
     }
-    const interfaceGtype = getInterfaceGtype(cls);
-    if (interfaceGtype !== TYPE_INVALID) {
-        return resolveWrapper(
-            handle,
-            (runtimeGtype) => findWrapperClassForInterface(runtimeGtype, interfaceGtype) ?? cls,
-        );
-    }
     return instantiate(cls, handle);
+}
+
+/**
+ * Lifts a native handle into the typed JavaScript wrapper for an
+ * interface-typed value.
+ *
+ * The concrete runtime type behind an interface return is frequently a private,
+ * unregistered GLib implementation (the local-file class behind a `Gio.File`,
+ * for example), so the runtime `GType` read off the handle resolves to the
+ * most-derived registered class that still conforms to `interfaceGtype`,
+ * falling back to the interface's own wrapper class — so the result always
+ * carries the interface's methods. Like the class-less {@link wrapHandle} it
+ * resolves a `GObject`, so identity is tracked and the same pointer yields the
+ * same (`===`) instance. A null/undefined handle yields `null`.
+ *
+ * @param handle - The native handle, or null/undefined
+ * @param interfaceGtype - The GLib interface type the value is known to implement
+ */
+export function wrapInterfaceHandle<T extends object>(handle: Handle, interfaceGtype: GType): T;
+export function wrapInterfaceHandle<T extends object>(
+    handle: Handle | null | undefined,
+    interfaceGtype: GType,
+): T | null;
+export function wrapInterfaceHandle(handle: Handle | null | undefined, interfaceGtype: GType): object | null {
+    if (handle === null || handle === undefined) return null;
+    return resolveWrapper(handle, (runtimeGtype) => {
+        const resolved = findWrapperClassForInterface(runtimeGtype, interfaceGtype) ?? getWrapperClass(interfaceGtype);
+        if (!resolved) {
+            throw new Error(
+                `Expected registered wrapper for interface ${typeName(interfaceGtype) ?? String(interfaceGtype)}`,
+            );
+        }
+        return resolved;
+    });
 }
 
 /**
@@ -262,8 +246,8 @@ function findWrapperClassForInterface(gtype: GType, interfaceGtype: GType): AnyC
  * Returns the existing wrapper when the object is already tracked. Otherwise it
  * resolves the runtime `GType`, picks the wrapper class via `resolveClass`,
  * and finally builds and — for `GObject`s — registers a fresh wrapper. The
- * class-less and interface forms of {@link wrapHandle} differ only in the
- * `resolveClass` strategy they supply.
+ * class-less {@link wrapHandle} and {@link wrapInterfaceHandle} differ only in
+ * the `resolveClass` strategy they supply.
  *
  * @param handle - The live native handle to resolve
  * @param resolveClass - Maps the runtime `GType` to the wrapper class to use

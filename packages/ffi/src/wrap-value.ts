@@ -11,9 +11,9 @@
 
 import type { Type as FfiType, Handle } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
-import { type GType, typeFromName, typeName } from "./gtype.js";
+import { type GType, TYPE_INTERFACE, TYPE_INVALID, typeFromName, typeFundamental, typeName } from "./gtype.js";
 import { resolveBoxedGtype } from "./gvalue.js";
-import { getInterfaceWrapperClass, getWrapperClass, wrapHandle } from "./registry.js";
+import { getWrapperClass, wrapHandle, wrapInterfaceHandle } from "./registry.js";
 
 type ArrayFfiType = Extract<FfiType, { type: "array" }>;
 
@@ -47,15 +47,31 @@ const wrapCollection = (ffiType: ArrayFfiType, value: unknown, elementClass: Any
 
 type GObjectFfiType = Extract<FfiType, { type: "gobject" }>;
 
-const interfaceClassByDescriptor = new WeakMap<FfiType, AnyClass>();
+const interfaceGtypeByDescriptor = new WeakMap<FfiType, GType>();
 
 /**
- * Lifts a `GObject` value. A descriptor naming an interface resolves that
- * interface's wrapper class from the registry — caching it per descriptor — so
- * the wrapper carries the interface's methods even when the runtime instance is
- * a private, unregistered implementation; a concrete-class or untyped descriptor
- * self-resolves from the handle's runtime `GType`. An explicit `targetClass`
- * takes precedence.
+ * Resolves the interface `GType` a `GObject` descriptor names, or
+ * {@link TYPE_INVALID} when its `typeName` is a concrete class rather than an
+ * interface — the GObject type system answers which through
+ * {@link typeFundamental}. The classification is cached per descriptor so the
+ * lookup is paid once per binding, never on the per-call hot path.
+ */
+const descriptorInterfaceGtype = (ffiType: GObjectFfiType, descriptorTypeName: string): GType => {
+    const cached = interfaceGtypeByDescriptor.get(ffiType);
+    if (cached !== undefined) return cached;
+    const gtype = typeFromName(descriptorTypeName);
+    if (gtype === TYPE_INVALID) return TYPE_INVALID;
+    const interfaceGtype = typeFundamental(gtype) === TYPE_INTERFACE ? gtype : TYPE_INVALID;
+    interfaceGtypeByDescriptor.set(ffiType, interfaceGtype);
+    return interfaceGtype;
+};
+
+/**
+ * Lifts a `GObject` value. A descriptor naming an interface resolves through
+ * {@link wrapInterfaceHandle} so the wrapper carries the interface's methods
+ * even when the runtime instance is a private, unregistered implementation; a
+ * concrete-class or untyped descriptor self-resolves from the handle's runtime
+ * `GType`. An explicit `targetClass` takes precedence.
  */
 const wrapGObjectValue = (
     ffiType: GObjectFfiType,
@@ -63,15 +79,11 @@ const wrapGObjectValue = (
     targetClass: AnyClass | undefined,
 ): object | null => {
     if (targetClass !== undefined) return wrapHandle(value, targetClass);
-    if (ffiType.typeName === undefined) return wrapHandle(value, undefined);
-    let cls = interfaceClassByDescriptor.get(ffiType);
-    if (cls === undefined) {
-        const resolved = getInterfaceWrapperClass(typeFromName(ffiType.typeName));
-        if (resolved === null) return wrapHandle(value, undefined);
-        interfaceClassByDescriptor.set(ffiType, resolved);
-        cls = resolved;
-    }
-    return wrapHandle(value, cls);
+    const descriptorTypeName = ffiType.typeName;
+    if (descriptorTypeName === undefined) return wrapHandle(value, undefined);
+    const interfaceGtype = descriptorInterfaceGtype(ffiType, descriptorTypeName);
+    if (interfaceGtype === TYPE_INVALID) return wrapHandle(value, undefined);
+    return wrapInterfaceHandle(value, interfaceGtype);
 };
 
 const boxedGtypeByDescriptor = new WeakMap<FfiType, GType>();
