@@ -1,6 +1,6 @@
 import type { ModuleContext } from "../dsl/context.js";
 import type { GirTypeRef, NamedTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
-import { boxedNeedsFallbackClass, renderFfiType } from "./value.js";
+import { renderFfiType } from "./value.js";
 
 /**
  * Lifting raw FFI values into their typed JavaScript form for the per-call
@@ -75,15 +75,14 @@ const wrapNamedInline = (
 /**
  * Routes a value through the runtime {@link wrapValue}, hoisting its FFI
  * descriptor to a module-level const so the wrap allocates nothing per call.
- * Ownership is irrelevant to wrapping, so the descriptor is rendered borrowed.
+ * Ownership is irrelevant to wrapping, so the descriptor is rendered borrowed;
+ * the descriptor itself carries the fallback wrapper class for an identity-less
+ * value, so none is threaded here.
  */
 const wrapViaFfiValue = (context: ModuleContext, ref: GirTypeRef, valueExpression: string): string => {
     context.addRuntimeImport("wrapValue");
     const descriptor = context.hoistFfiType(renderFfiType(context, ref, "none"));
-    const wrapperClass = resolveWrapperClass(context, ref);
-    return wrapperClass === undefined
-        ? `wrapValue(${descriptor}, ${valueExpression})`
-        : `wrapValue(${descriptor}, ${valueExpression}, ${wrapperClass})`;
+    return `wrapValue(${descriptor}, ${valueExpression})`;
 };
 
 const wrapPrimitive = (ref: PrimitiveTypeRef, nullable: boolean, valueExpression: string): string => {
@@ -92,56 +91,4 @@ const wrapPrimitive = (ref: PrimitiveTypeRef, nullable: boolean, valueExpression
     if (category === "string") return `(${valueExpression} as ${nullable ? "string | null" : "string"})`;
     if (category === "boolean") return `Boolean(${valueExpression})`;
     return `(${valueExpression} as number)`;
-};
-
-/**
- * Resolves the fallback wrapper class {@link wrapValue} needs to lift a value of
- * `ref`, or `undefined` when the value's FFI descriptor carries enough `GType`
- * identity to recover its class on its own.
- *
- * Almost every kind self-resolves: an object off its runtime GLib type (its
- * descriptor names an interface when one is needed), a boxed record or named
- * fundamental through the `GType` its descriptor identifies, and primitives,
- * enums, and hash tables need no class at all. Only the kinds whose descriptor
- * carries no recoverable identity supply a fallback — a plain `struct` and a
- * GType-less fundamental such as `GAsyncQueue`. A collection resolves its
- * element's fallback, applied per element. Used both for the `t.fn` return
- * descriptor and the per-call `wrapValue` sites.
- *
- * @param context - The module context
- * @param ref - The value's GIR type reference
- * @returns The qualified fallback-class expression, or `undefined`
- */
-export const resolveWrapperClass = (context: ModuleContext, ref: GirTypeRef | undefined): string | undefined => {
-    if (ref === undefined) return undefined;
-    switch (ref.kind) {
-        case "primitive":
-        case "hashtable":
-        case "callback":
-        case "varargs":
-            return undefined;
-        case "named":
-            return namedWrapperClass(context, ref);
-        case "array":
-            return resolveWrapperClass(context, ref.element);
-        case "list":
-            return ref.flavor === "gbytearray" ? undefined : resolveWrapperClass(context, ref.element);
-    }
-};
-
-const namedWrapperClass = (context: ModuleContext, ref: NamedTypeRef): string | undefined => {
-    const owner = ref.namespaceName ?? context.namespace.name;
-    const resolved = context.repository.resolveNamed(owner, ref.typeName);
-    if (resolved === undefined) return undefined;
-    switch (resolved.kind) {
-        case "boxed":
-            return boxedNeedsFallbackClass(resolved.value) ? context.qualify(owner, ref.typeName) : undefined;
-        case "alias":
-            return resolveWrapperClass(context, resolved.targetRef);
-        case "interface":
-        case "class":
-        case "enum":
-        case "callback":
-            return undefined;
-    }
 };

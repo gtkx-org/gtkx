@@ -34,8 +34,6 @@ export type GlEnum = {
     readonly value: string;
     /** The API the token value is specific to, when the name is API-overloaded. */
     readonly api?: string;
-    /** The C suffix recorded for wide values (`u`, `ull`), when present. */
-    readonly typeSuffix?: string;
     /** The groups the token belongs to. */
     readonly groups: readonly string[];
     /** Whether the enclosing `<enums>` block is a bitmask namespace. */
@@ -136,13 +134,11 @@ const parseEnums = (node: OrderedNode, into: GlEnum[]): void => {
         const value = nodeAttr(child, "value");
         if (name === undefined || value === undefined) continue;
         const api = nodeAttr(child, "api");
-        const typeSuffix = nodeAttr(child, "type");
         const group = nodeAttr(child, "group");
         into.push({
             name,
             value,
             ...(api !== undefined ? { api } : {}),
-            ...(typeSuffix !== undefined ? { typeSuffix } : {}),
             groups: group === undefined ? [] : group.split(",").map((part) => part.trim()),
             bitmask,
         });

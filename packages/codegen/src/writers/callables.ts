@@ -164,75 +164,6 @@ export const renderInstanceMethod = (
 };
 
 /**
- * Renders the legacy-name alias of a method that has been shadowed by a
- * variadic or kebab-cased successor.
- *
- * Returns `undefined` when the alias collides with `constructor` or the
- * shadower lacks a C identifier.
- *
- * @param context - The module context
- * @param original - The shadowed callable whose name should remain reachable
- * @param shadower - The callable the alias dispatches into
- */
-const renderInstanceAlias = (
-    context: ModuleContext,
-    original: GirFunction,
-    shadower: GirFunction,
-): string | undefined => {
-    if (shadower.cIdentifier === undefined) return undefined;
-    const aliasName = toCamelCase(original.name);
-    if (aliasName === "constructor") return undefined;
-    const signature = renderMethodSignature(context, shadower);
-    const returnType = renderMethodReturnType(context, shadower);
-    const body = renderMethodBody(context, shadower, {
-        bindingExpression: bindingIdentifier(shadower.cIdentifier),
-        isStatic: false,
-    });
-    return `${aliasName}(${signature}): ${returnType} {\n${indent(body, 1)}\n}`;
-};
-
-/**
- * Inputs for {@link appendShadowedAliases}.
- */
-export type ShadowedAliasOptions = {
-    readonly context: ModuleContext;
-    /** The full list of method callables. */
-    readonly methods: readonly GirFunction[];
-    /** Lookup table for shadower resolution. */
-    readonly methodByName: ReadonlyMap<string, GirFunction>;
-    /** The accumulating members list to append to. */
-    readonly members: string[];
-    /** Set of names already emitted on the class body. */
-    readonly claimedNames: Set<string>;
-};
-
-/**
- * Appends shadowed-method aliases for every callable in `methods` whose
- * shadower is introspectable.
- *
- * Records each emitted alias name in `claimedNames` so subsequent renderers
- * can detect collisions.
- *
- * @param options - {@link ShadowedAliasOptions}
- */
-export const appendShadowedAliases = (options: ShadowedAliasOptions): void => {
-    const { context, methods, methodByName, members, claimedNames } = options;
-    for (const callable of methods) {
-        if (callable.shadowedBy === undefined) continue;
-        if (callable.introspectable) continue;
-        const shadower = methodByName.get(callable.shadowedBy);
-        if (shadower === undefined || !shadower.introspectable) continue;
-        const aliasName = toCamelCase(callable.name);
-        if (claimedNames.has(aliasName)) continue;
-        const block = renderInstanceAlias(context, callable, shadower);
-        if (block !== undefined) {
-            members.push(block);
-            claimedNames.add(aliasName);
-        }
-    }
-};
-
-/**
  * Indexes a list of method callables by their GIR name for shadower lookup.
  */
 export const indexMethodsByName = (methods: readonly GirFunction[]): ReadonlyMap<string, GirFunction> => {
@@ -314,9 +245,8 @@ export type PlainTypeMembersOptions = {
 
 /**
  * Renders the shared head of an interface or boxed class body — `__gtype__`
- * declaration (optional), statics, plain instance methods, and
- * shadowed-method aliases — plus the `claimedNames` set populated by those
- * renderers.
+ * declaration (optional), statics, and plain instance methods — plus the
+ * `claimedNames` set populated by those renderers.
  *
  * Callers append the constructor, property accessors, field accessors, and
  * signal members on top of the returned members list. The class writer takes
@@ -331,7 +261,5 @@ export const renderPlainTypeMembers = (
     const claimedNames = new Set<string>();
     members.push(...renderStaticHead(context, callables, className));
     members.push(...renderPlainInstanceMethods(context, callables.methods, claimedNames));
-    const methodByName = indexMethodsByName(callables.methods);
-    appendShadowedAliases({ context, methods: callables.methods, methodByName, members, claimedNames });
     return { members, claimedNames };
 };

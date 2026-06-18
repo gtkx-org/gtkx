@@ -15,6 +15,12 @@ import { FontOptions as FontOptionsConstructor } from "./font-options.js";
 import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";
 
 const { bind } = t;
+const SCALED_FONT_T = t.boxed(
+    "CairoScaledFont",
+    "borrowed",
+    "libcairo-gobject.so.2",
+    "cairo_gobject_scaled_font_get_type",
+);
 const GLYPH_BUF_REF = t.ref(t.boxed("cairo_glyph_t", "borrowed", "libcairo.so.2"));
 const CLUSTER_BUF_REF = t.ref(t.boxed("cairo_text_cluster_t", "borrowed", "libcairo.so.2"));
 
@@ -76,12 +82,7 @@ ScaledFontWithStatics.create = (
     return wrapHandle(ptr, ScaledFont) as ScaledFont;
 };
 
-const cairoScaledFontStatus = bind(
-    "libcairo.so.2",
-    "cairo_scaled_font_status",
-    [t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type")],
-    t.int32,
-);
+const cairoScaledFontStatus = bind("libcairo.so.2", "cairo_scaled_font_status", [SCALED_FONT_T], t.int32);
 ScaledFont.prototype.status = function (): Status {
     return cairoScaledFontStatus(getHandle(this)) as Status;
 };
@@ -89,10 +90,7 @@ ScaledFont.prototype.status = function (): Status {
 const cairoScaledFontExtents = bind(
     "libcairo.so.2",
     "cairo_scaled_font_extents",
-    [
-        t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type"),
-        t.boxed("cairo_font_extents_t", "borrowed", "libcairo.so.2"),
-    ],
+    [SCALED_FONT_T, t.boxed("cairo_font_extents_t", "borrowed", "libcairo.so.2")],
     t.void,
 );
 ScaledFont.prototype.extents = function (): FontExtents {
@@ -104,11 +102,7 @@ ScaledFont.prototype.extents = function (): FontExtents {
 const cairoScaledFontTextExtents = bind(
     "libcairo.so.2",
     "cairo_scaled_font_text_extents",
-    [
-        t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type"),
-        t.string("full"),
-        t.boxed("cairo_text_extents_t", "borrowed", "libcairo.so.2"),
-    ],
+    [SCALED_FONT_T, t.string("full"), t.boxed("cairo_text_extents_t", "borrowed", "libcairo.so.2")],
     t.void,
 );
 ScaledFont.prototype.textExtents = function (text: string): TextExtents {
@@ -121,7 +115,7 @@ const cairoScaledFontGlyphExtents = bind(
     "libcairo.so.2",
     "cairo_scaled_font_glyph_extents",
     [
-        t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type"),
+        SCALED_FONT_T,
         t.boxed("cairo_glyph_t", "borrowed", "libcairo.so.2"),
         t.int32,
         t.boxed("cairo_text_extents_t", "borrowed", "libcairo.so.2"),
@@ -138,7 +132,7 @@ ScaledFont.prototype.glyphExtents = function (glyphs: Array<{ index: number; x: 
 const cairoScaledFontGetFontFace = bind(
     "libcairo.so.2",
     "cairo_scaled_font_get_font_face",
-    [t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type")],
+    [SCALED_FONT_T],
     t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type"),
 );
 ScaledFont.prototype.getFontFace = function (): FontFace {
@@ -149,7 +143,7 @@ const cairoScaledFontGetFontOptions = bind(
     "libcairo.so.2",
     "cairo_scaled_font_get_font_options",
     [
-        t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type"),
+        SCALED_FONT_T,
         t.boxed("CairoFontOptions", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type"),
     ],
     t.void,
@@ -163,28 +157,19 @@ ScaledFont.prototype.getFontOptions = function (): FontOptions {
 const cairoScaledFontGetFontMatrix = bind(
     "libcairo.so.2",
     "cairo_scaled_font_get_font_matrix",
-    [
-        t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type"),
-        t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2"),
-    ],
+    [SCALED_FONT_T, t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2")],
     t.void,
 );
 const cairoScaledFontGetCtm = bind(
     "libcairo.so.2",
     "cairo_scaled_font_get_ctm",
-    [
-        t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type"),
-        t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2"),
-    ],
+    [SCALED_FONT_T, t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2")],
     t.void,
 );
 const cairoScaledFontGetScaleMatrix = bind(
     "libcairo.so.2",
     "cairo_scaled_font_get_scale_matrix",
-    [
-        t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type"),
-        t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2"),
-    ],
+    [SCALED_FONT_T, t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2")],
     t.void,
 );
 
@@ -206,12 +191,7 @@ ScaledFont.prototype.getScaleMatrix = function (): CairoMatrix {
     return readMatrixVia(this, cairoScaledFontGetScaleMatrix);
 };
 
-const cairoScaledFontGetType = bind(
-    "libcairo.so.2",
-    "cairo_scaled_font_get_type",
-    [t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type")],
-    t.int32,
-);
+const cairoScaledFontGetType = bind("libcairo.so.2", "cairo_scaled_font_get_type", [SCALED_FONT_T], t.int32);
 ScaledFont.prototype.getType = function (): FontType {
     return cairoScaledFontGetType(getHandle(this)) as FontType;
 };
@@ -219,7 +199,7 @@ ScaledFont.prototype.getType = function (): FontType {
 const cairoScaledFontGetReferenceCount = bind(
     "libcairo.so.2",
     "cairo_scaled_font_get_reference_count",
-    [t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type")],
+    [SCALED_FONT_T],
     t.int32,
 );
 ScaledFont.prototype.getReferenceCount = function (): number {
@@ -236,7 +216,7 @@ const cairoScaledFontTextToGlyphs = bind(
     "libcairo.so.2",
     "cairo_scaled_font_text_to_glyphs",
     [
-        t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type"),
+        SCALED_FONT_T,
         t.float64,
         t.float64,
         t.string("full"),

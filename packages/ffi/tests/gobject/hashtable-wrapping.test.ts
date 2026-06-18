@@ -20,10 +20,9 @@ describe("wrapValue — hash-table entries are wrapped recursively", () => {
 
     it("wraps an interface-typed value (string → GtkConstraintTarget)", () => {
         const label = new Gtk.Label({});
-        const map = wrapValue(
-            t.hashTable(t.string("borrowed"), t.object("borrowed", "GtkConstraintTarget")),
-            [["a", getHandle(label)]],
-        );
+        const map = wrapValue(t.hashTable(t.string("borrowed"), t.object("borrowed", "GtkConstraintTarget")), [
+            ["a", getHandle(label)],
+        ]);
         expect((map as Map<string, unknown>).get("a")).toBe(label);
     });
 
@@ -33,6 +32,26 @@ describe("wrapValue — hash-table entries are wrapped recursively", () => {
         const wrapped = (map as Map<string, Gdk.Rectangle>).get("r");
         expect(wrapped).toBeInstanceOf(Gdk.Rectangle);
         expect(wrapped?.width).toBe(7);
+    });
+
+    it("self-resolves a plain struct (no GType) value from its descriptor", () => {
+        const range = new Gtk.PageRange({ start: 3 });
+        const map = wrapValue(t.hashTable(t.string("borrowed"), t.struct("borrowed", undefined, Gtk.PageRange)), [
+            ["r", getHandle(range)],
+        ]);
+        const wrapped = (map as Map<string, Gtk.PageRange>).get("r");
+        expect(wrapped).toBeInstanceOf(Gtk.PageRange);
+        expect(wrapped?.start).toBe(3);
+    });
+
+    it("self-resolves a plain struct (no GType) used as a key", () => {
+        const range = new Gtk.PageRange({ end: 8 });
+        const map = wrapValue(t.hashTable(t.struct("borrowed", undefined, Gtk.PageRange), t.string("borrowed")), [
+            [getHandle(range), "v"],
+        ]);
+        const key = [...(map as Map<Gtk.PageRange, string>).keys()][0];
+        expect(key).toBeInstanceOf(Gtk.PageRange);
+        expect(key?.end).toBe(8);
     });
 
     it("recurses into an array-valued entry, wrapping each element", () => {

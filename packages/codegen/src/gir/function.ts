@@ -48,7 +48,7 @@ export const functionFromNode = (node: RawNode, kind: FunctionKind): GirFunction
         name: attr(node, "shadows") ?? attr(node, "name") ?? "",
         cIdentifier: attr(node, "c:identifier"),
         throws: attrBool(node, "throws"),
-        introspectable: attr(node, "introspectable") !== "0",
+        introspectable: attrBool(node, "introspectable", true),
         shadowedBy: attr(node, "shadowed-by"),
         instance: instanceNode === undefined ? undefined : parameterFromNode(instanceNode),
         parameters: parameterNodes.map((parameter) => parameterFromNode(parameter)),

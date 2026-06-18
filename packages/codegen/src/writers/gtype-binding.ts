@@ -27,7 +27,7 @@ export const renderGtypeExpression = (
     getType: string,
     glibTypeName: string | undefined,
 ): string | undefined => {
-    if (getType === "intern" || getType === "") {
+    if (getType === "intern") {
         if (glibTypeName === undefined) return undefined;
         appendGtypeFromNameBinding(context);
         return `${bindingIdentifier(TYPE_FROM_NAME_SYMBOL)}(${quote(glibTypeName)}) as bigint`;

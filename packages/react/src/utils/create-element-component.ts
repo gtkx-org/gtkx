@@ -18,6 +18,7 @@
  * GObject-class prop accepts a JSX subtree without being enumerated anywhere.
  */
 import { CONTAINER_SLOTS } from "virtual:gtkx-config";
+import { CONTAINER_SLOT_KIND, SLOT_KIND } from "@gtkx/config";
 import { getWrapperClass, typeFromName } from "@gtkx/ffi";
 import { createElement, isValidElement, type ReactNode } from "react";
 import { WRAPPER_NODE_ELEMENT } from "../reconciler/instance.js";
@@ -85,7 +86,7 @@ const splitProps = (props: object, containerSet: ReadonlySet<string>): SplitProp
                 wrappers.push(
                     createElement(
                         WRAPPER_NODE_ELEMENT,
-                        { kind: "container-slot", method: name, key: `container-slot:${name}` },
+                        { kind: CONTAINER_SLOT_KIND, method: name, key: `container-slot:${name}` },
                         value as ReactNode,
                     ),
                 );
@@ -96,7 +97,7 @@ const splitProps = (props: object, containerSet: ReadonlySet<string>): SplitProp
             wrappers.push(
                 createElement(
                     WRAPPER_NODE_ELEMENT,
-                    { kind: "slot", propName: name, key: `slot:${name}` },
+                    { kind: SLOT_KIND, propName: name, key: `slot:${name}` },
                     value as ReactNode,
                 ),
             );

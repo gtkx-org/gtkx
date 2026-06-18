@@ -8,7 +8,8 @@ import {
     type Value,
     write,
 } from "@gtkx/native";
-import { GVALUE_SIZE, GVALUE_T, LIBGOBJECT } from "./constants.js";
+import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
+import { arrayT, biguint64T, bind, objectT, stringT, uint32T, uint64T, voidT } from "./descriptors.js";
 import { tupleResult } from "./fn.js";
 import { type GType, type GTyped, TYPE_POINTER } from "./gtype.js";
 import {
@@ -23,7 +24,6 @@ import {
     valueSetBoxed,
     valueSetStaticBoxed,
 } from "./gvalue.js";
-import { arrayT, biguint64T, bind, objectT, stringT, uint32T, uint64T, voidT } from "./helpers.js";
 import { getHandle } from "./registry.js";
 
 /** Storage size, in bytes, of a single out-parameter cell (a pointer or any scalar). */
@@ -165,7 +165,7 @@ export function connectGobjectSignal(
     after: boolean,
 ): number {
     return call(
-        LIBGOBJECT,
+        LIB,
         "g_signal_connect_data",
         [
             { type: objectT("borrowed"), value: getHandle(instance) },
@@ -282,13 +282,13 @@ export function offSignal(instance: SignalConnectable, signal: string, handler: 
 }
 
 const gSignalEmitv = bind(
-    LIBGOBJECT,
+    LIB,
     "g_signal_emitv",
     [arrayT(GVALUE_T, "array", "borrowed", { elementSize: GVALUE_SIZE }), uint32T, uint32T, GVALUE_T],
     voidT,
 );
 
-const gSignalLookup = bind(LIBGOBJECT, "g_signal_lookup", [stringT("borrowed"), biguint64T], uint32T);
+const gSignalLookup = bind(LIB, "g_signal_lookup", [stringT("borrowed"), biguint64T], uint32T);
 
 /**
  * How a signal parameter is marshalled into its emission `GValue` beyond a

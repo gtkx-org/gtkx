@@ -1,5 +1,5 @@
 import { type GirParameter, type GirReturnValue, parseCallable } from "./parameter.js";
-import { attr, type RawNode } from "./parse.js";
+import { attrBool, type RawNode } from "./parse.js";
 
 /** A `<callback>` declaration (top-level inside a namespace or nested in a field). */
 export type GirCallback = {
@@ -14,5 +14,5 @@ export type GirCallback = {
  */
 export const callbackFromNode = (node: RawNode): GirCallback => ({
     ...parseCallable(node),
-    introspectable: attr(node, "introspectable") !== "0",
+    introspectable: attrBool(node, "introspectable", true),
 });

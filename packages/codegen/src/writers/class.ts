@@ -10,7 +10,6 @@ import type { GirTypeRef } from "../gir/type-ref.js";
 import { matchAsyncFinishName } from "./async.js";
 import {
     appendMethodBinding,
-    appendShadowedAliases,
     type Callables,
     dedupeCallables,
     emitBindings,
@@ -96,7 +95,6 @@ const renderClassMembers = (
         claimedNames,
         className,
     });
-    appendShadowedAliases({ context, methods: callables.methods, methodByName, members, claimedNames });
     appendFlattenedInterfaceMethods({ context, klass, inheritedNames: inherited.names, members, claimedNames });
     for (const property of klass.properties) {
         const block = renderPropertyAccessor(context, property, claimedNames, methodByName);
@@ -135,10 +133,8 @@ const appendInstanceMethods = (options: AppendInstanceMethodsOptions): void => {
  * The disambiguated name a colliding instance method is emitted under:
  * `<lowerClassName><MethodName>` (e.g. `iconViewSetCursor`).
  */
-const conflictingMethodName = (className: string, methodName: string): string => {
-    const camel = toCamelCase(className);
-    return `${camel.charAt(0).toLowerCase()}${camel.slice(1)}${toPascalCase(methodName)}`;
-};
+const conflictingMethodName = (className: string, methodName: string): string =>
+    `${className.charAt(0).toLowerCase()}${className.slice(1)}${toPascalCase(methodName)}`;
 
 type AppendFlattenedInterfaceMethodsOptions = {
     readonly context: ModuleContext;
@@ -237,9 +233,7 @@ const resolveImplementsReference = (context: ModuleContext, name: string): strin
     const { namespaceName, typeName } = splitQualifiedName(name, context.namespace.name);
     const resolved = context.repository.resolveNamed(namespaceName, typeName);
     if (resolved === undefined || resolved.kind !== "interface") return undefined;
-    if (namespaceName === context.namespace.name) return toPascalCase(typeName);
-    const alias = context.addCrossNamespaceImport(namespaceName);
-    return `${alias}.${toPascalCase(typeName)}`;
+    return context.qualify(namespaceName, toPascalCase(typeName));
 };
 
 /** An ancestor method together with the namespace its type references resolve against. */
@@ -381,7 +375,5 @@ const enumIdentity = (
 const resolveParent = (context: ModuleContext, klass: GirClass): string | undefined => {
     if (klass.parent === undefined) return undefined;
     const { namespaceName, typeName } = splitQualifiedName(klass.parent, context.namespace.name);
-    if (namespaceName === context.namespace.name) return toPascalCase(typeName);
-    const alias = context.addCrossNamespaceImport(namespaceName);
-    return `${alias}.${toPascalCase(typeName)}`;
+    return context.qualify(namespaceName, toPascalCase(typeName));
 };

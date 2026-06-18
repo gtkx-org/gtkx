@@ -17,6 +17,7 @@ import {
     type Int16Type,
     type Int32Type,
     type Int64Type,
+    type Ownership,
     type RefType,
     type StructType,
     type TrampolineType,
@@ -29,26 +30,30 @@ import {
     type Value,
     type VoidType,
 } from "@gtkx/native";
+import type { AnyClass } from "@gtkx/utils";
 
-export { alloc, call, read, write } from "@gtkx/native";
+const wrapperClassByDescriptor = new WeakMap<Type, AnyClass>();
 
 /**
- * Lifetime of a value crossing the FFI boundary.
+ * Pairs `descriptor` with the wrapper class `wrapValue` lifts its value into.
+ * Called by the descriptor factories (`t.struct`, `t.fundamental`) when a
+ * binding supplies a fallback class for an identity-less value type.
  *
- * - `"full"` — caller takes ownership of the original pointer (GIR
- *   `transfer full`). The wrapper invokes the type-specific destructor on
- *   drop.
- * - `"borrowed"` — defensive-copy mode: the underlying value's lifetime is
- *   uncertain, so the codec makes a copy / reference (`g_boxed_copy`,
- *   `g_object_ref`, `g_strdup`) and owns the copy.
+ * @param descriptor - The FFI type descriptor the class is paired with.
+ * @param wrapperClass - The generated wrapper class to lift the value into.
  */
-type Ownership = "full" | "borrowed";
+export const setDescriptorWrapperClass = (descriptor: Type, wrapperClass: AnyClass): void => {
+    wrapperClassByDescriptor.set(descriptor, wrapperClass);
+};
 
-/** Container shape for array-like FFI types. */
-type ArrayKind = "array" | "glist" | "gslist" | "gptrarray" | "garray" | "gbytearray" | "sized" | "fixed";
-
-/** Lifetime of a callback trampoline. */
-type TrampolineScope = "call" | "notified" | "async" | "forever";
+/**
+ * Returns the wrapper class paired with `descriptor`, or `undefined` when the
+ * descriptor's value type recovers its class from its own runtime `GType`.
+ *
+ * @param descriptor - The FFI type descriptor to resolve.
+ */
+export const getDescriptorWrapperClass = (descriptor: Type): AnyClass | undefined =>
+    wrapperClassByDescriptor.get(descriptor);
 
 /**
  * Binds a native function symbol once and returns a callable that dispatches it,
@@ -79,7 +84,7 @@ export const bind = (
     symbol: string,
     argTypes: Type[],
     returnType: Type,
-): ((...values: unknown[]) => unknown) => {
+): ((...values: Value[]) => Value) => {
     const args: Arg[] = argTypes.map((argType) => ({ type: argType, value: undefined }));
     return (...values) => {
         let i = 0;
@@ -128,9 +133,10 @@ export const boxedT = (
     return result;
 };
 
-export const structT = (ownership: Ownership = "borrowed", size?: number): StructType => {
+export const structT = (ownership: Ownership = "borrowed", size?: number, wrapperClass?: AnyClass): StructType => {
     const result: StructType = { type: "struct", ownership };
     if (size !== undefined) result.size = size;
+    if (wrapperClass !== undefined) setDescriptorWrapperClass(result, wrapperClass);
     return result;
 };
 
@@ -140,6 +146,12 @@ type FundamentalOptions = {
     ownership?: Ownership;
     /** Fundamental GType name (e.g., `"GBytes"`). */
     typeName?: string;
+    /**
+     * Wrapper class for a `GType`-less fundamental, whose pointer carries no
+     * runtime type to recover a class from. Omitted when {@link typeName}
+     * resolves the class through the GLib type system instead.
+     */
+    wrapperClass?: AnyClass;
 };
 
 export const fundamentalT = (
@@ -151,6 +163,7 @@ export const fundamentalT = (
     const ownership = options.ownership ?? "borrowed";
     const result: FundamentalType = { type: "fundamental", ownership, library, refFn, unrefFn };
     if (options.typeName !== undefined) result.typeName = options.typeName;
+    if (options.wrapperClass !== undefined) setDescriptorWrapperClass(result, options.wrapperClass);
     return result;
 };
 
@@ -189,7 +202,7 @@ type ArrayOptions = {
 
 export const arrayT = (
     itemType: Type,
-    kind: ArrayKind = "array",
+    kind: ArrayType["kind"] = "array",
     ownership: Ownership = "borrowed",
     options?: ArrayOptions,
 ): ArrayType => {
@@ -235,7 +248,7 @@ type TrampolineOptions = {
     /** Index of the user-data parameter passed to the callback. */
     userDataIndex?: number;
     /** Lifetime of the callback. */
-    scope?: TrampolineScope;
+    scope?: TrampolineType["scope"];
 };
 
 export const trampolineT = (argTypes: Type[], returnType: Type, options?: TrampolineOptions): TrampolineType => {

@@ -1,6 +1,6 @@
 import type { ExternalObject } from "./native-binding.cjs";
 
-type AnyValue = Handle | number | bigint | string | boolean | Map<AnyValue, AnyValue> | null | undefined;
+type AnyValue = Handle | number | bigint | string | boolean | ArrayBufferView | [Value, Value][] | null | undefined;
 
 /**
  * Opaque reference to a native pointer (GObject, Boxed, Fundamental, or struct).

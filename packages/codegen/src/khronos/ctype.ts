@@ -8,6 +8,8 @@ export type GlScalar = {
     readonly tsAlias: string;
     /** The TypedArray accepted alongside `number[]` for array parameters. */
     readonly viewType?: string;
+    /** Whether a value of this type carries a registry enum group into its alias. */
+    readonly groupBearing?: boolean;
 };
 
 /**
@@ -16,8 +18,8 @@ export type GlScalar = {
  * cases) is a hard generation error, never a silent skip.
  */
 export const GL_SCALARS: ReadonlyMap<string, GlScalar> = new Map([
-    ["GLenum", { tExpr: "t.uint32", tsAlias: "GLenum", viewType: "Uint32Array" }],
-    ["GLbitfield", { tExpr: "t.uint32", tsAlias: "GLbitfield", viewType: "Uint32Array" }],
+    ["GLenum", { tExpr: "t.uint32", tsAlias: "GLenum", viewType: "Uint32Array", groupBearing: true }],
+    ["GLbitfield", { tExpr: "t.uint32", tsAlias: "GLbitfield", viewType: "Uint32Array", groupBearing: true }],
     ["GLuint", { tExpr: "t.uint32", tsAlias: "GLuint", viewType: "Uint32Array" }],
     ["GLint", { tExpr: "t.int32", tsAlias: "GLint", viewType: "Int32Array" }],
     ["GLsizei", { tExpr: "t.int32", tsAlias: "GLsizei", viewType: "Int32Array" }],

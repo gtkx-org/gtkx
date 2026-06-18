@@ -1,48 +1,19 @@
-import type { Type as NativeType, Ref, Value } from "@gtkx/native";
-import type { AnyClass } from "@gtkx/utils";
-import { checkError } from "./error.js";
-import { bind, boxedT, refT } from "./helpers.js";
+import type { Ref, Type, Value } from "@gtkx/native";
+import { bind, boxedT, refT } from "./descriptors.js";
+import { checkError } from "./gerror.js";
 import { getHandle } from "./registry.js";
-import { wrapValue } from "./wrap-value.js";
-
-/**
- * The out-direction an argument participates in beyond a plain input:
- *
- * - `"out"` — the native layer writes the result through a `{ value }` cell
- *   this call allocates; the read-back value joins the result tuple.
- * - `"inout"` — a scalar cell seeded from the input value, read back after.
- *
- * Either direction may pair with {@link ArgType.callerAllocates}, which
- * passes the caller's own wrapper by handle in place of allocating a cell.
- */
-type ArgDirection = "out" | "inout";
-
-/**
- * An FFI value's marshalling identity: its type descriptor paired with the
- * wrapper class its produced value is lifted into. Carried by a callable's
- * return and by each out-direction argument — anywhere a native value is read
- * back and wrapped. A `t.void` type denotes no value.
- */
-export type Type = {
-    /** The value's FFI type. */
-    readonly type: NativeType;
-    /**
-     * The wrapper class the value is lifted into, supplied only for the kinds
-     * whose FFI descriptor carries no recoverable identity — a plain struct or a
-     * GType-less fundamental. Every other kind self-resolves its class from the
-     * descriptor's runtime `GType`, leaving this undefined.
-     */
-    readonly wrapperClass?: AnyClass;
-};
+import { wrapValue } from "./wrapper-class.js";
 
 /**
  * One positional argument of a callable, in C-signature order (the instance
  * receiver included): a {@link Type} extended with the argument-slot
  * flags. A plain input omits `direction`.
  */
-export type ArgType = Type & {
+export type ArgType = {
+    /** The value's FFI type. */
+    readonly type: Type;
     /** The out/inout direction the argument participates in beyond a plain input. */
-    readonly direction?: ArgDirection;
+    readonly direction?: "out" | "inout";
     /**
      * Whether the caller allocates the out/inout wrapper. The input wrapper's
      * handle is passed as the argument — the native call fills its backing
@@ -96,7 +67,7 @@ export const tupleResult = (outs: readonly unknown[], primary: unknown, hasPrima
  * it, the implicit trailing `GError**` ref appended when the callable throws,
  * every other argument's type passed through unchanged.
  */
-const toNativeArgTypes = (argTypes: readonly ArgType[], throws: boolean): NativeType[] => {
+const toNativeArgTypes = (argTypes: readonly ArgType[], throws: boolean): Type[] => {
     const nativeArgTypes = argTypes.map((argType) =>
         argType.direction !== undefined && argType.callerAllocates !== true ? refT(argType.type) : argType.type,
     );
@@ -145,9 +116,7 @@ const toOutputs = (
         const input = consumesInput ? inputs[cursor++] : undefined;
         if (argType.direction === undefined || argType.consumed === true) return;
         outputs.push(
-            argType.callerAllocates === true
-                ? input
-                : wrapValue(argType.type, (nativeValues[index] as Ref).value, argType.wrapperClass),
+            argType.callerAllocates === true ? input : wrapValue(argType.type, (nativeValues[index] as Ref).value),
         );
     });
     return outputs;
@@ -173,8 +142,8 @@ export function fn(
     options: FnOptions = {},
 ): (...inputs: unknown[]) => unknown {
     const nativeArgTypes = toNativeArgTypes(argTypes, options.throws === true);
-    const nativeFn = bind(library, symbol, nativeArgTypes, returnType.type);
-    const hasPrimary = returnType.type.type !== "void";
+    const nativeFn = bind(library, symbol, nativeArgTypes, returnType);
+    const hasPrimary = returnType.type !== "void";
 
     return (...inputs) => {
         const nativeValues = toNativeValues(argTypes, inputs);
@@ -182,7 +151,7 @@ export function fn(
         if (errorCell !== undefined) nativeValues.push(errorCell);
         const nativeResult = nativeFn(...nativeValues);
         if (errorCell !== undefined) checkError(errorCell);
-        const primary = hasPrimary ? wrapValue(returnType.type, nativeResult, returnType.wrapperClass) : undefined;
+        const primary = hasPrimary ? wrapValue(returnType, nativeResult) : undefined;
         return tupleResult(toOutputs(argTypes, inputs, nativeValues), primary, hasPrimary);
     };
 }

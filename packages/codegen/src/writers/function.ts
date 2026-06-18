@@ -19,9 +19,9 @@ import {
  * identifier or missing namespace shared-library).
  *
  * The parameter array carries each argument's FFI type and its direction (out
- * or inout, optionally caller-allocated), the return descriptor carries the
- * primary return's FFI type and wrapper class, and a throwing callable adds the
- * `throws` option; the bound callable owns out-parameter tupling, `GError`
+ * or inout, optionally caller-allocated), the return is the primary return's
+ * FFI type (which self-resolves its wrapper class), and a throwing callable adds
+ * the `throws` option; the bound callable owns out-parameter tupling, `GError`
  * handling, and result wrapping at call time.
  *
  * @param context - The module context

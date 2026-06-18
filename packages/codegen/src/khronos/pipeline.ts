@@ -195,7 +195,7 @@ const enumLiteral = (token: GlEnum): string | undefined => {
 };
 
 const scalarAliasOrGroup = (scalar: GlScalar, group: string | undefined): string =>
-    group !== undefined && (scalar.tsAlias === "GLenum" || scalar.tsAlias === "GLbitfield") ? group : scalar.tsAlias;
+    group !== undefined && scalar.groupBearing === true ? group : scalar.tsAlias;
 
 const paramIndexByName = (command: GlCommand, name: string): number => {
     const index = command.params.findIndex((param) => param.name === name);
@@ -334,14 +334,18 @@ const isOutPlan = (plan: ParamPlan): boolean =>
     plan.kind === "ref-fixed-out" ||
     plan.kind === "string-out";
 
+const trackInto =
+    (usedTypes: Set<string>) =>
+    (alias: string): string => {
+        usedTypes.add(alias);
+        return alias;
+    };
+
 const buildSlots = (
     plan: CommandPlan & { readonly ok: true },
     usedTypes: Set<string>,
 ): { slots: EmittedSlot[]; ins: EmittedIn[]; outs: EmittedOut[] } => {
-    const track = (alias: string): string => {
-        usedTypes.add(alias);
-        return alias;
-    };
+    const track = trackInto(usedTypes);
     const slots: EmittedSlot[] = [];
     const ins: EmittedIn[] = [];
     const outs: EmittedOut[] = [];
@@ -379,10 +383,7 @@ const buildEmittedReturn = (
     returnGroup: string | undefined,
     usedTypes: Set<string>,
 ): EmittedReturn => {
-    const track = (alias: string): string => {
-        usedTypes.add(alias);
-        return alias;
-    };
+    const track = trackInto(usedTypes);
     switch (plan.kind) {
         case "void":
             return { tsType: "void", descriptor: "t.void" };
@@ -527,12 +528,6 @@ const renderCommand = (
     };
 };
 
-type SingularSpec = {
-    readonly exportName: string;
-    readonly binding?: string;
-    readonly declaration: string;
-};
-
 const GEN_FAMILY = /^gl(Gen|Create)[A-Z][A-Za-z]*s$/;
 const DELETE_FAMILY = /^glDelete[A-Z][A-Za-z]*s$/;
 
@@ -540,10 +535,7 @@ const scalarPrefixSlots = (
     plan: CommandPlan & { readonly ok: true },
     usedTypes: Set<string>,
 ): EmittedIn[] | undefined => {
-    const track = (alias: string): string => {
-        usedTypes.add(alias);
-        return alias;
-    };
+    const track = trackInto(usedTypes);
     const prefix: EmittedIn[] = [];
     for (let index = 0; index < plan.params.length - 2; index++) {
         const paramPlan = plan.params[index];
@@ -565,7 +557,7 @@ const deriveGenSingular = (
     plan: CommandPlan & { readonly ok: true },
     feature: string,
     usedTypes: Set<string>,
-): SingularSpec | undefined => {
+): RenderedCommand | undefined => {
     if (!GEN_FAMILY.test(plan.command.name)) return undefined;
     const countIndex = plan.params.length - 2;
     const outIndex = plan.params.length - 1;
@@ -612,7 +604,7 @@ const deriveDeleteSingular = (
     plan: CommandPlan & { readonly ok: true },
     feature: string,
     usedTypes: Set<string>,
-): SingularSpec | undefined => {
+): RenderedCommand | undefined => {
     if (!DELETE_FAMILY.test(plan.command.name)) return undefined;
     if (plan.params.length !== 2) return undefined;
     const [countPlan, arrayPlan] = plan.params;
@@ -676,7 +668,7 @@ const TS_PRIMITIVES: ReadonlySet<string> = new Set(["boolean", "string", "void",
 
 const renderCommandsModule = (
     rendered: readonly RenderedCommand[],
-    singulars: readonly SingularSpec[],
+    singulars: readonly RenderedCommand[],
     usedTypes: ReadonlySet<string>,
 ): string => {
     const builder = new ModuleBuilder();
@@ -701,7 +693,7 @@ const collectGroupAliases = (plans: readonly (CommandPlan & { readonly ok: true 
     const aliases = new Map<string, string>();
     const consider = (scalar: GlScalar, group: string | undefined): void => {
         if (group === undefined) return;
-        if (scalar.tsAlias !== "GLenum" && scalar.tsAlias !== "GLbitfield") return;
+        if (scalar.groupBearing !== true) return;
         const existing = aliases.get(group);
         if (existing === "GLbitfield") return;
         aliases.set(group, scalar.tsAlias === "GLbitfield" ? "GLbitfield" : (existing ?? "GLenum"));
@@ -807,7 +799,7 @@ const buildEnumRows = (
 
 const assertExportNamesDisjoint = (
     rendered: readonly RenderedCommand[],
-    singulars: readonly SingularSpec[],
+    singulars: readonly RenderedCommand[],
     enumRows: readonly EnumRow[],
     companionExports: ReadonlySet<string>,
 ): void => {
@@ -839,7 +831,7 @@ export const generateGlModules = (options: GlGenerationOptions): GlGenerationRes
 
     const usedTypes = new Set<string>();
     const rendered: RenderedCommand[] = [];
-    const singulars: SingularSpec[] = [];
+    const singulars: RenderedCommand[] = [];
     for (const plan of okPlans) {
         const feature = planFeatures.get(plan.command.name) ?? "unknown feature";
         rendered.push(renderCommand(plan, feature, usedTypes));

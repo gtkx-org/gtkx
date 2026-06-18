@@ -70,10 +70,7 @@ export class GirRepository {
      * @param typeName - Local type name within the namespace (e.g. `"Variant"`)
      */
     resolveNamed(namespaceName: string, typeName: string): ResolvedNamed | undefined {
-        const key = entityKey(namespaceName, typeName);
-        const direct = this.entityIndex.get(key);
-        if (direct !== undefined) return direct;
-        return undefined;
+        return this.entityIndex.get(entityKey(namespaceName, typeName));
     }
 }
 

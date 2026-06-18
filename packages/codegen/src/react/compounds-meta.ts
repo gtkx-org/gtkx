@@ -9,6 +9,15 @@
  * avoids one more GIR-introspection pass.
  */
 
+import {
+    LAYOUT_CHILD_KIND,
+    META_OBJECT_KIND,
+    OVERLAY_KIND,
+    TAB_LABEL_KIND,
+    TEXT_ANCHOR_KIND,
+    TEXT_PAINTABLE_KIND,
+} from "@gtkx/config";
+
 /**
  * An optional slot a virtual subcomponent desugars from a single `ReactNode`
  * prop into a nested inert wrapper child the enclosing meta-object consumes
@@ -35,37 +44,45 @@ export type VirtualSubcomponent = {
     readonly slot?: VirtualSubcomponentSlot;
 };
 
-const STACK_PAGE: VirtualSubcomponent = { flatName: "GtkStackPage", kind: "meta-object", propsType: "StackPageProps" };
+const STACK_PAGE: VirtualSubcomponent = {
+    flatName: "GtkStackPage",
+    kind: META_OBJECT_KIND,
+    propsType: "StackPageProps",
+};
 const VIEW_STACK_PAGE: VirtualSubcomponent = {
     flatName: "AdwViewStackPage",
-    kind: "meta-object",
+    kind: META_OBJECT_KIND,
     propsType: "StackPageProps",
 };
 const NOTEBOOK_PAGE: VirtualSubcomponent = {
     flatName: "GtkNotebookPage",
-    kind: "meta-object",
+    kind: META_OBJECT_KIND,
     propsType: "NotebookPageProps",
-    slot: { prop: "tabLabel", kind: "tab-label" },
+    slot: { prop: "tabLabel", kind: TAB_LABEL_KIND },
 };
-const GRID_CHILD: VirtualSubcomponent = { flatName: "GtkGridChild", kind: "layout-child", propsType: "GridChildProps" };
+const GRID_CHILD: VirtualSubcomponent = {
+    flatName: "GtkGridChild",
+    kind: LAYOUT_CHILD_KIND,
+    propsType: "GridChildProps",
+};
 const FIXED_CHILD: VirtualSubcomponent = {
     flatName: "GtkFixedChild",
-    kind: "layout-child",
+    kind: LAYOUT_CHILD_KIND,
     propsType: "FixedChildProps",
 };
 const OVERLAY_CHILD: VirtualSubcomponent = {
     flatName: "GtkOverlayChild",
-    kind: "overlay",
+    kind: OVERLAY_KIND,
     propsType: "OverlayChildProps",
 };
 const TEXT_ANCHOR: VirtualSubcomponent = {
     flatName: "GtkTextAnchor",
-    kind: "text-anchor",
+    kind: TEXT_ANCHOR_KIND,
     propsType: "TextAnchorProps",
 };
 const TEXT_PAINTABLE: VirtualSubcomponent = {
     flatName: "GtkTextPaintable",
-    kind: "text-paintable",
+    kind: TEXT_PAINTABLE_KIND,
     propsType: "TextPaintableProps",
 };
 

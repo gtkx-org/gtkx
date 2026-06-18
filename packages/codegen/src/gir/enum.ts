@@ -1,5 +1,5 @@
 import { functionFromNode, type GirFunction } from "./function.js";
-import { attr, childrenOf, type RawNode } from "./parse.js";
+import { attr, attrBool, childrenOf, type RawNode } from "./parse.js";
 
 /** A single `<member>` of an `<enumeration>` or `<bitfield>`. */
 type EnumMember = {
@@ -43,7 +43,7 @@ export const enumFromNode = (node: RawNode, kind: EnumKind): GirEnum => ({
     glibTypeName: attr(node, "glib:type-name"),
     glibGetType: attr(node, "glib:get-type"),
     errorDomain: attr(node, "glib:error-domain"),
-    introspectable: attr(node, "introspectable") !== "0",
+    introspectable: attrBool(node, "introspectable", true),
     members: childrenOf(node, "member").map((member) => ({
         name: attr(member, "name") ?? "",
         value: attr(member, "value") ?? "0",

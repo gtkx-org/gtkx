@@ -6,14 +6,14 @@
  * {@link getGobjectProperty} / {@link setGobjectProperty} drive `g_object_*_property`
  * for a single statically-typed property. The generated `GObject.Object`
  * constructor and accessors call them; the `GValue` marshalling they build on
- * lives in `./gvalue.js` and the wrapper-lifting in `./wrap-value.js`.
+ * lives in `./gvalue.js` and the wrapper-lifting in `./wrapper-class.js`.
  */
 
 import { call, type Type as FfiType, type Handle, type Value } from "@gtkx/native";
-import { GVALUE_SIZE, GVALUE_T, LIBGOBJECT } from "./constants.js";
+import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
+import { biguint64T, bind, objectT, sizedArrayT, stringT, uint32T, voidT } from "./descriptors.js";
 import type { GType } from "./gtype.js";
 import { fromGvalue, newValueFromFfi, toGvalue } from "./gvalue.js";
-import { biguint64T, bind, objectT, sizedArrayT, stringT, uint32T, voidT } from "./helpers.js";
 import { getHandle } from "./registry.js";
 
 /**
@@ -58,7 +58,7 @@ export function newGobjectWithProperties(gtype: GType, props: Record<string, Pro
     }
 
     return call(
-        LIBGOBJECT,
+        LIB,
         "g_object_new_with_properties",
         [
             { type: biguint64T, value: gtype },
@@ -72,8 +72,8 @@ export function newGobjectWithProperties(gtype: GType, props: Record<string, Pro
 
 const PROPERTY_CALL_ARGS = [objectT("borrowed"), stringT("borrowed"), GVALUE_T] as const;
 
-const gObjectGetProperty = bind(LIBGOBJECT, "g_object_get_property", [...PROPERTY_CALL_ARGS], voidT);
-const gObjectSetProperty = bind(LIBGOBJECT, "g_object_set_property", [...PROPERTY_CALL_ARGS], voidT);
+const gObjectGetProperty = bind(LIB, "g_object_get_property", [...PROPERTY_CALL_ARGS], voidT);
+const gObjectSetProperty = bind(LIB, "g_object_set_property", [...PROPERTY_CALL_ARGS], voidT);
 
 /**
  * Reads a GObject property into a plain JavaScript value through a

@@ -11,22 +11,14 @@ export type TranspiledFile = {
     readonly dts: string;
 };
 
-/**
- * The compiler options the store's single-file transpile passes share. The
- * `.js` emit and the isolated `.d.ts` emit each spread these and add their own
- * emit-specific keys.
- */
-const baseCompilerOptions = (): ts.CompilerOptions => ({
+/** The compiler options shared by the store's single-file `.js` and `.d.ts` transpile passes. */
+const COMPILER_OPTIONS: ts.CompilerOptions = {
     module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler,
     target: ts.ScriptTarget.ESNext,
     skipLibCheck: true,
     jsx: ts.JsxEmit.ReactJSX,
     jsxImportSource: "react",
-});
-
-const COMPILER_OPTIONS: ts.CompilerOptions = {
-    ...baseCompilerOptions(),
     declaration: true,
     skipDefaultLibCheck: true,
     removeComments: false,

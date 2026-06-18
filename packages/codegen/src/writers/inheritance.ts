@@ -48,9 +48,7 @@ export const resolvePrerequisiteReference = (context: ModuleContext, name: strin
     const resolved = context.repository.resolveNamed(namespaceName, typeName);
     if (resolved === undefined) return undefined;
     if (resolved.kind !== "interface" && resolved.kind !== "class") return undefined;
-    if (namespaceName === context.namespace.name) return toPascalCase(typeName);
-    const alias = context.addCrossNamespaceImport(namespaceName);
-    return `${alias}.${toPascalCase(typeName)}`;
+    return context.qualify(namespaceName, toPascalCase(typeName));
 };
 
 /**

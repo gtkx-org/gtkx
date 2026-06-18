@@ -4,6 +4,7 @@ import type { FontSlant, FontType, FontWeight, Status } from "../cairo.js";
 import { FontFace } from "../cairo.js";
 
 const { bind } = t;
+const FONT_FACE_T = t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type");
 const FC_PATTERN_T = t.boxed("FcPattern", "borrowed", "libcairo.so.2");
 const FT_FACE_T = t.boxed("FT_Face", "borrowed", "libcairo.so.2");
 
@@ -21,22 +22,12 @@ declare module "../cairo.js" {
     }
 }
 
-const cairoFontFaceStatus = bind(
-    "libcairo.so.2",
-    "cairo_font_face_status",
-    [t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type")],
-    t.int32,
-);
+const cairoFontFaceStatus = bind("libcairo.so.2", "cairo_font_face_status", [FONT_FACE_T], t.int32);
 FontFace.prototype.status = function (): Status {
     return cairoFontFaceStatus(getHandle(this)) as Status;
 };
 
-const cairoFontFaceGetType = bind(
-    "libcairo.so.2",
-    "cairo_font_face_get_type",
-    [t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type")],
-    t.int32,
-);
+const cairoFontFaceGetType = bind("libcairo.so.2", "cairo_font_face_get_type", [FONT_FACE_T], t.int32);
 FontFace.prototype.getType = function (): FontType {
     return cairoFontFaceGetType(getHandle(this)) as FontType;
 };
@@ -44,7 +35,7 @@ FontFace.prototype.getType = function (): FontType {
 const cairoFontFaceGetReferenceCount = bind(
     "libcairo.so.2",
     "cairo_font_face_get_reference_count",
-    [t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type")],
+    [FONT_FACE_T],
     t.int32,
 );
 FontFace.prototype.getReferenceCount = function (): number {
@@ -54,37 +45,22 @@ FontFace.prototype.getReferenceCount = function (): number {
 const cairoToyFontFaceGetFamily = bind(
     "libcairo.so.2",
     "cairo_toy_font_face_get_family",
-    [t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type")],
+    [FONT_FACE_T],
     t.string("borrowed"),
 );
-const cairoToyFontFaceGetSlant = bind(
-    "libcairo.so.2",
-    "cairo_toy_font_face_get_slant",
-    [t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type")],
-    t.int32,
-);
-const cairoToyFontFaceGetWeight = bind(
-    "libcairo.so.2",
-    "cairo_toy_font_face_get_weight",
-    [t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type")],
-    t.int32,
-);
-const cairoFtFontFaceGetSynthesize = bind(
-    "libcairo.so.2",
-    "cairo_ft_font_face_get_synthesize",
-    [t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type")],
-    t.int32,
-);
+const cairoToyFontFaceGetSlant = bind("libcairo.so.2", "cairo_toy_font_face_get_slant", [FONT_FACE_T], t.int32);
+const cairoToyFontFaceGetWeight = bind("libcairo.so.2", "cairo_toy_font_face_get_weight", [FONT_FACE_T], t.int32);
+const cairoFtFontFaceGetSynthesize = bind("libcairo.so.2", "cairo_ft_font_face_get_synthesize", [FONT_FACE_T], t.int32);
 const cairoFtFontFaceSetSynthesize = bind(
     "libcairo.so.2",
     "cairo_ft_font_face_set_synthesize",
-    [t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type"), t.int32],
+    [FONT_FACE_T, t.int32],
     t.void,
 );
 const cairoFtFontFaceUnsetSynthesize = bind(
     "libcairo.so.2",
     "cairo_ft_font_face_unset_synthesize",
-    [t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type"), t.int32],
+    [FONT_FACE_T, t.int32],
     t.void,
 );
 

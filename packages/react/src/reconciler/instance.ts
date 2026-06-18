@@ -8,6 +8,7 @@
  * prop diffing in `apply-props`; the reconciler ({@link "./host-config"}) only
  * manages the children array and routes commits to those tables.
  */
+import { WRAPPER_NODE_ELEMENT } from "@gtkx/config";
 import { getWrapperClass, typeFromName } from "@gtkx/ffi";
 import type { GType } from "@gtkx/gi/gobject";
 import { omit } from "@gtkx/utils";
@@ -16,12 +17,7 @@ import { createContainerWithProperties } from "./construct.js";
 import { getSignalStore, type SignalStore } from "./signal-store.js";
 import type { BackingInstance, BackingInstanceClass, ContainerInfo, Props } from "./types.js";
 
-/**
- * The single JSX element name every metadata wrapper renders. A wrapper carries
- * its concrete kind (`"slot"`, `"meta-object"`, …) through the `kind` prop, which
- * the host config forwards to {@link Instance.kind}.
- */
-export const WRAPPER_NODE_ELEMENT = "__GTKX_WRAPPER_NODE__";
+export { WRAPPER_NODE_ELEMENT };
 
 /** The synthetic element type of the inert top-level render root. */
 export const ROOT_TYPE = "__GTKX_ROOT__";

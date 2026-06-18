@@ -10,8 +10,8 @@
  * runtime self-contained.
  */
 
-import { LIBGOBJECT } from "./constants.js";
-import { biguint64T, bind, booleanT, refT, sizedArrayT, stringT, uint32T } from "./helpers.js";
+import { LIB } from "./constants.js";
+import { biguint64T, bind, booleanT, refT, sizedArrayT, stringT, uint32T } from "./descriptors.js";
 
 /**
  * A GLib type identifier — the `GType` integer the GObject type system
@@ -69,18 +69,13 @@ export const lazyGtype = (name: string): (() => GType) => {
     };
 };
 
-const gTypeFromName = bind(LIBGOBJECT, "g_type_from_name", [stringT("borrowed")], biguint64T);
-const gTypeIsA = bind(LIBGOBJECT, "g_type_is_a", [biguint64T, biguint64T], booleanT);
-const gTypeParent = bind(LIBGOBJECT, "g_type_parent", [biguint64T], biguint64T);
-const gTypeFundamental = bind(LIBGOBJECT, "g_type_fundamental", [biguint64T], biguint64T);
-const gTypeName = bind(LIBGOBJECT, "g_type_name", [biguint64T], stringT("borrowed"));
+const gTypeFromName = bind(LIB, "g_type_from_name", [stringT("borrowed")], biguint64T);
+const gTypeIsA = bind(LIB, "g_type_is_a", [biguint64T, biguint64T], booleanT);
+const gTypeParent = bind(LIB, "g_type_parent", [biguint64T], biguint64T);
+const gTypeFundamental = bind(LIB, "g_type_fundamental", [biguint64T], biguint64T);
+const gTypeName = bind(LIB, "g_type_name", [biguint64T], stringT("borrowed"));
 
-const gTypeInterfaces = bind(
-    LIBGOBJECT,
-    "g_type_interfaces",
-    [biguint64T, refT(uint32T)],
-    sizedArrayT(biguint64T, 1, "full"),
-);
+const gTypeInterfaces = bind(LIB, "g_type_interfaces", [biguint64T, refT(uint32T)], sizedArrayT(biguint64T, 1, "full"));
 
 /**
  * Tests whether `type` is a descendant of `isAType`, or — when `isAType` is
@@ -142,7 +137,7 @@ export function typeFundamental(type: GType): GType {
  * @param type - The GType whose name to resolve
  */
 export function typeName(type: GType): string | null {
-    return (gTypeName(type) as string | null) ?? null;
+    return (gTypeName(type) ?? null) as string | null;
 }
 
 /**

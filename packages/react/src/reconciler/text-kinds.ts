@@ -1,11 +1,6 @@
-/** Wrapper kind for a raw text run inside a text buffer. */
-export const BUFFER_TEXT_KIND = "text";
-
-/** Wrapper kind for an inline paintable embedded in a text buffer. */
-export const PAINTABLE_KIND = "text-paintable";
-
-/** Wrapper kind for a widget anchored into a text buffer. */
-export const ANCHOR_KIND = "text-anchor";
-
-/** Wrapper kind for a raw text run inside a label. */
-export const LABEL_TEXT_KIND = "label-text";
+export {
+    BUFFER_TEXT_KIND,
+    LABEL_TEXT_KIND,
+    TEXT_ANCHOR_KIND as ANCHOR_KIND,
+    TEXT_PAINTABLE_KIND as PAINTABLE_KIND,
+} from "@gtkx/config";

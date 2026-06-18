@@ -11,13 +11,6 @@ import type { ArrayTypeRef, GirTypeRef, NamedTypeRef } from "../gir/type-ref.js"
 import { computeBoxedFieldSlots } from "./boxed-layout.js";
 
 /**
- * Inline byte sizes for boxed value types whose GIR record is opaque, so the
- * field layout cannot be computed but the type is still passed by value in
- * arrays (e.g. the `GValue` cells `g_signal_emitv` consumes).
- */
-const HARDCODED_INLINE_ELEMENT_SIZES: ReadonlyMap<string, number> = new Map([["GObject.Value", 24]]);
-
-/**
  * Maps a GIR transfer-ownership value to the FFI runtime's ownership
  * vocabulary.
  *
@@ -225,22 +218,13 @@ const namedExpression = (context: ModuleContext, ref: NamedTypeRef, ownership: "
     return expressionForResolved(context, resolved, ownership);
 };
 
-/**
- * Ref/unref functions for fundamental types whose GIR record omits
- * `glib:ref-func`/`glib:unref-func` but which are nonetheless ref-counted
- * fundamentals (their `GType` is not a boxed type, so `g_boxed_free` aborts).
- * Keyed by GLib type name.
- */
-const INTRINSIC_FUNDAMENTAL_FUNCS: ReadonlyMap<string, { readonly ref: string; readonly unref: string }> = new Map([
-    ["GVariant", { ref: "g_variant_ref_sink", unref: "g_variant_unref" }],
-]);
-
 type FundamentalDescriptor = {
     readonly lib: string;
     readonly refFunc: string;
     readonly unrefFunc: string;
     readonly glibTypeName: string | undefined;
     readonly ownership: "borrowed" | "full";
+    readonly wrapperClass?: string;
 };
 
 /**
@@ -260,9 +244,10 @@ const referenceAddingFunc = (refFunc: string): string =>
     refFunc.endsWith("_ref_sink") ? refFunc.slice(0, -"_sink".length) : refFunc;
 
 const renderFundamental = (descriptor: FundamentalDescriptor): string => {
-    const { lib, refFunc, unrefFunc, glibTypeName, ownership } = descriptor;
+    const { lib, refFunc, unrefFunc, glibTypeName, ownership, wrapperClass } = descriptor;
     const parts = [`ownership: ${quote(ownership)}`];
     if (glibTypeName !== undefined) parts.push(`typeName: ${quote(glibTypeName)}`);
+    if (wrapperClass !== undefined) parts.push(`wrapperClass: ${wrapperClass}`);
     return `t.fundamental(${quote(lib)}, ${quote(referenceAddingFunc(refFunc))}, ${quote(unrefFunc)}, { ${parts.join(", ")} })`;
 };
 
@@ -348,7 +333,7 @@ export const renderSelfFfiType = (context: ModuleContext, instance: GirParameter
             : renderFundamental({ ...ancestor, ownership: "borrowed" });
     }
     if (resolved.kind === "boxed" && isReferenceableBoxed(resolved.value)) {
-        return boxedExpression(resolved, ffiOwnership(instance.transferOwnership));
+        return boxedExpression(context, resolved, ffiOwnership(instance.transferOwnership));
     }
     return `t.object("borrowed")`;
 };
@@ -357,57 +342,64 @@ type ResolvedBoxed = Extract<ResolvedNamed, { kind: "boxed" }>["value"];
 
 /**
  * The ref/unref function pair a boxed record marshals through, drawn in
- * precedence order from its GLib ref/unref funcs, its copy/free funcs, then the
- * intrinsic funcs keyed by its GLib type name. A record with both halves present
- * renders as a `t.fundamental`; one with neither renders as `t.boxed` (when it
- * has a `get-type`) or a plain `t.struct`.
+ * precedence order from its GLib ref/unref funcs, then its copy/free funcs. A
+ * record with both halves present renders as a `t.fundamental`; one with neither
+ * renders as `t.boxed` (when it has a `get-type`) or a plain `t.struct`.
  */
 const boxedRefPair = (
     boxed: ResolvedBoxed,
-): { readonly refFunc: string | undefined; readonly unrefFunc: string | undefined } => {
-    const intrinsic =
-        boxed.glibTypeName === undefined ? undefined : INTRINSIC_FUNDAMENTAL_FUNCS.get(boxed.glibTypeName);
-    return {
-        refFunc: boxed.glibRefFunc ?? boxed.copyFunc ?? intrinsic?.ref,
-        unrefFunc: boxed.glibUnrefFunc ?? boxed.freeFunc ?? intrinsic?.unref,
-    };
-};
+): { readonly refFunc: string | undefined; readonly unrefFunc: string | undefined } => ({
+    refFunc: boxed.glibRefFunc ?? boxed.copyFunc,
+    unrefFunc: boxed.glibUnrefFunc ?? boxed.freeFunc,
+});
 
 const isReferenceableBoxed = (boxed: ResolvedBoxed): boolean => {
     const hasRefPair =
         (boxed.glibRefFunc ?? boxed.copyFunc) !== undefined && (boxed.glibUnrefFunc ?? boxed.freeFunc) !== undefined;
-    const hasIntrinsic = boxed.glibTypeName !== undefined && INTRINSIC_FUNDAMENTAL_FUNCS.has(boxed.glibTypeName);
-    return hasRefPair || hasIntrinsic || boxed.glibGetType !== undefined;
+    return hasRefPair || boxed.glibGetType !== undefined;
 };
 
 /**
  * Whether a boxed record's FFI descriptor carries no `GType` identity the
- * runtime can resolve a wrapper class from, so the binding must pass an explicit
- * `wrapperClass` fallback. True for a plain `t.struct` (no copy/free pair, no
+ * runtime can resolve a wrapper class from, so the binding pairs its wrapper
+ * class with the descriptor. True for a plain `t.struct` (no copy/free pair, no
  * `get-type`) and for a `t.fundamental` with no registered GLib type name (e.g.
  * `GAsyncQueue`); false for a `t.boxed` (resolved through its `get-type`) and a
  * named `t.fundamental` (resolved through its type name).
  *
  * @param boxed - The resolved boxed record.
  */
-export const boxedNeedsFallbackClass = (boxed: ResolvedBoxed): boolean => {
+const boxedNeedsFallbackClass = (boxed: ResolvedBoxed): boolean => {
     const { refFunc, unrefFunc } = boxedRefPair(boxed);
     if (refFunc !== undefined && unrefFunc !== undefined) return boxed.glibTypeName === undefined;
     return boxed.glibGetType === undefined;
 };
 
 const boxedExpression = (
+    context: ModuleContext,
     resolved: Extract<ResolvedNamed, { kind: "boxed" }>,
     ownership: "borrowed" | "full",
 ): string => {
     const boxed = resolved.value;
     const { refFunc, unrefFunc } = boxedRefPair(boxed);
+    const wrapperClass = boxedNeedsFallbackClass(boxed)
+        ? context.qualify(resolved.namespace.name, boxed.name)
+        : undefined;
     if (refFunc !== undefined && unrefFunc !== undefined) {
         const lib = resolved.namespace.sharedLibrary ?? "";
-        return renderFundamental({ lib, refFunc, unrefFunc, glibTypeName: boxed.glibTypeName, ownership });
+        return renderFundamental({
+            lib,
+            refFunc,
+            unrefFunc,
+            glibTypeName: boxed.glibTypeName,
+            ownership,
+            wrapperClass,
+        });
     }
     if (boxed.glibGetType === undefined) {
-        return `t.struct(${quote(ownership)})`;
+        return wrapperClass === undefined
+            ? `t.struct(${quote(ownership)})`
+            : `t.struct(${quote(ownership)}, undefined, ${wrapperClass})`;
     }
     const glibName = boxed.glibTypeName ?? boxed.cType ?? boxed.name;
     const lib = resolved.namespace.sharedLibrary;
@@ -425,7 +417,7 @@ const expressionForResolved = (
         case "interface":
             return classOrInterfaceExpression(resolved, ownership);
         case "boxed":
-            return boxedExpression(resolved, ownership);
+            return boxedExpression(context, resolved, ownership);
         case "enum": {
             const getter = resolved.value.glibGetType;
             const signed = resolved.value.members.some((member) => member.value.startsWith("-"));
@@ -474,8 +466,6 @@ const arrayExpression = (
 const inlineElementSize = (context: ModuleContext, element: GirTypeRef | undefined): number | undefined => {
     if (element === undefined || element.kind !== "named") return undefined;
     const owner = element.namespaceName ?? context.namespace.name;
-    const hardcoded = HARDCODED_INLINE_ELEMENT_SIZES.get(`${owner}.${element.typeName}`);
-    if (hardcoded !== undefined) return hardcoded;
     if (element.cType?.includes("*")) return undefined;
     const resolved = context.repository.resolveNamed(owner, element.typeName);
     if (resolved === undefined || resolved.kind !== "boxed") return undefined;

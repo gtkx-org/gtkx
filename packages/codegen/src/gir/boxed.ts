@@ -56,7 +56,7 @@ export const boxedFromNode = (node: RawNode, isVtable: boolean, isUnion: boolean
     freeFunc: attr(node, "free-function"),
     disguised: attrBool(node, "disguised"),
     opaque: attrBool(node, "opaque"),
-    introspectable: attr(node, "introspectable") !== "0",
+    introspectable: attrBool(node, "introspectable", true),
     fields: childrenOf(node, "field").map(fieldFromNode),
     methods: childrenOf(node, "method").map((method) => functionFromNode(method, "method")),
     constructors: childrenOf(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, "constructor")),

@@ -4,7 +4,7 @@ import type { GType } from "@gtkx/gi/gobject";
 import { typeFromName } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
-import { checkError, createErrorDomain } from "../src/error.js";
+import { checkError, createErrorDomain } from "../src/gerror.js";
 import { instanceIsA } from "./helpers.js";
 
 const orientableGtype = (): GType => typeFromName("GtkOrientable");

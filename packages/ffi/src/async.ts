@@ -10,24 +10,9 @@
  */
 
 import type { Handle } from "@gtkx/native";
-import { setHandle, tryGetHandle } from "./registry.js";
-
-/**
- * Wraps the raw `GAsyncResult*` handle delivered to a `GAsyncReadyCallback`
- * into the minimal object a generated `*_finish` member consumes.
- *
- * A `*_finish` member only ever reads the native pointer of its result
- * argument via the internal handle accessor, so the wrapper carries nothing
- * beyond that handle. Resolving the result to a fully typed `Gio.AsyncResult`
- * wrapper would pull a generated namespace into this hand-written runtime
- * module and serve no purpose, since the result object is transient and never
- * surfaces to callers.
- */
-const wrapAsyncResult = (rawResult: Handle): object => {
-    const result: object = {};
-    setHandle(result, rawResult);
-    return result;
-};
+import { objectT } from "./descriptors.js";
+import { tryGetHandle } from "./registry.js";
+import { wrapValue } from "./wrapper-class.js";
 
 /**
  * The native start-callable of a GIO-style asynchronous operation. Accepts
@@ -83,7 +68,7 @@ export const promisify = (
             ...(args.trailing ?? []),
             (_source: Handle, rawResult: Handle) => {
                 try {
-                    resolve(finish(wrapAsyncResult(rawResult)));
+                    resolve(finish(wrapValue(objectT("borrowed", "GAsyncResult"), rawResult) as object));
                 } catch (error) {
                     reject(error);
                 }

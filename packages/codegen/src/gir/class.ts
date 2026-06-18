@@ -53,7 +53,7 @@ export const classFromNode = (node: RawNode, isInterface: boolean): GirClass => 
     glibUnrefFunc: attr(node, "glib:unref-func"),
     fundamental: attrBool(node, "glib:fundamental"),
     isInterface,
-    introspectable: attr(node, "introspectable") !== "0",
+    introspectable: attrBool(node, "introspectable", true),
     implements: childrenOf(node, "implements")
         .map((implement) => attr(implement, "name"))
         .filter((name): name is string => name !== undefined),

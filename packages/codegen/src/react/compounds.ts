@@ -1,12 +1,10 @@
+import { WRAPPER_NODE_ELEMENT } from "@gtkx/config";
 import { quote, toCamelCase } from "@gtkx/utils";
 import type { GirNamespace } from "../gir/namespace.js";
 import type { GirRepository } from "../gir/repository.js";
 import { type VirtualSubcomponent, virtualSubcomponentEntries } from "./compounds-meta.js";
 import type { JsxImports } from "./imports.js";
 import { ancestorGlibNames, collectReactNodeClasses, type WidgetCandidate } from "./widgets.js";
-
-/** The single JSX element name every metadata wrapper renders. */
-const WRAPPER_NODE_ELEMENT = "__GTKX_WRAPPER_NODE__";
 
 /** Module-local const name binding the wrapper sentinel element. */
 const WRAPPER_ELEMENT_CONST = "WrapperNodeElement";
@@ -104,18 +102,6 @@ const virtualSubcomponentsForNamespace = (
     return result.sort((a, b) => a.flatName.localeCompare(b.flatName));
 };
 
-/** The shared own-keys of the list-view and grid-view controller prop shapes. */
-const LIST_VIEW_OWN_KEYS =
-    '"items" | "model" | "renderItem" | "renderHeader" | "autoexpand" | "selected" | "onSelectionChanged" | "selectionMode" | "estimatedItemHeight" | "estimatedItemWidth"';
-
-/** The own-keys of the drop-down and combo-row controller prop shape. */
-const DROP_DOWN_OWN_KEYS =
-    '"items" | "model" | "renderItem" | "renderListItem" | "renderHeader" | "selectedId" | "onSelectionChanged"';
-
-/** The own-keys of the column-view controller prop shape. */
-const COLUMN_VIEW_OWN_KEYS =
-    '"items" | "model" | "renderHeader" | "selected" | "onSelectionChanged" | "selectionMode" | "sortColumn" | "sortOrder" | "onSortChanged" | "estimatedRowHeight"';
-
 /** A typed namespace-module wrapper around a hand-written `@gtkx/react` runtime component. */
 type RuntimeComponentWrapper =
     | { readonly kind: "reexport" }
@@ -124,8 +110,12 @@ type RuntimeComponentWrapper =
           readonly kind: "typed";
           /** The wrapper's generic parameter list (e.g. `"<T = unknown, S = unknown>"`). */
           readonly genericParams: string;
-          /** Keys removed from the generated `Props` in the wrapper's surface. */
-          readonly omitKeys: string;
+          /**
+           * Keys removed from the generated `Props` in the wrapper's surface. Defaults to
+           * `keyof <controllerProps>` so the omitted set tracks the controller type; set
+           * explicitly only when the removed keys differ from the controller's own keys.
+           */
+          readonly omitKeys?: string;
           /** The `@gtkx/react` controller prop shape intersected in, with generics applied. */
           readonly controllerProps: string;
           /** The `@gtkx/react` type names the wrapper's surface imports. */
@@ -144,35 +134,30 @@ const RUNTIME_COMPONENT_WRAPPERS: Readonly<Record<string, RuntimeComponentWrappe
     GtkListView: {
         kind: "typed",
         genericParams: "<T = unknown, S = unknown>",
-        omitKeys: LIST_VIEW_OWN_KEYS,
         controllerProps: "ListViewProps<T, S>",
         sharedTypes: ["ListViewProps"],
     },
     GtkGridView: {
         kind: "typed",
         genericParams: "<T = unknown>",
-        omitKeys: LIST_VIEW_OWN_KEYS,
         controllerProps: "GridViewProps<T>",
         sharedTypes: ["GridViewProps"],
     },
     GtkDropDown: {
         kind: "typed",
         genericParams: "<T = unknown, S = unknown>",
-        omitKeys: DROP_DOWN_OWN_KEYS,
         controllerProps: "DropDownProps<T, S>",
         sharedTypes: ["DropDownProps"],
     },
     AdwComboRow: {
         kind: "typed",
         genericParams: "<T = unknown, S = unknown>",
-        omitKeys: DROP_DOWN_OWN_KEYS,
         controllerProps: "DropDownProps<T, S>",
         sharedTypes: ["DropDownProps"],
     },
     GtkColumnView: {
         kind: "typed",
         genericParams: "<T = unknown, S = unknown>",
-        omitKeys: COLUMN_VIEW_OWN_KEYS,
         controllerProps: "ColumnViewProps<T, S>",
         sharedTypes: ["ColumnViewProps"],
     },
@@ -198,7 +183,8 @@ const renderRuntimeWrapper = (glibName: string, wrapper: RuntimeComponentWrapper
         return `export const ${glibName}: (props: ${glibName}Props) => ReactNode = ${alias};`;
     }
     for (const sharedType of wrapper.sharedTypes) imports.sharedTypes.add(sharedType);
-    const propsExpr = `Omit<${glibName}Props, ${wrapper.omitKeys}> & ${wrapper.controllerProps}`;
+    const omitKeys = wrapper.omitKeys ?? `keyof ${wrapper.controllerProps}`;
+    const propsExpr = `Omit<${glibName}Props, ${omitKeys}> & ${wrapper.controllerProps}`;
     return `export const ${glibName}: ${wrapper.genericParams}(props: ${propsExpr}) => ReactNode = ${alias};`;
 };
 

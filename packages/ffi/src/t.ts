@@ -16,8 +16,8 @@
  * other surfaced value is lifted through {@link wrapValue} under its FFI `type`.
  */
 
+import * as helpers from "./descriptors.js";
 import { fn } from "./fn.js";
-import * as helpers from "./helpers.js";
 
 /**
  * The binding factory the generated `@gtkx/gi` bindings and their override

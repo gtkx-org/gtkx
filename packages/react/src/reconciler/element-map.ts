@@ -14,7 +14,15 @@
  * {@link Instance.attachState}.
  */
 import { META_OBJECT_ADD_METHODS, PAGE_META_SETTERS, TOP_LEVEL_TYPES } from "virtual:gtkx-config";
-import type { AddMethodRule } from "@gtkx/config";
+import {
+    type AddMethodRule,
+    CONTAINER_SLOT_KIND,
+    LAYOUT_CHILD_KIND,
+    META_OBJECT_KIND,
+    OVERLAY_KIND,
+    SLOT_KIND,
+    TAB_LABEL_KIND,
+} from "@gtkx/config";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -63,9 +71,6 @@ const childWidget = (instance: Instance): Gtk.Widget | null => {
 
 // --- Wrapper content selection ---
 
-const TAB_LABEL_KIND = "tab-label";
-const META_OBJECT_KIND = "meta-object";
-
 /** The wrapper's primary tracked content child, skipping the tab-label slot. */
 const trackedChild = (marker: Instance): Instance | null =>
     marker.children.find((child) => !isWrapperKind(child, TAB_LABEL_KIND)) ?? marker.children[0] ?? null;
@@ -102,12 +107,12 @@ const LAYOUT_MANAGER_PROP = "layoutManager";
  */
 const resyncLayoutChildWrappers = (parent: Instance): void => {
     for (const sibling of parent.children) {
-        if (isWrapperKind(sibling, "layout-child")) attachToParent(sibling, parent);
+        if (isWrapperKind(sibling, LAYOUT_CHILD_KIND)) attachToParent(sibling, parent);
     }
 };
 
 const slotMapping: ElementMapping = {
-    matches: (child, parent) => isWrapperKind(child, "slot") && parent.backingInstance !== undefined,
+    matches: (child, parent) => isWrapperKind(child, SLOT_KIND) && parent.backingInstance !== undefined,
     attach: (child, parent) => {
         const prop = child.props.propName;
         const target = parent.backingInstance;
@@ -158,7 +163,7 @@ const detachContainerSlotChild = (instance: Instance, parent: Instance): void =>
 };
 
 const containerSlotMapping: ElementMapping = {
-    matches: (child, parent) => isWrapperKind(child, "container-slot") && parent.backingInstance !== undefined,
+    matches: (child, parent) => isWrapperKind(child, CONTAINER_SLOT_KIND) && parent.backingInstance !== undefined,
     attach: (child, parent) => {
         const method = child.props.method;
         const target = parent.backingInstance;
@@ -364,7 +369,7 @@ const applyLayoutChild = (
 
 const layoutChildMapping: ElementMapping = {
     matches: (child, parent) =>
-        isWrapperKind(child, "layout-child") &&
+        isWrapperKind(child, LAYOUT_CHILD_KIND) &&
         parent.backingInstance instanceof Gtk.Widget &&
         resolveLayoutKind(parent.backingInstance) !== null,
     attach: (child, parent) => {
@@ -400,7 +405,7 @@ const applyOverlayFlags = (overlay: Gtk.Overlay, widget: Gtk.Widget, props: Inst
 };
 
 const overlayMapping: ElementMapping = {
-    matches: (child, parent) => isWrapperKind(child, "overlay") && parent.backingInstance instanceof Gtk.Overlay,
+    matches: (child, parent) => isWrapperKind(child, OVERLAY_KIND) && parent.backingInstance instanceof Gtk.Overlay,
     attach: (child, parent) => {
         const overlay = parent.backingInstance;
         if (!(overlay instanceof Gtk.Overlay)) return;

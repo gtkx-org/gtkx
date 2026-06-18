@@ -4,6 +4,12 @@ import type { Antialias, HintMetrics, HintStyle, Status, SubpixelOrder } from ".
 import { FontOptions } from "../cairo.js";
 
 const { bind } = t;
+const FONT_OPTIONS_T = t.boxed(
+    "CairoFontOptions",
+    "borrowed",
+    "libcairo-gobject.so.2",
+    "cairo_gobject_font_options_get_type",
+);
 
 declare module "../cairo.js" {
     interface FontOptions {
@@ -29,7 +35,7 @@ const cairoFontOptionsCreate = bind(
 const cairoFontOptionsCopy = bind(
     "libcairo.so.2",
     "cairo_font_options_copy",
-    [t.boxed("CairoFontOptions", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type")],
+    [FONT_OPTIONS_T],
     t.boxed("CairoFontOptions", "full", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type"),
 );
 
@@ -56,7 +62,7 @@ export { FontOptionsImpl as FontOptions };
 const cairoFontOptionsSetHintStyle = bind(
     "libcairo.so.2",
     "cairo_font_options_set_hint_style",
-    [t.boxed("CairoFontOptions", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type"), t.int32],
+    [FONT_OPTIONS_T, t.int32],
     t.void,
 );
 FontOptions.prototype.setHintStyle = function (hintStyle: HintStyle): void {
@@ -66,7 +72,7 @@ FontOptions.prototype.setHintStyle = function (hintStyle: HintStyle): void {
 const cairoFontOptionsGetHintStyle = bind(
     "libcairo.so.2",
     "cairo_font_options_get_hint_style",
-    [t.boxed("CairoFontOptions", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type")],
+    [FONT_OPTIONS_T],
     t.int32,
 );
 FontOptions.prototype.getHintStyle = function (): HintStyle {
@@ -76,7 +82,7 @@ FontOptions.prototype.getHintStyle = function (): HintStyle {
 const cairoFontOptionsSetAntialias = bind(
     "libcairo.so.2",
     "cairo_font_options_set_antialias",
-    [t.boxed("CairoFontOptions", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type"), t.int32],
+    [FONT_OPTIONS_T, t.int32],
     t.void,
 );
 FontOptions.prototype.setAntialias = function (antialias: Antialias): void {
@@ -86,7 +92,7 @@ FontOptions.prototype.setAntialias = function (antialias: Antialias): void {
 const cairoFontOptionsGetAntialias = bind(
     "libcairo.so.2",
     "cairo_font_options_get_antialias",
-    [t.boxed("CairoFontOptions", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type")],
+    [FONT_OPTIONS_T],
     t.int32,
 );
 FontOptions.prototype.getAntialias = function (): Antialias {
@@ -96,7 +102,7 @@ FontOptions.prototype.getAntialias = function (): Antialias {
 const cairoFontOptionsSetHintMetrics = bind(
     "libcairo.so.2",
     "cairo_font_options_set_hint_metrics",
-    [t.boxed("CairoFontOptions", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type"), t.int32],
+    [FONT_OPTIONS_T, t.int32],
     t.void,
 );
 FontOptions.prototype.setHintMetrics = function (hintMetrics: HintMetrics): void {
@@ -106,7 +112,7 @@ FontOptions.prototype.setHintMetrics = function (hintMetrics: HintMetrics): void
 const cairoFontOptionsGetHintMetrics = bind(
     "libcairo.so.2",
     "cairo_font_options_get_hint_metrics",
-    [t.boxed("CairoFontOptions", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type")],
+    [FONT_OPTIONS_T],
     t.int32,
 );
 FontOptions.prototype.getHintMetrics = function (): HintMetrics {
@@ -116,7 +122,7 @@ FontOptions.prototype.getHintMetrics = function (): HintMetrics {
 const cairoFontOptionsSetSubpixelOrder = bind(
     "libcairo.so.2",
     "cairo_font_options_set_subpixel_order",
-    [t.boxed("CairoFontOptions", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type"), t.int32],
+    [FONT_OPTIONS_T, t.int32],
     t.void,
 );
 FontOptions.prototype.setSubpixelOrder = function (subpixelOrder: SubpixelOrder): void {
@@ -126,7 +132,7 @@ FontOptions.prototype.setSubpixelOrder = function (subpixelOrder: SubpixelOrder)
 const cairoFontOptionsGetSubpixelOrder = bind(
     "libcairo.so.2",
     "cairo_font_options_get_subpixel_order",
-    [t.boxed("CairoFontOptions", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type")],
+    [FONT_OPTIONS_T],
     t.int32,
 );
 FontOptions.prototype.getSubpixelOrder = function (): SubpixelOrder {
@@ -136,10 +142,7 @@ FontOptions.prototype.getSubpixelOrder = function (): SubpixelOrder {
 const cairoFontOptionsEqual = bind(
     "libcairo.so.2",
     "cairo_font_options_equal",
-    [
-        t.boxed("CairoFontOptions", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type"),
-        t.boxed("CairoFontOptions", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type"),
-    ],
+    [FONT_OPTIONS_T, FONT_OPTIONS_T],
     t.boolean,
 );
 FontOptions.prototype.equal = function (other: FontOptions): boolean {
@@ -149,10 +152,7 @@ FontOptions.prototype.equal = function (other: FontOptions): boolean {
 const cairoFontOptionsMerge = bind(
     "libcairo.so.2",
     "cairo_font_options_merge",
-    [
-        t.boxed("CairoFontOptions", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type"),
-        t.boxed("CairoFontOptions", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type"),
-    ],
+    [FONT_OPTIONS_T, FONT_OPTIONS_T],
     t.void,
 );
 FontOptions.prototype.merge = function (other: FontOptions): void {
@@ -168,22 +168,12 @@ declare module "../cairo.js" {
     }
 }
 
-const cairoFontOptionsStatus = bind(
-    "libcairo.so.2",
-    "cairo_font_options_status",
-    [t.boxed("CairoFontOptions", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type")],
-    t.int32,
-);
+const cairoFontOptionsStatus = bind("libcairo.so.2", "cairo_font_options_status", [FONT_OPTIONS_T], t.int32);
 FontOptions.prototype.status = function (): Status {
     return cairoFontOptionsStatus(getHandle(this)) as Status;
 };
 
-const cairoFontOptionsHash = bind(
-    "libcairo.so.2",
-    "cairo_font_options_hash",
-    [t.boxed("CairoFontOptions", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type")],
-    t.uint64,
-);
+const cairoFontOptionsHash = bind("libcairo.so.2", "cairo_font_options_hash", [FONT_OPTIONS_T], t.uint64);
 FontOptions.prototype.hash = function (): number {
     return cairoFontOptionsHash(getHandle(this)) as number;
 };
@@ -191,10 +181,7 @@ FontOptions.prototype.hash = function (): number {
 const cairoFontOptionsSetVariations = bind(
     "libcairo.so.2",
     "cairo_font_options_set_variations",
-    [
-        t.boxed("CairoFontOptions", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type"),
-        t.string("full"),
-    ],
+    [FONT_OPTIONS_T, t.string("full")],
     t.void,
 );
 FontOptions.prototype.setVariations = function (variations: string): void {
@@ -204,7 +191,7 @@ FontOptions.prototype.setVariations = function (variations: string): void {
 const cairoFontOptionsGetVariations = bind(
     "libcairo.so.2",
     "cairo_font_options_get_variations",
-    [t.boxed("CairoFontOptions", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type")],
+    [FONT_OPTIONS_T],
     t.string("borrowed"),
 );
 FontOptions.prototype.getVariations = function (): string {

@@ -151,8 +151,4 @@ const appendInterfaceRegistrations = (context: ModuleContext, iface: GirClass, c
     });
 };
 
-const resolveInterfaceParent = (context: ModuleContext): string => {
-    if (context.namespace.name === "GObject") return "Object";
-    const alias = context.addCrossNamespaceImport("GObject");
-    return `${alias}.Object`;
-};
+const resolveInterfaceParent = (context: ModuleContext): string => context.qualify("GObject", "Object");

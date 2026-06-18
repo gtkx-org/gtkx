@@ -4,6 +4,7 @@ import { indent } from "../dsl/emit.js";
 import type { GirField } from "../gir/field.js";
 import type { FieldSlot } from "../gir/size.js";
 import type { GirTypeRef } from "../gir/type-ref.js";
+import { bitMask, mergeBitfield } from "./bitfield.js";
 import { type BoxedFieldSlot, computeBoxedFieldSlots } from "./boxed-layout.js";
 import { typeRefIsClassStruct } from "./class-struct-record.js";
 import { wrapReturnValue } from "./return-wrap.js";
@@ -161,9 +162,8 @@ const appendElementWriteStatements = (context: ModuleContext, options: ElementWr
         }
         const mask = bitMask(slot.bitWidth);
         const shift = slot.bitOffset ?? 0;
-        out.push(
-            `write(__array, ${ffi}, __base + ${offset}, ((read(__array, ${ffi}, __base + ${offset}) & ~(${mask} << ${shift})) | ((Number(${valueExpr}) & ${mask}) << ${shift})) >>> 0);`,
-        );
+        const merged = mergeBitfield(`read(__array, ${ffi}, __base + ${offset})`, valueExpr, mask, shift);
+        out.push(`write(__array, ${ffi}, __base + ${offset}, ${merged});`);
     }
 };
 
@@ -295,11 +295,7 @@ const setterBlock = (options: AccessorOptions): string => {
     context.addNativeImport("read");
     const mask = bitMask(slot.bitWidth);
     const shift = slot.bitOffset ?? 0;
-    const body = `const __unit = read(getHandle(this), ${ffiType}, ${slot.byteOffset}) as number;\nconst __next = ((__unit & ~(${mask} << ${shift})) | ((Number(value) & ${mask}) << ${shift})) >>> 0;\nwrite(getHandle(this), ${ffiType}, ${slot.byteOffset}, __next);`;
+    const merged = mergeBitfield("__unit", "value", mask, shift);
+    const body = `const __unit = read(getHandle(this), ${ffiType}, ${slot.byteOffset}) as number;\nconst __next = ${merged};\nwrite(getHandle(this), ${ffiType}, ${slot.byteOffset}, __next);`;
     return `set ${jsName}(value: ${tsType}) {\n${indent(body, 1)}\n}`;
-};
-
-const bitMask = (width: number): number => {
-    if (width >= 32) return 0xffffffff;
-    return (1 << width) - 1;
 };

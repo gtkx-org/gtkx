@@ -60,10 +60,7 @@ export class ImageSurface extends Surface {
     }
 
     static createFromPng(filename: string): ImageSurface {
-        const ptr = cairoImageSurfaceCreateFromPng(filename) as Handle;
-        const surface = Object.create(ImageSurface.prototype) as ImageSurface;
-        setHandle(surface, ptr);
-        return surface;
+        return wrapHandle(cairoImageSurfaceCreateFromPng(filename) as Handle, ImageSurface);
     }
 
     getWidth(): number {

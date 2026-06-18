@@ -4,7 +4,9 @@ import { indent } from "../dsl/emit.js";
 import type { GirBoxed } from "../gir/boxed.js";
 import type { GirField } from "../gir/field.js";
 import type { GirTypeRef } from "../gir/type-ref.js";
+import { bitMask, mergeBitfield } from "./bitfield.js";
 import { type BoxedFieldSlot, computeBoxedFieldSlots } from "./boxed-layout.js";
+import { typeRefIsClassStruct } from "./class-struct-record.js";
 import { renderTsType } from "./ts-type.js";
 import { renderFfiType } from "./value.js";
 
@@ -14,11 +16,12 @@ import { renderFfiType } from "./value.js";
  */
 type WritableFieldSlot = BoxedFieldSlot & { readonly field: GirField & { readonly type: GirTypeRef } };
 
-const isWritableFieldSlot = (entry: BoxedFieldSlot): entry is WritableFieldSlot =>
+const isWritableFieldSlot = (context: ModuleContext, entry: BoxedFieldSlot): entry is WritableFieldSlot =>
     !entry.field.private &&
     entry.field.writable &&
     entry.field.callback === undefined &&
-    entry.field.type !== undefined;
+    entry.field.type !== undefined &&
+    !typeRefIsClassStruct(context, entry.field.type);
 
 const isOpaque = (boxed: GirBoxed): boolean => boxed.glibGetType === undefined && boxed.disguised;
 
@@ -39,7 +42,7 @@ export const renderBoxedConstructorPropsInterface = (
     if (isOpaque(boxed)) return `export interface ${className}ConstructorProps {}`;
     const { slots } = computeBoxedFieldSlots(context, boxed.fields, boxed.isUnion);
     const lines = slots
-        .filter(isWritableFieldSlot)
+        .filter((entry): entry is WritableFieldSlot => isWritableFieldSlot(context, entry))
         .map(
             (entry) =>
                 `${toIdentifier(toCamelCase(entry.field.name))}?: ${renderTsType(context, entry.field.type, true)};`,
@@ -76,7 +79,7 @@ export const renderBoxedConstructor = (context: ModuleContext, boxed: GirBoxed, 
     context.addRuntimeImport("setHandle");
     const statements = [`const handle = alloc(${allocArgs(boxed, size).join(", ")});`];
     for (const entry of slots) {
-        if (!isWritableFieldSlot(entry)) continue;
+        if (!isWritableFieldSlot(context, entry)) continue;
         statements.push(renderFieldWrite(context, entry));
     }
     statements.push("setHandle(this, handle);");
@@ -103,8 +106,8 @@ const renderFieldWrite = (context: ModuleContext, entry: WritableFieldSlot): str
         return `if (props.${name} !== undefined) write(handle, ${ffiType}, ${offset}, props.${name});`;
     }
     context.addNativeImport("read");
-    const mask = (1 << entry.slot.bitWidth) - 1;
+    const mask = bitMask(entry.slot.bitWidth);
     const bitOffset = entry.slot.bitOffset ?? 0;
-    const merged = `(((read(handle, ${ffiType}, ${offset}) as number) & ~(${mask} << ${bitOffset})) | ((Number(props.${name}) & ${mask}) << ${bitOffset})) >>> 0`;
+    const merged = mergeBitfield(`(read(handle, ${ffiType}, ${offset}) as number)`, `props.${name}`, mask, bitOffset);
     return `if (props.${name} !== undefined) write(handle, ${ffiType}, ${offset}, ${merged});`;
 };
