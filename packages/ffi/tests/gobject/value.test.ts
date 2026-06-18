@@ -22,8 +22,8 @@ import "@gtkx/gi/gobject";
 import { getHandle, t } from "@gtkx/ffi";
 import { call } from "@gtkx/native";
 import {
-    emptyValueFromFfi,
     fromGvalue,
+    newValueFromFfi,
     toGvalue,
     valueGetBoolean,
     valueGetDouble,
@@ -297,7 +297,7 @@ describe("toGvalue — arrays and errors", () => {
     });
 });
 
-const gtypeOfEmpty = (ffi: Parameters<typeof emptyValueFromFfi>[0]): GType => valueGetType(emptyValueFromFfi(ffi));
+const gtypeOfEmpty = (ffi: Parameters<typeof newValueFromFfi>[0]): GType => valueGetType(newValueFromFfi(ffi));
 const gdkRgbaFfi = {
     type: "boxed",
     ownership: "borrowed",
@@ -316,7 +316,7 @@ const strvFfi = {
     itemType: { type: "string", ownership: "borrowed" },
 } as const;
 
-describe("emptyValueFromFfi — GType resolution from an FFI descriptor", () => {
+describe("newValueFromFfi — GType resolution from an FFI descriptor", () => {
     it("resolves primitive descriptors to their fundamental GType", () => {
         expect(gtypeOfEmpty({ type: "boolean" })).toBe(TYPE_BOOLEAN);
         expect(gtypeOfEmpty({ type: "string", ownership: "borrowed" })).toBe(TYPE_STRING);
@@ -360,7 +360,7 @@ describe("emptyValueFromFfi — GType resolution from an FFI descriptor", () => 
     });
 
     it("throws for unsupported descriptors", () => {
-        expect(() => emptyValueFromFfi({ ...strvFfi, kind: "glist" })).toThrow(/unsupported array type/);
-        expect(() => emptyValueFromFfi({ type: "unichar" })).toThrow(/unsupported FFI type/);
+        expect(() => newValueFromFfi({ ...strvFfi, kind: "glist" })).toThrow(/unsupported array type/i);
+        expect(() => newValueFromFfi({ type: "unichar" })).toThrow(/unsupported FFI type/i);
     });
 });

@@ -1,11 +1,20 @@
-import { alloc, type Type as FfiType, type Handle, read, type TrampolineType, type Value, write } from "@gtkx/native";
+import {
+    alloc,
+    call,
+    type Type as FfiType,
+    type Handle,
+    read,
+    type TrampolineType,
+    type Value,
+    write,
+} from "@gtkx/native";
 import { GVALUE_SIZE, GVALUE_T, LIBGOBJECT } from "./constants.js";
-import { call, t } from "./descriptors.js";
+import { tupleResult } from "./fn.js";
 import { type GType, type GTyped, TYPE_POINTER } from "./gtype.js";
 import {
-    emptyValueFromFfi,
     fromGvalue,
     newGValue,
+    newValueFromFfi,
     resolveBoxedGtype,
     setGValuePointer,
     toGvalue,
@@ -14,7 +23,7 @@ import {
     valueSetBoxed,
     valueSetStaticBoxed,
 } from "./gvalue.js";
-import { tupleResult } from "./helpers.js";
+import { arrayT, biguint64T, bind, objectT, stringT, uint32T, uint64T, voidT } from "./helpers.js";
 import { getHandle } from "./registry.js";
 
 /** Storage size, in bytes, of a single out-parameter cell (a pointer or any scalar). */
@@ -35,7 +44,7 @@ const OUT_PARAM_STORAGE_SIZE = 8;
  */
 function outValueFromFfi(innerFfi: FfiType, initial?: unknown): { value: Handle; read: () => unknown } {
     const storage = alloc(OUT_PARAM_STORAGE_SIZE);
-    write(storage, t.uint64, 0, 0);
+    write(storage, uint64T, 0, 0);
     if (initial !== undefined) write(storage, innerFfi, 0, initial);
     const value = newGValue();
     valueInit(value, TYPE_POINTER);
@@ -104,11 +113,11 @@ export const signalBaseName = (signal: string): string => {
     return detailIndex === -1 ? signal : signal.slice(0, detailIndex);
 };
 
-const gQuarkFromString = t.bind(
+const gQuarkFromString = bind(
     "libgobject-2.0.so.0,libglib-2.0.so.0",
     "g_quark_from_string",
-    [t.string("borrowed")],
-    t.uint32,
+    [stringT("borrowed")],
+    uint32T,
 );
 
 /**
@@ -159,12 +168,12 @@ export function connectGobjectSignal(
         LIBGOBJECT,
         "g_signal_connect_data",
         [
-            { type: t.object("borrowed"), value: getHandle(instance) },
-            { type: t.string("borrowed"), value: signal },
+            { type: objectT("borrowed"), value: getHandle(instance) },
+            { type: stringT("borrowed"), value: signal },
             { type: trampoline, value: handler as Value },
-            { type: t.uint32, value: after ? 1 : 0 },
+            { type: uint32T, value: after ? 1 : 0 },
         ],
-        t.uint64,
+        uint64T,
     ) as number;
 }
 
@@ -272,14 +281,14 @@ export function offSignal(instance: SignalConnectable, signal: string, handler: 
     }
 }
 
-const gSignalEmitv = t.bind(
+const gSignalEmitv = bind(
     LIBGOBJECT,
     "g_signal_emitv",
-    [t.array(GVALUE_T, "array", "borrowed", { elementSize: GVALUE_SIZE }), t.uint32, t.uint32, GVALUE_T],
-    t.void,
+    [arrayT(GVALUE_T, "array", "borrowed", { elementSize: GVALUE_SIZE }), uint32T, uint32T, GVALUE_T],
+    voidT,
 );
 
-const gSignalLookup = t.bind(LIBGOBJECT, "g_signal_lookup", [t.string("borrowed"), t.biguint64], t.uint32);
+const gSignalLookup = bind(LIBGOBJECT, "g_signal_lookup", [stringT("borrowed"), biguint64T], uint32T);
 
 /**
  * How a signal parameter is marshalled into its emission `GValue` beyond a
@@ -339,7 +348,7 @@ export function emitGobjectSignal(
     const signalId = gSignalLookup(signalBaseName(sigName), gtype) as number;
     const detail = signalDetailQuark(sigName);
 
-    const values: Handle[] = [toGvalue(t.object("full"), instance)];
+    const values: Handle[] = [toGvalue(objectT("full"), instance)];
     const reads: (() => unknown)[] = [];
     for (const arg of args) {
         switch (arg.role) {
@@ -370,7 +379,7 @@ export function emitGobjectSignal(
     }
 
     if (returnFfi !== undefined) {
-        const returnValue = emptyValueFromFfi(returnFfi);
+        const returnValue = newValueFromFfi(returnFfi);
         gSignalEmitv(values, signalId, detail, returnValue);
         return assembleResult(fromGvalue(returnValue), true, reads);
     }

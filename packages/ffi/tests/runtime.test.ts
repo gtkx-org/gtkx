@@ -27,7 +27,7 @@ const PRIVATE_MARSHALLING_INTERNALS = [
     "toGvalue",
     "fromGvalue",
     "valueGetType",
-    "emptyValueFromFfi",
+    "newValueFromFfi",
     "outBoxedFromFfi",
     "inoutBoxedFromFfi",
     "signalDetailQuark",

@@ -11,9 +11,9 @@
 
 import { call, type Type as FfiType, type Handle, type Value } from "@gtkx/native";
 import { GVALUE_SIZE, GVALUE_T, LIBGOBJECT } from "./constants.js";
-import { t } from "./descriptors.js";
 import type { GType } from "./gtype.js";
-import { emptyValueFromFfi, fromGvalue, toGvalue } from "./gvalue.js";
+import { fromGvalue, newValueFromFfi, toGvalue } from "./gvalue.js";
+import { biguint64T, bind, objectT, sizedArrayT, stringT, uint32T, voidT } from "./helpers.js";
 import { getHandle } from "./registry.js";
 
 /**
@@ -61,19 +61,19 @@ export function newGobjectWithProperties(gtype: GType, props: Record<string, Pro
         LIBGOBJECT,
         "g_object_new_with_properties",
         [
-            { type: t.biguint64, value: gtype },
-            { type: t.uint32, value: names.length },
-            { type: t.sizedArray(t.string("borrowed"), 1, "borrowed"), value: names },
-            { type: t.sizedArray(GVALUE_T, 1, "borrowed", GVALUE_SIZE), value: values },
+            { type: biguint64T, value: gtype },
+            { type: uint32T, value: names.length },
+            { type: sizedArrayT(stringT("borrowed"), 1, "borrowed"), value: names },
+            { type: sizedArrayT(GVALUE_T, 1, "borrowed", GVALUE_SIZE), value: values },
         ],
-        t.object("full"),
+        objectT("full"),
     ) as Handle;
 }
 
-const PROPERTY_CALL_ARGS = [t.object("borrowed"), t.string("borrowed"), GVALUE_T] as const;
+const PROPERTY_CALL_ARGS = [objectT("borrowed"), stringT("borrowed"), GVALUE_T] as const;
 
-const gObjectGetProperty = t.bind(LIBGOBJECT, "g_object_get_property", [...PROPERTY_CALL_ARGS], t.void);
-const gObjectSetProperty = t.bind(LIBGOBJECT, "g_object_set_property", [...PROPERTY_CALL_ARGS], t.void);
+const gObjectGetProperty = bind(LIBGOBJECT, "g_object_get_property", [...PROPERTY_CALL_ARGS], voidT);
+const gObjectSetProperty = bind(LIBGOBJECT, "g_object_set_property", [...PROPERTY_CALL_ARGS], voidT);
 
 /**
  * Reads a GObject property into a plain JavaScript value through a
@@ -89,7 +89,7 @@ const gObjectSetProperty = t.bind(LIBGOBJECT, "g_object_set_property", [...PROPE
  * @param ffiType - The property's FFI type descriptor.
  */
 export function getGobjectProperty(obj: object, propertyName: string, ffiType: FfiType): unknown {
-    const value = emptyValueFromFfi(ffiType);
+    const value = newValueFromFfi(ffiType);
     gObjectGetProperty(getHandle(obj), propertyName, value);
     return fromGvalue(value);
 }

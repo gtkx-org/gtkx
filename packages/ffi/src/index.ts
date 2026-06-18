@@ -27,7 +27,6 @@ export { createErrorDomain, type ErrorDomain } from "./error.js";
 export { getGobjectProperty, newGobjectWithProperties, setGobjectProperty } from "./gobject.js";
 export * from "./gtype.js";
 export { getGvalueBoxed, setGvalueBoxed } from "./gvalue.js";
-export { t } from "./helpers.js";
 export * from "./lifecycle.js";
 export { registerClass } from "./register-class.js";
 export { registerWrapperClass } from "./register-wrapper-class.js";
@@ -41,4 +40,5 @@ export {
     type SignalHandler,
     signalBaseName,
 } from "./signal.js";
+export { t } from "./t.js";
 export { wrapValue } from "./wrap-value.js";

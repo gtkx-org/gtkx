@@ -13,9 +13,9 @@
 
 import { alloc, call, type Type as FfiType, getType, type Handle, read } from "@gtkx/native";
 import { GVALUE_SIZE, GVALUE_T, LIBGOBJECT } from "./constants.js";
-import { t } from "./descriptors.js";
 import {
     type GType,
+    getStrvGtype,
     TYPE_BOOLEAN,
     TYPE_BOXED,
     TYPE_DOUBLE,
@@ -36,6 +36,23 @@ import {
     typeFundamental,
     typeName,
 } from "./gtype.js";
+import {
+    arrayT,
+    bigint64T,
+    biguint64T,
+    bind,
+    booleanT,
+    boxedT,
+    float32T,
+    float64T,
+    fundamentalT,
+    int32T,
+    objectT,
+    stringT,
+    uint32T,
+    uint64T,
+    voidT,
+} from "./helpers.js";
 import { getHandle, getWrapperClass, tryGetHandle, wrapHandle } from "./registry.js";
 
 /** Allocates a fresh, uninitialized `GValue` struct and returns its handle. */
@@ -50,17 +67,17 @@ export const newGValue = (): Handle => alloc(GVALUE_SIZE, "GValue");
  * @returns The `GType` identifier.
  */
 export function valueGetType(value: Handle): GType {
-    return read(value, t.biguint64, 0) as GType;
+    return read(value, biguint64T, 0) as GType;
 }
 
-const gValueInit = t.bind(LIBGOBJECT, "g_value_init", [GVALUE_T, t.biguint64], t.void);
+const gValueInit = bind(LIBGOBJECT, "g_value_init", [GVALUE_T, biguint64T], voidT);
 
 /** Initializes `value` to hold `gtype`. */
 export const valueInit = (value: Handle, gtype: GType): void => {
     gValueInit(value, gtype);
 };
 
-const gValueSetPointer = t.bind(LIBGOBJECT, "g_value_set_pointer", [GVALUE_T, t.uint64], t.void);
+const gValueSetPointer = bind(LIBGOBJECT, "g_value_set_pointer", [GVALUE_T, uint64T], voidT);
 
 /**
  * Stores `pointer`'s raw address as `value`'s `G_TYPE_POINTER` payload. `value`
@@ -74,42 +91,42 @@ export const setGValuePointer = (value: Handle, pointer: Handle): void => {
     gValueSetPointer(value, pointer);
 };
 
-const gValueSetBoolean = t.bind(LIBGOBJECT, "g_value_set_boolean", [GVALUE_T, t.boolean], t.void);
-const gValueGetBoolean = t.bind(LIBGOBJECT, "g_value_get_boolean", [GVALUE_T], t.boolean);
-const gValueSetInt = t.bind(LIBGOBJECT, "g_value_set_int", [GVALUE_T, t.int32], t.void);
-const gValueGetInt = t.bind(LIBGOBJECT, "g_value_get_int", [GVALUE_T], t.int32);
-const gValueSetUint = t.bind(LIBGOBJECT, "g_value_set_uint", [GVALUE_T, t.uint32], t.void);
-const gValueGetUint = t.bind(LIBGOBJECT, "g_value_get_uint", [GVALUE_T], t.uint32);
-const gValueSetInt64 = t.bind(LIBGOBJECT, "g_value_set_int64", [GVALUE_T, t.bigint64], t.void);
-const gValueGetInt64 = t.bind(LIBGOBJECT, "g_value_get_int64", [GVALUE_T], t.bigint64);
-const gValueSetUint64 = t.bind(LIBGOBJECT, "g_value_set_uint64", [GVALUE_T, t.biguint64], t.void);
-const gValueGetUint64 = t.bind(LIBGOBJECT, "g_value_get_uint64", [GVALUE_T], t.biguint64);
-const gValueSetFloat = t.bind(LIBGOBJECT, "g_value_set_float", [GVALUE_T, t.float32], t.void);
-const gValueGetFloat = t.bind(LIBGOBJECT, "g_value_get_float", [GVALUE_T], t.float32);
-const gValueSetDouble = t.bind(LIBGOBJECT, "g_value_set_double", [GVALUE_T, t.float64], t.void);
-const gValueGetDouble = t.bind(LIBGOBJECT, "g_value_get_double", [GVALUE_T], t.float64);
-const gValueSetString = t.bind(LIBGOBJECT, "g_value_set_string", [GVALUE_T, t.string("borrowed")], t.void);
-const gValueGetString = t.bind(LIBGOBJECT, "g_value_get_string", [GVALUE_T], t.string("borrowed"));
-const gValueSetEnum = t.bind(LIBGOBJECT, "g_value_set_enum", [GVALUE_T, t.int32], t.void);
-const gValueGetEnum = t.bind(LIBGOBJECT, "g_value_get_enum", [GVALUE_T], t.int32);
-const gValueSetFlags = t.bind(LIBGOBJECT, "g_value_set_flags", [GVALUE_T, t.uint32], t.void);
-const gValueGetFlags = t.bind(LIBGOBJECT, "g_value_get_flags", [GVALUE_T], t.uint32);
-const gValueSetObject = t.bind(LIBGOBJECT, "g_value_set_object", [GVALUE_T, t.object("borrowed")], t.void);
-const gValueGetObject = t.bind(LIBGOBJECT, "g_value_get_object", [GVALUE_T], t.object("borrowed"));
+const gValueSetBoolean = bind(LIBGOBJECT, "g_value_set_boolean", [GVALUE_T, booleanT], voidT);
+const gValueGetBoolean = bind(LIBGOBJECT, "g_value_get_boolean", [GVALUE_T], booleanT);
+const gValueSetInt = bind(LIBGOBJECT, "g_value_set_int", [GVALUE_T, int32T], voidT);
+const gValueGetInt = bind(LIBGOBJECT, "g_value_get_int", [GVALUE_T], int32T);
+const gValueSetUint = bind(LIBGOBJECT, "g_value_set_uint", [GVALUE_T, uint32T], voidT);
+const gValueGetUint = bind(LIBGOBJECT, "g_value_get_uint", [GVALUE_T], uint32T);
+const gValueSetInt64 = bind(LIBGOBJECT, "g_value_set_int64", [GVALUE_T, bigint64T], voidT);
+const gValueGetInt64 = bind(LIBGOBJECT, "g_value_get_int64", [GVALUE_T], bigint64T);
+const gValueSetUint64 = bind(LIBGOBJECT, "g_value_set_uint64", [GVALUE_T, biguint64T], voidT);
+const gValueGetUint64 = bind(LIBGOBJECT, "g_value_get_uint64", [GVALUE_T], biguint64T);
+const gValueSetFloat = bind(LIBGOBJECT, "g_value_set_float", [GVALUE_T, float32T], voidT);
+const gValueGetFloat = bind(LIBGOBJECT, "g_value_get_float", [GVALUE_T], float32T);
+const gValueSetDouble = bind(LIBGOBJECT, "g_value_set_double", [GVALUE_T, float64T], voidT);
+const gValueGetDouble = bind(LIBGOBJECT, "g_value_get_double", [GVALUE_T], float64T);
+const gValueSetString = bind(LIBGOBJECT, "g_value_set_string", [GVALUE_T, stringT("borrowed")], voidT);
+const gValueGetString = bind(LIBGOBJECT, "g_value_get_string", [GVALUE_T], stringT("borrowed"));
+const gValueSetEnum = bind(LIBGOBJECT, "g_value_set_enum", [GVALUE_T, int32T], voidT);
+const gValueGetEnum = bind(LIBGOBJECT, "g_value_get_enum", [GVALUE_T], int32T);
+const gValueSetFlags = bind(LIBGOBJECT, "g_value_set_flags", [GVALUE_T, uint32T], voidT);
+const gValueGetFlags = bind(LIBGOBJECT, "g_value_get_flags", [GVALUE_T], uint32T);
+const gValueSetObject = bind(LIBGOBJECT, "g_value_set_object", [GVALUE_T, objectT("borrowed")], voidT);
+const gValueGetObject = bind(LIBGOBJECT, "g_value_get_object", [GVALUE_T], objectT("borrowed"));
 
-const PARAM_FUNDAMENTAL = t.fundamental(LIBGOBJECT, "g_param_spec_ref", "g_param_spec_unref", {
+const PARAM_FUNDAMENTAL = fundamentalT(LIBGOBJECT, "g_param_spec_ref", "g_param_spec_unref", {
     ownership: "borrowed",
     typeName: "GParam",
 });
-const gValueSetParam = t.bind(LIBGOBJECT, "g_value_set_param", [GVALUE_T, PARAM_FUNDAMENTAL], t.void);
-const gValueGetParam = t.bind(LIBGOBJECT, "g_value_get_param", [GVALUE_T], PARAM_FUNDAMENTAL);
+const gValueSetParam = bind(LIBGOBJECT, "g_value_set_param", [GVALUE_T, PARAM_FUNDAMENTAL], voidT);
+const gValueGetParam = bind(LIBGOBJECT, "g_value_get_param", [GVALUE_T], PARAM_FUNDAMENTAL);
 
-const VARIANT_FUNDAMENTAL = t.fundamental("libgobject-2.0.so.0,libglib-2.0.so.0", "g_variant_ref", "g_variant_unref", {
+const VARIANT_FUNDAMENTAL = fundamentalT("libgobject-2.0.so.0,libglib-2.0.so.0", "g_variant_ref", "g_variant_unref", {
     ownership: "borrowed",
     typeName: "GVariant",
 });
-const gValueSetVariant = t.bind(LIBGOBJECT, "g_value_set_variant", [GVALUE_T, VARIANT_FUNDAMENTAL], t.void);
-const gValueGetVariant = t.bind(LIBGOBJECT, "g_value_get_variant", [GVALUE_T], VARIANT_FUNDAMENTAL);
+const gValueSetVariant = bind(LIBGOBJECT, "g_value_set_variant", [GVALUE_T, VARIANT_FUNDAMENTAL], voidT);
+const gValueGetVariant = bind(LIBGOBJECT, "g_value_get_variant", [GVALUE_T], VARIANT_FUNDAMENTAL);
 
 export const valueSetBoolean = (value: Handle, v: boolean): void => {
     gValueSetBoolean(value, v);
@@ -172,17 +189,8 @@ export const valueGetVariant = (value: Handle): object | null => {
     return wrapHandle(result, cls);
 };
 
-const gStrvGetType = t.bind(LIBGOBJECT, "g_strv_get_type", [], t.biguint64);
-let cachedStrvGtype: GType | undefined;
-
-/** Resolves and caches the `GStrv` (`gchar**`) boxed `GType`. */
-function getStrvGtype(): GType {
-    cachedStrvGtype ??= gStrvGetType() as GType;
-    return cachedStrvGtype;
-}
-
-const gValueSetBoxedStrv = t.bind(LIBGOBJECT, "g_value_set_boxed", [GVALUE_T, t.array(t.string("borrowed"))], t.void);
-const gValueGetBoxedStrv = t.bind(LIBGOBJECT, "g_value_get_boxed", [GVALUE_T], t.array(t.string("borrowed")));
+const gValueSetBoxedStrv = bind(LIBGOBJECT, "g_value_set_boxed", [GVALUE_T, arrayT(stringT("borrowed"))], voidT);
+const gValueGetBoxedStrv = bind(LIBGOBJECT, "g_value_get_boxed", [GVALUE_T], arrayT(stringT("borrowed")));
 
 const valueSetStrv = (value: Handle, v: string[]): void => {
     gValueSetBoxedStrv(value, v);
@@ -206,11 +214,11 @@ export function valueSetBoxed(value: Handle, boxed: object | null): void {
         [
             { type: GVALUE_T, value },
             {
-                type: t.boxed(boxedTypeName(valueGetType(value)), "borrowed", LIBGOBJECT),
+                type: boxedT(boxedTypeName(valueGetType(value)), "borrowed", LIBGOBJECT),
                 value: boxed === null ? null : getHandle(boxed),
             },
         ],
-        t.void,
+        voidT,
     );
 }
 
@@ -226,9 +234,9 @@ export function valueSetStaticBoxed(value: Handle, boxed: object): void {
         "g_value_set_static_boxed",
         [
             { type: GVALUE_T, value },
-            { type: t.boxed(boxedTypeName(valueGetType(value)), "borrowed", LIBGOBJECT), value: getHandle(boxed) },
+            { type: boxedT(boxedTypeName(valueGetType(value)), "borrowed", LIBGOBJECT), value: getHandle(boxed) },
         ],
-        t.void,
+        voidT,
     );
 }
 
@@ -250,7 +258,7 @@ export function valueGetBoxed(value: Handle): object | null {
         LIBGOBJECT,
         "g_value_dup_boxed",
         [{ type: GVALUE_T, value }],
-        t.boxed(boxedTypeName(gtype), "full", LIBGOBJECT),
+        boxedT(boxedTypeName(gtype), "full", LIBGOBJECT),
     );
     return ptr === null ? null : wrapHandle(ptr as Handle, cls);
 }
@@ -287,7 +295,7 @@ export function getGvalueBoxed(value: object): object | null {
 export function resolveBoxedGtype(ffiType: FfiType): GType {
     if (ffiType.type === "boxed") {
         if (ffiType.getTypeFn && ffiType.library) {
-            return call(ffiType.library, ffiType.getTypeFn, [], t.biguint64) as GType;
+            return call(ffiType.library, ffiType.getTypeFn, [], biguint64T) as GType;
         }
         const gtype = typeFromName(ffiType.innerType);
         if (gtype === TYPE_INVALID) {
@@ -339,16 +347,16 @@ function gtypeFromFfiType(ffiType: FfiType): GType {
             return TYPE_OBJECT;
         case "enum":
         case "flags":
-            return call(ffiType.library, ffiType.getTypeFn, [], t.biguint64) as GType;
+            return call(ffiType.library, ffiType.getTypeFn, [], biguint64T) as GType;
         case "boxed":
             return resolveBoxedGtype(ffiType);
         case "fundamental":
             return ffiType.typeName === "GVariant" ? TYPE_VARIANT : resolveBoxedGtype(ffiType);
         case "array":
             if (ffiType.itemType.type === "string" && ffiType.kind === "array") return getStrvGtype();
-            throw new Error(`gtypeFromFfiType: unsupported array type ${ffiType.kind} of ${ffiType.itemType.type}`);
+            throw new Error(`Unsupported array type ${ffiType.kind} of ${ffiType.itemType.type}`);
         default:
-            throw new Error(`gtypeFromFfiType: unsupported FFI type '${(ffiType as { type: string }).type}'`);
+            throw new Error(`Unsupported FFI type '${(ffiType as { type: string }).type}'`);
     }
 }
 
@@ -358,7 +366,7 @@ function gtypeFromFfiType(ffiType: FfiType): GType {
  *
  * @param ffiType - The FFI type descriptor.
  */
-export function emptyValueFromFfi(ffiType: FfiType): Handle {
+export function newValueFromFfi(ffiType: FfiType): Handle {
     const value = newGValue();
     valueInit(value, gtypeFromFfiType(ffiType));
     return value;
@@ -373,7 +381,7 @@ function objectToGvalue(value: object | null): Handle {
 }
 
 const getPointerValue = (value: Handle): null => {
-    const ptr = read(value, t.uint64, 8) as number;
+    const ptr = read(value, uint64T, 8) as number;
     if (ptr !== 0) {
         throw new Error("G_TYPE_POINTER non-null values cannot be marshalled to JS");
     }

@@ -1,5 +1,5 @@
 import type { BoxedType } from "@gtkx/native";
-import { t } from "./descriptors.js";
+import { boxedT } from "./helpers.js";
 
 /**
  * Shared-object name of libgobject, home of every `g_type_*`, `g_value_*`,
@@ -15,4 +15,4 @@ export const GVALUE_SIZE = 24;
  * `g_value_*` and `g_object_*_property` call passes for a `GValue *` whose
  * ownership stays with the caller.
  */
-export const GVALUE_T: BoxedType = t.boxed("GValue", "borrowed", LIBGOBJECT, "g_value_get_type");
+export const GVALUE_T: BoxedType = boxedT("GValue", "borrowed", LIBGOBJECT, "g_value_get_type");
