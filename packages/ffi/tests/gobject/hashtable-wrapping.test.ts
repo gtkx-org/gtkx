@@ -1,0 +1,50 @@
+import { getHandle, t, wrapValue } from "@gtkx/ffi";
+import * as Gdk from "@gtkx/gi/gdk";
+import * as Gtk from "@gtkx/gi/gtk";
+import { describe, expect, it } from "vitest";
+
+const rectangleFfi = t.boxed("GdkRectangle", "borrowed", "libgtk-4.so.1", "gdk_rectangle_get_type");
+
+describe("wrapValue — hash-table entries are wrapped recursively", () => {
+    it("passes string keys and values straight through", () => {
+        const map = wrapValue(t.hashTable(t.string("borrowed"), t.string("borrowed")), [["k", "v"]]);
+        expect(map).toBeInstanceOf(Map);
+        expect((map as Map<string, string>).get("k")).toBe("v");
+    });
+
+    it("wraps a GObject value, returning the identity-tracked instance", () => {
+        const label = new Gtk.Label({});
+        const map = wrapValue(t.hashTable(t.string("borrowed"), t.object("borrowed")), [["a", getHandle(label)]]);
+        expect((map as Map<string, unknown>).get("a")).toBe(label);
+    });
+
+    it("wraps an interface-typed value (string → GtkConstraintTarget)", () => {
+        const label = new Gtk.Label({});
+        const map = wrapValue(
+            t.hashTable(t.string("borrowed"), t.object("borrowed", "GtkConstraintTarget")),
+            [["a", getHandle(label)]],
+        );
+        expect((map as Map<string, unknown>).get("a")).toBe(label);
+    });
+
+    it("self-resolves a boxed value reached through a hash table, with no threaded class", () => {
+        const rect = new Gdk.Rectangle({ width: 7 });
+        const map = wrapValue(t.hashTable(t.string("borrowed"), rectangleFfi), [["r", getHandle(rect)]]);
+        const wrapped = (map as Map<string, Gdk.Rectangle>).get("r");
+        expect(wrapped).toBeInstanceOf(Gdk.Rectangle);
+        expect(wrapped?.width).toBe(7);
+    });
+
+    it("recurses into an array-valued entry, wrapping each element", () => {
+        const first = new Gtk.Label({});
+        const second = new Gtk.Label({});
+        const map = wrapValue(t.hashTable(t.string("borrowed"), t.list(t.object("borrowed"))), [
+            ["widgets", [getHandle(first), getHandle(second)]],
+        ]);
+        expect((map as Map<string, unknown[]>).get("widgets")).toEqual([first, second]);
+    });
+
+    it("maps a null hash table to null", () => {
+        expect(wrapValue(t.hashTable(t.string("borrowed"), t.string("borrowed")), null)).toBeNull();
+    });
+});

@@ -27,10 +27,10 @@ export type Type = {
     /** The value's FFI type. */
     readonly type: NativeType;
     /**
-     * The wrapper class the value is lifted into, supplied for a pointer-backed
-     * value type — a plain struct, a boxed record, or a named fundamental, none
-     * of which carry runtime polymorphism. A `GObject` self-resolves its class
-     * from the live pointer's runtime `GType`, leaving this undefined.
+     * The wrapper class the value is lifted into, supplied only for the kinds
+     * whose FFI descriptor carries no recoverable identity — a plain struct or a
+     * GType-less fundamental. Every other kind self-resolves its class from the
+     * descriptor's runtime `GType`, leaving this undefined.
      */
     readonly wrapperClass?: AnyClass;
 };

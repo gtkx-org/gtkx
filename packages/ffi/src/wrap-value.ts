@@ -4,15 +4,16 @@
  *
  * {@link wrapValue} is the read-side counterpart of the call layer: given an FFI
  * type descriptor and the raw value a native call produced, it resolves the
- * wrapper class — from the descriptor's interface `typeName`, the runtime
- * `GType` read off the handle, or an explicit fallback class — and lifts the
- * value into its typed form, recursing through collections and hash tables.
+ * wrapper class — from the descriptor's `GType`, an interface registration, or
+ * an explicit fallback — and lifts the value into its typed form, recursing
+ * through collections and hash tables.
  */
 
 import type { ArrayType, Type as FfiType, Handle } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
-import { type GType, TYPE_INVALID, typeFromName } from "./gtype.js";
-import { wrapHandle, wrapInterfaceHandle } from "./registry.js";
+import { type GType, TYPE_INVALID, typeFromName, typeName } from "./gtype.js";
+import { resolveBoxedGtype } from "./gvalue.js";
+import { getWrapperClass, wrapHandle, wrapInterfaceHandle } from "./registry.js";
 
 /**
  * Whether a value of this FFI descriptor is transformed on the way out, as
@@ -81,15 +82,40 @@ const wrapGObjectValue = (
     return wrapInterfaceHandle(value, gtype);
 };
 
+const boxedGtypeByDescriptor = new WeakMap<FfiType, GType>();
+
+/**
+ * Lifts a boxed or named-fundamental value whose FFI descriptor identifies its
+ * `GType`, resolving the wrapper class from the registry and caching the
+ * resolved `GType` per descriptor so the lookup is paid once per binding. When
+ * the binding supplies an explicit fallback class — a plain struct, or a
+ * fundamental with no registered GLib type name — that class is used directly.
+ */
+const wrapBoxedValue = (ffiType: FfiType, value: Handle | null, targetClass: AnyClass | undefined): object | null => {
+    if (value === null) return null;
+    if (targetClass !== undefined) return wrapHandle(value, targetClass);
+    let gtype = boxedGtypeByDescriptor.get(ffiType);
+    if (gtype === undefined) {
+        gtype = resolveBoxedGtype(ffiType);
+        boxedGtypeByDescriptor.set(ffiType, gtype);
+    }
+    const cls = getWrapperClass(gtype);
+    if (cls === null) {
+        throw new Error(`wrapValue: no registered wrapper class for boxed GType '${typeName(gtype) ?? String(gtype)}'`);
+    }
+    return wrapHandle(value, cls);
+};
+
 /**
  * Lifts a raw FFI value into its typed JavaScript form.
  *
  * @param ffiType - The value's FFI type descriptor.
  * @param value - The raw value the native call produced.
- * @param targetClass - The wrapper class for a pointer-backed value type — a
- *   plain struct, a boxed record, or a named fundamental — or the element
- *   wrapper for a collection. Omitted for GObjects, which self-resolve from
- *   their runtime `GType`, and for primitives, enums, flags, and strings.
+ * @param targetClass - The fallback wrapper class for a value type whose FFI
+ *   descriptor carries no `GType` identity — a plain struct or a GType-less
+ *   fundamental — or the element wrapper for a collection. Omitted for GObjects,
+ *   boxed records, and named fundamentals, which self-resolve from their
+ *   descriptor's `GType`, and for primitives, enums, flags, and strings.
  * @returns The wrapped JavaScript value.
  */
 export function wrapValue(ffiType: FfiType, value: unknown, targetClass?: AnyClass): unknown {
@@ -97,9 +123,10 @@ export function wrapValue(ffiType: FfiType, value: unknown, targetClass?: AnyCla
         case "gobject":
             return wrapGObjectValue(ffiType, value as Handle | null, targetClass);
         case "struct":
+            return wrapHandle(value as Handle | null, targetClass);
         case "boxed":
         case "fundamental":
-            return wrapHandle(value as Handle | null, targetClass);
+            return wrapBoxedValue(ffiType, value as Handle | null, targetClass);
         case "array":
             return wrapCollection(ffiType, value, targetClass);
         case "hashtable": {
