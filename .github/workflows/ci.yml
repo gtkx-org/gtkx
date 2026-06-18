@@ -28,7 +28,7 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Detect changes
         id: filter
@@ -54,7 +54,7 @@ jobs:
       ref: ${{ steps.meta.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Compute image tags
         id: meta
@@ -100,7 +100,7 @@ jobs:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Setup CI
         uses: ./.github/actions/setup-ci
@@ -121,7 +121,7 @@ jobs:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Setup CI
         uses: ./.github/actions/setup-ci
@@ -142,7 +142,7 @@ jobs:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Setup CI
         uses: ./.github/actions/setup-ci
@@ -163,7 +163,7 @@ jobs:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Setup CI
         uses: ./.github/actions/setup-ci
@@ -185,7 +185,7 @@ jobs:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Setup CI
         uses: ./.github/actions/setup-ci
@@ -206,7 +206,7 @@ jobs:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Setup CI
         uses: ./.github/actions/setup-ci
@@ -227,7 +227,7 @@ jobs:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Setup CI
         uses: ./.github/actions/setup-ci
@@ -256,7 +256,7 @@ jobs:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Setup CI
         uses: ./.github/actions/setup-ci
