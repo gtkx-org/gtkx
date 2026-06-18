@@ -279,7 +279,7 @@ const gSignalEmitv = t.bind(
     t.void,
 );
 
-const gSignalLookup = t.bind(LIBGOBJECT, "g_signal_lookup", [t.string("borrowed"), t.uint64], t.uint32);
+const gSignalLookup = t.bind(LIBGOBJECT, "g_signal_lookup", [t.string("borrowed"), t.biguint64], t.uint32);
 
 /**
  * How a signal parameter is marshalled into its emission `GValue` beyond a

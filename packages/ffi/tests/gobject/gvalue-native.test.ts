@@ -50,8 +50,8 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
 
 const gtypeOf = (library: string, getTypeFn: string): GType => {
-    const result = call(library, getTypeFn, [], { type: "uint64" });
-    if (typeof result !== "number") {
+    const result = call(library, getTypeFn, [], { type: "biguint64" });
+    if (typeof result !== "bigint") {
         throw new TypeError(`${getTypeFn} did not return a GType`);
     }
     return result;

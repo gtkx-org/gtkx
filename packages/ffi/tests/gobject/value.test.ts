@@ -40,8 +40,8 @@ import {
 } from "../../src/gvalue.js";
 
 const callGetType = (lib: string, fn: string): GType => {
-    const result = call(lib, fn, [], { type: "uint64" });
-    if (typeof result !== "number") {
+    const result = call(lib, fn, [], { type: "biguint64" });
+    if (typeof result !== "bigint") {
         throw new TypeError(`${fn} did not return a GType`);
     }
     return result;

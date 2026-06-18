@@ -50,10 +50,10 @@ export const newGValue = (): Handle => alloc(GVALUE_SIZE, "GValue");
  * @returns The `GType` identifier.
  */
 export function valueGetType(value: Handle): GType {
-    return read(value, t.uint64, 0) as GType;
+    return read(value, t.biguint64, 0) as GType;
 }
 
-const gValueInit = t.bind(LIBGOBJECT, "g_value_init", [GVALUE_T, t.uint64], t.void);
+const gValueInit = t.bind(LIBGOBJECT, "g_value_init", [GVALUE_T, t.biguint64], t.void);
 
 /** Initializes `value` to hold `gtype`. */
 export const valueInit = (value: Handle, gtype: GType): void => {
@@ -172,7 +172,7 @@ export const valueGetVariant = (value: Handle): object | null => {
     return wrapHandle(result, cls);
 };
 
-const gStrvGetType = t.bind(LIBGOBJECT, "g_strv_get_type", [], t.uint64);
+const gStrvGetType = t.bind(LIBGOBJECT, "g_strv_get_type", [], t.biguint64);
 let cachedStrvGtype: GType | undefined;
 
 /** Resolves and caches the `GStrv` (`gchar**`) boxed `GType`. */
@@ -287,7 +287,7 @@ export function getGvalueBoxed(value: object): object | null {
 export function resolveBoxedGtype(ffiType: FfiType): GType {
     if (ffiType.type === "boxed") {
         if (ffiType.getTypeFn && ffiType.library) {
-            return call(ffiType.library, ffiType.getTypeFn, [], t.uint64) as GType;
+            return call(ffiType.library, ffiType.getTypeFn, [], t.biguint64) as GType;
         }
         const gtype = typeFromName(ffiType.innerType);
         if (gtype === TYPE_INVALID) {
@@ -339,7 +339,7 @@ function gtypeFromFfiType(ffiType: FfiType): GType {
             return TYPE_OBJECT;
         case "enum":
         case "flags":
-            return call(ffiType.library, ffiType.getTypeFn, [], t.uint64) as GType;
+            return call(ffiType.library, ffiType.getTypeFn, [], t.biguint64) as GType;
         case "boxed":
             return resolveBoxedGtype(ffiType);
         case "fundamental":
@@ -367,7 +367,7 @@ export function emptyValueFromFfi(ffiType: FfiType): Handle {
 /** Builds a `GValue` holding a `GObject` instance, typed to its runtime class. */
 function objectToGvalue(value: object | null): Handle {
     const v = newGValue();
-    valueInit(v, value ? getType(getHandle(value)) : TYPE_OBJECT);
+    valueInit(v, value ? BigInt(getType(getHandle(value))) : TYPE_OBJECT);
     valueSetObject(v, value);
     return v;
 }

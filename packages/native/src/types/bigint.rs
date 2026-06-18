@@ -106,6 +106,67 @@ impl BigIntKind {
             }
         }
     }
+
+    /// Width in bytes of one array element (always 8).
+    #[must_use]
+    pub fn byte_size(self) -> usize {
+        self.wire_kind().byte_size()
+    }
+
+    /// Reads `len` contiguous 64-bit elements at `ptr` into JS `BigInt` values.
+    ///
+    /// # Safety
+    ///
+    /// `ptr` must address `len` readable, 8-byte-strided elements.
+    #[must_use]
+    pub unsafe fn read_slice(self, ptr: *const u8, len: usize) -> Vec<value::Value> {
+        (0..len)
+            // SAFETY: The caller guarantees `len` 8-byte elements at `ptr`.
+            .map(|i| value::Value::BigInt(unsafe { self.read_i128(ptr.add(i * self.byte_size())) }))
+            .collect()
+    }
+
+    /// Builds an FFI storage buffer of 64-bit elements from JS `BigInt` (or
+    /// integral `Number`) values, range-checking each element.
+    pub fn to_ffi_storage(self, array: &[value::Value]) -> anyhow::Result<ffi::FfiStorage> {
+        let int_at = |i: usize, v: &value::Value| {
+            self.int_from_value(v)
+                .map_err(|e| anyhow::anyhow!("Array element {i}: {e}"))
+        };
+        match self {
+            Self::I64 => array
+                .iter()
+                .enumerate()
+                .map(|(i, v)| {
+                    i64::try_from(int_at(i, v)?).map_err(|_| {
+                        anyhow::anyhow!("Array element {i}: value out of range for bigint64")
+                    })
+                })
+                .collect::<anyhow::Result<Vec<i64>>>()
+                .map(Into::into),
+            Self::U64 => array
+                .iter()
+                .enumerate()
+                .map(|(i, v)| {
+                    u64::try_from(int_at(i, v)?).map_err(|_| {
+                        anyhow::anyhow!("Array element {i}: value out of range for biguint64")
+                    })
+                })
+                .collect::<anyhow::Result<Vec<u64>>>()
+                .map(Into::into),
+        }
+    }
+
+    /// Writes `value` into the 8-byte slot at `ptr` (a `GArray` cell).
+    ///
+    /// # Safety
+    ///
+    /// `ptr` must be valid for an 8-byte write.
+    pub unsafe fn append_into(self, ptr: *mut u8, value: &value::Value) -> anyhow::Result<()> {
+        let ffi_value = self.checked_to_ffi_value(self.int_from_value(value)?)?;
+        // SAFETY: The caller guarantees `ptr` is a writable 8-byte slot.
+        unsafe { ffi_value.write_scalar_to(ptr.cast()) }
+    }
 }
 
 impl FfiEncoder for BigIntKind {
@@ -289,5 +350,117 @@ mod tests {
         // never dereferences it.
         let value = unsafe { BigIntKind::I64.ptr_to_value(ptr, "test") }.expect("convert");
         assert!(matches!(value, value::Value::BigInt(v) if v == -1));
+    }
+
+    #[test]
+    fn byte_size_is_eight_for_both_kinds() {
+        assert_eq!(BigIntKind::I64.byte_size(), 8);
+        assert_eq!(BigIntKind::U64.byte_size(), 8);
+    }
+
+    #[test]
+    fn read_slice_reads_contiguous_elements() {
+        let buffer: [u64; 3] = [u64::MAX, 0, 42];
+        // SAFETY: `buffer` holds three readable 8-byte elements.
+        let values = unsafe { BigIntKind::U64.read_slice(buffer.as_ptr().cast(), 3) };
+        assert_eq!(values.len(), 3);
+        assert!(matches!(values[0], value::Value::BigInt(v) if v == i128::from(u64::MAX)));
+        assert!(matches!(values[2], value::Value::BigInt(v) if v == 42));
+    }
+
+    #[test]
+    fn to_ffi_storage_round_trips_through_as_bigint_vec() {
+        for (kind, payload) in [
+            (BigIntKind::I64, i128::from(i64::MIN)),
+            (BigIntKind::U64, i128::from(u64::MAX)),
+        ] {
+            let storage = kind
+                .to_ffi_storage(&[value::Value::BigInt(payload), value::Value::BigInt(7)])
+                .expect("encode");
+            let back = storage.as_bigint_vec(kind).expect("decode");
+            assert_eq!(back, vec![payload, 7]);
+        }
+    }
+
+    #[test]
+    fn to_ffi_storage_rejects_out_of_range_element() {
+        assert!(
+            BigIntKind::U64
+                .to_ffi_storage(&[value::Value::BigInt(-1)])
+                .is_err()
+        );
+        assert!(
+            BigIntKind::I64
+                .to_ffi_storage(&[value::Value::BigInt(i128::from(i64::MAX) + 1)])
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn append_into_writes_value_into_slot() {
+        let mut slot = [0u8; 8];
+        // SAFETY: `slot` is a writable 8-byte buffer.
+        unsafe {
+            BigIntKind::I64
+                .append_into(slot.as_mut_ptr(), &value::Value::BigInt(-5))
+                .expect("write");
+        }
+        // SAFETY: `slot` now holds one written 8-byte element.
+        let read = unsafe { BigIntKind::I64.read_i128(slot.as_ptr()) };
+        assert_eq!(read, -5);
+    }
+
+    #[test]
+    fn encode_rejects_non_integer_number() {
+        assert!(BigIntKind::I64.encode(&value::Value::Number(1.5)).is_err());
+    }
+
+    #[test]
+    fn encode_rejects_non_numeric_value() {
+        assert!(
+            BigIntKind::U64
+                .encode(&value::Value::String("nope".to_string()))
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn encode_rejects_out_of_range_bigint() {
+        assert!(BigIntKind::U64.encode(&value::Value::BigInt(-1)).is_err());
+        assert!(
+            BigIntKind::I64
+                .encode(&value::Value::BigInt(i128::from(i64::MAX) + 1))
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn decode_rejects_non_64bit_ffi_value() {
+        assert!(BigIntKind::I64.decode(&ffi::FfiValue::I32(5)).is_err());
+    }
+
+    #[test]
+    fn write_return_writes_value() {
+        let mut slot = [0u8; 8];
+        let value: std::result::Result<value::Value, ()> = Ok(value::Value::BigInt(123));
+        // SAFETY: `slot` is a writable 8-byte return slot.
+        unsafe { BigIntKind::I64.write_return_to_raw_ptr(slot.as_mut_ptr().cast(), &value) };
+        // SAFETY: `slot` now holds the written 8-byte return value.
+        assert_eq!(unsafe { BigIntKind::I64.read_i128(slot.as_ptr()) }, 123);
+    }
+
+    #[test]
+    fn write_return_falls_back_to_zero_when_unrepresentable() {
+        for (kind, payload) in [
+            (BigIntKind::I64, i128::from(i64::MAX) + 1),
+            (BigIntKind::U64, i128::from(u64::MAX) + 1),
+        ] {
+            let mut slot = [0xFFu8; 8];
+            let value: std::result::Result<value::Value, ()> = Ok(value::Value::BigInt(payload));
+            // SAFETY: `slot` is a writable 8-byte return slot.
+            unsafe { kind.write_return_to_raw_ptr(slot.as_mut_ptr().cast(), &value) };
+            // SAFETY: `slot` now holds the zero fallback the codec wrote.
+            assert_eq!(unsafe { kind.read_i128(slot.as_ptr()) }, 0);
+        }
     }
 }

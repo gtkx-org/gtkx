@@ -14,7 +14,7 @@ declare module "../gobject.js" {
          * wrapper type the instance is referenced through.
          */
         // biome-ignore lint/style/useNamingConvention: GObject runtime type key stamped on every instance
-        __gtype__: number;
+        __gtype__: bigint;
 
         /**
          * Disconnects a signal handler previously connected via

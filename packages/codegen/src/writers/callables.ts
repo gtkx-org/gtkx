@@ -308,7 +308,7 @@ export type PlainTypeMembersOptions = {
     readonly context: ModuleContext;
     readonly className: string;
     readonly callables: Callables;
-    /** Whether to prepend `declare __gtype__: number;`. */
+    /** Whether to prepend `declare __gtype__: bigint;`. */
     readonly hasGtype: boolean;
 };
 
@@ -327,7 +327,7 @@ export const renderPlainTypeMembers = (
 ): { readonly members: string[]; readonly claimedNames: Set<string> } => {
     const { context, className, callables, hasGtype } = options;
     const members: string[] = [];
-    if (hasGtype) members.push("declare __gtype__: number;");
+    if (hasGtype) members.push("declare __gtype__: bigint;");
     const claimedNames = new Set<string>();
     members.push(...renderStaticHead(context, callables, className));
     members.push(...renderPlainInstanceMethods(context, callables.methods, claimedNames));

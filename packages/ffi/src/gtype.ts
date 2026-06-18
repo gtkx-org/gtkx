@@ -20,7 +20,7 @@ import { t } from "./descriptors.js";
  * Hand-declared here rather than imported from the generated bindings so the
  * runtime type layer stays independent of generated code.
  */
-export type GType = number;
+export type GType = bigint;
 
 /**
  * Structural shape of a wrapped native instance once construction or
@@ -36,13 +36,13 @@ export type GTyped = {
 
 /**
  * Tests whether `value` is a wrapped native instance carrying a runtime
- * `GType` — an object exposing a numeric `__gtype__`.
+ * `GType` — an object exposing a `bigint` `__gtype__`.
  *
  * @param value - The value to test.
- * @returns `true` when `value` exposes a numeric `__gtype__`.
+ * @returns `true` when `value` exposes a `bigint` `__gtype__`.
  */
 export const isGtyped = (value: unknown): value is GTyped =>
-    typeof value === "object" && value !== null && "__gtype__" in value && typeof value.__gtype__ === "number";
+    typeof value === "object" && value !== null && "__gtype__" in value && typeof value.__gtype__ === "bigint";
 
 /**
  * Builds a resolver that looks a `GType` up by name on first call and caches the
@@ -69,17 +69,17 @@ export const lazyGtype = (name: string): (() => GType) => {
     };
 };
 
-const gTypeFromName = t.bind(LIBGOBJECT, "g_type_from_name", [t.string("borrowed")], t.uint64);
-const gTypeIsA = t.bind(LIBGOBJECT, "g_type_is_a", [t.uint64, t.uint64], t.boolean);
-const gTypeParent = t.bind(LIBGOBJECT, "g_type_parent", [t.uint64], t.uint64);
-const gTypeFundamental = t.bind(LIBGOBJECT, "g_type_fundamental", [t.uint64], t.uint64);
-const gTypeName = t.bind(LIBGOBJECT, "g_type_name", [t.uint64], t.string("borrowed"));
+const gTypeFromName = t.bind(LIBGOBJECT, "g_type_from_name", [t.string("borrowed")], t.biguint64);
+const gTypeIsA = t.bind(LIBGOBJECT, "g_type_is_a", [t.biguint64, t.biguint64], t.boolean);
+const gTypeParent = t.bind(LIBGOBJECT, "g_type_parent", [t.biguint64], t.biguint64);
+const gTypeFundamental = t.bind(LIBGOBJECT, "g_type_fundamental", [t.biguint64], t.biguint64);
+const gTypeName = t.bind(LIBGOBJECT, "g_type_name", [t.biguint64], t.string("borrowed"));
 
 const gTypeInterfaces = t.bind(
     LIBGOBJECT,
     "g_type_interfaces",
-    [t.uint64, t.ref(t.uint32)],
-    t.sizedArray(t.uint64, 1, "full"),
+    [t.biguint64, t.ref(t.uint32)],
+    t.sizedArray(t.biguint64, 1, "full"),
 );
 
 /**
@@ -146,12 +146,11 @@ export function typeName(type: GType): string | null {
 }
 
 /**
- * The invalid `GType` sentinel — the numeric `0` the GObject type system
- * reserves for "no type". Type-resolution helpers (`typeFromName`,
- * `typeParent`, …) return it when a class, parent, or instance has no
- * associated `GType`.
+ * The invalid `GType` sentinel — the `0n` the GObject type system reserves for
+ * "no type". Type-resolution helpers (`typeFromName`, `typeParent`, …) return it
+ * when a class, parent, or instance has no associated `GType`.
  */
-export const TYPE_INVALID: GType = 0;
+export const TYPE_INVALID: GType = 0n;
 
 /**
  * The fundamental `GType` denoting the absence of a typed value.

@@ -14,6 +14,9 @@ import { renderTsType } from "./ts-type.js";
  */
 export const emitAlias = (context: ModuleContext, alias: GirAlias): void => {
     const exportName = aliasExportName(context.namespace.name, alias.name);
-    const targetType = renderTsType(context, alias.target);
+    // GObject's `Type` alias is the canonical `GType`, surfaced as `bigint` to
+    // match the `GType` primitive category; its GIR target (`gsize`) would
+    // otherwise render as the structural `number`.
+    const targetType = exportName === "GType" ? "bigint" : renderTsType(context, alias.target);
     context.module.appendDeclaration(`export type ${exportName} = ${targetType};`);
 };

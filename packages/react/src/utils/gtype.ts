@@ -44,7 +44,7 @@ export const collectTypeNameChain = (gtype: GType): readonly string[] => {
 
     const chain: string[] = [];
     let current = gtype;
-    while (current !== 0) {
+    while (current !== 0n) {
         const name = typeName(current);
         if (!name) break;
         chain.push(name);

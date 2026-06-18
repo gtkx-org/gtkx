@@ -12,7 +12,7 @@ import { getType, type Handle } from "@gtkx/native";
  * @param gtype - GType identifier of the target type
  */
 export function instanceIsA(handle: Handle, gtype: GType): boolean {
-    const instanceGtype: GType = getType(handle);
+    const instanceGtype: GType = BigInt(getType(handle));
     if (instanceGtype === TYPE_INVALID) return false;
     return typeIsA(instanceGtype, gtype);
 }

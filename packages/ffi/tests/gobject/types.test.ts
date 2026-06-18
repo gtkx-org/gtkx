@@ -26,7 +26,7 @@ import {
 } from "@gtkx/ffi";
 import { describe, expect, it } from "vitest";
 
-const NONZERO_FUNDAMENTALS: readonly (readonly [string, number])[] = [
+const NONZERO_FUNDAMENTALS: readonly (readonly [string, bigint])[] = [
     ["NONE", TYPE_NONE],
     ["INTERFACE", TYPE_INTERFACE],
     ["CHAR", TYPE_CHAR],
@@ -54,11 +54,11 @@ const NONZERO_FUNDAMENTALS: readonly (readonly [string, number])[] = [
 
 describe("fundamental GType constants", () => {
     it("resolves TYPE_INVALID to the zero sentinel", () => {
-        expect(TYPE_INVALID).toBe(0);
+        expect(TYPE_INVALID).toBe(0n);
     });
 
     it.each(NONZERO_FUNDAMENTALS)("resolves TYPE_%s to a nonzero GType", (_name, gtype) => {
-        expect(gtype).toBeGreaterThan(0);
+        expect(gtype).toBeGreaterThan(0n);
     });
 
     it("resolves distinct fundamentals to distinct GTypes", () => {

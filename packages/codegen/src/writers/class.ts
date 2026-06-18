@@ -80,7 +80,7 @@ const renderClassMembers = (
     hasParent: boolean,
 ): readonly string[] => {
     const className = toPascalCase(klass.name);
-    const members: string[] = ["declare __gtype__: number;"];
+    const members: string[] = ["declare __gtype__: bigint;"];
     const constructorBlock = renderClassConstructor(context, klass, className, hasParent);
     if (constructorBlock !== undefined) members.push(constructorBlock);
     const claimedNames = new Set<string>();

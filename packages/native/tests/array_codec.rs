@@ -9,9 +9,9 @@ use native::NativeHandle;
 use native::arg::Arg;
 use native::ffi::{FfiStorageKind, FfiValue, GArrayData};
 use native::types::{
-    ArrayKind, ArrayType, BooleanType, FfiDecoder, FfiEncoder, FloatKind, FundamentalType,
-    GObjectType, IntegerKind, Ownership, RawPtrCodec, RefType, StringType, StructType, TaggedKind,
-    TaggedType, Type,
+    ArrayKind, ArrayType, BigIntKind, BooleanType, FfiDecoder, FfiEncoder, FloatKind,
+    FundamentalType, GObjectType, IntegerKind, Ownership, RawPtrCodec, RefType, StringType,
+    StructType, TaggedKind, TaggedType, Type,
 };
 use native::value::Value;
 
@@ -863,6 +863,96 @@ fn decode_zero_terminated_scalar_array_reads_with_scalar_stride() {
         assert!(matches!(items[0], Value::Number(n) if n == 7.0));
         assert!(matches!(items[2], Value::Number(n) if n == 9.0));
     });
+}
+
+#[test]
+fn encode_bigint_array_roundtrips_through_storage() {
+    for kind in [BigIntKind::I64, BigIntKind::U64] {
+        let ty = array_type(Type::BigInt(kind), ArrayKind::Array, Ownership::Full);
+        let big = i128::from(u32::MAX) + 1;
+        let val = Value::Array(vec![Value::BigInt(big), Value::BigInt(7)]);
+        let encoded = ty.encode(&val).unwrap();
+        let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+            panic!("expected array")
+        };
+        assert_eq!(items.len(), 2);
+        assert!(matches!(items[0], Value::BigInt(v) if v == big));
+    }
+}
+
+#[test]
+fn encode_garray_bigint_roundtrips() {
+    common::run(|| {
+        for kind in [BigIntKind::I64, BigIntKind::U64] {
+            let ty = array_type(Type::BigInt(kind), ArrayKind::GArray, Ownership::Borrowed);
+            let big = i128::from(u32::MAX) + 5;
+            let val = Value::Array(vec![Value::BigInt(10), Value::BigInt(big)]);
+            let encoded = ty.encode(&val).unwrap();
+            let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+                panic!("expected array")
+            };
+            assert_eq!(items.len(), 2);
+            assert!(matches!(items[1], Value::BigInt(v) if v == big));
+        }
+    });
+}
+
+#[test]
+fn decode_contiguous_bigint_elements() {
+    for kind in [BigIntKind::I64, BigIntKind::U64] {
+        let ty = array_type(
+            Type::BigInt(kind),
+            ArrayKind::Fixed { size: 2 },
+            Ownership::Borrowed,
+        );
+        let data: Vec<i64> = vec![100, 42];
+        let Value::Array(items) = ty
+            .decode_with_context(&FfiValue::Ptr(data.as_ptr() as *mut c_void), &[], &[])
+            .unwrap()
+        else {
+            panic!("expected array")
+        };
+        assert_eq!(items.len(), 2);
+        assert!(matches!(items[1], Value::BigInt(v) if v == 42));
+    }
+}
+
+#[test]
+fn decode_zero_terminated_bigint_array() {
+    let ty = array_type(
+        Type::BigInt(BigIntKind::U64),
+        ArrayKind::Array,
+        Ownership::Borrowed,
+    );
+    let buffer: [u64; 3] = [5, 9, 0];
+    let decoded = ty
+        .decode(&FfiValue::Ptr(buffer.as_ptr() as *mut c_void))
+        .expect("zero-terminated bigint decode should succeed");
+    let Value::Array(items) = decoded else {
+        panic!("expected array")
+    };
+    assert_eq!(items.len(), 2);
+    assert!(matches!(items[0], Value::BigInt(v) if v == 5));
+}
+
+#[test]
+fn encode_bigint_array_rejects_out_of_range() {
+    let neg = array_type(
+        Type::BigInt(BigIntKind::U64),
+        ArrayKind::Array,
+        Ownership::Full,
+    );
+    assert!(neg.encode(&Value::Array(vec![Value::BigInt(-1)])).is_err());
+
+    let over = array_type(
+        Type::BigInt(BigIntKind::I64),
+        ArrayKind::Array,
+        Ownership::Full,
+    );
+    assert!(
+        over.encode(&Value::Array(vec![Value::BigInt(i128::from(i64::MAX) + 1)]))
+            .is_err()
+    );
 }
 
 #[test]

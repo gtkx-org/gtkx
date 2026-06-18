@@ -8,7 +8,7 @@ use super::prelude::*;
 use super::string::str_to_glib_full;
 use crate::arg::Arg;
 use crate::ffi::{FfiStorage, FfiStorageKind};
-use crate::types::{FloatKind, IntegerKind, Type};
+use crate::types::{BigIntKind, FloatKind, IntegerKind, Type};
 use crate::value::BufferViewKind;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -158,6 +158,8 @@ enum ItemCodec {
     /// `Type::Tagged`: an integer-storage element encoded without range
     /// checking, since the tag already constrains its value range.
     Tagged(IntegerKind),
+    /// `Type::BigInt`: a 64-bit integer surfaced as a JS `bigint`.
+    BigInt(BigIntKind),
     /// `Type::Float`.
     Float(FloatKind),
     /// `Type::Boolean`, stored as a C `int`.
@@ -175,6 +177,7 @@ impl ItemCodec {
         Some(match item_type {
             Type::Integer(kind) => Self::Integer(*kind),
             Type::Tagged(tagged) => Self::Tagged(tagged.storage),
+            Type::BigInt(kind) => Self::BigInt(*kind),
             Type::Float(kind) => Self::Float(*kind),
             Type::Boolean(_) => Self::Boolean,
             Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
@@ -182,7 +185,6 @@ impl ItemCodec {
             }
             Type::String(_) => Self::String,
             Type::Void(_)
-            | Type::BigInt(_)
             | Type::Array(_)
             | Type::Blob(_)
             | Type::HashTable(_)
@@ -212,6 +214,11 @@ impl ItemCodec {
             ),
             Self::Float(FloatKind::F32) => view_kind == BufferViewKind::Float32,
             Self::Float(FloatKind::F64) => view_kind == BufferViewKind::Float64,
+            Self::BigInt(kind) => matches!(
+                (kind, view_kind),
+                (BigIntKind::I64, BufferViewKind::BigInt64)
+                    | (BigIntKind::U64, BufferViewKind::BigUint64)
+            ),
             Self::Boolean | Self::Pointer | Self::String => false,
         }
     }
@@ -220,6 +227,7 @@ impl ItemCodec {
     fn element_size(self) -> usize {
         match self {
             Self::Integer(kind) | Self::Tagged(kind) => kind.byte_size(),
+            Self::BigInt(kind) => kind.byte_size(),
             Self::Float(FloatKind::F32) => size_of::<f32>(),
             Self::Float(FloatKind::F64) => size_of::<f64>(),
             Self::Boolean => size_of::<i32>(),
@@ -762,6 +770,11 @@ impl ArrayType {
                     .map(value::Value::Number)
                     .collect()
             }
+            ItemCodec::BigInt(kind) => {
+                // SAFETY: The caller guarantees `data` addresses `len`
+                // contiguous elements of the resolved item codec.
+                unsafe { kind.read_slice(data, len) }
+            }
             ItemCodec::Float(FloatKind::F32) => {
                 // SAFETY: The caller guarantees `data` addresses `len`
                 // contiguous elements of the resolved item codec.
@@ -829,6 +842,7 @@ impl ArrayType {
             ItemCodec::Tagged(kind) => Ok(ffi::FfiValue::Storage(
                 kind.to_ffi_storage(&Self::extract_numbers(array)?),
             )),
+            ItemCodec::BigInt(kind) => Ok(ffi::FfiValue::Storage(kind.to_ffi_storage(array)?)),
             ItemCodec::Float(kind) => {
                 Self::encode_float_array(&Self::extract_numbers(array)?, kind)
             }
@@ -973,6 +987,24 @@ impl ArrayType {
         Ok(())
     }
 
+    fn append_bigint_values_to_garray(
+        g_array: *mut glib::ffi::GArray,
+        kind: super::BigIntKind,
+        array: &[value::Value],
+    ) -> anyhow::Result<()> {
+        let mut buf = [0u8; size_of::<i64>()];
+        for v in array {
+            // SAFETY: `buf` is an 8-byte local, the width of a bigint element.
+            unsafe { kind.append_into(buf.as_mut_ptr(), v)? };
+            // SAFETY: `g_array` is the live GArray this encode allocated,
+            // and `buf` holds one element of its declared width.
+            unsafe {
+                glib::ffi::g_array_append_vals(g_array, buf.as_ptr() as *const c_void, 1);
+            }
+        }
+        Ok(())
+    }
+
     fn append_float_values_to_garray(
         g_array: *mut glib::ffi::GArray,
         float_kind: super::FloatKind,
@@ -1032,6 +1064,9 @@ impl ArrayType {
         match self.item_codec("GArray")? {
             ItemCodec::Integer(kind) | ItemCodec::Tagged(kind) => {
                 Self::append_integer_values_to_garray(g_array, kind, array).map(|()| Vec::new())
+            }
+            ItemCodec::BigInt(kind) => {
+                Self::append_bigint_values_to_garray(g_array, kind, array).map(|()| Vec::new())
             }
             ItemCodec::Float(kind) => {
                 Self::append_float_values_to_garray(g_array, kind, array).map(|()| Vec::new())
@@ -1163,6 +1198,7 @@ impl ArrayType {
                 ItemCodec::Pointer => self.decode_null_terminated_ptr_array(*ptr),
                 codec @ (ItemCodec::Integer(_)
                 | ItemCodec::Tagged(_)
+                | ItemCodec::BigInt(_)
                 | ItemCodec::Float(_)
                 | ItemCodec::Boolean) => self.decode_zero_terminated_scalar_array(codec, *ptr),
             };
@@ -1451,6 +1487,11 @@ impl ArrayType {
                 .vec_to_f64(storage)?
                 .into_iter()
                 .map(value::Value::Number)
+                .collect(),
+            ItemCodec::BigInt(kind) => storage
+                .as_bigint_vec(kind)?
+                .into_iter()
+                .map(value::Value::BigInt)
                 .collect(),
             ItemCodec::Float(FloatKind::F32) => storage
                 .as_f32_slice()?

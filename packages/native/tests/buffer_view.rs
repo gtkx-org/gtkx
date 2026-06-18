@@ -6,7 +6,8 @@ use std::ffi::c_void;
 use napi::sys::TypedarrayType;
 use native::ffi::FfiValue;
 use native::types::{
-    ArrayKind, ArrayType, FloatKind, IntegerKind, Ownership, TaggedKind, TaggedType, Type,
+    ArrayKind, ArrayType, BigIntKind, BooleanType, FloatKind, IntegerKind, Ownership, TaggedKind,
+    TaggedType, Type,
 };
 use native::value::{BufferView, BufferViewKind, Value};
 
@@ -125,8 +126,28 @@ fn array_encode_accepts_every_matching_view_kind() {
     assert_passthrough(Type::Integer(IntegerKind::U32), BufferViewKind::Uint32);
     assert_passthrough(Type::Integer(IntegerKind::I64), BufferViewKind::BigInt64);
     assert_passthrough(Type::Integer(IntegerKind::U64), BufferViewKind::BigUint64);
+    assert_passthrough(Type::BigInt(BigIntKind::I64), BufferViewKind::BigInt64);
+    assert_passthrough(Type::BigInt(BigIntKind::U64), BufferViewKind::BigUint64);
     assert_passthrough(Type::Float(FloatKind::F32), BufferViewKind::Float32);
     assert_passthrough(Type::Float(FloatKind::F64), BufferViewKind::Float64);
+}
+
+fn assert_view_rejected(item: Type, view_kind: BufferViewKind) {
+    let mut data = vec![0u8; 4 * view_kind.element_size()];
+    let view = view_over(&mut data, 4, view_kind);
+    let err = encode_view(item, ArrayKind::Array, Ownership::Borrowed, view)
+        .expect_err("a mismatched view must fail to supply array elements");
+    assert!(err.to_string().contains("cannot supply"));
+}
+
+#[test]
+fn array_encode_rejects_mismatched_bigint_view() {
+    assert_view_rejected(Type::BigInt(BigIntKind::U64), BufferViewKind::BigInt64);
+}
+
+#[test]
+fn array_encode_rejects_views_for_non_buffer_element_kinds() {
+    assert_view_rejected(Type::Boolean(BooleanType), BufferViewKind::Uint8);
 }
 
 #[test]

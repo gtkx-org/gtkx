@@ -14,7 +14,7 @@ use std::ffi::c_void;
 use glib::translate::IntoGlib as _;
 
 use crate::managed::UnrefFn;
-use crate::types::IntegerKind;
+use crate::types::{BigIntKind, IntegerKind};
 
 /// Backing memory for one encoded argument, dropped after the native call.
 pub struct FfiStorage {
@@ -299,6 +299,18 @@ impl FfiStorage {
                 }
                 with_integer_kinds!(dispatch)
             }
+        }
+    }
+
+    pub fn as_bigint_vec(&self, kind: BigIntKind) -> anyhow::Result<Vec<i128>> {
+        match (&self.kind, kind) {
+            (FfiStorageKind::I64Vec(v), BigIntKind::I64) => {
+                Ok(v.iter().map(|&x| i128::from(x)).collect())
+            }
+            (FfiStorageKind::U64Vec(v), BigIntKind::U64) => {
+                Ok(v.iter().map(|&x| i128::from(x)).collect())
+            }
+            _ => anyhow::bail!("FfiStorage does not match bigint kind {kind:?}"),
         }
     }
 

@@ -7,12 +7,12 @@ import type { AnyClass } from "@gtkx/utils";
 import { describe, expect, it } from "vitest";
 import { findWrapperClass, getWrapperClass, setClassGtype, wrapHandle } from "../src/registry.js";
 
-const INVALID_GTYPE: GType = 0;
+const INVALID_GTYPE: GType = 0n;
 
 describe("setClassGtype", () => {
     it("registers a class by GType", () => {
         class TestClass {}
-        const fakeGtype: GType = 123456789;
+        const fakeGtype: GType = 123456789n;
         setClassGtype(TestClass as AnyClass, fakeGtype);
         expect(findWrapperClass(fakeGtype)).toBe(TestClass);
     });

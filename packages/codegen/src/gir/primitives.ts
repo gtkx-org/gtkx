@@ -86,7 +86,7 @@ const PRIMITIVE_BY_NAME: ReadonlyMap<string, PrimitiveCategory> = new Map([
     ["guint64", "biguint64"],
     ["gsize", "uint64"],
     ["guintptr", "uint64"],
-    ["GType", "uint64"],
+    ["GType", "biguint64"],
     ["time_t", "bigint64"],
     ["pid_t", "int32"],
     ["uid_t", "uint32"],

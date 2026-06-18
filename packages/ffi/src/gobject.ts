@@ -61,7 +61,7 @@ export function newGobjectWithProperties(gtype: GType, props: Record<string, Pro
         LIBGOBJECT,
         "g_object_new_with_properties",
         [
-            { type: t.uint64, value: gtype },
+            { type: t.biguint64, value: gtype },
             { type: t.uint32, value: names.length },
             { type: t.sizedArray(t.string("borrowed"), 1, "borrowed"), value: names },
             { type: t.sizedArray(GVALUE_T, 1, "borrowed", GVALUE_SIZE), value: values },
