@@ -380,22 +380,6 @@ const isReferenceableBoxed = (boxed: ResolvedBoxed): boolean => {
     return hasRefPair || hasIntrinsic || boxed.glibGetType !== undefined;
 };
 
-/**
- * Whether a boxed record's FFI descriptor carries no `GType` identity the
- * runtime can resolve a wrapper class from, so the binding must pass an explicit
- * `wrapperClass` fallback. True for a plain `t.struct` (no copy/free pair, no
- * `get-type`) and for a `t.fundamental` with no registered GLib type name (e.g.
- * `GAsyncQueue`); false for a `t.boxed` (resolved through its `get-type`) and a
- * named `t.fundamental` (resolved through its type name).
- *
- * @param boxed - The resolved boxed record.
- */
-export const boxedNeedsFallbackClass = (boxed: ResolvedBoxed): boolean => {
-    const { refFunc, unrefFunc } = boxedRefPair(boxed);
-    if (refFunc !== undefined && unrefFunc !== undefined) return boxed.glibTypeName === undefined;
-    return boxed.glibGetType === undefined;
-};
-
 const boxedExpression = (
     resolved: Extract<ResolvedNamed, { kind: "boxed" }>,
     ownership: "borrowed" | "full",

@@ -1,6 +1,6 @@
 import type { ModuleContext } from "../dsl/context.js";
 import type { GirTypeRef, NamedTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
-import { boxedNeedsFallbackClass, renderFfiType } from "./value.js";
+import { renderFfiType } from "./value.js";
 
 /**
  * Lifting raw FFI values into their typed JavaScript form for the per-call
@@ -30,7 +30,7 @@ export type WrapReturnOptions = {
  * Primitives, enums, and callbacks coerce inline; everything that needs a
  * registry wrapper (objects, interfaces, boxed records, collections, hash
  * tables) routes through {@link wrapValue} with a hoisted FFI descriptor and,
- * where the descriptor lacks the identity, a pre-resolved wrapper class.
+ * for a pointer-backed value type, its statically resolved wrapper class.
  *
  * @param context - The module context
  * @param options - {@link WrapReturnOptions}
@@ -95,22 +95,20 @@ const wrapPrimitive = (ref: PrimitiveTypeRef, nullable: boolean, valueExpression
 };
 
 /**
- * Resolves the fallback wrapper class {@link wrapValue} needs to lift a value of
- * `ref`, or `undefined` when the value's FFI descriptor carries enough `GType`
- * identity to recover its class on its own.
+ * Resolves the wrapper class {@link wrapValue} lifts a value of `ref` into via
+ * `wrapHandle`, or `undefined` when the value resolves its own class at runtime.
  *
- * Almost every kind self-resolves: an object off its runtime GLib type (its
- * descriptor names an interface when one is needed), a boxed record or named
- * fundamental through the `GType` its descriptor identifies, and primitives,
- * enums, and hash tables need no class at all. Only the kinds whose descriptor
- * carries no recoverable identity supply a fallback — a plain `struct` and a
- * GType-less fundamental such as `GAsyncQueue`. A collection resolves its
- * element's fallback, applied per element. Used both for the `t.fn` return
- * descriptor and the per-call `wrapValue` sites.
+ * A pointer-backed value type — a plain `struct`, a boxed record, or a named
+ * fundamental — supplies its statically known class, since its wrapper carries
+ * no runtime polymorphism. A `GObject` self-resolves off the live pointer's
+ * runtime GLib type (its descriptor names an interface when one is needed), and
+ * primitives, enums, hash tables, and callbacks need no class at all. A
+ * collection resolves its element's class, applied per element. Used both for
+ * the `t.fn` return descriptor and the per-call `wrapValue` sites.
  *
  * @param context - The module context
  * @param ref - The value's GIR type reference
- * @returns The qualified fallback-class expression, or `undefined`
+ * @returns The qualified class expression, or `undefined`
  */
 export const resolveWrapperClass = (context: ModuleContext, ref: GirTypeRef | undefined): string | undefined => {
     if (ref === undefined) return undefined;
@@ -135,11 +133,16 @@ const namedWrapperClass = (context: ModuleContext, ref: NamedTypeRef): string | 
     if (resolved === undefined) return undefined;
     switch (resolved.kind) {
         case "boxed":
-            return boxedNeedsFallbackClass(resolved.value) ? context.qualify(owner, ref.typeName) : undefined;
+            return context.qualify(owner, ref.typeName);
+        case "class":
+        case "interface": {
+            const cls = resolved.value;
+            return cls.glibRefFunc !== undefined && cls.glibUnrefFunc !== undefined
+                ? context.qualify(owner, ref.typeName)
+                : undefined;
+        }
         case "alias":
             return resolveWrapperClass(context, resolved.targetRef);
-        case "interface":
-        case "class":
         case "enum":
         case "callback":
             return undefined;
