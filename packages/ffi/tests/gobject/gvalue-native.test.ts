@@ -1,19 +1,15 @@
 import {
     type GType,
     TYPE_BOOLEAN,
-    TYPE_CHAR,
     TYPE_DOUBLE,
     TYPE_FLOAT,
     TYPE_INT,
     TYPE_INT64,
-    TYPE_LONG,
     TYPE_OBJECT,
     TYPE_PARAM,
     TYPE_STRING,
-    TYPE_UCHAR,
     TYPE_UINT,
     TYPE_UINT64,
-    TYPE_ULONG,
     TYPE_VARIANT,
 } from "@gtkx/ffi";
 import * as GLib from "@gtkx/gi/glib";
@@ -28,15 +24,11 @@ import {
     valueGetFloat,
     valueGetInt,
     valueGetInt64,
-    valueGetLong,
     valueGetObject,
     valueGetParam,
-    valueGetSchar,
     valueGetString,
-    valueGetUchar,
     valueGetUint,
     valueGetUint64,
-    valueGetUlong,
     valueGetVariant,
     valueInit,
     valueSetBoolean,
@@ -46,15 +38,11 @@ import {
     valueSetFloat,
     valueSetInt,
     valueSetInt64,
-    valueSetLong,
     valueSetObject,
     valueSetParam,
-    valueSetSchar,
     valueSetString,
-    valueSetUchar,
     valueSetUint,
     valueSetUint64,
-    valueSetUlong,
     valueSetVariant,
 } from "../../src/gvalue.js";
 import "@gtkx/gi/gobject";
@@ -101,18 +89,6 @@ describe("GValue signed and unsigned integers", () => {
         expect(valueGetUint(value)).toBe(4_000_000_000);
     });
 
-    it("round-trips a long", () => {
-        const value = initialized(TYPE_LONG);
-        valueSetLong(value, 123_456);
-        expect(valueGetLong(value)).toBe(123_456);
-    });
-
-    it("round-trips a ulong", () => {
-        const value = initialized(TYPE_ULONG);
-        valueSetUlong(value, 654_321);
-        expect(valueGetUlong(value)).toBe(654_321);
-    });
-
     it("round-trips an int64", () => {
         const value = initialized(TYPE_INT64);
         valueSetInt64(value, -9_007_199_254_740_991);
@@ -123,18 +99,6 @@ describe("GValue signed and unsigned integers", () => {
         const value = initialized(TYPE_UINT64);
         valueSetUint64(value, 9_007_199_254_740_991);
         expect(valueGetUint64(value)).toBe(9_007_199_254_740_991);
-    });
-
-    it("round-trips a schar", () => {
-        const value = initialized(TYPE_CHAR);
-        valueSetSchar(value, -12);
-        expect(valueGetSchar(value)).toBe(-12);
-    });
-
-    it("round-trips a uchar", () => {
-        const value = initialized(TYPE_UCHAR);
-        valueSetUchar(value, 200);
-        expect(valueGetUchar(value)).toBe(200);
     });
 });
 

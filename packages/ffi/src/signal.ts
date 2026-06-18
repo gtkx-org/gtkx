@@ -1,18 +1,81 @@
-import type { Type as FfiType, Handle, TrampolineType, Value } from "@gtkx/native";
+import { alloc, type Type as FfiType, type Handle, read, type TrampolineType, type Value, write } from "@gtkx/native";
 import { GVALUE_SIZE, GVALUE_T, LIBGOBJECT } from "./constants.js";
 import { call, t } from "./descriptors.js";
-import type { GType, GTyped } from "./gtype.js";
-import { tupleResult } from "./helpers.js";
-import { getHandle } from "./registry.js";
+import { type GType, type GTyped, TYPE_POINTER } from "./gtype.js";
 import {
     emptyValueFromFfi,
-    inoutBoxedFromFfi,
-    outBoxedFromFfi,
-    outValueFromFfi,
-    valueFromFfi,
+    fromGvalue,
+    newGValue,
+    resolveBoxedGtype,
+    setGValuePointer,
+    toGvalue,
     valueGetBoxed,
-    valueToJS,
-} from "./value-marshal.js";
+    valueInit,
+    valueSetBoxed,
+    valueSetStaticBoxed,
+} from "./gvalue.js";
+import { tupleResult } from "./helpers.js";
+import { getHandle } from "./registry.js";
+
+/** Storage size, in bytes, of a single out-parameter cell (a pointer or any scalar). */
+const OUT_PARAM_STORAGE_SIZE = 8;
+
+/**
+ * Builds the `G_TYPE_POINTER` GValue a signal out-parameter is emitted through,
+ * paired with a reader for the value a handler writes back.
+ *
+ * `g_signal_emitv` hands the pointer payload to handlers as the out-parameter's
+ * `T*`, so a handler writes into the freshly allocated storage; the returned
+ * `read` unmarshals that storage with `innerFfi`. The `initial` value seeds the
+ * storage for inout parameters, where the handler both reads the incoming value
+ * and overwrites it.
+ *
+ * @param innerFfi - FFI descriptor of the pointed-to value (the `t.ref` inner type).
+ * @param initial - Seed written before emission, for inout parameters.
+ */
+function outValueFromFfi(innerFfi: FfiType, initial?: unknown): { value: Handle; read: () => unknown } {
+    const storage = alloc(OUT_PARAM_STORAGE_SIZE);
+    write(storage, t.uint64, 0, 0);
+    if (initial !== undefined) write(storage, innerFfi, 0, initial);
+    const value = newGValue();
+    valueInit(value, TYPE_POINTER);
+    setGValuePointer(value, storage);
+    return { value, read: () => read(storage, innerFfi, 0) };
+}
+
+/**
+ * Builds a `G_TYPE_BOXED` `GValue` holding a copy of `boxed`, for emitting a
+ * signal whose caller-allocated out-parameter a handler fills. The handler
+ * mutates the value's owned copy in place; the generated `emit` reads that copy
+ * back through {@link valueGetBoxed} after `g_signal_emitv` returns.
+ *
+ * @param ffiType - The boxed FFI descriptor naming the value's `GType`.
+ * @param boxed - The freshly allocated wrapper whose contents seed the copy.
+ */
+export function outBoxedFromFfi(ffiType: FfiType, boxed: object): Handle {
+    const value = newGValue();
+    valueInit(value, resolveBoxedGtype(ffiType));
+    valueSetBoxed(value, boxed);
+    return value;
+}
+
+/**
+ * Builds a `G_TYPE_BOXED` `GValue` that references `boxed` in place (no copy),
+ * for emitting a signal whose boxed inout-parameter a handler mutates. The
+ * value shares the caller's pointer through {@link valueSetStaticBoxed}, so the
+ * handler's in-place writes land on the caller's wrapper directly; the result
+ * surfaces through that wrapper rather than the `emit` return tuple. The value
+ * must not outlive `boxed`.
+ *
+ * @param ffiType - The boxed FFI descriptor naming the value's `GType`.
+ * @param boxed - The caller's wrapper the handler mutates in place.
+ */
+export function inoutBoxedFromFfi(ffiType: FfiType, boxed: object): Handle {
+    const value = newGValue();
+    valueInit(value, resolveBoxedGtype(ffiType));
+    valueSetStaticBoxed(value, boxed);
+    return value;
+}
 
 /**
  * Runtime signal-connection wrapper for generated FFI bindings.
@@ -276,7 +339,7 @@ export function emitGobjectSignal(
     const signalId = gSignalLookup(signalBaseName(sigName), gtype) as number;
     const detail = signalDetailQuark(sigName);
 
-    const values: Handle[] = [valueFromFfi(t.object("full"), instance)];
+    const values: Handle[] = [toGvalue(t.object("full"), instance)];
     const reads: (() => unknown)[] = [];
     for (const arg of args) {
         switch (arg.role) {
@@ -302,14 +365,14 @@ export function emitGobjectSignal(
                 values.push(inoutBoxedFromFfi(arg.ffi, arg.value as object));
                 break;
             default:
-                values.push(valueFromFfi(arg.ffi, arg.value));
+                values.push(toGvalue(arg.ffi, arg.value));
         }
     }
 
     if (returnFfi !== undefined) {
         const returnValue = emptyValueFromFfi(returnFfi);
         gSignalEmitv(values, signalId, detail, returnValue);
-        return assembleResult(valueToJS(returnValue), true, reads);
+        return assembleResult(fromGvalue(returnValue), true, reads);
     }
     gSignalEmitv(values, signalId, detail, undefined);
     return assembleResult(undefined, false, reads);

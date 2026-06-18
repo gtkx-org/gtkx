@@ -11,7 +11,7 @@
  * neither keep the loop alive nor quit the application.
  */
 
-import { quitApplication, type GApplication, runApplication } from "@gtkx/ffi";
+import { type GApplication, quitApplication, runApplication } from "@gtkx/ffi";
 
 /**
  * The lifecycle an application component drives: `run` when it mounts and `quit`

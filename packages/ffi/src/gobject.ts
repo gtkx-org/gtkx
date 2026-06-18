@@ -1,18 +1,20 @@
 /**
- * GObject construction.
+ * GObject construction and property access.
  *
  * {@link newGobjectWithProperties} marshals a property record and calls
- * `g_object_new_with_properties`, returning the freshly allocated handle. The
- * generated `GObject.Object` constructor calls it and links the handle to the
- * wrapper. The marshalling, `GValue`, and wrapper-lifting machinery it builds
- * on lives in `./value-marshal.js`, `./gvalue.js`, and `./wrap-value.js`.
+ * `g_object_new_with_properties`, returning the freshly allocated handle, while
+ * {@link getGobjectProperty} / {@link setGobjectProperty} drive `g_object_*_property`
+ * for a single statically-typed property. The generated `GObject.Object`
+ * constructor and accessors call them; the `GValue` marshalling they build on
+ * lives in `./gvalue.js` and the wrapper-lifting in `./wrap-value.js`.
  */
 
 import { call, type Type as FfiType, type Handle, type Value } from "@gtkx/native";
 import { GVALUE_SIZE, GVALUE_T, LIBGOBJECT } from "./constants.js";
 import { t } from "./descriptors.js";
 import type { GType } from "./gtype.js";
-import { valueFromFfi } from "./value-marshal.js";
+import { emptyValueFromFfi, fromGvalue, toGvalue, valueGetInt64Big, valueGetUint64Big } from "./gvalue.js";
+import { getHandle } from "./registry.js";
 
 /**
  * A property-marshalling instruction: the property's FFI type paired with the
@@ -52,7 +54,7 @@ export function newGobjectWithProperties(gtype: GType, props: Record<string, Pro
     for (const [name, [ffiType, value]] of Object.entries(props)) {
         if (value === undefined) continue;
         names.push(name);
-        values.push(valueFromFfi(ffiType, value));
+        values.push(toGvalue(ffiType, value));
     }
 
     return call(
@@ -66,4 +68,57 @@ export function newGobjectWithProperties(gtype: GType, props: Record<string, Pro
         ],
         t.object("full"),
     ) as Handle;
+}
+
+const PROPERTY_CALL_ARGS = [t.object("borrowed"), t.string("borrowed"), GVALUE_T] as const;
+
+const gObjectGetProperty = t.bind(LIBGOBJECT, "g_object_get_property", [...PROPERTY_CALL_ARGS], t.void);
+const gObjectSetProperty = t.bind(LIBGOBJECT, "g_object_set_property", [...PROPERTY_CALL_ARGS], t.void);
+
+/**
+ * Reads a 64-bit `GValue` payload as a `bigint` when the property's FFI
+ * descriptor declares a bigint representation, or `undefined` when the
+ * fundamental-keyed {@link fromGvalue} path applies instead.
+ */
+function bigintPropertyValue(ffiType: FfiType, value: Handle): bigint | undefined {
+    if (ffiType.type === "bigint64") return valueGetInt64Big(value);
+    if (ffiType.type === "biguint64") return valueGetUint64Big(value);
+    return undefined;
+}
+
+/**
+ * Reads a GObject property into a plain JavaScript value through a
+ * statically-known FFI type descriptor.
+ *
+ * The generated property getter passes the property's FFI type — resolved from
+ * the GIR at codegen time — so an empty `GValue` of the matching type is
+ * populated by `g_object_get_property` and unmarshalled via {@link fromGvalue},
+ * with no runtime param-spec introspection.
+ *
+ * @param obj - The GObject instance whose property is read.
+ * @param propertyName - The property name (kebab-case GIR name).
+ * @param ffiType - The property's FFI type descriptor.
+ */
+export function getGobjectProperty(obj: object, propertyName: string, ffiType: FfiType): unknown {
+    const value = emptyValueFromFfi(ffiType);
+    gObjectGetProperty(getHandle(obj), propertyName, value);
+    return bigintPropertyValue(ffiType, value) ?? fromGvalue(value);
+}
+
+/**
+ * Writes a plain JavaScript value to a GObject property through a
+ * statically-known FFI type descriptor.
+ *
+ * The generated property setter passes the property's FFI type — resolved from
+ * the GIR at codegen time — so `value` is marshalled by {@link toGvalue} and
+ * dispatched to `g_object_set_property`, with no runtime param-spec
+ * introspection.
+ *
+ * @param obj - The GObject instance whose property is written.
+ * @param propertyName - The property name (kebab-case GIR name).
+ * @param ffiType - The property's FFI type descriptor.
+ * @param jsValue - The JS value to set.
+ */
+export function setGobjectProperty(obj: object, propertyName: string, ffiType: FfiType, jsValue: unknown): void {
+    gObjectSetProperty(getHandle(obj), propertyName, toGvalue(ffiType, jsValue));
 }

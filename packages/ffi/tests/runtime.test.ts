@@ -24,11 +24,10 @@ const EXPECTED_RUNTIME_EXPORTS = [
 const NATIVE_TRANSPORT_PRIMITIVES = ["alloc", "call", "read", "write", "freeze", "unfreeze"] as const;
 
 const PRIVATE_MARSHALLING_INTERNALS = [
-    "valueFromFfi",
-    "valueToJS",
+    "toGvalue",
+    "fromGvalue",
     "valueGetType",
-    "valueFromObject",
-    "outValueFromFfi",
+    "emptyValueFromFfi",
     "outBoxedFromFfi",
     "inoutBoxedFromFfi",
     "signalDetailQuark",

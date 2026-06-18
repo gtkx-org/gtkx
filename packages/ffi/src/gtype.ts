@@ -167,11 +167,15 @@ export const TYPE_INTERFACE: GType = typeFromName("GInterface");
 
 /**
  * The fundamental `GType` of a signed 8-bit integer (`gchar`).
+ *
+ * @public
  */
 export const TYPE_CHAR: GType = typeFromName("gchar");
 
 /**
  * The fundamental `GType` of an unsigned 8-bit integer (`guchar`).
+ *
+ * @public
  */
 export const TYPE_UCHAR: GType = typeFromName("guchar");
 
@@ -192,11 +196,15 @@ export const TYPE_UINT: GType = typeFromName("guint");
 
 /**
  * The fundamental `GType` of a signed long integer (`glong`).
+ *
+ * @public
  */
 export const TYPE_LONG: GType = typeFromName("glong");
 
 /**
  * The fundamental `GType` of an unsigned long integer (`gulong`).
+ *
+ * @public
  */
 export const TYPE_ULONG: GType = typeFromName("gulong");
 

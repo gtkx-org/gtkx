@@ -12,8 +12,8 @@
 import type { Type as FfiType, Handle } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { type GType, typeFromName, typeName } from "./gtype.js";
+import { resolveBoxedGtype } from "./gvalue.js";
 import { getInterfaceWrapperClass, getWrapperClass, wrapHandle } from "./registry.js";
-import { resolveBoxedGtype } from "./value-marshal.js";
 
 type ArrayFfiType = Extract<FfiType, { type: "array" }>;
 
