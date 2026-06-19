@@ -3,22 +3,21 @@
  *
  * Every real-GObject instance commits its props through {@link applyProps}: a
  * generic diff-classify-apply pass that routes each changed prop to a GObject
- * signal or a GObject property, plus two declarative tables for props that need
- * bespoke handling — the {@link "./array-props".ARRAY_PROPS} table for
- * array-valued props and a {@link PropDescriptorTable} for signal/imperative
- * props the host config supplies.
+ * signal or a GObject property, plus one declarative {@link PropDescriptorTable}
+ * — the unified per-GType descriptor view the host config supplies — for props
+ * that need bespoke handling.
  *
- * Three descriptor sources cover every case. The generic path handles plain
- * GObject signals and properties. The array-prop table reconciles array elements
- * into repeated GTK calls. The descriptor table's {@link signal} wires a callback
- * prop to GObject signals and {@link imperative} runs a side-effecting handler.
- * A prop named in any table bypasses the generic path.
+ * Each descriptor is one of three kinds. An {@link ArrayPropDescriptor}
+ * reconciles array elements into repeated GTK calls; a {@link signal} descriptor
+ * wires a callback prop to GObject signals; an {@link imperative} descriptor runs
+ * a side-effecting handler against the backing GObject. A prop named in the
+ * descriptor view bypasses the generic path; every other prop flows through it.
  */
 
 import type * as GObject from "@gtkx/gi/gobject";
 import { isConstructOnlyProp, resolveDefaultProp, resolveSignal } from "../utils/gtype.js";
 import { NOTIFY_DETAIL_PREFIX, notifyDetailToProp } from "../utils/notify-name.js";
-import { type ArrayPropDescriptor, applyArrayProp, collectArrayProps } from "./array-props.js";
+import { type ArrayPropDescriptor, applyArrayProp } from "./array-props.js";
 import { isEditable } from "./predicates.js";
 import type { SignalHandler } from "./signal-store.js";
 import { stateOf } from "./state.js";
@@ -46,8 +45,13 @@ export interface SignalPropDescriptor {
     readonly returnValue?: unknown;
 }
 
-/** A bespoke prop's side-effecting handler; receives the previous and current props. */
-export type ImperativeHandler = (oldProps: Props | null, newProps: Props) => void;
+/**
+ * A bespoke prop's side-effecting handler; receives the backing GObject and the
+ * previous and current props. Taking the container as an argument keeps the
+ * handler stateless so its descriptor is shared per GType rather than rebuilt
+ * per node.
+ */
+export type ImperativeHandler = (container: GObject.Object, oldProps: Props | null, newProps: Props) => void;
 
 /**
  * Descriptor for a prop applied by running a side-effecting handler.
@@ -60,10 +64,10 @@ export interface ImperativeDescriptor {
     readonly always: boolean;
 }
 
-/** A descriptor for one bespoke prop. */
-type PropDescriptor = SignalPropDescriptor | ImperativeDescriptor;
+/** A descriptor for one bespoke prop: array reconciliation, signal wiring, or an imperative handler. */
+type PropDescriptor = SignalPropDescriptor | ImperativeDescriptor | ArrayPropDescriptor;
 
-/** A node's bespoke props, keyed by prop name. */
+/** A node's bespoke props, keyed by prop name; the unified per-GType descriptor view. */
 export type PropDescriptorTable = Record<string, PropDescriptor>;
 
 const EMPTY_TABLE: PropDescriptorTable = {};
@@ -132,8 +136,8 @@ const propsEqual = (a: unknown, b: unknown): boolean => {
 
 /** Options for {@link applyProps}. */
 export type ApplyPropsOptions = {
-    /** The node's bespoke-prop descriptors; table keys bypass the generic path. */
-    readonly table?: PropDescriptorTable;
+    /** The node's per-GType descriptor view; described props bypass the generic path. */
+    readonly descriptors?: PropDescriptorTable;
     /** Prop names to omit from the generic path (e.g. accessible props). */
     readonly exclude?: (name: string) => boolean;
     /** Whether generic signal handlers are suppressed during commits. */
@@ -143,14 +147,14 @@ export type ApplyPropsOptions = {
 /**
  * Applies a prop commit to a real element's backing GObject.
  *
- * Props named in the array-prop table or `options.table` are handled by their
- * descriptors; every other prop flows through the generic path, which classifies
- * it as a GObject signal or a GObject property and applies the change.
+ * Props named in `options.descriptors` are handled by their descriptor (array,
+ * signal, or imperative); every other prop flows through the generic path, which
+ * classifies it as a GObject signal or a GObject property and applies the change.
  *
  * @param container - the backing GObject being committed
  * @param oldProps - the previously-committed props, or `null` on first mount
  * @param newProps - the props to apply
- * @param options - descriptor table and generic-path tuning
+ * @param options - descriptor view and generic-path tuning
  */
 export function applyProps(
     container: GObject.Object,
@@ -162,21 +166,18 @@ export function applyProps(
         container,
         oldProps,
         newProps,
-        table: options?.table ?? EMPTY_TABLE,
-        arrayProps: collectArrayProps(container),
+        descriptors: options?.descriptors ?? EMPTY_TABLE,
     };
 
     applyGenericProps(context, options?.exclude, options?.defaultBlockable ?? true);
-    applyArrayProps(context);
-    applyTableDescriptors(context);
+    applyDescriptors(context);
 }
 
 type ApplyContext = {
     readonly container: GObject.Object;
     readonly oldProps: Props | null;
     readonly newProps: Props;
-    readonly table: PropDescriptorTable;
-    readonly arrayProps: ReadonlyMap<string, ArrayPropDescriptor>;
+    readonly descriptors: PropDescriptorTable;
 };
 
 type PendingSignal = { signalName: string; newValue: unknown };
@@ -215,13 +216,13 @@ const collectGenericChanges = (
     context: ApplyContext,
     exclude: ((name: string) => boolean) | undefined,
 ): { pendingSignals: PendingSignal[]; pendingProperties: PendingProperty[] } => {
-    const { container, oldProps, newProps, table, arrayProps } = context;
+    const { container, oldProps, newProps, descriptors } = context;
     const constructionApplied = oldProps === null;
     const pendingSignals: PendingSignal[] = [];
     const pendingProperties: PendingProperty[] = [];
 
     const collect = (name: string): void => {
-        if (name === "children" || name in table || arrayProps.has(name) || exclude?.(name)) return;
+        if (name === "children" || name in descriptors || exclude?.(name)) return;
         if (isConstructOnlyProp(container, name)) return;
 
         const oldValue = oldProps?.[name];
@@ -283,34 +284,32 @@ const applyGenericProps = (
     }
 };
 
-const applyArrayProps = (context: ApplyContext): void => {
-    const { container, oldProps, newProps, arrayProps } = context;
-    for (const [name, descriptor] of arrayProps) {
-        const oldValue = oldProps?.[name];
-        const newValue = newProps[name];
-        if (propsEqual(oldValue, newValue)) continue;
-        applyArrayProp(container, descriptor, oldValue, newValue);
-    }
-};
-
-const applyTableDescriptors = (context: ApplyContext): void => {
-    const { container, oldProps, newProps, table } = context;
+/**
+ * Applies every described prop in one pass over the unified descriptor view.
+ *
+ * An array descriptor reconciles its elements on identity change; a signal
+ * descriptor rewires its connection on change; an imperative descriptor runs its
+ * handler when its prop changes or when `always` forces it every commit. Several
+ * prop keys may share one imperative handler reference (e.g. a setter group), so
+ * `ranImperatives` dedupes it to a single run per commit.
+ */
+const applyDescriptors = (context: ApplyContext): void => {
+    const { container, oldProps, newProps, descriptors } = context;
     const ranImperatives = new Set<ImperativeHandler>();
 
-    for (const [key, descriptor] of Object.entries(table)) {
+    for (const [key, descriptor] of Object.entries(descriptors)) {
+        const changed = !propsEqual(oldProps?.[key], newProps[key]);
         switch (descriptor.kind) {
+            case "array":
+                if (changed) applyArrayProp(container, descriptor, oldProps?.[key], newProps[key]);
+                break;
             case "signal":
-                if (!propsEqual(oldProps?.[key], newProps[key])) {
-                    applySignalDescriptor(container, newProps[key], descriptor);
-                }
+                if (changed) applySignalDescriptor(container, newProps[key], descriptor);
                 break;
             case "imperative":
-                if (
-                    (descriptor.always || !propsEqual(oldProps?.[key], newProps[key])) &&
-                    !ranImperatives.has(descriptor.handler)
-                ) {
+                if ((descriptor.always || changed) && !ranImperatives.has(descriptor.handler)) {
                     ranImperatives.add(descriptor.handler);
-                    descriptor.handler(oldProps, newProps);
+                    descriptor.handler(container, oldProps, newProps);
                 }
                 break;
         }

@@ -16,7 +16,7 @@ import {
     WRAPPER_NODE_ELEMENT,
 } from "./instance.js";
 import { scheduleLabelTextRebuild } from "./label-text-rebuild.js";
-import { getPropDescriptors } from "./prop-descriptor-table.js";
+import { getDescriptors } from "./prop-descriptor-table.js";
 import { reportReconcilerError } from "./reconciler-error-sink.js";
 import { ensureState, type Node, stateOf } from "./state.js";
 import { scheduleBufferRebuild } from "./text-buffer-rebuild.js";
@@ -157,12 +157,15 @@ const commitInstanceProps = (instance: Node, oldProps: Props | null, newProps: P
         return;
     }
     if (!(instance instanceof GObject.Object)) return;
-    const table = getPropDescriptors(instance);
+    const descriptors = getDescriptors(instance);
     if (instance instanceof Gtk.Widget) {
         applyAccessibleProps(instance, oldProps, newProps);
-        applyProps(instance, oldProps, newProps, { table, exclude: isAccessibleProp });
+        applyProps(instance, oldProps, newProps, { descriptors, exclude: isAccessibleProp });
     } else {
-        applyProps(instance, oldProps, newProps, { table, defaultBlockable: instance instanceof Gtk.TextBuffer });
+        applyProps(instance, oldProps, newProps, {
+            descriptors,
+            defaultBlockable: instance instanceof Gtk.TextBuffer,
+        });
     }
     if (instance instanceof Gtk.TextTag) scheduleBufferRebuild(instance);
 };

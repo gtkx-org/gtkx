@@ -20,7 +20,6 @@
 import { ARRAY_PROPS as ARRAY_PROP_ROWS } from "virtual:gtkx-config";
 import type { ArrayPropRow, CallStep, ConstructStep, PresenceCondition } from "@gtkx/config";
 import type * as GObject from "@gtkx/gi/gobject";
-import { collectTypeNameChain } from "../utils/gtype.js";
 import { requireClassByName } from "../utils/gtype-predicates.js";
 import { callMethod } from "./reflect-call.js";
 
@@ -32,6 +31,8 @@ import { callMethod } from "./reflect-call.js";
  * previous one was empty.
  */
 export interface ArrayPropDescriptor {
+    /** Discriminates this descriptor within the unified prop-descriptor view. */
+    readonly kind: "array";
     /** Removes every previously-applied element in one call. */
     clear?(target: GObject.Object): void;
     /** Removes one previously-applied element. */
@@ -89,7 +90,7 @@ const runConstructStep = (target: GObject.Object, step: ConstructStep, item: unk
 };
 
 const compileRow = (row: ArrayPropRow): ArrayPropDescriptor => {
-    const descriptor: ArrayPropDescriptor = {};
+    const descriptor: ArrayPropDescriptor = { kind: "array" };
     const { clear, remove, add, construct, set } = row;
     if (set !== undefined) descriptor.set = (target, items) => callMethod(target, set, [items]);
     if (row.appendOnce) descriptor.appendOnce = true;
@@ -121,29 +122,6 @@ const compileRows = (): Readonly<Record<string, Readonly<Record<string, ArrayPro
  * ancestry.
  */
 export const ARRAY_PROPS: Readonly<Record<string, Readonly<Record<string, ArrayPropDescriptor>>>> = compileRows();
-
-const arrayPropCache = new Map<GObject.GType, ReadonlyMap<string, ArrayPropDescriptor>>();
-
-/**
- * Returns the array-prop descriptors for `instance`, merged across its GType
- * ancestry (most-derived first), keyed by prop name. Cached per GType.
- *
- * @param instance - The backing GObject whose array props to resolve.
- */
-export const collectArrayProps = (instance: GObject.Object): ReadonlyMap<string, ArrayPropDescriptor> => {
-    const cached = arrayPropCache.get(instance.__gtype__);
-    if (cached) return cached;
-    const merged = new Map<string, ArrayPropDescriptor>();
-    for (const typeName of collectTypeNameChain(instance.__gtype__)) {
-        const entry = ARRAY_PROPS[typeName];
-        if (!entry) continue;
-        for (const [prop, descriptor] of Object.entries(entry)) {
-            if (!merged.has(prop)) merged.set(prop, descriptor);
-        }
-    }
-    arrayPropCache.set(instance.__gtype__, merged);
-    return merged;
-};
 
 const toArray = (value: unknown): readonly unknown[] => (Array.isArray(value) ? value : []);
 
