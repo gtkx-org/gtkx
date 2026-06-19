@@ -14,7 +14,7 @@ GTKX renders React components as native GTK4 widgets through a Rust FFI bridge.
 import { applicationId } from "@gtkx/config/runtime";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
-import { render, quit } from "@gtkx/react";
+import { createRoot, quit } from "@gtkx/react";
 
 const App = () => (
     <GtkApplication applicationId={applicationId}>
@@ -35,10 +35,10 @@ const App = () => (
     </GtkApplication>
 );
 
-render(<App />);
+createRoot().render(<App />);
 ```
 
-The application id is passed explicitly; `@gtkx/config/runtime` exposes each field of the resolved `gtkx.config.ts` as a named constant, so the `applicationId` declared there reaches the application through the prop. `render` is called once at module top-level — analogous to `createRoot().render()` in `react-dom`. In dev, `gtkx dev` restarts the Node process whenever a non-component file changes, so this top-level call only ever runs once per process life.
+The application id is passed explicitly; `@gtkx/config/runtime` exposes each field of the resolved `gtkx.config.ts` as a named constant, so the `applicationId` declared there reaches the application through the prop. `createRoot().render()` is called once at module top-level — analogous to `createRoot` in `react-dom`. In dev, `gtkx dev` restarts the Node process whenever a non-component file changes, so this top-level call only ever runs once per process life.
 
 ## Essential Patterns
 

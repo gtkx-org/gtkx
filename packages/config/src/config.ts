@@ -20,7 +20,7 @@ export const LIBRARIES_WILDCARD = "*";
  * `GLib-2.0`: a leading-alpha alphanumeric name, a `-`, then one or more
  * dot-separated numeric version components.
  */
-export const GIR_NAMESPACE_PATTERN = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/;
+export const GIR_NAMESPACE_PATTERN: RegExp = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/;
 
 /**
  * User-facing configuration for a GTKX project.

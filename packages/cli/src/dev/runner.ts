@@ -224,7 +224,7 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
             deps.log(`Connected application id: ${applicationId}`);
             await deps.startMcpClient(applicationId, (id) => server.ssrLoadModule(id));
         } else {
-            deps.log("Entry did not call render() — MCP client not started.");
+            deps.log("Entry did not mount an application — MCP client not started.");
         }
 
         deps.log("HMR enabled - watching for changes...");

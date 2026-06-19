@@ -46,8 +46,8 @@ export type BuildOptions = {
  * and registered with GIO when the entry first loads.
  *
  * The user entry is the bundle's only entry point: it is expected to call
- * `render(<App />)` at top level, mirroring the
- * `createRoot().render()` pattern used in `react-dom`.
+ * `createRoot().render(<App />)` at top level, mirroring the `createRoot()`
+ * pattern used in `react-dom`.
  *
  * @param options - Build configuration including entry point and Vite options
  *

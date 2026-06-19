@@ -12,7 +12,7 @@ export const GTKX_CONFIG_VIRTUAL_ID = "virtual:gtkx-config";
  * Rollup-convention resolved id for {@link GTKX_CONFIG_VIRTUAL_ID} (the `\0`
  * prefix marks it virtual).
  */
-export const RESOLVED_GTKX_CONFIG_VIRTUAL_ID = `\0${GTKX_CONFIG_VIRTUAL_ID}`;
+export const RESOLVED_GTKX_CONFIG_VIRTUAL_ID: string = `\0${GTKX_CONFIG_VIRTUAL_ID}`;
 
 const METADATA_SPECIFIER = "@gtkx/jsx/metadata";
 
