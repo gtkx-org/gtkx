@@ -8,7 +8,7 @@ use gtk4::glib;
 
 use native::ffi;
 use native::managed::NativeHandle;
-use native::types::{FfiDecoder, FfiEncoder, FundamentalType, Ownership, RawPtrCodec};
+use native::types::{FfiDecoder, FfiEncoder, FundamentalType, Ownership, RawPtrCodec, ReadSource};
 use native::value::Value;
 
 fn create_param_spec() -> *mut c_void {
@@ -335,8 +335,9 @@ fn ptr_to_value_wraps_fundamental() {
         let before = param_spec_refcount(pspec);
 
         // SAFETY: `pspec` addresses a live GParamSpec.
-        let value = unsafe { fundamental(Ownership::Borrowed).ptr_to_value(pspec, "ctx") }
-            .expect("ptr_to_value should succeed");
+        let value =
+            unsafe { fundamental(Ownership::Borrowed).read(ReadSource::Value(pspec, "ctx")) }
+                .expect("ptr_to_value should succeed");
         assert!(matches!(value, Value::Object(_)));
         assert_eq!(param_spec_refcount(pspec), before + 1);
 
@@ -349,9 +350,10 @@ fn ptr_to_value_wraps_fundamental() {
 fn ptr_to_value_null_yields_null() {
     common::run(|| {
         // SAFETY: Null short-circuits before any read.
-        let value =
-            unsafe { fundamental(Ownership::Borrowed).ptr_to_value(std::ptr::null_mut(), "ctx") }
-                .expect("null ptr_to_value should succeed");
+        let value = unsafe {
+            fundamental(Ownership::Borrowed).read(ReadSource::Value(std::ptr::null_mut(), "ctx"))
+        }
+        .expect("null ptr_to_value should succeed");
         assert!(matches!(value, Value::Null));
     });
 }
@@ -365,8 +367,10 @@ fn read_from_raw_ptr_dereferences_slot() {
         // SAFETY: `slot` is a live local pointer-sized slot holding a live
         // GParamSpec pointer.
         let value = unsafe {
-            fundamental(Ownership::Borrowed)
-                .read_from_raw_ptr(&slot as *const *mut c_void as *const c_void, "ctx")
+            fundamental(Ownership::Borrowed).read(ReadSource::Slot(
+                &slot as *const *mut c_void as *const c_void,
+                "ctx",
+            ))
         }
         .expect("read_from_raw_ptr should succeed");
         assert!(matches!(value, Value::Object(_)));

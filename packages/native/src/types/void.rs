@@ -28,28 +28,12 @@ impl FfiEncoder for VoidType {
 }
 
 impl FfiDecoder for VoidType {
-    fn decode(&self, _ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    unsafe fn read(&self, _src: ReadSource<'_>) -> anyhow::Result<value::Value> {
         Ok(value::Value::Undefined)
     }
 }
 
 impl RawPtrCodec for VoidType {
-    unsafe fn ptr_to_value(
-        &self,
-        _ptr: *mut c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        Ok(value::Value::Undefined)
-    }
-
-    unsafe fn read_from_raw_ptr(
-        &self,
-        _ptr: *const c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        Ok(value::Value::Undefined)
-    }
-
     unsafe fn write_return_to_raw_ptr(&self, _ret: *mut c_void, _value: &Result<value::Value, ()>) {
     }
 }

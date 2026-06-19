@@ -14,7 +14,7 @@ use gtk4::prelude::ObjectType as _;
 use native::ffi::{self, FfiStorage, FfiStorageKind};
 use native::types::{
     ArrayKind, ArrayType, BooleanType, FfiDecoder, FloatKind, GObjectType, IntegerKind, Ownership,
-    RawPtrCodec, RefType, StringType, TaggedKind, TaggedType, Type, UnicharType,
+    ReadSource, RefType, StringType, TaggedKind, TaggedType, Type, UnicharType,
 };
 use native::value::Value;
 
@@ -413,7 +413,10 @@ fn read_from_raw_ptr_null_inner_yields_null() {
         let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
         // SAFETY: `inner` is a live local pointer-sized slot holding null.
         let value = unsafe {
-            ref_type.read_from_raw_ptr(&inner as *const *mut c_void as *const c_void, "ctx")
+            ref_type.read(ReadSource::Slot(
+                &inner as *const *mut c_void as *const c_void,
+                "ctx",
+            ))
         }
         .expect("read_from_raw_ptr should succeed");
         assert!(matches!(value, Value::Null));
@@ -431,7 +434,10 @@ fn read_from_raw_ptr_string_inner_reads_value() {
         // SAFETY: `inner_slot` is a live local pointer-sized slot whose
         // target holds a live NUL-terminated string pointer.
         let value = unsafe {
-            ref_type.read_from_raw_ptr(&inner_slot as *const *mut c_void as *const c_void, "ctx")
+            ref_type.read(ReadSource::Slot(
+                &inner_slot as *const *mut c_void as *const c_void,
+                "ctx",
+            ))
         }
         .expect("read_from_raw_ptr should succeed");
         assert!(matches!(value, Value::String(s) if s == "raw-ref"));

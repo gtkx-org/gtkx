@@ -179,40 +179,30 @@ impl FfiEncoder for BigIntKind {
 }
 
 impl FfiDecoder for BigIntKind {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        match ffi_value {
-            ffi::FfiValue::I64(v) => Ok(value::Value::BigInt(i128::from(*v))),
-            ffi::FfiValue::U64(v) => Ok(value::Value::BigInt(i128::from(*v))),
-            other => bail!(
-                "Expected a 64-bit FfiValue for {}, got {other:?}",
-                self.label()
-            ),
+    unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
+        match src {
+            ReadSource::Call(ffi_value) => match ffi_value {
+                ffi::FfiValue::I64(v) => Ok(value::Value::BigInt(i128::from(*v))),
+                ffi::FfiValue::U64(v) => Ok(value::Value::BigInt(i128::from(*v))),
+                other => bail!(
+                    "Expected a 64-bit FfiValue for {}, got {other:?}",
+                    self.label()
+                ),
+            },
+            ReadSource::Value(ptr, _context) => Ok(value::Value::BigInt(match self {
+                Self::I64 => i128::from(ptr as i64),
+                Self::U64 => i128::from(ptr as u64),
+            })),
+            ReadSource::Slot(ptr, _context) => {
+                // SAFETY: The caller guarantees `ptr` is readable at this kind's
+                // 8-byte width.
+                Ok(value::Value::BigInt(unsafe { self.read_i128(ptr.cast()) }))
+            }
         }
     }
 }
 
 impl RawPtrCodec for BigIntKind {
-    unsafe fn ptr_to_value(
-        &self,
-        ptr: *mut c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        Ok(value::Value::BigInt(match self {
-            Self::I64 => i128::from(ptr as i64),
-            Self::U64 => i128::from(ptr as u64),
-        }))
-    }
-
-    unsafe fn read_from_raw_ptr(
-        &self,
-        ptr: *const c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        // SAFETY: The caller guarantees `ptr` is readable at this kind's
-        // 8-byte width.
-        Ok(value::Value::BigInt(unsafe { self.read_i128(ptr.cast()) }))
-    }
-
     unsafe fn write_return_to_raw_ptr(
         &self,
         ret: *mut c_void,
@@ -293,7 +283,7 @@ mod tests {
                 .write_value_to_raw_ptr(slot.as_mut_ptr().cast(), &value::Value::BigInt(big))
                 .expect("write");
             let read = BigIntKind::U64
-                .read_from_raw_ptr(slot.as_ptr().cast(), "test")
+                .read(ReadSource::Slot(slot.as_ptr().cast(), "test"))
                 .expect("read");
             assert!(matches!(read, value::Value::BigInt(v) if v == big));
         }
@@ -302,9 +292,10 @@ mod tests {
     #[test]
     fn ptr_to_value_reinterprets_pointer_bits() {
         let ptr = 0x1234usize as *mut std::ffi::c_void;
-        // SAFETY: ptr_to_value reinterprets the pointer value itself and
+        // SAFETY: a Value read reinterprets the pointer value itself and
         // never dereferences it.
-        let value = unsafe { BigIntKind::U64.ptr_to_value(ptr, "test") }.expect("convert");
+        let value =
+            unsafe { BigIntKind::U64.read(ReadSource::Value(ptr, "test")) }.expect("convert");
         assert!(matches!(value, value::Value::BigInt(v) if v == 0x1234));
     }
 
@@ -337,7 +328,7 @@ mod tests {
                 .write_value_to_raw_ptr(slot.as_mut_ptr().cast(), &value::Value::BigInt(big))
                 .expect("write");
             let read = BigIntKind::I64
-                .read_from_raw_ptr(slot.as_ptr().cast(), "test")
+                .read(ReadSource::Slot(slot.as_ptr().cast(), "test"))
                 .expect("read");
             assert!(matches!(read, value::Value::BigInt(v) if v == big));
         }
@@ -346,9 +337,10 @@ mod tests {
     #[test]
     fn ptr_to_value_i64_reinterprets_pointer_bits() {
         let ptr = usize::MAX as *mut std::ffi::c_void;
-        // SAFETY: ptr_to_value reinterprets the pointer value itself and
+        // SAFETY: a Value read reinterprets the pointer value itself and
         // never dereferences it.
-        let value = unsafe { BigIntKind::I64.ptr_to_value(ptr, "test") }.expect("convert");
+        let value =
+            unsafe { BigIntKind::I64.read(ReadSource::Value(ptr, "test")) }.expect("convert");
         assert!(matches!(value, value::Value::BigInt(v) if v == -1));
     }
 

@@ -146,30 +146,29 @@ impl FfiDecoder for GObjectType {
     /// instance already sunk during construction (e.g. a `GtkApplicationWindow`
     /// parented into its `GtkApplication` before the constructor returns). A
     /// plain transfer-full pointer keeps the caller's reference; a borrowed one
-    /// is referenced. See [`tracked_gobject_value`].
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        let Some(object_ptr) = ffi_value.as_non_null_ptr("GObject")? else {
-            return Ok(value::Value::Null);
-        };
-
-        tracked_gobject_value(
-            object_ptr as *mut glib::gobject_ffi::GObject,
-            self.ownership,
-        )
+    /// is referenced. A `Value`/`Slot` read is always borrowed — the slot or
+    /// container still owns the object. See [`tracked_gobject_value`].
+    unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
+        match src {
+            ReadSource::Call(ffi_value) => {
+                let Some(object_ptr) = ffi_value.as_non_null_ptr("GObject")? else {
+                    return Ok(value::Value::Null);
+                };
+                tracked_gobject_value(
+                    object_ptr as *mut glib::gobject_ffi::GObject,
+                    self.ownership,
+                )
+            }
+            ReadSource::Value(ptr, _context) => self.null_guarded(ptr, |ptr| {
+                tracked_gobject_value(ptr as *mut glib::gobject_ffi::GObject, Ownership::Borrowed)
+            }),
+            // SAFETY: forwarded from this method's safety contract.
+            ReadSource::Slot(ptr, context) => unsafe { self.read_pointer_slot(ptr, context) },
+        }
     }
 }
 
 impl RawPtrCodec for GObjectType {
-    unsafe fn ptr_to_value(
-        &self,
-        ptr: *mut c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        self.null_guarded(ptr, |ptr| {
-            tracked_gobject_value(ptr as *mut glib::gobject_ffi::GObject, Ownership::Borrowed)
-        })
-    }
-
     /// Writes a trampoline return honoring the declared transfer: a full
     /// transfer hands the caller a fresh reference; a transfer-none return
     /// writes the wrapper-held pointer unchanged, since the JS wrapper's

@@ -2,7 +2,7 @@ use std::ffi::c_void;
 
 use libffi::middle;
 use native::ffi;
-use native::types::{BooleanType, FfiDecoder, FfiEncoder, RawPtrCodec};
+use native::types::{BooleanType, FfiDecoder, FfiEncoder, RawPtrCodec, ReadSource};
 use native::value::Value;
 
 extern "C" fn ret_true() -> i32 {
@@ -73,7 +73,10 @@ fn ptr_to_value_treats_nonzero_as_true() {
     // SAFETY: BooleanType reinterprets the pointer value without
     // dereferencing it.
     let truthy = unsafe {
-        RawPtrCodec::ptr_to_value(&BooleanType, &anchor as *const u8 as *mut c_void, "ctx")
+        FfiDecoder::read(
+            &BooleanType,
+            ReadSource::Value(&anchor as *const u8 as *mut c_void, "ctx"),
+        )
     }
     .unwrap();
     assert!(matches!(truthy, Value::Boolean(true)));
@@ -81,7 +84,8 @@ fn ptr_to_value_treats_nonzero_as_true() {
     // SAFETY: BooleanType reinterprets the pointer value without
     // dereferencing it.
     let falsy =
-        unsafe { RawPtrCodec::ptr_to_value(&BooleanType, std::ptr::null_mut(), "ctx") }.unwrap();
+        unsafe { FfiDecoder::read(&BooleanType, ReadSource::Value(std::ptr::null_mut(), "ctx")) }
+            .unwrap();
     assert!(matches!(falsy, Value::Boolean(false)));
 }
 
@@ -90,14 +94,15 @@ fn read_from_raw_ptr_reads_i32_slot() {
     let truthy_slot: i32 = 1;
     let truthy_ptr = &truthy_slot as *const i32 as *const c_void;
     // SAFETY: `truthy_ptr` addresses a live local i32.
-    let read = unsafe { RawPtrCodec::read_from_raw_ptr(&BooleanType, truthy_ptr, "ctx") }.unwrap();
+    let read =
+        unsafe { FfiDecoder::read(&BooleanType, ReadSource::Slot(truthy_ptr, "ctx")) }.unwrap();
     assert!(matches!(read, Value::Boolean(true)));
 
     let falsy_slot: i32 = 0;
     let falsy_ptr = &falsy_slot as *const i32 as *const c_void;
     // SAFETY: `falsy_ptr` addresses a live local i32.
     let read_zero =
-        unsafe { RawPtrCodec::read_from_raw_ptr(&BooleanType, falsy_ptr, "ctx") }.unwrap();
+        unsafe { FfiDecoder::read(&BooleanType, ReadSource::Slot(falsy_ptr, "ctx")) }.unwrap();
     assert!(matches!(read_zero, Value::Boolean(false)));
 }
 

@@ -65,39 +65,40 @@ impl FfiEncoder for StringType {
 }
 
 impl FfiDecoder for StringType {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        let Some(str_ptr) = ffi_value.as_non_null_ptr("string")? else {
-            return Ok(value::Value::Null);
-        };
+    unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
+        match src {
+            ReadSource::Call(ffi_value) => {
+                let Some(str_ptr) = ffi_value.as_non_null_ptr("string")? else {
+                    return Ok(value::Value::Null);
+                };
 
-        // SAFETY: A non-null string return from the native call is a live
-        // NUL-terminated C string.
-        let string = unsafe { glib::GStr::from_ptr_lossy(str_ptr as *const c_char) }.to_string();
+                // SAFETY: A non-null string return from the native call is a
+                // live NUL-terminated C string.
+                let string =
+                    unsafe { glib::GStr::from_ptr_lossy(str_ptr as *const c_char) }.to_string();
 
-        if self.ownership.is_full() {
-            // SAFETY: A transfer-full return hands this decode the one
-            // owned allocation, released here exactly once after copying.
-            unsafe { glib::ffi::g_free(str_ptr) };
+                if self.ownership.is_full() {
+                    // SAFETY: A transfer-full return hands this decode the one
+                    // owned allocation, released here exactly once after copying.
+                    unsafe { glib::ffi::g_free(str_ptr) };
+                }
+
+                Ok(value::Value::String(string))
+            }
+            ReadSource::Value(ptr, _context) => self.null_guarded(ptr, |ptr| {
+                // SAFETY: The caller guarantees the non-null `ptr` addresses a
+                // live NUL-terminated C string.
+                let string =
+                    unsafe { glib::GStr::from_ptr_lossy(ptr as *const c_char) }.to_string();
+                Ok(value::Value::String(string))
+            }),
+            // SAFETY: forwarded from this method's safety contract.
+            ReadSource::Slot(ptr, context) => unsafe { self.read_pointer_slot(ptr, context) },
         }
-
-        Ok(value::Value::String(string))
     }
 }
 
 impl RawPtrCodec for StringType {
-    unsafe fn ptr_to_value(
-        &self,
-        ptr: *mut c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        self.null_guarded(ptr, |ptr| {
-            // SAFETY: The caller guarantees the non-null `ptr` addresses a
-            // live NUL-terminated C string.
-            let string = unsafe { glib::GStr::from_ptr_lossy(ptr as *const c_char) }.to_string();
-            Ok(value::Value::String(string))
-        })
-    }
-
     unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let ptr = match value {
             Ok(value::Value::String(s)) => {

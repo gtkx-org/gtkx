@@ -8,7 +8,7 @@ mod common;
 
 use std::ffi::c_void;
 
-use native::types::{Ownership, RawPtrCodec, StructType};
+use native::types::{FfiDecoder, Ownership, RawPtrCodec, ReadSource, StructType};
 use native::value::Value;
 use native::{NativeHandle, value};
 
@@ -23,8 +23,13 @@ fn struct_type() -> StructType {
 #[test]
 fn null_guarded_short_circuits_null_pointer() {
     // SAFETY: Null short-circuits before any read.
-    let decoded =
-        unsafe { RawPtrCodec::ptr_to_value(&struct_type(), std::ptr::null_mut(), "ctx") }.unwrap();
+    let decoded = unsafe {
+        FfiDecoder::read(
+            &struct_type(),
+            ReadSource::Value(std::ptr::null_mut(), "ctx"),
+        )
+    }
+    .unwrap();
     assert!(matches!(decoded, Value::Null));
 }
 
@@ -33,7 +38,8 @@ fn null_guarded_runs_decode_for_non_null_pointer() {
     let source: u64 = 0xDEAD_BEEF;
     let ptr = &source as *const u64 as *mut c_void;
     // SAFETY: `ptr` addresses a live local u64.
-    let decoded = unsafe { RawPtrCodec::ptr_to_value(&struct_type(), ptr, "ctx") }.unwrap();
+    let decoded =
+        unsafe { FfiDecoder::read(&struct_type(), ReadSource::Value(ptr, "ctx")) }.unwrap();
     assert!(matches!(decoded, Value::Object(_)));
 }
 

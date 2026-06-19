@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use libffi::middle;
 use native::ffi;
-use native::types::{FfiDecoder, FfiEncoder, RawPtrCodec, VoidType};
+use native::types::{FfiDecoder, FfiEncoder, RawPtrCodec, ReadSource, VoidType};
 use native::value::Value;
 
 static CALLED: AtomicBool = AtomicBool::new(false);
@@ -57,12 +57,13 @@ fn decode_yields_undefined() {
 fn ptr_to_value_yields_undefined() {
     // SAFETY: VoidType never touches the pointer.
     let from_null =
-        unsafe { RawPtrCodec::ptr_to_value(&VoidType, std::ptr::null_mut(), "ctx") }.unwrap();
+        unsafe { FfiDecoder::read(&VoidType, ReadSource::Value(std::ptr::null_mut(), "ctx")) }
+            .unwrap();
     assert!(matches!(from_null, Value::Undefined));
 
     // SAFETY: VoidType never touches the pointer.
     let from_ptr =
-        unsafe { RawPtrCodec::ptr_to_value(&VoidType, 8 as *mut c_void, "ctx") }.unwrap();
+        unsafe { FfiDecoder::read(&VoidType, ReadSource::Value(8 as *mut c_void, "ctx")) }.unwrap();
     assert!(matches!(from_ptr, Value::Undefined));
 }
 
@@ -71,7 +72,7 @@ fn read_from_raw_ptr_yields_undefined() {
     let mut slot: usize = 42;
     let ptr = &mut slot as *mut usize as *const c_void;
     // SAFETY: `ptr` addresses a live local; VoidType never reads it.
-    let read = unsafe { RawPtrCodec::read_from_raw_ptr(&VoidType, ptr, "ctx") }.unwrap();
+    let read = unsafe { FfiDecoder::read(&VoidType, ReadSource::Slot(ptr, "ctx")) }.unwrap();
     assert!(matches!(read, Value::Undefined));
 }
 

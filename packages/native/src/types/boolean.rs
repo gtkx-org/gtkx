@@ -32,35 +32,27 @@ impl FfiEncoder for BooleanType {
 }
 
 impl FfiDecoder for BooleanType {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        let b = match ffi_value {
-            ffi::FfiValue::I32(v) => *v != 0,
-            _ => anyhow::bail!("Expected a boolean ffi::FfiValue, got {ffi_value:?}"),
-        };
-        Ok(value::Value::Boolean(b))
+    unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
+        match src {
+            ReadSource::Call(ffi_value) => {
+                let b = match ffi_value {
+                    ffi::FfiValue::I32(v) => *v != 0,
+                    _ => anyhow::bail!("Expected a boolean ffi::FfiValue, got {ffi_value:?}"),
+                };
+                Ok(value::Value::Boolean(b))
+            }
+            ReadSource::Value(ptr, _context) => Ok(value::Value::Boolean(ptr as isize != 0)),
+            ReadSource::Slot(ptr, _context) => {
+                // SAFETY: The caller guarantees `ptr` is a readable `gboolean`
+                // (i32) slot.
+                let val = unsafe { *(ptr as *const i32) };
+                Ok(value::Value::Boolean(val != 0))
+            }
+        }
     }
 }
 
 impl RawPtrCodec for BooleanType {
-    unsafe fn ptr_to_value(
-        &self,
-        ptr: *mut c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        Ok(value::Value::Boolean(ptr as isize != 0))
-    }
-
-    unsafe fn read_from_raw_ptr(
-        &self,
-        ptr: *const c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        // SAFETY: The caller guarantees `ptr` is a readable `gboolean`
-        // (i32) slot.
-        let val = unsafe { *(ptr as *const i32) };
-        Ok(value::Value::Boolean(val != 0))
-    }
-
     /// Writes a `gboolean` trampoline return widened to `ffi_sarg`, per
     /// libffi's closure contract for integral results narrower than a
     /// register.

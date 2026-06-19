@@ -159,9 +159,29 @@ fn ref_storage_or_null<'a>(
 }
 
 impl FfiDecoder for RefType {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        let Some(storage) = ref_storage_or_null(ffi_value, "Ref")? else {
-            return Ok(value::Value::Null);
+    unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
+        let storage = match src {
+            ReadSource::Call(ffi_value) => {
+                let Some(storage) = ref_storage_or_null(ffi_value, "Ref")? else {
+                    return Ok(value::Value::Null);
+                };
+                storage
+            }
+            ReadSource::Slot(ptr, _context) => {
+                // SAFETY: The caller guarantees `ptr` is a readable pointer-sized
+                // slot.
+                let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
+                if inner_ptr.is_null() {
+                    return Ok(value::Value::Null);
+                }
+                // SAFETY: The non-null dereferenced pointer is the ref's target
+                // slot, valid for the inner codec's read per the caller's contract.
+                return unsafe {
+                    self.inner_type
+                        .read(ReadSource::Slot(inner_ptr, "ref inner"))
+                };
+            }
+            ReadSource::Value(..) => bail!("This type cannot be read from pointer"),
         };
 
         match &*self.inner_type {
@@ -192,12 +212,12 @@ impl FfiDecoder for RefType {
             // SAFETY: The storage is the live, aligned scalar out slot this
             // encode allocated.
             Type::Boolean(boolean) => unsafe {
-                boolean.read_from_raw_ptr(storage.ptr(), "Ref<Boolean>")
+                boolean.read(ReadSource::Slot(storage.ptr(), "Ref<Boolean>"))
             },
             // SAFETY: The storage is the live, aligned scalar out slot this
             // encode allocated.
             Type::Unichar(unichar) => unsafe {
-                unichar.read_from_raw_ptr(storage.ptr(), "Ref<Unichar>")
+                unichar.read(ReadSource::Slot(storage.ptr(), "Ref<Unichar>"))
             },
             Type::String(string_type) => Ok(Self::decode_ref_string(storage, string_type)),
             Type::Array(_) => {
@@ -220,23 +240,7 @@ impl FfiDecoder for RefType {
     }
 }
 
-impl RawPtrCodec for RefType {
-    unsafe fn read_from_raw_ptr(
-        &self,
-        ptr: *const c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        // SAFETY: The caller guarantees `ptr` is a readable pointer-sized
-        // slot.
-        let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
-        if inner_ptr.is_null() {
-            return Ok(value::Value::Null);
-        }
-        // SAFETY: The non-null dereferenced pointer is the ref's target
-        // slot, valid for the inner codec's read per the caller's contract.
-        unsafe { self.inner_type.read_from_raw_ptr(inner_ptr, "ref inner") }
-    }
-}
+impl RawPtrCodec for RefType {}
 
 impl RefType {
     pub fn decode_with_context(

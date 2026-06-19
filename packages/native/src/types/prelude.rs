@@ -7,7 +7,9 @@
 pub(super) use std::ffi::c_void;
 
 pub(super) use super::raw_ptr::{full_transfer_storage, write_object_ptr, write_return_object_ptr};
-pub(super) use super::{FfiDecoder, FfiEncoder, FromDescriptor, Ownership, RawPtrCodec};
+pub(super) use super::{
+    FfiDecoder, FfiEncoder, FromDescriptor, Ownership, RawPtrCodec, ReadSource,
+};
 pub(super) use crate::{ffi, value};
 
 /// Stamps out an [`FfiEncoder::call_cif`] override that bails with

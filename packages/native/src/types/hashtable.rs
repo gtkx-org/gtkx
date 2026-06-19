@@ -346,7 +346,21 @@ impl FfiEncoder for HashTableType {
 }
 
 impl FfiDecoder for HashTableType {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
+        let ffi_value = match src {
+            ReadSource::Call(ffi_value) => ffi_value,
+            ReadSource::Value(ptr, _context) => {
+                if ptr.is_null() {
+                    return Ok(value::Value::Array(vec![]));
+                }
+                return self.decode(&ffi::FfiValue::Ptr(ptr));
+            }
+            ReadSource::Slot(ptr, context) => {
+                // SAFETY: forwarded from this method's safety contract.
+                return unsafe { self.read_pointer_slot(ptr, context) };
+            }
+        };
+
         let Some(hash_ptr) = ffi_value.as_non_null_ptr("GHashTable")? else {
             return Ok(value::Value::Array(vec![]));
         };
@@ -372,10 +386,12 @@ impl FfiDecoder for HashTableType {
                     &mut value_ptr as *mut _,
                 ) != 0
                 {
-                    let key_value = self.key_type.ptr_to_value(key_ptr, "hash table key")?;
+                    let key_value = self
+                        .key_type
+                        .read(ReadSource::Value(key_ptr, "hash table key"))?;
                     let val_value = self
                         .value_type
-                        .ptr_to_value(value_ptr, "hash table value")?;
+                        .read(ReadSource::Value(value_ptr, "hash table value"))?;
                     pairs.push(value::Value::Array(vec![key_value, val_value]));
                 }
             }
@@ -418,17 +434,6 @@ impl HashTableType {
 }
 
 impl RawPtrCodec for HashTableType {
-    unsafe fn ptr_to_value(
-        &self,
-        ptr: *mut c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        if ptr.is_null() {
-            return Ok(value::Value::Array(vec![]));
-        }
-        self.decode(&ffi::FfiValue::Ptr(ptr))
-    }
-
     /// Writes a vfunc's hashtable return, building the `GHashTable` the caller
     /// adopts. A transfer-none (borrowed) hashtable return is intercepted
     /// earlier by the trampoline, which retains the table instead.

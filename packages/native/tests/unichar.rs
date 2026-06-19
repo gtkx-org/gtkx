@@ -4,7 +4,7 @@ use std::ffi::c_void;
 
 use libffi::middle;
 use native::ffi;
-use native::types::{FfiDecoder, FfiEncoder, RawPtrCodec, UnicharType};
+use native::types::{FfiDecoder, FfiEncoder, RawPtrCodec, ReadSource, UnicharType};
 use native::value::Value;
 
 extern "C" fn ret_codepoint() -> u32 {
@@ -74,16 +74,24 @@ fn decode_reads_codepoint_and_rejects_invalid() {
 fn ptr_to_value_decodes_codepoint_and_replaces_invalid() {
     // SAFETY: UnicharType reinterprets the pointer value without
     // dereferencing it.
-    let valid =
-        unsafe { RawPtrCodec::ptr_to_value(&UnicharType, 'X' as usize as *mut c_void, "ctx") }
-            .unwrap();
+    let valid = unsafe {
+        FfiDecoder::read(
+            &UnicharType,
+            ReadSource::Value('X' as usize as *mut c_void, "ctx"),
+        )
+    }
+    .unwrap();
     assert!(matches!(valid, Value::String(ref s) if s == "X"));
 
     // SAFETY: UnicharType reinterprets the pointer value without
     // dereferencing it.
-    let invalid =
-        unsafe { RawPtrCodec::ptr_to_value(&UnicharType, 0x0011_0000 as *mut c_void, "ctx") }
-            .unwrap();
+    let invalid = unsafe {
+        FfiDecoder::read(
+            &UnicharType,
+            ReadSource::Value(0x0011_0000 as *mut c_void, "ctx"),
+        )
+    }
+    .unwrap();
     assert!(matches!(invalid, Value::String(ref s) if s == "\u{FFFD}"));
 }
 
@@ -92,14 +100,15 @@ fn read_from_raw_ptr_decodes_codepoint_and_replaces_invalid() {
     let valid_slot: u32 = 'M' as u32;
     let valid_ptr = &valid_slot as *const u32 as *const c_void;
     // SAFETY: `valid_ptr` addresses a live local u32.
-    let read = unsafe { RawPtrCodec::read_from_raw_ptr(&UnicharType, valid_ptr, "ctx") }.unwrap();
+    let read =
+        unsafe { FfiDecoder::read(&UnicharType, ReadSource::Slot(valid_ptr, "ctx")) }.unwrap();
     assert!(matches!(read, Value::String(ref s) if s == "M"));
 
     let invalid_slot: u32 = 0x0011_0000;
     let invalid_ptr = &invalid_slot as *const u32 as *const c_void;
     // SAFETY: `invalid_ptr` addresses a live local u32.
     let read_invalid =
-        unsafe { RawPtrCodec::read_from_raw_ptr(&UnicharType, invalid_ptr, "ctx") }.unwrap();
+        unsafe { FfiDecoder::read(&UnicharType, ReadSource::Slot(invalid_ptr, "ctx")) }.unwrap();
     assert!(matches!(read_invalid, Value::String(ref s) if s == "\u{FFFD}"));
 }
 

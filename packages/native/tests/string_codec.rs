@@ -7,7 +7,7 @@ use std::ffi::{CStr, CString, c_char, c_void};
 use gtk4::glib;
 
 use native::ffi;
-use native::types::{FfiDecoder, FfiEncoder, Ownership, RawPtrCodec, StringType};
+use native::types::{FfiDecoder, FfiEncoder, Ownership, RawPtrCodec, ReadSource, StringType};
 use native::value::Value;
 
 fn borrowed() -> StringType {
@@ -122,8 +122,9 @@ fn ptr_to_value_reads_string() {
     common::run(|| {
         let cstring = CString::new("ptr-value").unwrap();
         // SAFETY: `cstring` is a live NUL-terminated local string.
-        let value = unsafe { borrowed().ptr_to_value(cstring.as_ptr() as *mut c_void, "ctx") }
-            .expect("ptr_to_value should succeed");
+        let value =
+            unsafe { borrowed().read(ReadSource::Value(cstring.as_ptr() as *mut c_void, "ctx")) }
+                .expect("ptr_to_value should succeed");
         assert!(matches!(value, Value::String(s) if s == "ptr-value"));
     });
 }
@@ -132,7 +133,7 @@ fn ptr_to_value_reads_string() {
 fn ptr_to_value_null_yields_null() {
     common::run(|| {
         // SAFETY: Null short-circuits before any read.
-        let value = unsafe { borrowed().ptr_to_value(std::ptr::null_mut(), "ctx") }
+        let value = unsafe { borrowed().read(ReadSource::Value(std::ptr::null_mut(), "ctx")) }
             .expect("null ptr_to_value should succeed");
         assert!(matches!(value, Value::Null));
     });
@@ -146,7 +147,10 @@ fn read_from_raw_ptr_dereferences_pointer_slot() {
         // SAFETY: `slot` is a live local pointer-sized slot holding a live
         // NUL-terminated string.
         let value = unsafe {
-            borrowed().read_from_raw_ptr(&slot as *const *mut c_void as *const c_void, "ctx")
+            borrowed().read(ReadSource::Slot(
+                &slot as *const *mut c_void as *const c_void,
+                "ctx",
+            ))
         }
         .expect("read_from_raw_ptr should succeed");
         assert!(matches!(value, Value::String(s) if s == "slot"));

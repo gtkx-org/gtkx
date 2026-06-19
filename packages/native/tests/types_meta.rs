@@ -9,7 +9,7 @@ use std::ffi::c_void;
 use libffi::middle;
 use native::types::{
     BlobType, BooleanType, FfiDecoder, FfiEncoder, GObjectType, IntegerKind, Ownership,
-    RawPtrCodec, RefType, StructType, TrampolineType, Type, VoidType,
+    RawPtrCodec, ReadSource, RefType, StructType, TrampolineType, Type, VoidType,
 };
 use native::value::Value;
 use native::{ffi, value};
@@ -138,7 +138,13 @@ fn ffi_decoder_decode_with_context_default_delegates_to_decode() {
 fn raw_ptr_codec_ptr_to_value_default_bails() {
     assert!(
         // SAFETY: The default implementation bails before any read.
-        unsafe { RawPtrCodec::ptr_to_value(&trampoline_type(), 8 as *mut c_void, "ctx") }.is_err()
+        unsafe {
+            FfiDecoder::read(
+                &trampoline_type(),
+                ReadSource::Value(8 as *mut c_void, "ctx"),
+            )
+        }
+        .is_err()
     );
 }
 
@@ -147,7 +153,7 @@ fn raw_ptr_codec_read_from_raw_ptr_default_dereferences_then_bails() {
     let mut inner: *mut c_void = 8 as *mut c_void;
     let ptr = &mut inner as *mut *mut c_void as *const c_void;
     // SAFETY: `ptr` addresses a live local pointer-sized slot.
-    assert!(unsafe { RawPtrCodec::read_from_raw_ptr(&trampoline_type(), ptr, "ctx") }.is_err());
+    assert!(unsafe { FfiDecoder::read(&trampoline_type(), ReadSource::Slot(ptr, "ctx")) }.is_err());
 }
 
 #[test]

@@ -11,7 +11,7 @@ use napi_derive::napi;
 
 use super::handler::ModuleRequest;
 use crate::managed::NativeHandle;
-use crate::types::{RawPtrCodec as _, Type};
+use crate::types::{FfiDecoder as _, RawPtrCodec as _, ReadSource, Type};
 use crate::value::Value;
 
 /// The address of a field inside a boxed/structured native value: the base
@@ -55,7 +55,10 @@ impl ModuleRequest for ReadRequest {
         let field_ptr = unsafe { self.location.resolve()? }.cast_const();
         // SAFETY: The resolved field address is valid for the declared
         // field type's read.
-        unsafe { self.field_type.read_from_raw_ptr(field_ptr, "field read") }
+        unsafe {
+            self.field_type
+                .read(ReadSource::Slot(field_ptr, "field read"))
+        }
     }
 
     fn error_context() -> &'static str {

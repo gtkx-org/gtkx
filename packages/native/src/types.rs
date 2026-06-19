@@ -227,13 +227,57 @@ pub trait FfiEncoder {
     }
 }
 
+/// One of the three sources [`FfiDecoder::read`] decodes a value from.
+///
+/// The variant a caller picks carries the transfer semantics: `Call` honors the
+/// codec's declared ownership (a transfer-aware call return), while `Slot` and
+/// `Value` are borrowed reads of memory the caller still owns.
+#[derive(Debug)]
+pub enum ReadSource<'a> {
+    /// A typed value returned across the call boundary; transfer-mode aware.
+    Call(&'a ffi::FfiValue),
+    /// A pointer to the slot holding the value: dereferenced once for
+    /// pointer-typed codecs, read at its width for scalar codecs.
+    Slot(*const c_void, &'a str),
+    /// The value pointer itself, already dereferenced — a borrowed read.
+    Value(*mut c_void, &'a str),
+}
+
 #[enum_dispatch]
 pub trait FfiDecoder {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        let _ = ffi_value;
-        bail!("This type cannot be decoded from FfiValue")
+    /// Reads a value from one of the three [`ReadSource`]s.
+    ///
+    /// `Call` decodes a call return honoring this codec's transfer mode; `Slot`
+    /// reads through a pointer-to-slot; `Value` decodes an already-dereferenced
+    /// pointer as a borrowed value. A pointer-typed codec implements the `Call`
+    /// and `Value` arms and inherits `Slot` through [`Self::read_pointer_slot`];
+    /// a scalar codec implements all three. The default implementation derefs a
+    /// `Slot` and otherwise reports the type as unreadable.
+    ///
+    /// # Safety
+    ///
+    /// For `Slot`/`Value`, the pointer must be null or valid for this codec's
+    /// read at its representation size. `Call` never dereferences a pointer.
+    unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
+        match src {
+            // SAFETY: forwarded from this method's safety contract.
+            ReadSource::Slot(ptr, context) => unsafe { self.read_pointer_slot(ptr, context) },
+            ReadSource::Call(_) => bail!("This type cannot be decoded from FfiValue"),
+            ReadSource::Value(..) => bail!("This type cannot be read from pointer"),
+        }
     }
 
+    /// Decodes a call-return [`ffi::FfiValue`] honoring this codec's transfer
+    /// mode — the safe `Call` entry into [`Self::read`], which never
+    /// dereferences a pointer.
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        // SAFETY: a `Call` source carries an `FfiValue` and is never dereferenced.
+        unsafe { self.read(ReadSource::Call(ffi_value)) }
+    }
+
+    /// Decodes a call return that needs its sibling arguments — a C array whose
+    /// length lives in another parameter. Defaults to the context-free
+    /// [`Self::decode`].
     fn decode_with_context(
         &self,
         ffi_value: &ffi::FfiValue,
@@ -242,32 +286,45 @@ pub trait FfiDecoder {
     ) -> anyhow::Result<value::Value> {
         self.decode(ffi_value)
     }
-}
 
-#[enum_dispatch]
-pub trait RawPtrCodec {
-    /// Reads a value from a `*const T**` (a pointer-to-pointer location), by
-    /// dereferencing once and delegating to [`Self::ptr_to_value`]. Pointer-typed
-    /// codecs (string/gobject/boxed/struct/fundamental) inherit this default;
-    /// scalar codecs override with a direct read.
+    /// Dereferences a pointer-to-slot once and reads the inner pointer as a
+    /// [`ReadSource::Value`] — the shared `Slot` behavior of pointer-typed
+    /// codecs (string/gobject/boxed/struct/fundamental).
     ///
     /// # Safety
     ///
-    /// `ptr` must be valid for a read of this codec's slot representation (a
-    /// pointer-sized slot for the default implementation).
-    unsafe fn read_from_raw_ptr(
+    /// `ptr` must be a readable pointer-sized slot.
+    unsafe fn read_pointer_slot(
         &self,
         ptr: *const c_void,
         context: &str,
     ) -> anyhow::Result<value::Value> {
-        // SAFETY: The caller guarantees `ptr` is a readable pointer-sized
-        // slot.
+        // SAFETY: the caller guarantees `ptr` is a readable pointer-sized slot.
         let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
-        // SAFETY: The dereferenced pointer is the value the slot carries for
-        // this codec, satisfying `ptr_to_value`'s validity requirement.
-        unsafe { self.ptr_to_value(inner_ptr, context) }
+        // SAFETY: the dereferenced pointer is the value the slot carries for
+        // this codec, satisfying the `Value` read's validity requirement.
+        unsafe { self.read(ReadSource::Value(inner_ptr, context)) }
     }
 
+    /// Decodes `ptr` to a [`value::Value`], short-circuiting a null pointer to
+    /// [`value::Value::Null`].
+    ///
+    /// `decode` runs only for a non-null pointer and receives it unchanged.
+    /// This is the shared prologue of the pointer-typed `Value` reads.
+    #[allow(clippy::unused_self)]
+    fn null_guarded<F>(&self, ptr: *mut c_void, decode: F) -> anyhow::Result<value::Value>
+    where
+        F: FnOnce(*mut c_void) -> anyhow::Result<value::Value>,
+    {
+        if ptr.is_null() {
+            return Ok(value::Value::Null);
+        }
+        decode(ptr)
+    }
+}
+
+#[enum_dispatch]
+pub trait RawPtrCodec {
     /// Writes a trampoline return value into the libffi closure return slot.
     ///
     /// # Safety
@@ -285,18 +342,6 @@ pub trait RawPtrCodec {
         unsafe { *(ret as *mut *mut c_void) = std::ptr::null_mut() };
     }
 
-    /// Decodes the value `ptr` represents — a dereference for pointer-typed
-    /// codecs, a reinterpretation of the pointer value itself for scalars.
-    ///
-    /// # Safety
-    ///
-    /// `ptr` must be null or valid for this codec's read at its
-    /// representation size.
-    unsafe fn ptr_to_value(&self, ptr: *mut c_void, context: &str) -> anyhow::Result<value::Value> {
-        let _ = (ptr, context);
-        bail!("This type cannot be read from pointer")
-    }
-
     /// Writes `value` into the slot at `ptr` using this codec's
     /// representation.
     ///
@@ -311,23 +356,6 @@ pub trait RawPtrCodec {
     ) -> anyhow::Result<()> {
         let _ = (ptr, value);
         bail!("This type cannot be written to a raw pointer")
-    }
-
-    /// Decodes `ptr` to a [`value::Value`], short-circuiting a null pointer to
-    /// [`value::Value::Null`].
-    ///
-    /// `decode` runs only for a non-null pointer and receives it unchanged.
-    /// This is the shared prologue of the pointer-typed [`Self::ptr_to_value`]
-    /// implementations.
-    #[allow(clippy::unused_self)]
-    fn null_guarded<F>(&self, ptr: *mut c_void, decode: F) -> anyhow::Result<value::Value>
-    where
-        F: FnOnce(*mut c_void) -> anyhow::Result<value::Value>,
-    {
-        if ptr.is_null() {
-            return Ok(value::Value::Null);
-        }
-        decode(ptr)
     }
 
     /// Writes a return pointer honoring the declared transfer mode: a borrowed

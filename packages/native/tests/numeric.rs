@@ -3,7 +3,9 @@ mod common;
 use std::ffi::c_void;
 
 use libffi::middle;
-use native::types::{FfiDecoder, FfiEncoder, FloatKind, IntegerKind, RawPtrCodec, Type};
+use native::types::{
+    FfiDecoder, FfiEncoder, FloatKind, IntegerKind, RawPtrCodec, ReadSource, Type,
+};
 use native::value::Value;
 use native::{ffi, value};
 
@@ -234,14 +236,16 @@ fn integer_raw_ptr_codec_round_trips() {
         unsafe { RawPtrCodec::write_return_to_raw_ptr(&kind, ret, &Ok(Value::Number(5.0))) };
         // SAFETY: `ret` addresses a live local 8-byte slot.
         let read =
-            unsafe { RawPtrCodec::read_from_raw_ptr(&kind, ret as *const c_void, "ctx") }.unwrap();
+            unsafe { FfiDecoder::read(&kind, ReadSource::Slot(ret as *const c_void, "ctx")) }
+                .unwrap();
         assert!(matches!(read, Value::Number(n) if n == 5.0));
 
         // SAFETY: `ret` addresses a writable local 8-byte slot.
         unsafe { RawPtrCodec::write_return_to_raw_ptr(&kind, ret, &Err(())) };
         // SAFETY: `ret` addresses a live local 8-byte slot.
         let zero =
-            unsafe { RawPtrCodec::read_from_raw_ptr(&kind, ret as *const c_void, "ctx") }.unwrap();
+            unsafe { FfiDecoder::read(&kind, ReadSource::Slot(ret as *const c_void, "ctx")) }
+                .unwrap();
         assert!(matches!(zero, Value::Number(n) if n == 0.0));
 
         let mut field: i64 = 0;
@@ -252,7 +256,8 @@ fn integer_raw_ptr_codec_round_trips() {
         // SAFETY: Integer kinds reinterpret the pointer value without
         // dereferencing it.
         let from_field =
-            unsafe { RawPtrCodec::ptr_to_value(&kind, 12 as *mut c_void, "ctx") }.unwrap();
+            unsafe { FfiDecoder::read(&kind, ReadSource::Value(12 as *mut c_void, "ctx")) }
+                .unwrap();
         assert!(matches!(from_field, Value::Number(n) if n == 12.0));
         assert!(
             // SAFETY: `field_ptr` addresses a writable local 8-byte slot.
@@ -412,14 +417,17 @@ fn float_codec_encode_decode_and_raw_ptr() {
         unsafe { RawPtrCodec::write_return_to_raw_ptr(&kind, ret, &Ok(Value::Number(1.0))) };
         assert!(
             // SAFETY: `ret` addresses a live local 8-byte slot.
-            unsafe { RawPtrCodec::read_from_raw_ptr(&kind, ret as *const c_void, "c") }.is_ok()
+            unsafe { FfiDecoder::read(&kind, ReadSource::Slot(ret as *const c_void, "c")) }.is_ok()
         );
         // SAFETY: `ret` addresses a writable local 8-byte slot.
         unsafe { RawPtrCodec::write_return_to_raw_ptr(&kind, ret, &Err(())) };
         // SAFETY: `ret` addresses a writable local 8-byte slot.
         unsafe { RawPtrCodec::write_value_to_raw_ptr(&kind, ret, &Value::Number(3.0)) }.unwrap();
-        // SAFETY: Null short-circuits before any read.
-        assert!(unsafe { RawPtrCodec::ptr_to_value(&kind, std::ptr::null_mut(), "c") }.is_ok());
+        assert!(
+            // SAFETY: Null short-circuits before any read.
+            unsafe { FfiDecoder::read(&kind, ReadSource::Value(std::ptr::null_mut(), "c")) }
+                .is_ok()
+        );
         // SAFETY: `ret` addresses a writable local 8-byte slot.
         assert!(unsafe { RawPtrCodec::write_value_to_raw_ptr(&kind, ret, &Value::Null) }.is_err());
     }
@@ -483,14 +491,15 @@ fn tagged_raw_ptr_codec() {
         unsafe { RawPtrCodec::write_value_to_raw_ptr(&tagged, ptr, &Value::Number(2.0)) }.unwrap();
         // SAFETY: `ptr` addresses a live local 8-byte slot.
         let read =
-            unsafe { RawPtrCodec::read_from_raw_ptr(&tagged, ptr as *const c_void, "c") }.unwrap();
+            unsafe { FfiDecoder::read(&tagged, ReadSource::Slot(ptr as *const c_void, "c")) }
+                .unwrap();
         assert!(matches!(read, Value::Number(n) if n == 2.0));
         // SAFETY: `ptr` addresses a writable local 8-byte slot.
         unsafe { RawPtrCodec::write_return_to_raw_ptr(&tagged, ptr, &Ok(Value::Number(4.0))) };
         // SAFETY: Tagged storage reinterprets the pointer value without
         // dereferencing it.
         let from_ptr =
-            unsafe { RawPtrCodec::ptr_to_value(&tagged, 3 as *mut c_void, "c") }.unwrap();
+            unsafe { FfiDecoder::read(&tagged, ReadSource::Value(3 as *mut c_void, "c")) }.unwrap();
         assert!(matches!(from_ptr, Value::Number(n) if n == 3.0));
     });
 }
@@ -544,13 +553,18 @@ fn integer_codec_covers_every_kind() {
             unsafe { RawPtrCodec::write_value_to_raw_ptr(&kind, ptr, &Value::Number(2.0)) }
                 .unwrap();
             // SAFETY: `slot` is a live local 8-byte buffer.
-            unsafe { RawPtrCodec::read_from_raw_ptr(&kind, ptr.cast_const(), "c") }.unwrap();
+            unsafe { FfiDecoder::read(&kind, ReadSource::Slot(ptr.cast_const(), "c")) }.unwrap();
             // SAFETY: `slot` is a writable local 8-byte buffer.
             unsafe { RawPtrCodec::write_return_to_raw_ptr(&kind, ptr, &Ok(Value::Number(1.0))) };
             // SAFETY: Integer kinds reinterpret the pointer value without
             // dereferencing it.
-            unsafe { RawPtrCodec::ptr_to_value(&kind, std::ptr::dangling_mut::<c_void>(), "c") }
-                .unwrap();
+            unsafe {
+                FfiDecoder::read(
+                    &kind,
+                    ReadSource::Value(std::ptr::dangling_mut::<c_void>(), "c"),
+                )
+            }
+            .unwrap();
         }
     });
 }
@@ -581,11 +595,12 @@ fn float_codec_covers_every_kind() {
             unsafe { RawPtrCodec::write_value_to_raw_ptr(&kind, ptr, &Value::Number(2.0)) }
                 .unwrap();
             // SAFETY: `slot` is a live local 8-byte buffer.
-            unsafe { RawPtrCodec::read_from_raw_ptr(&kind, ptr.cast_const(), "c") }.unwrap();
+            unsafe { FfiDecoder::read(&kind, ReadSource::Slot(ptr.cast_const(), "c")) }.unwrap();
             // SAFETY: `slot` is a writable local 8-byte buffer.
             unsafe { RawPtrCodec::write_return_to_raw_ptr(&kind, ptr, &Ok(Value::Number(1.0))) };
             // SAFETY: Null short-circuits before any read.
-            unsafe { RawPtrCodec::ptr_to_value(&kind, std::ptr::null_mut(), "c") }.unwrap();
+            unsafe { FfiDecoder::read(&kind, ReadSource::Value(std::ptr::null_mut(), "c")) }
+                .unwrap();
         }
     });
 }
@@ -595,7 +610,7 @@ fn u64_read_beyond_2_53_errors_instead_of_rounding() {
     let stored: u64 = 9_007_199_254_740_993;
     let ptr = std::ptr::from_ref(&stored).cast::<c_void>();
     // SAFETY: `ptr` addresses a live local u64.
-    let err = unsafe { RawPtrCodec::read_from_raw_ptr(&IntegerKind::U64, ptr, "test read") }
+    let err = unsafe { FfiDecoder::read(&IntegerKind::U64, ReadSource::Slot(ptr, "test read")) }
         .expect_err("a u64 beyond 2^53 must not round silently");
     assert!(err.to_string().contains("2^53"));
     assert!(err.to_string().contains("test read"));
@@ -606,7 +621,7 @@ fn i64_read_beyond_negative_2_53_errors_instead_of_rounding() {
     let stored: i64 = -9_007_199_254_740_993;
     let ptr = std::ptr::from_ref(&stored).cast::<c_void>();
     // SAFETY: `ptr` addresses a live local i64.
-    let err = unsafe { RawPtrCodec::read_from_raw_ptr(&IntegerKind::I64, ptr, "test read") }
+    let err = unsafe { FfiDecoder::read(&IntegerKind::I64, ReadSource::Slot(ptr, "test read")) }
         .expect_err("an i64 beyond -2^53 must not round silently");
     assert!(err.to_string().contains("2^53"));
 }
@@ -616,7 +631,7 @@ fn u64_read_at_2_53_still_converts() {
     let stored: u64 = 9_007_199_254_740_992;
     let ptr = std::ptr::from_ref(&stored).cast::<c_void>();
     // SAFETY: `ptr` addresses a live local u64.
-    let value = unsafe { RawPtrCodec::read_from_raw_ptr(&IntegerKind::U64, ptr, "test read") }
+    let value = unsafe { FfiDecoder::read(&IntegerKind::U64, ReadSource::Slot(ptr, "test read")) }
         .expect("2^53 itself is exactly representable");
     assert!(matches!(value, Value::Number(n) if n == 9_007_199_254_740_992.0));
 }

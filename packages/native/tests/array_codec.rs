@@ -10,8 +10,8 @@ use native::arg::Arg;
 use native::ffi::{FfiStorageKind, FfiValue, GArrayData};
 use native::types::{
     ArrayKind, ArrayType, BigIntKind, BooleanType, FfiDecoder, FfiEncoder, FloatKind,
-    FundamentalType, GObjectType, IntegerKind, Ownership, RawPtrCodec, RefType, StringType,
-    StructType, TaggedKind, TaggedType, Type,
+    FundamentalType, GObjectType, IntegerKind, Ownership, RawPtrCodec, ReadSource, RefType,
+    StringType, StructType, TaggedKind, TaggedType, Type,
 };
 use native::value::Value;
 
@@ -1780,9 +1780,13 @@ fn trait_methods_delegate_to_inherent_implementations() {
         let mut data: Vec<*mut c_void> = vec![h0.ptr(), std::ptr::null_mut()];
         // SAFETY: `data` is a live null-terminated local array of boxed
         // pointers.
-        let from_ptr =
-            unsafe { RawPtrCodec::ptr_to_value(&ptr_ty, data.as_mut_ptr() as *mut c_void, "ctx") }
-                .unwrap();
+        let from_ptr = unsafe {
+            FfiDecoder::read(
+                &ptr_ty,
+                ReadSource::Value(data.as_mut_ptr() as *mut c_void, "ctx"),
+            )
+        }
+        .unwrap();
         assert!(matches!(from_ptr, Value::Array(items) if items.len() == 1));
     });
 }

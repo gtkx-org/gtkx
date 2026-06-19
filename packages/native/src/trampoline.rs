@@ -22,7 +22,9 @@ use napi::JsFunction;
 use crate::dispatch::Mailbox;
 use crate::error_reporter::NativeErrorReporter;
 use crate::ffi::FfiValue;
-use crate::types::{FfiEncoder as _, RawPtrCodec as _, Type, str_to_glib_full};
+use crate::types::{
+    FfiDecoder as _, FfiEncoder as _, RawPtrCodec as _, ReadSource, Type, str_to_glib_full,
+};
 use crate::value::{JsRef, Value};
 
 pub struct TrampolineData {
@@ -197,7 +199,7 @@ impl TrampolineData {
             }
             // SAFETY: libffi materialized `arg_ptr` for the argument of
             // type `ty`, so it is valid for that codec's read.
-            match unsafe { ty.read_from_raw_ptr(arg_ptr, "trampoline arg") } {
+            match unsafe { ty.read(ReadSource::Slot(arg_ptr, "trampoline arg")) } {
                 Ok(val) => values.push(val),
                 Err(e) => {
                     NativeErrorReporter::global()
@@ -343,7 +345,7 @@ pub(crate) fn seed_ref_cell(inner_ptr: *mut c_void, inner_type: &Type) -> Value 
             // SAFETY: A non-null inout target for a scalar inner type
             // addresses the caller-initialized scalar slot, readable at
             // the codec's width.
-            unsafe { inner_type.read_from_raw_ptr(inner_ptr.cast_const(), "inout cell seed") }
+            unsafe { inner_type.read(ReadSource::Slot(inner_ptr.cast_const(), "inout cell seed")) }
                 .unwrap_or(Value::Null)
         }
         _ => Value::Null,

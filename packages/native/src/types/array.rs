@@ -120,8 +120,17 @@ impl FfiEncoder for ArrayType {
 }
 
 impl FfiDecoder for ArrayType {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        Self::decode(self, ffi_value)
+    unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
+        match src {
+            ReadSource::Call(ffi_value) => Self::decode(self, ffi_value),
+            ReadSource::Value(ptr, _context) => {
+                // SAFETY: The caller guarantees `ptr` is null or a live array of
+                // this descriptor's kind, exactly the inherent method's contract.
+                unsafe { Self::ptr_to_value(self, ptr) }
+            }
+            // SAFETY: forwarded from this method's safety contract.
+            ReadSource::Slot(ptr, context) => unsafe { self.read_pointer_slot(ptr, context) },
+        }
     }
 
     fn decode_with_context(
@@ -135,16 +144,6 @@ impl FfiDecoder for ArrayType {
 }
 
 impl RawPtrCodec for ArrayType {
-    unsafe fn ptr_to_value(
-        &self,
-        ptr: *mut std::ffi::c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        // SAFETY: The caller guarantees `ptr` is null or a live array of
-        // this descriptor's kind, exactly the inherent method's contract.
-        unsafe { Self::ptr_to_value(self, ptr) }
-    }
-
     /// Writes a vfunc's array return, building the C container the caller
     /// adopts. A transfer-full or transfer-container return is handed over
     /// here; a transfer-none (borrowed) array return is intercepted earlier by
@@ -1529,8 +1528,10 @@ impl ArrayType {
                     let item_ptr = unsafe { *pdata.add(i) };
                     // SAFETY: A live GPtrArray's elements are live instances
                     // of the declared item type (or null).
-                    let item_value =
-                        unsafe { self.item_type.ptr_to_value(item_ptr, "GPtrArray item")? };
+                    let item_value = unsafe {
+                        self.item_type
+                            .read(ReadSource::Value(item_ptr, "GPtrArray item"))?
+                    };
                     values.push(item_value);
                 }
                 Ok(value::Value::Array(values))

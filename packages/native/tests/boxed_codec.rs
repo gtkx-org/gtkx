@@ -12,7 +12,9 @@ use gtk4::prelude::StaticType as _;
 
 use native::ffi;
 use native::managed::NativeHandle;
-use native::types::{BoxedType, FfiDecoder, FfiEncoder, Ownership, RawPtrCodec, StructType};
+use native::types::{
+    BoxedType, FfiDecoder, FfiEncoder, Ownership, RawPtrCodec, ReadSource, StructType,
+};
 use native::value::Value;
 
 fn rgba_type_name() -> String {
@@ -258,7 +260,7 @@ fn ptr_to_value_wraps_boxed() {
         let (gtype, original) = rgba_boxed_alloc();
 
         // SAFETY: `original` addresses a live boxed GdkRGBA.
-        let value = unsafe { boxed(Ownership::Borrowed).ptr_to_value(original, "ctx") }
+        let value = unsafe { boxed(Ownership::Borrowed).read(ReadSource::Value(original, "ctx")) }
             .expect("ptr_to_value should succeed");
         assert!(matches!(value, Value::Object(_)));
         drop(value);
@@ -271,8 +273,10 @@ fn ptr_to_value_wraps_boxed() {
 fn ptr_to_value_null_yields_null() {
     common::run(|| {
         // SAFETY: Null short-circuits before any read.
-        let value = unsafe { boxed(Ownership::Borrowed).ptr_to_value(std::ptr::null_mut(), "ctx") }
-            .expect("null ptr_to_value should succeed");
+        let value = unsafe {
+            boxed(Ownership::Borrowed).read(ReadSource::Value(std::ptr::null_mut(), "ctx"))
+        }
+        .expect("null ptr_to_value should succeed");
         assert!(matches!(value, Value::Null));
     });
 }
@@ -284,7 +288,7 @@ fn ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
 
         for ownership in [Ownership::Borrowed, Ownership::Full] {
             // SAFETY: `original` addresses a live boxed GdkRGBA.
-            let value = unsafe { boxed(ownership).ptr_to_value(original, "ctx") }
+            let value = unsafe { boxed(ownership).read(ReadSource::Value(original, "ctx")) }
                 .expect("ptr_to_value should succeed");
             let Value::Object(handle) = &value else {
                 panic!("expected Object value");
@@ -312,8 +316,8 @@ fn caller_allocated_boxed_aliases_source_without_copying() {
             ..boxed(Ownership::Borrowed)
         };
         // SAFETY: `original` addresses a live boxed GdkRGBA.
-        let value =
-            unsafe { ty.ptr_to_value(original, "ctx") }.expect("ptr_to_value should succeed");
+        let value = unsafe { ty.read(ReadSource::Value(original, "ctx")) }
+            .expect("ptr_to_value should succeed");
         let Value::Object(handle) = &value else {
             panic!("expected Object value");
         };
@@ -339,8 +343,8 @@ fn caller_allocated_struct_aliases_source_without_copying() {
             ..struct_type(Ownership::Borrowed, Some(size_of::<gdk::ffi::GdkRGBA>()))
         };
         // SAFETY: `original` addresses a live struct allocation.
-        let value =
-            unsafe { ty.ptr_to_value(original, "ctx") }.expect("ptr_to_value should succeed");
+        let value = unsafe { ty.read(ReadSource::Value(original, "ctx")) }
+            .expect("ptr_to_value should succeed");
         let Value::Object(handle) = &value else {
             panic!("expected Object value");
         };
@@ -364,8 +368,10 @@ fn read_from_raw_ptr_dereferences_slot() {
         // SAFETY: `slot` is a live local pointer-sized slot holding a live
         // boxed GdkRGBA pointer.
         let value = unsafe {
-            boxed(Ownership::Borrowed)
-                .read_from_raw_ptr(&slot as *const *mut c_void as *const c_void, "ctx")
+            boxed(Ownership::Borrowed).read(ReadSource::Slot(
+                &slot as *const *mut c_void as *const c_void,
+                "ctx",
+            ))
         }
         .expect("read_from_raw_ptr should succeed");
         assert!(matches!(value, Value::Object(_)));
@@ -558,8 +564,10 @@ fn struct_ptr_to_value_wraps_struct() {
         // SAFETY: Allocating zeroed memory has no pointer preconditions.
         let raw = unsafe { glib::ffi::g_malloc0(64) };
         // SAFETY: `raw` addresses a live 64-byte allocation.
-        let value = unsafe { struct_type(Ownership::Borrowed, Some(64)).ptr_to_value(raw, "ctx") }
-            .expect("struct ptr_to_value should succeed");
+        let value = unsafe {
+            struct_type(Ownership::Borrowed, Some(64)).read(ReadSource::Value(raw, "ctx"))
+        }
+        .expect("struct ptr_to_value should succeed");
         assert!(matches!(value, Value::Object(_)));
         drop(value);
 
@@ -573,7 +581,8 @@ fn struct_ptr_to_value_null_yields_null() {
     common::run(|| {
         // SAFETY: Null short-circuits before any read.
         let value = unsafe {
-            struct_type(Ownership::Borrowed, None).ptr_to_value(std::ptr::null_mut(), "ctx")
+            struct_type(Ownership::Borrowed, None)
+                .read(ReadSource::Value(std::ptr::null_mut(), "ctx"))
         }
         .expect("struct null ptr_to_value should succeed");
         assert!(matches!(value, Value::Null));
@@ -588,8 +597,9 @@ fn struct_ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
 
         for ownership in [Ownership::Borrowed, Ownership::Full] {
             // SAFETY: `raw` addresses a live 64-byte allocation.
-            let value = unsafe { struct_type(ownership, Some(64)).ptr_to_value(raw, "ctx") }
-                .expect("struct ptr_to_value should succeed");
+            let value =
+                unsafe { struct_type(ownership, Some(64)).read(ReadSource::Value(raw, "ctx")) }
+                    .expect("struct ptr_to_value should succeed");
             let Value::Object(handle) = &value else {
                 panic!("expected Object value");
             };
@@ -613,8 +623,9 @@ fn struct_ptr_to_value_without_size_wraps_unowned() {
         let raw = unsafe { glib::ffi::g_malloc0(64) };
 
         // SAFETY: `raw` addresses a live 64-byte allocation.
-        let value = unsafe { struct_type(Ownership::Borrowed, None).ptr_to_value(raw, "ctx") }
-            .expect("struct ptr_to_value without size should succeed");
+        let value =
+            unsafe { struct_type(Ownership::Borrowed, None).read(ReadSource::Value(raw, "ctx")) }
+                .expect("struct ptr_to_value without size should succeed");
         let Value::Object(handle) = &value else {
             panic!("expected Object value");
         };
@@ -717,7 +728,7 @@ mod free_fn {
     use gtk4::glib;
 
     use native::ffi;
-    use native::types::{BoxedType, FfiDecoder, Ownership, RawPtrCodec};
+    use native::types::{BoxedType, FfiDecoder, Ownership, ReadSource};
     use native::value::Value;
 
     use super::common;
@@ -769,7 +780,7 @@ mod free_fn {
 
     fn ptr_to_value_wrapper(descriptor: &BoxedType, ptr: *mut c_void) -> Value {
         // SAFETY: `ptr` addresses a live 16-byte allocation.
-        unsafe { descriptor.ptr_to_value(ptr, "ctx") }
+        unsafe { descriptor.read(ReadSource::Value(ptr, "ctx")) }
             .expect("ptr_to_value with freeFn should succeed")
     }
 
@@ -857,7 +868,7 @@ mod free_fn {
             // SAFETY: Null short-circuits before any read.
             let value = unsafe {
                 boxed_with_free_fn(Ownership::Full)
-                    .ptr_to_value(std::ptr::null_mut::<c_void>(), "ctx")
+                    .read(ReadSource::Value(std::ptr::null_mut::<c_void>(), "ctx"))
             }
             .expect("null ptr_to_value should succeed");
             assert!(matches!(value, Value::Null));

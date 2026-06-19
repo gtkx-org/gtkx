@@ -119,9 +119,10 @@ with_integer_kinds!(impl_integer_kind_dispatch);
 /// lives in inherent methods (`checked_to_ffi_value`, `ptr_to_value_raw`,
 /// `ffi_type`, `read_ptr`, `write_ptr`, `call_cif_raw`) that the generated
 /// impls delegate to. `$label` names the kind in error messages.
-/// `$ptr_to_value` is the kind's own [`RawPtrCodec::ptr_to_value`] method:
-/// integer kinds reinterpret the pointer value without dereferencing it,
-/// while float kinds read through the pointer.
+/// `$ptr_to_value` is the kind's own inherent value-pointer read, invoked from
+/// the [`ReadSource::Value`] arm of [`FfiDecoder::read`]: integer kinds
+/// reinterpret the pointer value without dereferencing it, while float kinds
+/// read through the pointer.
 macro_rules! impl_numeric_codecs {
     ($kind:ty, $label:literal, $ptr_to_value:item) => {
         impl FfiEncoder for $kind {
@@ -147,27 +148,28 @@ macro_rules! impl_numeric_codecs {
             }
         }
 
+        impl $kind {
+            $ptr_to_value
+        }
+
         impl FfiDecoder for $kind {
-            fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-                Ok(value::Value::Number(ffi_value.to_number()?))
+            unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
+                match src {
+                    ReadSource::Call(ffi_value) => Ok(value::Value::Number(ffi_value.to_number()?)),
+                    ReadSource::Slot(ptr, context) => {
+                        // SAFETY: The caller guarantees `ptr` is readable at
+                        // this kind's width.
+                        Ok(value::Value::Number(unsafe {
+                            self.read_ptr_checked(ptr as *const u8, context)?
+                        }))
+                    }
+                    // SAFETY: forwarded from this method's safety contract.
+                    ReadSource::Value(ptr, context) => unsafe { self.ptr_to_value(ptr, context) },
+                }
             }
         }
 
         impl RawPtrCodec for $kind {
-            $ptr_to_value
-
-            unsafe fn read_from_raw_ptr(
-                &self,
-                ptr: *const c_void,
-                context: &str,
-            ) -> anyhow::Result<value::Value> {
-                // SAFETY: The caller guarantees `ptr` is readable at this
-                // kind's width.
-                Ok(value::Value::Number(unsafe {
-                    self.read_ptr_checked(ptr as *const u8, context)?
-                }))
-            }
-
             unsafe fn write_return_to_raw_ptr(
                 &self,
                 ret: *mut c_void,
@@ -539,6 +541,7 @@ impl FloatKind {
 impl_numeric_codecs!(
     FloatKind,
     "float",
+    #[allow(clippy::unnecessary_wraps)]
     unsafe fn ptr_to_value(
         &self,
         ptr: *mut c_void,
@@ -647,28 +650,22 @@ impl FfiEncoder for TaggedType {
 }
 
 impl FfiDecoder for TaggedType {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        FfiDecoder::decode(&self.storage, ffi_value)
+    unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
+        match src {
+            ReadSource::Call(ffi_value) => FfiDecoder::decode(&self.storage, ffi_value),
+            ReadSource::Value(ptr, context) => self.storage.ptr_to_value_raw(ptr, context),
+            ReadSource::Slot(ptr, _context) => {
+                // SAFETY: The caller guarantees `ptr` is readable at the storage
+                // kind's width.
+                Ok(value::Value::Number(unsafe {
+                    self.storage.read_ptr(ptr as *const u8)
+                }))
+            }
+        }
     }
 }
 
 impl RawPtrCodec for TaggedType {
-    unsafe fn ptr_to_value(&self, ptr: *mut c_void, context: &str) -> anyhow::Result<value::Value> {
-        self.storage.ptr_to_value_raw(ptr, context)
-    }
-
-    unsafe fn read_from_raw_ptr(
-        &self,
-        ptr: *const c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        // SAFETY: The caller guarantees `ptr` is readable at the storage
-        // kind's width.
-        Ok(value::Value::Number(unsafe {
-            self.storage.read_ptr(ptr as *const u8)
-        }))
-    }
-
     unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         // SAFETY: The caller's contract for `ret` carries over unchanged to
         // the storage kind's codec.

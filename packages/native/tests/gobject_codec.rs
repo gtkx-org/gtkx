@@ -9,7 +9,7 @@ use gtk4::prelude::ObjectType as _;
 
 use native::ffi;
 use native::managed::NativeHandle;
-use native::types::{FfiDecoder, FfiEncoder, GObjectType, Ownership, RawPtrCodec};
+use native::types::{FfiDecoder, FfiEncoder, GObjectType, Ownership, RawPtrCodec, ReadSource};
 use native::value::Value;
 
 use common::get_gobject_refcount;
@@ -228,7 +228,7 @@ fn ptr_to_value_wraps_borrowed_object() {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
         // SAFETY: `obj_ptr` addresses the live GObject owned by the guard.
-        let value = unsafe { borrowed().ptr_to_value(obj_ptr as *mut c_void, "ctx") }
+        let value = unsafe { borrowed().read(ReadSource::Value(obj_ptr as *mut c_void, "ctx")) }
             .expect("ptr_to_value should succeed");
 
         assert_eq!(get_gobject_refcount(obj_ptr), before + 1);
@@ -241,7 +241,7 @@ fn ptr_to_value_wraps_borrowed_object() {
 fn ptr_to_value_null_yields_null() {
     common::run(|| {
         // SAFETY: Null short-circuits before any read.
-        let value = unsafe { borrowed().ptr_to_value(std::ptr::null_mut(), "ctx") }
+        let value = unsafe { borrowed().read(ReadSource::Value(std::ptr::null_mut(), "ctx")) }
             .expect("null ptr_to_value should succeed");
         assert!(matches!(value, Value::Null));
     });
@@ -256,7 +256,10 @@ fn read_from_raw_ptr_dereferences_and_wraps() {
         // SAFETY: `slot` is a live local pointer-sized slot holding a live
         // GObject pointer.
         let value = unsafe {
-            borrowed().read_from_raw_ptr(&slot as *const *mut c_void as *const c_void, "ctx")
+            borrowed().read(ReadSource::Slot(
+                &slot as *const *mut c_void as *const c_void,
+                "ctx",
+            ))
         }
         .expect("read_from_raw_ptr should succeed");
         assert!(matches!(value, Value::Object(_)));

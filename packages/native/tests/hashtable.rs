@@ -12,7 +12,7 @@ use native::types::{
     ArrayKind, ArrayType, BooleanType, BoxedType, FloatKind, FundamentalType, GObjectType,
     HashTableEntryEncoder, HashTableType, IntegerKind, Ownership, StringType, StructType, Type,
 };
-use native::types::{FfiDecoder, FfiEncoder, RawPtrCodec};
+use native::types::{FfiDecoder, FfiEncoder, RawPtrCodec, ReadSource};
 use native::value::Value;
 
 fn struct_type() -> Type {
@@ -239,7 +239,8 @@ fn ptr_to_value_boolean_true() {
 
     // SAFETY: BooleanType reinterprets the pointer value without
     // dereferencing it.
-    let value = unsafe { ty.ptr_to_value(ptr, "test") }.expect("decoding should succeed");
+    let value =
+        unsafe { ty.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
 
     match value {
         Value::Boolean(true) => (),
@@ -254,7 +255,8 @@ fn ptr_to_value_boolean_false() {
 
     // SAFETY: BooleanType reinterprets the pointer value without
     // dereferencing it.
-    let value = unsafe { ty.ptr_to_value(ptr, "test") }.expect("decoding should succeed");
+    let value =
+        unsafe { ty.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
 
     match value {
         Value::Boolean(false) => (),
@@ -269,7 +271,8 @@ fn ptr_to_value_boolean_nonzero_is_true() {
 
     // SAFETY: BooleanType reinterprets the pointer value without
     // dereferencing it.
-    let value = unsafe { ty.ptr_to_value(ptr, "test") }.expect("decoding should succeed");
+    let value =
+        unsafe { ty.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
 
     match value {
         Value::Boolean(true) => (),
@@ -289,7 +292,8 @@ fn ptr_to_value_float() {
     };
 
     // SAFETY: `ptr` addresses a live g_malloc'd f64.
-    let value = unsafe { ty.ptr_to_value(ptr, "test") }.expect("decoding should succeed");
+    let value =
+        unsafe { ty.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
 
     match value {
         Value::Number(n) => assert!((n - std::f64::consts::E).abs() < f64::EPSILON),
@@ -309,8 +313,8 @@ fn ptr_to_value_struct_null() {
     });
 
     // SAFETY: Null short-circuits before any read.
-    let value =
-        unsafe { ty.ptr_to_value(std::ptr::null_mut(), "test") }.expect("decoding should succeed");
+    let value = unsafe { ty.read(ReadSource::Value(std::ptr::null_mut(), "test")) }
+        .expect("decoding should succeed");
 
     match value {
         Value::Null => (),
@@ -331,7 +335,8 @@ fn ptr_to_value_struct_non_null() {
         let ptr = unsafe { glib::ffi::g_malloc0(16) };
 
         // SAFETY: `ptr` addresses a live 16-byte allocation.
-        let value = unsafe { ty.ptr_to_value(ptr, "test") }.expect("decoding should succeed");
+        let value =
+            unsafe { ty.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
 
         match value {
             Value::Object(_) => (),
@@ -694,12 +699,14 @@ fn hashtable_ptr_to_value_null_and_populated() {
         );
 
         // SAFETY: Null short-circuits before any read.
-        let empty = unsafe { ht_type.ptr_to_value(std::ptr::null_mut(), "ctx") }.unwrap();
+        let empty =
+            unsafe { ht_type.read(ReadSource::Value(std::ptr::null_mut(), "ctx")) }.unwrap();
         assert!(matches!(empty, Value::Array(items) if items.is_empty()));
 
         let hash_table = common::make_integer_hash_table(&[(1, 10)]);
         // SAFETY: `hash_table` is a live GHashTable.
-        let decoded = unsafe { ht_type.ptr_to_value(hash_table as *mut c_void, "ctx") }.unwrap();
+        let decoded =
+            unsafe { ht_type.read(ReadSource::Value(hash_table as *mut c_void, "ctx")) }.unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
         // SAFETY: Releases a reference this test owns on the live GHashTable.
         unsafe { glib::ffi::g_hash_table_unref(hash_table) };
