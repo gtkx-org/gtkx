@@ -114,29 +114,16 @@ useTickCallback(areaRef, (widget, frameClock) => {
 });
 ```
 
-## useAdjustment
+## useForwardedRef
 
-Builds a stable `Gtk.Adjustment` for widgets that take one — scales, spin buttons, spin rows. Config fields update the live adjustment in place on re-render; defaults are `value: 0, lower: 0, upper: 100, stepIncrement: 1, pageIncrement: 10, pageSize: 0`.
-
-```tsx
-import { useAdjustment } from "@gtkx/react";
-
-const fontSizeAdjustment = useAdjustment({ value: fontSize, lower: 8, upper: 32, stepIncrement: 1 });
-
-<AdwSpinRow title="Font Size" adjustment={fontSizeAdjustment} onNotifyValue={(value) => setFontSize(value ?? 8)} />;
-```
-
-## useMergedRefs
-
-Combines an internal ref with a forwarded one into a single callback ref — for components that need their own handle on a widget while still exposing `ref` to callers:
+Captures a component's own handle on a widget while still forwarding `ref` to callers — for components that need their own reference and also expose `ref`. It returns the internal ref object paired with the callback ref to bind:
 
 ```tsx
-import { useMergedRefs } from "@gtkx/react";
+import { useForwardedRef } from "@gtkx/react";
 
 const Inner = ({ ref }: { ref?: Ref<Gtk.Entry | null> }) => {
-    const entryRef = useRef<Gtk.Entry | null>(null);
-    const mergedRef = useMergedRefs(entryRef, ref);
-    return <GtkEntry ref={mergedRef} />;
+    const [entryRef, setEntryRef] = useForwardedRef(ref);
+    return <GtkEntry ref={setEntryRef} />;
 };
 ```
 
@@ -151,5 +138,4 @@ Props set state on widgets; hooks observe it. If you own the value, render it as
 | `useSignal` | Any signal subscription | [API](/api/react/functions/useSignal) |
 | `useSetting` | GSettings keys as state | [API](/api/react/functions/useSetting) |
 | `useTickCallback` | Per-frame work on a widget | [API](/api/react/functions/useTickCallback) |
-| `useAdjustment` | A stable `Gtk.Adjustment` | [API](/api/react/functions/useAdjustment) |
-| `useMergedRefs` | Forwarding plus internal refs | [API](/api/react/functions/useMergedRefs) |
+| `useForwardedRef` | A captured handle plus forwarded `ref` | [API](/api/react/functions/useForwardedRef) |

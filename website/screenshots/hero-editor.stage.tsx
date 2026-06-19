@@ -13,11 +13,12 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import * as Adw from "@gtkx/gi/adw";
+import * as Gio from "@gtkx/gi/gio";
 import type * as GtkSource from "@gtkx/gi/gtksource";
-import { AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
+import { AdwApplication, AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
 import { GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { GtkSourceBuffer, GtkSourceView } from "@gtkx/jsx/gtksource";
-import { render } from "@gtkx/testing";
+import { createRootElement, render } from "@gtkx/testing";
 import { createRef } from "react";
 import { it } from "vitest";
 
@@ -122,25 +123,27 @@ it("performs the hero editor scene", async () => {
     const darkScheme = GtkSourceModule.StyleSchemeManager.getDefault().getScheme("Adwaita-dark");
 
     await render(
-        <AdwApplicationWindow title="note-card.tsx — GTKX" defaultWidth={800} defaultHeight={900}>
-            <AdwToolbarView addTopBar={<AdwHeaderBar />}>
-                <GtkScrolledWindow vexpand>
-                    <GtkSourceView
-                        showLineNumbers
-                        monospace
-                        highlightCurrentLine
-                        topMargin={8}
-                        leftMargin={8}
-                        buffer={
-                            <GtkSourceBuffer ref={bufferRef} language={tsLanguage} styleScheme={darkScheme}>
-                                {originalSource}
-                            </GtkSourceBuffer>
-                        }
-                    />
-                </GtkScrolledWindow>
-            </AdwToolbarView>
-        </AdwApplicationWindow>,
-        { wrapper: false },
+        <AdwApplication applicationId="org.gtkx.heroeditor" flags={Gio.ApplicationFlags.NON_UNIQUE}>
+            <AdwApplicationWindow title="note-card.tsx — GTKX" defaultWidth={800} defaultHeight={900}>
+                <AdwToolbarView addTopBar={<AdwHeaderBar />}>
+                    <GtkScrolledWindow vexpand>
+                        <GtkSourceView
+                            showLineNumbers
+                            monospace
+                            highlightCurrentLine
+                            topMargin={8}
+                            leftMargin={8}
+                            buffer={
+                                <GtkSourceBuffer ref={bufferRef} language={tsLanguage} styleScheme={darkScheme}>
+                                    {originalSource}
+                                </GtkSourceBuffer>
+                            }
+                        />
+                    </GtkScrolledWindow>
+                </AdwToolbarView>
+            </AdwApplicationWindow>
+        </AdwApplication>,
+        { container: createRootElement() },
     );
 
     const buffer = bufferRef.current;

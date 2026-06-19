@@ -1,5 +1,6 @@
 import { AdwPreferencesGroup, AdwPreferencesPage, AdwPreferencesWindow, AdwSpinRow, AdwSwitchRow } from "@gtkx/jsx/adw";
-import { useAdjustment, useApplication, useProperty, useSetting } from "@gtkx/react";
+import { GtkAdjustment } from "@gtkx/jsx/gtk";
+import { useApplication, useProperty, useSetting } from "@gtkx/react";
 import schema from "../../com.gtkx.tutorial.gschema.xml";
 
 export const Preferences = ({ onClose }: { onClose: () => void }) => {
@@ -9,7 +10,6 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
     const [compactMode, setCompactMode] = useSetting(schema, "compact-mode");
     const [spellCheck, setSpellCheck] = useSetting(schema, "spell-check");
     const [fontSize, setFontSize] = useSetting(schema, "font-size");
-    const fontSizeAdjustment = useAdjustment({ value: fontSize, lower: 8, upper: 32, stepIncrement: 1 });
 
     if (!activeWindow) return null;
 
@@ -44,7 +44,7 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
                     <AdwSpinRow
                         title="Font Size"
                         subtitle="Base font size for the editor"
-                        adjustment={fontSizeAdjustment}
+                        adjustment={<GtkAdjustment value={fontSize} lower={8} upper={32} stepIncrement={1} />}
                         onNotifyValue={(value) => setFontSize(value ?? 8)}
                     />
                 </AdwPreferencesGroup>

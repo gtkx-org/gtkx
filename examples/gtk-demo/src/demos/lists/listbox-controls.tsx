@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import {
+    GtkAdjustment,
     GtkBox,
     GtkCheckButton,
     GtkDropDown,
@@ -15,7 +16,6 @@ import {
     GtkSwitch,
     GtkViewport,
 } from "@gtkx/jsx/gtk";
-import { useAdjustment } from "@gtkx/react";
 import { type ReactNode, type Ref, useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listbox-controls.tsx?raw";
@@ -120,8 +120,6 @@ const Group1List = ({
 );
 
 const Group2List = ({ labelRef }: { labelRef: Ref<Gtk.Label | null> }) => {
-    const scaleAdjustment = useAdjustment({ value: 50, upper: 100, stepIncrement: 1, pageIncrement: 10 });
-    const spinAdjustment = useAdjustment({ value: 50, upper: 100, stepIncrement: 1, pageIncrement: 10 });
     return (
         <GtkListBox name="group-2-list" selectionMode={Gtk.SelectionMode.NONE} cssClasses={["rich-list", "boxed-list"]}>
             <LabeledRow labelText="_Scale" labelRef={labelRef} useUnderline activatable={false}>
@@ -131,7 +129,7 @@ const Group2List = ({ labelRef }: { labelRef: Ref<Gtk.Label | null> }) => {
                     valign={Gtk.Align.CENTER}
                     drawValue={false}
                     widthRequest={150}
-                    adjustment={scaleAdjustment}
+                    adjustment={<GtkAdjustment value={50} upper={100} stepIncrement={1} pageIncrement={10} />}
                 />
             </LabeledRow>
             <LabeledRow labelText="S_pinbutton" labelRef={labelRef} useUnderline activatable={false}>
@@ -139,7 +137,7 @@ const Group2List = ({ labelRef }: { labelRef: Ref<Gtk.Label | null> }) => {
                     name="spin"
                     halign={Gtk.Align.END}
                     valign={Gtk.Align.CENTER}
-                    adjustment={spinAdjustment}
+                    adjustment={<GtkAdjustment value={50} upper={100} stepIncrement={1} pageIncrement={10} />}
                 />
             </LabeledRow>
             <LabeledRow labelText="_Dropdown" labelRef={labelRef} useUnderline activatable={false}>

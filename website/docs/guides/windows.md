@@ -52,25 +52,26 @@ multiple instances of the same application ID.
 
 ## Rendering and quitting
 
-`render` mirrors `createRoot().render()` from `react-dom`: call it once at module top level in your entry file.
+`createRoot` mirrors `createRoot` from `react-dom`: call it once at module top level in your entry file and `render` the tree onto the returned root.
 
 ```tsx
 // src/index.tsx
-import { render } from "@gtkx/react";
+import { createRoot } from "@gtkx/react";
 import { App } from "./app.js";
 
-render(<App />);
+createRoot().render(<App />);
 ```
 
-It returns a handle whose `unmount()` tears down that single tree; calling it twice is a no-op:
+The root's `unmount()` tears down that single tree; calling it twice is a no-op:
 
 ```tsx
-const handle = render(<App />);
+const root = createRoot();
+root.render(<App />);
 
-handle.unmount();
+root.unmount();
 ```
 
-`quit()` unmounts every active root — the `render(null)` counterpart to `render`. Unmounting a tree that contains a
+`quit()` unmounts every active root — the teardown counterpart to `createRoot`. Unmounting a tree that contains a
 `GtkApplication` or `AdwApplication` quits the application, which stops the GTK runtime by default, so the process
 exits once the roots are gone.
 

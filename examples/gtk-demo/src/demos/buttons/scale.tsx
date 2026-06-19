@@ -1,6 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkGrid, GtkGridChild, GtkLabel, GtkScale } from "@gtkx/jsx/gtk";
-import { useAdjustment } from "@gtkx/react";
+import { GtkAdjustment, GtkGrid, GtkGridChild, GtkLabel, GtkScale } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
 import sourceCode from "./scale.tsx?raw";
 
@@ -12,19 +11,22 @@ interface ScaleRowProps {
     scaleProps?: Partial<React.ComponentProps<typeof GtkScale>>;
 }
 
-const ScaleRow = ({ label, row, scaleProps }: ScaleRowProps) => {
-    const adjustment = useAdjustment({ value: 2, upper: 4, stepIncrement: 0.1, pageIncrement: 1 });
-    return (
-        <>
-            <GtkGridChild column={0} row={row}>
-                <GtkLabel label={label} xalign={0} />
-            </GtkGridChild>
-            <GtkGridChild column={1} row={row}>
-                <GtkScale widthRequest={200} drawValue={false} hexpand adjustment={adjustment} {...scaleProps} />
-            </GtkGridChild>
-        </>
-    );
-};
+const ScaleRow = ({ label, row, scaleProps }: ScaleRowProps) => (
+    <>
+        <GtkGridChild column={0} row={row}>
+            <GtkLabel label={label} xalign={0} />
+        </GtkGridChild>
+        <GtkGridChild column={1} row={row}>
+            <GtkScale
+                widthRequest={200}
+                drawValue={false}
+                hexpand
+                adjustment={<GtkAdjustment value={2} upper={4} stepIncrement={0.1} pageIncrement={1} />}
+                {...scaleProps}
+            />
+        </GtkGridChild>
+    </>
+);
 
 const ScaleDemo = () => (
     <GtkGrid rowSpacing={10} columnSpacing={10} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>

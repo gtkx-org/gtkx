@@ -1,10 +1,21 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
+import { GtkApplication } from "@gtkx/jsx/gtk";
+import { act, createRootElement, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { Demo } from "../src/app.js";
 import { path as logoResourcePath } from "../src/icons/org.gtk.Demo4.svg";
+
+let nextAppId = 0;
+
+const renderDemo = () =>
+    render(
+        <GtkApplication applicationId={`org.gtkx.gtkdemoint${nextAppId++}`} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+            <Demo />
+        </GtkApplication>,
+        { container: createRootElement() },
+    );
 
 const selectFirstDemoWithComponent = async (): Promise<void> => {
     const sidebar = (await screen.findByName("sidebar-list")) as Gtk.ListView;
@@ -24,7 +35,7 @@ const selectFirstDemoWithComponent = async (): Promise<void> => {
 
 describe("App search toggle", () => {
     it("turns the sidebar's search bar on when the header bar toggle is activated", async () => {
-        await render(<Demo />, { wrapper: false });
+        await renderDemo();
         const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
         const searchBar = (await screen.findByName("sidebar-search-bar")) as Gtk.SearchBar;
         expect(searchBar.getSearchMode()).toBe(false);
@@ -35,14 +46,14 @@ describe("App search toggle", () => {
 
 describe("App run button", () => {
     it("enables the Run button after a demo with a component is selected", async () => {
-        await render(<Demo />, { wrapper: false });
+        await renderDemo();
         await selectFirstDemoWithComponent();
         const run = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run" })) as Gtk.Button;
         expect(run.getSensitive()).toBe(true);
     });
 
     it("opens a demo window when Run is clicked", async () => {
-        await render(<Demo />, { wrapper: false });
+        await renderDemo();
         await selectFirstDemoWithComponent();
         const beforeCount = (await screen.findAllByRole(Gtk.AccessibleRole.WINDOW)).length;
         const run = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run" })) as Gtk.Button;
@@ -56,7 +67,7 @@ describe("App run button", () => {
 
 describe("App about menu", () => {
     it("renders the about dialog after the About menu entry is activated", async () => {
-        await render(<Demo />, { wrapper: false });
+        await renderDemo();
         const menuButton = (await screen.findByName("menu-button")) as Gtk.MenuButton;
         await act(() => menuButton.activateAction("win.about", null));
         await waitFor(async () => {
@@ -66,7 +77,7 @@ describe("App about menu", () => {
     });
 
     it("bundles the application icon into the GResource so AdwAboutDialog can resolve it", async () => {
-        await render(<Demo />, { wrapper: false });
+        await renderDemo();
         const display = Gdk.Display.getDefault();
         expect(display, "no default display available").not.toBeNull();
         expect(() => Gio.resourcesLookupData(logoResourcePath, Gio.ResourceLookupFlags.NONE)).not.toThrow();
@@ -75,13 +86,13 @@ describe("App about menu", () => {
 
 describe("App notebook", () => {
     it("renders the Info and Source tabs", async () => {
-        await render(<Demo />, { wrapper: false });
+        await renderDemo();
         const notebook = (await screen.findByName("notebook")) as Gtk.Notebook;
         expect(notebook.getNPages()).toBe(2);
     });
 
     it("advances the page when the notebook page is set", async () => {
-        await render(<Demo />, { wrapper: false });
+        await renderDemo();
         const notebook = (await screen.findByName("notebook")) as Gtk.Notebook;
         expect(notebook.getCurrentPage()).toBe(0);
         await act(() => notebook.setCurrentPage(1));
@@ -91,7 +102,7 @@ describe("App notebook", () => {
 
 describe("App keyboard shortcuts dialog", () => {
     it("opens the keyboard shortcuts dialog when the menu entry is activated", async () => {
-        await render(<Demo />, { wrapper: false });
+        await renderDemo();
         const menuButton = (await screen.findByName("menu-button")) as Gtk.MenuButton;
         await act(() => menuButton.activateAction("win.shortcuts", null));
         await waitFor(async () => {
@@ -105,7 +116,7 @@ describe("App inspector activation", () => {
     it("invokes Gtk.Window.setInteractiveDebugging when the inspector menu entry is activated", async () => {
         const debugSpy = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation(() => {});
         try {
-            await render(<Demo />, { wrapper: false });
+            await renderDemo();
             const menuButton = (await screen.findByName("menu-button")) as Gtk.MenuButton;
             await act(() => menuButton.activateAction("win.inspector", null));
             await waitFor(() => expect(debugSpy).toHaveBeenCalled());
@@ -117,7 +128,7 @@ describe("App inspector activation", () => {
 
 describe("App global shortcuts", () => {
     it("toggles the search bar when Ctrl+F is pressed", async () => {
-        await render(<Demo />, { wrapper: false });
+        await renderDemo();
         const body = await screen.findByName("main-window-body");
         const searchBar = (await screen.findByName("sidebar-search-bar")) as Gtk.SearchBar;
         expect(searchBar.getSearchMode()).toBe(false);
@@ -128,7 +139,7 @@ describe("App global shortcuts", () => {
     it("activates Gtk.Window.setInteractiveDebugging when Ctrl+Shift+I is pressed", async () => {
         const debugSpy = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation(() => {});
         try {
-            await render(<Demo />, { wrapper: false });
+            await renderDemo();
             const body = await screen.findByName("main-window-body");
             await userEvent.keyboard(body, "{Control>}{Shift>}i{/Shift}{/Control}");
             await waitFor(() => expect(debugSpy).toHaveBeenCalledWith(true));
@@ -138,7 +149,7 @@ describe("App global shortcuts", () => {
     });
 
     it("advances the notebook page when Ctrl+Page_Down is pressed", async () => {
-        await render(<Demo />, { wrapper: false });
+        await renderDemo();
         const body = await screen.findByName("main-window-body");
         const notebook = (await screen.findByName("notebook")) as Gtk.Notebook;
         expect(notebook.getCurrentPage()).toBe(0);
@@ -147,7 +158,7 @@ describe("App global shortcuts", () => {
     });
 
     it("returns to the previous notebook page when Ctrl+Page_Up is pressed", async () => {
-        await render(<Demo />, { wrapper: false });
+        await renderDemo();
         const body = await screen.findByName("main-window-body");
         const notebook = (await screen.findByName("notebook")) as Gtk.Notebook;
         await act(() => notebook.setCurrentPage(1));
@@ -159,7 +170,7 @@ describe("App global shortcuts", () => {
 
 describe("App opens demos with custom titlebars and dialog-only demos", () => {
     it("renders Run-enabled demo entries from the sidebar (covers DemoWindow titlebar/provider paths)", async () => {
-        await render(<Demo />, { wrapper: false });
+        await renderDemo();
         await selectFirstDemoWithComponent();
         const run = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run" })) as Gtk.Button;
         await userEvent.click(run);

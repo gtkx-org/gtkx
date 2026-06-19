@@ -1,8 +1,7 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as gl from "@gtkx/gl";
-import { GtkBox, GtkButton, GtkGLArea, GtkLabel, GtkScale } from "@gtkx/jsx/gtk";
-import { useAdjustment } from "@gtkx/react";
+import { GtkAdjustment, GtkBox, GtkButton, GtkGLArea, GtkLabel, GtkScale } from "@gtkx/jsx/gtk";
 import { useRef, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import { bufferFloatData, setShaderSource } from "./gl-helpers.js";
@@ -188,14 +187,13 @@ const renderGLArea = ({ glStateRef, rotationX, rotationY, rotationZ }: RenderGLA
 };
 
 const AxisScale = ({ label, onValueChanged }: { label: string; onValueChanged: (value: number) => void }) => {
-    const adjustment = useAdjustment({ value: 0, lower: 0, upper: 360, stepIncrement: 1, pageIncrement: 12 });
     return (
         <GtkBox spacing={12}>
             <GtkLabel label={label} widthRequest={60} halign={Gtk.Align.START} />
             <GtkScale
                 hexpand
                 drawValue={false}
-                adjustment={adjustment}
+                adjustment={<GtkAdjustment value={0} lower={0} upper={360} stepIncrement={1} pageIncrement={12} />}
                 onValueChanged={(scale) => onValueChanged(scale.getValue())}
             />
         </GtkBox>

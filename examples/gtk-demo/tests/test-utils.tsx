@@ -1,10 +1,13 @@
+import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkApplicationWindow } from "@gtkx/jsx/gtk";
-import { type RenderResult, render } from "@gtkx/testing";
+import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
+import { createRootElement, type RenderResult, render } from "@gtkx/testing";
 import { type ComponentType, createRef, type ReactNode, type RefObject, useCallback, useState } from "react";
 import { expect } from "vitest";
 import { DemoProvider, useDemo } from "../src/context/demo-context.js";
 import type { Demo, DemoProps, DemoProviderProps } from "../src/demos/types.js";
+
+let nextAppId = 0;
 
 /**
  * Per-test render options for {@link renderDemo}.
@@ -35,6 +38,7 @@ const buildWrapper = ({
 }: WrapperArgs): ComponentType<{ children: ReactNode }> => {
     const DemoShell = ({ children }: { children: ReactNode }) => {
         const [windowReady, setWindowReady] = useState(false);
+        const [applicationId] = useState(() => `org.gtkx.gtkdemo${nextAppId++}`);
         const { windowTitle, defaultWidget } = useDemo();
         const titlebar = Titlebar ? <Titlebar window={windowRef} onClose={onClose} /> : undefined;
         const handleWindowRef = useCallback((widget: Gtk.Widget | null): void => {
@@ -42,21 +46,23 @@ const buildWrapper = ({
             if (widget) setWindowReady(true);
         }, []);
         return (
-            <Provider window={windowRef} onClose={onClose}>
-                <GtkApplicationWindow
-                    ref={handleWindowRef}
-                    title={windowTitle ?? demo?.windowTitle}
-                    defaultWidth={demo?.defaultWidth ?? 800}
-                    defaultHeight={demo?.defaultHeight ?? 600}
-                    resizable={demo?.resizable ?? true}
-                    deletable={demo?.deletable ?? true}
-                    cssClasses={demo?.windowCssClasses}
-                    defaultWidget={defaultWidget}
-                    titlebar={titlebar}
-                >
-                    {windowReady ? children : null}
-                </GtkApplicationWindow>
-            </Provider>
+            <GtkApplication applicationId={applicationId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+                <Provider window={windowRef} onClose={onClose}>
+                    <GtkApplicationWindow
+                        ref={handleWindowRef}
+                        title={windowTitle ?? demo?.windowTitle}
+                        defaultWidth={demo?.defaultWidth ?? 800}
+                        defaultHeight={demo?.defaultHeight ?? 600}
+                        resizable={demo?.resizable ?? true}
+                        deletable={demo?.deletable ?? true}
+                        cssClasses={demo?.windowCssClasses}
+                        defaultWidget={defaultWidget}
+                        titlebar={titlebar}
+                    >
+                        {windowReady ? children : null}
+                    </GtkApplicationWindow>
+                </Provider>
+            </GtkApplication>
         );
     };
     return ({ children }: { children: ReactNode }) => (
@@ -97,6 +103,7 @@ export const renderDemo = async (
         options.provider ?? (isDemo(componentOrDemo) ? componentOrDemo.provider : undefined) ?? PassthroughProvider;
     const demo = isDemo(componentOrDemo) ? componentOrDemo : undefined;
     return await render(<ResolvedComponent window={windowRef} onClose={onClose} />, {
+        container: createRootElement(),
         wrapper: buildWrapper({ windowRef, onClose, Provider, Titlebar, demo }),
     });
 };

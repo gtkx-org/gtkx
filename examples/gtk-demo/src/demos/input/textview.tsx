@@ -4,6 +4,7 @@ import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import {
+    GtkAdjustment,
     GtkButton,
     GtkDropDown,
     GtkEntry,
@@ -16,7 +17,6 @@ import {
     GtkTextTag,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
-import { useAdjustment } from "@gtkx/react";
 import { type RefObject, useLayoutEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./textview.tsx?raw";
@@ -380,7 +380,6 @@ const TextViewInternationalSection = () => (
 );
 
 const TextViewWidgetsSection = ({ onClickMe }: { onClickMe: () => void }) => {
-    const scaleAdjustment = useAdjustment({ lower: 0, upper: 100, stepIncrement: 1, pageIncrement: 10 });
     return (
         <>
             {"\n\nYou can put widgets in the buffer: Here's a button: "}
@@ -399,7 +398,11 @@ const TextViewWidgetsSection = ({ onClickMe }: { onClickMe: () => void }) => {
             </GtkTextAnchor>
             {" and a scale: "}
             <GtkTextAnchor>
-                <GtkScale orientation={Gtk.Orientation.HORIZONTAL} adjustment={scaleAdjustment} widthRequest={100} />
+                <GtkScale
+                    orientation={Gtk.Orientation.HORIZONTAL}
+                    adjustment={<GtkAdjustment lower={0} upper={100} stepIncrement={1} pageIncrement={10} />}
+                    widthRequest={100}
+                />
             </GtkTextAnchor>
             {" finally a text entry: "}
             <GtkTextAnchor>

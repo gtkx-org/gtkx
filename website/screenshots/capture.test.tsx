@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { cleanup, render, screen } from "@gtkx/testing";
+import { cleanup, createRootElement, render, screen } from "@gtkx/testing";
 import type { ReactElement } from "react";
 import { afterEach, describe, it } from "vitest";
 import { Chapter1 } from "./chapters/1-window-and-header-bar.js";
@@ -122,7 +122,7 @@ describe("Tutorial Screenshots", () => {
         for (const { slug, description, Component, capture, windowTitle, setup } of chapters) {
             it(`captures chapter ${slug.split("-", 1)[0]}: ${description} (${theme})`, async () => {
                 setTheme(theme);
-                await render(<Component />, { wrapper: false });
+                await render(<Component />, { container: createRootElement() });
                 await setup?.();
                 const filename = `${slug}-${theme}.png`;
                 if (capture === "display") {

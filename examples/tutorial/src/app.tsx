@@ -617,9 +617,9 @@ interface NotesWindowActionsProps {
 
 const NotesWindowActions = ({ notes, dialogs, onShortcuts }: NotesWindowActionsProps) => (
     <>
-        <GSimpleAction name="new" onActivate={notes.addNote} accels="<Control>n" />
-        <GSimpleAction name="preferences" onActivate={() => dialogs.setShowPreferences(true)} accels="<Control>comma" />
-        <GSimpleAction name="shortcuts" onActivate={onShortcuts} accels="<Control>question" />
+        <GSimpleAction name="new" onActivate={notes.addNote} />
+        <GSimpleAction name="preferences" onActivate={() => dialogs.setShowPreferences(true)} />
+        <GSimpleAction name="shortcuts" onActivate={onShortcuts} />
         <GSimpleAction name="about" onActivate={() => dialogs.setShowAbout(true)} />
     </>
 );
@@ -684,7 +684,14 @@ function NotesWindow() {
 
 export function App() {
     return (
-        <AdwApplication applicationId={applicationId}>
+        <AdwApplication
+            applicationId={applicationId}
+            actionAccels={[
+                { action: "win.new", accels: ["<Control>n"] },
+                { action: "win.preferences", accels: ["<Control>comma"] },
+                { action: "win.shortcuts", accels: ["<Control>question"] },
+            ]}
+        >
             <NotesWindow />
         </AdwApplication>
     );

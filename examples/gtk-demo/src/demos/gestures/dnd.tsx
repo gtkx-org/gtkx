@@ -6,6 +6,7 @@ import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
+    GtkAdjustment,
     GtkBox,
     GtkButton,
     GtkDragSource,
@@ -22,7 +23,6 @@ import {
     GtkScrolledWindow,
     GtkSeparator,
 } from "@gtkx/jsx/gtk";
-import { useAdjustment } from "@gtkx/react";
 import { useEffect, useRef, useState } from "react";
 import { useContextMenuGesture } from "../../use-context-menu-gesture.js";
 import { useImperativeDragVisibility } from "../../use-imperative-drag-visibility.js";
@@ -575,7 +575,6 @@ const DndContextMenu = ({ dnd }: { dnd: DndState }) => {
 const DndItemEditor = ({ dnd, editingItem }: { dnd: DndState; editingItem: CanvasItem }) => {
     const { refs, handlers, setEditState } = dnd;
     const halfH = refs.itemHalves.current.get(editingItem.id)?.halfH ?? ITEM_SIZE / 2;
-    const angleAdjustment = useAdjustment({ value: editingItem.angle % 360, lower: 0, upper: 360 });
     return (
         <GtkFixedChild x={editingItem.x} y={editingItem.y + 2 * halfH}>
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
@@ -588,7 +587,7 @@ const DndItemEditor = ({ dnd, editingItem }: { dnd: DndState; editingItem: Canva
                 />
                 <GtkScale
                     orientation={Gtk.Orientation.HORIZONTAL}
-                    adjustment={angleAdjustment}
+                    adjustment={<GtkAdjustment value={editingItem.angle % 360} lower={0} upper={360} />}
                     onValueChanged={(scale) => handlers.updateItemAngle(editingItem.id, scale.getValue())}
                     drawValue={false}
                 />

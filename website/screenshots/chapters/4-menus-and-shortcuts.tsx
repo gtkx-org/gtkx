@@ -33,13 +33,17 @@ export const Chapter4 = () => (
                 }
             />
         }
+        actionAccels={[
+            { action: "win.new", accels: ["<Control>n"] },
+            { action: "win.quit", accels: ["<Control>q"] },
+        ]}
         actions={
             <>
-                <GSimpleAction name="new" onActivate={noop} accels="<Control>n" />
+                <GSimpleAction name="new" onActivate={noop} />
                 <GSimpleAction name="sort-title" onActivate={noop} />
                 <GSimpleAction name="sort-date" onActivate={noop} />
                 <GSimpleAction name="about" onActivate={noop} />
-                <GSimpleAction name="quit" onActivate={noop} accels="<Control>q" />
+                <GSimpleAction name="quit" onActivate={noop} />
             </>
         }
     >

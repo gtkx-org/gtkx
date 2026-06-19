@@ -4,6 +4,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import * as PangoCairo from "@gtkx/gi/pangocairo";
 import {
+    GtkAdjustment,
     GtkBox,
     GtkButton,
     GtkCheckButton,
@@ -20,7 +21,6 @@ import {
     GtkSeparator,
     GtkSpinButton,
 } from "@gtkx/jsx/gtk";
-import { useAdjustment } from "@gtkx/react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-selections.tsx?raw";
@@ -492,12 +492,6 @@ const DirectorySuggestionEntry = () => {
 const ListViewSelectionsDemo = () => {
     const [fontIndex, setFontIndex] = useState(0);
     const [enableFontSearch, setEnableFontSearch] = useState(false);
-    const fontAdjustment = useAdjustment({
-        value: fontIndex,
-        lower: -1,
-        upper: getFontFamilies().length,
-        stepIncrement: 1,
-    });
 
     const handleFontSpinChanged = (val: number) => {
         const idx = Math.round(val);
@@ -530,7 +524,14 @@ const ListViewSelectionsDemo = () => {
                     name="font-spin"
                     halign={Gtk.Align.START}
                     marginStart={20}
-                    adjustment={fontAdjustment}
+                    adjustment={
+                        <GtkAdjustment
+                            value={fontIndex}
+                            lower={-1}
+                            upper={getFontFamilies().length}
+                            stepIncrement={1}
+                        />
+                    }
                     onValueChanged={(spin) => handleFontSpinChanged(spin.getValue())}
                 />
 

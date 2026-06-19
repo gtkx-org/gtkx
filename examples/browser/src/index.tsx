@@ -1,4 +1,4 @@
-import { render } from "@gtkx/react";
+import { createRoot } from "@gtkx/react";
 import { App } from "./app.js";
 
-render(<App />);
+createRoot().render(<App />);

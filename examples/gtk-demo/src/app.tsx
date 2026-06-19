@@ -347,12 +347,8 @@ interface MainWindowActionsProps {
 
 const renderMainWindowActions = ({ onKeyboardShortcuts, onShowAbout }: MainWindowActionsProps) => (
     <>
-        <GSimpleAction
-            name="inspector"
-            onActivate={() => Gtk.Window.setInteractiveDebugging(true)}
-            accels="<Control><Shift>i"
-        />
-        <GSimpleAction name="shortcuts" onActivate={onKeyboardShortcuts} accels="<Control>question" />
+        <GSimpleAction name="inspector" onActivate={() => Gtk.Window.setInteractiveDebugging(true)} />
+        <GSimpleAction name="shortcuts" onActivate={onKeyboardShortcuts} />
         <GSimpleAction name="about" onActivate={onShowAbout} />
     </>
 );
@@ -432,7 +428,14 @@ export const Demo = () => {
 };
 
 export const App = () => (
-    <GtkApplication applicationId={applicationId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+    <GtkApplication
+        applicationId={applicationId}
+        flags={Gio.ApplicationFlags.NON_UNIQUE}
+        actionAccels={[
+            { action: "win.inspector", accels: ["<Control><Shift>i"] },
+            { action: "win.shortcuts", accels: ["<Control>question"] },
+        ]}
+    >
         <Demo />
     </GtkApplication>
 );

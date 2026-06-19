@@ -1,10 +1,11 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
+import { AdwApplication, AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
 import { GtkBox } from "@gtkx/jsx/gtk";
-import { cleanup, render, screen } from "@gtkx/testing";
-import type { ComponentType, ReactNode } from "react";
+import { cleanup, createRootElement, render, screen } from "@gtkx/testing";
+import { type ComponentType, type ReactNode, useState } from "react";
 import { afterEach, describe, it } from "vitest";
 import { GALLERY_ENTRIES, type GalleryEntry } from "./gallery/manifest.js";
 import { setTheme, THEMES } from "./theme.js";
@@ -22,27 +23,34 @@ const fixtureFor = (slug: string): ComponentType => {
     return module.Demo;
 };
 
-const Shell = ({ entry, children }: { entry: GalleryEntry; children: ReactNode }) => (
-    <AdwApplicationWindow title={entry.title} defaultWidth={entry.width} defaultHeight={entry.height}>
-        <AdwToolbarView addTopBar={<AdwHeaderBar />}>
-            {entry.fill ? (
-                children
-            ) : (
-                <GtkBox
-                    halign={Gtk.Align.CENTER}
-                    valign={Gtk.Align.CENTER}
-                    vexpand
-                    marginTop={24}
-                    marginBottom={24}
-                    marginStart={24}
-                    marginEnd={24}
-                >
-                    {children}
-                </GtkBox>
-            )}
-        </AdwToolbarView>
-    </AdwApplicationWindow>
-);
+let nextGalleryAppId = 0;
+
+const Shell = ({ entry, children }: { entry: GalleryEntry; children: ReactNode }) => {
+    const [applicationId] = useState(() => `org.gtkx.gallery${nextGalleryAppId++}`);
+    return (
+        <AdwApplication applicationId={applicationId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+            <AdwApplicationWindow title={entry.title} defaultWidth={entry.width} defaultHeight={entry.height}>
+                <AdwToolbarView addTopBar={<AdwHeaderBar />}>
+                    {entry.fill ? (
+                        children
+                    ) : (
+                        <GtkBox
+                            halign={Gtk.Align.CENTER}
+                            valign={Gtk.Align.CENTER}
+                            vexpand
+                            marginTop={24}
+                            marginBottom={24}
+                            marginStart={24}
+                            marginEnd={24}
+                        >
+                            {children}
+                        </GtkBox>
+                    )}
+                </AdwToolbarView>
+            </AdwApplicationWindow>
+        </AdwApplication>
+    );
+};
 
 describe("Gallery Screenshots", () => {
     afterEach(async () => {
@@ -58,7 +66,7 @@ describe("Gallery Screenshots", () => {
                     <Shell entry={entry}>
                         <Demo />
                     </Shell>,
-                    { wrapper: false },
+                    { container: createRootElement() },
                 );
                 const result = await screen.screenshot(undefined, { scale: SCALE });
                 writeFileSync(resolve(OUT_DIR, `${entry.slug}-${theme}.png`), Buffer.from(result.data, "base64"));

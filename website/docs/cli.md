@@ -48,7 +48,7 @@ project/
 │ └── EXAMPLES.md
 ├── src/
 │ ├── app.tsx # Root component, wrapped in <GtkApplication>
-│ ├── index.tsx # Entry: calls render(<App />)
+│ ├── index.tsx # Entry: calls createRoot().render(<App />)
 │ └── gtkx-env.d.ts # Ambient types for asset imports
 ├── tests/ # Example test (if testing enabled)
 │ └── app.test.tsx

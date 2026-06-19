@@ -122,10 +122,10 @@ export default App;
 **`src/index.tsx`** — Application entry consumed by both `gtkx dev` and `gtkx build`. It imports `App` and renders it with a single argument; the `GtkApplication` component inside `App` owns the application:
 
 ```tsx
-import { render } from "@gtkx/react";
+import { createRoot } from "@gtkx/react";
 import { App } from "./app.js";
 
-render(<App />);
+createRoot().render(<App />);
 ```
 
 **`gtkx.config.ts`** — Project configuration: the GIR libraries to generate bindings for and the application identifier:

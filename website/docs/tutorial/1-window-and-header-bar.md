@@ -30,10 +30,10 @@ A GTKX app starts in `src/index.tsx`, which renders the root component. `render`
 
 ```tsx
 // src/index.tsx
-import { render } from "@gtkx/react";
+import { createRoot } from "@gtkx/react";
 import { App } from "./app.js";
 
-render(<App />);
+createRoot().render(<App />);
 ```
 
 The `<App />` tree owns the GTK application. The `<AdwApplication>` component creates, registers, and activates the application for you, then publishes it through context so hooks like `useApplication` can read it. You never construct an `Adw.Application` or `Gtk.Application` yourself, and you never pass one to `render`.

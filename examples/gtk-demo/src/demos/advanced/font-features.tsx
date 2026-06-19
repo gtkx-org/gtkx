@@ -3,6 +3,7 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import {
+    GtkAdjustment,
     GtkBox,
     GtkButton,
     GtkCheckButton,
@@ -27,7 +28,6 @@ import {
     GtkToggleButton,
     GtkViewport,
 } from "@gtkx/jsx/gtk";
-import { useAdjustment } from "@gtkx/react";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import { createContext, useContext, useLayoutEffect, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
@@ -792,7 +792,6 @@ const SliderEntryRow = ({
     onEntryActivate,
     sensitive,
 }: SliderEntryRowProps) => {
-    const adjustment = useAdjustment({ value, lower, upper, stepIncrement, pageIncrement });
     return (
         <>
             <GtkGridChild column={0} row={row}>
@@ -803,7 +802,15 @@ const SliderEntryRow = ({
                     hexpand
                     widthRequest={100}
                     valign={Gtk.Align.BASELINE}
-                    adjustment={adjustment}
+                    adjustment={
+                        <GtkAdjustment
+                            value={value}
+                            lower={lower}
+                            upper={upper}
+                            stepIncrement={stepIncrement}
+                            pageIncrement={pageIncrement}
+                        />
+                    }
                     onValueChanged={(scale) => onValueChanged(scale.getValue())}
                     sensitive={sensitive}
                 />

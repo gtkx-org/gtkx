@@ -1,9 +1,7 @@
 import { AdwPreferencesGroup, AdwPreferencesPage, AdwPreferencesWindow, AdwSpinRow, AdwSwitchRow } from "@gtkx/jsx/adw";
-import { useAdjustment } from "@gtkx/react";
+import { GtkAdjustment } from "@gtkx/jsx/gtk";
 
 export const Chapter7 = () => {
-    const fontSizeAdjustment = useAdjustment({ value: 14, lower: 8, upper: 32, stepIncrement: 1 });
-
     return (
         <AdwPreferencesWindow title="Preferences" defaultWidth={500} defaultHeight={400}>
             <AdwPreferencesPage title="General" iconName="preferences-system-symbolic">
@@ -15,7 +13,7 @@ export const Chapter7 = () => {
                     <AdwSpinRow
                         title="Font Size"
                         subtitle="Base font size for the editor"
-                        adjustment={fontSizeAdjustment}
+                        adjustment={<GtkAdjustment value={14} lower={8} upper={32} stepIncrement={1} />}
                     />
                 </AdwPreferencesGroup>
             </AdwPreferencesPage>

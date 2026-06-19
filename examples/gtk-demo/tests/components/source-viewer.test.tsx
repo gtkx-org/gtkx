@@ -1,10 +1,11 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { act, render, renderHook, screen } from "@gtkx/testing";
-import type { ReactNode } from "react";
+import { act, render, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { SourceViewer } from "../../src/components/source-viewer.js";
 import { DemoProvider, useDemo } from "../../src/context/demo-context.js";
 import type { Demo } from "../../src/demos/types.js";
+
+type DemoApi = ReturnType<typeof useDemo>;
 
 const intro: Demo = { id: "intro", title: "GTK Demo", description: "Introduction", keywords: [] };
 
@@ -27,15 +28,19 @@ describe("SourceViewer", () => {
             keywords: [],
             component: () => null,
         };
-        const Wrapper = ({ children }: { children: ReactNode }) => (
+        let demoApi: DemoApi | undefined;
+        const Probe = (): null => {
+            demoApi = useDemo();
+            return null;
+        };
+        await render(
             <DemoProvider demos={[intro, withoutSource]}>
                 <SourceViewer />
-                {children}
-            </DemoProvider>
+                <Probe />
+            </DemoProvider>,
         );
-        const { result } = await renderHook(() => useDemo(), { wrapper: Wrapper });
         await act(() => {
-            result.current.setCurrentDemo(withoutSource);
+            demoApi?.setCurrentDemo(withoutSource);
         });
         await screen.findByText("No source");
         expect(screen.queryByName("source-view")).toBeNull();
@@ -51,15 +56,19 @@ describe("SourceViewer", () => {
             component: () => null,
             sourceCode,
         };
-        const Wrapper = ({ children }: { children: ReactNode }) => (
+        let demoApi: DemoApi | undefined;
+        const Probe = (): null => {
+            demoApi = useDemo();
+            return null;
+        };
+        await render(
             <DemoProvider demos={[intro, withSource]}>
                 <SourceViewer />
-                {children}
-            </DemoProvider>
+                <Probe />
+            </DemoProvider>,
         );
-        const { result } = await renderHook(() => useDemo(), { wrapper: Wrapper });
         await act(() => {
-            result.current.setCurrentDemo(withSource);
+            demoApi?.setCurrentDemo(withSource);
         });
         const view = (await screen.findByName("source-view")) as Gtk.TextView;
         const buffer = view.getBuffer();

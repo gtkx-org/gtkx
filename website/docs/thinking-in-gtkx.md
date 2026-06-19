@@ -179,14 +179,14 @@ Tree lists, section headers, columns, and dropdowns follow the same contract —
 
 ## The application owns the loop
 
-`render(<App />)` is the counterpart of `createRoot().render()`: call it once in your entry file. The tree it mounts is expected to contain a `GtkApplication` or `AdwApplication` component, which constructs the GTK application, registers and activates it, and keeps the main loop running. `quit()` unmounts every rendered root; unmounting the application component stops the GTK runtime, so the process exits.
+`createRoot().render(<App />)` is the counterpart of `createRoot` in `react-dom`: call it once in your entry file. The tree it mounts is expected to contain a `GtkApplication` or `AdwApplication` component, which constructs the GTK application, registers and activates it, and keeps the main loop running. `quit()` unmounts every rendered root; unmounting the application component stops the GTK runtime, so the process exits.
 
 Closing a window is where browsers and GTK diverge: GTK destroys the window natively, behind React's back. The main window therefore vetoes the native close and lets React drive the teardown — return `true` from `onCloseRequest` and call `quit()`:
 
 ```tsx
 import { applicationId } from "@gtkx/config/runtime";
 import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
-import { quit, render } from "@gtkx/react";
+import { createRoot, quit } from "@gtkx/react";
 
 const App = () => (
     <GtkApplication applicationId={applicationId}>
@@ -202,7 +202,7 @@ const App = () => (
     </GtkApplication>
 );
 
-render(<App />);
+createRoot().render(<App />);
 ```
 
 Secondary windows take a `transientFor` prop, and Adwaita dialogs take a `parent` prop — see the [Windows guide](/docs/guides/windows).

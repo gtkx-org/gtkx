@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwDialog, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
 import {
+    GtkAdjustment,
     GtkEntry,
     GtkGrid,
     GtkGridChild,
@@ -10,7 +11,6 @@ import {
     GtkShortcutController,
     GtkSwitch,
 } from "@gtkx/jsx/gtk";
-import { useAdjustment } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./errorstates.tsx?raw";
@@ -151,33 +151,30 @@ interface LevelScaleProps {
     onValueChanged: (value: number) => void;
 }
 
-const LevelScaleRow = ({ levelScale, setLevelScale, onValueChanged }: LevelScaleProps) => {
-    const adjustment = useAdjustment({ value: 50, lower: 0, upper: 100, stepIncrement: 1, pageIncrement: 10 });
-    return (
-        <>
-            <GtkGridChild column={0} row={2}>
-                <GtkLabel
-                    label="_Level"
-                    useUnderline
-                    halign={Gtk.Align.END}
-                    valign={Gtk.Align.BASELINE}
-                    cssClasses={["dim-label"]}
-                    mnemonicWidget={levelScale}
-                />
-            </GtkGridChild>
-            <GtkGridChild column={1} row={2} columnSpan={2}>
-                <GtkScale
-                    ref={setLevelScale}
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    valign={Gtk.Align.BASELINE}
-                    drawValue={false}
-                    adjustment={adjustment}
-                    onValueChanged={(scale) => onValueChanged(scale.getValue())}
-                />
-            </GtkGridChild>
-        </>
-    );
-};
+const LevelScaleRow = ({ levelScale, setLevelScale, onValueChanged }: LevelScaleProps) => (
+    <>
+        <GtkGridChild column={0} row={2}>
+            <GtkLabel
+                label="_Level"
+                useUnderline
+                halign={Gtk.Align.END}
+                valign={Gtk.Align.BASELINE}
+                cssClasses={["dim-label"]}
+                mnemonicWidget={levelScale}
+            />
+        </GtkGridChild>
+        <GtkGridChild column={1} row={2} columnSpan={2}>
+            <GtkScale
+                ref={setLevelScale}
+                orientation={Gtk.Orientation.HORIZONTAL}
+                valign={Gtk.Align.BASELINE}
+                drawValue={false}
+                adjustment={<GtkAdjustment value={50} lower={0} upper={100} stepIncrement={1} pageIncrement={10} />}
+                onValueChanged={(scale) => onValueChanged(scale.getValue())}
+            />
+        </GtkGridChild>
+    </>
+);
 
 interface ModeSwitchRowProps {
     state: ErrorStatesState;
