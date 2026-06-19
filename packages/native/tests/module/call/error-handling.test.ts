@@ -119,7 +119,7 @@ describe("call - error handling - value errors", () => {
                     { type: STRING, value: "clicked" },
                     {
                         type: {
-                            type: "trampoline",
+                            type: "callback",
                             argTypes: [GOBJECT_BORROWED, UINT64],
                             returnType: { type: "void" },
                             hasDestroy: true,

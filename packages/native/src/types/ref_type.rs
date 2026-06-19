@@ -24,7 +24,7 @@ impl RefType {
 
     /// Whether `inner` describes a shape `Ref` can carry as an out-parameter.
     ///
-    /// `HashTable`, `Trampoline`, `Void`, `Blob`, and nested `Ref` have no
+    /// `HashTable`, `Callback`, `Void`, `Blob`, and nested `Ref` have no
     /// out-parameter slot representation: a hash table encodes to its payload
     /// pointer (not a writable slot), a trampoline encodes to multiple libffi
     /// arguments, a blob is an argument-only raw memory window with no
@@ -36,7 +36,7 @@ impl RefType {
     pub fn supports_inner(inner: &Type) -> bool {
         !matches!(
             inner,
-            Type::HashTable(_) | Type::Trampoline(_) | Type::Void(_) | Type::Blob(_) | Type::Ref(_)
+            Type::HashTable(_) | Type::Callback(_) | Type::Void(_) | Type::Blob(_) | Type::Ref(_)
         )
     }
 }

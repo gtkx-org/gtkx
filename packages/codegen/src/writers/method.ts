@@ -13,7 +13,7 @@ import {
     passesHandleInPlace,
 } from "./param-classify.js";
 import { renderTsType } from "./ts-type.js";
-import { renderFfiType, renderSelfFfiType, renderTrampolineType } from "./value.js";
+import { renderFfiType, renderSelfFfiType, renderCallbackType } from "./value.js";
 
 /**
  * Returns the camelCased JS export name for a callable's method or static.
@@ -294,7 +294,7 @@ export const renderReturnDescriptor = (context: ModuleContext, fn: GirFunction):
  * companions — yields its binding descriptor and the body input expression that
  * feeds it. Pure out-parameters carry no input: the runtime allocates and reads
  * their cell. Closure, destroy, and `<varargs>` slots are folded into a
- * callback's trampoline descriptor and excluded.
+ * callback's descriptor and excluded.
  *
  * @param context - The module context
  * @param fn - The callable
@@ -394,9 +394,9 @@ const planInParam = (
     index: number,
     instanceOffset: number,
 ): CallArgPlan => {
-    const trampoline = renderTrampolineType(context, parameter.type, parameter);
+    const callback = renderCallbackType(context, parameter.type, parameter);
     const ffi =
-        trampoline ??
+        callback ??
         renderFfiType(context, parameter.type, parameter.transferOwnership, { argIndexOffset: instanceOffset });
     return {
         paramLiteral: ffiParamLiteral(ffi, {}),

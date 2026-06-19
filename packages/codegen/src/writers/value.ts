@@ -178,7 +178,7 @@ export const isCellInout = (context: ModuleContext, parameter: GirParameter): bo
     isInoutParameter(parameter) && isScalarRef(context.repository, context.namespace.name, parameter.type);
 
 /**
- * Renders one handler-trampoline parameter's FFI descriptor — shared by vfunc
+ * Renders one handler-callback parameter's FFI descriptor — shared by vfunc
  * vtables, signal handlers, and callbacks. A scalar out/inout parameter becomes
  * a `t.ref` cell the native trampoline seeds and flushes back; a caller-allocated
  * out boxed/struct is marked so the trampoline reads it as a borrowed view of the
@@ -205,9 +205,9 @@ export const renderHandlerArgType = (
 };
 
 /**
- * Renders the `t.trampoline(...)` FFI descriptor for a callback parameter.
+ * Renders the `t.callback(...)` FFI descriptor for a callback parameter.
  *
- * The trampoline carries the callback's own argument and return FFI types,
+ * The descriptor carries the callback's own argument and return FFI types,
  * the index of its `user_data` slot, and the owning parameter's `scope` plus
  * whether a paired `GDestroyNotify` is present. The native marshaller folds
  * the C-level callback, `user_data`, and destroy arguments into this single
@@ -217,7 +217,7 @@ export const renderHandlerArgType = (
  * @param ref - The parameter type reference
  * @param owningParameter - The parameter that carries the callback, for scope/destroy
  */
-export const renderTrampolineType = (
+export const renderCallbackType = (
     context: ModuleContext,
     ref: GirTypeRef | undefined,
     owningParameter: GirParameter,
@@ -240,7 +240,7 @@ export const renderTrampolineType = (
     if (userDataIndex !== undefined) options.push(`userDataIndex: ${userDataIndex}`);
     if (owningParameter.scope !== undefined) options.push(`scope: ${quote(owningParameter.scope)}`);
     const optionsArg = options.length > 0 ? `, { ${options.join(", ")} }` : "";
-    return `t.trampoline([${argTypes.join(", ")}], ${returnType}${optionsArg})`;
+    return `t.callback([${argTypes.join(", ")}], ${returnType}${optionsArg})`;
 };
 
 const LIST_HELPERS: Readonly<Record<"glist" | "gslist" | "gptrarray" | "garray" | "gbytearray", string>> = {

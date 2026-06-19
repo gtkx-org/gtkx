@@ -102,7 +102,7 @@ const glDebugMessageCallbackBinding = t.bind(
     LIB,
     "glDebugMessageCallback",
     [
-        t.trampoline([t.uint32, t.uint32, t.uint32, t.uint32, t.int32, t.string("borrowed"), t.uint64], t.void, {
+        t.callback([t.uint32, t.uint32, t.uint32, t.uint32, t.int32, t.string("borrowed"), t.uint64], t.void, {
             userDataIndex: 6,
             scope: "forever",
         }),

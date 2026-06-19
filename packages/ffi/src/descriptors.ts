@@ -20,7 +20,7 @@ import {
     type Ownership,
     type RefType,
     type StructType,
-    type TrampolineType,
+    type CallbackType,
     type Type,
     type Uint8Type,
     type Uint16Type,
@@ -269,18 +269,18 @@ export const fixedArrayT = (
     elementSize?: number,
 ): ArrayType => arrayT(itemType, "fixed", ownership, { fixedSize, elementSize });
 
-/** Optional configuration for a trampoline FFI descriptor. */
-type TrampolineOptions = {
+/** Optional configuration for a callback FFI descriptor. */
+type CallbackOptions = {
     /** Whether the call has a paired destroy-notify parameter. */
     hasDestroy?: boolean;
     /** Index of the user-data parameter passed to the callback. */
     userDataIndex?: number;
     /** Lifetime of the callback. */
-    scope?: TrampolineType["scope"];
+    scope?: CallbackType["scope"];
 };
 
-export const trampolineT = (argTypes: Type[], returnType: Type, options?: TrampolineOptions): TrampolineType => {
-    const result: TrampolineType = { type: "trampoline", argTypes, returnType };
+export const callbackT = (argTypes: Type[], returnType: Type, options?: CallbackOptions): CallbackType => {
+    const result: CallbackType = { type: "callback", argTypes, returnType };
     if (options?.hasDestroy !== undefined) result.hasDestroy = options.hasDestroy;
     if (options?.userDataIndex !== undefined) result.userDataIndex = options.userDataIndex;
     if (options?.scope !== undefined) result.scope = options.scope;

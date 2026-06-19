@@ -9,7 +9,7 @@ use std::ffi::c_void;
 use libffi::middle;
 use native::types::{
     BlobType, BooleanType, FfiDecoder, FfiEncoder, GObjectType, IntegerKind, Ownership,
-    RawPtrCodec, ReadSource, RefType, StructType, TrampolineType, Type, VoidType,
+    RawPtrCodec, ReadSource, RefType, StructType, CallbackType, Type, VoidType,
 };
 use native::value::Value;
 use native::{ffi, value};
@@ -95,12 +95,12 @@ fn struct_type() -> StructType {
     }
 }
 
-/// Builds a [`TrampolineType`] without naming the unexported `TrampolineScope`
+/// Builds a [`CallbackType`] without naming the unexported `CallbackScope`
 /// enum: the `scope` field is filled by `Default::default()`, whose target
 /// type the compiler infers from the field declaration.
 #[allow(clippy::default_trait_access)]
-fn trampoline_type() -> TrampolineType {
-    TrampolineType {
+fn callback_type() -> CallbackType {
+    CallbackType {
         arg_types: vec![Type::Integer(IntegerKind::I32)],
         return_type: Box::new(Type::Void(VoidType)),
         has_destroy: false,
@@ -116,7 +116,7 @@ fn can_be_return_type_accepts_value_shapes_and_rejects_argument_shapes() {
     assert!(Type::GObject(gobject_type()).can_be_return_type());
     assert!(Type::Tagged(common::enum_tagged()).can_be_return_type());
 
-    assert!(!Type::Trampoline(trampoline_type()).can_be_return_type());
+    assert!(!Type::Callback(callback_type()).can_be_return_type());
     assert!(!Type::Blob(BlobType).can_be_return_type());
     let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
     assert!(!Type::Ref(ref_type).can_be_return_type());
@@ -124,13 +124,13 @@ fn can_be_return_type_accepts_value_shapes_and_rejects_argument_shapes() {
 
 #[test]
 fn ffi_decoder_decode_default_bails() {
-    assert!(FfiDecoder::decode(&trampoline_type(), &ffi::FfiValue::Void).is_err());
+    assert!(FfiDecoder::decode(&callback_type(), &ffi::FfiValue::Void).is_err());
 }
 
 #[test]
 fn ffi_decoder_decode_with_context_default_delegates_to_decode() {
     let result =
-        FfiDecoder::decode_with_context(&trampoline_type(), &ffi::FfiValue::Void, &[], &[]);
+        FfiDecoder::decode_with_context(&callback_type(), &ffi::FfiValue::Void, &[], &[]);
     assert!(result.is_err());
 }
 
@@ -140,7 +140,7 @@ fn raw_ptr_codec_ptr_to_value_default_bails() {
         // SAFETY: The default implementation bails before any read.
         unsafe {
             FfiDecoder::read(
-                &trampoline_type(),
+                &callback_type(),
                 ReadSource::Value(8 as *mut c_void, "ctx"),
             )
         }
@@ -153,7 +153,7 @@ fn raw_ptr_codec_read_from_raw_ptr_default_dereferences_then_bails() {
     let mut inner: *mut c_void = 8 as *mut c_void;
     let ptr = &mut inner as *mut *mut c_void as *const c_void;
     // SAFETY: `ptr` addresses a live local pointer-sized slot.
-    assert!(unsafe { FfiDecoder::read(&trampoline_type(), ReadSource::Slot(ptr, "ctx")) }.is_err());
+    assert!(unsafe { FfiDecoder::read(&callback_type(), ReadSource::Slot(ptr, "ctx")) }.is_err());
 }
 
 #[test]
@@ -162,13 +162,13 @@ fn raw_ptr_codec_write_return_to_raw_ptr_default_writes_null() {
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
     // SAFETY: `ret` addresses a writable local pointer-sized slot.
     unsafe {
-        RawPtrCodec::write_return_to_raw_ptr(&trampoline_type(), ret, &Ok(Value::Number(1.0)));
+        RawPtrCodec::write_return_to_raw_ptr(&callback_type(), ret, &Ok(Value::Number(1.0)));
     }
     assert!(slot.is_null());
 
     slot = 9 as *mut c_void;
     // SAFETY: `ret` addresses a writable local pointer-sized slot.
-    unsafe { RawPtrCodec::write_return_to_raw_ptr(&trampoline_type(), ret, &Err(())) };
+    unsafe { RawPtrCodec::write_return_to_raw_ptr(&callback_type(), ret, &Err(())) };
     assert!(slot.is_null());
 }
 
@@ -179,7 +179,7 @@ fn raw_ptr_codec_write_value_to_raw_ptr_default_bails() {
     assert!(
         // SAFETY: The default implementation bails before any write.
         unsafe {
-            RawPtrCodec::write_value_to_raw_ptr(&trampoline_type(), ptr, &Value::Number(1.0))
+            RawPtrCodec::write_value_to_raw_ptr(&callback_type(), ptr, &Value::Number(1.0))
         }
         .is_err()
     );

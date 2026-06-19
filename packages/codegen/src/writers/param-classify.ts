@@ -51,7 +51,7 @@ export const inputParameters = (fn: GirFunction): readonly InputParameter[] => {
 /**
  * Indices of the `gpointer user_data` and `GDestroyNotify` parameters paired
  * to a callback parameter. These slots are folded into the callback's
- * trampoline descriptor and are not emitted as standalone FFI arguments.
+ * callback descriptor and are not emitted as standalone FFI arguments.
  *
  * @param fn - The callable
  */

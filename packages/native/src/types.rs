@@ -36,12 +36,12 @@ pub(crate) fn optional_descriptor_property<T: FromNapiValue + ValidateNapiValue>
     })
 }
 
-/// Parses the `argTypes` and `returnType` properties of a [`TrampolineType`]
+/// Parses the `argTypes` and `returnType` properties of a [`CallbackType`]
 /// descriptor. Returns the parsed argument types and return type. An absent
 /// `returnType` is reported as required; a present-but-malformed one
 /// propagates its own parse error.
 #[cfg_attr(coverage_nightly, coverage(off))]
-pub(crate) fn parse_trampoline_arg_and_return_types(
+pub(crate) fn parse_callback_arg_and_return_types(
     env: &Env,
     obj: &JsObject,
     kind: &str,
@@ -86,7 +86,7 @@ mod prelude;
 mod raw_ptr;
 mod ref_type;
 mod string;
-mod trampoline;
+mod callback;
 mod unichar;
 mod void;
 
@@ -102,7 +102,7 @@ pub use hashtable::{HashTableEntryEncoder, HashTableType};
 pub use numeric::{FloatKind, IntegerKind, TaggedKind, TaggedType};
 pub use ref_type::RefType;
 pub use string::{StringType, str_to_glib_full};
-pub use trampoline::{TrampolineScope, TrampolineType};
+pub use callback::{CallbackScope, CallbackType};
 pub use unichar::UnicharType;
 pub use void::VoidType;
 
@@ -416,7 +416,7 @@ pub enum Type {
     Array(ArrayType),
     Blob(BlobType),
     HashTable(HashTableType),
-    Trampoline(TrampolineType),
+    Callback(CallbackType),
     Ref(RefType),
     Unichar(UnicharType),
 }
@@ -441,7 +441,7 @@ impl std::fmt::Display for Type {
             Self::Array(_) => write!(f, "Array"),
             Self::Blob(_) => write!(f, "Blob"),
             Self::HashTable(_) => write!(f, "HashTable"),
-            Self::Trampoline(_) => write!(f, "Trampoline"),
+            Self::Callback(_) => write!(f, "Callback"),
             Self::Ref(t) => write!(f, "Ref({})", t.inner_type),
             Self::Unichar(_) => write!(f, "Unichar"),
         }
@@ -486,7 +486,7 @@ impl Type {
             "array" => Ok(Self::Array(ArrayType::from_descriptor(env, &obj)?)),
             "blob" => Ok(Self::Blob(BlobType)),
             "hashtable" => Ok(Self::HashTable(HashTableType::from_descriptor(env, &obj)?)),
-            "trampoline" => Ok(Self::Trampoline(TrampolineType::from_descriptor(
+            "callback" => Ok(Self::Callback(CallbackType::from_descriptor(
                 env, &obj,
             )?)),
             "ref" => Ok(Self::Ref(RefType::from_descriptor(env, &obj)?)),
@@ -503,14 +503,14 @@ impl Type {
 
     /// Whether this type may occupy a function's return slot.
     ///
-    /// `Trampoline`, `Ref`, and `Blob` describe argument-only shapes — a
+    /// `Callback`, `Ref`, and `Blob` describe argument-only shapes — a
     /// callback handler, an out-parameter, or a raw memory argument — and have
     /// no return-slot codec (their [`FfiEncoder::call_cif`] implementations
     /// bail). Callers consult this at the descriptor-parsing boundary to
     /// reject a malformed return type with a precise `InvalidArg` error.
     #[must_use]
     pub fn can_be_return_type(&self) -> bool {
-        !matches!(self, Self::Trampoline(_) | Self::Ref(_) | Self::Blob(_))
+        !matches!(self, Self::Callback(_) | Self::Ref(_) | Self::Blob(_))
     }
 
     /// Whether this type may describe a function or callback argument.
@@ -528,7 +528,7 @@ impl Type {
 
 #[cfg(test)]
 mod tests {
-    use super::trampoline::TrampolineScope;
+    use super::callback::CallbackScope;
     use super::*;
 
     #[test]
@@ -539,15 +539,15 @@ mod tests {
     }
 
     #[test]
-    fn trampoline_cannot_be_return_type() {
-        let trampoline = TrampolineType {
+    fn callback_cannot_be_return_type() {
+        let callback = CallbackType {
             arg_types: Vec::new(),
             return_type: Box::new(Type::Void(VoidType)),
             has_destroy: false,
             user_data_index: None,
-            scope: TrampolineScope::Call,
+            scope: CallbackScope::Call,
         };
-        assert!(!Type::Trampoline(trampoline).can_be_return_type());
+        assert!(!Type::Callback(callback).can_be_return_type());
     }
 
     #[test]

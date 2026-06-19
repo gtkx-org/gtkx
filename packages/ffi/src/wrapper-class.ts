@@ -272,7 +272,7 @@ export type Handler = (...args: Value[]) => Value;
 export type UserHandler = (...args: never[]) => unknown;
 
 /**
- * The trampoline descriptor {@link wrapHandler} marshals against. {@link TrampolineType}
+ * The callback descriptor {@link wrapHandler} marshals against. {@link CallbackType}
  * satisfies it directly; a vfunc supplies the argument and return types alone.
  */
 export type HandlerSpec = {
@@ -337,7 +337,7 @@ const writeOutParams = (outParams: readonly OutParam[], outValues: readonly unkn
  * the primary return is lowered through {@link unwrapValue}.
  *
  * @param fn - The user handler.
- * @param spec - The trampoline descriptor (argument types, return type, user-data index).
+ * @param spec - The callback descriptor (argument types, return type, user-data index).
  * @param receiver - How the leading argument is treated.
  */
 export function wrapHandler(fn: UserHandler, spec: HandlerSpec, receiver: HandlerReceiver): Handler {

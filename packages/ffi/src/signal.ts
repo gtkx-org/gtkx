@@ -1,4 +1,4 @@
-import { alloc, call, type Type as FfiType, type Handle, read, type TrampolineType, write } from "@gtkx/native";
+import { alloc, call, type Type as FfiType, type Handle, read, type CallbackType, write } from "@gtkx/native";
 import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
 import { arrayT, biguint64T, bind, objectT, stringT, uint32T, uint64T, voidT } from "./descriptors.js";
 import { tupleResult } from "./fn.js";
@@ -84,7 +84,7 @@ export function inoutBoxedFromFfi(ffiType: FfiType, boxed: object): Handle {
  * Generated classes implement `connect` and `emit` as `switch` statements over
  * their own signals. The `emit` path marshals arguments into `GValue`s and
  * dispatches `g_signal_emitv` entirely in generated code; the `connect` path
- * resolves the per-signal trampoline and delegates to {@link connectGobjectSignal},
+ * resolves the per-signal callback and delegates to {@link connectGobjectSignal},
  * the thin wrapper this module provides around the non-introspectable
  * `g_signal_connect_data`.
  */
@@ -132,10 +132,10 @@ export function signalDetailQuark(signal: string): number {
 /**
  * Connects a wrapped handler to a signal through `g_signal_connect_data`.
  *
- * The generated `connect` switch resolves the signal's typed trampoline
+ * The generated `connect` switch resolves the signal's typed callback
  * descriptor and the handler-marshalling closure, then hands both here. The
  * full detailed signal name (including any `::detail` suffix) is passed through
- * unchanged. The trampoline expands to the three positional arguments
+ * unchanged. The callback expands to the three positional arguments
  * `g_signal_connect_data` takes after the name: the handler's libffi closure,
  * its captured state as the user-data argument, and a destroy notify that
  * releases the handler when the connection is disconnected or the emitter is
@@ -143,7 +143,7 @@ export function signalDetailQuark(signal: string): number {
  *
  * @param instance - The emitting object whose native handle receives the connection
  * @param signal - The signal name, optionally carrying a `::detail` suffix
- * @param trampoline - The signal's FFI trampoline descriptor
+ * @param callback - The signal's FFI callback descriptor
  * @param handler - The wrapped handler invoked with the marshalled arguments
  * @param after - When true, run the handler after the default handler
  * @returns The handler connection id
@@ -152,18 +152,18 @@ export function signalDetailQuark(signal: string): number {
 export function connectGobjectSignal(
     instance: object,
     signal: string,
-    trampoline: TrampolineType,
+    callback: CallbackType,
     handler: SignalHandler,
     after: boolean,
 ): number {
-    const wrapped = wrapHandler(handler, trampoline, "skip");
+    const wrapped = wrapHandler(handler, callback, "skip");
     return call(
         LIB,
         "g_signal_connect_data",
         [
             { type: objectT("borrowed"), value: getHandle(instance) },
             { type: stringT("borrowed"), value: signal },
-            { type: trampoline, value: wrapped },
+            { type: callback, value: wrapped },
             { type: uint32T, value: after ? 1 : 0 },
         ],
         uint64T,

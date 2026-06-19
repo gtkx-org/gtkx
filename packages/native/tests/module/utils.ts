@@ -131,7 +131,7 @@ export function connectSignalReturning(
             { type: STRING, value: signalName },
             {
                 type: {
-                    type: "trampoline",
+                    type: "callback",
                     argTypes: [GOBJECT_BORROWED, UINT64],
                     returnType: { type: "void" },
                     hasDestroy: true,
@@ -145,7 +145,7 @@ export function connectSignalReturning(
     );
 }
 
-export function connectSignalTrampoline(
+export function connectSignalCallback(
     obj: unknown,
     signalName: string,
     callback: (...args: unknown[]) => void,
@@ -163,7 +163,7 @@ export function connectSignalTrampoline(
             { type: STRING, value: signalName },
             {
                 type: {
-                    type: "trampoline",
+                    type: "callback",
                     argTypes: options.argTypes,
                     returnType: { type: "void" },
                     hasDestroy: options.hasDestroy ?? true,

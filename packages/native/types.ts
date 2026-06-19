@@ -89,8 +89,8 @@ export type HashTableType = {
     ownership: Ownership;
 };
 
-export type TrampolineType = {
-    type: "trampoline";
+export type CallbackType = {
+    type: "callback";
     argTypes: Type[];
     returnType: Type;
     hasDestroy?: boolean;
@@ -128,7 +128,7 @@ export type Type =
     | BlobType
     | HashTableType
     | RefType
-    | TrampolineType
+    | CallbackType
     | UnicharType
     | VoidType;
 

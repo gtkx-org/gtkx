@@ -205,7 +205,7 @@ impl ItemCodec {
             | Type::Array(_)
             | Type::Blob(_)
             | Type::HashTable(_)
-            | Type::Trampoline(_)
+            | Type::Callback(_)
             | Type::Ref(_)
             | Type::Unichar(_) => return None,
         })

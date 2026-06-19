@@ -9,7 +9,7 @@ use crate::types::Type;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
-pub enum TrampolineScope {
+pub enum CallbackScope {
     #[default]
     Call,
     Notified,
@@ -17,7 +17,7 @@ pub enum TrampolineScope {
     Forever,
 }
 
-impl std::str::FromStr for TrampolineScope {
+impl std::str::FromStr for CallbackScope {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -34,19 +34,19 @@ impl std::str::FromStr for TrampolineScope {
 }
 
 #[derive(Debug, Clone)]
-pub struct TrampolineType {
+pub struct CallbackType {
     pub arg_types: Vec<Type>,
     pub return_type: Box<Type>,
     pub has_destroy: bool,
     pub user_data_index: Option<usize>,
-    pub scope: TrampolineScope,
+    pub scope: CallbackScope,
 }
 
-impl FromDescriptor for TrampolineType {
+impl FromDescriptor for CallbackType {
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let (arg_types, return_type) =
-            super::parse_trampoline_arg_and_return_types(env, obj, "trampoline")?;
+            super::parse_callback_arg_and_return_types(env, obj, "callback")?;
 
         let has_destroy =
             super::optional_descriptor_property::<bool>(obj, "hasDestroy")?.unwrap_or(false);
@@ -62,9 +62,9 @@ impl FromDescriptor for TrampolineType {
                 .map_err(|e: String| napi::Error::new(napi::Status::InvalidArg, e))?,
             None => {
                 if has_destroy {
-                    TrampolineScope::Notified
+                    CallbackScope::Notified
                 } else {
-                    TrampolineScope::Call
+                    CallbackScope::Call
                 }
             }
         };
@@ -79,8 +79,8 @@ impl FromDescriptor for TrampolineType {
     }
 }
 
-impl FfiEncoder for TrampolineType {
-    arg_only_call_cif!("Trampolines");
+impl FfiEncoder for CallbackType {
+    arg_only_call_cif!("Callbacks");
 
     fn append_ffi_arg_types(&self, types: &mut Vec<libffi::Type>) {
         types.push(libffi::Type::pointer());
@@ -99,10 +99,10 @@ impl FfiEncoder for TrampolineType {
             value::Value::Null | value::Value::Undefined => {
                 return Ok(self.build_null_ffi_value());
             }
-            _ => bail!("Expected a Callback for trampoline type, got {val:?}"),
+            _ => bail!("Expected a Callback for the callback descriptor, got {val:?}"),
         };
 
-        let is_oneshot = self.scope == TrampolineScope::Async;
+        let is_oneshot = self.scope == CallbackScope::Async;
 
         let data = TrampolineData::new(
             callback.js_func.clone(),
@@ -116,30 +116,30 @@ impl FfiEncoder for TrampolineType {
         let fn_ptr = state.code_ptr;
 
         match self.scope {
-            TrampolineScope::Forever => Ok(ffi::FfiValue::Trampoline(
-                ffi::TrampolineValue::new_armed(fn_ptr, None, state),
+            CallbackScope::Forever => Ok(ffi::FfiValue::Callback(
+                ffi::CallbackValue::new_armed(fn_ptr, None, state),
             )),
-            TrampolineScope::Notified => {
-                Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue::new_armed(
+            CallbackScope::Notified => {
+                Ok(ffi::FfiValue::Callback(ffi::CallbackValue::new_armed(
                     fn_ptr,
                     Some(TrampolineState::destroy as *mut c_void),
                     state,
                 )))
             }
-            TrampolineScope::Async => {
+            CallbackScope::Async => {
                 let state_ptr =
                     std::ptr::from_ref::<TrampolineState>(&state) as *mut TrampolineState;
                 state
                     .data_ref()
                     .oneshot_state_ptr
                     .store(state_ptr, Ordering::Release);
-                Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue::new_armed(
+                Ok(ffi::FfiValue::Callback(ffi::CallbackValue::new_armed(
                     fn_ptr, None, state,
                 )))
             }
-            TrampolineScope::Call => {
+            CallbackScope::Call => {
                 let state_ptr = &*state as *const TrampolineState as *mut c_void;
-                Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue::new(
+                Ok(ffi::FfiValue::Callback(ffi::CallbackValue::new(
                     fn_ptr,
                     state_ptr,
                     None,
@@ -150,13 +150,13 @@ impl FfiEncoder for TrampolineType {
     }
 }
 
-impl FfiDecoder for TrampolineType {}
+impl FfiDecoder for CallbackType {}
 
-impl RawPtrCodec for TrampolineType {}
+impl RawPtrCodec for CallbackType {}
 
-impl TrampolineType {
+impl CallbackType {
     fn build_null_ffi_value(&self) -> ffi::FfiValue {
-        ffi::FfiValue::Trampoline(ffi::TrampolineValue::new(
+        ffi::FfiValue::Callback(ffi::CallbackValue::new(
             std::ptr::null_mut(),
             std::ptr::null_mut(),
             if self.has_destroy {

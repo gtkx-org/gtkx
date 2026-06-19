@@ -11,7 +11,7 @@ pub use storage::{
     FfiStorage, FfiStorageKind, GArrayData, GListData, GListFlavor, GSListData, GSListFlavor,
     HashTableData, ListFlavor, PendingRelease, PendingTransfer, StringGListData, StringGSListData,
 };
-pub use value::{FfiValue, TrampolineValue};
+pub use value::{FfiValue, CallbackValue};
 
 use crate::arg::Arg;
 use crate::types::FfiEncoder as _;

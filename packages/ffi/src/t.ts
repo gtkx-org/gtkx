@@ -84,7 +84,7 @@ type T = {
     readonly byteArray: typeof helpers.byteArrayT;
     readonly sizedArray: typeof helpers.sizedArrayT;
     readonly fixedArray: typeof helpers.fixedArrayT;
-    readonly trampoline: typeof helpers.trampolineT;
+    readonly callback: typeof helpers.callbackT;
     readonly fn: typeof fn;
 };
 
@@ -123,6 +123,6 @@ export const t: T = {
     byteArray: helpers.byteArrayT,
     sizedArray: helpers.sizedArrayT,
     fixedArray: helpers.fixedArrayT,
-    trampoline: helpers.trampolineT,
+    callback: helpers.callbackT,
     fn,
 } as const;

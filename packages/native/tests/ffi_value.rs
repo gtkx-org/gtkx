@@ -1,6 +1,6 @@
-//! Tests for [`native::ffi::FfiValue`] and [`native::ffi::TrampolineValue`].
+//! Tests for [`native::ffi::FfiValue`] and [`native::ffi::CallbackValue`].
 //!
-//! The armed-trampoline tests build a real [`TrampolineState`] around an inert
+//! The armed-callback tests build a real [`TrampolineState`] around an inert
 //! [`JsRef`]: in a `cargo test` process the napi-sys dyn-symbols stubs report
 //! success without allocating a reference, so the state's JS handle is a
 //! harmless null token while its libffi closure and pending-transfer lifetime
@@ -15,18 +15,18 @@ use std::ffi::c_void;
 use std::sync::Arc;
 
 use napi::{Env, JsFunction, NapiValue as _};
-use native::ffi::{FfiStorage, FfiValue, TrampolineValue};
+use native::ffi::{FfiStorage, FfiValue, CallbackValue};
 use native::trampoline::{TrampolineData, TrampolineState};
 use native::types::{Type, VoidType};
 use native::value::JsRef;
 
-fn trampoline_value(destroy: bool) -> TrampolineValue {
+fn callback_value(destroy: bool) -> CallbackValue {
     let destroy_ptr = if destroy {
         Some(std::ptr::without_provenance_mut::<c_void>(0xDEAD))
     } else {
         None
     };
-    TrampolineValue::new(
+    CallbackValue::new(
         std::ptr::without_provenance_mut::<c_void>(0xCAFE),
         std::ptr::without_provenance_mut::<c_void>(0xBEEF),
         destroy_ptr,
@@ -43,9 +43,9 @@ fn js_func_ref() -> Arc<JsRef<JsFunction>> {
     Arc::new(JsRef::from_js_value(&env, &func).expect("stubbed reference creation should succeed"))
 }
 
-fn armed_trampoline_value(
+fn armed_callback_value(
     destroy_ptr: Option<*mut c_void>,
-) -> (TrampolineValue, Arc<JsRef<JsFunction>>) {
+) -> (CallbackValue, Arc<JsRef<JsFunction>>) {
     let js_func = js_func_ref();
     let data = TrampolineData::new(
         Arc::clone(&js_func),
@@ -57,7 +57,7 @@ fn armed_trampoline_value(
     let state = Box::new(TrampolineState::create(data));
     let fn_ptr = state.code_ptr;
     (
-        TrampolineValue::new_armed(fn_ptr, destroy_ptr, state),
+        CallbackValue::new_armed(fn_ptr, destroy_ptr, state),
         js_func,
     )
 }
@@ -76,7 +76,7 @@ fn release_handed_over_state(state_ptr: *mut c_void, js_func: &Arc<JsRef<JsFunct
 #[test]
 fn new_armed_exposes_state_and_closure_pointers() {
     let destroy_ptr = TrampolineState::destroy as *mut c_void;
-    let (tv, _js_func) = armed_trampoline_value(Some(destroy_ptr));
+    let (tv, _js_func) = armed_callback_value(Some(destroy_ptr));
     assert!(!tv.fn_ptr().is_null());
     assert!(!tv.state_ptr().is_null());
     assert_eq!(tv.destroy_ptr(), Some(destroy_ptr));
@@ -88,7 +88,7 @@ fn new_armed_exposes_state_and_closure_pointers() {
 
 #[test]
 fn armed_state_drops_with_value_when_call_never_happens() {
-    let (tv, js_func) = armed_trampoline_value(None);
+    let (tv, js_func) = armed_callback_value(None);
     assert_eq!(Arc::strong_count(&js_func), 2);
     drop(tv);
     assert_eq!(Arc::strong_count(&js_func), 1);
@@ -96,7 +96,7 @@ fn armed_state_drops_with_value_when_call_never_happens() {
 
 #[test]
 fn disarm_pending_transfer_hands_state_over_and_is_idempotent() {
-    let (tv, js_func) = armed_trampoline_value(Some(TrampolineState::destroy as *mut c_void));
+    let (tv, js_func) = armed_callback_value(Some(TrampolineState::destroy as *mut c_void));
     let state_ptr = tv.state_ptr();
     tv.disarm_pending_transfer();
     tv.disarm_pending_transfer();
@@ -105,10 +105,10 @@ fn disarm_pending_transfer_hands_state_over_and_is_idempotent() {
 }
 
 #[test]
-fn ffi_value_disarm_pending_transfer_routes_to_trampoline() {
-    let (tv, js_func) = armed_trampoline_value(None);
+fn ffi_value_disarm_pending_transfer_routes_to_callback() {
+    let (tv, js_func) = armed_callback_value(None);
     let state_ptr = tv.state_ptr();
-    let value = FfiValue::Trampoline(tv);
+    let value = FfiValue::Callback(tv);
     value.disarm_pending_transfer();
     drop(value);
     release_handed_over_state(state_ptr, &js_func);
@@ -121,8 +121,8 @@ fn ffi_value_disarm_pending_transfer_is_a_noop_for_scalars() {
 }
 
 #[test]
-fn trampoline_value_accessors_expose_pointers() {
-    let tv = trampoline_value(true);
+fn callback_value_accessors_expose_pointers() {
+    let tv = callback_value(true);
     assert_eq!(
         tv.fn_ptr(),
         std::ptr::without_provenance_mut::<c_void>(0xCAFE)
@@ -138,8 +138,8 @@ fn trampoline_value_accessors_expose_pointers() {
 }
 
 #[test]
-fn trampoline_value_without_destroy_has_none() {
-    let tv = trampoline_value(false);
+fn callback_value_without_destroy_has_none() {
+    let tv = callback_value(false);
     assert_eq!(tv.destroy_ptr(), None);
 }
 
@@ -185,7 +185,7 @@ fn as_ptr_storage_returns_storage_ptr() {
 }
 
 #[test]
-fn as_ptr_scalar_and_trampoline_and_void_fail() {
+fn as_ptr_scalar_and_callback_and_void_fail() {
     assert!(FfiValue::U8(1).as_ptr("test").is_err());
     assert!(FfiValue::I8(1).as_ptr("test").is_err());
     assert!(FfiValue::U16(1).as_ptr("test").is_err());
@@ -197,7 +197,7 @@ fn as_ptr_scalar_and_trampoline_and_void_fail() {
     assert!(FfiValue::F32(1.0).as_ptr("test").is_err());
     assert!(FfiValue::F64(1.0).as_ptr("test").is_err());
     assert!(
-        FfiValue::Trampoline(trampoline_value(false))
+        FfiValue::Callback(callback_value(false))
             .as_ptr("test")
             .is_err()
     );
@@ -237,16 +237,16 @@ fn to_number_handles_every_numeric_variant() {
 }
 
 #[test]
-fn append_libffi_args_trampoline_without_destroy_pushes_two() {
-    let v = FfiValue::Trampoline(trampoline_value(false));
+fn append_libffi_args_callback_without_destroy_pushes_two() {
+    let v = FfiValue::Callback(callback_value(false));
     let mut args = Vec::new();
     v.append_libffi_args(&mut args);
     assert_eq!(args.len(), 2);
 }
 
 #[test]
-fn append_libffi_args_trampoline_with_destroy_pushes_three() {
-    let v = FfiValue::Trampoline(trampoline_value(true));
+fn append_libffi_args_callback_with_destroy_pushes_three() {
+    let v = FfiValue::Callback(callback_value(true));
     let mut args = Vec::new();
     v.append_libffi_args(&mut args);
     assert_eq!(args.len(), 3);

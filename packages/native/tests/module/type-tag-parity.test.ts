@@ -46,7 +46,7 @@ const REPRESENTATIVES: DescriptorByTag = {
         ownership: "borrowed",
     },
     ref: { type: "ref", innerType: { type: "int32" } },
-    trampoline: { type: "trampoline", argTypes: [], returnType: { type: "void" } },
+    callback: { type: "callback", argTypes: [], returnType: { type: "void" } },
     unichar: { type: "unichar" },
     void: { type: "void" },
 };

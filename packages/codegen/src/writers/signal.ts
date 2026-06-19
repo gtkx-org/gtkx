@@ -38,7 +38,7 @@ type CollectedSignal = {
  *
  * Each method is a `switch` over the type's own signals, keyed by the bare
  * signal name `signalBaseName` strips any `::detail` suffix down to. `connect`
- * resolves the per-signal trampoline, wraps the handler, and hands it to the
+ * resolves the per-signal callback descriptor, wraps the handler, and hands it to the
  * thin `connectGobjectSignal` wrapper around the non-introspectable
  * `g_signal_connect_data`. `emit` marshals the arguments into `GValue`s with
  * `valueFromFfi`, resolves the signal id via the generated `signalLookup` and
@@ -361,16 +361,16 @@ const renderSignalEmitEntry = (context: ModuleContext, collected: CollectedSigna
 };
 
 /**
- * Renders one `connect` switch case: it resolves the signal's typed trampoline
+ * Renders one `connect` switch case: it resolves the signal's typed callback
  * and dispatches `g_signal_connect_data` through {@link connectGobjectSignal}
  * with the full detailed signal name. The handler is passed raw;
  * `connectGobjectSignal` wraps it with the shared `wrapHandler` using the
- * trampoline descriptor.
+ * callback descriptor.
  */
 const renderConnectCase = (context: ModuleContext, collected: CollectedSignal): string => {
     const { signal } = collected;
-    const trampoline = renderTrampoline(context, collected);
-    const body = `return connectGobjectSignal(this, signal, ${trampoline}, handler, after ?? false);`;
+    const callback = renderCallback(context, collected);
+    const body = `return connectGobjectSignal(this, signal, ${callback}, handler, after ?? false);`;
     return `case ${quote(signal.name)}: {\n${indent(body, 1)}\n}`;
 };
 
@@ -450,7 +450,7 @@ const renderCallerOutAllocation = (context: ModuleContext, parameter: GirParamet
 };
 
 /**
- * Renders the `t.trampoline(...)` FFI descriptor a handler connects through.
+ * Renders the `t.callback(...)` FFI descriptor a handler connects through.
  *
  * Each parameter renders via the shared {@link renderHandlerArgType}: a scalar
  * out/inout cell as `t.ref(...)` the native trampoline writes back, a
@@ -459,17 +459,17 @@ const renderCallerOutAllocation = (context: ModuleContext, parameter: GirParamet
  * the shared `wrapHandler` driven by this descriptor, so no per-signal invoke
  * closure is generated.
  */
-const renderTrampoline = (context: ModuleContext, collected: CollectedSignal): string => {
+const renderCallback = (context: ModuleContext, collected: CollectedSignal): string => {
     const { signal, namespaceName } = collected;
     const params = signal.parameters.filter((parameter) => !parameter.isVarargs);
-    const trampolineParamFfi = params.map((parameter) =>
+    const callbackParamFfi = params.map((parameter) =>
         renderHandlerArgType(context, parameter, qualifyTypeRef(parameter.type, namespaceName)),
     );
     const returnRef = qualifyTypeRef(signal.returnValue.type, namespaceName);
     const isVoid = omitsPrimaryReturn(returnRef, signal);
     const returnFfi = isVoid ? "t.void" : renderFfiType(context, returnRef, signal.returnValue.transferOwnership);
-    const trampolineArgs = ['t.object("borrowed")', ...trampolineParamFfi, "t.void"].join(", ");
-    return `t.trampoline([${trampolineArgs}], ${returnFfi}, { hasDestroy: true, userDataIndex: ${params.length + 1} })`;
+    const callbackArgs = ['t.object("borrowed")', ...callbackParamFfi, "t.void"].join(", ");
+    return `t.callback([${callbackArgs}], ${returnFfi}, { hasDestroy: true, userDataIndex: ${params.length + 1} })`;
 };
 
 const collectClassSignals = (context: ModuleContext, klass: GirClass): readonly CollectedSignal[] => {
