@@ -24,26 +24,25 @@
  */
 import { CONTAINER_SLOTS, ELEMENT_MAP } from "virtual:gtkx-config";
 import type { ElementMapRule, MethodVerb, OrderedInsertVerb, VerbArgs } from "@gtkx/config";
-import type { GType } from "@gtkx/gi/gobject";
+import * as GObject from "@gtkx/gi/gobject";
 import { collectTypeNameChain, typeChainIncludes } from "../utils/gtype.js";
 import { notifyOrderedAttach } from "./attach-events.js";
 import type { ElementMapping } from "./element-mapping.js";
-import type { Instance } from "./instance.js";
 import { callMethod } from "./reflect-call.js";
-import type { BackingInstance } from "./types.js";
+import { type Node, stateOf } from "./state.js";
 
 /** Whether `name` appears in `instance`'s GType ancestry. */
-const hasType = (instance: BackingInstance, name: string): boolean => typeChainIncludes(instance.__gtype__, name);
+const hasType = (instance: GObject.Object, name: string): boolean => typeChainIncludes(instance.__gtype__, name);
 
-const exposesMethod = (instance: BackingInstance, method: string): boolean =>
+const exposesMethod = (instance: GObject.Object, method: string): boolean =>
     typeof Reflect.get(instance, method) === "function";
 
-const ruleMatches = (rule: ElementMapRule, child: Instance, parent: Instance): boolean => {
-    const childBacking = child.backingInstance;
-    const parentBacking = parent.backingInstance;
-    if (!childBacking || !parentBacking || !hasType(childBacking, rule.child)) return false;
-    if (rule.parentType !== undefined) return hasType(parentBacking, rule.parentType);
-    if (rule.parentMethod !== undefined) return exposesMethod(parentBacking, rule.parentMethod);
+const ruleMatches = (rule: ElementMapRule, child: Node, parent: Node): boolean => {
+    if (!(child instanceof GObject.Object) || !(parent instanceof GObject.Object) || !hasType(child, rule.child)) {
+        return false;
+    }
+    if (rule.parentType !== undefined) return hasType(parent, rule.parentType);
+    if (rule.parentMethod !== undefined) return exposesMethod(parent, rule.parentMethod);
     return false;
 };
 
@@ -58,13 +57,13 @@ const ruleMatches = (rule: ElementMapRule, child: Instance, parent: Instance): b
  * @param absent - the value returned when either side has no backing instance
  */
 const memoizeByGtypePair = <T>(
-    compute: (child: Instance, parent: Instance) => T,
+    compute: (child: Node, parent: Node) => T,
     absent: T,
-): ((child: Instance, parent: Instance) => T) => {
-    const cache = new Map<GType, Map<GType, T>>();
+): ((child: Node, parent: Node) => T) => {
+    const cache = new Map<GObject.GType, Map<GObject.GType, T>>();
     return (child, parent) => {
-        const childType = child.backingInstance?.__gtype__;
-        const parentType = parent.backingInstance?.__gtype__;
+        const childType = child instanceof GObject.Object ? child.__gtype__ : undefined;
+        const parentType = parent instanceof GObject.Object ? parent.__gtype__ : undefined;
         if (childType === undefined || parentType === undefined) return absent;
         let perParent = cache.get(childType);
         if (!perParent) {
@@ -80,43 +79,41 @@ const memoizeByGtypePair = <T>(
 };
 
 /** Resolves a verb's argument list, or `null` when the shape cannot be satisfied. */
-const resolveArgs = (shape: VerbArgs, child: Instance): readonly unknown[] | null => {
-    const backing = child.backingInstance;
+const resolveArgs = (shape: VerbArgs, child: Node): readonly unknown[] | null => {
     switch (shape) {
         case "child":
-            return [backing];
+            return [child];
         case "null":
             return [null];
         case "childName": {
-            const getName = backing && Reflect.get(backing, "getName");
-            return typeof getName === "function" ? [Reflect.apply(getName, backing, [])] : null;
+            const getName = Reflect.get(child, "getName");
+            return typeof getName === "function" ? [Reflect.apply(getName, child, [])] : null;
         }
         case "prefixChild": {
-            const prefix = child.props.prefix;
-            return typeof prefix === "string" ? [prefix, backing] : null;
+            const prefix = stateOf(child).props.prefix;
+            return typeof prefix === "string" ? [prefix, child] : null;
         }
         case "prefixNull": {
-            const prefix = child.props.prefix;
+            const prefix = stateOf(child).props.prefix;
             return typeof prefix === "string" ? [prefix, null] : null;
         }
     }
 };
 
-const callVerb = (parent: Instance, method: string, args: readonly unknown[]): void => {
-    const target = parent.backingInstance;
-    if (target) callMethod(target, method, args);
+const callVerb = (parent: Node, method: string, args: readonly unknown[]): void => {
+    if (parent instanceof GObject.Object) callMethod(parent, method, args);
 };
 
-const guardHolds = (verb: MethodVerb, child: Instance, parent: Instance): boolean => {
+const guardHolds = (verb: MethodVerb, child: Node, parent: Node): boolean => {
     const { detachGuard } = verb;
     if (!detachGuard) return true;
-    const subject = detachGuard.side === "child" ? child.backingInstance : parent.backingInstance;
-    const counterpart = detachGuard.side === "child" ? parent.backingInstance : child.backingInstance;
-    const getter = subject && Reflect.get(subject, detachGuard.getter);
+    const subject = detachGuard.side === "child" ? child : parent;
+    const counterpart = detachGuard.side === "child" ? parent : child;
+    const getter = Reflect.get(subject, detachGuard.getter);
     return typeof getter === "function" && Reflect.apply(getter, subject, []) === counterpart;
 };
 
-type RuleMatcher = (child: Instance, parent: Instance) => boolean;
+type RuleMatcher = (child: Node, parent: Node) => boolean;
 
 const buildMethodMapping = (verb: MethodVerb, matches: RuleMatcher): ElementMapping => ({
     matches,
@@ -134,7 +131,7 @@ const buildMethodMapping = (verb: MethodVerb, matches: RuleMatcher): ElementMapp
 /** The duck-typed surface of a `Gio.ListModel` the ordered-insert verb reads. */
 type ItemCollection = { getNItems(): number; getItem(position: number): unknown };
 
-const collectionOf = (parent: BackingInstance, getter: string): ItemCollection | null => {
+const collectionOf = (parent: GObject.Object, getter: string): ItemCollection | null => {
     const fn = Reflect.get(parent, getter);
     if (typeof fn !== "function") return null;
     const collection = Reflect.apply(fn, parent, []) as ItemCollection | null;
@@ -144,7 +141,7 @@ const collectionOf = (parent: BackingInstance, getter: string): ItemCollection |
     return collection;
 };
 
-const indexOf = (collection: ItemCollection, item: BackingInstance): number => {
+const indexOf = (collection: ItemCollection, item: GObject.Object): number => {
     const nItems = collection.getNItems();
     for (let i = 0; i < nItems; i++) {
         if (collection.getItem(i) === item) return i;
@@ -158,7 +155,7 @@ const indexOf = (collection: ItemCollection, item: BackingInstance): number => {
  * first): the anchor's current index, or the end when there is no anchor or
  * it is not present.
  */
-const insertPosition = (collection: ItemCollection, anchor: BackingInstance | null | undefined): number => {
+const insertPosition = (collection: ItemCollection, anchor: GObject.Object | null | undefined): number => {
     if (anchor != null) {
         const anchorIndex = indexOf(collection, anchor);
         if (anchorIndex >= 0) return anchorIndex;
@@ -173,8 +170,8 @@ const insertPosition = (collection: ItemCollection, anchor: BackingInstance | nu
  */
 const isPlacedBefore = (
     collection: ItemCollection,
-    item: BackingInstance,
-    anchor: BackingInstance | null | undefined,
+    item: GObject.Object,
+    anchor: GObject.Object | null | undefined,
 ): boolean => {
     const index = indexOf(collection, item);
     if (index < 0) return false;
@@ -182,33 +179,32 @@ const isPlacedBefore = (
     return index === collection.getNItems() - 1;
 };
 
-type OrderedInsertState = { parent: BackingInstance };
+type OrderedInsertState = { parent: GObject.Object };
 
 const buildOrderedInsertMapping = (verb: OrderedInsertVerb, matches: RuleMatcher): ElementMapping => ({
     matches,
     attach: (child, parent, anchor) => {
-        const childBacking = child.backingInstance;
-        const parentBacking = parent.backingInstance;
-        if (!childBacking || !parentBacking) return;
-        const collection = collectionOf(parentBacking, verb.collection);
+        if (!(child instanceof GObject.Object) || !(parent instanceof GObject.Object)) return;
+        const collection = collectionOf(parent, verb.collection);
         if (!collection) return;
-        const state = child.attachState as OrderedInsertState | undefined;
-        if (state?.parent === parentBacking) {
-            if (isPlacedBefore(collection, childBacking, anchor)) return;
-            if (indexOf(collection, childBacking) >= 0) callVerb(parent, verb.detach, [childBacking]);
+        const childState = stateOf(child);
+        const state = childState.attachState as OrderedInsertState | undefined;
+        if (state?.parent === parent) {
+            if (isPlacedBefore(collection, child, anchor)) return;
+            if (indexOf(collection, child) >= 0) callVerb(parent, verb.detach, [child]);
         }
-        callVerb(parent, verb.attach, [insertPosition(collection, anchor), childBacking]);
-        child.attachState = { parent: parentBacking };
-        notifyOrderedAttach(parentBacking);
+        callVerb(parent, verb.attach, [insertPosition(collection, anchor), child]);
+        childState.attachState = { parent };
+        notifyOrderedAttach(parent);
     },
     detach: (child, parent) => {
-        const childBacking = child.backingInstance;
-        const parentBacking = parent.backingInstance;
-        const state = child.attachState as OrderedInsertState | undefined;
-        if (!childBacking || !parentBacking || state?.parent !== parentBacking) return;
-        callVerb(parent, verb.detach, [childBacking]);
-        child.attachState = undefined;
-        notifyOrderedAttach(parentBacking);
+        if (!(child instanceof GObject.Object) || !(parent instanceof GObject.Object)) return;
+        const childState = stateOf(child);
+        const state = childState.attachState as OrderedInsertState | undefined;
+        if (state?.parent !== parent) return;
+        callVerb(parent, verb.detach, [child]);
+        childState.attachState = undefined;
+        notifyOrderedAttach(parent);
     },
 });
 
@@ -251,10 +247,10 @@ const findCompiledRule = memoizeByGtypePair<CompiledRule | null>(
  * this to attach and detach a slot's GObject children through the row's verbs
  * (`addController`/`removeController`, …) instead of widget unparenting.
  *
- * @param child - The child instance being attached or detached.
- * @param parent - The parent instance it targets.
+ * @param child - The child node being attached or detached.
+ * @param parent - The parent node it targets.
  */
-export const findDataAttachMapping = (child: Instance, parent: Instance): ElementMapping | undefined =>
+export const findDataAttachMapping = (child: Node, parent: Node): ElementMapping | undefined =>
     findCompiledRule(child, parent)?.mapping;
 
 const SETTER_PREFIX = "set";
@@ -273,23 +269,22 @@ const propertyNameForSetter = (method: string): string | null =>
  * container-slot method on `parent`; add/insert methods that are not (e.g.
  * `AdwToggleGroup.add`) have no prop surface and keep attaching as children.
  */
-const promotedPropFor = (rule: ElementMapRule, parent: Instance): string | null => {
-    if (rule.verb.kind !== "method") return null;
-    const backing = parent.backingInstance;
-    if (!backing) return null;
+const promotedPropFor = (rule: ElementMapRule, parent: Node): string | null => {
+    if (rule.verb.kind !== "method" || !(parent instanceof GObject.Object)) return null;
     const attach = rule.verb.attach;
     const setterProp = propertyNameForSetter(attach);
     if (setterProp !== null) return setterProp;
-    for (const typeName of collectTypeNameChain(backing.__gtype__)) {
+    for (const typeName of collectTypeNameChain(parent.__gtype__)) {
         if (CONTAINER_SLOTS[typeName]?.includes(attach)) return attach;
     }
     return null;
 };
 
-const displayName = (instance: Instance): string =>
-    instance.backingInstance
-        ? (collectTypeNameChain(instance.backingInstance.__gtype__)[0] ?? instance.type)
-        : instance.type;
+const displayName = (node: Node): string => {
+    const state = stateOf(node);
+    if (node instanceof GObject.Object) return collectTypeNameChain(node.__gtype__)[0] ?? state.name ?? "GObject";
+    return state.name ?? state.kind ?? "node";
+};
 
 /**
  * Rejects direct child nesting for relationships promoted to slot or

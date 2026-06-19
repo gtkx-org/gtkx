@@ -1,4 +1,4 @@
+import type * as GObject from "@gtkx/gi/gobject";
 import type { ReactNode } from "react";
-import type { BackingInstance } from "./types.js";
 
-export type BoundItem = [ReactNode, BackingInstance, string];
+export type BoundItem = [ReactNode, GObject.Object, string];

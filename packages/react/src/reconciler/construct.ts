@@ -1,5 +1,6 @@
 import { getWrapperClass, typeFromName } from "@gtkx/ffi";
-import type { BackingInstance, Props } from "./types.js";
+import type * as GObject from "@gtkx/gi/gobject";
+import type { Props } from "./types.js";
 
 /**
  * Instantiates the backing GObject of a reconciler element, widget or not.
@@ -13,10 +14,10 @@ import type { BackingInstance, Props } from "./types.js";
  * @param typeName - GLib type name (e.g. `"GtkLabel"`)
  * @param props - The construct-time GObject properties to set.
  */
-export function createContainerWithProperties(typeName: string, props: Props): BackingInstance {
+export function createContainerWithProperties(typeName: string, props: Props): GObject.Object {
     const cls = getWrapperClass(typeFromName(typeName));
     if (!cls) {
         throw new Error(`createContainerWithProperties: no registered class for GLib type '${typeName}'`);
     }
-    return new (cls as new (props: Record<string, unknown>) => BackingInstance)(props as Record<string, unknown>);
+    return new (cls as new (props: Record<string, unknown>) => GObject.Object)(props as Record<string, unknown>);
 }

@@ -1,10 +1,8 @@
 /// <reference types="@gtkx/config/virtual" />
 
 import { CONSTRUCT_ONLY_PROPS, CONSTRUCT_PROPS, DEFAULT_PROPS, SIGNALS } from "virtual:gtkx-config";
-import type { GType } from "@gtkx/gi/gobject";
-import { typeName, typeParent } from "@gtkx/gi/gobject";
+import * as GObject from "@gtkx/gi/gobject";
 import { toKebabCase } from "@gtkx/utils";
-import type { BackingInstance } from "../reconciler/types.js";
 
 const NOTIFY_PREFIX = "onNotify";
 
@@ -23,32 +21,32 @@ export const resolveNotifySignal = (propName: string): string | null => {
     return `notify::${toKebabCase(tail.charAt(0).toLowerCase() + tail.slice(1))}`;
 };
 
-const typeNameChainCache = new Map<GType, readonly string[]>();
-const typeNameSetCache = new Map<GType, ReadonlySet<string>>();
-const signalCache = new Map<GType, Map<string, string | null>>();
-const constructOnlyCache = new Map<GType, Map<string, boolean>>();
-const defaultPropCache = new Map<GType, Map<string, DefaultPropLookup>>();
-const constructablePropsCache = new Map<GType, ReadonlySet<string>>();
+const typeNameChainCache = new Map<GObject.GType, readonly string[]>();
+const typeNameSetCache = new Map<GObject.GType, ReadonlySet<string>>();
+const signalCache = new Map<GObject.GType, Map<string, string | null>>();
+const constructOnlyCache = new Map<GObject.GType, Map<string, boolean>>();
+const defaultPropCache = new Map<GObject.GType, Map<string, DefaultPropLookup>>();
+const constructablePropsCache = new Map<GObject.GType, ReadonlySet<string>>();
 
 /**
  * Returns a GLib type's ancestry as type names, most-derived first.
  *
  * Walks the type-parent chain from `gtype` up to the root, collecting each
- * {@link typeName}. The result is cached per GType.
+ * {@link GObject.typeName}. The result is cached per GType.
  *
  * @param gtype - the GLib type whose ancestry to collect
  */
-export const collectTypeNameChain = (gtype: GType): readonly string[] => {
+export const collectTypeNameChain = (gtype: GObject.GType): readonly string[] => {
     const cached = typeNameChainCache.get(gtype);
     if (cached) return cached;
 
     const chain: string[] = [];
     let current = gtype;
     while (current !== 0n) {
-        const name = typeName(current);
+        const name = GObject.typeName(current);
         if (!name) break;
         chain.push(name);
-        current = typeParent(current);
+        current = GObject.typeParent(current);
     }
 
     typeNameChainCache.set(gtype, chain);
@@ -63,7 +61,7 @@ export const collectTypeNameChain = (gtype: GType): readonly string[] => {
  * @param gtype - the GLib type whose ancestry to test
  * @param name - the GLib type name to look for
  */
-export const typeChainIncludes = (gtype: GType, name: string): boolean => {
+export const typeChainIncludes = (gtype: GObject.GType, name: string): boolean => {
     let names = typeNameSetCache.get(gtype);
     if (!names) {
         names = new Set(collectTypeNameChain(gtype));
@@ -73,8 +71,8 @@ export const typeChainIncludes = (gtype: GType, name: string): boolean => {
 };
 
 const memoize = <T>(
-    cache: Map<GType, Map<string, T>>,
-    instance: BackingInstance,
+    cache: Map<GObject.GType, Map<string, T>>,
+    instance: GObject.Object,
     key: string,
     compute: (typeNames: readonly string[]) => T,
 ): T => {
@@ -100,7 +98,7 @@ const memoize = <T>(
  *
  * @param gtype - the GLib type whose constructable property names to resolve
  */
-export const collectConstructableProps = (gtype: GType): ReadonlySet<string> => {
+export const collectConstructableProps = (gtype: GObject.GType): ReadonlySet<string> => {
     const cached = constructablePropsCache.get(gtype);
     if (cached) return cached;
     const names = new Set<string>();
@@ -112,7 +110,7 @@ export const collectConstructableProps = (gtype: GType): ReadonlySet<string> => 
     return names;
 };
 
-export const isConstructOnlyProp = (instance: BackingInstance, key: string): boolean =>
+export const isConstructOnlyProp = (instance: GObject.Object, key: string): boolean =>
     memoize(constructOnlyCache, instance, key, (typeNames) => {
         for (const name of typeNames) {
             if (CONSTRUCT_ONLY_PROPS[name]?.has(key)) return true;
@@ -120,7 +118,7 @@ export const isConstructOnlyProp = (instance: BackingInstance, key: string): boo
         return false;
     });
 
-export const resolveSignal = (instance: BackingInstance, propName: string): string | null => {
+export const resolveSignal = (instance: GObject.Object, propName: string): string | null => {
     const notify = resolveNotifySignal(propName);
     if (notify) return notify;
     return memoize(signalCache, instance, propName, (typeNames) => {
@@ -150,7 +148,7 @@ const NO_DEFAULT_PROP: DefaultPropLookup = { has: false, value: undefined };
  * @param instance - the backing GObject whose property is being reset
  * @param key - the camelCase property name
  */
-export const resolveDefaultProp = (instance: BackingInstance, key: string): DefaultPropLookup =>
+export const resolveDefaultProp = (instance: GObject.Object, key: string): DefaultPropLookup =>
     memoize(defaultPropCache, instance, key, (typeNames) => {
         for (const name of typeNames) {
             const table = DEFAULT_PROPS[name];

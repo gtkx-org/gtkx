@@ -1,5 +1,5 @@
+import type * as GObject from "@gtkx/gi/gobject";
 import type { ReactNode, ReactPortal } from "react";
-import type { BackingInstance } from "./types.js";
 
 /**
  * Creates a React portal for rendering children into a different part of the widget tree.
@@ -38,11 +38,11 @@ type PortalElement = {
     $$typeof: symbol;
     key: string | null;
     children: ReactNode;
-    containerInfo: BackingInstance;
+    containerInfo: GObject.Object;
     implementation: null;
 };
 
-export const createPortal = (children: ReactNode, container: BackingInstance, key?: string | null): ReactPortal => {
+export const createPortal = (children: ReactNode, container: GObject.Object, key?: string | null): ReactPortal => {
     const portal: PortalElement = {
         // biome-ignore lint/style/useNamingConvention: React element brand, name fixed by React
         $$typeof: Symbol.for("react.portal"),

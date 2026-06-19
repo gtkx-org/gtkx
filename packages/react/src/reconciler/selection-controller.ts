@@ -1,6 +1,5 @@
 import type * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { isAdwComboRow } from "../utils/gtype-predicates.js";
 import type { ListModelController } from "./list-model-controller.js";
 import type { SignalStore } from "./signal-store.js";
 
@@ -25,6 +24,10 @@ export interface SelectionHost {
     isDropDown(): boolean;
     assignModelToWidget(): void;
     getOnSelectionChanged(): SelectionCallback;
+    /** Selects the dropdown item at `position`. */
+    setDropDownSelected(position: number): void;
+    /** The dropdown's selected position, or `-1` when none. */
+    getDropDownSelected(): number;
 }
 
 /**
@@ -146,30 +149,17 @@ export class SelectionController {
         if (!this.host.isDropDown()) return;
         if (id === undefined) return;
         if (id === null) {
-            this.setDropDownSelected(Gtk.INVALID_LIST_POSITION);
+            this.host.setDropDownSelected(Gtk.INVALID_LIST_POSITION);
             return;
         }
 
         const flatItems = this.model.collectFlatItems();
         for (let i = 0; i < flatItems.length; i++) {
             if (flatItems[i]?.id === id) {
-                this.setDropDownSelected(i);
+                this.host.setDropDownSelected(i);
                 return;
             }
         }
-    }
-
-    private setDropDownSelected(position: number): void {
-        if (this.backingInstance instanceof Gtk.DropDown || isAdwComboRow(this.backingInstance)) {
-            this.backingInstance.setSelected(position);
-        }
-    }
-
-    private getDropDownSelected(): number {
-        if (this.backingInstance instanceof Gtk.DropDown || isAdwComboRow(this.backingInstance)) {
-            return this.backingInstance.getSelected();
-        }
-        return -1;
     }
 
     private collectTreeSelectionIds(treeModel: Gtk.TreeListModel, selection: Gtk.Bitset, nItems: number): string[] {
@@ -196,7 +186,7 @@ export class SelectionController {
 
     private buildDropDownSelectionHandler(onSelectionChanged: (id: string) => void): () => void {
         return () => {
-            const position = this.getDropDownSelected();
+            const position = this.host.getDropDownSelected();
             const flatItems = this.model.collectFlatItems();
             const item = flatItems[position];
             if (item) {

@@ -10,25 +10,25 @@
  */
 import * as Gtk from "@gtkx/gi/gtk";
 import { scheduleFlush } from "./commit-flush.js";
-import { closestInstance, type Instance } from "./instance.js";
+import { closestInstance, type Node, stateOf } from "./state.js";
 import { isLabelTextWrapper } from "./text-wrapper.js";
 
-const rebuilds = new WeakMap<Instance, () => void>();
+const rebuilds = new WeakMap<Node, () => void>();
 
-const rebuildLabelText = (owner: Instance): void => {
-    const label = owner.backingInstance;
-    if (!(label instanceof Gtk.Label)) return;
-    const runs = owner.children.filter(isLabelTextWrapper);
-    if (owner.props.label !== undefined) {
+const rebuildLabelText = (owner: Node): void => {
+    if (!(owner instanceof Gtk.Label)) return;
+    const state = stateOf(owner);
+    const runs = state.children.filter(isLabelTextWrapper);
+    if (state.props.label !== undefined) {
         if (runs.length === 0) return;
         throw new Error("<GtkLabel> cannot mix a `label` prop with text children; use one or the other");
     }
-    const text = runs.map((run) => String(run.props.text)).join("");
-    owner.signalStore.blockAll();
+    const text = runs.map((run) => String(stateOf(run).props.text)).join("");
+    state.signalStore.blockAll();
     try {
-        label.setLabel(text);
+        owner.setLabel(text);
     } finally {
-        owner.signalStore.unblockAll();
+        state.signalStore.unblockAll();
     }
 };
 
@@ -37,10 +37,10 @@ const rebuildLabelText = (owner: Instance): void => {
  * end-of-commit rebuild of its text content. Used by the reconciler whenever a
  * label-text wrapper is attached, detached, or updated.
  *
- * @param node - The instance whose label text content changed.
+ * @param node - The node whose label text content changed.
  */
-export const scheduleLabelTextRebuild = (node: Instance): void => {
-    const owner = closestInstance(node, (instance) => instance.backingInstance instanceof Gtk.Label);
+export const scheduleLabelTextRebuild = (node: Node): void => {
+    const owner = closestInstance(node, (candidate) => candidate instanceof Gtk.Label);
     if (!owner) return;
     let rebuild = rebuilds.get(owner);
     if (!rebuild) {

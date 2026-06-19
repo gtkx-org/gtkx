@@ -1,24 +1,41 @@
 import type { ReactNode } from "react";
 import { reconciler } from "./reconciler.js";
 import { type ReconcilerErrorHandler, setReconcilerErrorHandler } from "./reconciler-error-sink.js";
+import { createRootElement, type RootElement } from "./root-element.js";
 import { getSignalStore } from "./signal-store.js";
 
 type ActiveRoot = {
-    container: unknown;
-    sentinel: object;
+    fiberRoot: ReturnType<typeof reconciler.createContainer>;
+    token: RootElement;
     priorHandler: ReconcilerErrorHandler | null;
 };
 
 const activeRoots = new Set<ActiveRoot>();
 
+const teardownRoot = (root: ActiveRoot): void => {
+    setReconcilerErrorHandler(root.priorHandler);
+    reconciler.updateContainer(null, root.fiberRoot, null, () => {});
+};
+
 /**
- * Handle returned by {@link render}, allowing callers to tear down a single
- * rendered tree independently of the rest of the application.
+ * A render root, the entry point for mounting a React tree onto GTK. Returned
+ * by {@link createRoot} and mirroring the `Root` object from `react-dom`'s
+ * `createRoot`.
  */
-export type RenderHandle = {
+export type Root = {
+    /**
+     * Mounts (or, on later calls, updates) the element tree on this root. The
+     * tree is expected to render a {@link GtkApplication} or
+     * {@link AdwApplication} component, which constructs the GTK application,
+     * registers and activates it, and publishes it through
+     * `ApplicationContext`.
+     *
+     * @param element - The root React element to render.
+     */
+    render(element: ReactNode): void;
     /**
      * Unmounts the tree, restores the reconciler error handler captured at
-     * mount time, and frees the container. When the tree contains a
+     * creation time, and frees the container. When the tree contains a
      * {@link GtkApplication} or {@link AdwApplication}, its unmount quits the
      * application, which stops the GTK runtime by default. Calling twice is a
      * no-op.
@@ -27,27 +44,27 @@ export type RenderHandle = {
 };
 
 /**
- * Renders a React element tree.
+ * Creates a render root for a React element tree, the counterpart to
+ * `createRoot` in `react-dom`.
  *
- * Creates a per-root sentinel container and begins reconciliation. The element
- * tree is expected to render a {@link GtkApplication} (or {@link AdwApplication})
- * component, which constructs the GTK application, registers and activates it,
- * and publishes it through {@link ApplicationContext}. Mirrors the role of
- * `createRoot().render()` in `react-dom`: call once at module top-level in your
- * entry file, or once per test that drives the reconciler directly.
+ * Each root owns a per-root {@link RootElement} container, defaulting to a fresh
+ * one so two roots never share identity. Call {@link Root.render} once at module
+ * top-level in your entry file, or once per test that drives the reconciler
+ * directly.
  *
  * In the dev server, the entry module runs once per process. Component-level
  * edits are applied via React Refresh; edits that propagate up to the entry
- * trigger a process restart so this function still runs at most once per
- * process.
+ * trigger a process restart so the root is created at most once per process.
  *
- * @param element - The root React element to render
- * @returns A handle whose `unmount()` method tears down this root.
+ * @param container - The root container token. Defaults to a fresh
+ *   {@link createRootElement} token; pass one only to control root identity.
+ * @returns A {@link Root} whose `render()` mounts the tree and whose `unmount()`
+ *   tears it down.
  *
  * @example
  * ```tsx
  * import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
- * import { render, quit } from "@gtkx/react";
+ * import { createRoot, quit } from "@gtkx/react";
  *
  * const App = () => (
  *   <GtkApplication applicationId="com.example.myapp">
@@ -63,27 +80,25 @@ export type RenderHandle = {
  *   </GtkApplication>
  * );
  *
- * render(<App />);
+ * createRoot().render(<App />);
  * ```
  *
  * @see {@link quit} for shutting down the application
  */
-export const render = (element: ReactNode): RenderHandle => {
-    const sentinel: object = {};
-
+export const createRoot = (container: RootElement = createRootElement()): Root => {
     const onUncaughtError = (error: unknown): void => {
-        getSignalStore(sentinel).forceUnblockAll();
+        getSignalStore(container).forceUnblockAll();
         throw error;
     };
     const onCaughtError = (error: unknown): void => {
-        getSignalStore(sentinel).forceUnblockAll();
+        getSignalStore(container).forceUnblockAll();
         console.error(error);
     };
 
     const priorHandler = setReconcilerErrorHandler(onUncaughtError);
 
-    const container = reconciler.createContainer(
-        sentinel,
+    const fiberRoot = reconciler.createContainer(
+        container,
         1,
         null,
         false,
@@ -95,16 +110,16 @@ export const render = (element: ReactNode): RenderHandle => {
         () => {},
     );
 
-    const root: ActiveRoot = { container, sentinel, priorHandler };
+    const root: ActiveRoot = { fiberRoot, token: container, priorHandler };
     activeRoots.add(root);
 
-    reconciler.updateContainer(element, container, null, () => {});
-
     return {
-        unmount: () => {
+        render: (element: ReactNode): void => {
+            reconciler.updateContainer(element, fiberRoot, null, () => {});
+        },
+        unmount: (): void => {
             if (!activeRoots.delete(root)) return;
-            setReconcilerErrorHandler(root.priorHandler);
-            reconciler.updateContainer(null, root.container, null, () => {});
+            teardownRoot(root);
         },
     };
 };
@@ -113,7 +128,7 @@ export const render = (element: ReactNode): RenderHandle => {
  * Gracefully shuts down the GTK application.
  *
  * Unmounts every active render root and restores their reconciler error
- * handlers — the `render(null)` counterpart to {@link render}. Unmounting a
+ * handlers — the teardown counterpart to {@link createRoot}. Unmounting a
  * tree that contains a {@link GtkApplication} or {@link AdwApplication} quits
  * the application, which stops the GTK runtime by default, so the process exits
  * once the roots are gone. Typically called from the main window's
@@ -138,14 +153,13 @@ export const render = (element: ReactNode): RenderHandle => {
  * );
  * ```
  *
- * @see {@link render} for starting the application
+ * @see {@link createRoot} for starting the application
  */
 export const quit = (): void => {
     const roots = [...activeRoots];
     activeRoots.clear();
 
     for (const root of roots) {
-        setReconcilerErrorHandler(root.priorHandler);
-        reconciler.updateContainer(null, root.container, null, () => {});
+        teardownRoot(root);
     }
 };

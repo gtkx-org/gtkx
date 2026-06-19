@@ -1,5 +1,4 @@
 export type { GApplication } from "@gtkx/ffi";
-export { withActionAccels, withActionScope } from "./components/action.js";
 export { withApplication, withApplicationWindow } from "./components/application.js";
 export { type ConstraintLayoutProps, GtkConstraintLayout } from "./components/constraint-layout.js";
 export {
@@ -12,9 +11,8 @@ export {
 } from "./components/list.js";
 export { GMenu, type MenuProps } from "./components/menu.js";
 export { type TopLevelParentProps, withTopLevel } from "./components/top-level.js";
-export { type AdjustmentConfig, useAdjustment } from "./hooks/use-adjustment.js";
 export { ApplicationContext, useApplication } from "./hooks/use-application.js";
-export { useMergedRefs } from "./hooks/use-merged-refs.js";
+export { useForwardedRef } from "./hooks/use-forwarded-ref.js";
 export { useProperty } from "./hooks/use-property.js";
 export { type RelocatableSchemaRef, type SchemaRef, useSetting } from "./hooks/use-setting.js";
 export {
@@ -25,12 +23,13 @@ export {
     useSignal,
 } from "./hooks/use-signal.js";
 export { useTickCallback } from "./hooks/use-tick-callback.js";
+export { type TopLevelSurface, useWindowPresentation } from "./hooks/use-window-presentation.js";
 export { type DeferredFlushWrapper, setDeferredFlushWrapper } from "./reconciler/deferred-flush.js";
 export { createPortal } from "./reconciler/portal.js";
 export { reconciler } from "./reconciler/reconciler.js";
 export { type ReconcilerErrorHandler, setReconcilerErrorHandler } from "./reconciler/reconciler-error-sink.js";
-export { quit, type RenderHandle, render } from "./reconciler/render.js";
-export type { BackingInstance } from "./reconciler/types.js";
+export { createRoot, quit, type Root } from "./reconciler/render.js";
+export { createRootElement, isRootElement, ROOT_ELEMENT, type RootElement } from "./reconciler/root-element.js";
 export {
     type ApplicationLifecycle,
     defaultApplicationLifecycle,

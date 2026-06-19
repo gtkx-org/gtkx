@@ -19,11 +19,10 @@
  */
 import { ARRAY_PROPS as ARRAY_PROP_ROWS } from "virtual:gtkx-config";
 import type { ArrayPropRow, CallStep, ConstructStep, PresenceCondition } from "@gtkx/config";
-import type { GType } from "@gtkx/gi/gobject";
+import type * as GObject from "@gtkx/gi/gobject";
 import { collectTypeNameChain } from "../utils/gtype.js";
 import { requireClassByName } from "../utils/gtype-predicates.js";
 import { callMethod } from "./reflect-call.js";
-import type { BackingInstance } from "./types.js";
 
 /**
  * Describes how one array-valued prop reconciles its elements into GTK calls.
@@ -34,13 +33,13 @@ import type { BackingInstance } from "./types.js";
  */
 export interface ArrayPropDescriptor {
     /** Removes every previously-applied element in one call. */
-    clear?(target: BackingInstance): void;
+    clear?(target: GObject.Object): void;
     /** Removes one previously-applied element. */
-    remove?(target: BackingInstance, item: unknown, index: number): void;
+    remove?(target: GObject.Object, item: unknown, index: number): void;
     /** Adds one current element. */
-    add?(target: BackingInstance, item: unknown, index: number): void;
+    add?(target: GObject.Object, item: unknown, index: number): void;
     /** Replaces the whole list in one call (used when GTK has no per-element API). */
-    set?(target: BackingInstance, items: readonly unknown[]): void;
+    set?(target: GObject.Object, items: readonly unknown[]): void;
     /** When true, the list is immutable: apply only when the previous list was empty. */
     appendOnce?: boolean;
 }
@@ -58,7 +57,7 @@ const resolveCallArg = (arg: CallStep["args"][number], item: unknown): unknown =
     return "fallback" in arg ? (value ?? arg.fallback) : value;
 };
 
-const runCallStep = (target: BackingInstance, step: CallStep, item: unknown): void => {
+const runCallStep = (target: GObject.Object, step: CallStep, item: unknown): void => {
     if (step.when && !satisfies(itemField(item, step.when.path), step.when.is)) return;
     callMethod(
         target,
@@ -76,11 +75,11 @@ const runCallStep = (target: BackingInstance, step: CallStep, item: unknown): vo
  * @param steps - The call steps to run, in order.
  * @param item - The value the steps' `item` arguments resolve against.
  */
-export const runCallSteps = (target: BackingInstance, steps: readonly CallStep[], item: unknown): void => {
+export const runCallSteps = (target: GObject.Object, steps: readonly CallStep[], item: unknown): void => {
     for (const step of steps) runCallStep(target, step, item);
 };
 
-const runConstructStep = (target: BackingInstance, step: ConstructStep, item: unknown): void => {
+const runConstructStep = (target: GObject.Object, step: ConstructStep, item: unknown): void => {
     const constructed = new (requireClassByName(step.type) as new () => object)();
     for (const setter of step.setters) {
         const value = itemField(item, setter.path);
@@ -123,7 +122,7 @@ const compileRows = (): Readonly<Record<string, Readonly<Record<string, ArrayPro
  */
 export const ARRAY_PROPS: Readonly<Record<string, Readonly<Record<string, ArrayPropDescriptor>>>> = compileRows();
 
-const arrayPropCache = new Map<GType, ReadonlyMap<string, ArrayPropDescriptor>>();
+const arrayPropCache = new Map<GObject.GType, ReadonlyMap<string, ArrayPropDescriptor>>();
 
 /**
  * Returns the array-prop descriptors for `instance`, merged across its GType
@@ -131,7 +130,7 @@ const arrayPropCache = new Map<GType, ReadonlyMap<string, ArrayPropDescriptor>>(
  *
  * @param instance - The backing GObject whose array props to resolve.
  */
-export const collectArrayProps = (instance: BackingInstance): ReadonlyMap<string, ArrayPropDescriptor> => {
+export const collectArrayProps = (instance: GObject.Object): ReadonlyMap<string, ArrayPropDescriptor> => {
     const cached = arrayPropCache.get(instance.__gtype__);
     if (cached) return cached;
     const merged = new Map<string, ArrayPropDescriptor>();
@@ -158,7 +157,7 @@ const toArray = (value: unknown): readonly unknown[] => (Array.isArray(value) ? 
  * @param newValue - The array value to apply.
  */
 export const applyArrayProp = (
-    target: BackingInstance,
+    target: GObject.Object,
     descriptor: ArrayPropDescriptor,
     oldValue: unknown,
     newValue: unknown,
@@ -178,13 +177,13 @@ export const applyArrayProp = (
     addAll(target, descriptor, newItems);
 };
 
-const addAll = (target: BackingInstance, descriptor: ArrayPropDescriptor, items: readonly unknown[]): void => {
+const addAll = (target: GObject.Object, descriptor: ArrayPropDescriptor, items: readonly unknown[]): void => {
     items.forEach((item, index) => {
         descriptor.add?.(target, item, index);
     });
 };
 
-const removeAll = (target: BackingInstance, descriptor: ArrayPropDescriptor, items: readonly unknown[]): void => {
+const removeAll = (target: GObject.Object, descriptor: ArrayPropDescriptor, items: readonly unknown[]): void => {
     items.forEach((item, index) => {
         descriptor.remove?.(target, item, index);
     });

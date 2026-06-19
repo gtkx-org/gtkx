@@ -10,8 +10,8 @@
  * `matches` predicate holds, so specific entries precede the generic
  * widget-container fallback. Entries are self-contained: `attach` is idempotent
  * (it may run again when a wrapper's content or metadata changes), reading the
- * child's own props/children and stashing per-attachment bookkeeping on
- * {@link Instance.attachState}.
+ * child's own props/children and stashing per-attachment bookkeeping on the
+ * node's `attachState`.
  */
 import { META_OBJECT_ADD_METHODS, PAGE_META_SETTERS, TOP_LEVEL_TYPES } from "virtual:gtkx-config";
 import {
@@ -23,6 +23,7 @@ import {
     SLOT_KIND,
     TAB_LABEL_KIND,
 } from "@gtkx/config";
+import * as GObject from "@gtkx/gi/gobject";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -30,7 +31,6 @@ import { collectTypeNameChain } from "../utils/gtype.js";
 import { hasType } from "../utils/gtype-predicates.js";
 import { DATA_ATTACH_MAPPINGS, findDataAttachMapping, promotedNestingGuardMapping } from "./attach-rules.js";
 import type { ElementMapping } from "./element-mapping.js";
-import { type Instance, isWrapperInstance, isWrapperKind } from "./instance.js";
 import {
     type InsertableWidget,
     isAddable,
@@ -42,59 +42,63 @@ import {
     type ReorderableWidget,
 } from "./predicates.js";
 import { callMethod } from "./reflect-call.js";
-import type { BackingInstance } from "./types.js";
+import { isWrapperKind, type Node, stateOf } from "./state.js";
+import type { Props } from "./types.js";
 import { attachChild, detachChild, getFocusWidget, isAttachedTo, isDescendantOf, unparentWidget } from "./widget.js";
+import { isWrapperElement } from "./wrapper-element.js";
 
-const isRooted = (instance: BackingInstance): boolean =>
+const isRooted = (instance: GObject.Object): boolean =>
     instance instanceof Gtk.Widget ? instance.getRoot() !== null : true;
 
-const rescueFocus = (parent: BackingInstance, child: BackingInstance | undefined): void => {
+const rescueFocus = (parent: GObject.Object, child: GObject.Object | undefined): void => {
     if (!(parent instanceof Gtk.Widget) || !(child instanceof Gtk.Widget)) return;
     const focus = getFocusWidget(child);
     if (focus && isDescendantOf(focus, child)) parent.grabFocus();
 };
 
-const isTopLevelSurface = (widget: BackingInstance): boolean =>
+const isTopLevelSurface = (widget: GObject.Object): boolean =>
     TOP_LEVEL_TYPES.some((typeName) => hasType(widget, typeName));
 
 /**
- * The widget a child instance contributes to its parent: its backing widget,
- * unless it is a top-level surface (per the `TOP_LEVEL_TYPES` table — windows
- * and dialogs never attach as widget children) or a non-widget GObject.
+ * The widget a child node contributes to its parent: its backing widget, unless
+ * it is a top-level surface (per the `TOP_LEVEL_TYPES` table — windows and
+ * dialogs never attach as widget children) or a non-widget GObject.
  */
-const childWidget = (instance: Instance): Gtk.Widget | null => {
-    const widget = instance.backingInstance;
-    if (!(widget instanceof Gtk.Widget)) return null;
-    if (isTopLevelSurface(widget)) return null;
-    return widget;
+const childWidget = (instance: Node): Gtk.Widget | null => {
+    if (!(instance instanceof Gtk.Widget)) return null;
+    if (isTopLevelSurface(instance)) return null;
+    return instance;
 };
 
 // --- Wrapper content selection ---
 
 /** The wrapper's primary tracked content child, skipping the tab-label slot. */
-const trackedChild = (marker: Instance): Instance | null =>
-    marker.children.find((child) => !isWrapperKind(child, TAB_LABEL_KIND)) ?? marker.children[0] ?? null;
-
-const trackedWidget = (marker: Instance): Gtk.Widget | null => {
-    const child = trackedChild(marker);
-    const widget = child?.backingInstance;
-    return widget instanceof Gtk.Widget ? widget : null;
+const trackedChild = (marker: Node): Node | null => {
+    const { children } = stateOf(marker);
+    return children.find((child) => !isWrapperKind(child, TAB_LABEL_KIND)) ?? children[0] ?? null;
 };
 
-const trackedInstance = (marker: Instance): BackingInstance | undefined => trackedChild(marker)?.backingInstance;
+const trackedWidget = (marker: Node): Gtk.Widget | null => {
+    const child = trackedChild(marker);
+    return child instanceof Gtk.Widget ? child : null;
+};
 
-const wrapperChildWidgets = (marker: Instance): Gtk.Widget[] => {
+const trackedInstance = (marker: Node): GObject.Object | undefined => {
+    const child = trackedChild(marker);
+    return child instanceof GObject.Object ? child : undefined;
+};
+
+const wrapperChildWidgets = (marker: Node): Gtk.Widget[] => {
     const widgets: Gtk.Widget[] = [];
-    for (const child of marker.children) {
-        const widget = child.backingInstance;
-        if (widget instanceof Gtk.Widget) widgets.push(widget);
+    for (const child of stateOf(marker).children) {
+        if (child instanceof Gtk.Widget) widgets.push(child);
     }
     return widgets;
 };
 
 // --- Slot (single, property setter) ---
 
-type SlotState = { prop: string; value: BackingInstance };
+type SlotState = { prop: string; value: GObject.Object };
 
 const LAYOUT_MANAGER_PROP = "layoutManager";
 
@@ -105,81 +109,80 @@ const LAYOUT_MANAGER_PROP = "layoutManager";
  * found no grid or fixed layout to bind to; re-running its attach resolves it
  * against the layout the slot just installed.
  */
-const resyncLayoutChildWrappers = (parent: Instance): void => {
-    for (const sibling of parent.children) {
+const resyncLayoutChildWrappers = (parent: Node): void => {
+    for (const sibling of stateOf(parent).children) {
         if (isWrapperKind(sibling, LAYOUT_CHILD_KIND)) attachToParent(sibling, parent);
     }
 };
 
 const slotMapping: ElementMapping = {
-    matches: (child, parent) => isWrapperKind(child, SLOT_KIND) && parent.backingInstance !== undefined,
+    matches: (child, parent) => isWrapperKind(child, SLOT_KIND) && parent instanceof GObject.Object,
     attach: (child, parent) => {
-        const prop = child.props.propName;
-        const target = parent.backingInstance;
-        if (typeof prop !== "string" || !target) return;
+        const childState = stateOf(child);
+        const prop = childState.props.propName;
+        if (typeof prop !== "string" || !(parent instanceof GObject.Object)) return;
         const value = trackedInstance(child);
-        const state = child.attachState as SlotState | undefined;
+        const state = childState.attachState as SlotState | undefined;
         if (state && state.value === value) return;
-        Reflect.set(target, prop, value ?? null);
-        child.attachState = value ? { prop, value } : undefined;
+        Reflect.set(parent, prop, value ?? null);
+        childState.attachState = value ? { prop, value } : undefined;
         if (prop === LAYOUT_MANAGER_PROP) resyncLayoutChildWrappers(parent);
     },
     detach: (child, parent) => {
-        const state = child.attachState as SlotState | undefined;
-        const target = parent.backingInstance;
-        child.attachState = undefined;
-        if (!state || !target || !isRooted(target)) return;
-        rescueFocus(target, state.value);
-        Reflect.set(target, state.prop, null);
+        const childState = stateOf(child);
+        const state = childState.attachState as SlotState | undefined;
+        childState.attachState = undefined;
+        if (!state || !(parent instanceof GObject.Object) || !isRooted(parent)) return;
+        rescueFocus(parent, state.value);
+        Reflect.set(parent, state.prop, null);
     },
 };
 
 // --- Container slot (multi, method append) ---
 
-const wrapperChildInstances = (marker: Instance): Instance[] =>
-    marker.children.filter((child) => child.backingInstance !== undefined);
+const wrapperChildInstances = (marker: Node): Node[] =>
+    stateOf(marker).children.filter((child) => child instanceof GObject.Object);
 
-const sameInstances = (a: readonly Instance[], b: readonly Instance[]): boolean =>
+const sameInstances = (a: readonly Node[], b: readonly Node[]): boolean =>
     a.length === b.length && a.every((instance, index) => instance === b[index]);
 
-const attachContainerSlotChild = (instance: Instance, parent: Instance, method: string): void => {
+const attachContainerSlotChild = (instance: Node, parent: Node, method: string): void => {
     const mapping = findDataAttachMapping(instance, parent);
     if (mapping) {
         mapping.attach(instance, parent);
         return;
     }
-    const target = parent.backingInstance;
-    if (target) invokeRequired(target, method, instance.backingInstance);
+    if (parent instanceof GObject.Object) invokeRequired(parent, method, instance);
 };
 
-const detachContainerSlotChild = (instance: Instance, parent: Instance): void => {
+const detachContainerSlotChild = (instance: Node, parent: Node): void => {
     const mapping = findDataAttachMapping(instance, parent);
     if (mapping) {
         mapping.detach(instance, parent);
         return;
     }
-    const widget = instance.backingInstance;
-    if (widget instanceof Gtk.Widget) unparentWidget(widget);
+    if (instance instanceof Gtk.Widget) unparentWidget(instance);
 };
 
 const containerSlotMapping: ElementMapping = {
-    matches: (child, parent) => isWrapperKind(child, CONTAINER_SLOT_KIND) && parent.backingInstance !== undefined,
+    matches: (child, parent) => isWrapperKind(child, CONTAINER_SLOT_KIND) && parent instanceof GObject.Object,
     attach: (child, parent) => {
-        const method = child.props.method;
-        const target = parent.backingInstance;
-        if (typeof method !== "string" || !target) return;
+        const childState = stateOf(child);
+        const method = childState.props.method;
+        if (typeof method !== "string" || !(parent instanceof GObject.Object)) return;
         const desired = wrapperChildInstances(child);
-        const prev = (child.attachState as Instance[] | undefined) ?? [];
+        const prev = (childState.attachState as Node[] | undefined) ?? [];
         if (sameInstances(prev, desired)) return;
         for (const instance of prev) detachContainerSlotChild(instance, parent);
         for (const instance of desired) attachContainerSlotChild(instance, parent, method);
-        child.attachState = desired;
+        childState.attachState = desired;
     },
     detach: (child, parent) => {
-        for (const instance of (child.attachState as Instance[] | undefined) ?? []) {
+        const childState = stateOf(child);
+        for (const instance of (childState.attachState as Node[] | undefined) ?? []) {
             detachContainerSlotChild(instance, parent);
         }
-        child.attachState = undefined;
+        childState.attachState = undefined;
     },
 };
 
@@ -193,7 +196,7 @@ const invokeRequired = (target: object, method: string, arg: unknown): void => {
 
 // --- Meta object (single, Stack / ViewStack / Notebook page) ---
 
-const applyPageMeta = (page: object, props: Instance["props"]): void => {
+const applyPageMeta = (page: object, props: Props): void => {
     for (const { setter, prop, fallback, whenPresent } of PAGE_META_SETTERS) {
         if (typeof Reflect.get(page, setter) !== "function") continue;
         if (whenPresent && props[prop] === undefined) continue;
@@ -207,7 +210,7 @@ type MetaState = { widget: Gtk.Widget; page: object };
  * The page-add method rows matching `target`'s GType ancestry, or `null` when
  * no `META_OBJECT_ADD_METHODS` entry applies.
  */
-const metaAddRules = (target: BackingInstance | undefined): readonly AddMethodRule[] | null => {
+const metaAddRules = (target: GObject.Object | undefined): readonly AddMethodRule[] | null => {
     if (!target) return null;
     for (const typeName of collectTypeNameChain(target.__gtype__)) {
         const rules = META_OBJECT_ADD_METHODS[typeName];
@@ -216,14 +219,14 @@ const metaAddRules = (target: BackingInstance | undefined): readonly AddMethodRu
     return null;
 };
 
-const pagePropValue = (props: Instance["props"], key: string): string | null =>
+const pagePropValue = (props: Props, key: string): string | null =>
     typeof props[key] === "string" ? (props[key] as string) : null;
 
 const addStackPage = (
-    stack: BackingInstance,
+    stack: GObject.Object,
     rules: readonly AddMethodRule[],
     widget: Gtk.Widget,
-    props: Instance["props"],
+    props: Props,
 ): object | undefined => {
     for (const rule of rules) {
         if (!rule.requires.every((key) => pagePropValue(props, key) !== null)) continue;
@@ -234,95 +237,100 @@ const addStackPage = (
     return undefined;
 };
 
-const notebookPosition = (marker: Instance): number | null => {
-    const siblings = marker.parent?.children.filter((child) => isWrapperKind(child, META_OBJECT_KIND)) ?? [];
+const notebookPosition = (marker: Node): number | null => {
+    const parent = stateOf(marker).parent;
+    const siblings = parent ? stateOf(parent).children.filter((child) => isWrapperKind(child, META_OBJECT_KIND)) : [];
     const index = siblings.indexOf(marker);
     return index >= 0 ? index : null;
 };
 
-const notebookTabLabel = (marker: Instance): Gtk.Widget => {
-    const tab = marker.children.find((child) => isWrapperKind(child, TAB_LABEL_KIND));
-    const label = tab?.children[0]?.backingInstance;
+const notebookTabLabel = (marker: Node): Gtk.Widget => {
+    const markerState = stateOf(marker);
+    const tab = markerState.children.find((child) => isWrapperKind(child, TAB_LABEL_KIND));
+    const label = tab ? stateOf(tab).children[0] : undefined;
     if (label instanceof Gtk.Widget) return label;
     const synthesized = new Gtk.Label();
-    synthesized.setLabel(typeof marker.props.label === "string" ? marker.props.label : "");
+    synthesized.setLabel(typeof markerState.props.label === "string" ? markerState.props.label : "");
     return synthesized;
 };
 
-const applyNotebookMeta = (notebook: Gtk.Notebook, widget: Gtk.Widget, props: Instance["props"]): void => {
+const applyNotebookMeta = (notebook: Gtk.Notebook, widget: Gtk.Widget, props: Props): void => {
     const page = notebook.getPage(widget);
     if (!page) return;
     if (props.tabExpand !== undefined) Reflect.set(page, "tabExpand", props.tabExpand);
     if (props.tabFill !== undefined) Reflect.set(page, "tabFill", props.tabFill);
 };
 
-const updateNotebookTabLabel = (notebook: Gtk.Notebook, widget: Gtk.Widget, marker: Instance): void => {
-    if (marker.children.some((child) => isWrapperKind(child, TAB_LABEL_KIND))) return;
+const updateNotebookTabLabel = (notebook: Gtk.Notebook, widget: Gtk.Widget, marker: Node): void => {
+    const markerState = stateOf(marker);
+    if (markerState.children.some((child) => isWrapperKind(child, TAB_LABEL_KIND))) return;
     const current = notebook.getTabLabel(widget);
     if (current instanceof Gtk.Label)
-        current.setLabel(typeof marker.props.label === "string" ? marker.props.label : "");
+        current.setLabel(typeof markerState.props.label === "string" ? markerState.props.label : "");
 };
 
-const attachNotebookPage = (notebook: Gtk.Notebook, widget: Gtk.Widget, marker: Instance): void => {
+const attachNotebookPage = (notebook: Gtk.Notebook, widget: Gtk.Widget, marker: Node): void => {
     const label = notebookTabLabel(marker);
     const position = notebookPosition(marker);
     if (position == null) notebook.appendPage(widget, label);
     else notebook.insertPage(widget, label, position);
-    applyNotebookMeta(notebook, widget, marker.props);
+    applyNotebookMeta(notebook, widget, stateOf(marker).props);
 };
 
 const metaObjectMapping: ElementMapping = {
     matches: (child, parent) =>
         isWrapperKind(child, META_OBJECT_KIND) &&
-        (metaAddRules(parent.backingInstance) !== null || parent.backingInstance instanceof Gtk.Notebook),
+        (metaAddRules(parent instanceof GObject.Object ? parent : undefined) !== null ||
+            parent instanceof Gtk.Notebook),
     attach: (child, parent) => {
-        const target = parent.backingInstance;
+        const childState = stateOf(child);
         const widget = trackedWidget(child);
-        const state = child.attachState as MetaState | undefined;
+        const state = childState.attachState as MetaState | undefined;
         if (state && state.widget === widget) {
-            if (target instanceof Gtk.Notebook) {
-                updateNotebookTabLabel(target, state.widget, child);
-                applyNotebookMeta(target, state.widget, child.props);
+            if (parent instanceof Gtk.Notebook) {
+                updateNotebookTabLabel(parent, state.widget, child);
+                applyNotebookMeta(parent, state.widget, childState.props);
             } else {
-                applyPageMeta(state.page, child.props);
+                applyPageMeta(state.page, childState.props);
             }
             return;
         }
         if (state) metaObjectMapping.detach(child, parent);
         if (!widget) return;
-        if (target instanceof Gtk.Notebook) {
-            attachNotebookPage(target, widget, child);
-            child.attachState = { widget, page: target };
+        if (parent instanceof Gtk.Notebook) {
+            attachNotebookPage(parent, widget, child);
+            childState.attachState = { widget, page: parent };
             return;
         }
+        const target = parent instanceof GObject.Object ? parent : undefined;
         const rules = metaAddRules(target);
         if (!target || !rules) return;
-        const page = addStackPage(target, rules, widget, child.props);
+        const page = addStackPage(target, rules, widget, childState.props);
         if (!page) return;
-        applyPageMeta(page, child.props);
-        child.attachState = { widget, page };
+        applyPageMeta(page, childState.props);
+        childState.attachState = { widget, page };
     },
     detach: (child, parent) => {
-        const state = child.attachState as MetaState | undefined;
-        const target = parent.backingInstance;
-        child.attachState = undefined;
+        const childState = stateOf(child);
+        const state = childState.attachState as MetaState | undefined;
+        childState.attachState = undefined;
         if (!state) return;
-        if (target instanceof Gtk.Notebook) {
-            const pageNum = target.pageNum(state.widget);
-            if (pageNum !== -1) target.removePage(pageNum);
+        if (parent instanceof Gtk.Notebook) {
+            const pageNum = parent.pageNum(state.widget);
+            if (pageNum !== -1) parent.removePage(pageNum);
         } else if (
-            target instanceof Gtk.Widget &&
-            metaAddRules(target) !== null &&
-            isAttachedTo(state.widget, target)
+            parent instanceof Gtk.Widget &&
+            metaAddRules(parent) !== null &&
+            isAttachedTo(state.widget, parent)
         ) {
-            callMethod(target, "remove", [state.widget]);
+            callMethod(parent, "remove", [state.widget]);
         }
     },
 };
 
 // --- Layout child (multi, Grid / Fixed layout-child props) ---
 
-const resolveLayoutKind = (parent: BackingInstance): "grid" | "fixed" | null => {
+const resolveLayoutKind = (parent: GObject.Object): "grid" | "fixed" | null => {
     if (parent instanceof Gtk.Grid) return "grid";
     if (parent instanceof Gtk.Fixed) return "fixed";
     if (parent instanceof Gtk.Widget) {
@@ -333,7 +341,7 @@ const resolveLayoutKind = (parent: BackingInstance): "grid" | "fixed" | null => 
     return null;
 };
 
-const buildFixedTransform = (props: Instance["props"]): Gsk.Transform | null => {
+const buildFixedTransform = (props: Props): Gsk.Transform | null => {
     const point = new Graphene.Point();
     point.init(typeof props.x === "number" ? props.x : 0, typeof props.y === "number" ? props.y : 0);
     let value: Gsk.Transform | null = Gsk.Transform.new().translate(point);
@@ -341,25 +349,20 @@ const buildFixedTransform = (props: Instance["props"]): Gsk.Transform | null => 
     return value;
 };
 
-const applyGridLayoutChild = (layoutChild: Gtk.LayoutChild, props: Instance["props"]): void => {
+const applyGridLayoutChild = (layoutChild: Gtk.LayoutChild, props: Props): void => {
     if ("column" in layoutChild) Reflect.set(layoutChild, "column", props.column ?? 0);
     if ("row" in layoutChild) Reflect.set(layoutChild, "row", props.row ?? 0);
     if ("columnSpan" in layoutChild) Reflect.set(layoutChild, "columnSpan", props.columnSpan ?? 1);
     if ("rowSpan" in layoutChild) Reflect.set(layoutChild, "rowSpan", props.rowSpan ?? 1);
 };
 
-const applyFixedLayoutChild = (layoutChild: Gtk.LayoutChild, props: Instance["props"]): void => {
+const applyFixedLayoutChild = (layoutChild: Gtk.LayoutChild, props: Props): void => {
     if (typeof Reflect.get(layoutChild, "setTransform") !== "function") return;
     const value = buildFixedTransform(props);
     if (value) callMethod(layoutChild, "setTransform", [value]);
 };
 
-const applyLayoutChild = (
-    parent: Gtk.Widget,
-    widget: Gtk.Widget,
-    kind: "grid" | "fixed",
-    props: Instance["props"],
-): void => {
+const applyLayoutChild = (parent: Gtk.Widget, widget: Gtk.Widget, kind: "grid" | "fixed", props: Props): void => {
     const layout = parent.getLayoutManager();
     if (!layout) return;
     const layoutChild = layout.getLayoutChild(widget);
@@ -369,96 +372,93 @@ const applyLayoutChild = (
 
 const layoutChildMapping: ElementMapping = {
     matches: (child, parent) =>
-        isWrapperKind(child, LAYOUT_CHILD_KIND) &&
-        parent.backingInstance instanceof Gtk.Widget &&
-        resolveLayoutKind(parent.backingInstance) !== null,
+        isWrapperKind(child, LAYOUT_CHILD_KIND) && parent instanceof Gtk.Widget && resolveLayoutKind(parent) !== null,
     attach: (child, parent) => {
-        const target = parent.backingInstance;
-        if (!(target instanceof Gtk.Widget)) return;
-        const kind = resolveLayoutKind(target);
+        if (!(parent instanceof Gtk.Widget)) return;
+        const kind = resolveLayoutKind(parent);
         if (!kind) return;
+        const childState = stateOf(child);
         const desired = wrapperChildWidgets(child);
-        const prev = (child.attachState as Gtk.Widget[] | undefined) ?? [];
+        const prev = (childState.attachState as Gtk.Widget[] | undefined) ?? [];
         for (const widget of prev) {
-            if (!desired.includes(widget)) detachChild(widget, target);
+            if (!desired.includes(widget)) detachChild(widget, parent);
         }
         for (const widget of desired) {
-            if (widget.getParent() !== target) attachChild(widget, target);
-            applyLayoutChild(target, widget, kind, child.props);
+            if (widget.getParent() !== parent) attachChild(widget, parent);
+            applyLayoutChild(parent, widget, kind, childState.props);
         }
-        child.attachState = desired;
+        childState.attachState = desired;
     },
     detach: (child, parent) => {
-        const target = parent.backingInstance;
-        for (const widget of (child.attachState as Gtk.Widget[] | undefined) ?? []) {
-            if (target instanceof Gtk.Widget) detachChild(widget, target);
+        const childState = stateOf(child);
+        for (const widget of (childState.attachState as Gtk.Widget[] | undefined) ?? []) {
+            if (parent instanceof Gtk.Widget) detachChild(widget, parent);
         }
-        child.attachState = undefined;
+        childState.attachState = undefined;
     },
 };
 
 // --- Overlay (multi, GtkOverlay measure/clip flags) ---
 
-const applyOverlayFlags = (overlay: Gtk.Overlay, widget: Gtk.Widget, props: Instance["props"]): void => {
+const applyOverlayFlags = (overlay: Gtk.Overlay, widget: Gtk.Widget, props: Props): void => {
     overlay.setMeasureOverlay(widget, props.measure === true);
     overlay.setClipOverlay(widget, props.clipOverlay === true);
 };
 
 const overlayMapping: ElementMapping = {
-    matches: (child, parent) => isWrapperKind(child, OVERLAY_KIND) && parent.backingInstance instanceof Gtk.Overlay,
+    matches: (child, parent) => isWrapperKind(child, OVERLAY_KIND) && parent instanceof Gtk.Overlay,
     attach: (child, parent) => {
-        const overlay = parent.backingInstance;
-        if (!(overlay instanceof Gtk.Overlay)) return;
+        if (!(parent instanceof Gtk.Overlay)) return;
+        const childState = stateOf(child);
         const desired = wrapperChildWidgets(child);
-        const prev = (child.attachState as Gtk.Widget[] | undefined) ?? [];
+        const prev = (childState.attachState as Gtk.Widget[] | undefined) ?? [];
         for (const widget of prev) {
-            if (!desired.includes(widget) && widget.getParent() === overlay) overlay.removeOverlay(widget);
+            if (!desired.includes(widget) && widget.getParent() === parent) parent.removeOverlay(widget);
         }
         for (const widget of desired) {
-            if (widget.getParent() !== overlay) overlay.addOverlay(widget);
-            applyOverlayFlags(overlay, widget, child.props);
+            if (widget.getParent() !== parent) parent.addOverlay(widget);
+            applyOverlayFlags(parent, widget, childState.props);
         }
-        child.attachState = desired;
+        childState.attachState = desired;
     },
     detach: (child, parent) => {
-        const overlay = parent.backingInstance;
-        for (const widget of (child.attachState as Gtk.Widget[] | undefined) ?? []) {
-            if (overlay instanceof Gtk.Overlay && widget.getParent() === overlay) overlay.removeOverlay(widget);
+        const childState = stateOf(child);
+        for (const widget of (childState.attachState as Gtk.Widget[] | undefined) ?? []) {
+            if (parent instanceof Gtk.Overlay && widget.getParent() === parent) parent.removeOverlay(widget);
             else if (widget instanceof Gtk.Widget) unparentWidget(widget);
         }
-        child.attachState = undefined;
+        childState.attachState = undefined;
     },
 };
 
 // --- Transparent (single, attaches its child to the marker's parent widget) ---
 
 const transparentMapping: ElementMapping = {
-    matches: (child, parent) => isWrapperKind(child, "transparent") && parent.backingInstance instanceof Gtk.Widget,
+    matches: (child, parent) => isWrapperKind(child, "transparent") && parent instanceof Gtk.Widget,
     attach: (child, parent) => {
-        const target = parent.backingInstance;
-        if (!(target instanceof Gtk.Widget)) return;
+        if (!(parent instanceof Gtk.Widget)) return;
+        const childState = stateOf(child);
         const widget = trackedWidget(child);
-        const prev = child.attachState as Gtk.Widget | undefined;
+        const prev = childState.attachState as Gtk.Widget | undefined;
         if (prev && prev !== widget) {
-            detachChild(prev, target);
-            child.attachState = undefined;
+            detachChild(prev, parent);
+            childState.attachState = undefined;
         }
-        if (!widget || widget.getParent() === target) return;
-        attachChild(widget, target);
-        child.attachState = widget;
+        if (!widget || widget.getParent() === parent) return;
+        attachChild(widget, parent);
+        childState.attachState = widget;
     },
     detach: (child, parent) => {
-        const widget = child.attachState as Gtk.Widget | undefined;
-        const target = parent.backingInstance;
-        if (widget && target instanceof Gtk.Widget) detachChild(widget, target);
-        child.attachState = undefined;
+        const childState = stateOf(child);
+        const widget = childState.attachState as Gtk.Widget | undefined;
+        if (widget && parent instanceof Gtk.Widget) detachChild(widget, parent);
+        childState.attachState = undefined;
     },
 };
 
 // --- Top-level surfaces ---
 
-const isTopLevel = (instance: Instance): boolean =>
-    instance.backingInstance !== undefined && isTopLevelSurface(instance.backingInstance);
+const isTopLevel = (instance: Node): boolean => instance instanceof GObject.Object && isTopLevelSurface(instance);
 
 const topLevelSkipMapping: ElementMapping = {
     matches: (child) => isTopLevel(child),
@@ -470,22 +470,16 @@ const topLevelSkipMapping: ElementMapping = {
 
 const listItemChildMapping: ElementMapping = {
     matches: (child, parent) =>
-        child.backingInstance instanceof Gtk.Widget &&
-        !(parent.backingInstance instanceof Gtk.Widget) &&
-        isSingleChildContainer(parent.backingInstance),
+        child instanceof Gtk.Widget && !(parent instanceof Gtk.Widget) && isSingleChildContainer(parent),
     attach: (child, parent, _anchor, fresh) => {
-        if (child.backingInstance instanceof Gtk.Widget && isSingleChildContainer(parent.backingInstance)) {
-            if (fresh !== true) unparentWidget(child.backingInstance);
-            parent.backingInstance.setChild(child.backingInstance);
+        if (child instanceof Gtk.Widget && isSingleChildContainer(parent)) {
+            if (fresh !== true) unparentWidget(child);
+            parent.setChild(child);
         }
     },
     detach: (child, parent) => {
-        if (
-            child.backingInstance instanceof Gtk.Widget &&
-            isSingleChildContainer(parent.backingInstance) &&
-            parent.backingInstance.getChild() === child.backingInstance
-        ) {
-            parent.backingInstance.setChild(null);
+        if (child instanceof Gtk.Widget && isSingleChildContainer(parent) && parent.getChild() === child) {
+            parent.setChild(null);
         }
     },
 };
@@ -587,9 +581,9 @@ const insertInsertable = (container: InsertableWidget, widget: Gtk.Widget, befor
     container.insert(widget, findInsertPosition(container, before));
 };
 
-const reinsertAll = (parent: Instance, container: Gtk.Widget): void => {
+const reinsertAll = (parent: Node, container: Gtk.Widget): void => {
     const widgets: Gtk.Widget[] = [];
-    for (const child of parent.children) {
+    for (const child of stateOf(parent).children) {
         const widget = childWidget(child);
         if (widget) widgets.push(widget);
     }
@@ -597,7 +591,7 @@ const reinsertAll = (parent: Instance, container: Gtk.Widget): void => {
     for (const widget of widgets) attachChild(widget, container);
 };
 
-const insertWidgetBefore = (parent: Instance, container: Gtk.Widget, widget: Gtk.Widget, anchor: Gtk.Widget): void => {
+const insertWidgetBefore = (parent: Node, container: Gtk.Widget, widget: Gtk.Widget, anchor: Gtk.Widget): void => {
     if (container instanceof Gtk.ListBox || container instanceof Gtk.FlowBox) {
         insertAutowrapping(container, widget, anchor);
     } else if (isReorderable(container)) {
@@ -622,18 +616,16 @@ const removeWidget = (container: Gtk.Widget, widget: Gtk.Widget): void => {
 };
 
 const widgetContainerMapping: ElementMapping = {
-    matches: (child, parent) => childWidget(child) !== null && parent.backingInstance instanceof Gtk.Widget,
+    matches: (child, parent) => childWidget(child) !== null && parent instanceof Gtk.Widget,
     attach: (child, parent, anchor, fresh) => {
-        const container = parent.backingInstance;
         const widget = childWidget(child);
-        if (!(container instanceof Gtk.Widget) || !widget) return;
-        if (anchor instanceof Gtk.Widget) insertWidgetBefore(parent, container, widget, anchor);
-        else appendWidget(container, widget, fresh === true);
+        if (!(parent instanceof Gtk.Widget) || !widget) return;
+        if (anchor instanceof Gtk.Widget) insertWidgetBefore(parent, parent, widget, anchor);
+        else appendWidget(parent, widget, fresh === true);
     },
     detach: (child, parent) => {
-        const container = parent.backingInstance;
         const widget = childWidget(child);
-        if (container instanceof Gtk.Widget && widget) removeWidget(container, widget);
+        if (parent instanceof Gtk.Widget && widget) removeWidget(parent, widget);
     },
 };
 
@@ -658,35 +650,30 @@ export const ELEMENT_MAP: readonly ElementMapping[] = [
     widgetContainerMapping,
 ];
 
-const resolveMapping = (child: Instance, parent: Instance): ElementMapping | undefined =>
+const resolveMapping = (child: Node, parent: Node): ElementMapping | undefined =>
     ELEMENT_MAP.find((mapping) => mapping.matches(child, parent));
 
 /**
  * Attaches `child` to `parent` through the first matching {@link ELEMENT_MAP}
  * entry. `anchor` is the next sibling's backing instance for ordered insertion.
  *
- * @param child - The child instance being attached.
- * @param parent - The parent instance it attaches to.
+ * @param child - The child node being attached.
+ * @param parent - The parent node it attaches to.
  * @param anchor - The next sibling's backing instance, or `null` to append.
  * @param fresh - Whether the child has not been attached before, so its backing
  *   widget is known unparented and the defensive unparent can be skipped.
  */
-export const attachToParent = (
-    child: Instance,
-    parent: Instance,
-    anchor?: BackingInstance | null,
-    fresh?: boolean,
-): void => {
+export const attachToParent = (child: Node, parent: Node, anchor?: GObject.Object | null, fresh?: boolean): void => {
     resolveMapping(child, parent)?.attach(child, parent, anchor, fresh);
 };
 
 /**
  * Reverses {@link attachToParent}, detaching `child` from `parent`.
  *
- * @param child - The child instance being detached.
- * @param parent - The parent instance it detaches from.
+ * @param child - The child node being detached.
+ * @param parent - The parent node it detaches from.
  */
-export const detachFromParent = (child: Instance, parent: Instance): void => {
+export const detachFromParent = (child: Node, parent: Node): void => {
     resolveMapping(child, parent)?.detach(child, parent);
 };
 
@@ -694,9 +681,9 @@ export const detachFromParent = (child: Instance, parent: Instance): void => {
  * Re-runs a metadata wrapper's idempotent attach against its current parent so
  * its content and metadata reconcile after a child or prop change.
  *
- * @param marker - The wrapper instance to resynchronize.
+ * @param marker - The wrapper node to resynchronize.
  */
-export const resyncWrapper = (marker: Instance): void => {
-    const parent = marker.parent;
-    if (isWrapperInstance(marker) && parent) attachToParent(marker, parent);
+export const resyncWrapper = (marker: Node): void => {
+    const parent = stateOf(marker).parent;
+    if (isWrapperElement(marker) && parent) attachToParent(marker, parent);
 };

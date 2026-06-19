@@ -1,4 +1,4 @@
-import { typeName } from "@gtkx/gi/gobject";
+import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { freeze, unfreeze } from "@gtkx/native";
 import React from "react";
@@ -11,28 +11,19 @@ import { beginCommit, endCommit, runCommitFlush } from "./commit-flush.js";
 import { attachToParent, detachFromParent, resyncWrapper } from "./element-map.js";
 import {
     createElementInstance,
-    createRootInstance,
     createWrapperInstance,
-    type Instance,
-    isWrapperInstance,
     resolveContainerClass,
     WRAPPER_NODE_ELEMENT,
 } from "./instance.js";
 import { scheduleLabelTextRebuild } from "./label-text-rebuild.js";
 import { getPropDescriptors } from "./prop-descriptor-table.js";
 import { reportReconcilerError } from "./reconciler-error-sink.js";
+import { ensureState, type Node, stateOf } from "./state.js";
 import { scheduleBufferRebuild } from "./text-buffer-rebuild.js";
 import { BUFFER_TEXT_KIND, LABEL_TEXT_KIND } from "./text-kinds.js";
 import { isBufferContentWrapper, isLabelTextWrapper } from "./text-wrapper.js";
-import type { BackingInstance, ContainerInfo, Props } from "./types.js";
-
-declare global {
-    var __GTKX_CONTAINER_NODE_CACHE__: WeakMap<ContainerInfo, Instance> | undefined;
-}
-
-globalThis.__GTKX_CONTAINER_NODE_CACHE__ ??= new WeakMap<ContainerInfo, Instance>();
-
-const containerNodeCache = globalThis.__GTKX_CONTAINER_NODE_CACHE__;
+import type { ContainerInfo, Props } from "./types.js";
+import { isWrapperElement } from "./wrapper-element.js";
 
 type PublicInstance = Gtk.Widget | Gtk.Application;
 
@@ -49,8 +40,8 @@ type HostConfig = ReactReconciler.HostConfig<
     string,
     Props,
     ContainerInfo,
-    Instance,
-    Instance,
+    Node,
+    Node,
     never,
     never,
     never,
@@ -62,95 +53,67 @@ type HostConfig = ReactReconciler.HostConfig<
     number
 >;
 
-export type ReconcilerInstance = ReactReconciler.Reconciler<
-    ContainerInfo,
-    Instance,
-    Instance,
-    never,
-    never,
-    PublicInstance
->;
+export type ReconcilerInstance = ReactReconciler.Reconciler<ContainerInfo, Node, Node, never, never, PublicInstance>;
 
-const hasGtype = (container: ContainerInfo): container is BackingInstance =>
-    // biome-ignore lint/style/useNamingConvention: GObject phantom-type key
-    typeof (container as { __gtype__?: unknown }).__gtype__ === "bigint";
-
-const getOrCreateContainerNode = (container: ContainerInfo): Instance => {
-    let node = containerNodeCache.get(container);
-
-    if (!node) {
-        if (!hasGtype(container)) {
-            node = createRootInstance(container);
-        } else {
-            const runtimeName = typeName(container.__gtype__);
-            if (!runtimeName) {
-                throw new Error("Cannot resolve runtime GLib type name for container");
-            }
-            node = createElementInstance(runtimeName, {}, container, container);
-        }
-        containerNodeCache.set(container, node);
-    }
-
-    return node;
-};
-
-const withSignalsBlocked = <T>(instance: Instance, fn: () => T): T => {
-    instance.signalStore.blockAll();
+const withSignalsBlocked = <T>(instance: Node, fn: () => T): T => {
+    const { signalStore } = stateOf(instance);
+    signalStore.blockAll();
     try {
         return fn();
     } finally {
-        instance.signalStore.unblockAll();
+        signalStore.unblockAll();
     }
 };
 
 // --- Children management ---
 
-const link = (parent: Instance, child: Instance): void => {
-    const index = parent.children.indexOf(child);
-    if (index !== -1) parent.children.splice(index, 1);
-    parent.children.push(child);
-    child.parent = parent;
+const link = (parent: Node, child: Node): void => {
+    const { children } = stateOf(parent);
+    const index = children.indexOf(child);
+    if (index !== -1) children.splice(index, 1);
+    children.push(child);
+    stateOf(child).parent = parent;
 };
 
-const linkBefore = (parent: Instance, child: Instance, before: Instance): void => {
-    const existing = parent.children.indexOf(child);
-    if (existing !== -1) parent.children.splice(existing, 1);
-    const beforeIndex = parent.children.indexOf(before);
-    if (beforeIndex === -1) parent.children.push(child);
-    else parent.children.splice(beforeIndex, 0, child);
-    child.parent = parent;
+const linkBefore = (parent: Node, child: Node, before: Node): void => {
+    const { children } = stateOf(parent);
+    const existing = children.indexOf(child);
+    if (existing !== -1) children.splice(existing, 1);
+    const beforeIndex = children.indexOf(before);
+    if (beforeIndex === -1) children.push(child);
+    else children.splice(beforeIndex, 0, child);
+    stateOf(child).parent = parent;
 };
 
-const unlink = (parent: Instance, child: Instance): void => {
-    const index = parent.children.indexOf(child);
-    if (index !== -1) parent.children.splice(index, 1);
-    child.parent = null;
+const unlink = (parent: Node, child: Node): void => {
+    const { children } = stateOf(parent);
+    const index = children.indexOf(child);
+    if (index !== -1) children.splice(index, 1);
+    stateOf(child).parent = null;
 };
 
-const isBufferRelated = (instance: Instance): boolean =>
-    isBufferContentWrapper(instance) ||
-    instance.backingInstance instanceof Gtk.TextTag ||
-    instance.backingInstance instanceof Gtk.TextBuffer;
+const isBufferRelated = (instance: Node): boolean =>
+    isBufferContentWrapper(instance) || instance instanceof Gtk.TextTag || instance instanceof Gtk.TextBuffer;
 
-const maybeScheduleBufferRebuild = (parent: Instance, child: Instance): void => {
+const maybeScheduleBufferRebuild = (parent: Node, child: Node): void => {
     if (isBufferRelated(parent) || isBufferRelated(child)) scheduleBufferRebuild(parent);
 };
 
-const maybeScheduleLabelTextRebuild = (parent: Instance, child: Instance): void => {
+const maybeScheduleLabelTextRebuild = (parent: Node, child: Node): void => {
     if (isLabelTextWrapper(child)) scheduleLabelTextRebuild(parent);
 };
 
-const scheduleTextRebuilds = (parent: Instance, child: Instance): void => {
+const scheduleTextRebuilds = (parent: Node, child: Node): void => {
     maybeScheduleBufferRebuild(parent, child);
     maybeScheduleLabelTextRebuild(parent, child);
 };
 
-const appendChild = (parent: Instance, child: Instance): void => {
-    const fresh = child.parent === null;
+const appendChild = (parent: Node, child: Node): void => {
+    const fresh = stateOf(child).parent === null;
     link(parent, child);
-    if (isWrapperInstance(child)) attachToParent(child, parent, null, fresh);
-    else if (!isWrapperInstance(parent)) attachToParent(child, parent, null, fresh);
-    if (isWrapperInstance(parent)) resyncWrapper(parent);
+    if (isWrapperElement(child)) attachToParent(child, parent, null, fresh);
+    else if (!isWrapperElement(parent)) attachToParent(child, parent, null, fresh);
+    if (isWrapperElement(parent)) resyncWrapper(parent);
     scheduleTextRebuilds(parent, child);
 };
 
@@ -160,47 +123,48 @@ const appendChild = (parent: Instance, child: Instance): void => {
  * widget directly into the same parent (a transparent wrapper) — that widget,
  * so the new child lands before it rather than appending.
  */
-const anchorBacking = (before: Instance): BackingInstance | null => {
-    if (before.backingInstance) return before.backingInstance;
-    for (const grandchild of before.children) {
-        if (grandchild.backingInstance) return grandchild.backingInstance;
+const anchorBacking = (before: Node): GObject.Object | null => {
+    if (before instanceof GObject.Object) return before;
+    for (const grandchild of stateOf(before).children) {
+        if (grandchild instanceof GObject.Object) return grandchild;
     }
     return null;
 };
 
-const insertBefore = (parent: Instance, child: Instance, before: Instance): void => {
+const insertBefore = (parent: Node, child: Node, before: Node): void => {
     linkBefore(parent, child, before);
-    if (isWrapperInstance(child)) attachToParent(child, parent);
-    else if (!isWrapperInstance(parent)) attachToParent(child, parent, anchorBacking(before));
-    if (isWrapperInstance(parent)) resyncWrapper(parent);
+    if (isWrapperElement(child)) attachToParent(child, parent);
+    else if (!isWrapperElement(parent)) attachToParent(child, parent, anchorBacking(before));
+    if (isWrapperElement(parent)) resyncWrapper(parent);
     scheduleTextRebuilds(parent, child);
 };
 
-const removeChild = (parent: Instance, child: Instance): void => {
+const removeChild = (parent: Node, child: Node): void => {
     scheduleTextRebuilds(parent, child);
-    if (isWrapperInstance(child) || !isWrapperInstance(parent)) detachFromParent(child, parent);
+    if (isWrapperElement(child) || !isWrapperElement(parent)) detachFromParent(child, parent);
     unlink(parent, child);
-    if (isWrapperInstance(parent)) resyncWrapper(parent);
+    if (isWrapperElement(parent)) resyncWrapper(parent);
 };
 
 // --- Prop commit ---
 
-const commitInstanceProps = (instance: Instance, oldProps: Props | null, newProps: Props): void => {
-    instance.props = newProps;
-    if (isWrapperInstance(instance)) {
+const commitInstanceProps = (instance: Node, oldProps: Props | null, newProps: Props): void => {
+    const state = stateOf(instance);
+    state.props = newProps;
+    if (isWrapperElement(instance)) {
         if (isBufferContentWrapper(instance)) scheduleBufferRebuild(instance);
         else resyncWrapper(instance);
         return;
     }
-    const container = instance.backingInstance;
+    if (!(instance instanceof GObject.Object)) return;
     const table = getPropDescriptors(instance);
-    if (container instanceof Gtk.Widget) {
-        applyAccessibleProps(container, oldProps, newProps);
+    if (instance instanceof Gtk.Widget) {
+        applyAccessibleProps(instance, oldProps, newProps);
         applyProps(instance, oldProps, newProps, { table, exclude: isAccessibleProp });
     } else {
-        applyProps(instance, oldProps, newProps, { table, defaultBlockable: container instanceof Gtk.TextBuffer });
+        applyProps(instance, oldProps, newProps, { table, defaultBlockable: instance instanceof Gtk.TextBuffer });
     }
-    if (container instanceof Gtk.TextTag) scheduleBufferRebuild(instance);
+    if (instance instanceof Gtk.TextTag) scheduleBufferRebuild(instance);
 };
 
 // --- Instance teardown ---
@@ -212,14 +176,15 @@ const commitInstanceProps = (instance: Instance, oldProps: Props | null, newProp
  * guard's `getBuffer()` would lazily create a fresh buffer on the disposed
  * view.
  */
-const needsDetachOnDelete = (backing: BackingInstance): boolean =>
+const needsDetachOnDelete = (backing: GObject.Object): boolean =>
     !(backing instanceof Gtk.Widget) && !(backing instanceof Gtk.TextBuffer);
 
-const detachInstance = (instance: Instance): void => {
-    if (instance.backingInstance && needsDetachOnDelete(instance.backingInstance) && instance.parent) {
-        detachFromParent(instance, instance.parent);
+const detachInstance = (instance: Node): void => {
+    const state = stateOf(instance);
+    if (instance instanceof GObject.Object && needsDetachOnDelete(instance) && state.parent) {
+        detachFromParent(instance, state.parent);
     }
-    instance.signalStore.clear(instance);
+    state.signalStore.clear(instance);
 };
 
 /**
@@ -230,9 +195,9 @@ const detachInstance = (instance: Instance): void => {
  * fiber alternate. Side-effects such as `Gtk.Window.destroy()` must run exactly
  * once; this guard short-circuits subsequent calls.
  */
-const createDetachGuard = (): ((instance: Instance) => void) => {
-    const detached = new WeakSet<Instance>();
-    return (instance: Instance) => {
+const createDetachGuard = (): ((instance: Node) => void) => {
+    const detached = new WeakSet<Node>();
+    return (instance: Node) => {
         if (detached.has(instance)) return;
         detached.add(instance);
         detachInstance(instance);
@@ -337,7 +302,7 @@ const createInstanceConfig = (): InstanceConfig => ({
         withSignalsBlocked(instance, () => commitInstanceProps(instance, null, props));
         return false;
     },
-    getPublicInstance: (instance) => instance.backingInstance as PublicInstance,
+    getPublicInstance: (instance) => instance as PublicInstance,
 });
 
 type MutationConfig = Pick<
@@ -362,13 +327,16 @@ const createMutationConfig = (): MutationConfig => ({
         insertBefore(parent, child, beforeChild);
     },
     removeChildFromContainer: (container, child) => {
-        removeChild(getOrCreateContainerNode(container), child);
+        ensureState(container);
+        removeChild(container, child);
     },
     appendChildToContainer: (container, child) => {
-        appendChild(getOrCreateContainerNode(container), child);
+        ensureState(container);
+        appendChild(container, child);
     },
     insertInContainerBefore: (container, child, beforeChild) => {
-        insertBefore(getOrCreateContainerNode(container), child, beforeChild);
+        ensureState(container);
+        insertBefore(container, child, beforeChild);
     },
     clearContainer: () => {},
 });
@@ -379,7 +347,7 @@ const createCommitConfig = (): CommitConfig => ({
     commitUpdate: (instance, _type, oldProps, newProps) =>
         withSignalsBlocked(instance, () => commitInstanceProps(instance, oldProps, newProps)),
     commitTextUpdate: (textInstance, _oldText, newText) => {
-        textInstance.props = { text: newText };
+        stateOf(textInstance).props = { text: newText };
         if (isBufferContentWrapper(textInstance)) scheduleBufferRebuild(textInstance);
         else scheduleLabelTextRebuild(textInstance);
     },
