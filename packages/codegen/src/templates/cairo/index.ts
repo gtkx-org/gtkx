@@ -13,7 +13,7 @@ export {
     version,
     versionString,
 } from "./overrides/context.js";
-export { FtFontFace, ToyFontFace } from "./overrides/font-face.js";
+export { FtFontFace, FtSynthesize, ToyFontFace } from "./overrides/font-face.js";
 export { FontOptions } from "./overrides/font-options.js";
 export { ImageSurface } from "./overrides/image-surface.js";
 export { Matrix } from "./overrides/matrix.js";

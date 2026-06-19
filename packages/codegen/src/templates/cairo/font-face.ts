@@ -91,28 +91,45 @@ export class ToyFontFace extends FontFace {
 }
 
 /**
+ * Synthesis flags for an {@link FtFontFace}, selecting which font variants
+ * cairo synthesizes from a FreeType face that does not provide them natively.
+ * Combine members with the bitwise OR operator.
+ *
+ * @example
+ * ```ts
+ * face.setSynthesize(FtSynthesize.BOLD | FtSynthesize.OBLIQUE);
+ * ```
+ */
+export enum FtSynthesize {
+    /** Synthesize a bold variant from the FreeType face. */
+    BOLD = 1,
+    /** Synthesize an oblique (slanted) variant from the FreeType face. */
+    OBLIQUE = 2,
+}
+
+/**
  * FreeType-backed font face produced by {@link FontFace.createForFtFace} and
  * {@link FontFace.createForPattern}.
  */
 export class FtFontFace extends FontFace {
     /**
-     * Returns the synthesis flags applied to the font.
+     * Returns the {@link FtSynthesize} flags applied to the font.
      */
-    getSynthesize(): number {
-        return cairoFtFontFaceGetSynthesize(getHandle(this)) as number;
+    getSynthesize(): FtSynthesize {
+        return cairoFtFontFaceGetSynthesize(getHandle(this)) as FtSynthesize;
     }
 
     /**
-     * Enables the given synthesis flags on the font.
+     * Enables the given {@link FtSynthesize} flags on the font.
      */
-    setSynthesize(synthFlags: number): void {
+    setSynthesize(synthFlags: FtSynthesize): void {
         cairoFtFontFaceSetSynthesize(getHandle(this), synthFlags);
     }
 
     /**
-     * Disables the given synthesis flags on the font.
+     * Disables the given {@link FtSynthesize} flags on the font.
      */
-    unsetSynthesize(synthFlags: number): void {
+    unsetSynthesize(synthFlags: FtSynthesize): void {
         cairoFtFontFaceUnsetSynthesize(getHandle(this), synthFlags);
     }
 }
