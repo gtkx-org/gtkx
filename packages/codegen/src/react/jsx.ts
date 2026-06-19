@@ -4,6 +4,7 @@ import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import { splitQualifiedName } from "../gir/qualified-name.js";
 import type { GirRepository } from "../gir/repository.js";
+import { splitOptionalNamespace } from "../gir/type-ref.js";
 import type { JsxImports } from "./imports.js";
 import { buildWidgetPropsEntries } from "./props.js";
 import { BUILT_IN_PROPS_MIXINS, WIDGET_BASE_PROPS_MIXINS } from "./tables.js";
@@ -131,11 +132,10 @@ const renderPropBlock = (
     context.imports.giNamespaces.set(entry.namespace.name, entry.namespace.name);
     const widgetTypeRef = `${entry.namespace.name}.${entry.klass.name} | null`;
     const resolveItemType = (itemType: string): string => {
-        const dotIndex = itemType.indexOf(".");
-        if (dotIndex === -1) {
+        const [namespace] = splitOptionalNamespace(itemType);
+        if (namespace === undefined) {
             context.imports.sharedTypes.add(itemType);
         } else {
-            const namespace = itemType.slice(0, dotIndex);
             context.imports.giNamespaces.set(namespace, namespace);
         }
         return itemType;
@@ -147,7 +147,7 @@ const renderPropBlock = (
         ([propName, row]) => `    ${propName}?: ${resolveItemType(row.itemType)} | null;`,
     );
     const virtualPropLines = Object.entries(virtualProps).map(([propName, row]) => {
-        const [namespace] = row.type.split(".");
+        const [namespace] = splitOptionalNamespace(row.type);
         if (namespace) context.imports.giNamespaces.set(namespace, namespace);
         return `    ${propName}?: ${row.type} | null;`;
     });

@@ -11,6 +11,7 @@ import {
     type ParameterTransfer,
 } from "../gir/parameter.js";
 import type { PrimitiveCategory } from "../gir/primitives.js";
+import { splitQualifiedName } from "../gir/qualified-name.js";
 import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirRepository, ResolvedNamed } from "../gir/repository.js";
 import type { ArrayTypeRef, GirTypeRef, NamedTypeRef } from "../gir/type-ref.js";
@@ -353,9 +354,7 @@ const fundamentalAncestor = (
             };
         }
         if (cls.parent === undefined) return undefined;
-        const dot = cls.parent.indexOf(".");
-        owner = dot === -1 ? resolved.namespace.name : cls.parent.slice(0, dot);
-        name = dot === -1 ? cls.parent : cls.parent.slice(dot + 1);
+        ({ namespaceName: owner, typeName: name } = splitQualifiedName(cls.parent, resolved.namespace.name));
     }
     return undefined;
 };

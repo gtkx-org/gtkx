@@ -1,5 +1,6 @@
 import type { GirClass } from "./class.js";
 import type { GirRepository } from "./repository.js";
+import { splitOptionalNamespace } from "./type-ref.js";
 
 /**
  * Splits a possibly cross-namespace GIR identifier (e.g. `"Gtk.Widget"`) into
@@ -16,11 +17,8 @@ export const splitQualifiedName = (
     qualified: string,
     defaultNamespace: string,
 ): { readonly namespaceName: string; readonly typeName: string } => {
-    const dot = qualified.indexOf(".");
-    if (dot === -1) {
-        return { namespaceName: defaultNamespace, typeName: qualified };
-    }
-    return { namespaceName: qualified.slice(0, dot), typeName: qualified.slice(dot + 1) };
+    const [namespace, typeName] = splitOptionalNamespace(qualified);
+    return { namespaceName: namespace ?? defaultNamespace, typeName };
 };
 
 /**

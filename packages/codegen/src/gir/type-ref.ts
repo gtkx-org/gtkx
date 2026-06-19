@@ -171,7 +171,13 @@ const arrayTypeRefFromNode = (arrayNode: RawNode): ArrayTypeRef | ListTypeRef =>
 
 const pointerFallback = (): PrimitiveTypeRef => ({ kind: "primitive", category: "pointer", cType: undefined });
 
-const splitOptionalNamespace = (name: string): [string | undefined, string] => {
+/**
+ * Splits a possibly cross-namespace GIR identifier into its namespace and local
+ * name, reporting an absent namespace as `undefined` so callers can apply their
+ * own default. `splitOptionalNamespace("Gtk.Widget")` is `["Gtk", "Widget"]`
+ * and `splitOptionalNamespace("Widget")` is `[undefined, "Widget"]`.
+ */
+export const splitOptionalNamespace = (name: string): readonly [string | undefined, string] => {
     const dot = name.indexOf(".");
     if (dot === -1) return [undefined, name];
     return [name.slice(0, dot), name.slice(dot + 1)];

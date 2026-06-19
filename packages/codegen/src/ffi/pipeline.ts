@@ -1,6 +1,7 @@
 import { ModuleContext } from "../dsl/context.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
+import { splitQualifiedName } from "../gir/qualified-name.js";
 import type { GirRepository } from "../gir/repository.js";
 import { emitAlias } from "../writers/alias.js";
 import { emitBoxed } from "../writers/boxed.js";
@@ -106,8 +107,7 @@ const sameNamespaceParent = (
     byLocalName: ReadonlyMap<string, GirClass>,
 ): GirClass | undefined => {
     if (klass.parent === undefined) return undefined;
-    const dot = klass.parent.indexOf(".");
-    if (dot === -1) return byLocalName.get(klass.parent);
-    if (klass.parent.slice(0, dot) !== namespaceName) return undefined;
-    return byLocalName.get(klass.parent.slice(dot + 1));
+    const { namespaceName: parentNamespace, typeName } = splitQualifiedName(klass.parent, namespaceName);
+    if (parentNamespace !== namespaceName) return undefined;
+    return byLocalName.get(typeName);
 };
