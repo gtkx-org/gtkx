@@ -9,7 +9,7 @@ import {
     BUILT_IN_PROP_RULES,
     META_OBJECT_ADD_METHODS,
     mergeArrayProps,
-    mergeContainerSlots,
+    mergeContainerProps,
     mergeElementMap,
     mergeObjectProps,
     mergeVirtualProps,
@@ -24,7 +24,7 @@ import { collectReactNodeClasses } from "./widgets.js";
  */
 export type UserTables = {
     /** Container methods to surface as append-semantics `ReactNode` slots. */
-    readonly containerSlots?: Readonly<Record<string, readonly string[]>>;
+    readonly containerProps?: Readonly<Record<string, readonly string[]>>;
     /** Array-prop rows keyed by JSX element name then camelCase prop name. */
     readonly arrayProps?: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>>;
     /** Object-prop rows keyed by JSX element name then camelCase prop name. */
@@ -86,7 +86,7 @@ export type JsxFiles = {
  * @param userTables - Table overrides from `gtkx.config.ts`, merged with the built-ins
  */
 export const generateJsxFiles = (repository: GirRepository, userTables: UserTables = {}): JsxFiles => {
-    const containerSlotMap = mergeContainerSlots(userTables.containerSlots);
+    const containerPropMap = mergeContainerProps(userTables.containerProps);
     const arrayPropMap = mergeArrayProps(userTables.arrayProps);
     const objectPropMap = mergeObjectProps(userTables.objectProps);
     const virtualPropMap = mergeVirtualProps(userTables.virtualProps);
@@ -100,7 +100,7 @@ export const generateJsxFiles = (repository: GirRepository, userTables: UserTabl
     let widgetCount = 0;
     for (const namespace of [...namespacesWithWidgets.values()].sort((a, b) => a.name.localeCompare(b.name))) {
         const { source, count } = generateJsxNamespace(namespace, repository, {
-            containerSlotMap,
+            containerPropMap,
             arrayPropMap,
             objectPropMap,
             virtualPropMap,
@@ -118,7 +118,7 @@ export const generateJsxFiles = (repository: GirRepository, userTables: UserTabl
         topLevelTypes: TOP_LEVEL_TYPES,
         metaObjectAddMethods: META_OBJECT_ADD_METHODS,
         pageMetaSetters: PAGE_META_SETTERS,
-        containerSlots: containerSlotMap,
+        containerProps: containerPropMap,
     });
 
     return { namespaces, metadata, widgetCount };

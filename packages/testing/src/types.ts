@@ -69,7 +69,7 @@ export type MatcherOptions = {
 
 /**
  * Accessible value filter for {@link ByRoleOptions}, mirroring the
- * `aria-valuenow`/`aria-valuemin`/`aria-valuemax`/`aria-valuetext` triad
+ * `accessible-valuenow`/`accessible-valuemin`/`accessible-valuemax`/`accessible-valuetext` triad
  * (GTK's `AccessibleProperty.VALUE_*`).
  */
 export type ByRoleValue = {

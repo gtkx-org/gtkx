@@ -173,7 +173,7 @@ describe("codegen React pipeline (auto-derived slots)", () => {
     });
 
     it("promotes a user-supplied container slot on a widget without built-in ones", () => {
-        const overridden = generateJsxFiles(repository, { containerSlots: { GtkButton: ["addChild"] } });
+        const overridden = generateJsxFiles(repository, { containerProps: { GtkButton: ["addChild"] } });
         const gtk = sourceFor(overridden, "gtk");
         expect(gtk).toContain("addChild?: ReactNode | null;");
         expect(overridden.metadata).toMatch(/"GtkButton": \[\s*"addChild"\s*\]/);
@@ -182,7 +182,7 @@ describe("codegen React pipeline (auto-derived slots)", () => {
     });
 
     it("promotes a user container slot on a plain GObject class", () => {
-        const overridden = generateJsxFiles(repository, { containerSlots: { GApplication: ["addWindow"] } });
+        const overridden = generateJsxFiles(repository, { containerProps: { GApplication: ["addWindow"] } });
         const gio = sourceFor(overridden, "gio");
         expect(gio).toContain("GApplicationProps");
         expect(gio).toContain("addWindow?: ReactNode | null;");
@@ -257,7 +257,7 @@ describe("codegen runtime tables", () => {
         expect(reactPipeline.metadata).toContain("export const TOP_LEVEL_TYPES");
         expect(reactPipeline.metadata).toContain("export const META_OBJECT_ADD_METHODS");
         expect(reactPipeline.metadata).toContain("export const PAGE_META_SETTERS");
-        expect(reactPipeline.metadata).toContain("export const CONTAINER_SLOTS");
+        expect(reactPipeline.metadata).toContain("export const CONTAINER_PROPS");
     });
 
     it("appends user elementMap rows after the built-ins", () => {

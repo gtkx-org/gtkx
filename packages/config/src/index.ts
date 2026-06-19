@@ -46,7 +46,7 @@ export type {
 export { GTKX_CONFIG_VIRTUAL_ID, RESOLVED_GTKX_CONFIG_VIRTUAL_ID, renderGtkxConfigModule } from "./virtual.js";
 export {
     BUFFER_TEXT_KIND,
-    CONTAINER_SLOT_KIND,
+    CONTAINER_PROP_KIND,
     LABEL_TEXT_KIND,
     LAYOUT_CHILD_KIND,
     META_OBJECT_KIND,

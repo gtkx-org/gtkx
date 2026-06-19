@@ -92,9 +92,9 @@ import { x, GtkStack, GtkGrid, GtkMenuButton, AdwHeaderBar, AdwToolbarView } fro
 </GtkGrid>
 
 <AdwToolbarView>
-  <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
+  <x.ContainerProp for={AdwToolbarView} id="addTopBar">
     <AdwHeaderBar />
-  </x.ContainerSlot>
+  </x.ContainerProp>
 </AdwToolbarView>
 
 <GtkMenuButton>
@@ -569,7 +569,7 @@ cr.fill();
 
 #### Changelog
 
-- Fixed `isValidChild` rejecting `EventControllerNode`, `SlotNode`, and `ContainerSlotNode` on widget nodes with restrictive child validation (Window, PopoverMenu, NavigationView, TextView, ColumnView, ListView, GridView, DropDown, Notebook, DrawingArea, Calendar).
+- Fixed `isValidChild` rejecting `EventControllerNode`, `SlotNode`, and `ContainerPropNode` on widget nodes with restrictive child validation (Window, PopoverMenu, NavigationView, TextView, ColumnView, ListView, GridView, DropDown, Notebook, DrawingArea, Calendar).
 
 [Release notes on GitHub](https://github.com/gtkx-org/gtkx/releases/tag/v0.18.5)
 
@@ -638,14 +638,14 @@ await build({ entry: "./src/index.tsx", vite: { root: process.cwd() } });
 
 Static assets (images, SVGs, etc.) should now be handled via Vite imports rather than `path.resolve` / `import.meta.dirname`. `vite` is a required `devDependency` for applications using the build command.
 
-###### `x.ContainerSlot` -- unified container slot component
+###### `x.ContainerProp` -- unified container slot component
 
 A new generic, type-safe component replaces all specialized method-child nodes for attaching children to parent widgets via named methods:
 
 ```tsx
-<x.ContainerSlot for={AdwToolbarView} id="addTopBar">
+<x.ContainerProp for={AdwToolbarView} id="addTopBar">
   <AdwHeaderBar />
-</x.ContainerSlot>
+</x.ContainerProp>
 ```
 
 ---
@@ -680,18 +680,18 @@ Use `x.ListItem` instead. `ListItemProps` now includes tree-specific props (`ind
 
 ###### Specialized method-child nodes removed
 
-All replaced by `x.ContainerSlot`:
+All replaced by `x.ContainerProp`:
 
 | Before | After |
 |--------|-------|
-| `<x.PackStart>` | `<x.ContainerSlot for={GtkHeaderBar} id="packStart">` |
-| `<x.PackEnd>` | `<x.ContainerSlot for={GtkHeaderBar} id="packEnd">` |
-| `<x.ToolbarTop>` | `<x.ContainerSlot for={AdwToolbarView} id="addTopBar">` |
-| `<x.ToolbarBottom>` | `<x.ContainerSlot for={AdwToolbarView} id="addBottomBar">` |
-| `<x.ActionRowPrefix>` | `<x.ContainerSlot for={AdwActionRow} id="addPrefix">` |
-| `<x.ActionRowSuffix>` | `<x.ContainerSlot for={AdwActionRow} id="addSuffix">` |
-| `<x.ExpanderRowRow>` | `<x.ContainerSlot for={AdwExpanderRow} id="addRow">` |
-| `<x.ExpanderRowAction>` | `<x.ContainerSlot for={AdwExpanderRow} id="addAction">` |
+| `<x.PackStart>` | `<x.ContainerProp for={GtkHeaderBar} id="packStart">` |
+| `<x.PackEnd>` | `<x.ContainerProp for={GtkHeaderBar} id="packEnd">` |
+| `<x.ToolbarTop>` | `<x.ContainerProp for={AdwToolbarView} id="addTopBar">` |
+| `<x.ToolbarBottom>` | `<x.ContainerProp for={AdwToolbarView} id="addBottomBar">` |
+| `<x.ActionRowPrefix>` | `<x.ContainerProp for={AdwActionRow} id="addPrefix">` |
+| `<x.ActionRowSuffix>` | `<x.ContainerProp for={AdwActionRow} id="addSuffix">` |
+| `<x.ExpanderRowRow>` | `<x.ContainerProp for={AdwExpanderRow} id="addRow">` |
+| `<x.ExpanderRowAction>` | `<x.ContainerProp for={AdwExpanderRow} id="addAction">` |
 
 ###### Animation `mode` prop moved into `transition`
 

@@ -45,11 +45,11 @@ const buildAttrs = (widget: Gtk.Widget, includeIds: boolean): ReadonlyArray<read
     attrs.push(["role", formatRole(widget.getAccessibleRole())]);
 
     if (!widget.getSensitive()) {
-        attrs.push(["aria-disabled", "true"]);
+        attrs.push(["accessible-disabled", "true"]);
     }
 
     if (!widget.getVisible()) {
-        attrs.push(["aria-hidden", "true"]);
+        attrs.push(["accessible-hidden", "true"]);
     }
 
     return attrs.toSorted(([a], [b]) => {

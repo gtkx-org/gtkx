@@ -12,7 +12,7 @@ import { collectReactNodeClasses, type WidgetCandidate } from "./widgets.js";
 /** Merged JSX-surface maps keyed by JSX element name, threaded into {@link generateJsxSection}. */
 export type JsxSurfaceMaps = {
     /** Container-slot methods keyed by JSX element name. */
-    readonly containerSlotMap?: Readonly<Record<string, readonly string[]>>;
+    readonly containerPropMap?: Readonly<Record<string, readonly string[]>>;
     /** Array-prop rows keyed by JSX element name then prop name. */
     readonly arrayPropMap?: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>>;
     /** Object-prop rows keyed by JSX element name then prop name. */
@@ -70,7 +70,7 @@ export const generateJsxSection = (
     const propBlocks: string[] = [];
     for (const entry of widgets) {
         const { block, extendsBase, slotPropNames } = renderPropBlock(repository, entry, {
-            containerSlotMap: maps.containerSlotMap ?? {},
+            containerPropMap: maps.containerPropMap ?? {},
             arrayPropMap: maps.arrayPropMap ?? {},
             objectPropMap: maps.objectPropMap ?? {},
             virtualPropMap: maps.virtualPropMap ?? {},
@@ -155,7 +155,7 @@ const renderPropBlock = (
         "    children?: ReactNode;",
         `    ref?: Ref<${widgetTypeRef}>;`,
         ...propLines.map((line) => `    ${line}`),
-        ...(context.containerSlotMap[entry.glibName] ?? []).map((method) => `    ${method}?: ReactNode | null;`),
+        ...(context.containerPropMap[entry.glibName] ?? []).map((method) => `    ${method}?: ReactNode | null;`),
         ...arrayPropLines,
         ...objectPropLines,
         ...virtualPropLines,

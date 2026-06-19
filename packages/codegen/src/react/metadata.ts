@@ -41,7 +41,7 @@ export type RuntimeTables = {
     /** Page-metadata setters applied to stack page handles. */
     readonly pageMetaSetters: readonly PageMetaSetter[];
     /** Merged container-slot method names keyed by JSX element name. */
-    readonly containerSlots: Readonly<Record<string, readonly string[]>>;
+    readonly containerProps: Readonly<Record<string, readonly string[]>>;
 };
 
 const CONFIG_TYPES = "@gtkx/config";
@@ -82,7 +82,7 @@ const renderRuntimeTables = (tables: RuntimeTables): readonly string[] => [
         `ReadonlyArray<import("${CONFIG_TYPES}").PageMetaSetter>`,
         tables.pageMetaSetters,
     ),
-    renderTableConst("CONTAINER_SLOTS", "Readonly<Record<string, readonly string[]>>", tables.containerSlots),
+    renderTableConst("CONTAINER_PROPS", "Readonly<Record<string, readonly string[]>>", tables.containerProps),
 ];
 
 /**

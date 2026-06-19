@@ -98,12 +98,12 @@ export type GtkxConfig = {
      *
      * @example
      * ```ts
-     * containerSlots: {
+     * containerProps: {
      *     MyAppHeaderBar: ["packStart", "packEnd"],
      * }
      * ```
      */
-    containerSlots?: Record<string, string[]>;
+    containerProps?: Record<string, string[]>;
 
     /**
      * Additional array-valued props to expose on a widget's JSX surface, where
@@ -424,7 +424,7 @@ export const defineConfig = (config: GtkxConfig): GtkxConfig => {
     validateLibraries(config.libraries);
     validateGirPath(config.girPath);
     validateApplicationId(config.applicationId);
-    validateSlotMap(config.containerSlots, "containerSlots");
+    validateSlotMap(config.containerProps, "containerProps");
     validateArrayPropRows(config.arrayProps);
     validateObjectPropRows(config.objectProps);
     validateVirtualPropRows(config.virtualProps);
@@ -448,7 +448,7 @@ export type ResolvedGtkxConfig = {
     /** The GLib application id, or `undefined` when unset. */
     readonly applicationId: string | undefined;
     /** The user's container-slot map, or `{}` when omitted. */
-    readonly containerSlots: Readonly<Record<string, readonly string[]>>;
+    readonly containerProps: Readonly<Record<string, readonly string[]>>;
     /** The user's array-prop rows, or `{}` when omitted. */
     readonly arrayProps: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>>;
     /** The user's object-prop rows, or `{}` when omitted. */
@@ -479,7 +479,7 @@ export const resolveGtkxConfig = (config: GtkxConfig): ResolvedGtkxConfig => ({
     libraries: config.libraries ?? [],
     girPath: config.girPath ?? [],
     applicationId: config.applicationId,
-    containerSlots: config.containerSlots ?? {},
+    containerProps: config.containerProps ?? {},
     arrayProps: config.arrayProps ?? {},
     objectProps: config.objectProps ?? {},
     virtualProps: config.virtualProps ?? {},

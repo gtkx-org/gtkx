@@ -77,7 +77,7 @@ export const getWidgetText = (widget: Gtk.Widget): string | null => {
  * Returns the widget's own text from properties (getLabel, getText, getTitle).
  *
  * Used for display/debugging purposes (e.g., prettyWidget). This is
- * analogous to HTML attributes like aria-label, not text content.
+ * analogous to HTML attributes like accessible-label, not text content.
  *
  * @param widget - The widget to extract property text from
  * @returns The property text or null if none found
@@ -90,7 +90,7 @@ export const getWidgetPropertyText = (widget: Gtk.Widget): string | null => {
  * Computes the accessible name of a widget for role-based queries.
  *
  * Uses the widget's own text properties first, then recursively collects
- * all descendant label text. This mirrors how ARIA accessible name
+ * all descendant label text. This mirrors how ACCESSIBLE accessible name
  * computation works in the DOM.
  *
  * @param widget - The widget to compute the accessible name for
@@ -304,7 +304,7 @@ export const getWidgetValue = (widget: Gtk.Widget): WidgetValue => ({
 
 /**
  * Gets a widget's own accessible label, declared via the `accessibleLabel` JSX
- * prop (the analog of the HTML `aria-label` attribute).
+ * prop (the analog of the HTML `accessible-label` attribute).
  *
  * @param widget - The widget to read the label from
  * @returns The label, or null when none is declared
@@ -315,7 +315,7 @@ export const getWidgetOwnLabel = (widget: Gtk.Widget): string | null => {
 
 /**
  * Gets the combined text of the widgets a widget is labeled by, declared via
- * the `accessibleLabelledBy` JSX prop (the analog of HTML `aria-labelledby`).
+ * the `accessibleLabelledBy` JSX prop (the analog of HTML `accessible-labelledby`).
  *
  * @param widget - The widget to resolve the labeling text for
  * @returns The joined accessible names of the labeling widgets, or null

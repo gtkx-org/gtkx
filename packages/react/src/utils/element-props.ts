@@ -230,7 +230,7 @@ export type SlotProps = {
 /**
  * Props for method-based container slot child positioning.
  */
-export type ContainerSlotProps = {
+export type ContainerPropProps = {
     /** The method name to call on the parent widget */
     id: string;
     /** Content to place in the container slot */

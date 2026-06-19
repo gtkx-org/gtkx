@@ -27,7 +27,7 @@ export const TAB_LABEL_KIND = "tab-label";
 export const SLOT_KIND = "slot";
 
 /** Wrapper kind for a prop appended to its parent through a named container method. */
-export const CONTAINER_SLOT_KIND = "container-slot";
+export const CONTAINER_PROP_KIND = "container-slot";
 
 /** Wrapper kind for a widget anchored into a text buffer. */
 export const TEXT_ANCHOR_KIND = "text-anchor";

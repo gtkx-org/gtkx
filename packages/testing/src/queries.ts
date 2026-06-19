@@ -179,8 +179,8 @@ const collectMnemonicMatch = (
 /**
  * Finds all elements labeled by matching text, resolving every GTK labeling
  * mechanism: a `GtkLabel`'s mnemonic-widget association, a widget's own
- * `accessibleLabel` (the analog of `aria-label`), and the widgets named by
- * `accessibleLabelledBy` (the analog of `aria-labelledby`).
+ * `accessibleLabel` (the analog of `accessible-label`), and the widgets named by
+ * `accessibleLabelledBy` (the analog of `accessible-labelledby`).
  *
  * @param container - The container to search within
  * @param text - Label text to match (string, RegExp, or custom matcher)

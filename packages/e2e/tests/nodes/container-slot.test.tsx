@@ -62,7 +62,7 @@ const renderToolbarWithSingleBar = async (bar: { addTopBar?: ReactNode; addBotto
     return { toolbarRef, contentRef };
 };
 
-describe("render - ContainerSlot (1)", () => {
+describe("render - ContainerProp (1)", () => {
     describe("AdwActionRow (addPrefix/addSuffix) (1)", () => {
         it("creates ActionRow widget", async () => {
             const ref = createRef<Adw.ActionRow>();
@@ -86,7 +86,7 @@ describe("render - ContainerSlot (1)", () => {
     });
 });
 
-describe("render - ContainerSlot (2)", () => {
+describe("render - ContainerProp (2)", () => {
     describe("AdwActionRow (addPrefix/addSuffix) (2)", () => {
         it("removes prefix and suffix children", async () => {
             const rowRef = createRef<Adw.ActionRow>();
@@ -130,7 +130,7 @@ describe("render - ContainerSlot (2)", () => {
     });
 });
 
-describe("render - ContainerSlot (3)", () => {
+describe("render - ContainerProp (3)", () => {
     describe("AdwActionRow (addPrefix/addSuffix) (3)", () => {
         it("adds child as suffix via addSuffix", async () => {
             const rowRef = createRef<Adw.ActionRow>();
@@ -150,7 +150,7 @@ describe("render - ContainerSlot (3)", () => {
     });
 });
 
-describe("render - ContainerSlot (4)", () => {
+describe("render - ContainerProp (4)", () => {
     describe("AdwActionRow (addPrefix/addSuffix) (4)", () => {
         it("removes prefix child", async () => {
             const rowRef = createRef<Adw.ActionRow>();
@@ -177,7 +177,7 @@ describe("render - ContainerSlot (4)", () => {
     });
 });
 
-describe("render - ContainerSlot (5)", () => {
+describe("render - ContainerProp (5)", () => {
     describe("AdwActionRow (addPrefix/addSuffix) (5)", () => {
         it("adds multiple children as prefix via addPrefix", async () => {
             const rowRef = createRef<Adw.ActionRow>();
@@ -203,7 +203,7 @@ describe("render - ContainerSlot (5)", () => {
     });
 });
 
-describe("render - ContainerSlot (6)", () => {
+describe("render - ContainerProp (6)", () => {
     describe("AdwActionRow (addPrefix/addSuffix) (6)", () => {
         it("removes individual children from addPrefix", async () => {
             const rowRef = createRef<Adw.ActionRow>();
@@ -240,7 +240,7 @@ describe("render - ContainerSlot (6)", () => {
     });
 });
 
-describe("render - ContainerSlot (7)", () => {
+describe("render - ContainerProp (7)", () => {
     describe("AdwExpanderRow (rows/actions) (1)", () => {
         it("creates ExpanderRow widget", async () => {
             const ref = createRef<Adw.ExpanderRow>();
@@ -283,7 +283,7 @@ describe("render - ContainerSlot (7)", () => {
     });
 });
 
-describe("render - ContainerSlot (8)", () => {
+describe("render - ContainerProp (8)", () => {
     describe("AdwExpanderRow (rows/actions) (2)", () => {
         it("adds nested rows to ExpanderRow", async () => {
             const rowRef = createRef<Adw.ActionRow>();
@@ -316,7 +316,7 @@ describe("render - ContainerSlot (8)", () => {
     });
 });
 
-describe("render - ContainerSlot (9)", () => {
+describe("render - ContainerProp (9)", () => {
     describe("AdwExpanderRow (rows/actions) (3)", () => {
         it("removes nested rows when unmounted", async () => {
             const expanderRef = createRef<Adw.ExpanderRow>();
@@ -353,7 +353,7 @@ describe("render - ContainerSlot (9)", () => {
     });
 });
 
-describe("render - ContainerSlot (10)", () => {
+describe("render - ContainerProp (10)", () => {
     describe("AdwExpanderRow (rows/actions) (4)", () => {
         it("adds multiple action widgets", async () => {
             const action1Ref = createRef<Gtk.Button>();
@@ -403,7 +403,7 @@ describe("render - ContainerSlot (10)", () => {
     });
 });
 
-describe("render - ContainerSlot (11)", () => {
+describe("render - ContainerProp (11)", () => {
     describe("GtkHeaderBar (packStart/packEnd) (1)", () => {
         it("packs child at start via packStart", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
@@ -427,7 +427,7 @@ describe("render - ContainerSlot (11)", () => {
     });
 });
 
-describe("render - ContainerSlot (12)", () => {
+describe("render - ContainerProp (12)", () => {
     describe("GtkHeaderBar (packStart/packEnd) (2)", () => {
         it("combines packStart and packEnd", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
@@ -473,7 +473,7 @@ describe("render - ContainerSlot (12)", () => {
     });
 });
 
-describe("render - ContainerSlot (13)", () => {
+describe("render - ContainerProp (13)", () => {
     describe("GtkHeaderBar (packStart/packEnd) (3)", () => {
         it("packs multiple children at start via packStart", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
@@ -499,7 +499,7 @@ describe("render - ContainerSlot (13)", () => {
     });
 });
 
-describe("render - ContainerSlot (14)", () => {
+describe("render - ContainerProp (14)", () => {
     describe("GtkHeaderBar (packStart/packEnd) (4)", () => {
         it("swaps keyed children in packStart without duplication", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
@@ -537,7 +537,7 @@ describe("render - ContainerSlot (14)", () => {
     });
 });
 
-describe("render - ContainerSlot (15)", () => {
+describe("render - ContainerProp (15)", () => {
     describe("GtkHeaderBar (packStart/packEnd) (5)", () => {
         it("reorders children in packStart via insertBefore", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
@@ -578,7 +578,7 @@ describe("render - ContainerSlot (15)", () => {
     });
 });
 
-describe("render - ContainerSlot (16)", () => {
+describe("render - ContainerProp (16)", () => {
     describe("GtkHeaderBar (packStart/packEnd) (6)", () => {
         it("removes individual children from packStart", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
@@ -612,7 +612,7 @@ describe("render - ContainerSlot (16)", () => {
     });
 });
 
-describe("render - ContainerSlot (17)", () => {
+describe("render - ContainerProp (17)", () => {
     describe("AdwToolbarView (topBar/bottomBar) (1)", () => {
         it("adds child to top bar via addTopBar", async () => {
             const { toolbarRef, contentRef } = await renderToolbarWithSingleBar({ addTopBar: <AdwHeaderBar /> });
@@ -630,7 +630,7 @@ describe("render - ContainerSlot (17)", () => {
     });
 });
 
-describe("render - ContainerSlot (18)", () => {
+describe("render - ContainerProp (18)", () => {
     describe("AdwToolbarView (topBar/bottomBar) (2)", () => {
         it("handles multiple top bars", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
@@ -676,7 +676,7 @@ describe("render - ContainerSlot (18)", () => {
     });
 });
 
-describe("render - ContainerSlot (19)", () => {
+describe("render - ContainerProp (19)", () => {
     describe("error handling", () => {
         it("throws when the requested method does not exist on the parent", async () => {
             const WrapperNode = "__GTKX_WRAPPER_NODE__" as const;

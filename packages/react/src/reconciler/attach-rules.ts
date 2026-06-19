@@ -22,7 +22,7 @@
  * the widget-container fallback) stay hand-written in `element-map`; this
  * table covers the stateless verbs.
  */
-import { CONTAINER_SLOTS, ELEMENT_MAP } from "virtual:gtkx-config";
+import { CONTAINER_PROPS, ELEMENT_MAP } from "virtual:gtkx-config";
 import type { ElementMapRule, MethodVerb, OrderedInsertVerb, VerbArgs } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
 import { collectTypeNameChain, typeChainIncludes } from "../utils/gtype.js";
@@ -275,7 +275,7 @@ const promotedPropFor = (rule: ElementMapRule, parent: Node): string | null => {
     const setterProp = propertyNameForSetter(attach);
     if (setterProp !== null) return setterProp;
     for (const typeName of collectTypeNameChain(parent.__gtype__)) {
-        if (CONTAINER_SLOTS[typeName]?.includes(attach)) return attach;
+        if (CONTAINER_PROPS[typeName]?.includes(attach)) return attach;
     }
     return null;
 };

@@ -44,8 +44,8 @@ const stableValue = (value: unknown): unknown => {
  * shaping the Props surfaces.
  */
 export type UserTableInputs = {
-    /** The config's `containerSlots` map, or `undefined`. */
-    readonly containerSlots?: Readonly<Record<string, readonly string[]>>;
+    /** The config's `containerProps` map, or `undefined`. */
+    readonly containerProps?: Readonly<Record<string, readonly string[]>>;
     /** The config's `arrayProps` rows, or `undefined`. */
     readonly arrayProps?: unknown;
     /** The config's `objectProps` rows, or `undefined`. */
@@ -66,7 +66,7 @@ export type UserTableInputs = {
 export const serializeUserTables = (tables: UserTableInputs): string =>
     JSON.stringify(
         stableValue({
-            containerSlots: tables.containerSlots ?? {},
+            containerProps: tables.containerProps ?? {},
             arrayProps: tables.arrayProps ?? {},
             objectProps: tables.objectProps ?? {},
             virtualProps: tables.virtualProps ?? {},

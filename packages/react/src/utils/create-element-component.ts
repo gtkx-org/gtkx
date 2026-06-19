@@ -10,23 +10,23 @@
  * element map sets on the GObject property of the same name (setter semantics),
  * while a constructed GObject instance, a primitive, or `null` is forwarded
  * verbatim as a plain prop — a direct property set the reconciler already makes.
- * Container-slot props (the append-method names in `CONTAINER_SLOTS`, resolved
+ * Container-slot props (the append-method names in `CONTAINER_PROPS`, resolved
  * at first render against the element's GType ancestry) become
  * `kind="container-slot"` wrappers (append semantics through the named method).
  *
  * Slot-ness is therefore decided by value, not by a generated table: any
  * GObject-class prop accepts a JSX subtree without being enumerated anywhere.
  */
-import { CONTAINER_SLOTS } from "virtual:gtkx-config";
-import { CONTAINER_SLOT_KIND, SLOT_KIND } from "@gtkx/config";
+import { CONTAINER_PROPS } from "virtual:gtkx-config";
+import { CONTAINER_PROP_KIND, SLOT_KIND } from "@gtkx/config";
 import { getWrapperClass, typeFromName } from "@gtkx/ffi";
 import { createElement, isValidElement, type ReactNode } from "react";
 import { WRAPPER_NODE_ELEMENT } from "../reconciler/instance.js";
 import { classHasType, type GTyped } from "./gtype-predicates.js";
 
-const EMPTY_CONTAINER_SLOTS: ReadonlySet<string> = new Set();
+const EMPTY_CONTAINER_PROPS: ReadonlySet<string> = new Set();
 
-const containerSlotCache = new Map<string, ReadonlySet<string>>();
+const containerPropCache = new Map<string, ReadonlySet<string>>();
 
 const collectInherited = (
     table: Readonly<Record<string, readonly string[]>>,
@@ -42,12 +42,12 @@ const collectInherited = (
     return collected;
 };
 
-const resolveContainerSlots = (elementName: string): ReadonlySet<string> => {
-    const cached = containerSlotCache.get(elementName);
+const resolveContainerProps = (elementName: string): ReadonlySet<string> => {
+    const cached = containerPropCache.get(elementName);
     if (cached) return cached;
     const cls = getWrapperClass(typeFromName(elementName)) as { readonly prototype: GTyped } | null;
-    const set = cls ? new Set(collectInherited(CONTAINER_SLOTS, cls)) : EMPTY_CONTAINER_SLOTS;
-    containerSlotCache.set(elementName, set);
+    const set = cls ? new Set(collectInherited(CONTAINER_PROPS, cls)) : EMPTY_CONTAINER_PROPS;
+    containerPropCache.set(elementName, set);
     return set;
 };
 
@@ -86,7 +86,7 @@ const splitProps = (props: object, containerSet: ReadonlySet<string>): SplitProp
                 wrappers.push(
                     createElement(
                         WRAPPER_NODE_ELEMENT,
-                        { kind: CONTAINER_SLOT_KIND, method: name, key: `container-slot:${name}` },
+                        { kind: CONTAINER_PROP_KIND, method: name, key: `container-slot:${name}` },
                         value as ReactNode,
                     ),
                 );
@@ -113,7 +113,7 @@ const splitProps = (props: object, containerSet: ReadonlySet<string>): SplitProp
  *
  * The component lifts element-valued props into `kind="slot"` wrapper children
  * and container-slot props into `kind="container-slot"` wrapper children
- * (resolved from `CONTAINER_SLOTS` against the element's GType ancestry),
+ * (resolved from `CONTAINER_PROPS` against the element's GType ancestry),
  * rendering both after the regular children, and forwards every other prop to
  * the intrinsic element. When nothing needs lifting, the props pass through to
  * the intrinsic element unchanged.
@@ -125,7 +125,7 @@ const splitProps = (props: object, containerSet: ReadonlySet<string>): SplitProp
 export const createElementComponent = <P extends object>(elementName: string): ((props: P) => ReactNode) => {
     let containerSet: ReadonlySet<string> | null = null;
     return (props: P): ReactNode => {
-        containerSet ??= resolveContainerSlots(elementName);
+        containerSet ??= resolveContainerProps(elementName);
         if (!needsSplit(props, containerSet)) return createElement(elementName, props);
         const { rest, wrappers, children } = splitProps(props, containerSet);
         return createElement(elementName, rest, children, ...wrappers);

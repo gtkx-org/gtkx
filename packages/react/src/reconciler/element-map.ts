@@ -16,7 +16,7 @@
 import { META_OBJECT_ADD_METHODS, PAGE_META_SETTERS, TOP_LEVEL_TYPES } from "virtual:gtkx-config";
 import {
     type AddMethodRule,
-    CONTAINER_SLOT_KIND,
+    CONTAINER_PROP_KIND,
     LAYOUT_CHILD_KIND,
     META_OBJECT_KIND,
     OVERLAY_KIND,
@@ -146,7 +146,7 @@ const wrapperChildInstances = (marker: Node): Node[] =>
 const sameInstances = (a: readonly Node[], b: readonly Node[]): boolean =>
     a.length === b.length && a.every((instance, index) => instance === b[index]);
 
-const attachContainerSlotChild = (instance: Node, parent: Node, method: string): void => {
+const attachContainerPropChild = (instance: Node, parent: Node, method: string): void => {
     const mapping = findDataAttachMapping(instance, parent);
     if (mapping) {
         mapping.attach(instance, parent);
@@ -155,7 +155,7 @@ const attachContainerSlotChild = (instance: Node, parent: Node, method: string):
     if (parent instanceof GObject.Object) invokeRequired(parent, method, instance);
 };
 
-const detachContainerSlotChild = (instance: Node, parent: Node): void => {
+const detachContainerPropChild = (instance: Node, parent: Node): void => {
     const mapping = findDataAttachMapping(instance, parent);
     if (mapping) {
         mapping.detach(instance, parent);
@@ -164,8 +164,8 @@ const detachContainerSlotChild = (instance: Node, parent: Node): void => {
     if (instance instanceof Gtk.Widget) unparentWidget(instance);
 };
 
-const containerSlotMapping: ElementMapping = {
-    matches: (child, parent) => isWrapperKind(child, CONTAINER_SLOT_KIND) && parent instanceof GObject.Object,
+const containerPropMapping: ElementMapping = {
+    matches: (child, parent) => isWrapperKind(child, CONTAINER_PROP_KIND) && parent instanceof GObject.Object,
     attach: (child, parent) => {
         const childState = stateOf(child);
         const method = childState.props.method;
@@ -173,14 +173,14 @@ const containerSlotMapping: ElementMapping = {
         const desired = wrapperChildInstances(child);
         const prev = (childState.attachState as Node[] | undefined) ?? [];
         if (sameInstances(prev, desired)) return;
-        for (const instance of prev) detachContainerSlotChild(instance, parent);
-        for (const instance of desired) attachContainerSlotChild(instance, parent, method);
+        for (const instance of prev) detachContainerPropChild(instance, parent);
+        for (const instance of desired) attachContainerPropChild(instance, parent, method);
         childState.attachState = desired;
     },
     detach: (child, parent) => {
         const childState = stateOf(child);
         for (const instance of (childState.attachState as Node[] | undefined) ?? []) {
-            detachContainerSlotChild(instance, parent);
+            detachContainerPropChild(instance, parent);
         }
         childState.attachState = undefined;
     },
@@ -638,7 +638,7 @@ const widgetContainerMapping: ElementMapping = {
  */
 export const ELEMENT_MAP: readonly ElementMapping[] = [
     slotMapping,
-    containerSlotMapping,
+    containerPropMapping,
     metaObjectMapping,
     layoutChildMapping,
     overlayMapping,

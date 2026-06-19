@@ -91,12 +91,12 @@ describe("defineConfig (applicationId)", () => {
 });
 
 describe("defineConfig slot-map validation", () => {
-    it("accepts a containerSlots map", () => {
-        const config: GtkxConfig = { libraries: ["Gtk-4.0"], containerSlots: { MyAppHeaderBar: ["packStart"] } };
+    it("accepts a containerProps map", () => {
+        const config: GtkxConfig = { libraries: ["Gtk-4.0"], containerProps: { MyAppHeaderBar: ["packStart"] } };
         expect(defineConfig(config)).toBe(config);
     });
 
-    describe.each(["containerSlots"] as const)("%s", (option) => {
+    describe.each(["containerProps"] as const)("%s", (option) => {
         it("rejects a value that is not an object", () => {
             expect(() => defineUnknown({ [option]: "nope" })).toThrow(new RegExp(`\`${option}\` must be an object`));
         });
@@ -491,7 +491,7 @@ describe("resolveGtkxConfig", () => {
             libraries: [],
             girPath: [],
             applicationId: undefined,
-            containerSlots: {},
+            containerProps: {},
             arrayProps: {},
             objectProps: {},
             virtualProps: {},
@@ -505,7 +505,7 @@ describe("resolveGtkxConfig", () => {
             libraries: ["Gtk-4.0", "Adw-1"],
             girPath: ["/opt/gir"],
             applicationId: "org.gtk.Demo4",
-            containerSlots: { MyAppHeaderBar: ["packStart"] },
+            containerProps: { MyAppHeaderBar: ["packStart"] },
             arrayProps: { MyAppChart: { series: { itemType: "ChartSeries", clear: "clearSeries" } } },
             objectProps: {
                 MyAppCanvas: {

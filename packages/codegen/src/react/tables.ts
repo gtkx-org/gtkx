@@ -405,12 +405,12 @@ export const PAGE_META_SETTERS: readonly PageMetaSetter[] = [
  * Built-in container-slot method names — the camelCase GTK methods that
  * append a child onto the widget — keyed by JSX element name. Each method
  * name doubles as a `ReactNode` prop on the compound and as the
- * `<ContainerSlot id="…">` identifier the reconciler dispatches to. Entries
+ * `<ContainerProp id="…">` identifier the reconciler dispatches to. Entries
  * apply to the named type and its whole GType subtree — `GtkWidget`'s
  * `addController` is a prop on every widget. Project entries from
- * `gtkx.config.ts` (`containerSlots`) merge into this map.
+ * `gtkx.config.ts` (`containerProps`) merge into this map.
  */
-export const BUILT_IN_CONTAINER_SLOTS: Readonly<Record<string, readonly string[]>> = Object.freeze({
+export const BUILT_IN_CONTAINER_PROPS: Readonly<Record<string, readonly string[]>> = Object.freeze({
     GtkWidget: ["addController", "insertActionGroup"],
     GtkShortcutController: ["addShortcut"],
     GtkApplicationWindow: ["addAction"],
@@ -461,16 +461,16 @@ const mergeSlotMap = (
 };
 
 /**
- * Merges the built-in container slots with a project's `containerSlots` map:
+ * Merges the built-in container slots with a project's `containerProps` map:
  * an overridden element becomes the union of both sources with duplicates
  * removed and a stable alphabetical sort; untouched elements keep their
  * built-in declaration order.
  *
- * @param userContainerSlots - The project's `containerSlots` map, or `undefined`
+ * @param userContainerProps - The project's `containerProps` map, or `undefined`
  */
-export const mergeContainerSlots = (
-    userContainerSlots: Readonly<Record<string, readonly string[]>> | undefined,
-): Readonly<Record<string, readonly string[]>> => mergeSlotMap(BUILT_IN_CONTAINER_SLOTS, userContainerSlots);
+export const mergeContainerProps = (
+    userContainerProps: Readonly<Record<string, readonly string[]>> | undefined,
+): Readonly<Record<string, readonly string[]>> => mergeSlotMap(BUILT_IN_CONTAINER_PROPS, userContainerProps);
 
 const mergePropRowMap = <Row>(
     builtIn: Readonly<Record<string, Readonly<Record<string, Row>>>>,

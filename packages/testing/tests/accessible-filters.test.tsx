@@ -81,7 +81,7 @@ describe("getByRole hidden", () => {
     });
 });
 
-describe("getByLabelText aria-label and aria-labelledby", () => {
+describe("getByLabelText accessible-label and accessible-labelledby", () => {
     it("matches a widget by its own accessibleLabel", async () => {
         const { container } = await render(<GtkEntry accessibleLabel="Email address" />);
         expect(getByLabelText(container, "Email address")).toBeInstanceOf(Gtk.Entry);
