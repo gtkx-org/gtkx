@@ -6,6 +6,34 @@ const TYPE_FROM_NAME_SYMBOL = "g_type_from_name";
 const TYPE_FROM_NAME_LIB = "libgobject-2.0.so.0";
 
 /**
+ * Resolves the `GType` alias name to reference in `context`'s module, adding the
+ * import it needs.
+ *
+ * The `GObject` namespace publishes the canonical `GType` alias from its GIR
+ * `Type` alias, so its own modules use the bare local name. Every other module
+ * imports the same alias type-only from `@gtkx/ffi`, which all generated
+ * modules already import for the `t` runtime. Routing the alias through
+ * `@gtkx/ffi` rather than `GObject` keeps foundational modules such as `GLib`
+ * — which carry `__gtype__` members but must not import `GObject` — free of a
+ * cross-namespace edge.
+ *
+ * @param context - The module context
+ */
+export const gtypeTsType = (context: ModuleContext): string => {
+    if (context.namespace.name !== "GObject") context.addRuntimeTypeImport("GType");
+    return "GType";
+};
+
+/**
+ * Renders the `declare __gtype__: GType;` member every generated wrapper class,
+ * interface, and boxed record carries, resolving the alias via
+ * {@link gtypeTsType}.
+ *
+ * @param context - The module context
+ */
+export const gtypeMemberDeclaration = (context: ModuleContext): string => `declare __gtype__: ${gtypeTsType(context)};`;
+
+/**
  * Renders the JS expression that resolves a type's runtime `GType`, appending
  * any required `t.bind` bindings to the module.
  *

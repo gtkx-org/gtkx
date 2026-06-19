@@ -19,7 +19,7 @@ import {
 } from "./callables.js";
 import { renderVfuncMetadata } from "./class-struct.js";
 import { renderClassConstructor, renderConstructorPropsInterface } from "./constructor-props.js";
-import { renderGtypeExpression } from "./gtype-binding.js";
+import { gtypeMemberDeclaration, renderGtypeExpression } from "./gtype-binding.js";
 import {
     collectInterfaceProperties,
     forEachAncestor,
@@ -84,7 +84,7 @@ const renderClassMembers = (
     hasParent: boolean,
 ): readonly string[] => {
     const className = toPascalCase(klass.name);
-    const members: string[] = ["declare __gtype__: bigint;"];
+    const members: string[] = [gtypeMemberDeclaration(context)];
     const constructorBlock = renderClassConstructor(context, klass, className, hasParent);
     if (constructorBlock !== undefined) members.push(constructorBlock);
     const claimedNames = new Set<string>();

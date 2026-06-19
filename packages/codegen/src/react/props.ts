@@ -302,6 +302,10 @@ const reactTarget = (context: PropTypeRenderContext): TsTypeTarget => ({
     callbackType: "(...args: unknown[]) => unknown",
     byteArrayAsNumber: false,
     renderNamed: (ref) => namedTsType(context, ref),
+    renderGtype: () => {
+        context.imports.set("GObject", "GObject");
+        return "GObject.GType";
+    },
 });
 
 const renderReactPropType = (

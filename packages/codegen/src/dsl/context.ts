@@ -37,6 +37,14 @@ export class ModuleContext {
     }
 
     /**
+     * Adds a type-only named import from the `@gtkx/ffi` runtime barrel
+     * (`import { type Name }`), erased from the emitted `.js`.
+     */
+    addRuntimeTypeImport(name: string): void {
+        this.module.imports.addNamed("@gtkx/ffi", name, true);
+    }
+
+    /**
      * Hoists an FFI type-descriptor expression to a deduplicated module-level
      * `const`, returning its identifier (see {@link ModuleBuilder.hoistFfiType}).
      */

@@ -5,6 +5,7 @@ import { bindingIdentifier } from "../dsl/identifier.js";
 import type { GirFunction } from "../gir/function.js";
 import { callableReferencesClassStruct } from "./class-struct-record.js";
 import { renderFnExpression } from "./function.js";
+import { gtypeMemberDeclaration } from "./gtype-binding.js";
 import { methodExportName, renderMethodBody, renderMethodReturnType, renderMethodSignature } from "./method.js";
 import { renderRuntimeOverride } from "./runtime-override.js";
 
@@ -235,7 +236,7 @@ export type PlainTypeMembersOptions = {
     readonly context: ModuleContext;
     readonly className: string;
     readonly callables: Callables;
-    /** Whether to prepend `declare __gtype__: bigint;`. */
+    /** Whether to prepend the `declare __gtype__: GType;` member. */
     readonly hasGtype: boolean;
 };
 
@@ -253,7 +254,7 @@ export const renderPlainTypeMembers = (
 ): { readonly members: string[]; readonly claimedNames: Set<string> } => {
     const { context, className, callables, hasGtype } = options;
     const members: string[] = [];
-    if (hasGtype) members.push("declare __gtype__: bigint;");
+    if (hasGtype) members.push(gtypeMemberDeclaration(context));
     const claimedNames = new Set<string>();
     members.push(...renderStaticHead(context, callables, className));
     members.push(...renderPlainInstanceMethods(context, callables.methods, claimedNames));

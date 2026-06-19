@@ -90,5 +90,8 @@ const wrapPrimitive = (ref: PrimitiveTypeRef, nullable: boolean, valueExpression
     if (category === "void") return valueExpression;
     if (category === "string") return `(${valueExpression} as ${nullable ? "string | null" : "string"})`;
     if (category === "boolean") return `Boolean(${valueExpression})`;
+    if (category === "gtype" || category === "bigint64" || category === "biguint64") {
+        return `(${valueExpression} as bigint)`;
+    }
     return `(${valueExpression} as number)`;
 };

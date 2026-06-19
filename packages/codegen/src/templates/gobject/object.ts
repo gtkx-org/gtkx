@@ -1,5 +1,5 @@
 import { offSignal, onceSignal, onSignal } from "@gtkx/ffi";
-import { Object as GObject, signalHandlerDisconnect } from "../gobject.js";
+import { Object as GObject, type GType, signalHandlerDisconnect } from "../gobject.js";
 
 /** A signal callback passed to the EventEmitter-style methods. */
 // biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
@@ -14,7 +14,7 @@ declare module "../gobject.js" {
          * wrapper type the instance is referenced through.
          */
         // biome-ignore lint/style/useNamingConvention: GObject runtime type key stamped on every instance
-        __gtype__: bigint;
+        __gtype__: GType;
 
         /**
          * Disconnects a signal handler previously connected via

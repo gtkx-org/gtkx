@@ -5,7 +5,9 @@
  * The categories mirror the `t.*` helpers exposed by `@gtkx/ffi`'s runtime
  * (see `packages/ffi/src/helpers.ts`). Categories that are not directly
  * marshaled (e.g. `void`, `string`, `unichar`) are still listed so callers
- * can branch on them without falling through to a default.
+ * can branch on them without falling through to a default. `gtype` marshals
+ * identically to `biguint64` (an unsigned 64-bit integer) but carries the
+ * `GType` alias as its TypeScript surface type rather than bare `bigint`.
  */
 export type PrimitiveCategory =
     | "void"
@@ -20,6 +22,7 @@ export type PrimitiveCategory =
     | "uint64"
     | "bigint64"
     | "biguint64"
+    | "gtype"
     | "float32"
     | "float64"
     | "string"
@@ -45,6 +48,7 @@ export const PRIMITIVE_SIZE: Readonly<Record<PrimitiveCategory, number>> = Objec
     uint64: 8,
     bigint64: 8,
     biguint64: 8,
+    gtype: 8,
     float32: 4,
     float64: 8,
     string: 8,
@@ -86,7 +90,7 @@ const PRIMITIVE_BY_NAME: ReadonlyMap<string, PrimitiveCategory> = new Map([
     ["guint64", "biguint64"],
     ["gsize", "uint64"],
     ["guintptr", "uint64"],
-    ["GType", "biguint64"],
+    ["GType", "gtype"],
     ["time_t", "bigint64"],
     ["pid_t", "int32"],
     ["uid_t", "uint32"],
@@ -120,7 +124,10 @@ export const primitiveCategory = (name: string): PrimitiveCategory | undefined =
  *
  * Codegen surfaces both raw C primitives and string-marshalled categories
  * (`string`, `unichar`) through this map so writers in the FFI and React
- * pipelines agree on the same annotation per category.
+ * pipelines agree on the same annotation per category. The `gtype` entry is
+ * the bare `GType` alias name; the type writers intercept that category to
+ * resolve the alias to its owning import per module, so the map value serves
+ * only as the unqualified fallback.
  */
 export const PRIMITIVE_TS_TYPE: Readonly<Record<PrimitiveCategory, string>> = Object.freeze({
     void: "void",
@@ -135,6 +142,7 @@ export const PRIMITIVE_TS_TYPE: Readonly<Record<PrimitiveCategory, string>> = Ob
     uint64: "number",
     bigint64: "bigint",
     biguint64: "bigint",
+    gtype: "GType",
     float32: "number",
     float64: "number",
     string: "string",

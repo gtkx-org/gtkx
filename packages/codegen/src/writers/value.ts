@@ -255,6 +255,7 @@ const primitiveExpression = (category: PrimitiveCategory, ownership: "borrowed" 
     if (category === "void") return "t.void";
     if (category === "string") return `t.string(${quote(ownership)})`;
     if (category === "pointer") return "t.uint64";
+    if (category === "gtype") return "t.biguint64";
     return `t.${category}`;
 };
 

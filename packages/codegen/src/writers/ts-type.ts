@@ -3,6 +3,7 @@ import { aliasExportName } from "../dsl/identifier.js";
 import { PRIMITIVE_TS_TYPE } from "../gir/primitives.js";
 import type { ResolvedNamed } from "../gir/repository.js";
 import type { GirTypeRef, NamedTypeRef } from "../gir/type-ref.js";
+import { gtypeTsType } from "./gtype-binding.js";
 
 /**
  * TypeScript type annotations the writers emit alongside runtime values.
@@ -32,6 +33,8 @@ export type TsTypeTarget = {
     readonly byteArrayAsNumber: boolean;
     /** Renders a named reference (class/interface/boxed/enum/callback/alias). */
     readonly renderNamed: (ref: NamedTypeRef) => string;
+    /** Renders the `GType` alias, adding the import the surrounding module needs. */
+    readonly renderGtype: () => string;
 };
 
 /**
@@ -45,6 +48,7 @@ export const renderBaseTypeFor = (target: TsTypeTarget, ref: GirTypeRef | undefi
     if (ref === undefined) return "void";
     switch (ref.kind) {
         case "primitive":
+            if (ref.category === "gtype") return target.renderGtype();
             return PRIMITIVE_TS_TYPE[ref.category];
         case "varargs":
             return "unknown[]";
@@ -70,6 +74,7 @@ const moduleTarget = (context: ModuleContext): TsTypeTarget => ({
     callbackType: "((...args: any[]) => any)",
     byteArrayAsNumber: true,
     renderNamed: (ref) => namedTsType(context, ref),
+    renderGtype: () => gtypeTsType(context),
 });
 
 /**
