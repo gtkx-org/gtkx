@@ -51,6 +51,7 @@ fn transfer_release_matches_codec_ownership() {
             library: None,
             get_type_fn: None,
             free_fn: None,
+            caller_allocated: false,
         };
         assert!(matches!(
             full_boxed.transfer_release(),
@@ -65,6 +66,7 @@ fn transfer_release_matches_codec_ownership() {
         let plain_struct = StructType {
             ownership: Ownership::Full,
             size: None,
+            caller_allocated: false,
         };
         assert!(plain_struct.transfer_release().is_none());
     });
@@ -89,6 +91,7 @@ fn struct_type() -> StructType {
     StructType {
         ownership: Ownership::Borrowed,
         size: Some(8),
+        caller_allocated: false,
     }
 }
 

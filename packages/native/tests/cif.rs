@@ -421,6 +421,7 @@ fn try_from_struct_null() {
     let struct_type = native::types::StructType {
         ownership: Ownership::Borrowed,
         size: Some(16),
+        caller_allocated: false,
     };
     let arg = Arg::new(Type::Struct(struct_type), value::Value::Null);
 
@@ -433,6 +434,7 @@ fn try_from_struct_undefined() {
     let struct_type = native::types::StructType {
         ownership: Ownership::Full,
         size: None,
+        caller_allocated: false,
     };
     let arg = Arg::new(Type::Struct(struct_type), value::Value::Undefined);
 
@@ -494,10 +496,12 @@ fn try_from_struct_transfer_none_vs_full() {
     let transfer_none_type = native::types::StructType {
         ownership: Ownership::Full,
         size: Some(16),
+        caller_allocated: false,
     };
     let transfer_full_type = native::types::StructType {
         ownership: Ownership::Borrowed,
         size: Some(16),
+        caller_allocated: false,
     };
 
     let transfer_none_arg = Arg::new(Type::Struct(transfer_none_type), value::Value::Null);

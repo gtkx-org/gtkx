@@ -19,6 +19,7 @@ fn struct_item_type() -> Type {
     Type::Struct(StructType {
         ownership: Ownership::Borrowed,
         size: Some(size_of::<gtk4::gdk::ffi::GdkRGBA>()),
+        caller_allocated: false,
     })
 }
 
@@ -1959,5 +1960,78 @@ fn decode_zero_terminated_scalar_array_full_ownership_frees_buffer() {
         assert_eq!(items.len(), 3);
         assert!(matches!(items[0], Value::Number(n) if n == 7.0));
         assert!(matches!(items[2], Value::Number(n) if n == 9.0));
+    });
+}
+
+#[test]
+fn write_return_to_raw_ptr_full_string_array_hands_caller_owned_container() {
+    common::run(|| {
+        let ty = array_type(
+            string_item_type(Ownership::Full),
+            ArrayKind::Array,
+            Ownership::Full,
+        );
+        let val = Value::Array(vec![
+            Value::String("alpha".to_string()),
+            Value::String("beta".to_string()),
+        ]);
+        let mut slot: *mut c_void = std::ptr::null_mut();
+        let ret = &mut slot as *mut *mut c_void as *mut c_void;
+        // SAFETY: `ret` addresses a writable local pointer-sized slot.
+        unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(val)) };
+        assert!(!slot.is_null());
+        // SAFETY: The slot holds a transfer-full NULL-terminated string array
+        // the caller now owns; adopt it so the test frees it.
+        let strv = unsafe { glib::StrV::from_glib_full(slot as *mut *mut c_char) };
+        let items: Vec<String> = strv
+            .iter()
+            .map(|item| {
+                // SAFETY: Every GStringPtr in a StrV is a live NUL-terminated
+                // string.
+                unsafe { glib::GStr::from_ptr_lossy(item.as_ptr()) }.to_string()
+            })
+            .collect();
+        assert_eq!(items, vec!["alpha".to_string(), "beta".to_string()]);
+    });
+}
+
+#[test]
+fn write_return_to_raw_ptr_null_err_and_non_array_write_null() {
+    let ty = array_type(
+        string_item_type(Ownership::Full),
+        ArrayKind::Array,
+        Ownership::Full,
+    );
+    let mut slot: *mut c_void = 7 as *mut c_void;
+    let ret = &mut slot as *mut *mut c_void as *mut c_void;
+    // SAFETY: `ret` addresses a writable local pointer-sized slot.
+    unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(Value::Null)) };
+    assert!(slot.is_null());
+
+    slot = 7 as *mut c_void;
+    // SAFETY: Same writable local slot.
+    unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Err(())) };
+    assert!(slot.is_null());
+
+    slot = 7 as *mut c_void;
+    // SAFETY: Same writable local slot.
+    unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(Value::Number(1.0))) };
+    assert!(slot.is_null());
+}
+
+#[test]
+fn write_return_to_raw_ptr_encode_error_writes_null() {
+    common::run(|| {
+        let ty = array_type(
+            Type::Integer(IntegerKind::I32),
+            ArrayKind::Array,
+            Ownership::Full,
+        );
+        let val = Value::Array(vec![Value::String("not a number".to_string())]);
+        let mut slot: *mut c_void = 7 as *mut c_void;
+        let ret = &mut slot as *mut *mut c_void as *mut c_void;
+        // SAFETY: `ret` addresses a writable local pointer-sized slot.
+        unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(val)) };
+        assert!(slot.is_null());
     });
 }

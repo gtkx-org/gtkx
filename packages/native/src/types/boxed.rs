@@ -30,6 +30,10 @@ pub struct BoxedType {
     pub library: Option<String>,
     pub get_type_fn: Option<String>,
     pub free_fn: Option<String>,
+    /// A caller-allocated out parameter: the C caller passes a pointer to its
+    /// own buffer the vfunc fills in place. The arg is read as a borrowed view
+    /// (no copy) so JS field writes land on the caller's buffer.
+    pub caller_allocated: bool,
 }
 
 impl FromDescriptor for BoxedType {
@@ -45,12 +49,16 @@ impl FromDescriptor for BoxedType {
 
         let free_fn: Option<String> = super::optional_descriptor_property(obj, "freeFn")?;
 
+        let caller_allocated: bool =
+            super::optional_descriptor_property(obj, "callerAllocated")?.unwrap_or(false);
+
         Ok(Self {
             ownership,
             type_name,
             library,
             get_type_fn,
             free_fn,
+            caller_allocated,
         })
     }
 }
@@ -209,7 +217,7 @@ impl RawPtrCodec for BoxedType {
         _context: &str,
     ) -> anyhow::Result<value::Value> {
         self.null_guarded(ptr, |ptr| {
-            if self.free_fn.is_some() {
+            if self.free_fn.is_some() || self.caller_allocated {
                 return Ok(boxed_value(Boxed::from_ptr_unowned(ptr)));
             }
             Ok(boxed_value(Boxed::from_glib_none(self.gtype(), ptr)?))
@@ -264,6 +272,10 @@ impl RawPtrCodec for BoxedType {
 pub struct StructType {
     pub ownership: Ownership,
     pub size: Option<usize>,
+    /// A caller-allocated out parameter: the C caller passes a pointer to its
+    /// own struct the vfunc fills in place. The arg is read as a borrowed view
+    /// (no copy) so JS field writes land on the caller's struct.
+    pub caller_allocated: bool,
 }
 
 impl FromDescriptor for StructType {
@@ -274,7 +286,14 @@ impl FromDescriptor for StructType {
         let size: Option<usize> =
             super::optional_descriptor_property::<f64>(obj, "size")?.map(|n| n as usize);
 
-        Ok(Self { ownership, size })
+        let caller_allocated: bool =
+            super::optional_descriptor_property(obj, "callerAllocated")?.unwrap_or(false);
+
+        Ok(Self {
+            ownership,
+            size,
+            caller_allocated,
+        })
     }
 }
 
@@ -310,6 +329,9 @@ impl RawPtrCodec for StructType {
         _context: &str,
     ) -> anyhow::Result<value::Value> {
         self.null_guarded(ptr, |ptr| {
+            if self.caller_allocated {
+                return Ok(boxed_value(Boxed::from_ptr_unowned(ptr)));
+            }
             let boxed = self.size.map_or_else(
                 || Boxed::from_ptr_unowned(ptr),
                 |size| Boxed::copy_with_size(ptr, size),

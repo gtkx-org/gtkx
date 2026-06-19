@@ -18,7 +18,7 @@ export type Handle = ExternalObject<unknown>;
  * Returned by `call()` and `read()` where the concrete type
  * depends on the type descriptor passed to the function.
  */
-export type Value = Ref | AnyValue | Value[] | ((...args: Value[]) => Value);
+export type Value = Ref | AnyValue | readonly Value[] | ((...args: never[]) => unknown);
 
 /**
  * Out-parameter reference to a native value.
@@ -50,8 +50,8 @@ export type GObjectType = { type: "gobject"; ownership: Ownership; typeName?: st
 export type UnicharType = { type: "unichar" };
 export type VoidType = { type: "void" };
 export type BlobType = { type: "blob" };
-export type StructType = { type: "struct"; ownership: Ownership; size?: number };
-export type RefType = { type: "ref"; innerType: Type };
+export type StructType = { type: "struct"; ownership: Ownership; size?: number; callerAllocated?: boolean };
+export type RefType = { type: "ref"; innerType: Type; inout?: boolean };
 
 export type BoxedType = {
     type: "boxed";
@@ -60,6 +60,7 @@ export type BoxedType = {
     library?: string;
     getTypeFn?: string;
     freeFn?: string;
+    callerAllocated?: boolean;
 };
 
 export type FundamentalType = {

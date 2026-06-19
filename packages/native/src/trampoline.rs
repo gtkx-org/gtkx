@@ -21,6 +21,7 @@ use napi::JsFunction;
 
 use crate::dispatch::Mailbox;
 use crate::error_reporter::NativeErrorReporter;
+use crate::ffi::FfiValue;
 use crate::types::{FfiEncoder as _, RawPtrCodec as _, Type, str_to_glib_full};
 use crate::value::{JsRef, Value};
 
@@ -32,6 +33,7 @@ pub struct TrampolineData {
     pub is_oneshot: bool,
     pub oneshot_state_ptr: AtomicPtr<TrampolineState>,
     pub retained_string_return: AtomicPtr<c_char>,
+    pub retained_container_return: AtomicPtr<FfiValue>,
 }
 
 impl TrampolineData {
@@ -53,6 +55,7 @@ impl TrampolineData {
             is_oneshot,
             oneshot_state_ptr: AtomicPtr::new(std::ptr::null_mut()),
             retained_string_return: AtomicPtr::new(std::ptr::null_mut()),
+            retained_container_return: AtomicPtr::new(std::ptr::null_mut()),
         }
     }
 }
@@ -66,6 +69,15 @@ impl Drop for TrampolineData {
             // SAFETY: The swap took the one retained duplicate out of the
             // atomic slot, so this is its only release.
             unsafe { glib::ffi::g_free(retained.cast()) };
+        }
+        let container = self
+            .retained_container_return
+            .swap(std::ptr::null_mut(), Ordering::AcqRel);
+        if !container.is_null() {
+            // SAFETY: The swap took the one retained container out of the
+            // atomic slot, so this drop is its only release; the boxed
+            // FfiValue's own drop frees the held container.
+            drop(unsafe { Box::from_raw(container) });
         }
     }
 }
@@ -237,9 +249,54 @@ impl TrampolineData {
             self.write_retained_string_return(result, value);
             return;
         }
+        if self.return_type_is_borrowed_container() {
+            self.write_retained_container_return(result, value);
+            return;
+        }
         // SAFETY: `result` is the libffi closure return slot, which libffi
         // sizes for the declared return type.
         unsafe { self.return_type.write_return_to_raw_ptr(result, value) };
+    }
+
+    /// Whether the return type is a transfer-none array or hash table: a
+    /// container the caller borrows, so the trampoline must keep it alive past
+    /// the call rather than hand ownership over.
+    fn return_type_is_borrowed_container(&self) -> bool {
+        match &self.return_type {
+            Type::Array(array_type) => array_type.ownership.is_borrowed(),
+            Type::HashTable(hash_type) => hash_type.ownership.is_borrowed(),
+            _ => false,
+        }
+    }
+
+    /// Writes a transfer-none array/hash-table return through a per-trampoline
+    /// retained container. The C caller only borrows the result, so the
+    /// container must outlive the call; it is freed when the next return
+    /// replaces it or when the trampoline is destroyed. The retained
+    /// [`FfiValue`]'s own drop runs the container's release.
+    fn write_retained_container_return(&self, result: *mut c_void, value: &Result<Value, ()>) {
+        let built = match value {
+            Ok(value) => self.return_type.encode(value).ok(),
+            Err(()) => None,
+        };
+        let ptr = built
+            .as_ref()
+            .and_then(|ffi_value| ffi_value.as_ptr("container return").ok())
+            .unwrap_or(std::ptr::null_mut());
+        let new_ptr = built.map_or(std::ptr::null_mut(), |ffi_value| {
+            Box::into_raw(Box::new(ffi_value))
+        });
+        let previous = self
+            .retained_container_return
+            .swap(new_ptr, Ordering::AcqRel);
+        if !previous.is_null() {
+            // SAFETY: The swap took the one previously retained container out
+            // of the atomic slot, so this is its only release.
+            drop(unsafe { Box::from_raw(previous) });
+        }
+        // SAFETY: `result` is the libffi closure return slot, wide enough for
+        // a pointer result.
+        unsafe { (result as *mut *mut c_void).write_unaligned(ptr) };
     }
 
     /// Writes a transfer-none string return through a per-trampoline retained

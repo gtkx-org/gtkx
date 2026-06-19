@@ -34,6 +34,7 @@ fn rgba_boxed_type_of(ownership: Ownership) -> Type {
         library: None,
         get_type_fn: None,
         free_fn: None,
+        caller_allocated: false,
     })
 }
 
@@ -48,7 +49,11 @@ fn gvariant_fundamental_type_of(ownership: Ownership) -> Type {
 }
 
 fn struct_type_of(ownership: Ownership, size: Option<usize>) -> Type {
-    Type::Struct(native::types::StructType { ownership, size })
+    Type::Struct(native::types::StructType {
+        ownership,
+        size,
+        caller_allocated: false,
+    })
 }
 
 fn gobject_glist_type_of(container: Ownership) -> Type {

@@ -26,11 +26,16 @@ fn boxed(ownership: Ownership) -> BoxedType {
         library: None,
         get_type_fn: None,
         free_fn: None,
+        caller_allocated: false,
     }
 }
 
 fn struct_type(ownership: Ownership, size: Option<usize>) -> StructType {
-    StructType { ownership, size }
+    StructType {
+        ownership,
+        size,
+        caller_allocated: false,
+    }
 }
 
 fn assert_slot_holds_copy_then_free(slot: *mut c_void, original: *mut c_void, gtype: glib::Type) {
@@ -105,6 +110,7 @@ fn gtype_resolves_via_library_lookup() {
             library: Some("libgobject-2.0.so.0".to_owned()),
             get_type_fn: Some("g_bytes_get_type".to_owned()),
             free_fn: None,
+            caller_allocated: false,
         };
         let resolved = bytes_type.gtype();
         assert_eq!(resolved, Some(glib::Bytes::static_type()));
@@ -297,6 +303,59 @@ fn ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
 }
 
 #[test]
+fn caller_allocated_boxed_aliases_source_without_copying() {
+    common::run(|| {
+        let (gtype, original) = rgba_boxed_alloc();
+
+        let ty = BoxedType {
+            caller_allocated: true,
+            ..boxed(Ownership::Borrowed)
+        };
+        // SAFETY: `original` addresses a live boxed GdkRGBA.
+        let value =
+            unsafe { ty.ptr_to_value(original, "ctx") }.expect("ptr_to_value should succeed");
+        let Value::Object(handle) = &value else {
+            panic!("expected Object value");
+        };
+        assert_eq!(
+            handle.ptr(),
+            original,
+            "a caller-allocated out boxed must alias the caller's buffer, not copy it"
+        );
+        drop(value);
+        assert!(common::is_valid_boxed_ptr(original, gtype));
+
+        free_rgba(gtype, original);
+    });
+}
+
+#[test]
+fn caller_allocated_struct_aliases_source_without_copying() {
+    common::run(|| {
+        let (gtype, original) = rgba_boxed_alloc();
+
+        let ty = StructType {
+            caller_allocated: true,
+            ..struct_type(Ownership::Borrowed, Some(size_of::<gdk::ffi::GdkRGBA>()))
+        };
+        // SAFETY: `original` addresses a live struct allocation.
+        let value =
+            unsafe { ty.ptr_to_value(original, "ctx") }.expect("ptr_to_value should succeed");
+        let Value::Object(handle) = &value else {
+            panic!("expected Object value");
+        };
+        assert_eq!(
+            handle.ptr(),
+            original,
+            "a caller-allocated out struct must alias the caller's buffer, not copy it"
+        );
+        drop(value);
+
+        free_rgba(gtype, original);
+    });
+}
+
+#[test]
 fn read_from_raw_ptr_dereferences_slot() {
     common::run(|| {
         let (gtype, original) = rgba_boxed_alloc();
@@ -378,6 +437,7 @@ fn write_value_to_raw_ptr_falls_back_when_gtype_unresolvable() {
             library: None,
             get_type_fn: None,
             free_fn: None,
+            caller_allocated: false,
         };
 
         let slot = write_value_into_slot(
@@ -672,6 +732,7 @@ mod free_fn {
             library: Some(LIBGLIB.to_owned()),
             get_type_fn: None,
             free_fn: Some(G_FREE.to_owned()),
+            caller_allocated: false,
         }
     }
 
@@ -751,6 +812,7 @@ mod free_fn {
                 library: Some(LIBGLIB.to_owned()),
                 get_type_fn: None,
                 free_fn: Some("definitely_not_a_real_symbol_xyz".to_owned()),
+                caller_allocated: false,
             };
 
             let err = descriptor
@@ -776,6 +838,7 @@ mod free_fn {
                 library: Some("libdoes-not-exist-xyz-12345.so.0".to_owned()),
                 get_type_fn: None,
                 free_fn: Some(G_FREE.to_owned()),
+                caller_allocated: false,
             };
 
             let err = descriptor
@@ -815,6 +878,7 @@ mod free_fn {
                 library: None,
                 get_type_fn: None,
                 free_fn: Some(G_FREE.to_owned()),
+                caller_allocated: false,
             };
 
             let err = descriptor

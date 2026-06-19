@@ -19,6 +19,7 @@ fn struct_type() -> Type {
     Type::Struct(StructType {
         ownership: Ownership::Borrowed,
         size: Some(size_of::<gtk4::gdk::ffi::GdkRGBA>()),
+        caller_allocated: false,
     })
 }
 
@@ -43,6 +44,7 @@ fn full_boxed_type() -> Type {
         library: None,
         get_type_fn: None,
         free_fn: None,
+        caller_allocated: false,
     })
 }
 
@@ -303,6 +305,7 @@ fn ptr_to_value_struct_null() {
     let ty = Type::Struct(StructType {
         ownership: Ownership::Borrowed,
         size: Some(16),
+        caller_allocated: false,
     });
 
     // SAFETY: Null short-circuits before any read.
@@ -321,6 +324,7 @@ fn ptr_to_value_struct_non_null() {
         let ty = Type::Struct(StructType {
             ownership: Ownership::Borrowed,
             size: Some(16),
+            caller_allocated: false,
         });
 
         // SAFETY: Allocating zeroed memory has no pointer preconditions.
@@ -941,5 +945,68 @@ fn hashtable_encode_second_tuple_error_unwinds_inserted_entries() {
         assert!(err.to_string().contains("Expected boolean in GHashTable"));
         assert_eq!(common::get_gobject_refcount(inserted_ptr), inserted_before);
         assert_eq!(common::get_gobject_refcount(failing_ptr), failing_before);
+    });
+}
+
+fn string_hashtable_type(ownership: Ownership) -> HashTableType {
+    HashTableType {
+        key_type: Box::new(borrowed_string_type()),
+        value_type: Box::new(borrowed_string_type()),
+        ownership,
+    }
+}
+
+#[test]
+fn write_return_to_raw_ptr_full_table_hands_caller_owned_table() {
+    common::run(|| {
+        let ty = string_hashtable_type(Ownership::Full);
+        let val = Value::Array(vec![Value::Array(vec![
+            Value::String("key".to_string()),
+            Value::String("value".to_string()),
+        ])]);
+        let mut slot: *mut c_void = std::ptr::null_mut();
+        let ret = &mut slot as *mut *mut c_void as *mut c_void;
+        // SAFETY: `ret` addresses a writable local pointer-sized slot.
+        unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(val)) };
+        assert!(!slot.is_null());
+        let table = slot as *mut glib::ffi::GHashTable;
+        // SAFETY: The slot holds a live caller-owned GHashTable.
+        let size = unsafe { glib::ffi::g_hash_table_size(table) };
+        assert_eq!(size, 1);
+        // SAFETY: The caller owns the one reference the encode created.
+        unsafe { glib::ffi::g_hash_table_unref(table) };
+    });
+}
+
+#[test]
+fn write_return_to_raw_ptr_null_err_and_non_array_write_null() {
+    let ty = string_hashtable_type(Ownership::Full);
+    let mut slot: *mut c_void = 7 as *mut c_void;
+    let ret = &mut slot as *mut *mut c_void as *mut c_void;
+    // SAFETY: `ret` addresses a writable local pointer-sized slot.
+    unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(Value::Null)) };
+    assert!(slot.is_null());
+
+    slot = 7 as *mut c_void;
+    // SAFETY: Same writable local slot.
+    unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Err(())) };
+    assert!(slot.is_null());
+
+    slot = 7 as *mut c_void;
+    // SAFETY: Same writable local slot.
+    unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(Value::Number(1.0))) };
+    assert!(slot.is_null());
+}
+
+#[test]
+fn write_return_to_raw_ptr_encode_error_writes_null() {
+    common::run(|| {
+        let ty = string_hashtable_type(Ownership::Full);
+        let val = Value::Array(vec![Value::String("not a tuple".to_string())]);
+        let mut slot: *mut c_void = 7 as *mut c_void;
+        let ret = &mut slot as *mut *mut c_void as *mut c_void;
+        // SAFETY: `ret` addresses a writable local pointer-sized slot.
+        unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(val)) };
+        assert!(slot.is_null());
     });
 }

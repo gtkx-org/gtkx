@@ -16,6 +16,7 @@ fn struct_type() -> StructType {
     StructType {
         ownership: Ownership::Borrowed,
         size: None,
+        caller_allocated: false,
     }
 }
 
