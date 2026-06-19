@@ -10,9 +10,8 @@ import { ListModelController } from "../reconciler/list-model-controller.js";
 import { SelectionController } from "../reconciler/selection-controller.js";
 import { SignalStore } from "../reconciler/signal-store.js";
 import { stableIdOf } from "../reconciler/stable-id.js";
-import type { BackingInstance } from "../reconciler/types.js";
 import type { ListItem } from "../utils/element-props.js";
-import { type AdwComboRowLike, isAdwComboRow } from "../utils/gtype-predicates.js";
+import type { DropDownLike } from "../utils/gtype-predicates.js";
 import type { ColumnController, ColumnHost } from "./column-controller.js";
 
 /** Renders one bound row; `row` carries tree state for hierarchical lists. */
@@ -104,12 +103,16 @@ export class ListController implements ColumnHost {
 
     /**
      * @param widget - The backing list widget this controller drives.
+     * @param dropDown - The widget's dropdown surface when it is a dropdown-style
+     *   widget (`Gtk.DropDown`/`Adw.ComboRow`), resolved by the owning component;
+     *   `null` for list/grid/column views.
      * @param props - The widget's initial props.
      * @param requestRerender - Invoked when the visible bound items change so the
      *   owning component re-renders its portals.
      */
     constructor(
         private readonly widget: Gtk.Widget,
+        private readonly dropDown: DropDownLike | null,
         private props: ListControllerProps,
         private readonly requestRerender: () => void,
     ) {
@@ -117,6 +120,8 @@ export class ListController implements ColumnHost {
             isDropDown: () => this.isDropDown(),
             assignModelToWidget: () => this.assignModelToWidget(),
             getOnSelectionChanged: () => this.props.onSelectionChanged,
+            setDropDownSelected: (position) => this.dropDown?.setSelected(position),
+            getDropDownSelected: () => this.dropDown?.getSelected() ?? -1,
         });
     }
 
@@ -264,7 +269,7 @@ export class ListController implements ColumnHost {
 
     /** Whether this controller drives a dropdown-style widget. */
     public isDropDown(): boolean {
-        return this.widget instanceof Gtk.DropDown || isAdwComboRow(this.widget);
+        return this.dropDown !== null;
     }
 
     /** The estimated per-item size used to seed placeholder cells. */
@@ -505,13 +510,11 @@ export class ListController implements ColumnHost {
     private assignModelToWidget(): void {
         const widget = this.widget;
 
-        if (this.isDropDown()) {
+        if (this.dropDown) {
             const dropDownModel = this.modelController.hasSections()
                 ? (this.modelController.flattenModel as Gio.ListModel)
                 : (this.modelController.model as Gio.ListModel);
-            if (widget instanceof Gtk.DropDown || isAdwComboRow(widget)) {
-                widget.setModel(dropDownModel);
-            }
+            this.dropDown.setModel(dropDownModel);
             return;
         }
 
@@ -527,8 +530,8 @@ export class ListController implements ColumnHost {
         const widget = this.widget;
         const model = this.props.model;
         if (!model) return;
-        if (widget instanceof Gtk.DropDown || isAdwComboRow(widget)) {
-            widget.setModel(model);
+        if (this.dropDown) {
+            this.dropDown.setModel(model);
             return;
         }
         if (widget instanceof Gtk.ListView || widget instanceof Gtk.GridView || widget instanceof Gtk.ColumnView) {
@@ -539,6 +542,11 @@ export class ListController implements ColumnHost {
     private assignFactoryToWidget(): void {
         const widget = this.widget;
 
+        if (this.dropDown) {
+            this.dropDown.setFactory(this.factory);
+            this.applyListAndHeaderFactories(this.dropDown);
+            return;
+        }
         if (widget instanceof Gtk.ListView) {
             widget.setFactory(this.factory);
             this.applyHeaderFactory(widget);
@@ -546,9 +554,6 @@ export class ListController implements ColumnHost {
             this.applyHeaderFactory(widget);
         } else if (widget instanceof Gtk.GridView) {
             widget.setFactory(this.factory);
-        } else if (widget instanceof Gtk.DropDown || isAdwComboRow(widget)) {
-            widget.setFactory(this.factory);
-            this.applyListAndHeaderFactories(widget);
         }
     }
 
@@ -558,9 +563,9 @@ export class ListController implements ColumnHost {
         }
     }
 
-    private applyListAndHeaderFactories(widget: Gtk.DropDown | AdwComboRowLike): void {
-        if (this.listFactory) widget.setListFactory(this.listFactory);
-        if (this.headerFactory) widget.setHeaderFactory(this.headerFactory);
+    private applyListAndHeaderFactories(dropDown: DropDownLike): void {
+        if (this.listFactory) dropDown.setListFactory(this.listFactory);
+        if (this.headerFactory) dropDown.setHeaderFactory(this.headerFactory);
     }
 
     private applyTreeExpanderProps(expander: Gtk.TreeExpander, item: ListItem): void {
@@ -788,8 +793,8 @@ export class ListController implements ColumnHost {
     }
 
     private collectContainerBoundItems(args: {
-        containers: Map<BackingInstance, number>;
-        containerKeys: Map<BackingInstance, string>;
+        containers: Map<GObject.Object, number>;
+        containerKeys: Map<GObject.Object, string>;
         resolveItem: (position: number) => unknown;
         renderFn: (item: unknown, row?: Gtk.TreeListRow | null) => ReactNode;
         out: BoundItem[];
@@ -811,7 +816,7 @@ export class ListController implements ColumnHost {
     }
 
     private appendTreeBoundItem(args: {
-        container: BackingInstance;
+        container: GObject.Object;
         key: string;
         renderFn: (item: unknown, row?: Gtk.TreeListRow | null) => ReactNode;
         out: BoundItem[];
@@ -826,7 +831,7 @@ export class ListController implements ColumnHost {
     }
 
     private appendFlatBoundItem(args: {
-        container: BackingInstance;
+        container: GObject.Object;
         position: number;
         key: string;
         resolveItem: (position: number) => unknown;

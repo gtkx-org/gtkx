@@ -49,14 +49,17 @@ export interface AdwDialogLike extends GTyped {
 }
 
 /**
- * The structural surface of an `Adw.ComboRow` the list controller drives: the
- * model and the three item factories. Declared structurally so the runtime
- * never references the optional Adwaita namespace, even at the type level.
+ * The structural surface of a dropdown-style list widget (`Gtk.DropDown` or
+ * `Adw.ComboRow`) the list controller drives: the model, the three item
+ * factories, and the selected-position accessors. Declared structurally so the
+ * runtime never references the optional Adwaita namespace, even at the type
+ * level, and so the two widgets — whose GObject hierarchies are disjoint —
+ * share one type.
  */
-export interface AdwComboRowLike extends GTyped {
-    /** Replaces the row's item model. */
+export interface DropDownLike extends GTyped {
+    /** Replaces the widget's item model. */
     setModel(model: Gio.ListModel | null): void;
-    /** Replaces the factory rendering the row's selected item. */
+    /** Replaces the factory rendering the selected item. */
     setFactory(factory: Gtk.ListItemFactory | null): void;
     /** Replaces the factory rendering the popup list's items. */
     setListFactory(factory: Gtk.ListItemFactory | null): void;
@@ -72,8 +75,8 @@ export interface AdwComboRowLike extends GTyped {
 export const isAdwDialog = <T extends GTyped>(instance: T): instance is T & AdwDialogLike =>
     hasType(instance, "AdwDialog");
 
-/** Whether `instance` is an `AdwComboRow`. */
-export const isAdwComboRow = <T extends GTyped>(instance: T): instance is T & AdwComboRowLike =>
+/** Whether `instance` is an `AdwComboRow`, narrowing it to the dropdown surface. */
+export const isAdwComboRow = <T extends GTyped>(instance: T): instance is T & DropDownLike =>
     hasType(instance, "AdwComboRow");
 
 /**

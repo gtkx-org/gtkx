@@ -181,6 +181,21 @@ export type LevelBarOffset = {
 export type CalendarMark = number;
 
 /**
+ * One application accelerator binding: a detailed action name and the keyboard
+ * accelerators that trigger it. An item of the `actionAccels` prop on
+ * `<GtkApplication>`/`<AdwApplication>`, each applied through
+ * `Gtk.Application.set_accels_for_action`.
+ *
+ * @see {@link https://docs.gtk.org/gtk4/method.Application.set_accels_for_action.html Gtk.Application.set_accels_for_action}
+ */
+export type ActionAccel = {
+    /** The detailed action name the accelerators trigger, e.g. `"app.quit"` or `"win.new"`. */
+    action: string;
+    /** The accelerators in `Gtk.accelerator_parse` form, e.g. `["<Control>q"]`. */
+    accels: string[];
+};
+
+/**
  * A `GType` value accepted as drop content on a GtkDropTarget.
  *
  * @see {@link https://docs.gtk.org/gtk4/method.DropTarget.set_gtypes.html GtkDropTarget.set_gtypes}
@@ -605,16 +620,6 @@ export type MenuItemsProps = {
 };
 
 /**
- * The `accels` prop of a `<GSimpleAction>` element, mixed into its generated
- * `Props`. Accelerators bind on the enclosing application under the action's
- * scope (`app.`, `win.`, or an action group's prefix).
- */
-export type ActionAccelsProps = {
-    /** Keyboard accelerator(s) bound on the enclosing application (e.g. `"<Control>q"`). */
-    accels?: string | string[];
-};
-
-/**
  * The `prefix` prop of a `<GSimpleActionGroup>` element, mixed into its
  * generated `Props`. The `insertActionGroup` attach rule reads it when
  * installing the group on its host widget.
@@ -627,21 +632,20 @@ export type ActionGroupPrefixProps = {
 /**
  * Props for `<GtkConstraintLayout.Constraint>`.
  *
- * Declares one row in the constraint solver. `target` and `source` reference
- * ids registered by `<GtkConstraintLayout.Widget id="…">` wrappers
- * or `<GtkConstraintLayout.Guide id="…">` markers; either may be omitted or
- * set to `"super"` to mean the widget owning the layout. The underlying
- * `Gtk.Constraint` is immutable, so the reconciler re-creates it on every
- * prop change.
+ * Declares one row in the constraint solver. `target` and `source` reference the
+ * `name` of a host child or the id of a `<GtkConstraintLayout.Guide id="…">`
+ * marker; either may be omitted or set to `"super"` to mean the widget owning
+ * the layout. The underlying `Gtk.Constraint` is immutable, so the reconciler
+ * re-creates it on every prop change.
  */
 export type ConstraintProps = {
-    /** id of the constrained target (registered widget, guide, or `"super"` / omitted for the container) */
+    /** Name of the constrained target child, a guide id, or `"super"` / omitted for the container */
     target?: string;
     /** Attribute of the target the constraint sets */
     targetAttribute: Gtk.ConstraintAttribute;
     /** Comparison relation between target and source attributes (default `EQ`) */
     relation?: Gtk.ConstraintRelation;
-    /** id of the constraint's source (registered widget, guide, or `"super"` / omitted for the container) */
+    /** Name of the source child, a guide id, or `"super"` / omitted for the container */
     source?: string;
     /** Attribute of the source the constraint reads (default `NONE`) */
     sourceAttribute?: Gtk.ConstraintAttribute;
@@ -661,7 +665,7 @@ export type ConstraintProps = {
  * key used by `<Constraint>` and `<Vfl>` markers.
  */
 export type ConstraintGuideProps = {
-    /** Identifier for the guide (sets `Gtk.ConstraintGuide.name` and registers in the layout target map) */
+    /** Identifier for the guide (sets `Gtk.ConstraintGuide.name` and the id constraints resolve it by) */
     id: string;
     /** Minimum width in pixels */
     minWidth?: number;
@@ -683,8 +687,8 @@ export type ConstraintGuideProps = {
  * Props for `<GtkConstraintLayout.Vfl>`.
  *
  * Wraps `Gtk.ConstraintLayout.addConstraintsFromDescription`. The marker builds
- * the `views` map automatically from `<GtkConstraintLayout.Widget>`
- * registrations plus any `<Guide>` ids on the same layout.
+ * the `views` map automatically from the host's named children plus any
+ * `<Guide>` ids on the same layout.
  */
 export type ConstraintVflProps = {
     /** Visual Format Language lines to parse */
@@ -693,22 +697,6 @@ export type ConstraintVflProps = {
     hspacing?: number;
     /** Default vertical spacing for `-` separators (default 0) */
     vspacing?: number;
-};
-
-/**
- * Props for `<GtkConstraintLayout.Widget>`.
- *
- * Wraps a single widget that participates in constraints. The wrapper is
- * transparent in the GTK tree — the wrapped widget attaches to the host
- * widget — and registers `id → widget` on the `<GtkConstraintLayout>` carried
- * by the host's `layoutManager` prop. `<Constraint>` and `<Vfl>` markers then
- * resolve `id` references against that registry.
- */
-export type ConstraintLayoutWidgetProps = {
-    /** Identifier used by Constraint/Vfl markers to reference this widget */
-    id: string;
-    /** Single widget to register with the enclosing constraint layout */
-    children: ReactNode;
 };
 
 /**

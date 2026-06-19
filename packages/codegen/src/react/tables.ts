@@ -121,6 +121,27 @@ export const BUILT_IN_ELEMENT_MAP: readonly ElementMapRule[] = [
     },
 ];
 
+/** A `@gtkx/react` higher-order component that wraps a behavior-carrying compound's host component. */
+export type CompoundHoc = "withTopLevel" | "withApplication" | "withApplicationWindow";
+
+/** One HOC rule: the HOC wrapping a class whose GLib-type ancestry contains any of `ancestors`. */
+export type CompoundHocRule = { readonly ancestors: readonly string[]; readonly hoc: CompoundHoc };
+
+/**
+ * Built-in compound HOC rules in precedence order: an application takes
+ * precedence over an application window, which takes precedence over a plain
+ * window or Adwaita dialog. The React pipeline classifies each class by its
+ * GLib-type ancestry against this table and wraps the matching compound in the
+ * named `@gtkx/react` HOC. Keeping the GLib type names here (alongside the other
+ * built-in tables) rather than in the generator logic keeps the compound emitter
+ * namespace-agnostic.
+ */
+export const BUILT_IN_COMPOUND_HOCS: readonly CompoundHocRule[] = [
+    { ancestors: ["GtkApplication"], hoc: "withApplication" },
+    { ancestors: ["GtkApplicationWindow"], hoc: "withApplicationWindow" },
+    { ancestors: ["GtkWindow", "AdwDialog"], hoc: "withTopLevel" },
+];
+
 const POSITION_TYPE_BOTTOM = 3;
 
 /**
@@ -131,6 +152,27 @@ const POSITION_TYPE_BOTTOM = 3;
  * these.
  */
 export const BUILT_IN_ARRAY_PROPS: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>> = {
+    GtkApplication: {
+        actionAccels: {
+            itemType: "ActionAccel",
+            remove: {
+                method: "setAccelsForAction",
+                args: [
+                    { kind: "item", path: "action" },
+                    { kind: "value", value: [] },
+                ],
+            },
+            add: [
+                {
+                    method: "setAccelsForAction",
+                    args: [
+                        { kind: "item", path: "action" },
+                        { kind: "item", path: "accels" },
+                    ],
+                },
+            ],
+        },
+    },
     GtkSizeGroup: {
         widgets: {
             itemType: "Gtk.Widget",
@@ -391,7 +433,6 @@ export const BUILT_IN_CONTAINER_SLOTS: Readonly<Record<string, readonly string[]
  */
 export const BUILT_IN_PROPS_MIXINS: Readonly<Record<string, readonly string[]>> = Object.freeze({
     GMenu: ["MenuItemsProps"],
-    GSimpleAction: ["ActionAccelsProps"],
     GSimpleActionGroup: ["ActionGroupPrefixProps"],
 });
 

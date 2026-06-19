@@ -10,7 +10,7 @@ import { expect } from "vitest";
  *
  * @param boxRef - Ref capturing the host `GtkBox`.
  * @param markers - `Constraint`/`Guide`/`Vfl` markers placed inside the layout.
- * @param children - `GtkConstraintLayout.Widget` markers rendered as box children.
+ * @param children - Named widgets rendered as box children.
  */
 export const renderConstraintBox = async (
     boxRef: RefObject<Gtk.Box | null>,
@@ -80,12 +80,12 @@ export const onlyConstraint = (boxRef: RefObject<Gtk.Box | null>): Gtk.Constrain
 };
 
 /**
- * A `GtkConstraintLayout.Widget` marker wrapping a `GtkLabel`, used to register
- * a labelled widget that `Constraint` and `Vfl` markers can resolve by id.
+ * A `GtkLabel` named for constraint resolution, so `Constraint` and `Vfl`
+ * markers can reference it by id.
  *
- * @param id - Marker id referenced by constraints and VFL lines.
- * @param label - Text rendered by the wrapped `GtkLabel`.
- * @param labelRef - Optional ref to the wrapped `GtkLabel`.
+ * @param id - The `name` referenced by constraints and VFL lines.
+ * @param label - Text rendered by the `GtkLabel`.
+ * @param labelRef - Optional ref to the `GtkLabel`.
  */
 export const LabelMarker = ({
     id,
@@ -95,21 +95,15 @@ export const LabelMarker = ({
     id: string;
     label: string;
     labelRef?: RefObject<Gtk.Label | null>;
-}): ReactNode => (
-    <GtkConstraintLayout.Widget id={id}>
-        <GtkLabel ref={labelRef} label={label} />
-    </GtkConstraintLayout.Widget>
-);
+}): ReactNode => <GtkLabel ref={labelRef} name={id} label={label} />;
 
 /**
- * A `GtkConstraintLayout.Widget` marker wrapping a `GtkButton`, used to register
- * a button widget that `Constraint` and `Vfl` markers can resolve by id.
+ * A `GtkButton` named for constraint resolution, so `Constraint` and `Vfl`
+ * markers can reference it by id.
  *
- * @param id - Marker id referenced by constraints and VFL lines.
- * @param label - Text rendered by the wrapped `GtkButton`.
+ * @param id - The `name` referenced by constraints and VFL lines.
+ * @param label - Text rendered by the `GtkButton`.
  */
 export const ButtonMarker = ({ id, label }: { id: string; label: string }): ReactNode => (
-    <GtkConstraintLayout.Widget id={id}>
-        <GtkButton label={label} />
-    </GtkConstraintLayout.Widget>
+    <GtkButton name={id} label={label} />
 );

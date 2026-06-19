@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkConstraintLayout } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkConstraintLayout, GtkLabel } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -38,8 +38,8 @@ describe("render - GtkConstraintLayout attach", () => {
     });
 });
 
-describe("render - GtkConstraintLayout.Widget registration (a)", () => {
-    it("registers wrapped widgets so Constraint markers can resolve them", async () => {
+describe("render - name-based target resolution (a)", () => {
+    it("resolves named children so Constraint markers can reference them", async () => {
         const boxRef = createRef<Gtk.Box>();
         const labelARef = createRef<Gtk.Label>();
         const labelBRef = createRef<Gtk.Label>();
@@ -66,8 +66,8 @@ describe("render - GtkConstraintLayout.Widget registration (a)", () => {
     });
 });
 
-describe("render - GtkConstraintLayout.Widget registration (b)", () => {
-    it("attaches the wrapped widget to the host widget (transparent in the GTK tree)", async () => {
+describe("render - name-based target resolution (b)", () => {
+    it("renders a named child as a direct child of the host widget", async () => {
         const boxRef = createRef<Gtk.Box>();
         const labelRef = createRef<Gtk.Label>();
 
@@ -78,6 +78,72 @@ describe("render - GtkConstraintLayout.Widget registration (b)", () => {
         );
 
         expect(labelRef.current?.getParent()).toBe(boxRef.current);
+    });
+
+    it("ignores an unnamed child rather than matching its widget type name", async () => {
+        await expect(
+            render(
+                <GtkBox
+                    layoutManager={
+                        <GtkConstraintLayout>
+                            <GtkConstraintLayout.Constraint
+                                target="GtkButton"
+                                targetAttribute={A.WIDTH}
+                                constant={100}
+                            />
+                        </GtkConstraintLayout>
+                    }
+                >
+                    <GtkButton label="unnamed" />
+                    <GtkButton name="named" label="named" />
+                </GtkBox>,
+            ),
+        ).rejects.toThrow(/unknown id 'GtkButton'/);
+    });
+
+    it("scopes resolution to each layout's own children", async () => {
+        const firstRef = createRef<Gtk.Box>();
+        const secondRef = createRef<Gtk.Box>();
+        const firstChildRef = createRef<Gtk.Label>();
+        const secondChildRef = createRef<Gtk.Label>();
+
+        await render(
+            <GtkBox>
+                <GtkBox
+                    ref={firstRef}
+                    layoutManager={
+                        <GtkConstraintLayout>
+                            <GtkConstraintLayout.Constraint
+                                target="a"
+                                targetAttribute={A.START}
+                                sourceAttribute={A.START}
+                                constant={1}
+                            />
+                        </GtkConstraintLayout>
+                    }
+                >
+                    <GtkLabel ref={firstChildRef} name="a" label="first" />
+                </GtkBox>
+                <GtkBox
+                    ref={secondRef}
+                    layoutManager={
+                        <GtkConstraintLayout>
+                            <GtkConstraintLayout.Constraint
+                                target="a"
+                                targetAttribute={A.START}
+                                sourceAttribute={A.START}
+                                constant={2}
+                            />
+                        </GtkConstraintLayout>
+                    }
+                >
+                    <GtkLabel ref={secondChildRef} name="a" label="second" />
+                </GtkBox>
+            </GtkBox>,
+        );
+
+        expect(firstConstraint(firstRef).getTarget()).toBe(firstChildRef.current);
+        expect(firstConstraint(secondRef).getTarget()).toBe(secondChildRef.current);
     });
 
     it("treats `super` (or omitted source) as the layout-owning widget", async () => {
@@ -99,6 +165,29 @@ describe("render - GtkConstraintLayout.Widget registration (b)", () => {
         expect(c.getTarget()).toBe(labelRef.current);
         expect(c.getSource()).toBeNull();
         expect(c.getConstant()).toBe(8);
+    });
+
+    it("treats `super` as the host even when a child is named `super`", async () => {
+        const boxRef = createRef<Gtk.Box>();
+        const superRef = createRef<Gtk.Label>();
+
+        await renderConstraintBox(
+            boxRef,
+            <GtkConstraintLayout.Constraint
+                target="a"
+                targetAttribute={A.START}
+                source="super"
+                sourceAttribute={A.START}
+            />,
+            <>
+                <LabelMarker id="a" label="A" />
+                <GtkLabel ref={superRef} name="super" label="Super" />
+            </>,
+        );
+
+        const c = onlyConstraint(boxRef);
+        expect(c.getSource()).toBeNull();
+        expect(c.getSource()).not.toBe(superRef.current);
     });
 
     it("throws a clear error when a Constraint references an unknown id", async () => {
@@ -316,8 +405,8 @@ describe("render - GtkConstraintLayout.Constraint props", () => {
     });
 });
 
-describe("render - GtkConstraintLayout.Widget lifecycle", () => {
-    it("re-registers when the id prop changes", async () => {
+describe("render - name-based target lifecycle", () => {
+    it("follows the widget when its name changes", async () => {
         const boxRef = createRef<Gtk.Box>();
         const labelRef = createRef<Gtk.Label>();
 
@@ -371,14 +460,16 @@ describe("render - GtkConstraintLayout.Widget lifecycle", () => {
         expect(conditionalRef.current).toBeNull();
     });
 
-    it("throws when a Widget's host has no ConstraintLayout layout manager", async () => {
-        await expect(
-            render(
-                <GtkBox>
-                    <LabelMarker id="orphan" label="Orphan" />
-                </GtkBox>,
-            ),
-        ).rejects.toThrow(/must be a child of the widget whose layoutManager prop carries the <GtkConstraintLayout>/);
+    it("renders a named child without error when its host has no ConstraintLayout", async () => {
+        const labelRef = createRef<Gtk.Label>();
+
+        await render(
+            <GtkBox>
+                <GtkLabel ref={labelRef} name="orphan" label="Orphan" />
+            </GtkBox>,
+        );
+
+        expect(labelRef.current?.name).toBe("orphan");
     });
 });
 
@@ -402,6 +493,25 @@ describe("render - GtkConstraintLayout.Vfl", () => {
         const layout = layoutFrom(boxRef);
         const constraints = collectConstraints(layout);
         expect(constraints.length).toBeGreaterThanOrEqual(5);
+    });
+
+    it("builds the views map from named children and guides", async () => {
+        const boxRef = createRef<Gtk.Box>();
+
+        await renderConstraintBox(
+            boxRef,
+            <>
+                <GtkConstraintLayout.Guide id="g" minWidth={20} natWidth={20} maxWidth={20} />
+                <GtkConstraintLayout.Vfl lines={["H:|-[a]-[g]-[b]-|", "V:|-[a]-|", "V:|-[b]-|"]} hspacing={8} />
+            </>,
+            <>
+                <ButtonMarker id="a" label="A" />
+                <ButtonMarker id="b" label="B" />
+            </>,
+        );
+
+        const layout = layoutFrom(boxRef);
+        expect(collectConstraints(layout).length).toBeGreaterThanOrEqual(5);
     });
 
     it("re-parses VFL when the lines prop changes", async () => {

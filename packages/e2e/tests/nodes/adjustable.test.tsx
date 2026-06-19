@@ -1,9 +1,10 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkScale } from "@gtkx/jsx/gtk";
-import { type AdjustmentConfig, useAdjustment } from "@gtkx/react";
+import { GtkAdjustment, GtkScale } from "@gtkx/jsx/gtk";
 import { render, waitFor } from "@gtkx/testing";
-import { createRef, type RefObject } from "react";
+import { type ComponentProps, createRef, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
+
+type AdjustmentConfig = ComponentProps<typeof GtkAdjustment>;
 
 const ScaleWithAdjustment = ({
     config,
@@ -13,20 +14,17 @@ const ScaleWithAdjustment = ({
     config: AdjustmentConfig;
     scaleRef: RefObject<Gtk.Scale | null>;
     onValueChanged?: (value: number) => void;
-}) => {
-    const adjustment = useAdjustment(config);
-    return (
-        <GtkScale
-            ref={scaleRef}
-            adjustment={adjustment}
-            onValueChanged={onValueChanged ? (scale) => onValueChanged(scale.getValue()) : undefined}
-        />
-    );
-};
+}) => (
+    <GtkScale
+        ref={scaleRef}
+        adjustment={<GtkAdjustment {...config} />}
+        onValueChanged={onValueChanged ? (scale) => onValueChanged(scale.getValue()) : undefined}
+    />
+);
 
 /**
- * Renders a `GtkScale` driven by `useAdjustment(config)` and asserts that the
- * value read from its `Gtk.Adjustment` equals the expected number.
+ * Renders a `GtkScale` whose `adjustment` element is built from `config` and
+ * asserts that the value read from its `Gtk.Adjustment` equals the expected number.
  */
 const expectScaleAdjustment = async (
     config: AdjustmentConfig,
@@ -38,7 +36,7 @@ const expectScaleAdjustment = async (
     expect(read(ref.current?.getAdjustment())).toBe(expected);
 };
 
-describe("render - useAdjustment (1)", () => {
+describe("render - adjustment element (1)", () => {
     it("supplies an Adjustment to the Scale widget", async () => {
         const ref = createRef<Gtk.Scale>();
 
@@ -69,7 +67,7 @@ describe("render - useAdjustment (1)", () => {
     });
 });
 
-describe("render - useAdjustment (2)", () => {
+describe("render - adjustment element (2)", () => {
     it("sets page increment", async () => {
         await expectScaleAdjustment(
             { value: 50, lower: 0, upper: 100, pageIncrement: 20 },
@@ -86,7 +84,7 @@ describe("render - useAdjustment (2)", () => {
         );
     });
 
-    it("uses default values when not specified", async () => {
+    it("uses GObject defaults when not specified", async () => {
         const ref = createRef<Gtk.Scale>();
 
         await render(<ScaleWithAdjustment config={{}} scaleRef={ref} />);
@@ -94,14 +92,14 @@ describe("render - useAdjustment (2)", () => {
         const adjustment = ref.current?.getAdjustment();
         expect(adjustment?.getValue()).toBe(0);
         expect(adjustment?.getLower()).toBe(0);
-        expect(adjustment?.getUpper()).toBe(100);
-        expect(adjustment?.getStepIncrement()).toBe(1);
-        expect(adjustment?.getPageIncrement()).toBe(10);
+        expect(adjustment?.getUpper()).toBe(0);
+        expect(adjustment?.getStepIncrement()).toBe(0);
+        expect(adjustment?.getPageIncrement()).toBe(0);
         expect(adjustment?.getPageSize()).toBe(0);
     });
 });
 
-describe("render - useAdjustment (3)", () => {
+describe("render - adjustment element (3)", () => {
     it("keeps a stable adjustment but follows config value and bounds", async () => {
         const ref = createRef<Gtk.Scale>();
 
@@ -130,7 +128,7 @@ describe("render - useAdjustment (3)", () => {
     });
 });
 
-describe("render - useAdjustment (4)", () => {
+describe("render - adjustment element (4)", () => {
     it("fires onValueChanged when the value changes", async () => {
         const ref = createRef<Gtk.Scale>();
         const onValueChanged = vi.fn();

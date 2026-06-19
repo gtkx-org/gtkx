@@ -1,14 +1,13 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkScale } from "@gtkx/jsx/gtk";
-import { type ScaleMark, useAdjustment } from "@gtkx/react";
+import { GtkAdjustment, GtkScale } from "@gtkx/jsx/gtk";
+import type { ScaleMark } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 
-const ScaleWithMarks = ({ marks, scaleRef }: { marks?: ScaleMark[]; scaleRef: RefObject<Gtk.Scale | null> }) => {
-    const adjustment = useAdjustment({ value: 0, lower: 0, upper: 100 });
-    return <GtkScale ref={scaleRef} adjustment={adjustment} marks={marks} />;
-};
+const ScaleWithMarks = ({ marks, scaleRef }: { marks?: ScaleMark[]; scaleRef: RefObject<Gtk.Scale | null> }) => (
+    <GtkScale ref={scaleRef} adjustment={<GtkAdjustment value={0} lower={0} upper={100} />} marks={marks} />
+);
 
 const expectDefaultRange = (scale: Gtk.Scale | null): void => {
     expect(scale).toBeInstanceOf(Gtk.Scale);

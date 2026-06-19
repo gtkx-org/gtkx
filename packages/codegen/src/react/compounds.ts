@@ -4,18 +4,11 @@ import type { GirNamespace } from "../gir/namespace.js";
 import type { GirRepository } from "../gir/repository.js";
 import { type VirtualSubcomponent, virtualSubcomponentEntries } from "./compounds-meta.js";
 import type { JsxImports } from "./imports.js";
+import { BUILT_IN_COMPOUND_HOCS, type CompoundHoc } from "./tables.js";
 import { ancestorGlibNames, collectReactNodeClasses, type WidgetCandidate } from "./widgets.js";
 
 /** Module-local const name binding the wrapper sentinel element. */
 const WRAPPER_ELEMENT_CONST = "WrapperNodeElement";
-
-/** A `@gtkx/react` higher-order component that wraps a compound's host component. */
-type CompoundHoc =
-    | "withTopLevel"
-    | "withApplication"
-    | "withApplicationWindow"
-    | "withActionAccels"
-    | "withActionScope";
 
 /**
  * Generates the compounds section of one namespace's `@gtkx/jsx` module: one
@@ -221,26 +214,17 @@ const renderCandidateExport = (
     return renderCompound(glibName, hoc, isDialogSurface);
 };
 
-/** The HOC precedence list, applied in order against a class's ancestry. */
-const COMPOUND_HOC_RULES: readonly { readonly ancestors: readonly string[]; readonly hoc: CompoundHoc }[] = [
-    { ancestors: ["GtkApplication"], hoc: "withApplication" },
-    { ancestors: ["GtkApplicationWindow"], hoc: "withApplicationWindow" },
-    { ancestors: ["GtkWindow", "AdwDialog"], hoc: "withTopLevel" },
-    { ancestors: ["GSimpleAction"], hoc: "withActionAccels" },
-    { ancestors: ["GSimpleActionGroup"], hoc: "withActionScope" },
-];
-
 /**
  * Classifies a class by its GLib-type ancestry, returning the `@gtkx/react`
  * HOC that wraps its compound, or `undefined` when the class needs none. An
  * application takes precedence over an application window, which takes
- * precedence over a plain window or Adwaita dialog; the remaining rules wrap
- * behavior-carrying hosts (dialog buttons, actions, action groups).
+ * precedence over a plain window or Adwaita dialog, matching the order of
+ * {@link BUILT_IN_COMPOUND_HOCS}.
  *
  * @param ancestry - The GLib type names of the class and its ancestors
  */
 const compoundHoc = (ancestry: ReadonlySet<string>): CompoundHoc | undefined => {
-    for (const rule of COMPOUND_HOC_RULES) {
+    for (const rule of BUILT_IN_COMPOUND_HOCS) {
         if (rule.ancestors.some((ancestor) => ancestry.has(ancestor))) return rule.hoc;
     }
     return undefined;
@@ -251,12 +235,7 @@ const renderCompound = (glibName: string, hoc: CompoundHoc | undefined, isDialog
     if (hoc === undefined) {
         return `export const ${glibName}: (props: ${propsType}) => ReactNode = createElementComponent<${propsType}>(${quote(glibName)});`;
     }
-    const componentPropsType =
-        hoc === "withApplication"
-            ? `Omit<${propsType}, "menubar"> & { menubar?: ReactNode }`
-            : isDialogSurface
-              ? `${propsType} & TopLevelParentProps`
-              : propsType;
+    const componentPropsType = isDialogSurface ? `${propsType} & TopLevelParentProps` : propsType;
     const annotation = `(props: ${componentPropsType}) => ReactNode`;
     const memo = `${toCamelCase(glibName)}Instance`;
     return [

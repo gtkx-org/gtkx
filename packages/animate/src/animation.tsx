@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { useMergedRefs } from "@gtkx/react";
+import { useForwardedRef } from "@gtkx/react";
 import { Children, cloneElement, type ReactElement, type ReactNode, type Ref, useLayoutEffect, useRef } from "react";
 import { usePresence } from "./animate-presence.js";
 import type { AdwSpringAnimationProps, AdwTimedAnimationProps } from "./types.js";
@@ -20,9 +20,8 @@ type WidgetChild = ReactElement<{ ref?: Ref<Gtk.Widget | null> }>;
  */
 const WidgetAnimation = (props: WidgetAnimationProps): ReactNode => {
     const { children, exit } = props;
-    const widgetRef = useRef<Gtk.Widget | null>(null);
     const child = Children.only(children) as WidgetChild;
-    const mergedRef = useMergedRefs(widgetRef, child.props.ref);
+    const [widgetRef, mergedRef] = useForwardedRef(child.props.ref);
 
     const handle = useWidgetAnimation(widgetRef, props);
     const presence = usePresence();

@@ -3,16 +3,6 @@ import * as GLib from "@gtkx/gi/glib";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSignal } from "./use-signal.js";
 
-type SettingTypeMap = {
-    boolean: boolean;
-    int: number;
-    double: number;
-    string: string;
-    strv: string[];
-};
-
-type SettingType = keyof SettingTypeMap;
-
 /**
  * A typed reference to a GSettings schema, as produced by importing a
  * `.gschema.xml` file in a GTKX project.
@@ -159,23 +149,7 @@ const VARIANT_ACCESSOR: SettingAccessor = {
     write: (settings, key, value) => settings.setValue(key, expectVariant(value)),
 };
 
-const LEGACY_KINDS: Record<SettingType, string> = {
-    boolean: "b",
-    int: "i",
-    double: "d",
-    string: "s",
-    strv: "as",
-};
-
-const resolveAccessor = (schema: SchemaRef | string, key: string, type: SettingType | undefined): SettingAccessor => {
-    if (typeof schema === "string") {
-        if (type === undefined) {
-            throw new TypeError(`useSetting("${schema}", "${key}") requires a type argument for string schema IDs`);
-        }
-        const accessor = ACCESSORS[LEGACY_KINDS[type]];
-        if (accessor === undefined) throw new TypeError(`Unknown setting type "${type}"`);
-        return accessor;
-    }
+const resolveAccessor = (schema: SchemaRef, key: string): SettingAccessor => {
     const kind = schema.keys[key];
     if (kind === undefined) {
         throw new TypeError(`Key "${key}" is not declared by the GSettings schema "${schema.id}"`);
@@ -213,37 +187,9 @@ export function useSetting<K extends object, P extends keyof K & string>(
     schema: SchemaRef<K>,
     key: P,
 ): [K[P], (value: K[P]) => void];
-/**
- * Subscribes to a GSettings key by schema ID and returns its current value
- * alongside a setter, similar to `useState`.
- *
- * This form addresses schemas the project does not ship — system schemas
- * such as `org.gnome.desktop.interface` — so the key and value type cannot
- * be checked; the `type` argument selects the `Gio.Settings` accessor.
- *
- * @param schemaId - The GSettings schema ID (e.g. `"org.gnome.desktop.interface"`)
- * @param key - The settings key in kebab-case (e.g. `"color-scheme"`)
- * @param type - The value type, used to select the appropriate GSettings getter/setter
- * @returns A `[value, setValue]` tuple kept in sync with the GSettings backend
- *
- * @example
- * ```tsx
- * const [colorScheme, setColorScheme] = useSetting("org.gnome.desktop.interface", "color-scheme", "string");
- * ```
- */
-export function useSetting<T extends SettingType>(
-    schemaId: string,
-    key: string,
-    type: T,
-): [SettingTypeMap[T], (value: SettingTypeMap[T]) => void];
-export function useSetting(
-    schema: SchemaRef | string,
-    key: string,
-    type?: SettingType,
-): [unknown, (value: unknown) => void] {
-    const schemaId = typeof schema === "string" ? schema : schema.id;
-    const path = typeof schema === "string" ? null : schema.path;
-    const accessor = resolveAccessor(schema, key, type);
+export function useSetting(schema: SchemaRef, key: string): [unknown, (value: unknown) => void] {
+    const { id: schemaId, path } = schema;
+    const accessor = resolveAccessor(schema, key);
 
     const settings = useMemo(
         () => (path === null ? Gio.Settings.new(schemaId) : new Gio.Settings({ schemaId, path })),

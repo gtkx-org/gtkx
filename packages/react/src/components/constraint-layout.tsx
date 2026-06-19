@@ -1,17 +1,5 @@
-import * as Gtk from "@gtkx/gi/gtk";
-import {
-    Children,
-    cloneElement,
-    createElement,
-    type EffectCallback,
-    type ReactNode,
-    type Ref,
-    useCallback,
-    useEffect,
-    useLayoutEffect,
-    useRef,
-} from "react";
-import { useChildWidgetRegistration, type WidgetChild } from "../hooks/use-child-widget-registration.js";
+import type * as Gtk from "@gtkx/gi/gtk";
+import { createElement, type ReactNode, type Ref, useEffect, useLayoutEffect, useRef } from "react";
 import {
     applyConstraint,
     applyGuide,
@@ -20,14 +8,7 @@ import {
     useConstraintLayout,
     useConstraintLayoutRef,
 } from "../hooks/use-constraint-layout.js";
-import { assignRef } from "../hooks/use-merged-refs.js";
-import { registerConstraintTarget, unregisterConstraintTarget } from "../reconciler/constraint-target-registry.js";
-import type {
-    ConstraintGuideProps,
-    ConstraintLayoutWidgetProps,
-    ConstraintProps,
-    ConstraintVflProps,
-} from "../utils/element-props.js";
+import type { ConstraintGuideProps, ConstraintProps, ConstraintVflProps } from "../utils/element-props.js";
 
 const GtkConstraintLayoutElement = "GtkConstraintLayout" as const;
 
@@ -42,44 +23,6 @@ export type ConstraintLayoutProps = {
     ref?: Ref<Gtk.ConstraintLayout | null>;
 };
 
-const MISSING_LAYOUT_MESSAGE =
-    "<GtkConstraintLayout.Widget> must be a child of the widget whose layoutManager prop carries the <GtkConstraintLayout>";
-
-const layoutOf = (widget: Gtk.Widget): Gtk.ConstraintLayout | null => {
-    const layout = widget.getParent()?.getLayoutManager();
-    return layout instanceof Gtk.ConstraintLayout ? layout : null;
-};
-
-/**
- * Registers a `<GtkConstraintLayout.Widget>`'s single child with the constraint
- * layout installed as the layout manager of the widget the child attaches to.
- *
- * The child's widget is captured through a callback ref merged with any ref the
- * child already carries, then registered under `id` from a layout effect and
- * unregistered on cleanup. Throws when the host widget has no constraint
- * layout, mirroring the requirement that the marker be a child of the widget
- * whose `layoutManager` prop carries the `<GtkConstraintLayout>`.
- *
- * @param id - The id the wrapped widget is registered under.
- * @param child - The single widget element to register.
- */
-const ConstraintLayoutMember = ({ id, child }: { id: string; child: WidgetChild }): ReactNode => {
-    const register = useCallback(
-        (widget: Gtk.Widget) => {
-            const layout = layoutOf(widget);
-            if (!layout) throw new Error(MISSING_LAYOUT_MESSAGE);
-            registerConstraintTarget(layout, id, widget);
-            return () => unregisterConstraintTarget(layout, id);
-        },
-        [id],
-    );
-    const captureWidget = useChildWidgetRegistration(child, register);
-
-    return cloneElement(child, { ref: captureWidget });
-};
-
-/** A React effect hook with the `useEffect`/`useLayoutEffect` call signature. */
-type EffectHook = (effect: EffectCallback, deps: readonly unknown[]) => void;
 type ContributionCleanupRef = { current: (() => void) | null };
 
 const cleanupContribution = (cleanupRef: ContributionCleanupRef): void => {
@@ -90,43 +33,43 @@ const cleanupContribution = (cleanupRef: ContributionCleanupRef): void => {
 };
 
 /**
- * Runs `apply` against the enclosing layout through `useEffectHook`, re-applying
- * it when `deps` change and removing it on cleanup.
+ * Adds a `<Guide>`'s contribution to the enclosing layout from a layout effect,
+ * re-applying it when `deps` change and removing it on cleanup. A layout effect
+ * runs before any `<Constraint>`/`<Vfl>` passive effect of the same commit, so
+ * the registered guide is present before those markers resolve ids against it.
  *
- * Markers that register targets (`<Guide>`) use a layout effect so the target is
- * present before dependents resolve; markers that resolve ids (`<Constraint>`,
- * `<Vfl>`) use a passive effect, which runs after every `<Widget>`/`<Guide>`
- * layout effect of the same commit has registered.
- *
- * @param useEffectHook - The effect hook to drive the contribution.
  * @param apply - Adds the contribution and returns its remover.
  * @param deps - Marker props whose change re-applies the contribution.
  */
-const useContribution = (
-    useEffectHook: EffectHook,
-    apply: (layout: Gtk.ConstraintLayout) => () => void,
-    deps: readonly unknown[],
-): void => {
+const useLayoutContribution = (apply: (layout: Gtk.ConstraintLayout) => () => void, deps: readonly unknown[]): void => {
     const layoutRef = useConstraintLayoutRef();
-    useEffectHook(() => {
+    useLayoutEffect(() => {
         const layout = layoutRef.current;
         if (!layout) return;
         return apply(layout);
     }, deps);
 };
 
+/**
+ * Adds a `<Constraint>`/`<Vfl>` contribution, deferring application to a passive
+ * effect so every `<Widget>`/`<Guide>` layout-effect registration of the same
+ * commit has settled before its ids are resolved, while tearing the previous
+ * contribution down in the layout phase before any re-registration disturbs the
+ * id map.
+ *
+ * @param apply - Adds the contribution and returns its remover.
+ * @param deps - Marker props whose change re-applies the contribution.
+ */
 const useDeferredContribution = (
     apply: (layout: Gtk.ConstraintLayout) => () => void,
     deps: readonly unknown[],
 ): void => {
     const layoutRef = useConstraintLayoutRef();
     const cleanupRef = useRef<(() => void) | null>(null);
-    const onCommitCleanup: EffectHook = useLayoutEffect;
-    const onPassiveApply: EffectHook = useEffect;
 
-    onCommitCleanup(() => () => cleanupContribution(cleanupRef), deps);
+    useLayoutEffect(() => () => cleanupContribution(cleanupRef), deps);
 
-    onPassiveApply(() => {
+    useEffect(() => {
         const layout = layoutRef.current;
         if (!layout) return;
         const cleanup = apply(layout);
@@ -144,13 +87,12 @@ const useDeferredContribution = (
  * and its live instance is shared with the sub-components that declare the
  * solver:
  *
- * - `<GtkConstraintLayout.Widget id>` wraps a single widget transparently as a
- *   regular child of the host widget and registers the widget under `id` so
- *   constraints can reference it.
+ * - A participating widget declares its id through its own `name` prop
+ *   (e.g. `<GtkLabel name="a" />`) and renders as a regular child of the host.
  * - `<GtkConstraintLayout.Guide id>` adds a spacer `Gtk.ConstraintGuide`,
  *   registered under `id`.
  * - `<GtkConstraintLayout.Constraint>` declares one solver row, resolving its
- *   `target`/`source` ids to the registered widgets and guides.
+ *   `target`/`source` ids to the host's named children and the layout's guides.
  * - `<GtkConstraintLayout.Vfl>` parses a Visual Format Language description.
  *
  * @example
@@ -162,26 +104,20 @@ const useDeferredContribution = (
  *     </GtkConstraintLayout>
  *   }
  * >
- *   <GtkConstraintLayout.Widget id="a"><GtkLabel label="A" /></GtkConstraintLayout.Widget>
- *   <GtkConstraintLayout.Widget id="b"><GtkLabel label="B" /></GtkConstraintLayout.Widget>
+ *   <GtkLabel name="a" label="A" />
+ *   <GtkLabel name="b" label="B" />
  * </GtkBox>
  * ```
  */
 export const GtkConstraintLayout: ((props: ConstraintLayoutProps) => ReactNode) & {
-    /**
-     * Wraps a single widget that participates in constraints, registering it
-     * under `id`. Transparent in the GTK tree: the widget attaches to the host
-     * whose `layoutManager` prop carries the layout.
-     */
-    Widget: (props: ConstraintLayoutWidgetProps) => ReactNode;
     /**
      * Adds a `Gtk.ConstraintGuide` spacer to the layout, registered under `id`
      * (the guide's `name`), with optional min/nat/max sizes and strength.
      */
     Guide: (props: ConstraintGuideProps) => ReactNode;
     /**
-     * Declares one solver row. `target`/`source` reference ids registered by
-     * `<Widget>`/`<Guide>` markers, or `"super"` / omitted for the
+     * Declares one solver row. `target`/`source` reference the `name` of a
+     * host child or a `<Guide>` id, or `"super"` / omitted for the
      * layout-owning widget.
      */
     Constraint: (props: ConstraintProps) => ReactNode;
@@ -192,7 +128,11 @@ export const GtkConstraintLayout: ((props: ConstraintLayoutProps) => ReactNode) 
         const layoutRef = useConstraintLayout();
         const mergedRef = (layout: Gtk.ConstraintLayout | null): void => {
             layoutRef.current = layout;
-            assignRef(ref, layout);
+            if (typeof ref === "function") {
+                ref(layout);
+            } else if (ref) {
+                ref.current = layout;
+            }
         };
         return (
             <>
@@ -202,21 +142,20 @@ export const GtkConstraintLayout: ((props: ConstraintLayoutProps) => ReactNode) 
         );
     },
     {
-        Widget: (props: ConstraintLayoutWidgetProps): ReactNode => {
-            const child = Children.only(props.children) as WidgetChild;
-            return <ConstraintLayoutMember id={props.id} child={child} />;
-        },
         Guide: (props: ConstraintGuideProps): ReactNode => {
-            useContribution(useLayoutEffect, (layout) => applyGuide(layout, props), [
-                props.id,
-                props.minWidth,
-                props.minHeight,
-                props.natWidth,
-                props.natHeight,
-                props.maxWidth,
-                props.maxHeight,
-                props.strength,
-            ]);
+            useLayoutContribution(
+                (layout) => applyGuide(layout, props),
+                [
+                    props.id,
+                    props.minWidth,
+                    props.minHeight,
+                    props.natWidth,
+                    props.natHeight,
+                    props.maxWidth,
+                    props.maxHeight,
+                    props.strength,
+                ],
+            );
             return null;
         },
         Constraint: (props: ConstraintProps): ReactNode => {

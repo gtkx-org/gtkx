@@ -10,6 +10,9 @@ const PROFILE_SCHEMA_ID = "com.gtkx.test.useSetting.profile";
 type TestSchemaKeys = {
     enabled: boolean;
     count: number;
+    label: string;
+    tags: string[];
+    ratio: number;
     "wrap-mode": "none" | "word" | "char";
     theme: "default" | "light" | "dark";
     retries: number;
@@ -22,6 +25,9 @@ const TYPED_SCHEMA: SchemaRef<TestSchemaKeys> = {
     keys: {
         enabled: "b",
         count: "i",
+        label: "s",
+        tags: "as",
+        ratio: "d",
         "wrap-mode": "enum",
         theme: "s",
         retries: "u",
@@ -47,14 +53,14 @@ const resetKey = (key: string, fallback: () => void): void => {
 describe("useSetting (1)", () => {
     it("reads the initial boolean value from the schema default", async () => {
         resetKey("enabled", () => {});
-        const { result } = await renderHook(() => useSetting(SCHEMA_ID, "enabled", "boolean"));
+        const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "enabled"));
 
         expect(result.current[0]).toBe(false);
     });
 
     it("writes a boolean value through the returned setter", async () => {
         resetKey("enabled", () => {});
-        const { result } = await renderHook(() => useSetting(SCHEMA_ID, "enabled", "boolean"));
+        const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "enabled"));
 
         await act(() => result.current[1](true));
 
@@ -65,7 +71,7 @@ describe("useSetting (1)", () => {
 
     it("reads and writes integer values", async () => {
         resetKey("count", () => {});
-        const { result } = await renderHook(() => useSetting(SCHEMA_ID, "count", "int"));
+        const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "count"));
 
         expect(result.current[0]).toBe(0);
 
@@ -78,7 +84,7 @@ describe("useSetting (1)", () => {
 
     it("reads and writes string values", async () => {
         resetKey("label", () => {});
-        const { result } = await renderHook(() => useSetting(SCHEMA_ID, "label", "string"));
+        const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "label"));
 
         expect(result.current[0]).toBe("initial");
 
@@ -93,7 +99,7 @@ describe("useSetting (1)", () => {
 describe("useSetting (2)", () => {
     it("reads and writes string array values", async () => {
         resetKey("tags", () => {});
-        const { result } = await renderHook(() => useSetting(SCHEMA_ID, "tags", "strv"));
+        const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "tags"));
 
         expect(result.current[0]).toEqual([]);
 
@@ -106,7 +112,7 @@ describe("useSetting (2)", () => {
 
     it("reads and writes double values", async () => {
         resetKey("ratio", () => {});
-        const { result } = await renderHook(() => useSetting(SCHEMA_ID, "ratio", "double"));
+        const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "ratio"));
 
         expect(result.current[0]).toBeCloseTo(1.0);
 
@@ -119,7 +125,7 @@ describe("useSetting (2)", () => {
 
     it("reflects external GSettings changes via signal handler", async () => {
         resetKey("count", () => {});
-        const { result } = await renderHook(() => useSetting(SCHEMA_ID, "count", "int"));
+        const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "count"));
 
         const settings = Gio.Settings.new(SCHEMA_ID);
         await act(() => settings.setInt("count", 99));
@@ -133,7 +139,7 @@ describe("useSetting (2)", () => {
 describe("useSetting (3)", () => {
     it("disconnects the signal handler on unmount", async () => {
         resetKey("count", () => {});
-        const { result, unmount } = await renderHook(() => useSetting(SCHEMA_ID, "count", "int"));
+        const { result, unmount } = await renderHook(() => useSetting(TYPED_SCHEMA, "count"));
 
         await unmount();
 

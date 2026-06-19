@@ -1,6 +1,6 @@
 import type * as Gio from "@gtkx/gi/gio";
 import { createElement, type ReactNode, type Ref, useLayoutEffect, useRef } from "react";
-import { useMergedRefs } from "../hooks/use-merged-refs.js";
+import { useForwardedRef } from "../hooks/use-forwarded-ref.js";
 import { createElementComponent } from "../utils/create-element-component.js";
 import type { MenuEntry } from "../utils/element-props.js";
 import { applyMenuItems, menuItemsEqual } from "./menu-items.js";
@@ -46,9 +46,8 @@ export type MenuProps = {
  */
 export const GMenu = (props: MenuProps): ReactNode => {
     const { items, ref, ...rest } = props;
-    const menuRef = useRef<Gio.Menu | null>(null);
+    const [menuRef, mergedRef] = useForwardedRef(ref);
     const appliedRef = useRef<readonly MenuEntry[] | null>(null);
-    const mergedRef = useMergedRefs(menuRef, ref);
 
     useLayoutEffect(() => {
         const menu = menuRef.current;

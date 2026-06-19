@@ -11,7 +11,7 @@ import {
     useRef,
     useState,
 } from "react";
-import { useMergedRefs } from "../hooks/use-merged-refs.js";
+import { useForwardedRef } from "../hooks/use-forwarded-ref.js";
 import { onOrderedAttach } from "../reconciler/attach-events.js";
 import type { BoundItem } from "../reconciler/bound-item.js";
 import { createPortal } from "../reconciler/portal.js";
@@ -23,6 +23,7 @@ import type {
     GridViewProps,
     ListViewProps,
 } from "../utils/element-props.js";
+import { type DropDownLike, isAdwComboRow } from "../utils/gtype-predicates.js";
 import { ColumnController } from "./column-controller.js";
 import { ColumnViewContext } from "./column-view-context.js";
 import { ListController, type ListControllerProps } from "./list-controller.js";
@@ -33,6 +34,10 @@ const GtkColumnViewElement = createElementComponent<Record<string, unknown>>("Gt
 const GtkColumnViewColumnElement = createElementComponent<Record<string, unknown>>("GtkColumnViewColumn");
 const GtkDropDownElement = createElementComponent<Record<string, unknown>>("GtkDropDown");
 const AdwComboRowElement = createElementComponent<Record<string, unknown>>("AdwComboRow");
+
+const resolveDropDownWidget = (widget: Gtk.Widget): DropDownLike | null =>
+    widget instanceof Gtk.DropDown ? widget : null;
+const resolveComboRow = (widget: Gtk.Widget): DropDownLike | null => (isAdwComboRow(widget) ? widget : null);
 
 /** The keys a list controller reads, used to split controller props from element props. */
 const CONTROLLER_KEYS = [
@@ -87,7 +92,10 @@ interface ListHandle {
  * @param controllerProps - The split controller props for the current render.
  * @returns The widget setter, the live controller, and the portal re-render trigger.
  */
-const useListController = (controllerProps: ListControllerProps): ListHandle => {
+const useListController = (
+    controllerProps: ListControllerProps,
+    resolveDropDown?: (widget: Gtk.Widget) => DropDownLike | null,
+): ListHandle => {
     const [widget, setWidget] = useState<Gtk.Widget | null>(null);
     const [, rerender] = useReducer((x: number) => x + 1, 0);
     const controllerRef = useRef<ListController | null>(null);
@@ -95,7 +103,12 @@ const useListController = (controllerProps: ListControllerProps): ListHandle => 
     const appliedFirstUpdate = useRef(false);
 
     if (widget && !controllerRef.current) {
-        controllerRef.current = new ListController(widget, controllerProps, rerender);
+        controllerRef.current = new ListController(
+            widget,
+            resolveDropDown?.(widget) ?? null,
+            controllerProps,
+            rerender,
+        );
         prevPropsRef.current = controllerProps;
         appliedFirstUpdate.current = false;
     }
@@ -136,6 +149,14 @@ const renderPortals = (boundItems: BoundItem[], headerBoundItems: BoundItem[]): 
     return portals;
 };
 
+/** Per-component customization for {@link useListElement}. */
+type ListElementOptions = {
+    /** Renders the element's children from the live handle (column view). */
+    scope?: (handle: ListHandle) => ReactNode;
+    /** Resolves the widget's dropdown surface for dropdown-style components. */
+    resolveDropDown?: (widget: Gtk.Widget) => DropDownLike | null;
+};
+
 /**
  * Renders a virtualized list intrinsic element with its bound-item portals.
  *
@@ -146,24 +167,26 @@ const renderPortals = (boundItems: BoundItem[], headerBoundItems: BoundItem[]): 
  *
  * @param elementType - The element's slot-splitting host component to render.
  * @param props - The merged public props, including an optional caller ref.
- * @param scope - Renders the element's children from the live handle (column view).
+ * @param options - Per-component customization: the column-view child scope and
+ *   the dropdown-surface resolver.
  * @returns The rendered node plus the live handle.
  */
 const useListElement = (
     elementType: (props: Record<string, unknown>) => ReactNode,
     props: Record<string, unknown> & { ref?: Ref<Gtk.Widget>; children?: ReactNode },
-    scope?: (handle: ListHandle) => ReactNode,
+    options?: ListElementOptions,
 ): { node: ReactNode; handle: ListHandle } => {
     const { ref, children, ...rest } = props;
     const { controllerProps, elementProps } = splitProps(rest);
-    const handle = useListController(controllerProps);
-    const mergedRef = useMergedRefs<Gtk.Widget>(handle.setWidget, ref);
+    const handle = useListController(controllerProps, options?.resolveDropDown);
+    const [, mergedRef] = useForwardedRef<Gtk.Widget>(ref, handle.setWidget);
     const boundItems = handle.controller?.getBoundItems() ?? EMPTY_BOUND_ITEMS;
     const headerBoundItems = handle.controller?.getHeaderBoundItems() ?? EMPTY_BOUND_ITEMS;
     const portals = useMemo(() => renderPortals(boundItems, headerBoundItems), [boundItems, headerBoundItems]);
+    const scopedChildren = options?.scope ? options.scope(handle) : children;
     const node = (
         <>
-            {createElement(elementType, { ...elementProps, ref: mergedRef }, scope ? scope(handle) : children)}
+            {createElement(elementType, { ...elementProps, ref: mergedRef }, scopedChildren)}
             {portals}
         </>
     );
@@ -203,7 +226,9 @@ export function GtkGridView<T = unknown>(
 export function GtkDropDown<T = unknown, S = unknown>(
     props: DropDownProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.DropDown> },
 ): ReactNode {
-    return useListElement(GtkDropDownElement, props as Record<string, unknown> & { ref?: Ref<Gtk.Widget> }).node;
+    return useListElement(GtkDropDownElement, props as Record<string, unknown> & { ref?: Ref<Gtk.Widget> }, {
+        resolveDropDown: resolveDropDownWidget,
+    }).node;
 }
 
 /**
@@ -216,7 +241,9 @@ export function GtkDropDown<T = unknown, S = unknown>(
 export function AdwComboRow<T = unknown, S = unknown>(
     props: DropDownProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.Widget> },
 ): ReactNode {
-    return useListElement(AdwComboRowElement, props as Record<string, unknown> & { ref?: Ref<Gtk.Widget> }).node;
+    return useListElement(AdwComboRowElement, props as Record<string, unknown> & { ref?: Ref<Gtk.Widget> }, {
+        resolveDropDown: resolveComboRow,
+    }).node;
 }
 
 /**
@@ -239,7 +266,11 @@ function GtkColumnViewBase<T = unknown, S = unknown>(
     const { node, handle } = useListElement(
         GtkColumnViewElement,
         rest as Record<string, unknown> & { ref?: Ref<Gtk.Widget> },
-        (live) => <ColumnViewContext.Provider value={live.controller}>{children}</ColumnViewContext.Provider>,
+        {
+            scope: (live) => (
+                <ColumnViewContext.Provider value={live.controller}>{children}</ColumnViewContext.Provider>
+            ),
+        },
     );
     const controller = handle.controller;
     useLayoutEffect(() => {
