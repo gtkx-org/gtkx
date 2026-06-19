@@ -26,14 +26,12 @@ import { CONTAINER_PROPS, ELEMENT_MAP } from "virtual:gtkx-config";
 import type { ElementMapRule, MethodVerb, OrderedInsertVerb, VerbArgs } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
 import { toLowerFirst } from "@gtkx/utils";
-import { collectTypeNameChain, typeChainIncludes } from "../utils/gtype.js";
+import { collectTypeNameChain } from "../utils/gtype.js";
+import { hasType } from "../utils/gtype-predicates.js";
 import { notifyOrderedAttach } from "./attach-events.js";
 import type { ElementMapping } from "./element-mapping.js";
 import { callMethod } from "./reflect-call.js";
 import { type Node, stateOf } from "./state.js";
-
-/** Whether `name` appears in `instance`'s GType ancestry. */
-const hasType = (instance: GObject.Object, name: string): boolean => typeChainIncludes(instance.__gtype__, name);
 
 const exposesMethod = (instance: GObject.Object, method: string): boolean =>
     typeof Reflect.get(instance, method) === "function";

@@ -19,10 +19,10 @@
  */
 import { CONTAINER_PROPS } from "virtual:gtkx-config";
 import { CONTAINER_PROP_KIND, SLOT_KIND } from "@gtkx/config";
-import { getWrapperClass, typeFromName } from "@gtkx/ffi";
+import type { AnyClass } from "@gtkx/utils";
 import { createElement, isValidElement, type ReactNode } from "react";
 import { WRAPPER_NODE_ELEMENT } from "../reconciler/instance.js";
-import { classHasType, type GTyped } from "./gtype-predicates.js";
+import { classHasType, type GTyped, resolveBackingClass } from "./gtype-predicates.js";
 
 const EMPTY_CONTAINER_PROPS: ReadonlySet<string> = new Set();
 
@@ -30,7 +30,7 @@ const containerPropCache = new Map<string, ReadonlySet<string>>();
 
 const collectInherited = (
     table: Readonly<Record<string, readonly string[]>>,
-    cls: { readonly prototype: GTyped },
+    cls: AnyClass<GTyped>,
 ): readonly string[] => {
     const collected: string[] = [];
     for (const [typeName, names] of Object.entries(table)) {
@@ -45,7 +45,7 @@ const collectInherited = (
 const resolveContainerProps = (elementName: string): ReadonlySet<string> => {
     const cached = containerPropCache.get(elementName);
     if (cached) return cached;
-    const cls = getWrapperClass(typeFromName(elementName)) as { readonly prototype: GTyped } | null;
+    const cls = resolveBackingClass(elementName);
     const set = cls ? new Set(collectInherited(CONTAINER_PROPS, cls)) : EMPTY_CONTAINER_PROPS;
     containerPropCache.set(elementName, set);
     return set;

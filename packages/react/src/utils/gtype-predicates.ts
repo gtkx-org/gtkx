@@ -1,13 +1,10 @@
-import { getWrapperClass, typeFromName } from "@gtkx/ffi";
+import { type GTyped, getWrapperClass, typeFromName } from "@gtkx/ffi";
 import type * as Gio from "@gtkx/gi/gio";
-import type { GType } from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { AnyClass } from "@gtkx/utils";
-import { collectTypeNameChain } from "./gtype.js";
+import { typeChainIncludes } from "./gtype.js";
 
-/** The minimal shape every GObject instance carries: its resolved GLib type. */
-// biome-ignore lint/style/useNamingConvention: GObject phantom-type key
-export type GTyped = { readonly __gtype__: GType };
+export type { GTyped };
 
 /**
  * Whether `instance`'s GType ancestry contains `typeName`.
@@ -20,8 +17,7 @@ export type GTyped = { readonly __gtype__: GType };
  * @param instance - The backing GObject to test
  * @param typeName - GLib type name to search the ancestry for
  */
-export const hasType = (instance: GTyped, typeName: string): boolean =>
-    collectTypeNameChain(instance.__gtype__).includes(typeName);
+export const hasType = (instance: GTyped, typeName: string): boolean => typeChainIncludes(instance.__gtype__, typeName);
 
 /**
  * Whether a registered class's GType ancestry contains `typeName`. The class
@@ -32,8 +28,8 @@ export const hasType = (instance: GTyped, typeName: string): boolean =>
  * @param cls - The registered backing class to test, or `null`
  * @param typeName - GLib type name to search the ancestry for
  */
-export const classHasType = (cls: { readonly prototype: GTyped } | null, typeName: string): boolean =>
-    cls !== null && collectTypeNameChain(cls.prototype.__gtype__).includes(typeName);
+export const classHasType = (cls: AnyClass<GTyped> | null, typeName: string): boolean =>
+    cls !== null && typeChainIncludes(cls.prototype.__gtype__, typeName);
 
 /**
  * The structural surface of an `Adw.Dialog` that `@gtkx/react` drives:
@@ -80,6 +76,17 @@ export const isAdwComboRow = <T extends GTyped>(instance: T): instance is T & Dr
     hasType(instance, "AdwComboRow");
 
 /**
+ * Resolves the registered backing class for a GLib type name, or `null` when
+ * none is registered. The single name→class resolver: the class registry stamps
+ * `__gtype__` on every registered prototype, so the result safely backs a
+ * {@link GTyped} instance.
+ *
+ * @param typeName - GLib type name, e.g. `"GtkBox"`
+ */
+export const resolveBackingClass = (typeName: string): AnyClass<GTyped> | null =>
+    getWrapperClass(typeFromName(typeName)) as AnyClass<GTyped> | null;
+
+/**
  * Resolves a registered GObject class by its GLib type name, throwing a clear
  * error when the class is not registered.
  *
@@ -93,7 +100,7 @@ export const isAdwComboRow = <T extends GTyped>(instance: T): instance is T & Dr
  * @throws {Error} when the class is not registered (its namespace was not imported)
  */
 export const requireClassByName = (typeName: string): AnyClass => {
-    const cls = getWrapperClass(typeFromName(typeName));
+    const cls = resolveBackingClass(typeName);
     if (!cls) {
         throw new Error(
             `${typeName} is not registered. Import its @gtkx/jsx namespace module (e.g. \`import "@gtkx/jsx/adw"\`) before use.`,

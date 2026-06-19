@@ -9,10 +9,11 @@
  * {@link "./array-props".ARRAY_PROPS}, and generic prop diffing in `apply-props`.
  */
 import { WRAPPER_NODE_ELEMENT } from "@gtkx/config";
-import { getWrapperClass, typeFromName } from "@gtkx/ffi";
+import { type GTyped, typeFromName } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/gi/gobject";
-import { omit } from "@gtkx/utils";
+import { type AnyClass, omit } from "@gtkx/utils";
 import { collectConstructableProps } from "../utils/gtype.js";
+import { resolveBackingClass } from "../utils/gtype-predicates.js";
 import { createContainerWithProperties } from "./construct.js";
 import { type Node, registerState } from "./state.js";
 import type { ContainerInfo, Props } from "./types.js";
@@ -39,8 +40,7 @@ export const CONSTRUCTION_SKIP_PROPS: Readonly<Record<string, readonly string[]>
  *
  * @param type - JSX intrinsic element name, e.g. `"GtkButton"`.
  */
-export const resolveContainerClass = (type: string): typeof GObject.Object | null =>
-    getWrapperClass(typeFromName(type)) as typeof GObject.Object | null;
+export const resolveContainerClass = (type: string): AnyClass<GTyped> | null => resolveBackingClass(type);
 
 /**
  * Narrows a JSX prop bag to the construct-time GObject properties
