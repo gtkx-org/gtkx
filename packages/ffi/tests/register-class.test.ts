@@ -1,4 +1,6 @@
 import { getHandle, registerClass } from "@gtkx/ffi";
+import * as Gdk from "@gtkx/gi/gdk";
+import * as Gio from "@gtkx/gi/gio";
 import { Object as GObject, typeFromName, typeName, typeParent } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
@@ -121,6 +123,81 @@ describe("registerClass — vfunc self argument convention", () => {
         expect(call.positionalArgs).toHaveLength(1);
         expect(call.positionalArgs[0]).toBeInstanceOf(Gtk.Builder);
         expect(call.thisRef).toBeInstanceOf(CustomWidget);
+    });
+});
+
+describe("registerClass — vfunc argument and return marshalling", () => {
+    it("lifts a boxed vfunc argument to its typed wrapper, not a raw handle", () => {
+        const name = uniqueName("GtkxVfuncBoxedArg");
+        const observed: unknown[] = [];
+        class CustomBuffer extends Gtk.TextBuffer {
+            insertText(iter: Gtk.TextIter, _text: string, _len: number): void {
+                observed.push(iter);
+            }
+        }
+
+        registerClass(CustomBuffer, { gtypeName: name });
+
+        const buffer = new CustomBuffer();
+        buffer.insertAtCursor("hi", 2);
+
+        expect(observed).toHaveLength(1);
+        expect(observed[0]).toBeInstanceOf(Gtk.TextIter);
+    });
+
+    it("unwraps a handle-typed vfunc return so the caller receives the object, not null", () => {
+        class ReturnedItem extends GObject {}
+        registerClass(ReturnedItem, { gtypeName: uniqueName("GtkxVfuncReturnedItem") });
+        const returned = new ReturnedItem();
+
+        class ReturningModel extends Gtk.StringList {
+            getNItems(): number {
+                return 1;
+            }
+            getItem(position: number): GObject | null {
+                return position === 0 ? returned : null;
+            }
+        }
+
+        registerClass(ReturningModel, { gtypeName: uniqueName("GtkxVfuncReturnsObject") });
+
+        const model = new ReturningModel();
+        const viaVtable = Gio.ListModel.prototype.getItem.call(model, 0);
+
+        expect(viaVtable).toBe(returned);
+    });
+});
+
+describe("registerClass — caller-allocated and scalar out parameters", () => {
+    it("fills a caller-allocated out boxed parameter from the handler's return value", () => {
+        class CustomChooser extends Gtk.ColorButton {
+            getRgba(): Gdk.RGBA {
+                return new Gdk.RGBA({ red: 0.5, green: 0.25, blue: 0.75, alpha: 1.0 });
+            }
+        }
+        registerClass(CustomChooser, { gtypeName: uniqueName("GtkxVfuncCallerOutBoxed") });
+
+        const chooser = new CustomChooser();
+        const result = Gtk.ColorChooser.prototype.getRgba.call(chooser);
+
+        expect(result.red).toBeCloseTo(0.5);
+        expect(result.green).toBeCloseTo(0.25);
+        expect(result.blue).toBeCloseTo(0.75);
+        expect(result.alpha).toBeCloseTo(1.0);
+    });
+
+    it("writes scalar out parameters from the handler's returned tuple", () => {
+        class CustomWidget extends Gtk.Widget {
+            measure(_orientation: Gtk.Orientation, _forSize: number): [number, number, number, number] {
+                return [42, 48, -1, -1];
+            }
+        }
+        registerClass(CustomWidget, { gtypeName: uniqueName("GtkxVfuncScalarOut") });
+
+        const widget = new CustomWidget();
+        const result = Gtk.Widget.prototype.measure.call(widget, Gtk.Orientation.HORIZONTAL, -1);
+
+        expect(result).toEqual([42, 48, -1, -1]);
     });
 });
 

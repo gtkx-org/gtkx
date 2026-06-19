@@ -1,8 +1,16 @@
-import type { Ref, Type, Value } from "@gtkx/native";
+import type { Ref, TrampolineType, Type, Value } from "@gtkx/native";
 import { bind, boxedT, refT } from "./descriptors.js";
 import { checkError } from "./gerror.js";
 import { getHandle } from "./registry.js";
-import { wrapValue } from "./wrapper-class.js";
+import { type UserHandler, wrapHandler, wrapValue } from "./wrapper-class.js";
+
+/**
+ * Wraps a callback argument in its {@link wrapHandler} trampoline (a plain
+ * callback, so the leading argument is forwarded positionally), or passes a
+ * nullish callback through unchanged.
+ */
+const wrapCallbackValue = (trampoline: TrampolineType, callback: unknown): Value =>
+    callback == null ? (callback as Value) : wrapHandler(callback as UserHandler, trampoline, "none");
 
 /**
  * One positional argument of a callable, in C-signature order (the instance
@@ -79,7 +87,8 @@ const toNativeArgTypes = (argTypes: readonly ArgType[], throws: boolean): Type[]
  * Maps a call's inputs onto the native values, in C-signature order: a
  * caller-allocated wrapper to its handle, a runtime out- or inout-parameter to a
  * fresh `{ value }` cell (seeded from the input for an inout, which the native
- * call fills), a plain input straight through.
+ * call fills), a callback to its {@link wrapHandler}-wrapped trampoline, a plain
+ * input straight through.
  */
 const toNativeValues = (argTypes: readonly ArgType[], inputs: readonly unknown[]): Value[] => {
     const nativeValues: Value[] = [];
@@ -90,6 +99,8 @@ const toNativeValues = (argTypes: readonly ArgType[], inputs: readonly unknown[]
             nativeValues.push(wrapper == null ? wrapper : getHandle(wrapper as object));
         } else if (argType.direction !== undefined) {
             nativeValues.push({ value: argType.direction === "inout" ? (inputs[cursor++] as Value) : null });
+        } else if (argType.type.type === "trampoline") {
+            nativeValues.push(wrapCallbackValue(argType.type, inputs[cursor++]));
         } else {
             nativeValues.push(inputs[cursor++] as Value);
         }

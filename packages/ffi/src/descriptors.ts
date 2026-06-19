@@ -118,6 +118,30 @@ export const stringT = (ownership: Ownership = "borrowed", length?: number): Typ
 export const objectT = (ownership: Ownership = "borrowed", typeName?: string): Type =>
     typeName === undefined ? { type: "gobject", ownership } : { type: "gobject", ownership, typeName };
 
+/**
+ * Optional flags a boxed descriptor carries beyond its positional core, for the
+ * less-common configuration a vtable slot needs.
+ */
+type BoxedOptions = {
+    /**
+     * A caller-allocated out parameter: the native trampoline reads the
+     * argument as a borrowed view of the caller's buffer (no copy) so a vfunc
+     * handler's field writes land on it in place.
+     */
+    callerAllocated?: boolean;
+};
+
+/** Optional configuration for {@link structT}. */
+type StructOptions = BoxedOptions & {
+    /** Struct size in bytes, for copying a borrowed value into an owned one. */
+    size?: number;
+    /**
+     * Wrapper class for a plain struct, whose pointer carries no runtime type
+     * to recover a class from.
+     */
+    wrapperClass?: AnyClass;
+};
+
 // biome-ignore lint/complexity/useMaxParams: positional descriptor mirrors the native BoxedType fields and is the format generated bindings emit
 export const boxedT = (
     innerType: string,
@@ -125,18 +149,21 @@ export const boxedT = (
     library?: string,
     getTypeFn?: string,
     freeFn?: string,
+    options: BoxedOptions = {},
 ): BoxedType => {
     const result: BoxedType = { type: "boxed", ownership, innerType };
     if (library !== undefined) result.library = library;
     if (getTypeFn !== undefined) result.getTypeFn = getTypeFn;
     if (freeFn !== undefined) result.freeFn = freeFn;
+    if (options.callerAllocated) result.callerAllocated = true;
     return result;
 };
 
-export const structT = (ownership: Ownership = "borrowed", size?: number, wrapperClass?: AnyClass): StructType => {
+export const structT = (ownership: Ownership = "borrowed", options: StructOptions = {}): StructType => {
     const result: StructType = { type: "struct", ownership };
-    if (size !== undefined) result.size = size;
-    if (wrapperClass !== undefined) setDescriptorWrapperClass(result, wrapperClass);
+    if (options.size !== undefined) result.size = options.size;
+    if (options.wrapperClass !== undefined) setDescriptorWrapperClass(result, options.wrapperClass);
+    if (options.callerAllocated) result.callerAllocated = true;
     return result;
 };
 
@@ -167,7 +194,8 @@ export const fundamentalT = (
     return result;
 };
 
-export const refT = (innerType: Type): RefType => ({ type: "ref", innerType });
+export const refT = (innerType: Type, inout = false): RefType =>
+    inout ? { type: "ref", innerType, inout: true } : { type: "ref", innerType };
 
 export const hashTableT = (keyType: Type, valueType: Type, ownership: Ownership = "borrowed"): HashTableType => ({
     type: "hashtable",

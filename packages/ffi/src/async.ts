@@ -9,10 +9,7 @@
  * than being inlined into every generated wrapper.
  */
 
-import type { Handle } from "@gtkx/native";
-import { objectT } from "./descriptors.js";
 import { tryGetHandle } from "./registry.js";
-import { wrapValue } from "./wrapper-class.js";
 
 /**
  * The native start-callable of a GIO-style asynchronous operation. Accepts
@@ -45,9 +42,10 @@ export type PromisifyArgs = {
  *
  * Starts `asyncFn` with the supplied arguments — splicing the resolved
  * `GCancellable*` handle into its dedicated slot — and an internal
- * `GAsyncReadyCallback`. On completion the callback settles the promise with
- * `finish` applied to the wrapped `GAsyncResult`, rejecting when `finish`
- * throws (typically a `GError`).
+ * `GAsyncReadyCallback`. The callback's `GAsyncResult` argument is already
+ * lifted to its wrapper by the trampoline's handler marshalling, so on
+ * completion the promise settles with `finish` applied to it directly,
+ * rejecting when `finish` throws (typically a `GError`).
  *
  * @param asyncFn - The native `*_async` start callable.
  * @param finish - The companion `*_finish` callable; bound to its owner for instance methods.
@@ -66,9 +64,9 @@ export const promisify = (
             ...args.leading,
             tryGetHandle(cancellable),
             ...(args.trailing ?? []),
-            (_source: Handle, rawResult: Handle) => {
+            (_source: object | null, asyncResult: object) => {
                 try {
-                    resolve(finish(wrapValue(objectT("borrowed", "GAsyncResult"), rawResult) as object));
+                    resolve(finish(asyncResult));
                 } catch (error) {
                     reject(error);
                 }

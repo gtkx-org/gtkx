@@ -343,3 +343,26 @@ export function registerVfuncRegistry(cls: object, registry: VfuncRegistry): voi
 export function getVfuncRegistry(cls: object): VfuncRegistry | undefined {
     return vfuncRegistryByClass.get(cls);
 }
+
+const interfaceVfuncRegistryByGtype = new Map<GType, VfuncRegistry>();
+
+/**
+ * Records an interface's generated vtable vfunc descriptor map under its
+ * `GType` so that `registerClass` can auto-discover interface vfunc overrides
+ * on a subclass. Called once per interface at module load.
+ *
+ * @param gtype - The interface's GLib type identifier.
+ * @param vfuncRegistry - The interface's vtable vfunc descriptor map.
+ */
+export function registerInterfaceVfuncRegistry(gtype: GType, vfuncRegistry: VfuncRegistry): void {
+    if (gtype === TYPE_INVALID) return;
+    interfaceVfuncRegistryByGtype.set(gtype, vfuncRegistry);
+}
+
+/**
+ * Resolves the vtable vfunc descriptor map registered for an interface
+ * `GType`, or `undefined` when none has been registered.
+ */
+export function getInterfaceVfuncRegistry(gtype: GType): VfuncRegistry | undefined {
+    return interfaceVfuncRegistryByGtype.get(gtype);
+}

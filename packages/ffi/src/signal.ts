@@ -1,13 +1,4 @@
-import {
-    alloc,
-    call,
-    type Type as FfiType,
-    type Handle,
-    read,
-    type TrampolineType,
-    type Value,
-    write,
-} from "@gtkx/native";
+import { alloc, call, type Type as FfiType, type Handle, read, type TrampolineType, write } from "@gtkx/native";
 import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
 import { arrayT, biguint64T, bind, objectT, stringT, uint32T, uint64T, voidT } from "./descriptors.js";
 import { tupleResult } from "./fn.js";
@@ -25,6 +16,7 @@ import {
     valueSetStaticBoxed,
 } from "./gvalue.js";
 import { getHandle } from "./registry.js";
+import { wrapHandler } from "./wrapper-class.js";
 
 /** Storage size, in bytes, of a single out-parameter cell (a pointer or any scalar). */
 const OUT_PARAM_STORAGE_SIZE = 8;
@@ -164,13 +156,14 @@ export function connectGobjectSignal(
     handler: SignalHandler,
     after: boolean,
 ): number {
+    const wrapped = wrapHandler(handler, trampoline, "skip");
     return call(
         LIB,
         "g_signal_connect_data",
         [
             { type: objectT("borrowed"), value: getHandle(instance) },
             { type: stringT("borrowed"), value: signal },
-            { type: trampoline, value: handler as Value },
+            { type: trampoline, value: wrapped },
             { type: uint32T, value: after ? 1 : 0 },
         ],
         uint64T,

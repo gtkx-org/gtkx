@@ -77,6 +77,26 @@ export const valueInit = (value: Handle, gtype: GType): void => {
     gValueInit(value, gtype);
 };
 
+const gValueCopy = bind(LIB, "g_value_copy", [GVALUE_T, GVALUE_T], voidT);
+
+/**
+ * Deep-copies the contents of `src` into the caller-allocated `dest` `GValue`,
+ * the ownership-correct fill for a caller-allocated out `GValue` parameter:
+ * `g_value_copy` refs objects, duplicates strings, and copies boxed payloads per
+ * the value's `GType`, so `dest` owns its own contents. `dest` is initialized to
+ * `src`'s type first when it is still untyped, as the out-parameter contract
+ * passes a zeroed `GValue`.
+ *
+ * @param dest - The caller-allocated destination `GValue` handle.
+ * @param src - The source `GValue` handle whose contents are copied.
+ */
+export const valueCopyInto = (dest: Handle, src: Handle): void => {
+    if (valueGetType(dest) === TYPE_INVALID) {
+        valueInit(dest, valueGetType(src));
+    }
+    gValueCopy(src, dest);
+};
+
 const gValueSetPointer = bind(LIB, "g_value_set_pointer", [GVALUE_T, uint64T], voidT);
 
 /**

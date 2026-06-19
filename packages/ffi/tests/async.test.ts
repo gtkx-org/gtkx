@@ -44,15 +44,15 @@ describe("promisify", () => {
         });
     });
 
-    it("passes a wrapped GAsyncResult whose handle is the raw callback pointer", () => {
-        const rawResult = gobjectHandle();
+    it("forwards the already-wrapped GAsyncResult straight to the finish callable", () => {
+        const asyncResult = new Gtk.Label({ label: "" });
         const asyncFn = (...args: unknown[]): void => {
-            (args[args.length - 1] as (source: Handle, result: Handle) => void)(handle(1), rawResult);
+            (args[args.length - 1] as (source: object | null, result: object) => void)(null, asyncResult);
         };
 
         return promisify(asyncFn, (result: object) => getHandle(result), undefined, { leading: [] }).then(
             (resolvedHandle) => {
-                expect(resolvedHandle).toBe(rawResult);
+                expect(resolvedHandle).toBe(getHandle(asyncResult));
             },
         );
     });

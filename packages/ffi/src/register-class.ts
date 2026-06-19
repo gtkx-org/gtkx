@@ -5,7 +5,14 @@ import {
 } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { type GType, TYPE_INVALID, typeInterfaces } from "./gtype.js";
-import { getClassGtype, getParentClass, getVfuncRegistry, type Handle, setClassGtype, wrapHandle } from "./registry.js";
+import {
+    getClassGtype,
+    getInterfaceVfuncRegistry,
+    getParentClass,
+    getVfuncRegistry,
+    setClassGtype,
+} from "./registry.js";
+import { wrapHandler } from "./wrapper-class.js";
 
 /**
  * Generated descriptor of a vtable vfunc slot. Codegen emits one per vfunc on
@@ -151,33 +158,23 @@ function discoverClassVfuncs(klass: AnyClass): DiscoveredClassVfunc[] {
         }
         const fn = proto[methodName];
         if (!fn) continue;
-        result.push({ ...descriptor, methodName, fn: wrapVfunc(fn, descriptor.argTypes) });
+        result.push({ ...descriptor, methodName, fn: wrapVfunc(fn, descriptor.argTypes, descriptor.returnType) });
     }
     return result;
 }
 
 /**
- * Wraps a JS-side vfunc implementation so the native trampoline can hand it
- * raw `ExternalObject<Handle>` arguments and the user code receives
- * fully-typed JS wrappers. The first object-typed argument — the GObject
- * `self` for any instance vfunc — is bound as `this` and is NOT forwarded
- * positionally, so subclass authors receive only the remaining vfunc
- * arguments and can write `this.setLayoutManager(...)` exactly the way they
- * would in any other instance method.
+ * Adapts a JS-side vfunc implementation to the native trampoline through the
+ * shared {@link wrapHandler}, binding the receiver `self` as `this`. Out
+ * parameters surface as the handler's return value following the public
+ * method's tuple convention; see {@link wrapHandler} for the marshalling.
  */
-function wrapVfunc(fn: VfuncFn, argTypes: NativeRegisterClassVfunc["argTypes"]): VfuncFn {
-    return ((...rawArgs: unknown[]) => {
-        const wrapped: unknown[] = rawArgs.map((arg, i) => {
-            if (arg == null) return arg;
-            const argType = argTypes[i] as { type?: string } | undefined;
-            if (argType?.type === "gobject") {
-                return wrapHandle(arg as Handle);
-            }
-            return arg;
-        });
-        const self = wrapped[0] ?? null;
-        return (fn as (this: unknown, ...args: unknown[]) => unknown).apply(self, wrapped.slice(1));
-    }) as VfuncFn;
+function wrapVfunc(
+    fn: VfuncFn,
+    argTypes: NativeRegisterClassVfunc["argTypes"],
+    returnType: NativeRegisterClassVfunc["returnType"],
+): VfuncFn {
+    return wrapHandler(fn, { argTypes, returnType }, "this");
 }
 
 /**
@@ -207,7 +204,7 @@ function discoverInterfaceVfuncs(
     interfaceGtype: GType,
     claimedMethodNames: ReadonlySet<string>,
 ): DiscoveredInterfaceVfunc[] {
-    const vfuncRegistry = interfaceVfuncRegistryByGtype.get(interfaceGtype);
+    const vfuncRegistry = getInterfaceVfuncRegistry(interfaceGtype);
     if (!vfuncRegistry) return [];
     const proto = (klass as { prototype: Record<string, VfuncFn> }).prototype;
     const result: DiscoveredInterfaceVfunc[] = [];
@@ -221,7 +218,7 @@ function discoverInterfaceVfuncs(
         result.push({
             ...ifaceDescriptor,
             methodName,
-            fn: wrapVfunc(fn, ifaceDescriptor.argTypes),
+            fn: wrapVfunc(fn, ifaceDescriptor.argTypes, ifaceDescriptor.returnType),
         });
     }
     return result;
@@ -240,19 +237,6 @@ function findClassVfuncDescriptor(klass: AnyClass, methodName: string): VfuncDes
         current = getParentClass(current);
     }
     return null;
-}
-
-const interfaceVfuncRegistryByGtype = new Map<GType, Readonly<Record<string, unknown>>>();
-
-/**
- * Registers a runtime mapping from an interface `GType` to its generated
- * vtable vfunc descriptor map so that {@link registerClass} can auto-discover
- * interface vfunc overrides on a subclass. Codegen calls this once per
- * interface at module load.
- */
-export function registerInterfaceVfuncRegistry(gtype: GType, vfuncRegistry: Readonly<Record<string, unknown>>): void {
-    if (gtype === TYPE_INVALID) return;
-    interfaceVfuncRegistryByGtype.set(gtype, vfuncRegistry);
 }
 
 function toNativeOptions(
