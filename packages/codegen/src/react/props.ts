@@ -1,4 +1,4 @@
-import { toCamelCase, toIdentifier, toUpperFirst } from "@gtkx/utils";
+import { toCamelIdentifier, toUpperFirst } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import { type GirParameter, isInoutParameter, isOutParameter } from "../gir/parameter.js";
@@ -91,7 +91,7 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
 
     const acceptProperty = (property: GirProperty, owningNamespace: string): void => {
         if (!property.introspectable) return;
-        const jsName = toIdentifier(toCamelCase(property.name));
+        const jsName = toCamelIdentifier(property.name);
         if (seen.has(jsName)) return;
         seen.add(jsName);
         if (isPropOverridden(ownerName, jsName)) return;

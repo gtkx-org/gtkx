@@ -1,4 +1,4 @@
-import { quote, toCamelCase, toIdentifier } from "@gtkx/utils";
+import { quote, toCamelIdentifier } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
 import type { GirBoxed } from "../gir/boxed.js";
@@ -43,10 +43,7 @@ export const renderBoxedConstructorPropsInterface = (
     const { slots } = computeBoxedFieldSlots(context, boxed.fields, boxed.isUnion);
     const lines = slots
         .filter((entry): entry is WritableFieldSlot => isWritableFieldSlot(context, entry))
-        .map(
-            (entry) =>
-                `${toIdentifier(toCamelCase(entry.field.name))}?: ${renderTsType(context, entry.field.type, true)};`,
-        );
+        .map((entry) => `${toCamelIdentifier(entry.field.name)}?: ${renderTsType(context, entry.field.type, true)};`);
     const body = lines.length === 0 ? "" : `\n${indent(lines.join("\n"), 1)}\n`;
     return `export interface ${className}ConstructorProps {${body}}`;
 };
@@ -100,7 +97,7 @@ const renderFieldWrite = (context: ModuleContext, entry: WritableFieldSlot): str
     context.addRuntimeImport("t");
     context.addNativeImport("write");
     const ffiType = renderFfiType(context, entry.field.type, "none");
-    const name = toIdentifier(toCamelCase(entry.field.name));
+    const name = toCamelIdentifier(entry.field.name);
     const offset = entry.slot.byteOffset;
     if (entry.slot.bitWidth === undefined) {
         return `if (props.${name} !== undefined) write(handle, ${ffiType}, ${offset}, props.${name});`;

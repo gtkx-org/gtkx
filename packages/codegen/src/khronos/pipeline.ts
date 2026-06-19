@@ -20,7 +20,7 @@
  * isolated-declarations regression fails generation instead of landing in the
  * committed output.
  */
-import { toCamelCase, toIdentifier } from "@gtkx/utils";
+import { toCamelIdentifier, toIdentifier, toLowerFirst } from "@gtkx/utils";
 import { ModuleBuilder } from "../dsl/module.js";
 import { transpileSource } from "../transpile.js";
 import {
@@ -152,18 +152,8 @@ const GENERATED_HEADER = `/**
  * \`pnpm --filter @gtkx/codegen codegen:gl\`.
  */`;
 
-const lowerFirst = (name: string): string => name.charAt(0).toLowerCase() + name.slice(1);
-
-/**
- * Shapes a GL name into a camelCase identifier: folds the `i_v`/`num_groups_x`
- * underscores Khronos uses into camel humps so the result is valid camelCase
- * (`getTransformFeedbacki_v` → `getTransformFeedbackiV`), then guards against
- * reserved words.
- */
-const toCamelIdentifier = (name: string): string => toIdentifier(toCamelCase(name));
-
 const commandExportName = (name: string): string => {
-    const stripped = name.startsWith("gl") ? lowerFirst(name.slice(2)) : name;
+    const stripped = name.startsWith("gl") ? toLowerFirst(name.slice(2)) : name;
     return /^[0-9]/.test(stripped) ? name : toCamelIdentifier(stripped);
 };
 

@@ -1,4 +1,4 @@
-import { toCamelCase } from "@gtkx/utils";
+import { dedupeBy, toCamelCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
 import { bindingIdentifier } from "../dsl/identifier.js";
@@ -26,17 +26,13 @@ export type Callables = {
  *
  * @param callables - The raw GIR callables
  */
-export const dedupeCallables = (callables: readonly GirFunction[]): readonly GirFunction[] => {
-    const seen = new Set<string>();
-    const result: GirFunction[] = [];
-    for (const callable of callables) {
-        if (callable.cIdentifier === undefined) continue;
-        if (seen.has(callable.cIdentifier)) continue;
-        seen.add(callable.cIdentifier);
-        result.push(callable);
-    }
-    return result;
-};
+export const dedupeCallables = (callables: readonly GirFunction[]): readonly GirFunction[] =>
+    dedupeBy(
+        callables.filter(
+            (callable): callable is GirFunction & { cIdentifier: string } => callable.cIdentifier !== undefined,
+        ),
+        (callable) => callable.cIdentifier,
+    );
 
 /**
  * Appends the top-level `const fn = t.fn(...)` binding for a single callable,

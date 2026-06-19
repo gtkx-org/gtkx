@@ -1,4 +1,4 @@
-import { quote, toCamelCase, toIdentifier, toPascalCase } from "@gtkx/utils";
+import { dedupeBy, quote, toCamelIdentifier, toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
 import type { GirClass } from "../gir/class.js";
@@ -29,18 +29,10 @@ const isConstructable = (property: GirProperty): boolean =>
  * @param context - The module context
  * @param klass - The class whose construct props to collect
  */
-const collectConstructableProps = (context: ModuleContext, klass: GirClass): readonly GirProperty[] => {
-    const all = [...klass.properties, ...collectInterfaceProperties(context, klass)].filter(isConstructable);
-    const seen = new Set<string>();
-    const result: GirProperty[] = [];
-    for (const property of all) {
-        const jsName = toIdentifier(toCamelCase(property.name));
-        if (seen.has(jsName)) continue;
-        seen.add(jsName);
-        result.push(property);
-    }
-    return result;
-};
+const collectConstructableProps = (context: ModuleContext, klass: GirClass): readonly GirProperty[] =>
+    dedupeBy([...klass.properties, ...collectInterfaceProperties(context, klass)].filter(isConstructable), (property) =>
+        toCamelIdentifier(property.name),
+    );
 
 /**
  * Renders the `export interface <Class>ConstructorProps` declaration.
@@ -57,7 +49,7 @@ export const renderConstructorPropsInterface = (context: ModuleContext, klass: G
     const parentRef = resolveParentPropsReference(context, klass);
     const extendsClause = parentRef === undefined ? "" : ` extends ${parentRef}`;
     const lines = collectConstructableProps(context, klass).map(
-        (property) => `${toIdentifier(toCamelCase(property.name))}?: ${renderTsType(context, property.type, true)};`,
+        (property) => `${toCamelIdentifier(property.name)}?: ${renderTsType(context, property.type, true)};`,
     );
     const body = lines.length === 0 ? "" : `\n${indent(lines.join("\n"), 1)}\n`;
     return `export interface ${className}ConstructorProps${extendsClause} {${body}}`;
@@ -120,11 +112,11 @@ const renderTranslatingConstructor = (
     className: string,
 ): string => {
     context.addRuntimeImport("t");
-    const destructured = props.map((property) => toIdentifier(toCamelCase(property.name)));
+    const destructured = props.map((property) => toCamelIdentifier(property.name));
     const pattern = `{ ${[...destructured, "...rest"].join(", ")} }`;
     const entries = props.map(
         (property) =>
-            `${quote(property.name)}: [${renderFfiType(context, property.type, property.transferOwnership)}, ${toIdentifier(toCamelCase(property.name))}],`,
+            `${quote(property.name)}: [${renderFfiType(context, property.type, property.transferOwnership)}, ${toCamelIdentifier(property.name)}],`,
     );
     const recordLiteral = `{\n${indent(entries.join("\n"), 1)}\n}`;
     const lines = [`const props: ${PROPS_RECORD} = ${recordLiteral};`, "super({ ...props, ...rest });"];

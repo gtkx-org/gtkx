@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { quote, toIdentifier } from "../src/source.js";
+import { quote, toCamelIdentifier, toIdentifier } from "../src/source.js";
 
 const LINE_SEPARATOR = String.fromCharCode(0x2028);
 const PARAGRAPH_SEPARATOR = String.fromCharCode(0x2029);
@@ -17,6 +17,22 @@ describe("toIdentifier", () => {
 
     it("leaves the empty string unchanged", () => {
         expect(toIdentifier("")).toBe("");
+    });
+});
+
+describe("toCamelIdentifier", () => {
+    it("camelCases a snake_case GIR name", () => {
+        expect(toCamelIdentifier("icon_name")).toBe("iconName");
+        expect(toCamelIdentifier("n_pages")).toBe("nPages");
+    });
+
+    it("escapes a name that camelCases to a reserved word", () => {
+        expect(toCamelIdentifier("class")).toBe("class_");
+        expect(toCamelIdentifier("new")).toBe("new_");
+    });
+
+    it("leaves the empty string unchanged", () => {
+        expect(toCamelIdentifier("")).toBe("");
     });
 });
 

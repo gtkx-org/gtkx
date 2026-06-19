@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toCamelCase, toKebabCase, toPascalCase, toUpperFirst } from "../src/string.js";
+import { toCamelCase, toKebabCase, toLowerFirst, toPascalCase, toUpperFirst } from "../src/string.js";
 
 describe("toUpperFirst", () => {
     it("uppercases the first character", () => {
@@ -13,6 +13,21 @@ describe("toUpperFirst", () => {
 
     it("returns the empty string unchanged", () => {
         expect(toUpperFirst("")).toBe("");
+    });
+});
+
+describe("toLowerFirst", () => {
+    it("lowercases the first character", () => {
+        expect(toLowerFirst("Fred")).toBe("fred");
+    });
+
+    it("preserves the casing of the tail", () => {
+        expect(toLowerFirst("FooBar")).toBe("fooBar");
+        expect(toLowerFirst("URL")).toBe("uRL");
+    });
+
+    it("returns the empty string unchanged", () => {
+        expect(toLowerFirst("")).toBe("");
     });
 });
 

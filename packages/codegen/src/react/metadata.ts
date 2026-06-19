@@ -7,7 +7,7 @@ import type {
     PropRule,
     VirtualPropRow,
 } from "@gtkx/config";
-import { quote, toCamelCase, toIdentifier } from "@gtkx/utils";
+import { quote, toCamelIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirEnum } from "../gir/enum.js";
 import type { GirProperty } from "../gir/property.js";
@@ -190,7 +190,7 @@ const collectPropNames = (
     for (const source of sources) {
         for (const property of source.properties) {
             if (!keep(property)) continue;
-            const jsName = toIdentifier(toCamelCase(property.name));
+            const jsName = toCamelIdentifier(property.name);
             if (seen.has(jsName)) continue;
             seen.add(jsName);
             names.push(jsName);
@@ -242,7 +242,7 @@ const collectDefaultProps = (
         for (const property of klass.properties) {
             const settable = (property.writable || property.construct) && !property.constructOnly;
             if (!settable || !property.introspectable) continue;
-            const jsName = toIdentifier(toCamelCase(property.name));
+            const jsName = toCamelIdentifier(property.name);
             if (seen.has(jsName)) continue;
             seen.add(jsName);
             const literal = renderDefaultLiteral(repository, namespaceName, property);

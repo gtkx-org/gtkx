@@ -21,6 +21,19 @@
 export const toUpperFirst = (value: string): string => value.charAt(0).toUpperCase() + value.slice(1);
 
 /**
+ * Lowercases the first character of `value`, leaving the remaining characters
+ * untouched.
+ *
+ * The mirror of {@link toUpperFirst}: the tail is preserved verbatim rather
+ * than lowercased, so `toLowerFirst("FooBar")` is `"fooBar"` and
+ * `toLowerFirst("URL")` is `"uRL"`. An empty string returns an empty string.
+ *
+ * @param value - The string to transform.
+ * @returns `value` with its first character lowercased.
+ */
+export const toLowerFirst = (value: string): string => value.charAt(0).toLowerCase() + value.slice(1);
+
+/**
  * Converts a snake_case or kebab-case string to camelCase.
  *
  * The input is split on underscores and hyphens, dropping empty segments from

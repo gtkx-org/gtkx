@@ -1,4 +1,4 @@
-import { quote, toCamelCase, toIdentifier, toPascalCase } from "@gtkx/utils";
+import { quote, toCamelIdentifier, toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
 import { callbackFromNode, type GirCallback } from "../gir/callback.js";
@@ -46,7 +46,7 @@ const vtableEntries = (context: ModuleContext, structName: string, kind: VtableK
     const claimedNames = new Set<string>();
     for (const { field, slot } of slots) {
         if (field.callback === undefined) continue;
-        const key = toIdentifier(toCamelCase(field.name));
+        const key = toCamelIdentifier(field.name);
         if (key === "constructor" || claimedNames.has(key)) continue;
         const callback = callbackFromNode(field.callback);
         if (!isVtableSlotEligible(context, callback)) continue;

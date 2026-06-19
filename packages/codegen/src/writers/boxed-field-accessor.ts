@@ -1,4 +1,4 @@
-import { toCamelCase, toIdentifier } from "@gtkx/utils";
+import { toCamelIdentifier } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
 import type { GirField } from "../gir/field.js";
@@ -36,7 +36,7 @@ export const renderBoxedFieldAccessor = (
     if (field.callback !== undefined) return undefined;
     if (field.type === undefined) return undefined;
     if (typeRefIsClassStruct(context, field.type)) return undefined;
-    const jsName = toIdentifier(toCamelCase(field.name));
+    const jsName = toCamelIdentifier(field.name);
     if (claimedNames.has(jsName)) return undefined;
     if (jsName === "constructor") return undefined;
 
@@ -104,7 +104,7 @@ const arrayLengthExpression = (
     if (arrayRef.lengthParameterIndex === undefined) return undefined;
     const lengthField = siblingFields.filter((field) => !field.private)[arrayRef.lengthParameterIndex];
     if (lengthField === undefined) return undefined;
-    return `this.${toIdentifier(toCamelCase(lengthField.name))}`;
+    return `this.${toCamelIdentifier(lengthField.name)}`;
 };
 
 const renderElementReadObject = (context: ModuleContext, fields: readonly GirField[], baseOffset: number): string => {
@@ -112,7 +112,7 @@ const renderElementReadObject = (context: ModuleContext, fields: readonly GirFie
     const entries: string[] = [];
     for (const { field, slot } of slots) {
         if (field.private || field.type === undefined || field.callback !== undefined) continue;
-        const jsName = toIdentifier(toCamelCase(field.name));
+        const jsName = toCamelIdentifier(field.name);
         const offset = baseOffset + slot.byteOffset;
         const nested = resolveInlineStructFields(context, field.type);
         if (nested !== undefined) {
@@ -147,7 +147,7 @@ const appendElementWriteStatements = (context: ModuleContext, options: ElementWr
     const { slots } = computeBoxedFieldSlots(context, fields);
     for (const { field, slot } of slots) {
         if (field.private || field.type === undefined || field.callback !== undefined) continue;
-        const valueExpr = `${valuePath}.${toIdentifier(toCamelCase(field.name))}`;
+        const valueExpr = `${valuePath}.${toCamelIdentifier(field.name)}`;
         const offset = baseOffset + slot.byteOffset;
         const nested = resolveInlineStructFields(context, field.type);
         if (nested !== undefined) {

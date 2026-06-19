@@ -4,6 +4,8 @@
  * pure and runtime-agnostic, intended for code generators that emit TypeScript.
  */
 
+import { toCamelCase } from "./string.js";
+
 /** Reserved words and global identifiers a generated identifier must not collide with. */
 const RESERVED: ReadonlySet<string> = new Set([
     "arguments",
@@ -69,6 +71,19 @@ const RESERVED: ReadonlySet<string> = new Set([
  * @returns A reserved-word-safe identifier.
  */
 export const toIdentifier = (name: string): string => (RESERVED.has(name) ? `${name}_` : name);
+
+/**
+ * Converts a snake_case or kebab-case GIR name to the reserved-word-safe
+ * camelCase JavaScript identifier the generated surface uses.
+ *
+ * Composes {@link toCamelCase} with {@link toIdentifier}, so
+ * `toCamelIdentifier("icon_name")` is `"iconName"` and
+ * `toCamelIdentifier("class")` is `"class_"`.
+ *
+ * @param name - The GIR property, field, parameter, or symbol name.
+ * @returns The camelCased, reserved-word-safe identifier.
+ */
+export const toCamelIdentifier = (name: string): string => toIdentifier(toCamelCase(name));
 
 const UNSAFE_SOURCE_CHARS = /[<>\u2028\u2029]/g;
 

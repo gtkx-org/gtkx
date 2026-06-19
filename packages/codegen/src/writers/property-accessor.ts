@@ -1,4 +1,4 @@
-import { quote, toCamelCase, toIdentifier } from "@gtkx/utils";
+import { quote, toCamelCase, toCamelIdentifier } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
 import type { GirFunction } from "../gir/function.js";
@@ -50,7 +50,7 @@ export const renderPropertyAccessor = (
     claimedNames: ReadonlySet<string>,
     methodByName: ReadonlyMap<string, GirFunction>,
 ): string | undefined => {
-    const jsName = toIdentifier(toCamelCase(property.name));
+    const jsName = toCamelIdentifier(property.name);
     if (claimedNames.has(jsName)) return undefined;
     if (jsName === "constructor") return undefined;
 

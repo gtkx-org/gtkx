@@ -1,4 +1,4 @@
-import { toCamelCase, toIdentifier, toPascalCase } from "@gtkx/utils";
+import { toCamelIdentifier, toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirProperty } from "../gir/property.js";
@@ -97,13 +97,13 @@ export const forEachAncestor = (
  */
 export const collectInterfaceProperties = (context: ModuleContext, klass: GirClass): readonly GirProperty[] => {
     const seen = new Set<string>();
-    for (const property of klass.properties) seen.add(toIdentifier(toCamelCase(property.name)));
+    for (const property of klass.properties) seen.add(toCamelIdentifier(property.name));
     forEachAncestor(context, klass, (ancestor) => {
-        for (const property of ancestor.klass.properties) seen.add(toIdentifier(toCamelCase(property.name)));
+        for (const property of ancestor.klass.properties) seen.add(toCamelIdentifier(property.name));
         for (const implementName of ancestor.klass.implements) {
             const iface = resolveImplementedInterface(context, implementName, ancestor.namespaceName);
             if (iface === undefined) continue;
-            for (const property of iface.klass.properties) seen.add(toIdentifier(toCamelCase(property.name)));
+            for (const property of iface.klass.properties) seen.add(toCamelIdentifier(property.name));
         }
     });
     const result: GirProperty[] = [];
@@ -111,7 +111,7 @@ export const collectInterfaceProperties = (context: ModuleContext, klass: GirCla
         const iface = resolveImplementedInterface(context, implementName);
         if (iface === undefined) continue;
         for (const property of iface.klass.properties) {
-            const name = toIdentifier(toCamelCase(property.name));
+            const name = toCamelIdentifier(property.name);
             if (seen.has(name)) continue;
             seen.add(name);
             result.push({ ...property, type: qualifyTypeRef(property.type, iface.namespaceName) });

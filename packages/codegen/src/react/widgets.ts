@@ -1,4 +1,4 @@
-import { toCamelCase, toIdentifier, toUpperFirst } from "@gtkx/utils";
+import { toCamelIdentifier, toUpperFirst } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import { splitQualifiedName } from "../gir/qualified-name.js";
@@ -10,8 +10,7 @@ import type { GirRepository } from "../gir/repository.js";
  *
  * @param signalName - The GIR signal name
  */
-export const signalHandlerName = (signalName: string): string =>
-    `on${toUpperFirst(toIdentifier(toCamelCase(signalName)))}`;
+export const signalHandlerName = (signalName: string): string => `on${toUpperFirst(toCamelIdentifier(signalName))}`;
 
 /** A class qualified by its declaring namespace and the GLib type name it exposes. */
 export type WidgetCandidate = {

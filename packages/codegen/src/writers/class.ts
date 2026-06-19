@@ -1,4 +1,4 @@
-import { toCamelCase, toPascalCase } from "@gtkx/utils";
+import { toCamelCase, toLowerFirst, toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
 import { bindingIdentifier } from "../dsl/identifier.js";
@@ -134,7 +134,7 @@ const appendInstanceMethods = (options: AppendInstanceMethodsOptions): void => {
  * `<lowerClassName><MethodName>` (e.g. `iconViewSetCursor`).
  */
 const conflictingMethodName = (className: string, methodName: string): string =>
-    `${className.charAt(0).toLowerCase()}${className.slice(1)}${toPascalCase(methodName)}`;
+    `${toLowerFirst(className)}${toPascalCase(methodName)}`;
 
 type AppendFlattenedInterfaceMethodsOptions = {
     readonly context: ModuleContext;

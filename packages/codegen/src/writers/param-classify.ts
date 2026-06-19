@@ -1,4 +1,4 @@
-import { toCamelCase, toIdentifier } from "@gtkx/utils";
+import { toCamelIdentifier } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import type { GirFunction } from "../gir/function.js";
 import { type GirParameter, isCallerAllocatedOut, isInoutParameter, isOutParameter } from "../gir/parameter.js";
@@ -227,7 +227,7 @@ export const isHandlePassing = (context: ModuleContext, ref: GirTypeRef): boolea
  */
 export const parameterIdentifier = (parameter: GirParameter, index: number): string => {
     if (parameter.name.length === 0) return `arg${index}`;
-    return toIdentifier(toCamelCase(parameter.name));
+    return toCamelIdentifier(parameter.name);
 };
 
 /**

@@ -25,6 +25,7 @@
 import { CONTAINER_PROPS, ELEMENT_MAP } from "virtual:gtkx-config";
 import type { ElementMapRule, MethodVerb, OrderedInsertVerb, VerbArgs } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
+import { toLowerFirst } from "@gtkx/utils";
 import { collectTypeNameChain, typeChainIncludes } from "../utils/gtype.js";
 import { notifyOrderedAttach } from "./attach-events.js";
 import type { ElementMapping } from "./element-mapping.js";
@@ -257,7 +258,7 @@ const SETTER_PREFIX = "set";
 
 const propertyNameForSetter = (method: string): string | null =>
     method.startsWith(SETTER_PREFIX) && method.length > SETTER_PREFIX.length
-        ? method.charAt(SETTER_PREFIX.length).toLowerCase() + method.slice(SETTER_PREFIX.length + 1)
+        ? toLowerFirst(method.slice(SETTER_PREFIX.length))
         : null;
 
 /**
