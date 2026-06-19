@@ -1,3 +1,4 @@
+export { createRootElement, type RootElement } from "@gtkx/react";
 export type { Config } from "./config.js";
 export { configure, getConfig } from "./config.js";
 export { fireEvent } from "./fire-event.js";

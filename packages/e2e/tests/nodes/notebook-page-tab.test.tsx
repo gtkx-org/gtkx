@@ -72,7 +72,7 @@ describe("render - NotebookPageTab > NotebookPageTabNode (2)", () => {
         const contentRef = createRef<Gtk.Label>();
         const tabRef = createRef<Gtk.Label>();
 
-        await render(
+        const { rerender } = await render(
             <SingleTabPage
                 notebookRef={notebookRef}
                 contentRef={contentRef}
@@ -82,7 +82,7 @@ describe("render - NotebookPageTab > NotebookPageTabNode (2)", () => {
         let tabLabel = notebookRef.current?.getTabLabel(contentRef.current as Gtk.Widget) as Gtk.Label;
         expect(tabLabel?.getLabel()).toBe("Initial");
 
-        await render(
+        await rerender(
             <SingleTabPage
                 notebookRef={notebookRef}
                 contentRef={contentRef}
@@ -165,7 +165,7 @@ describe("render - NotebookPageTab > NotebookPageTabNode (5)", () => {
             return <GtkLabel ref={tabRef} label={text} />;
         }
 
-        await render(
+        const { rerender } = await render(
             <SingleTabPage
                 notebookRef={notebookRef}
                 contentRef={contentRef}
@@ -176,7 +176,7 @@ describe("render - NotebookPageTab > NotebookPageTabNode (5)", () => {
         expect(tabLabel && tabRef.current && tabLabel === tabRef.current).toBe(true);
         expect((tabLabel as Gtk.Label)?.getLabel()).toBe("From Component");
 
-        await render(
+        await rerender(
             <SingleTabPage
                 notebookRef={notebookRef}
                 contentRef={contentRef}
@@ -192,12 +192,14 @@ describe("render - NotebookPageTab > NotebookPageTabNode (5)", () => {
         const notebookRef = createRef<Gtk.Notebook>();
         const contentRef = createRef<Gtk.Label>();
 
-        await render(<SingleTabPage notebookRef={notebookRef} contentRef={contentRef} label="String Tab" />);
+        const { rerender } = await render(
+            <SingleTabPage notebookRef={notebookRef} contentRef={contentRef} label="String Tab" />,
+        );
         let tabLabel = notebookRef.current?.getTabLabel(contentRef.current as Gtk.Widget) as Gtk.Label;
         const firstTab = tabLabel;
         expect(tabLabel?.getLabel()).toBe("String Tab");
 
-        await render(<SingleTabPage notebookRef={notebookRef} contentRef={contentRef} label="String Tab Updated" />);
+        await rerender(<SingleTabPage notebookRef={notebookRef} contentRef={contentRef} label="String Tab Updated" />);
         tabLabel = notebookRef.current?.getTabLabel(contentRef.current as Gtk.Widget) as Gtk.Label;
         expect(tabLabel).toBe(firstTab);
         expect(tabLabel?.getLabel()).toBe("String Tab Updated");

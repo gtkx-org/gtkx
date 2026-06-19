@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
-import { render } from "@gtkx/react";
+import { createRoot } from "@gtkx/react";
 import { screenshot } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -13,7 +13,7 @@ describe("screenshot outside the act environment", () => {
     it("captures a presented window rendered through the production render", async () => {
         const windowRef = createRef<Gtk.ApplicationWindow>();
 
-        render(
+        createRoot().render(
             <GtkApplication applicationId="org.gtkx.screenshot-real" flags={Gio.ApplicationFlags.NON_UNIQUE}>
                 <GtkApplicationWindow ref={windowRef} defaultWidth={200} defaultHeight={120}>
                     <GtkLabel label="Shot" />

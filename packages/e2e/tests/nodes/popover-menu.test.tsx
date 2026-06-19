@@ -1,9 +1,15 @@
+import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
-import { GtkApplicationWindow, GtkMenuButton, GtkPopoverMenu } from "@gtkx/jsx/gtk";
-import { render } from "@gtkx/testing";
+import { GtkApplication, GtkApplicationWindow, GtkMenuButton, GtkPopoverMenu } from "@gtkx/jsx/gtk";
+import { createRootElement, render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
+
+const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
+
+let nextAppId = 0;
+const uniqueAppId = (): string => `org.gtkx.popovermenutest${nextAppId++}`;
 
 describe("render - PopoverMenu widget integration", () => {
     it("creates a PopoverMenu widget", async () => {
@@ -55,9 +61,15 @@ describe("render - PopoverMenu actions", () => {
         const onActivate = vi.fn();
 
         await render(
-            <GtkApplicationWindow ref={windowRef} addAction={<GSimpleAction name="click" onActivate={onActivate} />}>
-                <GtkPopoverMenu menuModel={<GMenu items={[{ label: "Click Me", action: "win.click" }]} />} />
-            </GtkApplicationWindow>,
+            <GtkApplication applicationId={uniqueAppId()} flags={APP_FLAGS}>
+                <GtkApplicationWindow
+                    ref={windowRef}
+                    addAction={<GSimpleAction name="click" onActivate={onActivate} />}
+                >
+                    <GtkPopoverMenu menuModel={<GMenu items={[{ label: "Click Me", action: "win.click" }]} />} />
+                </GtkApplicationWindow>
+            </GtkApplication>,
+            { container: createRootElement() },
         );
 
         expect(windowRef.current?.activateAction("win.click", null)).toBe(true);
@@ -67,19 +79,23 @@ describe("render - PopoverMenu actions", () => {
     it("removes a menu item's action when it unmounts", async () => {
         const windowRef = createRef<Gtk.ApplicationWindow>();
 
+        const appId = uniqueAppId();
+
         function App({ enabled }: { enabled: boolean }) {
             return (
-                <GtkApplicationWindow
-                    ref={windowRef}
-                    addAction={enabled && <GSimpleAction name="toggle" onActivate={() => {}} />}
-                />
+                <GtkApplication applicationId={appId} flags={APP_FLAGS}>
+                    <GtkApplicationWindow
+                        ref={windowRef}
+                        addAction={enabled && <GSimpleAction name="toggle" onActivate={() => {}} />}
+                    />
+                </GtkApplication>
             );
         }
 
-        await render(<App enabled={true} />);
+        const { rerender } = await render(<App enabled={true} />, { container: createRootElement() });
         expect(windowRef.current?.hasAction("toggle")).toBe(true);
 
-        await render(<App enabled={false} />);
+        await rerender(<App enabled={false} />);
         expect(windowRef.current?.hasAction("toggle")).toBe(false);
     });
 });

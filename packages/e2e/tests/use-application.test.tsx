@@ -1,7 +1,11 @@
-import { GtkApplicationWindow } from "@gtkx/jsx/gtk";
+import * as Gio from "@gtkx/gi/gio";
+import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { ApplicationContext, useApplication } from "@gtkx/react";
-import { render } from "@gtkx/testing";
+import { createRootElement, render } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
+
+let nextAppId = 0;
+const uniqueAppId = (): string => `org.gtkx.useapplicationtest${nextAppId++}`;
 
 describe("useApplication", () => {
     it("returns the GTK application provided by ApplicationContext", async () => {
@@ -12,7 +16,12 @@ describe("useApplication", () => {
             return <GtkApplicationWindow defaultWidth={100} defaultHeight={100} />;
         };
 
-        await render(<Probe />, { wrapper: false });
+        await render(
+            <GtkApplication applicationId={uniqueAppId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+                <Probe />
+            </GtkApplication>,
+            { container: createRootElement() },
+        );
 
         expect(captured).not.toBeNull();
         expect(typeof (captured as { register?: unknown }).register).toBe("function");
@@ -29,7 +38,7 @@ describe("useApplication", () => {
                 <ApplicationContext.Provider value={null}>
                     <Probe />
                 </ApplicationContext.Provider>,
-                { wrapper: false },
+                { container: createRootElement() },
             ),
         ).rejects.toThrow(/useApplication must be called within Application/);
     });

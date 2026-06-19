@@ -3,8 +3,8 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { GMenu } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import type { MenuEntry } from "@gtkx/react";
-import { render } from "@gtkx/testing";
-import { createRef, type ReactNode, type RefObject } from "react";
+import { createRootElement, render } from "@gtkx/testing";
+import { createRef, type ReactElement, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 
 const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
@@ -19,16 +19,18 @@ const MenubarApp = ({
 }: {
     appRef: RefObject<Gtk.Application | null>;
     appId: string;
-    menubar: ReactNode;
+    menubar: ReactElement | null;
 }): ReactNode => (
     <GtkApplication ref={appRef} applicationId={appId} flags={APP_FLAGS} menubar={menubar}>
         <GtkApplicationWindow defaultWidth={800} defaultHeight={600} />
     </GtkApplication>
 );
 
-const renderApp = async (menubar: ReactNode): Promise<Gtk.Application> => {
+const renderApp = async (menubar: ReactElement | null): Promise<Gtk.Application> => {
     const ref = createRef<Gtk.Application>();
-    await render(<MenubarApp appRef={ref} appId={uniqueAppId()} menubar={menubar} />, { wrapper: false });
+    await render(<MenubarApp appRef={ref} appId={uniqueAppId()} menubar={menubar} />, {
+        container: createRootElement(),
+    });
     if (!ref.current) throw new Error("Expected application instance");
     return ref.current;
 };
@@ -62,7 +64,7 @@ describe("render - Application", () => {
             const fileMenu = <GMenu items={[{ label: "File", submenu: [{ label: "New", action: "win.new" }] }]} />;
 
             const { rerender } = await render(<MenubarApp appRef={ref} appId={appId} menubar={fileMenu} />, {
-                wrapper: false,
+                container: createRootElement(),
             });
             expect(ref.current?.getMenubar()).not.toBeNull();
 
@@ -73,14 +75,14 @@ describe("render - Application", () => {
         it("updates menubar when items change", async () => {
             const ref = createRef<Gtk.Application>();
             const appId = uniqueAppId();
-            const fileMenu = (items: string[]): ReactNode => {
+            const fileMenu = (items: string[]): ReactElement => {
                 const submenu: MenuEntry[] = items.map((label) => ({ label, action: `win.${label}` }));
                 return <GMenu items={[{ label: "File", submenu }]} />;
             };
 
             const { rerender } = await render(
                 <MenubarApp appRef={ref} appId={appId} menubar={fileMenu(["New", "Open"])} />,
-                { wrapper: false },
+                { container: createRootElement() },
             );
             expect(ref.current?.getMenubar()?.getItemLink(0, "submenu")?.getNItems()).toBe(2);
 

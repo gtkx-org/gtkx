@@ -6,16 +6,17 @@ import { bindQueries } from "./bind-queries.js";
 import { prettyWidget } from "./pretty-widget.js";
 import { logRoles } from "./role-helpers.js";
 import { screenshot as captureScreenshot, type ScreenshotOptions } from "./screenshot.js";
+import type { Container } from "./traversal.js";
 import type { BoundQueries, ScreenshotResult } from "./types.js";
 
-let currentRoot: Gtk.Application | null = null;
+let currentRoot: Container | null = null;
 
-/** Sets the application the `screen` queries operate against; called by `render`. */
-export const setScreenRoot = (root: Gtk.Application | null): void => {
+/** Sets the scope the `screen` queries operate against; called by `render`. */
+export const setScreenRoot = (root: Container | null): void => {
     currentRoot = root;
 };
 
-const getRoot = (): Gtk.Application => {
+const getRoot = (): Container => {
     if (!currentRoot) {
         throw new Error("No render has been performed: call render() before using screen queries");
     }

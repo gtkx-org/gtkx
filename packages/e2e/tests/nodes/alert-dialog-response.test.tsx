@@ -1,11 +1,11 @@
 import * as Adw from "@gtkx/gi/adw";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
-import { render } from "@gtkx/testing";
+import { createRootElement, render } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 import { renderChildren } from "../helpers/render-children.js";
 
-const options = { wrapper: false } as const;
+const options = () => ({ container: createRootElement() });
 
 type Response = { id: string; label: string };
 
@@ -17,7 +17,7 @@ describe("render - AlertDialogResponse > AlertDialogNode (1)", () => {
     it("creates AlertDialog without responses", async () => {
         const ref = createRef<Adw.AlertDialog>();
 
-        await render(<AdwAlertDialog ref={ref} heading="Test" />, options);
+        await render(<AdwAlertDialog ref={ref} heading="Test" />, options());
 
         expect(ref.current).not.toBeNull();
         expect(ref.current?.hasResponse("any")).toBe(false);
@@ -35,7 +35,7 @@ describe("render - AlertDialogResponse > AlertDialogNode (1)", () => {
                     { id: "confirm", label: "Confirm" },
                 ]}
             />,
-            options,
+            options(),
         );
 
         expect(ref.current?.hasResponse("cancel")).toBe(true);
@@ -47,7 +47,7 @@ describe("render - AlertDialogResponse > AlertDialogNode (1)", () => {
 
         await render(
             <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "ok", label: "OK Button" }]} />,
-            options,
+            options(),
         );
 
         expect(ref.current?.getResponseLabel("ok")).toBe("OK Button");
@@ -68,7 +68,7 @@ describe("render - AlertDialogResponse > AlertDialogNode (2)", () => {
                     { id: "destructive", label: "Delete", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
                 ]}
             />,
-            options,
+            options(),
         );
 
         expect(ref.current?.getResponseAppearance("default")).toBe(Adw.ResponseAppearance.DEFAULT);
@@ -88,7 +88,7 @@ describe("render - AlertDialogResponse > AlertDialogNode (2)", () => {
                     { id: "disabled", label: "Disabled", enabled: false },
                 ]}
             />,
-            options,
+            options(),
         );
 
         expect(ref.current?.getResponseEnabled("enabled")).toBe(true);
@@ -104,10 +104,10 @@ describe("render - AlertDialogResponse > AlertDialogNode (3)", () => {
             return <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label }]} />;
         }
 
-        await render(<App label="Initial" />, options);
+        await render(<App label="Initial" />, options());
         expect(ref.current?.getResponseLabel("test")).toBe("Initial");
 
-        await render(<App label="Updated" />, options);
+        await render(<App label="Updated" />, options());
         expect(ref.current?.getResponseLabel("test")).toBe("Updated");
     });
 
@@ -118,10 +118,10 @@ describe("render - AlertDialogResponse > AlertDialogNode (3)", () => {
             return <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label: "Test", appearance }]} />;
         }
 
-        await render(<App appearance={Adw.ResponseAppearance.DEFAULT} />, options);
+        await render(<App appearance={Adw.ResponseAppearance.DEFAULT} />, options());
         expect(ref.current?.getResponseAppearance("test")).toBe(Adw.ResponseAppearance.DEFAULT);
 
-        await render(<App appearance={Adw.ResponseAppearance.DESTRUCTIVE} />, options);
+        await render(<App appearance={Adw.ResponseAppearance.DESTRUCTIVE} />, options());
         expect(ref.current?.getResponseAppearance("test")).toBe(Adw.ResponseAppearance.DESTRUCTIVE);
     });
 
@@ -132,10 +132,10 @@ describe("render - AlertDialogResponse > AlertDialogNode (3)", () => {
             return <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label: "Test", enabled }]} />;
         }
 
-        await render(<App enabled={true} />, options);
+        await render(<App enabled={true} />, options());
         expect(ref.current?.getResponseEnabled("test")).toBe(true);
 
-        await render(<App enabled={false} />, options);
+        await render(<App enabled={false} />, options());
         expect(ref.current?.getResponseEnabled("test")).toBe(false);
     });
 });
@@ -150,7 +150,7 @@ describe("render - AlertDialogResponse > AlertDialogNode (4)", () => {
                 { id: "extra", label: "Extra" },
             ],
             buildAlertDialog(ref),
-            options,
+            options(),
         );
         expect(ref.current?.hasResponse("always")).toBe(true);
         expect(ref.current?.hasResponse("extra")).toBe(true);
@@ -169,7 +169,7 @@ describe("render - AlertDialogResponse > AlertDialogNode (4)", () => {
                 { id: "last", label: "Last" },
             ],
             buildAlertDialog(ref),
-            options,
+            options(),
         );
         expect(ref.current?.hasResponse("first")).toBe(true);
         expect(ref.current?.hasResponse("middle")).toBe(false);

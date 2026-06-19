@@ -1,19 +1,26 @@
-import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkApplicationWindow } from "@gtkx/jsx/gtk";
-import { ApplicationContext, reconciler, setReconcilerErrorHandler } from "@gtkx/react";
+import { isRootElement, type RootElement, reconciler, setReconcilerErrorHandler } from "@gtkx/react";
 import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
 import { bindQueries } from "./bind-queries.js";
 import { prettyWidget } from "./pretty-widget.js";
 import { setScreenRoot } from "./screen.js";
 import { act } from "./timing.js";
-import { type Container, isApplication, traverse } from "./traversal.js";
-import type { RenderOptions, RenderResult, WrapperComponent } from "./types.js";
+import { type Container, TOPLEVELS, traverse } from "./traversal.js";
+import type { RenderOptions, RenderResult } from "./types.js";
 
-let application: Gtk.Application | null = null;
-let container: Reconciler.FiberRoot | null = null;
 let lastRenderError: Error | null = null;
+let errorHandlerInstalled = false;
+
+type ActiveRender = {
+    root: Reconciler.FiberRoot;
+    window: Gtk.Window | null;
+};
+
+const activeRenders = new Set<ActiveRender>();
+
+const HARNESS_WINDOW_WIDTH = 800;
+const HARNESS_WINDOW_HEIGHT = 600;
 
 const update = async (element: ReactNode, fiberRoot: Reconciler.FiberRoot): Promise<void> => {
     await act(() => {
@@ -31,78 +38,61 @@ const handleError = (error: unknown): void => {
     lastRenderError = error instanceof Error ? error : new Error(String(error));
 };
 
-/**
- * The harness application's fixed id. Deliberately distinct from the
- * project's `applicationId`: a component under test may pass the configured
- * id from `@gtkx/config/runtime`, and two same-id `Gtk.Application` instances
- * in one process collide on the D-Bus object path GTK derives from the id
- * (breaking menubar export, among others).
- */
-const TESTING_APPLICATION_ID = "org.gtkx.testing";
-
-const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.FiberRoot } => {
-    if (!application) {
-        application = new Gtk.Application({
-            applicationId: TESTING_APPLICATION_ID,
-            flags: Gio.ApplicationFlags.NON_UNIQUE,
-        });
-        application.register(null);
-        application.on("activate", () => {});
-        application.activate();
-    }
-
-    if (!container) {
-        setReconcilerErrorHandler(handleError);
-        container = reconciler.createContainer(
-            application,
-            1,
-            null,
-            false,
-            null,
-            "",
-            handleError,
-            handleError,
-            () => {},
-            () => {},
-        );
-    }
-
-    return { app: application, container };
+const installErrorHandler = (): void => {
+    if (errorHandlerInstalled) return;
+    setReconcilerErrorHandler(handleError);
+    errorHandlerInstalled = true;
 };
 
-const DefaultWrapper: WrapperComponent = ({ children }) => (
-    <GtkApplicationWindow defaultWidth={800} defaultHeight={600}>
-        {children}
-    </GtkApplicationWindow>
-);
+type ResolvedContainer = {
+    containerInfo: Gtk.Widget | RootElement;
+    window: Gtk.Window | null;
+};
 
-const resolveContainer = (baseElement: Container): Gtk.Widget => {
-    if (isApplication(baseElement)) {
-        const [firstWindow] = baseElement.getWindows();
-        if (firstWindow) return firstWindow;
-        const iterator = traverse(baseElement)[Symbol.iterator]();
-        const first = iterator.next();
-        if (!first.done) return first.value;
-        throw new Error("render() produced no widgets: ensure the element renders visible content");
+const resolveContainer = (container: RenderOptions["container"]): ResolvedContainer => {
+    if (isRootElement(container)) {
+        return { containerInfo: container, window: null };
     }
+    if (container instanceof Gtk.Widget) {
+        return { containerInfo: container, window: null };
+    }
+    const window = new Gtk.Window({ defaultWidth: HARNESS_WINDOW_WIDTH, defaultHeight: HARNESS_WINDOW_HEIGHT });
+    return { containerInfo: window, window };
+};
+
+const firstWidget = (baseElement: Container): Gtk.Widget => {
     if (baseElement instanceof Gtk.Widget) return baseElement;
+    for (const widget of traverse(baseElement)) return widget;
     throw new Error("render() produced no widgets: ensure the element renders visible content");
 };
 
-const wrapElement = (element: ReactNode, wrapper: RenderOptions["wrapper"]): ReactNode => {
-    if (wrapper === false || wrapper === undefined) return element;
-    const Wrapper = wrapper === true ? DefaultWrapper : wrapper;
-    return <Wrapper>{element}</Wrapper>;
+const resultContainer = (
+    resolved: ResolvedContainer,
+    container: RenderOptions["container"],
+    baseElement: Container,
+): Gtk.Widget => {
+    if (resolved.window) return resolved.window;
+    if (container instanceof Gtk.Widget) return container;
+    return firstWidget(baseElement);
 };
 
 /**
  * Renders a React element for testing.
  *
- * Creates a GTK application context and renders the element, returning
- * query methods and utilities for interacting with the rendered widgets.
+ * Mounts the element into a fresh, presented `Gtk.Window` by default — the
+ * GTK analogue of Testing Library's default container — so a component renders
+ * into a real window queries and screenshots can reach. Pass `container` to
+ * change the mount: a specific widget to render into it, or a token from
+ * {@link createRootElement} to render a top-level element (a `GtkApplication`/
+ * `AdwApplication` or a window) directly at the reconciler root with no host
+ * window. A user `wrapper` is applied around the element and re-applied on every
+ * `rerender`.
+ *
+ * The harness owns no application: a component that needs one renders its own
+ * (with `container: createRootElement()`) or supplies it through a `wrapper`.
  *
  * @param element - The React element to render
- * @param options - Render options including wrapper configuration
+ * @param options - Render options: `container`, `baseElement`, and `wrapper`
  * @returns A promise resolving to query methods and utilities
  *
  * @example
@@ -116,32 +106,63 @@ const wrapElement = (element: ReactNode, wrapper: RenderOptions["wrapper"]): Rea
  * });
  * ```
  *
+ * @example
+ * ```tsx
+ * import { createRootElement, render } from "@gtkx/testing";
+ *
+ * test("renders its own application", async () => {
+ *   await render(<MyApp />, { container: createRootElement() });
+ * });
+ * ```
+ *
  * @see {@link cleanup} for cleaning up after tests
  * @see {@link screen} for global query access
  */
 export const render = async (element: ReactNode, options?: RenderOptions): Promise<RenderResult> => {
-    const { app: application, container: fiberRoot } = ensureInitialized();
-    const baseElement: Container = options?.baseElement ?? application;
-    const wrapper = options?.wrapper ?? true;
+    installErrorHandler();
 
-    const wrappedElement = wrapElement(element, wrapper);
-    const withContext = <ApplicationContext.Provider value={application}>{wrappedElement}</ApplicationContext.Provider>;
-    await update(withContext, fiberRoot);
+    const baseElement: Container = options?.baseElement ?? TOPLEVELS;
+    const Wrapper = options?.wrapper;
 
-    setScreenRoot(application);
+    const resolved = resolveContainer(options?.container);
+    const fiberRoot = reconciler.createContainer(
+        resolved.containerInfo,
+        1,
+        null,
+        false,
+        null,
+        "",
+        handleError,
+        handleError,
+        () => {},
+        () => {},
+    );
+    const active: ActiveRender = { root: fiberRoot, window: resolved.window };
+    activeRenders.add(active);
+
+    const wrap = (node: ReactNode): ReactNode => (Wrapper ? <Wrapper>{node}</Wrapper> : node);
+
+    await update(wrap(element), fiberRoot);
+    resolved.window?.present();
+
+    setScreenRoot(baseElement);
 
     return {
-        container: resolveContainer(baseElement),
-        baseElement,
         ...bindQueries(baseElement),
-        unmount: () => update(null, fiberRoot),
+        get container(): Gtk.Widget {
+            return resultContainer(resolved, options?.container, baseElement);
+        },
+        baseElement,
+        unmount: async () => {
+            if (!activeRenders.delete(active)) return;
+            await update(null, fiberRoot);
+            resolved.window?.destroy();
+        },
         rerender: async (newElement: ReactNode) => {
-            const wrapped = wrapElement(newElement, wrapper);
-            const withCtx = <ApplicationContext.Provider value={application}>{wrapped}</ApplicationContext.Provider>;
-            await update(withCtx, fiberRoot);
+            await update(wrap(newElement), fiberRoot);
         },
         debug: () => {
-            console.log(prettyWidget(application));
+            console.log(prettyWidget(baseElement));
         },
     };
 };
@@ -149,8 +170,9 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
 /**
  * Cleans up the rendered component tree.
  *
- * Unmounts all rendered components and resets the testing environment.
- * Call this in `afterEach` to ensure tests don't affect each other.
+ * Unmounts every tree rendered since the last cleanup and destroys the host
+ * windows the harness created for them. Call this in `afterEach` to ensure
+ * tests don't affect each other.
  *
  * @example
  * ```tsx
@@ -166,9 +188,10 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
  * ```
  */
 export const cleanup = async (): Promise<void> => {
-    if (container && application) {
-        await update(null, container);
+    for (const active of activeRenders) {
+        await update(null, active.root);
+        active.window?.destroy();
     }
-    container = null;
+    activeRenders.clear();
     setScreenRoot(null);
 };

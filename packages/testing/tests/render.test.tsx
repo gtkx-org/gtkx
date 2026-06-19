@@ -1,7 +1,11 @@
+import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { createContext, type ReactNode, useContext } from "react";
 import { describe, expect, it } from "vitest";
-import { cleanup, render, type WrapperComponent } from "../src/index.js";
+import { cleanup, createRootElement, render, type WrapperComponent } from "../src/index.js";
+
+const NON_UNIQUE = Gio.ApplicationFlags.NON_UNIQUE;
 
 describe("render basics", () => {
     it("renders a simple element", async () => {
@@ -18,91 +22,118 @@ describe("render basics", () => {
             </GtkBox>,
         );
 
-        const button = await findByRole(Gtk.AccessibleRole.BUTTON, { name: "First" });
-        const label = await findByText("Second");
-
-        expect(button).toBeDefined();
-        expect(label).toBeDefined();
+        expect(await findByRole(Gtk.AccessibleRole.BUTTON, { name: "First" })).toBeDefined();
+        expect(await findByText("Second")).toBeDefined();
     });
 
-    it("returns container as the wrapper widget", async () => {
+    it("mounts into a fresh Gtk.Window container by default", async () => {
         const { container } = await render(<GtkButton label="Test" />);
-        expect(container).toBeDefined();
-        expect(container).toBeInstanceOf(Gtk.ApplicationWindow);
+        expect(container).toBeInstanceOf(Gtk.Window);
     });
 
-    it("returns baseElement as the GTK Application by default", async () => {
-        const { baseElement } = await render(<GtkLabel label="Test" />);
-        expect(baseElement).toBeDefined();
-        expect((baseElement as Gtk.Application).getApplicationId()).toMatch(/org\.gtkx\.testing/);
+    it("makes the default container queryable as a WINDOW", async () => {
+        const { findByRole } = await render(<GtkButton label="Test" />);
+        expect(await findByRole(Gtk.AccessibleRole.WINDOW)).toBeDefined();
+    });
+});
+
+describe("render container", () => {
+    it("renders a top-level element directly at the reconciler root", async () => {
+        const { findByRole } = await render(
+            <GtkApplication applicationId="org.gtkx.rendertest" flags={NON_UNIQUE}>
+                <GtkApplicationWindow title="Own Window">
+                    <GtkButton label="Inside" />
+                </GtkApplicationWindow>
+            </GtkApplication>,
+            { container: createRootElement() },
+        );
+
+        expect(await findByRole(Gtk.AccessibleRole.WINDOW, { name: "Own Window" })).toBeDefined();
+        expect(await findByRole(Gtk.AccessibleRole.BUTTON, { name: "Inside" })).toBeDefined();
+    });
+
+    it("mounts into a provided widget container", async () => {
+        const host = new Gtk.Window({ defaultWidth: 200, defaultHeight: 120 });
+        const box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
+        host.setChild(box);
+        host.present();
+
+        const { container, findByRole } = await render(<GtkButton label="Into Box" />, { container: box });
+
+        expect(container).toBe(box);
+        expect(await findByRole(Gtk.AccessibleRole.BUTTON, { name: "Into Box" })).toBeDefined();
+        host.destroy();
     });
 });
 
 describe("render wrapper", () => {
-    it("wraps element in ApplicationWindow by default", async () => {
-        const { findByRole } = await render(<GtkButton label="Test" />);
-        const window = await findByRole(Gtk.AccessibleRole.WINDOW);
-        expect(window).toBeDefined();
+    it("applies a context-provider wrapper around the element", async () => {
+        const Context = createContext("default");
+        const Provider: WrapperComponent = ({ children }) => (
+            <Context.Provider value="wrapped">{children}</Context.Provider>
+        );
+        let seen = "default";
+        const Probe = (): ReactNode => {
+            seen = useContext(Context);
+            return <GtkLabel label="probe" />;
+        };
+
+        await render(<Probe />, { wrapper: Provider });
+        expect(seen).toBe("wrapped");
     });
 
-    it("does not wrap when wrapper is false", async () => {
-        const { findByRole } = await render(
-            <GtkApplicationWindow>
-                <GtkButton label="Test" />
-            </GtkApplicationWindow>,
-            { wrapper: false },
+    it("re-applies the wrapper on rerender", async () => {
+        const Context = createContext("default");
+        const Provider: WrapperComponent = ({ children }) => (
+            <Context.Provider value="wrapped">{children}</Context.Provider>
         );
+        const seen: string[] = [];
+        const Probe = ({ tag }: { tag: string }): ReactNode => {
+            seen.push(`${tag}:${useContext(Context)}`);
+            return <GtkLabel label={tag} />;
+        };
 
-        const windows = await findByRole(Gtk.AccessibleRole.WINDOW);
-        expect(windows).toBeDefined();
-    });
+        const { rerender, findByText } = await render(<Probe tag="first" />, { wrapper: Provider });
+        await findByText("first");
+        await rerender(<Probe tag="second" />);
+        await findByText("second");
 
-    it("uses custom wrapper component", async () => {
-        const CustomWrapper: WrapperComponent = ({ children }) => (
-            <GtkApplicationWindow title="Custom Title">{children}</GtkApplicationWindow>
-        );
-
-        const { findByRole, container } = await render(<GtkButton label="Test" />, { wrapper: CustomWrapper });
-        const window = await findByRole(Gtk.AccessibleRole.WINDOW, { name: "Custom Title" });
-        expect(window).toBeDefined();
-        expect(container).toBeInstanceOf(Gtk.ApplicationWindow);
+        expect(seen).toContain("first:wrapped");
+        expect(seen).toContain("second:wrapped");
     });
 });
 
 describe("render lifecycle", () => {
-    it("provides rerender function to update content", async () => {
+    it("rerender updates content", async () => {
         const { findByText, rerender } = await render(<GtkLabel label="Initial" />);
 
         await findByText("Initial");
         await rerender(<GtkLabel label="Updated" />);
 
-        const updatedLabel = await findByText("Updated");
-        expect(updatedLabel).toBeDefined();
+        expect(await findByText("Updated")).toBeDefined();
     });
 
-    it("provides unmount function to remove content", async () => {
-        const { baseElement, findByRole, unmount } = await render(<GtkButton label="Test" />);
+    it("unmount removes content and destroys the host window", async () => {
+        const { container, findByRole, unmount } = await render(<GtkButton label="Test" />);
 
         await findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
         await unmount();
 
-        const activeWindow = (baseElement as Gtk.Application).getActiveWindow();
-        expect(activeWindow).toBeNull();
+        expect(Gtk.Window.listToplevels()).not.toContain(container);
     });
 
-    it("provides debug function", async () => {
+    it("provides a debug function", async () => {
         const { debug } = await render(<GtkButton label="Debug Test" />);
         expect(typeof debug).toBe("function");
     });
 });
 
 describe("cleanup", () => {
-    it("removes rendered content", async () => {
-        const { baseElement } = await render(<GtkButton label="Test" />);
+    it("removes rendered content and host windows", async () => {
+        const { container } = await render(<GtkButton label="Test" />);
         await cleanup();
 
-        const windows = (baseElement as Gtk.Application).getWindows();
-        expect(windows.length).toBe(0);
+        expect(Gtk.Window.listToplevels()).not.toContain(container);
     });
 
     it("allows rendering again after cleanup", async () => {
@@ -112,7 +143,6 @@ describe("cleanup", () => {
         await cleanup();
 
         const { findByText: findByText2 } = await render(<GtkLabel label="Second" />);
-        const label = await findByText2("Second");
-        expect(label).toBeDefined();
+        expect(await findByText2("Second")).toBeDefined();
     });
 });

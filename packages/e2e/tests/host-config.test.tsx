@@ -1,8 +1,13 @@
+import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkApplicationWindow, GtkBox, GtkButton, GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
-import { render, screen, within } from "@gtkx/testing";
-import { createRef, type RefObject } from "react";
+import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
+import { createRootElement, render, screen, within } from "@gtkx/testing";
+import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
+
+let nextAppId = 0;
+const uniqueAppId = (): string => `org.gtkx.hostconfigtest${nextAppId++}`;
+
 import { renderChildren } from "./helpers/render-children.js";
 import { getChildTexts } from "./helpers/widget-text.js";
 
@@ -118,19 +123,29 @@ describe("host-config - children (4)", () => {
         it("renders root level window", async () => {
             const windowRef = createRef<Gtk.ApplicationWindow>();
 
-            await render(<GtkApplicationWindow ref={windowRef} title="Root Container" />, { wrapper: false });
+            await render(
+                <GtkApplication applicationId={uniqueAppId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+                    <GtkApplicationWindow ref={windowRef} title="Root Container" />
+                </GtkApplication>,
+                { container: createRootElement() },
+            );
 
             expect(windowRef.current).not.toBeNull();
         });
 
         it("removes root level window", async () => {
             const windowRef = createRef<Gtk.ApplicationWindow>();
+            const appId = uniqueAppId();
 
-            function App({ showWindow }: { showWindow: boolean }) {
-                return showWindow ? <GtkApplicationWindow ref={windowRef} title="Window" /> : null;
+            function App({ showWindow }: { showWindow: boolean }): ReactNode {
+                return (
+                    <GtkApplication applicationId={appId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+                        {showWindow ? <GtkApplicationWindow ref={windowRef} title="Window" /> : null}
+                    </GtkApplication>
+                );
             }
 
-            const { rerender } = await render(<App showWindow={true} />, { wrapper: false });
+            const { rerender } = await render(<App showWindow={true} />, { container: createRootElement() });
 
             expect(windowRef.current).not.toBeNull();
 
@@ -140,18 +155,19 @@ describe("host-config - children (4)", () => {
         it("inserts root level window before sibling", async () => {
             const window1Ref = createRef<Gtk.ApplicationWindow>();
             const window2Ref = createRef<Gtk.ApplicationWindow>();
+            const appId = uniqueAppId();
 
-            function App({ windows }: { windows: string[] }) {
+            function App({ windows }: { windows: string[] }): ReactNode {
                 return (
-                    <>
+                    <GtkApplication applicationId={appId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
                         {windows.map((title, i) => (
                             <GtkApplicationWindow key={title} ref={i === 0 ? window1Ref : window2Ref} title={title} />
                         ))}
-                    </>
+                    </GtkApplication>
                 );
             }
 
-            const { rerender } = await render(<App windows={["First"]} />, { wrapper: false });
+            const { rerender } = await render(<App windows={["First"]} />, { container: createRootElement() });
 
             await rerender(<App windows={["Second", "First"]} />);
 

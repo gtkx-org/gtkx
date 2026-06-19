@@ -258,10 +258,10 @@ describe("render - ContainerSlot (7)", () => {
                 return <AdwExpanderRow ref={ref} title={title} />;
             }
 
-            await render(<App title="Initial" />);
+            const { rerender } = await render(<App title="Initial" />);
             expect(ref.current?.getTitle()).toBe("Initial");
 
-            await render(<App title="Updated" />);
+            await rerender(<App title="Updated" />);
             expect(ref.current?.getTitle()).toBe("Updated");
         });
 
@@ -336,10 +336,10 @@ describe("render - ContainerSlot (9)", () => {
                 );
             }
 
-            await render(<App showRow={true} />);
+            const { rerender } = await render(<App showRow={true} />);
             expect(expanderRef.current).not.toBeNull();
 
-            await render(<App showRow={false} />);
+            await rerender(<App showRow={false} />);
             expect(expanderRef.current).not.toBeNull();
         });
 
@@ -460,12 +460,12 @@ describe("render - ContainerSlot (12)", () => {
                 );
             }
 
-            await render(<App showStart={true} />);
+            const { rerender } = await render(<App showStart={true} />);
 
             expect(startRef.current).not.toBeNull();
             expect(alwaysRef.current).not.toBeNull();
 
-            await render(<App showStart={false} />);
+            await rerender(<App showStart={false} />);
 
             expect(startRef.current).toBeNull();
             expect(alwaysRef.current).not.toBeNull();
@@ -599,12 +599,12 @@ describe("render - ContainerSlot (16)", () => {
                 );
             }
 
-            await render(<App showSecond={true} />);
+            const { rerender } = await render(<App showSecond={true} />);
 
             expect(firstRef.current).not.toBeNull();
             expect(secondRef.current).not.toBeNull();
 
-            await render(<App showSecond={false} />);
+            await rerender(<App showSecond={false} />);
 
             expect(firstRef.current).not.toBeNull();
             expect(secondRef.current).toBeNull();
@@ -667,8 +667,8 @@ describe("render - ContainerSlot (18)", () => {
                 );
             }
 
-            await render(<App showTop={false} />);
-            await render(<App showTop={true} />);
+            const { rerender } = await render(<App showTop={false} />);
+            await rerender(<App showTop={true} />);
 
             expect(contentRef.current).not.toBeNull();
             expect(toolbarRef.current?.getContent()).not.toBeNull();

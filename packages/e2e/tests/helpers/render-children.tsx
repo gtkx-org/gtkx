@@ -33,10 +33,10 @@ export const renderChildren = async <T,>(
     build: ChildrenBuilder<T>,
     options?: RenderOptions,
 ): Promise<RenderChildrenResult<T>> => {
-    await render(build(initial), options);
+    const { rerender } = await render(build(initial), options);
     return {
         rerender: async (items: T[]) => {
-            await render(build(items), options);
+            await rerender(build(items));
         },
     };
 };

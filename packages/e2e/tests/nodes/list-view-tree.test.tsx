@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import type { ListItem } from "@gtkx/react";
-import { act, screen, waitFor } from "@gtkx/testing";
+import { act, screen, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { type FixtureInput, renderListView } from "../helpers/list-fixtures.js";
 import { getChildTexts } from "../helpers/widget-text.js";
@@ -266,13 +266,14 @@ describe("render - ListView (tree) (2)", () => {
         });
 
         it("inserts item before existing item", async () => {
-            const { rerender } = await renderListView([
+            const { ref, rerender } = await renderListView([
                 { id: "1", value: { name: "First" } },
                 { id: "3", value: { name: "Third" } },
             ]);
 
-            expect(screen.queryAllByText("First")).toHaveLength(1);
-            expect(screen.queryAllByText("Third")).toHaveLength(1);
+            const list = within(ref.current);
+            expect(list.queryAllByText("First")).toHaveLength(1);
+            expect(list.queryAllByText("Third")).toHaveLength(1);
 
             await rerender([
                 { id: "1", value: { name: "First" } },
@@ -280,9 +281,10 @@ describe("render - ListView (tree) (2)", () => {
                 { id: "3", value: { name: "Third" } },
             ]);
 
-            expect(screen.queryAllByText("First")).toHaveLength(1);
-            expect(screen.queryAllByText("Second")).toHaveLength(1);
-            expect(screen.queryAllByText("Third")).toHaveLength(1);
+            const updated = within(ref.current);
+            expect(updated.queryAllByText("First")).toHaveLength(1);
+            expect(updated.queryAllByText("Second")).toHaveLength(1);
+            expect(updated.queryAllByText("Third")).toHaveLength(1);
         });
     });
 });
@@ -290,24 +292,26 @@ describe("render - ListView (tree) (2)", () => {
 describe("render - ListView (tree) (3)", () => {
     describe("ListItem (tree) (2)", () => {
         it("removes item from tree model", async () => {
-            const { rerender } = await renderListView([
+            const { ref, rerender } = await renderListView([
                 { id: "1", value: { name: "A" } },
                 { id: "2", value: { name: "B" } },
                 { id: "3", value: { name: "C" } },
             ]);
 
-            expect(screen.queryAllByText("A")).toHaveLength(1);
-            expect(screen.queryAllByText("B")).toHaveLength(1);
-            expect(screen.queryAllByText("C")).toHaveLength(1);
+            const list = within(ref.current);
+            expect(list.queryAllByText("A")).toHaveLength(1);
+            expect(list.queryAllByText("B")).toHaveLength(1);
+            expect(list.queryAllByText("C")).toHaveLength(1);
 
             await rerender([
                 { id: "1", value: { name: "A" } },
                 { id: "3", value: { name: "C" } },
             ]);
 
-            expect(screen.queryAllByText("A")).toHaveLength(1);
-            expect(screen.queryAllByText("B")).toHaveLength(0);
-            expect(screen.queryAllByText("C")).toHaveLength(1);
+            const updated = within(ref.current);
+            expect(updated.queryAllByText("A")).toHaveLength(1);
+            expect(updated.queryAllByText("B")).toHaveLength(0);
+            expect(updated.queryAllByText("C")).toHaveLength(1);
         });
 
         it("updates item value", async () => {

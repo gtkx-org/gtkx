@@ -1,7 +1,15 @@
+import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import type { BackingInstance } from "@gtkx/react";
 
-export type Container = BackingInstance;
+/**
+ * Scope sentinel spanning every presented top-level window. The default
+ * `baseElement` and `screen` root: queries resolve through
+ * `Gtk.Window.listToplevels()`, so they reach popovers, menus, and dialogs that
+ * present as their own top-levels rather than as children of the rendered window.
+ */
+export const TOPLEVELS: unique symbol = Symbol("gtkx.toplevels");
+
+export type Container = GObject.Object | typeof TOPLEVELS;
 
 export const isApplication = (container: Container): container is Gtk.Application =>
     container instanceof Gtk.Application;
@@ -23,7 +31,7 @@ const traverseWindows = function* (): Generator<Gtk.Widget> {
     }
 };
 
-const resolveRoot = (container: Container): Gtk.Widget | null => {
+const resolveRoot = (container: GObject.Object): Gtk.Widget | null => {
     if (container instanceof Gtk.Widget) return container;
     if (container instanceof Gtk.EventController) return container.getWidget();
     if (container instanceof Gtk.LayoutManager) return container.getWidget();
@@ -32,7 +40,7 @@ const resolveRoot = (container: Container): Gtk.Widget | null => {
 };
 
 export const traverse = function* (container: Container): Generator<Gtk.Widget> {
-    if (isApplication(container)) {
+    if (container === TOPLEVELS || isApplication(container)) {
         yield* traverseWindows();
         return;
     }

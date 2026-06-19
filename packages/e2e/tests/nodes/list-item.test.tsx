@@ -61,10 +61,10 @@ describe("render - ListItem (2)", () => {
                 );
             }
 
-            await render(<App value={{ text: "Initial" }} />);
+            const { rerender } = await render(<App value={{ text: "Initial" }} />);
             expect(screen.queryAllByText("Initial")).toHaveLength(1);
 
-            await render(<App value={{ text: "Updated" }} />);
+            await rerender(<App value={{ text: "Updated" }} />);
             expect(screen.queryAllByText("Updated")).toHaveLength(1);
             expect(screen.queryAllByText("Initial")).toHaveLength(0);
         });
@@ -129,10 +129,10 @@ describe("render - ListItem (4)", () => {
                 return <GtkDropDown items={[{ id: "dynamic", value }]} />;
             }
 
-            await render(<App value="Initial" />);
+            const { rerender } = await render(<App value="Initial" />);
             expect(screen.queryAllByText("Initial").length).toBeGreaterThan(0);
 
-            await render(<App value="Updated" />);
+            await rerender(<App value="Updated" />);
             expect(screen.queryAllByText("Updated").length).toBeGreaterThan(0);
             expect(screen.queryAllByText("Initial")).toHaveLength(0);
         });

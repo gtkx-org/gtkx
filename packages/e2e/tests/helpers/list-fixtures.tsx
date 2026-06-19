@@ -102,11 +102,11 @@ export const renderListView = async <T = NamedValue>(
             </ScrollWrapper>
         );
     };
-    await render(draw(items, options));
+    const { rerender } = await render(draw(items, options));
     return {
         ref: ref as RefObject<Gtk.ListView>,
         rerender: async (nextItems, nextOptions) => {
-            await render(draw(nextItems, { ...options, ...nextOptions }));
+            await rerender(draw(nextItems, { ...options, ...nextOptions }));
         },
     };
 };
@@ -142,11 +142,11 @@ export const renderGridView = async <T = NamedValue>(
             </ScrollWrapper>
         );
     };
-    await render(draw(items, options));
+    const { rerender } = await render(draw(items, options));
     return {
         ref: ref as RefObject<Gtk.GridView>,
         rerender: async (nextItems, nextOptions) => {
-            await render(draw(nextItems, { ...options, ...nextOptions }));
+            await rerender(draw(nextItems, { ...options, ...nextOptions }));
         },
     };
 };
@@ -237,11 +237,11 @@ export const renderColumnView = async <T = NamedValue>(
             </ScrollWrapper>
         );
     };
-    await render(draw(items, options));
+    const { rerender } = await render(draw(items, options));
     return {
         ref: ref as RefObject<Gtk.ColumnView>,
         rerender: async (nextItems, nextOptions) => {
-            await render(draw(nextItems, { ...options, ...nextOptions }));
+            await rerender(draw(nextItems, { ...options, ...nextOptions }));
         },
     };
 };

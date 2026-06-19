@@ -1,7 +1,9 @@
+import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkAboutDialog,
+    GtkApplication,
     GtkApplicationWindow,
     GtkBox,
     GtkButton,
@@ -16,13 +18,16 @@ import {
     GtkListBox,
     GtkSwitch,
 } from "@gtkx/jsx/gtk";
-import { render as baseRender, screen, userEvent, waitFor } from "@gtkx/testing";
+import { render as baseRender, createRootElement, screen, userEvent, waitFor } from "@gtkx/testing";
 import type { ReactNode } from "react";
 import { createRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { countChildren } from "../helpers/child-count.js";
 
 const render = (element: ReactNode) => baseRender(element);
+
+let nextAppId = 0;
+const uniqueAppId = (): string => `org.gtkx.widgettest${nextAppId++}`;
 
 describe("widget - creation (1)", () => {
     describe("basic widgets", () => {
@@ -964,14 +969,20 @@ describe("widget - auto-wrapping (4)", () => {
     });
 });
 
-const renderUnwrapped = (element: ReactNode) => baseRender(element, { wrapper: false });
+const renderInApp = (window: ReactNode) =>
+    baseRender(
+        <GtkApplication applicationId={uniqueAppId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+            {window}
+        </GtkApplication>,
+        { container: createRootElement() },
+    );
 
 describe("widget - AboutDialog (1)", () => {
     describe("creditSections", () => {
         it("applies credit sections on mount", async () => {
             const ref = createRef<Gtk.AboutDialog>();
 
-            await renderUnwrapped(
+            await renderInApp(
                 <GtkApplicationWindow>
                     <GtkAboutDialog
                         ref={ref}
@@ -990,7 +1001,7 @@ describe("widget - AboutDialog (1)", () => {
         it("applies empty credit sections array", async () => {
             const ref = createRef<Gtk.AboutDialog>();
 
-            await renderUnwrapped(
+            await renderInApp(
                 <GtkApplicationWindow>
                     <GtkAboutDialog ref={ref} programName="Test App" creditSections={[]} />
                 </GtkApplicationWindow>,
@@ -1002,7 +1013,7 @@ describe("widget - AboutDialog (1)", () => {
         it("renders without creditSections prop", async () => {
             const ref = createRef<Gtk.AboutDialog>();
 
-            await renderUnwrapped(
+            await renderInApp(
                 <GtkApplicationWindow>
                     <GtkAboutDialog ref={ref} programName="Test App" />
                 </GtkApplicationWindow>,
@@ -1018,7 +1029,7 @@ describe("widget - AboutDialog (2)", () => {
         it("presents dialog on mount", async () => {
             const ref = createRef<Gtk.AboutDialog>();
 
-            await renderUnwrapped(
+            await renderInApp(
                 <GtkApplicationWindow>
                     <GtkAboutDialog ref={ref} programName="Lifecycle Test" />
                 </GtkApplicationWindow>,
@@ -1029,21 +1040,24 @@ describe("widget - AboutDialog (2)", () => {
 
         it("destroys dialog on unmount", async () => {
             const ref = createRef<Gtk.AboutDialog>();
+            const appId = uniqueAppId();
 
             function App({ show }: { show: boolean }) {
                 return (
-                    <GtkApplicationWindow>
-                        {show ? <GtkAboutDialog ref={ref} programName="Unmount Test" /> : null}
-                    </GtkApplicationWindow>
+                    <GtkApplication applicationId={appId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+                        <GtkApplicationWindow>
+                            {show ? <GtkAboutDialog ref={ref} programName="Unmount Test" /> : null}
+                        </GtkApplicationWindow>
+                    </GtkApplication>
                 );
             }
 
-            await renderUnwrapped(<App show={true} />);
+            const { rerender } = await baseRender(<App show={true} />, { container: createRootElement() });
 
             const handle = ref.current;
             expect(handle).toBeDefined();
 
-            await renderUnwrapped(<App show={false} />);
+            await rerender(<App show={false} />);
         });
     });
 });

@@ -1,13 +1,33 @@
 import type * as Adw from "@gtkx/gi/adw";
+import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { AdwApplicationWindow } from "@gtkx/jsx/adw";
-import { GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
-import { render as baseRender } from "@gtkx/testing";
+import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
+import { render as baseRender, createRootElement } from "@gtkx/testing";
 import type { ReactNode } from "react";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
-const render = (element: ReactNode) => baseRender(element, { wrapper: false });
+const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
+
+let nextAppId = 0;
+const uniqueAppId = (): string => `org.gtkx.windowtest${nextAppId++}`;
+
+const render = (element: ReactNode, appId: string = uniqueAppId()) =>
+    baseRender(
+        <GtkApplication applicationId={appId} flags={APP_FLAGS}>
+            {element}
+        </GtkApplication>,
+        { container: createRootElement() },
+    );
+
+const renderAdw = (element: ReactNode, appId: string = uniqueAppId()) =>
+    baseRender(
+        <AdwApplication applicationId={appId} flags={APP_FLAGS}>
+            {element}
+        </AdwApplication>,
+        { container: createRootElement() },
+    );
 
 describe("render - Window (1)", () => {
     describe("creation", () => {
@@ -23,7 +43,7 @@ describe("render - Window (1)", () => {
         it("creates Adw.ApplicationWindow with current app", async () => {
             const ref = createRef<Adw.ApplicationWindow>();
 
-            await render(<AdwApplicationWindow ref={ref} />);
+            await renderAdw(<AdwApplicationWindow ref={ref} />);
 
             expect(ref.current).not.toBeNull();
             expect(ref.current?.getApplication()).not.toBeNull();
@@ -45,16 +65,21 @@ describe("render - Window (2)", () => {
 
         it("updates default size when props change", async () => {
             const ref = createRef<Gtk.ApplicationWindow>();
+            const appId = uniqueAppId();
 
             function App({ width, height }: { width: number; height: number }) {
                 return <GtkApplicationWindow ref={ref} defaultWidth={width} defaultHeight={height} />;
             }
 
-            await render(<App width={200} height={150} />);
+            const { rerender } = await render(<App width={200} height={150} />, appId);
 
             const [initialWidth, initialHeight] = ref.current?.getDefaultSize() ?? [0, 0];
 
-            await render(<App width={400} height={300} />);
+            await rerender(
+                <GtkApplication applicationId={appId} flags={APP_FLAGS}>
+                    <App width={400} height={300} />
+                </GtkApplication>,
+            );
 
             const [updatedWidth, updatedHeight] = ref.current?.getDefaultSize() ?? [0, 0];
             expect(updatedWidth).toBeGreaterThanOrEqual(initialWidth);
@@ -93,17 +118,22 @@ describe("render - Window (3)", () => {
 
         it("destroys window on unmount", async () => {
             const ref = createRef<Gtk.ApplicationWindow>();
+            const appId = uniqueAppId();
 
             function App({ show }: { show: boolean }) {
                 return show ? <GtkApplicationWindow ref={ref} title="Destroy" /> : null;
             }
 
-            const { rerender } = await render(<App show={true} />);
+            const { rerender } = await render(<App show={true} />, appId);
 
             const windowId = ref.current;
             expect(windowId).toBeDefined();
 
-            await rerender(<App show={false} />);
+            await rerender(
+                <GtkApplication applicationId={appId} flags={APP_FLAGS}>
+                    <App show={false} />
+                </GtkApplication>,
+            );
         });
     });
 });
@@ -127,6 +157,7 @@ describe("render - Window (4)", () => {
             const windowRef = createRef<Gtk.ApplicationWindow>();
             const label1Ref = createRef<Gtk.Label>();
             const label2Ref = createRef<Gtk.Label>();
+            const appId = uniqueAppId();
 
             function App({ first }: { first: boolean }) {
                 return (
@@ -140,11 +171,15 @@ describe("render - Window (4)", () => {
                 );
             }
 
-            await render(<App first={true} />);
+            const { rerender } = await render(<App first={true} />, appId);
 
             expect(windowRef.current?.getChild()).toBe(label1Ref.current);
 
-            await render(<App first={false} />);
+            await rerender(
+                <GtkApplication applicationId={appId} flags={APP_FLAGS}>
+                    <App first={false} />
+                </GtkApplication>,
+            );
 
             expect(windowRef.current?.getChild()).toBe(label2Ref.current);
         });

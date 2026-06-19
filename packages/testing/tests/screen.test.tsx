@@ -1,10 +1,10 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkLabel, GtkWindow } from "@gtkx/jsx/gtk";
 import { describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "../src/index.js";
+import { cleanup, createRootElement, render, screen } from "../src/index.js";
 
 describe("screen binding", () => {
-    it("routes queries through the global application container", async () => {
+    it("routes queries through the global toplevel scope", async () => {
         await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkButton label="First" />
@@ -82,13 +82,12 @@ describe("screen screenshot scale", () => {
 
 describe("screen screenshot selectors", () => {
     it("captures a window matching a title substring", async () => {
-        await render(<GtkLabel label="Titled" />, {
-            wrapper: ({ children }) => (
-                <GtkApplicationWindow title="Settings Window" defaultWidth={120} defaultHeight={80}>
-                    {children}
-                </GtkApplicationWindow>
-            ),
-        });
+        await render(
+            <GtkWindow title="Settings Window" defaultWidth={120} defaultHeight={80}>
+                <GtkLabel label="Titled" />
+            </GtkWindow>,
+            { container: createRootElement() },
+        );
 
         const result = await screen.screenshot("Settings");
 
@@ -96,13 +95,12 @@ describe("screen screenshot selectors", () => {
     });
 
     it("captures a window matching a title regex", async () => {
-        await render(<GtkLabel label="Pattern" />, {
-            wrapper: ({ children }) => (
-                <GtkApplicationWindow title="Demo Pattern App" defaultWidth={120} defaultHeight={80}>
-                    {children}
-                </GtkApplicationWindow>
-            ),
-        });
+        await render(
+            <GtkWindow title="Demo Pattern App" defaultWidth={120} defaultHeight={80}>
+                <GtkLabel label="Pattern" />
+            </GtkWindow>,
+            { container: createRootElement() },
+        );
 
         const result = await screen.screenshot(/^Demo/);
 
@@ -115,13 +113,12 @@ describe("screen screenshot errors", () => {
         ["throws when no window matches a string selector", "Nonexistent" as string | RegExp],
         ["throws when no window matches a regex selector", /^Bogus/],
     ])("%s", async (_title, selector) => {
-        await render(<GtkLabel label="Unmatched" />, {
-            wrapper: ({ children }) => (
-                <GtkApplicationWindow title="Real Title" defaultWidth={120} defaultHeight={80}>
-                    {children}
-                </GtkApplicationWindow>
-            ),
-        });
+        await render(
+            <GtkWindow title="Real Title" defaultWidth={120} defaultHeight={80}>
+                <GtkLabel label="Unmatched" />
+            </GtkWindow>,
+            { container: createRootElement() },
+        );
 
         await expect(screen.screenshot(selector)).rejects.toThrow(/No window found with title matching/);
     });

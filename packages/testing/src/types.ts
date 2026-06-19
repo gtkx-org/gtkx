@@ -1,4 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import type { RootElement } from "@gtkx/react";
 import type { ComponentType, ReactNode } from "react";
 import type { Container } from "./traversal.js";
 
@@ -90,18 +91,28 @@ export type WrapperComponent = ComponentType<{
  */
 export type RenderOptions = {
     /**
-     * Wrapper component or boolean.
-     * - `true` (default): Wrap in GtkApplicationWindow
-     * - `false`: No wrapper
-     * - Component: Custom wrapper that renders its `children`
+     * Where the element is mounted.
+     * - omitted (default): a fresh, presented `Gtk.Window` is created and the
+     *   element rendered into it — the analogue of Testing Library's default
+     *   container.
+     * - a widget: the element is rendered into it.
+     * - `createRootElement()`: the element is rendered directly at the reconciler
+     *   root with no host window, for a top-level element (an application or
+     *   window).
      */
-    wrapper?: boolean | WrapperComponent;
+    container?: Gtk.Widget | RootElement;
     /**
      * The element queries are bound to.
      * Defaults to the GTK Application (searches all toplevel windows).
      * Provide a specific widget or application to scope queries.
      */
     baseElement?: Container;
+    /**
+     * A component rendered around the element (inside the container), for
+     * supplying context providers. Re-applied on every `rerender`. Defaults to
+     * none.
+     */
+    wrapper?: WrapperComponent;
 };
 
 /**
@@ -201,12 +212,10 @@ export type ScreenshotResult = {
  */
 export type RenderHookOptions<Props> = {
     /**
-     * Wrapper component or boolean.
-     * - `true` (default): Wrap in GtkApplicationWindow
-     * - `false`: No wrapper
-     * - Component: Custom wrapper that renders its `children`
+     * A component rendered around the hook tree, for supplying context
+     * providers. Re-applied on every `rerender`. Defaults to none.
      */
-    wrapper?: boolean | WrapperComponent;
+    wrapper?: WrapperComponent;
 } & (undefined extends Props
     ? {
           /**

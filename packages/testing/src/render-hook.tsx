@@ -1,24 +1,7 @@
-import { GtkApplicationWindow } from "@gtkx/jsx/gtk";
+import { createRootElement } from "@gtkx/react";
 import { useRef } from "react";
 import { render } from "./render.js";
-import type { RenderHookOptions, RenderHookResult, WrapperComponent } from "./types.js";
-
-const composeWithDefaultHost = (userWrapper: boolean | WrapperComponent | undefined): WrapperComponent | false => {
-    if (userWrapper === false) return false;
-    if (userWrapper === true || userWrapper === undefined) {
-        return ({ children }) => (
-            <GtkApplicationWindow defaultWidth={800} defaultHeight={600}>
-                {children}
-            </GtkApplicationWindow>
-        );
-    }
-    const InnerWrapper = userWrapper;
-    return ({ children }) => (
-        <GtkApplicationWindow defaultWidth={800} defaultHeight={600}>
-            <InnerWrapper>{children}</InnerWrapper>
-        </GtkApplicationWindow>
-    );
-};
+import type { RenderHookOptions, RenderHookResult } from "./types.js";
 
 /**
  * Renders a React hook for testing.
@@ -29,10 +12,10 @@ const composeWithDefaultHost = (userWrapper: boolean | WrapperComponent | undefi
  * When the hook callback takes props, `initialProps` is required at the
  * type level. When it takes none, `options` may be omitted entirely.
  *
- * A host `GtkApplicationWindow` is always provided so the hook tree has a
- * widget root. A custom `wrapper` is composed *inside* the host, which lets
- * tests pass pure context-provider wrappers without having to provide their
- * own window.
+ * The hook tree renders at the reconciler root with no host window — a hook
+ * needs only the harness `ApplicationContext`, which `render` supplies. A
+ * custom `wrapper` is applied around the hook tree for additional context
+ * providers.
  *
  * @param callback - Function that calls the hook and returns its result
  * @param options - Render options including initialProps and wrapper
@@ -90,7 +73,6 @@ export async function renderHook<Result, Props>(
     callback: (props: Props) => Result,
     options?: RenderHookOptions<Props>,
 ): Promise<RenderHookResult<Result, Props>> {
-    const composedWrapper = composeWithDefaultHost(options?.wrapper);
     const initialProps = (options as { initialProps?: Props } | undefined)?.initialProps as Props;
     const resultRef: { current: Result | undefined } = { current: undefined };
     let currentProps: Props = initialProps;
@@ -102,7 +84,10 @@ export async function renderHook<Result, Props>(
         return null;
     };
 
-    const renderResult = await render(<TestComponent props={currentProps} />, { wrapper: composedWrapper });
+    const renderResult = await render(<TestComponent props={currentProps} />, {
+        container: createRootElement(),
+        wrapper: options?.wrapper,
+    });
 
     return {
         result: resultRef as { current: Result },

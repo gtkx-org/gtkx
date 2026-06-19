@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
-import { quit, render, useApplication } from "@gtkx/react";
+import { createRoot, quit, useApplication } from "@gtkx/react";
 import { Component, createRef, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { setupRealRenderEnvironment } from "./helpers/real-render-environment.js";
@@ -41,7 +41,7 @@ describe("render and quit", () => {
             );
         };
 
-        render(
+        createRoot().render(
             <GtkApplication
                 ref={appRef}
                 applicationId="org.gtkx.render-coverage"

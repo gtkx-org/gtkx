@@ -107,17 +107,12 @@ describe("renderHook unmount", () => {
 });
 
 describe("renderHook wrapper option", () => {
-    it("hosts the hook in a default GtkApplicationWindow with no options", async () => {
+    it("runs the hook with no options", async () => {
         const { result } = await renderHook(() => useState("test"));
         expect(result.current[0]).toBe("test");
     });
 
-    it("hosts the hook in a default GtkApplicationWindow when wrapper is true", async () => {
-        const { result } = await renderHook(() => useState("wrapped"), { wrapper: true });
-        expect(result.current[0]).toBe("wrapped");
-    });
-
-    it("composes a user wrapper inside the default host so it can supply context", async () => {
+    it("applies a user wrapper around the hook so it can supply context", async () => {
         const Ctx = createContext<string>("default");
         let wrapperRendered = false;
 

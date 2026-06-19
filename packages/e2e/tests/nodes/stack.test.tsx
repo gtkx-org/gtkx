@@ -132,13 +132,13 @@ describe("render - Stack (3)", () => {
                 );
             }
 
-            await render(<App iconName="dialog-information" />);
+            const { rerender } = await render(<App iconName="dialog-information" />);
 
             const child = stackRef.current?.getChildByName("dynamic");
             let page = stackRef.current?.getPage(child as Gtk.Widget);
             expect(page?.getIconName()).toBe("dialog-information");
 
-            await render(<App iconName="dialog-warning" />);
+            await rerender(<App iconName="dialog-warning" />);
 
             page = stackRef.current?.getPage(child as Gtk.Widget);
             expect(page?.getIconName()).toBe("dialog-warning");

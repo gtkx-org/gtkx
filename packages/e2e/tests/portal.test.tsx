@@ -1,10 +1,16 @@
+import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import * as GtkEnums from "@gtkx/gi/gtk";
-import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
-import { createPortal, useApplication } from "@gtkx/react";
+import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { createPortal, createRootElement, useApplication } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef, type ReactNode } from "react";
 import { describe, expect, it } from "vitest";
+
+const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
+
+let nextAppId = 0;
+const uniqueAppId = (): string => `org.gtkx.portaltest${nextAppId++}`;
 
 const Portal = ({ children, portalKey }: { children: ReactNode; portalKey?: string }) => {
     const app = useApplication();
@@ -16,9 +22,12 @@ describe("createPortal (1)", () => {
         const windowRef = createRef<Gtk.ApplicationWindow>();
 
         await render(
-            <Portal>
-                <GtkApplicationWindow ref={windowRef} title="Portal Window" />
-            </Portal>,
+            <GtkApplication applicationId={uniqueAppId()} flags={APP_FLAGS}>
+                <Portal>
+                    <GtkApplicationWindow ref={windowRef} title="Portal Window" />
+                </Portal>
+            </GtkApplication>,
+            { container: createRootElement() },
         );
 
         expect(windowRef.current).not.toBeNull();
@@ -39,8 +48,8 @@ describe("createPortal (1)", () => {
             );
         }
 
-        await render(<App />);
-        await render(<App />);
+        const { rerender } = await render(<App />);
+        await rerender(<App />);
 
         expect(labelRef.current).not.toBeNull();
         expect(labelRef.current?.getParent()).toBe(boxRef.current);
@@ -50,9 +59,12 @@ describe("createPortal (1)", () => {
         const windowRef = createRef<Gtk.ApplicationWindow>();
 
         await render(
-            <Portal portalKey="my-key">
-                <GtkApplicationWindow ref={windowRef} title="Keyed Window" />
-            </Portal>,
+            <GtkApplication applicationId={uniqueAppId()} flags={APP_FLAGS}>
+                <Portal portalKey="my-key">
+                    <GtkApplicationWindow ref={windowRef} title="Keyed Window" />
+                </Portal>
+            </GtkApplication>,
+            { container: createRootElement() },
         );
 
         expect(windowRef.current).not.toBeNull();
@@ -63,32 +75,52 @@ describe("createPortal (1)", () => {
 describe("createPortal (2)", () => {
     it("unmounts portal children when portal is removed", async () => {
         const windowRef = createRef<Gtk.ApplicationWindow>();
+        const appId = uniqueAppId();
 
         function App({ showPortal }: { showPortal: boolean }) {
             const app = useApplication();
             return <>{showPortal && createPortal(<GtkApplicationWindow ref={windowRef} title="Portal" />, app)}</>;
         }
 
-        await render(<App showPortal={true} />);
+        const { rerender } = await render(
+            <GtkApplication applicationId={appId} flags={APP_FLAGS}>
+                <App showPortal={true} />
+            </GtkApplication>,
+            { container: createRootElement() },
+        );
 
         const windowId = windowRef.current;
         expect(windowId).not.toBeUndefined();
 
-        await render(<App showPortal={false} />);
+        await rerender(
+            <GtkApplication applicationId={appId} flags={APP_FLAGS}>
+                <App showPortal={false} />
+            </GtkApplication>,
+        );
     });
 
     it("updates portal children when props change", async () => {
         const windowRef = createRef<Gtk.ApplicationWindow>();
+        const appId = uniqueAppId();
 
         function App({ title }: { title: string }) {
             const app = useApplication();
             return <>{createPortal(<GtkApplicationWindow ref={windowRef} title={title} />, app)}</>;
         }
 
-        await render(<App title="First" />);
+        const { rerender } = await render(
+            <GtkApplication applicationId={appId} flags={APP_FLAGS}>
+                <App title="First" />
+            </GtkApplication>,
+            { container: createRootElement() },
+        );
         expect(windowRef.current?.getTitle()).toBe("First");
 
-        await render(<App title="Second" />);
+        await rerender(
+            <GtkApplication applicationId={appId} flags={APP_FLAGS}>
+                <App title="Second" />
+            </GtkApplication>,
+        );
         expect(windowRef.current?.getTitle()).toBe("Second");
     });
 });
@@ -110,8 +142,8 @@ describe("createPortal (3)", () => {
             );
         }
 
-        await render(<App />);
-        await render(<App />);
+        const { rerender } = await render(<App />);
+        await rerender(<App />);
 
         expect(label1Ref.current).not.toBeNull();
         expect(label2Ref.current).not.toBeNull();
@@ -135,8 +167,8 @@ describe("createPortal (3)", () => {
             );
         }
 
-        await render(<App />);
-        await render(<App />);
+        const { rerender } = await render(<App />);
+        await rerender(<App />);
 
         expect(buttonRef.current).not.toBeNull();
         expect(buttonRef.current?.getParent()).toBe(innerBoxRef.current);

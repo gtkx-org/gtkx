@@ -1,17 +1,18 @@
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
-import { render } from "@gtkx/react";
+import { createRoot } from "@gtkx/react";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { setupRealRenderEnvironment } from "./helpers/real-render-environment.js";
 
 setupRealRenderEnvironment();
 
-describe("RenderHandle.unmount", () => {
+describe("Root.unmount", () => {
     it("shuts the application down when the unmounted tree contains the application component", async () => {
         const appRef = createRef<Gtk.Application>();
-        const handle = render(
+        const root = createRoot();
+        root.render(
             <GtkApplication
                 ref={appRef}
                 applicationId="org.gtkx.render-unmount"
@@ -27,7 +28,7 @@ describe("RenderHandle.unmount", () => {
         const shutdownHandler = vi.fn();
         app.on("shutdown", shutdownHandler);
 
-        handle.unmount();
+        root.unmount();
         await new Promise((resolve) => setTimeout(resolve, 100));
 
         expect(shutdownHandler).toHaveBeenCalledTimes(1);
