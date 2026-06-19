@@ -16,22 +16,20 @@
  */
 
 import type * as GObject from "@gtkx/gi/gobject";
-import { toCamelCase } from "@gtkx/utils";
 import { isConstructOnlyProp, resolveDefaultProp, resolveSignal } from "../utils/gtype.js";
+import { NOTIFY_DETAIL_PREFIX, notifyDetailToProp } from "../utils/notify-name.js";
 import { type ArrayPropDescriptor, applyArrayProp, collectArrayProps } from "./array-props.js";
 import { isEditable } from "./predicates.js";
 import type { SignalHandler } from "./signal-store.js";
 import { stateOf } from "./state.js";
 import type { Props } from "./types.js";
 
-const NOTIFY_DETAIL_PREFIX = "notify::";
-
 /**
  * Wraps a callback bound to a `notify::<prop>` signal so it receives the
  * property's current value (and the object), rather than the raw `GParamSpec`.
  */
 const notifyValueHandler = (container: GObject.Object, signalName: string, callback: SignalHandler): SignalHandler => {
-    const prop = toCamelCase(signalName.slice(NOTIFY_DETAIL_PREFIX.length));
+    const prop = notifyDetailToProp(signalName);
     return () => callback(Reflect.get(container, prop), container);
 };
 

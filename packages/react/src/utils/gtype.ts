@@ -2,7 +2,7 @@
 
 import { CONSTRUCT_ONLY_PROPS, CONSTRUCT_PROPS, DEFAULT_PROPS, SIGNALS } from "virtual:gtkx-config";
 import * as GObject from "@gtkx/gi/gobject";
-import { toKebabCase, toLowerFirst } from "@gtkx/utils";
+import { NOTIFY_SIGNAL, propToNotifySignal } from "./notify-name.js";
 
 const NOTIFY_PREFIX = "onNotify";
 
@@ -14,11 +14,11 @@ const NOTIFY_PREFIX = "onNotify";
  * @param propName - The JSX prop name (e.g. `onNotifyActive`).
  */
 export const resolveNotifySignal = (propName: string): string | null => {
-    if (propName === NOTIFY_PREFIX) return "notify";
+    if (propName === NOTIFY_PREFIX) return NOTIFY_SIGNAL;
     if (!propName.startsWith(NOTIFY_PREFIX) || propName.length === NOTIFY_PREFIX.length) return null;
     const tail = propName.slice(NOTIFY_PREFIX.length);
     if (tail[0] !== tail[0]?.toUpperCase()) return null;
-    return `notify::${toKebabCase(toLowerFirst(tail))}`;
+    return propToNotifySignal(tail);
 };
 
 const typeNameChainCache = new Map<GObject.GType, readonly string[]>();
