@@ -13,6 +13,7 @@ import { stableIdOf } from "../reconciler/stable-id.js";
 import type { ListItem } from "../utils/element-props.js";
 import type { DropDownLike } from "../utils/gtype-predicates.js";
 import type { ColumnController, ColumnHost } from "./column-controller.js";
+import { ColumnViewLifecycle } from "./column-view-lifecycle.js";
 
 /** Renders one bound row; `row` carries tree state for hierarchical lists. */
 export type ListItemRenderer = (item: unknown, row?: Gtk.TreeListRow | null) => ReactNode;
@@ -94,12 +95,11 @@ export class ListController implements ColumnHost {
     private readonly listContainers = new Map<Gtk.ListItem, number>();
     private readonly listContainerKeys = new Map<Gtk.ListItem, string>();
     private readonly treeExpanders = new Map<Gtk.ListItem, Gtk.TreeExpander>();
-    private readonly columns = new Set<ColumnController>();
+    private readonly columnView: ColumnViewLifecycle | null;
     private boundItems: BoundItem[] = [];
     private headerBoundItems: BoundItem[] = [];
     private detached = false;
     private boundItemsUpdateScheduled = false;
-    private columnViewModelAssigned = false;
 
     /**
      * @param widget - The backing list widget this controller drives.
@@ -123,6 +123,21 @@ export class ListController implements ColumnHost {
             setDropDownSelected: (position) => this.dropDown?.setSelected(position),
             getDropDownSelected: () => this.dropDown?.getSelected() ?? -1,
         });
+        this.columnView =
+            this.widget instanceof Gtk.ColumnView
+                ? new ColumnViewLifecycle(this.signalOwner, this.widget, {
+                      isUncontrolled: () => this.isUncontrolled(),
+                      isDetached: () => this.detached,
+                      assignModelToWidget: () => this.assignModelToWidget(),
+                      assignUncontrolledModelToWidget: () => this.assignUncontrolledModelToWidget(),
+                      applySelection: () => this.selectionController.applySelection(this.props.selected ?? null),
+                      applySelectedId: () => this.selectionController.applySelectedId(this.props.selectedId),
+                      scheduleBoundItemsUpdate: () => this.scheduleBoundItemsUpdate(),
+                      getSortColumn: () => this.props.sortColumn,
+                      getSortOrder: () => this.props.sortOrder,
+                      getOnSortChanged: () => this.props.onSortChanged,
+                  })
+                : null;
     }
 
     /** The backing list widget this controller drives. */
@@ -145,49 +160,26 @@ export class ListController implements ColumnHost {
      * widget. Runs once when the component first sees the widget.
      */
     public attach(): void {
-        const isColumnView = this.isColumnView();
+        const columnView = this.columnView;
         if (this.isUncontrolled()) {
             this.setupFactory();
             this.assignFactoryToWidget();
-            if (!isColumnView) this.assignUncontrolledModelToWidget();
+            if (!columnView) this.assignUncontrolledModelToWidget();
         } else {
             this.modelController.setupModel();
             this.setupFactory();
             if (this.props.renderHeader) this.setupHeaderFactory();
             this.selectionController.setup(this.props.selectionMode);
             this.modelController.syncModel();
-            if (!isColumnView) this.assignModelToWidget();
+            if (!columnView) this.assignModelToWidget();
             this.assignFactoryToWidget();
         }
         this.connectInteractionSignals();
-        if (!this.isUncontrolled() && !isColumnView) {
+        if (!this.isUncontrolled() && !columnView) {
             this.selectionController.applySelection(this.props.selected ?? null);
             this.selectionController.applySelectedId(this.props.selectedId);
         }
-        if (isColumnView) this.settleColumns();
-    }
-
-    /**
-     * Assigns the model and applies the initial selection to a `GtkColumnView`
-     * once its columns have been inserted.
-     *
-     * A column view builds and lays out its cells from its model. Assigning the
-     * model while the view still has no columns, then inserting the columns,
-     * makes GTK rebuild and recycle those cells mid-insertion, disposing cell
-     * widgets that still reference a column and measuring already-freed ones.
-     * Deferring the model until the columns are in place builds the cells once,
-     * against the final column set, so no cell is recycled during insertion.
-     */
-    public finishColumnViewAttach(): void {
-        if (this.columnViewModelAssigned || !this.isColumnView() || this.detached) return;
-        this.columnViewModelAssigned = true;
-        if (this.isUncontrolled()) {
-            this.assignUncontrolledModelToWidget();
-            return;
-        }
-        this.assignModelToWidget();
-        this.selectionController.applySelection(this.props.selected ?? null);
-        this.selectionController.applySelectedId(this.props.selectedId);
+        columnView?.settle();
     }
 
     /** Applies a prop change, re-syncing models, factories, and selection. */
@@ -206,65 +198,25 @@ export class ListController implements ColumnHost {
         this.treeExpanders.clear();
         this.modelController.detach();
         this.signals.clear(this.signalOwner);
-        this.columns.clear();
+        this.columnView?.clearColumns();
     }
 
     /** Registers a column controller so the controller can collect its cells. */
     public addColumn(column: ColumnController): void {
-        this.columns.add(column);
+        this.columnView?.addColumn(column);
     }
 
     /** Unregisters a column controller. */
     public removeColumn(column: ColumnController): void {
-        this.columns.delete(column);
+        this.columnView?.removeColumn(column);
     }
 
     /**
      * Schedules the column-view settle work to run once after every column
-     * mutation of the current commit applies. The reconciler inserts and removes
-     * columns during the commit's freeze window; queuing the settle through the
-     * commit flush (deduped by identity) collapses many column mutations into one
-     * settle that sees the final column set.
+     * mutation of the current commit applies.
      */
     public scheduleColumnSettle(): void {
-        if (!this.isColumnView() || this.detached) return;
-        scheduleFlush(this.settleColumns);
-    }
-
-    private settleColumns = (): void => {
-        if (this.detached) return;
-        const modelWasAssigned = this.columnViewModelAssigned;
-        this.finishColumnViewAttach();
-        if (modelWasAssigned) this.relayoutColumns();
-        this.applySortColumn(this.props);
-        this.scheduleBoundItemsUpdate();
-    };
-
-    /**
-     * Re-inserts every live column in its current order so the column view
-     * rebuilds each already-realized row's cells in column order.
-     *
-     * `Gtk.ColumnView.insertColumn` appends a newly inserted column's cells to the
-     * visual end of rows that GTK has already realized, leaving the cells out of
-     * logical column order. Removing then re-inserting the whole column set forces
-     * GTK to lay every row's cells out in the columns' order. It runs only on a
-     * settle after the model is assigned, when realized cells exist; the initial
-     * settle builds the cells once against the final column set and needs no
-     * relayout.
-     */
-    private relayoutColumns(): void {
-        const columnView = this.widget;
-        if (!(columnView instanceof Gtk.ColumnView)) return;
-        const columns = columnView.getColumns();
-        const ordered: Gtk.ColumnViewColumn[] = [];
-        for (let i = 0; i < columns.getNItems(); i++) {
-            const column = columns.getItem(i);
-            if (column instanceof Gtk.ColumnViewColumn) ordered.push(column);
-        }
-        for (const column of ordered) columnView.removeColumn(column);
-        ordered.forEach((column, index) => {
-            columnView.insertColumn(index, column);
-        });
+        this.columnView?.scheduleSettle();
     }
 
     /** Whether this controller drives a dropdown-style widget. */
@@ -331,18 +283,14 @@ export class ListController implements ColumnHost {
         return this.props.model != null;
     }
 
-    private isColumnView(): boolean {
-        return this.widget instanceof Gtk.ColumnView;
-    }
-
     private connectInteractionSignals(): void {
         if (this.isUncontrolled()) return;
         this.selectionController.connectSelectionSignal();
-        this.connectSortSignal();
+        this.columnView?.connectSortSignal();
     }
 
     private setupFactory(): void {
-        if (this.isColumnView()) return;
+        if (this.columnView) return;
 
         this.factory = new Gtk.SignalListItemFactory();
         const isTree = this.modelController.isTreeMode();
@@ -605,49 +553,12 @@ export class ListController implements ColumnHost {
         }
 
         if (oldProps.onSortChanged !== newProps.onSortChanged) {
-            this.connectSortSignal();
+            this.columnView?.connectSortSignal();
         }
 
         if (oldProps.sortColumn !== newProps.sortColumn || oldProps.sortOrder !== newProps.sortOrder) {
-            this.applySortColumn(newProps);
+            this.columnView?.applySortColumn();
         }
-    }
-
-    /**
-     * Applies the controlled sort column after columns settle. Called by the
-     * component once column controllers have attached their columns, so the
-     * `id` lookup against the column view's live column list resolves.
-     */
-    public applySortColumn(props: ListControllerProps): void {
-        if (!this.isColumnView()) return;
-
-        const columnView = this.widget as Gtk.ColumnView;
-        const { sortColumn, sortOrder } = props;
-
-        if (sortColumn === null || sortColumn === undefined) {
-            columnView.sortByColumn(null, Gtk.SortType.ASCENDING);
-            return;
-        }
-
-        const column = this.findColumnById(sortColumn);
-        if (column) {
-            columnView.sortByColumn(column, sortOrder ?? Gtk.SortType.ASCENDING);
-        }
-    }
-
-    private findColumnById(id: string): Gtk.ColumnViewColumn | null {
-        if (!this.isColumnView()) return null;
-        const columnView = this.widget as Gtk.ColumnView;
-        const columns = columnView.getColumns();
-        const nItems = columns.getNItems();
-
-        for (let i = 0; i < nItems; i++) {
-            const obj = columns.getItem(i);
-            if (obj instanceof Gtk.ColumnViewColumn && obj.getId() === id) {
-                return obj;
-            }
-        }
-        return null;
     }
 
     private applySelectionProps(oldProps: ListControllerProps, newProps: ListControllerProps): void {
@@ -669,44 +580,11 @@ export class ListController implements ColumnHost {
         }
     }
 
-    private connectSortSignal(): void {
-        if (!this.isColumnView()) return;
-
-        const columnView = this.widget as Gtk.ColumnView;
-        const sorter = columnView.getSorter();
-        if (!sorter) return;
-
-        const { onSortChanged } = this.props;
-        const handler = onSortChanged
-            ? () => {
-                  const cvSorter = columnView.getSorter();
-                  if (!(cvSorter instanceof Gtk.ColumnViewSorter)) {
-                      onSortChanged(null, Gtk.SortType.ASCENDING);
-                      return;
-                  }
-                  const primaryColumn = cvSorter.getPrimarySortColumn();
-                  const primaryOrder = cvSorter.getPrimarySortOrder();
-                  const columnId = primaryColumn?.getId() ?? null;
-                  onSortChanged(columnId, primaryOrder);
-              }
-            : undefined;
-
-        this.signals.set({ owner: this.signalOwner, obj: sorter, signal: "changed", handler, blockable: false });
-    }
-
     private flushBoundItemsUpdate = (): void => {
         this.boundItemsUpdateScheduled = false;
         if (this.detached) return;
         this.rebuildBoundItems();
     };
-
-    private collectColumnViewBoundItems(resolveItem: (position: number) => unknown): BoundItem[] {
-        const items: BoundItem[] = [];
-        for (const column of this.columns) {
-            items.push(...column.collectBoundItems(resolveItem));
-        }
-        return items;
-    }
 
     private collectStandardBoundItems(resolveItem: (position: number) => unknown): BoundItem[] {
         const { renderItem, renderListItem } = this.props;
@@ -768,8 +646,8 @@ export class ListController implements ColumnHost {
     private rebuildBoundItems(): void {
         const { renderHeader } = this.props;
         const resolveItem = this.buildItemResolver();
-        const newBoundItems = this.isColumnView()
-            ? this.collectColumnViewBoundItems(resolveItem)
+        const newBoundItems = this.columnView
+            ? this.columnView.collectBoundItems(resolveItem)
             : this.collectStandardBoundItems(resolveItem);
 
         this.boundItems = newBoundItems;
