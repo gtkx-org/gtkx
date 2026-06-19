@@ -4,6 +4,18 @@ import type { GirClass } from "../gir/class.js";
 import type { GirProperty } from "../gir/property.js";
 import { type ResolvedQualifiedClass, resolveQualifiedClass, splitQualifiedName } from "../gir/qualified-name.js";
 import { qualifyTypeRef } from "../gir/qualify.js";
+import type { GirRepository } from "../gir/repository.js";
+
+/**
+ * The minimal context the ancestry walkers read: the repository to resolve
+ * references against and the namespace unqualified names default to. Satisfied
+ * by a full {@link ModuleContext} as well as the bare repository + namespace the
+ * React props builder holds.
+ */
+type AncestryContext = {
+    readonly repository: GirRepository;
+    readonly namespace: { readonly name: string };
+};
 
 /**
  * A directly-implemented interface resolved to its declaration and the
@@ -20,11 +32,12 @@ export type ResolvedInterface = {
  * Returns `undefined` when the name resolves to a non-interface entity or
  * cannot be resolved at all.
  *
- * @param context - The module context
+ * @param context - The repository and default namespace to resolve against
  * @param name - The (possibly cross-namespace) interface name
+ * @param defaultNamespace - Namespace assumed for an unqualified `name`
  */
 export const resolveImplementedInterface = (
-    context: ModuleContext,
+    context: AncestryContext,
     name: string,
     defaultNamespace: string = context.namespace.name,
 ): ResolvedInterface | undefined => {
@@ -32,6 +45,27 @@ export const resolveImplementedInterface = (
     const resolved = context.repository.resolveNamed(namespaceName, typeName);
     if (resolved === undefined || resolved.kind !== "interface") return undefined;
     return { klass: resolved.value, namespaceName: resolved.namespace.name };
+};
+
+/**
+ * Resolves every directly-implemented interface of `klass`, dropping entries
+ * that do not resolve to an interface.
+ *
+ * @param context - The repository and default namespace to resolve against
+ * @param klass - The implementing class
+ * @param defaultNamespace - Namespace assumed for unqualified `<implements>` names
+ */
+export const resolveDirectInterfaces = (
+    context: AncestryContext,
+    klass: GirClass,
+    defaultNamespace: string,
+): readonly ResolvedInterface[] => {
+    const interfaces: ResolvedInterface[] = [];
+    for (const implementName of klass.implements) {
+        const iface = resolveImplementedInterface(context, implementName, defaultNamespace);
+        if (iface !== undefined) interfaces.push(iface);
+    }
+    return interfaces;
 };
 
 /**
@@ -55,28 +89,31 @@ export const resolvePrerequisiteReference = (context: ModuleContext, name: strin
  * Invokes `visit` for each ancestor class of `klass`, nearest first.
  *
  * Walks the same-namespace and cross-namespace parent chain, stopping at the
- * first unresolved parent or a cycle. Each ancestor is reported together with
- * the namespace it was resolved through so callers can qualify its references.
+ * first unresolved parent, a cycle, or an ancestor `stop` selects. Each
+ * ancestor is reported together with the namespace it was resolved through and
+ * its directly-implemented interfaces, so callers need not re-resolve them.
  *
- * @param context - The module context
+ * @param context - The repository and default namespace to resolve against
  * @param klass - The class whose ancestors to visit
- * @param visit - Callback invoked once per resolved ancestor
+ * @param visit - Callback invoked once per resolved ancestor with its interfaces
+ * @param stop - Halts the walk before visiting an ancestor it selects
  */
 export const forEachAncestor = (
-    context: ModuleContext,
+    context: AncestryContext,
     klass: GirClass,
-    visit: (ancestor: ResolvedQualifiedClass) => void,
+    visit: (ancestor: ResolvedQualifiedClass, interfaces: readonly ResolvedInterface[]) => void,
+    stop: (ancestor: GirClass) => boolean = () => false,
 ): void => {
     const visited = new Set<string>();
     let current =
         klass.parent === undefined ? undefined : { name: klass.parent, defaultNamespace: context.namespace.name };
     while (current !== undefined) {
         const resolved = resolveQualifiedClass(context.repository, current.name, current.defaultNamespace);
-        if (resolved === undefined) break;
+        if (resolved === undefined || stop(resolved.klass)) break;
         const key = `${resolved.namespaceName}.${resolved.klass.name}`;
         if (visited.has(key)) break;
         visited.add(key);
-        visit(resolved);
+        visit(resolved, resolveDirectInterfaces(context, resolved.klass, resolved.namespaceName));
         current = resolved.klass.parent
             ? { name: resolved.klass.parent, defaultNamespace: resolved.namespaceName }
             : undefined;
@@ -98,18 +135,14 @@ export const forEachAncestor = (
 export const collectInterfaceProperties = (context: ModuleContext, klass: GirClass): readonly GirProperty[] => {
     const seen = new Set<string>();
     for (const property of klass.properties) seen.add(toCamelIdentifier(property.name));
-    forEachAncestor(context, klass, (ancestor) => {
+    forEachAncestor(context, klass, (ancestor, interfaces) => {
         for (const property of ancestor.klass.properties) seen.add(toCamelIdentifier(property.name));
-        for (const implementName of ancestor.klass.implements) {
-            const iface = resolveImplementedInterface(context, implementName, ancestor.namespaceName);
-            if (iface === undefined) continue;
+        for (const iface of interfaces) {
             for (const property of iface.klass.properties) seen.add(toCamelIdentifier(property.name));
         }
     });
     const result: GirProperty[] = [];
-    for (const implementName of klass.implements) {
-        const iface = resolveImplementedInterface(context, implementName);
-        if (iface === undefined) continue;
+    for (const iface of resolveDirectInterfaces(context, klass, context.namespace.name)) {
         for (const property of iface.klass.properties) {
             const name = toCamelIdentifier(property.name);
             if (seen.has(name)) continue;

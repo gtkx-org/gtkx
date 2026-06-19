@@ -20,7 +20,12 @@ import {
 import { renderVfuncMetadata } from "./class-struct.js";
 import { renderClassConstructor, renderConstructorPropsInterface } from "./constructor-props.js";
 import { renderGtypeExpression } from "./gtype-binding.js";
-import { collectInterfaceProperties, forEachAncestor, resolveImplementedInterface } from "./inheritance.js";
+import {
+    collectInterfaceProperties,
+    forEachAncestor,
+    type ResolvedInterface,
+    resolveImplementedInterface,
+} from "./inheritance.js";
 import { methodExportName, renderPromisifiedBody, renderPromisifiedSignature } from "./method.js";
 import { inputParameters } from "./param-classify.js";
 import { renderPropertyAccessor } from "./property-accessor.js";
@@ -264,9 +269,9 @@ const collectInheritedMethods = (context: ModuleContext, klass: GirClass): Inher
         definitions: new Map<string, InheritedMethod>(),
         names: new Set<string>(),
     };
-    forEachAncestor(context, klass, (ancestor) => {
+    forEachAncestor(context, klass, (ancestor, interfaces) => {
         absorbInheritedMethods(context, ancestor, accumulator);
-        absorbInheritedInterfaceMethodNames(context, ancestor, accumulator.names);
+        absorbInheritedInterfaceMethodNames(interfaces, accumulator.names);
     });
     return accumulator;
 };
@@ -288,14 +293,8 @@ const absorbInheritedMethods = (
     }
 };
 
-const absorbInheritedInterfaceMethodNames = (
-    context: ModuleContext,
-    ancestor: { readonly klass: GirClass; readonly namespaceName: string },
-    names: Set<string>,
-): void => {
-    for (const implementName of ancestor.klass.implements) {
-        const iface = resolveImplementedInterface(context, implementName, ancestor.namespaceName);
-        if (iface === undefined) continue;
+const absorbInheritedInterfaceMethodNames = (interfaces: readonly ResolvedInterface[], names: Set<string>): void => {
+    for (const iface of interfaces) {
         for (const method of iface.klass.methods) {
             if (!method.introspectable) continue;
             names.add(toCamelCase(method.name));

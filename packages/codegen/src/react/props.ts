@@ -3,11 +3,11 @@ import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import { type GirParameter, isInoutParameter, isOutParameter } from "../gir/parameter.js";
 import type { GirProperty } from "../gir/property.js";
-import { resolveQualifiedClass, splitQualifiedName } from "../gir/qualified-name.js";
 import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirRepository } from "../gir/repository.js";
 import type { GirSignal } from "../gir/signal.js";
 import type { GirTypeRef, NamedTypeRef } from "../gir/type-ref.js";
+import { forEachAncestor, type ResolvedInterface, resolveDirectInterfaces } from "../writers/inheritance.js";
 import { renderHandlerParameters } from "../writers/param-classify.js";
 import { renderBaseTypeFor, type TsTypeTarget } from "../writers/ts-type.js";
 import { isScalarRef } from "../writers/value.js";
@@ -65,8 +65,6 @@ type SignalRenderOptions = {
     readonly owningNamespace: string;
 };
 
-type ParentRef = { readonly klass: GirClass; readonly namespaceName: string };
-
 /**
  * Builds a typed prop bag for one widget intrinsic.
  *
@@ -87,7 +85,6 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
     const seen = new Set<string>();
 
     const ownerName = klass.glibTypeName ?? klass.cType ?? klass.name;
-    const selfNamespace = currentNamespaceKey(repository, klass);
 
     const acceptProperty = (property: GirProperty, owningNamespace: string): void => {
         if (!property.introspectable) return;
@@ -120,9 +117,48 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
         propEntries.push(`${handlerName}?: ${signature};`);
     };
 
-    visitClassAndAncestors({ repository, klass, selfNamespace, isWidgetAncestor }, acceptProperty, acceptSignal);
+    walkWidgetMembers({ repository, klass, namespace, isWidgetAncestor, acceptProperty, acceptSignal });
 
     return { propLines: propEntries, imports, slotPropNames };
+};
+
+/** The widget plus the member visitor {@link walkWidgetMembers} drives. */
+type WidgetMemberWalk = {
+    readonly repository: GirRepository;
+    readonly klass: GirClass;
+    readonly namespace: GirNamespace;
+    readonly isWidgetAncestor: (candidate: GirClass) => boolean;
+    readonly acceptProperty: (property: GirProperty, owningNamespace: string) => void;
+    readonly acceptSignal: (signal: GirSignal, owningNamespace: string) => void;
+};
+
+/**
+ * Visits a widget class, its directly-implemented interfaces, and every
+ * non-widget ancestor (nearest first, up to the first widget parent), invoking
+ * `acceptProperty`/`acceptSignal` for each member in declaration order.
+ */
+const walkWidgetMembers = (walk: WidgetMemberWalk): void => {
+    const { repository, klass, namespace, isWidgetAncestor, acceptProperty, acceptSignal } = walk;
+    const visitMembers = (
+        memberClass: GirClass,
+        owningNamespace: string,
+        interfaces: readonly ResolvedInterface[],
+    ): void => {
+        for (const property of memberClass.properties) acceptProperty(property, owningNamespace);
+        for (const signal of memberClass.signals) acceptSignal(signal, owningNamespace);
+        for (const iface of interfaces) {
+            for (const property of iface.klass.properties) acceptProperty(property, iface.namespaceName);
+            for (const signal of iface.klass.signals) acceptSignal(signal, iface.namespaceName);
+        }
+    };
+    const ancestry = { repository, namespace };
+    visitMembers(klass, namespace.name, resolveDirectInterfaces(ancestry, klass, namespace.name));
+    forEachAncestor(
+        ancestry,
+        klass,
+        (ancestor, interfaces) => visitMembers(ancestor.klass, ancestor.namespaceName, interfaces),
+        isWidgetAncestor,
+    );
 };
 
 /**
@@ -192,70 +228,6 @@ const isSlotProperty = (owner: SlotOwner, property: GirProperty, owningNamespace
         return false;
     }
     return true;
-};
-
-type WalkContext = {
-    readonly repository: GirRepository;
-    readonly klass: GirClass;
-    readonly selfNamespace: string;
-    readonly isWidgetAncestor: (candidate: GirClass) => boolean;
-};
-
-const visitClassAndAncestors = (
-    walk: WalkContext,
-    acceptProperty: (property: GirProperty, owningNamespace: string) => void,
-    acceptSignal: (signal: GirSignal, owningNamespace: string) => void,
-): void => {
-    const visit = (current: GirClass, owningNamespace: string): void => {
-        for (const property of current.properties) acceptProperty(property, owningNamespace);
-        for (const signal of current.signals) acceptSignal(signal, owningNamespace);
-        for (const implementsName of current.implements) {
-            const resolved = resolveInterface(walk.repository, current, implementsName);
-            if (resolved === undefined) continue;
-            for (const property of resolved.value.properties) acceptProperty(property, resolved.namespace.name);
-            for (const signal of resolved.value.signals) acceptSignal(signal, resolved.namespace.name);
-        }
-    };
-
-    visit(walk.klass, walk.selfNamespace);
-    const visited = new Set<string>([`${walk.selfNamespace}.${walk.klass.name}`]);
-    let parentRef = resolveParent(walk.repository, walk.klass, walk.selfNamespace);
-    while (parentRef !== undefined && !walk.isWidgetAncestor(parentRef.klass)) {
-        const key = `${parentRef.namespaceName}.${parentRef.klass.name}`;
-        if (visited.has(key)) break;
-        visited.add(key);
-        visit(parentRef.klass, parentRef.namespaceName);
-        parentRef = resolveParent(walk.repository, parentRef.klass, parentRef.namespaceName);
-    }
-};
-
-const resolveParent = (repository: GirRepository, klass: GirClass, defaultNamespace: string): ParentRef | undefined => {
-    if (klass.parent === undefined) return undefined;
-    return resolveQualifiedClass(repository, klass.parent, defaultNamespace);
-};
-
-const currentNamespaceKey = (repository: GirRepository, klass: GirClass): string => {
-    for (const namespace of repository.namespaces.values()) {
-        if (namespace.classes.includes(klass) || namespace.interfaces.includes(klass)) {
-            return namespace.name;
-        }
-    }
-    return "?";
-};
-
-const resolveInterface = (
-    repository: GirRepository,
-    declaringClass: GirClass,
-    implementsName: string,
-): { readonly namespace: GirNamespace; readonly value: GirClass } | undefined => {
-    const { namespaceName, typeName } = splitQualifiedName(
-        implementsName,
-        currentNamespaceKey(repository, declaringClass),
-    );
-    const resolved = repository.resolveNamed(namespaceName, typeName);
-    if (resolved === undefined) return undefined;
-    if (resolved.kind !== "interface") return undefined;
-    return { namespace: resolved.namespace, value: resolved.value };
 };
 
 /**

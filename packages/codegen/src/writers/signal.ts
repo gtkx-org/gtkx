@@ -516,11 +516,9 @@ const collectInheritedMemberNames = (
     select: (source: GirClass) => readonly NamedMember[],
 ): ReadonlySet<string> => {
     const names = new Set<string>();
-    forEachAncestor(context, klass, (ancestor) => {
+    forEachAncestor(context, klass, (ancestor, interfaces) => {
         for (const member of select(ancestor.klass)) names.add(toCamelCase(member.name));
-        for (const implementName of ancestor.klass.implements) {
-            const iface = resolveImplementedInterface(context, implementName, ancestor.namespaceName);
-            if (iface === undefined) continue;
+        for (const iface of interfaces) {
             for (const member of select(iface.klass)) names.add(toCamelCase(member.name));
         }
     });
