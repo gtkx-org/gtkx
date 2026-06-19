@@ -42,7 +42,8 @@
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "dependencies": {
-        "@gtkx/ffi": "workspace:*"
+        "@gtkx/ffi": "workspace:*",
+        "@gtkx/native": "workspace:*"
     },
     "devDependencies": {
         "@gtkx/vitest": "workspace:*"

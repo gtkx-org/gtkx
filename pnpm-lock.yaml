@@ -332,6 +332,9 @@ importers:
       '@gtkx/ffi':
         specifier: workspace:*
         version: link:../ffi
+      '@gtkx/native':
+        specifier: workspace:*
+        version: link:../native
     devDependencies:
       '@gtkx/vitest':
         specifier: workspace:*

@@ -644,9 +644,10 @@ const renderEnumsModule = (
 
 const renderTypesModule = (groupAliases: ReadonlyMap<string, string>): string => {
     const builder = new ModuleBuilder();
-    builder.appendDeclaration(`/** An opaque \`GLsync\` fence handle. */\nexport type GLsync = object;`);
+    builder.imports.addNamed("@gtkx/native", "Handle", true);
+    builder.appendDeclaration(`/** An opaque \`GLsync\` fence handle. */\nexport type GLsync = Handle;`);
     builder.appendDeclaration(
-        `/** An opaque native pointer handle (e.g. a \`glMapBufferRange\` mapping). */\nexport type GLpointer = object;`,
+        `/** An opaque native pointer handle (e.g. a \`glMapBufferRange\` mapping). */\nexport type GLpointer = Handle;`,
     );
     const seen = new Set<string>();
     for (const scalar of GL_SCALARS.values()) {

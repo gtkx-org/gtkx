@@ -6,11 +6,13 @@
  * `pnpm --filter @gtkx/codegen codegen:gl`.
  */
 
+import type { Handle } from "@gtkx/native";
+
 /** An opaque `GLsync` fence handle. */
-export type GLsync = object;
+export type GLsync = Handle;
 
 /** An opaque native pointer handle (e.g. a `glMapBufferRange` mapping). */
-export type GLpointer = object;
+export type GLpointer = Handle;
 
 /** The C `GLenum` scalar. */
 export type GLenum = number;
