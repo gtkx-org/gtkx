@@ -1,32 +1,45 @@
 export { createRootElement, type RootElement } from "@gtkx/react";
-export type { Config } from "./config.js";
+export type { Config, ConfigFn } from "./config.js";
 export { configure, getConfig } from "./config.js";
 export { fireEvent } from "./fire-event.js";
 export type { PrettyWidgetOptions } from "./pretty-widget.js";
-export { prettyWidget } from "./pretty-widget.js";
+export { logWidget, prettyWidget } from "./pretty-widget.js";
 export {
+    findAllByDisplayValue,
     findAllByLabelText,
     findAllByName,
+    findAllByPlaceholderText,
     findAllByRole,
     findAllByText,
+    findByDisplayValue,
     findByLabelText,
     findByName,
+    findByPlaceholderText,
     findByRole,
     findByText,
+    getAllByDisplayValue,
     getAllByLabelText,
     getAllByName,
+    getAllByPlaceholderText,
     getAllByRole,
     getAllByText,
+    getByDisplayValue,
     getByLabelText,
     getByName,
+    getByPlaceholderText,
     getByRole,
     getByText,
+    getDefaultNormalizer,
+    queryAllByDisplayValue,
     queryAllByLabelText,
     queryAllByName,
+    queryAllByPlaceholderText,
     queryAllByRole,
     queryAllByText,
+    queryByDisplayValue,
     queryByLabelText,
     queryByName,
+    queryByPlaceholderText,
     queryByRole,
     queryByText,
 } from "./queries.js";
@@ -37,14 +50,18 @@ export { getRoles, logRoles, prettyRoles } from "./role-helpers.js";
 export { logScreenshotPath, screen } from "./screen.js";
 export type { ScreenshotOptions } from "./screenshot.js";
 export { screenshot } from "./screenshot.js";
+export type { Method, Suggestion, Variant } from "./suggestions.js";
+export { getSuggestedQuery } from "./suggestions.js";
 export { act } from "./timing.js";
 export type { Container } from "./traversal.js";
 export type {
     BoundQueries,
     ByRoleOptions,
+    ByRoleValue,
     Matcher,
     MatcherFunction,
     MatcherOptions,
+    NormalizerFn,
     NormalizerOptions,
     RenderHookOptions,
     RenderHookResult,
@@ -60,7 +77,10 @@ export type {
     DropOptions,
     PointerInput,
     TabOptions,
+    TypeOptions,
+    UserEvent,
     UserEventInstance,
+    UserEventOptions,
 } from "./user-event.js";
 export { userEvent } from "./user-event.js";
 export { waitFor, waitForElementToBeRemoved } from "./wait-for.js";

@@ -1,9 +1,32 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
-import { createContext, type ReactNode, useContext } from "react";
-import { describe, expect, it } from "vitest";
-import { cleanup, createRootElement, render, type WrapperComponent } from "../src/index.js";
+import { Component, createContext, type ReactNode, useContext } from "react";
+import { describe, expect, it, vi } from "vitest";
+import {
+    type Container,
+    cleanup,
+    createRootElement,
+    queryAllByRole,
+    render,
+    type WrapperComponent,
+} from "../src/index.js";
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+    state = { hasError: false };
+
+    static getDerivedStateFromError(): { hasError: boolean } {
+        return { hasError: true };
+    }
+
+    render(): ReactNode {
+        return this.state.hasError ? <GtkLabel label="error" /> : this.props.children;
+    }
+}
+
+const Thrower = (): ReactNode => {
+    throw new Error("boom");
+};
 
 const NON_UNIQUE = Gio.ApplicationFlags.NON_UNIQUE;
 
@@ -125,6 +148,59 @@ describe("render lifecycle", () => {
     it("provides a debug function", async () => {
         const { debug } = await render(<GtkButton label="Debug Test" />);
         expect(typeof debug).toBe("function");
+    });
+});
+
+describe("render options", () => {
+    it("double-invokes renders under reactStrictMode", async () => {
+        let plain = 0;
+        const Plain = () => {
+            plain++;
+            return <GtkButton label="plain" />;
+        };
+        await render(<Plain />);
+        expect(plain).toBe(1);
+
+        let strict = 0;
+        const Strict = () => {
+            strict++;
+            return <GtkButton label="strict" />;
+        };
+        await render(<Strict />, { reactStrictMode: true });
+        expect(strict).toBe(2);
+    });
+
+    it("invokes onCaughtError when an error boundary catches", async () => {
+        const onCaughtError = vi.fn();
+
+        await expect(
+            render(
+                <ErrorBoundary>
+                    <Thrower />
+                </ErrorBoundary>,
+                { onCaughtError },
+            ),
+        ).rejects.toThrow("boom");
+
+        expect(onCaughtError).toHaveBeenCalled();
+    });
+
+    it("accepts an onRecoverableError option without invoking it on a clean render", async () => {
+        const onRecoverableError = vi.fn();
+        const { findByRole } = await render(<GtkButton label="recover" />, { onRecoverableError });
+        await findByRole(Gtk.AccessibleRole.BUTTON, { name: "recover" });
+        expect(onRecoverableError).not.toHaveBeenCalled();
+    });
+
+    it("binds custom queries from the queries option", async () => {
+        const { getFirstButton } = await render(<GtkButton label="Custom" />, {
+            queries: {
+                getFirstButton: (container: Container): Gtk.Widget | null =>
+                    queryAllByRole(container, Gtk.AccessibleRole.BUTTON)[0] ?? null,
+            },
+        });
+
+        expect(getFirstButton()).toBeInstanceOf(Gtk.Button);
     });
 });
 

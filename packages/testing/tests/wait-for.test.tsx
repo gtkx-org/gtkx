@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { type ReactNode, useState } from "react";
 import { describe, expect, it } from "vitest";
-import { render, screen, userEvent, waitFor, waitForElementToBeRemoved } from "../src/index.js";
+import { findByText, render, screen, userEvent, waitFor, waitForElementToBeRemoved } from "../src/index.js";
 
 /**
  * Builds a component that renders a "Remove" button which hides the given
@@ -109,6 +109,20 @@ describe("waitFor error handling", () => {
             ),
         ).rejects.toThrow("Specific failure reason");
     });
+
+    it("throws a TypeError when the callback is not a function", () => {
+        expect(() => waitFor(undefined as never)).toThrow(TypeError);
+        expect(() => waitFor(undefined as never)).toThrow(/callback.*must be a function/);
+    });
+});
+
+describe("findBy forwards waitForOptions", () => {
+    it("routes a custom onTimeout through the find query", async () => {
+        const { container } = await render(<GtkLabel label="Present" />);
+        await expect(
+            findByText(container, "Missing", { timeout: 100, onTimeout: () => new Error("custom find timeout") }),
+        ).rejects.toThrow("custom find timeout");
+    });
 });
 
 describe("waitForElementToBeRemoved widget", () => {
@@ -146,6 +160,31 @@ describe("waitForElementToBeRemoved widget", () => {
 
         await userEvent.click(removeButton);
         await expect(removalPromise).resolves.toBeUndefined();
+    });
+
+    it("resolves once every widget in an array is removed", async () => {
+        const DynamicComponent = createDynamicComponent(
+            <>
+                <GtkButton label="First" />
+                <GtkButton label="Second" />
+            </>,
+        );
+
+        await render(<DynamicComponent />);
+
+        const first = await screen.findByText("First");
+        const second = await screen.findByText("Second");
+        const removeButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Remove" });
+
+        const removalPromise = waitForElementToBeRemoved([first, second]);
+        await userEvent.click(removeButton);
+
+        await expect(removalPromise).resolves.toBeUndefined();
+    });
+
+    it("throws immediately when given an empty array", async () => {
+        await render(<GtkLabel label="Test" />);
+        await expect(waitForElementToBeRemoved([])).rejects.toThrow("already removed");
     });
 });
 

@@ -1,66 +1,76 @@
-import type * as Gtk from "@gtkx/gi/gtk";
 import * as queries from "./queries.js";
 import type { Container } from "./traversal.js";
-import type { BoundQueries, ByRoleOptions, Matcher, MatcherOptions } from "./types.js";
+import type { BoundCustomQueries, BoundQueries, QueryMap } from "./types.js";
 
 type ContainerOrGetter = Container | (() => Container);
 
 const resolveContainer = (containerOrGetter: ContainerOrGetter): Container =>
     typeof containerOrGetter === "function" ? containerOrGetter() : containerOrGetter;
 
+const bindQuery =
+    <Args extends unknown[], Result>(
+        query: (container: Container, ...args: Args) => Result,
+        containerOrGetter: ContainerOrGetter,
+    ) =>
+    (...args: Args): Result =>
+        query(resolveContainer(containerOrGetter), ...args);
+
+const bindCustomQueries = <Q extends QueryMap>(
+    customQueries: Q,
+    containerOrGetter: ContainerOrGetter,
+): BoundCustomQueries<Q> => {
+    const entries = Object.entries(customQueries).map(
+        ([key, query]) => [key, bindQuery(query, containerOrGetter)] as const,
+    );
+    return Object.fromEntries(entries) as BoundCustomQueries<Q>;
+};
+
 /**
  * Binds all query functions to a container.
  *
  * @param containerOrGetter - The container to bind queries to, or a function that returns it
+ * @param customQueries - Extra query functions to bind alongside the built-ins
  * @returns Object with all query methods bound to the container
  */
-export const bindQueries = (containerOrGetter: ContainerOrGetter): BoundQueries => ({
-    queryByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) =>
-        queries.queryByRole(resolveContainer(containerOrGetter), role, options),
-    queryByLabelText: (text: Matcher, options?: MatcherOptions) =>
-        queries.queryByLabelText(resolveContainer(containerOrGetter), text, options),
-    queryByText: (text: Matcher, options?: MatcherOptions) =>
-        queries.queryByText(resolveContainer(containerOrGetter), text, options),
-    queryByName: (name: Matcher, options?: MatcherOptions) =>
-        queries.queryByName(resolveContainer(containerOrGetter), name, options),
-    queryAllByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) =>
-        queries.queryAllByRole(resolveContainer(containerOrGetter), role, options),
-    queryAllByLabelText: (text: Matcher, options?: MatcherOptions) =>
-        queries.queryAllByLabelText(resolveContainer(containerOrGetter), text, options),
-    queryAllByText: (text: Matcher, options?: MatcherOptions) =>
-        queries.queryAllByText(resolveContainer(containerOrGetter), text, options),
-    queryAllByName: (name: Matcher, options?: MatcherOptions) =>
-        queries.queryAllByName(resolveContainer(containerOrGetter), name, options),
-    getByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) =>
-        queries.getByRole(resolveContainer(containerOrGetter), role, options),
-    getByLabelText: (text: Matcher, options?: MatcherOptions) =>
-        queries.getByLabelText(resolveContainer(containerOrGetter), text, options),
-    getByText: (text: Matcher, options?: MatcherOptions) =>
-        queries.getByText(resolveContainer(containerOrGetter), text, options),
-    getByName: (name: Matcher, options?: MatcherOptions) =>
-        queries.getByName(resolveContainer(containerOrGetter), name, options),
-    getAllByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) =>
-        queries.getAllByRole(resolveContainer(containerOrGetter), role, options),
-    getAllByLabelText: (text: Matcher, options?: MatcherOptions) =>
-        queries.getAllByLabelText(resolveContainer(containerOrGetter), text, options),
-    getAllByText: (text: Matcher, options?: MatcherOptions) =>
-        queries.getAllByText(resolveContainer(containerOrGetter), text, options),
-    getAllByName: (name: Matcher, options?: MatcherOptions) =>
-        queries.getAllByName(resolveContainer(containerOrGetter), name, options),
-    findByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) =>
-        queries.findByRole(resolveContainer(containerOrGetter), role, options),
-    findByLabelText: (text: Matcher, options?: MatcherOptions) =>
-        queries.findByLabelText(resolveContainer(containerOrGetter), text, options),
-    findByText: (text: Matcher, options?: MatcherOptions) =>
-        queries.findByText(resolveContainer(containerOrGetter), text, options),
-    findByName: (name: Matcher, options?: MatcherOptions) =>
-        queries.findByName(resolveContainer(containerOrGetter), name, options),
-    findAllByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) =>
-        queries.findAllByRole(resolveContainer(containerOrGetter), role, options),
-    findAllByLabelText: (text: Matcher, options?: MatcherOptions) =>
-        queries.findAllByLabelText(resolveContainer(containerOrGetter), text, options),
-    findAllByText: (text: Matcher, options?: MatcherOptions) =>
-        queries.findAllByText(resolveContainer(containerOrGetter), text, options),
-    findAllByName: (name: Matcher, options?: MatcherOptions) =>
-        queries.findAllByName(resolveContainer(containerOrGetter), name, options),
+export const bindQueries = <Q extends QueryMap = Record<never, never>>(
+    containerOrGetter: ContainerOrGetter,
+    customQueries?: Q,
+): BoundQueries & BoundCustomQueries<Q> => ({
+    queryByRole: bindQuery(queries.queryByRole, containerOrGetter),
+    queryByLabelText: bindQuery(queries.queryByLabelText, containerOrGetter),
+    queryByText: bindQuery(queries.queryByText, containerOrGetter),
+    queryByName: bindQuery(queries.queryByName, containerOrGetter),
+    queryByPlaceholderText: bindQuery(queries.queryByPlaceholderText, containerOrGetter),
+    queryByDisplayValue: bindQuery(queries.queryByDisplayValue, containerOrGetter),
+    queryAllByRole: bindQuery(queries.queryAllByRole, containerOrGetter),
+    queryAllByLabelText: bindQuery(queries.queryAllByLabelText, containerOrGetter),
+    queryAllByText: bindQuery(queries.queryAllByText, containerOrGetter),
+    queryAllByName: bindQuery(queries.queryAllByName, containerOrGetter),
+    queryAllByPlaceholderText: bindQuery(queries.queryAllByPlaceholderText, containerOrGetter),
+    queryAllByDisplayValue: bindQuery(queries.queryAllByDisplayValue, containerOrGetter),
+    getByRole: bindQuery(queries.getByRole, containerOrGetter),
+    getByLabelText: bindQuery(queries.getByLabelText, containerOrGetter),
+    getByText: bindQuery(queries.getByText, containerOrGetter),
+    getByName: bindQuery(queries.getByName, containerOrGetter),
+    getByPlaceholderText: bindQuery(queries.getByPlaceholderText, containerOrGetter),
+    getByDisplayValue: bindQuery(queries.getByDisplayValue, containerOrGetter),
+    getAllByRole: bindQuery(queries.getAllByRole, containerOrGetter),
+    getAllByLabelText: bindQuery(queries.getAllByLabelText, containerOrGetter),
+    getAllByText: bindQuery(queries.getAllByText, containerOrGetter),
+    getAllByName: bindQuery(queries.getAllByName, containerOrGetter),
+    getAllByPlaceholderText: bindQuery(queries.getAllByPlaceholderText, containerOrGetter),
+    getAllByDisplayValue: bindQuery(queries.getAllByDisplayValue, containerOrGetter),
+    findByRole: bindQuery(queries.findByRole, containerOrGetter),
+    findByLabelText: bindQuery(queries.findByLabelText, containerOrGetter),
+    findByText: bindQuery(queries.findByText, containerOrGetter),
+    findByName: bindQuery(queries.findByName, containerOrGetter),
+    findByPlaceholderText: bindQuery(queries.findByPlaceholderText, containerOrGetter),
+    findByDisplayValue: bindQuery(queries.findByDisplayValue, containerOrGetter),
+    findAllByRole: bindQuery(queries.findAllByRole, containerOrGetter),
+    findAllByLabelText: bindQuery(queries.findAllByLabelText, containerOrGetter),
+    findAllByText: bindQuery(queries.findAllByText, containerOrGetter),
+    findAllByName: bindQuery(queries.findAllByName, containerOrGetter),
+    findAllByPlaceholderText: bindQuery(queries.findAllByPlaceholderText, containerOrGetter),
+    findAllByDisplayValue: bindQuery(queries.findAllByDisplayValue, containerOrGetter),
+    ...(customQueries ? bindCustomQueries(customQueries, containerOrGetter) : ({} as BoundCustomQueries<Q>)),
 });

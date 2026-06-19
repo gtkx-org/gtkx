@@ -1,5 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { Container } from "./traversal.js";
+import type { WaitForOptions } from "./types.js";
 import { waitFor } from "./wait-for.js";
 
 /**
@@ -21,13 +22,13 @@ export type BuiltQueries<Args extends unknown[]> = {
     findBy: (container: Container, ...args: Args) => Promise<Gtk.Widget>;
 };
 
-const extractTimeout = (args: readonly unknown[]): number | undefined => {
+const extractWaitForOptions = (args: readonly unknown[]): WaitForOptions => {
     const last = args[args.length - 1];
-    if (last && typeof last === "object" && "timeout" in last) {
-        const t = (last as { timeout?: number }).timeout;
-        return typeof t === "number" ? t : undefined;
+    if (last && typeof last === "object" && !(last instanceof RegExp)) {
+        const { timeout, interval, onTimeout } = last as WaitForOptions;
+        return { timeout, interval, onTimeout };
     }
-    return undefined;
+    return {};
 };
 
 /**
@@ -74,10 +75,10 @@ export const buildQueries = <Args extends unknown[]>(
     };
 
     const findAllBy = (container: Container, ...args: Args): Promise<Gtk.Widget[]> =>
-        waitFor(() => getAllBy(container, ...args), { timeout: extractTimeout(args) });
+        waitFor(() => getAllBy(container, ...args), extractWaitForOptions(args));
 
     const findBy = (container: Container, ...args: Args): Promise<Gtk.Widget> =>
-        waitFor(() => getBy(container, ...args), { timeout: extractTimeout(args) });
+        waitFor(() => getBy(container, ...args), extractWaitForOptions(args));
 
     return { queryBy, getAllBy, getBy, findAllBy, findBy };
 };

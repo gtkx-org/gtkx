@@ -1,5 +1,28 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { getAccessibleMetadata } from "@gtkx/react";
+import { isEditable } from "./editable.js";
+
+const callStringGetter = (widget: Gtk.Widget, method: string): string | null => {
+    const fn: unknown = Reflect.get(widget, method);
+    if (typeof fn !== "function") return null;
+    const value = (fn as () => string | null).call(widget);
+    return value ?? null;
+};
+
+const readAccessibleString = (widget: Gtk.Widget, key: string): string | null => {
+    const value = getAccessibleMetadata<string>(widget, key);
+    return typeof value === "string" ? value : null;
+};
+
+const readAccessibleNumber = (widget: Gtk.Widget, key: string): number | null => {
+    const value = getAccessibleMetadata<number>(widget, key);
+    return typeof value === "number" ? value : null;
+};
+
+const readAccessibleBoolean = (widget: Gtk.Widget, key: string): boolean | null => {
+    const value = getAccessibleMetadata<boolean>(widget, key);
+    return typeof value === "boolean" ? value : null;
+};
 
 const getLabelText = (widget: Gtk.Widget): string | null => {
     const asLabel = widget as Gtk.Label;
@@ -11,9 +34,7 @@ const DEFAULT_TEXT_GETTERS = ["getLabel", "getText", "getTitle"] as const;
 
 const getDefaultText = (widget: Gtk.Widget): string | null => {
     for (const getter of DEFAULT_TEXT_GETTERS) {
-        const fn: unknown = Reflect.get(widget, getter);
-        if (typeof fn !== "function") continue;
-        const value = (fn as () => string).call(widget);
+        const value = callStringGetter(widget, getter);
         if (value) return value;
     }
     return null;
@@ -111,6 +132,39 @@ export const getWidgetName = (widget: Gtk.Widget): string | null => {
 };
 
 /**
+ * Gets the placeholder text of an entry-like widget (`GtkEntry`,
+ * `GtkSearchEntry`, `GtkPasswordEntry`, a standalone `GtkText`), analogous to
+ * the HTML `placeholder` attribute. Scoped to editable-role widgets so the
+ * internal `GtkText` delegate of a composite entry is not matched twice.
+ *
+ * @param widget - The widget to read the placeholder text from
+ * @returns The placeholder text, or null for widgets without one
+ */
+export const getWidgetPlaceholderText = (widget: Gtk.Widget): string | null => {
+    if (!isEditable(widget)) {
+        return null;
+    }
+
+    return callStringGetter(widget, "getPlaceholderText");
+};
+
+/**
+ * Gets the current value displayed by an editable widget, analogous to the
+ * `value` of an HTML `input`/`textarea`. Editable widgets (`GtkEntry`,
+ * `GtkText`, `GtkSearchEntry`, `GtkSpinButton`) report their editable text.
+ *
+ * @param widget - The widget to read the display value from
+ * @returns The displayed value, or null for widgets that carry none
+ */
+export const getWidgetDisplayValue = (widget: Gtk.Widget): string | null => {
+    if (isEditable(widget)) {
+        return widget.getText();
+    }
+
+    return null;
+};
+
+/**
  * Gets the checked state from toggle-like widgets.
  *
  * @param widget - The widget to get the checked state from
@@ -192,6 +246,107 @@ export const getWidgetSelectedState = (widget: Gtk.Widget): boolean | null => {
  * @returns The numeric level or null if none is set
  */
 export const getWidgetLevel = (widget: Gtk.Widget): number | null => {
-    const level = getAccessibleMetadata<number>(widget, "accessibleLevel");
-    return typeof level === "number" ? level : null;
+    return readAccessibleNumber(widget, "accessibleLevel");
+};
+
+/**
+ * Gets the busy state declared via the `accessibleBusy` JSX prop (mirrors GTK's
+ * `AccessibleState.BUSY`).
+ *
+ * @param widget - The widget to read the busy state from
+ * @returns The busy state, or null when none is declared
+ */
+export const getWidgetBusyState = (widget: Gtk.Widget): boolean | null => {
+    return readAccessibleBoolean(widget, "accessibleBusy");
+};
+
+/**
+ * Gets the accessible description declared via the `accessibleDescription` JSX
+ * prop (mirrors GTK's `AccessibleProperty.DESCRIPTION`).
+ *
+ * @param widget - The widget to read the description from
+ * @returns The description, or null when none is declared
+ */
+export const getWidgetDescription = (widget: Gtk.Widget): string | null => {
+    return readAccessibleString(widget, "accessibleDescription");
+};
+
+/**
+ * The accessible value of a widget, declared via the `accessibleValueNow`,
+ * `accessibleValueMin`, `accessibleValueMax`, and `accessibleValueText` JSX
+ * props (mirrors GTK's `AccessibleProperty.VALUE_*`). Each field is null when
+ * the corresponding prop is not declared.
+ */
+export type WidgetValue = {
+    /** The current value (`AccessibleProperty.VALUE_NOW`) */
+    now: number | null;
+    /** The minimum value (`AccessibleProperty.VALUE_MIN`) */
+    min: number | null;
+    /** The maximum value (`AccessibleProperty.VALUE_MAX`) */
+    max: number | null;
+    /** The human-readable value text (`AccessibleProperty.VALUE_TEXT`) */
+    text: string | null;
+};
+
+/**
+ * Gets the accessible value of a widget from its declared `accessibleValue*`
+ * JSX props.
+ *
+ * @param widget - The widget to read the value from
+ * @returns The declared value fields, each null when not declared
+ */
+export const getWidgetValue = (widget: Gtk.Widget): WidgetValue => ({
+    now: readAccessibleNumber(widget, "accessibleValueNow"),
+    min: readAccessibleNumber(widget, "accessibleValueMin"),
+    max: readAccessibleNumber(widget, "accessibleValueMax"),
+    text: readAccessibleString(widget, "accessibleValueText"),
+});
+
+/**
+ * Gets a widget's own accessible label, declared via the `accessibleLabel` JSX
+ * prop (the analog of the HTML `aria-label` attribute).
+ *
+ * @param widget - The widget to read the label from
+ * @returns The label, or null when none is declared
+ */
+export const getWidgetOwnLabel = (widget: Gtk.Widget): string | null => {
+    return readAccessibleString(widget, "accessibleLabel");
+};
+
+/**
+ * Gets the combined text of the widgets a widget is labeled by, declared via
+ * the `accessibleLabelledBy` JSX prop (the analog of HTML `aria-labelledby`).
+ *
+ * @param widget - The widget to resolve the labeling text for
+ * @returns The joined accessible names of the labeling widgets, or null
+ */
+export const getWidgetLabelledByText = (widget: Gtk.Widget): string | null => {
+    const targets = getAccessibleMetadata<Gtk.Widget[]>(widget, "accessibleLabelledBy");
+    if (!Array.isArray(targets) || targets.length === 0) return null;
+
+    const texts: string[] = [];
+    for (const target of targets) {
+        const text = getWidgetAccessibleName(target);
+        if (text !== null) texts.push(text);
+    }
+
+    return texts.length > 0 ? texts.join(" ") : null;
+};
+
+/**
+ * Reports whether a widget is hidden from the accessibility tree — either it or
+ * an ancestor is not visible, or declares the `accessibleHidden` state. The GTK
+ * analog of `@testing-library/dom`'s `isInaccessible`.
+ *
+ * @param widget - The widget to test
+ * @returns `true` when the widget is hidden from accessibility
+ */
+export const isHiddenFromAccessibility = (widget: Gtk.Widget): boolean => {
+    let current: Gtk.Widget | null = widget;
+    while (current) {
+        if (!current.getVisible()) return true;
+        if (readAccessibleBoolean(current, "accessibleHidden") === true) return true;
+        current = current.getParent();
+    }
+    return false;
 };

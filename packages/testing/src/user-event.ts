@@ -75,6 +75,27 @@ export type TabOptions = {
     shift?: boolean;
 };
 
+/**
+ * Options for {@link userEvent.type}.
+ */
+export type TypeOptions = {
+    /** Skip focusing the widget before typing (default: false) */
+    skipClick?: boolean;
+    /** Selection anchor to place before typing */
+    initialSelectionStart?: number;
+    /** Selection end to place before typing (defaults to `initialSelectionStart`) */
+    initialSelectionEnd?: number;
+};
+
+/**
+ * Options for {@link userEvent.setup}, applied as defaults to the returned
+ * instance's interactions.
+ */
+export type UserEventOptions = {
+    /** Default for {@link TypeOptions.skipClick} on the instance's `type` */
+    skipClick?: boolean;
+};
+
 const findClickableAncestor = (widget: Gtk.Widget): Gtk.Widget | null => {
     let current = widget.getParent();
     while (current) {
@@ -136,33 +157,102 @@ const getEditableDelegate = (widget: Gtk.Widget): Gtk.Widget | null => {
     return delegate instanceof Gtk.Widget ? delegate : null;
 };
 
-const type = async (widget: Gtk.Widget, text: string): Promise<void> => {
+const EDITABLE_REQUIRED = "expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)";
+
+const insertEditableText = (widget: Gtk.Editable, text: string): void => {
+    const target = getEditableDelegate(widget) ?? widget;
+    if (target instanceof Gtk.Text || target instanceof Gtk.TextView) {
+        target.emit("insert-at-cursor", text);
+        return;
+    }
+
+    const position = widget.getPosition();
+    const newPosition = widget.insertText(text, text.length, position);
+    widget.setPosition(newPosition);
+};
+
+const readEditableSelection = (widget: Gtk.Editable): string => {
+    const [hasSelection, start, end] = widget.getSelectionBounds();
+    return hasSelection ? widget.getChars(start, end) : "";
+};
+
+const writeClipboardText = (widget: Gtk.Widget, text: string): void => {
+    const value = GObject.buildValue(GObject.TYPE_STRING, (v) => v.setString(text));
+    widget.getClipboard().set(value);
+};
+
+/**
+ * Clears the display clipboard that {@link userEvent.copy}/{@link userEvent.cut}/
+ * {@link userEvent.paste} operate on. Called by `cleanup` so clipboard contents
+ * do not leak between tests sharing a display.
+ */
+export const resetClipboard = (): void => {
+    Gdk.Display.getDefault()?.getClipboard().setContent(null);
+};
+
+const type = async (widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> => {
     await act(() => {
         if (!isEditable(widget)) {
-            throw new Error(
-                "Cannot type into element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)",
-            );
+            throw new Error(`Cannot type into element: ${EDITABLE_REQUIRED}`);
         }
 
-        const target = getEditableDelegate(widget) ?? widget;
-        if (target instanceof Gtk.Text || target instanceof Gtk.TextView) {
-            target.emit("insert-at-cursor", text);
-            return;
+        if (!options?.skipClick) {
+            widget.grabFocus();
         }
 
-        const position = widget.getPosition();
-        const newPosition = widget.insertText(text, text.length, position);
-        widget.setPosition(newPosition);
+        if (options?.initialSelectionStart !== undefined) {
+            const start = options.initialSelectionStart;
+            const end = options.initialSelectionEnd ?? start;
+            widget.selectRegion(start, end);
+            if (end !== start) {
+                widget.deleteSelection();
+            }
+            widget.setPosition(start);
+        }
+
+        insertEditableText(widget, text);
     });
 };
 
 const clear = async (widget: Gtk.Widget): Promise<void> => {
     await act(() => {
         if (!isEditable(widget)) {
-            throw new Error("Cannot clear element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)");
+            throw new Error(`Cannot clear element: ${EDITABLE_REQUIRED}`);
         }
 
         widget.setText("");
+    });
+};
+
+const copy = async (widget: Gtk.Widget): Promise<void> => {
+    await act(() => {
+        if (!isEditable(widget)) {
+            throw new Error(`Cannot copy: ${EDITABLE_REQUIRED}`);
+        }
+
+        writeClipboardText(widget, readEditableSelection(widget));
+    });
+};
+
+const cut = async (widget: Gtk.Widget): Promise<void> => {
+    await act(() => {
+        if (!isEditable(widget)) {
+            throw new Error(`Cannot cut: ${EDITABLE_REQUIRED}`);
+        }
+
+        writeClipboardText(widget, readEditableSelection(widget));
+        widget.deleteSelection();
+    });
+};
+
+const paste = async (widget: Gtk.Widget, text?: string): Promise<void> => {
+    if (!isEditable(widget)) {
+        throw new Error(`Cannot paste: ${EDITABLE_REQUIRED}`);
+    }
+
+    const content = text ?? (await widget.getClipboard().readTextAsync(null)) ?? "";
+    await act(() => {
+        insertEditableText(widget, content);
     });
 };
 
@@ -695,6 +785,9 @@ export const userEvent: {
     tab: typeof tab;
     type: typeof type;
     clear: typeof clear;
+    copy: typeof copy;
+    cut: typeof cut;
+    paste: typeof paste;
     selectOptions: typeof selectOptions;
     deselectOptions: typeof deselectOptions;
     hover: typeof hover;
@@ -708,7 +801,7 @@ export const userEvent: {
     drag: typeof drag;
     drop: typeof drop;
     dragAndDrop: typeof dragAndDrop;
-    setup: () => UserEventInstance;
+    setup: (options?: UserEventOptions) => UserEventInstance;
 } = {
     /**
      * Activates a widget.
@@ -764,6 +857,21 @@ export const userEvent: {
      * Sets the text to empty string.
      */
     clear,
+    /**
+     * Copies an editable widget's current selection to an in-memory clipboard
+     * that {@link paste} reads from.
+     */
+    copy,
+    /**
+     * Cuts an editable widget's current selection: copies it to the in-memory
+     * clipboard, then deletes it.
+     */
+    cut,
+    /**
+     * Pastes text into an editable widget at the cursor. Uses the supplied
+     * `text`, or the in-memory clipboard written by {@link copy}/{@link cut}.
+     */
+    paste,
     /**
      * Selects options in a dropdown or list.
      *
@@ -919,15 +1027,18 @@ export const userEvent: {
      * await user.keyboard("{/Shift}"); // Shift released
      * ```
      */
-    setup: (): UserEventInstance => {
+    setup: (options?: UserEventOptions): UserEventInstance => {
         const state = createInitialState();
         return {
             click,
             dblClick,
             tripleClick,
             tab,
-            type,
+            type: (widget, text, typeOptions) => type(widget, text, { skipClick: options?.skipClick, ...typeOptions }),
             clear,
+            copy,
+            cut,
+            paste,
             selectOptions,
             deselectOptions,
             hover,
@@ -956,6 +1067,9 @@ export type UserEventInstance = {
     tab: typeof tab;
     type: typeof type;
     clear: typeof clear;
+    copy: typeof copy;
+    cut: typeof cut;
+    paste: typeof paste;
     selectOptions: typeof selectOptions;
     deselectOptions: typeof deselectOptions;
     hover: typeof hover;
@@ -970,3 +1084,9 @@ export type UserEventInstance = {
     keyboard: (widget: Gtk.Widget, input: string) => Promise<void>;
     pointer: (widget: Gtk.Widget, input: PointerInput) => Promise<void>;
 };
+
+/**
+ * Alias of {@link UserEventInstance}, matching the `UserEvent` type name from
+ * `@testing-library/user-event`.
+ */
+export type UserEvent = UserEventInstance;

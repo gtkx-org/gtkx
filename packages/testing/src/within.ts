@@ -1,14 +1,17 @@
-import type * as Gtk from "@gtkx/gi/gtk";
 import { bindQueries } from "./bind-queries.js";
-import type { BoundQueries } from "./types.js";
+import type { Container } from "./traversal.js";
+import type { BoundCustomQueries, BoundQueries, QueryMap } from "./types.js";
 
 /**
- * Creates scoped query methods for a container widget.
+ * Creates scoped query methods for a container.
  *
- * Use this to query within a specific section of your UI rather than
- * the entire application.
+ * Use this to query within a specific section of your UI rather than the entire
+ * application. The container may be any query scope — a widget, a controller, or
+ * the `TOPLEVELS` sentinel — and extra custom queries can be bound alongside the
+ * built-ins.
  *
- * @param container - The widget to scope queries to
+ * @param container - The scope to bind queries to
+ * @param queries - Extra query functions to bind alongside the built-ins
  * @returns Object with query methods bound to the container
  *
  * @example
@@ -28,4 +31,7 @@ import type { BoundQueries } from "./types.js";
  *
  * @see {@link screen} for global queries
  */
-export const within = (container: Gtk.Widget): BoundQueries => bindQueries(container);
+export const within = <Q extends QueryMap = Record<never, never>>(
+    container: Container,
+    queries?: Q,
+): BoundQueries & BoundCustomQueries<Q> => bindQueries(container, queries);

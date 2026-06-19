@@ -2,26 +2,49 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { multipleFoundError, notFoundError } from "./errors.js";
 import { type BuiltQueries, buildQueries } from "./query-helpers.js";
 import { type Container, findAll, traverse } from "./traversal.js";
-import type { ByRoleOptions, Matcher, MatcherOptions } from "./types.js";
+import type { ByRoleOptions, ByRoleValue, Matcher, MatcherOptions, NormalizerFn, NormalizerOptions } from "./types.js";
 import {
     getWidgetAccessibleName,
+    getWidgetBusyState,
     getWidgetCheckedState,
+    getWidgetDescription,
+    getWidgetDisplayValue,
     getWidgetExpandedState,
+    getWidgetLabelledByText,
     getWidgetLevel,
     getWidgetName,
+    getWidgetOwnLabel,
+    getWidgetPlaceholderText,
     getWidgetPressedState,
     getWidgetSelectedState,
     getWidgetText,
+    getWidgetValue,
+    isHiddenFromAccessibility,
 } from "./widget-text.js";
 
-const buildNormalizer = (options?: MatcherOptions): ((text: string) => string) => {
-    if (options?.normalizer) {
-        return options.normalizer;
-    }
-
-    const trim = options?.trim ?? true;
-    const collapseWhitespace = options?.collapseWhitespace ?? true;
-
+/**
+ * Returns the default text normalizer: it trims leading and trailing whitespace
+ * and collapses internal whitespace runs to a single space. Compose it inside a
+ * custom `normalizer` to retain the default behavior alongside extra steps.
+ *
+ * Mirrors `getDefaultNormalizer` from `@testing-library/dom`.
+ *
+ * @param options - Toggles for `trim` and `collapseWhitespace` (both default to `true`).
+ * @returns A normalizer applying the selected transformations.
+ *
+ * @example
+ * ```tsx
+ * import { getByText, getDefaultNormalizer } from "@gtkx/testing";
+ *
+ * getByText(container, "hello", {
+ *     normalizer: (text) => getDefaultNormalizer({ trim: false })(text).replace(/ /g, " "),
+ * });
+ * ```
+ */
+export const getDefaultNormalizer = ({
+    trim = true,
+    collapseWhitespace = true,
+}: NormalizerOptions = {}): NormalizerFn => {
     return (text: string): string => {
         let result = text;
         if (trim) {
@@ -34,6 +57,24 @@ const buildNormalizer = (options?: MatcherOptions): ((text: string) => string) =
 
         return result;
     };
+};
+
+const buildNormalizer = (options?: MatcherOptions): NormalizerFn => {
+    const { normalizer, trim, collapseWhitespace } = options ?? {};
+
+    if (!normalizer) {
+        return getDefaultNormalizer({ trim, collapseWhitespace });
+    }
+
+    if (trim !== undefined || collapseWhitespace !== undefined) {
+        throw new Error(
+            "trim and collapseWhitespace are not supported with a normalizer. " +
+                "If you want to use the default trim and collapseWhitespace logic in your normalizer, " +
+                'use "getDefaultNormalizer({ trim, collapseWhitespace })" and compose that into your normalizer',
+        );
+    }
+
+    return normalizer;
 };
 
 const normalizeText = (text: string, options?: MatcherOptions): string => {
@@ -55,7 +96,7 @@ const matchText = (actual: string | null, expected: Matcher, widget: Gtk.Widget,
         return expected.test(normalizedActual);
     }
 
-    const normalizedExpected = normalizeText(expected, options);
+    const normalizedExpected = normalizeText(String(expected), options);
     const exact = options?.exact ?? true;
     return exact
         ? normalizedActual === normalizedExpected
@@ -68,12 +109,33 @@ const matchAccessibleName = (widget: Gtk.Widget, options: ByRoleOptions): boolea
     return matchText(text, options.name, widget, options);
 };
 
-const matchAccessibleStates = (widget: Gtk.Widget, options: ByRoleOptions): boolean => {
+const matchAccessibleValue = (widget: Gtk.Widget, value: ByRoleValue, options: ByRoleOptions): boolean => {
+    const actual = getWidgetValue(widget);
+    if (value.now !== undefined && actual.now !== value.now) return false;
+    if (value.min !== undefined && actual.min !== value.min) return false;
+    if (value.max !== undefined && actual.max !== value.max) return false;
+    if (value.text !== undefined && !matchText(actual.text, value.text, widget, options)) return false;
+    return true;
+};
+
+const matchBooleanStates = (widget: Gtk.Widget, options: ByRoleOptions): boolean => {
     if (options.checked !== undefined && getWidgetCheckedState(widget) !== options.checked) return false;
     if (options.pressed !== undefined && getWidgetPressedState(widget) !== options.pressed) return false;
     if (options.expanded !== undefined && getWidgetExpandedState(widget) !== options.expanded) return false;
     if (options.selected !== undefined && getWidgetSelectedState(widget) !== options.selected) return false;
+    if (options.busy !== undefined && (getWidgetBusyState(widget) ?? false) !== options.busy) return false;
+    return true;
+};
+
+const matchAccessibleStates = (widget: Gtk.Widget, options: ByRoleOptions): boolean => {
+    if (!matchBooleanStates(widget, options)) return false;
     if (options.level !== undefined && getWidgetLevel(widget) !== options.level) return false;
+    if (
+        options.description !== undefined &&
+        !matchText(getWidgetDescription(widget), options.description, widget, options)
+    )
+        return false;
+    if (options.value !== undefined && !matchAccessibleValue(widget, options.value, options)) return false;
     return true;
 };
 
@@ -93,6 +155,7 @@ const matchByRoleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolea
 export const queryAllByRole = (container: Container, role: Gtk.AccessibleRole, options?: ByRoleOptions): Gtk.Widget[] =>
     findAll(container, (widget) => {
         if (widget.getAccessibleRole() !== role) return false;
+        if (!options?.hidden && isHiddenFromAccessibility(widget)) return false;
         return matchByRoleOptions(widget, options);
     });
 
@@ -102,11 +165,22 @@ const roleVariants = buildQueries<[role: Gtk.AccessibleRole, options?: ByRoleOpt
     (container, role, options) => notFoundError(container, { queryType: "role", role, options }),
 );
 
+const collectMnemonicMatch = (
+    widget: Gtk.Widget,
+    text: Matcher,
+    options: MatcherOptions | undefined,
+): Gtk.Widget | null => {
+    if (!(widget instanceof Gtk.Label)) return null;
+    const labelText = widget.getLabel();
+    if (!labelText || !matchText(labelText, text, widget, options)) return null;
+    return widget.getMnemonicWidget();
+};
+
 /**
- * Finds all elements that are labeled by a GtkLabel whose text matches.
- *
- * Uses GtkLabel's mnemonic widget association to find form elements
- * by their label text.
+ * Finds all elements labeled by matching text, resolving every GTK labeling
+ * mechanism: a `GtkLabel`'s mnemonic-widget association, a widget's own
+ * `accessibleLabel` (the analog of `aria-label`), and the widgets named by
+ * `accessibleLabelledBy` (the analog of `aria-labelledby`).
  *
  * @param container - The container to search within
  * @param text - Label text to match (string, RegExp, or custom matcher)
@@ -114,22 +188,20 @@ const roleVariants = buildQueries<[role: Gtk.AccessibleRole, options?: ByRoleOpt
  * @returns Array of labeled widgets (empty if none found)
  */
 export const queryAllByLabelText = (container: Container, text: Matcher, options?: MatcherOptions): Gtk.Widget[] => {
-    const results: Gtk.Widget[] = [];
+    const results = new Set<Gtk.Widget>();
 
     for (const widget of traverse(container)) {
-        if (!(widget instanceof Gtk.Label)) continue;
+        const mnemonicTarget = collectMnemonicMatch(widget, text, options);
+        if (mnemonicTarget) results.add(mnemonicTarget);
 
-        const labelText = widget.getLabel();
-        if (!labelText) continue;
-        if (!matchText(labelText, text, widget, options)) continue;
+        const ownLabel = getWidgetOwnLabel(widget);
+        if (ownLabel !== null && matchText(ownLabel, text, widget, options)) results.add(widget);
 
-        const target = widget.getMnemonicWidget();
-        if (target) {
-            results.push(target);
-        }
+        const labelledByText = getWidgetLabelledByText(widget);
+        if (labelledByText !== null && matchText(labelledByText, text, widget, options)) results.add(widget);
     }
 
-    return results;
+    return [...results];
 };
 
 const labelTextVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
@@ -225,3 +297,72 @@ export const findByName: BuiltQueries<[name: Matcher, options?: MatcherOptions]>
 /** Finds all elements matching a widget name, waiting until any appear. Throws if none found. */
 export const findAllByName: BuiltQueries<[name: Matcher, options?: MatcherOptions]>["findAllBy"] =
     nameVariants.findAllBy;
+
+/**
+ * Finds all entry-like widgets whose placeholder text matches, without throwing.
+ *
+ * @param container - The container to search within
+ * @param text - Placeholder text to match (string, RegExp, or custom matcher)
+ * @param options - Query options including normalization
+ * @returns Array of matching widgets (empty if none found)
+ */
+export const queryAllByPlaceholderText = (
+    container: Container,
+    text: Matcher,
+    options?: MatcherOptions,
+): Gtk.Widget[] => findAll(container, (widget) => matchText(getWidgetPlaceholderText(widget), text, widget, options));
+
+const placeholderTextVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
+    queryAllByPlaceholderText,
+    (container, count, text) => multipleFoundError(container, { queryType: "placeholderText", text }, count),
+    (container, text) => notFoundError(container, { queryType: "placeholderText", text }),
+);
+
+/**
+ * Finds all input widgets whose current display value matches, without throwing.
+ *
+ * @param container - The container to search within
+ * @param value - Value to match (string, RegExp, or custom matcher)
+ * @param options - Query options including normalization
+ * @returns Array of matching widgets (empty if none found)
+ */
+export const queryAllByDisplayValue = (container: Container, value: Matcher, options?: MatcherOptions): Gtk.Widget[] =>
+    findAll(container, (widget) => matchText(getWidgetDisplayValue(widget), value, widget, options));
+
+const displayValueVariants = buildQueries<[value: Matcher, options?: MatcherOptions]>(
+    queryAllByDisplayValue,
+    (container, count, value) => multipleFoundError(container, { queryType: "displayValue", value }, count),
+    (container, value) => notFoundError(container, { queryType: "displayValue", value }),
+);
+
+/** Finds a single element by placeholder text without throwing. Returns `null` if not found; throws if multiple match. */
+export const queryByPlaceholderText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["queryBy"] =
+    placeholderTextVariants.queryBy;
+/** Finds a single element by placeholder text. Throws if not found or if multiple match. */
+export const getByPlaceholderText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["getBy"] =
+    placeholderTextVariants.getBy;
+/** Finds all elements matching placeholder text. Throws if none found. */
+export const getAllByPlaceholderText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["getAllBy"] =
+    placeholderTextVariants.getAllBy;
+/** Finds a single element by placeholder text, waiting until it appears. Throws if not found or if multiple match. */
+export const findByPlaceholderText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["findBy"] =
+    placeholderTextVariants.findBy;
+/** Finds all elements matching placeholder text, waiting until any appear. Throws if none found. */
+export const findAllByPlaceholderText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["findAllBy"] =
+    placeholderTextVariants.findAllBy;
+
+/** Finds a single element by display value without throwing. Returns `null` if not found; throws if multiple match. */
+export const queryByDisplayValue: BuiltQueries<[value: Matcher, options?: MatcherOptions]>["queryBy"] =
+    displayValueVariants.queryBy;
+/** Finds a single element by display value. Throws if not found or if multiple match. */
+export const getByDisplayValue: BuiltQueries<[value: Matcher, options?: MatcherOptions]>["getBy"] =
+    displayValueVariants.getBy;
+/** Finds all elements matching a display value. Throws if none found. */
+export const getAllByDisplayValue: BuiltQueries<[value: Matcher, options?: MatcherOptions]>["getAllBy"] =
+    displayValueVariants.getAllBy;
+/** Finds a single element by display value, waiting until it appears. Throws if not found or if multiple match. */
+export const findByDisplayValue: BuiltQueries<[value: Matcher, options?: MatcherOptions]>["findBy"] =
+    displayValueVariants.findBy;
+/** Finds all elements matching a display value, waiting until any appear. Throws if none found. */
+export const findAllByDisplayValue: BuiltQueries<[value: Matcher, options?: MatcherOptions]>["findAllBy"] =
+    displayValueVariants.findAllBy;

@@ -55,8 +55,12 @@ const asyncWrapper = async <T>(callback: () => Promise<T>): Promise<T> => {
  * }, { timeout: 2000 });
  * ```
  */
-export const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOptions): Promise<T> =>
-    asyncWrapper(async () => {
+export const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOptions): Promise<T> => {
+    if (typeof callback !== "function") {
+        throw new TypeError("Received `callback` arg must be a function");
+    }
+
+    return asyncWrapper(async () => {
         const config = getConfig();
         const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
         const startTime = Date.now();
@@ -77,18 +81,22 @@ export const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOpti
         }
         throw error;
     });
+};
 
 /** @internal */
-type ElementOrCallback = Gtk.Widget | (() => Gtk.Widget | null);
+type RemovalTarget = Gtk.Widget | Gtk.Widget[] | null;
 
-const getElement = (elementOrCallback: ElementOrCallback): Gtk.Widget | null => {
+/** @internal */
+type ElementOrCallback = Gtk.Widget | Gtk.Widget[] | (() => RemovalTarget);
+
+const getTarget = (elementOrCallback: ElementOrCallback): RemovalTarget => {
     if (typeof elementOrCallback === "function") {
         return elementOrCallback();
     }
     return elementOrCallback;
 };
 
-const isElementRemoved = (widget: Gtk.Widget | null): boolean => {
+const isWidgetRemoved = (widget: Gtk.Widget | null): boolean => {
     if (widget === null) return true;
 
     try {
@@ -98,15 +106,24 @@ const isElementRemoved = (widget: Gtk.Widget | null): boolean => {
     }
 };
 
+const isTargetRemoved = (target: RemovalTarget): boolean => {
+    if (Array.isArray(target)) {
+        return target.length === 0 || target.every(isWidgetRemoved);
+    }
+    return isWidgetRemoved(target);
+};
+
 /**
  * Waits for a widget to be removed from the widget tree.
  *
  * Polls until the widget no longer belongs to a root — the GTK analog of no
  * longer being contained in the document — or no longer exists. A widget
  * detached together with an ancestor counts as removed even though it keeps
- * its direct parent.
+ * its direct parent. An array of widgets is removed once every member is
+ * removed.
  *
- * @param elementOrCallback - Element or function returning widget to watch
+ * @param elementOrCallback - A widget, an array of widgets, or a function
+ *   returning either, to watch for removal
  * @param options - Timeout and interval configuration
  *
  * @example
@@ -126,8 +143,8 @@ export const waitForElementToBeRemoved = (
         const config = getConfig();
         const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
 
-        const initialWidget = getElement(elementOrCallback);
-        if (initialWidget === null || isElementRemoved(initialWidget)) {
+        const initialTarget = getTarget(elementOrCallback);
+        if (isTargetRemoved(initialTarget)) {
             throw new Error(
                 "Element already removed: waitForElementToBeRemoved requires the element to be present initially",
             );
@@ -136,8 +153,7 @@ export const waitForElementToBeRemoved = (
         const startTime = Date.now();
 
         while (Date.now() - startTime < timeout) {
-            const widget = getElement(elementOrCallback);
-            if (isElementRemoved(widget)) {
+            if (isTargetRemoved(getTarget(elementOrCallback))) {
                 return;
             }
             await new Promise((resolve) => setTimeout(resolve, interval));

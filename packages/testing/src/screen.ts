@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as Gtk from "@gtkx/gi/gtk";
 import { bindQueries } from "./bind-queries.js";
-import { prettyWidget } from "./pretty-widget.js";
+import { logWidget, type PrettyWidgetOptions } from "./pretty-widget.js";
 import { logRoles } from "./role-helpers.js";
 import { screenshot as captureScreenshot, type ScreenshotOptions } from "./screenshot.js";
 import type { Container } from "./traversal.js";
@@ -103,14 +103,14 @@ const boundQueries = bindQueries(getRoot);
  * @see {@link within} for scoped queries
  */
 export const screen: BoundQueries & {
-    debug: () => void;
+    debug: (container?: Container | Container[], options?: PrettyWidgetOptions) => void;
     logRoles: () => void;
     screenshot: (selector?: WindowSelector, options?: ScreenshotOptions) => Promise<ScreenshotResult>;
 } = {
     ...boundQueries,
-    /** Print the widget tree to console for debugging */
-    debug: (): void => {
-        console.log(prettyWidget(getRoot()));
+    /** Print the widget tree to console for debugging, defaulting to the screen root */
+    debug: (container: Container | Container[] = getRoot(), options?: PrettyWidgetOptions): void => {
+        logWidget(container, options);
     },
     /** Log all accessible roles to console for debugging */
     logRoles: (): void => {

@@ -1,13 +1,14 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { isRootElement, type RootElement, reconciler, setReconcilerErrorHandler } from "@gtkx/react";
-import type { ReactNode } from "react";
+import { type ErrorInfo, type ReactNode, StrictMode } from "react";
 import type Reconciler from "react-reconciler";
 import { bindQueries } from "./bind-queries.js";
-import { prettyWidget } from "./pretty-widget.js";
+import { logWidget, type PrettyWidgetOptions } from "./pretty-widget.js";
 import { setScreenRoot } from "./screen.js";
 import { act } from "./timing.js";
 import { type Container, TOPLEVELS, traverse } from "./traversal.js";
-import type { RenderOptions, RenderResult } from "./types.js";
+import type { QueryMap, RenderOptions, RenderResult } from "./types.js";
+import { resetClipboard } from "./user-event.js";
 
 let lastRenderError: Error | null = null;
 let errorHandlerInstalled = false;
@@ -118,11 +119,22 @@ const resultContainer = (
  * @see {@link cleanup} for cleaning up after tests
  * @see {@link screen} for global query access
  */
-export const render = async (element: ReactNode, options?: RenderOptions): Promise<RenderResult> => {
+export const render = async <Q extends QueryMap = Record<never, never>>(
+    element: ReactNode,
+    options?: RenderOptions<Q>,
+): Promise<RenderResult<Q>> => {
     installErrorHandler();
 
     const baseElement: Container = options?.baseElement ?? TOPLEVELS;
     const Wrapper = options?.wrapper;
+
+    const onCaughtError = (error: unknown, errorInfo: ErrorInfo): void => {
+        handleError(error);
+        options?.onCaughtError?.(error, errorInfo);
+    };
+    const onRecoverableError = (error: unknown, errorInfo: ErrorInfo): void => {
+        options?.onRecoverableError?.(error, errorInfo);
+    };
 
     const resolved = resolveContainer(options?.container);
     const fiberRoot = reconciler.createContainer(
@@ -133,14 +145,17 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
         null,
         "",
         handleError,
-        handleError,
-        () => {},
+        onCaughtError,
+        onRecoverableError,
         () => {},
     );
     const active: ActiveRender = { root: fiberRoot, window: resolved.window };
     activeRenders.add(active);
 
-    const wrap = (node: ReactNode): ReactNode => (Wrapper ? <Wrapper>{node}</Wrapper> : node);
+    const wrap = (node: ReactNode): ReactNode => {
+        const wrapped = Wrapper ? <Wrapper>{node}</Wrapper> : node;
+        return options?.reactStrictMode ? <StrictMode>{wrapped}</StrictMode> : wrapped;
+    };
 
     await update(wrap(element), fiberRoot);
     resolved.window?.present();
@@ -148,7 +163,7 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
     setScreenRoot(baseElement);
 
     return {
-        ...bindQueries(baseElement),
+        ...bindQueries(baseElement, options?.queries),
         get container(): Gtk.Widget {
             return resultContainer(resolved, options?.container, baseElement);
         },
@@ -161,8 +176,8 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
         rerender: async (newElement: ReactNode) => {
             await update(wrap(newElement), fiberRoot);
         },
-        debug: () => {
-            console.log(prettyWidget(baseElement));
+        debug: (element: Container | Container[] = baseElement, options?: PrettyWidgetOptions) => {
+            logWidget(element, options);
         },
     };
 };
@@ -194,4 +209,5 @@ export const cleanup = async (): Promise<void> => {
     }
     activeRenders.clear();
     setScreenRoot(null);
+    resetClipboard();
 };

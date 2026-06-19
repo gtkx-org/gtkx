@@ -134,6 +134,33 @@ describe("userEvent.type", () => {
         expectEditableText(entry, "Initial appended");
     });
 
+    it("inserts at a collapsed initial selection", async () => {
+        await render(<GtkEntry text="ac" />);
+
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+        await userEvent.type(entry, "b", { initialSelectionStart: 1 });
+
+        expectEditableText(entry, "abc");
+    });
+
+    it("replaces the text under an initial selection range", async () => {
+        await render(<GtkEntry text="Hello World" />);
+
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+        await userEvent.type(entry, "Goodbye", { initialSelectionStart: 0, initialSelectionEnd: 5 });
+
+        expectEditableText(entry, "Goodbye World");
+    });
+
+    it("still types when click is skipped", async () => {
+        await render(<GtkEntry />);
+
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+        await userEvent.type(entry, "typed", { skipClick: true });
+
+        expectEditableText(entry, "typed");
+    });
+
     describe("error handling", () => {
         it("throws when element is not editable", async () => {
             await expectActionRejectsOnButton(
@@ -141,6 +168,18 @@ describe("userEvent.type", () => {
                 "Cannot type into element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)",
             );
         });
+    });
+});
+
+describe("userEvent.setup options", () => {
+    it("applies skipClick as a default for the instance's type", async () => {
+        await render(<GtkEntry />);
+
+        const user = userEvent.setup({ skipClick: true });
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+        await user.type(entry, "session");
+
+        expectEditableText(entry, "session");
     });
 });
 
@@ -211,6 +250,70 @@ const renderTwoItemListBox = async (selectionMode?: Gtk.SelectionMode): Promise<
     );
     return screen.findByRole(Gtk.AccessibleRole.LIST);
 };
+
+describe("userEvent clipboard", () => {
+    const selectAll = (widget: Gtk.Widget): void => {
+        if (isEditable(widget)) widget.selectRegion(0, -1);
+    };
+
+    it("copies a selection and pastes it into another editable", async () => {
+        await render(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkEntry text="copy me" name="source" />
+                <GtkEntry name="dest" />
+            </GtkBox>,
+        );
+        const source = await screen.findByName("source");
+        const dest = await screen.findByName("dest");
+
+        selectAll(source);
+        await userEvent.copy(source);
+        await userEvent.paste(dest);
+
+        expectEditableText(dest, "copy me");
+    });
+
+    it("cuts a selection, emptying the source, and pastes it elsewhere", async () => {
+        await render(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkEntry text="cut me" name="src" />
+                <GtkEntry name="dst" />
+            </GtkBox>,
+        );
+        const src = await screen.findByName("src");
+        const dst = await screen.findByName("dst");
+
+        selectAll(src);
+        await userEvent.cut(src);
+        expectEditableText(src, "");
+
+        await userEvent.paste(dst);
+        expectEditableText(dst, "cut me");
+    });
+
+    it("pastes explicit text", async () => {
+        await render(<GtkEntry name="literal" />);
+        const entry = await screen.findByName("literal");
+
+        await userEvent.paste(entry, "pasted literal");
+
+        expectEditableText(entry, "pasted literal");
+    });
+
+    describe("error handling", () => {
+        it("rejects copy on a non-editable widget", async () => {
+            await render(<GtkButton label="x" />);
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+            await expect(userEvent.copy(button)).rejects.toThrow("Cannot copy");
+        });
+
+        it("rejects paste on a non-editable widget", async () => {
+            await render(<GtkButton label="x" />);
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+            await expect(userEvent.paste(button, "text")).rejects.toThrow("Cannot paste");
+        });
+    });
+});
 
 describe("userEvent.selectOptions", () => {
     it("selects option in dropdown by index", async () => {

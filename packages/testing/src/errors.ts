@@ -3,7 +3,7 @@ import { getConfig } from "./config.js";
 import { prettyWidget } from "./pretty-widget.js";
 import { formatRole, prettyRoles } from "./role-helpers.js";
 import type { Container } from "./traversal.js";
-import type { ByRoleOptions, Matcher } from "./types.js";
+import type { ByRoleOptions, ByRoleValue, Matcher } from "./types.js";
 
 const formatTextMatcher = (text: Matcher): string => {
     if (typeof text === "function") {
@@ -15,6 +15,15 @@ const formatTextMatcher = (text: Matcher): string => {
     return `'${text}'`;
 };
 
+const formatByRoleValue = (value: ByRoleValue): string => {
+    const parts: string[] = [];
+    if (value.now !== undefined) parts.push(`now=${value.now}`);
+    if (value.min !== undefined) parts.push(`min=${value.min}`);
+    if (value.max !== undefined) parts.push(`max=${value.max}`);
+    if (value.text !== undefined) parts.push(`text ${formatTextMatcher(value.text)}`);
+    return parts.join(", ");
+};
+
 const formatByRoleDescription = (role: Gtk.AccessibleRole, options?: ByRoleOptions): string => {
     const parts = [`role '${formatRole(role).toUpperCase()}'`];
     if (options?.name) parts.push(`name ${formatTextMatcher(options.name)}`);
@@ -23,6 +32,10 @@ const formatByRoleDescription = (role: Gtk.AccessibleRole, options?: ByRoleOptio
     if (options?.selected !== undefined) parts.push(`selected=${options.selected}`);
     if (options?.expanded !== undefined) parts.push(`expanded=${options.expanded}`);
     if (options?.level !== undefined) parts.push(`level=${options.level}`);
+    if (options?.busy !== undefined) parts.push(`busy=${options.busy}`);
+    if (options?.description) parts.push(`description ${formatTextMatcher(options.description)}`);
+    if (options?.value) parts.push(`value ${formatByRoleValue(options.value)}`);
+    if (options?.hidden !== undefined) parts.push(`hidden=${options.hidden}`);
     return parts.join(" and ");
 };
 
@@ -34,7 +47,9 @@ export type QueryDescriptor =
     | { queryType: "role"; role: Gtk.AccessibleRole; options?: ByRoleOptions }
     | { queryType: "text"; text: Matcher }
     | { queryType: "labelText"; text: Matcher }
-    | { queryType: "name"; name: Matcher };
+    | { queryType: "name"; name: Matcher }
+    | { queryType: "placeholderText"; text: Matcher }
+    | { queryType: "displayValue"; value: Matcher };
 
 const formatQueryDescription = (descriptor: QueryDescriptor): string => {
     switch (descriptor.queryType) {
@@ -46,6 +61,10 @@ const formatQueryDescription = (descriptor: QueryDescriptor): string => {
             return `label text ${formatTextMatcher(descriptor.text)}`;
         case "name":
             return `name ${formatTextMatcher(descriptor.name)}`;
+        case "placeholderText":
+            return `placeholder text ${formatTextMatcher(descriptor.text)}`;
+        case "displayValue":
+            return `display value ${formatTextMatcher(descriptor.value)}`;
     }
 };
 

@@ -23,6 +23,12 @@ export type Config = {
     asyncUtilTimeout: number;
 };
 
+/**
+ * Updater passed to {@link configure}: receives the current configuration and
+ * returns the fields to merge.
+ */
+export type ConfigFn = (existingConfig: Config) => Partial<Config>;
+
 const defaultGetElementError = (message: string, _container: Container): Error => {
     return new Error(message);
 };
@@ -73,7 +79,7 @@ export const getConfig = (): Readonly<Config> => {
  * }));
  * ```
  */
-export const configure = (newConfig: Partial<Config> | ((current: Config) => Partial<Config>)): void => {
+export const configure = (newConfig: Partial<Config> | ConfigFn): void => {
     const updates = typeof newConfig === "function" ? newConfig(currentConfig) : newConfig;
     currentConfig = { ...currentConfig, ...updates };
 };

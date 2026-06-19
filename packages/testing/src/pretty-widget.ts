@@ -173,3 +173,25 @@ export const prettyWidget = (container: Container, options: PrettyWidgetOptions 
 
     return output.trimEnd();
 };
+
+/**
+ * Logs the formatted widget tree to the console — the GTK analog of
+ * `@testing-library/dom`'s `logDOM`. Accepts a single container/application or
+ * an array of them, logging each in turn.
+ *
+ * @param container - A container/application or an array of them to format and log
+ * @param options - Formatting options for length and highlighting
+ *
+ * @example
+ * ```tsx
+ * import { logWidget, screen } from "@gtkx/testing";
+ *
+ * logWidget(await screen.findByRole(Gtk.AccessibleRole.DIALOG));
+ * ```
+ */
+export const logWidget = (container: Container | Container[], options?: PrettyWidgetOptions): void => {
+    const containers: Container[] = Array.isArray(container) ? container : [container];
+    for (const target of containers) {
+        console.log(prettyWidget(target, options));
+    }
+};
