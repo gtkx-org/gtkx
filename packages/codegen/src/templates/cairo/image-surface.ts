@@ -99,7 +99,7 @@ export class ImageSurface extends Surface {
                     value: getHandle(this),
                 },
             ],
-            t.struct("borrowed", totalBytes),
+            t.struct("borrowed", { size: totalBytes }),
         ) as Handle | null;
         if (ptr === null) return new Uint8Array(0);
         const result = new Uint8Array(totalBytes);

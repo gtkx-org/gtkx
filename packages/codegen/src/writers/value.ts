@@ -3,7 +3,13 @@ import type { ModuleContext } from "../dsl/context.js";
 import { joinArgs } from "../dsl/emit.js";
 import { callbackFromNode, type GirCallback } from "../gir/callback.js";
 import type { GirNamespace } from "../gir/namespace.js";
-import { type GirParameter, isInoutParameter, isOutParameter, type ParameterTransfer } from "../gir/parameter.js";
+import {
+    type GirParameter,
+    isCallerAllocatedOut,
+    isInoutParameter,
+    isOutParameter,
+    type ParameterTransfer,
+} from "../gir/parameter.js";
 import type { PrimitiveCategory } from "../gir/primitives.js";
 import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirRepository, ResolvedNamed } from "../gir/repository.js";
@@ -39,23 +45,39 @@ const deriveElementTransfer = (transfer: ParameterTransfer): ParameterTransfer =
     transfer === "container" ? "none" : transfer;
 
 /**
+ * Optional rendering controls for {@link renderFfiType} beyond the type and
+ * its transfer.
+ */
+type RenderFfiTypeOptions = {
+    /**
+     * Offset added to a sized array's length-parameter index, so a method's
+     * implicit instance receiver shifts the indices the descriptor records.
+     */
+    argIndexOffset?: number;
+    /**
+     * Marks a boxed or struct argument as a caller-allocated out parameter, so
+     * the descriptor borrows the caller's buffer in place rather than copying.
+     */
+    callerAllocated?: boolean;
+};
+
+/**
  * Renders a TypeScript expression that materialises the FFI type
  * descriptor for `ref`.
  *
  * @param context - The module context (used for cross-namespace imports)
  * @param ref - The GIR type reference, or `undefined` for void
  * @param transfer - GIR transfer-ownership conveyed onto the descriptor
- * @param argIndexOffset - Shift applied to a sized array's length-parameter
- *     index so it addresses the FFI argument list (which includes the
- *     instance receiver) rather than the GIR parameter list
+ * @param options - Optional rendering controls (see {@link RenderFfiTypeOptions})
  */
 export const renderFfiType = (
     context: ModuleContext,
     ref: GirTypeRef | undefined,
     transfer: ParameterTransfer = "none",
-    argIndexOffset = 0,
+    options: RenderFfiTypeOptions = {},
 ): string => {
     if (ref === undefined) return "t.void";
+    const { argIndexOffset = 0, callerAllocated = false } = options;
     const ownership = ffiOwnership(transfer);
     switch (ref.kind) {
         case "primitive":
@@ -65,19 +87,19 @@ export const renderFfiType = (
         case "callback":
             return "t.void";
         case "named":
-            return namedExpression(context, ref, ownership);
+            return namedExpression(context, ref, ownership, callerAllocated);
         case "array":
             return arrayExpression(context, ref, transfer, argIndexOffset);
         case "list": {
             if (ref.flavor === "gbytearray") return `t.byteArray(${quote(ownership)})`;
-            const element = renderFfiType(context, ref.element, deriveElementTransfer(transfer), argIndexOffset);
+            const element = renderFfiType(context, ref.element, deriveElementTransfer(transfer), { argIndexOffset });
             const helper = LIST_HELPERS[ref.flavor];
             return `t.${helper}(${element}, ${quote(ownership)})`;
         }
         case "hashtable": {
             const elementTransfer = deriveElementTransfer(transfer);
-            const key = renderFfiType(context, ref.key, elementTransfer, argIndexOffset);
-            const value = renderFfiType(context, ref.value, elementTransfer, argIndexOffset);
+            const key = renderFfiType(context, ref.key, elementTransfer, { argIndexOffset });
+            const value = renderFfiType(context, ref.value, elementTransfer, { argIndexOffset });
             return `t.hashTable(${key}, ${value}, ${quote(ownership)})`;
         }
     }
@@ -155,6 +177,33 @@ export const isCellInout = (context: ModuleContext, parameter: GirParameter): bo
     isInoutParameter(parameter) && isScalarRef(context.repository, context.namespace.name, parameter.type);
 
 /**
+ * Renders one handler-trampoline parameter's FFI descriptor — shared by vfunc
+ * vtables, signal handlers, and callbacks. A scalar out/inout parameter becomes
+ * a `t.ref` cell the native trampoline seeds and flushes back; a caller-allocated
+ * out boxed/struct is marked so the trampoline reads it as a borrowed view of the
+ * caller's buffer (filled in place); every other parameter renders plainly.
+ *
+ * @param context - The module context.
+ * @param parameter - The parameter, supplying the out/caller-allocated predicates.
+ * @param ref - The parameter's type reference, already namespace-qualified.
+ */
+export const renderHandlerArgType = (
+    context: ModuleContext,
+    parameter: GirParameter,
+    ref: GirTypeRef | undefined,
+): string => {
+    if (isCellInout(context, parameter)) {
+        return `t.ref(${renderFfiType(context, ref, parameter.transferOwnership)}, true)`;
+    }
+    if (isOutParameter(parameter)) {
+        return `t.ref(${renderFfiType(context, ref, parameter.transferOwnership)})`;
+    }
+    return renderFfiType(context, ref, parameter.transferOwnership, {
+        callerAllocated: isCallerAllocatedOut(parameter),
+    });
+};
+
+/**
  * Renders the `t.trampoline(...)` FFI descriptor for a callback parameter.
  *
  * The trampoline carries the callback's own argument and return FFI types,
@@ -175,10 +224,9 @@ export const renderTrampolineType = (
     const resolved = resolveCallbackType(context, ref);
     if (resolved === undefined) return undefined;
     const { callback, namespaceName } = resolved;
-    const argTypes = callback.parameters.map((parameter) => {
-        const ffi = renderFfiType(context, qualifyTypeRef(parameter.type, namespaceName), parameter.transferOwnership);
-        return isOutParameter(parameter) || isCellInout(context, parameter) ? `t.ref(${ffi})` : ffi;
-    });
+    const argTypes = callback.parameters.map((parameter) =>
+        renderHandlerArgType(context, parameter, qualifyTypeRef(parameter.type, namespaceName)),
+    );
     let userDataIndex: number | undefined;
     callback.parameters.forEach((parameter, index) => {
         if (parameter.name === "user_data" || parameter.name === "data") userDataIndex = index;
@@ -209,13 +257,18 @@ const primitiveExpression = (category: PrimitiveCategory, ownership: "borrowed" 
     return `t.${category}`;
 };
 
-const namedExpression = (context: ModuleContext, ref: NamedTypeRef, ownership: "borrowed" | "full"): string => {
+const namedExpression = (
+    context: ModuleContext,
+    ref: NamedTypeRef,
+    ownership: "borrowed" | "full",
+    callerAllocated = false,
+): string => {
     const namespaceName = ref.namespaceName ?? context.namespace.name;
     const resolved = context.repository.resolveNamed(namespaceName, ref.typeName);
     if (resolved === undefined) {
         return `t.object(${quote(ownership)})`;
     }
-    return expressionForResolved(context, resolved, ownership);
+    return expressionForResolved(context, resolved, ownership, callerAllocated);
 };
 
 type FundamentalDescriptor = {
@@ -375,10 +428,35 @@ const boxedNeedsFallbackClass = (boxed: ResolvedBoxed): boolean => {
     return boxed.glibGetType === undefined;
 };
 
+/**
+ * Renders a plain struct (a record with no boxed `GType`) as `t.struct(...)`,
+ * carrying its computed byte size (so a borrowed value is copied retain-safe),
+ * its fallback wrapper class, and the caller-allocated flag. The size is omitted
+ * for a caller-allocated buffer, which is borrowed and filled in place.
+ */
+const structExpression = (
+    context: ModuleContext,
+    resolved: Extract<ResolvedNamed, { kind: "boxed" }>,
+    ownership: "borrowed" | "full",
+    callerAllocated: boolean,
+): string => {
+    const { size } = computeBoxedFieldSlots(context, resolved.value.fields, resolved.value.isUnion);
+    const wrapperClass = context.qualify(resolved.namespace.name, resolved.value.name);
+    const structOptions = joinArgs([
+        size > 0 && !callerAllocated ? `size: ${size}` : undefined,
+        `wrapperClass: ${wrapperClass}`,
+        callerAllocated ? "callerAllocated: true" : undefined,
+    ]);
+    return structOptions === ""
+        ? `t.struct(${quote(ownership)})`
+        : `t.struct(${quote(ownership)}, { ${structOptions} })`;
+};
+
 const boxedExpression = (
     context: ModuleContext,
     resolved: Extract<ResolvedNamed, { kind: "boxed" }>,
     ownership: "borrowed" | "full",
+    callerAllocated = false,
 ): string => {
     const boxed = resolved.value;
     const { refFunc, unrefFunc } = boxedRefPair(boxed);
@@ -397,27 +475,33 @@ const boxedExpression = (
         });
     }
     if (boxed.glibGetType === undefined) {
-        return wrapperClass === undefined
-            ? `t.struct(${quote(ownership)})`
-            : `t.struct(${quote(ownership)}, undefined, ${wrapperClass})`;
+        return structExpression(context, resolved, ownership, callerAllocated);
     }
     const glibName = boxed.glibTypeName ?? boxed.cType ?? boxed.name;
     const lib = resolved.namespace.sharedLibrary;
     const libExpr = lib === undefined ? "undefined" : quote(lib);
-    return `t.boxed(${joinArgs([quote(glibName), quote(ownership), libExpr, quote(boxed.glibGetType)])})`;
+    return `t.boxed(${joinArgs([
+        quote(glibName),
+        quote(ownership),
+        libExpr,
+        quote(boxed.glibGetType),
+        callerAllocated ? "undefined" : undefined,
+        callerAllocated ? "{ callerAllocated: true }" : undefined,
+    ])})`;
 };
 
 const expressionForResolved = (
     context: ModuleContext,
     resolved: ResolvedNamed,
     ownership: "borrowed" | "full",
+    callerAllocated = false,
 ): string => {
     switch (resolved.kind) {
         case "class":
         case "interface":
             return classOrInterfaceExpression(resolved, ownership);
         case "boxed":
-            return boxedExpression(context, resolved, ownership);
+            return boxedExpression(context, resolved, ownership, callerAllocated);
         case "enum": {
             const getter = resolved.value.glibGetType;
             const signed = resolved.value.members.some((member) => member.value.startsWith("-"));
@@ -444,7 +528,7 @@ const arrayExpression = (
     argIndexOffset: number,
 ): string => {
     const ownership = ffiOwnership(transfer);
-    const element = renderFfiType(context, ref.element, deriveElementTransfer(transfer), argIndexOffset);
+    const element = renderFfiType(context, ref.element, deriveElementTransfer(transfer), { argIndexOffset });
     const size = inlineElementSize(context, ref.element);
     const sizeArg = size === undefined ? "" : `, ${size}`;
     if (ref.lengthParameterIndex !== undefined) {

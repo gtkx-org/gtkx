@@ -6,7 +6,7 @@ import type { GirClass } from "../gir/class.js";
 import type { GirField } from "../gir/field.js";
 import type { GirTypeRef } from "../gir/type-ref.js";
 import { computeBoxedFieldSlots } from "./boxed-layout.js";
-import { renderFfiType } from "./value.js";
+import { isScalarRef, renderFfiType, renderHandlerArgType } from "./value.js";
 
 type VtableKind = "class" | "interface";
 
@@ -20,8 +20,9 @@ type VtableKind = "class" | "interface";
  * argTypes, returnType }` — so the runtime `registerClass` can auto-discover
  * a subclass method, locate the matching slot by byte offset, and register a
  * trampoline with the correct marshalling. Slots whose signature cannot be
- * marshalled (non-introspectable, variadic, out-parameters without
- * caller-allocates, or nested callbacks) are omitted. The `kind` discriminator
+ * marshalled (non-introspectable, variadic, a non-scalar out/inout parameter
+ * that is not caller-allocated, or nested callbacks) are omitted; scalar
+ * out/inout parameters are emitted as `t.ref` cells. The `kind` discriminator
  * lets the runtime register an interface vfunc mapping in addition to the class
  * one when the descriptor's role is `"interface"`.
  *
@@ -48,7 +49,7 @@ const vtableEntries = (context: ModuleContext, structName: string, kind: VtableK
         const key = toIdentifier(toCamelCase(field.name));
         if (key === "constructor" || claimedNames.has(key)) continue;
         const callback = callbackFromNode(field.callback);
-        if (!isVtableSlotEligible(callback)) continue;
+        if (!isVtableSlotEligible(context, callback)) continue;
         claimedNames.add(key);
         entries.push(
             renderDescriptor(context, { key, structName, kind, field, callback, byteOffset: slot.byteOffset }),
@@ -57,11 +58,17 @@ const vtableEntries = (context: ModuleContext, structName: string, kind: VtableK
     return entries;
 };
 
-const isVtableSlotEligible = (callback: GirCallback): boolean => {
+const isVtableSlotEligible = (context: ModuleContext, callback: GirCallback): boolean => {
     if (!callback.introspectable) return false;
     for (const param of callback.parameters) {
         if (param.isVarargs) return false;
-        if ((param.direction === "out" || param.direction === "inout") && !param.callerAllocates) return false;
+        if (
+            (param.direction === "out" || param.direction === "inout") &&
+            !param.callerAllocates &&
+            !isScalarRef(context.repository, context.namespace.name, param.type)
+        ) {
+            return false;
+        }
         if (isCallbackRef(param.type)) return false;
     }
     return !isCallbackRef(callback.returnValue.type);
@@ -80,9 +87,7 @@ type RenderDescriptorOptions = {
 
 const renderDescriptor = (context: ModuleContext, options: RenderDescriptorOptions): string => {
     const { key, structName, kind, field, callback, byteOffset } = options;
-    const argTypes = callback.parameters
-        .map((param) => renderFfiType(context, param.type, param.transferOwnership))
-        .join(", ");
+    const argTypes = callback.parameters.map((param) => renderHandlerArgType(context, param, param.type)).join(", ");
     const returnType = renderFfiType(context, callback.returnValue.type, callback.returnValue.transferOwnership);
     const lines = [
         `kind: ${quote(kind)},`,

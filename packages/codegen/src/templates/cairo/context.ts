@@ -149,7 +149,7 @@ export const parsePath = (pathHandle: Handle): PathData[] => {
     const numData = read(pathHandle, t.int32, 16) as number;
     if (numData === 0) return [];
 
-    const dataArray = read(pathHandle, t.struct("borrowed", numData * 16), 8) as Handle;
+    const dataArray = read(pathHandle, t.struct("borrowed", { size: numData * 16 }), 8) as Handle;
     const result: PathData[] = [];
     let i = 0;
     while (i < numData) {
@@ -865,7 +865,7 @@ Context.prototype.copyClipRectangleList = function (): Array<{
         cairoRectangleListDestroy(listHandle);
         return [];
     }
-    const rectsArray = read(listHandle, t.struct("full", numRectangles * 32), 8) as Handle;
+    const rectsArray = read(listHandle, t.struct("full", { size: numRectangles * 32 }), 8) as Handle;
     const result: Array<{ x: number; y: number; width: number; height: number }> = [];
 
     for (let i = 0; i < numRectangles; i++) {

@@ -15,10 +15,9 @@ import {
     resolveImplementedInterface,
     resolvePrerequisiteReference,
 } from "./inheritance.js";
-import { planTrampolineArgs, renderTupleWriteback } from "./method.js";
-import { isBoxedCallerOut, isBoxedInout, isHandlePassing, renderHandlerParameters } from "./param-classify.js";
+import { isBoxedCallerOut, isBoxedInout, renderHandlerParameters } from "./param-classify.js";
 import { renderTsType } from "./ts-type.js";
-import { isCellInout, renderFfiType } from "./value.js";
+import { isCellInout, renderFfiType, renderHandlerArgType } from "./value.js";
 
 const SIGNAL_HANDLER_TYPE = "(...args: any[]) => any";
 
@@ -362,19 +361,16 @@ const renderSignalEmitEntry = (context: ModuleContext, collected: CollectedSigna
 };
 
 /**
- * Renders one `connect` switch case: it resolves the signal's typed trampoline,
- * wraps the user handler with the per-signal in-parameter marshalling closure,
- * and dispatches `g_signal_connect_data` through {@link connectGobjectSignal} with the
- * full detailed signal name.
+ * Renders one `connect` switch case: it resolves the signal's typed trampoline
+ * and dispatches `g_signal_connect_data` through {@link connectGobjectSignal}
+ * with the full detailed signal name. The handler is passed raw;
+ * `connectGobjectSignal` wraps it with the shared `wrapHandler` using the
+ * trampoline descriptor.
  */
 const renderConnectCase = (context: ModuleContext, collected: CollectedSignal): string => {
     const { signal } = collected;
-    const { trampoline, invoke } = renderTrampolineAndInvoke(context, collected);
-    const body = [
-        `const invoke = ${invoke};`,
-        "const handlerWrapper = (...args: unknown[]): unknown => invoke(handler, args);",
-        `return connectGobjectSignal(this, signal, ${trampoline}, handlerWrapper, after ?? false);`,
-    ].join("\n");
+    const trampoline = renderTrampoline(context, collected);
+    const body = `return connectGobjectSignal(this, signal, ${trampoline}, handler, after ?? false);`;
     return `case ${quote(signal.name)}: {\n${indent(body, 1)}\n}`;
 };
 
@@ -454,32 +450,26 @@ const renderCallerOutAllocation = (context: ModuleContext, parameter: GirParamet
 };
 
 /**
- * Renders the trampoline FFI descriptor used to connect a handler and the
- * `invoke` closure that marshals the trampoline arguments into the user handler.
+ * Renders the `t.trampoline(...)` FFI descriptor a handler connects through.
  *
- * Out-parameter cells are wrapped in `t.ref(...)` so the native trampoline can
- * write them back; the `invoke` closure mirrors the out-parameter tuple
- * convention used by method out-parameters.
+ * Each parameter renders via the shared {@link renderHandlerArgType}: a scalar
+ * out/inout cell as `t.ref(...)` the native trampoline writes back, a
+ * caller-allocated out boxed/struct marked so it is borrowed and filled in
+ * place. The runtime {@link connectGobjectSignal} wraps the user handler with
+ * the shared `wrapHandler` driven by this descriptor, so no per-signal invoke
+ * closure is generated.
  */
-const renderTrampolineAndInvoke = (
-    context: ModuleContext,
-    collected: CollectedSignal,
-): { readonly trampoline: string; readonly invoke: string } => {
+const renderTrampoline = (context: ModuleContext, collected: CollectedSignal): string => {
     const { signal, namespaceName } = collected;
     const params = signal.parameters.filter((parameter) => !parameter.isVarargs);
-    const paramFfi = params.map((parameter) =>
-        renderFfiType(context, qualifyTypeRef(parameter.type, namespaceName), parameter.transferOwnership),
-    );
-    const trampolineParamFfi = params.map((parameter, index) =>
-        isOutParameter(parameter) || isCellInout(context, parameter) ? `t.ref(${paramFfi[index]})` : paramFfi[index],
+    const trampolineParamFfi = params.map((parameter) =>
+        renderHandlerArgType(context, parameter, qualifyTypeRef(parameter.type, namespaceName)),
     );
     const returnRef = qualifyTypeRef(signal.returnValue.type, namespaceName);
     const isVoid = omitsPrimaryReturn(returnRef, signal);
     const returnFfi = isVoid ? "t.void" : renderFfiType(context, returnRef, signal.returnValue.transferOwnership);
     const trampolineArgs = ['t.object("borrowed")', ...trampolineParamFfi, "t.void"].join(", ");
-    const trampoline = `t.trampoline([${trampolineArgs}], ${returnFfi}, { hasDestroy: true, userDataIndex: ${params.length + 1} })`;
-    const invoke = renderInvokeClosure(context, collected, params, isVoid ? undefined : returnRef);
-    return { trampoline, invoke };
+    return `t.trampoline([${trampolineArgs}], ${returnFfi}, { hasDestroy: true, userDataIndex: ${params.length + 1} })`;
 };
 
 const collectClassSignals = (context: ModuleContext, klass: GirClass): readonly CollectedSignal[] => {
@@ -563,50 +553,6 @@ const collectNotifyDetails = (context: ModuleContext, klass: GirClass): readonly
     for (const property of klass.properties) consider(property);
     for (const property of collectInterfaceProperties(context, klass)) consider(property);
     return result;
-};
-
-const renderInvokeClosure = (
-    context: ModuleContext,
-    collected: CollectedSignal,
-    params: readonly GirParameter[],
-    returnRef: GirTypeRef | undefined,
-): string => {
-    const { namespaceName } = collected;
-    const { callArgs, outArgIndices } = planTrampolineArgs(context, params, namespaceName, 1);
-    if (outArgIndices.length === 0) {
-        if (returnRef !== undefined && isHandlePassing(context, returnRef)) {
-            context.addRuntimeImport("tryGetHandle");
-            return `(handler, args) => {\n    const _result = handler(${callArgs});\n    return tryGetHandle(_result);\n}`;
-        }
-        return `(handler, args) => handler(${callArgs})`;
-    }
-    return renderOutParamInvoke(context, callArgs, outArgIndices, returnRef);
-};
-
-/**
- * Renders the invoke closure for a signal with out-parameters.
- *
- * The handler returns its results as the tuple {@link renderMethodReturnType}
- * describes (`[primary, ...outs]` when both exist, the scalar out alone for a
- * void return with a single out, or an out-only tuple otherwise). The shared
- * {@link renderTupleWriteback} destructures that tuple and writes each out
- * value into its trampoline cell's `value` slot — the native side flushes
- * those cells through the matching C out-pointers, so the tuple convention
- * stays entirely in generated code.
- *
- * @param context - The module context
- * @param callArgs - The rendered in-parameter call arguments
- * @param outArgIndices - Trampoline-arg indices of the out-parameter cells
- * @param returnRef - The signal's return type, or `undefined` for void
- */
-const renderOutParamInvoke = (
-    context: ModuleContext,
-    callArgs: string,
-    outArgIndices: readonly number[],
-    returnRef: GirTypeRef | undefined,
-): string => {
-    const body = renderTupleWriteback(context, `handler(${callArgs})`, outArgIndices, returnRef);
-    return `(handler, args) => {\n    ${body}\n}`;
 };
 
 const isVoidRef = (ref: GirTypeRef | undefined): boolean =>

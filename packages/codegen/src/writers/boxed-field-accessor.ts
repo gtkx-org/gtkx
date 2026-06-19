@@ -240,7 +240,7 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
         context,
         jsName,
         tsType: renderTsType(context, arrayRef, false),
-        bufferType: `t.struct("borrowed", ${lengthExpr} * ${elementSize})`,
+        bufferType: `t.struct("borrowed", { size: ${lengthExpr} * ${elementSize} })`,
         offset: slot.byteOffset,
         lengthExpr,
         elementSize,

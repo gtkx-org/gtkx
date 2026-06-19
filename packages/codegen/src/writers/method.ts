@@ -2,8 +2,6 @@ import { quote, toCamelCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import type { GirFunction } from "../gir/function.js";
 import { type GirParameter, isCallerAllocatedOut, isInoutParameter, isOutParameter } from "../gir/parameter.js";
-import { qualifyTypeRef } from "../gir/qualify.js";
-import type { GirTypeRef } from "../gir/type-ref.js";
 import {
     arrayLengthSources,
     closureAndDestroyIndices,
@@ -14,16 +12,8 @@ import {
     parameterIdentifier,
     passesHandleInPlace,
 } from "./param-classify.js";
-import { wrapReturnValue } from "./return-wrap.js";
 import { renderTsType } from "./ts-type.js";
-import {
-    isCellInout,
-    type ResolvedCallback,
-    renderFfiType,
-    renderSelfFfiType,
-    renderTrampolineType,
-    resolveCallbackType,
-} from "./value.js";
+import { renderFfiType, renderSelfFfiType, renderTrampolineType } from "./value.js";
 
 /**
  * Returns the camelCased JS export name for a callable's method or static.
@@ -290,7 +280,9 @@ const ffiParamLiteral = (ffiExpr: string, options: FfiParamOptions): string => {
  */
 export const renderReturnDescriptor = (context: ModuleContext, fn: GirFunction): string => {
     const instanceOffset = fn.instance === undefined ? 0 : 1;
-    return renderFfiType(context, fn.returnValue.type, fn.returnValue.transferOwnership, instanceOffset);
+    return renderFfiType(context, fn.returnValue.type, fn.returnValue.transferOwnership, {
+        argIndexOffset: instanceOffset,
+    });
 };
 
 /**
@@ -338,7 +330,9 @@ export const planCallArgs = (context: ModuleContext, fn: GirFunction): CallArgPl
         const sourceIndex = lengthFor.get(index);
         if (sourceIndex !== undefined) {
             const source = fn.parameters[sourceIndex];
-            const ffi = renderFfiType(context, parameter.type, parameter.transferOwnership, instanceOffset);
+            const ffi = renderFfiType(context, parameter.type, parameter.transferOwnership, {
+                argIndexOffset: instanceOffset,
+            });
             plan.push({
                 paramLiteral: ffiParamLiteral(ffi, {}),
                 inputExpr: source === undefined ? "0" : `${parameterIdentifier(source, sourceIndex)}.length`,
@@ -356,12 +350,12 @@ const planOutParam = (
     instanceOffset: number,
     consumed: boolean,
 ): CallArgPlan => {
-    const ffi = renderFfiType(context, parameter.type, parameter.transferOwnership, instanceOffset);
+    const ffi = renderFfiType(context, parameter.type, parameter.transferOwnership, { argIndexOffset: instanceOffset });
     return { paramLiteral: ffiParamLiteral(ffi, { direction: "out", consumed }), inputExpr: undefined };
 };
 
 const planCallerOut = (context: ModuleContext, parameter: GirParameter, instanceOffset: number): CallArgPlan => {
-    const ffi = renderFfiType(context, parameter.type, "none", instanceOffset);
+    const ffi = renderFfiType(context, parameter.type, "none", { argIndexOffset: instanceOffset });
     if (parameter.type?.kind === "named" && isCollectibleCallerOut(context, parameter)) {
         context.addRuntimeImport("getHandle");
         const owner = parameter.type.namespaceName ?? context.namespace.name;
@@ -381,13 +375,13 @@ const planInoutParam = (
 ): CallArgPlan => {
     const { index, instanceOffset, consumed } = options;
     if (passesHandleInPlace(context, parameter)) {
-        const ffi = renderFfiType(context, parameter.type, "none", instanceOffset);
+        const ffi = renderFfiType(context, parameter.type, "none", { argIndexOffset: instanceOffset });
         return {
             paramLiteral: ffiParamLiteral(ffi, { direction: "inout", callerAllocates: true, consumed }),
             inputExpr: parameterIdentifier(parameter, index),
         };
     }
-    const ffi = renderFfiType(context, parameter.type, parameter.transferOwnership, instanceOffset);
+    const ffi = renderFfiType(context, parameter.type, parameter.transferOwnership, { argIndexOffset: instanceOffset });
     return {
         paramLiteral: ffiParamLiteral(ffi, { direction: "inout", consumed }),
         inputExpr: parameterCallExpression(context, parameter, index),
@@ -401,7 +395,9 @@ const planInParam = (
     instanceOffset: number,
 ): CallArgPlan => {
     const trampoline = renderTrampolineType(context, parameter.type, parameter);
-    const ffi = trampoline ?? renderFfiType(context, parameter.type, parameter.transferOwnership, instanceOffset);
+    const ffi =
+        trampoline ??
+        renderFfiType(context, parameter.type, parameter.transferOwnership, { argIndexOffset: instanceOffset });
     return {
         paramLiteral: ffiParamLiteral(ffi, {}),
         inputExpr: parameterCallExpression(context, parameter, index),
@@ -412,8 +408,6 @@ const parameterCallExpression = (context: ModuleContext, parameter: GirParameter
     const name = parameterIdentifier(parameter, index);
     const ref = parameter.type;
     if (ref === undefined) return name;
-    const callback = resolveCallbackType(context, ref);
-    if (callback !== undefined) return renderCallbackArgument(context, callback, name);
     const nullable = parameter.nullable || parameter.optional;
     if (isHandlePassing(context, ref)) {
         if (nullable) {
@@ -435,116 +429,4 @@ const parameterCallExpression = (context: ModuleContext, parameter: GirParameter
         return `${name} ? globalThis.Array.from(${name}) : null`;
     }
     return name;
-};
-
-/**
- * The marshalling plan for a callback or signal trampoline's incoming
- * arguments: the rendered comma-separated handler call arguments and the
- * trampoline-arg indices of any out-parameter cells.
- */
-export type TrampolineArgPlan = {
-    readonly callArgs: string;
-    readonly outArgIndices: number[];
-};
-
-/**
- * Plans how a callback or signal trampoline forwards its raw arguments to the
- * user handler.
- *
- * In-parameters are wrapped via {@link wrapReturnValue} and joined into the
- * handler call; out-parameters are dropped from the call and their trampoline
- * cell indices collected for write-back. `argOffset` shifts every `args[...]`
- * access: callbacks read from index `0`, while signal trampolines reserve
- * index `0` for the emitting instance and so pass `1`.
- *
- * @param context - The module context
- * @param parameters - The callback or signal parameters, varargs excluded
- * @param namespaceName - The namespace the parameter type references resolve against
- * @param argOffset - Added to each parameter's positional index
- */
-export const planTrampolineArgs = (
-    context: ModuleContext,
-    parameters: readonly GirParameter[],
-    namespaceName: string,
-    argOffset: number,
-): TrampolineArgPlan => {
-    const callArgs = parameters
-        .map((parameter, index) =>
-            isOutParameter(parameter)
-                ? undefined
-                : wrapReturnValue(context, {
-                      ref: qualifyTypeRef(parameter.type, namespaceName),
-                      nullable: parameter.nullable,
-                      valueExpression: isCellInout(context, parameter)
-                          ? `args[${index + argOffset}].value`
-                          : `args[${index + argOffset}]`,
-                  }),
-        )
-        .filter((expression): expression is string => expression !== undefined)
-        .join(", ");
-    const outArgIndices = parameters
-        .map((parameter, index) =>
-            isOutParameter(parameter) || isCellInout(context, parameter) ? index + argOffset : -1,
-        )
-        .filter((index) => index >= 0);
-    return { callArgs, outArgIndices };
-};
-
-const renderCallbackArgument = (context: ModuleContext, resolved: ResolvedCallback, name: string): string => {
-    const { callback, namespaceName } = resolved;
-    const { callArgs, outArgIndices } = planTrampolineArgs(context, callback.parameters, namespaceName, 0);
-    const returnRef = qualifyTypeRef(callback.returnValue.type, namespaceName);
-    if (outArgIndices.length > 0) {
-        const body = renderTupleWriteback(context, `${name}(${callArgs})`, outArgIndices, returnRef);
-        return `${name} ? (...args: unknown[]) => {\n    ${body}\n} : null`;
-    }
-    if (returnRef !== undefined && isHandlePassing(context, returnRef)) {
-        context.addRuntimeImport("getHandle");
-        return `${name} ? (...args: unknown[]) => {\n    const _result = ${name}(${callArgs});\n    return _result != null ? getHandle(_result) : null;\n} : null`;
-    }
-    return `${name} ? (...args: unknown[]) => ${name}(${callArgs}) : null`;
-};
-
-/**
- * Renders the body of a native→JS callback wrapper that returns out-parameters
- * as a tuple.
- *
- * The wrapped user function returns `[primary, ...outs]` (or the scalar out
- * alone for a void return with a single out, or an out-only tuple otherwise).
- * This emits `const _result = …;`, writes each out value into its `{ value }`
- * cell's `value` slot (`args[i].value = …`), and returns the primary — keeping the
- * tuple convention entirely in generated code so the native layer only flushes
- * cells through their out-pointers. Shared by signal and callback writers.
- *
- * @param context - The module context
- * @param callExpression - The expression that invokes the user function
- * @param outArgIndices - Argument indices of the out-parameter cells
- * @param returnRef - The primary return type, or `undefined` for void
- */
-export const renderTupleWriteback = (
-    context: ModuleContext,
-    callExpression: string,
-    outArgIndices: readonly number[],
-    returnRef: GirTypeRef | undefined,
-): string => {
-    const lines = [`const _result = ${callExpression};`];
-    const isVoid = returnRef === undefined || (returnRef.kind === "primitive" && returnRef.category === "void");
-    if (!isVoid) {
-        outArgIndices.forEach((argIndex, position) => {
-            lines.push(`args[${argIndex}].value = _result[${position + 1}];`);
-        });
-        if (returnRef !== undefined && isHandlePassing(context, returnRef)) {
-            context.addRuntimeImport("tryGetHandle");
-            lines.push("return tryGetHandle(_result[0]);");
-        } else {
-            lines.push("return _result[0];");
-        }
-    } else if (outArgIndices.length === 1) {
-        lines.push(`args[${outArgIndices[0]}].value = _result;`);
-    } else {
-        outArgIndices.forEach((argIndex, position) => {
-            lines.push(`args[${argIndex}].value = _result[${position}];`);
-        });
-    }
-    return lines.join("\n    ");
 };
