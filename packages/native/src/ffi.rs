@@ -8,8 +8,8 @@ mod storage;
 mod value;
 
 pub use storage::{
-    FfiStorage, FfiStorageKind, GArrayData, GListData, GSListData, HashTableData, PendingRelease,
-    PendingTransfer, StringGListData, StringGSListData,
+    FfiStorage, FfiStorageKind, GArrayData, GListData, GListFlavor, GSListData, GSListFlavor,
+    HashTableData, ListFlavor, PendingRelease, PendingTransfer, StringGListData, StringGSListData,
 };
 pub use value::{FfiValue, TrampolineValue};
 

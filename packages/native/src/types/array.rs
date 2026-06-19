@@ -1,4 +1,5 @@
 use std::ffi::{CString, c_char};
+use std::marker::PhantomData;
 
 use anyhow::bail;
 use napi::bindgen_prelude::*;
@@ -502,92 +503,23 @@ fn transfer_elements(
     Ok((ptrs, acquired))
 }
 
-struct GListEncoder;
-
-impl ArrayKindEncoder for GListEncoder {
-    fn encode_strings(
-        &self,
-        array: &[value::Value],
-        dup_elements: bool,
-        ownership: Ownership,
-    ) -> anyhow::Result<ffi::FfiValue> {
-        let should_free = ownership.is_borrowed();
-        let (strings, ptrs) = string_list_parts(array, dup_elements)?;
-        let mut list: *mut glib::ffi::GList = std::ptr::null_mut();
-        for ptr in ptrs.iter().rev() {
-            // SAFETY: Prepending to a (possibly null) GList head only
-            // requires a valid element pointer, staged just above.
-            list = unsafe { glib::ffi::g_list_prepend(list, *ptr) };
-        }
-        let storage = FfiStorage::new(
-            list as *mut c_void,
-            FfiStorageKind::StringGList(ffi::StringGListData {
-                strings,
-                list_ptr: list,
-                should_free,
-                elements_duped: dup_elements,
-            }),
-        );
-        let storage = if should_free {
-            storage
-        } else {
-            let acquired: Vec<ffi::PendingTransfer> = if dup_elements {
-                ptrs.iter()
-                    .map(|p| ffi::PendingTransfer::new(*p, ffi::PendingRelease::GFree))
-                    .collect()
-            } else {
-                Vec::new()
-            };
-            let release =
-                group_with_container(acquired, list.cast(), ffi::PendingRelease::ListSpineFree);
-            storage.with_pending_transfer(list as *mut c_void, release)
-        };
-        Ok(ffi::FfiValue::Storage(storage))
+/// Builds a list spine of `F`'s flavor by prepending the staged element
+/// pointers in reverse, so the head ends up in original order.
+fn build_spine<F: ffi::ListFlavor>(ptrs: &[*mut c_void]) -> *mut F::Spine {
+    let mut list: *mut F::Spine = std::ptr::null_mut();
+    for ptr in ptrs.iter().rev() {
+        // SAFETY: Prepending to a (possibly null) spine head only requires a
+        // valid element pointer, staged just above.
+        list = unsafe { F::prepend(list, *ptr) };
     }
-
-    fn encode_handles(
-        &self,
-        handles: &[crate::managed::NativeHandle],
-        item_type: &Type,
-        ownership: Ownership,
-    ) -> anyhow::Result<ffi::FfiValue> {
-        let should_free = ownership.is_borrowed();
-        let (ptrs, acquired) = transfer_elements(handles, item_type, "GList")?;
-        let mut list: *mut glib::ffi::GList = std::ptr::null_mut();
-        for ptr in ptrs.iter().rev() {
-            // SAFETY: Prepending to a (possibly null) GList head only
-            // requires a valid element pointer, staged just above.
-            list = unsafe { glib::ffi::g_list_prepend(list, *ptr) };
-        }
-        let storage = FfiStorage::new(
-            list as *mut c_void,
-            FfiStorageKind::GList(ffi::GListData {
-                handles: handles.to_vec(),
-                list_ptr: list,
-                should_free,
-            }),
-        );
-        let storage = if should_free {
-            if acquired.is_empty() {
-                storage
-            } else {
-                storage.with_pending_transfer(
-                    list as *mut c_void,
-                    ffi::PendingRelease::Group(acquired),
-                )
-            }
-        } else {
-            let release =
-                group_with_container(acquired, list.cast(), ffi::PendingRelease::ListSpineFree);
-            storage.with_pending_transfer(list as *mut c_void, release)
-        };
-        Ok(ffi::FfiValue::Storage(storage))
-    }
+    list
 }
 
-struct GSListEncoder;
+/// Encodes a `GList`/`GSList` argument, with the spine flavor `F` supplying the
+/// prepend, storage-kind, and spine-release points of variation.
+struct ListEncoder<F: ffi::ListFlavor>(PhantomData<F>);
 
-impl ArrayKindEncoder for GSListEncoder {
+impl<F: ffi::ListFlavor> ArrayKindEncoder for ListEncoder<F> {
     fn encode_strings(
         &self,
         array: &[value::Value],
@@ -596,20 +528,10 @@ impl ArrayKindEncoder for GSListEncoder {
     ) -> anyhow::Result<ffi::FfiValue> {
         let should_free = ownership.is_borrowed();
         let (strings, ptrs) = string_list_parts(array, dup_elements)?;
-        let mut list: *mut glib::ffi::GSList = std::ptr::null_mut();
-        for ptr in ptrs.iter().rev() {
-            // SAFETY: Prepending to a (possibly null) GSList head only
-            // requires a valid element pointer, staged just above.
-            list = unsafe { glib::ffi::g_slist_prepend(list, *ptr) };
-        }
+        let list = build_spine::<F>(&ptrs);
         let storage = FfiStorage::new(
             list as *mut c_void,
-            FfiStorageKind::StringGSList(ffi::StringGSListData {
-                strings,
-                list_ptr: list,
-                should_free,
-                elements_duped: dup_elements,
-            }),
+            F::string_storage(strings, list, should_free, dup_elements),
         );
         let storage = if should_free {
             storage
@@ -621,8 +543,7 @@ impl ArrayKindEncoder for GSListEncoder {
             } else {
                 Vec::new()
             };
-            let release =
-                group_with_container(acquired, list.cast(), ffi::PendingRelease::SListSpineFree);
+            let release = group_with_container(acquired, list.cast(), F::spine_release());
             storage.with_pending_transfer(list as *mut c_void, release)
         };
         Ok(ffi::FfiValue::Storage(storage))
@@ -635,20 +556,11 @@ impl ArrayKindEncoder for GSListEncoder {
         ownership: Ownership,
     ) -> anyhow::Result<ffi::FfiValue> {
         let should_free = ownership.is_borrowed();
-        let (ptrs, acquired) = transfer_elements(handles, item_type, "GSList")?;
-        let mut list: *mut glib::ffi::GSList = std::ptr::null_mut();
-        for ptr in ptrs.iter().rev() {
-            // SAFETY: Prepending to a (possibly null) GSList head only
-            // requires a valid element pointer, staged just above.
-            list = unsafe { glib::ffi::g_slist_prepend(list, *ptr) };
-        }
+        let (ptrs, acquired) = transfer_elements(handles, item_type, F::LABEL)?;
+        let list = build_spine::<F>(&ptrs);
         let storage = FfiStorage::new(
             list as *mut c_void,
-            FfiStorageKind::GSList(ffi::GSListData {
-                handles: handles.to_vec(),
-                list_ptr: list,
-                should_free,
-            }),
+            F::handle_storage(handles.to_vec(), list, should_free),
         );
         let storage = if should_free {
             if acquired.is_empty() {
@@ -660,8 +572,7 @@ impl ArrayKindEncoder for GSListEncoder {
                 )
             }
         } else {
-            let release =
-                group_with_container(acquired, list.cast(), ffi::PendingRelease::SListSpineFree);
+            let release = group_with_container(acquired, list.cast(), F::spine_release());
             storage.with_pending_transfer(list as *mut c_void, release)
         };
         Ok(ffi::FfiValue::Storage(storage))
@@ -847,8 +758,8 @@ impl ArrayType {
         }
 
         let encoder: &dyn ArrayKindEncoder = match &self.kind {
-            ArrayKind::GList => &GListEncoder,
-            ArrayKind::GSList => &GSListEncoder,
+            ArrayKind::GList => &ListEncoder::<ffi::GListFlavor>(PhantomData),
+            ArrayKind::GSList => &ListEncoder::<ffi::GSListFlavor>(PhantomData),
             _ => &NullTerminatedArrayEncoder,
         };
 
