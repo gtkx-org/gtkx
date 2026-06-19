@@ -157,6 +157,9 @@ importers:
 
   packages/animate:
     dependencies:
+      '@gtkx/css':
+        specifier: workspace:*
+        version: link:../css
       '@gtkx/react':
         specifier: workspace:*
         version: link:../react

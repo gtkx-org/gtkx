@@ -1,7 +1,7 @@
 import type { MockInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { css, cx, injectGlobal } from "../src/index.js";
-import { StyleSheet } from "../src/style-sheet.js";
+import { Stylesheet } from "../src/stylesheet.js";
 
 describe("css", () => {
     it("creates a class name from template literal styles", () => {
@@ -224,10 +224,10 @@ describe("injectGlobal", () => {
 });
 
 describe("stylis pipeline correctness", () => {
-    let insertSpy: MockInstance<StyleSheet["insert"]>;
+    let insertSpy: MockInstance<Stylesheet["insert"]>;
 
     beforeEach(() => {
-        insertSpy = vi.spyOn(StyleSheet.prototype, "insert");
+        insertSpy = vi.spyOn(Stylesheet.prototype, "insert");
     });
 
     afterEach(() => {
@@ -323,5 +323,29 @@ describe("stylis pipeline correctness", () => {
         expect(compound).toBeDefined();
         expect(compound).toMatch(new RegExp(`^\\.${className}:hover:focus`));
         expect(compound).not.toMatch(/:hover\s+\..*:focus/);
+    });
+
+    it("strips Emotion label declarations before they reach the GTK sink", () => {
+        const className = css({ label: "btn", padding: "8px" });
+
+        const rules = insertSpy.mock.calls.map((call) => call[0] as string);
+        const rule = rules.find((r) => r.startsWith(`.${className}`));
+        expect(rule).toBeDefined();
+        expect(rule).toContain("padding:8px;");
+        expect(rule).not.toContain("label:");
+    });
+
+    it("inlines a previously created class when interpolated into another css call", () => {
+        const base = css({ color: "red" });
+        const composed = css`
+            ${base};
+            padding: 8px;
+        `;
+
+        const rules = insertSpy.mock.calls.map((call) => call[0] as string);
+        const rule = rules.find((r) => r.startsWith(`.${composed}`));
+        expect(rule).toBeDefined();
+        expect(rule).toContain("color:red");
+        expect(rule).toContain("padding:8px");
     });
 });

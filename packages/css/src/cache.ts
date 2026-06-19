@@ -1,33 +1,20 @@
 import type { EmotionCache } from "@emotion/cache";
 import createCache from "@emotion/cache";
-import { StyleSheet } from "./style-sheet.js";
+import { Stylesheet } from "./stylesheet.js";
 
-let gtkCache: EmotionCache | null = null;
+const CACHE_KEY = "gtkx";
 
-export const getGtkCache = (): EmotionCache => {
-    if (!gtkCache) {
-        gtkCache = createCache({
-            key: "gtkx",
-            container: null,
-        });
+let cache: EmotionCache | null = null;
+let stylesheet: Stylesheet | null = null;
 
-        gtkCache.sheet = createGtkSheet();
-    }
-
-    return gtkCache;
-};
+export const getCache = (): EmotionCache => (cache ??= createCache({ key: CACHE_KEY, container: null }));
 
 /**
- * Builds the GTK style sheet Emotion's cache writes generated CSS into.
+ * The GTK stylesheet generated rules are inserted into.
  *
- * `EmotionCache.sheet` is typed as the DOM-coupled `@emotion/sheet`
- * `StyleSheet`, whose `HTMLStyleElement`/`Node` members have no GTK
- * equivalent. The local {@link StyleSheet} is a deliberate DOM-free
- * reimplementation exposing the `key`/`insert` surface the cache actually
- * invokes; the `unknown` hop is the single boundary bridging that drop-in to
- * the third-party type.
+ * Deliberately separate from {@link EmotionCache.sheet}: that field is the
+ * DOM-coupled `@emotion/sheet` whose `HTMLStyleElement`/`Node` members have no
+ * GTK equivalent, and {@link getCache} is used only for serialization hashing,
+ * `registered` composition, and insertion dedup — never its sheet.
  */
-const createGtkSheet = (): EmotionCache["sheet"] => {
-    const sheet: unknown = new StyleSheet({ key: "gtkx" });
-    return sheet as EmotionCache["sheet"];
-};
+export const getStylesheet = (): Stylesheet => (stylesheet ??= new Stylesheet());

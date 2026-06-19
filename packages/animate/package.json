@@ -42,6 +42,7 @@
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "dependencies": {
+        "@gtkx/css": "workspace:*",
         "@gtkx/react": "workspace:*"
     },
     "peerDependencies": {

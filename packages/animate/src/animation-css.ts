@@ -1,3 +1,4 @@
+import { registerProviderForDefaultDisplay } from "@gtkx/css";
 import type * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { AnimatableProperties } from "./types.js";
@@ -167,7 +168,7 @@ export class AnimationCssProvider {
         this.widget = widget;
 
         if (!this.provider) {
-            const { provider, display } = Gtk.registerProviderForDefaultDisplay();
+            const { provider, display } = registerProviderForDefaultDisplay();
             this.provider = provider;
             this.display = display;
         }

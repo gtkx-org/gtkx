@@ -1,23 +1,15 @@
 import * as Gdk from "@gtkx/gi/gdk";
-import * as Gtk from "@gtkx/gi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
+import { attachProviderToDisplay, registerProviderForDefaultDisplay } from "./provider.js";
 
-type StyleSheetOptions = {
-    key: string;
-};
-
-export class StyleSheet {
-    key: string;
+export class Stylesheet {
     private rules: string[] = [];
     private provider: Gtk.CssProvider | null = null;
     private updateScheduled = false;
 
-    constructor(options: StyleSheetOptions) {
-        this.key = options.key;
-    }
-
     private ensureProvider(): void {
         if (this.provider) return;
-        const { provider, display } = Gtk.registerProviderForDefaultDisplay();
+        const { provider, display } = registerProviderForDefaultDisplay();
         this.provider = provider;
         provider.on("parsing-error", (section, error) => {
             console.warn(`[gtkx/css] GTK rejected CSS at ${section.toString()}: ${error.message}`);
@@ -36,7 +28,7 @@ export class StyleSheet {
      */
     private registerWhenDisplayOpens(provider: Gtk.CssProvider): void {
         Gdk.DisplayManager.get().once("display-opened", (display) => {
-            Gtk.StyleContext.addProviderForDisplay(display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
+            attachProviderToDisplay(provider, display);
         });
     }
 
