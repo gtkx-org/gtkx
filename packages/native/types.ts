@@ -174,7 +174,7 @@ export type RegisterClassVfunc = {
  */
 export type RegisterClassInterface = {
     /** GType of the inherited interface whose vfuncs are overridden. */
-    gtype: number;
+    gtype: bigint;
     /** Vfunc overrides relative to the interface struct base. */
     vfuncs: RegisterClassVfunc[];
 };

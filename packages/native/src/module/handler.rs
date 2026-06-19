@@ -80,7 +80,7 @@ impl ModuleResponse for u64 {
         // SAFETY: This runs on the JS thread with the live `env` of the
         // current callback, and the raw value was just created under it.
         unsafe {
-            let raw = f64::to_napi_value(env.raw(), self as f64)?;
+            let raw = BigInt::to_napi_value(env.raw(), BigInt::from(self))?;
             Ok(Unknown::from_raw_unchecked(env.raw(), raw))
         }
     }

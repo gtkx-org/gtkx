@@ -16,6 +16,7 @@ export const UINT8 = { type: "uint8" as const };
 export const UINT16 = { type: "uint16" as const };
 export const UINT32 = { type: "uint32" as const };
 export const UINT64 = { type: "uint64" as const };
+export const BIGUINT64 = { type: "biguint64" as const };
 export const FLOAT32 = { type: "float32" as const };
 export const FLOAT64 = { type: "float64" as const };
 export const BOOLEAN = { type: "boolean" as const };
@@ -81,8 +82,8 @@ export function createCancellable(): Value {
     return call(GIO_LIB, "g_cancellable_new", [], GOBJECT);
 }
 
-export const typeFromName = (name: string): number =>
-    Number(call(GOBJECT_LIB, "g_type_from_name", [{ type: STRING_BORROWED, value: name }], UINT64));
+export const typeFromName = (name: string): bigint =>
+    call(GOBJECT_LIB, "g_type_from_name", [{ type: STRING_BORROWED, value: name }], BIGUINT64) as bigint;
 
 export function forceGC(): void {
     if (!global.gc) {

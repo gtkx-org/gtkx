@@ -114,11 +114,16 @@ impl RawInterface {
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn from_js_value(env: &Env, item: Unknown<'_>) -> napi::Result<Self> {
         let obj = crate::value::unknown_as_object(env, &item)?;
+        let (_, gtype_value, gtype_lossless) = obj.get_named_property::<BigInt>("gtype")?.get_u64();
+        if !gtype_lossless {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                "register_class: interface gtype exceeds the 64-bit GType range",
+            ));
+        }
         // SAFETY: Converting a numeric GType value has no pointer
         // preconditions; validity is checked just below.
-        let gtype = unsafe {
-            glib::Type::from_glib(obj.get_named_property::<f64>("gtype")? as glib::ffi::GType)
-        };
+        let gtype = unsafe { glib::Type::from_glib(gtype_value as glib::ffi::GType) };
         if !gtype.is_valid() {
             return Err(napi::Error::new(
                 napi::Status::InvalidArg,
@@ -488,7 +493,7 @@ mod napi_export {
     pub fn register_class(
         env: &Env,
         name: String,
-        parent_gtype: f64,
+        parent_gtype: BigInt,
         options: Option<JsObject>,
     ) -> napi::Result<Unknown<'_>> {
         let name = glib::GString::from_string_checked(name).map_err(|err| {
@@ -497,12 +502,19 @@ mod napi_export {
                 format!("register_class: invalid type name: {err}"),
             )
         })?;
+        let (_, parent_value, parent_lossless) = parent_gtype.get_u64();
+        if !parent_lossless {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                "register_class: parent gtype exceeds the 64-bit GType range",
+            ));
+        }
         let (vfuncs, interfaces) = parse_register_options(env, options)?;
         RegisterClassRequest {
             name,
             // SAFETY: Converting a numeric GType value has no pointer
             // preconditions; the request validates it before use.
-            parent_gtype: unsafe { glib::Type::from_glib(parent_gtype as glib::ffi::GType) },
+            parent_gtype: unsafe { glib::Type::from_glib(parent_value as glib::ffi::GType) },
             vfuncs,
             interfaces,
         }

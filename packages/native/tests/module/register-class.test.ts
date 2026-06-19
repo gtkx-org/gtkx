@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { call, registerClass } from "../../index.js";
-import { createLabel, GOBJECT_LIB, typeFromName, UINT64 } from "./utils.js";
+import { BIGUINT64, createLabel, GOBJECT_LIB, typeFromName } from "./utils.js";
 
 const G_TYPE_INVALID_NAME = "ThisGTypeDefinitelyDoesNotExist";
 
@@ -27,7 +27,7 @@ describe("registerClass", () => {
     });
 
     it("returns zero for a GType name that has not been registered", () => {
-        expect(typeFromName(G_TYPE_INVALID_NAME)).toBe(0);
+        expect(typeFromName(G_TYPE_INVALID_NAME)).toBe(0n);
     });
 
     it("accepts inherited-interface entries through the options builder", () => {
@@ -48,8 +48,8 @@ describe("registerClass", () => {
             GOBJECT_LIB,
             "g_type_is_a",
             [
-                { type: UINT64, value: newGtype },
-                { type: UINT64, value: buildableGtype },
+                { type: BIGUINT64, value: newGtype },
+                { type: BIGUINT64, value: buildableGtype },
             ],
             { type: "boolean" },
         );

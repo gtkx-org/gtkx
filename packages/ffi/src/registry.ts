@@ -256,7 +256,7 @@ function resolveWrapper(handle: Handle, resolveClass: (runtimeGtype: GType) => A
     const existing = getWrapper(handle);
     if (existing) return existing;
 
-    const runtimeGtype: GType = BigInt(getType(handle));
+    const runtimeGtype: GType = getType(handle);
     if (runtimeGtype === TYPE_INVALID) {
         throw new Error("Cannot resolve runtime GLib type from handle");
     }

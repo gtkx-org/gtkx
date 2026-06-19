@@ -102,7 +102,7 @@ export function registerClass<T extends AnyClass>(klass: T, options: RegisterCla
     const interfaceBindings = discoverInheritedInterfaceVfuncs(klass, parentGtype, claimedMethodNames);
 
     const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings);
-    const newGtype: GType = BigInt(nativeRegisterClass(name, Number(parentGtype), nativeOptions));
+    const newGtype: GType = nativeRegisterClass(name, parentGtype, nativeOptions);
     setClassGtype(klass, newGtype);
 
     return klass;
@@ -250,8 +250,6 @@ function toNativeOptions(
     }
     return {
         vfuncs: hasClassVfuncs ? classVfuncs : undefined,
-        interfaces: hasInterfaces
-            ? interfaceBindings.map((binding) => ({ ...binding, gtype: Number(binding.gtype) }))
-            : undefined,
+        interfaces: hasInterfaces ? interfaceBindings : undefined,
     } as NativeRegisterClassOptions;
 }

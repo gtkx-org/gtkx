@@ -82,8 +82,8 @@ export function alloc(size: number, glibTypeName?: string): Handle {
  *
  * @param handle - Handle to a live GObject-compatible instance
  */
-export function getType(handle: Handle): number {
-    return native.getType(handle) as number;
+export function getType(handle: Handle): bigint {
+    return native.getType(handle) as bigint;
 }
 
 /**
@@ -97,12 +97,12 @@ export function getType(handle: Handle): number {
  * the JS class registry) lives in `@gtkx/ffi`'s `registerClass`.
  *
  * @param name - Globally-unique GType name (must not already be registered)
- * @param parentGtype - Numeric GType of the parent class
+ * @param parentGtype - GType of the parent class
  * @param options - Optional class and inherited-interface vfunc overrides
- * @returns Numeric GType of the newly registered subclass
+ * @returns GType of the newly registered subclass
  */
-export function registerClass(name: string, parentGtype: number, options?: RegisterClassOptions): number {
-    return native.registerClass(name, parentGtype, options) as number;
+export function registerClass(name: string, parentGtype: bigint, options?: RegisterClassOptions): bigint {
+    return native.registerClass(name, parentGtype, options) as bigint;
 }
 
 /**
