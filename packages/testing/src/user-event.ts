@@ -751,10 +751,14 @@ const drag = async (widget: Gtk.Widget, dx: number, dy: number, options: DragOpt
     });
 };
 
+const emitDrop = (target: Gtk.Widget, content: DropContent, options: DropOptions): void => {
+    const dropTarget = findController(target, Gtk.DropTarget);
+    dropTarget.emit("drop", wrapValue(content), options.x ?? 0, options.y ?? 0);
+};
+
 const drop = async (widget: Gtk.Widget, content: DropContent, options: DropOptions = {}): Promise<void> => {
     await act(() => {
-        const target = findController(widget, Gtk.DropTarget);
-        target.emit("drop", wrapValue(content), options.x ?? 0, options.y ?? 0);
+        emitDrop(widget, content, options);
     });
 };
 
@@ -766,8 +770,7 @@ const dragAndDrop = async (
 ): Promise<void> => {
     await act(() => {
         findController(source, Gtk.DragSource);
-        const dropTarget = findController(target, Gtk.DropTarget);
-        dropTarget.emit("drop", wrapValue(content), options.x ?? 0, options.y ?? 0);
+        emitDrop(target, content, options);
     });
 };
 
