@@ -41,12 +41,12 @@ export interface GtkxConfigPluginOptions {
  */
 export const createGtkxConfigPlugin = (options: GtkxConfigPluginOptions): Plugin => {
     const loadConfig = options.loadConfig ?? createGtkxConfigLoader();
-    let root = process.cwd();
+    let root: string | undefined;
 
     return {
         name: options.name,
         config(config: UserConfig) {
-            root = config.root ?? process.cwd();
+            root = config.root ?? root;
             return options.config?.(config) ?? undefined;
         },
         resolveId(id: string) {
@@ -55,7 +55,7 @@ export const createGtkxConfigPlugin = (options: GtkxConfigPluginOptions): Plugin
         },
         async load(id: string) {
             if (id !== RESOLVED_GTKX_CONFIG_VIRTUAL_ID) return undefined;
-            return renderGtkxConfigModule(await loadConfig(root));
+            return renderGtkxConfigModule(await loadConfig(root ?? process.cwd()));
         },
     };
 };
