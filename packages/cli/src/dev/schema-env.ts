@@ -1,22 +1,8 @@
-import { copyFileSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { compileSchemas } from "../gsettings/compile.js";
-
-const SCHEMA_SUFFIX = ".gschema.xml";
-const SKIPPED_DIRECTORIES = new Set(["node_modules", "dist", "out-tsc", "build-dir"]);
-
-const collectSchemaFiles = (dir: string, out: string[]): void => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        if (entry.name.startsWith(".")) continue;
-        const path = join(dir, entry.name);
-        if (entry.isDirectory()) {
-            if (!SKIPPED_DIRECTORIES.has(entry.name)) collectSchemaFiles(path, out);
-            continue;
-        }
-        if (entry.isFile() && entry.name.endsWith(SCHEMA_SUFFIX)) out.push(path);
-    }
-};
+import { findSchemaFiles } from "../gsettings/env.js";
 
 /**
  * Prepares the dev runner's GSettings environment before GTK loads.
@@ -34,8 +20,7 @@ const collectSchemaFiles = (dir: string, out: string[]): void => {
  * @returns The compiled schema directory, or `null` when the project has no schemas
  */
 export const prepareDevSchemaEnv = (root: string): string | null => {
-    const schemaFiles: string[] = [];
-    collectSchemaFiles(root, schemaFiles);
+    const schemaFiles = findSchemaFiles(root);
     if (schemaFiles.length === 0) return null;
 
     const dir = mkdtempSync(join(tmpdir(), "gtkx-dev-schemas-"));

@@ -4,9 +4,10 @@ import { sortedAlpha } from "@gtkx/utils";
 import { type ParsedSchemaFile, parseSchemaXml, SchemaParseError } from "./parser.js";
 import { renderEnvModule } from "./render.js";
 
-const SCHEMA_SUFFIX = ".gschema.xml";
+/** Filename suffix every GSettings schema XML file carries. */
+export const SCHEMA_SUFFIX = ".gschema.xml";
 
-const SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set(["node_modules", "dist", "out-tsc", "coverage"]);
+const SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set(["node_modules", "dist", "out-tsc", "coverage", "build-dir"]);
 
 /**
  * Result of {@link emitSchemaEnv}.
@@ -20,13 +21,6 @@ export type SchemaEnvResult = {
     readonly written: boolean;
 };
 
-/**
- * Finds every `.gschema.xml` file under a project root, skipping
- * `node_modules`, build output, and hidden directories.
- *
- * @param rootDir - Absolute path of the project root
- * @returns Absolute file paths in deterministic (sorted) order
- */
 const readVisibleEntries = (dir: string): Dirent[] => {
     try {
         return readdirSync(dir, { withFileTypes: true }).filter((entry) => !entry.name.startsWith("."));
@@ -39,6 +33,13 @@ const shouldDescend = (entry: Dirent): boolean => entry.isDirectory() && !SKIPPE
 
 const isSchemaFile = (entry: Dirent): boolean => entry.isFile() && entry.name.endsWith(SCHEMA_SUFFIX);
 
+/**
+ * Finds every `.gschema.xml` file under a project root, skipping
+ * `node_modules`, build output, and hidden directories.
+ *
+ * @param rootDir - Absolute path of the project root
+ * @returns Absolute file paths in deterministic (sorted) order
+ */
 export const findSchemaFiles = (rootDir: string): string[] => {
     const found: string[] = [];
     const walk = (dir: string): void => {

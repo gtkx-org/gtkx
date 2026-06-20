@@ -4,11 +4,10 @@ import { basename, join } from "node:path";
 import { errorMessage } from "@gtkx/utils";
 import type { ModuleNode, Plugin, ViteDevServer } from "vite";
 import { compileSchemas } from "../gsettings/compile.js";
-import { emitSchemaEnv } from "../gsettings/env.js";
+import { emitSchemaEnv, SCHEMA_SUFFIX } from "../gsettings/env.js";
 import { parseSchemaXml, SchemaParseError } from "../gsettings/parser.js";
 import { renderRuntimeModule } from "../gsettings/render.js";
 
-const SCHEMA_SUFFIX = ".gschema.xml";
 const VIRTUAL_PREFIX = "\0gtkx-gsettings:";
 
 /**
