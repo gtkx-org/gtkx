@@ -43,9 +43,11 @@ const wrapValue = (content: DropContent): GObject.Value => {
     return value;
 };
 
+type ControllerConstructor<T extends Gtk.EventController> = new () => T;
+
 const findExistingController = <T extends Gtk.EventController>(
     widget: Gtk.Widget,
-    controllerType: new (...args: never[]) => T,
+    controllerType: ControllerConstructor<T>,
 ): T | null => {
     const controllers = widget.observeControllers();
     const nItems = controllers.getNItems();
@@ -58,7 +60,7 @@ const findExistingController = <T extends Gtk.EventController>(
 
 const findController = <T extends Gtk.EventController>(
     widget: Gtk.Widget,
-    controllerType: new (...args: never[]) => T,
+    controllerType: ControllerConstructor<T>,
 ): T => {
     const controller = findExistingController(widget, controllerType);
     if (!controller) {
@@ -151,9 +153,7 @@ const tab = async (widget: Gtk.Widget, options?: TabOptions): Promise<void> => {
 
 const getEditableDelegate = (widget: Gtk.Widget): Gtk.Widget | null => {
     if (!isEditable(widget)) return null;
-    const getDelegate = (widget as { getDelegate?: () => Gtk.Editable | null }).getDelegate;
-    if (typeof getDelegate !== "function") return null;
-    const delegate = getDelegate.call(widget);
+    const delegate = widget.getDelegate();
     return delegate instanceof Gtk.Widget ? delegate : null;
 };
 
@@ -329,8 +329,8 @@ const selectByRole = (widget: Gtk.Widget, values: number | number[], valueArray:
     const role = widget.getAccessibleRole();
     if (role === Gtk.AccessibleRole.COMBO_BOX) {
         selectComboBoxOption(widget, values, valueArray);
-    } else if (role === Gtk.AccessibleRole.LIST) {
-        selectListBoxOptions(widget as Gtk.ListBox, valueArray);
+    } else if (widget instanceof Gtk.ListBox) {
+        selectListBoxOptions(widget, valueArray);
     }
 };
 
@@ -371,10 +371,10 @@ const deselectOptions = async (widget: Gtk.Widget, values: number | number[]): P
             deselectInListView(widget, valueArray);
             return;
         }
-        if (widget.getAccessibleRole() !== Gtk.AccessibleRole.LIST) {
+        if (!(widget instanceof Gtk.ListBox)) {
             throw new Error("Cannot deselect options: only ListBox supports deselection");
         }
-        deselectInListBox(widget as Gtk.ListBox, valueArray);
+        deselectInListBox(widget, valueArray);
     });
 };
 
@@ -385,12 +385,18 @@ const deselectOptions = async (widget: Gtk.Widget, values: number | number[]): P
  * strong, and skipping the re-observation avoids resolving controllers GTK may be
  * recycling under garbage-collection pressure mid-interaction.
  */
-const adoptedControllers = new WeakMap<Gtk.Widget, Map<new () => Gtk.EventController, Gtk.EventController>>();
+const adoptedControllers = new WeakMap<
+    Gtk.Widget,
+    Map<ControllerConstructor<Gtk.EventController>, Gtk.EventController>
+>();
 
-const getOrCreateController = <T extends Gtk.EventController>(widget: Gtk.Widget, controllerType: new () => T): T => {
+const getOrCreateController = <T extends Gtk.EventController>(
+    widget: Gtk.Widget,
+    controllerType: ControllerConstructor<T>,
+): T => {
     let perWidget = adoptedControllers.get(widget);
     const cached = perWidget?.get(controllerType);
-    if (cached) return cached as T;
+    if (cached instanceof controllerType) return cached;
 
     const existing = findExistingController(widget, controllerType);
     const controller = existing ?? new controllerType();
