@@ -1,14 +1,14 @@
 import { loadResolvedGtkxConfig } from "@gtkx/config";
 import { quitApplication } from "@gtkx/ffi";
 import * as Gio from "@gtkx/gi/gio";
+import type { ApplicationLifecycleModule } from "@gtkx/react";
 import { installGracefulShutdown } from "@gtkx/utils";
 import { createServer } from "vite";
 import { startMcpClient, stopMcpClient } from "../mcp/index.js";
 import { setTestingModuleLoader } from "../mcp/testing-loader.js";
 import { isReactRefreshBoundary, performRefresh } from "../refresh-runtime.js";
+import { gtkxFastRefresh } from "../vite-plugins/fast-refresh/index.js";
 import { gtkxVitePlugins } from "../vite-plugins/index.js";
-import { gtkxRefresh } from "../vite-plugins/react-refresh-runtime.js";
-import { swcSsrRefresh } from "../vite-plugins/react-refresh-transform.js";
 import { gtkxSkipReactDomOptimize } from "../vite-plugins/skip-react-dom-optimize.js";
 import type { DevRunnerDeps } from "./runner.js";
 
@@ -37,10 +37,7 @@ export const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     },
     stopMcpClient,
     installApplicationLifecycle: async (loadAppModule, onQuit) => {
-        const react = (await loadAppModule("@gtkx/react")) as {
-            setApplicationLifecycle(next: { quit(application: unknown): void } | null): void;
-            defaultApplicationLifecycle: { quit(application: unknown): void };
-        };
+        const react = (await loadAppModule("@gtkx/react")) as ApplicationLifecycleModule;
         react.setApplicationLifecycle({
             quit: (application) => onQuit(() => react.defaultApplicationLifecycle.quit(application)),
         });
@@ -54,7 +51,7 @@ export const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     },
     performRefresh,
     isReactRefreshBoundary,
-    plugins: () => [...gtkxVitePlugins(), swcSsrRefresh(), gtkxRefresh(), gtkxSkipReactDomOptimize()],
+    plugins: () => [...gtkxVitePlugins(), ...gtkxFastRefresh(), gtkxSkipReactDomOptimize()],
     log: (message: string) => console.log(`[gtkx] ${message}`),
     exit: (code: number): never => process.exit(code),
 });

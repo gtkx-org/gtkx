@@ -25,6 +25,20 @@ export type ApplicationLifecycle = {
 };
 
 /**
+ * The slice of the `@gtkx/react` module surface a host that drives the GTK
+ * lifecycle through a dynamic import depends on: installing a (possibly
+ * partial) lifecycle and falling through to the stock default. Lets a consumer
+ * assert the dynamic import against a contract `@gtkx/react` publishes rather
+ * than re-spelling the shape inline.
+ */
+export type ApplicationLifecycleModule = {
+    /** {@link setApplicationLifecycle} */
+    setApplicationLifecycle(next: Partial<ApplicationLifecycle> | null): void;
+    /** {@link defaultApplicationLifecycle} */
+    defaultApplicationLifecycle: ApplicationLifecycle;
+};
+
+/**
  * The lifecycle installed when none has been set: delegates to `runApplication`
  * and `quitApplication` from `@gtkx/ffi`, keeping the GTK main loop alive while
  * an application is mounted and releasing it on unmount.

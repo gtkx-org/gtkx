@@ -39,6 +39,7 @@ export { createRoot, quit, type Root } from "./reconciler/render.js";
 export { createRootElement, isRootElement, ROOT_ELEMENT, type RootElement } from "./reconciler/root-element.js";
 export {
     type ApplicationLifecycle,
+    type ApplicationLifecycleModule,
     defaultApplicationLifecycle,
     setApplicationLifecycle,
 } from "./utils/application-lifecycle.js";
