@@ -25,6 +25,14 @@ import { isBufferContentWrapper, isLabelTextWrapper } from "./text-wrapper.js";
 import type { ContainerInfo, Props } from "./types.js";
 import { isWrapperElement } from "./wrapper-element.js";
 
+/**
+ * The reconciler's single event priority. The GLib commit model schedules every
+ * update at one priority, so the three React `…UpdatePriority` host hooks all
+ * resolve to this constant rather than the Discrete/Continuous/Idle spread a
+ * multi-priority host would distinguish.
+ */
+const FIXED_UPDATE_PRIORITY = DiscreteEventPriority;
+
 type PublicInstance = Gtk.Widget | Gtk.Application;
 
 /**
@@ -238,9 +246,9 @@ const createSchedulingConfig = (): SchedulingConfig => ({
     cancelTimeout: (id) => {
         clearTimeout(id);
     },
-    getCurrentUpdatePriority: () => DiscreteEventPriority,
+    getCurrentUpdatePriority: () => FIXED_UPDATE_PRIORITY,
     setCurrentUpdatePriority: () => {},
-    resolveUpdatePriority: () => DiscreteEventPriority,
+    resolveUpdatePriority: () => FIXED_UPDATE_PRIORITY,
 });
 
 type HostContextConfig = Pick<HostConfig, "getRootHostContext" | "getChildHostContext" | "shouldSetTextContent">;
