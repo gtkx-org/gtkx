@@ -39,6 +39,7 @@
 //! [`Mailbox::dispatch_to_glib_and_wait`] do not deadlock waiting on a
 //! result from the dying main loop.
 
+mod freeze_controller;
 mod js_bridge;
 pub mod wait_signal;
 
@@ -51,6 +52,7 @@ use napi::threadsafe_function::ThreadsafeFunction;
 use napi::{JsFunction, Status, sys};
 use parking_lot::Mutex;
 
+use crate::dispatch::freeze_controller::FreezeController;
 use crate::dispatch::wait_signal::WaitSignal;
 use crate::error_reporter::NativeErrorReporter;
 use crate::panic_handler::format_panic_payload;
@@ -143,16 +145,14 @@ pub struct Mailbox {
 
     running: AtomicBool,
 
-    freeze_depth: AtomicUsize,
-    freeze_loop_active: AtomicBool,
-    freeze_wake: WaitSignal,
+    freeze: FreezeController,
 }
 
 impl std::fmt::Debug for Mailbox {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Mailbox")
             .field("running", &self.running)
-            .field("freeze_depth", &self.freeze_depth)
+            .field("freeze", &self.freeze)
             .finish_non_exhaustive()
     }
 }
@@ -174,9 +174,7 @@ impl Mailbox {
             wake_glib: WaitSignal::new(),
             wake_js_tsfn: OnceLock::new(),
             running: AtomicBool::new(true),
-            freeze_depth: AtomicUsize::new(0),
-            freeze_loop_active: AtomicBool::new(false),
-            freeze_wake: WaitSignal::new(),
+            freeze: FreezeController::new(),
         }
     }
 
@@ -185,7 +183,7 @@ impl Mailbox {
         self.running.store(false, Ordering::Release);
         self.wake_js.notify();
         self.wake_glib.notify();
-        self.freeze_wake.notify();
+        self.freeze.wake_for_shutdown();
     }
 
     /// Clears the not running flag so the mailbox accepts tasks again. Intended
@@ -202,7 +200,7 @@ impl Mailbox {
 
     /// Increments the freeze depth. Returns true if this was the outermost call.
     pub fn freeze(&self) -> bool {
-        self.freeze_depth.fetch_add(1, Ordering::AcqRel) == 0
+        self.freeze.enter()
     }
 
     /// Decrements the freeze depth. Wakes the freeze loop when depth reaches zero.
@@ -211,17 +209,7 @@ impl Mailbox {
     /// of wrapping the counter, which would permanently disable commit
     /// freezing.
     pub fn unfreeze(&self) {
-        let previous =
-            self.freeze_depth
-                .fetch_update(Ordering::AcqRel, Ordering::Acquire, |depth| {
-                    depth.checked_sub(1)
-                });
-        match previous {
-            Ok(1) => self.freeze_wake.notify(),
-            Ok(_) => {}
-            Err(_) => NativeErrorReporter::global()
-                .report_str("unfreeze called without a matching freeze; ignoring"),
-        }
+        self.freeze.leave();
     }
 
     /// Drains all currently-queued `GLib` tasks until [`Self::unfreeze`] resets
@@ -230,24 +218,13 @@ impl Mailbox {
     /// loop, preventing the frame clock from firing between individual
     /// mutations during a React commit.
     pub fn run_freeze_loop(&self) {
-        self.freeze_loop_active.store(true, Ordering::Release);
-        loop {
-            self.dispatch_pending();
-            if self.freeze_depth.load(Ordering::Acquire) == 0 || self.is_not_running() {
-                break;
-            }
-            self.freeze_wake.wait();
-        }
-        self.freeze_loop_active.store(false, Ordering::Release);
-        self.dispatch_pending();
+        self.freeze.run_loop(self);
     }
 
     fn push_glib_task(&self, task: GlibTask) {
         let depth = self.callback_depth.load(Ordering::Acquire);
         self.glib_inbox.lock().push_back((depth, task));
-        if self.freeze_loop_active.load(Ordering::Acquire) {
-            self.freeze_wake.notify();
-        }
+        self.freeze.notify_if_active();
         self.wake_glib.notify();
     }
 
@@ -262,7 +239,7 @@ impl Mailbox {
 
         self.push_glib_task(task);
 
-        if self.freeze_loop_active.load(Ordering::Acquire) {
+        if self.freeze.loop_active() {
             return;
         }
 
