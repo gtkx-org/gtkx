@@ -1,7 +1,8 @@
 import type { SignalHandler } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/gi/gobject";
-import { type RefObject, useLayoutEffect, useRef } from "react";
-import { type GObjectTarget, resolveGobjectTarget } from "../utils/gobject-target.js";
+import { useRef } from "react";
+import type { GObjectTarget } from "../utils/gobject-target.js";
+import { useTargetRegistration } from "../utils/use-target-registration.js";
 
 type AnySignalHandler = { handler(...args: unknown[]): unknown }["handler"];
 
@@ -67,14 +68,6 @@ interface SignalSubscription {
     readonly listener: SignalHandler;
 }
 
-const dropSubscription = (subscriptionRef: RefObject<SignalSubscription | null>): void => {
-    const subscription = subscriptionRef.current;
-    if (subscription) {
-        subscription.obj.off(subscription.signal, subscription.listener);
-        subscriptionRef.current = null;
-    }
-};
-
 /**
  * Subscribes a callback to a GObject signal via `on` and unsubscribes it
  * automatically on unmount or when the target, signal name, or `after` option
@@ -129,28 +122,18 @@ export function useSignal(
 ): void {
     const handlerRef = useRef(handler);
     handlerRef.current = handler;
-    const subscriptionRef = useRef<SignalSubscription | null>(null);
     const after = options?.after ?? false;
     const immediate = options?.immediate ?? false;
 
-    useLayoutEffect(() => {
-        const obj = resolveGobjectTarget(target);
-        const subscription = subscriptionRef.current;
-        if (
-            subscription &&
-            subscription.obj === obj &&
-            subscription.signal === signal &&
-            subscription.after === after
-        ) {
-            return;
-        }
-        dropSubscription(subscriptionRef);
-        if (!obj) return;
-        const listener: SignalHandler = (...args) => handlerRef.current(...args);
-        obj.on(signal, listener, after);
-        subscriptionRef.current = { obj, signal, after, listener };
-        if (immediate) handlerRef.current();
+    useTargetRegistration<GObject.Object, SignalSubscription>(target, {
+        attach: (obj) => {
+            const listener: SignalHandler = (...args) => handlerRef.current(...args);
+            obj.on(signal, listener, after);
+            if (immediate) handlerRef.current();
+            return { obj, signal, after, listener };
+        },
+        detach: (subscription) => subscription.obj.off(subscription.signal, subscription.listener),
+        isSame: (subscription, obj) =>
+            subscription.obj === obj && subscription.signal === signal && subscription.after === after,
     });
-
-    useLayoutEffect(() => () => dropSubscription(subscriptionRef), []);
 }
