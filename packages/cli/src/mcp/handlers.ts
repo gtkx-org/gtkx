@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { type IpcMethod, methodNotFoundError, widgetNotFoundError } from "@gtkx/mcp";
+import { serializeWidget } from "./serialize-widget.js";
 import { loadTestingModule } from "./testing-loader.js";
 import type { WidgetRegistry } from "./widget-registry.js";
 
@@ -58,7 +59,7 @@ const handleQuery: Handler = async ({ app, registry }, params) => {
             throw new Error(`Unknown query type: ${p.queryType}`);
     }
 
-    return { widgets: widgets.map((w) => registry.serialize(w)) };
+    return { widgets: widgets.map((w) => serializeWidget(w, (widget) => registry.idFor(widget), testing)) };
 };
 
 const handleScreenshot: Handler = async ({ app, registry }, params) => {
@@ -92,23 +93,21 @@ type ServerInitiatedMethod = Exclude<IpcMethod, "app.register" | "app.unregister
  * without a matching entry is a type error.
  */
 const HANDLERS: Record<ServerInitiatedMethod, Handler> = {
-    "app.getWindows": async ({ registry }) => {
-        const windows = Gtk.Window.listToplevels();
-        return {
-            windows: windows.map((w) => ({
-                id: registry.idFor(w),
-                title: (w as Gtk.Window).getTitle?.() ?? null,
-            })),
-        };
-    },
+    "app.getWindows": async ({ registry }) => ({
+        windows: registry.toplevels().map((window) => ({
+            id: registry.idFor(window),
+            title: window.getTitle?.() ?? null,
+        })),
+    }),
     "widget.getTree": async ({ app, registry }) => {
         const testing = await loadTestingModule();
         return { tree: testing.prettyWidget(app, { getId: (w) => registry.idFor(w), highlight: false }) };
     },
     "widget.query": handleQuery,
     "widget.getProps": async ({ registry }, params) => {
+        const testing = await loadTestingModule();
         const widget = requireWidget(registry, (params as { widgetId: string }).widgetId);
-        return registry.serialize(widget);
+        return serializeWidget(widget, (target) => registry.idFor(target), testing);
     },
     "widget.click": async ({ registry }, params) => {
         const testing = await loadTestingModule();

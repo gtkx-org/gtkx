@@ -12,6 +12,10 @@ const hoisted = vi.hoisted(() => ({
     clear: vi.fn(async () => undefined),
     fireEvent: vi.fn(async () => undefined),
     prettyWidget: vi.fn((_container: unknown, _options?: { getId?: (w: unknown) => string }) => "tree"),
+    formatRole: vi.fn((role: number) => (role === 2 ? "label" : "button")),
+    getWidgetPropertyText: vi.fn((widget: { getLabel?: () => string | null; getText?: () => string | null }) => {
+        return widget.getLabel?.() ?? widget.getText?.() ?? null;
+    }),
     listToplevels: vi.fn(() => [] as unknown[]),
     AccessibleRole: { BUTTON: 1, LABEL: 2 } as Record<string, number>,
 }));
@@ -37,6 +41,8 @@ vi.mock("@gtkx/testing", () => ({
     screenshot: hoisted.screenshot,
     fireEvent: hoisted.fireEvent,
     prettyWidget: hoisted.prettyWidget,
+    formatRole: hoisted.formatRole,
+    getWidgetPropertyText: hoisted.getWidgetPropertyText,
     userEvent: { click: hoisted.click, type: hoisted.typeText, clear: hoisted.clear },
 }));
 
@@ -80,11 +86,12 @@ describe("dispatch (method routing)", () => {
 });
 
 describe("app.getWindows", () => {
-    it("returns toplevel ids and titles", async () => {
+    it("returns toplevel ids and titles from the registry's captured set", async () => {
         const w1 = makeWidget({ getTitle: () => "Hello" });
         const w2 = makeWidget({ getTitle: () => null });
         listToplevels.mockReturnValueOnce([w1, w2]);
         const registry = new WidgetRegistry();
+        registry.refresh();
 
         const result = (await dispatch("app.getWindows", {}, { app: makeApp() as never, registry })) as {
             windows: Array<{ id: string; title: string | null }>;

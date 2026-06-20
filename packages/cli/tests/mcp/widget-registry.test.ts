@@ -58,7 +58,7 @@ describe("WidgetRegistry.register / get", () => {
     });
 });
 
-describe("WidgetRegistry.refresh", () => {
+describe("WidgetRegistry.refresh / toplevels", () => {
     it("clears the reverse lookup and re-registers from the live toplevels", () => {
         const stale = makeWidget();
         const fresh = makeWidget();
@@ -72,54 +72,17 @@ describe("WidgetRegistry.refresh", () => {
         expect(registry.get(staleId)).toBeUndefined();
         expect(registry.get(registry.idFor(fresh as never))).toBe(fresh);
     });
-});
 
-describe("WidgetRegistry.serialize", () => {
-    it("returns the wire shape with the registered id, role name, and child trees", () => {
-        const child = makeWidget({ type: "GtkButton", getLabel: () => "OK" });
-        const root = makeWidget({
-            type: "GtkBox",
-            getAccessibleRole: () => 2,
-            getName: () => "main",
-            getCssClasses: () => ["primary"],
-            getFirstChild: () => child,
-        });
-
+    it("retains the toplevel set captured by the most recent refresh", () => {
+        const first = makeWidget();
+        const second = makeWidget();
         const registry = new WidgetRegistry();
-        const result = registry.serialize(root as never);
 
-        expect(result.type).toBe("GtkBox");
-        expect(result.role).toBe("LABEL");
-        expect(result.name).toBe("main");
-        expect(result.cssClasses).toEqual(["primary"]);
-        expect(result.children).toHaveLength(1);
-        const [serializedChild] = result.children;
-        expect(serializedChild?.type).toBe("GtkButton");
-        expect(serializedChild?.text).toBe("OK");
-    });
+        expect(registry.toplevels()).toEqual([]);
 
-    it("falls back through getLabel, getText, getTitle in order when extracting text", () => {
-        const registry = new WidgetRegistry();
-        const labelOnly = makeWidget({ getLabel: () => "L" });
-        const textOnly = makeWidget({ getText: () => "T" });
-        const titleOnly = makeWidget({ getTitle: () => "Ti" });
+        listToplevels.mockReturnValueOnce([first as unknown, second as unknown]);
+        registry.refresh();
 
-        expect(registry.serialize(labelOnly as never).text).toBe("L");
-        expect(registry.serialize(textOnly as never).text).toBe("T");
-        expect(registry.serialize(titleOnly as never).text).toBe("Ti");
-    });
-
-    it("formats unknown role values as their numeric string", () => {
-        const registry = new WidgetRegistry();
-        const widget = makeWidget({ getAccessibleRole: () => 99 });
-
-        expect(registry.serialize(widget as never).role).toBe("99");
-    });
-
-    it("returns UNKNOWN when the role is undefined", () => {
-        const registry = new WidgetRegistry();
-        const widget = makeWidget({ getAccessibleRole: () => undefined });
-
-        expect(registry.serialize(widget as never).role).toBe("UNKNOWN");
+        expect(registry.toplevels()).toEqual([first, second]);
     });
 });

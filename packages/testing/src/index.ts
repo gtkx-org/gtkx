@@ -49,7 +49,7 @@ export {
 export { cleanup, render } from "./render.js";
 export { renderHook } from "./render-hook.js";
 export type { RoleInfo } from "./role-helpers.js";
-export { getRoles, logRoles, prettyRoles } from "./role-helpers.js";
+export { formatRole, getRoles, logRoles, prettyRoles } from "./role-helpers.js";
 export { screen } from "./screen.js";
 export { captureAndSaveScreenshot, logScreenshotPath, screenshot } from "./screenshot.js";
 export type { Method, Suggestion, Variant } from "./suggestions.js";
@@ -87,4 +87,5 @@ export type {
 } from "./user-event.js";
 export { userEvent } from "./user-event.js";
 export { waitFor, waitForElementToBeRemoved } from "./wait-for.js";
+export { getWidgetPropertyText } from "./widget-text.js";
 export { within } from "./within.js";
