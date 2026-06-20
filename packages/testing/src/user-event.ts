@@ -109,6 +109,26 @@ const findClickableAncestor = (widget: Gtk.Widget): Gtk.Widget | null => {
     return null;
 };
 
+/**
+ * Activates a widget.
+ *
+ * Uses GTK's native `Gtk.Widget.activate()` to trigger the widget's
+ * default action — clicking buttons, toggling checkboxes/switches, etc.
+ *
+ * `Gtk.Button` (and subclasses) are special-cased to a synchronous
+ * `pressed`/`released` click-gesture sequence instead, so the `clicked`
+ * signal fires immediately rather than behind GtkButton's unconditional
+ * 250ms keyboard-activation timeout, which races test wait windows under
+ * load.
+ *
+ * A widget that handles neither — a label inside a button, say —
+ * resolves upward to the nearest ancestor that is a button or carries a
+ * click gesture, mirroring how a click on text reaches the enclosing
+ * control's handler in the DOM and in React Native. So
+ * `click(getByText("Save"))` activates the button that renders the text.
+ *
+ * @param widget - The widget to activate.
+ */
 const click = async (widget: Gtk.Widget): Promise<void> => {
     if (widget instanceof Gtk.Button) {
         await emitClickSequence(widget, 1);
@@ -144,10 +164,30 @@ const emitClickSequence = async (widget: Gtk.Widget, nPress: number): Promise<vo
     });
 };
 
+/**
+ * Double-clicks a widget.
+ *
+ * Emits pressed/released signals with n_press=1, then n_press=2.
+ *
+ * @param widget - The widget to double-click.
+ */
 const dblClick = (widget: Gtk.Widget): Promise<void> => emitClickSequence(widget, 2);
 
+/**
+ * Triple-clicks a widget.
+ *
+ * Emits pressed/released signals with n_press=1, 2, then 3. Useful for text selection.
+ *
+ * @param widget - The widget to triple-click.
+ */
 const tripleClick = (widget: Gtk.Widget): Promise<void> => emitClickSequence(widget, 3);
 
+/**
+ * Simulates Tab key navigation.
+ *
+ * @param widget - Starting widget
+ * @param options - Use `shift: true` for backwards navigation
+ */
 const tab = async (widget: Gtk.Widget, options?: TabOptions): Promise<void> => {
     await act(() => {
         const direction = options?.shift ? Gtk.DirectionType.TAB_BACKWARD : Gtk.DirectionType.TAB_FORWARD;
@@ -198,6 +238,16 @@ export const resetClipboard = (): void => {
     Gdk.Display.getDefault()?.getClipboard().setContent(null);
 };
 
+/**
+ * Types text into an editable widget.
+ *
+ * Appends text to the current content. Works with Entry, SearchEntry,
+ * and SpinButton widgets.
+ *
+ * @param widget - The editable widget
+ * @param text - Text to type
+ * @param options - Selection and focus behavior before typing
+ */
 const type = async (widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> => {
     await act(() => {
         if (!isEditable(widget)) {
@@ -222,6 +272,13 @@ const type = async (widget: Gtk.Widget, text: string, options?: TypeOptions): Pr
     });
 };
 
+/**
+ * Clears an editable widget's content.
+ *
+ * Sets the text to empty string.
+ *
+ * @param widget - The editable widget to clear.
+ */
 const clear = async (widget: Gtk.Widget): Promise<void> => {
     await act(() => {
         if (!isEditable(widget)) {
@@ -232,6 +289,12 @@ const clear = async (widget: Gtk.Widget): Promise<void> => {
     });
 };
 
+/**
+ * Copies an editable widget's current selection to an in-memory clipboard
+ * that {@link paste} reads from.
+ *
+ * @param widget - The editable widget to copy from.
+ */
 const copy = async (widget: Gtk.Widget): Promise<void> => {
     await act(() => {
         if (!isEditable(widget)) {
@@ -242,6 +305,12 @@ const copy = async (widget: Gtk.Widget): Promise<void> => {
     });
 };
 
+/**
+ * Cuts an editable widget's current selection: copies it to the in-memory
+ * clipboard, then deletes it.
+ *
+ * @param widget - The editable widget to cut from.
+ */
 const cut = async (widget: Gtk.Widget): Promise<void> => {
     await act(() => {
         if (!isEditable(widget)) {
@@ -253,6 +322,13 @@ const cut = async (widget: Gtk.Widget): Promise<void> => {
     });
 };
 
+/**
+ * Pastes text into an editable widget at the cursor. Uses the supplied
+ * `text`, or the in-memory clipboard written by {@link copy}/{@link cut}.
+ *
+ * @param widget - The editable widget to paste into.
+ * @param text - Text to paste; defaults to the in-memory clipboard contents.
+ */
 const paste = async (widget: Gtk.Widget, text?: string): Promise<void> => {
     if (!isEditable(widget)) {
         throw new Error(`Cannot paste: ${EDITABLE_REQUIRED}`);
@@ -353,6 +429,14 @@ const selectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
     }
 };
 
+/**
+ * Selects options in a dropdown or list.
+ *
+ * Works with DropDown, ComboBox, ListBox, ListView, GridView, and ColumnView.
+ *
+ * @param widget - The selectable widget
+ * @param values - Index or array of indices to select
+ */
 const selectOptions = async (widget: Gtk.Widget, values: number | number[]): Promise<void> => {
     await act(() => {
         const valueArray = Array.isArray(values) ? values : [values];
@@ -371,6 +455,14 @@ const deselectInListView = (widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView
     }
 };
 
+/**
+ * Deselects options in a list.
+ *
+ * Works with ListBox and multi-selection list views.
+ *
+ * @param widget - The selectable widget
+ * @param values - Index or array of indices to deselect
+ */
 const deselectOptions = async (widget: Gtk.Widget, values: number | number[]): Promise<void> => {
     await act(() => {
         const valueArray = Array.isArray(values) ? values : [values];
@@ -417,6 +509,13 @@ const getOrCreateController = <T extends Gtk.EventController>(
     return controller;
 };
 
+/**
+ * Simulates mouse entering a widget (hover).
+ *
+ * Triggers the "enter" signal on the widget's EventControllerMotion.
+ *
+ * @param widget - The widget to hover over.
+ */
 const hover = async (widget: Gtk.Widget): Promise<void> => {
     await act(() => {
         const controller = getOrCreateController(widget, Gtk.EventControllerMotion);
@@ -424,6 +523,13 @@ const hover = async (widget: Gtk.Widget): Promise<void> => {
     });
 };
 
+/**
+ * Simulates mouse leaving a widget (unhover).
+ *
+ * Triggers the "leave" signal on the widget's EventControllerMotion.
+ *
+ * @param widget - The widget to stop hovering over.
+ */
 const unhover = async (widget: Gtk.Widget): Promise<void> => {
     await act(() => {
         const controller = getOrCreateController(widget, Gtk.EventControllerMotion);
@@ -610,6 +716,20 @@ const applyKeyAction = async (
     }
 };
 
+/**
+ * Builds a `keyboard` helper bound to a shared modifier state, so held modifier
+ * keys persist across calls within one user-event instance.
+ *
+ * Supports special keys in braces: `{Enter}`, `{Tab}`, `{Escape}`, etc. Use
+ * `{Key>}` to hold a key down, `{/Key}` to release.
+ *
+ * @example
+ * ```tsx
+ * await userEvent.keyboard(widget, "hello");
+ * await userEvent.keyboard(widget, "{Enter}");
+ * await userEvent.keyboard(widget, "{Shift>}A{/Shift}");
+ * ```
+ */
 const keyboardWith =
     (state: UserEventState) =>
     async (widget: Gtk.Widget, input: string): Promise<void> => {
@@ -620,9 +740,6 @@ const keyboardWith =
             }
         });
     };
-
-const keyboard = (widget: Gtk.Widget, input: string): Promise<void> =>
-    keyboardWith(createInitialState())(widget, input);
 
 /**
  * Pointer input actions for simulating mouse interactions.
@@ -655,6 +772,18 @@ const applyPointerInput = (controller: Gtk.GestureClick, state: UserEventState, 
     }
 };
 
+/**
+ * Builds a `pointer` helper bound to a shared pointer-down state, so a held
+ * press persists across calls within one user-event instance.
+ *
+ * Supports: `"click"`, `"[MouseLeft]"`, `"down"`, `"up"`.
+ *
+ * @example
+ * ```tsx
+ * await userEvent.pointer(widget, "click");
+ * await userEvent.pointer(widget, "[MouseLeft]");
+ * ```
+ */
 const pointerWith =
     (state: UserEventState) =>
     async (widget: Gtk.Widget, input: PointerInput): Promise<void> => {
@@ -664,9 +793,17 @@ const pointerWith =
         });
     };
 
-const pointer = (widget: Gtk.Widget, input: PointerInput): Promise<void> =>
-    pointerWith(createInitialState())(widget, input);
-
+/**
+ * Simulates a rotate gesture on a widget.
+ *
+ * Locates the widget's `Gtk.GestureRotate` controller and emits
+ * `angle-changed` with the given absolute and delta angles in radians.
+ * Throws if the widget has no `GestureRotate` controller attached.
+ *
+ * @param widget - The widget receiving the gesture
+ * @param angle - Absolute rotation angle in radians
+ * @param deltaAngle - Angle delta since gesture start, in radians (default: `angle`)
+ */
 const rotate = async (widget: Gtk.Widget, angle: number, deltaAngle: number = angle): Promise<void> => {
     await act(() => {
         const controller = findController(widget, Gtk.GestureRotate);
@@ -674,6 +811,16 @@ const rotate = async (widget: Gtk.Widget, angle: number, deltaAngle: number = an
     });
 };
 
+/**
+ * Simulates a pinch-zoom gesture on a widget.
+ *
+ * Locates the widget's `Gtk.GestureZoom` controller and emits
+ * `scale-changed` with the given scale factor. Throws if the widget
+ * has no `GestureZoom` controller attached.
+ *
+ * @param widget - The widget receiving the gesture
+ * @param scale - The new scale factor (1 = no zoom)
+ */
 const zoom = async (widget: Gtk.Widget, scale: number): Promise<void> => {
     await act(() => {
         const controller = findController(widget, Gtk.GestureZoom);
@@ -681,6 +828,17 @@ const zoom = async (widget: Gtk.Widget, scale: number): Promise<void> => {
     });
 };
 
+/**
+ * Simulates a swipe gesture on a widget.
+ *
+ * Locates the widget's `Gtk.GestureSwipe` controller and emits `swipe`
+ * with the supplied velocity vector. Throws if the widget has no
+ * `GestureSwipe` controller attached.
+ *
+ * @param widget - The widget receiving the gesture
+ * @param velocityX - Horizontal velocity in pixels per second
+ * @param velocityY - Vertical velocity in pixels per second
+ */
 const swipe = async (widget: Gtk.Widget, velocityX: number, velocityY: number): Promise<void> => {
     await act(() => {
         const controller = findController(widget, Gtk.GestureSwipe);
@@ -688,6 +846,17 @@ const swipe = async (widget: Gtk.Widget, velocityX: number, velocityY: number): 
     });
 };
 
+/**
+ * Simulates a long-press gesture on a widget.
+ *
+ * Locates the widget's `Gtk.GestureLongPress` controller and emits
+ * `pressed` at the supplied coordinates. Throws if the widget has no
+ * `GestureLongPress` controller attached.
+ *
+ * @param widget - The widget receiving the gesture
+ * @param x - X coordinate in widget-local pixels (default: 0)
+ * @param y - Y coordinate in widget-local pixels (default: 0)
+ */
 const longPress = async (widget: Gtk.Widget, x: number = 0, y: number = 0): Promise<void> => {
     await act(() => {
         const controller = findController(widget, Gtk.GestureLongPress);
@@ -736,6 +905,18 @@ const withGestureDragState = <T>(
     }
 };
 
+/**
+ * Simulates a click-drag gesture on a widget.
+ *
+ * Locates the widget's `Gtk.GestureDrag` controller and emits the
+ * `drag-begin` → `drag-update` → `drag-end` sequence with the supplied
+ * offset. Throws if the widget has no `GestureDrag` controller attached.
+ *
+ * @param widget - The widget receiving the gesture
+ * @param dx - Horizontal offset from the gesture origin
+ * @param dy - Vertical offset from the gesture origin
+ * @param options - Coordinates where the drag begins
+ */
 const drag = async (widget: Gtk.Widget, dx: number, dy: number, options: DragOptions = {}): Promise<void> => {
     const startX = options.startX ?? 0;
     const startY = options.startY ?? 0;
@@ -755,12 +936,36 @@ const emitDrop = (target: Gtk.Widget, content: DropContent, options: DropOptions
     dropTarget.emit("drop", wrapValue(content), options.x ?? 0, options.y ?? 0);
 };
 
+/**
+ * Simulates a drop onto a widget's `Gtk.DropTarget`.
+ *
+ * Wraps the supplied content in a `GObject.Value` (strings → `G_TYPE_STRING`,
+ * numbers → `G_TYPE_DOUBLE`, booleans → `G_TYPE_BOOLEAN`; pre-constructed
+ * `GObject.Value` instances are forwarded unchanged) and emits `drop`.
+ * Throws if the widget has no `DropTarget` controller attached.
+ *
+ * @param widget - The drop target widget
+ * @param content - Payload value (auto-marshalled or a pre-built GObject.Value)
+ * @param options - Drop coordinates relative to the widget
+ */
 const drop = async (widget: Gtk.Widget, content: DropContent, options: DropOptions = {}): Promise<void> => {
     await act(() => {
         emitDrop(widget, content, options);
     });
 };
 
+/**
+ * Simulates dragging from one widget and dropping on another.
+ *
+ * Verifies the source widget has a `Gtk.DragSource` controller, then
+ * fires a `drop` on the target widget's `Gtk.DropTarget` with the
+ * supplied content. Throws if either controller is missing.
+ *
+ * @param source - Widget that initiates the drag
+ * @param target - Widget that receives the drop
+ * @param content - Payload value (auto-marshalled or a pre-built GObject.Value)
+ * @param options - Drop coordinates relative to the target
+ */
 const dragAndDrop = async (
     source: Gtk.Widget,
     target: Gtk.Widget,
@@ -771,305 +976,6 @@ const dragAndDrop = async (
         findController(source, Gtk.DragSource);
         emitDrop(target, content, options);
     });
-};
-
-/**
- * User interaction utilities for testing.
- *
- * Simulates user actions like clicking, typing, and selecting.
- * All methods are async and wait for GTK event processing.
- *
- * @example
- * ```tsx
- * import { render, screen, userEvent } from "@gtkx/testing";
- *
- * test("form submission", async () => {
- *   await render(<LoginForm />);
- *
- *   const input = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
- *   await userEvent.type(input, "username");
- *
- *   const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
- *   await userEvent.click(button);
- * });
- * ```
- */
-export const userEvent: {
-    click: typeof click;
-    dblClick: typeof dblClick;
-    tripleClick: typeof tripleClick;
-    tab: typeof tab;
-    type: typeof type;
-    clear: typeof clear;
-    copy: typeof copy;
-    cut: typeof cut;
-    paste: typeof paste;
-    selectOptions: typeof selectOptions;
-    deselectOptions: typeof deselectOptions;
-    hover: typeof hover;
-    unhover: typeof unhover;
-    keyboard: typeof keyboard;
-    pointer: typeof pointer;
-    rotate: typeof rotate;
-    zoom: typeof zoom;
-    swipe: typeof swipe;
-    longPress: typeof longPress;
-    drag: typeof drag;
-    drop: typeof drop;
-    dragAndDrop: typeof dragAndDrop;
-    setup: (options?: UserEventOptions) => UserEventInstance;
-} = {
-    /**
-     * Activates a widget.
-     *
-     * Uses GTK's native `Gtk.Widget.activate()` to trigger the widget's
-     * default action — clicking buttons, toggling checkboxes/switches, etc.
-     *
-     * `Gtk.Button` (and subclasses) are special-cased to a synchronous
-     * `pressed`/`released` click-gesture sequence instead, so the `clicked`
-     * signal fires immediately rather than behind GtkButton's unconditional
-     * 250ms keyboard-activation timeout, which races test wait windows under
-     * load.
-     *
-     * A widget that handles neither — a label inside a button, say —
-     * resolves upward to the nearest ancestor that is a button or carries a
-     * click gesture, mirroring how a click on text reaches the enclosing
-     * control's handler in the DOM and in React Native. So
-     * `click(getByText("Save"))` activates the button that renders the text.
-     */
-    click,
-    /**
-     * Double-clicks a widget.
-     *
-     * Emits pressed/released signals with n_press=1, then n_press=2.
-     */
-    dblClick,
-    /**
-     * Triple-clicks a widget.
-     *
-     * Emits pressed/released signals with n_press=1, 2, then 3. Useful for text selection.
-     */
-    tripleClick,
-    /**
-     * Simulates Tab key navigation.
-     *
-     * @param widget - Starting widget
-     * @param options - Use `shift: true` for backwards navigation
-     */
-    tab,
-    /**
-     * Types text into an editable widget.
-     *
-     * Appends text to the current content. Works with Entry, SearchEntry,
-     * and SpinButton widgets.
-     *
-     * @param widget - The editable widget
-     * @param text - Text to type
-     */
-    type,
-    /**
-     * Clears an editable widget's content.
-     *
-     * Sets the text to empty string.
-     */
-    clear,
-    /**
-     * Copies an editable widget's current selection to an in-memory clipboard
-     * that {@link paste} reads from.
-     */
-    copy,
-    /**
-     * Cuts an editable widget's current selection: copies it to the in-memory
-     * clipboard, then deletes it.
-     */
-    cut,
-    /**
-     * Pastes text into an editable widget at the cursor. Uses the supplied
-     * `text`, or the in-memory clipboard written by {@link copy}/{@link cut}.
-     */
-    paste,
-    /**
-     * Selects options in a dropdown or list.
-     *
-     * Works with DropDown, ComboBox, ListBox, ListView, GridView, and ColumnView.
-     *
-     * @param widget - The selectable widget
-     * @param values - Index or array of indices to select
-     */
-    selectOptions,
-    /**
-     * Deselects options in a list.
-     *
-     * Works with ListBox and multi-selection list views.
-     *
-     * @param widget - The selectable widget
-     * @param values - Index or array of indices to deselect
-     */
-    deselectOptions,
-    /**
-     * Simulates mouse entering a widget (hover).
-     *
-     * Triggers the "enter" signal on the widget's EventControllerMotion.
-     */
-    hover,
-    /**
-     * Simulates mouse leaving a widget (unhover).
-     *
-     * Triggers the "leave" signal on the widget's EventControllerMotion.
-     */
-    unhover,
-    /**
-     * Simulates keyboard input.
-     *
-     * Supports special keys in braces: `{Enter}`, `{Tab}`, `{Escape}`, etc.
-     * Use `{Key>}` to hold a key down, `{/Key}` to release.
-     *
-     * @example
-     * ```tsx
-     * await userEvent.keyboard(widget, "hello");
-     * await userEvent.keyboard(widget, "{Enter}");
-     * await userEvent.keyboard(widget, "{Shift>}A{/Shift}");
-     * ```
-     */
-    keyboard,
-    /**
-     * Simulates pointer (mouse) input.
-     *
-     * Supports: `"click"`, `"[MouseLeft]"`, `"down"`, `"up"`.
-     *
-     * @example
-     * ```tsx
-     * await userEvent.pointer(widget, "click");
-     * await userEvent.pointer(widget, "[MouseLeft]");
-     * ```
-     */
-    pointer,
-    /**
-     * Simulates a rotate gesture on a widget.
-     *
-     * Locates the widget's `Gtk.GestureRotate` controller and emits
-     * `angle-changed` with the given absolute and delta angles in radians.
-     * Throws if the widget has no `GestureRotate` controller attached.
-     *
-     * @param widget - The widget receiving the gesture
-     * @param angle - Absolute rotation angle in radians
-     * @param deltaAngle - Angle delta since gesture start, in radians (default: `angle`)
-     */
-    rotate,
-    /**
-     * Simulates a pinch-zoom gesture on a widget.
-     *
-     * Locates the widget's `Gtk.GestureZoom` controller and emits
-     * `scale-changed` with the given scale factor. Throws if the widget
-     * has no `GestureZoom` controller attached.
-     *
-     * @param widget - The widget receiving the gesture
-     * @param scale - The new scale factor (1 = no zoom)
-     */
-    zoom,
-    /**
-     * Simulates a swipe gesture on a widget.
-     *
-     * Locates the widget's `Gtk.GestureSwipe` controller and emits `swipe`
-     * with the supplied velocity vector. Throws if the widget has no
-     * `GestureSwipe` controller attached.
-     *
-     * @param widget - The widget receiving the gesture
-     * @param velocityX - Horizontal velocity in pixels per second
-     * @param velocityY - Vertical velocity in pixels per second
-     */
-    swipe,
-    /**
-     * Simulates a long-press gesture on a widget.
-     *
-     * Locates the widget's `Gtk.GestureLongPress` controller and emits
-     * `pressed` at the supplied coordinates. Throws if the widget has no
-     * `GestureLongPress` controller attached.
-     *
-     * @param widget - The widget receiving the gesture
-     * @param x - X coordinate in widget-local pixels (default: 0)
-     * @param y - Y coordinate in widget-local pixels (default: 0)
-     */
-    longPress,
-    /**
-     * Simulates a click-drag gesture on a widget.
-     *
-     * Locates the widget's `Gtk.GestureDrag` controller and emits the
-     * `drag-begin` → `drag-update` → `drag-end` sequence with the supplied
-     * offset. Throws if the widget has no `GestureDrag` controller attached.
-     *
-     * @param widget - The widget receiving the gesture
-     * @param dx - Horizontal offset from the gesture origin
-     * @param dy - Vertical offset from the gesture origin
-     */
-    drag,
-    /**
-     * Simulates a drop onto a widget's `Gtk.DropTarget`.
-     *
-     * Wraps the supplied content in a `GObject.Value` (strings → `G_TYPE_STRING`,
-     * numbers → `G_TYPE_DOUBLE`, booleans → `G_TYPE_BOOLEAN`; pre-constructed
-     * `GObject.Value` instances are forwarded unchanged) and emits `drop`.
-     * Throws if the widget has no `DropTarget` controller attached.
-     *
-     * @param widget - The drop target widget
-     * @param content - Payload value (auto-marshalled or a pre-built GObject.Value)
-     * @param options - Drop coordinates relative to the widget
-     */
-    drop,
-    /**
-     * Simulates dragging from one widget and dropping on another.
-     *
-     * Verifies the source widget has a `Gtk.DragSource` controller, then
-     * fires a `drop` on the target widget's `Gtk.DropTarget` with the
-     * supplied content. Throws if either controller is missing.
-     *
-     * @param source - Widget that initiates the drag
-     * @param target - Widget that receives the drop
-     * @param content - Payload value (auto-marshalled or a pre-built GObject.Value)
-     * @param options - Drop coordinates relative to the target
-     */
-    dragAndDrop,
-    /**
-     * Creates an isolated user-event instance whose `keyboard` and `pointer`
-     * helpers retain modifier and pointer-down state across calls.
-     *
-     * Mirrors `@testing-library/user-event` v14's `userEvent.setup()`.
-     *
-     * @example
-     * ```tsx
-     * const user = userEvent.setup();
-     * await user.keyboard("{Shift>}"); // Shift held
-     * await user.keyboard("a");        // arrives with Shift still held
-     * await user.keyboard("{/Shift}"); // Shift released
-     * ```
-     */
-    setup: (options?: UserEventOptions): UserEventInstance => {
-        const state = createInitialState();
-        return {
-            click,
-            dblClick,
-            tripleClick,
-            tab,
-            type: (widget, text, typeOptions) => type(widget, text, { skipClick: options?.skipClick, ...typeOptions }),
-            clear,
-            copy,
-            cut,
-            paste,
-            selectOptions,
-            deselectOptions,
-            hover,
-            unhover,
-            rotate,
-            zoom,
-            swipe,
-            longPress,
-            drag,
-            drop,
-            dragAndDrop,
-            keyboard: keyboardWith(state),
-            pointer: pointerWith(state),
-        };
-    },
 };
 
 /**
@@ -1097,12 +1003,86 @@ export type UserEventInstance = {
     drag: typeof drag;
     drop: typeof drop;
     dragAndDrop: typeof dragAndDrop;
-    keyboard: (widget: Gtk.Widget, input: string) => Promise<void>;
-    pointer: (widget: Gtk.Widget, input: PointerInput) => Promise<void>;
+    keyboard: ReturnType<typeof keyboardWith>;
+    pointer: ReturnType<typeof pointerWith>;
 };
+
+type StatelessHelpers = Omit<UserEventInstance, "type" | "keyboard" | "pointer">;
+
+const statelessHelpers: StatelessHelpers = {
+    click,
+    dblClick,
+    tripleClick,
+    tab,
+    clear,
+    copy,
+    cut,
+    paste,
+    selectOptions,
+    deselectOptions,
+    hover,
+    unhover,
+    rotate,
+    zoom,
+    swipe,
+    longPress,
+    drag,
+    drop,
+    dragAndDrop,
+};
+
+const buildUserEvent = (state: UserEventState, options?: UserEventOptions): UserEventInstance => ({
+    ...statelessHelpers,
+    type: (widget: Gtk.Widget, text: string, typeOptions?: TypeOptions): Promise<void> =>
+        type(widget, text, { skipClick: options?.skipClick, ...typeOptions }),
+    keyboard: keyboardWith(state),
+    pointer: pointerWith(state),
+});
 
 /**
  * Alias of {@link UserEventInstance}, matching the `UserEvent` type name from
  * `@testing-library/user-event`.
  */
 export type UserEvent = UserEventInstance;
+
+/**
+ * User interaction utilities for testing.
+ *
+ * Simulates user actions like clicking, typing, and selecting.
+ * All methods are async and wait for GTK event processing.
+ *
+ * @example
+ * ```tsx
+ * import { render, screen, userEvent } from "@gtkx/testing";
+ *
+ * test("form submission", async () => {
+ *   await render(<LoginForm />);
+ *
+ *   const input = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+ *   await userEvent.type(input, "username");
+ *
+ *   const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+ *   await userEvent.click(button);
+ * });
+ * ```
+ */
+export const userEvent: UserEventInstance & {
+    /**
+     * Creates an isolated user-event instance whose `keyboard` and `pointer`
+     * helpers retain modifier and pointer-down state across calls.
+     *
+     * Mirrors `@testing-library/user-event` v14's `userEvent.setup()`.
+     *
+     * @example
+     * ```tsx
+     * const user = userEvent.setup();
+     * await user.keyboard("{Shift>}"); // Shift held
+     * await user.keyboard("a");        // arrives with Shift still held
+     * await user.keyboard("{/Shift}"); // Shift released
+     * ```
+     */
+    setup: (options?: UserEventOptions) => UserEventInstance;
+} = {
+    ...buildUserEvent(createInitialState()),
+    setup: (options?: UserEventOptions): UserEventInstance => buildUserEvent(createInitialState(), options),
+};
