@@ -161,20 +161,17 @@ impl Mailbox {
         capture_result: bool,
         out_cell_indices: Vec<usize>,
     ) -> anyhow::Result<super::NodeCallbackResult> {
-        let (glib_initiated, wait_depth) = self.node_wait_setup();
-        let (tx, rx) = mpsc::channel();
-
-        self.push_node_task(NodeTask::Callback(NodeCallback {
-            callback: callback.clone(),
-            args,
-            capture_result,
-            out_cell_indices,
-            result_tx: tx,
-            glib_initiated,
-        }));
-
-        self.wake_node_thread();
-        self.wait_node(&rx, wait_depth)
+        let callback = callback.clone();
+        self.submit_blocking_node_task(move |result_tx, glib_initiated| {
+            NodeTask::Callback(NodeCallback {
+                callback,
+                args,
+                capture_result,
+                out_cell_indices,
+                result_tx,
+                glib_initiated,
+            })
+        })
     }
 
     /// Applies a wrapper-reference operation on the JS thread — strengthen,
@@ -188,15 +185,30 @@ impl Mailbox {
     /// by a JS thread parked in an enclosing wait.
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn apply_wrapper_ref_op_and_wait(&self, ref_ptr: usize, op: RefOp) -> anyhow::Result<()> {
+        self.submit_blocking_node_task(|result_tx, glib_initiated| NodeTask::WrapperRefOp {
+            ref_ptr,
+            op,
+            result_tx,
+            glib_initiated,
+        })
+    }
+
+    /// Pushes a blocking node task built by `build` and blocks the calling
+    /// thread until it delivers its result, draining re-entrant `GLib`-bound
+    /// work along the way.
+    ///
+    /// `build` receives the result channel's sender and the `glib_initiated`
+    /// flag so each caller assembles its own [`NodeTask`] payload; the
+    /// re-entrancy `wait_depth` and the push/wake/wait skeleton stay here.
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn submit_blocking_node_task<R>(
+        &self,
+        build: impl FnOnce(mpsc::Sender<anyhow::Result<R>>, bool) -> NodeTask,
+    ) -> anyhow::Result<R> {
         let (glib_initiated, wait_depth) = self.node_wait_setup();
         let (tx, rx) = mpsc::channel();
 
-        self.push_node_task(NodeTask::WrapperRefOp {
-            ref_ptr,
-            op,
-            result_tx: tx,
-            glib_initiated,
-        });
+        self.push_node_task(build(tx, glib_initiated));
 
         self.wake_node_thread();
         self.wait_node(&rx, wait_depth)
