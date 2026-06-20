@@ -50,6 +50,52 @@ pub(super) fn write_return_object_ptr<F>(
     unsafe { (ret as *mut *mut c_void).write_unaligned(owned) };
 }
 
+/// Swaps the strong reference a field slot holds for the one carried by
+/// `value`.
+///
+/// Reads the incoming pointer from `value`, acquires a fresh reference on it
+/// through `acquire` (a null passes through untouched, never acquired), writes
+/// the slot, then releases the pointer the slot previously held through
+/// `release` (a null is never released). The read-old/acquire/write-new/
+/// release-old sequence is the shared skeleton every owned-pointer codec's
+/// field write follows; each codec supplies only its own acquire and release.
+///
+/// `label` names the field being written and is surfaced in the error raised
+/// when `value` does not carry an object pointer.
+///
+/// # Safety
+///
+/// `ptr` must be a writable pointer-sized field slot whose current contents
+/// are either null or a pointer the codec's `release` can soundly drop.
+pub(super) unsafe fn swap_owned_slot<A, R>(
+    ptr: *mut c_void,
+    value: &value::Value,
+    label: &str,
+    acquire: A,
+    release: R,
+) -> anyhow::Result<()>
+where
+    A: FnOnce(*mut c_void) -> *mut c_void,
+    R: FnOnce(*mut c_void),
+{
+    let new_ptr = value.object_ptr(label)?;
+    // SAFETY: The caller guarantees `ptr` is a readable pointer-sized field
+    // slot; the read is unaligned-tolerant.
+    let old_ptr = unsafe { (ptr as *const *mut c_void).read_unaligned() };
+    let owned_new = if new_ptr.is_null() {
+        new_ptr
+    } else {
+        acquire(new_ptr)
+    };
+    // SAFETY: The caller guarantees `ptr` is a writable pointer-sized field
+    // slot; the write is unaligned-tolerant.
+    unsafe { (ptr as *mut *mut c_void).write_unaligned(owned_new) };
+    if !old_ptr.is_null() {
+        release(old_ptr);
+    }
+    Ok(())
+}
+
 /// Wraps a transfer-full encoded pointer in storage that releases it through
 /// `release` unless the call completes and disarms the transfer — the shared
 /// shape of every pointer codec's full-ownership encode arm.

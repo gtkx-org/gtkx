@@ -159,28 +159,27 @@ impl RawPtrCodec for FundamentalType {
         ptr: *mut c_void,
         value: &value::Value,
     ) -> anyhow::Result<()> {
-        let new_ptr = value.object_ptr("Fundamental field write")?;
-        // SAFETY: The caller guarantees `ptr` is a readable pointer-sized
-        // field slot; the read is unaligned-tolerant.
-        let old_ptr = unsafe { (ptr as *const *mut c_void).read_unaligned() };
         let (ref_fn, unref_fn) = self.lookup_fns()?;
-        let stored_ptr = if new_ptr.is_null() {
-            new_ptr
-        } else {
-            // SAFETY: `new_ptr` came from a NativeHandle wrapping a live
-            // instance of the fundamental type `ref_fn` expects.
-            ref_fn.map_or(new_ptr, |f| unsafe { f(new_ptr) })
-        };
         // SAFETY: The caller guarantees `ptr` is a writable pointer-sized
-        // field slot; the write is unaligned-tolerant.
-        unsafe { (ptr as *mut *mut c_void).write_unaligned(stored_ptr) };
-        if !old_ptr.is_null()
-            && let Some(unref_fn) = unref_fn
-        {
-            // SAFETY: The slot held one reference to the previous instance,
-            // which this release drops exactly once.
-            unsafe { unref_fn(old_ptr) };
+        // field slot holding a previous reference (or null).
+        unsafe {
+            swap_owned_slot(
+                ptr,
+                value,
+                "Fundamental field write",
+                |new_ptr| {
+                    // SAFETY: `new_ptr` came from a NativeHandle wrapping a
+                    // live instance of the fundamental type `ref_fn` expects.
+                    ref_fn.map_or(new_ptr, |f| f(new_ptr))
+                },
+                |old_ptr| {
+                    if let Some(unref_fn) = unref_fn {
+                        // SAFETY: The slot held one reference to the previous
+                        // instance, which this release drops exactly once.
+                        unref_fn(old_ptr);
+                    }
+                },
+            )
         }
-        Ok(())
     }
 }

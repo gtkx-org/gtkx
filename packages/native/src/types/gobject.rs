@@ -186,34 +186,37 @@ impl RawPtrCodec for GObjectType {
 
     /// Swaps the `GObject` strong reference held by a field slot: acquires a
     /// plain (never sinking) reference on the incoming object, writes the
-    /// slot, then releases the previous holder. Both pointers route through
-    /// the `Option` translate impls so a null on either side is absorbed.
+    /// slot, then releases the previous holder.
     unsafe fn write_value_to_raw_ptr(
         &self,
         ptr: *mut c_void,
         value: &value::Value,
     ) -> anyhow::Result<()> {
-        let new_ptr = value.object_ptr("GObject field write")?;
-        // SAFETY: The caller guarantees `ptr` is a readable pointer-sized
-        // field slot; the read is unaligned-tolerant.
-        let old_ptr = unsafe { (ptr as *const *mut c_void).read_unaligned() };
-
-        // SAFETY: `new_ptr` came from a NativeHandle whose wrapper's toggle
-        // reference keeps the GObject alive; null is absorbed by the
-        // `Option` translate impl.
-        let borrowed_new: Borrowed<Option<glib::Object>> =
-            unsafe { from_glib_borrow(new_ptr as *mut glib::gobject_ffi::GObject) };
-        let owned_new: *mut glib::gobject_ffi::GObject = ToGlibPtr::to_glib_full(&*borrowed_new);
-
         // SAFETY: The caller guarantees `ptr` is a writable pointer-sized
-        // field slot; the write is unaligned-tolerant.
-        unsafe { (ptr as *mut *mut c_void).write_unaligned(owned_new.cast()) };
-
-        // SAFETY: The slot held one strong reference to the previous object
-        // (or null), which this adoption releases exactly once.
-        let released: Option<glib::Object> =
-            unsafe { from_glib_full(old_ptr as *mut glib::gobject_ffi::GObject) };
-        drop(released);
-        Ok(())
+        // field slot holding a previous strong reference (or null).
+        unsafe {
+            swap_owned_slot(
+                ptr,
+                value,
+                "GObject field write",
+                |new_ptr| {
+                    // SAFETY: `new_ptr` came from a NativeHandle whose
+                    // wrapper's toggle reference keeps the GObject alive, so
+                    // taking a fresh reference is sound.
+                    let borrowed_new: Borrowed<glib::Object> =
+                        from_glib_borrow(new_ptr as *mut glib::gobject_ffi::GObject);
+                    ToGlibPtr::<*mut glib::gobject_ffi::GObject>::to_glib_full(&*borrowed_new)
+                        .cast()
+                },
+                |old_ptr| {
+                    // SAFETY: The slot held one strong reference to the
+                    // previous object, which this adoption releases exactly
+                    // once.
+                    let released: glib::Object =
+                        from_glib_full(old_ptr as *mut glib::gobject_ffi::GObject);
+                    drop(released);
+                },
+            )
+        }
     }
 }
