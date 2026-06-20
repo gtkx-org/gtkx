@@ -21,7 +21,7 @@ export type StoreOptions = {
 };
 
 /** A transpilable source destined for the store, addressed by output stem. */
-export type StoreFile = {
+type StoreFile = {
     /** Output path without extension, relative to the store root. */
     readonly stem: string;
     /** Source filename TypeScript uses for diagnostics. */
@@ -31,12 +31,24 @@ export type StoreFile = {
 };
 
 /** A symlink to create inside the store's own bundled `node_modules`. */
-export type StoreSymlink = {
+type StoreSymlink = {
     /** Path segments under the store root the symlink is created at. */
     readonly segments: readonly string[];
     /** Absolute symlink target, or `"self"` for the store root itself. */
     readonly target: string | "self";
 };
+
+/**
+ * Builds the `package.json` `exports` entry for a store subpath: the `types`
+ * declaration and `default` JavaScript file derived from one output stem.
+ *
+ * @param stem - The output path without extension, relative to the store root
+ *   (e.g. `"gtk/index"` or `"metadata"`)
+ */
+export const subpathExport = (stem: string): { readonly types: string; readonly default: string } => ({
+    types: `./${stem}.d.ts`,
+    default: `./${stem}.js`,
+});
 
 /**
  * Assembles a store in a fresh temp directory and atomically swaps it into
@@ -86,7 +98,7 @@ export type WriteStoreParams = {
  * @param fileName - Source filename TypeScript uses for diagnostics
  * @param source - The TypeScript source to transpile
  */
-export const writeFilePair = (storeDir: string, stem: string, fileName: string, source: string): void => {
+const writeFilePair = (storeDir: string, stem: string, fileName: string, source: string): void => {
     const { js, dts } = transpileSource(fileName, source);
     const jsPath = join(storeDir, `${stem}.js`);
     mkdirSync(dirname(jsPath), { recursive: true });
@@ -101,7 +113,7 @@ export const writeFilePair = (storeDir: string, stem: string, fileName: string, 
  * @param linkPath - Absolute path of the symlink to create
  * @param realTarget - Absolute path the symlink resolves to
  */
-export const symlinkRelative = (linkPath: string, realTarget: string): void => {
+const symlinkRelative = (linkPath: string, realTarget: string): void => {
     mkdirSync(dirname(linkPath), { recursive: true });
     rmSync(linkPath, { recursive: true, force: true });
     symlinkSync(relative(dirname(linkPath), realTarget), linkPath, "dir");
@@ -113,7 +125,7 @@ export const symlinkRelative = (linkPath: string, realTarget: string): void => {
  * @param storeDir - Absolute directory to write `package.json` into
  * @param manifest - The manifest object to serialize
  */
-export const writePackageJson = (storeDir: string, manifest: unknown): void => {
+const writePackageJson = (storeDir: string, manifest: unknown): void => {
     writeFileSync(join(storeDir, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 };
 
@@ -130,7 +142,7 @@ export const writePackageJson = (storeDir: string, manifest: unknown): void => {
  * @param storeDir - Absolute final store directory
  * @param visibleLink - Absolute path of the visible alias symlink
  */
-export const swapStore = (tmp: string, storeDir: string, visibleLink: string): void => {
+const swapStore = (tmp: string, storeDir: string, visibleLink: string): void => {
     const previous = `${storeDir}.old`;
     rmSync(previous, { recursive: true, force: true });
     if (existsSync(storeDir)) {
@@ -146,7 +158,7 @@ export const swapStore = (tmp: string, storeDir: string, visibleLink: string): v
  * returns its path. The random suffix isolates concurrent or repeated runs so
  * they cannot corrupt each other's in-progress trees.
  */
-export const tempStoreFor = (storeDir: string): string => {
+const tempStoreFor = (storeDir: string): string => {
     mkdirSync(dirname(storeDir), { recursive: true });
     return mkdtempSync(`${storeDir}.tmp-`);
 };

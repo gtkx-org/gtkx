@@ -1,5 +1,5 @@
 import type { JsxNamespaceFile } from "./react/pipeline.js";
-import { type StoreOptions, writeStore } from "./store-fs.js";
+import { type StoreOptions, subpathExport, writeStore } from "./store-fs.js";
 
 /**
  * Options for assembling the injected `@gtkx/jsx` package.
@@ -37,15 +37,12 @@ export const writeJsxStore = (
 ): void => {
     const exportsMap: Record<string, unknown> = {
         "./package.json": "./package.json",
-        "./metadata": { types: "./metadata.d.ts", default: "./metadata.js" },
+        "./metadata": subpathExport("metadata"),
     };
     const files = [{ stem: "metadata", fileName: "metadata.ts", source: metadata }];
     for (const { directory, source } of namespaces) {
         files.push({ stem: `${directory}/${directory}`, fileName: `${directory}/${directory}.tsx`, source });
-        exportsMap[`./${directory}`] = {
-            types: `./${directory}/${directory}.d.ts`,
-            default: `./${directory}/${directory}.js`,
-        };
+        exportsMap[`./${directory}`] = subpathExport(`${directory}/${directory}`);
     }
 
     writeStore({

@@ -22,12 +22,12 @@ import { emitInterface } from "../writers/interface.js";
  *
  * @param namespace - The namespace to emit
  * @param repository - The full repository (for cross-namespace lookups)
- * @returns The relative output path and the TypeScript source string
+ * @returns The TypeScript source string
  */
 export const generateNamespaceModule = (
     namespace: GirNamespace,
     repository: GirRepository,
-): { readonly path: string; readonly source: string } => {
+): { readonly source: string } => {
     const context = new ModuleContext(namespace, repository);
     context.addGobjectBootstrapImports();
 
@@ -57,11 +57,7 @@ export const generateNamespaceModule = (
         emitAlias(context, alias);
     }
 
-    const directory = namespace.name.toLowerCase();
-    return {
-        path: `${directory}/${directory}.ts`,
-        source: context.module.toSource(),
-    };
+    return { source: context.module.toSource() };
 };
 
 /**

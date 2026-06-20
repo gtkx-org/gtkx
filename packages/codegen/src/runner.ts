@@ -2,6 +2,7 @@ import type { ArrayPropRow, ElementMapRule, ObjectPropRow, VirtualPropRow } from
 import { generateNamespaceModule } from "./ffi/pipeline.js";
 import { computeFingerprint, serializeUserTables } from "./fingerprint.js";
 import { type GiNamespaceInput, type GiStoreOptions, writeGiStore } from "./gi-store.js";
+import { namespaceDirectory } from "./gir/namespace.js";
 import { loadGirRepository } from "./gir/repository.js";
 import { type JsxStoreOptions, writeJsxStore } from "./jsx-store.js";
 import { generateJsxFiles } from "./react/pipeline.js";
@@ -73,7 +74,7 @@ export class CodegenRunner {
         const namespaces: GiNamespaceInput[] = [];
         for (const namespace of repository.namespaces.values()) {
             const { source } = generateNamespaceModule(namespace, repository);
-            namespaces.push({ directory: namespace.name.toLowerCase(), rawSource: source });
+            namespaces.push({ directory: namespaceDirectory(namespace), rawSource: source });
         }
         const libraries = [...this.options.libraries];
         const tables = {

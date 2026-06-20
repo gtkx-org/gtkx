@@ -13,9 +13,9 @@ describe("codegen FFI pipeline", () => {
         expect(names).toEqual(expect.arrayContaining(["GLib", "GObject", "Gio", "Gdk", "Gsk", "Gtk", "Adw"]));
     });
 
-    it("emits one module per namespace at the expected path", () => {
-        for (const { path } of ffiModules) {
-            expect(path).toMatch(/^[a-z0-9]+\/[a-z0-9]+\.ts$/);
+    it("emits one module per namespace under the expected directory", () => {
+        for (const { directory } of ffiModules) {
+            expect(directory).toMatch(/^[a-z0-9]+$/);
         }
         expect(ffiModules.length).toBe(repository.namespaces.size);
     });
@@ -28,15 +28,15 @@ describe("codegen FFI pipeline", () => {
     });
 
     it("emits a registered GTK Button class binding", () => {
-        const gtk = ffiModules.find(({ path }) => path === "gtk/gtk.ts");
+        const gtk = ffiModules.find(({ directory }) => directory === "gtk");
         expect(gtk).toBeDefined();
         expect(gtk?.source).toContain("Button");
     });
 
     it("transpiles a generated FFI module to valid JS and declarations", () => {
-        const gtk = ffiModules.find(({ path }) => path === "gtk/gtk.ts");
+        const gtk = ffiModules.find(({ directory }) => directory === "gtk");
         expect(gtk).toBeDefined();
-        const { js, dts } = transpileSource(gtk?.path ?? "", gtk?.source ?? "");
+        const { js, dts } = transpileSource(`${gtk?.directory ?? ""}.ts`, gtk?.source ?? "");
         expect(js.length).toBeGreaterThan(0);
         expect(dts.length).toBeGreaterThan(0);
         expect(js).not.toContain("interface ");
@@ -45,27 +45,27 @@ describe("codegen FFI pipeline", () => {
 
 describe("codegen return-value convention", () => {
     it("folds an out-array length companion out of the return tuple", () => {
-        const gio = ffiModules.find(({ path }) => path === "gio/gio.ts");
+        const gio = ffiModules.find(({ directory }) => directory === "gio");
         const source = gio?.source ?? "";
         expect(source).toContain("loadContents(cancellable: Cancellable | null): [boolean, number[], string]");
         expect(source).not.toContain("[boolean, number[], number, string]");
     });
 
     it("returns a bare array when the only surfaced out is an array with a folded length", () => {
-        const pango = ffiModules.find(({ path }) => path === "pango/pango.ts");
+        const pango = ffiModules.find(({ directory }) => directory === "pango");
         const source = pango?.source ?? "";
         expect(source).toContain("listFamilies(): FontFamily[]");
         expect(source).not.toContain("listFamilies(): [FontFamily[], number]");
     });
 
     it("keeps an unlinked length out-parameter in the return tuple", () => {
-        const glib = ffiModules.find(({ path }) => path === "glib/glib.ts");
+        const glib = ffiModules.find(({ directory }) => directory === "glib");
         const source = glib?.source ?? "";
         expect(source).toContain("getGroups(): [string[], number]");
     });
 
     it("drops a skip-annotated return value from the surfaced result", () => {
-        const glib = ffiModules.find(({ path }) => path === "glib/glib.ts");
+        const glib = ffiModules.find(({ directory }) => directory === "glib");
         const source = glib?.source ?? "";
         expect(source).toContain(
             "uriSplit(uriRef: string, flags: UriFlags): [string, string, string, number, string, string, string]",
@@ -76,21 +76,21 @@ describe("codegen return-value convention", () => {
 
 describe("codegen notify detail signals", () => {
     it("keys each introduced property's notify detail off GObject.Object's notify member", () => {
-        const gobject = ffiModules.find(({ path }) => path === "gobject/gobject.ts");
+        const gobject = ffiModules.find(({ directory }) => directory === "gobject");
         const source = gobject?.source ?? "";
         expect(source).toContain('"notify::source-property": ObjectSignalHandlers["notify"];');
         expect(source).toContain('"notify::source-property": ObjectSignalEmit["notify"];');
     });
 
     it("qualifies the notify member reference across namespaces", () => {
-        const gtk = ffiModules.find(({ path }) => path === "gtk/gtk.ts");
+        const gtk = ffiModules.find(({ directory }) => directory === "gtk");
         const source = gtk?.source ?? "";
         expect(source).toContain('"notify::visible": GObject.ObjectSignalHandlers["notify"];');
         expect(source).toContain('"notify::visible": GObject.ObjectSignalEmit["notify"];');
     });
 
     it("inherits a property's notify detail through the parent map rather than re-listing it", () => {
-        const gtk = ffiModules.find(({ path }) => path === "gtk/gtk.ts");
+        const gtk = ffiModules.find(({ directory }) => directory === "gtk");
         const source = gtk?.source ?? "";
         const buttonHandlers = source.slice(source.indexOf("export interface ButtonSignalHandlers"));
         const buttonBody = buttonHandlers.slice(0, buttonHandlers.indexOf("}"));
@@ -98,7 +98,7 @@ describe("codegen notify detail signals", () => {
     });
 
     it("gives a class that introduces properties but no signals its own typed overloads", () => {
-        const gobject = ffiModules.find(({ path }) => path === "gobject/gobject.ts");
+        const gobject = ffiModules.find(({ directory }) => directory === "gobject");
         const source = gobject?.source ?? "";
         expect(source).toContain("export interface Binding {");
         expect(source).toContain("connect<K extends keyof BindingSignalHandlers>");

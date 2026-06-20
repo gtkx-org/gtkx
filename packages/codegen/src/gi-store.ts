@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type CodegenFingerprint, FINGERPRINT_FILENAME } from "./fingerprint.js";
-import { type StoreOptions, writeStore } from "./store-fs.js";
+import { type StoreOptions, subpathExport, writeStore } from "./store-fs.js";
 
 /**
  * Absolute path to the hand-written override templates shipped with
@@ -87,10 +87,7 @@ const collectStoreSources = (
             fileName: `${directory}/index.ts`,
             source: barrelSource(directory),
         });
-        exportsMap[`./${directory}`] = {
-            types: `./${directory}/index.d.ts`,
-            default: `./${directory}/index.js`,
-        };
+        exportsMap[`./${directory}`] = subpathExport(`${directory}/index`);
     }
     return { collected, exportsMap };
 };

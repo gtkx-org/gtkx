@@ -54,6 +54,15 @@ export type GirNamespace = {
     readonly aliases: readonly GirAlias[];
 };
 
+/**
+ * The lowercased output directory a namespace's generated modules live under
+ * (e.g. `"Gtk"` → `"gtk"`). The single source of the store directory naming
+ * convention shared by the FFI and React pipelines.
+ *
+ * @param namespace - The namespace (or anything carrying its `name`)
+ */
+export const namespaceDirectory = (namespace: Pick<GirNamespace, "name">): string => namespace.name.toLowerCase();
+
 /** A `<include>` entry pointing at another namespace identifier. */
 type NamespaceInclude = {
     readonly name: string;

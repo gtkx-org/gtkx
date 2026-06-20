@@ -1,6 +1,6 @@
 import type { ArrayPropRow, ElementMapRule, ObjectPropRow, VirtualPropRow } from "@gtkx/config";
 import { sortedAlphaBy } from "@gtkx/utils";
-import type { GirNamespace } from "../gir/namespace.js";
+import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import type { GirRepository } from "../gir/repository.js";
 import { generateCompoundsSection } from "./compounds.js";
 import { emptyJsxImports, renderJsxImports } from "./imports.js";
@@ -106,7 +106,7 @@ export const generateJsxFiles = (repository: GirRepository, userTables: UserTabl
             objectPropMap,
             virtualPropMap,
         });
-        namespaces.push({ directory: namespace.name.toLowerCase(), source });
+        namespaces.push({ directory: namespaceDirectory(namespace), source });
         widgetCount += count;
     }
 
@@ -153,7 +153,7 @@ const generateJsxNamespace = (
         imports,
     });
 
-    const body = [renderJsxImports(targetNamespace.name.toLowerCase(), imports), "", jsxSection];
+    const body = [renderJsxImports(namespaceDirectory(targetNamespace), imports), "", jsxSection];
     if (compounds.source.length > 0) body.push("", compounds.source);
 
     const count = compounds.exportedNames.size + intrinsicCount;
