@@ -34,7 +34,7 @@
 //!
 //! ## Lifecycle
 //!
-//! [`Mailbox::mark_not_started`] is set during the orchestrated shutdown task,
+//! [`Mailbox::mark_not_running`] is set during the orchestrated shutdown task,
 //! after which new tasks are silently dropped so callers blocked in
 //! [`Mailbox::dispatch_to_glib_and_wait`] do not deadlock waiting on a
 //! result from the dying main loop.
@@ -370,23 +370,27 @@ pub(crate) fn send_or_report<T>(tx: &mpsc::Sender<T>, value: T, context: &str) {
 }
 
 /// Returned by [`Mailbox::dispatch_to_glib_and_wait`] when the dispatched task
-/// does not produce a value.
+/// does not produce a value, carrying the message every call site surfaces.
 #[derive(Debug, Clone)]
-pub enum GlibDispatchError {
+pub struct GlibDispatchError(String);
+
+impl GlibDispatchError {
     /// The result channel was dropped before producing a value, typically
     /// because the `GLib` thread is shutting down.
-    Disconnected,
+    pub(crate) fn disconnected() -> Self {
+        Self("GLib thread disconnected".to_owned())
+    }
+
     /// The dispatched task panicked on the `GLib` thread; the thread itself
     /// remains alive and continues servicing tasks.
-    TaskPanicked(String),
+    pub(crate) fn task_panicked(message: &str) -> Self {
+        Self(format!("GLib task panicked: {message}"))
+    }
 }
 
 impl std::fmt::Display for GlibDispatchError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Disconnected => write!(f, "GLib thread disconnected"),
-            Self::TaskPanicked(message) => write!(f, "GLib task panicked: {message}"),
-        }
+        write!(f, "{}", self.0)
     }
 }
 

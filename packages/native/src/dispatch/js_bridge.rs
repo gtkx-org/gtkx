@@ -36,7 +36,7 @@ fn node_channel_disconnected<R>() -> anyhow::Result<R> {
 fn poll_result<R>(rx: &mpsc::Receiver<R>) -> Result<Option<R>, GlibDispatchError> {
     match rx.try_recv() {
         Ok(result) => Ok(Some(result)),
-        Err(mpsc::TryRecvError::Disconnected) => Err(GlibDispatchError::Disconnected),
+        Err(mpsc::TryRecvError::Disconnected) => Err(GlibDispatchError::disconnected()),
         Err(mpsc::TryRecvError::Empty) => Ok(None),
     }
 }
@@ -79,8 +79,8 @@ impl Mailbox {
     /// node inbox so re-entrant `GLib → JS → GLib` calls progress.
     ///
     /// A panic inside the task is caught on the `GLib` thread and surfaces to
-    /// the caller as [`GlibDispatchError::TaskPanicked`]; the `GLib` thread
-    /// keeps running.
+    /// the caller as a [`GlibDispatchError`] naming the panic; the `GLib`
+    /// thread keeps running.
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn dispatch_to_glib_and_wait<R, F>(&self, env: Env, task: F) -> Result<R, GlibDispatchError>
     where
