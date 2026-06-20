@@ -125,13 +125,21 @@ const click = async (widget: Gtk.Widget): Promise<void> => {
     if (target) await emitClickSequence(target, 1);
 };
 
+const emitPress = (controller: Gtk.GestureClick, nPress: number): void => {
+    controller.emit("pressed", nPress, 0, 0);
+};
+
+const emitRelease = (controller: Gtk.GestureClick, nPress: number): void => {
+    controller.emit("released", nPress, 0, 0);
+};
+
 const emitClickSequence = async (widget: Gtk.Widget, nPress: number): Promise<void> => {
     await act(() => {
         const controller = getOrCreateController(widget, Gtk.GestureClick);
 
         for (let i = 1; i <= nPress; i++) {
-            controller.emit("pressed", i, 0, 0);
-            controller.emit("released", i, 0, 0);
+            emitPress(controller, i);
+            emitRelease(controller, i);
         }
     });
 };
@@ -632,18 +640,18 @@ const CLICK_INPUTS = new Set<PointerInput>(["[MouseLeft]", "click"]);
 
 const applyPointerInput = (controller: Gtk.GestureClick, state: UserEventState, input: PointerInput): void => {
     if (CLICK_INPUTS.has(input)) {
-        controller.emit("pressed", 1, 0, 0);
-        controller.emit("released", 1, 0, 0);
+        emitPress(controller, 1);
+        emitRelease(controller, 1);
         state.mouseLeftDown = false;
         return;
     }
     if (PRESS_INPUTS.has(input) && !state.mouseLeftDown) {
-        controller.emit("pressed", 1, 0, 0);
+        emitPress(controller, 1);
         state.mouseLeftDown = true;
         return;
     }
     if (RELEASE_INPUTS.has(input) && state.mouseLeftDown) {
-        controller.emit("released", 1, 0, 0);
+        emitRelease(controller, 1);
         state.mouseLeftDown = false;
     }
 };
