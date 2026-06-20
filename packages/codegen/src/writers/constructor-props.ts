@@ -1,6 +1,6 @@
 import { dedupeBy, quote, toCamelIdentifier, toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
-import { indent } from "../dsl/emit.js";
+import { indent, renderBlock } from "../dsl/emit.js";
 import type { GirClass } from "../gir/class.js";
 import { type GirProperty, isConstructableProperty } from "../gir/property.js";
 import { splitOptionalNamespace } from "../gir/type-ref.js";
@@ -94,7 +94,7 @@ const renderRootConstructor = (context: ModuleContext): string => {
         "setHandle(this, handle);",
         "setWrapper(handle, this);",
     ].join("\n");
-    return `constructor(props: ${PROPS_RECORD} = {}) {\n${indent(body, 1)}\n}`;
+    return renderBlock(`constructor(props: ${PROPS_RECORD} = {})`, body);
 };
 
 const renderTranslatingConstructor = (
@@ -112,7 +112,7 @@ const renderTranslatingConstructor = (
     const recordLiteral = `{\n${indent(entries.join("\n"), 1)}\n}`;
     const lines = [`const props: ${PROPS_RECORD} = ${recordLiteral};`, "super({ ...props, ...rest });"];
     const body = lines.join("\n");
-    return `constructor(${pattern}: ${className}ConstructorProps = {}) {\n${indent(body, 1)}\n}`;
+    return renderBlock(`constructor(${pattern}: ${className}ConstructorProps = {})`, body);
 };
 
 const resolveParentPropsReference = (context: ModuleContext, klass: GirClass): string | undefined => {

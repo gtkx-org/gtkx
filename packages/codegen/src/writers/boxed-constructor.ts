@@ -1,6 +1,6 @@
 import { quote, toCamelIdentifier } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
-import { indent } from "../dsl/emit.js";
+import { indent, renderBlock } from "../dsl/emit.js";
 import type { GirBoxed } from "../gir/boxed.js";
 import type { GirField } from "../gir/field.js";
 import type { TypeId } from "../gir/type-id.js";
@@ -66,7 +66,10 @@ export const renderBoxedConstructorPropsInterface = (
  */
 export const renderBoxedConstructor = (context: ModuleContext, boxed: GirBoxed, className: string): string => {
     if (isOpaque(boxed)) {
-        return `constructor() {\n${indent(`throw new Error(${quote(`Cannot construct ${className}: opaque boxed type with no known layout`)});`, 1)}\n}`;
+        return renderBlock(
+            `constructor()`,
+            `throw new Error(${quote(`Cannot construct ${className}: opaque boxed type with no known layout`)});`,
+        );
     }
     const { slots, size } = computeBoxedFieldSlots(context, boxed.fields, boxed.isUnion);
     if (size === 0) {
@@ -81,7 +84,7 @@ export const renderBoxedConstructor = (context: ModuleContext, boxed: GirBoxed, 
     }
     statements.push("setHandle(this, handle);");
     const body = statements.join("\n");
-    return `constructor(props: ${className}ConstructorProps = {}) {\n${indent(body, 1)}\n}`;
+    return renderBlock(`constructor(props: ${className}ConstructorProps = {})`, body);
 };
 
 const allocArgs = (boxed: GirBoxed, size: number): readonly string[] => {

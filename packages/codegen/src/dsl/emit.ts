@@ -22,6 +22,17 @@ export const indent = (block: string, level: number): string => {
 };
 
 /**
+ * Renders a brace-delimited block: `head`, a space, an opening brace, the
+ * one-level-indented `body`, and a closing brace on its own line. The single
+ * brace/indent formatter the writers route their member, accessor, case, and
+ * constructor bodies through.
+ *
+ * @param head - The text preceding the opening brace (e.g. a method signature)
+ * @param body - The multi-line block body, indented one level
+ */
+export const renderBlock = (head: string, body: string): string => `${head} {\n${indent(body, 1)}\n}`;
+
+/**
  * Joins `parts` with commas, dropping `undefined` entries.
  */
 export const joinArgs = (parts: ReadonlyArray<string | undefined>): string =>

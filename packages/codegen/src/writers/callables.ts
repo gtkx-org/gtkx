@@ -1,6 +1,6 @@
 import { dedupeBy, toCamelCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
-import { indent } from "../dsl/emit.js";
+import { renderBlock } from "../dsl/emit.js";
 import { bindingIdentifier } from "../dsl/identifier.js";
 import type { GirFunction } from "../gir/function.js";
 import { callableReferencesClassStruct } from "./class-struct-record.js";
@@ -101,7 +101,7 @@ const renderConstructorStatic = (
         isStatic: true,
         returnTypeOverride: ownerClassName,
     });
-    return `static ${name}(${signature}): ${ownerClassName} {\n${indent(body, 1)}\n}`;
+    return renderBlock(`static ${name}(${signature}): ${ownerClassName}`, body);
 };
 
 /**
@@ -124,7 +124,7 @@ const renderStaticMember = (context: ModuleContext, callable: GirFunction): stri
         bindingExpression: bindingIdentifier(cIdentifier),
         isStatic: true,
     });
-    return `static ${name}(${signature}): ${returnType} {\n${indent(body, 1)}\n}`;
+    return renderBlock(`static ${name}(${signature}): ${returnType}`, body);
 };
 
 /**
@@ -157,7 +157,7 @@ export const renderInstanceMethod = (
         bindingExpression: bindingIdentifier(cIdentifier),
         isStatic: false,
     });
-    return `${name}(${signature}): ${returnType} {\n${indent(body, 1)}\n}`;
+    return renderBlock(`${name}(${signature}): ${returnType}`, body);
 };
 
 /**

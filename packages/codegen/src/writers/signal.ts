@@ -1,6 +1,6 @@
 import { quote, toCamelCase, toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
-import { indent } from "../dsl/emit.js";
+import { indent, renderBlock } from "../dsl/emit.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirParameter } from "../gir/parameter.js";
 import { isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
@@ -71,8 +71,8 @@ export const renderSignalMembers = (context: ModuleContext, klass: GirClass): re
     const emitSwitch = `switch (signalBaseName(sigName)) {\n${indent([...emitCases, emitDefault].join("\n"), 1)}\n}`;
 
     return [
-        `connect(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, after?: boolean): number {\n${indent(connectSwitch, 1)}\n}`,
-        `emit(sigName: string, ...args: unknown[]): unknown {\n${indent(emitSwitch, 1)}\n}`,
+        renderBlock(`connect(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, after?: boolean): number`, connectSwitch),
+        renderBlock(`emit(sigName: string, ...args: unknown[]): unknown`, emitSwitch),
     ];
 };
 
@@ -259,7 +259,7 @@ const renderSignalConnectInterface = (className: string, isRootObject: boolean):
             );
         }
     }
-    return `export interface ${className} {\n${indent(lines.join("\n"), 1)}\n}`;
+    return renderBlock(`export interface ${className}`, lines.join("\n"));
 };
 
 /**
@@ -364,7 +364,7 @@ const renderConnectCase = (context: ModuleContext, collected: CollectedSignal): 
     const { signal } = collected;
     const callback = renderCallback(context, collected);
     const body = `return connectGobjectSignal(this, signal, ${callback}, handler, after ?? false);`;
-    return `case ${quote(signal.name)}: {\n${indent(body, 1)}\n}`;
+    return renderBlock(`case ${quote(signal.name)}:`, body);
 };
 
 /**
@@ -410,7 +410,7 @@ const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): str
         : `, ${renderFfiType(context, signal.returnValue.type, signal.returnValue.transferOwnership)}`;
     const body = `return emitGobjectSignal(this, sigName, [${argLiterals.join(", ")}]${returnArg});`;
 
-    return `case ${quote(signal.name)}: {\n${indent(body, 1)}\n}`;
+    return renderBlock(`case ${quote(signal.name)}:`, body);
 };
 
 /**
@@ -423,7 +423,7 @@ const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): str
  */
 const renderUnsupportedEmitCase = (signal: GirSignal): string => {
     const message = `emit() cannot allocate the caller-allocated out-parameter of '${signal.name}'`;
-    return `case ${quote(signal.name)}: {\n${indent(`throw new globalThis.Error(${quote(message)});`, 1)}\n}`;
+    return renderBlock(`case ${quote(signal.name)}:`, `throw new globalThis.Error(${quote(message)});`);
 };
 
 /**

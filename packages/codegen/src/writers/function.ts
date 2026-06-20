@@ -1,6 +1,6 @@
 import { quote } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
-import { arrayLiteral, indent } from "../dsl/emit.js";
+import { arrayLiteral, renderBlock } from "../dsl/emit.js";
 import { bindingIdentifier, namespaceFunctionExportName } from "../dsl/identifier.js";
 import type { GirFunction } from "../gir/function.js";
 import type { GirNamespace } from "../gir/namespace.js";
@@ -64,9 +64,7 @@ export const emitNamespaceFunction = (context: ModuleContext, fn: GirFunction): 
     const signature = renderMethodSignature(context, fn);
     const returnType = renderMethodReturnType(context, fn);
     const body = renderMethodBody(context, fn, { bindingExpression: bindingName, isStatic: true });
-    context.module.appendDeclaration(
-        `export function ${exportName}(${signature}): ${returnType} {\n${indent(body, 1)}\n}`,
-    );
+    context.module.appendDeclaration(renderBlock(`export function ${exportName}(${signature}): ${returnType}`, body));
 };
 
 /**

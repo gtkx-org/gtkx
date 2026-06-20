@@ -1,6 +1,6 @@
 import { toCamelIdentifier } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
-import { indent } from "../dsl/emit.js";
+import { indent, renderBlock } from "../dsl/emit.js";
 import type { GirField } from "../gir/field.js";
 import type { FieldSlot } from "../gir/size.js";
 import type { GirType } from "../gir/type.js";
@@ -209,7 +209,7 @@ const structArrayGetterBlock = (options: StructArrayAccessorOptions): string => 
         "}",
         "return __result;",
     ].join("\n");
-    return `get ${jsName}(): ${tsType} {\n${indent(body, 1)}\n}`;
+    return renderBlock(`get ${jsName}(): ${tsType}`, body);
 };
 
 const structArraySetterBlock = (options: StructArrayAccessorOptions): string => {
@@ -231,7 +231,7 @@ const structArraySetterBlock = (options: StructArrayAccessorOptions): string => 
         "}",
         `write(getHandle(this), ${bufferType}, ${offset}, __array);`,
     ].join("\n");
-    return `set ${jsName}(__value: ${tsType}) {\n${indent(body, 1)}\n}`;
+    return renderBlock(`set ${jsName}(__value: ${tsType})`, body);
 };
 
 const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTarget): string | undefined => {
@@ -289,12 +289,12 @@ const getterBlock = (options: AccessorOptions): string => {
             valueExpression,
         });
         const body = `return ${wrapped};`;
-        return `get ${jsName}(): ${tsType} {\n${indent(body, 1)}\n}`;
+        return renderBlock(`get ${jsName}(): ${tsType}`, body);
     }
     const mask = bitMask(slot.bitWidth);
     const shift = slot.bitOffset ?? 0;
     const body = `const __unit = read(getHandle(this), ${ffiType}, ${slot.byteOffset}) as number;\nreturn (((__unit >>> ${shift}) & ${mask}) >>> 0) as ${tsType};`;
-    return `get ${jsName}(): ${tsType} {\n${indent(body, 1)}\n}`;
+    return renderBlock(`get ${jsName}(): ${tsType}`, body);
 };
 
 const setterBlock = (options: AccessorOptions): string => {
@@ -303,12 +303,12 @@ const setterBlock = (options: AccessorOptions): string => {
     context.addRuntimeImport("getHandle");
     if (slot.bitWidth === undefined) {
         const body = `write(getHandle(this), ${ffiType}, ${slot.byteOffset}, value);`;
-        return `set ${jsName}(value: ${tsType}) {\n${indent(body, 1)}\n}`;
+        return renderBlock(`set ${jsName}(value: ${tsType})`, body);
     }
     context.addNativeImport("read");
     const mask = bitMask(slot.bitWidth);
     const shift = slot.bitOffset ?? 0;
     const merged = mergeBitfield("__unit", "value", mask, shift);
     const body = `const __unit = read(getHandle(this), ${ffiType}, ${slot.byteOffset}) as number;\nconst __next = ${merged};\nwrite(getHandle(this), ${ffiType}, ${slot.byteOffset}, __next);`;
-    return `set ${jsName}(value: ${tsType}) {\n${indent(body, 1)}\n}`;
+    return renderBlock(`set ${jsName}(value: ${tsType})`, body);
 };

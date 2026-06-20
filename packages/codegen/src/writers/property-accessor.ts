@@ -1,6 +1,6 @@
 import { quote, toCamelCase, toCamelIdentifier } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
-import { indent } from "../dsl/emit.js";
+import { renderBlock } from "../dsl/emit.js";
 import type { GirFunction } from "../gir/function.js";
 import { type GirProperty, isConstructableProperty } from "../gir/property.js";
 import type { TypeId } from "../gir/type-id.js";
@@ -71,12 +71,12 @@ export const renderPropertyAccessor = (
 
     const blocks: string[] = [];
     const getBody = renderGetterBody({ context, property, getterMember, getMethod, tsType });
-    blocks.push(`get ${jsName}(): ${tsType} {\n${indent(getBody, 1)}\n}`);
+    blocks.push(renderBlock(`get ${jsName}(): ${tsType}`, getBody));
 
     if (writable) {
         const setBody =
             setterMember !== undefined ? `this.${setterMember}(value);` : renderGenericSetBody(context, property);
-        blocks.push(`set ${jsName}(value: ${tsType}) {\n${indent(setBody, 1)}\n}`);
+        blocks.push(renderBlock(`set ${jsName}(value: ${tsType})`, setBody));
     }
     return blocks.join("\n\n");
 };
