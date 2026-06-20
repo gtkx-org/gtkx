@@ -50,8 +50,7 @@ export { renderHook } from "./render-hook.js";
 export type { RoleInfo } from "./role-helpers.js";
 export { getRoles, logRoles, prettyRoles } from "./role-helpers.js";
 export { screen } from "./screen.js";
-export type { ScreenshotOptions } from "./screenshot.js";
-export { logScreenshotPath, screenshot } from "./screenshot.js";
+export { captureAndSaveScreenshot, logScreenshotPath, screenshot } from "./screenshot.js";
 export type { Method, Suggestion, Variant } from "./suggestions.js";
 export { getSuggestedQuery } from "./suggestions.js";
 export { act } from "./act.js";
@@ -69,8 +68,10 @@ export type {
     RenderHookResult,
     RenderOptions,
     RenderResult,
+    ScreenshotOptions,
     ScreenshotResult,
     WaitForOptions,
+    WindowSelector,
     WrapperComponent,
 } from "./types.js";
 export type {

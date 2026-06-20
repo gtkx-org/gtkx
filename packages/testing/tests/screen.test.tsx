@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel, GtkWindow } from "@gtkx/jsx/gtk";
 import { describe, expect, it } from "vitest";
-import { cleanup, createRootElement, render, screen } from "../src/index.js";
+import { captureAndSaveScreenshot, cleanup, createRootElement, render, screen } from "../src/index.js";
 
 describe("screen binding", () => {
     it("routes queries through the global toplevel scope", async () => {
@@ -126,6 +126,6 @@ describe("screen screenshot errors", () => {
     it("throws when no windows are available", async () => {
         await cleanup();
 
-        await expect(screen.screenshot()).rejects.toThrow(/No windows available for screenshot/);
+        await expect(captureAndSaveScreenshot()).rejects.toThrow(/No windows available for screenshot/);
     });
 });

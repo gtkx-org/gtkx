@@ -10,10 +10,12 @@ import { type ErrorInfo, type ReactNode, StrictMode } from "react";
 import { act } from "./act.js";
 import { bindQueries } from "./bind-queries.js";
 import { logWidget, type PrettyWidgetOptions } from "./pretty-widget.js";
-import { setScreenRoot } from "./screen.js";
+import { logRoles } from "./role-helpers.js";
+import { clearScreen, setScreen } from "./screen.js";
+import { captureAndSaveScreenshot } from "./screenshot.js";
 import "./setup-runtime.js";
 import { type Container, TOPLEVELS, traverse } from "./traversal.js";
-import type { QueryMap, RenderOptions, RenderResult } from "./types.js";
+import type { QueryMap, RenderOptions, RenderResult, ScreenshotOptions, WindowSelector } from "./types.js";
 import { resetClipboard } from "./user-event.js";
 
 let lastRenderError: Error | null = null;
@@ -168,9 +170,7 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
     await update(wrap(element), root);
     resolved.window?.present();
 
-    setScreenRoot(baseElement);
-
-    return {
+    const result: RenderResult<Q> = {
         ...bindQueries(baseElement, options?.queries),
         get container(): Gtk.Widget {
             return resultContainer(resolved, options?.container, baseElement);
@@ -182,10 +182,19 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
         rerender: async (newElement: ReactNode) => {
             await update(wrap(newElement), root);
         },
-        debug: (element: Container | Container[] = baseElement, options?: PrettyWidgetOptions) => {
-            logWidget(element, options);
+        debug: (element: Container | Container[] = baseElement, debugOptions?: PrettyWidgetOptions) => {
+            logWidget(element, debugOptions);
         },
+        logRoles: () => {
+            logRoles(baseElement);
+        },
+        screenshot: (selector?: WindowSelector, screenshotOptions?: ScreenshotOptions) =>
+            captureAndSaveScreenshot(selector, screenshotOptions),
     };
+
+    setScreen(result);
+
+    return result;
 };
 
 /**
@@ -212,6 +221,6 @@ export const cleanup = async (): Promise<void> => {
     for (const active of [...activeRenders]) {
         await disposeActiveRender(active);
     }
-    setScreenRoot(null);
+    clearScreen();
     resetClipboard();
 };

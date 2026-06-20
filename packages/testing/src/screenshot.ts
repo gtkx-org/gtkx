@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
-import type { ScreenshotResult, WaitForOptions } from "./types.js";
+import type { ScreenshotOptions, ScreenshotResult, WindowSelector } from "./types.js";
 import { waitFor } from "./wait-for.js";
 
 const bytesToBase64 = (bytes: number[]): string => {
@@ -62,20 +62,6 @@ const captureSnapshot = (widget: Gtk.Widget, scale: number): ScreenshotResult =>
 };
 
 /**
- * Options for capturing widget screenshots.
- */
-export type ScreenshotOptions = Pick<WaitForOptions, "timeout" | "interval"> & {
-    /**
-     * Supersampling factor applied while rasterizing the widget. The widget is
-     * laid out at its logical size and painted at `scale` times that size, so
-     * text and strokes render crisply in the enlarged output (e.g. `2` yields a
-     * 2x-resolution capture suitable for high-DPI documentation imagery).
-     * Defaults to `1`.
-     */
-    scale?: number;
-};
-
-/**
  * Captures a screenshot of a GTK widget as a PNG image.
  *
  * This function will retry multiple times if the widget hasn't finished
@@ -109,12 +95,6 @@ export const screenshot = async (widget: Gtk.Widget, options?: ScreenshotOptions
         interval: options?.interval ?? DEFAULT_SCREENSHOT_INTERVAL,
     });
 };
-
-/**
- * Selects which top-level window to capture: an index, a title substring, a
- * title pattern, or the first window when omitted.
- */
-export type WindowSelector = number | string | RegExp | undefined;
 
 const resolveWindow = (selector?: WindowSelector): Gtk.Window => {
     const windows = Gtk.Window.listToplevels();

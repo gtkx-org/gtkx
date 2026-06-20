@@ -297,6 +297,13 @@ export type RenderResult<Q extends QueryMap = Record<never, never>> = BoundQueri
          * options to scope or shape the output.
          */
         debug: (element?: Container | Container[], options?: PrettyWidgetOptions) => void;
+        /** Log every accessible role under the `baseElement` to the console. */
+        logRoles: () => void;
+        /**
+         * Capture a screenshot of a top-level window, save it to a temp file, and
+         * log a clickable `file://` URI. Defaults to the first window.
+         */
+        screenshot: (selector?: WindowSelector, options?: ScreenshotOptions) => Promise<ScreenshotResult>;
     };
 
 /**
@@ -312,6 +319,26 @@ export type ScreenshotResult = {
     /** Height of the captured image in pixels */
     height: number;
 };
+
+/**
+ * Options for capturing widget screenshots.
+ */
+export type ScreenshotOptions = Pick<WaitForOptions, "timeout" | "interval"> & {
+    /**
+     * Supersampling factor applied while rasterizing the widget. The widget is
+     * laid out at its logical size and painted at `scale` times that size, so
+     * text and strokes render crisply in the enlarged output (e.g. `2` yields a
+     * 2x-resolution capture suitable for high-DPI documentation imagery).
+     * Defaults to `1`.
+     */
+    scale?: number;
+};
+
+/**
+ * Selects which top-level window to capture: an index, a title substring, a
+ * title pattern, or the first window when omitted.
+ */
+export type WindowSelector = number | string | RegExp | undefined;
 
 /**
  * Options for {@link renderHook}.

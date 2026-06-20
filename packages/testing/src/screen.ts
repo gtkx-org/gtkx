@@ -1,32 +1,25 @@
-import { bindQueries } from "./bind-queries.js";
-import { logWidget, type PrettyWidgetOptions } from "./pretty-widget.js";
-import { logRoles } from "./role-helpers.js";
-import { captureAndSaveScreenshot, type ScreenshotOptions, type WindowSelector } from "./screenshot.js";
-import type { Container } from "./traversal.js";
-import type { BoundQueries, ScreenshotResult } from "./types.js";
+import type { RenderResult } from "./types.js";
 
-let currentRoot: Container | null = null;
+const NO_RENDER_MESSAGE = "No render has been performed: call render() before using screen queries";
 
-/** Sets the scope the `screen` queries operate against; called by `render`. */
-export const setScreenRoot = (root: Container | null): void => {
-    currentRoot = root;
+const throwNoRender = (): never => {
+    throw new Error(NO_RENDER_MESSAGE);
 };
 
-const getRoot = (): Container => {
-    if (!currentRoot) {
-        throw new Error("No render has been performed: call render() before using screen queries");
-    }
-
-    return currentRoot;
-};
-
-const boundQueries = bindQueries(getRoot);
+const defaultScreen: RenderResult = new Proxy({} as RenderResult, {
+    get: (_target, property) => {
+        if (property === "baseElement" || property === "container") return throwNoRender();
+        return throwNoRender;
+    },
+});
 
 /**
  * Global query object for accessing rendered components.
  *
- * Provides the same query methods as render result, but automatically
- * uses the most recently rendered application as the container.
+ * Holds the most recent {@link render} result, so its queries, `debug`,
+ * `logRoles`, and `screenshot` operate against the latest mount without
+ * re-binding. Accessing any member before a render — or after `cleanup` —
+ * throws, directing the caller to render first.
  *
  * @example
  * ```tsx
@@ -42,37 +35,14 @@ const boundQueries = bindQueries(getRoot);
  * @see {@link render} for rendering components
  * @see {@link within} for scoped queries
  */
-export const screen: BoundQueries & {
-    debug: (container?: Container | Container[], options?: PrettyWidgetOptions) => void;
-    logRoles: () => void;
-    screenshot: (selector?: WindowSelector, options?: ScreenshotOptions) => Promise<ScreenshotResult>;
-} = {
-    ...boundQueries,
-    /** Print the widget tree to console for debugging, defaulting to the screen root */
-    debug: (container: Container | Container[] = getRoot(), options?: PrettyWidgetOptions): void => {
-        logWidget(container, options);
-    },
-    /** Log all accessible roles to console for debugging */
-    logRoles: (): void => {
-        logRoles(getRoot());
-    },
-    /**
-     * Capture a screenshot of a toplevel window, save it to a temp file, and
-     * log a clickable `file://` URI.
-     *
-     * @param selector - Window selector: index (number), title substring (string), or title pattern (RegExp).
-     *                   If omitted, captures the first window.
-     * @param options - Optional timeout and interval configuration for waiting on widget rendering.
-     * @returns Screenshot result containing base64-encoded PNG data
-     *
-     * @example
-     * ```tsx
-     * await screen.screenshot();              // First window
-     * await screen.screenshot(0);             // Window at index 0
-     * await screen.screenshot("Settings");    // Window with title containing "Settings"
-     * await screen.screenshot(/^My App/);     // Window with title matching regex
-     * ```
-     */
-    screenshot: (selector?: WindowSelector, options?: ScreenshotOptions): Promise<ScreenshotResult> =>
-        captureAndSaveScreenshot(selector, options),
+export let screen: RenderResult = defaultScreen;
+
+/** Points `screen` at a fresh {@link render} result; called by `render`. */
+export const setScreen = (result: RenderResult): void => {
+    screen = result;
+};
+
+/** Resets `screen` to its pre-render state; called by `cleanup`. */
+export const clearScreen = (): void => {
+    screen = defaultScreen;
 };
