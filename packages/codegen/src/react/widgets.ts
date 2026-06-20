@@ -48,6 +48,28 @@ const resolveParentClass = (
     return { klass: resolved.value, namespace: resolved.namespace };
 };
 
+/**
+ * Yields a class and each of its ancestors, nearest first, following the
+ * `parent` chain across namespaces. The single traversal both the glib-name
+ * collection and the ancestor predicate folds run over.
+ *
+ * @param klass - The class to start from
+ * @param namespace - The namespace the class lives in
+ * @param repository - The repository for cross-namespace parent lookups
+ */
+function* walkAncestors(
+    klass: GirClass,
+    namespace: GirNamespace,
+    repository: GirRepository,
+): Generator<{ readonly klass: GirClass; readonly namespace: GirNamespace }> {
+    let current: { readonly klass: GirClass; readonly namespace: GirNamespace } | undefined = { klass, namespace };
+    while (current !== undefined) {
+        yield current;
+        if (current.klass.parent === undefined) return;
+        current = resolveParentClass(repository, current.klass.parent, current.namespace);
+    }
+}
+
 /** A resolved interface qualified by the namespace that declares it. */
 export type ResolvedQualifiedInterface = { readonly klass: GirClass; readonly namespace: GirNamespace };
 
@@ -104,16 +126,9 @@ export const ancestorGlibNames = (
     repository: GirRepository,
 ): readonly string[] => {
     const names: string[] = [];
-    let currentClass: GirClass | undefined = klass;
-    let currentNamespace: GirNamespace | undefined = namespace;
-    while (currentClass !== undefined && currentNamespace !== undefined) {
-        const glibName = currentClass.glibTypeName ?? currentClass.cType;
+    for (const { klass: ancestor } of walkAncestors(klass, namespace, repository)) {
+        const glibName = ancestor.glibTypeName ?? ancestor.cType;
         if (glibName !== undefined) names.push(glibName);
-        if (currentClass.parent === undefined) break;
-        const next = resolveParentClass(repository, currentClass.parent, currentNamespace);
-        if (next === undefined) break;
-        currentClass = next.klass;
-        currentNamespace = next.namespace;
     }
     return names;
 };
@@ -124,16 +139,9 @@ const someAncestor = (
     repository: GirRepository,
     predicate: (klass: GirClass, glibName: string) => boolean,
 ): boolean => {
-    let currentClass: GirClass | undefined = klass;
-    let currentNamespace: GirNamespace | undefined = namespace;
-    while (currentClass !== undefined && currentNamespace !== undefined) {
-        const glibName = currentClass.glibTypeName ?? currentClass.cType ?? "";
-        if (predicate(currentClass, glibName)) return true;
-        if (currentClass.parent === undefined) return false;
-        const next = resolveParentClass(repository, currentClass.parent, currentNamespace);
-        if (next === undefined) return false;
-        currentClass = next.klass;
-        currentNamespace = next.namespace;
+    for (const { klass: ancestor } of walkAncestors(klass, namespace, repository)) {
+        const glibName = ancestor.glibTypeName ?? ancestor.cType ?? "";
+        if (predicate(ancestor, glibName)) return true;
     }
     return false;
 };

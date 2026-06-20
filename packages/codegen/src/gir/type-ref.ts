@@ -1,14 +1,17 @@
 import { attr, childOf, childrenOf, intAttr, nameAttr, type RawNode } from "./parse.js";
 import { primitiveCategory } from "./primitives.js";
-import type { CArrayType, ListFlavor, ParseContext, TypeId } from "./type-id.js";
+import { type CArrayType, LIST_FLAVOR_BY_NAME, type ListFlavor, type ParseContext, type TypeId } from "./type-id.js";
 
-const LIST_KIND_BY_NAME: ReadonlyMap<string, ListFlavor> = new Map([
-    ["GLib.List", "glist"],
-    ["GLib.SList", "gslist"],
-    ["GLib.PtrArray", "gptrarray"],
-    ["GLib.Array", "garray"],
-    ["GLib.ByteArray", "gbytearray"],
-] as const);
+const LIST_FLAVOR_BY_NAME_LOOKUP: ReadonlyMap<string, ListFlavor> = new Map(Object.entries(LIST_FLAVOR_BY_NAME));
+
+/**
+ * Interns the element type of a list-like or array node from its first `<type>`
+ * child, falling back to an opaque pointer when the element is unannotated.
+ */
+const elementRefOf = (node: RawNode, context: ParseContext): TypeId => {
+    const elementNode = childOf(node, "type");
+    return elementNode === undefined ? pointerFallback(context) : typeRefFromTypeNode(elementNode, context);
+};
 
 /**
  * Interns the type slot of a parent XML node whose first `<type>`, `<array>`,
@@ -46,12 +49,9 @@ export const typeRefFromSlot = (parent: RawNode | undefined, context: ParseConte
 const typeRefFromTypeNode = (typeNode: RawNode, context: ParseContext): TypeId => {
     const name = nameAttr(typeNode);
 
-    const listFlavor = LIST_KIND_BY_NAME.get(name);
+    const listFlavor = LIST_FLAVOR_BY_NAME_LOOKUP.get(name);
     if (listFlavor !== undefined) {
-        const elementNode = childOf(typeNode, "type");
-        const element =
-            elementNode === undefined ? pointerFallback(context) : typeRefFromTypeNode(elementNode, context);
-        return context.internContainer({ kind: "list", flavor: listFlavor, element });
+        return context.internContainer({ kind: "list", flavor: listFlavor, element: elementRefOf(typeNode, context) });
     }
 
     if (name === "GLib.HashTable") {
@@ -74,13 +74,13 @@ const typeRefFromTypeNode = (typeNode: RawNode, context: ParseContext): TypeId =
 };
 
 const arrayTypeRefFromNode = (arrayNode: RawNode, context: ParseContext): TypeId => {
-    const elementNode = childOf(arrayNode, "type");
-    const element = elementNode === undefined ? pointerFallback(context) : typeRefFromTypeNode(elementNode, context);
+    const element = elementRefOf(arrayNode, context);
     const arrayName = attr(arrayNode, "name");
-    const listFlavor = arrayName === undefined ? undefined : LIST_KIND_BY_NAME.get(arrayName);
+    const listFlavor = arrayName === undefined ? undefined : LIST_FLAVOR_BY_NAME_LOOKUP.get(arrayName);
     if (listFlavor !== undefined) {
         return context.internContainer({ kind: "list", flavor: listFlavor, element });
     }
+    const elementNode = childOf(arrayNode, "type");
     const carray: CArrayType = {
         kind: "carray",
         element,

@@ -13,7 +13,7 @@ import {
 import type { PrimitiveCategory } from "../gir/primitives.js";
 import type { GirRepository } from "../gir/repository.js";
 import type { EntityType, GirType } from "../gir/type.js";
-import type { CArrayType, TypeId } from "../gir/type-id.js";
+import type { CArrayType, ListFlavor, TypeId } from "../gir/type-id.js";
 import { computeBoxedFieldSlots } from "./boxed-layout.js";
 
 /**
@@ -266,7 +266,7 @@ export const renderCallbackType = (
     return `t.callback([${argTypes.join(", ")}], ${returnType}${optionsArg})`;
 };
 
-const LIST_HELPERS: Readonly<Record<"glist" | "gslist" | "gptrarray" | "garray" | "gbytearray", string>> = {
+const LIST_HELPERS: Readonly<Record<ListFlavor, string>> = {
     glist: "list",
     gslist: "slist",
     gptrarray: "ptrArray",

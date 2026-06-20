@@ -11,8 +11,22 @@ import type { PrimitiveCategory } from "./primitives.js";
  */
 export type TypeId = { readonly nsId: number; readonly id: number };
 
-/** A GLib `GList` / `GSList` / `GPtrArray` / `GArray` / `GByteArray`. */
-export type ListFlavor = "glist" | "gslist" | "gptrarray" | "garray" | "gbytearray";
+/**
+ * The GLib container type names that intern as a list, mapped to the runtime
+ * marshalling flavor each carries. The single closed table of list-container
+ * recognition; {@link ListFlavor} derives from its values, and the parse layer
+ * looks names up against it.
+ */
+export const LIST_FLAVOR_BY_NAME = {
+    "GLib.List": "glist",
+    "GLib.SList": "gslist",
+    "GLib.PtrArray": "gptrarray",
+    "GLib.Array": "garray",
+    "GLib.ByteArray": "gbytearray",
+} as const;
+
+/** A GLib `GList` / `GSList` / `GPtrArray` / `GArray` / `GByteArray` flavor. */
+export type ListFlavor = (typeof LIST_FLAVOR_BY_NAME)[keyof typeof LIST_FLAVOR_BY_NAME];
 
 /** A GIR scalar primitive: `gint`, `gboolean`, `utf8`, `gpointer`, etc. */
 export type PrimitiveType = { readonly kind: "primitive"; readonly category: PrimitiveCategory };
