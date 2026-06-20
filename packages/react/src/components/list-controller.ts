@@ -2,7 +2,7 @@ import type * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { createElement, type ReactNode } from "react";
-import type { BoundItem } from "../reconciler/bound-item.js";
+import { type BoundItem, collectFlatBoundItems } from "../reconciler/bound-item.js";
 import { isInCommit, scheduleFlush } from "../reconciler/commit-flush.js";
 import { runDeferredFlush } from "../reconciler/deferred-flush.js";
 import { asLifecycleItem, connectFactoryLifecycle, UNBOUND_POSITION } from "../reconciler/list-factory.js";
@@ -685,18 +685,16 @@ export class ListController implements ColumnHost {
         out: BoundItem[];
     }): void {
         const { containers, containerKeys, resolveItem, renderFn, out } = args;
-        const isTree = this.modelController.treeModel !== null;
+        if (this.modelController.treeModel === null) {
+            collectFlatBoundItems(containers, containerKeys, resolveItem, renderFn, out);
+            return;
+        }
 
         for (const [container, position] of containers) {
             if (position === UNBOUND_POSITION) continue;
             const key = containerKeys.get(container);
             if (!key) continue;
-
-            if (isTree) {
-                this.appendTreeBoundItem({ container, key, renderFn, out });
-            } else {
-                this.appendFlatBoundItem({ container, position, key, resolveItem, renderFn, out });
-            }
+            this.appendTreeBoundItem({ container, key, renderFn, out });
         }
     }
 
@@ -713,20 +711,6 @@ export class ListController implements ColumnHost {
         const item = this.modelController.resolveTreeItem(row);
         if (!item) return;
         out.push([renderFn(item.value, row), container, key]);
-    }
-
-    private appendFlatBoundItem(args: {
-        container: GObject.Object;
-        position: number;
-        key: string;
-        resolveItem: (position: number) => unknown;
-        renderFn: (item: unknown, row?: Gtk.TreeListRow | null) => ReactNode;
-        out: BoundItem[];
-    }): void {
-        const { container, position, key, resolveItem, renderFn, out } = args;
-        const value = resolveItem(position);
-        if (value === undefined || value === null) return;
-        out.push([renderFn(value), container, key]);
     }
 
     private applyEstimatedItemSize(widget: Gtk.Widget): void {

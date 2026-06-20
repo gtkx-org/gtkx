@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import type { ReactNode } from "react";
-import type { BoundItem } from "../reconciler/bound-item.js";
-import { connectFactoryLifecycle, UNBOUND_POSITION } from "../reconciler/list-factory.js";
+import { type BoundItem, collectFlatBoundItems } from "../reconciler/bound-item.js";
+import { connectFactoryLifecycle } from "../reconciler/list-factory.js";
 
 const UNREGISTERED_ITEM_SIZE = { width: -1, height: -1 } as const;
 
@@ -116,18 +116,7 @@ export class ColumnController {
         if (!renderCell) return [];
 
         const items: BoundItem[] = [];
-
-        for (const [container, position] of this.containers) {
-            if (position === UNBOUND_POSITION) continue;
-
-            const key = this.containerKeys.get(container);
-            if (!key) continue;
-
-            const value = resolveItem(position);
-            if (value === undefined || value === null) continue;
-            items.push([renderCell(value), container, key]);
-        }
-
+        collectFlatBoundItems(this.containers, this.containerKeys, resolveItem, renderCell, items);
         return items;
     }
 }
