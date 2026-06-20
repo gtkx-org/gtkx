@@ -4,8 +4,8 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication } from "@gtkx/jsx/gtk";
 import { act, createRootElement, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
+import { path as logoResourcePath } from "#data/icons/org.gtk.Demo4.svg";
 import { Demo } from "../src/app.js";
-import { path as logoResourcePath } from "../src/icons/org.gtk.Demo4.svg";
 
 let nextAppId = 0;
 

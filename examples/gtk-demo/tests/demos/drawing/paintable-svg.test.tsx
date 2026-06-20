@@ -2,7 +2,7 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
-import nodeEditorSvgUri from "../../../src/demos/drawing/org.gtk.gtk4.NodeEditor.Devel.svg";
+import nodeEditorSvgUri from "#data/demos/drawing/org.gtk.gtk4.NodeEditor.Devel.svg";
 import { paintableSvgDemo } from "../../../src/demos/drawing/paintable-svg.js";
 import { renderDemo } from "../../test-utils.js";
 

@@ -12,6 +12,7 @@ export {
     resolveGtkxConfig,
     resolveReactCompilerOptions,
 } from "./config.js";
+export { DATA_IMPORT_KEY, DATA_IMPORT_PREFIX, resolveDataDir } from "./data-dir.js";
 export {
     createGtkxConfigLoader,
     type GtkxConfigLoader,

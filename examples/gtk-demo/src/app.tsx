@@ -24,11 +24,11 @@ import {
 } from "@gtkx/jsx/gtk";
 import { quit, useApplication, useProperty } from "@gtkx/react";
 import { useEffect, useRef, useState } from "react";
+import { path as logoResourcePath } from "#data/icons/org.gtk.Demo4.svg";
 import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";
 import { DemoProvider, parseTitle, useDemo } from "./context/demo-context.js";
 import { demos } from "./demos/index.js";
-import { path as logoResourcePath } from "./icons/org.gtk.Demo4.svg";
 import { useLatest } from "./use-latest.js";
 
 const applicationIconName = path.basename(logoResourcePath, path.extname(logoResourcePath));

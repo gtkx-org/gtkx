@@ -13,11 +13,11 @@ import {
     GtkStackSwitcher,
 } from "@gtkx/jsx/gtk";
 import { useState } from "react";
+import blendsPath from "#data/demos/css/blends.png";
+import cmyPath from "#data/demos/css/cmy.jpg";
+import duckyPath from "#data/demos/css/ducky.png";
 import type { Demo } from "../types.js";
-import blendsPath from "./blends.png";
-import cmyPath from "./cmy.jpg";
 import sourceCode from "./css-blendmodes.tsx?raw";
-import duckyPath from "./ducky.png";
 
 const BLEND_MODES = [
     { name: "Color", id: "color" },

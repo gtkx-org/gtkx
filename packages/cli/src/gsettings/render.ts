@@ -156,7 +156,7 @@ const renderSchemaConst = (schema: ParsedSchema, interfaceName: string): string[
 };
 
 const renderFileModule = (file: ParsedSchemaFile, usedNames: Set<string>): string[] => {
-    const lines = [`declare module "*/${file.fileName}" {`];
+    const lines = [`declare module "${file.fileName}" {`];
     const exportNames: string[] = [];
     file.schemas.forEach((schema, index) => {
         if (index > 0) lines.push("");
@@ -185,8 +185,8 @@ const ENV_HEADER = [
 
 /**
  * Renders the project's generated `env.d.ts`: one ambient module declaration
- * per `.gschema.xml` file, keyed on the file's basename, with a typed key
- * interface and schema-reference export per schema.
+ * per `.gschema.xml` file, keyed on the file's exact `#data/<rel>` import
+ * specifier, with a typed key interface and schema-reference export per schema.
  *
  * Enum and flags keys narrow to unions of their value nicks, string keys
  * with `<choices>` narrow to unions of the choice values, and keys whose

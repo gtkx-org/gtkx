@@ -1,17 +1,17 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkPaned, GtkScrolledWindow, GtkTextBuffer, GtkTextView } from "@gtkx/jsx/gtk";
+import appleRedPath from "#data/demos/css/apple-red.png";
+import backgroundPath from "#data/demos/css/background.jpg";
+import gnomeAppletsPath from "#data/demos/css/gnome-applets.png";
+import gnomeCalendarPath from "#data/demos/css/gnome-calendar.png";
+import gnomeFootPath from "#data/demos/css/gnome-foot.png";
+import gnomeGimpPath from "#data/demos/css/gnome-gimp.png";
+import gnomeGmushPath from "#data/demos/css/gnome-gmush.png";
+import gnomeGsamePath from "#data/demos/css/gnome-gsame.png";
+import gnuKeysPath from "#data/demos/css/gnu-keys.png";
 import type { Demo } from "../types.js";
-import appleRedPath from "./apple-red.png";
-import backgroundPath from "./background.jpg";
 import sourceCode from "./css-pixbufs.tsx?raw";
 import cssviewCssPath from "./cssview.css?url";
-import gnomeAppletsPath from "./gnome-applets.png";
-import gnomeCalendarPath from "./gnome-calendar.png";
-import gnomeFootPath from "./gnome-foot.png";
-import gnomeGimpPath from "./gnome-gimp.png";
-import gnomeGmushPath from "./gnome-gmush.png";
-import gnomeGsamePath from "./gnome-gsame.png";
-import gnuKeysPath from "./gnu-keys.png";
 import resetCssPath from "./reset.css?url";
 import { useCssEditor } from "./use-css-editor.js";
 

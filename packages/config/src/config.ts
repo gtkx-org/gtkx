@@ -75,11 +75,12 @@ export type GtkxConfig = UserTableRows & {
      *
      * When set, asset imports resolve to `resource:///<prefix>/<rel>` where
      * `<prefix>` is derived from the id (`org.gtk.Demo4` → `/org/gtk/Demo4`)
-     * and `<rel>` is the file's path relative to the Vite `root`. To land an
-     * asset at an exact path — e.g. `style.css` at the GApplication default
-     * `resource_base_path` for Adw/Gtk auto-loading — pin it with a
-     * `?resource=<path>` import query.
-     * Must match `g_application_id_is_valid` — see {@link isValidApplicationId}.
+     * and `<rel>` is the asset's path under the `#data/` import root. Importing
+     * `#data/icons/logo.svg` therefore lands it at `<prefix>/icons/logo.svg`,
+     * and `#data/style.css` at `<prefix>/style.css` — the GApplication default
+     * `resource_base_path` Adw/Gtk auto-load from. The directory `#data/` points
+     * at is declared in `package.json` `imports` (`"#data/*": "./data/*"`), not
+     * here. Must match `g_application_id_is_valid` — see {@link isValidApplicationId}.
      *
      * When omitted, the GResource pipeline falls back to the prefix
      * `/gtkx/app`.

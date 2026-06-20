@@ -1,7 +1,7 @@
 import { AdwPreferencesGroup, AdwPreferencesPage, AdwPreferencesWindow, AdwSpinRow, AdwSwitchRow } from "@gtkx/jsx/adw";
 import { GtkAdjustment } from "@gtkx/jsx/gtk";
 import { useApplication, useProperty, useSetting } from "@gtkx/react";
-import schema from "../../com.gtkx.tutorial.gschema.xml";
+import schema from "#data/com.gtkx.tutorial.gschema.xml";
 
 export const Preferences = ({ onClose }: { onClose: () => void }) => {
     const app = useApplication();

@@ -23,11 +23,11 @@ import {
 } from "@gtkx/jsx/gtk";
 import { useProperty } from "@gtkx/react";
 import { useState } from "react";
+import { path as floppyBuddyPath } from "#data/demos/gestures/floppybuddy.gif";
+import { path as demo4LogoPath } from "#data/demos/gestures/org.gtk.Demo4.svg";
+import { path as portlandRosePath } from "#data/demos/gestures/portland-rose.jpg";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./clipboard.tsx?raw";
-import { path as floppyBuddyPath } from "./floppybuddy.gif";
-import { path as demo4LogoPath } from "./org.gtk.Demo4.svg";
-import { path as portlandRosePath } from "./portland-rose.jpg";
 
 const setClipboardValue = (clipboard: Gdk.Clipboard, value: GObject.Value): void => clipboard.set(value);
 const readTextureAsync = (clipboard: Gdk.Clipboard): Promise<Gdk.Texture | null> => clipboard.readTextureAsync(null);

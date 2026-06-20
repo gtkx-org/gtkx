@@ -79,10 +79,10 @@ describe("renderRuntimeModule", () => {
 });
 
 describe("renderEnvModule (typing)", () => {
-    it("declares an ambient module per file, keyed on the basename", () => {
-        const env = renderEnvModule([parse(FIXED_SCHEMA, "com.example.app.gschema.xml")]);
+    it("declares an ambient module per file, keyed on the exact #data specifier", () => {
+        const env = renderEnvModule([parse(FIXED_SCHEMA, "#data/com.example.app.gschema.xml")]);
 
-        expect(env).toContain(`declare module "*/com.example.app.gschema.xml" {`);
+        expect(env).toContain(`declare module "#data/com.example.app.gschema.xml" {`);
         expect(env).toContain("export { com_example_app };");
         expect(env).toContain("export default com_example_app;");
     });

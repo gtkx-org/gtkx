@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { resolveDataDir } from "@gtkx/config";
 import { createDevRunner } from "./runner.js";
 import { prepareDevSchemaEnv } from "./schema-env.js";
 
@@ -22,7 +23,7 @@ export const main = async (): Promise<void> => {
         process.exit(1);
     }
 
-    prepareDevSchemaEnv(cwd);
+    prepareDevSchemaEnv(cwd, resolveDataDir(cwd));
 
     const entryPath = resolve(cwd, entryArg);
     const { defaultDevRunnerDeps } = await import("./runner-deps.js");

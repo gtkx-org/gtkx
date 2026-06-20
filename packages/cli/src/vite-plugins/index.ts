@@ -18,9 +18,9 @@ import { gtkxReactCompiler } from "./react-compiler.js";
  * JS-transforming plugins (`enforce: "pre"`), so each pipeline's own
  * JSX/TypeScript transform lowers its output afterward. `gtkxConfig`,
  * `gtkxResources`, and `gtkxReactCompiler` read their settings from
- * `gtkx.config.ts` through one shared memoizing loader, so the pipeline
- * loads the config file once and no caller threads build-time configuration
- * through.
+ * `gtkx.config.ts` through one shared memoizing loader, so the pipeline loads
+ * the config file once and no caller threads build-time configuration through;
+ * `gtkxGSettings` reads the data directory from `package.json` `imports`.
  *
  * @returns The ordered list of core GTKX plugins.
  */

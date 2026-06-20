@@ -1,13 +1,13 @@
 import { execFileSync } from "node:child_process";
 import { EventEmitter } from "node:events";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     BUNDLE_FILENAME,
     escapeXml,
-    OVERRIDE_SEPARATOR,
+    REL_SEPARATOR,
     VIRTUAL_INIT,
     VIRTUAL_PREFIX,
 } from "../../src/vite-plugins/gresource-protocol.js";
@@ -41,9 +41,23 @@ const writeAppConfig = (root: string, applicationId: string): void => {
     );
 };
 
+/** Absolute path of an asset nested in the project's `data/` directory. */
+const dataAssetPath = (...segments: string[]): string => join(tmpDir, "data", ...segments);
+
+/** Writes an asset file under `data/`, creating parent directories. */
+const writeDataAsset = (relPath: string, bytes: Buffer): string => {
+    const full = dataAssetPath(relPath);
+    mkdirSync(dirname(full), { recursive: true });
+    writeFileSync(full, bytes);
+    return full;
+};
+
+/** Builds the synthesized virtual id `load` decodes: resolved path + `#data/`-relative path. */
+const virtualAssetId = (absPath: string, rel: string): string => `${VIRTUAL_PREFIX}${absPath}${REL_SEPARATOR}${rel}`;
+
 /**
- * Drives the plugin's async `config` hook (which self-loads `applicationId`
- * from `gtkx.config.ts`) followed by `configResolved`, mirroring Vite's own
+ * Drives the plugin's `config` hook (which self-loads `applicationId` from
+ * `gtkx.config.ts`) followed by `configResolved`, mirroring Vite's own
  * lifecycle so `load` sees the resolved prefix.
  */
 const initPlugin = async (
@@ -100,47 +114,44 @@ describe("gtkxResources (resolveId)", () => {
         const plugin = gtkxResources();
         const result = await (plugin.resolveId as ResolveIdHook).call(
             { resolve: () => Promise.resolve({ id: "" }) },
-            "./some.module.ts",
+            "#data/some.module.ts",
         );
         expect(result).toBeUndefined();
     });
 
-    it("rewrites asset imports to the virtual prefix", async () => {
+    it("ignores asset imports that are not rooted at #data/", async () => {
         const plugin = gtkxResources();
         const result = await (plugin.resolveId as ResolveIdHook).call(
             { resolve: () => Promise.resolve({ id: "/abs/logo.png" }) },
             "./logo.png",
         );
-        expect(result).toBe(`${VIRTUAL_PREFIX}/abs/logo.png`);
+        expect(result).toBeUndefined();
+    });
+
+    it("rewrites a #data asset import to the virtual prefix, carrying the relative path", async () => {
+        const plugin = gtkxResources();
+        const result = await (plugin.resolveId as ResolveIdHook).call(
+            { resolve: () => Promise.resolve({ id: "/abs/data/icons/logo.png" }) },
+            "#data/icons/logo.png",
+        );
+        expect(result).toBe(`${VIRTUAL_PREFIX}/abs/data/icons/logo.png${REL_SEPARATOR}icons/logo.png`);
     });
 
     it("returns undefined when resolve marks the asset external", async () => {
         const plugin = gtkxResources();
         const result = await (plugin.resolveId as ResolveIdHook).call(
             { resolve: () => Promise.resolve({ id: "/abs/logo.png", external: true }) },
-            "./logo.png",
+            "#data/logo.png",
         );
         expect(result).toBeUndefined();
     });
 
-    it("matches asset paths even when a query string is appended", async () => {
+    it("strips a query string before resolving and carries the relative path", async () => {
         const plugin = gtkxResources();
-        const result = await (plugin.resolveId as ResolveIdHook).call(
-            { resolve: () => Promise.resolve({ id: "/abs/logo.png?import" }) },
-            "./logo.png?import",
-        );
-        expect(result).toBe(`${VIRTUAL_PREFIX}/abs/logo.png?import`);
-    });
-
-    it("strips a ?resource= query before resolving and encodes the override", async () => {
-        const plugin = gtkxResources();
-        const resolve = vi.fn(() => Promise.resolve({ id: "/abs/logo.png" }));
-        const result = await (plugin.resolveId as ResolveIdHook).call(
-            { resolve },
-            "./logo.png?resource=icons/logo.png",
-        );
-        expect(resolve).toHaveBeenCalledWith("./logo.png", undefined, expect.objectContaining({ skipSelf: true }));
-        expect(result).toBe(`${VIRTUAL_PREFIX}/abs/logo.png${OVERRIDE_SEPARATOR}icons/logo.png`);
+        const resolve = vi.fn(() => Promise.resolve({ id: "/abs/data/logo.png" }));
+        const result = await (plugin.resolveId as ResolveIdHook).call({ resolve }, "#data/logo.png?inline");
+        expect(resolve).toHaveBeenCalledWith("#data/logo.png", undefined, expect.objectContaining({ skipSelf: true }));
+        expect(result).toBe(`${VIRTUAL_PREFIX}/abs/data/logo.png${REL_SEPARATOR}logo.png`);
     });
 });
 
@@ -165,9 +176,8 @@ describe("gtkxResources (init module)", () => {
         const plugin = gtkxResources();
         await initPlugin(plugin, "serve", tmpDir, "org.gtk.Demo4");
 
-        const assetPath = join(tmpDir, "logo.png");
-        writeFileSync(assetPath, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
-        (plugin.load as LoadHook)(`${VIRTUAL_PREFIX}${assetPath}`);
+        const assetPath = writeDataAsset("logo.png", Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+        (plugin.load as LoadHook)(virtualAssetId(assetPath, "logo.png"));
 
         const out = (plugin.load as LoadHook)(VIRTUAL_INIT) as string;
         expect(out).toContain("resourcesUnregister");
@@ -184,8 +194,8 @@ describe("gtkxResources (default prefix)", () => {
         const plugin = gtkxResources();
         await initPlugin(plugin, "build", tmpDir);
 
-        const assetPath = join(tmpDir, "icons/foo.svg");
-        const out = (plugin.load as LoadHook)(`${VIRTUAL_PREFIX}${assetPath}`) as string;
+        const assetPath = dataAssetPath("icons", "foo.svg");
+        const out = (plugin.load as LoadHook)(virtualAssetId(assetPath, "icons/foo.svg")) as string;
 
         expect(out).toContain(`export const path = "/gtkx/app/icons/foo.svg";`);
     });
@@ -200,12 +210,12 @@ describe("gtkxResources (asset load)", () => {
         expect((plugin.load as LoadHook)("/abs/path/foo.ts")).toBeUndefined();
     });
 
-    it("rewrites a tracked asset import to a resource URI in build mode", async () => {
+    it("rewrites a #data asset import to a resource URI under the app prefix", async () => {
         const plugin = gtkxResources();
         await initPlugin(plugin, "build", tmpDir, "org.gtk.Demo4");
 
-        const assetPath = join(tmpDir, "icons/foo.svg");
-        const out = (plugin.load as LoadHook)(`${VIRTUAL_PREFIX}${assetPath}`) as string;
+        const assetPath = dataAssetPath("icons", "foo.svg");
+        const out = (plugin.load as LoadHook)(virtualAssetId(assetPath, "icons/foo.svg")) as string;
 
         expect(out).toContain('import { ensureRegistered } from "\\u0000gtkx-gresources-init";');
         expect(out).toContain("ensureRegistered();");
@@ -213,37 +223,14 @@ describe("gtkxResources (asset load)", () => {
         expect(out).toContain(`export const path = "/org/gtk/Demo4/icons/foo.svg";`);
     });
 
-    it("nests a relative ?resource= override under the app prefix", async () => {
+    it("lands a top-level #data asset at the resource base path", async () => {
         const plugin = gtkxResources();
         await initPlugin(plugin, "build", tmpDir, "org.gtk.Demo4");
 
-        const assetPath = join(tmpDir, "src/theme/dark.css");
-        const virtualId = `${VIRTUAL_PREFIX}${assetPath}${OVERRIDE_SEPARATOR}style.css`;
-        const out = (plugin.load as LoadHook)(virtualId) as string;
+        const assetPath = dataAssetPath("style.css");
+        const out = (plugin.load as LoadHook)(virtualAssetId(assetPath, "style.css")) as string;
 
-        expect(out).toContain(`export default "resource:///org/gtk/Demo4/style.css";`);
         expect(out).toContain(`export const path = "/org/gtk/Demo4/style.css";`);
-    });
-
-    it("treats a leading-slash ?resource= override as absolute, bypassing the prefix", async () => {
-        const plugin = gtkxResources();
-        await initPlugin(plugin, "build", tmpDir, "org.gtk.Demo4");
-
-        const assetPath = join(tmpDir, "src/demos/css/brick.png");
-        const virtualId = `${VIRTUAL_PREFIX}${assetPath}${OVERRIDE_SEPARATOR}/css_multiplebgs/brick.png`;
-        const out = (plugin.load as LoadHook)(virtualId) as string;
-
-        expect(out).toContain(`export default "resource:///css_multiplebgs/brick.png";`);
-        expect(out).toContain(`export const path = "/css_multiplebgs/brick.png";`);
-    });
-
-    it("rejects assets outside the Vite root when no override is given", async () => {
-        const root = join(tmpDir, "src");
-        const plugin = gtkxResources();
-        await initPlugin(plugin, "build", root);
-
-        const outsidePath = join(tmpDir, "outside.png");
-        expect(() => (plugin.load as LoadHook)(`${VIRTUAL_PREFIX}${outsidePath}`)).toThrow(/outside the Vite root/);
     });
 });
 
@@ -263,9 +250,8 @@ describe("gtkxResources (buildEnd)", () => {
         const plugin = gtkxResources();
         await initPlugin(plugin, "build", tmpDir, "org.gtk.Demo4");
 
-        const assetPath = join(tmpDir, "logo.png");
-        writeFileSync(assetPath, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
-        (plugin.load as LoadHook)(`${VIRTUAL_PREFIX}${assetPath}`);
+        const assetPath = writeDataAsset("logo.png", Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+        (plugin.load as LoadHook)(virtualAssetId(assetPath, "logo.png"));
 
         expectBuildEndEmitsAsset(plugin.buildEnd as BuildEndHook, BUNDLE_FILENAME);
     });
@@ -288,9 +274,7 @@ const waitTicks = async (n = 2): Promise<void> => {
     }
 };
 
-const writeTinyPng = (path: string): void => {
-    writeFileSync(path, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
-};
+const TINY_PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 
 type WatcherHarness = {
     assetPath: string;
@@ -302,9 +286,8 @@ const setupTrackedAssetServer = async (assetName: string): Promise<WatcherHarnes
     const plugin = gtkxResources();
     await initPlugin(plugin, "serve", tmpDir);
 
-    const assetPath = join(tmpDir, assetName);
-    writeTinyPng(assetPath);
-    (plugin.load as LoadHook)(`${VIRTUAL_PREFIX}${assetPath}`);
+    const assetPath = writeDataAsset(assetName, TINY_PNG);
+    (plugin.load as LoadHook)(virtualAssetId(assetPath, assetName));
 
     const refresh = vi.fn();
     const server = createFakeServer(refresh);
@@ -373,9 +356,8 @@ describe("gtkxResources (watcher: refresh failure)", () => {
         const plugin = gtkxResources();
         await initPlugin(plugin, "serve", tmpDir);
 
-        const assetPath = join(tmpDir, "broken.png");
-        writeTinyPng(assetPath);
-        (plugin.load as LoadHook)(`${VIRTUAL_PREFIX}${assetPath}`);
+        const assetPath = writeDataAsset("broken.png", TINY_PNG);
+        (plugin.load as LoadHook)(virtualAssetId(assetPath, "broken.png"));
 
         const watcher = new EventEmitter();
         const server = {

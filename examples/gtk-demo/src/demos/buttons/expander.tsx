@@ -11,9 +11,9 @@ import {
     GtkTextTag,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
+import { path as gtkLogoCursorPath } from "#data/demos/buttons/gtk_logo_cursor.png";
 import type { Demo } from "../types.js";
 import sourceCode from "./expander.tsx?raw";
-import { path as gtkLogoCursorPath } from "./gtk_logo_cursor.png";
 
 const DETAILS_TEXT = `Finally, the full story with all details. And all the inside information, including error codes, etc etc. Pages of information, you might have to scroll down to read it all, or even resize the window - it works !
 A second paragraph will contain even more innuendo, just to make you scroll down or resize the window.

@@ -10,9 +10,9 @@ import {
     GtkTextBuffer,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
+import brickUri from "#data/demos/css/brick.png";
+import brick2Uri from "#data/demos/css/brick2.png";
 import type { Demo } from "../types.js";
-import brickUri from "./brick.png";
-import brick2Uri from "./brick2.png";
 import sourceCode from "./css-multiplebgs.tsx?raw";
 import cssviewCssPath from "./cssview.css?url";
 import resetCssPath from "./reset.css?url";

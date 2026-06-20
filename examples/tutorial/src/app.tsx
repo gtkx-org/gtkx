@@ -28,7 +28,7 @@ import {
 } from "@gtkx/jsx/gtk";
 import { quit, useApplication, useSetting } from "@gtkx/react";
 import { useRef, useState } from "react";
-import schema from "../com.gtkx.tutorial.gschema.xml";
+import schema from "#data/com.gtkx.tutorial.gschema.xml";
 import { About } from "./components/about.js";
 import { DeleteConfirmation } from "./components/delete-confirmation.js";
 import { NoteCard } from "./components/note-card.js";

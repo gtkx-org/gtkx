@@ -7,7 +7,13 @@ import {
     FINGERPRINT_FILENAME,
     serializeUserTables,
 } from "@gtkx/codegen";
-import { type GtkxConfig, GtkxConfigNotFoundError, loadGtkxConfig, type UserTableRows } from "@gtkx/config";
+import {
+    type GtkxConfig,
+    GtkxConfigNotFoundError,
+    loadGtkxConfig,
+    resolveDataDir,
+    type UserTableRows,
+} from "@gtkx/config";
 import { sortedAlpha } from "@gtkx/utils";
 import { emitSchemaEnv } from "../gsettings/env.js";
 import { resolveGirPath } from "./gir-resolver.js";
@@ -278,7 +284,7 @@ const pruneShadowingStore = (memberDir: string): void => {
  */
 export const syncSchemaEnv = (cwd: string): void => {
     if (isWorkspaceRoot(cwd)) return;
-    emitSchemaEnv(cwd);
+    emitSchemaEnv(cwd, resolveDataDir(cwd));
 };
 
 /**

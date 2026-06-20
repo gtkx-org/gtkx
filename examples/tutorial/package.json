@@ -5,6 +5,9 @@
     "license": "MPL-2.0",
     "description": "Notes app from the GTKX tutorial",
     "type": "module",
+    "imports": {
+        "#data/*": "./data/*"
+    },
     "scripts": {
         "build": "gtkx build",
         "typecheck": "gtkx codegen && tsc -b --noEmit",

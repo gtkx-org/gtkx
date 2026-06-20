@@ -2,13 +2,13 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkPicture, GtkSwitch, GtkToggleButton, GtkVideo } from "@gtkx/jsx/gtk";
 import { useEffect, useState } from "react";
-import { path as floppybuddyGifPath } from "../gestures/floppybuddy.gif";
-import gtkLogoWebmUri from "../media/gtk-logo.webm";
+import { path as animatedSvgPath } from "#data/demos/drawing/animated.gpa";
+import { path as gtkLogoSvgPath } from "#data/demos/drawing/gtk-logo.svg";
+import { path as statefulSvgPath } from "#data/demos/drawing/stateful.gpa";
+import { path as floppybuddyGifPath } from "#data/demos/gestures/floppybuddy.gif";
+import gtkLogoWebmUri from "#data/demos/media/gtk-logo.webm";
 import type { Demo, DemoProps } from "../types.js";
-import { path as animatedSvgPath } from "./animated.gpa";
-import { path as gtkLogoSvgPath } from "./gtk-logo.svg";
 import sourceCode from "./images.tsx?raw";
-import { path as statefulSvgPath } from "./stateful.gpa";
 
 let symbolicIcon: Gio.ThemedIcon | undefined;
 function getSymbolicIcon() {

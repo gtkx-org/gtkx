@@ -4,10 +4,10 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkButton, GtkHeaderBar, GtkImage, GtkShortcut, GtkShortcutController, GtkVideo } from "@gtkx/jsx/gtk";
 import { useSignal } from "@gtkx/react";
 import { createContext, useContext, useState } from "react";
+import { path as bbbPngPath } from "#data/demos/media/bbb.png";
+import { path as gtkLogoCursorPath } from "#data/demos/media/gtk_logo_cursor.png";
+import gtkLogoUri from "#data/demos/media/gtk-logo.webm";
 import type { Demo, DemoProviderProps } from "../types.js";
-import { path as bbbPngPath } from "./bbb.png";
-import { path as gtkLogoCursorPath } from "./gtk_logo_cursor.png";
-import gtkLogoUri from "./gtk-logo.webm";
 import sourceCode from "./video-player.tsx?raw";
 
 const openVideoDialog = async (window: Gtk.Window | null, setVideoFile: (f: Gio.File) => void) => {

@@ -24,11 +24,11 @@ import {
     GtkSeparator,
 } from "@gtkx/jsx/gtk";
 import { useEffect, useRef, useState } from "react";
+import { path as trashSvgPath } from "#data/demos/gestures/user-trash-opening.gpa";
 import { useContextMenuGesture } from "../../use-context-menu-gesture.js";
 import { useImperativeDragVisibility } from "../../use-imperative-drag-visibility.js";
 import type { Demo } from "../types.js";
 import sourceCode from "./dnd.tsx?raw";
-import { path as trashSvgPath } from "./user-trash-opening.gpa";
 
 const buildRectangle = (x: number, y: number, width: number, height: number): Gdk.Rectangle => {
     const rectangle = new Gdk.Rectangle();

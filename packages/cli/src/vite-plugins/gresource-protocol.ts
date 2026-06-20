@@ -1,8 +1,8 @@
 /**
  * Wire-protocol constants and helpers shared between the GResource Vite
  * plugin and its test suite: the sentinel virtual-module ids the plugin
- * synthesizes, the compiled bundle filename, the `?resource=` override
- * separator, and the manifest XML escaper.
+ * synthesizes, the compiled bundle filename, the resource-path separator,
+ * and the manifest XML escaper.
  */
 
 /** Prefix marking a synthesized virtual asset module id. */
@@ -14,8 +14,11 @@ export const VIRTUAL_INIT = "\0gtkx-gresources-init";
 /** Filename of the compiled GResource bundle emitted at build end. */
 export const BUNDLE_FILENAME = "gtkx.gresource";
 
-/** Separator joining a resolved asset id to its `?resource=` override. */
-export const OVERRIDE_SEPARATOR = "\0resource=";
+/**
+ * Separator joining a resolved asset's absolute path to its `#data/`-relative
+ * resource path inside a synthesized virtual module id.
+ */
+export const REL_SEPARATOR = "\0rel=";
 
 /**
  * XML-escapes the five reserved characters (`<`, `>`, `&`, `"`, `'`) used

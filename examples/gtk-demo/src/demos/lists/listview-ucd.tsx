@@ -4,9 +4,9 @@ import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkColumnView, GtkColumnViewColumn, GtkInscription, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { useState } from "react";
+import { path as ucdDataPath } from "#data/demos/lists/ucdnames.data";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-ucd.tsx?raw";
-import { path as ucdDataPath } from "./ucdnames.data";
 
 interface UcdEntry {
     codepoint: number;
