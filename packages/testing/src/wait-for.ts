@@ -6,6 +6,8 @@ import type { WaitForOptions } from "./types.js";
 
 const DEFAULT_INTERVAL = 50;
 
+const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
 /**
  * Drains the JS microtask queue by yielding one `setTimeout(0)` round.
  *
@@ -13,7 +15,7 @@ const DEFAULT_INTERVAL = 50;
  * `IS_REACT_ACT_ENVIRONMENT` was cleared get a chance to settle before the
  * caller re-enters an act-tracked scope.
  */
-const drainMicrotasks = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+const drainMicrotasks = (): Promise<void> => delay(0);
 
 /**
  * Runs an async callback with `IS_REACT_ACT_ENVIRONMENT` cleared, draining the
@@ -71,7 +73,7 @@ export const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOpti
                 return await callback();
             } catch (error) {
                 lastError = error as Error;
-                await new Promise((resolve) => setTimeout(resolve, interval));
+                await delay(interval);
             }
         }
 
