@@ -42,46 +42,45 @@ export type RuntimeTables = {
     readonly containerProps: Readonly<Record<string, readonly string[]>>;
 };
 
-const CONFIG_TYPES = "@gtkx/config";
+const configType = (name: string): string => `import("@gtkx/config").${name}`;
 
-const renderTableConst = (name: string, annotation: string, value: unknown): string =>
-    `export const ${name}: ${annotation} = ${JSON.stringify(value, null, 4)};`;
+const nestedRecordOf = (rowType: string): string =>
+    `Readonly<Record<string, Readonly<Record<string, ${configType(rowType)}>>>>`;
 
-const renderRuntimeTables = (tables: RuntimeTables): readonly string[] => [
-    renderTableConst("ELEMENT_MAP", `ReadonlyArray<import("${CONFIG_TYPES}").ElementMapRule>`, tables.elementMap),
-    renderTableConst(
-        "ARRAY_PROPS",
-        `Readonly<Record<string, Readonly<Record<string, import("${CONFIG_TYPES}").ArrayPropRow>>>>`,
-        tables.arrayProps,
-    ),
-    renderTableConst(
-        "OBJECT_PROPS",
-        `Readonly<Record<string, Readonly<Record<string, import("${CONFIG_TYPES}").ObjectPropRow>>>>`,
-        tables.objectProps,
-    ),
-    renderTableConst(
-        "VIRTUAL_PROPS",
-        `Readonly<Record<string, Readonly<Record<string, import("${CONFIG_TYPES}").VirtualPropRow>>>>`,
-        tables.virtualProps,
-    ),
-    renderTableConst(
-        "PROP_RULES",
-        `Readonly<Record<string, ReadonlyArray<import("${CONFIG_TYPES}").PropRule>>>`,
-        tables.propRules,
-    ),
-    renderTableConst("TOP_LEVEL_TYPES", "readonly string[]", tables.topLevelTypes),
-    renderTableConst(
-        "META_OBJECT_ADD_METHODS",
-        `Readonly<Record<string, ReadonlyArray<import("${CONFIG_TYPES}").AddMethodRule>>>`,
-        tables.metaObjectAddMethods,
-    ),
-    renderTableConst(
-        "PAGE_META_SETTERS",
-        `ReadonlyArray<import("${CONFIG_TYPES}").PageMetaSetter>`,
-        tables.pageMetaSetters,
-    ),
-    renderTableConst("CONTAINER_PROPS", "Readonly<Record<string, readonly string[]>>", tables.containerProps),
-];
+const recordOfArray = (rowType: string): string => `Readonly<Record<string, ReadonlyArray<${configType(rowType)}>>>`;
+
+const arrayOf = (rowType: string): string => `ReadonlyArray<${configType(rowType)}>`;
+
+/**
+ * The generated const name and TypeScript annotation for one {@link RuntimeTables}
+ * field, baked next to its value as a `JSON.stringify`d literal.
+ */
+type RuntimeTableSpec = {
+    /** The exported const identifier. */
+    readonly name: string;
+    /** The TypeScript type annotation, re-spelling the field's `@gtkx/config` shape. */
+    readonly annotation: string;
+};
+
+const RUNTIME_TABLE_SPECS: Readonly<Record<keyof RuntimeTables, RuntimeTableSpec>> = {
+    elementMap: { name: "ELEMENT_MAP", annotation: arrayOf("ElementMapRule") },
+    arrayProps: { name: "ARRAY_PROPS", annotation: nestedRecordOf("ArrayPropRow") },
+    objectProps: { name: "OBJECT_PROPS", annotation: nestedRecordOf("ObjectPropRow") },
+    virtualProps: { name: "VIRTUAL_PROPS", annotation: nestedRecordOf("VirtualPropRow") },
+    propRules: { name: "PROP_RULES", annotation: recordOfArray("PropRule") },
+    topLevelTypes: { name: "TOP_LEVEL_TYPES", annotation: "readonly string[]" },
+    metaObjectAddMethods: { name: "META_OBJECT_ADD_METHODS", annotation: recordOfArray("AddMethodRule") },
+    pageMetaSetters: { name: "PAGE_META_SETTERS", annotation: arrayOf("PageMetaSetter") },
+    containerProps: { name: "CONTAINER_PROPS", annotation: "Readonly<Record<string, readonly string[]>>" },
+};
+
+const RUNTIME_TABLE_KEYS = Object.keys(RUNTIME_TABLE_SPECS) as ReadonlyArray<keyof RuntimeTables>;
+
+const renderRuntimeTables = (tables: RuntimeTables): readonly string[] =>
+    RUNTIME_TABLE_KEYS.map((key) => {
+        const { name, annotation } = RUNTIME_TABLE_SPECS[key];
+        return `export const ${name}: ${annotation} = ${JSON.stringify(tables[key], null, 4)};`;
+    });
 
 /**
  * Generates `metadata.ts` source — the merged `SIGNALS`, `CONSTRUCT_ONLY_PROPS`,
@@ -107,10 +106,10 @@ export const generateMetadata = (repository: GirRepository, tables: RuntimeTable
     );
     const constructOnlyEntries = widgets
         .filter(({ constructOnly }) => constructOnly.length > 0)
-        .map(({ glibName, constructOnly }) => `    "${glibName}": new Set([${constructOnly.map(quote).join(",")}]),`);
+        .map(({ glibName, constructOnly }) => `    "${glibName}": ${renderStringSet(constructOnly)},`);
     const constructableEntries = widgets
         .filter(({ constructable }) => constructable.length > 0)
-        .map(({ glibName, constructable }) => `    "${glibName}": new Set([${constructable.map(quote).join(",")}]),`);
+        .map(({ glibName, constructable }) => `    "${glibName}": ${renderStringSet(constructable)},`);
     const defaultsEntries = widgets
         .filter(({ defaults }) => defaults.length > 0)
         .map(({ glibName, defaults }) => `    "${glibName}": ${renderDefaultsObject(defaults)},`);
@@ -210,11 +209,28 @@ const collectConstructOnly = (sources: readonly GirClass[]): readonly string[] =
 const collectConstructable = (sources: readonly GirClass[]): readonly string[] =>
     collectPropNames(sources, isConstructableProperty);
 
-const renderSignalsObject = (entries: ReadonlyArray<readonly [string, string]>): string => {
+/**
+ * Renders a `glibName`-keyed entry's value as an object literal: empty collapses
+ * to `{}`, otherwise each pair is quoted-key, `renderValue`d-value, two-level
+ * indented with the closing brace at the entry's own indent.
+ *
+ * @param entries - The key/value pairs to render
+ * @param renderValue - Renders each pair's value to source (e.g. quoting it)
+ */
+const renderObjectLiteral = (
+    entries: ReadonlyArray<readonly [string, string]>,
+    renderValue: (value: string) => string,
+): string => {
     if (entries.length === 0) return "{}";
-    const lines = entries.map(([key, value]) => `        ${quote(key)}: ${quote(value)}`);
+    const lines = entries.map(([key, value]) => `        ${quote(key)}: ${renderValue(value)}`);
     return `{\n${lines.join(",\n")}\n    }`;
 };
+
+/** Renders a list of property names as a `new Set([...])` of quoted strings. */
+const renderStringSet = (names: readonly string[]): string => `new Set([${names.map(quote).join(",")}])`;
+
+const renderSignalsObject = (entries: ReadonlyArray<readonly [string, string]>): string =>
+    renderObjectLiteral(entries, quote);
 
 /**
  * Collects the settable properties a class introduces (its own plus those of
@@ -317,8 +333,5 @@ const enumDefaultLiteral = (enumType: GirEnum, raw: string): string | undefined 
     return member?.value;
 };
 
-const renderDefaultsObject = (entries: ReadonlyArray<readonly [string, string]>): string => {
-    if (entries.length === 0) return "{}";
-    const lines = entries.map(([key, literal]) => `        ${quote(key)}: ${literal}`);
-    return `{\n${lines.join(",\n")}\n    }`;
-};
+const renderDefaultsObject = (entries: ReadonlyArray<readonly [string, string]>): string =>
+    renderObjectLiteral(entries, (literal) => literal);
