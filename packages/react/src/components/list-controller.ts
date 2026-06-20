@@ -240,13 +240,7 @@ export class ListController implements ColumnHost {
      * that runs the flush through the installed deferred-flush wrapper.
      */
     public scheduleBoundItemsUpdate(): void {
-        if (this.boundItemsUpdateScheduled) return;
-        this.boundItemsUpdateScheduled = true;
-        if (isInCommit()) {
-            scheduleFlush(this.flushBoundItemsUpdate);
-        } else {
-            queueMicrotask(this.deferredBoundItemsFlush);
-        }
+        this.requestBoundItemsUpdate(queueMicrotask);
     }
 
     /**
@@ -258,12 +252,25 @@ export class ListController implements ColumnHost {
      * through the installed deferred-flush wrapper.
      */
     public queueBoundItemsUpdate(): void {
+        this.requestBoundItemsUpdate(setImmediate);
+    }
+
+    /**
+     * Schedules a single bound-item flush, guarding against a detached
+     * controller and a flush already pending. Inside a React commit the flush is
+     * queued onto the post-commit queue so it drains within the same `act`
+     * boundary; otherwise `defer` schedules the deferred flush onto its task
+     * queue (a microtask or a macrotask).
+     *
+     * @param defer - Schedules the deferred flush off the commit, e.g. `queueMicrotask`.
+     */
+    private requestBoundItemsUpdate(defer: (flush: () => void) => void): void {
         if (this.detached || this.boundItemsUpdateScheduled) return;
         this.boundItemsUpdateScheduled = true;
         if (isInCommit()) {
             scheduleFlush(this.flushBoundItemsUpdate);
         } else {
-            setImmediate(this.deferredBoundItemsFlush);
+            defer(this.deferredBoundItemsFlush);
         }
     }
 
