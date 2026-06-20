@@ -200,11 +200,6 @@ impl Mailbox {
         !self.running.load(Ordering::Acquire)
     }
 
-    /// Returns whether the mailbox is running.
-    pub fn is_running(&self) -> bool {
-        self.running.load(Ordering::Acquire)
-    }
-
     /// Increments the freeze depth. Returns true if this was the outermost call.
     pub fn freeze(&self) -> bool {
         self.freeze_depth.fetch_add(1, Ordering::AcqRel) == 0
