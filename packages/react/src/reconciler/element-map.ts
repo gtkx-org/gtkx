@@ -13,7 +13,7 @@
  * child's own props/children and stashing per-attachment bookkeeping in the
  * mapping's own per-node `WeakMap`.
  */
-import { META_OBJECT_ADD_METHODS, PAGE_META_SETTERS, TOP_LEVEL_TYPES } from "virtual:gtkx-config";
+import { META_OBJECT_ADD_METHODS, PAGE_META_SETTERS } from "virtual:gtkx-config";
 import {
     type AddMethodRule,
     CONTAINER_PROP_KIND,
@@ -28,9 +28,16 @@ import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { findInheritedRow } from "../utils/gtype.js";
-import { hasType } from "../utils/gtype-predicates.js";
 import { DATA_ATTACH_MAPPINGS, findDataAttachMapping, promotedNestingGuardMapping } from "./attach-rules.js";
 import type { ElementMapping } from "./element-mapping.js";
+import { attachToParent, setElementMap } from "./mappings/dispatch.js";
+import {
+    childWidget,
+    isTopLevel,
+    trackedInstance,
+    trackedWidget,
+    wrapperChildWidgets,
+} from "./mappings/wrapper-content.js";
 import {
     type InsertableWidget,
     isAddable,
@@ -45,7 +52,6 @@ import { callMethod } from "./reflect-call.js";
 import { isWrapperKind, type Node, stateOf } from "./state.js";
 import type { Props } from "./types.js";
 import { attachChild, detachChild, getFocusWidget, isAttachedTo, isDescendantOf, unparentWidget } from "./widget.js";
-import { isWrapperElement } from "./wrapper-element.js";
 
 const isRooted = (instance: GObject.Object): boolean =>
     instance instanceof Gtk.Widget ? instance.getRoot() !== null : true;
@@ -54,46 +60,6 @@ const rescueFocus = (parent: GObject.Object, child: GObject.Object | undefined):
     if (!(parent instanceof Gtk.Widget) || !(child instanceof Gtk.Widget)) return;
     const focus = getFocusWidget(child);
     if (focus && isDescendantOf(focus, child)) parent.grabFocus();
-};
-
-const isTopLevelSurface = (widget: GObject.Object): boolean =>
-    TOP_LEVEL_TYPES.some((typeName) => hasType(widget, typeName));
-
-/**
- * The widget a child node contributes to its parent: its backing widget, unless
- * it is a top-level surface (per the `TOP_LEVEL_TYPES` table — windows and
- * dialogs never attach as widget children) or a non-widget GObject.
- */
-const childWidget = (instance: Node): Gtk.Widget | null => {
-    if (!(instance instanceof Gtk.Widget)) return null;
-    if (isTopLevelSurface(instance)) return null;
-    return instance;
-};
-
-// --- Wrapper content selection ---
-
-/** The wrapper's primary tracked content child, skipping the tab-label slot. */
-const trackedChild = (marker: Node): Node | null => {
-    const { children } = stateOf(marker);
-    return children.find((child) => !isWrapperKind(child, TAB_LABEL_KIND)) ?? children[0] ?? null;
-};
-
-const trackedWidget = (marker: Node): Gtk.Widget | null => {
-    const child = trackedChild(marker);
-    return child instanceof Gtk.Widget ? child : null;
-};
-
-const trackedInstance = (marker: Node): GObject.Object | undefined => {
-    const child = trackedChild(marker);
-    return child instanceof GObject.Object ? child : undefined;
-};
-
-const wrapperChildWidgets = (marker: Node): Gtk.Widget[] => {
-    const widgets: Gtk.Widget[] = [];
-    for (const child of stateOf(marker).children) {
-        if (child instanceof Gtk.Widget) widgets.push(child);
-    }
-    return widgets;
 };
 
 // --- Slot (single, property setter) ---
@@ -476,8 +442,6 @@ const overlayMapping: ElementMapping = {
 
 // --- Top-level surfaces ---
 
-const isTopLevel = (instance: Node): boolean => instance instanceof GObject.Object && isTopLevelSurface(instance);
-
 const topLevelSkipMapping: ElementMapping = {
     matches: (child) => isTopLevel(child),
     attach: () => {},
@@ -668,40 +632,6 @@ export const ELEMENT_MAP: readonly ElementMapping[] = [
     widgetContainerMapping,
 ];
 
-const resolveMapping = (child: Node, parent: Node): ElementMapping | undefined =>
-    ELEMENT_MAP.find((mapping) => mapping.matches(child, parent));
+setElementMap(ELEMENT_MAP);
 
-/**
- * Attaches `child` to `parent` through the first matching {@link ELEMENT_MAP}
- * entry. `anchor` is the next sibling's backing instance for ordered insertion.
- *
- * @param child - The child node being attached.
- * @param parent - The parent node it attaches to.
- * @param anchor - The next sibling's backing instance, or `null` to append.
- * @param fresh - Whether the child has not been attached before, so its backing
- *   widget is known unparented and the defensive unparent can be skipped.
- */
-export const attachToParent = (child: Node, parent: Node, anchor?: GObject.Object | null, fresh?: boolean): void => {
-    resolveMapping(child, parent)?.attach(child, parent, anchor, fresh);
-};
-
-/**
- * Reverses {@link attachToParent}, detaching `child` from `parent`.
- *
- * @param child - The child node being detached.
- * @param parent - The parent node it detaches from.
- */
-export const detachFromParent = (child: Node, parent: Node): void => {
-    resolveMapping(child, parent)?.detach(child, parent);
-};
-
-/**
- * Re-runs a metadata wrapper's idempotent attach against its current parent so
- * its content and metadata reconcile after a child or prop change.
- *
- * @param marker - The wrapper node to resynchronize.
- */
-export const resyncWrapper = (marker: Node): void => {
-    const parent = stateOf(marker).parent;
-    if (isWrapperElement(marker) && parent) attachToParent(marker, parent);
-};
+export { attachToParent, detachFromParent, resyncWrapper } from "./mappings/dispatch.js";
