@@ -18,7 +18,8 @@
  * - `bench`: runs the marshalling and reconciler benchmarks under the CodSpeed
  *   runner. A single `codspeed run` instruments the Rust (cargo-codspeed) and
  *   TypeScript (vitest) suites as one report. The reconciler benches render real
- *   widgets, so the vitest suite runs under Xvfb with the software renderer; its
+ *   widgets, so the vitest suite runs under a headless weston compositor with
+ *   the software renderer; its
  *   `@codspeed/core` addon needs a V8 that Node 26 dropped, so it runs on the
  *   secondary Node 22 in `/opt/node22`. `bench:measured` is the inner command
  *   CodSpeed instruments and is not meant to be invoked directly.
@@ -60,12 +61,27 @@ function run(command: string, args: string[], options: RunOptions = {}): void {
 const tasks: Record<string, () => void> = {
     asan() {
         run(
-            "xvfb-run",
-            ["-a", "cargo", "+nightly", "test", "--target", "x86_64-unknown-linux-gnu", "--", "--test-threads=1"],
+            "wlheadless-run",
+            [
+                "-c",
+                "weston",
+                "--",
+                "cargo",
+                "+nightly",
+                "test",
+                "--target",
+                "x86_64-unknown-linux-gnu",
+                "--",
+                "--test-threads=1",
+            ],
             {
                 cwd: nativeDir,
                 env: {
                     ...process.env,
+                    GDK_BACKEND: "wayland",
+                    GSK_RENDERER: "cairo",
+                    LIBGL_ALWAYS_SOFTWARE: "1",
+                    GDK_DISABLE: "vulkan",
                     RUSTUP_TOOLCHAIN: "nightly",
                     RUSTFLAGS: "-Zsanitizer=address",
                     ASAN_OPTIONS: "detect_leaks=0:abort_on_error=1:detect_stack_use_after_return=1",
@@ -88,11 +104,13 @@ const tasks: Record<string, () => void> = {
     },
     "bench:measured"() {
         run("cargo", ["codspeed", "run"], { cwd: nativeDir });
-        run("xvfb-run", ["-a", "pnpm", "--filter", "@gtkx/e2e", "bench"], {
+        run("wlheadless-run", ["-c", "weston", "--", "pnpm", "--filter", "@gtkx/e2e", "bench"], {
             env: {
                 ...process.env,
+                GDK_BACKEND: "wayland",
                 GSK_RENDERER: "cairo",
                 LIBGL_ALWAYS_SOFTWARE: "1",
+                GDK_DISABLE: "vulkan",
                 PATH: `/opt/node22/bin:${process.env.PATH ?? ""}`,
             },
         });

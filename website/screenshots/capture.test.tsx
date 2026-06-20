@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type * as Gtk from "@gtkx/gi/gtk";
@@ -13,6 +12,7 @@ import { Chapter5 } from "./chapters/5-navigation.js";
 import { Chapter6 } from "./chapters/6-dialogs-and-animations.js";
 import { Chapter7 } from "./chapters/7-settings-and-preferences.js";
 import { Chapter8 } from "./chapters/8-deploying.js";
+import { grabOutput } from "./headless.js";
 import { setTheme, THEMES } from "./theme.js";
 
 const OUT_DIR = resolve(import.meta.dirname, "out/tutorial");
@@ -25,43 +25,9 @@ const saveSnapshot = async (filename: string, windowTitle?: string) => {
     writeFileSync(resolve(OUT_DIR, filename), Buffer.from(result.data, "base64"));
 };
 
-const displayGrabSize = (process.env.GTKX_XVFB_SCREEN ?? "1024x768x24").split("x").slice(0, 2).join("x");
-
-const grabWithFfmpeg = (path: string) => {
-    execFileSync("ffmpeg", [
-        "-y",
-        "-loglevel",
-        "error",
-        "-f",
-        "x11grab",
-        "-draw_mouse",
-        "0",
-        "-video_size",
-        displayGrabSize,
-        "-i",
-        process.env.DISPLAY ?? ":0",
-        "-frames:v",
-        "1",
-        path,
-    ]);
-};
-
-const grabWithImageMagick = (path: string) => {
-    execFileSync("import", ["-window", "root", `png:${path}`]);
-};
-
-const isMissingBinary = (error: unknown): boolean =>
-    error instanceof Error && "code" in error && error.code === "ENOENT";
-
 const saveDisplayScreenshot = async (filename: string) => {
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 200));
-    const path = resolve(OUT_DIR, filename);
-    try {
-        grabWithFfmpeg(path);
-    } catch (error) {
-        if (!isMissingBinary(error)) throw error;
-        grabWithImageMagick(path);
-    }
+    grabOutput(resolve(OUT_DIR, filename));
 };
 
 interface ChapterDef {

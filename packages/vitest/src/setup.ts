@@ -1,8 +1,7 @@
 import { type ChildProcess, type StdioOptions, spawn } from "node:child_process";
-import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Readable } from "node:stream";
 
 declare global {
     var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
@@ -10,9 +9,12 @@ declare global {
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-const busDir = mkdtempSync(join(tmpdir(), "gtkx-dbus-"));
-const busConfigPath = join(busDir, "session.conf");
-const busSocketPath = join(busDir, "bus");
+const runtimeDir = mkdtempSync(join(tmpdir(), "gtkx-xdg-"));
+chmodSync(runtimeDir, 0o700);
+process.env.XDG_RUNTIME_DIR = runtimeDir;
+
+const busConfigPath = join(runtimeDir, "session.conf");
+const busSocketPath = join(runtimeDir, "bus");
 
 writeFileSync(
     busConfigPath,
@@ -35,8 +37,8 @@ writeFileSync(
  * `setpriv --pdeathsig SIGKILL` makes the kernel kill the helper the instant
  * the worker process dies — by any signal, including a `SIGSEGV` from a native
  * crash or a `SIGKILL` from the OOM killer — paths that `process.on` exit and
- * signal handlers cannot cover. Without it a crashed worker orphans its `Xvfb`
- * and `dbus-daemon`, leaking one of each per crash.
+ * signal handlers cannot cover. Without it a crashed worker orphans its
+ * compositor and `dbus-daemon`, leaking one of each per crash.
  */
 const spawnWorkerChild = (command: string, args: string[], stdio: StdioOptions): ChildProcess => {
     const child = spawn("setpriv", ["--pdeathsig", "SIGKILL", command, ...args], { stdio });
@@ -44,12 +46,71 @@ const spawnWorkerChild = (command: string, args: string[], stdio: StdioOptions):
     return child;
 };
 
-const xvfbScreen = process.env.GTKX_XVFB_SCREEN ?? "1024x768x24";
-const xvfb = spawnWorkerChild("Xvfb", ["-displayfd", "1", "-screen", "0", xvfbScreen], ["ignore", "pipe", "pipe"]);
 spawnWorkerChild("dbus-daemon", [`--config-file=${busConfigPath}`], "ignore");
-
 process.env.DBUS_SESSION_BUS_ADDRESS = `unix:path=${busSocketPath}`;
-process.env.GDK_BACKEND = "x11";
+
+const [width, height] = (process.env.GTKX_HEADLESS_SIZE ?? "1024x768").split("x");
+
+/**
+ * Launches the per-worker headless Wayland compositor that GTK realizes its
+ * windows against, returning the `WAYLAND_DISPLAY` socket name it listens on.
+ *
+ * `weston` (the default) is the lightest multi-client headless compositor and
+ * is what every test path uses, since `@gtkx/testing` synthesizes input by
+ * emitting controller signals and captures screenshots in-process — neither
+ * touches the compositor's input or output. `sway` is selected through
+ * `GTKX_COMPOSITOR=sway` only by the website asset pipeline, which needs the
+ * `wlr-screencopy` protocol (for `grim`/`wf-recorder`) that weston does not
+ * implement; its single `HEADLESS-1` output is sized to match and its windows
+ * float at their natural size so a full-output grab matches an X server's.
+ */
+const startCompositor = (): { child: ChildProcess; socket: string } => {
+    if (process.env.GTKX_COMPOSITOR === "sway") {
+        const configPath = join(runtimeDir, "sway.conf");
+        writeFileSync(
+            configPath,
+            [
+                "xwayland disable",
+                "default_border none",
+                "default_floating_border none",
+                `output HEADLESS-1 resolution ${width}x${height}`,
+                "output HEADLESS-1 bg #000000 solid_color",
+                'for_window [app_id=".*"] floating enable, border none',
+                'for_window [title=".*"] floating enable, border none',
+                "",
+            ].join("\n"),
+        );
+        process.env.WLR_BACKENDS = "headless";
+        process.env.WLR_RENDERER = "pixman";
+        process.env.WLR_RENDERER_ALLOW_SOFTWARE = "1";
+        process.env.WLR_LIBINPUT_NO_DEVICES = "1";
+        process.env.WLR_HEADLESS_OUTPUTS = "1";
+        return {
+            child: spawnWorkerChild("sway", ["-c", configPath], ["ignore", "ignore", "pipe"]),
+            socket: "wayland-1",
+        };
+    }
+
+    const socket = "wayland-0";
+    const child = spawnWorkerChild(
+        "weston",
+        [
+            "--backend=headless",
+            "--renderer=pixman",
+            "--fake-seat",
+            `--width=${width}`,
+            `--height=${height}`,
+            `--socket=${socket}`,
+        ],
+        ["ignore", "ignore", "pipe"],
+    );
+    return { child, socket };
+};
+
+const compositor = startCompositor();
+
+process.env.WAYLAND_DISPLAY = compositor.socket;
+process.env.GDK_BACKEND = "wayland";
 process.env.GDK_DISABLE = "vulkan";
 process.env.GSK_RENDERER = "cairo";
 process.env.GTK_A11Y = "test";
@@ -68,66 +129,54 @@ const waitForFile = async (path: string, label: string, timeout = 15000): Promis
 };
 
 /**
- * Resolves with the display number Xvfb chose, reported on its `-displayfd`.
+ * Resolves once the compositor's Wayland socket appears, or rejects with the
+ * captured log if the compositor exits first.
  *
- * Letting Xvfb scan for and claim a free display — rather than computing one
- * from the worker PID — removes collisions between the many worker `Xvfb`
- * instances a `turbo` run starts concurrently. The number is written only once
- * the server owns the display and accepts connections, so it is usable as soon
- * as it arrives. An early server exit is surfaced with its captured log instead
- * of stalling until the timeout elapses.
+ * Polling for the socket file — rather than parsing compositor stdout — works
+ * uniformly across weston and sway, since the socket is created only once the
+ * compositor accepts connections. An early exit is surfaced with its captured
+ * `stderr` instead of stalling until the timeout elapses.
  */
-const waitForDisplay = (timeout = 15000): Promise<string> =>
+const waitForCompositor = (child: ChildProcess, socketPath: string, timeout = 15000): Promise<void> =>
     new Promise((resolve, reject) => {
-        const { stdout, stderr } = xvfb;
-        if (stdout === null || stderr === null) {
-            reject(new Error("Xvfb output pipes are unavailable"));
-            return;
-        }
-        stdout.setEncoding("utf8");
-        stderr.setEncoding("utf8");
-        let displayBuffer = "";
         let log = "";
+        const { stderr } = child;
+        stderr?.setEncoding("utf8");
+        stderr?.on("data", (chunk: string) => {
+            log += chunk;
+        });
         let timer: ReturnType<typeof setTimeout>;
+        let poll: ReturnType<typeof setInterval>;
         const stopListening = (): void => {
             clearTimeout(timer);
-            stdout.removeAllListeners("data");
-            stderr.removeAllListeners("data");
-            xvfb.removeAllListeners("exit");
-        };
-        const drain = (stream: Readable): void => {
-            stream.resume();
-            (stream as Partial<{ unref(): void }>).unref?.();
-        };
-        const onDisplay = (chunk: string): void => {
-            displayBuffer += chunk;
-            const newline = displayBuffer.indexOf("\n");
-            if (newline === -1) {
-                return;
-            }
-            stopListening();
-            drain(stdout);
-            drain(stderr);
-            resolve(displayBuffer.slice(0, newline).trim());
+            clearInterval(poll);
+            child.removeListener("exit", onExit);
+            stderr?.removeAllListeners("data");
+            stderr?.resume();
+            (stderr as Partial<{ unref(): void }> | null)?.unref?.();
         };
         const onExit = (code: number | null, signal: NodeJS.Signals | null): void => {
             stopListening();
             reject(
                 new Error(
-                    `Xvfb exited (code ${code ?? "null"}, signal ${signal ?? "null"}) before reporting a display\n${log}`,
+                    `Compositor exited (code ${code ?? "null"}, signal ${signal ?? "null"}) before its socket appeared\n${log}`,
                 ),
             );
         };
+        poll = setInterval(() => {
+            if (existsSync(socketPath)) {
+                stopListening();
+                resolve();
+            }
+        }, 50);
         timer = setTimeout(() => {
             stopListening();
-            reject(new Error(`Xvfb did not report a display within ${timeout}ms\n${log}`));
+            reject(new Error(`Compositor did not create ${socketPath} within ${timeout}ms\n${log}`));
         }, timeout);
-        stdout.on("data", onDisplay);
-        stderr.on("data", (chunk: string) => {
-            log += chunk;
-        });
-        xvfb.on("exit", onExit);
+        child.on("exit", onExit);
     });
 
-const [display] = await Promise.all([waitForDisplay(), waitForFile(busSocketPath, "D-Bus session bus")]);
-process.env.DISPLAY = `:${display}`;
+await Promise.all([
+    waitForCompositor(compositor.child, join(runtimeDir, compositor.socket)),
+    waitForFile(busSocketPath, "D-Bus session bus"),
+]);

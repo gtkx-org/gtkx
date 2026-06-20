@@ -37,7 +37,7 @@ GTKX is a framework for building native Linux applications with React and GTK. A
 - **Native, not embedded** — No Chromium, no WebView, no second runtime. A Rust napi-rs module binds vanilla Node.js straight to GTK through libffi.
 - **All of GTK4 and Libadwaita** — Every class, signal, and property, generated from GObject Introspection with full TypeScript types. The GNOME look and feel out of the box.
 - **CSS-in-JS for GTK** — Emotion-style tagged templates compile to GTK CSS. Nesting, prop interpolation, and global styles.
-- **Tests that touch real widgets** — A Testing Library-style API and a Vitest plugin drive real GTK under Xvfb. Query by accessible role, click, type, assert.
+- **Tests that touch real widgets** — A Testing Library-style API and a Vitest plugin drive real GTK under a headless Wayland compositor. Query by accessible role, click, type, assert.
 - **Built for AI agents** — A built-in MCP server exposes the live widget tree: agents inspect, click, type, fire signals, and screenshot your running app.
 
 ## Prerequisites

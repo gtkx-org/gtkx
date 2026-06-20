@@ -1,6 +1,7 @@
 import { dedupeBy, quote, toCamelIdentifier, toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent, renderBlock, renderBraced } from "../dsl/emit.js";
+import { ancestorChain } from "../gir/ancestry.js";
 import type { GirClass } from "../gir/class.js";
 import { type GirProperty, isConstructableProperty } from "../gir/property.js";
 import { splitOptionalNamespace } from "../gir/type-ref.js";
@@ -9,21 +10,49 @@ import { renderTsType } from "./ts-type.js";
 import { renderFfiType } from "./value.js";
 
 /**
+ * The camelCase names of every constructable property an ancestor class
+ * introduces. A GIR class may redeclare an inherited property (e.g. an Adwaita
+ * page redeclares `GtkWidget`'s `name`); since each constructor translates its
+ * props to `[ffiType, value]` instructions and forwards `...rest` to `super`,
+ * translating a redeclared property here would wrap it a second time when the
+ * introducing ancestor's constructor translates it again. Excluding these names
+ * forwards such props up untouched to the single ancestor that owns them.
+ *
+ * @param context - The module context
+ * @param klass - The class whose ancestors to scan
+ */
+const ancestorConstructablePropNames = (context: ModuleContext, klass: GirClass): ReadonlySet<string> => {
+    const names = new Set<string>();
+    for (const { klass: ancestor } of ancestorChain(context.repository, klass, context.namespace.name)) {
+        if (ancestor === klass) continue;
+        for (const property of ancestor.properties) {
+            if (isConstructableProperty(property)) names.add(toCamelIdentifier(property.name));
+        }
+    }
+    return names;
+};
+
+/**
  * The constructable properties a class introduces: its own writable/construct
  * properties plus those it inherits from directly-implemented interfaces,
  * deduplicated by camelCase JS name (the class's own declaration wins).
  *
- * Ancestor class properties are intentionally excluded — each class translates
- * only the props it introduces and forwards the rest up the `super(...)` chain.
+ * Ancestor class properties are excluded — including any the class redeclares —
+ * so each class translates only the props it introduces and forwards the rest
+ * up the `super(...)` chain.
  *
  * @param context - The module context
  * @param klass - The class whose construct props to collect
  */
-const collectConstructableProps = (context: ModuleContext, klass: GirClass): readonly GirProperty[] =>
-    dedupeBy(
-        [...klass.properties, ...collectInterfaceProperties(context, klass)].filter(isConstructableProperty),
+const collectConstructableProps = (context: ModuleContext, klass: GirClass): readonly GirProperty[] => {
+    const inherited = ancestorConstructablePropNames(context, klass);
+    return dedupeBy(
+        [...klass.properties, ...collectInterfaceProperties(context, klass)]
+            .filter(isConstructableProperty)
+            .filter((property) => !inherited.has(toCamelIdentifier(property.name))),
         (property) => toCamelIdentifier(property.name),
     );
+};
 
 /**
  * Renders the `export interface <Class>ConstructorProps` declaration.

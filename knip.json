@@ -7,10 +7,12 @@
         "ffmpeg",
         "glib-compile-resources",
         "glib-compile-schemas",
-        "import",
+        "grim",
         "pkg-config",
         "setpriv",
-        "Xvfb"
+        "sway",
+        "wf-recorder",
+        "wlheadless-run"
     ],
     "ignoreWorkspaces": ["packages/native/npm/*"],
     "workspaces": {

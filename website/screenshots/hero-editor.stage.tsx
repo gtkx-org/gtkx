@@ -6,10 +6,10 @@
  * app at the same time, so every save triggers an authentic Vite Fast Refresh
  * in the Notes window being recorded next to this one.
  *
- * Run through `screenshots/vitest.hero.config.ts` only; the stage records its
- * own Xvfb display with ffmpeg for the scripted duration.
+ * Run through `screenshots/vitest.hero.config.ts` only (with
+ * `GTKX_COMPOSITOR=sway`); the stage records the worker's headless Wayland
+ * output with `wf-recorder` for the scripted duration.
  */
-import { type ChildProcess, spawn } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import * as Adw from "@gtkx/gi/adw";
@@ -21,6 +21,7 @@ import { GtkSourceBuffer, GtkSourceView } from "@gtkx/jsx/gtksource";
 import { createRootElement, render } from "@gtkx/testing";
 import { createRef } from "react";
 import { it } from "vitest";
+import { startOutputRecorder } from "./headless.js";
 
 const NOTE_CARD_PATH = resolve(import.meta.dirname, "../../examples/tutorial/src/components/note-card.tsx");
 const OUT_PATH = resolve(import.meta.dirname, "out/hero-editor.mkv");
@@ -41,34 +42,6 @@ const EDIT_TWO = {
 };
 
 const sleep = (ms: number): Promise<void> => new Promise((resolveDelay) => setTimeout(resolveDelay, ms));
-
-const startRecorder = (): ChildProcess =>
-    spawn(
-        "ffmpeg",
-        [
-            "-y",
-            "-loglevel",
-            "error",
-            "-f",
-            "x11grab",
-            "-draw_mouse",
-            "0",
-            "-framerate",
-            "30",
-            "-video_size",
-            (process.env.GTKX_XVFB_SCREEN ?? "800x900x24").split("x").slice(0, 2).join("x"),
-            "-i",
-            process.env.DISPLAY ?? ":0",
-            "-t",
-            String(RECORD_SECONDS),
-            "-c:v",
-            "libx264rgb",
-            "-qp",
-            "0",
-            OUT_PATH,
-        ],
-        { stdio: ["ignore", "ignore", "inherit"] },
-    );
 
 interface BufferEditor {
     deleteRange(start: number, end: number): void;
@@ -150,7 +123,7 @@ it("performs the hero editor scene", async () => {
     if (!buffer) throw new Error("Hero stage has no source buffer");
     const editor = editorFor(buffer);
 
-    const recorder = startRecorder();
+    const recorder = startOutputRecorder(OUT_PATH);
     const startedAt = Date.now();
     const until = (ms: number) => sleep(Math.max(0, ms - (Date.now() - startedAt)));
 
@@ -166,6 +139,7 @@ it("performs the hero editor scene", async () => {
         writeFileSync(NOTE_CARD_PATH, editor.text());
 
         await until(RECORD_SECONDS * 1000 + 500);
+        recorder.kill("SIGINT");
         await new Promise<void>((resolveExit) => {
             if (recorder.exitCode !== null) return resolveExit();
             recorder.once("exit", () => resolveExit());

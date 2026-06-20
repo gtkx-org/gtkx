@@ -7,8 +7,8 @@ import { gtkxVitePlugins } from "./vite-plugins/index.js";
  *
  * Returns the GTKX core Vite plugins (GSettings, GResource bundling, asset
  * resolution — the same set used by `gtkx dev` and `gtkx build`) followed by
- * the `@gtkx/vitest` worker plugin that spawns a per-worker Xvfb instance and
- * forces the `forks` pool. Vite flattens the returned array, so adding
+ * the `@gtkx/vitest` worker plugin that spawns a per-worker headless Wayland
+ * compositor and forces the `forks` pool. Vite flattens the returned array, so adding
  * `gtkx()` is all a project needs; `applicationId` is read from
  * `gtkx.config.ts` automatically.
  *

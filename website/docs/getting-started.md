@@ -206,10 +206,10 @@ yarn test
 
 :::
 
-Tests run in a real GTK environment using the `@gtkx/vitest` plugin, which automatically manages Xvfb displays for headless execution.
+Tests run in a real GTK environment using the `@gtkx/vitest` plugin, which automatically spawns a per-worker headless Wayland compositor for headless execution.
 
 ::: tip
-Headless test runs need Xvfb installed: `sudo apt install xvfb` on Ubuntu/Debian, `sudo dnf install xorg-x11-server-Xvfb` on Fedora.
+Headless test runs need a headless Wayland compositor installed: `sudo apt install weston` on Ubuntu/Debian, `sudo dnf install weston` on Fedora.
 :::
 
 Next, read [Thinking in GTKX](/docs/thinking-in-gtkx) to learn how React trees become GTK widgets and how props map to properties, signals, and children.

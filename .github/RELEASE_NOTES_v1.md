@@ -21,7 +21,7 @@ GTKX 1.0 is here: React 19 and TypeScript render to real GTK4 and Libadwaita wid
 - **The whole GNOME platform, typed.** Every GTK4/Libadwaita class, signal, and property is generated from GObject Introspection with full TypeScript types.
 - **A real development loop.** `gtkx create`, `gtkx dev` with Vite-powered Fast Refresh that keeps window state, `gtkx build` for a single-file production bundle.
 - **CSS-in-JS for GTK.** Emotion-style tagged templates compile to GTK CSS, including GTK named colors and nesting.
-- **Tests against real widgets.** A Testing Library-style API and a Vitest plugin drive real GTK under Xvfb.
+- **Tests against real widgets.** A Testing Library-style API and a Vitest plugin drive real GTK under a headless Wayland compositor.
 - **Built for AI agents.** The bundled MCP server exposes the live widget tree — inspect, click, type, and screenshot a running app.
 
 ### Start here

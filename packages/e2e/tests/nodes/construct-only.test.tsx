@@ -1,4 +1,6 @@
+import type * as Adw from "@gtkx/gi/adw";
 import type * as Gtk from "@gtkx/gi/gtk";
+import { AdwPreferencesPage } from "@gtkx/jsx/adw";
 import { GtkBox } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
@@ -35,5 +37,15 @@ describe("construct-only properties", () => {
 
         expect(ref.current).not.toBeNull();
         expect(ref.current?.getCssName()).toBeTruthy();
+    });
+
+    it("constructs and sets a property a class redeclares from an ancestor", async () => {
+        const ref = createRef<Adw.PreferencesPage>();
+
+        await render(<AdwPreferencesPage ref={ref} name="general" title="General" />);
+
+        expect(ref.current).not.toBeNull();
+        expect(ref.current?.name).toBe("general");
+        expect(ref.current?.getTitle()).toBe("General");
     });
 });

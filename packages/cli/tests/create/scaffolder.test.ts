@@ -284,13 +284,13 @@ describe("createScaffolder (git initialization)", () => {
 describe("createScaffolder (next steps)", () => {
     setupVol();
 
-    it("prints the package-manager-specific dev command and the xvfb note for vitest", async () => {
+    it("prints the package-manager-specific dev command and the compositor note for vitest", async () => {
         const harness = await runScaffolder({ packageManager: "npm", testing: "vitest" });
 
         const note = harness.notes.at(-1);
         expect(note?.message).toContain("cd test-app");
         expect(note?.message).toContain("npm run dev");
-        expect(note?.message).toContain("xvfb");
+        expect(note?.message).toContain("weston");
     });
 
     it("prints the pnpm dev command", async () => {
@@ -305,11 +305,11 @@ describe("createScaffolder (next steps)", () => {
         expect(harness.notes.at(-1)?.message).toContain("yarn dev");
     });
 
-    it("omits the xvfb note when testing=none", async () => {
+    it("omits the compositor note when testing=none", async () => {
         const harness = await runScaffolder();
 
         const note = harness.notes.at(-1);
-        expect(note?.message).not.toContain("xvfb");
+        expect(note?.message).not.toContain("weston");
     });
 });
 

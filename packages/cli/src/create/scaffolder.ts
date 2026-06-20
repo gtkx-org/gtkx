@@ -307,16 +307,16 @@ const initializeGitRepo = async (deps: ScaffolderDeps, projectPath: string): Pro
     }
 };
 
-const XVFB_NOTE = `
+const HEADLESS_COMPOSITOR_NOTE = `
 
-To run tests, you need xvfb installed:
-  Fedora: sudo dnf install xorg-x11-server-Xvfb
-  Ubuntu: sudo apt install xvfb`;
+To run tests, you need a headless Wayland compositor installed:
+  Fedora: sudo dnf install weston
+  Ubuntu: sudo apt install weston`;
 
 const printNextSteps = (deps: ScaffolderDeps, resolved: ResolvedOptions): void => {
     const runCmd = getRunCommand(resolved.packageManager);
     const nextSteps = `cd ${resolved.name}\n${runCmd}`;
-    const testingNote = resolved.testing === "none" ? "" : XVFB_NOTE;
+    const testingNote = resolved.testing === "none" ? "" : HEADLESS_COMPOSITOR_NOTE;
     deps.prompts.note(`${nextSteps}${testingNote}`, "Next steps");
 };
 

@@ -10,7 +10,7 @@
         "docs": "pnpm typedoc && pnpm changelog && pnpm gallery && vitepress build",
         "dev": "vitepress dev",
         "preview": "vitepress preview",
-        "screenshots": "GTKX_XVFB_SCREEN=2200x1600x24 GDK_SCALE=2 vitest run --config screenshots/vitest.config.ts",
+        "screenshots": "GTKX_COMPOSITOR=sway GTKX_HEADLESS_SIZE=2200x1600 GDK_SCALE=2 vitest run --config screenshots/vitest.config.ts",
         "assets:apps": "node screenshots/capture-apps.ts",
         "assets:images": "node screenshots/postprocess.ts",
         "assets:og": "node screenshots/og.ts",

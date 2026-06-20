@@ -55,9 +55,9 @@
         "lint": "cargo fmt --check && cargo clippy --all-targets -- -D warnings",
         "native-bench": "cargo bench --bench marshalling",
         "native-build": "napi build --platform --release --js native-binding.cjs --dts native-binding.d.cts && cp native.linux-$(node -p \"process.arch\")-gnu.node npm/linux-$(node -p \"process.arch\")-gnu/",
-        "native-coverage": "mkdir -p coverage && xvfb-run -a cargo +nightly llvm-cov --lcov --output-path coverage/native.lcov.info --fail-under-lines 80 -- --test-threads=1",
+        "native-coverage": "mkdir -p coverage && GDK_BACKEND=wayland GSK_RENDERER=cairo LIBGL_ALWAYS_SOFTWARE=1 GDK_DISABLE=vulkan wlheadless-run -c weston -- cargo +nightly llvm-cov --lcov --output-path coverage/native.lcov.info --fail-under-lines 80 -- --test-threads=1",
         "prepublishOnly": "napi prepublish -t npm",
-        "test": "xvfb-run -a cargo test -- --test-threads=1",
+        "test": "GDK_BACKEND=wayland GSK_RENDERER=cairo LIBGL_ALWAYS_SOFTWARE=1 GDK_DISABLE=vulkan wlheadless-run -c weston -- cargo test -- --test-threads=1",
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "optionalDependencies": {

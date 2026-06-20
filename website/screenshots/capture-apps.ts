@@ -2,11 +2,11 @@
  * Captures showcase screenshots of the built example apps.
  *
  * Each app's production bundle (`dist/bundle.js`, produced by `pnpm build`)
- * runs inside its own Xvfb display with a private D-Bus session, in both the
- * light and the dark Adwaita color scheme (forced through
- * `ADW_DEBUG_COLOR_SCHEME`), and the display is grabbed with ffmpeg into a
- * lossless master under `screenshots/out/showcase/`. The browser app loads a
- * deterministic local fixture page served from a loopback HTTP server.
+ * runs inside its own headless `sway` compositor with a private D-Bus session,
+ * in both the light and the dark Adwaita color scheme (forced through
+ * `ADW_DEBUG_COLOR_SCHEME`), and the compositor output is grabbed with `grim`
+ * into a lossless master under `screenshots/out/showcase/`. The browser app
+ * loads a deterministic local fixture page served from a loopback HTTP server.
  *
  * Run `postprocess.ts` afterwards to trim, round, and encode the masters.
  */
@@ -14,6 +14,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { mkdirSync, readFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import { join, resolve } from "node:path";
+import { grabOutput, startHeadlessCompositor } from "./headless.js";
 
 const SCREENSHOTS_DIR = import.meta.dirname;
 const REPO_ROOT = resolve(SCREENSHOTS_DIR, "../..");
@@ -59,53 +60,6 @@ const startFixtureServer = (): Promise<Server> => {
     });
 };
 
-const startXvfb = (): Promise<{ xvfb: ChildProcess; display: string }> =>
-    new Promise((resolveDisplay, reject) => {
-        const xvfb = spawn("Xvfb", ["-displayfd", "1", "-screen", "0", `${SCREEN_WIDTH}x${SCREEN_HEIGHT}x24`], {
-            stdio: ["ignore", "pipe", "ignore"],
-        });
-        let buffer = "";
-        const timer = setTimeout(() => {
-            xvfb.kill();
-            reject(new Error("Xvfb did not report a display within 15s"));
-        }, 15000);
-        xvfb.stdout?.setEncoding("utf8");
-        xvfb.stdout?.on("data", (chunk: string) => {
-            buffer += chunk;
-            const newline = buffer.indexOf("\n");
-            if (newline === -1) return;
-            clearTimeout(timer);
-            resolveDisplay({ xvfb, display: `:${buffer.slice(0, newline).trim()}` });
-        });
-        xvfb.once("exit", () => {
-            clearTimeout(timer);
-            reject(new Error("Xvfb exited before reporting a display"));
-        });
-    });
-
-const grabDisplay = (display: string, path: string): Promise<void> =>
-    new Promise((resolveGrab, reject) => {
-        const ffmpeg = spawn("ffmpeg", [
-            "-y",
-            "-loglevel",
-            "error",
-            "-f",
-            "x11grab",
-            "-draw_mouse",
-            "0",
-            "-video_size",
-            `${SCREEN_WIDTH}x${SCREEN_HEIGHT}`,
-            "-i",
-            display,
-            "-frames:v",
-            "1",
-            path,
-        ]);
-        ffmpeg.once("exit", (code) =>
-            code === 0 ? resolveGrab() : reject(new Error(`ffmpeg exited with code ${code ?? "null"}`)),
-        );
-    });
-
 const terminate = async (child: ChildProcess): Promise<void> => {
     if (child.exitCode !== null || child.signalCode !== null) return;
     const exited = new Promise<void>((resolveExit) => child.once("exit", () => resolveExit()));
@@ -117,15 +71,13 @@ const terminate = async (child: ChildProcess): Promise<void> => {
 
 const captureApp = async (app: AppTarget, theme: (typeof THEMES)[number]): Promise<void> => {
     console.log(`Capturing ${app.name} (${theme}): booting, settling ${app.settleMs}ms…`);
-    const { xvfb, display } = await startXvfb();
+    const compositor = await startHeadlessCompositor(SCREEN_WIDTH, SCREEN_HEIGHT);
     const child = spawn("dbus-run-session", ["--", "node", "dist/bundle.js", ...(app.args ?? [])], {
         cwd: join(REPO_ROOT, app.appDir),
         stdio: ["ignore", "ignore", "inherit"],
         env: {
-            ...process.env,
+            ...compositor.env,
             ...app.env,
-            DISPLAY: display,
-            GDK_BACKEND: "x11",
             GDK_SCALE: "2",
             GDK_DISABLE: "vulkan",
             GSK_RENDERER: "cairo",
@@ -140,11 +92,11 @@ const captureApp = async (app: AppTarget, theme: (typeof THEMES)[number]): Promi
         if (child.exitCode !== null) {
             throw new Error(`${app.name} exited with code ${child.exitCode} before the capture`);
         }
-        await grabDisplay(display, join(OUT_DIR, `${app.name}-${theme}.png`));
+        grabOutput(join(OUT_DIR, `${app.name}-${theme}.png`), compositor.env);
         console.log(`showcase/${app.name}-${theme}.png`);
     } finally {
         await terminate(child);
-        xvfb.kill();
+        compositor.dispose();
     }
 };
 

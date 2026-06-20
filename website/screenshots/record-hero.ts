@@ -1,19 +1,20 @@
 /**
  * Records and encodes the hero demo: a GTKX-built code editor types two style
  * edits into the tutorial's note-card component and saves them, while the
- * tutorial Notes app runs under a real `gtkx dev` server in a second Xvfb —
- * each save triggers an authentic Vite Fast Refresh that repaints the running
- * app. Both displays are recorded with ffmpeg, composed side by side over the
- * site's ink background, closed with the brand end card, and encoded to
- * `public/media/hero-demo.webm`, `hero-demo.mp4`, a poster frame, and the
- * repo-root `demo.gif` the README embeds.
+ * tutorial Notes app runs under a real `gtkx dev` server in a second headless
+ * `sway` compositor — each save triggers an authentic Vite Fast Refresh that
+ * repaints the running app. Both panes are recorded with `wf-recorder`, then
+ * composed with ffmpeg side by side over the site's ink background, closed with
+ * the brand end card, and encoded to `public/media/hero-demo.webm`,
+ * `hero-demo.mp4`, a poster frame, and the repo-root `demo.gif` the README embeds.
  *
- * Local-only step: needs ffmpeg and the workspace built (`pnpm build`).
- * Run `node screenshots/og.ts` first to produce the end card.
+ * Local-only step: needs ffmpeg, sway, and wf-recorder, and the workspace built
+ * (`pnpm build`). Run `node screenshots/og.ts` first to produce the end card.
  */
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { startHeadlessCompositor, startOutputRecorder } from "./headless.js";
 
 const SCREENSHOTS_DIR = import.meta.dirname;
 const WEBSITE_DIR = resolve(SCREENSHOTS_DIR, "..");
@@ -27,30 +28,6 @@ const CANVAS = { width: 1792, height: 960 };
 const END_CARD_SECONDS = 2.5;
 
 const sleep = (ms: number): Promise<void> => new Promise((resolveDelay) => setTimeout(resolveDelay, ms));
-
-const startXvfb = (geometry: string): Promise<{ xvfb: ChildProcess; display: string }> =>
-    new Promise((resolveDisplay, reject) => {
-        const xvfb = spawn("Xvfb", ["-displayfd", "1", "-screen", "0", geometry], {
-            stdio: ["ignore", "pipe", "ignore"],
-        });
-        let buffer = "";
-        const timer = setTimeout(() => {
-            xvfb.kill();
-            reject(new Error("Xvfb did not report a display within 15s"));
-        }, 15000);
-        xvfb.stdout?.setEncoding("utf8");
-        xvfb.stdout?.on("data", (chunk: string) => {
-            buffer += chunk;
-            const newline = buffer.indexOf("\n");
-            if (newline === -1) return;
-            clearTimeout(timer);
-            resolveDisplay({ xvfb, display: `:${buffer.slice(0, newline).trim()}` });
-        });
-        xvfb.once("exit", () => {
-            clearTimeout(timer);
-            reject(new Error("Xvfb exited before reporting a display"));
-        });
-    });
 
 const terminate = async (child: ChildProcess, signal: NodeJS.Signals = "SIGTERM"): Promise<void> => {
     if (child.exitCode !== null || child.signalCode !== null) return;
@@ -69,14 +46,12 @@ if (!existsSync(endCard)) {
 }
 
 console.log("Starting the Notes app under gtkx dev…");
-const notes = await startXvfb(`${NOTES_SCREEN.width}x${NOTES_SCREEN.height}x24`);
+const notes = await startHeadlessCompositor(NOTES_SCREEN.width, NOTES_SCREEN.height);
 const devServer = spawn("dbus-run-session", ["--", "pnpm", "exec", "gtkx", "dev"], {
     cwd: join(REPO_ROOT, "examples/tutorial"),
     stdio: ["ignore", "inherit", "inherit"],
     env: {
-        ...process.env,
-        DISPLAY: notes.display,
-        GDK_BACKEND: "x11",
+        ...notes.env,
         GDK_DISABLE: "vulkan",
         GSK_RENDERER: "cairo",
         LIBGL_ALWAYS_SOFTWARE: "1",
@@ -95,43 +70,19 @@ try {
     }
 
     console.log("Recording both panes…");
-    notesRecorder = spawn(
-        "ffmpeg",
-        [
-            "-y",
-            "-loglevel",
-            "error",
-            "-f",
-            "x11grab",
-            "-draw_mouse",
-            "0",
-            "-framerate",
-            "30",
-            "-video_size",
-            `${NOTES_SCREEN.width}x${NOTES_SCREEN.height}`,
-            "-i",
-            notes.display,
-            "-t",
-            String(RECORD_SECONDS),
-            "-c:v",
-            "libx264rgb",
-            "-qp",
-            "0",
-            join(OUT_DIR, "hero-notes.mkv"),
-        ],
-        { stdio: ["ignore", "ignore", "inherit"] },
-    );
+    notesRecorder = startOutputRecorder(join(OUT_DIR, "hero-notes.mkv"), notes.env);
 
     editorStage = spawn("pnpm", ["exec", "vitest", "run", "--config", "screenshots/vitest.hero.config.ts"], {
         cwd: WEBSITE_DIR,
         stdio: ["ignore", "inherit", "inherit"],
-        env: { ...process.env, GTKX_XVFB_SCREEN: "800x900x24" },
+        env: { ...process.env, GTKX_COMPOSITOR: "sway", GTKX_HEADLESS_SIZE: "800x900" },
     });
 
     const stageExit = await new Promise<number | null>((resolveExit) =>
         editorStage?.once("exit", (code) => resolveExit(code)),
     );
     if (stageExit !== 0) throw new Error(`The editor stage exited with code ${stageExit}`);
+    notesRecorder.kill("SIGINT");
     await new Promise<void>((resolveExit) => {
         if (notesRecorder?.exitCode !== null) return resolveExit();
         notesRecorder?.once("exit", () => resolveExit());
@@ -140,7 +91,7 @@ try {
     if (notesRecorder) await terminate(notesRecorder, "SIGINT");
     if (editorStage) await terminate(editorStage);
     await terminate(devServer);
-    notes.xvfb.kill();
+    notes.dispose();
 }
 
 console.log("Composing and encoding…");

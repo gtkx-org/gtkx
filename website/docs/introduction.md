@@ -80,7 +80,7 @@ GTKX runs the real React 19 — hooks, Suspense, concurrent rendering, the compo
 
 The bindings cover the entire GTK4 and Libadwaita surface, generated from the same GObject Introspection data the toolkit publishes. Every class, property, signal, and enum is fully typed, so your editor autocompletes GTK as confidently as it autocompletes the DOM. The same pipeline reaches beyond Gtk and Adw — WebKit, GtkSourceView, Gio, Pango, and more — by adding a line to `gtkx.config.ts`.
 
-The toolchain is the one you expect from a modern web project. `gtkx dev` gives you Vite-powered HMR that preserves application state across edits, `@gtkx/testing` and `@gtkx/vitest` run Testing Library-style tests against real widgets under Xvfb, `@gtkx/css` compiles Emotion-style CSS-in-JS to GTK CSS, and the built-in [MCP server](/docs/mcp) lets AI agents inspect the live widget tree, click, type, and take screenshots of your running app.
+The toolchain is the one you expect from a modern web project. `gtkx dev` gives you Vite-powered HMR that preserves application state across edits, `@gtkx/testing` and `@gtkx/vitest` run Testing Library-style tests against real widgets under a headless Wayland compositor, `@gtkx/css` compiles Emotion-style CSS-in-JS to GTK CSS, and the built-in [MCP server](/docs/mcp) lets AI agents inspect the live widget tree, click, type, and take screenshots of your running app.
 
 ## Who is this for?
 

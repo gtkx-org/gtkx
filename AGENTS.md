@@ -34,7 +34,7 @@ Rust native module (`packages/native`):
 
 ```bash
 pnpm --filter @gtkx/native native-build                   # build the .node binary
-cd packages/native && xvfb-run -a cargo test -- --test-threads=1   # Rust tests (need a display, single-threaded)
+cd packages/native && GDK_BACKEND=wayland wlheadless-run -c weston -- cargo test -- --test-threads=1   # Rust tests (need a display, single-threaded)
 cd packages/native && cargo fmt --check && cargo clippy -- -D warnings
 ```
 
@@ -82,7 +82,7 @@ The core runtime is four layers, top to bottom. A React tree mutation flows down
 | `@gtkx/cli` | `gtkx` binary: `create`, `codegen`, `dev` (Vite + Fast Refresh), `build`. |
 | `@gtkx/mcp` | MCP server exposing running apps to AI agents (widget tree, query, click, type, screenshot). |
 | `@gtkx/testing` | Testing Library-inspired API: `render`, queries, `userEvent`, `waitFor`, `screen`. |
-| `@gtkx/vitest` | Vitest plugin: per-worker Xvfb + D-Bus, `forks` pool, single-module-identity inlining. |
+| `@gtkx/vitest` | Vitest plugin: per-worker headless Wayland compositor + D-Bus, `forks` pool, single-module-identity inlining. |
 | `@gtkx/utils` | Leaf helpers (case converters, equality, shutdown). No GTKX deps. |
 | `@gtkx/e2e` | Private integration + reconciler benchmark suite. |
 
@@ -91,7 +91,7 @@ Module boundaries are enforced by `.dependency-cruiser.cjs`: no cycles; `@gtkx/n
 ## Gotchas
 
 - **Build ordering.** `native-build` and `pnpm codegen` must precede any TypeScript build of `ffi`, `react`, `testing`, `css`, or `cli`. Turbo handles this; a manual `tsc -b` in one package without it will fail to resolve `@gtkx/gi` or `native-binding.cjs`.
-- **Xvfb is required for any test touching GTK.** `@gtkx/vitest` spawns a per-worker Xvfb and D-Bus automatically; raw `cargo test` needs `xvfb-run -a`. Cargo tests are always `--test-threads=1` (single GLib main thread).
+- **A headless Wayland compositor is required for any test touching GTK.** `@gtkx/vitest` spawns a per-worker `weston` (or `sway` when `GTKX_COMPOSITOR=sway`), on a private `XDG_RUNTIME_DIR`, plus a D-Bus session automatically; raw `cargo test` needs `wlheadless-run -c weston`. Cargo tests are always `--test-threads=1` (single GLib main thread).
 - **The `.gtkx` store** (`node_modules/.gtkx`, with `gi` and `jsx` subdirectories) is where codegen writes the generated packages. `pnpm lint:all` creates a root-level `.gtkx` symlink pointing at it (`ln -sfn node_modules/.gtkx .gtkx`) so knip and depcruise can analyze them; that symlink is gitignored.
 - **GTK 4.22.4 is the pinned target** (the CI image pins this exact bugfix release). Layout and text metrics are version-sensitive; snapshot tests assume this version (and `GSK_RENDERER=cairo`, software GL).
 - **TypeScript 6.0.3 is patched** (`patches/typescript@6.0.3.patch`); upgrading requires a new patch.

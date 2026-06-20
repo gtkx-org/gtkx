@@ -51,10 +51,9 @@ RUN apt-get update \
         gvfs \
         libgles2 \
         libgl1-mesa-dri \
-        xvfb \
-        imagemagick \
+        weston \
+        xwayland-run \
         dbus \
-        dbus-x11 \
         git \
         gdb \
         valgrind \

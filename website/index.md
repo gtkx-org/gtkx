@@ -52,7 +52,7 @@ features:
   - icon:
       svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M10 3v6L4 21h16L14 9V3"/></svg>'
     title: Tests that touch real widgets
-    details: A Testing Library-style API and a Vitest plugin drive real GTK under Xvfb. Query by accessible role, click, type, assert.
+    details: A Testing Library-style API and a Vitest plugin drive real GTK under a headless Wayland compositor. Query by accessible role, click, type, assert.
   - icon:
       svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3 M12 19v3 M2 12h3 M19 12h3 M5 5l2 2 M17 17l2 2 M5 19l2-2 M17 7l2-2"/></svg>'
     title: Built for AI agents

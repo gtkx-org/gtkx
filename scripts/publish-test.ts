@@ -20,7 +20,7 @@
  *    in a directory outside the workspace, and builds it with `gtkx build`.
  * 5. Asserts the build produced a non-empty bundle and native binary, then
  *    type-checks the app and runs its own test suite, which renders it under
- *    Xvfb.
+ *    a headless Wayland compositor.
  *
  * The process exits non-zero if any step fails, and always tears down the
  * registry and temporary directories.
@@ -299,8 +299,9 @@ async function typecheckConsumer(appDir: string, env: NodeJS.ProcessEnv): Promis
 }
 
 /**
- * Runs the scaffolded app's own test suite, which renders the app under Xvfb
- * via `@gtkx/vitest` and queries it through `@gtkx/testing`, exercising the
+ * Runs the scaffolded app's own test suite, which renders the app under a
+ * headless Wayland compositor via `@gtkx/vitest` and queries it through
+ * `@gtkx/testing`, exercising the
  * published runtime — not just the bundle — end to end.
  *
  * @param appDir - The scaffolded app directory.

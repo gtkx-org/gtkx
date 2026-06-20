@@ -123,4 +123,5 @@ The values are snapshots of `gtkx.config.ts` taken at build time. Changing the c
 | `GTKX_GIR_PATH` | `gtkx codegen` | Colon-separated list of extra directories to search for `.gir` files, consulted after the config's `girPath` and before the system locations. |
 | `GTKX_DISABLE_PREFLIGHT` | `gtkx dev`, `gtkx build` | Set to `1` to skip the codegen preflight that regenerates stale bindings before the command starts. |
 | `GTKX_DISABLE_SHUTDOWN_HANDLERS` | `@gtkx/ffi` | Set to `1` to keep the runtime from installing its `SIGINT`/`SIGTERM`/`SIGHUP` shutdown handlers when it loads. The `@gtkx/vitest` plugin sets this automatically in test workers. |
-| `GTKX_XVFB_SCREEN` | `@gtkx/vitest` | Screen geometry of the per-worker Xvfb display, in `WIDTHxHEIGHTxDEPTH` form. Defaults to `1024x768x24`. |
+| `GTKX_HEADLESS_SIZE` | `@gtkx/vitest` | Output size of the per-worker headless Wayland compositor, in `WIDTHxHEIGHT` form. Defaults to `1024x768`. |
+| `GTKX_COMPOSITOR` | `@gtkx/vitest` | Headless compositor each worker spawns: `weston` (default) or `sway`. `sway` exposes the `wlr-screencopy` protocol that `grim`/`wf-recorder` need, so the website asset pipeline selects it. |
