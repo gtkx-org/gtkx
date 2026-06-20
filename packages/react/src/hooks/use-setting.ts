@@ -1,6 +1,6 @@
 import * as Gio from "@gtkx/gi/gio";
-import * as GLib from "@gtkx/gi/glib";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { resolveAccessor } from "../utils/settings-accessor.js";
 import { useSignal } from "./use-signal.js";
 
 /**
@@ -61,102 +61,6 @@ export interface RelocatableSchemaRef<K extends object = Record<string, unknown>
     at(path: string): SchemaRef<K>;
 }
 
-type SettingAccessor = {
-    read: (settings: Gio.Settings, key: string) => unknown;
-    write: (settings: Gio.Settings, key: string, value: unknown) => void;
-};
-
-const settingTypeError = (expected: string, value: unknown): TypeError =>
-    new TypeError(`Expected ${expected} for the settings value, got ${typeof value}`);
-
-const expectBoolean = (value: unknown): boolean => {
-    if (typeof value !== "boolean") throw settingTypeError("a boolean", value);
-    return value;
-};
-
-const expectNumber = (value: unknown): number => {
-    if (typeof value !== "number") throw settingTypeError("a number", value);
-    return value;
-};
-
-const expectBigInt = (value: unknown): bigint => {
-    if (typeof value === "bigint") return value;
-    if (typeof value === "number") return BigInt(value);
-    throw settingTypeError("a bigint", value);
-};
-
-const expectString = (value: unknown): string => {
-    if (typeof value !== "string") throw settingTypeError("a string", value);
-    return value;
-};
-
-const isStringArray = (value: unknown): value is string[] =>
-    Array.isArray(value) && value.every((entry) => typeof entry === "string");
-
-const expectStringArray = (value: unknown): string[] => {
-    if (!isStringArray(value)) throw settingTypeError("an array of strings", value);
-    return value;
-};
-
-const expectVariant = (value: unknown): GLib.Variant => {
-    if (!(value instanceof GLib.Variant)) throw settingTypeError("a GLib.Variant", value);
-    return value;
-};
-
-const STRING_ACCESSOR: SettingAccessor = {
-    read: (settings, key) => settings.getString(key) ?? "",
-    write: (settings, key, value) => settings.setString(key, expectString(value)),
-};
-
-const STRV_ACCESSOR: SettingAccessor = {
-    read: (settings, key) => settings.getStrv(key),
-    write: (settings, key, value) => settings.setStrv(key, expectStringArray(value)),
-};
-
-const ACCESSORS: Record<string, SettingAccessor | undefined> = {
-    b: {
-        read: (settings, key) => settings.getBoolean(key),
-        write: (settings, key, value) => settings.setBoolean(key, expectBoolean(value)),
-    },
-    i: {
-        read: (settings, key) => settings.getInt(key),
-        write: (settings, key, value) => settings.setInt(key, expectNumber(value)),
-    },
-    u: {
-        read: (settings, key) => settings.getUint(key),
-        write: (settings, key, value) => settings.setUint(key, expectNumber(value)),
-    },
-    x: {
-        read: (settings, key) => settings.getInt64(key),
-        write: (settings, key, value) => settings.setInt64(key, expectBigInt(value)),
-    },
-    t: {
-        read: (settings, key) => settings.getUint64(key),
-        write: (settings, key, value) => settings.setUint64(key, expectBigInt(value)),
-    },
-    d: {
-        read: (settings, key) => settings.getDouble(key),
-        write: (settings, key, value) => settings.setDouble(key, expectNumber(value)),
-    },
-    s: STRING_ACCESSOR,
-    as: STRV_ACCESSOR,
-    enum: STRING_ACCESSOR,
-    flags: STRV_ACCESSOR,
-};
-
-const VARIANT_ACCESSOR: SettingAccessor = {
-    read: (settings, key) => settings.getValue(key),
-    write: (settings, key, value) => settings.setValue(key, expectVariant(value)),
-};
-
-const resolveAccessor = (schema: SchemaRef, key: string): SettingAccessor => {
-    const kind = schema.keys[key];
-    if (kind === undefined) {
-        throw new TypeError(`Key "${key}" is not declared by the GSettings schema "${schema.id}"`);
-    }
-    return ACCESSORS[kind] ?? VARIANT_ACCESSOR;
-};
-
 /**
  * Subscribes to a key of an imported GSettings schema and returns its current
  * value alongside a setter, similar to `useState`.
@@ -189,7 +93,7 @@ export function useSetting<K extends object, P extends keyof K & string>(
 ): [K[P], (value: K[P]) => void];
 export function useSetting(schema: SchemaRef, key: string): [unknown, (value: unknown) => void] {
     const { id: schemaId, path } = schema;
-    const accessor = resolveAccessor(schema, key);
+    const accessor = resolveAccessor(schema.keys[key], key, schemaId);
 
     const settings = useMemo(
         () => (path === null ? Gio.Settings.new(schemaId) : new Gio.Settings({ schemaId, path })),
