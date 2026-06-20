@@ -16,6 +16,7 @@ import {
 } from "@gtkx/config";
 import { sortedAlpha } from "@gtkx/utils";
 import { emitSchemaEnv } from "../gsettings/env.js";
+import { info } from "../internal/log.js";
 import { resolveGirPath } from "./gir-resolver.js";
 import { resolveLibraries } from "./library-resolver.js";
 import { type CodegenStore, findCodegenRoot, isWorkspaceRoot, resolveCodegenStore } from "./store-resolver.js";
@@ -350,7 +351,7 @@ export const preflightCodegen = async (cwd: string): Promise<void> => {
     }
     syncSchemaEnv(cwd);
     if (isCodegenNeeded(context.root, context.config)) {
-        console.log("[gtkx] generated bindings missing; running codegen...");
+        info("generated bindings missing; running codegen...");
         await runCodegen({ cwd: context.root });
     }
 };

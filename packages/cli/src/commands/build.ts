@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { defineCommand } from "citty";
 import { build as buildApp } from "../builder.js";
 import { preflightCodegen } from "../codegen/run-codegen.js";
+import { info } from "../internal/log.js";
 
 /**
  * `gtkx build` — bundle the project for production.
@@ -29,7 +30,7 @@ export const build = defineCommand({
     async run({ args }) {
         const cwd = process.cwd();
         const entry = resolve(cwd, args.entry ?? "src/index.tsx");
-        console.log(`[gtkx] Building ${entry}`);
+        info(`Building ${entry}`);
 
         await preflightCodegen(cwd);
 
@@ -41,6 +42,6 @@ export const build = defineCommand({
             },
         });
 
-        console.log("[gtkx] Build complete: dist/bundle.js");
+        info("Build complete: dist/bundle.js");
     },
 });

@@ -3,6 +3,7 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { DEFAULT_SOCKET_PATH, type IpcRequest, JsonStreamTransport, McpError, McpErrorCode } from "@gtkx/mcp";
 import { errorMessage } from "@gtkx/utils";
+import { error, info, warn } from "../internal/log.js";
 import { dispatch } from "./handlers.js";
 import { WidgetRegistry } from "./widget-registry.js";
 
@@ -99,48 +100,48 @@ export class McpClient {
         };
 
         const socket = net.createConnection(this.socketPath, () => {
-            console.log(`[gtkx] Connected to MCP server at ${this.socketPath}`);
+            info(`Connected to MCP server at ${this.socketPath}`);
             this.hasConnected = true;
             this.register()
                 .then(() => {
-                    console.log("[gtkx] Registered with MCP server");
+                    info("Registered with MCP server");
                     settle(onSuccess);
                 })
-                .catch((error) => {
-                    console.error("[gtkx] Failed to register with MCP server:", error.message);
-                    settle(onError, error instanceof Error ? error : new Error(String(error)));
+                .catch((cause) => {
+                    error("Failed to register with MCP server:", cause.message);
+                    settle(onError, cause instanceof Error ? cause : new Error(String(cause)));
                 });
         });
 
         const transport = JsonStreamTransport.fromSocket(socket, {
             onClose: () => {
                 if (this.hasConnected) {
-                    console.log("[gtkx] Disconnected from MCP server");
+                    info("Disconnected from MCP server");
                     this.hasConnected = false;
                 }
                 this.socket = null;
                 this.transport = null;
                 this.scheduleReconnect();
             },
-            onError: (error) => {
-                const code = (error as NodeJS.ErrnoException).code;
+            onError: (socketError) => {
+                const code = (socketError as NodeJS.ErrnoException).code;
                 const isDisconnectError =
                     code === "ENOENT" || code === "ECONNREFUSED" || code === "EPIPE" || code === "ECONNRESET";
                 if (isDisconnectError) {
                     this.scheduleReconnect();
                 } else {
-                    console.error("[gtkx] Socket error:", error.message);
+                    error("Socket error:", socketError.message);
                 }
-                settle(onError, error);
+                settle(onError, socketError);
             },
         });
         transport.on("request", (request) => {
-            this.handleRequest(request).catch((error) => {
-                console.error("[gtkx] Error handling request:", error);
+            this.handleRequest(request).catch((cause) => {
+                error("Error handling request:", cause);
             });
         });
-        transport.on("invalid", ({ error }) => {
-            console.warn(`[gtkx] Received invalid JSON from MCP server: ${error.message}`);
+        transport.on("invalid", ({ error: parseError }) => {
+            warn(`Received invalid JSON from MCP server: ${parseError.message}`);
         });
 
         this.socket = socket;

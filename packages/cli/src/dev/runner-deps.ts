@@ -4,6 +4,7 @@ import * as Gio from "@gtkx/gi/gio";
 import type { ApplicationLifecycleModule } from "@gtkx/react";
 import { installGracefulShutdown } from "@gtkx/utils";
 import { createServer } from "vite";
+import { info } from "../internal/log.js";
 import { startMcpClient, stopMcpClient } from "../mcp/index.js";
 import { setTestingModuleLoader } from "../mcp/testing-loader.js";
 import { isReactRefreshBoundary, performRefresh } from "../refresh-runtime.js";
@@ -52,6 +53,6 @@ export const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     performRefresh,
     isReactRefreshBoundary,
     plugins: () => [...gtkxVitePlugins(), ...gtkxFastRefresh(), gtkxSkipReactDomOptimize()],
-    log: (message: string) => console.log(`[gtkx] ${message}`),
+    log: info,
     exit: (code: number): never => process.exit(code),
 });

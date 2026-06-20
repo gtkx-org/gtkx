@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { createGtkxConfigLoader, DATA_IMPORT_PREFIX, type GtkxConfigLoader } from "@gtkx/config";
 import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
+import { error, info } from "../internal/log.js";
 import { removeTempDir } from "../internal/remove-temp-dir.js";
 import { resolveCliTool } from "../internal/resolve-cli-tool.js";
 import { ASSET_PATH_RE, ASSET_RE } from "./asset-extensions.js";
@@ -197,7 +198,7 @@ const emitBuildBundle = (
     try {
         const compiled = compileBundle(state, join(outDir, BUNDLE_FILENAME));
         ctx.emitFile({ type: "asset", fileName: BUNDLE_FILENAME, source: compiled });
-        console.log(`[gtkx] Compiled ${state.entries.size} resource(s) into ${BUNDLE_FILENAME}`);
+        info(`Compiled ${state.entries.size} resource(s) into ${BUNDLE_FILENAME}`);
     } finally {
         removeTempDir(outDir);
     }
@@ -209,8 +210,8 @@ const refreshDevRegistration = async (server: ViteDevServer, state: PluginState)
         // biome-ignore lint/style/useNamingConvention: Fast Refresh module hook injected by the React plugin
         const mod = (await server.ssrLoadModule(VIRTUAL_INIT)) as { __refresh?: () => void };
         mod.__refresh?.();
-    } catch (error) {
-        console.error("[gtkx] Failed to refresh GResource bundle:", error);
+    } catch (cause) {
+        error("Failed to refresh GResource bundle:", cause);
     }
 };
 
@@ -234,8 +235,8 @@ const resolveResourceConfig = async (state: PluginState, config: UserConfig, loa
 const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void => {
     const onFileEvent = (file: string): void => {
         if (!isTrackedSource(state, file)) return;
-        refreshDevRegistration(server, state).catch((error) => {
-            console.error("[gtkx] GResource refresh failed:", error);
+        refreshDevRegistration(server, state).catch((cause) => {
+            error("GResource refresh failed:", cause);
         });
     };
     server.watcher.on("change", onFileEvent);

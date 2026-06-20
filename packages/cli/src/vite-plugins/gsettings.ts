@@ -8,6 +8,7 @@ import { compileSchemas } from "../gsettings/compile.js";
 import { emitSchemaEnv, SCHEMA_SUFFIX, stagedSchemaName } from "../gsettings/env.js";
 import { parseSchemaXml, SchemaParseError } from "../gsettings/parser.js";
 import { renderRuntimeModule } from "../gsettings/render.js";
+import { error, info } from "../internal/log.js";
 import { removeTempDir } from "../internal/remove-temp-dir.js";
 
 const VIRTUAL_PREFIX = "\0gtkx-gsettings:";
@@ -110,8 +111,8 @@ const syncSchemaEnv = (state: PluginState): void => {
     if (state.rootDir === null) return;
     try {
         emitSchemaEnv(state.rootDir, state.dataDir);
-    } catch (error) {
-        console.error(`[gtkx] Failed to generate GSettings schema types: ${errorMessage(error)}`);
+    } catch (cause) {
+        error(`Failed to generate GSettings schema types: ${errorMessage(cause)}`);
     }
 };
 
@@ -119,14 +120,14 @@ const registerSchemaForMode = (state: PluginState, filePath: string, id: string)
     const fileName = basename(filePath);
     if (state.isBuild) {
         state.buildSchemas.add(filePath);
-        console.log(`[gtkx] Queued GSettings schema: ${fileName}`);
+        info(`Queued GSettings schema: ${fileName}`);
         return;
     }
     state.trackedSchemas.set(filePath, id);
     const dir = ensureSchemaDir(state);
     copyFileSync(filePath, join(dir, stagedSchemaName(filePath)));
     compileSchemaDir(state);
-    console.log(`[gtkx] Compiled GSettings schema: ${fileName}`);
+    info(`Compiled GSettings schema: ${fileName}`);
 };
 
 const loadSchemaModule = (ctx: PluginContext, state: PluginState, id: string): string => {
@@ -169,7 +170,7 @@ const emitCompiledSchemas = (ctx: PluginContext, state: PluginState): void => {
         removeTempDir(dir);
     }
 
-    console.log(`[gtkx] Compiled ${state.buildSchemas.size} GSettings schema(s)`);
+    info(`Compiled ${state.buildSchemas.size} GSettings schema(s)`);
 };
 
 const handleSchemaHotUpdate = (state: PluginState, file: string, server: ViteDevServer): ModuleNode[] | undefined => {
@@ -180,7 +181,7 @@ const handleSchemaHotUpdate = (state: PluginState, file: string, server: ViteDev
     copyFileSync(file, join(dir, stagedSchemaName(file)));
     compileSchemaDir(state);
 
-    console.log(`[gtkx] Recompiled GSettings schema: ${basename(file)}`);
+    info(`Recompiled GSettings schema: ${basename(file)}`);
 
     const mod = server.moduleGraph.getModuleById(virtualId);
     if (mod) {

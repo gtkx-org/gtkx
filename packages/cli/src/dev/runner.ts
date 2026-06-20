@@ -1,4 +1,5 @@
 import type { InlineConfig, Plugin } from "vite";
+import { error } from "../internal/log.js";
 import { RELOAD_EXIT_CODE } from "./protocol.js";
 
 /**
@@ -195,8 +196,8 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
 
         server.watcher.on("change", (changedPath) => {
             if (isShuttingDown) return;
-            handleFileChange(server, refreshTrackingDeps, changedPath).catch((error) => {
-                console.error("[gtkx] Hot reload failed:", error);
+            handleFileChange(server, refreshTrackingDeps, changedPath).catch((cause) => {
+                error("Hot reload failed:", cause);
             });
         });
 

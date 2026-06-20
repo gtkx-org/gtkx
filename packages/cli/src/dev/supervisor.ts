@@ -3,6 +3,7 @@ import { type FSWatcher, watch as watchFs } from "node:fs";
 import { basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { exitCodeForSignal, installGracefulShutdown } from "@gtkx/utils";
+import { error, info } from "../internal/log.js";
 import { RELOAD_EXIT_CODE } from "./protocol.js";
 
 const DEV_RUNNER_URL = new URL("../../bin/gtkx-dev-runner.js", import.meta.url);
@@ -97,7 +98,7 @@ const launch = (state: SupervisorState): void => {
             return;
         }
         if (code === RELOAD_EXIT_CODE) {
-            console.log("[gtkx] Restarting dev runner...");
+            info("Restarting dev runner...");
             launch(state);
             return;
         }
@@ -113,11 +114,11 @@ const launch = (state: SupervisorState): void => {
 const restart = async (state: SupervisorState): Promise<void> => {
     if (state.restarting || state.shuttingDown || state.watch === undefined) return;
     state.restarting = true;
-    console.log("[gtkx] gtkx.config.ts changed; regenerating bindings...");
+    info("gtkx.config.ts changed; regenerating bindings...");
     try {
         await state.watch.regenerate();
-    } catch (error) {
-        console.error("[gtkx] Codegen failed; keeping the current dev runner. Fix the error and save again.", error);
+    } catch (cause) {
+        error("Codegen failed; keeping the current dev runner. Fix the error and save again.", cause);
         state.restarting = false;
         return;
     }
@@ -134,7 +135,7 @@ const restart = async (state: SupervisorState): Promise<void> => {
     current.once("exit", () => {
         state.restarting = false;
         if (!state.shuttingDown) {
-            console.log("[gtkx] Restarting dev runner...");
+            info("Restarting dev runner...");
             launch(state);
         }
     });

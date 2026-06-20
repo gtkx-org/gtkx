@@ -3,6 +3,7 @@ import { type Dirent, mkdirSync, readdirSync, readFileSync, writeFileSync } from
 import { dirname, join, relative } from "node:path";
 import { DATA_IMPORT_PREFIX } from "@gtkx/config";
 import { sortedAlpha } from "@gtkx/utils";
+import { warn } from "../internal/log.js";
 import { type ParsedSchemaFile, parseSchemaXml, SchemaParseError } from "./parser.js";
 import { renderEnvModule } from "./render.js";
 
@@ -92,7 +93,7 @@ const parseProjectSchemas = (schemaFiles: readonly string[], dataDirAbs: string)
             parsed.push(parseSchemaXml(readFileSync(filePath, "utf-8"), specifier));
         } catch (error) {
             if (!(error instanceof SchemaParseError)) throw error;
-            console.warn(`[gtkx] Skipping ${filePath} in schema type generation: ${error.message}`);
+            warn(`Skipping ${filePath} in schema type generation: ${error.message}`);
         }
     }
     return parsed;
