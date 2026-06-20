@@ -127,13 +127,11 @@ export function wrapHandle<T extends object = GTyped>(handle: Handle | null | un
 export function wrapHandle(handle: Handle | null | undefined, cls?: AnyClass): object | null {
     if (handle === null || handle === undefined) return null;
     if (cls === undefined) {
-        return resolveWrapper(handle, (runtimeGtype) => {
-            const resolved = findWrapperClass(runtimeGtype);
-            if (!resolved) {
-                throw new Error(`Expected registered GLib type, got gtype ${String(runtimeGtype)}`);
-            }
-            return resolved;
-        });
+        return resolveWrapper(
+            handle,
+            (runtimeGtype) => findWrapperClass(runtimeGtype),
+            (runtimeGtype) => `Expected registered GLib type, got gtype ${String(runtimeGtype)}`,
+        );
     }
     return instantiate(cls, handle);
 }
@@ -161,15 +159,11 @@ export function wrapInterfaceHandle<T extends object>(
 ): T | null;
 export function wrapInterfaceHandle(handle: Handle | null | undefined, interfaceGtype: GType): object | null {
     if (handle === null || handle === undefined) return null;
-    return resolveWrapper(handle, (runtimeGtype) => {
-        const resolved = findWrapperClassForInterface(runtimeGtype, interfaceGtype) ?? getWrapperClass(interfaceGtype);
-        if (!resolved) {
-            throw new Error(
-                `Expected registered wrapper for interface ${typeName(interfaceGtype) ?? String(interfaceGtype)}`,
-            );
-        }
-        return resolved;
-    });
+    return resolveWrapper(
+        handle,
+        (runtimeGtype) => findWrapperClassForInterface(runtimeGtype, interfaceGtype) ?? getWrapperClass(interfaceGtype),
+        () => `Expected registered wrapper for interface ${typeName(interfaceGtype) ?? String(interfaceGtype)}`,
+    );
 }
 
 /**
@@ -258,15 +252,22 @@ function findWrapperClassForInterface(gtype: GType, interfaceGtype: GType): AnyC
  * Shared wrapper-resolution pipeline behind the identity-tracked entry points.
  *
  * Returns the existing wrapper when the object is already tracked. Otherwise it
- * resolves the runtime `GType`, picks the wrapper class via `resolveClass`,
- * and finally builds and — for `GObject`s — registers a fresh wrapper. The
+ * resolves the runtime `GType`, picks the wrapper class via `resolveClass`, and
+ * finally builds and — for `GObject`s — registers a fresh wrapper. When
+ * `resolveClass` finds no class, it throws with the message `describe` supplies,
+ * so each caller keeps its own diagnostic while the throw lives here. The
  * class-less {@link wrapHandle} and {@link wrapInterfaceHandle} differ only in
  * the `resolveClass` strategy they supply.
  *
  * @param handle - The live native handle to resolve
- * @param resolveClass - Maps the runtime `GType` to the wrapper class to use
+ * @param resolveClass - Maps the runtime `GType` to the wrapper class, or null
+ * @param describe - Builds the error message when no class resolves
  */
-function resolveWrapper(handle: Handle, resolveClass: (runtimeGtype: GType) => AnyClass): object {
+function resolveWrapper(
+    handle: Handle,
+    resolveClass: (runtimeGtype: GType) => AnyClass | null,
+    describe: (runtimeGtype: GType) => string,
+): object {
     const existing = getWrapper(handle);
     if (existing) return existing;
 
@@ -276,6 +277,7 @@ function resolveWrapper(handle: Handle, resolveClass: (runtimeGtype: GType) => A
     }
 
     const cls = resolveClass(runtimeGtype);
+    if (!cls) throw new Error(describe(runtimeGtype));
     const instance = Object.create(cls.prototype) as GTyped;
     if (isGobjectType(runtimeGtype)) {
         linkGobjectWrapper(handle, instance);
