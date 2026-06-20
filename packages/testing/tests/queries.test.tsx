@@ -59,7 +59,7 @@ describe("findByRole", () => {
         expect(checkedBox).toBeDefined();
     });
 
-    it("filters by checked state for toggle buttons", async () => {
+    it("filters by pressed state for toggle buttons", async () => {
         const { container } = await render(
             <VBox>
                 <GtkToggleButton label="Inactive" />
@@ -67,7 +67,7 @@ describe("findByRole", () => {
             </VBox>,
         );
 
-        const activeToggle = await findByRole(container, Gtk.AccessibleRole.TOGGLE_BUTTON, { checked: true });
+        const activeToggle = await findByRole(container, Gtk.AccessibleRole.TOGGLE_BUTTON, { pressed: true });
         expect(activeToggle).toBeDefined();
     });
 

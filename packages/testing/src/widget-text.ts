@@ -177,8 +177,6 @@ export const getWidgetCheckedState = (widget: Gtk.Widget): boolean | null => {
         case Gtk.AccessibleRole.CHECKBOX:
         case Gtk.AccessibleRole.RADIO:
             return (widget as Gtk.CheckButton).getActive();
-        case Gtk.AccessibleRole.TOGGLE_BUTTON:
-            return (widget as Gtk.ToggleButton).getActive();
         case Gtk.AccessibleRole.SWITCH:
             return (widget as Gtk.Switch).getActive();
         default:

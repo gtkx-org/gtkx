@@ -86,7 +86,7 @@ describe("userEvent.click", () => {
         const toggle = await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON);
         await userEvent.click(toggle);
 
-        const active = await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { checked: true });
+        const active = await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { pressed: true });
         expect(active).toBeDefined();
     });
 });
