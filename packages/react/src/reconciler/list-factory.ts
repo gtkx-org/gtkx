@@ -16,46 +16,95 @@ export type ListLifecycleItem = Gtk.ListItem | Gtk.ListHeader;
  */
 export const asLifecycleItem = <T extends ListLifecycleItem>(obj: GObject.Object): T => obj as T;
 
-export type ListFactoryOptions<T extends ListLifecycleItem> = {
-    containers: Map<T, number>;
-    containerKeys: Map<T, string>;
+/**
+ * Options driving {@link connectFactoryLifecycle}. The lifecycle item type `T`
+ * and the container type `C` differ when a factory keys its bookkeeping by a
+ * widget it creates per item (a `Gtk.TreeExpander`) rather than by the list
+ * item itself; the default `createContainer`/`resolveContainer` key by the item.
+ */
+export type ListFactoryOptions<T extends ListLifecycleItem, C extends GObject.Object = T> = {
+    /** Container-to-position map; the factory keeps it current across the lifecycle. */
+    containers: Map<C, number>;
+    /** Container-to-stable-key map; the factory keeps it current across the lifecycle. */
+    containerKeys: Map<C, string>;
+    /** Builds (and is the key for) the container a freshly set-up item owns. */
+    createContainer: (item: T) => C;
+    /** Resolves the container a bound/unbound/torn-down item is keyed by, or `null` when none is tracked. */
+    resolveContainer: (item: T) => C | null;
+    /** The position a binding reports for `item`, before any refinement. */
     getPosition: (item: T) => number;
+    /** Refines the reported position a binding addresses. Defaults to the reported position. */
+    resolvePosition?: (item: T, reported: number) => number;
+    /** Notifies that the bound-item set changed and portals must rebuild. */
     onBoundItemsChanged: () => void;
-    onSetup?: (item: T) => void;
+    /** Runs after a container is created and registered on setup. */
+    onSetup?: (item: T, container: C) => void;
+    /** Runs after a binding's position is recorded. */
+    onBind?: (item: T, container: C, position: number) => void;
+    /** Runs when a binding is released, before the container is marked unbound. */
+    onUnbind?: (item: T, container: C) => void;
+    /** Runs when a container is torn down, after its bookkeeping is dropped. */
+    onTeardown?: (item: T, container: C) => void;
+    /** Whether the owning controller has detached, suppressing bind/unbind work. */
     isDetached?: () => boolean;
 };
 
-export function connectFactoryLifecycle<T extends ListLifecycleItem>(
+export function connectFactoryLifecycle<T extends ListLifecycleItem, C extends GObject.Object = T>(
     factory: Gtk.SignalListItemFactory,
-    options: ListFactoryOptions<T>,
+    options: ListFactoryOptions<T, C>,
 ): void {
-    const { containers, containerKeys, getPosition, onBoundItemsChanged, onSetup, isDetached } = options;
+    const {
+        containers,
+        containerKeys,
+        createContainer,
+        resolveContainer,
+        getPosition,
+        onBoundItemsChanged,
+        onSetup,
+        onBind,
+        onUnbind,
+        onTeardown,
+        isDetached,
+    } = options;
+    const resolvePosition = options.resolvePosition ?? ((_item: T, reported: number) => reported);
 
     factory.on("setup", (obj: GObject.Object) => {
         const item = asLifecycleItem<T>(obj);
-        containers.set(item, UNBOUND_POSITION);
-        containerKeys.set(item, stableIdOf(item));
-        onSetup?.(item);
+        const container = createContainer(item);
+        containers.set(container, UNBOUND_POSITION);
+        containerKeys.set(container, stableIdOf(container));
+        onSetup?.(item, container);
     });
 
     factory.on("bind", (obj: GObject.Object) => {
         if (isDetached?.()) return;
         const item = asLifecycleItem<T>(obj);
-        containers.set(item, getPosition(item));
+        const container = resolveContainer(item);
+        if (!container) return;
+        const position = resolvePosition(item, getPosition(item));
+        containers.set(container, position);
+        onBind?.(item, container, position);
         onBoundItemsChanged();
     });
 
     factory.on("unbind", (obj: GObject.Object) => {
         if (isDetached?.()) return;
         const item = asLifecycleItem<T>(obj);
-        containers.set(item, UNBOUND_POSITION);
+        const container = resolveContainer(item);
+        if (!container) return;
+        onUnbind?.(item, container);
+        containers.set(container, UNBOUND_POSITION);
         onBoundItemsChanged();
     });
 
     factory.on("teardown", (obj: GObject.Object) => {
         const item = asLifecycleItem<T>(obj);
-        containers.delete(item);
-        containerKeys.delete(item);
+        const container = resolveContainer(item);
+        if (container) {
+            containers.delete(container);
+            containerKeys.delete(container);
+            onTeardown?.(item, container);
+        }
         item.setChild(null);
     });
 }

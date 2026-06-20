@@ -5,11 +5,10 @@ import { createElement, type ReactNode } from "react";
 import { type BoundItem, collectFlatBoundItems } from "../reconciler/bound-item.js";
 import { isInCommit, scheduleFlush } from "../reconciler/commit-flush.js";
 import { runDeferredFlush } from "../reconciler/deferred-flush.js";
-import { asLifecycleItem, connectFactoryLifecycle, UNBOUND_POSITION } from "../reconciler/list-factory.js";
+import { connectFactoryLifecycle, UNBOUND_POSITION } from "../reconciler/list-factory.js";
 import { ListModelController } from "../reconciler/list-model-controller.js";
 import { SelectionController } from "../reconciler/selection-controller.js";
 import { SignalStore } from "../reconciler/signal-store.js";
-import { stableIdOf } from "../reconciler/stable-id.js";
 import type { ListItem } from "../utils/element-props.js";
 import type { DropDownLike } from "../utils/gtype-predicates.js";
 import type { ColumnController, ColumnHost } from "./column-controller.js";
@@ -297,77 +296,62 @@ export class ListController implements ColumnHost {
         this.factory = new Gtk.SignalListItemFactory();
         const isTree = this.modelController.isTreeMode();
 
-        this.factory.on("setup", (obj: GObject.Object) => this.onFactorySetup(obj, isTree));
-        this.factory.on("bind", (obj: GObject.Object) => this.onFactoryBind(obj, isTree));
-        this.factory.on("unbind", (obj: GObject.Object) => this.onFactoryUnbind(obj, isTree));
-        this.factory.on("teardown", (obj: GObject.Object) => this.onFactoryTeardown(obj, isTree));
+        connectFactoryLifecycle<Gtk.ListItem, Gtk.Widget | Gtk.ListItem>(this.factory, {
+            containers: this.containers,
+            containerKeys: this.containerKeys,
+            createContainer: (item) => (isTree ? this.createTreeContainer(item) : this.createFlatContainer(item)),
+            resolveContainer: (item) => (isTree ? (this.treeExpanders.get(item) ?? null) : item),
+            getPosition: (item) => item.getPosition(),
+            resolvePosition: (item, reported) => this.resolveBindPosition(item, reported),
+            onBoundItemsChanged: () => this.queueBoundItemsUpdate(),
+            onBind: (item, _container, position) => {
+                if (isTree) this.bindTreeExpander(item, position);
+            },
+            onUnbind: (_item, container) => {
+                if (container instanceof Gtk.TreeExpander) container.setListRow(null);
+            },
+            onTeardown: (item) => {
+                if (isTree) this.treeExpanders.delete(item);
+            },
+            isDetached: () => this.detached,
+        });
 
         if (this.props.renderListItem && this.isDropDown()) {
             this.setupListFactory();
         }
     }
 
-    private onFactorySetup(obj: GObject.Object, isTree: boolean): void {
-        const listItem = asLifecycleItem<Gtk.ListItem>(obj);
+    private createTreeContainer(listItem: Gtk.ListItem): Gtk.TreeExpander {
+        const expander = new Gtk.TreeExpander();
+        listItem.setChild(expander);
+        this.treeExpanders.set(listItem, expander);
+        return expander;
+    }
 
-        if (isTree) {
-            const expander = new Gtk.TreeExpander();
-            listItem.setChild(expander);
-            this.containers.set(expander, UNBOUND_POSITION);
-            this.containerKeys.set(expander, stableIdOf(expander));
-            this.treeExpanders.set(listItem, expander);
-            return;
-        }
-
+    private createFlatContainer(listItem: Gtk.ListItem): Gtk.ListItem {
         const { width, height } = this.getEstimatedItemSize();
         if (width !== -1 || height !== -1) {
             const placeholder = new Gtk.Box();
             placeholder.setSizeRequest(width, height);
             listItem.setChild(placeholder);
         }
-        this.containers.set(listItem, UNBOUND_POSITION);
-        this.containerKeys.set(listItem, stableIdOf(listItem));
-    }
-
-    private lifecycleListItem(obj: GObject.Object): Gtk.ListItem | null {
-        if (this.detached) return null;
-        return asLifecycleItem<Gtk.ListItem>(obj);
-    }
-
-    private withTreeExpander(listItem: Gtk.ListItem, fn: (expander: Gtk.TreeExpander) => void): void {
-        const expander = this.treeExpanders.get(listItem);
-        if (expander) fn(expander);
-    }
-
-    private onFactoryBind(obj: GObject.Object, isTree: boolean): void {
-        const listItem = this.lifecycleListItem(obj);
-        if (!listItem) return;
-        const position = this.resolveBindPosition(listItem);
-
-        if (isTree) {
-            this.bindTreeListItem(listItem, position);
-        } else {
-            this.containers.set(listItem, position);
-        }
-
-        this.queueBoundItemsUpdate();
+        return listItem;
     }
 
     /**
-     * Resolves the flat position a factory binding addresses. Dropdown-like
+     * Refines the flat position a factory binding addresses. Dropdown-like
      * widgets resolve through the bound object's identity because
      * `Adw.ComboRow` binds its selected-item display without assigning the
      * list item a position, leaving `getPosition()` stuck at `0`.
      */
-    private resolveBindPosition(listItem: Gtk.ListItem): number {
-        const position = listItem.getPosition();
-        if (!this.isDropDown() || this.isUncontrolled()) return position;
+    private resolveBindPosition(listItem: Gtk.ListItem, reported: number): number {
+        if (!this.isDropDown() || this.isUncontrolled()) return reported;
         const item = listItem.getItem();
-        if (!item) return position;
-        return this.modelController.positionOf(item) ?? position;
+        if (!item) return reported;
+        return this.modelController.positionOf(item) ?? reported;
     }
 
-    private bindTreeListItem(listItem: Gtk.ListItem, position: number): void {
+    private bindTreeExpander(listItem: Gtk.ListItem, position: number): void {
         const expander = this.treeExpanders.get(listItem);
         if (!expander) return;
 
@@ -384,62 +368,13 @@ export class ListController implements ColumnHost {
         this.containers.set(expander, position);
     }
 
-    private withLifecycleItem(
-        obj: GObject.Object,
-        isTree: boolean,
-        onTreeExpander: (expander: Gtk.TreeExpander) => void,
-        onFlatItem: (listItem: Gtk.ListItem) => void,
-    ): Gtk.ListItem | null {
-        const listItem = this.lifecycleListItem(obj);
-        if (!listItem) return null;
-
-        if (isTree) {
-            this.withTreeExpander(listItem, onTreeExpander);
-        } else {
-            onFlatItem(listItem);
-        }
-
-        return listItem;
-    }
-
-    private onFactoryUnbind(obj: GObject.Object, isTree: boolean): void {
-        const listItem = this.withLifecycleItem(
-            obj,
-            isTree,
-            (expander) => {
-                this.containers.set(expander, UNBOUND_POSITION);
-                expander.setListRow(null);
-            },
-            (item) => {
-                this.containers.set(item, UNBOUND_POSITION);
-            },
-        );
-        if (listItem) this.queueBoundItemsUpdate();
-    }
-
-    private onFactoryTeardown(obj: GObject.Object, isTree: boolean): void {
-        const listItem = this.withLifecycleItem(
-            obj,
-            isTree,
-            (expander) => {
-                this.containers.delete(expander);
-                this.containerKeys.delete(expander);
-            },
-            (item) => {
-                this.containers.delete(item);
-                this.containerKeys.delete(item);
-            },
-        );
-        if (!listItem) return;
-        if (isTree) this.treeExpanders.delete(listItem);
-        listItem.setChild(null);
-    }
-
     private setupListFactory(): void {
         this.listFactory = new Gtk.SignalListItemFactory();
-        connectFactoryLifecycle(this.listFactory, {
+        connectFactoryLifecycle<Gtk.ListItem>(this.listFactory, {
             containers: this.listContainers,
             containerKeys: this.listContainerKeys,
+            createContainer: (item) => item,
+            resolveContainer: (item) => item,
             getPosition: (item) => item.getPosition(),
             onBoundItemsChanged: () => this.queueBoundItemsUpdate(),
             isDetached: () => this.detached,
@@ -448,9 +383,11 @@ export class ListController implements ColumnHost {
 
     private setupHeaderFactory(): void {
         this.headerFactory = new Gtk.SignalListItemFactory();
-        connectFactoryLifecycle(this.headerFactory, {
+        connectFactoryLifecycle<Gtk.ListHeader>(this.headerFactory, {
             containers: this.headerContainers,
             containerKeys: this.headerContainerKeys,
+            createContainer: (item) => item,
+            resolveContainer: (item) => item,
             getPosition: (item) => item.getStart(),
             onBoundItemsChanged: () => this.queueBoundItemsUpdate(),
             isDetached: () => this.detached,

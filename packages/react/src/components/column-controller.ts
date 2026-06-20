@@ -56,9 +56,11 @@ export class ColumnController {
      */
     public constructor() {
         this.factory = new Gtk.SignalListItemFactory();
-        connectFactoryLifecycle(this.factory, {
+        connectFactoryLifecycle<Gtk.ListItem>(this.factory, {
             containers: this.containers,
             containerKeys: this.containerKeys,
+            createContainer: (item) => item,
+            resolveContainer: (item) => item,
             getPosition: (item) => item.getPosition(),
             onBoundItemsChanged: () => this.list?.queueBoundItemsUpdate(),
             onSetup: (item) => {
