@@ -2,7 +2,7 @@ import { type CallbackType, call, type Type as FfiType, type Handle } from "@gtk
 import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
 import { arrayT, biguint64T, bind, objectT, stringT, uint32T, uint64T, voidT } from "./descriptors.js";
 import { tupleResult } from "./fn.js";
-import { type GType, type GTyped } from "./gtype.js";
+import type { GType, GTyped } from "./gtype.js";
 import {
     fromGvalue,
     inoutBoxedFromFfi,
@@ -12,8 +12,8 @@ import {
     toGvalue,
     valueGetBoxed,
 } from "./gvalue.js";
-import { getHandle } from "./registry.js";
 import { wrapHandler } from "./handler-trampoline.js";
+import { getHandle } from "./registry.js";
 
 /**
  * Runtime signal-connection wrapper for generated FFI bindings.

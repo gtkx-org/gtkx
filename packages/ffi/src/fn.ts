@@ -1,8 +1,8 @@
 import type { CallbackType, Ref, Type, Value } from "@gtkx/native";
 import { bind, boxedT, refT } from "./descriptors.js";
 import { checkError } from "./gerror.js";
-import { getHandle } from "./registry.js";
 import { type UserHandler, wrapHandler } from "./handler-trampoline.js";
+import { getHandle } from "./registry.js";
 import { wrapValue } from "./wrap-value.js";
 
 /**
@@ -142,7 +142,11 @@ const toNativeValues = (plans: readonly ArgPlan[], inputs: readonly unknown[]): 
  * yields its cell's filled value lifted through {@link wrapValue}. A `consumed`
  * out and a plain input contribute nothing.
  */
-const toOutputs = (plans: readonly ArgPlan[], inputs: readonly unknown[], nativeValues: readonly Value[]): unknown[] => {
+const toOutputs = (
+    plans: readonly ArgPlan[],
+    inputs: readonly unknown[],
+    nativeValues: readonly Value[],
+): unknown[] => {
     const outputs: unknown[] = [];
     plans.forEach(({ argType, inputIndex, isOutput }, index) => {
         if (!isOutput) return;

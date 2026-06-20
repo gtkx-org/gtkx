@@ -29,6 +29,7 @@ export { getGobjectProperty, newGobjectWithProperties, setGobjectProperty } from
 export * from "./gtype.js";
 export { getGvalueBoxed, setGvalueBoxed } from "./gvalue.js";
 export * from "./lifecycle.js";
+export { offSignal, onceSignal, onSignal } from "./listeners.js";
 export { registerClass } from "./register-class.js";
 export {
     constructWrapper,
@@ -43,7 +44,6 @@ export {
     wrapHandle,
     wrapInterfaceHandle,
 } from "./registry.js";
-export { offSignal, onceSignal, onSignal } from "./listeners.js";
 export { connectGobjectSignal, emitGobjectSignal, type SignalHandler, signalBaseName } from "./signal.js";
 export { t } from "./t.js";
 export { wrapValue } from "./wrap-value.js";

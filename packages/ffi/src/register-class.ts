@@ -5,6 +5,7 @@ import {
 } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { type GType, TYPE_INVALID, typeInterfaces } from "./gtype.js";
+import { wrapHandler } from "./handler-trampoline.js";
 import {
     getClassGtype,
     getInterfaceVfuncRegistry,
@@ -14,7 +15,6 @@ import {
     type VfuncDescriptor,
     walkClassChain,
 } from "./registry.js";
-import { wrapHandler } from "./handler-trampoline.js";
 
 /**
  * Options accepted by {@link registerClass}.
