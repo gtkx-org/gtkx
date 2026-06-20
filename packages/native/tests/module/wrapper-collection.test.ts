@@ -3,15 +3,6 @@ import { getWrapper, type Handle, setWrapper } from "../../index.js";
 import { finalizeCount, watchObjectFinalize } from "./native-test-support.js";
 import { boxAppend, boxRemove, createBox, createLabel, forceGC, getRefCount } from "./utils.js";
 
-/**
- * Drives `forceGC` and yields to the event loop until `predicate` holds or the
- * round budget is exhausted, so a napi finalizer that runs across several GC
- * passes — and the `GLib`-thread idle it schedules — has a chance to complete.
- *
- * Each `forceGC` is preceded by an `await`, so the strong reference a prior
- * `WeakRef.deref()` leaves on the stack is unwound before collection runs;
- * otherwise conservative stack scanning would re-pin the wrapper every round.
- */
 async function gcUntil(predicate: () => boolean, maxRounds = 100): Promise<boolean> {
     for (let i = 0; i < maxRounds; i++) {
         if (predicate()) return true;
@@ -22,11 +13,6 @@ async function gcUntil(predicate: () => boolean, maxRounds = 100): Promise<boole
     return predicate();
 }
 
-/**
- * Binds a fresh wrapper to `handle` in an isolated scope and returns only a
- * `WeakRef` to it, so the wrapper is unreachable from the caller — a strong
- * local would otherwise pin it past garbage collection in an async test body.
- */
 function bindWrapper(handle: Handle, tag: string): WeakRef<object> {
     const wrapper = { tag };
     setWrapper(handle, wrapper);

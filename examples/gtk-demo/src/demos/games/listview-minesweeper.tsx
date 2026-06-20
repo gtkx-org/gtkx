@@ -81,7 +81,7 @@ const revealCell = (index: number, currentBoard: Cell[]): Cell[] => {
 };
 
 const playGameSound = (win: boolean, soundStreamRef: React.RefObject<Gtk.MediaFile | null>) => {
-    const dataDirs = (process.env.XDG_DATA_DIRS ?? "/usr/local/share:/usr/share").split(":");
+    const dataDirs = (process.env["XDG_DATA_DIRS"] ?? "/usr/local/share:/usr/share").split(":");
     const sound = win ? "complete.oga" : "suspend-error.oga";
     const path = dataDirs
         .map((dir) => `${dir}/sounds/freedesktop/stereo/${sound}`)

@@ -1,9 +1,3 @@
-//! Tick-callback freezing during a React commit.
-//!
-//! [`freeze`] and [`unfreeze`] are napi exports driven by a live [`napi::Env`],
-//! so the module is excluded from coverage instrumentation. The underlying
-//! [`crate::dispatch::Mailbox`] freeze logic is exercised directly by tests.
-
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use napi::Env;

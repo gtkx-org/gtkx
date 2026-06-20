@@ -1,18 +1,3 @@
-//! Native-side error surface for the JavaScript thread.
-//!
-//! [`NativeErrorReporter`] is a process-global singleton holding a
-//! [`ThreadsafeFunction`] installed once at startup. Any thread can call
-//! [`NativeErrorReporter::report`] / [`NativeErrorReporter::report_str`]; the
-//! TSFN schedules the message back onto the JavaScript thread where it is
-//! raised as an uncaught exception.
-//!
-//! The TSFN is `Weak`, so a pending error never keeps the Node.js event loop
-//! alive past natural shutdown.
-//!
-//! Every path here either installs or invokes a threadsafe function bound to
-//! the Node.js event loop, so the module is excluded from coverage
-//! instrumentation — a `cargo test` process has no event loop to drive it.
-
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use std::sync::{Arc, OnceLock};
@@ -21,13 +6,8 @@ use napi::bindgen_prelude::*;
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi::{Env, Status, sys};
 
-/// Type alias for the threadsafe function used to throw native errors on the
-/// JavaScript thread.
-///
-/// The const generics encode `CalleeHandled = false` and `Weak = true`.
 pub type ErrorReporterTsfn = ThreadsafeFunction<String, (), String, Status, false, true>;
 
-/// Process-global error reporter routing native errors back to JavaScript.
 pub struct NativeErrorReporter {
     tsfn: OnceLock<Arc<ErrorReporterTsfn>>,
 }
@@ -43,24 +23,16 @@ impl std::fmt::Debug for NativeErrorReporter {
 static REPORTER: OnceLock<NativeErrorReporter> = OnceLock::new();
 
 impl NativeErrorReporter {
-    /// Returns the global reporter, initializing it on first access.
     pub fn global() -> &'static Self {
         REPORTER.get_or_init(|| Self {
             tsfn: OnceLock::new(),
         })
     }
 
-    /// Installs the JavaScript-thread TSFN. Called exactly once during startup.
-    ///
-    /// Subsequent calls are silently ignored to keep the singleton write-once.
     pub fn initialize(&self, tsfn: Arc<ErrorReporterTsfn>) {
         let _ = self.tsfn.set(tsfn);
     }
 
-    /// Builds the `gtkx_report_error` JS function and its threadsafe function,
-    /// then initializes the reporter with it. The function surfaces each native
-    /// error as an `unhandledRejection` on the Node.js process through
-    /// [`UnhandledRejection`].
     pub fn install(&self, env: Env) -> napi::Result<()> {
         let error_fn =
             env.create_function_from_closure::<String, (), _>("gtkx_report_error", |ctx| {
@@ -79,15 +51,10 @@ impl NativeErrorReporter {
         Ok(())
     }
 
-    /// Reports an [`anyhow::Error`] (with full chain) as a JavaScript exception.
     pub fn report(&self, error: &anyhow::Error) {
         self.report_str(&format!("{error:#}"));
     }
 
-    /// Reports a free-form message as a JavaScript exception.
-    ///
-    /// Falls back to `stderr` if the reporter has not been initialized, so
-    /// startup errors are still observable.
     pub fn report_str(&self, message: &str) {
         let Some(tsfn) = self.tsfn.get() else {
             eprintln!("[gtkx] ERROR (not initialized): {message}");
@@ -98,18 +65,10 @@ impl NativeErrorReporter {
     }
 }
 
-/// Surfaces native-side failures that have no JavaScript stack of their own by
-/// emitting `unhandledRejection` events on the Node.js process.
 #[cfg_attr(test, allow(dead_code))]
 struct UnhandledRejection;
 
 impl UnhandledRejection {
-    /// Emits an `unhandledRejection` event on the Node.js process with a
-    /// synthesized `Error` whose message is `msg`. The event flows through
-    /// Node's standard rejection handling so userland code can suppress or
-    /// redirect it via `process.on('unhandledRejection', ...)`.
-    ///
-    /// Falls back to `stderr` if any step of the emission fails.
     #[allow(clippy::trivially_copy_pass_by_ref)]
     #[cfg_attr(test, allow(dead_code))]
     fn emit(env: &Env, msg: &str) {
@@ -118,14 +77,9 @@ impl UnhandledRejection {
         }
     }
 
-    /// Performs the `unhandledRejection` emission, returning `None` as soon as
-    /// any napi step fails so [`emit`](Self::emit) can fall back to `stderr`.
     #[cfg_attr(test, allow(dead_code))]
     fn try_emit(env: &Env, msg: &str) -> Option<()> {
         let raw_env = env.raw();
-        // SAFETY: This runs on the JS thread with the live `env` of the
-        // current callback; every value passed between the napi calls was
-        // created under that same env.
         unsafe {
             let mut global = std::ptr::null_mut();
             (sys::napi_get_global(raw_env, &mut global) == sys::Status::napi_ok).then_some(())?;
@@ -168,8 +122,6 @@ impl UnhandledRejection {
 
     #[cfg_attr(test, allow(dead_code))]
     unsafe fn make_error_object(env: sys::napi_env, msg: &str) -> Option<sys::napi_value> {
-        // SAFETY: The caller passes the live env of the current JS-thread
-        // callback, and `msg` provides valid UTF-8 bytes for the string.
         unsafe {
             let mut msg_value = std::ptr::null_mut();
             let bytes = msg.as_bytes();
@@ -194,8 +146,6 @@ impl UnhandledRejection {
 
     #[cfg_attr(test, allow(dead_code))]
     unsafe fn make_resolved_promise(env: sys::napi_env) -> Option<sys::napi_value> {
-        // SAFETY: The caller passes the live env of the current JS-thread
-        // callback; the deferred and undefined values are created under it.
         unsafe {
             let mut deferred = std::ptr::null_mut();
             let mut promise = std::ptr::null_mut();

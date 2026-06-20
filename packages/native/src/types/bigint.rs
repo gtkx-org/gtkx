@@ -1,11 +1,3 @@
-//! BigInt-represented 64-bit integers.
-//!
-//! [`BigIntKind`] is the codec for FFI slots whose JavaScript representation
-//! is a `bigint` instead of a `number`. The wire format matches the 64-bit
-//! [`super::IntegerKind`] variants exactly — the kinds differ only in the IR
-//! variant they produce and accept ([`value::Value::BigInt`]), which spans
-//! the full `i64`/`u64` range instead of capping at 2^53.
-
 use anyhow::bail;
 use libffi::middle as libffi;
 
@@ -13,7 +5,6 @@ use super::IntegerKind;
 use super::numeric::MAX_SAFE_INTEGER_I128;
 use super::prelude::*;
 
-/// Signedness of a BigInt-represented 64-bit FFI slot.
 #[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
 pub enum BigIntKind {
@@ -22,8 +13,6 @@ pub enum BigIntKind {
 }
 
 impl BigIntKind {
-    /// The number-represented integer kind sharing this kind's wire format,
-    /// which the codec delegates ABI-level work to.
     fn wire_kind(self) -> IntegerKind {
         match self {
             Self::I64 => IntegerKind::I64,
@@ -50,10 +39,6 @@ impl BigIntKind {
         }
     }
 
-    /// Extracts the integer payload a bigint argument encodes. `BigInt`
-    /// values pass through exactly; `Number` values are accepted for
-    /// ergonomics under the same integrality and 2^53 constraints the
-    /// number-represented integer kinds enforce.
     fn int_from_value(self, value: &value::Value) -> anyhow::Result<i128> {
         match value {
             value::Value::BigInt(v) => Ok(*v),
@@ -93,12 +78,7 @@ impl BigIntKind {
         }
     }
 
-    /// # Safety
-    ///
-    /// `ptr` must be valid for a read of 8 bytes.
     unsafe fn read_i128(self, ptr: *const u8) -> i128 {
-        // SAFETY: The caller guarantees `ptr` is readable at this kind's
-        // 8-byte width; the reads are unaligned-tolerant.
         unsafe {
             match self {
                 Self::I64 => i128::from(ptr.cast::<i64>().read_unaligned()),
@@ -107,27 +87,18 @@ impl BigIntKind {
         }
     }
 
-    /// Width in bytes of one array element (always 8).
     #[must_use]
     pub fn byte_size(self) -> usize {
         self.wire_kind().byte_size()
     }
 
-    /// Reads `len` contiguous 64-bit elements at `ptr` into JS `BigInt` values.
-    ///
-    /// # Safety
-    ///
-    /// `ptr` must address `len` readable, 8-byte-strided elements.
     #[must_use]
     pub unsafe fn read_slice(self, ptr: *const u8, len: usize) -> Vec<value::Value> {
         (0..len)
-            // SAFETY: The caller guarantees `len` 8-byte elements at `ptr`.
             .map(|i| value::Value::BigInt(unsafe { self.read_i128(ptr.add(i * self.byte_size())) }))
             .collect()
     }
 
-    /// Builds an FFI storage buffer of 64-bit elements from JS `BigInt` (or
-    /// integral `Number`) values, range-checking each element.
     pub fn to_ffi_storage(self, array: &[value::Value]) -> anyhow::Result<ffi::FfiStorage> {
         let int_at = |i: usize, v: &value::Value| {
             self.int_from_value(v)
@@ -157,14 +128,8 @@ impl BigIntKind {
         }
     }
 
-    /// Writes `value` into the 8-byte slot at `ptr` (a `GArray` cell).
-    ///
-    /// # Safety
-    ///
-    /// `ptr` must be valid for an 8-byte write.
     pub unsafe fn append_into(self, ptr: *mut u8, value: &value::Value) -> anyhow::Result<()> {
         let ffi_value = self.checked_to_ffi_value(self.int_from_value(value)?)?;
-        // SAFETY: The caller guarantees `ptr` is a writable 8-byte slot.
         unsafe { ffi_value.write_scalar_to(ptr.cast()) }
     }
 }
@@ -194,8 +159,6 @@ impl FfiDecoder for BigIntKind {
                 Self::U64 => i128::from(ptr as u64),
             })),
             ReadSource::Slot(ptr, _context) => {
-                // SAFETY: The caller guarantees `ptr` is readable at this kind's
-                // 8-byte width.
                 Ok(value::Value::BigInt(unsafe { self.read_i128(ptr.cast()) }))
             }
         }
@@ -216,8 +179,6 @@ impl RawPtrCodec for BigIntKind {
         let ffi_value = self
             .checked_to_ffi_value(int)
             .unwrap_or_else(|_| self.zero_ffi_value());
-        // SAFETY: The caller guarantees `ret` is a writable 8-byte libffi
-        // return slot, the exact width of this kind's scalar payload.
         let _ = unsafe { ffi_value.write_scalar_to(ret) };
     }
 
@@ -228,8 +189,6 @@ impl RawPtrCodec for BigIntKind {
     ) -> anyhow::Result<()> {
         let int = self.int_from_value(value)?;
         let ffi_value = self.checked_to_ffi_value(int)?;
-        // SAFETY: The caller guarantees `ptr` is writable at this kind's
-        // 8-byte width.
         unsafe { ffi_value.write_scalar_to(ptr) }
     }
 }
@@ -276,8 +235,6 @@ mod tests {
     fn field_write_then_read_round_trips_beyond_2_53() {
         let mut slot = [0u8; 8];
         let big = i128::from(u64::MAX) - 7;
-        // SAFETY: The local 8-byte buffer is valid for this kind's write and
-        // read.
         unsafe {
             BigIntKind::U64
                 .write_value_to_raw_ptr(slot.as_mut_ptr().cast(), &value::Value::BigInt(big))
@@ -292,8 +249,6 @@ mod tests {
     #[test]
     fn ptr_to_value_reinterprets_pointer_bits() {
         let ptr = 0x1234usize as *mut std::ffi::c_void;
-        // SAFETY: a Value read reinterprets the pointer value itself and
-        // never dereferences it.
         let value =
             unsafe { BigIntKind::U64.read(ReadSource::Value(ptr, "test")) }.expect("convert");
         assert!(matches!(value, value::Value::BigInt(v) if v == 0x1234));
@@ -321,8 +276,6 @@ mod tests {
     fn field_write_then_read_round_trips_i64() {
         let mut slot = [0u8; 8];
         let big = i128::from(i64::MIN);
-        // SAFETY: The local 8-byte buffer is valid for this kind's write and
-        // read.
         unsafe {
             BigIntKind::I64
                 .write_value_to_raw_ptr(slot.as_mut_ptr().cast(), &value::Value::BigInt(big))
@@ -337,8 +290,6 @@ mod tests {
     #[test]
     fn ptr_to_value_i64_reinterprets_pointer_bits() {
         let ptr = usize::MAX as *mut std::ffi::c_void;
-        // SAFETY: a Value read reinterprets the pointer value itself and
-        // never dereferences it.
         let value =
             unsafe { BigIntKind::I64.read(ReadSource::Value(ptr, "test")) }.expect("convert");
         assert!(matches!(value, value::Value::BigInt(v) if v == -1));
@@ -353,7 +304,6 @@ mod tests {
     #[test]
     fn read_slice_reads_contiguous_elements() {
         let buffer: [u64; 3] = [u64::MAX, 0, 42];
-        // SAFETY: `buffer` holds three readable 8-byte elements.
         let values = unsafe { BigIntKind::U64.read_slice(buffer.as_ptr().cast(), 3) };
         assert_eq!(values.len(), 3);
         assert!(matches!(values[0], value::Value::BigInt(v) if v == i128::from(u64::MAX)));
@@ -391,13 +341,11 @@ mod tests {
     #[test]
     fn append_into_writes_value_into_slot() {
         let mut slot = [0u8; 8];
-        // SAFETY: `slot` is a writable 8-byte buffer.
         unsafe {
             BigIntKind::I64
                 .append_into(slot.as_mut_ptr(), &value::Value::BigInt(-5))
                 .expect("write");
         }
-        // SAFETY: `slot` now holds one written 8-byte element.
         let read = unsafe { BigIntKind::I64.read_i128(slot.as_ptr()) };
         assert_eq!(read, -5);
     }
@@ -435,9 +383,7 @@ mod tests {
     fn write_return_writes_value() {
         let mut slot = [0u8; 8];
         let value: std::result::Result<value::Value, ()> = Ok(value::Value::BigInt(123));
-        // SAFETY: `slot` is a writable 8-byte return slot.
         unsafe { BigIntKind::I64.write_return_to_raw_ptr(slot.as_mut_ptr().cast(), &value) };
-        // SAFETY: `slot` now holds the written 8-byte return value.
         assert_eq!(unsafe { BigIntKind::I64.read_i128(slot.as_ptr()) }, 123);
     }
 
@@ -449,9 +395,7 @@ mod tests {
         ] {
             let mut slot = [0xFFu8; 8];
             let value: std::result::Result<value::Value, ()> = Ok(value::Value::BigInt(payload));
-            // SAFETY: `slot` is a writable 8-byte return slot.
             unsafe { kind.write_return_to_raw_ptr(slot.as_mut_ptr().cast(), &value) };
-            // SAFETY: `slot` now holds the zero fallback the codec wrote.
             assert_eq!(unsafe { kind.read_i128(slot.as_ptr()) }, 0);
         }
     }

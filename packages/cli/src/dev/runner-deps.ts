@@ -13,21 +13,6 @@ import { gtkxVitePlugins } from "../vite-plugins/index.js";
 import { gtkxSkipReactDomOptimize } from "../vite-plugins/skip-react-dom-optimize.js";
 import type { DevRunnerDeps } from "./runner.js";
 
-/**
- * Production wiring for {@link createDevRunner}.
- *
- * Connects the runner to Vite, the GLib runtime, the MCP client, and the
- * React Fast Refresh runtime. Lives in its own module so that the runner
- * factory file (`runner.ts`) can be imported in unit tests without
- * pulling the GTK FFI bindings into the test process.
- *
- * The gtkx Vite plugins read `gtkx.config.ts` through their own shared
- * loader, so no build-time configuration is threaded through here;
- * `getConfiguredApplicationId` resolves the config separately for the MCP
- * registration identity.
- *
- * @returns The default {@link DevRunnerDeps} used by `main`.
- */
 export const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     createServer,
     getApplicationId: () => Gio.Application.getDefault()?.applicationId ?? null,

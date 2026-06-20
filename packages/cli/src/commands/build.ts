@@ -4,13 +4,6 @@ import { preflightCodegen } from "../codegen/run-codegen.js";
 import { info } from "../internal/log.js";
 import { entryArg, resolveEntry } from "./entry.js";
 
-/**
- * `gtkx build` — bundle the project for production.
- *
- * Runs codegen preflight, then invokes {@link buildApp} with the resolved entry
- * and the optional asset base path. The GResource pipeline reads
- * `applicationId` directly from `gtkx.config.ts`.
- */
 export const build = defineCommand({
     meta: {
         name: "build",

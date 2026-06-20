@@ -1,14 +1,3 @@
-/**
- * Mapping from GIR primitive type names to the FFI marshaling categories
- * the writers emit.
- *
- * The categories mirror the `t.*` helpers exposed by `@gtkx/ffi`'s runtime
- * (see `packages/ffi/src/helpers.ts`). Categories that are not directly
- * marshaled (e.g. `void`, `string`, `unichar`) are still listed so callers
- * can branch on them without falling through to a default. `gtype` marshals
- * identically to `biguint64` (an unsigned 64-bit integer) but carries the
- * `GType` alias as its TypeScript surface type rather than bare `bigint`.
- */
 export type PrimitiveCategory =
     | "void"
     | "boolean"
@@ -29,13 +18,7 @@ export type PrimitiveCategory =
     | "unichar"
     | "pointer";
 
-/**
- * Width in bytes of each primitive category on the x86-64 ABI (Linux LP64).
- *
- * The widths are also used as the natural alignment requirement of each
- * category — every native integer/float aligns to its own size.
- */
-export const PRIMITIVE_SIZE: Readonly<Record<PrimitiveCategory, number>> = Object.freeze({
+export const PRIMITIVE_SIZE: Record<PrimitiveCategory, number> = Object.freeze({
     void: 0,
     boolean: 4,
     int8: 1,
@@ -56,7 +39,7 @@ export const PRIMITIVE_SIZE: Readonly<Record<PrimitiveCategory, number>> = Objec
     pointer: 8,
 });
 
-const PRIMITIVE_BY_NAME: ReadonlyMap<string, PrimitiveCategory> = new Map([
+const PRIMITIVE_BY_NAME: Map<string, PrimitiveCategory> = new Map([
     ["none", "void"],
     ["void", "void"],
     ["gboolean", "boolean"],
@@ -108,28 +91,9 @@ const PRIMITIVE_BY_NAME: ReadonlyMap<string, PrimitiveCategory> = new Map([
     ["gconstpointer", "pointer"],
 ] as const);
 
-/**
- * Returns the FFI category for a GIR primitive name (`"gint"`, `"utf8"`,
- * `"gsize"`, …) or `undefined` when the name is not a primitive.
- *
- * Aliases that GIR uses inconsistently (`gint` / `int` / `gint32`, …) all
- * map to the same canonical category.
- *
- * @param name - The GIR type name as it appears in `<type name="…">`
- */
 export const primitiveCategory = (name: string): PrimitiveCategory | undefined => PRIMITIVE_BY_NAME.get(name);
 
-/**
- * TypeScript surface type for each primitive category.
- *
- * Codegen surfaces both raw C primitives and string-marshalled categories
- * (`string`, `unichar`) through this map so writers in the FFI and React
- * pipelines agree on the same annotation per category. The `gtype` entry is
- * the bare `GType` alias name; the type writers intercept that category to
- * resolve the alias to its owning import per module, so the map value serves
- * only as the unqualified fallback.
- */
-export const PRIMITIVE_TS_TYPE: Readonly<Record<PrimitiveCategory, string>> = Object.freeze({
+export const PRIMITIVE_TS_TYPE: Record<PrimitiveCategory, string> = Object.freeze({
     void: "void",
     boolean: "boolean",
     int8: "number",

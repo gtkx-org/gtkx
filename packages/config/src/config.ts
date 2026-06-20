@@ -11,164 +11,35 @@ import {
     validateVirtualPropRows,
 } from "./table-schema.js";
 
-/**
- * Sentinel {@link GtkxConfig.libraries} value selecting every `.gir` file
- * found on the resolved GIR search path.
- */
 export const LIBRARIES_WILDCARD = "*";
 
-/**
- * Matches a `Name-Version` GIR namespace identifier such as `Gtk-4.0` or
- * `GLib-2.0`: a leading-alpha alphanumeric name, a `-`, then one or more
- * dot-separated numeric version components.
- */
 export const GIR_NAMESPACE_PATTERN: RegExp = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/;
 
-/**
- * User-facing configuration for a GTKX project.
- *
- * Authored in `gtkx.config.ts` at the project root. Loaded by the
- * `gtkx codegen`, `gtkx dev`, and `gtkx build` commands via {@link loadGtkxConfig}.
- *
- * @example
- * ```ts
- * import { defineConfig } from "@gtkx/cli";
- *
- * export default defineConfig({
- *     libraries: ["Gtk-4.0", "Adw-1"],
- * });
- * ```
- */
 export type GtkxConfig = UserTableRows & {
-    /**
-     * GLib namespace identifiers (with version) to generate bindings for,
-     * e.g. `"Gtk-4.0"`, `"Adw-1"`. Transitive dependencies are resolved
-     * automatically from the GIR files on disk.
-     *
-     * Set to `"*"` to generate bindings for every `.gir` file discovered on
-     * the resolved GIR search path, keeping the newest version of each
-     * namespace.
-     *
-     * Only `Gtk-4.0` is mandatory: it is the default when `libraries` is
-     * omitted and is added to an explicit list that omits it. Every other
-     * namespace (libadwaita, GtkSource, WebKit, …) is generated exactly when
-     * listed.
-     */
     libraries?: typeof LIBRARIES_WILDCARD | string[];
 
-    /**
-     * Additional directories to search for `.gir` files, prepended to the
-     * default probe chain. The default chain is:
-     *
-     * 1. The `GTKX_GIR_PATH` environment variable (colon-separated)
-     * 2. `/usr/share/gir-1.0` (the standard system location on Linux)
-     * 3. The output of `pkg-config --variable=girdir gobject-introspection-1.0`
-     *
-     * Paths are resolved relative to the project root.
-     */
     girPath?: string[];
 
-    /**
-     * GLib application id used by the GResource pipeline and exposed to app
-     * code as the `applicationId` constant of the `virtual:gtkx-config`
-     * module, ready to pass to the application component's `applicationId` prop.
-     *
-     * When set, asset imports resolve to `resource:///<prefix>/<rel>` where
-     * `<prefix>` is derived from the id (`org.gtk.Demo4` → `/org/gtk/Demo4`)
-     * and `<rel>` is the asset's path under the `#data/` import root. Importing
-     * `#data/icons/logo.svg` therefore lands it at `<prefix>/icons/logo.svg`,
-     * and `#data/style.css` at `<prefix>/style.css` — the GApplication default
-     * `resource_base_path` Adw/Gtk auto-load from. The directory `#data/` points
-     * at is declared in `package.json` `imports` (`"#data/*": "./data/*"`), not
-     * here. Must match `g_application_id_is_valid` — see {@link isValidApplicationId}.
-     *
-     * When omitted, the GResource pipeline falls back to the prefix
-     * `/gtkx/app`.
-     */
     applicationId?: string;
 
-    /**
-     * Controls the React Compiler (`babel-plugin-react-compiler`), which
-     * auto-memoizes components and hooks at build time so the reconciler
-     * commits fewer GObject property sets and signal reconnections per render.
-     *
-     * Enabled by default for every `gtkx dev`, `gtkx build`, and test run: the
-     * compiler transforms the project's own `.ts`/`.tsx` source (files under
-     * the project root, excluding `node_modules`) with `target: "19"`, matching
-     * GTKX's required React version.
-     *
-     * Set to `false` to disable it, or pass an object to tune the compiler.
-     *
-     * @example
-     * ```ts
-     * reactCompiler: false,
-     * ```
-     *
-     * @example
-     * ```ts
-     * reactCompiler: { compilationMode: "annotation" },
-     * ```
-     */
     reactCompiler?: boolean | ReactCompilerOptions;
 };
 
-/**
- * The React Compiler `compilationMode`: which functions it attempts to
- * optimize. `"infer"` (the compiler default) memoizes functions recognized as
- * components or hooks; `"annotation"` only those marked with a `"use memo"`
- * directive; `"all"` every top-level function; `"syntax"` only those using
- * optimization-eligible syntax.
- */
 export type ReactCompilerCompilationMode = "infer" | "syntax" | "annotation" | "all";
 
-/**
- * The React Compiler `panicThreshold`: how it reacts to code it cannot safely
- * optimize. `"none"` (the compiler default) silently skips such functions;
- * `"critical_errors"` fails the build on critical diagnostics; `"all_errors"`
- * fails on any diagnostic.
- */
 export type ReactCompilerPanicThreshold = "none" | "critical_errors" | "all_errors";
 
-/**
- * User-tunable subset of `babel-plugin-react-compiler` options exposed through
- * {@link GtkxConfig.reactCompiler}. The compiler `target` is always `"19"`,
- * matching GTKX's required React version, and is not configurable.
- */
 export type ReactCompilerOptions = {
-    /**
-     * See {@link ReactCompilerCompilationMode}. Omit to let the compiler
-     * default (`"infer"`) apply.
-     */
     compilationMode?: ReactCompilerCompilationMode;
-    /**
-     * See {@link ReactCompilerPanicThreshold}. Omit to let the compiler
-     * default (`"none"`) apply.
-     */
     panicThreshold?: ReactCompilerPanicThreshold;
 };
 
-/**
- * The fully resolved option object handed to `babel-plugin-react-compiler`,
- * produced by {@link resolveReactCompilerOptions}.
- */
 export type ResolvedReactCompilerOptions = ReactCompilerOptions & {
-    /** Pinned to GTKX's required React major. */
     target: "19";
 };
 
 const REACT_COMPILER_TARGET = "19";
 
-/**
- * Maps a {@link GtkxConfig.reactCompiler} setting to the option object passed
- * to `babel-plugin-react-compiler`, or `null` when the compiler is disabled.
- *
- * `false` disables it; `undefined` and `true` enable it with defaults; an
- * object enables it with the given overrides. The `target` is always forced
- * to `"19"`.
- *
- * @param setting - The `reactCompiler` value from `gtkx.config.ts`
- * @returns The resolved compiler options, or `null` when disabled
- */
 export const resolveReactCompilerOptions = (
     setting: GtkxConfig["reactCompiler"],
 ): ResolvedReactCompilerOptions | null => {
@@ -222,10 +93,7 @@ const validateApplicationId = (applicationId: GtkxConfig["applicationId"]): void
 const JSX_NAME_PATTERN = /^[A-Z][A-Za-z0-9]*$/;
 const SLOT_ENTRY_PATTERN = /^[a-z][A-Za-z0-9]*$/;
 
-const validateSlotMap = (
-    slotMap: Readonly<Record<string, readonly string[]>> | undefined,
-    optionName: string,
-): void => {
+const validateSlotMap = (slotMap: Record<string, string[]> | undefined, optionName: string): void => {
     if (slotMap === undefined) return;
     if (typeof slotMap !== "object" || Array.isArray(slotMap) || slotMap === null) {
         throw new Error(
@@ -253,24 +121,11 @@ const validateSlotMap = (
     }
 };
 
-const REACT_COMPILER_COMPILATION_MODES: readonly ReactCompilerCompilationMode[] = [
-    "infer",
-    "syntax",
-    "annotation",
-    "all",
-];
+const REACT_COMPILER_COMPILATION_MODES: ReactCompilerCompilationMode[] = ["infer", "syntax", "annotation", "all"];
 
-const REACT_COMPILER_PANIC_THRESHOLDS: readonly ReactCompilerPanicThreshold[] = [
-    "none",
-    "critical_errors",
-    "all_errors",
-];
+const REACT_COMPILER_PANIC_THRESHOLDS: ReactCompilerPanicThreshold[] = ["none", "critical_errors", "all_errors"];
 
-const validateReactCompilerEnum = <T extends string>(
-    value: T | undefined,
-    allowed: readonly T[],
-    field: string,
-): void => {
+const validateReactCompilerEnum = <T extends string>(value: T | undefined, allowed: T[], field: string): void => {
     if (value !== undefined && !allowed.includes(value)) {
         throw new Error(
             `gtkx.config.ts: invalid \`reactCompiler.${field}\` "${String(value)}" — must be one of ${allowed.join(", ")}`,
@@ -287,26 +142,6 @@ const validateReactCompiler = (reactCompiler: GtkxConfig["reactCompiler"]): void
     validateReactCompilerEnum(reactCompiler.panicThreshold, REACT_COMPILER_PANIC_THRESHOLDS, "panicThreshold");
 };
 
-/**
- * Identity helper that lets users author a {@link GtkxConfig} with full
- * type-checking and IDE autocompletion.
- *
- * Validates the config eagerly at load time so misconfigurations surface
- * before any GIR loading or codegen work begins.
- *
- * @param config - The configuration object
- * @returns The same configuration object after validation
- *
- * @example
- * ```ts
- * import { defineConfig } from "@gtkx/cli";
- *
- * export default defineConfig({
- *     libraries: ["Gtk-4.0", "Adw-1"],
- *     girPath: ["/opt/custom/share/gir-1.0"],
- * });
- * ```
- */
 export const defineConfig = (config: GtkxConfig): GtkxConfig => {
     validateLibraries(config.libraries);
     validateGirPath(config.girPath);
@@ -320,48 +155,18 @@ export const defineConfig = (config: GtkxConfig): GtkxConfig => {
     return config;
 };
 
-/**
- * A {@link GtkxConfig} with every optional field normalized to a concrete
- * value, produced by {@link resolveGtkxConfig}.
- *
- * This is the shape the toolchain serializes into the `virtual:gtkx-config`
- * module, so it contains only JSON-representable data.
- */
 export type ResolvedGtkxConfig = {
-    /** The configured library identifiers, the `"*"` wildcard, or `[]` when omitted. */
-    readonly libraries: typeof LIBRARIES_WILDCARD | readonly string[];
-    /** Additional GIR search directories, or `[]` when omitted. */
-    readonly girPath: readonly string[];
-    /** The GLib application id, or `undefined` when unset. */
-    readonly applicationId: string | undefined;
-    /** The user's container-slot map, or `{}` when omitted. */
-    readonly containerProps: Readonly<Record<string, readonly string[]>>;
-    /** The user's array-prop rows, or `{}` when omitted. */
-    readonly arrayProps: PerElementPropRows<ArrayPropRow>;
-    /** The user's object-prop rows, or `{}` when omitted. */
-    readonly objectProps: PerElementPropRows<ObjectPropRow>;
-    /** The user's virtual-prop rows, or `{}` when omitted. */
-    readonly virtualProps: PerElementPropRows<VirtualPropRow>;
-    /** The user's element-map rows, or `[]` when omitted. */
-    readonly elementMap: readonly ElementMapRule[];
-    /** The resolved React Compiler options, or `null` when disabled. */
-    readonly reactCompiler: ResolvedReactCompilerOptions | null;
+    libraries: typeof LIBRARIES_WILDCARD | string[];
+    girPath: string[];
+    applicationId: string | undefined;
+    containerProps: Record<string, string[]>;
+    arrayProps: PerElementPropRows<ArrayPropRow>;
+    objectProps: PerElementPropRows<ObjectPropRow>;
+    virtualProps: PerElementPropRows<VirtualPropRow>;
+    elementMap: ElementMapRule[];
+    reactCompiler: ResolvedReactCompilerOptions | null;
 };
 
-/**
- * Normalizes a validated {@link GtkxConfig} into a {@link ResolvedGtkxConfig}:
- * every optional field receives its documented default, and the
- * `reactCompiler` setting collapses into the option object handed to
- * `babel-plugin-react-compiler` (or `null` when disabled).
- *
- * @param config - The configuration to normalize
- * @returns The fully resolved configuration
- *
- * @example
- * ```ts
- * resolveGtkxConfig({}); // { libraries: [], girPath: [], applicationId: undefined, ... }
- * ```
- */
 export const resolveGtkxConfig = (config: GtkxConfig): ResolvedGtkxConfig => ({
     libraries: config.libraries ?? [],
     girPath: config.girPath ?? [],
@@ -377,18 +182,6 @@ export const resolveGtkxConfig = (config: GtkxConfig): ResolvedGtkxConfig => ({
 const APPLICATION_ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$/;
 const APPLICATION_ID_MAX_LENGTH = 255;
 
-/**
- * Validates an application ID against the D-Bus well-known name spec used by
- * GTK 4's `g_application_id_is_valid`.
- *
- * Rules enforced:
- *   - At least two `.`-separated elements
- *   - Each element starts with `[A-Za-z_]` and continues with `[A-Za-z0-9_-]`
- *   - Total length 1..=255 characters
- *
- * @param applicationId - The candidate identifier
- * @returns `true` if the identifier is a valid GTK application ID
- */
 export const isValidApplicationId = (applicationId: string): boolean => {
     if (applicationId.length === 0 || applicationId.length > APPLICATION_ID_MAX_LENGTH) {
         return false;

@@ -20,8 +20,6 @@ impl FfiEncoder for VoidType {
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::FfiValue> {
-        // SAFETY: The dispatch site built `cif` and `args` for this
-        // descriptor and resolved `ptr` from a loaded library symbol.
         unsafe { cif.call::<()>(ptr, args) };
         Ok(ffi::FfiValue::Void)
     }

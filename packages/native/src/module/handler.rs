@@ -1,10 +1,3 @@
-//! Request/response plumbing shared by the napi export handlers.
-//!
-//! [`ModuleRequest::dispatch`] and the [`ModuleResponse`] conversions all
-//! require a live [`napi::Env`], so the module is excluded from coverage
-//! instrumentation. The per-request `execute` logic lives in the sibling
-//! modules and is exercised directly by tests.
-
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use std::sync::Arc;
@@ -22,12 +15,6 @@ pub trait ModuleRequest: Sized + Send + 'static {
     fn execute(self) -> anyhow::Result<Self::Output>;
     fn error_context() -> &'static str;
 
-    /// Dispatches the request onto the `GLib` thread, blocks the JS thread
-    /// until it completes, and converts the outcome into a JavaScript value.
-    ///
-    /// A failed request surfaces with its full anyhow context chain
-    /// (alternate formatting), so the JavaScript error names both the failing
-    /// operation and the root cause.
     fn dispatch(self, env: &Env) -> napi::Result<Unknown<'_>> {
         let result = dispatch::Mailbox::global()
             .dispatch_and_wait_napi(*env, move || self.execute())?

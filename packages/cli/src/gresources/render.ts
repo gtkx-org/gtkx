@@ -48,13 +48,5 @@ const devInitModuleSource = (bundlePath: string): string => {
     ].join("\n");
 };
 
-/**
- * Renders the JavaScript source of the GResource init module: a build-mode
- * registrar that loads the emitted bundle next to itself, or a dev-mode
- * registrar that re-registers a staged bundle on change.
- *
- * @param options - Whether this is a build and, for dev, the staged bundle path.
- * @returns The init module source.
- */
 export const renderInitModule = (options: { isBuild: boolean; devBundlePath: string }): string =>
     options.isBuild ? buildInitModuleSource() : devInitModuleSource(options.devBundlePath);

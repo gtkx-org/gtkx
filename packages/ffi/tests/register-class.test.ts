@@ -151,10 +151,10 @@ describe("registerClass — vfunc argument and return marshalling", () => {
         const returned = new ReturnedItem();
 
         class ReturningModel extends Gtk.StringList {
-            getNItems(): number {
+            override getNItems(): number {
                 return 1;
             }
-            getItem(position: number): GObject | null {
+            override getItem(position: number): GObject | null {
                 return position === 0 ? returned : null;
             }
         }
@@ -171,7 +171,7 @@ describe("registerClass — vfunc argument and return marshalling", () => {
 describe("registerClass — caller-allocated and scalar out parameters", () => {
     it("fills a caller-allocated out boxed parameter from the handler's return value", () => {
         class CustomChooser extends Gtk.ColorButton {
-            getRgba(): Gdk.RGBA {
+            override getRgba(): Gdk.RGBA {
                 return new Gdk.RGBA({ red: 0.5, green: 0.25, blue: 0.75, alpha: 1.0 });
             }
         }
@@ -188,7 +188,7 @@ describe("registerClass — caller-allocated and scalar out parameters", () => {
 
     it("writes scalar out parameters from the handler's returned tuple", () => {
         class CustomWidget extends Gtk.Widget {
-            measure(_orientation: Gtk.Orientation, _forSize: number): [number, number, number, number] {
+            override measure(_orientation: Gtk.Orientation, _forSize: number): [number, number, number, number] {
                 return [42, 48, -1, -1];
             }
         }
@@ -216,7 +216,7 @@ describe("registerClass — construct-time vtable slots", () => {
     it("rejects overriding the `setProperty` slot", () => {
         const name = uniqueName("GtkxSetPropertyRejected");
         class CustomObject extends GObject {
-            setProperty(): void {}
+            override setProperty(): void {}
         }
 
         expect(() => registerClass(CustomObject, { gtypeName: name })).toThrow(

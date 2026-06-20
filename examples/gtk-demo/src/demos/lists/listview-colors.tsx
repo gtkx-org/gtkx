@@ -364,13 +364,6 @@ function getCompareFn(mode: SortMode): ((a: ColorItem, b: ColorItem) => number) 
 interface ColorsModels {
     baseStore: Gio.ListStore;
     selection: Gtk.MultiSelection;
-    /**
-     * The demo's sort-state: an ordered array of every {@link ColorObject}
-     * currently in {@link baseStore}, kept in lockstep with it. {@link reorderStore}
-     * sorts this array by the active sort mode and splices the new order back
-     * into {@link baseStore} in one pass, so the visible list reflects the
-     * chosen ordering without rebuilding the items.
-     */
     liveRefs: ColorObject[];
 }
 
@@ -473,11 +466,6 @@ function useColorsLimitFill(
 
 const formatItemCount = (count: number): string => `${count.toLocaleString("en-US")} /`;
 
-/**
- * Mirrors the store's live item count into the header label without React
- * state, so the batched tick-callback fill does not re-render the tree on
- * every `items-changed`.
- */
 function useStoreCountLabel(baseStore: Gio.ListStore, labelRef: React.RefObject<Gtk.Label | null>): void {
     useSignal(
         baseStore,
@@ -489,10 +477,6 @@ function useStoreCountLabel(baseStore: Gio.ListStore, labelRef: React.RefObject<
     );
 }
 
-/**
- * Drives the overlay progress bar's fraction and visibility imperatively
- * from the store's item count, again avoiding a per-tick re-render.
- */
 function useStoreProgressBar(
     baseStore: Gio.ListStore,
     colorLimit: ColorLimit,

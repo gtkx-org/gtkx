@@ -1,30 +1,10 @@
 import type { GirFunction } from "../gir/function.js";
 import type { GirRepository } from "../gir/repository.js";
 
-/**
- * Detects the start half of a `Gio.AsyncReady` callable pair.
- *
- * Pairs follow two GIR conventions: an explicit `*_async` / `*_finish`
- * suffix (the older style), or a base name paired with a `<root>_finish`
- * (the modern GTK 4 style, e.g. `gtk_file_dialog_open` /
- * `gtk_file_dialog_open_finish`).
- *
- * The runtime convention is to wrap the pair with `promisify(asyncFn,
- * finishFn, cancellable, { leading })`. This detector returns the
- * matching finish counterpart's GIR name when one exists in the same
- * set of callables, so the class writer can wire the wrapper.
- *
- * @param repository - The GIR repository, to name a callback parameter type
- * @param fn - The candidate async-start callable
- * @param siblings - Other callables on the same type to scan for the
- *     matching `*_finish`
- * @returns The matching `*_finish` GIR name, or `undefined` when there is
- *     no pair
- */
 export const matchAsyncFinishName = (
     repository: GirRepository,
     fn: GirFunction,
-    siblings: readonly GirFunction[],
+    siblings: GirFunction[],
 ): string | undefined => {
     if (fn.name.endsWith("_async")) {
         const root = fn.name.slice(0, -"_async".length);

@@ -7,9 +7,6 @@ import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";
 const { bind } = t;
 const PATTERN_T = t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type");
 
-/**
- * RGBA color tuple shared by Pattern color APIs.
- */
 export type RgbaColor = {
     red: number;
     green: number;
@@ -17,12 +14,6 @@ export type RgbaColor = {
     alpha: number;
 };
 
-/**
- * Allocates four `double` out-cells, runs `fill` to populate them through a
- * cairo `*_get_*_rgba` call, and reads them back as an {@link RgbaColor}.
- *
- * @param fill - Invokes the cairo getter with the four colour out-cells
- */
 const readRgba = (
     fill: (red: { value: number }, green: { value: number }, blue: { value: number }, alpha: { value: number }) => void,
 ): RgbaColor => {
@@ -285,13 +276,7 @@ const cairoMeshPatternGetCornerColorRgba = bind(
     t.int32,
 );
 
-/**
- * Linear gradient pattern produced by {@link Pattern.createLinear}.
- */
 export class LinearPattern extends Pattern {
-    /**
-     * Returns the endpoints of the gradient line.
-     */
     getLinearPoints(): { x0: number; y0: number; x1: number; y1: number } {
         const x0Ref = { value: 0 };
         const y0Ref = { value: 0 };
@@ -302,13 +287,7 @@ export class LinearPattern extends Pattern {
     }
 }
 
-/**
- * Radial gradient pattern produced by {@link Pattern.createRadial}.
- */
 export class RadialPattern extends Pattern {
-    /**
-     * Returns the centres and radii of the gradient circles.
-     */
     getRadialCircles(): { x0: number; y0: number; r0: number; x1: number; y1: number; r1: number } {
         const x0Ref = { value: 0 };
         const y0Ref = { value: 0 };
@@ -328,85 +307,49 @@ export class RadialPattern extends Pattern {
     }
 }
 
-/**
- * Mesh gradient pattern produced by {@link Pattern.createMesh}.
- */
 export class MeshPattern extends Pattern {
-    /**
-     * Begins a new patch in the mesh pattern.
-     */
     beginPatch(): void {
         cairoMeshPatternBeginPatch(getHandle(this));
     }
 
-    /**
-     * Completes the current patch in the mesh pattern.
-     */
     endPatch(): void {
         cairoMeshPatternEndPatch(getHandle(this));
     }
 
-    /**
-     * Defines the first point of the current patch.
-     */
     moveTo(x: number, y: number): void {
         cairoMeshPatternMoveTo(getHandle(this), x, y);
     }
 
-    /**
-     * Adds a line segment to the current patch.
-     */
     lineTo(x: number, y: number): void {
         cairoMeshPatternLineTo(getHandle(this), x, y);
     }
 
-    /**
-     * Adds a cubic Bézier segment to the current patch.
-     */
     curveTo(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): void {
         cairoMeshPatternCurveTo(getHandle(this), x1, y1, x2, y2, x3, y3);
     }
 
-    /**
-     * Sets an internal control point of the current patch.
-     */
     setControlPoint(pointNum: number, x: number, y: number): void {
         cairoMeshPatternSetControlPoint(getHandle(this), pointNum, x, y);
     }
 
-    /**
-     * Sets the RGB color of a corner of the current patch.
-     */
     setCornerColorRgb(cornerNum: number, red: number, green: number, blue: number): void {
         cairoMeshPatternSetCornerColorRgb(getHandle(this), cornerNum, red, green, blue);
     }
 
-    /**
-     * Sets the RGBA color of a corner of the current patch.
-     */
     setCornerColorRgba(cornerNum: number, red: number, green: number, blue: number, alpha: number): void {
         cairoMeshPatternSetCornerColorRgba(getHandle(this), cornerNum, red, green, blue, alpha);
     }
 
-    /**
-     * Returns the number of patches recorded in the mesh pattern.
-     */
     getPatchCount(): number {
         const countRef = { value: 0 };
         cairoMeshPatternGetPatchCount(getHandle(this), countRef);
         return countRef.value;
     }
 
-    /**
-     * Returns the path defining the boundary of patch `patchNum`.
-     */
     getPath(patchNum: number): PathData[] {
         return parsePath(cairoMeshPatternGetPath(getHandle(this), patchNum) as Handle);
     }
 
-    /**
-     * Returns an internal control point of patch `patchNum`.
-     */
     getControlPoint(patchNum: number, pointNum: number): { x: number; y: number } {
         const xRef = { value: 0 };
         const yRef = { value: 0 };
@@ -414,9 +357,6 @@ export class MeshPattern extends Pattern {
         return { x: xRef.value, y: yRef.value };
     }
 
-    /**
-     * Returns the RGBA color of a corner of patch `patchNum`.
-     */
     getCornerColorRgba(patchNum: number, cornerNum: number): RgbaColor {
         return readRgba((red, green, blue, alpha) =>
             cairoMeshPatternGetCornerColorRgba(getHandle(this), patchNum, cornerNum, red, green, blue, alpha),

@@ -1,24 +1,9 @@
-/**
- * Controller lookup and rebuild scheduling for `<GtkTextBuffer>` elements.
- *
- * Each buffer element node lazily receives one {@link TextBufferController} the
- * first time content beneath it changes; the controller linearizes the element's
- * children into the backing `Gtk.TextBuffer` once per commit.
- */
 import * as Gtk from "@gtkx/gi/gtk";
 import { closestInstance, type Node } from "./state.js";
 import { TextBufferController } from "./text-buffer-controller.js";
 
 const controllers = new WeakMap<Node, TextBufferController>();
 
-/**
- * Walks up from `node` to the enclosing `<GtkTextBuffer>` element and, when one
- * exists, schedules a single end-of-commit rebuild of its content. Used by the
- * reconciler's mutation hooks so any structural or content change within a
- * buffered subtree refreshes the buffer.
- *
- * @param node - The node whose buffered subtree changed.
- */
 export const scheduleBufferRebuild = (node: Node): void => {
     const owner = closestInstance(node, (candidate) => candidate instanceof Gtk.TextBuffer);
     if (!owner) return;

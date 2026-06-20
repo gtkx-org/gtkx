@@ -198,7 +198,7 @@ interface ToggleableColumnSpec {
     action: string;
 }
 
-const TOGGLEABLE_COLUMNS: readonly ToggleableColumnSpec[] = [
+const TOGGLEABLE_COLUMNS: ToggleableColumnSpec[] = [
     { id: "type", menuLabel: "Type", action: "show-type" },
     { id: "default", menuLabel: "Default value", action: "show-default" },
     { id: "summary", menuLabel: "Summary", action: "show-summary" },

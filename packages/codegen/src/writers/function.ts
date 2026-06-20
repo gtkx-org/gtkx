@@ -13,20 +13,6 @@ import {
     renderReturnDescriptor,
 } from "./method.js";
 
-/**
- * Renders the `t.fn(library, symbol, params, return, options?)` expression
- * for a callable. Returns `undefined` when the callable cannot be bound (no C
- * identifier or missing namespace shared-library).
- *
- * The parameter array carries each argument's FFI type and its direction (out
- * or inout, optionally caller-allocated), the return is the primary return's
- * FFI type (which self-resolves its wrapper class), and a throwing callable adds
- * the `throws` option; the bound callable owns out-parameter tupling, `GError`
- * handling, and result wrapping at call time.
- *
- * @param context - The module context
- * @param fn - The callable
- */
 export const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | undefined => {
     if (fn.cIdentifier === undefined) return undefined;
     const library = context.namespace.sharedLibrary;
@@ -38,17 +24,6 @@ export const renderFnExpression = (context: ModuleContext, fn: GirFunction): str
     return `t.fn(${quote(library)}, ${quote(fn.cIdentifier)}, ${arrayLiteral(params)}, ${ret}${options})`;
 };
 
-/**
- * Emits both the bound `const fooBinding = t.fn(...)` and the
- * `export function camelName(...)` wrapper for a namespace-level callable.
- *
- * Silently skipped when {@link renderFnExpression} cannot bind the callable
- * (e.g. macros, unintrospectable signatures) or when the GIR marks the
- * callable as `introspectable="0"`.
- *
- * @param context - The module context
- * @param fn - The callable
- */
 export const emitNamespaceFunction = (context: ModuleContext, fn: GirFunction): void => {
     if (!fn.introspectable) return;
     if (fn.shadowedBy !== undefined) return;
@@ -67,20 +42,6 @@ export const emitNamespaceFunction = (context: ModuleContext, fn: GirFunction): 
     context.module.appendDeclaration(renderBlock(`export function ${exportName}(${signature}): ${returnType}`, body));
 };
 
-/**
- * Emits a namespace's self-bootstrap statements as module-load side effects:
- * a call to its zero-argument `init` entry point and an `onExit` registration
- * for its zero-argument `finalize` entry point.
- *
- * GTK-style libraries expose top-level `init`/`finalize` functions (`gtk_init`,
- * `adw_init`, `gtk_source_finalize`, …). Calling `init()` as the module is
- * imported initializes the library's runtime before any of its types are
- * touched — without it a `Gdk` display lookup can run before `gtk_init`.
- * Registering `finalize` with `onExit` runs it during shutdown.
- *
- * @param context - The module context
- * @param namespace - The namespace being generated
- */
 export const emitNamespaceBootstrap = (context: ModuleContext, namespace: GirNamespace): void => {
     for (const fn of namespace.functions) {
         if (fn.parameters.length > 0) continue;

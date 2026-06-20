@@ -148,7 +148,7 @@ function useScribbleHandlers(
     return { handleDragBegin, handleDragUpdate: handleDragOffset, handleDragEnd: handleDragOffset };
 }
 
-const ScribbleArea = ({ accessibleLabelledBy }: { accessibleLabelledBy?: Gtk.Widget[] }) => {
+const ScribbleArea = ({ accessibleLabelledBy }: { accessibleLabelledBy?: Gtk.Widget[] | undefined }) => {
     const ref = useRef<Gtk.DrawingArea | null>(null);
     const surfaceRef = useRef<ImageSurface | null>(null);
     const startPointRef = useRef({ x: 0, y: 0 });

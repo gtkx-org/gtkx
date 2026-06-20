@@ -39,7 +39,6 @@ const resolveDropDownWidget = (widget: Gtk.Widget): DropDownLike | null =>
     widget instanceof Gtk.DropDown ? widget : null;
 const resolveComboRow = (widget: Gtk.Widget): DropDownLike | null => (isAdwComboRow(widget) ? widget : null);
 
-/** The keys a list controller reads, used to split controller props from element props. */
 const CONTROLLER_KEYS = [
     "items",
     "model",
@@ -73,27 +72,14 @@ const splitProps = (props: Record<string, unknown>): SplitProps => {
     return { controllerProps: controllerProps as ListControllerProps, elementProps };
 };
 
-/** The live list controller plus the portal re-render trigger, shared with column children. */
 interface ListHandle {
-    /** The widget setter passed to the element's merged ref. */
-    readonly setWidget: (widget: Gtk.Widget | null) => void;
-    /** The captured list widget once its ref has settled, else `null`. */
-    readonly widget: Gtk.Widget | null;
-    /** The live controller once the widget has settled, else `null`. */
-    readonly controller: ListController | null;
-    /** Forces the component to re-render its portals. */
-    readonly rerender: () => void;
-    /** The latest controller props (read by the column view to apply sorting). */
-    readonly controllerProps: ListControllerProps;
+    setWidget: (widget: Gtk.Widget | null) => void;
+    widget: Gtk.Widget | null;
+    controller: ListController | null;
+    rerender: () => void;
+    controllerProps: ListControllerProps;
 }
 
-/**
- * Captures the list widget, drives a {@link ListController} through its lifecycle,
- * and re-renders portals whenever the controller's bound items change.
- *
- * @param controllerProps - The split controller props for the current render.
- * @returns The widget setter, the live controller, and the portal re-render trigger.
- */
 const useListController = (
     controllerProps: ListControllerProps,
     resolveDropDown?: (widget: Gtk.Widget) => DropDownLike | null,
@@ -140,7 +126,6 @@ const useListController = (
     return { setWidget, widget, controller, rerender, controllerProps };
 };
 
-/** Shared empty bound-item list so an unsettled controller yields a stable reference. */
 const EMPTY_BOUND_ITEMS: BoundItem[] = [];
 
 const renderPortals = (boundItems: BoundItem[], headerBoundItems: BoundItem[]): ReactNode[] => {
@@ -151,28 +136,11 @@ const renderPortals = (boundItems: BoundItem[], headerBoundItems: BoundItem[]): 
     return portals;
 };
 
-/** Per-component customization for {@link useListElement}. */
 type ListElementOptions = {
-    /** Renders the element's children from the live handle (column view). */
     scope?: (handle: ListHandle) => ReactNode;
-    /** Resolves the widget's dropdown surface for dropdown-style components. */
     resolveDropDown?: (widget: Gtk.Widget) => DropDownLike | null;
 };
 
-/**
- * Renders a virtualized list intrinsic element with its bound-item portals.
- *
- * Each public list component is a thin generic-typed wrapper over this hook: it
- * splits the controller props from the element props, captures the widget, and
- * emits the element plus its portals, so the only per-component difference is the
- * element name, the public prop type, and the optional column scope.
- *
- * @param elementType - The element's slot-splitting host component to render.
- * @param props - The merged public props, including an optional caller ref.
- * @param options - Per-component customization: the column-view child scope and
- *   the dropdown-surface resolver.
- * @returns The rendered node plus the live handle.
- */
 const useListElement = (
     elementType: (props: Record<string, unknown>) => ReactNode,
     props: Record<string, unknown> & { ref?: Ref<Gtk.Widget>; children?: ReactNode },
@@ -195,36 +163,18 @@ const useListElement = (
     return { node, handle };
 };
 
-/**
- * Virtualized scrollable list that renders items from a flat or tree data model.
- *
- * Wraps `GtkListView` with React-managed item rendering via portals,
- * supporting single/multi selection, section headers, and tree expansion.
- */
 export function GtkListView<T = unknown, S = unknown>(
     props: ListViewProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.ListView> },
 ): ReactNode {
     return useListElement(GtkListViewElement, props as Record<string, unknown> & { ref?: Ref<Gtk.Widget> }).node;
 }
 
-/**
- * Virtualized scrollable grid that renders items in a multi-column layout.
- *
- * Wraps `GtkGridView` with React-managed item rendering via portals,
- * supporting single/multi selection.
- */
 export function GtkGridView<T = unknown>(
     props: GridViewProps<T> & { children?: ReactNode; ref?: Ref<Gtk.GridView> },
 ): ReactNode {
     return useListElement(GtkGridViewElement, props as Record<string, unknown> & { ref?: Ref<Gtk.Widget> }).node;
 }
 
-/**
- * Single-selection dropdown widget with React-managed item rendering.
- *
- * Wraps `GtkDropDown` with portal-based factories, supporting custom
- * item templates, separate list-item templates, and section headers.
- */
 export function GtkDropDown<T = unknown, S = unknown>(
     props: DropDownProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.DropDown> },
 ): ReactNode {
@@ -233,13 +183,6 @@ export function GtkDropDown<T = unknown, S = unknown>(
     }).node;
 }
 
-/**
- * Libadwaita combo row with React-managed item rendering.
- *
- * Wraps `AdwComboRow` with portal-based factories, providing a
- * preferences-style dropdown row with custom item templates and
- * section headers.
- */
 export function AdwComboRow<T = unknown, S = unknown>(
     props: DropDownProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.Widget> },
 ): ReactNode {
@@ -248,19 +191,6 @@ export function AdwComboRow<T = unknown, S = unknown>(
     }).node;
 }
 
-/**
- * Drives a `GtkColumnView`, sharing its settled list controller with the
- * `<GtkColumnViewColumn>` children through the column-view context.
- *
- * The columns are real reconciler elements: their order, insertion, and
- * removal flow through the host config's ordered-insert table row like any
- * ordered container. This component renders the column-view element with the
- * columns as its children inside the context provider, and subscribes to the
- * ordered-insert attach events on its widget so every column insertion,
- * reorder, or removal schedules one coalesced column settle.
- *
- * @internal
- */
 function GtkColumnViewBase<T = unknown, S = unknown>(
     props: ColumnViewProps<T, S> & { children?: ReactNode; ref?: Ref<Gtk.ColumnView> },
 ): ReactNode {
@@ -283,35 +213,10 @@ function GtkColumnViewBase<T = unknown, S = unknown>(
     return node;
 }
 
-/**
- * Multi-column sortable list with React-managed cell rendering.
- *
- * Wraps `GtkColumnView` with portal-based factories. Use the
- * `<GtkColumnViewColumn>` component to define columns, passing an optional
- * `headerMenu={<GMenu>…</GMenu>}` for the column header's context menu.
- */
 export const GtkColumnView: typeof GtkColumnViewBase = GtkColumnViewBase;
 
-/**
- * Declares one column of a `GtkColumnView`, with header and per-row cell
- * rendering. Place it as a child of `<GtkColumnView>`.
- */
 export const GtkColumnViewColumn: <T = unknown>(props: ColumnViewColumnProps<T>) => ReactNode = ColumnViewColumn;
 
-/**
- * Declares one column of a `GtkColumnView`.
- *
- * Renders the real `GtkColumnViewColumn` element carrying the column's GObject
- * props, constructing the cell factory it is built with and the optional
- * sorter as regular construct props. The cell renderer and the column-view
- * registration are owned here: the component registers its
- * {@link ColumnController} on the list controller shared through the
- * column-view context, routes `renderCell` changes to it, and unregisters on
- * unmount. An optional `headerMenu` `<GMenu>` flows through the element's
- * `headerMenu` slot prop.
- *
- * @param props - The column definition and optional header menu.
- */
 function ColumnViewColumn<T = unknown>({ renderCell, sortable, ...rest }: ColumnViewColumnProps<T>): ReactNode {
     const list = useContext(ColumnViewContext);
     const controllerRef = useRef<ColumnController | null>(null);

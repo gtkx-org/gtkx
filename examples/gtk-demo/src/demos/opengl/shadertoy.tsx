@@ -67,8 +67,6 @@ function buildFragmentSource(imageShader: string): string {
     return SHADER_PREFIX + FRAGMENT_PREFIX + imageShader + FRAGMENT_SUFFIX;
 }
 
-// Originally from: https://www.shadertoy.com/view/wsjBD3
-// License CC0: A battered alien planet
 const ALIEN_PLANET_SHADER = `#define PI  3.141592654
 #define TAU (2.0*PI)
 
@@ -409,8 +407,6 @@ void mainImage(out vec4 fragColor, vec2 fragCoord) {
 }
 `;
 
-// Originally from: https://www.shadertoy.com/view/wdBfDK
-// License: CC0
 const MANDELBROT_SHADER = `#define MANDELBROT_ZOOM_START 0.0
 #define MANDELBROT_ITER       240
 
@@ -503,8 +499,6 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 }
 `;
 
-// Originally from: https://www.shadertoy.com/view/WlByzy
-// License CC0: Neonwave style road, sun and city
 const NEON_SHADER = `#define PI          3.141592654
 #define TAU         (2.0*PI)
 
@@ -719,8 +713,6 @@ void mainImage(out vec4 fragColor, vec2 fragCoord) {
 }
 `;
 
-// Originally from: https://www.shadertoy.com/view/3ljyDD
-// License CC0: Hexagonal tiling + cog wheels
 const COGS_SHADER = `#define PI      3.141592654
 #define TAU     (2.0*PI)
 #define MROT(a) mat2(cos(a), sin(a), -sin(a), cos(a))
@@ -937,8 +929,6 @@ void mainImage(out vec4 fragColor, vec2 fragCoord) {
 }
 `;
 
-// Originally from: https://www.shadertoy.com/view/ttBcRV
-// License CC0: Flying through glowing stars
 const GLOWING_STARS_SHADER = `#define PI              3.141592654
 #define TAU             (2.0*PI)
 #define TIME            iTime

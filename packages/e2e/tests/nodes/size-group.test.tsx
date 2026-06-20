@@ -4,7 +4,7 @@ import { render } from "@gtkx/testing";
 import { createRef, type RefObject, useState } from "react";
 import { describe, expect, it } from "vitest";
 
-const definedWidgets = (widgets: readonly (Gtk.Widget | null)[]): Gtk.Widget[] =>
+const definedWidgets = (widgets: (Gtk.Widget | null)[]): Gtk.Widget[] =>
     widgets.filter((widget): widget is Gtk.Widget => widget !== null);
 
 const GroupedLabels = ({

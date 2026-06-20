@@ -39,12 +39,8 @@ const formatByRoleDescription = (role: Gtk.AccessibleRole, options?: ByRoleOptio
     return parts.join(" and ");
 };
 
-/**
- * A query and the value it matched on, carried per query type so the matched
- * value is always present for its kind.
- */
 export type QueryDescriptor =
-    | { queryType: "role"; role: Gtk.AccessibleRole; options?: ByRoleOptions }
+    | { queryType: "role"; role: Gtk.AccessibleRole; options?: ByRoleOptions | undefined }
     | { queryType: "text"; text: Matcher }
     | { queryType: "labelText"; text: Matcher }
     | { queryType: "name"; name: Matcher }
@@ -74,9 +70,6 @@ const buildElementError = (container: Container, headLines: string[]): Error => 
     return config.getElementError(lines.join("\n"), container);
 };
 
-/**
- * Builds an error for when no elements match a query.
- */
 export const notFoundError = (container: Container, descriptor: QueryDescriptor): Error => {
     const description = formatQueryDescription(descriptor);
     const headLines = [`Unable to find an element with ${description}`];
@@ -88,17 +81,11 @@ export const notFoundError = (container: Container, descriptor: QueryDescriptor)
     return buildElementError(container, headLines);
 };
 
-/**
- * Builds an error for when multiple elements match a query but only one was expected.
- */
 export const multipleFoundError = (container: Container, descriptor: QueryDescriptor, count: number): Error => {
     const description = formatQueryDescription(descriptor);
     return buildElementError(container, [`Found ${count} elements with ${description}, but expected only one`]);
 };
 
-/**
- * Builds a timeout error with the last query error message.
- */
 export const timeoutError = (timeout: number, lastError: Error | null): Error => {
     const baseMessage = `Timed out after ${timeout}ms`;
     if (lastError) {

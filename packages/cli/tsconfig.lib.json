@@ -17,9 +17,6 @@
             "path": "../mcp/tsconfig.lib.json"
         },
         {
-            "path": "../react/tsconfig.lib.json"
-        },
-        {
             "path": "../utils/tsconfig.lib.json"
         },
         {

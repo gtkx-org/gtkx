@@ -7,90 +7,53 @@ import { attr, childOf, childrenOf, nameAttr, type RawNode } from "./parse.js";
 import type { ParseContext, TypeId } from "./type-id.js";
 import { typeRefFromSlot } from "./type-ref.js";
 
-/** A `<constant>` declaration at namespace level. */
 export type GirConstant = {
-    readonly name: string;
-    /** Constant value as the raw string from GIR. */
-    readonly value: string;
-    readonly type: TypeId | undefined;
+    name: string;
+    value: string;
+    type: TypeId | undefined;
 };
 
-/** A `<alias>` declaration at namespace level. */
 export type GirAlias = {
-    readonly name: string;
-    /** Interned alias target, or `undefined` when the alias has no type slot. */
-    readonly target: TypeId | undefined;
-    /** The target's own `c:type`, kept for the record-layout pointer test. */
-    readonly targetCType: string | undefined;
+    name: string;
+    target: TypeId | undefined;
+    targetCType: string | undefined;
 };
 
-/**
- * A single namespace loaded from one `.gir` file.
- *
- * Construction is two-phase: {@link createNamespaceShell} builds the shell from
- * the header during discovery, then {@link populateNamespaceBody} fills its
- * entity arrays once every namespace shell exists (so cross-namespace and
- * forward references intern against a known `nsId`). After population the public
- * surface is read-only by convention.
- */
 export type GirNamespace = {
-    /** Arena id assigned during discovery; selects this namespace's type slots. */
-    readonly id: number;
-    /** Namespace name (e.g. `"Gtk"`). */
-    readonly name: string;
-    /** Comma-separated `shared-library` value (passed verbatim to `t.fn(...)`). */
-    readonly sharedLibrary: string | undefined;
-    /** GIR `c:symbol-prefixes` (used to strip function prefixes). */
-    readonly cSymbolPrefixes: readonly string[];
-    /** Other namespaces referenced via `<include>`. */
-    readonly includes: readonly NamespaceInclude[];
-    readonly classes: readonly GirClass[];
-    readonly interfaces: readonly GirClass[];
-    readonly boxeds: readonly GirBoxed[];
-    readonly enums: readonly GirEnum[];
-    readonly callbacks: readonly GirCallback[];
-    readonly functions: readonly GirFunction[];
-    readonly constants: readonly GirConstant[];
-    readonly aliases: readonly GirAlias[];
+    id: number;
+    name: string;
+    sharedLibrary: string | undefined;
+    cSymbolPrefixes: string[];
+    includes: NamespaceInclude[];
+    classes: GirClass[];
+    interfaces: GirClass[];
+    boxeds: GirBoxed[];
+    enums: GirEnum[];
+    callbacks: GirCallback[];
+    functions: GirFunction[];
+    constants: GirConstant[];
+    aliases: GirAlias[];
 };
 
-/**
- * The lowercased output directory a namespace's generated modules live under
- * (e.g. `"Gtk"` → `"gtk"`). The single source of the store directory naming
- * convention shared by the FFI and React pipelines.
- *
- * @param namespace - The namespace (or anything carrying its `name`)
- */
 export const namespaceDirectory = (namespace: Pick<GirNamespace, "name">): string => namespace.name.toLowerCase();
 
-/** A `<include>` entry pointing at another namespace identifier. */
 type NamespaceInclude = {
-    readonly name: string;
-    readonly version: string;
+    name: string;
+    version: string;
 };
 
-/** The mutable shell populated in place by {@link populateNamespaceBody}. */
 type MutableNamespace = {
-    -readonly [Key in keyof GirNamespace]: GirNamespace[Key];
+    [Key in keyof GirNamespace]: GirNamespace[Key];
 };
 
-/** The header fields read from a `<repository>`/`<namespace>` during discovery. */
 export type NamespaceHeader = {
-    readonly name: string;
-    readonly sharedLibrary: string | undefined;
-    readonly cSymbolPrefixes: readonly string[];
-    readonly includes: readonly NamespaceInclude[];
-    /** The `<namespace>` element, retained so the body can be parsed later. */
-    readonly namespaceNode: RawNode;
+    name: string;
+    sharedLibrary: string | undefined;
+    cSymbolPrefixes: string[];
+    includes: NamespaceInclude[];
+    namespaceNode: RawNode;
 };
 
-/**
- * Reads the namespace header (name, library, prefixes, includes) from a parsed
- * `<repository>` root without parsing any entities, so discovery can assign an
- * arena id before forward references are interned.
- *
- * @param repositoryNode - The raw `<repository>` element returned by `parseGirFile`
- */
 export const parseNamespaceHeader = (repositoryNode: RawNode): NamespaceHeader => {
     const includes = childrenOf(repositoryNode, "include").map<NamespaceInclude>((include) => ({
         name: nameAttr(include),
@@ -109,12 +72,6 @@ export const parseNamespaceHeader = (repositoryNode: RawNode): NamespaceHeader =
     };
 };
 
-/**
- * Builds an empty namespace shell from its header and arena id.
- *
- * @param header - The parsed namespace header
- * @param id - The arena id assigned during discovery
- */
 export const createNamespaceShell = (header: NamespaceHeader, id: number): GirNamespace => ({
     id,
     name: header.name,
@@ -131,14 +88,6 @@ export const createNamespaceShell = (header: NamespaceHeader, id: number): GirNa
     aliases: [],
 });
 
-/**
- * Parses every entity of a `<namespace>` and assigns them onto the shell,
- * interning each type slot against `context`.
- *
- * @param shell - The namespace shell created by {@link createNamespaceShell}
- * @param namespaceNode - The `<namespace>` element from the header
- * @param context - The per-namespace interning seam, bound to the shell's id
- */
 export const populateNamespaceBody = (shell: GirNamespace, namespaceNode: RawNode, context: ParseContext): void => {
     const mutable: MutableNamespace = shell;
     mutable.classes = childrenOf(namespaceNode, "class").map((klass) => classFromNode(klass, false, context));
@@ -159,17 +108,17 @@ export const populateNamespaceBody = (shell: GirNamespace, namespaceNode: RawNod
     }));
 };
 
-const splitPrefixes = (raw: string | undefined): readonly string[] =>
+const splitPrefixes = (raw: string | undefined): string[] =>
     (raw ?? "").split(",").filter((prefix) => prefix.length > 0);
 
-const collectBoxeds = (namespaceNode: RawNode, context: ParseContext): readonly GirBoxed[] => [
+const collectBoxeds = (namespaceNode: RawNode, context: ParseContext): GirBoxed[] => [
     ...childrenOf(namespaceNode, "record").map((record) =>
         boxedFromNode(record, isVtableRecord(record), false, context),
     ),
     ...childrenOf(namespaceNode, "union").map((union) => boxedFromNode(union, isVtableRecord(union), true, context)),
 ];
 
-const collectEnums = (namespaceNode: RawNode, context: ParseContext): readonly GirEnum[] => [
+const collectEnums = (namespaceNode: RawNode, context: ParseContext): GirEnum[] => [
     ...childrenOf(namespaceNode, "enumeration").map((enumeration) => enumFromNode(enumeration, "enumeration", context)),
     ...childrenOf(namespaceNode, "bitfield").map((bitfield) => enumFromNode(bitfield, "bitfield", context)),
 ];

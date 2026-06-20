@@ -12,9 +12,6 @@ fn drain_pending() {
     while mailbox.dispatch_pending() {}
 }
 
-/// Drains pending work, schedules a glib task that increments the returned
-/// counter, and returns the counter so the test can observe whether the task
-/// has run.
 fn schedule_incrementing_task() -> Arc<AtomicUsize> {
     drain_pending();
     let counter = Arc::new(AtomicUsize::new(0));
@@ -86,10 +83,6 @@ fn freeze_returns_true_only_for_outermost_call() {
     });
 }
 
-/// Named with a leading `a_` so libtest's alphabetical ordering runs it first:
-/// `gtk4::init` acquires the global default `MainContext` for whichever thread
-/// calls it first, so the idle source `schedule_glib` registers there can only
-/// be dispatched from that same thread.
 #[test]
 fn a_schedule_glib_idle_source_dispatches_through_global_main_context() {
     common::run(|| {

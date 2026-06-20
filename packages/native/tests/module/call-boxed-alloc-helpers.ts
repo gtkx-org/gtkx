@@ -4,9 +4,6 @@ import { FLOAT32, INT32 } from "./utils.js";
 
 const BOXED_SIZE = 16;
 
-/**
- * The four signed 32-bit fields of a `GdkRectangle`.
- */
 export type RectangleFields = {
     x: number;
     y: number;
@@ -14,9 +11,6 @@ export type RectangleFields = {
     height: number;
 };
 
-/**
- * The four 32-bit floating-point channels of a `GdkRGBA`.
- */
 export type RgbaChannels = {
     red: number;
     green: number;
@@ -24,23 +18,14 @@ export type RgbaChannels = {
     alpha: number;
 };
 
-/**
- * Allocates a zeroed `GdkRectangle` boxed value backed by GDK memory.
- */
 export function allocRectangle(): Handle {
     return alloc(BOXED_SIZE, "GdkRectangle");
 }
 
-/**
- * Allocates a zeroed `GdkRGBA` boxed value backed by GDK memory.
- */
 export function allocRgba(): Handle {
     return alloc(BOXED_SIZE, "GdkRGBA");
 }
 
-/**
- * Writes the four signed 32-bit `GdkRectangle` fields from `fields`.
- */
 export function writeRectangleFields(rect: Handle, fields: RectangleFields): void {
     write(rect, INT32, 0, fields.x);
     write(rect, INT32, 4, fields.y);
@@ -48,9 +33,6 @@ export function writeRectangleFields(rect: Handle, fields: RectangleFields): voi
     write(rect, INT32, 12, fields.height);
 }
 
-/**
- * Reads the four signed 32-bit `GdkRectangle` fields back as an object.
- */
 export function readRectangleFields(rect: Handle): RectangleFields {
     return {
         x: read(rect, INT32, 0) as number,
@@ -60,10 +42,6 @@ export function readRectangleFields(rect: Handle): RectangleFields {
     };
 }
 
-/**
- * Reads the four `GdkRectangle` fields and asserts each one equals the matching
- * value in `expected`.
- */
 export function expectRectangleFields(rect: Handle, expected: RectangleFields): void {
     const fields = readRectangleFields(rect);
 
@@ -73,9 +51,6 @@ export function expectRectangleFields(rect: Handle, expected: RectangleFields): 
     expect(fields.height).toBe(expected.height);
 }
 
-/**
- * Writes the four 32-bit floating-point `GdkRGBA` channels from `channels`.
- */
 export function writeRgbaChannels(rgba: Handle, channels: RgbaChannels): void {
     write(rgba, FLOAT32, 0, channels.red);
     write(rgba, FLOAT32, 4, channels.green);
@@ -83,9 +58,6 @@ export function writeRgbaChannels(rgba: Handle, channels: RgbaChannels): void {
     write(rgba, FLOAT32, 12, channels.alpha);
 }
 
-/**
- * Reads the four 32-bit floating-point `GdkRGBA` channels back as an object.
- */
 export function readRgbaChannels(rgba: Handle): RgbaChannels {
     return {
         red: read(rgba, FLOAT32, 0) as number,

@@ -21,39 +21,18 @@ import {
     resolveCodegenStore,
 } from "./store-resolver.js";
 
-/**
- * Options for {@link runCodegen}.
- */
 export type RunCodegenOptions = {
-    /** Project root in which to look for `gtkx.config.ts`. Defaults to `process.cwd()`. */
     cwd?: string;
-    /**
-     * When true, remove the entire generated store and aliases before
-     * regenerating, for a guaranteed-fresh tree — the `--force` escape hatch
-     * for a corrupted store.
-     */
     force?: boolean;
 };
 
-/**
- * Result of a codegen invocation.
- */
 export type RunCodegenResult = {
-    /** Number of namespaces processed. */
     namespaces: number;
-    /** Number of widgets metadata-collected for React. */
     widgets: number;
-    /** Wall-clock duration in milliseconds. */
     duration: number;
-    /** Resolved GIR search path used by the run. */
-    girPath?: string[];
-    /** Path of the loaded `gtkx.config.ts`, when one was used. */
-    configFile?: string;
-    /**
-     * Concrete GIR namespace identifiers generated this run, after applying
-     * the `libraries` default and expanding `"*"`. Absent when cached.
-     */
-    libraries?: string[];
+    girPath?: string[] | undefined;
+    configFile?: string | undefined;
+    libraries?: string[] | undefined;
 };
 
 const tableRows = (config: GtkxConfig): UserTableRows => {
@@ -61,12 +40,7 @@ const tableRows = (config: GtkxConfig): UserTableRows => {
     return { containerProps, arrayProps, objectProps, virtualProps, elementMap };
 };
 
-const buildRunner = (
-    store: CodegenStore,
-    libraries: readonly string[],
-    girPath: readonly string[],
-    config: GtkxConfig,
-): CodegenRunner =>
+const buildRunner = (store: CodegenStore, libraries: string[], girPath: string[], config: GtkxConfig): CodegenRunner =>
     new CodegenRunner({
         libraries,
         girPath,
@@ -91,22 +65,6 @@ const buildRunner = (
                 : undefined,
     });
 
-/**
- * Runs the codegen pipeline end-to-end against a user project.
- *
- * Loads `gtkx.config.ts`, resolves GIR search paths and the resolved library
- * list, locates the project's installed `@gtkx/ffi`/`@gtkx/react`, and delegates
- * to {@link CodegenRunner}, which materializes the injected `@gtkx/gi` (and,
- * when React is present, `@gtkx/jsx`) packages into `node_modules`.
- *
- * Always regenerates: the conditional {@link ensureGenerated} gate (used by the
- * turbo task and the `gtkx dev`/`gtkx build` preflight) owns the decision of
- * whether to invoke codegen at all. With {@link RunCodegenOptions.force}, the
- * store and aliases are removed first.
- *
- * @param options - {@link RunCodegenOptions}
- * @returns Summary of work performed, plus the resolved config and GIR path
- */
 export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
     const cwd = findCodegenRoot(options.cwd ?? process.cwd());
 
@@ -141,32 +99,11 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
     };
 };
 
-/**
- * Regenerates the project's GSettings schema declaration file
- * (`node_modules/.gtkx/env.d.ts`) for an app package root.
- *
- * Workspace roots are skipped: the schema declarations are app-local (each
- * member's schemas type that member's imports), so emission only applies to
- * the package the command runs in.
- *
- * @param cwd - The app package root
- */
 export const syncSchemaEnv = (cwd: string): void => {
     if (isWorkspaceRoot(cwd)) return;
     emitSchemaEnv(cwd, resolveDataDir(cwd));
 };
 
-/**
- * Regenerates the injected packages when any required module or alias is
- * missing, leaving them untouched otherwise.
- *
- * The injected packages are a generated artifact that the build system does not
- * track, so a cache-restored build can be present without them. The
- * `gtkx dev`/`gtkx build` flows and the `@gtkx/cli#codegen` turbo task call this
- * first so generation is coupled to the build graph.
- *
- * @param cwd - Project root in which to look for `gtkx.config.ts`
- */
 export const ensureGenerated = async (cwd: string): Promise<boolean> => {
     const context = await resolveCodegenContext(cwd);
     if (!context) {
@@ -180,17 +117,8 @@ export const ensureGenerated = async (cwd: string): Promise<boolean> => {
     return true;
 };
 
-/**
- * Best-effort preflight for `gtkx dev` and `gtkx build`.
- *
- * Runs codegen if a `gtkx.config.ts` is present and a required generated module
- * or alias is missing. Returns silently when `GTKX_DISABLE_PREFLIGHT=1` is set
- * or no `gtkx.config.ts` exists.
- *
- * @param cwd - Project root
- */
 export const preflightCodegen = async (cwd: string): Promise<void> => {
-    if (process.env.GTKX_DISABLE_PREFLIGHT === "1") {
+    if (process.env["GTKX_DISABLE_PREFLIGHT"] === "1") {
         return;
     }
 
@@ -205,20 +133,9 @@ export const preflightCodegen = async (cwd: string): Promise<void> => {
     }
 };
 
-/**
- * Resolves the `gtkx dev` config watch: the project's `gtkx.config.ts` path and
- * a regenerate hook that re-runs codegen against its codegen root.
- *
- * A `libraries` (or any) edit to `gtkx.config.ts` thus regenerates the bindings
- * and restarts the supervised runner. Returns `undefined` when no
- * `gtkx.config.ts` is present, so `gtkx dev` simply runs without config-driven
- * regeneration. The shape matches the supervisor's `DevWatch`.
- *
- * @param cwd - Project root passed to `gtkx dev`
- */
 export const resolveConfigWatch = async (
     cwd: string,
-): Promise<{ readonly paths: readonly string[]; readonly regenerate: () => Promise<void> } | undefined> => {
+): Promise<{ paths: string[]; regenerate: () => Promise<void> } | undefined> => {
     const root = findCodegenRoot(cwd);
     try {
         const { configFile, rootDir } = await loadGtkxConfig(root);

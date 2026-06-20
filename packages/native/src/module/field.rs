@@ -1,8 +1,3 @@
-//! Field access for boxed/structured memory.
-//!
-//! Reads and writes fields in boxed types at given byte offsets, so JavaScript
-//! can reach struct fields that GTK property accessors do not expose.
-
 use std::ffi::c_void;
 
 use napi::Env;
@@ -14,8 +9,6 @@ use crate::managed::NativeHandle;
 use crate::types::{FfiDecoder as _, RawPtrCodec as _, ReadSource, Type};
 use crate::value::Value;
 
-/// The address of a field inside a boxed/structured native value: the base
-/// pointer of the owning allocation plus a byte `offset`.
 #[cfg_attr(test, allow(dead_code))]
 struct FieldLocation {
     base_addr: usize,
@@ -23,19 +16,11 @@ struct FieldLocation {
 }
 
 impl FieldLocation {
-    /// Resolves the field's address, failing when the owning handle holds a
-    /// null pointer.
-    ///
-    /// # Safety
-    ///
-    /// `base_addr` plus `offset` must stay within one live allocation.
     #[cfg_attr(test, allow(dead_code))]
     unsafe fn resolve(&self) -> anyhow::Result<*mut c_void> {
         if self.base_addr == 0 {
             anyhow::bail!("NativeHandle has a null pointer");
         }
-        // SAFETY: The caller guarantees the offset address stays within the
-        // allocation `base_addr` points into.
         Ok(unsafe { (self.base_addr as *mut u8).add(self.offset) as *mut c_void })
     }
 }
@@ -50,11 +35,7 @@ impl ModuleRequest for ReadRequest {
     type Output = Value;
 
     fn execute(self) -> anyhow::Result<Value> {
-        // SAFETY: The location came from a live NativeHandle and a
-        // descriptor-declared field offset within its allocation.
         let field_ptr = unsafe { self.location.resolve()? }.cast_const();
-        // SAFETY: The resolved field address is valid for the declared
-        // field type's read.
         unsafe {
             self.field_type
                 .read(ReadSource::Slot(field_ptr, "field read"))
@@ -77,11 +58,7 @@ impl ModuleRequest for WriteRequest {
     type Output = ();
 
     fn execute(self) -> anyhow::Result<()> {
-        // SAFETY: The location came from a live NativeHandle and a
-        // descriptor-declared field offset within its allocation.
         let field_ptr = unsafe { self.location.resolve()? };
-        // SAFETY: The resolved field address is valid for the declared
-        // field type's write.
         unsafe {
             self.field_type
                 .write_value_to_raw_ptr(field_ptr, &self.value)
@@ -93,10 +70,6 @@ impl ModuleRequest for WriteRequest {
     }
 }
 
-/// napi export shims for field access. Excluded from coverage instrumentation:
-/// both parse JS values through a live [`napi::Env`]. The [`ReadRequest`] and
-/// [`WriteRequest`] `execute` logic they dispatch is exercised directly by
-/// tests.
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[allow(clippy::wildcard_imports)]
 mod napi_export {
@@ -158,7 +131,6 @@ mod tests {
             base_addr,
             offset: 8,
         };
-        // SAFETY: Offset 8 stays within the 32-byte local buffer.
         let resolved = unsafe { location.resolve() }.expect("resolve should succeed");
         assert_eq!(resolved as usize, base_addr + 8);
     }
@@ -169,7 +141,6 @@ mod tests {
             base_addr: 0,
             offset: 0,
         };
-        // SAFETY: A zero base fails before any address arithmetic.
         let err = unsafe { location.resolve() }.expect_err("null base should fail");
         assert!(err.to_string().contains("null pointer"));
     }

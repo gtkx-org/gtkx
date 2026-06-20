@@ -1,25 +1,3 @@
-/**
- * Emission pipeline for the Khronos GL generator.
- *
- * Orchestrates registry loading, feature selection, command planning, and the
- * rendering of the three generated `@gtkx/gl` source modules:
- *
- * - `types.ts` — scalar aliases, opaque handles, and enum-group aliases
- * - `enums.ts` — one exported constant per selected enum token
- * - `commands.ts` — one `t.fn` binding plus one typed export per command,
- *   with mechanically derived singular forms of the gen/create/delete
- *   object-name families
- *
- * Output parameters follow the GIR bindings' convention: they are dropped
- * from the TypeScript signature, marshalled through internal `{ value }`
- * cells, and surfaced as the return value — bare when the C return is `void`
- * and exactly one output exists, otherwise as a tuple of the wrapped C return
- * followed by each output in declaration order.
- *
- * Every emitted module is validated through {@link transpileSource} so an
- * isolated-declarations regression fails generation instead of landing in the
- * committed output.
- */
 import { sortedAlpha, sortedAlphaBy, toCamelIdentifier, toIdentifier, toLowerFirst } from "@gtkx/utils";
 import { ModuleBuilder } from "../dsl/module.js";
 import { transpileSource } from "../transpile.js";
@@ -39,13 +17,7 @@ import { type GlSelection, resolveEnum, selectSubset } from "./select.js";
 const LIB_CONSTANT = `const LIB = "libGL.so.1";`;
 const REFPAGES_BASE = "https://registry.khronos.org/OpenGL-Refpages/gl4/html";
 
-/**
- * `command:param` pairs whose `void *` argument is a byte offset into the
- * bound buffer object. Typing them as plain numbers removes the raw-GL
- * footgun of a typed array silently becoming a dangling client pointer at
- * draw time; genuine data parameters stay `t.blob`. Pinned-registry safe.
- */
-const BYTE_OFFSET_PARAMS: ReadonlySet<string> = new Set([
+const BYTE_OFFSET_PARAMS: Set<string> = new Set([
     "glVertexAttribPointer:pointer",
     "glVertexAttribIPointer:pointer",
     "glVertexAttribLPointer:pointer",
@@ -65,14 +37,7 @@ const BYTE_OFFSET_PARAMS: ReadonlySet<string> = new Set([
     "glMultiDrawElementsIndirect:indirect",
 ]);
 
-/**
- * Object-scoped query commands whose `COMPSIZE(pname)`-sized output is
- * single-valued for every `pname` the gl 4.6 core profile allows, generated
- * with a scalar out-cell. The general `COMPSIZE(pname)` output rule stays an
- * exclusion — vector-returning state queries corrupt memory when treated as
- * single-valued. Pinned-registry safe.
- */
-const SINGLE_VALUED_QUERIES: ReadonlySet<string> = new Set([
+const SINGLE_VALUED_QUERIES: Set<string> = new Set([
     "glGetShaderiv",
     "glGetProgramiv",
     "glGetProgramPipelineiv",
@@ -90,12 +55,7 @@ const SINGLE_VALUED_QUERIES: ReadonlySet<string> = new Set([
     "glGetVertexArrayiv",
 ]);
 
-/**
- * Commands the hand-written companion module owns under their WebGL-style
- * names (string-returning info-log helpers). Excluded from generation so the
- * export name sets stay disjoint.
- */
-const COMPANION_OWNED: ReadonlySet<string> = new Set([
+const COMPANION_OWNED: Set<string> = new Set([
     "glGetShaderInfoLog",
     "glGetProgramInfoLog",
     "glGetProgramPipelineInfoLog",
@@ -106,42 +66,26 @@ const PLAN_POLICY: GlPlanPolicy = {
     singleValuedQueries: SINGLE_VALUED_QUERIES,
 };
 
-/** One excluded command and why. */
 export type GlExclusion = {
-    /** The C entry point name. */
-    readonly command: string;
-    /** The exclusion category. */
-    readonly reason: GlExclusionReason;
-    /** The offending parameter and shape. */
-    readonly detail: string;
+    command: string;
+    reason: GlExclusionReason;
+    detail: string;
 };
 
-/** Counts and exclusion lists for one generation run. */
 export type GlGenerationReport = {
-    /** The resolved selection. */
-    readonly selection: GlSelection;
-    /** Commands the selection resolved to. */
-    readonly selectedCommands: number;
-    /** Commands emitted as typed exports. */
-    readonly emittedCommands: number;
-    /** Mechanically derived singular exports. */
-    readonly derivedSingulars: number;
-    /** Enum tokens the selection resolved to. */
-    readonly selectedEnums: number;
-    /** Enum constants emitted. */
-    readonly emittedEnums: number;
-    /** Commands excluded from generation, with reasons. */
-    readonly exclusions: readonly GlExclusion[];
-    /** Enum tokens skipped, with reasons. */
-    readonly skippedEnums: readonly { readonly name: string; readonly reason: string }[];
+    selection: GlSelection;
+    selectedCommands: number;
+    emittedCommands: number;
+    derivedSingulars: number;
+    selectedEnums: number;
+    emittedEnums: number;
+    exclusions: GlExclusion[];
+    skippedEnums: { name: string; reason: string }[];
 };
 
-/** The output of one generation run: sources keyed by filename, plus counts. */
 export type GlGenerationResult = {
-    /** Generated TypeScript sources keyed by output filename. */
-    readonly files: ReadonlyMap<string, string>;
-    /** Counts and exclusions for the run. */
-    readonly report: GlGenerationReport;
+    files: Map<string, string>;
+    report: GlGenerationReport;
 };
 
 const GENERATED_HEADER = `/**
@@ -195,36 +139,34 @@ const paramIndexByName = (command: GlCommand, name: string): number => {
 
 const arrayInTsType = (scalar: GlScalar, group: string | undefined): string => {
     const element = scalarAliasOrGroup(scalar, group);
-    return scalar.viewType === undefined ? `readonly ${element}[]` : `readonly ${element}[] | ${scalar.viewType}`;
+    return scalar.viewType === undefined ? `${element}[]` : `${element}[] | ${scalar.viewType}`;
 };
 
-/** An input parameter: surfaced in the signature and passed through. */
 type EmittedIn = {
-    readonly out: false;
-    readonly name: string;
-    readonly tsType: string;
-    readonly descriptor: string;
+    out: false;
+    name: string;
+    tsType: string;
+    descriptor: string;
 };
 
-/** An output parameter: marshalled through an internal cell and returned. */
 type EmittedOut = {
-    readonly out: true;
-    readonly cellName: string;
-    readonly seed: string;
-    readonly tsType: string;
-    readonly descriptor: string;
-    readonly docName: string;
-    readonly docCType: string;
+    out: true;
+    cellName: string;
+    seed: string;
+    tsType: string;
+    descriptor: string;
+    docName: string;
+    docCType: string;
 };
 
 type EmittedSlot = EmittedIn | EmittedOut;
 
 type BuildSlotOptions = {
-    readonly command: GlCommand;
-    readonly index: number;
-    readonly plan: ParamPlan;
-    readonly outIndex: number;
-    readonly usedTypes: Set<string>;
+    command: GlCommand;
+    index: number;
+    plan: ParamPlan;
+    outIndex: number;
+    usedTypes: Set<string>;
 };
 
 const inSlot = (name: string, tsType: string, descriptor: string): EmittedIn => ({
@@ -248,7 +190,7 @@ const buildInSlot = (options: BuildSlotOptions, name: string, track: (alias: str
         case "string-in":
             return inSlot(name, "string", `t.string("borrowed")`);
         case "string-array-in":
-            return inSlot(name, "readonly string[]", `t.array(t.string("borrowed"))`);
+            return inSlot(name, "string[]", `t.array(t.string("borrowed"))`);
         case "array-in": {
             track(scalarAliasOrGroup(plan.scalar, param.group));
             return inSlot(name, arrayInTsType(plan.scalar, param.group), `t.array(${plan.scalar.tExpr})`);
@@ -258,7 +200,7 @@ const buildInSlot = (options: BuildSlotOptions, name: string, track: (alias: str
         case "byte-offset":
             return inSlot(name, track("GLintptr"), "t.uint64");
         case "byte-offset-array":
-            return inSlot(name, `readonly ${track("GLintptr")}[]`, "t.array(t.uint64)");
+            return inSlot(name, `${track("GLintptr")}[]`, "t.array(t.uint64)");
         default:
             throw new Error(`Plan kind ${plan.kind} is not an input parameter`);
     }
@@ -332,7 +274,7 @@ const trackInto =
     };
 
 const buildSlots = (
-    plan: CommandPlan & { readonly ok: true },
+    plan: CommandPlan & { ok: true },
     usedTypes: Set<string>,
 ): { slots: EmittedSlot[]; ins: EmittedIn[]; outs: EmittedOut[] } => {
     const track = trackInto(usedTypes);
@@ -363,9 +305,9 @@ const buildSlots = (
 };
 
 type EmittedReturn = {
-    readonly tsType: string;
-    readonly descriptor: string;
-    readonly expr?: (call: string) => string;
+    tsType: string;
+    descriptor: string;
+    expr?: (call: string) => string;
 };
 
 const buildEmittedReturn = (
@@ -413,11 +355,7 @@ const inParamDocLine = (command: GlCommand, slot: EmittedIn): string => {
     return ` * @param ${slot.name} - ${notes.join(", ")}`;
 };
 
-const returnsDocLine = (
-    command: GlCommand,
-    returnPlan: ReturnPlan,
-    outs: readonly EmittedOut[],
-): string | undefined => {
+const returnsDocLine = (command: GlCommand, returnPlan: ReturnPlan, outs: EmittedOut[]): string | undefined => {
     const members: string[] = [];
     if (returnPlan.kind !== "void") members.push(`\`${command.returnCType}\``);
     for (const out of outs) members.push(`\`${out.docName}\` (\`${out.docCType}\`)`);
@@ -427,11 +365,11 @@ const returnsDocLine = (
 };
 
 type CommandJsDocOptions = {
-    readonly command: GlCommand;
-    readonly feature: string;
-    readonly ins: readonly EmittedIn[];
-    readonly outs: readonly EmittedOut[];
-    readonly returnPlan: ReturnPlan;
+    command: GlCommand;
+    feature: string;
+    ins: EmittedIn[];
+    outs: EmittedOut[];
+    returnPlan: ReturnPlan;
 };
 
 const commandJsDoc = ({ command, feature, ins, outs, returnPlan }: CommandJsDocOptions): string => {
@@ -447,16 +385,16 @@ const commandJsDoc = ({ command, feature, ins, outs, returnPlan }: CommandJsDocO
     return lines.join("\n");
 };
 
-const renderDescriptorList = (descriptors: readonly string[]): string =>
+const renderDescriptorList = (descriptors: string[]): string =>
     descriptors.length === 0 ? "[]" : `[${descriptors.join(", ")}]`;
 
 type RenderedCommand = {
-    readonly exportName: string;
-    readonly binding?: string;
-    readonly declaration: string;
+    exportName: string;
+    binding?: string;
+    declaration: string;
 };
 
-const returnTsType = (returned: EmittedReturn, outs: readonly EmittedOut[]): string => {
+const returnTsType = (returned: EmittedReturn, outs: EmittedOut[]): string => {
     if (outs.length === 0) return returned.tsType;
     const outTypes = outs.map((out) => out.tsType);
     if (returned.expr === undefined) {
@@ -465,7 +403,7 @@ const returnTsType = (returned: EmittedReturn, outs: readonly EmittedOut[]): str
     return `[${returned.tsType}, ${outTypes.join(", ")}]`;
 };
 
-const returnStatements = (call: string, returned: EmittedReturn, outs: readonly EmittedOut[]): string[] => {
+const returnStatements = (call: string, returned: EmittedReturn, outs: EmittedOut[]): string[] => {
     if (outs.length === 0) {
         return returned.expr === undefined ? [`${call};`] : [`return ${returned.expr(call)};`];
     }
@@ -477,11 +415,7 @@ const returnStatements = (call: string, returned: EmittedReturn, outs: readonly 
     return [`const result = ${call};`, `return [${returned.expr("result")}, ${outValues.join(", ")}];`];
 };
 
-const renderCommand = (
-    plan: CommandPlan & { readonly ok: true },
-    feature: string,
-    usedTypes: Set<string>,
-): RenderedCommand => {
+const renderCommand = (plan: CommandPlan & { ok: true }, feature: string, usedTypes: Set<string>): RenderedCommand => {
     const { command } = plan;
     const exportName = commandExportName(command.name);
     const { slots, ins, outs } = buildSlots(plan, usedTypes);
@@ -521,10 +455,7 @@ const renderCommand = (
 const GEN_FAMILY = /^gl(Gen|Create)[A-Z][A-Za-z]*s$/;
 const DELETE_FAMILY = /^glDelete[A-Z][A-Za-z]*s$/;
 
-const scalarPrefixSlots = (
-    plan: CommandPlan & { readonly ok: true },
-    usedTypes: Set<string>,
-): EmittedIn[] | undefined => {
+const scalarPrefixSlots = (plan: CommandPlan & { ok: true }, usedTypes: Set<string>): EmittedIn[] | undefined => {
     const track = trackInto(usedTypes);
     const prefix: EmittedIn[] = [];
     for (let index = 0; index < plan.params.length - 2; index++) {
@@ -544,7 +475,7 @@ const scalarPrefixSlots = (
 };
 
 const deriveGenSingular = (
-    plan: CommandPlan & { readonly ok: true },
+    plan: CommandPlan & { ok: true },
     feature: string,
     usedTypes: Set<string>,
 ): RenderedCommand | undefined => {
@@ -591,7 +522,7 @@ const deriveGenSingular = (
 };
 
 const deriveDeleteSingular = (
-    plan: CommandPlan & { readonly ok: true },
+    plan: CommandPlan & { ok: true },
     feature: string,
     usedTypes: Set<string>,
 ): RenderedCommand | undefined => {
@@ -620,7 +551,7 @@ const deriveDeleteSingular = (
 };
 
 const renderEnumsModule = (
-    tokens: readonly { token: GlEnum; exportName: string; literal: string; feature: string }[],
+    tokens: { token: GlEnum; exportName: string; literal: string; feature: string }[],
 ): string => {
     const builder = new ModuleBuilder();
     for (const { token, exportName, literal, feature } of tokens) {
@@ -632,7 +563,7 @@ const renderEnumsModule = (
     return `${GENERATED_HEADER}\n\n${builder.toSource()}`;
 };
 
-const renderTypesModule = (groupAliases: ReadonlyMap<string, string>): string => {
+const renderTypesModule = (groupAliases: Map<string, string>): string => {
     const builder = new ModuleBuilder();
     builder.imports.addNamed("@gtkx/native", "Handle", true);
     builder.appendDeclaration(`/** An opaque \`GLsync\` fence handle. */\nexport type GLsync = Handle;`);
@@ -655,12 +586,12 @@ const renderTypesModule = (groupAliases: ReadonlyMap<string, string>): string =>
     return `${GENERATED_HEADER}\n\n${builder.toSource()}`;
 };
 
-const TS_PRIMITIVES: ReadonlySet<string> = new Set(["boolean", "string", "void", "number"]);
+const TS_PRIMITIVES: Set<string> = new Set(["boolean", "string", "void", "number"]);
 
 const renderCommandsModule = (
-    rendered: readonly RenderedCommand[],
-    singulars: readonly RenderedCommand[],
-    usedTypes: ReadonlySet<string>,
+    rendered: RenderedCommand[],
+    singulars: RenderedCommand[],
+    usedTypes: Set<string>,
 ): string => {
     const builder = new ModuleBuilder();
     builder.imports.addNamed("@gtkx/ffi", "t");
@@ -680,7 +611,7 @@ const renderCommandsModule = (
     return `${GENERATED_HEADER}\n\n${builder.toSource()}`;
 };
 
-const collectGroupAliases = (plans: readonly (CommandPlan & { readonly ok: true })[]): ReadonlyMap<string, string> => {
+const collectGroupAliases = (plans: (CommandPlan & { ok: true })[]): Map<string, string> => {
     const aliases = new Map<string, string>();
     const consider = (scalar: GlScalar, group: string | undefined): void => {
         if (group === undefined) return;
@@ -702,39 +633,25 @@ const collectGroupAliases = (plans: readonly (CommandPlan & { readonly ok: true 
     return aliases;
 };
 
-/** Options for {@link generateGlModules}. */
 export type GlGenerationOptions = {
-    /** Absolute path to the vendored `gl.xml`. */
-    readonly registryPath: string;
-    /** Export names of the hand-written companion module, for the disjointness assertion. */
-    readonly companionExports: ReadonlySet<string>;
-    /** The API/version/profile to generate; defaults to gl 4.6 core. */
-    readonly selection?: GlSelection;
+    registryPath: string;
+    companionExports: Set<string>;
+    selection?: GlSelection;
 };
 
 const DEFAULT_SELECTION: GlSelection = { api: "gl", version: 4.6, profile: "core" };
 
-/**
- * Generates the `@gtkx/gl` source modules from a Khronos registry file.
- *
- * Resolves the selection, plans every selected command, renders the three
- * output modules, validates each through {@link transpileSource}, and asserts
- * that no generated export name collides with the hand-written companion
- * module (an ESM star-export collision drops exports silently).
- *
- * @param options - Registry path, companion export names, and selection
- */
-type OkPlan = CommandPlan & { readonly ok: true };
+type OkPlan = CommandPlan & { ok: true };
 
 type PlannedSelection = {
-    readonly okPlans: readonly OkPlan[];
-    readonly planFeatures: ReadonlyMap<string, string>;
-    readonly exclusions: readonly GlExclusion[];
+    okPlans: OkPlan[];
+    planFeatures: Map<string, string>;
+    exclusions: GlExclusion[];
 };
 
 const planSelectedCommands = (
     registry: ReturnType<typeof loadGlRegistry>,
-    commandNames: ReadonlyMap<string, string>,
+    commandNames: Map<string, string>,
 ): PlannedSelection => {
     const exclusions: GlExclusion[] = [];
     const okPlans: OkPlan[] = [];
@@ -758,20 +675,20 @@ const planSelectedCommands = (
 };
 
 type EnumRow = {
-    readonly token: GlEnum;
-    readonly exportName: string;
-    readonly literal: string;
-    readonly feature: string;
+    token: GlEnum;
+    exportName: string;
+    literal: string;
+    feature: string;
 };
 
 type EnumRows = {
-    readonly enumRows: readonly EnumRow[];
-    readonly skippedEnums: readonly { readonly name: string; readonly reason: string }[];
+    enumRows: EnumRow[];
+    skippedEnums: { name: string; reason: string }[];
 };
 
 const buildEnumRows = (
     registry: ReturnType<typeof loadGlRegistry>,
-    enumNames: ReadonlyMap<string, string>,
+    enumNames: Map<string, string>,
     api: string,
 ): EnumRows => {
     const skippedEnums: { name: string; reason: string }[] = [];
@@ -789,10 +706,10 @@ const buildEnumRows = (
 };
 
 const assertExportNamesDisjoint = (
-    rendered: readonly RenderedCommand[],
-    singulars: readonly RenderedCommand[],
-    enumRows: readonly EnumRow[],
-    companionExports: ReadonlySet<string>,
+    rendered: RenderedCommand[],
+    singulars: RenderedCommand[],
+    enumRows: EnumRow[],
+    companionExports: Set<string>,
 ): void => {
     const exportNames = new Map<string, string>();
     const claim = (name: string, owner: string): void => {

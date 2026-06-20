@@ -5,21 +5,14 @@ import { renderEnvModule } from "../gsettings/render.js";
 import { TEMPLATE_SUFFIX, type TemplateContext } from "../templates.js";
 import { isValidProjectName, PACKAGE_MANAGERS, type PackageManager, type TestingOption } from "./options.js";
 
-/**
- * Options accepted by {@link Scaffolder.run}. Missing fields are filled
- * interactively via the injected prompt collaborator.
- */
 export type CreateOptions = {
-    name?: string;
-    applicationId?: string;
-    packageManager?: PackageManager;
-    testing?: TestingOption;
-    claudeSkills?: boolean;
+    name?: string | undefined;
+    applicationId?: string | undefined;
+    packageManager?: PackageManager | undefined;
+    testing?: TestingOption | undefined;
+    claudeSkills?: boolean | undefined;
 };
 
-/**
- * Resolved options after all prompts have been answered.
- */
 type ResolvedOptions = {
     name: string;
     applicationId: string;
@@ -28,11 +21,6 @@ type ResolvedOptions = {
     claudeSkills: boolean;
 };
 
-/**
- * Minimal `@clack/prompts` surface area the scaffolder relies on, expressed
- * as a `Pick` of the real package so tests inject a structurally compatible
- * mock without re-deriving clack's option shapes.
- */
 type ScaffolderPrompts = Pick<
     typeof import("@clack/prompts"),
     "intro" | "note" | "cancel" | "text" | "select" | "confirm" | "isCancel"
@@ -41,19 +29,12 @@ type ScaffolderPrompts = Pick<
     log: { info(message: string): void; error(message: string): void };
 };
 
-/**
- * Filesystem operations the scaffolder needs.
- */
 type ScaffolderFs = {
     existsSync(path: string): boolean;
     mkdirSync(path: string, opts: { recursive: boolean }): void;
     writeFileSync(path: string, content: string): void;
 };
 
-/**
- * Function invoked to install a set of dependencies into a freshly scaffolded
- * project. Production wires this to `nypm`.
- */
 type InstallDependenciesFn = (opts: {
     cwd: string;
     packageManager: PackageManager;
@@ -61,15 +42,8 @@ type InstallDependenciesFn = (opts: {
     dev: boolean;
 }) => Promise<void>;
 
-/**
- * Function invoked to initialize a git repository at the given directory.
- * Production wires this to `tinyexec`.
- */
 type GitInitFn = (cwd: string) => Promise<void>;
 
-/**
- * Collaborators required by {@link createScaffolder}.
- */
 export type ScaffolderDeps = {
     cwd(): string;
     fs: ScaffolderFs;
@@ -82,13 +56,7 @@ export type ScaffolderDeps = {
     exit(code: number): never;
 };
 
-/**
- * Public surface of the configured scaffolder.
- */
 export type Scaffolder = {
-    /**
-     * Runs the full scaffold flow: prompts → file writes → install → git.
-     */
     run(options?: CreateOptions): Promise<void>;
 };
 
@@ -102,13 +70,6 @@ const RUN_DEV_COMMAND: Record<PackageManager, string> = Object.fromEntries(
     PACKAGE_MANAGERS.map((manager) => [manager.value, manager.runDev]),
 ) as Record<PackageManager, string>;
 
-/**
- * Returns the conventional "run the dev server" command line for a given
- * package manager.
- *
- * @param pm - The package manager.
- * @returns The shell command to print in the "next steps" hint.
- */
 const getRunCommand = (pm: PackageManager): string => RUN_DEV_COMMAND[pm];
 
 const titleFromName = (name: string): string => name.split("-").map(toUpperFirst).join(" ");
@@ -180,11 +141,10 @@ const promptPackageManager = async (deps: ScaffolderDeps): Promise<PackageManage
         deps,
         await deps.prompts.select<PackageManager>({
             message: "Package manager",
-            options: PACKAGE_MANAGERS.map((manager) => ({
-                value: manager.value,
-                label: manager.label,
-                hint: detected === manager.value ? "detected" : manager.recommended ? "recommended" : undefined,
-            })),
+            options: PACKAGE_MANAGERS.map((manager) => {
+                const hint = detected === manager.value ? "detected" : manager.recommended ? "recommended" : undefined;
+                return { value: manager.value, label: manager.label, ...(hint === undefined ? {} : { hint }) };
+            }),
             initialValue: initial,
         }),
     );
@@ -223,12 +183,7 @@ const TESTING_TEMPLATE_PREFIXES = ["config/", "tests/"] as const;
 const CLAUDE_TEMPLATE_PREFIX = "claude/";
 const CLAUDE_SKILLS_DIR = ".claude/skills/developing-gtkx-apps";
 
-/**
- * Maps a template's `.ejs`-stripped relative path to its destination relative
- * path within the project. Templates absent from the table keep their relative
- * path unchanged.
- */
-const TEMPLATE_DESTINATIONS: Readonly<Record<string, string>> = {
+const TEMPLATE_DESTINATIONS: Record<string, string> = {
     gitignore: ".gitignore",
     "config/vitest.config.ts": "vitest.config.ts",
 };
@@ -320,13 +275,6 @@ const printNextSteps = (deps: ScaffolderDeps, resolved: ResolvedOptions): void =
     deps.prompts.note(`${nextSteps}${testingNote}`, "Next steps");
 };
 
-/**
- * Builds the configured scaffolder closure.
- *
- * @param deps - Collaborators that provide every side-effecting capability
- *   the scaffolder needs.
- * @returns A {@link Scaffolder} instance whose `run` performs the scaffold.
- */
 export const createScaffolder = (deps: ScaffolderDeps): Scaffolder => ({
     async run(options: CreateOptions = {}): Promise<void> {
         deps.prompts.intro("Create GTKX App");

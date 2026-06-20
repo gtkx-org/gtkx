@@ -40,12 +40,6 @@ const cairoFontOptionsCopy = bind(
 );
 
 class FontOptionsImpl extends FontOptions {
-    /**
-     * Allocates a font options object. With no argument, a fresh default-valued
-     * object is created; passing `other` produces an independent copy of it.
-     *
-     * @param other - Optional font options to copy
-     */
     constructor(other?: FontOptions) {
         super();
         const handle = other === undefined ? cairoFontOptionsCreate() : cairoFontOptionsCopy(getHandle(other));

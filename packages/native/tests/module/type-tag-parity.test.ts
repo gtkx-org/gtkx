@@ -1,13 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { call, type Type } from "../../index.js";
 
-/**
- * A representative descriptor for every discriminant in the {@link Type} union,
- * keyed by its tag. The mapped type forces an entry for each member — adding a
- * new `Type` variant fails this file's typecheck until its tag is listed —
- * and types each entry as the member with that exact tag, so a representative
- * cannot drift to the wrong shape.
- */
 type DescriptorByTag = { [K in Type["type"]]: Extract<Type, { type: K }> };
 
 const REPRESENTATIVES: DescriptorByTag = {
@@ -55,12 +48,6 @@ const MISSING_LIBRARY = "libgtkx-type-tag-parity-nonexistent.so";
 const MISSING_SYMBOL = "gtkx_type_tag_parity_missing_symbol";
 const UNKNOWN_TAG_ERROR = /unknown type/i;
 
-/**
- * Parses `returnType` through the native boundary without invoking anything: the
- * descriptor is decoded by `Type::from_js_value` before the call dispatches, and
- * the deliberately-absent library makes the dispatch fail at load time — so a
- * recognized tag throws a library error rather than an `Unknown type` error.
- */
 const parseReturnType = (returnType: Type): void => {
     call(MISSING_LIBRARY, MISSING_SYMBOL, [], returnType);
 };

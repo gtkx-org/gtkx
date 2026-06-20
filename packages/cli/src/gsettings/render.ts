@@ -1,7 +1,7 @@
 import { toUpperFirst } from "@gtkx/utils";
 import type { ParsedKey, ParsedSchema, ParsedSchemaFile } from "./parser.js";
 
-const VARIANT_TS_TYPES: Readonly<Record<string, string>> = {
+const VARIANT_TS_TYPES: Record<string, string> = {
     b: "boolean",
     i: "number",
     u: "number",
@@ -17,22 +17,12 @@ const VARIANT_FALLBACK_TS_TYPE = `import("@gtkx/gi/glib").Variant`;
 const ENUM_KIND = "enum";
 const FLAGS_KIND = "flags";
 
-/**
- * Serializes `value` as a string literal safe to embed in generated source.
- *
- * `JSON.stringify` leaves the U+2028/U+2029 line separators raw — JSON
- * permits them, but inside generated code they must appear escaped — so they
- * are rewritten to their escape sequences.
- *
- * @param value - The string to serialize
- * @returns The escaped string literal, including quotes
- */
 const toJsStringLiteral = (value: string): string =>
     JSON.stringify(value).replaceAll("\u2028", "\\u2028").replaceAll("\u2029", "\\u2029");
 
 const exportNameFor = (schemaId: string): string => schemaId.replaceAll(".", "_");
 
-const unionOf = (values: readonly string[]): string => values.map(toJsStringLiteral).join(" | ");
+const unionOf = (values: string[]): string => values.map(toJsStringLiteral).join(" | ");
 
 const tsTypeForKey = (key: ParsedKey, file: ParsedSchemaFile): string => {
     if (key.enumId !== null) {
@@ -62,19 +52,6 @@ const runtimeKeysFor = (schema: ParsedSchema): string => {
     return `{ ${entries.join(", ")} }`;
 };
 
-/**
- * Renders the JavaScript source of the virtual module backing a
- * `.gschema.xml` import.
- *
- * Each schema becomes a named export (its ID with dots replaced by
- * underscores) holding a schema-reference object: `id`, the per-key dispatch
- * map `keys`, and either `path: null` for a fixed-path schema or an
- * `at(path)` binder for a relocatable one. The first schema is also the
- * default export.
- *
- * @param file - The parsed schema file
- * @returns The module source
- */
 export const renderRuntimeModule = (file: ParsedSchemaFile): string => {
     const lines: string[] = [];
     file.schemas.forEach((schema, index) => {
@@ -127,10 +104,10 @@ const renderKeysType = (name: string, schema: ParsedSchema, file: ParsedSchemaFi
 };
 
 const boundRefTypeLines = (interfaceName: string, indent: string): string[] => [
-    `${indent}readonly id: string;`,
-    `${indent}readonly path: string | null;`,
-    `${indent}readonly keys: { readonly [P in keyof ${interfaceName}]: string };`,
-    `${indent}readonly __keys__?: ${interfaceName};`,
+    `${indent}id: string;`,
+    `${indent}path: string | null;`,
+    `${indent}keys: { [P in keyof ${interfaceName}]: string };`,
+    `${indent}__keys__?: ${interfaceName};`,
 ];
 
 const renderSchemaConst = (schema: ParsedSchema, interfaceName: string): string[] => {
@@ -138,16 +115,16 @@ const renderSchemaConst = (schema: ParsedSchema, interfaceName: string): string[
     if (schema.path !== null) {
         return [
             `    const ${exportName}: {`,
-            `        readonly id: ${toJsStringLiteral(schema.id)};`,
+            `        id: ${toJsStringLiteral(schema.id)};`,
             ...boundRefTypeLines(interfaceName, "        ").slice(1),
             "    };",
         ];
     }
     return [
         `    const ${exportName}: {`,
-        `        readonly id: ${JSON.stringify(schema.id)};`,
-        `        readonly keys: { readonly [P in keyof ${interfaceName}]: string };`,
-        `        readonly __keys__?: ${interfaceName};`,
+        `        id: ${JSON.stringify(schema.id)};`,
+        `        keys: { [P in keyof ${interfaceName}]: string };`,
+        `        __keys__?: ${interfaceName};`,
         "        at(path: string): {",
         ...boundRefTypeLines(interfaceName, "            "),
         "        };",
@@ -183,19 +160,7 @@ const ENV_HEADER = [
     " */",
 ];
 
-/**
- * Renders the project's generated `env.d.ts`: one ambient module declaration
- * per `.gschema.xml` file, keyed on the file's exact `#data/<rel>` import
- * specifier, with a typed key interface and schema-reference export per schema.
- *
- * Enum and flags keys narrow to unions of their value nicks, string keys
- * with `<choices>` narrow to unions of the choice values, and keys whose
- * GVariant type has no native TypeScript mapping surface as `GLib.Variant`.
- *
- * @param files - The parsed schema files, in deterministic order
- * @returns The declaration file source
- */
-export const renderEnvModule = (files: readonly ParsedSchemaFile[]): string => {
+export const renderEnvModule = (files: ParsedSchemaFile[]): string => {
     const usedNames = new Set<string>();
     const blocks = files
         .filter((file) => file.schemas.length > 0)

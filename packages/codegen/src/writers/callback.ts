@@ -15,18 +15,6 @@ const callbackAsFunction = (callback: GirCallback): GirFunction => ({
     returnValue: callback.returnValue,
 });
 
-/**
- * Emits an `export type` alias for a top-level GIR `<callback>`.
- *
- * The callback is surfaced under its GIR `name` verbatim with a fully typed
- * call signature: input parameters follow {@link renderMethodSignature} (the
- * folded `user_data`/`GDestroyNotify` slots are dropped) and the return follows
- * {@link renderMethodReturnType}, so out-parameters tuple into the return the
- * same way a method's would.
- *
- * @param context - The module context
- * @param callback - The callback to emit
- */
 export const emitCallback = (context: ModuleContext, callback: GirCallback): void => {
     if (!callback.introspectable) return;
     if (callback.name.length === 0) return;

@@ -148,7 +148,7 @@ describe("build (define and rolldown)", () => {
         });
 
         const config = getViteConfig();
-        expect(config.define.__APP_VERSION__).toBe(JSON.stringify("1.2.3"));
+        expect(config.define["__APP_VERSION__"]).toBe(JSON.stringify("1.2.3"));
         expect(config.define["process.env.NODE_ENV"]).toBe(JSON.stringify("production"));
     });
 
@@ -160,8 +160,8 @@ describe("build (define and rolldown)", () => {
         });
 
         const output = getViteConfig().build.rolldownOptions.output as Record<string, unknown>;
-        expect(output.format).toBe("es");
-        expect(output.sourcemap).toBe(true);
-        expect(output.entryFileNames).toBe("bundle.js");
+        expect(output["format"]).toBe("es");
+        expect(output["sourcemap"]).toBe(true);
+        expect(output["entryFileNames"]).toBe("bundle.js");
     });
 });

@@ -4,18 +4,6 @@ import type { Plugin } from "vite";
 const CSS_RE = /\.css$/i;
 const VIRTUAL_PREFIX = "\0gtkx:";
 
-/**
- * Vite plugin that converts bare CSS imports into runtime
- * `injectGlobal` calls.
- *
- * Intercepts `import "./style.css"` (side-effect form) and rewrites it to
- * a virtual module whose body reads the file at build/dev time and calls
- * `injectGlobal` from `@gtkx/css`, installing the stylesheet into the GTK
- * CSS provider when the importing module is evaluated.
- *
- * Binary asset imports (images, fonts, video, etc.) are owned by
- * `gtkxResources`, which routes them through the GResource pipeline.
- */
 export function gtkxAssets(): Plugin {
     return {
         name: "gtkx:assets",

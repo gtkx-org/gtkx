@@ -7,48 +7,29 @@ import { error, info, warn } from "../internal/log.js";
 import { dispatch } from "./handlers.js";
 import { WidgetRegistry } from "./widget-registry.js";
 
-/**
- * Options for constructing an {@link McpClient}.
- */
 export type McpClientOptions = {
-    /** Socket path to connect to; defaults to `@gtkx/mcp`'s {@link DEFAULT_SOCKET_PATH}. */
     socketPath?: string;
-    /** The GTK application ID the client should register with. */
     applicationId: string;
 };
 
 const RECONNECT_DELAY_MS = 2000;
 
-/**
- * Connects a GTKX app to the MCP socket server.
- *
- * Owns the socket lifecycle (connect, reconnect, disconnect) and routes
- * inbound requests through {@link dispatch}. Wire framing and pending-request
- * correlation are delegated to {@link JsonStreamTransport}, the same class
- * the MCP server uses on its end — so both sides agree exactly on how a
- * frame is bounded, parsed, and resolved.
- */
 export class McpClient {
     private socket: net.Socket | null = null;
     private transport: JsonStreamTransport | null = null;
-    private readonly socketPath: string;
-    private readonly applicationId: string;
+    private socketPath: string;
+    private applicationId: string;
     private reconnectTimer: NodeJS.Timeout | null = null;
     private hasConnected = false;
     private isStopping = false;
     private pendingConnectReject: ((error: Error) => void) | null = null;
-    private readonly registry = new WidgetRegistry();
+    private registry = new WidgetRegistry();
 
     constructor(options: McpClientOptions) {
         this.socketPath = options.socketPath ?? DEFAULT_SOCKET_PATH;
         this.applicationId = options.applicationId;
     }
 
-    /**
-     * Establishes the initial connection and registers this app with the
-     * MCP server. Subsequent disconnects are handled transparently by the
-     * built-in reconnect timer.
-     */
     async connect(): Promise<void> {
         return new Promise<void>((resolve, reject) => {
             this.pendingConnectReject = reject;
@@ -65,11 +46,6 @@ export class McpClient {
         });
     }
 
-    /**
-     * Tears down the socket and cancels any pending reconnect timer. Rejects
-     * an in-flight {@link connect} call with a disconnect error so callers
-     * waiting on registration do not hang past teardown.
-     */
     disconnect(): void {
         this.isStopping = true;
         if (this.pendingConnectReject) {

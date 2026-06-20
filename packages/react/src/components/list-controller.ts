@@ -14,66 +14,31 @@ import type { DropDownLike } from "../utils/gtype-predicates.js";
 import type { ColumnController, ColumnHost } from "./column-controller.js";
 import { ColumnViewLifecycle } from "./column-view-lifecycle.js";
 
-/** Renders one bound row; `row` carries tree state for hierarchical lists. */
 export type ListItemRenderer = (item: unknown, row?: Gtk.TreeListRow | null) => ReactNode;
 
-/** Renders one bound section header. */
 export type ListHeaderRenderer = (item: unknown) => ReactNode;
 
-/**
- * The props a {@link ListController} reads. This is the union of every public
- * list-variant prop the controller acts on, kept structural so the controller
- * does not depend on the per-variant JSX prop types.
- */
 export interface ListControllerProps {
-    /** Controlled-mode data items. */
     items?: ListItem[];
-    /** Uncontrolled-mode `Gio.ListModel` handed straight to the widget. */
     model?: Gio.ListModel;
-    /** Renders the primary cell/item content. */
     renderItem?: ListItemRenderer | null;
-    /** Renders the dropdown popup-list item, overriding `renderItem` there. */
     renderListItem?: ListItemRenderer | null;
-    /** Renders a section header. */
     renderHeader?: ListHeaderRenderer | null;
-    /** Whether tree rows expand automatically. */
     autoexpand?: boolean;
-    /** Controlled selected item ids. */
     selected?: string[] | null;
-    /** Fired when the user changes the selection. */
     onSelectionChanged?: ((ids: string[]) => void) | ((id: string) => void) | null;
-    /** Selection behavior. */
     selectionMode?: Gtk.SelectionMode | null;
-    /** Controlled dropdown selected id. */
     selectedId?: string | null;
-    /** Id of the sorted column, or null for no sorting (column view). */
     sortColumn?: string | null;
-    /** Sort direction (column view). */
     sortOrder?: Gtk.SortType | null;
-    /** Fired when the sort column or order changes (column view). */
     onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null;
-    /** Estimated item height in pixels for virtualization. */
     estimatedItemHeight?: number;
-    /** Estimated item width in pixels for virtualization. */
     estimatedItemWidth?: number;
-    /** Estimated row height in pixels for virtualization (column view). */
     estimatedRowHeight?: number | null;
 }
 
-/**
- * Drives one virtualized list widget (`GtkListView`/`GtkGridView`/
- * `GtkColumnView`/`GtkDropDown`/`AdwComboRow`) from a hand-written component.
- *
- * It owns the backing GTK models (flat/tree/section), the selection model, the
- * `Gtk.SignalListItemFactory` instances that map rows to React-rendered cells,
- * and the bound-item lists the component renders as portals. The component
- * instantiates one controller per widget, calls {@link attach} once the widget
- * ref settles, {@link update} on every prop change, and {@link dispose} on
- * unmount. Whenever the visible bound items change the controller invokes the
- * `requestRerender` callback so the component re-renders its portals.
- */
 export class ListController implements ColumnHost {
-    private readonly modelController = new ListModelController({
+    private modelController = new ListModelController({
         getItems: () => this.getItems(),
         getAutoexpand: () => this.getAutoexpand(),
         isDropDown: () => this.isDropDown(),
@@ -81,40 +46,39 @@ export class ListController implements ColumnHost {
         assignModelToWidget: () => this.assignModelToWidget(),
         scheduleBoundItemsUpdate: () => this.queueBoundItemsUpdate(),
     });
-    private readonly selectionController: SelectionController;
-    private readonly signals = new SignalStore();
-    private readonly signalOwner = { signalStore: this.signals };
+    private selectionController: SelectionController;
+    private signals = new SignalStore();
+    private signalOwner = { signalStore: this.signals };
     private factory: Gtk.SignalListItemFactory | null = null;
     private headerFactory: Gtk.SignalListItemFactory | null = null;
     private listFactory: Gtk.SignalListItemFactory | null = null;
-    private readonly containers = new Map<Gtk.Widget | Gtk.ListItem, number>();
-    private readonly containerKeys = new Map<Gtk.Widget | Gtk.ListItem, string>();
-    private readonly headerContainers = new Map<Gtk.ListHeader, number>();
-    private readonly headerContainerKeys = new Map<Gtk.ListHeader, string>();
-    private readonly listContainers = new Map<Gtk.ListItem, number>();
-    private readonly listContainerKeys = new Map<Gtk.ListItem, string>();
-    private readonly treeExpanders = new Map<Gtk.ListItem, Gtk.TreeExpander>();
-    private readonly columnView: ColumnViewLifecycle | null;
+    private containers = new Map<Gtk.Widget | Gtk.ListItem, number>();
+    private containerKeys = new Map<Gtk.Widget | Gtk.ListItem, string>();
+    private headerContainers = new Map<Gtk.ListHeader, number>();
+    private headerContainerKeys = new Map<Gtk.ListHeader, string>();
+    private listContainers = new Map<Gtk.ListItem, number>();
+    private listContainerKeys = new Map<Gtk.ListItem, string>();
+    private treeExpanders = new Map<Gtk.ListItem, Gtk.TreeExpander>();
+    private columnView: ColumnViewLifecycle | null;
     private boundItems: BoundItem[] = [];
     private headerBoundItems: BoundItem[] = [];
     private detached = false;
     private boundItemsUpdateScheduled = false;
+    private widget: Gtk.Widget;
+    private dropDown: DropDownLike | null;
+    private props: ListControllerProps;
+    private requestRerender: () => void;
 
-    /**
-     * @param widget - The backing list widget this controller drives.
-     * @param dropDown - The widget's dropdown surface when it is a dropdown-style
-     *   widget (`Gtk.DropDown`/`Adw.ComboRow`), resolved by the owning component;
-     *   `null` for list/grid/column views.
-     * @param props - The widget's initial props.
-     * @param requestRerender - Invoked when the visible bound items change so the
-     *   owning component re-renders its portals.
-     */
     constructor(
-        private readonly widget: Gtk.Widget,
-        private readonly dropDown: DropDownLike | null,
-        private props: ListControllerProps,
-        private readonly requestRerender: () => void,
+        widget: Gtk.Widget,
+        dropDown: DropDownLike | null,
+        props: ListControllerProps,
+        requestRerender: () => void,
     ) {
+        this.widget = widget;
+        this.dropDown = dropDown;
+        this.props = props;
+        this.requestRerender = requestRerender;
         this.selectionController = new SelectionController(this.signalOwner, this.widget, this.modelController, {
             isDropDown: () => this.isDropDown(),
             assignModelToWidget: () => this.assignModelToWidget(),
@@ -139,20 +103,14 @@ export class ListController implements ColumnHost {
                 : null;
     }
 
-    /** The widget's current bound-item list (one portal per visible cell). */
     public getBoundItems(): BoundItem[] {
         return this.boundItems;
     }
 
-    /** The widget's current header bound-item list (one portal per visible header). */
     public getHeaderBoundItems(): BoundItem[] {
         return this.headerBoundItems;
     }
 
-    /**
-     * Builds the models, factories, and selection, then assigns them to the
-     * widget. Runs once when the component first sees the widget.
-     */
     public attach(): void {
         const columnView = this.columnView;
         if (this.isUncontrolled()) {
@@ -176,7 +134,6 @@ export class ListController implements ColumnHost {
         columnView?.settle();
     }
 
-    /** Applies a prop change, re-syncing models, factories, and selection. */
     public update(oldProps: ListControllerProps, newProps: ListControllerProps): void {
         this.props = newProps;
         if (this.isUncontrolled()) {
@@ -186,7 +143,6 @@ export class ListController implements ColumnHost {
         }
     }
 
-    /** Releases every model signal, factory, expander, and column registration. */
     public dispose(): void {
         this.detached = true;
         this.treeExpanders.clear();
@@ -195,30 +151,22 @@ export class ListController implements ColumnHost {
         this.columnView?.clearColumns();
     }
 
-    /** Registers a column controller so the controller can collect its cells. */
     public addColumn(column: ColumnController): void {
         this.columnView?.addColumn(column);
     }
 
-    /** Unregisters a column controller. */
     public removeColumn(column: ColumnController): void {
         this.columnView?.removeColumn(column);
     }
 
-    /**
-     * Schedules the column-view settle work to run once after every column
-     * mutation of the current commit applies.
-     */
     public scheduleColumnSettle(): void {
         this.columnView?.scheduleSettle();
     }
 
-    /** Whether this controller drives a dropdown-style widget. */
     public isDropDown(): boolean {
         return this.dropDown !== null;
     }
 
-    /** The estimated per-item size used to seed placeholder cells. */
     public getEstimatedItemSize(): { width: number; height: number } {
         return {
             width: this.props.estimatedItemWidth ?? -1,
@@ -226,38 +174,14 @@ export class ListController implements ColumnHost {
         };
     }
 
-    /**
-     * Requests a bound-item refresh after the current change settles.
-     *
-     * Inside a React commit the flush is queued onto the post-commit queue so it
-     * drains within the same `act` boundary; otherwise it defers to a microtask
-     * that runs the flush through the installed deferred-flush wrapper.
-     */
     public scheduleBoundItemsUpdate(): void {
         this.requestBoundItemsUpdate(queueMicrotask);
     }
 
-    /**
-     * Requests a bound-item refresh, used by factory lifecycle callbacks.
-     *
-     * When a GTK factory binds during a React commit, the flush is queued onto
-     * the post-commit queue so the rendered cells land within the same `act`
-     * boundary; outside a commit it defers to a macrotask that runs the flush
-     * through the installed deferred-flush wrapper.
-     */
     public queueBoundItemsUpdate(): void {
         this.requestBoundItemsUpdate(setImmediate);
     }
 
-    /**
-     * Schedules a single bound-item flush, guarding against a detached
-     * controller and a flush already pending. Inside a React commit the flush is
-     * queued onto the post-commit queue so it drains within the same `act`
-     * boundary; otherwise `defer` schedules the deferred flush onto its task
-     * queue (a microtask or a macrotask).
-     *
-     * @param defer - Schedules the deferred flush off the commit, e.g. `queueMicrotask`.
-     */
     private requestBoundItemsUpdate(defer: (flush: () => void) => void): void {
         if (this.detached || this.boundItemsUpdateScheduled) return;
         this.boundItemsUpdateScheduled = true;
@@ -268,7 +192,7 @@ export class ListController implements ColumnHost {
         }
     }
 
-    private readonly deferredBoundItemsFlush = (): void => {
+    private deferredBoundItemsFlush = (): void => {
         runDeferredFlush(this.flushBoundItemsUpdate);
     };
 
@@ -338,12 +262,6 @@ export class ListController implements ColumnHost {
         return listItem;
     }
 
-    /**
-     * Refines the flat position a factory binding addresses. Dropdown-like
-     * widgets resolve through the bound object's identity because
-     * `Adw.ComboRow` binds its selected-item display without assigning the
-     * list item a position, leaving `getPosition()` stuck at `0`.
-     */
     private resolveBindPosition(listItem: Gtk.ListItem, reported: number): number {
         if (!this.isDropDown() || this.isUncontrolled()) return reported;
         const item = listItem.getItem();

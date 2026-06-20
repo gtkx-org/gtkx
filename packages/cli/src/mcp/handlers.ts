@@ -12,24 +12,13 @@ import { serializeWidget } from "./serialize-widget.js";
 import { loadTestingModule } from "./testing-loader.js";
 import type { WidgetRegistry } from "./widget-registry.js";
 
-/**
- * Context every handler receives: the app the entry registered and the
- * client-scoped widget registry.
- */
 export type HandlerContext = {
     app: Gtk.Application;
     registry: WidgetRegistry;
 };
 
-/**
- * Subset of {@link IpcMethod} the MCP server can send to a client.
- *
- * `app.register` and `app.unregister` are sent only in the client→server
- * direction, so they are intentionally absent from the dispatch table.
- */
 type ServerInitiatedMethod = Exclude<IpcMethod, "app.register" | "app.unregister">;
 
-/** A handler whose parameters have already been validated from `unknown`. */
 type ValidatedHandler = (ctx: HandlerContext, params: unknown) => Promise<unknown>;
 
 const validated = <Params>(
@@ -109,13 +98,6 @@ const firstWindow = (app: Gtk.Application): Gtk.Window => {
     return window;
 };
 
-/**
- * Dispatch table mapping every server-initiated method to its parameter-
- * validating handler. The `Record` shape makes coverage a compile-time
- * guarantee — adding a new {@link ServerInitiatedMethod} without a matching
- * entry is a type error — and each entry validates its wire parameters against
- * the shared `@gtkx/mcp` schema before running.
- */
 const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
     "app.getWindows": validated(ServerRequestParamsSchemas["app.getWindows"], async ({ registry }) => ({
         windows: registry.toplevels().map((window) => ({
@@ -161,16 +143,6 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
 const isServerInitiatedMethod = (method: string): method is ServerInitiatedMethod =>
     Object.hasOwn(ServerRequestParamsSchemas, method);
 
-/**
- * Resolves an incoming method name to a handler, validates its parameters
- * against the shared `@gtkx/mcp` wire schema, and runs it.
- *
- * @param method - The IPC method requested by the MCP server.
- * @param params - Method-specific parameters.
- * @param ctx - Shared handler context for this dispatch.
- * @throws `methodNotFoundError` if no handler is registered for `method`.
- * @throws `invalidRequestError` if the parameters fail wire-schema validation.
- */
 export const dispatch = async (method: string, params: unknown, ctx: HandlerContext): Promise<unknown> => {
     if (!isServerInitiatedMethod(method)) {
         throw methodNotFoundError(method);

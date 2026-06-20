@@ -3,49 +3,26 @@ import { functionFromNode, type GirFunction } from "./function.js";
 import { attr, attrBool, childrenOf, GIR_CONSTRUCTOR_TAG, type RawNode } from "./parse.js";
 import type { ParseContext } from "./type-id.js";
 
-/** A `<record>` or `<union>` declaration. */
 export type GirBoxed = {
-    /**
-     * `true` when the record is a vtable (`glib:is-gtype-struct-for`): its
-     * fields are function pointers consumed by the class struct registration.
-     * Whether a non-vtable record is a registered boxed or a plain struct is
-     * derived where needed from {@link GirBoxed.glibGetType}.
-     */
-    readonly isVtable: boolean;
-    /** Local name inside the namespace (no prefix). */
-    readonly name: string;
-    readonly cType: string | undefined;
-    /** GLib type name (e.g. `"GtkBorder"`); absent on plain structs. */
-    readonly glibTypeName: string | undefined;
-    /** GLib get-type C symbol; absent on plain structs. */
-    readonly glibGetType: string | undefined;
-    /** GLib ref/unref/etc. function names on fundamentals. */
-    readonly glibRefFunc: string | undefined;
-    readonly glibUnrefFunc: string | undefined;
-    /** `copy-function`/`free-function` — the ref/unref pair for records that are reference-counted rather than g_boxed-copyable. */
-    readonly copyFunc: string | undefined;
-    readonly freeFunc: string | undefined;
-    /** `disguised="1"` — record has no introspectable fields. */
-    readonly disguised: boolean;
-    /** `opaque="1"` — record is opaque to callers. */
-    readonly opaque: boolean;
-    readonly introspectable: boolean;
-    readonly fields: readonly GirField[];
-    readonly methods: readonly GirFunction[];
-    readonly constructors: readonly GirFunction[];
-    readonly functions: readonly GirFunction[];
-    /** `true` when the source element was `<union>` rather than `<record>`. */
-    readonly isUnion: boolean;
+    isVtable: boolean;
+    name: string;
+    cType: string | undefined;
+    glibTypeName: string | undefined;
+    glibGetType: string | undefined;
+    glibRefFunc: string | undefined;
+    glibUnrefFunc: string | undefined;
+    copyFunc: string | undefined;
+    freeFunc: string | undefined;
+    disguised: boolean;
+    opaque: boolean;
+    introspectable: boolean;
+    fields: GirField[];
+    methods: GirFunction[];
+    constructors: GirFunction[];
+    functions: GirFunction[];
+    isUnion: boolean;
 };
 
-/**
- * Builds a {@link GirBoxed} from a `<record>` or `<union>` element.
- *
- * @param node - The XML element
- * @param isVtable - Whether the record is a vtable (see {@link isVtableRecord})
- * @param isUnion - `true` when the source element was `<union>`
- * @param context - The per-namespace interning seam
- */
 export const boxedFromNode = (node: RawNode, isVtable: boolean, isUnion: boolean, context: ParseContext): GirBoxed => ({
     isVtable,
     name: attr(node, "name") ?? attr(node, "glib:name") ?? "",
@@ -66,11 +43,4 @@ export const boxedFromNode = (node: RawNode, isVtable: boolean, isUnion: boolean
     isUnion,
 });
 
-/**
- * Whether a `<record>` or `<union>` element is a vtable record — one carrying
- * `glib:is-gtype-struct-for`, whose fields are function pointers consumed by the
- * class struct registration.
- *
- * @param node - The `<record>` or `<union>` element
- */
 export const isVtableRecord = (node: RawNode): boolean => attr(node, "glib:is-gtype-struct-for") !== undefined;

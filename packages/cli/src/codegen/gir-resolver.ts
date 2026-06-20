@@ -2,31 +2,16 @@ import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { formatChildProcessError } from "@gtkx/utils";
 
-/** Default Linux system location for GIR files. */
 const SYSTEM_GIR_PATH = "/usr/share/gir-1.0";
 
-/**
- * Resolves the full set of GIR search paths to use for codegen.
- *
- * The resulting list is deduplicated and ordered by precedence. Sources, in
- * order:
- *
- * 1. Paths from `config.girPath` (highest priority — user override)
- * 2. The `GTKX_GIR_PATH` environment variable (colon-separated)
- * 3. `/usr/share/gir-1.0` if it exists
- * 4. `pkg-config --variable=girdir gobject-introspection-1.0` if available
- *
- * @param configGirPath - Optional `girPath` from the user's `gtkx.config.ts`
- * @returns Ordered, deduplicated list of absolute directory paths
- */
-export const resolveGirPath = (configGirPath: readonly string[] | undefined): string[] => {
+export const resolveGirPath = (configGirPath: string[] | undefined): string[] => {
     const paths: string[] = [];
 
     if (configGirPath) {
         paths.push(...configGirPath);
     }
 
-    const envPath = process.env.GTKX_GIR_PATH;
+    const envPath = process.env["GTKX_GIR_PATH"];
     if (envPath) {
         paths.push(...envPath.split(":").filter((path) => path.length > 0));
     }

@@ -15,20 +15,16 @@ const LIFECYCLE_SIGNALS = new Set([
     "render",
 ]);
 
-/**
- * Parameter object for {@link SignalStore.set}.
- *
- */
 export interface SignalBinding {
-    readonly owner: object;
-    readonly obj: GObject.Object;
-    readonly signal: string;
-    readonly handler?: SignalHandler | null;
-    readonly blockable?: boolean;
+    owner: object;
+    obj: GObject.Object;
+    signal: string;
+    handler?: SignalHandler | null | undefined;
+    blockable?: boolean | undefined;
 }
 
 export class SignalStore {
-    private readonly ownerHandlers: Map<object, Map<GObject.Object, Map<string, SignalHandler>>> = new Map();
+    private ownerHandlers: Map<object, Map<GObject.Object, Map<string, SignalHandler>>> = new Map();
     private blockDepth = 0;
 
     private getObjectMap(owner: object, obj: GObject.Object): Map<string, SignalHandler> {
@@ -112,13 +108,6 @@ export class SignalStore {
         this.blockDepth++;
     }
 
-    /**
-     * Decrements the block depth, but absorbs the underflow that occurs when
-     * an error-recovery path has reset the depth to zero between the matching
-     * `blockAll` and this call — see `render.tsx`, which calls
-     * {@link forceUnblockAll} on commit failure to release stuck signals
-     * before any pending `unblockAll` runs.
-     */
     public unblockAll(): void {
         if (this.blockDepth > 0) {
             this.blockDepth--;

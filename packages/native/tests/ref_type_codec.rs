@@ -1,9 +1,3 @@
-//! Coverage tests for the non-excluded parts of [`native::types::RefType`].
-//!
-//! `RefType::encode` and `null_ptr_storage` are excluded from coverage; the
-//! decode side, `decode_with_context`, `read_from_raw_ptr`, `from_glib_value`,
-//! `call_cif`, `new`, and `decode_ref_string` are exercised here.
-
 mod common;
 
 use std::ffi::{CString, c_char, c_void};
@@ -227,7 +221,6 @@ fn decode_ref_string_null_inner_pointer_yields_null() {
 #[test]
 fn decode_ref_string_full_ownership_frees_pointer() {
     common::run(|| {
-        // SAFETY: Duplicating a static NUL-terminated literal has no pointer preconditions.
         let owned = unsafe { glib::ffi::g_strdup(c"owned-ref".as_ptr()) };
         let storage = ptr_storage(owned as *mut c_void);
 
@@ -299,7 +292,6 @@ fn decode_with_context_array_ptr_storage_null_inner_yields_empty_array() {
 #[test]
 fn decode_with_context_array_string_items_not_freed_by_ref() {
     common::run(|| {
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
         let inner = unsafe { glib::ffi::g_malloc0(std::mem::size_of::<*mut c_char>()) };
         let storage = ptr_storage(inner);
 
@@ -320,7 +312,6 @@ fn decode_with_context_array_string_items_not_freed_by_ref() {
 #[test]
 fn decode_with_context_array_container_released_by_array_decoder() {
     common::run(|| {
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
         let inner = unsafe { glib::ffi::g_malloc0(std::mem::size_of::<*mut c_void>()) };
         let storage = ptr_storage(inner);
 
@@ -344,7 +335,6 @@ fn decode_with_context_array_container_released_by_array_decoder() {
 fn decode_with_context_garray_container_released_by_array_decoder() {
     common::run(|| {
         let g_array =
-            // SAFETY: Creating a GArray from size parameters has no pointer preconditions.
             unsafe { glib::ffi::g_array_sized_new(0, 0, std::mem::size_of::<u8>() as u32, 0) };
         let storage = ptr_storage(g_array as *mut c_void);
 
@@ -365,7 +355,6 @@ fn decode_with_context_garray_container_released_by_array_decoder() {
 #[test]
 fn decode_with_context_array_non_string_items_freed_by_ref() {
     common::run(|| {
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
         let inner = unsafe { glib::ffi::g_malloc0(std::mem::size_of::<*mut c_void>()) };
         let storage = ptr_storage(inner);
 
@@ -411,7 +400,6 @@ fn read_from_raw_ptr_null_inner_yields_null() {
     common::run(|| {
         let inner: *mut c_void = std::ptr::null_mut();
         let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
-        // SAFETY: `inner` is a live local pointer-sized slot holding null.
         let value = unsafe {
             ref_type.read(ReadSource::Slot(
                 &inner as *const *mut c_void as *const c_void,
@@ -431,8 +419,6 @@ fn read_from_raw_ptr_string_inner_reads_value() {
         let inner_slot: *mut c_void = &char_ptr as *const *mut c_void as *mut c_void;
 
         let ref_type = RefType::new(Type::String(string_type()));
-        // SAFETY: `inner_slot` is a live local pointer-sized slot whose
-        // target holds a live NUL-terminated string pointer.
         let value = unsafe {
             ref_type.read(ReadSource::Slot(
                 &inner_slot as *const *mut c_void as *const c_void,

@@ -8,24 +8,8 @@ const DEFAULT_INTERVAL = 50;
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
-/**
- * Drains the JS microtask queue by yielding one `setTimeout(0)` round.
- *
- * Mirrors {@link https://github.com/testing-library/react-testing-library/blob/main/src/pure.js | RTL's `asyncWrapper`} drain step: any in-flight promises scheduled while
- * `IS_REACT_ACT_ENVIRONMENT` was cleared get a chance to settle before the
- * caller re-enters an act-tracked scope.
- */
 const drainMicrotasks = (): Promise<void> => delay(0);
 
-/**
- * Runs an async callback with `IS_REACT_ACT_ENVIRONMENT` cleared, draining the
- * microtask queue once it resolves before restoring the previous flag value.
- *
- * Direct port of {@link https://github.com/testing-library/react-testing-library/blob/main/src/pure.js | RTL's `asyncWrapper`}; used by every async utility in this package so
- * that polling code does not capture React state updates as part of an
- * accidental act scope, and so callers regain control with a clean microtask
- * queue.
- */
 const asyncWrapper = async <T>(callback: () => Promise<T>): Promise<T> => {
     const previousActEnvironment = getIsReactActEnvironment();
     setIsReactActEnvironment(false);
@@ -38,25 +22,6 @@ const asyncWrapper = async <T>(callback: () => Promise<T>): Promise<T> => {
     }
 };
 
-/**
- * Waits for a callback to succeed.
- *
- * Repeatedly calls the callback until it returns without throwing,
- * or until the timeout is reached.
- *
- * @param callback - Function to execute repeatedly
- * @param options - Timeout and interval configuration
- * @returns Promise resolving to the callback's return value
- *
- * @example
- * ```tsx
- * import { waitFor } from "@gtkx/testing";
- *
- * await waitFor(() => {
- *   expect(counter.value).toBe(5);
- * }, { timeout: 2000 });
- * ```
- */
 export const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOptions): Promise<T> => {
     if (typeof callback !== "function") {
         throw new TypeError("Received `callback` arg must be a function");
@@ -85,10 +50,8 @@ export const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOpti
     });
 };
 
-/** @internal */
 type RemovalTarget = Gtk.Widget | Gtk.Widget[] | null;
 
-/** @internal */
 type ElementOrCallback = Gtk.Widget | Gtk.Widget[] | (() => RemovalTarget);
 
 const getTarget = (elementOrCallback: ElementOrCallback): RemovalTarget => {
@@ -115,28 +78,6 @@ const isTargetRemoved = (target: RemovalTarget): boolean => {
     return isWidgetRemoved(target);
 };
 
-/**
- * Waits for a widget to be removed from the widget tree.
- *
- * Polls until the widget no longer belongs to a root — the GTK analog of no
- * longer being contained in the document — or no longer exists. A widget
- * detached together with an ancestor counts as removed even though it keeps
- * its direct parent. An array of widgets is removed once every member is
- * removed.
- *
- * @param elementOrCallback - A widget, an array of widgets, or a function
- *   returning either, to watch for removal
- * @param options - Timeout and interval configuration
- *
- * @example
- * ```tsx
- * import { waitForElementToBeRemoved } from "@gtkx/testing";
- *
- * const loader = await screen.findByRole(Gtk.AccessibleRole.PROGRESS_BAR);
- * await waitForElementToBeRemoved(loader);
- * // Loader is now gone
- * ```
- */
 const ELEMENT_NOT_REMOVED = new Error("Element not yet removed");
 
 export const waitForElementToBeRemoved = (

@@ -82,14 +82,6 @@ const drawPageBody = ({
     }
 };
 
-/**
- * Builds the demo's `GtkPrintOperation`, configured for asynchronous output in
- * points with an embedded page setup, and wired to render `source` across
- * paginated pages via the `begin-print` and `draw-page` signals.
- *
- * @param source - The text to lay out, one entry per newline-separated line.
- * @returns The configured print operation, ready to `run`.
- */
 export const configurePrintOperation = (source: string): Gtk.PrintOperation => {
     const lines = source.split("\n");
     const numLines = lines.length;

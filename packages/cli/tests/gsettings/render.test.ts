@@ -108,7 +108,7 @@ describe("renderEnvModule (typing)", () => {
         const env = renderEnvModule([parse(RELOCATABLE_SCHEMA, "com.example.profile.gschema.xml")]);
 
         expect(env).toContain("at(path: string): {");
-        expect(env).not.toContain(`readonly path: string | null;\n        readonly keys`);
+        expect(env).not.toContain(`path: string | null;\n        keys`);
     });
 });
 

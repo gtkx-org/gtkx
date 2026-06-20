@@ -5,12 +5,6 @@ import { describe, expect, it, vi } from "vitest";
 type ClickedHandler = () => void;
 type RegisterClicked = (button: Gtk.Button, handler: ClickedHandler) => GObject;
 
-/**
- * Asserts that a handler registered with `register` and immediately removed via
- * `off` never fires for the `clicked` signal of a fresh button.
- *
- * @param register - Registers the handler on the button and returns the button
- */
 const expectRemovableHandlerNeverFires = (register: RegisterClicked): void => {
     const button = new Gtk.Button();
     const handler = vi.fn();
@@ -21,12 +15,6 @@ const expectRemovableHandlerNeverFires = (register: RegisterClicked): void => {
     expect(handler).not.toHaveBeenCalled();
 };
 
-/**
- * Asserts that `register` returns the button it registered on, enabling method
- * chaining, then removes the handler again.
- *
- * @param register - Registers the handler on the button and returns the button
- */
 const expectRegisterReturnsButton = (register: RegisterClicked): void => {
     const button = new Gtk.Button();
     const handler = (): void => {};

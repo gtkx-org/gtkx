@@ -10,7 +10,6 @@ function gc(): void {
     global.gc();
 }
 
-/** Wraps the model in an isolated scope so no strong local pins it afterward. */
 function touchControllers(button: Gtk.Button): void {
     button.observeControllers().getNItems();
 }
@@ -28,12 +27,6 @@ describe("observeControllers wrapper lifetime", () => {
         const button = new Gtk.Button();
         button.addController(new Gtk.GestureClick());
 
-        // Each iteration re-acquires the cached model right after its wrapper
-        // is collected (cleanup still pending), which before the rebind fix
-        // tripped a toggle-ref CRITICAL / freed-handle on roughly every pass.
-        // A forced GC per pass is costly, so the count is kept low — at this
-        // hit rate even a handful of passes would catch a regression — while
-        // the timeout is widened for slower, loaded CI runners.
         for (let i = 0; i < 150; i++) {
             touchControllers(button);
             await drain();
@@ -47,10 +40,6 @@ describe("observeControllers wrapper lifetime", () => {
         const button = new Gtk.Button();
         button.addController(new Gtk.GestureClick());
 
-        // Each round rebinds several times before draining, so a batch of
-        // deferred cleanups for the same model dispatches together. A stale
-        // cleanup that tore down the live binding, or that dispatched ahead of
-        // the live one, would surface as a toggle-ref CRITICAL or a freed read.
         for (let round = 0; round < 40; round++) {
             for (let k = 0; k < 5; k++) {
                 touchControllers(button);

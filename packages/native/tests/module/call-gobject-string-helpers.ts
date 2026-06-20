@@ -2,21 +2,12 @@ import { expect } from "vitest";
 import type { Value } from "../../types.js";
 import { boxAppend, createBox, createLabel, getRefCount, startMemoryMeasurement } from "./utils.js";
 
-/**
- * The box, the appended label, and the label's reference count captured before
- * the append.
- */
 export type AppendedLabelRefCount = {
     box: Value;
     label: Value;
     initialRefCount: number;
 };
 
-/**
- * Creates a box and a label, appends the label to the box, and asserts that the
- * append raised the label's reference count by exactly one. Returns the box,
- * the label, and the reference count captured before the append.
- */
 export function appendLabelAndExpectRefIncrement(): AppendedLabelRefCount {
     const box = createBox();
     const label = createLabel("Test");
@@ -29,10 +20,6 @@ export function appendLabelAndExpectRefIncrement(): AppendedLabelRefCount {
     return { box, label, initialRefCount };
 }
 
-/**
- * Creates one thousand labels inside a measured loop and asserts that the heap
- * growth stays below five megabytes.
- */
 export function expectNoLeakCreatingLabels(): void {
     const mem = startMemoryMeasurement();
 

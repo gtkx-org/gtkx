@@ -9,19 +9,7 @@ import { collectInterfaceProperties } from "./inheritance.js";
 import { renderTsType } from "./ts-type.js";
 import { renderFfiType } from "./value.js";
 
-/**
- * The camelCase names of every constructable property an ancestor class
- * introduces. A GIR class may redeclare an inherited property (e.g. an Adwaita
- * page redeclares `GtkWidget`'s `name`); since each constructor translates its
- * props to `[ffiType, value]` instructions and forwards `...rest` to `super`,
- * translating a redeclared property here would wrap it a second time when the
- * introducing ancestor's constructor translates it again. Excluding these names
- * forwards such props up untouched to the single ancestor that owns them.
- *
- * @param context - The module context
- * @param klass - The class whose ancestors to scan
- */
-const ancestorConstructablePropNames = (context: ModuleContext, klass: GirClass): ReadonlySet<string> => {
+const ancestorConstructablePropNames = (context: ModuleContext, klass: GirClass): Set<string> => {
     const names = new Set<string>();
     for (const { klass: ancestor } of ancestorChain(context.repository, klass, context.namespace.name)) {
         if (ancestor === klass) continue;
@@ -32,19 +20,7 @@ const ancestorConstructablePropNames = (context: ModuleContext, klass: GirClass)
     return names;
 };
 
-/**
- * The constructable properties a class introduces: its own writable/construct
- * properties plus those it inherits from directly-implemented interfaces,
- * deduplicated by camelCase JS name (the class's own declaration wins).
- *
- * Ancestor class properties are excluded — including any the class redeclares —
- * so each class translates only the props it introduces and forwards the rest
- * up the `super(...)` chain.
- *
- * @param context - The module context
- * @param klass - The class whose construct props to collect
- */
-const collectConstructableProps = (context: ModuleContext, klass: GirClass): readonly GirProperty[] => {
+const collectConstructableProps = (context: ModuleContext, klass: GirClass): GirProperty[] => {
     const inherited = ancestorConstructablePropNames(context, klass);
     return dedupeBy(
         [...klass.properties, ...collectInterfaceProperties(context, klass)]
@@ -54,44 +30,17 @@ const collectConstructableProps = (context: ModuleContext, klass: GirClass): rea
     );
 };
 
-/**
- * Renders the `export interface <Class>ConstructorProps` declaration.
- *
- * Each interface lists the camelCase, optional, nullable form of every
- * property the class introduces and `extends` its parent's interface, so the
- * full inherited prop set is available when typing `new <Class>(props)`.
- *
- * @param context - The module context
- * @param klass - The class to render props for
- * @param className - The local PascalCase class name
- */
 export const renderConstructorPropsInterface = (context: ModuleContext, klass: GirClass, className: string): string => {
     const parentRef = resolveParentPropsReference(context, klass);
     const extendsClause = parentRef === undefined ? "" : ` extends ${parentRef}`;
     const lines = collectConstructableProps(context, klass).map(
-        (property) => `${toCamelIdentifier(property.name)}?: ${renderTsType(context, property.type, true)};`,
+        (property) =>
+            `${toCamelIdentifier(property.name)}?: ${renderTsType(context, property.type, true)} | undefined;`,
     );
     const body = lines.length === 0 ? "" : `\n${indent(lines.join("\n"), 1)}\n`;
     return `export interface ${className}ConstructorProps${extendsClause} {${body}}`;
 };
 
-/**
- * Renders the constructor for a class, or `undefined` when none is needed.
- *
- * The parentless root of a GObject hierarchy gets the canonical base
- * constructor: it hands the assembled marshalling record to
- * `newGobjectWithProperties` and links the returned handle to the wrapper. A
- * class that introduces constructable props gets
- * a constructor that destructures and translates those props into `GValue`s,
- * spreads the untranslated remainder, and forwards everything to `super`. A
- * class that introduces no props gets no constructor and inherits its nearest
- * typed ancestor's, keeping the chain free of redundant hops.
- *
- * @param context - The module context
- * @param klass - The class being emitted
- * @param className - The local PascalCase class name
- * @param hasParent - Whether the class declares an `extends` clause
- */
 export const renderClassConstructor = (
     context: ModuleContext,
     klass: GirClass,
@@ -104,13 +53,6 @@ export const renderClassConstructor = (
     return renderTranslatingConstructor(context, props, className);
 };
 
-/**
- * The forwarding record a constructor hands to `super`: each property it
- * introduces as a `[ffiType, value]` marshalling instruction keyed by GIR name,
- * spread alongside the still-raw `...rest` bound for ancestor constructors. The
- * root constructor marshals the instructions; raw `...rest` entries pass through
- * untouched until the ancestor that introduces them.
- */
 const PROPS_RECORD = "Record<string, unknown>";
 
 const renderRootConstructor = (context: ModuleContext): string => {
@@ -126,11 +68,7 @@ const renderRootConstructor = (context: ModuleContext): string => {
     return renderBlock(`constructor(props: ${PROPS_RECORD} = {})`, body);
 };
 
-const renderTranslatingConstructor = (
-    context: ModuleContext,
-    props: readonly GirProperty[],
-    className: string,
-): string => {
+const renderTranslatingConstructor = (context: ModuleContext, props: GirProperty[], className: string): string => {
     context.addRuntimeImport("t");
     const destructured = props.map((property) => toCamelIdentifier(property.name));
     const pattern = `{ ${[...destructured, "...rest"].join(", ")} }`;

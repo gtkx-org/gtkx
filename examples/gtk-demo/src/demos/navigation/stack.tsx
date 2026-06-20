@@ -6,10 +6,6 @@ import demoIconUri from "#data/icons/org.gtk.Demo4.svg";
 import type { Demo } from "../types.js";
 import sourceCode from "./stack.tsx?raw";
 
-/**
- * Stack demo matching the official GTK gtk-demo.
- * Shows a stack with three pages and a GtkStackSwitcher.
- */
 const StackDemo = () => {
     const demoIcon = Gio.FileIcon.new(Gio.fileNewForUri(demoIconUri));
     const [stack, setStack] = useState<Gtk.Stack | null>(null);

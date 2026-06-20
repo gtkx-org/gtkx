@@ -12,27 +12,17 @@ import { resolveCliTool } from "../internal/resolve-cli-tool.js";
 import { ASSET_PATH_RE, ASSET_RE } from "./asset-extensions.js";
 import { BUNDLE_FILENAME, escapeXml, REL_SEPARATOR, VIRTUAL_INIT, VIRTUAL_PREFIX } from "./gresource-protocol.js";
 
-/** The `#data/` import prefix every bundled asset is rooted at. */
 const DATA_PREFIX = `${DATA_IMPORT_PREFIX}/`;
 
 const RESOURCE_COMPILER = "glib-compile-resources";
 const DEFAULT_RESOURCE_PREFIX = "/gtkx/app";
 const MANIFEST_PREFIX = "/";
 
-/**
- * Converts a GLib application id like `org.gtk.Demo4` into the standard
- * GResource path prefix `/org/gtk/Demo4`.
- *
- * Falls back to {@link DEFAULT_RESOURCE_PREFIX} when no id is supplied so
- * the pipeline still emits a deterministic, registerable path for projects
- * that have not yet declared an `applicationId` in `gtkx.config.ts`.
- */
 const deriveResourcePrefix = (applicationId?: string): string => {
     if (!applicationId) return DEFAULT_RESOURCE_PREFIX;
     return `/${applicationId.replaceAll(".", "/")}`;
 };
 
-/** Strips any trailing `?query` Vite may append to an import specifier. */
 const stripQuery = (source: string): string => {
     const queryIndex = source.indexOf("?");
     return queryIndex === -1 ? source : source.slice(0, queryIndex);
@@ -40,7 +30,6 @@ const stripQuery = (source: string): string => {
 
 type ResourceEntry = {
     sourcePath: string;
-    /** Path relative to the temp staging dir, used inside the generated XML. */
     stagedRelPath: string;
     resourcePath: string;
 };
@@ -49,7 +38,6 @@ type PluginState = {
     prefix: string;
     isBuild: boolean;
     entries: Map<string, ResourceEntry>;
-    /** Absolute source paths of every registered entry, for O(1) watcher-change membership tests. */
     sourcePaths: Set<string>;
     devStagingDir: string | null;
     devBundlePath: string;
@@ -175,11 +163,6 @@ const refreshDevRegistration = async (server: ViteDevServer, state: PluginState)
     }
 };
 
-/**
- * Reads `applicationId` from the resolved `gtkx.config.ts`, fixes the plugin's
- * resource prefix from it, and returns the partial Vite config: the asset
- * matcher.
- */
 const resolveResourceConfig = async (state: PluginState, config: UserConfig, loadConfig: GtkxConfigLoader) => {
     const { applicationId } = await loadConfig(config.root ?? process.cwd());
     state.prefix = deriveResourcePrefix(applicationId);
@@ -188,10 +171,6 @@ const resolveResourceConfig = async (state: PluginState, config: UserConfig, loa
     };
 };
 
-/**
- * Wires the dev server's watcher so a change to any tracked asset recompiles
- * and re-registers the GResource bundle without a process restart.
- */
 const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void => {
     const onFileEvent = (file: string): void => {
         if (!isTrackedSource(state, file)) return;
@@ -203,34 +182,6 @@ const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void 
     server.watcher.on("add", onFileEvent);
 };
 
-/**
- * Vite plugin that bundles static asset imports into a single
- * `.gresource` file and rewrites import sites to `resource:///` URIs.
- *
- * **Build mode:** Every `#data/` asset import is captured during `load`; the
- * collected files are compiled with `glib-compile-resources` at `buildEnd`
- * into `dist/gtkx.gresource`. A generated init module registers the bundle
- * with GIO when the user's entry first imports any asset.
- *
- * **Dev mode:** The bundle is staged into a temp directory and recompiled
- * whenever an asset file changes; the init module exposes a `__refresh`
- * hook that re-registers the bundle without restarting the process.
- *
- * **Path layout:** Assets are imported through the `#data/` root (the
- * `package.json` subpath import `"#data/*": "./data/*"`), and resolve to
- * `resource:///<prefix>/<rest>`, where `<prefix>` is derived from the
- * `applicationId` declared in `gtkx.config.ts` (loaded during the `config`
- * hook) — `org.gtk.Demo4` yields `/org/gtk/Demo4`, a missing id falls back to
- * `/gtkx/app` — and `<rest>` is the path after `#data/`. So
- * `import "#data/icons/logo.svg"` lands at `<prefix>/icons/logo.svg`, and
- * `import "#data/style.css"` at `<prefix>/style.css`, the GApplication default
- * `resource_base_path` Adw/Gtk auto-load from. The exact value is otherwise
- * incidental — callers use the import's returned `path`/URI rather than
- * depending on it.
- *
- * @param loadConfig - Memoizing config loader, shared with the other gtkx
- *   plugins by `gtkxVitePlugins` so the pipeline loads `gtkx.config.ts` once.
- */
 export function gtkxResources(loadConfig: GtkxConfigLoader = createGtkxConfigLoader()): Plugin {
     const state: PluginState = {
         prefix: DEFAULT_RESOURCE_PREFIX,

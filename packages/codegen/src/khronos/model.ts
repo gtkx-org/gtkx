@@ -1,83 +1,51 @@
 import { collectText, nodeAttr, nodeChildren, nodeTag, type OrderedNode, parseRegistryFile } from "./parse.js";
 
-/** One parameter of a registry `<command>`. */
 export type GlParam = {
-    /** The parameter name from the `<name>` child. */
-    readonly name: string;
-    /** The C type reconstructed from the mixed content (e.g. `const GLchar *const*`). */
-    readonly cType: string;
-    /** The enum group the parameter draws from, when annotated. */
-    readonly group?: string;
-    /** The registry `len` expression, when annotated. */
-    readonly len?: string;
-    /** The object kind from the `class` annotation (e.g. `buffer`, `shader`). */
-    readonly kind?: string;
+    name: string;
+    cType: string;
+    group?: string;
+    len?: string;
+    kind?: string;
 };
 
-/** One registry `<command>`. */
 export type GlCommand = {
-    /** The C entry point name (e.g. `glBufferData`). */
-    readonly name: string;
-    /** The return C type reconstructed from the `<proto>` mixed content. */
-    readonly returnCType: string;
-    /** The enum group of the return value, when annotated. */
-    readonly returnGroup?: string;
-    /** The parameters in declaration order. */
-    readonly params: readonly GlParam[];
+    name: string;
+    returnCType: string;
+    returnGroup?: string;
+    params: GlParam[];
 };
 
-/** One registry `<enum>` token. */
 export type GlEnum = {
-    /** The token name (e.g. `GL_COLOR_BUFFER_BIT`). */
-    readonly name: string;
-    /** The literal value text (decimal or `0x` hex). */
-    readonly value: string;
-    /** The API the token value is specific to, when the name is API-overloaded. */
-    readonly api?: string;
-    /** The groups the token belongs to. */
-    readonly groups: readonly string[];
-    /** Whether the enclosing `<enums>` block is a bitmask namespace. */
-    readonly bitmask: boolean;
+    name: string;
+    value: string;
+    api?: string;
+    groups: string[];
+    bitmask: boolean;
 };
 
-/** One `<require>` or `<remove>` block of a feature. */
 export type GlInterfaceBlock = {
-    /** The profile the block applies to, or `undefined` for all profiles. */
-    readonly profile?: string;
-    /** The API the block applies to, or `undefined` for the feature's API. */
-    readonly api?: string;
-    /** Command names listed by the block. */
-    readonly commands: readonly string[];
-    /** Enum token names listed by the block. */
-    readonly enums: readonly string[];
+    profile?: string;
+    api?: string;
+    commands: string[];
+    enums: string[];
 };
 
-/** One registry `<feature>` (an API version). */
 export type GlFeature = {
-    /** The API the feature belongs to (e.g. `gl`, `gles2`). */
-    readonly api: string;
-    /** The feature name (e.g. `GL_VERSION_4_6`). */
-    readonly name: string;
-    /** The numeric version (e.g. `4.6`). */
-    readonly number: number;
-    /** The feature's `<require>` blocks in order. */
-    readonly requires: readonly GlInterfaceBlock[];
-    /** The feature's `<remove>` blocks in order. */
-    readonly removes: readonly GlInterfaceBlock[];
+    api: string;
+    name: string;
+    number: number;
+    requires: GlInterfaceBlock[];
+    removes: GlInterfaceBlock[];
 };
 
-/** The typed model of a Khronos GL registry file. */
 export type GlRegistry = {
-    /** Commands keyed by C entry point name. */
-    readonly commands: ReadonlyMap<string, GlCommand>;
-    /** Every enum token, in registry order; names may repeat across APIs. */
-    readonly enums: readonly GlEnum[];
-    /** Every feature, in registry order. */
-    readonly features: readonly GlFeature[];
+    commands: Map<string, GlCommand>;
+    enums: GlEnum[];
+    features: GlFeature[];
 };
 
 const NAME_TAG = "name";
-const SKIP_IN_C_TYPE: ReadonlySet<string> = new Set([NAME_TAG, "comment"]);
+const SKIP_IN_C_TYPE: Set<string> = new Set([NAME_TAG, "comment"]);
 
 const normalizeWhitespace = (text: string): string => text.replace(/\s+/g, " ").trim();
 
@@ -188,16 +156,6 @@ const parseCommandsSection = (section: OrderedNode, into: Map<string, GlCommand>
     }
 };
 
-/**
- * Loads and types a Khronos GL registry file.
- *
- * Reads `<commands>`, `<enums>`, and `<feature>` sections; `<types>`,
- * `<kinds>`, `<groups>`, `<extensions>`, and `<comment>` content is skipped —
- * extensions are outside the supported selection surface and the rest carries
- * no information the generator consumes.
- *
- * @param path - Absolute path to the registry XML file (the vendored `gl.xml`)
- */
 export const loadGlRegistry = (path: string): GlRegistry => {
     const commands = new Map<string, GlCommand>();
     const enums: GlEnum[] = [];

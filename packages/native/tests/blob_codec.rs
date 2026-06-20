@@ -1,6 +1,3 @@
-//! Coverage for [`BlobType`]: raw memory arguments encoded from views,
-//! numeric addresses, and null, plus its argument-only restrictions.
-
 use std::ffi::c_void;
 
 use libffi::middle;

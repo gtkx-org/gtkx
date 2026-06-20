@@ -41,7 +41,6 @@ fn from_glib_none_creates_copy() {
         assert!(!boxed.as_ptr().is_null());
         assert_ne!(boxed.as_ptr(), original_ptr);
 
-        // SAFETY: Frees the boxed allocation this test owns.
         unsafe {
             glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original_ptr);
         }
@@ -110,7 +109,6 @@ fn drop_does_not_free_transfer_none_memory() {
 
         assert!(common::is_valid_boxed_ptr(ptr, gtype));
 
-        // SAFETY: Frees the boxed allocation this test owns.
         unsafe {
             glib::gobject_ffi::g_boxed_free(gtype.into_glib(), ptr);
         }
@@ -120,7 +118,6 @@ fn drop_does_not_free_transfer_none_memory() {
 #[test]
 fn from_glib_full_none_type_plain_struct() {
     common::run(|| {
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
         let ptr = unsafe { glib::ffi::g_malloc0(16) };
 
         let boxed = Boxed::from_glib_full(None, ptr);
@@ -143,7 +140,6 @@ fn from_glib_full_none_type_null_ptr() {
 #[test]
 fn drop_plain_struct_uses_g_free() {
     common::run(|| {
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
         let ptr = unsafe { glib::ffi::g_malloc0(32) };
 
         let boxed = Boxed::from_glib_full(None, ptr);
@@ -162,7 +158,6 @@ fn drop_plain_struct_null_ptr_safe() {
 #[test]
 fn plain_struct_not_owned_does_not_free() {
     common::run(|| {
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
         let ptr = unsafe { glib::ffi::g_malloc0(16) };
 
         let boxed = common::TestBoxed {
@@ -172,7 +167,6 @@ fn plain_struct_not_owned_does_not_free() {
         };
         drop(boxed);
 
-        // SAFETY: Frees the allocation this test owns.
         unsafe {
             glib::ffi::g_free(ptr);
         }
@@ -193,7 +187,6 @@ fn from_glib_none_null_ptr_with_none_type() {
 #[test]
 fn as_ptr_returns_ptr_for_plain_struct() {
     common::run(|| {
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
         let ptr = unsafe { glib::ffi::g_malloc0(24) };
         let boxed = Boxed::from_glib_full(None, ptr);
 
@@ -204,7 +197,6 @@ fn as_ptr_returns_ptr_for_plain_struct() {
 #[test]
 fn clone_without_gtype_shares_ownership() {
     common::run(|| {
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
         let ptr = unsafe { glib::ffi::g_malloc0(16) };
         let boxed = Boxed::from_glib_full(None, ptr);
 
@@ -212,17 +204,12 @@ fn clone_without_gtype_shares_ownership() {
         assert_eq!(cloned.as_ptr(), boxed.as_ptr());
         assert!(cloned.is_owned());
 
-        // The shared allocation survives the original's drop, so the clone
-        // can never dangle; the memory is released once, by the last holder.
         drop(boxed);
-        // SAFETY: The clone owns a live allocation at least one byte long.
         let first_byte = unsafe { *(cloned.as_ptr() as *const u8) };
         assert_eq!(first_byte, 0);
     });
 }
 
-/// Builds a null-pointer owned wrapper under `gtype` and asserts its clone is
-/// a borrowed null view carrying the same type.
 fn assert_null_boxed_clone_stays_null(gtype: Option<glib::Type>) {
     let boxed = Boxed::from_glib_full(gtype, std::ptr::null_mut());
 
@@ -259,12 +246,7 @@ mod from_alloc {
 
     const DEFERRED_ALLOC_SIZE: usize = 16;
 
-    /// Allocates a zeroed block of [`DEFERRED_ALLOC_SIZE`] bytes and wraps it
-    /// through `Boxed::from_alloc` under a type name with no registered
-    /// `GType`, asserting the wrapper defers its destructor decision: owned,
-    /// original pointer, no bound `GType`.
     fn deferred_boxed(type_name: &str) -> (Boxed, *mut c_void) {
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
         let ptr = unsafe { glib::ffi::g_malloc0(DEFERRED_ALLOC_SIZE) };
         let name = glib::GString::from(type_name);
         assert!(glib::Type::from_name(name.as_str()).is_none());
@@ -277,12 +259,7 @@ mod from_alloc {
         (boxed, ptr)
     }
 
-    /// Copy function for the late-registered boxed type: duplicates the
-    /// fixed-size allocation its values are made of.
     unsafe extern "C" fn late_boxed_copy(ptr: *mut c_void) -> *mut c_void {
-        // SAFETY: Every value of this type is a live allocation of
-        // DEFERRED_ALLOC_SIZE bytes, and g_malloc aborts on failure, so
-        // `dest` holds DEFERRED_ALLOC_SIZE writable bytes.
         unsafe {
             let dest = glib::ffi::g_malloc(DEFERRED_ALLOC_SIZE);
             std::ptr::copy_nonoverlapping(ptr as *const u8, dest as *mut u8, DEFERRED_ALLOC_SIZE);
@@ -290,12 +267,9 @@ mod from_alloc {
         }
     }
 
-    /// Free function for the late-registered boxed type: records the call and
-    /// releases the allocation so leak detectors stay happy.
     unsafe extern "C" fn late_boxed_free(ptr: *mut c_void) {
         BOXED_FREE_CALLS.fetch_add(1, Ordering::SeqCst);
         LAST_BOXED_FREED_PTR.store(ptr, Ordering::SeqCst);
-        // SAFETY: Frees the allocation handed to this destructor exactly once.
         unsafe { glib::ffi::g_free(ptr) };
     }
 
@@ -313,7 +287,6 @@ mod from_alloc {
     #[test]
     fn missing_name_binds_plain_g_free_cleanup() {
         common::run(|| {
-            // SAFETY: Allocating zeroed memory has no pointer preconditions.
             let ptr = unsafe { glib::ffi::g_malloc0(DEFERRED_ALLOC_SIZE) };
             let boxed = Boxed::from_alloc(None, ptr);
             assert!(boxed.is_owned());
@@ -340,9 +313,6 @@ mod from_alloc {
         common::run(|| {
             let (boxed, ptr) = deferred_boxed("GtkxTestLateRegisteredBoxed");
 
-            // SAFETY: Registers a fresh boxed GType under a name unique to
-            // this test, with copy and free functions matching the type's
-            // allocation scheme.
             let registered = unsafe {
                 glib::gobject_ffi::g_boxed_type_register_static(
                     c"GtkxTestLateRegisteredBoxed".as_ptr(),
@@ -375,13 +345,9 @@ mod free_fn {
     static FREE_CALLS: AtomicUsize = AtomicUsize::new(0);
     static LAST_FREED_PTR: AtomicPtr<c_void> = AtomicPtr::new(std::ptr::null_mut());
 
-    /// Records each call and `g_free`s the pointer so leak detectors stay
-    /// happy. Tests pre-allocate the pointer with `g_malloc0` for this
-    /// reason.
     unsafe extern "C" fn record_free(ptr: *mut c_void) {
         FREE_CALLS.fetch_add(1, Ordering::SeqCst);
         LAST_FREED_PTR.store(ptr, Ordering::SeqCst);
-        // SAFETY: Frees the allocation handed to this destructor exactly once.
         unsafe { glib::ffi::g_free(ptr) };
     }
 
@@ -396,7 +362,6 @@ mod free_fn {
     fn drop_invokes_free_fn_for_owned_boxed() {
         common::run(|| {
             let before = snapshot();
-            // SAFETY: Allocating zeroed memory has no pointer preconditions.
             let ptr = unsafe { glib::ffi::g_malloc0(16) };
 
             {
@@ -414,7 +379,6 @@ mod free_fn {
     #[test]
     fn clone_of_free_fn_boxed_shares_ownership() {
         common::run(|| {
-            // SAFETY: Allocating zeroed memory has no pointer preconditions.
             let ptr = unsafe { glib::ffi::g_malloc0(16) };
             let boxed = Boxed::from_glib_full_with_free_fn(ptr, record_free);
 
@@ -424,8 +388,6 @@ mod free_fn {
             assert_eq!(cloned.as_ptr(), boxed.as_ptr());
             assert!(cloned.is_owned());
 
-            // The allocation outlives either single holder, so the clone can
-            // never dangle; the destructor runs once, on the last drop.
             drop(boxed);
             assert_eq!(snapshot().0, before.0);
 

@@ -4,11 +4,6 @@ import * as Gtk from "@gtkx/gi/gtk";
 import type { ListItem } from "../utils/element-props.js";
 import { indexOfInListModel, listModelItems } from "./list-model-iteration.js";
 
-/**
- * The slice of the list node that the model controller drives back: the item
- * source, controlled-mode flags, and the post-commit/selection refresh hooks.
- * Matched structurally so the controller does not import the concrete node.
- */
 export interface ListModelHost {
     getItems(): ListItem[];
     getAutoexpand(): boolean;
@@ -18,11 +13,6 @@ export interface ListModelHost {
     scheduleBoundItemsUpdate(): void;
 }
 
-/**
- * Per-apply lookup state that turns tree-row resolution from a per-position
- * model scan into constant-time map reads: the root items hoisted once and the
- * root `GObject` → root position index built once.
- */
 type TreeResolveContext = {
     rootItems: ListItem[];
     rootIndex: Map<GObject.Object, number>;
@@ -37,27 +27,23 @@ function resizeStringList(model: Gtk.StringList, newSize: number): void {
     }
 }
 
-/**
- * Owns the backing GTK models behind a list node: the flat `StringList`, the
- * tree (`TreeListModel`) and section (`FlattenListModel`) overlays, and the
- * controlled-mode synchronisation that keeps them mirroring the `items` prop.
- * Also owns item flattening, mode detection, and tree-row resolution — the
- * read model that selection and bound-item rendering consult.
- */
 export class ListModelController {
     public model: Gtk.StringList | null = null;
     public treeModel: Gtk.TreeListModel | null = null;
     public flattenModel: Gtk.FlattenListModel | null = null;
     private sectionStore: Gio.ListStore | null = null;
-    private readonly sectionModels: Gtk.StringList[] = [];
-    private readonly treeChildModels = new Map<string, Gtk.StringList>();
+    private sectionModels: Gtk.StringList[] = [];
+    private treeChildModels = new Map<string, Gtk.StringList>();
     private rootItemIds: string[] = [];
-    private modeCacheItems: readonly ListItem[] | null = null;
+    private modeCacheItems: ListItem[] | null = null;
     private modeCacheValue: "sections" | "tree" | "flat" = "flat";
-    private flatItemsCacheKey: readonly ListItem[] | null = null;
+    private flatItemsCacheKey: ListItem[] | null = null;
     private flatItemsCache: ListItem[] | null = null;
+    private host: ListModelHost;
 
-    constructor(private readonly host: ListModelHost) {}
+    constructor(host: ListModelHost) {
+        this.host = host;
+    }
 
     public hasSectionStore(): boolean {
         return this.sectionStore !== null;
@@ -289,18 +275,6 @@ export class ListModelController {
         return indexOfInListModel(this.model, item);
     }
 
-    /**
-     * Resolves a model object's flat position in the model the widget displays
-     * (the flatten model when sections are present, the plain model otherwise).
-     *
-     * Position-less factory bindings rely on this: `Adw.ComboRow` binds its
-     * selected-item display through the row factory without assigning the list
-     * item a position, so the bound object's identity is the only way back to
-     * the item data.
-     *
-     * @param item - The model object delivered by the factory binding
-     * @returns The flat position, or `null` when the object is not in the model
-     */
     public positionOf(item: GObject.Object): number | null {
         const model = this.hasSections() ? this.flattenModel : this.model;
         if (!model) return null;
@@ -381,7 +355,7 @@ export class ListModelController {
 
     private findChildItemInRow(
         parentRow: Gtk.TreeListRow,
-        siblings: readonly ListItem[],
+        siblings: ListItem[],
         childItem: GObject.Object,
     ): ListItem | null {
         const childModel = parentRow.getChildren();
@@ -390,15 +364,6 @@ export class ListModelController {
         return index !== null ? (siblings[index] ?? null) : null;
     }
 
-    /**
-     * Resolves the item id at each position in the half-open range `[0, count)`
-     * in a single pass.
-     *
-     * Flat and section modes index the memoized flat list directly. Tree mode
-     * builds the root-object index once and resolves each row against it, so
-     * the whole pass is `O(count)` instead of rebuilding the item list per
-     * position. The selection-apply path consumes this to stay linear.
-     */
     public resolveIdsAtPositions(count: number): (string | null)[] {
         const ids: (string | null)[] = new Array(count);
 

@@ -68,8 +68,6 @@ fn unresolvable_fundamental_item_type() -> Type {
 }
 
 fn gobject_refcount(ptr: *mut std::ffi::c_void) -> u32 {
-    // SAFETY: The test holds a live reference to the object for the whole
-    // read.
     unsafe { (*(ptr as *mut gtk4::glib::gobject_ffi::GObject)).ref_count }
 }
 
@@ -80,9 +78,6 @@ fn new_gobject() -> (glib::Object, *mut c_void) {
     (obj, ptr)
 }
 
-/// Encodes one full-ownership `GObject` element into the given container
-/// shape, asserting the encode acquires exactly one reference and that
-/// dropping the encoded value without a disarm releases it again.
 fn assert_full_element_container_releases_on_drop(kind: ArrayKind, container: Ownership) {
     common::run(|| {
         let (_obj, obj_ptr) = new_gobject();
@@ -98,9 +93,6 @@ fn assert_full_element_container_releases_on_drop(kind: ArrayKind, container: Ow
     });
 }
 
-/// Encodes one borrowed string element into a transfer-full list container,
-/// asserting the storage retains the caller-owned `CString` and arms only the
-/// spine for release on drop.
 fn assert_string_list_full_container_borrowed_elements_releases_spine(kind: ArrayKind) {
     common::run(|| {
         let ty = array_type(string_item_type(Ownership::Borrowed), kind, Ownership::Full);
@@ -144,8 +136,6 @@ fn encode_glist_handles_full_ownership_transfers_to_callee_when_disarmed() {
             panic!("expected storage")
         };
         let list = storage.ptr() as *mut gtk4::glib::ffi::GList;
-        // SAFETY: The disarmed transfer makes this test the callee, owning
-        // the spine and the one element reference the encode acquired.
         unsafe {
             gtk4::glib::ffi::g_list_free(list);
             gtk4::glib::gobject_ffi::g_object_unref(obj_ptr.cast());
@@ -211,7 +201,6 @@ fn ptr_to_value_sized_reads_explicit_length() {
         Ownership::Borrowed,
     );
     let data: Vec<i32> = vec![7, 8, 9];
-    // SAFETY: `data` provides exactly three contiguous i32 elements.
     let value =
         unsafe { ty.ptr_to_value_sized(data.as_ptr() as *mut std::ffi::c_void, 3) }.unwrap();
     let Value::Array(items) = value else {
@@ -220,7 +209,6 @@ fn ptr_to_value_sized_reads_explicit_length() {
     assert_eq!(items.len(), 3);
     assert!(matches!(items[0], Value::Number(n) if n == 7.0));
 
-    // SAFETY: A null pointer takes the empty-array short circuit.
     let empty = unsafe { ty.ptr_to_value_sized(std::ptr::null_mut(), 5) }.unwrap();
     assert!(matches!(empty, Value::Array(items) if items.is_empty()));
 }
@@ -233,8 +221,6 @@ fn ptr_to_value_sized_reads_tagged_elements_without_range_guard() {
         Ownership::Borrowed,
     );
     let data: Vec<i32> = vec![0, 1, 2];
-    // SAFETY: `data` provides three contiguous i32 elements, matching the
-    // tagged item's i32 storage.
     let value =
         unsafe { ty.ptr_to_value_sized(data.as_ptr() as *mut std::ffi::c_void, 3) }.unwrap();
     let Value::Array(items) = value else {
@@ -394,16 +380,12 @@ fn encode_string_array_full_ownership_transfers_glib_container() {
     };
 
     let container = storage.ptr() as *mut *mut std::ffi::c_char;
-    // SAFETY: The container holds live NUL-terminated duplicates.
     let first = unsafe { std::ffi::CStr::from_ptr(*container) };
-    // SAFETY: The container holds live NUL-terminated duplicates.
     let second = unsafe { std::ffi::CStr::from_ptr(*container.add(1)) };
     assert_eq!(first.to_str().unwrap(), "foo");
     assert_eq!(second.to_str().unwrap(), "bar");
-    // SAFETY: The container is a live three-slot block ending in NULL.
     assert!(unsafe { (*container.add(2)).is_null() });
 
-    // SAFETY: Frees the NULL-terminated container and strings this test owns.
     unsafe { glib::ffi::g_strfreev(container) };
 }
 
@@ -459,10 +441,8 @@ fn encode_string_array_element_transfer_hands_over_duplicates() {
     assert_eq!(ptrs.len(), 2);
     assert!(ptrs[1].is_null());
 
-    // SAFETY: The staged element is a live NUL-terminated duplicate.
     let dup = unsafe { std::ffi::CStr::from_ptr(ptrs[0] as *const std::ffi::c_char) };
     assert_eq!(dup.to_str().unwrap(), "foo");
-    // SAFETY: Frees the duplicate this test owns.
     unsafe { glib::ffi::g_free(ptrs[0]) };
 }
 
@@ -524,12 +504,9 @@ fn encode_pointer_array_full_ownership_transfers_glib_container() {
     assert!(ptrs.is_empty());
 
     let container = storage.ptr() as *mut *mut std::ffi::c_void;
-    // SAFETY: The container is a live two-slot block ending in NULL.
     assert!(!unsafe { *container }.is_null());
-    // SAFETY: The container is a live two-slot block ending in NULL.
     assert!(unsafe { *container.add(1) }.is_null());
 
-    // SAFETY: Frees the container this test owns.
     unsafe { glib::ffi::g_free(container as *mut std::ffi::c_void) };
 }
 
@@ -959,11 +936,8 @@ fn encode_bigint_array_rejects_out_of_range() {
 #[test]
 fn decode_gptrarray_frees_container_when_element_decode_fails() {
     common::run(|| {
-        // SAFETY: Creating an empty GPtrArray has no pointer preconditions.
         let ptr_array = unsafe { glib::ffi::g_ptr_array_new() };
-        // SAFETY: `ptr_array` is the live array created above.
         unsafe { glib::ffi::g_ptr_array_add(ptr_array, std::ptr::without_provenance_mut(0x4)) };
-        // SAFETY: `ptr_array` is the live array created above; the extra reference balances the decode's release.
         unsafe { glib::ffi::g_ptr_array_ref(ptr_array) };
 
         let ty = array_type(
@@ -976,7 +950,6 @@ fn decode_gptrarray_frees_container_when_element_decode_fails() {
                 .is_err()
         );
 
-        // SAFETY: Releases the reference this test owns on the live GPtrArray.
         unsafe { glib::ffi::g_ptr_array_unref(ptr_array) };
     });
 }
@@ -984,7 +957,6 @@ fn decode_gptrarray_frees_container_when_element_decode_fails() {
 #[test]
 fn decode_glist_frees_spine_when_element_decode_fails() {
     common::run(|| {
-        // SAFETY: Appending to a (possibly null) GList head only requires a valid element pointer.
         let list = unsafe {
             glib::ffi::g_list_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(0x4))
         };
@@ -1078,7 +1050,6 @@ fn decode_null_terminated_string_array_full_ownership_frees() {
             ArrayKind::Array,
             Ownership::Full,
         );
-        // SAFETY: g_malloc0 aborts on failure, so the slots are writable; each element is a fresh GLib duplicate.
         let strv = unsafe {
             let arr = glib::ffi::g_malloc0(size_of::<*mut c_char>() * 3) as *mut *mut c_char;
             *arr = glib::ffi::g_strdup(c"a".as_ptr());
@@ -1100,7 +1071,6 @@ fn decode_null_terminated_borrowed_string_array_full_ownership_frees_vector_only
             ArrayKind::Array,
             Ownership::Full,
         );
-        // SAFETY: g_malloc0 aborts on failure, so the slots are writable; the element is a static literal the decode only borrows.
         let strv = unsafe {
             let arr = glib::ffi::g_malloc0(size_of::<*mut c_char>() * 2) as *mut *mut c_char;
             *arr = c"borrowed".as_ptr().cast_mut();
@@ -1132,7 +1102,6 @@ fn decode_null_terminated_ptr_array_from_ptr() {
 fn decode_null_terminated_ptr_array_full_ownership_frees() {
     common::run(|| {
         let ty = array_type(struct_item_type(), ArrayKind::Array, Ownership::Full);
-        // SAFETY: g_malloc0 aborts on failure, so the slots are writable; the element is a live boxed pointer.
         let arr = unsafe {
             let mem = glib::ffi::g_malloc0(size_of::<*mut c_void>() * 2) as *mut *mut c_void;
             *mem = boxed_handle().ptr();
@@ -1154,7 +1123,6 @@ fn decode_glist_empty_and_populated() {
         };
         assert!(empty.is_empty());
 
-        // SAFETY: Appending to a (possibly null) GList head only requires a valid element pointer.
         let list = unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), boxed_handle().ptr()) };
         let Value::Array(items) = ty.decode(&FfiValue::Ptr(list as *mut c_void)).unwrap() else {
             panic!("expected array")
@@ -1167,7 +1135,6 @@ fn decode_glist_empty_and_populated() {
 fn decode_gslist_full_ownership_frees_list() {
     common::run(|| {
         let ty = array_type(struct_item_type(), ArrayKind::GSList, Ownership::Full);
-        // SAFETY: Appending to a (possibly null) GSList head only requires a valid element pointer.
         let list = unsafe { glib::ffi::g_slist_append(std::ptr::null_mut(), boxed_handle().ptr()) };
         let Value::Array(items) = ty.decode(&FfiValue::Ptr(list as *mut c_void)).unwrap() else {
             panic!("expected array")
@@ -1184,10 +1151,8 @@ fn decode_garray_from_borrowed_ptr() {
             ArrayKind::GArray,
             Ownership::Full,
         );
-        // SAFETY: Creating a GArray from size parameters has no pointer preconditions.
         let g_array = unsafe { glib::ffi::g_array_sized_new(0, 0, size_of::<i32>() as u32, 0) };
         let value: i32 = 42;
-        // SAFETY: `g_array` is the live array created above, and `value` is one element of its declared width.
         unsafe {
             glib::ffi::g_array_append_vals(g_array, &value as *const i32 as *const c_void, 1);
         }
@@ -1221,7 +1186,6 @@ fn decode_garray_storage_owned_does_not_double_free() {
             ArrayKind::GArray,
             Ownership::Full,
         );
-        // SAFETY: Creating a GArray from size parameters has no pointer preconditions.
         let g_array = unsafe { glib::ffi::g_array_sized_new(0, 0, size_of::<i32>() as u32, 0) };
         let storage = native::ffi::FfiStorage::new(
             g_array as *mut c_void,
@@ -1241,9 +1205,7 @@ fn decode_garray_storage_owned_does_not_double_free() {
 fn decode_gptrarray_from_ptr() {
     common::run(|| {
         let ty = array_type(struct_item_type(), ArrayKind::GPtrArray, Ownership::Full);
-        // SAFETY: Creating an empty GPtrArray has no pointer preconditions.
         let ptr_array = unsafe { glib::ffi::g_ptr_array_new() };
-        // SAFETY: `ptr_array` is the live array created above.
         unsafe { glib::ffi::g_ptr_array_add(ptr_array, boxed_handle().ptr()) };
         let Value::Array(items) = ty.decode(&FfiValue::Ptr(ptr_array as *mut c_void)).unwrap()
         else {
@@ -1271,7 +1233,6 @@ fn decode_gbytearray_from_ptr_and_empty() {
             Ownership::Borrowed,
         );
         let bytes = [1u8, 2, 3];
-        // SAFETY: Building a fresh GByteArray from a live local byte buffer has no other preconditions.
         let ba = unsafe {
             let ba = glib::ffi::g_byte_array_sized_new(3);
             glib::ffi::g_byte_array_append(ba, bytes.as_ptr(), 3);
@@ -1281,16 +1242,13 @@ fn decode_gbytearray_from_ptr_and_empty() {
             panic!("expected array")
         };
         assert_eq!(items.len(), 3);
-        // SAFETY: Releases the reference this test owns on the live GByteArray.
         unsafe { glib::ffi::g_byte_array_unref(ba) };
 
-        // SAFETY: Creating an empty GByteArray has no pointer preconditions.
         let empty = unsafe { glib::ffi::g_byte_array_new() };
         let Value::Array(items) = ty.decode(&FfiValue::Ptr(empty as *mut c_void)).unwrap() else {
             panic!("expected array")
         };
         assert!(items.is_empty());
-        // SAFETY: Releases the reference this test owns on the live GByteArray.
         unsafe { glib::ffi::g_byte_array_unref(empty) };
     });
 }
@@ -1304,7 +1262,6 @@ fn decode_gbytearray_full_ownership_unrefs_raw_ptr() {
             Ownership::Full,
         );
         let bytes = [7u8, 8];
-        // SAFETY: Building a fresh GByteArray from a live local byte buffer has no other preconditions.
         let ba = unsafe {
             let ba = glib::ffi::g_byte_array_sized_new(2);
             glib::ffi::g_byte_array_append(ba, bytes.as_ptr(), 2);
@@ -1314,7 +1271,6 @@ fn decode_gbytearray_full_ownership_unrefs_raw_ptr() {
             panic!("expected array")
         };
         assert_eq!(items.len(), 2);
-        // SAFETY: Releases the reference this test owns on the live GByteArray.
         unsafe { glib::ffi::g_byte_array_unref(ba) };
     });
 }
@@ -1562,7 +1518,6 @@ fn ptr_to_value_null_yields_empty() {
         ArrayKind::Array,
         Ownership::Borrowed,
     );
-    // SAFETY: Null short-circuits before any read.
     let value = unsafe { ty.ptr_to_value(std::ptr::null_mut()) }.unwrap();
     assert!(matches!(value, Value::Array(items) if items.is_empty()));
 }
@@ -1575,14 +1530,10 @@ fn ptr_to_value_gptrarray() {
             ArrayKind::GPtrArray,
             Ownership::Borrowed,
         );
-        // SAFETY: Creating an empty GPtrArray has no pointer preconditions.
         let ptr_array = unsafe { glib::ffi::g_ptr_array_new() };
-        // SAFETY: `ptr_array` is the live array created above.
         unsafe { glib::ffi::g_ptr_array_add(ptr_array, boxed_handle().ptr()) };
-        // SAFETY: `ptr_array` is the live GPtrArray built above.
         let value = unsafe { ty.ptr_to_value(ptr_array as *mut c_void) }.unwrap();
         assert!(matches!(value, Value::Array(items) if items.len() == 1));
-        // SAFETY: Releases the reference this test owns on the live GPtrArray.
         unsafe { glib::ffi::g_ptr_array_unref(ptr_array) };
     });
 }
@@ -1596,16 +1547,13 @@ fn ptr_to_value_gbytearray() {
             Ownership::Borrowed,
         );
         let bytes = [9u8];
-        // SAFETY: Building a fresh GByteArray from a live local byte buffer has no other preconditions.
         let ba = unsafe {
             let ba = glib::ffi::g_byte_array_sized_new(1);
             glib::ffi::g_byte_array_append(ba, bytes.as_ptr(), 1);
             ba
         };
-        // SAFETY: `ba` is the live GByteArray built above.
         let value = unsafe { ty.ptr_to_value(ba as *mut c_void) }.unwrap();
         assert!(matches!(value, Value::Array(items) if items.len() == 1));
-        // SAFETY: Releases the reference this test owns on the live GByteArray.
         unsafe { glib::ffi::g_byte_array_unref(ba) };
     });
 }
@@ -1618,17 +1566,13 @@ fn ptr_to_value_garray() {
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
-        // SAFETY: Creating a GArray from size parameters has no pointer preconditions.
         let g_array = unsafe { glib::ffi::g_array_sized_new(0, 0, size_of::<i32>() as u32, 0) };
         let value: i32 = 1;
-        // SAFETY: `g_array` is the live array created above, and `value` is one element of its declared width.
         unsafe {
             glib::ffi::g_array_append_vals(g_array, &value as *const i32 as *const c_void, 1)
         };
-        // SAFETY: `g_array` is the live GArray built above.
         let decoded = unsafe { ty.ptr_to_value(g_array as *mut c_void) }.unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
-        // SAFETY: Releases the reference this test owns on the live GArray.
         unsafe { glib::ffi::g_array_unref(g_array) };
     });
 }
@@ -1637,12 +1581,9 @@ fn ptr_to_value_garray() {
 fn ptr_to_value_glist() {
     common::run(|| {
         let ty = array_type(struct_item_type(), ArrayKind::GList, Ownership::Borrowed);
-        // SAFETY: Appending to a (possibly null) GList head only requires a valid element pointer.
         let list = unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), boxed_handle().ptr()) };
-        // SAFETY: `list` is the live GList built above.
         let decoded = unsafe { ty.ptr_to_value(list as *mut c_void) }.unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
-        // SAFETY: Frees the list this test owns.
         unsafe { glib::ffi::g_list_free(list) };
     });
 }
@@ -1653,7 +1594,6 @@ fn ptr_to_value_plain_array() {
         let ty = array_type(struct_item_type(), ArrayKind::Array, Ownership::Borrowed);
         let h0 = boxed_handle();
         let mut data: Vec<*mut c_void> = vec![h0.ptr(), std::ptr::null_mut()];
-        // SAFETY: `data` is a live null-terminated local array of boxed pointers.
         let decoded = unsafe { ty.ptr_to_value(data.as_mut_ptr() as *mut c_void) }.unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
     });
@@ -1778,8 +1718,6 @@ fn trait_methods_delegate_to_inherent_implementations() {
         let ptr_ty = array_type(struct_item_type(), ArrayKind::Array, Ownership::Borrowed);
         let h0 = boxed_handle();
         let mut data: Vec<*mut c_void> = vec![h0.ptr(), std::ptr::null_mut()];
-        // SAFETY: `data` is a live null-terminated local array of boxed
-        // pointers.
         let from_ptr = unsafe {
             FfiDecoder::read(
                 &ptr_ty,
@@ -1828,8 +1766,6 @@ fn encode_gslist_handles_full_ownership_releases_when_call_never_happens() {
 #[test]
 fn encode_glist_handles_fails_and_unwinds_when_element_transfer_fails() {
     common::run(|| {
-        // SAFETY: Creating a GParamSpec from static NUL-terminated literals
-        // has no pointer preconditions.
         let pspec = unsafe {
             glib::gobject_ffi::g_param_spec_boolean(
                 c"array-codec-cov".as_ptr(),
@@ -1853,8 +1789,6 @@ fn encode_glist_handles_fails_and_unwinds_when_element_transfer_fails() {
         assert!(err.to_string().contains("Failed to find ref symbol"));
         assert_eq!(common::param_spec_refcount(pspec), before);
 
-        // SAFETY: Releases the reference this test owns on the live
-        // GParamSpec.
         unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
     });
 }
@@ -1880,8 +1814,6 @@ fn encode_glist_strings_full_container_full_elements_releases_when_call_never_ha
         };
         assert!(data.elements_duped);
         assert!(!data.should_free);
-        // SAFETY: The encoded list head is a live node whose data pointer is
-        // a live NUL-terminated duplicate.
         let first = unsafe { std::ffi::CStr::from_ptr((*data.list_ptr).data as *const c_char) };
         assert_eq!(first.to_str().unwrap(), "a");
         drop(encoded);
@@ -1917,8 +1849,6 @@ fn encode_gbytearray_full_ownership_releases_when_call_never_happens() {
     });
 }
 
-/// Borrowed string elements install a slot-dereferencing clear function, so
-/// the storage drop releases both the duplicated strings and the spine.
 #[test]
 fn encode_garray_borrowed_strings_installs_clear_func_and_roundtrips() {
     common::run(|| {
@@ -1949,8 +1879,6 @@ fn decode_zero_terminated_scalar_array_full_ownership_frees_buffer() {
             ArrayKind::Array,
             Ownership::Full,
         );
-        // SAFETY: g_malloc0 aborts on failure, so the four i32 slots are
-        // writable; the final slot stays zero as the terminator.
         let buffer = unsafe {
             let mem = glib::ffi::g_malloc0(size_of::<i32>() * 4) as *mut i32;
             *mem = 7;
@@ -1981,19 +1909,12 @@ fn write_return_to_raw_ptr_full_string_array_hands_caller_owned_container() {
         ]);
         let mut slot: *mut c_void = std::ptr::null_mut();
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
-        // SAFETY: `ret` addresses a writable local pointer-sized slot.
         unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(val)) };
         assert!(!slot.is_null());
-        // SAFETY: The slot holds a transfer-full NULL-terminated string array
-        // the caller now owns; adopt it so the test frees it.
         let strv = unsafe { glib::StrV::from_glib_full(slot as *mut *mut c_char) };
         let items: Vec<String> = strv
             .iter()
-            .map(|item| {
-                // SAFETY: Every GStringPtr in a StrV is a live NUL-terminated
-                // string.
-                unsafe { glib::GStr::from_ptr_lossy(item.as_ptr()) }.to_string()
-            })
+            .map(|item| unsafe { glib::GStr::from_ptr_lossy(item.as_ptr()) }.to_string())
             .collect();
         assert_eq!(items, vec!["alpha".to_string(), "beta".to_string()]);
     });
@@ -2008,17 +1929,14 @@ fn write_return_to_raw_ptr_null_err_and_non_array_write_null() {
     );
     let mut slot: *mut c_void = 7 as *mut c_void;
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
-    // SAFETY: `ret` addresses a writable local pointer-sized slot.
     unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(Value::Null)) };
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
-    // SAFETY: Same writable local slot.
     unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Err(())) };
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
-    // SAFETY: Same writable local slot.
     unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(Value::Number(1.0))) };
     assert!(slot.is_null());
 }
@@ -2034,7 +1952,6 @@ fn write_return_to_raw_ptr_encode_error_writes_null() {
         let val = Value::Array(vec![Value::String("not a number".to_string())]);
         let mut slot: *mut c_void = 7 as *mut c_void;
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
-        // SAFETY: `ret` addresses a writable local pointer-sized slot.
         unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(val)) };
         assert!(slot.is_null());
     });

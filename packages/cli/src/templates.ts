@@ -10,7 +10,6 @@ export type TemplateContext = {
     testing: TestingOption;
 };
 
-/** Filename suffix every project template carries. */
 export const TEMPLATE_SUFFIX = ".ejs";
 
 const getTemplatesDir = (): string => {
@@ -22,14 +21,6 @@ const renderTemplate = (templatePath: string, context: TemplateContext): string 
     return ejs.render(templateContent, context);
 };
 
-/**
- * Lists every project template, as its path relative to the templates
- * directory using forward slashes (e.g. `src/app.tsx.ejs`, `claude/SKILL.md.ejs`).
- * The template tree is the single manifest of project contents, so adding or
- * renaming a template is picked up without editing the scaffolder.
- *
- * @returns The relative template paths, in deterministic (sorted) order.
- */
 export const listTemplates = (): string[] =>
     readdirSync(getTemplatesDir(), { recursive: true, withFileTypes: true })
         .filter((entry) => entry.isFile() && entry.name.endsWith(TEMPLATE_SUFFIX))

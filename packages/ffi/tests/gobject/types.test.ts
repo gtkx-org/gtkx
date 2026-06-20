@@ -26,7 +26,7 @@ import {
 } from "@gtkx/ffi";
 import { describe, expect, it } from "vitest";
 
-const NONZERO_FUNDAMENTALS: readonly (readonly [string, bigint])[] = [
+const NONZERO_FUNDAMENTALS: [string, bigint][] = [
     ["NONE", TYPE_NONE],
     ["INTERFACE", TYPE_INTERFACE],
     ["CHAR", TYPE_CHAR],

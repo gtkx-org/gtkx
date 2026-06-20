@@ -21,34 +21,17 @@ import {
 } from "./tables.js";
 import { collectReactNodeClasses } from "./widgets.js";
 
-/** One per-namespace `@gtkx/jsx` module: its directory and combined source. */
 export type JsxNamespaceFile = {
-    /** Lowercased namespace directory name (e.g. `"gtk"`). */
-    readonly directory: string;
-    /** The combined namespace module source. */
-    readonly source: string;
+    directory: string;
+    source: string;
 };
 
-/** Result of {@link generateJsxFiles}. */
 export type JsxFiles = {
-    /** Per-namespace module sources. */
-    readonly namespaces: readonly JsxNamespaceFile[];
-    /** The merged metadata module source. */
-    readonly metadata: string;
-    /** Number of widget intrinsics emitted across all namespaces. */
-    readonly widgetCount: number;
+    namespaces: JsxNamespaceFile[];
+    metadata: string;
+    widgetCount: number;
 };
 
-/**
- * Produces the per-namespace `@gtkx/jsx` module sources plus the single
- * merged `metadata.ts`. A namespace gets a module when it contributes at least
- * one React-node class. Each module combines the intrinsic/Props section, the
- * compounds section, the runtime-component re-exports, and the `@gtkx/gi/<ns>`
- * side-effect import.
- *
- * @param repository - The loaded GIR repository
- * @param userTables - Table overrides from `gtkx.config.ts`, merged with the built-ins
- */
 export const generateJsxFiles = (repository: GirRepository, userTables: UserTableRows = {}): JsxFiles => {
     const containerPropMap = mergeContainerProps(userTables.containerProps);
     const arrayPropMap = mergeArrayProps(userTables.arrayProps);
@@ -89,21 +72,11 @@ export const generateJsxFiles = (repository: GirRepository, userTables: UserTabl
     return { namespaces, metadata, widgetCount };
 };
 
-/**
- * Generates one namespace's combined `@gtkx/jsx` module: imports + the
- * compounds section + the intrinsic/Props section. Compound-exported names and
- * re-exported runtime components are excluded from the intrinsic consts so the
- * module has no duplicate exports.
- *
- * @param targetNamespace - The namespace this module is generated for
- * @param repository - The loaded GIR repository
- * @param maps - Merged widget-slot, container-slot, and array-prop maps
- */
 const generateJsxNamespace = (
     targetNamespace: GirNamespace,
     repository: GirRepository,
     maps: Required<JsxSurfaceMaps>,
-): { readonly source: string; readonly count: number } => {
+): { source: string; count: number } => {
     const imports = emptyJsxImports();
 
     const compounds = generateCompoundsSection(targetNamespace, repository, {

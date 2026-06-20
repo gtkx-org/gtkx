@@ -1,20 +1,3 @@
-//! Graceful `GLib` main loop shutdown.
-//!
-//! The [`quit`] function tears the runtime down in a single GLib-thread task
-//! that runs while the main loop is still iterating, so any pending finalizer
-//! work scheduled by [`crate::managed::NativeHandle`]'s drop runs before the
-//! loop exits. It marks the mailbox not-running (fencing further JS-side cleanup
-//! schedules), drains all pending sources on the default main context while the
-//! loop is still alive, then quits the loop.
-//!
-//! JS handles that GC after the mark-not-running fence are intentionally leaked
-//! via [`std::mem::forget`] — running `GLib` finalizers after the main loop
-//! has exited can crash on libraries like `WebKit` that depend on the loop
-//! for their own cleanup.
-//!
-//! [`quit`] is a napi export that dispatches through a live [`napi::Env`], so
-//! the module is excluded from coverage instrumentation.
-
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use napi::Env;

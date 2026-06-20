@@ -12,10 +12,6 @@ import {
 } from "./animation-css.js";
 import type { AdwSpringAnimationProps, AdwTimedAnimationProps, AnimatableProperties } from "./types.js";
 
-/**
- * Props shared by both animation kinds, discriminated by `kind` into the timed
- * or spring parameter set.
- */
 export type WidgetAnimationProps =
     | ({ kind: "timed" } & AdwTimedAnimationProps)
     | ({ kind: "spring" } & AdwSpringAnimationProps);
@@ -83,37 +79,20 @@ const mountValues = (props: WidgetAnimationProps): AnimatableProperties => {
     return baselineValues(props);
 };
 
-/**
- * Imperatively drives a CSS-rendered animation on one widget.
- *
- * Holds the in-flight `Adw.Animation`, the current animated values, the pending
- * delay timer, and the per-instance `Gtk.CssProvider`. {@link startAnimation}
- * runs an animation towards a target; {@link applyMount} establishes the mount
- * baseline; {@link dispose} tears everything down on unmount.
- */
 export class AnimationDriver {
-    private readonly cssProvider: AnimationCssProvider;
-    private readonly propsRef: RefObject<WidgetAnimationProps>;
-    private readonly ref: RefObject<Gtk.Widget | null>;
+    private cssProvider: AnimationCssProvider;
+    private propsRef: RefObject<WidgetAnimationProps>;
+    private ref: RefObject<Gtk.Widget | null>;
     private currentValues: AnimatableProperties = {};
     private currentAnimation: Adw.Animation | null = null;
     private delayTimer: ReturnType<typeof setTimeout> | null = null;
 
-    /**
-     * @param className - Unique CSS class scoping this driver's rules.
-     * @param ref - Ref to the widget the animation targets.
-     * @param propsRef - Ref holding the latest animation props.
-     */
     constructor(className: string, ref: RefObject<Gtk.Widget | null>, propsRef: RefObject<WidgetAnimationProps>) {
         this.cssProvider = new AnimationCssProvider(className);
         this.ref = ref;
         this.propsRef = propsRef;
     }
 
-    /**
-     * Attaches the provider to the widget and applies the mount baseline,
-     * animating from `initial` to `animate` when `animateOnMount` is set.
-     */
     public applyMount(): void {
         const widget = this.ref.current;
         if (!widget) return;
@@ -129,17 +108,6 @@ export class AnimationDriver {
         }
     }
 
-    /**
-     * Animates the bound widget from its current values to `target`.
-     *
-     * Skips any in-flight animation, fires `onAnimationStart`, drives CSS on
-     * every progress tick, and fires `onAnimationComplete` then `onComplete`
-     * when finished. Honors the `delay` prop with an identity guard so a
-     * superseded deferred start never plays.
-     *
-     * @param target - The values to animate towards.
-     * @param onComplete - Optional callback run after the animation completes.
-     */
     public startAnimation(target: AnimatableProperties, onComplete?: () => void): void {
         const widget = this.ref.current;
         if (!widget) return;
@@ -169,10 +137,6 @@ export class AnimationDriver {
         this.play(animation, props.delay ?? 0);
     }
 
-    /**
-     * Tears down the in-flight animation, the pending delay timer, and the
-     * provider, leaving nothing behind on unmount.
-     */
     public dispose(): void {
         if (this.delayTimer !== null) {
             clearTimeout(this.delayTimer);
@@ -204,21 +168,6 @@ export class AnimationDriver {
     }
 }
 
-/**
- * Drives a CSS-rendered animation on a widget referenced by `ref`.
- *
- * Constructs an `Adw.TimedAnimation` or `Adw.SpringAnimation` targeting the
- * referenced widget and writes interpolated `opacity`/`transform` values through
- * a dedicated `Gtk.CssProvider`. On mount it applies the static baseline (or
- * animates from `initial` to `animate` when `animateOnMount` is set); when the
- * `animate` prop changes afterward it animates towards the new target. The
- * provider, the in-flight animation, and any pending delay timer are all torn
- * down on unmount.
- *
- * @param ref - Ref to the widget the animation targets.
- * @param props - The animation configuration, discriminated by `kind`.
- * @returns The {@link AnimationDriver} for imperative control of the animation.
- */
 export const useWidgetAnimation = (ref: RefObject<Gtk.Widget | null>, props: WidgetAnimationProps): AnimationDriver => {
     const className = sanitizeId(useId());
     const propsRef = useRef(props);

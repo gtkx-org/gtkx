@@ -4,8 +4,6 @@ use libffi::middle as libffi;
 use super::numeric::IntegerKind;
 use super::prelude::*;
 
-/// The integer kind a `gboolean` marshals as, which the codec delegates
-/// ABI-level work to.
 const WIRE_KIND: IntegerKind = IntegerKind::I32;
 
 #[derive(Debug, Clone, Copy)]
@@ -46,8 +44,6 @@ impl FfiDecoder for BooleanType {
             }
             ReadSource::Value(ptr, _context) => Ok(value::Value::Boolean(ptr as isize != 0)),
             ReadSource::Slot(ptr, _context) => {
-                // SAFETY: The caller guarantees `ptr` is a readable `gboolean`
-                // (i32) slot.
                 let val = unsafe { *(ptr as *const i32) };
                 Ok(value::Value::Boolean(val != 0))
             }
@@ -56,13 +52,8 @@ impl FfiDecoder for BooleanType {
 }
 
 impl RawPtrCodec for BooleanType {
-    /// Writes a `gboolean` trampoline return widened to `ffi_sarg`, per
-    /// libffi's closure contract for integral results narrower than a
-    /// register.
     unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let val = f64::from(u8::from(matches!(value, Ok(value::Value::Boolean(true)))));
-        // SAFETY: The caller guarantees `ret` is a writable 8-byte libffi
-        // return slot wide enough for the widened `gboolean` result.
         unsafe { WIRE_KIND.write_return_widened(ret, val) };
     }
 
@@ -74,8 +65,6 @@ impl RawPtrCodec for BooleanType {
         let value::Value::Boolean(b) = value else {
             anyhow::bail!("Expected a Boolean for boolean field write, got {value:?}");
         };
-        // SAFETY: The caller guarantees `ptr` is a writable `gboolean`
-        // (i32) slot.
         unsafe { *(ptr as *mut i32) = (*b).into_glib() };
         Ok(())
     }

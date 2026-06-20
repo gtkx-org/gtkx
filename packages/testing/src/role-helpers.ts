@@ -3,9 +3,6 @@ import { reverseNumericEnum } from "@gtkx/utils";
 import { type Container, traverse } from "./traversal.js";
 import { getWidgetAccessibleName } from "./widget-text.js";
 
-/**
- * Information about a widget and its accessible name.
- */
 export type RoleInfo = {
     widget: Gtk.Widget;
     name: string | null;
@@ -13,38 +10,12 @@ export type RoleInfo = {
 
 const ROLE_NAMES_BY_VALUE = reverseNumericEnum(Gtk.AccessibleRole);
 
-/**
- * Formats a GTK accessible role to a lowercase string.
- *
- * @param role - The GTK accessible role
- * @returns Lowercase role name (e.g., "button", "checkbox")
- */
 export const formatRole = (role: Gtk.AccessibleRole): string => {
     const name = ROLE_NAMES_BY_VALUE.get(role);
     if (!name) return String(role);
     return name.toLowerCase();
 };
 
-/**
- * Collects all accessible roles and their widgets from a container.
- *
- * Returns a Map where keys are role names (lowercase) and values are
- * arrays of widgets with that role, including their accessible names.
- *
- * @param container - The container to scan for roles
- * @returns Map of role names to arrays of RoleInfo
- *
- * @example
- * ```tsx
- * import { getRoles } from "@gtkx/testing";
- *
- * const roles = getRoles(container);
- * // Map {
- * //   "button" => [{ widget: ..., name: "Submit" }, { widget: ..., name: "Cancel" }],
- * //   "checkbox" => [{ widget: ..., name: "Remember me" }]
- * // }
- * ```
- */
 export const getRoles = (container: Container): Map<string, RoleInfo[]> => {
     const roles = new Map<string, RoleInfo[]>();
 
@@ -73,12 +44,6 @@ const formatWidgetPreview = (widget: Gtk.Widget, name: string | null): string =>
     return `${nameDisplay}: <${tagName} role="${roleAttr}">${name ?? ""}</${tagName}>`;
 };
 
-/**
- * Formats roles into a readable string for error messages.
- *
- * @param container - The container to format roles for
- * @returns Formatted string showing all roles and their accessible names
- */
 export const prettyRoles = (container: Container): string => {
     const roles = getRoles(container);
 
@@ -101,27 +66,6 @@ export const prettyRoles = (container: Container): string => {
     return lines.join("\n").trimEnd();
 };
 
-/**
- * Logs all accessible roles in a container to the console.
- *
- * Useful for debugging test failures and discovering available roles.
- *
- * @param container - The container to log roles for
- *
- * @example
- * ```tsx
- * import { render, logRoles } from "@gtkx/testing";
- *
- * const { container } = await render(<MyComponent />);
- * logRoles(container);
- * // Console output:
- * // button:
- * //   Name "Submit": <GtkButton role="button">Submit</GtkButton>
- * //   Name "Cancel": <GtkButton role="button">Cancel</GtkButton>
- * // checkbox:
- * //   Name "Remember me": <GtkCheckButton role="checkbox">Remember me</GtkCheckButton>
- * ```
- */
 export const logRoles = (container: Container): void => {
     console.log(prettyRoles(container));
 };

@@ -1,10 +1,3 @@
-/**
- * Runtime type predicates for GTK widget capability detection.
- *
- * These predicates check for specific APIs that widgets may or may not expose.
- * GTK widgets don't have a consistent interface - different widgets support
- * different child management APIs - so runtime checking is necessary.
- */
 import * as Gtk from "@gtkx/gi/gtk";
 
 type AppendableWidget = Gtk.Widget & { append: (child: Gtk.Widget) => void };
@@ -26,10 +19,6 @@ export type InsertableWidget = Gtk.Widget & {
 const hasMethod = (obj: unknown, name: string): obj is Gtk.Widget =>
     obj instanceof Gtk.Widget && name in obj && typeof Reflect.get(obj, name) === "function";
 
-/**
- * A non-widget single-child container, such as `Gtk.ListItem`/`Gtk.ListHeader`,
- * that exposes `getChild`/`setChild` to hold one widget child.
- */
 export type SingleChildContainer = {
     getChild: () => Gtk.Widget | null;
     setChild: (child: Gtk.Widget | null) => void;
@@ -37,12 +26,6 @@ export type SingleChildContainer = {
 
 const hasFunction = (obj: object, name: string): boolean => name in obj && typeof Reflect.get(obj, name) === "function";
 
-/**
- * Whether `obj` is a single-child container exposing `getChild`/`setChild`,
- * including non-widget containers a list factory produces.
- *
- * @param obj - The candidate container.
- */
 export const isSingleChildContainer = (obj: unknown): obj is SingleChildContainer =>
     typeof obj === "object" && obj !== null && hasFunction(obj, "getChild") && hasFunction(obj, "setChild");
 

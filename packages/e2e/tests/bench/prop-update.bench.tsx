@@ -4,20 +4,8 @@ import type { ReactNode } from "react";
 import { bench, describe } from "vitest";
 import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
 
-/**
- * Sizes grown geometrically so an instruction-count gate (CodSpeed) sees a
- * flat per-item slope for the linear `applyProps` diff walk and a rising
- * slope for any quadratic regression. Kept modest because the benches run
- * under CodSpeed's Valgrind instrumentation, where exact instruction counts
- * make the slope visible without large inputs.
- */
 const SIZES = [100, 400];
 
-/**
- * Rebuilds the full element tree on every call so each rerender presents
- * fresh element objects to the reconciler and forces the per-instance prop
- * diff to run, with `suffix` deciding whether the diff finds a change.
- */
 const drawLabels = (n: number, suffix: string): ReactNode => (
     <ScrollWrapper>
         <GtkBox>

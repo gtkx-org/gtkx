@@ -1,46 +1,13 @@
-/**
- * Error-domain machinery for generated throwing callables.
- *
- * Surfaces a `GError` failure as an `instanceof`-discriminable thrown value:
- * the catch site reads the live boxed error's `domain`, `code`, and `message`
- * and matches it against a generated error-domain enum, without `@gtkx/ffi`
- * depending on the generated `GLib.Error` class.
- */
-
 import type { Handle, Ref } from "@gtkx/native";
 import { getErrorGtype, isGtyped } from "./gtype.js";
 import { getWrapperClass, wrapHandle } from "./registry.js";
 
-/**
- * Structural shape of a thrown GLib `GError` boxed wrapper.
- *
- * The runtime only ever reads an error's `domain`, `code`, and `message`, so a
- * hand-written structural type keeps `@gtkx/ffi` independent of the generated
- * `GLib.Error` class; any generated error wrapper satisfies it.
- */
 export interface GError {
-    /** The error domain quark. */
-    readonly domain: number;
-    /** The domain-specific error code. */
-    readonly code: number;
-    /** The human-readable error message. */
-    readonly message: string;
+    domain: number;
+    code: number;
+    message: string;
 }
 
-/**
- * Throws the failing `GError` when a `GError` out-parameter holds an error.
- *
- * The GLib `Error` wrapper class is resolved from the registry by the boxed
- * `GError` `GType`, so generated bindings pass only the populated error ref. The
- * raw `GError` wrapper is thrown directly, so the catch site reads its `domain`,
- * `code`, and `message` off the live boxed value and discriminates it with
- * `instanceof` against a generated error-domain enum. A JavaScript stack trace
- * pointing at the call site is attached before throwing so failures remain
- * debuggable even though the boxed `GError` is not a JavaScript `Error`. A no-op
- * when the ref is empty.
- *
- * @param error - Out-parameter ref populated by the FFI call
- */
 export function checkError(error: Ref): void {
     if (error.value !== null) {
         const errorClass = getWrapperClass(getErrorGtype());
@@ -61,32 +28,10 @@ export function checkError(error: Ref): void {
 
 const isGError = (value: unknown): value is GError => isGtyped(value) && value.__gtype__ === getErrorGtype();
 
-/**
- * An error-domain enum: a frozen member map that also acts as the right-hand
- * side of an `instanceof` check.
- *
- * `error instanceof SomeErrorDomain` is true when `error` is a `GError` thrown
- * from the matching GLib error domain, letting callers discriminate failures
- * without referencing the GLib `Error` class.
- *
- * @typeParam T - The enum's member-name to numeric-value map.
- */
-export type ErrorDomain<T extends Record<string, number>> = Readonly<T> & {
-    readonly [Symbol.hasInstance]: (value: unknown) => value is GError;
+export type ErrorDomain<T extends Record<string, number>> = T & {
+    [Symbol.hasInstance]: (value: unknown) => value is GError;
 };
 
-/**
- * Builds an error-domain enum whose `instanceof` checks match `GError`s thrown
- * from the given GLib error domain.
- *
- * The domain quark is resolved lazily on first `instanceof` check, since the
- * generated `quark_from_string` binding may be declared after the enum in its
- * module.
- *
- * @param resolveDomain - Resolves the quark of the GLib error domain.
- * @param members - The enum's member-name to numeric-value map.
- * @returns A frozen enum object usable as an `instanceof` right-hand side.
- */
 export function createErrorDomain<const T extends Record<string, number>>(
     resolveDomain: () => number,
     members: T,

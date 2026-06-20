@@ -147,7 +147,7 @@ const findSuggestions = (words: string[], text: string): string[] => {
 };
 
 interface SuggestionEntryViewProps {
-    name?: string;
+    name?: string | undefined;
     placeholder: string;
     query: string;
     matches: string[];

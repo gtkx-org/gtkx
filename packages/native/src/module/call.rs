@@ -1,11 +1,3 @@
-//! FFI function call execution.
-//!
-//! The `call` function invokes GTK and `GLib` functions from JavaScript via libffi.
-//!
-//! Callback arguments (`AsyncReady`, Destroy, `DrawFunc`) need special handling:
-//! each expands to multiple FFI arguments — the callback function pointer, user
-//! data, and optionally a destroy notify.
-
 use std::{ffi::c_void, sync::Arc};
 
 use anyhow::Context as _;
@@ -67,9 +59,6 @@ impl ModuleRequest for CallRequest {
             ffi_value.append_libffi_args(&mut ffi_args);
         }
 
-        // SAFETY: The looked-up symbol is only stored as a code pointer
-        // here; the erased signature is never called through directly, and
-        // the library stays loaded for the process lifetime.
         let symbol_ptr = unsafe {
             GlibThreadState::with::<_, anyhow::Result<libffi::CodePtr>>(|state| {
                 let library = state.library(&self.library_name)?;
@@ -109,13 +98,6 @@ impl ModuleRequest for CallRequest {
 }
 
 impl CallRequest {
-    /// Frees the container of a transfer-full sized or fixed-size array
-    /// return value once its elements have been copied out.
-    ///
-    /// The decoder cannot perform this release itself: the same decode path
-    /// also reads caller-owned out-parameter buffers, whose containers must
-    /// not be freed. Running after the decode — error or not — also keeps a
-    /// failed element decode from leaking the container.
     fn release_sized_array_return(&self, result: &ffi::FfiValue) {
         let Type::Array(array_type) = &self.result_type else {
             return;
@@ -131,18 +113,10 @@ impl CallRequest {
         if let ffi::FfiValue::Ptr(ptr) = result
             && !ptr.is_null()
         {
-            // SAFETY: A transfer-full sized/fixed array return hands this
-            // call the one owned container, released here exactly once
-            // after the decode copied the elements.
             unsafe { glib::ffi::g_free(*ptr) };
         }
     }
 
-    /// Collects the out-parameter write-backs for `Ref`-typed arguments.
-    ///
-    /// Excluded from coverage instrumentation: a `Value::Ref` carries an
-    /// `Arc<JsRef<JsObject>>`, which only exists when a live JavaScript runtime
-    /// produced it, so this path cannot run under `cargo test`.
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn collect_ref_updates(&self, ffi_values: &[ffi::FfiValue]) -> anyhow::Result<Vec<RefUpdate>> {
         let mut ref_updates = Vec::new();
@@ -161,9 +135,6 @@ impl CallRequest {
     }
 }
 
-/// napi export shim. Excluded from coverage instrumentation: it parses JS
-/// arguments through a live [`napi::Env`]. The [`CallRequest::execute`] logic
-/// it dispatches is exercised directly by tests.
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[allow(clippy::wildcard_imports)]
 mod napi_export {

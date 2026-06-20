@@ -6,7 +6,7 @@ import { resolveEnum, selectSubset } from "../../src/khronos/select.js";
 
 const REGISTRY_PATH = fileURLToPath(new URL("../../registry/gl.xml", import.meta.url));
 
-const COMPANION_EXPORTS: ReadonlySet<string> = new Set([
+const COMPANION_EXPORTS: Set<string> = new Set([
     "getShaderInfoLog",
     "getProgramInfoLog",
     "getProgramPipelineInfoLog",

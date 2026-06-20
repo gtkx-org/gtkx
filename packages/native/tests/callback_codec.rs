@@ -1,10 +1,3 @@
-//! Coverage tests for the non-excluded parts of
-//! [`native::types::CallbackType`] and [`native::types::CallbackScope`].
-//!
-//! `CallbackType::encode` is excluded from coverage, but executing the
-//! excluded `encode` with a null value still drives the non-excluded
-//! `build_null_ffi_value`.
-
 mod common;
 
 use libffi::middle as libffi;

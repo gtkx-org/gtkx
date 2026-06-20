@@ -75,11 +75,6 @@ function createFaceTransform(face: CubeFace): Gsk.Transform {
     return t;
 }
 
-/**
- * Fixed Layout / Cube demo matching the official GTK gtk-demo.
- * GtkFixed is a container that allows placing and transforming widgets manually.
- * This demo uses a GtkFixed to create a cube out of child widgets.
- */
 const FixedDemo = () => {
     useCssResource(fixedCss);
 

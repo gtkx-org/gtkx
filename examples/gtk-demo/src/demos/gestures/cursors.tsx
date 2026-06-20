@@ -51,7 +51,7 @@ interface CursorInfo {
     hotY: number;
 }
 
-const GROUPS: readonly (readonly CursorInfo[])[] = [
+const GROUPS: CursorInfo[][] = [
     [
         { name: "default", image: defaultPath, hotX: 5, hotY: 5 },
         { name: "none", image: nonePath, hotX: 0, hotY: 0 },
@@ -140,7 +140,7 @@ const buildCursorVariants = (info: CursorInfo) => {
     return [named, image, namedWithFallback, imageWithFallback] as const;
 };
 
-const buildCursorTooltips = (info: CursorInfo): readonly [string, string, string, string] =>
+const buildCursorTooltips = (info: CursorInfo): [string, string, string, string] =>
     info.name === "gtk-logo"
         ? [
               `The "gtk-logo" named cursor`,
@@ -181,7 +181,7 @@ const CursorRow = ({ info }: { info: CursorInfo }) => {
     );
 };
 
-const CursorGroup = ({ rows }: { rows: readonly CursorInfo[] }) => (
+const CursorGroup = ({ rows }: { rows: CursorInfo[] }) => (
     <GtkFrame cssClasses={["view"]}>
         <GtkListBox selectionMode={Gtk.SelectionMode.NONE}>
             {rows.map((info) => (

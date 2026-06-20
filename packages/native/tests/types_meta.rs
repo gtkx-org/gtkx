@@ -1,7 +1,3 @@
-//! Coverage for the type-system metadata in `src/types.rs`: the [`Ownership`]
-//! enum, [`Type`]'s `Display`, [`Type::can_be_return_type`], and the default
-//! bodies of the four codec traits.
-
 mod common;
 
 use std::ffi::c_void;
@@ -95,9 +91,6 @@ fn struct_type() -> StructType {
     }
 }
 
-/// Builds a [`CallbackType`] without naming the unexported `CallbackScope`
-/// enum: the `scope` field is filled by `Default::default()`, whose target
-/// type the compiler infers from the field declaration.
 #[allow(clippy::default_trait_access)]
 fn callback_type() -> CallbackType {
     CallbackType {
@@ -136,7 +129,6 @@ fn ffi_decoder_decode_with_context_default_delegates_to_decode() {
 #[test]
 fn raw_ptr_codec_ptr_to_value_default_bails() {
     assert!(
-        // SAFETY: The default implementation bails before any read.
         unsafe { FfiDecoder::read(&callback_type(), ReadSource::Value(8 as *mut c_void, "ctx"),) }
             .is_err()
     );
@@ -146,7 +138,6 @@ fn raw_ptr_codec_ptr_to_value_default_bails() {
 fn raw_ptr_codec_read_from_raw_ptr_default_dereferences_then_bails() {
     let mut inner: *mut c_void = 8 as *mut c_void;
     let ptr = &mut inner as *mut *mut c_void as *const c_void;
-    // SAFETY: `ptr` addresses a live local pointer-sized slot.
     assert!(unsafe { FfiDecoder::read(&callback_type(), ReadSource::Slot(ptr, "ctx")) }.is_err());
 }
 
@@ -154,14 +145,12 @@ fn raw_ptr_codec_read_from_raw_ptr_default_dereferences_then_bails() {
 fn raw_ptr_codec_write_return_to_raw_ptr_default_writes_null() {
     let mut slot: *mut c_void = 9 as *mut c_void;
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
-    // SAFETY: `ret` addresses a writable local pointer-sized slot.
     unsafe {
         RawPtrCodec::write_return_to_raw_ptr(&callback_type(), ret, &Ok(Value::Number(1.0)));
     }
     assert!(slot.is_null());
 
     slot = 9 as *mut c_void;
-    // SAFETY: `ret` addresses a writable local pointer-sized slot.
     unsafe { RawPtrCodec::write_return_to_raw_ptr(&callback_type(), ret, &Err(())) };
     assert!(slot.is_null());
 }
@@ -171,7 +160,6 @@ fn raw_ptr_codec_write_value_to_raw_ptr_default_bails() {
     let mut slot: *mut c_void = std::ptr::null_mut();
     let ptr = &mut slot as *mut *mut c_void as *mut c_void;
     assert!(
-        // SAFETY: The default implementation bails before any write.
         unsafe { RawPtrCodec::write_value_to_raw_ptr(&callback_type(), ptr, &Value::Number(1.0)) }
             .is_err()
     );
@@ -194,7 +182,6 @@ fn ffi_encoder_defaults_cover_pointer_typed_codec() {
     FfiEncoder::append_ffi_arg_types(&st, &mut arg_types);
     assert_eq!(arg_types.len(), 1);
 
-    // SAFETY: The default implementation returns the pointer untouched.
     let transferred = unsafe { FfiEncoder::ref_for_transfer(&st, 16 as *mut c_void) }.unwrap();
     assert_eq!(transferred, 16 as *mut c_void);
 

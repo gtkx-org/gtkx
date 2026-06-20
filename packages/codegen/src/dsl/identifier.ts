@@ -1,24 +1,6 @@
 import { toCamelIdentifier } from "@gtkx/utils";
 
-/**
- * Derives the public camelCase export name for a namespace-level callable.
- *
- * The GIR `name` attribute is camelCased (`quark_from_string` →
- * `quarkFromString`); for a shadowing function it is the shadowed short name,
- * so `g_idle_add_full` (which shadows `idle_add`) exports as `idleAdd`. When the
- * `name` is empty the C identifier is used instead, with the namespace's
- * `c:symbol-prefixes` value stripped (e.g. `g_` from `g_quark_from_string`).
- * The result is escaped so it never collides with a reserved word.
- *
- * @param cIdentifier - The C symbol identifier from GIR
- * @param girName - The GIR `name` attribute (shadow-resolved)
- * @param symbolPrefixes - The namespace's `c:symbol-prefixes` values
- */
-export const namespaceFunctionExportName = (
-    cIdentifier: string,
-    girName: string,
-    symbolPrefixes: readonly string[],
-): string => {
+export const namespaceFunctionExportName = (cIdentifier: string, girName: string, symbolPrefixes: string[]): string => {
     if (girName.length > 0) {
         return toCamelIdentifier(girName);
     }
@@ -26,34 +8,12 @@ export const namespaceFunctionExportName = (
     return toCamelIdentifier(stripped);
 };
 
-/**
- * Derives the exported identifier for a GIR `<alias>`.
- *
- * Aliases are surfaced under their GIR `name` (e.g. `Quark`, `Pid`,
- * `Allocation`), matching the `@girs` convention. GObject's `Type` alias is the
- * one exception: it is published as `GType` so it lines up with the GObject
- * runtime's `GType` type and the references that resolve through it.
- *
- * @param namespaceName - The namespace the alias is declared in
- * @param aliasName - The alias's GIR `name`
- */
 export const aliasExportName = (namespaceName: string, aliasName: string): string =>
     namespaceName === "GObject" && aliasName === "Type" ? "GType" : aliasName;
 
-/**
- * Derives the module-level binding-const name for a native C symbol.
- *
- * The C identifier (`g_object_ref`, `gtk_widget_show`) is camelCased to the
- * variable name the generated `const … = t.fn(...)` binding declares and its
- * call sites reference (`gObjectRef`, `gtkWidgetShow`), so every binding follows
- * the same casing as the rest of the generated surface. The result is escaped so
- * it never collides with a reserved word.
- *
- * @param cIdentifier - The C symbol identifier from GIR
- */
 export const bindingIdentifier = (cIdentifier: string): string => toCamelIdentifier(cIdentifier);
 
-const stripLongestPrefix = (input: string, prefixes: readonly string[]): string => {
+const stripLongestPrefix = (input: string, prefixes: string[]): string => {
     let best = "";
     for (const prefix of prefixes) {
         const candidate = `${prefix}_`;

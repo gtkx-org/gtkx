@@ -1,16 +1,3 @@
-//! Instruction-count benchmarks over the pure marshalling hot paths.
-//!
-//! These exercise both marshalling directions — container and string decoding
-//! (pointer and per-element index math over Rust-allocated buffers) and
-//! argument encoding (`Value` extraction into FFI storage) — with no GTK or
-//! `GLib` FFI, so they double as the Miri subset: deterministic,
-//! runner-independent, and free of any `dlopen`'d library. Under the
-//! `CodSpeed` runner the wall-clock harness is replaced by instruction
-//! counting, gating the per-element cost as the input grows. The
-//! buffer-view passthrough groups gate the opposite property: their cost
-//! must stay flat as the view grows, because any slope means a copy crept
-//! into the zero-copy path.
-
 #![allow(clippy::significant_drop_tightening)]
 
 use std::ffi::{CString, c_void};

@@ -4,11 +4,6 @@ import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
-/**
- * Helper to get child position from transform.
- * Note: getChildPosition only works after widget realization,
- * but getChildTransform().toTranslate() works immediately.
- */
 function getChildPosition(fixed: Gtk.Fixed | null, child: Gtk.Widget | null): { x: number; y: number } {
     if (!fixed || !child) throw new Error("Refs should be set after render");
     const transform = fixed.getChildTransform(child);

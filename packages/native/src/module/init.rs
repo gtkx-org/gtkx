@@ -1,19 +1,3 @@
-//! `GLib` main loop initialization and thread spawning.
-//!
-//! The [`init`] function spawns a dedicated `GLib` thread that runs a plain
-//! `glib::MainLoop`. The loop reference is exposed to JavaScript as a
-//! [`crate::managed::NativeHandle`] wrapping a `GMainLoop` boxed value, allowing the JS layer
-//! to terminate it via `g_main_loop_quit` through the standard FFI dispatch.
-//!
-//! Before returning the handle, the JS thread blocks on a `glib::idle_add_once`
-//! barrier that fires on the loop's first iteration, so the handle is handed back
-//! only once the loop is confirmed live.
-//!
-//! [`init`] orchestrates a fixed sequence of install steps — wake threadsafe
-//! function, error reporter, panic hook, then the `GLib` thread spawn and ready
-//! barrier — each owned by its subsystem, so the module is excluded from
-//! coverage instrumentation.
-
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use std::panic::{self, AssertUnwindSafe};

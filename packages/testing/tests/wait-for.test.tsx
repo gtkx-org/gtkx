@@ -4,10 +4,6 @@ import { type ReactNode, useState } from "react";
 import { describe, expect, it } from "vitest";
 import { findByText, render, screen, userEvent, waitFor, waitForElementToBeRemoved } from "../src/index.js";
 
-/**
- * Builds a component that renders a "Remove" button which hides the given
- * `removableContent` when clicked, used to exercise element-removal waits.
- */
 const createDynamicComponent = (removableContent: ReactNode) => () => {
     const [showLabel, setShowLabel] = useState(true);
     return (

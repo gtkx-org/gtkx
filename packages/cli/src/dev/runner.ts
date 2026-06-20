@@ -6,12 +6,6 @@ import { buildConfig, type DevServer } from "./vite-dev-server.js";
 
 export type { DevServer } from "./vite-dev-server.js";
 
-/**
- * Collaborators the dev runner uses to talk to the outside world.
- *
- * Production wires this to Vite, the GLib runtime, and the MCP client; tests
- * inject deterministic mocks via {@link createDevRunner}.
- */
 export type DevRunnerDeps = {
     createServer(config: InlineConfig): Promise<DevServer>;
     getApplicationId(): string | null;
@@ -34,21 +28,7 @@ export type DevRunnerDeps = {
     exit(code: number): never;
 };
 
-/**
- * The dev runner exposes a single `run` method; everything else is
- * encapsulated by the closure returned from {@link createDevRunner}.
- */
 type DevRunner = {
-    /**
-     * Starts the Vite dev server, registers file watchers, loads the user's
-     * entry, and connects the MCP client when the entry registers a
-     * `Gio.Application`. The client registers under the `applicationId` from
-     * `gtkx.config.ts` when one is declared, else under the live application's
-     * id. Resolves once the runner is fully wired and HMR is active; never
-     * resolves if the entry triggers a process exit.
-     *
-     * @param entryPath - Absolute path of the user's entry module.
-     */
     run(entryPath: string): Promise<void>;
 };
 
@@ -80,15 +60,6 @@ const handleFileChange = async (server: DevServer, deps: DevRunnerDeps, changedP
     await requestReload(server, deps);
 };
 
-/**
- * Builds a configured dev runner.
- *
- * The factory takes every side-effecting collaborator via `deps`, leaving
- * the runner's logic pure and observable from tests.
- *
- * @param deps - Side-effecting collaborators.
- * @returns The configured {@link DevRunner}.
- */
 export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
     async run(entryPath: string): Promise<void> {
         const root = process.cwd();

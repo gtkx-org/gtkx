@@ -253,7 +253,7 @@ describe("widget - props (2)", () => {
         });
 
         it("handles undefined to value transition", async () => {
-            function App({ label }: { label?: string }) {
+            function App({ label }: { label?: string | undefined }) {
                 return <GtkLabel label={label} />;
             }
 
@@ -271,7 +271,7 @@ describe("widget - props (3)", () => {
         it("preserves the last-set value when a prop transitions to undefined", async () => {
             const ref = createRef<Gtk.Label>();
 
-            function App({ label }: { label?: string }) {
+            function App({ label }: { label?: string | undefined }) {
                 return <GtkLabel ref={ref} label={label} />;
             }
 

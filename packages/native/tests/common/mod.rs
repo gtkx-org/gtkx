@@ -20,17 +20,10 @@ pub fn ensure_gtk_init() {
     });
 }
 
-/// Serializes tests that mutate process-global state.
-///
-/// Tests within a binary run on concurrent threads, so any test touching a
-/// singleton (such as the dispatch `Mailbox`) must hold this guard for its
-/// whole duration to avoid racing with its siblings.
 pub fn serial_guard() -> MutexGuard<'static, ()> {
     SERIAL.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-/// Runs a test body with GTK initialized and the serial guard held for the
-/// duration of the closure. Mirrors `gtk::test_synced` from `gtk4-rs`.
 pub fn run<F, R>(f: F) -> R
 where
     F: FnOnce() -> R,
@@ -41,8 +34,6 @@ where
 }
 
 pub fn make_integer_hash_table(entries: &[(usize, usize)]) -> *mut glib::ffi::GHashTable {
-    // SAFETY: Building a fresh GHashTable with pointer-packed integer keys
-    // and values involves no dereference of caller data.
     unsafe {
         let table = glib::ffi::g_hash_table_new_full(
             Some(glib::ffi::g_direct_hash),
@@ -62,7 +53,6 @@ pub fn make_integer_hash_table(entries: &[(usize, usize)]) -> *mut glib::ffi::GH
 }
 
 pub unsafe extern "C" fn param_spec_ref(ptr: *mut c_void) -> *mut c_void {
-    // SAFETY: The caller passes a live GParamSpec.
     unsafe {
         glib::gobject_ffi::g_param_spec_ref(ptr as *mut glib::gobject_ffi::GParamSpec)
             as *mut c_void
@@ -70,7 +60,6 @@ pub unsafe extern "C" fn param_spec_ref(ptr: *mut c_void) -> *mut c_void {
 }
 
 pub unsafe extern "C" fn param_spec_unref(ptr: *mut c_void) {
-    // SAFETY: The caller passes a live GParamSpec and owns the reference being released.
     unsafe {
         glib::gobject_ffi::g_param_spec_unref(ptr as *mut glib::gobject_ffi::GParamSpec);
     }
@@ -81,7 +70,6 @@ pub fn param_spec_refcount(ptr: *mut c_void) -> u32 {
     if ptr.is_null() {
         return 0;
     }
-    // SAFETY: The caller passes a live GParamSpec; null was handled above.
     unsafe {
         let param = ptr as *mut glib::gobject_ffi::GParamSpec;
         (*param).ref_count
@@ -93,21 +81,17 @@ pub fn get_gobject_refcount(obj_ptr: *mut glib::gobject_ffi::GObject) -> u32 {
     if obj_ptr.is_null() {
         return 0;
     }
-    // SAFETY: The caller passes a live GObject; null was handled above.
     unsafe { (*obj_ptr).ref_count }
 }
 
 #[must_use]
 pub fn allocate_test_boxed(gtype: glib::Type) -> *mut std::ffi::c_void {
-    // SAFETY: `rgba` is a live local GdkRGBA of the requested boxed `gtype`.
     unsafe {
         let rgba = gdk::RGBA::new(1.0, 0.5, 0.25, 1.0);
         glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), rgba.as_ptr() as *const _)
     }
 }
 
-/// Allocates an owned `GdkRGBA` boxed value, returning the [`Boxed`] wrapper
-/// paired with the raw pointer it took ownership of so tests can assert on it.
 #[must_use]
 pub fn owned_rgba_boxed() -> (Boxed, *mut std::ffi::c_void) {
     let gtype = gdk::RGBA::static_type();
@@ -121,7 +105,6 @@ pub fn is_valid_boxed_ptr(ptr: *mut std::ffi::c_void, gtype: glib::Type) -> bool
     }
 
     if gtype == gdk::RGBA::static_type() {
-        // SAFETY: The caller passes a live GdkRGBA allocation.
         unsafe {
             let rgba: &gdk::ffi::GdkRGBA = &*(ptr as *const gdk::ffi::GdkRGBA);
             rgba.red >= 0.0 && rgba.red <= 1.0 && rgba.alpha >= 0.0 && rgba.alpha <= 1.0
@@ -131,8 +114,6 @@ pub fn is_valid_boxed_ptr(ptr: *mut std::ffi::c_void, gtype: glib::Type) -> bool
     }
 }
 
-/// Owning/borrowed wrapper around a boxed allocation used by tests that
-/// exercise transfer-none and plain-struct drop semantics.
 pub struct TestBoxed {
     pub ptr: *mut c_void,
     pub ty: Option<glib::Type>,
@@ -142,7 +123,6 @@ pub struct TestBoxed {
 impl Drop for TestBoxed {
     fn drop(&mut self) {
         if self.is_owned && !self.ptr.is_null() {
-            // SAFETY: `is_owned` marks the allocation this wrapper owns; the destructor matches how it was produced.
             unsafe {
                 match self.ty {
                     Some(gtype) => {

@@ -11,7 +11,6 @@ use common::{param_spec_ref, param_spec_refcount, param_spec_unref};
 fn create_param_spec() -> *mut c_void {
     common::ensure_gtk_init();
 
-    // SAFETY: Creating a GParamSpec from static NUL-terminated literals has no pointer preconditions.
     unsafe {
         let param = glib::gobject_ffi::g_param_spec_boolean(
             c"test-param".as_ptr(),
@@ -41,7 +40,6 @@ fn from_glib_full_takes_ownership() {
 fn from_glib_full_drop_calls_unref() {
     let ptr = create_param_spec();
 
-    // SAFETY: Takes a reference on the live GParamSpec this test created.
     unsafe { glib::gobject_ffi::g_param_spec_ref(ptr as *mut _) };
     let ref_after_extra = param_spec_refcount(ptr);
 
@@ -54,7 +52,6 @@ fn from_glib_full_drop_calls_unref() {
     let ref_after_drop = param_spec_refcount(ptr);
     assert_eq!(ref_after_drop, ref_after_extra - 1);
 
-    // SAFETY: Releases a reference this test owns on the live GParamSpec.
     unsafe { glib::gobject_ffi::g_param_spec_unref(ptr as *mut _) };
 }
 
@@ -64,7 +61,6 @@ fn from_glib_none_refs_pointer() {
     let initial_ref = param_spec_refcount(ptr);
 
     let fundamental =
-        // SAFETY: The pointer addresses a live GParamSpec created by this test.
         unsafe { Fundamental::from_glib_none(ptr, Some(param_spec_ref), Some(param_spec_unref)) };
 
     assert!(fundamental.is_owned());
@@ -75,13 +71,11 @@ fn from_glib_none_refs_pointer() {
 
     assert_eq!(param_spec_refcount(ptr), initial_ref);
 
-    // SAFETY: Releases a reference this test owns on the live GParamSpec.
     unsafe { glib::gobject_ffi::g_param_spec_unref(ptr as *mut _) };
 }
 
 #[test]
 fn from_glib_none_null_ptr_safe() {
-    // SAFETY: Null is a valid input; the constructor short-circuits before any read.
     let fundamental: Fundamental = unsafe {
         Fundamental::from_glib_none(
             std::ptr::null_mut(),
@@ -115,7 +109,6 @@ fn clone_increases_refcount() {
 
 #[test]
 fn clone_null_ptr_safe() {
-    // SAFETY: Null is a valid input; the constructor short-circuits before any read.
     let fundamental: Fundamental = unsafe {
         Fundamental::from_glib_none(
             std::ptr::null_mut(),
@@ -135,7 +128,6 @@ fn clone_null_ptr_safe() {
 fn drop_without_unref_fn_does_not_crash() {
     let ptr = create_param_spec();
 
-    // SAFETY: Takes a reference on the live GParamSpec this test created.
     unsafe { glib::gobject_ffi::g_param_spec_ref(ptr as *mut _) };
     let ref_after_extra = param_spec_refcount(ptr);
 
@@ -146,7 +138,6 @@ fn drop_without_unref_fn_does_not_crash() {
 
     assert_eq!(param_spec_refcount(ptr), ref_after_extra);
 
-    // SAFETY: Releases the references this test owns on the live GParamSpec.
     unsafe {
         glib::gobject_ffi::g_param_spec_unref(ptr as *mut _);
         glib::gobject_ffi::g_param_spec_unref(ptr as *mut _);
@@ -158,7 +149,6 @@ fn from_glib_none_without_ref_fn_does_not_ref() {
     let ptr = create_param_spec();
     let initial_ref = param_spec_refcount(ptr);
 
-    // SAFETY: The pointer addresses a live GParamSpec created by this test.
     let fundamental = unsafe { Fundamental::from_glib_none(ptr, None, Some(param_spec_unref)) };
 
     assert!(!fundamental.is_owned());
@@ -167,7 +157,6 @@ fn from_glib_none_without_ref_fn_does_not_ref() {
     drop(fundamental);
     assert_eq!(param_spec_refcount(ptr), initial_ref);
 
-    // SAFETY: Releases a reference this test owns on the live GParamSpec.
     unsafe { glib::gobject_ffi::g_param_spec_unref(ptr as *mut _) };
 }
 

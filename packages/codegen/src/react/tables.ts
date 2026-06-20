@@ -1,19 +1,3 @@
-/**
- * The reconciler's built-in data tables and their merge helpers.
- *
- * This module is pure data plus pure functions over that data: GLib type
- * names, method names, prop names, and finite condition vocabularies in the
- * row shapes declared by `@gtkx/config`. The React pipeline merges the
- * built-ins with the rows a project declares in `gtkx.config.ts` and emits
- * the result into the generated `@gtkx/jsx/metadata` module, which reaches
- * `@gtkx/react` through `virtual:gtkx-config` — the same channel as
- * `SIGNALS`/`CONSTRUCT_ONLY_PROPS`/`DEFAULT_PROPS`. The slot and array-prop
- * maps additionally shape the generated Props surfaces and compounds.
- *
- * Rows keyed by optional-namespace GLib type names (`"AdwToggleGroup"`,
- * `"AdwAlertDialog"`, …) are inert in projects that never load those
- * namespaces: no instance ever carries the GType, so the row never matches.
- */
 import type {
     AddMethodRule,
     ArrayPropRow,
@@ -26,11 +10,7 @@ import type {
 } from "@gtkx/config";
 import { sortedAlpha } from "@gtkx/utils";
 
-/**
- * Built-in attach relationships, interpreted by the reconciler's element map.
- * Project rows from `gtkx.config.ts` (`elementMap`) merge after these.
- */
-export const BUILT_IN_ELEMENT_MAP: readonly ElementMapRule[] = [
+export const BUILT_IN_ELEMENT_MAP: ElementMapRule[] = [
     {
         child: "GtkEventController",
         parentType: "GtkWidget",
@@ -123,22 +103,11 @@ export const BUILT_IN_ELEMENT_MAP: readonly ElementMapRule[] = [
     },
 ];
 
-/** A `@gtkx/react` higher-order component that wraps a behavior-carrying compound's host component. */
 export type CompoundHoc = "withTopLevel" | "withApplication" | "withApplicationWindow";
 
-/** One HOC rule: the HOC wrapping a class whose GLib-type ancestry contains any of `ancestors`. */
-export type CompoundHocRule = { readonly ancestors: readonly string[]; readonly hoc: CompoundHoc };
+export type CompoundHocRule = { ancestors: string[]; hoc: CompoundHoc };
 
-/**
- * Built-in compound HOC rules in precedence order: an application takes
- * precedence over an application window, which takes precedence over a plain
- * window or Adwaita dialog. The React pipeline classifies each class by its
- * GLib-type ancestry against this table and wraps the matching compound in the
- * named `@gtkx/react` HOC. Keeping the GLib type names here (alongside the other
- * built-in tables) rather than in the generator logic keeps the compound emitter
- * namespace-agnostic.
- */
-export const BUILT_IN_COMPOUND_HOCS: readonly CompoundHocRule[] = [
+export const BUILT_IN_COMPOUND_HOCS: CompoundHocRule[] = [
     { ancestors: ["GtkApplication"], hoc: "withApplication" },
     { ancestors: ["GtkApplicationWindow"], hoc: "withApplicationWindow" },
     { ancestors: ["GtkWindow", "AdwDialog"], hoc: "withTopLevel" },
@@ -146,13 +115,6 @@ export const BUILT_IN_COMPOUND_HOCS: readonly CompoundHocRule[] = [
 
 const POSITION_TYPE_BOTTOM = 3;
 
-/**
- * Built-in array-valued props keyed by GLib type name, then by prop name.
- * Each row carries the item-type name its generated `Props` line declares
- * (an exported member of `@gtkx/react`) and the verbs the reconciler applies
- * per element. Project rows from `gtkx.config.ts` (`arrayProps`) merge over
- * these.
- */
 export const BUILT_IN_ARRAY_PROPS: PerElementPropRows<ArrayPropRow> = {
     GtkApplication: {
         actionAccels: {
@@ -271,12 +233,6 @@ export const BUILT_IN_ARRAY_PROPS: PerElementPropRows<ArrayPropRow> = {
     },
 };
 
-/**
- * Built-in object-prop rows keyed by JSX element name, then prop name. Each
- * row carries the item-type name its generated `Props` line declares (an
- * exported member of `@gtkx/react`) and the calls applying or clearing the
- * value. Project rows from `gtkx.config.ts` (`objectProps`) merge over these.
- */
 export const BUILT_IN_OBJECT_PROPS: PerElementPropRows<ObjectPropRow> = {
     GtkDragSource: {
         icon: {
@@ -305,13 +261,6 @@ export const BUILT_IN_OBJECT_PROPS: PerElementPropRows<ObjectPropRow> = {
     },
 };
 
-/**
- * Built-in virtual-prop rows keyed by JSX element name, then prop name. Each
- * row types a prop with a qualified GIR type and forwards its value to a
- * setter — `null` when cleared — optionally followed by a zero-argument
- * method. Project rows from `gtkx.config.ts` (`virtualProps`) merge over
- * these.
- */
 export const BUILT_IN_VIRTUAL_PROPS: PerElementPropRows<VirtualPropRow> = {
     GtkDrawingArea: {
         drawFunc: { type: "Gtk.DrawingAreaDrawFunc", setter: "setDrawFunc", after: "queueDraw" },
@@ -332,12 +281,7 @@ const STACK_PAGE_RULE: PropRule = {
     ],
 };
 
-/**
- * Built-in imperative and signal prop rules keyed by GLib type name, merged
- * for every type in an instance's GType ancestry and interpreted by the
- * renderer's prop-descriptor layer.
- */
-export const BUILT_IN_PROP_RULES: Readonly<Record<string, readonly PropRule[]>> = {
+export const BUILT_IN_PROP_RULES: Record<string, PropRule[]> = {
     GtkEditable: [
         {
             kind: "setters",
@@ -369,29 +313,11 @@ export const BUILT_IN_PROP_RULES: Readonly<Record<string, readonly PropRule[]>> 
     ],
 };
 
-/**
- * GLib type names of top-level surfaces: widgets that never attach as a
- * parent's widget child and present on their own (windows and dialogs).
- */
-export const TOP_LEVEL_TYPES: readonly string[] = ["GtkWindow", "AdwDialog"];
+export const TOP_LEVEL_TYPES: string[] = ["GtkWindow", "AdwDialog"];
 
-/**
- * GLib type names of non-widget GObjects whose generic signal handlers default
- * to blockable — suppressed while a commit holds the frame clock, like a
- * widget's. A plain non-widget GObject's handlers default to non-blockable; a
- * type in this list opts back into the widget default. `Gtk.TextBuffer` belongs
- * here so its `changed`/`insert-text` handlers do not fire during the reconciler's
- * own buffer rebuild.
- */
-export const DEFAULT_BLOCKABLE_TYPES: readonly string[] = ["GtkTextBuffer"];
+export const DEFAULT_BLOCKABLE_TYPES: string[] = ["GtkTextBuffer"];
 
-/**
- * Page-add method selection for stack-like parents, keyed by GLib type name
- * in priority order: the first rule whose `requires` are all satisfied wins.
- * The returned page handle is held by the meta-object interpreter, which
- * applies {@link PAGE_META_SETTERS} to it on every reconcile.
- */
-export const META_OBJECT_ADD_METHODS: Readonly<Record<string, readonly AddMethodRule[]>> = {
+export const META_OBJECT_ADD_METHODS: Record<string, AddMethodRule[]> = {
     AdwViewStack: [
         { method: "addTitledWithIcon", args: ["widget", "id", "title", "iconName"], requires: ["title", "iconName"] },
         { method: "addTitled", args: ["widget", "id", "title"], requires: ["title"] },
@@ -405,12 +331,7 @@ export const META_OBJECT_ADD_METHODS: Readonly<Record<string, readonly AddMethod
     ],
 };
 
-/**
- * Page-metadata setters applied to stack page handles. Setters a page handle
- * lacks are skipped, so namespace-specific rows (`setBadgeNumber` exists only
- * on `Adw.ViewStackPage`) are inert elsewhere.
- */
-export const PAGE_META_SETTERS: readonly PageMetaSetter[] = [
+export const PAGE_META_SETTERS: PageMetaSetter[] = [
     { setter: "setTitle", prop: "title", whenPresent: true },
     { setter: "setIconName", prop: "iconName", whenPresent: true },
     { setter: "setNeedsAttention", prop: "needsAttention", fallback: false },
@@ -419,16 +340,7 @@ export const PAGE_META_SETTERS: readonly PageMetaSetter[] = [
     { setter: "setBadgeNumber", prop: "badgeNumber", whenPresent: true },
 ];
 
-/**
- * Built-in container-slot method names — the camelCase GTK methods that
- * append a child onto the widget — keyed by JSX element name. Each method
- * name doubles as a `ReactNode` prop on the compound and as the
- * `<ContainerProp id="…">` identifier the reconciler dispatches to. Entries
- * apply to the named type and its whole GType subtree — `GtkWidget`'s
- * `addController` is a prop on every widget. Project entries from
- * `gtkx.config.ts` (`containerProps`) merge into this map.
- */
-export const BUILT_IN_CONTAINER_PROPS: Readonly<Record<string, readonly string[]>> = Object.freeze({
+export const BUILT_IN_CONTAINER_PROPS: Record<string, string[]> = Object.freeze({
     GtkWidget: ["addController", "insertActionGroup"],
     GtkShortcutController: ["addShortcut"],
     GtkApplicationWindow: ["addAction"],
@@ -441,29 +353,17 @@ export const BUILT_IN_CONTAINER_PROPS: Readonly<Record<string, readonly string[]
     GtkHeaderBar: ["packStart", "packEnd"],
 });
 
-/**
- * Hand-written `@gtkx/react` prop shapes mixed into generated `Props`
- * interfaces, keyed by JSX element name. Each value is a type name exported
- * by `@gtkx/react`; the generated interface adds it to its `extends` clause
- * and the module imports it. This is the inverse of a module augmentation:
- * the base shapes are declared once in `@gtkx/react` and the generated
- * surface extends them, never the other way around.
- */
-export const BUILT_IN_PROPS_MIXINS: Readonly<Record<string, readonly string[]>> = Object.freeze({
+export const BUILT_IN_PROPS_MIXINS: Record<string, string[]> = Object.freeze({
     GMenu: ["MenuItemsProps"],
     GSimpleActionGroup: ["ActionGroupPrefixProps"],
 });
 
-/**
- * `@gtkx/react` prop shapes the synthetic `WidgetProps` root extends, mixed
- * into every generated widget through the `Props` inheritance chain.
- */
-export const WIDGET_BASE_PROPS_MIXINS: readonly string[] = Object.freeze(["AccessibleProps"]);
+export const WIDGET_BASE_PROPS_MIXINS: string[] = ["AccessibleProps"];
 
 const mergeSlotMap = (
-    builtIn: Readonly<Record<string, readonly string[]>>,
-    userSlots: Readonly<Record<string, readonly string[]>> | undefined,
-): Readonly<Record<string, readonly string[]>> => {
+    builtIn: Record<string, string[]>,
+    userSlots: Record<string, string[]> | undefined,
+): Record<string, string[]> => {
     const result: Record<string, string[]> = {};
     for (const [key, values] of Object.entries(builtIn)) {
         result[key] = [...values];
@@ -478,23 +378,15 @@ const mergeSlotMap = (
     return result;
 };
 
-/**
- * Merges the built-in container slots with a project's `containerProps` map:
- * an overridden element becomes the union of both sources with duplicates
- * removed and a stable alphabetical sort; untouched elements keep their
- * built-in declaration order.
- *
- * @param userContainerProps - The project's `containerProps` map, or `undefined`
- */
 export const mergeContainerProps = (
-    userContainerProps: Readonly<Record<string, readonly string[]>> | undefined,
-): Readonly<Record<string, readonly string[]>> => mergeSlotMap(BUILT_IN_CONTAINER_PROPS, userContainerProps);
+    userContainerProps: Record<string, string[]> | undefined,
+): Record<string, string[]> => mergeSlotMap(BUILT_IN_CONTAINER_PROPS, userContainerProps);
 
 const mergePropRowMap = <Row>(
     builtIn: PerElementPropRows<Row>,
     userRows: PerElementPropRows<Row> | undefined,
 ): PerElementPropRows<Row> => {
-    const result: Record<string, Readonly<Record<string, Row>>> = {};
+    const result: Record<string, Record<string, Row>> = {};
     for (const [key, props] of Object.entries(builtIn)) {
         result[key] = { ...props };
     }
@@ -506,77 +398,35 @@ const mergePropRowMap = <Row>(
     return result;
 };
 
-/**
- * Merges the built-in array-prop rows with a project's `arrayProps` map: per
- * element, the project's prop-to-row object is spread over the built-in one,
- * so project entries add new props or replace an existing prop's row.
- *
- * @param userArrayProps - The project's `arrayProps` map, or `undefined`
- */
 export const mergeArrayProps = (
     userArrayProps: PerElementPropRows<ArrayPropRow> | undefined,
 ): PerElementPropRows<ArrayPropRow> => mergePropRowMap(BUILT_IN_ARRAY_PROPS, userArrayProps);
 
-/**
- * Merges the built-in object-prop rows with a project's `objectProps` map,
- * with the same per-element spread semantics as {@link mergeArrayProps}.
- *
- * @param userObjectProps - The project's `objectProps` map, or `undefined`
- */
 export const mergeObjectProps = (
     userObjectProps: PerElementPropRows<ObjectPropRow> | undefined,
 ): PerElementPropRows<ObjectPropRow> => mergePropRowMap(BUILT_IN_OBJECT_PROPS, userObjectProps);
 
-/**
- * Merges the built-in virtual-prop rows with a project's `virtualProps` map,
- * with the same per-element spread semantics as {@link mergeArrayProps}.
- *
- * @param userVirtualProps - The project's `virtualProps` map, or `undefined`
- */
 export const mergeVirtualProps = (
     userVirtualProps: PerElementPropRows<VirtualPropRow> | undefined,
 ): PerElementPropRows<VirtualPropRow> => mergePropRowMap(BUILT_IN_VIRTUAL_PROPS, userVirtualProps);
 
-/**
- * Merges the built-in element-map rows with a project's `elementMap` rows,
- * built-ins first so specific built-in relationships keep precedence.
- *
- * @param userElementMap - The project's `elementMap` rows, or `undefined`
- */
-export const mergeElementMap = (userElementMap: readonly ElementMapRule[] | undefined): readonly ElementMapRule[] =>
+export const mergeElementMap = (userElementMap: ElementMapRule[] | undefined): ElementMapRule[] =>
     userElementMap === undefined || userElementMap.length === 0
         ? BUILT_IN_ELEMENT_MAP
         : [...BUILT_IN_ELEMENT_MAP, ...userElementMap];
 
-/** A typed namespace-module wrapper around a hand-written `@gtkx/react` runtime component. */
 export type RuntimeComponentWrapper =
-    | { readonly kind: "reexport" }
-    | { readonly kind: "typedProps" }
+    | { kind: "reexport" }
+    | { kind: "typedProps" }
     | {
-          readonly kind: "typed";
-          /** The wrapper's generic parameter list (e.g. `"<T = unknown, S = unknown>"`). */
-          readonly genericParams: string;
-          /**
-           * Keys removed from the generated `Props` in the wrapper's surface. Defaults to
-           * `keyof <controllerProps>` so the omitted set tracks the controller type; set
-           * explicitly only when the removed keys differ from the controller's own keys.
-           */
-          readonly omitKeys?: string;
-          /** The `@gtkx/react` controller prop shape intersected in, with generics applied. */
-          readonly controllerProps: string;
-          /** The `@gtkx/react` type names the wrapper's surface imports. */
-          readonly sharedTypes: readonly string[];
+          kind: "typed";
+          genericParams: string;
+          omitKeys?: string;
+          controllerProps: string;
+          sharedTypes: string[];
       };
 
-/**
- * The hand-written `@gtkx/react` components re-exported with a fully typed
- * surface by their namespace module, keyed by JSX element name. A `typed`
- * entry composes the generated `Props` (own keys removed) with the runtime
- * component's controller prop shape; a `reexport` entry forwards the
- * component verbatim because its public typing is already complete in
- * `@gtkx/react`.
- */
-export const RUNTIME_COMPONENT_WRAPPERS: Readonly<Record<string, RuntimeComponentWrapper>> = {
+export const RUNTIME_COMPONENT_WRAPPERS: Record<string, RuntimeComponentWrapper> = {
     GtkListView: {
         kind: "typed",
         genericParams: "<T = unknown, S = unknown>",
@@ -618,20 +468,9 @@ export const RUNTIME_COMPONENT_WRAPPERS: Readonly<Record<string, RuntimeComponen
     GtkConstraintLayout: { kind: "reexport" },
 };
 
-/**
- * Runtime-owned classes with no typed wrapper entry: `GMenuItem` is not an
- * element (menu content is the `<GMenu>` `items` data prop) and the Adwaita
- * animation components live in `@gtkx/animate`.
- */
-const RUNTIME_OWNED_RESIDUE: readonly string[] = ["GMenuItem", "AdwSpringAnimation", "AdwTimedAnimation"];
+const RUNTIME_OWNED_RESIDUE: string[] = ["GMenuItem", "AdwSpringAnimation", "AdwTimedAnimation"];
 
-/**
- * Every class a hand-written component owns rather than a generated one: the
- * keys of {@link RUNTIME_COMPONENT_WRAPPERS} plus the wrapper-less
- * {@link RUNTIME_OWNED_RESIDUE}. A namespace module emits only the `Props`
- * interface and JSX-element augmentation for these.
- */
-export const RUNTIME_OWNED_WIDGETS: ReadonlySet<string> = new Set([
+export const RUNTIME_OWNED_WIDGETS: Set<string> = new Set([
     ...Object.keys(RUNTIME_COMPONENT_WRAPPERS),
     ...RUNTIME_OWNED_RESIDUE,
 ]);

@@ -4,35 +4,10 @@ import type { GObjectTarget } from "../utils/gobject-target.js";
 import { useTargetRegistration } from "../utils/use-target-registration.js";
 
 interface TickRegistration {
-    readonly widget: Gtk.Widget;
+    widget: Gtk.Widget;
     id: number | null;
 }
 
-/**
- * Registers a frame-clock tick callback on a widget via `addTickCallback` and
- * removes it automatically on unmount or when the target widget changes.
- *
- * The callback fires once per frame while the widget is mapped, receiving the
- * widget and its `Gdk.FrameClock`; returning `true` keeps the tick running and
- * returning `false` stops it, matching GTK's `GtkTickCallback` contract. The
- * latest callback is read on each tick, so changing it never re-registers the
- * tick. The target may be a React ref to a JSX widget; the registration
- * follows the ref, reattaching when a later commit replaces the widget. When
- * the target is or resolves to `null`/`undefined`, the hook is inactive.
- *
- * @param target - The widget to drive, a ref holding it, or null/undefined to disable
- * @param callback - The per-frame callback; return `true` to continue ticking
- *
- * @example
- * ```tsx
- * const areaRef = useRef<Gtk.DrawingArea | null>(null);
- * useTickCallback(areaRef, (widget, frameClock) => {
- *     setAngle(Number(frameClock.getFrameTime()) / 1_000_000);
- *     widget.queueDraw();
- *     return true;
- * });
- * ```
- */
 export function useTickCallback(target: GObjectTarget<Gtk.Widget>, callback: Gtk.TickCallback): void {
     const callbackRef = useRef(callback);
     callbackRef.current = callback;

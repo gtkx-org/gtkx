@@ -12,31 +12,16 @@ import type { TypeId } from "../gir/type-id.js";
 
 const POINTER_LAYOUT: FieldLayout = { size: 8, align: 8 };
 
-/**
- * Computed slot for a single boxed field, ready for accessor emission.
- */
 export type BoxedFieldSlot = {
-    readonly field: GirField;
-    readonly slot: FieldSlot;
+    field: GirField;
+    slot: FieldSlot;
 };
 
-/**
- * Computes per-field storage slots for a boxed record.
- *
- * Walks every field (private fields included so their storage occupies
- * space) and resolves each to a primitive-size {@link FieldLayoutInput}.
- * Private fields are returned with their slots so callers can filter on
- * `field.private` while still seeing the layout-correct offsets of public
- * fields after them.
- *
- * @param context - The module context
- * @param fields - The boxed's field list in declaration order
- */
 export const computeBoxedFieldSlots = (
     context: ModuleContext,
-    fields: readonly GirField[],
+    fields: GirField[],
     isUnion = false,
-): { readonly slots: readonly BoxedFieldSlot[]; readonly size: number } => {
+): { slots: BoxedFieldSlot[]; size: number } => {
     const inputs: FieldLayoutInput[] = [];
     for (const field of fields) {
         inputs.push(fieldLayoutInput(context, field, new Set()));
@@ -52,7 +37,7 @@ export const computeBoxedFieldSlots = (
     return { slots, size: result.size };
 };
 
-const fieldLayoutInput = (context: ModuleContext, field: GirField, visited: ReadonlySet<string>): FieldLayoutInput => {
+const fieldLayoutInput = (context: ModuleContext, field: GirField, visited: Set<string>): FieldLayoutInput => {
     if (field.type === undefined) {
         return { layout: POINTER_LAYOUT, bits: undefined };
     }
@@ -63,7 +48,7 @@ const layoutOfType = (
     context: ModuleContext,
     ref: TypeId,
     occurrenceCType: string | undefined,
-    visited: ReadonlySet<string>,
+    visited: Set<string>,
 ): FieldLayout => {
     const type = context.repository.typeOf(ref);
     if (type === undefined) return POINTER_LAYOUT;
@@ -95,7 +80,7 @@ const layoutOfType = (
 const arrayLayout = (
     context: ModuleContext,
     ref: Extract<GirType, { kind: "carray" }>,
-    visited: ReadonlySet<string>,
+    visited: Set<string>,
 ): FieldLayout => {
     if (ref.fixedSize === undefined) return POINTER_LAYOUT;
     const elementLayout = layoutOfType(context, ref.element, ref.elementCType, visited);
@@ -105,7 +90,7 @@ const arrayLayout = (
 const layoutOfBoxedRecord = (
     context: ModuleContext,
     resolved: Extract<EntityType, { kind: "boxed" }>,
-    visited: ReadonlySet<string>,
+    visited: Set<string>,
 ): FieldLayout => {
     if (resolved.value.cType?.endsWith("*") === true) return POINTER_LAYOUT;
     const key = `${resolved.namespace.name}.${resolved.value.name}`;
@@ -135,7 +120,7 @@ const recordLayoutCache = new Map<string, FieldLayout>();
 const resolveAliasLayout = (
     context: ModuleContext,
     resolved: Extract<EntityType, { kind: "alias" }>,
-    visited: ReadonlySet<string>,
+    visited: Set<string>,
 ): FieldLayout => {
     const ref = resolved.target;
     if (ref === undefined) return POINTER_LAYOUT;

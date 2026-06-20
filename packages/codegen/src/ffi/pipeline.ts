@@ -12,22 +12,7 @@ import { emitEnum } from "../writers/enum.js";
 import { emitNamespaceBootstrap, emitNamespaceFunction } from "../writers/function.js";
 import { emitInterface } from "../writers/interface.js";
 
-/**
- * Generates the TypeScript source for one FFI namespace module.
- *
- * Walks the namespace's declared enums, boxeds, classes, interfaces,
- * callbacks, functions, constants, and aliases, dispatching to the
- * per-construct writers in `writers/`: declarations first, bindings second,
- * registrations trailing.
- *
- * @param namespace - The namespace to emit
- * @param repository - The full repository (for cross-namespace lookups)
- * @returns The TypeScript source string
- */
-export const generateNamespaceModule = (
-    namespace: GirNamespace,
-    repository: GirRepository,
-): { readonly source: string } => {
+export const generateNamespaceModule = (namespace: GirNamespace, repository: GirRepository): { source: string } => {
     const context = new ModuleContext(namespace, repository);
     context.addGobjectBootstrapImports();
 
@@ -60,24 +45,7 @@ export const generateNamespaceModule = (
     return { source: context.module.toSource() };
 };
 
-/**
- * Returns the namespace's classes ordered so each class is preceded by every
- * same-namespace ancestor it extends.
- *
- * Generated JS classes use `extends`, which is a runtime reference: a child
- * class declaration that names its parent before the parent's class body runs
- * hits a temporal dead-zone error. GIR file order is source order, which does
- * not match the inheritance order for namespaces where a leaf type (e.g.
- * `GObject.Binding`) is declared earlier in the file than its base (e.g.
- * `GObject.Object`). The codegen sorts by inheritance instead.
- *
- * Cross-namespace parents are imported by the writer and do not participate in
- * the sort.
- *
- * @param classes - The classes to order
- * @param namespaceName - The namespace these classes live in
- */
-const topologicalClassOrder = (classes: readonly GirClass[], namespaceName: string): readonly GirClass[] => {
+const topologicalClassOrder = (classes: GirClass[], namespaceName: string): GirClass[] => {
     const byLocalName = new Map<string, GirClass>();
     for (const klass of classes) byLocalName.set(klass.name, klass);
     const result: GirClass[] = [];
@@ -100,7 +68,7 @@ const topologicalClassOrder = (classes: readonly GirClass[], namespaceName: stri
 const sameNamespaceParent = (
     klass: GirClass,
     namespaceName: string,
-    byLocalName: ReadonlyMap<string, GirClass>,
+    byLocalName: Map<string, GirClass>,
 ): GirClass | undefined => {
     if (klass.parent === undefined) return undefined;
     const [parentNamespace, typeName] = splitOptionalNamespace(klass.parent);

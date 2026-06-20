@@ -1,10 +1,3 @@
-//! Boxed and struct type handling for FFI.
-//!
-//! `GLib` boxed types are heap-allocated structures with reference counting
-//! managed by `GLib`. Struct types are similar but may be stack-allocated
-//! or have fixed sizes. This module provides [`BoxedType`] and [`StructType`]
-//! descriptors that handle encoding/decoding these types for FFI calls.
-
 use anyhow::bail;
 use glib::{
     self,
@@ -17,8 +10,6 @@ use crate::error_reporter::NativeErrorReporter;
 use crate::managed::{Boxed, NativeValue};
 use crate::state::GlibThreadState;
 
-/// Wraps a [`Boxed`] in the `Value::Object` shape the boxed and struct codecs
-/// hand back to JavaScript.
 fn boxed_value(boxed: Boxed) -> value::Value {
     value::Value::Object(NativeValue::Boxed(boxed).into())
 }
@@ -30,9 +21,6 @@ pub struct BoxedType {
     pub library: Option<String>,
     pub get_type_fn: Option<String>,
     pub free_fn: Option<String>,
-    /// A caller-allocated out parameter: the C caller passes a pointer to its
-    /// own buffer the vfunc fills in place. The arg is read as a borrowed view
-    /// (no copy) so JS field writes land on the caller's buffer.
     pub caller_allocated: bool,
 }
 
@@ -80,9 +68,6 @@ impl BoxedType {
     fn lookup_free_fn(lib_name: &str, free_fn: &str) -> anyhow::Result<BoxedFreeFn> {
         GlibThreadState::with(|state| -> anyhow::Result<_> {
             let library = state.library(lib_name)?;
-            // SAFETY: The descriptor names a C destructor whose signature
-            // matches `BoxedFreeFn`; the library stays loaded for the
-            // process lifetime.
             let sym = unsafe {
                 library
                     .get::<BoxedFreeFn>(free_fn.as_bytes())
@@ -92,10 +77,6 @@ impl BoxedType {
         })
     }
 
-    /// Constructs a [`Boxed`] for a descriptor that declares the custom
-    /// destructor named `free_fn_name`. Fails when the symbol cannot be
-    /// resolved instead of falling back to `g_free`, which would call the
-    /// wrong destructor.
     fn boxed_with_free_fn(&self, ptr: *mut c_void, free_fn_name: &str) -> anyhow::Result<Boxed> {
         let lib_name = self.library.as_deref().unwrap_or("(no library)");
 
@@ -119,9 +100,6 @@ impl BoxedType {
 
         let symbol = GlibThreadState::with(|state| -> anyhow::Result<_> {
             let library = state.library(lib_name)?;
-            // SAFETY: The descriptor names a GIR `get_type` function, whose
-            // C signature is `GType (*)(void)`; the library stays loaded
-            // for the process lifetime.
             let sym = unsafe {
                 library
                     .get::<unsafe extern "C" fn() -> glib::ffi::GType>(get_type_fn.as_bytes())
@@ -130,18 +108,12 @@ impl BoxedType {
             Ok(*sym)
         })?;
 
-        // SAFETY: `get_type` functions take no arguments and only register
-        // and return a GType.
         let gtype_raw = unsafe { symbol() };
-        // SAFETY: `gtype_raw` came from the type's own `get_type` function,
-        // so it is a valid GType value.
         let gtype = unsafe { glib::Type::from_glib(gtype_raw) };
         Ok(Some(gtype).filter(|t| t.is_valid()))
     }
 }
 
-/// Signature of a custom destructor declared via the `freeFn` descriptor
-/// field — e.g. `cairo_path_destroy` or `cairo_rectangle_list_destroy`.
 pub type BoxedFreeFn = unsafe extern "C" fn(*mut c_void);
 
 impl FfiEncoder for BoxedType {
@@ -152,8 +124,6 @@ impl FfiEncoder for BoxedType {
             && !ptr.is_null()
             && let Some(gtype) = self.gtype()
         {
-            // SAFETY: `ptr` came from a NativeHandle wrapping a live boxed
-            // value of `gtype`, the type `ref_for_transfer`'s copy requires.
             let copied = unsafe { self.ref_for_transfer(ptr)? };
             return Ok(full_transfer_storage(
                 copied,
@@ -176,8 +146,6 @@ impl FfiEncoder for BoxedType {
             && !ptr.is_null()
             && let Some(gtype) = self.gtype()
         {
-            // SAFETY: The caller guarantees the non-null `ptr` addresses a
-            // live boxed value of `gtype`, the type `boxed_copy` requires.
             let copied = unsafe { Boxed::boxed_copy(gtype, ptr) };
             return Ok(copied);
         }
@@ -218,20 +186,14 @@ impl FfiDecoder for BoxedType {
                 }
                 Ok(boxed_value(Boxed::from_glib_none(self.gtype(), ptr)?))
             }),
-            // SAFETY: forwarded from this method's safety contract.
             ReadSource::Slot(ptr, context) => unsafe { self.read_pointer_slot(ptr, context) },
         }
     }
 }
 
 impl RawPtrCodec for BoxedType {
-    /// Writes a trampoline return honoring the declared transfer: a full
-    /// transfer hands the caller its own boxed copy; a transfer-none return
-    /// writes the wrapper-owned pointer unchanged.
     unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
-            // SAFETY: `ptr` came from a NativeHandle wrapping a live boxed
-            // value of `gtype`, the type `boxed_copy` requires.
             self.gtype()
                 .map_or(ptr, |gtype| unsafe { Boxed::boxed_copy(gtype, ptr) })
         });
@@ -245,23 +207,13 @@ impl RawPtrCodec for BoxedType {
         let Some(gtype) = self.gtype() else {
             return write_object_ptr(ptr, value, "Boxed field write");
         };
-        // SAFETY: The caller guarantees `ptr` is a writable pointer-sized
-        // field slot owning a previous boxed value of `gtype` (or null).
         unsafe {
             swap_owned_slot(
                 ptr,
                 value,
                 "Boxed field write",
-                |src_ptr| {
-                    // SAFETY: `src_ptr` came from a NativeHandle wrapping a
-                    // live boxed value of `gtype`, the type `boxed_copy`
-                    // requires.
-                    Boxed::boxed_copy(gtype, src_ptr)
-                },
+                |src_ptr| Boxed::boxed_copy(gtype, src_ptr),
                 |old_ptr| {
-                    // SAFETY: The slot owned the previous boxed value of
-                    // `gtype`; this release runs exactly once, after the slot
-                    // is replaced.
                     glib::gobject_ffi::g_boxed_free(gtype.into_glib(), old_ptr);
                 },
             )
@@ -273,9 +225,6 @@ impl RawPtrCodec for BoxedType {
 pub struct StructType {
     pub ownership: Ownership,
     pub size: Option<usize>,
-    /// A caller-allocated out parameter: the C caller passes a pointer to its
-    /// own struct the vfunc fills in place. The arg is read as a borrowed view
-    /// (no copy) so JS field writes land on the caller's struct.
     pub caller_allocated: bool,
 }
 
@@ -333,7 +282,6 @@ impl FfiDecoder for StructType {
                 );
                 Ok(boxed_value(boxed))
             }),
-            // SAFETY: forwarded from this method's safety contract.
             ReadSource::Slot(ptr, context) => unsafe { self.read_pointer_slot(ptr, context) },
         }
     }
@@ -352,20 +300,13 @@ impl RawPtrCodec for StructType {
         if let Some(size) = self.size {
             let src_ptr = value.object_ptr("Struct field write")?;
             if src_ptr.is_null() {
-                // SAFETY: The caller guarantees `ptr` is a writable
-                // pointer-sized field slot; the write is unaligned-tolerant.
                 unsafe { (ptr as *mut *mut c_void).write_unaligned(std::ptr::null_mut()) };
                 return Ok(());
             }
-            // SAFETY: The caller guarantees `ptr` is a readable
-            // pointer-sized field slot; the read is unaligned-tolerant.
             let dst_ptr = unsafe { (ptr as *const *mut c_void).read_unaligned() };
             if dst_ptr.is_null() {
                 bail!("Struct field write into null pointer slot")
             }
-            // SAFETY: `src_ptr` came from a NativeHandle wrapping a live
-            // struct of `size` bytes, and the slot's non-null target is a
-            // distinct allocation of the same struct type.
             unsafe {
                 std::ptr::copy_nonoverlapping(src_ptr as *const u8, dst_ptr as *mut u8, size);
             }

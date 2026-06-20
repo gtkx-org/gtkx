@@ -2,30 +2,13 @@ import { attr, childOf, childrenOf, intAttr, nameAttr, type RawNode } from "./pa
 import { primitiveCategory } from "./primitives.js";
 import { type CArrayType, LIST_FLAVOR_BY_NAME, type ListFlavor, type ParseContext, type TypeId } from "./type-id.js";
 
-const LIST_FLAVOR_BY_NAME_LOOKUP: ReadonlyMap<string, ListFlavor> = new Map(Object.entries(LIST_FLAVOR_BY_NAME));
+const LIST_FLAVOR_BY_NAME_LOOKUP: Map<string, ListFlavor> = new Map(Object.entries(LIST_FLAVOR_BY_NAME));
 
-/**
- * Interns the element type of a list-like or array node from its first `<type>`
- * child, falling back to an opaque pointer when the element is unannotated.
- */
 const elementRefOf = (node: RawNode, context: ParseContext): TypeId => {
     const elementNode = childOf(node, "type");
     return elementNode === undefined ? pointerFallback(context) : typeRefFromTypeNode(elementNode, context);
 };
 
-/**
- * Interns the type slot of a parent XML node whose first `<type>`, `<array>`,
- * `<varargs>`, or `<callback>` child describes it, returning the {@link TypeId}
- * handle or `undefined` when no type slot exists.
- *
- * Pass the parent (`<parameter>`, `<return-value>`, `<field>`, `<property>`,
- * `<constant>`, `<alias>`). Resolution into a concrete entity happens later
- * through {@link GirRepository.typeOf}; the namespace is already baked into the
- * returned handle.
- *
- * @param parent - The element whose typed slot we are inspecting
- * @param context - The per-namespace interning seam
- */
 export const typeRefFromSlot = (parent: RawNode | undefined, context: ParseContext): TypeId | undefined => {
     if (parent === undefined) return undefined;
     if (childOf(parent, "varargs") !== undefined) return context.internVarargs();
@@ -38,14 +21,6 @@ export const typeRefFromSlot = (parent: RawNode | undefined, context: ParseConte
     return undefined;
 };
 
-/**
- * Interns a `<type>` element: a recognised GLib container routes to the
- * dedicated branch, a primitive interns into the internal namespace, and any
- * other name resolves-or-stubs against the surrounding namespace.
- *
- * @param typeNode - A `<type>` element
- * @param context - The per-namespace interning seam
- */
 const typeRefFromTypeNode = (typeNode: RawNode, context: ParseContext): TypeId => {
     const name = nameAttr(typeNode);
 
@@ -93,13 +68,7 @@ const arrayTypeRefFromNode = (arrayNode: RawNode, context: ParseContext): TypeId
 
 const pointerFallback = (context: ParseContext): TypeId => context.internPrimitive("pointer");
 
-/**
- * Splits a possibly cross-namespace GIR identifier into its namespace and local
- * name, reporting an absent namespace as `undefined` so callers can apply their
- * own default. `splitOptionalNamespace("Gtk.Widget")` is `["Gtk", "Widget"]`
- * and `splitOptionalNamespace("Widget")` is `[undefined, "Widget"]`.
- */
-export const splitOptionalNamespace = (name: string): readonly [string | undefined, string] => {
+export const splitOptionalNamespace = (name: string): [string | undefined, string] => {
     const dot = name.indexOf(".");
     if (dot === -1) return [undefined, name];
     return [name.slice(0, dot), name.slice(dot + 1)];

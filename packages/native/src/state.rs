@@ -1,5 +1,3 @@
-//! `GLib` thread-local state and native library management.
-
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
@@ -18,9 +16,6 @@ thread_local! {
     static GLIB_THREAD_STATE: RefCell<GlibThreadState> = RefCell::new(GlibThreadState::default());
 }
 
-/// Lifecycle phase of the `GLib` runtime, tracked by [`GlibThread`] so `init`
-/// and `quit` can reject out-of-order calls instead of silently producing a
-/// dead runtime or a leaked OS thread.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RuntimePhase {
     New,
@@ -54,14 +49,10 @@ impl GlibThread {
         })
     }
 
-    /// Returns the current lifecycle phase.
     pub fn phase(&self) -> RuntimePhase {
         RuntimePhase::from(self.phase.load(Ordering::Acquire))
     }
 
-    /// Transitions `New → Running`. Fails when the runtime is already running
-    /// or has been quit — the runtime cannot be initialized twice or
-    /// reinitialized after shutdown.
     pub fn begin_init(&self) -> Result<(), String> {
         match self.phase.compare_exchange(
             RuntimePhase::New as u8,
@@ -79,14 +70,10 @@ impl GlibThread {
         }
     }
 
-    /// Rolls back `Running → New` when startup fails before the `GLib` thread
-    /// is spawned.
     pub fn abort_init(&self) {
         self.phase.store(RuntimePhase::New as u8, Ordering::Release);
     }
 
-    /// Transitions `Running → NotRunning`. Fails when the runtime was never
-    /// initialized or has already been quit.
     pub fn begin_quit(&self) -> Result<(), String> {
         match self.phase.compare_exchange(
             RuntimePhase::Running as u8,
@@ -102,8 +89,6 @@ impl GlibThread {
         }
     }
 
-    /// Restores the phase to `New` so tests can exercise the lifecycle
-    /// transitions repeatedly against the process-global singleton.
     pub fn reset_phase_for_test(&self) {
         self.phase.store(RuntimePhase::New as u8, Ordering::Release);
     }
@@ -129,12 +114,7 @@ impl GlibThread {
 }
 
 pub struct LibraryCache {
-    /// Wrapped in `ManuallyDrop` because libraries like `WebKit` spawn threads with
-    /// TLS destructors — calling `dlclose()` while those threads exist causes
-    /// segfaults. Libraries are reclaimed at process exit.
     libraries: ManuallyDrop<HashMap<String, Library>>,
-    /// Resolved `GType`s keyed by `(library, get_type_fn)`, so repeated
-    /// resolutions of the same descriptor skip the dlsym round trip.
     gtypes: HashMap<(String, String), glib::Type>,
 }
 
@@ -166,8 +146,6 @@ impl LibraryCache {
         let mut last_error = None;
 
         for lib_name in name.split(',') {
-            // SAFETY: Loading a shared library with RTLD_NOW | RTLD_GLOBAL
-            // is safe as long as the library path is valid.
             match unsafe { Library::open(Some(lib_name), RTLD_NOW | RTLD_GLOBAL) } {
                 Ok(lib) => return Ok(lib),
                 Err(err) => last_error = Some(err),
@@ -194,19 +172,12 @@ impl LibraryCache {
 
         let lib = self.get_or_load(lib_name)?;
 
-        // SAFETY: The descriptor names a GIR `get_type` function, whose C
-        // signature is `GType (*)(void)`; the library stays loaded for the
-        // process lifetime.
         let func = unsafe {
             lib.get::<GetTypeFn>(get_type_fn_name.as_bytes())
                 .map_err(|e| anyhow::anyhow!("Failed to find symbol '{get_type_fn_name}': {e}"))?
         };
 
-        // SAFETY: `get_type` functions take no arguments and only register
-        // and return a GType.
         let gtype_raw = unsafe { func() };
-        // SAFETY: `gtype_raw` came from the type's own `get_type`
-        // function, so it is a valid GType value.
         let gtype = unsafe { glib::Type::from_glib(gtype_raw) };
         self.gtypes.insert(key, gtype);
         Ok(gtype)
@@ -278,9 +249,6 @@ impl FundamentalFnCache {
         let ref_fn = if ref_func.is_empty() {
             None
         } else {
-            // SAFETY: The descriptor names a C ref function whose signature
-            // matches `RefFn`; the library stays loaded for the process
-            // lifetime.
             Some(unsafe {
                 *library
                     .get::<RefFn>(ref_func.as_bytes())
@@ -291,9 +259,6 @@ impl FundamentalFnCache {
         let unref_fn = if unref_func.is_empty() {
             None
         } else {
-            // SAFETY: The descriptor names a C unref function whose
-            // signature matches `UnrefFn`; the library stays loaded for
-            // the process lifetime.
             Some(unsafe {
                 *library.get::<UnrefFn>(unref_func.as_bytes()).map_err(|e| {
                     anyhow::anyhow!("Failed to find unref symbol '{unref_func}': {e}")

@@ -13,13 +13,13 @@ import {
 } from "../src/index.js";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-    state = { hasError: false };
+    override state = { hasError: false };
 
     static getDerivedStateFromError(): { hasError: boolean } {
         return { hasError: true };
     }
 
-    render(): ReactNode {
+    override render(): ReactNode {
         return this.state.hasError ? <GtkLabel label="error" /> : this.props.children;
     }
 }

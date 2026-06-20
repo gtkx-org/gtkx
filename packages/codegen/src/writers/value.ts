@@ -16,96 +16,32 @@ import type { EntityType, GirType } from "../gir/type.js";
 import type { CArrayType, ListFlavor, TypeId } from "../gir/type-id.js";
 import { computeBoxedFieldSlots } from "./boxed-layout.js";
 
-/**
- * Maps a GIR transfer-ownership value to the FFI runtime's ownership
- * vocabulary.
- *
- * GIR `transfer none` becomes a `"borrowed"` defensive copy/reference, while
- * `transfer full` and `transfer container` (which owns the container) become
- * `"full"`. Callers pass the GIR string directly; this helper does the
- * translation.
- *
- * @param transfer - GIR transfer-ownership (`"none"`, `"full"`, `"container"`)
- */
 const ffiOwnership = (transfer: ParameterTransfer): "borrowed" | "full" => {
     if (transfer === "full") return "full";
     if (transfer === "container") return "full";
     return "borrowed";
 };
 
-/**
- * Derives the transfer of a container's elements from the container's own
- * transfer. A `"container"` transfer owns the container but borrows its
- * elements, so they marshal as `"none"`; otherwise elements inherit the
- * container's transfer.
- *
- * @param transfer - The container's GIR transfer-ownership
- */
 const deriveElementTransfer = (transfer: ParameterTransfer): ParameterTransfer =>
     transfer === "container" ? "none" : transfer;
 
-/**
- * Optional rendering controls for {@link renderFfiType} beyond the type and
- * its transfer.
- */
 type RenderFfiTypeOptions = {
-    /**
-     * Offset added to a sized array's length-parameter index, so a method's
-     * implicit instance receiver shifts the indices the descriptor records.
-     */
     argIndexOffset?: number;
-    /**
-     * Marks a boxed or struct argument as a caller-allocated out parameter, so
-     * the descriptor borrows the caller's buffer in place rather than copying.
-     */
     callerAllocated?: boolean;
 };
 
-/**
- * Whether a type slot is void: an absent slot or a `void` primitive.
- *
- * @param repository - The GIR repository
- * @param ref - The interned type slot, or `undefined`
- */
 export const isVoidRef = (repository: GirRepository, ref: TypeId | undefined): boolean => {
     if (ref === undefined) return true;
     const type = repository.typeOf(ref);
     return type?.kind === "primitive" && type.category === "void";
 };
 
-/**
- * Whether a type slot is an inline `<callback>` (a vtable slot's anonymous
- * function pointer) rather than a reference to a namespace-level callback type.
- * A named callback resolves to the same `callback` kind but carries a recoverable
- * name; only the anonymous inline form is a structural vtable slot.
- *
- * @param repository - The GIR repository
- * @param ref - The interned type slot, or `undefined`
- */
 export const isInlineCallbackRef = (repository: GirRepository, ref: TypeId | undefined): boolean =>
     ref !== undefined && repository.typeOf(ref)?.kind === "callback" && repository.nameOf(ref) === undefined;
 
-/**
- * Whether a callable's primary return is dropped from the surfaced result: a
- * `void` return, or a `(skip)`-annotated one whose C value carries nothing a JS
- * caller needs. Either way only the out-parameters remain. Shared by the method
- * and signal paths so both define "primary return is dropped" once.
- *
- * @param repository - The GIR repository
- * @param returnValue - The callable's return value
- */
 export const omitsPrimaryReturn = (repository: GirRepository, returnValue: GirReturnValue): boolean =>
     isVoidRef(repository, returnValue.type) || returnValue.skip;
 
-/**
- * Renders a TypeScript expression that materialises the FFI type
- * descriptor for `ref`.
- *
- * @param context - The module context (used for cross-namespace imports)
- * @param ref - The interned type slot, or `undefined` for void
- * @param transfer - GIR transfer-ownership conveyed onto the descriptor
- * @param options - Optional rendering controls (see {@link RenderFfiTypeOptions})
- */
 export const renderFfiType = (
     context: ModuleContext,
     ref: TypeId | undefined,
@@ -146,18 +82,10 @@ export const renderFfiType = (
     }
 };
 
-/** A callback declaration resolved from a parameter type. */
 export type ResolvedCallback = {
-    readonly callback: GirCallback;
+    callback: GirCallback;
 };
 
-/**
- * Resolves a parameter type reference to its callback declaration, whether
- * declared inline or by name. Returns `undefined` for non-callback references.
- *
- * @param context - The module context
- * @param ref - The parameter type slot
- */
 export const resolveCallbackType = (context: ModuleContext, ref: TypeId | undefined): ResolvedCallback | undefined => {
     if (ref === undefined) return undefined;
     const type = context.repository.typeOf(ref);
@@ -165,16 +93,6 @@ export const resolveCallbackType = (context: ModuleContext, ref: TypeId | undefi
     return { callback: type.value };
 };
 
-/**
- * Whether a type reference is a scalar the native trampoline can read and
- * write through a `{ value }` cell: a non-string, non-void primitive, an enum or
- * flags type, or an alias resolving to one. Pointer-shaped types (strings,
- * objects, boxed records, arrays) are excluded — their out-parameter slots may
- * be uninitialized, so reading the incoming value would be unsound.
- *
- * @param repository - The GIR repository
- * @param ref - The interned type slot
- */
 export const isScalarRef = (repository: GirRepository, ref: TypeId | undefined): boolean => {
     if (ref === undefined) return false;
     const type = repository.typeOf(ref);
@@ -185,33 +103,9 @@ export const isScalarRef = (repository: GirRepository, ref: TypeId | undefined):
     return false;
 };
 
-/**
- * Whether an inout parameter marshals through a readable-and-writable
- * `{ value }` cell rather than being passed by handle and mutated in place.
- *
- * True for scalar inout parameters (see {@link isScalarRef}): the native
- * trampoline seeds the cell with the incoming value, the handler returns its
- * replacement in the tuple, and the cell is flushed back through the pointer.
- * Handle-passing inout parameters (objects, interfaces, boxed records) stay
- * plain arguments the handler mutates directly.
- *
- * @param context - The module context
- * @param parameter - The parameter to test
- */
 export const isCellInout = (context: ModuleContext, parameter: GirParameter): boolean =>
     isInoutParameter(parameter) && isScalarRef(context.repository, parameter.type);
 
-/**
- * Renders one handler-callback parameter's FFI descriptor — shared by vfunc
- * vtables, signal handlers, and callbacks. A scalar out/inout parameter becomes
- * a `t.ref` cell the native trampoline seeds and flushes back; a caller-allocated
- * out boxed/struct is marked so the trampoline reads it as a borrowed view of the
- * caller's buffer (filled in place); every other parameter renders plainly.
- *
- * @param context - The module context.
- * @param parameter - The parameter, supplying the out/caller-allocated predicates.
- * @param ref - The parameter's interned type slot.
- */
 export const renderHandlerArgType = (
     context: ModuleContext,
     parameter: GirParameter,
@@ -228,19 +122,6 @@ export const renderHandlerArgType = (
     });
 };
 
-/**
- * Renders the `t.callback(...)` FFI descriptor for a callback parameter.
- *
- * The descriptor carries the callback's own argument and return FFI types,
- * the index of its `user_data` slot, and the owning parameter's `scope` plus
- * whether a paired `GDestroyNotify` is present. The native marshaller folds
- * the C-level callback, `user_data`, and destroy arguments into this single
- * descriptor. Returns `undefined` when `ref` is not a callback.
- *
- * @param context - The module context
- * @param ref - The parameter type slot
- * @param owningParameter - The parameter that carries the callback, for scope/destroy
- */
 export const renderCallbackType = (
     context: ModuleContext,
     ref: TypeId | undefined,
@@ -266,7 +147,7 @@ export const renderCallbackType = (
     return `t.callback([${argTypes.join(", ")}], ${returnType}${optionsArg})`;
 };
 
-const LIST_HELPERS: Readonly<Record<ListFlavor, string>> = {
+const LIST_HELPERS: Record<ListFlavor, string> = {
     glist: "list",
     gslist: "slist",
     gptrarray: "ptrArray",
@@ -283,27 +164,14 @@ const primitiveExpression = (category: PrimitiveCategory, ownership: "borrowed" 
 };
 
 type FundamentalDescriptor = {
-    readonly lib: string;
-    readonly refFunc: string;
-    readonly unrefFunc: string;
-    readonly glibTypeName: string | undefined;
-    readonly ownership: "borrowed" | "full";
-    readonly wrapperClass?: string;
+    lib: string;
+    refFunc: string;
+    unrefFunc: string;
+    glibTypeName: string | undefined;
+    ownership: "borrowed" | "full";
+    wrapperClass?: string | undefined;
 };
 
-/**
- * Translates a GLib ref-func into the function the FFI runtime calls to add an
- * independent reference.
- *
- * The runtime references a fundamental to make a defensive copy of a borrowed
- * return, to clone a handle, or to hand a callee its own reference for a
- * transfer-full argument — each must *add* a reference. GObject registers
- * `*_ref_sink` (e.g. `g_param_spec_ref_sink`, `g_variant_ref_sink`) as the
- * ref-func for floating types, but a sink only clears the floating flag on a
- * floating instance and adds no reference, so a wrapper built from it would
- * later unref a reference it never took and abort. The plain `*_ref`
- * counterpart adds a reference for floating and non-floating instances alike.
- */
 const referenceAddingFunc = (refFunc: string): string =>
     refFunc.endsWith("_ref_sink") ? refFunc.slice(0, -"_sink".length) : refFunc;
 
@@ -336,10 +204,10 @@ const classOrInterfaceExpression = (
 };
 
 type AncestorFundamental = {
-    readonly lib: string;
-    readonly refFunc: string;
-    readonly unrefFunc: string;
-    readonly glibTypeName: string | undefined;
+    lib: string;
+    refFunc: string;
+    unrefFunc: string;
+    glibTypeName: string | undefined;
 };
 
 const fundamentalAncestor = (
@@ -367,19 +235,6 @@ const fundamentalAncestor = (
     return undefined;
 };
 
-/**
- * Renders the FFI descriptor for a method's instance (`self`) parameter.
- *
- * The receiver is always passed as a borrowed pointer regardless of the GIR
- * instance-parameter transfer (`transfer="full"` on e.g. `gdk_event_unref`
- * describes C-side consumption, not FFI ownership). A receiver whose ancestry
- * reaches a ref-counted fundamental (e.g. `GskRenderNode`) is marshalled as
- * `t.fundamental`; every other receiver — GObject subclasses and opaque
- * records alike — is a borrowed `t.object`.
- *
- * @param context - The module context
- * @param instance - The instance parameter
- */
 export const renderSelfFfiType = (context: ModuleContext, instance: GirParameter): string => {
     const ref = instance.type;
     if (ref === undefined) return `t.object("borrowed")`;
@@ -399,15 +254,7 @@ export const renderSelfFfiType = (context: ModuleContext, instance: GirParameter
 
 type ResolvedBoxed = Extract<EntityType, { kind: "boxed" }>["value"];
 
-/**
- * The ref/unref function pair a boxed record marshals through, drawn in
- * precedence order from its GLib ref/unref funcs, then its copy/free funcs. A
- * record with both halves present renders as a `t.fundamental`; one with neither
- * renders as `t.boxed` (when it has a `get-type`) or a plain `t.struct`.
- */
-const boxedRefPair = (
-    boxed: ResolvedBoxed,
-): { readonly refFunc: string | undefined; readonly unrefFunc: string | undefined } => ({
+const boxedRefPair = (boxed: ResolvedBoxed): { refFunc: string | undefined; unrefFunc: string | undefined } => ({
     refFunc: boxed.glibRefFunc ?? boxed.copyFunc,
     unrefFunc: boxed.glibUnrefFunc ?? boxed.freeFunc,
 });
@@ -418,28 +265,12 @@ const isReferenceableBoxed = (boxed: ResolvedBoxed): boolean => {
     return hasRefPair || boxed.glibGetType !== undefined;
 };
 
-/**
- * Whether a boxed record's FFI descriptor carries no `GType` identity the
- * runtime can resolve a wrapper class from, so the binding pairs its wrapper
- * class with the descriptor. True for a plain `t.struct` (no copy/free pair, no
- * `get-type`) and for a `t.fundamental` with no registered GLib type name (e.g.
- * `GAsyncQueue`); false for a `t.boxed` (resolved through its `get-type`) and a
- * named `t.fundamental` (resolved through its type name).
- *
- * @param boxed - The resolved boxed record.
- */
 const boxedNeedsFallbackClass = (boxed: ResolvedBoxed): boolean => {
     const { refFunc, unrefFunc } = boxedRefPair(boxed);
     if (refFunc !== undefined && unrefFunc !== undefined) return boxed.glibTypeName === undefined;
     return boxed.glibGetType === undefined;
 };
 
-/**
- * Renders a plain struct (a record with no boxed `GType`) as `t.struct(...)`,
- * carrying its computed byte size (so a borrowed value is copied retain-safe),
- * its fallback wrapper class, and the caller-allocated flag. The size is omitted
- * for a caller-allocated buffer, which is borrowed and filled in place.
- */
 const structExpression = (
     context: ModuleContext,
     resolved: Extract<EntityType, { kind: "boxed" }>,
@@ -541,12 +372,6 @@ const arrayExpression = (
     return `t.array(${element}, "array", ${quote(ownership)}${optionsArg})`;
 };
 
-/**
- * Computes the inline byte size of an array element when it is a by-value
- * boxed struct, so the native marshaller can lay out a contiguous element
- * buffer. Returns `undefined` for pointer elements (objects, strings, boxed
- * pointers) and primitives, which the native layer already sizes.
- */
 const inlineElementSize = (
     context: ModuleContext,
     element: TypeId | undefined,

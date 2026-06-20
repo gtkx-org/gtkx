@@ -61,28 +61,6 @@ const captureSnapshot = (widget: Gtk.Widget, scale: number): ScreenshotResult =>
     }
 };
 
-/**
- * Captures a screenshot of a GTK widget as a PNG image.
- *
- * This function will retry multiple times if the widget hasn't finished
- * rendering, waiting for GTK to complete its paint cycle.
- *
- * @param widget - The widget to capture (typically a Window)
- * @param options - Optional timeout and interval configuration
- * @returns Screenshot result containing base64-encoded PNG data and dimensions
- * @throws Error if widget has no size, is not realized, or rendering fails after timeout
- *
- * @example
- * ```tsx
- * import { render, screenshot } from "@gtkx/testing";
- * import * as Gtk from "@gtkx/gi/gtk";
- *
- * const { container } = await render(<MyApp />);
- * const window = container.getWindows()[0];
- * const result = await screenshot(window);
- * console.log(result.mimeType); // "image/png"
- * ```
- */
 export const screenshot = async (widget: Gtk.Widget, options?: ScreenshotOptions): Promise<ScreenshotResult> => {
     const scale = options?.scale ?? 1;
 
@@ -143,39 +121,10 @@ const saveScreenshotToTempFile = (result: ScreenshotResult): string => {
     return filepath;
 };
 
-/**
- * Logs a `file://` URI for the given screenshot path to the console.
- *
- * @param filepath - The absolute path the screenshot PNG was written to.
- *
- * @example
- * ```tsx
- * import { logScreenshotPath } from "@gtkx/testing";
- *
- * logScreenshotPath("/tmp/gtkx-screenshots/123-screenshot.png");
- * ```
- */
 export const logScreenshotPath = (filepath: string): void => {
     console.log(`Screenshot saved: file://${filepath}`);
 };
 
-/**
- * Captures a screenshot of a top-level window, saves it to a temp file, and
- * logs a clickable `file://` URI.
- *
- * @param selector - Window selector: index (number), title substring (string),
- *   or title pattern (RegExp). When omitted, captures the first window.
- * @param options - Optional timeout, interval, and scale configuration.
- * @returns Screenshot result containing base64-encoded PNG data and dimensions.
- *
- * @example
- * ```tsx
- * import { captureAndSaveScreenshot } from "@gtkx/testing";
- *
- * await captureAndSaveScreenshot();           // First window
- * await captureAndSaveScreenshot("Settings"); // Window titled "Settings"
- * ```
- */
 export const captureAndSaveScreenshot = async (
     selector?: WindowSelector,
     options?: ScreenshotOptions,

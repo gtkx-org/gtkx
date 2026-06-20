@@ -1,12 +1,3 @@
-/**
- * Dev-time entry point for the Khronos GL generator.
- *
- * Reads the vendored `registry/gl.xml`, the hand-written companion module's
- * export names (for the disjointness assertion), and writes the generated
- * modules into `packages/gl/src/generated/`. Run via
- * `pnpm --filter @gtkx/codegen codegen:gl`; the emitted files are committed
- * and reviewed like any other source change.
- */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,7 +10,7 @@ const outputDir = join(glSrcDir, "generated");
 
 const EXPORT_PATTERN = /^export (?:async )?(?:function|const|type|interface|class) ([A-Za-z_$][\w$]*)/gm;
 
-const companionExportNames = (path: string): ReadonlySet<string> => {
+const companionExportNames = (path: string): Set<string> => {
     const source = readFileSync(path, "utf-8");
     const names = new Set<string>();
     for (const match of source.matchAll(EXPORT_PATTERN)) {

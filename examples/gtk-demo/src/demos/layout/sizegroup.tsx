@@ -11,7 +11,7 @@ const END_OPTIONS = ["Square", "Round", "Double Arrow"];
 interface DropdownRowProps {
     labelText: string;
     selectedId: string;
-    options: readonly string[];
+    options: string[];
     onSelectionChanged: (id: string) => void;
     onDropdownChange: (dropdown: Gtk.DropDown | null) => void;
 }

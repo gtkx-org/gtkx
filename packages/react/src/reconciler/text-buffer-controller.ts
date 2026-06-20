@@ -6,38 +6,16 @@ import { type Node, stateOf } from "./state.js";
 import { isAnchorWrapper, isBufferContentWrapper, isBufferTextWrapper, isPaintableWrapper } from "./text-wrapper.js";
 import { unparentWidget } from "./widget.js";
 
-/**
- * Linearizes a `<GtkTextBuffer>` element's React content children into its
- * backing `Gtk.TextBuffer`.
- *
- * On every structural or content change the buffer is rebuilt in tree order:
- * the children are walked depth-first while the buffer end iterator advances,
- * text runs and inline paintables are inserted, anchored widgets occupy one
- * anchor each, and each `Gtk.TextTag` is applied across the offset range its
- * descendant content spans. The rebuild is bracketed by
- * `beginIrreversibleAction`/`endIrreversibleAction` so it never pollutes the
- * user-facing undo stack, and is coalesced to one pass per commit through a
- * post-commit debounce. Buffer signal handlers are suppressed during a commit
- * by the owner's signal store.
- *
- * Anchored widgets need a view to attach to; the controller resolves the
- * enclosing `Gtk.TextView` from the buffer element's nearest backing ancestor
- * at rebuild time — stepping over the slot wrapper when the buffer is mounted
- * through a `buffer={...}` prop — and skips widget attachment when the buffer
- * is rendered without a view.
- */
 export class TextBufferController {
     private managesContent = false;
-    private readonly anchoredWidgets = new Set<Gtk.Widget>();
-    private readonly boundRebuild = (): void => this.rebuild();
+    private anchoredWidgets = new Set<Gtk.Widget>();
+    private boundRebuild = (): void => this.rebuild();
+    private owner: Node;
 
-    /**
-     * @param owner - The node whose backing GObject is the text buffer; its
-     *   `children` are the content the buffer is rebuilt from.
-     */
-    constructor(private readonly owner: Node) {}
+    constructor(owner: Node) {
+        this.owner = owner;
+    }
 
-    /** Schedules a single buffer rebuild to run after the current commit drains. */
     public scheduleRebuild(): void {
         scheduleFlush(this.boundRebuild);
     }
@@ -94,7 +72,7 @@ export class TextBufferController {
         for (const tag of tags) tagTable.remove(tag);
     }
 
-    private insertChildren(buffer: Gtk.TextBuffer, children: readonly Node[]): void {
+    private insertChildren(buffer: Gtk.TextBuffer, children: Node[]): void {
         for (const child of children) {
             this.insertChild(buffer, child);
         }
@@ -102,9 +80,9 @@ export class TextBufferController {
 
     private insertChild(buffer: Gtk.TextBuffer, child: Node): void {
         if (isBufferTextWrapper(child)) {
-            this.insertText(buffer, stateOf(child).props.text as string);
+            this.insertText(buffer, stateOf(child).props["text"] as string);
         } else if (isPaintableWrapper(child)) {
-            this.insertPaintable(buffer, stateOf(child).props.paintable as Gdk.Paintable);
+            this.insertPaintable(buffer, stateOf(child).props["paintable"] as Gdk.Paintable);
         } else if (isAnchorWrapper(child)) {
             this.insertAnchor(buffer, child);
         } else if (child instanceof Gtk.TextTag) {
@@ -126,7 +104,7 @@ export class TextBufferController {
 
     private insertAnchor(buffer: Gtk.TextBuffer, wrapper: Node): void {
         const child = stateOf(wrapper).children[0];
-        const replacement = stateOf(wrapper).props.replacementChar;
+        const replacement = stateOf(wrapper).props["replacementChar"];
         const anchor =
             typeof replacement === "string"
                 ? Gtk.TextChildAnchor.newWithReplacement(replacement)

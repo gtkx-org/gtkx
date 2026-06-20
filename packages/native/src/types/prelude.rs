@@ -1,9 +1,3 @@
-//! Internal prelude for the [`super`] type-module siblings.
-//!
-//! Re-exports the symbols every codec submodule reaches for so that each
-//! `types/*.rs` file opens with a single `use super::prelude::*;` instead of
-//! the same five-line import block.
-
 pub(super) use std::ffi::c_void;
 
 pub(super) use super::raw_ptr::{
@@ -15,13 +9,6 @@ pub(super) use super::{
 };
 pub(super) use crate::{ffi, value};
 
-/// Stamps out an [`FfiEncoder::call_cif`] override that bails with
-/// `"{kind} cannot be return types"`.
-///
-/// `Callback` and `Ref` are argument-only shapes. The dispatch
-/// site in `module::call` rejects them through
-/// [`super::Type::can_be_return_type`] before they would ever reach
-/// `call_cif`, so this body is the unreachable defensive branch.
 macro_rules! arg_only_call_cif {
     ($kind:literal) => {
         fn call_cif(
@@ -36,10 +23,6 @@ macro_rules! arg_only_call_cif {
 }
 pub(super) use arg_only_call_cif;
 
-/// Stamps the [`super::FfiEncoder::libffi_type`] and
-/// [`super::FfiEncoder::call_cif`] overrides for a codec whose ABI
-/// representation is the [`super::IntegerKind`] returned by its `$wire`
-/// accessor, delegating both to that kind's own encoder.
 macro_rules! integer_wire_encoder {
     ($wire:ident) => {
         fn libffi_type(&self) -> ::libffi::middle::Type {

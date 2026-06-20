@@ -37,51 +37,13 @@ import type { AnyClass } from "@gtkx/utils";
 
 const wrapperClassByDescriptor = new WeakMap<Type, AnyClass>();
 
-/**
- * Pairs `descriptor` with the wrapper class `wrapValue` lifts its value into.
- * Called by the descriptor factories (`t.struct`, `t.fundamental`) when a
- * binding supplies a fallback class for an identity-less value type.
- *
- * @param descriptor - The FFI type descriptor the class is paired with.
- * @param wrapperClass - The generated wrapper class to lift the value into.
- */
 export const setDescriptorWrapperClass = (descriptor: Type, wrapperClass: AnyClass): void => {
     wrapperClassByDescriptor.set(descriptor, wrapperClass);
 };
 
-/**
- * Returns the wrapper class paired with `descriptor`, or `undefined` when the
- * descriptor's value type recovers its class from its own runtime `GType`.
- *
- * @param descriptor - The FFI type descriptor to resolve.
- */
 export const getDescriptorWrapperClass = (descriptor: Type): AnyClass | undefined =>
     wrapperClassByDescriptor.get(descriptor);
 
-/**
- * Binds a native function symbol once and returns a callable that dispatches it,
- * returning the raw marshaled result with no wrapping.
- *
- * Exposed as `t.bind`. GObject bindings use the sugared `t.fn` (which adds
- * out-parameter tupling, `GError` handling, and result wrapping); low-level
- * non-GObject bindings and the runtime's own type-system and `GValue`
- * marshalling use `t.bind` for the unwrapped native result.
- *
- * Captures the library, symbol, and a pre-built `Arg` array in a closure so
- * the descriptor objects are allocated once at module load. Each invocation
- * mutates only the per-arg `value` slot before dispatching, making calls
- * allocation-free on the hot path.
- *
- * Reentrancy is safe: native marshals all argument values up-front before
- * dispatching, so trampolines that re-enter the same binding during signal
- * emission cannot observe a partially-marshaled state.
- *
- * @param library - Library name (e.g., "libgtk-4.so.1")
- * @param symbol - Function symbol name
- * @param argTypes - Argument type descriptors in positional order
- * @param returnType - Expected return type descriptor
- * @returns A function that, given argument values, dispatches the FFI call
- */
 export const bind = <R extends Type>(
     library: string,
     symbol: string,
@@ -121,27 +83,12 @@ export const stringT = (ownership: Ownership = "borrowed", length?: number): Str
 export const objectT = (ownership: Ownership = "borrowed", typeName?: string): GObjectType =>
     typeName === undefined ? { type: "gobject", ownership } : { type: "gobject", ownership, typeName };
 
-/**
- * Optional flags a boxed descriptor carries beyond its positional core, for the
- * less-common configuration a vtable slot needs.
- */
 type BoxedOptions = {
-    /**
-     * A caller-allocated out parameter: the native trampoline reads the
-     * argument as a borrowed view of the caller's buffer (no copy) so a vfunc
-     * handler's field writes land on it in place.
-     */
     callerAllocated?: boolean;
 };
 
-/** Optional configuration for {@link structT}. */
 type StructOptions = BoxedOptions & {
-    /** Struct size in bytes, for copying a borrowed value into an owned one. */
     size?: number;
-    /**
-     * Wrapper class for a plain struct, whose pointer carries no runtime type
-     * to recover a class from.
-     */
     wrapperClass?: AnyClass;
 };
 
@@ -170,17 +117,9 @@ export const structT = (ownership: Ownership = "borrowed", options: StructOption
     return result;
 };
 
-/** Optional configuration for {@link t.fundamental}. */
 type FundamentalOptions = {
-    /** Owned (`"full"`) or borrowed (`"borrowed"`) value. */
     ownership?: Ownership;
-    /** Fundamental GType name (e.g., `"GBytes"`). */
     typeName?: string;
-    /**
-     * Wrapper class for a `GType`-less fundamental, whose pointer carries no
-     * runtime type to recover a class from. Omitted when {@link typeName}
-     * resolves the class through the GLib type system instead.
-     */
     wrapperClass?: AnyClass;
 };
 
@@ -221,14 +160,10 @@ export const flagsT = (library: string, getTypeFn: string, signed: boolean): Fla
     signed,
 });
 
-/** Optional sizing metadata for array-like FFI descriptors. */
 type ArrayOptions = {
-    /** Size of each element in bytes (used for `garray`). */
-    elementSize?: number;
-    /** Index of the parameter carrying the array length (used for `sized`). */
-    sizeParamIndex?: number;
-    /** Compile-time known length (used for `fixed`). */
-    fixedSize?: number;
+    elementSize?: number | undefined;
+    sizeParamIndex?: number | undefined;
+    fixedSize?: number | undefined;
 };
 
 export const arrayT = (
@@ -272,13 +207,9 @@ export const fixedArrayT = (
     elementSize?: number,
 ): ArrayType => arrayT(itemType, "fixed", ownership, { fixedSize, elementSize });
 
-/** Optional configuration for a callback FFI descriptor. */
 type CallbackOptions = {
-    /** Whether the call has a paired destroy-notify parameter. */
     hasDestroy?: boolean;
-    /** Index of the user-data parameter passed to the callback. */
     userDataIndex?: number;
-    /** Lifetime of the callback. */
     scope?: CallbackType["scope"];
 };
 

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, userEvent, waitFor } from "@gtkx/testing";
+import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { overlayDemo } from "../../../src/demos/layout/overlay.js";
 import { renderDemo } from "../../test-utils.js";
@@ -21,7 +21,8 @@ describe("overlayDemo metadata", () => {
 describe("overlayDemo grid and labels", () => {
     it("renders a 5x5 grid of numbered buttons", async () => {
         await renderDemo(overlayDemo);
-        const buttons = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON);
+        const grid = await screen.findByName("number-grid");
+        const buttons = within(grid).getAllByRole(Gtk.AccessibleRole.BUTTON);
         expect(buttons).toHaveLength(25);
         const labels = buttons.map((b) => (b as Gtk.Button).getLabel());
         for (let i = 0; i < 25; i++) {

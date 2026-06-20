@@ -17,15 +17,6 @@ export class Stylesheet {
         if (!display) this.registerWhenDisplayOpens(provider);
     }
 
-    /**
-     * Defers the provider's display registration until a display exists.
-     *
-     * Application code evaluates `css` templates at module scope, before the
-     * application activates and opens the default display — at that point the
-     * provider can only be created, not attached. Attaching on the display
-     * manager's `display-opened` signal makes those early rules take effect
-     * the moment the first display appears.
-     */
     private registerWhenDisplayOpens(provider: Gtk.CssProvider): void {
         Gdk.DisplayManager.get().once("display-opened", (display) => {
             attachProviderToDisplay(provider, display);

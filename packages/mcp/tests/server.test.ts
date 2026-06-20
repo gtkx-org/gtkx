@@ -99,14 +99,6 @@ function getTool(connectionManager: AppQueryClient, name: string) {
     return tool;
 }
 
-/**
- * Runs the `gtkx_list_apps` tool with no connected apps while `waitForApp`
- * rejects with the supplied value, asserts the handler reports an error
- * result, and returns its first text content entry.
- *
- * @param thrown - Value thrown by the stubbed `waitForApp`.
- * @returns The first text content entry produced by the handler.
- */
 async function runListAppsWithFailingWait(thrown: unknown): Promise<{ type: "text"; text: string }> {
     const cm = makeConnectionManager({
         hasConnectedApps: vi.fn(() => false),

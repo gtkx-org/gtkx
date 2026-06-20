@@ -1,18 +1,5 @@
 /// <reference types="@gtkx/config/env" />
 
-/**
- * The reconciler's attach/detach table.
- *
- * Every parent→child relationship the renderer can make — a widget into a
- * container, an event controller onto a widget, a metadata wrapper's content
- * onto its grandparent — is one {@link ElementMapping} entry. The reconciler
- * iterates {@link ELEMENT_MAP} top to bottom and applies the first entry whose
- * `matches` predicate holds, so specific entries precede the generic
- * widget-container fallback. Entries are self-contained: `attach` is idempotent
- * (it may run again when a wrapper's content or metadata changes), reading the
- * child's own props/children and stashing per-attachment bookkeeping in the
- * mapping's own per-node `WeakMap`.
- */
 import { META_OBJECT_ADD_METHODS, PAGE_META_SETTERS } from "virtual:gtkx-config";
 import {
     type AddMethodRule,
@@ -62,21 +49,12 @@ const rescueFocus = (parent: GObject.Object, child: GObject.Object | undefined):
     if (focus && isDescendantOf(focus, child)) parent.grabFocus();
 };
 
-// --- Slot (single, property setter) ---
-
 type SlotState = { prop: string; value: GObject.Object };
 
 const slotState = new WeakMap<Node, SlotState>();
 
 const LAYOUT_MANAGER_PROP = "layoutManager";
 
-/**
- * Re-attaches the parent's layout-child wrappers after its layout manager
- * changes. Slot wrappers attach after the regular children, so a layout-child
- * wrapper appended while the host still carried its default layout manager
- * found no grid or fixed layout to bind to; re-running its attach resolves it
- * against the layout the slot just installed.
- */
 const resyncLayoutChildWrappers = (parent: Node): void => {
     for (const sibling of stateOf(parent).children) {
         if (isWrapperKind(sibling, LAYOUT_CHILD_KIND)) attachToParent(sibling, parent);
@@ -87,7 +65,7 @@ const slotMapping: ElementMapping = {
     matches: (child, parent) => isWrapperKind(child, SLOT_KIND) && parent instanceof GObject.Object,
     attach: (child, parent) => {
         const childState = stateOf(child);
-        const prop = childState.props.propName;
+        const prop = childState.props["propName"];
         if (typeof prop !== "string" || !(parent instanceof GObject.Object)) return;
         const value = trackedInstance(child);
         const state = slotState.get(child);
@@ -106,12 +84,10 @@ const slotMapping: ElementMapping = {
     },
 };
 
-// --- Container slot (multi, method append) ---
-
 const wrapperChildInstances = (marker: Node): Node[] =>
     stateOf(marker).children.filter((child) => child instanceof GObject.Object);
 
-const sameInstances = (a: readonly Node[], b: readonly Node[]): boolean =>
+const sameInstances = (a: Node[], b: Node[]): boolean =>
     a.length === b.length && a.every((instance, index) => instance === b[index]);
 
 const attachContainerPropChild = (instance: Node, parent: Node, method: string): void => {
@@ -138,7 +114,7 @@ const containerPropMapping: ElementMapping = {
     matches: (child, parent) => isWrapperKind(child, CONTAINER_PROP_KIND) && parent instanceof GObject.Object,
     attach: (child, parent) => {
         const childState = stateOf(child);
-        const method = childState.props.method;
+        const method = childState.props["method"];
         if (typeof method !== "string" || !(parent instanceof GObject.Object)) return;
         const desired = wrapperChildInstances(child);
         const prev = containerPropState.get(child) ?? [];
@@ -163,8 +139,6 @@ const invokeRequired = (target: object, method: string, arg: unknown): void => {
     Reflect.apply(fn, target, [arg]);
 };
 
-// --- Meta object (single, Stack / ViewStack / Notebook page) ---
-
 const applyPageMeta = (page: object, props: Props): void => {
     for (const { setter, prop, fallback, whenPresent } of PAGE_META_SETTERS) {
         if (typeof Reflect.get(page, setter) !== "function") continue;
@@ -175,11 +149,7 @@ const applyPageMeta = (page: object, props: Props): void => {
 
 type MetaState = { widget: Gtk.Widget; page: object };
 
-/**
- * The page-add method rows matching `target`'s GType ancestry, or `null` when
- * no `META_OBJECT_ADD_METHODS` entry applies.
- */
-const metaAddRules = (target: GObject.Object | undefined): readonly AddMethodRule[] | null => {
+const metaAddRules = (target: GObject.Object | undefined): AddMethodRule[] | null => {
     if (!target) return null;
     return findInheritedRow(target.__gtype__, META_OBJECT_ADD_METHODS, () => true) ?? null;
 };
@@ -189,7 +159,7 @@ const pagePropValue = (props: Props, key: string): string | null =>
 
 const addStackPage = (
     stack: GObject.Object,
-    rules: readonly AddMethodRule[],
+    rules: AddMethodRule[],
     widget: Gtk.Widget,
     props: Props,
 ): object | undefined => {
@@ -215,15 +185,15 @@ const notebookTabLabel = (marker: Node): Gtk.Widget => {
     const label = tab ? stateOf(tab).children[0] : undefined;
     if (label instanceof Gtk.Widget) return label;
     const synthesized = new Gtk.Label();
-    synthesized.setLabel(typeof markerState.props.label === "string" ? markerState.props.label : "");
+    synthesized.setLabel(typeof markerState.props["label"] === "string" ? markerState.props["label"] : "");
     return synthesized;
 };
 
 const applyNotebookMeta = (notebook: Gtk.Notebook, widget: Gtk.Widget, props: Props): void => {
     const page = notebook.getPage(widget);
     if (!page) return;
-    if (props.tabExpand !== undefined) Reflect.set(page, "tabExpand", props.tabExpand);
-    if (props.tabFill !== undefined) Reflect.set(page, "tabFill", props.tabFill);
+    if (props["tabExpand"] !== undefined) Reflect.set(page, "tabExpand", props["tabExpand"]);
+    if (props["tabFill"] !== undefined) Reflect.set(page, "tabFill", props["tabFill"]);
 };
 
 const updateNotebookTabLabel = (notebook: Gtk.Notebook, widget: Gtk.Widget, marker: Node): void => {
@@ -231,7 +201,7 @@ const updateNotebookTabLabel = (notebook: Gtk.Notebook, widget: Gtk.Widget, mark
     if (markerState.children.some((child) => isWrapperKind(child, TAB_LABEL_KIND))) return;
     const current = notebook.getTabLabel(widget);
     if (current instanceof Gtk.Label)
-        current.setLabel(typeof markerState.props.label === "string" ? markerState.props.label : "");
+        current.setLabel(typeof markerState.props["label"] === "string" ? markerState.props["label"] : "");
 };
 
 const attachNotebookPage = (notebook: Gtk.Notebook, widget: Gtk.Widget, marker: Node): void => {
@@ -306,8 +276,6 @@ const metaObjectMapping: ElementMapping = {
     },
 };
 
-// --- Layout child (multi, Grid / Fixed layout-child props) ---
-
 const resolveLayoutKind = (parent: GObject.Object): "grid" | "fixed" | null => {
     if (parent instanceof Gtk.Grid) return "grid";
     if (parent instanceof Gtk.Fixed) return "fixed";
@@ -321,17 +289,17 @@ const resolveLayoutKind = (parent: GObject.Object): "grid" | "fixed" | null => {
 
 const buildFixedTransform = (props: Props): Gsk.Transform | null => {
     const point = new Graphene.Point();
-    point.init(typeof props.x === "number" ? props.x : 0, typeof props.y === "number" ? props.y : 0);
+    point.init(typeof props["x"] === "number" ? props["x"] : 0, typeof props["y"] === "number" ? props["y"] : 0);
     let value: Gsk.Transform | null = Gsk.Transform.new().translate(point);
-    if (props.transform instanceof Gsk.Transform && value) value = value.transform(props.transform);
+    if (props["transform"] instanceof Gsk.Transform && value) value = value.transform(props["transform"]);
     return value;
 };
 
 const applyGridLayoutChild = (layoutChild: Gtk.LayoutChild, props: Props): void => {
-    if ("column" in layoutChild) Reflect.set(layoutChild, "column", props.column ?? 0);
-    if ("row" in layoutChild) Reflect.set(layoutChild, "row", props.row ?? 0);
-    if ("columnSpan" in layoutChild) Reflect.set(layoutChild, "columnSpan", props.columnSpan ?? 1);
-    if ("rowSpan" in layoutChild) Reflect.set(layoutChild, "rowSpan", props.rowSpan ?? 1);
+    if ("column" in layoutChild) Reflect.set(layoutChild, "column", props["column"] ?? 0);
+    if ("row" in layoutChild) Reflect.set(layoutChild, "row", props["row"] ?? 0);
+    if ("columnSpan" in layoutChild) Reflect.set(layoutChild, "columnSpan", props["columnSpan"] ?? 1);
+    if ("rowSpan" in layoutChild) Reflect.set(layoutChild, "rowSpan", props["rowSpan"] ?? 1);
 };
 
 const applyFixedLayoutChild = (layoutChild: Gtk.LayoutChild, props: Props): void => {
@@ -348,14 +316,6 @@ const applyLayoutChild = (parent: Gtk.Widget, widget: Gtk.Widget, kind: "grid" |
     else applyFixedLayoutChild(layoutChild, props);
 };
 
-/**
- * Reconciles a wrapper marker's child widgets against the parent: removes the
- * previously-attached widgets no longer desired, attaches the unparented
- * desired widgets, applies per-child metadata, and records the new set in the
- * shared multi-child `WeakMap`. The shared skeleton behind the layout-child and
- * overlay multi-child mappings; the parent-specific add/remove/apply
- * operations are supplied as closures.
- */
 const multiChildState = new WeakMap<Node, Gtk.Widget[]>();
 
 // biome-ignore lint/complexity/useMaxParams: shared multi-child attach skeleton; add/remove/apply are supplied as closures
@@ -379,10 +339,6 @@ const reconcileMultiChildAttach = (
     multiChildState.set(child, desired);
 };
 
-/**
- * Reverses {@link reconcileMultiChildAttach}: removes every widget recorded for
- * the child through `remove` and clears the record.
- */
 const reconcileMultiChildDetach = (child: Node, remove: (widget: Gtk.Widget) => void): void => {
     for (const widget of multiChildState.get(child) ?? []) {
         remove(widget);
@@ -412,11 +368,9 @@ const layoutChildMapping: ElementMapping = {
     },
 };
 
-// --- Overlay (multi, GtkOverlay measure/clip flags) ---
-
 const applyOverlayFlags = (overlay: Gtk.Overlay, widget: Gtk.Widget, props: Props): void => {
-    overlay.setMeasureOverlay(widget, props.measure === true);
-    overlay.setClipOverlay(widget, props.clipOverlay === true);
+    overlay.setMeasureOverlay(widget, props["measure"] === true);
+    overlay.setClipOverlay(widget, props["clipOverlay"] === true);
 };
 
 const overlayMapping: ElementMapping = {
@@ -441,15 +395,11 @@ const overlayMapping: ElementMapping = {
     },
 };
 
-// --- Top-level surfaces ---
-
 const topLevelSkipMapping: ElementMapping = {
     matches: (child) => isTopLevel(child),
     attach: () => {},
     detach: () => {},
 };
-
-// --- Non-widget single-child containers (list factory cells) ---
 
 const listItemChildMapping: ElementMapping = {
     matches: (child, parent) =>
@@ -466,8 +416,6 @@ const listItemChildMapping: ElementMapping = {
         }
     },
 };
-
-// --- Generic widget container (fallback) ---
 
 const isAutowrap = (container: Gtk.Widget, widget: Gtk.Widget): boolean =>
     (container instanceof Gtk.ListBox || container instanceof Gtk.FlowBox) &&
@@ -612,14 +560,7 @@ const widgetContainerMapping: ElementMapping = {
     },
 };
 
-/**
- * The ordered attach/detach table. The reconciler applies the first matching
- * entry, so specific relationships precede the generic widget-container
- * fallback. Wrappers that carry buffered text content (`text`, `text-anchor`,
- * `text-paintable`) and the inert `tab-label` slot have no entry: the text-buffer
- * controller and the enclosing `meta-object` consume them.
- */
-export const ELEMENT_MAP: readonly ElementMapping[] = [
+export const ELEMENT_MAP: ElementMapping[] = [
     slotMapping,
     containerPropMapping,
     notebookPageMapping,

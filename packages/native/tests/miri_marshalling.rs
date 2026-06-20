@@ -1,11 +1,3 @@
-//! FFI-free marshalling tests that double as the Miri subset.
-//!
-//! Miri has no access to FFI, so it cannot execute a `dlopen`'d GTK or `GLib`.
-//! Every test here touches only pointer and per-element index math over a
-//! Rust-allocated buffer — the container-decode hot path — so Miri can validate
-//! the unsafe pointer arithmetic for out-of-bounds and provenance violations.
-//! `scripts/ci-miri.sh` runs exactly this target under Miri.
-
 use std::ffi::c_void;
 
 use native::ffi::FfiValue;
@@ -83,8 +75,6 @@ fn buffer_view_array_passthrough_shares_the_backing_store() {
     let ptr = encoded_ptr(&encoded);
     assert_eq!(ptr, buffer.as_mut_ptr() as *mut c_void);
 
-    // SAFETY: `ptr` is the live backing store of `buffer`, with mutable
-    // provenance taken at view construction; this models a callee write-back.
     unsafe { *ptr.cast::<f32>().add(1) = 9.5 };
     assert_eq!(buffer[1], 9.5);
 }
@@ -106,9 +96,6 @@ fn blob_view_passthrough_reads_and_writes_the_backing_store() {
     let ptr = encoded_ptr(&encoded);
     assert_eq!(ptr, buffer.as_mut_ptr() as *mut c_void);
 
-    // SAFETY: `ptr` is the live backing store of `buffer`, with mutable
-    // provenance taken at view construction; this models a callee
-    // read-then-write.
     unsafe {
         assert_eq!(*ptr.cast::<u8>(), 10);
         *ptr.cast::<u8>().add(2) = 99;

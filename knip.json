@@ -2,16 +2,11 @@
     "$schema": "https://unpkg.com/knip@6/schema.json",
     "ignoreExportsUsedInFile": true,
     "ignoreBinaries": [
-        "dbus-run-session",
         "espeak-ng",
-        "ffmpeg",
         "glib-compile-resources",
         "glib-compile-schemas",
-        "grim",
         "pkg-config",
         "setpriv",
-        "sway",
-        "wf-recorder",
         "wlheadless-run"
     ],
     "ignoreWorkspaces": ["packages/native/npm/*"],
@@ -88,10 +83,6 @@
         "examples/tutorial": {
             "entry": ["src/index.tsx!", "src/gtkx-env.d.ts!", "gtkx.config.ts!"],
             "project": ["src/**/*.{ts,tsx}!", "scripts/**/*.ts"]
-        },
-        "website": {
-            "entry": ["screenshots/**/*.test.{ts,tsx}"],
-            "project": [".vitepress/**/*.{ts,tsx,js}", "scripts/**/*.{ts,js}", "screenshots/**/*.{ts,tsx}"]
         },
         ".gtkx/gi": {
             "entry": ["**/*.{js,d.ts}!"]

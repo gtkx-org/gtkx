@@ -22,16 +22,6 @@ impl RefType {
         }
     }
 
-    /// Whether `inner` describes a shape `Ref` can carry as an out-parameter.
-    ///
-    /// `HashTable`, `Callback`, `Void`, `Blob`, and nested `Ref` have no
-    /// out-parameter slot representation: a hash table encodes to its payload
-    /// pointer (not a writable slot), a trampoline encodes to multiple libffi
-    /// arguments, a blob is an argument-only raw memory window with no
-    /// decodable result, and void/nested refs describe no storable value.
-    /// Both the descriptor-parsing boundary and [`FfiEncoder::encode`]
-    /// consult this so a malformed descriptor surfaces as a precise error
-    /// instead of corrupting memory.
     #[must_use]
     pub fn supports_inner(inner: &Type) -> bool {
         !matches!(
@@ -142,11 +132,6 @@ impl FfiEncoder for RefType {
     arg_only_call_cif!("Ref types");
 }
 
-/// Extracts the [`FfiStorage`] backing a `Ref` decode.
-///
-/// Returns `None` for the null-pointer fast path so the caller can short
-/// circuit to [`value::Value::Null`]. `kind` (e.g. `"Ref"` or `"Ref<Array>"`)
-/// names the expected shape in the bail message when the variant is unexpected.
 fn ref_storage_or_null<'a>(
     ffi_value: &'a ffi::FfiValue,
     kind: &str,
@@ -168,14 +153,10 @@ impl FfiDecoder for RefType {
                 storage
             }
             ReadSource::Slot(ptr, _context) => {
-                // SAFETY: The caller guarantees `ptr` is a readable pointer-sized
-                // slot.
                 let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
                 if inner_ptr.is_null() {
                     return Ok(value::Value::Null);
                 }
-                // SAFETY: The non-null dereferenced pointer is the ref's target
-                // slot, valid for the inner codec's read per the caller's contract.
                 return unsafe {
                     self.inner_type
                         .read(ReadSource::Slot(inner_ptr, "ref inner"))
@@ -186,36 +167,24 @@ impl FfiDecoder for RefType {
 
         match &*self.inner_type {
             Type::GObject(_) | Type::Boxed(_) | Type::Fundamental(_) | Type::Struct(_) => {
-                // SAFETY: The storage is the live out-parameter slot this
-                // encode allocated, holding the pointer the callee wrote.
                 let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
                 self.inner_type.decode(&ffi::FfiValue::Ptr(actual_ptr))
             }
             Type::Integer(int_type) => {
-                // SAFETY: The storage is the live, aligned scalar out slot
-                // this encode allocated.
                 let number = unsafe { int_type.read_ptr(storage.ptr() as *const u8) };
                 Ok(value::Value::Number(number))
             }
             Type::Tagged(tagged) => {
-                // SAFETY: The storage is the live, aligned scalar out slot
-                // this encode allocated.
                 let number = unsafe { tagged.storage.read_ptr(storage.ptr() as *const u8) };
                 Ok(value::Value::Number(number))
             }
             Type::Float(float_kind) => {
-                // SAFETY: The storage is the live, aligned scalar out slot
-                // this encode allocated.
                 let number = unsafe { float_kind.read_ptr(storage.ptr() as *const u8) };
                 Ok(value::Value::Number(number))
             }
-            // SAFETY: The storage is the live, aligned scalar out slot this
-            // encode allocated.
             Type::Boolean(boolean) => unsafe {
                 boolean.read(ReadSource::Slot(storage.ptr(), "Ref<Boolean>"))
             },
-            // SAFETY: The storage is the live, aligned scalar out slot this
-            // encode allocated.
             Type::Unichar(unichar) => unsafe {
                 unichar.read(ReadSource::Slot(storage.ptr(), "Ref<Unichar>"))
             },
@@ -255,8 +224,6 @@ impl RefType {
             };
 
             let actual_ptr = match storage.kind() {
-                // SAFETY: A PtrStorage is the live out-parameter slot this
-                // encode allocated, holding the pointer the callee wrote.
                 FfiStorageKind::PtrStorage(_) => unsafe { *(storage.ptr() as *const *mut c_void) },
                 _ => storage.ptr(),
             };
@@ -275,9 +242,6 @@ impl RefType {
                     ArrayKind::Sized { .. } | ArrayKind::Fixed { .. }
                 )
             {
-                // SAFETY: A transfer-full sized/fixed array out-parameter
-                // hands this decode the one owned buffer, released here
-                // exactly once after copying.
                 unsafe { glib::ffi::g_free(actual_ptr) };
             }
 
@@ -287,10 +251,6 @@ impl RefType {
         self.decode(ffi_value)
     }
 
-    /// Builds an [`ffi::FfiValue::Storage`] holding a heap-allocated null
-    /// pointer, the out-parameter slot a native callee writes a result pointer
-    /// into. The slot address is derived mutably so the callee's write carries
-    /// valid provenance.
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn null_ptr_storage() -> ffi::FfiValue {
         let mut slot: Vec<*mut c_void> = vec![std::ptr::null_mut()];
@@ -298,21 +258,12 @@ impl RefType {
         ffi::FfiValue::Storage(FfiStorage::new(ptr, FfiStorageKind::PtrStorage(slot)))
     }
 
-    /// Builds an aligned, writable out-parameter slot seeded with the scalar
-    /// payload of `encoded` — the slot a native callee writes a scalar
-    /// out-parameter through. The backing allocation is a `Vec<u64>`, giving
-    /// every scalar width an aligned home and a write-capable pointer.
     fn scalar_out_slot(encoded: &ffi::FfiValue) -> anyhow::Result<ffi::FfiValue> {
         let storage = FfiStorage::from(vec![0u64]);
-        // SAFETY: The storage is a live, aligned 8-byte slot, wide enough
-        // for every scalar payload.
         unsafe { encoded.write_scalar_to(storage.ptr())? };
         Ok(ffi::FfiValue::Storage(storage))
     }
 
-    /// Builds a zero-initialized scalar out-parameter slot for a pure out whose
-    /// cell carries no seed value — the callee overwrites it, so the initial
-    /// payload only has to be a valid, aligned slot of sufficient width.
     fn zeroed_scalar_slot() -> ffi::FfiValue {
         ffi::FfiValue::Storage(FfiStorage::from(vec![0u64]))
     }
@@ -323,26 +274,17 @@ impl RefType {
         }
 
         if let FfiStorageKind::Buffer(_) = storage.kind() {
-            // SAFETY: The buffer is the live, NUL-initialized scratch
-            // allocation this encode created for the callee to fill.
             let string =
                 unsafe { glib::GStr::from_ptr_lossy(storage.ptr() as *const c_char) }.to_string();
             value::Value::String(string)
         } else {
-            // SAFETY: The storage is the live out-parameter slot this
-            // encode allocated, holding the pointer the callee wrote.
             let str_ptr = unsafe { *(storage.ptr() as *const *const c_char) };
             if str_ptr.is_null() {
                 return value::Value::Null;
             }
-            // SAFETY: A non-null string out-parameter is a live
-            // NUL-terminated C string.
             let string = unsafe { glib::GStr::from_ptr_lossy(str_ptr) }.to_string();
 
             if string_type.ownership.is_full() {
-                // SAFETY: A transfer-full out-parameter hands this decode
-                // the one owned allocation, released here exactly once
-                // after copying.
                 unsafe { glib::ffi::g_free(str_ptr as *mut c_void) };
             }
 
@@ -367,8 +309,6 @@ mod tests {
         let slot = RefType::scalar_out_slot(&ffi::FfiValue::I32(7))
             .expect("i32 payload should produce a slot");
         let storage = slot_storage(&slot);
-        // SAFETY: The slot's storage is a live, aligned 8-byte allocation,
-        // wide enough for an i32 read.
         let seeded = unsafe { IntegerKind::I32.read_ptr(storage.ptr() as *const u8) };
         assert_eq!(seeded, 7.0);
     }
@@ -378,8 +318,6 @@ mod tests {
         let slot = RefType::scalar_out_slot(&ffi::FfiValue::F64(1.5))
             .expect("f64 payload should produce a slot");
         let storage = slot_storage(&slot);
-        // SAFETY: The slot's storage is a live, aligned 8-byte allocation,
-        // wide enough for an f64 read.
         let seeded = unsafe { FloatKind::F64.read_ptr(storage.ptr() as *const u8) };
         assert_eq!(seeded, 1.5);
     }
@@ -388,8 +326,6 @@ mod tests {
     fn zeroed_scalar_slot_is_zero_initialized() {
         let slot = RefType::zeroed_scalar_slot();
         let storage = slot_storage(&slot);
-        // SAFETY: The slot's storage is a live, aligned 8-byte allocation,
-        // wide enough for an i32 read.
         let seeded = unsafe { IntegerKind::I32.read_ptr(storage.ptr() as *const u8) };
         assert_eq!(seeded, 0.0);
     }

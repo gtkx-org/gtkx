@@ -7,56 +7,26 @@ import { loadGirRepository } from "./gir/repository.js";
 import { type JsxStoreOptions, writeJsxStore } from "./jsx-store.js";
 import { generateJsxFiles } from "./react/pipeline.js";
 
-/**
- * Options for {@link CodegenRunner}.
- */
 export type CodegenRunnerOptions = UserTableRows & {
-    /** Resolved `Name-Version` namespace identifiers to generate. */
-    readonly libraries: readonly string[];
-    /** Directories searched for `.gir` files. */
-    readonly girPath: readonly string[];
-    /** Target for the injected `@gtkx/gi` bindings package. */
-    readonly gi: GiStoreOptions;
-    /** Target for the injected `@gtkx/jsx` package; React is skipped when omitted. */
-    readonly jsx?: JsxStoreOptions;
+    libraries: string[];
+    girPath: string[];
+    gi: GiStoreOptions;
+    jsx?: JsxStoreOptions | undefined;
 };
 
-/**
- * Result returned from {@link CodegenRunner.run}.
- */
 export type CodegenRunnerResult = {
-    /** Number of FFI namespaces produced. */
-    readonly namespaces: number;
-    /** Number of widget intrinsics emitted into `jsx.ts`. */
-    readonly widgets: number;
-    /** Wall-clock duration in milliseconds. */
-    readonly duration: number;
+    namespaces: number;
+    widgets: number;
+    duration: number;
 };
 
-/**
- * Single-entry orchestrator for the GTKX codegen.
- *
- * Loads the GIR repository, runs the FFI pipeline per namespace, runs the
- * React pipeline once, and materializes the self-contained `@gtkx/gi` (and
- * optional `@gtkx/jsx`) packages into the project's `node_modules`.
- *
- * @example
- * ```ts
- * import { CodegenRunner } from "@gtkx/codegen";
- *
- * await new CodegenRunner({
- *     libraries: ["Gtk-4.0", "Adw-1"],
- *     girPath: ["/usr/share/gir-1.0"],
- *     gi: { storeDir, linkDir, realFfiDir, realNativeDir, version },
- * }).run();
- * ```
- */
 export class CodegenRunner {
-    constructor(private readonly options: CodegenRunnerOptions) {}
+    private options: CodegenRunnerOptions;
 
-    /**
-     * Executes the full codegen pipeline and materializes the output packages.
-     */
+    constructor(options: CodegenRunnerOptions) {
+        this.options = options;
+    }
+
     async run(): Promise<CodegenRunnerResult> {
         const start = Date.now();
         const repository = loadGirRepository(this.options.libraries, this.options.girPath);

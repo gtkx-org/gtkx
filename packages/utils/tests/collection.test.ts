@@ -46,11 +46,14 @@ describe("omit", () => {
 });
 
 describe("reverseNumericEnum", () => {
-    enum Color {
-        Red = 0,
-        Green = 5,
-        Blue = 6,
-    }
+    const Color: Record<string, string | number> = {
+        Red: 0,
+        Green: 5,
+        Blue: 6,
+        0: "Red",
+        5: "Green",
+        6: "Blue",
+    };
 
     it("maps each numeric enum value to its member name", () => {
         const byValue = reverseNumericEnum(Color);

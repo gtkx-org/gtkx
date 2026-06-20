@@ -293,7 +293,7 @@ export function bindBuffersBase(
     target: BufferTargetARB,
     first: GLuint,
     count: GLsizei,
-    buffers: readonly GLuint[] | Uint32Array,
+    buffers: GLuint[] | Uint32Array,
 ): void {
     glBindBuffersBase(target, first, count, buffers);
 }
@@ -315,9 +315,9 @@ export function bindBuffersRange(
     target: BufferTargetARB,
     first: GLuint,
     count: GLsizei,
-    buffers: readonly GLuint[] | Uint32Array,
-    offsets: readonly GLintptr[],
-    sizes: readonly GLsizeiptr[],
+    buffers: GLuint[] | Uint32Array,
+    offsets: GLintptr[],
+    sizes: GLsizeiptr[],
 ): void {
     glBindBuffersRange(target, first, count, buffers, offsets, sizes);
 }
@@ -400,7 +400,7 @@ export function bindImageTexture(
  * @param textures - `const GLuint *`, length `count`, object kind `texture`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindImageTextures.xhtml
  */
-export function bindImageTextures(first: GLuint, count: GLsizei, textures: readonly GLuint[] | Uint32Array): void {
+export function bindImageTextures(first: GLuint, count: GLsizei, textures: GLuint[] | Uint32Array): void {
     glBindImageTextures(first, count, textures);
 }
 
@@ -452,7 +452,7 @@ export function bindSampler(unit: GLuint, sampler: GLuint): void {
  * @param samplers - `const GLuint *`, length `count`, object kind `sampler`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindSamplers.xhtml
  */
-export function bindSamplers(first: GLuint, count: GLsizei, samplers: readonly GLuint[] | Uint32Array): void {
+export function bindSamplers(first: GLuint, count: GLsizei, samplers: GLuint[] | Uint32Array): void {
     glBindSamplers(first, count, samplers);
 }
 
@@ -479,7 +479,7 @@ export function bindTexture(target: TextureTarget, texture: GLuint): void {
  * @param textures - `const GLuint *`, length `count`, object kind `texture`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindTextures.xhtml
  */
-export function bindTextures(first: GLuint, count: GLsizei, textures: readonly GLuint[] | Uint32Array): void {
+export function bindTextures(first: GLuint, count: GLsizei, textures: GLuint[] | Uint32Array): void {
     glBindTextures(first, count, textures);
 }
 
@@ -551,9 +551,9 @@ export function bindVertexBuffer(bindingindex: GLuint, buffer: GLuint, offset: G
 export function bindVertexBuffers(
     first: GLuint,
     count: GLsizei,
-    buffers: readonly GLuint[] | Uint32Array,
-    offsets: readonly GLintptr[],
-    strides: readonly GLsizei[] | Int32Array,
+    buffers: GLuint[] | Uint32Array,
+    offsets: GLintptr[],
+    strides: GLsizei[] | Int32Array,
 ): void {
     glBindVertexBuffers(first, count, buffers, offsets, strides);
 }
@@ -938,7 +938,7 @@ export function clearBufferfi(buffer: Buffer, drawbuffer: GLint, depth: GLfloat,
  * @param value - `const GLfloat *`, length `COMPSIZE(buffer)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glClearBufferfv.xhtml
  */
-export function clearBufferfv(buffer: Buffer, drawbuffer: GLint, value: readonly GLfloat[] | Float32Array): void {
+export function clearBufferfv(buffer: Buffer, drawbuffer: GLint, value: GLfloat[] | Float32Array): void {
     glClearBufferfv(buffer, drawbuffer, value);
 }
 
@@ -952,7 +952,7 @@ export function clearBufferfv(buffer: Buffer, drawbuffer: GLint, value: readonly
  * @param value - `const GLint *`, length `COMPSIZE(buffer)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glClearBufferiv.xhtml
  */
-export function clearBufferiv(buffer: Buffer, drawbuffer: GLint, value: readonly GLint[] | Int32Array): void {
+export function clearBufferiv(buffer: Buffer, drawbuffer: GLint, value: GLint[] | Int32Array): void {
     glClearBufferiv(buffer, drawbuffer, value);
 }
 
@@ -992,7 +992,7 @@ export function clearBufferSubData(
  * @param value - `const GLuint *`, length `COMPSIZE(buffer)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glClearBufferuiv.xhtml
  */
-export function clearBufferuiv(buffer: Buffer, drawbuffer: GLint, value: readonly GLuint[] | Uint32Array): void {
+export function clearBufferuiv(buffer: Buffer, drawbuffer: GLint, value: GLuint[] | Uint32Array): void {
     glClearBufferuiv(buffer, drawbuffer, value);
 }
 
@@ -1120,7 +1120,7 @@ export function clearNamedFramebufferfv(
     framebuffer: GLuint,
     buffer: Buffer,
     drawbuffer: GLint,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glClearNamedFramebufferfv(framebuffer, buffer, drawbuffer, value);
 }
@@ -1140,7 +1140,7 @@ export function clearNamedFramebufferiv(
     framebuffer: GLuint,
     buffer: Buffer,
     drawbuffer: GLint,
-    value: readonly GLint[] | Int32Array,
+    value: GLint[] | Int32Array,
 ): void {
     glClearNamedFramebufferiv(framebuffer, buffer, drawbuffer, value);
 }
@@ -1160,7 +1160,7 @@ export function clearNamedFramebufferuiv(
     framebuffer: GLuint,
     buffer: Buffer,
     drawbuffer: GLint,
-    value: readonly GLuint[] | Uint32Array,
+    value: GLuint[] | Uint32Array,
 ): void {
     glClearNamedFramebufferuiv(framebuffer, buffer, drawbuffer, value);
 }
@@ -2026,7 +2026,7 @@ export function createShader(type: ShaderType): GLuint {
  * @returns `GLuint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glCreateShaderProgramv.xhtml
  */
-export function createShaderProgramv(type: ShaderType, count: GLsizei, strings: readonly string[]): GLuint {
+export function createShaderProgramv(type: ShaderType, count: GLsizei, strings: string[]): GLuint {
     return glCreateShaderProgramv(type, count, strings) as GLuint;
 }
 
@@ -2106,7 +2106,7 @@ export function debugMessageControl(
     type: DebugType,
     severity: DebugSeverity,
     count: GLsizei,
-    ids: readonly GLuint[] | Uint32Array,
+    ids: GLuint[] | Uint32Array,
     enabled: boolean,
 ): void {
     glDebugMessageControl(source, type, severity, count, ids, enabled);
@@ -2145,7 +2145,7 @@ export function debugMessageInsert(
  * @param buffers - `const GLuint *`, length `n`, object kind `buffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteBuffers.xhtml
  */
-export function deleteBuffers(n: GLsizei, buffers: readonly GLuint[] | Uint32Array): void {
+export function deleteBuffers(n: GLsizei, buffers: GLuint[] | Uint32Array): void {
     glDeleteBuffers(n, buffers);
 }
 
@@ -2158,7 +2158,7 @@ export function deleteBuffers(n: GLsizei, buffers: readonly GLuint[] | Uint32Arr
  * @param framebuffers - `const GLuint *`, length `n`, object kind `framebuffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteFramebuffers.xhtml
  */
-export function deleteFramebuffers(n: GLsizei, framebuffers: readonly GLuint[] | Uint32Array): void {
+export function deleteFramebuffers(n: GLsizei, framebuffers: GLuint[] | Uint32Array): void {
     glDeleteFramebuffers(n, framebuffers);
 }
 
@@ -2183,7 +2183,7 @@ export function deleteProgram(program: GLuint): void {
  * @param pipelines - `const GLuint *`, length `n`, object kind `program pipeline`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteProgramPipelines.xhtml
  */
-export function deleteProgramPipelines(n: GLsizei, pipelines: readonly GLuint[] | Uint32Array): void {
+export function deleteProgramPipelines(n: GLsizei, pipelines: GLuint[] | Uint32Array): void {
     glDeleteProgramPipelines(n, pipelines);
 }
 
@@ -2196,7 +2196,7 @@ export function deleteProgramPipelines(n: GLsizei, pipelines: readonly GLuint[] 
  * @param ids - `const GLuint *`, length `n`, object kind `query`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteQueries.xhtml
  */
-export function deleteQueries(n: GLsizei, ids: readonly GLuint[] | Uint32Array): void {
+export function deleteQueries(n: GLsizei, ids: GLuint[] | Uint32Array): void {
     glDeleteQueries(n, ids);
 }
 
@@ -2209,7 +2209,7 @@ export function deleteQueries(n: GLsizei, ids: readonly GLuint[] | Uint32Array):
  * @param renderbuffers - `const GLuint *`, length `n`, object kind `renderbuffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteRenderbuffers.xhtml
  */
-export function deleteRenderbuffers(n: GLsizei, renderbuffers: readonly GLuint[] | Uint32Array): void {
+export function deleteRenderbuffers(n: GLsizei, renderbuffers: GLuint[] | Uint32Array): void {
     glDeleteRenderbuffers(n, renderbuffers);
 }
 
@@ -2222,7 +2222,7 @@ export function deleteRenderbuffers(n: GLsizei, renderbuffers: readonly GLuint[]
  * @param samplers - `const GLuint *`, length `count`, object kind `sampler`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteSamplers.xhtml
  */
-export function deleteSamplers(count: GLsizei, samplers: readonly GLuint[] | Uint32Array): void {
+export function deleteSamplers(count: GLsizei, samplers: GLuint[] | Uint32Array): void {
     glDeleteSamplers(count, samplers);
 }
 
@@ -2259,7 +2259,7 @@ export function deleteSync(sync: GLsync): void {
  * @param textures - `const GLuint *`, length `n`, object kind `texture`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteTextures.xhtml
  */
-export function deleteTextures(n: GLsizei, textures: readonly GLuint[] | Uint32Array): void {
+export function deleteTextures(n: GLsizei, textures: GLuint[] | Uint32Array): void {
     glDeleteTextures(n, textures);
 }
 
@@ -2272,7 +2272,7 @@ export function deleteTextures(n: GLsizei, textures: readonly GLuint[] | Uint32A
  * @param ids - `const GLuint *`, length `n`, object kind `transform feedback`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteTransformFeedbacks.xhtml
  */
-export function deleteTransformFeedbacks(n: GLsizei, ids: readonly GLuint[] | Uint32Array): void {
+export function deleteTransformFeedbacks(n: GLsizei, ids: GLuint[] | Uint32Array): void {
     glDeleteTransformFeedbacks(n, ids);
 }
 
@@ -2285,7 +2285,7 @@ export function deleteTransformFeedbacks(n: GLsizei, ids: readonly GLuint[] | Ui
  * @param arrays - `const GLuint *`, length `n`, object kind `vertex array`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteVertexArrays.xhtml
  */
-export function deleteVertexArrays(n: GLsizei, arrays: readonly GLuint[] | Uint32Array): void {
+export function deleteVertexArrays(n: GLsizei, arrays: GLuint[] | Uint32Array): void {
     glDeleteVertexArrays(n, arrays);
 }
 
@@ -2336,7 +2336,7 @@ export function depthRange(n: GLdouble, f: GLdouble): void {
  * @param v - `const GLdouble *`, length `COMPSIZE(count)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDepthRangeArrayv.xhtml
  */
-export function depthRangeArrayv(first: GLuint, count: GLsizei, v: readonly GLdouble[] | Float64Array): void {
+export function depthRangeArrayv(first: GLuint, count: GLsizei, v: GLdouble[] | Float64Array): void {
     glDepthRangeArrayv(first, count, v);
 }
 
@@ -2541,7 +2541,7 @@ export function drawBuffer(buf: DrawBufferMode): void {
  * @param bufs - `const GLenum *`, group `DrawBufferMode`, length `n`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDrawBuffers.xhtml
  */
-export function drawBuffers(n: GLsizei, bufs: readonly DrawBufferMode[] | Uint32Array): void {
+export function drawBuffers(n: GLsizei, bufs: DrawBufferMode[] | Uint32Array): void {
     glDrawBuffers(n, bufs);
 }
 
@@ -4072,7 +4072,7 @@ export function getProgramResourceiv(
     programInterface: ProgramInterface,
     index: GLuint,
     propCount: GLsizei,
-    props: readonly ProgramResourceProperty[] | Uint32Array,
+    props: ProgramResourceProperty[] | Uint32Array,
     count: GLsizei,
 ): [GLsizei, GLint[]] {
     const out0 = { value: 0 };
@@ -4976,7 +4976,7 @@ export function invalidateBufferSubData(buffer: GLuint, offset: GLintptr, length
 export function invalidateFramebuffer(
     target: FramebufferTarget,
     numAttachments: GLsizei,
-    attachments: readonly InvalidateFramebufferAttachment[] | Uint32Array,
+    attachments: InvalidateFramebufferAttachment[] | Uint32Array,
 ): void {
     glInvalidateFramebuffer(target, numAttachments, attachments);
 }
@@ -4994,7 +4994,7 @@ export function invalidateFramebuffer(
 export function invalidateNamedFramebufferData(
     framebuffer: GLuint,
     numAttachments: GLsizei,
-    attachments: readonly FramebufferAttachment[] | Uint32Array,
+    attachments: FramebufferAttachment[] | Uint32Array,
 ): void {
     glInvalidateNamedFramebufferData(framebuffer, numAttachments, attachments);
 }
@@ -5016,7 +5016,7 @@ export function invalidateNamedFramebufferData(
 export function invalidateNamedFramebufferSubData(
     framebuffer: GLuint,
     numAttachments: GLsizei,
-    attachments: readonly FramebufferAttachment[] | Uint32Array,
+    attachments: FramebufferAttachment[] | Uint32Array,
     x: GLint,
     y: GLint,
     width: GLsizei,
@@ -5042,7 +5042,7 @@ export function invalidateNamedFramebufferSubData(
 export function invalidateSubFramebuffer(
     target: FramebufferTarget,
     numAttachments: GLsizei,
-    attachments: readonly InvalidateFramebufferAttachment[] | Uint32Array,
+    attachments: InvalidateFramebufferAttachment[] | Uint32Array,
     x: GLint,
     y: GLint,
     width: GLsizei,
@@ -5430,8 +5430,8 @@ export function minSampleShading(value: GLfloat): void {
  */
 export function multiDrawArrays(
     mode: PrimitiveType,
-    first: readonly GLint[] | Int32Array,
-    count: readonly GLsizei[] | Int32Array,
+    first: GLint[] | Int32Array,
+    count: GLsizei[] | Int32Array,
     drawcount: GLsizei,
 ): void {
     glMultiDrawArrays(mode, first, count, drawcount);
@@ -5493,9 +5493,9 @@ export function multiDrawArraysIndirectCount(
  */
 export function multiDrawElements(
     mode: PrimitiveType,
-    count: readonly GLsizei[] | Int32Array,
+    count: GLsizei[] | Int32Array,
     type: DrawElementsType,
-    indices: readonly GLintptr[],
+    indices: GLintptr[],
     drawcount: GLsizei,
 ): void {
     glMultiDrawElements(mode, count, type, indices, drawcount);
@@ -5516,11 +5516,11 @@ export function multiDrawElements(
  */
 export function multiDrawElementsBaseVertex(
     mode: PrimitiveType,
-    count: readonly GLsizei[] | Int32Array,
+    count: GLsizei[] | Int32Array,
     type: DrawElementsType,
-    indices: readonly GLintptr[],
+    indices: GLintptr[],
     drawcount: GLsizei,
-    basevertex: readonly GLint[] | Int32Array,
+    basevertex: GLint[] | Int32Array,
 ): void {
     glMultiDrawElementsBaseVertex(mode, count, type, indices, drawcount, basevertex);
 }
@@ -5654,11 +5654,7 @@ export function namedFramebufferDrawBuffer(framebuffer: GLuint, buf: ColorBuffer
  * @param bufs - `const GLenum *`, group `ColorBuffer`, length `n`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glNamedFramebufferDrawBuffers.xhtml
  */
-export function namedFramebufferDrawBuffers(
-    framebuffer: GLuint,
-    n: GLsizei,
-    bufs: readonly ColorBuffer[] | Uint32Array,
-): void {
+export function namedFramebufferDrawBuffers(framebuffer: GLuint, n: GLsizei, bufs: ColorBuffer[] | Uint32Array): void {
     glNamedFramebufferDrawBuffers(framebuffer, n, bufs);
 }
 
@@ -5831,7 +5827,7 @@ export function objectPtrLabel(ptr: ArrayBufferView | GLintptr | null, length: G
  * @param values - `const GLfloat *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glPatchParameterfv.xhtml
  */
-export function patchParameterfv(pname: PatchParameterName, values: readonly GLfloat[] | Float32Array): void {
+export function patchParameterfv(pname: PatchParameterName, values: GLfloat[] | Float32Array): void {
     glPatchParameterfv(pname, values);
 }
 
@@ -5906,7 +5902,7 @@ export function pointParameterf(pname: PointParameterNameARB, param: GLfloat): v
  * @param params - `const GLfloat *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glPointParameterfv.xhtml
  */
-export function pointParameterfv(pname: PointParameterNameARB, params: readonly GLfloat[] | Float32Array): void {
+export function pointParameterfv(pname: PointParameterNameARB, params: GLfloat[] | Float32Array): void {
     glPointParameterfv(pname, params);
 }
 
@@ -5932,7 +5928,7 @@ export function pointParameteri(pname: PointParameterNameARB, param: GLint): voi
  * @param params - `const GLint *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glPointParameteriv.xhtml
  */
-export function pointParameteriv(pname: PointParameterNameARB, params: readonly GLint[] | Int32Array): void {
+export function pointParameteriv(pname: PointParameterNameARB, params: GLint[] | Int32Array): void {
     glPointParameteriv(pname, params);
 }
 
@@ -6073,7 +6069,7 @@ export function programUniform1dv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniform1dv(program, location, count, value);
 }
@@ -6107,7 +6103,7 @@ export function programUniform1fv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniform1fv(program, location, count, value);
 }
@@ -6137,12 +6133,7 @@ export function programUniform1i(program: GLuint, location: GLint, v0: GLint): v
  * @param value - `const GLint *`, length `count`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glProgramUniform1iv.xhtml
  */
-export function programUniform1iv(
-    program: GLuint,
-    location: GLint,
-    count: GLsizei,
-    value: readonly GLint[] | Int32Array,
-): void {
+export function programUniform1iv(program: GLuint, location: GLint, count: GLsizei, value: GLint[] | Int32Array): void {
     glProgramUniform1iv(program, location, count, value);
 }
 
@@ -6175,7 +6166,7 @@ export function programUniform1uiv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLuint[] | Uint32Array,
+    value: GLuint[] | Uint32Array,
 ): void {
     glProgramUniform1uiv(program, location, count, value);
 }
@@ -6210,7 +6201,7 @@ export function programUniform2dv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniform2dv(program, location, count, value);
 }
@@ -6245,7 +6236,7 @@ export function programUniform2fv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniform2fv(program, location, count, value);
 }
@@ -6276,12 +6267,7 @@ export function programUniform2i(program: GLuint, location: GLint, v0: GLint, v1
  * @param value - `const GLint *`, length `count*2`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glProgramUniform2iv.xhtml
  */
-export function programUniform2iv(
-    program: GLuint,
-    location: GLint,
-    count: GLsizei,
-    value: readonly GLint[] | Int32Array,
-): void {
+export function programUniform2iv(program: GLuint, location: GLint, count: GLsizei, value: GLint[] | Int32Array): void {
     glProgramUniform2iv(program, location, count, value);
 }
 
@@ -6315,7 +6301,7 @@ export function programUniform2uiv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLuint[] | Uint32Array,
+    value: GLuint[] | Uint32Array,
 ): void {
     glProgramUniform2uiv(program, location, count, value);
 }
@@ -6351,7 +6337,7 @@ export function programUniform3dv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniform3dv(program, location, count, value);
 }
@@ -6387,7 +6373,7 @@ export function programUniform3fv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniform3fv(program, location, count, value);
 }
@@ -6419,12 +6405,7 @@ export function programUniform3i(program: GLuint, location: GLint, v0: GLint, v1
  * @param value - `const GLint *`, length `count*3`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glProgramUniform3iv.xhtml
  */
-export function programUniform3iv(
-    program: GLuint,
-    location: GLint,
-    count: GLsizei,
-    value: readonly GLint[] | Int32Array,
-): void {
+export function programUniform3iv(program: GLuint, location: GLint, count: GLsizei, value: GLint[] | Int32Array): void {
     glProgramUniform3iv(program, location, count, value);
 }
 
@@ -6459,7 +6440,7 @@ export function programUniform3uiv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLuint[] | Uint32Array,
+    value: GLuint[] | Uint32Array,
 ): void {
     glProgramUniform3uiv(program, location, count, value);
 }
@@ -6503,7 +6484,7 @@ export function programUniform4dv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniform4dv(program, location, count, value);
 }
@@ -6547,7 +6528,7 @@ export function programUniform4fv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniform4fv(program, location, count, value);
 }
@@ -6580,12 +6561,7 @@ export function programUniform4i(program: GLuint, location: GLint, v0: GLint, v1
  * @param value - `const GLint *`, length `count*4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glProgramUniform4iv.xhtml
  */
-export function programUniform4iv(
-    program: GLuint,
-    location: GLint,
-    count: GLsizei,
-    value: readonly GLint[] | Int32Array,
-): void {
+export function programUniform4iv(program: GLuint, location: GLint, count: GLsizei, value: GLint[] | Int32Array): void {
     glProgramUniform4iv(program, location, count, value);
 }
 
@@ -6628,7 +6604,7 @@ export function programUniform4uiv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLuint[] | Uint32Array,
+    value: GLuint[] | Uint32Array,
 ): void {
     glProgramUniform4uiv(program, location, count, value);
 }
@@ -6650,7 +6626,7 @@ export function programUniformMatrix2dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniformMatrix2dv(program, location, count, transpose, value);
 }
@@ -6672,7 +6648,7 @@ export function programUniformMatrix2fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniformMatrix2fv(program, location, count, transpose, value);
 }
@@ -6694,7 +6670,7 @@ export function programUniformMatrix2x3dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniformMatrix2x3dv(program, location, count, transpose, value);
 }
@@ -6716,7 +6692,7 @@ export function programUniformMatrix2x3fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniformMatrix2x3fv(program, location, count, transpose, value);
 }
@@ -6738,7 +6714,7 @@ export function programUniformMatrix2x4dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniformMatrix2x4dv(program, location, count, transpose, value);
 }
@@ -6760,7 +6736,7 @@ export function programUniformMatrix2x4fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniformMatrix2x4fv(program, location, count, transpose, value);
 }
@@ -6782,7 +6758,7 @@ export function programUniformMatrix3dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniformMatrix3dv(program, location, count, transpose, value);
 }
@@ -6804,7 +6780,7 @@ export function programUniformMatrix3fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniformMatrix3fv(program, location, count, transpose, value);
 }
@@ -6826,7 +6802,7 @@ export function programUniformMatrix3x2dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniformMatrix3x2dv(program, location, count, transpose, value);
 }
@@ -6848,7 +6824,7 @@ export function programUniformMatrix3x2fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniformMatrix3x2fv(program, location, count, transpose, value);
 }
@@ -6870,7 +6846,7 @@ export function programUniformMatrix3x4dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniformMatrix3x4dv(program, location, count, transpose, value);
 }
@@ -6892,7 +6868,7 @@ export function programUniformMatrix3x4fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniformMatrix3x4fv(program, location, count, transpose, value);
 }
@@ -6914,7 +6890,7 @@ export function programUniformMatrix4dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniformMatrix4dv(program, location, count, transpose, value);
 }
@@ -6936,7 +6912,7 @@ export function programUniformMatrix4fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniformMatrix4fv(program, location, count, transpose, value);
 }
@@ -6958,7 +6934,7 @@ export function programUniformMatrix4x2dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniformMatrix4x2dv(program, location, count, transpose, value);
 }
@@ -6980,7 +6956,7 @@ export function programUniformMatrix4x2fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniformMatrix4x2fv(program, location, count, transpose, value);
 }
@@ -7002,7 +6978,7 @@ export function programUniformMatrix4x3dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniformMatrix4x3dv(program, location, count, transpose, value);
 }
@@ -7024,7 +7000,7 @@ export function programUniformMatrix4x3fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniformMatrix4x3fv(program, location, count, transpose, value);
 }
@@ -7247,11 +7223,7 @@ export function samplerParameterf(sampler: GLuint, pname: SamplerParameterF, par
  * @param param - `const GLfloat *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glSamplerParameterfv.xhtml
  */
-export function samplerParameterfv(
-    sampler: GLuint,
-    pname: SamplerParameterF,
-    param: readonly GLfloat[] | Float32Array,
-): void {
+export function samplerParameterfv(sampler: GLuint, pname: SamplerParameterF, param: GLfloat[] | Float32Array): void {
     glSamplerParameterfv(sampler, pname, param);
 }
 
@@ -7279,11 +7251,7 @@ export function samplerParameteri(sampler: GLuint, pname: SamplerParameterI, par
  * @param param - `const GLint *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glSamplerParameterIiv.xhtml
  */
-export function samplerParameterIiv(
-    sampler: GLuint,
-    pname: SamplerParameterI,
-    param: readonly GLint[] | Int32Array,
-): void {
+export function samplerParameterIiv(sampler: GLuint, pname: SamplerParameterI, param: GLint[] | Int32Array): void {
     glSamplerParameterIiv(sampler, pname, param);
 }
 
@@ -7297,11 +7265,7 @@ export function samplerParameterIiv(
  * @param param - `const GLuint *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glSamplerParameterIuiv.xhtml
  */
-export function samplerParameterIuiv(
-    sampler: GLuint,
-    pname: SamplerParameterI,
-    param: readonly GLuint[] | Uint32Array,
-): void {
+export function samplerParameterIuiv(sampler: GLuint, pname: SamplerParameterI, param: GLuint[] | Uint32Array): void {
     glSamplerParameterIuiv(sampler, pname, param);
 }
 
@@ -7315,11 +7279,7 @@ export function samplerParameterIuiv(
  * @param param - `const GLint *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glSamplerParameteriv.xhtml
  */
-export function samplerParameteriv(
-    sampler: GLuint,
-    pname: SamplerParameterI,
-    param: readonly GLint[] | Int32Array,
-): void {
+export function samplerParameteriv(sampler: GLuint, pname: SamplerParameterI, param: GLint[] | Int32Array): void {
     glSamplerParameteriv(sampler, pname, param);
 }
 
@@ -7348,7 +7308,7 @@ export function scissor(x: GLint, y: GLint, width: GLsizei, height: GLsizei): vo
  * @param v - `const GLint *`, length `COMPSIZE(count)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glScissorArrayv.xhtml
  */
-export function scissorArrayv(first: GLuint, count: GLsizei, v: readonly GLint[] | Int32Array): void {
+export function scissorArrayv(first: GLuint, count: GLsizei, v: GLint[] | Int32Array): void {
     glScissorArrayv(first, count, v);
 }
 
@@ -7377,7 +7337,7 @@ export function scissorIndexed(index: GLuint, left: GLint, bottom: GLint, width:
  * @param v - `const GLint *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glScissorIndexedv.xhtml
  */
-export function scissorIndexedv(index: GLuint, v: readonly GLint[] | Int32Array): void {
+export function scissorIndexedv(index: GLuint, v: GLint[] | Int32Array): void {
     glScissorIndexedv(index, v);
 }
 
@@ -7395,7 +7355,7 @@ export function scissorIndexedv(index: GLuint, v: readonly GLint[] | Int32Array)
  */
 export function shaderBinary(
     count: GLsizei,
-    shaders: readonly GLuint[] | Uint32Array,
+    shaders: GLuint[] | Uint32Array,
     binaryFormat: ShaderBinaryFormat,
     binary: ArrayBufferView | GLintptr | null,
     length: GLsizei,
@@ -7414,12 +7374,7 @@ export function shaderBinary(
  * @param length - `const GLint *`, length `count`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glShaderSource.xhtml
  */
-export function shaderSource(
-    shader: GLuint,
-    count: GLsizei,
-    string: readonly string[],
-    length: readonly GLint[] | Int32Array,
-): void {
+export function shaderSource(shader: GLuint, count: GLsizei, string: string[], length: GLint[] | Int32Array): void {
     glShaderSource(shader, count, string, length);
 }
 
@@ -7457,8 +7412,8 @@ export function specializeShader(
     shader: GLuint,
     pEntryPoint: string,
     numSpecializationConstants: GLuint,
-    pConstantIndex: readonly GLuint[] | Uint32Array,
-    pConstantValue: readonly GLuint[] | Uint32Array,
+    pConstantIndex: GLuint[] | Uint32Array,
+    pConstantValue: GLuint[] | Uint32Array,
 ): void {
     glSpecializeShader(shader, pEntryPoint, numSpecializationConstants, pConstantIndex, pConstantValue);
 }
@@ -7749,7 +7704,7 @@ export function texParameterf(target: TextureTarget, pname: TextureParameterName
 export function texParameterfv(
     target: TextureTarget,
     pname: TextureParameterName,
-    params: readonly GLfloat[] | Float32Array,
+    params: GLfloat[] | Float32Array,
 ): void {
     glTexParameterfv(target, pname, params);
 }
@@ -7781,7 +7736,7 @@ export function texParameteri(target: TextureTarget, pname: TextureParameterName
 export function texParameterIiv(
     target: TextureTarget,
     pname: TextureParameterName,
-    params: readonly GLint[] | Int32Array,
+    params: GLint[] | Int32Array,
 ): void {
     glTexParameterIiv(target, pname, params);
 }
@@ -7799,7 +7754,7 @@ export function texParameterIiv(
 export function texParameterIuiv(
     target: TextureTarget,
     pname: TextureParameterName,
-    params: readonly GLuint[] | Uint32Array,
+    params: GLuint[] | Uint32Array,
 ): void {
     glTexParameterIuiv(target, pname, params);
 }
@@ -7814,11 +7769,7 @@ export function texParameterIuiv(
  * @param params - `const GLint *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTexParameteriv.xhtml
  */
-export function texParameteriv(
-    target: TextureTarget,
-    pname: TextureParameterName,
-    params: readonly GLint[] | Int32Array,
-): void {
+export function texParameteriv(target: TextureTarget, pname: TextureParameterName, params: GLint[] | Int32Array): void {
     glTexParameteriv(target, pname, params);
 }
 
@@ -8101,7 +8052,7 @@ export function textureParameterf(texture: GLuint, pname: TextureParameterName, 
 export function textureParameterfv(
     texture: GLuint,
     pname: TextureParameterName,
-    param: readonly GLfloat[] | Float32Array,
+    param: GLfloat[] | Float32Array,
 ): void {
     glTextureParameterfv(texture, pname, param);
 }
@@ -8130,11 +8081,7 @@ export function textureParameteri(texture: GLuint, pname: TextureParameterName, 
  * @param params - `const GLint *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTextureParameterIiv.xhtml
  */
-export function textureParameterIiv(
-    texture: GLuint,
-    pname: TextureParameterName,
-    params: readonly GLint[] | Int32Array,
-): void {
+export function textureParameterIiv(texture: GLuint, pname: TextureParameterName, params: GLint[] | Int32Array): void {
     glTextureParameterIiv(texture, pname, params);
 }
 
@@ -8151,7 +8098,7 @@ export function textureParameterIiv(
 export function textureParameterIuiv(
     texture: GLuint,
     pname: TextureParameterName,
-    params: readonly GLuint[] | Uint32Array,
+    params: GLuint[] | Uint32Array,
 ): void {
     glTextureParameterIuiv(texture, pname, params);
 }
@@ -8166,11 +8113,7 @@ export function textureParameterIuiv(
  * @param param - `const GLint *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTextureParameteriv.xhtml
  */
-export function textureParameteriv(
-    texture: GLuint,
-    pname: TextureParameterName,
-    param: readonly GLint[] | Int32Array,
-): void {
+export function textureParameteriv(texture: GLuint, pname: TextureParameterName, param: GLint[] | Int32Array): void {
     glTextureParameteriv(texture, pname, param);
 }
 
@@ -8458,7 +8401,7 @@ export function transformFeedbackBufferRange(
 export function transformFeedbackVaryings(
     program: GLuint,
     count: GLsizei,
-    varyings: readonly string[],
+    varyings: string[],
     bufferMode: TransformFeedbackBufferMode,
 ): void {
     glTransformFeedbackVaryings(program, count, varyings, bufferMode);
@@ -8487,7 +8430,7 @@ export function uniform1d(location: GLint, x: GLdouble): void {
  * @param value - `const GLdouble *`, length `count*1`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform1dv.xhtml
  */
-export function uniform1dv(location: GLint, count: GLsizei, value: readonly GLdouble[] | Float64Array): void {
+export function uniform1dv(location: GLint, count: GLsizei, value: GLdouble[] | Float64Array): void {
     glUniform1dv(location, count, value);
 }
 
@@ -8514,7 +8457,7 @@ export function uniform1f(location: GLint, v0: GLfloat): void {
  * @param value - `const GLfloat *`, length `count*1`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform1fv.xhtml
  */
-export function uniform1fv(location: GLint, count: GLsizei, value: readonly GLfloat[] | Float32Array): void {
+export function uniform1fv(location: GLint, count: GLsizei, value: GLfloat[] | Float32Array): void {
     glUniform1fv(location, count, value);
 }
 
@@ -8541,7 +8484,7 @@ export function uniform1i(location: GLint, v0: GLint): void {
  * @param value - `const GLint *`, length `count*1`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform1iv.xhtml
  */
-export function uniform1iv(location: GLint, count: GLsizei, value: readonly GLint[] | Int32Array): void {
+export function uniform1iv(location: GLint, count: GLsizei, value: GLint[] | Int32Array): void {
     glUniform1iv(location, count, value);
 }
 
@@ -8568,7 +8511,7 @@ export function uniform1ui(location: GLint, v0: GLuint): void {
  * @param value - `const GLuint *`, length `count*1`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform1uiv.xhtml
  */
-export function uniform1uiv(location: GLint, count: GLsizei, value: readonly GLuint[] | Uint32Array): void {
+export function uniform1uiv(location: GLint, count: GLsizei, value: GLuint[] | Uint32Array): void {
     glUniform1uiv(location, count, value);
 }
 
@@ -8596,7 +8539,7 @@ export function uniform2d(location: GLint, x: GLdouble, y: GLdouble): void {
  * @param value - `const GLdouble *`, length `count*2`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform2dv.xhtml
  */
-export function uniform2dv(location: GLint, count: GLsizei, value: readonly GLdouble[] | Float64Array): void {
+export function uniform2dv(location: GLint, count: GLsizei, value: GLdouble[] | Float64Array): void {
     glUniform2dv(location, count, value);
 }
 
@@ -8624,7 +8567,7 @@ export function uniform2f(location: GLint, v0: GLfloat, v1: GLfloat): void {
  * @param value - `const GLfloat *`, length `count*2`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform2fv.xhtml
  */
-export function uniform2fv(location: GLint, count: GLsizei, value: readonly GLfloat[] | Float32Array): void {
+export function uniform2fv(location: GLint, count: GLsizei, value: GLfloat[] | Float32Array): void {
     glUniform2fv(location, count, value);
 }
 
@@ -8652,7 +8595,7 @@ export function uniform2i(location: GLint, v0: GLint, v1: GLint): void {
  * @param value - `const GLint *`, length `count*2`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform2iv.xhtml
  */
-export function uniform2iv(location: GLint, count: GLsizei, value: readonly GLint[] | Int32Array): void {
+export function uniform2iv(location: GLint, count: GLsizei, value: GLint[] | Int32Array): void {
     glUniform2iv(location, count, value);
 }
 
@@ -8680,7 +8623,7 @@ export function uniform2ui(location: GLint, v0: GLuint, v1: GLuint): void {
  * @param value - `const GLuint *`, length `count*2`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform2uiv.xhtml
  */
-export function uniform2uiv(location: GLint, count: GLsizei, value: readonly GLuint[] | Uint32Array): void {
+export function uniform2uiv(location: GLint, count: GLsizei, value: GLuint[] | Uint32Array): void {
     glUniform2uiv(location, count, value);
 }
 
@@ -8709,7 +8652,7 @@ export function uniform3d(location: GLint, x: GLdouble, y: GLdouble, z: GLdouble
  * @param value - `const GLdouble *`, length `count*3`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform3dv.xhtml
  */
-export function uniform3dv(location: GLint, count: GLsizei, value: readonly GLdouble[] | Float64Array): void {
+export function uniform3dv(location: GLint, count: GLsizei, value: GLdouble[] | Float64Array): void {
     glUniform3dv(location, count, value);
 }
 
@@ -8738,7 +8681,7 @@ export function uniform3f(location: GLint, v0: GLfloat, v1: GLfloat, v2: GLfloat
  * @param value - `const GLfloat *`, length `count*3`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform3fv.xhtml
  */
-export function uniform3fv(location: GLint, count: GLsizei, value: readonly GLfloat[] | Float32Array): void {
+export function uniform3fv(location: GLint, count: GLsizei, value: GLfloat[] | Float32Array): void {
     glUniform3fv(location, count, value);
 }
 
@@ -8767,7 +8710,7 @@ export function uniform3i(location: GLint, v0: GLint, v1: GLint, v2: GLint): voi
  * @param value - `const GLint *`, length `count*3`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform3iv.xhtml
  */
-export function uniform3iv(location: GLint, count: GLsizei, value: readonly GLint[] | Int32Array): void {
+export function uniform3iv(location: GLint, count: GLsizei, value: GLint[] | Int32Array): void {
     glUniform3iv(location, count, value);
 }
 
@@ -8796,7 +8739,7 @@ export function uniform3ui(location: GLint, v0: GLuint, v1: GLuint, v2: GLuint):
  * @param value - `const GLuint *`, length `count*3`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform3uiv.xhtml
  */
-export function uniform3uiv(location: GLint, count: GLsizei, value: readonly GLuint[] | Uint32Array): void {
+export function uniform3uiv(location: GLint, count: GLsizei, value: GLuint[] | Uint32Array): void {
     glUniform3uiv(location, count, value);
 }
 
@@ -8826,7 +8769,7 @@ export function uniform4d(location: GLint, x: GLdouble, y: GLdouble, z: GLdouble
  * @param value - `const GLdouble *`, length `count*4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform4dv.xhtml
  */
-export function uniform4dv(location: GLint, count: GLsizei, value: readonly GLdouble[] | Float64Array): void {
+export function uniform4dv(location: GLint, count: GLsizei, value: GLdouble[] | Float64Array): void {
     glUniform4dv(location, count, value);
 }
 
@@ -8856,7 +8799,7 @@ export function uniform4f(location: GLint, v0: GLfloat, v1: GLfloat, v2: GLfloat
  * @param value - `const GLfloat *`, length `count*4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform4fv.xhtml
  */
-export function uniform4fv(location: GLint, count: GLsizei, value: readonly GLfloat[] | Float32Array): void {
+export function uniform4fv(location: GLint, count: GLsizei, value: GLfloat[] | Float32Array): void {
     glUniform4fv(location, count, value);
 }
 
@@ -8886,7 +8829,7 @@ export function uniform4i(location: GLint, v0: GLint, v1: GLint, v2: GLint, v3: 
  * @param value - `const GLint *`, length `count*4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform4iv.xhtml
  */
-export function uniform4iv(location: GLint, count: GLsizei, value: readonly GLint[] | Int32Array): void {
+export function uniform4iv(location: GLint, count: GLsizei, value: GLint[] | Int32Array): void {
     glUniform4iv(location, count, value);
 }
 
@@ -8916,7 +8859,7 @@ export function uniform4ui(location: GLint, v0: GLuint, v1: GLuint, v2: GLuint, 
  * @param value - `const GLuint *`, length `count*4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform4uiv.xhtml
  */
-export function uniform4uiv(location: GLint, count: GLsizei, value: readonly GLuint[] | Uint32Array): void {
+export function uniform4uiv(location: GLint, count: GLsizei, value: GLuint[] | Uint32Array): void {
     glUniform4uiv(location, count, value);
 }
 
@@ -8949,7 +8892,7 @@ export function uniformMatrix2dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glUniformMatrix2dv(location, count, transpose, value);
 }
@@ -8969,7 +8912,7 @@ export function uniformMatrix2fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glUniformMatrix2fv(location, count, transpose, value);
 }
@@ -8989,7 +8932,7 @@ export function uniformMatrix2x3dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glUniformMatrix2x3dv(location, count, transpose, value);
 }
@@ -9009,7 +8952,7 @@ export function uniformMatrix2x3fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glUniformMatrix2x3fv(location, count, transpose, value);
 }
@@ -9029,7 +8972,7 @@ export function uniformMatrix2x4dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glUniformMatrix2x4dv(location, count, transpose, value);
 }
@@ -9049,7 +8992,7 @@ export function uniformMatrix2x4fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glUniformMatrix2x4fv(location, count, transpose, value);
 }
@@ -9069,7 +9012,7 @@ export function uniformMatrix3dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glUniformMatrix3dv(location, count, transpose, value);
 }
@@ -9089,7 +9032,7 @@ export function uniformMatrix3fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glUniformMatrix3fv(location, count, transpose, value);
 }
@@ -9109,7 +9052,7 @@ export function uniformMatrix3x2dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glUniformMatrix3x2dv(location, count, transpose, value);
 }
@@ -9129,7 +9072,7 @@ export function uniformMatrix3x2fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glUniformMatrix3x2fv(location, count, transpose, value);
 }
@@ -9149,7 +9092,7 @@ export function uniformMatrix3x4dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glUniformMatrix3x4dv(location, count, transpose, value);
 }
@@ -9169,7 +9112,7 @@ export function uniformMatrix3x4fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glUniformMatrix3x4fv(location, count, transpose, value);
 }
@@ -9189,7 +9132,7 @@ export function uniformMatrix4dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glUniformMatrix4dv(location, count, transpose, value);
 }
@@ -9209,7 +9152,7 @@ export function uniformMatrix4fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glUniformMatrix4fv(location, count, transpose, value);
 }
@@ -9229,7 +9172,7 @@ export function uniformMatrix4x2dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glUniformMatrix4x2dv(location, count, transpose, value);
 }
@@ -9249,7 +9192,7 @@ export function uniformMatrix4x2fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glUniformMatrix4x2fv(location, count, transpose, value);
 }
@@ -9269,7 +9212,7 @@ export function uniformMatrix4x3dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glUniformMatrix4x3dv(location, count, transpose, value);
 }
@@ -9289,7 +9232,7 @@ export function uniformMatrix4x3fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glUniformMatrix4x3fv(location, count, transpose, value);
 }
@@ -9304,11 +9247,7 @@ export function uniformMatrix4x3fv(
  * @param indices - `const GLuint *`, length `count`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniformSubroutinesuiv.xhtml
  */
-export function uniformSubroutinesuiv(
-    shadertype: ShaderType,
-    count: GLsizei,
-    indices: readonly GLuint[] | Uint32Array,
-): void {
+export function uniformSubroutinesuiv(shadertype: ShaderType, count: GLsizei, indices: GLuint[] | Uint32Array): void {
     glUniformSubroutinesuiv(shadertype, count, indices);
 }
 
@@ -9536,9 +9475,9 @@ export function vertexArrayVertexBuffers(
     vaobj: GLuint,
     first: GLuint,
     count: GLsizei,
-    buffers: readonly GLuint[] | Uint32Array,
-    offsets: readonly GLintptr[],
-    strides: readonly GLsizei[] | Int32Array,
+    buffers: GLuint[] | Uint32Array,
+    offsets: GLintptr[],
+    strides: GLsizei[] | Int32Array,
 ): void {
     glVertexArrayVertexBuffers(vaobj, first, count, buffers, offsets, strides);
 }
@@ -9565,7 +9504,7 @@ export function vertexAttrib1d(index: GLuint, x: GLdouble): void {
  * @param v - `const GLdouble *`, length `1`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib1dv.xhtml
  */
-export function vertexAttrib1dv(index: GLuint, v: readonly GLdouble[] | Float64Array): void {
+export function vertexAttrib1dv(index: GLuint, v: GLdouble[] | Float64Array): void {
     glVertexAttrib1dv(index, v);
 }
 
@@ -9591,7 +9530,7 @@ export function vertexAttrib1f(index: GLuint, x: GLfloat): void {
  * @param v - `const GLfloat *`, length `1`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib1fv.xhtml
  */
-export function vertexAttrib1fv(index: GLuint, v: readonly GLfloat[] | Float32Array): void {
+export function vertexAttrib1fv(index: GLuint, v: GLfloat[] | Float32Array): void {
     glVertexAttrib1fv(index, v);
 }
 
@@ -9617,7 +9556,7 @@ export function vertexAttrib1s(index: GLuint, x: GLshort): void {
  * @param v - `const GLshort *`, length `1`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib1sv.xhtml
  */
-export function vertexAttrib1sv(index: GLuint, v: readonly GLshort[] | Int16Array): void {
+export function vertexAttrib1sv(index: GLuint, v: GLshort[] | Int16Array): void {
     glVertexAttrib1sv(index, v);
 }
 
@@ -9644,7 +9583,7 @@ export function vertexAttrib2d(index: GLuint, x: GLdouble, y: GLdouble): void {
  * @param v - `const GLdouble *`, length `2`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib2dv.xhtml
  */
-export function vertexAttrib2dv(index: GLuint, v: readonly GLdouble[] | Float64Array): void {
+export function vertexAttrib2dv(index: GLuint, v: GLdouble[] | Float64Array): void {
     glVertexAttrib2dv(index, v);
 }
 
@@ -9671,7 +9610,7 @@ export function vertexAttrib2f(index: GLuint, x: GLfloat, y: GLfloat): void {
  * @param v - `const GLfloat *`, length `2`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib2fv.xhtml
  */
-export function vertexAttrib2fv(index: GLuint, v: readonly GLfloat[] | Float32Array): void {
+export function vertexAttrib2fv(index: GLuint, v: GLfloat[] | Float32Array): void {
     glVertexAttrib2fv(index, v);
 }
 
@@ -9698,7 +9637,7 @@ export function vertexAttrib2s(index: GLuint, x: GLshort, y: GLshort): void {
  * @param v - `const GLshort *`, length `2`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib2sv.xhtml
  */
-export function vertexAttrib2sv(index: GLuint, v: readonly GLshort[] | Int16Array): void {
+export function vertexAttrib2sv(index: GLuint, v: GLshort[] | Int16Array): void {
     glVertexAttrib2sv(index, v);
 }
 
@@ -9726,7 +9665,7 @@ export function vertexAttrib3d(index: GLuint, x: GLdouble, y: GLdouble, z: GLdou
  * @param v - `const GLdouble *`, length `3`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib3dv.xhtml
  */
-export function vertexAttrib3dv(index: GLuint, v: readonly GLdouble[] | Float64Array): void {
+export function vertexAttrib3dv(index: GLuint, v: GLdouble[] | Float64Array): void {
     glVertexAttrib3dv(index, v);
 }
 
@@ -9754,7 +9693,7 @@ export function vertexAttrib3f(index: GLuint, x: GLfloat, y: GLfloat, z: GLfloat
  * @param v - `const GLfloat *`, length `3`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib3fv.xhtml
  */
-export function vertexAttrib3fv(index: GLuint, v: readonly GLfloat[] | Float32Array): void {
+export function vertexAttrib3fv(index: GLuint, v: GLfloat[] | Float32Array): void {
     glVertexAttrib3fv(index, v);
 }
 
@@ -9782,7 +9721,7 @@ export function vertexAttrib3s(index: GLuint, x: GLshort, y: GLshort, z: GLshort
  * @param v - `const GLshort *`, length `3`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib3sv.xhtml
  */
-export function vertexAttrib3sv(index: GLuint, v: readonly GLshort[] | Int16Array): void {
+export function vertexAttrib3sv(index: GLuint, v: GLshort[] | Int16Array): void {
     glVertexAttrib3sv(index, v);
 }
 
@@ -9795,7 +9734,7 @@ export function vertexAttrib3sv(index: GLuint, v: readonly GLshort[] | Int16Arra
  * @param v - `const GLbyte *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4bv.xhtml
  */
-export function vertexAttrib4bv(index: GLuint, v: readonly GLbyte[] | Int8Array): void {
+export function vertexAttrib4bv(index: GLuint, v: GLbyte[] | Int8Array): void {
     glVertexAttrib4bv(index, v);
 }
 
@@ -9824,7 +9763,7 @@ export function vertexAttrib4d(index: GLuint, x: GLdouble, y: GLdouble, z: GLdou
  * @param v - `const GLdouble *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4dv.xhtml
  */
-export function vertexAttrib4dv(index: GLuint, v: readonly GLdouble[] | Float64Array): void {
+export function vertexAttrib4dv(index: GLuint, v: GLdouble[] | Float64Array): void {
     glVertexAttrib4dv(index, v);
 }
 
@@ -9853,7 +9792,7 @@ export function vertexAttrib4f(index: GLuint, x: GLfloat, y: GLfloat, z: GLfloat
  * @param v - `const GLfloat *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4fv.xhtml
  */
-export function vertexAttrib4fv(index: GLuint, v: readonly GLfloat[] | Float32Array): void {
+export function vertexAttrib4fv(index: GLuint, v: GLfloat[] | Float32Array): void {
     glVertexAttrib4fv(index, v);
 }
 
@@ -9866,7 +9805,7 @@ export function vertexAttrib4fv(index: GLuint, v: readonly GLfloat[] | Float32Ar
  * @param v - `const GLint *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4iv.xhtml
  */
-export function vertexAttrib4iv(index: GLuint, v: readonly GLint[] | Int32Array): void {
+export function vertexAttrib4iv(index: GLuint, v: GLint[] | Int32Array): void {
     glVertexAttrib4iv(index, v);
 }
 
@@ -9879,7 +9818,7 @@ export function vertexAttrib4iv(index: GLuint, v: readonly GLint[] | Int32Array)
  * @param v - `const GLbyte *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4Nbv.xhtml
  */
-export function vertexAttrib4Nbv(index: GLuint, v: readonly GLbyte[] | Int8Array): void {
+export function vertexAttrib4Nbv(index: GLuint, v: GLbyte[] | Int8Array): void {
     glVertexAttrib4Nbv(index, v);
 }
 
@@ -9892,7 +9831,7 @@ export function vertexAttrib4Nbv(index: GLuint, v: readonly GLbyte[] | Int8Array
  * @param v - `const GLint *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4Niv.xhtml
  */
-export function vertexAttrib4Niv(index: GLuint, v: readonly GLint[] | Int32Array): void {
+export function vertexAttrib4Niv(index: GLuint, v: GLint[] | Int32Array): void {
     glVertexAttrib4Niv(index, v);
 }
 
@@ -9905,7 +9844,7 @@ export function vertexAttrib4Niv(index: GLuint, v: readonly GLint[] | Int32Array
  * @param v - `const GLshort *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4Nsv.xhtml
  */
-export function vertexAttrib4Nsv(index: GLuint, v: readonly GLshort[] | Int16Array): void {
+export function vertexAttrib4Nsv(index: GLuint, v: GLshort[] | Int16Array): void {
     glVertexAttrib4Nsv(index, v);
 }
 
@@ -9934,7 +9873,7 @@ export function vertexAttrib4Nub(index: GLuint, x: GLubyte, y: GLubyte, z: GLuby
  * @param v - `const GLubyte *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4Nubv.xhtml
  */
-export function vertexAttrib4Nubv(index: GLuint, v: readonly GLubyte[] | Uint8Array): void {
+export function vertexAttrib4Nubv(index: GLuint, v: GLubyte[] | Uint8Array): void {
     glVertexAttrib4Nubv(index, v);
 }
 
@@ -9947,7 +9886,7 @@ export function vertexAttrib4Nubv(index: GLuint, v: readonly GLubyte[] | Uint8Ar
  * @param v - `const GLuint *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4Nuiv.xhtml
  */
-export function vertexAttrib4Nuiv(index: GLuint, v: readonly GLuint[] | Uint32Array): void {
+export function vertexAttrib4Nuiv(index: GLuint, v: GLuint[] | Uint32Array): void {
     glVertexAttrib4Nuiv(index, v);
 }
 
@@ -9960,7 +9899,7 @@ export function vertexAttrib4Nuiv(index: GLuint, v: readonly GLuint[] | Uint32Ar
  * @param v - `const GLushort *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4Nusv.xhtml
  */
-export function vertexAttrib4Nusv(index: GLuint, v: readonly GLushort[] | Uint16Array): void {
+export function vertexAttrib4Nusv(index: GLuint, v: GLushort[] | Uint16Array): void {
     glVertexAttrib4Nusv(index, v);
 }
 
@@ -9989,7 +9928,7 @@ export function vertexAttrib4s(index: GLuint, x: GLshort, y: GLshort, z: GLshort
  * @param v - `const GLshort *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4sv.xhtml
  */
-export function vertexAttrib4sv(index: GLuint, v: readonly GLshort[] | Int16Array): void {
+export function vertexAttrib4sv(index: GLuint, v: GLshort[] | Int16Array): void {
     glVertexAttrib4sv(index, v);
 }
 
@@ -10002,7 +9941,7 @@ export function vertexAttrib4sv(index: GLuint, v: readonly GLshort[] | Int16Arra
  * @param v - `const GLubyte *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4ubv.xhtml
  */
-export function vertexAttrib4ubv(index: GLuint, v: readonly GLubyte[] | Uint8Array): void {
+export function vertexAttrib4ubv(index: GLuint, v: GLubyte[] | Uint8Array): void {
     glVertexAttrib4ubv(index, v);
 }
 
@@ -10015,7 +9954,7 @@ export function vertexAttrib4ubv(index: GLuint, v: readonly GLubyte[] | Uint8Arr
  * @param v - `const GLuint *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4uiv.xhtml
  */
-export function vertexAttrib4uiv(index: GLuint, v: readonly GLuint[] | Uint32Array): void {
+export function vertexAttrib4uiv(index: GLuint, v: GLuint[] | Uint32Array): void {
     glVertexAttrib4uiv(index, v);
 }
 
@@ -10028,7 +9967,7 @@ export function vertexAttrib4uiv(index: GLuint, v: readonly GLuint[] | Uint32Arr
  * @param v - `const GLushort *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4usv.xhtml
  */
-export function vertexAttrib4usv(index: GLuint, v: readonly GLushort[] | Uint16Array): void {
+export function vertexAttrib4usv(index: GLuint, v: GLushort[] | Uint16Array): void {
     glVertexAttrib4usv(index, v);
 }
 
@@ -10102,7 +10041,7 @@ export function vertexAttribI1i(index: GLuint, x: GLint): void {
  * @param v - `const GLint *`, length `1`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI1iv.xhtml
  */
-export function vertexAttribI1iv(index: GLuint, v: readonly GLint[] | Int32Array): void {
+export function vertexAttribI1iv(index: GLuint, v: GLint[] | Int32Array): void {
     glVertexAttribI1iv(index, v);
 }
 
@@ -10128,7 +10067,7 @@ export function vertexAttribI1ui(index: GLuint, x: GLuint): void {
  * @param v - `const GLuint *`, length `1`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI1uiv.xhtml
  */
-export function vertexAttribI1uiv(index: GLuint, v: readonly GLuint[] | Uint32Array): void {
+export function vertexAttribI1uiv(index: GLuint, v: GLuint[] | Uint32Array): void {
     glVertexAttribI1uiv(index, v);
 }
 
@@ -10155,7 +10094,7 @@ export function vertexAttribI2i(index: GLuint, x: GLint, y: GLint): void {
  * @param v - `const GLint *`, length `2`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI2iv.xhtml
  */
-export function vertexAttribI2iv(index: GLuint, v: readonly GLint[] | Int32Array): void {
+export function vertexAttribI2iv(index: GLuint, v: GLint[] | Int32Array): void {
     glVertexAttribI2iv(index, v);
 }
 
@@ -10182,7 +10121,7 @@ export function vertexAttribI2ui(index: GLuint, x: GLuint, y: GLuint): void {
  * @param v - `const GLuint *`, length `2`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI2uiv.xhtml
  */
-export function vertexAttribI2uiv(index: GLuint, v: readonly GLuint[] | Uint32Array): void {
+export function vertexAttribI2uiv(index: GLuint, v: GLuint[] | Uint32Array): void {
     glVertexAttribI2uiv(index, v);
 }
 
@@ -10210,7 +10149,7 @@ export function vertexAttribI3i(index: GLuint, x: GLint, y: GLint, z: GLint): vo
  * @param v - `const GLint *`, length `3`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI3iv.xhtml
  */
-export function vertexAttribI3iv(index: GLuint, v: readonly GLint[] | Int32Array): void {
+export function vertexAttribI3iv(index: GLuint, v: GLint[] | Int32Array): void {
     glVertexAttribI3iv(index, v);
 }
 
@@ -10238,7 +10177,7 @@ export function vertexAttribI3ui(index: GLuint, x: GLuint, y: GLuint, z: GLuint)
  * @param v - `const GLuint *`, length `3`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI3uiv.xhtml
  */
-export function vertexAttribI3uiv(index: GLuint, v: readonly GLuint[] | Uint32Array): void {
+export function vertexAttribI3uiv(index: GLuint, v: GLuint[] | Uint32Array): void {
     glVertexAttribI3uiv(index, v);
 }
 
@@ -10251,7 +10190,7 @@ export function vertexAttribI3uiv(index: GLuint, v: readonly GLuint[] | Uint32Ar
  * @param v - `const GLbyte *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI4bv.xhtml
  */
-export function vertexAttribI4bv(index: GLuint, v: readonly GLbyte[] | Int8Array): void {
+export function vertexAttribI4bv(index: GLuint, v: GLbyte[] | Int8Array): void {
     glVertexAttribI4bv(index, v);
 }
 
@@ -10280,7 +10219,7 @@ export function vertexAttribI4i(index: GLuint, x: GLint, y: GLint, z: GLint, w: 
  * @param v - `const GLint *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI4iv.xhtml
  */
-export function vertexAttribI4iv(index: GLuint, v: readonly GLint[] | Int32Array): void {
+export function vertexAttribI4iv(index: GLuint, v: GLint[] | Int32Array): void {
     glVertexAttribI4iv(index, v);
 }
 
@@ -10293,7 +10232,7 @@ export function vertexAttribI4iv(index: GLuint, v: readonly GLint[] | Int32Array
  * @param v - `const GLshort *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI4sv.xhtml
  */
-export function vertexAttribI4sv(index: GLuint, v: readonly GLshort[] | Int16Array): void {
+export function vertexAttribI4sv(index: GLuint, v: GLshort[] | Int16Array): void {
     glVertexAttribI4sv(index, v);
 }
 
@@ -10306,7 +10245,7 @@ export function vertexAttribI4sv(index: GLuint, v: readonly GLshort[] | Int16Arr
  * @param v - `const GLubyte *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI4ubv.xhtml
  */
-export function vertexAttribI4ubv(index: GLuint, v: readonly GLubyte[] | Uint8Array): void {
+export function vertexAttribI4ubv(index: GLuint, v: GLubyte[] | Uint8Array): void {
     glVertexAttribI4ubv(index, v);
 }
 
@@ -10335,7 +10274,7 @@ export function vertexAttribI4ui(index: GLuint, x: GLuint, y: GLuint, z: GLuint,
  * @param v - `const GLuint *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI4uiv.xhtml
  */
-export function vertexAttribI4uiv(index: GLuint, v: readonly GLuint[] | Uint32Array): void {
+export function vertexAttribI4uiv(index: GLuint, v: GLuint[] | Uint32Array): void {
     glVertexAttribI4uiv(index, v);
 }
 
@@ -10348,7 +10287,7 @@ export function vertexAttribI4uiv(index: GLuint, v: readonly GLuint[] | Uint32Ar
  * @param v - `const GLushort *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI4usv.xhtml
  */
-export function vertexAttribI4usv(index: GLuint, v: readonly GLushort[] | Uint16Array): void {
+export function vertexAttribI4usv(index: GLuint, v: GLushort[] | Uint16Array): void {
     glVertexAttribI4usv(index, v);
 }
 
@@ -10416,7 +10355,7 @@ export function vertexAttribL1d(index: GLuint, x: GLdouble): void {
  * @param v - `const GLdouble *`, length `1`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribL1dv.xhtml
  */
-export function vertexAttribL1dv(index: GLuint, v: readonly GLdouble[] | Float64Array): void {
+export function vertexAttribL1dv(index: GLuint, v: GLdouble[] | Float64Array): void {
     glVertexAttribL1dv(index, v);
 }
 
@@ -10443,7 +10382,7 @@ export function vertexAttribL2d(index: GLuint, x: GLdouble, y: GLdouble): void {
  * @param v - `const GLdouble *`, length `2`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribL2dv.xhtml
  */
-export function vertexAttribL2dv(index: GLuint, v: readonly GLdouble[] | Float64Array): void {
+export function vertexAttribL2dv(index: GLuint, v: GLdouble[] | Float64Array): void {
     glVertexAttribL2dv(index, v);
 }
 
@@ -10471,7 +10410,7 @@ export function vertexAttribL3d(index: GLuint, x: GLdouble, y: GLdouble, z: GLdo
  * @param v - `const GLdouble *`, length `3`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribL3dv.xhtml
  */
-export function vertexAttribL3dv(index: GLuint, v: readonly GLdouble[] | Float64Array): void {
+export function vertexAttribL3dv(index: GLuint, v: GLdouble[] | Float64Array): void {
     glVertexAttribL3dv(index, v);
 }
 
@@ -10500,7 +10439,7 @@ export function vertexAttribL4d(index: GLuint, x: GLdouble, y: GLdouble, z: GLdo
  * @param v - `const GLdouble *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribL4dv.xhtml
  */
-export function vertexAttribL4dv(index: GLuint, v: readonly GLdouble[] | Float64Array): void {
+export function vertexAttribL4dv(index: GLuint, v: GLdouble[] | Float64Array): void {
     glVertexAttribL4dv(index, v);
 }
 
@@ -10581,7 +10520,7 @@ export function vertexAttribP1uiv(
     index: GLuint,
     type: VertexAttribPointerType,
     normalized: boolean,
-    value: readonly GLuint[] | Uint32Array,
+    value: GLuint[] | Uint32Array,
 ): void {
     glVertexAttribP1uiv(index, type, normalized, value);
 }
@@ -10621,7 +10560,7 @@ export function vertexAttribP2uiv(
     index: GLuint,
     type: VertexAttribPointerType,
     normalized: boolean,
-    value: readonly GLuint[] | Uint32Array,
+    value: GLuint[] | Uint32Array,
 ): void {
     glVertexAttribP2uiv(index, type, normalized, value);
 }
@@ -10661,7 +10600,7 @@ export function vertexAttribP3uiv(
     index: GLuint,
     type: VertexAttribPointerType,
     normalized: boolean,
-    value: readonly GLuint[] | Uint32Array,
+    value: GLuint[] | Uint32Array,
 ): void {
     glVertexAttribP3uiv(index, type, normalized, value);
 }
@@ -10701,7 +10640,7 @@ export function vertexAttribP4uiv(
     index: GLuint,
     type: VertexAttribPointerType,
     normalized: boolean,
-    value: readonly GLuint[] | Uint32Array,
+    value: GLuint[] | Uint32Array,
 ): void {
     glVertexAttribP4uiv(index, type, normalized, value);
 }
@@ -10768,7 +10707,7 @@ export function viewport(x: GLint, y: GLint, width: GLsizei, height: GLsizei): v
  * @param v - `const GLfloat *`, length `COMPSIZE(count)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glViewportArrayv.xhtml
  */
-export function viewportArrayv(first: GLuint, count: GLsizei, v: readonly GLfloat[] | Float32Array): void {
+export function viewportArrayv(first: GLuint, count: GLsizei, v: GLfloat[] | Float32Array): void {
     glViewportArrayv(first, count, v);
 }
 
@@ -10797,7 +10736,7 @@ export function viewportIndexedf(index: GLuint, x: GLfloat, y: GLfloat, w: GLflo
  * @param v - `const GLfloat *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glViewportIndexedfv.xhtml
  */
-export function viewportIndexedfv(index: GLuint, v: readonly GLfloat[] | Float32Array): void {
+export function viewportIndexedfv(index: GLuint, v: GLfloat[] | Float32Array): void {
     glViewportIndexedfv(index, v);
 }
 

@@ -21,8 +21,8 @@ const baseCard = css`
 
 type NoteCardProps = {
     note: Note;
-    compact?: boolean;
-    fontSize?: number;
+    compact?: boolean | undefined;
+    fontSize?: number | undefined;
 };
 
 export const NoteCard = ({ note, compact = false, fontSize = 14 }: NoteCardProps) => {

@@ -13,14 +13,6 @@ import { removeTempDir } from "../internal/remove-temp-dir.js";
 
 const VIRTUAL_PREFIX = "\0gtkx-gsettings:";
 
-/**
- * Banner prepended to the production bundle so `GSETTINGS_SCHEMA_DIR` points
- * at the bundle's directory (where `gschemas.compiled` is emitted) before any
- * bundled module evaluates. GTK's own initialization snapshots GLib's default
- * schema source on first use, so setting the variable from within the module
- * graph would be too late: the `@gtkx/gi` side-effect imports initialize GTK
- * ahead of application code.
- */
 const SCHEMA_ENV_BANNER = [
     `process.env.GSETTINGS_SCHEMA_DIR = [`,
     `    decodeURIComponent(new URL(".", import.meta.url).pathname),`,
@@ -30,34 +22,6 @@ const SCHEMA_ENV_BANNER = [
     `    .join(":");`,
 ].join("\n");
 
-/**
- * Vite plugin that compiles GSettings schemas when imported.
- *
- * Intercepts imports of `.gschema.xml` files. Each schema in the file
- * becomes a named export (its ID with dots replaced by underscores) holding
- * a typed schema reference usable with `useSetting`; the first schema is
- * also the default export. The matching ambient module types are generated
- * into the project's `node_modules/.gtkx/env.d.ts` from the `.gschema.xml`
- * files under the configured data directory (`dataDir`, default `data`),
- * kept fresh on dev-server start and whenever a `.gschema.xml` file is added,
- * changed, or removed.
- *
- * **Dev mode:** Copies the schema to a temporary directory, runs
- * `glib-compile-schemas`, and sets `GSETTINGS_SCHEMA_DIR` so
- * `Gio.Settings` can find the compiled result. Schema file changes
- * trigger recompilation via HMR.
- *
- * **Build mode:** All imported schemas are compiled together at build time
- * into a single `gschemas.compiled` asset emitted next to the bundle. At
- * runtime a shared init module sets `GSETTINGS_SCHEMA_DIR` to the
- * bundle's directory once, regardless of how many schemas are imported.
- *
- * @example
- * ```ts
- * import schema from "./com.example.myapp.gschema.xml";
- * const [value, setValue] = useSetting(schema, "my-key");
- * ```
- */
 type PluginState = {
     schemaDir: string | null;
     rootDir: string | null;
@@ -75,7 +39,7 @@ type PluginContext = {
 
 const ensureSchemaDir = (state: PluginState): string => {
     if (!state.schemaDir) {
-        const runnerDir = process.env.GTKX_DEV_SCHEMA_DIR;
+        const runnerDir = process.env["GTKX_DEV_SCHEMA_DIR"];
         if (runnerDir) {
             state.schemaDir = runnerDir;
             return runnerDir;
@@ -102,7 +66,7 @@ const releaseSchemaDir = (state: PluginState): void => {
 const compileSchemaDir = (state: PluginState): void => {
     if (!state.schemaDir) return;
     compileSchemas(state.schemaDir);
-    process.env.GSETTINGS_SCHEMA_DIR = prependSchemaDir(state.schemaDir, process.env.GSETTINGS_SCHEMA_DIR);
+    process.env["GSETTINGS_SCHEMA_DIR"] = prependSchemaDir(state.schemaDir, process.env["GSETTINGS_SCHEMA_DIR"]);
 };
 
 const syncSchemaEnv = (state: PluginState): void => {

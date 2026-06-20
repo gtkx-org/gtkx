@@ -1,27 +1,5 @@
 /// <reference types="@gtkx/config/env" />
 
-/**
- * The data-driven core of the reconciler's attach table.
- *
- * Every "attach a child to a parent through one fixed call" relationship is a
- * plain-data {@link "@gtkx/config".ElementMapRule}: the child's GLib type, the
- * parent it targets (by type or by an exposed method), and a verb naming the
- * GTK methods to call. The rows arrive merged through `virtual:gtkx-config` —
- * codegen's built-ins followed by the project's `gtkx.config.ts` `elementMap`
- * rows. A single generic interpreter turns each row into an
- * {@link "./element-mapping".ElementMapping}, so these relationships carry no
- * bespoke `attach`/`detach` code.
- *
- * Two verb shapes are interpreted: `method` verbs make one attach and one
- * detach call with a finite argument vocabulary; `orderedInsert` verbs place
- * the child at the anchor-derived position of a list-model collection and
- * notify {@link "./attach-events".onOrderedAttach} subscribers after every
- * mutation.
- *
- * Relationships that hold per-attachment state (slots, overlays, stack pages,
- * the widget-container fallback) stay hand-written in `element-map`; this
- * table covers the stateless verbs.
- */
 import { CONTAINER_PROPS, ELEMENT_MAP } from "virtual:gtkx-config";
 import type { ElementMapRule, MethodVerb, OrderedInsertVerb, VerbArgs } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
@@ -45,16 +23,6 @@ const ruleMatches = (rule: ElementMapRule, child: Node, parent: Node): boolean =
     return false;
 };
 
-/**
- * Memoizes a `(child, parent)` predicate or lookup by the pair's backing
- * GTypes. A rule match depends only on the GType ancestries and the methods a
- * backing class's prototype exposes, all fixed per GType, so a pair's result
- * never changes once computed. Pairs missing a backing instance resolve to
- * `absent` and are never cached.
- *
- * @param compute - the per-pair computation to memoize
- * @param absent - the value returned when either side has no backing instance
- */
 const memoizeByGtypePair = <T>(
     compute: (child: Node, parent: Node) => T,
     absent: T,
@@ -77,8 +45,7 @@ const memoizeByGtypePair = <T>(
     };
 };
 
-/** Resolves a verb's argument list, or `null` when the shape cannot be satisfied. */
-const resolveArgs = (shape: VerbArgs, child: Node): readonly unknown[] | null => {
+const resolveArgs = (shape: VerbArgs, child: Node): unknown[] | null => {
     switch (shape) {
         case "child":
             return [child];
@@ -89,17 +56,17 @@ const resolveArgs = (shape: VerbArgs, child: Node): readonly unknown[] | null =>
             return typeof getName === "function" ? [Reflect.apply(getName, child, [])] : null;
         }
         case "prefixChild": {
-            const prefix = stateOf(child).props.prefix;
+            const prefix = stateOf(child).props["prefix"];
             return typeof prefix === "string" ? [prefix, child] : null;
         }
         case "prefixNull": {
-            const prefix = stateOf(child).props.prefix;
+            const prefix = stateOf(child).props["prefix"];
             return typeof prefix === "string" ? [prefix, null] : null;
         }
     }
 };
 
-const callVerb = (parent: Node, method: string, args: readonly unknown[]): void => {
+const callVerb = (parent: Node, method: string, args: unknown[]): void => {
     if (parent instanceof GObject.Object) callMethod(parent, method, args);
 };
 
@@ -127,7 +94,6 @@ const buildMethodMapping = (verb: MethodVerb, matches: RuleMatcher): ElementMapp
     },
 });
 
-/** The duck-typed surface of a `Gio.ListModel` the ordered-insert verb reads. */
 type ItemCollection = { getNItems(): number; getItem(position: number): unknown };
 
 const collectionOf = (parent: GObject.Object, getter: string): ItemCollection | null => {
@@ -148,12 +114,6 @@ const indexOf = (collection: ItemCollection, item: GObject.Object): number => {
     return -1;
 };
 
-/**
- * The position `item` should insert at to land before `anchor`, computed
- * against the live collection that must NOT contain `item` (a move removes it
- * first): the anchor's current index, or the end when there is no anchor or
- * it is not present.
- */
 const insertPosition = (collection: ItemCollection, anchor: GObject.Object | null | undefined): number => {
     if (anchor != null) {
         const anchorIndex = indexOf(collection, anchor);
@@ -162,11 +122,6 @@ const insertPosition = (collection: ItemCollection, anchor: GObject.Object | nul
     return collection.getNItems();
 };
 
-/**
- * Whether `item` already sits immediately before `anchor` (or last, when
- * there is no anchor) in the live collection, so a re-invoked attach can skip
- * the remove/insert.
- */
 const isPlacedBefore = (
     collection: ItemCollection,
     item: GObject.Object,
@@ -206,14 +161,6 @@ const buildOrderedInsertMapping = (verb: OrderedInsertVerb, matches: RuleMatcher
     },
 });
 
-/**
- * Compiles one element-map rule into an {@link "./element-mapping".ElementMapping}.
- * The returned mapping's `attach`/`detach` are the generic interpreter bound
- * to the row's data, never relationship-specific code; its `matches` is the
- * row predicate memoized per GType pair through {@link memoizeByGtypePair}.
- *
- * @param rule - The data row to interpret.
- */
 const buildRuleMapping = (rule: ElementMapRule): ElementMapping => {
     const matches = memoizeByGtypePair((child, parent) => ruleMatches(rule, child, parent), false);
     return rule.verb.kind === "method"
@@ -221,33 +168,20 @@ const buildRuleMapping = (rule: ElementMapRule): ElementMapping => {
         : buildOrderedInsertMapping(rule.verb, matches);
 };
 
-type CompiledRule = { readonly rule: ElementMapRule; readonly mapping: ElementMapping };
+type CompiledRule = { rule: ElementMapRule; mapping: ElementMapping };
 
-const COMPILED_RULES: readonly CompiledRule[] = ELEMENT_MAP.map((rule) => ({
+const COMPILED_RULES: CompiledRule[] = ELEMENT_MAP.map((rule) => ({
     rule,
     mapping: buildRuleMapping(rule),
 }));
 
-/**
- * The attach mappings compiled from the merged element-map rows delivered by
- * `virtual:gtkx-config`, in table order.
- */
-export const DATA_ATTACH_MAPPINGS: readonly ElementMapping[] = COMPILED_RULES.map(({ mapping }) => mapping);
+export const DATA_ATTACH_MAPPINGS: ElementMapping[] = COMPILED_RULES.map(({ mapping }) => mapping);
 
 const findCompiledRule = memoizeByGtypePair<CompiledRule | null>(
     (child, parent) => COMPILED_RULES.find(({ mapping }) => mapping.matches(child, parent)) ?? null,
     null,
 );
 
-/**
- * The first compiled element-map rule whose row matches the `(child, parent)`
- * pair, or `undefined` when none does. The container-slot interpreter uses
- * this to attach and detach a slot's GObject children through the row's verbs
- * (`addController`/`removeController`, …) instead of widget unparenting.
- *
- * @param child - The child node being attached or detached.
- * @param parent - The parent node it targets.
- */
 export const findDataAttachMapping = (child: Node, parent: Node): ElementMapping | undefined =>
     findCompiledRule(child, parent)?.mapping;
 
@@ -258,15 +192,6 @@ const propertyNameForSetter = (method: string): string | null =>
         ? toLowerFirst(method.slice(SETTER_PREFIX.length))
         : null;
 
-/**
- * The slot or container-slot prop that covers `rule` on `parent`, or `null`
- * when the relationship has no prop surface. A `set<Prop>` attach method writes
- * a GObject-class property, which is always a value-driven slot, so it promotes
- * to that `<prop>` (e.g. `setBuffer` → `buffer`, `setLayoutManager` →
- * `layoutManager`). Any other attach method promotes only when it is a declared
- * container-slot method on `parent`; add/insert methods that are not (e.g.
- * `AdwToggleGroup.add`) have no prop surface and keep attaching as children.
- */
 const promotedPropFor = (rule: ElementMapRule, parent: Node): string | null => {
     if (rule.verb.kind !== "method" || !(parent instanceof GObject.Object)) return null;
     const attach = rule.verb.attach;
@@ -283,15 +208,6 @@ const displayName = (node: Node): string => {
     return state.name ?? state.kind ?? "node";
 };
 
-/**
- * Rejects direct child nesting for relationships promoted to slot or
- * container-slot props. Placed ahead of the data-rule mappings in the element
- * map, it matches exactly when a data rule would attach the pair AND a prop
- * covers that rule on the parent, and throws an error naming the prop.
- * Relationships without a prop surface (an add/insert method that is not a
- * declared container slot, such as `AdwToggleGroup.add`) keep attaching as
- * children.
- */
 export const promotedNestingGuardMapping: ElementMapping = {
     matches: memoizeByGtypePair((child, parent) => {
         const compiled = findCompiledRule(child, parent);

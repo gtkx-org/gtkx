@@ -20,18 +20,6 @@ import { renderPropertyAccessor } from "./property-accessor.js";
 import { appendWrapperClassRegistration } from "./registration.js";
 import { renderSignalDeclarations, renderSignalMembers } from "./signal.js";
 
-/**
- * Emits a class declaration for a `<interface>` element.
- *
- * Interfaces have no GIR parent — they extend the GObject base
- * (`GObject.Object`) in the generated output because every implementor is
- * itself a GObject. Methods, static functions, and constructors are
- * surfaced on the interface class just like a regular class so JS callers
- * can dispatch them directly on interface-typed values.
- *
- * @param context - The module context
- * @param iface - The interface to emit
- */
 export const emitInterface = (context: ModuleContext, iface: GirClass): void => {
     if (!iface.introspectable) return;
     if (iface.name.length === 0) return;
@@ -61,7 +49,7 @@ export const emitInterface = (context: ModuleContext, iface: GirClass): void => 
     appendInterfaceRegistrations(context, iface, className);
 };
 
-const renderInterfaceMembers = (context: ModuleContext, iface: GirClass, callables: Callables): readonly string[] => {
+const renderInterfaceMembers = (context: ModuleContext, iface: GirClass, callables: Callables): string[] => {
     const className = toPascalCase(iface.name);
     const { members, claimedNames } = renderPlainTypeMembers({
         context,
@@ -79,21 +67,6 @@ const renderInterfaceMembers = (context: ModuleContext, iface: GirClass, callabl
     return members;
 };
 
-/**
- * Copies the methods of an interface's transitive prerequisite interfaces onto
- * the interface wrapper class.
- *
- * A `Gtk.SelectionModel` value is also a `Gio.ListModel`, but the JS wrapper
- * only exposes `getNItems`/`getItem` if those prerequisite methods are emitted
- * on the wrapper. Each prerequisite interface's methods are re-rooted to its
- * namespace, bound, and emitted as direct members; names already provided by
- * the interface itself are skipped.
- *
- * @param context - The module context
- * @param iface - The interface being emitted
- * @param members - The accumulating member list
- * @param claimedNames - Names already emitted on the interface body
- */
 const appendPrerequisiteMethods = (
     context: ModuleContext,
     iface: GirClass,
@@ -111,7 +84,7 @@ const appendPrerequisiteMethods = (
     }
 };
 
-const collectPrerequisiteMethods = (context: ModuleContext, iface: GirClass): readonly GirFunction[] => {
+const collectPrerequisiteMethods = (context: ModuleContext, iface: GirClass): GirFunction[] => {
     const result: GirFunction[] = [];
     const visited = new Set<string>();
     const seen = new Set<string>();

@@ -1,9 +1,3 @@
-//! Fundamental type handling for FFI.
-//!
-//! `GLib` fundamental types are custom reference-counted types that don't
-//! derive from `GObject`. Examples include `GParamSpec` and Pango layout types.
-//! They have custom ref/unref functions rather than using `g_object_ref/unref`.
-
 use napi::{Env, JsObject};
 
 use super::prelude::*;
@@ -49,17 +43,11 @@ impl FundamentalType {
         })
     }
 
-    /// Wraps a non-null fundamental `ptr` into a [`value::Value`], honoring
-    /// `ownership`: a full transfer adopts the pointer while a borrowed one
-    /// takes a fresh reference.
     fn wrap_ptr(&self, ptr: *mut c_void) -> anyhow::Result<value::Value> {
         let (ref_fn, unref_fn) = self.lookup_fns()?;
         let fundamental = if self.ownership.is_full() {
             Fundamental::from_glib_full(ptr, ref_fn, unref_fn)
         } else {
-            // SAFETY: `wrap_ptr`'s callers pass a pointer to a live
-            // instance of the fundamental type, so taking a reference is
-            // sound.
             unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) }
         };
         Ok(value::Value::Object(
@@ -75,8 +63,6 @@ impl FfiEncoder for FundamentalType {
         if self.ownership.is_full() && !ptr.is_null() {
             let (ref_fn, unref_fn) = self.lookup_fns()?;
             if let Some(ref_fn) = ref_fn {
-                // SAFETY: `ptr` came from a NativeHandle wrapping a live
-                // instance of the fundamental type `ref_fn` expects.
                 let referenced = unsafe { ref_fn(ptr) };
                 if let Some(unref_fn) = unref_fn {
                     return Ok(full_transfer_storage(
@@ -105,8 +91,6 @@ impl FfiEncoder for FundamentalType {
         if self.ownership.is_full() && !ptr.is_null() {
             let (ref_fn, _) = self.lookup_fns()?;
             if let Some(ref_fn) = ref_fn {
-                // SAFETY: The caller guarantees the non-null `ptr` addresses
-                // a live instance of the fundamental type `ref_fn` expects.
                 return Ok(unsafe { ref_fn(ptr) });
             }
         }
@@ -125,29 +109,20 @@ impl FfiDecoder for FundamentalType {
             }
             ReadSource::Value(ptr, _context) => self.null_guarded(ptr, |ptr| {
                 let (ref_fn, unref_fn) = self.lookup_fns()?;
-                // SAFETY: The caller guarantees the non-null `ptr` addresses a
-                // live instance of the fundamental type, so taking a reference
-                // is sound.
                 let fundamental = unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) };
                 Ok(value::Value::Object(
                     NativeValue::Fundamental(fundamental).into(),
                 ))
             }),
-            // SAFETY: forwarded from this method's safety contract.
             ReadSource::Slot(ptr, context) => unsafe { self.read_pointer_slot(ptr, context) },
         }
     }
 }
 
 impl RawPtrCodec for FundamentalType {
-    /// Writes a trampoline return honoring the declared transfer: a full
-    /// transfer hands the caller a fresh reference; a transfer-none return
-    /// writes the wrapper-held pointer unchanged.
     unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
             match self.lookup_fns() {
-                // SAFETY: `ptr` came from a NativeHandle wrapping a live
-                // instance of the fundamental type `ref_fn` expects.
                 Ok((Some(ref_fn), _)) => unsafe { ref_fn(ptr) },
                 _ => ptr,
             }
@@ -160,22 +135,14 @@ impl RawPtrCodec for FundamentalType {
         value: &value::Value,
     ) -> anyhow::Result<()> {
         let (ref_fn, unref_fn) = self.lookup_fns()?;
-        // SAFETY: The caller guarantees `ptr` is a writable pointer-sized
-        // field slot holding a previous reference (or null).
         unsafe {
             swap_owned_slot(
                 ptr,
                 value,
                 "Fundamental field write",
-                |new_ptr| {
-                    // SAFETY: `new_ptr` came from a NativeHandle wrapping a
-                    // live instance of the fundamental type `ref_fn` expects.
-                    ref_fn.map_or(new_ptr, |f| f(new_ptr))
-                },
+                |new_ptr| ref_fn.map_or(new_ptr, |f| f(new_ptr)),
                 |old_ptr| {
                     if let Some(unref_fn) = unref_fn {
-                        // SAFETY: The slot held one reference to the previous
-                        // instance, which this release drops exactly once.
                         unref_fn(old_ptr);
                     }
                 },

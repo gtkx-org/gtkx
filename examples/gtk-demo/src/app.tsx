@@ -412,11 +412,6 @@ const MainWindow = () => {
     );
 };
 
-/**
- * The application's content tree: the main window and its provider, without the
- * surrounding {@link GtkApplication}. Rendered directly by tests that supply
- * their own application context.
- */
 export const Demo = () => {
     useApplicationIcon();
 

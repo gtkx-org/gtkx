@@ -50,14 +50,6 @@ impl CallbackValue {
         }
     }
 
-    /// Builds a callback value whose state's ownership is pending transfer
-    /// to the native callee.
-    ///
-    /// The state stays armed and drops with the value — freeing the libffi
-    /// closure, the captured data, and its JS reference — unless the native
-    /// call actually happens and [`Self::disarm_pending_transfer`] hands the
-    /// state over to the callee's lifetime protocol (a destroy notify, the
-    /// one-shot self-free, or process lifetime).
     #[must_use]
     pub fn new_armed(
         fn_ptr: *mut c_void,
@@ -74,8 +66,6 @@ impl CallbackValue {
         }
     }
 
-    /// Hands the armed state to the native callee once the call has actually
-    /// happened. From here the callee's lifetime protocol owns the state.
     pub fn disarm_pending_transfer(&self) {
         if let Some(state) = self.armed_state.take() {
             let _ = Box::into_raw(state);
@@ -125,10 +115,6 @@ macro_rules! ffi_numeric_with {
 }
 
 impl FfiValue {
-    /// Hands any armed transfer-full ownership to the callee once the native
-    /// call has actually happened. See
-    /// [`FfiStorage::disarm_pending_transfer`] and
-    /// [`CallbackValue::disarm_pending_transfer`].
     pub fn disarm_pending_transfer(&self) {
         match self {
             Self::Storage(storage) => storage.disarm_pending_transfer(),
@@ -137,41 +123,17 @@ impl FfiValue {
         }
     }
 
-    /// Writes the scalar payload of an inline numeric variant into the
-    /// out-parameter slot at `slot`, the seed value a `Ref` scalar
-    /// out-parameter carries into a native call.
-    ///
-    /// Pointer-, storage-, callback-, and void-shaped values have no scalar
-    /// payload and are rejected with an error.
-    ///
-    /// # Safety
-    ///
-    /// `slot` must be valid for writes of at least the payload's size. No
-    /// alignment is required; the write is unaligned.
     pub unsafe fn write_scalar_to(&self, slot: *mut c_void) -> anyhow::Result<()> {
-        // SAFETY: The caller guarantees `slot` is writable at the payload's
-        // size; every write below is unaligned-tolerant. The arms differ
-        // only in payload width.
         match self {
-            // SAFETY: See the match-level comment.
             Self::U8(value) => unsafe { slot.cast::<u8>().write_unaligned(*value) },
-            // SAFETY: See the match-level comment.
             Self::I8(value) => unsafe { slot.cast::<i8>().write_unaligned(*value) },
-            // SAFETY: See the match-level comment.
             Self::U16(value) => unsafe { slot.cast::<u16>().write_unaligned(*value) },
-            // SAFETY: See the match-level comment.
             Self::I16(value) => unsafe { slot.cast::<i16>().write_unaligned(*value) },
-            // SAFETY: See the match-level comment.
             Self::U32(value) => unsafe { slot.cast::<u32>().write_unaligned(*value) },
-            // SAFETY: See the match-level comment.
             Self::I32(value) => unsafe { slot.cast::<i32>().write_unaligned(*value) },
-            // SAFETY: See the match-level comment.
             Self::U64(value) => unsafe { slot.cast::<u64>().write_unaligned(*value) },
-            // SAFETY: See the match-level comment.
             Self::I64(value) => unsafe { slot.cast::<i64>().write_unaligned(*value) },
-            // SAFETY: See the match-level comment.
             Self::F32(value) => unsafe { slot.cast::<f32>().write_unaligned(*value) },
-            // SAFETY: See the match-level comment.
             Self::F64(value) => unsafe { slot.cast::<f64>().write_unaligned(*value) },
             Self::Ptr(_) | Self::Storage(_) | Self::Callback(_) | Self::Void => {
                 anyhow::bail!("{self:?} has no scalar payload for an out-parameter slot")

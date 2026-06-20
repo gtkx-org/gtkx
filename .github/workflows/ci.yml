@@ -154,28 +154,6 @@ jobs:
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
 
-  docs:
-    needs: image
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      NODE_OPTIONS: --max-old-space-size=8192
-      CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-
-      - name: Setup CI
-        uses: ./.github/actions/setup-ci
-
-      - name: Build docs
-        uses: ./.github/actions/run-in-container
-        with:
-          command: pnpm run docs
-          mount-cargo-cache: "true"
-          mount-pnpm-store: "true"
-          extra-env: NODE_OPTIONS
-
   publish-test:
     needs: [changes, image]
     if: needs.changes.outputs.code == 'true'

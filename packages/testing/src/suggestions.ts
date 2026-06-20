@@ -10,32 +10,15 @@ import {
     getWidgetText,
 } from "./widget-text.js";
 
-/**
- * The query variant a {@link Suggestion} targets, mirroring the six query forms.
- */
 export type Variant = "get" | "getAll" | "query" | "queryAll" | "find" | "findAll";
 
-/**
- * The query axis a {@link Suggestion} recommends, ordered from most to least
- * preferred. `Name` is the GTK analog of Testing Library's least-preferred
- * `TestId`.
- */
 export type Method = "Role" | "LabelText" | "PlaceholderText" | "Text" | "DisplayValue" | "Name";
 
-/**
- * A recommended query for a widget, mirroring `@testing-library/dom`'s
- * `getSuggestedQuery` result.
- */
 export type Suggestion = {
-    /** The query axis (e.g. `"Role"`). */
     queryName: Method;
-    /** The full query method name (e.g. `"getByRole"`). */
     queryMethod: string;
-    /** The arguments the query should be called with. */
     queryArgs: unknown[];
-    /** The query variant (e.g. `"get"`). */
     variant: Variant;
-    /** Renders the suggestion as callable source, e.g. `getByText('Save')`. */
     toString: () => string;
 };
 
@@ -67,26 +50,6 @@ const textSuggestion = (queryName: Method, variant: Variant, value: string | nul
     return makeSuggestion(queryName, variant, [value], `'${value}'`);
 };
 
-/**
- * Returns the recommended query for a widget, preferring the most accessible
- * axis available: role (with accessible name) first, then label text,
- * placeholder text, visible text, display value, and finally widget name (the
- * GTK analog of a test id). Mirrors `getSuggestedQuery` from
- * `@testing-library/dom`.
- *
- * @param widget - The widget to suggest a query for
- * @param variant - The query variant to recommend (defaults to `"get"`)
- * @param method - Restrict the suggestion to a single axis; omit to pick the best
- * @returns The recommended query, or `undefined` if no axis applies
- *
- * @example
- * ```tsx
- * import { getSuggestedQuery } from "@gtkx/testing";
- *
- * const suggestion = getSuggestedQuery(button);
- * console.log(suggestion?.toString()); // getByRole(Gtk.AccessibleRole.BUTTON, { name: 'Save' })
- * ```
- */
 export const getSuggestedQuery = (
     widget: Gtk.Widget,
     variant: Variant = "get",

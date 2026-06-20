@@ -36,10 +36,7 @@ export function swcSsrRefresh(options: RefreshFilterOptions = {}): Plugin {
 
             const result = await transform(code, swcOptions);
 
-            return {
-                code: result.code,
-                map: result.map,
-            };
+            return result.map === undefined ? { code: result.code } : { code: result.code, map: result.map };
         },
     };
 }

@@ -1,5 +1,3 @@
-//! Coverage tests for [`native::types::FundamentalType`] codec implementations.
-
 mod common;
 
 use std::ffi::c_void;
@@ -12,7 +10,6 @@ use native::types::{FfiDecoder, FfiEncoder, FundamentalType, Ownership, RawPtrCo
 use native::value::Value;
 
 fn create_param_spec() -> *mut c_void {
-    // SAFETY: Creating a GParamSpec from static NUL-terminated literals has no pointer preconditions.
     unsafe {
         let param = glib::gobject_ffi::g_param_spec_boolean(
             c"cov-param".as_ptr(),
@@ -29,13 +26,11 @@ fn param_spec_refcount(ptr: *mut c_void) -> u32 {
     if ptr.is_null() {
         return 0;
     }
-    // SAFETY: The pointer addresses a live GParamSpec created by this test.
     unsafe { (*(ptr as *mut glib::gobject_ffi::GParamSpec)).ref_count }
 }
 
 fn release_param_spec_refs(ptr: *mut c_void, count: u32) {
     for _ in 0..count {
-        // SAFETY: Releases a reference this test owns on the live GParamSpec.
         unsafe { glib::gobject_ffi::g_param_spec_unref(ptr.cast()) };
     }
 }
@@ -87,7 +82,6 @@ fn assert_ref_for_transfer(codec: &FundamentalType, expected_extra_refs: u32) {
     let pspec = create_param_spec();
     let before = param_spec_refcount(pspec);
 
-    // SAFETY: `pspec` addresses a live GParamSpec.
     let returned =
         unsafe { codec.ref_for_transfer(pspec) }.expect("ref_for_transfer should succeed");
     assert_eq!(returned, pspec);
@@ -102,8 +96,6 @@ fn assert_write_return_writes_pointer(codec: &FundamentalType, expected_extra_re
 
     let mut slot: *mut c_void = std::ptr::null_mut();
     let value: Result<Value, ()> = Ok(Value::Object(NativeHandle::borrowed(pspec)));
-    // SAFETY: `slot` is a writable local pointer-sized slot and `pspec`
-    // addresses a live GParamSpec.
     unsafe {
         codec.write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &value);
     }
@@ -234,7 +226,6 @@ fn transfer_release_full_releases_one_reference() {
         assert!(matches!(release, ffi::PendingRelease::Fundamental(_)));
 
         let pspec = create_param_spec();
-        // SAFETY: Takes a reference on the live GParamSpec this test created.
         unsafe { glib::gobject_ffi::g_param_spec_ref(pspec.cast()) };
         let before = param_spec_refcount(pspec);
 
@@ -276,7 +267,6 @@ fn write_return_to_raw_ptr_full_without_ref_fn_writes_plain_pointer() {
 #[test]
 fn ref_for_transfer_full_null_is_noop() {
     common::run(|| {
-        // SAFETY: Null short-circuits before any reference is taken.
         let returned =
             unsafe { fundamental(Ownership::Full).ref_for_transfer(std::ptr::null_mut()) }
                 .expect("null ref_for_transfer should succeed");
@@ -334,7 +324,6 @@ fn ptr_to_value_wraps_fundamental() {
         let pspec = create_param_spec();
         let before = param_spec_refcount(pspec);
 
-        // SAFETY: `pspec` addresses a live GParamSpec.
         let value =
             unsafe { fundamental(Ownership::Borrowed).read(ReadSource::Value(pspec, "ctx")) }
                 .expect("ptr_to_value should succeed");
@@ -349,7 +338,6 @@ fn ptr_to_value_wraps_fundamental() {
 #[test]
 fn ptr_to_value_null_yields_null() {
     common::run(|| {
-        // SAFETY: Null short-circuits before any read.
         let value = unsafe {
             fundamental(Ownership::Borrowed).read(ReadSource::Value(std::ptr::null_mut(), "ctx"))
         }
@@ -364,8 +352,6 @@ fn read_from_raw_ptr_dereferences_slot() {
         let pspec = create_param_spec();
         let slot: *mut c_void = pspec;
 
-        // SAFETY: `slot` is a live local pointer-sized slot holding a live
-        // GParamSpec pointer.
         let value = unsafe {
             fundamental(Ownership::Borrowed).read(ReadSource::Slot(
                 &slot as *const *mut c_void as *const c_void,
@@ -398,7 +384,6 @@ fn write_return_to_raw_ptr_err_writes_null() {
     common::run(|| {
         let mut slot: *mut c_void = std::ptr::dangling_mut::<c_void>();
         let value: Result<Value, ()> = Err(());
-        // SAFETY: `slot` is a writable local pointer-sized slot.
         unsafe {
             fundamental(Ownership::Borrowed)
                 .write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &value);
@@ -414,8 +399,6 @@ fn write_value_to_raw_ptr_writes_fundamental() {
         let before = param_spec_refcount(pspec);
 
         let mut slot: *mut c_void = std::ptr::null_mut();
-        // SAFETY: `slot` is a writable local pointer-sized slot and
-        // `pspec` addresses a live GParamSpec.
         unsafe {
             fundamental(Ownership::Borrowed).write_value_to_raw_ptr(
                 &mut slot as *mut *mut c_void as *mut c_void,
@@ -437,14 +420,11 @@ fn write_value_to_raw_ptr_unrefs_previous_fundamental() {
         let old = create_param_spec();
         let new = create_param_spec();
 
-        // SAFETY: Takes a reference on the live GParamSpec this test created.
         unsafe { glib::gobject_ffi::g_param_spec_ref(old.cast()) };
         let mut slot: *mut c_void = old;
         let old_before = param_spec_refcount(old);
         let new_before = param_spec_refcount(new);
 
-        // SAFETY: `slot` is a writable local pointer-sized slot holding an
-        // owned reference, and `new` addresses a live GParamSpec.
         unsafe {
             fundamental(Ownership::Borrowed).write_value_to_raw_ptr(
                 &mut slot as *mut *mut c_void as *mut c_void,
@@ -467,13 +447,10 @@ fn write_value_to_raw_ptr_null_releases_previous_fundamental() {
     common::run(|| {
         let pspec = create_param_spec();
 
-        // SAFETY: Takes a reference on the live GParamSpec this test created.
         unsafe { glib::gobject_ffi::g_param_spec_ref(pspec.cast()) };
         let mut slot: *mut c_void = pspec;
         let before = param_spec_refcount(pspec);
 
-        // SAFETY: `slot` is a writable local pointer-sized slot holding an
-        // owned reference.
         unsafe {
             fundamental(Ownership::Borrowed)
                 .write_value_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &Value::Null)

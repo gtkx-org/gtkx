@@ -94,48 +94,6 @@ const resultContainer = (
     return firstWidget(baseElement);
 };
 
-/**
- * Renders a React element for testing.
- *
- * Mounts the element into a fresh, presented `Gtk.Window` by default — the
- * GTK analogue of Testing Library's default container — so a component renders
- * into a real window queries and screenshots can reach. Pass `container` to
- * change the mount: a specific widget to render into it, or a token from
- * {@link createRootElement} to render a top-level element (a `GtkApplication`/
- * `AdwApplication` or a window) directly at the reconciler root with no host
- * window. A user `wrapper` is applied around the element and re-applied on every
- * `rerender`.
- *
- * The harness owns no application: a component that needs one renders its own
- * (with `container: createRootElement()`) or supplies it through a `wrapper`.
- *
- * @param element - The React element to render
- * @param options - Render options: `container`, `baseElement`, and `wrapper`
- * @returns A promise resolving to query methods and utilities
- *
- * @example
- * ```tsx
- * import { render, screen } from "@gtkx/testing";
- *
- * test("button click", async () => {
- *   await render(<MyButton />);
- *   const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
- *   await userEvent.click(button);
- * });
- * ```
- *
- * @example
- * ```tsx
- * import { createRootElement, render } from "@gtkx/testing";
- *
- * test("renders its own application", async () => {
- *   await render(<MyApp />, { container: createRootElement() });
- * });
- * ```
- *
- * @see {@link cleanup} for cleaning up after tests
- * @see {@link screen} for global query access
- */
 export const render = async <Q extends QueryMap = Record<never, never>>(
     element: ReactNode,
     options?: RenderOptions<Q>,
@@ -198,26 +156,6 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
     return result;
 };
 
-/**
- * Cleans up the rendered component tree.
- *
- * Unmounts every tree rendered since the last cleanup and destroys the host
- * windows the harness created for them. Call this in `afterEach` to ensure
- * tests don't affect each other.
- *
- * @example
- * ```tsx
- * import { render, cleanup } from "@gtkx/testing";
- *
- * afterEach(async () => {
- *   await cleanup();
- * });
- *
- * test("my test", async () => {
- *   await render(<MyComponent />);
- * });
- * ```
- */
 export const cleanup = async (): Promise<void> => {
     for (const active of [...activeRenders]) {
         await disposeActiveRender(active);

@@ -14,13 +14,6 @@ export const isEditable = (widget: unknown): widget is Gtk.Editable => {
     return EDITABLE_ROLES.has(widget.getAccessibleRole());
 };
 
-/**
- * Whether the widget implements the `Gtk.Editable` interface — every
- * role-editable widget except `Gtk.TextView`, which reports the `TEXT_BOX`
- * accessible role yet edits through a `Gtk.TextBuffer` rather than the
- * `Gtk.Editable` delegate protocol, so its instances carry none of the
- * interface's methods (`getDelegate`, `getText`, …).
- */
 export const implementsEditable = (widget: unknown): widget is Gtk.Editable =>
     isEditable(widget) && !(widget instanceof Gtk.TextView);
 

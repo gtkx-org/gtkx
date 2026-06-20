@@ -1,10 +1,6 @@
 import type * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 
-/**
- * Reads and writes one GSettings key through the `Gio.Settings` accessor
- * matching its GVariant type, validating the value type on write.
- */
 export type SettingAccessor = {
     read: (settings: Gio.Settings, key: string) => unknown;
     write: (settings: Gio.Settings, key: string, value: unknown) => void;
@@ -85,15 +81,6 @@ const VARIANT_ACCESSOR: SettingAccessor = {
     write: (settings, key, value) => settings.setValue(key, expectVariant(value)),
 };
 
-/**
- * Resolves the {@link SettingAccessor} for a key from its schema dispatch tag.
- * A tag with no native TypeScript mapping falls back to the raw `GLib.Variant`
- * accessor; an undeclared key throws.
- *
- * @param kind - The key's dispatch tag (a GVariant type string, `"enum"`, or `"flags"`), or `undefined` when undeclared.
- * @param key - The settings key name, for the diagnostic.
- * @param schemaId - The owning schema's id, for the diagnostic.
- */
 export const resolveAccessor = (kind: string | undefined, key: string, schemaId: string): SettingAccessor => {
     if (kind === undefined) {
         throw new TypeError(`Key "${key}" is not declared by the GSettings schema "${schemaId}"`);

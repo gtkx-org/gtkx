@@ -37,7 +37,6 @@ fn owned_ptr_from_vec_captures_correct_pointer() {
     let data = vec![10u64, 20, 30];
     let owned: FfiStorage = data.into();
 
-    // SAFETY: The encoded storage owns a live buffer of the asserted length.
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const u64, 3);
         assert_eq!(slice, &[10, 20, 30]);
@@ -50,7 +49,6 @@ fn owned_ptr_keeps_cstring_alive() {
     let ptr = cstring.as_ptr() as *mut c_void;
     let owned = FfiStorage::new(ptr, FfiStorageKind::CString(cstring));
 
-    // SAFETY: The encoded storage owns a live NUL-terminated string.
     unsafe {
         let s = std::ffi::CStr::from_ptr(owned.ptr() as *const i8);
         assert_eq!(s.to_str().unwrap(), "test string");
@@ -68,7 +66,6 @@ fn owned_ptr_tuple_keeps_both_alive() {
 
     let owned = FfiStorage::new(tuple_ptr, FfiStorageKind::StringArray(strings, ptrs));
 
-    // SAFETY: The encoded storage owns a live pointer block of NUL-terminated strings.
     unsafe {
         let ptr_slice = std::slice::from_raw_parts(owned.ptr() as *const *const i8, 2);
         let s0 = std::ffi::CStr::from_ptr(ptr_slice[0]);
@@ -168,7 +165,6 @@ fn try_from_string_full() {
         panic!("Expected FfiValue::Storage, got {encoded:?}");
     };
     let ptr = storage.ptr();
-    // SAFETY: The call returned a live NUL-terminated string.
     unsafe {
         let s = std::ffi::CStr::from_ptr(ptr as *const i8);
         assert_eq!(s.to_str().unwrap(), "hello world");
@@ -187,7 +183,6 @@ fn try_from_string_borrowed() {
     );
 
     let owned = expect_variant!(arg, Storage);
-    // SAFETY: The encoded storage owns a live NUL-terminated string.
     unsafe {
         let s = std::ffi::CStr::from_ptr(owned.ptr() as *const i8);
         assert_eq!(s.to_str().unwrap(), "hello world");
@@ -257,7 +252,6 @@ fn try_from_array_u8() {
     );
 
     let owned = expect_variant!(arg, Storage);
-    // SAFETY: The encoded storage owns a live buffer of the asserted length.
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const u8, 3);
         assert_eq!(slice, &[1, 2, 3]);
@@ -281,7 +275,6 @@ fn try_from_array_i32() {
     );
 
     let owned = expect_variant!(arg, Storage);
-    // SAFETY: The encoded storage owns a live buffer of the asserted length.
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const i32, 3);
         assert_eq!(slice, &[-10, 0, 10]);
@@ -301,7 +294,6 @@ fn try_from_array_f64() {
     );
 
     let owned = expect_variant!(arg, Storage);
-    // SAFETY: The encoded storage owns a live buffer of the asserted length.
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const f64, 2);
         assert!((slice[0] - 1.1).abs() < 0.001);
@@ -328,7 +320,6 @@ fn try_from_array_string() {
     );
 
     let owned = expect_variant!(arg, Storage);
-    // SAFETY: The encoded storage owns a live pointer block of NUL-terminated strings.
     unsafe {
         let ptrs = std::slice::from_raw_parts(owned.ptr() as *const *const i8, 3);
         let s0 = std::ffi::CStr::from_ptr(ptrs[0]);
@@ -356,7 +347,6 @@ fn try_from_array_boolean() {
     );
 
     let owned = expect_variant!(arg, Storage);
-    // SAFETY: The encoded storage owns a live buffer of the asserted length.
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const i32, 3);
         assert_eq!(slice, &[1, 0, 1]);

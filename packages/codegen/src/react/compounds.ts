@@ -12,35 +12,16 @@ import {
 } from "./tables.js";
 import { ancestorGlibNames, collectReactNodeClasses, type WidgetCandidate } from "./widgets.js";
 
-/** Module-local const name binding the wrapper sentinel element. */
 const WRAPPER_ELEMENT_CONST = "WrapperNodeElement";
 
-/**
- * Generates the compounds section of one namespace's `@gtkx/jsx` module: one
- * `createElementComponent` line per element — the `@gtkx/react` factory
- * resolves the element's slot surface at runtime from the merged tables in
- * `virtual:gtkx-config` — wrapped in the matching `@gtkx/react` HOC for
- * behavior-carrying hosts (windows, applications, dialog buttons, actions),
- * plus one flat component per metadata-child kind whose parent lives in this
- * namespace (`GtkStackPage`, …).
- *
- * HOC and factory value imports, `react` builtins, and shared virtual prop
- * types accumulate into `imports`; compound prop types resolve locally
- * because the intrinsic section of the same module declares them.
- *
- * @param targetNamespace - The namespace this module is generated for
- * @param repository - The loaded GIR repository
- * @param options - The shared import accumulator and the widget names a
- *   hand-written component owns (skipped here)
- */
 export const generateCompoundsSection = (
     targetNamespace: GirNamespace,
     repository: GirRepository,
     options: {
-        readonly imports: JsxImports;
-        readonly excludeNames: ReadonlySet<string>;
+        imports: JsxImports;
+        excludeNames: Set<string>;
     },
-): { readonly source: string; readonly exportedNames: ReadonlySet<string> } => {
+): { source: string; exportedNames: Set<string> } => {
     const { imports, excludeNames } = options;
     const exportedNames = new Set<string>();
     const exportLines: string[] = [];
@@ -74,19 +55,10 @@ export const generateCompoundsSection = (
     return { source, exportedNames };
 };
 
-/**
- * Returns the virtual subcomponents whose standing-in parent widget belongs to
- * the target namespace. Each distinct virtual is assigned to the first parent
- * that contributes it (so a virtual shared by `GtkTextView` and `GtkSourceView`
- * lands in `gtk`, the first parent), keeping it declared in exactly one module.
- *
- * @param targetNamespace - The namespace this module is generated for
- * @param repository - The loaded GIR repository
- */
 const virtualSubcomponentsForNamespace = (
     targetNamespace: GirNamespace,
     repository: GirRepository,
-): readonly VirtualSubcomponent[] => {
+): VirtualSubcomponent[] => {
     const namespaceByGlib = new Map(
         collectReactNodeClasses(repository).map((entry) => [entry.glibName, entry.namespace.name]),
     );
@@ -116,24 +88,11 @@ const renderRuntimeWrapper = (glibName: string, wrapper: RuntimeComponentWrapper
     return `export const ${glibName}: ${wrapper.genericParams}(props: ${propsExpr}) => ReactNode = ${alias};`;
 };
 
-/**
- * Emits one candidate's component export: the typed wrapper line for a
- * hand-written runtime component, the HOC-wrapped or plain
- * `createElementComponent` line otherwise, or `null` when the candidate is
- * excluded. Accumulates the HOC, builtin, and shared-type imports the line
- * needs; an `Adw.Dialog` descendant additionally composes
- * `TopLevelParentProps` into its component prop type.
- *
- * @param candidate - The widget class to emit
- * @param repository - The repository for cross-namespace parent lookups
- * @param imports - The shared import accumulator
- * @param excludeNames - The widget names a hand-written component owns
- */
 const renderCandidateExport = (
     candidate: WidgetCandidate,
     repository: GirRepository,
     imports: JsxImports,
-    excludeNames: ReadonlySet<string>,
+    excludeNames: Set<string>,
 ): string | null => {
     const { glibName, klass, namespace } = candidate;
     const wrapper = RUNTIME_COMPONENT_WRAPPERS[glibName];
@@ -149,16 +108,7 @@ const renderCandidateExport = (
     return renderCompound(glibName, hoc, isDialogSurface);
 };
 
-/**
- * Classifies a class by its GLib-type ancestry, returning the `@gtkx/react`
- * HOC that wraps its compound, or `undefined` when the class needs none. An
- * application takes precedence over an application window, which takes
- * precedence over a plain window or Adwaita dialog, matching the order of
- * {@link BUILT_IN_COMPOUND_HOCS}.
- *
- * @param ancestry - The GLib type names of the class and its ancestors
- */
-const compoundHoc = (ancestry: ReadonlySet<string>): CompoundHoc | undefined => {
+const compoundHoc = (ancestry: Set<string>): CompoundHoc | undefined => {
     for (const rule of BUILT_IN_COMPOUND_HOCS) {
         if (rule.ancestors.some((ancestor) => ancestry.has(ancestor))) return rule.hoc;
     }
@@ -179,27 +129,9 @@ const renderCompound = (glibName: string, hoc: CompoundHoc | undefined, isDialog
     ].join("\n");
 };
 
-/**
- * Emits the conditional inert wrapper child for a positionally-consumed slot:
- * `{prop != null && <WrapperNodeElement kind="...">{prop}</WrapperNodeElement>}`.
- * It carries no target attribute, because the enclosing meta-object reads
- * this wrapper's child by position instead of setting a property from it.
- *
- * @param kind - The wrapper kind the child is emitted with.
- * @param prop - The prop name carrying the `ReactNode`.
- */
 const renderPositionalSlotChild = (kind: string, prop: string): string =>
     `{${prop} != null && <${WRAPPER_ELEMENT_CONST} kind=${quote(kind)}>{${prop}}</${WRAPPER_ELEMENT_CONST}>}`;
 
-/**
- * Emits one flat virtual-child subcomponent. A virtual without a slot spreads
- * all its props onto the wrapper sentinel; a virtual with a
- * {@link VirtualSubcomponent.slot} destructures that slot prop and `children`
- * out of the rest, spreads the rest onto the sentinel, and renders `children`
- * followed by the conditional positional slot child.
- *
- * @param virtual - The virtual subcomponent to emit.
- */
 const renderVirtualSubcomponent = (virtual: VirtualSubcomponent): string => {
     const { flatName, kind, propsType, slot } = virtual;
     if (slot === undefined) {

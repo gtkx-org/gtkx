@@ -13,8 +13,6 @@ use native::managed::{Fundamental, NativeHandle, NativeValue};
 
 use common::{get_gobject_refcount, param_spec_ref, param_spec_refcount, param_spec_unref};
 
-/// Pumps the global default `MainContext` until `done` reports true, bounded
-/// so a missing dispatch leaves the calling test's assertions to fail.
 fn pump_default_context_until(done: impl Fn() -> bool) {
     let context = glib::MainContext::default();
     for _ in 0..1000 {
@@ -29,7 +27,6 @@ fn pump_default_context_until(done: impl Fn() -> bool) {
 
 fn param_spec_ptr() -> *mut c_void {
     common::ensure_gtk_init();
-    // SAFETY: Creating a GParamSpec from static NUL-terminated literals has no pointer preconditions.
     unsafe {
         let param = glib::gobject_ffi::g_param_spec_boolean(
             c"managed-test".as_ptr(),
@@ -51,12 +48,8 @@ fn owned_fundamental(ptr: *mut c_void) -> NativeHandle {
     .into()
 }
 
-/// Wraps `ptr` in a handle that takes its own reference (transfer-none), so the
-/// caller's reference keeps the value alive past the handle's drop and the
-/// post-drop refcount can be read safely.
 fn borrowed_fundamental(ptr: *mut c_void) -> NativeHandle {
     let fundamental =
-        // SAFETY: The pointer addresses a live GParamSpec created by this test.
         unsafe { Fundamental::from_glib_none(ptr, Some(param_spec_ref), Some(param_spec_unref)) };
     NativeValue::Fundamental(fundamental).into()
 }
@@ -153,7 +146,6 @@ fn drop_owned_handle_on_creating_thread_releases_value() {
         drop(handle);
         assert_eq!(param_spec_refcount(ptr), initial_ref - 1);
 
-        // SAFETY: Releases a reference this test owns on the live GParamSpec.
         unsafe { param_spec_unref(ptr) };
     });
 }
@@ -164,20 +156,11 @@ fn drop_borrowed_handle_is_noop() {
     drop(handle);
 }
 
-/// Named with a leading `a_` so libtest's alphabetical ordering runs it before
-/// `a_drop_owned_handle_off_thread_routes_through_glib_idle` and therefore
-/// before any test that initializes GTK: `gtk4::init` permanently acquires the
-/// global default `MainContext` for its calling thread, after which no other
-/// test thread can dispatch sources attached to that context. Holding the
-/// serial guard directly keeps GTK uninitialized, leaving the context unowned
-/// so this test's thread can dispatch the sentinel idle source that proves no
-/// release was queued for the consumed pending reference.
 #[test]
 fn a_consumed_decoded_handle_drop_releases_nothing() {
     let _guard = common::serial_guard();
     let obj = glib::Object::new::<glib::Object>();
     let obj_ptr = obj.as_ptr();
-    // SAFETY: Takes the decode protocol's pending reference on the live GObject.
     unsafe { glib::gobject_ffi::g_object_ref(obj_ptr) };
     let initial_ref = get_gobject_refcount(obj_ptr);
 
@@ -193,26 +176,15 @@ fn a_consumed_decoded_handle_drop_releases_nothing() {
     assert!(sentinel.load(Ordering::SeqCst));
     assert_eq!(get_gobject_refcount(obj_ptr), initial_ref);
 
-    // SAFETY: Releases the pending reference this test consumed by winning
-    // take_pending_gobject_ref on the live GObject.
     unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
     assert_eq!(get_gobject_refcount(obj_ptr), initial_ref - 1);
 }
 
-/// Named with a leading `a_` so libtest's alphabetical ordering runs it before
-/// `a_drop_owned_handle_off_thread_routes_through_glib_idle` and therefore
-/// before any test that initializes GTK: `gtk4::init` permanently acquires the
-/// global default `MainContext` for its calling thread, after which no other
-/// test thread can dispatch sources attached to that context. Holding the
-/// serial guard directly keeps GTK uninitialized, leaving the context unowned
-/// so this test's thread can dispatch the idle source through which the drop
-/// releases the unconsumed pending reference.
 #[test]
 fn a_decoded_handle_drop_releases_unconsumed_pending_ref() {
     let _guard = common::serial_guard();
     let obj = glib::Object::new::<glib::Object>();
     let obj_ptr = obj.as_ptr();
-    // SAFETY: Takes the decode protocol's pending reference on the live GObject.
     unsafe { glib::gobject_ffi::g_object_ref(obj_ptr) };
     let initial_ref = get_gobject_refcount(obj_ptr);
 
@@ -224,12 +196,6 @@ fn a_decoded_handle_drop_releases_unconsumed_pending_ref() {
     assert_eq!(get_gobject_refcount(obj_ptr), initial_ref - 1);
 }
 
-/// Named with a leading `a_` so libtest's alphabetical ordering makes it the
-/// first test to initialize GTK (the decoded-handle tests sorting before it
-/// hold the serial guard without touching GTK): `gtk4::init` acquires the
-/// global default `MainContext` for whichever thread calls it first, and the
-/// `idle_add_once` source the off-thread drop posts can only be dispatched
-/// from that same thread's main context.
 #[test]
 fn a_drop_owned_handle_off_thread_routes_through_glib_idle() {
     common::run(|| {
@@ -246,7 +212,6 @@ fn a_drop_owned_handle_off_thread_routes_through_glib_idle() {
         pump_default_context_until(|| param_spec_refcount(ptr) == initial_ref - 1);
 
         assert_eq!(param_spec_refcount(ptr), initial_ref - 1);
-        // SAFETY: Releases a reference this test owns on the live GParamSpec.
         unsafe { param_spec_unref(ptr) };
     });
 }
@@ -267,7 +232,6 @@ fn drop_owned_handle_off_thread_while_not_running_leaks_value() {
         .expect("dropping handle while stopped should not panic");
 
         mailbox.reset_for_test();
-        // SAFETY: Releases a reference this test owns on the live GParamSpec.
         unsafe { param_spec_unref(ptr) };
     });
 }

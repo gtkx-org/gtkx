@@ -1,16 +1,3 @@
-//! Memory allocation for boxed types and plain structs.
-//!
-//! The `alloc` function allocates zeroed memory for structured/boxed types
-//! on the `GLib` thread. This is used to create instances of GTK structs like
-//! `GdkRGBA`, `GtkTextIter`, etc. that need to be populated field-by-field.
-//!
-//! ## Allocation Modes
-//!
-//! - **Boxed types** (with `type_name)`: Memory is wrapped with `GType` info for
-//!   proper `g_boxed_free` cleanup.
-//! - **Plain structs** (without `type_name)`: Memory is allocated with `g_malloc0`
-//!   and freed with `g_free` on drop.
-
 use glib::ffi::g_malloc0;
 use napi::Env;
 use napi::bindgen_prelude::*;
@@ -35,7 +22,6 @@ impl ModuleRequest for AllocRequest {
             .transpose()
             .map_err(|err| anyhow::anyhow!("invalid alloc type name: {err}"))?;
 
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
         let ptr = unsafe { g_malloc0(self.size) };
 
         if ptr.is_null() {
@@ -54,9 +40,6 @@ impl ModuleRequest for AllocRequest {
     }
 }
 
-/// napi export shim. Excluded from coverage instrumentation: it requires a
-/// live [`napi::Env`]. The [`AllocRequest::execute`] logic it dispatches is
-/// exercised directly by tests.
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[allow(clippy::wildcard_imports)]
 mod napi_export {

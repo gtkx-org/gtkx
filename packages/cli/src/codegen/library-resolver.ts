@@ -2,35 +2,11 @@ import { readdirSync } from "node:fs";
 import { GIR_NAMESPACE_PATTERN, type GtkxConfig, LIBRARIES_WILDCARD } from "@gtkx/config";
 import { sortedAlpha } from "@gtkx/utils";
 
-/**
- * GIR namespaces generated when `gtkx.config.ts` omits `libraries`.
- *
- * Only GTK 4 is mandatory: `@gtkx/react` is namespace-agnostic, so optional
- * namespaces (libadwaita, GtkSource, WebKit, …) are generated exactly when a
- * project lists them. GTK's transitive dependencies (GLib, GObject, Gio, Gdk,
- * Pango, Cairo, …) are resolved automatically from the GIR files on disk. An
- * explicit `libraries` list replaces this default; `Gtk-4.0` is added when
- * the list omits it, since the reconciler's widget handling requires it.
- */
-const DEFAULT_LIBRARIES: readonly string[] = ["Gtk-4.0"];
+const DEFAULT_LIBRARIES: string[] = ["Gtk-4.0"];
 
 const GIR_FILE_SUFFIX = ".gir";
 
-/**
- * Resolves the {@link GtkxConfig.libraries} setting to a concrete list of
- * `Name-Version` GIR namespace identifiers:
- *
- * - omitted → {@link DEFAULT_LIBRARIES}
- * - `"*"` → every `.gir` discovered across `girPath`, keeping the newest
- *   version of each namespace
- * - an explicit array → as given, with `Gtk-4.0` added when omitted
- *
- * @param libraries - The validated `libraries` field from {@link GtkxConfig}
- * @param girPath - Resolved GIR search directories, used only to expand `"*"`
- * @returns Concrete GIR namespace identifiers
- * @throws When `libraries` is `"*"` and no `.gir` files are found on `girPath`
- */
-export const resolveLibraries = (libraries: GtkxConfig["libraries"], girPath: readonly string[]): string[] => {
+export const resolveLibraries = (libraries: GtkxConfig["libraries"], girPath: string[]): string[] => {
     if (libraries === undefined) {
         return [...DEFAULT_LIBRARIES];
     }
@@ -50,19 +26,7 @@ export const resolveLibraries = (libraries: GtkxConfig["libraries"], girPath: re
     return [...new Set([...(hasGtk ? [] : DEFAULT_LIBRARIES), ...libraries])];
 };
 
-/**
- * Scans every directory in `girPath` for `Name-Version.gir` files and returns
- * their namespace identifiers, sorted. When several versions of the same
- * namespace are present, only the highest is kept — a single codegen run
- * cannot emit two bindings for the same namespace.
- *
- * Files whose names do not match {@link GIR_NAMESPACE_PATTERN} are skipped, as
- * are directories that cannot be read.
- *
- * @param girPath - Resolved GIR search directories
- * @returns Sorted GIR namespace identifiers, one per namespace
- */
-const discoverGirNamespaces = (girPath: readonly string[]): string[] => {
+const discoverGirNamespaces = (girPath: string[]): string[] => {
     const highestByName = new Map<string, { version: string; identifier: string }>();
 
     for (const dir of girPath) {
@@ -96,14 +60,6 @@ const discoverGirNamespaces = (girPath: readonly string[]): string[] => {
     return sortedAlpha([...highestByName.values()].map(({ identifier }) => identifier));
 };
 
-/**
- * Compares two dot-separated numeric version strings component-wise.
- *
- * @param a - First version string, e.g. `"4.0"`
- * @param b - Second version string, e.g. `"3.0"`
- * @returns A positive number when `a` is newer, negative when `b` is newer,
- *     and `0` when they are equal
- */
 const compareVersions = (a: string, b: string): number => {
     const aParts = a.split(".");
     const bParts = b.split(".");

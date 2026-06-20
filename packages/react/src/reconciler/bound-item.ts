@@ -4,24 +4,10 @@ import { UNBOUND_POSITION } from "./list-factory.js";
 
 export type BoundItem = [ReactNode, GObject.Object, string];
 
-/**
- * Collects the bound, flat-positioned cells of a container map into `out`.
- *
- * For each container holding a bound position, resolves the item at that
- * position, renders it, and appends the `[node, container, key]` triple. A
- * container that is still unbound, has no tracked key, or whose item resolves to
- * `null`/`undefined` is skipped. Shared by the flat list path and each column.
- *
- * @param containers - Container-to-position map; `UNBOUND_POSITION` skips a container.
- * @param containerKeys - Container-to-stable-key map; a missing key skips the container.
- * @param resolveItem - Resolves the model value at a position.
- * @param render - Renders one resolved value to a React node.
- * @param out - The accumulator the bound triples are pushed onto.
- */
 // biome-ignore lint/complexity/useMaxParams: shared flat collector; the maps, resolver, renderer, and accumulator are its variation points
 export const collectFlatBoundItems = (
-    containers: ReadonlyMap<GObject.Object, number>,
-    containerKeys: ReadonlyMap<GObject.Object, string>,
+    containers: Map<GObject.Object, number>,
+    containerKeys: Map<GObject.Object, string>,
     resolveItem: (position: number) => unknown,
     render: (value: unknown) => ReactNode,
     out: BoundItem[],

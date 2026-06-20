@@ -11,22 +11,10 @@ const firstLabelWithin = (widget: Gtk.Widget): string | null => {
     return null;
 };
 
-/** Options for {@link getChildTexts}. */
 export interface ChildTextOptions {
-    /**
-     * When `true` (the default), each direct child's subtree is searched for
-     * its first `Gtk.Label`. When `false`, only direct children that are
-     * themselves a `Gtk.Label` contribute text.
-     */
     recursive?: boolean;
 }
 
-/**
- * Extracts label text from the direct children of a widget.
- *
- * Used to read back what a list/grid/column view or container actually
- * rendered, without depending on a specific cell-widget structure.
- */
 export const getChildTexts = (container: Gtk.Widget, options: ChildTextOptions = {}): string[] => {
     const recursive = options.recursive ?? true;
     const texts: string[] = [];

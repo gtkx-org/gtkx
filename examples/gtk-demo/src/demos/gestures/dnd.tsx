@@ -148,7 +148,7 @@ function createRotationTransform(halfW: number, halfH: number, angle: number): G
     return t;
 }
 
-function ColorSwatch({ color }: Readonly<{ color: string }>) {
+function ColorSwatch({ color }: { color: string }) {
     const dynamicStyle = css`
         background-color: ${color};
     `;
@@ -168,7 +168,7 @@ function ColorSwatch({ color }: Readonly<{ color: string }>) {
     );
 }
 
-function CssPatternSwatch({ id, cssClass }: Readonly<{ id: string; cssClass: string }>) {
+function CssPatternSwatch({ id, cssClass }: { id: string; cssClass: string }) {
     const createClassProvider = () => {
         return Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.TYPE_STRING, (v) => v.setString(cssClass)));
     };
@@ -207,7 +207,7 @@ function getItemStyleClass(style: ItemStyle): string[] {
 }
 
 function themeIsDark(): boolean {
-    const envTheme = process.env.GTK_THEME;
+    const envTheme = process.env["GTK_THEME"];
     if (envTheme != null) {
         return envTheme.endsWith(":dark") || envTheme.endsWith("-dark");
     }

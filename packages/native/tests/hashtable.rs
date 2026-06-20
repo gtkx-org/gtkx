@@ -82,8 +82,6 @@ fn param_spec_fundamental_type() -> Type {
 }
 
 fn create_param_spec() -> *mut c_void {
-    // SAFETY: Creating a GParamSpec from static NUL-terminated literals has
-    // no pointer preconditions.
     unsafe {
         glib::gobject_ffi::g_param_spec_boolean(
             c"ht-cov-param".as_ptr(),
@@ -201,7 +199,6 @@ fn encode_float_value() {
 
     let ptr = encoder.encode(&value).expect("encoding should succeed");
 
-    // SAFETY: The encoder returned a live g_malloc'd f64 box.
     let stored_value = unsafe {
         *ptr.cast::<f64>()
             .as_ref()
@@ -209,7 +206,6 @@ fn encode_float_value() {
     };
     assert!((stored_value - std::f64::consts::PI).abs() < f64::EPSILON);
 
-    // SAFETY: Frees the allocation this test owns.
     unsafe { glib::ffi::g_free(ptr) };
 }
 
@@ -220,7 +216,6 @@ fn encode_float_negative() {
 
     let ptr = encoder.encode(&value).expect("encoding should succeed");
 
-    // SAFETY: The encoder returned a live g_malloc'd f64 box.
     let stored_value = unsafe {
         *ptr.cast::<f64>()
             .as_ref()
@@ -228,7 +223,6 @@ fn encode_float_negative() {
     };
     assert!((stored_value - (-123.456)).abs() < f64::EPSILON);
 
-    // SAFETY: Frees the allocation this test owns.
     unsafe { glib::ffi::g_free(ptr) };
 }
 
@@ -237,8 +231,6 @@ fn ptr_to_value_boolean_true() {
     let ty = Type::Boolean(BooleanType);
     let ptr = std::ptr::dangling_mut::<c_void>();
 
-    // SAFETY: BooleanType reinterprets the pointer value without
-    // dereferencing it.
     let value =
         unsafe { ty.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
 
@@ -253,8 +245,6 @@ fn ptr_to_value_boolean_false() {
     let ty = Type::Boolean(BooleanType);
     let ptr = std::ptr::null_mut::<c_void>();
 
-    // SAFETY: BooleanType reinterprets the pointer value without
-    // dereferencing it.
     let value =
         unsafe { ty.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
 
@@ -269,8 +259,6 @@ fn ptr_to_value_boolean_nonzero_is_true() {
     let ty = Type::Boolean(BooleanType);
     let ptr = 42isize as *mut c_void;
 
-    // SAFETY: BooleanType reinterprets the pointer value without
-    // dereferencing it.
     let value =
         unsafe { ty.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
 
@@ -284,14 +272,12 @@ fn ptr_to_value_boolean_nonzero_is_true() {
 fn ptr_to_value_float() {
     let ty = Type::Float(FloatKind::F64);
     let float_val: f64 = std::f64::consts::E;
-    // SAFETY: g_malloc aborts on failure, so the write targets a valid f64 slot.
     let ptr = unsafe {
         let mem = glib::ffi::g_malloc(std::mem::size_of::<f64>()) as *mut f64;
         *mem = float_val;
         mem as *mut c_void
     };
 
-    // SAFETY: `ptr` addresses a live g_malloc'd f64.
     let value =
         unsafe { ty.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
 
@@ -300,7 +286,6 @@ fn ptr_to_value_float() {
         other => panic!("Expected Number, got {other:?}"),
     }
 
-    // SAFETY: Frees the allocation this test owns.
     unsafe { glib::ffi::g_free(ptr) };
 }
 
@@ -312,7 +297,6 @@ fn ptr_to_value_struct_null() {
         caller_allocated: false,
     });
 
-    // SAFETY: Null short-circuits before any read.
     let value = unsafe { ty.read(ReadSource::Value(std::ptr::null_mut(), "test")) }
         .expect("decoding should succeed");
 
@@ -331,10 +315,8 @@ fn ptr_to_value_struct_non_null() {
             caller_allocated: false,
         });
 
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
         let ptr = unsafe { glib::ffi::g_malloc0(16) };
 
-        // SAFETY: `ptr` addresses a live 16-byte allocation.
         let value =
             unsafe { ty.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
 
@@ -343,7 +325,6 @@ fn ptr_to_value_struct_non_null() {
             other => panic!("Expected Object, got {other:?}"),
         }
 
-        // SAFETY: Frees the allocation this test owns.
         unsafe { glib::ffi::g_free(ptr) };
     });
 }
@@ -513,11 +494,9 @@ fn hashtable_borrowed_does_not_free() {
             _ => panic!("Expected array"),
         }
 
-        // SAFETY: `hash_table` is a live GHashTable.
         let size = unsafe { glib::ffi::g_hash_table_size(hash_table) };
         assert_eq!(size, 2);
 
-        // SAFETY: Releases a reference this test owns on the live GHashTable.
         unsafe { glib::ffi::g_hash_table_unref(hash_table) };
     });
 }
@@ -637,7 +616,6 @@ fn encode_ptr_array_value_with_objects_and_nulls() {
             ]))
             .unwrap();
         assert!(!ptr.is_null());
-        // SAFETY: Releases the reference this test owns on the live GPtrArray.
         unsafe { glib::ffi::g_ptr_array_unref(ptr as *mut glib::ffi::GPtrArray) };
     });
 }
@@ -698,17 +676,14 @@ fn hashtable_ptr_to_value_null_and_populated() {
             Ownership::Borrowed,
         );
 
-        // SAFETY: Null short-circuits before any read.
         let empty =
             unsafe { ht_type.read(ReadSource::Value(std::ptr::null_mut(), "ctx")) }.unwrap();
         assert!(matches!(empty, Value::Array(items) if items.is_empty()));
 
         let hash_table = common::make_integer_hash_table(&[(1, 10)]);
-        // SAFETY: `hash_table` is a live GHashTable.
         let decoded =
             unsafe { ht_type.read(ReadSource::Value(hash_table as *mut c_void, "ctx")) }.unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
-        // SAFETY: Releases a reference this test owns on the live GHashTable.
         unsafe { glib::ffi::g_hash_table_unref(hash_table) };
     });
 }
@@ -722,7 +697,6 @@ fn hashtable_decode_full_ownership_from_raw_ptr_unrefs() {
             Ownership::Full,
         );
         let hash_table = common::make_integer_hash_table(&[(3, 30)]);
-        // SAFETY: `hash_table` is a live GHashTable created by this test.
         unsafe {
             glib::ffi::g_hash_table_ref(hash_table);
         }
@@ -732,11 +706,9 @@ fn hashtable_decode_full_ownership_from_raw_ptr_unrefs() {
             .unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
 
-        // SAFETY: `hash_table` is a live GHashTable.
         let size = unsafe { glib::ffi::g_hash_table_size(hash_table) };
         assert_eq!(size, 1);
 
-        // SAFETY: Releases a reference this test owns on the live GHashTable.
         unsafe { glib::ffi::g_hash_table_unref(hash_table) };
     });
 }
@@ -818,7 +790,6 @@ fn fundamental_value_unreffed_when_hashtable_storage_drops() {
         drop(encoded);
         assert_eq!(common::param_spec_refcount(pspec), before);
 
-        // SAFETY: Releases the reference this test owns on the live GParamSpec.
         unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
     });
 }
@@ -849,7 +820,6 @@ fn gobject_value_unreffed_when_hashtable_storage_drops() {
         let FfiValue::Storage(storage) = &encoded else {
             panic!("Expected Storage ffi value")
         };
-        // SAFETY: `storage.ptr()` is the live GHashTable the encode built.
         let size =
             unsafe { glib::ffi::g_hash_table_size(storage.ptr() as *mut glib::ffi::GHashTable) };
         assert_eq!(size, 2);
@@ -973,14 +943,11 @@ fn write_return_to_raw_ptr_full_table_hands_caller_owned_table() {
         ])]);
         let mut slot: *mut c_void = std::ptr::null_mut();
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
-        // SAFETY: `ret` addresses a writable local pointer-sized slot.
         unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(val)) };
         assert!(!slot.is_null());
         let table = slot as *mut glib::ffi::GHashTable;
-        // SAFETY: The slot holds a live caller-owned GHashTable.
         let size = unsafe { glib::ffi::g_hash_table_size(table) };
         assert_eq!(size, 1);
-        // SAFETY: The caller owns the one reference the encode created.
         unsafe { glib::ffi::g_hash_table_unref(table) };
     });
 }
@@ -990,17 +957,14 @@ fn write_return_to_raw_ptr_null_err_and_non_array_write_null() {
     let ty = string_hashtable_type(Ownership::Full);
     let mut slot: *mut c_void = 7 as *mut c_void;
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
-    // SAFETY: `ret` addresses a writable local pointer-sized slot.
     unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(Value::Null)) };
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
-    // SAFETY: Same writable local slot.
     unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Err(())) };
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
-    // SAFETY: Same writable local slot.
     unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(Value::Number(1.0))) };
     assert!(slot.is_null());
 }
@@ -1012,7 +976,6 @@ fn write_return_to_raw_ptr_encode_error_writes_null() {
         let val = Value::Array(vec![Value::String("not a tuple".to_string())]);
         let mut slot: *mut c_void = 7 as *mut c_void;
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
-        // SAFETY: `ret` addresses a writable local pointer-sized slot.
         unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(val)) };
         assert!(slot.is_null());
     });

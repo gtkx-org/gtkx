@@ -1,18 +1,3 @@
-//! Dynamic `GType` registration.
-//!
-//! Registers new `GObject` subclasses at runtime from a JavaScript class
-//! descriptor: parses vfunc and inherited-interface overrides, builds a libffi
-//! trampoline for each handler, and writes the resulting function pointers into
-//! the new class's vtable (via [`class_init_trampoline`]) and its copies of any
-//! inherited interface vtables (via [`PreparedInterface::install`]).
-//!
-//! The functions that parse the JS descriptor or build trampolines around a
-//! captured JS callback are excluded from coverage instrumentation — they
-//! require a live [`napi::Env`] or a [`JsRef`], neither of which exists in a
-//! `cargo test` process. The pure registration logic ([`RegisterClassRequest::execute`],
-//! [`RegisterClassRequest::query_parent_gtype`], [`RegisterClassRequest::validate_vfunc_offset`])
-//! is exercised directly by tests.
-
 use std::ffi::{c_char, c_void};
 use std::sync::Arc;
 
@@ -30,10 +15,6 @@ use crate::trampoline::{TrampolineState, build_trampoline};
 use crate::types::Type;
 use crate::value::{JsRef, map_js_array};
 
-/// JS-thread parse output for a vfunc override.
-///
-/// The libffi closure is built on the `GLib` thread inside
-/// [`RawVfunc::into_built`], where the trampoline will eventually fire.
 #[cfg_attr(test, allow(dead_code))]
 struct RawVfunc {
     byte_offset: usize,
@@ -42,8 +23,6 @@ struct RawVfunc {
     return_type: Type,
 }
 
-/// JS-thread parse output for the vfunc overrides of one interface that the
-/// new class inherits from its parent.
 #[cfg_attr(test, allow(dead_code))]
 struct RawInterface {
     gtype: glib::Type,
@@ -71,8 +50,6 @@ impl RawVfunc {
                 "register_class: vfunc 'fn' must be a function",
             ));
         }
-        // SAFETY: `handler_prop` is a live JS value from the current
-        // callback's `env`, verified to be a function just above.
         let handler: JsFunction =
             unsafe { JsFunction::from_raw_unchecked(env.raw(), handler_prop.raw()) };
 
@@ -119,8 +96,6 @@ impl RawInterface {
                 "register_class: interface gtype exceeds the 64-bit GType range",
             ));
         }
-        // SAFETY: Converting a numeric GType value has no pointer
-        // preconditions; validity is checked just below.
         let gtype = unsafe { glib::Type::from_glib(gtype_value as glib::ffi::GType) };
         if !gtype.is_valid() {
             return Err(napi::Error::new(
@@ -148,10 +123,6 @@ impl RawInterface {
     }
 }
 
-/// Built vfunc trampoline waiting to be written into a vtable.
-///
-/// `code_ptr` is the libffi-generated C function pointer; `state` retains the
-/// `TrampolineData` and libffi closure for the lifetime of the type registration.
 #[cfg_attr(test, allow(dead_code))]
 struct PreparedVfunc {
     byte_offset: usize,
@@ -159,11 +130,6 @@ struct PreparedVfunc {
     state: Box<TrampolineState>,
 }
 
-/// Built interface vfunc overrides for one inherited interface.
-///
-/// `gtype` identifies the interface; each vfunc's `byte_offset` is relative to
-/// the interface struct base. The overrides are written into the new class's
-/// own copy of the inherited interface vtable by [`PreparedInterface::install`].
 #[cfg_attr(test, allow(dead_code))]
 struct PreparedInterface {
     gtype: glib::Type,
@@ -171,16 +137,10 @@ struct PreparedInterface {
 }
 
 impl PreparedVfunc {
-    /// Writes each prepared vfunc's trampoline pointer into the vtable rooted
-    /// at `vtable_base`, then leaks the trampoline state so its libffi closure
-    /// outlives the type registration.
     #[cfg_attr(test, allow(dead_code))]
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn install_all(vtable_base: *mut c_void, vfuncs: Vec<Self>) {
         for vfunc in vfuncs {
-            // SAFETY: The request validated each byte offset against the
-            // queried class size and pointer alignment, so the slot lies
-            // within the live vtable GLib allocated for the new type.
             unsafe {
                 let slot = vtable_base
                     .cast::<u8>()
@@ -194,19 +154,9 @@ impl PreparedVfunc {
 }
 
 impl PreparedInterface {
-    /// Writes this interface's vfunc overrides into the new class's own copy of
-    /// the inherited interface vtable.
-    ///
-    /// `g_type_class_ref` has already initialized the class, so `GLib` has
-    /// allocated a per-type copy of every inherited interface vtable. Writing
-    /// into that copy overrides the interface methods for the new type only,
-    /// leaving the parent's vtable untouched.
     #[cfg_attr(test, allow(dead_code))]
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn install(self, class_ptr: *mut c_void) {
-        // SAFETY: `class_ptr` is the live class structure returned by
-        // `g_type_class_ref`, the receiver `g_type_interface_peek`
-        // requires.
         let iface_vtable =
             unsafe { gobject_ffi::g_type_interface_peek(class_ptr, self.gtype.into_glib()) };
         if iface_vtable.is_null() {
@@ -226,9 +176,6 @@ unsafe extern "C" fn class_init_trampoline(g_class: *mut c_void, class_data: *mu
     if class_data.is_null() {
         return;
     }
-    // SAFETY: `class_data` is the unique `Box::into_raw` pointer the
-    // registration stored in GTypeInfo, and class_init runs exactly once
-    // per static type.
     let vfuncs = unsafe { Box::from_raw(class_data.cast::<Vec<PreparedVfunc>>()) };
     PreparedVfunc::install_all(g_class, *vfuncs);
 }
@@ -252,11 +199,7 @@ impl RegisterClassRequest {
             anyhow::bail!("GType name '{}' is already registered", self.name);
         }
 
-        // SAFETY: GTypeQuery is a plain C struct for which all-zero bytes
-        // are a valid (empty) representation.
         let mut query: gobject_ffi::GTypeQuery = unsafe { std::mem::zeroed() };
-        // SAFETY: `query` is a live local out-parameter, and the gtype is
-        // a plain value.
         unsafe { gobject_ffi::g_type_query(self.parent_gtype.into_glib(), &mut query) };
         if query.type_ == 0 {
             anyhow::bail!("parent gtype could not be queried");
@@ -343,21 +286,15 @@ impl RegisterClassRequest {
             value_table: std::ptr::null(),
         };
 
-        // SAFETY: `name_ptr` is the caller's live NUL-terminated GString
-        // and `info` is a fully initialized local GTypeInfo.
         let new_gtype = unsafe {
             gobject_ffi::g_type_register_static(parent_gtype.into_glib(), name_ptr, &info, 0)
         };
 
         if new_gtype == 0 {
-            // SAFETY: Registration failed, so class_init never ran and the
-            // unique `Box::into_raw` pointer is still unconsumed.
             drop(unsafe { Box::from_raw(class_vfuncs_ptr.cast::<Vec<PreparedVfunc>>()) });
             anyhow::bail!("g_type_register_static returned G_TYPE_INVALID");
         }
 
-        // SAFETY: `new_gtype` was just returned as a valid registered
-        // type.
         let class_ptr = unsafe { gobject_ffi::g_type_class_ref(new_gtype) };
 
         for iface in interfaces {
@@ -371,10 +308,6 @@ impl RegisterClassRequest {
 impl ModuleRequest for RegisterClassRequest {
     type Output = u64;
 
-    /// Excluded from coverage instrumentation: the request orchestrates
-    /// [`Self::validate_layout`] and [`Self::register_type`], both of which are
-    /// themselves excluded, so its error-propagation has no reachable path
-    /// under `cargo test`. [`Self::query_parent_gtype`] is covered directly.
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn execute(self) -> anyhow::Result<u64> {
         let query = self.query_parent_gtype()?;
@@ -423,8 +356,6 @@ fn parse_js_array<T>(
             format!("register_class: expected an array of {description}"),
         ));
     }
-    // SAFETY: `prop` is a live JS value from the current callback's
-    // `env`, verified to be an array just above.
     let arr: Array = unsafe { Array::from_napi_value(env.raw(), prop.raw())? };
     map_js_array(env, &arr, convert)
 }
@@ -476,10 +407,6 @@ fn parse_register_options(
     Ok((vfuncs, interfaces))
 }
 
-/// napi export shim. Excluded from coverage instrumentation: it parses the JS
-/// class descriptor through a live [`napi::Env`]. The
-/// [`RegisterClassRequest::execute`] logic it dispatches is exercised directly
-/// by tests.
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[allow(clippy::wildcard_imports)]
 mod napi_export {
@@ -510,8 +437,6 @@ mod napi_export {
         let (vfuncs, interfaces) = parse_register_options(env, options)?;
         RegisterClassRequest {
             name,
-            // SAFETY: Converting a numeric GType value has no pointer
-            // preconditions; the request validates it before use.
             parent_gtype: unsafe { glib::Type::from_glib(parent_value as glib::ffi::GType) },
             vfuncs,
             interfaces,

@@ -19,22 +19,8 @@ import type { ReactNode } from "react";
 import { bench, describe } from "vitest";
 import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
 
-/**
- * Sizes grown geometrically so an instruction-count gate (CodSpeed) sees a flat
- * per-item slope for the per-host-config-op `stateOf` fetch the WeakMap flip
- * introduces, and a rising slope for any regression that turns the lazy
- * `ensureState` allocation into repeated work.
- */
 const SIZES = [98, 392];
 
-/**
- * Distinct widget classes cycled per row so every node is a different GObject
- * type. Where the single-class `reconciler`/`prop-update` benches keep the
- * per-GType prop-descriptor table and the GType-ancestry walk warm with one
- * entry, this spread forces a fresh descriptor-table build and a distinct
- * `stateOf`/`ensureState` key on every element, exercising the one-WeakMap.get
- * cost across heterogeneous GObject keys rather than a single hot type.
- */
 const ROW = (i: number): ReactNode => {
     const key = String(i);
     switch (i % 14) {

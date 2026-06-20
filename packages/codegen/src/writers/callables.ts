@@ -9,25 +9,13 @@ import { gtypeMemberDeclaration } from "./gtype-binding.js";
 import { methodExportName, renderMethodBody, renderMethodReturnType, renderMethodSignature } from "./method.js";
 import { renderRuntimeOverride } from "./runtime-override.js";
 
-/**
- * Constructors, static functions, and instance methods of a class, interface,
- * or boxed record.
- */
 export type Callables = {
-    readonly constructors: readonly GirFunction[];
-    readonly functions: readonly GirFunction[];
-    readonly methods: readonly GirFunction[];
+    constructors: GirFunction[];
+    functions: GirFunction[];
+    methods: GirFunction[];
 };
 
-/**
- * Drops callables that lack a `c:identifier` or repeat one already retained.
- *
- * GIR sometimes lists the same callable twice (e.g. as both a class function
- * and a constructor); the C identifier is the canonical key.
- *
- * @param callables - The raw GIR callables
- */
-export const dedupeCallables = (callables: readonly GirFunction[]): readonly GirFunction[] =>
+export const dedupeCallables = (callables: GirFunction[]): GirFunction[] =>
     dedupeBy(
         callables.filter(
             (callable): callable is GirFunction & { cIdentifier: string } => callable.cIdentifier !== undefined,
@@ -35,14 +23,6 @@ export const dedupeCallables = (callables: readonly GirFunction[]): readonly Gir
         (callable) => callable.cIdentifier,
     );
 
-/**
- * Appends the top-level `const fn = t.fn(...)` binding for a single callable,
- * deduplicated by its C identifier. Used when flattening interface and
- * prerequisite methods onto a type one at a time.
- *
- * @param context - The module context
- * @param method - The callable to bind
- */
 export const appendMethodBinding = (context: ModuleContext, method: GirFunction): void => {
     if (method.cIdentifier === undefined) return;
     if (callableReferencesClassStruct(context, method)) return;
@@ -51,13 +31,6 @@ export const appendMethodBinding = (context: ModuleContext, method: GirFunction)
     context.module.appendBinding(`const ${bindingIdentifier(method.cIdentifier)} = ${expression};`, method.cIdentifier);
 };
 
-/**
- * Appends the top-level `const fn = t.fn(...)` binding for every introspectable
- * callable that has a C identifier and is not shadowed.
- *
- * @param context - The module context
- * @param callables - The callables to bind
- */
 export const emitBindings = (context: ModuleContext, callables: Callables): void => {
     const all = [...callables.constructors, ...callables.functions, ...callables.methods];
     for (const callable of all) {
@@ -74,17 +47,6 @@ export const emitBindings = (context: ModuleContext, callables: Callables): void
     }
 };
 
-/**
- * Renders a `static <name>(...): Owner` factory method for a GIR `<constructor>`.
- *
- * Returns `undefined` for non-introspectable, shadowed, identifier-less, or
- * `constructor`-named entries. The result is asserted to `ownerClassName`; the
- * bound `t.fn` lifts the raw handle to its concrete runtime wrapper.
- *
- * @param context - The module context
- * @param callable - The GIR constructor callable
- * @param ownerClassName - The local class name that wraps the result
- */
 const renderConstructorStatic = (
     context: ModuleContext,
     callable: GirFunction,
@@ -104,14 +66,6 @@ const renderConstructorStatic = (
     return renderBlock(`static ${name}(${signature}): ${ownerClassName}`, body);
 };
 
-/**
- * Renders a `static <name>(...): Return` member for a GIR `<function>`.
- *
- * Returns `undefined` when the callable cannot be emitted on a class body.
- *
- * @param context - The module context
- * @param callable - The GIR function callable
- */
 const renderStaticMember = (context: ModuleContext, callable: GirFunction): string | undefined => {
     if (!isEmittableCallable(context, callable)) return undefined;
     const cIdentifier = callable.cIdentifier;
@@ -127,18 +81,6 @@ const renderStaticMember = (context: ModuleContext, callable: GirFunction): stri
     return renderBlock(`static ${name}(${signature}): ${returnType}`, body);
 };
 
-/**
- * Renders an instance method body for a GIR `<method>`.
- *
- * Hand-written runtime overrides (e.g. `g_value_get_boxed`) short-circuit the
- * usual FFI call body with a throwing stub that the runtime replaces on the
- * prototype at module load.
- *
- * Returns `undefined` for non-emittable callables.
- *
- * @param context - The module context
- * @param callable - The GIR method callable
- */
 export const renderInstanceMethod = (
     context: ModuleContext,
     callable: GirFunction,
@@ -160,10 +102,7 @@ export const renderInstanceMethod = (
     return renderBlock(`${name}(${signature}): ${returnType}`, body);
 };
 
-/**
- * Indexes a list of method callables by their GIR name for shadower lookup.
- */
-export const indexMethodsByName = (methods: readonly GirFunction[]): ReadonlyMap<string, GirFunction> => {
+export const indexMethodsByName = (methods: GirFunction[]): Map<string, GirFunction> => {
     const map = new Map<string, GirFunction>();
     for (const callable of methods) map.set(callable.name, callable);
     return map;
@@ -181,19 +120,7 @@ const constructorMemberName = (girName: string): string | undefined => {
     return camel;
 };
 
-/**
- * Renders the shared head of a class/interface/boxed body: every `static`
- * constructor factory and every `static` namespace function on the same type.
- *
- * @param context - The module context
- * @param callables - The class's emittable callables
- * @param ownerClassName - The local PascalCase class name
- */
-export const renderStaticHead = (
-    context: ModuleContext,
-    callables: Callables,
-    ownerClassName: string,
-): readonly string[] => {
+export const renderStaticHead = (context: ModuleContext, callables: Callables, ownerClassName: string): string[] => {
     const blocks: string[] = [];
     for (const callable of callables.constructors) {
         const block = renderConstructorStatic(context, callable, ownerClassName);
@@ -206,19 +133,11 @@ export const renderStaticHead = (
     return blocks;
 };
 
-/**
- * Renders the plain instance methods of a class/interface/boxed body, the
- * variant that does NOT consult inherited-signature conflicts. Used for
- * interfaces and boxed records that do not extend other widget shapes.
- *
- * Records each emitted method name in `claimedNames` so subsequent property
- * and signal-method renderers can detect collisions.
- */
 const renderPlainInstanceMethods = (
     context: ModuleContext,
-    methods: readonly GirFunction[],
+    methods: GirFunction[],
     claimedNames: Set<string>,
-): readonly string[] => {
+): string[] => {
     const blocks: string[] = [];
     for (const callable of methods) {
         const block = renderInstanceMethod(context, callable);
@@ -229,29 +148,16 @@ const renderPlainInstanceMethods = (
     return blocks;
 };
 
-/**
- * Inputs for {@link renderPlainTypeMembers}.
- */
 export type PlainTypeMembersOptions = {
-    readonly context: ModuleContext;
-    readonly className: string;
-    readonly callables: Callables;
-    /** Whether to prepend the `declare __gtype__: GType;` member. */
-    readonly hasGtype: boolean;
+    context: ModuleContext;
+    className: string;
+    callables: Callables;
+    hasGtype: boolean;
 };
 
-/**
- * Renders the shared head of an interface or boxed class body — `__gtype__`
- * declaration (optional), statics, and plain instance methods — plus the
- * `claimedNames` set populated by those renderers.
- *
- * Callers append the constructor, property accessors, field accessors, and
- * signal members on top of the returned members list. The class writer takes
- * a different path because it has to consult inherited signatures.
- */
 export const renderPlainTypeMembers = (
     options: PlainTypeMembersOptions,
-): { readonly members: string[]; readonly claimedNames: Set<string> } => {
+): { members: string[]; claimedNames: Set<string> } => {
     const { context, className, callables, hasGtype } = options;
     const members: string[] = [];
     if (hasGtype) members.push(gtypeMemberDeclaration(context));

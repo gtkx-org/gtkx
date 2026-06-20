@@ -1,5 +1,3 @@
-//! napi-rs module exports for FFI operations.
-
 mod alloc;
 mod call;
 mod field;

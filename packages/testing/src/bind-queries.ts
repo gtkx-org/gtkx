@@ -2,7 +2,6 @@ import * as queries from "./queries.js";
 import type { Container } from "./traversal.js";
 import type { BoundCustomQueries, BoundQueries, Query, QueryMap } from "./types.js";
 
-/** Matches the built-in query export names: `queryBy`/`getBy`/`findBy` and their `All` variants. */
 const BUILTIN_QUERY_PATTERN = /^(query|get|find)(All)?By/;
 
 const bindQuery =
@@ -15,13 +14,6 @@ const bindCustomQueries = <Q extends QueryMap>(customQueries: Q, container: Cont
     return Object.fromEntries(entries) as BoundCustomQueries<Q>;
 };
 
-/**
- * Binds all query functions to a container.
- *
- * @param container - The container to bind queries to
- * @param customQueries - Extra query functions to bind alongside the built-ins
- * @returns Object with all query methods bound to the container
- */
 export const bindQueries = <Q extends QueryMap = Record<never, never>>(
     container: Container,
     customQueries?: Q,

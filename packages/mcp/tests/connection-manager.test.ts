@@ -35,7 +35,7 @@ function makeConnection(id: string): TestConnection {
 }
 
 class FakeAppTransport extends EventEmitter<AppTransportEvents> implements AppTransport {
-    readonly sent: Array<{ connectionId: string; message: IpcMessage }> = [];
+    sent: Array<{ connectionId: string; message: IpcMessage }> = [];
 
     send(connectionId: string, message: IpcMessage): void {
         this.sent.push({ connectionId, message });
@@ -60,25 +60,10 @@ interface ManagerContext {
 
 const ctx = {} as ManagerContext;
 
-/**
- * Emits an `app.register` request for the given connection on the shared
- * context transport, leaving the recorded `sent` messages untouched.
- *
- * @param conn - Connection the request originates from.
- * @param params - Registration parameters, where `pid` may be omitted to
- *   exercise validation failures.
- * @param id - Request id carried by the emitted message.
- */
 function emitRegister(conn: TestConnection, params: { applicationId: string; pid?: number }, id = "req-1"): void {
     ctx.transport.emit("request", conn, { id, method: "app.register", params });
 }
 
-/**
- * Creates a connection, attaches a fresh spy to the manager's
- * `appUnregistered` event, and registers `app-a` from that connection.
- *
- * @returns The created connection and the attached unregister spy.
- */
 function registerWithUnregisterSpy(): { conn: TestConnection; onUnregister: ReturnType<typeof vi.fn> } {
     const conn = makeConnection("c1");
     const onUnregister = vi.fn();

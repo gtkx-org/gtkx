@@ -1,9 +1,3 @@
-//! Function argument representation combining type and value.
-//!
-//! [`Arg`] pairs a [`Type`] descriptor with a [`Value`], representing a single
-//! argument to an FFI function call. Arguments are parsed from JavaScript
-//! objects containing `type` and `value` properties.
-
 use napi::bindgen_prelude::*;
 use napi::{Env, JsObject};
 

@@ -5,45 +5,28 @@ import { type GirProperty, propertyFromNode } from "./property.js";
 import { type GirSignal, signalFromNode } from "./signal.js";
 import type { ParseContext } from "./type-id.js";
 
-/** A `<class>` or `<interface>` declaration. */
 export type GirClass = {
-    /** Local name inside the namespace (no prefix). */
-    readonly name: string;
-    readonly cType: string | undefined;
-    /** GIR `parent`, possibly cross-namespace (e.g. `"GObject.InitiallyUnowned"`). */
-    readonly parent: string | undefined;
-    /** GLib type name (e.g. `"GtkWidget"`). */
-    readonly glibTypeName: string | undefined;
-    /** C symbol that returns the GType integer (e.g. `"gtk_widget_get_type"`). */
-    readonly glibGetType: string | undefined;
-    /** Local record name that holds this class's vtable (`glib:type-struct`). */
-    readonly glibTypeStruct: string | undefined;
-    /** Glib ref/unref/etc. function names on fundamentals; not used for GObject subclasses. */
-    readonly glibRefFunc: string | undefined;
-    readonly glibUnrefFunc: string | undefined;
-    /** `glib:fundamental="1"` — a non-GObject fundamental type (e.g. `GdkEvent`, `GskRenderNode`). */
-    readonly fundamental: boolean;
-    readonly isInterface: boolean;
-    readonly introspectable: boolean;
-    /** Names of interfaces this class implements (cross-namespace possible). */
-    readonly implements: readonly string[];
-    /** Names of interfaces a `<interface>` requires (`<prerequisite>` elements). */
-    readonly prerequisites: readonly string[];
-    readonly methods: readonly GirFunction[];
-    readonly constructors: readonly GirFunction[];
-    readonly functions: readonly GirFunction[];
-    readonly properties: readonly GirProperty[];
-    readonly signals: readonly GirSignal[];
-    readonly fields: readonly GirField[];
+    name: string;
+    cType: string | undefined;
+    parent: string | undefined;
+    glibTypeName: string | undefined;
+    glibGetType: string | undefined;
+    glibTypeStruct: string | undefined;
+    glibRefFunc: string | undefined;
+    glibUnrefFunc: string | undefined;
+    fundamental: boolean;
+    isInterface: boolean;
+    introspectable: boolean;
+    implements: string[];
+    prerequisites: string[];
+    methods: GirFunction[];
+    constructors: GirFunction[];
+    functions: GirFunction[];
+    properties: GirProperty[];
+    signals: GirSignal[];
+    fields: GirField[];
 };
 
-/**
- * Builds a {@link GirClass} from a `<class>` or `<interface>` element.
- *
- * @param node - The XML element
- * @param isInterface - `true` when the source element was `<interface>`
- * @param context - The per-namespace interning seam
- */
 export const classFromNode = (node: RawNode, isInterface: boolean, context: ParseContext): GirClass => ({
     name: nameAttr(node),
     cType: attr(node, "c:type"),

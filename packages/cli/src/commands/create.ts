@@ -25,13 +25,6 @@ const parseTestingOption = (value: string | undefined): TestingOption | undefine
     return value;
 };
 
-/**
- * `gtkx create` — interactive project scaffolder.
- *
- * Forwards CLI flags to {@link createApp}, which prompts for any missing
- * options before scaffolding the project. The `--pm`/`--testing` flags are
- * validated against the supported sets before scaffolding begins.
- */
 export const create = defineCommand({
     meta: {
         name: "create",

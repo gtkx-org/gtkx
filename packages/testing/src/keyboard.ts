@@ -6,20 +6,10 @@ import { getEditableDelegate, implementsEditable } from "./editable.js";
 import { fireEvent } from "./fire-event.js";
 import type { UserEventState } from "./state.js";
 
-/**
- * Options for tab navigation.
- */
 export type TabOptions = {
-    /** Navigate backwards (Shift+Tab) instead of forwards */
     shift?: boolean;
 };
 
-/**
- * Simulates Tab key navigation.
- *
- * @param widget - Starting widget
- * @param options - Use `shift: true` for backwards navigation
- */
 export const tab = async (widget: Gtk.Widget, options?: TabOptions): Promise<void> => {
     await act(() => {
         const direction = options?.shift ? Gtk.DirectionType.TAB_BACKWARD : Gtk.DirectionType.TAB_FORWARD;
@@ -203,20 +193,6 @@ const applyKeyAction = async (
     }
 };
 
-/**
- * Builds a `keyboard` helper bound to a shared modifier state, so held modifier
- * keys persist across calls within one user-event instance.
- *
- * Supports special keys in braces: `{Enter}`, `{Tab}`, `{Escape}`, etc. Use
- * `{Key>}` to hold a key down, `{/Key}` to release.
- *
- * @example
- * ```tsx
- * await userEvent.keyboard(widget, "hello");
- * await userEvent.keyboard(widget, "{Enter}");
- * await userEvent.keyboard(widget, "{Shift>}A{/Shift}");
- * ```
- */
 export const keyboardWith =
     (state: UserEventState) =>
     async (widget: Gtk.Widget, input: string): Promise<void> => {

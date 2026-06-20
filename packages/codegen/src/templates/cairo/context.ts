@@ -20,17 +20,9 @@ import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";
 const { bind } = t;
 const CONTEXT_T = t.boxed("CairoContext", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_context_get_type");
 
-/** One glyph in a `cairo_glyph_t` buffer. */
 export type CairoGlyph = { index: number; x: number; y: number };
-/** One cluster in a `cairo_text_cluster_t` buffer. */
 export type CairoTextCluster = { numBytes: number; numGlyphs: number };
 
-/**
- * Packs glyphs into a freshly allocated `cairo_glyph_t[]` buffer.
- *
- * @param glyphs - The glyphs to pack.
- * @returns The allocated buffer handle.
- */
 export const allocGlyphBuffer = (glyphs: CairoGlyph[]): Handle => {
     const buf = alloc(glyphs.length * 24, "cairo_glyph_t[]");
     let offset = 0;
@@ -43,12 +35,6 @@ export const allocGlyphBuffer = (glyphs: CairoGlyph[]): Handle => {
     return buf;
 };
 
-/**
- * Packs clusters into a freshly allocated `cairo_text_cluster_t[]` buffer.
- *
- * @param clusters - The clusters to pack.
- * @returns The allocated buffer handle.
- */
 export const allocClusterBuffer = (clusters: CairoTextCluster[]): Handle => {
     const buf = alloc(clusters.length * 8, "cairo_text_cluster_t[]");
     let offset = 0;
@@ -60,7 +46,6 @@ export const allocClusterBuffer = (clusters: CairoTextCluster[]): Handle => {
     return buf;
 };
 
-/** Text extents read from a `cairo_text_extents_t` struct. */
 export type TextExtents = {
     xBearing: number;
     yBearing: number;
@@ -70,7 +55,6 @@ export type TextExtents = {
     yAdvance: number;
 };
 
-/** Font extents read from a `cairo_font_extents_t` struct. */
 export type FontExtents = {
     ascent: number;
     descent: number;
@@ -79,12 +63,6 @@ export type FontExtents = {
     maxYAdvance: number;
 };
 
-/**
- * Reads a `cairo_text_extents_t` struct.
- *
- * @param handle - The struct handle.
- * @returns The extents fields.
- */
 export const readTextExtents = (handle: Handle): TextExtents => ({
     xBearing: read(handle, t.float64, 0) as number,
     yBearing: read(handle, t.float64, 8) as number,
@@ -94,12 +72,6 @@ export const readTextExtents = (handle: Handle): TextExtents => ({
     yAdvance: read(handle, t.float64, 40) as number,
 });
 
-/**
- * Reads a `cairo_font_extents_t` struct.
- *
- * @param handle - The struct handle.
- * @returns The extents fields.
- */
 export const readFontExtents = (handle: Handle): FontExtents => ({
     ascent: read(handle, t.float64, 0) as number,
     descent: read(handle, t.float64, 8) as number,
@@ -108,43 +80,17 @@ export const readFontExtents = (handle: Handle): FontExtents => ({
     maxYAdvance: read(handle, t.float64, 32) as number,
 });
 
-/** One parsed element of a `cairo_path_t`. */
 export type PathData =
     | { type: "moveTo"; x: number; y: number }
     | { type: "lineTo"; x: number; y: number }
     | { type: "curveTo"; x1: number; y1: number; x2: number; y2: number; x3: number; y3: number }
     | { type: "closePath" };
 
-/**
- * `cairo_path_data_type_t` ABI values, stable in cairo's public C API.
- */
 const PATH_MOVE_TO = 0;
 const PATH_LINE_TO = 1;
 const PATH_CURVE_TO = 2;
 const PATH_CLOSE_PATH = 3;
 
-/**
- * Parses `cairo_path_t` struct layout:
- *   offset  0: cairo_status_t status (int32)
- *   offset  8: cairo_path_data_t *data (pointer)
- *   offset 16: int num_data (int32)
- *
- * Each `cairo_path_data_t` is a 16-byte union:
- *   Header variant:
- *     offset 0: cairo_path_data_type_t type (int32)
- *     offset 4: int length (int32, number of data elements including header)
- *   Point variant:
- *     offset 0: double x
- *     offset 8: double y
- *
- * The path wrapper carries its own `cairo_path_destroy` finalizer (declared
- * on its boxed descriptor), so the GC releases it once `pathHandle` is no
- * longer reachable. The inner data-array read borrows cairo's own buffer
- * for the duration of the parse and is never freed independently.
- *
- * @param pathHandle - The `cairo_path_t` handle.
- * @returns The parsed path elements.
- */
 export const parsePath = (pathHandle: Handle): PathData[] => {
     const numData = read(pathHandle, t.int32, 16) as number;
     if (numData === 0) return [];
@@ -203,25 +149,8 @@ export const parsePath = (pathHandle: Handle): PathData[] => {
 const cairoVersion = t.bind("libcairo.so.2", "cairo_version", [], t.int32);
 const cairoVersionString = t.bind("libcairo.so.2", "cairo_version_string", [], t.string("borrowed"));
 
-/**
- * Returns the linked cairo version encoded as a single integer
- * (`major * 10000 + minor * 100 + micro`).
- *
- * Re-exported by the generated `@gtkx/gi/cairo` barrel.
- *
- * @public
- * @returns The encoded version number.
- */
 export const version = (): number => cairoVersion() as number;
 
-/**
- * Returns the linked cairo version as a human-readable string.
- *
- * Re-exported by the generated `@gtkx/gi/cairo` barrel.
- *
- * @public
- * @returns The version string, e.g. `"1.18.0"`.
- */
 export const versionString = (): string => cairoVersionString() as string;
 
 declare module "../cairo.js" {
@@ -840,18 +769,6 @@ const cairoRectangleListDestroy = bind(
     t.void,
 );
 
-/**
- * Parses `cairo_rectangle_list_t` struct layout:
- *   offset  0: cairo_status_t status (int32)
- *   offset  8: cairo_rectangle_t *rectangles (pointer)
- *   offset 16: int num_rectangles (int32)
- *
- * Each `cairo_rectangle_t` is 32 bytes:
- *   offset 0: double x
- *   offset 8: double y
- *   offset 16: double width
- *   offset 24: double height
- */
 Context.prototype.copyClipRectangleList = function (): Array<{
     x: number;
     y: number;

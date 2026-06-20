@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="GTKX">
-    <rect width="128" height="128" rx="30" fill="#C8102E" />
-    <g fill="none" stroke="#FFFFFF" stroke-width="13" stroke-linecap="round">
-        <ellipse cx="64" cy="64" rx="42" ry="14" transform="rotate(45 64 64)" />
-        <ellipse cx="64" cy="64" rx="42" ry="14" transform="rotate(-45 64 64)" />
-    </g>
-</svg>

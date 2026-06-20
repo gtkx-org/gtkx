@@ -1,6 +1,3 @@
-//! Coverage for [`BufferView`]/[`BufferViewKind`] and the zero-copy
-//! `ArrayBufferView` fast path in `ArrayType`'s encoder.
-
 use std::ffi::c_void;
 
 use napi::sys::TypedarrayType;

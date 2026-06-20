@@ -38,11 +38,6 @@ function createFakeChild(): FakeChild {
 
 const forkMock = vi.fn<ForkRunner>();
 
-/**
- * Injects {@link forkMock} into {@link runDevSupervisor}, so each test drives the
- * supervisor through a deterministic fork factory instead of the real
- * `node:child_process` fork.
- */
 const startWithForkMock = (entry: string, watch?: Parameters<typeof runDevSupervisor>[1]): void => {
     runDevSupervisor(entry, watch, forkMock).catch(() => undefined);
 };
@@ -67,10 +62,6 @@ function createFakeWatcher(): FSWatcher {
     return watcher;
 }
 
-/**
- * Stubs the next `watch()` with a fake `FSWatcher`, capturing the change
- * listener so a test can fire a synthetic config-file change.
- */
 function captureConfigWatcher(): { fireConfigChange: () => void } {
     let fire: () => void = () => {};
     watchMock.mockImplementationOnce((_path, listener) => {

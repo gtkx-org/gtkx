@@ -2,45 +2,20 @@ import { type GirParameter, type GirReturnValue, parameterFromNode, parseCallabl
 import { attr, attrBool, childOf, type RawNode } from "./parse.js";
 import type { ParseContext } from "./type-id.js";
 
-/**
- * Whether this callable is a free function, a static method on a type, an
- * instance method, or a constructor.
- *
- * The kind controls call-site shape in the writers: instance methods pass
- * `self` as the first FFI argument, constructors return a fresh native
- * handle, etc.
- */
 export type FunctionKind = "function" | "method" | "constructor";
 
-/**
- * A callable declaration: `<function>`, `<method>`, or `<constructor>`.
- */
 export type GirFunction = {
-    readonly kind: FunctionKind;
-    /** GIR `name`, snake_case (e.g. `"set_label"`). */
-    readonly name: string;
-    /** C symbol identifier passed to `t.fn(library, symbol, …)`. */
-    readonly cIdentifier: string | undefined;
-    /** `throws="1"` — appends an implicit `GError**` out-parameter. */
-    readonly throws: boolean;
-    /** `introspectable="0"` — the function is skipped in JS output. */
-    readonly introspectable: boolean;
-    /** Indicates a different function is the preferred binding (the shadower). */
-    readonly shadowedBy: string | undefined;
-    /** The instance parameter for methods; `undefined` otherwise. */
-    readonly instance: GirParameter | undefined;
-    /** Regular parameters (no instance and no implicit GError). */
-    readonly parameters: readonly GirParameter[];
-    readonly returnValue: GirReturnValue;
+    kind: FunctionKind;
+    name: string;
+    cIdentifier: string | undefined;
+    throws: boolean;
+    introspectable: boolean;
+    shadowedBy: string | undefined;
+    instance: GirParameter | undefined;
+    parameters: GirParameter[];
+    returnValue: GirReturnValue;
 };
 
-/**
- * Builds a {@link GirFunction} from a callable element.
- *
- * @param node - The XML element
- * @param kind - The callable kind matching the element name
- * @param context - The per-namespace interning seam
- */
 export const functionFromNode = (node: RawNode, kind: FunctionKind, context: ParseContext): GirFunction => {
     const instanceNode = childOf(childOf(node, "parameters"), "instance-parameter");
     return {

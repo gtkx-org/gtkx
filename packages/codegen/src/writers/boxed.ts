@@ -9,24 +9,6 @@ import { isClassStructRecord } from "./class-struct-record.js";
 import { gtypeExprFor } from "./gtype-binding.js";
 import { appendWrapperClassRegistration } from "./registration.js";
 
-/**
- * Emits a class declaration plus optional boxed registration for a
- * `<record>` or `<union>`.
- *
- * Walks constructors, static functions, and methods just like
- * {@link emitClass}, attaching them to the boxed class. The typed
- * constructor ({@link renderBoxedConstructor}), its
- * {@link renderBoxedConstructorPropsInterface} props interface, and the
- * field accessors are emitted by their dedicated writers.
- *
- * Vtable records (`glib:is-gtype-struct-for`) are skipped here — they are
- * consumed by the owning class's vtable registration. Class- and
- * interface-struct records (`GTypeClass`, `GEnumClass`, …) are likewise skipped
- * as they are runtime vtables rather than marshallable values.
- *
- * @param context - The module context
- * @param boxed - The boxed to emit
- */
 export const emitBoxed = (context: ModuleContext, boxed: GirBoxed): void => {
     if (!boxed.introspectable) return;
     if (boxed.isVtable) return;
@@ -57,7 +39,7 @@ const renderBoxedMembers = (
     boxed: GirBoxed,
     className: string,
     callables: Callables,
-): readonly string[] => {
+): string[] => {
     const { members, claimedNames } = renderPlainTypeMembers({
         context,
         className,

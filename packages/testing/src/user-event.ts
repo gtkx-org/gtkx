@@ -13,19 +13,10 @@ export type { PointerInput } from "./pointer.js";
 export type { TypeOptions } from "./text.js";
 export { resetClipboard } from "./text.js";
 
-/**
- * Options for {@link userEvent.setup}, applied as defaults to the returned
- * instance's interactions.
- */
 export type UserEventOptions = {
-    /** Default for {@link TypeOptions.skipClick} on the instance's `type` */
     skipClick?: boolean;
 };
 
-/**
- * Result of {@link userEvent.setup}: the same helpers as {@link userEvent},
- * but with persistent keyboard/pointer state across calls.
- */
 export type UserEventInstance = {
     click: typeof click;
     dblClick: typeof dblClick;
@@ -51,10 +42,6 @@ export type UserEventInstance = {
     pointer: ReturnType<typeof pointerWith>;
 };
 
-/**
- * Alias of {@link UserEventInstance}, matching the `UserEvent` type name from
- * `@testing-library/user-event`.
- */
 export type UserEvent = UserEventInstance;
 
 type StatelessHelpers = Omit<UserEventInstance, "type" | "keyboard" | "pointer">;
@@ -89,42 +76,7 @@ const buildUserEvent = (state: UserEventState, options?: UserEventOptions): User
     pointer: pointerWith(state),
 });
 
-/**
- * User interaction utilities for testing.
- *
- * Simulates user actions like clicking, typing, and selecting.
- * All methods are async and wait for GTK event processing.
- *
- * @example
- * ```tsx
- * import { render, screen, userEvent } from "@gtkx/testing";
- *
- * test("form submission", async () => {
- *   await render(<LoginForm />);
- *
- *   const input = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
- *   await userEvent.type(input, "username");
- *
- *   const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
- *   await userEvent.click(button);
- * });
- * ```
- */
 export const userEvent: UserEventInstance & {
-    /**
-     * Creates an isolated user-event instance whose `keyboard` and `pointer`
-     * helpers retain modifier and pointer-down state across calls.
-     *
-     * Mirrors `@testing-library/user-event` v14's `userEvent.setup()`.
-     *
-     * @example
-     * ```tsx
-     * const user = userEvent.setup();
-     * await user.keyboard("{Shift>}"); // Shift held
-     * await user.keyboard("a");        // arrives with Shift still held
-     * await user.keyboard("{/Shift}"); // Shift released
-     * ```
-     */
     setup: (options?: UserEventOptions) => UserEventInstance;
 } = {
     ...buildUserEvent(createInitialState()),

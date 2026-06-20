@@ -37,18 +37,7 @@ const cairoRecordingSurfaceGetExtents = bind(
     t.boolean,
 );
 
-/**
- * Cairo recording surface, which captures drawing operations for later replay.
- */
 export class RecordingSurface extends Surface {
-    /**
-     * Allocates a recording surface for the given content type, optionally
-     * bounded by `extents`.
-     *
-     * @param content - The content type captured by the surface
-     * @param extents - Optional bounding rectangle in user space; omit for an
-     *   unbounded surface
-     */
     constructor(content: Content, extents?: { x: number; y: number; width: number; height: number }) {
         super();
         let handle: Handle;
@@ -65,14 +54,6 @@ export class RecordingSurface extends Surface {
         setHandle(this, handle);
     }
 
-    /**
-     * Allocates a recording surface for the given content type, optionally
-     * bounded by `extents`.
-     *
-     * @param content - The content type captured by the surface
-     * @param extents - Optional bounding rectangle in user space; omit for an
-     *   unbounded surface
-     */
     static create(
         content: Content,
         extents?: { x: number; y: number; width: number; height: number },
@@ -80,9 +61,6 @@ export class RecordingSurface extends Surface {
         return new RecordingSurface(content, extents);
     }
 
-    /**
-     * Measures the extents of the operations recorded into the surface.
-     */
     inkExtents(): { x0: number; y0: number; width: number; height: number } {
         const x0Ref = { value: 0 };
         const y0Ref = { value: 0 };
@@ -92,10 +70,6 @@ export class RecordingSurface extends Surface {
         return { x0: x0Ref.value, y0: y0Ref.value, width: widthRef.value, height: heightRef.value };
     }
 
-    /**
-     * Returns the bounding rectangle the surface was created with, or `null`
-     * when the surface is unbounded.
-     */
     getExtents(): { x: number; y: number; width: number; height: number } | null {
         const rect = alloc(32, "cairo_rectangle_t");
         const result = cairoRecordingSurfaceGetExtents(getHandle(this), rect) as boolean;

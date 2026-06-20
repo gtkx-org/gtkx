@@ -1,16 +1,3 @@
-/**
- * The hand-written `GValue` container and its bidirectional marshalling.
- *
- * A `GValue` here is the {@link Handle} of a freshly allocated `GValue` struct,
- * with every accessor bound through raw FFI so the runtime carries no dependency
- * on the generated `GObject.Value`. {@link newGValue} allocates one,
- * {@link valueInit} types it, and the `valueGet*`/`valueSet*` pairs read and
- * write its payload. On top of those, {@link toGvalue} builds a value from an
- * FFI type descriptor and a JS value and {@link fromGvalue} reads one back, with
- * the boxed payload helpers and `GStrv` marshalling registry-aware access relies
- * on living here too.
- */
-
 import { alloc, call, type Type as FfiType, getType, type Handle, read, write } from "@gtkx/native";
 import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
 import {
@@ -55,29 +42,18 @@ import {
 } from "./gtype.js";
 import { getHandle, getWrapperClass, tryGetHandle, wrapHandle } from "./registry.js";
 
-/** Allocates a fresh, uninitialized `GValue` struct and returns its handle. */
 export const newGValue = (): Handle => alloc(GVALUE_SIZE, "GValue");
 
-/**
- * Gets the `GType` of the value stored in a `GValue`.
- *
- * Equivalent to the C macro `G_VALUE_TYPE(value)`.
- *
- * @param value - The handle of the `GValue` to inspect.
- * @returns The `GType` identifier.
- */
 export function valueGetType(value: Handle): GType {
     return read(value, biguint64T, 0) as GType;
 }
 
 const gValueInit = bind(LIB, "g_value_init", [GVALUE_T, biguint64T], voidT);
 
-/** Initializes `value` to hold `gtype`. */
 export const valueInit = (value: Handle, gtype: GType): void => {
     gValueInit(value, gtype);
 };
 
-/** Allocates a fresh `GValue` and initializes it to `gtype`, ready to receive a payload. */
 export const newTypedGValue = (gtype: GType): Handle => {
     const value = newGValue();
     valueInit(value, gtype);
@@ -86,17 +62,6 @@ export const newTypedGValue = (gtype: GType): Handle => {
 
 const gValueCopy = bind(LIB, "g_value_copy", [GVALUE_T, GVALUE_T], voidT);
 
-/**
- * Deep-copies the contents of `src` into the caller-allocated `dest` `GValue`,
- * the ownership-correct fill for a caller-allocated out `GValue` parameter:
- * `g_value_copy` refs objects, duplicates strings, and copies boxed payloads per
- * the value's `GType`, so `dest` owns its own contents. `dest` is initialized to
- * `src`'s type first when it is still untyped, as the out-parameter contract
- * passes a zeroed `GValue`.
- *
- * @param dest - The caller-allocated destination `GValue` handle.
- * @param src - The source `GValue` handle whose contents are copied.
- */
 export const valueCopyInto = (dest: Handle, src: Handle): void => {
     if (valueGetType(dest) === TYPE_INVALID) {
         valueInit(dest, valueGetType(src));
@@ -106,14 +71,6 @@ export const valueCopyInto = (dest: Handle, src: Handle): void => {
 
 const gValueSetPointer = bind(LIB, "g_value_set_pointer", [GVALUE_T, uint64T], voidT);
 
-/**
- * Stores `pointer`'s raw address as `value`'s `G_TYPE_POINTER` payload. `value`
- * must already be initialized to `G_TYPE_POINTER`; a handler reached through the
- * payload writes into the memory `pointer` references.
- *
- * @param value - The handle of the `G_TYPE_POINTER`-initialized value.
- * @param pointer - Handle whose backing memory the payload points at.
- */
 export const setGValuePointer = (value: Handle, pointer: Handle): void => {
     gValueSetPointer(value, pointer);
 };
@@ -243,37 +200,16 @@ const setBoxedPayload = (
     );
 };
 
-/** Sets the boxed payload of a `GValue` handle already typed with a boxed `GType`. */
 export function valueSetBoxed(value: Handle, boxed: object | null): void {
     setBoxedPayload(value, "g_value_set_boxed", boxed === null ? null : getHandle(boxed));
 }
 
-/**
- * Stores `boxed` as a `GValue` handle's payload without copying it
- * (`g_value_set_static_boxed`): the value holds the wrapper's own pointer, so a
- * callee that mutates the boxed in place writes through to `boxed`. The wrapper
- * retains ownership, so the value must not outlive it.
- */
 export function valueSetStaticBoxed(value: Handle, boxed: object): void {
     setBoxedPayload(value, "g_value_set_static_boxed", getHandle(boxed));
 }
 
-/** Storage size, in bytes, of a single out-parameter cell (a pointer or any scalar). */
 const OUT_PARAM_STORAGE_SIZE = 8;
 
-/**
- * Builds the `G_TYPE_POINTER` GValue a signal out-parameter is emitted through,
- * paired with a reader for the value a handler writes back.
- *
- * `g_signal_emitv` hands the pointer payload to handlers as the out-parameter's
- * `T*`, so a handler writes into the freshly allocated storage; the returned
- * `read` unmarshals that storage with `innerFfi`. The `initial` value seeds the
- * storage for inout parameters, where the handler both reads the incoming value
- * and overwrites it.
- *
- * @param innerFfi - FFI descriptor of the pointed-to value (the `t.ref` inner type).
- * @param initial - Seed written before emission, for inout parameters.
- */
 export function outValueFromFfi(innerFfi: FfiType, initial?: unknown): { value: Handle; read: () => unknown } {
     const storage = alloc(OUT_PARAM_STORAGE_SIZE);
     write(storage, uint64T, 0, 0);
@@ -283,43 +219,18 @@ export function outValueFromFfi(innerFfi: FfiType, initial?: unknown): { value: 
     return { value, read: () => read(storage, innerFfi, 0) };
 }
 
-/**
- * Builds a `G_TYPE_BOXED` `GValue` holding a copy of `boxed`, for emitting a
- * signal whose caller-allocated out-parameter a handler fills. The handler
- * mutates the value's owned copy in place; the generated `emit` reads that copy
- * back through {@link valueGetBoxed} after `g_signal_emitv` returns.
- *
- * @param ffiType - The boxed FFI descriptor naming the value's `GType`.
- * @param boxed - The freshly allocated wrapper whose contents seed the copy.
- */
 export function outBoxedFromFfi(ffiType: FfiType, boxed: object): Handle {
     const value = newTypedGValue(resolveBoxedGtype(ffiType));
     valueSetBoxed(value, boxed);
     return value;
 }
 
-/**
- * Builds a `G_TYPE_BOXED` `GValue` that references `boxed` in place (no copy),
- * for emitting a signal whose boxed inout-parameter a handler mutates. The
- * value shares the caller's pointer through {@link valueSetStaticBoxed}, so the
- * handler's in-place writes land on the caller's wrapper directly; the result
- * surfaces through that wrapper rather than the `emit` return tuple. The value
- * must not outlive `boxed`.
- *
- * @param ffiType - The boxed FFI descriptor naming the value's `GType`.
- * @param boxed - The caller's wrapper the handler mutates in place.
- */
 export function inoutBoxedFromFfi(ffiType: FfiType, boxed: object): Handle {
     const value = newTypedGValue(resolveBoxedGtype(ffiType));
     valueSetStaticBoxed(value, boxed);
     return value;
 }
 
-/**
- * Reads the boxed payload of a `GValue` handle, resolving the wrapper class
- * through the registry. Returns `null` when the value holds no boxed type or the
- * boxed pointer is NULL; throws when the boxed `GType` has no registered class.
- */
 export function valueGetBoxed(value: Handle): object | null {
     const gtype = valueGetType(value);
     if (typeFundamental(gtype) !== TYPE_BOXED) {
@@ -338,35 +249,14 @@ export function valueGetBoxed(value: Handle): object | null {
     return ptr === null ? null : wrapHandle(ptr as Handle, cls);
 }
 
-/**
- * Sets the boxed payload of a `GValue` already typed with a boxed `GType`.
- *
- * @param value - The `GValue` (any object backed by a `GValue` handle).
- * @param boxed - The boxed wrapper to store, or `null`.
- */
 export function setGvalueBoxed(value: object, boxed: object | null): void {
     valueSetBoxed(getHandle(value), boxed);
 }
 
-/**
- * Reads the boxed payload of a `GValue`, resolving the wrapper class through
- * the registry.
- *
- * @param value - The `GValue` to read (any object backed by a `GValue` handle).
- * @returns The wrapped boxed instance, or `null` when the value holds no boxed
- *   type or the boxed pointer is NULL.
- * @throws if the boxed `GType` has no registered wrapper class.
- */
 export function getGvalueBoxed(value: object): object | null {
     return valueGetBoxed(getHandle(value));
 }
 
-/**
- * Resolves the concrete boxed or named-fundamental `GType` an FFI descriptor
- * identifies, through its registered `get-type` function or its GLib type name.
- *
- * @param ffiType - The boxed or fundamental FFI type descriptor.
- */
 export function resolveBoxedGtype(ffiType: FfiType): GType {
     if (ffiType.type === "boxed") {
         if (ffiType.getTypeFn && ffiType.library) {
@@ -388,12 +278,6 @@ export function resolveBoxedGtype(ffiType: FfiType): GType {
     throw new Error(`resolveBoxedGtype: unsupported FFI type '${ffiType.type}'`);
 }
 
-/**
- * Resolves the concrete `GType` an FFI type descriptor denotes. Primitive
- * descriptors map to their fundamental `GType`; enum/flags and boxed/fundamental
- * descriptors resolve their registered `GType`; a string-array descriptor
- * resolves `GStrv`.
- */
 function gtypeFromFfiType(ffiType: FfiType): GType {
     switch (ffiType.type) {
         case "boolean":
@@ -435,17 +319,10 @@ function gtypeFromFfiType(ffiType: FfiType): GType {
     }
 }
 
-/**
- * Creates an empty `GValue` typed to the `GType` an FFI descriptor denotes,
- * ready for `g_object_get_property` to populate or a signal emission to fill.
- *
- * @param ffiType - The FFI type descriptor.
- */
 export function newValueFromFfi(ffiType: FfiType): Handle {
     return newTypedGValue(gtypeFromFfiType(ffiType));
 }
 
-/** Builds a `GValue` holding a `GObject` instance, typed to its runtime class. */
 function objectToGvalue(value: object | null): Handle {
     const v = newTypedGValue(value ? getType(getHandle(value)) : TYPE_OBJECT);
     valueSetObject(v, value);
@@ -460,15 +337,6 @@ const getPointerValue = (value: Handle): null => {
     return null;
 };
 
-/**
- * Writes `jsValue` into the already-typed `GValue` handle, dispatching on the
- * `GType`'s fundamental. A 64-bit integer is written through the bigint
- * accessor, which accepts a `bigint` or a `number`. The FFI descriptor
- * disambiguates the one case the fundamental cannot: a string-array descriptor
- * selects the `GStrv` setter over the generic boxed setter. Fundamentals
- * {@link gtypeFromFfiType} never resolves to (`LONG`/`ULONG`/`CHAR`/`UCHAR`) are
- * absent by construction.
- */
 function setGvaluePayload(value: Handle, gtype: GType, ffiType: FfiType, jsValue: unknown): void {
     switch (typeFundamental(gtype)) {
         case TYPE_BOOLEAN:
@@ -516,16 +384,6 @@ function setGvaluePayload(value: Handle, gtype: GType, ffiType: FfiType, jsValue
     }
 }
 
-/**
- * Builds a `GValue` from an FFI type descriptor and a JavaScript value.
- *
- * The descriptor resolves the target `GType` — a `GObject` derives it from the
- * instance's runtime class — then the value is written by fundamental through
- * {@link setGvaluePayload}.
- *
- * @param ffiType - The FFI type descriptor.
- * @param jsValue - The JS value to convert.
- */
 export function toGvalue(ffiType: FfiType, jsValue: unknown): Handle {
     if (ffiType.type === "gobject") return objectToGvalue(jsValue as object | null);
     const gtype = gtypeFromFfiType(ffiType);
@@ -534,17 +392,6 @@ export function toGvalue(ffiType: FfiType, jsValue: unknown): Handle {
     return value;
 }
 
-/**
- * Unmarshals a `GValue` into a plain JavaScript value, dispatching on the
- * value's fundamental `GType`: numeric/boolean fundamentals return their JS
- * primitive, STRING returns `string | null`, ENUM/FLAGS the integer payload,
- * OBJECT/VARIANT/PARAM the wrapped instance, the `GStrv` boxed type a
- * `string[]`, any other BOXED type its registered wrapper, and POINTER `null`
- * for a null pointer.
- *
- * @param value - The handle of the `GValue` to unmarshal.
- * @throws if the GValue holds an unsupported or unregistered type.
- */
 export function fromGvalue(value: Handle): unknown {
     const gtype = valueGetType(value);
     if (gtype === getStrvGtype()) return valueGetStrv(value);

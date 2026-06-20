@@ -22,25 +22,6 @@ import {
     isHiddenFromAccessibility,
 } from "./widget-text.js";
 
-/**
- * Returns the default text normalizer: it trims leading and trailing whitespace
- * and collapses internal whitespace runs to a single space. Compose it inside a
- * custom `normalizer` to retain the default behavior alongside extra steps.
- *
- * Mirrors `getDefaultNormalizer` from `@testing-library/dom`.
- *
- * @param options - Toggles for `trim` and `collapseWhitespace` (both default to `true`).
- * @returns A normalizer applying the selected transformations.
- *
- * @example
- * ```tsx
- * import { getByText, getDefaultNormalizer } from "@gtkx/testing";
- *
- * getByText(container, "hello", {
- *     normalizer: (text) => getDefaultNormalizer({ trim: false })(text).replace(/ /g, " "),
- * });
- * ```
- */
 export const getDefaultNormalizer = ({
     trim = true,
     collapseWhitespace = true,
@@ -144,14 +125,6 @@ const matchByRoleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolea
     return matchAccessibleName(widget, options) && matchAccessibleStates(widget, options);
 };
 
-/**
- * Finds all elements matching a role without throwing.
- *
- * @param container - The container to search within
- * @param role - The GTK accessible role to match
- * @param options - Query options including name and state filters
- * @returns Array of matching widgets (empty if none found)
- */
 export const queryAllByRole = (container: Container, role: Gtk.AccessibleRole, options?: ByRoleOptions): Gtk.Widget[] =>
     findAll(container, (widget) => {
         if (widget.getAccessibleRole() !== role) return false;
@@ -176,17 +149,6 @@ const collectMnemonicMatch = (
     return widget.getMnemonicWidget();
 };
 
-/**
- * Finds all elements labeled by matching text, resolving every GTK labeling
- * mechanism: a `GtkLabel`'s mnemonic-widget association, a widget's own
- * `accessibleLabel` (the analog of `accessible-label`), and the widgets named by
- * `accessibleLabelledBy` (the analog of `accessible-labelledby`).
- *
- * @param container - The container to search within
- * @param text - Label text to match (string, RegExp, or custom matcher)
- * @param options - Query options including normalization
- * @returns Array of labeled widgets (empty if none found)
- */
 export const queryAllByLabelText = (container: Container, text: Matcher, options?: MatcherOptions): Gtk.Widget[] => {
     const results = new Set<Gtk.Widget>();
 
@@ -210,14 +172,6 @@ const labelTextVariants = buildQueries<[text: Matcher, options?: MatcherOptions]
     (container, text) => notFoundError(container, { queryType: "labelText", text }),
 );
 
-/**
- * Finds all elements matching text content without throwing.
- *
- * @param container - The container to search within
- * @param text - Text to match (string, RegExp, or custom matcher)
- * @param options - Query options including normalization
- * @returns Array of matching widgets (empty if none found)
- */
 export const queryAllByText = (container: Container, text: Matcher, options?: MatcherOptions): Gtk.Widget[] =>
     findAll(container, (widget) => matchText(getWidgetText(widget), text, widget, options));
 
@@ -227,14 +181,6 @@ const textVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
     (container, text) => notFoundError(container, { queryType: "text", text }),
 );
 
-/**
- * Finds all elements matching a widget name without throwing.
- *
- * @param container - The container to search within
- * @param name - Widget name to match (string, RegExp, or custom matcher)
- * @param options - Query options including normalization
- * @returns Array of matching widgets (empty if none found)
- */
 export const queryAllByName = (container: Container, name: Matcher, options?: MatcherOptions): Gtk.Widget[] =>
     findAll(container, (widget) => matchText(getWidgetName(widget), name, widget, options));
 
@@ -244,68 +190,40 @@ const nameVariants = buildQueries<[name: Matcher, options?: MatcherOptions]>(
     (container, name) => notFoundError(container, { queryType: "name", name }),
 );
 
-/** Finds a single element matching a role without throwing. Returns `null` if not found; throws if multiple match. */
 export const queryByRole: BuiltQueries<[role: Gtk.AccessibleRole, options?: ByRoleOptions]>["queryBy"] =
     roleVariants.queryBy;
-/** Finds a single element matching a role. Throws if not found or if multiple match. */
 export const getByRole: BuiltQueries<[role: Gtk.AccessibleRole, options?: ByRoleOptions]>["getBy"] = roleVariants.getBy;
-/** Finds all elements matching a role. Throws if none found. */
 export const getAllByRole: BuiltQueries<[role: Gtk.AccessibleRole, options?: ByRoleOptions]>["getAllBy"] =
     roleVariants.getAllBy;
-/** Finds a single element matching a role, waiting until it appears. Throws if not found or if multiple match. */
 export const findByRole: BuiltQueries<[role: Gtk.AccessibleRole, options?: ByRoleOptions]>["findBy"] =
     roleVariants.findBy;
-/** Finds all elements matching a role, waiting until any appear. Throws if none found. */
 export const findAllByRole: BuiltQueries<[role: Gtk.AccessibleRole, options?: ByRoleOptions]>["findAllBy"] =
     roleVariants.findAllBy;
 
-/** Finds a single element by label text without throwing. Returns `null` if not found; throws if multiple match. */
 export const queryByLabelText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["queryBy"] =
     labelTextVariants.queryBy;
-/** Finds a single element by label text. Throws if not found or if multiple match. */
 export const getByLabelText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["getBy"] = labelTextVariants.getBy;
-/** Finds all elements matching label text. Throws if none found. */
 export const getAllByLabelText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["getAllBy"] =
     labelTextVariants.getAllBy;
-/** Finds a single element by label text, waiting until it appears. Throws if not found or if multiple match. */
 export const findByLabelText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["findBy"] =
     labelTextVariants.findBy;
-/** Finds all elements matching label text, waiting until any appear. Throws if none found. */
 export const findAllByLabelText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["findAllBy"] =
     labelTextVariants.findAllBy;
 
-/** Finds a single element by visible text without throwing. Returns `null` if not found; throws if multiple match. */
 export const queryByText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["queryBy"] = textVariants.queryBy;
-/** Finds a single element by visible text. Throws if not found or if multiple match. */
 export const getByText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["getBy"] = textVariants.getBy;
-/** Finds all elements matching visible text. Throws if none found. */
 export const getAllByText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["getAllBy"] = textVariants.getAllBy;
-/** Finds a single element by visible text, waiting until it appears. Throws if not found or if multiple match. */
 export const findByText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["findBy"] = textVariants.findBy;
-/** Finds all elements matching visible text, waiting until any appear. Throws if none found. */
 export const findAllByText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["findAllBy"] =
     textVariants.findAllBy;
 
-/** Finds a single element by widget name without throwing. Returns `null` if not found; throws if multiple match. */
 export const queryByName: BuiltQueries<[name: Matcher, options?: MatcherOptions]>["queryBy"] = nameVariants.queryBy;
-/** Finds a single element by widget name. Throws if not found or if multiple match. */
 export const getByName: BuiltQueries<[name: Matcher, options?: MatcherOptions]>["getBy"] = nameVariants.getBy;
-/** Finds all elements matching a widget name. Throws if none found. */
 export const getAllByName: BuiltQueries<[name: Matcher, options?: MatcherOptions]>["getAllBy"] = nameVariants.getAllBy;
-/** Finds a single element by widget name, waiting until it appears. Throws if not found or if multiple match. */
 export const findByName: BuiltQueries<[name: Matcher, options?: MatcherOptions]>["findBy"] = nameVariants.findBy;
-/** Finds all elements matching a widget name, waiting until any appear. Throws if none found. */
 export const findAllByName: BuiltQueries<[name: Matcher, options?: MatcherOptions]>["findAllBy"] =
     nameVariants.findAllBy;
 
-/**
- * Finds all entry-like widgets whose placeholder text matches, without throwing.
- *
- * @param container - The container to search within
- * @param text - Placeholder text to match (string, RegExp, or custom matcher)
- * @param options - Query options including normalization
- * @returns Array of matching widgets (empty if none found)
- */
 export const queryAllByPlaceholderText = (
     container: Container,
     text: Matcher,
@@ -318,14 +236,6 @@ const placeholderTextVariants = buildQueries<[text: Matcher, options?: MatcherOp
     (container, text) => notFoundError(container, { queryType: "placeholderText", text }),
 );
 
-/**
- * Finds all input widgets whose current display value matches, without throwing.
- *
- * @param container - The container to search within
- * @param value - Value to match (string, RegExp, or custom matcher)
- * @param options - Query options including normalization
- * @returns Array of matching widgets (empty if none found)
- */
 export const queryAllByDisplayValue = (container: Container, value: Matcher, options?: MatcherOptions): Gtk.Widget[] =>
     findAll(container, (widget) => matchText(getWidgetDisplayValue(widget), value, widget, options));
 
@@ -335,34 +245,24 @@ const displayValueVariants = buildQueries<[value: Matcher, options?: MatcherOpti
     (container, value) => notFoundError(container, { queryType: "displayValue", value }),
 );
 
-/** Finds a single element by placeholder text without throwing. Returns `null` if not found; throws if multiple match. */
 export const queryByPlaceholderText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["queryBy"] =
     placeholderTextVariants.queryBy;
-/** Finds a single element by placeholder text. Throws if not found or if multiple match. */
 export const getByPlaceholderText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["getBy"] =
     placeholderTextVariants.getBy;
-/** Finds all elements matching placeholder text. Throws if none found. */
 export const getAllByPlaceholderText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["getAllBy"] =
     placeholderTextVariants.getAllBy;
-/** Finds a single element by placeholder text, waiting until it appears. Throws if not found or if multiple match. */
 export const findByPlaceholderText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["findBy"] =
     placeholderTextVariants.findBy;
-/** Finds all elements matching placeholder text, waiting until any appear. Throws if none found. */
 export const findAllByPlaceholderText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["findAllBy"] =
     placeholderTextVariants.findAllBy;
 
-/** Finds a single element by display value without throwing. Returns `null` if not found; throws if multiple match. */
 export const queryByDisplayValue: BuiltQueries<[value: Matcher, options?: MatcherOptions]>["queryBy"] =
     displayValueVariants.queryBy;
-/** Finds a single element by display value. Throws if not found or if multiple match. */
 export const getByDisplayValue: BuiltQueries<[value: Matcher, options?: MatcherOptions]>["getBy"] =
     displayValueVariants.getBy;
-/** Finds all elements matching a display value. Throws if none found. */
 export const getAllByDisplayValue: BuiltQueries<[value: Matcher, options?: MatcherOptions]>["getAllBy"] =
     displayValueVariants.getAllBy;
-/** Finds a single element by display value, waiting until it appears. Throws if not found or if multiple match. */
 export const findByDisplayValue: BuiltQueries<[value: Matcher, options?: MatcherOptions]>["findBy"] =
     displayValueVariants.findBy;
-/** Finds all elements matching a display value, waiting until any appear. Throws if none found. */
 export const findAllByDisplayValue: BuiltQueries<[value: Matcher, options?: MatcherOptions]>["findAllBy"] =
     displayValueVariants.findAllBy;

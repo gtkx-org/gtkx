@@ -1,7 +1,7 @@
 import type * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/jsx/gtk";
-import { render, screen, userEvent } from "@gtkx/testing";
+import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, type RefObject, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderListView } from "../helpers/list-fixtures.js";
@@ -13,10 +13,6 @@ const TWO_ITEMS = [
 
 const THREE_ITEMS = [...TWO_ITEMS, { id: "3", value: { name: "Third" } }];
 
-/**
- * Renders {@link TWO_ITEMS}, clicks the first row, and asserts the change
- * callback fires with the id of that row.
- */
 const expectSelectionChangedOnFirstRowClick = async (): Promise<void> => {
     const onSelectionChanged = vi.fn();
 
@@ -27,10 +23,6 @@ const expectSelectionChangedOnFirstRowClick = async (): Promise<void> => {
     expect(onSelectionChanged).toHaveBeenCalledWith(["1"]);
 };
 
-/**
- * Renders a single selected item, re-renders it with an empty selection, and
- * asserts the row still renders exactly once.
- */
 const expectUnselectKeepsRow = async (): Promise<void> => {
     const { rerender } = await renderListView([{ id: "1", value: { name: "First" } }], { selected: ["1"] });
 
@@ -270,11 +262,18 @@ describe("render - ListView - selection (6) > tree - single (3)", () => {
         const scrolledWindow = scrollRef.current as Gtk.ScrolledWindow;
         const vadj = scrolledWindow.getVadjustment();
 
+        await waitFor(() => {
+            expect(vadj.getUpper()).toBeGreaterThan(vadj.getPageSize());
+        });
+
         listView.scrollTo(targetPosition, Gtk.ListScrollFlags.FOCUS, null);
 
-        if (vadj.getValue() === 0 && vadj.getUpper() > vadj.getPageSize()) {
-            vadj.setValue(vadj.getUpper() - vadj.getPageSize());
-        }
+        await waitFor(() => {
+            if (vadj.getValue() === 0) {
+                vadj.setValue(vadj.getUpper() - vadj.getPageSize());
+            }
+            expect(vadj.getValue()).toBeGreaterThan(0);
+        });
 
         const scrollPosBefore = vadj.getValue();
         expect(scrollPosBefore).toBeGreaterThan(0);

@@ -8,22 +8,13 @@ const INDENT = "  ";
 
 type WidgetIdResolver = (widget: Gtk.Widget) => string;
 
-/**
- * Options for {@link prettyWidget}.
- */
 export type PrettyWidgetOptions = {
-    /** Maximum output length before truncation (default: 7000) */
     maxLength?: number;
-    /** Enable ANSI color highlighting (default: auto-detect) */
     highlight?: boolean;
-    /** Resolve a stable widget id for the `id` attribute, for MCP/agentic interactions */
     getId?: WidgetIdResolver;
 };
 
-const buildAttrs = (
-    widget: Gtk.Widget,
-    getId: WidgetIdResolver | undefined,
-): ReadonlyArray<readonly [string, string]> => {
+const buildAttrs = (widget: Gtk.Widget, getId: WidgetIdResolver | undefined): [string, string][] => {
     const attrs: [string, string][] = [];
 
     if (getId) {
@@ -67,8 +58,8 @@ const ansi = {
 
 const shouldHighlight = (): boolean => {
     if (typeof process === "undefined") return false;
-    if (process.env.COLORS === "false" || process.env.NO_COLOR) return false;
-    if (process.env.COLORS === "true" || process.env.FORCE_COLOR) return true;
+    if (process.env["COLORS"] === "false" || process.env["NO_COLOR"]) return false;
+    if (process.env["COLORS"] === "true" || process.env["FORCE_COLOR"]) return true;
     return process.stdout?.isTTY ?? false;
 };
 
@@ -86,7 +77,7 @@ const createColors = (enabled: boolean): Colors => {
 
 const escapeAttrValue = (value: string): string => value.replaceAll('"', "&quot;");
 
-const formatAttrs = (attrs: ReadonlyArray<readonly [string, string]>, colors: Colors): string =>
+const formatAttrs = (attrs: [string, string][], colors: Colors): string =>
     attrs.map(([key, value]) => ` ${colors.attr(key)}=${colors.value(`"${escapeAttrValue(value)}"`)}`).join("");
 
 const formatWidget = (
@@ -121,31 +112,8 @@ const formatWidget = (
     return output;
 };
 
-/**
- * Formats a widget tree as a readable string for debugging.
- *
- * Renders the widget hierarchy in an HTML-like format with accessibility
- * attributes like role, name, and text content.
- *
- * @param container - The container widget or application to format
- * @param options - Formatting options for length and highlighting
- * @returns Formatted string representation of the widget tree
- *
- * @example
- * ```tsx
- * import { prettyWidget } from "@gtkx/testing";
- *
- * console.log(prettyWidget(application));
- * // Output:
- * // <GtkApplicationWindow role="window">
- * //   <GtkButton role="button">
- * //     Click me
- * //   </GtkButton>
- * // </GtkApplicationWindow>
- * ```
- */
 export const prettyWidget = (container: Container, options: PrettyWidgetOptions = {}): string => {
-    const envLimit = process.env.DEBUG_PRINT_LIMIT ? Number(process.env.DEBUG_PRINT_LIMIT) : DEFAULT_MAX_LENGTH;
+    const envLimit = process.env["DEBUG_PRINT_LIMIT"] ? Number(process.env["DEBUG_PRINT_LIMIT"]) : DEFAULT_MAX_LENGTH;
     const maxLength = options.maxLength ?? envLimit;
 
     if (maxLength === 0) {
@@ -167,21 +135,6 @@ export const prettyWidget = (container: Container, options: PrettyWidgetOptions 
     return output.trimEnd();
 };
 
-/**
- * Logs the formatted widget tree to the console — the GTK analog of
- * `@testing-library/dom`'s `logDOM`. Accepts a single container/application or
- * an array of them, logging each in turn.
- *
- * @param container - A container/application or an array of them to format and log
- * @param options - Formatting options for length and highlighting
- *
- * @example
- * ```tsx
- * import { logWidget, screen } from "@gtkx/testing";
- *
- * logWidget(await screen.findByRole(Gtk.AccessibleRole.DIALOG));
- * ```
- */
 export const logWidget = (container: Container | Container[], options?: PrettyWidgetOptions): void => {
     const containers: Container[] = Array.isArray(container) ? container : [container];
     for (const target of containers) {

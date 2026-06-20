@@ -6,16 +6,6 @@ use glib::translate::IntoGlib as _;
 
 use crate::types::BoxedFreeFn;
 
-/// Wrapper for a boxed or plain-struct allocation crossing the FFI boundary.
-///
-/// A `Boxed` is either *borrowed* (a bare pointer view with no release duty)
-/// or *owned*, in which case it holds an [`OwnedAllocation`] whose drop runs
-/// the destructor matching how the memory was produced. Ownership is held
-/// through an `Rc`: a clone of an owned value whose type supports deep
-/// copying (`g_boxed_copy`) receives its own independent allocation, while a
-/// clone of an owned value with no copy function (a custom destructor or a
-/// `g_malloc` block of unknown size) shares the allocation, so a clone can
-/// never outlive the memory it points at.
 #[derive(Debug)]
 pub struct Boxed {
     ptr: *mut c_void,
@@ -24,31 +14,17 @@ pub struct Boxed {
     ownership: Option<Rc<OwnedAllocation>>,
 }
 
-/// The owning core of a [`Boxed`]: the allocation pointer paired with the
-/// destructor that releases it exactly once, when the last sharing wrapper
-/// drops.
 #[derive(Debug)]
 struct OwnedAllocation {
     ptr: *mut c_void,
     destructor: BoxedDestructor,
 }
 
-/// How an [`OwnedAllocation`] releases its memory, matching the allocator
-/// that produced it.
 #[derive(Debug, Clone)]
 enum BoxedDestructor {
-    /// A `GType`-registered boxed value, released with `g_boxed_free`.
     BoxedFree(glib::Type),
-    /// A `g_malloc0` allocation made under a type name that had no registered
-    /// `GType` at allocation time. Resolution is retried at release, when the
-    /// type has had every chance to register: a registered boxed type is
-    /// released with `g_boxed_free` (running its value destructor, e.g.
-    /// `g_value_unset` for a `GValue`), while a plain C struct whose name
-    /// never registers is released with `g_free`.
     GBoxedFreeByName(glib::GString),
-    /// A plain `g_malloc` block, released with `g_free`.
     GFree,
-    /// A value with a custom destructor (e.g. `cairo_path_destroy`).
     Custom(BoxedFreeFn),
 }
 
@@ -57,9 +33,6 @@ impl Drop for OwnedAllocation {
         if self.ptr.is_null() {
             return;
         }
-        // SAFETY: This allocation owns `ptr`, the destructor matches the
-        // allocator that produced it, and Rc sharing makes this drop the
-        // single release.
         unsafe {
             match &self.destructor {
                 BoxedDestructor::BoxedFree(gtype) => {
@@ -79,10 +52,6 @@ impl Drop for OwnedAllocation {
 }
 
 impl Boxed {
-    /// Rough byte hint reported to V8 for a boxed allocation. The exact size
-    /// of the underlying `GLib` allocation is generally unknowable, but
-    /// pressuring the GC proportional to handle count keeps ephemeral wrappers
-    /// from accumulating between collections.
     pub(crate) const SIZE_HINT: usize = 256;
 
     fn owned(
@@ -114,14 +83,6 @@ impl Boxed {
         Self::owned(ptr, gtype, None, destructor)
     }
 
-    /// Wraps a zeroed `g_malloc0` allocation made under an optional type
-    /// name, as produced by the `alloc` export.
-    ///
-    /// A name whose `GType` is already registered binds boxed semantics
-    /// immediately; an unregistered name defers the decision to release time
-    /// (see [`BoxedDestructor::GBoxedFreeByName`]), so the same allocation
-    /// gets boxed cleanup once the type registers and plain `g_free` cleanup
-    /// when the name never names a `GType` (a plain C struct).
     #[must_use]
     pub fn from_alloc(type_name: Option<glib::GString>, ptr: *mut c_void) -> Self {
         let Some(name) = type_name else {
@@ -133,11 +94,6 @@ impl Boxed {
         Self::owned(ptr, None, None, BoxedDestructor::GBoxedFreeByName(name))
     }
 
-    /// Wraps a caller-owned pointer whose destructor is neither
-    /// `g_boxed_free` nor `g_free` (e.g. `cairo_path_destroy`).
-    ///
-    /// The destructor runs exactly once, when the last wrapper sharing the
-    /// allocation drops.
     #[must_use]
     pub fn from_glib_full_with_free_fn(ptr: *mut c_void, free_fn: BoxedFreeFn) -> Self {
         Self::owned(ptr, None, Some(free_fn), BoxedDestructor::Custom(free_fn))
@@ -148,26 +104,12 @@ impl Boxed {
         Self::borrowed(ptr, None, None)
     }
 
-    /// Deep-copies the boxed value of `gtype` at `ptr` through `g_boxed_copy`,
-    /// returning a fresh independent allocation the caller owns.
-    ///
-    /// # Safety
-    ///
-    /// `ptr` must address a live boxed value of `gtype`, the type
-    /// `g_boxed_copy` requires.
     pub(crate) unsafe fn boxed_copy(gtype: glib::Type, ptr: *mut c_void) -> *mut c_void {
-        // SAFETY: The caller guarantees `ptr` addresses a live boxed value of
-        // `gtype`, the type `g_boxed_copy` requires.
         unsafe { glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _) }
     }
 
-    /// Copies `size` bytes starting at `ptr` into a fresh owned `g_malloc`
-    /// allocation. The infallible constructor for the known-size struct copy.
     #[must_use]
     pub fn copy_with_size(ptr: *mut c_void, size: usize) -> Self {
-        // SAFETY: The caller passes a live allocation of at least `size`
-        // bytes, and g_malloc aborts on failure, so `dest` holds `size`
-        // writable bytes.
         let cloned_ptr = unsafe {
             let dest = glib::ffi::g_malloc(size);
             std::ptr::copy_nonoverlapping(ptr as *const u8, dest as *mut u8, size);
@@ -180,9 +122,6 @@ impl Boxed {
         Self::from_glib_none_with_size(gtype, ptr, None, None)
     }
 
-    // The pointer is dereferenced only by the documented-unsafe `boxed_copy`,
-    // under a null guard and a caller liveness contract; the safe constructor
-    // wraps that single unsafe operation.
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
     pub fn from_glib_none_with_size(
         gtype: Option<glib::Type>,
@@ -195,8 +134,6 @@ impl Boxed {
         }
 
         if let Some(gt) = gtype {
-            // SAFETY: The caller passes a live boxed value of `gt`, the
-            // type `boxed_copy` requires.
             let cloned_ptr = unsafe { Self::boxed_copy(gt, ptr) };
             return Ok(Self::owned(
                 cloned_ptr,
@@ -241,11 +178,6 @@ impl Boxed {
 }
 
 impl Clone for Boxed {
-    /// Clones the wrapper. An owned `GType`-registered value is deep-copied
-    /// with `g_boxed_copy`; an owned value with no copy function (custom
-    /// destructor, or a `g_malloc` block of unknown size) shares its
-    /// allocation with the clone, which keeps the memory alive until the last
-    /// wrapper drops. A borrowed wrapper clones as another borrowed view.
     fn clone(&self) -> Self {
         if self.ptr.is_null() || self.ownership.is_none() {
             return Self::borrowed(self.ptr, self.gtype, self.free_fn);
@@ -254,8 +186,6 @@ impl Clone for Boxed {
         if let Some(gtype) = self.gtype
             && self.free_fn.is_none()
         {
-            // SAFETY: This wrapper owns a live boxed value of `gtype`, the
-            // type `boxed_copy` requires.
             let cloned_ptr = unsafe { Self::boxed_copy(gtype, self.ptr) };
             return Self::owned(
                 cloned_ptr,

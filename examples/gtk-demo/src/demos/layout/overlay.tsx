@@ -13,12 +13,6 @@ import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./overlay.tsx?raw";
 
-/**
- * Overlay/Interactive Overlay demo matching the official GTK gtk-demo.
- * Shows widgets in static positions over a main widget.
- * The overlaid widgets can be interactive controls such as the entry in this
- * example, or just decorative, like the big blue label.
- */
 const OverlayDemo = () => {
     const [value, setValue] = useState("");
 
@@ -44,7 +38,7 @@ const OverlayDemo = () => {
 
     return (
         <GtkOverlay>
-            <GtkGrid>{buttons}</GtkGrid>
+            <GtkGrid name="number-grid">{buttons}</GtkGrid>
             <GtkOverlayChild>
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

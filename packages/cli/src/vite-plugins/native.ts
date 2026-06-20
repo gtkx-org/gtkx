@@ -7,17 +7,6 @@ import type { Plugin } from "vite";
 const NATIVE_BINDING_SUFFIX = "native-binding.cjs";
 const EMITTED_BINDING_SPECIFIER = "./gtkx.node";
 
-/**
- * Vite plugin that embeds the native `.node` binary into the build output.
- *
- * During production builds, resolves the platform-specific `.node` binary,
- * copies it into the output directory as `gtkx.node`, and rewrites the
- * `@gtkx/native` binding loader so the bundle loads `./gtkx.node` directly.
- * This makes the bundle self-contained with no `node_modules` dependency at
- * runtime.
- *
- * @param root - Project root directory used to resolve native packages
- */
 export function gtkxNative(root: string): Plugin {
     const projectRequire = createRequire(join(root, "package.json"));
 

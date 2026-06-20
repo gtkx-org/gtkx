@@ -9,35 +9,8 @@ const getGlobalThis = (): typeof globalThis => {
     throw new Error("unable to locate global object");
 };
 
-/**
- * Returns the current `IS_REACT_ACT_ENVIRONMENT` flag, which controls whether
- * React captures state updates as act-wrapped work.
- *
- * Async utilities such as {@link waitFor} read it to remember the caller's
- * environment before clearing the flag for the duration of a poll.
- *
- * @returns The flag's current value, or `undefined` when it has never been set.
- * @example
- * ```ts
- * const wasActive = getIsReactActEnvironment();
- * ```
- */
 export const getIsReactActEnvironment = (): boolean | undefined => getGlobalThis().IS_REACT_ACT_ENVIRONMENT;
 
-/**
- * Sets the `IS_REACT_ACT_ENVIRONMENT` flag that controls whether React captures
- * state updates as act-wrapped work.
- *
- * {@link act} and the async utilities toggle it around scopes that should — or
- * should not — capture updates; a test rendering through `@gtkx/react` directly
- * clears it so the real application lifecycle runs.
- *
- * @param value - The flag value to install, or `undefined` to clear it.
- * @example
- * ```ts
- * setIsReactActEnvironment(false);
- * ```
- */
 export const setIsReactActEnvironment = (value: boolean | undefined): void => {
     getGlobalThis().IS_REACT_ACT_ENVIRONMENT = value;
 };
@@ -82,21 +55,4 @@ const withGlobalActEnvironment =
         }
     };
 
-/**
- * GTK-flavored mirror of `@testing-library/react`'s `act`.
- *
- * Sets `IS_REACT_ACT_ENVIRONMENT` for the duration of the call and runs the
- * callback inside React's `act` scope. Detects whether the callback returns a
- * thenable and only keeps the act environment open across awaits when it does.
- *
- * @example
- * ```tsx
- * await act(() => widget.setSensitive(false));
- *
- * await act(async () => {
- *     widget.activate();
- *     await screen.findByText("Done");
- * });
- * ```
- */
 export const act: ActImplementation = withGlobalActEnvironment(reactAct as ActImplementation);

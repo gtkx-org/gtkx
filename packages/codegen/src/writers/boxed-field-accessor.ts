@@ -12,24 +12,11 @@ import { wrapReturnValue } from "./return-wrap.js";
 import { renderTsType } from "./ts-type.js";
 import { isInlineCallbackRef, renderFfiType } from "./value.js";
 
-/**
- * Renders the `get` / `set` accessor pair for a single boxed field.
- *
- * The accessor reads through the runtime's `read(handle, ffiType, offset)`
- * (or `write` for the setter), with bitfield members threading through a
- * read-modify-write sequence into their shared storage word. Fields whose
- * type cannot be marshaled at present (callbacks, varargs, inline arrays
- * of complex types) are skipped silently.
- *
- * @param context - The module context
- * @param slot - The field plus its layout slot
- * @param claimedNames - Names already used by emitted methods
- */
 export const renderBoxedFieldAccessor = (
     context: ModuleContext,
     slot: BoxedFieldSlot,
-    claimedNames: ReadonlySet<string>,
-    siblingFields: readonly GirField[],
+    claimedNames: Set<string>,
+    siblingFields: GirField[],
 ): string | undefined => {
     const { field } = slot;
     if (field.private) return undefined;
@@ -46,8 +33,7 @@ export const renderBoxedFieldAccessor = (
 
     if (!isAccessorEligibleType(context, field.type)) {
         const tsType = renderTsType(context, field.type, false);
-        const modifier = field.writable ? "declare" : "declare readonly";
-        return `${modifier} ${jsName}: ${tsType};`;
+        return `declare ${jsName}: ${tsType};`;
     }
 
     const ffiType = renderFfiType(context, field.type, "none");
@@ -94,7 +80,7 @@ const resolveInlineStructFields = (
     context: ModuleContext,
     ref: TypeId | undefined,
     occurrenceCType: string | undefined,
-): readonly GirField[] | undefined => {
+): GirField[] | undefined => {
     if (ref === undefined) return undefined;
     if (occurrenceCType?.endsWith("*") === true) return undefined;
     const type = context.repository.typeOf(ref);
@@ -106,7 +92,7 @@ const resolveInlineStructFields = (
 
 const arrayLengthExpression = (
     arrayRef: Extract<GirType, { kind: "carray" }>,
-    siblingFields: readonly GirField[],
+    siblingFields: GirField[],
 ): string | undefined => {
     if (arrayRef.fixedSize !== undefined) return String(arrayRef.fixedSize);
     if (arrayRef.lengthParameterIndex === undefined) return undefined;
@@ -115,7 +101,7 @@ const arrayLengthExpression = (
     return `this.${toCamelIdentifier(lengthField.name)}`;
 };
 
-const renderElementReadObject = (context: ModuleContext, fields: readonly GirField[], baseOffset: number): string => {
+const renderElementReadObject = (context: ModuleContext, fields: GirField[], baseOffset: number): string => {
     const { slots } = computeBoxedFieldSlots(context, fields);
     const entries: string[] = [];
     for (const { field, slot } of slots) {
@@ -146,10 +132,10 @@ const renderElementReadObject = (context: ModuleContext, fields: readonly GirFie
 };
 
 type ElementWriteOptions = {
-    readonly fields: readonly GirField[];
-    readonly baseOffset: number;
-    readonly valuePath: string;
-    readonly out: string[];
+    fields: GirField[];
+    baseOffset: number;
+    valuePath: string;
+    out: string[];
 };
 
 const appendElementWriteStatements = (context: ModuleContext, options: ElementWriteOptions): void => {
@@ -180,21 +166,21 @@ const appendElementWriteStatements = (context: ModuleContext, options: ElementWr
 };
 
 type StructArrayTarget = {
-    readonly field: GirField;
-    readonly jsName: string;
-    readonly slot: FieldSlot;
-    readonly siblingFields: readonly GirField[];
+    field: GirField;
+    jsName: string;
+    slot: FieldSlot;
+    siblingFields: GirField[];
 };
 
 type StructArrayAccessorOptions = {
-    readonly context: ModuleContext;
-    readonly jsName: string;
-    readonly tsType: string;
-    readonly bufferType: string;
-    readonly offset: number;
-    readonly lengthExpr: string;
-    readonly elementSize: number;
-    readonly elementFields: readonly GirField[];
+    context: ModuleContext;
+    jsName: string;
+    tsType: string;
+    bufferType: string;
+    offset: number;
+    lengthExpr: string;
+    elementSize: number;
+    elementFields: GirField[];
 };
 
 const structArrayGetterBlock = (options: StructArrayAccessorOptions): string => {
@@ -269,12 +255,12 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
 };
 
 type AccessorOptions = {
-    readonly context: ModuleContext;
-    readonly jsName: string;
-    readonly tsType: string;
-    readonly ffiType: string;
-    readonly slot: FieldSlot;
-    readonly fieldType: TypeId;
+    context: ModuleContext;
+    jsName: string;
+    tsType: string;
+    ffiType: string;
+    slot: FieldSlot;
+    fieldType: TypeId;
 };
 
 const getterBlock = (options: AccessorOptions): string => {

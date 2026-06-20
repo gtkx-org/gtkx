@@ -7,47 +7,15 @@ import { applyMenuItems, menuItemsEqual } from "./menu-items.js";
 
 const GMenuElement = createElementComponent<Record<string, unknown>>("GMenu");
 
-/**
- * Props for the {@link GMenu} runtime component: the menu's content as plain
- * data plus an optional ref to the live model.
- */
 export type MenuProps = {
-    /** The menu's entries, in order. The content rebuilds when they change. */
-    items?: readonly MenuEntry[] | null;
-    /** Ref to the live `Gio.Menu`. */
+    items?: MenuEntry[] | null;
     ref?: Ref<Gio.Menu | null>;
 };
 
-/**
- * Declarative wrapper for `Gio.Menu`.
- *
- * The component owns the `items` data prop: `Gio.Menu` is a value-snapshot
- * model, so the content is declared as plain {@link MenuEntry} data and the
- * component rebuilds the model wholesale — sections and submenus recursively —
- * whenever the entries change (compared deeply, so content-stable inline
- * arrays never rebuild). Every other prop forwards to the underlying element.
- *
- * @example
- * ```tsx
- * <GtkMenuButton
- *     iconName="open-menu-symbolic"
- *     menuModel={
- *         <GMenu
- *             items={[
- *                 { label: "_Open", action: "win.open" },
- *                 { section: [{ label: "_Quit", action: "app.quit" }] },
- *             ]}
- *         />
- *     }
- * />
- * ```
- *
- * @param props - {@link MenuProps}, plus any generated `GMenuProps` member.
- */
 export const GMenu = (props: MenuProps): ReactNode => {
     const { items, ref, ...rest } = props;
     const [menuRef, mergedRef] = useForwardedRef(ref);
-    const appliedRef = useRef<readonly MenuEntry[] | null>(null);
+    const appliedRef = useRef<MenuEntry[] | null>(null);
 
     useLayoutEffect(() => {
         const menu = menuRef.current;

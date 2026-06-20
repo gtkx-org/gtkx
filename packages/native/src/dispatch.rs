@@ -1,44 +1,3 @@
-//! Cross-thread message dispatch between the JavaScript and `GLib` threads.
-//!
-//! This module owns the JS↔GLib bridge as a single [`Mailbox`] singleton that
-//! exposes two queues:
-//!
-//! - `glib_inbox`: tasks pushed by the JS thread for execution on the `GLib` thread.
-//! - `node_inbox`: callbacks pushed by the `GLib` thread for execution in the JS context.
-//!
-//! Each thread parks on its own wake signal while waiting for a response.
-//! Re-entrance follows the call stack: while a thread is parked waiting for a
-//! response from the other side, the wait loop services incoming requests on
-//! its own inbox so nested `GLib → JS → GLib` calls progress.
-//!
-//! `glib_inbox` tasks are tagged with the JS callback-nesting depth in effect
-//! when they were enqueued. A `GLib` thread parked inside a JS callback drains
-//! only tasks at or deeper than that callback's depth — the nested calls the
-//! callback itself makes. Shallower tasks (an unrelated mutation the JS thread
-//! queued at the top level) stay queued until the callback returns and the
-//! `GLib` thread unwinds to a safe point. This keeps a `Gtk.Window.destroy()`
-//! from running inside the `gtk_widget_render` of a draw callback, where it
-//! would free the window's renderer mid-frame.
-//!
-//! The [`Mailbox`] methods that cross into the JavaScript runtime — invoking JS
-//! callbacks, converting values through a [`napi::Env`], and the wake
-//! threadsafe function — live in the [`js_bridge`] submodule.
-//!
-//! ## Freeze mode
-//!
-//! React's commit phase brackets a batch of mutations with [`Mailbox::freeze`] /
-//! [`Mailbox::unfreeze`]. While frozen, the `GLib` thread runs a tight loop
-//! (`run_freeze_loop`) that drains incoming tasks without yielding to the `GLib`
-//! main loop, ensuring the frame clock cannot fire mid-commit. Nested freeze
-//! pairs are no-ops; only the outermost pair starts and stops the loop.
-//!
-//! ## Lifecycle
-//!
-//! [`Mailbox::mark_not_running`] is set during the orchestrated shutdown task,
-//! after which new tasks are silently dropped so callers blocked in
-//! [`Mailbox::dispatch_to_glib_and_wait`] do not deadlock waiting on a
-//! result from the dying main loop.
-
 mod freeze_controller;
 mod js_bridge;
 pub mod wait_signal;
@@ -61,15 +20,10 @@ use crate::value::{JsRef, Value};
 
 type GlibTask = Box<dyn FnOnce() + Send + 'static>;
 
-/// A queued `GLib` task paired with the JS callback-nesting depth in effect
-/// when it was enqueued. A parked `GLib` thread uses the depth to tell its
-/// own nested calls apart from unrelated top-level work.
 type DepthTaggedTask = (usize, GlibTask);
 
 pub type WakeJsTsfn = ThreadsafeFunction<(), (), (), Status, false, true>;
 
-/// A node callback's outcome: the JS return value plus, for each out-cell
-/// argument index, the value the callback left in that cell's `value` slot.
 pub type NodeCallbackResult = (Value, Vec<(usize, Value)>);
 
 struct NodeCallback {
@@ -78,22 +32,12 @@ struct NodeCallback {
     capture_result: bool,
     out_cell_indices: Vec<usize>,
     result_tx: mpsc::Sender<anyhow::Result<NodeCallbackResult>>,
-    /// Whether the `GLib` thread initiated this callback and is parked
-    /// waiting on it. Only these callbacks participate in the nesting depth:
-    /// a foreign-thread callback parks its own thread on a private channel
-    /// and must not inflate the depth a `GLib` waiter predicts.
     glib_initiated: bool,
 }
 
 enum NodeTask {
     Callback(NodeCallback),
     DeleteReference(JsReference),
-    /// A wrapper-reference operation to apply on the JS thread: strengthen,
-    /// weaken, or delete the wrapper `napi_ref` at `ref_ptr`. Carries the same
-    /// `glib_initiated` flag and result channel as [`NodeCallback`] so a toggle
-    /// notify firing on the `GLib` thread blocks, with full re-entrancy, until
-    /// the operation completes. `glib_initiated` participates in the callback
-    /// nesting depth exactly as a callback does.
     WrapperRefOp {
         ref_ptr: usize,
         op: RefOp,
@@ -108,8 +52,6 @@ pub(crate) struct JsReference {
     raw: sys::napi_ref,
 }
 
-// SAFETY: The raw napi_ref is only dereferenced by `delete_on_js_thread`,
-// which the mailbox routes back to the JS thread that created it.
 unsafe impl Send for JsReference {}
 
 impl JsReference {
@@ -120,18 +62,11 @@ impl JsReference {
 
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub(crate) fn delete_on_js_thread(self) {
-        // SAFETY: This runs on the JS thread owning `env`, and `raw` is the
-        // live reference created alongside it.
         let status = unsafe { sys::napi_delete_reference(self.env, self.raw) };
         debug_assert_eq!(status, sys::Status::napi_ok);
     }
 }
 
-/// Bidirectional message queues coordinating the JS and `GLib` threads.
-///
-/// Holds two inboxes — one for tasks bound for the `GLib` thread, one for
-/// callbacks bound for the JS thread — plus the wake primitives that park
-/// each thread when its inbox is empty.
 pub struct Mailbox {
     glib_inbox: Mutex<VecDeque<DepthTaggedTask>>,
     node_inbox: Mutex<VecDeque<NodeTask>>,
@@ -160,7 +95,6 @@ impl std::fmt::Debug for Mailbox {
 static MAILBOX: OnceLock<Mailbox> = OnceLock::new();
 
 impl Mailbox {
-    /// Returns the global mailbox singleton, initializing it on first access.
     pub fn global() -> &'static Self {
         MAILBOX.get_or_init(Self::new)
     }
@@ -178,7 +112,6 @@ impl Mailbox {
         }
     }
 
-    /// Marks the mailbox as not running. Subsequent `dispatch_to_glib*` calls become no-ops.
     pub fn mark_not_running(&self) {
         self.running.store(false, Ordering::Release);
         self.wake_js.notify();
@@ -186,37 +119,22 @@ impl Mailbox {
         self.freeze.wake_for_shutdown();
     }
 
-    /// Clears the not running flag so the mailbox accepts tasks again. Intended
-    /// for tests that need to restore the mailbox to a fresh state after
-    /// exercising the shutdown path.
     pub fn reset_for_test(&self) {
         self.running.store(true, Ordering::Release);
     }
 
-    /// Returns whether the mailbox is not running.
     pub fn is_not_running(&self) -> bool {
         !self.running.load(Ordering::Acquire)
     }
 
-    /// Increments the freeze depth. Returns true if this was the outermost call.
     pub fn freeze(&self) -> bool {
         self.freeze.enter()
     }
 
-    /// Decrements the freeze depth. Wakes the freeze loop when depth reaches zero.
-    ///
-    /// An unpaired call (depth already zero) is rejected and reported instead
-    /// of wrapping the counter, which would permanently disable commit
-    /// freezing.
     pub fn unfreeze(&self) {
         self.freeze.leave();
     }
 
-    /// Drains all currently-queued `GLib` tasks until [`Self::unfreeze`] resets
-    /// the freeze depth to zero or [`Self::mark_not_running`] shuts the mailbox
-    /// down. Runs on the `GLib` thread without yielding to the `GLib` main
-    /// loop, preventing the frame clock from firing between individual
-    /// mutations during a React commit.
     pub fn run_freeze_loop(&self) {
         self.freeze.run_loop(self);
     }
@@ -228,10 +146,6 @@ impl Mailbox {
         self.wake_glib.notify();
     }
 
-    /// Pushes a fire-and-forget task onto the `GLib` inbox. The task runs on the
-    /// `GLib` thread the next time the inbox is drained — either by the `GLib`
-    /// main loop's idle source, by the freeze loop, or by another thread's
-    /// wait loop dispatching pending tasks.
     pub fn schedule_glib(&self, task: Box<dyn FnOnce() + Send + 'static>) {
         if !self.running.load(Ordering::Acquire) {
             return;
@@ -249,47 +163,22 @@ impl Mailbox {
         });
     }
 
-    /// Whether the runtime has been initialized with a live JS thread — set
-    /// when `init()` installs the wake threadsafe function. False in a plain
-    /// `cargo test` process, where no Node.js runtime exists.
     pub fn is_initialized(&self) -> bool {
         self.wake_js_tsfn.get().is_some()
     }
 
-    /// Increments the `GLib`-initiated callback-nesting depth. Called on the
-    /// JS thread immediately before a callback the `GLib` thread is parked
-    /// on starts executing, so the tasks that callback pushes are tagged at
-    /// the waiter's level — and nothing else is: a task pushed by unrelated
-    /// JS code or by a foreign-initiated callback keeps a shallower tag and
-    /// waits for the main loop instead of re-entering `GLib` state inside
-    /// the parked waiter. Foreign-initiated callbacks never touch the depth,
-    /// so the level a `GLib` waiter predicts at push time cannot be inflated
-    /// by an unrelated in-flight callback.
     pub fn enter_glib_callback(&self) {
         self.callback_depth.fetch_add(1, Ordering::AcqRel);
     }
 
-    /// Decrements the `GLib`-initiated callback-nesting depth. Called on the
-    /// JS thread immediately after a `GLib`-initiated callback returns.
     pub fn leave_glib_callback(&self) {
         self.callback_depth.fetch_sub(1, Ordering::AcqRel);
     }
 
-    /// Drains every queued `GLib` task regardless of depth. Returns whether any
-    /// were executed. Intended to run on the `GLib` thread at a top-level
-    /// dispatch point — the idle source, the freeze loop, or the main loop.
     pub fn dispatch_pending(&self) -> bool {
         self.dispatch_pending_from_depth(0)
     }
 
-    /// Drains queued `GLib` tasks enqueued at callback-nesting depth
-    /// `min_depth` or deeper, in FIFO order, leaving shallower tasks queued.
-    ///
-    /// A `GLib` thread parked inside a JS callback running at depth `min_depth`
-    /// passes that depth so it services only the nested calls that callback
-    /// makes, never an unrelated top-level task that would re-enter `GLib`
-    /// state mid-callback. The inbox lock is reacquired per task so tasks the
-    /// running task enqueues are observed.
     pub fn dispatch_pending_from_depth(&self, min_depth: usize) -> bool {
         let mut dispatched = false;
 
@@ -324,31 +213,20 @@ impl Mailbox {
     }
 }
 
-/// Delivers `value` on `tx`, reporting `context` as a native error when the
-/// receiver has already been dropped.
-///
-/// The shared encoding of every oneshot-result handshake: a closed channel
-/// means the waiter is gone, which is surfaced rather than panicked.
 pub(crate) fn send_or_report<T>(tx: &mpsc::Sender<T>, value: T, context: &str) {
     if tx.send(value).is_err() {
         NativeErrorReporter::global().report_str(context);
     }
 }
 
-/// Returned by [`Mailbox::dispatch_to_glib_and_wait`] when the dispatched task
-/// does not produce a value, carrying the message every call site surfaces.
 #[derive(Debug, Clone)]
 pub struct GlibDispatchError(String);
 
 impl GlibDispatchError {
-    /// The result channel was dropped before producing a value, typically
-    /// because the `GLib` thread is shutting down.
     pub(crate) fn disconnected() -> Self {
         Self("GLib thread disconnected".to_owned())
     }
 
-    /// The dispatched task panicked on the `GLib` thread; the thread itself
-    /// remains alive and continues servicing tasks.
     pub(crate) fn task_panicked(message: &str) -> Self {
         Self(format!("GLib task panicked: {message}"))
     }

@@ -4,15 +4,10 @@ import { dirname, join, parse } from "node:path";
 import { pathToFileURL } from "node:url";
 import { type GtkxConfig, GtkxConfigNotFoundError, loadGtkxConfig } from "@gtkx/config";
 
-const CONFIG_FILENAMES: readonly string[] = ["gtkx.config.ts", "gtkx.config.js", "gtkx.config.mjs"];
+const CONFIG_FILENAMES: string[] = ["gtkx.config.ts", "gtkx.config.js", "gtkx.config.mjs"];
 
 const hasGtkxConfig = (dir: string): boolean => CONFIG_FILENAMES.some((name) => existsSync(join(dir, name)));
 
-/**
- * Whether `dir` is the root of a JavaScript monorepo, across package managers:
- * a `pnpm-workspace.yaml` (pnpm) or a `workspaces` field in `package.json`
- * (npm, Yarn, Bun).
- */
 export const isWorkspaceRoot = (dir: string): boolean => {
     if (existsSync(join(dir, "pnpm-workspace.yaml"))) return true;
     const packageJson = join(dir, "package.json");
@@ -24,19 +19,6 @@ export const isWorkspaceRoot = (dir: string): boolean => {
     }
 };
 
-/**
- * Resolves the directory whose generated store and config drive codegen for
- * `projectRoot`.
- *
- * In a workspace whose root declares its own `gtkx.config.ts`, every member
- * shares that single root store — the root config is authored as the union of
- * all members' libraries — so a member never materializes a second, shadowing
- * copy that would split wrapper-class identity. A standalone project, or a
- * workspace root without a config, resolves to `projectRoot` unchanged.
- *
- * @param projectRoot - Absolute path to the project being generated for
- * @returns The workspace root that owns the shared store, or `projectRoot`
- */
 export const findCodegenRoot = (projectRoot: string): string => {
     const { root } = parse(projectRoot);
     let dir = projectRoot;
@@ -47,60 +29,30 @@ export const findCodegenRoot = (projectRoot: string): string => {
     }
 };
 
-/**
- * Resolved locations for the codegen-owned injected packages.
- *
- * Codegen materializes `@gtkx/gi` (and, when React is present,
- * `@gtkx/jsx`) into a hidden `node_modules/.gtkx` store and exposes each
- * through a visible `node_modules/@gtkx/<name>` symlink. The injected packages
- * resolve `@gtkx/ffi`/`react` through their own bundled symlinks, so the real
- * directories of those runtime dependencies are resolved here too.
- */
 export type CodegenStore = {
-    /** Hidden store for the `@gtkx/gi` bindings package. */
-    readonly giStoreDir: string;
-    /** Visible `@gtkx/gi` alias symlink. */
-    readonly giLinkDir: string;
-    /** Hidden store for the `@gtkx/jsx` package. */
-    readonly jsxStoreDir: string;
-    /** Visible `@gtkx/jsx` alias symlink. */
-    readonly jsxLinkDir: string;
-    /** Real directory of the installed `@gtkx/ffi`. */
-    readonly realFfiDir: string;
-    /** Real directory of the installed `@gtkx/native`. */
-    readonly realNativeDir: string;
-    /** `@gtkx/ffi`'s version, copied onto the emitted `@gtkx/gi`. */
-    readonly ffiVersion: string;
-    /** Installed `@gtkx/react` package, or `null` when absent. */
-    readonly react: CodegenReactPackage | null;
-    /** Real directory of the installed `react` runtime, or `null` when absent. */
-    readonly realReactRuntimeDir: string | null;
+    giStoreDir: string;
+    giLinkDir: string;
+    jsxStoreDir: string;
+    jsxLinkDir: string;
+    realFfiDir: string;
+    realNativeDir: string;
+    ffiVersion: string;
+    react: CodegenReactPackage | null;
+    realReactRuntimeDir: string | null;
 };
 
-/**
- * The installed `@gtkx/react` package, whose real directory and version are
- * always resolved together: the version is copied onto the emitted
- * `@gtkx/jsx` package.
- */
 export type CodegenReactPackage = {
-    /** Real directory of the installed `@gtkx/react`. */
-    readonly realDir: string;
-    /** `@gtkx/react`'s version. */
-    readonly version: string;
+    realDir: string;
+    version: string;
 };
 
-type ResolvedPackage = { readonly dir: string; readonly version: string };
+type ResolvedPackage = { dir: string; version: string };
 
 const readVersion = (packageJsonPath: string): string => {
     const parsed = JSON.parse(readFileSync(packageJsonPath, "utf8")) as { version?: string };
     return parsed.version ?? "0.0.0";
 };
 
-/**
- * Resolves a package's real directory and version, falling back to the gtkx
- * monorepo workspace layout (`<projectRoot>/packages/<name>`) when the package
- * is not resolvable as an installed dependency.
- */
 const resolvePackage = (require: NodeJS.Require, projectRoot: string, packageName: string): ResolvedPackage | null => {
     try {
         const real = realpathSync(require.resolve(`${packageName}/package.json`));
@@ -114,13 +66,6 @@ const resolvePackage = (require: NodeJS.Require, projectRoot: string, packageNam
     }
 };
 
-/**
- * Resolves the store layout codegen writes into for `projectRoot`.
- *
- * @param projectRoot - Absolute path to the project root
- * @returns The resolved {@link CodegenStore}
- * @throws If `@gtkx/ffi` cannot be located from the project
- */
 export const resolveCodegenStore = (projectRoot: string): CodegenStore => {
     const root = findCodegenRoot(projectRoot);
     const require = createRequire(pathToFileURL(join(root, "__gtkx_resolver__.js")).href);
@@ -150,18 +95,6 @@ export const resolveCodegenStore = (projectRoot: string): CodegenStore => {
     };
 };
 
-/**
- * Removes a workspace member's own generated binding packages and aliases so
- * they cannot shadow the shared root store.
- *
- * When a member shares the workspace root's store, leftover member-local
- * `.gtkx/{gi,jsx}` trees (or their `@gtkx/{gi,jsx}` symlinks) would resolve
- * ahead of the root copy, reintroducing the duplicate-instance split this
- * sharing avoids. The member's `.gtkx/env.d.ts` is app-local by design and
- * stays in place.
- *
- * @param memberDir - The workspace member whose shadowing store to prune
- */
 const pruneShadowingStore = (memberDir: string): void => {
     const nodeModules = join(memberDir, "node_modules");
     for (const path of [
@@ -174,13 +107,6 @@ const pruneShadowingStore = (memberDir: string): void => {
     }
 };
 
-/**
- * Resolves the codegen root and configuration for `cwd`, pruning a member's
- * shadowing store along the way.
- *
- * @param cwd - Project root in which to look for `gtkx.config.ts`
- * @returns The resolved root and config, or `null` when no config is found
- */
 export const resolveCodegenContext = async (cwd: string): Promise<{ root: string; config: GtkxConfig } | null> => {
     const root = findCodegenRoot(cwd);
     if (root !== cwd) pruneShadowingStore(cwd);

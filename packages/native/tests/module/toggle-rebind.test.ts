@@ -11,10 +11,6 @@ describe("toggle-ref rebind", () => {
         expect(getRefCount(label)).toBe(1);
         expect(getWrapper(label)).toBe(first);
 
-        // Re-binding the same object reuses its one toggle ref. A second
-        // g_object_add_toggle_ref would raise "Unexpected number of toggle-refs"
-        // and leave the count at 2; the qdata cell must instead adopt the newest
-        // wrapper so identity follows the live binding.
         for (let gen = 2; gen <= 5; gen++) {
             const next = { gen };
             setWrapper(label, next);

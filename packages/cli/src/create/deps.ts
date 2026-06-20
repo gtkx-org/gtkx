@@ -6,15 +6,6 @@ import { listTemplates, renderFile } from "../templates.js";
 import { isKnownPackageManager, type PackageManager } from "./options.js";
 import type { ScaffolderDeps } from "./scaffolder.js";
 
-/**
- * Production wiring for {@link createScaffolder}.
- *
- * Connects the scaffolder to the real filesystem, `@clack/prompts` (TTY),
- * `nypm` (package-manager-agnostic dependency installation), and
- * `tinyexec` (process spawning for `git init`).
- *
- * @returns The default {@link ScaffolderDeps} used by `createApp`.
- */
 export const defaultScaffolderDeps = (): ScaffolderDeps => ({
     cwd: () => process.cwd(),
     fs: { existsSync, mkdirSync, writeFileSync },

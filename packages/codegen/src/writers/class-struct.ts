@@ -9,25 +9,6 @@ import { isInlineCallbackRef, isScalarRef, renderFfiType, renderHandlerArgType }
 
 type VtableKind = "class" | "interface";
 
-/**
- * Renders the `{ … }` vtable descriptor literal for a class or interface
- * descriptor's `vfuncs` field, or `undefined` when the type exposes no
- * marshallable slots.
- *
- * Each entry describes one overridable vtable slot — keyed by the slot's
- * camelCase name and carrying `{ kind, className, vfuncName, byteOffset,
- * argTypes, returnType }` — so the runtime `registerClass` can auto-discover
- * a subclass method, locate the matching slot by byte offset, and register a
- * trampoline with the correct marshalling. Slots whose signature cannot be
- * marshalled (non-introspectable, variadic, a non-scalar out/inout parameter
- * that is not caller-allocated, or nested callbacks) are omitted; scalar
- * out/inout parameters are emitted as `t.ref` cells. The `kind` discriminator
- * lets the runtime register an interface vfunc mapping in addition to the class
- * one when the descriptor's role is `"interface"`.
- *
- * @param context - The module context
- * @param klass - The class or interface
- */
 export const renderVfuncMetadata = (context: ModuleContext, klass: GirClass): string | undefined => {
     if (klass.glibTypeStruct === undefined) return undefined;
     const structName = toPascalCase(klass.glibTypeStruct);
@@ -76,12 +57,12 @@ const isVtableSlotEligible = (context: ModuleContext, callback: GirCallback): bo
 };
 
 type RenderDescriptorOptions = {
-    readonly key: string;
-    readonly structName: string;
-    readonly kind: VtableKind;
-    readonly field: GirField;
-    readonly callback: GirCallback;
-    readonly byteOffset: number;
+    key: string;
+    structName: string;
+    kind: VtableKind;
+    field: GirField;
+    callback: GirCallback;
+    byteOffset: number;
 };
 
 const renderDescriptor = (context: ModuleContext, options: RenderDescriptorOptions): string => {

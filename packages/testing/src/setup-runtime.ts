@@ -7,7 +7,7 @@ const hasActQueue = (value: unknown): value is { actQueue: unknown } =>
 
 const extractReactActQueueHolder = (): { actQueue: unknown } | null => {
     const reactExports: Record<string, unknown> = { ...React };
-    const internals = reactExports.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+    const internals = reactExports["__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE"];
     return hasActQueue(internals) ? internals : null;
 };
 
@@ -25,13 +25,6 @@ setDeferredFlushWrapper((flush) => {
     });
 });
 
-/**
- * Registers and activates application components but installs neither the
- * keep-alive nor the `shutdown` teardown the production lifecycle uses: the
- * test worker shares one GTK runtime across many per-test applications, so a
- * keep-alive would block the worker from terminating and emitting `shutdown`
- * on one application would tear the shared runtime down for the next test.
- */
 setApplicationLifecycle({
     run: (application: GApplication) => {
         application.on("activate", () => {});

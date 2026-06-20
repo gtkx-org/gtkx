@@ -1,26 +1,4 @@
 #!/usr/bin/env node
-/**
- * Keeps every workspace package's TypeScript project-reference arrays in sync
- * with its `package.json` dependency graph, so `tsc -b` resolves cross-package
- * imports to a dependency's emitted declarations instead of recompiling its
- * source.
- *
- * Each managed config gets references derived from the owning package's
- * dependencies:
- *
- * - `tsconfig.lib.json` / `tsconfig.app.json` (source builds) reference the
- *   workspace `dependencies` + `peerDependencies`.
- * - `tsconfig.test.json` references those plus `devDependencies`, prefixed with
- *   the package's own source config so its tests build against fresh local
- *   declarations.
- *
- * Every cross-package edge points at the dependency's source build config
- * (`tsconfig.lib.json` — falling back to `tsconfig.app.json`), never at a test
- * config.
- *
- * Invoked as `node scripts/sync-ts-references.ts`; pass `--check` to verify
- * without writing, exiting non-zero when any config has drifted.
- */
 
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";

@@ -1,11 +1,3 @@
-/**
- * Shared widget fakes used across the `mcp/*` test files.
- *
- * Internal test helper — not part of any package export — kept here so the
- * handler and registry tests share a single source of truth for the
- * minimal GTK widget surface they exercise.
- */
-
 export type FakeWidgetOverrides = {
     type?: string;
     getFirstChild?: () => unknown;
@@ -30,11 +22,6 @@ const DEFAULTS = {
     getCssClasses: () => [],
 };
 
-/**
- * Returns a fake widget with overridable getters. The result is typed as
- * `never` so call sites can pass it to `WidgetRegistry` / `dispatch` —
- * which expect `Gtk.Widget` — without TypeScript fighting the test fakes.
- */
 export const makeFakeWidget = (overrides: FakeWidgetOverrides = {}): never => {
     const { type = "GtkWidget", ...rest } = overrides;
     return {

@@ -50,11 +50,6 @@ const cairoRegionCreateRectangles = bind(
 );
 
 class RegionImpl extends Region {
-    /**
-     * Creates a region containing the single rectangle `rect`.
-     *
-     * @param rect - The rectangle the region covers
-     */
     constructor(rect: RectangleInt) {
         super();
         setHandle(this, cairoRegionCreateRectangle(getHandle(rect)) as Handle);

@@ -13,9 +13,9 @@ let originalGirPath: string | undefined;
 
 const setGirPath = (value: string | undefined): void => {
     if (value === undefined) {
-        delete process.env.GTKX_GIR_PATH;
+        delete process.env["GTKX_GIR_PATH"];
     } else {
-        process.env.GTKX_GIR_PATH = value;
+        process.env["GTKX_GIR_PATH"] = value;
     }
 };
 
@@ -27,7 +27,7 @@ const enoentError = (): NodeJS.ErrnoException => {
 
 describe("resolveGirPath", () => {
     beforeEach(() => {
-        originalGirPath = process.env.GTKX_GIR_PATH;
+        originalGirPath = process.env["GTKX_GIR_PATH"];
         execFileSyncMock.mockReset();
         execFileSyncMock.mockImplementation(() => {
             throw enoentError();
@@ -86,7 +86,7 @@ describe("resolveGirPath", () => {
 
 describe("resolveGirPath — pkg-config invocation", () => {
     beforeEach(() => {
-        originalGirPath = process.env.GTKX_GIR_PATH;
+        originalGirPath = process.env["GTKX_GIR_PATH"];
         setGirPath(undefined);
         execFileSyncMock.mockReset();
     });

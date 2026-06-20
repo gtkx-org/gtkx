@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen } from "@gtkx/testing";
+import { screen, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { flowboxDemo } from "../../../src/demos/layout/flowbox.js";
 import { renderDemo } from "../../test-utils.js";
@@ -46,7 +46,8 @@ describe("flowboxDemo container", () => {
 describe("flowboxDemo children", () => {
     it("renders one GtkButton per color in the dataset", async () => {
         await renderDemo(flowboxDemo);
-        const buttons = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON);
+        const flowBox = await screen.findByName("flow-box");
+        const buttons = within(flowBox).getAllByRole(Gtk.AccessibleRole.BUTTON);
         expect(buttons).toHaveLength(EXPECTED_COLOR_COUNT);
         for (const button of buttons) {
             expect(button).toBeInstanceOf(Gtk.Button);
@@ -55,7 +56,8 @@ describe("flowboxDemo children", () => {
 
     it("creates a unique GtkFlowBoxChild for every color button", async () => {
         await renderDemo(flowboxDemo);
-        const cells = await screen.findAllByRole(Gtk.AccessibleRole.GRID_CELL);
+        const flowBox = await screen.findByName("flow-box");
+        const cells = within(flowBox).getAllByRole(Gtk.AccessibleRole.GRID_CELL);
         expect(cells).toHaveLength(EXPECTED_COLOR_COUNT);
         for (const cell of cells) {
             expect(cell).toBeInstanceOf(Gtk.FlowBoxChild);

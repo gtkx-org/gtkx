@@ -62,15 +62,6 @@ const constraintViews = (layout: Gtk.ConstraintLayout): Map<string, Gtk.Constrai
 
 const isLayoutLive = (layout: Gtk.ConstraintLayout): boolean => layout.getWidget() !== null;
 
-/**
- * Resolves the `target`/`source` ids of `props` against `layout`, builds the
- * immutable `Gtk.Constraint`, adds it to the layout, and returns a remover.
- *
- * @param layout - The layout the constraint is added to.
- * @param props - The `<Constraint>` props.
- * @returns A cleanup that removes the constraint while the layout is live.
- * @throws When `target` or `source` references an id matching no named child or guide.
- */
 export function applyConstraint(layout: Gtk.ConstraintLayout, props: ConstraintProps): () => void {
     const target = resolveConstraintTarget(layout, props.target);
     if (target === undefined) throw new Error(unknownIdMessage("target", String(props.target)));
@@ -94,14 +85,6 @@ export function applyConstraint(layout: Gtk.ConstraintLayout, props: ConstraintP
     };
 }
 
-/**
- * Parses the VFL lines of `props` against the named children and guides of
- * `layout`, adds the resulting constraints, and returns a remover for them.
- *
- * @param layout - The layout the parsed constraints are added to.
- * @param props - The `<Vfl>` props.
- * @returns A cleanup that removes every parsed constraint while the layout is live.
- */
 export function applyVfl(layout: Gtk.ConstraintLayout, props: ConstraintVflProps): () => void {
     const views = constraintViews(layout);
     const constraints = layout.addConstraintsFromDescription(
@@ -117,17 +100,6 @@ export function applyVfl(layout: Gtk.ConstraintLayout, props: ConstraintVflProps
     };
 }
 
-/**
- * Creates a `Gtk.ConstraintGuide` from `props`, registers it under its id on
- * `layout`, adds it, and returns a cleanup that removes and unregisters it.
- *
- * The guide is held in a per-layout id map so `<Constraint>`/`<Vfl>` markers
- * resolve guide ids without arming `Gtk.ConstraintLayout.observeGuides` bookkeeping.
- *
- * @param layout - The layout the guide is added to.
- * @param props - The `<Guide>` props.
- * @returns A cleanup that removes the guide and drops its registration.
- */
 export function applyGuide(layout: Gtk.ConstraintLayout, props: ConstraintGuideProps): () => void {
     const guide = new Gtk.ConstraintGuide({
         name: props.id,

@@ -154,17 +154,19 @@ describe("codegen React pipeline", () => {
 describe("codegen React pipeline (auto-derived slots)", () => {
     it("widens a settable GObject-class property into a ReactElement slot", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
-        expect(interfaceBody(gtk, "GtkWindow")).toContain("titlebar?: Gtk.Widget | ReactElement | null;");
+        expect(interfaceBody(gtk, "GtkWindow")).toContain("titlebar?: Gtk.Widget | ReactElement | null | undefined;");
     });
 
     it("widens a text view's buffer into a ReactElement slot", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
-        expect(interfaceBody(gtk, "GtkTextView")).toContain("buffer?: Gtk.TextBuffer | ReactElement | null;");
+        expect(interfaceBody(gtk, "GtkTextView")).toContain(
+            "buffer?: Gtk.TextBuffer | ReactElement | null | undefined;",
+        );
     });
 
     it("keeps the single-child `child` property a plain widget reference, not a slot", () => {
         const body = interfaceBody(sourceFor(reactPipeline, "gtk"), "GtkButton");
-        expect(body).toContain("child?: Gtk.Widget | null;");
+        expect(body).toContain("child?: Gtk.Widget | null | undefined;");
         expect(body).not.toContain("child?: Gtk.Widget | ReactElement");
     });
 
@@ -175,7 +177,7 @@ describe("codegen React pipeline (auto-derived slots)", () => {
     it("promotes a user-supplied container slot on a widget without built-in ones", () => {
         const overridden = generateJsxFiles(repository, { containerProps: { GtkButton: ["addChild"] } });
         const gtk = sourceFor(overridden, "gtk");
-        expect(gtk).toContain("addChild?: ReactNode | null;");
+        expect(gtk).toContain("addChild?: ReactNode | null | undefined;");
         expect(overridden.metadata).toMatch(/"GtkButton": \[\s*"addChild"\s*\]/);
         const { js } = transpileSource("gtk/gtk.tsx", gtk);
         expect(js.length).toBeGreaterThan(0);
@@ -185,7 +187,7 @@ describe("codegen React pipeline (auto-derived slots)", () => {
         const overridden = generateJsxFiles(repository, { containerProps: { GApplication: ["addWindow"] } });
         const gio = sourceFor(overridden, "gio");
         expect(gio).toContain("GApplicationProps");
-        expect(gio).toContain("addWindow?: ReactNode | null;");
+        expect(gio).toContain("addWindow?: ReactNode | null | undefined;");
         expect(overridden.metadata).toMatch(/"GApplication": \[\s*"addWindow"\s*\]/);
         const { js, dts } = transpileSource("gio/gio.tsx", gio);
         expect(js.length).toBeGreaterThan(0);
@@ -201,7 +203,7 @@ const interfaceBody = (jsxSource: string, glibName: string): string => {
 describe("codegen array props", () => {
     it("emits the built-in array-prop line and item-type import on its element", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
-        expect(interfaceBody(gtk, "GtkScale")).toContain("marks?: ScaleMark[] | null;");
+        expect(interfaceBody(gtk, "GtkScale")).toContain("marks?: ScaleMark[] | null | undefined;");
         expect(gtk).toMatch(/import type \{[^}]*\} from "@gtkx\/react";/);
         expect(gtk).toContain("ScaleMark");
         const adw = sourceFor(reactPipeline, "adw");
@@ -211,7 +213,7 @@ describe("codegen array props", () => {
     it("suppresses the raw GObject property of an array-prop name", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
         const dropTargetBody = interfaceBody(gtk, "GtkDropTarget");
-        expect(dropTargetBody).toContain("types?: DropTargetType[] | null;");
+        expect(dropTargetBody).toContain("types?: DropTargetType[] | null | undefined;");
         expect(dropTargetBody).not.toContain("types?: GType[] | null;");
         expect(dropTargetBody).not.toContain("onNotifyTypes");
         const { dts } = transpileSource("gtk/gtk.tsx", gtk);
@@ -223,8 +225,8 @@ describe("codegen array props", () => {
             arrayProps: { GtkScale: { marks: { itemType: "ScaleMark", clear: "clearMarks" } } },
         });
         const gtk = sourceFor(overridden, "gtk");
-        expect(interfaceBody(gtk, "GtkScale")).toContain("marks?: ScaleMark[] | null;");
-        expect(interfaceBody(gtk, "GtkCalendar")).toContain("markedDays?: CalendarMark[] | null;");
+        expect(interfaceBody(gtk, "GtkScale")).toContain("marks?: ScaleMark[] | null | undefined;");
+        expect(interfaceBody(gtk, "GtkCalendar")).toContain("markedDays?: CalendarMark[] | null | undefined;");
         expect(gtk).toContain('from "@gtkx/react";');
         expect(gtk).toContain("ScaleMark");
         const { dts } = transpileSource("gtk/gtk.tsx", gtk);
@@ -243,7 +245,7 @@ describe("codegen read-only props", () => {
     it("keeps the settable line for a writable property", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
         const widgetBody = interfaceBody(gtk, "GtkWidget");
-        expect(widgetBody).toContain("opacity?: number | null;");
+        expect(widgetBody).toContain("opacity?: number | null | undefined;");
         expect(widgetBody).toContain("onNotifyOpacity?:");
     });
 });

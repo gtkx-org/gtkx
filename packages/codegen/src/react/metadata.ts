@@ -17,92 +17,53 @@ import type { GirRepository } from "../gir/repository.js";
 import type { TypeId } from "../gir/type-id.js";
 import { implementedInterfaces, isReactNodeClass, iterateClassesWithGlibName, signalHandlerName } from "./widgets.js";
 
-/**
- * The reconciler's data tables baked into the generated metadata module: the
- * built-ins merged with the project's `gtkx.config.ts` rows, in the row
- * shapes declared by `@gtkx/config`.
- */
 export type RuntimeTables = {
-    /** Merged attach relationships, built-ins first. */
-    readonly elementMap: readonly ElementMapRule[];
-    /** Merged array-prop rows keyed by GLib type name, then prop name. */
-    readonly arrayProps: PerElementPropRows<ArrayPropRow>;
-    /** Merged object-prop rows keyed by GLib type name, then prop name. */
-    readonly objectProps: PerElementPropRows<ObjectPropRow>;
-    /** Merged virtual-prop rows keyed by GLib type name, then prop name. */
-    readonly virtualProps: PerElementPropRows<VirtualPropRow>;
-    /** Imperative and signal prop rules keyed by GLib type name. */
-    readonly propRules: Readonly<Record<string, readonly PropRule[]>>;
-    /** GLib type names of top-level surfaces. */
-    readonly topLevelTypes: readonly string[];
-    /** GLib type names of non-widget GObjects whose generic signals default to blockable. */
-    readonly defaultBlockableTypes: readonly string[];
-    /** Page-add method priority rows for stack-like parents. */
-    readonly metaObjectAddMethods: Readonly<Record<string, readonly AddMethodRule[]>>;
-    /** Page-metadata setters applied to stack page handles. */
-    readonly pageMetaSetters: readonly PageMetaSetter[];
-    /** Merged container-slot method names keyed by JSX element name. */
-    readonly containerProps: Readonly<Record<string, readonly string[]>>;
+    elementMap: ElementMapRule[];
+    arrayProps: PerElementPropRows<ArrayPropRow>;
+    objectProps: PerElementPropRows<ObjectPropRow>;
+    virtualProps: PerElementPropRows<VirtualPropRow>;
+    propRules: Record<string, PropRule[]>;
+    topLevelTypes: string[];
+    defaultBlockableTypes: string[];
+    metaObjectAddMethods: Record<string, AddMethodRule[]>;
+    pageMetaSetters: PageMetaSetter[];
+    containerProps: Record<string, string[]>;
 };
 
 const configType = (name: string): string => `import("@gtkx/config").${name}`;
 
-const nestedRecordOf = (rowType: string): string =>
-    `Readonly<Record<string, Readonly<Record<string, ${configType(rowType)}>>>>`;
+const nestedRecordOf = (rowType: string): string => `Record<string, Record<string, ${configType(rowType)}>>`;
 
-const recordOfArray = (rowType: string): string => `Readonly<Record<string, ReadonlyArray<${configType(rowType)}>>>`;
+const recordOfArray = (rowType: string): string => `Record<string, Array<${configType(rowType)}>>`;
 
-const arrayOf = (rowType: string): string => `ReadonlyArray<${configType(rowType)}>`;
+const arrayOf = (rowType: string): string => `Array<${configType(rowType)}>`;
 
-/**
- * The generated const name and TypeScript annotation for one {@link RuntimeTables}
- * field, baked next to its value as a `JSON.stringify`d literal.
- */
 type RuntimeTableSpec = {
-    /** The exported const identifier. */
-    readonly name: string;
-    /** The TypeScript type annotation, re-spelling the field's `@gtkx/config` shape. */
-    readonly annotation: string;
+    name: string;
+    annotation: string;
 };
 
-const RUNTIME_TABLE_SPECS: Readonly<Record<keyof RuntimeTables, RuntimeTableSpec>> = {
+const RUNTIME_TABLE_SPECS: Record<keyof RuntimeTables, RuntimeTableSpec> = {
     elementMap: { name: "ELEMENT_MAP", annotation: arrayOf("ElementMapRule") },
     arrayProps: { name: "ARRAY_PROPS", annotation: nestedRecordOf("ArrayPropRow") },
     objectProps: { name: "OBJECT_PROPS", annotation: nestedRecordOf("ObjectPropRow") },
     virtualProps: { name: "VIRTUAL_PROPS", annotation: nestedRecordOf("VirtualPropRow") },
     propRules: { name: "PROP_RULES", annotation: recordOfArray("PropRule") },
-    topLevelTypes: { name: "TOP_LEVEL_TYPES", annotation: "readonly string[]" },
-    defaultBlockableTypes: { name: "DEFAULT_BLOCKABLE_TYPES", annotation: "readonly string[]" },
+    topLevelTypes: { name: "TOP_LEVEL_TYPES", annotation: "string[]" },
+    defaultBlockableTypes: { name: "DEFAULT_BLOCKABLE_TYPES", annotation: "string[]" },
     metaObjectAddMethods: { name: "META_OBJECT_ADD_METHODS", annotation: recordOfArray("AddMethodRule") },
     pageMetaSetters: { name: "PAGE_META_SETTERS", annotation: arrayOf("PageMetaSetter") },
-    containerProps: { name: "CONTAINER_PROPS", annotation: "Readonly<Record<string, readonly string[]>>" },
+    containerProps: { name: "CONTAINER_PROPS", annotation: "Record<string, string[]>" },
 };
 
-const RUNTIME_TABLE_KEYS = Object.keys(RUNTIME_TABLE_SPECS) as ReadonlyArray<keyof RuntimeTables>;
+const RUNTIME_TABLE_KEYS = Object.keys(RUNTIME_TABLE_SPECS) as Array<keyof RuntimeTables>;
 
-const renderRuntimeTables = (tables: RuntimeTables): readonly string[] =>
+const renderRuntimeTables = (tables: RuntimeTables): string[] =>
     RUNTIME_TABLE_KEYS.map((key) => {
         const { name, annotation } = RUNTIME_TABLE_SPECS[key];
         return `export const ${name}: ${annotation} = ${JSON.stringify(tables[key], null, 4)};`;
     });
 
-/**
- * Generates `metadata.ts` source — the merged `SIGNALS`, `CONSTRUCT_ONLY_PROPS`,
- * `CONSTRUCT_PROPS`, and `DEFAULT_PROPS` tables consumed by the React metadata
- * resolver, plus the reconciler's {@link RuntimeTables} (built-ins merged with
- * the project's config rows).
- *
- * The tables are pure data keyed by GLib type name and carry no value imports
- * from any namespace, so the module loads no GObject library: it is delivered to
- * `@gtkx/react` through the `virtual:gtkx-config` Vite module. Signals are mapped
- * from kebab-case to `onCamelCase`; construct-only properties are surfaced as a
- * `Set` for the runtime to consult on mount; each settable property's GIR
- * `default-value` is coerced to a JS literal so the reconciler can reset a removed
- * prop to its default.
- *
- * @param repository - The loaded GIR repository
- * @param tables - The merged reconciler tables to bake in
- */
 export const generateMetadata = (repository: GirRepository, tables: RuntimeTables): string => {
     const widgets = collectWidgets(repository);
     const signalsEntries = widgets.map(
@@ -119,28 +80,28 @@ export const generateMetadata = (repository: GirRepository, tables: RuntimeTable
         .map(({ glibName, defaults }) => `    "${glibName}": ${renderDefaultsObject(defaults)},`);
 
     return `${[
-        `export const SIGNALS: Readonly<Record<string, Readonly<Record<string, string>>>> = {\n${signalsEntries.join("\n")}\n};`,
-        `export const CONSTRUCT_ONLY_PROPS: Readonly<Record<string, ReadonlySet<string>>> = {\n${constructOnlyEntries.join("\n")}\n};`,
-        `export const CONSTRUCT_PROPS: Readonly<Record<string, ReadonlySet<string>>> = {\n${constructableEntries.join("\n")}\n};`,
-        `export const DEFAULT_PROPS: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {\n${defaultsEntries.join("\n")}\n};`,
+        `export const SIGNALS: Record<string, Record<string, string>> = {\n${signalsEntries.join("\n")}\n};`,
+        `export const CONSTRUCT_ONLY_PROPS: Record<string, Set<string>> = {\n${constructOnlyEntries.join("\n")}\n};`,
+        `export const CONSTRUCT_PROPS: Record<string, Set<string>> = {\n${constructableEntries.join("\n")}\n};`,
+        `export const DEFAULT_PROPS: Record<string, Record<string, unknown>> = {\n${defaultsEntries.join("\n")}\n};`,
         ...renderRuntimeTables(tables),
     ].join("\n\n")}\n`;
 };
 
 type WidgetEntry = {
-    readonly glibName: string;
-    readonly namespace: string;
-    readonly signals: ReadonlyArray<readonly [string, string]>;
-    readonly constructOnly: readonly string[];
-    readonly constructable: readonly string[];
-    readonly defaults: ReadonlyArray<readonly [string, string]>;
+    glibName: string;
+    namespace: string;
+    signals: [string, string][];
+    constructOnly: string[];
+    constructable: string[];
+    defaults: [string, string][];
 };
 
-const collectWidgets = (repository: GirRepository): readonly WidgetEntry[] => {
+const collectWidgets = (repository: GirRepository): WidgetEntry[] => {
     const entries: WidgetEntry[] = [];
     for (const { glibName, klass, namespace } of iterateClassesWithGlibName(repository)) {
         if (!isReactNodeClass(klass, namespace, repository)) continue;
-        const sources: readonly GirClass[] = [
+        const sources: GirClass[] = [
             klass,
             ...implementedInterfaces(klass, namespace, repository).map((entry) => entry.klass),
         ];
@@ -156,9 +117,9 @@ const collectWidgets = (repository: GirRepository): readonly WidgetEntry[] => {
     return sortedAlphaBy(entries, (entry) => entry.glibName);
 };
 
-const collectSignals = (sources: readonly GirClass[]): ReadonlyArray<readonly [string, string]> => {
+const collectSignals = (sources: GirClass[]): [string, string][] => {
     const seen = new Set<string>();
-    const signals: Array<readonly [string, string]> = [];
+    const signals: [string, string][] = [];
     for (const source of sources) {
         for (const signal of source.signals) {
             const handlerName = signalHandlerName(signal.name);
@@ -170,18 +131,7 @@ const collectSignals = (sources: readonly GirClass[]): ReadonlyArray<readonly [s
     return signals;
 };
 
-/**
- * Collects the camelCase names of the properties a class introduces — its own
- * and its implemented interfaces' — that `keep` selects. Each name is considered
- * once, nearest source winning.
- *
- * @param sources - The class and its implemented interfaces.
- * @param keep - Predicate selecting which properties to include.
- */
-const collectPropNames = (
-    sources: readonly GirClass[],
-    keep: (property: GirProperty) => boolean,
-): readonly string[] => {
+const collectPropNames = (sources: GirClass[], keep: (property: GirProperty) => boolean): string[] => {
     const seen = new Set<string>();
     const names: string[] = [];
     for (const source of sources) {
@@ -196,62 +146,24 @@ const collectPropNames = (
     return names;
 };
 
-/** The construct-only camelCase property names a class introduces. */
-const collectConstructOnly = (sources: readonly GirClass[]): readonly string[] =>
+const collectConstructOnly = (sources: GirClass[]): string[] =>
     collectPropNames(sources, (property) => property.constructOnly && property.introspectable);
 
-/**
- * The camelCase names of every constructable property a class introduces — its
- * own and its implemented interfaces', that are writable, construct, or
- * construct-only — mirroring exactly the props the generated constructor
- * destructures and marshals through `g_object_new_with_properties`. The
- * reconciler narrows a JSX prop bag to this set before constructing, so only
- * real GObject properties reach construction.
- *
- * @param sources - The class and its implemented interfaces.
- */
-const collectConstructable = (sources: readonly GirClass[]): readonly string[] =>
-    collectPropNames(sources, isConstructableProperty);
+const collectConstructable = (sources: GirClass[]): string[] => collectPropNames(sources, isConstructableProperty);
 
-/**
- * Renders a `glibName`-keyed entry's value as an object literal: empty collapses
- * to `{}`, otherwise each pair is quoted-key, `renderValue`d-value, two-level
- * indented with the closing brace at the entry's own indent.
- *
- * @param entries - The key/value pairs to render
- * @param renderValue - Renders each pair's value to source (e.g. quoting it)
- */
-const renderObjectLiteral = (
-    entries: ReadonlyArray<readonly [string, string]>,
-    renderValue: (value: string) => string,
-): string => {
+const renderObjectLiteral = (entries: [string, string][], renderValue: (value: string) => string): string => {
     if (entries.length === 0) return "{}";
     const lines = entries.map(([key, value]) => `        ${quote(key)}: ${renderValue(value)}`);
     return `{\n${lines.join(",\n")}\n    }`;
 };
 
-/** Renders a list of property names as a `new Set([...])` of quoted strings. */
-const renderStringSet = (names: readonly string[]): string => `new Set([${names.map(quote).join(",")}])`;
+const renderStringSet = (names: string[]): string => `new Set([${names.map(quote).join(",")}])`;
 
-const renderSignalsObject = (entries: ReadonlyArray<readonly [string, string]>): string =>
-    renderObjectLiteral(entries, quote);
+const renderSignalsObject = (entries: [string, string][]): string => renderObjectLiteral(entries, quote);
 
-/**
- * Collects the settable properties a class introduces (its own plus those of
- * the interfaces it implements) whose GIR `default-value` coerces to a JS
- * literal, paired with that literal. Read-only and construct-only properties
- * are excluded — the reconciler never resets them. Each property name is
- * considered once, nearest source winning.
- *
- * @param repository - The loaded GIR repository
- * @param sources - The class and its implemented interfaces, with namespaces
- */
-const collectDefaultProps = (
-    repository: GirRepository,
-    sources: readonly GirClass[],
-): ReadonlyArray<readonly [string, string]> => {
+const collectDefaultProps = (repository: GirRepository, sources: GirClass[]): [string, string][] => {
     const seen = new Set<string>();
-    const defaults: Array<readonly [string, string]> = [];
+    const defaults: [string, string][] = [];
     for (const klass of sources) {
         for (const property of klass.properties) {
             const settable = (property.writable || property.construct) && !property.constructOnly;
@@ -267,16 +179,6 @@ const collectDefaultProps = (
     return defaults;
 };
 
-/**
- * Coerces a property's GIR `default-value` to the JS literal the reconciler
- * assigns when the prop is removed. The coerced value is the property's declared
- * default, so setting it back is always valid. Returns `undefined` when the
- * default is absent or cannot be resolved (e.g. an object property whose default
- * is not `NULL`), in which case the property is omitted and never reset.
- *
- * @param repository - The loaded GIR repository
- * @param property - The property whose default to coerce
- */
 const renderDefaultLiteral = (repository: GirRepository, property: GirProperty): string | undefined =>
     resolveDefaultLiteral(repository, property.type, property.defaultValue);
 
@@ -326,10 +228,6 @@ const primitiveDefaultLiteral = (category: PrimitiveCategory, raw: string): stri
     }
 };
 
-/**
- * Resolves an enum/flags `default-value` — a numeric literal or a member's C
- * identifier — to the member's integer value as a string.
- */
 const enumDefaultLiteral = (enumType: GirEnum, raw: string): string | undefined => {
     const trimmed = raw.trim();
     if (INTEGER_PATTERN.test(trimmed)) return trimmed;
@@ -337,5 +235,5 @@ const enumDefaultLiteral = (enumType: GirEnum, raw: string): string | undefined 
     return member?.value;
 };
 
-const renderDefaultsObject = (entries: ReadonlyArray<readonly [string, string]>): string =>
+const renderDefaultsObject = (entries: [string, string][]): string =>
     renderObjectLiteral(entries, (literal) => literal);

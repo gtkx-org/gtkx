@@ -158,15 +158,10 @@ function SortableColumnView({
     );
 }
 
-/** Handle returned by {@link renderSortableColumnView}. */
 interface SortableColumnViewFixture {
-    /** Ref to the rendered `GtkColumnView`. */
     ref: React.RefObject<Gtk.ColumnView | null>;
-    /** Employees rendered into the column view. */
     employees: Employee[];
-    /** Row id orders captured on every render, newest last. */
     renderOrders: string[][];
-    /** Most recent captured render order, or `undefined` before the first render. */
     latestOrder: () => string[] | undefined;
 }
 

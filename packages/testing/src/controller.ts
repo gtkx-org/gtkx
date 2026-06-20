@@ -26,13 +26,6 @@ export const findController = <T extends Gtk.EventController>(
     return controller;
 };
 
-/**
- * Controllers the harness created or adopted, kept alive and keyed by widget so a
- * repeated interaction reuses the same controller instead of re-observing the
- * widget's controller list. Retaining the wrapper keeps its toggle reference
- * strong, and skipping the re-observation avoids resolving controllers GTK may be
- * recycling under garbage-collection pressure mid-interaction.
- */
 const adoptedControllers = new WeakMap<
     Gtk.Widget,
     Map<ControllerConstructor<Gtk.EventController>, Gtk.EventController>

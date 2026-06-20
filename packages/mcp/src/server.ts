@@ -73,50 +73,18 @@ const imageContent = (data: string, mimeType: string): CallToolResult => ({
     content: [{ type: "image", data, mimeType }],
 });
 
-/**
- * Narrow view of {@link ConnectionManager} consumed by the tool handlers. Each
- * tool needs only app discovery (`getApps`, `hasConnectedApps`, `waitForApp`)
- * and request forwarding (`sendToApp`).
- */
 export type AppQueryClient = Pick<ConnectionManager, "getApps" | "hasConnectedApps" | "waitForApp" | "sendToApp">;
 
-/**
- * Result envelope every tool handler returns to the MCP SDK. Aliased to the
- * SDK's `CallToolResult` so any drift between local handlers and the SDK's
- * structural contract is caught at compile time.
- */
 type ToolHandlerResult = CallToolResult;
 
-/**
- * The argument record received by a typed tool handler — mirrors the SDK's
- * `ShapeOutput<Shape>` (which is not part of the SDK's published exports) so
- * the resolved shape matches what the MCP server actually delivers.
- *
- * @typeParam Shape - The Zod raw shape used as the tool's `inputSchema`.
- */
 type ToolArgs<Shape extends Record<string, z.ZodType>> = { [K in keyof Shape]: z.output<Shape[K]> };
 
-/**
- * Internal, per-tool typed view used while a tool is being constructed: the
- * `Shape` parameter ties `inputSchema` to the `handler`'s argument record so
- * the SDK's structural contract is enforced inside {@link defineTool}.
- *
- * @typeParam Shape - The Zod raw shape used as the tool's `inputSchema`.
- */
 type TypedTool<Shape extends Record<string, z.ZodType>> = {
     name: string;
     config: { description: string; inputSchema: Shape };
     handler: (args: ToolArgs<Shape>) => Promise<ToolHandlerResult>;
 };
 
-/**
- * A registered MCP tool as exposed to consumers (tests and the registration
- * loop in {@link main}). The per-tool `Shape` parameter is hidden behind the
- * `register` closure so heterogeneous tools can be stored in a single array
- * without type-erasing casts; the closure preserves the typed link between
- * `inputSchema` and `handler` at the point where it actually matters — the
- * call to {@link McpServer.registerTool}.
- */
 export type ToolDefinition = {
     name: string;
     config: { description: string; inputSchema: z.ZodRawShape };
@@ -124,19 +92,6 @@ export type ToolDefinition = {
     register: (server: McpServer) => void;
 };
 
-/**
- * Builds a {@link ToolDefinition} from a typed tool spec. The SDK's
- * `registerTool` is called inside the returned closure with the original
- * `Shape` in scope; the only cast is a localized assertion to the SDK's
- * `ToolCallback<Shape>` (made necessary by the SDK's optional
- * `inputSchema?: InputArgs` widening to `undefined` during inference) that
- * still names the SDK type so renames in `ToolCallback` itself fail
- * compilation.
- *
- * @typeParam Shape - The Zod raw shape used as the tool's `inputSchema`.
- * @param tool - The typed tool spec (without `register`; it is added here).
- * @returns A shape-erased {@link ToolDefinition}.
- */
 const defineTool = <Shape extends Record<string, z.ZodType>>(tool: TypedTool<Shape>): ToolDefinition => ({
     name: tool.name,
     config: tool.config,
@@ -253,16 +208,6 @@ const getWidgetTreeTool = (connectionManager: AppQueryClient) =>
         },
     });
 
-/**
- * Builds the GTKX MCP tool definitions, ready to be registered on a server.
- *
- * Exposed so tests can drive each tool handler against a fake
- * {@link ConnectionManager} without spinning up a real socket server.
- *
- * @param connectionManager - Connection manager that proxies tool requests to the connected
- *   GTKX application.
- * @returns Array of tool definitions in registration order.
- */
 export function buildTools(connectionManager: AppQueryClient): ToolDefinition[] {
     return [
         listAppsTool(connectionManager),
@@ -317,40 +262,16 @@ export function buildTools(connectionManager: AppQueryClient): ToolDefinition[] 
     ];
 }
 
-/**
- * Configuration for {@link createMcpServer}.
- */
 export type CreateMcpServerOptions = {
-    /** Unix-domain socket path the server listens on. */
     socketPath?: string;
-    /** Version reported to MCP clients. */
     version: string;
 };
 
-/**
- * Runtime handle returned by {@link createMcpServer}.
- */
 export type McpServerHandle = {
-    /** Starts the socket server and connects the MCP stdio transport. */
     start(): Promise<void>;
-    /**
-     * Tears down the connection manager, socket server, and MCP SDK server.
-     * Idempotent.
-     */
     stop(): Promise<void>;
 };
 
-/**
- * Builds a configured GTKX MCP server, wiring the socket listener, the
- * connection registry, the connection manager, and the MCP SDK server.
- * Returns lifecycle hooks the caller invokes to start and stop the server.
- *
- * The shape is intentionally testable: `createMcpServer` is what tests drive,
- * `main` is the thin shell that adds signal handling on top.
- *
- * @param options - Server configuration.
- * @returns A handle exposing `start` and `stop`.
- */
 export const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
     const socketPath = options.socketPath ?? DEFAULT_SOCKET_PATH;
 
@@ -397,10 +318,6 @@ export const createMcpServer = (options: CreateMcpServerOptions): McpServerHandl
     };
 };
 
-/**
- * Bootstraps the GTKX MCP server: builds it, installs the shared graceful
- * shutdown helper, and awaits the listening socket.
- */
 export async function main(): Promise<void> {
     const server = createMcpServer({ version });
     installGracefulShutdown({

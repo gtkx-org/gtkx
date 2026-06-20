@@ -24,11 +24,6 @@ const revealerConfigs: RevealerConfig[] = [
 
 const TRANSITION_DURATION = 2000;
 
-/**
- * Revealer demo matching the official GTK gtk-demo.
- * Shows 9 icons in a grid that reveal sequentially (690ms apart),
- * then each independently oscillates via the child-revealed signal.
- */
 const RevealerDemo = () => {
     const [revealed, setRevealed] = useState<boolean[]>(new Array(9).fill(false));
     const activatedRef = useRef<boolean[]>(new Array(9).fill(false));

@@ -12,10 +12,6 @@ pub struct Fundamental {
 }
 
 impl Fundamental {
-    /// Rough byte hint reported to V8 for a fundamental allocation. The exact
-    /// size of the underlying instance is generally unknowable, but pressuring
-    /// the GC proportional to handle count keeps ephemeral wrappers from
-    /// accumulating between collections.
     pub(crate) const SIZE_HINT: usize = 128;
 
     #[must_use]
@@ -32,8 +28,6 @@ impl Fundamental {
         }
     }
 
-    /// # Safety
-    /// `ptr` must be null or point to a valid fundamental type instance.
     #[must_use]
     pub unsafe fn from_glib_none(
         ptr: *mut c_void,
@@ -49,8 +43,6 @@ impl Fundamental {
             };
         }
 
-        // SAFETY: The caller guarantees the non-null `ptr` is a live
-        // instance of the fundamental type `do_ref` expects.
         let owned_ptr = ref_fn.map_or(ptr, |do_ref| unsafe { do_ref(ptr) });
 
         Self {
@@ -87,8 +79,6 @@ impl Clone for Fundamental {
 
         let cloned_ptr = self
             .ref_fn
-            // SAFETY: `self.ptr` is non-null here and stays live for as
-            // long as this wrapper holds its reference.
             .map_or(self.ptr, |ref_fn| unsafe { ref_fn(self.ptr) });
 
         Self {
@@ -106,8 +96,6 @@ impl Drop for Fundamental {
             && !self.ptr.is_null()
             && let Some(unref_fn) = self.unref_fn
         {
-            // SAFETY: `owned` marks the one reference this wrapper holds,
-            // released here exactly once.
             unsafe { unref_fn(self.ptr) };
         }
     }

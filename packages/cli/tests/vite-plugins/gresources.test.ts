@@ -41,10 +41,8 @@ const writeAppConfig = (root: string, applicationId: string): void => {
     );
 };
 
-/** Absolute path of an asset nested in the project's `data/` directory. */
 const dataAssetPath = (...segments: string[]): string => join(tmpDir, "data", ...segments);
 
-/** Writes an asset file under `data/`, creating parent directories. */
 const writeDataAsset = (relPath: string, bytes: Buffer): string => {
     const full = dataAssetPath(relPath);
     mkdirSync(dirname(full), { recursive: true });
@@ -52,14 +50,8 @@ const writeDataAsset = (relPath: string, bytes: Buffer): string => {
     return full;
 };
 
-/** Builds the synthesized virtual id `load` decodes: resolved path + `#data/`-relative path. */
 const virtualAssetId = (absPath: string, rel: string): string => `${VIRTUAL_PREFIX}${absPath}${REL_SEPARATOR}${rel}`;
 
-/**
- * Drives the plugin's `config` hook (which self-loads `applicationId` from
- * `gtkx.config.ts`) followed by `configResolved`, mirroring Vite's own
- * lifecycle so `load` sees the resolved prefix.
- */
 const initPlugin = async (
     plugin: GresourcesPlugin,
     command: "build" | "serve",

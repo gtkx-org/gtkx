@@ -1,10 +1,3 @@
-/**
- * File extensions the GResource pipeline (`gtkxResources`) treats as binary
- * assets, bundling each `#data/` import of a matching file into the
- * `.gresource` and rewriting its import site to a `resource:///` URI.
- *
- * Listed without the leading dot. Matching is case-insensitive.
- */
 const ASSET_EXTENSIONS = [
     "png",
     "jpg",
@@ -30,19 +23,6 @@ const ASSET_EXTENSIONS = [
     "gpa",
 ] as const;
 
-/**
- * Regex matching any file whose extension is in {@link ASSET_EXTENSIONS}.
- *
- * The match is anchored to the end of the string and tolerates query
- * suffixes via the caller-supplied test (use {@link ASSET_PATH_RE} for
- * paths with potential `?query` parts).
- */
 export const ASSET_RE = new RegExp(String.raw`\.(?:${ASSET_EXTENSIONS.join("|")})$`, "i");
 
-/**
- * Regex matching asset extensions while ignoring any trailing query string.
- *
- * Useful when inspecting Vite ids that may carry `?import`, `?inline`, or
- * other suffixes appended by the resolver.
- */
 export const ASSET_PATH_RE = new RegExp(String.raw`\.(?:${ASSET_EXTENSIONS.join("|")})(?:\?.*)?$`, "i");

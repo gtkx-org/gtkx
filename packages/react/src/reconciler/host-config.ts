@@ -26,21 +26,10 @@ import { isBufferContentWrapper, isLabelTextWrapper } from "./text-wrapper.js";
 import type { ContainerInfo, Props } from "./types.js";
 import { isWrapperElement } from "./wrapper-element.js";
 
-/**
- * The reconciler's single event priority. The GLib commit model schedules every
- * update at one priority, so the three React `…UpdatePriority` host hooks all
- * resolve to this constant rather than the Discrete/Continuous/Idle spread a
- * multi-priority host would distinguish.
- */
 const FIXED_UPDATE_PRIORITY = DiscreteEventPriority;
 
 type PublicInstance = Gtk.Widget | Gtk.Application;
 
-/**
- * Tracks whether the elements being created sit inside a text-capable host:
- * a `<GtkLabel>` (text children become label text) or a `<GtkTextBuffer>`
- * (text children become buffer content). Text nodes outside both are invalid.
- */
 type HostContext = {
     textHost?: "label" | "buffer";
 };
@@ -73,8 +62,6 @@ const withSignalsBlocked = <T>(instance: Node, fn: () => T): T => {
         signalStore.unblockAll();
     }
 };
-
-// --- Children management ---
 
 const link = (parent: Node, child: Node): void => {
     const { children } = stateOf(parent);
@@ -126,12 +113,6 @@ const appendChild = (parent: Node, child: Node): void => {
     scheduleTextRebuilds(parent, child);
 };
 
-/**
- * The backing instance an ordered insert should position before: the sibling's
- * own backing GObject, or — when the sibling is a metadata wrapper that places a
- * widget into the same parent — its first backing child, so the new child lands
- * before it rather than appending.
- */
 const anchorBacking = (before: Node): GObject.Object | null => {
     if (before instanceof GObject.Object) return before;
     for (const grandchild of stateOf(before).children) {
@@ -155,8 +136,6 @@ const removeChild = (parent: Node, child: Node): void => {
     if (isWrapperElement(parent)) resyncWrapper(parent);
 };
 
-// --- Prop commit ---
-
 const commitInstanceProps = (instance: Node, oldProps: Props | null, newProps: Props): void => {
     const state = stateOf(instance);
     state.props = newProps;
@@ -179,15 +158,6 @@ const commitInstanceProps = (instance: Node, oldProps: Props | null, newProps: P
     if (instance instanceof Gtk.TextTag) scheduleBufferRebuild(instance);
 };
 
-// --- Instance teardown ---
-
-/**
- * Whether a deleted instance must actively detach from its parent. Widgets are
- * detached by their own removal path, and a text buffer must not be: a deleted
- * subtree's view releases its buffer during its own teardown, and the detach
- * guard's `getBuffer()` would lazily create a fresh buffer on the disposed
- * view.
- */
 const needsDetachOnDelete = (backing: GObject.Object): boolean =>
     !(backing instanceof Gtk.Widget) && !(backing instanceof Gtk.TextBuffer);
 
@@ -199,14 +169,6 @@ const detachInstance = (instance: Node): void => {
     state.signalStore.clear(instance);
 };
 
-/**
- * Builds an idempotency guard for {@link HostConfig.detachDeletedInstance}.
- *
- * React's fiber model keeps both `current` and `workInProgress` fibers pointing
- * at the same host instance, so `detachDeletedInstance` is invoked once per
- * fiber alternate. Side-effects such as `Gtk.Window.destroy()` must run exactly
- * once; this guard short-circuits subsequent calls.
- */
 const createDetachGuard = (): ((instance: Node) => void) => {
     const detached = new WeakSet<Node>();
     return (instance: Node) => {
@@ -294,7 +256,7 @@ type InstanceConfig = Pick<
 const createInstanceConfig = (): InstanceConfig => ({
     createInstance: (type, props, rootContainer) =>
         type === WRAPPER_NODE_ELEMENT
-            ? createWrapperInstance(typeof props.kind === "string" ? props.kind : "", props, rootContainer)
+            ? createWrapperInstance(typeof props["kind"] === "string" ? props["kind"] : "", props, rootContainer)
             : createElementInstance(type, props, rootContainer),
     createTextInstance: (text, rootContainer, hostContext) => {
         if (hostContext.textHost === "buffer") {

@@ -22,10 +22,6 @@ const ScaleWithAdjustment = ({
     />
 );
 
-/**
- * Renders a `GtkScale` whose `adjustment` element is built from `config` and
- * asserts that the value read from its `Gtk.Adjustment` equals the expected number.
- */
 const expectScaleAdjustment = async (
     config: AdjustmentConfig,
     read: (adjustment: Gtk.Adjustment | null | undefined) => number | undefined,

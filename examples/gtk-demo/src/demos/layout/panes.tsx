@@ -3,10 +3,6 @@ import { GtkBox, GtkFrame, GtkLabel, GtkPaned } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
 import sourceCode from "./panes.tsx?raw";
 
-/**
- * Paned Widgets demo matching the official GTK gtk-demo.
- * Shows nested horizontal and vertical panes with simple labels.
- */
 const renderLabel = (label: string) => (
     <GtkLabel label={label} marginStart={4} marginEnd={4} marginTop={4} marginBottom={4} hexpand vexpand />
 );

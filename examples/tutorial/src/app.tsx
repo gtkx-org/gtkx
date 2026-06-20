@@ -92,7 +92,7 @@ function NoteListContent({
     filteredNotes,
     selectedId,
     setSelectedId,
-}: Readonly<NoteListContentProps>) {
+}: NoteListContentProps) {
     const items = filteredNotes.map((note) => ({ id: note.id, value: note }));
     const selected = selectedId ? [selectedId] : [];
     const renderItem = (note: Note) => <NoteCard note={note} compact={compactMode} fontSize={fontSize} />;

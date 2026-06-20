@@ -5,47 +5,37 @@ import type { SignalStore } from "./signal-store.js";
 
 type SelectionCallback = ((ids: string[]) => void) | ((id: string) => void) | null | undefined;
 
-/**
- * The owner a selection controller routes its signal connections through: a
- * `SignalStore` paired with a stable key the store dedupes handlers by. Both the
- * reconciler node and the hand-written list controller satisfy this shape.
- */
 export interface SelectionSignalOwner {
-    /** The store the controller connects and clears signal handlers on. */
-    readonly signalStore: SignalStore;
+    signalStore: SignalStore;
 }
 
-/**
- * The slice of the list node the selection controller drives back: the
- * widget-kind check and the model/widget reassignment used when the selection
- * model is rebuilt. Matched structurally to avoid importing the concrete node.
- */
 export interface SelectionHost {
     isDropDown(): boolean;
     assignModelToWidget(): void;
     getOnSelectionChanged(): SelectionCallback;
-    /** Selects the dropdown item at `position`. */
     setDropDownSelected(position: number): void;
-    /** The dropdown's selected position, or `-1` when none. */
     getDropDownSelected(): number;
 }
 
-/**
- * Owns the selection model for a list node and the controlled selection it
- * applies: it builds the `Single`/`Multi`/`NoSelection` wrapper, mirrors the
- * `selected`/`selectedId` props onto it, and reports user-driven changes back
- * through the node's signal store. Selection apply resolves every position's id
- * once via the model controller, so it stays linear in the item count.
- */
 export class SelectionController {
     public selectionModel: Gtk.SingleSelection | Gtk.MultiSelection | Gtk.NoSelection | null = null;
 
+    private owner: SelectionSignalOwner;
+    private backingInstance: Gtk.Widget;
+    private model: ListModelController;
+    private host: SelectionHost;
+
     constructor(
-        private readonly owner: SelectionSignalOwner,
-        private readonly backingInstance: Gtk.Widget,
-        private readonly model: ListModelController,
-        private readonly host: SelectionHost,
-    ) {}
+        owner: SelectionSignalOwner,
+        backingInstance: Gtk.Widget,
+        model: ListModelController,
+        host: SelectionHost,
+    ) {
+        this.owner = owner;
+        this.backingInstance = backingInstance;
+        this.model = model;
+        this.host = host;
+    }
 
     public setup(selectionMode: Gtk.SelectionMode | null | undefined): void {
         if (this.host.isDropDown()) {

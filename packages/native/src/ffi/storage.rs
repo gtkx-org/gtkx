@@ -1,13 +1,3 @@
-//! Argument-lifetime storage for encoded FFI values.
-//!
-//! An [`FfiStorage`] keeps whatever backing memory an encoded argument needs
-//! alive for the duration of one native call: staging buffers, `GLib`
-//! containers, retained `CString`s, out-parameter slots. Its `ptr` is the
-//! address handed to libffi; its [`FfiStorageKind`] decides what `Drop`
-//! releases. The recurring `should_free` flag means "this storage still owns
-//! the `GLib` container when it drops" — it is `false` exactly when the
-//! callee took the container per the descriptor's transfer mode.
-
 use std::cell::Cell;
 use std::ffi::c_void;
 
@@ -16,7 +6,6 @@ use glib::translate::IntoGlib as _;
 use crate::managed::UnrefFn;
 use crate::types::{BigIntKind, IntegerKind};
 
-/// Backing memory for one encoded argument, dropped after the native call.
 pub struct FfiStorage {
     ptr: *mut c_void,
     kind: FfiStorageKind,
@@ -32,20 +21,12 @@ impl std::fmt::Debug for FfiStorage {
     }
 }
 
-/// Ownership a transfer-full argument encoder paid up front.
-///
-/// Covers a duplicated string, a boxed copy, an added object reference, or a
-/// container built for the callee. The storage releases it on drop unless the
-/// native call actually happened
-/// ([`FfiStorage::disarm_pending_transfer`]), at which point the callee owns
-/// it.
 #[derive(Debug, Clone)]
 pub struct PendingTransfer {
     ptr: *mut c_void,
     release: PendingRelease,
 }
 
-/// How a [`PendingTransfer`] releases the ownership it guards.
 #[derive(Debug, Clone)]
 pub enum PendingRelease {
     GFree,
@@ -53,34 +34,21 @@ pub enum PendingRelease {
     BoxedFree(glib::Type),
     Fundamental(UnrefFn),
     StrFreeV,
-    /// Frees the GLib-allocated strings of a NULL-terminated pointer block
-    /// whose container itself is caller-owned.
     StringElements,
     HashTableUnref,
     GArrayUnref,
     GByteArrayUnref,
-    /// Frees a `GList` spine with `g_list_free`, leaving elements untouched.
     ListSpineFree,
-    /// Frees a `GSList` spine with `g_slist_free`, leaving elements
-    /// untouched.
     SListSpineFree,
-    /// One release per element acquisition plus the container, fired
-    /// together when the call never happens — the shape of a transfer-full
-    /// container argument whose elements were individually referenced,
-    /// copied, or duplicated.
     Group(Vec<PendingTransfer>),
 }
 
 impl PendingTransfer {
-    /// Pairs an acquired pointer with its release, for grouped arming or for
-    /// an encoder unwinding a partial build.
     #[must_use]
     pub fn new(ptr: *mut c_void, release: PendingRelease) -> Self {
         Self { ptr, release }
     }
 
-    /// Releases the guarded ownership immediately — the unwind path of an
-    /// encoder that fails mid-build after acquiring per-element ownership.
     pub fn release_now(self) {
         self.release();
     }
@@ -89,9 +57,6 @@ impl PendingTransfer {
         if self.ptr.is_null() {
             return;
         }
-        // SAFETY: The transfer guards the one ownership the encode stage
-        // acquired over `ptr`; release consumes `self`, so it runs exactly
-        // once with the matching destructor.
         unsafe {
             match self.release {
                 PendingRelease::GFree => glib::ffi::g_free(self.ptr),
@@ -137,8 +102,6 @@ impl PendingTransfer {
     }
 }
 
-/// A `GList` of handle elements: the handles keep the elements alive for the
-/// call; `should_free` releases the spine with `g_list_free` on drop.
 #[derive(Debug)]
 pub struct GListData {
     pub handles: Vec<crate::managed::NativeHandle>,
@@ -146,7 +109,6 @@ pub struct GListData {
     pub should_free: bool,
 }
 
-/// A `GSList` of handle elements; see [`GListData`].
 #[derive(Debug)]
 pub struct GSListData {
     pub handles: Vec<crate::managed::NativeHandle>,
@@ -154,11 +116,6 @@ pub struct GSListData {
     pub should_free: bool,
 }
 
-/// A `GList` of string elements.
-///
-/// `elements_duped` records whether the list nodes point at GLib-allocated
-/// duplicates (freed with `g_list_free_full` when `should_free`) or borrow
-/// the retained `strings` (spine-only `g_list_free`).
 #[derive(Debug)]
 pub struct StringGListData {
     pub strings: Vec<std::ffi::CString>,
@@ -167,7 +124,6 @@ pub struct StringGListData {
     pub elements_duped: bool,
 }
 
-/// A `GSList` of string elements; see [`StringGListData`].
 #[derive(Debug)]
 pub struct StringGSListData {
     pub strings: Vec<std::ffi::CString>,
@@ -176,48 +132,24 @@ pub struct StringGSListData {
     pub elements_duped: bool,
 }
 
-/// The points of variation between the two `GLib` list spines.
-///
-/// A doubly-linked `GList` and a singly-linked `GSList` differ only in their
-/// node type, prepend/free functions, storage-kind variant, and spine-release
-/// — captured here so one encoder and one pair of drop helpers serve both.
-/// Implemented by the [`GListFlavor`] / [`GSListFlavor`] markers.
 pub trait ListFlavor {
-    /// The `glib` spine node type (`GList` or `GSList`).
     type Spine;
-    /// Container label used in element-acquisition error messages.
     const LABEL: &'static str;
 
-    /// Prepends `ptr` to the spine head, returning the new head.
-    ///
-    /// # Safety
-    /// `list` is null or a spine this build owns, and `ptr` is a valid element.
     unsafe fn prepend(list: *mut Self::Spine, ptr: *mut c_void) -> *mut Self::Spine;
 
-    /// Frees the spine, leaving its elements untouched.
-    ///
-    /// # Safety
-    /// `list` is the spine this storage built and still owns.
     unsafe fn free_spine(list: *mut Self::Spine);
 
-    /// Frees the spine and each element with `g_free`.
-    ///
-    /// # Safety
-    /// `list` is the spine this storage built; its elements are GLib-allocated
-    /// duplicates nothing else owns.
     unsafe fn free_spine_full(list: *mut Self::Spine);
 
-    /// The spine-only release a transfer-container argument arms.
     fn spine_release() -> PendingRelease;
 
-    /// Wraps a built handle spine in its [`FfiStorageKind`] variant.
     fn handle_storage(
         handles: Vec<crate::managed::NativeHandle>,
         list_ptr: *mut Self::Spine,
         should_free: bool,
     ) -> FfiStorageKind;
 
-    /// Wraps a built string spine in its [`FfiStorageKind`] variant.
     fn string_storage(
         strings: Vec<std::ffi::CString>,
         list_ptr: *mut Self::Spine,
@@ -226,10 +158,8 @@ pub trait ListFlavor {
     ) -> FfiStorageKind;
 }
 
-/// Doubly-linked `GList` flavor.
 #[derive(Debug)]
 pub struct GListFlavor;
-/// Singly-linked `GSList` flavor.
 #[derive(Debug)]
 pub struct GSListFlavor;
 
@@ -238,17 +168,14 @@ impl ListFlavor for GListFlavor {
     const LABEL: &'static str = "GList";
 
     unsafe fn prepend(list: *mut glib::ffi::GList, ptr: *mut c_void) -> *mut glib::ffi::GList {
-        // SAFETY: forwarded from this method's safety contract.
         unsafe { glib::ffi::g_list_prepend(list, ptr) }
     }
 
     unsafe fn free_spine(list: *mut glib::ffi::GList) {
-        // SAFETY: forwarded from this method's safety contract.
         unsafe { glib::ffi::g_list_free(list) };
     }
 
     unsafe fn free_spine_full(list: *mut glib::ffi::GList) {
-        // SAFETY: forwarded from this method's safety contract.
         unsafe { glib::ffi::g_list_free_full(list, Some(glib::ffi::g_free)) };
     }
 
@@ -288,17 +215,14 @@ impl ListFlavor for GSListFlavor {
     const LABEL: &'static str = "GSList";
 
     unsafe fn prepend(list: *mut glib::ffi::GSList, ptr: *mut c_void) -> *mut glib::ffi::GSList {
-        // SAFETY: forwarded from this method's safety contract.
         unsafe { glib::ffi::g_slist_prepend(list, ptr) }
     }
 
     unsafe fn free_spine(list: *mut glib::ffi::GSList) {
-        // SAFETY: forwarded from this method's safety contract.
         unsafe { glib::ffi::g_slist_free(list) };
     }
 
     unsafe fn free_spine_full(list: *mut glib::ffi::GSList) {
-        // SAFETY: forwarded from this method's safety contract.
         unsafe { glib::ffi::g_slist_free_full(list, Some(glib::ffi::g_free)) };
     }
 
@@ -333,32 +257,20 @@ impl ListFlavor for GSListFlavor {
     }
 }
 
-/// A built `GArray`, unreffed on drop when `should_free`. Element cleanup is
-/// the array's own clear function, installed at construction.
 #[derive(Debug)]
 pub struct GArrayData {
     pub array_ptr: *mut glib::ffi::GArray,
     pub should_free: bool,
 }
 
-/// A built `GHashTable`, unreffed on drop when `should_free`. Entry cleanup
-/// is the table's own destroy notifies, installed at construction.
 #[derive(Debug)]
 pub struct HashTableData {
     pub handle: *mut glib::ffi::GHashTable,
     pub should_free: bool,
 }
 
-/// What an [`FfiStorage`] owns, deciding the release its `Drop` performs.
-///
-/// The numeric `*Vec` variants, `StringArray`/`ObjectArray`, `CString`,
-/// `Buffer`, `PtrStorage`, and `StrV` own plain Rust or `glib` allocations
-/// whose own destructors suffice; the `GLib`-container variants carry the
-/// flags documented on their data structs.
 #[derive(Debug)]
 pub enum FfiStorageKind {
-    /// No backing memory of its own: `ptr` points at memory owned elsewhere
-    /// (or deliberately leaked to the callee).
     Unit,
     U8Vec(Vec<u8>),
     I8Vec(Vec<i8>),
@@ -398,8 +310,6 @@ impl FfiStorage {
         Self::new(ptr, FfiStorageKind::Unit)
     }
 
-    /// Arms the storage with ownership the encoder paid up front, to be
-    /// released on drop unless [`Self::disarm_pending_transfer`] runs first.
     #[must_use]
     pub fn with_pending_transfer(self, ptr: *mut c_void, release: PendingRelease) -> Self {
         self.pending_transfer
@@ -407,8 +317,6 @@ impl FfiStorage {
         self
     }
 
-    /// Hands the armed ownership to the callee: the native call happened, so
-    /// the transfer contract is fulfilled and drop must release nothing.
     pub fn disarm_pending_transfer(&self) {
         self.pending_transfer.set(None);
     }
@@ -507,12 +415,6 @@ impl FfiStorage {
     }
 }
 
-/// Frees a `GList`/`GSList` of duplicated string elements, dispatching to the
-/// `_free_full` or plain `_free` variant based on whether the elements were
-/// duplicated on the way in.
-///
-/// `is_null` and the two closures carry the list-type-specific bindings the
-/// caller already has in hand; this helper only owns the branching.
 fn free_string_list<F, G>(
     should_free: bool,
     is_null: bool,
@@ -533,17 +435,12 @@ fn free_string_list<F, G>(
     }
 }
 
-/// Frees a built handle spine on drop, leaving its elements to the handles.
 fn drop_handle_spine<F: ListFlavor>(list_ptr: *mut F::Spine, should_free: bool) {
     if should_free && !list_ptr.is_null() {
-        // SAFETY: `should_free` marks the storage as owning the spine it built;
-        // the elements stay owned by the retained handles.
         unsafe { F::free_spine(list_ptr) };
     }
 }
 
-/// Frees a built string spine on drop, dispatching to the `_free_full` or plain
-/// `_free` variant per whether the elements were duplicated on the way in.
 fn drop_string_spine<F: ListFlavor>(
     list_ptr: *mut F::Spine,
     should_free: bool,
@@ -553,11 +450,7 @@ fn drop_string_spine<F: ListFlavor>(
         should_free,
         list_ptr.is_null(),
         elements_duped,
-        // SAFETY: the storage owns the list it built, and duplicated elements
-        // are g_malloc'd strings nothing else owns.
         || unsafe { F::free_spine_full(list_ptr) },
-        // SAFETY: the storage owns the list it built; the elements stay owned
-        // by the retained CStrings.
         || unsafe { F::free_spine(list_ptr) },
     );
 }
@@ -565,16 +458,12 @@ fn drop_string_spine<F: ListFlavor>(
 impl FfiStorage {
     fn drop_hash_table(data: &HashTableData) {
         if data.should_free && !data.handle.is_null() {
-            // SAFETY: `should_free` marks the storage as holding the one
-            // reference the encode created.
             unsafe { glib::ffi::g_hash_table_unref(data.handle) };
         }
     }
 
     fn drop_garray(data: &GArrayData) {
         if data.should_free && !data.array_ptr.is_null() {
-            // SAFETY: `should_free` marks the storage as holding the one
-            // reference the encode created.
             unsafe { glib::ffi::g_array_unref(data.array_ptr) };
         }
     }

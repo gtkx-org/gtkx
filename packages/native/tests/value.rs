@@ -74,7 +74,6 @@ fn string_array_type_of(item: Ownership, container: Ownership, kind: ArrayKind) 
     })
 }
 
-/// Decodes `ptr` with `ty`, asserting the decode succeeds.
 fn decode_ptr(ty: &Type, ptr: *mut c_void) -> Value {
     ty.decode(&ffi::FfiValue::Ptr(ptr))
         .expect("decode should succeed")
@@ -104,33 +103,24 @@ fn assert_string_item(items: &[Value], index: usize, expected: &str) {
     }
 }
 
-/// Builds a `GList` of `count` fresh `GObjects`, taking one extra reference
-/// per element that the caller balances.
 fn build_gobject_glist(count: usize) -> *mut glib::ffi::GList {
     let mut list: *mut glib::ffi::GList = std::ptr::null_mut();
     for _ in 0..count {
         let obj = glib::Object::new::<glib::Object>();
-        // SAFETY: Takes a reference on the live GObject; the caller balances it.
         unsafe {
             glib::gobject_ffi::g_object_ref(obj.as_ptr());
         }
-        // SAFETY: Appending to a (possibly null) GList head only requires a valid element pointer.
         list = unsafe { glib::ffi::g_list_append(list, obj.as_ptr() as *mut c_void) };
     }
     list
 }
 
-/// Builds the scalar out-parameter slot a `Ref` scalar encode produces: an
-/// aligned `u64`-backed storage seeded with the scalar payload of `value`.
 fn scalar_slot_storage(value: &ffi::FfiValue) -> ffi::FfiValue {
     let storage = ffi::FfiStorage::from(vec![0u64]);
-    // SAFETY: The storage is a live, aligned 8-byte slot.
     unsafe { value.write_scalar_to(storage.ptr()) }.expect("scalar payload should write");
     ffi::FfiValue::Storage(storage)
 }
 
-/// Decodes a seeded scalar out slot through `Ref<inner>`, asserting the
-/// decoded number equals `expected`.
 fn assert_scalar_ref_decodes_to_number(inner: Type, seeded: &ffi::FfiValue, expected: f64) {
     let cif_value = scalar_slot_storage(seeded);
     let type_ = Type::Ref(native::types::RefType::new(inner));
@@ -140,8 +130,6 @@ fn assert_scalar_ref_decodes_to_number(inner: Type, seeded: &ffi::FfiValue, expe
     assert_eq!(n, expected);
 }
 
-/// Builds the pointer out-parameter slot a `Ref` pointer encode produces,
-/// seeded with `ptr` as the value the callee wrote.
 fn ptr_slot_storage(ptr: *mut c_void) -> ffi::FfiValue {
     let mut slot: Vec<*mut c_void> = vec![ptr];
     let storage_ptr = slot.as_mut_ptr() as *mut c_void;
@@ -151,11 +139,7 @@ fn ptr_slot_storage(ptr: *mut c_void) -> ffi::FfiValue {
     ))
 }
 
-/// Decodes a `g_malloc0`'d allocation of `bytes` through a plain struct type,
-/// asserting an object handle results. Borrowed decodes leave the allocation
-/// caller-owned, so the helper frees it; full decodes hand it to the handle.
 fn assert_struct_alloc_decodes_to_object(ownership: Ownership, size: Option<usize>, bytes: usize) {
-    // SAFETY: Allocating zeroed memory has no pointer preconditions.
     let struct_ptr = unsafe { glib::ffi::g_malloc0(bytes) };
 
     let result = decode_ptr(&struct_type_of(ownership, size), struct_ptr);
@@ -165,12 +149,10 @@ fn assert_struct_alloc_decodes_to_object(ownership: Ownership, size: Option<usiz
     );
 
     if ownership.is_borrowed() {
-        // SAFETY: Frees the allocation this test owns.
         unsafe { glib::ffi::g_free(struct_ptr) };
     }
 }
 
-/// Asserts an accessor-style predicate holds for every sample value.
 fn assert_for_each(samples: Vec<Value>, predicate: impl Fn(&Value) -> bool) {
     for sample in samples {
         assert!(predicate(&sample), "predicate failed for {sample:?}");
@@ -192,12 +174,9 @@ fn gobject_transfer_none_does_not_take_ownership() {
 
         assert_eq!(get_gobject_refcount(obj_ptr), initial_ref + 1);
 
-        // The handle is a non-owning pointer carrier; dropping it releases nothing.
-        // The pending reference is consumed by `setWrapper` in production.
         drop(result);
         assert_eq!(get_gobject_refcount(obj_ptr), initial_ref + 1);
 
-        // SAFETY: Releases a reference this test owns on the live GObject.
         unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
         assert_eq!(get_gobject_refcount(obj_ptr), initial_ref);
     });
@@ -209,7 +188,6 @@ fn gobject_full_transfer_keeps_pending_reference() {
         let obj = glib::Object::new::<glib::Object>();
         let obj_ptr = obj.as_ptr();
 
-        // SAFETY: Takes a reference on the live GObject; this test balances it itself.
         unsafe {
             glib::gobject_ffi::g_object_ref(obj_ptr);
         }
@@ -218,15 +196,11 @@ fn gobject_full_transfer_keeps_pending_reference() {
 
         let result = decode_ptr(&gobject_type_of(Ownership::Full), obj_ptr as *mut c_void);
 
-        // Transfer-full keeps the caller's reference as the single pending ref.
         assert_eq!(get_gobject_refcount(obj_ptr), ref_before_transfer);
 
-        // The non-owning handle releases nothing on drop; `setWrapper` consumes
-        // the pending reference in production.
         drop(result);
         assert_eq!(get_gobject_refcount(obj_ptr), ref_before_transfer);
 
-        // SAFETY: Releases a reference this test owns on the live GObject.
         unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
         assert_eq!(get_gobject_refcount(obj_ptr), ref_before_transfer - 1);
     });
@@ -245,19 +219,16 @@ fn gobject_floating_ref_gets_sunk() {
         let obj = glib::Object::new::<glib::Object>();
         let obj_ptr = obj.as_ptr();
 
-        // SAFETY: `obj_ptr` is a live GObject this test owns; the forced floating state is consumed by the decode.
         unsafe {
             glib::gobject_ffi::g_object_ref(obj_ptr);
             glib::gobject_ffi::g_object_force_floating(obj_ptr);
         }
 
-        // SAFETY: `obj_ptr` is a live GObject.
         let is_floating_before = unsafe { glib::gobject_ffi::g_object_is_floating(obj_ptr) != 0 };
         assert!(is_floating_before);
 
         decode_ptr(&gobject_type_of(Ownership::Full), obj_ptr as *mut c_void);
 
-        // SAFETY: `obj_ptr` is a live GObject.
         let is_floating_after = unsafe { glib::gobject_ffi::g_object_is_floating(obj_ptr) != 0 };
         assert!(!is_floating_after);
     });
@@ -272,7 +243,6 @@ fn string_transfer_none_does_not_free() {
 
         assert_ptr_decodes_to_string(&string_type_of(Ownership::Borrowed), ptr, test_string);
 
-        // SAFETY: `c_string` is a live NUL-terminated local.
         let still_valid = unsafe { std::ffi::CStr::from_ptr(c_string.as_ptr()) };
         assert_eq!(still_valid.to_str().unwrap(), test_string);
     });
@@ -283,7 +253,6 @@ fn string_full_transfer_frees_memory() {
     common::run(|| {
         let test_string = "allocated string";
         let c_string = std::ffi::CString::new(test_string).unwrap();
-        // SAFETY: Duplicating a live NUL-terminated local has no other preconditions.
         let allocated_ptr = unsafe { glib::ffi::g_strdup(c_string.as_ptr()) };
 
         assert_ptr_decodes_to_string(
@@ -311,7 +280,6 @@ fn boxed_transfer_none_creates_copy() {
 
         assert!(common::is_valid_boxed_ptr(original_ptr, gtype));
 
-        // SAFETY: Frees the boxed allocation this test owns.
         unsafe {
             glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original_ptr);
         }
@@ -348,19 +316,15 @@ fn glist_transfer_none_does_not_free_list() {
 
         assert!(!list.is_null());
 
-        // SAFETY: `list` is a live GList built by this test.
         let length = unsafe { glib::ffi::g_list_length(list) };
         for index in 0..length {
-            // SAFETY: `list` is a live GList built by this test.
             let data = unsafe { glib::ffi::g_list_nth_data(list, index) };
             if !data.is_null() {
-                // SAFETY: Releases the reference this test took for the list element.
                 unsafe {
                     glib::gobject_ffi::g_object_unref(data as *mut glib::gobject_ffi::GObject);
                 }
             }
         }
-        // SAFETY: Frees the list this test owns.
         unsafe {
             glib::ffi::g_list_free(list);
         }
@@ -407,7 +371,6 @@ fn strv_transfer_none_does_not_free() {
         assert_string_item(&items, 1, "world");
 
         assert_eq!(
-            // SAFETY: The decoded StrV elements are live NUL-terminated strings.
             unsafe { std::ffi::CStr::from_ptr(strings[0].as_ptr()) }
                 .to_str()
                 .unwrap(),
@@ -419,12 +382,9 @@ fn strv_transfer_none_does_not_free() {
 #[test]
 fn strv_full_transfer_frees_strings() {
     common::run(|| {
-        // SAFETY: Duplicating a static NUL-terminated literal has no pointer preconditions.
         let s1 = unsafe { glib::ffi::g_strdup(c"hello".as_ptr()) };
-        // SAFETY: Duplicating a static NUL-terminated literal has no pointer preconditions.
         let s2 = unsafe { glib::ffi::g_strdup(c"world".as_ptr()) };
 
-        // SAFETY: g_malloc aborts on failure, so the three-slot buffer is writable; `s1` and `s2` are live duplicates.
         let strv = unsafe {
             let ptr = glib::ffi::g_malloc(3 * std::mem::size_of::<*mut i8>()) as *mut *mut i8;
             *ptr = s1;
@@ -444,7 +404,6 @@ fn strv_full_transfer_frees_strings() {
 #[test]
 fn from_cif_value_fundamental_gvariant_transfer_none() {
     common::run(|| {
-        // SAFETY: Creating and sinking a fresh GVariant has no pointer preconditions.
         let variant = unsafe {
             let ptr = glib::ffi::g_variant_new_int32(42);
             glib::ffi::g_variant_ref_sink(ptr);
@@ -457,7 +416,6 @@ fn from_cif_value_fundamental_gvariant_transfer_none() {
         );
         assert!(matches!(result, Value::Object(_)), "Expected Value::Object");
 
-        // SAFETY: Releases the reference this test owns on the live GVariant.
         unsafe {
             glib::ffi::g_variant_unref(variant);
         }
@@ -544,7 +502,6 @@ fn from_cif_value_ref_boxed() {
         let result = type_.decode(&cif_value).expect("Ref<Boxed> decode failed");
         assert!(matches!(result, Value::Object(_)));
 
-        // SAFETY: Frees the boxed allocation this test owns.
         unsafe {
             glib::gobject_ffi::g_boxed_free(gtype.into_glib(), boxed_ptr);
         }
@@ -558,9 +515,7 @@ fn glist_with_string_items() {
         let s2 = std::ffi::CString::new("world").unwrap();
 
         let mut list: *mut glib::ffi::GList = std::ptr::null_mut();
-        // SAFETY: Appending to a (possibly null) GList head only requires a valid element pointer.
         list = unsafe { glib::ffi::g_list_append(list, s1.as_ptr() as *mut c_void) };
-        // SAFETY: Appending to a (possibly null) GList head only requires a valid element pointer.
         list = unsafe { glib::ffi::g_list_append(list, s2.as_ptr() as *mut c_void) };
 
         let items = decode_array(
@@ -571,7 +526,6 @@ fn glist_with_string_items() {
         assert_string_item(&items, 0, "hello");
         assert_string_item(&items, 1, "world");
 
-        // SAFETY: Frees the list this test owns.
         unsafe {
             glib::ffi::g_list_free(list);
         }

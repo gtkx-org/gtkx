@@ -2,13 +2,6 @@ import { cleanup } from "@gtkx/testing";
 import { bench, describe } from "vitest";
 import { renderListView } from "../helpers/list-fixtures.js";
 
-/**
- * Sizes grown geometrically so an instruction-count gate (CodSpeed) sees a
- * flat per-item slope for `ListController`'s linear keyed diff and a rising
- * slope for any quadratic regression. Each bench loops one splice shape and
- * its inverse so the incremental item diff — not the one-time mount —
- * dominates the measurement.
- */
 const SIZES = [100, 400];
 
 const makeIds = (n: number): string[] => Array.from({ length: n }, (_, i) => `row-${i}`);

@@ -43,13 +43,6 @@ const cairoImageSurfaceGetStride = bind(
 );
 
 export class ImageSurface extends Surface {
-    /**
-     * Allocates an image surface of the given pixel `format` and dimensions.
-     *
-     * @param format - The pixel format of the surface
-     * @param width - Width of the surface in pixels
-     * @param height - Height of the surface in pixels
-     */
     constructor(format: Format, width: number, height: number) {
         super();
         setHandle(this, cairoImageSurfaceCreate(format, width, height) as Handle);

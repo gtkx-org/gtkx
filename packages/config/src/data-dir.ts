@@ -1,16 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-/**
- * The Node subpath-import prefix every bundled-data import is rooted at.
- * An app declares where it points with a `package.json` `imports` entry —
- * `{ "imports": { "#data/*": "./data/*" } }` — which Node, Vite, and
- * TypeScript all resolve natively, and which GTKX reads back to locate the
- * directory holding GResource assets and GSettings schemas.
- */
 export const DATA_IMPORT_PREFIX = "#data";
 
-/** The `imports` key GTKX reads to locate the data directory. */
 export const DATA_IMPORT_KEY: string = `${DATA_IMPORT_PREFIX}/*`;
 
 const CONDITION_PRIORITY = ["default", "import", "node"] as const;
@@ -34,18 +26,6 @@ const directoryFromTarget = (target: string): string | null => {
     return match?.[1] ?? null;
 };
 
-/**
- * Resolves the project-relative data directory from a package.json
- * `imports` map, reading the {@link DATA_IMPORT_KEY} entry.
- *
- * `{ "imports": { "#data/*": "./data/*" } }` yields `"data"`. Returns `null`
- * when the project has no `package.json`, no `#data/*` entry, or an entry
- * whose target is not a `./<dir>/*` glob — in which case `#data/` imports do
- * not resolve and no data directory is scanned.
- *
- * @param root - Absolute path of the project root
- * @returns The project-relative data directory, or `null` when unconfigured
- */
 export const resolveDataDir = (root: string): string | null => {
     let manifest: { imports?: Record<string, unknown> };
     try {

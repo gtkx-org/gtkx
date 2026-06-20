@@ -24,7 +24,6 @@ interface ActionSpec {
     onActivate?: () => void;
 }
 
-/** A `<GSimpleActionGroup>` installed on the column view's scroll container under `prefix`. */
 const actionGroup = (prefix: string, specs: ActionSpec[]): ReactNode => (
     <GSimpleActionGroup prefix={prefix}>
         {specs.map((spec) => (
@@ -33,14 +32,11 @@ const actionGroup = (prefix: string, specs: ActionSpec[]): ReactNode => (
     </GSimpleActionGroup>
 );
 
-/** Leaf menu entries referencing `${prefix}.${id}` actions. */
 const menuEntries = (prefix: string, specs: ActionSpec[]): MenuEntry[] =>
     specs.map((spec) => ({ label: spec.label, action: `${prefix}.${spec.id}` }));
 
-/** A flat `<GMenu>` whose items reference `${prefix}.${id}` actions. */
 const flatMenu = (prefix: string, specs: ActionSpec[]): ReactElement => <GMenu items={menuEntries(prefix, specs)} />;
 
-/** A `<GMenu>` of sections, each section grouping its specs' entries inline. */
 const sectionedMenu = (prefix: string, sections: ActionSpec[][]): ReactElement => (
     <GMenu items={sections.map((specs) => ({ section: menuEntries(prefix, specs) }))} />
 );
@@ -61,7 +57,6 @@ const getColumn = (columnView: Gtk.ColumnView, index: number): Gtk.ColumnViewCol
     return columnView.getColumns().getItem(index) as Gtk.ColumnViewColumn;
 };
 
-/** Asserts each column's header menu item count, where `null` expects no header menu at all. */
 const expectHeaderMenuItemCounts = (
     columnViewRef: RefObject<Gtk.ColumnView | null>,
     expectedCounts: (number | null)[],

@@ -1,9 +1,3 @@
-//! FFI value encoding and decoding.
-//!
-//! Converts between JavaScript values and FFI-compatible representations:
-//! encoding values for native calls and decoding return values back to
-//! JavaScript.
-
 mod storage;
 mod value;
 

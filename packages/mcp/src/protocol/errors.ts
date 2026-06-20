@@ -1,35 +1,19 @@
-/**
- * Error codes for MCP protocol errors.
- */
-export enum McpErrorCode {
-    /** Internal server error */
-    INTERNAL_ERROR = 1000,
-    /** No GTKX application is connected */
-    NO_APP_CONNECTED = 1001,
-    /** Requested application ID was not found */
-    APP_NOT_FOUND = 1002,
-    /** Widget with specified ID was not found */
-    WIDGET_NOT_FOUND = 1003,
-    /** Connection write failed (socket not writable) */
-    CONNECTION_WRITE_FAILED = 1004,
-    /** IPC request timed out */
-    IPC_TIMEOUT = 1008,
-    /** Request format is invalid */
-    INVALID_REQUEST = 1010,
-    /** Requested method does not exist */
-    METHOD_NOT_FOUND = 1011,
-}
+export const McpErrorCode = {
+    INTERNAL_ERROR: 1000,
+    NO_APP_CONNECTED: 1001,
+    APP_NOT_FOUND: 1002,
+    WIDGET_NOT_FOUND: 1003,
+    CONNECTION_WRITE_FAILED: 1004,
+    IPC_TIMEOUT: 1008,
+    INVALID_REQUEST: 1010,
+    METHOD_NOT_FOUND: 1011,
+} as const;
 
-/**
- * Error class for MCP protocol errors.
- *
- * Contains an error code, message, and optional additional data.
- */
+export type McpErrorCode = (typeof McpErrorCode)[keyof typeof McpErrorCode];
+
 export class McpError extends Error {
-    /** The MCP error code */
-    readonly code: McpErrorCode;
-    /** Additional error context */
-    readonly data?: unknown;
+    code: McpErrorCode;
+    data?: unknown;
 
     constructor(code: McpErrorCode, message: string, data?: unknown) {
         super(message);
@@ -38,11 +22,6 @@ export class McpError extends Error {
         this.name = "McpError";
     }
 
-    /**
-     * Converts the error to an IPC-compatible format.
-     *
-     * @returns Object suitable for IPC response error field
-     */
     toIpcError(): { code: number; message: string; data?: unknown } {
         return {
             code: this.code,
@@ -52,11 +31,6 @@ export class McpError extends Error {
     }
 }
 
-/**
- * Creates an error for when no GTKX application is connected.
- *
- * @returns McpError with NO_APP_CONNECTED code
- */
 export function noAppConnectedError(): McpError {
     return new McpError(
         McpErrorCode.NO_APP_CONNECTED,
@@ -65,24 +39,10 @@ export function noAppConnectedError(): McpError {
     );
 }
 
-/**
- * Creates an error for when a requested app is not found.
- *
- * @param applicationId - The application ID that was not found
- * @returns McpError with APP_NOT_FOUND code
- */
 export function appNotFoundError(applicationId: string): McpError {
     return new McpError(McpErrorCode.APP_NOT_FOUND, `Application '${applicationId}' not found`, { applicationId });
 }
 
-/**
- * Creates an error for when the underlying socket for a registered app
- * is not writable (typically because the app disconnected between routing
- * the request and writing the frame).
- *
- * @param applicationId - The application ID whose connection failed.
- * @returns McpError with CONNECTION_WRITE_FAILED code.
- */
 export function connectionWriteFailedError(applicationId: string): McpError {
     return new McpError(
         McpErrorCode.CONNECTION_WRITE_FAILED,
@@ -91,42 +51,18 @@ export function connectionWriteFailedError(applicationId: string): McpError {
     );
 }
 
-/**
- * Creates an error for when a widget is not found.
- *
- * @param widgetId - The widget ID that was not found
- * @returns McpError with WIDGET_NOT_FOUND code
- */
 export function widgetNotFoundError(widgetId: string): McpError {
     return new McpError(McpErrorCode.WIDGET_NOT_FOUND, `Widget '${widgetId}' not found`, { widgetId });
 }
 
-/**
- * Creates an error for when an IPC request times out.
- *
- * @param timeout - The timeout duration in milliseconds
- * @returns McpError with IPC_TIMEOUT code
- */
 export function ipcTimeoutError(timeout: number): McpError {
     return new McpError(McpErrorCode.IPC_TIMEOUT, `IPC request timed out after ${timeout}ms`, { timeout });
 }
 
-/**
- * Creates an error for invalid request format.
- *
- * @param reason - Description of why the request is invalid
- * @returns McpError with INVALID_REQUEST code
- */
 export function invalidRequestError(reason: string): McpError {
     return new McpError(McpErrorCode.INVALID_REQUEST, `Invalid request: ${reason}`, { reason });
 }
 
-/**
- * Creates an error for when a method is not found.
- *
- * @param method - The method name that was not found
- * @returns McpError with METHOD_NOT_FOUND code
- */
 export function methodNotFoundError(method: string): McpError {
     return new McpError(McpErrorCode.METHOD_NOT_FOUND, `Method '${method}' not found`, { method });
 }

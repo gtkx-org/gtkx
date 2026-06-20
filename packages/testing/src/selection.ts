@@ -90,14 +90,6 @@ const selectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
     }
 };
 
-/**
- * Selects options in a dropdown or list.
- *
- * Works with DropDown, ComboBox, ListBox, ListView, GridView, and ColumnView.
- *
- * @param widget - The selectable widget
- * @param values - Index or array of indices to select
- */
 export const selectOptions = async (widget: Gtk.Widget, values: number | number[]): Promise<void> => {
     await act(() => {
         const valueArray = Array.isArray(values) ? values : [values];
@@ -116,14 +108,6 @@ const deselectInListView = (widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView
     }
 };
 
-/**
- * Deselects options in a list.
- *
- * Works with ListBox and multi-selection list views.
- *
- * @param widget - The selectable widget
- * @param values - Index or array of indices to deselect
- */
 export const deselectOptions = async (widget: Gtk.Widget, values: number | number[]): Promise<void> => {
     await act(() => {
         const valueArray = Array.isArray(values) ? values : [values];

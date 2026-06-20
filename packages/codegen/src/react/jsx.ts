@@ -9,48 +9,22 @@ import { buildWidgetPropsEntries } from "./props.js";
 import { BUILT_IN_PROPS_MIXINS, WIDGET_BASE_PROPS_MIXINS } from "./tables.js";
 import { collectReactNodeClasses, type WidgetCandidate } from "./widgets.js";
 
-/** Merged JSX-surface maps keyed by JSX element name, threaded into {@link generateJsxSection}. */
 export type JsxSurfaceMaps = {
-    /** Container-slot methods keyed by JSX element name. */
-    readonly containerPropMap?: Readonly<Record<string, readonly string[]>>;
-    /** Array-prop rows keyed by JSX element name then prop name. */
-    readonly arrayPropMap?: PerElementPropRows<ArrayPropRow>;
-    /** Object-prop rows keyed by JSX element name then prop name. */
-    readonly objectPropMap?: PerElementPropRows<ObjectPropRow>;
-    /** Virtual-prop rows keyed by JSX element name then prop name. */
-    readonly virtualPropMap?: PerElementPropRows<VirtualPropRow>;
+    containerPropMap?: Record<string, string[]>;
+    arrayPropMap?: PerElementPropRows<ArrayPropRow>;
+    objectPropMap?: PerElementPropRows<ObjectPropRow>;
+    virtualPropMap?: PerElementPropRows<VirtualPropRow>;
 };
 
-/**
- * Generates the intrinsic/Props section of one namespace's `@gtkx/jsx`
- * module: one `export const Name = "Name"` per JSX intrinsic element NOT exported
- * as a compound, an `export interface NameProps` per intrinsic, the synthetic
- * `WidgetProps` base when this namespace owns the root of the prop chain, and
- * the `React.JSX.IntrinsicElements` augmentation — each scoped to the target
- * namespace's widgets.
- *
- * Parent-prop inheritance resolves against the full repository, so a widget whose
- * parent lives in another namespace records a cross-namespace `Props` import into
- * `imports`; same-namespace parents resolve locally. Every other import need
- * (`react` builtins, GIR namespace aliases, shared item types) is accumulated
- * into `imports` for the pipeline to render once.
- *
- * @param targetNamespace - The namespace this module is generated for
- * @param repository - The loaded GIR repository
- * @param options - The compound-exported names to skip, the merged slot/array-prop
- *   maps, and the shared import accumulator the section populates
- * @returns The rendered section source and the number of intrinsic elements it
- *   emitted, so callers tally widgets without re-parsing the generated text
- */
 export const generateJsxSection = (
     targetNamespace: GirNamespace,
     repository: GirRepository,
     options: {
-        readonly excludeNames: ReadonlySet<string>;
-        readonly maps: JsxSurfaceMaps;
-        readonly imports: JsxImports;
+        excludeNames: Set<string>;
+        maps: JsxSurfaceMaps;
+        imports: JsxImports;
     },
-): { readonly source: string; readonly intrinsicCount: number } => {
+): { source: string; intrinsicCount: number } => {
     const { excludeNames, maps, imports } = options;
     const allWidgets = collectReactNodeClasses(repository);
     const widgets = allWidgets.filter((entry) => entry.namespace.name === targetNamespace.name);
@@ -97,7 +71,7 @@ export const generateJsxSection = (
     return { source, intrinsicCount: intrinsicWidgets.length };
 };
 
-const renderJsxAugmentation = (widgets: readonly WidgetCandidate[]): string =>
+const renderJsxAugmentation = (widgets: WidgetCandidate[]): string =>
     [
         "declare global {",
         "    namespace React.JSX {",
@@ -109,17 +83,17 @@ const renderJsxAugmentation = (widgets: readonly WidgetCandidate[]): string =>
     ].join("\n");
 
 type RenderPropBlockContext = Required<JsxSurfaceMaps> & {
-    readonly isWidgetAncestor: (candidate: GirClass) => boolean;
-    readonly widgetByGlibName: ReadonlyMap<string, WidgetCandidate>;
-    readonly targetNamespaceName: string;
-    readonly imports: JsxImports;
+    isWidgetAncestor: (candidate: GirClass) => boolean;
+    widgetByGlibName: Map<string, WidgetCandidate>;
+    targetNamespaceName: string;
+    imports: JsxImports;
 };
 
 const renderPropBlock = (
     repository: GirRepository,
     entry: WidgetCandidate,
     context: RenderPropBlockContext,
-): { readonly block: string; readonly extendsBase: boolean; readonly slotPropNames: readonly string[] } => {
+): { block: string; extendsBase: boolean; slotPropNames: string[] } => {
     const arrayProps = context.arrayPropMap[entry.glibName] ?? {};
     const objectProps = context.objectPropMap[entry.glibName] ?? {};
     const virtualProps = context.virtualPropMap[entry.glibName] ?? {};
@@ -143,21 +117,23 @@ const renderPropBlock = (
         return itemType;
     };
     const arrayPropLines = Object.entries(arrayProps).map(
-        ([propName, row]) => `    ${propName}?: ${resolveItemType(row.itemType)}[] | null;`,
+        ([propName, row]) => `    ${propName}?: ${resolveItemType(row.itemType)}[] | null | undefined;`,
     );
     const objectPropLines = Object.entries(objectProps).map(
-        ([propName, row]) => `    ${propName}?: ${resolveItemType(row.itemType)} | null;`,
+        ([propName, row]) => `    ${propName}?: ${resolveItemType(row.itemType)} | null | undefined;`,
     );
     const virtualPropLines = Object.entries(virtualProps).map(([propName, row]) => {
         const [namespace] = splitOptionalNamespace(row.type);
         if (namespace) context.imports.giNamespaces.set(namespace, namespace);
-        return `    ${propName}?: ${row.type} | null;`;
+        return `    ${propName}?: ${row.type} | null | undefined;`;
     });
     const ownerLines = [
         "    children?: ReactNode;",
-        `    ref?: Ref<${widgetTypeRef}>;`,
+        `    ref?: Ref<${widgetTypeRef}> | undefined;`,
         ...propLines.map((line) => `    ${line}`),
-        ...(context.containerPropMap[entry.glibName] ?? []).map((method) => `    ${method}?: ReactNode | null;`),
+        ...(context.containerPropMap[entry.glibName] ?? []).map(
+            (method) => `    ${method}?: ReactNode | null | undefined;`,
+        ),
         ...arrayPropLines,
         ...objectPropLines,
         ...virtualPropLines,

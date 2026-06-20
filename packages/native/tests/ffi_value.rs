@@ -1,12 +1,3 @@
-//! Tests for [`native::ffi::FfiValue`] and [`native::ffi::CallbackValue`].
-//!
-//! The armed-callback tests build a real [`TrampolineState`] around an inert
-//! [`JsRef`]: in a `cargo test` process the napi-sys dyn-symbols stubs report
-//! success without allocating a reference, so the state's JS handle is a
-//! harmless null token while its libffi closure and pending-transfer lifetime
-//! protocol are fully live. The [`napi::JsFunction`] compat type those handles
-//! require is deprecated upstream, hence the file-level allow.
-
 #![allow(deprecated)]
 
 mod common;
@@ -36,8 +27,6 @@ fn callback_value(destroy: bool) -> CallbackValue {
 
 fn js_func_ref() -> Arc<JsRef<JsFunction>> {
     let env = Env::from_raw(std::ptr::null_mut());
-    // SAFETY: The null env and value are never dereferenced; the napi-sys
-    // stubs active in a `cargo test` process treat them as opaque tokens.
     let func =
         unsafe { JsFunction::from_raw_unchecked(std::ptr::null_mut(), std::ptr::null_mut()) };
     Arc::new(JsRef::from_js_value(&env, &func).expect("stubbed reference creation should succeed"))
@@ -62,13 +51,8 @@ fn armed_callback_value(
     )
 }
 
-/// Releases a state the value handed over on disarm, mirroring the callee's
-/// destroy-notify protocol, and asserts the state stays alive until then.
 fn release_handed_over_state(state_ptr: *mut c_void, js_func: &Arc<JsRef<JsFunction>>) {
     assert_eq!(Arc::strong_count(js_func), 2);
-    // SAFETY: Disarm handed the boxed state over to the callee's lifetime
-    // protocol; this test acts as the callee and releases it through the
-    // production destroy notify exactly once.
     unsafe { TrampolineState::destroy(state_ptr) };
     assert_eq!(Arc::strong_count(js_func), 1);
 }
@@ -80,8 +64,6 @@ fn new_armed_exposes_state_and_closure_pointers() {
     assert!(!tv.fn_ptr().is_null());
     assert!(!tv.state_ptr().is_null());
     assert_eq!(tv.destroy_ptr(), Some(destroy_ptr));
-    // SAFETY: The armed state stays alive inside `tv`, so its address held
-    // in `state_ptr` is dereferenceable for a shared read.
     let state = unsafe { &*(tv.state_ptr() as *const TrampolineState) };
     assert_eq!(state.code_ptr, tv.fn_ptr());
 }
@@ -150,9 +132,7 @@ fn write_scalar_to_writes_every_numeric_variant() {
             let mut slot: u64 = 0;
             let slot_ptr = &mut slot as *mut u64 as *mut c_void;
             let v = FfiValue::$variant($value);
-            // SAFETY: `slot_ptr` addresses a writable local 8-byte slot.
             unsafe { v.write_scalar_to(slot_ptr) }.expect("scalar write should succeed");
-            // SAFETY: The slot is a live local just written.
             let read = unsafe { *(slot_ptr as *const $ty) };
             assert_eq!(read, $value);
         }};

@@ -4,16 +4,6 @@ import { formatCodegenResult } from "../codegen/report.js";
 import { ensureGenerated, runCodegen, syncSchemaEnv } from "../codegen/run-codegen.js";
 import { info } from "../internal/log.js";
 
-/**
- * `gtkx codegen` — regenerate the TypeScript bindings for the GIR libraries
- * declared in `gtkx.config.ts`.
- *
- * Default: regenerate only when the store is missing or its fingerprint is stale
- * (a changed library set, GIR runtime, or `@gtkx/codegen` version) — the
- * conditional path the `@gtkx/cli#codegen` turbo task and the `gtkx dev`/`gtkx
- * build` preflight use. Pass `--force` to wipe the store and regenerate
- * unconditionally: the last-ditch recovery for a corrupted store.
- */
 export const codegen = defineCommand({
     meta: {
         name: "codegen",

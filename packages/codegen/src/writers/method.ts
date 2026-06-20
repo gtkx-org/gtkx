@@ -13,24 +13,8 @@ import {
 import { renderTsType } from "./ts-type.js";
 import { omitsPrimaryReturn, renderCallbackType, renderFfiType, renderSelfFfiType } from "./value.js";
 
-/**
- * Returns the camelCased JS export name for a callable's method or static.
- *
- * @param fn - The callable
- */
 export const methodExportName = (fn: GirFunction): string => toCamelCase(fn.name);
 
-/**
- * Renders the TypeScript parameter list for a callable.
- *
- * Drops out-only parameters, `<varargs>` slots, and array-length
- * parameters whose value is computed from a sibling array's `.length`.
- * Names follow `toCamelCase` of the GIR name, falling back to
- * `arg<index>` for unnamed positions.
- *
- * @param context - The module context
- * @param fn - The callable
- */
 export const renderMethodSignature = (context: ModuleContext, fn: GirFunction): string =>
     renderInputParameters(
         context,
@@ -59,16 +43,6 @@ const renderInputParameters = (
     return parts.join(", ");
 };
 
-/**
- * Renders the TypeScript return-type annotation for a callable.
- *
- * Multi-out callables tuple the primary return with each out-parameter
- * (`[primary, ...outs]`); when the primary return is void the tuple
- * starts at the first out-parameter.
- *
- * @param context - The module context
- * @param fn - The callable
- */
 export const renderMethodReturnType = (context: ModuleContext, fn: GirFunction): string => {
     const folded = foldedLengthIndices(context.repository, fn);
     const outs = fn.parameters.filter(
@@ -90,21 +64,6 @@ export const renderMethodReturnType = (context: ModuleContext, fn: GirFunction):
     return `[${primary}, ${outTypes.join(", ")}]`;
 };
 
-/**
- * Renders the JS body of a promisified `*_async` method that delegates to
- * the runtime's `promisify` helper.
- *
- * The method's leading FFI args (everything before the `GCancellable*`
- * slot) and the cancellable parameter are extracted from the GIR `*_async`
- * signature; the trailing `GAsyncReadyCallback` slot is filled by
- * `promisify`. The `*_finish` companion is bound from the same class via
- * `this[finishName].bind(this)`.
- *
- * @param context - The module context
- * @param asyncFn - The `*_async` callable
- * @param finishMember - The camelCase JS name of the companion `*_finish` method
- * @param bindingExpression - Expression that evaluates to the bound async callable
- */
 export const renderPromisifiedBody = (
     context: ModuleContext,
     asyncFn: GirFunction,
@@ -143,7 +102,7 @@ export const renderPromisifiedBody = (
     return `return promisify(${bindingExpression}, this.${finishMember}.bind(this), ${cancellableExpression}, { leading: ${leadingLiteral} });`;
 };
 
-const findCancellableIndex = (context: ModuleContext, parameters: readonly GirParameter[]): number => {
+const findCancellableIndex = (context: ModuleContext, parameters: GirParameter[]): number => {
     for (let index = 0; index < parameters.length; index += 1) {
         const parameter = parameters[index];
         if (parameter === undefined) continue;
@@ -152,22 +111,11 @@ const findCancellableIndex = (context: ModuleContext, parameters: readonly GirPa
     return -1;
 };
 
-/**
- * Renders the TypeScript signature for a promisified `*_async` method.
- *
- * The signature drops the trailing `GAsyncReadyCallback` and `gpointer
- * user_data` slots, marks the cancellable optional, and returns a
- * `Promise` wrapping the finish method's return type.
- *
- * @param context - The module context
- * @param asyncFn - The `*_async` callable
- * @param finishFn - The companion `*_finish` callable
- */
 export const renderPromisifiedSignature = (
     context: ModuleContext,
     asyncFn: GirFunction,
     finishFn: GirFunction,
-): { readonly signature: string; readonly returnType: string } => {
+): { signature: string; returnType: string } => {
     const signature = renderInputParameters(
         context,
         asyncFn,
@@ -187,32 +135,12 @@ const isCallbackParameter = (context: ModuleContext, parameter: GirParameter): b
     return context.repository.typeOf(ref)?.kind === "callback";
 };
 
-/**
- * Options accepted by {@link renderMethodBody}.
- */
 export type WriteMethodBodyOptions = {
-    /** Bound `t.fn` callable expression to invoke. */
-    readonly bindingExpression: string;
-    /** True for static methods, constructors, or namespace functions. */
-    readonly isStatic: boolean;
-    /**
-     * Overrides the cast applied to the call result — a constructor narrows it
-     * to its owning class even when the GIR `<return-value>` is a parent type.
-     */
-    readonly returnTypeOverride?: string;
+    bindingExpression: string;
+    isStatic: boolean;
+    returnTypeOverride?: string;
 };
 
-/**
- * Renders the JS body of a method or static: it assembles the call's input
- * values and dispatches the bound {@link t.fn} callable, which owns
- * out-parameter tupling, `GError` handling, and result wrapping. The result is
- * asserted to the rendered return type; a void callable with no out-parameters
- * is a bare statement.
- *
- * @param context - The module context
- * @param fn - The callable
- * @param options - {@link WriteMethodBodyOptions}
- */
 export const renderMethodBody = (context: ModuleContext, fn: GirFunction, options: WriteMethodBodyOptions): string => {
     const { bindingExpression, returnTypeOverride } = options;
     const inputs = planCallArgs(context, fn)
@@ -223,20 +151,15 @@ export const renderMethodBody = (context: ModuleContext, fn: GirFunction, option
     return annotation === "void" ? `${callExpression};` : `return ${callExpression} as ${annotation};`;
 };
 
-/**
- * One positional argument of a call: the `t.fn` parameter descriptor the
- * binding carries, paired with the input expression the body passes (absent for
- * a pure-out the runtime allocates).
- */
 type CallArgPlan = {
-    readonly paramLiteral: string;
-    readonly inputExpr: string | undefined;
+    paramLiteral: string;
+    inputExpr: string | undefined;
 };
 
 type FfiParamOptions = {
-    readonly direction?: "out" | "inout";
-    readonly callerAllocates?: boolean;
-    readonly consumed?: boolean;
+    direction?: "out" | "inout";
+    callerAllocates?: boolean;
+    consumed?: boolean;
 };
 
 const ffiParamLiteral = (ffiExpr: string, options: FfiParamOptions): string => {
@@ -247,14 +170,6 @@ const ffiParamLiteral = (ffiExpr: string, options: FfiParamOptions): string => {
     return `{ ${parts.join(", ")} }`;
 };
 
-/**
- * Renders the FFI return-type descriptor an {@link t.fn} binding carries: the
- * FFI type of the primary return, passed directly as the binding's return type.
- * The descriptor self-resolves the wrapper class the value lifts into.
- *
- * @param context - The module context
- * @param fn - The callable
- */
 export const renderReturnDescriptor = (context: ModuleContext, fn: GirFunction): string => {
     const instanceOffset = fn.instance === undefined ? 0 : 1;
     return renderFfiType(context, fn.returnValue.type, fn.returnValue.transferOwnership, {
@@ -262,20 +177,6 @@ export const renderReturnDescriptor = (context: ModuleContext, fn: GirFunction):
     });
 };
 
-/**
- * Plans a callable's positional arguments for both the {@link t.fn} binding
- * and the method body.
- *
- * Each FFI argument — the instance receiver, every regular parameter, the
- * out/inout cells, the caller-allocated outs, and folded array-length
- * companions — yields its binding descriptor and the body input expression that
- * feeds it. Pure out-parameters carry no input: the runtime allocates and reads
- * their cell. Closure, destroy, and `<varargs>` slots are folded into a
- * callback's descriptor and excluded.
- *
- * @param context - The module context
- * @param fn - The callable
- */
 export const planCallArgs = (context: ModuleContext, fn: GirFunction): CallArgPlan[] => {
     const plan: CallArgPlan[] = [];
     if (fn.instance !== undefined) {
@@ -348,7 +249,7 @@ const planCallerOut = (context: ModuleContext, parameter: GirParameter, instance
 const planInoutParam = (
     context: ModuleContext,
     parameter: GirParameter,
-    options: { readonly index: number; readonly instanceOffset: number; readonly consumed: boolean },
+    options: { index: number; instanceOffset: number; consumed: boolean },
 ): CallArgPlan => {
     const { index, instanceOffset, consumed } = options;
     if (passesHandleInPlace(context, parameter)) {

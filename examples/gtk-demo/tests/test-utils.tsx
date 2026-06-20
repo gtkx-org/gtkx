@@ -9,15 +9,9 @@ import type { Demo, DemoProps, DemoProviderProps } from "../src/demos/types.js";
 
 let nextAppId = 0;
 
-/**
- * Per-test render options for {@link renderDemo}.
- */
 export interface RenderDemoOptions {
-    /** Callback fired when the demo signals it wants to close. */
     onClose?: () => void;
-    /** Override the demo's titlebar component. */
     titlebar?: ComponentType<DemoProps>;
-    /** Override the demo's state provider component. */
     provider?: ComponentType<DemoProviderProps>;
 }
 
@@ -77,18 +71,6 @@ const isDemo = (value: ComponentType<DemoProps> | Demo): value is Demo =>
 
 const PassthroughProvider: ComponentType<DemoProviderProps> = ({ children }) => children;
 
-/**
- * Renders a {@link Demo} (or a bare demo component) inside a {@link GtkApplicationWindow}
- * that mirrors what the production app shell provides — titlebar, provider, default size,
- * resizable flag, and window title from the demo metadata.
- *
- * Wraps `@gtkx/testing`'s {@link render} so tests do not need to repeat the window/provider
- * scaffolding themselves. Equivalent to React Testing Library's documented custom-render
- * pattern (https://testing-library.com/docs/react-testing-library/setup#custom-render).
- *
- * Use `screen.findByRole(Gtk.AccessibleRole.WINDOW)` to locate the host window
- * in tests; the internal window ref is private to the wrapper.
- */
 export const renderDemo = async (
     componentOrDemo: ComponentType<DemoProps> | Demo,
     options: RenderDemoOptions = {},

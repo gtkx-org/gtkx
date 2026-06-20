@@ -4,16 +4,10 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { act } from "./act.js";
 import { getEditableDelegate, isEditable } from "./editable.js";
 
-/**
- * Options for {@link userEvent.type}.
- */
 export type TypeOptions = {
-    /** Skip focusing the widget before typing (default: false) */
-    skipClick?: boolean;
-    /** Selection anchor to place before typing */
-    initialSelectionStart?: number;
-    /** Selection end to place before typing (defaults to `initialSelectionStart`) */
-    initialSelectionEnd?: number;
+    skipClick?: boolean | undefined;
+    initialSelectionStart?: number | undefined;
+    initialSelectionEnd?: number | undefined;
 };
 
 const EDITABLE_REQUIRED = "expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)";
@@ -40,25 +34,10 @@ const writeClipboardText = (widget: Gtk.Widget, text: string): void => {
     widget.getClipboard().set(value);
 };
 
-/**
- * Clears the display clipboard that {@link userEvent.copy}/{@link userEvent.cut}/
- * {@link userEvent.paste} operate on. Called by `cleanup` so clipboard contents
- * do not leak between tests sharing a display.
- */
 export const resetClipboard = (): void => {
     Gdk.Display.getDefault()?.getClipboard().setContent(null);
 };
 
-/**
- * Types text into an editable widget.
- *
- * Appends text to the current content. Works with Entry, SearchEntry,
- * and SpinButton widgets.
- *
- * @param widget - The editable widget
- * @param text - Text to type
- * @param options - Selection and focus behavior before typing
- */
 export const type = async (widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> => {
     await act(() => {
         if (!isEditable(widget)) {
@@ -83,13 +62,6 @@ export const type = async (widget: Gtk.Widget, text: string, options?: TypeOptio
     });
 };
 
-/**
- * Clears an editable widget's content.
- *
- * Sets the text to empty string.
- *
- * @param widget - The editable widget to clear.
- */
 export const clear = async (widget: Gtk.Widget): Promise<void> => {
     await act(() => {
         if (!isEditable(widget)) {
@@ -100,12 +72,6 @@ export const clear = async (widget: Gtk.Widget): Promise<void> => {
     });
 };
 
-/**
- * Copies an editable widget's current selection to an in-memory clipboard
- * that {@link paste} reads from.
- *
- * @param widget - The editable widget to copy from.
- */
 export const copy = async (widget: Gtk.Widget): Promise<void> => {
     await act(() => {
         if (!isEditable(widget)) {
@@ -116,12 +82,6 @@ export const copy = async (widget: Gtk.Widget): Promise<void> => {
     });
 };
 
-/**
- * Cuts an editable widget's current selection: copies it to the in-memory
- * clipboard, then deletes it.
- *
- * @param widget - The editable widget to cut from.
- */
 export const cut = async (widget: Gtk.Widget): Promise<void> => {
     await act(() => {
         if (!isEditable(widget)) {
@@ -133,13 +93,6 @@ export const cut = async (widget: Gtk.Widget): Promise<void> => {
     });
 };
 
-/**
- * Pastes text into an editable widget at the cursor. Uses the supplied
- * `text`, or the in-memory clipboard written by {@link copy}/{@link cut}.
- *
- * @param widget - The editable widget to paste into.
- * @param text - Text to paste; defaults to the in-memory clipboard contents.
- */
 export const paste = async (widget: Gtk.Widget, text?: string): Promise<void> => {
     if (!isEditable(widget)) {
         throw new Error(`Cannot paste: ${EDITABLE_REQUIRED}`);

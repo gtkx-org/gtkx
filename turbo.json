@@ -189,11 +189,6 @@
             "inputs": ["*.ts", "tests/**/*.ts", "tsconfig.json", "tsconfig.lib.json", "tsconfig.test.json"],
             "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
             "outputLogs": "new-only"
-        },
-        "website#dev": {
-            "dependsOn": ["@gtkx/ffi#build", "@gtkx/react#build"],
-            "persistent": true,
-            "cache": false
         }
     }
 }

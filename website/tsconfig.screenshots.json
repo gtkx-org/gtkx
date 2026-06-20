@@ -1,9 +1,0 @@
-{
-    "extends": "../tsconfig.test.json",
-    "compilerOptions": {
-        "outDir": "out-tsc/screenshots",
-        "tsBuildInfoFile": "out-tsc/screenshots/tsconfig.screenshots.tsbuildinfo",
-        "types": ["node"]
-    },
-    "include": ["screenshots/**/*.ts", "screenshots/**/*.tsx"]
-}
