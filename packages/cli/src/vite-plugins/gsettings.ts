@@ -1,4 +1,4 @@
-import { copyFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { copyFileSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { errorMessage } from "@gtkx/utils";
@@ -7,6 +7,7 @@ import { compileSchemas } from "../gsettings/compile.js";
 import { emitSchemaEnv, SCHEMA_SUFFIX } from "../gsettings/env.js";
 import { parseSchemaXml, SchemaParseError } from "../gsettings/parser.js";
 import { renderRuntimeModule } from "../gsettings/render.js";
+import { removeTempDir } from "../internal/remove-temp-dir.js";
 
 const VIRTUAL_PREFIX = "\0gtkx-gsettings:";
 
@@ -26,10 +27,6 @@ const SCHEMA_ENV_BANNER = [
     `    .filter(Boolean)`,
     `    .join(":");`,
 ].join("\n");
-
-const removeTempDir = (dir: string): void => {
-    rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
-};
 
 /**
  * Vite plugin that compiles GSettings schemas when imported.

@@ -1,9 +1,10 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative } from "node:path";
 import { createGtkxConfigLoader, type GtkxConfigLoader } from "@gtkx/config";
 import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
+import { removeTempDir } from "../internal/remove-temp-dir.js";
 import { resolveCliTool } from "../internal/resolve-cli-tool.js";
 import { ASSET_PATH_RE, ASSET_RE } from "./asset-extensions.js";
 import { BUNDLE_FILENAME, escapeXml, OVERRIDE_SEPARATOR, VIRTUAL_INIT, VIRTUAL_PREFIX } from "./gresource-protocol.js";
@@ -97,7 +98,7 @@ const compileBundle = (state: PluginState, outputPath: string): Buffer => {
     try {
         return runCompiler(staged.dir, staged.manifest, outputPath);
     } finally {
-        rmSync(staged.dir, { recursive: true, force: true });
+        removeTempDir(staged.dir);
     }
 };
 
@@ -247,7 +248,7 @@ const emitBuildBundle = (
         ctx.emitFile({ type: "asset", fileName: BUNDLE_FILENAME, source: compiled });
         console.log(`[gtkx] Compiled ${state.entries.size} resource(s) into ${BUNDLE_FILENAME}`);
     } finally {
-        rmSync(outDir, { recursive: true, force: true });
+        removeTempDir(outDir);
     }
 };
 

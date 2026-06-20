@@ -1,8 +1,9 @@
-import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
+import { copyFileSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { compileSchemas } from "../gsettings/compile.js";
 import { findSchemaFiles } from "../gsettings/env.js";
+import { removeTempDir } from "../internal/remove-temp-dir.js";
 
 /**
  * Prepares the dev runner's GSettings environment before GTK loads.
@@ -32,7 +33,7 @@ export const prepareDevSchemaEnv = (root: string): string | null => {
     process.env.GTKX_DEV_SCHEMA_DIR = dir;
     const existing = process.env.GSETTINGS_SCHEMA_DIR;
     process.env.GSETTINGS_SCHEMA_DIR = existing ? `${dir}:${existing}` : dir;
-    process.once("exit", () => rmSync(dir, { recursive: true, force: true, maxRetries: 5 }));
+    process.once("exit", () => removeTempDir(dir));
 
     return dir;
 };
