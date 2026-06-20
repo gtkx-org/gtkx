@@ -4,7 +4,12 @@ import type { GirNamespace } from "../gir/namespace.js";
 import type { GirRepository } from "../gir/repository.js";
 import { type VirtualSubcomponent, virtualSubcomponentEntries } from "./compounds-meta.js";
 import type { JsxImports } from "./imports.js";
-import { BUILT_IN_COMPOUND_HOCS, type CompoundHoc } from "./tables.js";
+import {
+    BUILT_IN_COMPOUND_HOCS,
+    type CompoundHoc,
+    RUNTIME_COMPONENT_WRAPPERS,
+    type RuntimeComponentWrapper,
+} from "./tables.js";
 import { ancestorGlibNames, collectReactNodeClasses, type WidgetCandidate } from "./widgets.js";
 
 /** Module-local const name binding the wrapper sentinel element. */
@@ -93,76 +98,6 @@ const virtualSubcomponentsForNamespace = (
         if (namespaceByGlib.get(parentGlibName) === targetNamespace.name) result.push(virtual);
     }
     return sortedAlphaBy(result, (entry) => entry.flatName);
-};
-
-/** A typed namespace-module wrapper around a hand-written `@gtkx/react` runtime component. */
-type RuntimeComponentWrapper =
-    | { readonly kind: "reexport" }
-    | { readonly kind: "typedProps" }
-    | {
-          readonly kind: "typed";
-          /** The wrapper's generic parameter list (e.g. `"<T = unknown, S = unknown>"`). */
-          readonly genericParams: string;
-          /**
-           * Keys removed from the generated `Props` in the wrapper's surface. Defaults to
-           * `keyof <controllerProps>` so the omitted set tracks the controller type; set
-           * explicitly only when the removed keys differ from the controller's own keys.
-           */
-          readonly omitKeys?: string;
-          /** The `@gtkx/react` controller prop shape intersected in, with generics applied. */
-          readonly controllerProps: string;
-          /** The `@gtkx/react` type names the wrapper's surface imports. */
-          readonly sharedTypes: readonly string[];
-      };
-
-/**
- * The hand-written `@gtkx/react` components re-exported with a fully typed
- * surface by their namespace module, keyed by JSX element name. A `typed`
- * entry composes the generated `Props` (own keys removed) with the runtime
- * component's controller prop shape; a `reexport` entry forwards the
- * component verbatim because its public typing is already complete in
- * `@gtkx/react`.
- */
-const RUNTIME_COMPONENT_WRAPPERS: Readonly<Record<string, RuntimeComponentWrapper>> = {
-    GtkListView: {
-        kind: "typed",
-        genericParams: "<T = unknown, S = unknown>",
-        controllerProps: "ListViewProps<T, S>",
-        sharedTypes: ["ListViewProps"],
-    },
-    GtkGridView: {
-        kind: "typed",
-        genericParams: "<T = unknown>",
-        controllerProps: "GridViewProps<T>",
-        sharedTypes: ["GridViewProps"],
-    },
-    GtkDropDown: {
-        kind: "typed",
-        genericParams: "<T = unknown, S = unknown>",
-        controllerProps: "DropDownProps<T, S>",
-        sharedTypes: ["DropDownProps"],
-    },
-    AdwComboRow: {
-        kind: "typed",
-        genericParams: "<T = unknown, S = unknown>",
-        controllerProps: "DropDownProps<T, S>",
-        sharedTypes: ["DropDownProps"],
-    },
-    GtkColumnView: {
-        kind: "typed",
-        genericParams: "<T = unknown, S = unknown>",
-        controllerProps: "ColumnViewProps<T, S>",
-        sharedTypes: ["ColumnViewProps"],
-    },
-    GtkColumnViewColumn: {
-        kind: "typed",
-        genericParams: "<T = unknown>",
-        omitKeys: '"factory" | "sorter"',
-        controllerProps: "ColumnViewColumnProps<T>",
-        sharedTypes: ["ColumnViewColumnProps"],
-    },
-    GMenu: { kind: "typedProps" },
-    GtkConstraintLayout: { kind: "reexport" },
 };
 
 const renderRuntimeWrapper = (glibName: string, wrapper: RuntimeComponentWrapper, imports: JsxImports): string => {

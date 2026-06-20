@@ -533,3 +533,91 @@ export const mergeElementMap = (userElementMap: readonly ElementMapRule[] | unde
     userElementMap === undefined || userElementMap.length === 0
         ? BUILT_IN_ELEMENT_MAP
         : [...BUILT_IN_ELEMENT_MAP, ...userElementMap];
+
+/** A typed namespace-module wrapper around a hand-written `@gtkx/react` runtime component. */
+export type RuntimeComponentWrapper =
+    | { readonly kind: "reexport" }
+    | { readonly kind: "typedProps" }
+    | {
+          readonly kind: "typed";
+          /** The wrapper's generic parameter list (e.g. `"<T = unknown, S = unknown>"`). */
+          readonly genericParams: string;
+          /**
+           * Keys removed from the generated `Props` in the wrapper's surface. Defaults to
+           * `keyof <controllerProps>` so the omitted set tracks the controller type; set
+           * explicitly only when the removed keys differ from the controller's own keys.
+           */
+          readonly omitKeys?: string;
+          /** The `@gtkx/react` controller prop shape intersected in, with generics applied. */
+          readonly controllerProps: string;
+          /** The `@gtkx/react` type names the wrapper's surface imports. */
+          readonly sharedTypes: readonly string[];
+      };
+
+/**
+ * The hand-written `@gtkx/react` components re-exported with a fully typed
+ * surface by their namespace module, keyed by JSX element name. A `typed`
+ * entry composes the generated `Props` (own keys removed) with the runtime
+ * component's controller prop shape; a `reexport` entry forwards the
+ * component verbatim because its public typing is already complete in
+ * `@gtkx/react`.
+ */
+export const RUNTIME_COMPONENT_WRAPPERS: Readonly<Record<string, RuntimeComponentWrapper>> = {
+    GtkListView: {
+        kind: "typed",
+        genericParams: "<T = unknown, S = unknown>",
+        controllerProps: "ListViewProps<T, S>",
+        sharedTypes: ["ListViewProps"],
+    },
+    GtkGridView: {
+        kind: "typed",
+        genericParams: "<T = unknown>",
+        controllerProps: "GridViewProps<T>",
+        sharedTypes: ["GridViewProps"],
+    },
+    GtkDropDown: {
+        kind: "typed",
+        genericParams: "<T = unknown, S = unknown>",
+        controllerProps: "DropDownProps<T, S>",
+        sharedTypes: ["DropDownProps"],
+    },
+    AdwComboRow: {
+        kind: "typed",
+        genericParams: "<T = unknown, S = unknown>",
+        controllerProps: "DropDownProps<T, S>",
+        sharedTypes: ["DropDownProps"],
+    },
+    GtkColumnView: {
+        kind: "typed",
+        genericParams: "<T = unknown, S = unknown>",
+        controllerProps: "ColumnViewProps<T, S>",
+        sharedTypes: ["ColumnViewProps"],
+    },
+    GtkColumnViewColumn: {
+        kind: "typed",
+        genericParams: "<T = unknown>",
+        omitKeys: '"factory" | "sorter"',
+        controllerProps: "ColumnViewColumnProps<T>",
+        sharedTypes: ["ColumnViewColumnProps"],
+    },
+    GMenu: { kind: "typedProps" },
+    GtkConstraintLayout: { kind: "reexport" },
+};
+
+/**
+ * Runtime-owned classes with no typed wrapper entry: `GMenuItem` is not an
+ * element (menu content is the `<GMenu>` `items` data prop) and the Adwaita
+ * animation components live in `@gtkx/animate`.
+ */
+const RUNTIME_OWNED_RESIDUE: readonly string[] = ["GMenuItem", "AdwSpringAnimation", "AdwTimedAnimation"];
+
+/**
+ * Every class a hand-written component owns rather than a generated one: the
+ * keys of {@link RUNTIME_COMPONENT_WRAPPERS} plus the wrapper-less
+ * {@link RUNTIME_OWNED_RESIDUE}. A namespace module emits only the `Props`
+ * interface and JSX-element augmentation for these.
+ */
+export const RUNTIME_OWNED_WIDGETS: ReadonlySet<string> = new Set([
+    ...Object.keys(RUNTIME_COMPONENT_WRAPPERS),
+    ...RUNTIME_OWNED_RESIDUE,
+]);

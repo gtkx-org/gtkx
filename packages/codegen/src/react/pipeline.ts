@@ -15,6 +15,7 @@ import {
     mergeObjectProps,
     mergeVirtualProps,
     PAGE_META_SETTERS,
+    RUNTIME_OWNED_WIDGETS,
     TOP_LEVEL_TYPES,
 } from "./tables.js";
 import { collectReactNodeClasses } from "./widgets.js";
@@ -35,28 +36,6 @@ export type UserTables = {
     /** Attach relationships merged after the built-in element-map rows. */
     readonly elementMap?: readonly ElementMapRule[];
 };
-
-/**
- * Names with no generated component: classes a hand-written enhanced
- * component owns (a controller-backed list or combo row in `@gtkx/react`; the
- * animation components in `@gtkx/animate`) plus classes that are not elements
- * at all (`GMenuItem` — menu content is the `<GMenu>` `items` data prop). A
- * namespace module emits only the `Props` interface and the JSX-element
- * augmentation for these; the owning package exports the component, where one
- * exists.
- */
-const RUNTIME_OWNED_WIDGETS: ReadonlySet<string> = new Set([
-    "GtkColumnView",
-    "GtkColumnViewColumn",
-    "GtkConstraintLayout",
-    "GtkDropDown",
-    "GtkGridView",
-    "GtkListView",
-    "GMenuItem",
-    "AdwComboRow",
-    "AdwSpringAnimation",
-    "AdwTimedAnimation",
-]);
 
 /** One per-namespace `@gtkx/jsx` module: its directory and combined source. */
 export type JsxNamespaceFile = {
