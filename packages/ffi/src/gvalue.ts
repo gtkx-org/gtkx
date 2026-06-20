@@ -390,7 +390,7 @@ export function newValueFromFfi(ffiType: FfiType): Handle {
 
 /** Builds a `GValue` holding a `GObject` instance, typed to its runtime class. */
 function objectToGvalue(value: object | null): Handle {
-    const v = newTypedGValue(value ? BigInt(getType(getHandle(value))) : TYPE_OBJECT);
+    const v = newTypedGValue(value ? getType(getHandle(value)) : TYPE_OBJECT);
     valueSetObject(v, value);
     return v;
 }
