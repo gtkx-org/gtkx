@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import type { BoundItem } from "../reconciler/bound-item.js";
 import { scheduleFlush } from "../reconciler/commit-flush.js";
+import { findInListModel, listModelItems } from "../reconciler/list-model-iteration.js";
 import type { SignalStore } from "../reconciler/signal-store.js";
 import type { ColumnController } from "./column-controller.js";
 
@@ -130,10 +131,8 @@ export class ColumnViewLifecycle {
      * relayout.
      */
     private relayoutColumns(): void {
-        const columns = this.columnView.getColumns();
         const ordered: Gtk.ColumnViewColumn[] = [];
-        for (let i = 0; i < columns.getNItems(); i++) {
-            const column = columns.getItem(i);
+        for (const column of listModelItems(this.columnView.getColumns())) {
             if (column instanceof Gtk.ColumnViewColumn) ordered.push(column);
         }
         for (const column of ordered) this.columnView.removeColumn(column);
@@ -159,15 +158,10 @@ export class ColumnViewLifecycle {
     }
 
     private findColumnById(id: string): Gtk.ColumnViewColumn | null {
-        const columns = this.columnView.getColumns();
-        const nItems = columns.getNItems();
-        for (let i = 0; i < nItems; i++) {
-            const obj = columns.getItem(i);
-            if (obj instanceof Gtk.ColumnViewColumn && obj.getId() === id) {
-                return obj;
-            }
-        }
-        return null;
+        return findInListModel(
+            this.columnView.getColumns(),
+            (obj): obj is Gtk.ColumnViewColumn => obj instanceof Gtk.ColumnViewColumn && obj.getId() === id,
+        );
     }
 
     /** Connects the column view sorter's `changed` signal to `onSortChanged`. */

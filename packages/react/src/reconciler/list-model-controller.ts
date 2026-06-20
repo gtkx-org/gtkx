@@ -2,6 +2,7 @@ import * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { ListItem } from "../utils/element-props.js";
+import { indexOfInListModel, listModelItems } from "./list-model-iteration.js";
 
 /**
  * The slice of the list node that the model controller drives back: the item
@@ -285,14 +286,7 @@ export class ListModelController {
 
     private findStringObjectPosition(item: GObject.Object): number | null {
         if (!this.model) return null;
-        const nItems = this.model.getNItems();
-        for (let i = 0; i < nItems; i++) {
-            const obj = this.model.getItem(i);
-            if (obj === item) {
-                return i;
-            }
-        }
-        return null;
+        return indexOfInListModel(this.model, item);
     }
 
     /**
@@ -310,13 +304,7 @@ export class ListModelController {
     public positionOf(item: GObject.Object): number | null {
         const model = this.hasSections() ? this.flattenModel : this.model;
         if (!model) return null;
-        const nItems = model.getNItems();
-        for (let i = 0; i < nItems; i++) {
-            if (model.getItem(i) === item) {
-                return i;
-            }
-        }
-        return null;
+        return indexOfInListModel(model, item);
     }
 
     private syncSectionModel(): void {
@@ -398,12 +386,8 @@ export class ListModelController {
     ): ListItem | null {
         const childModel = parentRow.getChildren();
         if (!childModel) return null;
-        for (let j = 0; j < childModel.getNItems(); j++) {
-            if (childModel.getItem(j) === childItem) {
-                return siblings[j] ?? null;
-            }
-        }
-        return null;
+        const index = indexOfInListModel(childModel, childItem);
+        return index !== null ? (siblings[index] ?? null) : null;
     }
 
     /**
@@ -438,11 +422,8 @@ export class ListModelController {
         const rootItems = this.collectRootItems();
         const rootIndex = new Map<GObject.Object, number>();
         if (this.model) {
-            const nItems = this.model.getNItems();
-            for (let i = 0; i < nItems; i++) {
-                const obj = this.model.getItem(i);
-                if (obj) rootIndex.set(obj, i);
-            }
+            let position = 0;
+            for (const obj of listModelItems(this.model)) rootIndex.set(obj, position++);
         }
         return { rootItems, rootIndex };
     }
