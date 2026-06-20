@@ -1,7 +1,6 @@
 {
     "extends": "./tsconfig.base.json",
     "compilerOptions": {
-        "customConditions": ["source"],
         "outDir": "${configDir}/out-tsc/test",
         "tsBuildInfoFile": "${configDir}/out-tsc/test/tsconfig.test.tsbuildinfo",
         "emitDeclarationOnly": true

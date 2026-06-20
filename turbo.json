@@ -6,7 +6,15 @@
     "tasks": {
         "//#lint:all": {
             "dependsOn": ["@gtkx/cli#build", "@gtkx/vitest#build"],
-            "inputs": ["**/*.ts", "**/*.tsx", "**/package.json", "biome.json", "knip.json", ".dependency-cruiser.cjs"],
+            "inputs": [
+                "**/*.ts",
+                "**/*.tsx",
+                "**/package.json",
+                "**/tsconfig*.json",
+                "biome.json",
+                "knip.json",
+                ".dependency-cruiser.cjs"
+            ],
             "outputLogs": "new-only"
         },
         "//#coverage:all": {
@@ -131,7 +139,7 @@
             "cache": false
         },
         "typecheck": {
-            "dependsOn": ["@gtkx/cli#codegen"],
+            "dependsOn": ["^typecheck", "@gtkx/cli#codegen"],
             "inputs": [
                 "src/**/*.ts",
                 "src/**/*.tsx",
@@ -144,10 +152,11 @@
                 "tests/**/*.tsx",
                 "vitest.config.ts",
                 "tsconfig.json",
+                "tsconfig.app.json",
                 "tsconfig.lib.json",
                 "tsconfig.test.json"
             ],
-            "outputs": [],
+            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
             "outputLogs": "new-only"
         },
         "bench": {
@@ -176,9 +185,9 @@
             "outputLogs": "new-only"
         },
         "@gtkx/native#typecheck": {
-            "dependsOn": ["^build", "native-build"],
+            "dependsOn": ["^typecheck", "native-build"],
             "inputs": ["*.ts", "tests/**/*.ts", "tsconfig.json", "tsconfig.lib.json", "tsconfig.test.json"],
-            "outputs": [],
+            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
             "outputLogs": "new-only"
         },
         "website#dev": {

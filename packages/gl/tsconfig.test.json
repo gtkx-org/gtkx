@@ -3,6 +3,15 @@
     "references": [
         {
             "path": "./tsconfig.lib.json"
+        },
+        {
+            "path": "../ffi/tsconfig.lib.json"
+        },
+        {
+            "path": "../native/tsconfig.lib.json"
+        },
+        {
+            "path": "../vitest/tsconfig.lib.json"
         }
     ]
 }

@@ -1,7 +1,6 @@
 {
     "extends": "./tsconfig.base.json",
     "compilerOptions": {
-        "customConditions": ["source"],
         "rootDir": "${configDir}/src",
         "outDir": "${configDir}/out-tsc/app",
         "tsBuildInfoFile": "${configDir}/out-tsc/app/tsconfig.app.tsbuildinfo"

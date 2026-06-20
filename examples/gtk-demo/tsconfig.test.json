@@ -4,6 +4,30 @@
     "references": [
         {
             "path": "./tsconfig.app.json"
+        },
+        {
+            "path": "../../packages/cli/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/config/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/css/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/ffi/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/gl/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/native/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/react/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/testing/tsconfig.lib.json"
         }
     ]
 }

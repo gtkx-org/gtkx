@@ -1,3 +1,17 @@
 {
-    "extends": "../../tsconfig.lib.json"
+    "extends": "../../tsconfig.lib.json",
+    "references": [
+        {
+            "path": "../config/tsconfig.lib.json"
+        },
+        {
+            "path": "../ffi/tsconfig.lib.json"
+        },
+        {
+            "path": "../native/tsconfig.lib.json"
+        },
+        {
+            "path": "../utils/tsconfig.lib.json"
+        }
+    ]
 }

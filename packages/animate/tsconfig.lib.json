@@ -1,3 +1,11 @@
 {
-    "extends": "../../tsconfig.lib.json"
+    "extends": "../../tsconfig.lib.json",
+    "references": [
+        {
+            "path": "../css/tsconfig.lib.json"
+        },
+        {
+            "path": "../react/tsconfig.lib.json"
+        }
+    ]
 }

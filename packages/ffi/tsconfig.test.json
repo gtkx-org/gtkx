@@ -4,6 +4,15 @@
     "references": [
         {
             "path": "./tsconfig.lib.json"
+        },
+        {
+            "path": "../native/tsconfig.lib.json"
+        },
+        {
+            "path": "../utils/tsconfig.lib.json"
+        },
+        {
+            "path": "../vitest/tsconfig.lib.json"
         }
     ]
 }
