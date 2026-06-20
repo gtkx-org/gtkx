@@ -47,11 +47,10 @@ export interface SignalPropDescriptor {
 
 /**
  * A bespoke prop's side-effecting handler; receives the backing GObject and the
- * previous and current props. Taking the container as an argument keeps the
- * handler stateless so its descriptor is shared per GType rather than rebuilt
- * per node.
+ * current props. Taking the container as an argument keeps the handler stateless
+ * so its descriptor is shared per GType rather than rebuilt per node.
  */
-export type ImperativeHandler = (container: GObject.Object, oldProps: Props | null, newProps: Props) => void;
+export type ImperativeHandler = (container: GObject.Object, newProps: Props) => void;
 
 /**
  * Descriptor for a prop applied by running a side-effecting handler.
@@ -309,7 +308,7 @@ const applyDescriptors = (context: ApplyContext): void => {
             case "imperative":
                 if ((descriptor.always || changed) && !ranImperatives.has(descriptor.handler)) {
                     ranImperatives.add(descriptor.handler);
-                    descriptor.handler(container, oldProps, newProps);
+                    descriptor.handler(container, newProps);
                 }
                 break;
         }

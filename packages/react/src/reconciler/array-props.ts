@@ -36,9 +36,9 @@ export interface ArrayPropDescriptor {
     /** Removes every previously-applied element in one call. */
     clear?(target: GObject.Object): void;
     /** Removes one previously-applied element. */
-    remove?(target: GObject.Object, item: unknown, index: number): void;
+    remove?(target: GObject.Object, item: unknown): void;
     /** Adds one current element. */
-    add?(target: GObject.Object, item: unknown, index: number): void;
+    add?(target: GObject.Object, item: unknown): void;
     /** Replaces the whole list in one call (used when GTK has no per-element API). */
     set?(target: GObject.Object, items: readonly unknown[]): void;
     /** When true, the list is immutable: apply only when the previous list was empty. */
@@ -156,13 +156,9 @@ export const applyArrayProp = (
 };
 
 const addAll = (target: GObject.Object, descriptor: ArrayPropDescriptor, items: readonly unknown[]): void => {
-    items.forEach((item, index) => {
-        descriptor.add?.(target, item, index);
-    });
+    for (const item of items) descriptor.add?.(target, item);
 };
 
 const removeAll = (target: GObject.Object, descriptor: ArrayPropDescriptor, items: readonly unknown[]): void => {
-    items.forEach((item, index) => {
-        descriptor.remove?.(target, item, index);
-    });
+    for (const item of items) descriptor.remove?.(target, item);
 };

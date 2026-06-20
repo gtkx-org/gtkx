@@ -57,7 +57,7 @@ const applySetterStep = (container: GObject.Object, step: SetterPropStep, newPro
 const addSetterGroup = (entry: PropDescriptorTable, group: SetterPropGroup): void => {
     if (group.always) {
         const descriptor = imperative(
-            (container, _oldProps, newProps) => {
+            (container, newProps) => {
                 for (const step of group.props) applySetterStep(container, step, newProps);
             },
             { always: true },
@@ -66,7 +66,7 @@ const addSetterGroup = (entry: PropDescriptorTable, group: SetterPropGroup): voi
         return;
     }
     for (const step of group.props) {
-        entry[step.prop] = imperative((container, _oldProps, newProps) => applySetterStep(container, step, newProps));
+        entry[step.prop] = imperative((container, newProps) => applySetterStep(container, step, newProps));
     }
 };
 
@@ -84,7 +84,7 @@ const addRuleRows = (entry: PropDescriptorTable, rules: readonly PropRule[]): vo
 };
 
 const objectPropDescriptor = (prop: string, row: ObjectPropRow): PropDescriptorTable[string] =>
-    imperative((container, _oldProps, newProps) => {
+    imperative((container, newProps) => {
         const value = newProps[prop];
         if (value == null) {
             if (row.unset !== undefined) runCallSteps(container, row.unset, null);
@@ -94,7 +94,7 @@ const objectPropDescriptor = (prop: string, row: ObjectPropRow): PropDescriptorT
     });
 
 const virtualPropDescriptor = (prop: string, row: VirtualPropRow): PropDescriptorTable[string] =>
-    imperative((container, _oldProps, newProps) => {
+    imperative((container, newProps) => {
         callMethod(container, row.setter, [newProps[prop] ?? null]);
         if (row.after !== undefined) callMethod(container, row.after, []);
     });
