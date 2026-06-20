@@ -54,6 +54,52 @@ export const collectTypeNameChain = (gtype: GType): readonly string[] => {
 };
 
 /**
+ * Folds the rows a per-type-name `table` holds for `gtype`'s ancestry into one
+ * accumulator, visiting each matching row most-derived first. The table is keyed
+ * by GLib type name; a type with no row contributes nothing. The chain walk is
+ * the cached {@link collectTypeNameChain}, so the fold runs in ancestry length.
+ *
+ * @param gtype - the GLib type whose ancestry to fold over
+ * @param table - per-type-name rows to merge
+ * @param fold - combines the running accumulator with a matching row
+ * @param seed - the accumulator's initial value
+ */
+export const foldInheritedTable = <R, T>(
+    gtype: GType,
+    table: Readonly<Record<string, R>>,
+    fold: (accumulator: T, row: R) => T,
+    seed: T,
+): T => {
+    let accumulator = seed;
+    for (const name of collectTypeNameChain(gtype)) {
+        const row = table[name];
+        if (row !== undefined) accumulator = fold(accumulator, row);
+    }
+    return accumulator;
+};
+
+/**
+ * The first row a per-type-name `table` holds for `gtype`'s ancestry that
+ * `accept` admits, scanning most-derived first, or `undefined` when none does.
+ * Shares the cached {@link collectTypeNameChain} walk.
+ *
+ * @param gtype - the GLib type whose ancestry to scan
+ * @param table - per-type-name rows to search
+ * @param accept - whether a candidate row is the one to return
+ */
+export const findInheritedRow = <R>(
+    gtype: GType,
+    table: Readonly<Record<string, R>>,
+    accept: (row: R) => boolean,
+): R | undefined => {
+    for (const name of collectTypeNameChain(gtype)) {
+        const row = table[name];
+        if (row !== undefined && accept(row)) return row;
+    }
+    return undefined;
+};
+
+/**
  * Whether `name` appears in `gtype`'s ancestry. Backed by a per-GType set of
  * the names {@link collectTypeNameChain} returns, so repeated membership tests
  * cost one hash lookup.
@@ -101,11 +147,15 @@ const memoize = <T>(
 export const collectConstructableProps = (gtype: GType): ReadonlySet<string> => {
     const cached = constructablePropsCache.get(gtype);
     if (cached) return cached;
-    const names = new Set<string>();
-    for (const name of collectTypeNameChain(gtype)) {
-        const set = CONSTRUCT_PROPS[name];
-        if (set) for (const prop of set) names.add(prop);
-    }
+    const names = foldInheritedTable(
+        gtype,
+        CONSTRUCT_PROPS,
+        (collected: Set<string>, props) => {
+            for (const prop of props) collected.add(prop);
+            return collected;
+        },
+        new Set<string>(),
+    );
     constructablePropsCache.set(gtype, names);
     return names;
 };

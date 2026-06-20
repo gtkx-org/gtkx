@@ -25,7 +25,7 @@ import type {
     VirtualPropRow,
 } from "@gtkx/config";
 import type * as GObject from "@gtkx/gi/gobject";
-import { collectTypeNameChain } from "../utils/gtype.js";
+import { foldInheritedTable } from "../utils/gtype.js";
 import { imperative, type PropDescriptorTable, signal } from "./apply-props.js";
 import { ARRAY_PROPS, runCallSteps } from "./array-props.js";
 import { callMethod } from "./reflect-call.js";
@@ -140,11 +140,15 @@ export const getDescriptors = (instance: GObject.Object): PropDescriptorTable =>
     const gtype = instance.__gtype__;
     const cached = descriptorsByGtype.get(gtype);
     if (cached) return cached;
-    const merged: PropDescriptorTable = {};
-    for (const typeName of collectTypeNameChain(gtype).toReversed()) {
-        const entry = DESCRIPTORS_BY_TYPE_NAME[typeName];
-        if (entry) Object.assign(merged, entry);
-    }
+    const merged = foldInheritedTable(
+        gtype,
+        DESCRIPTORS_BY_TYPE_NAME,
+        (view: PropDescriptorTable, entry) => {
+            for (const [prop, descriptor] of Object.entries(entry)) view[prop] ??= descriptor;
+            return view;
+        },
+        {},
+    );
     descriptorsByGtype.set(gtype, merged);
     return merged;
 };

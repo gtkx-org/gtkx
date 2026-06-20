@@ -19,34 +19,30 @@
  */
 import { CONTAINER_PROPS } from "virtual:gtkx-config";
 import { CONTAINER_PROP_KIND, SLOT_KIND } from "@gtkx/config";
-import type { AnyClass } from "@gtkx/utils";
 import { createElement, isValidElement, type ReactNode } from "react";
 import { WRAPPER_NODE_ELEMENT } from "../reconciler/instance.js";
-import { classHasType, type GTyped, resolveBackingClass } from "./gtype-predicates.js";
+import { resolveBackingClass } from "./gtype-predicates.js";
+import { foldInheritedTable } from "./gtype.js";
 
 const EMPTY_CONTAINER_PROPS: ReadonlySet<string> = new Set();
 
 const containerPropCache = new Map<string, ReadonlySet<string>>();
 
-const collectInherited = (
-    table: Readonly<Record<string, readonly string[]>>,
-    cls: AnyClass<GTyped>,
-): readonly string[] => {
-    const collected: string[] = [];
-    for (const [typeName, names] of Object.entries(table)) {
-        if (!classHasType(cls, typeName)) continue;
-        for (const name of names) {
-            if (!collected.includes(name)) collected.push(name);
-        }
-    }
-    return collected;
-};
-
 const resolveContainerProps = (elementName: string): ReadonlySet<string> => {
     const cached = containerPropCache.get(elementName);
     if (cached) return cached;
     const cls = resolveBackingClass(elementName);
-    const set = cls ? new Set(collectInherited(CONTAINER_PROPS, cls)) : EMPTY_CONTAINER_PROPS;
+    const set = cls
+        ? foldInheritedTable(
+              cls.prototype.__gtype__,
+              CONTAINER_PROPS,
+              (collected: Set<string>, names) => {
+                  for (const name of names) collected.add(name);
+                  return collected;
+              },
+              new Set<string>(),
+          )
+        : EMPTY_CONTAINER_PROPS;
     containerPropCache.set(elementName, set);
     return set;
 };

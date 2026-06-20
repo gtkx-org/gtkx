@@ -27,7 +27,7 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { collectTypeNameChain } from "../utils/gtype.js";
+import { findInheritedRow } from "../utils/gtype.js";
 import { hasType } from "../utils/gtype-predicates.js";
 import { DATA_ATTACH_MAPPINGS, findDataAttachMapping, promotedNestingGuardMapping } from "./attach-rules.js";
 import type { ElementMapping } from "./element-mapping.js";
@@ -212,11 +212,7 @@ type MetaState = { widget: Gtk.Widget; page: object };
  */
 const metaAddRules = (target: GObject.Object | undefined): readonly AddMethodRule[] | null => {
     if (!target) return null;
-    for (const typeName of collectTypeNameChain(target.__gtype__)) {
-        const rules = META_OBJECT_ADD_METHODS[typeName];
-        if (rules) return rules;
-    }
-    return null;
+    return findInheritedRow(target.__gtype__, META_OBJECT_ADD_METHODS, () => true) ?? null;
 };
 
 const pagePropValue = (props: Props, key: string): string | null =>

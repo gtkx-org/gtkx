@@ -26,7 +26,7 @@ import { CONTAINER_PROPS, ELEMENT_MAP } from "virtual:gtkx-config";
 import type { ElementMapRule, MethodVerb, OrderedInsertVerb, VerbArgs } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
 import { toLowerFirst } from "@gtkx/utils";
-import { collectTypeNameChain } from "../utils/gtype.js";
+import { collectTypeNameChain, findInheritedRow } from "../utils/gtype.js";
 import { hasType } from "../utils/gtype-predicates.js";
 import { notifyOrderedAttach } from "./attach-events.js";
 import type { ElementMapping } from "./element-mapping.js";
@@ -273,10 +273,9 @@ const promotedPropFor = (rule: ElementMapRule, parent: Node): string | null => {
     const attach = rule.verb.attach;
     const setterProp = propertyNameForSetter(attach);
     if (setterProp !== null) return setterProp;
-    for (const typeName of collectTypeNameChain(parent.__gtype__)) {
-        if (CONTAINER_PROPS[typeName]?.includes(attach)) return attach;
-    }
-    return null;
+    return findInheritedRow(parent.__gtype__, CONTAINER_PROPS, (methods) => methods.includes(attach)) !== undefined
+        ? attach
+        : null;
 };
 
 const displayName = (node: Node): string => {
