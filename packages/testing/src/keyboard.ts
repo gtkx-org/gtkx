@@ -2,7 +2,7 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { act } from "./act.js";
 import { getOrCreateController } from "./controller.js";
-import { getEditableDelegate, isEditable } from "./editable.js";
+import { getEditableDelegate, implementsEditable } from "./editable.js";
 import { fireEvent } from "./fire-event.js";
 import type { UserEventState } from "./state.js";
 
@@ -197,7 +197,7 @@ const applyKeyAction = async (
     controller.emit(signalName, action.keyval, 0, state.modifierState);
     if (action.press) {
         const handled = dispatchShortcuts(widget, action.keyval, state.modifierState);
-        if (!handled && action.keyval === Gdk.KEY_Return && isEditable(widget) && !(widget instanceof Gtk.TextView)) {
+        if (!handled && action.keyval === Gdk.KEY_Return && implementsEditable(widget)) {
             await fireEvent(widget, "activate");
         }
     }
