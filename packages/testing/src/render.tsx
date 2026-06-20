@@ -7,10 +7,11 @@ import {
     setReconcilerErrorHandler,
 } from "@gtkx/react";
 import { type ErrorInfo, type ReactNode, StrictMode } from "react";
+import { act } from "./act.js";
 import { bindQueries } from "./bind-queries.js";
 import { logWidget, type PrettyWidgetOptions } from "./pretty-widget.js";
 import { setScreenRoot } from "./screen.js";
-import { act } from "./timing.js";
+import "./setup-runtime.js";
 import { type Container, TOPLEVELS, traverse } from "./traversal.js";
 import type { QueryMap, RenderOptions, RenderResult } from "./types.js";
 import { resetClipboard } from "./user-event.js";

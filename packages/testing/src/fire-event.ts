@@ -1,5 +1,5 @@
 import type * as GObject from "@gtkx/gi/gobject";
-import { act } from "./timing.js";
+import { act } from "./act.js";
 
 /**
  * Emits a signal on any GObject — widgets, event controllers, selection models,

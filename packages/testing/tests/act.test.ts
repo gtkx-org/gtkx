@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { getIsReactActEnvironment, setIsReactActEnvironment } from "../src/act.js";
 import { act } from "../src/index.js";
-import { getIsReactActEnvironment, setIsReactActEnvironment } from "../src/timing.js";
 
 describe("act / sync callback", () => {
     it("returns a thenable", async () => {

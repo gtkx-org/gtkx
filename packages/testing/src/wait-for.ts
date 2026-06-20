@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { getConfig } from "./config.js";
 import { timeoutError } from "./errors.js";
-import { getIsReactActEnvironment, setIsReactActEnvironment } from "./timing.js";
+import { getIsReactActEnvironment, setIsReactActEnvironment } from "./act.js";
 import type { WaitForOptions } from "./types.js";
 
 const DEFAULT_INTERVAL = 50;

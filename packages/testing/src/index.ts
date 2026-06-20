@@ -1,3 +1,5 @@
+import "./setup-runtime.js";
+
 export { createRootElement, type RootElement } from "@gtkx/react";
 export type { Config, ConfigFn } from "./config.js";
 export { configure, getConfig } from "./config.js";
@@ -52,7 +54,7 @@ export type { ScreenshotOptions } from "./screenshot.js";
 export { screenshot } from "./screenshot.js";
 export type { Method, Suggestion, Variant } from "./suggestions.js";
 export { getSuggestedQuery } from "./suggestions.js";
-export { act } from "./timing.js";
+export { act } from "./act.js";
 export type { Container } from "./traversal.js";
 export type {
     BoundQueries,
