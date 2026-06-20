@@ -19,9 +19,10 @@
  */
 import { ARRAY_PROPS as ARRAY_PROP_ROWS } from "virtual:gtkx-config";
 import { constructWrapper } from "@gtkx/ffi";
-import type { ArrayPropRow, CallStep, ConstructStep, PresenceCondition } from "@gtkx/config";
+import type { ArrayPropRow, ConstructStep } from "@gtkx/config";
 import type * as GObject from "@gtkx/gi/gobject";
 import { requireClassByName } from "../utils/gtype-predicates.js";
+import { itemField, runCallStep, satisfiesCondition } from "./call-steps.js";
 import { callMethod } from "./reflect-call.js";
 
 /**
@@ -46,46 +47,11 @@ export interface ArrayPropDescriptor {
     appendOnce?: boolean;
 }
 
-const itemField = (item: unknown, path: string): unknown =>
-    typeof item === "object" && item !== null ? Reflect.get(item, path) : undefined;
-
-const satisfies = (value: unknown, condition: PresenceCondition): boolean =>
-    condition === "defined" ? value !== undefined : value != null;
-
-const resolveCallArg = (arg: CallStep["args"][number], item: unknown): unknown => {
-    if (arg.kind === "value") return arg.value;
-    if (arg.path === undefined) return item;
-    const value = itemField(item, arg.path);
-    return "fallback" in arg ? (value ?? arg.fallback) : value;
-};
-
-const runCallStep = (target: GObject.Object, step: CallStep, item: unknown): void => {
-    if (step.when && !satisfies(itemField(item, step.when.path), step.when.is)) return;
-    callMethod(
-        target,
-        step.method,
-        step.args.map((arg) => resolveCallArg(arg, item)),
-    );
-};
-
-/**
- * Runs a sequence of {@link "@gtkx/config".CallStep}s against `target`, with
- * each step's arguments resolved from `item`'s fields. Shared by the
- * array-prop and object-prop interpreters.
- *
- * @param target - The backing GObject the calls apply to.
- * @param steps - The call steps to run, in order.
- * @param item - The value the steps' `item` arguments resolve against.
- */
-export const runCallSteps = (target: GObject.Object, steps: readonly CallStep[], item: unknown): void => {
-    for (const step of steps) runCallStep(target, step, item);
-};
-
 const runConstructStep = (target: GObject.Object, step: ConstructStep, item: unknown): void => {
     const constructed = constructWrapper(requireClassByName(step.type), {});
     for (const setter of step.setters) {
         const value = itemField(item, setter.path);
-        if (satisfies(value, setter.when)) callMethod(constructed, setter.method, [value]);
+        if (satisfiesCondition(value, setter.when)) callMethod(constructed, setter.method, [value]);
     }
     callMethod(target, step.attach, [constructed]);
 };

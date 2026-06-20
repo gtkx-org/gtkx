@@ -16,17 +16,11 @@
  * subclass.
  */
 import { OBJECT_PROPS, PROP_RULES, VIRTUAL_PROPS } from "virtual:gtkx-config";
-import type {
-    ObjectPropRow,
-    PropCondition,
-    PropRule,
-    SetterPropGroup,
-    SetterPropStep,
-    VirtualPropRow,
-} from "@gtkx/config";
+import type { ObjectPropRow, PropRule, SetterPropGroup, SetterPropStep, VirtualPropRow } from "@gtkx/config";
 import type * as GObject from "@gtkx/gi/gobject";
 import { foldInheritedTable } from "../utils/gtype.js";
-import { ARRAY_PROPS, type ArrayPropDescriptor, runCallSteps } from "./array-props.js";
+import { ARRAY_PROPS, type ArrayPropDescriptor } from "./array-props.js";
+import { runCallSteps, satisfiesCondition } from "./call-steps.js";
 import { callMethod } from "./reflect-call.js";
 import type { Props } from "./types.js";
 
@@ -100,13 +94,6 @@ export function signal(
 export function imperative(handler: ImperativeHandler, options?: { always?: boolean }): ImperativeDescriptor {
     return { kind: "imperative", handler, always: options?.always ?? false };
 }
-
-const satisfiesCondition = (value: unknown, condition: PropCondition | undefined): boolean => {
-    if (condition === undefined) return true;
-    if (condition === "defined") return value !== undefined;
-    if (condition === "nonNull") return value != null;
-    return Boolean(value);
-};
 
 const applySetterStep = (container: GObject.Object, step: SetterPropStep, newProps: Props): void => {
     const value = newProps[step.prop];
