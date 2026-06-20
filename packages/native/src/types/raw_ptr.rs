@@ -96,6 +96,37 @@ where
     Ok(())
 }
 
+/// Encodes a container vfunc return and leaks its staging [`FfiValue`] so the
+/// `GLib` caller adopts the container instead of the staging storage freeing
+/// it.
+///
+/// A non-array value, a null/`Err` return, or an encode failure yields a null
+/// pointer; an encode failure is reported through the error reporter under
+/// `context`. The staging [`FfiValue`] is `forget`-ten so its drop never
+/// releases the container the caller now owns.
+pub(super) fn encode_and_leak_container<F>(
+    value: &std::result::Result<value::Value, ()>,
+    context: &'static str,
+    encode: F,
+) -> *mut c_void
+where
+    F: FnOnce(&value::Value) -> anyhow::Result<crate::ffi::FfiValue>,
+{
+    let Ok(value @ value::Value::Array(_)) = value else {
+        return std::ptr::null_mut();
+    };
+    let ffi_value = match encode(value) {
+        Ok(ffi_value) => ffi_value,
+        Err(err) => {
+            crate::error_reporter::NativeErrorReporter::global().report(&err.context(context));
+            return std::ptr::null_mut();
+        }
+    };
+    let container = ffi_value.as_ptr(context).unwrap_or(std::ptr::null_mut());
+    std::mem::forget(ffi_value);
+    container
+}
+
 /// Wraps a transfer-full encoded pointer in storage that releases it through
 /// `release` unless the call completes and disarms the transfer — the shared
 /// shape of every pointer codec's full-ownership encode arm.

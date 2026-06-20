@@ -4,7 +4,6 @@ use napi::{Env, JsObject};
 
 use super::prelude::*;
 use super::string::str_to_glib_full;
-use crate::error_reporter::NativeErrorReporter;
 use crate::ffi::{FfiStorage, FfiStorageKind, HashTableData};
 use crate::types::Type;
 use crate::types::array::ArrayKind;
@@ -409,30 +408,6 @@ impl FfiDecoder for HashTableType {
     }
 }
 
-impl HashTableType {
-    /// Builds the `GHashTable` a caller-adopted return hands back, forgetting
-    /// the staging [`FfiStorage`] so its drop never frees the table the caller
-    /// now owns. A null/`Err` return, or a non-tuple-array value, yields a null
-    /// pointer.
-    fn encode_owned_table(&self, value: &std::result::Result<value::Value, ()>) -> *mut c_void {
-        let Ok(value @ value::Value::Array(_)) = value else {
-            return std::ptr::null_mut();
-        };
-        let ffi_value = match self.encode(value) {
-            Ok(ffi_value) => ffi_value,
-            Err(err) => {
-                NativeErrorReporter::global().report(&err.context("hashtable vfunc return"));
-                return std::ptr::null_mut();
-            }
-        };
-        let table = ffi_value
-            .as_ptr("hashtable vfunc return")
-            .unwrap_or(std::ptr::null_mut());
-        std::mem::forget(ffi_value);
-        table
-    }
-}
-
 impl RawPtrCodec for HashTableType {
     /// Writes a vfunc's hashtable return, building the `GHashTable` the caller
     /// adopts. A transfer-none (borrowed) hashtable return is intercepted
@@ -442,7 +417,7 @@ impl RawPtrCodec for HashTableType {
         ret: *mut c_void,
         value: &std::result::Result<value::Value, ()>,
     ) {
-        let table = self.encode_owned_table(value);
+        let table = encode_and_leak_container(value, "hashtable vfunc return", |v| self.encode(v));
         // SAFETY: The caller guarantees `ret` is a writable pointer-sized
         // return slot; the write is unaligned-tolerant.
         unsafe { (ret as *mut *mut c_void).write_unaligned(table) };

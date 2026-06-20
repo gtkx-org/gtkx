@@ -8,7 +8,6 @@ use napi::{Env, JsObject};
 use super::prelude::*;
 use super::string::str_to_glib_full;
 use crate::arg::Arg;
-use crate::error_reporter::NativeErrorReporter;
 use crate::ffi::{FfiStorage, FfiStorageKind};
 use crate::types::{BigIntKind, FloatKind, IntegerKind, Type};
 use crate::value::BufferViewKind;
@@ -154,7 +153,7 @@ impl RawPtrCodec for ArrayType {
         ret: *mut c_void,
         value: &std::result::Result<value::Value, ()>,
     ) {
-        let container = self.encode_owned_container(value);
+        let container = encode_and_leak_container(value, "array vfunc return", |v| self.encode(v));
         // SAFETY: The caller guarantees `ret` is a writable pointer-sized
         // return slot; the write is unaligned-tolerant.
         unsafe { (ret as *mut *mut c_void).write_unaligned(container) };
@@ -807,28 +806,6 @@ impl ArrayType {
                 encoder.encode_handles(&handles, &self.item_type, self.ownership)
             }
         }
-    }
-
-    /// Builds the C container a caller-adopted array return hands back,
-    /// forgetting the staging [`FfiStorage`] so its drop never frees the
-    /// container the caller now owns. A null/`Err` return, or a non-array
-    /// value, yields a null pointer.
-    fn encode_owned_container(&self, value: &std::result::Result<value::Value, ()>) -> *mut c_void {
-        let Ok(value @ value::Value::Array(_)) = value else {
-            return std::ptr::null_mut();
-        };
-        let ffi_value = match self.encode(value) {
-            Ok(ffi_value) => ffi_value,
-            Err(err) => {
-                NativeErrorReporter::global().report(&err.context("array vfunc return"));
-                return std::ptr::null_mut();
-            }
-        };
-        let container = ffi_value
-            .as_ptr("array vfunc return")
-            .unwrap_or(std::ptr::null_mut());
-        std::mem::forget(ffi_value);
-        container
     }
 
     /// Encodes an `ArrayBufferView` argument zero-copy: validates the view

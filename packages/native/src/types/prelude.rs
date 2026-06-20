@@ -7,7 +7,8 @@
 pub(super) use std::ffi::c_void;
 
 pub(super) use super::raw_ptr::{
-    full_transfer_storage, swap_owned_slot, write_object_ptr, write_return_object_ptr,
+    encode_and_leak_container, full_transfer_storage, swap_owned_slot, write_object_ptr,
+    write_return_object_ptr,
 };
 pub(super) use super::{
     FfiDecoder, FfiEncoder, FromDescriptor, Ownership, RawPtrCodec, ReadSource,
