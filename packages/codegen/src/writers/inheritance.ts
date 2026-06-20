@@ -1,5 +1,6 @@
 import { toCamelCase, toCamelIdentifier, toLowerFirst, toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
+import { ancestorChain, type ResolvedAncestor } from "../gir/ancestry.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import type { GirProperty } from "../gir/property.js";
@@ -8,25 +9,6 @@ import type { TypeId } from "../gir/type-id.js";
 import { methodExportName } from "./method.js";
 import { inputParameters } from "./param-structure.js";
 import { renderTsType } from "./ts-type.js";
-
-/**
- * A class or interface resolved to its declaration and the namespace that
- * declares it — the ancestry walk's per-step result.
- */
-export type ResolvedQualifiedClass = {
-    readonly klass: GirClass;
-    readonly namespaceName: string;
-};
-
-const resolveClassOrInterface = (
-    repository: GirRepository,
-    defaultNamespace: string,
-    name: string,
-): ResolvedQualifiedClass | undefined => {
-    const resolved = repository.resolveType(defaultNamespace, name);
-    if (resolved === undefined || (resolved.kind !== "class" && resolved.kind !== "interface")) return undefined;
-    return { klass: resolved.value, namespaceName: resolved.namespace.name };
-};
 
 /**
  * The minimal context the ancestry walkers read: the repository to resolve
@@ -121,22 +103,17 @@ export const resolvePrerequisiteReference = (context: ModuleContext, name: strin
 export const forEachAncestor = (
     context: AncestryContext,
     klass: GirClass,
-    visit: (ancestor: ResolvedQualifiedClass, interfaces: readonly ResolvedInterface[]) => void,
+    visit: (ancestor: ResolvedAncestor, interfaces: readonly ResolvedInterface[]) => void,
     stop: (ancestor: GirClass) => boolean = () => false,
 ): void => {
-    const visited = new Set<string>();
-    let current =
-        klass.parent === undefined ? undefined : { name: klass.parent, defaultNamespace: context.namespace.name };
-    while (current !== undefined) {
-        const resolved = resolveClassOrInterface(context.repository, current.defaultNamespace, current.name);
-        if (resolved === undefined || stop(resolved.klass)) break;
-        const key = `${resolved.namespaceName}.${resolved.klass.name}`;
-        if (visited.has(key)) break;
-        visited.add(key);
-        visit(resolved, resolveDirectInterfaces(context, resolved.klass, resolved.namespaceName));
-        current = resolved.klass.parent
-            ? { name: resolved.klass.parent, defaultNamespace: resolved.namespaceName }
-            : undefined;
+    let first = true;
+    for (const ancestor of ancestorChain(context.repository, klass, context.namespace.name)) {
+        if (first) {
+            first = false;
+            continue;
+        }
+        if (stop(ancestor.klass)) break;
+        visit(ancestor, resolveDirectInterfaces(context, ancestor.klass, ancestor.namespaceName));
     }
 };
 

@@ -1,4 +1,5 @@
 import { sortedAlphaBy, toCamelIdentifier, toUpperFirst } from "@gtkx/utils";
+import { ancestorChain } from "../gir/ancestry.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import type { GirRepository } from "../gir/repository.js";
@@ -35,38 +36,6 @@ export function* iterateClassesWithGlibName(repository: GirRepository): Iterable
             if (glibName === undefined) continue;
             yield { glibName, klass, namespace };
         }
-    }
-}
-
-const resolveParentClass = (
-    repository: GirRepository,
-    parent: string,
-    namespace: GirNamespace,
-): { readonly klass: GirClass; readonly namespace: GirNamespace } | undefined => {
-    const resolved = repository.resolveType(namespace.name, parent);
-    if (resolved === undefined || (resolved.kind !== "class" && resolved.kind !== "interface")) return undefined;
-    return { klass: resolved.value, namespace: resolved.namespace };
-};
-
-/**
- * Yields a class and each of its ancestors, nearest first, following the
- * `parent` chain across namespaces. The single traversal both the glib-name
- * collection and the ancestor predicate folds run over.
- *
- * @param klass - The class to start from
- * @param namespace - The namespace the class lives in
- * @param repository - The repository for cross-namespace parent lookups
- */
-function* walkAncestors(
-    klass: GirClass,
-    namespace: GirNamespace,
-    repository: GirRepository,
-): Generator<{ readonly klass: GirClass; readonly namespace: GirNamespace }> {
-    let current: { readonly klass: GirClass; readonly namespace: GirNamespace } | undefined = { klass, namespace };
-    while (current !== undefined) {
-        yield current;
-        if (current.klass.parent === undefined) return;
-        current = resolveParentClass(repository, current.klass.parent, current.namespace);
     }
 }
 
@@ -126,7 +95,7 @@ export const ancestorGlibNames = (
     repository: GirRepository,
 ): readonly string[] => {
     const names: string[] = [];
-    for (const { klass: ancestor } of walkAncestors(klass, namespace, repository)) {
+    for (const { klass: ancestor } of ancestorChain(repository, klass, namespace.name)) {
         const glibName = ancestor.glibTypeName ?? ancestor.cType;
         if (glibName !== undefined) names.push(glibName);
     }
@@ -139,7 +108,7 @@ const someAncestor = (
     repository: GirRepository,
     predicate: (klass: GirClass, glibName: string) => boolean,
 ): boolean => {
-    for (const { klass: ancestor } of walkAncestors(klass, namespace, repository)) {
+    for (const { klass: ancestor } of ancestorChain(repository, klass, namespace.name)) {
         const glibName = ancestor.glibTypeName ?? ancestor.cType ?? "";
         if (predicate(ancestor, glibName)) return true;
     }
