@@ -4,6 +4,7 @@ import { joinArgs } from "../dsl/emit.js";
 import type { GirCallback } from "../gir/callback.js";
 import {
     type GirParameter,
+    type GirReturnValue,
     isCallerAllocatedOut,
     isInoutParameter,
     isOutParameter,
@@ -83,6 +84,18 @@ export const isVoidRef = (repository: GirRepository, ref: TypeId | undefined): b
  */
 export const isInlineCallbackRef = (repository: GirRepository, ref: TypeId | undefined): boolean =>
     ref !== undefined && repository.typeOf(ref)?.kind === "callback" && repository.nameOf(ref) === undefined;
+
+/**
+ * Whether a callable's primary return is dropped from the surfaced result: a
+ * `void` return, or a `(skip)`-annotated one whose C value carries nothing a JS
+ * caller needs. Either way only the out-parameters remain. Shared by the method
+ * and signal paths so both define "primary return is dropped" once.
+ *
+ * @param repository - The GIR repository
+ * @param returnValue - The callable's return value
+ */
+export const omitsPrimaryReturn = (repository: GirRepository, returnValue: GirReturnValue): boolean =>
+    isVoidRef(repository, returnValue.type) || returnValue.skip;
 
 /**
  * Renders a TypeScript expression that materialises the FFI type

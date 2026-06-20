@@ -13,7 +13,7 @@ import {
     passesHandleInPlace,
 } from "./param-classify.js";
 import { renderTsType } from "./ts-type.js";
-import { isVoidRef, renderCallbackType, renderFfiType, renderSelfFfiType } from "./value.js";
+import { omitsPrimaryReturn, renderCallbackType, renderFfiType, renderSelfFfiType } from "./value.js";
 
 /**
  * Returns the camelCased JS export name for a callable's method or static.
@@ -80,7 +80,7 @@ export const renderMethodReturnType = (context: ModuleContext, fn: GirFunction):
                 isInoutParameter(p)) &&
             !folded.has(index),
     );
-    const primaryReturnsValue = !omitsPrimaryReturn(context, fn);
+    const primaryReturnsValue = !omitsPrimaryReturn(context.repository, fn.returnValue);
     if (outs.length === 0) {
         return primaryReturnsValue ? renderTsType(context, fn.returnValue.type, fn.returnValue.nullable) : "void";
     }
@@ -91,18 +91,6 @@ export const renderMethodReturnType = (context: ModuleContext, fn: GirFunction):
     const primary = renderTsType(context, fn.returnValue.type, fn.returnValue.nullable);
     return `[${primary}, ${outTypes.join(", ")}]`;
 };
-
-/**
- * Whether the callable's primary return value is dropped from the surfaced
- * result: a `void` return, or a `(skip)`-annotated one whose C value carries
- * nothing a JS caller needs. Either way the rendered return type and body
- * expose only the out-parameters.
- *
- * @param context - The module context
- * @param fn - The callable
- */
-const omitsPrimaryReturn = (context: ModuleContext, fn: GirFunction): boolean =>
-    isVoidRef(context.repository, fn.returnValue.type) || fn.returnValue.skip;
 
 /**
  * Renders the JS body of a promisified `*_async` method that delegates to

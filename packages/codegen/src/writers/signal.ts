@@ -15,7 +15,7 @@ import {
 } from "./inheritance.js";
 import { isBoxedCallerOut, isBoxedInout, renderHandlerParameters } from "./param-classify.js";
 import { renderTsType } from "./ts-type.js";
-import { isCellInout, isVoidRef, renderFfiType, renderHandlerArgType } from "./value.js";
+import { isCellInout, omitsPrimaryReturn, renderFfiType, renderHandlerArgType } from "./value.js";
 
 const SIGNAL_HANDLER_TYPE = "(...args: any[]) => any";
 
@@ -316,7 +316,7 @@ const renderResultType = (
     optOut: boolean,
 ): string => {
     const { signal } = collected;
-    const primary = omitsPrimaryReturn(context, signal)
+    const primary = omitsPrimaryReturn(context.repository, signal.returnValue)
         ? undefined
         : renderTsType(context, signal.returnValue.type, signal.returnValue.nullable);
     const outTypes = signal.parameters
@@ -404,7 +404,7 @@ const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): str
         return `{ ffi: ${ffi}, value: args[${argIndex++}] }`;
     });
 
-    const isVoid = omitsPrimaryReturn(context, signal);
+    const isVoid = omitsPrimaryReturn(context.repository, signal.returnValue);
     const returnArg = isVoid
         ? ""
         : `, ${renderFfiType(context, signal.returnValue.type, signal.returnValue.transferOwnership)}`;
@@ -455,7 +455,7 @@ const renderCallback = (context: ModuleContext, collected: CollectedSignal): str
     const { signal } = collected;
     const params = signal.parameters.filter((parameter) => !parameter.isVarargs);
     const callbackParamFfi = params.map((parameter) => renderHandlerArgType(context, parameter, parameter.type));
-    const isVoid = omitsPrimaryReturn(context, signal);
+    const isVoid = omitsPrimaryReturn(context.repository, signal.returnValue);
     const returnFfi = isVoid
         ? "t.void"
         : renderFfiType(context, signal.returnValue.type, signal.returnValue.transferOwnership);
@@ -539,12 +539,3 @@ const collectNotifyDetails = (context: ModuleContext, klass: GirClass): readonly
     for (const property of collectInterfaceProperties(context, klass)) consider(property);
     return result;
 };
-
-/**
- * Whether a signal's primary return is dropped from the surfaced result: a void
- * return, or a `(skip)`-annotated one whose C value carries nothing a JS caller
- * needs. Either way only the out-parameters remain, mirroring the method path's
- * `omitsPrimaryReturn`.
- */
-const omitsPrimaryReturn = (context: ModuleContext, signal: GirSignal): boolean =>
-    isVoidRef(context.repository, signal.returnValue.type) || signal.returnValue.skip;
