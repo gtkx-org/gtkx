@@ -168,7 +168,7 @@ describe("waitForElementToBeRemoved timeout", () => {
         const element = createMockWidget(true);
 
         await expect(waitForElementToBeRemoved(element as never, { timeout: 100, interval: 10 })).rejects.toThrow(
-            /Timed out after 100ms waiting for element to be removed/,
+            /Timed out after 100ms[\s\S]*Element not yet removed/,
         );
     });
 

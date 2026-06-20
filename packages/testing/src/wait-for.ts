@@ -135,33 +135,20 @@ const isTargetRemoved = (target: RemovalTarget): boolean => {
  * // Loader is now gone
  * ```
  */
+const ELEMENT_NOT_REMOVED = new Error("Element not yet removed");
+
 export const waitForElementToBeRemoved = (
     elementOrCallback: ElementOrCallback,
     options?: WaitForOptions,
-): Promise<void> =>
-    asyncWrapper(async () => {
-        const config = getConfig();
-        const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
-
-        const initialTarget = getTarget(elementOrCallback);
-        if (isTargetRemoved(initialTarget)) {
-            throw new Error(
+): Promise<void> => {
+    if (isTargetRemoved(getTarget(elementOrCallback))) {
+        return Promise.reject(
+            new Error(
                 "Element already removed: waitForElementToBeRemoved requires the element to be present initially",
-            );
-        }
-
-        const startTime = Date.now();
-
-        while (Date.now() - startTime < timeout) {
-            if (isTargetRemoved(getTarget(elementOrCallback))) {
-                return;
-            }
-            await new Promise((resolve) => setTimeout(resolve, interval));
-        }
-
-        const timeoutError = new Error(`Timed out after ${timeout}ms waiting for element to be removed`);
-        if (onTimeout) {
-            throw onTimeout(timeoutError);
-        }
-        throw timeoutError;
-    });
+            ),
+        );
+    }
+    return waitFor(() => {
+        if (!isTargetRemoved(getTarget(elementOrCallback))) throw ELEMENT_NOT_REMOVED;
+    }, options);
+};
