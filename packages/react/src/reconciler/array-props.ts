@@ -18,7 +18,7 @@
  * GObject prop of the same name.
  */
 import { ARRAY_PROPS as ARRAY_PROP_ROWS } from "virtual:gtkx-config";
-import type { ArrayPropRow, ConstructStep } from "@gtkx/config";
+import type { ArrayPropRow, ConstructStep, PerElementPropRows } from "@gtkx/config";
 import { constructWrapper } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/gi/gobject";
 import { requireClassByName } from "../utils/gtype-predicates.js";
@@ -72,7 +72,7 @@ const compileRow = (row: ArrayPropRow): ArrayPropDescriptor => {
     return descriptor;
 };
 
-const compileRows = (): Readonly<Record<string, Readonly<Record<string, ArrayPropDescriptor>>>> => {
+const compileRows = (): PerElementPropRows<ArrayPropDescriptor> => {
     const compiled: Record<string, Record<string, ArrayPropDescriptor>> = {};
     for (const [typeName, props] of Object.entries(ARRAY_PROP_ROWS)) {
         const entry: Record<string, ArrayPropDescriptor> = {};
@@ -88,7 +88,7 @@ const compileRows = (): Readonly<Record<string, Readonly<Record<string, ArrayPro
  * `apply-props` merges the entries for every type in an instance's GType
  * ancestry.
  */
-export const ARRAY_PROPS: Readonly<Record<string, Readonly<Record<string, ArrayPropDescriptor>>>> = compileRows();
+export const ARRAY_PROPS: PerElementPropRows<ArrayPropDescriptor> = compileRows();
 
 const toArray = (value: unknown): readonly unknown[] => (Array.isArray(value) ? value : []);
 

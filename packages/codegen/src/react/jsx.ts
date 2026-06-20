@@ -1,4 +1,4 @@
-import type { ArrayPropRow, ObjectPropRow, VirtualPropRow } from "@gtkx/config";
+import type { ArrayPropRow, ObjectPropRow, PerElementPropRows, VirtualPropRow } from "@gtkx/config";
 import { quote } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
@@ -14,11 +14,11 @@ export type JsxSurfaceMaps = {
     /** Container-slot methods keyed by JSX element name. */
     readonly containerPropMap?: Readonly<Record<string, readonly string[]>>;
     /** Array-prop rows keyed by JSX element name then prop name. */
-    readonly arrayPropMap?: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>>;
+    readonly arrayPropMap?: PerElementPropRows<ArrayPropRow>;
     /** Object-prop rows keyed by JSX element name then prop name. */
-    readonly objectPropMap?: Readonly<Record<string, Readonly<Record<string, ObjectPropRow>>>>;
+    readonly objectPropMap?: PerElementPropRows<ObjectPropRow>;
     /** Virtual-prop rows keyed by JSX element name then prop name. */
-    readonly virtualPropMap?: Readonly<Record<string, Readonly<Record<string, VirtualPropRow>>>>;
+    readonly virtualPropMap?: PerElementPropRows<VirtualPropRow>;
 };
 
 /**

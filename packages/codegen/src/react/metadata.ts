@@ -4,6 +4,7 @@ import type {
     ElementMapRule,
     ObjectPropRow,
     PageMetaSetter,
+    PerElementPropRows,
     PropRule,
     VirtualPropRow,
 } from "@gtkx/config";
@@ -25,11 +26,11 @@ export type RuntimeTables = {
     /** Merged attach relationships, built-ins first. */
     readonly elementMap: readonly ElementMapRule[];
     /** Merged array-prop rows keyed by GLib type name, then prop name. */
-    readonly arrayProps: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>>;
+    readonly arrayProps: PerElementPropRows<ArrayPropRow>;
     /** Merged object-prop rows keyed by GLib type name, then prop name. */
-    readonly objectProps: Readonly<Record<string, Readonly<Record<string, ObjectPropRow>>>>;
+    readonly objectProps: PerElementPropRows<ObjectPropRow>;
     /** Merged virtual-prop rows keyed by GLib type name, then prop name. */
-    readonly virtualProps: Readonly<Record<string, Readonly<Record<string, VirtualPropRow>>>>;
+    readonly virtualProps: PerElementPropRows<VirtualPropRow>;
     /** Imperative and signal prop rules keyed by GLib type name. */
     readonly propRules: Readonly<Record<string, readonly PropRule[]>>;
     /** GLib type names of top-level surfaces. */

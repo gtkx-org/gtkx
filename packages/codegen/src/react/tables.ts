@@ -20,6 +20,7 @@ import type {
     ElementMapRule,
     ObjectPropRow,
     PageMetaSetter,
+    PerElementPropRows,
     PropRule,
     VirtualPropRow,
 } from "@gtkx/config";
@@ -152,7 +153,7 @@ const POSITION_TYPE_BOTTOM = 3;
  * per element. Project rows from `gtkx.config.ts` (`arrayProps`) merge over
  * these.
  */
-export const BUILT_IN_ARRAY_PROPS: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>> = {
+export const BUILT_IN_ARRAY_PROPS: PerElementPropRows<ArrayPropRow> = {
     GtkApplication: {
         actionAccels: {
             itemType: "ActionAccel",
@@ -276,7 +277,7 @@ export const BUILT_IN_ARRAY_PROPS: Readonly<Record<string, Readonly<Record<strin
  * exported member of `@gtkx/react`) and the calls applying or clearing the
  * value. Project rows from `gtkx.config.ts` (`objectProps`) merge over these.
  */
-export const BUILT_IN_OBJECT_PROPS: Readonly<Record<string, Readonly<Record<string, ObjectPropRow>>>> = {
+export const BUILT_IN_OBJECT_PROPS: PerElementPropRows<ObjectPropRow> = {
     GtkDragSource: {
         icon: {
             itemType: "DragSourceIcon",
@@ -311,7 +312,7 @@ export const BUILT_IN_OBJECT_PROPS: Readonly<Record<string, Readonly<Record<stri
  * method. Project rows from `gtkx.config.ts` (`virtualProps`) merge over
  * these.
  */
-export const BUILT_IN_VIRTUAL_PROPS: Readonly<Record<string, Readonly<Record<string, VirtualPropRow>>>> = {
+export const BUILT_IN_VIRTUAL_PROPS: PerElementPropRows<VirtualPropRow> = {
     GtkDrawingArea: {
         drawFunc: { type: "Gtk.DrawingAreaDrawFunc", setter: "setDrawFunc", after: "queueDraw" },
     },
@@ -474,9 +475,9 @@ export const mergeContainerProps = (
 ): Readonly<Record<string, readonly string[]>> => mergeSlotMap(BUILT_IN_CONTAINER_PROPS, userContainerProps);
 
 const mergePropRowMap = <Row>(
-    builtIn: Readonly<Record<string, Readonly<Record<string, Row>>>>,
-    userRows: Readonly<Record<string, Readonly<Record<string, Row>>>> | undefined,
-): Readonly<Record<string, Readonly<Record<string, Row>>>> => {
+    builtIn: PerElementPropRows<Row>,
+    userRows: PerElementPropRows<Row> | undefined,
+): PerElementPropRows<Row> => {
     const result: Record<string, Readonly<Record<string, Row>>> = {};
     for (const [key, props] of Object.entries(builtIn)) {
         result[key] = { ...props };
@@ -497,9 +498,8 @@ const mergePropRowMap = <Row>(
  * @param userArrayProps - The project's `arrayProps` map, or `undefined`
  */
 export const mergeArrayProps = (
-    userArrayProps: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>> | undefined,
-): Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>> =>
-    mergePropRowMap(BUILT_IN_ARRAY_PROPS, userArrayProps);
+    userArrayProps: PerElementPropRows<ArrayPropRow> | undefined,
+): PerElementPropRows<ArrayPropRow> => mergePropRowMap(BUILT_IN_ARRAY_PROPS, userArrayProps);
 
 /**
  * Merges the built-in object-prop rows with a project's `objectProps` map,
@@ -508,9 +508,8 @@ export const mergeArrayProps = (
  * @param userObjectProps - The project's `objectProps` map, or `undefined`
  */
 export const mergeObjectProps = (
-    userObjectProps: Readonly<Record<string, Readonly<Record<string, ObjectPropRow>>>> | undefined,
-): Readonly<Record<string, Readonly<Record<string, ObjectPropRow>>>> =>
-    mergePropRowMap(BUILT_IN_OBJECT_PROPS, userObjectProps);
+    userObjectProps: PerElementPropRows<ObjectPropRow> | undefined,
+): PerElementPropRows<ObjectPropRow> => mergePropRowMap(BUILT_IN_OBJECT_PROPS, userObjectProps);
 
 /**
  * Merges the built-in virtual-prop rows with a project's `virtualProps` map,
@@ -519,9 +518,8 @@ export const mergeObjectProps = (
  * @param userVirtualProps - The project's `virtualProps` map, or `undefined`
  */
 export const mergeVirtualProps = (
-    userVirtualProps: Readonly<Record<string, Readonly<Record<string, VirtualPropRow>>>> | undefined,
-): Readonly<Record<string, Readonly<Record<string, VirtualPropRow>>>> =>
-    mergePropRowMap(BUILT_IN_VIRTUAL_PROPS, userVirtualProps);
+    userVirtualProps: PerElementPropRows<VirtualPropRow> | undefined,
+): PerElementPropRows<VirtualPropRow> => mergePropRowMap(BUILT_IN_VIRTUAL_PROPS, userVirtualProps);
 
 /**
  * Merges the built-in element-map rows with a project's `elementMap` rows,

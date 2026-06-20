@@ -14,23 +14,21 @@
  */
 declare module "virtual:gtkx-config" {
     /** Per-GLib-type-name map of `onCamelCase` handler prop names to GIR signal names. */
-    export const SIGNALS: Readonly<Record<string, Readonly<Record<string, string>>>>;
+    export const SIGNALS: import("@gtkx/config").PerElementPropRows<string>;
     /** Per-GLib-type-name set of construct-only camelCase property names. */
     export const CONSTRUCT_ONLY_PROPS: Readonly<Record<string, ReadonlySet<string>>>;
     /** Per-GLib-type-name set of constructable (writable/construct/construct-only) camelCase property names. */
     export const CONSTRUCT_PROPS: Readonly<Record<string, ReadonlySet<string>>>;
     /** Per-GLib-type-name map of settable property names to their GIR default value. */
-    export const DEFAULT_PROPS: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
+    export const DEFAULT_PROPS: import("@gtkx/config").PerElementPropRows<unknown>;
     /** Merged attach relationships: codegen's built-ins, then the config's `elementMap` rows. */
     export const ELEMENT_MAP: readonly import("@gtkx/config").ElementMapRule[];
     /** Merged array-prop rows keyed by GLib type name, then prop name. */
-    export const ARRAY_PROPS: Readonly<Record<string, Readonly<Record<string, import("@gtkx/config").ArrayPropRow>>>>;
+    export const ARRAY_PROPS: import("@gtkx/config").PerElementPropRows<import("@gtkx/config").ArrayPropRow>;
     /** Merged object-prop rows keyed by GLib type name, then prop name. */
-    export const OBJECT_PROPS: Readonly<Record<string, Readonly<Record<string, import("@gtkx/config").ObjectPropRow>>>>;
+    export const OBJECT_PROPS: import("@gtkx/config").PerElementPropRows<import("@gtkx/config").ObjectPropRow>;
     /** Merged virtual-prop rows keyed by GLib type name, then prop name. */
-    export const VIRTUAL_PROPS: Readonly<
-        Record<string, Readonly<Record<string, import("@gtkx/config").VirtualPropRow>>>
-    >;
+    export const VIRTUAL_PROPS: import("@gtkx/config").PerElementPropRows<import("@gtkx/config").VirtualPropRow>;
     /** Imperative and signal prop rules keyed by GLib type name. */
     export const PROP_RULES: Readonly<Record<string, readonly import("@gtkx/config").PropRule[]>>;
     /** GLib type names of top-level surfaces (windows and dialogs). */
