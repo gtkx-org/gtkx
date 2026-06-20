@@ -19,7 +19,6 @@ function isGobjectType(gtype: GType): boolean {
 }
 
 const classRegistry = new Map<GType, AnyClass>();
-const gtypeByClass = new WeakMap<AnyClass, GType>();
 
 /**
  * Stamps a wrapper class's `GType` onto its prototype, the one sanctioned
@@ -27,6 +26,16 @@ const gtypeByClass = new WeakMap<AnyClass, GType>();
  */
 function stampGtype(cls: AnyClass, gtype: GType): void {
     (cls.prototype as { -readonly [K in keyof GTyped]: GTyped[K] }).__gtype__ = gtype;
+}
+
+/**
+ * Reads the `GType` stamped directly on `cls`'s own prototype, ignoring any
+ * value inherited from a registered ancestor. An unregistered class — including
+ * an unregistered subclass of a registered one — yields the invalid `GType`.
+ */
+function ownStampedGtype(cls: AnyClass): GType {
+    const proto: object = cls.prototype;
+    return Object.hasOwn(proto, "__gtype__") ? (proto as GTyped).__gtype__ : TYPE_INVALID;
 }
 
 /**
@@ -46,7 +55,6 @@ function stampGtype(cls: AnyClass, gtype: GType): void {
 export function setClassGtype(cls: AnyClass, gtype: GType): void {
     if (gtype !== TYPE_INVALID) {
         classRegistry.set(gtype, cls);
-        gtypeByClass.set(cls, gtype);
         stampGtype(cls, gtype);
     }
 }
@@ -56,7 +64,7 @@ export function setClassGtype(cls: AnyClass, gtype: GType): void {
  * GType (`0`) when the class has not been registered (e.g. boxed value types).
  */
 export function getClassGtype(cls: AnyClass): GType {
-    return gtypeByClass.get(cls) ?? TYPE_INVALID;
+    return ownStampedGtype(cls);
 }
 
 /**
