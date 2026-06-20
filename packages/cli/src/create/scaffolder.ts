@@ -8,7 +8,22 @@ import { isValidProjectName, type TestingOption } from "./options.js";
 /**
  * Supported package managers for GTKX projects.
  */
-export type PackageManager = "pnpm" | "npm" | "yarn";
+/**
+ * The package managers a scaffolded project supports: the run-dev command line
+ * each uses and whether it is the recommended default. The single table the
+ * type, the run command, the membership list, and the prompt rows derive from.
+ */
+const PACKAGE_MANAGERS = [
+    { value: "pnpm", label: "pnpm", runDev: "pnpm dev", recommended: true },
+    { value: "npm", label: "npm", runDev: "npm run dev", recommended: false },
+    { value: "yarn", label: "yarn", runDev: "yarn dev", recommended: false },
+] as const;
+
+/** A package manager a scaffolded project can use, derived from {@link PACKAGE_MANAGERS}. */
+export type PackageManager = (typeof PACKAGE_MANAGERS)[number]["value"];
+
+/** The supported package-manager identifiers, for membership validation. */
+export const PACKAGE_MANAGER_VALUES: readonly PackageManager[] = PACKAGE_MANAGERS.map((manager) => manager.value);
 
 /**
  * Options accepted by {@link Scaffolder.run}. Missing fields are filled
@@ -102,11 +117,9 @@ const DEV_DEPENDENCIES = ["@gtkx/cli", "@types/react", "typescript", "vite"];
 
 const TESTING_DEV_DEPENDENCIES = ["@gtkx/testing", "vitest"];
 
-const RUN_DEV_COMMAND: Record<PackageManager, string> = {
-    pnpm: "pnpm dev",
-    npm: "npm run dev",
-    yarn: "yarn dev",
-};
+const RUN_DEV_COMMAND: Record<PackageManager, string> = Object.fromEntries(
+    PACKAGE_MANAGERS.map((manager) => [manager.value, manager.runDev]),
+) as Record<PackageManager, string>;
 
 /**
  * Returns the conventional "run the dev server" command line for a given
@@ -186,11 +199,11 @@ const promptPackageManager = async (deps: ScaffolderDeps): Promise<PackageManage
         deps,
         await deps.prompts.select<PackageManager>({
             message: "Package manager",
-            options: [
-                { value: "pnpm", label: "pnpm", hint: detected === "pnpm" ? "detected" : "recommended" },
-                { value: "npm", label: "npm", hint: detected === "npm" ? "detected" : undefined },
-                { value: "yarn", label: "yarn", hint: detected === "yarn" ? "detected" : undefined },
-            ],
+            options: PACKAGE_MANAGERS.map((manager) => ({
+                value: manager.value,
+                label: manager.label,
+                hint: detected === manager.value ? "detected" : manager.recommended ? "recommended" : undefined,
+            })),
             initialValue: initial,
         }),
     );
