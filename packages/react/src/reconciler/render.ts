@@ -1,20 +1,14 @@
 import type { ReactNode } from "react";
-import { reconciler } from "./reconciler.js";
 import { type ReconcilerErrorHandler, setReconcilerErrorHandler } from "./reconciler-error-sink.js";
+import { createReconcilerRoot, type ReconcilerRoot, unmountAllReconcilerRoots } from "./reconciler-root.js";
 import { createRootElement, type RootElement } from "./root-element.js";
 import { getSignalStore } from "./signal-store.js";
 
-type ActiveRoot = {
-    fiberRoot: ReturnType<typeof reconciler.createContainer>;
-    token: RootElement;
-    priorHandler: ReconcilerErrorHandler | null;
-};
+const priorHandlers = new WeakMap<ReconcilerRoot, ReconcilerErrorHandler | null>();
 
-const activeRoots = new Set<ActiveRoot>();
-
-const teardownRoot = (root: ActiveRoot): void => {
-    setReconcilerErrorHandler(root.priorHandler);
-    reconciler.updateContainer(null, root.fiberRoot, null, () => {});
+const teardownRoot = (root: ReconcilerRoot): void => {
+    setReconcilerErrorHandler(priorHandlers.get(root) ?? null);
+    root.update(null);
 };
 
 /**
@@ -97,29 +91,15 @@ export const createRoot = (container: RootElement = createRootElement()): Root =
 
     const priorHandler = setReconcilerErrorHandler(onUncaughtError);
 
-    const fiberRoot = reconciler.createContainer(
-        container,
-        1,
-        null,
-        false,
-        null,
-        "",
-        onUncaughtError,
-        onCaughtError,
-        () => {},
-        () => {},
-    );
-
-    const root: ActiveRoot = { fiberRoot, token: container, priorHandler };
-    activeRoots.add(root);
+    const root = createReconcilerRoot({ containerInfo: container, onUncaughtError, onCaughtError });
+    priorHandlers.set(root, priorHandler);
 
     return {
         render: (element: ReactNode): void => {
-            reconciler.updateContainer(element, fiberRoot, null, () => {});
+            root.update(element);
         },
         unmount: (): void => {
-            if (!activeRoots.delete(root)) return;
-            teardownRoot(root);
+            root.unmount(teardownRoot);
         },
     };
 };
@@ -156,10 +136,5 @@ export const createRoot = (container: RootElement = createRootElement()): Root =
  * @see {@link createRoot} for starting the application
  */
 export const quit = (): void => {
-    const roots = [...activeRoots];
-    activeRoots.clear();
-
-    for (const root of roots) {
-        teardownRoot(root);
-    }
+    unmountAllReconcilerRoots(teardownRoot);
 };

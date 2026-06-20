@@ -28,6 +28,13 @@ export { type DeferredFlushWrapper, setDeferredFlushWrapper } from "./reconciler
 export { createPortal } from "./reconciler/portal.js";
 export { reconciler } from "./reconciler/reconciler.js";
 export { type ReconcilerErrorHandler, setReconcilerErrorHandler } from "./reconciler/reconciler-error-sink.js";
+export {
+    createReconcilerRoot,
+    type FiberRoot,
+    type ReconcilerRoot,
+    type ReconcilerRootOptions,
+    unmountAllReconcilerRoots,
+} from "./reconciler/reconciler-root.js";
 export { createRoot, quit, type Root } from "./reconciler/render.js";
 export { createRootElement, isRootElement, ROOT_ELEMENT, type RootElement } from "./reconciler/root-element.js";
 export {

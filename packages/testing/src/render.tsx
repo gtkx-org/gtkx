@@ -1,7 +1,12 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { isRootElement, type RootElement, reconciler, setReconcilerErrorHandler } from "@gtkx/react";
+import {
+    createReconcilerRoot,
+    isRootElement,
+    type ReconcilerRoot,
+    type RootElement,
+    setReconcilerErrorHandler,
+} from "@gtkx/react";
 import { type ErrorInfo, type ReactNode, StrictMode } from "react";
-import type Reconciler from "react-reconciler";
 import { bindQueries } from "./bind-queries.js";
 import { logWidget, type PrettyWidgetOptions } from "./pretty-widget.js";
 import { setScreenRoot } from "./screen.js";
@@ -14,7 +19,7 @@ let lastRenderError: Error | null = null;
 let errorHandlerInstalled = false;
 
 type ActiveRender = {
-    root: Reconciler.FiberRoot;
+    root: ReconcilerRoot;
     window: Gtk.Window | null;
 };
 
@@ -23,9 +28,9 @@ const activeRenders = new Set<ActiveRender>();
 const HARNESS_WINDOW_WIDTH = 800;
 const HARNESS_WINDOW_HEIGHT = 600;
 
-const update = async (element: ReactNode, fiberRoot: Reconciler.FiberRoot): Promise<void> => {
+const update = async (element: ReactNode, root: ReconcilerRoot): Promise<void> => {
     await act(() => {
-        reconciler.updateContainer(element, fiberRoot, null, () => {});
+        root.update(element);
     });
 
     if (lastRenderError) {
@@ -33,6 +38,14 @@ const update = async (element: ReactNode, fiberRoot: Reconciler.FiberRoot): Prom
         lastRenderError = null;
         throw captured;
     }
+};
+
+const disposeActiveRender = async (active: ActiveRender): Promise<void> => {
+    if (!activeRenders.delete(active)) return;
+    await active.root.unmount(async (root) => {
+        await update(null, root);
+        active.window?.destroy();
+    });
 };
 
 const handleError = (error: unknown): void => {
@@ -137,19 +150,13 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
     };
 
     const resolved = resolveContainer(options?.container);
-    const fiberRoot = reconciler.createContainer(
-        resolved.containerInfo,
-        1,
-        null,
-        false,
-        null,
-        "",
-        handleError,
+    const root = createReconcilerRoot({
+        containerInfo: resolved.containerInfo,
+        onUncaughtError: handleError,
         onCaughtError,
         onRecoverableError,
-        () => {},
-    );
-    const active: ActiveRender = { root: fiberRoot, window: resolved.window };
+    });
+    const active: ActiveRender = { root, window: resolved.window };
     activeRenders.add(active);
 
     const wrap = (node: ReactNode): ReactNode => {
@@ -157,7 +164,7 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
         return options?.reactStrictMode ? <StrictMode>{wrapped}</StrictMode> : wrapped;
     };
 
-    await update(wrap(element), fiberRoot);
+    await update(wrap(element), root);
     resolved.window?.present();
 
     setScreenRoot(baseElement);
@@ -169,12 +176,10 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
         },
         baseElement,
         unmount: async () => {
-            if (!activeRenders.delete(active)) return;
-            await update(null, fiberRoot);
-            resolved.window?.destroy();
+            await disposeActiveRender(active);
         },
         rerender: async (newElement: ReactNode) => {
-            await update(wrap(newElement), fiberRoot);
+            await update(wrap(newElement), root);
         },
         debug: (element: Container | Container[] = baseElement, options?: PrettyWidgetOptions) => {
             logWidget(element, options);
@@ -203,11 +208,9 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
  * ```
  */
 export const cleanup = async (): Promise<void> => {
-    for (const active of activeRenders) {
-        await update(null, active.root);
-        active.window?.destroy();
+    for (const active of [...activeRenders]) {
+        await disposeActiveRender(active);
     }
-    activeRenders.clear();
     setScreenRoot(null);
     resetClipboard();
 };
