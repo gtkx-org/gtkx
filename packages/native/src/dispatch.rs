@@ -256,17 +256,6 @@ impl Mailbox {
         self.wake_js_tsfn.get().is_some()
     }
 
-    /// Wakes the JS thread if it is parked in `wait_for_glib_result`.
-    ///
-    /// Callers running long-lived `GLib` tasks (e.g. the freeze loop, which does
-    /// not return until [`Self::unfreeze`] is called) must invoke this after
-    /// signalling their `Receiver` so the JS thread observes the value rather
-    /// than blocking forever — the standard wake-after-drain in
-    /// [`Self::dispatch_pending`] only fires once the task closure returns.
-    pub fn notify_js(&self) {
-        self.wake_js.notify();
-    }
-
     /// Increments the `GLib`-initiated callback-nesting depth. Called on the
     /// JS thread immediately before a callback the `GLib` thread is parked
     /// on starts executing, so the tasks that callback pushes are tagged at

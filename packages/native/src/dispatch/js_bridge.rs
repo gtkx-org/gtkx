@@ -29,6 +29,31 @@ fn node_channel_disconnected<R>() -> anyhow::Result<R> {
     Err(anyhow::anyhow!("JS callback channel disconnected"))
 }
 
+/// The readiness handle a long-lived `GLib` task uses to unblock its waiting
+/// JS caller while it keeps running.
+///
+/// Handed to the task by [`Mailbox::dispatch_long_lived_glib_task`]; calling
+/// [`Self::signal`] delivers the readiness value and wakes the parked JS thread
+/// so it observes it without waiting for the task to return.
+#[derive(Debug)]
+pub struct ReadySignal {
+    tx: mpsc::Sender<()>,
+}
+
+impl ReadySignal {
+    /// Reports readiness: delivers the value to the waiting JS thread and wakes
+    /// it, so a still-running `GLib` task no longer blocks its caller.
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    pub fn signal(self) {
+        send_or_report(
+            &self.tx,
+            (),
+            "Long-lived GLib task ready signal channel was closed",
+        );
+        Mailbox::global().wake_js.notify();
+    }
+}
+
 /// One non-blocking poll of a result channel: `Ok(Some)` on a delivered
 /// result, `Ok(None)` when empty, and the dispatch error when the sender is
 /// gone.
@@ -134,6 +159,25 @@ impl Mailbox {
             .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))
     }
 
+    /// Schedules a `GLib`-thread `task` that keeps running after it reports
+    /// readiness, blocking the JS thread only until the [`ReadySignal`] fires.
+    ///
+    /// The task receives a [`ReadySignal`]; calling [`ReadySignal::signal`]
+    /// unblocks the JS thread while the task continues on the `GLib` thread
+    /// (for example, the freeze loop that drains mutations until unfrozen). A
+    /// readiness wait that ends with a dropped sender surfaces as a
+    /// `GenericFailure` [`napi::Error`].
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    pub fn dispatch_long_lived_glib_task<F>(&self, env: Env, task: F) -> napi::Result<()>
+    where
+        F: FnOnce(ReadySignal) + Send + 'static,
+    {
+        let (tx, rx) = mpsc::channel::<()>();
+        self.schedule_glib(Box::new(move || task(ReadySignal { tx })));
+        self.wait_for_glib_result(env, &rx)
+            .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))
+    }
+
     /// Blocks the JS thread until the receiver yields a value, draining any
     /// pending node callbacks along the way. Useful when callers schedule
     /// tasks via [`Mailbox::schedule_glib`] and want fine-grained control over
@@ -147,7 +191,7 @@ impl Mailbox {
     /// dereferences it. Node tasks left pending here are picked up by the wake
     /// threadsafe function or the next wait.
     #[cfg_attr(coverage_nightly, coverage(off))]
-    pub fn wait_for_glib_result<R>(
+    fn wait_for_glib_result<R>(
         &self,
         env: Env,
         rx: &mpsc::Receiver<R>,
