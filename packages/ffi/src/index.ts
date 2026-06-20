@@ -39,14 +39,7 @@ export {
     wrapHandle,
     wrapInterfaceHandle,
 } from "./registry.js";
-export {
-    connectGobjectSignal,
-    emitGobjectSignal,
-    offSignal,
-    onceSignal,
-    onSignal,
-    type SignalHandler,
-    signalBaseName,
-} from "./signal.js";
+export { offSignal, onceSignal, onSignal } from "./listeners.js";
+export { connectGobjectSignal, emitGobjectSignal, type SignalHandler, signalBaseName } from "./signal.js";
 export { t } from "./t.js";
 export { registerWrapperClass, wrapValue } from "./wrapper-class.js";
