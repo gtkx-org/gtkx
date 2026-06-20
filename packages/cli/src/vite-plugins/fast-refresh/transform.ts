@@ -1,22 +1,16 @@
 import { type Options as SwcOptions, transform } from "@swc/core";
 import type { Plugin } from "vite";
-import {
-    type RefreshFilterOptions,
-    resolveRefreshFilter,
-    shouldTransformForRefresh,
-} from "../internal/vite-refresh-shared.js";
+import { createRefreshGate, type RefreshFilterOptions } from "../../internal/vite-refresh-shared.js";
 
-type SwcSsrRefreshOptions = RefreshFilterOptions;
-
-export function swcSsrRefresh(options: SwcSsrRefreshOptions = {}): Plugin {
-    const filter = resolveRefreshFilter(options);
+export function swcSsrRefresh(options: RefreshFilterOptions = {}): Plugin {
+    const gate = createRefreshGate(options);
 
     return {
         name: "gtkx:swc-ssr-refresh",
         enforce: "pre",
 
         async transform(code, id, transformOptions) {
-            if (!shouldTransformForRefresh(id, transformOptions, filter)) {
+            if (!gate(id, transformOptions)) {
                 return;
             }
 
