@@ -3,7 +3,7 @@ import { callbackFromNode, type GirCallback } from "./callback.js";
 import { classFromNode, type GirClass } from "./class.js";
 import { enumFromNode, type GirEnum } from "./enum.js";
 import { functionFromNode, type GirFunction } from "./function.js";
-import { attr, childOf, childrenOf, type RawNode } from "./parse.js";
+import { attr, childOf, childrenOf, nameAttr, type RawNode } from "./parse.js";
 import type { ParseContext, TypeId } from "./type-id.js";
 import { typeRefFromSlot } from "./type-ref.js";
 
@@ -84,7 +84,7 @@ export type NamespaceHeader = {
  */
 export const parseNamespaceHeader = (repositoryNode: RawNode): NamespaceHeader => {
     const includes = childrenOf(repositoryNode, "include").map<NamespaceInclude>((include) => ({
-        name: attr(include, "name") ?? "",
+        name: nameAttr(include),
         version: attr(include, "version") ?? "",
     }));
     const namespaceNode = childrenOf(repositoryNode, "namespace")[0];
@@ -92,7 +92,7 @@ export const parseNamespaceHeader = (repositoryNode: RawNode): NamespaceHeader =
         throw new Error("GIR repository has no <namespace> child");
     }
     return {
-        name: attr(namespaceNode, "name") ?? "",
+        name: nameAttr(namespaceNode),
         sharedLibrary: attr(namespaceNode, "shared-library"),
         cSymbolPrefixes: splitPrefixes(attr(namespaceNode, "c:symbol-prefixes")),
         includes,
@@ -139,12 +139,12 @@ export const populateNamespaceBody = (shell: GirNamespace, namespaceNode: RawNod
     mutable.callbacks = childrenOf(namespaceNode, "callback").map((callback) => callbackFromNode(callback, context));
     mutable.functions = childrenOf(namespaceNode, "function").map((fn) => functionFromNode(fn, "function", context));
     mutable.constants = childrenOf(namespaceNode, "constant").map((constant) => ({
-        name: attr(constant, "name") ?? "",
+        name: nameAttr(constant),
         value: attr(constant, "value") ?? "",
         type: typeRefFromSlot(constant, context),
     }));
     mutable.aliases = childrenOf(namespaceNode, "alias").map((alias) => ({
-        name: attr(alias, "name") ?? "",
+        name: nameAttr(alias),
         target: typeRefFromSlot(alias, context),
         targetCType: attr(childOf(alias, "type"), "c:type"),
     }));

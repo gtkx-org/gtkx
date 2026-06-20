@@ -1,4 +1,4 @@
-import { attr, childOf, childrenOf, type RawNode } from "./parse.js";
+import { attr, childOf, childrenOf, intAttr, nameAttr, type RawNode } from "./parse.js";
 import { primitiveCategory } from "./primitives.js";
 import type { CArrayType, ListFlavor, ParseContext, TypeId } from "./type-id.js";
 
@@ -44,7 +44,7 @@ export const typeRefFromSlot = (parent: RawNode | undefined, context: ParseConte
  * @param context - The per-namespace interning seam
  */
 const typeRefFromTypeNode = (typeNode: RawNode, context: ParseContext): TypeId => {
-    const name = attr(typeNode, "name") ?? "";
+    const name = nameAttr(typeNode);
 
     const listFlavor = LIST_KIND_BY_NAME.get(name);
     if (listFlavor !== undefined) {
@@ -81,14 +81,12 @@ const arrayTypeRefFromNode = (arrayNode: RawNode, context: ParseContext): TypeId
     if (listFlavor !== undefined) {
         return context.internContainer({ kind: "list", flavor: listFlavor, element });
     }
-    const lengthAttr = attr(arrayNode, "length");
-    const fixedSizeAttr = attr(arrayNode, "fixed-size");
     const carray: CArrayType = {
         kind: "carray",
         element,
         elementCType: elementNode === undefined ? undefined : attr(elementNode, "c:type"),
-        lengthParameterIndex: lengthAttr === undefined ? undefined : Number.parseInt(lengthAttr, 10),
-        fixedSize: fixedSizeAttr === undefined ? undefined : Number.parseInt(fixedSizeAttr, 10),
+        lengthParameterIndex: intAttr(arrayNode, "length"),
+        fixedSize: intAttr(arrayNode, "fixed-size"),
     };
     return context.internContainer(carray);
 };

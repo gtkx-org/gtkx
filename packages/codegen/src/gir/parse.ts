@@ -129,6 +129,56 @@ export const attrBool = (node: RawNode | undefined, name: string, fallback = fal
 };
 
 /**
+ * Reads the `name` attribute, falling back to the empty string the IR uses for
+ * anonymous or unnamed elements.
+ *
+ * @param node - The raw element
+ */
+export const nameAttr = (node: RawNode): string => attr(node, "name") ?? "";
+
+/**
+ * Reads an optional base-10 integer attribute, returning `undefined` when the
+ * attribute is absent.
+ *
+ * @param node - The raw element
+ * @param name - The attribute name (without the `@_` prefix)
+ */
+export const intAttr = (node: RawNode, name: string): number | undefined => {
+    const raw = attr(node, name);
+    return raw === undefined ? undefined : Number.parseInt(raw, 10);
+};
+
+/**
+ * Narrows an attribute value to one of a closed token set.
+ *
+ * An absent attribute yields `fallback`; a present token outside `members`
+ * throws rather than silently passing an unmodelled value through an unchecked
+ * cast, so the parse boundary rejects GIR the type model does not cover. The
+ * matched member is returned from the set, so the result is `T` (or `F` when
+ * the attribute is absent) without a cast.
+ *
+ * @typeParam T - The token union the attribute narrows to.
+ * @typeParam F - The fallback type returned when the attribute is absent.
+ * @param raw - The raw attribute value, or `undefined` when absent.
+ * @param members - The closed set of accepted tokens.
+ * @param fallback - The value returned when the attribute is absent.
+ * @param label - The attribute name, used in the error message.
+ * @returns The matched token, or `fallback` when the attribute is absent.
+ */
+export const parseEnumAttr = <T extends string, F extends T | undefined>(
+    raw: string | undefined,
+    members: ReadonlySet<T>,
+    fallback: F,
+    label: string,
+): T | F => {
+    if (raw === undefined) return fallback;
+    for (const member of members) {
+        if (member === raw) return member;
+    }
+    throw new Error(`Unknown ${label} value "${raw}"`);
+};
+
+/**
  * Returns the children of a raw node under a given tag name as an array.
  *
  * The parser configuration forces multi-occurrence tags to arrays already;

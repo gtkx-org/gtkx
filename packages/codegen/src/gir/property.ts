@@ -1,5 +1,5 @@
-import type { ParameterTransfer } from "./parameter.js";
-import { attr, attrBool, type RawNode } from "./parse.js";
+import { type ParameterTransfer, transferOwnership } from "./parameter.js";
+import { attr, attrBool, nameAttr, type RawNode } from "./parse.js";
 import type { ParseContext, TypeId } from "./type-id.js";
 import { typeRefFromSlot } from "./type-ref.js";
 
@@ -56,13 +56,13 @@ export const isConstructableProperty = (property: GirProperty): boolean =>
  * @param context - The per-namespace interning seam
  */
 export const propertyFromNode = (node: RawNode, context: ParseContext): GirProperty => ({
-    name: attr(node, "name") ?? "",
+    name: nameAttr(node),
     type: typeRefFromSlot(node, context),
     writable: attrBool(node, "writable"),
     construct: attrBool(node, "construct"),
     constructOnly: attrBool(node, "construct-only"),
     introspectable: attrBool(node, "introspectable", true),
-    transferOwnership: (attr(node, "transfer-ownership") ?? "none") as ParameterTransfer,
+    transferOwnership: transferOwnership(node),
     getter: attr(node, "getter"),
     setter: attr(node, "setter"),
     defaultValue: attr(node, "default-value"),

@@ -1,6 +1,6 @@
 import { fieldFromNode, type GirField } from "./field.js";
 import { functionFromNode, type GirFunction } from "./function.js";
-import { attr, attrBool, childrenOf, GIR_CONSTRUCTOR_TAG, type RawNode } from "./parse.js";
+import { attr, attrBool, childrenOf, GIR_CONSTRUCTOR_TAG, nameAttr, type RawNode } from "./parse.js";
 import { type GirProperty, propertyFromNode } from "./property.js";
 import { type GirSignal, signalFromNode } from "./signal.js";
 import type { ParseContext } from "./type-id.js";
@@ -45,7 +45,7 @@ export type GirClass = {
  * @param context - The per-namespace interning seam
  */
 export const classFromNode = (node: RawNode, isInterface: boolean, context: ParseContext): GirClass => ({
-    name: attr(node, "name") ?? "",
+    name: nameAttr(node),
     cType: attr(node, "c:type"),
     parent: attr(node, "parent"),
     glibTypeName: attr(node, "glib:type-name"),

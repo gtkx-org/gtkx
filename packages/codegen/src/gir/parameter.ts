@@ -1,4 +1,4 @@
-import { attr, attrBool, childOf, childrenOf, type RawNode } from "./parse.js";
+import { attr, attrBool, childOf, childrenOf, intAttr, nameAttr, parseEnumAttr, type RawNode } from "./parse.js";
 import type { ParseContext, TypeId } from "./type-id.js";
 import { typeRefFromSlot } from "./type-ref.js";
 
@@ -13,6 +13,27 @@ export type ParameterTransfer = "none" | "full" | "container";
 
 /** Lifetime of a callback parameter (`scope=…`). */
 type CallbackScope = "call" | "notified" | "async" | "forever";
+
+const DIRECTIONS: ReadonlySet<ParameterDirection> = new Set(["in", "out", "inout"]);
+const TRANSFERS: ReadonlySet<ParameterTransfer> = new Set(["none", "full", "container"]);
+const SCOPES: ReadonlySet<CallbackScope> = new Set(["call", "notified", "async", "forever"]);
+
+/**
+ * Reads `transfer-ownership` as a {@link ParameterTransfer}, defaulting to
+ * `"none"` when absent and rejecting an unmodelled token.
+ *
+ * @param node - The `<parameter>`, `<return-value>`, or `<property>` element
+ */
+export const transferOwnership = (node: RawNode): ParameterTransfer =>
+    parseEnumAttr(attr(node, "transfer-ownership"), TRANSFERS, "none", "transfer-ownership");
+
+/**
+ * Reads the GIR nullability of an element: `nullable="1"` or the legacy
+ * `allow-none="1"`.
+ *
+ * @param node - The `<parameter>` or `<return-value>` element
+ */
+export const nullableAttr = (node: RawNode): boolean => attrBool(node, "nullable") || attrBool(node, "allow-none");
 
 /**
  * A `<parameter>` or `<instance-parameter>` of a callable.
@@ -47,25 +68,19 @@ export type GirParameter = {
  * @param node - The XML element
  * @param context - The per-namespace interning seam
  */
-export const parameterFromNode = (node: RawNode, context: ParseContext): GirParameter => {
-    const direction = (attr(node, "direction") ?? "in") as ParameterDirection;
-    const transferOwnership = (attr(node, "transfer-ownership") ?? "none") as ParameterTransfer;
-    const closure = attr(node, "closure");
-    const destroy = attr(node, "destroy");
-    return {
-        name: attr(node, "name") ?? "",
-        type: typeRefFromSlot(node, context),
-        direction,
-        transferOwnership,
-        nullable: attrBool(node, "nullable") || attrBool(node, "allow-none"),
-        optional: attrBool(node, "optional"),
-        callerAllocates: attrBool(node, "caller-allocates"),
-        scope: attr(node, "scope") as CallbackScope | undefined,
-        closureIndex: closure === undefined ? undefined : Number.parseInt(closure, 10),
-        destroyIndex: destroy === undefined ? undefined : Number.parseInt(destroy, 10),
-        isVarargs: childOf(node, "varargs") !== undefined,
-    };
-};
+export const parameterFromNode = (node: RawNode, context: ParseContext): GirParameter => ({
+    name: nameAttr(node),
+    type: typeRefFromSlot(node, context),
+    direction: parseEnumAttr(attr(node, "direction"), DIRECTIONS, "in", "direction"),
+    transferOwnership: transferOwnership(node),
+    nullable: nullableAttr(node),
+    optional: attrBool(node, "optional"),
+    callerAllocates: attrBool(node, "caller-allocates"),
+    scope: parseEnumAttr(attr(node, "scope"), SCOPES, undefined, "scope"),
+    closureIndex: intAttr(node, "closure"),
+    destroyIndex: intAttr(node, "destroy"),
+    isVarargs: childOf(node, "varargs") !== undefined,
+});
 
 /**
  * Whether a parameter is a pure out-parameter: `direction="out"` and not
@@ -119,8 +134,8 @@ export const returnValueFromNode = (node: RawNode | undefined, context: ParseCon
     }
     return {
         type: typeRefFromSlot(node, context),
-        transferOwnership: (attr(node, "transfer-ownership") ?? "none") as ParameterTransfer,
-        nullable: attrBool(node, "nullable") || attrBool(node, "allow-none"),
+        transferOwnership: transferOwnership(node),
+        nullable: nullableAttr(node),
         skip: attrBool(node, "skip"),
     };
 };
@@ -144,7 +159,7 @@ export const parseCallable = (node: RawNode, context: ParseContext): GirCallable
     const parametersNode = childOf(node, "parameters");
     const parameterNodes = childrenOf(parametersNode, "parameter");
     return {
-        name: attr(node, "name") ?? "",
+        name: nameAttr(node),
         parameters: parameterNodes.map((parameter) => parameterFromNode(parameter, context)),
         returnValue: returnValueFromNode(childOf(node, "return-value"), context),
     };

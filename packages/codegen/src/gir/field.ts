@@ -1,4 +1,4 @@
-import { attr, attrBool, childOf, type RawNode } from "./parse.js";
+import { attr, attrBool, childOf, intAttr, nameAttr, type RawNode } from "./parse.js";
 import type { ParseContext, TypeId } from "./type-id.js";
 import { typeRefFromSlot } from "./type-ref.js";
 
@@ -29,15 +29,12 @@ export type GirField = {
  * @param node - The `<field>` element
  * @param context - The per-namespace interning seam
  */
-export const fieldFromNode = (node: RawNode, context: ParseContext): GirField => {
-    const bitsAttr = attr(node, "bits");
-    return {
-        name: attr(node, "name") ?? "",
-        type: typeRefFromSlot(node, context),
-        cType: attr(childOf(node, "type"), "c:type"),
-        readable: attrBool(node, "readable", true),
-        writable: attrBool(node, "writable", false),
-        private: attrBool(node, "private", false),
-        bits: bitsAttr === undefined ? undefined : Number.parseInt(bitsAttr, 10),
-    };
-};
+export const fieldFromNode = (node: RawNode, context: ParseContext): GirField => ({
+    name: nameAttr(node),
+    type: typeRefFromSlot(node, context),
+    cType: attr(childOf(node, "type"), "c:type"),
+    readable: attrBool(node, "readable", true),
+    writable: attrBool(node, "writable", false),
+    private: attrBool(node, "private", false),
+    bits: intAttr(node, "bits"),
+});
