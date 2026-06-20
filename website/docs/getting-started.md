@@ -66,10 +66,10 @@ my-app/
 
 ### Key files
 
-**`src/app.tsx`** — The default app component (just an example, can be removed or renamed). The `App` component wraps the window in a `GtkApplication`, which owns the application; its `applicationId` is passed explicitly, read from the resolved `gtkx.config.ts` through `@gtkx/config/runtime`. It is provided as both a named export `App` and the default export:
+**`src/app.tsx`** — The default app component (just an example, can be removed or renamed). The `App` component wraps the window in a `GtkApplication`, which owns the application; its `applicationId` is passed explicitly, read from the resolved `gtkx.config.ts` through `@gtkx/cli/runtime`. It is provided as both a named export `App` and the default export:
 
 ```tsx
-import { applicationId } from "@gtkx/config/runtime";
+import { applicationId } from "@gtkx/cli/runtime";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { quit } from "@gtkx/react";

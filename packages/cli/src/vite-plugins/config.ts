@@ -10,7 +10,7 @@ import type { Plugin, UserConfig } from "vite";
 
 /**
  * Vite plugin that serves the `virtual:gtkx-config` module `@gtkx/react`
- * imports and `@gtkx/config/runtime` re-exports verbatim.
+ * imports and `@gtkx/cli/runtime` re-exports verbatim.
  *
  * The module re-exports the codegen-derived metadata tables (`SIGNALS`,
  * `CONSTRUCT_ONLY_PROPS`, `DEFAULT_PROPS`) from the generated `@gtkx/jsx`

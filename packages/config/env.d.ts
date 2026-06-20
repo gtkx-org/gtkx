@@ -4,12 +4,12 @@
  * (`gtkx dev`/`gtkx build`) and the `@gtkx/vitest` plugin. The module
  * re-exports the codegen-derived metadata tables from the generated bindings
  * package and carries each field of the project's resolved `gtkx.config.ts`
- * as a named constant, re-exported verbatim by `@gtkx/config/runtime`.
+ * as a named constant, re-exported verbatim by `@gtkx/cli/runtime`.
  * `gtkx build` inlines the resolved module into the production bundle, so no
  * plugin is needed at runtime.
  *
  * Consumers pull this declaration in with
- * `/// <reference types="@gtkx/config/virtual" />`, so a TypeScript program
+ * `/// <reference types="@gtkx/config/env" />`, so a TypeScript program
  * spanning several source packages sees a single declaration of the module.
  */
 declare module "virtual:gtkx-config" {

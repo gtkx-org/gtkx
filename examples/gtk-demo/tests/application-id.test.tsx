@@ -1,4 +1,4 @@
-import { applicationId } from "@gtkx/config/runtime";
+import { applicationId } from "@gtkx/cli/runtime";
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
@@ -8,7 +8,7 @@ import { expect, it } from "vitest";
 
 const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
 
-it("exposes the applicationId declared in gtkx.config.ts through @gtkx/config/runtime", () => {
+it("exposes the applicationId declared in gtkx.config.ts through @gtkx/cli/runtime", () => {
     expect(applicationId).toBe("org.gtkx.gtk-demo");
 });
 

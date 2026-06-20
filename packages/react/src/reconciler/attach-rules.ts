@@ -1,4 +1,4 @@
-/// <reference types="@gtkx/config/virtual" />
+/// <reference types="@gtkx/config/env" />
 
 /**
  * The data-driven core of the reconciler's attach table.

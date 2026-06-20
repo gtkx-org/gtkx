@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-/// <reference types="@gtkx/config/virtual" />
+/// <reference types="@gtkx/config/env" />
 
 declare module "*.css?url" {
     const path: string;

@@ -190,7 +190,7 @@ describe("createScaffolder (src/* generated files)", () => {
         expect(content).toContain('title="My Cool App"');
     });
 
-    it("declares the application id in gtkx.config.ts and passes it through @gtkx/config/runtime", async () => {
+    it("declares the application id in gtkx.config.ts and passes it through @gtkx/cli/runtime", async () => {
         await runScaffolder();
 
         const config = vol.readFileSync(`${TEST_DIR}/test-app/gtkx.config.ts`, "utf-8") as string;
@@ -198,7 +198,7 @@ describe("createScaffolder (src/* generated files)", () => {
 
         const app = vol.readFileSync(`${TEST_DIR}/test-app/src/app.tsx`, "utf-8") as string;
         expect(app).toContain("<GtkApplication applicationId={applicationId}>");
-        expect(app).toContain('import { applicationId } from "@gtkx/config/runtime";');
+        expect(app).toContain('import { applicationId } from "@gtkx/cli/runtime";');
     });
 
     it("writes vitest.config.ts when testing=vitest", async () => {
@@ -250,9 +250,9 @@ describe("createScaffolder (dependency installation)", () => {
         expect(harness.installs).toHaveLength(2);
         const [prod, dev] = harness.installs;
         expect(prod?.dev).toBe(false);
-        expect(prod?.dependencies).toEqual(["@gtkx/config", "@gtkx/css", "@gtkx/ffi", "@gtkx/react", "react"]);
+        expect(prod?.dependencies).toEqual(["@gtkx/cli", "@gtkx/css", "@gtkx/ffi", "@gtkx/react", "react"]);
         expect(dev?.dev).toBe(true);
-        expect(dev?.dependencies).toEqual(expect.arrayContaining(["@gtkx/cli", "vitest", "@gtkx/testing"]));
+        expect(dev?.dependencies).toEqual(expect.arrayContaining(["vitest", "@gtkx/testing"]));
     });
 
     it("forwards the chosen package manager", async () => {

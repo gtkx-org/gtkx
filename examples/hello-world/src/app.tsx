@@ -1,4 +1,4 @@
-import { applicationId } from "@gtkx/config/runtime";
+import { applicationId } from "@gtkx/cli/runtime";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { quit } from "@gtkx/react";

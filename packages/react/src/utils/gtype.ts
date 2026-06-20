@@ -1,4 +1,4 @@
-/// <reference types="@gtkx/config/virtual" />
+/// <reference types="@gtkx/config/env" />
 
 import { CONSTRUCT_ONLY_PROPS, CONSTRUCT_PROPS, DEFAULT_PROPS, SIGNALS } from "virtual:gtkx-config";
 import { type GType, type GTyped, typeName, typeParent } from "@gtkx/ffi";

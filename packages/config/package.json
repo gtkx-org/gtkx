@@ -31,20 +31,15 @@
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
         },
-        "./runtime": {
-            "source": "./src/runtime.ts",
-            "types": "./dist/runtime.d.ts",
-            "default": "./dist/runtime.js"
-        },
-        "./virtual": {
-            "types": "./virtual.d.ts"
+        "./env": {
+            "types": "./env.d.ts"
         }
     },
     "sideEffects": false,
     "files": [
         "dist",
         "src",
-        "virtual.d.ts"
+        "env.d.ts"
     ],
     "scripts": {
         "build": "tsc -b",

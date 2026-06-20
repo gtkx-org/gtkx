@@ -1,4 +1,4 @@
-/// <reference path="../virtual.d.ts" preserve="true" />
+/// <reference types="@gtkx/config/env" preserve="true" />
 
 /**
  * Runtime window onto the project's resolved `gtkx.config.ts`: a verbatim
@@ -9,7 +9,7 @@
  *
  * @example
  * ```tsx
- * import { applicationId } from "@gtkx/config/runtime";
+ * import { applicationId } from "@gtkx/cli/runtime";
  * import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
  *
  * const App = () => (

@@ -1,4 +1,4 @@
-/// <reference types="@gtkx/config/virtual" />
+/// <reference types="@gtkx/config/env" />
 
 /**
  * The generic component factory behind every generated `@gtkx/jsx` element.

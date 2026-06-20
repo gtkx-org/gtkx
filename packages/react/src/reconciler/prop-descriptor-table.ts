@@ -1,4 +1,4 @@
-/// <reference types="@gtkx/config/virtual" />
+/// <reference types="@gtkx/config/env" />
 
 /**
  * The unified per-GType prop-descriptor view for real-GObject nodes.

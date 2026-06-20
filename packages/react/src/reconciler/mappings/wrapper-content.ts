@@ -1,4 +1,4 @@
-/// <reference types="@gtkx/config/virtual" />
+/// <reference types="@gtkx/config/env" />
 
 /**
  * The wrapper-content selectors shared by the reconciler's element-map

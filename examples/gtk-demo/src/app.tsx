@@ -1,5 +1,5 @@
 import * as path from "node:path/posix";
-import { applicationId } from "@gtkx/config/runtime";
+import { applicationId } from "@gtkx/cli/runtime";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
