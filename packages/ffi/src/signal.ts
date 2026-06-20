@@ -13,7 +13,7 @@ import {
     valueGetBoxed,
 } from "./gvalue.js";
 import { getHandle } from "./registry.js";
-import { wrapHandler } from "./wrapper-class.js";
+import { wrapHandler } from "./handler-trampoline.js";
 
 /**
  * Runtime signal-connection wrapper for generated FFI bindings.

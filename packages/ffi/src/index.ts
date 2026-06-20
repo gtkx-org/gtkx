@@ -34,6 +34,7 @@ export {
     getHandle,
     getInstanceGtype,
     getWrapperClass,
+    registerWrapperClass,
     setHandle,
     tryGetHandle,
     wrapHandle,
@@ -42,4 +43,4 @@ export {
 export { offSignal, onceSignal, onSignal } from "./listeners.js";
 export { connectGobjectSignal, emitGobjectSignal, type SignalHandler, signalBaseName } from "./signal.js";
 export { t } from "./t.js";
-export { registerWrapperClass, wrapValue } from "./wrapper-class.js";
+export { wrapValue } from "./wrap-value.js";

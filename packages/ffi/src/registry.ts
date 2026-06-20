@@ -6,7 +6,17 @@ import {
     setWrapper,
 } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
-import { type GType, type GTyped, TYPE_INVALID, typeFromName, typeIsA, typeName, typeParent } from "./gtype.js";
+import {
+    type GType,
+    type GTyped,
+    TYPE_INTERFACE,
+    TYPE_INVALID,
+    typeFromName,
+    typeFundamental,
+    typeIsA,
+    typeName,
+    typeParent,
+} from "./gtype.js";
 
 let gobjectGtype: GType = TYPE_INVALID;
 
@@ -62,6 +72,29 @@ export function setClassGtype(cls: AnyClass, gtype: GType): void {
     if (gtype !== TYPE_INVALID) {
         classRegistry.set(gtype, cls);
         stampGtype(cls, gtype);
+    }
+}
+
+/**
+ * Registers a generated wrapper type from its runtime `GType`.
+ *
+ * Called automatically by generated bindings, once per type at module load. The
+ * class is recorded under its `GType` regardless of kind. The `vfuncs` map, when
+ * present, registers the type's overridable vtable slots; for an interface
+ * `GType` (one whose fundamental is `G_TYPE_INTERFACE`) it additionally registers
+ * the interface vtable so user subclasses can implement it.
+ *
+ * @param cls - The generated wrapper class
+ * @param gtype - The runtime `GType` of the wrapper type
+ * @param vfuncs - Overridable vtable slot descriptors, when the type has any
+ */
+export function registerWrapperClass(cls: AnyClass, gtype: GType, vfuncs?: VfuncRegistry): void {
+    setClassGtype(cls, gtype);
+    if (vfuncs) {
+        registerVfuncRegistry(cls, vfuncs);
+        if (typeFundamental(gtype) === TYPE_INTERFACE) {
+            registerInterfaceVfuncRegistry(gtype, vfuncs);
+        }
     }
 }
 

@@ -6,7 +6,7 @@
  * {@link getGobjectProperty} / {@link setGobjectProperty} drive `g_object_*_property`
  * for a single statically-typed property. The generated `GObject.Object`
  * constructor and accessors call them; the `GValue` marshalling they build on
- * lives in `./gvalue.js` and the wrapper-lifting in `./wrapper-class.js`.
+ * lives in `./gvalue.js` and the wrapper-lifting in `./wrap-value.js`.
  */
 
 import { call, type Type as FfiType, type Handle, type Value } from "@gtkx/native";

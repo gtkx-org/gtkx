@@ -14,7 +14,7 @@ import {
     type VfuncDescriptor,
     walkClassChain,
 } from "./registry.js";
-import { wrapHandler } from "./wrapper-class.js";
+import { wrapHandler } from "./handler-trampoline.js";
 
 /**
  * Options accepted by {@link registerClass}.
