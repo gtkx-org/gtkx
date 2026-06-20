@@ -261,6 +261,9 @@ importers:
       c12:
         specifier: ^3.3.4
         version: 3.3.4(magicast@0.5.3)
+      vite:
+        specifier: ^8.0.16
+        version: 8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
 
   packages/css:
     dependencies:

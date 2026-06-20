@@ -1,11 +1,6 @@
 import { join } from "node:path";
 
-import {
-    createGtkxConfigLoader,
-    GTKX_CONFIG_VIRTUAL_ID,
-    RESOLVED_GTKX_CONFIG_VIRTUAL_ID,
-    renderGtkxConfigModule,
-} from "@gtkx/config";
+import { createGtkxConfigPlugin } from "@gtkx/config";
 import type { Plugin } from "vitest/config";
 
 /**
@@ -49,21 +44,10 @@ import type { Plugin } from "vitest/config";
  */
 const gtkx = (): Plugin => {
     const workerSetupPath = join(import.meta.dirname, "setup.js");
-    const loadConfig = createGtkxConfigLoader();
-    let root = process.cwd();
 
-    return {
+    return createGtkxConfigPlugin({
         name: "gtkx",
-        resolveId(id) {
-            if (id === GTKX_CONFIG_VIRTUAL_ID) return RESOLVED_GTKX_CONFIG_VIRTUAL_ID;
-            return undefined;
-        },
-        async load(id) {
-            if (id !== RESOLVED_GTKX_CONFIG_VIRTUAL_ID) return undefined;
-            return renderGtkxConfigModule(await loadConfig(root));
-        },
         config(config) {
-            root = config.root ?? process.cwd();
             const setupFiles = config.test?.setupFiles ?? [];
 
             return {
@@ -85,7 +69,7 @@ const gtkx = (): Plugin => {
                 },
             };
         },
-    };
+    });
 };
 
 export default gtkx;

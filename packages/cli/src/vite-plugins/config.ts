@@ -1,12 +1,5 @@
-import {
-    createGtkxConfigLoader,
-    GTKX_CONFIG_VIRTUAL_ID,
-    type GtkxConfigLoader,
-    RESOLVED_GTKX_CONFIG_VIRTUAL_ID,
-    type ResolvedGtkxConfig,
-    renderGtkxConfigModule,
-} from "@gtkx/config";
-import type { Plugin, UserConfig } from "vite";
+import { createGtkxConfigLoader, createGtkxConfigPlugin, type GtkxConfigLoader } from "@gtkx/config";
+import type { Plugin } from "vite";
 
 /**
  * Vite plugin that serves the `virtual:gtkx-config` module that `@gtkx/react`
@@ -27,23 +20,5 @@ import type { Plugin, UserConfig } from "vite";
  * @returns The `gtkx:config` Vite plugin.
  */
 export function gtkxConfig(loadConfig: GtkxConfigLoader = createGtkxConfigLoader()): Plugin {
-    let resolved: Promise<ResolvedGtkxConfig> | undefined;
-
-    return {
-        name: "gtkx:config",
-
-        config(config: UserConfig) {
-            resolved = loadConfig(config.root ?? process.cwd());
-        },
-
-        resolveId(id: string) {
-            if (id === GTKX_CONFIG_VIRTUAL_ID) return RESOLVED_GTKX_CONFIG_VIRTUAL_ID;
-            return undefined;
-        },
-
-        async load(id: string) {
-            if (id !== RESOLVED_GTKX_CONFIG_VIRTUAL_ID) return undefined;
-            return renderGtkxConfigModule(await (resolved ?? loadConfig(process.cwd())));
-        },
-    };
+    return createGtkxConfigPlugin({ name: "gtkx:config", loadConfig });
 }

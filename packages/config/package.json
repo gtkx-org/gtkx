@@ -46,6 +46,7 @@
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "dependencies": {
-        "c12": "^3.3.4"
+        "c12": "^3.3.4",
+        "vite": "^8.0.16"
     }
 }

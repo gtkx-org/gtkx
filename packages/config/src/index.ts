@@ -21,6 +21,7 @@ export {
     loadGtkxConfig,
     loadResolvedGtkxConfig,
 } from "./loader.js";
+export { createGtkxConfigPlugin, type GtkxConfigPluginOptions } from "./plugin.js";
 export type {
     AddMethodArg,
     AddMethodRule,
