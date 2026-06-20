@@ -431,31 +431,6 @@ const overlayMapping: ElementMapping = {
     },
 };
 
-// --- Transparent (single, attaches its child to the marker's parent widget) ---
-
-const transparentMapping: ElementMapping = {
-    matches: (child, parent) => isWrapperKind(child, "transparent") && parent instanceof Gtk.Widget,
-    attach: (child, parent) => {
-        if (!(parent instanceof Gtk.Widget)) return;
-        const childState = stateOf(child);
-        const widget = trackedWidget(child);
-        const prev = childState.attachState as Gtk.Widget | undefined;
-        if (prev && prev !== widget) {
-            detachChild(prev, parent);
-            childState.attachState = undefined;
-        }
-        if (!widget || widget.getParent() === parent) return;
-        attachChild(widget, parent);
-        childState.attachState = widget;
-    },
-    detach: (child, parent) => {
-        const childState = stateOf(child);
-        const widget = childState.attachState as Gtk.Widget | undefined;
-        if (widget && parent instanceof Gtk.Widget) detachChild(widget, parent);
-        childState.attachState = undefined;
-    },
-};
-
 // --- Top-level surfaces ---
 
 const isTopLevel = (instance: Node): boolean => instance instanceof GObject.Object && isTopLevelSurface(instance);
@@ -642,7 +617,6 @@ export const ELEMENT_MAP: readonly ElementMapping[] = [
     metaObjectMapping,
     layoutChildMapping,
     overlayMapping,
-    transparentMapping,
     promotedNestingGuardMapping,
     ...DATA_ATTACH_MAPPINGS,
     topLevelSkipMapping,

@@ -120,8 +120,8 @@ const appendChild = (parent: Node, child: Node): void => {
 /**
  * The backing instance an ordered insert should position before: the sibling's
  * own backing GObject, or — when the sibling is a metadata wrapper that places a
- * widget directly into the same parent (a transparent wrapper) — that widget,
- * so the new child lands before it rather than appending.
+ * widget into the same parent — its first backing child, so the new child lands
+ * before it rather than appending.
  */
 const anchorBacking = (before: Node): GObject.Object | null => {
     if (before instanceof GObject.Object) return before;
