@@ -40,8 +40,6 @@ export interface State {
     readonly rootContainer: ContainerInfo;
     /** The signal store keyed on the root container. */
     readonly signalStore: SignalStore;
-    /** Opaque per-node attachment bookkeeping owned by the matched mapping. */
-    attachState: unknown;
 }
 
 const stateMap = new WeakMap<Node, State>();
@@ -68,7 +66,6 @@ export const registerState = (node: Node, { name, kind, props, rootContainer }: 
         children: [],
         rootContainer,
         signalStore: getSignalStore(rootContainer),
-        attachState: undefined,
     };
     stateMap.set(node, state);
     return state;

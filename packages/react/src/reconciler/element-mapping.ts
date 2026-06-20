@@ -12,7 +12,7 @@ export interface ElementMapping {
     /**
      * Attaches `child` to `parent`. Idempotent: re-invoked when a wrapper child's
      * own content or metadata changes, so it reconciles against any prior attach
-     * recorded on the child's reconciler-state `attachState`. `anchor` is the next
+     * recorded in the mapping's own per-node `WeakMap`. `anchor` is the next
      * sibling's backing instance for ordered insertion, or `null`/`undefined` to
      * append. `fresh` marks a child the reconciler has not attached before, so its
      * backing widget is known to be unparented and the defensive unparent can be skipped.

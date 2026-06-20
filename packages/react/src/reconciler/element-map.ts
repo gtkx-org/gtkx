@@ -10,8 +10,8 @@
  * `matches` predicate holds, so specific entries precede the generic
  * widget-container fallback. Entries are self-contained: `attach` is idempotent
  * (it may run again when a wrapper's content or metadata changes), reading the
- * child's own props/children and stashing per-attachment bookkeeping on the
- * node's `attachState`.
+ * child's own props/children and stashing per-attachment bookkeeping in the
+ * mapping's own per-node `WeakMap`.
  */
 import { META_OBJECT_ADD_METHODS, PAGE_META_SETTERS, TOP_LEVEL_TYPES } from "virtual:gtkx-config";
 import {
@@ -100,6 +100,8 @@ const wrapperChildWidgets = (marker: Node): Gtk.Widget[] => {
 
 type SlotState = { prop: string; value: GObject.Object };
 
+const slotState = new WeakMap<Node, SlotState>();
+
 const LAYOUT_MANAGER_PROP = "layoutManager";
 
 /**
@@ -122,16 +124,16 @@ const slotMapping: ElementMapping = {
         const prop = childState.props.propName;
         if (typeof prop !== "string" || !(parent instanceof GObject.Object)) return;
         const value = trackedInstance(child);
-        const state = childState.attachState as SlotState | undefined;
+        const state = slotState.get(child);
         if (state && state.value === value) return;
         Reflect.set(parent, prop, value ?? null);
-        childState.attachState = value ? { prop, value } : undefined;
+        if (value) slotState.set(child, { prop, value });
+        else slotState.delete(child);
         if (prop === LAYOUT_MANAGER_PROP) resyncLayoutChildWrappers(parent);
     },
     detach: (child, parent) => {
-        const childState = stateOf(child);
-        const state = childState.attachState as SlotState | undefined;
-        childState.attachState = undefined;
+        const state = slotState.get(child);
+        slotState.delete(child);
         if (!state || !(parent instanceof GObject.Object) || !isRooted(parent)) return;
         rescueFocus(parent, state.value);
         Reflect.set(parent, state.prop, null);
@@ -164,6 +166,8 @@ const detachContainerPropChild = (instance: Node, parent: Node): void => {
     if (instance instanceof Gtk.Widget) unparentWidget(instance);
 };
 
+const containerPropState = new WeakMap<Node, Node[]>();
+
 const containerPropMapping: ElementMapping = {
     matches: (child, parent) => isWrapperKind(child, CONTAINER_PROP_KIND) && parent instanceof GObject.Object,
     attach: (child, parent) => {
@@ -171,18 +175,17 @@ const containerPropMapping: ElementMapping = {
         const method = childState.props.method;
         if (typeof method !== "string" || !(parent instanceof GObject.Object)) return;
         const desired = wrapperChildInstances(child);
-        const prev = (childState.attachState as Node[] | undefined) ?? [];
+        const prev = containerPropState.get(child) ?? [];
         if (sameInstances(prev, desired)) return;
         for (const instance of prev) detachContainerPropChild(instance, parent);
         for (const instance of desired) attachContainerPropChild(instance, parent, method);
-        childState.attachState = desired;
+        containerPropState.set(child, desired);
     },
     detach: (child, parent) => {
-        const childState = stateOf(child);
-        for (const instance of (childState.attachState as Node[] | undefined) ?? []) {
+        for (const instance of containerPropState.get(child) ?? []) {
             detachContainerPropChild(instance, parent);
         }
-        childState.attachState = undefined;
+        containerPropState.delete(child);
     },
 };
 
@@ -275,33 +278,35 @@ const attachNotebookPage = (notebook: Gtk.Notebook, widget: Gtk.Widget, marker: 
 
 type NotebookPageState = { widget: Gtk.Widget };
 
+const notebookPageState = new WeakMap<Node, NotebookPageState>();
+
 const notebookPageMapping: ElementMapping = {
     matches: (child, parent) => isWrapperKind(child, META_OBJECT_KIND) && parent instanceof Gtk.Notebook,
     attach: (child, parent) => {
         if (!(parent instanceof Gtk.Notebook)) return;
-        const childState = stateOf(child);
         const widget = trackedWidget(child);
-        const state = childState.attachState as NotebookPageState | undefined;
+        const state = notebookPageState.get(child);
         if (state && state.widget === widget) {
             updateNotebookTabLabel(parent, state.widget, child);
-            applyNotebookMeta(parent, state.widget, childState.props);
+            applyNotebookMeta(parent, state.widget, stateOf(child).props);
             return;
         }
         if (state) notebookPageMapping.detach(child, parent);
         if (!widget) return;
         attachNotebookPage(parent, widget, child);
-        childState.attachState = { widget };
+        notebookPageState.set(child, { widget });
     },
     detach: (child, parent) => {
         if (!(parent instanceof Gtk.Notebook)) return;
-        const childState = stateOf(child);
-        const state = childState.attachState as NotebookPageState | undefined;
-        childState.attachState = undefined;
+        const state = notebookPageState.get(child);
+        notebookPageState.delete(child);
         if (!state) return;
         const pageNum = parent.pageNum(state.widget);
         if (pageNum !== -1) parent.removePage(pageNum);
     },
 };
+
+const metaState = new WeakMap<Node, MetaState>();
 
 const metaObjectMapping: ElementMapping = {
     matches: (child, parent) =>
@@ -310,7 +315,7 @@ const metaObjectMapping: ElementMapping = {
     attach: (child, parent) => {
         const childState = stateOf(child);
         const widget = trackedWidget(child);
-        const state = childState.attachState as MetaState | undefined;
+        const state = metaState.get(child);
         if (state && state.widget === widget) {
             applyPageMeta(state.page, childState.props);
             return;
@@ -323,12 +328,11 @@ const metaObjectMapping: ElementMapping = {
         const page = addStackPage(target, rules, widget, childState.props);
         if (!page) return;
         applyPageMeta(page, childState.props);
-        childState.attachState = { widget, page };
+        metaState.set(child, { widget, page });
     },
     detach: (child, parent) => {
-        const childState = stateOf(child);
-        const state = childState.attachState as MetaState | undefined;
-        childState.attachState = undefined;
+        const state = metaState.get(child);
+        metaState.delete(child);
         if (!state) return;
         if (parent instanceof Gtk.Widget && metaAddRules(parent) !== null && isAttachedTo(state.widget, parent)) {
             callMethod(parent, "remove", [state.widget]);
@@ -381,11 +385,13 @@ const applyLayoutChild = (parent: Gtk.Widget, widget: Gtk.Widget, kind: "grid" |
 /**
  * Reconciles a wrapper marker's child widgets against the parent: removes the
  * previously-attached widgets no longer desired, attaches the unparented
- * desired widgets, applies per-child metadata, and records the new set on the
- * child's `attachState`. The shared skeleton behind the layout-child and
+ * desired widgets, applies per-child metadata, and records the new set in the
+ * shared multi-child `WeakMap`. The shared skeleton behind the layout-child and
  * overlay multi-child mappings; the parent-specific add/remove/apply
  * operations are supplied as closures.
  */
+const multiChildState = new WeakMap<Node, Gtk.Widget[]>();
+
 const reconcileMultiChildAttach = (
     child: Node,
     parent: Gtk.Widget,
@@ -395,7 +401,7 @@ const reconcileMultiChildAttach = (
 ): void => {
     const childState = stateOf(child);
     const desired = wrapperChildWidgets(child);
-    const prev = (childState.attachState as Gtk.Widget[] | undefined) ?? [];
+    const prev = multiChildState.get(child) ?? [];
     for (const widget of prev) {
         if (!desired.includes(widget)) remove(widget);
     }
@@ -403,19 +409,18 @@ const reconcileMultiChildAttach = (
         if (widget.getParent() !== parent) add(widget);
         applyChild(widget, childState.props);
     }
-    childState.attachState = desired;
+    multiChildState.set(child, desired);
 };
 
 /**
- * Reverses {@link reconcileMultiChildAttach}: removes every widget recorded on
- * the child's `attachState` through `remove` and clears the record.
+ * Reverses {@link reconcileMultiChildAttach}: removes every widget recorded for
+ * the child through `remove` and clears the record.
  */
 const reconcileMultiChildDetach = (child: Node, remove: (widget: Gtk.Widget) => void): void => {
-    const childState = stateOf(child);
-    for (const widget of (childState.attachState as Gtk.Widget[] | undefined) ?? []) {
+    for (const widget of multiChildState.get(child) ?? []) {
         remove(widget);
     }
-    childState.attachState = undefined;
+    multiChildState.delete(child);
 };
 
 const layoutChildMapping: ElementMapping = {

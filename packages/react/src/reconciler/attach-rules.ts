@@ -180,29 +180,28 @@ const isPlacedBefore = (
 
 type OrderedInsertState = { parent: GObject.Object };
 
+const orderedInsertState = new WeakMap<Node, OrderedInsertState>();
+
 const buildOrderedInsertMapping = (verb: OrderedInsertVerb, matches: RuleMatcher): ElementMapping => ({
     matches,
     attach: (child, parent, anchor) => {
         if (!(child instanceof GObject.Object) || !(parent instanceof GObject.Object)) return;
         const collection = collectionOf(parent, verb.collection);
         if (!collection) return;
-        const childState = stateOf(child);
-        const state = childState.attachState as OrderedInsertState | undefined;
+        const state = orderedInsertState.get(child);
         if (state?.parent === parent) {
             if (isPlacedBefore(collection, child, anchor)) return;
             if (indexOf(collection, child) >= 0) callVerb(parent, verb.detach, [child]);
         }
         callVerb(parent, verb.attach, [insertPosition(collection, anchor), child]);
-        childState.attachState = { parent };
+        orderedInsertState.set(child, { parent });
         notifyOrderedAttach(parent);
     },
     detach: (child, parent) => {
         if (!(child instanceof GObject.Object) || !(parent instanceof GObject.Object)) return;
-        const childState = stateOf(child);
-        const state = childState.attachState as OrderedInsertState | undefined;
-        if (state?.parent !== parent) return;
+        if (orderedInsertState.get(child)?.parent !== parent) return;
         callVerb(parent, verb.detach, [child]);
-        childState.attachState = undefined;
+        orderedInsertState.delete(child);
         notifyOrderedAttach(parent);
     },
 });
