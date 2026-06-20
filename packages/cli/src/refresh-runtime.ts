@@ -32,26 +32,6 @@ export function createModuleRegistration(moduleId: string): {
     };
 }
 
-function isLikelyComponentType(value: unknown): boolean {
-    if (typeof value !== "function") {
-        return false;
-    }
-
-    // biome-ignore lint/style/useNamingConvention: React element brand, name fixed by React
-    const func = value as { $$typeof?: symbol };
-
-    if (func.$$typeof === Symbol.for("react.memo") || func.$$typeof === Symbol.for("react.forward_ref")) {
-        return true;
-    }
-
-    const name = (value as { name?: string }).name;
-    if (typeof name === "string" && /^[A-Z]/.test(name)) {
-        return true;
-    }
-
-    return false;
-}
-
 /**
  * Checks if a module's exports form a React Refresh boundary.
  *
@@ -74,7 +54,7 @@ export function isReactRefreshBoundary(moduleExports: Record<string, unknown>): 
 
         const value = moduleExports[key];
 
-        if (!isLikelyComponentType(value)) {
+        if (!RefreshRuntime.isLikelyComponentType(value)) {
             return false;
         }
     }

@@ -58,15 +58,13 @@ describe("isReactRefreshBoundary", () => {
 
     it("recognizes React.memo-wrapped components", () => {
         // biome-ignore lint/style/useNamingConvention: React element brand exercised by the test
-        const memoized = (() => null) as { (): null; $$typeof?: symbol };
-        memoized.$$typeof = Symbol.for("react.memo");
+        const memoized = { $$typeof: Symbol.for("react.memo"), type: () => null };
         expect(isReactRefreshBoundary({ wrapped: memoized })).toBe(true);
     });
 
     it("recognizes React.forwardRef-wrapped components", () => {
         // biome-ignore lint/style/useNamingConvention: React element brand exercised by the test
-        const forwarded = (() => null) as { (): null; $$typeof?: symbol };
-        forwarded.$$typeof = Symbol.for("react.forward_ref");
+        const forwarded = { $$typeof: Symbol.for("react.forward_ref"), render: () => null };
         expect(isReactRefreshBoundary({ wrapped: forwarded })).toBe(true);
     });
 
