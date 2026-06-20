@@ -4,7 +4,7 @@ use libffi::middle as libffi;
 use napi::{Env, JsObject};
 
 use super::prelude::*;
-use crate::trampoline::{TrampolineData, TrampolineState};
+use crate::trampoline::{TrampolineState, build_trampoline};
 use crate::types::Type;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -104,16 +104,13 @@ impl FfiEncoder for CallbackType {
 
         let is_oneshot = self.scope == CallbackScope::Async;
 
-        let data = TrampolineData::new(
+        let (fn_ptr, state) = build_trampoline(
             callback.js_func.clone(),
             self.arg_types.clone(),
             (*self.return_type).clone(),
             self.user_data_index,
             is_oneshot,
         );
-
-        let state = Box::new(TrampolineState::create(data));
-        let fn_ptr = state.code_ptr;
 
         match self.scope {
             CallbackScope::Forever => Ok(ffi::FfiValue::Callback(ffi::CallbackValue::new_armed(

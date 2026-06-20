@@ -26,7 +26,7 @@ use napi_derive::napi;
 
 use super::handler::ModuleRequest;
 use crate::error_reporter::NativeErrorReporter;
-use crate::trampoline::{TrampolineData, TrampolineState};
+use crate::trampoline::{TrampolineState, build_trampoline};
 use crate::types::Type;
 use crate::value::{JsRef, map_js_array};
 
@@ -97,9 +97,7 @@ impl RawVfunc {
             arg_types,
             return_type,
         } = self;
-        let data = TrampolineData::new(js_func, arg_types, return_type, None, false);
-        let state = Box::new(TrampolineState::create(data));
-        let code_ptr = state.code_ptr;
+        let (code_ptr, state) = build_trampoline(js_func, arg_types, return_type, None, false);
         PreparedVfunc {
             byte_offset,
             code_ptr,

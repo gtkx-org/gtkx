@@ -153,6 +153,25 @@ impl TrampolineState {
     }
 }
 
+/// Builds a boxed [`TrampolineState`] from the call shape, returning its libffi
+/// `code_ptr` alongside the box so neither caller re-reads `.code_ptr`.
+///
+/// The `code_ptr` aliases the closure inside the returned box; the box must
+/// outlive every native call routed through that pointer.
+#[must_use]
+pub fn build_trampoline(
+    js_func: Arc<JsRef<JsFunction>>,
+    arg_types: Vec<Type>,
+    return_type: Type,
+    user_data_index: Option<usize>,
+    is_oneshot: bool,
+) -> (*mut c_void, Box<TrampolineState>) {
+    let data = TrampolineData::new(js_func, arg_types, return_type, user_data_index, is_oneshot);
+    let state = Box::new(TrampolineState::create(data));
+    let code_ptr = state.code_ptr;
+    (code_ptr, state)
+}
+
 impl TrampolineState {
     /// # Safety
     /// `user_data` must be a valid pointer to a `TrampolineState` allocated via `Box::new`,
