@@ -1,3 +1,6 @@
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { ScreenshotResult, WaitForOptions } from "./types.js";
@@ -105,4 +108,100 @@ export const screenshot = async (widget: Gtk.Widget, options?: ScreenshotOptions
         timeout: options?.timeout,
         interval: options?.interval ?? DEFAULT_SCREENSHOT_INTERVAL,
     });
+};
+
+/**
+ * Selects which top-level window to capture: an index, a title substring, a
+ * title pattern, or the first window when omitted.
+ */
+export type WindowSelector = number | string | RegExp | undefined;
+
+const resolveWindow = (selector?: WindowSelector): Gtk.Window => {
+    const windows = Gtk.Window.listToplevels();
+
+    if (windows.length === 0) {
+        throw new Error("No windows available for screenshot");
+    }
+
+    if (selector === undefined) {
+        const [first] = windows;
+        if (!(first instanceof Gtk.Window)) {
+            throw new TypeError("First toplevel is not a Window");
+        }
+        return first;
+    }
+
+    if (typeof selector === "number") {
+        const indexed = windows[selector];
+        if (!(indexed instanceof Gtk.Window)) {
+            throw new TypeError(`Window at index ${selector} not found`);
+        }
+        return indexed;
+    }
+
+    const isRegex = selector instanceof RegExp;
+    const found = windows.find((w): w is Gtk.Window => {
+        if (!(w instanceof Gtk.Window)) return false;
+        const title = w.getTitle() ?? "";
+        return isRegex ? selector.test(title) : title.includes(selector);
+    });
+
+    if (!found) {
+        const pattern = isRegex ? selector.toString() : `"${selector}"`;
+        throw new Error(`No window found with title matching ${pattern}`);
+    }
+    return found;
+};
+
+const saveScreenshotToTempFile = (result: ScreenshotResult): string => {
+    const dir = join(tmpdir(), "gtkx-screenshots");
+    if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+    }
+    const filepath = join(dir, `${Date.now()}-screenshot.png`);
+    writeFileSync(filepath, Buffer.from(result.data, "base64"));
+    return filepath;
+};
+
+/**
+ * Logs a `file://` URI for the given screenshot path to the console.
+ *
+ * @param filepath - The absolute path the screenshot PNG was written to.
+ *
+ * @example
+ * ```tsx
+ * import { logScreenshotPath } from "@gtkx/testing";
+ *
+ * logScreenshotPath("/tmp/gtkx-screenshots/123-screenshot.png");
+ * ```
+ */
+export const logScreenshotPath = (filepath: string): void => {
+    console.log(`Screenshot saved: file://${filepath}`);
+};
+
+/**
+ * Captures a screenshot of a top-level window, saves it to a temp file, and
+ * logs a clickable `file://` URI.
+ *
+ * @param selector - Window selector: index (number), title substring (string),
+ *   or title pattern (RegExp). When omitted, captures the first window.
+ * @param options - Optional timeout, interval, and scale configuration.
+ * @returns Screenshot result containing base64-encoded PNG data and dimensions.
+ *
+ * @example
+ * ```tsx
+ * import { captureAndSaveScreenshot } from "@gtkx/testing";
+ *
+ * await captureAndSaveScreenshot();           // First window
+ * await captureAndSaveScreenshot("Settings"); // Window titled "Settings"
+ * ```
+ */
+export const captureAndSaveScreenshot = async (
+    selector?: WindowSelector,
+    options?: ScreenshotOptions,
+): Promise<ScreenshotResult> => {
+    const target = resolveWindow(selector);
+    const result = await screenshot(target, options);
+    logScreenshotPath(saveScreenshotToTempFile(result));
+    return result;
 };
