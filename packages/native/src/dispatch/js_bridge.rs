@@ -298,25 +298,20 @@ impl Mailbox {
                         result_tx,
                         glib_initiated,
                     } = pending;
-                    if glib_initiated {
-                        self.enter_glib_callback();
-                    }
-                    let result = Self::execute_callback(
-                        env,
-                        &callback,
-                        args,
-                        capture_result,
-                        &out_cell_indices,
-                    );
-                    if glib_initiated {
-                        self.leave_glib_callback();
-                    }
-                    send_or_report(
+                    self.run_glib_initiated(
+                        glib_initiated,
                         &result_tx,
-                        result,
                         "Node callback completed but result channel was closed",
+                        || {
+                            Self::execute_callback(
+                                env,
+                                &callback,
+                                args,
+                                capture_result,
+                                &out_cell_indices,
+                            )
+                        },
                     );
-                    self.wake_glib.notify();
                 }
                 NodeTask::DeleteReference(reference) => reference.delete_on_js_thread(),
                 NodeTask::WrapperRefOp {
@@ -325,22 +320,45 @@ impl Mailbox {
                     result_tx,
                     glib_initiated,
                 } => {
-                    if glib_initiated {
-                        self.enter_glib_callback();
-                    }
-                    op.apply(&env, ref_ptr);
-                    if glib_initiated {
-                        self.leave_glib_callback();
-                    }
-                    send_or_report(
+                    self.run_glib_initiated(
+                        glib_initiated,
                         &result_tx,
-                        Ok(()),
                         "Wrapper reference operation completed but result channel was closed",
+                        || {
+                            op.apply(&env, ref_ptr);
+                            Ok(())
+                        },
                     );
-                    self.wake_glib.notify();
                 }
             }
         }
+    }
+
+    /// Runs `op` for a `GLib`-initiated node task between the callback-nesting
+    /// bracket, then delivers its result and wakes the parked `GLib` thread.
+    ///
+    /// The `enter_glib_callback`/`leave_glib_callback` pair must bracket `op`:
+    /// [`Self::push_glib_task`] reads `callback_depth` to tag the nested tasks
+    /// `op` enqueues at this waiter's level, so the bracket cannot be deferred
+    /// until after `op` runs. `closed_message` names the handshake in the error
+    /// raised when the waiter is already gone.
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn run_glib_initiated<R>(
+        &self,
+        glib_initiated: bool,
+        result_tx: &mpsc::Sender<anyhow::Result<R>>,
+        closed_message: &'static str,
+        op: impl FnOnce() -> anyhow::Result<R>,
+    ) {
+        if glib_initiated {
+            self.enter_glib_callback();
+        }
+        let result = op();
+        if glib_initiated {
+            self.leave_glib_callback();
+        }
+        send_or_report(result_tx, result, closed_message);
+        self.wake_glib.notify();
     }
 
     /// Wraps `value` in a fresh `{ value }` JavaScript object so a callback can
