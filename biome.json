@@ -1,8 +1,7 @@
 {
     "$schema": "https://biomejs.dev/schemas/2.5.0/schema.json",
-    "plugins": ["./biome-plugins/no-unsafe-typescript.grit"],
     "files": {
-        "includes": ["**", "!**/*.svg", "!**/*.grit"]
+        "includes": ["**", "!**/*.svg"]
     },
     "css": {
         "parser": {
