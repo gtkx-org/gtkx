@@ -20,12 +20,12 @@
     },
     "dependencies": {
         "@gtkx/animate": "workspace:*",
-        "@gtkx/cli": "workspace:*",
         "@gtkx/css": "workspace:*",
         "@gtkx/react": "workspace:*",
         "react": "^19.2.7"
     },
     "devDependencies": {
+        "@gtkx/cli": "workspace:*",
         "esbuild": "^0.28.1",
         "postject": "1.0.0-alpha.6"
     }

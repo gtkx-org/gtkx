@@ -22,7 +22,7 @@ Start by scaffolding a new project:
 npx @gtkx/cli@latest create notes-app
 ```
 
-When prompted, enter `com.example.notes` as the application ID, choose your preferred package manager, and enable testing. The application ID is written to `gtkx.config.ts`, and your code reads it from there through `@gtkx/cli/runtime`.
+When prompted, enter `com.example.notes` as the application ID, choose your preferred package manager, and enable testing. The application ID is written to `gtkx.config.ts`, and your code reads it from there through the `virtual:gtkx-config` module.
 
 ## The entry point
 
@@ -44,7 +44,7 @@ Replace the generated `src/app.tsx` with an Adwaita-styled window wrapped in `<A
 
 ```tsx
 // src/app.tsx
-import { applicationId } from "@gtkx/cli/runtime";
+import { applicationId } from "virtual:gtkx-config";
 import {
     AdwApplication,
     AdwApplicationWindow,
@@ -86,7 +86,7 @@ export function App() {
 }
 ```
 
-The window lives inside `<AdwApplication>`, whose `applicationId` comes from `@gtkx/cli/runtime` — the resolved fields of `gtkx.config.ts`, including the ID you entered during scaffolding. Every later chapter keeps this structure: the inner `NotesWindow` component grows, while the `<AdwApplication>` wrapper stays exactly as shown here.
+The window lives inside `<AdwApplication>`, whose `applicationId` comes from the `virtual:gtkx-config` module — the resolved fields of `gtkx.config.ts`, including the ID you entered during scaffolding. Every later chapter keeps this structure: the inner `NotesWindow` component grows, while the `<AdwApplication>` wrapper stays exactly as shown here.
 
 The `onCloseRequest` handler runs when the user clicks the window's close button. Returning `true` vetoes GTK's native close so your React code controls what happens — here it calls `quit()` to shut the application down. The same pattern drives secondary windows from state: set the state to `false` and return `true`, and React unmounts the window.
 
@@ -123,7 +123,7 @@ Add a "New Note" button to the header bar in `src/app.tsx`, packed at the start 
 
 ```tsx
 // src/app.tsx
-import { applicationId } from "@gtkx/cli/runtime";
+import { applicationId } from "virtual:gtkx-config";
 import {
     AdwApplication,
     AdwApplicationWindow,

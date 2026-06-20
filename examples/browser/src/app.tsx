@@ -1,4 +1,4 @@
-import { applicationId } from "@gtkx/cli/runtime";
+import { applicationId } from "virtual:gtkx-config";
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as WebKit from "@gtkx/gi/webkit";

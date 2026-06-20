@@ -5,9 +5,6 @@
             "path": "../../packages/animate/tsconfig.lib.json"
         },
         {
-            "path": "../../packages/cli/tsconfig.lib.json"
-        },
-        {
             "path": "../../packages/css/tsconfig.lib.json"
         },
         {

@@ -9,11 +9,11 @@ children. This guide covers how that tree starts, how windows open and close, an
 application from `applicationId` and `flags`, register and activate it, and provide it to every descendant through
 context. Exactly one application component sits at the root of the tree; every window renders inside it.
 
-Pass `applicationId` explicitly, reading it from the resolved `gtkx.config.ts` through `@gtkx/cli/runtime`:
+Pass `applicationId` explicitly, reading it from the resolved `gtkx.config.ts` through the `virtual:gtkx-config` module:
 
 ```tsx
 // src/app.tsx
-import { applicationId } from "@gtkx/cli/runtime";
+import { applicationId } from "virtual:gtkx-config";
 import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
 import { quit } from "@gtkx/react";
 
@@ -36,7 +36,7 @@ Use `AdwApplication` when your interface builds on Adwaita widgets. It backs the
 `Gtk.Application` subclass that exposes the Adwaita style manager — and is otherwise a drop-in replacement:
 
 ```tsx
-import { applicationId } from "@gtkx/cli/runtime";
+import { applicationId } from "virtual:gtkx-config";
 import { AdwApplication } from "@gtkx/jsx/adw";
 import { NotesWindow } from "./notes-window.js";
 
@@ -119,7 +119,7 @@ windows. A window presents itself when it mounts and is destroyed when it unmoun
 secondary window is plain conditional rendering:
 
 ```tsx
-import { applicationId } from "@gtkx/cli/runtime";
+import { applicationId } from "virtual:gtkx-config";
 import { GtkApplication, GtkApplicationWindow, GtkButton, GtkLabel, GtkWindow } from "@gtkx/jsx/gtk";
 import { quit } from "@gtkx/react";
 import { useState } from "react";

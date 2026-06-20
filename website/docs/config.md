@@ -24,7 +24,7 @@ export default defineConfig({
 | --- | --- | --- | --- |
 | `libraries` | `"*" \| string[]` | `["Gtk-4.0"]` | GIR namespace identifiers (with version) to generate bindings for, e.g. `"Gtk-4.0"`, `"Adw-1"`. `"*"` generates every `.gir` file found on the search path, keeping the newest version of each namespace. |
 | `girPath` | `string[]` | `[]` | Additional directories to search for `.gir` files, prepended to the default probe chain. Resolved relative to the project root. |
-| `applicationId` | `string` | `undefined` | GLib application id, validated against `g_application_id_is_valid` (e.g. `"org.example.MyApp"`). Used by the GResource pipeline and exposed to app code as the `applicationId` export of `@gtkx/cli/runtime`. |
+| `applicationId` | `string` | `undefined` | GLib application id, validated against `g_application_id_is_valid` (e.g. `"org.example.MyApp"`). Used by the GResource pipeline and exposed to app code as the `applicationId` export of the `virtual:gtkx-config` module. |
 | `reactCompiler` | `boolean \| ReactCompilerOptions` | `true` | Controls the [React Compiler](./cli.md#react-compiler), enabled by default for every `gtkx dev`, `gtkx build`, and test run. `false` disables it; an object tunes `compilationMode` and `panicThreshold`. |
 | `containerProps` | `Record<string, string[]>` | `{}` | Additional container methods to expose as JSX slots with append semantics (e.g. `"packStart"`), keyed by JSX element name. Merged with the built-in container-slot map. |
 | `arrayProps` | `Record<string, Record<string, ArrayPropRow>>` | `{}` | Additional array-valued props where each element maps to repeated GTK calls instead of a single property set. Merged with the built-in array-prop rows. |
@@ -92,11 +92,11 @@ You rarely run `gtkx codegen` yourself — the dev and build preflights keep the
 
 ## Runtime access
 
-App code reads the resolved configuration through named exports of `@gtkx/cli/runtime`. The canonical use is passing the configured `applicationId` to the application component, as the tutorial app does:
+App code reads the resolved configuration through named imports from the `virtual:gtkx-config` module. The canonical use is passing the configured `applicationId` to the application component, as the tutorial app does:
 
 ```tsx
 // src/app.tsx
-import { applicationId } from "@gtkx/cli/runtime";
+import { applicationId } from "virtual:gtkx-config";
 import { AdwApplication } from "@gtkx/jsx/adw";
 
 export function App() {
@@ -110,7 +110,7 @@ export function App() {
 
 `NotesWindow` is the tutorial's root window component, defined alongside `App` in the same file.
 
-Under the hood, `@gtkx/cli/runtime` re-exports the `virtual:gtkx-config` module verbatim. The gtkx Vite plugins serve that module during `gtkx dev` and `gtkx build`, and the `@gtkx/vitest` plugin serves it under tests, so the same imports work in every pipeline; `gtkx build` inlines the resolved module into the production bundle. Each field of the resolved config is a named constant — frozen at build time, identical on every import: `libraries`, `girPath`, `applicationId`, `containerProps`, `arrayProps`, `objectProps`, `virtualProps`, `elementMap`, `bigintAliases`, and `reactCompiler`, with every optional field normalized to its documented default (`applicationId` stays `undefined` when unset).
+The gtkx Vite plugins serve the `virtual:gtkx-config` module during `gtkx dev` and `gtkx build`, and the `@gtkx/vitest` plugin serves it under tests, so the same imports work in every pipeline; `gtkx build` inlines the resolved module into the production bundle. Each field of the resolved config is a named constant — frozen at build time, identical on every import: `libraries`, `girPath`, `applicationId`, `containerProps`, `arrayProps`, `objectProps`, `virtualProps`, `elementMap`, `bigintAliases`, and `reactCompiler`, with every optional field normalized to its documented default (`applicationId` stays `undefined` when unset).
 
 ::: warning
 The values are snapshots of `gtkx.config.ts` taken at build time. Changing the config file does not affect an already-built bundle; rebuild (or let the `gtkx dev` config watch restart the app) to pick up new values.

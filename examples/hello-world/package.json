@@ -12,8 +12,10 @@
         "start": "node dist/bundle.js"
     },
     "dependencies": {
-        "@gtkx/cli": "workspace:*",
         "@gtkx/react": "workspace:*",
         "react": "^19.2.7"
+    },
+    "devDependencies": {
+        "@gtkx/cli": "workspace:*"
     }
 }

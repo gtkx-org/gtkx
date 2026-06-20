@@ -184,7 +184,7 @@ Tree lists, section headers, columns, and dropdowns follow the same contract —
 Closing a window is where browsers and GTK diverge: GTK destroys the window natively, behind React's back. The main window therefore vetoes the native close and lets React drive the teardown — return `true` from `onCloseRequest` and call `quit()`:
 
 ```tsx
-import { applicationId } from "@gtkx/cli/runtime";
+import { applicationId } from "virtual:gtkx-config";
 import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
 import { createRoot, quit } from "@gtkx/react";
 

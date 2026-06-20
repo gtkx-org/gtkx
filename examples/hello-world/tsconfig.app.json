@@ -2,9 +2,6 @@
     "extends": "../../tsconfig.app.json",
     "references": [
         {
-            "path": "../../packages/cli/tsconfig.lib.json"
-        },
-        {
             "path": "../../packages/react/tsconfig.lib.json"
         }
     ]
