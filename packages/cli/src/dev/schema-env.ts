@@ -2,7 +2,7 @@ import { copyFileSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { compileSchemas } from "../gsettings/compile.js";
-import { findSchemaFiles, stagedSchemaName } from "../gsettings/env.js";
+import { findSchemaFiles, prependSchemaDir, stagedSchemaName } from "../gsettings/env.js";
 import { removeTempDir } from "../internal/remove-temp-dir.js";
 
 /**
@@ -33,8 +33,7 @@ export const prepareDevSchemaEnv = (root: string, dataDir: string | null): strin
     compileSchemas(dir);
 
     process.env.GTKX_DEV_SCHEMA_DIR = dir;
-    const existing = process.env.GSETTINGS_SCHEMA_DIR;
-    process.env.GSETTINGS_SCHEMA_DIR = existing ? `${dir}:${existing}` : dir;
+    process.env.GSETTINGS_SCHEMA_DIR = prependSchemaDir(dir, process.env.GSETTINGS_SCHEMA_DIR);
     process.once("exit", () => removeTempDir(dir));
 
     return dir;

@@ -5,7 +5,7 @@ import { resolveDataDir } from "@gtkx/config";
 import { errorMessage } from "@gtkx/utils";
 import type { ModuleNode, Plugin, UserConfig, ViteDevServer } from "vite";
 import { compileSchemas } from "../gsettings/compile.js";
-import { emitSchemaEnv, SCHEMA_SUFFIX, stagedSchemaName } from "../gsettings/env.js";
+import { emitSchemaEnv, prependSchemaDir, SCHEMA_SUFFIX, stagedSchemaName } from "../gsettings/env.js";
 import { parseSchemaXml, SchemaParseError } from "../gsettings/parser.js";
 import { renderRuntimeModule } from "../gsettings/render.js";
 import { error, info } from "../internal/log.js";
@@ -102,9 +102,7 @@ const releaseSchemaDir = (state: PluginState): void => {
 const compileSchemaDir = (state: PluginState): void => {
     if (!state.schemaDir) return;
     compileSchemas(state.schemaDir);
-    const existing = process.env.GSETTINGS_SCHEMA_DIR;
-    if (existing?.split(":").includes(state.schemaDir)) return;
-    process.env.GSETTINGS_SCHEMA_DIR = existing ? `${state.schemaDir}:${existing}` : state.schemaDir;
+    process.env.GSETTINGS_SCHEMA_DIR = prependSchemaDir(state.schemaDir, process.env.GSETTINGS_SCHEMA_DIR);
 };
 
 const syncSchemaEnv = (state: PluginState): void => {

@@ -10,6 +10,22 @@ import { renderEnvModule } from "./render.js";
 /** Filename suffix every GSettings schema XML file carries. */
 export const SCHEMA_SUFFIX = ".gschema.xml";
 
+/**
+ * Composes the `GSETTINGS_SCHEMA_DIR` colon-separated search path with `dir`
+ * prepended, skipping the prepend when `dir` is already present so a repeated
+ * compile does not lengthen the path. Pure: the caller assigns the result to
+ * `process.env`.
+ *
+ * @param dir - The compiled-schema directory to give precedence.
+ * @param existing - The current `GSETTINGS_SCHEMA_DIR` value, if any.
+ * @returns The composed search path.
+ */
+export const prependSchemaDir = (dir: string, existing: string | undefined): string => {
+    if (existing === undefined || existing.length === 0) return dir;
+    if (existing.split(":").includes(dir)) return existing;
+    return `${dir}:${existing}`;
+};
+
 const STAGED_NAME_LENGTH = 16;
 
 /**

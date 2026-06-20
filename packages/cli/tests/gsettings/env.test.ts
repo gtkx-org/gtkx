@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, wri
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { emitSchemaEnv, findSchemaFiles, schemaEnvPath } from "../../src/gsettings/env.js";
+import { emitSchemaEnv, findSchemaFiles, prependSchemaDir, schemaEnvPath } from "../../src/gsettings/env.js";
 
 const schemaXmlWithId = (id: string): string => `<schemalist>
     <schema id="${id}" path="/${id.replaceAll(".", "/")}/">
@@ -133,5 +133,20 @@ describe("emitSchemaEnv", () => {
         } finally {
             warn.mockRestore();
         }
+    });
+});
+
+describe("prependSchemaDir", () => {
+    it("returns the dir alone when there is no existing path", () => {
+        expect(prependSchemaDir("/a", undefined)).toBe("/a");
+        expect(prependSchemaDir("/a", "")).toBe("/a");
+    });
+
+    it("prepends the dir before an existing path", () => {
+        expect(prependSchemaDir("/a", "/b:/c")).toBe("/a:/b:/c");
+    });
+
+    it("does not duplicate a dir already present in the path", () => {
+        expect(prependSchemaDir("/b", "/a:/b:/c")).toBe("/a:/b:/c");
     });
 });
