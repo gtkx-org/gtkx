@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { createElement, type ReactNode, type Ref, useEffect, useLayoutEffect, useRef } from "react";
+import { createElement, type ReactNode, type Ref, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import {
     applyConstraint,
     applyGuide,
@@ -8,6 +8,7 @@ import {
     useConstraintLayout,
     useConstraintLayoutRef,
 } from "../hooks/use-constraint-layout.js";
+import { useForwardedRef } from "../hooks/use-forwarded-ref.js";
 import type { ConstraintGuideProps, ConstraintProps, ConstraintVflProps } from "../utils/element-props.js";
 
 const GtkConstraintLayoutElement = "GtkConstraintLayout" as const;
@@ -126,14 +127,13 @@ export const GtkConstraintLayout: ((props: ConstraintLayoutProps) => ReactNode) 
 } = Object.assign(
     ({ children, ref }: ConstraintLayoutProps): ReactNode => {
         const layoutRef = useConstraintLayout();
-        const mergedRef = (layout: Gtk.ConstraintLayout | null): void => {
-            layoutRef.current = layout;
-            if (typeof ref === "function") {
-                ref(layout);
-            } else if (ref) {
-                ref.current = layout;
-            }
-        };
+        const captureLayout = useCallback(
+            (layout: Gtk.ConstraintLayout | null): void => {
+                layoutRef.current = layout;
+            },
+            [layoutRef],
+        );
+        const [, mergedRef] = useForwardedRef<Gtk.ConstraintLayout>(ref, captureLayout);
         return (
             <>
                 {createElement(GtkConstraintLayoutElement, { ref: mergedRef })}

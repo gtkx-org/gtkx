@@ -2,6 +2,7 @@ import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { type ElementType, type ReactNode, type Ref, useCallback, useLayoutEffect, useState } from "react";
 import { ApplicationContext, useApplication } from "../hooks/use-application.js";
+import { useForwardedRef } from "../hooks/use-forwarded-ref.js";
 import { quitApplicationLifecycle, runApplicationLifecycle } from "../utils/application-lifecycle.js";
 import { withTopLevel } from "./top-level.js";
 
@@ -35,18 +36,11 @@ const useApplicationInstance = <T extends Gtk.Application>(
     const [app, setApp] = useState<Gtk.Application | null>(null);
     const [registeredApp, setRegisteredApp] = useState<Gtk.Application | null>(null);
 
-    const captureApp = useCallback(
-        (instance: T | null) => {
-            setApp(instance);
-            if (!instance) setRegisteredApp(null);
-            if (typeof ref === "function") {
-                ref(instance);
-            } else if (ref) {
-                ref.current = instance;
-            }
-        },
-        [ref],
-    );
+    const captureInstance = useCallback((instance: T | null) => {
+        setApp(instance);
+        if (!instance) setRegisteredApp(null);
+    }, []);
+    const [, captureApp] = useForwardedRef<T>(ref, captureInstance);
 
     useLayoutEffect(() => {
         if (!app) return;
