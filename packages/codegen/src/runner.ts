@@ -1,4 +1,4 @@
-import type { ArrayPropRow, ElementMapRule, ObjectPropRow, VirtualPropRow } from "@gtkx/config";
+import type { UserTableRows } from "@gtkx/config";
 import { generateNamespaceModule } from "./ffi/pipeline.js";
 import { computeFingerprint, serializeUserTables } from "./fingerprint.js";
 import { type GiNamespaceInput, type GiStoreOptions, writeGiStore } from "./gi-store.js";
@@ -10,21 +10,11 @@ import { generateJsxFiles } from "./react/pipeline.js";
 /**
  * Options for {@link CodegenRunner}.
  */
-export type CodegenRunnerOptions = {
+export type CodegenRunnerOptions = UserTableRows & {
     /** Resolved `Name-Version` namespace identifiers to generate. */
     readonly libraries: readonly string[];
     /** Directories searched for `.gir` files. */
     readonly girPath: readonly string[];
-    /** Optional user container-slot overrides keyed by JSX element name (append semantics). */
-    readonly containerProps?: Readonly<Record<string, readonly string[]>>;
-    /** Optional user array-prop rows keyed by JSX element name then prop name. */
-    readonly arrayProps?: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>>;
-    /** Optional user object-prop rows keyed by JSX element name then prop name. */
-    readonly objectProps?: Readonly<Record<string, Readonly<Record<string, ObjectPropRow>>>>;
-    /** Optional user virtual-prop rows keyed by JSX element name then prop name. */
-    readonly virtualProps?: Readonly<Record<string, Readonly<Record<string, VirtualPropRow>>>>;
-    /** Optional user attach rules merged after the built-in element-map rows. */
-    readonly elementMap?: readonly ElementMapRule[];
     /** Target for the injected `@gtkx/gi` bindings package. */
     readonly gi: GiStoreOptions;
     /** Target for the injected `@gtkx/jsx` package; React is skipped when omitted. */
@@ -77,22 +67,15 @@ export class CodegenRunner {
             namespaces.push({ directory: namespaceDirectory(namespace), rawSource: source });
         }
         const libraries = [...this.options.libraries];
-        const tables = {
-            containerProps: this.options.containerProps,
-            arrayProps: this.options.arrayProps,
-            objectProps: this.options.objectProps,
-            virtualProps: this.options.virtualProps,
-            elementMap: this.options.elementMap,
-        };
         writeGiStore(this.options.gi, namespaces, {
-            value: computeFingerprint(repository.girFiles, libraries, serializeUserTables(tables)),
+            value: computeFingerprint(repository.girFiles, libraries, serializeUserTables(this.options)),
             girFiles: repository.girFiles,
             libraries,
         });
 
         let widgetCount = 0;
         if (this.options.jsx !== undefined) {
-            const reactPipeline = generateJsxFiles(repository, tables);
+            const reactPipeline = generateJsxFiles(repository, this.options);
             writeJsxStore(this.options.jsx, reactPipeline.namespaces, reactPipeline.metadata);
             widgetCount = reactPipeline.widgetCount;
         }

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import type { UserTableRows } from "@gtkx/config";
 import { sortedAlpha } from "@gtkx/utils";
 
 const require = createRequire(import.meta.url);
@@ -44,18 +45,7 @@ const stableValue = (value: unknown): unknown => {
  * contents: the table rows baked into `@gtkx/jsx/metadata` and the slot maps
  * shaping the Props surfaces.
  */
-export type UserTableInputs = {
-    /** The config's `containerProps` map, or `undefined`. */
-    readonly containerProps?: Readonly<Record<string, readonly string[]>>;
-    /** The config's `arrayProps` rows, or `undefined`. */
-    readonly arrayProps?: unknown;
-    /** The config's `objectProps` rows, or `undefined`. */
-    readonly objectProps?: unknown;
-    /** The config's `virtualProps` rows, or `undefined`. */
-    readonly virtualProps?: unknown;
-    /** The config's `elementMap` rows, or `undefined`. */
-    readonly elementMap?: unknown;
-};
+export type UserTableInputs = UserTableRows;
 
 /**
  * Serializes the table-shaping config inputs into the canonical string mixed

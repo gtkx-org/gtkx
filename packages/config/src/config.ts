@@ -2,6 +2,8 @@ import {
     type ArrayPropRow,
     type ElementMapRule,
     type ObjectPropRow,
+    type PerElementPropRows,
+    type UserTableRows,
     type VirtualPropRow,
     validateArrayPropRows,
     validateElementMap,
@@ -37,7 +39,7 @@ export const GIR_NAMESPACE_PATTERN: RegExp = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)
  * });
  * ```
  */
-export type GtkxConfig = {
+export type GtkxConfig = UserTableRows & {
     /**
      * GLib namespace identifiers (with version) to generate bindings for,
      * e.g. `"Gtk-4.0"`, `"Adw-1"`. Transitive dependencies are resolved
@@ -83,125 +85,6 @@ export type GtkxConfig = {
      * `/gtkx/app`.
      */
     applicationId?: string;
-
-    /**
-     * Additional container methods to expose as renderable JSX child slots
-     * (typed as `ReactNode`) with append semantics — each child is appended via
-     * the named method instead of replacing a single value.
-     *
-     * Keys are JSX element names (e.g. `"GtkHeaderBar"`, `"AdwActionRow"`);
-     * values are camelCase method names that append a child onto the widget
-     * (e.g. `"packStart"`, `"addPrefix"`). The reconciler dispatches each slot
-     * to `parent[method](child)`. Entries merge with the built-in container-slot
-     * map, so consumer-provided GIRs can opt their own append methods into the
-     * slot-mounting pipeline without patching the codegen package.
-     *
-     * @example
-     * ```ts
-     * containerProps: {
-     *     MyAppHeaderBar: ["packStart", "packEnd"],
-     * }
-     * ```
-     */
-    containerProps?: Record<string, string[]>;
-
-    /**
-     * Additional array-valued props to expose on a widget's JSX surface, where
-     * each element maps to repeated GTK calls instead of a single property set.
-     *
-     * Keys are PascalCase JSX element names (e.g. `"GtkScale"`, `"MyAppChart"`);
-     * each value maps a camelCase prop name to an {@link ArrayPropRow} carrying
-     * both the typed JSX surface and the runtime behavior. The row's `itemType`
-     * must be an exported member of `@gtkx/react` — codegen type-imports it from
-     * that hard-coded path and emits `prop?: ItemType[] | null;` into the
-     * element's generated `Props` interface, suppressing the raw GObject prop of
-     * the same name. The row's verbs (`add`, `remove`, `clear`, `set`,
-     * `construct`, `appendOnce`) describe how the reconciler turns array
-     * elements into GTK calls. Entries merge with the built-in array-prop rows.
-     *
-     * @example
-     * ```ts
-     * arrayProps: {
-     *     MyAppChart: {
-     *         series: {
-     *             itemType: "ChartSeries",
-     *             clear: "clearSeries",
-     *             add: [{ method: "addSeries", args: [{ kind: "item", path: "id" }] }],
-     *         },
-     *     },
-     * }
-     * ```
-     */
-    arrayProps?: Record<string, Record<string, ArrayPropRow>>;
-
-    /**
-     * Additional object-valued props to expose on a widget's JSX surface,
-     * where the object's fields map to one or more GTK calls.
-     *
-     * Keys are PascalCase JSX element names; each value maps a camelCase prop
-     * name to an {@link ObjectPropRow}. The row's `itemType` must be an
-     * exported member of `@gtkx/react` — codegen type-imports it and emits
-     * `prop?: ItemType | null;` into the element's generated `Props`
-     * interface. When the prop holds a value the `set` calls run with
-     * arguments resolved against it; when it is cleared the `unset` calls
-     * run. Entries merge with the built-in object-prop rows.
-     *
-     * @example
-     * ```ts
-     * objectProps: {
-     *     MyAppCanvas: {
-     *         viewport: {
-     *             itemType: "CanvasViewport",
-     *             set: [{ method: "setViewport", args: [{ kind: "item", path: "x" }, { kind: "item", path: "y" }] }],
-     *         },
-     *     },
-     * }
-     * ```
-     */
-    objectProps?: Record<string, Record<string, ObjectPropRow>>;
-
-    /**
-     * Additional virtual props to expose on a widget's JSX surface: props with
-     * no GObject property backing whose value is forwarded verbatim to a
-     * setter method.
-     *
-     * Keys are PascalCase JSX element names; each value maps a camelCase prop
-     * name to a {@link VirtualPropRow}. The row's `type` is the qualified GIR
-     * type the generated `Props` line declares (typically a GIR callback
-     * type), `setter` is called with the value — `null` when the prop is
-     * cleared — and `after` optionally names a zero-argument method invoked
-     * after every set. Entries merge with the built-in virtual-prop rows.
-     *
-     * @example
-     * ```ts
-     * virtualProps: {
-     *     GtkListBox: {
-     *         sortFunc: { type: "Gtk.ListBoxSortFunc", setter: "setSortFunc" },
-     *     },
-     * }
-     * ```
-     */
-    virtualProps?: Record<string, Record<string, VirtualPropRow>>;
-
-    /**
-     * Additional attach relationships for the reconciler's element map, merged
-     * after the built-in rows. Each rule names the child's GLib type, the
-     * parent it targets (by type or by an exposed method), and the verb that
-     * attaches and detaches the pair — all as plain data interpreted by
-     * `@gtkx/react`.
-     *
-     * @example
-     * ```ts
-     * elementMap: [
-     *     {
-     *         child: "MyAppGadget",
-     *         parentType: "MyAppBoard",
-     *         verb: { kind: "method", attach: "addGadget", attachArgs: "child", detach: "removeGadget", detachArgs: "child" },
-     *     },
-     * ]
-     * ```
-     */
-    elementMap?: ElementMapRule[];
 
     /**
      * Controls the React Compiler (`babel-plugin-react-compiler`), which
@@ -338,7 +221,10 @@ const validateApplicationId = (applicationId: GtkxConfig["applicationId"]): void
 const JSX_NAME_PATTERN = /^[A-Z][A-Za-z0-9]*$/;
 const SLOT_ENTRY_PATTERN = /^[a-z][A-Za-z0-9]*$/;
 
-const validateSlotMap = (slotMap: Record<string, string[]> | undefined, optionName: string): void => {
+const validateSlotMap = (
+    slotMap: Readonly<Record<string, readonly string[]>> | undefined,
+    optionName: string,
+): void => {
     if (slotMap === undefined) return;
     if (typeof slotMap !== "object" || Array.isArray(slotMap) || slotMap === null) {
         throw new Error(
@@ -450,11 +336,11 @@ export type ResolvedGtkxConfig = {
     /** The user's container-slot map, or `{}` when omitted. */
     readonly containerProps: Readonly<Record<string, readonly string[]>>;
     /** The user's array-prop rows, or `{}` when omitted. */
-    readonly arrayProps: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>>;
+    readonly arrayProps: PerElementPropRows<ArrayPropRow>;
     /** The user's object-prop rows, or `{}` when omitted. */
-    readonly objectProps: Readonly<Record<string, Readonly<Record<string, ObjectPropRow>>>>;
+    readonly objectProps: PerElementPropRows<ObjectPropRow>;
     /** The user's virtual-prop rows, or `{}` when omitted. */
-    readonly virtualProps: Readonly<Record<string, Readonly<Record<string, VirtualPropRow>>>>;
+    readonly virtualProps: PerElementPropRows<VirtualPropRow>;
     /** The user's element-map rows, or `[]` when omitted. */
     readonly elementMap: readonly ElementMapRule[];
     /** The resolved React Compiler options, or `null` when disabled. */

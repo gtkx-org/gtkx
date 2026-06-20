@@ -7,7 +7,7 @@ import {
     FINGERPRINT_FILENAME,
     serializeUserTables,
 } from "@gtkx/codegen";
-import { type GtkxConfig, GtkxConfigNotFoundError, loadGtkxConfig } from "@gtkx/config";
+import { type GtkxConfig, GtkxConfigNotFoundError, loadGtkxConfig, type UserTableRows } from "@gtkx/config";
 import { sortedAlpha } from "@gtkx/utils";
 import { emitSchemaEnv } from "../gsettings/env.js";
 import { resolveGirPath } from "./gir-resolver.js";
@@ -53,7 +53,7 @@ const buildRunner = (
     store: CodegenStore,
     libraries: readonly string[],
     girPath: readonly string[],
-    tables: Pick<GtkxConfig, "containerProps" | "arrayProps" | "objectProps" | "virtualProps" | "elementMap">,
+    tables: UserTableRows,
 ): CodegenRunner =>
     new CodegenRunner({
         libraries,

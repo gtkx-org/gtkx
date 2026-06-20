@@ -1,4 +1,4 @@
-import type { ArrayPropRow, ElementMapRule, ObjectPropRow, VirtualPropRow } from "@gtkx/config";
+import type { UserTableRows } from "@gtkx/config";
 import { sortedAlphaBy } from "@gtkx/utils";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import type { GirRepository } from "../gir/repository.js";
@@ -19,23 +19,6 @@ import {
     TOP_LEVEL_TYPES,
 } from "./tables.js";
 import { collectReactNodeClasses } from "./widgets.js";
-
-/**
- * User-supplied table overrides from `gtkx.config.ts`, keyed by JSX element
- * name, merged with the built-in rows from `./tables`.
- */
-export type UserTables = {
-    /** Container methods to surface as append-semantics `ReactNode` slots. */
-    readonly containerProps?: Readonly<Record<string, readonly string[]>>;
-    /** Array-prop rows keyed by JSX element name then camelCase prop name. */
-    readonly arrayProps?: Readonly<Record<string, Readonly<Record<string, ArrayPropRow>>>>;
-    /** Object-prop rows keyed by JSX element name then camelCase prop name. */
-    readonly objectProps?: Readonly<Record<string, Readonly<Record<string, ObjectPropRow>>>>;
-    /** Virtual-prop rows keyed by JSX element name then camelCase prop name. */
-    readonly virtualProps?: Readonly<Record<string, Readonly<Record<string, VirtualPropRow>>>>;
-    /** Attach relationships merged after the built-in element-map rows. */
-    readonly elementMap?: readonly ElementMapRule[];
-};
 
 /** One per-namespace `@gtkx/jsx` module: its directory and combined source. */
 export type JsxNamespaceFile = {
@@ -65,7 +48,7 @@ export type JsxFiles = {
  * @param repository - The loaded GIR repository
  * @param userTables - Table overrides from `gtkx.config.ts`, merged with the built-ins
  */
-export const generateJsxFiles = (repository: GirRepository, userTables: UserTables = {}): JsxFiles => {
+export const generateJsxFiles = (repository: GirRepository, userTables: UserTableRows = {}): JsxFiles => {
     const containerPropMap = mergeContainerProps(userTables.containerProps);
     const arrayPropMap = mergeArrayProps(userTables.arrayProps);
     const objectPropMap = mergeObjectProps(userTables.objectProps);

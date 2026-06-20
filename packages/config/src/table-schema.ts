@@ -286,6 +286,142 @@ export type PageMetaSetter = {
     readonly whenPresent?: boolean;
 };
 
+/**
+ * Per-element prop-table rows keyed by JSX element name, then by camelCase prop
+ * name — the shape the array, object, and virtual prop tables share at every
+ * hop from config through codegen.
+ *
+ * @typeParam Row - The row shape stored per prop.
+ */
+export type PerElementPropRows<Row> = Readonly<Record<string, Readonly<Record<string, Row>>>>;
+
+/**
+ * The reconciler table overrides a project declares in `gtkx.config.ts`,
+ * merged with the built-in rows by codegen. The single definition of the
+ * five-field bundle that {@link GtkxConfig} embeds and every codegen
+ * orchestration hop consumes.
+ */
+export type UserTableRows = {
+    /**
+     * Additional container methods to expose as renderable JSX child slots
+     * (typed as `ReactNode`) with append semantics — each child is appended via
+     * the named method instead of replacing a single value.
+     *
+     * Keys are JSX element names (e.g. `"GtkHeaderBar"`, `"AdwActionRow"`);
+     * values are camelCase method names that append a child onto the widget
+     * (e.g. `"packStart"`, `"addPrefix"`). The reconciler dispatches each slot
+     * to `parent[method](child)`. Entries merge with the built-in container-slot
+     * map, so consumer-provided GIRs can opt their own append methods into the
+     * slot-mounting pipeline without patching the codegen package.
+     *
+     * @example
+     * ```ts
+     * containerProps: {
+     *     MyAppHeaderBar: ["packStart", "packEnd"],
+     * }
+     * ```
+     */
+    readonly containerProps?: Readonly<Record<string, readonly string[]>>;
+
+    /**
+     * Additional array-valued props to expose on a widget's JSX surface, where
+     * each element maps to repeated GTK calls instead of a single property set.
+     *
+     * Keys are PascalCase JSX element names (e.g. `"GtkScale"`, `"MyAppChart"`);
+     * each value maps a camelCase prop name to an {@link ArrayPropRow} carrying
+     * both the typed JSX surface and the runtime behavior. The row's `itemType`
+     * must be an exported member of `@gtkx/react` — codegen type-imports it from
+     * that hard-coded path and emits `prop?: ItemType[] | null;` into the
+     * element's generated `Props` interface, suppressing the raw GObject prop of
+     * the same name. The row's verbs (`add`, `remove`, `clear`, `set`,
+     * `construct`, `appendOnce`) describe how the reconciler turns array
+     * elements into GTK calls. Entries merge with the built-in array-prop rows.
+     *
+     * @example
+     * ```ts
+     * arrayProps: {
+     *     MyAppChart: {
+     *         series: {
+     *             itemType: "ChartSeries",
+     *             clear: "clearSeries",
+     *             add: [{ method: "addSeries", args: [{ kind: "item", path: "id" }] }],
+     *         },
+     *     },
+     * }
+     * ```
+     */
+    readonly arrayProps?: PerElementPropRows<ArrayPropRow>;
+
+    /**
+     * Additional object-valued props to expose on a widget's JSX surface,
+     * where the object's fields map to one or more GTK calls.
+     *
+     * Keys are PascalCase JSX element names; each value maps a camelCase prop
+     * name to an {@link ObjectPropRow}. The row's `itemType` must be an
+     * exported member of `@gtkx/react` — codegen type-imports it and emits
+     * `prop?: ItemType | null;` into the element's generated `Props`
+     * interface. When the prop holds a value the `set` calls run with
+     * arguments resolved against it; when it is cleared the `unset` calls
+     * run. Entries merge with the built-in object-prop rows.
+     *
+     * @example
+     * ```ts
+     * objectProps: {
+     *     MyAppCanvas: {
+     *         viewport: {
+     *             itemType: "CanvasViewport",
+     *             set: [{ method: "setViewport", args: [{ kind: "item", path: "x" }, { kind: "item", path: "y" }] }],
+     *         },
+     *     },
+     * }
+     * ```
+     */
+    readonly objectProps?: PerElementPropRows<ObjectPropRow>;
+
+    /**
+     * Additional virtual props to expose on a widget's JSX surface: props with
+     * no GObject property backing whose value is forwarded verbatim to a
+     * setter method.
+     *
+     * Keys are PascalCase JSX element names; each value maps a camelCase prop
+     * name to a {@link VirtualPropRow}. The row's `type` is the qualified GIR
+     * type the generated `Props` line declares (typically a GIR callback
+     * type), `setter` is called with the value — `null` when the prop is
+     * cleared — and `after` optionally names a zero-argument method invoked
+     * after every set. Entries merge with the built-in virtual-prop rows.
+     *
+     * @example
+     * ```ts
+     * virtualProps: {
+     *     GtkListBox: {
+     *         sortFunc: { type: "Gtk.ListBoxSortFunc", setter: "setSortFunc" },
+     *     },
+     * }
+     * ```
+     */
+    readonly virtualProps?: PerElementPropRows<VirtualPropRow>;
+
+    /**
+     * Additional attach relationships for the reconciler's element map, merged
+     * after the built-in rows. Each rule names the child's GLib type, the
+     * parent it targets (by type or by an exposed method), and the verb that
+     * attaches and detaches the pair — all as plain data interpreted by
+     * `@gtkx/react`.
+     *
+     * @example
+     * ```ts
+     * elementMap: [
+     *     {
+     *         child: "MyAppGadget",
+     *         parentType: "MyAppBoard",
+     *         verb: { kind: "method", attach: "addGadget", attachArgs: "child", detach: "removeGadget", detachArgs: "child" },
+     *     },
+     * ]
+     * ```
+     */
+    readonly elementMap?: readonly ElementMapRule[];
+};
+
 const GLIB_TYPE_NAME_PATTERN = /^[A-Z][A-Za-z0-9]*$/;
 const METHOD_NAME_PATTERN = /^[a-z][A-Za-z0-9]*$/;
 const VERB_ARGS: readonly VerbArgs[] = ["child", "childName", "null", "prefixChild", "prefixNull"];
