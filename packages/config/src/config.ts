@@ -70,8 +70,8 @@ export type GtkxConfig = UserTableRows & {
 
     /**
      * GLib application id used by the GResource pipeline and exposed to app
-     * code as the `applicationId` constant of `@gtkx/cli/runtime`, ready
-     * to pass to the application component's `applicationId` prop.
+     * code as the `applicationId` constant of the `virtual:gtkx-config`
+     * module, ready to pass to the application component's `applicationId` prop.
      *
      * When set, asset imports resolve to `resource:///<prefix>/<rel>` where
      * `<prefix>` is derived from the id (`org.gtk.Demo4` → `/org/gtk/Demo4`)

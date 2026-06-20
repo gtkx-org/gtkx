@@ -54,9 +54,6 @@ importers:
 
   examples/browser:
     dependencies:
-      '@gtkx/cli':
-        specifier: workspace:*
-        version: link:../../packages/cli
       '@gtkx/css':
         specifier: workspace:*
         version: link:../../packages/css
@@ -66,12 +63,13 @@ importers:
       react:
         specifier: ^19.2.7
         version: 19.2.7
-
-  examples/gtk-demo:
-    dependencies:
+    devDependencies:
       '@gtkx/cli':
         specifier: workspace:*
         version: link:../../packages/cli
+
+  examples/gtk-demo:
+    dependencies:
       '@gtkx/css':
         specifier: workspace:*
         version: link:../../packages/css
@@ -88,6 +86,9 @@ importers:
         specifier: ^19.2.7
         version: 19.2.7
     devDependencies:
+      '@gtkx/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
       '@gtkx/native':
         specifier: workspace:*
         version: link:../../packages/native
@@ -106,24 +107,22 @@ importers:
 
   examples/hello-world:
     dependencies:
-      '@gtkx/cli':
-        specifier: workspace:*
-        version: link:../../packages/cli
       '@gtkx/react':
         specifier: workspace:*
         version: link:../../packages/react
       react:
         specifier: ^19.2.7
         version: 19.2.7
+    devDependencies:
+      '@gtkx/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
 
   examples/tutorial:
     dependencies:
       '@gtkx/animate':
         specifier: workspace:*
         version: link:../../packages/animate
-      '@gtkx/cli':
-        specifier: workspace:*
-        version: link:../../packages/cli
       '@gtkx/css':
         specifier: workspace:*
         version: link:../../packages/css
@@ -134,6 +133,9 @@ importers:
         specifier: ^19.2.7
         version: 19.2.7
     devDependencies:
+      '@gtkx/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
       esbuild:
         specifier: ^0.28.1
         version: 0.28.1

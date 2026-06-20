@@ -4,7 +4,7 @@
  * (`gtkx dev`/`gtkx build`) and the `@gtkx/vitest` plugin. The module
  * re-exports the codegen-derived metadata tables from the generated bindings
  * package and carries each field of the project's resolved `gtkx.config.ts`
- * as a named constant, re-exported verbatim by `@gtkx/cli/runtime`.
+ * as a named constant that `@gtkx/react` and app code import directly.
  * `gtkx build` inlines the resolved module into the production bundle, so no
  * plugin is needed at runtime.
  *
