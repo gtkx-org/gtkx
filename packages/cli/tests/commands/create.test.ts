@@ -61,4 +61,14 @@ describe("create", () => {
             claudeSkills: undefined,
         });
     });
+
+    it("rejects an unknown package manager before scaffolding", async () => {
+        await expect(runCreate({ pm: "bun" })).rejects.toThrow(/Unknown package manager "bun"/);
+        expect(createAppMock).not.toHaveBeenCalled();
+    });
+
+    it("rejects an unknown testing setup before scaffolding", async () => {
+        await expect(runCreate({ testing: "jest" })).rejects.toThrow(/Unknown testing setup "jest"/);
+        expect(createAppMock).not.toHaveBeenCalled();
+    });
 });

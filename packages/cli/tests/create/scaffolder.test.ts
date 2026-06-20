@@ -3,12 +3,8 @@ import { join } from "node:path";
 import ejs from "ejs";
 import { vol } from "memfs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-    type CreateOptions,
-    createScaffolder,
-    type PackageManager,
-    type ScaffolderDeps,
-} from "../../src/create/scaffolder.js";
+import type { PackageManager } from "../../src/create/options.js";
+import { type CreateOptions, createScaffolder, type ScaffolderDeps } from "../../src/create/scaffolder.js";
 import type { TemplateContext } from "../../src/templates.js";
 
 const TEST_DIR = "/test-workspace";
@@ -190,7 +186,7 @@ describe("createScaffolder (src/* generated files)", () => {
         expect(content).toContain('title="My Cool App"');
     });
 
-    it("declares the application id in gtkx.config.ts and passes it through @gtkx/cli/runtime", async () => {
+    it("declares the application id in gtkx.config.ts and passes it through virtual:gtkx-config", async () => {
         await runScaffolder();
 
         const config = vol.readFileSync(`${TEST_DIR}/test-app/gtkx.config.ts`, "utf-8") as string;
@@ -198,7 +194,7 @@ describe("createScaffolder (src/* generated files)", () => {
 
         const app = vol.readFileSync(`${TEST_DIR}/test-app/src/app.tsx`, "utf-8") as string;
         expect(app).toContain("<GtkApplication applicationId={applicationId}>");
-        expect(app).toContain('import { applicationId } from "@gtkx/cli/runtime";');
+        expect(app).toContain('import { applicationId } from "virtual:gtkx-config";');
     });
 
     it("writes vitest.config.ts when testing=vitest", async () => {
@@ -250,9 +246,9 @@ describe("createScaffolder (dependency installation)", () => {
         expect(harness.installs).toHaveLength(2);
         const [prod, dev] = harness.installs;
         expect(prod?.dev).toBe(false);
-        expect(prod?.dependencies).toEqual(["@gtkx/cli", "@gtkx/css", "@gtkx/ffi", "@gtkx/react", "react"]);
+        expect(prod?.dependencies).toEqual(["@gtkx/css", "@gtkx/ffi", "@gtkx/react", "react"]);
         expect(dev?.dev).toBe(true);
-        expect(dev?.dependencies).toEqual(expect.arrayContaining(["vitest", "@gtkx/testing"]));
+        expect(dev?.dependencies).toEqual(expect.arrayContaining(["@gtkx/cli", "vitest", "@gtkx/testing"]));
     });
 
     it("forwards the chosen package manager", async () => {

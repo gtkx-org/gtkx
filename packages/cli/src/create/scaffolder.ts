@@ -3,27 +3,7 @@ import { isValidApplicationId } from "@gtkx/config";
 import { errorMessage, toUpperFirst } from "@gtkx/utils";
 import { renderEnvModule } from "../gsettings/render.js";
 import type { TemplateContext } from "../templates.js";
-import { isValidProjectName, type TestingOption } from "./options.js";
-
-/**
- * Supported package managers for GTKX projects.
- */
-/**
- * The package managers a scaffolded project supports: the run-dev command line
- * each uses and whether it is the recommended default. The single table the
- * type, the run command, the membership list, and the prompt rows derive from.
- */
-const PACKAGE_MANAGERS = [
-    { value: "pnpm", label: "pnpm", runDev: "pnpm dev", recommended: true },
-    { value: "npm", label: "npm", runDev: "npm run dev", recommended: false },
-    { value: "yarn", label: "yarn", runDev: "yarn dev", recommended: false },
-] as const;
-
-/** A package manager a scaffolded project can use, derived from {@link PACKAGE_MANAGERS}. */
-export type PackageManager = (typeof PACKAGE_MANAGERS)[number]["value"];
-
-/** The supported package-manager identifiers, for membership validation. */
-export const PACKAGE_MANAGER_VALUES: readonly PackageManager[] = PACKAGE_MANAGERS.map((manager) => manager.value);
+import { isValidProjectName, PACKAGE_MANAGERS, type PackageManager, type TestingOption } from "./options.js";
 
 /**
  * Options accepted by {@link Scaffolder.run}. Missing fields are filled
@@ -111,9 +91,9 @@ export type Scaffolder = {
     run(options?: CreateOptions): Promise<void>;
 };
 
-const DEPENDENCIES = ["@gtkx/cli", "@gtkx/css", "@gtkx/ffi", "@gtkx/react", "react"];
+const DEPENDENCIES = ["@gtkx/css", "@gtkx/ffi", "@gtkx/react", "react"];
 
-const DEV_DEPENDENCIES = ["@types/react", "typescript", "vite"];
+const DEV_DEPENDENCIES = ["@gtkx/cli", "@types/react", "typescript", "vite"];
 
 const TESTING_DEV_DEPENDENCIES = ["@gtkx/testing", "vitest"];
 

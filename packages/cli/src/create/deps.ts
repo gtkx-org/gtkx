@@ -3,10 +3,8 @@ import * as p from "@clack/prompts";
 import { addDependency, detectPackageManager as nypmDetectPackageManager } from "nypm";
 import { x } from "tinyexec";
 import { renderFile } from "../templates.js";
-import { PACKAGE_MANAGER_VALUES, type PackageManager, type ScaffolderDeps } from "./scaffolder.js";
-
-const isKnownPackageManager = (name: string): name is PackageManager =>
-    (PACKAGE_MANAGER_VALUES as readonly string[]).includes(name);
+import { isKnownPackageManager, type PackageManager } from "./options.js";
+import type { ScaffolderDeps } from "./scaffolder.js";
 
 /**
  * Production wiring for {@link createScaffolder}.
