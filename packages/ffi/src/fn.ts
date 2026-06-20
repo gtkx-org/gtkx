@@ -85,29 +85,55 @@ const toNativeArgTypes = (argTypes: readonly ArgType[], throws: boolean): Type[]
 };
 
 /**
+ * One argument's self-describing call plan, computed once at bind time so the
+ * per-call walks read flags instead of re-deriving the direction taxonomy. A
+ * runtime pure-out cell reads no input — `inputIndex` is `-1` for it — every
+ * other argument consumes the input at `inputIndex`. `isOutput` marks the
+ * arguments that surface in the result tuple (an out/inout that is not folded
+ * away as a `consumed` array-length companion).
+ */
+type ArgPlan = {
+    readonly argType: ArgType;
+    readonly consumesInput: boolean;
+    readonly inputIndex: number;
+    readonly isOutput: boolean;
+};
+
+/**
+ * Classifies each argument once, threading the input cursor so each plan records
+ * the input slot it consumes (or `-1` for a runtime pure-out cell, which the
+ * native call fills without an input value).
+ */
+const planArgs = (argTypes: readonly ArgType[]): ArgPlan[] => {
+    let inputCursor = 0;
+    return argTypes.map((argType) => {
+        const consumesInput = !(argType.direction === "out" && argType.callerAllocates !== true);
+        const isOutput = argType.direction !== undefined && argType.consumed !== true;
+        return { argType, consumesInput, inputIndex: consumesInput ? inputCursor++ : -1, isOutput };
+    });
+};
+
+/**
  * Maps a call's inputs onto the native values, in C-signature order: a
  * caller-allocated wrapper to its handle, a runtime out- or inout-parameter to a
  * fresh `{ value }` cell (seeded from the input for an inout, which the native
  * call fills), a callback to its {@link wrapHandler}-wrapped value, a plain
  * input straight through.
  */
-const toNativeValues = (argTypes: readonly ArgType[], inputs: readonly unknown[]): Value[] => {
-    const nativeValues: Value[] = [];
-    let cursor = 0;
-    for (const argType of argTypes) {
+const toNativeValues = (plans: readonly ArgPlan[], inputs: readonly unknown[]): Value[] =>
+    plans.map(({ argType, consumesInput, inputIndex }) => {
         if (argType.callerAllocates === true) {
-            const wrapper = inputs[cursor++];
-            nativeValues.push(wrapper == null ? wrapper : getHandle(wrapper as object));
-        } else if (argType.direction !== undefined) {
-            nativeValues.push({ value: argType.direction === "inout" ? (inputs[cursor++] as Value) : null });
-        } else if (argType.type.type === "callback") {
-            nativeValues.push(wrapCallbackValue(argType.type, inputs[cursor++]));
-        } else {
-            nativeValues.push(inputs[cursor++] as Value);
+            const wrapper = inputs[inputIndex];
+            return wrapper == null ? wrapper : getHandle(wrapper as object);
         }
-    }
-    return nativeValues;
-};
+        if (argType.direction !== undefined) {
+            return { value: consumesInput ? (inputs[inputIndex] as Value) : null };
+        }
+        if (argType.type.type === "callback") {
+            return wrapCallbackValue(argType.type, inputs[inputIndex]);
+        }
+        return inputs[inputIndex] as Value;
+    });
 
 /**
  * Reads the surfaced out-values back after the call, in declaration order: a
@@ -116,19 +142,14 @@ const toNativeValues = (argTypes: readonly ArgType[], inputs: readonly unknown[]
  * yields its cell's filled value lifted through {@link wrapValue}. A `consumed`
  * out and a plain input contribute nothing.
  */
-const toOutputs = (
-    argTypes: readonly ArgType[],
-    inputs: readonly unknown[],
-    nativeValues: readonly Value[],
-): unknown[] => {
+const toOutputs = (plans: readonly ArgPlan[], inputs: readonly unknown[], nativeValues: readonly Value[]): unknown[] => {
     const outputs: unknown[] = [];
-    let cursor = 0;
-    argTypes.forEach((argType, index) => {
-        const consumesInput = !(argType.direction === "out" && argType.callerAllocates !== true);
-        const input = consumesInput ? inputs[cursor++] : undefined;
-        if (argType.direction === undefined || argType.consumed === true) return;
+    plans.forEach(({ argType, inputIndex, isOutput }, index) => {
+        if (!isOutput) return;
         outputs.push(
-            argType.callerAllocates === true ? input : wrapValue(argType.type, (nativeValues[index] as Ref).value),
+            argType.callerAllocates === true
+                ? inputs[inputIndex]
+                : wrapValue(argType.type, (nativeValues[index] as Ref).value),
         );
     });
     return outputs;
@@ -156,14 +177,15 @@ export function fn(
     const nativeArgTypes = toNativeArgTypes(argTypes, options.throws === true);
     const nativeFn = bind(library, symbol, nativeArgTypes, returnType);
     const hasPrimary = returnType.type !== "void";
+    const plans = planArgs(argTypes);
 
     return (...inputs) => {
-        const nativeValues = toNativeValues(argTypes, inputs);
+        const nativeValues = toNativeValues(plans, inputs);
         const errorCell: Ref | undefined = options.throws === true ? { value: null } : undefined;
         if (errorCell !== undefined) nativeValues.push(errorCell);
         const nativeResult = nativeFn(...nativeValues);
         if (errorCell !== undefined) checkError(errorCell);
         const primary = hasPrimary ? wrapValue(returnType, nativeResult) : undefined;
-        return tupleResult(toOutputs(argTypes, inputs, nativeValues), primary, hasPrimary);
+        return tupleResult(toOutputs(plans, inputs, nativeValues), primary, hasPrimary);
     };
 }
