@@ -56,16 +56,21 @@ export type RunCodegenResult = {
     libraries?: string[];
 };
 
+const tableRows = (config: GtkxConfig): UserTableRows => {
+    const { containerProps, arrayProps, objectProps, virtualProps, elementMap } = config;
+    return { containerProps, arrayProps, objectProps, virtualProps, elementMap };
+};
+
 const buildRunner = (
     store: CodegenStore,
     libraries: readonly string[],
     girPath: readonly string[],
-    tables: UserTableRows,
+    config: GtkxConfig,
 ): CodegenRunner =>
     new CodegenRunner({
         libraries,
         girPath,
-        ...tables,
+        ...tableRows(config),
         gi: {
             storeDir: store.giStoreDir,
             linkDir: store.giLinkDir,
@@ -124,13 +129,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
         }
     }
 
-    const result = await buildRunner(store, libraries, girPath, {
-        containerProps: config.containerProps,
-        arrayProps: config.arrayProps,
-        objectProps: config.objectProps,
-        virtualProps: config.virtualProps,
-        elementMap: config.elementMap,
-    }).run();
+    const result = await buildRunner(store, libraries, girPath, config).run();
 
     return {
         namespaces: result.namespaces,
