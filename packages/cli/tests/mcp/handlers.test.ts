@@ -164,11 +164,11 @@ describe("widget.query", () => {
         expect(findAllByLabelText).toHaveBeenCalledWith(expect.anything(), "Submit", undefined);
     });
 
-    it("rejects unknown query types", async () => {
+    it("rejects an unknown query type at the wire-schema boundary", async () => {
         const registry = new WidgetRegistry();
         await expect(
             dispatch("widget.query", { queryType: "id", value: "x" }, { app: makeApp() as never, registry }),
-        ).rejects.toThrow(/Unknown query type/);
+        ).rejects.toMatchObject({ code: McpErrorCode.INVALID_REQUEST });
     });
 });
 
