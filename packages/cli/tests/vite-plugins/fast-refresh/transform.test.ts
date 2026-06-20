@@ -1,6 +1,6 @@
 import type { Plugin } from "vite";
 import { describe, expect, it } from "vitest";
-import { swcSsrRefresh } from "../../src/vite-plugins/react-refresh-transform.js";
+import { swcSsrRefresh } from "../../../src/vite-plugins/fast-refresh/transform.js";
 
 type TransformHook = Extract<Plugin["transform"], (...args: never[]) => unknown>;
 type TransformContext = ThisParameterType<TransformHook>;

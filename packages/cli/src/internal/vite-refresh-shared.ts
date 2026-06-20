@@ -1,4 +1,23 @@
 /**
+ * Global the SWC transform emits a registration function into and the header
+ * plugin destructures back out, completing the transform→header handshake.
+ */
+export const REFRESH_REG = "$RefreshReg$";
+
+/**
+ * Global the SWC transform emits a signature function into and the header
+ * plugin destructures back out, completing the transform→header handshake.
+ */
+export const REFRESH_SIG = "$RefreshSig$";
+
+/**
+ * Module specifier the header plugin resolves and imports the in-process
+ * registration runtime from. Published as the `@gtkx/cli/refresh-runtime`
+ * export condition so the dev server can hand the app the runtime by name.
+ */
+export const REFRESH_RUNTIME_SPECIFIER = "@gtkx/cli/refresh-runtime";
+
+/**
  * Shared options accepted by the SSR refresh-related Vite plugins.
  */
 export type RefreshFilterOptions = {
@@ -11,32 +30,44 @@ export type RefreshFilterOptions = {
 const defaultInclude = /\.[tj]sx?$/;
 const defaultExclude = /node_modules|[/\\]dist[/\\]|[/\\]\.gtkx[/\\]/;
 
-export type ResolvedRefreshFilter = {
+type ResolvedRefreshFilter = {
     include: RegExp;
     exclude: RegExp;
 };
 
-/**
- * Resolves include/exclude patterns from user options, falling back to defaults.
- */
-export function resolveRefreshFilter(options: RefreshFilterOptions): ResolvedRefreshFilter {
-    return {
-        include: options.include ?? defaultInclude,
-        exclude: options.exclude ?? defaultExclude,
-    };
-}
+const resolveRefreshFilter = (options: RefreshFilterOptions): ResolvedRefreshFilter => ({
+    include: options.include ?? defaultInclude,
+    exclude: options.exclude ?? defaultExclude,
+});
 
-/**
- * Returns true when the given module ID should be transformed by an SSR refresh plugin.
- * Skips non-SSR transforms, files that do not match `include`, and files that match `exclude`.
- */
-export function shouldTransformForRefresh(
+const shouldTransformForRefresh = (
     id: string,
     transformOptions: { ssr?: boolean } | undefined,
     filter: ResolvedRefreshFilter,
-): boolean {
+): boolean => {
     if (!transformOptions?.ssr) return false;
     if (!filter.include.test(id)) return false;
     if (filter.exclude.test(id)) return false;
     return true;
-}
+};
+
+/**
+ * Predicate a refresh plugin gates each transform on: true when the module id
+ * is an SSR source file that passes the resolved include/exclude filter.
+ */
+export type RefreshGate = (id: string, transformOptions: { ssr?: boolean } | undefined) => boolean;
+
+/**
+ * Resolves the include/exclude filter once and returns the per-transform
+ * {@link RefreshGate} predicate closing over it, so each refresh plugin opens
+ * its transform hook with one guard call instead of re-spelling resolve+test.
+ *
+ * @param options - Include/exclude overrides; defaults cover JS/TS sources
+ *   while skipping `node_modules`, built `dist` output, and the generated
+ *   `.gtkx` store.
+ * @returns The gate predicate for the resolved filter.
+ */
+export const createRefreshGate = (options: RefreshFilterOptions): RefreshGate => {
+    const filter = resolveRefreshFilter(options);
+    return (id, transformOptions) => shouldTransformForRefresh(id, transformOptions, filter);
+};

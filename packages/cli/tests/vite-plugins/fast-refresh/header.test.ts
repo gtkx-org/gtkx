@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gtkxRefresh } from "../../src/vite-plugins/react-refresh-runtime.js";
+import { gtkxRefresh } from "../../../src/vite-plugins/fast-refresh/header.js";
 
 type TransformFn = (code: string, id: string, options?: { ssr?: boolean }) => { code: string; map: null } | undefined;
 
