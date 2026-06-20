@@ -55,14 +55,8 @@ impl ModuleResponse for Value {
 
 impl ModuleResponse for NativeHandle {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
-        // SAFETY: This runs on the JS thread with the live `env` of the
-        // current callback, and the raw value was just created under it.
-        unsafe {
-            let size_hint = self.size_hint();
-            let external = External::new_with_size_hint(self, size_hint);
-            let raw = External::<Self>::to_napi_value(env.raw(), external)?;
-            Ok(Unknown::from_raw_unchecked(env.raw(), raw))
-        }
+        let size_hint = self.size_hint();
+        External::new_with_size_hint(self, size_hint).into_unknown(env)
     }
 }
 
@@ -77,23 +71,13 @@ impl ModuleResponse for Option<NativeHandle> {
 
 impl ModuleResponse for u64 {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
-        // SAFETY: This runs on the JS thread with the live `env` of the
-        // current callback, and the raw value was just created under it.
-        unsafe {
-            let raw = BigInt::to_napi_value(env.raw(), BigInt::from(self))?;
-            Ok(Unknown::from_raw_unchecked(env.raw(), raw))
-        }
+        BigInt::from(self).into_unknown(env)
     }
 }
 
 impl ModuleResponse for () {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
-        // SAFETY: This runs on the JS thread with the live `env` of the
-        // current callback, and the raw value was just created under it.
-        unsafe {
-            let raw = Undefined::to_napi_value(env.raw(), ())?;
-            Ok(Unknown::from_raw_unchecked(env.raw(), raw))
-        }
+        ().into_unknown(env)
     }
 }
 

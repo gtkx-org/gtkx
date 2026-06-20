@@ -635,63 +635,24 @@ impl Value {
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn to_js_value(self, env: &Env) -> napi::Result<Unknown<'_>> {
         match self {
-            // SAFETY: The raw value is created and rewrapped under the
-            // live `env` of the current JS-thread callback.
-            Self::Number(n) => unsafe {
-                let raw = f64::to_napi_value(env.raw(), n)?;
-                Ok(Unknown::from_raw_unchecked(env.raw(), raw))
-            },
-            // SAFETY: The raw value is created and rewrapped under the
-            // live `env` of the current JS-thread callback.
-            Self::BigInt(v) => unsafe {
-                let raw = i128::to_napi_value(env.raw(), v)?;
-                Ok(Unknown::from_raw_unchecked(env.raw(), raw))
-            },
-            // SAFETY: The raw value is created and rewrapped under the
-            // live `env` of the current JS-thread callback.
-            Self::String(s) => unsafe {
-                let raw = String::to_napi_value(env.raw(), s)?;
-                Ok(Unknown::from_raw_unchecked(env.raw(), raw))
-            },
-            // SAFETY: The raw value is created and rewrapped under the
-            // live `env` of the current JS-thread callback.
-            Self::Boolean(b) => unsafe {
-                let raw = bool::to_napi_value(env.raw(), b)?;
-                Ok(Unknown::from_raw_unchecked(env.raw(), raw))
-            },
-            // SAFETY: The raw value is created and rewrapped under the
-            // live `env` of the current JS-thread callback.
-            Self::Object(handle) => unsafe {
+            Self::Number(n) => n.into_unknown(env),
+            Self::BigInt(v) => v.into_unknown(env),
+            Self::String(s) => s.into_unknown(env),
+            Self::Boolean(b) => b.into_unknown(env),
+            Self::Object(handle) => {
                 let size_hint = handle.size_hint();
-                let external = External::new_with_size_hint(handle, size_hint);
-                let raw = External::<NativeHandle>::to_napi_value(env.raw(), external)?;
-                Ok(Unknown::from_raw_unchecked(env.raw(), raw))
-            },
+                External::new_with_size_hint(handle, size_hint).into_unknown(env)
+            }
             Self::Array(arr) => {
                 let mut js_array = env.create_array(arr.len() as u32)?;
                 for (i, item) in arr.into_iter().enumerate() {
                     let js_item = item.to_js_value(env)?;
                     js_array.set(i as u32, js_item)?;
                 }
-                // SAFETY: The raw value is created and rewrapped under the
-                // live `env` of the current JS-thread callback.
-                unsafe {
-                    let raw = Array::to_napi_value(env.raw(), js_array)?;
-                    Ok(Unknown::from_raw_unchecked(env.raw(), raw))
-                }
+                js_array.into_unknown(env)
             }
-            // SAFETY: The raw value is created and rewrapped under the
-            // live `env` of the current JS-thread callback.
-            Self::Null => unsafe {
-                let raw = napi::bindgen_prelude::Null::to_napi_value(env.raw(), Null)?;
-                Ok(Unknown::from_raw_unchecked(env.raw(), raw))
-            },
-            // SAFETY: The raw value is created and rewrapped under the
-            // live `env` of the current JS-thread callback.
-            Self::Undefined => unsafe {
-                let raw = napi::bindgen_prelude::Undefined::to_napi_value(env.raw(), ())?;
-                Ok(Unknown::from_raw_unchecked(env.raw(), raw))
-            },
+            Self::Null => Null.into_unknown(env),
+            Self::Undefined => ().into_unknown(env),
             Self::BufferView(_) | Self::Callback(_) | Self::Ref(_) => Err(napi::Error::new(
                 napi::Status::InvalidArg,
                 format!("Unsupported Value type for JS conversion: {self:?}"),
