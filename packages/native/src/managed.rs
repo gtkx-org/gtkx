@@ -132,10 +132,7 @@ impl std::fmt::Debug for NativeHandle {
 
 impl From<NativeValue> for NativeHandle {
     fn from(value: NativeValue) -> Self {
-        let ptr = match &value {
-            NativeValue::Boxed(boxed) => boxed.as_ptr() as usize,
-            NativeValue::Fundamental(fundamental) => fundamental.as_ptr() as usize,
-        };
+        let ptr = value.as_ptr() as usize;
         let size_hint = value.size_hint();
         Self {
             ptr,
@@ -302,22 +299,29 @@ pub enum NativeValue {
     Fundamental(Fundamental),
 }
 
-/// Rough byte hint reported to V8 for each variant. The exact size of the
+/// Rough byte hint reported to V8 for a `GObject`. The exact size of the
 /// underlying `GLib` allocation is generally unknowable to us, but pressuring
 /// the GC proportional to handle count is enough to keep ephemeral wrappers
 /// (e.g. per-frame `PangoLayoutIter`s) from accumulating between collections.
 const GOBJECT_SIZE_HINT: usize = 512;
-const BOXED_SIZE_HINT: usize = 256;
-const FUNDAMENTAL_SIZE_HINT: usize = 128;
 
 impl NativeValue {
+    /// The native pointer this value wraps.
+    #[must_use]
+    pub fn as_ptr(&self) -> *mut c_void {
+        match self {
+            Self::Boxed(boxed) => boxed.as_ptr(),
+            Self::Fundamental(fundamental) => fundamental.as_ptr(),
+        }
+    }
+
     /// Approximate external-memory size reported to V8 when this value is
     /// exposed as an `External`. Reversed on finalize.
     #[must_use]
     pub fn size_hint(&self) -> usize {
         match self {
-            Self::Boxed(_) => BOXED_SIZE_HINT,
-            Self::Fundamental(_) => FUNDAMENTAL_SIZE_HINT,
+            Self::Boxed(_) => Boxed::SIZE_HINT,
+            Self::Fundamental(_) => Fundamental::SIZE_HINT,
         }
     }
 }

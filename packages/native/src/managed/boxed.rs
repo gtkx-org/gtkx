@@ -79,6 +79,12 @@ impl Drop for OwnedAllocation {
 }
 
 impl Boxed {
+    /// Rough byte hint reported to V8 for a boxed allocation. The exact size
+    /// of the underlying `GLib` allocation is generally unknowable, but
+    /// pressuring the GC proportional to handle count keeps ephemeral wrappers
+    /// from accumulating between collections.
+    pub(crate) const SIZE_HINT: usize = 256;
+
     fn owned(
         ptr: *mut c_void,
         gtype: Option<glib::Type>,

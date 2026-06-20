@@ -12,6 +12,12 @@ pub struct Fundamental {
 }
 
 impl Fundamental {
+    /// Rough byte hint reported to V8 for a fundamental allocation. The exact
+    /// size of the underlying instance is generally unknowable, but pressuring
+    /// the GC proportional to handle count keeps ephemeral wrappers from
+    /// accumulating between collections.
+    pub(crate) const SIZE_HINT: usize = 128;
+
     #[must_use]
     pub fn from_glib_full(
         ptr: *mut c_void,
