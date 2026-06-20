@@ -4,6 +4,7 @@ import { freeze, unfreeze } from "@gtkx/native";
 import { createContext } from "react";
 import type ReactReconciler from "react-reconciler";
 import { DiscreteEventPriority } from "react-reconciler/constants.js";
+import { isDefaultBlockableType } from "../utils/gtype.js";
 import { classHasType } from "../utils/gtype-predicates.js";
 import { applyAccessibleProps, isAccessibleProp } from "./accessible.js";
 import { applyProps } from "./apply-props.js";
@@ -172,7 +173,7 @@ const commitInstanceProps = (instance: Node, oldProps: Props | null, newProps: P
     } else {
         applyProps(instance, oldProps, newProps, {
             descriptors,
-            defaultBlockable: instance instanceof Gtk.TextBuffer,
+            defaultBlockable: isDefaultBlockableType(instance.__gtype__),
         });
     }
     if (instance instanceof Gtk.TextTag) scheduleBufferRebuild(instance);

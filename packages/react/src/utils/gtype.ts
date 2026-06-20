@@ -1,7 +1,13 @@
 /// <reference types="@gtkx/config/env" />
 
-import { CONSTRUCT_ONLY_PROPS, CONSTRUCT_PROPS, DEFAULT_PROPS, SIGNALS } from "virtual:gtkx-config";
-import { type GType, type GTyped, typeName, typeParent } from "@gtkx/ffi";
+import {
+    CONSTRUCT_ONLY_PROPS,
+    CONSTRUCT_PROPS,
+    DEFAULT_BLOCKABLE_TYPES,
+    DEFAULT_PROPS,
+    SIGNALS,
+} from "virtual:gtkx-config";
+import { type GType, type GTyped, typeInterfaces, typeName, typeParent } from "@gtkx/ffi";
 import { NOTIFY_SIGNAL, propToNotifySignal } from "./notify-name.js";
 
 const NOTIFY_PREFIX = "onNotify";
@@ -22,6 +28,7 @@ export const resolveNotifySignal = (propName: string): string | null => {
 };
 
 const typeNameChainCache = new Map<GType, readonly string[]>();
+const interfaceNamesCache = new Map<GType, readonly string[]>();
 const typeNameSetCache = new Map<GType, ReadonlySet<string>>();
 const signalCache = new Map<GType, Map<string, string | null>>();
 const constructOnlyCache = new Map<GType, Map<string, boolean>>();
@@ -54,6 +61,26 @@ export const collectTypeNameChain = (gtype: GType): readonly string[] => {
 };
 
 /**
+ * Returns the GLib type names of the interfaces `gtype` and its ancestors
+ * implement. The result is cached per GType.
+ *
+ * @param gtype - the GLib type whose implemented interfaces to collect
+ */
+export const collectInterfaceNames = (gtype: GType): readonly string[] => {
+    const cached = interfaceNamesCache.get(gtype);
+    if (cached) return cached;
+
+    const names: string[] = [];
+    for (const iface of typeInterfaces(gtype)) {
+        const name = typeName(iface);
+        if (name) names.push(name);
+    }
+
+    interfaceNamesCache.set(gtype, names);
+    return names;
+};
+
+/**
  * Folds the rows a per-type-name `table` holds for `gtype`'s ancestry into one
  * accumulator, visiting each matching row most-derived first. The table is keyed
  * by GLib type name; a type with no row contributes nothing. The chain walk is
@@ -72,6 +99,31 @@ export const foldInheritedTable = <R, T>(
 ): T => {
     let accumulator = seed;
     for (const name of collectTypeNameChain(gtype)) {
+        const row = table[name];
+        if (row !== undefined) accumulator = fold(accumulator, row);
+    }
+    return accumulator;
+};
+
+/**
+ * Like {@link foldInheritedTable}, but additionally visits the rows keyed by the
+ * interfaces `gtype` implements after its class ancestry. Class-chain rows are
+ * folded most-derived first, then interface rows, so a class-keyed row always
+ * precedes an interface-keyed one for the same prop.
+ *
+ * @param gtype - the GLib type whose class ancestry and interfaces to fold over
+ * @param table - per-type-name rows to merge
+ * @param fold - combines the running accumulator with a matching row
+ * @param seed - the accumulator's initial value
+ */
+export const foldInheritedTableWithInterfaces = <R, T>(
+    gtype: GType,
+    table: Readonly<Record<string, R>>,
+    fold: (accumulator: T, row: R) => T,
+    seed: T,
+): T => {
+    let accumulator = foldInheritedTable(gtype, table, fold, seed);
+    for (const name of collectInterfaceNames(gtype)) {
         const row = table[name];
         if (row !== undefined) accumulator = fold(accumulator, row);
     }
@@ -115,6 +167,17 @@ export const typeChainIncludes = (gtype: GType, name: string): boolean => {
     }
     return names.has(name);
 };
+
+/**
+ * Whether a non-widget GObject's generic signal handlers default to blockable —
+ * suppressed during a commit — because its GType ancestry contains a name in the
+ * `DEFAULT_BLOCKABLE_TYPES` table. A plain non-widget GObject defaults to
+ * non-blockable.
+ *
+ * @param gtype - the GLib type whose blockable default to resolve
+ */
+export const isDefaultBlockableType = (gtype: GType): boolean =>
+    DEFAULT_BLOCKABLE_TYPES.some((name) => typeChainIncludes(gtype, name));
 
 const memoize = <T>(
     cache: Map<GType, Map<string, T>>,

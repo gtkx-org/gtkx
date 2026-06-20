@@ -33,6 +33,8 @@ declare module "virtual:gtkx-config" {
     export const PROP_RULES: Readonly<Record<string, readonly import("@gtkx/config").PropRule[]>>;
     /** GLib type names of top-level surfaces (windows and dialogs). */
     export const TOP_LEVEL_TYPES: readonly string[];
+    /** GLib type names of non-widget GObjects whose generic signals default to blockable. */
+    export const DEFAULT_BLOCKABLE_TYPES: readonly string[];
     /** Page-add method priority rows for stack-like parents, keyed by GLib type name. */
     export const META_OBJECT_ADD_METHODS: Readonly<Record<string, readonly import("@gtkx/config").AddMethodRule[]>>;
     /** Page-metadata setters applied to stack page handles. */

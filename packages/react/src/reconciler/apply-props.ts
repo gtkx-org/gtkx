@@ -18,7 +18,6 @@ import type * as GObject from "@gtkx/gi/gobject";
 import { isConstructOnlyProp, resolveDefaultProp, resolveSignal } from "../utils/gtype.js";
 import { NOTIFY_DETAIL_PREFIX, notifyDetailToProp } from "../utils/notify-name.js";
 import { applyArrayProp } from "./array-props.js";
-import { isEditable } from "./predicates.js";
 import type { ImperativeHandler, PropDescriptorTable, SignalPropDescriptor } from "./prop-descriptor-table.js";
 import type { SignalHandler } from "./signal-store.js";
 import { stateOf } from "./state.js";
@@ -111,7 +110,7 @@ type ApplyContext = {
 
 type PendingSignal = { signalName: string; newValue: unknown };
 
-type PendingProperty = { name: string; oldValue: unknown; newValue: unknown };
+type PendingProperty = { name: string; newValue: unknown };
 
 /**
  * Resolves the property change a non-signal prop contributes: the new value
@@ -122,12 +121,11 @@ type PendingProperty = { name: string; oldValue: unknown; newValue: unknown };
 const resolvePendingProperty = (
     container: GObject.Object,
     name: string,
-    oldValue: unknown,
     newValue: unknown,
 ): PendingProperty | undefined => {
-    if (newValue !== undefined) return { name, oldValue, newValue };
+    if (newValue !== undefined) return { name, newValue };
     const fallback = resolveDefaultProp(container, name);
-    return fallback.has ? { name, oldValue, newValue: fallback.value } : undefined;
+    return fallback.has ? { name, newValue: fallback.value } : undefined;
 };
 
 /**
@@ -164,7 +162,7 @@ const collectGenericChanges = (
             return;
         }
         if (constructionApplied) return;
-        const pending = resolvePendingProperty(container, name, oldValue, newValue);
+        const pending = resolvePendingProperty(container, name, newValue);
         if (pending) pendingProperties.push(pending);
     };
 
@@ -204,10 +202,7 @@ const applyGenericProps = (
         });
     }
 
-    for (const { name, oldValue, newValue } of pendingProperties) {
-        if (name === "text" && oldValue !== undefined && isEditable(container) && oldValue !== container.getText()) {
-            continue;
-        }
+    for (const { name, newValue } of pendingProperties) {
         if (typeof newValue === "string" && Reflect.get(container, name) === newValue) continue;
         Reflect.set(container, name, newValue);
     }
@@ -238,7 +233,7 @@ const applyDescriptors = (context: ApplyContext): void => {
             case "imperative":
                 if ((descriptor.always || changed) && !ranImperatives.has(descriptor.handler)) {
                     ranImperatives.add(descriptor.handler);
-                    descriptor.handler(container, newProps);
+                    descriptor.handler(container, newProps, oldProps);
                 }
                 break;
         }

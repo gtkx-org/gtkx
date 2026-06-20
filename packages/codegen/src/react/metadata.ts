@@ -35,6 +35,8 @@ export type RuntimeTables = {
     readonly propRules: Readonly<Record<string, readonly PropRule[]>>;
     /** GLib type names of top-level surfaces. */
     readonly topLevelTypes: readonly string[];
+    /** GLib type names of non-widget GObjects whose generic signals default to blockable. */
+    readonly defaultBlockableTypes: readonly string[];
     /** Page-add method priority rows for stack-like parents. */
     readonly metaObjectAddMethods: Readonly<Record<string, readonly AddMethodRule[]>>;
     /** Page-metadata setters applied to stack page handles. */
@@ -70,6 +72,7 @@ const RUNTIME_TABLE_SPECS: Readonly<Record<keyof RuntimeTables, RuntimeTableSpec
     virtualProps: { name: "VIRTUAL_PROPS", annotation: nestedRecordOf("VirtualPropRow") },
     propRules: { name: "PROP_RULES", annotation: recordOfArray("PropRule") },
     topLevelTypes: { name: "TOP_LEVEL_TYPES", annotation: "readonly string[]" },
+    defaultBlockableTypes: { name: "DEFAULT_BLOCKABLE_TYPES", annotation: "readonly string[]" },
     metaObjectAddMethods: { name: "META_OBJECT_ADD_METHODS", annotation: recordOfArray("AddMethodRule") },
     pageMetaSetters: { name: "PAGE_META_SETTERS", annotation: arrayOf("PageMetaSetter") },
     containerProps: { name: "CONTAINER_PROPS", annotation: "Readonly<Record<string, readonly string[]>>" },

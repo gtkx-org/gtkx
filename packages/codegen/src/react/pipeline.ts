@@ -8,6 +8,7 @@ import { generateJsxSection, type JsxSurfaceMaps } from "./jsx.js";
 import { generateMetadata } from "./metadata.js";
 import {
     BUILT_IN_PROP_RULES,
+    DEFAULT_BLOCKABLE_TYPES,
     META_OBJECT_ADD_METHODS,
     mergeArrayProps,
     mergeContainerProps,
@@ -79,6 +80,7 @@ export const generateJsxFiles = (repository: GirRepository, userTables: UserTabl
         virtualProps: virtualPropMap,
         propRules: BUILT_IN_PROP_RULES,
         topLevelTypes: TOP_LEVEL_TYPES,
+        defaultBlockableTypes: DEFAULT_BLOCKABLE_TYPES,
         metaObjectAddMethods: META_OBJECT_ADD_METHODS,
         pageMetaSetters: PAGE_META_SETTERS,
         containerProps: containerPropMap,

@@ -18,7 +18,7 @@
 import { OBJECT_PROPS, PROP_RULES, VIRTUAL_PROPS } from "virtual:gtkx-config";
 import type { ObjectPropRow, PropRule, SetterPropGroup, SetterPropStep, VirtualPropRow } from "@gtkx/config";
 import type * as GObject from "@gtkx/gi/gobject";
-import { foldInheritedTable } from "../utils/gtype.js";
+import { foldInheritedTableWithInterfaces } from "../utils/gtype.js";
 import { ARRAY_PROPS, type ArrayPropDescriptor } from "./array-props.js";
 import { runCallSteps, satisfiesCondition } from "./call-steps.js";
 import { callMethod } from "./reflect-call.js";
@@ -38,11 +38,12 @@ export interface SignalPropDescriptor {
 }
 
 /**
- * A bespoke prop's side-effecting handler; receives the backing GObject and the
- * current props. Taking the container as an argument keeps the handler stateless
- * so its descriptor is shared per GType rather than rebuilt per node.
+ * A bespoke prop's side-effecting handler; receives the backing GObject, the
+ * current props, and the previously-committed props (`null` on first mount).
+ * Taking the container as an argument keeps the handler stateless so its
+ * descriptor is shared per GType rather than rebuilt per node.
  */
-export type ImperativeHandler = (container: GObject.Object, newProps: Props) => void;
+export type ImperativeHandler = (container: GObject.Object, newProps: Props, oldProps: Props | null) => void;
 
 /**
  * Descriptor for a prop applied by running a side-effecting handler.
@@ -95,7 +96,12 @@ export function imperative(handler: ImperativeHandler, options?: { always?: bool
     return { kind: "imperative", handler, always: options?.always ?? false };
 }
 
-const applySetterStep = (container: GObject.Object, step: SetterPropStep, newProps: Props): void => {
+const applySetterStep = (
+    container: GObject.Object,
+    step: SetterPropStep,
+    newProps: Props,
+    oldProps: Props | null,
+): void => {
     const value = newProps[step.prop];
     if (!satisfiesCondition(value, step.when)) return;
     if (step.skipWhenGetterEquals !== undefined && callMethod(container, step.skipWhenGetterEquals, []) === value) {
@@ -107,6 +113,15 @@ const applySetterStep = (container: GObject.Object, step: SetterPropStep, newPro
     ) {
         return;
     }
+    if (step.skipWhenGetterDivergedFromCommitted !== undefined) {
+        const committed = oldProps?.[step.prop];
+        if (
+            committed !== undefined &&
+            callMethod(container, step.skipWhenGetterDivergedFromCommitted, []) !== committed
+        ) {
+            return;
+        }
+    }
     if (step.call !== undefined) callMethod(container, step.call, [value]);
     else if (step.set !== undefined) Reflect.set(container, step.set, value);
 };
@@ -114,8 +129,8 @@ const applySetterStep = (container: GObject.Object, step: SetterPropStep, newPro
 const addSetterGroup = (entry: PropDescriptorTable, group: SetterPropGroup): void => {
     if (group.always) {
         const descriptor = imperative(
-            (container, newProps) => {
-                for (const step of group.props) applySetterStep(container, step, newProps);
+            (container, newProps, oldProps) => {
+                for (const step of group.props) applySetterStep(container, step, newProps, oldProps);
             },
             { always: true },
         );
@@ -123,7 +138,9 @@ const addSetterGroup = (entry: PropDescriptorTable, group: SetterPropGroup): voi
         return;
     }
     for (const step of group.props) {
-        entry[step.prop] = imperative((container, newProps) => applySetterStep(container, step, newProps));
+        entry[step.prop] = imperative((container, newProps, oldProps) =>
+            applySetterStep(container, step, newProps, oldProps),
+        );
     }
 };
 
@@ -197,7 +214,7 @@ export const getDescriptors = (instance: GObject.Object): PropDescriptorTable =>
     const gtype = instance.__gtype__;
     const cached = descriptorsByGtype.get(gtype);
     if (cached) return cached;
-    const merged = foldInheritedTable(
+    const merged = foldInheritedTableWithInterfaces(
         gtype,
         DESCRIPTORS_BY_TYPE_NAME,
         (view: PropDescriptorTable, entry) => {

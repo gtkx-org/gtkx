@@ -338,6 +338,12 @@ const STACK_PAGE_RULE: PropRule = {
  * renderer's prop-descriptor layer.
  */
 export const BUILT_IN_PROP_RULES: Readonly<Record<string, readonly PropRule[]>> = {
+    GtkEditable: [
+        {
+            kind: "setters",
+            props: [{ prop: "text", set: "text", skipWhenGetterDivergedFromCommitted: "getText" }],
+        },
+    ],
     AdwToggleGroup: [
         {
             kind: "setters",
@@ -368,6 +374,16 @@ export const BUILT_IN_PROP_RULES: Readonly<Record<string, readonly PropRule[]>> 
  * parent's widget child and present on their own (windows and dialogs).
  */
 export const TOP_LEVEL_TYPES: readonly string[] = ["GtkWindow", "AdwDialog"];
+
+/**
+ * GLib type names of non-widget GObjects whose generic signal handlers default
+ * to blockable — suppressed while a commit holds the frame clock, like a
+ * widget's. A plain non-widget GObject's handlers default to non-blockable; a
+ * type in this list opts back into the widget default. `Gtk.TextBuffer` belongs
+ * here so its `changed`/`insert-text` handlers do not fire during the reconciler's
+ * own buffer rebuild.
+ */
+export const DEFAULT_BLOCKABLE_TYPES: readonly string[] = ["GtkTextBuffer"];
 
 /**
  * Page-add method selection for stack-like parents, keyed by GLib type name

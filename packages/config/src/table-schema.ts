@@ -217,6 +217,13 @@ export type SetterPropStep = {
     readonly skipWhenGetterEquals?: string;
     /** Skips the step unless the named getter, called with the prop value, returns truthy. */
     readonly requireGetterTruthyWithValue?: string;
+    /**
+     * Skips the step when the named getter's live value no longer matches the
+     * prop's previously-committed value — the instance diverged from what the
+     * last commit wrote (e.g. a user edited a controlled text field), so the
+     * step must not clobber that divergence.
+     */
+    readonly skipWhenGetterDivergedFromCommitted?: string;
 };
 
 /**

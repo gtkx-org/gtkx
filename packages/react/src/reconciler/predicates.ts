@@ -23,12 +23,6 @@ export type InsertableWidget = Gtk.Widget & {
     getFirstChild: () => Gtk.Widget | null;
 };
 
-type EditableWidget = Gtk.Widget & {
-    getPosition: () => number;
-    setPosition: (position: number) => void;
-    getText: () => string;
-};
-
 const hasMethod = (obj: unknown, name: string): obj is Gtk.Widget =>
     obj instanceof Gtk.Widget && name in obj && typeof Reflect.get(obj, name) === "function";
 
@@ -67,6 +61,3 @@ export const isReorderable = (obj: unknown): obj is ReorderableWidget =>
 
 export const isInsertable = (obj: unknown): obj is InsertableWidget =>
     hasMethod(obj, "insert") && hasMethod(obj, "getFirstChild");
-
-export const isEditable = (obj: unknown): obj is EditableWidget =>
-    hasMethod(obj, "getPosition") && hasMethod(obj, "setPosition") && hasMethod(obj, "getText");
