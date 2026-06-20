@@ -1,7 +1,6 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { freeze, unfreeze } from "@gtkx/native";
-import React from "react";
 import type ReactReconciler from "react-reconciler";
 import { DiscreteEventPriority } from "react-reconciler/constants.js";
 import { classHasType } from "../utils/gtype-predicates.js";
@@ -439,14 +438,25 @@ export function createHostConfig(): HostConfig {
 }
 
 /**
- * Builds the reconciler `HostTransitionContext`. `React.createContext` and
- * `react-reconciler` ship independent type declarations for the same runtime
- * context object: the public `react` type omits the internal `_currentValue`
- * slots the reconciler mutates, while the reconciler type omits the public
- * `Provider`/`Consumer` shape. The runtime value satisfies both; the
- * `unknown` hop is the single boundary reconciling the two declarations.
+ * Builds the reconciler `HostTransitionContext` as the plain context object the
+ * reconciler reads, without routing through `React.createContext`. The
+ * `Consumer`/`Provider` slots are recursive self-references the reconciler never
+ * reads for this context, so they are back-filled after the value object is
+ * assembled, mirroring React's own runtime context construction.
  */
 function createReconcilerContext(value: number): ReactReconciler.ReactContext<number> {
-    const context: unknown = React.createContext<number>(value);
-    return context as ReactReconciler.ReactContext<number>;
+    const context = {
+        // biome-ignore lint/style/useNamingConvention: React context brand, name fixed by React
+        $$typeof: Symbol.for("react.context"),
+        _currentValue: value,
+        _currentValue2: value,
+        _threadCount: 0,
+    } as ReactReconciler.ReactContext<number>;
+    context.Provider = {
+        // biome-ignore lint/style/useNamingConvention: React provider brand, name fixed by React
+        $$typeof: Symbol.for("react.provider"),
+        _context: context,
+    };
+    context.Consumer = context;
+    return context;
 }
