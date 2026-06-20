@@ -31,7 +31,7 @@ export const emitBoxed = (context: ModuleContext, boxed: GirBoxed): void => {
     if (!boxed.introspectable) return;
     if (boxed.isVtable) return;
     if (boxed.name.length === 0) return;
-    if (isClassStructRecord(context.namespace.name, boxed)) return;
+    if (isClassStructRecord(context.repository, context.namespace.name, boxed)) return;
     const className = boxed.name;
     const callables: Callables = {
         constructors: dedupeCallables(boxed.constructors),

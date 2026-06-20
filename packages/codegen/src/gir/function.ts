@@ -1,5 +1,6 @@
 import { type GirParameter, type GirReturnValue, parameterFromNode, returnValueFromNode } from "./parameter.js";
 import { attr, attrBool, childOf, childrenOf, type RawNode } from "./parse.js";
+import type { ParseContext } from "./type-id.js";
 
 /**
  * Whether this callable is a free function, a static method on a type, an
@@ -38,8 +39,9 @@ export type GirFunction = {
  *
  * @param node - The XML element
  * @param kind - The callable kind matching the element name
+ * @param context - The per-namespace interning seam
  */
-export const functionFromNode = (node: RawNode, kind: FunctionKind): GirFunction => {
+export const functionFromNode = (node: RawNode, kind: FunctionKind, context: ParseContext): GirFunction => {
     const parametersNode = childOf(node, "parameters");
     const instanceNode = childOf(parametersNode, "instance-parameter");
     const parameterNodes = childrenOf(parametersNode, "parameter");
@@ -50,8 +52,8 @@ export const functionFromNode = (node: RawNode, kind: FunctionKind): GirFunction
         throws: attrBool(node, "throws"),
         introspectable: attrBool(node, "introspectable", true),
         shadowedBy: attr(node, "shadowed-by"),
-        instance: instanceNode === undefined ? undefined : parameterFromNode(instanceNode),
-        parameters: parameterNodes.map((parameter) => parameterFromNode(parameter)),
-        returnValue: returnValueFromNode(childOf(node, "return-value")),
+        instance: instanceNode === undefined ? undefined : parameterFromNode(instanceNode, context),
+        parameters: parameterNodes.map((parameter) => parameterFromNode(parameter, context)),
+        returnValue: returnValueFromNode(childOf(node, "return-value"), context),
     };
 };

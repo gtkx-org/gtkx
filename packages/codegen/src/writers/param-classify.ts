@@ -2,8 +2,9 @@ import { toCamelIdentifier } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import type { GirFunction } from "../gir/function.js";
 import { type GirParameter, isCallerAllocatedOut, isInoutParameter, isOutParameter } from "../gir/parameter.js";
-import { qualifyTypeRef } from "../gir/qualify.js";
-import type { GirTypeRef } from "../gir/type-ref.js";
+import type { GirRepository } from "../gir/repository.js";
+import type { GirType } from "../gir/type.js";
+import type { TypeId } from "../gir/type-id.js";
 
 /**
  * Parameter classification shared across the callable writers: which positions
@@ -31,10 +32,11 @@ export type InputParameter = {
  * surviving parameter keeps its original index so callers can recover argument
  * names.
  *
+ * @param repository - The GIR repository, to resolve array-length companions
  * @param fn - The callable
  */
-export const inputParameters = (fn: GirFunction): readonly InputParameter[] => {
-    const lengthIndices = arrayLengthIndices(fn);
+export const inputParameters = (repository: GirRepository, fn: GirFunction): readonly InputParameter[] => {
+    const lengthIndices = arrayLengthIndices(repository, fn);
     const closureIndices = closureAndDestroyIndices(fn);
     const result: InputParameter[] = [];
     fn.parameters.forEach((parameter, index) => {
@@ -64,8 +66,8 @@ export const closureAndDestroyIndices = (fn: GirFunction): ReadonlySet<number> =
     return indices;
 };
 
-const arrayLengthIndices = (fn: GirFunction): ReadonlySet<number> => {
-    const map = arrayLengthSources(fn);
+const arrayLengthIndices = (repository: GirRepository, fn: GirFunction): ReadonlySet<number> => {
+    const map = arrayLengthSources(repository, fn);
     return new Set(map.keys());
 };
 
@@ -73,13 +75,15 @@ const arrayLengthIndices = (fn: GirFunction): ReadonlySet<number> => {
  * Maps each array-length parameter's index to the array parameter whose
  * `.length` supplies it.
  *
+ * @param repository - The GIR repository, to resolve each parameter's type
  * @param fn - The callable
  */
-export const arrayLengthSources = (fn: GirFunction): ReadonlyMap<number, number> => {
+export const arrayLengthSources = (repository: GirRepository, fn: GirFunction): ReadonlyMap<number, number> => {
     const map = new Map<number, number>();
     fn.parameters.forEach((parameter, index) => {
-        if (parameter.type?.kind !== "array") return;
-        const lengthIndex = parameter.type.lengthParameterIndex;
+        const type = parameter.type === undefined ? undefined : repository.typeOf(parameter.type);
+        if (type?.kind !== "carray") return;
+        const lengthIndex = type.lengthParameterIndex;
         if (lengthIndex === undefined) return;
         map.set(lengthIndex, index);
     });
@@ -90,11 +94,13 @@ export const arrayLengthSources = (fn: GirFunction): ReadonlyMap<number, number>
  * Indices of parameters consumed as the length of the return array (and so
  * dropped from the return tuple).
  *
+ * @param repository - The GIR repository, to resolve the return type
  * @param fn - The callable
  */
-export const returnArrayLengthIndices = (fn: GirFunction): ReadonlySet<number> => {
-    if (fn.returnValue.type?.kind !== "array") return new Set();
-    const lengthIndex = fn.returnValue.type.lengthParameterIndex;
+export const returnArrayLengthIndices = (repository: GirRepository, fn: GirFunction): ReadonlySet<number> => {
+    const returnType = fn.returnValue.type === undefined ? undefined : repository.typeOf(fn.returnValue.type);
+    if (returnType?.kind !== "carray") return new Set();
+    const lengthIndex = returnType.lengthParameterIndex;
     if (lengthIndex === undefined) return new Set();
     return new Set([lengthIndex]);
 };
@@ -109,11 +115,12 @@ export const returnArrayLengthIndices = (fn: GirFunction): ReadonlySet<number> =
  * these from the out-parameter tuple while still passing the underlying ref
  * cell to the FFI, which the native marshaller reads to size the array.
  *
+ * @param repository - The GIR repository, to resolve array types
  * @param fn - The callable
  */
-export const foldedLengthIndices = (fn: GirFunction): ReadonlySet<number> => {
-    const indices = new Set<number>(arrayLengthSources(fn).keys());
-    for (const index of returnArrayLengthIndices(fn)) indices.add(index);
+export const foldedLengthIndices = (repository: GirRepository, fn: GirFunction): ReadonlySet<number> => {
+    const indices = new Set<number>(arrayLengthSources(repository, fn).keys());
+    for (const index of returnArrayLengthIndices(repository, fn)) indices.add(index);
     return indices;
 };
 
@@ -140,13 +147,8 @@ export const passesHandleInPlace = (context: ModuleContext, parameter: GirParame
     );
 };
 
-const resolveNamedParam = (context: ModuleContext, parameter: GirParameter) => {
-    if (parameter.type === undefined || parameter.type.kind !== "named") return undefined;
-    return context.repository.resolveNamed(
-        parameter.type.namespaceName ?? context.namespace.name,
-        parameter.type.typeName,
-    );
-};
+const resolveNamedParam = (context: ModuleContext, parameter: GirParameter): GirType | undefined =>
+    parameter.type === undefined ? undefined : context.repository.typeOf(parameter.type);
 
 /**
  * Whether a caller-allocated-out parameter is one the body can materialize and
@@ -195,25 +197,19 @@ export const isBoxedInout = (context: ModuleContext, parameter: GirParameter): b
  * handle (object, interface, boxed, or an alias to one) instead of by value.
  *
  * @param context - The module context
- * @param ref - The type reference to test
+ * @param ref - The interned type slot to test
  */
-export const isHandlePassing = (context: ModuleContext, ref: GirTypeRef): boolean => {
-    if (ref.kind !== "named") return false;
-    const owner = ref.namespaceName ?? context.namespace.name;
-    const resolved = context.repository.resolveNamed(owner, ref.typeName);
-    if (resolved === undefined) return true;
-    switch (resolved.kind) {
+export const isHandlePassing = (context: ModuleContext, ref: TypeId): boolean => {
+    const type = context.repository.typeOf(ref);
+    if (type === undefined) return true;
+    switch (type.kind) {
         case "class":
         case "interface":
         case "boxed":
             return true;
-        case "alias": {
-            const target = resolved.targetRef;
-            if (target === undefined || target.kind !== "named") return false;
-            return isHandlePassing(context, target);
-        }
-        case "enum":
-        case "callback":
+        case "alias":
+            return type.target !== undefined && isHandlePassing(context, type.target);
+        default:
             return false;
     }
 };
@@ -243,19 +239,17 @@ export const parameterIdentifier = (parameter: GirParameter, index: number): str
  * allocates those itself and returns them rather than taking them as arguments.
  *
  * @param parameters - The signal's parameters
- * @param namespaceName - The namespace the parameter references resolve against
- * @param renderType - Renders a qualified type reference to its TS annotation
+ * @param renderType - Renders an interned type slot to its TS annotation
  * @param additionalExclude - Extra predicate for parameters to drop from the list
  */
 export const renderHandlerParameters = (
     parameters: readonly GirParameter[],
-    namespaceName: string,
-    renderType: (ref: GirTypeRef | undefined, nullable: boolean) => string,
+    renderType: (ref: TypeId | undefined, nullable: boolean) => string,
     additionalExclude: (parameter: GirParameter) => boolean = () => false,
 ): readonly string[] =>
     parameters
         .filter((parameter) => !parameter.isVarargs && !isOutParameter(parameter) && !additionalExclude(parameter))
         .map(
             (parameter, index) =>
-                `${parameterIdentifier(parameter, index)}: ${renderType(qualifyTypeRef(parameter.type, namespaceName), parameter.nullable)}`,
+                `${parameterIdentifier(parameter, index)}: ${renderType(parameter.type, parameter.nullable)}`,
         );

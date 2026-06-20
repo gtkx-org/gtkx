@@ -1,5 +1,6 @@
 import { type GirParameter, type GirReturnValue, parseCallable } from "./parameter.js";
 import type { RawNode } from "./parse.js";
+import type { ParseContext } from "./type-id.js";
 
 /** A GObject `<glib:signal>` declaration. */
 export type GirSignal = {
@@ -11,5 +12,8 @@ export type GirSignal = {
 
 /**
  * Builds a {@link GirSignal} from a `<glib:signal>` element.
+ *
+ * @param node - The `<glib:signal>` element
+ * @param context - The per-namespace interning seam
  */
-export const signalFromNode = (node: RawNode): GirSignal => parseCallable(node);
+export const signalFromNode = (node: RawNode, context: ParseContext): GirSignal => parseCallable(node, context);

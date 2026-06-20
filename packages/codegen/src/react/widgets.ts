@@ -1,7 +1,6 @@
 import { toCamelIdentifier, toUpperFirst } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
-import { splitQualifiedName } from "../gir/qualified-name.js";
 import type { GirRepository } from "../gir/repository.js";
 
 /**
@@ -44,8 +43,7 @@ const resolveParentClass = (
     parent: string,
     namespace: GirNamespace,
 ): { readonly klass: GirClass; readonly namespace: GirNamespace } | undefined => {
-    const { namespaceName, typeName } = splitQualifiedName(parent, namespace.name);
-    const resolved = repository.resolveNamed(namespaceName, typeName);
+    const resolved = repository.resolveType(namespace.name, parent);
     if (resolved === undefined || (resolved.kind !== "class" && resolved.kind !== "interface")) return undefined;
     return { klass: resolved.value, namespace: resolved.namespace };
 };
@@ -78,8 +76,7 @@ export const implementedInterfaces = (
     const visited = new Set<string>();
     const visit = (names: readonly string[], fromNamespace: GirNamespace): void => {
         for (const name of names) {
-            const { namespaceName, typeName } = splitQualifiedName(name, fromNamespace.name);
-            const resolved = repository.resolveNamed(namespaceName, typeName);
+            const resolved = repository.resolveType(fromNamespace.name, name);
             if (resolved === undefined || resolved.kind !== "interface") continue;
             const key = `${resolved.namespace.name}.${resolved.value.name}`;
             if (visited.has(key)) continue;

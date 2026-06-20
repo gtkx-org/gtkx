@@ -2,7 +2,6 @@ import type { ArrayPropRow, ObjectPropRow, VirtualPropRow } from "@gtkx/config";
 import { quote } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
-import { splitQualifiedName } from "../gir/qualified-name.js";
 import type { GirRepository } from "../gir/repository.js";
 import { splitOptionalNamespace } from "../gir/type-ref.js";
 import type { JsxImports } from "./imports.js";
@@ -179,8 +178,7 @@ const resolveParentPropsExtension = (
 ): string => {
     const parent = entry.klass.parent;
     if (parent === undefined) return "WidgetProps";
-    const { namespaceName, typeName } = splitQualifiedName(parent, entry.namespace.name);
-    const resolved = repository.resolveNamed(namespaceName, typeName);
+    const resolved = repository.resolveType(entry.namespace.name, parent);
     if (resolved === undefined) return "WidgetProps";
     if (resolved.kind !== "class" && resolved.kind !== "interface") return "WidgetProps";
     const parentGlib = resolved.value.glibTypeName ?? resolved.value.cType;

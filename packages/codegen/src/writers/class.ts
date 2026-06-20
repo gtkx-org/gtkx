@@ -4,9 +4,8 @@ import { indent } from "../dsl/emit.js";
 import { bindingIdentifier } from "../dsl/identifier.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
-import { splitQualifiedName } from "../gir/qualified-name.js";
-import { qualifyFunction, qualifyTypeRef } from "../gir/qualify.js";
-import type { GirTypeRef } from "../gir/type-ref.js";
+import type { TypeId } from "../gir/type-id.js";
+import { splitOptionalNamespace } from "../gir/type-ref.js";
 import { matchAsyncFinishName } from "./async.js";
 import {
     appendMethodBinding,
@@ -169,9 +168,7 @@ const appendFlattenedInterfaceMethods = (options: AppendFlattenedInterfaceMethod
     for (const implementName of klass.implements) {
         const iface = resolveImplementedInterface(context, implementName);
         if (iface === undefined) continue;
-        const methods = dedupeCallables(iface.klass.methods).map((method) =>
-            qualifyFunction(method, iface.namespaceName),
-        );
+        const methods = dedupeCallables(iface.klass.methods);
         const methodByName = indexMethodsByName(methods);
         for (const method of methods) {
             const name = methodExportName(method);
@@ -222,7 +219,7 @@ const renderPromisifiedMember = (
     siblings: ReadonlyMap<string, GirFunction>,
     name: string,
 ): string | undefined => {
-    const finishName = matchAsyncFinishName(callable, [...siblings.values()]);
+    const finishName = matchAsyncFinishName(context.repository, callable, [...siblings.values()]);
     if (finishName === undefined) return undefined;
     const finishFn = siblings.get(finishName);
     if (finishFn === undefined) return undefined;
@@ -235,10 +232,9 @@ const renderPromisifiedMember = (
 };
 
 const resolveImplementsReference = (context: ModuleContext, name: string): string | undefined => {
-    const { namespaceName, typeName } = splitQualifiedName(name, context.namespace.name);
-    const resolved = context.repository.resolveNamed(namespaceName, typeName);
+    const resolved = context.repository.resolveType(context.namespace.name, name);
     if (resolved === undefined || resolved.kind !== "interface") return undefined;
-    return context.qualify(namespaceName, toPascalCase(typeName));
+    return context.qualify(resolved.namespace.name, toPascalCase(resolved.value.name));
 };
 
 /** An ancestor method together with the namespace its type references resolve against. */
@@ -288,8 +284,7 @@ const absorbInheritedMethods = (
         names.add(name);
         if (returnTypes.has(name)) continue;
         definitions.set(name, { method, namespaceName: resolved.namespaceName });
-        const qualifiedType = qualifyTypeRef(method.returnValue.type, resolved.namespaceName);
-        returnTypes.set(name, renderTsType(context, qualifiedType, method.returnValue.nullable));
+        returnTypes.set(name, renderTsType(context, method.returnValue.type, method.returnValue.nullable));
     }
 };
 
@@ -327,7 +322,8 @@ const conflictRename = (
     const conflicts =
         inheritedReturn !== ownReturn ||
         hasParameterEnumConflict(context, callable, inheritedMethod) ||
-        inputParameters(callable).length !== inputParameters(inheritedMethod.method).length;
+        inputParameters(context.repository, callable).length !==
+            inputParameters(context.repository, inheritedMethod.method).length;
     return conflicts ? conflictingMethodName(className, callable.name) : undefined;
 };
 
@@ -345,34 +341,29 @@ const conflictRename = (
  * @param inherited - The nearest ancestor definition of the same name
  */
 const hasParameterEnumConflict = (context: ModuleContext, own: GirFunction, inherited: InheritedMethod): boolean => {
-    const ownParams = inputParameters(own);
-    const inheritedParams = inputParameters(inherited.method);
+    const ownParams = inputParameters(context.repository, own);
+    const inheritedParams = inputParameters(context.repository, inherited.method);
     const count = Math.min(ownParams.length, inheritedParams.length);
     for (let index = 0; index < count; index += 1) {
         const ownParam = ownParams[index];
         const inheritedParam = inheritedParams[index];
         if (ownParam === undefined || inheritedParam === undefined) continue;
-        const ownEnum = enumIdentity(context, ownParam.parameter.type, context.namespace.name);
-        const inheritedEnum = enumIdentity(context, inheritedParam.parameter.type, inherited.namespaceName);
+        const ownEnum = enumIdentity(context, ownParam.parameter.type);
+        const inheritedEnum = enumIdentity(context, inheritedParam.parameter.type);
         if (ownEnum !== undefined && inheritedEnum !== undefined && ownEnum !== inheritedEnum) return true;
     }
     return false;
 };
 
-const enumIdentity = (
-    context: ModuleContext,
-    ref: GirTypeRef | undefined,
-    defaultNamespace: string,
-): string | undefined => {
-    const qualified = qualifyTypeRef(ref, defaultNamespace);
-    if (qualified === undefined || qualified.kind !== "named") return undefined;
-    const resolved = context.repository.resolveNamed(qualified.namespaceName ?? defaultNamespace, qualified.typeName);
-    if (resolved === undefined || resolved.kind !== "enum") return undefined;
+const enumIdentity = (context: ModuleContext, ref: TypeId | undefined): string | undefined => {
+    if (ref === undefined) return undefined;
+    const resolved = context.repository.typeOf(ref);
+    if (resolved?.kind !== "enum") return undefined;
     return `${resolved.namespace.name}.${resolved.value.name}`;
 };
 
 const resolveParent = (context: ModuleContext, klass: GirClass): string | undefined => {
     if (klass.parent === undefined) return undefined;
-    const { namespaceName, typeName } = splitQualifiedName(klass.parent, context.namespace.name);
-    return context.qualify(namespaceName, toPascalCase(typeName));
+    const [namespace, typeName] = splitOptionalNamespace(klass.parent);
+    return context.qualify(namespace ?? context.namespace.name, toPascalCase(typeName));
 };

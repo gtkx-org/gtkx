@@ -1,5 +1,6 @@
 import { attr, attrBool, childOf, childrenOf, type RawNode } from "./parse.js";
-import { type GirTypeRef, typeRefFromSlot } from "./type-ref.js";
+import type { ParseContext, TypeId } from "./type-id.js";
+import { typeRefFromSlot } from "./type-ref.js";
 
 /** Direction of a `<parameter>` (`in`, `out`, `inout`). */
 type ParameterDirection = "in" | "out" | "inout";
@@ -22,8 +23,8 @@ type CallbackScope = "call" | "notified" | "async" | "forever";
 export type GirParameter = {
     /** Parameter name as authored in GIR (often snake_case). */
     readonly name: string;
-    /** Typed slot of the parameter, or `undefined` for `<varargs/>`. */
-    readonly type: GirTypeRef | undefined;
+    /** Interned type slot of the parameter, or `undefined` when absent. */
+    readonly type: TypeId | undefined;
     readonly direction: ParameterDirection;
     readonly transferOwnership: ParameterTransfer;
     readonly nullable: boolean;
@@ -44,15 +45,16 @@ export type GirParameter = {
  * Builds a {@link GirParameter} from a `<parameter>` or `<instance-parameter>`.
  *
  * @param node - The XML element
+ * @param context - The per-namespace interning seam
  */
-export const parameterFromNode = (node: RawNode): GirParameter => {
+export const parameterFromNode = (node: RawNode, context: ParseContext): GirParameter => {
     const direction = (attr(node, "direction") ?? "in") as ParameterDirection;
     const transferOwnership = (attr(node, "transfer-ownership") ?? "none") as ParameterTransfer;
     const closure = attr(node, "closure");
     const destroy = attr(node, "destroy");
     return {
         name: attr(node, "name") ?? "",
-        type: typeRefFromSlot(node),
+        type: typeRefFromSlot(node, context),
         direction,
         transferOwnership,
         nullable: attrBool(node, "nullable") || attrBool(node, "allow-none"),
@@ -93,7 +95,7 @@ export const isInoutParameter = (parameter: GirParameter): boolean => parameter.
 
 /** A `<return-value>` plus its inferred type and transfer settings. */
 export type GirReturnValue = {
-    readonly type: GirTypeRef | undefined;
+    readonly type: TypeId | undefined;
     readonly transferOwnership: ParameterTransfer;
     readonly nullable: boolean;
     /**
@@ -109,13 +111,14 @@ export type GirReturnValue = {
  * void return when the element is missing.
  *
  * @param node - The `<return-value>` element, or `undefined`
+ * @param context - The per-namespace interning seam
  */
-export const returnValueFromNode = (node: RawNode | undefined): GirReturnValue => {
+export const returnValueFromNode = (node: RawNode | undefined, context: ParseContext): GirReturnValue => {
     if (node === undefined) {
         return { type: undefined, transferOwnership: "none", nullable: false, skip: false };
     }
     return {
-        type: typeRefFromSlot(node),
+        type: typeRefFromSlot(node, context),
         transferOwnership: (attr(node, "transfer-ownership") ?? "none") as ParameterTransfer,
         nullable: attrBool(node, "nullable") || attrBool(node, "allow-none"),
         skip: attrBool(node, "skip"),
@@ -134,14 +137,15 @@ export type GirCallable = {
  * callable elements such as `<callback>` and `<glib:signal>`.
  *
  * @param node - The callable element (a `<callback>`, `<glib:signal>`, etc.)
+ * @param context - The per-namespace interning seam
  * @returns The callable's name, parsed parameters, and parsed return value.
  */
-export const parseCallable = (node: RawNode): GirCallable => {
+export const parseCallable = (node: RawNode, context: ParseContext): GirCallable => {
     const parametersNode = childOf(node, "parameters");
     const parameterNodes = childrenOf(parametersNode, "parameter");
     return {
         name: attr(node, "name") ?? "",
-        parameters: parameterNodes.map((parameter) => parameterFromNode(parameter)),
-        returnValue: returnValueFromNode(childOf(node, "return-value")),
+        parameters: parameterNodes.map((parameter) => parameterFromNode(parameter, context)),
+        returnValue: returnValueFromNode(childOf(node, "return-value"), context),
     };
 };

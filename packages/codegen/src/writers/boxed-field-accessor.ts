@@ -3,13 +3,14 @@ import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
 import type { GirField } from "../gir/field.js";
 import type { FieldSlot } from "../gir/size.js";
-import type { GirTypeRef } from "../gir/type-ref.js";
+import type { GirType } from "../gir/type.js";
+import type { TypeId } from "../gir/type-id.js";
 import { bitMask, mergeBitfield } from "./bitfield.js";
 import { type BoxedFieldSlot, computeBoxedFieldSlots } from "./boxed-layout.js";
 import { typeRefIsClassStruct } from "./class-struct-record.js";
 import { wrapReturnValue } from "./return-wrap.js";
 import { renderTsType } from "./ts-type.js";
-import { renderFfiType } from "./value.js";
+import { isInlineCallbackRef, renderFfiType } from "./value.js";
 
 /**
  * Renders the `get` / `set` accessor pair for a single boxed field.
@@ -33,8 +34,8 @@ export const renderBoxedFieldAccessor = (
     const { field } = slot;
     if (field.private) return undefined;
     if (!field.readable && !field.writable) return undefined;
-    if (field.callback !== undefined) return undefined;
     if (field.type === undefined) return undefined;
+    if (isInlineCallbackRef(context.repository, field.type)) return undefined;
     if (typeRefIsClassStruct(context, field.type)) return undefined;
     const jsName = toCamelIdentifier(field.name);
     if (claimedNames.has(jsName)) return undefined;
@@ -43,7 +44,7 @@ export const renderBoxedFieldAccessor = (
     const structArray = renderStructArrayAccessor(context, { field, jsName, slot: slot.slot, siblingFields });
     if (structArray !== undefined) return structArray;
 
-    if (!isAccessorEligibleType(field.type)) {
+    if (!isAccessorEligibleType(context, field.type)) {
         const tsType = renderTsType(context, field.type, false);
         const modifier = field.writable ? "declare" : "declare readonly";
         return `${modifier} ${jsName}: ${tsType};`;
@@ -66,18 +67,24 @@ export const renderBoxedFieldAccessor = (
     return blocks.join("\n\n");
 };
 
-const isAccessorEligibleType = (ref: GirTypeRef): boolean => {
-    switch (ref.kind) {
+const isAccessorEligibleType = (context: ModuleContext, ref: TypeId): boolean => {
+    const type = context.repository.typeOf(ref);
+    if (type === undefined) return true;
+    switch (type.kind) {
         case "primitive":
-            return ref.category !== "void" && ref.category !== "unichar";
-        case "named":
+            return type.category !== "void" && type.category !== "unichar";
+        case "class":
+        case "interface":
+        case "boxed":
+        case "enum":
+        case "alias":
             return true;
-        case "array":
-            return ref.fixedSize !== undefined;
+        case "callback":
+            return context.repository.nameOf(ref) !== undefined;
+        case "carray":
+            return type.fixedSize !== undefined;
         case "list":
         case "hashtable":
-            return false;
-        case "callback":
         case "varargs":
             return false;
     }
@@ -85,19 +92,20 @@ const isAccessorEligibleType = (ref: GirTypeRef): boolean => {
 
 const resolveInlineStructFields = (
     context: ModuleContext,
-    ref: GirTypeRef | undefined,
+    ref: TypeId | undefined,
+    occurrenceCType: string | undefined,
 ): readonly GirField[] | undefined => {
-    if (ref === undefined || ref.kind !== "named") return undefined;
-    if (ref.cType?.endsWith("*") === true) return undefined;
-    const resolved = context.repository.resolveNamed(ref.namespaceName ?? context.namespace.name, ref.typeName);
-    if (resolved === undefined || resolved.kind !== "boxed") return undefined;
-    if (resolved.value.cType?.endsWith("*") === true) return undefined;
-    if (resolved.value.fields.length === 0) return undefined;
-    return resolved.value.fields;
+    if (ref === undefined) return undefined;
+    if (occurrenceCType?.endsWith("*") === true) return undefined;
+    const type = context.repository.typeOf(ref);
+    if (type?.kind !== "boxed") return undefined;
+    if (type.value.cType?.endsWith("*") === true) return undefined;
+    if (type.value.fields.length === 0) return undefined;
+    return type.value.fields;
 };
 
 const arrayLengthExpression = (
-    arrayRef: Extract<GirTypeRef, { kind: "array" }>,
+    arrayRef: Extract<GirType, { kind: "carray" }>,
     siblingFields: readonly GirField[],
 ): string | undefined => {
     if (arrayRef.fixedSize !== undefined) return String(arrayRef.fixedSize);
@@ -111,15 +119,17 @@ const renderElementReadObject = (context: ModuleContext, fields: readonly GirFie
     const { slots } = computeBoxedFieldSlots(context, fields);
     const entries: string[] = [];
     for (const { field, slot } of slots) {
-        if (field.private || field.type === undefined || field.callback !== undefined) continue;
+        if (field.private || field.type === undefined || isInlineCallbackRef(context.repository, field.type)) {
+            continue;
+        }
         const jsName = toCamelIdentifier(field.name);
         const offset = baseOffset + slot.byteOffset;
-        const nested = resolveInlineStructFields(context, field.type);
+        const nested = resolveInlineStructFields(context, field.type, field.cType);
         if (nested !== undefined) {
             entries.push(`${jsName}: ${renderElementReadObject(context, nested, offset)}`);
             continue;
         }
-        if (!isAccessorEligibleType(field.type)) continue;
+        if (!isAccessorEligibleType(context, field.type)) continue;
         const ffi = renderFfiType(context, field.type, "none");
         if (slot.bitWidth === undefined) {
             entries.push(
@@ -146,15 +156,17 @@ const appendElementWriteStatements = (context: ModuleContext, options: ElementWr
     const { fields, baseOffset, valuePath, out } = options;
     const { slots } = computeBoxedFieldSlots(context, fields);
     for (const { field, slot } of slots) {
-        if (field.private || field.type === undefined || field.callback !== undefined) continue;
+        if (field.private || field.type === undefined || isInlineCallbackRef(context.repository, field.type)) {
+            continue;
+        }
         const valueExpr = `${valuePath}.${toCamelIdentifier(field.name)}`;
         const offset = baseOffset + slot.byteOffset;
-        const nested = resolveInlineStructFields(context, field.type);
+        const nested = resolveInlineStructFields(context, field.type, field.cType);
         if (nested !== undefined) {
             appendElementWriteStatements(context, { fields: nested, baseOffset: offset, valuePath: valueExpr, out });
             continue;
         }
-        if (!isAccessorEligibleType(field.type)) continue;
+        if (!isAccessorEligibleType(context, field.type)) continue;
         const ffi = renderFfiType(context, field.type, "none");
         if (slot.bitWidth === undefined) {
             out.push(`write(__array, ${ffi}, __base + ${offset}, ${valueExpr});`);
@@ -224,11 +236,12 @@ const structArraySetterBlock = (options: StructArrayAccessorOptions): string => 
 
 const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTarget): string | undefined => {
     const { field, jsName, slot, siblingFields } = target;
-    const arrayRef = field.type;
-    if (arrayRef === undefined || arrayRef.kind !== "array" || slot.bitWidth !== undefined) return undefined;
-    const elementFields = resolveInlineStructFields(context, arrayRef.element);
+    if (field.type === undefined || slot.bitWidth !== undefined) return undefined;
+    const arrayType = context.repository.typeOf(field.type);
+    if (arrayType?.kind !== "carray") return undefined;
+    const elementFields = resolveInlineStructFields(context, arrayType.element, arrayType.elementCType);
     if (elementFields === undefined) return undefined;
-    const lengthExpr = arrayLengthExpression(arrayRef, siblingFields);
+    const lengthExpr = arrayLengthExpression(arrayType, siblingFields);
     if (lengthExpr === undefined) return undefined;
     const elementSize = computeBoxedFieldSlots(context, elementFields).size;
     if (elementSize === 0) return undefined;
@@ -239,7 +252,7 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
     const options: StructArrayAccessorOptions = {
         context,
         jsName,
-        tsType: renderTsType(context, arrayRef, false),
+        tsType: renderTsType(context, field.type, false),
         bufferType: `t.struct("borrowed", { size: ${lengthExpr} * ${elementSize} })`,
         offset: slot.byteOffset,
         lengthExpr,
@@ -261,7 +274,7 @@ type AccessorOptions = {
     readonly tsType: string;
     readonly ffiType: string;
     readonly slot: FieldSlot;
-    readonly fieldType: GirTypeRef;
+    readonly fieldType: TypeId;
 };
 
 const getterBlock = (options: AccessorOptions): string => {

@@ -3,6 +3,7 @@ import { functionFromNode, type GirFunction } from "./function.js";
 import { attr, attrBool, childrenOf, GIR_CONSTRUCTOR_TAG, type RawNode } from "./parse.js";
 import { type GirProperty, propertyFromNode } from "./property.js";
 import { type GirSignal, signalFromNode } from "./signal.js";
+import type { ParseContext } from "./type-id.js";
 
 /** A `<class>` or `<interface>` declaration. */
 export type GirClass = {
@@ -41,8 +42,9 @@ export type GirClass = {
  *
  * @param node - The XML element
  * @param isInterface - `true` when the source element was `<interface>`
+ * @param context - The per-namespace interning seam
  */
-export const classFromNode = (node: RawNode, isInterface: boolean): GirClass => ({
+export const classFromNode = (node: RawNode, isInterface: boolean, context: ParseContext): GirClass => ({
     name: attr(node, "name") ?? "",
     cType: attr(node, "c:type"),
     parent: attr(node, "parent"),
@@ -60,10 +62,10 @@ export const classFromNode = (node: RawNode, isInterface: boolean): GirClass => 
     prerequisites: childrenOf(node, "prerequisite")
         .map((prerequisite) => attr(prerequisite, "name"))
         .filter((name): name is string => name !== undefined),
-    methods: childrenOf(node, "method").map((method) => functionFromNode(method, "method")),
-    constructors: childrenOf(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, "constructor")),
-    functions: childrenOf(node, "function").map((function_) => functionFromNode(function_, "function")),
-    properties: childrenOf(node, "property").map(propertyFromNode),
-    signals: childrenOf(node, "glib:signal").map(signalFromNode),
-    fields: childrenOf(node, "field").map(fieldFromNode),
+    methods: childrenOf(node, "method").map((method) => functionFromNode(method, "method", context)),
+    constructors: childrenOf(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, "constructor", context)),
+    functions: childrenOf(node, "function").map((function_) => functionFromNode(function_, "function", context)),
+    properties: childrenOf(node, "property").map((property) => propertyFromNode(property, context)),
+    signals: childrenOf(node, "glib:signal").map((signal) => signalFromNode(signal, context)),
+    fields: childrenOf(node, "field").map((field) => fieldFromNode(field, context)),
 });

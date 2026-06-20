@@ -1,6 +1,7 @@
 import type { ParameterTransfer } from "./parameter.js";
 import { attr, attrBool, type RawNode } from "./parse.js";
-import { type GirTypeRef, typeRefFromSlot } from "./type-ref.js";
+import type { ParseContext, TypeId } from "./type-id.js";
+import { typeRefFromSlot } from "./type-ref.js";
 
 /**
  * A `<property>` of a class or interface.
@@ -13,8 +14,8 @@ import { type GirTypeRef, typeRefFromSlot } from "./type-ref.js";
 export type GirProperty = {
     /** GIR property name, kebab-case (e.g. `"css-name"`). */
     readonly name: string;
-    /** Property value type. */
-    readonly type: GirTypeRef | undefined;
+    /** Interned property value type. */
+    readonly type: TypeId | undefined;
     readonly writable: boolean;
     readonly construct: boolean;
     readonly constructOnly: boolean;
@@ -39,10 +40,13 @@ export type GirProperty = {
 
 /**
  * Builds a {@link GirProperty} from a `<property>` element.
+ *
+ * @param node - The `<property>` element
+ * @param context - The per-namespace interning seam
  */
-export const propertyFromNode = (node: RawNode): GirProperty => ({
+export const propertyFromNode = (node: RawNode, context: ParseContext): GirProperty => ({
     name: attr(node, "name") ?? "",
-    type: typeRefFromSlot(node),
+    type: typeRefFromSlot(node, context),
     writable: attrBool(node, "writable"),
     construct: attrBool(node, "construct"),
     constructOnly: attrBool(node, "construct-only"),

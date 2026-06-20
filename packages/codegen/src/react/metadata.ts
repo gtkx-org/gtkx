@@ -10,13 +10,11 @@ import type {
 import { quote, toCamelIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirEnum } from "../gir/enum.js";
+import type { PrimitiveCategory } from "../gir/primitives.js";
 import type { GirProperty } from "../gir/property.js";
 import type { GirRepository } from "../gir/repository.js";
-import type { GirTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
+import type { TypeId } from "../gir/type-id.js";
 import { implementedInterfaces, isReactNodeClass, iterateClassesWithGlibName, signalHandlerName } from "./widgets.js";
-
-/** A class qualified by the namespace its property type references resolve against. */
-type QualifiedSource = { readonly klass: GirClass; readonly namespaceName: string };
 
 /**
  * The reconciler's data tables baked into the generated metadata module: the
@@ -139,21 +137,17 @@ const collectWidgets = (repository: GirRepository): readonly WidgetEntry[] => {
     const entries: WidgetEntry[] = [];
     for (const { glibName, klass, namespace } of iterateClassesWithGlibName(repository)) {
         if (!isReactNodeClass(klass, namespace, repository)) continue;
-        const qualifiedSources: readonly QualifiedSource[] = [
-            { klass, namespaceName: namespace.name },
-            ...implementedInterfaces(klass, namespace, repository).map((entry) => ({
-                klass: entry.klass,
-                namespaceName: entry.namespace.name,
-            })),
+        const sources: readonly GirClass[] = [
+            klass,
+            ...implementedInterfaces(klass, namespace, repository).map((entry) => entry.klass),
         ];
-        const sources = qualifiedSources.map((source) => source.klass);
         entries.push({
             glibName,
             namespace: namespace.name,
             signals: collectSignals(sources),
             constructOnly: collectConstructOnly(sources),
             constructable: collectConstructable(sources),
-            defaults: collectDefaultProps(repository, qualifiedSources),
+            defaults: collectDefaultProps(repository, sources),
         });
     }
     return entries.sort((a, b) => a.glibName.localeCompare(b.glibName));
@@ -234,18 +228,18 @@ const renderSignalsObject = (entries: ReadonlyArray<readonly [string, string]>):
  */
 const collectDefaultProps = (
     repository: GirRepository,
-    sources: readonly QualifiedSource[],
+    sources: readonly GirClass[],
 ): ReadonlyArray<readonly [string, string]> => {
     const seen = new Set<string>();
     const defaults: Array<readonly [string, string]> = [];
-    for (const { klass, namespaceName } of sources) {
+    for (const klass of sources) {
         for (const property of klass.properties) {
             const settable = (property.writable || property.construct) && !property.constructOnly;
             if (!settable || !property.introspectable) continue;
             const jsName = toCamelIdentifier(property.name);
             if (seen.has(jsName)) continue;
             seen.add(jsName);
-            const literal = renderDefaultLiteral(repository, namespaceName, property);
+            const literal = renderDefaultLiteral(repository, property);
             if (literal === undefined) continue;
             defaults.push([jsName, literal] as const);
         }
@@ -261,38 +255,31 @@ const collectDefaultProps = (
  * is not `NULL`), in which case the property is omitted and never reset.
  *
  * @param repository - The loaded GIR repository
- * @param namespaceName - The namespace the property type resolves against
  * @param property - The property whose default to coerce
  */
-const renderDefaultLiteral = (
-    repository: GirRepository,
-    namespaceName: string,
-    property: GirProperty,
-): string | undefined => resolveDefaultLiteral(repository, namespaceName, property.type, property.defaultValue);
+const renderDefaultLiteral = (repository: GirRepository, property: GirProperty): string | undefined =>
+    resolveDefaultLiteral(repository, property.type, property.defaultValue);
 
 const resolveDefaultLiteral = (
     repository: GirRepository,
-    namespaceName: string,
-    ref: GirTypeRef | undefined,
+    ref: TypeId | undefined,
     raw: string | undefined,
 ): string | undefined => {
     if (raw === undefined) return undefined;
     if (raw === "NULL") return "null";
     if (ref === undefined) return undefined;
-    if (ref.kind === "primitive") return primitiveDefaultLiteral(ref, raw);
-    if (ref.kind !== "named") return undefined;
-    const resolved = repository.resolveNamed(ref.namespaceName ?? namespaceName, ref.typeName);
+    const resolved = repository.typeOf(ref);
     if (resolved === undefined) return undefined;
+    if (resolved.kind === "primitive") return primitiveDefaultLiteral(resolved.category, raw);
     if (resolved.kind === "enum") return enumDefaultLiteral(resolved.value, raw);
-    if (resolved.kind === "alias")
-        return resolveDefaultLiteral(repository, resolved.namespace.name, resolved.targetRef, raw);
+    if (resolved.kind === "alias") return resolveDefaultLiteral(repository, resolved.target, raw);
     return undefined;
 };
 
 const INTEGER_PATTERN = /^-?\d+$/;
 
-const primitiveDefaultLiteral = (ref: PrimitiveTypeRef, raw: string): string | undefined => {
-    switch (ref.category) {
+const primitiveDefaultLiteral = (category: PrimitiveCategory, raw: string): string | undefined => {
+    switch (category) {
         case "boolean":
             if (raw === "TRUE") return "true";
             if (raw === "FALSE") return "false";

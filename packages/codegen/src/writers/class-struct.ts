@@ -1,12 +1,11 @@
 import { quote, toCamelIdentifier, toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
-import { callbackFromNode, type GirCallback } from "../gir/callback.js";
+import type { GirCallback } from "../gir/callback.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirField } from "../gir/field.js";
-import type { GirTypeRef } from "../gir/type-ref.js";
 import { computeBoxedFieldSlots } from "./boxed-layout.js";
-import { isScalarRef, renderFfiType, renderHandlerArgType } from "./value.js";
+import { isInlineCallbackRef, isScalarRef, renderFfiType, renderHandlerArgType } from "./value.js";
 
 type VtableKind = "class" | "interface";
 
@@ -45,10 +44,12 @@ const vtableEntries = (context: ModuleContext, structName: string, kind: VtableK
     const entries: string[] = [];
     const claimedNames = new Set<string>();
     for (const { field, slot } of slots) {
-        if (field.callback === undefined) continue;
+        if (field.type === undefined) continue;
+        const type = context.repository.typeOf(field.type);
+        if (type?.kind !== "callback" || context.repository.nameOf(field.type) !== undefined) continue;
         const key = toCamelIdentifier(field.name);
         if (key === "constructor" || claimedNames.has(key)) continue;
-        const callback = callbackFromNode(field.callback);
+        const callback = type.value;
         if (!isVtableSlotEligible(context, callback)) continue;
         claimedNames.add(key);
         entries.push(
@@ -65,16 +66,14 @@ const isVtableSlotEligible = (context: ModuleContext, callback: GirCallback): bo
         if (
             (param.direction === "out" || param.direction === "inout") &&
             !param.callerAllocates &&
-            !isScalarRef(context.repository, context.namespace.name, param.type)
+            !isScalarRef(context.repository, param.type)
         ) {
             return false;
         }
-        if (isCallbackRef(param.type)) return false;
+        if (isInlineCallbackRef(context.repository, param.type)) return false;
     }
-    return !isCallbackRef(callback.returnValue.type);
+    return !isInlineCallbackRef(context.repository, callback.returnValue.type);
 };
-
-const isCallbackRef = (ref: GirTypeRef | undefined): boolean => ref?.kind === "callback";
 
 type RenderDescriptorOptions = {
     readonly key: string;

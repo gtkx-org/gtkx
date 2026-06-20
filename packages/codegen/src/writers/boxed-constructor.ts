@@ -3,24 +3,24 @@ import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
 import type { GirBoxed } from "../gir/boxed.js";
 import type { GirField } from "../gir/field.js";
-import type { GirTypeRef } from "../gir/type-ref.js";
+import type { TypeId } from "../gir/type-id.js";
 import { bitMask, mergeBitfield } from "./bitfield.js";
 import { type BoxedFieldSlot, computeBoxedFieldSlots } from "./boxed-layout.js";
 import { typeRefIsClassStruct } from "./class-struct-record.js";
 import { renderTsType } from "./ts-type.js";
-import { renderFfiType } from "./value.js";
+import { isInlineCallbackRef, renderFfiType } from "./value.js";
 
 /**
  * A boxed field that carries a writable value (private, read-only, callback,
  * and type-less fields are not settable at construction).
  */
-type WritableFieldSlot = BoxedFieldSlot & { readonly field: GirField & { readonly type: GirTypeRef } };
+type WritableFieldSlot = BoxedFieldSlot & { readonly field: GirField & { readonly type: TypeId } };
 
 const isWritableFieldSlot = (context: ModuleContext, entry: BoxedFieldSlot): entry is WritableFieldSlot =>
     !entry.field.private &&
     entry.field.writable &&
-    entry.field.callback === undefined &&
     entry.field.type !== undefined &&
+    !isInlineCallbackRef(context.repository, entry.field.type) &&
     !typeRefIsClassStruct(context, entry.field.type);
 
 const isOpaque = (boxed: GirBoxed): boolean => boxed.glibGetType === undefined && boxed.disguised;

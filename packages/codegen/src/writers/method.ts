@@ -13,7 +13,7 @@ import {
     passesHandleInPlace,
 } from "./param-classify.js";
 import { renderTsType } from "./ts-type.js";
-import { renderFfiType, renderSelfFfiType, renderCallbackType } from "./value.js";
+import { isVoidRef, renderCallbackType, renderFfiType, renderSelfFfiType } from "./value.js";
 
 /**
  * Returns the camelCased JS export name for a callable's method or static.
@@ -49,7 +49,7 @@ const renderInputParameters = (
 ): string => {
     const parts: string[] = [];
     let sawOptional = false;
-    for (const { parameter, index } of inputParameters(fn)) {
+    for (const { parameter, index } of inputParameters(context.repository, fn)) {
         if (skip(parameter)) continue;
         const name = parameterIdentifier(parameter, index);
         if (parameter.optional || isOptionalExtra(parameter)) {
@@ -72,7 +72,7 @@ const renderInputParameters = (
  * @param fn - The callable
  */
 export const renderMethodReturnType = (context: ModuleContext, fn: GirFunction): string => {
-    const folded = foldedLengthIndices(fn);
+    const folded = foldedLengthIndices(context.repository, fn);
     const outs = fn.parameters.filter(
         (p, index) =>
             (isOutParameter(p) ||
@@ -80,7 +80,7 @@ export const renderMethodReturnType = (context: ModuleContext, fn: GirFunction):
                 isInoutParameter(p)) &&
             !folded.has(index),
     );
-    const primaryReturnsValue = !omitsPrimaryReturn(fn);
+    const primaryReturnsValue = !omitsPrimaryReturn(context, fn);
     if (outs.length === 0) {
         return primaryReturnsValue ? renderTsType(context, fn.returnValue.type, fn.returnValue.nullable) : "void";
     }
@@ -92,21 +92,17 @@ export const renderMethodReturnType = (context: ModuleContext, fn: GirFunction):
     return `[${primary}, ${outTypes.join(", ")}]`;
 };
 
-const isVoidReturn = (fn: GirFunction): boolean => {
-    const ref = fn.returnValue.type;
-    if (ref === undefined) return true;
-    return ref.kind === "primitive" && ref.category === "void";
-};
-
 /**
  * Whether the callable's primary return value is dropped from the surfaced
  * result: a `void` return, or a `(skip)`-annotated one whose C value carries
  * nothing a JS caller needs. Either way the rendered return type and body
  * expose only the out-parameters.
  *
+ * @param context - The module context
  * @param fn - The callable
  */
-const omitsPrimaryReturn = (fn: GirFunction): boolean => isVoidReturn(fn) || fn.returnValue.skip;
+const omitsPrimaryReturn = (context: ModuleContext, fn: GirFunction): boolean =>
+    isVoidRef(context.repository, fn.returnValue.type) || fn.returnValue.skip;
 
 /**
  * Renders the JS body of a promisified `*_async` method that delegates to
@@ -130,9 +126,9 @@ export const renderPromisifiedBody = (
     bindingExpression: string,
 ): string => {
     context.addRuntimeImport("promisify");
-    const cancellableIndex = findCancellableIndex(asyncFn.parameters);
+    const cancellableIndex = findCancellableIndex(context, asyncFn.parameters);
     const closureIndices = closureAndDestroyIndices(asyncFn);
-    const lengthFor = arrayLengthSources(asyncFn);
+    const lengthFor = arrayLengthSources(context.repository, asyncFn);
     const leadingExpressions: string[] = [];
     if (asyncFn.instance !== undefined) {
         context.addRuntimeImport("getHandle");
@@ -161,12 +157,11 @@ export const renderPromisifiedBody = (
     return `return promisify(${bindingExpression}, this.${finishMember}.bind(this), ${cancellableExpression}, { leading: ${leadingLiteral} });`;
 };
 
-const findCancellableIndex = (parameters: readonly GirParameter[]): number => {
+const findCancellableIndex = (context: ModuleContext, parameters: readonly GirParameter[]): number => {
     for (let index = 0; index < parameters.length; index += 1) {
         const parameter = parameters[index];
         if (parameter === undefined) continue;
-        if (parameter.type?.kind !== "named") continue;
-        if (parameter.type.typeName === "Cancellable") return index;
+        if (isCancellable(context, parameter)) return index;
     }
     return -1;
 };
@@ -191,23 +186,19 @@ export const renderPromisifiedSignature = (
         context,
         asyncFn,
         (parameter) => isCallbackParameter(context, parameter),
-        isCancellable,
+        (parameter) => isCancellable(context, parameter),
     );
     const finishReturn = renderMethodReturnType(context, finishFn);
     return { signature, returnType: `Promise<${finishReturn}>` };
 };
 
-const isCancellable = (parameter: GirParameter): boolean =>
-    parameter.type?.kind === "named" && parameter.type.typeName === "Cancellable";
+const isCancellable = (context: ModuleContext, parameter: GirParameter): boolean =>
+    parameter.type !== undefined && context.repository.nameOf(parameter.type)?.typeName === "Cancellable";
 
 const isCallbackParameter = (context: ModuleContext, parameter: GirParameter): boolean => {
     const ref = parameter.type;
     if (ref === undefined) return false;
-    if (ref.kind === "callback") return true;
-    if (ref.kind !== "named") return false;
-    const namespaceName = ref.namespaceName ?? context.namespace.name;
-    const resolved = context.repository.resolveNamed(namespaceName, ref.typeName);
-    return resolved !== undefined && resolved.kind === "callback";
+    return context.repository.typeOf(ref)?.kind === "callback";
 };
 
 /**
@@ -309,9 +300,9 @@ export const planCallArgs = (context: ModuleContext, fn: GirFunction): CallArgPl
         });
     }
     const instanceOffset = fn.instance === undefined ? 0 : 1;
-    const lengthFor = arrayLengthSources(fn);
+    const lengthFor = arrayLengthSources(context.repository, fn);
     const closureIndices = closureAndDestroyIndices(fn);
-    const folded = foldedLengthIndices(fn);
+    const folded = foldedLengthIndices(context.repository, fn);
     fn.parameters.forEach((parameter, index) => {
         if (parameter.isVarargs) return;
         if (closureIndices.has(index)) return;
@@ -356,10 +347,10 @@ const planOutParam = (
 
 const planCallerOut = (context: ModuleContext, parameter: GirParameter, instanceOffset: number): CallArgPlan => {
     const ffi = renderFfiType(context, parameter.type, "none", { argIndexOffset: instanceOffset });
-    if (parameter.type?.kind === "named" && isCollectibleCallerOut(context, parameter)) {
+    const name = parameter.type === undefined ? undefined : context.repository.nameOf(parameter.type);
+    if (name !== undefined && isCollectibleCallerOut(context, parameter)) {
         context.addRuntimeImport("getHandle");
-        const owner = parameter.type.namespaceName ?? context.namespace.name;
-        const classExpression = context.qualify(owner, parameter.type.typeName);
+        const classExpression = context.qualify(name.namespaceName, name.typeName);
         return {
             paramLiteral: ffiParamLiteral(ffi, { direction: "out", callerAllocates: true }),
             inputExpr: `new ${classExpression}()`,
@@ -417,12 +408,13 @@ const parameterCallExpression = (context: ModuleContext, parameter: GirParameter
         context.addRuntimeImport("getHandle");
         return `getHandle(${name})`;
     }
-    if ((ref.kind === "array" || ref.kind === "list") && isHandlePassing(context, ref.element)) {
+    const type = context.repository.typeOf(ref);
+    if ((type?.kind === "carray" || type?.kind === "list") && isHandlePassing(context, type.element)) {
         context.addRuntimeImport("getHandle");
         return nullable ? `${name}?.map((item) => getHandle(item))` : `${name}.map((item) => getHandle(item))`;
     }
-    if (ref.kind === "hashtable") {
-        if (isHandlePassing(context, ref.value)) {
+    if (type?.kind === "hashtable") {
+        if (isHandlePassing(context, type.value)) {
             context.addRuntimeImport("tryGetHandle");
             return `${name} ? globalThis.Array.from(${name}).map(([k, v]) => [k, tryGetHandle(v)]) : null`;
         }

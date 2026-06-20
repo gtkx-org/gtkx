@@ -5,10 +5,8 @@ import type { GirClass } from "../gir/class.js";
 import type { GirParameter } from "../gir/parameter.js";
 import { isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
 import type { GirProperty } from "../gir/property.js";
-import { splitQualifiedName } from "../gir/qualified-name.js";
-import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirSignal } from "../gir/signal.js";
-import type { GirTypeRef } from "../gir/type-ref.js";
+import { splitOptionalNamespace } from "../gir/type-ref.js";
 import {
     collectInterfaceProperties,
     forEachAncestor,
@@ -17,19 +15,17 @@ import {
 } from "./inheritance.js";
 import { isBoxedCallerOut, isBoxedInout, renderHandlerParameters } from "./param-classify.js";
 import { renderTsType } from "./ts-type.js";
-import { isCellInout, renderFfiType, renderHandlerArgType } from "./value.js";
+import { isCellInout, isVoidRef, renderFfiType, renderHandlerArgType } from "./value.js";
 
 const SIGNAL_HANDLER_TYPE = "(...args: any[]) => any";
 
 /**
- * A signal together with the namespace its parameter and return references
- * belong to. Own signals carry the class's namespace; signals flattened from
- * an implemented interface carry the interface's namespace so their references
- * resolve correctly.
+ * A signal collected for emission. Its parameter and return references are
+ * interned handles that already carry their declaring namespace, so a signal
+ * flattened from an implemented interface resolves identically to an own one.
  */
 type CollectedSignal = {
     readonly signal: GirSignal;
-    readonly namespaceName: string;
 };
 
 /**
@@ -195,7 +191,8 @@ const signalMapParentRefs = (
     suffix: string,
 ): readonly string[] => {
     if (klass.parent !== undefined) {
-        const { namespaceName, typeName } = splitQualifiedName(klass.parent, context.namespace.name);
+        const [parentNamespace, typeName] = splitOptionalNamespace(klass.parent);
+        const namespaceName = parentNamespace ?? context.namespace.name;
         const name = `${toPascalCase(typeName)}${suffix}`;
         if (namespaceName === context.namespace.name) return [name];
         return [`${context.addCrossNamespaceImport(namespaceName)}.${name}`];
@@ -273,10 +270,8 @@ const renderSignalConnectInterface = (className: string, isRootObject: boolean):
  * {@link renderResultType} encodes rather than the parameter list.
  */
 const renderSignalHandlerType = (context: ModuleContext, collected: CollectedSignal): string => {
-    const { signal, namespaceName } = collected;
-    const params = renderHandlerParameters(signal.parameters, namespaceName, (ref, nullable) =>
-        renderTsType(context, ref, nullable),
-    );
+    const { signal } = collected;
+    const params = renderHandlerParameters(signal.parameters, (ref, nullable) => renderTsType(context, ref, nullable));
     return `(${params.join(", ")}) => ${renderResultType(context, collected, false, true)}`;
 };
 
@@ -320,11 +315,10 @@ const renderResultType = (
     includeCallerAllocated: boolean,
     optOut: boolean,
 ): string => {
-    const { signal, namespaceName } = collected;
-    const returnRef = qualifyTypeRef(signal.returnValue.type, namespaceName);
-    const primary = omitsPrimaryReturn(returnRef, signal)
+    const { signal } = collected;
+    const primary = omitsPrimaryReturn(context, signal)
         ? undefined
-        : renderTsType(context, returnRef, signal.returnValue.nullable);
+        : renderTsType(context, signal.returnValue.type, signal.returnValue.nullable);
     const outTypes = signal.parameters
         .filter(
             (parameter) =>
@@ -333,7 +327,7 @@ const renderResultType = (
                     isCellInout(context, parameter) ||
                     (includeCallerAllocated && isCallerAllocatedOut(parameter))),
         )
-        .map((parameter) => renderTsType(context, qualifyTypeRef(parameter.type, namespaceName), false));
+        .map((parameter) => renderTsType(context, parameter.type, false));
     return assembleSignalResult(primary, outTypes, optOut);
 };
 
@@ -349,10 +343,9 @@ const renderResultType = (
  * @param collected - The signal and the namespace its references resolve against
  */
 const renderSignalEmitEntry = (context: ModuleContext, collected: CollectedSignal): string => {
-    const { signal, namespaceName } = collected;
+    const { signal } = collected;
     const args = renderHandlerParameters(
         signal.parameters,
-        namespaceName,
         (ref, nullable) => renderTsType(context, ref, nullable),
         isCallerAllocatedOut,
     );
@@ -386,7 +379,7 @@ const renderConnectCase = (context: ModuleContext, collected: CollectedSignal): 
  * source its storage.
  */
 const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): string => {
-    const { signal, namespaceName } = collected;
+    const { signal } = collected;
     const params = signal.parameters.filter((parameter) => !parameter.isVarargs);
     if (params.some((parameter) => isCallerAllocatedOut(parameter) && !isBoxedCallerOut(context, parameter))) {
         return renderUnsupportedEmitCase(signal);
@@ -395,7 +388,7 @@ const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): str
 
     let argIndex = 0;
     const argLiterals = params.map((parameter) => {
-        const ffi = renderFfiType(context, qualifyTypeRef(parameter.type, namespaceName), parameter.transferOwnership);
+        const ffi = renderFfiType(context, parameter.type, parameter.transferOwnership);
         if (isOutParameter(parameter)) {
             return `{ ffi: ${ffi}, role: "out" }`;
         }
@@ -403,7 +396,7 @@ const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): str
             return `{ ffi: ${ffi}, role: "inout", value: args[${argIndex++}] }`;
         }
         if (isCallerAllocatedOut(parameter)) {
-            return `{ ffi: ${ffi}, role: "boxedOut", value: ${renderCallerOutAllocation(context, parameter, namespaceName)} }`;
+            return `{ ffi: ${ffi}, role: "boxedOut", value: ${renderCallerOutAllocation(context, parameter)} }`;
         }
         if (isBoxedInout(context, parameter)) {
             return `{ ffi: ${ffi}, role: "boxedInout", value: args[${argIndex++}] }`;
@@ -411,9 +404,10 @@ const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): str
         return `{ ffi: ${ffi}, value: args[${argIndex++}] }`;
     });
 
-    const returnRef = qualifyTypeRef(signal.returnValue.type, namespaceName);
-    const isVoid = returnRef === undefined || omitsPrimaryReturn(returnRef, signal);
-    const returnArg = isVoid ? "" : `, ${renderFfiType(context, returnRef, signal.returnValue.transferOwnership)}`;
+    const isVoid = omitsPrimaryReturn(context, signal);
+    const returnArg = isVoid
+        ? ""
+        : `, ${renderFfiType(context, signal.returnValue.type, signal.returnValue.transferOwnership)}`;
     const body = `return emitGobjectSignal(this, sigName, [${argLiterals.join(", ")}]${returnArg});`;
 
     return `case ${quote(signal.name)}: {\n${indent(body, 1)}\n}`;
@@ -438,15 +432,13 @@ const renderUnsupportedEmitCase = (signal: GirSignal): string => {
  *
  * @param context - The module context
  * @param parameter - The caller-allocated out parameter (a named boxed/class)
- * @param namespaceName - The signal's namespace, used when the type is unqualified
  */
-const renderCallerOutAllocation = (context: ModuleContext, parameter: GirParameter, namespaceName: string): string => {
-    const type = parameter.type;
-    if (type === undefined || type.kind !== "named") {
+const renderCallerOutAllocation = (context: ModuleContext, parameter: GirParameter): string => {
+    const name = parameter.type === undefined ? undefined : context.repository.nameOf(parameter.type);
+    if (name === undefined) {
         throw new Error("renderCallerOutAllocation: expected a named caller-allocated out-parameter");
     }
-    const owner = type.namespaceName ?? namespaceName;
-    return `new ${context.qualify(owner, type.typeName)}()`;
+    return `new ${context.qualify(name.namespaceName, name.typeName)}()`;
 };
 
 /**
@@ -460,14 +452,13 @@ const renderCallerOutAllocation = (context: ModuleContext, parameter: GirParamet
  * closure is generated.
  */
 const renderCallback = (context: ModuleContext, collected: CollectedSignal): string => {
-    const { signal, namespaceName } = collected;
+    const { signal } = collected;
     const params = signal.parameters.filter((parameter) => !parameter.isVarargs);
-    const callbackParamFfi = params.map((parameter) =>
-        renderHandlerArgType(context, parameter, qualifyTypeRef(parameter.type, namespaceName)),
-    );
-    const returnRef = qualifyTypeRef(signal.returnValue.type, namespaceName);
-    const isVoid = omitsPrimaryReturn(returnRef, signal);
-    const returnFfi = isVoid ? "t.void" : renderFfiType(context, returnRef, signal.returnValue.transferOwnership);
+    const callbackParamFfi = params.map((parameter) => renderHandlerArgType(context, parameter, parameter.type));
+    const isVoid = omitsPrimaryReturn(context, signal);
+    const returnFfi = isVoid
+        ? "t.void"
+        : renderFfiType(context, signal.returnValue.type, signal.returnValue.transferOwnership);
     const callbackArgs = ['t.object("borrowed")', ...callbackParamFfi, "t.void"].join(", ");
     return `t.callback([${callbackArgs}], ${returnFfi}, { hasDestroy: true, userDataIndex: ${params.length + 1} })`;
 };
@@ -476,21 +467,17 @@ const collectClassSignals = (context: ModuleContext, klass: GirClass): readonly 
     const inheritedNames = collectInheritedSignalNames(context, klass);
     const seen = new Set<string>();
     const result: CollectedSignal[] = [];
-    for (const signal of klass.signals) {
+    const consider = (signal: GirSignal): void => {
         const name = toCamelCase(signal.name);
-        if (inheritedNames.has(name) || seen.has(name)) continue;
+        if (inheritedNames.has(name) || seen.has(name)) return;
         seen.add(name);
-        result.push({ signal, namespaceName: context.namespace.name });
-    }
+        result.push({ signal });
+    };
+    for (const signal of klass.signals) consider(signal);
     for (const implementName of klass.implements) {
         const iface = resolveImplementedInterface(context, implementName);
         if (iface === undefined) continue;
-        for (const signal of iface.klass.signals) {
-            const name = toCamelCase(signal.name);
-            if (inheritedNames.has(name) || seen.has(name)) continue;
-            seen.add(name);
-            result.push({ signal, namespaceName: iface.namespaceName });
-        }
+        for (const signal of iface.klass.signals) consider(signal);
     }
     return result;
 };
@@ -553,14 +540,11 @@ const collectNotifyDetails = (context: ModuleContext, klass: GirClass): readonly
     return result;
 };
 
-const isVoidRef = (ref: GirTypeRef | undefined): boolean =>
-    ref === undefined || (ref.kind === "primitive" && ref.category === "void");
-
 /**
  * Whether a signal's primary return is dropped from the surfaced result: a void
  * return, or a `(skip)`-annotated one whose C value carries nothing a JS caller
  * needs. Either way only the out-parameters remain, mirroring the method path's
  * `omitsPrimaryReturn`.
  */
-const omitsPrimaryReturn = (returnRef: GirTypeRef | undefined, signal: GirSignal): boolean =>
-    isVoidRef(returnRef) || signal.returnValue.skip;
+const omitsPrimaryReturn = (context: ModuleContext, signal: GirSignal): boolean =>
+    isVoidRef(context.repository, signal.returnValue.type) || signal.returnValue.skip;

@@ -3,10 +3,9 @@ import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import { type GirParameter, isInoutParameter, isOutParameter } from "../gir/parameter.js";
 import type { GirProperty } from "../gir/property.js";
-import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirRepository } from "../gir/repository.js";
 import type { GirSignal } from "../gir/signal.js";
-import type { GirTypeRef, NamedTypeRef } from "../gir/type-ref.js";
+import type { TypeId } from "../gir/type-id.js";
 import { forEachAncestor, type ResolvedInterface, resolveDirectInterfaces } from "../writers/inheritance.js";
 import { renderHandlerParameters } from "../writers/param-classify.js";
 import { renderBaseTypeFor, type TsTypeTarget } from "../writers/ts-type.js";
@@ -62,7 +61,6 @@ type SignalRenderOptions = {
     readonly types: PropTypeRenderContext;
     readonly signal: GirSignal;
     readonly selfType: string;
-    readonly owningNamespace: string;
 };
 
 /**
@@ -86,16 +84,15 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
 
     const ownerName = klass.glibTypeName ?? klass.cType ?? klass.name;
 
-    const acceptProperty = (property: GirProperty, owningNamespace: string): void => {
+    const acceptProperty = (property: GirProperty): void => {
         if (!property.introspectable) return;
         const jsName = toCamelIdentifier(property.name);
         if (seen.has(jsName)) return;
         seen.add(jsName);
         if (isPropOverridden(ownerName, jsName)) return;
         if (dataPropNames.has(jsName)) return;
-        const qualified = qualifyTypeRef(property.type, owningNamespace);
-        const tsType = renderReactPropType(types, qualified, false);
-        if (isSlotProperty({ repository, klass, namespace }, property, owningNamespace, jsName)) {
+        const tsType = renderReactPropType(types, property.type, false);
+        if (isSlotProperty({ repository, klass, namespace }, property, jsName)) {
             propEntries.push(`${jsName}?: ${tsType} | ReactElement | null;`);
             slotPropNames.push(jsName);
             return;
@@ -104,16 +101,11 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
         propEntries.push(`onNotify${toUpperFirst(jsName)}?: ((value: ${tsType} | null, self: Self) => void) | null;`);
     };
 
-    const acceptSignal = (signal: GirSignal, owningNamespace: string): void => {
+    const acceptSignal = (signal: GirSignal): void => {
         const handlerName = signalHandlerName(signal.name);
         if (seen.has(handlerName)) return;
         seen.add(handlerName);
-        const signature = renderSignalHandler({
-            types,
-            signal,
-            selfType: "Self",
-            owningNamespace,
-        });
+        const signature = renderSignalHandler({ types, signal, selfType: "Self" });
         propEntries.push(`${handlerName}?: ${signature};`);
     };
 
@@ -128,8 +120,8 @@ type WidgetMemberWalk = {
     readonly klass: GirClass;
     readonly namespace: GirNamespace;
     readonly isWidgetAncestor: (candidate: GirClass) => boolean;
-    readonly acceptProperty: (property: GirProperty, owningNamespace: string) => void;
-    readonly acceptSignal: (signal: GirSignal, owningNamespace: string) => void;
+    readonly acceptProperty: (property: GirProperty) => void;
+    readonly acceptSignal: (signal: GirSignal) => void;
 };
 
 /**
@@ -139,24 +131,20 @@ type WidgetMemberWalk = {
  */
 const walkWidgetMembers = (walk: WidgetMemberWalk): void => {
     const { repository, klass, namespace, isWidgetAncestor, acceptProperty, acceptSignal } = walk;
-    const visitMembers = (
-        memberClass: GirClass,
-        owningNamespace: string,
-        interfaces: readonly ResolvedInterface[],
-    ): void => {
-        for (const property of memberClass.properties) acceptProperty(property, owningNamespace);
-        for (const signal of memberClass.signals) acceptSignal(signal, owningNamespace);
+    const visitMembers = (memberClass: GirClass, interfaces: readonly ResolvedInterface[]): void => {
+        for (const property of memberClass.properties) acceptProperty(property);
+        for (const signal of memberClass.signals) acceptSignal(signal);
         for (const iface of interfaces) {
-            for (const property of iface.klass.properties) acceptProperty(property, iface.namespaceName);
-            for (const signal of iface.klass.signals) acceptSignal(signal, iface.namespaceName);
+            for (const property of iface.klass.properties) acceptProperty(property);
+            for (const signal of iface.klass.signals) acceptSignal(signal);
         }
     };
     const ancestry = { repository, namespace };
-    visitMembers(klass, namespace.name, resolveDirectInterfaces(ancestry, klass, namespace.name));
+    visitMembers(klass, resolveDirectInterfaces(ancestry, klass, namespace.name));
     forEachAncestor(
         ancestry,
         klass,
-        (ancestor, interfaces) => visitMembers(ancestor.klass, ancestor.namespaceName, interfaces),
+        (ancestor, interfaces) => visitMembers(ancestor.klass, interfaces),
         isWidgetAncestor,
     );
 };
@@ -168,17 +156,12 @@ const walkWidgetMembers = (walk: WidgetMemberWalk): void => {
  * GObject class is renderable as a slot subtree.
  *
  * @param repository - The loaded GIR repository
- * @param ref - The property's type reference
- * @param owningNamespace - The namespace unqualified references resolve against
+ * @param ref - The property's interned type slot
  */
-const resolvesToGobjectClass = (
-    repository: GirRepository,
-    ref: GirTypeRef | undefined,
-    owningNamespace: string,
-): boolean => {
-    if (ref?.kind !== "named") return false;
-    const resolved = repository.resolveNamed(ref.namespaceName ?? owningNamespace, ref.typeName);
-    if (resolved === undefined || resolved.kind !== "class") return false;
+const resolvesToGobjectClass = (repository: GirRepository, ref: TypeId | undefined): boolean => {
+    if (ref === undefined) return false;
+    const resolved = repository.typeOf(ref);
+    if (resolved?.kind !== "class") return false;
     return isReactNodeClass(resolved.value, resolved.namespace, repository);
 };
 
@@ -218,12 +201,11 @@ type SlotOwner = {
  *
  * @param owner - The widget being emitted
  * @param property - The candidate property
- * @param owningNamespace - The namespace the property's type resolves against
  * @param jsName - The property's camelCase JS name
  */
-const isSlotProperty = (owner: SlotOwner, property: GirProperty, owningNamespace: string, jsName: string): boolean => {
+const isSlotProperty = (owner: SlotOwner, property: GirProperty, jsName: string): boolean => {
     if (!property.writable || property.constructOnly) return false;
-    if (!resolvesToGobjectClass(owner.repository, property.type, owningNamespace)) return false;
+    if (!resolvesToGobjectClass(owner.repository, property.type)) return false;
     if (jsName === "child" && classExposesMethod(owner.klass, owner.namespace, owner.repository, "set_child")) {
         return false;
     }
@@ -251,12 +233,10 @@ const isPropOverridden = (ownerName: string, propName: string): boolean => {
 };
 
 const renderSignalHandler = (options: SignalRenderOptions): string => {
-    const { types, signal, selfType, owningNamespace } = options;
+    const { types, signal, selfType } = options;
     const visible = signal.parameters.filter((parameter) => !parameter.isVarargs);
     const params = [
-        ...renderHandlerParameters(signal.parameters, owningNamespace, (ref, nullable) =>
-            renderReactPropType(types, ref, nullable),
-        ),
+        ...renderHandlerParameters(signal.parameters, (ref, nullable) => renderReactPropType(types, ref, nullable)),
         `self: ${selfType}`,
     ];
     return `(${params.join(", ")}) => ${renderSignalReturnType(options, visible)}`;
@@ -276,16 +256,15 @@ const renderSignalHandler = (options: SignalRenderOptions): string => {
  * @param visible - The signal's non-varargs parameters
  */
 const renderSignalReturnType = (options: SignalRenderOptions, visible: readonly GirParameter[]): string => {
-    const { types, signal, owningNamespace } = options;
-    const qualifiedReturn = qualifyTypeRef(signal.returnValue.type, owningNamespace);
-    const baseReturn = renderReactPropType(types, qualifiedReturn, signal.returnValue.nullable);
+    const { types, signal } = options;
+    const baseReturn = renderReactPropType(types, signal.returnValue.type, signal.returnValue.nullable);
     const outTypes = visible
         .filter(
             (parameter) =>
                 isOutParameter(parameter) ||
-                (isInoutParameter(parameter) && isScalarRef(types.repository, owningNamespace, parameter.type)),
+                (isInoutParameter(parameter) && isScalarRef(types.repository, parameter.type)),
         )
-        .map((parameter) => renderReactPropType(types, qualifyTypeRef(parameter.type, owningNamespace), false));
+        .map((parameter) => renderReactPropType(types, parameter.type, false));
     if (outTypes.length === 0) {
         return baseReturn === "void" ? "void" : `${baseReturn} | undefined`;
     }
@@ -301,38 +280,23 @@ const reactTarget = (context: PropTypeRenderContext): TsTypeTarget => ({
     containerStyle: "record",
     callbackType: "(...args: unknown[]) => unknown",
     byteArrayAsNumber: false,
-    renderNamed: (ref) => namedTsType(context, ref),
+    renderNamed: (resolved, name) => {
+        if (resolved?.kind === "callback") return "(...args: unknown[]) => unknown";
+        if (resolved?.kind === "alias") {
+            return resolved.target === undefined
+                ? "number"
+                : renderBaseTypeFor(context.repository, reactTarget(context), resolved.target);
+        }
+        context.imports.set(name.namespaceName, name.namespaceName);
+        return `${name.namespaceName}.${name.typeName}`;
+    },
     renderGtype: () => {
         context.imports.set("GObject", "GObject");
         return "GObject.GType";
     },
 });
 
-const renderReactPropType = (
-    context: PropTypeRenderContext,
-    ref: GirTypeRef | undefined,
-    isNullable: boolean,
-): string => {
-    const base = renderBaseTypeFor(reactTarget(context), ref);
+const renderReactPropType = (context: PropTypeRenderContext, ref: TypeId | undefined, isNullable: boolean): string => {
+    const base = renderBaseTypeFor(context.repository, reactTarget(context), ref);
     return isNullable ? `${base} | null` : base;
-};
-
-const namedTsType = (context: PropTypeRenderContext, ref: NamedTypeRef): string => {
-    const namespaceName = ref.namespaceName;
-    if (namespaceName === undefined) {
-        return ref.typeName;
-    }
-    const resolved = context.repository.resolveNamed(namespaceName, ref.typeName);
-    if (resolved === undefined) {
-        context.imports.set(namespaceName, namespaceName);
-        return `${namespaceName}.${ref.typeName}`;
-    }
-    if (resolved.kind === "callback") return "(...args: unknown[]) => unknown";
-    if (resolved.kind === "alias") {
-        return resolved.targetRef === undefined
-            ? "number"
-            : renderBaseTypeFor(reactTarget(context), resolved.targetRef);
-    }
-    context.imports.set(namespaceName, namespaceName);
-    return `${namespaceName}.${ref.typeName}`;
 };

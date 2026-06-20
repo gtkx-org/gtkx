@@ -3,7 +3,6 @@ import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
-import { qualifyFunction } from "../gir/qualify.js";
 import {
     appendMethodBinding,
     type Callables,
@@ -130,7 +129,7 @@ const collectPrerequisiteMethods = (context: ModuleContext, iface: GirClass): re
                 const name = methodExportName(method);
                 if (seen.has(name)) continue;
                 seen.add(name);
-                result.push(qualifyFunction(method, prerequisite.namespaceName));
+                result.push(method);
             }
             visit(prerequisite.klass, prerequisite.namespaceName);
         }

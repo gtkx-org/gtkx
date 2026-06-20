@@ -1,6 +1,7 @@
 import { fieldFromNode, type GirField } from "./field.js";
 import { functionFromNode, type GirFunction } from "./function.js";
 import { attr, attrBool, childrenOf, GIR_CONSTRUCTOR_TAG, type RawNode } from "./parse.js";
+import type { ParseContext } from "./type-id.js";
 
 /** A `<record>` or `<union>` declaration. */
 export type GirBoxed = {
@@ -43,8 +44,9 @@ export type GirBoxed = {
  * @param node - The XML element
  * @param isVtable - Whether the record is a vtable (see {@link isVtableRecord})
  * @param isUnion - `true` when the source element was `<union>`
+ * @param context - The per-namespace interning seam
  */
-export const boxedFromNode = (node: RawNode, isVtable: boolean, isUnion: boolean): GirBoxed => ({
+export const boxedFromNode = (node: RawNode, isVtable: boolean, isUnion: boolean, context: ParseContext): GirBoxed => ({
     isVtable,
     name: attr(node, "name") ?? attr(node, "glib:name") ?? "",
     cType: attr(node, "c:type"),
@@ -57,10 +59,10 @@ export const boxedFromNode = (node: RawNode, isVtable: boolean, isUnion: boolean
     disguised: attrBool(node, "disguised"),
     opaque: attrBool(node, "opaque"),
     introspectable: attrBool(node, "introspectable", true),
-    fields: childrenOf(node, "field").map(fieldFromNode),
-    methods: childrenOf(node, "method").map((method) => functionFromNode(method, "method")),
-    constructors: childrenOf(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, "constructor")),
-    functions: childrenOf(node, "function").map((function_) => functionFromNode(function_, "function")),
+    fields: childrenOf(node, "field").map((field) => fieldFromNode(field, context)),
+    methods: childrenOf(node, "method").map((method) => functionFromNode(method, "method", context)),
+    constructors: childrenOf(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, "constructor", context)),
+    functions: childrenOf(node, "function").map((function_) => functionFromNode(function_, "function", context)),
     isUnion,
 });
 

@@ -1,5 +1,6 @@
 import { functionFromNode, type GirFunction } from "./function.js";
 import { attr, attrBool, childrenOf, type RawNode } from "./parse.js";
+import type { ParseContext } from "./type-id.js";
 
 /** A single `<member>` of an `<enumeration>` or `<bitfield>`. */
 type EnumMember = {
@@ -36,8 +37,9 @@ export type GirEnum = {
  *
  * @param node - The XML element
  * @param kind - `"enumeration"` or `"bitfield"`, matching the element name
+ * @param context - The per-namespace interning seam
  */
-export const enumFromNode = (node: RawNode, kind: EnumKind): GirEnum => ({
+export const enumFromNode = (node: RawNode, kind: EnumKind, context: ParseContext): GirEnum => ({
     kind,
     name: attr(node, "name") ?? "",
     glibTypeName: attr(node, "glib:type-name"),
@@ -49,5 +51,5 @@ export const enumFromNode = (node: RawNode, kind: EnumKind): GirEnum => ({
         value: attr(member, "value") ?? "0",
         cIdentifier: attr(member, "c:identifier"),
     })),
-    functions: childrenOf(node, "function").map((function_) => functionFromNode(function_, "function")),
+    functions: childrenOf(node, "function").map((function_) => functionFromNode(function_, "function", context)),
 });

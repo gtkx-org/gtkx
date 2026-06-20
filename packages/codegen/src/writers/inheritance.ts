@@ -2,9 +2,26 @@ import { toCamelIdentifier, toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirProperty } from "../gir/property.js";
-import { type ResolvedQualifiedClass, resolveQualifiedClass, splitQualifiedName } from "../gir/qualified-name.js";
-import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirRepository } from "../gir/repository.js";
+
+/**
+ * A class or interface resolved to its declaration and the namespace that
+ * declares it — the ancestry walk's per-step result.
+ */
+export type ResolvedQualifiedClass = {
+    readonly klass: GirClass;
+    readonly namespaceName: string;
+};
+
+const resolveClassOrInterface = (
+    repository: GirRepository,
+    defaultNamespace: string,
+    name: string,
+): ResolvedQualifiedClass | undefined => {
+    const resolved = repository.resolveType(defaultNamespace, name);
+    if (resolved === undefined || (resolved.kind !== "class" && resolved.kind !== "interface")) return undefined;
+    return { klass: resolved.value, namespaceName: resolved.namespace.name };
+};
 
 /**
  * The minimal context the ancestry walkers read: the repository to resolve
@@ -41,8 +58,7 @@ export const resolveImplementedInterface = (
     name: string,
     defaultNamespace: string = context.namespace.name,
 ): ResolvedInterface | undefined => {
-    const { namespaceName, typeName } = splitQualifiedName(name, defaultNamespace);
-    const resolved = context.repository.resolveNamed(namespaceName, typeName);
+    const resolved = context.repository.resolveType(defaultNamespace, name);
     if (resolved === undefined || resolved.kind !== "interface") return undefined;
     return { klass: resolved.value, namespaceName: resolved.namespace.name };
 };
@@ -78,11 +94,10 @@ export const resolveDirectInterfaces = (
  * @param name - The (possibly cross-namespace) prerequisite name
  */
 export const resolvePrerequisiteReference = (context: ModuleContext, name: string): string | undefined => {
-    const { namespaceName, typeName } = splitQualifiedName(name, context.namespace.name);
-    const resolved = context.repository.resolveNamed(namespaceName, typeName);
+    const resolved = context.repository.resolveType(context.namespace.name, name);
     if (resolved === undefined) return undefined;
     if (resolved.kind !== "interface" && resolved.kind !== "class") return undefined;
-    return context.qualify(namespaceName, toPascalCase(typeName));
+    return context.qualify(resolved.namespace.name, toPascalCase(resolved.value.name));
 };
 
 /**
@@ -108,7 +123,7 @@ export const forEachAncestor = (
     let current =
         klass.parent === undefined ? undefined : { name: klass.parent, defaultNamespace: context.namespace.name };
     while (current !== undefined) {
-        const resolved = resolveQualifiedClass(context.repository, current.name, current.defaultNamespace);
+        const resolved = resolveClassOrInterface(context.repository, current.defaultNamespace, current.name);
         if (resolved === undefined || stop(resolved.klass)) break;
         const key = `${resolved.namespaceName}.${resolved.klass.name}`;
         if (visited.has(key)) break;
@@ -147,7 +162,7 @@ export const collectInterfaceProperties = (context: ModuleContext, klass: GirCla
             const name = toCamelIdentifier(property.name);
             if (seen.has(name)) continue;
             seen.add(name);
-            result.push({ ...property, type: qualifyTypeRef(property.type, iface.namespaceName) });
+            result.push(property);
         }
     }
     return result;

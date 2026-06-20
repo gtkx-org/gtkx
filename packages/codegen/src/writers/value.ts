@@ -1,8 +1,7 @@
 import { quote } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { joinArgs } from "../dsl/emit.js";
-import { callbackFromNode, type GirCallback } from "../gir/callback.js";
-import type { GirNamespace } from "../gir/namespace.js";
+import type { GirCallback } from "../gir/callback.js";
 import {
     type GirParameter,
     isCallerAllocatedOut,
@@ -11,10 +10,9 @@ import {
     type ParameterTransfer,
 } from "../gir/parameter.js";
 import type { PrimitiveCategory } from "../gir/primitives.js";
-import { splitQualifiedName } from "../gir/qualified-name.js";
-import { qualifyTypeRef } from "../gir/qualify.js";
-import type { GirRepository, ResolvedNamed } from "../gir/repository.js";
-import type { ArrayTypeRef, GirTypeRef, NamedTypeRef } from "../gir/type-ref.js";
+import type { GirRepository } from "../gir/repository.js";
+import type { EntityType, GirType } from "../gir/type.js";
+import type { CArrayType, TypeId } from "../gir/type-id.js";
 import { computeBoxedFieldSlots } from "./boxed-layout.js";
 
 /**
@@ -63,78 +61,95 @@ type RenderFfiTypeOptions = {
 };
 
 /**
+ * Whether a type slot is void: an absent slot or a `void` primitive.
+ *
+ * @param repository - The GIR repository
+ * @param ref - The interned type slot, or `undefined`
+ */
+export const isVoidRef = (repository: GirRepository, ref: TypeId | undefined): boolean => {
+    if (ref === undefined) return true;
+    const type = repository.typeOf(ref);
+    return type?.kind === "primitive" && type.category === "void";
+};
+
+/**
+ * Whether a type slot is an inline `<callback>` (a vtable slot's anonymous
+ * function pointer) rather than a reference to a namespace-level callback type.
+ * A named callback resolves to the same `callback` kind but carries a recoverable
+ * name; only the anonymous inline form is a structural vtable slot.
+ *
+ * @param repository - The GIR repository
+ * @param ref - The interned type slot, or `undefined`
+ */
+export const isInlineCallbackRef = (repository: GirRepository, ref: TypeId | undefined): boolean =>
+    ref !== undefined && repository.typeOf(ref)?.kind === "callback" && repository.nameOf(ref) === undefined;
+
+/**
  * Renders a TypeScript expression that materialises the FFI type
  * descriptor for `ref`.
  *
  * @param context - The module context (used for cross-namespace imports)
- * @param ref - The GIR type reference, or `undefined` for void
+ * @param ref - The interned type slot, or `undefined` for void
  * @param transfer - GIR transfer-ownership conveyed onto the descriptor
  * @param options - Optional rendering controls (see {@link RenderFfiTypeOptions})
  */
 export const renderFfiType = (
     context: ModuleContext,
-    ref: GirTypeRef | undefined,
+    ref: TypeId | undefined,
     transfer: ParameterTransfer = "none",
     options: RenderFfiTypeOptions = {},
 ): string => {
     if (ref === undefined) return "t.void";
     const { argIndexOffset = 0, callerAllocated = false } = options;
     const ownership = ffiOwnership(transfer);
-    switch (ref.kind) {
+    const type = context.repository.typeOf(ref);
+    if (type === undefined) return `t.object(${quote(ownership)})`;
+    switch (type.kind) {
         case "primitive":
-            return primitiveExpression(ref.category, ownership);
+            return primitiveExpression(type.category, ownership);
         case "varargs":
-            return "t.void";
         case "callback":
             return "t.void";
-        case "named":
-            return namedExpression(context, ref, ownership, callerAllocated);
-        case "array":
-            return arrayExpression(context, ref, transfer, argIndexOffset);
+        case "class":
+        case "interface":
+        case "boxed":
+        case "enum":
+        case "alias":
+            return expressionForResolved(context, type, ownership, callerAllocated);
+        case "carray":
+            return arrayExpression(context, type, transfer, argIndexOffset);
         case "list": {
-            if (ref.flavor === "gbytearray") return `t.byteArray(${quote(ownership)})`;
-            const element = renderFfiType(context, ref.element, deriveElementTransfer(transfer), { argIndexOffset });
-            const helper = LIST_HELPERS[ref.flavor];
+            if (type.flavor === "gbytearray") return `t.byteArray(${quote(ownership)})`;
+            const element = renderFfiType(context, type.element, deriveElementTransfer(transfer), { argIndexOffset });
+            const helper = LIST_HELPERS[type.flavor];
             return `t.${helper}(${element}, ${quote(ownership)})`;
         }
         case "hashtable": {
             const elementTransfer = deriveElementTransfer(transfer);
-            const key = renderFfiType(context, ref.key, elementTransfer, { argIndexOffset });
-            const value = renderFfiType(context, ref.value, elementTransfer, { argIndexOffset });
+            const key = renderFfiType(context, type.key, elementTransfer, { argIndexOffset });
+            const value = renderFfiType(context, type.value, elementTransfer, { argIndexOffset });
             return `t.hashTable(${key}, ${value}, ${quote(ownership)})`;
         }
     }
 };
 
-/**
- * A callback declaration resolved from a parameter type, together with the
- * namespace its parameter and return references belong to.
- */
+/** A callback declaration resolved from a parameter type. */
 export type ResolvedCallback = {
     readonly callback: GirCallback;
-    readonly namespaceName: string;
 };
 
 /**
  * Resolves a parameter type reference to its callback declaration, whether
- * declared inline (`<callback>` child) or by name (a namespace-level
- * `<callback>`). Returns `undefined` for non-callback references.
+ * declared inline or by name. Returns `undefined` for non-callback references.
  *
  * @param context - The module context
- * @param ref - The parameter type reference
+ * @param ref - The parameter type slot
  */
-export const resolveCallbackType = (
-    context: ModuleContext,
-    ref: GirTypeRef | undefined,
-): ResolvedCallback | undefined => {
+export const resolveCallbackType = (context: ModuleContext, ref: TypeId | undefined): ResolvedCallback | undefined => {
     if (ref === undefined) return undefined;
-    if (ref.kind === "callback")
-        return { callback: callbackFromNode(ref.callback), namespaceName: context.namespace.name };
-    if (ref.kind !== "named") return undefined;
-    const owner = ref.namespaceName ?? context.namespace.name;
-    const resolved = context.repository.resolveNamed(owner, ref.typeName);
-    if (resolved === undefined || resolved.kind !== "callback") return undefined;
-    return { callback: resolved.value, namespaceName: resolved.namespace.name };
+    const type = context.repository.typeOf(ref);
+    if (type?.kind !== "callback") return undefined;
+    return { callback: type.value };
 };
 
 /**
@@ -145,19 +160,15 @@ export const resolveCallbackType = (
  * be uninitialized, so reading the incoming value would be unsound.
  *
  * @param repository - The GIR repository
- * @param namespaceName - The namespace the reference is resolved against
- * @param ref - The type reference
+ * @param ref - The interned type slot
  */
-export const isScalarRef = (repository: GirRepository, namespaceName: string, ref: GirTypeRef | undefined): boolean => {
+export const isScalarRef = (repository: GirRepository, ref: TypeId | undefined): boolean => {
     if (ref === undefined) return false;
-    if (ref.kind === "primitive") return ref.category !== "string" && ref.category !== "void";
-    if (ref.kind !== "named") return false;
-    const resolved = repository.resolveNamed(ref.namespaceName ?? namespaceName, ref.typeName);
-    if (resolved === undefined) return false;
-    if (resolved.kind === "enum") return true;
-    if (resolved.kind === "alias") {
-        return resolved.targetRef !== undefined && isScalarRef(repository, resolved.namespace.name, resolved.targetRef);
-    }
+    const type = repository.typeOf(ref);
+    if (type === undefined) return false;
+    if (type.kind === "primitive") return type.category !== "string" && type.category !== "void";
+    if (type.kind === "enum") return true;
+    if (type.kind === "alias") return type.target !== undefined && isScalarRef(repository, type.target);
     return false;
 };
 
@@ -175,7 +186,7 @@ export const isScalarRef = (repository: GirRepository, namespaceName: string, re
  * @param parameter - The parameter to test
  */
 export const isCellInout = (context: ModuleContext, parameter: GirParameter): boolean =>
-    isInoutParameter(parameter) && isScalarRef(context.repository, context.namespace.name, parameter.type);
+    isInoutParameter(parameter) && isScalarRef(context.repository, parameter.type);
 
 /**
  * Renders one handler-callback parameter's FFI descriptor — shared by vfunc
@@ -186,12 +197,12 @@ export const isCellInout = (context: ModuleContext, parameter: GirParameter): bo
  *
  * @param context - The module context.
  * @param parameter - The parameter, supplying the out/caller-allocated predicates.
- * @param ref - The parameter's type reference, already namespace-qualified.
+ * @param ref - The parameter's interned type slot.
  */
 export const renderHandlerArgType = (
     context: ModuleContext,
     parameter: GirParameter,
-    ref: GirTypeRef | undefined,
+    ref: TypeId | undefined,
 ): string => {
     if (isCellInout(context, parameter)) {
         return `t.ref(${renderFfiType(context, ref, parameter.transferOwnership)}, true)`;
@@ -214,27 +225,26 @@ export const renderHandlerArgType = (
  * descriptor. Returns `undefined` when `ref` is not a callback.
  *
  * @param context - The module context
- * @param ref - The parameter type reference
+ * @param ref - The parameter type slot
  * @param owningParameter - The parameter that carries the callback, for scope/destroy
  */
 export const renderCallbackType = (
     context: ModuleContext,
-    ref: GirTypeRef | undefined,
+    ref: TypeId | undefined,
     owningParameter: GirParameter,
 ): string | undefined => {
     const resolved = resolveCallbackType(context, ref);
     if (resolved === undefined) return undefined;
-    const { callback, namespaceName } = resolved;
-    const argTypes = callback.parameters.map((parameter) =>
-        renderHandlerArgType(context, parameter, qualifyTypeRef(parameter.type, namespaceName)),
-    );
+    const { callback } = resolved;
+    const argTypes = callback.parameters.map((parameter) => renderHandlerArgType(context, parameter, parameter.type));
     let userDataIndex: number | undefined;
     callback.parameters.forEach((parameter, index) => {
         if (parameter.name === "user_data" || parameter.name === "data") userDataIndex = index;
     });
-    const returnRef = qualifyTypeRef(callback.returnValue.type, namespaceName);
-    const isVoid = returnRef === undefined || (returnRef.kind === "primitive" && returnRef.category === "void");
-    const returnType = isVoid ? "t.void" : renderFfiType(context, returnRef, callback.returnValue.transferOwnership);
+    const returnRef = callback.returnValue.type;
+    const returnType = isVoidRef(context.repository, returnRef)
+        ? "t.void"
+        : renderFfiType(context, returnRef, callback.returnValue.transferOwnership);
     const options: string[] = [];
     if (owningParameter.destroyIndex !== undefined) options.push("hasDestroy: true");
     if (userDataIndex !== undefined) options.push(`userDataIndex: ${userDataIndex}`);
@@ -257,20 +267,6 @@ const primitiveExpression = (category: PrimitiveCategory, ownership: "borrowed" 
     if (category === "pointer") return "t.uint64";
     if (category === "gtype") return "t.biguint64";
     return `t.${category}`;
-};
-
-const namedExpression = (
-    context: ModuleContext,
-    ref: NamedTypeRef,
-    ownership: "borrowed" | "full",
-    callerAllocated = false,
-): string => {
-    const namespaceName = ref.namespaceName ?? context.namespace.name;
-    const resolved = context.repository.resolveNamed(namespaceName, ref.typeName);
-    if (resolved === undefined) {
-        return `t.object(${quote(ownership)})`;
-    }
-    return expressionForResolved(context, resolved, ownership, callerAllocated);
 };
 
 type FundamentalDescriptor = {
@@ -307,7 +303,7 @@ const renderFundamental = (descriptor: FundamentalDescriptor): string => {
 };
 
 const classOrInterfaceExpression = (
-    resolved: Extract<ResolvedNamed, { kind: "class" | "interface" }>,
+    resolved: Extract<EntityType, { kind: "class" | "interface" }>,
     ownership: "borrowed" | "full",
 ): string => {
     const cls = resolved.value;
@@ -335,27 +331,25 @@ type AncestorFundamental = {
 
 const fundamentalAncestor = (
     context: ModuleContext,
-    namespaceName: string,
-    typeName: string,
+    start: Extract<EntityType, { kind: "class" | "interface" }>,
 ): AncestorFundamental | undefined => {
     const seen = new Set<string>();
-    let owner = namespaceName;
-    let name = typeName;
-    while (!seen.has(`${owner}.${name}`)) {
-        seen.add(`${owner}.${name}`);
-        const resolved = context.repository.resolveNamed(owner, name);
-        if (resolved === undefined || (resolved.kind !== "class" && resolved.kind !== "interface")) return undefined;
-        const cls = resolved.value;
+    let current: GirType | undefined = start;
+    while (current !== undefined && (current.kind === "class" || current.kind === "interface")) {
+        const key = `${current.namespace.name}.${current.value.name}`;
+        if (seen.has(key)) return undefined;
+        seen.add(key);
+        const cls = current.value;
         if (cls.fundamental && cls.glibRefFunc !== undefined && cls.glibUnrefFunc !== undefined) {
             return {
-                lib: resolved.namespace.sharedLibrary ?? "",
+                lib: current.namespace.sharedLibrary ?? "",
                 refFunc: cls.glibRefFunc,
                 unrefFunc: cls.glibUnrefFunc,
                 glibTypeName: cls.glibTypeName,
             };
         }
         if (cls.parent === undefined) return undefined;
-        ({ namespaceName: owner, typeName: name } = splitQualifiedName(cls.parent, resolved.namespace.name));
+        current = context.repository.resolveType(current.namespace.name, cls.parent);
     }
     return undefined;
 };
@@ -375,23 +369,22 @@ const fundamentalAncestor = (
  */
 export const renderSelfFfiType = (context: ModuleContext, instance: GirParameter): string => {
     const ref = instance.type;
-    if (ref === undefined || ref.kind !== "named") return `t.object("borrowed")`;
-    const owner = ref.namespaceName ?? context.namespace.name;
-    const resolved = context.repository.resolveNamed(owner, ref.typeName);
-    if (resolved === undefined) return `t.object("borrowed")`;
-    if (resolved.kind === "class" || resolved.kind === "interface") {
-        const ancestor = fundamentalAncestor(context, owner, ref.typeName);
+    if (ref === undefined) return `t.object("borrowed")`;
+    const type = context.repository.typeOf(ref);
+    if (type === undefined) return `t.object("borrowed")`;
+    if (type.kind === "class" || type.kind === "interface") {
+        const ancestor = fundamentalAncestor(context, type);
         return ancestor === undefined
             ? `t.object("borrowed")`
             : renderFundamental({ ...ancestor, ownership: "borrowed" });
     }
-    if (resolved.kind === "boxed" && isReferenceableBoxed(resolved.value)) {
-        return boxedExpression(context, resolved, ffiOwnership(instance.transferOwnership));
+    if (type.kind === "boxed" && isReferenceableBoxed(type.value)) {
+        return boxedExpression(context, type, ffiOwnership(instance.transferOwnership));
     }
     return `t.object("borrowed")`;
 };
 
-type ResolvedBoxed = Extract<ResolvedNamed, { kind: "boxed" }>["value"];
+type ResolvedBoxed = Extract<EntityType, { kind: "boxed" }>["value"];
 
 /**
  * The ref/unref function pair a boxed record marshals through, drawn in
@@ -436,7 +429,7 @@ const boxedNeedsFallbackClass = (boxed: ResolvedBoxed): boolean => {
  */
 const structExpression = (
     context: ModuleContext,
-    resolved: Extract<ResolvedNamed, { kind: "boxed" }>,
+    resolved: Extract<EntityType, { kind: "boxed" }>,
     ownership: "borrowed" | "full",
     callerAllocated: boolean,
 ): string => {
@@ -454,7 +447,7 @@ const structExpression = (
 
 const boxedExpression = (
     context: ModuleContext,
-    resolved: Extract<ResolvedNamed, { kind: "boxed" }>,
+    resolved: Extract<EntityType, { kind: "boxed" }>,
     ownership: "borrowed" | "full",
     callerAllocated = false,
 ): string => {
@@ -492,7 +485,7 @@ const boxedExpression = (
 
 const expressionForResolved = (
     context: ModuleContext,
-    resolved: ResolvedNamed,
+    resolved: Extract<EntityType, { kind: "class" | "interface" | "boxed" | "enum" | "alias" }>,
     ownership: "borrowed" | "full",
     callerAllocated = false,
 ): string => {
@@ -510,26 +503,20 @@ const expressionForResolved = (
             const helper = resolved.value.kind === "bitfield" ? "flags" : "enum";
             return `t.${helper}(${quote(lib)}, ${quote(getter)}, ${String(signed)})`;
         }
-        case "callback":
-            return "t.void";
         case "alias":
-            return aliasExpression(context, {
-                namespace: resolved.namespace,
-                targetRef: resolved.targetRef,
-                ownership,
-            });
+            return aliasExpression(context, resolved.target, ownership);
     }
 };
 
 const arrayExpression = (
     context: ModuleContext,
-    ref: ArrayTypeRef,
+    ref: CArrayType,
     transfer: ParameterTransfer,
     argIndexOffset: number,
 ): string => {
     const ownership = ffiOwnership(transfer);
     const element = renderFfiType(context, ref.element, deriveElementTransfer(transfer), { argIndexOffset });
-    const size = inlineElementSize(context, ref.element);
+    const size = inlineElementSize(context, ref.element, ref.elementCType);
     const sizeArg = size === undefined ? "" : `, ${size}`;
     if (ref.lengthParameterIndex !== undefined) {
         return `t.sizedArray(${element}, ${ref.lengthParameterIndex + argIndexOffset}, ${quote(ownership)}${sizeArg})`;
@@ -547,29 +534,28 @@ const arrayExpression = (
  * buffer. Returns `undefined` for pointer elements (objects, strings, boxed
  * pointers) and primitives, which the native layer already sizes.
  */
-const inlineElementSize = (context: ModuleContext, element: GirTypeRef | undefined): number | undefined => {
-    if (element === undefined || element.kind !== "named") return undefined;
-    const owner = element.namespaceName ?? context.namespace.name;
-    if (element.cType?.includes("*")) return undefined;
-    const resolved = context.repository.resolveNamed(owner, element.typeName);
-    if (resolved === undefined || resolved.kind !== "boxed") return undefined;
-    const boxed = resolved.value;
+const inlineElementSize = (
+    context: ModuleContext,
+    element: TypeId | undefined,
+    elementCType: string | undefined,
+): number | undefined => {
+    if (element === undefined) return undefined;
+    if (elementCType?.includes("*")) return undefined;
+    const type = context.repository.typeOf(element);
+    if (type?.kind !== "boxed") return undefined;
+    const boxed = type.value;
     if (boxed.opaque || boxed.disguised || boxed.fields.length === 0) return undefined;
     const { size } = computeBoxedFieldSlots(context, boxed.fields, boxed.isUnion);
     return size > 0 ? size : undefined;
 };
 
-type AliasExpressionOptions = {
-    readonly namespace: GirNamespace;
-    readonly targetRef: GirTypeRef | undefined;
-    readonly ownership: "borrowed" | "full";
-};
-
-const aliasExpression = (context: ModuleContext, options: AliasExpressionOptions): string => {
-    const { namespace, targetRef, ownership } = options;
-    const qualified = qualifyTypeRef(targetRef, namespace.name);
-    if (qualified === undefined) {
+const aliasExpression = (
+    context: ModuleContext,
+    target: TypeId | undefined,
+    ownership: "borrowed" | "full",
+): string => {
+    if (target === undefined) {
         return `t.object(${quote(ownership)})`;
     }
-    return renderFfiType(context, qualified, ownership === "full" ? "full" : "none");
+    return renderFfiType(context, target, ownership === "full" ? "full" : "none");
 };

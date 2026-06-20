@@ -1,5 +1,6 @@
 import type { ModuleContext } from "../dsl/context.js";
-import type { GirTypeRef, NamedTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
+import type { PrimitiveCategory } from "../gir/primitives.js";
+import type { TypeId } from "../gir/type-id.js";
 import { renderFfiType } from "./value.js";
 
 /**
@@ -19,7 +20,7 @@ import { renderFfiType } from "./value.js";
  * Inputs for {@link wrapReturnValue}.
  */
 export type WrapReturnOptions = {
-    readonly ref: GirTypeRef | undefined;
+    readonly ref: TypeId | undefined;
     readonly nullable: boolean;
     readonly valueExpression: string;
 };
@@ -38,38 +39,24 @@ export type WrapReturnOptions = {
 export const wrapReturnValue = (context: ModuleContext, options: WrapReturnOptions): string => {
     const { ref, nullable, valueExpression } = options;
     if (ref === undefined) return valueExpression;
-    if (ref.kind === "primitive") return wrapPrimitive(ref, nullable, valueExpression);
-    if (ref.kind === "callback" || ref.kind === "varargs") return `(${valueExpression} as unknown[])`;
-    if (ref.kind === "named") {
-        const inline = wrapNamedInline(context, ref, nullable, valueExpression);
-        if (inline !== undefined) return inline;
+    const type = context.repository.typeOf(ref);
+    if (type === undefined) return wrapViaFfiValue(context, ref, valueExpression);
+    switch (type.kind) {
+        case "primitive":
+            return wrapPrimitive(type.category, nullable, valueExpression);
+        case "varargs":
+            return `(${valueExpression} as unknown[])`;
+        case "callback":
+            return context.repository.nameOf(ref) === undefined ? `(${valueExpression} as unknown[])` : valueExpression;
+        case "enum":
+            return `(${valueExpression} as number)`;
+        case "alias":
+            return type.target === undefined
+                ? valueExpression
+                : wrapReturnValue(context, { ref: type.target, nullable, valueExpression });
+        default:
+            return wrapViaFfiValue(context, ref, valueExpression);
     }
-    return wrapViaFfiValue(context, ref, valueExpression);
-};
-
-/**
- * The inline wrap for a named type needing no registry wrapper — an enum (a
- * number), a callback (passthrough), or an alias resolving to one — or
- * `undefined` for a class/interface/boxed type, which routes through
- * {@link wrapViaFfiValue} instead.
- */
-const wrapNamedInline = (
-    context: ModuleContext,
-    ref: NamedTypeRef,
-    nullable: boolean,
-    valueExpression: string,
-): string | undefined => {
-    const owner = ref.namespaceName ?? context.namespace.name;
-    const resolved = context.repository.resolveNamed(owner, ref.typeName);
-    if (resolved === undefined) return undefined;
-    if (resolved.kind === "enum") return `(${valueExpression} as number)`;
-    if (resolved.kind === "callback") return valueExpression;
-    if (resolved.kind === "alias") {
-        return resolved.targetRef === undefined
-            ? valueExpression
-            : wrapReturnValue(context, { ref: resolved.targetRef, nullable, valueExpression });
-    }
-    return undefined;
 };
 
 /**
@@ -79,14 +66,13 @@ const wrapNamedInline = (
  * the descriptor itself carries the fallback wrapper class for an identity-less
  * value, so none is threaded here.
  */
-const wrapViaFfiValue = (context: ModuleContext, ref: GirTypeRef, valueExpression: string): string => {
+const wrapViaFfiValue = (context: ModuleContext, ref: TypeId, valueExpression: string): string => {
     context.addRuntimeImport("wrapValue");
     const descriptor = context.hoistFfiType(renderFfiType(context, ref, "none"));
     return `wrapValue(${descriptor}, ${valueExpression})`;
 };
 
-const wrapPrimitive = (ref: PrimitiveTypeRef, nullable: boolean, valueExpression: string): string => {
-    const category = ref.category;
+const wrapPrimitive = (category: PrimitiveCategory, nullable: boolean, valueExpression: string): string => {
     if (category === "void") return valueExpression;
     if (category === "string") return `(${valueExpression} as ${nullable ? "string | null" : "string"})`;
     if (category === "boolean") return `Boolean(${valueExpression})`;

@@ -299,4 +299,13 @@ describe("repository lookups", () => {
         expect(repository.resolveNamed("GLib", "NoSuchType")).toBeUndefined();
         expect(repository.resolveNamed("NoSuchNamespace", "Thing")).toBeUndefined();
     });
+
+    it("leaves only non-introspectable C types unresolved across the closure", () => {
+        const unresolved = repository.collectUnresolved();
+        const unexpected = unresolved.filter((name) => {
+            const local = name.slice(name.indexOf(".") + 1);
+            return local !== "va_list" && local !== "";
+        });
+        expect(unexpected).toEqual([]);
+    });
 });

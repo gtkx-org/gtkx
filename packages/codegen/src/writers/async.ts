@@ -1,4 +1,5 @@
 import type { GirFunction } from "../gir/function.js";
+import type { GirRepository } from "../gir/repository.js";
 
 /**
  * Detects the start half of a `Gio.AsyncReady` callable pair.
@@ -13,13 +14,18 @@ import type { GirFunction } from "../gir/function.js";
  * matching finish counterpart's GIR name when one exists in the same
  * set of callables, so the class writer can wire the wrapper.
  *
+ * @param repository - The GIR repository, to name a callback parameter type
  * @param fn - The candidate async-start callable
  * @param siblings - Other callables on the same type to scan for the
  *     matching `*_finish`
  * @returns The matching `*_finish` GIR name, or `undefined` when there is
  *     no pair
  */
-export const matchAsyncFinishName = (fn: GirFunction, siblings: readonly GirFunction[]): string | undefined => {
+export const matchAsyncFinishName = (
+    repository: GirRepository,
+    fn: GirFunction,
+    siblings: readonly GirFunction[],
+): string | undefined => {
     if (fn.name.endsWith("_async")) {
         const root = fn.name.slice(0, -"_async".length);
         const finishName = `${root}_finish`;
@@ -30,15 +36,15 @@ export const matchAsyncFinishName = (fn: GirFunction, siblings: readonly GirFunc
     const finishName = `${fn.name}_finish`;
     const match = siblings.find((sibling) => sibling.name === finishName);
     if (match === undefined) return undefined;
-    if (!hasAsyncReadyCallbackParameter(fn)) return undefined;
+    if (!hasAsyncReadyCallbackParameter(repository, fn)) return undefined;
     return finishName;
 };
 
-const hasAsyncReadyCallbackParameter = (fn: GirFunction): boolean => {
+const hasAsyncReadyCallbackParameter = (repository: GirRepository, fn: GirFunction): boolean => {
     for (const parameter of fn.parameters) {
         if (parameter.scope !== undefined) return true;
-        if (parameter.type?.kind !== "named") continue;
-        if (parameter.type.typeName === "AsyncReadyCallback") return true;
+        if (parameter.type === undefined) continue;
+        if (repository.nameOf(parameter.type)?.typeName === "AsyncReadyCallback") return true;
     }
     return false;
 };

@@ -3,7 +3,7 @@ import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
 import type { GirFunction } from "../gir/function.js";
 import type { GirProperty } from "../gir/property.js";
-import type { GirTypeRef } from "../gir/type-ref.js";
+import type { TypeId } from "../gir/type-id.js";
 import { renderMethodReturnType } from "./method.js";
 import { renderTsType } from "./ts-type.js";
 import { renderFfiType } from "./value.js";
@@ -19,14 +19,13 @@ import { renderFfiType } from "./value.js";
  * @param context - The module context
  * @param type - The property's value type
  */
-const isNullablePropertyType = (context: ModuleContext, type: GirTypeRef | undefined): boolean => {
+const isNullablePropertyType = (context: ModuleContext, type: TypeId | undefined): boolean => {
     if (type === undefined) return false;
-    if (type.kind === "primitive") return false;
-    if (type.kind !== "named") return true;
-    const resolved = context.repository.resolveNamed(type.namespaceName ?? context.namespace.name, type.typeName);
+    const resolved = context.repository.typeOf(type);
     if (resolved === undefined) return true;
+    if (resolved.kind === "primitive") return false;
     if (resolved.kind === "enum") return false;
-    if (resolved.kind === "alias") return isNullablePropertyType(context, resolved.targetRef);
+    if (resolved.kind === "alias") return isNullablePropertyType(context, resolved.target);
     return true;
 };
 

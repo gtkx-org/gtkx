@@ -3,7 +3,7 @@ import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirProperty } from "../gir/property.js";
-import { splitQualifiedName } from "../gir/qualified-name.js";
+import { splitOptionalNamespace } from "../gir/type-ref.js";
 import { collectInterfaceProperties } from "./inheritance.js";
 import { renderTsType } from "./ts-type.js";
 import { renderFfiType } from "./value.js";
@@ -126,7 +126,8 @@ const renderTranslatingConstructor = (
 
 const resolveParentPropsReference = (context: ModuleContext, klass: GirClass): string | undefined => {
     if (klass.parent === undefined) return undefined;
-    const { namespaceName, typeName } = splitQualifiedName(klass.parent, context.namespace.name);
+    const [parentNamespace, typeName] = splitOptionalNamespace(klass.parent);
+    const namespaceName = parentNamespace ?? context.namespace.name;
     const propsName = `${toPascalCase(typeName)}ConstructorProps`;
     if (namespaceName === context.namespace.name) return propsName;
     const alias = context.addCrossNamespaceImport(namespaceName);
