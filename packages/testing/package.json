@@ -52,8 +52,6 @@
         "@gtkx/utils": "workspace:*"
     },
     "devDependencies": {
-        "@gtkx/vitest": "workspace:*",
-        "@types/react-reconciler": "^0.33.0",
-        "react-reconciler": "^0.33.0"
+        "@gtkx/vitest": "workspace:*"
     }
 }
