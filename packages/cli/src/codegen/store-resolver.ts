@@ -1,7 +1,8 @@
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, parse } from "node:path";
 import { pathToFileURL } from "node:url";
+import { type GtkxConfig, GtkxConfigNotFoundError, loadGtkxConfig } from "@gtkx/config";
 
 const CONFIG_FILENAMES: readonly string[] = ["gtkx.config.ts", "gtkx.config.js", "gtkx.config.mjs"];
 
@@ -147,4 +148,47 @@ export const resolveCodegenStore = (projectRoot: string): CodegenStore => {
         react: react === null ? null : { realDir: react.dir, version: react.version },
         realReactRuntimeDir: reactRuntime?.dir ?? null,
     };
+};
+
+/**
+ * Removes a workspace member's own generated binding packages and aliases so
+ * they cannot shadow the shared root store.
+ *
+ * When a member shares the workspace root's store, leftover member-local
+ * `.gtkx/{gi,jsx}` trees (or their `@gtkx/{gi,jsx}` symlinks) would resolve
+ * ahead of the root copy, reintroducing the duplicate-instance split this
+ * sharing avoids. The member's `.gtkx/env.d.ts` is app-local by design and
+ * stays in place.
+ *
+ * @param memberDir - The workspace member whose shadowing store to prune
+ */
+const pruneShadowingStore = (memberDir: string): void => {
+    const nodeModules = join(memberDir, "node_modules");
+    for (const path of [
+        join(nodeModules, ".gtkx", "gi"),
+        join(nodeModules, ".gtkx", "jsx"),
+        join(nodeModules, "@gtkx", "gi"),
+        join(nodeModules, "@gtkx", "jsx"),
+    ]) {
+        rmSync(path, { recursive: true, force: true });
+    }
+};
+
+/**
+ * Resolves the codegen root and configuration for `cwd`, pruning a member's
+ * shadowing store along the way.
+ *
+ * @param cwd - Project root in which to look for `gtkx.config.ts`
+ * @returns The resolved root and config, or `null` when no config is found
+ */
+export const resolveCodegenContext = async (cwd: string): Promise<{ root: string; config: GtkxConfig } | null> => {
+    const root = findCodegenRoot(cwd);
+    if (root !== cwd) pruneShadowingStore(cwd);
+    try {
+        const { config } = await loadGtkxConfig(root);
+        return { root, config };
+    } catch (error) {
+        if (error instanceof GtkxConfigNotFoundError) return null;
+        throw error;
+    }
 };
