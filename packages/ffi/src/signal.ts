@@ -1,4 +1,4 @@
-import { alloc, call, type Type as FfiType, type Handle, read, type CallbackType, write } from "@gtkx/native";
+import { alloc, type CallbackType, call, type Type as FfiType, type Handle, read, write } from "@gtkx/native";
 import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
 import { arrayT, biguint64T, bind, objectT, stringT, uint32T, uint64T, voidT } from "./descriptors.js";
 import { tupleResult } from "./fn.js";
@@ -309,13 +309,6 @@ export type EmitArg = {
     readonly value?: unknown;
 };
 
-const assembleResult = (primary: unknown, hasPrimary: boolean, reads: readonly (() => unknown)[]): unknown =>
-    tupleResult(
-        reads.map((read) => read()),
-        primary,
-        hasPrimary,
-    );
-
 /**
  * Emits a GObject signal and returns its result.
  *
@@ -374,8 +367,16 @@ export function emitGobjectSignal(
     if (returnFfi !== undefined) {
         const returnValue = newValueFromFfi(returnFfi);
         gSignalEmitv(values, signalId, detail, returnValue);
-        return assembleResult(fromGvalue(returnValue), true, reads);
+        return tupleResult(
+            reads.map((emit) => emit()),
+            fromGvalue(returnValue),
+            true,
+        );
     }
     gSignalEmitv(values, signalId, detail, undefined);
-    return assembleResult(undefined, false, reads);
+    return tupleResult(
+        reads.map((emit) => emit()),
+        undefined,
+        false,
+    );
 }

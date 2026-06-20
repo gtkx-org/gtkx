@@ -217,20 +217,28 @@ const valueSetStrv = (value: Handle, v: string[]): void => {
 };
 const valueGetStrv = (value: Handle): string[] => (gValueGetBoxedStrv(value) as string[] | null) ?? [];
 
-/** Sets the boxed payload of a `GValue` handle already typed with a boxed `GType`. */
-export function valueSetBoxed(value: Handle, boxed: object | null): void {
+const setBoxedPayload = (
+    value: Handle,
+    symbol: "g_value_set_boxed" | "g_value_set_static_boxed",
+    boxedHandle: Handle | null,
+): void => {
     call(
         LIB,
-        "g_value_set_boxed",
+        symbol,
         [
             { type: GVALUE_T, value },
             {
                 type: boxedT(typeName(valueGetType(value) ?? TYPE_INVALID) ?? "GBoxed", "borrowed", LIB),
-                value: boxed === null ? null : getHandle(boxed),
+                value: boxedHandle,
             },
         ],
         voidT,
     );
+};
+
+/** Sets the boxed payload of a `GValue` handle already typed with a boxed `GType`. */
+export function valueSetBoxed(value: Handle, boxed: object | null): void {
+    setBoxedPayload(value, "g_value_set_boxed", boxed === null ? null : getHandle(boxed));
 }
 
 /**
@@ -240,18 +248,7 @@ export function valueSetBoxed(value: Handle, boxed: object | null): void {
  * retains ownership, so the value must not outlive it.
  */
 export function valueSetStaticBoxed(value: Handle, boxed: object): void {
-    call(
-        LIB,
-        "g_value_set_static_boxed",
-        [
-            { type: GVALUE_T, value },
-            {
-                type: boxedT(typeName(valueGetType(value) ?? TYPE_INVALID) ?? "GBoxed", "borrowed", LIB),
-                value: getHandle(boxed),
-            },
-        ],
-        voidT,
-    );
+    setBoxedPayload(value, "g_value_set_static_boxed", getHandle(boxed));
 }
 
 /**

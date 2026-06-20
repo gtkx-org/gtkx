@@ -1,4 +1,4 @@
-import type { Ref, CallbackType, Type, Value } from "@gtkx/native";
+import type { CallbackType, Ref, Type, Value } from "@gtkx/native";
 import { bind, boxedT, refT } from "./descriptors.js";
 import { checkError } from "./gerror.js";
 import { getHandle } from "./registry.js";

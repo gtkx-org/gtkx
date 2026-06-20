@@ -36,12 +36,12 @@ type CollectedSignal = {
  * signal name `signalBaseName` strips any `::detail` suffix down to. `connect`
  * resolves the per-signal callback descriptor, wraps the handler, and hands it to the
  * thin `connectGobjectSignal` wrapper around the non-introspectable
- * `g_signal_connect_data`. `emit` marshals the arguments into `GValue`s with
- * `valueFromFfi`, resolves the signal id via the generated `signalLookup` and
- * the detail quark from the name's `::detail` suffix via `signalDetailQuark`,
- * and dispatches `signalEmitv` directly. Unknown signals route up the class
- * chain via `super.connect` / `super.emit`; the root `GObject.Object` throws
- * because it bottoms out the hierarchy.
+ * `g_signal_connect_data`. `emit` builds the per-signal `EmitArg[]` argument
+ * literal and delegates to `emitGobjectSignal`, which marshals the arguments
+ * into a `GValue` array, resolves the signal id and the `::detail` quark,
+ * dispatches `g_signal_emitv`, and assembles the tuple result. Unknown signals
+ * route up the class chain via `super.connect` / `super.emit`; the root
+ * `GObject.Object` throws because it bottoms out the hierarchy.
  *
  * Returns an empty array when the class contributes no signals of its own.
  *
