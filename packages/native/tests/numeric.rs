@@ -50,18 +50,6 @@ fn integer_dispatch_read_slice_signed() {
 }
 
 #[test]
-fn integer_kind_is_unsigned() {
-    assert!(IntegerKind::U8.is_unsigned());
-    assert!(IntegerKind::U16.is_unsigned());
-    assert!(IntegerKind::U32.is_unsigned());
-    assert!(IntegerKind::U64.is_unsigned());
-    assert!(!IntegerKind::I8.is_unsigned());
-    assert!(!IntegerKind::I16.is_unsigned());
-    assert!(!IntegerKind::I32.is_unsigned());
-    assert!(!IntegerKind::I64.is_unsigned());
-}
-
-#[test]
 fn integer_kind_byte_size() {
     assert_eq!(IntegerKind::U8.byte_size(), 1);
     assert_eq!(IntegerKind::I8.byte_size(), 1);
@@ -131,26 +119,6 @@ fn float_dispatch_write_ptr_f64() {
     // SAFETY: `ptr` addresses a writable local f64.
     unsafe { FloatKind::F64.write_ptr(ptr, std::f64::consts::PI) };
     assert!((value - std::f64::consts::PI).abs() < 0.000_000_1);
-}
-
-#[test]
-fn float_dispatch_to_ffi_value_f32() {
-    let result = FloatKind::F32.to_ffi_value(2.5);
-    if let ffi::FfiValue::F32(v) = result {
-        assert!((v - 2.5).abs() < 0.001);
-    } else {
-        panic!("Expected FfiValue::F32");
-    }
-}
-
-#[test]
-fn float_dispatch_to_ffi_value_f64() {
-    let result = FloatKind::F64.to_ffi_value(std::f64::consts::E);
-    if let ffi::FfiValue::F64(v) = result {
-        assert!((v - std::f64::consts::E).abs() < 0.000_000_1);
-    } else {
-        panic!("Expected FfiValue::F64");
-    }
 }
 
 const INTEGER_KINDS: [IntegerKind; 8] = [
@@ -579,7 +547,6 @@ fn float_codec_covers_every_kind() {
             unsafe { kind.write_ptr(slot.as_mut_ptr(), 1.5) };
             // SAFETY: `slot` is a live local 8-byte buffer.
             let _ = unsafe { kind.read_ptr(slot.as_ptr()) };
-            let _ = kind.to_ffi_value(1.5);
             kind.checked_to_ffi_value(1.5).unwrap();
             assert!(matches!(
                 // SAFETY: Null short-circuits before any read.

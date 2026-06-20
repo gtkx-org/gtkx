@@ -224,11 +224,6 @@ pub fn lossless_f64(value: i128, context: &str) -> anyhow::Result<f64> {
 
 impl IntegerKind {
     #[must_use]
-    pub fn is_unsigned(self) -> bool {
-        matches!(self, Self::U8 | Self::U16 | Self::U32 | Self::U64)
-    }
-
-    #[must_use]
     pub fn byte_size(self) -> usize {
         match self {
             Self::U8 | Self::I8 => 1,
@@ -444,14 +439,6 @@ impl FloatKind {
                 Ok(ffi::FfiValue::F32(value as f32))
             }
             Self::F64 => Ok(ffi::FfiValue::F64(value)),
-        }
-    }
-
-    #[must_use]
-    pub fn to_ffi_value(self, value: f64) -> ffi::FfiValue {
-        match self {
-            Self::F32 => ffi::FfiValue::F32(value as f32),
-            Self::F64 => ffi::FfiValue::F64(value),
         }
     }
 
