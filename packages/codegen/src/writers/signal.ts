@@ -13,7 +13,8 @@ import {
     resolveImplementedInterface,
     resolvePrerequisiteReference,
 } from "./inheritance.js";
-import { isBoxedCallerOut, isBoxedInout, renderHandlerParameters } from "./param-classify.js";
+import { isBoxedCallerOut, isBoxedInout } from "./param-marshal.js";
+import { renderHandlerParameters } from "./param-structure.js";
 import { renderTsType } from "./ts-type.js";
 import { isCellInout, omitsPrimaryReturn, renderFfiType, renderHandlerArgType } from "./value.js";
 

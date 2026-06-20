@@ -7,7 +7,7 @@ import type { GirRepository } from "../gir/repository.js";
 import type { GirSignal } from "../gir/signal.js";
 import type { TypeId } from "../gir/type-id.js";
 import { forEachAncestor, type ResolvedInterface, resolveDirectInterfaces } from "../writers/inheritance.js";
-import { renderHandlerParameters } from "../writers/param-classify.js";
+import { renderHandlerParameters } from "../writers/param-structure.js";
 import { renderBaseTypeFor, type TsTypeTarget } from "../writers/ts-type.js";
 import { isScalarRef } from "../writers/value.js";
 import { classExposesMethod, isReactNodeClass, signalHandlerName } from "./widgets.js";

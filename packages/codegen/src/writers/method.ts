@@ -2,16 +2,14 @@ import { quote, toCamelCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import type { GirFunction } from "../gir/function.js";
 import { type GirParameter, isCallerAllocatedOut, isInoutParameter, isOutParameter } from "../gir/parameter.js";
+import { isCollectibleCallerOut, isHandlePassing, passesHandleInPlace } from "./param-marshal.js";
 import {
     arrayLengthSources,
     closureAndDestroyIndices,
     foldedLengthIndices,
     inputParameters,
-    isCollectibleCallerOut,
-    isHandlePassing,
     parameterIdentifier,
-    passesHandleInPlace,
-} from "./param-classify.js";
+} from "./param-structure.js";
 import { renderTsType } from "./ts-type.js";
 import { omitsPrimaryReturn, renderCallbackType, renderFfiType, renderSelfFfiType } from "./value.js";
 

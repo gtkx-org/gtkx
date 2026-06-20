@@ -6,7 +6,7 @@ import type { GirProperty } from "../gir/property.js";
 import type { GirRepository } from "../gir/repository.js";
 import type { TypeId } from "../gir/type-id.js";
 import { methodExportName } from "./method.js";
-import { inputParameters } from "./param-classify.js";
+import { inputParameters } from "./param-structure.js";
 import { renderTsType } from "./ts-type.js";
 
 /**
