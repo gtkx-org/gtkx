@@ -77,6 +77,13 @@ export const valueInit = (value: Handle, gtype: GType): void => {
     gValueInit(value, gtype);
 };
 
+/** Allocates a fresh `GValue` and initializes it to `gtype`, ready to receive a payload. */
+export const newTypedGValue = (gtype: GType): Handle => {
+    const value = newGValue();
+    valueInit(value, gtype);
+    return value;
+};
+
 const gValueCopy = bind(LIB, "g_value_copy", [GVALUE_T, GVALUE_T], voidT);
 
 /**
@@ -378,15 +385,12 @@ function gtypeFromFfiType(ffiType: FfiType): GType {
  * @param ffiType - The FFI type descriptor.
  */
 export function newValueFromFfi(ffiType: FfiType): Handle {
-    const value = newGValue();
-    valueInit(value, gtypeFromFfiType(ffiType));
-    return value;
+    return newTypedGValue(gtypeFromFfiType(ffiType));
 }
 
 /** Builds a `GValue` holding a `GObject` instance, typed to its runtime class. */
 function objectToGvalue(value: object | null): Handle {
-    const v = newGValue();
-    valueInit(v, value ? BigInt(getType(getHandle(value))) : TYPE_OBJECT);
+    const v = newTypedGValue(value ? BigInt(getType(getHandle(value))) : TYPE_OBJECT);
     valueSetObject(v, value);
     return v;
 }
@@ -468,8 +472,7 @@ function setGvaluePayload(value: Handle, gtype: GType, ffiType: FfiType, jsValue
 export function toGvalue(ffiType: FfiType, jsValue: unknown): Handle {
     if (ffiType.type === "gobject") return objectToGvalue(jsValue as object | null);
     const gtype = gtypeFromFfiType(ffiType);
-    const value = newGValue();
-    valueInit(value, gtype);
+    const value = newTypedGValue(gtype);
     setGvaluePayload(value, gtype, ffiType, jsValue);
     return value;
 }

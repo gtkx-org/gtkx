@@ -5,13 +5,12 @@ import { tupleResult } from "./fn.js";
 import { type GType, type GTyped, TYPE_POINTER } from "./gtype.js";
 import {
     fromGvalue,
-    newGValue,
+    newTypedGValue,
     newValueFromFfi,
     resolveBoxedGtype,
     setGValuePointer,
     toGvalue,
     valueGetBoxed,
-    valueInit,
     valueSetBoxed,
     valueSetStaticBoxed,
 } from "./gvalue.js";
@@ -38,8 +37,7 @@ function outValueFromFfi(innerFfi: FfiType, initial?: unknown): { value: Handle;
     const storage = alloc(OUT_PARAM_STORAGE_SIZE);
     write(storage, uint64T, 0, 0);
     if (initial !== undefined) write(storage, innerFfi, 0, initial);
-    const value = newGValue();
-    valueInit(value, TYPE_POINTER);
+    const value = newTypedGValue(TYPE_POINTER);
     setGValuePointer(value, storage);
     return { value, read: () => read(storage, innerFfi, 0) };
 }
@@ -54,8 +52,7 @@ function outValueFromFfi(innerFfi: FfiType, initial?: unknown): { value: Handle;
  * @param boxed - The freshly allocated wrapper whose contents seed the copy.
  */
 export function outBoxedFromFfi(ffiType: FfiType, boxed: object): Handle {
-    const value = newGValue();
-    valueInit(value, resolveBoxedGtype(ffiType));
+    const value = newTypedGValue(resolveBoxedGtype(ffiType));
     valueSetBoxed(value, boxed);
     return value;
 }
@@ -72,8 +69,7 @@ export function outBoxedFromFfi(ffiType: FfiType, boxed: object): Handle {
  * @param boxed - The caller's wrapper the handler mutates in place.
  */
 export function inoutBoxedFromFfi(ffiType: FfiType, boxed: object): Handle {
-    const value = newGValue();
-    valueInit(value, resolveBoxedGtype(ffiType));
+    const value = newTypedGValue(resolveBoxedGtype(ffiType));
     valueSetStaticBoxed(value, boxed);
     return value;
 }
