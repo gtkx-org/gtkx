@@ -11,7 +11,7 @@
  * on living here too.
  */
 
-import { alloc, call, type Type as FfiType, getType, type Handle, read } from "@gtkx/native";
+import { alloc, call, type Type as FfiType, getType, type Handle, read, write } from "@gtkx/native";
 import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
 import {
     arrayT,
@@ -256,6 +256,63 @@ export function valueSetBoxed(value: Handle, boxed: object | null): void {
  */
 export function valueSetStaticBoxed(value: Handle, boxed: object): void {
     setBoxedPayload(value, "g_value_set_static_boxed", getHandle(boxed));
+}
+
+/** Storage size, in bytes, of a single out-parameter cell (a pointer or any scalar). */
+const OUT_PARAM_STORAGE_SIZE = 8;
+
+/**
+ * Builds the `G_TYPE_POINTER` GValue a signal out-parameter is emitted through,
+ * paired with a reader for the value a handler writes back.
+ *
+ * `g_signal_emitv` hands the pointer payload to handlers as the out-parameter's
+ * `T*`, so a handler writes into the freshly allocated storage; the returned
+ * `read` unmarshals that storage with `innerFfi`. The `initial` value seeds the
+ * storage for inout parameters, where the handler both reads the incoming value
+ * and overwrites it.
+ *
+ * @param innerFfi - FFI descriptor of the pointed-to value (the `t.ref` inner type).
+ * @param initial - Seed written before emission, for inout parameters.
+ */
+export function outValueFromFfi(innerFfi: FfiType, initial?: unknown): { value: Handle; read: () => unknown } {
+    const storage = alloc(OUT_PARAM_STORAGE_SIZE);
+    write(storage, uint64T, 0, 0);
+    if (initial !== undefined) write(storage, innerFfi, 0, initial);
+    const value = newTypedGValue(TYPE_POINTER);
+    setGValuePointer(value, storage);
+    return { value, read: () => read(storage, innerFfi, 0) };
+}
+
+/**
+ * Builds a `G_TYPE_BOXED` `GValue` holding a copy of `boxed`, for emitting a
+ * signal whose caller-allocated out-parameter a handler fills. The handler
+ * mutates the value's owned copy in place; the generated `emit` reads that copy
+ * back through {@link valueGetBoxed} after `g_signal_emitv` returns.
+ *
+ * @param ffiType - The boxed FFI descriptor naming the value's `GType`.
+ * @param boxed - The freshly allocated wrapper whose contents seed the copy.
+ */
+export function outBoxedFromFfi(ffiType: FfiType, boxed: object): Handle {
+    const value = newTypedGValue(resolveBoxedGtype(ffiType));
+    valueSetBoxed(value, boxed);
+    return value;
+}
+
+/**
+ * Builds a `G_TYPE_BOXED` `GValue` that references `boxed` in place (no copy),
+ * for emitting a signal whose boxed inout-parameter a handler mutates. The
+ * value shares the caller's pointer through {@link valueSetStaticBoxed}, so the
+ * handler's in-place writes land on the caller's wrapper directly; the result
+ * surfaces through that wrapper rather than the `emit` return tuple. The value
+ * must not outlive `boxed`.
+ *
+ * @param ffiType - The boxed FFI descriptor naming the value's `GType`.
+ * @param boxed - The caller's wrapper the handler mutates in place.
+ */
+export function inoutBoxedFromFfi(ffiType: FfiType, boxed: object): Handle {
+    const value = newTypedGValue(resolveBoxedGtype(ffiType));
+    valueSetStaticBoxed(value, boxed);
+    return value;
 }
 
 /**
