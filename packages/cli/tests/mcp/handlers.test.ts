@@ -11,7 +11,7 @@ const hoisted = vi.hoisted(() => ({
     typeText: vi.fn(async () => undefined),
     clear: vi.fn(async () => undefined),
     fireEvent: vi.fn(async () => undefined),
-    prettyWidget: vi.fn(() => "tree"),
+    prettyWidget: vi.fn((_container: unknown, _options?: { getId?: (w: unknown) => string }) => "tree"),
     listToplevels: vi.fn(() => [] as unknown[]),
     AccessibleRole: { BUTTON: 1, LABEL: 2 } as Record<string, number>,
 }));
@@ -106,7 +106,21 @@ describe("widget.getTree", () => {
         };
 
         expect(result.tree).toBe("rendered");
-        expect(prettyWidget).toHaveBeenCalledWith(expect.anything(), { includeIds: true, highlight: false });
+        expect(prettyWidget).toHaveBeenCalledWith(expect.anything(), {
+            getId: expect.any(Function),
+            highlight: false,
+        });
+    });
+
+    it("resolves tree ids through the registry", async () => {
+        prettyWidget.mockReturnValueOnce("rendered");
+        const registry = new WidgetRegistry();
+        const widget = makeWidget({});
+
+        await dispatch("widget.getTree", {}, { app: makeApp() as never, registry });
+
+        const getId = prettyWidget.mock.calls[0]?.[1]?.getId;
+        expect(getId?.(widget)).toBe(registry.idFor(widget));
     });
 });
 

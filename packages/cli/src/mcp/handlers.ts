@@ -101,9 +101,9 @@ const HANDLERS: Record<ServerInitiatedMethod, Handler> = {
             })),
         };
     },
-    "widget.getTree": async ({ app }) => {
+    "widget.getTree": async ({ app, registry }) => {
         const testing = await loadTestingModule();
-        return { tree: testing.prettyWidget(app, { includeIds: true, highlight: false }) };
+        return { tree: testing.prettyWidget(app, { getId: (w) => registry.idFor(w), highlight: false }) };
     },
     "widget.query": handleQuery,
     "widget.getProps": async ({ registry }, params) => {

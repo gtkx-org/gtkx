@@ -6,17 +6,14 @@ import { getWidgetPropertyText } from "./widget-text.js";
 const DEFAULT_MAX_LENGTH = 7000;
 const INDENT = "  ";
 
-const debugIdMap = new WeakMap<Gtk.Widget, string>();
-let nextDebugId = 0;
-
-const getWidgetDebugId = (widget: Gtk.Widget): string => {
-    let id = debugIdMap.get(widget);
-    if (!id) {
-        id = String(nextDebugId++);
-        debugIdMap.set(widget, id);
-    }
-    return id;
-};
+/**
+ * Resolves a stable id for a widget, for the optional `id` attribute the printer
+ * renders.
+ *
+ * @param widget - The widget to identify.
+ * @returns The id string.
+ */
+export type WidgetIdResolver = (widget: Gtk.Widget) => string;
 
 /**
  * Options for {@link prettyWidget}.
@@ -26,15 +23,18 @@ export type PrettyWidgetOptions = {
     maxLength?: number;
     /** Enable ANSI color highlighting (default: auto-detect) */
     highlight?: boolean;
-    /** Include widget IDs for MCP/agentic interactions (default: false) */
-    includeIds?: boolean;
+    /** Resolve a stable widget id for the `id` attribute, for MCP/agentic interactions */
+    getId?: WidgetIdResolver;
 };
 
-const buildAttrs = (widget: Gtk.Widget, includeIds: boolean): ReadonlyArray<readonly [string, string]> => {
+const buildAttrs = (
+    widget: Gtk.Widget,
+    getId: WidgetIdResolver | undefined,
+): ReadonlyArray<readonly [string, string]> => {
     const attrs: [string, string][] = [];
 
-    if (includeIds) {
-        attrs.push(["id", getWidgetDebugId(widget)]);
+    if (getId) {
+        attrs.push(["id", getId(widget)]);
     }
 
     const name = widget.getName();
@@ -96,10 +96,15 @@ const escapeAttrValue = (value: string): string => value.replaceAll('"', "&quot;
 const formatAttrs = (attrs: ReadonlyArray<readonly [string, string]>, colors: Colors): string =>
     attrs.map(([key, value]) => ` ${colors.attr(key)}=${colors.value(`"${escapeAttrValue(value)}"`)}`).join("");
 
-const formatWidget = (widget: Gtk.Widget, depth: number, includeIds: boolean, colors: Colors): string => {
+const formatWidget = (
+    widget: Gtk.Widget,
+    depth: number,
+    getId: WidgetIdResolver | undefined,
+    colors: Colors,
+): string => {
     const indent = INDENT.repeat(depth);
     const tag = widget.constructor.name;
-    const attrs = formatAttrs(buildAttrs(widget, includeIds), colors);
+    const attrs = formatAttrs(buildAttrs(widget, getId), colors);
     const openTag = `${colors.tag("<")}${colors.tag(tag)}${attrs}${colors.tag(">")}`;
     const closeTag = `${colors.tag("</")}${colors.tag(tag)}${colors.tag(">")}`;
 
@@ -116,7 +121,7 @@ const formatWidget = (widget: Gtk.Widget, depth: number, includeIds: boolean, co
     }
     let child = firstChild;
     while (child) {
-        output += formatWidget(child, depth + 1, includeIds, colors);
+        output += formatWidget(child, depth + 1, getId, colors);
         child = child.getNextSibling();
     }
     output += `${indent}${closeTag}\n`;
@@ -155,12 +160,11 @@ export const prettyWidget = (container: Container, options: PrettyWidgetOptions 
     }
 
     const highlight = options.highlight ?? shouldHighlight();
-    const includeIds = options.includeIds ?? false;
     const colors = createColors(highlight);
 
     let output = "";
     for (const root of roots(container)) {
-        output += formatWidget(root, 0, includeIds, colors);
+        output += formatWidget(root, 0, options.getId, colors);
     }
 
     if (output.length > maxLength) {
