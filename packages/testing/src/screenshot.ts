@@ -7,7 +7,6 @@ const bytesToBase64 = (bytes: number[]): string => {
     return Buffer.from(bytes).toString("base64");
 };
 
-const DEFAULT_SCREENSHOT_TIMEOUT = 100;
 const DEFAULT_SCREENSHOT_INTERVAL = 10;
 
 const describeWidgetState = (widget: Gtk.Widget): string =>
@@ -103,17 +102,7 @@ export const screenshot = async (widget: Gtk.Widget, options?: ScreenshotOptions
     }
 
     return waitFor(() => captureSnapshot(widget, scale), {
-        timeout: options?.timeout ?? DEFAULT_SCREENSHOT_TIMEOUT,
+        timeout: options?.timeout,
         interval: options?.interval ?? DEFAULT_SCREENSHOT_INTERVAL,
-        onTimeout: (error) => {
-            const paintable = new Gtk.WidgetPaintable({ widget });
-            const width = paintable.getIntrinsicWidth();
-            const height = paintable.getIntrinsicHeight();
-
-            if (width <= 0 || height <= 0) {
-                return new Error("Widget has no size: ensure it is realized and visible");
-            }
-            return new Error(`Widget produced no render content after waiting for paint cycle: ${error.message}`);
-        },
     });
 };
