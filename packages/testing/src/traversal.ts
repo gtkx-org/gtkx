@@ -24,6 +24,22 @@ const traverseWidgetTree = function* (root: Gtk.Widget): Generator<Gtk.Widget> {
     }
 };
 
+/**
+ * Yields every descendant of a widget in depth-first order, excluding the widget
+ * itself. The single GTK child-iteration primitive: walks each child's subtree
+ * through {@link https://docs.gtk.org/gtk4/method.Widget.get_first_child.html | `getFirstChild`}/{@link https://docs.gtk.org/gtk4/method.Widget.get_next_sibling.html | `getNextSibling`}.
+ *
+ * @param widget - The widget whose descendants to enumerate.
+ * @returns A generator over each descendant widget.
+ */
+export const descendants = function* (widget: Gtk.Widget): Generator<Gtk.Widget> {
+    let child = widget.getFirstChild();
+    while (child) {
+        yield* traverseWidgetTree(child);
+        child = child.getNextSibling();
+    }
+};
+
 const traverseWindows = function* (): Generator<Gtk.Widget> {
     const windows = Gtk.Window.listToplevels();
     for (const window of windows) {

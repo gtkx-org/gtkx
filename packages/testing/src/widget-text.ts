@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { getAccessibleMetadata } from "@gtkx/react";
 import { isEditable } from "./editable.js";
+import { descendants } from "./traversal.js";
 
 const callStringGetter = (widget: Gtk.Widget, method: string): string | null => {
     const fn: unknown = Reflect.get(widget, method);
@@ -42,17 +43,11 @@ const getDefaultText = (widget: Gtk.Widget): string | null => {
 
 const collectLabels = (widget: Gtk.Widget): string[] => {
     const labels: string[] = [];
-    let child = widget.getFirstChild();
-
-    while (child) {
-        if (child.getAccessibleRole() === Gtk.AccessibleRole.LABEL) {
-            const labelText = getLabelText(child);
-            if (labelText) labels.push(labelText);
-        }
-        labels.push(...collectLabels(child));
-        child = child.getNextSibling();
+    for (const descendant of descendants(widget)) {
+        if (descendant.getAccessibleRole() !== Gtk.AccessibleRole.LABEL) continue;
+        const labelText = getLabelText(descendant);
+        if (labelText) labels.push(labelText);
     }
-
     return labels;
 };
 
