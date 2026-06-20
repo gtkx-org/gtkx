@@ -31,7 +31,22 @@ export type BuildOptions = {
      * ```
      */
     assetBase?: string;
-    /** Additional Vite configuration */
+    /**
+     * Additional Vite configuration merged into the orchestrator's own.
+     *
+     * Some keys are owned by the SSR-bundle contract and force-set regardless
+     * of what is passed here: `build.ssr` (the entry), `build.minify`,
+     * `build.cssMinify`, `build.assetsInlineLimit`, `build.ssrEmitAssets`,
+     * `build.rolldownOptions.output.entryFileNames` (`"bundle.js"`),
+     * `ssr.noExternal` (`true`), and `define["process.env.NODE_ENV"]`
+     * (`"production"`). A value supplied for any of these is discarded.
+     *
+     * `build.outDir` is respected and defaults to `"dist"`. Every other
+     * `build.rolldownOptions` entry, every other `define` entry, and the rest
+     * of the config (including `root` and `plugins`) merge with the
+     * orchestrator's, with the orchestrator's gtkx plugins appended after the
+     * supplied ones.
+     */
     vite?: InlineConfig;
 };
 
