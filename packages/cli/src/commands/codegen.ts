@@ -1,6 +1,8 @@
 import { resolve } from "node:path";
 import { defineCommand } from "citty";
+import { formatCodegenResult } from "../codegen/report.js";
 import { ensureGenerated, runCodegen, syncSchemaEnv } from "../codegen/run-codegen.js";
+import { info } from "../internal/log.js";
 
 /**
  * `gtkx codegen` — regenerate the TypeScript bindings for the GIR libraries
@@ -33,7 +35,7 @@ export const codegen = defineCommand({
 
         if (!args.force) {
             const ran = await ensureGenerated(cwd);
-            console.log(ran ? "[gtkx] codegen: regenerated stale bindings" : "[gtkx] codegen: bindings up to date");
+            info(ran ? "codegen: regenerated stale bindings" : "codegen: bindings up to date");
             return;
         }
 
@@ -41,19 +43,8 @@ export const codegen = defineCommand({
         const result = await runCodegen({ cwd, force: true });
         syncSchemaEnv(cwd);
 
-        if (result.configFile) {
-            console.log(`[gtkx] codegen: config=${result.configFile}`);
+        for (const line of formatCodegenResult(result, Date.now() - startedAt)) {
+            info(line);
         }
-        if (result.libraries) {
-            console.log(`[gtkx] codegen: libraries=${result.libraries.join(", ")}`);
-        }
-        if (result.girPath) {
-            console.log(`[gtkx] codegen: girPath=${result.girPath.join(":")}`);
-        }
-
-        const total = Date.now() - startedAt;
-        console.log(
-            `[gtkx] codegen: ${result.namespaces} namespaces, ${result.widgets} widgets in ${result.duration}ms (total ${total}ms)`,
-        );
     },
 });
