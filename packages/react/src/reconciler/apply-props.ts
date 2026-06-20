@@ -17,8 +17,9 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import { isConstructOnlyProp, resolveDefaultProp, resolveSignal } from "../utils/gtype.js";
 import { NOTIFY_DETAIL_PREFIX, notifyDetailToProp } from "../utils/notify-name.js";
-import { type ArrayPropDescriptor, applyArrayProp } from "./array-props.js";
+import { applyArrayProp } from "./array-props.js";
 import { isEditable } from "./predicates.js";
+import type { ImperativeHandler, PropDescriptorTable, SignalPropDescriptor } from "./prop-descriptor-table.js";
 import type { SignalHandler } from "./signal-store.js";
 import { stateOf } from "./state.js";
 import type { Props } from "./types.js";
@@ -32,78 +33,7 @@ const notifyValueHandler = (container: GObject.Object, signalName: string, callb
     return () => callback(Reflect.get(container, prop), container);
 };
 
-/**
- * Descriptor for a prop whose value is a callback bound to GObject signals.
- *
- * @see {@link signal}
- */
-export interface SignalPropDescriptor {
-    readonly kind: "signal";
-    readonly signals: readonly string[];
-    readonly blockable?: boolean;
-    readonly getArgs?: () => readonly unknown[] | null;
-    readonly returnValue?: unknown;
-}
-
-/**
- * A bespoke prop's side-effecting handler; receives the backing GObject and the
- * current props. Taking the container as an argument keeps the handler stateless
- * so its descriptor is shared per GType rather than rebuilt per node.
- */
-export type ImperativeHandler = (container: GObject.Object, newProps: Props) => void;
-
-/**
- * Descriptor for a prop applied by running a side-effecting handler.
- *
- * @see {@link imperative}
- */
-export interface ImperativeDescriptor {
-    readonly kind: "imperative";
-    readonly handler: ImperativeHandler;
-    readonly always: boolean;
-}
-
-/** A descriptor for one bespoke prop: array reconciliation, signal wiring, or an imperative handler. */
-type PropDescriptor = SignalPropDescriptor | ImperativeDescriptor | ArrayPropDescriptor;
-
-/** A node's bespoke props, keyed by prop name; the unified per-GType descriptor view. */
-export type PropDescriptorTable = Record<string, PropDescriptor>;
-
 const EMPTY_TABLE: PropDescriptorTable = {};
-
-/**
- * Builds a {@link SignalPropDescriptor}.
- *
- * @param signals - GObject signal name, or names, the callback connects to
- * @param options - `blockable` overrides whether the handler is suppressed
- *   during commits (default `true`); `getArgs` computes the arguments the
- *   callback receives, returning `null` to skip the call (default: the raw
- *   signal arguments); `returnValue` is the value the GObject handler returns
- */
-export function signal(
-    signals: string | readonly string[],
-    options?: Omit<SignalPropDescriptor, "kind" | "signals">,
-): SignalPropDescriptor {
-    return {
-        kind: "signal",
-        signals: typeof signals === "string" ? [signals] : signals,
-        ...options,
-    };
-}
-
-/**
- * Builds an {@link ImperativeDescriptor}.
- *
- * Several prop keys may share one handler reference; the shared handler then
- * runs once per commit when any of those props change. With `always`, the
- * handler runs on every commit regardless of whether its props changed.
- *
- * @param handler - side-effecting handler applied to the widget
- * @param options - `always` forces the handler to run on every commit
- */
-export function imperative(handler: ImperativeHandler, options?: { always?: boolean }): ImperativeDescriptor {
-    return { kind: "imperative", handler, always: options?.always ?? false };
-}
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> => {
     if (typeof value !== "object" || value === null) return false;
