@@ -12,7 +12,6 @@ use napi::Env;
 use napi_derive::napi;
 
 use crate::dispatch::Mailbox;
-use crate::error_reporter::NativeErrorReporter;
 
 #[napi(catch_unwind)]
 #[cfg_attr(test, allow(dead_code))]
@@ -24,9 +23,7 @@ pub fn freeze(env: Env) -> napi::Result<()> {
         let (tx, rx) = mpsc::channel::<()>();
 
         mailbox.schedule_glib(Box::new(move || {
-            if tx.send(()).is_err() {
-                NativeErrorReporter::global().report_str("Freeze ready signal channel was closed");
-            }
+            crate::dispatch::send_or_report(&tx, (), "Freeze ready signal channel was closed");
             let m = Mailbox::global();
             m.notify_js();
             m.run_freeze_loop();

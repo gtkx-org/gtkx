@@ -358,6 +358,17 @@ impl Mailbox {
     }
 }
 
+/// Delivers `value` on `tx`, reporting `context` as a native error when the
+/// receiver has already been dropped.
+///
+/// The shared encoding of every oneshot-result handshake: a closed channel
+/// means the waiter is gone, which is surfaced rather than panicked.
+pub(crate) fn send_or_report<T>(tx: &mpsc::Sender<T>, value: T, context: &str) {
+    if tx.send(value).is_err() {
+        NativeErrorReporter::global().report_str(context);
+    }
+}
+
 /// Returned by [`Mailbox::dispatch_to_glib_and_wait`] when the dispatched task
 /// does not produce a value.
 #[derive(Debug, Clone)]

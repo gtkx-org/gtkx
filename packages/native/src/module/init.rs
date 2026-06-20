@@ -78,10 +78,11 @@ pub fn init(env: Env) -> napi::Result<External<glib::MainLoop>> {
                 let main_loop_for_js = main_loop.clone();
 
                 glib::idle_add_once(move || {
-                    if tx.send(main_loop_for_js).is_err() {
-                        NativeErrorReporter::global()
-                            .report_str("GLib main loop ready but startup channel was closed");
-                    }
+                    crate::dispatch::send_or_report(
+                        &tx,
+                        main_loop_for_js,
+                        "GLib main loop ready but startup channel was closed",
+                    );
                 });
 
                 main_loop.run();

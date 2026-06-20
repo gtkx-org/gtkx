@@ -14,12 +14,20 @@ use napi::threadsafe_function::ThreadsafeFunctionCallMode;
 use napi::{Env, JsFunction, JsObject, NapiValue as _};
 
 use super::{
-    GlibDispatchError, JsReference, Mailbox, NodeCallback, NodeCallbackResult, NodeTask, WakeJsTsfn,
+    GlibDispatchError, JsReference, Mailbox, NodeCallback, NodeCallbackResult, NodeTask,
+    WakeJsTsfn, send_or_report,
 };
-use crate::error_reporter::NativeErrorReporter;
 use crate::panic_handler::format_panic_payload;
 use crate::toggle_ref::RefOp;
 use crate::value::{JsRef, Value};
+
+/// The outcome of a node-result wait whose oneshot sender was dropped before
+/// delivering: the JS side is gone, so the blocked native caller fails rather
+/// than hanging.
+#[cfg_attr(coverage_nightly, coverage(off))]
+fn node_channel_disconnected<R>() -> anyhow::Result<R> {
+    Err(anyhow::anyhow!("JS callback channel disconnected"))
+}
 
 /// One non-blocking poll of a result channel: `Ok(Some)` on a delivered
 /// result, `Ok(None)` when empty, and the dispatch error when the sender is
@@ -83,13 +91,14 @@ impl Mailbox {
         self.schedule_glib(Box::new(move || {
             let outcome = panic::catch_unwind(AssertUnwindSafe(task))
                 .map_err(|payload| format_panic_payload(&*payload));
-            if tx.send(outcome).is_err() {
-                NativeErrorReporter::global()
-                    .report_str("GLib dispatch completed but result channel was closed");
-            }
+            send_or_report(
+                &tx,
+                outcome,
+                "GLib dispatch completed but result channel was closed",
+            );
         }));
         self.wait_for_glib_result(env, &rx)?
-            .map_err(GlibDispatchError::TaskPanicked)
+            .map_err(|message| GlibDispatchError::task_panicked(&message))
     }
 
     /// Blocks the JS thread until the receiver yields a value, draining any
@@ -281,10 +290,11 @@ impl Mailbox {
                     if glib_initiated {
                         self.leave_glib_callback();
                     }
-                    if result_tx.send(result).is_err() {
-                        NativeErrorReporter::global()
-                            .report_str("Node callback completed but result channel was closed");
-                    }
+                    send_or_report(
+                        &result_tx,
+                        result,
+                        "Node callback completed but result channel was closed",
+                    );
                     self.wake_glib.notify();
                 }
                 NodeTask::DeleteReference(reference) => reference.delete_on_js_thread(),
@@ -301,11 +311,11 @@ impl Mailbox {
                     if glib_initiated {
                         self.leave_glib_callback();
                     }
-                    if result_tx.send(Ok(())).is_err() {
-                        NativeErrorReporter::global().report_str(
-                            "Wrapper reference operation completed but result channel was closed",
-                        );
-                    }
+                    send_or_report(
+                        &result_tx,
+                        Ok(()),
+                        "Wrapper reference operation completed but result channel was closed",
+                    );
                     self.wake_glib.notify();
                 }
             }
