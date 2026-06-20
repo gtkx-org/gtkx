@@ -235,7 +235,7 @@ const setBoxedPayload = (
         [
             { type: GVALUE_T, value },
             {
-                type: boxedT(typeName(valueGetType(value) ?? TYPE_INVALID) ?? "GBoxed", "borrowed", LIB),
+                type: boxedT(typeName(valueGetType(value)) ?? "GBoxed", "borrowed", LIB),
                 value: boxedHandle,
             },
         ],
