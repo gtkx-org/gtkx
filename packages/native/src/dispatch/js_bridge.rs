@@ -46,8 +46,28 @@ impl Mailbox {
     /// other threads. Set once during `init()` and invoked by the `GLib` thread
     /// when callbacks are pushed onto the node inbox.
     #[cfg_attr(coverage_nightly, coverage(off))]
-    pub fn set_wake_tsfn(&self, tsfn: Arc<WakeJsTsfn>) {
+    fn set_wake_tsfn(&self, tsfn: Arc<WakeJsTsfn>) {
         let _ = self.wake_js_tsfn.set(tsfn);
+    }
+
+    /// Builds the wake threadsafe function from `env` and installs it, so the
+    /// `GLib` thread can wake a JS thread parked in `wait_for_glib_result` to
+    /// drain pending node callbacks. Called once during `init()`.
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    pub fn install_wake(&self, env: Env) -> napi::Result<()> {
+        let wake_js_fn = env.create_function_from_closure::<(), _, _>("gtkx_wake_js", |ctx| {
+            Self::global().process_node_pending(*ctx.env);
+            Ok(())
+        })?;
+
+        let wake_tsfn: WakeJsTsfn = wake_js_fn
+            .build_threadsafe_function::<()>()
+            .weak::<true>()
+            .callee_handled::<false>()
+            .build()?;
+
+        self.set_wake_tsfn(Arc::new(wake_tsfn));
+        Ok(())
     }
 
     #[cfg_attr(coverage_nightly, coverage(off))]

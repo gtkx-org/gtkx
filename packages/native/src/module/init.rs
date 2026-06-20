@@ -9,23 +9,22 @@
 //! barrier that fires on the loop's first iteration, so the handle is handed back
 //! only once the loop is confirmed live.
 //!
-//! Every function here wires threadsafe functions to a live [`napi::Env`] and
-//! spawns the `GLib` thread, so the module is excluded from coverage
-//! instrumentation.
+//! [`init`] orchestrates a fixed sequence of install steps — wake threadsafe
+//! function, error reporter, panic hook, then the `GLib` thread spawn and ready
+//! barrier — each owned by its subsystem, so the module is excluded from
+//! coverage instrumentation.
 
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use std::panic::{self, AssertUnwindSafe};
-use std::sync::Arc;
 use std::sync::mpsc;
 
 use napi::Env;
 use napi::bindgen_prelude::*;
-use napi::sys;
 use napi_derive::napi;
 
-use crate::dispatch::{Mailbox, WakeJsTsfn};
-use crate::error_reporter::{ErrorReporterTsfn, NativeErrorReporter};
+use crate::dispatch::Mailbox;
+use crate::error_reporter::NativeErrorReporter;
 use crate::glib_log_handler::GlibLogHandler;
 use crate::panic_handler::{format_panic_payload, install_panic_hook};
 use crate::state::GlibThread;
@@ -37,33 +36,8 @@ pub fn init(env: Env) -> napi::Result<External<glib::MainLoop>> {
         .begin_init()
         .map_err(|msg| napi::Error::new(napi::Status::GenericFailure, msg))?;
 
-    let wake_js_fn = env.create_function_from_closure::<(), _, _>("gtkx_wake_js", |ctx| {
-        Mailbox::global().process_node_pending(*ctx.env);
-        Ok(())
-    })?;
-
-    let wake_tsfn: WakeJsTsfn = wake_js_fn
-        .build_threadsafe_function::<()>()
-        .weak::<true>()
-        .callee_handled::<false>()
-        .build()?;
-
-    Mailbox::global().set_wake_tsfn(Arc::new(wake_tsfn));
-
-    let error_fn =
-        env.create_function_from_closure::<String, (), _>("gtkx_report_error", |ctx| {
-            let msg: String = ctx.get(0)?;
-            UnhandledRejection::emit(ctx.env, &msg);
-            Ok(())
-        })?;
-
-    let error_tsfn: ErrorReporterTsfn = error_fn
-        .build_threadsafe_function::<String>()
-        .weak::<true>()
-        .callee_handled::<false>()
-        .build()?;
-
-    NativeErrorReporter::global().initialize(Arc::new(error_tsfn));
+    Mailbox::global().install_wake(env)?;
+    NativeErrorReporter::global().install(env)?;
     install_panic_hook();
 
     let (tx, rx) = mpsc::channel::<glib::MainLoop>();
@@ -117,116 +91,4 @@ pub fn init(env: Env) -> napi::Result<External<glib::MainLoop>> {
     })?;
 
     Ok(External::new(main_loop))
-}
-
-/// Surfaces native-side failures that have no JavaScript stack of their own by
-/// emitting `unhandledRejection` events on the Node.js process.
-#[cfg_attr(test, allow(dead_code))]
-struct UnhandledRejection;
-
-impl UnhandledRejection {
-    /// Emits an `unhandledRejection` event on the Node.js process with a
-    /// synthesized `Error` whose message is `msg`. The event flows through
-    /// Node's standard rejection handling so userland code can suppress or
-    /// redirect it via `process.on('unhandledRejection', ...)`.
-    ///
-    /// Falls back to `stderr` if any step of the emission fails.
-    #[allow(clippy::trivially_copy_pass_by_ref)]
-    #[cfg_attr(test, allow(dead_code))]
-    fn emit(env: &Env, msg: &str) {
-        if Self::try_emit(env, msg).is_none() {
-            eprintln!("[gtkx] ERROR: {msg}");
-        }
-    }
-
-    /// Performs the `unhandledRejection` emission, returning `None` as soon as
-    /// any napi step fails so [`emit`](Self::emit) can fall back to `stderr`.
-    #[cfg_attr(test, allow(dead_code))]
-    fn try_emit(env: &Env, msg: &str) -> Option<()> {
-        let raw_env = env.raw();
-        // SAFETY: This runs on the JS thread with the live `env` of the
-        // current callback; every value passed between the napi calls was
-        // created under that same env.
-        unsafe {
-            let mut global = std::ptr::null_mut();
-            (sys::napi_get_global(raw_env, &mut global) == sys::Status::napi_ok).then_some(())?;
-
-            let mut process = std::ptr::null_mut();
-            (sys::napi_get_named_property(raw_env, global, c"process".as_ptr(), &mut process)
-                == sys::Status::napi_ok)
-                .then_some(())?;
-
-            let mut emit_fn = std::ptr::null_mut();
-            (sys::napi_get_named_property(raw_env, process, c"emit".as_ptr(), &mut emit_fn)
-                == sys::Status::napi_ok)
-                .then_some(())?;
-
-            let event_name =
-                String::to_napi_value(raw_env, "unhandledRejection".to_owned()).ok()?;
-            let error_obj = Self::make_error_object(raw_env, msg)?;
-            let promise = Self::make_resolved_promise(raw_env)?;
-
-            let args = [event_name, error_obj, promise];
-            let mut result = std::ptr::null_mut();
-            let _ = sys::napi_call_function(
-                raw_env,
-                process,
-                emit_fn,
-                args.len(),
-                args.as_ptr(),
-                &mut result,
-            );
-
-            let mut had_exception = false;
-            sys::napi_is_exception_pending(raw_env, &mut had_exception);
-            if had_exception {
-                let mut exc = std::ptr::null_mut();
-                sys::napi_get_and_clear_last_exception(raw_env, &mut exc);
-            }
-        }
-        Some(())
-    }
-
-    #[cfg_attr(test, allow(dead_code))]
-    unsafe fn make_error_object(env: sys::napi_env, msg: &str) -> Option<sys::napi_value> {
-        // SAFETY: The caller passes the live env of the current JS-thread
-        // callback, and `msg` provides valid UTF-8 bytes for the string.
-        unsafe {
-            let mut msg_value = std::ptr::null_mut();
-            let bytes = msg.as_bytes();
-            if sys::napi_create_string_utf8(
-                env,
-                bytes.as_ptr().cast(),
-                bytes.len() as isize,
-                &mut msg_value,
-            ) != sys::Status::napi_ok
-            {
-                return None;
-            }
-            let mut error = std::ptr::null_mut();
-            if sys::napi_create_error(env, std::ptr::null_mut(), msg_value, &mut error)
-                != sys::Status::napi_ok
-            {
-                return None;
-            }
-            Some(error)
-        }
-    }
-
-    #[cfg_attr(test, allow(dead_code))]
-    unsafe fn make_resolved_promise(env: sys::napi_env) -> Option<sys::napi_value> {
-        // SAFETY: The caller passes the live env of the current JS-thread
-        // callback; the deferred and undefined values are created under it.
-        unsafe {
-            let mut deferred = std::ptr::null_mut();
-            let mut promise = std::ptr::null_mut();
-            if sys::napi_create_promise(env, &mut deferred, &mut promise) != sys::Status::napi_ok {
-                return None;
-            }
-            let mut undefined = std::ptr::null_mut();
-            sys::napi_get_undefined(env, &mut undefined);
-            sys::napi_resolve_deferred(env, deferred, undefined);
-            Some(promise)
-        }
-    }
 }
