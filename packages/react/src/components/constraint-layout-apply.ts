@@ -1,9 +1,6 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { type Context, createContext, type RefObject, useContext, useRef } from "react";
 import type { ConstraintGuideProps, ConstraintProps, ConstraintVflProps } from "../utils/element-props.js";
-
-const ORPHAN_MESSAGE = "<GtkConstraintLayout.Constraint> / <Guide> / <Vfl> must be a child of <GtkConstraintLayout>";
 
 const SUPER_ID = "super";
 
@@ -63,46 +60,6 @@ const constraintViews = (layout: Gtk.ConstraintLayout): Map<string, Gtk.Constrai
     return views;
 };
 
-/**
- * Context carrying a ref to the live `Gtk.ConstraintLayout` from a
- * `<GtkConstraintLayout>` provider down to its `<Constraint>`, `<Vfl>`, and
- * `<Guide>` children. A `null` value means the marker is not enclosed by a
- * provider.
- */
-export const ConstraintLayoutContext: Context<RefObject<Gtk.ConstraintLayout | null> | null> =
-    createContext<RefObject<Gtk.ConstraintLayout | null> | null>(null);
-
-/**
- * Owns the ref a `<GtkConstraintLayout>` provider binds to its backing
- * `Gtk.ConstraintLayout` element and shares through {@link ConstraintLayoutContext}.
- *
- * @returns The stable ref to bind to the `<GtkConstraintLayout>` element and to
- *   publish to descendant markers.
- */
-export function useConstraintLayout(): RefObject<Gtk.ConstraintLayout | null> {
-    return useRef<Gtk.ConstraintLayout | null>(null);
-}
-
-/**
- * Reads the enclosing {@link ConstraintLayoutContext}, throwing when a marker is
- * used outside a `<GtkConstraintLayout>`.
- *
- * @returns The ref to the enclosing layout.
- */
-export function useConstraintLayoutRef(): RefObject<Gtk.ConstraintLayout | null> {
-    const ref = useContext(ConstraintLayoutContext);
-    if (!ref) throw new Error(ORPHAN_MESSAGE);
-    return ref;
-}
-
-/**
- * Returns true while `layout` still owns a widget, mirroring the guard a marker
- * applies before removing its contribution: a layout discarded with its host
- * widget rejects further mutation.
- *
- * @param layout - The layout to test.
- * @returns Whether the layout is still attached to a widget.
- */
 const isLayoutLive = (layout: Gtk.ConstraintLayout): boolean => layout.getWidget() !== null;
 
 /**
@@ -147,12 +104,7 @@ export function applyConstraint(layout: Gtk.ConstraintLayout, props: ConstraintP
  */
 export function applyVfl(layout: Gtk.ConstraintLayout, props: ConstraintVflProps): () => void {
     const views = constraintViews(layout);
-    const constraints = layout.addConstraintsFromDescription(
-        props.lines,
-        props.hspacing ?? 0,
-        props.vspacing ?? 0,
-        views,
-    );
+    const constraints = layout.addConstraintsFromDescription(props.lines, props.hspacing ?? 0, props.vspacing ?? 0, views);
 
     return () => {
         if (!isLayoutLive(layout)) return;

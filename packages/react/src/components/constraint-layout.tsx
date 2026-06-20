@@ -1,17 +1,43 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { createElement, type ReactNode, type Ref, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import {
-    applyConstraint,
-    applyGuide,
-    applyVfl,
-    ConstraintLayoutContext,
-    useConstraintLayout,
-    useConstraintLayoutRef,
-} from "../hooks/use-constraint-layout.js";
+    type Context,
+    createContext,
+    createElement,
+    type ReactNode,
+    type Ref,
+    type RefObject,
+    useCallback,
+    useContext,
+    useEffect,
+    useLayoutEffect,
+    useRef,
+} from "react";
 import { useForwardedRef } from "../hooks/use-forwarded-ref.js";
 import type { ConstraintGuideProps, ConstraintProps, ConstraintVflProps } from "../utils/element-props.js";
+import { applyConstraint, applyGuide, applyVfl } from "./constraint-layout-apply.js";
 
 const GtkConstraintLayoutElement = "GtkConstraintLayout" as const;
+
+const ORPHAN_MESSAGE = "<GtkConstraintLayout.Constraint> / <Guide> / <Vfl> must be a child of <GtkConstraintLayout>";
+
+/**
+ * Context carrying a ref to the live `Gtk.ConstraintLayout` from a
+ * `<GtkConstraintLayout>` provider down to its `<Constraint>`, `<Vfl>`, and
+ * `<Guide>` children. A `null` value means the marker is not enclosed by a
+ * provider.
+ */
+const ConstraintLayoutContext: Context<RefObject<Gtk.ConstraintLayout | null> | null> =
+    createContext<RefObject<Gtk.ConstraintLayout | null> | null>(null);
+
+/**
+ * Reads the enclosing {@link ConstraintLayoutContext}, throwing when a marker is
+ * used outside a `<GtkConstraintLayout>`.
+ */
+const useConstraintLayoutRef = (): RefObject<Gtk.ConstraintLayout | null> => {
+    const ref = useContext(ConstraintLayoutContext);
+    if (!ref) throw new Error(ORPHAN_MESSAGE);
+    return ref;
+};
 
 /**
  * Props for the `GtkConstraintLayout` declarative wrapper: the solver markers
@@ -126,7 +152,7 @@ export const GtkConstraintLayout: ((props: ConstraintLayoutProps) => ReactNode) 
     Vfl: (props: ConstraintVflProps) => ReactNode;
 } = Object.assign(
     ({ children, ref }: ConstraintLayoutProps): ReactNode => {
-        const layoutRef = useConstraintLayout();
+        const layoutRef = useRef<Gtk.ConstraintLayout | null>(null);
         const captureLayout = useCallback(
             (layout: Gtk.ConstraintLayout | null): void => {
                 layoutRef.current = layout;
