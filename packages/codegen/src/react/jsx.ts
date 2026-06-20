@@ -39,6 +39,8 @@ export type JsxSurfaceMaps = {
  * @param repository - The loaded GIR repository
  * @param options - The compound-exported names to skip, the merged slot/array-prop
  *   maps, and the shared import accumulator the section populates
+ * @returns The rendered section source and the number of intrinsic elements it
+ *   emitted, so callers tally widgets without re-parsing the generated text
  */
 export const generateJsxSection = (
     targetNamespace: GirNamespace,
@@ -48,7 +50,7 @@ export const generateJsxSection = (
         readonly maps: JsxSurfaceMaps;
         readonly imports: JsxImports;
     },
-): string => {
+): { readonly source: string; readonly intrinsicCount: number } => {
     const { excludeNames, maps, imports } = options;
     const allWidgets = collectReactNodeClasses(repository);
     const widgets = allWidgets.filter((entry) => entry.namespace.name === targetNamespace.name);
@@ -91,7 +93,8 @@ export const generateJsxSection = (
         );
     }
 
-    return [constLines.join("\n"), "", propBlocks.join("\n\n"), "", renderJsxAugmentation(widgets)].join("\n");
+    const source = [constLines.join("\n"), "", propBlocks.join("\n\n"), "", renderJsxAugmentation(widgets)].join("\n");
+    return { source, intrinsicCount: intrinsicWidgets.length };
 };
 
 const renderJsxAugmentation = (widgets: readonly WidgetCandidate[]): string =>

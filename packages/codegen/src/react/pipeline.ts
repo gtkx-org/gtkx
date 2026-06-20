@@ -146,12 +146,15 @@ const generateJsxNamespace = (
         excludeNames: RUNTIME_OWNED_WIDGETS,
     });
     const excludeNames = new Set<string>([...compounds.exportedNames, ...RUNTIME_OWNED_WIDGETS]);
-    const jsxSection = generateJsxSection(targetNamespace, repository, { excludeNames, maps, imports });
+    const { source: jsxSection, intrinsicCount } = generateJsxSection(targetNamespace, repository, {
+        excludeNames,
+        maps,
+        imports,
+    });
 
     const body = [renderJsxImports(targetNamespace.name.toLowerCase(), imports), "", jsxSection];
     if (compounds.source.length > 0) body.push("", compounds.source);
 
-    const count =
-        compounds.exportedNames.size + jsxSection.split("\n").filter((line) => line.startsWith("export const ")).length;
+    const count = compounds.exportedNames.size + intrinsicCount;
     return { source: `${body.join("\n")}\n`, count };
 };
