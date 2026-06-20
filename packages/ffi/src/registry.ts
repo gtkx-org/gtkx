@@ -283,6 +283,26 @@ export function getParentClass(cls: AnyClass): AnyClass | null {
     return typeof parent === "function" && parent !== Function.prototype ? (parent as AnyClass) : null;
 }
 
+/**
+ * Walks the JS prototype chain from `cls` up through each ancestor class,
+ * returning the first non-`undefined` value `visit` produces, or `undefined`
+ * when the chain is exhausted.
+ *
+ * @typeParam T - The value the walk resolves to.
+ * @param cls - The class to start from, or `null` to visit nothing.
+ * @param visit - Invoked per ancestor; a defined return short-circuits the walk.
+ * @returns The first defined `visit` result, or `undefined`.
+ */
+export function walkClassChain<T>(cls: AnyClass | null, visit: (ancestor: AnyClass) => T | undefined): T | undefined {
+    let current = cls;
+    while (current !== null) {
+        const result = visit(current);
+        if (result !== undefined) return result;
+        current = getParentClass(current);
+    }
+    return undefined;
+}
+
 const handleMap = new WeakMap<object, Handle>();
 
 /**

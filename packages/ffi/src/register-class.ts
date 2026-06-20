@@ -11,6 +11,7 @@ import {
     getParentClass,
     getVfuncRegistry,
     setClassGtype,
+    walkClassChain,
 } from "./registry.js";
 import { wrapHandler } from "./wrapper-class.js";
 
@@ -83,13 +84,9 @@ type InterfaceVfuncBinding = {
  * ```
  */
 export function registerClass<T extends AnyClass>(klass: T, options: RegisterClassOptions = {}): T {
-    if (!hasRegisteredAncestor(klass)) {
-        throw new TypeError(`registerClass: ${klass.name} must extend a registered wrapper class`);
-    }
-
     const parentGtype = resolveParentGtype(klass);
     if (parentGtype === TYPE_INVALID) {
-        throw new Error(`registerClass: ${klass.name} parent GType is invalid (TYPE_INVALID)`);
+        throw new TypeError(`registerClass: ${klass.name} must extend a registered wrapper class`);
     }
 
     const name = options.gtypeName ?? klass.name;
@@ -108,23 +105,13 @@ export function registerClass<T extends AnyClass>(klass: T, options: RegisterCla
     return klass;
 }
 
-function hasRegisteredAncestor(klass: AnyClass): boolean {
-    let current: AnyClass | null = getParentClass(klass);
-    while (current) {
-        if (getClassGtype(current) !== TYPE_INVALID) return true;
-        current = getParentClass(current);
-    }
-    return false;
-}
-
 function resolveParentGtype(klass: AnyClass): GType {
-    let current = getParentClass(klass);
-    while (current) {
-        const gtype = getClassGtype(current);
-        if (gtype !== TYPE_INVALID) return gtype;
-        current = getParentClass(current);
-    }
-    return TYPE_INVALID;
+    return (
+        walkClassChain(getParentClass(klass), (cls) => {
+            const gtype = getClassGtype(cls);
+            return gtype !== TYPE_INVALID ? gtype : undefined;
+        }) ?? TYPE_INVALID
+    );
 }
 
 function ownInstanceMethodNames(klass: AnyClass): string[] {
@@ -225,18 +212,12 @@ function discoverInterfaceVfuncs(
 }
 
 function findClassVfuncDescriptor(klass: AnyClass, methodName: string): VfuncDescriptor<"class"> | null {
-    let current = getParentClass(klass);
-    while (current) {
-        const vfuncRegistry = getVfuncRegistry(current);
-        if (vfuncRegistry) {
-            const entry = vfuncRegistry[methodName];
-            if (entry) {
-                return entry as VfuncDescriptor<"class">;
-            }
-        }
-        current = getParentClass(current);
-    }
-    return null;
+    return (
+        walkClassChain(getParentClass(klass), (cls) => {
+            const entry = getVfuncRegistry(cls)?.[methodName];
+            return entry === undefined ? undefined : (entry as VfuncDescriptor<"class">);
+        }) ?? null
+    );
 }
 
 function toNativeOptions(
