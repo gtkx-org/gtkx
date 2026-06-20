@@ -273,31 +273,50 @@ const attachNotebookPage = (notebook: Gtk.Notebook, widget: Gtk.Widget, marker: 
     applyNotebookMeta(notebook, widget, stateOf(marker).props);
 };
 
+type NotebookPageState = { widget: Gtk.Widget };
+
+const notebookPageMapping: ElementMapping = {
+    matches: (child, parent) => isWrapperKind(child, META_OBJECT_KIND) && parent instanceof Gtk.Notebook,
+    attach: (child, parent) => {
+        if (!(parent instanceof Gtk.Notebook)) return;
+        const childState = stateOf(child);
+        const widget = trackedWidget(child);
+        const state = childState.attachState as NotebookPageState | undefined;
+        if (state && state.widget === widget) {
+            updateNotebookTabLabel(parent, state.widget, child);
+            applyNotebookMeta(parent, state.widget, childState.props);
+            return;
+        }
+        if (state) notebookPageMapping.detach(child, parent);
+        if (!widget) return;
+        attachNotebookPage(parent, widget, child);
+        childState.attachState = { widget };
+    },
+    detach: (child, parent) => {
+        if (!(parent instanceof Gtk.Notebook)) return;
+        const childState = stateOf(child);
+        const state = childState.attachState as NotebookPageState | undefined;
+        childState.attachState = undefined;
+        if (!state) return;
+        const pageNum = parent.pageNum(state.widget);
+        if (pageNum !== -1) parent.removePage(pageNum);
+    },
+};
+
 const metaObjectMapping: ElementMapping = {
     matches: (child, parent) =>
         isWrapperKind(child, META_OBJECT_KIND) &&
-        (metaAddRules(parent instanceof GObject.Object ? parent : undefined) !== null ||
-            parent instanceof Gtk.Notebook),
+        metaAddRules(parent instanceof GObject.Object ? parent : undefined) !== null,
     attach: (child, parent) => {
         const childState = stateOf(child);
         const widget = trackedWidget(child);
         const state = childState.attachState as MetaState | undefined;
         if (state && state.widget === widget) {
-            if (parent instanceof Gtk.Notebook) {
-                updateNotebookTabLabel(parent, state.widget, child);
-                applyNotebookMeta(parent, state.widget, childState.props);
-            } else {
-                applyPageMeta(state.page, childState.props);
-            }
+            applyPageMeta(state.page, childState.props);
             return;
         }
         if (state) metaObjectMapping.detach(child, parent);
         if (!widget) return;
-        if (parent instanceof Gtk.Notebook) {
-            attachNotebookPage(parent, widget, child);
-            childState.attachState = { widget, page: parent };
-            return;
-        }
         const target = parent instanceof GObject.Object ? parent : undefined;
         const rules = metaAddRules(target);
         if (!target || !rules) return;
@@ -311,14 +330,7 @@ const metaObjectMapping: ElementMapping = {
         const state = childState.attachState as MetaState | undefined;
         childState.attachState = undefined;
         if (!state) return;
-        if (parent instanceof Gtk.Notebook) {
-            const pageNum = parent.pageNum(state.widget);
-            if (pageNum !== -1) parent.removePage(pageNum);
-        } else if (
-            parent instanceof Gtk.Widget &&
-            metaAddRules(parent) !== null &&
-            isAttachedTo(state.widget, parent)
-        ) {
+        if (parent instanceof Gtk.Widget && metaAddRules(parent) !== null && isAttachedTo(state.widget, parent)) {
             callMethod(parent, "remove", [state.widget]);
         }
     },
@@ -640,6 +652,7 @@ const widgetContainerMapping: ElementMapping = {
 export const ELEMENT_MAP: readonly ElementMapping[] = [
     slotMapping,
     containerPropMapping,
+    notebookPageMapping,
     metaObjectMapping,
     layoutChildMapping,
     overlayMapping,
