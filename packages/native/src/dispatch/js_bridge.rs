@@ -303,7 +303,7 @@ impl Mailbox {
                     if glib_initiated {
                         self.enter_glib_callback();
                     }
-                    Self::apply_ref_op(&env, ref_ptr, op);
+                    op.apply(&env, ref_ptr);
                     if glib_initiated {
                         self.leave_glib_callback();
                     }
@@ -313,33 +313,6 @@ impl Mailbox {
                         "Wrapper reference operation completed but result channel was closed",
                     );
                     self.wake_glib.notify();
-                }
-            }
-        }
-    }
-
-    /// Applies one `napi_reference_*` operation to the wrapper reference at
-    /// `ref_ptr`, on the JS thread that owns `env`. A stale or already-deleted
-    /// reference makes the napi call return a failure status, which is ignored
-    /// by design — a teardown racing a stale notify must not crash.
-    #[cfg_attr(coverage_nightly, coverage(off))]
-    fn apply_ref_op(env: &Env, ref_ptr: usize, op: RefOp) {
-        use napi::sys;
-
-        let raw_ref = ref_ptr as sys::napi_ref;
-        let mut count: u32 = 0;
-        // SAFETY: This runs on the JS thread owning `env`; a stale or deleted
-        // reference yields a failure status that is ignored by design.
-        unsafe {
-            match op {
-                RefOp::Strengthen => {
-                    sys::napi_reference_ref(env.raw(), raw_ref, &mut count);
-                }
-                RefOp::Weaken => {
-                    sys::napi_reference_unref(env.raw(), raw_ref, &mut count);
-                }
-                RefOp::Delete => {
-                    sys::napi_delete_reference(env.raw(), raw_ref);
                 }
             }
         }

@@ -105,6 +105,34 @@ pub enum RefOp {
     Delete,
 }
 
+impl RefOp {
+    /// Applies one `napi_reference_*` operation to the wrapper reference at
+    /// `ref_ptr`, on the JS thread that owns `env`. A stale or already-deleted
+    /// reference makes the napi call return a failure status, which is ignored
+    /// by design — a teardown racing a stale notify must not crash.
+    pub(crate) fn apply(self, env: &napi::Env, ref_ptr: usize) {
+        use napi::sys;
+
+        let raw_ref = ref_ptr as sys::napi_ref;
+        let mut count: u32 = 0;
+        // SAFETY: This runs on the JS thread owning `env`; a stale or deleted
+        // reference yields a failure status that is ignored by design.
+        unsafe {
+            match self {
+                Self::Strengthen => {
+                    sys::napi_reference_ref(env.raw(), raw_ref, &mut count);
+                }
+                Self::Weaken => {
+                    sys::napi_reference_unref(env.raw(), raw_ref, &mut count);
+                }
+                Self::Delete => {
+                    sys::napi_delete_reference(env.raw(), raw_ref);
+                }
+            }
+        }
+    }
+}
+
 /// Per-object binding state, stored in qdata and reached off the object by a
 /// deferred cleanup.
 ///

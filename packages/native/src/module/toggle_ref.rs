@@ -113,17 +113,8 @@ pub fn set_wrapper(
     // consumes it, and the finalizer cannot run during this callback.
     unsafe { (*data).ref_addr = raw_ref as usize };
 
-    let mut count: u32 = 0;
-    // SAFETY: `raw_ref` is the live reference napi_add_finalizer just
-    // created under the current callback's `env`.
-    unsafe {
-        sys::napi_reference_ref(env.raw(), raw_ref, &mut count);
-        while count > 1 {
-            sys::napi_reference_unref(env.raw(), raw_ref, &mut count);
-        }
-    }
-
     let ref_addr = raw_ref as usize;
+    toggle_ref::RefOp::Strengthen.apply(&env, ref_addr);
     let consume_pending = handle.take_pending_gobject_ref();
     let (binding, generation) = Mailbox::global()
         // SAFETY: This closure runs on the GLib thread; the handle's
