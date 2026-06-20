@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderFile, type TemplateContext } from "../src/templates.js";
+import { listTemplates, renderFile, type TemplateContext } from "../src/templates.js";
 
 const baseContext: TemplateContext = {
     name: "my-app",
@@ -34,5 +34,32 @@ describe("renderFile", () => {
     it("propagates the applicationId and title to templates that use them", () => {
         const output = renderFile("gitignore.ejs", baseContext);
         expect(typeof output).toBe("string");
+    });
+});
+
+describe("listTemplates", () => {
+    it("lists every .ejs template with forward-slashed relative paths, sorted", () => {
+        const templates = listTemplates();
+
+        expect(templates).toEqual([
+            "claude/EXAMPLES.md.ejs",
+            "claude/SKILL.md.ejs",
+            "claude/WIDGETS.md.ejs",
+            "config/vitest.config.ts.ejs",
+            "gitignore.ejs",
+            "gtkx.config.ts.ejs",
+            "package.json.ejs",
+            "src/app.tsx.ejs",
+            "src/gtkx-env.d.ts.ejs",
+            "src/index.tsx.ejs",
+            "tests/app.test.tsx.ejs",
+            "tsconfig.json.ejs",
+        ]);
+    });
+
+    it("returns paths every entry of which renderFile resolves", () => {
+        for (const template of listTemplates()) {
+            expect(typeof renderFile(template, baseContext)).toBe("string");
+        }
     });
 });

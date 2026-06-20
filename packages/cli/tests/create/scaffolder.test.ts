@@ -5,7 +5,7 @@ import { vol } from "memfs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PackageManager } from "../../src/create/options.js";
 import { type CreateOptions, createScaffolder, type ScaffolderDeps } from "../../src/create/scaffolder.js";
-import type { TemplateContext } from "../../src/templates.js";
+import { listTemplates, type TemplateContext } from "../../src/templates.js";
 
 const TEST_DIR = "/test-workspace";
 const TEMPLATES_DIR = join(import.meta.dirname, "..", "..", "templates");
@@ -88,6 +88,7 @@ const buildHarness = (overrides: Partial<Omit<Harness, "deps">> = {}): Harness =
                 },
             },
         },
+        listTemplates,
         render: renderRealTemplate,
         install: async (opts) => {
             state.installs.push(opts);

@@ -1,8 +1,8 @@
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { isValidApplicationId } from "@gtkx/config";
 import { errorMessage, toUpperFirst } from "@gtkx/utils";
 import { renderEnvModule } from "../gsettings/render.js";
-import type { TemplateContext } from "../templates.js";
+import { TEMPLATE_SUFFIX, type TemplateContext } from "../templates.js";
 import { isValidProjectName, PACKAGE_MANAGERS, type PackageManager, type TestingOption } from "./options.js";
 
 /**
@@ -74,6 +74,7 @@ export type ScaffolderDeps = {
     cwd(): string;
     fs: ScaffolderFs;
     prompts: ScaffolderPrompts;
+    listTemplates(): string[];
     render(template: string, context: TemplateContext): string;
     install: InstallDependenciesFn;
     gitInit: GitInitFn;
@@ -218,39 +219,51 @@ const promptForOptions = async (deps: ScaffolderDeps, options: CreateOptions): P
     return { name, applicationId, packageManager, testing, claudeSkills };
 };
 
-const writeClaudeSkills = (deps: ScaffolderDeps, projectPath: string, context: TemplateContext): void => {
-    const skillsDir = join(projectPath, ".claude", "skills", "developing-gtkx-apps");
-    deps.fs.mkdirSync(skillsDir, { recursive: true });
-    deps.fs.writeFileSync(join(skillsDir, "SKILL.md"), deps.render("claude/SKILL.md.ejs", context));
-    deps.fs.writeFileSync(join(skillsDir, "WIDGETS.md"), deps.render("claude/WIDGETS.md.ejs", context));
-    deps.fs.writeFileSync(join(skillsDir, "EXAMPLES.md"), deps.render("claude/EXAMPLES.md.ejs", context));
+const TESTING_TEMPLATE_PREFIXES = ["config/", "tests/"] as const;
+const CLAUDE_TEMPLATE_PREFIX = "claude/";
+const CLAUDE_SKILLS_DIR = ".claude/skills/developing-gtkx-apps";
+
+/**
+ * Maps a template's `.ejs`-stripped relative path to its destination relative
+ * path within the project. Templates absent from the table keep their relative
+ * path unchanged.
+ */
+const TEMPLATE_DESTINATIONS: Readonly<Record<string, string>> = {
+    gitignore: ".gitignore",
+    "config/vitest.config.ts": "vitest.config.ts",
 };
 
-const writeVitestFiles = (deps: ScaffolderDeps, projectPath: string, context: TemplateContext): void => {
-    deps.fs.writeFileSync(join(projectPath, "vitest.config.ts"), deps.render("config/vitest.config.ts.ejs", context));
-    deps.fs.writeFileSync(join(projectPath, "tests", "app.test.tsx"), deps.render("tests/app.test.tsx.ejs", context));
+const destinationFor = (templateRelativePath: string): string => {
+    if (templateRelativePath.startsWith(CLAUDE_TEMPLATE_PREFIX)) {
+        return `${CLAUDE_SKILLS_DIR}/${templateRelativePath.slice(CLAUDE_TEMPLATE_PREFIX.length)}`;
+    }
+    return TEMPLATE_DESTINATIONS[templateRelativePath] ?? templateRelativePath;
+};
+
+const isTemplateIncluded = (templateRelativePath: string, resolved: ResolvedOptions): boolean => {
+    if (templateRelativePath.startsWith(CLAUDE_TEMPLATE_PREFIX)) {
+        return resolved.claudeSkills;
+    }
+    if (TESTING_TEMPLATE_PREFIXES.some((prefix) => templateRelativePath.startsWith(prefix))) {
+        return resolved.testing === "vitest";
+    }
+    return true;
 };
 
 const scaffoldProject = (deps: ScaffolderDeps, projectPath: string, resolved: ResolvedOptions): void => {
-    const { name, applicationId, testing, claudeSkills } = resolved;
+    const { name, applicationId, testing } = resolved;
     const context: TemplateContext = { name, applicationId, title: titleFromName(name), testing };
 
     deps.fs.mkdirSync(projectPath, { recursive: true });
-    deps.fs.mkdirSync(join(projectPath, "src"), { recursive: true });
-    if (testing !== "none") {
-        deps.fs.mkdirSync(join(projectPath, "tests"), { recursive: true });
+
+    for (const template of deps.listTemplates()) {
+        const relativeTemplate = template.slice(0, -TEMPLATE_SUFFIX.length);
+        if (!isTemplateIncluded(relativeTemplate, resolved)) continue;
+
+        const destination = join(projectPath, destinationFor(relativeTemplate));
+        deps.fs.mkdirSync(dirname(destination), { recursive: true });
+        deps.fs.writeFileSync(destination, deps.render(template, context));
     }
-
-    deps.fs.writeFileSync(join(projectPath, "package.json"), deps.render("package.json.ejs", context));
-    deps.fs.writeFileSync(join(projectPath, "gtkx.config.ts"), deps.render("gtkx.config.ts.ejs", context));
-    deps.fs.writeFileSync(join(projectPath, "tsconfig.json"), deps.render("tsconfig.json.ejs", context));
-    deps.fs.writeFileSync(join(projectPath, "src", "app.tsx"), deps.render("src/app.tsx.ejs", context));
-    deps.fs.writeFileSync(join(projectPath, "src", "index.tsx"), deps.render("src/index.tsx.ejs", context));
-    deps.fs.writeFileSync(join(projectPath, "src", "gtkx-env.d.ts"), deps.render("src/gtkx-env.d.ts.ejs", context));
-    deps.fs.writeFileSync(join(projectPath, ".gitignore"), deps.render("gitignore.ejs", context));
-
-    if (claudeSkills) writeClaudeSkills(deps, projectPath, context);
-    if (testing === "vitest") writeVitestFiles(deps, projectPath, context);
 };
 
 type InstallAllOptions = {

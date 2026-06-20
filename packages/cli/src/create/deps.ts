@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import * as p from "@clack/prompts";
 import { addDependency, detectPackageManager as nypmDetectPackageManager } from "nypm";
 import { x } from "tinyexec";
-import { renderFile } from "../templates.js";
+import { listTemplates, renderFile } from "../templates.js";
 import { isKnownPackageManager, type PackageManager } from "./options.js";
 import type { ScaffolderDeps } from "./scaffolder.js";
 
@@ -35,6 +35,7 @@ export const defaultScaffolderDeps = (): ScaffolderDeps => ({
         confirm: p.confirm,
         isCancel: p.isCancel,
     },
+    listTemplates,
     render: renderFile,
     install: async ({ cwd, packageManager, dependencies, dev }) => {
         if (dependencies.length === 0) return;
