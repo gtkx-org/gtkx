@@ -1,8 +1,5 @@
+import { getIsReactActEnvironment, setIsReactActEnvironment } from "@gtkx/testing/act";
 import { afterEach, beforeEach } from "vitest";
-
-declare global {
-    var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
-}
 
 /**
  * Registers per-test hooks for suites driving `render` from `@gtkx/react`
@@ -14,11 +11,11 @@ export const setupRealRenderEnvironment = (): void => {
     let previousActEnvironment: boolean | undefined;
 
     beforeEach(() => {
-        previousActEnvironment = globalThis.IS_REACT_ACT_ENVIRONMENT;
-        globalThis.IS_REACT_ACT_ENVIRONMENT = false;
+        previousActEnvironment = getIsReactActEnvironment();
+        setIsReactActEnvironment(false);
     });
 
     afterEach(() => {
-        globalThis.IS_REACT_ACT_ENVIRONMENT = previousActEnvironment;
+        setIsReactActEnvironment(previousActEnvironment);
     });
 };

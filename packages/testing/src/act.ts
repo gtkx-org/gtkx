@@ -10,18 +10,33 @@ const getGlobalThis = (): typeof globalThis => {
 };
 
 /**
- * Returns the current `IS_REACT_ACT_ENVIRONMENT` flag.
+ * Returns the current `IS_REACT_ACT_ENVIRONMENT` flag, which controls whether
+ * React captures state updates as act-wrapped work.
  *
- * Async utilities such as {@link waitFor} call this to remember the caller's
- * environment before clearing the flag for the duration of the poll.
+ * Async utilities such as {@link waitFor} read it to remember the caller's
+ * environment before clearing the flag for the duration of a poll.
+ *
+ * @returns The flag's current value, or `undefined` when it has never been set.
+ * @example
+ * ```ts
+ * const wasActive = getIsReactActEnvironment();
+ * ```
  */
 export const getIsReactActEnvironment = (): boolean | undefined => getGlobalThis().IS_REACT_ACT_ENVIRONMENT;
 
 /**
- * Sets the `IS_REACT_ACT_ENVIRONMENT` flag.
+ * Sets the `IS_REACT_ACT_ENVIRONMENT` flag that controls whether React captures
+ * state updates as act-wrapped work.
  *
- * Used by {@link act} and the async utilities to toggle React's act tracking
- * around scopes that should — or should not — capture state updates.
+ * {@link act} and the async utilities toggle it around scopes that should — or
+ * should not — capture updates; a test rendering through `@gtkx/react` directly
+ * clears it so the real application lifecycle runs.
+ *
+ * @param value - The flag value to install, or `undefined` to clear it.
+ * @example
+ * ```ts
+ * setIsReactActEnvironment(false);
+ * ```
  */
 export const setIsReactActEnvironment = (value: boolean | undefined): void => {
     getGlobalThis().IS_REACT_ACT_ENVIRONMENT = value;
