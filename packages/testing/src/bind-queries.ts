@@ -1,6 +1,9 @@
 import * as queries from "./queries.js";
 import type { Container } from "./traversal.js";
-import type { BoundCustomQueries, BoundQueries, QueryMap } from "./types.js";
+import type { BoundCustomQueries, BoundQueries, Query, QueryMap } from "./types.js";
+
+/** Matches the built-in query export names: `queryBy`/`getBy`/`findBy` and their `All` variants. */
+const BUILTIN_QUERY_PATTERN = /^(query|get|find)(All)?By/;
 
 type ContainerOrGetter = Container | (() => Container);
 
@@ -35,42 +38,15 @@ const bindCustomQueries = <Q extends QueryMap>(
 export const bindQueries = <Q extends QueryMap = Record<never, never>>(
     containerOrGetter: ContainerOrGetter,
     customQueries?: Q,
-): BoundQueries & BoundCustomQueries<Q> => ({
-    queryByRole: bindQuery(queries.queryByRole, containerOrGetter),
-    queryByLabelText: bindQuery(queries.queryByLabelText, containerOrGetter),
-    queryByText: bindQuery(queries.queryByText, containerOrGetter),
-    queryByName: bindQuery(queries.queryByName, containerOrGetter),
-    queryByPlaceholderText: bindQuery(queries.queryByPlaceholderText, containerOrGetter),
-    queryByDisplayValue: bindQuery(queries.queryByDisplayValue, containerOrGetter),
-    queryAllByRole: bindQuery(queries.queryAllByRole, containerOrGetter),
-    queryAllByLabelText: bindQuery(queries.queryAllByLabelText, containerOrGetter),
-    queryAllByText: bindQuery(queries.queryAllByText, containerOrGetter),
-    queryAllByName: bindQuery(queries.queryAllByName, containerOrGetter),
-    queryAllByPlaceholderText: bindQuery(queries.queryAllByPlaceholderText, containerOrGetter),
-    queryAllByDisplayValue: bindQuery(queries.queryAllByDisplayValue, containerOrGetter),
-    getByRole: bindQuery(queries.getByRole, containerOrGetter),
-    getByLabelText: bindQuery(queries.getByLabelText, containerOrGetter),
-    getByText: bindQuery(queries.getByText, containerOrGetter),
-    getByName: bindQuery(queries.getByName, containerOrGetter),
-    getByPlaceholderText: bindQuery(queries.getByPlaceholderText, containerOrGetter),
-    getByDisplayValue: bindQuery(queries.getByDisplayValue, containerOrGetter),
-    getAllByRole: bindQuery(queries.getAllByRole, containerOrGetter),
-    getAllByLabelText: bindQuery(queries.getAllByLabelText, containerOrGetter),
-    getAllByText: bindQuery(queries.getAllByText, containerOrGetter),
-    getAllByName: bindQuery(queries.getAllByName, containerOrGetter),
-    getAllByPlaceholderText: bindQuery(queries.getAllByPlaceholderText, containerOrGetter),
-    getAllByDisplayValue: bindQuery(queries.getAllByDisplayValue, containerOrGetter),
-    findByRole: bindQuery(queries.findByRole, containerOrGetter),
-    findByLabelText: bindQuery(queries.findByLabelText, containerOrGetter),
-    findByText: bindQuery(queries.findByText, containerOrGetter),
-    findByName: bindQuery(queries.findByName, containerOrGetter),
-    findByPlaceholderText: bindQuery(queries.findByPlaceholderText, containerOrGetter),
-    findByDisplayValue: bindQuery(queries.findByDisplayValue, containerOrGetter),
-    findAllByRole: bindQuery(queries.findAllByRole, containerOrGetter),
-    findAllByLabelText: bindQuery(queries.findAllByLabelText, containerOrGetter),
-    findAllByText: bindQuery(queries.findAllByText, containerOrGetter),
-    findAllByName: bindQuery(queries.findAllByName, containerOrGetter),
-    findAllByPlaceholderText: bindQuery(queries.findAllByPlaceholderText, containerOrGetter),
-    findAllByDisplayValue: bindQuery(queries.findAllByDisplayValue, containerOrGetter),
-    ...(customQueries ? bindCustomQueries(customQueries, containerOrGetter) : ({} as BoundCustomQueries<Q>)),
-});
+): BoundQueries & BoundCustomQueries<Q> => {
+    const builtins: Record<string, (...args: never[]) => unknown> = {};
+    for (const [name, value] of Object.entries(queries)) {
+        if (BUILTIN_QUERY_PATTERN.test(name) && typeof value === "function") {
+            builtins[name] = bindQuery(value as Query, containerOrGetter);
+        }
+    }
+    return {
+        ...(builtins as BoundQueries),
+        ...(customQueries ? bindCustomQueries(customQueries, containerOrGetter) : ({} as BoundCustomQueries<Q>)),
+    };
+};
