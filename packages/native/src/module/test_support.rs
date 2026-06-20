@@ -42,18 +42,16 @@ static TOGGLE_PENDING: AtomicU64 = AtomicU64::new(0);
 #[cfg_attr(test, allow(dead_code))]
 pub fn watch_object_finalize(env: Env, handle: &External<NativeHandle>) -> napi::Result<()> {
     let addr = handle.ptr() as usize;
-    Mailbox::global()
-        .dispatch_to_glib_and_wait(env, move || {
-            // SAFETY: `addr` came from a live NativeHandle whose wrapper's
-            // toggle reference keeps the GObject alive across this
-            // GLib-thread task.
-            let object: glib::translate::Borrowed<glib::Object> =
-                unsafe { from_glib_borrow(addr as *mut glib::gobject_ffi::GObject) };
-            object.add_weak_ref_notify(|| {
-                FINALIZE_COUNT.fetch_add(1, Ordering::SeqCst);
-            });
-        })
-        .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))?;
+    Mailbox::global().dispatch_and_wait_napi(env, move || {
+        // SAFETY: `addr` came from a live NativeHandle whose wrapper's
+        // toggle reference keeps the GObject alive across this
+        // GLib-thread task.
+        let object: glib::translate::Borrowed<glib::Object> =
+            unsafe { from_glib_borrow(addr as *mut glib::gobject_ffi::GObject) };
+        object.add_weak_ref_notify(|| {
+            FINALIZE_COUNT.fetch_add(1, Ordering::SeqCst);
+        });
+    })?;
     Ok(())
 }
 

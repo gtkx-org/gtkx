@@ -101,6 +101,19 @@ impl Mailbox {
             .map_err(|message| GlibDispatchError::task_panicked(&message))
     }
 
+    /// Runs [`Self::dispatch_to_glib_and_wait`] and maps a [`GlibDispatchError`]
+    /// into the `GenericFailure` [`napi::Error`] every napi-export call site
+    /// surfaces, so the dispatch-error policy lives in one place.
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    pub fn dispatch_and_wait_napi<R, F>(&self, env: Env, task: F) -> napi::Result<R>
+    where
+        F: FnOnce() -> R + Send + 'static,
+        R: Send + 'static,
+    {
+        self.dispatch_to_glib_and_wait(env, task)
+            .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))
+    }
+
     /// Blocks the JS thread until the receiver yields a value, draining any
     /// pending node callbacks along the way. Useful when callers schedule
     /// tasks via [`Mailbox::schedule_glib`] and want fine-grained control over

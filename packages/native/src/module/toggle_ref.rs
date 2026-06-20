@@ -120,14 +120,13 @@ pub fn set_wrapper(
         // SAFETY: This closure runs on the GLib thread; the handle's
         // pending reference (or the wrapper itself) keeps the GObject
         // alive across the dispatch.
-        .dispatch_to_glib_and_wait(env, move || unsafe {
+        .dispatch_and_wait_napi(env, move || unsafe {
             toggle_ref::WrapperRegistry::global().install(
                 gobject_addr as *mut _,
                 ref_addr as *mut c_void,
                 consume_pending,
             )
-        })
-        .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))?;
+        })?;
     // SAFETY: `data` stays a valid unique allocation until the finalizer
     // consumes it, and the finalizer cannot run during this callback.
     unsafe {
@@ -161,10 +160,9 @@ pub fn get_wrapper<'env>(
     let ref_addr: usize = Mailbox::global()
         // SAFETY: This closure runs on the GLib thread, and wrapper_ref
         // null-checks the address before touching qdata.
-        .dispatch_to_glib_and_wait(*env, move || unsafe {
+        .dispatch_and_wait_napi(*env, move || unsafe {
             toggle_ref::WrapperRegistry::global().wrapper_ref(gobject_addr as *mut _) as usize
-        })
-        .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))?;
+        })?;
 
     if ref_addr != 0 {
         let raw_ref = ref_addr as sys::napi_ref;
@@ -178,12 +176,11 @@ pub fn get_wrapper<'env>(
                     // SAFETY: The swapped flag held the one pending decode
                     // reference, released exactly once on the GLib thread;
                     // the live wrapper keeps the object alive afterward.
-                    .dispatch_to_glib_and_wait(*env, move || unsafe {
+                    .dispatch_and_wait_napi(*env, move || unsafe {
                         glib::gobject_ffi::g_object_unref(
                             gobject_addr as *mut glib::gobject_ffi::GObject,
                         );
-                    })
-                    .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))?;
+                    })?;
             }
             // SAFETY: `raw_value` is the live wrapper value just resolved
             // under the current callback's `env`.

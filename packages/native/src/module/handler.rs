@@ -30,8 +30,7 @@ pub trait ModuleRequest: Sized + Send + 'static {
     /// operation and the root cause.
     fn dispatch(self, env: &Env) -> napi::Result<Unknown<'_>> {
         let result = dispatch::Mailbox::global()
-            .dispatch_to_glib_and_wait(*env, move || self.execute())
-            .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))?
+            .dispatch_and_wait_napi(*env, move || self.execute())?
             .map_err(|e| {
                 napi::Error::new(
                     napi::Status::GenericFailure,
