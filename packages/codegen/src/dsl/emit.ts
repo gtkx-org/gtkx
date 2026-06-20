@@ -33,6 +33,36 @@ export const indent = (block: string, level: number): string => {
 export const renderBlock = (head: string, body: string): string => `${head} {\n${indent(body, 1)}\n}`;
 
 /**
+ * Renders a headless brace-delimited block: an opening brace, the
+ * one-level-indented `body`, and a closing brace on its own line. The
+ * record-literal counterpart to {@link renderBlock} for object/struct values
+ * that have no preceding signature.
+ *
+ * @param body - The multi-line block body, indented one level
+ */
+export const renderBraced = (body: string): string => `{\n${indent(body, 1)}\n}`;
+
+/**
+ * Renders {@link renderBlock}, collapsing to `${head} {}` when `body` is empty
+ * so an interface or class with no members emits a single-line empty body
+ * rather than a brace pair wrapping a blank line.
+ *
+ * @param head - The text preceding the opening brace
+ * @param body - The multi-line block body, indented one level when present
+ */
+export const renderBracedOrEmpty = (head: string, body: string): string =>
+    body.length === 0 ? `${head} {}` : renderBlock(head, body);
+
+/**
+ * Indents each member of `members` one level and joins them with a blank line,
+ * producing the body of a class or interface without wrapping braces.
+ *
+ * @param members - The already-rendered member declarations
+ */
+export const indentMembers = (members: readonly string[]): string =>
+    members.map((member) => indent(member, 1)).join("\n\n");
+
+/**
  * Joins `parts` with commas, dropping `undefined` entries.
  */
 export const joinArgs = (parts: ReadonlyArray<string | undefined>): string =>

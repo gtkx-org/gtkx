@@ -1,6 +1,6 @@
 import { quote, toCamelCase, toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
-import { indent, renderBlock } from "../dsl/emit.js";
+import { indent, renderBlock, renderBracedOrEmpty } from "../dsl/emit.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirParameter } from "../gir/parameter.js";
 import { isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
@@ -259,7 +259,7 @@ const renderSignalConnectInterface = (className: string, isRootObject: boolean):
             );
         }
     }
-    return renderBlock(`export interface ${className}`, lines.join("\n"));
+    return renderBracedOrEmpty(`export interface ${className}`, lines.join("\n"));
 };
 
 /**

@@ -1,5 +1,5 @@
 import type { ModuleContext } from "../dsl/context.js";
-import { indent } from "../dsl/emit.js";
+import { indentMembers } from "../dsl/emit.js";
 import type { GirBoxed } from "../gir/boxed.js";
 import { renderBoxedConstructor, renderBoxedConstructorPropsInterface } from "./boxed-constructor.js";
 import { renderBoxedFieldAccessor } from "./boxed-field-accessor.js";
@@ -41,7 +41,7 @@ export const emitBoxed = (context: ModuleContext, boxed: GirBoxed): void => {
     emitBindings(context, callables);
 
     const members = renderBoxedMembers(context, boxed, className, callables);
-    const body = members.map((member) => indent(member, 1)).join("\n\n");
+    const body = indentMembers(members);
     context.module.appendDeclaration(`export class ${className} {\n${body}\n}`);
     context.module.appendDeclaration(renderBoxedConstructorPropsInterface(context, boxed, className));
 

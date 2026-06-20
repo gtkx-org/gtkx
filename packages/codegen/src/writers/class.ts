@@ -1,6 +1,6 @@
 import { toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
-import { indent, renderBlock } from "../dsl/emit.js";
+import { indentMembers, renderBlock } from "../dsl/emit.js";
 import { bindingIdentifier } from "../dsl/identifier.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
@@ -57,7 +57,7 @@ export const emitClass = (context: ModuleContext, klass: GirClass): void => {
     const parentExpression = resolveParent(context, klass);
     const extendsClause = parentExpression === undefined ? "" : ` extends ${parentExpression}`;
     const members = renderClassMembers(context, klass, callables, parentExpression !== undefined);
-    const body = members.map((member) => indent(member, 1)).join("\n\n");
+    const body = indentMembers(members);
     context.module.appendDeclaration(`export class ${className}${extendsClause} {\n${body}\n}`);
     context.module.appendDeclaration(renderConstructorPropsInterface(context, klass, className));
     for (const declaration of renderSignalDeclarations(context, klass, className, false)) {

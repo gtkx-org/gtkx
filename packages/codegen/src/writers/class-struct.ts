@@ -1,6 +1,6 @@
 import { quote, toCamelIdentifier, toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
-import { indent } from "../dsl/emit.js";
+import { renderBraced } from "../dsl/emit.js";
 import type { GirCallback } from "../gir/callback.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirField } from "../gir/field.js";
@@ -34,7 +34,7 @@ export const renderVfuncMetadata = (context: ModuleContext, klass: GirClass): st
     const kind: VtableKind = klass.isInterface ? "interface" : "class";
     const entries = vtableEntries(context, structName, kind, klass.glibTypeStruct);
     if (entries.length === 0) return undefined;
-    return `{\n${entries.map((entry) => indent(entry, 1)).join("\n")}\n}`;
+    return renderBraced(entries.join("\n"));
 };
 
 const vtableEntries = (context: ModuleContext, structName: string, kind: VtableKind, typeStruct: string): string[] => {
@@ -96,5 +96,5 @@ const renderDescriptor = (context: ModuleContext, options: RenderDescriptorOptio
         `argTypes: [${argTypes}],`,
         `returnType: ${returnType},`,
     ];
-    return `${key}: {\n${lines.map((line) => indent(line, 1)).join("\n")}\n},`;
+    return `${key}: ${renderBraced(lines.join("\n"))},`;
 };

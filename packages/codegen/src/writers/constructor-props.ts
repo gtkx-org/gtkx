@@ -1,6 +1,6 @@
 import { dedupeBy, quote, toCamelIdentifier, toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
-import { indent, renderBlock } from "../dsl/emit.js";
+import { indent, renderBlock, renderBraced } from "../dsl/emit.js";
 import type { GirClass } from "../gir/class.js";
 import { type GirProperty, isConstructableProperty } from "../gir/property.js";
 import { splitOptionalNamespace } from "../gir/type-ref.js";
@@ -109,7 +109,7 @@ const renderTranslatingConstructor = (
         (property) =>
             `${quote(property.name)}: [${renderFfiType(context, property.type, property.transferOwnership)}, ${toCamelIdentifier(property.name)}],`,
     );
-    const recordLiteral = `{\n${indent(entries.join("\n"), 1)}\n}`;
+    const recordLiteral = renderBraced(entries.join("\n"));
     const lines = [`const props: ${PROPS_RECORD} = ${recordLiteral};`, "super({ ...props, ...rest });"];
     const body = lines.join("\n");
     return renderBlock(`constructor(${pattern}: ${className}ConstructorProps = {})`, body);

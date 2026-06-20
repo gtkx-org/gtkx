@@ -1,6 +1,6 @@
 import { toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
-import { indent } from "../dsl/emit.js";
+import { indentMembers } from "../dsl/emit.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import {
@@ -45,7 +45,7 @@ export const emitInterface = (context: ModuleContext, iface: GirClass): void => 
 
     const parent = resolveInterfaceParent(context);
     const members = renderInterfaceMembers(context, iface, callables);
-    const body = members.map((member) => indent(member, 1)).join("\n\n");
+    const body = indentMembers(members);
     context.module.appendDeclaration(`export class ${className} extends ${parent} {\n${body}\n}`);
 
     const prerequisiteRefs = iface.prerequisites
