@@ -1,6 +1,6 @@
 export type { AnyClass } from "./class.js";
 export { compareAlpha, dedupeBy, omit, reverseNumericEnum, sortedAlpha, sortedAlphaBy } from "./collection.js";
-export { errorMessage } from "./error.js";
+export { errorMessage, formatChildProcessError } from "./error.js";
 export {
     exitCodeForSignal,
     type GracefulShutdownHandle,

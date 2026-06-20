@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { formatChildProcessError } from "@gtkx/utils";
 import { resolveCliTool } from "../internal/resolve-cli-tool.js";
 
 const SCHEMA_COMPILER = "glib-compile-schemas";
@@ -18,9 +19,7 @@ export const compileSchemas = (dir: string): void => {
             encoding: "utf-8",
         });
     } catch (error) {
-        const stderr = (error as { stderr?: string }).stderr ?? "";
-        const stdout = (error as { stdout?: string }).stdout ?? "";
-        const details = [stderr, stdout].filter(Boolean).join("\n").trim();
+        const details = formatChildProcessError(error);
         throw new Error(`glib-compile-schemas failed for ${dir}${details ? `:\n${details}` : ""}`, { cause: error });
     }
 };

@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
+import { formatChildProcessError } from "@gtkx/utils";
 
 /** Default Linux system location for GIR files. */
 const SYSTEM_GIR_PATH = "/usr/share/gir-1.0";
@@ -52,9 +53,12 @@ const queryPkgConfigGirDir = (): string | undefined => {
         return trimmed.length > 0 ? trimmed : undefined;
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
-        const stderr = (error as { stderr?: string | Buffer }).stderr?.toString().trim() ?? "";
-        throw new Error(`pkg-config failed querying gobject-introspection-1.0 girdir${stderr ? `:\n${stderr}` : ""}`, {
-            cause: error,
-        });
+        const details = formatChildProcessError(error);
+        throw new Error(
+            `pkg-config failed querying gobject-introspection-1.0 girdir${details ? `:\n${details}` : ""}`,
+            {
+                cause: error,
+            },
+        );
     }
 };

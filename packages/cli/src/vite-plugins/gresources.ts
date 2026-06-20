@@ -3,6 +3,7 @@ import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } fro
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { createGtkxConfigLoader, DATA_IMPORT_PREFIX, type GtkxConfigLoader } from "@gtkx/config";
+import { formatChildProcessError } from "@gtkx/utils";
 import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
 import { error, info } from "../internal/log.js";
 import { removeTempDir } from "../internal/remove-temp-dir.js";
@@ -89,7 +90,16 @@ const stageBundle = (entries: Map<string, ResourceEntry>): StagedBundle => {
 };
 
 const runCompiler = (sourceDir: string, manifest: string, outputPath: string): Buffer => {
-    execFileSync(resolveCliTool(RESOURCE_COMPILER), [`--sourcedir=${sourceDir}`, `--target=${outputPath}`, manifest]);
+    try {
+        execFileSync(resolveCliTool(RESOURCE_COMPILER), [
+            `--sourcedir=${sourceDir}`,
+            `--target=${outputPath}`,
+            manifest,
+        ]);
+    } catch (error) {
+        const details = formatChildProcessError(error);
+        throw new Error(`${RESOURCE_COMPILER} failed${details ? `:\n${details}` : ""}`, { cause: error });
+    }
     return readFileSync(outputPath);
 };
 
