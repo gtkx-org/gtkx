@@ -370,6 +370,46 @@ const applyLayoutChild = (parent: Gtk.Widget, widget: Gtk.Widget, kind: "grid" |
     else applyFixedLayoutChild(layoutChild, props);
 };
 
+/**
+ * Reconciles a wrapper marker's child widgets against the parent: removes the
+ * previously-attached widgets no longer desired, attaches the unparented
+ * desired widgets, applies per-child metadata, and records the new set on the
+ * child's `attachState`. The shared skeleton behind the layout-child and
+ * overlay multi-child mappings; the parent-specific add/remove/apply
+ * operations are supplied as closures.
+ */
+const reconcileMultiChildAttach = (
+    child: Node,
+    parent: Gtk.Widget,
+    remove: (widget: Gtk.Widget) => void,
+    add: (widget: Gtk.Widget) => void,
+    applyChild: (widget: Gtk.Widget, props: Props) => void,
+): void => {
+    const childState = stateOf(child);
+    const desired = wrapperChildWidgets(child);
+    const prev = (childState.attachState as Gtk.Widget[] | undefined) ?? [];
+    for (const widget of prev) {
+        if (!desired.includes(widget)) remove(widget);
+    }
+    for (const widget of desired) {
+        if (widget.getParent() !== parent) add(widget);
+        applyChild(widget, childState.props);
+    }
+    childState.attachState = desired;
+};
+
+/**
+ * Reverses {@link reconcileMultiChildAttach}: removes every widget recorded on
+ * the child's `attachState` through `remove` and clears the record.
+ */
+const reconcileMultiChildDetach = (child: Node, remove: (widget: Gtk.Widget) => void): void => {
+    const childState = stateOf(child);
+    for (const widget of (childState.attachState as Gtk.Widget[] | undefined) ?? []) {
+        remove(widget);
+    }
+    childState.attachState = undefined;
+};
+
 const layoutChildMapping: ElementMapping = {
     matches: (child, parent) =>
         isWrapperKind(child, LAYOUT_CHILD_KIND) && parent instanceof Gtk.Widget && resolveLayoutKind(parent) !== null,
@@ -377,24 +417,18 @@ const layoutChildMapping: ElementMapping = {
         if (!(parent instanceof Gtk.Widget)) return;
         const kind = resolveLayoutKind(parent);
         if (!kind) return;
-        const childState = stateOf(child);
-        const desired = wrapperChildWidgets(child);
-        const prev = (childState.attachState as Gtk.Widget[] | undefined) ?? [];
-        for (const widget of prev) {
-            if (!desired.includes(widget)) detachChild(widget, parent);
-        }
-        for (const widget of desired) {
-            if (widget.getParent() !== parent) attachChild(widget, parent);
-            applyLayoutChild(parent, widget, kind, childState.props);
-        }
-        childState.attachState = desired;
+        reconcileMultiChildAttach(
+            child,
+            parent,
+            (widget) => detachChild(widget, parent),
+            (widget) => attachChild(widget, parent),
+            (widget, props) => applyLayoutChild(parent, widget, kind, props),
+        );
     },
     detach: (child, parent) => {
-        const childState = stateOf(child);
-        for (const widget of (childState.attachState as Gtk.Widget[] | undefined) ?? []) {
+        reconcileMultiChildDetach(child, (widget) => {
             if (parent instanceof Gtk.Widget) detachChild(widget, parent);
-        }
-        childState.attachState = undefined;
+        });
     },
 };
 
@@ -409,25 +443,21 @@ const overlayMapping: ElementMapping = {
     matches: (child, parent) => isWrapperKind(child, OVERLAY_KIND) && parent instanceof Gtk.Overlay,
     attach: (child, parent) => {
         if (!(parent instanceof Gtk.Overlay)) return;
-        const childState = stateOf(child);
-        const desired = wrapperChildWidgets(child);
-        const prev = (childState.attachState as Gtk.Widget[] | undefined) ?? [];
-        for (const widget of prev) {
-            if (!desired.includes(widget) && widget.getParent() === parent) parent.removeOverlay(widget);
-        }
-        for (const widget of desired) {
-            if (widget.getParent() !== parent) parent.addOverlay(widget);
-            applyOverlayFlags(parent, widget, childState.props);
-        }
-        childState.attachState = desired;
+        reconcileMultiChildAttach(
+            child,
+            parent,
+            (widget) => {
+                if (widget.getParent() === parent) parent.removeOverlay(widget);
+            },
+            (widget) => parent.addOverlay(widget),
+            (widget, props) => applyOverlayFlags(parent, widget, props),
+        );
     },
     detach: (child, parent) => {
-        const childState = stateOf(child);
-        for (const widget of (childState.attachState as Gtk.Widget[] | undefined) ?? []) {
+        reconcileMultiChildDetach(child, (widget) => {
             if (parent instanceof Gtk.Overlay && widget.getParent() === parent) parent.removeOverlay(widget);
             else if (widget instanceof Gtk.Widget) unparentWidget(widget);
-        }
-        childState.attachState = undefined;
+        });
     },
 };
 
