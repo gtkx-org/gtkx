@@ -228,9 +228,7 @@ impl Mailbox {
         wait_depth: Option<usize>,
     ) -> anyhow::Result<R> {
         let Some(depth) = wait_depth else {
-            return rx
-                .recv()
-                .unwrap_or_else(|_| Err(anyhow::anyhow!("JS callback channel disconnected")));
+            return rx.recv().unwrap_or_else(|_| node_channel_disconnected());
         };
         self.wait_for_node_result(rx, depth)
     }
@@ -252,9 +250,7 @@ impl Mailbox {
 
             match rx.try_recv() {
                 Ok(result) => return result,
-                Err(mpsc::TryRecvError::Disconnected) => {
-                    return Err(anyhow::anyhow!("JS callback channel disconnected"));
-                }
+                Err(mpsc::TryRecvError::Disconnected) => return node_channel_disconnected(),
                 Err(mpsc::TryRecvError::Empty) => self.wake_glib.wait(),
             }
         }
