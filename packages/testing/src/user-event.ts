@@ -297,8 +297,8 @@ const isListView = (widget: Gtk.Widget): widget is Gtk.ListView | Gtk.GridView |
     return widget instanceof Gtk.ListView || widget instanceof Gtk.GridView || widget instanceof Gtk.ColumnView;
 };
 
-const selectComboBoxOption = (widget: Gtk.Widget, values: number | number[], valueArray: number[]): void => {
-    if (Array.isArray(values) && values.length > 1) {
+const selectComboBoxOption = (widget: Gtk.Widget, valueArray: number[]): void => {
+    if (valueArray.length > 1) {
         throw new Error("Cannot select multiple options: ComboBox only supports single selection");
     }
     const [selection] = valueArray;
@@ -310,35 +310,46 @@ const selectComboBoxOption = (widget: Gtk.Widget, values: number | number[], val
     }
 };
 
-const selectListBoxOptions = (widget: Gtk.ListBox, valueArray: number[]): void => {
+const applyListBoxRows = (listBox: Gtk.ListBox, valueArray: number[], select: boolean): void => {
     for (const value of valueArray) {
-        const row = widget.getRowAtIndex(value);
-        if (row) {
-            widget.selectRow(row);
+        const row = listBox.getRowAtIndex(value);
+        if (!row) continue;
+        if (select) {
+            listBox.selectRow(row);
             row.activate();
+        } else {
+            listBox.unselectRow(row);
         }
     }
 };
 
-const selectInListView = (widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView, valueArray: number[]): void => {
+const requireSelectionModel = (
+    widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView,
+    verb: string,
+): Gtk.SelectionModel => {
     const selectionModel = widget.getModel();
     if (selectionModel === null) {
-        throw new Error("Cannot select options: list view has no selection model");
+        throw new Error(`Cannot ${verb} options: list view has no selection model`);
     }
+    return selectionModel;
+};
+
+const selectInListView = (widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView, valueArray: number[]): void => {
+    const selectionModel = requireSelectionModel(widget, "select");
     const isMultiSelection = selectionModel instanceof Gtk.MultiSelection;
     selectListViewItems(selectionModel, valueArray, !isMultiSelection);
 };
 
-const selectByRole = (widget: Gtk.Widget, values: number | number[], valueArray: number[]): void => {
+const selectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
     if (!isSelectable(widget)) {
         throw new Error("Cannot select options: expected selectable widget (COMBO_BOX or LIST)");
     }
 
     const role = widget.getAccessibleRole();
     if (role === Gtk.AccessibleRole.COMBO_BOX) {
-        selectComboBoxOption(widget, values, valueArray);
+        selectComboBoxOption(widget, valueArray);
     } else if (widget instanceof Gtk.ListBox) {
-        selectListBoxOptions(widget, valueArray);
+        applyListBoxRows(widget, valueArray, true);
     }
 };
 
@@ -349,26 +360,14 @@ const selectOptions = async (widget: Gtk.Widget, values: number | number[]): Pro
             selectInListView(widget, valueArray);
             return;
         }
-        selectByRole(widget, values, valueArray);
+        selectByRole(widget, valueArray);
     });
 };
 
 const deselectInListView = (widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView, valueArray: number[]): void => {
-    const selectionModel = widget.getModel();
-    if (selectionModel === null) {
-        throw new Error("Cannot deselect options: list view has no selection model");
-    }
+    const selectionModel = requireSelectionModel(widget, "deselect");
     for (const pos of valueArray) {
         selectionModel.unselectItem(pos);
-    }
-};
-
-const deselectInListBox = (listBox: Gtk.ListBox, valueArray: number[]): void => {
-    for (const value of valueArray) {
-        const row = listBox.getRowAtIndex(value);
-        if (row) {
-            listBox.unselectRow(row);
-        }
     }
 };
 
@@ -382,7 +381,7 @@ const deselectOptions = async (widget: Gtk.Widget, values: number | number[]): P
         if (!(widget instanceof Gtk.ListBox)) {
             throw new Error("Cannot deselect options: only ListBox supports deselection");
         }
-        deselectInListBox(widget, valueArray);
+        applyListBoxRows(widget, valueArray, false);
     });
 };
 
