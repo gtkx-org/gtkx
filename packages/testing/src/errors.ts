@@ -68,38 +68,32 @@ const formatQueryDescription = (descriptor: QueryDescriptor): string => {
     }
 };
 
+const buildElementError = (container: Container, headLines: string[]): Error => {
+    const config = getConfig();
+    const lines = [...headLines, "", prettyWidget(container, { highlight: false })];
+    return config.getElementError(lines.join("\n"), container);
+};
+
 /**
  * Builds an error for when no elements match a query.
  */
 export const notFoundError = (container: Container, descriptor: QueryDescriptor): Error => {
-    const config = getConfig();
     const description = formatQueryDescription(descriptor);
-    const lines: string[] = [`Unable to find an element with ${description}`];
+    const headLines = [`Unable to find an element with ${description}`];
 
-    if (config.showSuggestions && descriptor.queryType === "role") {
-        lines.push("", "Here are the accessible roles:", "", prettyRoles(container));
+    if (getConfig().showSuggestions && descriptor.queryType === "role") {
+        headLines.push("", "Here are the accessible roles:", "", prettyRoles(container));
     }
 
-    lines.push("", prettyWidget(container, { highlight: false }));
-
-    const message = lines.join("\n");
-    return config.getElementError(message, container);
+    return buildElementError(container, headLines);
 };
 
 /**
  * Builds an error for when multiple elements match a query but only one was expected.
  */
 export const multipleFoundError = (container: Container, descriptor: QueryDescriptor, count: number): Error => {
-    const config = getConfig();
     const description = formatQueryDescription(descriptor);
-    const lines: string[] = [
-        `Found ${count} elements with ${description}, but expected only one`,
-        "",
-        prettyWidget(container, { highlight: false }),
-    ];
-
-    const message = lines.join("\n");
-    return config.getElementError(message, container);
+    return buildElementError(container, [`Found ${count} elements with ${description}, but expected only one`]);
 };
 
 /**
