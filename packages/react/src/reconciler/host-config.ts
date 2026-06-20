@@ -1,6 +1,7 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { freeze, unfreeze } from "@gtkx/native";
+import { createContext } from "react";
 import type ReactReconciler from "react-reconciler";
 import { DiscreteEventPriority } from "react-reconciler/constants.js";
 import { classHasType } from "../utils/gtype-predicates.js";
@@ -406,7 +407,7 @@ type NoopConfig = Pick<
 const createNoopConfig = (): NoopConfig => ({
     preparePortalMount: () => {},
     NotPendingTransition: null,
-    HostTransitionContext: createReconcilerContext(0),
+    HostTransitionContext: createContext(0) as unknown as ReactReconciler.ReactContext<number>,
     getInstanceFromNode: () => null,
     beforeActiveInstanceBlur: () => {},
     afterActiveInstanceBlur: () => {},
@@ -435,32 +436,4 @@ export function createHostConfig(): HostConfig {
         ...createNoopConfig(),
         detachDeletedInstance: createDetachGuard(),
     };
-}
-
-/**
- * Builds the reconciler `HostTransitionContext` as the plain context object the
- * reconciler reads, without routing through `React.createContext`. The
- * `Consumer`/`Provider` slots are recursive self-references the reconciler never
- * reads for this context, so they are back-filled after the value object is
- * assembled, mirroring React's own runtime context construction.
- */
-function createReconcilerContext(value: number): ReactReconciler.ReactContext<number> {
-    const context = {
-        // biome-ignore lint/style/useNamingConvention: React context brand, name fixed by React
-        $$typeof: Symbol.for("react.context"),
-        // biome-ignore lint/style/useNamingConvention: React context internal field, name fixed by React
-        _currentValue: value,
-        // biome-ignore lint/style/useNamingConvention: React context internal field, name fixed by React
-        _currentValue2: value,
-        // biome-ignore lint/style/useNamingConvention: React context internal field, name fixed by React
-        _threadCount: 0,
-    } as ReactReconciler.ReactContext<number>;
-    context.Provider = {
-        // biome-ignore lint/style/useNamingConvention: React provider brand, name fixed by React
-        $$typeof: Symbol.for("react.provider"),
-        // biome-ignore lint/style/useNamingConvention: React provider internal field, name fixed by React
-        _context: context,
-    };
-    context.Consumer = context;
-    return context;
 }
