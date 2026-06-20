@@ -13,3 +13,9 @@ export const isEditable = (widget: unknown): widget is Gtk.Editable => {
 
     return EDITABLE_ROLES.has(widget.getAccessibleRole());
 };
+
+export const getEditableDelegate = (widget: Gtk.Widget): Gtk.Widget | null => {
+    if (!isEditable(widget)) return null;
+    const delegate = widget.getDelegate();
+    return delegate instanceof Gtk.Widget ? delegate : null;
+};

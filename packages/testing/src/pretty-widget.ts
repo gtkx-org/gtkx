@@ -6,14 +6,7 @@ import { getWidgetPropertyText } from "./widget-text.js";
 const DEFAULT_MAX_LENGTH = 7000;
 const INDENT = "  ";
 
-/**
- * Resolves a stable id for a widget, for the optional `id` attribute the printer
- * renders.
- *
- * @param widget - The widget to identify.
- * @returns The id string.
- */
-export type WidgetIdResolver = (widget: Gtk.Widget) => string;
+type WidgetIdResolver = (widget: Gtk.Widget) => string;
 
 /**
  * Options for {@link prettyWidget}.
