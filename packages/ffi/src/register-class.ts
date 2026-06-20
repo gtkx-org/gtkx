@@ -11,28 +11,10 @@ import {
     getParentClass,
     getVfuncRegistry,
     setClassGtype,
+    type VfuncDescriptor,
     walkClassChain,
 } from "./registry.js";
 import { wrapHandler } from "./wrapper-class.js";
-
-/**
- * Generated descriptor of a vtable vfunc slot. Codegen emits one per vfunc on
- * each class-struct registry (e.g. `GObjectClass.setProperty`) or
- * interface-struct registry (e.g. `GIconIface.hash`), discriminated by `kind`.
- * Users never construct these manually — they are resolved automatically when
- * `registerClass` discovers methods on a subclass whose camelCase name matches
- * a vfunc declared on an ancestor class struct or an inherited interface.
- *
- * @typeParam K - Whether the slot lives on a class vtable or an interface vtable.
- */
-type VfuncDescriptor<K extends "class" | "interface" = "class" | "interface"> = {
-    readonly kind: K;
-    readonly className: string;
-    readonly vfuncName: string;
-    readonly byteOffset: number;
-    readonly argTypes: NativeRegisterClassVfunc["argTypes"];
-    readonly returnType: NativeRegisterClassVfunc["returnType"];
-};
 
 /**
  * Options accepted by {@link registerClass}.
@@ -47,15 +29,14 @@ export type RegisterClassOptions = {
 
 type VfuncFn = NativeRegisterClassVfunc["fn"];
 
-type DiscoveredClassVfunc = VfuncDescriptor<"class"> & {
+type DiscoveredVfunc<K extends "class" | "interface"> = VfuncDescriptor<K> & {
     readonly methodName: string;
     readonly fn: VfuncFn;
 };
 
-type DiscoveredInterfaceVfunc = VfuncDescriptor<"interface"> & {
-    readonly methodName: string;
-    readonly fn: VfuncFn;
-};
+type DiscoveredClassVfunc = DiscoveredVfunc<"class">;
+
+type DiscoveredInterfaceVfunc = DiscoveredVfunc<"interface">;
 
 type InterfaceVfuncBinding = {
     readonly gtype: GType;
@@ -124,6 +105,32 @@ function ownInstanceMethodNames(klass: AnyClass): string[] {
 }
 
 /**
+ * Discovers vfunc overrides on `klass` by walking its own instance methods,
+ * resolving each method name to a vtable slot descriptor and wrapping the
+ * implementation in its native trampoline. `resolveDescriptor` chooses the slot
+ * — a parent class struct for class vfuncs, an interface registry for interface
+ * vfuncs — and `skip` excludes method names a higher-precedence vtable already
+ * claimed.
+ */
+function collectDiscoveredVfuncs<K extends "class" | "interface">(
+    klass: AnyClass,
+    resolveDescriptor: (methodName: string) => VfuncDescriptor<K> | undefined,
+    skip?: ReadonlySet<string>,
+): DiscoveredVfunc<K>[] {
+    const proto = (klass as { prototype: Record<string, VfuncFn> }).prototype;
+    const result: DiscoveredVfunc<K>[] = [];
+    for (const methodName of ownInstanceMethodNames(klass)) {
+        if (skip?.has(methodName)) continue;
+        const descriptor = resolveDescriptor(methodName);
+        if (!descriptor) continue;
+        const fn = proto[methodName];
+        if (!fn) continue;
+        result.push({ ...descriptor, methodName, fn: wrapVfunc(fn, descriptor.argTypes, descriptor.returnType) });
+    }
+    return result;
+}
+
+/**
  * GObject class-struct vtable slots that fire during `g_object_new`, before the
  * wrapper's handle is linked. gtkx does not route these to JavaScript: a
  * subclass runs construct-time logic in its constructor, after `super(...)`,
@@ -133,21 +140,15 @@ function ownInstanceMethodNames(klass: AnyClass): string[] {
 const UNSUPPORTED_CONSTRUCT_VFUNCS: ReadonlySet<string> = new Set(["constructed", "setProperty", "getProperty"]);
 
 function discoverClassVfuncs(klass: AnyClass): DiscoveredClassVfunc[] {
-    const proto = (klass as { prototype: Record<string, VfuncFn> }).prototype;
-    const result: DiscoveredClassVfunc[] = [];
-    for (const methodName of ownInstanceMethodNames(klass)) {
+    return collectDiscoveredVfuncs(klass, (methodName) => {
         const descriptor = findClassVfuncDescriptor(klass, methodName);
-        if (!descriptor) continue;
-        if (UNSUPPORTED_CONSTRUCT_VFUNCS.has(methodName)) {
+        if (descriptor && UNSUPPORTED_CONSTRUCT_VFUNCS.has(methodName)) {
             throw new Error(
                 `registerClass: overriding the GObject construct-time vtable slot '${methodName}' is not supported; run construct-time initialization in the subclass constructor, after super(...), instead`,
             );
         }
-        const fn = proto[methodName];
-        if (!fn) continue;
-        result.push({ ...descriptor, methodName, fn: wrapVfunc(fn, descriptor.argTypes, descriptor.returnType) });
-    }
-    return result;
+        return descriptor ?? undefined;
+    });
 }
 
 /**
@@ -193,29 +194,21 @@ function discoverInterfaceVfuncs(
 ): DiscoveredInterfaceVfunc[] {
     const vfuncRegistry = getInterfaceVfuncRegistry(interfaceGtype);
     if (!vfuncRegistry) return [];
-    const proto = (klass as { prototype: Record<string, VfuncFn> }).prototype;
-    const result: DiscoveredInterfaceVfunc[] = [];
-    for (const methodName of ownInstanceMethodNames(klass)) {
-        if (claimedMethodNames.has(methodName)) continue;
-        const descriptor = vfuncRegistry[methodName];
-        if (!descriptor) continue;
-        const fn = proto[methodName];
-        if (!fn) continue;
-        const ifaceDescriptor = descriptor as VfuncDescriptor<"interface">;
-        result.push({
-            ...ifaceDescriptor,
-            methodName,
-            fn: wrapVfunc(fn, ifaceDescriptor.argTypes, ifaceDescriptor.returnType),
-        });
-    }
-    return result;
+    return collectDiscoveredVfuncs(
+        klass,
+        (methodName) => {
+            const entry = vfuncRegistry[methodName];
+            return entry?.kind === "interface" ? entry : undefined;
+        },
+        claimedMethodNames,
+    );
 }
 
 function findClassVfuncDescriptor(klass: AnyClass, methodName: string): VfuncDescriptor<"class"> | null {
     return (
         walkClassChain(getParentClass(klass), (cls) => {
             const entry = getVfuncRegistry(cls)?.[methodName];
-            return entry === undefined ? undefined : (entry as VfuncDescriptor<"class">);
+            return entry?.kind === "class" ? entry : undefined;
         }) ?? null
     );
 }
@@ -229,8 +222,13 @@ function toNativeOptions(
     if (!hasClassVfuncs && !hasInterfaces) {
         return undefined;
     }
-    return {
-        vfuncs: hasClassVfuncs ? classVfuncs : undefined,
-        interfaces: hasInterfaces ? interfaceBindings : undefined,
-    } as NativeRegisterClassOptions;
+    const options: NativeRegisterClassOptions = {};
+    if (hasClassVfuncs) options.vfuncs = [...classVfuncs];
+    if (hasInterfaces) {
+        options.interfaces = interfaceBindings.map((binding) => ({
+            gtype: binding.gtype,
+            vfuncs: [...binding.vfuncs],
+        }));
+    }
+    return options;
 }

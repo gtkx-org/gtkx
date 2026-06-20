@@ -1,4 +1,10 @@
-import { getType, getWrapper, type Handle, setWrapper } from "@gtkx/native";
+import {
+    getType,
+    getWrapper,
+    type Handle,
+    type RegisterClassVfunc as NativeRegisterClassVfunc,
+    setWrapper,
+} from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { type GType, type GTyped, TYPE_INVALID, typeFromName, typeIsA, typeName, typeParent } from "./gtype.js";
 
@@ -346,12 +352,32 @@ export function setHandle(instance: object, handle: Handle): void {
 }
 
 /**
+ * Generated descriptor of a vtable vfunc slot. Codegen emits one per vfunc on
+ * each class-struct registry (e.g. `GObjectClass.setProperty`) or
+ * interface-struct registry (e.g. `GIconIface.hash`), discriminated by `kind`.
+ * Users never construct these manually — they are resolved automatically when
+ * `registerClass` discovers methods on a subclass whose camelCase name matches
+ * a vfunc declared on an ancestor class struct or an inherited interface.
+ *
+ * @typeParam K - Whether the slot lives on a class vtable or an interface vtable.
+ */
+export type VfuncDescriptor<K extends "class" | "interface"> = {
+    readonly kind: K;
+    readonly className: string;
+    readonly vfuncName: string;
+    readonly byteOffset: number;
+    readonly argTypes: NativeRegisterClassVfunc["argTypes"];
+    readonly returnType: NativeRegisterClassVfunc["returnType"];
+};
+
+/**
  * Registry of generated vtable vfunc descriptors, keyed by the JS class they
  * belong to. Populated by codegen at module load via {@link registerVfuncRegistry}
  * and consulted by `registerClass` to auto-discover vfunc overrides supplied
- * as plain methods on user subclasses.
+ * as plain methods on user subclasses. Keyed by the discriminated union so a
+ * `kind` check narrows an entry to its class- or interface-vtable slot.
  */
-export type VfuncRegistry = Readonly<Record<string, unknown>>;
+export type VfuncRegistry = Readonly<Record<string, VfuncDescriptor<"class"> | VfuncDescriptor<"interface">>>;
 
 const vfuncRegistryByClass = new WeakMap<object, VfuncRegistry>();
 
