@@ -11,7 +11,7 @@ export const TOPLEVELS: unique symbol = Symbol("gtkx.toplevels");
 
 export type Container = GObject.Object | typeof TOPLEVELS;
 
-export const isApplication = (container: Container): container is Gtk.Application =>
+const isApplication = (container: Container): container is Gtk.Application =>
     container instanceof Gtk.Application;
 
 const traverseWidgetTree = function* (root: Gtk.Widget): Generator<Gtk.Widget> {
@@ -40,13 +40,6 @@ export const descendants = function* (widget: Gtk.Widget): Generator<Gtk.Widget>
     }
 };
 
-const traverseWindows = function* (): Generator<Gtk.Widget> {
-    const windows = Gtk.Window.listToplevels();
-    for (const window of windows) {
-        yield* traverseWidgetTree(window);
-    }
-};
-
 const resolveRoot = (container: GObject.Object): Gtk.Widget | null => {
     if (container instanceof Gtk.Widget) return container;
     if (container instanceof Gtk.EventController) return container.getWidget();
@@ -55,13 +48,28 @@ const resolveRoot = (container: GObject.Object): Gtk.Widget | null => {
     return null;
 };
 
-export const traverse = function* (container: Container): Generator<Gtk.Widget> {
+/**
+ * Yields the root widget(s) a container resolves to: every presented top-level
+ * window for the {@link TOPLEVELS} sentinel or an application, otherwise the
+ * single widget the container maps to (a widget, an event controller's or
+ * layout manager's widget, a list item's or header's child). The single
+ * authority for container-scope resolution, shared by the query traversal and
+ * the tree printer.
+ *
+ * @param container - The query scope to resolve.
+ * @returns A generator over the container's root widgets.
+ */
+export const roots = function* (container: Container): Generator<Gtk.Widget> {
     if (container === TOPLEVELS || isApplication(container)) {
-        yield* traverseWindows();
+        yield* Gtk.Window.listToplevels();
         return;
     }
     const root = resolveRoot(container);
-    if (root) {
+    if (root) yield root;
+};
+
+export const traverse = function* (container: Container): Generator<Gtk.Widget> {
+    for (const root of roots(container)) {
         yield* traverseWidgetTree(root);
     }
 };

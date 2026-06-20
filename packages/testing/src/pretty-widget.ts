@@ -1,6 +1,6 @@
-import * as Gtk from "@gtkx/gi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { formatRole } from "./role-helpers.js";
-import { type Container, isApplication, TOPLEVELS } from "./traversal.js";
+import { type Container, roots } from "./traversal.js";
 import { getWidgetPropertyText } from "./widget-text.js";
 
 const DEFAULT_MAX_LENGTH = 7000;
@@ -159,12 +159,8 @@ export const prettyWidget = (container: Container, options: PrettyWidgetOptions 
     const colors = createColors(highlight);
 
     let output = "";
-    if (container === TOPLEVELS || isApplication(container)) {
-        for (const window of Gtk.Window.listToplevels()) {
-            output += formatWidget(window, 0, includeIds, colors);
-        }
-    } else if (container instanceof Gtk.Widget) {
-        output += formatWidget(container, 0, includeIds, colors);
+    for (const root of roots(container)) {
+        output += formatWidget(root, 0, includeIds, colors);
     }
 
     if (output.length > maxLength) {
