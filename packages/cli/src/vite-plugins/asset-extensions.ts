@@ -1,6 +1,7 @@
 /**
- * File extensions treated as binary assets by both the GResource pipeline
- * (`gtkxResources`) and the dev-time asset resolver (`gtkxAssets`).
+ * File extensions the GResource pipeline (`gtkxResources`) treats as binary
+ * assets, bundling each `#data/` import of a matching file into the
+ * `.gresource` and rewriting its import site to a `resource:///` URI.
  *
  * Listed without the leading dot. Matching is case-insensitive.
  */
