@@ -1,5 +1,6 @@
 import { type Dirent, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
+import { sortedAlpha } from "@gtkx/utils";
 import { type ParsedSchemaFile, parseSchemaXml, SchemaParseError } from "./parser.js";
 import { renderEnvModule } from "./render.js";
 
@@ -51,7 +52,7 @@ export const findSchemaFiles = (rootDir: string): string[] => {
         }
     };
     walk(rootDir);
-    return found.sort((a, b) => a.localeCompare(b));
+    return sortedAlpha(found);
 };
 
 /**

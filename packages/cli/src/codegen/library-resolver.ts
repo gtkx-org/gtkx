@@ -1,5 +1,6 @@
 import { readdirSync } from "node:fs";
 import { GIR_NAMESPACE_PATTERN, type GtkxConfig, LIBRARIES_WILDCARD } from "@gtkx/config";
+import { sortedAlpha } from "@gtkx/utils";
 
 /**
  * GIR namespaces generated when `gtkx.config.ts` omits `libraries`.
@@ -92,7 +93,7 @@ const discoverGirNamespaces = (girPath: readonly string[]): string[] => {
         }
     }
 
-    return [...highestByName.values()].map(({ identifier }) => identifier).sort((a, b) => a.localeCompare(b));
+    return sortedAlpha([...highestByName.values()].map(({ identifier }) => identifier));
 };
 
 /**

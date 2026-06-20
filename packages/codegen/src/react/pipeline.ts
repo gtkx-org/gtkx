@@ -1,4 +1,5 @@
 import type { ArrayPropRow, ElementMapRule, ObjectPropRow, VirtualPropRow } from "@gtkx/config";
+import { sortedAlphaBy } from "@gtkx/utils";
 import type { GirNamespace } from "../gir/namespace.js";
 import type { GirRepository } from "../gir/repository.js";
 import { generateCompoundsSection } from "./compounds.js";
@@ -98,7 +99,7 @@ export const generateJsxFiles = (repository: GirRepository, userTables: UserTabl
 
     const namespaces: JsxNamespaceFile[] = [];
     let widgetCount = 0;
-    for (const namespace of [...namespacesWithWidgets.values()].sort((a, b) => a.name.localeCompare(b.name))) {
+    for (const namespace of sortedAlphaBy(namespacesWithWidgets.values(), (entry) => entry.name)) {
         const { source, count } = generateJsxNamespace(namespace, repository, {
             containerPropMap,
             arrayPropMap,

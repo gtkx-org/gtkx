@@ -1,4 +1,4 @@
-import { quote } from "@gtkx/utils";
+import { quote, sortedAlpha, sortedAlphaBy } from "@gtkx/utils";
 
 /**
  * Tracks imports for a single generated module.
@@ -69,16 +69,16 @@ export class ImportsBuilder {
             lines.push(`import ${quote(specifier)};`);
         }
         const specifiers = new Set<string>([...this.named.keys(), ...this.namespaces.keys()]);
-        const sortedSpecifiers = [...specifiers].sort((a, b) => a.localeCompare(b));
+        const sortedSpecifiers = sortedAlpha(specifiers);
         for (const specifier of sortedSpecifiers) {
             const namespaceAlias = this.namespaces.get(specifier);
             const namedNames = this.named.get(specifier);
             const parts: string[] = [];
             if (namespaceAlias !== undefined) parts.push(`* as ${namespaceAlias}`);
             if (namedNames !== undefined && namedNames.size > 0) {
-                const sortedNames = [...namedNames.entries()]
-                    .sort(([a], [b]) => a.localeCompare(b))
-                    .map(([name, isType]) => (isType ? `type ${name}` : name));
+                const sortedNames = sortedAlphaBy(namedNames.entries(), ([name]) => name).map(([name, isType]) =>
+                    isType ? `type ${name}` : name,
+                );
                 parts.push(`{ ${sortedNames.join(", ")} }`);
             }
             if (parts.length === 0) continue;

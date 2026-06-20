@@ -20,7 +20,7 @@
  * isolated-declarations regression fails generation instead of landing in the
  * committed output.
  */
-import { toCamelIdentifier, toIdentifier, toLowerFirst } from "@gtkx/utils";
+import { sortedAlpha, sortedAlphaBy, toCamelIdentifier, toIdentifier, toLowerFirst } from "@gtkx/utils";
 import { ModuleBuilder } from "../dsl/module.js";
 import { transpileSource } from "../transpile.js";
 import {
@@ -647,7 +647,7 @@ const renderTypesModule = (groupAliases: ReadonlyMap<string, string>): string =>
             `/** The C \`${scalar.tsAlias}\` scalar. */\nexport type ${scalar.tsAlias} = number;`,
         );
     }
-    for (const [group, base] of [...groupAliases.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    for (const [group, base] of sortedAlphaBy(groupAliases.entries(), ([key]) => key)) {
         builder.appendDeclaration(
             `/** Registry enum group \`${group}\`; open and documentation-only, any \`${base}\` value is accepted. */\nexport type ${group} = ${base};`,
         );
@@ -664,7 +664,7 @@ const renderCommandsModule = (
 ): string => {
     const builder = new ModuleBuilder();
     builder.imports.addNamed("@gtkx/ffi", "t");
-    for (const alias of [...usedTypes].sort((a, b) => a.localeCompare(b))) {
+    for (const alias of sortedAlpha(usedTypes)) {
         if (TS_PRIMITIVES.has(alias)) continue;
         builder.imports.addNamed("./types.js", alias, true);
     }
@@ -739,7 +739,7 @@ const planSelectedCommands = (
     const exclusions: GlExclusion[] = [];
     const okPlans: OkPlan[] = [];
     const planFeatures = new Map<string, string>();
-    for (const [name, feature] of [...commandNames.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    for (const [name, feature] of sortedAlphaBy(commandNames.entries(), ([key]) => key)) {
         const command = registry.commands.get(name);
         if (command === undefined) throw new Error(`Selected command ${name} is not defined in the registry`);
         if (COMPANION_OWNED.has(name)) {
@@ -776,7 +776,7 @@ const buildEnumRows = (
 ): EnumRows => {
     const skippedEnums: { name: string; reason: string }[] = [];
     const enumRows: EnumRow[] = [];
-    for (const [name, feature] of [...enumNames.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    for (const [name, feature] of sortedAlphaBy(enumNames.entries(), ([key]) => key)) {
         const token = resolveEnum(registry, name, api);
         const literal = enumLiteral(token);
         if (literal === undefined) {
@@ -809,7 +809,7 @@ const assertExportNamesDisjoint = (
     const companionCollisions = [...exportNames.keys()].filter((name) => companionExports.has(name));
     if (companionCollisions.length > 0) {
         throw new Error(
-            `Companion module exports collide with generated exports: ${companionCollisions.sort((a, b) => a.localeCompare(b)).join(", ")}`,
+            `Companion module exports collide with generated exports: ${sortedAlpha(companionCollisions).join(", ")}`,
         );
     }
 };

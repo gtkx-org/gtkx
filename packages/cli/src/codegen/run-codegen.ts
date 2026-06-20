@@ -8,6 +8,7 @@ import {
     serializeUserTables,
 } from "@gtkx/codegen";
 import { type GtkxConfig, GtkxConfigNotFoundError, loadGtkxConfig } from "@gtkx/config";
+import { sortedAlpha } from "@gtkx/utils";
 import { emitSchemaEnv } from "../gsettings/env.js";
 import { resolveGirPath } from "./gir-resolver.js";
 import { resolveLibraries } from "./library-resolver.js";
@@ -236,7 +237,7 @@ const fingerprintStale = (giStoreDir: string, libraries: readonly string[], user
     } catch {
         return true;
     }
-    const sortAlpha = (values: readonly string[]): string => [...values].sort((a, b) => a.localeCompare(b)).join(",");
+    const sortAlpha = (values: readonly string[]): string => sortedAlpha(values).join(",");
     if (sortAlpha(sentinel.libraries) !== sortAlpha(libraries)) return true;
     try {
         return computeFingerprint(sentinel.girFiles, sentinel.libraries, userTables) !== sentinel.value;

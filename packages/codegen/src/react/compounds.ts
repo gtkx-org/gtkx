@@ -1,5 +1,5 @@
 import { WRAPPER_NODE_ELEMENT } from "@gtkx/config";
-import { quote, toCamelCase } from "@gtkx/utils";
+import { quote, sortedAlphaBy, toCamelCase } from "@gtkx/utils";
 import type { GirNamespace } from "../gir/namespace.js";
 import type { GirRepository } from "../gir/repository.js";
 import { type VirtualSubcomponent, virtualSubcomponentEntries } from "./compounds-meta.js";
@@ -92,7 +92,7 @@ const virtualSubcomponentsForNamespace = (
         seen.add(virtual.flatName);
         if (namespaceByGlib.get(parentGlibName) === targetNamespace.name) result.push(virtual);
     }
-    return result.sort((a, b) => a.flatName.localeCompare(b.flatName));
+    return sortedAlphaBy(result, (entry) => entry.flatName);
 };
 
 /** A typed namespace-module wrapper around a hand-written `@gtkx/react` runtime component. */

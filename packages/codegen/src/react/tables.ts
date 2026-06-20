@@ -23,6 +23,7 @@ import type {
     PropRule,
     VirtualPropRow,
 } from "@gtkx/config";
+import { sortedAlpha } from "@gtkx/utils";
 
 /**
  * Built-in attach relationships, interpreted by the reconciler's element map.
@@ -454,7 +455,7 @@ const mergeSlotMap = (
         for (const [key, values] of Object.entries(userSlots)) {
             const merged = new Set<string>(result[key] ?? []);
             for (const value of values) merged.add(value);
-            result[key] = [...merged].sort((a, b) => a.localeCompare(b));
+            result[key] = sortedAlpha(merged);
         }
     }
     return result;

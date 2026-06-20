@@ -8,6 +8,8 @@
  * body keeps a namespace module's import block free of duplicate specifiers.
  */
 
+import { sortedAlpha, sortedAlphaBy } from "@gtkx/utils";
+
 /** Mutable record of every import a per-namespace `@gtkx/jsx` module needs. */
 export type JsxImports = {
     /** Named type imports from `react` (e.g. `ReactNode`, `Ref`). */
@@ -31,8 +33,6 @@ export const emptyJsxImports = (): JsxImports => ({
     crossNsProps: new Map<string, Set<string>>(),
 });
 
-const sortedList = (values: Iterable<string>): readonly string[] => [...values].sort((a, b) => a.localeCompare(b));
-
 /**
  * Renders the merged import (and re-export) block for one namespace module,
  * led by the `@gtkx/gi/<ns>` side-effect import that loads the namespace.
@@ -43,21 +43,21 @@ const sortedList = (values: Iterable<string>): readonly string[] => [...values].
 export const renderJsxImports = (targetDirectory: string, imports: JsxImports): string => {
     const lines: string[] = [`import "@gtkx/gi/${targetDirectory}";`];
     if (imports.reactBuiltins.size > 0) {
-        lines.push(`import type { ${sortedList(imports.reactBuiltins).join(", ")} } from "react";`);
+        lines.push(`import type { ${sortedAlpha(imports.reactBuiltins).join(", ")} } from "react";`);
     }
     if (imports.hocs.size > 0) {
-        lines.push(`import { ${sortedList(imports.hocs).join(", ")} } from "@gtkx/react";`);
+        lines.push(`import { ${sortedAlpha(imports.hocs).join(", ")} } from "@gtkx/react";`);
     }
     if (imports.sharedTypes.size > 0) {
-        lines.push(`import type { ${sortedList(imports.sharedTypes).join(", ")} } from "@gtkx/react";`);
+        lines.push(`import type { ${sortedAlpha(imports.sharedTypes).join(", ")} } from "@gtkx/react";`);
     }
-    for (const [namespaceName, alias] of [...imports.giNamespaces].sort((a, b) => a[0].localeCompare(b[0]))) {
+    for (const [namespaceName, alias] of sortedAlphaBy(imports.giNamespaces, ([name]) => name)) {
         if (namespaceName === "") continue;
         lines.push(`import type * as ${alias} from "@gtkx/gi/${namespaceName.toLowerCase()}";`);
     }
-    for (const [directory, names] of [...imports.crossNsProps].sort((a, b) => a[0].localeCompare(b[0]))) {
+    for (const [directory, names] of sortedAlphaBy(imports.crossNsProps, ([dir]) => dir)) {
         if (directory === targetDirectory) continue;
-        lines.push(`import type { ${sortedList(names).join(", ")} } from "@gtkx/jsx/${directory}";`);
+        lines.push(`import type { ${sortedAlpha(names).join(", ")} } from "@gtkx/jsx/${directory}";`);
     }
     return lines.join("\n");
 };

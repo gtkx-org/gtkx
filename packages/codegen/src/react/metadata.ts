@@ -7,7 +7,7 @@ import type {
     PropRule,
     VirtualPropRow,
 } from "@gtkx/config";
-import { quote, toCamelIdentifier } from "@gtkx/utils";
+import { quote, sortedAlphaBy, toCamelIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirEnum } from "../gir/enum.js";
 import type { PrimitiveCategory } from "../gir/primitives.js";
@@ -150,7 +150,7 @@ const collectWidgets = (repository: GirRepository): readonly WidgetEntry[] => {
             defaults: collectDefaultProps(repository, sources),
         });
     }
-    return entries.sort((a, b) => a.glibName.localeCompare(b.glibName));
+    return sortedAlphaBy(entries, (entry) => entry.glibName);
 };
 
 const collectSignals = (sources: readonly GirClass[]): ReadonlyArray<readonly [string, string]> => {

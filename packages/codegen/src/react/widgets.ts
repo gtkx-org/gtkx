@@ -1,4 +1,4 @@
-import { toCamelIdentifier, toUpperFirst } from "@gtkx/utils";
+import { sortedAlphaBy, toCamelIdentifier, toUpperFirst } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import type { GirRepository } from "../gir/repository.js";
@@ -197,5 +197,5 @@ export const collectReactNodeClasses = (repository: GirRepository): readonly Wid
         seen.add(glibName);
         entries.push(candidate);
     }
-    return entries.sort((a, b) => a.glibName.localeCompare(b.glibName));
+    return sortedAlphaBy(entries, (entry) => entry.glibName);
 };

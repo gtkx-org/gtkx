@@ -1,5 +1,5 @@
 export type { AnyClass } from "./class.js";
-export { dedupeBy, omit, reverseNumericEnum } from "./collection.js";
+export { compareAlpha, dedupeBy, omit, reverseNumericEnum, sortedAlpha, sortedAlphaBy } from "./collection.js";
 export { errorMessage } from "./error.js";
 export {
     exitCodeForSignal,

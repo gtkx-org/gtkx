@@ -51,6 +51,44 @@ export const dedupeBy = <T>(items: readonly T[], key: (item: T) => string): T[] 
 };
 
 /**
+ * Compares two strings for ascending alphabetical order via `localeCompare`.
+ *
+ * The single comparator the codebase sorts strings by, so ordering is one
+ * decision applied everywhere rather than an inline closure re-spelled per call
+ * site.
+ *
+ * @param a - The first string.
+ * @param b - The second string.
+ * @returns A negative number when `a` sorts before `b`, positive when after,
+ *   and `0` when equal.
+ */
+export const compareAlpha = (a: string, b: string): number => a.localeCompare(b);
+
+/**
+ * Returns the items of `values` sorted alphabetically by {@link compareAlpha}.
+ *
+ * The input is copied before sorting, so the source iterable is not mutated.
+ *
+ * @param values - The strings to sort.
+ * @returns A new array holding `values` in ascending alphabetical order.
+ */
+export const sortedAlpha = (values: Iterable<string>): string[] => [...values].sort(compareAlpha);
+
+/**
+ * Returns the items of `items` sorted alphabetically by a projected string key,
+ * comparing with {@link compareAlpha}.
+ *
+ * The input is copied before sorting, so the source iterable is not mutated.
+ *
+ * @typeParam T - The item type.
+ * @param items - The items to sort.
+ * @param key - Projects each item to the string its order is decided by.
+ * @returns A new array holding `items` in ascending alphabetical order of `key`.
+ */
+export const sortedAlphaBy = <T>(items: Iterable<T>, key: (item: T) => string): T[] =>
+    [...items].sort((a, b) => compareAlpha(key(a), key(b)));
+
+/**
  * Builds a reverse lookup from a numeric enum's values to their member names.
  *
  * A TypeScript numeric enum's runtime object carries both name-to-value and

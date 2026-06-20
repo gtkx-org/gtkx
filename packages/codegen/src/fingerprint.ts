@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { sortedAlpha } from "@gtkx/utils";
 
 const require = createRequire(import.meta.url);
 
@@ -32,7 +33,7 @@ const stableValue = (value: unknown): unknown => {
     if (typeof value !== "object" || value === null) return value;
     const record = value as Record<string, unknown>;
     const sorted: Record<string, unknown> = {};
-    for (const key of Object.keys(record).sort((a, b) => a.localeCompare(b))) {
+    for (const key of sortedAlpha(Object.keys(record))) {
         sorted[key] = stableValue(record[key]);
     }
     return sorted;
@@ -92,10 +93,10 @@ export const computeFingerprint = (
     const hash = createHash("sha256");
     hash.update(CODEGEN_VERSION);
     hash.update("\n");
-    hash.update([...libraries].sort((a, b) => a.localeCompare(b)).join(","));
+    hash.update(sortedAlpha(libraries).join(","));
     hash.update("\n");
     hash.update(userTables);
-    for (const file of [...girFiles].sort((a, b) => a.localeCompare(b))) {
+    for (const file of sortedAlpha(girFiles)) {
         hash.update("\n");
         hash.update(file);
         hash.update("\0");
