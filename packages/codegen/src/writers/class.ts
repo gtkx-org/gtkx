@@ -1,10 +1,9 @@
-import { toCamelCase, toLowerFirst, toPascalCase } from "@gtkx/utils";
+import { toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent, renderBlock } from "../dsl/emit.js";
 import { bindingIdentifier } from "../dsl/identifier.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
-import type { TypeId } from "../gir/type-id.js";
 import { splitOptionalNamespace } from "../gir/type-ref.js";
 import { matchAsyncFinishName } from "./async.js";
 import {
@@ -20,18 +19,17 @@ import { renderVfuncMetadata } from "./class-struct.js";
 import { renderClassConstructor, renderConstructorPropsInterface } from "./constructor-props.js";
 import { gtypeExprFor, gtypeMemberDeclaration } from "./gtype-binding.js";
 import {
+    collectInheritedMethods,
     collectInterfaceProperties,
-    forEachAncestor,
-    type ResolvedInterface,
+    conflictRename,
+    type InheritedMethods,
     resolveImplementedInterface,
 } from "./inheritance.js";
 import { methodExportName, renderPromisifiedBody, renderPromisifiedSignature } from "./method.js";
-import { inputParameters } from "./param-classify.js";
 import { renderPropertyAccessor } from "./property-accessor.js";
 import { appendWrapperClassRegistration } from "./registration.js";
 import { renderRuntimeOverride } from "./runtime-override.js";
 import { renderSignalDeclarations, renderSignalMembers } from "./signal.js";
-import { renderTsType } from "./ts-type.js";
 
 /**
  * Emits a full class declaration for a `<class>` element.
@@ -133,13 +131,6 @@ const appendInstanceMethods = (options: AppendInstanceMethodsOptions): void => {
     }
 };
 
-/**
- * The disambiguated name a colliding instance method is emitted under:
- * `<lowerClassName><MethodName>` (e.g. `iconViewSetCursor`).
- */
-const conflictingMethodName = (className: string, methodName: string): string =>
-    `${toLowerFirst(className)}${toPascalCase(methodName)}`;
-
 type AppendFlattenedInterfaceMethodsOptions = {
     readonly context: ModuleContext;
     readonly klass: GirClass;
@@ -232,131 +223,6 @@ const resolveImplementsReference = (context: ModuleContext, name: string): strin
     const resolved = context.repository.resolveType(context.namespace.name, name);
     if (resolved === undefined || resolved.kind !== "interface") return undefined;
     return context.qualify(resolved.namespace.name, toPascalCase(resolved.value.name));
-};
-
-/** An ancestor method together with the namespace its type references resolve against. */
-type InheritedMethod = {
-    readonly method: GirFunction;
-    readonly namespaceName: string;
-};
-
-type InheritedMethods = {
-    /** camelCase method name → its TypeScript return type, for ancestor class methods. */
-    readonly returnTypes: ReadonlyMap<string, string>;
-    /** camelCase method name → the nearest ancestor definition it overrides. */
-    readonly definitions: ReadonlyMap<string, InheritedMethod>;
-    /** camelCase names of every method reachable through ancestors and the interfaces they implement. */
-    readonly names: ReadonlySet<string>;
-};
-
-/** Mutable accumulator threaded through ancestor traversal. */
-type InheritedMethodsAccumulator = {
-    readonly returnTypes: Map<string, string>;
-    readonly definitions: Map<string, InheritedMethod>;
-    readonly names: Set<string>;
-};
-
-const collectInheritedMethods = (context: ModuleContext, klass: GirClass): InheritedMethods => {
-    const accumulator: InheritedMethodsAccumulator = {
-        returnTypes: new Map<string, string>(),
-        definitions: new Map<string, InheritedMethod>(),
-        names: new Set<string>(),
-    };
-    forEachAncestor(context, klass, (ancestor, interfaces) => {
-        absorbInheritedMethods(context, ancestor, accumulator);
-        absorbInheritedInterfaceMethodNames(interfaces, accumulator.names);
-    });
-    return accumulator;
-};
-
-const absorbInheritedMethods = (
-    context: ModuleContext,
-    resolved: { readonly klass: GirClass; readonly namespaceName: string },
-    accumulator: InheritedMethodsAccumulator,
-): void => {
-    const { returnTypes, definitions, names } = accumulator;
-    for (const method of resolved.klass.methods) {
-        if (!method.introspectable) continue;
-        const name = toCamelCase(method.name);
-        names.add(name);
-        if (returnTypes.has(name)) continue;
-        definitions.set(name, { method, namespaceName: resolved.namespaceName });
-        returnTypes.set(name, renderTsType(context, method.returnValue.type, method.returnValue.nullable));
-    }
-};
-
-const absorbInheritedInterfaceMethodNames = (interfaces: readonly ResolvedInterface[], names: Set<string>): void => {
-    for (const iface of interfaces) {
-        for (const method of iface.klass.methods) {
-            if (!method.introspectable) continue;
-            names.add(toCamelCase(method.name));
-        }
-    }
-};
-
-/**
- * The disambiguated name an instance method is emitted under when it collides
- * incompatibly with an inherited method, or `undefined` when no rename applies.
- *
- * A collision is incompatible when the inherited method of the same name has a
- * different return type, a distinct enum at a parameter position, or a
- * different input-parameter arity — each of which would make the override
- * structurally unassignable to its base. The colliding method is renamed so
- * both it and the inherited method stay callable.
- */
-const conflictRename = (
-    context: ModuleContext,
-    callable: GirFunction,
-    inherited: InheritedMethods,
-    className: string,
-): string | undefined => {
-    if (!callable.introspectable) return undefined;
-    const name = methodExportName(callable);
-    const inheritedReturn = inherited.returnTypes.get(name);
-    const inheritedMethod = inherited.definitions.get(name);
-    if (inheritedReturn === undefined || inheritedMethod === undefined) return undefined;
-    const ownReturn = renderTsType(context, callable.returnValue.type, callable.returnValue.nullable);
-    const conflicts =
-        inheritedReturn !== ownReturn ||
-        hasParameterEnumConflict(context, callable, inheritedMethod) ||
-        inputParameters(context.repository, callable).length !==
-            inputParameters(context.repository, inheritedMethod.method).length;
-    return conflicts ? conflictingMethodName(className, callable.name) : undefined;
-};
-
-/**
- * Whether an override pairs a distinct enum against the inherited method at
- * any input-parameter position.
- *
- * Numeric enums are mutually assignable with `number`, so a `number`/enum
- * pairing is compatible; two *different* enums are not, which would make the
- * derived class structurally unassignable to its base. Such an override is
- * dropped so the inherited signature stands.
- *
- * @param context - The module context
- * @param own - The override declared on the derived class
- * @param inherited - The nearest ancestor definition of the same name
- */
-const hasParameterEnumConflict = (context: ModuleContext, own: GirFunction, inherited: InheritedMethod): boolean => {
-    const ownParams = inputParameters(context.repository, own);
-    const inheritedParams = inputParameters(context.repository, inherited.method);
-    const count = Math.min(ownParams.length, inheritedParams.length);
-    for (let index = 0; index < count; index += 1) {
-        const ownParam = ownParams[index];
-        const inheritedParam = inheritedParams[index];
-        if (ownParam === undefined || inheritedParam === undefined) continue;
-        const ownEnum = enumIdentity(context, ownParam.parameter.type);
-        const inheritedEnum = enumIdentity(context, inheritedParam.parameter.type);
-        if (ownEnum !== undefined && inheritedEnum !== undefined && ownEnum !== inheritedEnum) return true;
-    }
-    return false;
-};
-
-const enumIdentity = (context: ModuleContext, ref: TypeId | undefined): string | undefined => {
-    if (ref === undefined) return undefined;
-    const resolved = context.repository.typeOf(ref);
-    if (resolved?.kind !== "enum") return undefined;
-    return `${resolved.namespace.name}.${resolved.value.name}`;
 };
 
 const resolveParent = (context: ModuleContext, klass: GirClass): string | undefined => {
