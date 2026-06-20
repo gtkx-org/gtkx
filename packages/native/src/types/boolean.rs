@@ -1,7 +1,12 @@
 use glib::translate::IntoGlib as _;
 use libffi::middle as libffi;
 
+use super::numeric::IntegerKind;
 use super::prelude::*;
+
+/// The integer kind a `gboolean` marshals as, which the codec delegates
+/// ABI-level work to.
+const WIRE_KIND: IntegerKind = IntegerKind::I32;
 
 #[derive(Debug, Clone, Copy)]
 pub struct BooleanType;
@@ -16,7 +21,7 @@ impl FfiEncoder for BooleanType {
     }
 
     fn libffi_type(&self) -> libffi::Type {
-        libffi::Type::i32()
+        FfiEncoder::libffi_type(&WIRE_KIND)
     }
 
     fn call_cif(
@@ -25,9 +30,7 @@ impl FfiEncoder for BooleanType {
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::FfiValue> {
-        // SAFETY: The dispatch site built `cif` and `args` for this
-        // descriptor and resolved `ptr` from a loaded library symbol.
-        Ok(ffi::FfiValue::I32(unsafe { cif.call::<i32>(ptr, args) }))
+        FfiEncoder::call_cif(&WIRE_KIND, cif, ptr, args)
     }
 }
 
@@ -57,10 +60,10 @@ impl RawPtrCodec for BooleanType {
     /// libffi's closure contract for integral results narrower than a
     /// register.
     unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        let val = matches!(value, Ok(value::Value::Boolean(true)));
+        let val = f64::from(u8::from(matches!(value, Ok(value::Value::Boolean(true)))));
         // SAFETY: The caller guarantees `ret` is a writable 8-byte libffi
-        // return slot; the write is unaligned-tolerant.
-        unsafe { ret.cast::<i64>().write_unaligned(i64::from(val)) };
+        // return slot wide enough for the widened `gboolean` result.
+        unsafe { WIRE_KIND.write_return_widened(ret, val) };
     }
 
     unsafe fn write_value_to_raw_ptr(

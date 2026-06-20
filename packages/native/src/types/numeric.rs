@@ -353,7 +353,7 @@ impl IntegerKind {
     /// # Safety
     ///
     /// `ret` must be valid for an 8-byte write.
-    unsafe fn write_return_widened(self, ret: *mut c_void, value: f64) {
+    pub(super) unsafe fn write_return_widened(self, ret: *mut c_void, value: f64) {
         // SAFETY: The caller guarantees `ret` is a writable 8-byte libffi
         // return slot; the writes are unaligned-tolerant.
         unsafe {

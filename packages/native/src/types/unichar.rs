@@ -70,7 +70,7 @@ impl RawPtrCodec for UnicharType {
             _ => 0,
         };
         // SAFETY: The caller guarantees `ret` is a writable 8-byte libffi
-        // return slot; the write is unaligned-tolerant.
-        unsafe { ret.cast::<u64>().write_unaligned(u64::from(val)) };
+        // return slot wide enough for the widened `gunichar` result.
+        unsafe { IntegerKind::U32.write_return_widened(ret, f64::from(val)) };
     }
 }
