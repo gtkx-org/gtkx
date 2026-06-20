@@ -448,13 +448,17 @@ function createReconcilerContext(value: number): ReactReconciler.ReactContext<nu
     const context = {
         // biome-ignore lint/style/useNamingConvention: React context brand, name fixed by React
         $$typeof: Symbol.for("react.context"),
+        // biome-ignore lint/style/useNamingConvention: React context internal field, name fixed by React
         _currentValue: value,
+        // biome-ignore lint/style/useNamingConvention: React context internal field, name fixed by React
         _currentValue2: value,
+        // biome-ignore lint/style/useNamingConvention: React context internal field, name fixed by React
         _threadCount: 0,
     } as ReactReconciler.ReactContext<number>;
     context.Provider = {
         // biome-ignore lint/style/useNamingConvention: React provider brand, name fixed by React
         $$typeof: Symbol.for("react.provider"),
+        // biome-ignore lint/style/useNamingConvention: React provider internal field, name fixed by React
         _context: context,
     };
     context.Consumer = context;

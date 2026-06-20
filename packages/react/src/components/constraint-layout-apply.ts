@@ -104,7 +104,12 @@ export function applyConstraint(layout: Gtk.ConstraintLayout, props: ConstraintP
  */
 export function applyVfl(layout: Gtk.ConstraintLayout, props: ConstraintVflProps): () => void {
     const views = constraintViews(layout);
-    const constraints = layout.addConstraintsFromDescription(props.lines, props.hspacing ?? 0, props.vspacing ?? 0, views);
+    const constraints = layout.addConstraintsFromDescription(
+        props.lines,
+        props.hspacing ?? 0,
+        props.vspacing ?? 0,
+        views,
+    );
 
     return () => {
         if (!isLayoutLive(layout)) return;

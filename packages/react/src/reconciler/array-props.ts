@@ -18,8 +18,8 @@
  * GObject prop of the same name.
  */
 import { ARRAY_PROPS as ARRAY_PROP_ROWS } from "virtual:gtkx-config";
-import { constructWrapper } from "@gtkx/ffi";
 import type { ArrayPropRow, ConstructStep } from "@gtkx/config";
+import { constructWrapper } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/gi/gobject";
 import { requireClassByName } from "../utils/gtype-predicates.js";
 import { itemField, runCallStep, satisfiesCondition } from "./call-steps.js";

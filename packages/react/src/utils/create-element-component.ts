@@ -21,8 +21,8 @@ import { CONTAINER_PROPS } from "virtual:gtkx-config";
 import { CONTAINER_PROP_KIND, SLOT_KIND } from "@gtkx/config";
 import { createElement, isValidElement, type ReactNode } from "react";
 import { WRAPPER_NODE_ELEMENT } from "../reconciler/instance.js";
-import { resolveBackingClass } from "./gtype-predicates.js";
 import { foldInheritedTable } from "./gtype.js";
+import { resolveBackingClass } from "./gtype-predicates.js";
 
 const EMPTY_CONTAINER_PROPS: ReadonlySet<string> = new Set();
 

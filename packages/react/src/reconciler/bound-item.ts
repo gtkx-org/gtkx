@@ -18,6 +18,7 @@ export type BoundItem = [ReactNode, GObject.Object, string];
  * @param render - Renders one resolved value to a React node.
  * @param out - The accumulator the bound triples are pushed onto.
  */
+// biome-ignore lint/complexity/useMaxParams: shared flat collector; the maps, resolver, renderer, and accumulator are its variation points
 export const collectFlatBoundItems = (
     containers: ReadonlyMap<GObject.Object, number>,
     containerKeys: ReadonlyMap<GObject.Object, string>,

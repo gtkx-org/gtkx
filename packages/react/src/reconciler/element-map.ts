@@ -358,6 +358,7 @@ const applyLayoutChild = (parent: Gtk.Widget, widget: Gtk.Widget, kind: "grid" |
  */
 const multiChildState = new WeakMap<Node, Gtk.Widget[]>();
 
+// biome-ignore lint/complexity/useMaxParams: shared multi-child attach skeleton; add/remove/apply are supplied as closures
 const reconcileMultiChildAttach = (
     child: Node,
     parent: Gtk.Widget,

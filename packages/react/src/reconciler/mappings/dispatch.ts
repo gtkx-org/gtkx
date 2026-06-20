@@ -9,8 +9,8 @@
  */
 import type * as GObject from "@gtkx/gi/gobject";
 import type { ElementMapping } from "../element-mapping.js";
-import { isWrapperElement } from "../wrapper-element.js";
 import { type Node, stateOf } from "../state.js";
+import { isWrapperElement } from "../wrapper-element.js";
 
 let elementMap: readonly ElementMapping[] = [];
 
