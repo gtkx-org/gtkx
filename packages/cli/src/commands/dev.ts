@@ -1,7 +1,7 @@
-import { resolve } from "node:path";
 import { defineCommand } from "citty";
 import { preflightCodegen, resolveConfigWatch } from "../codegen/run-codegen.js";
 import { type DevWatch, runDevSupervisor } from "../dev/supervisor.js";
+import { entryArg, resolveEntry } from "./entry.js";
 
 /**
  * `gtkx dev` — start the development server with HMR.
@@ -18,15 +18,10 @@ export const dev = defineCommand({
         description: "Start development server with HMR",
     },
     args: {
-        entry: {
-            type: "positional",
-            description: "Entry file (default: src/index.tsx)",
-            required: false,
-        },
+        ...entryArg,
     },
     async run({ args }) {
-        const cwd = process.cwd();
-        const entryPath = resolve(cwd, args.entry ?? "src/index.tsx");
+        const { cwd, entry: entryPath } = resolveEntry(args);
 
         await preflightCodegen(cwd);
 

@@ -1,8 +1,8 @@
-import { resolve } from "node:path";
 import { defineCommand } from "citty";
 import { build as buildApp } from "../builder.js";
 import { preflightCodegen } from "../codegen/run-codegen.js";
 import { info } from "../internal/log.js";
+import { entryArg, resolveEntry } from "./entry.js";
 
 /**
  * `gtkx build` — bundle the project for production.
@@ -17,19 +17,14 @@ export const build = defineCommand({
         description: "Build application for production",
     },
     args: {
-        entry: {
-            type: "positional",
-            description: "Entry file (default: src/index.tsx)",
-            required: false,
-        },
+        ...entryArg,
         "asset-base": {
             type: "string",
             description: "Asset base path relative to executable directory (e.g., ../share/my-app)",
         },
     },
     async run({ args }) {
-        const cwd = process.cwd();
-        const entry = resolve(cwd, args.entry ?? "src/index.tsx");
+        const { cwd, entry } = resolveEntry(args);
         info(`Building ${entry}`);
 
         await preflightCodegen(cwd);
