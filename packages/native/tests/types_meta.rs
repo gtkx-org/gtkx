@@ -8,8 +8,8 @@ use std::ffi::c_void;
 
 use libffi::middle;
 use native::types::{
-    BlobType, BooleanType, FfiDecoder, FfiEncoder, GObjectType, IntegerKind, Ownership,
-    RawPtrCodec, ReadSource, RefType, StructType, CallbackType, Type, VoidType,
+    BlobType, BooleanType, CallbackType, FfiDecoder, FfiEncoder, GObjectType, IntegerKind,
+    Ownership, RawPtrCodec, ReadSource, RefType, StructType, Type, VoidType,
 };
 use native::value::Value;
 use native::{ffi, value};
@@ -129,8 +129,7 @@ fn ffi_decoder_decode_default_bails() {
 
 #[test]
 fn ffi_decoder_decode_with_context_default_delegates_to_decode() {
-    let result =
-        FfiDecoder::decode_with_context(&callback_type(), &ffi::FfiValue::Void, &[], &[]);
+    let result = FfiDecoder::decode_with_context(&callback_type(), &ffi::FfiValue::Void, &[], &[]);
     assert!(result.is_err());
 }
 
@@ -138,13 +137,8 @@ fn ffi_decoder_decode_with_context_default_delegates_to_decode() {
 fn raw_ptr_codec_ptr_to_value_default_bails() {
     assert!(
         // SAFETY: The default implementation bails before any read.
-        unsafe {
-            FfiDecoder::read(
-                &callback_type(),
-                ReadSource::Value(8 as *mut c_void, "ctx"),
-            )
-        }
-        .is_err()
+        unsafe { FfiDecoder::read(&callback_type(), ReadSource::Value(8 as *mut c_void, "ctx"),) }
+            .is_err()
     );
 }
 
@@ -178,10 +172,8 @@ fn raw_ptr_codec_write_value_to_raw_ptr_default_bails() {
     let ptr = &mut slot as *mut *mut c_void as *mut c_void;
     assert!(
         // SAFETY: The default implementation bails before any write.
-        unsafe {
-            RawPtrCodec::write_value_to_raw_ptr(&callback_type(), ptr, &Value::Number(1.0))
-        }
-        .is_err()
+        unsafe { RawPtrCodec::write_value_to_raw_ptr(&callback_type(), ptr, &Value::Number(1.0)) }
+            .is_err()
     );
 }
 

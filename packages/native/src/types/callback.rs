@@ -116,16 +116,14 @@ impl FfiEncoder for CallbackType {
         let fn_ptr = state.code_ptr;
 
         match self.scope {
-            CallbackScope::Forever => Ok(ffi::FfiValue::Callback(
-                ffi::CallbackValue::new_armed(fn_ptr, None, state),
-            )),
-            CallbackScope::Notified => {
-                Ok(ffi::FfiValue::Callback(ffi::CallbackValue::new_armed(
-                    fn_ptr,
-                    Some(TrampolineState::destroy as *mut c_void),
-                    state,
-                )))
-            }
+            CallbackScope::Forever => Ok(ffi::FfiValue::Callback(ffi::CallbackValue::new_armed(
+                fn_ptr, None, state,
+            ))),
+            CallbackScope::Notified => Ok(ffi::FfiValue::Callback(ffi::CallbackValue::new_armed(
+                fn_ptr,
+                Some(TrampolineState::destroy as *mut c_void),
+                state,
+            ))),
             CallbackScope::Async => {
                 let state_ptr =
                     std::ptr::from_ref::<TrampolineState>(&state) as *mut TrampolineState;

@@ -78,6 +78,7 @@ mod bigint;
 mod blob;
 mod boolean;
 mod boxed;
+mod callback;
 mod fundamental;
 mod gobject;
 mod hashtable;
@@ -86,7 +87,6 @@ mod prelude;
 mod raw_ptr;
 mod ref_type;
 mod string;
-mod callback;
 mod unichar;
 mod void;
 
@@ -96,13 +96,13 @@ pub use bigint::BigIntKind;
 pub use blob::BlobType;
 pub use boolean::BooleanType;
 pub use boxed::{BoxedFreeFn, BoxedType, StructType};
+pub use callback::{CallbackScope, CallbackType};
 pub use fundamental::FundamentalType;
 pub use gobject::GObjectType;
 pub use hashtable::{HashTableEntryEncoder, HashTableType};
 pub use numeric::{FloatKind, IntegerKind, TaggedKind, TaggedType};
 pub use ref_type::RefType;
 pub use string::{StringType, str_to_glib_full};
-pub use callback::{CallbackScope, CallbackType};
 pub use unichar::UnicharType;
 pub use void::VoidType;
 
@@ -486,9 +486,7 @@ impl Type {
             "array" => Ok(Self::Array(ArrayType::from_descriptor(env, &obj)?)),
             "blob" => Ok(Self::Blob(BlobType)),
             "hashtable" => Ok(Self::HashTable(HashTableType::from_descriptor(env, &obj)?)),
-            "callback" => Ok(Self::Callback(CallbackType::from_descriptor(
-                env, &obj,
-            )?)),
+            "callback" => Ok(Self::Callback(CallbackType::from_descriptor(env, &obj)?)),
             "ref" => Ok(Self::Ref(RefType::from_descriptor(env, &obj)?)),
             "unichar" => Ok(Self::Unichar(UnicharType)),
             "fundamental" => Ok(Self::Fundamental(FundamentalType::from_descriptor(

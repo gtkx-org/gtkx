@@ -35,17 +35,14 @@ impl GlibLogHandler {
     }
 
     fn write_log(level: LogLevel, fields: &[glib::LogField<'_>]) -> LogWriterOutput {
-        if matches!(level, LogLevel::Error | LogLevel::Critical) {
-            let level_str = if level == LogLevel::Error {
-                "ERROR"
-            } else {
-                "CRITICAL"
-            };
-            let domain = field_value(fields, "GLIB_DOMAIN").unwrap_or("unknown");
-            let message = field_value(fields, "MESSAGE").unwrap_or("(no message)");
-            NativeErrorReporter::global().report_str(&format!("{domain}-{level_str}: {message}"));
-        }
-
+        let level_str = match level {
+            LogLevel::Error => "ERROR",
+            LogLevel::Critical => "CRITICAL",
+            _ => return glib::log_writer_default(level, fields),
+        };
+        let domain = field_value(fields, "GLIB_DOMAIN").unwrap_or("unknown");
+        let message = field_value(fields, "MESSAGE").unwrap_or("(no message)");
+        NativeErrorReporter::global().report_str(&format!("{domain}-{level_str}: {message}"));
         glib::log_writer_default(level, fields)
     }
 }

@@ -258,8 +258,7 @@ mod tests {
 
     #[test]
     fn disarm_pending_transfer_covers_every_variant_shape() {
-        let callback =
-            CallbackValue::new(std::ptr::null_mut(), std::ptr::null_mut(), None, None);
+        let callback = CallbackValue::new(std::ptr::null_mut(), std::ptr::null_mut(), None, None);
         FfiValue::Callback(callback).disarm_pending_transfer();
         FfiValue::I32(1).disarm_pending_transfer();
         FfiValue::Storage(FfiStorage::unit(std::ptr::null_mut())).disarm_pending_transfer();

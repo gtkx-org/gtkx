@@ -15,7 +15,7 @@ use std::ffi::c_void;
 use std::sync::Arc;
 
 use napi::{Env, JsFunction, NapiValue as _};
-use native::ffi::{FfiStorage, FfiValue, CallbackValue};
+use native::ffi::{CallbackValue, FfiStorage, FfiValue};
 use native::trampoline::{TrampolineData, TrampolineState};
 use native::types::{Type, VoidType};
 use native::value::JsRef;

@@ -10,7 +10,7 @@ mod common;
 use libffi::middle as libffi;
 
 use native::ffi;
-use native::types::{FfiEncoder, CallbackScope, CallbackType, Type, VoidType};
+use native::types::{CallbackScope, CallbackType, FfiEncoder, Type, VoidType};
 use native::value::Value;
 
 fn callback_type(has_destroy: bool) -> CallbackType {
