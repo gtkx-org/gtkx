@@ -77,6 +77,8 @@ const splitProps = (props: Record<string, unknown>): SplitProps => {
 interface ListHandle {
     /** The widget setter passed to the element's merged ref. */
     readonly setWidget: (widget: Gtk.Widget | null) => void;
+    /** The captured list widget once its ref has settled, else `null`. */
+    readonly widget: Gtk.Widget | null;
     /** The live controller once the widget has settled, else `null`. */
     readonly controller: ListController | null;
     /** Forces the component to re-render its portals. */
@@ -135,7 +137,7 @@ const useListController = (
         prevPropsRef.current = controllerProps;
     });
 
-    return { setWidget, controller, rerender, controllerProps };
+    return { setWidget, widget, controller, rerender, controllerProps };
 };
 
 /** Shared empty bound-item list so an unsettled controller yields a stable reference. */
@@ -273,12 +275,11 @@ function GtkColumnViewBase<T = unknown, S = unknown>(
         },
     );
     const controller = handle.controller;
+    const widget = handle.widget;
     useLayoutEffect(() => {
-        if (!controller) return;
-        const widget = controller.getWidget();
-        if (!(widget instanceof Gtk.ColumnView)) return;
+        if (!controller || !(widget instanceof Gtk.ColumnView)) return;
         return onOrderedAttach(widget, () => controller.scheduleColumnSettle());
-    }, [controller]);
+    }, [controller, widget]);
     return node;
 }
 

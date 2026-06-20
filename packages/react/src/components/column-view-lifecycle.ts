@@ -84,7 +84,7 @@ export class ColumnViewLifecycle {
      * Deferring the model until the columns are in place builds the cells once,
      * against the final column set, so no cell is recycled during insertion.
      */
-    public finishAttach(): void {
+    private finishAttach(): void {
         if (this.modelAssigned) return;
         this.modelAssigned = true;
         if (this.host.isUncontrolled()) {

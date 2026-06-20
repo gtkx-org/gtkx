@@ -140,11 +140,6 @@ export class ListController implements ColumnHost {
                 : null;
     }
 
-    /** The backing list widget this controller drives. */
-    public getWidget(): Gtk.Widget {
-        return this.widget;
-    }
-
     /** The widget's current bound-item list (one portal per visible cell). */
     public getBoundItems(): BoundItem[] {
         return this.boundItems;
