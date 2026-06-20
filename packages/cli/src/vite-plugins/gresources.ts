@@ -86,6 +86,8 @@ type PluginState = {
     isBuild: boolean;
     root: string;
     entries: Map<string, ResourceEntry>;
+    /** Absolute source paths of every registered entry, for O(1) watcher-change membership tests. */
+    sourcePaths: Set<string>;
     devStagingDir: string | null;
     devBundlePath: string;
 };
@@ -201,15 +203,11 @@ const registerEntry = (state: PluginState, absPath: string, override: string | n
         resourcePath,
     };
     state.entries.set(key, entry);
+    state.sourcePaths.add(absPath);
     return entry;
 };
 
-const isTrackedSource = (state: PluginState, file: string): boolean => {
-    for (const entry of state.entries.values()) {
-        if (entry.sourcePath === file) return true;
-    }
-    return false;
-};
+const isTrackedSource = (state: PluginState, file: string): boolean => state.sourcePaths.has(file);
 
 const decodeVirtualAsset = (virtualId: string): { absPath: string; override: string | null } => {
     const rest = virtualId.slice(VIRTUAL_PREFIX.length);
@@ -331,6 +329,7 @@ export function gtkxResources(loadConfig: GtkxConfigLoader = createGtkxConfigLoa
         isBuild: false,
         root: "",
         entries: new Map(),
+        sourcePaths: new Set(),
         devStagingDir: null,
         devBundlePath: "",
     };
