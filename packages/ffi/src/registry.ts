@@ -276,9 +276,11 @@ function resolveWrapper(handle: Handle, resolveClass: (runtimeGtype: GType) => A
     }
 
     const cls = resolveClass(runtimeGtype);
-    const instance = instantiate(cls, handle) as GTyped;
+    const instance = Object.create(cls.prototype) as GTyped;
     if (isGobjectType(runtimeGtype)) {
-        setWrapper(handle, instance);
+        linkGobjectWrapper(handle, instance);
+    } else {
+        setHandle(instance, handle);
     }
     return instance;
 }
@@ -349,6 +351,21 @@ export function tryGetHandle(instance: object | null | undefined): Handle | unde
  */
 export function setHandle(instance: object, handle: Handle): void {
     handleMap.set(instance, handle);
+}
+
+/**
+ * Links a freshly constructed or decoded `GObject` to its canonical JavaScript
+ * wrapper, the single writer of the `GObject`⇄wrapper identity pairing. Records
+ * wrapper→`Handle` in the local handle map and `Handle`→wrapper in the native
+ * toggle-ref qdata, in that order, so the same pointer always resolves back to
+ * the same `===` instance.
+ *
+ * @param handle - The `GObject`'s native handle.
+ * @param instance - The canonical wrapper to pair with the handle.
+ */
+function linkGobjectWrapper(handle: Handle, instance: object): void {
+    setHandle(instance, handle);
+    setWrapper(handle, instance);
 }
 
 /**
