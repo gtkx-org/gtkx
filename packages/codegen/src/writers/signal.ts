@@ -391,16 +391,16 @@ const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): str
     const argLiterals = params.map((parameter) => {
         const ffi = renderFfiType(context, parameter.type, parameter.transferOwnership);
         if (isOutParameter(parameter)) {
-            return `{ ffi: ${ffi}, role: "out" }`;
+            return `{ ffi: ${ffi}, direction: "out" }`;
         }
         if (isCellInout(context, parameter)) {
-            return `{ ffi: ${ffi}, role: "inout", value: args[${argIndex++}] }`;
+            return `{ ffi: ${ffi}, direction: "inout", value: args[${argIndex++}] }`;
         }
         if (isCallerAllocatedOut(parameter)) {
-            return `{ ffi: ${ffi}, role: "boxedOut", value: ${renderCallerOutAllocation(context, parameter)} }`;
+            return `{ ffi: ${ffi}, direction: "out", callerAllocates: true, value: ${renderCallerOutAllocation(context, parameter)} }`;
         }
         if (isBoxedInout(context, parameter)) {
-            return `{ ffi: ${ffi}, role: "boxedInout", value: args[${argIndex++}] }`;
+            return `{ ffi: ${ffi}, direction: "inout", callerAllocates: true, value: args[${argIndex++}] }`;
         }
         return `{ ffi: ${ffi}, value: args[${argIndex++}] }`;
     });

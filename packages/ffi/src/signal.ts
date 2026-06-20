@@ -117,29 +117,44 @@ const gSignalEmitv = bind(
 const gSignalLookup = bind(LIB, "g_signal_lookup", [stringT("borrowed"), biguint64T], uint32T);
 
 /**
- * How a signal parameter is marshalled into its emission `GValue` beyond a
- * plain input:
- *
- * - `"out"` — a pointer-backed cell the handler writes through; read back after.
- * - `"inout"` — a scalar cell seeded from `value`, read back after.
- * - `"boxedOut"` — a caller-allocated boxed record (`value`) copied into a
- *   `G_TYPE_BOXED` cell the handler fills; the owned copy is read back.
- * - `"boxedInout"` — a boxed record (`value`) shared in place, so the handler's
- *   mutation lands on the caller's wrapper and surfaces through it, not the result.
+ * One argument of a signal emission, encoded with the same `direction` /
+ * `callerAllocates` flags an {@link "./fn.js".ArgType} carries. A plain input
+ * omits `direction`; an out/inout argument names its direction, and
+ * `callerAllocates` marks a boxed record shared in place rather than a
+ * pointer-backed scalar cell.
  */
-type EmitArgRole = "out" | "inout" | "boxedOut" | "boxedInout";
-
-/** One argument of a signal emission. A plain input omits `role`. */
 export type EmitArg = {
     /** The argument's FFI type descriptor. */
     readonly ffi: FfiType;
-    /** How the argument is marshalled beyond a plain input. */
-    readonly role?: EmitArgRole;
+    /** The out/inout direction the argument participates in beyond a plain input. */
+    readonly direction?: "out" | "inout";
+    /**
+     * Whether the caller allocates the boxed out/inout wrapper. A caller-allocated
+     * `"out"` copies the owned boxed read-back into the result; a caller-allocated
+     * `"inout"` shares the wrapper in place so the handler's mutation surfaces
+     * through it rather than the result.
+     */
+    readonly callerAllocates?: boolean;
     /**
      * The input value for an in/inout argument, or the caller-allocated wrapper
-     * for a boxed out/inout argument. Omitted for a pure `"out"`.
+     * for a boxed out/inout argument. Omitted for a pure pointer-backed `"out"`.
      */
     readonly value?: unknown;
+};
+
+/**
+ * Builds the emission `GValue` for one argument and, for an out/inout argument,
+ * the read-back that surfaces its post-dispatch value into the result tuple.
+ */
+const emitCell = (arg: EmitArg): { readonly value: Handle; readonly read?: () => unknown } => {
+    if (arg.direction === undefined) return { value: toGvalue(arg.ffi, arg.value) };
+    if (arg.callerAllocates) {
+        if (arg.direction === "inout") return { value: inoutBoxedFromFfi(arg.ffi, arg.value as object) };
+        const value = outBoxedFromFfi(arg.ffi, arg.value as object);
+        return { value, read: () => valueGetBoxed(value) };
+    }
+    const cell = arg.direction === "inout" ? outValueFromFfi(arg.ffi, arg.value) : outValueFromFfi(arg.ffi);
+    return { value: cell.value, read: cell.read };
 };
 
 /**
@@ -170,31 +185,9 @@ export function emitGobjectSignal(
     const values: Handle[] = [toGvalue(objectT("full"), instance)];
     const reads: (() => unknown)[] = [];
     for (const arg of args) {
-        switch (arg.role) {
-            case "out": {
-                const cell = outValueFromFfi(arg.ffi);
-                values.push(cell.value);
-                reads.push(cell.read);
-                break;
-            }
-            case "inout": {
-                const cell = outValueFromFfi(arg.ffi, arg.value);
-                values.push(cell.value);
-                reads.push(cell.read);
-                break;
-            }
-            case "boxedOut": {
-                const value = outBoxedFromFfi(arg.ffi, arg.value as object);
-                values.push(value);
-                reads.push(() => valueGetBoxed(value));
-                break;
-            }
-            case "boxedInout":
-                values.push(inoutBoxedFromFfi(arg.ffi, arg.value as object));
-                break;
-            default:
-                values.push(toGvalue(arg.ffi, arg.value));
-        }
+        const cell = emitCell(arg);
+        values.push(cell.value);
+        if (cell.read) reads.push(cell.read);
     }
 
     if (returnFfi !== undefined) {
