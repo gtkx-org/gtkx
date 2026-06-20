@@ -58,11 +58,7 @@ const buildRunner = (
     new CodegenRunner({
         libraries,
         girPath,
-        containerProps: tables.containerProps,
-        arrayProps: tables.arrayProps,
-        objectProps: tables.objectProps,
-        virtualProps: tables.virtualProps,
-        elementMap: tables.elementMap,
+        ...tables,
         gi: {
             storeDir: store.giStoreDir,
             linkDir: store.giLinkDir,
