@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/gi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 
 export type ControllerConstructor<T extends Gtk.EventController> = new () => T;
 

@@ -1,21 +1,8 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { click, dblClick, tripleClick } from "./click.js";
-import {
-    type DragOptions,
-    type DropContent,
-    type DropOptions,
-    drag,
-    dragAndDrop,
-    drop,
-    hover,
-    longPress,
-    rotate,
-    swipe,
-    unhover,
-    zoom,
-} from "./gesture.js";
-import { keyboardWith, type TabOptions, tab } from "./keyboard.js";
-import { type PointerInput, pointerWith } from "./pointer.js";
+import { drag, dragAndDrop, drop, hover, longPress, rotate, swipe, unhover, zoom } from "./gesture.js";
+import { keyboardWith, tab } from "./keyboard.js";
+import { pointerWith } from "./pointer.js";
 import { deselectOptions, selectOptions } from "./selection.js";
 import { createInitialState, type UserEventState } from "./state.js";
 import { clear, copy, cut, paste, type TypeOptions, type } from "./text.js";

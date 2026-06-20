@@ -11,8 +11,7 @@ export const TOPLEVELS: unique symbol = Symbol("gtkx.toplevels");
 
 export type Container = GObject.Object | typeof TOPLEVELS;
 
-const isApplication = (container: Container): container is Gtk.Application =>
-    container instanceof Gtk.Application;
+const isApplication = (container: Container): container is Gtk.Application => container instanceof Gtk.Application;
 
 const traverseWidgetTree = function* (root: Gtk.Widget): Generator<Gtk.Widget> {
     yield root;
