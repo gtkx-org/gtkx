@@ -142,6 +142,19 @@ impl Boxed {
         Self::borrowed(ptr, None, None)
     }
 
+    /// Deep-copies the boxed value of `gtype` at `ptr` through `g_boxed_copy`,
+    /// returning a fresh independent allocation the caller owns.
+    ///
+    /// # Safety
+    ///
+    /// `ptr` must address a live boxed value of `gtype`, the type
+    /// `g_boxed_copy` requires.
+    pub(crate) unsafe fn boxed_copy(gtype: glib::Type, ptr: *mut c_void) -> *mut c_void {
+        // SAFETY: The caller guarantees `ptr` addresses a live boxed value of
+        // `gtype`, the type `g_boxed_copy` requires.
+        unsafe { glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _) }
+    }
+
     /// Copies `size` bytes starting at `ptr` into a fresh owned `g_malloc`
     /// allocation. The infallible constructor for the known-size struct copy.
     #[must_use]
@@ -161,6 +174,10 @@ impl Boxed {
         Self::from_glib_none_with_size(gtype, ptr, None, None)
     }
 
+    // The pointer is dereferenced only by the documented-unsafe `boxed_copy`,
+    // under a null guard and a caller liveness contract; the safe constructor
+    // wraps that single unsafe operation.
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     pub fn from_glib_none_with_size(
         gtype: Option<glib::Type>,
         ptr: *mut c_void,
@@ -173,9 +190,8 @@ impl Boxed {
 
         if let Some(gt) = gtype {
             // SAFETY: The caller passes a live boxed value of `gt`, the
-            // type `g_boxed_copy` requires.
-            let cloned_ptr =
-                unsafe { glib::gobject_ffi::g_boxed_copy(gt.into_glib(), ptr as *const _) };
+            // type `boxed_copy` requires.
+            let cloned_ptr = unsafe { Self::boxed_copy(gt, ptr) };
             return Ok(Self::owned(
                 cloned_ptr,
                 gtype,
@@ -233,9 +249,8 @@ impl Clone for Boxed {
             && self.free_fn.is_none()
         {
             // SAFETY: This wrapper owns a live boxed value of `gtype`, the
-            // type `g_boxed_copy` requires.
-            let cloned_ptr =
-                unsafe { glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), self.ptr as *const _) };
+            // type `boxed_copy` requires.
+            let cloned_ptr = unsafe { Self::boxed_copy(gtype, self.ptr) };
             return Self::owned(
                 cloned_ptr,
                 self.gtype,

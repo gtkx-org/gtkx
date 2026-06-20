@@ -177,9 +177,8 @@ impl FfiEncoder for BoxedType {
             && let Some(gtype) = self.gtype()
         {
             // SAFETY: The caller guarantees the non-null `ptr` addresses a
-            // live boxed value of `gtype`, the type `g_boxed_copy` requires.
-            let copied =
-                unsafe { glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _) };
+            // live boxed value of `gtype`, the type `boxed_copy` requires.
+            let copied = unsafe { Boxed::boxed_copy(gtype, ptr) };
             return Ok(copied);
         }
         Ok(ptr)
@@ -232,10 +231,9 @@ impl RawPtrCodec for BoxedType {
     unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
             // SAFETY: `ptr` came from a NativeHandle wrapping a live boxed
-            // value of `gtype`, the type `g_boxed_copy` requires.
-            self.gtype().map_or(ptr, |gtype| unsafe {
-                glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _)
-            })
+            // value of `gtype`, the type `boxed_copy` requires.
+            self.gtype()
+                .map_or(ptr, |gtype| unsafe { Boxed::boxed_copy(gtype, ptr) })
         });
     }
 
@@ -247,26 +245,27 @@ impl RawPtrCodec for BoxedType {
         let Some(gtype) = self.gtype() else {
             return write_object_ptr(ptr, value, "Boxed field write");
         };
-        let src_ptr = value.object_ptr("Boxed field write")?;
-        // SAFETY: The caller guarantees `ptr` is a readable pointer-sized
-        // field slot; the read is unaligned-tolerant.
-        let old_ptr = unsafe { (ptr as *const *mut c_void).read_unaligned() };
-        let new_ptr = if src_ptr.is_null() {
-            std::ptr::null_mut()
-        } else {
-            // SAFETY: `src_ptr` came from a NativeHandle wrapping a live
-            // boxed value of `gtype`, the type `g_boxed_copy` requires.
-            unsafe { glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), src_ptr as *const _) }
-        };
         // SAFETY: The caller guarantees `ptr` is a writable pointer-sized
-        // field slot; the write is unaligned-tolerant.
-        unsafe { (ptr as *mut *mut c_void).write_unaligned(new_ptr) };
-        if !old_ptr.is_null() {
-            // SAFETY: The slot owned the previous boxed value of `gtype`;
-            // this release runs exactly once, after the slot is replaced.
-            unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), old_ptr) };
+        // field slot owning a previous boxed value of `gtype` (or null).
+        unsafe {
+            swap_owned_slot(
+                ptr,
+                value,
+                "Boxed field write",
+                |src_ptr| {
+                    // SAFETY: `src_ptr` came from a NativeHandle wrapping a
+                    // live boxed value of `gtype`, the type `boxed_copy`
+                    // requires.
+                    Boxed::boxed_copy(gtype, src_ptr)
+                },
+                |old_ptr| {
+                    // SAFETY: The slot owned the previous boxed value of
+                    // `gtype`; this release runs exactly once, after the slot
+                    // is replaced.
+                    glib::gobject_ffi::g_boxed_free(gtype.into_glib(), old_ptr);
+                },
+            )
         }
-        Ok(())
     }
 }
 
