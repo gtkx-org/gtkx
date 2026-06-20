@@ -174,18 +174,30 @@ export function fn(
     returnType: Type,
     options: FnOptions = {},
 ): (...inputs: unknown[]) => unknown {
-    const nativeArgTypes = toNativeArgTypes(argTypes, options.throws === true);
+    const throws = options.throws === true;
+    const nativeArgTypes = toNativeArgTypes(argTypes, throws);
     const nativeFn = bind(library, symbol, nativeArgTypes, returnType);
     const hasPrimary = returnType.type !== "void";
     const plans = planArgs(argTypes);
 
-    return (...inputs) => {
-        const nativeValues = toNativeValues(plans, inputs);
-        const errorCell: Ref | undefined = options.throws === true ? { value: null } : undefined;
-        if (errorCell !== undefined) nativeValues.push(errorCell);
-        const nativeResult = nativeFn(...nativeValues);
-        if (errorCell !== undefined) checkError(errorCell);
+    const shape = (inputs: readonly unknown[], nativeValues: readonly Value[], nativeResult: Value): unknown => {
         const primary = hasPrimary ? wrapValue(returnType, nativeResult) : undefined;
         return tupleResult(toOutputs(plans, inputs, nativeValues), primary, hasPrimary);
+    };
+
+    if (throws) {
+        return (...inputs) => {
+            const nativeValues = toNativeValues(plans, inputs);
+            const errorCell: Ref = { value: null };
+            nativeValues.push(errorCell);
+            const nativeResult = nativeFn(...nativeValues);
+            checkError(errorCell);
+            return shape(inputs, nativeValues, nativeResult);
+        };
+    }
+
+    return (...inputs) => {
+        const nativeValues = toNativeValues(plans, inputs);
+        return shape(inputs, nativeValues, nativeFn(...nativeValues));
     };
 }
