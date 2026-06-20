@@ -23,9 +23,3 @@ export const warn = (message: string, ...rest: unknown[]): void => console.warn(
  * @param rest - Extra values forwarded to `console.error` unchanged.
  */
 export const error = (message: string, ...rest: unknown[]): void => console.error(`${PREFIX} ${message}`, ...rest);
-
-/**
- * Alias of {@link info} for collaborators wired through a single `log(message)`
- * port.
- */
-export const log = info;
