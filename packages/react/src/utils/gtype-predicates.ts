@@ -1,4 +1,4 @@
-import { type GTyped, getWrapperClass, typeFromName } from "@gtkx/ffi";
+import { type GTyped, requireWrapperClass, resolveWrapperClass } from "@gtkx/ffi";
 import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { AnyClass } from "@gtkx/utils";
@@ -83,8 +83,10 @@ export const isAdwComboRow = <T extends GTyped>(instance: T): instance is T & Dr
  *
  * @param typeName - GLib type name, e.g. `"GtkBox"`
  */
-export const resolveBackingClass = (typeName: string): AnyClass<GTyped> | null =>
-    getWrapperClass(typeFromName(typeName)) as AnyClass<GTyped> | null;
+export const resolveBackingClass = (typeName: string): AnyClass<GTyped> | null => resolveWrapperClass(typeName);
+
+const describeUnregistered = (typeName: string): string =>
+    `${typeName} is not registered. Import its @gtkx/jsx namespace module (e.g. \`import "@gtkx/jsx/adw"\`) before use.`;
 
 /**
  * Resolves a registered GObject class by its GLib type name, throwing a clear
@@ -99,12 +101,5 @@ export const resolveBackingClass = (typeName: string): AnyClass<GTyped> | null =
  * @param typeName - GLib type name, e.g. `"GtkSourceBuffer"`
  * @throws {Error} when the class is not registered (its namespace was not imported)
  */
-export const requireClassByName = (typeName: string): AnyClass => {
-    const cls = resolveBackingClass(typeName);
-    if (!cls) {
-        throw new Error(
-            `${typeName} is not registered. Import its @gtkx/jsx namespace module (e.g. \`import "@gtkx/jsx/adw"\`) before use.`,
-        );
-    }
-    return cls;
-};
+export const requireClassByName = (typeName: string): AnyClass<GTyped> =>
+    requireWrapperClass(typeName, describeUnregistered);

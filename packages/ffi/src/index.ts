@@ -31,10 +31,13 @@ export { getGvalueBoxed, setGvalueBoxed } from "./gvalue.js";
 export * from "./lifecycle.js";
 export { registerClass } from "./register-class.js";
 export {
+    constructWrapper,
     getHandle,
     getInstanceGtype,
     getWrapperClass,
     registerWrapperClass,
+    requireWrapperClass,
+    resolveWrapperClass,
     setHandle,
     tryGetHandle,
     wrapHandle,

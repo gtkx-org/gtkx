@@ -18,6 +18,7 @@
  * GObject prop of the same name.
  */
 import { ARRAY_PROPS as ARRAY_PROP_ROWS } from "virtual:gtkx-config";
+import { constructWrapper } from "@gtkx/ffi";
 import type { ArrayPropRow, CallStep, ConstructStep, PresenceCondition } from "@gtkx/config";
 import type * as GObject from "@gtkx/gi/gobject";
 import { requireClassByName } from "../utils/gtype-predicates.js";
@@ -81,7 +82,7 @@ export const runCallSteps = (target: GObject.Object, steps: readonly CallStep[],
 };
 
 const runConstructStep = (target: GObject.Object, step: ConstructStep, item: unknown): void => {
-    const constructed = new (requireClassByName(step.type) as new () => object)();
+    const constructed = constructWrapper(requireClassByName(step.type), {});
     for (const setter of step.setters) {
         const value = itemField(item, setter.path);
         if (satisfies(value, setter.when)) callMethod(constructed, setter.method, [value]);

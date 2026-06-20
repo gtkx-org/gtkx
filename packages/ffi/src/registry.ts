@@ -219,6 +219,52 @@ export function getWrapperClass(gtype: GType): AnyClass | null {
 }
 
 /**
+ * Resolves the registered wrapper class for a GLib type name, or `null` when no
+ * namespace has registered it. The class registry stamps `__gtype__` on every
+ * registered prototype, so the result safely backs a {@link GTyped} instance —
+ * the single name→class resolver callers build on instead of re-pairing
+ * {@link getWrapperClass} with {@link typeFromName}.
+ *
+ * @param name - The GLib type name, e.g. `"GtkButton"`.
+ * @returns The registered class carrying the {@link GTyped} prototype, or `null`.
+ */
+export function resolveWrapperClass(name: string): AnyClass<GTyped> | null {
+    return getWrapperClass(typeFromName(name)) as AnyClass<GTyped> | null;
+}
+
+/**
+ * Resolves the registered wrapper class for a GLib type name, throwing when no
+ * namespace has registered it.
+ *
+ * A class is registered only once its namespace module has loaded, so an absent
+ * class means the consumer used a type from a namespace it never imported.
+ *
+ * @param name - The GLib type name, e.g. `"GtkSourceBuffer"`.
+ * @param describe - Builds the error message when the class is unregistered.
+ * @returns The registered class carrying the {@link GTyped} prototype.
+ * @throws {Error} when no class is registered for `name`.
+ */
+export function requireWrapperClass(name: string, describe: (name: string) => string): AnyClass<GTyped> {
+    const cls = resolveWrapperClass(name);
+    if (!cls) throw new Error(describe(name));
+    return cls;
+}
+
+/**
+ * Constructs a fresh instance of a wrapper class, passing `props` to the
+ * generated constructor. The one site where a wrapper class is invoked as a
+ * constructor lives here, where the registry already stamps the concrete class,
+ * so the consumer keeps a typed class and never spells the `new` cast itself.
+ *
+ * @param cls - The registered wrapper class to instantiate.
+ * @param props - The construct-time properties the generated constructor marshals.
+ * @returns The freshly constructed wrapper instance.
+ */
+export function constructWrapper(cls: AnyClass<GTyped>, props: Record<string, unknown>): GTyped {
+    return new (cls as new (props: Record<string, unknown>) => GTyped)(props);
+}
+
+/**
  * Walks the parent chain of `gtype`, returning the first registered ancestor
  * class that `accept` admits.
  *

@@ -9,12 +9,11 @@
  * {@link "./array-props".ARRAY_PROPS}, and generic prop diffing in `apply-props`.
  */
 import { WRAPPER_NODE_ELEMENT } from "@gtkx/config";
-import { type GTyped, typeFromName } from "@gtkx/ffi";
+import { constructWrapper, type GType, type GTyped } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/gi/gobject";
 import { type AnyClass, omit } from "@gtkx/utils";
 import { collectConstructableProps } from "../utils/gtype.js";
-import { resolveBackingClass } from "../utils/gtype-predicates.js";
-import { createContainerWithProperties } from "./construct.js";
+import { requireClassByName, resolveBackingClass } from "../utils/gtype-predicates.js";
 import { type Node, registerState } from "./state.js";
 import type { ContainerInfo, Props } from "./types.js";
 import { createWrapperElement } from "./wrapper-element.js";
@@ -54,7 +53,7 @@ export const resolveContainerClass = (type: string): AnyClass<GTyped> | null => 
  * @param gtype - The GLib type being constructed.
  * @param props - The JSX prop bag, after construction-skip removal.
  */
-const pickConstructProps = (gtype: GObject.GType, props: Props): Props => {
+const pickConstructProps = (gtype: GType, props: Props): Props => {
     const constructable = collectConstructableProps(gtype);
     const result: Props = {};
     for (const name in props) {
@@ -64,9 +63,10 @@ const pickConstructProps = (gtype: GObject.GType, props: Props): Props => {
 };
 
 const constructBacking = (type: string, props: Props): GObject.Object => {
-    const gtype = typeFromName(type);
+    const cls = requireClassByName(type);
     const skip = CONSTRUCTION_SKIP_PROPS[type];
-    return createContainerWithProperties(type, pickConstructProps(gtype, skip ? omit(props, skip) : props));
+    const picked = pickConstructProps(cls.prototype.__gtype__, skip ? omit(props, skip) : props);
+    return constructWrapper(cls, picked) as GObject.Object;
 };
 
 /**
