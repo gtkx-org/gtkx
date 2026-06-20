@@ -39,6 +39,17 @@ export type GirProperty = {
 };
 
 /**
+ * Whether a property can be assigned at construction or through its setter:
+ * `writable`, `construct`, or `construct-only` properties only. A read-only
+ * property cannot be set through `g_object_new_with_properties` or a setter
+ * accessor, so it is omitted from the settable surface.
+ *
+ * @param property - The GIR property
+ */
+export const isConstructableProperty = (property: GirProperty): boolean =>
+    property.writable || property.construct || property.constructOnly;
+
+/**
  * Builds a {@link GirProperty} from a `<property>` element.
  *
  * @param node - The `<property>` element

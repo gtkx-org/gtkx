@@ -126,7 +126,7 @@ export const returnValueFromNode = (node: RawNode | undefined, context: ParseCon
 };
 
 /** The name, parameters, and return value shared by every GIR callable element. */
-export type GirCallable = {
+type GirCallable = {
     readonly name: string;
     readonly parameters: readonly GirParameter[];
     readonly returnValue: GirReturnValue;

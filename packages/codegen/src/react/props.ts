@@ -2,7 +2,7 @@ import { toCamelIdentifier, toUpperFirst } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import { type GirParameter, isInoutParameter, isOutParameter } from "../gir/parameter.js";
-import type { GirProperty } from "../gir/property.js";
+import { type GirProperty, isConstructableProperty } from "../gir/property.js";
 import type { GirRepository } from "../gir/repository.js";
 import type { GirSignal } from "../gir/signal.js";
 import type { TypeId } from "../gir/type-id.js";
@@ -97,7 +97,7 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
             slotPropNames.push(jsName);
             return;
         }
-        if (isSettableProperty(property)) propEntries.push(`${jsName}?: ${tsType} | null;`);
+        if (isConstructableProperty(property)) propEntries.push(`${jsName}?: ${tsType} | null;`);
         propEntries.push(`onNotify${toUpperFirst(jsName)}?: ((value: ${tsType} | null, self: Self) => void) | null;`);
     };
 
@@ -164,19 +164,6 @@ const resolvesToGobjectClass = (repository: GirRepository, ref: TypeId | undefin
     if (resolved?.kind !== "class") return false;
     return isReactNodeClass(resolved.value, resolved.namespace, repository);
 };
-
-/**
- * Whether `property` can be assigned through the React prop surface. A
- * `writable`, `construct`, or `construct-only` property reaches its GObject
- * through the accessor setter or the construction GValue record; a read-only
- * property (a getter with no setter, e.g. `GtkWidget:parent`) cannot, so it is
- * omitted from the settable surface and exposed only through its generated
- * `onNotify<Prop>` change handler.
- *
- * @param property - The GIR property to classify.
- */
-const isSettableProperty = (property: GirProperty): boolean =>
-    property.writable || property.construct || property.constructOnly;
 
 /** The widget being emitted, supplying ancestry lookups for slot eligibility. */
 type SlotOwner = {

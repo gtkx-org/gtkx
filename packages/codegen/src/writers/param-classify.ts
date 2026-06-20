@@ -97,7 +97,7 @@ export const arrayLengthSources = (repository: GirRepository, fn: GirFunction): 
  * @param repository - The GIR repository, to resolve the return type
  * @param fn - The callable
  */
-export const returnArrayLengthIndices = (repository: GirRepository, fn: GirFunction): ReadonlySet<number> => {
+const returnArrayLengthIndices = (repository: GirRepository, fn: GirFunction): ReadonlySet<number> => {
     const returnType = fn.returnValue.type === undefined ? undefined : repository.typeOf(fn.returnValue.type);
     if (returnType?.kind !== "carray") return new Set();
     const lengthIndex = returnType.lengthParameterIndex;

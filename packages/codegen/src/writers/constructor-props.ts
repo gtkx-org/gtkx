@@ -2,21 +2,11 @@ import { dedupeBy, quote, toCamelIdentifier, toPascalCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
 import type { GirClass } from "../gir/class.js";
-import type { GirProperty } from "../gir/property.js";
+import { type GirProperty, isConstructableProperty } from "../gir/property.js";
 import { splitOptionalNamespace } from "../gir/type-ref.js";
 import { collectInterfaceProperties } from "./inheritance.js";
 import { renderTsType } from "./ts-type.js";
 import { renderFfiType } from "./value.js";
-
-/**
- * Whether a property can be passed to a constructor: writable, construct, or
- * construct-only properties only. Read-only properties cannot be set through
- * `g_object_new_with_properties`.
- *
- * @param property - The GIR property
- */
-const isConstructable = (property: GirProperty): boolean =>
-    property.writable || property.construct || property.constructOnly;
 
 /**
  * The constructable properties a class introduces: its own writable/construct
@@ -30,8 +20,9 @@ const isConstructable = (property: GirProperty): boolean =>
  * @param klass - The class whose construct props to collect
  */
 const collectConstructableProps = (context: ModuleContext, klass: GirClass): readonly GirProperty[] =>
-    dedupeBy([...klass.properties, ...collectInterfaceProperties(context, klass)].filter(isConstructable), (property) =>
-        toCamelIdentifier(property.name),
+    dedupeBy(
+        [...klass.properties, ...collectInterfaceProperties(context, klass)].filter(isConstructableProperty),
+        (property) => toCamelIdentifier(property.name),
     );
 
 /**

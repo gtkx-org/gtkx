@@ -18,7 +18,7 @@ import {
 } from "./callables.js";
 import { renderVfuncMetadata } from "./class-struct.js";
 import { renderClassConstructor, renderConstructorPropsInterface } from "./constructor-props.js";
-import { gtypeMemberDeclaration, renderGtypeExpression } from "./gtype-binding.js";
+import { gtypeExprFor, gtypeMemberDeclaration } from "./gtype-binding.js";
 import {
     collectInterfaceProperties,
     forEachAncestor,
@@ -184,10 +184,7 @@ const appendFlattenedInterfaceMethods = (options: AppendFlattenedInterfaceMethod
 };
 
 const appendClassRegistrations = (context: ModuleContext, klass: GirClass, className: string): void => {
-    const gtypeExpr =
-        klass.glibGetType === undefined
-            ? undefined
-            : renderGtypeExpression(context, klass.glibGetType, klass.glibTypeName);
+    const gtypeExpr = gtypeExprFor(context, klass);
     appendWrapperClassRegistration(context, {
         className,
         gtypeExpr,

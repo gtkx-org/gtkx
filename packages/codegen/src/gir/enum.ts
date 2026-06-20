@@ -13,7 +13,7 @@ type EnumMember = {
 };
 
 /** Discriminator for enums vs bitfields. */
-export type EnumKind = "enumeration" | "bitfield";
+type EnumKind = "enumeration" | "bitfield";
 
 /** An `<enumeration>` or `<bitfield>` declaration. */
 export type GirEnum = {

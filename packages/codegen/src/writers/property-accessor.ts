@@ -2,7 +2,7 @@ import { quote, toCamelCase, toCamelIdentifier } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
 import type { GirFunction } from "../gir/function.js";
-import type { GirProperty } from "../gir/property.js";
+import { type GirProperty, isConstructableProperty } from "../gir/property.js";
 import type { TypeId } from "../gir/type-id.js";
 import { renderMethodReturnType } from "./method.js";
 import { renderTsType } from "./ts-type.js";
@@ -53,7 +53,7 @@ export const renderPropertyAccessor = (
     if (claimedNames.has(jsName)) return undefined;
     if (jsName === "constructor") return undefined;
 
-    const writable = property.writable || property.construct || property.constructOnly;
+    const writable = isConstructableProperty(property);
     const getterMember = delegateMember(property.getter, jsName, claimedNames);
     const getMethod =
         getterMember !== undefined && property.getter !== undefined ? methodByName.get(property.getter) : undefined;

@@ -50,7 +50,7 @@ export const gtypeMemberDeclaration = (context: ModuleContext): string => `decla
  * @param getType - The C symbol name or the GIR sentinel `"intern"`
  * @param glibTypeName - The GLib type name (for `"intern"` get-types)
  */
-export const renderGtypeExpression = (
+const renderGtypeExpression = (
     context: ModuleContext,
     getType: string,
     glibTypeName: string | undefined,
@@ -63,6 +63,27 @@ export const renderGtypeExpression = (
     appendGetTypeBinding(context, getType);
     return `${bindingIdentifier(getType)}() as bigint`;
 };
+
+/** A type carrying the optional get-type symbol and GLib type name a GType expression resolves from. */
+type GtypeSource = {
+    readonly glibGetType: string | undefined;
+    readonly glibTypeName: string | undefined;
+};
+
+/**
+ * Renders the runtime `GType` expression for a class, interface, boxed record,
+ * or enum, or `undefined` when the type declares no get-type symbol.
+ *
+ * Folds the get-type presence guard the three registration sites otherwise
+ * repeat: a type with no `glibGetType` has no resolvable runtime `GType`.
+ *
+ * @param context - The module context
+ * @param source - The type's get-type symbol and GLib type name
+ */
+export const gtypeExprFor = (context: ModuleContext, source: GtypeSource): string | undefined =>
+    source.glibGetType === undefined
+        ? undefined
+        : renderGtypeExpression(context, source.glibGetType, source.glibTypeName);
 
 const appendGetTypeBinding = (context: ModuleContext, getType: string): void => {
     const lib = context.namespace.sharedLibrary ?? "";

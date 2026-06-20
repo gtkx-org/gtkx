@@ -13,7 +13,7 @@ import {
     renderPlainTypeMembers,
 } from "./callables.js";
 import { renderVfuncMetadata } from "./class-struct.js";
-import { renderGtypeExpression } from "./gtype-binding.js";
+import { gtypeExprFor } from "./gtype-binding.js";
 import { resolveImplementedInterface, resolvePrerequisiteReference } from "./inheritance.js";
 import { methodExportName } from "./method.js";
 import { renderPropertyAccessor } from "./property-accessor.js";
@@ -139,10 +139,7 @@ const collectPrerequisiteMethods = (context: ModuleContext, iface: GirClass): re
 };
 
 const appendInterfaceRegistrations = (context: ModuleContext, iface: GirClass, className: string): void => {
-    const gtypeExpr =
-        iface.glibGetType === undefined
-            ? undefined
-            : renderGtypeExpression(context, iface.glibGetType, iface.glibTypeName);
+    const gtypeExpr = gtypeExprFor(context, iface);
     appendWrapperClassRegistration(context, {
         className,
         gtypeExpr,

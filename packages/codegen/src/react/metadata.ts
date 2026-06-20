@@ -11,7 +11,7 @@ import { quote, toCamelIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirEnum } from "../gir/enum.js";
 import type { PrimitiveCategory } from "../gir/primitives.js";
-import type { GirProperty } from "../gir/property.js";
+import { type GirProperty, isConstructableProperty } from "../gir/property.js";
 import type { GirRepository } from "../gir/repository.js";
 import type { TypeId } from "../gir/type-id.js";
 import { implementedInterfaces, isReactNodeClass, iterateClassesWithGlibName, signalHandlerName } from "./widgets.js";
@@ -208,7 +208,7 @@ const collectConstructOnly = (sources: readonly GirClass[]): readonly string[] =
  * @param sources - The class and its implemented interfaces.
  */
 const collectConstructable = (sources: readonly GirClass[]): readonly string[] =>
-    collectPropNames(sources, (property) => property.writable || property.construct || property.constructOnly);
+    collectPropNames(sources, isConstructableProperty);
 
 const renderSignalsObject = (entries: ReadonlyArray<readonly [string, string]>): string => {
     if (entries.length === 0) return "{}";
