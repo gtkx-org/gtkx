@@ -133,6 +133,42 @@ export type Type =
     | VoidType;
 
 /**
+ * The concrete JavaScript value a descriptor `D` marshals to or from, recovered
+ * from the descriptor's literal `type` tag. A scalar maps to its primitive, a
+ * 64-bit integer to `bigint`, a string to `string | null`, a pointer-backed
+ * value (gobject/boxed/struct/fundamental) to `Handle | null`, and any wider or
+ * compound descriptor falls back to the full {@link Value} union.
+ *
+ * @typeParam D - The native type descriptor.
+ */
+export type ValueOf<D extends Type> = D extends { type: infer Tag }
+    ? Tag extends
+          | "int8"
+          | "uint8"
+          | "int16"
+          | "uint16"
+          | "int32"
+          | "uint32"
+          | "float32"
+          | "float64"
+          | "enum"
+          | "flags"
+          | "unichar"
+        ? number
+        : Tag extends "int64" | "uint64" | "bigint64" | "biguint64"
+          ? bigint
+          : Tag extends "boolean"
+            ? boolean
+            : Tag extends "string"
+              ? string | null
+              : Tag extends "gobject" | "boxed" | "struct" | "fundamental"
+                ? Handle | null
+                : Tag extends "void"
+                  ? undefined
+                  : Value
+    : Value;
+
+/**
  * An argument for an FFI call.
  *
  * Combines a value with its type information for marshaling.

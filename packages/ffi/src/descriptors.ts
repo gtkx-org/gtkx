@@ -13,6 +13,7 @@ import {
     type Float32Type,
     type Float64Type,
     type FundamentalType,
+    type GObjectType,
     type HashTableType,
     type Int8Type,
     type Int16Type,
@@ -20,6 +21,7 @@ import {
     type Int64Type,
     type Ownership,
     type RefType,
+    type StringType,
     type StructType,
     type Type,
     type Uint8Type,
@@ -28,6 +30,7 @@ import {
     type Uint64Type,
     type UnicharType,
     type Value,
+    type ValueOf,
     type VoidType,
 } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
@@ -79,19 +82,19 @@ export const getDescriptorWrapperClass = (descriptor: Type): AnyClass | undefine
  * @param returnType - Expected return type descriptor
  * @returns A function that, given argument values, dispatches the FFI call
  */
-export const bind = (
+export const bind = <R extends Type>(
     library: string,
     symbol: string,
     argTypes: Type[],
-    returnType: Type,
-): ((...values: Value[]) => Value) => {
+    returnType: R,
+): ((...values: Value[]) => ValueOf<R>) => {
     const args: Arg[] = argTypes.map((argType) => ({ type: argType, value: undefined }));
     return (...values) => {
         let i = 0;
         for (const arg of args) {
             arg.value = values[i++] as Value;
         }
-        return call(library, symbol, args, returnType);
+        return call(library, symbol, args, returnType) as ValueOf<R>;
     };
 };
 
@@ -112,10 +115,10 @@ export const voidT: VoidType = Object.freeze({ type: "void" });
 export const unicharT: UnicharType = Object.freeze({ type: "unichar" });
 export const blobT: BlobType = Object.freeze({ type: "blob" });
 
-export const stringT = (ownership: Ownership = "borrowed", length?: number): Type =>
+export const stringT = (ownership: Ownership = "borrowed", length?: number): StringType =>
     length === undefined ? { type: "string", ownership } : { type: "string", ownership, length };
 
-export const objectT = (ownership: Ownership = "borrowed", typeName?: string): Type =>
+export const objectT = (ownership: Ownership = "borrowed", typeName?: string): GObjectType =>
     typeName === undefined ? { type: "gobject", ownership } : { type: "gobject", ownership, typeName };
 
 /**

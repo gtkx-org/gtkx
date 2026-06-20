@@ -162,52 +162,52 @@ export const valueGetBoolean = (value: Handle): boolean => Boolean(gValueGetBool
 export const valueSetInt = (value: Handle, v: number): void => {
     gValueSetInt(value, v);
 };
-export const valueGetInt = (value: Handle): number => gValueGetInt(value) as number;
+export const valueGetInt = (value: Handle): number => gValueGetInt(value);
 export const valueSetUint = (value: Handle, v: number): void => {
     gValueSetUint(value, v);
 };
-export const valueGetUint = (value: Handle): number => gValueGetUint(value) as number;
+export const valueGetUint = (value: Handle): number => gValueGetUint(value);
 export const valueSetInt64 = (value: Handle, v: bigint | number): void => {
     gValueSetInt64(value, v);
 };
-export const valueGetInt64 = (value: Handle): bigint => gValueGetInt64(value) as bigint;
+export const valueGetInt64 = (value: Handle): bigint => gValueGetInt64(value);
 export const valueSetUint64 = (value: Handle, v: bigint | number): void => {
     gValueSetUint64(value, v);
 };
-export const valueGetUint64 = (value: Handle): bigint => gValueGetUint64(value) as bigint;
+export const valueGetUint64 = (value: Handle): bigint => gValueGetUint64(value);
 export const valueSetFloat = (value: Handle, v: number): void => {
     gValueSetFloat(value, v);
 };
-export const valueGetFloat = (value: Handle): number => gValueGetFloat(value) as number;
+export const valueGetFloat = (value: Handle): number => gValueGetFloat(value);
 export const valueSetDouble = (value: Handle, v: number): void => {
     gValueSetDouble(value, v);
 };
-export const valueGetDouble = (value: Handle): number => gValueGetDouble(value) as number;
+export const valueGetDouble = (value: Handle): number => gValueGetDouble(value);
 export const valueSetString = (value: Handle, v: string | null): void => {
     gValueSetString(value, v);
 };
-export const valueGetString = (value: Handle): string | null => (gValueGetString(value) as string | null) ?? null;
+export const valueGetString = (value: Handle): string | null => gValueGetString(value) ?? null;
 export const valueSetEnum = (value: Handle, v: number): void => {
     gValueSetEnum(value, v);
 };
-export const valueGetEnum = (value: Handle): number => gValueGetEnum(value) as number;
+export const valueGetEnum = (value: Handle): number => gValueGetEnum(value);
 export const valueSetFlags = (value: Handle, v: number): void => {
     gValueSetFlags(value, v);
 };
-export const valueGetFlags = (value: Handle): number => gValueGetFlags(value) as number;
+export const valueGetFlags = (value: Handle): number => gValueGetFlags(value);
 export const valueSetObject = (value: Handle, v: object | null): void => {
     gValueSetObject(value, tryGetHandle(v));
 };
-export const valueGetObject = (value: Handle): object | null => wrapHandle(gValueGetObject(value) as Handle | null);
+export const valueGetObject = (value: Handle): object | null => wrapHandle(gValueGetObject(value));
 export const valueSetParam = (value: Handle, v: object | null): void => {
     gValueSetParam(value, tryGetHandle(v));
 };
-export const valueGetParam = (value: Handle): object | null => wrapHandle(gValueGetParam(value) as Handle | null);
+export const valueGetParam = (value: Handle): object | null => wrapHandle(gValueGetParam(value));
 export const valueSetVariant = (value: Handle, v: object | null): void => {
     gValueSetVariant(value, tryGetHandle(v));
 };
 export const valueGetVariant = (value: Handle): object | null => {
-    const result = gValueGetVariant(value) as Handle | null;
+    const result = gValueGetVariant(value);
     if (result === null) return null;
     const cls = getWrapperClass(TYPE_VARIANT);
     if (cls === null) {
