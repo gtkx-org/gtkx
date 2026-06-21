@@ -38,14 +38,16 @@
             "default": "./dist/act.js"
         }
     },
-    "sideEffects": false,
+    "sideEffects": [
+        "./src/setup-runtime.ts",
+        "./dist/setup-runtime.js"
+    ],
     "files": [
         "dist",
         "src"
     ],
     "scripts": {
-        "build": "tsc -b",
-        "typecheck": "tsc -b --emitDeclarationOnly"
+        "build": "tsc -b"
     },
     "dependencies": {
         "@gtkx/ffi": "workspace:*",
@@ -53,6 +55,7 @@
         "@gtkx/utils": "workspace:*"
     },
     "devDependencies": {
+        "@gtkx/config": "workspace:*",
         "@gtkx/vitest": "workspace:*"
     }
 }

@@ -130,12 +130,15 @@ export class AnimationDriver {
     }
 
     public dispose(): void {
+        this.cancelAnimation();
+        this.cssProvider.dispose();
+    }
+
+    private clearDelay(): void {
         if (this.delayTimer !== null) {
             clearTimeout(this.delayTimer);
             this.delayTimer = null;
         }
-        this.cancelAnimation();
-        this.cssProvider.dispose();
     }
 
     private play(animation: Adw.Animation, delay: number): void {
@@ -153,6 +156,7 @@ export class AnimationDriver {
     }
 
     private cancelAnimation(): void {
+        this.clearDelay();
         if (this.currentAnimation) {
             this.currentAnimation.skip();
             this.currentAnimation = null;

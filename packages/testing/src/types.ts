@@ -19,6 +19,12 @@ export type WaitForOptions = {
     timeout?: number | undefined;
     interval?: number | undefined;
     onTimeout?: ((error: Error) => Error) | undefined;
+    /**
+     * An error captured at the public call boundary whose stack points at the caller's frame; when
+     * provided, a timeout rejection adopts this stack so the failure points at the user's line
+     * rather than at library internals.
+     */
+    stackTraceError?: Error | undefined;
 };
 
 export type MatcherOptions = {

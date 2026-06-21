@@ -2,9 +2,11 @@ mod storage;
 mod value;
 
 pub use storage::{
-    FfiStorage, FfiStorageKind, GArrayData, GListData, GListFlavor, GSListData, GSListFlavor,
-    HashTableData, ListFlavor, PendingRelease, PendingTransfer, StringGListData, StringGSListData,
+    FfiStorage, FfiStorageKind, GArrayData, GListFlavor, GSListFlavor, HashTableData, ListFlavor,
+    PendingRelease, PendingTransfer,
 };
+#[cfg(feature = "test-support")]
+pub use storage::{GListData, GSListData, StringGListData, StringGSListData};
 pub use value::{CallbackValue, FfiValue};
 
 use crate::arg::Arg;

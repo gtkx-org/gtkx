@@ -3,8 +3,13 @@ export {
     defineConfig,
     GIR_NAMESPACE_PATTERN,
     type GtkxConfig,
+    type GtkxConfigEnv,
+    type GtkxConfigExport,
+    type GtkxConfigFn,
+    type GtkxConfigFnPromise,
     isValidApplicationId,
     LIBRARIES_WILDCARD,
+    mergeConfig,
     type ReactCompilerCompilationMode,
     type ReactCompilerOptions,
     type ReactCompilerPanicThreshold,
@@ -20,6 +25,8 @@ export {
     type GtkxConfigLoader,
     GtkxConfigNotFoundError,
     type LoadedConfig,
+    type LoadGtkxConfigOptions,
+    type LoadResolvedGtkxConfigOptions,
     loadGtkxConfig,
     loadResolvedGtkxConfig,
 } from "./loader.js";
@@ -56,7 +63,13 @@ export {
     PASCAL_CASE_NAME_PATTERN,
     validateArrayOf,
 } from "./validators.js";
-export { GTKX_CONFIG_VIRTUAL_ID, RESOLVED_GTKX_CONFIG_VIRTUAL_ID, renderGtkxConfigModule } from "./virtual.js";
+export {
+    GTKX_CONFIG_VIRTUAL_ID,
+    RESOLVED_GTKX_CONFIG_VIRTUAL_ID,
+    renderGtkxConfigModule,
+    type SerializedGtkxConfig,
+    serializeGtkxConfig,
+} from "./virtual.js";
 export {
     BUFFER_TEXT_KIND,
     CONTAINER_PROP_KIND,

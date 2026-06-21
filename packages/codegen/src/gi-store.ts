@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type CodegenFingerprint, FINGERPRINT_FILENAME } from "./fingerprint.js";
-import { type StoreOptions, subpathExport, writeStore } from "./store-fs.js";
+import { buildManifest, type StoreOptions, selfLink, subpathExport, writeStore } from "./store-fs.js";
 
 const TEMPLATE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "src", "templates");
 
@@ -39,7 +39,7 @@ type CollectedFile = {
 const collectStoreSources = (
     namespaces: GiNamespaceInput[],
 ): { collected: CollectedFile[]; exportsMap: Record<string, unknown> } => {
-    const exportsMap: Record<string, unknown> = { "./package.json": "./package.json" };
+    const exportsMap: Record<string, unknown> = {};
     const collected: CollectedFile[] = [];
     for (const { directory, rawSource } of namespaces) {
         collected.push({
@@ -75,18 +75,12 @@ export const writeGiStore = (
         storeDir: options.storeDir,
         linkDir: options.linkDir,
         files: collected,
-        manifest: {
-            name: "@gtkx/gi",
-            type: "module",
-            version: options.version,
-            sideEffects: true,
-            exports: exportsMap,
-        },
+        manifest: buildManifest({ name: "@gtkx/gi", version: options.version, exports: exportsMap }),
         rawFiles: [{ relativePath: FINGERPRINT_FILENAME, content: `${JSON.stringify(fingerprint, null, 2)}\n` }],
         symlinks: [
             { segments: ["node_modules", "@gtkx", "ffi"], target: options.realFfiDir },
             { segments: ["node_modules", "@gtkx", "native"], target: options.realNativeDir },
-            { segments: ["node_modules", "@gtkx", "gi"], target: "self" },
+            selfLink("node_modules", "@gtkx", "gi"),
         ],
     });
 };

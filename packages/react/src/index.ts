@@ -1,3 +1,5 @@
+import "./utils/element-props.js";
+
 export { withApplication, withApplicationWindow } from "./components/application.js";
 export { type ConstraintLayoutProps, GtkConstraintLayout } from "./components/constraint-layout.js";
 export {
@@ -23,19 +25,9 @@ export {
 } from "./hooks/use-signal.js";
 export { useTickCallback } from "./hooks/use-tick-callback.js";
 export { type TopLevelSurface, useWindowPresentation } from "./hooks/use-window-presentation.js";
-export { type DeferredFlushWrapper, setDeferredFlushWrapper } from "./reconciler/deferred-flush.js";
 export { createPortal } from "./reconciler/portal.js";
-export { reconciler } from "./reconciler/reconciler.js";
-export { type ReconcilerErrorHandler, setReconcilerErrorHandler } from "./reconciler/reconciler-error-sink.js";
-export {
-    createReconcilerRoot,
-    type FiberRoot,
-    type ReconcilerRoot,
-    type ReconcilerRootOptions,
-    unmountAllReconcilerRoots,
-} from "./reconciler/reconciler-root.js";
 export { createRoot, quit, type Root } from "./reconciler/render.js";
-export { createRootElement, isRootElement, ROOT_ELEMENT, type RootElement } from "./reconciler/root-element.js";
+export { createRootElement, type RootElement } from "./reconciler/root-element.js";
 export {
     type ApplicationLifecycle,
     type ApplicationLifecycleModule,
@@ -43,7 +35,40 @@ export {
     setApplicationLifecycle,
 } from "./utils/application-lifecycle.js";
 export { createElementComponent } from "./utils/create-element-component.js";
-export * from "./utils/element-props.js";
+export type {
+    AccessibleProps,
+    ActionAccel,
+    ActionGroupPrefixProps,
+    AlertDialogResponseProps,
+    CalendarMark,
+    ColumnViewColumnProps,
+    ColumnViewProps,
+    ConstraintGuideProps,
+    ConstraintProps,
+    ConstraintVflProps,
+    ContainerPropProps,
+    CreditSection,
+    DragSourceIcon,
+    DropDownProps,
+    DropTargetType,
+    FixedChildProps,
+    GridChildProps,
+    GridViewProps,
+    LevelBarOffset,
+    ListItem,
+    ListViewProps,
+    MenuEntry,
+    MenuItemsProps,
+    NotebookPageProps,
+    OverlayChildProps,
+    ScaleMark,
+    SlotProps,
+    StackPageProps,
+    TextAnchorProps,
+    TextPaintableProps,
+    TextTagProps,
+    WrapperNodeElementProps,
+} from "./utils/element-props.js";
 export type { GObjectTarget } from "./utils/gobject-target.js";
 export {
     deleteAccessibleMetadata,

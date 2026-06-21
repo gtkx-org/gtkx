@@ -3,6 +3,7 @@ import {
     appNotFoundError,
     connectionWriteFailedError,
     invalidRequestError,
+    methodNotFoundError,
     noAppConnectedError,
 } from "./protocol/errors.js";
 import { type AppInfo, type IpcRequest, type IpcResponse, RegisterParamsSchema } from "./protocol/types.js";
@@ -112,6 +113,11 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
             this.handleRegister(connection, request);
         } else if (request.method === "app.unregister") {
             this.handleUnregister(connection, request);
+        } else {
+            this.transport.send(connection.id, {
+                id: request.id,
+                error: methodNotFoundError(request.method).toIpcError(),
+            });
         }
     }
 

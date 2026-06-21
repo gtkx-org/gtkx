@@ -1,7 +1,10 @@
-import { toCamelIdentifier, toLowerFirst } from "@gtkx/utils";
+import { quote, toCamelIdentifier, toLowerFirst } from "@gtkx/utils";
+import { tBind, tInlineStruct, tRef, tString, tUint8, tVoid } from "../writers/descriptor.js";
 import type { CommandPlan, ReturnPlan } from "./ctype.js";
 import { commandJsDoc, inParamDocLine, REFPAGES_BASE } from "./jsdoc.js";
 import { buildSlots, type EmittedOut, scalarAliasOrGroup, scalarPrefixSlots, trackInto } from "./slots.js";
+
+const GL_LIB_EXPRESSION = "LIB";
 
 const commandExportName = (name: string): string => {
     const stripped = name.startsWith("gl") ? toLowerFirst(name.slice(2)) : name;
@@ -34,21 +37,21 @@ const buildEmittedReturn = (
     const track = trackInto(usedTypes);
     switch (plan.kind) {
         case "void":
-            return { tsType: "void", descriptor: "t.void" };
+            return { tsType: "void", descriptor: tVoid };
         case "scalar": {
             const alias = track(scalarAliasOrGroup(plan.scalar, returnGroup));
             return { tsType: alias, descriptor: plan.scalar.tExpr, expr: (call) => `${call} as ${alias}` };
         }
         case "boolean":
-            return { tsType: "boolean", descriptor: "t.uint8", expr: (call) => `(${call} as number) !== 0` };
+            return { tsType: "boolean", descriptor: tUint8, expr: (call) => `(${call} as number) !== 0` };
         case "string":
-            return { tsType: "string", descriptor: `t.string("borrowed")`, expr: (call) => `${call} as string` };
+            return { tsType: "string", descriptor: tString("borrowed"), expr: (call) => `${call} as string` };
         case "sync":
-            return { tsType: track("GLsync"), descriptor: `t.struct("borrowed")`, expr: (call) => `${call} as GLsync` };
+            return { tsType: track("GLsync"), descriptor: tInlineStruct(), expr: (call) => `${call} as GLsync` };
         case "opaque-pointer":
             return {
                 tsType: track("GLpointer"),
-                descriptor: `t.struct("borrowed")`,
+                descriptor: tInlineStruct(),
                 expr: (call) => `${call} as GLpointer`,
             };
     }
@@ -92,9 +95,15 @@ export const renderCommand = (
     const seeds = outs.map((out) => out.seed);
     const hasStringOut = plan.params.some((paramPlan) => paramPlan.kind === "string-out");
     if (hasStringOut) {
+        const bindExpression = tBind({
+            libExpr: GL_LIB_EXPRESSION,
+            symbolExpr: quote(command.name),
+            argList: descriptors,
+            returnType: returned.descriptor,
+        });
         const body = [
             ...seeds,
-            `const binding = t.bind(LIB, "${command.name}", ${descriptors}, ${returned.descriptor});`,
+            `const binding = ${bindExpression};`,
             ...returnStatements(`binding(${argNames})`, returned, outs),
         ]
             .map((line) => `    ${line}`)
@@ -105,7 +114,13 @@ export const renderCommand = (
         };
     }
     const bindingName = toCamelIdentifier(command.name);
-    const binding = `const ${bindingName} = t.bind(LIB, "${command.name}", ${descriptors}, ${returned.descriptor});`;
+    const bindExpression = tBind({
+        libExpr: GL_LIB_EXPRESSION,
+        symbolExpr: quote(command.name),
+        argList: descriptors,
+        returnType: returned.descriptor,
+    });
+    const binding = `const ${bindingName} = ${bindExpression};`;
     const body = [...seeds, ...returnStatements(`${bindingName}(${argNames})`, returned, outs)]
         .map((line) => `    ${line}`)
         .join("\n");
@@ -141,7 +156,7 @@ export const deriveGenSingular = (
     const descriptors = [
         ...prefix.map((slot) => slot.descriptor),
         `${countPlan.scalar.tExpr}`,
-        `t.ref(${outPlan.scalar.tExpr})`,
+        tRef(outPlan.scalar.tExpr),
     ];
     usedTypes.add(outPlan.scalar.tsAlias);
     const signature = prefix.map((slot) => `${slot.name}: ${slot.tsType}`).join(", ");
@@ -159,9 +174,15 @@ export const deriveGenSingular = (
     const body = [`    const out = { value: 0 };`, `    ${bindingName}(${callArgs});`, "    return out.value;"].join(
         "\n",
     );
+    const binding = tBind({
+        libExpr: GL_LIB_EXPRESSION,
+        symbolExpr: quote(plan.command.name),
+        argList: renderDescriptorList(descriptors),
+        returnType: tVoid,
+    });
     return {
         exportName,
-        binding: `const ${bindingName} = t.bind(LIB, "${plan.command.name}", ${renderDescriptorList(descriptors)}, t.void);`,
+        binding: `const ${bindingName} = ${binding};`,
         declaration: `${jsDoc}\nexport function ${exportName}(${signature}): ${outPlan.scalar.tsAlias} {\n${body}\n}`,
     };
 };

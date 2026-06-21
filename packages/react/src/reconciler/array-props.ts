@@ -6,9 +6,10 @@ import { constructWrapper } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/gi/gobject";
 import { requireClassByName } from "../utils/gtype-predicates.js";
 import { itemField, runCallStep, satisfiesCondition } from "./call-steps.js";
-import { callMethod } from "./reflect-call.js";
+import type { PropDiffOverride } from "./prop-diff.js";
+import { invokeRequiredMethod } from "./reflect-call.js";
 
-export interface ArrayPropDescriptor {
+export interface ArrayPropDescriptor extends PropDiffOverride {
     kind: "array";
     clear?(target: GObject.Object): void;
     remove?(target: GObject.Object, item: unknown): void;
@@ -21,17 +22,17 @@ const runConstructStep = (target: GObject.Object, step: ConstructStep, item: unk
     const constructed = constructWrapper(requireClassByName(step.type), {});
     for (const setter of step.setters) {
         const value = itemField(item, setter.path);
-        if (satisfiesCondition(value, setter.when)) callMethod(constructed, setter.method, [value]);
+        if (satisfiesCondition(value, setter.when)) invokeRequiredMethod(constructed, setter.method, [value]);
     }
-    callMethod(target, step.attach, [constructed]);
+    invokeRequiredMethod(target, step.attach, [constructed]);
 };
 
 const compileRow = (row: ArrayPropRow): ArrayPropDescriptor => {
     const descriptor: ArrayPropDescriptor = { kind: "array" };
     const { clear, remove, add, construct, set } = row;
-    if (set !== undefined) descriptor.set = (target, items) => callMethod(target, set, [items]);
+    if (set !== undefined) descriptor.set = (target, items) => invokeRequiredMethod(target, set, [items]);
     if (row.appendOnce) descriptor.appendOnce = true;
-    if (clear !== undefined) descriptor.clear = (target) => callMethod(target, clear, []);
+    if (clear !== undefined) descriptor.clear = (target) => invokeRequiredMethod(target, clear, []);
     if (remove !== undefined) descriptor.remove = (target, item) => runCallStep(target, remove, item);
     if (add !== undefined) {
         descriptor.add = (target, item) => {

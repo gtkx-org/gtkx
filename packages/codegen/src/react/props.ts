@@ -8,6 +8,7 @@ import type { GirSignal } from "../gir/signal.js";
 import type { TypeId } from "../gir/type-id.js";
 import { forEachAncestor, type ResolvedInterface, resolveDirectInterfaces } from "../writers/inheritance.js";
 import { renderHandlerParameters } from "../writers/param-structure.js";
+import { foldOutParamShape } from "../writers/return-shape.js";
 import { renderBaseTypeFor, type TsTypeTarget } from "../writers/ts-type.js";
 import { isScalarRef } from "../writers/value.js";
 import { excludedPropsForWidget } from "./tables.js";
@@ -157,12 +158,8 @@ const renderSignalReturnType = (options: SignalRenderOptions, visible: GirParame
     if (outTypes.length === 0) {
         return baseReturn === "void" ? "void" : `${baseReturn} | undefined`;
     }
-    if (baseReturn !== "void") {
-        return `[${baseReturn}, ${outTypes.join(", ")}]`;
-    }
-    const [single, ...rest] = outTypes;
-    if (rest.length === 0 && single !== undefined) return single;
-    return `[${outTypes.join(", ")}]`;
+    const hasPrimary = baseReturn !== "void";
+    return foldOutParamShape({ primary: hasPrimary ? baseReturn : undefined, outTypes, hasPrimary });
 };
 
 const reactTarget = (context: PropTypeRenderContext): TsTypeTarget => ({

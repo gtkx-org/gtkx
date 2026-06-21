@@ -10,6 +10,7 @@ import {
     inputParameters,
     parameterIdentifier,
 } from "./param-structure.js";
+import { foldOutParamShape } from "./return-shape.js";
 import { renderTsType } from "./ts-type.js";
 import { omitsPrimaryReturn, renderCallbackType, renderFfiType, renderSelfFfiType } from "./value.js";
 
@@ -57,11 +58,10 @@ export const renderMethodReturnType = (context: ModuleContext, fn: GirFunction):
         return primaryReturnsValue ? renderTsType(context, fn.returnValue.type, fn.returnValue.nullable) : "void";
     }
     const outTypes = outs.map((parameter) => renderTsType(context, parameter.type, false));
-    if (!primaryReturnsValue) {
-        return outTypes.length === 1 ? `${outTypes[0]}` : `[${outTypes.join(", ")}]`;
-    }
-    const primary = renderTsType(context, fn.returnValue.type, fn.returnValue.nullable);
-    return `[${primary}, ${outTypes.join(", ")}]`;
+    const primary = primaryReturnsValue
+        ? renderTsType(context, fn.returnValue.type, fn.returnValue.nullable)
+        : undefined;
+    return foldOutParamShape({ primary, outTypes, hasPrimary: primaryReturnsValue });
 };
 
 export const renderPromisifiedBody = (

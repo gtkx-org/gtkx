@@ -10,6 +10,7 @@ export {
     type IpcMethod,
     type IpcRequest,
     type SerializedWidget,
+    type ServerInitiatedMethod,
     type ServerRequestParams,
     ServerRequestParamsSchemas,
     type WireParamsSchema,

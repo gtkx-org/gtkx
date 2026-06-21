@@ -13,16 +13,14 @@ const WidgetAnimation = (props: WidgetAnimationProps): ReactNode => {
     const [widgetRef, mergedRef] = useForwardedRef(child.props.ref);
 
     const handle = useWidgetAnimation(widgetRef, props);
-    const presence = usePresence();
-    const isPresent = presence ? presence.isPresent : true;
-    const onExitComplete = presence?.onExitComplete;
+    const [isPresent, safeToRemove] = usePresence();
 
     const exitStartedRef = useRef(false);
     useLayoutEffect(() => {
         if (isPresent || exitStartedRef.current) return;
         exitStartedRef.current = true;
-        handle.startAnimation(exit ?? {}, () => onExitComplete?.());
-    }, [isPresent, exit, handle, onExitComplete]);
+        handle.startAnimation(exit ?? {}, () => safeToRemove?.());
+    }, [isPresent, exit, handle, safeToRemove]);
 
     return cloneElement(child, { ref: mergedRef });
 };

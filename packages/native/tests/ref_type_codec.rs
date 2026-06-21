@@ -51,6 +51,8 @@ fn with_i32_storage_ref(value: i32, f: impl FnOnce(&ffi::FfiValue, &RefType)) {
 }
 
 fn ptr_sized_malloc_storage() -> ffi::FfiValue {
+    // SAFETY: `g_malloc0` with a non-zero pointer-sized request returns a freshly allocated,
+    // zeroed block that this helper wraps; the array decoder under test takes ownership and frees it.
     let inner = unsafe { glib::ffi::g_malloc0(std::mem::size_of::<*mut c_void>()) };
     ptr_storage(inner)
 }
@@ -239,6 +241,8 @@ fn decode_ref_string_null_inner_pointer_yields_null() {
 #[test]
 fn decode_ref_string_full_ownership_frees_pointer() {
     common::run(|| {
+        // SAFETY: `c"owned-ref"` is a valid NUL-terminated C string literal; `g_strdup` returns a
+        // freshly `g_malloc`-ed owned copy that the full-ownership string ref decode below frees.
         let owned = unsafe { glib::ffi::g_strdup(c"owned-ref".as_ptr()) };
         let storage = ptr_storage(owned as *mut c_void);
 
@@ -304,6 +308,8 @@ fn decode_with_context_array_ptr_storage_null_inner_yields_empty_array() {
 #[test]
 fn decode_with_context_array_string_items_not_freed_by_ref() {
     common::run(|| {
+        // SAFETY: `g_malloc0` with a non-zero pointer-sized request returns a freshly allocated,
+        // zeroed block (a NULL-terminated empty `char*` array) that the array decoder takes and frees.
         let inner = unsafe { glib::ffi::g_malloc0(std::mem::size_of::<*mut c_char>()) };
         let storage = ptr_storage(inner);
 
@@ -337,6 +343,8 @@ fn decode_with_context_array_container_released_by_array_decoder() {
 #[test]
 fn decode_with_context_garray_container_released_by_array_decoder() {
     common::run(|| {
+        // SAFETY: `g_array_sized_new` with a valid element size returns a freshly allocated, owned
+        // empty `GArray`; the full-ownership GArray decoder under test takes ownership and unrefs it.
         let g_array =
             unsafe { glib::ffi::g_array_sized_new(0, 0, std::mem::size_of::<u8>() as u32, 0) };
         let storage = ptr_storage(g_array as *mut c_void);
@@ -390,6 +398,8 @@ fn read_from_raw_ptr_null_inner_yields_null() {
     common::run(|| {
         let inner: *mut c_void = std::ptr::null_mut();
         let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
+        // SAFETY: the `ReadSource::Slot` pointer is the address of the live `inner` pointer stack
+        // local; the ref codec reads that one in-bounds pointer, finds it null, and yields `Null`.
         let value = unsafe {
             ref_type.read(ReadSource::Slot(
                 &inner as *const *mut c_void as *const c_void,
@@ -409,6 +419,9 @@ fn read_from_raw_ptr_string_inner_reads_value() {
         let inner_slot: *mut c_void = &char_ptr as *const *mut c_void as *mut c_void;
 
         let ref_type = RefType::new(Type::String(string_type()));
+        // SAFETY: the outer slot points to `inner_slot`, which holds `char_ptr` into the live
+        // `cstring`; the ref codec reads the inner pointer, then the borrowed string it addresses,
+        // both of which stay alive for the call.
         let value = unsafe {
             ref_type.read(ReadSource::Slot(
                 &inner_slot as *const *mut c_void as *const c_void,

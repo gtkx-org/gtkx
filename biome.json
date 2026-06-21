@@ -121,13 +121,7 @@
             }
         },
         {
-            "includes": ["website/.vitepress/**/*.vue"],
-            "linter": {
-                "enabled": false
-            }
-        },
-        {
-            "includes": ["**/tests/**", "website/screenshots/**"],
+            "includes": ["**/tests/**"],
             "linter": {
                 "rules": {
                     "complexity": {

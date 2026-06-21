@@ -117,11 +117,13 @@ describe("ConnectionManager registration — basics", () => {
         expect(response?.error?.code).toBe(McpErrorCode.INVALID_REQUEST);
     });
 
-    it("ignores unknown request methods on the manager event channel", () => {
+    it("replies with methodNotFound for unknown request methods", () => {
         const { transport } = ctx;
         const conn = makeConnection("c1");
         transport.emit("request", conn, { id: "req-1", method: "something.else" });
-        expect(transport.sent).toEqual([]);
+        const response = lastResponse(transport);
+        expect(response?.id).toBe("req-1");
+        expect(response?.error?.code).toBe(McpErrorCode.METHOD_NOT_FOUND);
     });
 });
 

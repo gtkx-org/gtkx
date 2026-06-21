@@ -27,9 +27,7 @@ const stableValue = (value: unknown): unknown => {
     return sorted;
 };
 
-export type UserTableInputs = UserTableRows;
-
-export const serializeUserTables = (tables: UserTableInputs): string =>
+export const serializeUserTables = (tables: UserTableRows): string =>
     JSON.stringify(
         stableValue({
             containerProps: tables.containerProps ?? {},

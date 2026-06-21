@@ -129,6 +129,8 @@ fn ffi_decoder_decode_with_context_default_delegates_to_decode() {
 #[test]
 fn raw_ptr_codec_ptr_to_value_default_bails() {
     assert!(
+        // SAFETY: the default `read_value` for a callback type bails without dereferencing, so the
+        // dangling sentinel `8` is never read; the call is sound and returns an error.
         unsafe { FfiDecoder::read(&callback_type(), ReadSource::Value(8 as *mut c_void, "ctx"),) }
             .is_err()
     );
@@ -138,6 +140,9 @@ fn raw_ptr_codec_ptr_to_value_default_bails() {
 fn raw_ptr_codec_read_from_raw_ptr_default_dereferences_then_bails() {
     let mut inner: *mut c_void = 8 as *mut c_void;
     let ptr = &mut inner as *mut *mut c_void as *const c_void;
+    // SAFETY: `ptr` points to the live pointer-sized stack local `inner`; the default
+    // `read_pointer_slot` reads that one in-bounds pointer, then bails on the inner sentinel
+    // without dereferencing it.
     assert!(unsafe { FfiDecoder::read(&callback_type(), ReadSource::Slot(ptr, "ctx")) }.is_err());
 }
 
@@ -145,12 +150,15 @@ fn raw_ptr_codec_read_from_raw_ptr_default_dereferences_then_bails() {
 fn raw_ptr_codec_write_return_to_raw_ptr_default_writes_null() {
     let mut slot: *mut c_void = 9 as *mut c_void;
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
+    // SAFETY: `ret` points to the live, writable pointer-sized stack local `slot`; the default
+    // `write_return_to_raw_ptr` writes null into that in-bounds slot.
     unsafe {
         RawPtrCodec::write_return_to_raw_ptr(&callback_type(), ret, &Ok(Value::Number(1.0)));
     }
     assert!(slot.is_null());
 
     slot = 9 as *mut c_void;
+    // SAFETY: same writable pointer-sized slot `ret`; the error case also writes null in bounds.
     unsafe { RawPtrCodec::write_return_to_raw_ptr(&callback_type(), ret, &Err(())) };
     assert!(slot.is_null());
 }
@@ -160,6 +168,8 @@ fn raw_ptr_codec_write_value_to_raw_ptr_default_bails() {
     let mut slot: *mut c_void = std::ptr::null_mut();
     let ptr = &mut slot as *mut *mut c_void as *mut c_void;
     assert!(
+        // SAFETY: the default `write_value_to_raw_ptr` for a callback type bails before touching
+        // `ptr`, which nonetheless points to the live pointer-sized stack local `slot`.
         unsafe { RawPtrCodec::write_value_to_raw_ptr(&callback_type(), ptr, &Value::Number(1.0)) }
             .is_err()
     );
@@ -182,6 +192,8 @@ fn ffi_encoder_defaults_cover_pointer_typed_codec() {
     FfiEncoder::append_ffi_arg_types(&st, &mut arg_types);
     assert_eq!(arg_types.len(), 1);
 
+    // SAFETY: the default `ref_for_transfer` returns its pointer argument unchanged without
+    // dereferencing it, so the sentinel `16` is never read; the call is sound.
     let transferred = unsafe { FfiEncoder::ref_for_transfer(&st, 16 as *mut c_void) }.unwrap();
     assert_eq!(transferred, 16 as *mut c_void);
 

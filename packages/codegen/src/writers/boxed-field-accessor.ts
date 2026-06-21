@@ -8,6 +8,7 @@ import type { TypeId } from "../gir/type-id.js";
 import { bitMask, mergeBitfield } from "./bitfield.js";
 import { type BoxedFieldSlot, computeBoxedFieldSlots } from "./boxed-layout.js";
 import { typeRefIsClassStruct } from "./class-struct-record.js";
+import { tStruct } from "./descriptor.js";
 import { wrapReturnValue } from "./return-wrap.js";
 import { renderTsType } from "./ts-type.js";
 import { isInlineCallbackRef, renderFfiType } from "./value.js";
@@ -239,7 +240,11 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
         context,
         jsName,
         tsType: renderTsType(context, field.type, false),
-        bufferType: `t.struct("borrowed", { size: ${lengthExpr} * ${elementSize} })`,
+        bufferType: tStruct("borrowed", {
+            size: `${lengthExpr} * ${elementSize}`,
+            wrapperClass: undefined,
+            callerAllocated: false,
+        }),
         offset: slot.byteOffset,
         lengthExpr,
         elementSize,

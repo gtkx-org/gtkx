@@ -34,6 +34,8 @@ fn integer_dispatch_read_slice() {
     let data: [u32; 3] = [100, 200, 300];
     let ptr = data.as_ptr() as *const u8;
 
+    // SAFETY: `ptr` addresses at least the requested number of the integer kind's elements,
+    // laid out contiguously, valid for this read.
     let result = unsafe { IntegerKind::U32.read_slice(ptr, 3) };
     assert_eq!(result, vec![100.0, 200.0, 300.0]);
 }
@@ -43,6 +45,8 @@ fn integer_dispatch_read_slice_signed() {
     let data: [i16; 3] = [-100, 0, 100];
     let ptr = data.as_ptr() as *const u8;
 
+    // SAFETY: `ptr` addresses at least the requested number of the integer kind's elements,
+    // laid out contiguously, valid for this read.
     let result = unsafe { IntegerKind::I16.read_slice(ptr, 3) };
     assert_eq!(result, vec![-100.0, 0.0, 100.0]);
 }
@@ -84,6 +88,7 @@ fn float_dispatch_read_ptr_f32() {
     let value: f32 = 3.125;
     let ptr = &value as *const f32 as *const u8;
 
+    // SAFETY: `ptr` addresses a live, suitably aligned value of the float kind being read.
     let result = unsafe { FloatKind::F32.read_ptr(ptr) };
     assert!((result - 3.125).abs() < 0.001);
 }
@@ -93,6 +98,7 @@ fn float_dispatch_read_ptr_f64() {
     let value: f64 = std::f64::consts::E;
     let ptr = &value as *const f64 as *const u8;
 
+    // SAFETY: `ptr` addresses a live, suitably aligned value of the float kind being read.
     let result = unsafe { FloatKind::F64.read_ptr(ptr) };
     assert!((result - std::f64::consts::E).abs() < 0.000_000_1);
 }
@@ -102,6 +108,7 @@ fn float_dispatch_write_ptr_f32() {
     let mut value: f32 = 0.0;
     let ptr = &mut value as *mut f32 as *mut u8;
 
+    // SAFETY: `ptr`/`slot` addresses a writable, suitably aligned slot for the kind's value.
     unsafe { FloatKind::F32.write_ptr(ptr, 1.5) };
     assert!((value - 1.5).abs() < 0.001);
 }
@@ -111,6 +118,7 @@ fn float_dispatch_write_ptr_f64() {
     let mut value: f64 = 0.0;
     let ptr = &mut value as *mut f64 as *mut u8;
 
+    // SAFETY: `ptr`/`slot` addresses a writable, suitably aligned slot for the kind's value.
     unsafe { FloatKind::F64.write_ptr(ptr, std::f64::consts::PI) };
     assert!((value - std::f64::consts::PI).abs() < 0.000_000_1);
 }
@@ -187,27 +195,41 @@ fn integer_raw_ptr_codec_round_trips() {
     for kind in INTEGER_KINDS {
         let mut slot: i64 = 0;
         let ret = &mut slot as *mut i64 as *mut c_void;
+        // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
+        // (or null) into it, read back after the call.
         unsafe { RawPtrCodec::write_return_to_raw_ptr(&kind, ret, &Ok(Value::Number(5.0))) };
         let read =
+            // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
+            // (or null) into it, read back after the call.
             unsafe { FfiDecoder::read(&kind, ReadSource::Slot(ret as *const c_void, "ctx")) }
                 .unwrap();
         assert!(matches!(read, Value::Number(n) if n == 5.0));
 
+        // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
+        // (or null) into it, read back after the call.
         unsafe { RawPtrCodec::write_return_to_raw_ptr(&kind, ret, &Err(())) };
         let zero =
+            // SAFETY: the field slot is a live, pointer-sized stack slot pre-seeded with the prior
+            // (null/owned) value; the call swaps in the new value, balancing ownership.
             unsafe { FfiDecoder::read(&kind, ReadSource::Slot(ret as *const c_void, "ctx")) }
                 .unwrap();
         assert!(matches!(zero, Value::Number(n) if n == 0.0));
 
         let mut field: i64 = 0;
         let field_ptr = &mut field as *mut i64 as *mut c_void;
+        // SAFETY: the field slot is a live, pointer-sized stack slot pre-seeded with the prior
+        // (null/owned) value; the call swaps in the new value, balancing ownership.
         unsafe { RawPtrCodec::write_value_to_raw_ptr(&kind, field_ptr, &Value::Number(9.0)) }
             .unwrap();
         let from_field =
+            // SAFETY: the field slot is a live, pointer-sized stack slot pre-seeded with the prior
+            // (null/owned) value; the call swaps in the new value, balancing ownership.
             unsafe { FfiDecoder::read(&kind, ReadSource::Value(12 as *mut c_void, "ctx")) }
                 .unwrap();
         assert!(matches!(from_field, Value::Number(n) if n == 12.0));
         assert!(
+            // SAFETY: the field slot is a live, pointer-sized stack slot pre-seeded with the prior
+            // (null/owned) value; the call swaps in the new value, balancing ownership.
             unsafe { RawPtrCodec::write_value_to_raw_ptr(&kind, field_ptr, &Value::Boolean(true)) }
                 .is_err()
         );
@@ -285,9 +307,17 @@ where
     K: RawPtrCodec + FfiDecoder,
 {
     let ptr = slot.as_mut_ptr().cast::<c_void>();
+    // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
+    // (or null) into it, read back after the call.
     unsafe { RawPtrCodec::write_value_to_raw_ptr(kind, ptr, &Value::Number(2.0)) }.unwrap();
+    // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
+    // (or null) into it, read back after the call.
     unsafe { FfiDecoder::read(kind, ReadSource::Slot(ptr.cast_const(), "c")) }.unwrap();
+    // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
+    // (or null) into it, read back after the call.
     unsafe { RawPtrCodec::write_return_to_raw_ptr(kind, ptr, &Ok(Value::Number(1.0))) };
+    // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
+    // this read.
     unsafe { FfiDecoder::read(kind, ReadSource::Value(value_ptr, "c")) }.unwrap();
 }
 
@@ -334,6 +364,9 @@ fn integer_call_cif_raw_covers_all_widths() {
         (IntegerKind::I64, ret_i64 as *mut c_void),
     ] {
         let cif = middle::Cif::new(Vec::new(), kind.ffi_type());
+        // SAFETY: `cif` is built with `kind.ffi_type()` as its return type, matching the
+        // zero-argument C function at `code` (one of the `ret_*` helpers); the call runs
+        // single-threaded in the test harness.
         let value = unsafe { kind.call_cif_raw(&cif, middle::CodePtr(code), &[]) };
         assert!(value.to_number().is_ok());
     }
@@ -362,16 +395,22 @@ fn float_ptr_to_value_raw_handles_null_and_value() {
     let value: f64 = 4.25;
     let ptr = &value as *const f64 as *mut c_void;
     assert!(matches!(
+        // SAFETY: `ptr` addresses the live `f64` `value` for the duration of the read, matching
+        // the `F64` kind under test.
         unsafe { FloatKind::F64.ptr_to_value_raw(ptr) },
         Value::Number(n) if (n - 4.25).abs() < 1e-9
     ));
     assert!(matches!(
+        // SAFETY: `ptr_to_value_raw` treats a null pointer as the zero value, so passing null is
+        // a defined input rather than a dereference.
         unsafe { FloatKind::F64.ptr_to_value_raw(std::ptr::null_mut()) },
         Value::Number(n) if n == 0.0
     ));
     let f: f32 = 1.25;
     let fptr = &f as *const f32 as *mut c_void;
     assert!(matches!(
+        // SAFETY: `fptr` addresses the live `f32` `f` for the duration of the read, matching the
+        // `F32` kind under test.
         unsafe { FloatKind::F32.ptr_to_value_raw(fptr) },
         Value::Number(n) if (n - 1.25).abs() < 1e-6
     ));
@@ -388,16 +427,26 @@ fn float_codec_encode_decode_and_raw_ptr() {
 
         let mut slot: f64 = 0.0;
         let ret = &mut slot as *mut f64 as *mut c_void;
+        // SAFETY: `ret` is the live, pointer-sized `slot` stack variable; the call writes one
+        // value of `kind` into it.
         unsafe { RawPtrCodec::write_return_to_raw_ptr(&kind, ret, &Ok(Value::Number(1.0))) };
         assert!(
+            // SAFETY: `ret` still addresses the live `slot` holding the value just written for
+            // this `kind`, so reading it back through the slot source is valid.
             unsafe { FfiDecoder::read(&kind, ReadSource::Slot(ret as *const c_void, "c")) }.is_ok()
         );
+        // SAFETY: `ret` is the live, pointer-sized `slot`; on the error case the call clears it.
         unsafe { RawPtrCodec::write_return_to_raw_ptr(&kind, ret, &Err(())) };
+        // SAFETY: `ret` is the live, pointer-sized `slot`; the call writes one value of `kind`.
         unsafe { RawPtrCodec::write_value_to_raw_ptr(&kind, ret, &Value::Number(3.0)) }.unwrap();
         assert!(
+            // SAFETY: a float decode treats a null value pointer as the zero value, so passing
+            // null is a defined input rather than a dereference.
             unsafe { FfiDecoder::read(&kind, ReadSource::Value(std::ptr::null_mut(), "c")) }
                 .is_ok()
         );
+        // SAFETY: `ret` is the live, pointer-sized `slot`; writing a null `Value` is rejected
+        // without dereferencing the slot.
         assert!(unsafe { RawPtrCodec::write_value_to_raw_ptr(&kind, ret, &Value::Null) }.is_err());
     }
 }
@@ -415,6 +464,8 @@ fn float_call_cif_invokes_native_functions() {
     assert!((r32.to_number().unwrap() - 1.5).abs() < 1e-6);
 
     let cif64 = middle::Cif::new(Vec::new(), FloatKind::F64.ffi_type());
+    // SAFETY: `cif64` is built with `F64`'s ffi type as its return type, matching the
+    // zero-argument C function `ret_f64`; the call runs single-threaded in the test harness.
     let r64 = unsafe {
         FloatKind::F64.call_cif_raw(&cif64, middle::CodePtr(ret_f64 as *mut c_void), &[])
     };
@@ -454,13 +505,20 @@ fn tagged_raw_ptr_codec() {
         let tagged = common::enum_tagged();
         let mut slot: i64 = 0;
         let ptr = &mut slot as *mut i64 as *mut c_void;
+        // SAFETY: `ptr` is the live, pointer-sized `slot` stack variable; the tagged codec writes
+        // one i32 enum value into it.
         unsafe { RawPtrCodec::write_value_to_raw_ptr(&tagged, ptr, &Value::Number(2.0)) }.unwrap();
         let read =
+            // SAFETY: `ptr` still addresses the live `slot` holding the value just written, so
+            // reading it back through the slot source is valid.
             unsafe { FfiDecoder::read(&tagged, ReadSource::Slot(ptr as *const c_void, "c")) }
                 .unwrap();
         assert!(matches!(read, Value::Number(n) if n == 2.0));
+        // SAFETY: `ptr` is the live, pointer-sized `slot`; the call writes one enum return value.
         unsafe { RawPtrCodec::write_return_to_raw_ptr(&tagged, ptr, &Ok(Value::Number(4.0))) };
         let from_ptr =
+            // SAFETY: a tagged value decode reads the integer payload directly from the pointer
+            // bits (here the small constant 3) rather than dereferencing it.
             unsafe { FfiDecoder::read(&tagged, ReadSource::Value(3 as *mut c_void, "c")) }.unwrap();
         assert!(matches!(from_ptr, Value::Number(n) if n == 3.0));
     });
@@ -479,9 +537,15 @@ fn integer_dispatch_methods_cover_every_kind() {
         let _ = kind.ffi_type();
 
         let mut slot = [0u8; 8];
+        // SAFETY: `slot` is an 8-byte buffer, large enough for any integer `kind`; the write
+        // stores one element of `kind` at its start.
         unsafe { kind.write_ptr(slot.as_mut_ptr(), 3.0) };
+        // SAFETY: `slot` holds the element just written for this `kind`, so reading one element
+        // of `kind` back from it is valid.
         assert_eq!(unsafe { kind.read_ptr(slot.as_ptr()) }, 3.0);
 
+        // SAFETY: `buffer` is a 64-byte array, large enough to hold two elements of any integer
+        // `kind`, so reading a 2-element slice from it is in bounds.
         assert!(unsafe { kind.read_slice(buffer.as_ptr(), 2) }.len() == 2);
 
         let storage = kind.to_ffi_storage(&[1.0, 2.0, 3.0]);
@@ -506,6 +570,9 @@ fn integer_codec_covers_every_kind() {
             FfiDecoder::decode(&kind, &encoded).unwrap();
 
             let mut slot = [0u8; 8];
+            // SAFETY: `slot` is a live 8-byte buffer; the value pointer is only read as integer
+            // bits by an integer codec (never dereferenced), so a dangling pointer is a valid
+            // input here, satisfying `assert_raw_ptr_codec_round_trip`'s contract.
             unsafe {
                 assert_raw_ptr_codec_round_trip(
                     &kind,
@@ -523,10 +590,16 @@ fn float_codec_covers_every_kind() {
         for kind in [FloatKind::F32, FloatKind::F64] {
             let _ = kind.ffi_type();
             let mut slot = [0u8; 8];
+            // SAFETY: `slot` is an 8-byte buffer, large enough for any float `kind`; the write
+            // stores one element of `kind` at its start.
             unsafe { kind.write_ptr(slot.as_mut_ptr(), 1.5) };
+            // SAFETY: `slot` holds the element just written for this `kind`, so reading one
+            // element of `kind` back from it is valid.
             let _ = unsafe { kind.read_ptr(slot.as_ptr()) };
             kind.checked_to_ffi_value(1.5).unwrap();
             assert!(matches!(
+                // SAFETY: a float decode treats a null pointer as the zero value, so passing null
+                // is a defined input rather than a dereference.
                 unsafe { kind.ptr_to_value_raw(std::ptr::null_mut()) },
                 Value::Number(_)
             ));
@@ -534,6 +607,8 @@ fn float_codec_covers_every_kind() {
             let encoded = FfiEncoder::encode(&kind, &Value::Number(1.0)).unwrap();
             FfiDecoder::decode(&kind, &encoded).unwrap();
 
+            // SAFETY: `slot` is a live 8-byte buffer; a float decode treats the null value
+            // pointer as the zero value, satisfying `assert_raw_ptr_codec_round_trip`'s contract.
             unsafe {
                 assert_raw_ptr_codec_round_trip(&kind, &mut slot, std::ptr::null_mut());
             }
@@ -545,6 +620,8 @@ fn float_codec_covers_every_kind() {
 fn u64_read_beyond_2_53_errors_instead_of_rounding() {
     let stored: u64 = 9_007_199_254_740_993;
     let ptr = std::ptr::from_ref(&stored).cast::<c_void>();
+    // SAFETY: `ptr` addresses the live `u64` `stored` for the duration of the read, matching the
+    // `U64` kind decoded through the slot source.
     let err = unsafe { FfiDecoder::read(&IntegerKind::U64, ReadSource::Slot(ptr, "test read")) }
         .expect_err("a u64 beyond 2^53 must not round silently");
     assert!(err.to_string().contains("2^53"));
@@ -555,6 +632,8 @@ fn u64_read_beyond_2_53_errors_instead_of_rounding() {
 fn i64_read_beyond_negative_2_53_errors_instead_of_rounding() {
     let stored: i64 = -9_007_199_254_740_993;
     let ptr = std::ptr::from_ref(&stored).cast::<c_void>();
+    // SAFETY: `ptr` addresses the live `i64` `stored` for the duration of the read, matching the
+    // `I64` kind decoded through the slot source.
     let err = unsafe { FfiDecoder::read(&IntegerKind::I64, ReadSource::Slot(ptr, "test read")) }
         .expect_err("an i64 beyond -2^53 must not round silently");
     assert!(err.to_string().contains("2^53"));
@@ -564,6 +643,8 @@ fn i64_read_beyond_negative_2_53_errors_instead_of_rounding() {
 fn u64_read_at_2_53_still_converts() {
     let stored: u64 = 9_007_199_254_740_992;
     let ptr = std::ptr::from_ref(&stored).cast::<c_void>();
+    // SAFETY: `ptr` addresses the live `u64` `stored` for the duration of the read, matching the
+    // `U64` kind decoded through the slot source.
     let value = unsafe { FfiDecoder::read(&IntegerKind::U64, ReadSource::Slot(ptr, "test read")) }
         .expect("2^53 itself is exactly representable");
     assert!(matches!(value, Value::Number(n) if n == 9_007_199_254_740_992.0));
@@ -603,12 +684,16 @@ fn ffi_value_to_number_guards_64_bit_payloads() {
 #[test]
 fn u64_slice_read_beyond_2_53_errors() {
     let data: [u64; 2] = [1, 9_007_199_254_740_993];
+    // SAFETY: `data` is a live 2-element `u64` array, so reading 2 `U64` elements from its pointer
+    // is in bounds.
     let err = unsafe { IntegerKind::U64.read_slice_checked(data.as_ptr().cast(), 2, "test slice") }
         .expect_err("a 64-bit element beyond 2^53 must not round silently");
     assert!(err.to_string().contains("2^53"));
 
     let small: [u64; 2] = [1, 2];
     let values =
+        // SAFETY: `small` is a live 2-element `u64` array, so reading 2 `U64` elements from its
+        // pointer is in bounds.
         unsafe { IntegerKind::U64.read_slice_checked(small.as_ptr().cast(), 2, "test slice") }
             .expect("small 64-bit elements convert exactly");
     assert_eq!(values, vec![1.0, 2.0]);
@@ -618,11 +703,15 @@ fn u64_slice_read_beyond_2_53_errors() {
 fn i64_slice_read_checked_converts_small_and_rejects_beyond_2_53() {
     let small: [i64; 3] = [-7, 0, 7];
     let values =
+        // SAFETY: `small` is a live 3-element `i64` array, so reading 3 `I64` elements from its
+        // pointer is in bounds.
         unsafe { IntegerKind::I64.read_slice_checked(small.as_ptr().cast(), 3, "test slice") }
             .expect("small 64-bit elements convert exactly");
     assert_eq!(values, vec![-7.0, 0.0, 7.0]);
 
     let big: [i64; 1] = [-9_007_199_254_740_993];
+    // SAFETY: `big` is a live 1-element `i64` array, so reading 1 `I64` element from its pointer
+    // is in bounds.
     let err = unsafe { IntegerKind::I64.read_slice_checked(big.as_ptr().cast(), 1, "test slice") }
         .expect_err("a 64-bit element beyond -2^53 must not round silently");
     assert!(err.to_string().contains("2^53"));

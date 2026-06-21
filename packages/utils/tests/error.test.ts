@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { errorMessage, formatChildProcessError } from "../src/error.js";
+import { errorMessage, formatChildProcessError, normalizeError } from "../src/error.js";
 
 describe("errorMessage", () => {
     it("returns the message of an Error instance", () => {
@@ -23,8 +23,46 @@ describe("errorMessage", () => {
         expect(errorMessage(undefined)).toBe("undefined");
     });
 
-    it("stringifies an object that is not an Error", () => {
+    it("returns the message of an error-like object", () => {
+        expect(errorMessage({ message: "boom" })).toBe("boom");
+    });
+
+    it("stringifies an object that is not error-like", () => {
         expect(errorMessage({ code: "E_BAD" })).toBe("[object Object]");
+    });
+});
+
+describe("normalizeError", () => {
+    it("returns an Error instance unchanged", () => {
+        const error = new Error("boom");
+        expect(normalizeError(error)).toBe(error);
+    });
+
+    it("returns a subclass of Error unchanged", () => {
+        class CustomError extends Error {}
+        const error = new CustomError("custom");
+        expect(normalizeError(error)).toBe(error);
+    });
+
+    it("wraps an error-like object and preserves its own properties", () => {
+        const result = normalizeError({ message: "boom", code: "E_BAD", errno: -2 });
+        expect(result).toBeInstanceOf(Error);
+        expect(result.message).toBe("boom");
+        expect(Object.assign({}, result)).toMatchObject({ code: "E_BAD", errno: -2 });
+    });
+
+    it("wraps a primitive throw value in an Error carrying its message", () => {
+        expect(normalizeError("plain string")).toBeInstanceOf(Error);
+        expect(normalizeError("plain string").message).toBe("plain string");
+        expect(normalizeError(42).message).toBe("42");
+        expect(normalizeError(null).message).toBe("null");
+        expect(normalizeError(undefined).message).toBe("undefined");
+    });
+
+    it("does not copy properties from a non-error-like object", () => {
+        const result = normalizeError({ code: "E_BAD" });
+        expect(result.message).toBe("[object Object]");
+        expect(Object.assign({}, result)).not.toMatchObject({ code: "E_BAD" });
     });
 });
 

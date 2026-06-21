@@ -1,6 +1,6 @@
 import type { CallStep, PropCondition } from "@gtkx/config";
 import type * as GObject from "@gtkx/gi/gobject";
-import { callMethod } from "./reflect-call.js";
+import { invokeRequiredMethod } from "./reflect-call.js";
 
 export const itemField = (item: unknown, path: string): unknown =>
     typeof item === "object" && item !== null ? Reflect.get(item, path) : undefined;
@@ -21,7 +21,7 @@ const resolveCallArg = (arg: CallStep["args"][number], item: unknown): unknown =
 
 export const runCallStep = (target: GObject.Object, step: CallStep, item: unknown): void => {
     if (step.when && !satisfiesCondition(itemField(item, step.when.path), step.when.is)) return;
-    callMethod(
+    invokeRequiredMethod(
         target,
         step.method,
         step.args.map((arg) => resolveCallArg(arg, item)),

@@ -81,10 +81,17 @@ const splitProps = (props: object, containerSet: Set<string>): SplitProps => {
     return { rest, wrappers, children };
 };
 
+/**
+ * Builds a React component for a GTK element name that splits container props and element-valued
+ * props into reconciler wrapper nodes before delegating to the intrinsic element.
+ *
+ * @typeParam P - The props type accepted by the produced component.
+ * @param elementName - The GTK element (intrinsic) name to render.
+ * @returns A function component rendering `elementName` with container/slot props extracted.
+ */
 export const createElementComponent = <P extends object>(elementName: string): ((props: P) => ReactNode) => {
-    let containerSet: Set<string> | null = null;
+    const containerSet = resolveContainerProps(elementName);
     return (props: P): ReactNode => {
-        containerSet ??= resolveContainerProps(elementName);
         if (!needsSplit(props, containerSet)) return createElement(elementName, props);
         const { rest, wrappers, children } = splitProps(props, containerSet);
         return createElement(elementName, rest, children, ...wrappers);

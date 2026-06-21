@@ -1,4 +1,5 @@
 import type { CallbackType, Ref, Type, Value } from "@gtkx/native";
+import { type ArgCategory, classifyArgCategory } from "./arg-category.js";
 import { LIB } from "./constants.js";
 import { bind, boxedT, refT } from "./descriptors.js";
 import { checkError } from "./gerror.js";
@@ -42,27 +43,32 @@ const toNativeArgTypes = (argTypes: ArgType[], throws: boolean): Type[] => {
 
 type ArgPlan = {
     argType: ArgType;
+    category: ArgCategory;
     consumesInput: boolean;
     inputIndex: number;
     isOutput: boolean;
 };
 
+const categoryOf = (argType: ArgType): ArgCategory =>
+    classifyArgCategory({ direction: argType.direction, callerAllocated: argType.callerAllocates === true });
+
 const planArgs = (argTypes: ArgType[]): ArgPlan[] => {
     let inputCursor = 0;
     return argTypes.map((argType) => {
-        const consumesInput = !(argType.direction === "out" && argType.callerAllocates !== true);
-        const isOutput = argType.direction !== undefined && argType.consumed !== true;
-        return { argType, consumesInput, inputIndex: consumesInput ? inputCursor++ : -1, isOutput };
+        const category = categoryOf(argType);
+        const consumesInput = category.kind !== "outCell" || category.inout;
+        const isOutput = category.kind !== "plainInput" && argType.consumed !== true;
+        return { argType, category, consumesInput, inputIndex: consumesInput ? inputCursor++ : -1, isOutput };
     });
 };
 
 const toNativeValues = (plans: ArgPlan[], inputs: unknown[]): Value[] =>
-    plans.map(({ argType, consumesInput, inputIndex }) => {
-        if (argType.callerAllocates === true) {
+    plans.map(({ argType, category, consumesInput, inputIndex }) => {
+        if (category.kind === "callerAllocated") {
             const wrapper = inputs[inputIndex];
             return wrapper == null ? wrapper : getHandle(wrapper as object);
         }
-        if (argType.direction !== undefined) {
+        if (category.kind === "outCell") {
             return { value: consumesInput ? (inputs[inputIndex] as Value) : null };
         }
         if (argType.type.type === "callback") {
@@ -73,10 +79,10 @@ const toNativeValues = (plans: ArgPlan[], inputs: unknown[]): Value[] =>
 
 const toOutputs = (plans: ArgPlan[], inputs: unknown[], nativeValues: Value[]): unknown[] => {
     const outputs: unknown[] = [];
-    plans.forEach(({ argType, inputIndex, isOutput }, index) => {
+    plans.forEach(({ argType, category, inputIndex, isOutput }, index) => {
         if (!isOutput) return;
         outputs.push(
-            argType.callerAllocates === true
+            category.kind === "callerAllocated"
                 ? inputs[inputIndex]
                 : wrapValue(argType.type, (nativeValues[index] as Ref).value),
         );

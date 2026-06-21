@@ -16,11 +16,19 @@ struct FieldLocation {
 }
 
 impl FieldLocation {
+    /// Resolves the field address as `base_addr + offset`.
+    ///
+    /// # Safety
+    ///
+    /// `base_addr` must be 0 or the address of a live struct, and `base_addr + offset` must stay
+    /// within that struct's allocation so the returned pointer addresses a valid field slot.
     #[cfg_attr(test, allow(dead_code))]
     unsafe fn resolve(&self) -> anyhow::Result<*mut c_void> {
         if self.base_addr == 0 {
             anyhow::bail!("NativeHandle has a null pointer");
         }
+        // SAFETY: `base_addr` is non-null (checked above) and, per the contract, `offset` lies
+        // within the struct's allocation, so the `add` stays in bounds of the same object.
         Ok(unsafe { (self.base_addr as *mut u8).add(self.offset) as *mut c_void })
     }
 }
@@ -35,7 +43,11 @@ impl ModuleRequest for ReadRequest {
     type Output = Value;
 
     fn execute(self) -> anyhow::Result<Value> {
+        // SAFETY: runs on the gtkx-glib thread; `location` was built from a live `NativeHandle`
+        // pointer plus an in-bounds field offset, satisfying `resolve`'s contract.
         let field_ptr = unsafe { self.location.resolve()? }.cast_const();
+        // SAFETY: `field_ptr` addresses a valid field slot of `field_type`; reading from it as a
+        // `Slot` source decodes the field according to that type.
         unsafe {
             self.field_type
                 .read(ReadSource::Slot(field_ptr, "field read"))
@@ -58,7 +70,11 @@ impl ModuleRequest for WriteRequest {
     type Output = ();
 
     fn execute(self) -> anyhow::Result<()> {
+        // SAFETY: runs on the gtkx-glib thread; `location` was built from a live `NativeHandle`
+        // pointer plus an in-bounds field offset, satisfying `resolve`'s contract.
         let field_ptr = unsafe { self.location.resolve()? };
+        // SAFETY: `field_ptr` addresses a valid, writable field slot of `field_type`; the codec
+        // writes `value` into it, balancing any owned pointer the slot previously held.
         unsafe {
             self.field_type
                 .write_value_to_raw_ptr(field_ptr, &self.value)
@@ -131,6 +147,7 @@ mod tests {
             base_addr,
             offset: 8,
         };
+        // SAFETY: `base_addr` is the address of the live 32-byte `buffer` and offset 8 is within it.
         let resolved = unsafe { location.resolve() }.expect("resolve should succeed");
         assert_eq!(resolved as usize, base_addr + 8);
     }
@@ -141,6 +158,7 @@ mod tests {
             base_addr: 0,
             offset: 0,
         };
+        // SAFETY: a zero `base_addr` is the explicit null case `resolve` rejects without deref.
         let err = unsafe { location.resolve() }.expect_err("null base should fail");
         assert!(err.to_string().contains("null pointer"));
     }

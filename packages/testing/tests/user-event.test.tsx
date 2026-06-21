@@ -24,14 +24,13 @@ import {
 } from "@gtkx/jsx/gtk";
 import type { ComponentProps, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { isEditable } from "../src/editable.js";
 import { render, screen, userEvent, waitFor } from "../src/index.js";
 import { renderClickButton } from "./event-render-setup.js";
 
 const widgetHasFocus = (w: Gtk.Widget): boolean => w.hasFocus();
 
 const expectEditableText = (entry: Gtk.Widget, expected: string): void => {
-    if (!isEditable(entry)) {
+    if (!(entry instanceof Gtk.Editable)) {
         throw new Error("Element is not editable");
     }
     expect(entry.getText()).toBe(expected);
@@ -253,7 +252,7 @@ const renderTwoItemListBox = async (selectionMode?: Gtk.SelectionMode): Promise<
 
 describe("userEvent clipboard", () => {
     const selectAll = (widget: Gtk.Widget): void => {
-        if (isEditable(widget)) widget.selectRegion(0, -1);
+        if (widget instanceof Gtk.Editable) widget.selectRegion(0, -1);
     };
 
     it("copies a selection and pastes it into another editable", async () => {

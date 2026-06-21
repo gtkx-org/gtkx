@@ -2,12 +2,15 @@ import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { type BoundContainerRegistry, UNBOUND_POSITION } from "./bound-container-registry.js";
 
+/**
+ * The two concrete list-item wrapper kinds a {@link Gtk.SignalListItemFactory}
+ * delivers to its lifecycle callbacks.
+ */
 export type ListLifecycleItem = Gtk.ListItem | Gtk.ListHeader;
-
-export const asLifecycleItem = <T extends ListLifecycleItem>(obj: GObject.Object): T => obj as T;
 
 export type ListFactoryOptions<T extends ListLifecycleItem, C extends GObject.Object = T> = {
     registry: BoundContainerRegistry<C>;
+    itemClass: abstract new (...args: never[]) => T;
     createContainer: (item: T) => C;
     resolveContainer: (item: T) => C | null;
     getPosition: (item: T) => number;
@@ -26,6 +29,7 @@ export function connectFactoryLifecycle<T extends ListLifecycleItem, C extends G
 ): void {
     const {
         registry,
+        itemClass,
         createContainer,
         resolveContainer,
         getPosition,
@@ -38,8 +42,13 @@ export function connectFactoryLifecycle<T extends ListLifecycleItem, C extends G
     } = options;
     const resolvePosition = options.resolvePosition ?? ((_item: T, reported: number) => reported);
 
+    const ensureItem = (obj: GObject.Object): T => {
+        if (obj instanceof itemClass) return obj;
+        throw new TypeError(`Expected a ${itemClass.name} list item from the factory`);
+    };
+
     factory.on("setup", (obj: GObject.Object) => {
-        const item = asLifecycleItem<T>(obj);
+        const item = ensureItem(obj);
         const container = createContainer(item);
         registry.register(container);
         onSetup?.(item, container);
@@ -47,7 +56,7 @@ export function connectFactoryLifecycle<T extends ListLifecycleItem, C extends G
 
     factory.on("bind", (obj: GObject.Object) => {
         if (isDetached?.()) return;
-        const item = asLifecycleItem<T>(obj);
+        const item = ensureItem(obj);
         const container = resolveContainer(item);
         if (!container) return;
         const position = resolvePosition(item, getPosition(item));
@@ -58,7 +67,7 @@ export function connectFactoryLifecycle<T extends ListLifecycleItem, C extends G
 
     factory.on("unbind", (obj: GObject.Object) => {
         if (isDetached?.()) return;
-        const item = asLifecycleItem<T>(obj);
+        const item = ensureItem(obj);
         const container = resolveContainer(item);
         if (!container) return;
         onUnbind?.(item, container);
@@ -67,7 +76,7 @@ export function connectFactoryLifecycle<T extends ListLifecycleItem, C extends G
     });
 
     factory.on("teardown", (obj: GObject.Object) => {
-        const item = asLifecycleItem<T>(obj);
+        const item = ensureItem(obj);
         const container = resolveContainer(item);
         if (container) {
             registry.delete(container);

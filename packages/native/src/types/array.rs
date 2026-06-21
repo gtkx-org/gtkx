@@ -165,6 +165,10 @@ impl FfiEncoder for ArrayType {
                             bail!("GObject in array has a null pointer");
                         }
                         let offset = i * element_size;
+                        // SAFETY: `ptr` is the non-null source object (checked above) and is at
+                        // least `element_size` bytes; `buffer` was sized to `len * element_size`, so
+                        // the `offset`-byte destination region holds exactly `element_size` bytes,
+                        // and source and destination do not overlap.
                         unsafe {
                             std::ptr::copy_nonoverlapping(
                                 ptr as *const u8,
@@ -222,11 +226,18 @@ impl FfiDecoder for ArrayType {
         match self.kind {
             ArrayKind::GPtrArray => {
                 let ptr_array = ptr as *mut glib::ffi::GPtrArray;
+                // SAFETY: `ptr` is non-null (checked above) and, for a GPtrArray field, points to a
+                // live `GPtrArray`; reading its `len` and `pdata` fields is sound.
                 let len = unsafe { (*ptr_array).len as usize };
+                // SAFETY: same live `GPtrArray`; `pdata` is its element-pointer array.
                 let pdata = unsafe { (*ptr_array).pdata };
                 let mut values = Vec::with_capacity(len);
                 for i in 0..len {
+                    // SAFETY: `pdata` holds `len` element pointers, so `pdata.add(i)` is in bounds
+                    // for every `i < len` and dereferences to the i-th element pointer.
                     let item_ptr = unsafe { *pdata.add(i) };
+                    // SAFETY: `item_ptr` is an element of this GPtrArray; `read` interprets it per
+                    // the array's item type, as the marshalling layer guarantees.
                     let item_value = unsafe {
                         self.item_type
                             .read(ReadSource::Value(item_ptr, "GPtrArray item"))?
@@ -294,12 +305,18 @@ impl FfiDecoder for ArrayType {
 }
 
 impl RawPtrCodec for ArrayType {
+    /// # Safety
+    ///
+    /// `ret` must point to a writable, pointer-sized return slot, as provided by the trampoline
+    /// return path.
     unsafe fn write_return_to_raw_ptr(
         &self,
         ret: *mut c_void,
         value: &std::result::Result<value::Value, ()>,
     ) {
         let container = encode_and_leak_container(value, "array vfunc return", |v| self.encode(v));
+        // SAFETY: `ret` is a pointer-sized writable return slot per the contract; the leaked (or
+        // null) container pointer is stored there unaligned for the callee to take ownership of.
         unsafe { (ret as *mut *mut c_void).write_unaligned(container) };
     }
 }
@@ -400,6 +417,9 @@ fn dup_strings_to_glib(array: &[value::Value]) -> anyhow::Result<Vec<*mut c_void
             Ok(ptr) => ptrs.push(ptr as *mut c_void),
             Err(err) => {
                 for ptr in ptrs {
+                    // SAFETY: every pointer collected so far came from `str_to_glib_full`, i.e. a
+                    // `g_malloc`-allocated owned string; freeing each once on the error path before
+                    // returning avoids leaking the strings duplicated before the failure.
                     unsafe { glib::ffi::g_free(ptr) };
                 }
                 return Err(err);
@@ -410,6 +430,9 @@ fn dup_strings_to_glib(array: &[value::Value]) -> anyhow::Result<Vec<*mut c_void
 }
 
 fn leak_container_to_callee(ptrs: &[*mut c_void]) -> *mut c_void {
+    // SAFETY: `g_malloc(bytes)` returns a block of exactly `bytes = size_of_val(ptrs)`, and the
+    // copy reads `bytes` from the `ptrs` slice into that distinct, non-overlapping block; the
+    // resulting `g_malloc`-owned container is handed to the callee, which frees it.
     unsafe {
         let bytes = std::mem::size_of_val(ptrs);
         let container = glib::ffi::g_malloc(bytes);
@@ -534,7 +557,15 @@ fn release_acquired(acquired: Vec<ffi::PendingTransfer>) {
     }
 }
 
+/// `GArray` clear function that frees an owned string element in place.
+///
+/// # Safety
+///
+/// Invoked by `GLib` for each element as the `GArray` is cleared. `slot` must point to a `GArray`
+/// element holding an owned `char*` (or null) produced by this module's string encoding.
 unsafe extern "C" fn free_garray_string_element(slot: glib::ffi::gpointer) {
+    // SAFETY: `slot` points to a GArray element holding an owned `char*` (per the clear-func
+    // contract); reading that pointer and `g_free`-ing it releases the string exactly once.
     unsafe { glib::ffi::g_free(*(slot as *mut glib::ffi::gpointer)) };
 }
 
@@ -563,6 +594,8 @@ fn transfer_elements(
             release_acquired(acquired);
             bail!("GObject in {container_label} has a null pointer");
         }
+        // SAFETY: `ptr` is the non-null source object (checked above) and is a live value of
+        // `item_type`; `ref_for_transfer` acquires the transfer reference/copy the callee will own.
         let element = match unsafe { item_type.ref_for_transfer(ptr) } {
             Ok(element) => element,
             Err(e) => {
@@ -581,6 +614,8 @@ fn transfer_elements(
 fn build_spine<F: ffi::ListFlavor>(ptrs: &[*mut c_void]) -> *mut F::Spine {
     let mut list: *mut F::Spine = std::ptr::null_mut();
     for ptr in ptrs.iter().rev() {
+        // SAFETY: `list` is either null (the empty-list start) or a spine returned by a previous
+        // `F::prepend`, both valid inputs; `prepend` returns the new head and never reads `*ptr`.
         list = unsafe { F::prepend(list, *ptr) };
     }
     list
@@ -746,34 +781,49 @@ impl ArrayType {
         }
         let values = match codec {
             ItemCodec::Integer(kind) => {
+                // SAFETY: `data`/`len` describe a contiguous array of `kind` elements (checked
+                // non-null/non-empty by the caller), satisfying `read_slice_checked`'s contract.
                 unsafe { kind.read_slice_checked(data, len, "array element") }?
                     .into_iter()
                     .map(value::Value::Number)
                     .collect()
             }
+            // SAFETY: `data`/`len` describe a contiguous array of `kind`'s wire-integer elements,
+            // satisfying `read_slice`'s contract.
             ItemCodec::Tagged(kind) => unsafe { kind.read_slice(data, len) }
                 .into_iter()
                 .map(value::Value::Number)
                 .collect(),
+            // SAFETY: `data`/`len` describe a contiguous array of `kind`'s 64-bit wire elements,
+            // satisfying `read_slice`'s contract.
             ItemCodec::BigInt(kind) => unsafe { kind.read_slice(data, len) },
             ItemCodec::Float(FloatKind::F32) => {
+                // SAFETY: `data`/`len` describe a contiguous `f32` array; `from_raw_parts` reads
+                // exactly that `len`-element region.
                 unsafe { std::slice::from_raw_parts(data.cast::<f32>(), len) }
                     .iter()
                     .map(|&v| value::Value::Number(f64::from(v)))
                     .collect()
             }
             ItemCodec::Float(FloatKind::F64) => {
+                // SAFETY: `data`/`len` describe a contiguous `f64` array; `from_raw_parts` reads
+                // exactly that `len`-element region.
                 unsafe { std::slice::from_raw_parts(data.cast::<f64>(), len) }
                     .iter()
                     .copied()
                     .map(value::Value::Number)
                     .collect()
             }
+            // SAFETY: `data`/`len` describe a contiguous `i32` (C boolean) array; `from_raw_parts`
+            // reads exactly that `len`-element region.
             ItemCodec::Boolean => unsafe { std::slice::from_raw_parts(data.cast::<i32>(), len) }
                 .iter()
                 .map(|&v| value::Value::Boolean(v != 0))
                 .collect(),
             ItemCodec::Pointer | ItemCodec::String => {
+                // SAFETY: `data`/`len` describe a contiguous array of `len` element pointers;
+                // `from_raw_parts` reads exactly that region, and each pointer is decoded per the
+                // item type.
                 let ptrs = unsafe { std::slice::from_raw_parts(data.cast::<*mut c_void>(), len) };
                 return ptrs
                     .iter()
@@ -838,6 +888,9 @@ impl ArrayType {
             })
             .collect::<anyhow::Result<Vec<u8>>>()?;
 
+        // SAFETY: `g_byte_array_sized_new` allocates a new GByteArray, and `g_byte_array_append`
+        // copies `bytes.len()` bytes from the live `bytes` buffer into it; both calls run on the
+        // gtkx-glib thread.
         let byte_array = unsafe {
             let ba = glib::ffi::g_byte_array_sized_new(bytes.len() as u32);
             glib::ffi::g_byte_array_append(ba, bytes.as_ptr(), bytes.len() as u32);
@@ -847,6 +900,8 @@ impl ArrayType {
         let owned: Option<glib::ByteArray> = self
             .ownership
             .is_borrowed()
+            // SAFETY: `byte_array` is the freshly created, owned GByteArray; `from_glib_full` adopts
+            // that single owning reference so the borrowed-ownership case frees it when dropped.
             .then(|| unsafe { glib::translate::from_glib_full(byte_array) });
 
         let storage = FfiStorage::new(byte_array as *mut c_void, FfiStorageKind::GByteArray(owned));
@@ -868,7 +923,11 @@ impl ArrayType {
     ) -> anyhow::Result<()> {
         let mut buf = [0u8; size_of::<i64>()];
         for n in Self::extract_numbers(array)? {
+            // SAFETY: `buf` is 8 bytes, enough for any integer wire type, so `write_ptr` stores the
+            // narrowed value within it.
             unsafe { int_type.write_ptr(buf.as_mut_ptr(), n) };
+            // SAFETY: `g_array` is a live GArray sized for this element type; `buf` holds one valid
+            // element, so appending 1 value from it is sound.
             unsafe {
                 glib::ffi::g_array_append_vals(g_array, buf.as_ptr() as *const c_void, 1);
             }
@@ -883,7 +942,11 @@ impl ArrayType {
     ) -> anyhow::Result<()> {
         let mut buf = [0u8; size_of::<i64>()];
         for v in array {
+            // SAFETY: `buf` is 8 bytes, matching the 64-bit bigint wire type, so `append_into`
+            // writes the encoded value within it.
             unsafe { kind.append_into(buf.as_mut_ptr(), v)? };
+            // SAFETY: `g_array` is a live GArray sized for this element type; `buf` holds one valid
+            // element, so appending 1 value from it is sound.
             unsafe {
                 glib::ffi::g_array_append_vals(g_array, buf.as_ptr() as *const c_void, 1);
             }
@@ -900,6 +963,8 @@ impl ArrayType {
             match float_kind {
                 super::FloatKind::F32 => {
                     let v = n as f32;
+                    // SAFETY: `g_array` is a live GArray sized for `f32`; `&v` is a valid 4-byte
+                    // `f32` element, so appending 1 value from it is sound.
                     unsafe {
                         glib::ffi::g_array_append_vals(
                             g_array,
@@ -908,6 +973,8 @@ impl ArrayType {
                         );
                     }
                 }
+                // SAFETY: `g_array` is a live GArray sized for `f64`; `&n` is a valid 8-byte `f64`
+                // element, so appending 1 value from it is sound.
                 super::FloatKind::F64 => unsafe {
                     glib::ffi::g_array_append_vals(g_array, &n as *const f64 as *const c_void, 1);
                 },
@@ -924,6 +991,8 @@ impl ArrayType {
         let handles = Self::extract_handles(array)?;
         let (ptrs, acquired) = transfer_elements(&handles, &self.item_type, "GArray")?;
         for ptr in ptrs {
+            // SAFETY: `g_array` is a live GArray sized for one pointer per element; `&ptr` is a
+            // valid pointer-sized element, so appending 1 value from it is sound.
             unsafe {
                 glib::ffi::g_array_append_vals(
                     g_array,
@@ -952,6 +1021,8 @@ impl ArrayType {
             }
             ItemCodec::Boolean => {
                 for b in Self::extract_booleans(array)? {
+                    // SAFETY: `g_array` is a live GArray sized for `i32` (C boolean); `&b` is a
+                    // valid 4-byte element, so appending 1 value from it is sound.
                     unsafe {
                         glib::ffi::g_array_append_vals(
                             g_array,
@@ -967,6 +1038,8 @@ impl ArrayType {
                 let callee_adopts_strings =
                     matches!(&*self.item_type, Type::String(s) if s.ownership.is_full());
                 if !callee_adopts_strings {
+                    // SAFETY: `g_array` is a live GArray of `char*` elements; installing the clear
+                    // func makes GLib free each owned string element when the array is cleared.
                     unsafe {
                         glib::ffi::g_array_set_clear_func(
                             g_array,
@@ -979,6 +1052,8 @@ impl ArrayType {
                     if callee_adopts_strings {
                         acquired.push(ffi::PendingTransfer::new(dup, ffi::PendingRelease::GFree));
                     }
+                    // SAFETY: `g_array` is a live GArray of `char*` elements; `&dup` is a valid
+                    // pointer-sized element holding one owned string, so appending 1 value is sound.
                     unsafe {
                         glib::ffi::g_array_append_vals(
                             g_array,
@@ -1010,12 +1085,16 @@ impl ArrayType {
             );
         }
 
+        // SAFETY: `g_array_sized_new` allocates a new GArray with the given element size and
+        // reserved capacity; the arguments are plain integers and the call returns an owned array.
         let g_array =
             unsafe { glib::ffi::g_array_sized_new(0, 0, element_size as u32, array.len() as u32) };
 
         let acquired = match self.append_items_to_garray(g_array, array) {
             Ok(acquired) => acquired,
             Err(err) => {
+                // SAFETY: `g_array` is the owned array just created; on the error path unref'ing it
+                // releases that single owning reference before returning.
                 unsafe { glib::ffi::g_array_unref(g_array) };
                 return Err(err);
             }
@@ -1057,9 +1136,14 @@ impl ArrayType {
             let mut values = Vec::new();
             let mut current = list_ptr as *mut glib::ffi::GList;
             while !current.is_null() {
+                // SAFETY: `current` is non-null here; for both GList and GSList the leading layout
+                // (`data` then `next`) is identical, so reading `data` and `next` through a `GList*`
+                // is valid for either flavor.
                 let data = unsafe { (*current).data };
                 let item_ffi = ffi::FfiValue::Ptr(data);
                 values.push(self.item_type.decode(&item_ffi)?);
+                // SAFETY: `current` is non-null; reading `next` advances to the following node (or
+                // null at the end), terminating the loop.
                 current = unsafe { (*current).next };
             }
             Ok(values)
@@ -1067,8 +1151,12 @@ impl ArrayType {
 
         if self.ownership.is_full() {
             if self.kind == ArrayKind::GSList {
+                // SAFETY: full ownership means we received the list spine; `g_slist_free` releases
+                // the GSList spine nodes exactly once (elements are not owned by the spine).
                 unsafe { glib::ffi::g_slist_free(list_ptr as *mut glib::ffi::GSList) };
             } else {
+                // SAFETY: full ownership means we received the list spine; `g_list_free` releases
+                // the GList spine nodes exactly once (elements are not owned by the spine).
                 unsafe { glib::ffi::g_list_free(list_ptr as *mut glib::ffi::GList) };
             }
         }
@@ -1083,13 +1171,18 @@ impl ArrayType {
 
         let codec = self.item_codec("GArray")?;
         let g_array = array_ptr as *const glib::ffi::GArray;
+        // SAFETY: `array_ptr` is non-null (checked above) and points to a live GArray; reading its
+        // `data` and `len` fields yields the element buffer and count.
         let data = unsafe { (*g_array).data as *const u8 };
+        // SAFETY: same live GArray as above.
         let len = unsafe { (*g_array).len as usize };
         let values = self.decode_contiguous(codec, data, len);
 
         if self.ownership.is_full() {
             let storage_owns = matches!(ffi_value, ffi::FfiValue::Storage(_));
             if !storage_owns {
+                // SAFETY: full ownership with no owning storage means we hold the array's single
+                // reference; `g_array_unref` releases it exactly once.
                 unsafe { glib::ffi::g_array_unref(array_ptr as *mut glib::ffi::GArray) };
             }
         }
@@ -1103,16 +1196,23 @@ impl ArrayType {
         };
 
         let ptr_array = ptr as *mut glib::ffi::GPtrArray;
+        // SAFETY: `ptr` is non-null (checked above) and points to a live GPtrArray; reading its
+        // `len` and `pdata` fields yields the element-pointer array and count.
         let len = unsafe { (*ptr_array).len as usize };
+        // SAFETY: same live GPtrArray as above.
         let pdata = unsafe { (*ptr_array).pdata };
         let values: anyhow::Result<Vec<value::Value>> = (0..len)
             .map(|i| {
+                // SAFETY: `pdata` holds `len` element pointers, so `pdata.add(i)` is in bounds for
+                // every `i < len` and dereferences to the i-th element pointer.
                 let item_ptr = unsafe { *pdata.add(i) };
                 self.item_type.decode(&ffi::FfiValue::Ptr(item_ptr))
             })
             .collect();
 
         if self.ownership.is_full() {
+            // SAFETY: full ownership means we hold the array's single reference; `g_ptr_array_unref`
+            // releases it exactly once.
             unsafe { glib::ffi::g_ptr_array_unref(ptr_array) };
         }
 
@@ -1127,9 +1227,14 @@ impl ArrayType {
         let byte_array = ptr as *mut glib::ffi::GByteArray;
         let storage_owns = matches!(ffi_value, ffi::FfiValue::Storage(_));
         let adopted: Option<glib::ByteArray> = (self.ownership.is_full() && !storage_owns)
+            // SAFETY: full ownership with no owning storage means `byte_array` is the single owning
+            // reference; `from_glib_full` adopts it so it is freed when `adopted` is dropped.
             .then(|| unsafe { glib::translate::from_glib_full(byte_array) });
 
+        // SAFETY: `ptr` is non-null (checked above) and points to a live GByteArray (still alive
+        // whether or not it was adopted); reading its `data` and `len` fields is sound.
         let data = unsafe { (*byte_array).data };
+        // SAFETY: same live GByteArray as above.
         let len = unsafe { (*byte_array).len as usize };
 
         let values: Vec<value::Value> = if data.is_null() || len == 0 {
@@ -1140,6 +1245,8 @@ impl ArrayType {
                 .map(|&b| value::Value::Number(f64::from(b)))
                 .collect()
         } else {
+            // SAFETY: `data` is non-null and `len` is its byte count (both just read from the live
+            // array); `from_raw_parts` reads exactly that `len`-byte region.
             unsafe { std::slice::from_raw_parts(data, len) }
                 .iter()
                 .map(|&b| value::Value::Number(b as f64))
@@ -1156,6 +1263,8 @@ impl ArrayType {
             let mut values = Vec::new();
             let mut i = 0;
             loop {
+                // SAFETY: `ptr_array` is a null-terminated pointer array; the loop reads strictly
+                // increasing indices and stops at the first null, so `offset(i)` stays in bounds.
                 let item_ptr = unsafe { *ptr_array.offset(i) };
                 if item_ptr.is_null() {
                     break;
@@ -1168,6 +1277,8 @@ impl ArrayType {
         })();
 
         if self.ownership.is_full() {
+            // SAFETY: full ownership means we own the container; `g_free` releases the
+            // `g_malloc`-allocated pointer array exactly once.
             unsafe { glib::ffi::g_free(ptr) };
         }
 
@@ -1183,6 +1294,9 @@ impl ArrayType {
         let base = ptr as *const u8;
         let mut len = 0usize;
         loop {
+            // SAFETY: the array is zero-terminated with a `stride`-byte all-zero sentinel element;
+            // scanning forward `stride` bytes at a time, `base.add(len * stride)` addresses the
+            // next element and stays in bounds until the sentinel is found, which stops the loop.
             let element = unsafe { std::slice::from_raw_parts(base.add(len * stride), stride) };
             if element.iter().all(|&byte| byte == 0) {
                 break;
@@ -1193,6 +1307,8 @@ impl ArrayType {
         let values = self.decode_contiguous(codec, base, len);
 
         if self.ownership.is_full() {
+            // SAFETY: full ownership means we own the container; `g_free` releases the
+            // `g_malloc`-allocated array exactly once.
             unsafe { glib::ffi::g_free(ptr) };
         }
 
@@ -1207,6 +1323,9 @@ impl ArrayType {
                 .iter()
                 .map(|item| {
                     value::Value::String(
+                        // SAFETY: `item.as_ptr()` is a valid NUL-terminated C string pointer owned
+                        // by the StrV/StrVRef being iterated; `from_ptr_lossy` borrows it to build a
+                        // `GStr` for the duration of `to_string`.
                         unsafe { glib::GStr::from_ptr_lossy(item.as_ptr()) }.to_string(),
                     )
                 })
@@ -1215,12 +1334,18 @@ impl ArrayType {
 
         let values = if self.ownership.is_full() {
             let strv = if items_full {
+                // SAFETY: full ownership with full elements means `ptr` is a NULL-terminated array
+                // of owned `char*`; `from_glib_full` adopts both the array and its strings.
                 unsafe { glib::StrV::from_glib_full(ptr as *mut *mut c_char) }
             } else {
+                // SAFETY: container-only ownership means `ptr` is a NULL-terminated array we own but
+                // whose strings we do not; `from_glib_container` adopts the array and copies strings.
                 unsafe { glib::StrV::from_glib_container(ptr as *mut *const c_char) }
             };
             read_strv(&strv)
         } else {
+            // SAFETY: borrowed ownership means `ptr` is a NULL-terminated `char*` array owned
+            // elsewhere; `from_glib_borrow` views it without taking ownership.
             let borrowed = unsafe { glib::StrVRef::from_glib_borrow(ptr as *const *const c_char) };
             read_strv(borrowed)
         };
@@ -1265,6 +1390,8 @@ impl ArrayType {
                     .iter()
                     .map(|item| {
                         value::Value::String(
+                            // SAFETY: `item.as_ptr()` is a valid NUL-terminated C string owned by
+                            // the `strv` being iterated; `from_ptr_lossy` borrows it for `to_string`.
                             unsafe { glib::GStr::from_ptr_lossy(item.as_ptr()) }.to_string(),
                         )
                     })
@@ -1286,6 +1413,12 @@ impl ArrayType {
         Ok(value::Value::Array(values))
     }
 
+    /// Decodes a sized array given an explicit element `length`.
+    ///
+    /// # Safety
+    ///
+    /// `ptr` must be null or point to a contiguous array of at least `length` elements of this
+    /// array's item type, as provided by the caller that knows the length.
     pub unsafe fn ptr_to_value_sized(
         &self,
         ptr: *mut c_void,
@@ -1294,6 +1427,8 @@ impl ArrayType {
         if ptr.is_null() {
             return Ok(value::Value::Array(vec![]));
         }
+        // SAFETY: `ptr` is non-null here and covers `length` contiguous item-type elements per the
+        // contract, satisfying `decode_sized_array`'s precondition.
         self.decode_sized_array(ptr, length)
     }
 
@@ -1325,10 +1460,14 @@ impl ArrayType {
         {
             match ffi_arg {
                 ffi::FfiValue::Storage(storage) => {
+                    // SAFETY: this arg is a `Ref<Integer>` out-parameter, so its storage pointer
+                    // addresses an `int_type`-sized slot holding the written-back length.
                     let size = unsafe { int_type.read_ptr(storage.ptr() as *const u8) };
                     return Self::validated_size(size, size_index);
                 }
                 ffi::FfiValue::Ptr(ptr) if !ptr.is_null() => {
+                    // SAFETY: this arg is a non-null `Ref<Integer>` out-parameter pointer, so it
+                    // addresses an `int_type`-sized slot holding the written-back length.
                     let size = unsafe { int_type.read_ptr(*ptr as *const u8) };
                     return Self::validated_size(size, size_index);
                 }

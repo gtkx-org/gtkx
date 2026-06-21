@@ -123,17 +123,35 @@ impl FfiValue {
         }
     }
 
+    /// Writes this value's scalar payload into the out-parameter slot at `slot`.
+    ///
+    /// # Safety
+    ///
+    /// `slot` must point to writable storage of at least the size of this value's scalar type.
+    /// Alignment is not required: every write uses `write_unaligned`. Non-scalar variants do not
+    /// write and instead return an error.
     pub unsafe fn write_scalar_to(&self, slot: *mut c_void) -> anyhow::Result<()> {
         match self {
+            // SAFETY: per the contract `slot` addresses at least `size_of::<u8>()` writable bytes;
+            // `write_unaligned` stores the value without an alignment requirement.
             Self::U8(value) => unsafe { slot.cast::<u8>().write_unaligned(*value) },
+            // SAFETY: per the contract `slot` addresses at least `size_of::<i8>()` writable bytes.
             Self::I8(value) => unsafe { slot.cast::<i8>().write_unaligned(*value) },
+            // SAFETY: per the contract `slot` addresses at least `size_of::<u16>()` writable bytes.
             Self::U16(value) => unsafe { slot.cast::<u16>().write_unaligned(*value) },
+            // SAFETY: per the contract `slot` addresses at least `size_of::<i16>()` writable bytes.
             Self::I16(value) => unsafe { slot.cast::<i16>().write_unaligned(*value) },
+            // SAFETY: per the contract `slot` addresses at least `size_of::<u32>()` writable bytes.
             Self::U32(value) => unsafe { slot.cast::<u32>().write_unaligned(*value) },
+            // SAFETY: per the contract `slot` addresses at least `size_of::<i32>()` writable bytes.
             Self::I32(value) => unsafe { slot.cast::<i32>().write_unaligned(*value) },
+            // SAFETY: per the contract `slot` addresses at least `size_of::<u64>()` writable bytes.
             Self::U64(value) => unsafe { slot.cast::<u64>().write_unaligned(*value) },
+            // SAFETY: per the contract `slot` addresses at least `size_of::<i64>()` writable bytes.
             Self::I64(value) => unsafe { slot.cast::<i64>().write_unaligned(*value) },
+            // SAFETY: per the contract `slot` addresses at least `size_of::<f32>()` writable bytes.
             Self::F32(value) => unsafe { slot.cast::<f32>().write_unaligned(*value) },
+            // SAFETY: per the contract `slot` addresses at least `size_of::<f64>()` writable bytes.
             Self::F64(value) => unsafe { slot.cast::<f64>().write_unaligned(*value) },
             Self::Ptr(_) | Self::Storage(_) | Self::Callback(_) | Self::Void => {
                 anyhow::bail!("{self:?} has no scalar payload for an out-parameter slot")

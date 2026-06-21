@@ -1,4 +1,15 @@
 import { toCamelIdentifier } from "@gtkx/utils";
+import {
+    tArray,
+    tBlob,
+    tBoolean,
+    tFixedArray,
+    tInlineStruct,
+    tRef,
+    tSizedArray,
+    tString,
+    tUint64,
+} from "../writers/descriptor.js";
 import type { CommandPlan, GlScalar, ParamPlan } from "./ctype.js";
 import type { GlCommand } from "./model.js";
 
@@ -58,23 +69,23 @@ const buildInSlot = (options: BuildSlotOptions, name: string, track: (alias: str
         case "scalar":
             return inSlot(name, track(scalarAliasOrGroup(plan.scalar, param.group)), `${plan.scalar.tExpr}`);
         case "boolean":
-            return inSlot(name, "boolean", "t.boolean");
+            return inSlot(name, "boolean", tBoolean);
         case "sync":
-            return inSlot(name, track("GLsync"), `t.struct("borrowed")`);
+            return inSlot(name, track("GLsync"), tInlineStruct());
         case "string-in":
-            return inSlot(name, "string", `t.string("borrowed")`);
+            return inSlot(name, "string", tString("borrowed"));
         case "string-array-in":
-            return inSlot(name, "string[]", `t.array(t.string("borrowed"))`);
+            return inSlot(name, "string[]", tArray(tString("borrowed")));
         case "array-in": {
             track(scalarAliasOrGroup(plan.scalar, param.group));
-            return inSlot(name, arrayInTsType(plan.scalar, param.group), `t.array(${plan.scalar.tExpr})`);
+            return inSlot(name, arrayInTsType(plan.scalar, param.group), tArray(plan.scalar.tExpr));
         }
         case "blob":
-            return inSlot(name, `ArrayBufferView | ${track("GLintptr")} | null`, "t.blob");
+            return inSlot(name, `ArrayBufferView | ${track("GLintptr")} | null`, tBlob);
         case "byte-offset":
-            return inSlot(name, track("GLintptr"), "t.uint64");
+            return inSlot(name, track("GLintptr"), tUint64);
         case "byte-offset-array":
-            return inSlot(name, `${track("GLintptr")}[]`, "t.array(t.uint64)");
+            return inSlot(name, `${track("GLintptr")}[]`, tArray(tUint64));
         default:
             throw new Error(`Plan kind ${plan.kind} is not an input parameter`);
     }
@@ -92,7 +103,7 @@ const buildOutSlot = (options: BuildSlotOptions, track: (alias: string) => strin
                 cellName,
                 seed: `const ${cellName} = { value: 0 };`,
                 tsType: track(scalarAliasOrGroup(plan.scalar, param.group)),
-                descriptor: `t.ref(${plan.scalar.tExpr})`,
+                descriptor: tRef(plan.scalar.tExpr),
                 docName: param.name,
                 docCType: param.cType,
             };
@@ -104,7 +115,7 @@ const buildOutSlot = (options: BuildSlotOptions, track: (alias: string) => strin
                 cellName,
                 seed: `const ${cellName} = { value: new Array<number>(${lenIdentifier}).fill(0) };`,
                 tsType: `${track(plan.scalar.tsAlias)}[]`,
-                descriptor: `t.ref(t.sizedArray(${plan.scalar.tExpr}, ${sizeIndex}))`,
+                descriptor: tRef(tSizedArray(plan.scalar.tExpr, sizeIndex)),
                 docName: param.name,
                 docCType: param.cType,
             };
@@ -115,7 +126,7 @@ const buildOutSlot = (options: BuildSlotOptions, track: (alias: string) => strin
                 cellName,
                 seed: `const ${cellName} = { value: new Array<number>(${plan.length}).fill(0) };`,
                 tsType: `${track(plan.scalar.tsAlias)}[]`,
-                descriptor: `t.ref(t.fixedArray(${plan.scalar.tExpr}, ${plan.length}))`,
+                descriptor: tRef(tFixedArray(plan.scalar.tExpr, plan.length)),
                 docName: param.name,
                 docCType: param.cType,
             };
@@ -125,7 +136,7 @@ const buildOutSlot = (options: BuildSlotOptions, track: (alias: string) => strin
                 cellName,
                 seed: `const ${cellName} = { value: "" };`,
                 tsType: "string",
-                descriptor: `t.ref(t.string("borrowed", ${toCamelIdentifier(plan.lenParamName)}))`,
+                descriptor: tRef(tString("borrowed", toCamelIdentifier(plan.lenParamName))),
                 docName: param.name,
                 docCType: param.cType,
             };

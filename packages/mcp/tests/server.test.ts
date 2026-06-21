@@ -214,9 +214,9 @@ describe("buildTools — gtkx_list_apps waiting", () => {
         expect(text.text).toContain("Timeout");
     });
 
-    it("returns a generic error message when waitForApp throws a non-Error", async () => {
+    it("stringifies a non-Error thrown by waitForApp into the error result", async () => {
         const text = await runListAppsWithFailingWait("not an Error");
-        expect(text.text).toBe("Timeout waiting for app");
+        expect(text.text).toBe("not an Error");
     });
 
     it("does not call waitForApp when apps are already connected", async () => {

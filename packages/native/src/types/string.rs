@@ -64,9 +64,13 @@ impl FfiDecoder for StringType {
             return Ok(value::Value::Null);
         };
 
+        // SAFETY: `str_ptr` is the non-null `char*` returned by the C call; `from_ptr_lossy` reads
+        // a NUL-terminated C string from it, which the callee guarantees for a string return.
         let string = unsafe { glib::GStr::from_ptr_lossy(str_ptr as *const c_char) }.to_string();
 
         if self.ownership.is_full() {
+            // SAFETY: full ownership means the callee transferred the string to us; `str_ptr` is a
+            // `g_malloc`-allocated C string, so `g_free` releases it exactly once after we copied it.
             unsafe { glib::ffi::g_free(str_ptr) };
         }
 
@@ -75,6 +79,8 @@ impl FfiDecoder for StringType {
 
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         self.null_guarded(ptr, |ptr| {
+            // SAFETY: `null_guarded` only invokes this with a non-null `ptr`; per `read_value`'s
+            // contract it points to a NUL-terminated C string, which `from_ptr_lossy` reads.
             let string = unsafe { glib::GStr::from_ptr_lossy(ptr as *const c_char) }.to_string();
             Ok(value::Value::String(string))
         })
@@ -89,6 +95,8 @@ impl RawPtrCodec for StringType {
             }
             _ => std::ptr::null_mut(),
         };
+        // SAFETY: `ret` is a marshalling-provided return slot for a pointer-sized value; writing the
+        // owned (`g_malloc`-allocated) or null string pointer into it transfers ownership to the callee.
         unsafe { *(ret as *mut *mut c_void) = ptr };
     }
 
@@ -100,8 +108,12 @@ impl RawPtrCodec for StringType {
         match value {
             value::Value::String(s) => {
                 let duped = str_to_glib_full(s)?;
+                // SAFETY: `ptr` is a marshalling-provided field slot of pointer size; `write_unaligned`
+                // stores the freshly owned C string into it without an alignment requirement.
                 unsafe { (ptr as *mut *mut c_char).write_unaligned(duped) };
             }
+            // SAFETY: `ptr` is a marshalling-provided field slot of pointer size; `write_unaligned`
+            // stores a null pointer into it without an alignment requirement.
             value::Value::Null | value::Value::Undefined => unsafe {
                 (ptr as *mut *const c_char).write_unaligned(std::ptr::null());
             },

@@ -222,6 +222,7 @@ export class ListController implements ColumnHost {
 
         connectFactoryLifecycle<Gtk.ListItem, Gtk.Widget | Gtk.ListItem>(this.factory, {
             registry: this.registry,
+            itemClass: Gtk.ListItem,
             createContainer: (item) => (isTree ? this.createTreeContainer(item) : this.createFlatContainer(item)),
             resolveContainer: (item) => (isTree ? (this.treeExpanders.get(item) ?? null) : item),
             getPosition: (item) => item.getPosition(),
@@ -289,6 +290,7 @@ export class ListController implements ColumnHost {
         this.listFactory = new Gtk.SignalListItemFactory();
         connectFactoryLifecycle<Gtk.ListItem>(this.listFactory, {
             registry: this.listRegistry,
+            itemClass: Gtk.ListItem,
             createContainer: (item) => item,
             resolveContainer: (item) => item,
             getPosition: (item) => item.getPosition(),
@@ -301,6 +303,7 @@ export class ListController implements ColumnHost {
         this.headerFactory = new Gtk.SignalListItemFactory();
         connectFactoryLifecycle<Gtk.ListHeader>(this.headerFactory, {
             registry: this.headerRegistry,
+            itemClass: Gtk.ListHeader,
             createContainer: (item) => item,
             resolveContainer: (item) => item,
             getPosition: (item) => item.getStart(),

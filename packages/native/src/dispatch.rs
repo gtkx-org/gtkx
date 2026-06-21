@@ -1,3 +1,27 @@
+//! Cross-thread task dispatch between the Node (JS) thread and the single gtkx-glib thread.
+//!
+//! # Depth-tagged reentrancy invariant
+//!
+//! GLib-thread work is queued in [`Mailbox::glib_inbox`] and Node-thread work in
+//! [`Mailbox::node_inbox`]. The risk is a *nested cross-thread callback*: the `GLib` thread calls
+//! into JS, that JS callback synchronously triggers another `GLib` task, and the inner wait must
+//! not re-run a task enqueued by an outer frame — doing so would reorder work and deadlock.
+//!
+//! The protocol that prevents this is the `callback_depth` tagging:
+//!
+//! - Every task pushed via [`Mailbox::push_glib_task`] is tagged with the current
+//!   `callback_depth` at enqueue time.
+//! - [`Mailbox::enter_glib_callback`] / [`Mailbox::leave_glib_callback`] bracket each GLib-thread
+//!   callback into JS, incrementing/decrementing `callback_depth`.
+//! - A blocking node task initiated *from the `GLib` thread* — detected via
+//!   `glib::MainContext::default().is_owner()` in `node_wait_setup` — waits at
+//!   `wait_depth = callback_depth + 1` and, while blocked, drains only tasks tagged
+//!   `depth >= wait_depth` through [`Mailbox::dispatch_pending_from_depth`].
+//!
+//! Because the inner wait drains strictly deeper tasks, it can make forward progress on work
+//! the inner callback itself enqueues without ever re-entering a task that belongs to the outer
+//! frame, which is what keeps the nested cross-thread dispatch deadlock-free.
+
 mod freeze_controller;
 mod js_bridge;
 pub mod wait_signal;
@@ -52,6 +76,9 @@ pub(crate) struct JsReference {
     raw: sys::napi_ref,
 }
 
+// SAFETY: a `JsReference` only carries the raw napi env/ref handles by value; it is moved to the
+// Node (JS) thread and its handles are exclusively touched there (in `delete_on_js_thread`), never
+// dereferenced from the gtkx-glib thread, so transferring ownership across threads is sound.
 unsafe impl Send for JsReference {}
 
 impl JsReference {
@@ -62,6 +89,8 @@ impl JsReference {
 
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub(crate) fn delete_on_js_thread(self) {
+        // SAFETY: runs on the Node (JS) thread that owns `self.env`; `self.raw` is the live napi
+        // reference captured in `new`, deleted exactly once here as `self` is consumed by value.
         let status = unsafe { sys::napi_delete_reference(self.env, self.raw) };
         debug_assert_eq!(status, sys::Status::napi_ok);
     }
@@ -146,6 +175,10 @@ impl Mailbox {
         self.freeze.run_loop(self);
     }
 
+    /// Enqueues a GLib-thread task tagged with the current `callback_depth`.
+    ///
+    /// The depth tag records the reentrancy frame that produced the task so that a nested wait
+    /// only drains tasks at or below its own depth; see the module-level reentrancy invariant.
     fn push_glib_task(&self, task: GlibTask) {
         let depth = self.callback_depth.load(Ordering::Acquire);
         self.glib_inbox.lock().push_back((depth, task));
@@ -174,10 +207,15 @@ impl Mailbox {
         self.wake_js_tsfn.get().is_some()
     }
 
+    /// Enters a GLib-thread callback frame, raising `callback_depth` by one.
+    ///
+    /// Tasks enqueued while this frame is active are tagged with the raised depth, which a
+    /// nested wait uses to avoid re-running outer-frame work (module-level reentrancy invariant).
     pub fn enter_glib_callback(&self) {
         self.callback_depth.fetch_add(1, Ordering::AcqRel);
     }
 
+    /// Leaves the current GLib-thread callback frame, lowering `callback_depth` by one.
     pub fn leave_glib_callback(&self) {
         self.callback_depth.fetch_sub(1, Ordering::AcqRel);
     }
@@ -186,6 +224,11 @@ impl Mailbox {
         self.dispatch_pending_from_depth(0)
     }
 
+    /// Drains GLib-thread tasks tagged with `depth >= min_depth`, leaving shallower tasks queued.
+    ///
+    /// A nested wait passes its own `wait_depth` as `min_depth` so it only runs work enqueued at
+    /// or below its frame and never re-enters a task belonging to an outer frame; see the
+    /// module-level depth-tagged reentrancy invariant.
     pub fn dispatch_pending_from_depth(&self, min_depth: usize) -> bool {
         let mut dispatched = false;
 

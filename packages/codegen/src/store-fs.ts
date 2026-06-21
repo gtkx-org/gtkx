@@ -24,6 +24,55 @@ export const subpathExport = (stem: string): { types: string; default: string } 
     default: `./${stem}.js`,
 });
 
+/**
+ * A generated store's `package.json` manifest.
+ *
+ * Carries the fixed `type: "module"` and `sideEffects: true` defaults shared by
+ * every gtkx store, plus the per-store name, version, and subpath export map.
+ */
+export type Manifest = {
+    name: string;
+    type: "module";
+    version: string;
+    sideEffects: true;
+    exports: Record<string, unknown>;
+};
+
+/**
+ * Inputs to {@link buildManifest}.
+ */
+export type ManifestInput = {
+    name: string;
+    version: string;
+    exports: Record<string, unknown>;
+};
+
+/**
+ * Builds a store {@link Manifest}, injecting the `"./package.json"` self-export
+ * and the shared `type`/`sideEffects` defaults around the caller's exports.
+ *
+ * @param input - The store name, version, and per-store subpath exports.
+ * @returns The assembled manifest.
+ */
+export const buildManifest = (input: ManifestInput): Manifest => ({
+    name: input.name,
+    type: "module",
+    version: input.version,
+    sideEffects: true,
+    exports: { "./package.json": "./package.json", ...input.exports },
+});
+
+/**
+ * Builds a self-targeting symlink entry under the given path segments.
+ *
+ * The store resolves the `"self"` target to its own root, so this expresses the
+ * convention of linking a store into its own `node_modules` tree.
+ *
+ * @param segments - Path segments, relative to the store root, for the link.
+ * @returns The self-targeting symlink descriptor.
+ */
+export const selfLink = (...segments: string[]): StoreSymlink => ({ segments, target: "self" });
+
 export const writeStore = (params: WriteStoreParams): void => {
     const tmp = tempStoreFor(params.storeDir);
     for (const file of params.files) {
@@ -43,7 +92,7 @@ export type WriteStoreParams = {
     storeDir: string;
     linkDir: string;
     files: StoreFile[];
-    manifest: unknown;
+    manifest: Manifest;
     symlinks: StoreSymlink[];
     rawFiles?: { relativePath: string; content: string }[];
 };
@@ -62,7 +111,7 @@ const symlinkRelative = (linkPath: string, realTarget: string): void => {
     symlinkSync(relative(dirname(linkPath), realTarget), linkPath, "dir");
 };
 
-const writePackageJson = (storeDir: string, manifest: unknown): void => {
+const writePackageJson = (storeDir: string, manifest: Manifest): void => {
     writeFileSync(join(storeDir, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 };
 

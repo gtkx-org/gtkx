@@ -16,11 +16,18 @@ thread_local! {
     static GLIB_THREAD_STATE: RefCell<GlibThreadState> = RefCell::new(GlibThreadState::default());
 }
 
+/// Lifecycle phase of the single `GLib` runtime thread.
+///
+/// The discriminants are pinned via `#[repr(u8)]` because the phase is stored in an
+/// [`AtomicU8`] and transitioned with `compare_exchange` over `RuntimePhase::X as u8`; the
+/// explicit values make that byte contract self-documenting and stable. The atomic is written
+/// only by this module from valid variants, so no out-of-range byte is reachable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
 pub enum RuntimePhase {
-    New,
-    Running,
-    NotRunning,
+    New = 0,
+    Running = 1,
+    NotRunning = 2,
 }
 
 impl From<u8> for RuntimePhase {
@@ -28,7 +35,8 @@ impl From<u8> for RuntimePhase {
         match value {
             0 => Self::New,
             1 => Self::Running,
-            _ => Self::NotRunning,
+            2 => Self::NotRunning,
+            other => unreachable!("RuntimePhase atomic holds an unknown discriminant: {other}"),
         }
     }
 }
@@ -46,6 +54,7 @@ impl GlibThread {
         GLIB_THREAD.get_or_init(Self::default)
     }
 
+    #[cfg(feature = "test-support")]
     pub fn phase(&self) -> RuntimePhase {
         RuntimePhase::from(self.phase.load(Ordering::Acquire))
     }
@@ -139,6 +148,9 @@ impl LibraryCache {
         let mut last_error = None;
 
         for lib_name in name.split(',') {
+            // SAFETY: `lib_name` is a caller-provided shared-object name; `Library::open` runs the
+            // library's initializers, which is sound for the GTK/GObject libraries this loads on
+            // the gtkx-glib thread. Any load failure is returned as an error rather than UB.
             match unsafe { Library::open(Some(lib_name), RTLD_NOW | RTLD_GLOBAL) } {
                 Ok(lib) => return Ok(lib),
                 Err(err) => last_error = Some(err),
@@ -165,12 +177,17 @@ impl LibraryCache {
 
         let lib = self.get_or_load(lib_name)?;
 
+        // SAFETY: `lib` is a loaded GObject-introspected library; `get` resolves the named symbol
+        // and the declared `GetTypeFn` signature matches a GObject `*_get_type` C function.
         let func = unsafe {
             lib.get::<GetTypeFn>(get_type_fn_name.as_bytes())
                 .map_err(|e| anyhow::anyhow!("Failed to find symbol '{get_type_fn_name}': {e}"))?
         };
 
+        // SAFETY: `func` is the resolved `*_get_type` symbol with no parameters; calling it on the
+        // gtkx-glib thread returns the registered GType, idempotently registering it if needed.
         let gtype_raw = unsafe { func() };
+        // SAFETY: `gtype_raw` is a valid `GType` returned by a `*_get_type` function.
         let gtype = unsafe { glib::Type::from_glib(gtype_raw) };
         self.gtypes.insert(key, gtype);
         Ok(gtype)
@@ -181,6 +198,7 @@ impl LibraryCache {
         self.libraries.len()
     }
 
+    #[cfg(feature = "test-support")]
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.libraries.is_empty()
@@ -242,6 +260,8 @@ impl FundamentalFnCache {
         let ref_fn = if ref_func.is_empty() {
             None
         } else {
+            // SAFETY: `library` is a loaded library; `get` resolves the named ref symbol whose C
+            // signature matches the declared `RefFn`, and the deref copies out the function pointer.
             Some(unsafe {
                 *library
                     .get::<RefFn>(ref_func.as_bytes())
@@ -252,6 +272,8 @@ impl FundamentalFnCache {
         let unref_fn = if unref_func.is_empty() {
             None
         } else {
+            // SAFETY: `library` is a loaded library; `get` resolves the named unref symbol whose C
+            // signature matches the declared `UnrefFn`, and the deref copies out the function pointer.
             Some(unsafe {
                 *library.get::<UnrefFn>(unref_func.as_bytes()).map_err(|e| {
                     anyhow::anyhow!("Failed to find unref symbol '{unref_func}': {e}")

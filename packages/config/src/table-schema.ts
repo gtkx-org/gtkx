@@ -117,6 +117,12 @@ const requireFieldName = (value: unknown, path: string): void => {
     }
 };
 
+const requireReactMemberName = (value: unknown, path: string, example: string): void => {
+    if (typeof value !== "string" || !PASCAL_CASE_NAME_PATTERN.test(value)) {
+        fail(path, `must be a PascalCase exported member of @gtkx/react (e.g. "${example}")`);
+    }
+};
+
 const validateMethodVerb = (verb: Record<string, unknown>, path: string): void => {
     requireMethodName(verb["attach"], `${path}.attach`);
     requireMethodName(verb["detach"], `${path}.detach`);
@@ -210,9 +216,7 @@ const validateConstructStep = (value: unknown, path: string): void => {
 
 const validateArrayPropRow = (value: unknown, path: string): void => {
     const row = requireRecord(value, path);
-    if (typeof row["itemType"] !== "string" || !PASCAL_CASE_NAME_PATTERN.test(row["itemType"])) {
-        fail(`${path}.itemType`, `must be a PascalCase exported member of @gtkx/react (e.g. "ScaleMark")`);
-    }
+    requireReactMemberName(row["itemType"], `${path}.itemType`, "ScaleMark");
     if (row["clear"] !== undefined) requireMethodName(row["clear"], `${path}.clear`);
     if (row["set"] !== undefined) requireMethodName(row["set"], `${path}.set`);
     if (row["appendOnce"] !== undefined && typeof row["appendOnce"] !== "boolean") {
@@ -233,9 +237,7 @@ export const validateArrayPropRows = (arrayProps: unknown): void => {
 
 const validateObjectPropRow = (value: unknown, path: string): void => {
     const row = requireRecord(value, path);
-    if (typeof row["itemType"] !== "string" || !PASCAL_CASE_NAME_PATTERN.test(row["itemType"])) {
-        fail(`${path}.itemType`, `must be a PascalCase exported member of @gtkx/react (e.g. "DragSourceIcon")`);
-    }
+    requireReactMemberName(row["itemType"], `${path}.itemType`, "DragSourceIcon");
     validateArrayOf(row["set"], `${path}.set`, validateCallStep, (setPath) =>
         fail(setPath, "must be an array of call steps"),
     );

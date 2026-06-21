@@ -135,7 +135,7 @@ export const queryAllByRole = (container: Container, role: Gtk.AccessibleRole, o
 const roleVariants = buildQueries<[role: Gtk.AccessibleRole, options?: ByRoleOptions]>(
     "Role",
     queryAllByRole,
-    (container, count, role, options) => multipleFoundError(container, { queryType: "role", role, options }, count),
+    (container, matches, role, options) => multipleFoundError(container, { queryType: "role", role, options }, matches),
     (container, role, options) => notFoundError(container, { queryType: "role", role, options }),
 );
 
@@ -170,7 +170,7 @@ export const queryAllByLabelText = (container: Container, text: Matcher, options
 const labelTextVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
     "LabelText",
     queryAllByLabelText,
-    (container, count, text) => multipleFoundError(container, { queryType: "labelText", text }, count),
+    (container, matches, text) => multipleFoundError(container, { queryType: "labelText", text }, matches),
     (container, text) => notFoundError(container, { queryType: "labelText", text }),
 );
 
@@ -180,7 +180,7 @@ export const queryAllByText = (container: Container, text: Matcher, options?: Ma
 const textVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
     "Text",
     queryAllByText,
-    (container, count, text) => multipleFoundError(container, { queryType: "text", text }, count),
+    (container, matches, text) => multipleFoundError(container, { queryType: "text", text }, matches),
     (container, text) => notFoundError(container, { queryType: "text", text }),
 );
 
@@ -190,7 +190,7 @@ export const queryAllByName = (container: Container, name: Matcher, options?: Ma
 const nameVariants = buildQueries<[name: Matcher, options?: MatcherOptions]>(
     "Name",
     queryAllByName,
-    (container, count, name) => multipleFoundError(container, { queryType: "name", name }, count),
+    (container, matches, name) => multipleFoundError(container, { queryType: "name", name }, matches),
     (container, name) => notFoundError(container, { queryType: "name", name }),
 );
 
@@ -237,7 +237,7 @@ export const queryAllByPlaceholderText = (
 const placeholderTextVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
     "PlaceholderText",
     queryAllByPlaceholderText,
-    (container, count, text) => multipleFoundError(container, { queryType: "placeholderText", text }, count),
+    (container, matches, text) => multipleFoundError(container, { queryType: "placeholderText", text }, matches),
     (container, text) => notFoundError(container, { queryType: "placeholderText", text }),
 );
 
@@ -247,7 +247,7 @@ export const queryAllByDisplayValue = (container: Container, value: Matcher, opt
 const displayValueVariants = buildQueries<[value: Matcher, options?: MatcherOptions]>(
     "DisplayValue",
     queryAllByDisplayValue,
-    (container, count, value) => multipleFoundError(container, { queryType: "displayValue", value }, count),
+    (container, matches, value) => multipleFoundError(container, { queryType: "displayValue", value }, matches),
     (container, value) => notFoundError(container, { queryType: "displayValue", value }),
 );
 

@@ -153,10 +153,14 @@ impl FfiDecoder for RefType {
                 storage
             }
             ReadSource::Slot(ptr, _context) => {
+                // SAFETY: per the `ReadSource::Slot` contract `ptr` addresses a pointer-sized slot;
+                // dereferencing it yields the inner pointer the ref points at.
                 let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
                 if inner_ptr.is_null() {
                     return Ok(value::Value::Null);
                 }
+                // SAFETY: `inner_ptr` is the non-null pointee read above, a valid slot for the
+                // inner type to read from.
                 return unsafe {
                     self.inner_type
                         .read(ReadSource::Slot(inner_ptr, "ref inner"))
@@ -167,24 +171,36 @@ impl FfiDecoder for RefType {
 
         match &*self.inner_type {
             Type::GObject(_) | Type::Boxed(_) | Type::Fundamental(_) | Type::Struct(_) => {
+                // SAFETY: for pointer inner types the out-slot `storage.ptr()` holds a pointer to
+                // the produced value; dereferencing it loads that pointer for the inner decoder.
                 let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
                 self.inner_type.decode(&ffi::FfiValue::Ptr(actual_ptr))
             }
             Type::Integer(int_type) => {
+                // SAFETY: `storage.ptr()` is the scalar out-slot sized for this integer kind;
+                // `read_ptr` reads the integer that was written into it by the callee.
                 let number = unsafe { int_type.read_ptr(storage.ptr() as *const u8) };
                 Ok(value::Value::Number(number))
             }
             Type::Tagged(tagged) => {
+                // SAFETY: `storage.ptr()` is the scalar out-slot sized for the tagged enum/flags
+                // backing integer; `read_ptr` reads that integer.
                 let number = unsafe { tagged.storage.read_ptr(storage.ptr() as *const u8) };
                 Ok(value::Value::Number(number))
             }
             Type::Float(float_kind) => {
+                // SAFETY: `storage.ptr()` is the scalar out-slot sized for this float kind;
+                // `read_ptr` reads the float that was written into it.
                 let number = unsafe { float_kind.read_ptr(storage.ptr() as *const u8) };
                 Ok(value::Value::Number(number))
             }
+            // SAFETY: `storage.ptr()` is the boolean out-slot the callee wrote; the inner boolean
+            // codec reads it as a pointer slot.
             Type::Boolean(boolean) => unsafe {
                 boolean.read(ReadSource::Slot(storage.ptr(), "Ref<Boolean>"))
             },
+            // SAFETY: `storage.ptr()` is the unichar out-slot the callee wrote; the inner unichar
+            // codec reads it as a pointer slot.
             Type::Unichar(unichar) => unsafe {
                 unichar.read(ReadSource::Slot(storage.ptr(), "Ref<Unichar>"))
             },
@@ -211,6 +227,8 @@ impl FfiDecoder for RefType {
             };
 
             let actual_ptr = match storage.kind() {
+                // SAFETY: a `PtrStorage` out-slot holds a pointer to the produced array; the slot
+                // is pointer-sized, so dereferencing it loads that array pointer.
                 FfiStorageKind::PtrStorage(_) => unsafe { *(storage.ptr() as *const *mut c_void) },
                 _ => storage.ptr(),
             };
@@ -229,6 +247,9 @@ impl FfiDecoder for RefType {
                     ArrayKind::Sized { .. } | ArrayKind::Fixed { .. }
                 )
             {
+                // SAFETY: full ownership of a sized/fixed array written through a `PtrStorage`
+                // out-parameter means the callee allocated `actual_ptr` with `g_malloc`; the
+                // elements were copied out during decode, so freeing the buffer once is correct.
                 unsafe { glib::ffi::g_free(actual_ptr) };
             }
 
@@ -251,6 +272,8 @@ impl RefType {
 
     fn scalar_out_slot(encoded: &ffi::FfiValue) -> anyhow::Result<ffi::FfiValue> {
         let storage = FfiStorage::from(vec![0u64]);
+        // SAFETY: `storage` owns an 8-byte `u64` buffer, large enough for any scalar payload of
+        // `encoded`; `write_scalar_to` writes that payload into the slot.
         unsafe { encoded.write_scalar_to(storage.ptr())? };
         Ok(ffi::FfiValue::Storage(storage))
     }
@@ -265,17 +288,25 @@ impl RefType {
         }
 
         if let FfiStorageKind::Buffer(_) = storage.kind() {
+            // SAFETY: a `Buffer` out-slot is the NUL-terminated byte buffer the callee filled in
+            // place; `from_ptr_lossy` reads it up to the terminator as a string.
             let string =
                 unsafe { glib::GStr::from_ptr_lossy(storage.ptr() as *const c_char) }.to_string();
             value::Value::String(string)
         } else {
+            // SAFETY: a non-buffer string out-slot is pointer-sized and holds the callee's
+            // `char*`; dereferencing it loads that pointer (checked for null below).
             let str_ptr = unsafe { *(storage.ptr() as *const *const c_char) };
             if str_ptr.is_null() {
                 return value::Value::Null;
             }
+            // SAFETY: `str_ptr` is the non-null NUL-terminated C string written by the callee;
+            // `from_ptr_lossy` reads it up to the terminator.
             let string = unsafe { glib::GStr::from_ptr_lossy(str_ptr) }.to_string();
 
             if string_type.ownership.is_full() {
+                // SAFETY: full ownership means the callee transferred the `g_malloc`-allocated
+                // string to us; after copying it out, freeing `str_ptr` once releases it.
                 unsafe { glib::ffi::g_free(str_ptr as *mut c_void) };
             }
 
@@ -300,6 +331,8 @@ mod tests {
         let slot = RefType::scalar_out_slot(&ffi::FfiValue::I32(7))
             .expect("i32 payload should produce a slot");
         let storage = slot_storage(&slot);
+        // SAFETY: `storage.ptr()` is the 8-byte scalar slot seeded with an i32 above; `read_ptr`
+        // reads it back as an i32.
         let seeded = unsafe { IntegerKind::I32.read_ptr(storage.ptr() as *const u8) };
         assert_eq!(seeded, 7.0);
     }
@@ -309,6 +342,8 @@ mod tests {
         let slot = RefType::scalar_out_slot(&ffi::FfiValue::F64(1.5))
             .expect("f64 payload should produce a slot");
         let storage = slot_storage(&slot);
+        // SAFETY: `storage.ptr()` is the 8-byte scalar slot seeded with an f64 above; `read_ptr`
+        // reads it back as an f64.
         let seeded = unsafe { FloatKind::F64.read_ptr(storage.ptr() as *const u8) };
         assert_eq!(seeded, 1.5);
     }
@@ -317,6 +352,8 @@ mod tests {
     fn zeroed_scalar_slot_is_zero_initialized() {
         let slot = RefType::zeroed_scalar_slot();
         let storage = slot_storage(&slot);
+        // SAFETY: `storage.ptr()` is the zero-initialized 8-byte scalar slot; `read_ptr` reads it
+        // back as an i32 (expected to be zero).
         let seeded = unsafe { IntegerKind::I32.read_ptr(storage.ptr() as *const u8) };
         assert_eq!(seeded, 0.0);
     }

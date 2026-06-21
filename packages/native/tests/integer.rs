@@ -5,6 +5,10 @@ use native::types::IntegerKind;
 fn read_u8() {
     let value: u8 = 200;
     let ptr = &value as *const u8;
+    // SAFETY: `ptr` points to the live `u8` stack local `value`, which matches the `U8` kind's
+    // element type, so `read_ptr` reads exactly one in-bounds, correctly-typed byte.
+    // SAFETY: `ptr` points to the live `u8` stack local `value`, matching the
+    // `U8` kind's element type, so `read_ptr` reads exactly one in-bounds, correctly-typed value.
     let result = unsafe { IntegerKind::U8.read_ptr(ptr) };
     assert_eq!(result, 200.0);
 }
@@ -13,6 +17,10 @@ fn read_u8() {
 fn read_i8() {
     let value: i8 = -50;
     let ptr = &value as *const i8 as *const u8;
+    // SAFETY: `ptr` points to the live `i8` stack local `value`, sized identically to the byte
+    // the `I8` kind reads; `read_ptr` reads exactly that one in-bounds, correctly-typed value.
+    // SAFETY: `ptr` points to the live `i8` stack local `value`, matching the
+    // `I8` kind's element type, so `read_ptr` reads exactly one in-bounds, correctly-typed value.
     let result = unsafe { IntegerKind::I8.read_ptr(ptr) };
     assert_eq!(result, -50.0);
 }
@@ -21,6 +29,10 @@ fn read_i8() {
 fn read_u16() {
     let value: u16 = 50000;
     let ptr = &value as *const u16 as *const u8;
+    // SAFETY: `ptr` points to the live `u16` stack local `value` whose two bytes are exactly
+    // what the `U16` kind reads; the read stays in bounds and matches the kind's width.
+    // SAFETY: `ptr` points to the live `u16` stack local `value`, matching the
+    // `U16` kind's element type, so `read_ptr` reads exactly one in-bounds, correctly-typed value.
     let result = unsafe { IntegerKind::U16.read_ptr(ptr) };
     assert_eq!(result, 50000.0);
 }
@@ -29,6 +41,8 @@ fn read_u16() {
 fn read_i16() {
     let value: i16 = -20000;
     let ptr = &value as *const i16 as *const u8;
+    // SAFETY: `ptr` points to the live `i16` stack local `value`, matching the
+    // `I16` kind's element type, so `read_ptr` reads exactly one in-bounds, correctly-typed value.
     let result = unsafe { IntegerKind::I16.read_ptr(ptr) };
     assert_eq!(result, -20000.0);
 }
@@ -37,6 +51,8 @@ fn read_i16() {
 fn read_u32() {
     let value: u32 = 3_000_000_000;
     let ptr = &value as *const u32 as *const u8;
+    // SAFETY: `ptr` points to the live `u32` stack local `value`, matching the
+    // `U32` kind's element type, so `read_ptr` reads exactly one in-bounds, correctly-typed value.
     let result = unsafe { IntegerKind::U32.read_ptr(ptr) };
     assert_eq!(result, 3_000_000_000.0);
 }
@@ -45,6 +61,8 @@ fn read_u32() {
 fn read_i32() {
     let value: i32 = -1_000_000_000;
     let ptr = &value as *const i32 as *const u8;
+    // SAFETY: `ptr` points to the live `i32` stack local `value`, matching the
+    // `I32` kind's element type, so `read_ptr` reads exactly one in-bounds, correctly-typed value.
     let result = unsafe { IntegerKind::I32.read_ptr(ptr) };
     assert_eq!(result, -1_000_000_000.0);
 }
@@ -53,6 +71,8 @@ fn read_i32() {
 fn read_u64() {
     let value: u64 = 9_000_000_000;
     let ptr = &value as *const u64 as *const u8;
+    // SAFETY: `ptr` points to the live `u64` stack local `value`, matching the
+    // `U64` kind's element type, so `read_ptr` reads exactly one in-bounds, correctly-typed value.
     let result = unsafe { IntegerKind::U64.read_ptr(ptr) };
     assert_eq!(result, 9_000_000_000.0);
 }
@@ -61,6 +81,8 @@ fn read_u64() {
 fn read_i64() {
     let value: i64 = -5_000_000_000;
     let ptr = &value as *const i64 as *const u8;
+    // SAFETY: `ptr` points to the live `i64` stack local `value`, matching the
+    // `I64` kind's element type, so `read_ptr` reads exactly one in-bounds, correctly-typed value.
     let result = unsafe { IntegerKind::I64.read_ptr(ptr) };
     assert_eq!(result, -5_000_000_000.0);
 }
@@ -69,6 +91,8 @@ fn read_i64() {
 fn write_u8() {
     let mut value: u8 = 0;
     let ptr = &mut value as *mut u8;
+    // SAFETY: `ptr` points to the live, writable `u8` stack local `value`, matching the
+    // `U8` kind's element type, so `write_ptr` stores exactly one in-bounds, correctly-typed value.
     unsafe { IntegerKind::U8.write_ptr(ptr, 123.0) };
     assert_eq!(value, 123);
 }
@@ -77,6 +101,8 @@ fn write_u8() {
 fn write_i8() {
     let mut value: i8 = 0;
     let ptr = &mut value as *mut i8 as *mut u8;
+    // SAFETY: `ptr` points to the live, writable `i8` stack local `value`, matching the
+    // `I8` kind's element type, so `write_ptr` stores exactly one in-bounds, correctly-typed value.
     unsafe { IntegerKind::I8.write_ptr(ptr, -42.0) };
     assert_eq!(value, -42);
 }
@@ -85,6 +111,8 @@ fn write_i8() {
 fn write_u16() {
     let mut value: u16 = 0;
     let ptr = &mut value as *mut u16 as *mut u8;
+    // SAFETY: `ptr` points to the live, writable `u16` stack local `value`, matching the
+    // `U16` kind's element type, so `write_ptr` stores exactly one in-bounds, correctly-typed value.
     unsafe { IntegerKind::U16.write_ptr(ptr, 12345.0) };
     assert_eq!(value, 12345);
 }
@@ -93,6 +121,8 @@ fn write_u16() {
 fn write_i16() {
     let mut value: i16 = 0;
     let ptr = &mut value as *mut i16 as *mut u8;
+    // SAFETY: `ptr` points to the live, writable `i16` stack local `value`, matching the
+    // `I16` kind's element type, so `write_ptr` stores exactly one in-bounds, correctly-typed value.
     unsafe { IntegerKind::I16.write_ptr(ptr, -12345.0) };
     assert_eq!(value, -12345);
 }
@@ -101,6 +131,8 @@ fn write_i16() {
 fn write_u32() {
     let mut value: u32 = 0;
     let ptr = &mut value as *mut u32 as *mut u8;
+    // SAFETY: `ptr` points to the live, writable `u32` stack local `value`, matching the
+    // `U32` kind's element type, so `write_ptr` stores exactly one in-bounds, correctly-typed value.
     unsafe { IntegerKind::U32.write_ptr(ptr, 1_234_567_890.0) };
     assert_eq!(value, 1_234_567_890);
 }
@@ -109,6 +141,8 @@ fn write_u32() {
 fn write_i32() {
     let mut value: i32 = 0;
     let ptr = &mut value as *mut i32 as *mut u8;
+    // SAFETY: `ptr` points to the live, writable `i32` stack local `value`, matching the
+    // `I32` kind's element type, so `write_ptr` stores exactly one in-bounds, correctly-typed value.
     unsafe { IntegerKind::I32.write_ptr(ptr, -1_234_567_890.0) };
     assert_eq!(value, -1_234_567_890);
 }
@@ -117,6 +151,8 @@ fn write_i32() {
 fn write_u64() {
     let mut value: u64 = 0;
     let ptr = &mut value as *mut u64 as *mut u8;
+    // SAFETY: `ptr` points to the live, writable `u64` stack local `value`, matching the
+    // `U64` kind's element type, so `write_ptr` stores exactly one in-bounds, correctly-typed value.
     unsafe { IntegerKind::U64.write_ptr(ptr, 9_876_543_210.0) };
     assert_eq!(value, 9_876_543_210);
 }
@@ -125,6 +161,8 @@ fn write_u64() {
 fn write_i64() {
     let mut value: i64 = 0;
     let ptr = &mut value as *mut i64 as *mut u8;
+    // SAFETY: `ptr` points to the live, writable `i64` stack local `value`, matching the
+    // `I64` kind's element type, so `write_ptr` stores exactly one in-bounds, correctly-typed value.
     unsafe { IntegerKind::I64.write_ptr(ptr, -9_876_543_210.0) };
     assert_eq!(value, -9_876_543_210);
 }

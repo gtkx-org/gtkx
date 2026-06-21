@@ -1,4 +1,4 @@
-import { getDefaultValue } from "./animatable-properties.js";
+import { propertyDefaults } from "./animatable-properties.js";
 import type { AnimatableProperties } from "./types.js";
 
 /**
@@ -6,7 +6,7 @@ import type { AnimatableProperties } from "./types.js";
  *
  * Each property present in either keyframe is interpolated independently;
  * missing properties fall back to their neutral resting value via
- * {@link getDefaultValue}.
+ * {@link propertyDefaults}.
  *
  * @param from - The starting keyframe.
  * @param to - The ending keyframe.
@@ -22,8 +22,8 @@ export const interpolate = (
     const allKeys = new Set([...Object.keys(from), ...Object.keys(to)]) as Set<keyof AnimatableProperties>;
 
     for (const key of allKeys) {
-        const fromVal = from[key] ?? getDefaultValue(key);
-        const toVal = to[key] ?? getDefaultValue(key);
+        const fromVal = from[key] ?? propertyDefaults[key];
+        const toVal = to[key] ?? propertyDefaults[key];
         result[key] = fromVal + (toVal - fromVal) * progress;
     }
 

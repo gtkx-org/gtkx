@@ -59,6 +59,9 @@ impl ModuleRequest for CallRequest {
             ffi_value.append_libffi_args(&mut ffi_args);
         }
 
+        // SAFETY: runs on the gtkx-glib thread; `state.library` returns a loaded library and
+        // `get` resolves the named symbol within it. The code pointer is only invoked through the
+        // `cif` built from `result_type`/`arg_types` below, which describes the symbol's real ABI.
         let symbol_ptr = unsafe {
             GlibThreadState::with::<_, anyhow::Result<libffi::CodePtr>>(|state| {
                 let library = state.library(&self.library_name)?;
@@ -113,6 +116,9 @@ impl CallRequest {
         if let ffi::FfiValue::Ptr(ptr) = result
             && !ptr.is_null()
         {
+            // SAFETY: the result is a transfer-full sized/fixed array whose backing buffer the
+            // callee allocated with the GLib allocator; after decoding it above, freeing `*ptr`
+            // with `g_free` on the gtkx-glib thread releases that buffer exactly once.
             unsafe { glib::ffi::g_free(*ptr) };
         }
     }

@@ -64,9 +64,31 @@ const formatQueryDescription = (descriptor: QueryDescriptor): string => {
     }
 };
 
+let expensiveErrorDiagnosticsDisabled = false;
+
+/**
+ * Runs `callback` with expensive error diagnostics (full widget-tree serialization in query
+ * failures) disabled, restoring the previous setting afterward.
+ *
+ * @typeParam T - The return type of `callback`.
+ * @param callback - The work to run with diagnostics suppressed.
+ * @returns The value returned by `callback`.
+ */
+export const runWithExpensiveErrorDiagnosticsDisabled = <T>(callback: () => T): T => {
+    const previous = expensiveErrorDiagnosticsDisabled;
+    expensiveErrorDiagnosticsDisabled = true;
+    try {
+        return callback();
+    } finally {
+        expensiveErrorDiagnosticsDisabled = previous;
+    }
+};
+
 const buildElementError = (container: Container, headLines: string[]): Error => {
     const config = getConfig();
-    const lines = [...headLines, "", prettyWidget(container, { highlight: false })];
+    const lines = expensiveErrorDiagnosticsDisabled
+        ? headLines
+        : [...headLines, "", prettyWidget(container, { highlight: false })];
     return config.getElementError(lines.join("\n"), container);
 };
 
@@ -74,16 +96,33 @@ export const notFoundError = (container: Container, descriptor: QueryDescriptor)
     const description = formatQueryDescription(descriptor);
     const headLines = [`Unable to find an element with ${description}`];
 
-    if (getConfig().showSuggestions && descriptor.queryType === "role") {
+    if (!expensiveErrorDiagnosticsDisabled && getConfig().showSuggestions && descriptor.queryType === "role") {
         headLines.push("", "Here are the accessible roles:", "", prettyRoles(container));
     }
 
     return buildElementError(container, headLines);
 };
 
-export const multipleFoundError = (container: Container, descriptor: QueryDescriptor, count: number): Error => {
+const allByVariantHint = (descriptor: QueryDescriptor): string => {
+    const variant = descriptor.queryType === "role" ? "getAllByRole" : "getAllBy*";
+    return (
+        "(If this is intentional, use the *AllBy* variant of the query, " +
+        `e.g. queryAllBy*/getAllBy*/findAllBy*, such as ${variant}.)`
+    );
+};
+
+export const multipleFoundError = (container: Container, descriptor: QueryDescriptor, matches: Gtk.Widget[]): Error => {
     const description = formatQueryDescription(descriptor);
-    return buildElementError(container, [`Found ${count} elements with ${description}, but expected only one`]);
+    const headLines = [
+        `Found ${matches.length} elements with ${description}, but expected only one`,
+        "",
+        allByVariantHint(descriptor),
+    ];
+    if (!expensiveErrorDiagnosticsDisabled) {
+        const renderedMatches = matches.map((widget) => prettyWidget(widget, { highlight: false }));
+        headLines.push("", "Here are the matching elements:", "", ...renderedMatches);
+    }
+    return buildElementError(container, headLines);
 };
 
 export const suggestionError = (suggestion: string, container: Container): Error => {
@@ -94,8 +133,6 @@ export const suggestionError = (suggestion: string, container: Container): Error
 
 export const timeoutError = (timeout: number, lastError: Error | null): Error => {
     const baseMessage = `Timed out after ${timeout}ms`;
-    if (lastError) {
-        return new Error(`${baseMessage}.\n\n${lastError.message}`);
-    }
-    return new Error(baseMessage);
+    const message = lastError ? `${baseMessage}.\n\n${lastError.message}` : baseMessage;
+    return getConfig().getElementError(message);
 };

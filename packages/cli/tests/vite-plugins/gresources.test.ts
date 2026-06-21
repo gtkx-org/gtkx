@@ -34,13 +34,6 @@ const hasGlibCompileResources = (): boolean => {
 
 let tmpDir: string;
 
-const writeAppConfig = (root: string, applicationId: string): void => {
-    writeFileSync(
-        join(root, "gtkx.config.ts"),
-        `export default { applicationId: ${JSON.stringify(applicationId)} };\n`,
-    );
-};
-
 const dataAssetPath = (...segments: string[]): string => join(tmpDir, "data", ...segments);
 
 const writeDataAsset = (relPath: string, bytes: Buffer): string => {
@@ -58,7 +51,12 @@ const initPlugin = async (
     root: string,
     applicationId?: string,
 ): Promise<void> => {
-    if (applicationId !== undefined) writeAppConfig(root, applicationId);
+    writeFileSync(
+        join(root, "gtkx.config.ts"),
+        applicationId === undefined
+            ? "export default {};\n"
+            : `export default { applicationId: ${JSON.stringify(applicationId)} };\n`,
+    );
     await (plugin.config as ConfigHook).call(plugin, { root });
     (plugin.configResolved as ConfigResolvedHook).call(plugin, { command, root });
 };

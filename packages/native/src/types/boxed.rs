@@ -68,6 +68,8 @@ impl BoxedType {
     fn lookup_free_fn(lib_name: &str, free_fn: &str) -> anyhow::Result<BoxedFreeFn> {
         GlibThreadState::with(|state| -> anyhow::Result<_> {
             let library = state.library(lib_name)?;
+            // SAFETY: `library` is a loaded library; `get` resolves the named free symbol whose C
+            // signature matches the declared `BoxedFreeFn`, and the deref copies out the pointer.
             let sym = unsafe {
                 library
                     .get::<BoxedFreeFn>(free_fn.as_bytes())
@@ -100,6 +102,8 @@ impl BoxedType {
 
         let symbol = GlibThreadState::with(|state| -> anyhow::Result<_> {
             let library = state.library(lib_name)?;
+            // SAFETY: `library` is a loaded library; `get` resolves the named `*_get_type` symbol
+            // whose C signature matches the declared zero-arg GType-returning fn pointer.
             let sym = unsafe {
                 library
                     .get::<unsafe extern "C" fn() -> glib::ffi::GType>(get_type_fn.as_bytes())
@@ -108,7 +112,10 @@ impl BoxedType {
             Ok(*sym)
         })?;
 
+        // SAFETY: `symbol` is the resolved zero-arg `*_get_type` function; calling it on the
+        // gtkx-glib thread returns the registered GType, registering it idempotently if needed.
         let gtype_raw = unsafe { symbol() };
+        // SAFETY: `gtype_raw` is a valid `GType` returned by a `*_get_type` function.
         let gtype = unsafe { glib::Type::from_glib(gtype_raw) };
         Ok(Some(gtype).filter(|t| t.is_valid()))
     }
@@ -117,21 +124,8 @@ impl BoxedType {
 pub type BoxedFreeFn = unsafe extern "C" fn(*mut c_void);
 
 impl FfiEncoder for BoxedType {
-    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::FfiValue> {
-        let ptr = value.object_ptr("Boxed object")?;
-
-        if self.ownership.is_full()
-            && !ptr.is_null()
-            && let Some(gtype) = self.gtype()
-        {
-            let copied = unsafe { self.ref_for_transfer(ptr)? };
-            return Ok(full_transfer_storage(
-                copied,
-                ffi::PendingRelease::BoxedFree(gtype),
-            ));
-        }
-
-        Ok(ffi::FfiValue::Ptr(ptr))
+    fn object_ptr_context(&self) -> &'static str {
+        "Boxed object"
     }
 
     fn transfer_release(&self) -> Option<ffi::PendingRelease> {
@@ -141,11 +135,18 @@ impl FfiEncoder for BoxedType {
         self.gtype().map(ffi::PendingRelease::BoxedFree)
     }
 
+    /// # Safety
+    ///
+    /// `ptr` must be either null or a pointer to a live boxed value of `self.gtype()` owned by
+    /// the gtkx-glib thread; on a full transfer the call produces a fresh `g_boxed_copy` that
+    /// the caller owns and must free with `g_boxed_free` for the same gtype.
     unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
         if self.ownership.is_full()
             && !ptr.is_null()
             && let Some(gtype) = self.gtype()
         {
+            // SAFETY: `ptr` is a non-null, live boxed value of `gtype`; `boxed_copy` calls
+            // `g_boxed_copy(gtype, ptr)`, returning an independently owned copy.
             let copied = unsafe { Boxed::boxed_copy(gtype, ptr) };
             return Ok(copied);
         }
@@ -189,8 +190,11 @@ impl FfiDecoder for BoxedType {
 impl RawPtrCodec for BoxedType {
     unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
-            self.gtype()
-                .map_or(ptr, |gtype| unsafe { Boxed::boxed_copy(gtype, ptr) })
+            self.gtype().map_or(ptr, |gtype| {
+                // SAFETY: `ptr` is a non-null live boxed value of `gtype` (the helper skips null);
+                // `boxed_copy` produces an independently owned `g_boxed_copy` for the full return.
+                unsafe { Boxed::boxed_copy(gtype, ptr) }
+            })
         });
     }
 
@@ -202,6 +206,10 @@ impl RawPtrCodec for BoxedType {
         let Some(gtype) = self.gtype() else {
             return write_object_ptr(ptr, value, "Boxed field write");
         };
+        // SAFETY: `ptr` is a boxed field slot per `write_value_to_raw_ptr`'s contract; the closures
+        // keep the slot balanced — `boxed_copy` installs a fresh owned copy of `gtype` for the
+        // non-null source value, and `g_boxed_free` frees the previous one — so `swap_owned_slot`'s
+        // invariants and ownership accounting hold.
         unsafe {
             swap_owned_slot(
                 ptr,
@@ -293,13 +301,20 @@ impl RawPtrCodec for StructType {
         if let Some(size) = self.size {
             let src_ptr = value.object_ptr("Struct field write")?;
             if src_ptr.is_null() {
+                // SAFETY: `ptr` is a pointer-sized writable field slot per the contract; a null
+                // source clears the slot.
                 unsafe { (ptr as *mut *mut c_void).write_unaligned(std::ptr::null_mut()) };
                 return Ok(());
             }
+            // SAFETY: `ptr` is a pointer-sized readable field slot per the contract; this loads the
+            // destination struct pointer it currently holds.
             let dst_ptr = unsafe { (ptr as *const *mut c_void).read_unaligned() };
             if dst_ptr.is_null() {
                 bail!("Struct field write into null pointer slot")
             }
+            // SAFETY: `src_ptr` is the non-null source struct and `dst_ptr` the non-null
+            // destination, both at least `size` bytes (the descriptor's struct size) and
+            // non-overlapping field storage; this copies the struct body by value into the slot.
             unsafe {
                 std::ptr::copy_nonoverlapping(src_ptr as *const u8, dst_ptr as *mut u8, size);
             }

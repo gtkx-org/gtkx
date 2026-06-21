@@ -109,17 +109,21 @@ describe("installGracefulShutdown — async + force-kill behaviour", () => {
         handle.uninstall();
     });
 
-    it("invokes onForce immediately on a second SIGINT", async () => {
+    it.each([
+        { signal: "SIGINT", exitCode: 130 },
+        { signal: "SIGTERM", exitCode: 143 },
+        { signal: "SIGHUP", exitCode: 143 },
+    ] as const)("invokes onForce immediately on a second $signal", async ({ signal, exitCode }) => {
         const onSignal = vi.fn().mockReturnValue(new Promise<void>(() => {}));
         const onForce = vi.fn();
         const handle = installGracefulShutdown({ onSignal, onForce, forceKillAfterMs: 0 });
 
-        process.emit("SIGINT", "SIGINT");
-        process.emit("SIGINT", "SIGINT");
+        process.emit(signal, signal);
+        process.emit(signal, signal);
         await flush();
 
         expect(onForce).toHaveBeenCalledOnce();
-        expect(fixture.exitSpy).toHaveBeenCalledWith(130);
+        expect(fixture.exitSpy).toHaveBeenCalledWith(exitCode);
         handle.uninstall();
     });
 });

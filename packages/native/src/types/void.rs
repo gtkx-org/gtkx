@@ -20,6 +20,9 @@ impl FfiEncoder for VoidType {
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::FfiValue> {
+        // SAFETY: `cif` was built to describe the callee at `ptr` with argument types matching
+        // `args`, and a void return is requested as `()`; invoking it on the gtkx-glib thread
+        // performs the C call under that agreed signature.
         unsafe { cif.call::<()>(ptr, args) };
         Ok(ffi::FfiValue::Void)
     }

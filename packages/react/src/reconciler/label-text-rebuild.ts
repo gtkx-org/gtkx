@@ -1,9 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { scheduleFlush } from "./commit-flush.js";
-import { closestInstance, type Node, stateOf } from "./state.js";
+import { scheduleOwnerRebuild } from "./owner-rebuild.js";
+import { type Node, stateOf } from "./state.js";
 import { isLabelTextWrapper } from "./text-wrapper.js";
-
-const rebuilds = new WeakMap<Node, () => void>();
 
 const rebuildLabelText = (owner: Node): void => {
     if (!(owner instanceof Gtk.Label)) return;
@@ -22,13 +20,15 @@ const rebuildLabelText = (owner: Node): void => {
     }
 };
 
+/**
+ * Schedules a label-text rebuild for the nearest enclosing `Gtk.Label` of `node`.
+ *
+ * @param node - The node whose owning label should have its text recomputed.
+ */
 export const scheduleLabelTextRebuild = (node: Node): void => {
-    const owner = closestInstance(node, (candidate) => candidate instanceof Gtk.Label);
-    if (!owner) return;
-    let rebuild = rebuilds.get(owner);
-    if (!rebuild) {
-        rebuild = () => rebuildLabelText(owner);
-        rebuilds.set(owner, rebuild);
-    }
-    scheduleFlush(rebuild);
+    scheduleOwnerRebuild(
+        node,
+        (candidate) => candidate instanceof Gtk.Label,
+        (owner) => () => rebuildLabelText(owner),
+    );
 };

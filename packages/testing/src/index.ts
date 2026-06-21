@@ -1,7 +1,8 @@
 import "./setup-runtime.js";
 
 export { act } from "./act.js";
-export type { Config, ConfigFn } from "./config.js";
+export { addToCleanupQueue, type CleanupFunction, runCleanup } from "./cleanup-registry.js";
+export type { AsyncWrapper, Config, ConfigFn, EventWrapper } from "./config.js";
 export { configure, getConfig } from "./config.js";
 export { fireEvent } from "./fire-event.js";
 export type { PrettyWidgetOptions } from "./pretty-widget.js";

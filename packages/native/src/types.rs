@@ -34,6 +34,8 @@ pub(crate) fn parse_callback_arg_and_return_types(
             format!("'argTypes' property is required for {kind} types"),
         ));
     }
+    // SAFETY: `arg_types_prop` was verified to be an array above, and its raw napi value is valid
+    // for the current `env`, so reconstructing an `Array` from the pair is sound.
     let arg_types_arr: Array = unsafe { Array::from_napi_value(env.raw(), arg_types_prop.raw())? };
     let arg_types = crate::value::map_js_array(env, &arg_types_arr, Type::from_js_value)?;
 
@@ -75,10 +77,14 @@ pub use bigint::BigIntKind;
 pub use blob::BlobType;
 pub use boolean::BooleanType;
 pub use boxed::{BoxedFreeFn, BoxedType, StructType};
-pub use callback::{CallbackScope, CallbackType};
+pub use callback::CallbackType;
+#[cfg(feature = "test-support")]
+pub use callback::CallbackScope;
 pub use fundamental::FundamentalType;
 pub use gobject::GObjectType;
-pub use hashtable::{HashTableEntryEncoder, HashTableType};
+pub use hashtable::HashTableType;
+#[cfg(feature = "test-support")]
+pub use hashtable::HashTableEntryEncoder;
 pub use numeric::{FloatKind, IntegerKind, TaggedKind, TaggedType};
 pub use ref_type::RefType;
 pub use string::{StringType, str_to_glib_full};
@@ -153,7 +159,34 @@ impl std::str::FromStr for Ownership {
 
 #[enum_dispatch]
 pub trait FfiEncoder {
-    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::FfiValue>;
+    /// Encodes the JS-side value into an [`ffi::FfiValue`] ready to be passed to a C call.
+    ///
+    /// The default implementation models the one-method-per-ownership-mode contract that
+    /// glib uses for `to_glib_none`/`to_glib_full`: it reads the object pointer, acquires a
+    /// transfer reference via [`FfiEncoder::ref_for_transfer`], and, when the type owns the
+    /// transfer ([`FfiEncoder::transfer_release`] returns `Some`) and the acquired pointer is
+    /// non-null, wraps it in storage carrying the matching pending release so the callee's
+    /// transfer-out is balanced by exactly one free. Borrowed transfers (no release) yield a
+    /// bare pointer that the caller does not own.
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::FfiValue> {
+        let ptr = value.object_ptr(self.object_ptr_context())?;
+        // SAFETY: `ptr` originates from `value.object_ptr`, which only yields a valid object
+        // pointer (or null) for the live wrapper; `ref_for_transfer` is invoked on the
+        // gtkx-glib thread that owns the object and tolerates null.
+        let transferred = unsafe { self.ref_for_transfer(ptr)? };
+        match self.transfer_release() {
+            Some(release) if !transferred.is_null() => {
+                Ok(raw_ptr::full_transfer_storage(transferred, release))
+            }
+            _ => Ok(ffi::FfiValue::Ptr(transferred)),
+        }
+    }
+
+    /// Context label describing this encoder's pointer payload, used in error messages when
+    /// [`value::Value::object_ptr`] cannot extract a pointer.
+    fn object_ptr_context(&self) -> &'static str {
+        "object"
+    }
 
     fn transfer_release(&self) -> Option<ffi::PendingRelease> {
         None
@@ -173,11 +206,22 @@ pub trait FfiEncoder {
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::FfiValue> {
+        // SAFETY: `cif` was built to describe the pointer-returning C function at `ptr` with arg
+        // types matching `args`, so invoking it with the `*mut c_void` return shape is sound; this
+        // runs on the gtkx-glib thread that performs all FFI calls.
         Ok(ffi::FfiValue::Ptr(unsafe {
             cif.call::<*mut c_void>(ptr, args)
         }))
     }
 
+    /// Acquires a transfer reference on `ptr` for a full-ownership argument, returning a pointer
+    /// the callee will own. The default borrows: it returns `ptr` unchanged.
+    ///
+    /// # Safety
+    ///
+    /// `ptr` must be null or a pointer to a live value of this encoder's type, owned by the
+    /// gtkx-glib thread. An overriding implementation may take a new reference/copy that the
+    /// caller becomes responsible for releasing.
     unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
         Ok(ptr)
     }
@@ -192,10 +236,22 @@ pub enum ReadSource<'a> {
 
 #[enum_dispatch]
 pub trait FfiDecoder {
+    /// Decodes a value from the requested [`ReadSource`].
+    ///
+    /// # Safety
+    ///
+    /// For [`ReadSource::Value`]/[`ReadSource::Slot`] the contained pointer must satisfy the
+    /// preconditions of [`FfiDecoder::read_value`]/[`FfiDecoder::read_pointer_slot`] respectively
+    /// (a live value pointer, or a readable pointer-sized slot). The call must run on the
+    /// gtkx-glib thread.
     unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
         match src {
             ReadSource::Call(ffi_value) => self.read_call(ffi_value),
+            // SAFETY: the caller's `read` contract guarantees `ptr` is a live value pointer for
+            // this decoder's type when the source is `Value`.
             ReadSource::Value(ptr, context) => unsafe { self.read_value(ptr, context) },
+            // SAFETY: the caller's `read` contract guarantees `ptr` is a readable pointer-sized
+            // slot when the source is `Slot`.
             ReadSource::Slot(ptr, context) => unsafe { self.read_pointer_slot(ptr, context) },
         }
     }
@@ -204,11 +260,19 @@ pub trait FfiDecoder {
         bail!("This type cannot be decoded from FfiValue")
     }
 
+    /// Reads a value directly from a pointer to a live instance of this decoder's type.
+    ///
+    /// # Safety
+    ///
+    /// `_ptr` must be null or point to a live value of this decoder's type owned by the
+    /// gtkx-glib thread; null yields [`value::Value::Null`] where supported.
     unsafe fn read_value(&self, _ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         bail!("This type cannot be read from pointer")
     }
 
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        // SAFETY: `ReadSource::Call` carries an `FfiValue`, not a raw pointer, so no pointer
+        // precondition applies; `read` only dispatches to `read_call`.
         unsafe { self.read(ReadSource::Call(ffi_value)) }
     }
 
@@ -221,12 +285,22 @@ pub trait FfiDecoder {
         self.decode(ffi_value)
     }
 
+    /// Reads a value through a pointer-sized slot that stores a pointer to the instance.
+    ///
+    /// # Safety
+    ///
+    /// `ptr` must point to a readable, pointer-sized slot whose stored pointer is null or a live
+    /// value of this decoder's type owned by the gtkx-glib thread.
     unsafe fn read_pointer_slot(
         &self,
         ptr: *const c_void,
         context: &str,
     ) -> anyhow::Result<value::Value> {
+        // SAFETY: `ptr` is a readable pointer-sized slot per the contract; this loads the stored
+        // inner pointer.
         let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
+        // SAFETY: `inner_ptr` is the slot's stored value (null or a live value of this type), the
+        // precondition `read`/`read_value` require for a `Value` source.
         unsafe { self.read(ReadSource::Value(inner_ptr, context)) }
     }
 
@@ -244,15 +318,31 @@ pub trait FfiDecoder {
 
 #[enum_dispatch]
 pub trait RawPtrCodec {
+    /// Writes a vfunc/callback return value into the C return slot `ret`. The default writes a
+    /// null pointer.
+    ///
+    /// # Safety
+    ///
+    /// `ret` must point to a writable, pointer-sized return slot supplied by the FFI layer, and
+    /// the call must run on the gtkx-glib thread.
     unsafe fn write_return_to_raw_ptr(
         &self,
         ret: *mut c_void,
         value: &std::result::Result<value::Value, ()>,
     ) {
         let _ = value;
+        // SAFETY: `ret` is a writable, pointer-sized return slot per the contract; the default
+        // stores a null pointer for types that have no meaningful raw return.
         unsafe { *(ret as *mut *mut c_void) = std::ptr::null_mut() };
     }
 
+    /// Writes `value` into a C field/out slot at `ptr`. The default rejects the operation.
+    ///
+    /// # Safety
+    ///
+    /// `ptr` must point to a writable slot of the appropriate size/layout for this type, owned by
+    /// the gtkx-glib thread; overriding implementations may take or release ownership to keep the
+    /// slot's reference count balanced.
     unsafe fn write_value_to_raw_ptr(
         &self,
         ptr: *mut c_void,
@@ -282,7 +372,9 @@ pub trait RawPtrCodec {
     }
 }
 
+#[cfg(feature = "test-support")]
 pub trait FfiCodec: FfiEncoder + FfiDecoder + RawPtrCodec {}
+#[cfg(feature = "test-support")]
 impl<T: FfiEncoder + FfiDecoder + RawPtrCodec> FfiCodec for T {}
 
 pub(crate) trait FromDescriptor: Sized {

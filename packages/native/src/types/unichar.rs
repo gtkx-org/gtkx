@@ -49,6 +49,8 @@ impl FfiDecoder for UnicharType {
                 Ok(value::Value::String(ch.to_string()))
             }
             ReadSource::Slot(ptr, _context) => {
+                // SAFETY: a `Slot` source carries a pointer to a `u32`-sized, readable, properly
+                // aligned location holding the gunichar codepoint; reading it yields that codepoint.
                 let val = unsafe { *(ptr as *const u32) };
                 let ch = char::from_u32(val).unwrap_or('\u{FFFD}');
                 Ok(value::Value::String(ch.to_string()))
@@ -64,6 +66,8 @@ impl RawPtrCodec for UnicharType {
             Ok(value::Value::Number(n)) => *n as u32,
             _ => 0,
         };
+        // SAFETY: `ret` is a marshalling-provided return slot sized for a gunichar's `u32` wire kind;
+        // `write_return_widened` writes the widened codepoint into it for that kind.
         unsafe { IntegerKind::U32.write_return_widened(ret, f64::from(val)) };
     }
 }

@@ -1,5 +1,15 @@
-import { alloc, call, type Type as FfiType, getType, type Handle, read, write } from "@gtkx/native";
-import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
+import {
+    alloc,
+    type BoxedType,
+    call,
+    type Type as FfiType,
+    type FundamentalType,
+    getType,
+    type Handle,
+    read,
+    write,
+} from "@gtkx/native";
+import { GVALUE_LAYOUT, GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
 import {
     arrayT,
     bigint64T,
@@ -45,7 +55,7 @@ import { getHandle, requireWrapperClassByGtype, tryGetHandle, wrapHandle } from 
 export const newGValue = (): Handle => alloc(GVALUE_SIZE, "GValue");
 
 export function valueGetType(value: Handle): GType {
-    return read(value, biguint64T, 0) as GType;
+    return read(value, biguint64T, GVALUE_LAYOUT.gTypeOffset) as GType;
 }
 
 const gValueInit = bind(LIB, "g_value_init", [GVALUE_T, biguint64T], voidT);
@@ -75,96 +85,88 @@ export const setGValuePointer = (value: Handle, pointer: Handle): void => {
     gValueSetPointer(value, pointer);
 };
 
-const gValueSetBoolean = bind(LIB, "g_value_set_boolean", [GVALUE_T, booleanT], voidT);
-const gValueGetBoolean = bind(LIB, "g_value_get_boolean", [GVALUE_T], booleanT);
-const gValueSetInt = bind(LIB, "g_value_set_int", [GVALUE_T, int32T], voidT);
-const gValueGetInt = bind(LIB, "g_value_get_int", [GVALUE_T], int32T);
-const gValueSetUint = bind(LIB, "g_value_set_uint", [GVALUE_T, uint32T], voidT);
-const gValueGetUint = bind(LIB, "g_value_get_uint", [GVALUE_T], uint32T);
-const gValueSetInt64 = bind(LIB, "g_value_set_int64", [GVALUE_T, bigint64T], voidT);
-const gValueGetInt64 = bind(LIB, "g_value_get_int64", [GVALUE_T], bigint64T);
-const gValueSetUint64 = bind(LIB, "g_value_set_uint64", [GVALUE_T, biguint64T], voidT);
-const gValueGetUint64 = bind(LIB, "g_value_get_uint64", [GVALUE_T], biguint64T);
-const gValueSetFloat = bind(LIB, "g_value_set_float", [GVALUE_T, float32T], voidT);
-const gValueGetFloat = bind(LIB, "g_value_get_float", [GVALUE_T], float32T);
-const gValueSetDouble = bind(LIB, "g_value_set_double", [GVALUE_T, float64T], voidT);
-const gValueGetDouble = bind(LIB, "g_value_get_double", [GVALUE_T], float64T);
-const gValueSetString = bind(LIB, "g_value_set_string", [GVALUE_T, stringT("borrowed")], voidT);
-const gValueGetString = bind(LIB, "g_value_get_string", [GVALUE_T], stringT("borrowed"));
-const gValueSetEnum = bind(LIB, "g_value_set_enum", [GVALUE_T, int32T], voidT);
-const gValueGetEnum = bind(LIB, "g_value_get_enum", [GVALUE_T], int32T);
-const gValueSetFlags = bind(LIB, "g_value_set_flags", [GVALUE_T, uint32T], voidT);
-const gValueGetFlags = bind(LIB, "g_value_get_flags", [GVALUE_T], uint32T);
-const gValueSetObject = bind(LIB, "g_value_set_object", [GVALUE_T, objectT("borrowed")], voidT);
-const gValueGetObject = bind(LIB, "g_value_get_object", [GVALUE_T], objectT("borrowed"));
+const scalarBind = <F extends FfiType>(symbol: string, ffiType: F) => ({
+    set: bind(LIB, `g_value_set_${symbol}`, [GVALUE_T, ffiType], voidT),
+    get: bind(LIB, `g_value_get_${symbol}`, [GVALUE_T], ffiType),
+});
+
+const booleanBind = scalarBind("boolean", booleanT);
+const intBind = scalarBind("int", int32T);
+const uintBind = scalarBind("uint", uint32T);
+const int64Bind = scalarBind("int64", bigint64T);
+const uint64Bind = scalarBind("uint64", biguint64T);
+const floatBind = scalarBind("float", float32T);
+const doubleBind = scalarBind("double", float64T);
+const stringBind = scalarBind("string", stringT("borrowed"));
+const enumBind = scalarBind("enum", int32T);
+const flagsBind = scalarBind("flags", uint32T);
+const objectBind = scalarBind("object", objectT("borrowed"));
 
 const PARAM_FUNDAMENTAL = fundamentalT(LIB, "g_param_spec_ref", "g_param_spec_unref", {
     ownership: "borrowed",
     typeName: "GParam",
 });
-const gValueSetParam = bind(LIB, "g_value_set_param", [GVALUE_T, PARAM_FUNDAMENTAL], voidT);
-const gValueGetParam = bind(LIB, "g_value_get_param", [GVALUE_T], PARAM_FUNDAMENTAL);
+const paramBind = scalarBind("param", PARAM_FUNDAMENTAL);
 
 const VARIANT_FUNDAMENTAL = fundamentalT(LIB, "g_variant_ref", "g_variant_unref", {
     ownership: "borrowed",
     typeName: "GVariant",
 });
-const gValueSetVariant = bind(LIB, "g_value_set_variant", [GVALUE_T, VARIANT_FUNDAMENTAL], voidT);
-const gValueGetVariant = bind(LIB, "g_value_get_variant", [GVALUE_T], VARIANT_FUNDAMENTAL);
+const variantBind = scalarBind("variant", VARIANT_FUNDAMENTAL);
 
 export const valueSetBoolean = (value: Handle, v: boolean): void => {
-    gValueSetBoolean(value, v);
+    booleanBind.set(value, v);
 };
-export const valueGetBoolean = (value: Handle): boolean => Boolean(gValueGetBoolean(value));
+export const valueGetBoolean = (value: Handle): boolean => Boolean(booleanBind.get(value));
 export const valueSetInt = (value: Handle, v: number): void => {
-    gValueSetInt(value, v);
+    intBind.set(value, v);
 };
-export const valueGetInt = (value: Handle): number => gValueGetInt(value);
+export const valueGetInt = (value: Handle): number => intBind.get(value);
 export const valueSetUint = (value: Handle, v: number): void => {
-    gValueSetUint(value, v);
+    uintBind.set(value, v);
 };
-export const valueGetUint = (value: Handle): number => gValueGetUint(value);
+export const valueGetUint = (value: Handle): number => uintBind.get(value);
 export const valueSetInt64 = (value: Handle, v: bigint | number): void => {
-    gValueSetInt64(value, v);
+    int64Bind.set(value, v);
 };
-export const valueGetInt64 = (value: Handle): bigint => gValueGetInt64(value);
+export const valueGetInt64 = (value: Handle): bigint => int64Bind.get(value);
 export const valueSetUint64 = (value: Handle, v: bigint | number): void => {
-    gValueSetUint64(value, v);
+    uint64Bind.set(value, v);
 };
-export const valueGetUint64 = (value: Handle): bigint => gValueGetUint64(value);
+export const valueGetUint64 = (value: Handle): bigint => uint64Bind.get(value);
 export const valueSetFloat = (value: Handle, v: number): void => {
-    gValueSetFloat(value, v);
+    floatBind.set(value, v);
 };
-export const valueGetFloat = (value: Handle): number => gValueGetFloat(value);
+export const valueGetFloat = (value: Handle): number => floatBind.get(value);
 export const valueSetDouble = (value: Handle, v: number): void => {
-    gValueSetDouble(value, v);
+    doubleBind.set(value, v);
 };
-export const valueGetDouble = (value: Handle): number => gValueGetDouble(value);
+export const valueGetDouble = (value: Handle): number => doubleBind.get(value);
 export const valueSetString = (value: Handle, v: string | null): void => {
-    gValueSetString(value, v);
+    stringBind.set(value, v);
 };
-export const valueGetString = (value: Handle): string | null => gValueGetString(value) ?? null;
+export const valueGetString = (value: Handle): string | null => stringBind.get(value) ?? null;
 export const valueSetEnum = (value: Handle, v: number): void => {
-    gValueSetEnum(value, v);
+    enumBind.set(value, v);
 };
-export const valueGetEnum = (value: Handle): number => gValueGetEnum(value);
+export const valueGetEnum = (value: Handle): number => enumBind.get(value);
 export const valueSetFlags = (value: Handle, v: number): void => {
-    gValueSetFlags(value, v);
+    flagsBind.set(value, v);
 };
-export const valueGetFlags = (value: Handle): number => gValueGetFlags(value);
+export const valueGetFlags = (value: Handle): number => flagsBind.get(value);
 export const valueSetObject = (value: Handle, v: object | null): void => {
-    gValueSetObject(value, tryGetHandle(v));
+    objectBind.set(value, tryGetHandle(v));
 };
-export const valueGetObject = (value: Handle): object | null => wrapHandle(gValueGetObject(value));
+export const valueGetObject = (value: Handle): object | null => wrapHandle(objectBind.get(value));
 export const valueSetParam = (value: Handle, v: object | null): void => {
-    gValueSetParam(value, tryGetHandle(v));
+    paramBind.set(value, tryGetHandle(v));
 };
-export const valueGetParam = (value: Handle): object | null => wrapHandle(gValueGetParam(value));
+export const valueGetParam = (value: Handle): object | null => wrapHandle(paramBind.get(value));
 export const valueSetVariant = (value: Handle, v: object | null): void => {
-    gValueSetVariant(value, tryGetHandle(v));
+    variantBind.set(value, tryGetHandle(v));
 };
 export const valueGetVariant = (value: Handle): object | null => {
-    const result = gValueGetVariant(value);
+    const result = variantBind.get(value);
     return result === null ? null : wrapHandle(result, requireWrapperClassByGtype(TYPE_VARIANT));
 };
 
@@ -249,24 +251,28 @@ export function getGvalueBoxed(value: object): object | null {
     return valueGetBoxed(getHandle(value));
 }
 
+const resolveBoxedInnerGtype = (ffiType: BoxedType): GType => {
+    if (ffiType.getTypeFn && ffiType.library) {
+        return call(ffiType.library, ffiType.getTypeFn, [], biguint64T) as GType;
+    }
+    const gtype = typeFromName(ffiType.innerType);
+    if (gtype === TYPE_INVALID) {
+        throw new Error(`Cannot resolve gtype for boxed type '${ffiType.innerType}'`);
+    }
+    return gtype;
+};
+
+const resolveFundamentalGtype = (ffiType: FundamentalType): GType => {
+    if (ffiType.typeName) {
+        const gtype = typeFromName(ffiType.typeName);
+        if (gtype !== TYPE_INVALID) return gtype;
+    }
+    throw new Error(`Cannot resolve gtype for fundamental type without a typeName`);
+};
+
 export function resolveBoxedGtype(ffiType: FfiType): GType {
-    if (ffiType.type === "boxed") {
-        if (ffiType.getTypeFn && ffiType.library) {
-            return call(ffiType.library, ffiType.getTypeFn, [], biguint64T) as GType;
-        }
-        const gtype = typeFromName(ffiType.innerType);
-        if (gtype === TYPE_INVALID) {
-            throw new Error(`Cannot resolve gtype for boxed type '${ffiType.innerType}'`);
-        }
-        return gtype;
-    }
-    if (ffiType.type === "fundamental") {
-        if (ffiType.typeName) {
-            const gtype = typeFromName(ffiType.typeName);
-            if (gtype !== TYPE_INVALID) return gtype;
-        }
-        throw new Error(`Cannot resolve gtype for fundamental type without a typeName`);
-    }
+    if (ffiType.type === "boxed") return resolveBoxedInnerGtype(ffiType);
+    if (ffiType.type === "fundamental") return resolveFundamentalGtype(ffiType);
     throw new Error(`resolveBoxedGtype: unsupported FFI type '${ffiType.type}'`);
 }
 
@@ -300,9 +306,9 @@ function gtypeFromFfiType(ffiType: FfiType): GType {
         case "flags":
             return call(ffiType.library, ffiType.getTypeFn, [], biguint64T) as GType;
         case "boxed":
-            return resolveBoxedGtype(ffiType);
+            return resolveBoxedInnerGtype(ffiType);
         case "fundamental":
-            return resolveBoxedGtype(ffiType);
+            return resolveFundamentalGtype(ffiType);
         case "array":
             if (ffiType.itemType.type === "string" && ffiType.kind === "array") return getStrvGtype();
             throw new Error(`Unsupported array type ${ffiType.kind} of ${ffiType.itemType.type}`);
@@ -322,58 +328,64 @@ function objectToGvalue(value: object | null): Handle {
 }
 
 const getPointerValue = (value: Handle): null => {
-    const ptr = read(value, uint64T, 8) as number;
+    const ptr = read(value, uint64T, GVALUE_LAYOUT.dataOffset) as number;
     if (ptr !== 0) {
         throw new Error("G_TYPE_POINTER non-null values cannot be marshalled to JS");
     }
     return null;
 };
 
+type PayloadHandler = {
+    set: (value: Handle, ffiType: FfiType, jsValue: unknown) => void;
+    get: (value: Handle) => unknown;
+};
+
+const setBoxedOrStrv = (value: Handle, ffiType: FfiType, jsValue: unknown): void => {
+    if (ffiType.type === "array") valueSetStrv(value, jsValue as string[]);
+    else valueSetBoxed(value, jsValue as object | null);
+};
+
+const unsupportedSet = (gtype: GType): never => {
+    throw new Error(`Unsupported GType for toGvalue: ${typeName(gtype) ?? String(gtype)}`);
+};
+
+const payloadHandlers = new Map<GType, PayloadHandler>([
+    [TYPE_BOOLEAN, { set: (value, _ffi, jsValue) => valueSetBoolean(value, jsValue as boolean), get: valueGetBoolean }],
+    [TYPE_INT, { set: (value, _ffi, jsValue) => valueSetInt(value, jsValue as number), get: valueGetInt }],
+    [TYPE_UINT, { set: (value, _ffi, jsValue) => valueSetUint(value, jsValue as number), get: valueGetUint }],
+    [
+        TYPE_INT64,
+        { set: (value, _ffi, jsValue) => valueSetInt64(value, jsValue as bigint | number), get: valueGetInt64 },
+    ],
+    [
+        TYPE_UINT64,
+        { set: (value, _ffi, jsValue) => valueSetUint64(value, jsValue as bigint | number), get: valueGetUint64 },
+    ],
+    [TYPE_FLOAT, { set: (value, _ffi, jsValue) => valueSetFloat(value, jsValue as number), get: valueGetFloat }],
+    [TYPE_DOUBLE, { set: (value, _ffi, jsValue) => valueSetDouble(value, jsValue as number), get: valueGetDouble }],
+    [
+        TYPE_STRING,
+        { set: (value, _ffi, jsValue) => valueSetString(value, jsValue as string | null), get: valueGetString },
+    ],
+    [TYPE_ENUM, { set: (value, _ffi, jsValue) => valueSetEnum(value, jsValue as number), get: valueGetEnum }],
+    [TYPE_FLAGS, { set: (value, _ffi, jsValue) => valueSetFlags(value, jsValue as number), get: valueGetFlags }],
+    [
+        TYPE_VARIANT,
+        { set: (value, _ffi, jsValue) => valueSetVariant(value, jsValue as object | null), get: valueGetVariant },
+    ],
+    [TYPE_PARAM, { set: (value, _ffi, jsValue) => valueSetParam(value, jsValue as object | null), get: valueGetParam }],
+    [TYPE_BOXED, { set: setBoxedOrStrv, get: valueGetBoxed }],
+    [
+        TYPE_OBJECT,
+        { set: (value, _ffi, jsValue) => valueSetObject(value, jsValue as object | null), get: valueGetObject },
+    ],
+    [TYPE_POINTER, { set: (value) => unsupportedSet(valueGetType(value)), get: getPointerValue }],
+]);
+
 function setGvaluePayload(value: Handle, gtype: GType, ffiType: FfiType, jsValue: unknown): void {
-    switch (typeFundamental(gtype)) {
-        case TYPE_BOOLEAN:
-            valueSetBoolean(value, jsValue as boolean);
-            break;
-        case TYPE_INT:
-            valueSetInt(value, jsValue as number);
-            break;
-        case TYPE_UINT:
-            valueSetUint(value, jsValue as number);
-            break;
-        case TYPE_INT64:
-            valueSetInt64(value, jsValue as bigint | number);
-            break;
-        case TYPE_UINT64:
-            valueSetUint64(value, jsValue as bigint | number);
-            break;
-        case TYPE_FLOAT:
-            valueSetFloat(value, jsValue as number);
-            break;
-        case TYPE_DOUBLE:
-            valueSetDouble(value, jsValue as number);
-            break;
-        case TYPE_STRING:
-            valueSetString(value, jsValue as string | null);
-            break;
-        case TYPE_ENUM:
-            valueSetEnum(value, jsValue as number);
-            break;
-        case TYPE_FLAGS:
-            valueSetFlags(value, jsValue as number);
-            break;
-        case TYPE_VARIANT:
-            valueSetVariant(value, jsValue as object | null);
-            break;
-        case TYPE_PARAM:
-            valueSetParam(value, jsValue as object | null);
-            break;
-        case TYPE_BOXED:
-            if (ffiType.type === "array") valueSetStrv(value, jsValue as string[]);
-            else valueSetBoxed(value, jsValue as object | null);
-            break;
-        default:
-            throw new Error(`Unsupported GType for toGvalue: ${typeName(gtype) ?? String(gtype)}`);
-    }
+    const handler = payloadHandlers.get(typeFundamental(gtype));
+    if (handler === undefined) unsupportedSet(gtype);
+    else handler.set(value, ffiType, jsValue);
 }
 
 export function toGvalue(ffiType: FfiType, jsValue: unknown): Handle {
@@ -387,38 +399,9 @@ export function toGvalue(ffiType: FfiType, jsValue: unknown): Handle {
 export function fromGvalue(value: Handle): unknown {
     const gtype = valueGetType(value);
     if (gtype === getStrvGtype()) return valueGetStrv(value);
-    switch (typeFundamental(gtype)) {
-        case TYPE_BOOLEAN:
-            return valueGetBoolean(value);
-        case TYPE_INT:
-            return valueGetInt(value);
-        case TYPE_UINT:
-            return valueGetUint(value);
-        case TYPE_INT64:
-            return valueGetInt64(value);
-        case TYPE_UINT64:
-            return valueGetUint64(value);
-        case TYPE_FLOAT:
-            return valueGetFloat(value);
-        case TYPE_DOUBLE:
-            return valueGetDouble(value);
-        case TYPE_STRING:
-            return valueGetString(value);
-        case TYPE_ENUM:
-            return valueGetEnum(value);
-        case TYPE_FLAGS:
-            return valueGetFlags(value);
-        case TYPE_OBJECT:
-            return valueGetObject(value);
-        case TYPE_VARIANT:
-            return valueGetVariant(value);
-        case TYPE_PARAM:
-            return valueGetParam(value);
-        case TYPE_POINTER:
-            return getPointerValue(value);
-        case TYPE_BOXED:
-            return valueGetBoxed(value);
-        default:
-            throw new Error(`Unsupported GType for fromGvalue: ${typeName(gtype) ?? String(gtype)}`);
+    const handler = payloadHandlers.get(typeFundamental(gtype));
+    if (handler === undefined) {
+        throw new Error(`Unsupported GType for fromGvalue: ${typeName(gtype) ?? String(gtype)}`);
     }
+    return handler.get(value);
 }

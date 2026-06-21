@@ -87,7 +87,7 @@ const referencePathsFor = (
 };
 
 const currentReferencePaths = (config: Record<string, unknown>): string[] => {
-    const references = config.references;
+    const references = config["references"];
     if (!Array.isArray(references)) return [];
     return references.map((reference: { path?: string }) => reference.path ?? "");
 };
@@ -126,9 +126,9 @@ const collectDrift = (packages: Map<string, WorkspacePackage>): ConfigDrift[] =>
 const applyReferences = ({ configPath, desired }: ConfigDrift): void => {
     const parsed = JSON.parse(readFileSync(configPath, "utf8")) as Record<string, unknown>;
     if (desired.length > 0) {
-        parsed.references = desired.map((path) => ({ path }));
+        parsed["references"] = desired.map((path) => ({ path }));
     } else {
-        delete parsed.references;
+        delete parsed["references"];
     }
     writeFileSync(configPath, `${JSON.stringify(parsed, null, 4)}\n`);
 };

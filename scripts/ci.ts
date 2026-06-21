@@ -54,7 +54,7 @@ const tasks: Record<string, () => void> = {
         });
     },
     bench() {
-        const profileFolder = process.env.CODSPEED_PROFILE_FOLDER ?? "/tmp/codspeed-profile";
+        const profileFolder = process.env["CODSPEED_PROFILE_FOLDER"] ?? "/tmp/codspeed-profile";
         mkdirSync(profileFolder, { recursive: true });
         run("codspeed", ["run", "-m", "simulation", "--", "node", selfPath, "bench:measured"], {
             env: { ...process.env, CODSPEED_PROFILE_FOLDER: profileFolder },
@@ -67,7 +67,7 @@ const tasks: Record<string, () => void> = {
             env: {
                 ...process.env,
                 ...HEADLESS_RENDER_ENV,
-                PATH: `/opt/node22/bin:${process.env.PATH ?? ""}`,
+                PATH: `/opt/node22/bin:${process.env["PATH"] ?? ""}`,
             },
         });
     },

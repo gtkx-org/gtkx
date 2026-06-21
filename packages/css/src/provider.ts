@@ -4,46 +4,51 @@ import { CssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION, StyleContext } from "
 
 /**
  * A {@link CssProvider} bound to the default GDK display. When no display exists yet at
- * creation time, the provider attaches automatically as soon as a display opens, and its
- * {@link DisplayProvider.display} is populated with the resolved display for correct teardown.
+ * creation time, the provider attaches automatically as soon as a display opens. The
+ * resolved display is held privately so `dispose` can remove the provider correctly.
  */
 export type DisplayProvider = {
     provider: CssProvider;
-    display: Display | null;
     dispose: () => void;
 };
 
-const attachProviderToDisplay = (provider: CssProvider, display: Display): void => {
-    StyleContext.addProviderForDisplay(display, provider, STYLE_PROVIDER_PRIORITY_APPLICATION);
+const attachProviderToDisplay = (provider: CssProvider, display: Display, priority: number): void => {
+    StyleContext.addProviderForDisplay(display, provider, priority);
 };
 
 /**
  * Creates a {@link CssProvider} and attaches it to the default GDK display.
  *
  * If a display already exists it is attached immediately. Otherwise a one-shot
- * `display-opened` handler attaches the provider as soon as the first display opens,
- * recording it on the returned object so teardown can remove the provider correctly.
+ * `display-opened` handler attaches the provider as soon as the first display opens.
+ * The resolved display is captured in closure state so teardown can remove the
+ * provider correctly.
+ *
+ * @param priority - The GTK style-provider priority the provider attaches at. Defaults
+ *   to {@link STYLE_PROVIDER_PRIORITY_APPLICATION}; pass a higher value so the provider's
+ *   rules deterministically override lower-priority providers regardless of attachment order.
+ * @returns The provider and a `dispose` callback that detaches it from the resolved display.
  */
-export const registerProviderForDefaultDisplay = (): DisplayProvider => {
+export const registerProviderForDefaultDisplay = (
+    priority: number = STYLE_PROVIDER_PRIORITY_APPLICATION,
+): DisplayProvider => {
     const provider = new CssProvider();
     const initialDisplay = DisplayManager.get().getDefaultDisplay();
-
-    const result: DisplayProvider = {
-        provider,
-        display: initialDisplay,
-        dispose: () => {
-            if (result.display) StyleContext.removeProviderForDisplay(result.display, provider);
-        },
-    };
+    let display = initialDisplay;
 
     if (initialDisplay) {
-        attachProviderToDisplay(provider, initialDisplay);
+        attachProviderToDisplay(provider, initialDisplay, priority);
     } else {
-        DisplayManager.get().once("display-opened", (display) => {
-            result.display = display;
-            attachProviderToDisplay(provider, display);
+        DisplayManager.get().once("display-opened", (openedDisplay) => {
+            display = openedDisplay;
+            attachProviderToDisplay(provider, openedDisplay, priority);
         });
     }
 
-    return result;
+    return {
+        provider,
+        dispose: () => {
+            if (display) StyleContext.removeProviderForDisplay(display, provider);
+        },
+    };
 };

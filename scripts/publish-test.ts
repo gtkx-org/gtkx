@@ -127,7 +127,7 @@ async function createUserToken(): Promise<string> {
     if (!response.ok) {
         throw new Error(`Failed to register Verdaccio user: HTTP ${response.status}`);
     }
-    const body: UserResponse = await response.json();
+    const body = (await response.json()) as UserResponse;
     if (!body.token) {
         throw new Error("Verdaccio did not return an authentication token");
     }

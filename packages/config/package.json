@@ -42,11 +42,10 @@
         "env.d.ts"
     ],
     "scripts": {
-        "build": "tsc -b",
-        "typecheck": "tsc -b --emitDeclarationOnly"
+        "build": "tsc -b"
     },
     "dependencies": {
         "c12": "^3.3.4",
-        "vite": "^8.0.16"
+        "vite": "catalog:"
     }
 }

@@ -50,6 +50,8 @@ impl RawVfunc {
                 "register_class: vfunc 'fn' must be a function",
             ));
         }
+        // SAFETY: `handler_prop` was verified to be a function above, and its raw napi value is
+        // valid for the current `env`, so reconstructing a `JsFunction` from the pair is sound.
         let handler: JsFunction =
             unsafe { JsFunction::from_raw_unchecked(env.raw(), handler_prop.raw()) };
 
@@ -96,6 +98,8 @@ impl RawInterface {
                 "register_class: interface gtype exceeds the 64-bit GType range",
             ));
         }
+        // SAFETY: `gtype_value` is a losslessly decoded u64 GType handle from JS; `from_glib`
+        // reinterprets it as a `glib::Type`, whose validity is checked immediately below.
         let gtype = unsafe { glib::Type::from_glib(gtype_value as glib::ffi::GType) };
         if !gtype.is_valid() {
             return Err(napi::Error::new(
@@ -141,6 +145,11 @@ impl PreparedVfunc {
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn install_all(vtable_base: *mut c_void, vfuncs: Vec<Self>) {
         for vfunc in vfuncs {
+            // SAFETY: `byte_offset` was validated against the class/interface size and pointer
+            // alignment in `validate_vfunc_offset`, so `vtable_base + byte_offset` is an in-bounds,
+            // pointer-aligned slot in this vtable. `slot.write` installs the trampoline code
+            // pointer into that slot; `mem::forget` keeps the backing `TrampolineState` alive for
+            // the lifetime of the registered type, which outlives any vfunc dispatch.
             unsafe {
                 let slot = vtable_base
                     .cast::<u8>()
@@ -157,6 +166,9 @@ impl PreparedInterface {
     #[cfg_attr(test, allow(dead_code))]
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn install(self, class_ptr: *mut c_void) {
+        // SAFETY: `class_ptr` is the live class struct returned by `g_type_class_ref` for the
+        // just-registered type, and `self.gtype` is a valid interface GType; `g_type_interface_peek`
+        // returns the interface vtable for that pairing or null if the type does not conform.
         let iface_vtable =
             unsafe { gobject_ffi::g_type_interface_peek(class_ptr, self.gtype.into_glib()) };
         if iface_vtable.is_null() {
@@ -172,10 +184,21 @@ impl PreparedInterface {
 
 #[cfg_attr(test, allow(dead_code))]
 #[cfg_attr(coverage_nightly, coverage(off))]
+/// `GObject` `class_init` callback that installs the prepared class vfuncs into the new vtable.
+///
+/// # Safety
+///
+/// Invoked by `GObject` during type registration. `class_data` is the pointer stored in
+/// `GTypeInfo::class_data` by `register_type` — either null or a `Box<Vec<PreparedVfunc>>` leaked
+/// via `Box::into_raw` — and `g_class` is the class struct being initialized. This must be called
+/// at most once per registered type so the boxed vfuncs are reclaimed exactly once.
 unsafe extern "C" fn class_init_trampoline(g_class: *mut c_void, class_data: *mut c_void) {
     if class_data.is_null() {
         return;
     }
+    // SAFETY: `class_data` is the non-null `Box<Vec<PreparedVfunc>>` raw pointer that
+    // `register_type` stored in `GTypeInfo::class_data`; reclaiming it here transfers ownership
+    // back so the vec is dropped after its vfuncs are installed.
     let vfuncs = unsafe { Box::from_raw(class_data.cast::<Vec<PreparedVfunc>>()) };
     PreparedVfunc::install_all(g_class, *vfuncs);
 }
@@ -199,7 +222,11 @@ impl RegisterClassRequest {
             anyhow::bail!("GType name '{}' is already registered", self.name);
         }
 
+        // SAFETY: `GTypeQuery` is a plain C struct of integers and a pointer, for which an
+        // all-zero bit pattern is a valid initial state that `g_type_query` then fills in.
         let mut query: gobject_ffi::GTypeQuery = unsafe { std::mem::zeroed() };
+        // SAFETY: `self.parent_gtype` was checked valid above; `g_type_query` writes the parent
+        // type's layout into the writable `query` struct.
         unsafe { gobject_ffi::g_type_query(self.parent_gtype.into_glib(), &mut query) };
         if query.type_ == 0 {
             anyhow::bail!("parent gtype could not be queried");
@@ -286,15 +313,23 @@ impl RegisterClassRequest {
             value_table: std::ptr::null(),
         };
 
+        // SAFETY: `parent_gtype` is valid, `name_ptr` points to the request's live NUL-terminated
+        // `GString`, and `info` is a fully initialized `GTypeInfo` whose `class_data` owns the
+        // boxed vfuncs that `class_init_trampoline` reclaims; the call runs on the gtkx-glib thread.
         let new_gtype = unsafe {
             gobject_ffi::g_type_register_static(parent_gtype.into_glib(), name_ptr, &info, 0)
         };
 
         if new_gtype == 0 {
+            // SAFETY: registration failed before `class_init_trampoline` could run, so the boxed
+            // vfuncs at `class_vfuncs_ptr` are still owned here; reclaiming and dropping them frees
+            // them exactly once.
             drop(unsafe { Box::from_raw(class_vfuncs_ptr.cast::<Vec<PreparedVfunc>>()) });
             anyhow::bail!("g_type_register_static returned G_TYPE_INVALID");
         }
 
+        // SAFETY: `new_gtype` is the valid type just registered; `g_type_class_ref` returns its
+        // live class struct (and drives `class_init`), holding a class reference for the process.
         let class_ptr = unsafe { gobject_ffi::g_type_class_ref(new_gtype) };
 
         for iface in interfaces {
@@ -356,6 +391,8 @@ fn parse_js_array<T>(
             format!("register_class: expected an array of {description}"),
         ));
     }
+    // SAFETY: `prop` was verified to be an array above, and its raw napi value is valid for the
+    // current `env`, so reconstructing an `Array` from the pair is sound.
     let arr: Array = unsafe { Array::from_napi_value(env.raw(), prop.raw())? };
     map_js_array(env, &arr, convert)
 }
@@ -437,6 +474,8 @@ mod napi_export {
         let (vfuncs, interfaces) = parse_register_options(env, options)?;
         RegisterClassRequest {
             name,
+            // SAFETY: `parent_value` is a losslessly decoded u64 GType handle from JS; `from_glib`
+            // reinterprets it as a `glib::Type`, whose validity is enforced during execution.
             parent_gtype: unsafe { glib::Type::from_glib(parent_value as glib::ffi::GType) },
             vfuncs,
             interfaces,

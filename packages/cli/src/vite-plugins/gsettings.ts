@@ -11,8 +11,10 @@ import { renderRuntimeModule } from "../gsettings/render.js";
 import { error, info } from "../internal/log.js";
 import { removeTempDir } from "../internal/remove-temp-dir.js";
 import { withStagingDir } from "../internal/staging-dir.js";
+import { createVirtualNamespace, resolveToVirtual } from "./virtual-module.js";
 
 const VIRTUAL_PREFIX = "\0gtkx-gsettings:";
+const { isVirtual, fromVirtualId } = createVirtualNamespace(VIRTUAL_PREFIX);
 
 const SCHEMA_ENV_BANNER = [
     `process.env.GSETTINGS_SCHEMA_DIR = [`,
@@ -94,7 +96,7 @@ const registerSchemaForMode = (state: PluginState, filePath: string, id: string)
 };
 
 const loadSchemaModule = (ctx: PluginContext, state: PluginState, id: string): string => {
-    const filePath = id.slice(VIRTUAL_PREFIX.length);
+    const filePath = fromVirtualId(id);
     const xml = readFileSync(filePath, "utf-8");
     const fileName = basename(filePath);
 
@@ -197,13 +199,11 @@ export function gtkxGSettings(): Plugin {
 
         async resolveId(source, importer, options) {
             if (!source.endsWith(SCHEMA_SUFFIX)) return;
-            const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
-            if (!resolved || resolved.external) return;
-            return VIRTUAL_PREFIX + resolved.id;
+            return resolveToVirtual(this, { source, importer, options }, VIRTUAL_PREFIX);
         },
 
         load(id) {
-            if (!id.startsWith(VIRTUAL_PREFIX)) return;
+            if (!isVirtual(id)) return;
             return loadSchemaModule(this, state, id);
         },
 

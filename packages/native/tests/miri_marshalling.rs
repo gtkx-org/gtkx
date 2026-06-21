@@ -63,6 +63,8 @@ fn buffer_view_array_passthrough_shares_the_backing_store() {
     let ptr = encoded_ptr(&encoded);
     assert_eq!(ptr, buffer.as_mut_ptr() as *mut c_void);
 
+    // SAFETY: the encode passed the buffer through unchanged, so `ptr` aliases the live `buffer`
+    // of three `f32`s; index 1 is in bounds and correctly typed, so the write is sound.
     unsafe { *ptr.cast::<f32>().add(1) = 9.5 };
     assert_eq!(buffer[1], 9.5);
 }
@@ -84,6 +86,8 @@ fn blob_view_passthrough_reads_and_writes_the_backing_store() {
     let ptr = encoded_ptr(&encoded);
     assert_eq!(ptr, buffer.as_mut_ptr() as *mut c_void);
 
+    // SAFETY: the blob encode passed the buffer through unchanged, so `ptr` aliases the live
+    // `buffer` of three `u8`s; indices 0 and 2 are in bounds, so the read and write are sound.
     unsafe {
         assert_eq!(*ptr.cast::<u8>(), 10);
         *ptr.cast::<u8>().add(2) = 99;

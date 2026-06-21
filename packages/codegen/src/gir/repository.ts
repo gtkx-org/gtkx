@@ -79,6 +79,17 @@ export class GirRepository {
         return arena;
     }
 
+    private insertIntoArena(
+        arena: Arena,
+        slot: { type: GirType | undefined; indexKey?: string; displayName?: string },
+    ): number {
+        const id = arena.types.length;
+        arena.types.push(slot.type);
+        arena.names.push(slot.displayName);
+        if (slot.indexKey !== undefined) arena.index.set(slot.indexKey, id);
+        return id;
+    }
+
     private setType(nsId: number, name: string, type: GirType): void {
         const arena = this.arenaOf(nsId);
         const existing = arena.index.get(name);
@@ -86,28 +97,20 @@ export class GirRepository {
             arena.types[existing] = type;
             return;
         }
-        const id = arena.types.length;
-        arena.types.push(type);
-        arena.names.push(name);
-        arena.index.set(name, id);
+        this.insertIntoArena(arena, { type, indexKey: name, displayName: name });
     }
 
     private stubNamed(nsId: number, name: string): TypeId {
         const arena = this.arenaOf(nsId);
         const existing = arena.index.get(name);
         if (existing !== undefined) return { nsId, id: existing };
-        const id = arena.types.length;
-        arena.types.push(undefined);
-        arena.names.push(name);
-        arena.index.set(name, id);
+        const id = this.insertIntoArena(arena, { type: undefined, indexKey: name, displayName: name });
         return { nsId, id };
     }
 
     private pushAnonymous(nsId: number, type: GirType): TypeId {
         const arena = this.arenaOf(nsId);
-        const id = arena.types.length;
-        arena.types.push(type);
-        arena.names.push(undefined);
+        const id = this.insertIntoArena(arena, { type });
         return { nsId, id };
     }
 
@@ -146,10 +149,7 @@ export class GirRepository {
         const arena = this.arenaOf(INTERNAL_NS_ID);
         const existing = arena.index.get(key);
         if (existing !== undefined) return { nsId: INTERNAL_NS_ID, id: existing };
-        const id = arena.types.length;
-        arena.types.push(type);
-        arena.names.push(undefined);
-        arena.index.set(key, id);
+        const id = this.insertIntoArena(arena, { type, indexKey: key });
         return { nsId: INTERNAL_NS_ID, id };
     }
 

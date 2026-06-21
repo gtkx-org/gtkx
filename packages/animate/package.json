@@ -38,13 +38,15 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc -b",
-        "typecheck": "tsc -b --emitDeclarationOnly"
+        "build": "tsc -b"
     },
     "dependencies": {
         "@gtkx/css": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/utils": "workspace:*"
+    },
+    "devDependencies": {
+        "@gtkx/vitest": "workspace:*"
     },
     "peerDependencies": {
         "react": "^19"

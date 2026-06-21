@@ -37,7 +37,6 @@ jobs:
           filters: |
             code:
               - '**'
-              - '!website/**'
               - '!**/*.md'
 
   # Builds the CI container from this run's Dockerfile and publishes it under a

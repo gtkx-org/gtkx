@@ -49,6 +49,8 @@ fn owned_ptr_from_vec_captures_correct_pointer() {
     let data = vec![10u64, 20, 30];
     let owned: FfiStorage = data.into();
 
+    // SAFETY: `owned` was built from the three-element `u64` vec and keeps it alive, so its pointer
+    // addresses exactly three contiguous, correctly-typed `u64`s spanned by this slice.
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const u64, 3);
         assert_eq!(slice, &[10, 20, 30]);
@@ -61,6 +63,8 @@ fn owned_ptr_keeps_cstring_alive() {
     let ptr = cstring.as_ptr() as *mut c_void;
     let owned = FfiStorage::new(ptr, FfiStorageKind::CString(cstring));
 
+    // SAFETY: `owned` keeps the source `CString` alive, so its pointer addresses a valid
+    // NUL-terminated C string that `CStr::from_ptr` can read.
     unsafe {
         let s = std::ffi::CStr::from_ptr(owned.ptr() as *const i8);
         assert_eq!(s.to_str().unwrap(), "test string");
@@ -78,6 +82,8 @@ fn owned_ptr_tuple_keeps_both_alive() {
 
     let owned = FfiStorage::new(tuple_ptr, FfiStorageKind::StringArray(strings, ptrs));
 
+    // SAFETY: `owned` keeps both the `ptrs` vec and the backing `CString`s alive, so its pointer
+    // addresses two contiguous `*const i8` entries, each a valid NUL-terminated C string.
     unsafe {
         let ptr_slice = std::slice::from_raw_parts(owned.ptr() as *const *const i8, 2);
         let s0 = std::ffi::CStr::from_ptr(ptr_slice[0]);
@@ -177,6 +183,9 @@ fn try_from_string_full() {
         panic!("Expected FfiValue::Storage, got {encoded:?}");
     };
     let ptr = storage.ptr();
+    // SAFETY: the full-ownership string encode produced a freshly `g_malloc`-ed NUL-terminated
+    // copy at `ptr` whose pending transfer was disarmed, so this code now owns it: `CStr::from_ptr`
+    // reads the valid string and `g_free` releases it exactly once.
     unsafe {
         let s = std::ffi::CStr::from_ptr(ptr as *const i8);
         assert_eq!(s.to_str().unwrap(), "hello world");
@@ -195,6 +204,8 @@ fn try_from_string_borrowed() {
     );
 
     let owned = expect_variant!(arg, Storage);
+    // SAFETY: the borrowed string encode kept the source `CString` alive inside `owned`, so its
+    // pointer addresses a valid NUL-terminated C string for `CStr::from_ptr`.
     unsafe {
         let s = std::ffi::CStr::from_ptr(owned.ptr() as *const i8);
         assert_eq!(s.to_str().unwrap(), "hello world");
@@ -256,6 +267,8 @@ fn try_from_array_u8() {
     ]));
 
     let owned = expect_variant!(arg, Storage);
+    // SAFETY: the array encode stored three `u8`s in `owned` and keeps them alive, so its pointer
+    // addresses exactly three contiguous, correctly-typed bytes spanned by this slice.
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const u8, 3);
         assert_eq!(slice, &[1, 2, 3]);
@@ -279,6 +292,8 @@ fn try_from_array_i32() {
     );
 
     let owned = expect_variant!(arg, Storage);
+    // SAFETY: the array encode stored three `i32`s in `owned` and keeps them alive, so its pointer
+    // addresses exactly three contiguous, correctly-typed values spanned by this slice.
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const i32, 3);
         assert_eq!(slice, &[-10, 0, 10]);
@@ -298,6 +313,8 @@ fn try_from_array_f64() {
     );
 
     let owned = expect_variant!(arg, Storage);
+    // SAFETY: the array encode stored two `f64`s in `owned` and keeps them alive, so its pointer
+    // addresses exactly two contiguous, correctly-typed values spanned by this slice.
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const f64, 2);
         assert!((slice[0] - 1.1).abs() < 0.001);
@@ -324,6 +341,9 @@ fn try_from_array_string() {
     );
 
     let owned = expect_variant!(arg, Storage);
+    // SAFETY: the string-array encode stored a NULL-terminated array of two `char*` in `owned` and
+    // keeps the backing strings alive, so the pointer addresses three entries (two valid C strings
+    // followed by the NULL terminator) spanned by this slice.
     unsafe {
         let ptrs = std::slice::from_raw_parts(owned.ptr() as *const *const i8, 3);
         let s0 = std::ffi::CStr::from_ptr(ptrs[0]);
@@ -351,6 +371,8 @@ fn try_from_array_boolean() {
     );
 
     let owned = expect_variant!(arg, Storage);
+    // SAFETY: the boolean-array encode stored three `i32`s (1/0/1) in `owned` and keeps them alive,
+    // so its pointer addresses exactly three contiguous, correctly-typed values spanned by this slice.
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const i32, 3);
         assert_eq!(slice, &[1, 0, 1]);

@@ -40,8 +40,7 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc -b",
-        "typecheck": "tsc -b --emitDeclarationOnly"
+        "build": "tsc -b"
     },
     "dependencies": {
         "@emotion/serialize": "^1.3.3",

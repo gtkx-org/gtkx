@@ -6,7 +6,8 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { ConnectionManager } from "./connection-manager.js";
 import { ConnectionRegistry } from "./connection-registry.js";
-import { DEFAULT_SOCKET_PATH, type ServerRequestParamsSchemas } from "./protocol/types.js";
+import { McpError } from "./protocol/errors.js";
+import { DEFAULT_SOCKET_PATH, queryOptionsSchema, type ServerInitiatedMethod } from "./protocol/types.js";
 import { SocketServer } from "./socket-server.js";
 
 const require = createRequire(import.meta.url);
@@ -35,14 +36,7 @@ const queryWidgetsShape = {
     ...applicationIdShape,
     by: z.enum(["role", "text", "name", "labelText"]).describe("Query type"),
     value: z.union([z.string(), z.number()]).describe("Value to search for"),
-    options: z
-        .object({
-            name: z.string().optional(),
-            exact: z.boolean().optional(),
-            timeout: z.number().optional(),
-        })
-        .optional()
-        .describe("Additional query options"),
+    options: queryOptionsSchema.optional().describe("Additional query options"),
 };
 
 const typeShape = {
@@ -79,33 +73,66 @@ type ToolHandlerResult = CallToolResult;
 
 type ToolArgs<Shape extends Record<string, z.ZodType>> = { [K in keyof Shape]: z.output<Shape[K]> };
 
+type ToolKind = "readOnly" | "action";
+
 type TypedTool<Shape extends Record<string, z.ZodType>> = {
     name: string;
+    kind: ToolKind;
     config: { description: string; inputSchema: Shape };
     handler: (args: ToolArgs<Shape>) => Promise<ToolHandlerResult>;
 };
 
 export type ToolDefinition = {
     name: string;
+    kind: ToolKind;
     config: { description: string; inputSchema: z.ZodRawShape };
     handler: (args: never) => Promise<ToolHandlerResult>;
     register: (server: McpServer) => void;
 };
 
+const hasStringHint = (data: unknown): data is { hint: string } =>
+    typeof data === "object" && data !== null && "hint" in data && typeof data.hint === "string";
+
+const runTool = async <Shape extends Record<string, z.ZodType>>(
+    handler: (args: ToolArgs<Shape>) => Promise<ToolHandlerResult>,
+    args: ToolArgs<Shape>,
+): Promise<ToolHandlerResult> => {
+    try {
+        return await handler(args);
+    } catch (error) {
+        if (error instanceof McpError) {
+            return textError(hasStringHint(error.data) ? `${error.message}\n${error.data.hint}` : error.message);
+        }
+        return textError(error instanceof Error ? error.message : String(error));
+    }
+};
+
 const defineTool = <Shape extends Record<string, z.ZodType>>(tool: TypedTool<Shape>): ToolDefinition => ({
     name: tool.name,
+    kind: tool.kind,
     config: tool.config,
     handler: tool.handler,
     register: (server) => {
-        const callback = ((args: ToolArgs<Shape>, _extra: unknown) => tool.handler(args)) as ToolCallback<Shape>;
-        server.registerTool(tool.name, tool.config, callback);
+        const callback = ((args: ToolArgs<Shape>, _extra: unknown) =>
+            runTool(tool.handler, args)) as ToolCallback<Shape>;
+        server.registerTool(
+            tool.name,
+            {
+                ...tool.config,
+                annotations: {
+                    readOnlyHint: tool.kind === "readOnly",
+                    destructiveHint: tool.kind === "action",
+                    openWorldHint: true,
+                },
+            },
+            callback,
+        );
     },
 });
 
-type ServerInitiatedMethod = keyof typeof ServerRequestParamsSchemas;
-
 type ForwardOptions<Shape extends Record<string, z.ZodType>> = {
     name: string;
+    kind: ToolKind;
     description: string;
     inputSchema: Shape;
     connectionManager: AppQueryClient;
@@ -132,6 +159,7 @@ const forwardTool = <Shape extends Record<string, z.ZodType>>(
 ): ToolDefinition =>
     defineTool<Shape>({
         name: options.name,
+        kind: options.kind,
         config: { description: options.description, inputSchema: options.inputSchema },
         handler: async (args) => {
             const { applicationId, params } = buildForwardParams(args, options.params);
@@ -166,17 +194,14 @@ const forwardImage = <Shape extends Record<string, z.ZodType>>(options: ForwardO
 const listAppsTool = (connectionManager: AppQueryClient) =>
     defineTool({
         name: "gtkx_list_apps",
+        kind: "readOnly",
         config: {
             description: "List all connected GTKX applications",
             inputSchema: listAppsShape,
         },
         handler: async ({ waitForApps, timeout }) => {
             if (waitForApps && !connectionManager.hasConnectedApps()) {
-                try {
-                    await connectionManager.waitForApp(timeout);
-                } catch (error) {
-                    return textError(error instanceof Error ? error.message : "Timeout waiting for app");
-                }
+                await connectionManager.waitForApp(timeout);
             }
 
             const apps = connectionManager.getApps();
@@ -199,6 +224,7 @@ const listAppsTool = (connectionManager: AppQueryClient) =>
 const getWidgetTreeTool = (connectionManager: AppQueryClient) =>
     defineTool({
         name: "gtkx_get_widget_tree",
+        kind: "readOnly",
         config: {
             description:
                 "Get the widget hierarchy for a connected GTKX app. Returns a tree of all widgets with their IDs, types, roles, and properties.",
@@ -210,12 +236,13 @@ const getWidgetTreeTool = (connectionManager: AppQueryClient) =>
         },
     });
 
-function buildTools(connectionManager: AppQueryClient): ToolDefinition[] {
+function buildInspectionTools(connectionManager: AppQueryClient): ToolDefinition[] {
     return [
         listAppsTool(connectionManager),
         getWidgetTreeTool(connectionManager),
         forwardJson({
             name: "gtkx_query_widgets",
+            kind: "readOnly",
             description:
                 "Find widgets by role, text, name, or label. Returns matching widgets with their IDs and properties.",
             inputSchema: queryWidgetsShape,
@@ -225,13 +252,20 @@ function buildTools(connectionManager: AppQueryClient): ToolDefinition[] {
         }),
         forwardJson({
             name: "gtkx_get_widget_props",
+            kind: "readOnly",
             description: "Get all properties of a specific widget by its ID",
             inputSchema: widgetIdShape,
             connectionManager,
             method: "widget.getProps",
         }),
+    ];
+}
+
+function buildInteractionTools(connectionManager: AppQueryClient): ToolDefinition[] {
+    return [
         forwardAck({
             name: "gtkx_click",
+            kind: "action",
             description: "Click a widget. Works with buttons, checkboxes, and other interactive widgets.",
             inputSchema: widgetIdShape,
             connectionManager,
@@ -240,6 +274,7 @@ function buildTools(connectionManager: AppQueryClient): ToolDefinition[] {
         }),
         forwardAck({
             name: "gtkx_type",
+            kind: "action",
             description: "Type text into an editable widget like Entry or TextView",
             inputSchema: typeShape,
             connectionManager,
@@ -248,6 +283,7 @@ function buildTools(connectionManager: AppQueryClient): ToolDefinition[] {
         }),
         forwardAck({
             name: "gtkx_fire_event",
+            kind: "action",
             description: "Emit a GTK signal on a widget. Use this for custom interactions.",
             inputSchema: fireEventShape,
             connectionManager,
@@ -256,12 +292,17 @@ function buildTools(connectionManager: AppQueryClient): ToolDefinition[] {
         }),
         forwardImage({
             name: "gtkx_take_screenshot",
+            kind: "readOnly",
             description: "Capture a screenshot of a window. Returns base64-encoded PNG image data.",
             inputSchema: screenshotShape,
             connectionManager,
             method: "widget.screenshot",
         }),
     ];
+}
+
+function buildTools(connectionManager: AppQueryClient): ToolDefinition[] {
+    return [...buildInspectionTools(connectionManager), ...buildInteractionTools(connectionManager)];
 }
 
 export type CreateMcpServerOptions = {
@@ -309,6 +350,8 @@ export const createMcpServer = (options: CreateMcpServerOptions): McpServerHandl
             await socketServer.start();
             console.error(`[gtkx] Socket server listening on ${socketPath}`);
             const transport = new StdioServerTransport();
+            process.stdin.on("end", () => void this.stop());
+            process.stdin.on("close", () => void this.stop());
             await mcpServer.connect(transport);
         },
         async stop() {

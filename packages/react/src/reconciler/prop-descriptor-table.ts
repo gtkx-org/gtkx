@@ -6,10 +6,11 @@ import type * as GObject from "@gtkx/gi/gobject";
 import { foldInheritedTableWithInterfaces } from "../utils/gtype.js";
 import { ARRAY_PROPS, type ArrayPropDescriptor } from "./array-props.js";
 import { runCallSteps, satisfiesCondition } from "./call-steps.js";
-import { callMethod } from "./reflect-call.js";
+import type { PropDiffOverride } from "./prop-diff.js";
+import { callMethod, invokeRequiredMethod } from "./reflect-call.js";
 import type { Props } from "./types.js";
 
-export interface SignalPropDescriptor {
+export interface SignalPropDescriptor extends PropDiffOverride {
     kind: "signal";
     signals: string[];
     blockable?: boolean | undefined;
@@ -19,7 +20,7 @@ export interface SignalPropDescriptor {
 
 export type ImperativeHandler = (container: GObject.Object, newProps: Props, oldProps: Props | null) => void;
 
-export interface ImperativeDescriptor {
+export interface ImperativeDescriptor extends PropDiffOverride {
     kind: "imperative";
     handler: ImperativeHandler;
     always: boolean;
@@ -70,7 +71,7 @@ const applySetterStep = (
             return;
         }
     }
-    if (step.call !== undefined) callMethod(container, step.call, [value]);
+    if (step.call !== undefined) invokeRequiredMethod(container, step.call, [value]);
     else if (step.set !== undefined) Reflect.set(container, step.set, value);
 };
 
@@ -117,8 +118,8 @@ const objectPropDescriptor = (prop: string, row: ObjectPropRow): PropDescriptorT
 
 const virtualPropDescriptor = (prop: string, row: VirtualPropRow): PropDescriptorTable[string] =>
     imperative((container, newProps) => {
-        callMethod(container, row.setter, [newProps[prop] ?? null]);
-        if (row.after !== undefined) callMethod(container, row.after, []);
+        invokeRequiredMethod(container, row.setter, [newProps[prop] ?? null]);
+        if (row.after !== undefined) invokeRequiredMethod(container, row.after, []);
     });
 
 const buildDescriptorsByTypeName = (): Record<string, PropDescriptorTable> => {

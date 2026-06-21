@@ -35,7 +35,8 @@ describe("omit", () => {
     });
 
     it("ignores keys absent from the record", () => {
-        expect(omit({ a: 1 }, ["x"])).toEqual({ a: 1 });
+        const record: Record<string, number> = { a: 1 };
+        expect(omit(record, ["x"])).toEqual({ a: 1 });
     });
 
     it("does not mutate the source record", () => {

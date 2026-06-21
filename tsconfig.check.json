@@ -1,0 +1,31 @@
+{
+    "extends": "./tsconfig.base.json",
+    "compilerOptions": {
+        "composite": false,
+        "incremental": false,
+        "declaration": false,
+        "declarationMap": false,
+        "noEmit": true,
+        "customConditions": ["source"],
+        "allowImportingTsExtensions": true
+    },
+    "include": [
+        "packages/*/src/**/*.ts",
+        "packages/*/src/**/*.tsx",
+        "packages/*/tests/**/*.ts",
+        "packages/*/tests/**/*.tsx",
+        "packages/*/vitest.config.ts",
+        "packages/*/vitest.bench.config.ts",
+        "packages/native/index.ts",
+        "packages/native/types.ts",
+        "scripts/**/*.ts",
+        "vitest.config.ts"
+    ],
+    "exclude": [
+        "**/dist/**",
+        "**/out-tsc/**",
+        "packages/codegen/src/templates/**",
+        "packages/native/target/**",
+        "packages/native/npm/**"
+    ]
+}

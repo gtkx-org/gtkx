@@ -1,4 +1,5 @@
 import { type CallbackType, call, type Type as FfiType, type Handle } from "@gtkx/native";
+import { classifyArgCategory } from "./arg-category.js";
 import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
 import { arrayT, biguint64T, bind, objectT, stringT, uint32T, uint64T, voidT } from "./descriptors.js";
 import { tupleResult } from "./fn.js";
@@ -69,13 +70,14 @@ export type EmitArg = {
 };
 
 const emitCell = (arg: EmitArg): { value: Handle; read?: () => unknown } => {
-    if (arg.direction === undefined) return { value: toGvalue(arg.ffi, arg.value) };
-    if (arg.callerAllocates) {
-        if (arg.direction === "inout") return { value: inoutBoxedFromFfi(arg.ffi, arg.value as object) };
+    const category = classifyArgCategory({ direction: arg.direction, callerAllocated: Boolean(arg.callerAllocates) });
+    if (category.kind === "plainInput") return { value: toGvalue(arg.ffi, arg.value) };
+    if (category.kind === "callerAllocated") {
+        if (category.inout) return { value: inoutBoxedFromFfi(arg.ffi, arg.value as object) };
         const value = outBoxedFromFfi(arg.ffi, arg.value as object);
         return { value, read: () => valueGetBoxed(value) };
     }
-    const cell = arg.direction === "inout" ? outValueFromFfi(arg.ffi, arg.value) : outValueFromFfi(arg.ffi);
+    const cell = category.inout ? outValueFromFfi(arg.ffi, arg.value) : outValueFromFfi(arg.ffi);
     return { value: cell.value, read: cell.read };
 };
 

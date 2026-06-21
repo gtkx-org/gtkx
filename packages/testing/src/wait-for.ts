@@ -1,5 +1,4 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { runWithActEnvironment } from "./act.js";
 import { getConfig } from "./config.js";
 import { timeoutError } from "./errors.js";
 import type { WaitForOptions } from "./types.js";
@@ -8,23 +7,28 @@ const DEFAULT_INTERVAL = 50;
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
-const drainMicrotasks = (): Promise<void> => delay(0);
+const copyStackTrace = (target: Error, source: Error): void => {
+    if (source.stack) {
+        target.stack = source.stack.replace(source.message, target.message);
+    }
+};
 
-const asyncWrapper = <T>(callback: () => Promise<T>): Promise<T> =>
-    Promise.resolve(
-        runWithActEnvironment(false, async () => {
-            const result = await callback();
-            await drainMicrotasks();
-            return result;
-        }),
-    );
-
+/**
+ * Repeatedly invokes `callback` until it returns without throwing or the timeout elapses.
+ *
+ * @typeParam T - The resolved value type of `callback`.
+ * @param callback - The assertion or query to retry; its last thrown error is embedded on timeout.
+ * @param options - Timeout, polling interval, timeout transform, and stack-trace controls.
+ * @returns A promise resolving to `callback`'s value, or rejecting with a timeout error.
+ */
 export const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOptions): Promise<T> => {
     if (typeof callback !== "function") {
         throw new TypeError("Received `callback` arg must be a function");
     }
 
-    return asyncWrapper(async () => {
+    const stackTraceError = options?.stackTraceError ?? new Error("STACK_TRACE_MESSAGE");
+
+    return getConfig().asyncWrapper(async () => {
         const config = getConfig();
         const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
         const startTime = Date.now();
@@ -40,10 +44,9 @@ export const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOpti
         }
 
         const error = timeoutError(timeout, lastError);
-        if (onTimeout) {
-            throw onTimeout(error);
-        }
-        throw error;
+        const finalError = onTimeout ? onTimeout(error) : error;
+        copyStackTrace(finalError, stackTraceError);
+        throw finalError;
     });
 };
 
@@ -77,10 +80,18 @@ const isTargetRemoved = (target: RemovalTarget): boolean => {
 
 const ELEMENT_NOT_REMOVED = new Error("Element not yet removed");
 
+/**
+ * Waits until the target element (or elements) is removed from the widget tree.
+ *
+ * @param elementOrCallback - The element, array of elements, or a callback returning the target(s).
+ * @param options - Timeout and polling controls.
+ * @returns A promise that resolves once the target is removed, or rejects on timeout.
+ */
 export const waitForElementToBeRemoved = (
     elementOrCallback: ElementOrCallback,
     options?: WaitForOptions,
 ): Promise<void> => {
+    const stackTraceError = new Error("STACK_TRACE_MESSAGE");
     if (isTargetRemoved(getTarget(elementOrCallback))) {
         return Promise.reject(
             new Error(
@@ -88,7 +99,10 @@ export const waitForElementToBeRemoved = (
             ),
         );
     }
-    return waitFor(() => {
-        if (!isTargetRemoved(getTarget(elementOrCallback))) throw ELEMENT_NOT_REMOVED;
-    }, options);
+    return waitFor(
+        () => {
+            if (!isTargetRemoved(getTarget(elementOrCallback))) throw ELEMENT_NOT_REMOVED;
+        },
+        { ...options, stackTraceError },
+    );
 };

@@ -113,18 +113,28 @@
             "persistent": true,
             "cache": false
         },
+        "//#typecheck:packages": {
+            "dependsOn": ["//#setup:store-link", "@gtkx/cli#codegen"],
+            "inputs": [
+                "packages/*/src/**/*.ts",
+                "packages/*/src/**/*.tsx",
+                "packages/*/tests/**/*.ts",
+                "packages/*/tests/**/*.tsx",
+                "packages/*/vitest.config.ts",
+                "packages/native/*.ts",
+                "scripts/**/*.ts",
+                "vitest.config.ts",
+                "tsconfig.base.json",
+                "tsconfig.check.json"
+            ],
+            "outputs": []
+        },
         "typecheck": {
-            "dependsOn": ["^typecheck", "@gtkx/cli#codegen"],
+            "dependsOn": ["^build", "@gtkx/cli#codegen"],
             "inputs": [
                 "src/**/*.ts",
                 "src/**/*.tsx",
                 "src/**/*.d.ts",
-                "src/**/*.js",
-                "scripts/**/*.ts",
-                "screenshots/**/*.ts",
-                "screenshots/**/*.tsx",
-                "tests/**/*.ts",
-                "tests/**/*.tsx",
                 "vitest.config.ts",
                 "tsconfig.json",
                 "tsconfig.app.json",
@@ -142,28 +152,6 @@
             "dependsOn": ["native-build"],
             "cache": false,
             "passThroughEnv": ["RUSTUP_TOOLCHAIN", "CODSPEED_RUNNER_MODE"]
-        },
-        "docs": {
-            "dependsOn": ["@gtkx/ffi#build", "@gtkx/react#build"],
-            "inputs": [
-                "package.json",
-                ".vitepress/**",
-                "docs/**",
-                "index.md",
-                "public/**",
-                "scripts/**",
-                "typedoc.config.ts",
-                "typedoc.json",
-                "tsconfig.json"
-            ],
-            "outputs": [".vitepress/dist/**", "api/**"],
-            "outputLogs": "new-only"
-        },
-        "@gtkx/native#typecheck": {
-            "dependsOn": ["^typecheck", "native-build"],
-            "inputs": ["*.ts", "tests/**/*.ts", "tsconfig.json", "tsconfig.lib.json", "tsconfig.test.json"],
-            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
-            "outputLogs": "new-only"
         }
     }
 }

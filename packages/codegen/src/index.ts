@@ -4,6 +4,5 @@ export {
     computeFingerprint,
     FINGERPRINT_FILENAME,
     serializeUserTables,
-    type UserTableInputs,
 } from "./fingerprint.js";
 export { CodegenRunner } from "./runner.js";

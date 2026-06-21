@@ -11,6 +11,18 @@ export const McpErrorCode = {
 
 export type McpErrorCode = (typeof McpErrorCode)[keyof typeof McpErrorCode];
 
+/**
+ * Type guard verifying that an arbitrary wire number is one of the defined
+ * {@link McpErrorCode} values, used to validate untrusted IPC error codes before
+ * reconstructing an {@link McpError}.
+ *
+ * @param code - The numeric error code received over the wire.
+ * @returns `true` when `code` is a known {@link McpErrorCode}.
+ */
+export function isMcpErrorCode(code: number): code is McpErrorCode {
+    return (Object.values(McpErrorCode) as number[]).includes(code);
+}
+
 export class McpError extends Error {
     code: McpErrorCode;
     data?: unknown;

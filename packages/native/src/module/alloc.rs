@@ -22,6 +22,9 @@ impl ModuleRequest for AllocRequest {
             .transpose()
             .map_err(|err| anyhow::anyhow!("invalid alloc type name: {err}"))?;
 
+        // SAFETY: runs on the gtkx-glib thread; `g_malloc0` allocates and zero-initializes
+        // `self.size` bytes (returning null only for a zero-size request, handled below), and the
+        // returned block's ownership is handed to the `Boxed` wrapper.
         let ptr = unsafe { g_malloc0(self.size) };
 
         if ptr.is_null() {

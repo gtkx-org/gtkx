@@ -27,6 +27,9 @@ fn callback_value(destroy: bool) -> CallbackValue {
 
 fn js_func_ref() -> Arc<JsRef<JsFunction>> {
     let env = Env::from_raw(std::ptr::null_mut());
+    // SAFETY: this stubs a `JsFunction` from null env/value handles purely to exercise the
+    // wrapper bookkeeping; `from_raw_unchecked` only stores the raw handles and `JsRef` records
+    // them without dereferencing, so no napi call touches the null pointers.
     let func =
         unsafe { JsFunction::from_raw_unchecked(std::ptr::null_mut(), std::ptr::null_mut()) };
     Arc::new(JsRef::from_js_value(&env, &func).expect("stubbed reference creation should succeed"))
@@ -53,6 +56,8 @@ fn armed_callback_value(
 
 fn release_handed_over_state(state_ptr: *mut c_void, js_func: &Arc<JsRef<JsFunction>>) {
     assert_eq!(Arc::strong_count(js_func), 2);
+    // SAFETY: `state_ptr` is the leaked `TrampolineState` raw pointer handed over by the armed
+    // `CallbackValue`; `destroy` reclaims and drops it exactly once, releasing its `Arc` clone.
     unsafe { TrampolineState::destroy(state_ptr) };
     assert_eq!(Arc::strong_count(js_func), 1);
 }
@@ -64,6 +69,8 @@ fn new_armed_exposes_state_and_closure_pointers() {
     assert!(!tv.fn_ptr().is_null());
     assert!(!tv.state_ptr().is_null());
     assert_eq!(tv.destroy_ptr(), Some(destroy_ptr));
+    // SAFETY: the armed `CallbackValue` still owns the boxed `TrampolineState`, so `state_ptr()`
+    // is a live, correctly-typed pointer; borrowing it to read `code_ptr` is sound.
     let state = unsafe { &*(tv.state_ptr() as *const TrampolineState) };
     assert_eq!(state.code_ptr, tv.fn_ptr());
 }
@@ -132,7 +139,11 @@ fn write_scalar_to_writes_every_numeric_variant() {
             let mut slot: u64 = 0;
             let slot_ptr = &mut slot as *mut u64 as *mut c_void;
             let v = FfiValue::$variant($value);
+            // SAFETY: `slot_ptr` points to the live, writable `u64` stack local `slot`, at least
+            // as wide as any scalar variant `write_scalar_to` stores, so the write is in bounds.
             unsafe { v.write_scalar_to(slot_ptr) }.expect("scalar write should succeed");
+            // SAFETY: the matching `$ty` was just written into `slot`, so reading it back through a
+            // correctly-typed pointer is an in-bounds, well-typed read.
             let read = unsafe { *(slot_ptr as *const $ty) };
             assert_eq!(read, $value);
         }};

@@ -1,23 +1,6 @@
 /// <reference types="vite/client" />
 /// <reference types="@gtkx/config/env" />
 
-declare module "*.css?url" {
-    const path: string;
-    export default path;
-}
-
-declare module "*.data" {
-    const resourceUri: string;
-    export const path: string;
-    export default resourceUri;
-}
-
-declare module "*.gpa" {
-    const resourceUri: string;
-    export const path: string;
-    export default resourceUri;
-}
-
 declare module "*.png" {
     const resourceUri: string;
     export const path: string;
@@ -136,4 +119,21 @@ declare module "*.avif" {
     const resourceUri: string;
     export const path: string;
     export default resourceUri;
+}
+
+declare module "*.data" {
+    const resourceUri: string;
+    export const path: string;
+    export default resourceUri;
+}
+
+declare module "*.gpa" {
+    const resourceUri: string;
+    export const path: string;
+    export default resourceUri;
+}
+
+declare module "*.css?url" {
+    const path: string;
+    export default path;
 }

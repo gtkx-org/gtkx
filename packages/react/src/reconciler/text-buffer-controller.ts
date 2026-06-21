@@ -1,7 +1,6 @@
 import type * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { scheduleFlush } from "./commit-flush.js";
 import { type Node, stateOf } from "./state.js";
 import { isAnchorWrapper, isBufferContentWrapper, isBufferTextWrapper, isPaintableWrapper } from "./text-wrapper.js";
 import { unparentWidget } from "./widget.js";
@@ -9,15 +8,16 @@ import { unparentWidget } from "./widget.js";
 export class TextBufferController {
     private managesContent = false;
     private anchoredWidgets = new Set<Gtk.Widget>();
-    private boundRebuild = (): void => this.rebuild();
     private owner: Node;
+
+    /**
+     * Bound, argument-less rebuild of the owning text buffer, suitable for scheduling via the
+     * shared commit flush. Reading it returns the same function instance for this controller.
+     */
+    public boundRebuild = (): void => this.rebuild();
 
     constructor(owner: Node) {
         this.owner = owner;
-    }
-
-    public scheduleRebuild(): void {
-        scheduleFlush(this.boundRebuild);
     }
 
     private resolveBuffer(): Gtk.TextBuffer | null {

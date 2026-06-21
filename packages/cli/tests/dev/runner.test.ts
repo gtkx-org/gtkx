@@ -219,7 +219,7 @@ describe("createDevRunner (application quit)", () => {
         await flushTick();
 
         const written = stderrSpy.mock.calls.map((call) => String(call[0])).join("");
-        expect(written).toContain("[gtkx] Error closing server:");
+        expect(written).toContain("[gtkx] error Error closing server:");
         expect(written).toContain(error.stack ?? error.message);
         stderrSpy.mockRestore();
     });
@@ -438,7 +438,7 @@ describe("main (argv parsing)", () => {
         await expect(main()).rejects.toThrow("__exit__");
 
         const written = stderrSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("");
-        expect(written).toContain("[gtkx] Missing entry argument");
+        expect(written).toContain("[gtkx] error Missing entry argument");
         expect(exitSpy).toHaveBeenCalledWith(1);
     });
 });

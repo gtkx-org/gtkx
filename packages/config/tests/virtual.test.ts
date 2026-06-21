@@ -4,6 +4,7 @@ import {
     RESOLVED_GTKX_CONFIG_VIRTUAL_ID,
     renderGtkxConfigModule,
     resolveGtkxConfig,
+    serializeGtkxConfig,
 } from "../src/index.js";
 
 describe("virtual module ids", () => {
@@ -30,5 +31,25 @@ describe("renderGtkxConfigModule", () => {
     it("serializes an unset applicationId as undefined", () => {
         const source = renderGtkxConfigModule(resolveGtkxConfig({}));
         expect(source.split("\n")).toContain("export const applicationId = undefined;");
+    });
+});
+
+describe("serializeGtkxConfig", () => {
+    it("projects only the config-derived fields exported into the virtual module", () => {
+        const serialized = serializeGtkxConfig(resolveGtkxConfig({ applicationId: "org.gtk.Demo4" }));
+        expect(Object.keys(serialized).sort()).toEqual(
+            [
+                "applicationId",
+                "arrayProps",
+                "containerProps",
+                "elementMap",
+                "girPath",
+                "libraries",
+                "objectProps",
+                "reactCompiler",
+                "virtualProps",
+            ].sort(),
+        );
+        expect(serialized.applicationId).toBe("org.gtk.Demo4");
     });
 });

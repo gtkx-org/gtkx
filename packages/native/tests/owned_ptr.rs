@@ -50,6 +50,8 @@ fn boxed_from_glib_none_copies_pointer() {
         assert!(boxed.is_owned());
         assert!(common::is_valid_boxed_ptr(boxed.as_ptr(), gtype));
 
+        // SAFETY: `original_ptr` is the live boxed value of `gtype` allocated above and never
+        // consumed (the wrapper copied it), so freeing it once with the matching gtype is sound.
         unsafe {
             glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original_ptr);
         }
@@ -102,6 +104,8 @@ fn boxed_from_glib_none_with_size_copies_without_gtype() {
     assert_ne!(boxed.as_ptr(), ptr);
     assert!(boxed.is_owned());
 
+    // SAFETY: `from_glib_none_with_size` copied 16 bytes into the owned `boxed`, so its pointer is
+    // non-null and addresses at least 16 readable bytes; the slice spans exactly that region.
     unsafe {
         let copied_data = std::slice::from_raw_parts(boxed.as_ptr() as *const u8, 16);
         assert_eq!(copied_data, &data);

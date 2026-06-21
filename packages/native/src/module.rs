@@ -3,7 +3,7 @@ mod call;
 mod field;
 mod freeze;
 mod gobject;
-pub(crate) mod handler;
+mod handler;
 mod init;
 mod quit;
 mod register_class;

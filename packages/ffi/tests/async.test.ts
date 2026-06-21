@@ -74,4 +74,27 @@ describe("promisify", () => {
             ),
         ).rejects.toBe(failure);
     });
+
+    it("splices the creation call-stack into the rejected error", () => {
+        const asyncFn = (...args: unknown[]): void => {
+            (args[args.length - 1] as (source: Handle, result: Handle) => void)(handle(1), gobjectHandle());
+        };
+
+        return promisify(
+            asyncFn,
+            () => {
+                throw new Error("boom");
+            },
+            undefined,
+            { leading: [] },
+        ).then(
+            () => {
+                throw new Error("expected rejection");
+            },
+            (error: unknown) => {
+                expect(error).toBeInstanceOf(Error);
+                expect((error as Error).stack).toContain("### Promise created here: ###");
+            },
+        );
+    });
 });

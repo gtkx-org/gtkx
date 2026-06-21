@@ -40,6 +40,14 @@ type T = {
     fn: typeof fn;
 };
 
+/**
+ * The descriptor DSL consumed in lockstep by `@gtkx/codegen` and `@gtkx/native`.
+ *
+ * Each member builds a `t.*` type descriptor (or, for `bind`/`fn`, a native
+ * call binding) used to marshal values across the FFI boundary. The runtime key
+ * names form a stable contract; only the underlying factory implementations may
+ * change.
+ */
 export const t: T = {
     bind: helpers.bind,
     int8: helpers.int8T,
@@ -77,4 +85,4 @@ export const t: T = {
     fixedArray: helpers.fixedArrayT,
     callback: helpers.callbackT,
     fn,
-} as const;
+};

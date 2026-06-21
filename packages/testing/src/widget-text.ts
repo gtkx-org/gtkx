@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { getAccessibleMetadata } from "@gtkx/react";
-import { isEditable } from "./editable.js";
+import { EDITABLE_ROLES, isEditable, readEditableText } from "./editable.js";
 import { descendants } from "./traversal.js";
 
 const callStringGetter = (widget: Gtk.Widget, method: string): string | null => {
@@ -26,9 +26,9 @@ const readAccessibleBoolean = (widget: Gtk.Widget, key: string): boolean | null 
 };
 
 const getLabelText = (widget: Gtk.Widget): string | null => {
-    const asLabel = widget as Gtk.Label;
-    const asInscription = widget as Gtk.Inscription;
-    return asLabel.getLabel?.() ?? asInscription.getText?.() ?? null;
+    if (widget instanceof Gtk.Label) return widget.getLabel() ?? null;
+    if (widget instanceof Gtk.Inscription) return widget.getText() ?? null;
+    return null;
 };
 
 const DEFAULT_TEXT_GETTERS = ["getLabel", "getText", "getTitle"] as const;
@@ -65,9 +65,8 @@ export const getWidgetAccessibleName = (widget: Gtk.Widget): string | null => {
 
     if (role === Gtk.AccessibleRole.TAB_PANEL) {
         const parent = widget.getParent();
-        if (parent) {
-            const stack = parent as Gtk.Stack;
-            const page = stack.getPage?.(widget);
+        if (parent instanceof Gtk.Stack) {
+            const page = parent.getPage(widget);
             if (page) {
                 return page.getTitle() ?? null;
             }
@@ -90,7 +89,7 @@ export const getWidgetName = (widget: Gtk.Widget): string | null => {
 };
 
 export const getWidgetPlaceholderText = (widget: Gtk.Widget): string | null => {
-    if (!isEditable(widget)) {
+    if (!EDITABLE_ROLES.has(widget.getAccessibleRole()) || !(widget instanceof Gtk.Editable)) {
         return null;
     }
 
@@ -98,34 +97,21 @@ export const getWidgetPlaceholderText = (widget: Gtk.Widget): string | null => {
 };
 
 export const getWidgetDisplayValue = (widget: Gtk.Widget): string | null => {
-    if (isEditable(widget)) {
-        return widget.getText();
+    if (EDITABLE_ROLES.has(widget.getAccessibleRole()) && isEditable(widget)) {
+        return readEditableText(widget);
     }
 
     return null;
 };
 
 export const getWidgetCheckedState = (widget: Gtk.Widget): boolean | null => {
-    const role = widget.getAccessibleRole();
-
-    switch (role) {
-        case Gtk.AccessibleRole.CHECKBOX:
-        case Gtk.AccessibleRole.RADIO:
-            return (widget as Gtk.CheckButton).getActive();
-        case Gtk.AccessibleRole.SWITCH:
-            return (widget as Gtk.Switch).getActive();
-        default:
-            return null;
-    }
+    if (widget instanceof Gtk.CheckButton) return widget.getActive();
+    if (widget instanceof Gtk.Switch) return widget.getActive();
+    return null;
 };
 
 export const getWidgetPressedState = (widget: Gtk.Widget): boolean | null => {
-    const role = widget.getAccessibleRole();
-
-    if (role === Gtk.AccessibleRole.TOGGLE_BUTTON) {
-        return (widget as Gtk.ToggleButton).getActive();
-    }
-
+    if (widget instanceof Gtk.ToggleButton) return widget.getActive();
     return null;
 };
 

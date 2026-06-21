@@ -20,15 +20,15 @@
         "@gtkx/ffi": "workspace:*",
         "@gtkx/gl": "workspace:*",
         "@gtkx/react": "workspace:*",
-        "react": "^19.2.7"
+        "react": "catalog:"
     },
     "devDependencies": {
         "@gtkx/cli": "workspace:*",
         "@gtkx/config": "workspace:*",
         "@gtkx/native": "workspace:*",
         "@gtkx/testing": "workspace:*",
-        "@vitest/coverage-v8": "^4.1.8",
-        "vite": "^8.0.16",
-        "vitest": "^4.1.8"
+        "@vitest/coverage-v8": "catalog:",
+        "vite": "catalog:",
+        "vitest": "catalog:"
     }
 }

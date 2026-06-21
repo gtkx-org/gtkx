@@ -1,6 +1,5 @@
 import { quote } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
-import { joinArgs } from "../dsl/emit.js";
 import type { GirCallback } from "../gir/callback.js";
 import {
     type GirParameter,
@@ -15,8 +14,34 @@ import type { GirRepository } from "../gir/repository.js";
 import type { EntityType, GirType } from "../gir/type.js";
 import type { CArrayType, ListFlavor, TypeId } from "../gir/type-id.js";
 import { computeBoxedFieldSlots } from "./boxed-layout.js";
+import {
+    type ListDescriptorName,
+    type Ownership,
+    type ScalarDescriptorName,
+    tArray,
+    tBigUint64,
+    tBoxed,
+    tByteArray,
+    tCallback,
+    tEnum,
+    tFixedArray,
+    tFlags,
+    tFundamental,
+    tHashTable,
+    tInt32,
+    tList,
+    tObject,
+    tRef,
+    tScalar,
+    tSizedArray,
+    tString,
+    tStruct,
+    tUint32,
+    tUint64,
+    tVoid,
+} from "./descriptor.js";
 
-const ffiOwnership = (transfer: ParameterTransfer): "borrowed" | "full" => {
+const ffiOwnership = (transfer: ParameterTransfer): Ownership => {
     if (transfer === "full") return "full";
     if (transfer === "container") return "full";
     return "borrowed";
@@ -48,17 +73,17 @@ export const renderFfiType = (
     transfer: ParameterTransfer = "none",
     options: RenderFfiTypeOptions = {},
 ): string => {
-    if (ref === undefined) return "t.void";
+    if (ref === undefined) return tVoid;
     const { argIndexOffset = 0, callerAllocated = false } = options;
     const ownership = ffiOwnership(transfer);
     const type = context.repository.typeOf(ref);
-    if (type === undefined) return `t.object(${quote(ownership)})`;
+    if (type === undefined) return tObject(ownership);
     switch (type.kind) {
         case "primitive":
             return primitiveExpression(type.category, ownership);
         case "varargs":
         case "callback":
-            return "t.void";
+            return tVoid;
         case "class":
         case "interface":
         case "boxed":
@@ -68,16 +93,15 @@ export const renderFfiType = (
         case "carray":
             return arrayExpression(context, type, transfer, argIndexOffset);
         case "list": {
-            if (type.flavor === "gbytearray") return `t.byteArray(${quote(ownership)})`;
+            if (type.flavor === "gbytearray") return tByteArray(ownership);
             const element = renderFfiType(context, type.element, deriveElementTransfer(transfer), { argIndexOffset });
-            const helper = LIST_HELPERS[type.flavor];
-            return `t.${helper}(${element}, ${quote(ownership)})`;
+            return tList(LIST_HELPERS[type.flavor], element, ownership);
         }
         case "hashtable": {
             const elementTransfer = deriveElementTransfer(transfer);
             const key = renderFfiType(context, type.key, elementTransfer, { argIndexOffset });
             const value = renderFfiType(context, type.value, elementTransfer, { argIndexOffset });
-            return `t.hashTable(${key}, ${value}, ${quote(ownership)})`;
+            return tHashTable(key, value, ownership);
         }
     }
 };
@@ -112,10 +136,10 @@ export const renderHandlerArgType = (
     ref: TypeId | undefined,
 ): string => {
     if (isCellInout(context, parameter)) {
-        return `t.ref(${renderFfiType(context, ref, parameter.transferOwnership)}, true)`;
+        return tRef(renderFfiType(context, ref, parameter.transferOwnership), true);
     }
     if (isOutParameter(parameter)) {
-        return `t.ref(${renderFfiType(context, ref, parameter.transferOwnership)})`;
+        return tRef(renderFfiType(context, ref, parameter.transferOwnership));
     }
     return renderFfiType(context, ref, parameter.transferOwnership, {
         callerAllocated: isCallerAllocatedOut(parameter),
@@ -137,30 +161,29 @@ export const renderCallbackType = (
     });
     const returnRef = callback.returnValue.type;
     const returnType = isVoidRef(context.repository, returnRef)
-        ? "t.void"
+        ? tVoid
         : renderFfiType(context, returnRef, callback.returnValue.transferOwnership);
     const options: string[] = [];
     if (owningParameter.destroyIndex !== undefined) options.push("hasDestroy: true");
     if (userDataIndex !== undefined) options.push(`userDataIndex: ${userDataIndex}`);
     if (owningParameter.scope !== undefined) options.push(`scope: ${quote(owningParameter.scope)}`);
-    const optionsArg = options.length > 0 ? `, { ${options.join(", ")} }` : "";
-    return `t.callback([${argTypes.join(", ")}], ${returnType}${optionsArg})`;
+    const optionsArg = options.length > 0 ? `{ ${options.join(", ")} }` : undefined;
+    return tCallback(argTypes, returnType, optionsArg);
 };
 
-const LIST_HELPERS: Record<ListFlavor, string> = {
+const LIST_HELPERS: Record<Exclude<ListFlavor, "gbytearray">, ListDescriptorName> = {
     glist: "list",
     gslist: "slist",
     gptrarray: "ptrArray",
     garray: "garray",
-    gbytearray: "byteArray",
 };
 
-const primitiveExpression = (category: PrimitiveCategory, ownership: "borrowed" | "full"): string => {
-    if (category === "void") return "t.void";
-    if (category === "string") return `t.string(${quote(ownership)})`;
-    if (category === "pointer") return "t.uint64";
-    if (category === "gtype") return "t.biguint64";
-    return `t.${category}`;
+const primitiveExpression = (category: PrimitiveCategory, ownership: Ownership): string => {
+    if (category === "void") return tVoid;
+    if (category === "string") return tString(ownership);
+    if (category === "pointer") return tUint64;
+    if (category === "gtype") return tBigUint64;
+    return tScalar(category satisfies ScalarDescriptorName);
 };
 
 type FundamentalDescriptor = {
@@ -168,7 +191,7 @@ type FundamentalDescriptor = {
     refFunc: string;
     unrefFunc: string;
     glibTypeName: string | undefined;
-    ownership: "borrowed" | "full";
+    ownership: Ownership;
     wrapperClass?: string | undefined;
 };
 
@@ -177,22 +200,23 @@ const referenceAddingFunc = (refFunc: string): string =>
 
 const renderFundamental = (descriptor: FundamentalDescriptor): string => {
     const { lib, refFunc, unrefFunc, glibTypeName, ownership, wrapperClass } = descriptor;
-    const parts = [`ownership: ${quote(ownership)}`];
-    if (glibTypeName !== undefined) parts.push(`typeName: ${quote(glibTypeName)}`);
-    if (wrapperClass !== undefined) parts.push(`wrapperClass: ${wrapperClass}`);
-    return `t.fundamental(${quote(lib)}, ${quote(referenceAddingFunc(refFunc))}, ${quote(unrefFunc)}, { ${parts.join(", ")} })`;
+    return tFundamental(lib, referenceAddingFunc(refFunc), unrefFunc, {
+        ownership,
+        typeName: glibTypeName,
+        wrapperClass,
+    });
 };
 
 const classOrInterfaceExpression = (
     resolved: Extract<EntityType, { kind: "class" | "interface" }>,
-    ownership: "borrowed" | "full",
+    ownership: Ownership,
 ): string => {
     const cls = resolved.value;
     if (cls.glibRefFunc === undefined || cls.glibUnrefFunc === undefined) {
         if (resolved.kind === "interface" && cls.glibTypeName !== undefined) {
-            return `t.object(${joinArgs([quote(ownership), quote(cls.glibTypeName)])})`;
+            return tObject(ownership, cls.glibTypeName);
         }
-        return `t.object(${quote(ownership)})`;
+        return tObject(ownership);
     }
     return renderFundamental({
         lib: resolved.namespace.sharedLibrary ?? "",
@@ -237,19 +261,17 @@ const fundamentalAncestor = (
 
 export const renderSelfFfiType = (context: ModuleContext, instance: GirParameter): string => {
     const ref = instance.type;
-    if (ref === undefined) return `t.object("borrowed")`;
+    if (ref === undefined) return tObject("borrowed");
     const type = context.repository.typeOf(ref);
-    if (type === undefined) return `t.object("borrowed")`;
+    if (type === undefined) return tObject("borrowed");
     if (type.kind === "class" || type.kind === "interface") {
         const ancestor = fundamentalAncestor(context, type);
-        return ancestor === undefined
-            ? `t.object("borrowed")`
-            : renderFundamental({ ...ancestor, ownership: "borrowed" });
+        return ancestor === undefined ? tObject("borrowed") : renderFundamental({ ...ancestor, ownership: "borrowed" });
     }
     if (type.kind === "boxed" && isReferenceableBoxed(type.value)) {
         return boxedExpression(context, type, ffiOwnership(instance.transferOwnership));
     }
-    return `t.object("borrowed")`;
+    return tObject("borrowed");
 };
 
 type ResolvedBoxed = Extract<EntityType, { kind: "boxed" }>["value"];
@@ -274,25 +296,22 @@ const boxedNeedsFallbackClass = (boxed: ResolvedBoxed): boolean => {
 const structExpression = (
     context: ModuleContext,
     resolved: Extract<EntityType, { kind: "boxed" }>,
-    ownership: "borrowed" | "full",
+    ownership: Ownership,
     callerAllocated: boolean,
 ): string => {
     const { size } = computeBoxedFieldSlots(context, resolved.value.fields, resolved.value.isUnion);
     const wrapperClass = context.qualify(resolved.namespace.name, resolved.value.name);
-    const structOptions = joinArgs([
-        size > 0 && !callerAllocated ? `size: ${size}` : undefined,
-        `wrapperClass: ${wrapperClass}`,
-        callerAllocated ? "callerAllocated: true" : undefined,
-    ]);
-    return structOptions === ""
-        ? `t.struct(${quote(ownership)})`
-        : `t.struct(${quote(ownership)}, { ${structOptions} })`;
+    return tStruct(ownership, {
+        size: size > 0 && !callerAllocated ? size : undefined,
+        wrapperClass,
+        callerAllocated,
+    });
 };
 
 const boxedExpression = (
     context: ModuleContext,
     resolved: Extract<EntityType, { kind: "boxed" }>,
-    ownership: "borrowed" | "full",
+    ownership: Ownership,
     callerAllocated = false,
 ): string => {
     const boxed = resolved.value;
@@ -315,18 +334,18 @@ const boxedExpression = (
         return structExpression(context, resolved, ownership, callerAllocated);
     }
     const glibName = boxed.glibTypeName ?? boxed.cType ?? boxed.name;
-    const lib = resolved.namespace.sharedLibrary;
-    const opts = [`ownership: ${quote(ownership)}`];
-    if (lib !== undefined) opts.push(`library: ${quote(lib)}`);
-    opts.push(`getTypeFn: ${quote(boxed.glibGetType)}`);
-    if (callerAllocated) opts.push("callerAllocated: true");
-    return `t.boxed(${quote(glibName)}, { ${opts.join(", ")} })`;
+    return tBoxed(glibName, {
+        ownership,
+        library: resolved.namespace.sharedLibrary,
+        getTypeFn: boxed.glibGetType,
+        callerAllocated,
+    });
 };
 
 const expressionForResolved = (
     context: ModuleContext,
     resolved: Extract<EntityType, { kind: "class" | "interface" | "boxed" | "enum" | "alias" }>,
-    ownership: "borrowed" | "full",
+    ownership: Ownership,
     callerAllocated = false,
 ): string => {
     switch (resolved.kind) {
@@ -338,10 +357,9 @@ const expressionForResolved = (
         case "enum": {
             const getter = resolved.value.glibGetType;
             const signed = resolved.value.members.some((member) => member.value.startsWith("-"));
-            if (getter === undefined || getter === "") return signed ? "t.int32" : "t.uint32";
+            if (getter === undefined || getter === "") return signed ? tInt32 : tUint32;
             const lib = resolved.namespace.sharedLibrary ?? "";
-            const helper = resolved.value.kind === "bitfield" ? "flags" : "enum";
-            return `t.${helper}(${quote(lib)}, ${quote(getter)}, ${String(signed)})`;
+            return resolved.value.kind === "bitfield" ? tFlags(lib, getter, signed) : tEnum(lib, getter, signed);
         }
         case "alias":
             return aliasExpression(context, resolved.target, ownership);
@@ -357,15 +375,13 @@ const arrayExpression = (
     const ownership = ffiOwnership(transfer);
     const element = renderFfiType(context, ref.element, deriveElementTransfer(transfer), { argIndexOffset });
     const size = inlineElementSize(context, ref.element, ref.elementCType);
-    const sizeArg = size === undefined ? "" : `, ${size}`;
     if (ref.lengthParameterIndex !== undefined) {
-        return `t.sizedArray(${element}, ${ref.lengthParameterIndex + argIndexOffset}, ${quote(ownership)}${sizeArg})`;
+        return tSizedArray(element, ref.lengthParameterIndex + argIndexOffset, ownership, size);
     }
     if (ref.fixedSize !== undefined) {
-        return `t.fixedArray(${element}, ${ref.fixedSize}, ${quote(ownership)}${sizeArg})`;
+        return tFixedArray(element, ref.fixedSize, ownership, size);
     }
-    const optionsArg = size === undefined ? "" : `, { elementSize: ${size} }`;
-    return `t.array(${element}, "array", ${quote(ownership)}${optionsArg})`;
+    return tArray(element, "array", ownership, size);
 };
 
 const inlineElementSize = (
@@ -383,13 +399,9 @@ const inlineElementSize = (
     return size > 0 ? size : undefined;
 };
 
-const aliasExpression = (
-    context: ModuleContext,
-    target: TypeId | undefined,
-    ownership: "borrowed" | "full",
-): string => {
+const aliasExpression = (context: ModuleContext, target: TypeId | undefined, ownership: Ownership): string => {
     if (target === undefined) {
-        return `t.object(${quote(ownership)})`;
+        return tObject(ownership);
     }
     return renderFfiType(context, target, ownership === "full" ? "full" : "none");
 };

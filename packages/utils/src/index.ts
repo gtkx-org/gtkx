@@ -8,7 +8,7 @@ export {
     sortedAlpha,
     sortedAlphaBy,
 } from "./collection.js";
-export { errorMessage, formatChildProcessError } from "./error.js";
+export { errorMessage, formatChildProcessError, normalizeError } from "./error.js";
 export {
     exitCodeForSignal,
     type GracefulShutdownHandle,

@@ -1,10 +1,10 @@
-import { quote } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { arrayLiteral, renderBlock } from "../dsl/emit.js";
 import { bindingIdentifier, namespaceFunctionExportName } from "../dsl/identifier.js";
 import type { GirFunction } from "../gir/function.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import { callableReferencesClassStruct } from "./class-struct-record.js";
+import { tFn } from "./descriptor.js";
 import {
     planCallArgs,
     renderMethodBody,
@@ -20,8 +20,7 @@ export const renderFnExpression = (context: ModuleContext, fn: GirFunction): str
     context.addRuntimeImport("t");
     const params = planCallArgs(context, fn).map((arg) => arg.paramLiteral);
     const ret = renderReturnDescriptor(context, fn);
-    const throwsEntry = fn.throws ? ", throws: true" : "";
-    return `t.fn(${quote(library)}, ${quote(fn.cIdentifier)}, { args: ${arrayLiteral(params)}, returns: ${ret}${throwsEntry} })`;
+    return tFn(library, fn.cIdentifier, { args: arrayLiteral(params), returns: ret, throws: fn.throws });
 };
 
 export const emitNamespaceFunction = (context: ModuleContext, fn: GirFunction): void => {

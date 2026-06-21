@@ -1,4 +1,5 @@
 import type { Type as FfiType, RefType, Value } from "@gtkx/native";
+import { type ArgCategory, type ArgDirectionMeta, classifyArgCategory } from "./arg-category.js";
 import { valueCopyInto } from "./gvalue.js";
 import { getHandle } from "./registry.js";
 import { unwrapValue, wrapValue } from "./wrap-value.js";
@@ -7,6 +8,14 @@ const isOutCell = (argType: FfiType): argType is RefType => argType.type === "re
 
 const isCallerAllocatedBuffer = (argType: FfiType): boolean =>
     (argType.type === "boxed" || argType.type === "struct") && argType.callerAllocated === true;
+
+const argDirectionMetaOf = (argType: FfiType): ArgDirectionMeta => {
+    if (isOutCell(argType)) return { direction: argType.inout === true ? "inout" : "out", callerAllocated: false };
+    if (isCallerAllocatedBuffer(argType)) return { direction: "out", callerAllocated: true };
+    return { callerAllocated: false };
+};
+
+const categoryOf = (argType: FfiType): ArgCategory => classifyArgCategory(argDirectionMetaOf(argType));
 
 const copyBoxedFields = (target: object, source: object): void => {
     let proto: object | null = Object.getPrototypeOf(target);
@@ -67,10 +76,11 @@ const partitionHandlerArgs = (
     const outParams: OutParam[] = [];
     for (let i = start; i < effectiveTypes.length; i++) {
         const argType = effectiveTypes[i];
-        if (argType !== undefined && isOutCell(argType)) {
-            if (argType.inout === true) inputs.push((wrapped[i] as { value: unknown }).value);
+        const category: ArgCategory = argType === undefined ? { kind: "plainInput" } : categoryOf(argType);
+        if (argType !== undefined && category.kind === "outCell") {
+            if (category.inout) inputs.push((wrapped[i] as { value: unknown }).value);
             outParams.push({ value: wrapped[i], argType });
-        } else if (argType !== undefined && isCallerAllocatedBuffer(argType) && receiver === "this") {
+        } else if (argType !== undefined && category.kind === "callerAllocated" && receiver === "this") {
             outParams.push({ value: wrapped[i], argType });
         } else {
             inputs.push(wrapped[i]);

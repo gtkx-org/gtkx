@@ -42,6 +42,7 @@ export const generateNamespaceModule = (namespace: GirNamespace, repository: Gir
         emitAlias(context, alias);
     }
 
+    context.flushImports();
     return { source: context.module.toSource() };
 };
 

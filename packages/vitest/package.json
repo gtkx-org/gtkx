@@ -39,14 +39,13 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc -b",
-        "typecheck": "tsc -b --emitDeclarationOnly"
+        "build": "tsc -b"
     },
     "dependencies": {
         "@gtkx/config": "workspace:*"
     },
     "devDependencies": {
-        "vitest": "^4.1.8"
+        "vitest": "catalog:"
     },
     "peerDependencies": {
         "vitest": ">=4"

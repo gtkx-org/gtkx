@@ -11,7 +11,6 @@ export {
     constructWrapper,
     getHandle,
     getInstanceGtype,
-    getWrapperClass,
     registerInterface,
     registerWrapperClass,
     requireWrapperClass,

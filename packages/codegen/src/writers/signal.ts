@@ -7,6 +7,7 @@ import { isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
 import type { GirProperty } from "../gir/property.js";
 import type { GirSignal } from "../gir/signal.js";
 import { splitOptionalNamespace } from "../gir/type-ref.js";
+import { tCallback, tObject, tVoid } from "./descriptor.js";
 import {
     collectInterfaceProperties,
     forEachAncestor,
@@ -15,6 +16,7 @@ import {
 } from "./inheritance.js";
 import { isBoxedCallerOut, isBoxedInout } from "./param-marshal.js";
 import { renderHandlerParameters } from "./param-structure.js";
+import { foldOutParamShape } from "./return-shape.js";
 import { renderTsType } from "./ts-type.js";
 import { isCellInout, omitsPrimaryReturn, renderFfiType, renderHandlerArgType } from "./value.js";
 
@@ -167,8 +169,7 @@ const assembleSignalResult = (primary: string | undefined, outTypes: string[], o
         if (primary === undefined) return "void";
         return optOut ? `${primary} | undefined` : primary;
     }
-    if (primary !== undefined) return `[${primary}, ${outTypes.join(", ")}]`;
-    return outTypes.length === 1 ? (outTypes[0] ?? "void") : `[${outTypes.join(", ")}]`;
+    return foldOutParamShape({ primary, outTypes, hasPrimary: primary !== undefined });
 };
 
 const renderResultType = (
@@ -265,10 +266,10 @@ const renderCallback = (context: ModuleContext, collected: CollectedSignal): str
     const callbackParamFfi = params.map((parameter) => renderHandlerArgType(context, parameter, parameter.type));
     const isVoid = omitsPrimaryReturn(context.repository, signal.returnValue);
     const returnFfi = isVoid
-        ? "t.void"
+        ? tVoid
         : renderFfiType(context, signal.returnValue.type, signal.returnValue.transferOwnership);
-    const callbackArgs = ['t.object("borrowed")', ...callbackParamFfi, "t.void"].join(", ");
-    return `t.callback([${callbackArgs}], ${returnFfi}, { hasDestroy: true, userDataIndex: ${params.length + 1} })`;
+    const callbackArgs = [tObject("borrowed"), ...callbackParamFfi, tVoid];
+    return tCallback(callbackArgs, returnFfi, `{ hasDestroy: true, userDataIndex: ${params.length + 1} }`);
 };
 
 const collectClassSignals = (context: ModuleContext, klass: GirClass): CollectedSignal[] => {

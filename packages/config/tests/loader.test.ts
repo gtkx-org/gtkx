@@ -71,6 +71,14 @@ describe("loadGtkxConfig", () => {
         writeConfig("export default { libraries: ['InvalidLib'] };\n");
         await expect(loadGtkxConfig(cwd)).rejects.toThrow(/invalid library identifier/);
     });
+
+    it("passes the mode to a function-form config as env.mode", async () => {
+        writeConfig(
+            `${defineConfigImport()}export default defineConfig((env) => ({ libraries: env.mode === "production" ? ["Gtk-4.0"] : ["Gtk-4.0", "Adw-1"] }));\n`,
+        );
+        const result = await loadGtkxConfig(cwd, { mode: "production" });
+        expect(result.config.libraries).toEqual(["Gtk-4.0"]);
+    });
 });
 
 describe("GtkxConfigNotFoundError", () => {
@@ -100,8 +108,12 @@ describe("loadResolvedGtkxConfig", () => {
         expect(resolved.reactCompiler).toEqual({ target: "19" });
     });
 
-    it("returns the empty resolved config when no config file exists", async () => {
-        await expect(loadResolvedGtkxConfig(cwd)).resolves.toEqual(resolveGtkxConfig({}));
+    it("surfaces GtkxConfigNotFoundError when no config file exists", async () => {
+        await expect(loadResolvedGtkxConfig(cwd)).rejects.toBeInstanceOf(GtkxConfigNotFoundError);
+    });
+
+    it("returns the empty resolved config when no config file exists and allowMissing is set", async () => {
+        await expect(loadResolvedGtkxConfig(cwd, { allowMissing: true })).resolves.toEqual(resolveGtkxConfig({}));
     });
 
     it("propagates validation errors from the loader", async () => {
@@ -132,10 +144,11 @@ describe("createGtkxConfigLoader", () => {
     it("loads distinct roots independently", async () => {
         writeConfig(`export default { applicationId: "org.gtk.Demo4" };\n`);
         const other = mkdtempSync(join(tmpdir(), "gtkx-config-loader-"));
+        writeFileSync(join(other, "gtkx.config.ts"), `export default { applicationId: "org.gtk.Other" };\n`);
         try {
             const load = createGtkxConfigLoader();
             expect((await load(cwd)).applicationId).toBe("org.gtk.Demo4");
-            expect((await load(other)).applicationId).toBeUndefined();
+            expect((await load(other)).applicationId).toBe("org.gtk.Other");
         } finally {
             rmSync(other, { recursive: true, force: true });
         }

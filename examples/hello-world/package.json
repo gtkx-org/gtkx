@@ -13,7 +13,7 @@
     },
     "dependencies": {
         "@gtkx/react": "workspace:*",
-        "react": "^19.2.7"
+        "react": "catalog:"
     },
     "devDependencies": {
         "@gtkx/cli": "workspace:*",

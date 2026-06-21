@@ -1,8 +1,8 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import {
-    type IpcMethod,
     invalidRequestError,
     methodNotFoundError,
+    type ServerInitiatedMethod,
     type ServerRequestParams,
     ServerRequestParamsSchemas,
     type WireParamsSchema,
@@ -16,8 +16,6 @@ export type HandlerContext = {
     app: Gtk.Application;
     registry: WidgetRegistry;
 };
-
-type ServerInitiatedMethod = Exclude<IpcMethod, "app.register" | "app.unregister">;
 
 type ValidatedHandler = (ctx: HandlerContext, params: unknown) => Promise<unknown>;
 

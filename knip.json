@@ -1,14 +1,8 @@
 {
     "$schema": "https://unpkg.com/knip@6/schema.json",
     "ignoreExportsUsedInFile": true,
-    "ignoreBinaries": [
-        "espeak-ng",
-        "glib-compile-resources",
-        "glib-compile-schemas",
-        "pkg-config",
-        "setpriv",
-        "wlheadless-run"
-    ],
+    "ignore": ["**/out-tsc/**"],
+    "ignoreBinaries": ["espeak-ng", "glib-compile-resources", "glib-compile-schemas", "pkg-config", "setpriv"],
     "ignoreWorkspaces": ["packages/native/npm/*"],
     "workspaces": {
         ".": {
@@ -20,7 +14,7 @@
         },
         "packages/cli": {
             "entry": ["src/global.d.ts!"],
-            "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
+            "project": ["src/**/*.{ts,tsx}!", "scripts/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/codegen": {
             "includeEntryExports": true,
@@ -34,7 +28,7 @@
             "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
         },
         "packages/e2e": {
-            "includeEntryExports": true,
+            "entry": ["gtkx.config.ts!"],
             "project": ["tests/**/*.{ts,tsx}"]
         },
         "packages/ffi": {
@@ -60,6 +54,7 @@
             "project": ["src/**/*.{ts,tsx}!"]
         },
         "packages/testing": {
+            "entry": ["gtkx.config.ts!"],
             "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
         },
         "packages/vitest": {

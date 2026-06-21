@@ -10,7 +10,15 @@ import { error, info } from "../internal/log.js";
 import { resolveCliTool } from "../internal/resolve-cli-tool.js";
 import { withStagingDir } from "../internal/staging-dir.js";
 import { ASSET_PATH_RE, ASSET_RE } from "./asset-extensions.js";
-import { BUNDLE_FILENAME, escapeXml, REL_SEPARATOR, VIRTUAL_INIT, VIRTUAL_PREFIX } from "./gresource-protocol.js";
+import {
+    BUNDLE_FILENAME,
+    escapeXml,
+    fromVirtualId,
+    isVirtual,
+    REL_SEPARATOR,
+    toVirtualId,
+    VIRTUAL_INIT,
+} from "./gresource-protocol.js";
 
 const DATA_PREFIX = `${DATA_IMPORT_PREFIX}/`;
 
@@ -112,7 +120,7 @@ const registerEntry = (state: PluginState, absPath: string, rel: string): Resour
 const isTrackedSource = (state: PluginState, file: string): boolean => state.sourcePaths.has(file);
 
 const loadAssetModule = (state: PluginState, virtualId: string): string => {
-    const rest = virtualId.slice(VIRTUAL_PREFIX.length);
+    const rest = fromVirtualId(virtualId);
     const separatorIndex = rest.indexOf(REL_SEPARATOR);
     const absPath = rest.slice(0, separatorIndex);
     const rel = rest.slice(separatorIndex + REL_SEPARATOR.length);
@@ -205,14 +213,14 @@ export function gtkxResources(loadConfig: GtkxConfigLoader = createGtkxConfigLoa
             if (!resolved || resolved.external) return;
 
             const rel = clean.slice(DATA_PREFIX.length);
-            return VIRTUAL_PREFIX + resolved.id + REL_SEPARATOR + rel;
+            return toVirtualId(resolved.id) + REL_SEPARATOR + rel;
         },
 
         load(id) {
             if (id === VIRTUAL_INIT) {
                 return renderInitModule({ isBuild: state.isBuild, devBundlePath: state.devBundlePath });
             }
-            if (!id.startsWith(VIRTUAL_PREFIX)) return;
+            if (!isVirtual(id)) return;
             return loadAssetModule(state, id);
         },
 

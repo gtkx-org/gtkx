@@ -2,7 +2,7 @@ import * as net from "node:net";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { DEFAULT_SOCKET_PATH, type IpcRequest, JsonStreamTransport, McpError, McpErrorCode } from "@gtkx/mcp";
-import { errorMessage } from "@gtkx/utils";
+import { errorMessage, normalizeError } from "@gtkx/utils";
 import { error, info, warn } from "../internal/log.js";
 import { dispatch } from "./handlers.js";
 import { WidgetRegistry } from "./widget-registry.js";
@@ -86,7 +86,7 @@ export class McpClient {
                 })
                 .catch((cause) => {
                     error("Failed to register with MCP server:", cause.message);
-                    settle(onError, cause instanceof Error ? cause : new Error(String(cause)));
+                    settle(onError, normalizeError(cause));
                 });
         });
 

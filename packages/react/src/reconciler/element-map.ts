@@ -36,7 +36,7 @@ import {
     isSingleChildContainer,
     type ReorderableWidget,
 } from "./predicates.js";
-import { callMethod } from "./reflect-call.js";
+import { callMethod, invokeRequiredMethod } from "./reflect-call.js";
 import { isWrapperKind, type Node, stateOf } from "./state.js";
 import type { Props } from "./types.js";
 import { attachChild, detachChild, getFocusWidget, isAttachedTo, isDescendantOf, unparentWidget } from "./widget.js";
@@ -97,7 +97,7 @@ const attachContainerPropChild = (instance: Node, parent: Node, method: string):
         mapping.attach(instance, parent);
         return;
     }
-    if (parent instanceof GObject.Object) invokeRequired(parent, method, instance);
+    if (parent instanceof GObject.Object) invokeRequiredMethod(parent, method, [instance]);
 };
 
 const detachContainerPropChild = (instance: Node, parent: Node): void => {
@@ -132,19 +132,11 @@ const containerPropMapping: ElementMapping = {
     },
 };
 
-const invokeRequired = (target: object, method: string, arg: unknown): void => {
-    const fn = Reflect.get(target, method);
-    if (typeof fn !== "function") {
-        throw new TypeError(`Method '${method}' not found on '${target.constructor.name}'`);
-    }
-    Reflect.apply(fn, target, [arg]);
-};
-
 const applyPageMeta = (page: object, props: Props): void => {
     for (const { setter, prop, fallback, whenPresent } of PAGE_META_SETTERS) {
         if (typeof Reflect.get(page, setter) !== "function") continue;
         if (whenPresent && props[prop] === undefined) continue;
-        callMethod(page, setter, [props[prop] ?? fallback]);
+        invokeRequiredMethod(page, setter, [props[prop] ?? fallback]);
     }
 };
 
@@ -167,7 +159,7 @@ const addStackPage = (
     for (const rule of rules) {
         if (!rule.requires.every((key) => pagePropValue(props, key) !== null)) continue;
         const args = rule.args.map((arg) => (arg === "widget" ? widget : pagePropValue(props, arg)));
-        const page = callMethod(stack, rule.method, args);
+        const page = invokeRequiredMethod(stack, rule.method, args);
         return typeof page === "object" && page !== null ? page : undefined;
     }
     return undefined;
@@ -306,7 +298,7 @@ const applyGridLayoutChild = (layoutChild: Gtk.LayoutChild, props: Props): void 
 const applyFixedLayoutChild = (layoutChild: Gtk.LayoutChild, props: Props): void => {
     if (typeof Reflect.get(layoutChild, "setTransform") !== "function") return;
     const value = buildFixedTransform(props);
-    if (value) callMethod(layoutChild, "setTransform", [value]);
+    if (value) invokeRequiredMethod(layoutChild, "setTransform", [value]);
 };
 
 const applyLayoutChild = (parent: Gtk.Widget, widget: Gtk.Widget, kind: "grid" | "fixed", props: Props): void => {

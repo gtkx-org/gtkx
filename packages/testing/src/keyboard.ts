@@ -1,7 +1,7 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { dispatchOnController, runInAct } from "./dispatch.js";
-import { getEditableDelegate, implementsEditable } from "./editable.js";
+import { getEditableDelegate } from "./editable.js";
 import { fireEvent } from "./fire-event.js";
 import type { UserEventState } from "./state.js";
 
@@ -185,7 +185,7 @@ const applyKeyAction = async (
     controller.emit(signalName, action.keyval, 0, state.modifierState);
     if (action.press) {
         const handled = dispatchShortcuts(widget, action.keyval, state.modifierState);
-        if (!handled && action.keyval === Gdk.KEY_Return && implementsEditable(widget)) {
+        if (!handled && action.keyval === Gdk.KEY_Return && widget instanceof Gtk.Editable) {
             await fireEvent(widget, "activate");
         }
     }

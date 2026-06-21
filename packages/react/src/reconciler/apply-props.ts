@@ -153,7 +153,8 @@ const applyDescriptors = (context: ApplyContext): void => {
     const ranImperatives = new Set<ImperativeHandler>();
 
     for (const [key, descriptor] of Object.entries(descriptors)) {
-        const changed = !propsEqual(oldProps?.[key], newProps[key]);
+        const isEqual = descriptor.diff ?? propsEqual;
+        const changed = !isEqual(oldProps?.[key], newProps[key]);
         switch (descriptor.kind) {
             case "array":
                 if (changed) applyArrayProp(container, descriptor, oldProps?.[key], newProps[key]);

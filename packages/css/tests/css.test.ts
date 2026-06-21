@@ -1,12 +1,17 @@
 import type { MockInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { css, cx, injectGlobal } from "../src/index.js";
-import { registeredStylesFor } from "../src/registry.js";
+import { createInstance, type Instance } from "../src/create-instance.js";
 import { Stylesheet } from "../src/stylesheet.js";
 
 describe("css", () => {
+    let instance: Instance;
+
+    beforeEach(() => {
+        instance = createInstance({ key: "gtkx" });
+    });
+
     it("creates a class name from template literal styles", () => {
-        const className = css`
+        const className = instance.css`
             background: red;
         `;
 
@@ -14,7 +19,7 @@ describe("css", () => {
     });
 
     it("creates a class name from object styles", () => {
-        const className = css({
+        const className = instance.css({
             padding: "12px",
             margin: "8px",
         });
@@ -23,10 +28,10 @@ describe("css", () => {
     });
 
     it("returns consistent class name for identical styles", () => {
-        const className1 = css`
+        const className1 = instance.css`
             color: blue;
         `;
-        const className2 = css`
+        const className2 = instance.css`
             color: blue;
         `;
 
@@ -34,10 +39,10 @@ describe("css", () => {
     });
 
     it("returns different class names for different styles", () => {
-        const className1 = css`
+        const className1 = instance.css`
             color: red;
         `;
-        const className2 = css`
+        const className2 = instance.css`
             color: green;
         `;
 
@@ -45,7 +50,7 @@ describe("css", () => {
     });
 
     it("handles nested style rules", () => {
-        const className = css`
+        const className = instance.css`
             background: white;
             &:hover {
                 background: gray;
@@ -57,7 +62,7 @@ describe("css", () => {
 
     it("handles interpolated values", () => {
         const color = "purple";
-        const className = css`
+        const className = instance.css`
             background: ${color};
         `;
 
@@ -65,7 +70,7 @@ describe("css", () => {
     });
 
     it("handles GTK CSS variables", () => {
-        const className = css`
+        const className = instance.css`
             background: @theme_bg_color;
             color: @theme_fg_color;
         `;
@@ -74,33 +79,39 @@ describe("css", () => {
     });
 
     it("handles array of styles", () => {
-        const baseStyles = css`
+        const baseStyles = instance.css`
             padding: 4px;
         `;
         const additionalStyles = {
             margin: "8px",
         };
-        const className = css(baseStyles, additionalStyles);
+        const className = instance.css(baseStyles, additionalStyles);
 
         expect(className).toMatch(/^gtkx-/);
     });
 });
 
 describe("cx", () => {
+    let instance: Instance;
+
+    beforeEach(() => {
+        instance = createInstance({ key: "gtkx" });
+    });
+
     it("combines multiple class names into an array", () => {
-        const result = cx("class-a", "class-b", "class-c");
+        const result = instance.cx("class-a", "class-b", "class-c");
 
         expect(result).toEqual(["class-a", "class-b", "class-c"]);
     });
 
     it("merges multiple css outputs into a single last-wins override class", () => {
-        const style1 = css`
+        const style1 = instance.css`
             color: red;
         `;
-        const style2 = css`
+        const style2 = instance.css`
             color: blue;
         `;
-        const result = cx(style1, style2);
+        const result = instance.cx(style1, style2);
 
         expect(result).toHaveLength(1);
         const mergedClass = result[0];
@@ -109,9 +120,9 @@ describe("cx", () => {
         expect(mergedClass).not.toBe(style1);
         expect(mergedClass).not.toBe(style2);
 
-        const mergedStyles = registeredStylesFor(mergedClass);
-        const style1Styles = registeredStylesFor(style1);
-        const style2Styles = registeredStylesFor(style2);
+        const mergedStyles = instance.registeredStylesFor(mergedClass);
+        const style1Styles = instance.registeredStylesFor(style1);
+        const style2Styles = instance.registeredStylesFor(style2);
         expect(mergedStyles).toBe(`${style1Styles}${style2Styles}`);
         expect(mergedStyles?.lastIndexOf("color: blue")).toBeGreaterThan(mergedStyles?.lastIndexOf("color: red") ?? -1);
     });
@@ -122,71 +133,89 @@ describe("cx", () => {
         const isActive = true;
         const isDisabled = false;
 
-        const result = cx(baseStyle, isActive && activeStyle, isDisabled && "disabled-class");
+        const result = instance.cx(baseStyle, isActive && activeStyle, isDisabled && "disabled-class");
 
         expect(result).toEqual(["base-class", "active-class"]);
     });
 });
 
 describe("cx falsy filtering", () => {
+    let instance: Instance;
+
+    beforeEach(() => {
+        instance = createInstance({ key: "gtkx" });
+    });
+
     it("filters out false values", () => {
         const isActive = false;
-        const result = cx("base", isActive && "active");
+        const result = instance.cx("base", isActive && "active");
 
         expect(result).toEqual(["base"]);
     });
 
     it("filters out undefined values", () => {
         const conditionalClass: string | undefined = undefined;
-        const result = cx("base", conditionalClass);
+        const result = instance.cx("base", conditionalClass);
 
         expect(result).toEqual(["base"]);
     });
 
     it("filters out null values", () => {
         const conditionalClass: string | null = null;
-        const result = cx("base", conditionalClass);
+        const result = instance.cx("base", conditionalClass);
 
         expect(result).toEqual(["base"]);
     });
 
     it("filters out empty strings", () => {
-        const result = cx("base", "", "other");
+        const result = instance.cx("base", "", "other");
 
         expect(result).toEqual(["base", "other"]);
     });
 });
 
 describe("cx edge cases", () => {
+    let instance: Instance;
+
+    beforeEach(() => {
+        instance = createInstance({ key: "gtkx" });
+    });
+
     it("returns empty array when given no arguments", () => {
-        const result = cx();
+        const result = instance.cx();
 
         expect(result).toEqual([]);
     });
 
     it("returns empty array when all values are falsy", () => {
-        const result = cx(false, undefined, null, "");
+        const result = instance.cx(false, undefined, null, "");
 
         expect(result).toEqual([]);
     });
 
     it("handles single class name", () => {
-        const result = cx("single");
+        const result = instance.cx("single");
 
         expect(result).toEqual(["single"]);
     });
 
     it("handles many class names", () => {
-        const result = cx("a", "b", "c", "d", "e", "f", "g");
+        const result = instance.cx("a", "b", "c", "d", "e", "f", "g");
 
         expect(result).toEqual(["a", "b", "c", "d", "e", "f", "g"]);
     });
 });
 
 describe("injectGlobal", () => {
+    let instance: Instance;
+
+    beforeEach(() => {
+        instance = createInstance({ key: "gtkx" });
+    });
+
     it("accepts template literal styles", () => {
         expect(() => {
-            injectGlobal`
+            instance.injectGlobal`
                 window {
                     background: @theme_bg_color;
                 }
@@ -196,7 +225,7 @@ describe("injectGlobal", () => {
 
     it("accepts object styles", () => {
         expect(() => {
-            injectGlobal({
+            instance.injectGlobal({
                 button: {
                     borderRadius: "6px",
                 },
@@ -206,12 +235,12 @@ describe("injectGlobal", () => {
 
     it("does not inject duplicate styles", () => {
         expect(() => {
-            injectGlobal`
+            instance.injectGlobal`
                 .global-unique-test {
                     color: red;
                 }
             `;
-            injectGlobal`
+            instance.injectGlobal`
                 .global-unique-test {
                     color: red;
                 }
@@ -221,7 +250,7 @@ describe("injectGlobal", () => {
 
     it("handles GTK widget selectors", () => {
         expect(() => {
-            injectGlobal`
+            instance.injectGlobal`
                 entry {
                     border: 1px solid @borders;
                 }
@@ -234,10 +263,12 @@ describe("injectGlobal", () => {
 });
 
 describe("stylis pipeline correctness", () => {
+    let instance: Instance;
     let insertSpy: MockInstance<Stylesheet["insert"]>;
 
     beforeEach(() => {
         insertSpy = vi.spyOn(Stylesheet.prototype, "insert");
+        instance = createInstance({ key: "gtkx" });
     });
 
     afterEach(() => {
@@ -252,7 +283,7 @@ describe("stylis pipeline correctness", () => {
     }
 
     it("preserves declarations carrying GTK named colors", () => {
-        const className = css`
+        const className = instance.css`
             background: @card_bg_color;
             color: alpha(@window_fg_color, 0.6);
             box-shadow: 0 0 0 1px alpha(@accent_bg_color, 0.4);
@@ -268,7 +299,7 @@ describe("stylis pipeline correctness", () => {
     });
 
     it("preserves named colors inside nested selectors", () => {
-        const className = css`
+        const className = instance.css`
             background: @card_bg_color;
 
             &:hover {
@@ -283,7 +314,7 @@ describe("stylis pipeline correctness", () => {
     });
 
     it("keeps real at-rules intact alongside named colors", () => {
-        const keyframes = css`
+        const keyframes = instance.css`
             color: @theme_fg_color;
             @keyframes gtkx-test-spin {
                 to {
@@ -300,7 +331,7 @@ describe("stylis pipeline correctness", () => {
     });
 
     it("scopes @media at-rules around the generated class selector", () => {
-        const className = css`
+        const className = instance.css`
             color: red;
             @media (prefers-color-scheme: dark) {
                 color: blue;
@@ -314,7 +345,7 @@ describe("stylis pipeline correctness", () => {
     });
 
     it("preserves & characters inside string literals", () => {
-        const className = css`
+        const className = instance.css`
             font-family: "Helvetica & Arial";
         `;
 
@@ -323,7 +354,7 @@ describe("stylis pipeline correctness", () => {
     });
 
     it("compounds nested & selectors instead of producing descendant combinators", () => {
-        const className = css`
+        const className = instance.css`
             &:hover {
                 &:focus {
                     color: red;
@@ -339,7 +370,7 @@ describe("stylis pipeline correctness", () => {
     });
 
     it("strips Emotion label declarations before they reach the GTK sink", () => {
-        const className = css({ label: "btn", padding: "8px" });
+        const className = instance.css({ label: "btn", padding: "8px" });
 
         const rule = findInsertedRule(`.${className}`);
         expect(rule).toContain("padding:8px;");
@@ -347,8 +378,8 @@ describe("stylis pipeline correctness", () => {
     });
 
     it("inlines a previously created class when interpolated into another css call", () => {
-        const base = css({ color: "red" });
-        const composed = css`
+        const base = instance.css({ color: "red" });
+        const composed = instance.css`
             ${base};
             padding: 8px;
         `;
@@ -358,5 +389,28 @@ describe("stylis pipeline correctness", () => {
         expect(rule).toBeDefined();
         expect(rule).toContain("color:red");
         expect(rule).toContain("padding:8px");
+    });
+
+    it("emits the literal scoped rule for the simplest common path", () => {
+        const className = instance.css({ background: "red" });
+
+        const rule = findInsertedRule(`.${className}`);
+        expect(rule).toBe(`.${className}{background:red;}`);
+    });
+
+    it("does not re-insert identical styles on the second css call", () => {
+        instance.css({ background: "red" });
+        const callsAfterFirst = insertSpy.mock.calls.length;
+
+        instance.css({ background: "red" });
+        expect(insertSpy.mock.calls.length).toBe(callsAfterFirst);
+    });
+
+    it("does not re-insert identical styles on the second injectGlobal call", () => {
+        instance.injectGlobal({ window: { background: "red" } });
+        const callsAfterFirst = insertSpy.mock.calls.length;
+
+        instance.injectGlobal({ window: { background: "red" } });
+        expect(insertSpy.mock.calls.length).toBe(callsAfterFirst);
     });
 });

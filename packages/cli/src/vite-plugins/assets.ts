@@ -1,9 +1,19 @@
 import { readFileSync } from "node:fs";
 import type { Plugin } from "vite";
+import { createVirtualNamespace, resolveToVirtual } from "./virtual-module.js";
 
 const CSS_RE = /\.css$/i;
+const INJECT_SUFFIX = "?inject";
 const VIRTUAL_PREFIX = "\0gtkx:";
+const { isVirtual, fromVirtualId } = createVirtualNamespace(VIRTUAL_PREFIX);
 
+/**
+ * Vite plugin that rewrites CSS imports into modules that push the stylesheet
+ * through `@gtkx/css`'s `injectGlobal`, so plain `import "./style.css"` works in
+ * the GTK runtime where there is no DOM stylesheet.
+ *
+ * @returns The configured Vite plugin.
+ */
 export function gtkxAssets(): Plugin {
     return {
         name: "gtkx:assets",
@@ -14,15 +24,15 @@ export function gtkxAssets(): Plugin {
                 return;
             }
 
-            const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
-            if (!resolved || resolved.external) return;
+            const virtualId = await resolveToVirtual(this, { source, importer, options }, VIRTUAL_PREFIX);
+            if (virtualId === undefined) return;
 
-            return `${VIRTUAL_PREFIX + resolved.id}?inject`;
+            return virtualId + INJECT_SUFFIX;
         },
 
         load(id) {
-            if (id.startsWith(VIRTUAL_PREFIX) && id.endsWith("?inject")) {
-                const filePath = id.slice(VIRTUAL_PREFIX.length, -"?inject".length);
+            if (isVirtual(id) && id.endsWith(INJECT_SUFFIX)) {
+                const filePath = fromVirtualId(id.slice(0, -INJECT_SUFFIX.length));
                 const content = readFileSync(filePath, "utf-8");
                 return [`import { injectGlobal } from "@gtkx/css";`, `injectGlobal(${JSON.stringify(content)});`].join(
                     "\n",

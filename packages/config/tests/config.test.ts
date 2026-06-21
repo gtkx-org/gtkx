@@ -15,6 +15,20 @@ describe("defineConfig", () => {
         const config = { libraries: ["Gtk-4.0", "Adw-1"] };
         expect(defineConfig(config)).toBe(config);
     });
+
+    it("returns a config-defining function unchanged", () => {
+        const fn = (env: { mode?: string }): GtkxConfig => ({
+            libraries: env.mode === "production" ? ["Gtk-4.0"] : ["Gtk-4.0", "Adw-1"],
+        });
+        expect(defineConfig(fn)).toBe(fn);
+        expect(defineConfig(fn)({ mode: "production" }).libraries).toEqual(["Gtk-4.0"]);
+    });
+
+    it("returns a promise-returning config unchanged", async () => {
+        const promised = Promise.resolve<GtkxConfig>({ libraries: ["Gtk-4.0"] });
+        expect(defineConfig(promised)).toBe(promised);
+        expect((await defineConfig(promised)).libraries).toEqual(["Gtk-4.0"]);
+    });
 });
 
 describe("validateGtkxConfig (libraries)", () => {

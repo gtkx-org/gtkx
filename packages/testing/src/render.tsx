@@ -1,14 +1,15 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import type { RootElement } from "@gtkx/react";
 import {
     createReconcilerRoot,
     isRootElement,
     type ReconcilerRoot,
-    type RootElement,
     setReconcilerErrorHandler,
-} from "@gtkx/react";
+} from "@gtkx/react/internal";
 import { type ErrorInfo, type ReactNode, StrictMode } from "react";
-import { act } from "./act.js";
 import { bindQueries } from "./bind-queries.js";
+import { addToCleanupQueue, runCleanup } from "./cleanup-registry.js";
+import { getConfig } from "./config.js";
 import { logWidget, type PrettyWidgetOptions } from "./pretty-widget.js";
 import { logRoles } from "./role-helpers.js";
 import { clearScreen, setScreen } from "./screen.js";
@@ -32,7 +33,7 @@ const HARNESS_WINDOW_WIDTH = 800;
 const HARNESS_WINDOW_HEIGHT = 600;
 
 const update = async (element: ReactNode, root: ReconcilerRoot): Promise<void> => {
-    await act(() => {
+    await getConfig().eventWrapper(() => {
         root.update(element);
     });
 
@@ -49,6 +50,12 @@ const disposeActiveRender = async (active: ActiveRender): Promise<void> => {
         await update(null, root);
         active.window?.destroy();
     });
+};
+
+const disposeAllActiveRenders = async (): Promise<void> => {
+    for (const active of [...activeRenders]) {
+        await disposeActiveRender(active);
+    }
 };
 
 const handleError = (error: unknown): void => {
@@ -121,6 +128,10 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
     const active: ActiveRender = { root, window: resolved.window };
     activeRenders.add(active);
 
+    addToCleanupQueue(disposeAllActiveRenders);
+    addToCleanupQueue(clearScreen);
+    addToCleanupQueue(resetClipboard);
+
     const wrap = (node: ReactNode): ReactNode => {
         const wrapped = Wrapper ? <Wrapper>{node}</Wrapper> : node;
         return options?.reactStrictMode ? <StrictMode>{wrapped}</StrictMode> : wrapped;
@@ -156,10 +167,12 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
     return result;
 };
 
+/**
+ * Tears down everything registered with the cleanup queue: unmounts all active renders, clears the
+ * screen singleton, and resets the clipboard.
+ *
+ * @returns A promise that resolves once teardown completes.
+ */
 export const cleanup = async (): Promise<void> => {
-    for (const active of [...activeRenders]) {
-        await disposeActiveRender(active);
-    }
-    clearScreen();
-    resetClipboard();
+    await runCleanup();
 };

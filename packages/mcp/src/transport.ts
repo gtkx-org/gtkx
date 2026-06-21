@@ -1,7 +1,7 @@
 import EventEmitter from "node:events";
 import type { Socket } from "node:net";
 import type { Duplex } from "node:stream";
-import { invalidRequestError, ipcTimeoutError, McpError, type McpErrorCode } from "./protocol/errors.js";
+import { invalidRequestError, ipcTimeoutError, isMcpErrorCode, McpError, McpErrorCode } from "./protocol/errors.js";
 import {
     type IpcMessage,
     type IpcRequest,
@@ -150,7 +150,9 @@ export class JsonStreamTransport extends EventEmitter<JsonStreamTransportEvents>
 
         if (response.error) {
             const err = response.error;
-            entry.reject(new McpError(err.code as McpErrorCode, err.message, err.data));
+            entry.reject(
+                new McpError(isMcpErrorCode(err.code) ? err.code : McpErrorCode.INTERNAL_ERROR, err.message, err.data),
+            );
         } else {
             entry.resolve(response.result);
         }

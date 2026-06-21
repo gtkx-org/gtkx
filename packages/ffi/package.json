@@ -39,8 +39,7 @@
         "!**/*.tsbuildinfo"
     ],
     "scripts": {
-        "build": "tsc -b",
-        "typecheck": "tsc -b --emitDeclarationOnly"
+        "build": "tsc -b"
     },
     "engines": {
         "node": ">=24"

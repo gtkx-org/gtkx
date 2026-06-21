@@ -13,9 +13,8 @@
         "codegen": "turbo run codegen --filter=@gtkx/cli",
         "coverage": "turbo coverage:all native-coverage --filter=!gtkx",
         "coverage:all": "vitest run --coverage --project=!gtk-demo",
-        "docs": "turbo run docs --filter=!gtkx",
         "lint": "turbo setup:store-link lint:all lint --filter=!gtkx",
-        "lint:all": "pnpm check:ts-refs && pnpm lint:biome && pnpm lint:knip && pnpm lint:knip:prod && pnpm lint:deps",
+        "lint:all": "pnpm check:ts-refs && pnpm --filter @gtkx/cli check:env && pnpm lint:biome && pnpm lint:knip && pnpm lint:knip:prod && pnpm lint:deps",
         "lint:biome": "biome check .",
         "lint:deps": "depcruise packages",
         "lint:knip": "knip --no-gitignore --exclude files",
@@ -26,24 +25,27 @@
         "publish-test": "node scripts/publish-test.ts",
         "release": "node scripts/publish.ts",
         "sync:ts-refs": "node scripts/sync-ts-references.ts",
+        "version": "changeset version",
         "version-key": "node scripts/compute-version-key.ts",
         "test": "turbo run test:all test --filter=!gtkx",
         "test:all": "vitest run",
-        "typecheck": "turbo typecheck --filter=!gtkx"
+        "typecheck": "turbo run typecheck:packages && turbo run typecheck --filter=!gtkx",
+        "typecheck:packages": "tsc -p tsconfig.check.json"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.5.0",
-        "@types/node": "^25.9.3",
+        "@changesets/cli": "^2.31.0",
+        "@types/node": "catalog:",
         "@types/react": "^19.2.17",
-        "@vitest/coverage-v8": "^4.1.8",
+        "@vitest/coverage-v8": "catalog:",
         "dependency-cruiser": "^17.4.3",
         "knip": "^6.16.1",
-        "react": "^19.2.7",
+        "react": "catalog:",
         "tsx": "^4.22.4",
         "turbo": "^2.9.18",
-        "typescript": "^6.0.3",
+        "typescript": "catalog:",
         "verdaccio": "^6.7.2",
-        "vitest": "^4.1.8"
+        "vitest": "catalog:"
     },
     "engines": {
         "node": ">=24"
