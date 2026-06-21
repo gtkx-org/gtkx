@@ -3,8 +3,8 @@ use std::ffi::c_void;
 use napi::sys::TypedarrayType;
 use native::ffi::FfiValue;
 use native::types::{
-    ArrayKind, ArrayType, BigIntKind, BooleanType, FloatKind, IntegerKind, Ownership, TaggedKind,
-    TaggedType, Type,
+    ArrayKind, ArrayType, BigIntKind, BooleanType, FfiEncoder as _, FloatKind, IntegerKind,
+    Ownership, TaggedKind, TaggedType, Type,
 };
 use native::value::{BufferView, BufferViewKind, Value};
 

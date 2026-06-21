@@ -1,7 +1,7 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { act } from "./act.js";
-import { findController, getOrCreateController } from "./controller.js";
+import { findController } from "./controller.js";
+import { dispatchOnController, dispatchOnExistingController, runInAct } from "./dispatch.js";
 
 export type DropContent = string | number | boolean | GObject.Value;
 
@@ -33,47 +33,27 @@ const wrapValue = (content: DropContent): GObject.Value => {
     return value;
 };
 
-export const hover = async (widget: Gtk.Widget): Promise<void> => {
-    await act(() => {
-        const controller = getOrCreateController(widget, Gtk.EventControllerMotion);
-        controller.emit("enter", 0, 0);
-    });
-};
+export const hover = (widget: Gtk.Widget): Promise<void> =>
+    dispatchOnController(widget, Gtk.EventControllerMotion, (controller) => controller.emit("enter", 0, 0));
 
-export const unhover = async (widget: Gtk.Widget): Promise<void> => {
-    await act(() => {
-        const controller = getOrCreateController(widget, Gtk.EventControllerMotion);
-        controller.emit("leave");
-    });
-};
+export const unhover = (widget: Gtk.Widget): Promise<void> =>
+    dispatchOnController(widget, Gtk.EventControllerMotion, (controller) => controller.emit("leave"));
 
-export const rotate = async (widget: Gtk.Widget, angle: number, deltaAngle: number = angle): Promise<void> => {
-    await act(() => {
-        const controller = findController(widget, Gtk.GestureRotate);
-        controller.emit("angle-changed", angle, deltaAngle);
-    });
-};
+export const rotate = (widget: Gtk.Widget, angle: number, deltaAngle: number = angle): Promise<void> =>
+    dispatchOnExistingController(widget, Gtk.GestureRotate, (controller) =>
+        controller.emit("angle-changed", angle, deltaAngle),
+    );
 
-export const zoom = async (widget: Gtk.Widget, scale: number): Promise<void> => {
-    await act(() => {
-        const controller = findController(widget, Gtk.GestureZoom);
-        controller.emit("scale-changed", scale);
-    });
-};
+export const zoom = (widget: Gtk.Widget, scale: number): Promise<void> =>
+    dispatchOnExistingController(widget, Gtk.GestureZoom, (controller) => controller.emit("scale-changed", scale));
 
-export const swipe = async (widget: Gtk.Widget, velocityX: number, velocityY: number): Promise<void> => {
-    await act(() => {
-        const controller = findController(widget, Gtk.GestureSwipe);
-        controller.emit("swipe", velocityX, velocityY);
-    });
-};
+export const swipe = (widget: Gtk.Widget, velocityX: number, velocityY: number): Promise<void> =>
+    dispatchOnExistingController(widget, Gtk.GestureSwipe, (controller) =>
+        controller.emit("swipe", velocityX, velocityY),
+    );
 
-export const longPress = async (widget: Gtk.Widget, x: number = 0, y: number = 0): Promise<void> => {
-    await act(() => {
-        const controller = findController(widget, Gtk.GestureLongPress);
-        controller.emit("pressed", x, y);
-    });
-};
+export const longPress = (widget: Gtk.Widget, x: number = 0, y: number = 0): Promise<void> =>
+    dispatchOnExistingController(widget, Gtk.GestureLongPress, (controller) => controller.emit("pressed", x, y));
 
 type DragInstancePatch = {
     getStartPoint?: Gtk.GestureDrag["getStartPoint"] | undefined;
@@ -112,7 +92,7 @@ const withGestureDragState = <T>(
 export const drag = async (widget: Gtk.Widget, dx: number, dy: number, options: DragOptions = {}): Promise<void> => {
     const startX = options.startX ?? 0;
     const startY = options.startY ?? 0;
-    await act(() => {
+    await runInAct(() => {
         const controller = findController(widget, Gtk.GestureDrag);
         withGestureDragState(controller, startX, startY, (setOffset) => {
             controller.emit("drag-begin", startX, startY);
@@ -128,20 +108,18 @@ const emitDrop = (target: Gtk.Widget, content: DropContent, options: DropOptions
     dropTarget.emit("drop", wrapValue(content), options.x ?? 0, options.y ?? 0);
 };
 
-export const drop = async (widget: Gtk.Widget, content: DropContent, options: DropOptions = {}): Promise<void> => {
-    await act(() => {
+export const drop = (widget: Gtk.Widget, content: DropContent, options: DropOptions = {}): Promise<void> =>
+    runInAct(() => {
         emitDrop(widget, content, options);
     });
-};
 
-export const dragAndDrop = async (
+export const dragAndDrop = (
     source: Gtk.Widget,
     target: Gtk.Widget,
     content: DropContent,
     options: DropOptions = {},
-): Promise<void> => {
-    await act(() => {
+): Promise<void> =>
+    runInAct(() => {
         findController(source, Gtk.DragSource);
         emitDrop(target, content, options);
     });
-};

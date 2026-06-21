@@ -43,7 +43,8 @@
     },
     "dependencies": {
         "@gtkx/css": "workspace:*",
-        "@gtkx/react": "workspace:*"
+        "@gtkx/react": "workspace:*",
+        "@gtkx/utils": "workspace:*"
     },
     "peerDependencies": {
         "react": "^19"

@@ -1,6 +1,6 @@
 import type { Handle, Ref } from "@gtkx/native";
 import { getErrorGtype, isGtyped } from "./gtype.js";
-import { getWrapperClass, wrapHandle } from "./registry.js";
+import { requireWrapperClassByGtype, wrapHandle } from "./registry.js";
 
 export interface GError {
     domain: number;
@@ -10,11 +10,7 @@ export interface GError {
 
 export function checkError(error: Ref): void {
     if (error.value !== null) {
-        const errorClass = getWrapperClass(getErrorGtype());
-        if (errorClass === null) {
-            throw new Error("checkError: the GLib Error wrapper class is not registered");
-        }
-        const gerror = wrapHandle<GError>(error.value as Handle, errorClass);
+        const gerror = wrapHandle<GError>(error.value as Handle, requireWrapperClassByGtype(getErrorGtype()));
         const carrier = new Error(gerror.message);
         Error.captureStackTrace?.(carrier, checkError);
         Object.defineProperty(gerror, "stack", {

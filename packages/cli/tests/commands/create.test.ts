@@ -62,13 +62,29 @@ describe("create", () => {
         });
     });
 
+    const expectBoundaryRejection = async (overrides: CreateArgs, message: RegExp): Promise<void> => {
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {
+            throw new Error("__exit__");
+        }) as never);
+        const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+        try {
+            await expect(runCreate(overrides)).rejects.toThrow("__exit__");
+
+            expect(exitSpy).toHaveBeenCalledWith(1);
+            const written = stderrSpy.mock.calls.map((call) => String(call[0])).join("");
+            expect(written).toMatch(message);
+            expect(createAppMock).not.toHaveBeenCalled();
+        } finally {
+            stderrSpy.mockRestore();
+            exitSpy.mockRestore();
+        }
+    };
+
     it("rejects an unknown package manager before scaffolding", async () => {
-        await expect(runCreate({ pm: "bun" })).rejects.toThrow(/Unknown package manager "bun"/);
-        expect(createAppMock).not.toHaveBeenCalled();
+        await expectBoundaryRejection({ pm: "bun" }, /Unknown package manager "bun"/);
     });
 
     it("rejects an unknown testing setup before scaffolding", async () => {
-        await expect(runCreate({ testing: "jest" })).rejects.toThrow(/Unknown testing setup "jest"/);
-        expect(createAppMock).not.toHaveBeenCalled();
+        await expectBoundaryRejection({ testing: "jest" }, /Unknown testing setup "jest"/);
     });
 });

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { reverseNumericEnum } from "@gtkx/utils";
+import { reverseNumericEnum, sortedAlphaBy } from "@gtkx/utils";
 import { type Container, traverse } from "./traversal.js";
 import { getWidgetAccessibleName } from "./widget-text.js";
 
@@ -14,6 +14,26 @@ export const formatRole = (role: Gtk.AccessibleRole): string => {
     const name = ROLE_NAMES_BY_VALUE.get(role);
     if (!name) return String(role);
     return name.toLowerCase();
+};
+
+/**
+ * Formats a set of accessible roles into a human-readable enum-name list joined with "or".
+ *
+ * Each role is rendered as its uppercase enum name (matching the GTK `Gtk.AccessibleRole`
+ * member spelling). Two roles are joined as "A or B"; three or more use an Oxford comma,
+ * e.g. "A, B, or C".
+ */
+export const formatRoleList = (roles: Iterable<Gtk.AccessibleRole>): string => {
+    const names = [...roles].map((role) => formatRole(role).toUpperCase());
+    if (names.length <= 1) {
+        return names.join("");
+    }
+    if (names.length === 2) {
+        return `${names[0]} or ${names[1]}`;
+    }
+    const head = names.slice(0, -1);
+    const last = names[names.length - 1];
+    return `${head.join(", ")}, or ${last}`;
 };
 
 export const getRoles = (container: Container): Map<string, RoleInfo[]> => {
@@ -53,7 +73,7 @@ export const prettyRoles = (container: Container): string => {
 
     const lines: string[] = [];
 
-    const sortedRoles = [...roles.entries()].sort(([a], [b]) => a.localeCompare(b));
+    const sortedRoles = sortedAlphaBy([...roles.entries()], ([roleName]) => roleName);
 
     for (const [roleName, widgets] of sortedRoles) {
         lines.push(`${roleName}:`);

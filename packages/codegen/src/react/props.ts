@@ -10,6 +10,7 @@ import { forEachAncestor, type ResolvedInterface, resolveDirectInterfaces } from
 import { renderHandlerParameters } from "../writers/param-structure.js";
 import { renderBaseTypeFor, type TsTypeTarget } from "../writers/ts-type.js";
 import { isScalarRef } from "../writers/value.js";
+import { excludedPropsForWidget } from "./tables.js";
 import { classExposesMethod, isReactNodeClass, signalHandlerName } from "./widgets.js";
 
 export type WidgetPropsEntries = {
@@ -130,14 +131,8 @@ const isSlotProperty = (owner: SlotOwner, property: GirProperty, jsName: string)
     return true;
 };
 
-const PROP_OVERRIDES_BY_WIDGET: Record<string, Set<string>> = {
-    GtkColumnView: new Set(["columns"]),
-};
-
-const isPropOverridden = (ownerName: string, propName: string): boolean => {
-    const overrides = PROP_OVERRIDES_BY_WIDGET[ownerName];
-    return overrides?.has(propName) ?? false;
-};
+const isPropOverridden = (ownerName: string, propName: string): boolean =>
+    excludedPropsForWidget(ownerName)?.has(propName) ?? false;
 
 const renderSignalHandler = (options: SignalRenderOptions): string => {
     const { types, signal, selfType } = options;

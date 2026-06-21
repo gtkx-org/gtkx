@@ -113,17 +113,144 @@ impl FromDescriptor for ArrayType {
 }
 
 impl FfiEncoder for ArrayType {
-    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::FfiValue> {
-        Self::encode(self, value)
+    fn encode(&self, val: &value::Value) -> anyhow::Result<ffi::FfiValue> {
+        let array = match val {
+            value::Value::Array(arr) => arr,
+            value::Value::BufferView(view) => return self.encode_buffer_view(view),
+            value::Value::Null | value::Value::Undefined => {
+                return Ok(ffi::FfiValue::Ptr(std::ptr::null_mut()));
+            }
+            _ => bail!("Expected an Array for array type, got {val:?}"),
+        };
+
+        if self.kind == ArrayKind::GByteArray {
+            return self.encode_gbytearray(array);
+        }
+
+        if self.kind == ArrayKind::GArray {
+            return self.encode_garray(array);
+        }
+
+        let encoder: &dyn ArrayKindEncoder = match &self.kind {
+            ArrayKind::GList => &ListEncoder::<ffi::GListFlavor>(PhantomData),
+            ArrayKind::GSList => &ListEncoder::<ffi::GSListFlavor>(PhantomData),
+            _ => &NullTerminatedArrayEncoder,
+        };
+
+        match self.item_codec("array")? {
+            ItemCodec::Integer(kind) => {
+                Self::encode_integer_array(&Self::extract_numbers(array)?, kind)
+            }
+            ItemCodec::Tagged(kind) => Ok(ffi::FfiValue::Storage(
+                kind.to_ffi_storage(&Self::extract_numbers(array)?),
+            )),
+            ItemCodec::BigInt(kind) => Ok(ffi::FfiValue::Storage(kind.to_ffi_storage(array)?)),
+            ItemCodec::Float(kind) => {
+                Self::encode_float_array(&Self::extract_numbers(array)?, kind)
+            }
+            ItemCodec::Boolean => Ok(Self::encode_boolean_array(&Self::extract_booleans(array)?)),
+            ItemCodec::String => {
+                let dup_elements =
+                    matches!(&*self.item_type, Type::String(s) if s.ownership.is_full());
+                encoder.encode_strings(array, dup_elements, self.ownership)
+            }
+            ItemCodec::Pointer => {
+                let handles = Self::extract_handles(array)?;
+
+                if let Some(element_size) = self.element_size {
+                    let mut buffer = vec![0u8; handles.len() * element_size];
+                    for (i, handle) in handles.iter().enumerate() {
+                        let ptr = handle.ptr();
+                        if ptr.is_null() {
+                            bail!("GObject in array has a null pointer");
+                        }
+                        let offset = i * element_size;
+                        unsafe {
+                            std::ptr::copy_nonoverlapping(
+                                ptr as *const u8,
+                                buffer.as_mut_ptr().add(offset),
+                                element_size,
+                            );
+                        }
+                    }
+                    return Ok(ffi::FfiValue::Storage(buffer.into()));
+                }
+
+                encoder.encode_handles(&handles, &self.item_type, self.ownership)
+            }
+        }
     }
 }
 
 impl FfiDecoder for ArrayType {
-    unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
-        match src {
-            ReadSource::Call(ffi_value) => Self::decode(self, ffi_value),
-            ReadSource::Value(ptr, _context) => unsafe { Self::ptr_to_value(self, ptr) },
-            ReadSource::Slot(ptr, context) => unsafe { self.read_pointer_slot(ptr, context) },
+    fn read_call(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        match &self.kind {
+            ArrayKind::GList | ArrayKind::GSList => return self.decode_glist(ffi_value),
+            ArrayKind::GArray => return self.decode_garray(ffi_value),
+            ArrayKind::GPtrArray => return self.decode_gptrarray(ffi_value),
+            ArrayKind::GByteArray => return self.decode_gbytearray(ffi_value),
+            ArrayKind::Array | ArrayKind::Sized { .. } | ArrayKind::Fixed { .. } => {}
+        }
+
+        if let ffi::FfiValue::Ptr(ptr) = ffi_value {
+            if ptr.is_null() {
+                return Ok(value::Value::Array(vec![]));
+            }
+
+            return match self.item_codec("array")? {
+                ItemCodec::String => Ok(self.decode_null_terminated_string_array(*ptr)),
+                ItemCodec::Pointer => self.decode_null_terminated_ptr_array(*ptr),
+                codec @ (ItemCodec::Integer(_)
+                | ItemCodec::Tagged(_)
+                | ItemCodec::BigInt(_)
+                | ItemCodec::Float(_)
+                | ItemCodec::Boolean) => self.decode_zero_terminated_scalar_array(codec, *ptr),
+            };
+        }
+
+        let ffi::FfiValue::Storage(storage) = ffi_value else {
+            bail!("Expected a Storage ffi::FfiValue for Array, got {ffi_value:?}")
+        };
+
+        self.decode_storage(storage)
+    }
+
+    unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+        if ptr.is_null() {
+            return Ok(value::Value::Array(vec![]));
+        }
+        match self.kind {
+            ArrayKind::GPtrArray => {
+                let ptr_array = ptr as *mut glib::ffi::GPtrArray;
+                let len = unsafe { (*ptr_array).len as usize };
+                let pdata = unsafe { (*ptr_array).pdata };
+                let mut values = Vec::with_capacity(len);
+                for i in 0..len {
+                    let item_ptr = unsafe { *pdata.add(i) };
+                    let item_value = unsafe {
+                        self.item_type
+                            .read(ReadSource::Value(item_ptr, "GPtrArray item"))?
+                    };
+                    values.push(item_value);
+                }
+                Ok(value::Value::Array(values))
+            }
+            ArrayKind::GByteArray => {
+                let ffi_value = ffi::FfiValue::Ptr(ptr);
+                self.decode_gbytearray(&ffi_value)
+            }
+            ArrayKind::GArray => {
+                let ffi_value = ffi::FfiValue::Ptr(ptr);
+                self.decode_garray(&ffi_value)
+            }
+            ArrayKind::GList | ArrayKind::GSList => {
+                let ffi_value = ffi::FfiValue::Ptr(ptr);
+                self.decode_glist(&ffi_value)
+            }
+            ArrayKind::Array | ArrayKind::Sized { .. } | ArrayKind::Fixed { .. } => {
+                let ffi_value = ffi::FfiValue::Ptr(ptr);
+                self.decode(&ffi_value)
+            }
         }
     }
 
@@ -133,7 +260,36 @@ impl FfiDecoder for ArrayType {
         ffi_args: &[ffi::FfiValue],
         args: &[crate::arg::Arg],
     ) -> anyhow::Result<value::Value> {
-        Self::decode_with_context(self, ffi_value, ffi_args, args)
+        match &self.kind {
+            ArrayKind::Sized { size_index } => {
+                let length = Self::size_from_args(ffi_args, args, *size_index)?;
+
+                if let ffi::FfiValue::Ptr(ptr) = ffi_value {
+                    if ptr.is_null() {
+                        return Ok(value::Value::Array(vec![]));
+                    }
+
+                    return self.decode_sized_array(*ptr, length);
+                }
+            }
+            ArrayKind::Fixed { size } => {
+                if let ffi::FfiValue::Ptr(ptr) = ffi_value {
+                    if ptr.is_null() {
+                        return Ok(value::Value::Array(vec![]));
+                    }
+
+                    return self.decode_sized_array(*ptr, *size);
+                }
+            }
+            ArrayKind::Array
+            | ArrayKind::GList
+            | ArrayKind::GSList
+            | ArrayKind::GPtrArray
+            | ArrayKind::GArray
+            | ArrayKind::GByteArray => {}
+        }
+
+        self.decode(ffi_value)
     }
 }
 
@@ -628,74 +784,6 @@ impl ArrayType {
         Ok(values)
     }
 
-    pub fn encode(&self, val: &value::Value) -> anyhow::Result<ffi::FfiValue> {
-        let array = match val {
-            value::Value::Array(arr) => arr,
-            value::Value::BufferView(view) => return self.encode_buffer_view(view),
-            value::Value::Null | value::Value::Undefined => {
-                return Ok(ffi::FfiValue::Ptr(std::ptr::null_mut()));
-            }
-            _ => bail!("Expected an Array for array type, got {val:?}"),
-        };
-
-        if self.kind == ArrayKind::GByteArray {
-            return self.encode_gbytearray(array);
-        }
-
-        if self.kind == ArrayKind::GArray {
-            return self.encode_garray(array);
-        }
-
-        let encoder: &dyn ArrayKindEncoder = match &self.kind {
-            ArrayKind::GList => &ListEncoder::<ffi::GListFlavor>(PhantomData),
-            ArrayKind::GSList => &ListEncoder::<ffi::GSListFlavor>(PhantomData),
-            _ => &NullTerminatedArrayEncoder,
-        };
-
-        match self.item_codec("array")? {
-            ItemCodec::Integer(kind) => {
-                Self::encode_integer_array(&Self::extract_numbers(array)?, kind)
-            }
-            ItemCodec::Tagged(kind) => Ok(ffi::FfiValue::Storage(
-                kind.to_ffi_storage(&Self::extract_numbers(array)?),
-            )),
-            ItemCodec::BigInt(kind) => Ok(ffi::FfiValue::Storage(kind.to_ffi_storage(array)?)),
-            ItemCodec::Float(kind) => {
-                Self::encode_float_array(&Self::extract_numbers(array)?, kind)
-            }
-            ItemCodec::Boolean => Ok(Self::encode_boolean_array(&Self::extract_booleans(array)?)),
-            ItemCodec::String => {
-                let dup_elements =
-                    matches!(&*self.item_type, Type::String(s) if s.ownership.is_full());
-                encoder.encode_strings(array, dup_elements, self.ownership)
-            }
-            ItemCodec::Pointer => {
-                let handles = Self::extract_handles(array)?;
-
-                if let Some(element_size) = self.element_size {
-                    let mut buffer = vec![0u8; handles.len() * element_size];
-                    for (i, handle) in handles.iter().enumerate() {
-                        let ptr = handle.ptr();
-                        if ptr.is_null() {
-                            bail!("GObject in array has a null pointer");
-                        }
-                        let offset = i * element_size;
-                        unsafe {
-                            std::ptr::copy_nonoverlapping(
-                                ptr as *const u8,
-                                buffer.as_mut_ptr().add(offset),
-                                element_size,
-                            );
-                        }
-                    }
-                    return Ok(ffi::FfiValue::Storage(buffer.into()));
-                }
-
-                encoder.encode_handles(&handles, &self.item_type, self.ownership)
-            }
-        }
-    }
-
     fn encode_buffer_view(&self, view: &value::BufferView) -> anyhow::Result<ffi::FfiValue> {
         anyhow::ensure!(
             !view.is_shared(),
@@ -957,76 +1045,6 @@ impl ArrayType {
         };
         Ok(ffi::FfiValue::Storage(storage))
     }
-
-    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        match &self.kind {
-            ArrayKind::GList | ArrayKind::GSList => return self.decode_glist(ffi_value),
-            ArrayKind::GArray => return self.decode_garray(ffi_value),
-            ArrayKind::GPtrArray => return self.decode_gptrarray(ffi_value),
-            ArrayKind::GByteArray => return self.decode_gbytearray(ffi_value),
-            ArrayKind::Array | ArrayKind::Sized { .. } | ArrayKind::Fixed { .. } => {}
-        }
-
-        if let ffi::FfiValue::Ptr(ptr) = ffi_value {
-            if ptr.is_null() {
-                return Ok(value::Value::Array(vec![]));
-            }
-
-            return match self.item_codec("array")? {
-                ItemCodec::String => Ok(self.decode_null_terminated_string_array(*ptr)),
-                ItemCodec::Pointer => self.decode_null_terminated_ptr_array(*ptr),
-                codec @ (ItemCodec::Integer(_)
-                | ItemCodec::Tagged(_)
-                | ItemCodec::BigInt(_)
-                | ItemCodec::Float(_)
-                | ItemCodec::Boolean) => self.decode_zero_terminated_scalar_array(codec, *ptr),
-            };
-        }
-
-        let ffi::FfiValue::Storage(storage) = ffi_value else {
-            bail!("Expected a Storage ffi::FfiValue for Array, got {ffi_value:?}")
-        };
-
-        self.decode_storage(storage)
-    }
-
-    pub fn decode_with_context(
-        &self,
-        ffi_value: &ffi::FfiValue,
-        ffi_args: &[ffi::FfiValue],
-        args: &[Arg],
-    ) -> anyhow::Result<value::Value> {
-        match &self.kind {
-            ArrayKind::Sized { size_index } => {
-                let length = Self::size_from_args(ffi_args, args, *size_index)?;
-
-                if let ffi::FfiValue::Ptr(ptr) = ffi_value {
-                    if ptr.is_null() {
-                        return Ok(value::Value::Array(vec![]));
-                    }
-
-                    return self.decode_sized_array(*ptr, length);
-                }
-            }
-            ArrayKind::Fixed { size } => {
-                if let ffi::FfiValue::Ptr(ptr) = ffi_value {
-                    if ptr.is_null() {
-                        return Ok(value::Value::Array(vec![]));
-                    }
-
-                    return self.decode_sized_array(*ptr, *size);
-                }
-            }
-            ArrayKind::Array
-            | ArrayKind::GList
-            | ArrayKind::GSList
-            | ArrayKind::GPtrArray
-            | ArrayKind::GArray
-            | ArrayKind::GByteArray => {}
-        }
-
-        self.decode(ffi_value)
-    }
 }
 
 impl ArrayType {
@@ -1277,45 +1295,6 @@ impl ArrayType {
             return Ok(value::Value::Array(vec![]));
         }
         self.decode_sized_array(ptr, length)
-    }
-
-    pub unsafe fn ptr_to_value(&self, ptr: *mut c_void) -> anyhow::Result<value::Value> {
-        if ptr.is_null() {
-            return Ok(value::Value::Array(vec![]));
-        }
-        match self.kind {
-            ArrayKind::GPtrArray => {
-                let ptr_array = ptr as *mut glib::ffi::GPtrArray;
-                let len = unsafe { (*ptr_array).len as usize };
-                let pdata = unsafe { (*ptr_array).pdata };
-                let mut values = Vec::with_capacity(len);
-                for i in 0..len {
-                    let item_ptr = unsafe { *pdata.add(i) };
-                    let item_value = unsafe {
-                        self.item_type
-                            .read(ReadSource::Value(item_ptr, "GPtrArray item"))?
-                    };
-                    values.push(item_value);
-                }
-                Ok(value::Value::Array(values))
-            }
-            ArrayKind::GByteArray => {
-                let ffi_value = ffi::FfiValue::Ptr(ptr);
-                self.decode_gbytearray(&ffi_value)
-            }
-            ArrayKind::GArray => {
-                let ffi_value = ffi::FfiValue::Ptr(ptr);
-                self.decode_garray(&ffi_value)
-            }
-            ArrayKind::GList | ArrayKind::GSList => {
-                let ffi_value = ffi::FfiValue::Ptr(ptr);
-                self.decode_glist(&ffi_value)
-            }
-            ArrayKind::Array | ArrayKind::Sized { .. } | ArrayKind::Fixed { .. } => {
-                let ffi_value = ffi::FfiValue::Ptr(ptr);
-                self.decode(&ffi_value)
-            }
-        }
     }
 
     fn validated_size(size: f64, param_index: usize) -> anyhow::Result<usize> {

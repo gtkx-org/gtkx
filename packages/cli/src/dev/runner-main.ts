@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { resolveDataDir } from "@gtkx/config";
+import { error } from "../internal/log.js";
 import { createDevRunner } from "./runner.js";
 import { prepareDevSchemaEnv } from "./schema-env.js";
 
@@ -10,7 +11,7 @@ export const main = async (): Promise<void> => {
     const entryArg = process.argv[ENTRY_ARG_INDEX];
 
     if (!entryArg) {
-        console.error("[gtkx-dev-runner] Missing entry argument");
+        error("Missing entry argument");
         process.exit(1);
     }
 

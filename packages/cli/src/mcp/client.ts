@@ -13,6 +13,7 @@ export type McpClientOptions = {
 };
 
 const RECONNECT_DELAY_MS = 2000;
+const REGISTER_TIMEOUT_MS = 30000;
 
 export class McpClient {
     private socket: net.Socket | null = null;
@@ -136,10 +137,14 @@ export class McpClient {
         if (!this.transport) {
             return Promise.reject(new Error("Transport not initialized"));
         }
-        return this.transport.sendRequest("app.register", {
-            applicationId: this.applicationId,
-            pid: process.pid,
-        });
+        return this.transport.sendRequest(
+            "app.register",
+            {
+                applicationId: this.applicationId,
+                pid: process.pid,
+            },
+            REGISTER_TIMEOUT_MS,
+        );
     }
 
     private async handleRequest(request: IpcRequest): Promise<void> {

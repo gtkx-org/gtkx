@@ -4,12 +4,7 @@ import type { GirNamespace } from "../gir/namespace.js";
 import type { GirRepository } from "../gir/repository.js";
 import { type VirtualSubcomponent, virtualSubcomponentEntries } from "./compounds-meta.js";
 import type { JsxImports } from "./imports.js";
-import {
-    BUILT_IN_COMPOUND_HOCS,
-    type CompoundHoc,
-    RUNTIME_COMPONENT_WRAPPERS,
-    type RuntimeComponentWrapper,
-} from "./tables.js";
+import { BUILT_IN_COMPOUND_HOCS, type CompoundHoc, type RuntimeComponentWrapper, widgetWrapper } from "./tables.js";
 import { ancestorGlibNames, collectReactNodeClasses, type WidgetCandidate } from "./widgets.js";
 
 const WRAPPER_ELEMENT_CONST = "WrapperNodeElement";
@@ -95,7 +90,7 @@ const renderCandidateExport = (
     excludeNames: Set<string>,
 ): string | null => {
     const { glibName, klass, namespace } = candidate;
-    const wrapper = RUNTIME_COMPONENT_WRAPPERS[glibName];
+    const wrapper = widgetWrapper(glibName);
     if (wrapper !== undefined) return renderRuntimeWrapper(glibName, wrapper, imports);
     if (excludeNames.has(glibName)) return null;
     const ancestry = new Set(ancestorGlibNames(klass, namespace, repository));

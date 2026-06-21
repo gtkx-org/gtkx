@@ -38,7 +38,7 @@ export const emitNamespaceFunction = (context: ModuleContext, fn: GirFunction): 
     const exportName = namespaceFunctionExportName(cIdentifier, fn.name, context.namespace.cSymbolPrefixes);
     const signature = renderMethodSignature(context, fn);
     const returnType = renderMethodReturnType(context, fn);
-    const body = renderMethodBody(context, fn, { bindingExpression: bindingName, isStatic: true });
+    const body = renderMethodBody(context, fn, { bindingExpression: bindingName });
     context.module.appendDeclaration(renderBlock(`export function ${exportName}(${signature}): ${returnType}`, body));
 };
 

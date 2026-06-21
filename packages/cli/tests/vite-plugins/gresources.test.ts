@@ -358,14 +358,15 @@ describe("gtkxResources (watcher: refresh failure)", () => {
             }),
         };
 
-        const errSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+        const errSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
         try {
             (plugin.configureServer as ConfigureServerHook).call(plugin, server);
 
             server.watcher.emit("change", assetPath);
             await waitTicks();
 
-            expect(errSpy).toHaveBeenCalled();
+            const written = errSpy.mock.calls.map((call) => String(call[0])).join("");
+            expect(written).toContain("Failed to refresh GResource bundle");
         } finally {
             errSpy.mockRestore();
         }

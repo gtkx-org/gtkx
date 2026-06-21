@@ -7,5 +7,6 @@ pub(crate) mod handler;
 mod init;
 mod quit;
 mod register_class;
+#[cfg(feature = "test-support")]
 mod test_support;
 mod toggle_ref;

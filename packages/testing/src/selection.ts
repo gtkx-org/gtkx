@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act } from "./act.js";
+import { runInAct } from "./dispatch.js";
+import { formatRoleList } from "./role-helpers.js";
 
 const SELECTABLE_ROLES = new Set<Gtk.AccessibleRole>([Gtk.AccessibleRole.COMBO_BOX, Gtk.AccessibleRole.LIST]);
 
@@ -79,7 +80,7 @@ const selectInListView = (widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView, 
 
 const selectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
     if (!isSelectable(widget)) {
-        throw new Error("Cannot select options: expected selectable widget (COMBO_BOX or LIST)");
+        throw new Error(`Cannot select options: expected selectable widget (${formatRoleList(SELECTABLE_ROLES)})`);
     }
 
     const role = widget.getAccessibleRole();
@@ -90,8 +91,8 @@ const selectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
     }
 };
 
-export const selectOptions = async (widget: Gtk.Widget, values: number | number[]): Promise<void> => {
-    await act(() => {
+export const selectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
+    runInAct(() => {
         const valueArray = Array.isArray(values) ? values : [values];
         if (isListView(widget)) {
             selectInListView(widget, valueArray);
@@ -99,7 +100,6 @@ export const selectOptions = async (widget: Gtk.Widget, values: number | number[
         }
         selectByRole(widget, valueArray);
     });
-};
 
 const deselectInListView = (widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView, valueArray: number[]): void => {
     const selectionModel = requireSelectionModel(widget, "deselect");
@@ -108,8 +108,8 @@ const deselectInListView = (widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView
     }
 };
 
-export const deselectOptions = async (widget: Gtk.Widget, values: number | number[]): Promise<void> => {
-    await act(() => {
+export const deselectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
+    runInAct(() => {
         const valueArray = Array.isArray(values) ? values : [values];
         if (isListView(widget)) {
             deselectInListView(widget, valueArray);
@@ -120,4 +120,3 @@ export const deselectOptions = async (widget: Gtk.Widget, values: number | numbe
         }
         applyListBoxRows(widget, valueArray, false);
     });
-};

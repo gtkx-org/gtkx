@@ -32,22 +32,22 @@ const run = (overrides: CodegenArgs): Promise<unknown> => {
     return Promise.resolve(handler({ rawArgs: [], args, cmd: codegen }));
 };
 
-type LogState = { logSpy: ReturnType<typeof vi.spyOn> };
+type LogState = { stderrSpy: ReturnType<typeof vi.spyOn> };
 
 const setupLogState = (): LogState => {
     const state = {} as LogState;
     beforeEach(() => {
         vi.clearAllMocks();
-        state.logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+        state.stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     });
     afterEach(() => {
-        state.logSpy.mockRestore();
+        state.stderrSpy.mockRestore();
     });
     return state;
 };
 
-const collectLogged = (logSpy: ReturnType<typeof vi.spyOn>): string =>
-    logSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("\n");
+const collectLogged = (stderrSpy: ReturnType<typeof vi.spyOn>): string =>
+    stderrSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("");
 
 describe("codegen command (default — conditional)", () => {
     const state = setupLogState();
@@ -57,7 +57,7 @@ describe("codegen command (default — conditional)", () => {
 
         expect(ensureGeneratedMock).toHaveBeenCalledWith(expect.stringContaining("custom/dir"));
         expect(runCodegenMock).not.toHaveBeenCalled();
-        expect(collectLogged(state.logSpy)).toContain("regenerated stale bindings");
+        expect(collectLogged(state.stderrSpy)).toContain("regenerated stale bindings");
     });
 
     it("reports up to date when nothing was regenerated", async () => {
@@ -65,7 +65,7 @@ describe("codegen command (default — conditional)", () => {
 
         await run({});
 
-        expect(collectLogged(state.logSpy)).toContain("bindings up to date");
+        expect(collectLogged(state.stderrSpy)).toContain("bindings up to date");
     });
 });
 
@@ -82,7 +82,7 @@ describe("codegen command (--force)", () => {
         expect(syncSchemaEnvMock).toHaveBeenCalledWith(expect.stringContaining("custom/dir"));
         expect(ensureGeneratedMock).not.toHaveBeenCalled();
 
-        const logged = collectLogged(state.logSpy);
+        const logged = collectLogged(state.stderrSpy);
         expect(logged).toContain("config=/project/gtkx.config.ts");
         expect(logged).toContain("libraries=Gtk-4.0, Adw-1");
         expect(logged).toContain("girPath=/usr/share/gir-1.0");
@@ -98,7 +98,7 @@ describe("codegen command (--force)", () => {
 
         await run({ force: true });
 
-        const logged = collectLogged(state.logSpy);
+        const logged = collectLogged(state.stderrSpy);
         expect(logged).not.toContain("config=");
         expect(logged).not.toContain("libraries=");
         expect(logged).not.toContain("girPath=");

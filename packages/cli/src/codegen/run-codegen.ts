@@ -9,21 +9,15 @@ import {
     type UserTableRows,
 } from "@gtkx/config";
 import { emitSchemaEnv } from "../gsettings/env.js";
+import { GtkxError } from "../internal/errors.js";
 import { info } from "../internal/log.js";
-import { isCodegenNeeded } from "./freshness.js";
-import { resolveGirPath } from "./gir-resolver.js";
-import { resolveLibraries } from "./library-resolver.js";
-import {
-    type CodegenStore,
-    findCodegenRoot,
-    isWorkspaceRoot,
-    resolveCodegenContext,
-    resolveCodegenStore,
-} from "./store-resolver.js";
+import { type CodegenInputs, isCodegenNeeded, resolveCodegenInputs } from "./freshness.js";
+import { type CodegenStore, findCodegenRoot, isWorkspaceRoot, resolveCodegenContext } from "./store-resolver.js";
 
 export type RunCodegenOptions = {
     cwd?: string;
     force?: boolean;
+    inputs?: CodegenInputs;
 };
 
 export type RunCodegenResult = {
@@ -44,7 +38,7 @@ const buildRunner = (store: CodegenStore, libraries: string[], girPath: string[]
     new CodegenRunner({
         libraries,
         girPath,
-        ...tableRows(config),
+        tables: tableRows(config),
         gi: {
             storeDir: store.giStoreDir,
             linkDir: store.giLinkDir,
@@ -70,13 +64,10 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
 
     const { config, configFile } = await loadGtkxConfig(cwd);
 
-    const girPath = resolveGirPath(config.girPath);
-    const libraries = resolveLibraries(config.libraries, girPath);
-
-    const store = resolveCodegenStore(cwd);
+    const { girPath, libraries, store } = options.inputs ?? resolveCodegenInputs(cwd, config);
 
     if (girPath.length === 0) {
-        throw new Error(
+        throw new GtkxError(
             "No GIR search paths available. Install gobject-introspection (Linux: `sudo dnf install gobject-introspection-devel` or `sudo apt install libgirepository1.0-dev`), or set `girPath` in gtkx.config.ts.",
         );
     }
@@ -104,16 +95,25 @@ export const syncSchemaEnv = (cwd: string): void => {
     emitSchemaEnv(cwd, resolveDataDir(cwd));
 };
 
+const resolveInputsOrNull = (cwd: string, config: GtkxConfig): CodegenInputs | null => {
+    try {
+        return resolveCodegenInputs(cwd, config);
+    } catch {
+        return null;
+    }
+};
+
 export const ensureGenerated = async (cwd: string): Promise<boolean> => {
     const context = await resolveCodegenContext(cwd);
     if (!context) {
         return false;
     }
     syncSchemaEnv(cwd);
-    if (!isCodegenNeeded(context.root, context.config)) {
+    const inputs = resolveInputsOrNull(context.root, context.config);
+    if (inputs !== null && !isCodegenNeeded(context.config, inputs)) {
         return false;
     }
-    await runCodegen({ cwd: context.root });
+    await runCodegen(inputs === null ? { cwd: context.root } : { cwd: context.root, inputs });
     return true;
 };
 
@@ -127,9 +127,10 @@ export const preflightCodegen = async (cwd: string): Promise<void> => {
         return;
     }
     syncSchemaEnv(cwd);
-    if (isCodegenNeeded(context.root, context.config)) {
+    const inputs = resolveInputsOrNull(context.root, context.config);
+    if (inputs === null || isCodegenNeeded(context.config, inputs)) {
         info("generated bindings missing; running codegen...");
-        await runCodegen({ cwd: context.root });
+        await runCodegen(inputs === null ? { cwd: context.root } : { cwd: context.root, inputs });
     }
 };
 

@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act } from "./act.js";
 import { findExistingController, getOrCreateController } from "./controller.js";
+import { runInAct } from "./dispatch.js";
 
 export const emitPress = (controller: Gtk.GestureClick, nPress: number): void => {
     controller.emit("pressed", nPress, 0, 0);
@@ -10,8 +10,8 @@ export const emitRelease = (controller: Gtk.GestureClick, nPress: number): void 
     controller.emit("released", nPress, 0, 0);
 };
 
-const emitClickSequence = async (widget: Gtk.Widget, nPress: number): Promise<void> => {
-    await act(() => {
+const emitClickSequence = (widget: Gtk.Widget, nPress: number): Promise<void> =>
+    runInAct(() => {
         const controller = getOrCreateController(widget, Gtk.GestureClick);
 
         for (let i = 1; i <= nPress; i++) {
@@ -19,7 +19,6 @@ const emitClickSequence = async (widget: Gtk.Widget, nPress: number): Promise<vo
             emitRelease(controller, i);
         }
     });
-};
 
 const findClickableAncestor = (widget: Gtk.Widget): Gtk.Widget | null => {
     let current = widget.getParent();
@@ -39,7 +38,7 @@ export const click = async (widget: Gtk.Widget): Promise<void> => {
     }
     if (widget.getAccessibleRole() !== Gtk.AccessibleRole.LABEL) {
         let activated = false;
-        await act(() => {
+        await runInAct(() => {
             activated = widget.activate();
         });
         if (activated) return;

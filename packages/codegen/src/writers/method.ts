@@ -137,7 +137,6 @@ const isCallbackParameter = (context: ModuleContext, parameter: GirParameter): b
 
 export type WriteMethodBodyOptions = {
     bindingExpression: string;
-    isStatic: boolean;
     returnTypeOverride?: string;
 };
 

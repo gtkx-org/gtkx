@@ -6,7 +6,16 @@ import {
     setWrapper,
 } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
-import { type GType, type GTyped, TYPE_INVALID, typeFromName, typeInterfaces, typeIsA, typeParent } from "./gtype.js";
+import {
+    type GType,
+    type GTyped,
+    TYPE_INVALID,
+    typeFromName,
+    typeInterfaces,
+    typeIsA,
+    typeName,
+    typeParent,
+} from "./gtype.js";
 import type { Mixin } from "./mixin.js";
 
 let gobjectGtype: GType = TYPE_INVALID;
@@ -84,6 +93,14 @@ export function wrapHandle(handle: Handle | null | undefined, cls?: AnyClass): o
 
 export function getWrapperClass(gtype: GType): AnyClass | null {
     return classRegistry.get(gtype) ?? null;
+}
+
+export function requireWrapperClassByGtype(gtype: GType): AnyClass {
+    const cls = getWrapperClass(gtype);
+    if (!cls) {
+        throw new Error(`No registered wrapper class for GType '${typeName(gtype) ?? String(gtype)}'`);
+    }
+    return cls;
 }
 
 export function resolveWrapperClass(name: string): AnyClass<GTyped> | null {

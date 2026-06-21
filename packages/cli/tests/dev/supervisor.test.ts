@@ -74,7 +74,7 @@ function captureConfigWatcher(): { fireConfigChange: () => void } {
 type SignalListener = ReturnType<typeof process.listeners>[number];
 
 type SupervisorContext = {
-    logSpy: ReturnType<typeof vi.spyOn>;
+    stderrSpy: ReturnType<typeof vi.spyOn>;
     exitSpy: ReturnType<typeof vi.spyOn>;
     prevSigInt: SignalListener[] | undefined;
     prevSigTerm: SignalListener[] | undefined;
@@ -97,14 +97,14 @@ const setupSupervisorCtx = (): SupervisorContext => {
     const ctx = {} as SupervisorContext;
     beforeEach(() => {
         vi.clearAllMocks();
-        ctx.logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+        ctx.stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
         ctx.exitSpy = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
         ctx.prevSigInt = process.listeners("SIGINT");
         ctx.prevSigTerm = process.listeners("SIGTERM");
         ctx.prevSigHup = process.listeners("SIGHUP");
     });
     afterEach(() => {
-        ctx.logSpy.mockRestore();
+        ctx.stderrSpy.mockRestore();
         ctx.exitSpy.mockRestore();
         cleanupSignalListeners("SIGINT", ctx.prevSigInt);
         cleanupSignalListeners("SIGTERM", ctx.prevSigTerm);
@@ -143,7 +143,7 @@ describe("runDevSupervisor (child exit handling)", () => {
 
         expect(forkMock).toHaveBeenCalledTimes(2);
         expect(ctx.exitSpy).not.toHaveBeenCalled();
-        const logged = ctx.logSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("\n");
+        const logged = ctx.stderrSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("");
         expect(logged).toContain("Restarting dev runner");
     });
 
@@ -318,7 +318,6 @@ describe("runDevSupervisor (config watch)", () => {
         const regenerate = vi.fn(async () => {
             throw new Error("bad config");
         });
-        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
         const { child, fireConfigChange } = await startWithWatch(regenerate);
 
         fireConfigChange();
@@ -327,6 +326,5 @@ describe("runDevSupervisor (config watch)", () => {
         expect(regenerate).toHaveBeenCalledOnce();
         expect(child.kill).not.toHaveBeenCalled();
         expect(forkMock).toHaveBeenCalledOnce();
-        errorSpy.mockRestore();
     });
 });

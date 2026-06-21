@@ -212,14 +212,16 @@ describe("createDevRunner (application quit)", () => {
         harness.server.close = vi.fn<DevServer["close"]>(async () => {
             throw error;
         });
-        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+        const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
 
         await startRunner(harness);
         installedQuit(harness)(vi.fn());
         await flushTick();
 
-        expect(errorSpy).toHaveBeenCalledWith("[gtkx-dev-runner] Error closing server:", error);
-        errorSpy.mockRestore();
+        const written = stderrSpy.mock.calls.map((call) => String(call[0])).join("");
+        expect(written).toContain("[gtkx] Error closing server:");
+        expect(written).toContain(error.stack ?? error.message);
+        stderrSpy.mockRestore();
     });
 
     const expectRefreshRestart = async (schedule: (fireQuit: () => void) => void): Promise<Harness> => {
@@ -412,19 +414,19 @@ describe("createDevRunner (file watcher dispatch)", () => {
 
 describe("main (argv parsing)", () => {
     let exitSpy: ReturnType<typeof vi.spyOn>;
-    let errorSpy: ReturnType<typeof vi.spyOn>;
+    let stderrSpy: ReturnType<typeof vi.spyOn>;
     let originalArgv: string[];
 
     beforeEach(() => {
         originalArgv = process.argv;
         exitSpy = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
-        errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+        stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     });
 
     afterEach(() => {
         process.argv = originalArgv;
         exitSpy.mockRestore();
-        errorSpy.mockRestore();
+        stderrSpy.mockRestore();
     });
 
     it("prints an error and exits 1 when no entry argument is supplied", async () => {
@@ -435,7 +437,8 @@ describe("main (argv parsing)", () => {
 
         await expect(main()).rejects.toThrow("__exit__");
 
-        expect(errorSpy).toHaveBeenCalledWith("[gtkx-dev-runner] Missing entry argument");
+        const written = stderrSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("");
+        expect(written).toContain("[gtkx] Missing entry argument");
         expect(exitSpy).toHaveBeenCalledWith(1);
     });
 });

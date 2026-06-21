@@ -25,8 +25,6 @@ type PendingRequest = {
     timeout: NodeJS.Timeout;
 };
 
-const DEFAULT_REQUEST_TIMEOUT_MS = 30000;
-
 export class TransportClosedError extends Error {
     constructor() {
         super("Transport stream is not writable");
@@ -38,12 +36,10 @@ export class JsonStreamTransport extends EventEmitter<JsonStreamTransportEvents>
     private buffer = "";
     private pending: Map<string, PendingRequest> = new Map();
     private writer: FrameWriter;
-    private defaultTimeout: number;
 
-    constructor(writer: FrameWriter, options: { requestTimeout?: number } = {}) {
+    constructor(writer: FrameWriter) {
         super();
         this.writer = writer;
-        this.defaultTimeout = options.requestTimeout ?? DEFAULT_REQUEST_TIMEOUT_MS;
     }
 
     feed(data: Buffer | string): void {
@@ -85,7 +81,7 @@ export class JsonStreamTransport extends EventEmitter<JsonStreamTransportEvents>
         return transport;
     }
 
-    sendRequest<T = unknown>(method: string, params?: unknown, timeoutMs: number = this.defaultTimeout): Promise<T> {
+    sendRequest<T = unknown>(method: string, params: unknown, timeoutMs: number): Promise<T> {
         return new Promise<T>((resolve, reject) => {
             if (!this.writer.writable) {
                 reject(new TransportClosedError());

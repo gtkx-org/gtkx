@@ -1,7 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act } from "./act.js";
 import { emitPress, emitRelease } from "./click.js";
-import { getOrCreateController } from "./controller.js";
+import { dispatchOnController } from "./dispatch.js";
 import type { UserEventState } from "./state.js";
 
 export type PointerInput = "click" | "down" | "up" | "[MouseLeft]" | "[MouseLeft>]" | "[/MouseLeft]";
@@ -30,9 +29,5 @@ const applyPointerInput = (controller: Gtk.GestureClick, state: UserEventState, 
 
 export const pointerWith =
     (state: UserEventState) =>
-    async (widget: Gtk.Widget, input: PointerInput): Promise<void> => {
-        await act(() => {
-            const controller = getOrCreateController(widget, Gtk.GestureClick);
-            applyPointerInput(controller, state, input);
-        });
-    };
+    (widget: Gtk.Widget, input: PointerInput): Promise<void> =>
+        dispatchOnController(widget, Gtk.GestureClick, (controller) => applyPointerInput(controller, state, input));

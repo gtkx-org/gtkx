@@ -18,6 +18,12 @@ type RegisteredApp = {
     connection: AppConnection;
 };
 
+/**
+ * Default time in milliseconds the connection manager waits for an app to
+ * respond to a forwarded request before rejecting it as timed out.
+ */
+export const DEFAULT_REQUEST_TIMEOUT_MS = 30000;
+
 export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
     private static DEFAULT_WAIT_TIMEOUT = 10000;
 
@@ -29,7 +35,7 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
     constructor(transport: AppTransport, options: { requestTimeout?: number } = {}) {
         super();
         this.transport = transport;
-        this.requestTimeout = options.requestTimeout ?? 30000;
+        this.requestTimeout = options.requestTimeout ?? DEFAULT_REQUEST_TIMEOUT_MS;
 
         this.transport.on("request", (connection, request) => {
             this.handleRequest(connection, request);

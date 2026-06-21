@@ -1,8 +1,8 @@
-import { copyFileSync, mkdtempSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { compileSchemas } from "../gsettings/compile.js";
-import { findSchemaFiles, prependSchemaDir, stagedSchemaName } from "../gsettings/env.js";
+import { findSchemaFiles, prependSchemaDir, stageSchema } from "../gsettings/env.js";
 import { removeTempDir } from "../internal/remove-temp-dir.js";
 
 export const prepareDevSchemaEnv = (root: string, dataDir: string | null): string | null => {
@@ -12,7 +12,7 @@ export const prepareDevSchemaEnv = (root: string, dataDir: string | null): strin
 
     const dir = mkdtempSync(join(tmpdir(), "gtkx-dev-schemas-"));
     for (const file of schemaFiles) {
-        copyFileSync(file, join(dir, stagedSchemaName(file)));
+        stageSchema(dir, file);
     }
     compileSchemas(dir);
 

@@ -26,6 +26,7 @@ export type MatcherOptions = {
     normalizer?: NormalizerFn | undefined;
     trim?: boolean | undefined;
     collapseWhitespace?: boolean | undefined;
+    suggest?: boolean | undefined;
 } & WaitForOptions;
 
 export type ByRoleValue = {

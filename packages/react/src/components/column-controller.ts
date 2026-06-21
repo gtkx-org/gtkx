@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import type { ReactNode } from "react";
+import { BoundContainerRegistry } from "../reconciler/bound-container-registry.js";
 import { type BoundItem, collectFlatBoundItems } from "../reconciler/bound-item.js";
 import { connectFactoryLifecycle } from "../reconciler/list-factory.js";
 
@@ -17,16 +18,14 @@ type CellRenderer = (item: unknown) => ReactNode;
 
 export class ColumnController {
     public factory: Gtk.SignalListItemFactory;
-    private containers = new Map<Gtk.ListItem, number>();
-    private containerKeys = new Map<Gtk.ListItem, string>();
+    private registry = new BoundContainerRegistry<Gtk.ListItem>();
     private list: ColumnHost | null = null;
     private renderCell: CellRenderer | null = null;
 
     public constructor() {
         this.factory = new Gtk.SignalListItemFactory();
         connectFactoryLifecycle<Gtk.ListItem>(this.factory, {
-            containers: this.containers,
-            containerKeys: this.containerKeys,
+            registry: this.registry,
             createContainer: (item) => item,
             resolveContainer: (item) => item,
             getPosition: (item) => item.getPosition(),
@@ -59,8 +58,7 @@ export class ColumnController {
     }
 
     public teardown(): void {
-        this.containers.clear();
-        this.containerKeys.clear();
+        this.registry.clear();
     }
 
     public collectBoundItems(resolveItem: (position: number) => unknown): BoundItem[] {
@@ -69,8 +67,7 @@ export class ColumnController {
 
         const items: BoundItem[] = [];
         collectFlatBoundItems({
-            containers: this.containers,
-            containerKeys: this.containerKeys,
+            registry: this.registry,
             resolveItem,
             render: renderCell,
             out: items,

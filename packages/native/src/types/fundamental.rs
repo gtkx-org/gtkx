@@ -99,23 +99,21 @@ impl FfiEncoder for FundamentalType {
 }
 
 impl FfiDecoder for FundamentalType {
-    unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
-        match src {
-            ReadSource::Call(ffi_value) => {
-                let Some(ptr) = ffi_value.as_non_null_ptr("Fundamental")? else {
-                    return Ok(value::Value::Null);
-                };
-                self.wrap_ptr(ptr)
-            }
-            ReadSource::Value(ptr, _context) => self.null_guarded(ptr, |ptr| {
-                let (ref_fn, unref_fn) = self.lookup_fns()?;
-                let fundamental = unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) };
-                Ok(value::Value::Object(
-                    NativeValue::Fundamental(fundamental).into(),
-                ))
-            }),
-            ReadSource::Slot(ptr, context) => unsafe { self.read_pointer_slot(ptr, context) },
-        }
+    fn read_call(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        let Some(ptr) = ffi_value.as_non_null_ptr("Fundamental")? else {
+            return Ok(value::Value::Null);
+        };
+        self.wrap_ptr(ptr)
+    }
+
+    unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+        self.null_guarded(ptr, |ptr| {
+            let (ref_fn, unref_fn) = self.lookup_fns()?;
+            let fundamental = unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) };
+            Ok(value::Value::Object(
+                NativeValue::Fundamental(fundamental).into(),
+            ))
+        })
     }
 }
 

@@ -205,19 +205,6 @@ impl FfiDecoder for RefType {
         ffi_args: &[ffi::FfiValue],
         args: &[Arg],
     ) -> anyhow::Result<value::Value> {
-        Self::decode_with_context(self, ffi_value, ffi_args, args)
-    }
-}
-
-impl RawPtrCodec for RefType {}
-
-impl RefType {
-    pub fn decode_with_context(
-        &self,
-        ffi_value: &ffi::FfiValue,
-        ffi_args: &[ffi::FfiValue],
-        args: &[Arg],
-    ) -> anyhow::Result<value::Value> {
         if let Type::Array(array_type) = &*self.inner_type {
             let Some(storage) = ref_storage_or_null(ffi_value, "Ref<Array>")? else {
                 return Ok(value::Value::Null);
@@ -250,7 +237,11 @@ impl RefType {
 
         self.decode(ffi_value)
     }
+}
 
+impl RawPtrCodec for RefType {}
+
+impl RefType {
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn null_ptr_storage() -> ffi::FfiValue {
         let mut slot: Vec<*mut c_void> = vec![std::ptr::null_mut()];

@@ -1,6 +1,7 @@
 import type { MockInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { css, cx, injectGlobal } from "../src/index.js";
+import { registeredStylesFor } from "../src/registry.js";
 import { Stylesheet } from "../src/stylesheet.js";
 
 describe("css", () => {
@@ -92,7 +93,7 @@ describe("cx", () => {
         expect(result).toEqual(["class-a", "class-b", "class-c"]);
     });
 
-    it("works with css function output", () => {
+    it("merges multiple css outputs into a single last-wins override class", () => {
         const style1 = css`
             color: red;
         `;
@@ -101,9 +102,18 @@ describe("cx", () => {
         `;
         const result = cx(style1, style2);
 
-        expect(result).toHaveLength(2);
-        expect(result[0]).toMatch(/^gtkx-/);
-        expect(result[1]).toMatch(/^gtkx-/);
+        expect(result).toHaveLength(1);
+        const mergedClass = result[0];
+        if (typeof mergedClass !== "string") throw new Error("cx should merge into one class");
+        expect(mergedClass).toMatch(/^gtkx-/);
+        expect(mergedClass).not.toBe(style1);
+        expect(mergedClass).not.toBe(style2);
+
+        const mergedStyles = registeredStylesFor(mergedClass);
+        const style1Styles = registeredStylesFor(style1);
+        const style2Styles = registeredStylesFor(style2);
+        expect(mergedStyles).toBe(`${style1Styles}${style2Styles}`);
+        expect(mergedStyles?.lastIndexOf("color: blue")).toBeGreaterThan(mergedStyles?.lastIndexOf("color: red") ?? -1);
     });
 
     it("handles conditional composition", () => {

@@ -10,6 +10,7 @@ import {
     validateObjectPropRows,
     validateVirtualPropRows,
 } from "./table-schema.js";
+import { CAMEL_CASE_NAME_PATTERN, PASCAL_CASE_NAME_PATTERN } from "./validators.js";
 
 export const LIBRARIES_WILDCARD = "*";
 
@@ -90,9 +91,6 @@ const validateApplicationId = (applicationId: GtkxConfig["applicationId"]): void
     }
 };
 
-const JSX_NAME_PATTERN = /^[A-Z][A-Za-z0-9]*$/;
-const SLOT_ENTRY_PATTERN = /^[a-z][A-Za-z0-9]*$/;
-
 const validateSlotMap = (slotMap: Record<string, string[]> | undefined, optionName: string): void => {
     if (slotMap === undefined) return;
     if (typeof slotMap !== "object" || Array.isArray(slotMap) || slotMap === null) {
@@ -101,7 +99,7 @@ const validateSlotMap = (slotMap: Record<string, string[]> | undefined, optionNa
         );
     }
     for (const [jsxName, names] of Object.entries(slotMap)) {
-        if (!JSX_NAME_PATTERN.test(jsxName)) {
+        if (!PASCAL_CASE_NAME_PATTERN.test(jsxName)) {
             throw new Error(
                 `gtkx.config.ts: invalid \`${optionName}\` key "${jsxName}" — must be a PascalCase JSX element name (e.g. "MyAppFooBar")`,
             );
@@ -112,7 +110,7 @@ const validateSlotMap = (slotMap: Record<string, string[]> | undefined, optionNa
             );
         }
         for (const name of names) {
-            if (typeof name !== "string" || !SLOT_ENTRY_PATTERN.test(name)) {
+            if (typeof name !== "string" || !CAMEL_CASE_NAME_PATTERN.test(name)) {
                 throw new Error(
                     `gtkx.config.ts: invalid \`${optionName}.${jsxName}\` entry "${String(name)}" — must be a camelCase name (e.g. "content")`,
                 );
@@ -142,7 +140,17 @@ const validateReactCompiler = (reactCompiler: GtkxConfig["reactCompiler"]): void
     validateReactCompilerEnum(reactCompiler.panicThreshold, REACT_COMPILER_PANIC_THRESHOLDS, "panicThreshold");
 };
 
-export const defineConfig = (config: GtkxConfig): GtkxConfig => {
+/**
+ * Validates a `gtkx.config.ts` object, throwing on the first invalid field.
+ *
+ * The loader invokes this exactly once per config load, after the file is read
+ * and before resolution, so every config — whether wrapped in {@link defineConfig}
+ * or exported as a plain object — is checked at the same point.
+ *
+ * @param config - the user config to validate
+ * @throws Error when any field violates its schema
+ */
+export const validateGtkxConfig = (config: GtkxConfig): void => {
     validateLibraries(config.libraries);
     validateGirPath(config.girPath);
     validateApplicationId(config.applicationId);
@@ -152,8 +160,17 @@ export const defineConfig = (config: GtkxConfig): GtkxConfig => {
     validateVirtualPropRows(config.virtualProps);
     validateElementMap(config.elementMap);
     validateReactCompiler(config.reactCompiler);
-    return config;
 };
+
+/**
+ * Identity helper that gives `gtkx.config.ts` authors full type checking and
+ * autocompletion over their config. It performs no validation; the loader
+ * validates the config once at load time via {@link validateGtkxConfig}.
+ *
+ * @param config - the user config, type-checked against {@link GtkxConfig}
+ * @returns the same config object, unchanged
+ */
+export const defineConfig = (config: GtkxConfig): GtkxConfig => config;
 
 export type ResolvedGtkxConfig = {
     libraries: typeof LIBRARIES_WILDCARD | string[];

@@ -154,40 +154,35 @@ impl FfiEncoder for BoxedType {
 }
 
 impl FfiDecoder for BoxedType {
-    unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
-        match src {
-            ReadSource::Call(ffi_value) => {
-                let Some(boxed_ptr) = ffi_value.as_non_null_ptr("Boxed")? else {
-                    return Ok(value::Value::Null);
-                };
+    fn read_call(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        let Some(boxed_ptr) = ffi_value.as_non_null_ptr("Boxed")? else {
+            return Ok(value::Value::Null);
+        };
 
-                if let Some(free_fn_name) = self.free_fn.as_deref() {
-                    return Ok(boxed_value(
-                        self.boxed_with_free_fn(boxed_ptr, free_fn_name)?,
-                    ));
-                }
-
-                let gtype = self.gtype();
-                let boxed = match self.ownership {
-                    Ownership::Full => Boxed::from_glib_full(gtype, boxed_ptr),
-                    Ownership::Borrowed => Boxed::from_glib_none_with_size(
-                        gtype,
-                        boxed_ptr,
-                        None,
-                        Some(&self.type_name),
-                    )?,
-                };
-
-                Ok(boxed_value(boxed))
-            }
-            ReadSource::Value(ptr, _context) => self.null_guarded(ptr, |ptr| {
-                if self.free_fn.is_some() || self.caller_allocated {
-                    return Ok(boxed_value(Boxed::from_ptr_unowned(ptr)));
-                }
-                Ok(boxed_value(Boxed::from_glib_none(self.gtype(), ptr)?))
-            }),
-            ReadSource::Slot(ptr, context) => unsafe { self.read_pointer_slot(ptr, context) },
+        if let Some(free_fn_name) = self.free_fn.as_deref() {
+            return Ok(boxed_value(
+                self.boxed_with_free_fn(boxed_ptr, free_fn_name)?,
+            ));
         }
+
+        let gtype = self.gtype();
+        let boxed = match self.ownership {
+            Ownership::Full => Boxed::from_glib_full(gtype, boxed_ptr),
+            Ownership::Borrowed => {
+                Boxed::from_glib_none_with_size(gtype, boxed_ptr, None, Some(&self.type_name))?
+            }
+        };
+
+        Ok(boxed_value(boxed))
+    }
+
+    unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+        self.null_guarded(ptr, |ptr| {
+            if self.free_fn.is_some() || self.caller_allocated {
+                return Ok(boxed_value(Boxed::from_ptr_unowned(ptr)));
+            }
+            Ok(boxed_value(Boxed::from_glib_none(self.gtype(), ptr)?))
+        })
     }
 }
 
@@ -255,35 +250,33 @@ impl FfiEncoder for StructType {
 }
 
 impl FfiDecoder for StructType {
-    unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
-        match src {
-            ReadSource::Call(ffi_value) => {
-                let Some(struct_ptr) = ffi_value.as_non_null_ptr("Struct")? else {
-                    return Ok(value::Value::Null);
-                };
+    fn read_call(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        let Some(struct_ptr) = ffi_value.as_non_null_ptr("Struct")? else {
+            return Ok(value::Value::Null);
+        };
 
-                let boxed = match self.ownership {
-                    Ownership::Full => Boxed::from_glib_full(None, struct_ptr),
-                    Ownership::Borrowed => self.size.map_or_else(
-                        || Boxed::from_ptr_unowned(struct_ptr),
-                        |size| Boxed::copy_with_size(struct_ptr, size),
-                    ),
-                };
+        let boxed = match self.ownership {
+            Ownership::Full => Boxed::from_glib_full(None, struct_ptr),
+            Ownership::Borrowed => self.size.map_or_else(
+                || Boxed::from_ptr_unowned(struct_ptr),
+                |size| Boxed::copy_with_size(struct_ptr, size),
+            ),
+        };
 
-                Ok(boxed_value(boxed))
+        Ok(boxed_value(boxed))
+    }
+
+    unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+        self.null_guarded(ptr, |ptr| {
+            if self.caller_allocated {
+                return Ok(boxed_value(Boxed::from_ptr_unowned(ptr)));
             }
-            ReadSource::Value(ptr, _context) => self.null_guarded(ptr, |ptr| {
-                if self.caller_allocated {
-                    return Ok(boxed_value(Boxed::from_ptr_unowned(ptr)));
-                }
-                let boxed = self.size.map_or_else(
-                    || Boxed::from_ptr_unowned(ptr),
-                    |size| Boxed::copy_with_size(ptr, size),
-                );
-                Ok(boxed_value(boxed))
-            }),
-            ReadSource::Slot(ptr, context) => unsafe { self.read_pointer_slot(ptr, context) },
-        }
+            let boxed = self.size.map_or_else(
+                || Boxed::from_ptr_unowned(ptr),
+                |size| Boxed::copy_with_size(ptr, size),
+            );
+            Ok(boxed_value(boxed))
+        })
     }
 }
 

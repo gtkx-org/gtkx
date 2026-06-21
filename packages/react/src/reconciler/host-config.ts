@@ -10,7 +10,7 @@ import { classHasType } from "../utils/gtype-predicates.js";
 import { applyAccessibleProps, isAccessibleProp } from "./accessible.js";
 import { applyProps } from "./apply-props.js";
 import { beginCommit, endCommit, runCommitFlush } from "./commit-flush.js";
-import { attachToParent, detachFromParent, resyncWrapper } from "./element-map.js";
+import { attachNode, detachFromParent, detachNode, resyncWrapper } from "./element-map.js";
 import {
     createElementInstance,
     createWrapperInstance,
@@ -107,33 +107,20 @@ const scheduleTextRebuilds = (parent: Node, child: Node): void => {
 const appendChild = (parent: Node, child: Node): void => {
     const fresh = stateOf(child).parent === null;
     link(parent, child);
-    if (isWrapperElement(child)) attachToParent(child, parent, null, fresh);
-    else if (!isWrapperElement(parent)) attachToParent(child, parent, null, fresh);
-    if (isWrapperElement(parent)) resyncWrapper(parent);
+    attachNode(parent, child, null, fresh);
     scheduleTextRebuilds(parent, child);
-};
-
-const anchorBacking = (before: Node): GObject.Object | null => {
-    if (before instanceof GObject.Object) return before;
-    for (const grandchild of stateOf(before).children) {
-        if (grandchild instanceof GObject.Object) return grandchild;
-    }
-    return null;
 };
 
 const insertBefore = (parent: Node, child: Node, before: Node): void => {
     linkBefore(parent, child, before);
-    if (isWrapperElement(child)) attachToParent(child, parent);
-    else if (!isWrapperElement(parent)) attachToParent(child, parent, anchorBacking(before));
-    if (isWrapperElement(parent)) resyncWrapper(parent);
+    attachNode(parent, child, before, false);
     scheduleTextRebuilds(parent, child);
 };
 
 const removeChild = (parent: Node, child: Node): void => {
     scheduleTextRebuilds(parent, child);
-    if (isWrapperElement(child) || !isWrapperElement(parent)) detachFromParent(child, parent);
     unlink(parent, child);
-    if (isWrapperElement(parent)) resyncWrapper(parent);
+    detachNode(parent, child);
 };
 
 const commitInstanceProps = (instance: Node, oldProps: Props | null, newProps: Props): void => {

@@ -1,20 +1,17 @@
 import * as Adw from "@gtkx/gi/adw";
 import type * as Gtk from "@gtkx/gi/gtk";
+import { shallowEqual } from "@gtkx/utils";
 import { type RefObject, useId, useLayoutEffect, useRef } from "react";
-import {
-    AnimationCssProvider,
-    areAnimatedPropsEqual,
-    DEFAULT_SPRING_DAMPING,
-    DEFAULT_SPRING_MASS,
-    DEFAULT_SPRING_STIFFNESS,
-    DEFAULT_TIMED_DURATION,
-    interpolate,
-} from "./animation-css.js";
+import { AnimationCssProvider } from "./animation-css-provider.js";
+import { interpolate } from "./interpolation.js";
 import type { AdwSpringAnimationProps, AdwTimedAnimationProps, AnimatableProperties } from "./types.js";
 
 export type WidgetAnimationProps =
     | ({ kind: "timed" } & AdwTimedAnimationProps)
     | ({ kind: "spring" } & AdwSpringAnimationProps);
+
+const timedDefaults = { duration: 300 };
+const springDefaults = { damping: 1, mass: 1, stiffness: 100 };
 
 const sanitizeId = (id: string): string => `gtkx-anim-${id.replace(/[^a-zA-Z0-9]/g, "")}`;
 
@@ -23,7 +20,7 @@ const buildTimedAnimation = (
     target: Adw.CallbackAnimationTarget,
     props: AdwTimedAnimationProps,
 ): Adw.TimedAnimation => {
-    const duration = props.duration ?? DEFAULT_TIMED_DURATION;
+    const duration = props.duration ?? timedDefaults.duration;
     const animation = Adw.TimedAnimation.new(widget, 0, 1, duration, target);
 
     if (props.easing !== undefined) animation.setEasing(props.easing);
@@ -39,9 +36,9 @@ const buildSpringAnimation = (
     target: Adw.CallbackAnimationTarget,
     props: AdwSpringAnimationProps,
 ): Adw.SpringAnimation => {
-    const damping = props.damping ?? DEFAULT_SPRING_DAMPING;
-    const mass = props.mass ?? DEFAULT_SPRING_MASS;
-    const stiffness = props.stiffness ?? DEFAULT_SPRING_STIFFNESS;
+    const damping = props.damping ?? springDefaults.damping;
+    const mass = props.mass ?? springDefaults.mass;
+    const stiffness = props.stiffness ?? springDefaults.stiffness;
 
     const springParams = Adw.SpringParams.new(damping, mass, stiffness);
     const animation = Adw.SpringAnimation.new(widget, 0, 1, springParams, target);
@@ -59,24 +56,19 @@ const buildAnimation = (
 ): Adw.Animation =>
     props.kind === "spring" ? buildSpringAnimation(widget, target, props) : buildTimedAnimation(widget, target, props);
 
-const baselineValues = (props: WidgetAnimationProps): AnimatableProperties => {
+const resolveInitialValues = (props: WidgetAnimationProps): AnimatableProperties => {
     const { initial, animate, animateOnMount } = props;
+    const animateValues = animate ? { ...animate } : {};
 
-    if (initial === false || !animateOnMount) {
-        return animate ? { ...animate } : {};
+    if (!animateOnMount) {
+        return animateValues;
     }
 
-    return { ...(initial ?? animate ?? {}) };
-};
-
-const mountValues = (props: WidgetAnimationProps): AnimatableProperties => {
-    const { initial, animate, animateOnMount } = props;
-
-    if (animateOnMount && animate) {
-        return { ...(initial !== false ? (initial ?? animate ?? {}) : {}) };
+    if (initial === false) {
+        return {};
     }
 
-    return baselineValues(props);
+    return initial !== undefined ? { ...initial } : animateValues;
 };
 
 export class AnimationDriver {
@@ -100,7 +92,7 @@ export class AnimationDriver {
         this.cssProvider.attach(widget);
 
         const props = this.propsRef.current;
-        this.currentValues = mountValues(props);
+        this.currentValues = resolveInitialValues(props);
         this.cssProvider.write(this.currentValues);
 
         if (props.animateOnMount && props.animate) {
@@ -190,7 +182,7 @@ export const useWidgetAnimation = (ref: RefObject<Gtk.Widget | null>, props: Wid
         previousAnimateRef.current = props.animate;
 
         if (!ref.current || !props.animate) return;
-        if (areAnimatedPropsEqual(previous, props.animate)) return;
+        if (shallowEqual(previous, props.animate)) return;
 
         driver.startAnimation(props.animate);
     }, [ref, driver, props.animate]);

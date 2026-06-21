@@ -11,7 +11,7 @@ runs:
           docker run --rm -v "${{ github.workspace }}:/workspace" -w /workspace gtkx-ci:local bash -c '
             printf "NODE_VERSION=%s\n" "$(node -v)"
             printf "GTK4_VERSION=%s\n" "$(pkg-config --modversion gtk4)"
-            printf "VERSION=%s\n" "$(cat packages/*/package.json | grep "\"version\"" | sha256sum | cut -d" " -f1)"
+            printf "VERSION=%s\n" "$(node scripts/compute-version-key.ts)"
           '
         }
         read_versions >> "$GITHUB_ENV"

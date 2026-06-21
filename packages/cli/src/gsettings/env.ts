@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { type Dirent, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, type Dirent, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { DATA_IMPORT_PREFIX } from "@gtkx/config";
 import { sortedAlpha } from "@gtkx/utils";
@@ -17,8 +17,18 @@ export const prependSchemaDir = (dir: string, existing: string | undefined): str
 
 const STAGED_NAME_LENGTH = 16;
 
-export const stagedSchemaName = (filePath: string): string =>
+const stagedSchemaName = (filePath: string): string =>
     `${createHash("sha1").update(filePath).digest("hex").slice(0, STAGED_NAME_LENGTH)}${SCHEMA_SUFFIX}`;
+
+/**
+ * Copies a schema file into a staging directory under its hashed staged name.
+ *
+ * @param dir - The directory the schema is copied into.
+ * @param filePath - The source schema file path.
+ */
+export const stageSchema = (dir: string, filePath: string): void => {
+    copyFileSync(filePath, join(dir, stagedSchemaName(filePath)));
+};
 
 const toForwardSlashes = (value: string): string => value.split(/[/\\]/).join("/");
 

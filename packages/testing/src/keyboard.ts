@@ -1,7 +1,6 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { act } from "./act.js";
-import { getOrCreateController } from "./controller.js";
+import { dispatchOnController, runInAct } from "./dispatch.js";
 import { getEditableDelegate, implementsEditable } from "./editable.js";
 import { fireEvent } from "./fire-event.js";
 import type { UserEventState } from "./state.js";
@@ -10,8 +9,8 @@ export type TabOptions = {
     shift?: boolean;
 };
 
-export const tab = async (widget: Gtk.Widget, options?: TabOptions): Promise<void> => {
-    await act(() => {
+export const tab = (widget: Gtk.Widget, options?: TabOptions): Promise<void> =>
+    runInAct(() => {
         const direction = options?.shift ? Gtk.DirectionType.TAB_BACKWARD : Gtk.DirectionType.TAB_FORWARD;
         const root = widget.getRoot();
 
@@ -19,7 +18,6 @@ export const tab = async (widget: Gtk.Widget, options?: TabOptions): Promise<voi
             root.childFocus(direction);
         }
     });
-};
 
 const KEY_MAP: Record<string, number> = {
     Enter: Gdk.KEY_Return,
@@ -195,11 +193,9 @@ const applyKeyAction = async (
 
 export const keyboardWith =
     (state: UserEventState) =>
-    async (widget: Gtk.Widget, input: string): Promise<void> => {
-        await act(async () => {
-            const controller = getOrCreateController(widget, Gtk.EventControllerKey);
+    (widget: Gtk.Widget, input: string): Promise<void> =>
+        dispatchOnController(widget, Gtk.EventControllerKey, async (controller) => {
             for (const action of parseKeyboardInput(input)) {
                 await applyKeyAction(widget, controller, state, action);
             }
         });
-    };

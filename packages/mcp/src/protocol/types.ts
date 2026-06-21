@@ -125,17 +125,7 @@ export type WireParamsSchema<Output> = {
     safeParse(value: unknown): { success: true; data: Output } | { success: false; error: { message: string } };
 };
 
-export type IpcMethod =
-    | "app.register"
-    | "app.unregister"
-    | "app.getWindows"
-    | "widget.getTree"
-    | "widget.query"
-    | "widget.getProps"
-    | "widget.click"
-    | "widget.type"
-    | "widget.fireEvent"
-    | "widget.screenshot";
+export type IpcMethod = keyof typeof ServerRequestParamsSchemas | "app.register" | "app.unregister";
 
 export type IpcMessage = IpcRequest | IpcResponse;
 

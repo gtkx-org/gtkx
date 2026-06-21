@@ -92,22 +92,20 @@ impl FfiEncoder for GObjectType {
 }
 
 impl FfiDecoder for GObjectType {
-    unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
-        match src {
-            ReadSource::Call(ffi_value) => {
-                let Some(object_ptr) = ffi_value.as_non_null_ptr("GObject")? else {
-                    return Ok(value::Value::Null);
-                };
-                tracked_gobject_value(
-                    object_ptr as *mut glib::gobject_ffi::GObject,
-                    self.ownership,
-                )
-            }
-            ReadSource::Value(ptr, _context) => self.null_guarded(ptr, |ptr| {
-                tracked_gobject_value(ptr as *mut glib::gobject_ffi::GObject, Ownership::Borrowed)
-            }),
-            ReadSource::Slot(ptr, context) => unsafe { self.read_pointer_slot(ptr, context) },
-        }
+    fn read_call(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        let Some(object_ptr) = ffi_value.as_non_null_ptr("GObject")? else {
+            return Ok(value::Value::Null);
+        };
+        tracked_gobject_value(
+            object_ptr as *mut glib::gobject_ffi::GObject,
+            self.ownership,
+        )
+    }
+
+    unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+        self.null_guarded(ptr, |ptr| {
+            tracked_gobject_value(ptr as *mut glib::gobject_ffi::GObject, Ownership::Borrowed)
+        })
     }
 }
 

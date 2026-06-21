@@ -1,3 +1,4 @@
+export { gtkxBundledModulePatterns } from "./bundled-modules.js";
 export {
     defineConfig,
     GIR_NAMESPACE_PATTERN,
@@ -11,6 +12,7 @@ export {
     type ResolvedReactCompilerOptions,
     resolveGtkxConfig,
     resolveReactCompilerOptions,
+    validateGtkxConfig,
 } from "./config.js";
 export { DATA_IMPORT_KEY, DATA_IMPORT_PREFIX, resolveDataDir } from "./data-dir.js";
 export {
@@ -25,6 +27,14 @@ export { createGtkxConfigPlugin, type GtkxConfigPluginOptions } from "./plugin.j
 export type {
     AddMethodArg,
     AddMethodRule,
+    PageMetaSetter,
+    PropCondition,
+    PropRule,
+    SetterPropGroup,
+    SetterPropStep,
+    SignalPropRule,
+} from "./table-rules-ir.js";
+export type {
     ArrayPropRow,
     AttachVerb,
     CallArg,
@@ -35,18 +45,17 @@ export type {
     MethodVerb,
     ObjectPropRow,
     OrderedInsertVerb,
-    PageMetaSetter,
     PerElementPropRows,
     PresenceCondition,
-    PropCondition,
-    PropRule,
-    SetterPropGroup,
-    SetterPropStep,
-    SignalPropRule,
     UserTableRows,
     VerbArgs,
     VirtualPropRow,
 } from "./table-schema.js";
+export {
+    CAMEL_CASE_NAME_PATTERN,
+    PASCAL_CASE_NAME_PATTERN,
+    validateArrayOf,
+} from "./validators.js";
 export { GTKX_CONFIG_VIRTUAL_ID, RESOLVED_GTKX_CONFIG_VIRTUAL_ID, renderGtkxConfigModule } from "./virtual.js";
 export {
     BUFFER_TEXT_KIND,

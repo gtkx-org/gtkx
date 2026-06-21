@@ -40,7 +40,7 @@ import {
     typeFundamental,
     typeName,
 } from "./gtype.js";
-import { getHandle, getWrapperClass, tryGetHandle, wrapHandle } from "./registry.js";
+import { getHandle, requireWrapperClassByGtype, tryGetHandle, wrapHandle } from "./registry.js";
 
 export const newGValue = (): Handle => alloc(GVALUE_SIZE, "GValue");
 
@@ -105,7 +105,7 @@ const PARAM_FUNDAMENTAL = fundamentalT(LIB, "g_param_spec_ref", "g_param_spec_un
 const gValueSetParam = bind(LIB, "g_value_set_param", [GVALUE_T, PARAM_FUNDAMENTAL], voidT);
 const gValueGetParam = bind(LIB, "g_value_get_param", [GVALUE_T], PARAM_FUNDAMENTAL);
 
-const VARIANT_FUNDAMENTAL = fundamentalT("libgobject-2.0.so.0,libglib-2.0.so.0", "g_variant_ref", "g_variant_unref", {
+const VARIANT_FUNDAMENTAL = fundamentalT(LIB, "g_variant_ref", "g_variant_unref", {
     ownership: "borrowed",
     typeName: "GVariant",
 });
@@ -165,12 +165,7 @@ export const valueSetVariant = (value: Handle, v: object | null): void => {
 };
 export const valueGetVariant = (value: Handle): object | null => {
     const result = gValueGetVariant(value);
-    if (result === null) return null;
-    const cls = getWrapperClass(TYPE_VARIANT);
-    if (cls === null) {
-        throw new Error("valueGetVariant: GLib.Variant wrapper class is not registered");
-    }
-    return wrapHandle(result, cls);
+    return result === null ? null : wrapHandle(result, requireWrapperClassByGtype(TYPE_VARIANT));
 };
 
 const gValueSetBoxedStrv = bind(LIB, "g_value_set_boxed", [GVALUE_T, arrayT(stringT("borrowed"))], voidT);
@@ -236,10 +231,7 @@ export function valueGetBoxed(value: Handle): object | null {
     if (typeFundamental(gtype) !== TYPE_BOXED) {
         return null;
     }
-    const cls = getWrapperClass(gtype);
-    if (!cls) {
-        throw new Error(`No registered class for boxed GType '${typeName(gtype) ?? String(gtype)}'`);
-    }
+    const cls = requireWrapperClassByGtype(gtype);
     const ptr = call(
         LIB,
         "g_value_dup_boxed",
@@ -310,7 +302,7 @@ function gtypeFromFfiType(ffiType: FfiType): GType {
         case "boxed":
             return resolveBoxedGtype(ffiType);
         case "fundamental":
-            return ffiType.typeName === "GVariant" ? TYPE_VARIANT : resolveBoxedGtype(ffiType);
+            return resolveBoxedGtype(ffiType);
         case "array":
             if (ffiType.itemType.type === "string" && ffiType.kind === "array") return getStrvGtype();
             throw new Error(`Unsupported array type ${ffiType.kind} of ${ffiType.itemType.type}`);

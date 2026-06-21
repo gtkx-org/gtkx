@@ -7,8 +7,8 @@ import { formatChildProcessError } from "@gtkx/utils";
 import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
 import { renderInitModule } from "../gresources/render.js";
 import { error, info } from "../internal/log.js";
-import { removeTempDir } from "../internal/remove-temp-dir.js";
 import { resolveCliTool } from "../internal/resolve-cli-tool.js";
+import { withStagingDir } from "../internal/staging-dir.js";
 import { ASSET_PATH_RE, ASSET_RE } from "./asset-extensions.js";
 import { BUNDLE_FILENAME, escapeXml, REL_SEPARATOR, VIRTUAL_INIT, VIRTUAL_PREFIX } from "./gresource-protocol.js";
 
@@ -43,19 +43,13 @@ type PluginState = {
     devBundlePath: string;
 };
 
-const compileBundle = (state: PluginState, outputPath: string): Buffer => {
-    const staged = stageBundle(state.entries);
-    try {
-        return runCompiler(staged.dir, staged.manifest, outputPath);
-    } finally {
-        removeTempDir(staged.dir);
-    }
-};
+const compileBundle = (state: PluginState, outputPath: string): Buffer =>
+    withStagingDir("gresources", (dir) => {
+        const manifest = stageBundle(dir, state.entries);
+        return runCompiler(dir, manifest, outputPath);
+    });
 
-type StagedBundle = { dir: string; manifest: string };
-
-const stageBundle = (entries: Map<string, ResourceEntry>): StagedBundle => {
-    const dir = mkdtempSync(join(tmpdir(), "gtkx-gresources-"));
+const stageBundle = (dir: string, entries: Map<string, ResourceEntry>): string => {
     const fileNodes: string[] = [];
     for (const entry of entries.values()) {
         const targetPath = join(dir, entry.stagedRelPath);
@@ -75,7 +69,7 @@ const stageBundle = (entries: Map<string, ResourceEntry>): StagedBundle => {
         ``,
     ].join("\n");
     writeFileSync(manifest, xml);
-    return { dir, manifest };
+    return manifest;
 };
 
 const runCompiler = (sourceDir: string, manifest: string, outputPath: string): Buffer => {
@@ -142,14 +136,9 @@ const emitBuildBundle = (
     state: PluginState,
 ): void => {
     if (!state.isBuild || state.entries.size === 0) return;
-    const outDir = mkdtempSync(join(tmpdir(), "gtkx-gresources-out-"));
-    try {
-        const compiled = compileBundle(state, join(outDir, BUNDLE_FILENAME));
-        ctx.emitFile({ type: "asset", fileName: BUNDLE_FILENAME, source: compiled });
-        info(`Compiled ${state.entries.size} resource(s) into ${BUNDLE_FILENAME}`);
-    } finally {
-        removeTempDir(outDir);
-    }
+    const compiled = withStagingDir("gresources-out", (outDir) => compileBundle(state, join(outDir, BUNDLE_FILENAME)));
+    ctx.emitFile({ type: "asset", fileName: BUNDLE_FILENAME, source: compiled });
+    info(`Compiled ${state.entries.size} resource(s) into ${BUNDLE_FILENAME}`);
 };
 
 const refreshDevRegistration = async (server: ViteDevServer, state: PluginState): Promise<void> => {

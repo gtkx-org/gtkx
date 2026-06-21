@@ -3,6 +3,8 @@ import type { Container } from "./traversal.js";
 export type Config = {
     showSuggestions: boolean;
 
+    throwSuggestions: boolean;
+
     getElementError: (message: string, container: Container) => Error;
 
     asyncUtilTimeout: number;
@@ -16,6 +18,7 @@ const defaultGetElementError = (message: string, _container: Container): Error =
 
 const defaultConfig: Config = {
     showSuggestions: true,
+    throwSuggestions: false,
     getElementError: defaultGetElementError,
     asyncUtilTimeout: 1000,
 };

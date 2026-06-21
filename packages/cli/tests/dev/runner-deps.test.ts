@@ -200,12 +200,12 @@ describe("defaultDevRunnerDeps (getConfiguredApplicationId)", () => {
 });
 
 describe("defaultDevRunnerDeps (log and exit)", () => {
-    it("forwards log messages through console.log with the [gtkx] prefix", () => {
+    it("forwards log messages through the output sink with the [gtkx] prefix", () => {
         const deps = defaultDevRunnerDeps();
-        const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+        const spy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
         try {
             deps.log("hello");
-            expect(spy).toHaveBeenCalledWith("[gtkx] hello");
+            expect(spy).toHaveBeenCalledWith("[gtkx] hello\n");
         } finally {
             spy.mockRestore();
         }

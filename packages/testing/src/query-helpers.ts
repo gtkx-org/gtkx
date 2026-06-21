@@ -1,6 +1,9 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import { getConfig } from "./config.js";
+import { suggestionError } from "./errors.js";
+import { getSuggestedQuery, type Method, type Variant } from "./suggestions.js";
 import type { Container } from "./traversal.js";
-import type { WaitForOptions } from "./types.js";
+import type { MatcherOptions, WaitForOptions } from "./types.js";
 import { waitFor } from "./wait-for.js";
 
 export type QueryAllBy<Args extends unknown[]> = (container: Container, ...args: Args) => Gtk.Widget[];
@@ -25,7 +28,33 @@ const extractWaitForOptions = (args: unknown[]): WaitForOptions => {
     return {};
 };
 
+const extractSuggestOption = (args: unknown[]): boolean | undefined => {
+    const last = args[args.length - 1];
+    if (last && typeof last === "object" && !(last instanceof RegExp)) {
+        return (last as MatcherOptions).suggest;
+    }
+    return undefined;
+};
+
+const maybeThrowSuggestion = (options: {
+    container: Container;
+    match: Gtk.Widget;
+    queryName: Method;
+    variant: Variant;
+    suggest: boolean | undefined;
+}): void => {
+    const { container, match, queryName, variant, suggest } = options;
+    const shouldSuggest = suggest ?? getConfig().throwSuggestions;
+    if (!shouldSuggest) return;
+
+    const suggestion = getSuggestedQuery(match, variant);
+    if (suggestion && suggestion.queryName !== queryName) {
+        throw suggestionError(suggestion.toString(), container);
+    }
+};
+
 export const buildQueries = <Args extends unknown[]>(
+    queryName: Method,
     queryAllBy: QueryAllBy<Args>,
     getMultipleError: MultipleErrorBuilder<Args>,
     getMissingError: MissingErrorBuilder<Args>,
@@ -35,7 +64,17 @@ export const buildQueries = <Args extends unknown[]>(
         if (matches.length > 1) {
             throw getMultipleError(container, matches.length, ...args);
         }
-        return matches[0] ?? null;
+        const match = matches[0] ?? null;
+        if (match) {
+            maybeThrowSuggestion({
+                container,
+                match,
+                queryName,
+                variant: "query",
+                suggest: extractSuggestOption(args),
+            });
+        }
+        return match;
     };
 
     const getAllBy = (container: Container, ...args: Args): Gtk.Widget[] => {
@@ -43,11 +82,21 @@ export const buildQueries = <Args extends unknown[]>(
         if (matches.length === 0) {
             throw getMissingError(container, ...args);
         }
+        const [first] = matches;
+        if (first !== undefined) {
+            maybeThrowSuggestion({
+                container,
+                match: first,
+                queryName,
+                variant: "getAll",
+                suggest: extractSuggestOption(args),
+            });
+        }
         return matches;
     };
 
     const getBy = (container: Container, ...args: Args): Gtk.Widget => {
-        const matches = getAllBy(container, ...args);
+        const matches = queryAllBy(container, ...args);
         if (matches.length > 1) {
             throw getMultipleError(container, matches.length, ...args);
         }
@@ -55,6 +104,13 @@ export const buildQueries = <Args extends unknown[]>(
         if (first === undefined) {
             throw getMissingError(container, ...args);
         }
+        maybeThrowSuggestion({
+            container,
+            match: first,
+            queryName,
+            variant: "get",
+            suggest: extractSuggestOption(args),
+        });
         return first;
     };
 

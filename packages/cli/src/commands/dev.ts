@@ -1,6 +1,7 @@
 import { defineCommand } from "citty";
 import { preflightCodegen, resolveConfigWatch } from "../codegen/run-codegen.js";
 import { type DevWatch, runDevSupervisor } from "../dev/supervisor.js";
+import { runCommand } from "../internal/errors.js";
 import { entryArg, resolveEntry } from "./entry.js";
 
 export const dev = defineCommand({
@@ -12,12 +13,14 @@ export const dev = defineCommand({
         ...entryArg,
     },
     async run({ args }) {
-        const { cwd, entry: entryPath } = resolveEntry(args);
+        await runCommand(async () => {
+            const { cwd, entry: entryPath } = resolveEntry(args);
 
-        await preflightCodegen(cwd);
+            await preflightCodegen(cwd);
 
-        const watch: DevWatch | undefined = await resolveConfigWatch(cwd);
+            const watch: DevWatch | undefined = await resolveConfigWatch(cwd);
 
-        await runDevSupervisor(entryPath, watch);
+            await runDevSupervisor(entryPath, watch);
+        });
     },
 });

@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { sortedAlpha } from "@gtkx/utils";
 import ejs from "ejs";
 import type { TestingOption } from "./create/options.js";
 
@@ -22,16 +23,17 @@ const renderTemplate = (templatePath: string, context: TemplateContext): string 
 };
 
 export const listTemplates = (): string[] =>
-    readdirSync(getTemplatesDir(), { recursive: true, withFileTypes: true })
-        .filter((entry) => entry.isFile() && entry.name.endsWith(TEMPLATE_SUFFIX))
-        .map((entry) => join(entry.parentPath, entry.name))
-        .map((absolute) =>
-            absolute
-                .slice(getTemplatesDir().length + 1)
-                .split(/[/\\]/)
-                .join("/"),
-        )
-        .sort((a, b) => a.localeCompare(b));
+    sortedAlpha(
+        readdirSync(getTemplatesDir(), { recursive: true, withFileTypes: true })
+            .filter((entry) => entry.isFile() && entry.name.endsWith(TEMPLATE_SUFFIX))
+            .map((entry) => join(entry.parentPath, entry.name))
+            .map((absolute) =>
+                absolute
+                    .slice(getTemplatesDir().length + 1)
+                    .split(/[/\\]/)
+                    .join("/"),
+            ),
+    );
 
 export const renderFile = (templateName: string, context: TemplateContext): string => {
     const templatesDir = getTemplatesDir();

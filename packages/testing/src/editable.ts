@@ -1,6 +1,13 @@
 import * as Gtk from "@gtkx/gi/gtk";
 
-const EDITABLE_ROLES = new Set<Gtk.AccessibleRole>([
+/**
+ * The accessible roles whose widgets implement the `Gtk.Editable` text-entry contract.
+ *
+ * This set is the single source of truth for which widgets `userEvent` text helpers
+ * (`type`, `clear`, `copy`, `cut`, `paste`) accept, and it drives the human-readable
+ * "expected editable widget" error message.
+ */
+export const EDITABLE_ROLES: Set<Gtk.AccessibleRole> = new Set<Gtk.AccessibleRole>([
     Gtk.AccessibleRole.TEXT_BOX,
     Gtk.AccessibleRole.SEARCH_BOX,
     Gtk.AccessibleRole.SPIN_BUTTON,

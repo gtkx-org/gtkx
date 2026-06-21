@@ -5,7 +5,33 @@ import type { GtkxConfig } from "@gtkx/config";
 import { sortedAlpha } from "@gtkx/utils";
 import { resolveGirPath } from "./gir-resolver.js";
 import { resolveLibraries } from "./library-resolver.js";
-import { resolveCodegenStore } from "./store-resolver.js";
+import { type CodegenStore, resolveCodegenStore } from "./store-resolver.js";
+
+/**
+ * The GIR search paths, resolved library list, and store layout derived from a
+ * project's configuration. Computed once and threaded through both the codegen
+ * freshness check and the codegen run.
+ */
+export type CodegenInputs = {
+    girPath: string[];
+    libraries: string[];
+    store: CodegenStore;
+};
+
+/**
+ * Derives the GIR search paths, resolved library list, and store layout for a
+ * project in one place so callers do not re-run the underlying subprocess and
+ * filesystem work independently.
+ *
+ * @param cwd - The codegen root the store is resolved against.
+ * @param config - The resolved gtkx configuration supplying GIR paths and libraries.
+ */
+export const resolveCodegenInputs = (cwd: string, config: GtkxConfig): CodegenInputs => {
+    const girPath = resolveGirPath(config.girPath);
+    const libraries = resolveLibraries(config.libraries, girPath);
+    const store = resolveCodegenStore(cwd);
+    return { girPath, libraries, store };
+};
 
 const REACT_GENERATED_MODULES: string[] = ["metadata.js", join("gtk", "gtk.js")];
 
@@ -37,17 +63,15 @@ const fingerprintStale = (giStoreDir: string, libraries: string[], userTables: s
     }
 };
 
-export const isCodegenNeeded = (cwd: string, config: GtkxConfig): boolean => {
+export const isCodegenNeeded = (config: GtkxConfig, inputs: CodegenInputs): boolean => {
     try {
-        const store = resolveCodegenStore(cwd);
+        const { store, libraries } = inputs;
         if (!existsSync(store.giLinkDir) || !existsSync(store.giStoreDir)) {
             return true;
         }
         if (!giStoreLinksResolve(store.giStoreDir)) {
             return true;
         }
-        const girPath = resolveGirPath(config.girPath);
-        const libraries = resolveLibraries(config.libraries, girPath);
         if (libraries.some((library) => !existsSync(namespaceBarrelPath(store.giStoreDir, library)))) {
             return true;
         }

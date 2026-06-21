@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { defineCommand } from "citty";
 import { formatCodegenResult } from "../codegen/report.js";
 import { ensureGenerated, runCodegen, syncSchemaEnv } from "../codegen/run-codegen.js";
+import { runCommand } from "../internal/errors.js";
 import { info } from "../internal/log.js";
 
 export const codegen = defineCommand({
@@ -21,20 +22,22 @@ export const codegen = defineCommand({
         },
     },
     async run({ args }) {
-        const cwd = args.cwd ? resolve(args.cwd) : process.cwd();
+        await runCommand(async () => {
+            const cwd = args.cwd ? resolve(args.cwd) : process.cwd();
 
-        if (!args.force) {
-            const ran = await ensureGenerated(cwd);
-            info(ran ? "codegen: regenerated stale bindings" : "codegen: bindings up to date");
-            return;
-        }
+            if (!args.force) {
+                const ran = await ensureGenerated(cwd);
+                info(ran ? "codegen: regenerated stale bindings" : "codegen: bindings up to date");
+                return;
+            }
 
-        const startedAt = Date.now();
-        const result = await runCodegen({ cwd, force: true });
-        syncSchemaEnv(cwd);
+            const startedAt = Date.now();
+            const result = await runCodegen({ cwd, force: true });
+            syncSchemaEnv(cwd);
 
-        for (const line of formatCodegenResult(result, Date.now() - startedAt)) {
-            info(line);
-        }
+            for (const line of formatCodegenResult(result, Date.now() - startedAt)) {
+                info(line);
+            }
+        });
     },
 });

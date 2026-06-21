@@ -241,13 +241,14 @@ describe("widget.click / widget.type / widget.fireEvent", () => {
 });
 
 describe("widget.screenshot", () => {
-    it("screenshots the first window when no windowId is supplied", async () => {
+    it("screenshots the first toplevel when no windowId is supplied", async () => {
         const window = makeWidget({ getTitle: () => "win" });
-        const app = makeApp([window as never]);
+        listToplevels.mockReturnValueOnce([window]);
         screenshot.mockResolvedValueOnce({ data: "abc", mimeType: "image/png" });
         const registry = new WidgetRegistry();
+        registry.refresh();
 
-        const result = (await dispatch("widget.screenshot", {}, { app: app as never, registry })) as {
+        const result = (await dispatch("widget.screenshot", {}, { app: makeApp() as never, registry })) as {
             data: string;
             mimeType: string;
         };

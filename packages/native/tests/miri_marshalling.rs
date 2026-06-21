@@ -3,7 +3,7 @@ mod common;
 use std::ffi::c_void;
 
 use native::ffi::FfiValue;
-use native::types::{ArrayType, BlobType, FfiEncoder as _};
+use native::types::{ArrayType, BlobType, FfiDecoder as _, FfiEncoder as _};
 use native::value::{BufferView, BufferViewKind, Value};
 
 use common::{f32_array_type, i32_array_type};

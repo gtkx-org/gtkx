@@ -1,6 +1,5 @@
-import * as Gdk from "@gtkx/gi/gdk";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { attachProviderToDisplay, registerProviderForDefaultDisplay } from "./provider.js";
+import { registerProviderForDefaultDisplay } from "./provider.js";
 
 export class Stylesheet {
     private rules: string[] = [];
@@ -9,17 +8,10 @@ export class Stylesheet {
 
     private ensureProvider(): void {
         if (this.provider) return;
-        const { provider, display } = registerProviderForDefaultDisplay();
+        const { provider } = registerProviderForDefaultDisplay();
         this.provider = provider;
         provider.on("parsing-error", (section, error) => {
             console.warn(`[gtkx/css] GTK rejected CSS at ${section.toString()}: ${error.message}`);
-        });
-        if (!display) this.registerWhenDisplayOpens(provider);
-    }
-
-    private registerWhenDisplayOpens(provider: Gtk.CssProvider): void {
-        Gdk.DisplayManager.get().once("display-opened", (display) => {
-            attachProviderToDisplay(provider, display);
         });
     }
 

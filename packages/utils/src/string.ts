@@ -2,8 +2,10 @@ export const toUpperFirst = (value: string): string => value.charAt(0).toUpperCa
 
 export const toLowerFirst = (value: string): string => value.charAt(0).toLowerCase() + value.slice(1);
 
+const splitWords = (input: string): string[] => input.split(/[_-]/g).filter((part) => part.length > 0);
+
 export const toCamelCase = (input: string): string => {
-    const parts = input.split(/[_-]/g).filter((part) => part.length > 0);
+    const parts = splitWords(input);
     if (parts.length === 0) return input;
     const [first, ...rest] = parts;
     const head = first ?? "";
@@ -11,8 +13,7 @@ export const toCamelCase = (input: string): string => {
 };
 
 export const toPascalCase = (input: string): string => {
-    if (input.length === 0) return input;
-    const parts = input.split(/[_-]/g).filter((part) => part.length > 0);
+    const parts = splitWords(input);
     if (parts.length === 0) return input;
     return parts.map(toUpperFirst).join("");
 };

@@ -72,12 +72,12 @@ const writeJsxStore = (cwd: string) => {
 };
 
 const preflightLogs = async (cwd: string): Promise<string> => {
-    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     try {
         await preflightCodegen(cwd);
-        return logSpy.mock.calls.map((call) => String(call[0])).join("\n");
+        return stderrSpy.mock.calls.map((call) => String(call[0])).join("");
     } finally {
-        logSpy.mockRestore();
+        stderrSpy.mockRestore();
     }
 };
 

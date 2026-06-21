@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { GTKX_CONFIG_VIRTUAL_ID, RESOLVED_GTKX_CONFIG_VIRTUAL_ID } from "@gtkx/config";
+import { GTKX_CONFIG_VIRTUAL_ID, gtkxBundledModulePatterns, RESOLVED_GTKX_CONFIG_VIRTUAL_ID } from "@gtkx/config";
 import { describe, expect, it } from "vitest";
 import type { Plugin } from "vitest/config";
 import gtkx from "../src/index.js";
@@ -53,14 +53,15 @@ describe("gtkx vitest plugin", () => {
         expect(result.test?.hookTimeout).toBe(20000);
     });
 
-    it("inlines the gtkx runtime packages and the .gtkx store", () => {
+    it("inlines the shared gtkx bundled-module patterns", () => {
         const result = callConfig(gtkx(), {});
         const inline = result.test?.server?.deps?.inline ?? [];
-        expect(inline.map((pattern) => pattern.source)).toEqual([
-            "@gtkx\\/(config|ffi|gi|react|jsx|testing|css)",
-            "[/\\\\]\\.gtkx[/\\\\]",
-        ]);
-        expect(inline.map((pattern) => pattern.flags)).toEqual(["", ""]);
+        expect(inline.map((pattern) => pattern.source)).toEqual(
+            gtkxBundledModulePatterns.map((pattern) => pattern.source),
+        );
+        expect(inline.map((pattern) => pattern.flags)).toEqual(
+            gtkxBundledModulePatterns.map((pattern) => pattern.flags),
+        );
     });
 
     it("orders the ssr resolve conditions source-first", () => {

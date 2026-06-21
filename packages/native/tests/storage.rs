@@ -7,7 +7,9 @@ use native::ffi::{
     FfiStorage, FfiStorageKind, FfiValue, GArrayData, GListData, GSListData, HashTableData,
     StringGListData, StringGSListData,
 };
-use native::types::{ArrayKind, ArrayType, IntegerKind, Ownership, StringType, Type};
+use native::types::{
+    ArrayKind, ArrayType, FfiEncoder as _, IntegerKind, Ownership, StringType, Type,
+};
 use native::value::Value;
 
 fn make_glist_one() -> *mut glib::ffi::GList {

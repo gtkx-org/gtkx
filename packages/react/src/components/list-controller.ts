@@ -2,10 +2,11 @@ import type * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { createElement, type ReactNode } from "react";
+import { BoundContainerRegistry, UNBOUND_POSITION } from "../reconciler/bound-container-registry.js";
 import { type BoundItem, collectFlatBoundItems } from "../reconciler/bound-item.js";
 import { isInCommit, scheduleFlush } from "../reconciler/commit-flush.js";
 import { runDeferredFlush } from "../reconciler/deferred-flush.js";
-import { connectFactoryLifecycle, UNBOUND_POSITION } from "../reconciler/list-factory.js";
+import { connectFactoryLifecycle } from "../reconciler/list-factory.js";
 import { ListModelController } from "../reconciler/list-model-controller.js";
 import { SelectionController } from "../reconciler/selection-controller.js";
 import { SignalStore } from "../reconciler/signal-store.js";
@@ -26,7 +27,8 @@ export interface ListControllerProps {
     renderHeader?: ListHeaderRenderer | null;
     autoexpand?: boolean;
     selected?: string[] | null;
-    onSelectionChanged?: ((ids: string[]) => void) | ((id: string) => void) | null;
+    onMultiSelectionChanged?: ((ids: string[]) => void) | null;
+    onDropDownSelectionChanged?: ((id: string) => void) | null;
     selectionMode?: Gtk.SelectionMode | null;
     selectedId?: string | null;
     sortColumn?: string | null;
@@ -52,12 +54,9 @@ export class ListController implements ColumnHost {
     private factory: Gtk.SignalListItemFactory | null = null;
     private headerFactory: Gtk.SignalListItemFactory | null = null;
     private listFactory: Gtk.SignalListItemFactory | null = null;
-    private containers = new Map<Gtk.Widget | Gtk.ListItem, number>();
-    private containerKeys = new Map<Gtk.Widget | Gtk.ListItem, string>();
-    private headerContainers = new Map<Gtk.ListHeader, number>();
-    private headerContainerKeys = new Map<Gtk.ListHeader, string>();
-    private listContainers = new Map<Gtk.ListItem, number>();
-    private listContainerKeys = new Map<Gtk.ListItem, string>();
+    private registry = new BoundContainerRegistry<Gtk.Widget | Gtk.ListItem>();
+    private headerRegistry = new BoundContainerRegistry<Gtk.ListHeader>();
+    private listRegistry = new BoundContainerRegistry<Gtk.ListItem>();
     private treeExpanders = new Map<Gtk.ListItem, Gtk.TreeExpander>();
     private columnView: ColumnViewLifecycle | null;
     private boundItems: BoundItem[] = [];
@@ -82,7 +81,8 @@ export class ListController implements ColumnHost {
         this.selectionController = new SelectionController(this.signalOwner, this.widget, this.modelController, {
             isDropDown: () => this.isDropDown(),
             assignModelToWidget: () => this.assignModelToWidget(),
-            getOnSelectionChanged: () => this.props.onSelectionChanged,
+            getDropDownSelectionCallback: () => this.props.onDropDownSelectionChanged ?? null,
+            getMultiSelectionCallback: () => this.props.onMultiSelectionChanged ?? null,
             setDropDownSelected: (position) => this.dropDown?.setSelected(position),
             getDropDownSelected: () => this.dropDown?.getSelected() ?? -1,
         });
@@ -221,8 +221,7 @@ export class ListController implements ColumnHost {
         const isTree = this.modelController.isTreeMode();
 
         connectFactoryLifecycle<Gtk.ListItem, Gtk.Widget | Gtk.ListItem>(this.factory, {
-            containers: this.containers,
-            containerKeys: this.containerKeys,
+            registry: this.registry,
             createContainer: (item) => (isTree ? this.createTreeContainer(item) : this.createFlatContainer(item)),
             resolveContainer: (item) => (isTree ? (this.treeExpanders.get(item) ?? null) : item),
             getPosition: (item) => item.getPosition(),
@@ -283,14 +282,13 @@ export class ListController implements ColumnHost {
             this.applyTreeExpanderProps(expander, treeItem);
         }
 
-        this.containers.set(expander, position);
+        this.registry.setPosition(expander, position);
     }
 
     private setupListFactory(): void {
         this.listFactory = new Gtk.SignalListItemFactory();
         connectFactoryLifecycle<Gtk.ListItem>(this.listFactory, {
-            containers: this.listContainers,
-            containerKeys: this.listContainerKeys,
+            registry: this.listRegistry,
             createContainer: (item) => item,
             resolveContainer: (item) => item,
             getPosition: (item) => item.getPosition(),
@@ -302,8 +300,7 @@ export class ListController implements ColumnHost {
     private setupHeaderFactory(): void {
         this.headerFactory = new Gtk.SignalListItemFactory();
         connectFactoryLifecycle<Gtk.ListHeader>(this.headerFactory, {
-            containers: this.headerContainers,
-            containerKeys: this.headerContainerKeys,
+            registry: this.headerRegistry,
             createContainer: (item) => item,
             resolveContainer: (item) => item,
             getPosition: (item) => item.getStart(),
@@ -432,7 +429,10 @@ export class ListController implements ColumnHost {
             this.selectionController.applySelectedId(newProps.selectedId);
         }
 
-        if (oldProps.onSelectionChanged !== newProps.onSelectionChanged) {
+        if (
+            oldProps.onMultiSelectionChanged !== newProps.onMultiSelectionChanged ||
+            oldProps.onDropDownSelectionChanged !== newProps.onDropDownSelectionChanged
+        ) {
             this.selectionController.connectSelectionSignal();
         }
     }
@@ -452,8 +452,7 @@ export class ListController implements ColumnHost {
 
         if (renderFn !== null) {
             this.collectContainerBoundItems({
-                containers: this.containers,
-                containerKeys: this.containerKeys,
+                registry: this.registry,
                 resolveItem,
                 renderFn,
                 out: newBoundItems,
@@ -462,8 +461,7 @@ export class ListController implements ColumnHost {
 
         if (renderListItem && this.isDropDown()) {
             this.collectContainerBoundItems({
-                containers: this.listContainers,
-                containerKeys: this.listContainerKeys,
+                registry: this.listRegistry,
                 resolveItem,
                 renderFn: renderListItem,
                 out: newBoundItems,
@@ -479,10 +477,8 @@ export class ListController implements ColumnHost {
         renderHeader: NonNullable<ListControllerProps["renderHeader"]>,
         out: BoundItem[],
     ): void {
-        for (const [container, position] of this.headerContainers) {
+        for (const { container, position, key } of this.headerRegistry.entries()) {
             if (position === UNBOUND_POSITION || position !== sectionStart) continue;
-            const key = this.headerContainerKeys.get(container);
-            if (!key) continue;
             out.push([renderHeader(section.value), container, key]);
         }
     }
@@ -527,23 +523,20 @@ export class ListController implements ColumnHost {
         return (position: number) => flatItems[position]?.value;
     }
 
-    private collectContainerBoundItems(args: {
-        containers: Map<GObject.Object, number>;
-        containerKeys: Map<GObject.Object, string>;
+    private collectContainerBoundItems<C extends GObject.Object>(args: {
+        registry: BoundContainerRegistry<C>;
         resolveItem: (position: number) => unknown;
         renderFn: (item: unknown, row?: Gtk.TreeListRow | null) => ReactNode;
         out: BoundItem[];
     }): void {
-        const { containers, containerKeys, resolveItem, renderFn, out } = args;
+        const { registry, resolveItem, renderFn, out } = args;
         if (this.modelController.treeModel === null) {
-            collectFlatBoundItems({ containers, containerKeys, resolveItem, render: renderFn, out });
+            collectFlatBoundItems({ registry, resolveItem, render: renderFn, out });
             return;
         }
 
-        for (const [container, position] of containers) {
+        for (const { container, position, key } of registry.entries()) {
             if (position === UNBOUND_POSITION) continue;
-            const key = containerKeys.get(container);
-            if (!key) continue;
             this.appendTreeBoundItem({ container, key, renderFn, out });
         }
     }

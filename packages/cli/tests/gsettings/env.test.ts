@@ -119,19 +119,20 @@ describe("emitSchemaEnv", () => {
     });
 
     it("skips unparseable files with a warning and still writes the file", () => {
-        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
         try {
             writeDataSchema("broken.gschema.xml", "<not-a-schemalist/>");
             writeDataSchema("com.example.app.gschema.xml");
 
             const result = emitSchemaEnv(root, DATA_DIR);
 
-            expect(warn).toHaveBeenCalledOnce();
+            const warnings = stderr.mock.calls.map((call) => String(call[0])).filter((line) => line.includes("broken"));
+            expect(warnings).toHaveLength(1);
             const content = readFileSync(result.path, "utf-8");
             expect(content).toContain("com.example.app.gschema.xml");
             expect(content).not.toContain("broken");
         } finally {
-            warn.mockRestore();
+            stderr.mockRestore();
         }
     });
 });

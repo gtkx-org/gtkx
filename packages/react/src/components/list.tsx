@@ -47,7 +47,6 @@ const CONTROLLER_KEYS = [
     "renderHeader",
     "autoexpand",
     "selected",
-    "onSelectionChanged",
     "selectionMode",
     "selectedId",
     "sortColumn",
@@ -60,16 +59,32 @@ const CONTROLLER_KEYS = [
 
 const CONTROLLER_KEY_SET = new Set<string>(CONTROLLER_KEYS);
 
+const SELECTION_CHANGED_KEY = "onSelectionChanged";
+
 type SplitProps = { controllerProps: ListControllerProps; elementProps: Record<string, unknown> };
 
-const splitProps = (props: Record<string, unknown>): SplitProps => {
+const resolveSelectionCallback = (value: unknown, isDropDown: boolean): Partial<ListControllerProps> => {
+    if (typeof value !== "function") return {};
+    return isDropDown
+        ? { onDropDownSelectionChanged: value as (id: string) => void }
+        : { onMultiSelectionChanged: value as (ids: string[]) => void };
+};
+
+const splitProps = (props: Record<string, unknown>, isDropDown: boolean): SplitProps => {
     const controllerProps: Record<string, unknown> = {};
     const elementProps: Record<string, unknown> = {};
     for (const key of Object.keys(props)) {
+        if (key === SELECTION_CHANGED_KEY) continue;
         if (CONTROLLER_KEY_SET.has(key)) controllerProps[key] = props[key];
         else elementProps[key] = props[key];
     }
-    return { controllerProps: controllerProps as ListControllerProps, elementProps };
+    return {
+        controllerProps: {
+            ...(controllerProps as ListControllerProps),
+            ...resolveSelectionCallback(props[SELECTION_CHANGED_KEY], isDropDown),
+        },
+        elementProps,
+    };
 };
 
 interface ListHandle {
@@ -147,7 +162,7 @@ const useListElement = (
     options?: ListElementOptions,
 ): { node: ReactNode; handle: ListHandle } => {
     const { ref, children, ...rest } = props;
-    const { controllerProps, elementProps } = splitProps(rest);
+    const { controllerProps, elementProps } = splitProps(rest, options?.resolveDropDown !== undefined);
     const handle = useListController(controllerProps, options?.resolveDropDown);
     const [, mergedRef] = useForwardedRef<Gtk.Widget>(ref, handle.setWidget);
     const boundItems = handle.controller?.getBoundItems() ?? EMPTY_BOUND_ITEMS;

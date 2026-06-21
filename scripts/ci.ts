@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { HEADLESS_RENDER_ENV, wlheadless } from "./headless.ts";
 
 const selfPath = fileURLToPath(import.meta.url);
 const repoRoot = dirname(dirname(selfPath));
@@ -27,34 +28,24 @@ function run(command: string, args: string[], options: RunOptions = {}): void {
 
 const tasks: Record<string, () => void> = {
     asan() {
-        run(
-            "wlheadless-run",
-            [
-                "-c",
-                "weston",
-                "--",
-                "cargo",
-                "+nightly",
-                "test",
-                "--target",
-                "x86_64-unknown-linux-gnu",
-                "--",
-                "--test-threads=1",
-            ],
-            {
-                cwd: nativeDir,
-                env: {
-                    ...process.env,
-                    GDK_BACKEND: "wayland",
-                    GSK_RENDERER: "cairo",
-                    LIBGL_ALWAYS_SOFTWARE: "1",
-                    GDK_DISABLE: "vulkan",
-                    RUSTUP_TOOLCHAIN: "nightly",
-                    RUSTFLAGS: "-Zsanitizer=address",
-                    ASAN_OPTIONS: "detect_leaks=0:abort_on_error=1:detect_stack_use_after_return=1",
-                },
+        const [command, args] = wlheadless("cargo", [
+            "+nightly",
+            "test",
+            "--target",
+            "x86_64-unknown-linux-gnu",
+            "--",
+            "--test-threads=1",
+        ]);
+        run(command, args, {
+            cwd: nativeDir,
+            env: {
+                ...process.env,
+                ...HEADLESS_RENDER_ENV,
+                RUSTUP_TOOLCHAIN: "nightly",
+                RUSTFLAGS: "-Zsanitizer=address",
+                ASAN_OPTIONS: "detect_leaks=0:abort_on_error=1:detect_stack_use_after_return=1",
             },
-        );
+        });
     },
     miri() {
         run("cargo", ["+nightly", "miri", "test", "--test", "miri_marshalling"], {
@@ -71,15 +62,25 @@ const tasks: Record<string, () => void> = {
     },
     "bench:measured"() {
         run("cargo", ["codspeed", "run"], { cwd: nativeDir });
-        run("wlheadless-run", ["-c", "weston", "--", "pnpm", "--filter", "@gtkx/e2e", "bench"], {
+        const [command, args] = wlheadless("pnpm", ["--filter", "@gtkx/e2e", "bench"]);
+        run(command, args, {
             env: {
                 ...process.env,
-                GDK_BACKEND: "wayland",
-                GSK_RENDERER: "cairo",
-                LIBGL_ALWAYS_SOFTWARE: "1",
-                GDK_DISABLE: "vulkan",
+                ...HEADLESS_RENDER_ENV,
                 PATH: `/opt/node22/bin:${process.env.PATH ?? ""}`,
             },
+        });
+    },
+    headless() {
+        const [forwarded, ...rest] = process.argv.slice(3);
+        if (!forwarded) {
+            console.error("Usage: ci.ts headless <command> [args...]");
+            process.exit(1);
+        }
+        const [command, args] = wlheadless(forwarded, rest);
+        run(command, args, {
+            cwd: nativeDir,
+            env: { ...process.env, ...HEADLESS_RENDER_ENV },
         });
     },
 };

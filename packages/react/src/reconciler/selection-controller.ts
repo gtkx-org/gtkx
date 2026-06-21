@@ -3,8 +3,6 @@ import * as Gtk from "@gtkx/gi/gtk";
 import type { ListModelController } from "./list-model-controller.js";
 import type { SignalStore } from "./signal-store.js";
 
-type SelectionCallback = ((ids: string[]) => void) | ((id: string) => void) | null | undefined;
-
 export interface SelectionSignalOwner {
     signalStore: SignalStore;
 }
@@ -12,7 +10,8 @@ export interface SelectionSignalOwner {
 export interface SelectionHost {
     isDropDown(): boolean;
     assignModelToWidget(): void;
-    getOnSelectionChanged(): SelectionCallback;
+    getDropDownSelectionCallback(): ((id: string) => void) | null;
+    getMultiSelectionCallback(): ((ids: string[]) => void) | null;
     setDropDownSelected(position: number): void;
     getDropDownSelected(): number;
 }
@@ -199,10 +198,8 @@ export class SelectionController {
     }
 
     public connectSelectionSignal(): void {
-        const onSelectionChanged = this.host.getOnSelectionChanged();
-
         if (this.host.isDropDown()) {
-            const callback = onSelectionChanged as ((id: string) => void) | null | undefined;
+            const callback = this.host.getDropDownSelectionCallback();
             const handler = callback ? this.buildDropDownSelectionHandler(callback) : undefined;
             this.owner.signalStore.set({
                 owner: this.owner,
@@ -215,7 +212,7 @@ export class SelectionController {
 
         if (!this.selectionModel) return;
 
-        const callback = onSelectionChanged as ((ids: string[]) => void) | null | undefined;
+        const callback = this.host.getMultiSelectionCallback();
         const handler = callback ? this.buildMultiSelectionHandler(callback) : undefined;
 
         this.owner.signalStore.set({

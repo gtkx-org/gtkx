@@ -1,8 +1,7 @@
 import type { ArrayType, Type as FfiType, Handle, Value } from "@gtkx/native";
 import { getDescriptorWrapperClass } from "./descriptors.js";
-import { typeName } from "./gtype.js";
 import { resolveBoxedGtype } from "./gvalue.js";
-import { getWrapperClass, tryGetHandle, wrapHandle } from "./registry.js";
+import { requireWrapperClassByGtype, tryGetHandle, wrapHandle } from "./registry.js";
 
 const wrapCollection = (ffiType: ArrayType, value: unknown): unknown => {
     if (value === null) return null;
@@ -13,12 +12,7 @@ const wrapBoxedValue = (ffiType: FfiType, value: Handle | null): object | null =
     if (value === null) return null;
     const paired = getDescriptorWrapperClass(ffiType);
     if (paired !== undefined) return wrapHandle(value, paired);
-    const gtype = resolveBoxedGtype(ffiType);
-    const cls = getWrapperClass(gtype);
-    if (cls === null) {
-        throw new Error(`wrapValue: no registered wrapper class for boxed GType '${typeName(gtype) ?? String(gtype)}'`);
-    }
-    return wrapHandle(value, cls);
+    return wrapHandle(value, requireWrapperClassByGtype(resolveBoxedGtype(ffiType)));
 };
 
 export function wrapValue(ffiType: FfiType, value: Value): unknown {

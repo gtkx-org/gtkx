@@ -1,84 +1,50 @@
 import type { CSSInterpolation } from "@emotion/serialize";
-import { serializeStyles } from "@emotion/serialize";
-import { compile, type Middleware, middleware, rulesheet, serialize, stringify } from "stylis";
-import { getCache, getStylesheet } from "./cache.js";
+import { classNameFor, insert, registeredStylesFor, serialize } from "./registry.js";
 
-const AT_RULE_KEYWORDS = new Set([
-    "binding-set",
-    "charset",
-    "define-color",
-    "document",
-    "font-face",
-    "import",
-    "keyframes",
-    "media",
-    "namespace",
-    "page",
-    "supports",
-]);
-const AT_IDENTIFIER_PATTERN = /@([A-Za-z_][\w-]*)/g;
-const NAMED_COLOR_TOKEN = "gtkx-named-color__";
-const NAMED_COLOR_TOKEN_PATTERN = new RegExp(`${NAMED_COLOR_TOKEN}([\\w-]+)`, "g");
-
-const escapeNamedColors = (input: string): string =>
-    input.replace(AT_IDENTIFIER_PATTERN, (match, name: string) =>
-        AT_RULE_KEYWORDS.has(name) ? match : `${NAMED_COLOR_TOKEN}${name}`,
-    );
-
-const restoreNamedColors = (rule: string): string => rule.replace(NAMED_COLOR_TOKEN_PATTERN, "@$1");
-
-const LABEL_DECL_FIRST_CHAR = 108;
-const LABEL_DECL_THIRD_CHAR = 98;
-
-const removeLabel: Middleware = (element) => {
-    if (
-        element.type === "decl" &&
-        element.value.charCodeAt(0) === LABEL_DECL_FIRST_CHAR &&
-        element.value.charCodeAt(2) === LABEL_DECL_THIRD_CHAR
-    ) {
-        element.return = "";
-        element.value = "";
-    }
-};
-
-const insertRules = (input: string): void => {
-    const stylesheet = getStylesheet();
-    serialize(
-        compile(escapeNamedColors(input)),
-        middleware([
-            removeLabel,
-            stringify,
-            rulesheet((rule) => {
-                stylesheet.insert(restoreNamedColors(rule));
-            }),
-        ]),
-    );
-};
-
+/**
+ * Serializes the given style interpolations and inserts them as a scoped GTK CSS rule,
+ * returning the generated class name. Identical styles return the same class name and
+ * are inserted only once.
+ */
 export const css = (...args: CSSInterpolation[]): string => {
-    const cache = getCache();
-    const serialized = serializeStyles(args, cache.registered);
-    const className = `${cache.key}-${serialized.name}`;
-
-    if (cache.inserted[serialized.name] === undefined) {
-        insertRules(`.${className}{${serialized.styles}}`);
-        cache.inserted[serialized.name] = true;
-        cache.registered[className] = serialized.styles;
-    }
-
-    return className;
+    const serialized = serialize(args);
+    insert(serialized, { scoped: true });
+    return classNameFor(serialized);
 };
 
-export const cx = (...classNames: (string | boolean | undefined | null)[]): string[] =>
-    classNames.filter((cn): cn is string => typeof cn === "string" && cn.length > 0);
+type CxToken = string | boolean | undefined | null;
 
-export const injectGlobal = (...args: CSSInterpolation[]): void => {
-    const cache = getCache();
-    const serialized = serializeStyles(args, cache.registered);
-    const insertedKey = `global-${serialized.name}`;
+/**
+ * Combines class names for GTK's `cssClasses` array prop, dropping falsy entries.
+ *
+ * When two or more arguments are class names produced by {@link css}, their registered
+ * styles are merged and re-serialized into a single override class so that later styles
+ * win over earlier ones for any conflicting property. Raw class names and a lone
+ * registered class are passed through unchanged.
+ */
+export const cx = (...classNames: CxToken[]): string[] => {
+    const tokens = classNames.filter((cn): cn is string => typeof cn === "string" && cn.length > 0);
 
-    if (cache.inserted[insertedKey] === undefined) {
-        insertRules(serialized.styles);
-        cache.inserted[insertedKey] = true;
+    const rawClasses: string[] = [];
+    const registeredStyles: string[] = [];
+    for (const token of tokens) {
+        const styles = registeredStylesFor(token);
+        if (styles === undefined) {
+            rawClasses.push(token);
+        } else {
+            registeredStyles.push(styles);
+        }
     }
+
+    if (registeredStyles.length < 2) return tokens;
+
+    return [...rawClasses, css(registeredStyles.join(""))];
+};
+
+/**
+ * Serializes the given style interpolations and inserts them as unscoped, global GTK CSS.
+ * Identical styles are inserted only once.
+ */
+export const injectGlobal = (...args: CSSInterpolation[]): void => {
+    insert(serialize(args), { scoped: false });
 };

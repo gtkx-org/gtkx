@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { getIsReactActEnvironment, setIsReactActEnvironment } from "./act.js";
+import { runWithActEnvironment } from "./act.js";
 import { getConfig } from "./config.js";
 import { timeoutError } from "./errors.js";
 import type { WaitForOptions } from "./types.js";
@@ -10,17 +10,14 @@ const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 
 const drainMicrotasks = (): Promise<void> => delay(0);
 
-const asyncWrapper = async <T>(callback: () => Promise<T>): Promise<T> => {
-    const previousActEnvironment = getIsReactActEnvironment();
-    setIsReactActEnvironment(false);
-    try {
-        const result = await callback();
-        await drainMicrotasks();
-        return result;
-    } finally {
-        setIsReactActEnvironment(previousActEnvironment);
-    }
-};
+const asyncWrapper = <T>(callback: () => Promise<T>): Promise<T> =>
+    Promise.resolve(
+        runWithActEnvironment(false, async () => {
+            const result = await callback();
+            await drainMicrotasks();
+            return result;
+        }),
+    );
 
 export const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOptions): Promise<T> => {
     if (typeof callback !== "function") {

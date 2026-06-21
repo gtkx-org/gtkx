@@ -5,126 +5,127 @@ import {
     isValidApplicationId,
     resolveGtkxConfig,
     resolveReactCompilerOptions,
+    validateGtkxConfig,
 } from "../src/index.js";
 
-const defineUnknown = (config: unknown): GtkxConfig => defineConfig(config as GtkxConfig);
+const validateUnknown = (config: unknown): void => validateGtkxConfig(config as GtkxConfig);
 
 describe("defineConfig", () => {
-    it("returns the config unchanged when valid", () => {
+    it("returns the config unchanged", () => {
         const config = { libraries: ["Gtk-4.0", "Adw-1"] };
         expect(defineConfig(config)).toBe(config);
     });
+});
 
+describe("validateGtkxConfig (libraries)", () => {
     it("accepts a girPath array", () => {
-        const config = { libraries: ["Gtk-4.0"], girPath: ["/usr/share/gir-1.0"] };
-        expect(defineConfig(config)).toBe(config);
+        expect(() => validateGtkxConfig({ libraries: ["Gtk-4.0"], girPath: ["/usr/share/gir-1.0"] })).not.toThrow();
     });
 
     it("rejects an empty libraries array", () => {
-        expect(() => defineConfig({ libraries: [] })).toThrow(
+        expect(() => validateGtkxConfig({ libraries: [] })).toThrow(
             '`libraries` must be "*", a non-empty string array, or omitted',
         );
     });
 
     it("rejects a non-array, non-wildcard libraries field", () => {
-        expect(() => defineUnknown({ libraries: "Gtk-4.0" })).toThrow(
+        expect(() => validateUnknown({ libraries: "Gtk-4.0" })).toThrow(
             '`libraries` must be "*", a non-empty string array, or omitted',
         );
     });
 
     it('accepts the "*" wildcard', () => {
-        expect(defineConfig({ libraries: "*" }).libraries).toBe("*");
+        expect(() => validateGtkxConfig({ libraries: "*" })).not.toThrow();
     });
 
     it("accepts a config that omits libraries", () => {
-        expect(() => defineConfig({})).not.toThrow();
-        expect(() => defineConfig({ girPath: ["/usr/share/gir-1.0"] })).not.toThrow();
+        expect(() => validateGtkxConfig({})).not.toThrow();
+        expect(() => validateGtkxConfig({ girPath: ["/usr/share/gir-1.0"] })).not.toThrow();
     });
 
     it('rejects "*" used as an array entry and hints at the bare-string form', () => {
-        expect(() => defineConfig({ libraries: ["*"] })).toThrow(
+        expect(() => validateGtkxConfig({ libraries: ["*"] })).toThrow(
             'set `libraries: "*"` as a bare string, not an array entry',
         );
     });
 
     it("rejects a library identifier without a version suffix", () => {
-        expect(() => defineConfig({ libraries: ["Gtk"] })).toThrow(/invalid library identifier/);
+        expect(() => validateGtkxConfig({ libraries: ["Gtk"] })).toThrow(/invalid library identifier/);
     });
 
     it("rejects a library identifier that starts with a digit", () => {
-        expect(() => defineConfig({ libraries: ["4Gtk-1.0"] })).toThrow(/invalid library identifier/);
+        expect(() => validateGtkxConfig({ libraries: ["4Gtk-1.0"] })).toThrow(/invalid library identifier/);
     });
 
     it("accepts multi-component versions", () => {
-        expect(() => defineConfig({ libraries: ["Glib-2.0.1"] })).not.toThrow();
+        expect(() => validateGtkxConfig({ libraries: ["Glib-2.0.1"] })).not.toThrow();
     });
 
     it("rejects a non-string library entry", () => {
-        expect(() => defineUnknown({ libraries: [123] })).toThrow(/invalid library identifier/);
+        expect(() => validateUnknown({ libraries: [123] })).toThrow(/invalid library identifier/);
     });
 
     it("rejects a non-array girPath", () => {
-        expect(() => defineUnknown({ libraries: ["Gtk-4.0"], girPath: "/usr/share/gir-1.0" })).toThrow(
+        expect(() => validateUnknown({ libraries: ["Gtk-4.0"], girPath: "/usr/share/gir-1.0" })).toThrow(
             /`girPath` must be an array of strings if provided/,
         );
     });
 });
 
-describe("defineConfig (applicationId)", () => {
+describe("validateGtkxConfig (applicationId)", () => {
     it("accepts a valid applicationId", () => {
-        expect(defineConfig({ applicationId: "org.gtk.Demo4" }).applicationId).toBe("org.gtk.Demo4");
+        expect(() => validateGtkxConfig({ applicationId: "org.gtk.Demo4" })).not.toThrow();
     });
 
     it("rejects an invalid applicationId", () => {
-        expect(() => defineConfig({ applicationId: "not valid" })).toThrow(/invalid `applicationId`/);
-        expect(() => defineConfig({ applicationId: "singletoken" })).toThrow(/invalid `applicationId`/);
+        expect(() => validateGtkxConfig({ applicationId: "not valid" })).toThrow(/invalid `applicationId`/);
+        expect(() => validateGtkxConfig({ applicationId: "singletoken" })).toThrow(/invalid `applicationId`/);
     });
 
     it("rejects a non-string applicationId", () => {
-        expect(() => defineUnknown({ applicationId: 123 })).toThrow(/invalid `applicationId`/);
+        expect(() => validateUnknown({ applicationId: 123 })).toThrow(/invalid `applicationId`/);
     });
 
     it("accepts a config that omits applicationId", () => {
-        expect(() => defineConfig({ libraries: ["Gtk-4.0"] })).not.toThrow();
-        expect(defineConfig({ libraries: ["Gtk-4.0"] }).applicationId).toBeUndefined();
+        expect(() => validateGtkxConfig({ libraries: ["Gtk-4.0"] })).not.toThrow();
     });
 });
 
-describe("defineConfig slot-map validation", () => {
+describe("validateGtkxConfig slot-map validation", () => {
     it("accepts a containerProps map", () => {
         const config: GtkxConfig = { libraries: ["Gtk-4.0"], containerProps: { MyAppHeaderBar: ["packStart"] } };
-        expect(defineConfig(config)).toBe(config);
+        expect(() => validateGtkxConfig(config)).not.toThrow();
     });
 
     describe.each(["containerProps"] as const)("%s", (option) => {
         it("rejects a value that is not an object", () => {
-            expect(() => defineUnknown({ [option]: "nope" })).toThrow(new RegExp(`\`${option}\` must be an object`));
+            expect(() => validateUnknown({ [option]: "nope" })).toThrow(new RegExp(`\`${option}\` must be an object`));
         });
 
         it("rejects an array value", () => {
-            expect(() => defineUnknown({ [option]: [] })).toThrow(new RegExp(`\`${option}\` must be an object`));
+            expect(() => validateUnknown({ [option]: [] })).toThrow(new RegExp(`\`${option}\` must be an object`));
         });
 
         it("rejects a key that is not PascalCase", () => {
-            expect(() => defineUnknown({ [option]: { "kebab-name": ["content"] } })).toThrow(
+            expect(() => validateUnknown({ [option]: { "kebab-name": ["content"] } })).toThrow(
                 new RegExp(`invalid \`${option}\` key "kebab-name"`),
             );
         });
 
         it("rejects an entry with an empty array", () => {
-            expect(() => defineUnknown({ [option]: { MyAppFooBar: [] } })).toThrow(
+            expect(() => validateUnknown({ [option]: { MyAppFooBar: [] } })).toThrow(
                 new RegExp(`\`${option}\\.MyAppFooBar\` must be a non-empty array`),
             );
         });
 
         it("rejects an entry that is not an array", () => {
-            expect(() => defineUnknown({ [option]: { MyAppFooBar: "content" } })).toThrow(
+            expect(() => validateUnknown({ [option]: { MyAppFooBar: "content" } })).toThrow(
                 new RegExp(`\`${option}\\.MyAppFooBar\` must be a non-empty array`),
             );
         });
 
         it("rejects a name that is not camelCase", () => {
-            expect(() => defineUnknown({ [option]: { MyAppFooBar: ["Content"] } })).toThrow(
+            expect(() => validateUnknown({ [option]: { MyAppFooBar: ["Content"] } })).toThrow(
                 new RegExp(`invalid \`${option}\\.MyAppFooBar\` entry "Content"`),
             );
         });
@@ -169,76 +170,76 @@ const ARRAY_PROP_CONSTRUCT_CONFIG: GtkxConfig = {
     },
 };
 
-describe("defineConfig arrayProps validation", () => {
+describe("validateGtkxConfig arrayProps validation", () => {
     it("accepts an arrayProps row with verbs", () => {
-        expect(defineConfig(ARRAY_PROP_VERB_CONFIG)).toBe(ARRAY_PROP_VERB_CONFIG);
+        expect(() => validateGtkxConfig(ARRAY_PROP_VERB_CONFIG)).not.toThrow();
     });
 
     it("accepts a construct row", () => {
-        expect(defineConfig(ARRAY_PROP_CONSTRUCT_CONFIG)).toBe(ARRAY_PROP_CONSTRUCT_CONFIG);
+        expect(() => validateGtkxConfig(ARRAY_PROP_CONSTRUCT_CONFIG)).not.toThrow();
     });
 
     it("rejects a value that is not an object", () => {
-        expect(() => defineUnknown({ arrayProps: "nope" })).toThrow(/invalid `arrayProps` — must be an object/);
+        expect(() => validateUnknown({ arrayProps: "nope" })).toThrow(/invalid `arrayProps` — must be an object/);
     });
 
     it("rejects an array value", () => {
-        expect(() => defineUnknown({ arrayProps: [] })).toThrow(/invalid `arrayProps` — must be an object/);
+        expect(() => validateUnknown({ arrayProps: [] })).toThrow(/invalid `arrayProps` — must be an object/);
     });
 
     it("rejects a key that is not PascalCase", () => {
-        expect(() => defineUnknown({ arrayProps: { "kebab-name": { series: { itemType: "ChartSeries" } } } })).toThrow(
-            /invalid `arrayProps key "kebab-name"`/,
-        );
+        expect(() =>
+            validateUnknown({ arrayProps: { "kebab-name": { series: { itemType: "ChartSeries" } } } }),
+        ).toThrow(/invalid `arrayProps key "kebab-name"`/);
     });
 
     it("rejects an entry with no props", () => {
-        expect(() => defineUnknown({ arrayProps: { MyAppChart: {} } })).toThrow(
+        expect(() => validateUnknown({ arrayProps: { MyAppChart: {} } })).toThrow(
             /invalid `arrayProps\.MyAppChart` — must declare at least one prop/,
         );
     });
 
     it("rejects an entry that is not an object", () => {
-        expect(() => defineUnknown({ arrayProps: { MyAppChart: ["series"] } })).toThrow(
+        expect(() => validateUnknown({ arrayProps: { MyAppChart: ["series"] } })).toThrow(
             /invalid `arrayProps\.MyAppChart` — must be an object/,
         );
     });
 
     it("rejects a prop name that is not camelCase", () => {
-        expect(() => defineUnknown({ arrayProps: { MyAppChart: { Series: { itemType: "ChartSeries" } } } })).toThrow(
+        expect(() => validateUnknown({ arrayProps: { MyAppChart: { Series: { itemType: "ChartSeries" } } } })).toThrow(
             /invalid `arrayProps\.MyAppChart prop "Series"`/,
         );
     });
 
     it("rejects an item type that is not PascalCase", () => {
-        expect(() => defineUnknown({ arrayProps: { MyAppChart: { series: { itemType: "chartSeries" } } } })).toThrow(
+        expect(() => validateUnknown({ arrayProps: { MyAppChart: { series: { itemType: "chartSeries" } } } })).toThrow(
             /invalid `arrayProps\.MyAppChart\.series\.itemType`/,
         );
     });
 
     it("rejects a row without an itemType", () => {
-        expect(() => defineUnknown({ arrayProps: { MyAppChart: { series: { clear: "clearSeries" } } } })).toThrow(
+        expect(() => validateUnknown({ arrayProps: { MyAppChart: { series: { clear: "clearSeries" } } } })).toThrow(
             /invalid `arrayProps\.MyAppChart\.series\.itemType`/,
         );
     });
 });
 
-describe("defineConfig arrayProps verb validation", () => {
+describe("validateGtkxConfig arrayProps verb validation", () => {
     it("rejects a clear verb that is not camelCase", () => {
         expect(() =>
-            defineUnknown({ arrayProps: { MyAppChart: { series: { itemType: "ChartSeries", clear: "Clear" } } } }),
+            validateUnknown({ arrayProps: { MyAppChart: { series: { itemType: "ChartSeries", clear: "Clear" } } } }),
         ).toThrow(/invalid `arrayProps\.MyAppChart\.series\.clear`/);
     });
 
     it("rejects an add verb that is not an array", () => {
         expect(() =>
-            defineUnknown({ arrayProps: { MyAppChart: { series: { itemType: "ChartSeries", add: "addSeries" } } } }),
+            validateUnknown({ arrayProps: { MyAppChart: { series: { itemType: "ChartSeries", add: "addSeries" } } } }),
         ).toThrow(/invalid `arrayProps\.MyAppChart\.series\.add` — must be an array of call steps/);
     });
 
     it("rejects a call arg with an unknown kind", () => {
         expect(() =>
-            defineUnknown({
+            validateUnknown({
                 arrayProps: {
                     MyAppChart: {
                         series: {
@@ -253,7 +254,7 @@ describe("defineConfig arrayProps verb validation", () => {
 
     it("rejects an invalid when condition", () => {
         expect(() =>
-            defineUnknown({
+            validateUnknown({
                 arrayProps: {
                     MyAppChart: {
                         series: {
@@ -268,7 +269,7 @@ describe("defineConfig arrayProps verb validation", () => {
 
     it("rejects a construct setter with an invalid condition", () => {
         expect(() =>
-            defineUnknown({
+            validateUnknown({
                 arrayProps: {
                     MyAppChart: {
                         series: {
@@ -318,22 +319,22 @@ const ORDERED_INSERT_RULE_CONFIG: GtkxConfig = {
     ],
 };
 
-describe("defineConfig elementMap validation", () => {
+describe("validateGtkxConfig elementMap validation", () => {
     it("accepts a method-verb rule", () => {
-        expect(defineConfig(METHOD_RULE_CONFIG)).toBe(METHOD_RULE_CONFIG);
+        expect(() => validateGtkxConfig(METHOD_RULE_CONFIG)).not.toThrow();
     });
 
     it("accepts an ordered-insert rule with a parent method", () => {
-        expect(defineConfig(ORDERED_INSERT_RULE_CONFIG)).toBe(ORDERED_INSERT_RULE_CONFIG);
+        expect(() => validateGtkxConfig(ORDERED_INSERT_RULE_CONFIG)).not.toThrow();
     });
 
     it("rejects a non-array value", () => {
-        expect(() => defineUnknown({ elementMap: {} })).toThrow(/invalid `elementMap` — must be an array/);
+        expect(() => validateUnknown({ elementMap: {} })).toThrow(/invalid `elementMap` — must be an array/);
     });
 
     it("rejects a rule without a parent", () => {
         expect(() =>
-            defineUnknown({
+            validateUnknown({
                 elementMap: [
                     {
                         child: "MyAppGadget",
@@ -352,7 +353,7 @@ describe("defineConfig elementMap validation", () => {
 
     it("rejects a child that is not a GLib type name", () => {
         expect(() =>
-            defineUnknown({
+            validateUnknown({
                 elementMap: [
                     {
                         child: "kebab-name",
@@ -371,10 +372,10 @@ describe("defineConfig elementMap validation", () => {
     });
 });
 
-describe("defineConfig elementMap verb validation", () => {
+describe("validateGtkxConfig elementMap verb validation", () => {
     it("rejects an unknown verb kind", () => {
         expect(() =>
-            defineUnknown({
+            validateUnknown({
                 elementMap: [{ child: "MyAppGadget", parentType: "MyAppBoard", verb: { kind: "magic" } }],
             }),
         ).toThrow(/invalid `elementMap\[0\]\.verb\.kind` — must be "method" or "orderedInsert"/);
@@ -382,7 +383,7 @@ describe("defineConfig elementMap verb validation", () => {
 
     it("rejects an unknown argument shape", () => {
         expect(() =>
-            defineUnknown({
+            validateUnknown({
                 elementMap: [
                     {
                         child: "MyAppGadget",
@@ -404,7 +405,7 @@ describe("defineConfig elementMap verb validation", () => {
 
     it("rejects an invalid detach guard", () => {
         expect(() =>
-            defineUnknown({
+            validateUnknown({
                 elementMap: [
                     {
                         child: "MyAppGadget",
@@ -424,43 +425,43 @@ describe("defineConfig elementMap verb validation", () => {
     });
 });
 
-describe("defineConfig reactCompiler validation", () => {
+describe("validateGtkxConfig reactCompiler validation", () => {
     it("accepts a boolean", () => {
-        expect(() => defineConfig({ reactCompiler: false })).not.toThrow();
-        expect(() => defineConfig({ reactCompiler: true })).not.toThrow();
+        expect(() => validateGtkxConfig({ reactCompiler: false })).not.toThrow();
+        expect(() => validateGtkxConfig({ reactCompiler: true })).not.toThrow();
     });
 
     it("accepts an options object", () => {
         const config: GtkxConfig = {
             reactCompiler: { compilationMode: "annotation", panicThreshold: "all_errors" },
         };
-        expect(defineConfig(config)).toBe(config);
+        expect(() => validateGtkxConfig(config)).not.toThrow();
     });
 
     it("accepts a config that omits reactCompiler", () => {
-        expect(() => defineConfig({ libraries: ["Gtk-4.0"] })).not.toThrow();
+        expect(() => validateGtkxConfig({ libraries: ["Gtk-4.0"] })).not.toThrow();
     });
 
     it("rejects a non-boolean, non-object value", () => {
-        expect(() => defineUnknown({ reactCompiler: "yes" })).toThrow(
+        expect(() => validateUnknown({ reactCompiler: "yes" })).toThrow(
             /`reactCompiler` must be a boolean or an options object/,
         );
     });
 
     it("rejects an array value", () => {
-        expect(() => defineUnknown({ reactCompiler: [] })).toThrow(
+        expect(() => validateUnknown({ reactCompiler: [] })).toThrow(
             /`reactCompiler` must be a boolean or an options object/,
         );
     });
 
     it("rejects an invalid compilationMode", () => {
-        expect(() => defineUnknown({ reactCompiler: { compilationMode: "eager" } })).toThrow(
+        expect(() => validateUnknown({ reactCompiler: { compilationMode: "eager" } })).toThrow(
             /invalid `reactCompiler\.compilationMode` "eager"/,
         );
     });
 
     it("rejects an invalid panicThreshold", () => {
-        expect(() => defineUnknown({ reactCompiler: { panicThreshold: "warn" } })).toThrow(
+        expect(() => validateUnknown({ reactCompiler: { panicThreshold: "warn" } })).toThrow(
             /invalid `reactCompiler\.panicThreshold` "warn"/,
         );
     });

@@ -1,4 +1,5 @@
 import type { CallbackType, Ref, Type, Value } from "@gtkx/native";
+import { LIB } from "./constants.js";
 import { bind, boxedT, refT } from "./descriptors.js";
 import { checkError } from "./gerror.js";
 import { type UserHandler, wrapHandler } from "./handler-trampoline.js";
@@ -35,11 +36,7 @@ const toNativeArgTypes = (argTypes: ArgType[], throws: boolean): Type[] => {
         argType.direction !== undefined && argType.callerAllocates !== true ? refT(argType.type) : argType.type,
     );
     if (throws)
-        nativeArgTypes.push(
-            refT(
-                boxedT("GError", { ownership: "full", library: "libgobject-2.0.so.0", getTypeFn: "g_error_get_type" }),
-            ),
-        );
+        nativeArgTypes.push(refT(boxedT("GError", { ownership: "full", library: LIB, getTypeFn: "g_error_get_type" })));
     return nativeArgTypes;
 };
 

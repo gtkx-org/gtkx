@@ -18,6 +18,7 @@ type AnimationBaseProps = {
     animate?: AnimatableProperties;
     exit?: AnimatableProperties;
     animateOnMount?: boolean;
+    delay?: number;
     onAnimationStart?: () => void;
     onAnimationComplete?: () => void;
     children?: ReactNode;
@@ -26,7 +27,6 @@ type AnimationBaseProps = {
 export type AdwTimedAnimationProps = AnimationBaseProps & {
     duration?: number;
     easing?: Adw.Easing;
-    delay?: number;
     repeat?: number;
     reverse?: boolean;
     alternate?: boolean;
@@ -38,7 +38,4 @@ export type AdwSpringAnimationProps = AnimationBaseProps & {
     mass?: number;
     initialVelocity?: number;
     clamp?: boolean;
-    delay?: number;
 };
-
-export type AnimationProps = AdwTimedAnimationProps | AdwSpringAnimationProps;

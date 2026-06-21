@@ -102,8 +102,8 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
                     return deps.exit(RELOAD_EXIT_CODE);
                 }
                 deps.log("Application quit - stopping dev runner...");
-                shutdown(runDefaultQuit).catch((error: unknown) => {
-                    console.error("[gtkx-dev-runner] Error closing server:", error);
+                shutdown(runDefaultQuit).catch((cause: unknown) => {
+                    error("Error closing server:", cause);
                 });
             },
         );

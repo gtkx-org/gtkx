@@ -6,7 +6,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { ConnectionManager } from "./connection-manager.js";
 import { ConnectionRegistry } from "./connection-registry.js";
-import { DEFAULT_SOCKET_PATH } from "./protocol/types.js";
+import { DEFAULT_SOCKET_PATH, type ServerRequestParamsSchemas } from "./protocol/types.js";
 import { SocketServer } from "./socket-server.js";
 
 const require = createRequire(import.meta.url);
@@ -102,12 +102,14 @@ const defineTool = <Shape extends Record<string, z.ZodType>>(tool: TypedTool<Sha
     },
 });
 
+type ServerInitiatedMethod = keyof typeof ServerRequestParamsSchemas;
+
 type ForwardOptions<Shape extends Record<string, z.ZodType>> = {
     name: string;
     description: string;
     inputSchema: Shape;
     connectionManager: AppQueryClient;
-    method: string;
+    method: ServerInitiatedMethod;
     params?: (args: ToolArgs<Shape>) => unknown;
 };
 
@@ -124,7 +126,7 @@ const forwardTool = <Shape extends Record<string, z.ZodType>>(
     perform: (
         connectionManager: AppQueryClient,
         applicationId: string | undefined,
-        method: string,
+        method: ServerInitiatedMethod,
         params: unknown,
     ) => Promise<ToolHandlerResult>,
 ): ToolDefinition =>

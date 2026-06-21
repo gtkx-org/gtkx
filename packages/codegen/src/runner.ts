@@ -7,7 +7,8 @@ import { loadGirRepository } from "./gir/repository.js";
 import { type JsxStoreOptions, writeJsxStore } from "./jsx-store.js";
 import { generateJsxFiles } from "./react/pipeline.js";
 
-export type CodegenRunnerOptions = UserTableRows & {
+export type CodegenRunnerOptions = {
+    tables: UserTableRows;
     libraries: string[];
     girPath: string[];
     gi: GiStoreOptions;
@@ -38,14 +39,14 @@ export class CodegenRunner {
         }
         const libraries = [...this.options.libraries];
         writeGiStore(this.options.gi, namespaces, {
-            value: computeFingerprint(repository.girFiles, libraries, serializeUserTables(this.options)),
+            value: computeFingerprint(repository.girFiles, libraries, serializeUserTables(this.options.tables)),
             girFiles: repository.girFiles,
             libraries,
         });
 
         let widgetCount = 0;
         if (this.options.jsx !== undefined) {
-            const reactPipeline = generateJsxFiles(repository, this.options);
+            const reactPipeline = generateJsxFiles(repository, this.options.tables);
             writeJsxStore(this.options.jsx, reactPipeline.namespaces, reactPipeline.metadata);
             widgetCount = reactPipeline.widgetCount;
         }

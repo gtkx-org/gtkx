@@ -18,15 +18,15 @@ const buildMock = vi.mocked(buildApp);
 const preflightMock = vi.mocked(preflightCodegen);
 
 describe("build", () => {
-    let logSpy: ReturnType<typeof vi.spyOn>;
+    let stderrSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
         vi.clearAllMocks();
-        logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+        stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     });
 
     afterEach(() => {
-        logSpy.mockRestore();
+        stderrSpy.mockRestore();
     });
 
     it("runs codegen preflight and builds with the default entry", async () => {

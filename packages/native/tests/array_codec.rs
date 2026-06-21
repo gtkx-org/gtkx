@@ -1518,7 +1518,7 @@ fn ptr_to_value_null_yields_empty() {
         ArrayKind::Array,
         Ownership::Borrowed,
     );
-    let value = unsafe { ty.ptr_to_value(std::ptr::null_mut()) }.unwrap();
+    let value = unsafe { ty.read(ReadSource::Value(std::ptr::null_mut(), "array")) }.unwrap();
     assert!(matches!(value, Value::Array(items) if items.is_empty()));
 }
 
@@ -1532,7 +1532,8 @@ fn ptr_to_value_gptrarray() {
         );
         let ptr_array = unsafe { glib::ffi::g_ptr_array_new() };
         unsafe { glib::ffi::g_ptr_array_add(ptr_array, boxed_handle().ptr()) };
-        let value = unsafe { ty.ptr_to_value(ptr_array as *mut c_void) }.unwrap();
+        let value =
+            unsafe { ty.read(ReadSource::Value(ptr_array as *mut c_void, "array")) }.unwrap();
         assert!(matches!(value, Value::Array(items) if items.len() == 1));
         unsafe { glib::ffi::g_ptr_array_unref(ptr_array) };
     });
@@ -1552,7 +1553,7 @@ fn ptr_to_value_gbytearray() {
             glib::ffi::g_byte_array_append(ba, bytes.as_ptr(), 1);
             ba
         };
-        let value = unsafe { ty.ptr_to_value(ba as *mut c_void) }.unwrap();
+        let value = unsafe { ty.read(ReadSource::Value(ba as *mut c_void, "array")) }.unwrap();
         assert!(matches!(value, Value::Array(items) if items.len() == 1));
         unsafe { glib::ffi::g_byte_array_unref(ba) };
     });
@@ -1571,7 +1572,8 @@ fn ptr_to_value_garray() {
         unsafe {
             glib::ffi::g_array_append_vals(g_array, &value as *const i32 as *const c_void, 1)
         };
-        let decoded = unsafe { ty.ptr_to_value(g_array as *mut c_void) }.unwrap();
+        let decoded =
+            unsafe { ty.read(ReadSource::Value(g_array as *mut c_void, "array")) }.unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
         unsafe { glib::ffi::g_array_unref(g_array) };
     });
@@ -1582,7 +1584,7 @@ fn ptr_to_value_glist() {
     common::run(|| {
         let ty = array_type(struct_item_type(), ArrayKind::GList, Ownership::Borrowed);
         let list = unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), boxed_handle().ptr()) };
-        let decoded = unsafe { ty.ptr_to_value(list as *mut c_void) }.unwrap();
+        let decoded = unsafe { ty.read(ReadSource::Value(list as *mut c_void, "array")) }.unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
         unsafe { glib::ffi::g_list_free(list) };
     });
@@ -1594,7 +1596,9 @@ fn ptr_to_value_plain_array() {
         let ty = array_type(struct_item_type(), ArrayKind::Array, Ownership::Borrowed);
         let h0 = boxed_handle();
         let mut data: Vec<*mut c_void> = vec![h0.ptr(), std::ptr::null_mut()];
-        let decoded = unsafe { ty.ptr_to_value(data.as_mut_ptr() as *mut c_void) }.unwrap();
+        let decoded =
+            unsafe { ty.read(ReadSource::Value(data.as_mut_ptr() as *mut c_void, "array")) }
+                .unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
     });
 }

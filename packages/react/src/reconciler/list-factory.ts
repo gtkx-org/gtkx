@@ -1,16 +1,13 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { stableIdOf } from "./stable-id.js";
-
-export const UNBOUND_POSITION = -1;
+import { type BoundContainerRegistry, UNBOUND_POSITION } from "./bound-container-registry.js";
 
 export type ListLifecycleItem = Gtk.ListItem | Gtk.ListHeader;
 
 export const asLifecycleItem = <T extends ListLifecycleItem>(obj: GObject.Object): T => obj as T;
 
 export type ListFactoryOptions<T extends ListLifecycleItem, C extends GObject.Object = T> = {
-    containers: Map<C, number>;
-    containerKeys: Map<C, string>;
+    registry: BoundContainerRegistry<C>;
     createContainer: (item: T) => C;
     resolveContainer: (item: T) => C | null;
     getPosition: (item: T) => number;
@@ -28,8 +25,7 @@ export function connectFactoryLifecycle<T extends ListLifecycleItem, C extends G
     options: ListFactoryOptions<T, C>,
 ): void {
     const {
-        containers,
-        containerKeys,
+        registry,
         createContainer,
         resolveContainer,
         getPosition,
@@ -45,8 +41,7 @@ export function connectFactoryLifecycle<T extends ListLifecycleItem, C extends G
     factory.on("setup", (obj: GObject.Object) => {
         const item = asLifecycleItem<T>(obj);
         const container = createContainer(item);
-        containers.set(container, UNBOUND_POSITION);
-        containerKeys.set(container, stableIdOf(container));
+        registry.register(container);
         onSetup?.(item, container);
     });
 
@@ -56,7 +51,7 @@ export function connectFactoryLifecycle<T extends ListLifecycleItem, C extends G
         const container = resolveContainer(item);
         if (!container) return;
         const position = resolvePosition(item, getPosition(item));
-        containers.set(container, position);
+        registry.setPosition(container, position);
         onBind?.(item, container, position);
         onBoundItemsChanged();
     });
@@ -67,7 +62,7 @@ export function connectFactoryLifecycle<T extends ListLifecycleItem, C extends G
         const container = resolveContainer(item);
         if (!container) return;
         onUnbind?.(item, container);
-        containers.set(container, UNBOUND_POSITION);
+        registry.setPosition(container, UNBOUND_POSITION);
         onBoundItemsChanged();
     });
 
@@ -75,8 +70,7 @@ export function connectFactoryLifecycle<T extends ListLifecycleItem, C extends G
         const item = asLifecycleItem<T>(obj);
         const container = resolveContainer(item);
         if (container) {
-            containers.delete(container);
-            containerKeys.delete(container);
+            registry.delete(container);
             onTeardown?.(item, container);
         }
         item.setChild(null);

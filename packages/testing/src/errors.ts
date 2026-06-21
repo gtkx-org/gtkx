@@ -86,6 +86,12 @@ export const multipleFoundError = (container: Container, descriptor: QueryDescri
     return buildElementError(container, [`Found ${count} elements with ${description}, but expected only one`]);
 };
 
+export const suggestionError = (suggestion: string, container: Container): Error => {
+    const config = getConfig();
+    const message = `A better query is available, try this:\n${suggestion}\n`;
+    return config.getElementError(message, container);
+};
+
 export const timeoutError = (timeout: number, lastError: Error | null): Error => {
     const baseMessage = `Timed out after ${timeout}ms`;
     if (lastError) {

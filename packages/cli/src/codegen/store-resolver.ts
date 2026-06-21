@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import { dirname, join, parse } from "node:path";
 import { pathToFileURL } from "node:url";
 import { type GtkxConfig, GtkxConfigNotFoundError, loadGtkxConfig } from "@gtkx/config";
+import { GtkxError } from "../internal/errors.js";
 
 const CONFIG_FILENAMES: string[] = ["gtkx.config.ts", "gtkx.config.js", "gtkx.config.mjs"];
 
@@ -72,11 +73,11 @@ export const resolveCodegenStore = (projectRoot: string): CodegenStore => {
 
     const ffi = resolvePackage(require, root, "@gtkx/ffi");
     if (ffi === null) {
-        throw new Error("Cannot resolve @gtkx/ffi from the project; is it installed?");
+        throw new GtkxError("Cannot resolve @gtkx/ffi from the project; is it installed?");
     }
     const native = resolvePackage(require, root, "@gtkx/native");
     if (native === null) {
-        throw new Error("Cannot resolve @gtkx/native from the project; is it installed?");
+        throw new GtkxError("Cannot resolve @gtkx/native from the project; is it installed?");
     }
     const react = resolvePackage(require, root, "@gtkx/react");
     const reactRuntime = resolvePackage(require, root, "react");

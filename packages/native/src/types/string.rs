@@ -59,29 +59,25 @@ impl FfiEncoder for StringType {
 }
 
 impl FfiDecoder for StringType {
-    unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
-        match src {
-            ReadSource::Call(ffi_value) => {
-                let Some(str_ptr) = ffi_value.as_non_null_ptr("string")? else {
-                    return Ok(value::Value::Null);
-                };
+    fn read_call(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        let Some(str_ptr) = ffi_value.as_non_null_ptr("string")? else {
+            return Ok(value::Value::Null);
+        };
 
-                let string =
-                    unsafe { glib::GStr::from_ptr_lossy(str_ptr as *const c_char) }.to_string();
+        let string = unsafe { glib::GStr::from_ptr_lossy(str_ptr as *const c_char) }.to_string();
 
-                if self.ownership.is_full() {
-                    unsafe { glib::ffi::g_free(str_ptr) };
-                }
-
-                Ok(value::Value::String(string))
-            }
-            ReadSource::Value(ptr, _context) => self.null_guarded(ptr, |ptr| {
-                let string =
-                    unsafe { glib::GStr::from_ptr_lossy(ptr as *const c_char) }.to_string();
-                Ok(value::Value::String(string))
-            }),
-            ReadSource::Slot(ptr, context) => unsafe { self.read_pointer_slot(ptr, context) },
+        if self.ownership.is_full() {
+            unsafe { glib::ffi::g_free(str_ptr) };
         }
+
+        Ok(value::Value::String(string))
+    }
+
+    unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+        self.null_guarded(ptr, |ptr| {
+            let string = unsafe { glib::GStr::from_ptr_lossy(ptr as *const c_char) }.to_string();
+            Ok(value::Value::String(string))
+        })
     }
 }
 

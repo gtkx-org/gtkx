@@ -133,6 +133,7 @@ export const queryAllByRole = (container: Container, role: Gtk.AccessibleRole, o
     });
 
 const roleVariants = buildQueries<[role: Gtk.AccessibleRole, options?: ByRoleOptions]>(
+    "Role",
     queryAllByRole,
     (container, count, role, options) => multipleFoundError(container, { queryType: "role", role, options }, count),
     (container, role, options) => notFoundError(container, { queryType: "role", role, options }),
@@ -167,6 +168,7 @@ export const queryAllByLabelText = (container: Container, text: Matcher, options
 };
 
 const labelTextVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
+    "LabelText",
     queryAllByLabelText,
     (container, count, text) => multipleFoundError(container, { queryType: "labelText", text }, count),
     (container, text) => notFoundError(container, { queryType: "labelText", text }),
@@ -176,6 +178,7 @@ export const queryAllByText = (container: Container, text: Matcher, options?: Ma
     findAll(container, (widget) => matchText(getWidgetText(widget), text, widget, options));
 
 const textVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
+    "Text",
     queryAllByText,
     (container, count, text) => multipleFoundError(container, { queryType: "text", text }, count),
     (container, text) => notFoundError(container, { queryType: "text", text }),
@@ -185,6 +188,7 @@ export const queryAllByName = (container: Container, name: Matcher, options?: Ma
     findAll(container, (widget) => matchText(getWidgetName(widget), name, widget, options));
 
 const nameVariants = buildQueries<[name: Matcher, options?: MatcherOptions]>(
+    "Name",
     queryAllByName,
     (container, count, name) => multipleFoundError(container, { queryType: "name", name }, count),
     (container, name) => notFoundError(container, { queryType: "name", name }),
@@ -231,6 +235,7 @@ export const queryAllByPlaceholderText = (
 ): Gtk.Widget[] => findAll(container, (widget) => matchText(getWidgetPlaceholderText(widget), text, widget, options));
 
 const placeholderTextVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
+    "PlaceholderText",
     queryAllByPlaceholderText,
     (container, count, text) => multipleFoundError(container, { queryType: "placeholderText", text }, count),
     (container, text) => notFoundError(container, { queryType: "placeholderText", text }),
@@ -240,6 +245,7 @@ export const queryAllByDisplayValue = (container: Container, value: Matcher, opt
     findAll(container, (widget) => matchText(getWidgetDisplayValue(widget), value, widget, options));
 
 const displayValueVariants = buildQueries<[value: Matcher, options?: MatcherOptions]>(
+    "DisplayValue",
     queryAllByDisplayValue,
     (container, count, value) => multipleFoundError(container, { queryType: "displayValue", value }, count),
     (container, value) => notFoundError(container, { queryType: "displayValue", value }),

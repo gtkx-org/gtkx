@@ -52,7 +52,6 @@ const renderConstructorStatic = (
     const signature = renderMethodSignature(context, callable);
     const body = renderMethodBody(context, callable, {
         bindingExpression: bindingIdentifier(cIdentifier),
-        isStatic: true,
         returnTypeOverride: ownerClassName,
     });
     return renderBlock(`static ${name}(${signature}): ${ownerClassName}`, body);
@@ -68,7 +67,6 @@ const renderStaticMember = (context: ModuleContext, callable: GirFunction): stri
     const returnType = renderMethodReturnType(context, callable);
     const body = renderMethodBody(context, callable, {
         bindingExpression: bindingIdentifier(cIdentifier),
-        isStatic: true,
     });
     return renderBlock(`static ${name}(${signature}): ${returnType}`, body);
 };
@@ -89,7 +87,6 @@ export const renderInstanceMethod = (
     const returnType = renderMethodReturnType(context, callable);
     const body = renderMethodBody(context, callable, {
         bindingExpression: bindingIdentifier(cIdentifier),
-        isStatic: false,
     });
     return renderBlock(`${name}(${signature}): ${returnType}`, body);
 };

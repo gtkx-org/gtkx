@@ -8,11 +8,14 @@ import {
     type TestingOption,
 } from "../create/options.js";
 import { createApp } from "../create.js";
+import { GtkxError, runCommand } from "../internal/errors.js";
 
 const parsePackageManager = (value: string | undefined): PackageManager | undefined => {
     if (value === undefined) return undefined;
     if (!isKnownPackageManager(value)) {
-        throw new Error(`Unknown package manager "${value}". Expected one of: ${PACKAGE_MANAGER_FLAG_DESCRIPTION}.`);
+        throw new GtkxError(
+            `Unknown package manager "${value}". Expected one of: ${PACKAGE_MANAGER_FLAG_DESCRIPTION}.`,
+        );
     }
     return value;
 };
@@ -20,7 +23,7 @@ const parsePackageManager = (value: string | undefined): PackageManager | undefi
 const parseTestingOption = (value: string | undefined): TestingOption | undefined => {
     if (value === undefined) return undefined;
     if (!isTestingOption(value)) {
-        throw new Error(`Unknown testing setup "${value}". Expected one of: ${TESTING_FLAG_DESCRIPTION}.`);
+        throw new GtkxError(`Unknown testing setup "${value}". Expected one of: ${TESTING_FLAG_DESCRIPTION}.`);
     }
     return value;
 };
@@ -54,12 +57,14 @@ export const create = defineCommand({
         },
     },
     async run({ args }) {
-        await createApp({
-            name: args.name,
-            applicationId: args["application-id"],
-            packageManager: parsePackageManager(args.pm),
-            testing: parseTestingOption(args.testing),
-            claudeSkills: args["claude-skills"],
+        await runCommand(async () => {
+            await createApp({
+                name: args.name,
+                applicationId: args["application-id"],
+                packageManager: parsePackageManager(args.pm),
+                testing: parseTestingOption(args.testing),
+                claudeSkills: args["claude-skills"],
+            });
         });
     },
 });

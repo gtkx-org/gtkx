@@ -1,4 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import { sortedAlphaBy } from "@gtkx/utils";
 import { formatRole } from "./role-helpers.js";
 import { type Container, roots } from "./traversal.js";
 import { getWidgetPropertyText } from "./widget-text.js";
@@ -36,11 +37,12 @@ const buildAttrs = (widget: Gtk.Widget, getId: WidgetIdResolver | undefined): [s
         attrs.push(["accessible-hidden", "true"]);
     }
 
-    return attrs.toSorted(([a], [b]) => {
-        if (a === "id") return -1;
-        if (b === "id") return 1;
-        return a.localeCompare(b);
-    });
+    const idAttrs = attrs.filter(([key]) => key === "id");
+    const otherAttrs = sortedAlphaBy(
+        attrs.filter(([key]) => key !== "id"),
+        ([key]) => key,
+    );
+    return [...idAttrs, ...otherAttrs];
 };
 
 type Colors = {

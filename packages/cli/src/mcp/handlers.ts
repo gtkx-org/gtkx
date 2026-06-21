@@ -80,22 +80,24 @@ const handleQuery = async (
     return { widgets: widgets.map((w) => serializeWidget(w, (widget) => registry.idFor(widget), testing)) };
 };
 
-const handleScreenshot = async (
-    { app, registry }: HandlerContext,
-    params: ServerRequestParams<"widget.screenshot">,
-): Promise<unknown> => {
-    const testing = await loadTestingModule();
-    const targetWindow = params.windowId ? (requireWidget(registry, params.windowId) as Gtk.Window) : firstWindow(app);
-    const result = await testing.screenshot(targetWindow);
-    return { data: result.data, mimeType: result.mimeType };
-};
-
-const firstWindow = (app: Gtk.Application): Gtk.Window => {
-    const [window] = app.getWindows();
+const defaultScreenshotTarget = (registry: WidgetRegistry): Gtk.Window => {
+    const [window] = registry.toplevels();
     if (!window) {
         throw new Error("No windows available for screenshot");
     }
     return window;
+};
+
+const handleScreenshot = async (
+    { registry }: HandlerContext,
+    params: ServerRequestParams<"widget.screenshot">,
+): Promise<unknown> => {
+    const testing = await loadTestingModule();
+    const targetWindow = params.windowId
+        ? (requireWidget(registry, params.windowId) as Gtk.Window)
+        : defaultScreenshotTarget(registry);
+    const result = await testing.screenshot(targetWindow);
+    return { data: result.data, mimeType: result.mimeType };
 };
 
 const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {

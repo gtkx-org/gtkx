@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadConfig } from "c12";
-import { defineConfig, type GtkxConfig, type ResolvedGtkxConfig, resolveGtkxConfig } from "./config.js";
+import { type GtkxConfig, type ResolvedGtkxConfig, resolveGtkxConfig, validateGtkxConfig } from "./config.js";
 
 export type LoadedConfig = {
     config: GtkxConfig;
@@ -39,8 +39,10 @@ export const loadGtkxConfig = async (cwd: string): Promise<LoadedConfig> => {
         throw new GtkxConfigNotFoundError(cwd);
     }
 
+    validateGtkxConfig(result.config);
+
     return {
-        config: defineConfig(result.config),
+        config: result.config,
         configFile: result.configFile,
         rootDir: result.cwd ?? cwd,
     };

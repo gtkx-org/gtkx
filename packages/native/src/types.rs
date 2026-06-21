@@ -194,10 +194,18 @@ pub enum ReadSource<'a> {
 pub trait FfiDecoder {
     unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
         match src {
+            ReadSource::Call(ffi_value) => self.read_call(ffi_value),
+            ReadSource::Value(ptr, context) => unsafe { self.read_value(ptr, context) },
             ReadSource::Slot(ptr, context) => unsafe { self.read_pointer_slot(ptr, context) },
-            ReadSource::Call(_) => bail!("This type cannot be decoded from FfiValue"),
-            ReadSource::Value(..) => bail!("This type cannot be read from pointer"),
         }
+    }
+
+    fn read_call(&self, _ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        bail!("This type cannot be decoded from FfiValue")
+    }
+
+    unsafe fn read_value(&self, _ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+        bail!("This type cannot be read from pointer")
     }
 
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
@@ -396,6 +404,7 @@ impl Type {
 
 #[cfg(test)]
 mod tests {
+    use super::array::ArrayKind;
     use super::callback::CallbackScope;
     use super::*;
 
@@ -422,5 +431,68 @@ mod tests {
     fn ref_cannot_be_return_type() {
         let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
         assert!(!Type::Ref(ref_type).can_be_return_type());
+    }
+
+    #[test]
+    fn ownership_parses_full_and_borrowed_only() {
+        assert!(matches!("full".parse::<Ownership>(), Ok(Ownership::Full)));
+        assert!(matches!(
+            "borrowed".parse::<Ownership>(),
+            Ok(Ownership::Borrowed)
+        ));
+        assert!("none".parse::<Ownership>().is_err());
+        assert!("nonsense".parse::<Ownership>().is_err());
+    }
+
+    #[test]
+    fn array_kind_parses_every_variant() {
+        assert!(matches!("array".parse::<ArrayKind>(), Ok(ArrayKind::Array)));
+        assert!(matches!("glist".parse::<ArrayKind>(), Ok(ArrayKind::GList)));
+        assert!(matches!(
+            "gslist".parse::<ArrayKind>(),
+            Ok(ArrayKind::GSList)
+        ));
+        assert!(matches!(
+            "gptrarray".parse::<ArrayKind>(),
+            Ok(ArrayKind::GPtrArray)
+        ));
+        assert!(matches!(
+            "garray".parse::<ArrayKind>(),
+            Ok(ArrayKind::GArray)
+        ));
+        assert!(matches!(
+            "gbytearray".parse::<ArrayKind>(),
+            Ok(ArrayKind::GByteArray)
+        ));
+        assert!(matches!(
+            "sized".parse::<ArrayKind>(),
+            Ok(ArrayKind::Sized { .. })
+        ));
+        assert!(matches!(
+            "fixed".parse::<ArrayKind>(),
+            Ok(ArrayKind::Fixed { .. })
+        ));
+        assert!("listish".parse::<ArrayKind>().is_err());
+    }
+
+    #[test]
+    fn callback_scope_parses_every_variant() {
+        assert!(matches!(
+            "call".parse::<CallbackScope>(),
+            Ok(CallbackScope::Call)
+        ));
+        assert!(matches!(
+            "notified".parse::<CallbackScope>(),
+            Ok(CallbackScope::Notified)
+        ));
+        assert!(matches!(
+            "async".parse::<CallbackScope>(),
+            Ok(CallbackScope::Async)
+        ));
+        assert!(matches!(
+            "forever".parse::<CallbackScope>(),
+            Ok(CallbackScope::Forever)
+        ));
+        assert!("whenever".parse::<CallbackScope>().is_err());
     }
 }

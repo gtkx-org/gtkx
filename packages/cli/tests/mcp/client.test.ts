@@ -158,15 +158,16 @@ describe("McpClient incoming requests", () => {
     });
 
     it("ignores malformed JSON without crashing the socket", async () => {
-        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+        const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
         const client = await connectAndRegister(ctx);
 
         ctx.sockets[0]?.write("not json\n");
         await new Promise((r) => setTimeout(r, 20));
 
-        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("invalid JSON"));
+        const written = stderrSpy.mock.calls.map((call) => String(call[0])).join("");
+        expect(written).toContain("invalid JSON");
 
-        warnSpy.mockRestore();
+        stderrSpy.mockRestore();
         client.disconnect();
     });
 
@@ -246,13 +247,13 @@ describe("McpClient connection failures", () => {
     });
 
     it("schedules a reconnect when the server drops an established connection", async () => {
-        const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+        const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
         const client = await connectAndRegister(ctx);
 
         ctx.sockets[0]?.destroy();
-        await waitFor(() => logSpy.mock.calls.some((call) => String(call[0]).includes("Disconnected")));
+        await waitFor(() => stderrSpy.mock.calls.some((call) => String(call[0]).includes("Disconnected")));
 
-        logSpy.mockRestore();
+        stderrSpy.mockRestore();
         client.disconnect();
     });
 });

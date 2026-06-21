@@ -426,51 +426,78 @@ export type RuntimeComponentWrapper =
           sharedTypes: string[];
       };
 
-export const RUNTIME_COMPONENT_WRAPPERS: Record<string, RuntimeComponentWrapper> = {
-    GtkListView: {
-        kind: "typed",
-        genericParams: "<T = unknown, S = unknown>",
-        controllerProps: "ListViewProps<T, S>",
-        sharedTypes: ["ListViewProps"],
-    },
-    GtkGridView: {
-        kind: "typed",
-        genericParams: "<T = unknown>",
-        controllerProps: "GridViewProps<T>",
-        sharedTypes: ["GridViewProps"],
-    },
-    GtkDropDown: {
-        kind: "typed",
-        genericParams: "<T = unknown, S = unknown>",
-        controllerProps: "DropDownProps<T, S>",
-        sharedTypes: ["DropDownProps"],
-    },
-    AdwComboRow: {
-        kind: "typed",
-        genericParams: "<T = unknown, S = unknown>",
-        controllerProps: "DropDownProps<T, S>",
-        sharedTypes: ["DropDownProps"],
-    },
-    GtkColumnView: {
-        kind: "typed",
-        genericParams: "<T = unknown, S = unknown>",
-        controllerProps: "ColumnViewProps<T, S>",
-        sharedTypes: ["ColumnViewProps"],
-    },
-    GtkColumnViewColumn: {
-        kind: "typed",
-        genericParams: "<T = unknown>",
-        omitKeys: '"factory" | "sorter"',
-        controllerProps: "ColumnViewColumnProps<T>",
-        sharedTypes: ["ColumnViewColumnProps"],
-    },
-    GMenu: { kind: "typedProps" },
-    GtkConstraintLayout: { kind: "reexport" },
+export type WidgetOverride = {
+    wrapper?: RuntimeComponentWrapper;
+    runtimeOwned?: boolean;
+    excludedProps?: Set<string>;
 };
 
-const RUNTIME_OWNED_RESIDUE: string[] = ["GMenuItem", "AdwSpringAnimation", "AdwTimedAnimation"];
+export const WIDGET_OVERRIDES: Record<string, WidgetOverride> = {
+    GtkListView: {
+        wrapper: {
+            kind: "typed",
+            genericParams: "<T = unknown, S = unknown>",
+            controllerProps: "ListViewProps<T, S>",
+            sharedTypes: ["ListViewProps"],
+        },
+    },
+    GtkGridView: {
+        wrapper: {
+            kind: "typed",
+            genericParams: "<T = unknown>",
+            controllerProps: "GridViewProps<T>",
+            sharedTypes: ["GridViewProps"],
+        },
+    },
+    GtkDropDown: {
+        wrapper: {
+            kind: "typed",
+            genericParams: "<T = unknown, S = unknown>",
+            controllerProps: "DropDownProps<T, S>",
+            sharedTypes: ["DropDownProps"],
+        },
+    },
+    AdwComboRow: {
+        wrapper: {
+            kind: "typed",
+            genericParams: "<T = unknown, S = unknown>",
+            controllerProps: "DropDownProps<T, S>",
+            sharedTypes: ["DropDownProps"],
+        },
+    },
+    GtkColumnView: {
+        wrapper: {
+            kind: "typed",
+            genericParams: "<T = unknown, S = unknown>",
+            controllerProps: "ColumnViewProps<T, S>",
+            sharedTypes: ["ColumnViewProps"],
+        },
+        excludedProps: new Set(["columns"]),
+    },
+    GtkColumnViewColumn: {
+        wrapper: {
+            kind: "typed",
+            genericParams: "<T = unknown>",
+            omitKeys: '"factory" | "sorter"',
+            controllerProps: "ColumnViewColumnProps<T>",
+            sharedTypes: ["ColumnViewColumnProps"],
+        },
+    },
+    GMenu: { wrapper: { kind: "typedProps" } },
+    GtkConstraintLayout: { wrapper: { kind: "reexport" } },
+    GMenuItem: { runtimeOwned: true },
+    AdwSpringAnimation: { runtimeOwned: true },
+    AdwTimedAnimation: { runtimeOwned: true },
+};
 
-export const RUNTIME_OWNED_WIDGETS: Set<string> = new Set([
-    ...Object.keys(RUNTIME_COMPONENT_WRAPPERS),
-    ...RUNTIME_OWNED_RESIDUE,
-]);
+export const widgetWrapper = (glibName: string): RuntimeComponentWrapper | undefined =>
+    WIDGET_OVERRIDES[glibName]?.wrapper;
+
+export const excludedPropsForWidget = (glibName: string): Set<string> | undefined =>
+    WIDGET_OVERRIDES[glibName]?.excludedProps;
+
+export const RUNTIME_OWNED_WIDGETS: Set<string> = new Set(
+    Object.entries(WIDGET_OVERRIDES)
+        .filter(([, override]) => override.runtimeOwned === true || override.wrapper !== undefined)
+        .map(([glibName]) => glibName),
+);

@@ -22,12 +22,7 @@ export const signalBaseName = (signal: string): string => {
     return detailIndex === -1 ? signal : signal.slice(0, detailIndex);
 };
 
-const gQuarkFromString = bind(
-    "libgobject-2.0.so.0,libglib-2.0.so.0",
-    "g_quark_from_string",
-    [stringT("borrowed")],
-    uint32T,
-);
+const gQuarkFromString = bind(LIB, "g_quark_from_string", [stringT("borrowed")], uint32T);
 
 export function signalDetailQuark(signal: string): number {
     const detailIndex = signal.indexOf("::");

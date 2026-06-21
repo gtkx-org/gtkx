@@ -30,6 +30,7 @@ import {
     isAddable,
     isAppendable,
     isInsertable,
+    isRemovable,
     isReorderable,
     isSingleChild,
     isSingleChildContainer,
@@ -422,12 +423,9 @@ const detachAutowrapped = (widget: Gtk.Widget): void => {
     if (wrapper && isSingleChild(wrapper)) {
         wrapper.setChild(null);
         const wrapperParent = wrapper.getParent();
-        if (wrapperParent && isRemovableWidget(wrapperParent)) wrapperParent.remove(wrapper);
+        if (wrapperParent && isRemovable(wrapperParent)) wrapperParent.remove(wrapper);
     }
 };
-
-const isRemovableWidget = (widget: Gtk.Widget): widget is Gtk.Widget & { remove: (child: Gtk.Widget) => void } =>
-    "remove" in widget && typeof Reflect.get(widget, "remove") === "function";
 
 function* gtkChildren(container: Gtk.Widget): IterableIterator<Gtk.Widget> {
     let child = container.getFirstChild();
@@ -468,7 +466,7 @@ const insertAutowrapping = (container: Gtk.ListBox | Gtk.FlowBox, widget: Gtk.Wi
     const currentParent = widget.getParent();
     if (currentParent !== null) {
         if (widget instanceof Gtk.ListBoxRow || widget instanceof Gtk.FlowBoxChild) {
-            if (isRemovableWidget(currentParent)) currentParent.remove(widget);
+            if (isRemovable(currentParent)) currentParent.remove(widget);
         } else {
             detachAutowrapped(widget);
         }
@@ -538,7 +536,7 @@ const removeWidget = (container: Gtk.Widget, widget: Gtk.Widget): void => {
     const wrapper = widget.getParent();
     if (wrapper && isSingleChild(wrapper)) {
         wrapper.setChild(null);
-        if (isRemovableWidget(container)) container.remove(wrapper);
+        if (isRemovable(container)) container.remove(wrapper);
     }
 };
 
@@ -572,4 +570,4 @@ export const ELEMENT_MAP: ElementMapping[] = [
 
 setElementMap(ELEMENT_MAP);
 
-export { attachToParent, detachFromParent, resyncWrapper } from "./mappings/dispatch.js";
+export { attachNode, detachFromParent, detachNode, resyncWrapper } from "./mappings/dispatch.js";

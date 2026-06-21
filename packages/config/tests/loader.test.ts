@@ -60,7 +60,7 @@ describe("loadGtkxConfig", () => {
         await expect(loadGtkxConfig(cwd)).rejects.toBeInstanceOf(GtkxConfigNotFoundError);
     });
 
-    it("propagates validation errors from defineConfig", async () => {
+    it("propagates validation errors from the loader", async () => {
         writeConfig("export default { libraries: [] };\n");
         await expect(loadGtkxConfig(cwd)).rejects.toThrow(
             '`libraries` must be "*", a non-empty string array, or omitted',
@@ -104,7 +104,7 @@ describe("loadResolvedGtkxConfig", () => {
         await expect(loadResolvedGtkxConfig(cwd)).resolves.toEqual(resolveGtkxConfig({}));
     });
 
-    it("propagates validation errors from defineConfig", async () => {
+    it("propagates validation errors from the loader", async () => {
         writeConfig(`export default { applicationId: "not valid" };\n`);
         await expect(loadResolvedGtkxConfig(cwd)).rejects.toThrow(/invalid `applicationId`/);
     });

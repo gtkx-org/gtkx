@@ -1,15 +1,16 @@
-import { copyFileSync, mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { resolveDataDir } from "@gtkx/config";
 import { errorMessage } from "@gtkx/utils";
 import type { ModuleNode, Plugin, UserConfig, ViteDevServer } from "vite";
 import { compileSchemas } from "../gsettings/compile.js";
-import { emitSchemaEnv, prependSchemaDir, SCHEMA_SUFFIX, stagedSchemaName } from "../gsettings/env.js";
+import { emitSchemaEnv, prependSchemaDir, SCHEMA_SUFFIX, stageSchema } from "../gsettings/env.js";
 import { parseSchemaXml, SchemaParseError } from "../gsettings/parser.js";
 import { renderRuntimeModule } from "../gsettings/render.js";
 import { error, info } from "../internal/log.js";
 import { removeTempDir } from "../internal/remove-temp-dir.js";
+import { withStagingDir } from "../internal/staging-dir.js";
 
 const VIRTUAL_PREFIX = "\0gtkx-gsettings:";
 
@@ -87,7 +88,7 @@ const registerSchemaForMode = (state: PluginState, filePath: string, id: string)
     }
     state.trackedSchemas.set(filePath, id);
     const dir = ensureSchemaDir(state);
-    copyFileSync(filePath, join(dir, stagedSchemaName(filePath)));
+    stageSchema(dir, filePath);
     compileSchemaDir(state);
     info(`Compiled GSettings schema: ${fileName}`);
 };
@@ -115,22 +116,18 @@ const loadSchemaModule = (ctx: PluginContext, state: PluginState, id: string): s
 const emitCompiledSchemas = (ctx: PluginContext, state: PluginState): void => {
     if (!state.isBuild || state.buildSchemas.size === 0) return;
 
-    const dir = mkdtempSync(join(tmpdir(), "gtkx-schemas-build-"));
-    try {
+    const compiled = withStagingDir("schemas-build", (dir) => {
         for (const filePath of state.buildSchemas) {
-            copyFileSync(filePath, join(dir, stagedSchemaName(filePath)));
+            stageSchema(dir, filePath);
         }
         compileSchemas(dir);
-
-        const compiled = readFileSync(join(dir, "gschemas.compiled"));
-        ctx.emitFile({
-            type: "asset",
-            fileName: "gschemas.compiled",
-            source: compiled,
-        });
-    } finally {
-        removeTempDir(dir);
-    }
+        return readFileSync(join(dir, "gschemas.compiled"));
+    });
+    ctx.emitFile({
+        type: "asset",
+        fileName: "gschemas.compiled",
+        source: compiled,
+    });
 
     info(`Compiled ${state.buildSchemas.size} GSettings schema(s)`);
 };
@@ -140,7 +137,7 @@ const handleSchemaHotUpdate = (state: PluginState, file: string, server: ViteDev
     if (!virtualId) return;
 
     const dir = ensureSchemaDir(state);
-    copyFileSync(file, join(dir, stagedSchemaName(file)));
+    stageSchema(dir, file);
     compileSchemaDir(state);
 
     info(`Recompiled GSettings schema: ${basename(file)}`);

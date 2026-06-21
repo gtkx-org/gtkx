@@ -1,3 +1,5 @@
+import { CAMEL_CASE_NAME_PATTERN, PASCAL_CASE_NAME_PATTERN, validateArrayOf } from "./validators.js";
+
 export type VerbArgs = "child" | "childName" | "null" | "prefixChild" | "prefixNull";
 
 export type MethodVerb = {
@@ -69,49 +71,6 @@ export type VirtualPropRow = {
     after?: string;
 };
 
-export type PropCondition = "defined" | "nonNull" | "truthy";
-
-export type SetterPropStep = {
-    prop: string;
-    call?: string;
-    set?: string;
-    when?: PropCondition;
-    skipWhenGetterEquals?: string;
-    requireGetterTruthyWithValue?: string;
-    skipWhenGetterDivergedFromCommitted?: string;
-};
-
-export type SetterPropGroup = {
-    kind: "setters";
-    props: SetterPropStep[];
-    always?: boolean;
-};
-
-export type SignalPropRule = {
-    kind: "signal";
-    prop: string;
-    signal: string;
-    noArgs?: boolean;
-    returnValue?: unknown;
-};
-
-export type PropRule = SetterPropGroup | SignalPropRule;
-
-export type AddMethodArg = "widget" | "id" | "title" | "iconName";
-
-export type AddMethodRule = {
-    method: string;
-    args: AddMethodArg[];
-    requires: AddMethodArg[];
-};
-
-export type PageMetaSetter = {
-    setter: string;
-    prop: string;
-    fallback?: unknown;
-    whenPresent?: boolean;
-};
-
 export type PerElementPropRows<Row> = Record<string, Record<string, Row>>;
 
 export type UserTableRows = {
@@ -126,8 +85,6 @@ export type UserTableRows = {
     elementMap?: ElementMapRule[] | undefined;
 };
 
-const GLIB_TYPE_NAME_PATTERN = /^[A-Z][A-Za-z0-9]*$/;
-const METHOD_NAME_PATTERN = /^[a-z][A-Za-z0-9]*$/;
 const VERB_ARGS: VerbArgs[] = ["child", "childName", "null", "prefixChild", "prefixNull"];
 const PRESENCE_CONDITIONS: PresenceCondition[] = ["defined", "nonNull"];
 
@@ -143,19 +100,19 @@ const requireRecord = (value: unknown, path: string): Record<string, unknown> =>
 };
 
 const requireTypeName = (value: unknown, path: string): void => {
-    if (typeof value !== "string" || !GLIB_TYPE_NAME_PATTERN.test(value)) {
+    if (typeof value !== "string" || !PASCAL_CASE_NAME_PATTERN.test(value)) {
         fail(path, `must be a PascalCase GLib type name (e.g. "GtkWidget"), got "${String(value)}"`);
     }
 };
 
 const requireMethodName = (value: unknown, path: string): void => {
-    if (typeof value !== "string" || !METHOD_NAME_PATTERN.test(value)) {
+    if (typeof value !== "string" || !CAMEL_CASE_NAME_PATTERN.test(value)) {
         fail(path, `must be a camelCase method name (e.g. "addController"), got "${String(value)}"`);
     }
 };
 
 const requireFieldName = (value: unknown, path: string): void => {
-    if (typeof value !== "string" || !METHOD_NAME_PATTERN.test(value)) {
+    if (typeof value !== "string" || !CAMEL_CASE_NAME_PATTERN.test(value)) {
         fail(path, `must be a camelCase item field name (e.g. "iconName"), got "${String(value)}"`);
     }
 };
@@ -190,20 +147,22 @@ const validateVerb = (value: unknown, path: string): void => {
     else fail(`${path}.kind`, 'must be "method" or "orderedInsert"');
 };
 
+const validateElementMapRule = (value: unknown, path: string): void => {
+    const rule = requireRecord(value, path);
+    requireTypeName(rule["child"], `${path}.child`);
+    if (rule["parentType"] === undefined && rule["parentMethod"] === undefined) {
+        fail(path, "must declare `parentType` or `parentMethod`");
+    }
+    if (rule["parentType"] !== undefined) requireTypeName(rule["parentType"], `${path}.parentType`);
+    if (rule["parentMethod"] !== undefined) requireMethodName(rule["parentMethod"], `${path}.parentMethod`);
+    validateVerb(rule["verb"], `${path}.verb`);
+};
+
 export const validateElementMap = (elementMap: unknown): void => {
     if (elementMap === undefined) return;
-    if (!Array.isArray(elementMap)) fail("elementMap", "must be an array of attach rules");
-    (elementMap as unknown[]).forEach((value, index) => {
-        const path = `elementMap[${index}]`;
-        const rule = requireRecord(value, path);
-        requireTypeName(rule["child"], `${path}.child`);
-        if (rule["parentType"] === undefined && rule["parentMethod"] === undefined) {
-            fail(path, "must declare `parentType` or `parentMethod`");
-        }
-        if (rule["parentType"] !== undefined) requireTypeName(rule["parentType"], `${path}.parentType`);
-        if (rule["parentMethod"] !== undefined) requireMethodName(rule["parentMethod"], `${path}.parentMethod`);
-        validateVerb(rule["verb"], `${path}.verb`);
-    });
+    validateArrayOf(elementMap, "elementMap", validateElementMapRule, (path) =>
+        fail(path, "must be an array of attach rules"),
+    );
 };
 
 const validateWhen = (when: unknown, path: string): void => {
@@ -227,34 +186,31 @@ const validateCallArg = (value: unknown, path: string): void => {
 const validateCallStep = (value: unknown, path: string): void => {
     const step = requireRecord(value, path);
     requireMethodName(step["method"], `${path}.method`);
-    if (!Array.isArray(step["args"])) fail(`${path}.args`, "must be an array");
-    (step["args"] as unknown[]).forEach((arg, index) => {
-        validateCallArg(arg, `${path}.args[${index}]`);
-    });
+    validateArrayOf(step["args"], `${path}.args`, validateCallArg, (argsPath) => fail(argsPath, "must be an array"));
     validateWhen(step["when"], `${path}.when`);
+};
+
+const validateConstructSetter = (setter: unknown, setterPath: string): void => {
+    const record = requireRecord(setter, setterPath);
+    requireMethodName(record["method"], `${setterPath}.method`);
+    requireFieldName(record["path"], `${setterPath}.path`);
+    if (!PRESENCE_CONDITIONS.includes(record["when"] as PresenceCondition)) {
+        fail(`${setterPath}.when`, `must be one of ${PRESENCE_CONDITIONS.join(", ")}`);
+    }
 };
 
 const validateConstructStep = (value: unknown, path: string): void => {
     const step = requireRecord(value, path);
     requireTypeName(step["type"], `${path}.type`);
     requireMethodName(step["attach"], `${path}.attach`);
-    if (!Array.isArray(step["setters"])) fail(`${path}.setters`, "must be an array");
-    (step["setters"] as unknown[]).forEach((setter, index) => {
-        const setterPath = `${path}.setters[${index}]`;
-        const record = requireRecord(setter, setterPath);
-        requireMethodName(record["method"], `${setterPath}.method`);
-        requireFieldName(record["path"], `${setterPath}.path`);
-        if (!PRESENCE_CONDITIONS.includes(record["when"] as PresenceCondition)) {
-            fail(`${setterPath}.when`, `must be one of ${PRESENCE_CONDITIONS.join(", ")}`);
-        }
-    });
+    validateArrayOf(step["setters"], `${path}.setters`, validateConstructSetter, (settersPath) =>
+        fail(settersPath, "must be an array"),
+    );
 };
-
-const ITEM_TYPE_NAME_PATTERN = /^[A-Z][A-Za-z0-9]*$/;
 
 const validateArrayPropRow = (value: unknown, path: string): void => {
     const row = requireRecord(value, path);
-    if (typeof row["itemType"] !== "string" || !ITEM_TYPE_NAME_PATTERN.test(row["itemType"])) {
+    if (typeof row["itemType"] !== "string" || !PASCAL_CASE_NAME_PATTERN.test(row["itemType"])) {
         fail(`${path}.itemType`, `must be a PascalCase exported member of @gtkx/react (e.g. "ScaleMark")`);
     }
     if (row["clear"] !== undefined) requireMethodName(row["clear"], `${path}.clear`);
@@ -264,10 +220,9 @@ const validateArrayPropRow = (value: unknown, path: string): void => {
     }
     if (row["remove"] !== undefined) validateCallStep(row["remove"], `${path}.remove`);
     if (row["add"] !== undefined) {
-        if (!Array.isArray(row["add"])) fail(`${path}.add`, "must be an array of call steps");
-        (row["add"] as unknown[]).forEach((step, index) => {
-            validateCallStep(step, `${path}.add[${index}]`);
-        });
+        validateArrayOf(row["add"], `${path}.add`, validateCallStep, (addPath) =>
+            fail(addPath, "must be an array of call steps"),
+        );
     }
     if (row["construct"] !== undefined) validateConstructStep(row["construct"], `${path}.construct`);
 };
@@ -278,18 +233,16 @@ export const validateArrayPropRows = (arrayProps: unknown): void => {
 
 const validateObjectPropRow = (value: unknown, path: string): void => {
     const row = requireRecord(value, path);
-    if (typeof row["itemType"] !== "string" || !ITEM_TYPE_NAME_PATTERN.test(row["itemType"])) {
+    if (typeof row["itemType"] !== "string" || !PASCAL_CASE_NAME_PATTERN.test(row["itemType"])) {
         fail(`${path}.itemType`, `must be a PascalCase exported member of @gtkx/react (e.g. "DragSourceIcon")`);
     }
-    if (!Array.isArray(row["set"])) fail(`${path}.set`, "must be an array of call steps");
-    (row["set"] as unknown[]).forEach((step, index) => {
-        validateCallStep(step, `${path}.set[${index}]`);
-    });
+    validateArrayOf(row["set"], `${path}.set`, validateCallStep, (setPath) =>
+        fail(setPath, "must be an array of call steps"),
+    );
     if (row["unset"] !== undefined) {
-        if (!Array.isArray(row["unset"])) fail(`${path}.unset`, "must be an array of call steps");
-        (row["unset"] as unknown[]).forEach((step, index) => {
-            validateCallStep(step, `${path}.unset[${index}]`);
-        });
+        validateArrayOf(row["unset"], `${path}.unset`, validateCallStep, (unsetPath) =>
+            fail(unsetPath, "must be an array of call steps"),
+        );
     }
 };
 

@@ -1,8 +1,9 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { act } from "./act.js";
-import { getEditableDelegate, isEditable } from "./editable.js";
+import { runInAct } from "./dispatch.js";
+import { EDITABLE_ROLES, getEditableDelegate, isEditable } from "./editable.js";
+import { formatRoleList } from "./role-helpers.js";
 
 export type TypeOptions = {
     skipClick?: boolean | undefined;
@@ -10,7 +11,7 @@ export type TypeOptions = {
     initialSelectionEnd?: number | undefined;
 };
 
-const EDITABLE_REQUIRED = "expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)";
+const EDITABLE_REQUIRED = `expected editable widget (${formatRoleList(EDITABLE_ROLES)})`;
 
 const insertEditableText = (widget: Gtk.Editable, text: string): void => {
     const target = getEditableDelegate(widget) ?? widget;
@@ -38,8 +39,8 @@ export const resetClipboard = (): void => {
     Gdk.Display.getDefault()?.getClipboard().setContent(null);
 };
 
-export const type = async (widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> => {
-    await act(() => {
+export const type = (widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> =>
+    runInAct(() => {
         if (!isEditable(widget)) {
             throw new Error(`Cannot type into element: ${EDITABLE_REQUIRED}`);
         }
@@ -60,30 +61,27 @@ export const type = async (widget: Gtk.Widget, text: string, options?: TypeOptio
 
         insertEditableText(widget, text);
     });
-};
 
-export const clear = async (widget: Gtk.Widget): Promise<void> => {
-    await act(() => {
+export const clear = (widget: Gtk.Widget): Promise<void> =>
+    runInAct(() => {
         if (!isEditable(widget)) {
             throw new Error(`Cannot clear element: ${EDITABLE_REQUIRED}`);
         }
 
         widget.setText("");
     });
-};
 
-export const copy = async (widget: Gtk.Widget): Promise<void> => {
-    await act(() => {
+export const copy = (widget: Gtk.Widget): Promise<void> =>
+    runInAct(() => {
         if (!isEditable(widget)) {
             throw new Error(`Cannot copy: ${EDITABLE_REQUIRED}`);
         }
 
         writeClipboardText(widget, readEditableSelection(widget));
     });
-};
 
-export const cut = async (widget: Gtk.Widget): Promise<void> => {
-    await act(() => {
+export const cut = (widget: Gtk.Widget): Promise<void> =>
+    runInAct(() => {
         if (!isEditable(widget)) {
             throw new Error(`Cannot cut: ${EDITABLE_REQUIRED}`);
         }
@@ -91,7 +89,6 @@ export const cut = async (widget: Gtk.Widget): Promise<void> => {
         writeClipboardText(widget, readEditableSelection(widget));
         widget.deleteSelection();
     });
-};
 
 export const paste = async (widget: Gtk.Widget, text?: string): Promise<void> => {
     if (!isEditable(widget)) {
@@ -99,7 +96,7 @@ export const paste = async (widget: Gtk.Widget, text?: string): Promise<void> =>
     }
 
     const content = text ?? (await widget.getClipboard().readTextAsync(null)) ?? "";
-    await act(() => {
+    await runInAct(() => {
         insertEditableText(widget, content);
     });
 };

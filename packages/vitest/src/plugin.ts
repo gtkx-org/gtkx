@@ -1,6 +1,6 @@
 import { join } from "node:path";
 
-import { createGtkxConfigPlugin } from "@gtkx/config";
+import { createGtkxConfigPlugin, gtkxBundledModulePatterns } from "@gtkx/config";
 import type { Plugin } from "vitest/config";
 
 const gtkx = (): Plugin => {
@@ -19,7 +19,7 @@ const gtkx = (): Plugin => {
                     pool: "forks",
                     server: {
                         deps: {
-                            inline: [/@gtkx\/(config|ffi|gi|react|jsx|testing|css)/, /[/\\]\.gtkx[/\\]/],
+                            inline: [...gtkxBundledModulePatterns],
                         },
                     },
                 },
