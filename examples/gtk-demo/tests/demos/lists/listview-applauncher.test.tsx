@@ -5,6 +5,12 @@ import { describe, expect, it, vi } from "vitest";
 import { listviewApplauncherDemo } from "../../../src/demos/lists/listview-applauncher.js";
 import { renderDemo } from "../../test-utils.js";
 
+const appInfoPrototype = (): Gio.AppInfo => {
+    const [first] = Gio.appInfoGetAll();
+    if (first === undefined) throw new Error("expected at least one installed application");
+    return Object.getPrototypeOf(first);
+};
+
 describe("listviewApplauncherDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listviewApplauncherDemo.id).toBe("listview-applauncher");
@@ -46,7 +52,7 @@ describe("listviewApplauncherDemo rows", () => {
     });
 
     it("invokes Gio.AppInfo.launch when a row is activated", async () => {
-        const launchSpy = vi.spyOn(Gio.AppInfo.prototype, "launch").mockReturnValue(true);
+        const launchSpy = vi.spyOn(appInfoPrototype(), "launch").mockReturnValue(true);
         try {
             await renderDemo(listviewApplauncherDemo);
             const listView = (await screen.findByName("list-view")) as Gtk.ListView;
@@ -58,7 +64,7 @@ describe("listviewApplauncherDemo rows", () => {
     });
 
     it("presents an alert dialog when launching the selected app throws", async () => {
-        const launchSpy = vi.spyOn(Gio.AppInfo.prototype, "launch").mockImplementation(() => {
+        const launchSpy = vi.spyOn(appInfoPrototype(), "launch").mockImplementation(() => {
             throw new Error("denied by policy");
         });
         try {

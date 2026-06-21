@@ -1,6 +1,5 @@
 import { getHandle, registerClass } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/gi/gdk";
-import * as Gio from "@gtkx/gi/gio";
 import { Object as GObject, typeFromName, typeName, typeParent } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
@@ -162,7 +161,7 @@ describe("registerClass — vfunc argument and return marshalling", () => {
         registerClass(ReturningModel, { gtypeName: uniqueName("GtkxVfuncReturnsObject") });
 
         const model = new ReturningModel();
-        const viaVtable = Gio.ListModel.prototype.getItem.call(model, 0);
+        const viaVtable = Gtk.StringList.prototype.getItem.call(model, 0);
 
         expect(viaVtable).toBe(returned);
     });
@@ -178,7 +177,7 @@ describe("registerClass — caller-allocated and scalar out parameters", () => {
         registerClass(CustomChooser, { gtypeName: uniqueName("GtkxVfuncCallerOutBoxed") });
 
         const chooser = new CustomChooser();
-        const result = Gtk.ColorChooser.prototype.getRgba.call(chooser);
+        const result = Gtk.ColorButton.prototype.getRgba.call(chooser);
 
         expect(result.red).toBeCloseTo(0.5);
         expect(result.green).toBeCloseTo(0.25);

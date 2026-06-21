@@ -301,8 +301,8 @@ const handleObjectDrop = (value: GObject.Value, setPastedContent: SetPastedConte
     if (!GObject.typeCheckValueHolds(value, GObject.TYPE_OBJECT)) return false;
     const obj = value.getObject();
     if (!obj) return false;
-    if (GObject.typeIsA(obj.__gtype__, gdkPaintableType)) {
-        setPastedContent({ type: "Image", paintable: obj as Gdk.Paintable });
+    if (obj instanceof Gdk.Paintable) {
+        setPastedContent({ type: "Image", paintable: obj });
         return true;
     }
     if (obj instanceof Gio.File) {

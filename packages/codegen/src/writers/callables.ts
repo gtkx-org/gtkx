@@ -23,14 +23,6 @@ export const dedupeCallables = (callables: GirFunction[]): GirFunction[] =>
         (callable) => callable.cIdentifier,
     );
 
-export const appendMethodBinding = (context: ModuleContext, method: GirFunction): void => {
-    if (method.cIdentifier === undefined) return;
-    if (callableReferencesClassStruct(context, method)) return;
-    const expression = renderFnExpression(context, method);
-    if (expression === undefined) return;
-    context.module.appendBinding(`const ${bindingIdentifier(method.cIdentifier)} = ${expression};`, method.cIdentifier);
-};
-
 export const emitBindings = (context: ModuleContext, callables: Callables): void => {
     const all = [...callables.constructors, ...callables.functions, ...callables.methods];
     for (const callable of all) {
@@ -100,6 +92,19 @@ export const renderInstanceMethod = (
         isStatic: false,
     });
     return renderBlock(`${name}(${signature}): ${returnType}`, body);
+};
+
+export const renderInstanceMethodSignature = (
+    context: ModuleContext,
+    callable: GirFunction,
+    nameOverride?: string,
+): string | undefined => {
+    if (!isEmittableCallable(context, callable)) return undefined;
+    const name = nameOverride ?? methodExportName(callable);
+    if (name === "constructor") return undefined;
+    const signature = renderMethodSignature(context, callable);
+    const returnType = renderMethodReturnType(context, callable);
+    return `${name}(${signature}): ${returnType};`;
 };
 
 export const indexMethodsByName = (methods: GirFunction[]): Map<string, GirFunction> => {

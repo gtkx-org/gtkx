@@ -96,24 +96,20 @@ type InheritedMethod = {
 export type InheritedMethods = {
     returnTypes: Map<string, string>;
     definitions: Map<string, InheritedMethod>;
-    names: Set<string>;
 };
 
 type InheritedMethodsAccumulator = {
     returnTypes: Map<string, string>;
     definitions: Map<string, InheritedMethod>;
-    names: Set<string>;
 };
 
 export const collectInheritedMethods = (context: ModuleContext, klass: GirClass): InheritedMethods => {
     const accumulator: InheritedMethodsAccumulator = {
         returnTypes: new Map<string, string>(),
         definitions: new Map<string, InheritedMethod>(),
-        names: new Set<string>(),
     };
-    forEachAncestor(context, klass, (ancestor, interfaces) => {
+    forEachAncestor(context, klass, (ancestor) => {
         absorbInheritedMethods(context, ancestor, accumulator);
-        absorbInheritedInterfaceMethodNames(interfaces, accumulator.names);
     });
     return accumulator;
 };
@@ -123,23 +119,13 @@ const absorbInheritedMethods = (
     resolved: { klass: GirClass; namespaceName: string },
     accumulator: InheritedMethodsAccumulator,
 ): void => {
-    const { returnTypes, definitions, names } = accumulator;
+    const { returnTypes, definitions } = accumulator;
     for (const method of resolved.klass.methods) {
         if (!method.introspectable) continue;
         const name = toCamelCase(method.name);
-        names.add(name);
         if (returnTypes.has(name)) continue;
         definitions.set(name, { method, namespaceName: resolved.namespaceName });
         returnTypes.set(name, renderTsType(context, method.returnValue.type, method.returnValue.nullable));
-    }
-};
-
-const absorbInheritedInterfaceMethodNames = (interfaces: ResolvedInterface[], names: Set<string>): void => {
-    for (const iface of interfaces) {
-        for (const method of iface.klass.methods) {
-            if (!method.introspectable) continue;
-            names.add(toCamelCase(method.name));
-        }
     }
 };
 

@@ -1,3 +1,4 @@
+export { installMixins, type Mixin } from "@gtkx/utils";
 export { promisify } from "./async.js";
 export { createErrorDomain, type ErrorDomain } from "./gerror.js";
 export { getGobjectProperty, newGobjectWithProperties, setGobjectProperty } from "./gobject.js";
@@ -11,13 +12,13 @@ export {
     getHandle,
     getInstanceGtype,
     getWrapperClass,
+    registerInterface,
     registerWrapperClass,
     requireWrapperClass,
     resolveWrapperClass,
     setHandle,
     tryGetHandle,
     wrapHandle,
-    wrapInterfaceHandle,
 } from "./registry.js";
 export { connectGobjectSignal, emitGobjectSignal, type SignalHandler, signalBaseName } from "./signal.js";
 export { t } from "./t.js";

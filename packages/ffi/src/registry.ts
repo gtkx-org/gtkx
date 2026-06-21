@@ -5,18 +5,8 @@ import {
     type RegisterClassVfunc as NativeRegisterClassVfunc,
     setWrapper,
 } from "@gtkx/native";
-import type { AnyClass } from "@gtkx/utils";
-import {
-    type GType,
-    type GTyped,
-    TYPE_INTERFACE,
-    TYPE_INVALID,
-    typeFromName,
-    typeFundamental,
-    typeIsA,
-    typeName,
-    typeParent,
-} from "./gtype.js";
+import type { AnyClass, Mixin } from "@gtkx/utils";
+import { type GType, type GTyped, TYPE_INVALID, typeFromName, typeInterfaces, typeIsA, typeParent } from "./gtype.js";
 
 let gobjectGtype: GType = TYPE_INVALID;
 
@@ -47,12 +37,17 @@ export function setClassGtype(cls: AnyClass, gtype: GType): void {
 
 export function registerWrapperClass(cls: AnyClass, gtype: GType, vfuncs?: VfuncRegistry): void {
     setClassGtype(cls, gtype);
-    if (vfuncs) {
-        registerVfuncRegistry(cls, vfuncs);
-        if (typeFundamental(gtype) === TYPE_INTERFACE) {
-            registerInterfaceVfuncRegistry(gtype, vfuncs);
-        }
-    }
+    if (vfuncs) registerVfuncRegistry(cls, vfuncs);
+}
+
+const interfaceMakerByGtype = new Map<GType, Mixin>();
+const composedClassByGtype = new Map<GType, AnyClass>();
+
+export function registerInterface(cls: AnyClass, gtype: GType, maker: Mixin, vfuncs?: VfuncRegistry): void {
+    if (gtype === TYPE_INVALID) return;
+    stampGtype(cls, gtype);
+    interfaceMakerByGtype.set(gtype, maker);
+    if (vfuncs) registerInterfaceVfuncRegistry(gtype, vfuncs);
 }
 
 export function getClassGtype(cls: AnyClass): GType {
@@ -79,25 +74,11 @@ export function wrapHandle(handle: Handle | null | undefined, cls?: AnyClass): o
     if (cls === undefined) {
         return resolveWrapper(
             handle,
-            (runtimeGtype) => findWrapperClass(runtimeGtype),
+            (runtimeGtype) => resolveComposedClass(runtimeGtype),
             (runtimeGtype) => `Expected registered GLib type, got gtype ${String(runtimeGtype)}`,
         );
     }
     return instantiate(cls, handle);
-}
-
-export function wrapInterfaceHandle<T extends object>(handle: Handle, interfaceGtype: GType): T;
-export function wrapInterfaceHandle<T extends object>(
-    handle: Handle | null | undefined,
-    interfaceGtype: GType,
-): T | null;
-export function wrapInterfaceHandle(handle: Handle | null | undefined, interfaceGtype: GType): object | null {
-    if (handle === null || handle === undefined) return null;
-    return resolveWrapper(
-        handle,
-        (runtimeGtype) => findWrapperClassForInterface(runtimeGtype, interfaceGtype) ?? getWrapperClass(interfaceGtype),
-        () => `Expected registered wrapper for interface ${typeName(interfaceGtype) ?? String(interfaceGtype)}`,
-    );
 }
 
 export function getWrapperClass(gtype: GType): AnyClass | null {
@@ -135,13 +116,32 @@ export function findWrapperClass(gtype: GType): AnyClass | null {
     return getWrapperClass(gtype) ?? walkParentChain(gtype, () => true);
 }
 
-function findWrapperClassForInterface(gtype: GType, interfaceGtype: GType): AnyClass | null {
-    const exact = getWrapperClass(gtype);
+function composeInterfaces(base: AnyClass, runtimeGtype: GType): AnyClass {
+    const baseGtype = getClassGtype(base);
+    const applied = new Set<GType>();
+    let cls: AnyClass = base;
+    for (const gtype of typeInterfaces(runtimeGtype)) {
+        if (applied.has(gtype) || typeIsA(baseGtype, gtype)) continue;
+        const make = interfaceMakerByGtype.get(gtype);
+        if (make === undefined) continue;
+        applied.add(gtype);
+        cls = make(cls);
+    }
+    return applied.size === 0 ? base : cls;
+}
+
+function resolveComposedClass(runtimeGtype: GType): AnyClass | null {
+    const exact = getWrapperClass(runtimeGtype);
     if (exact) return exact;
-
-    if (interfaceGtype === TYPE_INVALID) return null;
-
-    return walkParentChain(gtype, (parentGtype) => typeIsA(parentGtype, interfaceGtype));
+    const cached = composedClassByGtype.get(runtimeGtype);
+    if (cached) return cached;
+    const base = findWrapperClass(runtimeGtype);
+    if (base === null) return null;
+    const composed = composeInterfaces(base, runtimeGtype);
+    if (composed === base) return base;
+    stampGtype(composed, runtimeGtype);
+    composedClassByGtype.set(runtimeGtype, composed);
+    return composed;
 }
 
 function resolveWrapper(

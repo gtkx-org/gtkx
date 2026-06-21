@@ -18,12 +18,21 @@ const isNullablePropertyType = (context: ModuleContext, type: TypeId | undefined
     return true;
 };
 
-export const renderPropertyAccessor = (
+type ResolvedAccessor = {
+    jsName: string;
+    tsType: string;
+    writable: boolean;
+    getterMember: string | undefined;
+    getMethod: GirFunction | undefined;
+    setterMember: string | undefined;
+};
+
+const resolveAccessor = (
     context: ModuleContext,
     property: GirProperty,
     claimedNames: Set<string>,
     methodByName: Map<string, GirFunction>,
-): string | undefined => {
+): ResolvedAccessor | undefined => {
     const jsName = toCamelIdentifier(property.name);
     if (claimedNames.has(jsName)) return undefined;
     if (jsName === "constructor") return undefined;
@@ -44,6 +53,19 @@ export const renderPropertyAccessor = (
               ? renderMethodReturnType(context, getMethod)
               : renderTsType(context, property.type, isNullablePropertyType(context, property.type));
 
+    return { jsName, tsType, writable, getterMember, getMethod, setterMember };
+};
+
+export const renderPropertyAccessor = (
+    context: ModuleContext,
+    property: GirProperty,
+    claimedNames: Set<string>,
+    methodByName: Map<string, GirFunction>,
+): string | undefined => {
+    const accessor = resolveAccessor(context, property, claimedNames, methodByName);
+    if (accessor === undefined) return undefined;
+    const { jsName, tsType, writable, getterMember, getMethod, setterMember } = accessor;
+
     const blocks: string[] = [];
     const getBody = renderGetterBody({ context, property, getterMember, getMethod, tsType });
     blocks.push(renderBlock(`get ${jsName}(): ${tsType}`, getBody));
@@ -54,6 +76,18 @@ export const renderPropertyAccessor = (
         blocks.push(renderBlock(`set ${jsName}(value: ${tsType})`, setBody));
     }
     return blocks.join("\n\n");
+};
+
+export const renderPropertyAccessorSignature = (
+    context: ModuleContext,
+    property: GirProperty,
+    claimedNames: Set<string>,
+    methodByName: Map<string, GirFunction>,
+): string | undefined => {
+    const accessor = resolveAccessor(context, property, claimedNames, methodByName);
+    if (accessor === undefined) return undefined;
+    const { jsName, tsType, writable } = accessor;
+    return writable ? `${jsName}: ${tsType};` : `get ${jsName}(): ${tsType};`;
 };
 
 const renderPropertyFfiType = (context: ModuleContext, property: GirProperty): string =>

@@ -1,31 +1,12 @@
 import type { ArrayType, Type as FfiType, Handle, Value } from "@gtkx/native";
 import { getDescriptorWrapperClass } from "./descriptors.js";
-import { type GType, TYPE_INVALID, typeFromName, typeName } from "./gtype.js";
+import { typeName } from "./gtype.js";
 import { resolveBoxedGtype } from "./gvalue.js";
-import { getWrapperClass, tryGetHandle, wrapHandle, wrapInterfaceHandle } from "./registry.js";
+import { getWrapperClass, tryGetHandle, wrapHandle } from "./registry.js";
 
 const wrapCollection = (ffiType: ArrayType, value: unknown): unknown => {
     if (value === null) return null;
     return (value as Value[]).map((item) => wrapValue(ffiType.itemType, item));
-};
-
-type GObjectFfiType = Extract<FfiType, { type: "gobject" }>;
-
-const interfaceGtypeByName = new Map<string, GType>();
-
-const interfaceGtype = (typeName: string): GType => {
-    const cached = interfaceGtypeByName.get(typeName);
-    if (cached !== undefined) return cached;
-    const gtype = typeFromName(typeName);
-    if (gtype !== TYPE_INVALID) interfaceGtypeByName.set(typeName, gtype);
-    return gtype;
-};
-
-const wrapGObjectValue = (ffiType: GObjectFfiType, value: Handle | null): object | null => {
-    if (ffiType.typeName === undefined) return wrapHandle(value, undefined);
-    const gtype = interfaceGtype(ffiType.typeName);
-    if (gtype === TYPE_INVALID) return wrapHandle(value, undefined);
-    return wrapInterfaceHandle(value, gtype);
 };
 
 const wrapBoxedValue = (ffiType: FfiType, value: Handle | null): object | null => {
@@ -43,7 +24,7 @@ const wrapBoxedValue = (ffiType: FfiType, value: Handle | null): object | null =
 export function wrapValue(ffiType: FfiType, value: Value): unknown {
     switch (ffiType.type) {
         case "gobject":
-            return wrapGObjectValue(ffiType, value as Handle | null);
+            return wrapHandle(value as Handle | null, undefined);
         case "struct":
             return wrapHandle(value as Handle | null, getDescriptorWrapperClass(ffiType));
         case "boxed":

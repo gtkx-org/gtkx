@@ -1,4 +1,4 @@
-export type { AnyClass } from "./class.js";
+export { type AnyClass, installMixins, type Mixin } from "./class.js";
 export { compareAlpha, dedupeBy, omit, reverseNumericEnum, sortedAlpha, sortedAlphaBy } from "./collection.js";
 export { errorMessage, formatChildProcessError } from "./error.js";
 export {
