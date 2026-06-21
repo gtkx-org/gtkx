@@ -8,7 +8,6 @@ type AnySignalHandler = { handler(...args: unknown[]): unknown }["handler"];
 
 type AnySignalHandlers = Record<string, AnySignalHandler>;
 
-// biome-ignore lint/style/useNamingConvention: GObject phantom-type key
 export type SignalHandlersOf<T extends GObject.Object> = T extends { __signals__?: infer H }
     ? unknown extends H
         ? AnySignalHandlers

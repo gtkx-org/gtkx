@@ -4,7 +4,11 @@ import { describe, expect, it } from "vitest";
 import { inoutBoxedFromFfi, outBoxedFromFfi, valueGetBoxed } from "../../src/gvalue.js";
 
 describe("boxed GValue marshalling — caller-allocated out copies, inout shares", () => {
-    const rectangleFfi = t.boxed("GdkRectangle", "borrowed", "libgtk-4.so.1", "gdk_rectangle_get_type");
+    const rectangleFfi = t.boxed("GdkRectangle", {
+        ownership: "borrowed",
+        library: "libgtk-4.so.1",
+        getTypeFn: "gdk_rectangle_get_type",
+    });
 
     it("inoutBoxedFromFfi shares the caller's wrapper so an in-place mutation is visible", () => {
         const rect = new Gdk.Rectangle({ width: 1 });

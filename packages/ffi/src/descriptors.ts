@@ -83,28 +83,27 @@ export const stringT = (ownership: Ownership = "borrowed", length?: number): Str
 export const objectT = (ownership: Ownership = "borrowed", typeName?: string): GObjectType =>
     typeName === undefined ? { type: "gobject", ownership } : { type: "gobject", ownership, typeName };
 
-type BoxedOptions = {
+type CallerAllocatable = {
     callerAllocated?: boolean;
 };
 
-type StructOptions = BoxedOptions & {
+type BoxedOptions = CallerAllocatable & {
+    ownership?: Ownership;
+    library?: string;
+    getTypeFn?: string;
+    freeFn?: string;
+};
+
+type StructOptions = CallerAllocatable & {
     size?: number;
     wrapperClass?: AnyClass;
 };
 
-// biome-ignore lint/complexity/useMaxParams: positional descriptor mirrors the native BoxedType fields and is the format generated bindings emit
-export const boxedT = (
-    innerType: string,
-    ownership: Ownership = "borrowed",
-    library?: string,
-    getTypeFn?: string,
-    freeFn?: string,
-    options: BoxedOptions = {},
-): BoxedType => {
-    const result: BoxedType = { type: "boxed", ownership, innerType };
-    if (library !== undefined) result.library = library;
-    if (getTypeFn !== undefined) result.getTypeFn = getTypeFn;
-    if (freeFn !== undefined) result.freeFn = freeFn;
+export const boxedT = (innerType: string, options: BoxedOptions = {}): BoxedType => {
+    const result: BoxedType = { type: "boxed", ownership: options.ownership ?? "borrowed", innerType };
+    if (options.library !== undefined) result.library = options.library;
+    if (options.getTypeFn !== undefined) result.getTypeFn = options.getTypeFn;
+    if (options.freeFn !== undefined) result.freeFn = options.freeFn;
     if (options.callerAllocated) result.callerAllocated = true;
     return result;
 };

@@ -4,25 +4,37 @@ import type { Content } from "../cairo.js";
 import { Surface } from "../cairo.js";
 
 const { bind } = t;
-const RECT_T = t.boxed("cairo_rectangle_t", "borrowed", "libcairo.so.2");
+const RECT_T = t.boxed("cairo_rectangle_t", { ownership: "borrowed", library: "libcairo.so.2" });
 
 const cairoRecordingSurfaceCreateExtents = bind(
     "libcairo.so.2",
     "cairo_recording_surface_create",
     [t.int32, RECT_T],
-    t.boxed("CairoSurface", "full", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+    t.boxed("CairoSurface", {
+        ownership: "full",
+        library: "libcairo-gobject.so.2",
+        getTypeFn: "cairo_gobject_surface_get_type",
+    }),
 );
 const cairoRecordingSurfaceCreateUnbounded = bind(
     "libcairo.so.2",
     "cairo_recording_surface_create",
     [t.int32, t.uint64],
-    t.boxed("CairoSurface", "full", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+    t.boxed("CairoSurface", {
+        ownership: "full",
+        library: "libcairo-gobject.so.2",
+        getTypeFn: "cairo_gobject_surface_get_type",
+    }),
 );
 const cairoRecordingSurfaceInkExtents = bind(
     "libcairo.so.2",
     "cairo_recording_surface_ink_extents",
     [
-        t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+        t.boxed("CairoSurface", {
+            ownership: "borrowed",
+            library: "libcairo-gobject.so.2",
+            getTypeFn: "cairo_gobject_surface_get_type",
+        }),
         t.ref(t.float64),
         t.ref(t.float64),
         t.ref(t.float64),
@@ -33,7 +45,14 @@ const cairoRecordingSurfaceInkExtents = bind(
 const cairoRecordingSurfaceGetExtents = bind(
     "libcairo.so.2",
     "cairo_recording_surface_get_extents",
-    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"), RECT_T],
+    [
+        t.boxed("CairoSurface", {
+            ownership: "borrowed",
+            library: "libcairo-gobject.so.2",
+            getTypeFn: "cairo_gobject_surface_get_type",
+        }),
+        RECT_T,
+    ],
     t.boolean,
 );
 

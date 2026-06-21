@@ -4,7 +4,6 @@ import { biguint64T, bind, booleanT, refT, sizedArrayT, stringT, uint32T } from 
 export type GType = bigint;
 
 export type GTyped = {
-    // biome-ignore lint/style/useNamingConvention: GObject phantom-type key read off instances
     __gtype__: GType;
 };
 
@@ -54,16 +53,12 @@ export function typeName(type: GType): string | null {
 
 export const TYPE_INVALID: GType = 0n;
 
-/** @public */
 export const TYPE_NONE: GType = typeFromName("void");
 
-/** @public */
 export const TYPE_INTERFACE: GType = typeFromName("GInterface");
 
-/** @public */
 export const TYPE_CHAR: GType = typeFromName("gchar");
 
-/** @public */
 export const TYPE_UCHAR: GType = typeFromName("guchar");
 
 export const TYPE_BOOLEAN: GType = typeFromName("gboolean");
@@ -72,10 +67,8 @@ export const TYPE_INT: GType = typeFromName("gint");
 
 export const TYPE_UINT: GType = typeFromName("guint");
 
-/** @public */
 export const TYPE_LONG: GType = typeFromName("glong");
 
-/** @public */
 export const TYPE_ULONG: GType = typeFromName("gulong");
 
 export const TYPE_INT64: GType = typeFromName("gint64");
@@ -100,25 +93,12 @@ export const TYPE_PARAM: GType = typeFromName("GParam");
 
 export const TYPE_OBJECT: GType = typeFromName("GObject");
 
-/** @public */
 export const TYPE_GTYPE: GType = typeFromName("GType");
 
 export const TYPE_VARIANT: GType = typeFromName("GVariant");
 
-/** @public */
 export const TYPE_UNICHAR: GType = typeFromName("guint");
 
-/**
- * Test whether a value's runtime GObject type conforms to an interface GType,
- * via `g_type_is_a`. Backs the `static [Symbol.hasInstance]` of each generated
- * interface, so `value instanceof SomeInterface` matches every wrapper whose
- * runtime GType implements the interface — including private subtypes absent
- * from the wrapper registry.
- *
- * @param value - The value being tested by `instanceof`.
- * @param gtype - The interface's GType.
- * @public
- */
 export function valueIsA(value: unknown, gtype: GType): boolean {
     return isGtyped(value) && typeIsA(value.__gtype__, gtype);
 }

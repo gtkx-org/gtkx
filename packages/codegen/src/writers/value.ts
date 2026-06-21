@@ -316,15 +316,11 @@ const boxedExpression = (
     }
     const glibName = boxed.glibTypeName ?? boxed.cType ?? boxed.name;
     const lib = resolved.namespace.sharedLibrary;
-    const libExpr = lib === undefined ? "undefined" : quote(lib);
-    return `t.boxed(${joinArgs([
-        quote(glibName),
-        quote(ownership),
-        libExpr,
-        quote(boxed.glibGetType),
-        callerAllocated ? "undefined" : undefined,
-        callerAllocated ? "{ callerAllocated: true }" : undefined,
-    ])})`;
+    const opts = [`ownership: ${quote(ownership)}`];
+    if (lib !== undefined) opts.push(`library: ${quote(lib)}`);
+    opts.push(`getTypeFn: ${quote(boxed.glibGetType)}`);
+    if (callerAllocated) opts.push("callerAllocated: true");
+    return `t.boxed(${quote(glibName)}, { ${opts.join(", ")} })`;
 };
 
 const expressionForResolved = (

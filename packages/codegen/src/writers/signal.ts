@@ -207,7 +207,7 @@ const renderSignalEmitEntry = (context: ModuleContext, collected: CollectedSigna
 const renderConnectCase = (context: ModuleContext, collected: CollectedSignal): string => {
     const { signal } = collected;
     const callback = renderCallback(context, collected);
-    const body = `return connectGobjectSignal(this, signal, ${callback}, handler, after ?? false);`;
+    const body = `return connectGobjectSignal(this, signal, { callback: ${callback}, handler, after: after ?? false });`;
     return renderBlock(`case ${quote(signal.name)}:`, body);
 };
 

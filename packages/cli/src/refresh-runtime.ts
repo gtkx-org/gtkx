@@ -7,17 +7,13 @@ globalThis.$RefreshReg$ = () => {};
 globalThis.$RefreshSig$ = () => (type: unknown) => type;
 
 export function createModuleRegistration(moduleId: string): {
-    // biome-ignore lint/style/useNamingConvention: React Fast Refresh runtime global, name fixed by the React refresh API
     $RefreshReg$: (type: ComponentType, id: string) => void;
-    // biome-ignore lint/style/useNamingConvention: React Fast Refresh runtime global, name fixed by the React refresh API
     $RefreshSig$: typeof RefreshRuntime.createSignatureFunctionForTransform;
 } {
     return {
-        // biome-ignore lint/style/useNamingConvention: React Fast Refresh runtime global, name fixed by the React refresh API
         $RefreshReg$: (type: ComponentType, id: string) => {
             RefreshRuntime.register(type, `${moduleId} ${id}`);
         },
-        // biome-ignore lint/style/useNamingConvention: React Fast Refresh runtime global, name fixed by the React refresh API
         $RefreshSig$: RefreshRuntime.createSignatureFunctionForTransform,
     };
 }

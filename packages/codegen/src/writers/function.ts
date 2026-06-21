@@ -20,8 +20,8 @@ export const renderFnExpression = (context: ModuleContext, fn: GirFunction): str
     context.addRuntimeImport("t");
     const params = planCallArgs(context, fn).map((arg) => arg.paramLiteral);
     const ret = renderReturnDescriptor(context, fn);
-    const options = fn.throws ? ", { throws: true }" : "";
-    return `t.fn(${quote(library)}, ${quote(fn.cIdentifier)}, ${arrayLiteral(params)}, ${ret}${options})`;
+    const throwsEntry = fn.throws ? ", throws: true" : "";
+    return `t.fn(${quote(library)}, ${quote(fn.cIdentifier)}, { args: ${arrayLiteral(params)}, returns: ${ret}${throwsEntry} })`;
 };
 
 export const emitNamespaceFunction = (context: ModuleContext, fn: GirFunction): void => {

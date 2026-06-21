@@ -4,14 +4,16 @@ import { UNBOUND_POSITION } from "./list-factory.js";
 
 export type BoundItem = [ReactNode, GObject.Object, string];
 
-// biome-ignore lint/complexity/useMaxParams: shared flat collector; the maps, resolver, renderer, and accumulator are its variation points
-export const collectFlatBoundItems = (
-    containers: Map<GObject.Object, number>,
-    containerKeys: Map<GObject.Object, string>,
-    resolveItem: (position: number) => unknown,
-    render: (value: unknown) => ReactNode,
-    out: BoundItem[],
-): void => {
+export type FlatBoundItemsQuery = {
+    containers: Map<GObject.Object, number>;
+    containerKeys: Map<GObject.Object, string>;
+    resolveItem: (position: number) => unknown;
+    render: (value: unknown) => ReactNode;
+    out: BoundItem[];
+};
+
+export const collectFlatBoundItems = (query: FlatBoundItemsQuery): void => {
+    const { containers, containerKeys, resolveItem, render, out } = query;
     for (const [container, position] of containers) {
         if (position === UNBOUND_POSITION) continue;
         const key = containerKeys.get(container);

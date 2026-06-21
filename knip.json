@@ -38,7 +38,6 @@
             "project": ["tests/**/*.{ts,tsx}"]
         },
         "packages/ffi": {
-            "includeEntryExports": true,
             "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/gl": {

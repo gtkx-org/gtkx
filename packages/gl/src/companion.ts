@@ -40,7 +40,6 @@ export function getProgramPipelineInfoLog(pipeline: GLuint): string {
     return readInfoLog("glGetProgramPipelineInfoLog", pipeline, getProgramPipelineiv);
 }
 
-// biome-ignore lint/complexity/useMaxParams: mirrors the C `GLDEBUGPROC` callback signature
 export type DebugMessageCallback = (
     source: GLenum,
     type: GLenum,
@@ -69,7 +68,6 @@ export function debugMessageCallback(callback: DebugMessageCallback | null): voi
     enable(DEBUG_OUTPUT);
     enable(DEBUG_OUTPUT_SYNCHRONOUS);
     glDebugMessageCallbackBinding(
-        // biome-ignore lint/complexity/useMaxParams: mirrors the C `GLDEBUGPROC` callback signature
         (source: GLenum, type: GLenum, id: GLuint, severity: GLenum, _length: number, message: string) =>
             callback(source, type, id, severity, message),
     );

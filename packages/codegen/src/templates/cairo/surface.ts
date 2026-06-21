@@ -6,8 +6,12 @@ import { FontOptions } from "./font-options.js";
 import { ImageSurface } from "./image-surface.js";
 
 const { bind } = t;
-const SURFACE_T = t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type");
-const DEVICE_T_NONE = t.boxed("CairoDevice", "borrowed", "libcairo.so.2");
+const SURFACE_T = t.boxed("CairoSurface", {
+    ownership: "borrowed",
+    library: "libcairo-gobject.so.2",
+    getTypeFn: "cairo_gobject_surface_get_type",
+});
+const DEVICE_T_NONE = t.boxed("CairoDevice", { ownership: "borrowed", library: "libcairo.so.2" });
 
 declare module "../cairo.js" {
     interface Surface {
@@ -55,7 +59,11 @@ const cairoSurfaceCreateSimilar = bind(
     "libcairo.so.2",
     "cairo_surface_create_similar",
     [SURFACE_T, t.int32, t.int32, t.int32],
-    t.boxed("CairoSurface", "full", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+    t.boxed("CairoSurface", {
+        ownership: "full",
+        library: "libcairo-gobject.so.2",
+        getTypeFn: "cairo_gobject_surface_get_type",
+    }),
 );
 SurfaceWithStatics.createSimilar = (other: Surface, content: Content, width: number, height: number): Surface => {
     return wrapHandle(cairoSurfaceCreateSimilar(getHandle(other), content, width, height) as Handle, Surface);
@@ -65,7 +73,11 @@ const cairoSurfaceCreateSimilarImage = bind(
     "libcairo.so.2",
     "cairo_surface_create_similar_image",
     [SURFACE_T, t.int32, t.int32, t.int32],
-    t.boxed("CairoSurface", "full", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+    t.boxed("CairoSurface", {
+        ownership: "full",
+        library: "libcairo-gobject.so.2",
+        getTypeFn: "cairo_gobject_surface_get_type",
+    }),
 );
 SurfaceWithStatics.createSimilarImage = (other: Surface, format: Format, width: number, height: number): Surface => {
     return wrapHandle(cairoSurfaceCreateSimilarImage(getHandle(other), format, width, height) as Handle, Surface);
@@ -75,7 +87,11 @@ const cairoSurfaceCreateForRectangle = bind(
     "libcairo.so.2",
     "cairo_surface_create_for_rectangle",
     [SURFACE_T, t.float64, t.float64, t.float64, t.float64],
-    t.boxed("CairoSurface", "full", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+    t.boxed("CairoSurface", {
+        ownership: "full",
+        library: "libcairo-gobject.so.2",
+        getTypeFn: "cairo_gobject_surface_get_type",
+    }),
 );
 SurfaceWithStatics.createForRectangle = (
     target: Surface,
@@ -122,7 +138,11 @@ const cairoSurfaceGetFontOptions = bind(
     "cairo_surface_get_font_options",
     [
         SURFACE_T,
-        t.boxed("CairoFontOptions", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type"),
+        t.boxed("CairoFontOptions", {
+            ownership: "borrowed",
+            library: "libcairo-gobject.so.2",
+            getTypeFn: "cairo_gobject_font_options_get_type",
+        }),
     ],
     t.void,
 );
@@ -264,7 +284,7 @@ Surface.prototype.supportsMimeType = function (mimeType: string): boolean {
 const cairoSurfaceMapToImage = bind(
     "libcairo.so.2",
     "cairo_surface_map_to_image",
-    [SURFACE_T, t.boxed("cairo_rectangle_int_t", "borrowed", "libcairo.so.2")],
+    [SURFACE_T, t.boxed("cairo_rectangle_int_t", { ownership: "borrowed", library: "libcairo.so.2" })],
     SURFACE_T,
 );
 Surface.prototype.mapToImage = function (extents: RectangleInt): Surface {

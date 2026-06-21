@@ -13,7 +13,8 @@
             "complexity": {
                 "noExcessiveCognitiveComplexity": "error",
                 "noExcessiveLinesPerFunction": "error",
-                "useMaxParams": "error"
+                "useMaxParams": "error",
+                "useLiteralKeys": "off"
             },
             "style": {
                 "noNonNullAssertion": "error",
@@ -55,19 +56,27 @@
                                 "selector": {
                                     "kind": "objectLiteralProperty"
                                 },
+                                "match": "[0-9]+|[_$]*([a-zA-Z][a-zA-Z0-9_]*?)[_$]*",
                                 "formats": ["camelCase", "PascalCase", "CONSTANT_CASE"]
                             },
                             {
                                 "selector": {
                                     "kind": "typeProperty"
                                 },
+                                "match": "[0-9]+|[_$]*([a-zA-Z][a-zA-Z0-9_]*?)[_$]*",
                                 "formats": ["camelCase", "PascalCase", "CONSTANT_CASE"]
                             },
                             {
                                 "selector": {
                                     "kind": "typeAlias"
                                 },
-                                "formats": ["PascalCase"]
+                                "match": "[A-Z][a-zA-Z0-9]*"
+                            },
+                            {
+                                "selector": {
+                                    "kind": "namespace"
+                                },
+                                "match": "[A-Za-z][A-Za-z0-9]*"
                             }
                         ]
                     }
@@ -92,7 +101,17 @@
             }
         },
         {
-            "includes": ["packages/gl/src/generated/**", "packages/codegen/src/templates/**"],
+            "includes": ["packages/gl/**"],
+            "linter": {
+                "rules": {
+                    "complexity": {
+                        "useMaxParams": "off"
+                    }
+                }
+            }
+        },
+        {
+            "includes": ["packages/codegen/src/templates/**"],
             "linter": {
                 "rules": {
                     "complexity": {

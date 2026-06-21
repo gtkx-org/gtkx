@@ -9,36 +9,68 @@ const cairoImageSurfaceCreate = bind(
     "libcairo.so.2",
     "cairo_image_surface_create",
     [t.int32, t.int32, t.int32],
-    t.boxed("CairoSurface", "full", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+    t.boxed("CairoSurface", {
+        ownership: "full",
+        library: "libcairo-gobject.so.2",
+        getTypeFn: "cairo_gobject_surface_get_type",
+    }),
 );
 const cairoImageSurfaceCreateFromPng = bind(
     "libcairo.so.2",
     "cairo_image_surface_create_from_png",
     [t.string("full")],
-    t.boxed("CairoSurface", "full", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+    t.boxed("CairoSurface", {
+        ownership: "full",
+        library: "libcairo-gobject.so.2",
+        getTypeFn: "cairo_gobject_surface_get_type",
+    }),
 );
 const cairoImageSurfaceGetWidth = bind(
     "libcairo.so.2",
     "cairo_image_surface_get_width",
-    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type")],
+    [
+        t.boxed("CairoSurface", {
+            ownership: "borrowed",
+            library: "libcairo-gobject.so.2",
+            getTypeFn: "cairo_gobject_surface_get_type",
+        }),
+    ],
     t.int32,
 );
 const cairoImageSurfaceGetHeight = bind(
     "libcairo.so.2",
     "cairo_image_surface_get_height",
-    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type")],
+    [
+        t.boxed("CairoSurface", {
+            ownership: "borrowed",
+            library: "libcairo-gobject.so.2",
+            getTypeFn: "cairo_gobject_surface_get_type",
+        }),
+    ],
     t.int32,
 );
 const cairoImageSurfaceGetFormat = bind(
     "libcairo.so.2",
     "cairo_image_surface_get_format",
-    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type")],
+    [
+        t.boxed("CairoSurface", {
+            ownership: "borrowed",
+            library: "libcairo-gobject.so.2",
+            getTypeFn: "cairo_gobject_surface_get_type",
+        }),
+    ],
     t.int32,
 );
 const cairoImageSurfaceGetStride = bind(
     "libcairo.so.2",
     "cairo_image_surface_get_stride",
-    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type")],
+    [
+        t.boxed("CairoSurface", {
+            ownership: "borrowed",
+            library: "libcairo-gobject.so.2",
+            getTypeFn: "cairo_gobject_surface_get_type",
+        }),
+    ],
     t.int32,
 );
 
@@ -83,12 +115,11 @@ export class ImageSurface extends Surface {
             "cairo_image_surface_get_data",
             [
                 {
-                    type: t.boxed(
-                        "CairoSurface",
-                        "borrowed",
-                        "libcairo-gobject.so.2",
-                        "cairo_gobject_surface_get_type",
-                    ),
+                    type: t.boxed("CairoSurface", {
+                        ownership: "borrowed",
+                        library: "libcairo-gobject.so.2",
+                        getTypeFn: "cairo_gobject_surface_get_type",
+                    }),
                     value: getHandle(this),
                 },
             ],

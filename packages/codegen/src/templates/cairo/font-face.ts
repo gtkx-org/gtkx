@@ -4,9 +4,13 @@ import type { FontSlant, FontType, FontWeight, Status } from "../cairo.js";
 import { FontFace } from "../cairo.js";
 
 const { bind } = t;
-const FONT_FACE_T = t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type");
-const FC_PATTERN_T = t.boxed("FcPattern", "borrowed", "libcairo.so.2");
-const FT_FACE_T = t.boxed("FT_Face", "borrowed", "libcairo.so.2");
+const FONT_FACE_T = t.boxed("CairoFontFace", {
+    ownership: "borrowed",
+    library: "libcairo-gobject.so.2",
+    getTypeFn: "cairo_gobject_font_face_get_type",
+});
+const FC_PATTERN_T = t.boxed("FcPattern", { ownership: "borrowed", library: "libcairo.so.2" });
+const FT_FACE_T = t.boxed("FT_Face", { ownership: "borrowed", library: "libcairo.so.2" });
 
 declare module "../cairo.js" {
     interface FontFace {
@@ -109,7 +113,11 @@ const cairoToyFontFaceCreate = bind(
     "libcairo.so.2",
     "cairo_toy_font_face_create",
     [t.string("full"), t.int32, t.int32],
-    t.boxed("CairoFontFace", "full", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type"),
+    t.boxed("CairoFontFace", {
+        ownership: "full",
+        library: "libcairo-gobject.so.2",
+        getTypeFn: "cairo_gobject_font_face_get_type",
+    }),
 );
 FontFaceWithStatics.create = (family: string, slant: FontSlant, weight: FontWeight): ToyFontFace => {
     return wrapHandle(cairoToyFontFaceCreate(family, slant, weight) as Handle, ToyFontFace);
@@ -119,7 +127,11 @@ const cairoFtFontFaceCreateForFtFace = bind(
     "libcairo.so.2",
     "cairo_ft_font_face_create_for_ft_face",
     [FT_FACE_T, t.int32],
-    t.boxed("CairoFontFace", "full", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type"),
+    t.boxed("CairoFontFace", {
+        ownership: "full",
+        library: "libcairo-gobject.so.2",
+        getTypeFn: "cairo_gobject_font_face_get_type",
+    }),
 );
 FontFaceWithStatics.createForFtFace = (face: Handle, loadFlags: number): FtFontFace => {
     return wrapHandle(cairoFtFontFaceCreateForFtFace(face, loadFlags) as Handle, FtFontFace);
@@ -129,7 +141,11 @@ const cairoFtFontFaceCreateForPattern = bind(
     "libcairo.so.2",
     "cairo_ft_font_face_create_for_pattern",
     [FC_PATTERN_T],
-    t.boxed("CairoFontFace", "full", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type"),
+    t.boxed("CairoFontFace", {
+        ownership: "full",
+        library: "libcairo-gobject.so.2",
+        getTypeFn: "cairo_gobject_font_face_get_type",
+    }),
 );
 FontFaceWithStatics.createForPattern = (pattern: Handle): FtFontFace => {
     return wrapHandle(cairoFtFontFaceCreateForPattern(pattern) as Handle, FtFontFace);

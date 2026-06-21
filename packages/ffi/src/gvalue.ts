@@ -192,7 +192,7 @@ const setBoxedPayload = (
         [
             { type: GVALUE_T, value },
             {
-                type: boxedT(typeName(valueGetType(value)) ?? "GBoxed", "borrowed", LIB),
+                type: boxedT(typeName(valueGetType(value)) ?? "GBoxed", { library: LIB }),
                 value: boxedHandle,
             },
         ],
@@ -244,7 +244,7 @@ export function valueGetBoxed(value: Handle): object | null {
         LIB,
         "g_value_dup_boxed",
         [{ type: GVALUE_T, value }],
-        boxedT(typeName(gtype) ?? "GBoxed", "full", LIB),
+        boxedT(typeName(gtype) ?? "GBoxed", { ownership: "full", library: LIB }),
     );
     return ptr === null ? null : wrapHandle(ptr as Handle, cls);
 }

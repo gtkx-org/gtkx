@@ -7,14 +7,12 @@ export interface SchemaRef<K extends object = Record<string, unknown>> {
     id: string;
     path: string | null;
     keys: { [P in keyof K]: string };
-    // biome-ignore lint/style/useNamingConvention: GObject phantom-type key
     __keys__?: K;
 }
 
 export interface RelocatableSchemaRef<K extends object = Record<string, unknown>> {
     id: string;
     keys: { [P in keyof K]: string };
-    // biome-ignore lint/style/useNamingConvention: GObject phantom-type key
     __keys__?: K;
     at(path: string): SchemaRef<K>;
 }

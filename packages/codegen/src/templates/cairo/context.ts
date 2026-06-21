@@ -18,7 +18,11 @@ import { FontOptions as FontOptionsConstructor } from "./font-options.js";
 import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";
 
 const { bind } = t;
-const CONTEXT_T = t.boxed("CairoContext", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_context_get_type");
+const CONTEXT_T = t.boxed("CairoContext", {
+    ownership: "borrowed",
+    library: "libcairo-gobject.so.2",
+    getTypeFn: "cairo_gobject_context_get_type",
+});
 
 export type CairoGlyph = { index: number; x: number; y: number };
 export type CairoTextCluster = { numBytes: number; numGlyphs: number };
@@ -420,7 +424,14 @@ Context.prototype.setSourceRgba = function (red: number, green: number, blue: nu
 const cairoSetSource = bind(
     "libcairo.so.2",
     "cairo_set_source",
-    [CONTEXT_T, t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type")],
+    [
+        CONTEXT_T,
+        t.boxed("CairoPattern", {
+            ownership: "borrowed",
+            library: "libcairo-gobject.so.2",
+            getTypeFn: "cairo_gobject_pattern_get_type",
+        }),
+    ],
     t.void,
 );
 Context.prototype.setSource = function (pattern: Pattern): void {
@@ -457,7 +468,7 @@ Context.prototype.getLineJoin = function (): LineJoin {
     return cairoGetLineJoin(getHandle(this)) as LineJoin;
 };
 
-const DOUBLE_BUFFER_T = t.boxed("double[]", "borrowed", "libcairo.so.2");
+const DOUBLE_BUFFER_T = t.boxed("double[]", { ownership: "borrowed", library: "libcairo.so.2" });
 
 const cairoSetDash = bind("libcairo.so.2", "cairo_set_dash", [CONTEXT_T, DOUBLE_BUFFER_T, t.int32, t.float64], t.void);
 Context.prototype.setDash = function (dashes: number[], offset: number): void {
@@ -582,7 +593,7 @@ Context.prototype.textPath = function (text: string): void {
 const cairoTextExtents = bind(
     "libcairo.so.2",
     "cairo_text_extents",
-    [CONTEXT_T, t.string("full"), t.boxed("cairo_text_extents_t", "borrowed", "libcairo.so.2")],
+    [CONTEXT_T, t.string("full"), t.boxed("cairo_text_extents_t", { ownership: "borrowed", library: "libcairo.so.2" })],
     t.void,
 );
 Context.prototype.textExtents = function (text: string): TextExtents {
@@ -594,7 +605,7 @@ Context.prototype.textExtents = function (text: string): TextExtents {
 const cairoFontExtents = bind(
     "libcairo.so.2",
     "cairo_font_extents",
-    [CONTEXT_T, t.boxed("cairo_font_extents_t", "borrowed", "libcairo.so.2")],
+    [CONTEXT_T, t.boxed("cairo_font_extents_t", { ownership: "borrowed", library: "libcairo.so.2" })],
     t.void,
 );
 Context.prototype.fontExtents = function (): FontExtents {
@@ -608,7 +619,11 @@ const cairoSetFontOptions = bind(
     "cairo_set_font_options",
     [
         CONTEXT_T,
-        t.boxed("CairoFontOptions", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type"),
+        t.boxed("CairoFontOptions", {
+            ownership: "borrowed",
+            library: "libcairo-gobject.so.2",
+            getTypeFn: "cairo_gobject_font_options_get_type",
+        }),
     ],
     t.void,
 );
@@ -621,7 +636,11 @@ const cairoGetFontOptions = bind(
     "cairo_get_font_options",
     [
         CONTEXT_T,
-        t.boxed("CairoFontOptions", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type"),
+        t.boxed("CairoFontOptions", {
+            ownership: "borrowed",
+            library: "libcairo-gobject.so.2",
+            getTypeFn: "cairo_gobject_font_options_get_type",
+        }),
     ],
     t.void,
 );
@@ -655,7 +674,11 @@ const cairoGetTarget = bind(
     "libcairo.so.2",
     "cairo_get_target",
     [CONTEXT_T],
-    t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+    t.boxed("CairoSurface", {
+        ownership: "borrowed",
+        library: "libcairo-gobject.so.2",
+        getTypeFn: "cairo_gobject_surface_get_type",
+    }),
 );
 Context.prototype.getTarget = function (): Surface {
     return wrapHandle(cairoGetTarget(getHandle(this)) as Handle, Surface) as Surface;
@@ -666,7 +689,11 @@ const cairoSetSourceSurface = bind(
     "cairo_set_source_surface",
     [
         CONTEXT_T,
-        t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+        t.boxed("CairoSurface", {
+            ownership: "borrowed",
+            library: "libcairo-gobject.so.2",
+            getTypeFn: "cairo_gobject_surface_get_type",
+        }),
         t.float64,
         t.float64,
     ],
@@ -701,7 +728,11 @@ const cairoGetSource = bind(
     "libcairo.so.2",
     "cairo_get_source",
     [CONTEXT_T],
-    t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
+    t.boxed("CairoPattern", {
+        ownership: "borrowed",
+        library: "libcairo-gobject.so.2",
+        getTypeFn: "cairo_gobject_pattern_get_type",
+    }),
 );
 Context.prototype.getSource = function (): Pattern {
     return wrapHandle(cairoGetSource(getHandle(this)) as Handle, Pattern) as Pattern;
@@ -760,12 +791,12 @@ const cairoCopyClipRectangleList = bind(
     "libcairo.so.2",
     "cairo_copy_clip_rectangle_list",
     [CONTEXT_T],
-    t.boxed("cairo_rectangle_list_t", "borrowed", "libcairo.so.2"),
+    t.boxed("cairo_rectangle_list_t", { ownership: "borrowed", library: "libcairo.so.2" }),
 );
 const cairoRectangleListDestroy = bind(
     "libcairo.so.2",
     "cairo_rectangle_list_destroy",
-    [t.boxed("cairo_rectangle_list_t", "borrowed", "libcairo.so.2")],
+    [t.boxed("cairo_rectangle_list_t", { ownership: "borrowed", library: "libcairo.so.2" })],
     t.void,
 );
 
@@ -803,7 +834,14 @@ Context.prototype.copyClipRectangleList = function (): Array<{
 const cairoMask = bind(
     "libcairo.so.2",
     "cairo_mask",
-    [CONTEXT_T, t.boxed("CairoPattern", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type")],
+    [
+        CONTEXT_T,
+        t.boxed("CairoPattern", {
+            ownership: "borrowed",
+            library: "libcairo-gobject.so.2",
+            getTypeFn: "cairo_gobject_pattern_get_type",
+        }),
+    ],
     t.void,
 );
 Context.prototype.mask = function (pattern: Pattern): void {
@@ -815,7 +853,11 @@ const cairoMaskSurface = bind(
     "cairo_mask_surface",
     [
         CONTEXT_T,
-        t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+        t.boxed("CairoSurface", {
+            ownership: "borrowed",
+            library: "libcairo-gobject.so.2",
+            getTypeFn: "cairo_gobject_surface_get_type",
+        }),
         t.float64,
         t.float64,
     ],
@@ -828,7 +870,7 @@ Context.prototype.maskSurface = function (surface: Surface, x: number, y: number
 const cairoSetMatrix = bind(
     "libcairo.so.2",
     "cairo_set_matrix",
-    [CONTEXT_T, t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2")],
+    [CONTEXT_T, t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" })],
     t.void,
 );
 Context.prototype.setMatrix = function (matrix: CairoMatrix): void {
@@ -838,7 +880,7 @@ Context.prototype.setMatrix = function (matrix: CairoMatrix): void {
 const cairoGetMatrix = bind(
     "libcairo.so.2",
     "cairo_get_matrix",
-    [CONTEXT_T, t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2")],
+    [CONTEXT_T, t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" })],
     t.void,
 );
 Context.prototype.getMatrix = function (): CairoMatrix {
@@ -850,7 +892,7 @@ Context.prototype.getMatrix = function (): CairoMatrix {
 const cairoTransform = bind(
     "libcairo.so.2",
     "cairo_transform",
-    [CONTEXT_T, t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2")],
+    [CONTEXT_T, t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" })],
     t.void,
 );
 Context.prototype.transform = function (matrix: CairoMatrix): void {
@@ -949,7 +991,11 @@ const cairoPopGroup = bind(
     "libcairo.so.2",
     "cairo_pop_group",
     [CONTEXT_T],
-    t.boxed("CairoPattern", "full", "libcairo-gobject.so.2", "cairo_gobject_pattern_get_type"),
+    t.boxed("CairoPattern", {
+        ownership: "full",
+        library: "libcairo-gobject.so.2",
+        getTypeFn: "cairo_gobject_pattern_get_type",
+    }),
 );
 Context.prototype.popGroup = function (): Pattern {
     return wrapHandle(cairoPopGroup(getHandle(this)) as Handle, Pattern) as Pattern;
@@ -964,7 +1010,11 @@ const cairoGetGroupTarget = bind(
     "libcairo.so.2",
     "cairo_get_group_target",
     [CONTEXT_T],
-    t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type"),
+    t.boxed("CairoSurface", {
+        ownership: "borrowed",
+        library: "libcairo-gobject.so.2",
+        getTypeFn: "cairo_gobject_surface_get_type",
+    }),
 );
 Context.prototype.getGroupTarget = function (): Surface {
     return wrapHandle(cairoGetGroupTarget(getHandle(this)) as Handle, Surface) as Surface;
@@ -973,7 +1023,14 @@ Context.prototype.getGroupTarget = function (): Surface {
 const cairoSetFontFace = bind(
     "libcairo.so.2",
     "cairo_set_font_face",
-    [CONTEXT_T, t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type")],
+    [
+        CONTEXT_T,
+        t.boxed("CairoFontFace", {
+            ownership: "borrowed",
+            library: "libcairo-gobject.so.2",
+            getTypeFn: "cairo_gobject_font_face_get_type",
+        }),
+    ],
     t.void,
 );
 Context.prototype.setFontFace = function (fontFace: FontFace): void {
@@ -984,7 +1041,11 @@ const cairoGetFontFace = bind(
     "libcairo.so.2",
     "cairo_get_font_face",
     [CONTEXT_T],
-    t.boxed("CairoFontFace", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_font_face_get_type"),
+    t.boxed("CairoFontFace", {
+        ownership: "borrowed",
+        library: "libcairo-gobject.so.2",
+        getTypeFn: "cairo_gobject_font_face_get_type",
+    }),
 );
 Context.prototype.getFontFace = function (): FontFace {
     return wrapHandle(cairoGetFontFace(getHandle(this)) as Handle, FontFace) as FontFace;
@@ -993,7 +1054,7 @@ Context.prototype.getFontFace = function (): FontFace {
 const cairoSetFontMatrix = bind(
     "libcairo.so.2",
     "cairo_set_font_matrix",
-    [CONTEXT_T, t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2")],
+    [CONTEXT_T, t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" })],
     t.void,
 );
 Context.prototype.setFontMatrix = function (matrix: CairoMatrix): void {
@@ -1003,7 +1064,7 @@ Context.prototype.setFontMatrix = function (matrix: CairoMatrix): void {
 const cairoGetFontMatrix = bind(
     "libcairo.so.2",
     "cairo_get_font_matrix",
-    [CONTEXT_T, t.boxed("cairo_matrix_t", "borrowed", "libcairo.so.2")],
+    [CONTEXT_T, t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" })],
     t.void,
 );
 Context.prototype.getFontMatrix = function (): CairoMatrix {
@@ -1015,7 +1076,14 @@ Context.prototype.getFontMatrix = function (): CairoMatrix {
 const cairoSetScaledFont = bind(
     "libcairo.so.2",
     "cairo_set_scaled_font",
-    [CONTEXT_T, t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type")],
+    [
+        CONTEXT_T,
+        t.boxed("CairoScaledFont", {
+            ownership: "borrowed",
+            library: "libcairo-gobject.so.2",
+            getTypeFn: "cairo_gobject_scaled_font_get_type",
+        }),
+    ],
     t.void,
 );
 Context.prototype.setScaledFont = function (scaledFont: ScaledFont): void {
@@ -1026,7 +1094,11 @@ const cairoGetScaledFont = bind(
     "libcairo.so.2",
     "cairo_get_scaled_font",
     [CONTEXT_T],
-    t.boxed("CairoScaledFont", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_scaled_font_get_type"),
+    t.boxed("CairoScaledFont", {
+        ownership: "borrowed",
+        library: "libcairo-gobject.so.2",
+        getTypeFn: "cairo_gobject_scaled_font_get_type",
+    }),
 );
 Context.prototype.getScaledFont = function (): ScaledFont {
     return wrapHandle(cairoGetScaledFont(getHandle(this)) as Handle, ScaledFont) as ScaledFont;
@@ -1035,7 +1107,7 @@ Context.prototype.getScaledFont = function (): ScaledFont {
 const cairoShowGlyphs = bind(
     "libcairo.so.2",
     "cairo_show_glyphs",
-    [CONTEXT_T, t.boxed("cairo_glyph_t", "borrowed", "libcairo.so.2"), t.int32],
+    [CONTEXT_T, t.boxed("cairo_glyph_t", { ownership: "borrowed", library: "libcairo.so.2" }), t.int32],
     t.void,
 );
 Context.prototype.showGlyphs = function (glyphs: Array<{ index: number; x: number; y: number }>): void {
@@ -1045,7 +1117,7 @@ Context.prototype.showGlyphs = function (glyphs: Array<{ index: number; x: numbe
 const cairoGlyphPath = bind(
     "libcairo.so.2",
     "cairo_glyph_path",
-    [CONTEXT_T, t.boxed("cairo_glyph_t", "borrowed", "libcairo.so.2"), t.int32],
+    [CONTEXT_T, t.boxed("cairo_glyph_t", { ownership: "borrowed", library: "libcairo.so.2" }), t.int32],
     t.void,
 );
 Context.prototype.glyphPath = function (glyphs: Array<{ index: number; x: number; y: number }>): void {
@@ -1057,9 +1129,9 @@ const cairoGlyphExtents = bind(
     "cairo_glyph_extents",
     [
         CONTEXT_T,
-        t.boxed("cairo_glyph_t", "borrowed", "libcairo.so.2"),
+        t.boxed("cairo_glyph_t", { ownership: "borrowed", library: "libcairo.so.2" }),
         t.int32,
-        t.boxed("cairo_text_extents_t", "borrowed", "libcairo.so.2"),
+        t.boxed("cairo_text_extents_t", { ownership: "borrowed", library: "libcairo.so.2" }),
     ],
     t.void,
 );
@@ -1074,7 +1146,7 @@ const cairoCopyPath = bind(
     "libcairo.so.2",
     "cairo_copy_path",
     [CONTEXT_T],
-    t.boxed("cairo_path_t", "full", "libcairo.so.2", undefined, "cairo_path_destroy"),
+    t.boxed("cairo_path_t", { ownership: "full", library: "libcairo.so.2", freeFn: "cairo_path_destroy" }),
 );
 Context.prototype.copyPath = function (): PathData[] {
     return parsePath(cairoCopyPath(getHandle(this)) as Handle);
@@ -1084,7 +1156,7 @@ const cairoCopyPathFlat = bind(
     "libcairo.so.2",
     "cairo_copy_path_flat",
     [CONTEXT_T],
-    t.boxed("cairo_path_t", "full", "libcairo.so.2", undefined, "cairo_path_destroy"),
+    t.boxed("cairo_path_t", { ownership: "full", library: "libcairo.so.2", freeFn: "cairo_path_destroy" }),
 );
 Context.prototype.copyPathFlat = function (): PathData[] {
     return parsePath(cairoCopyPathFlat(getHandle(this)) as Handle);
@@ -1117,7 +1189,13 @@ export const statusToString = (status: Status): string => {
 const cairoCreate = bind(
     "libcairo.so.2",
     "cairo_create",
-    [t.boxed("CairoSurface", "borrowed", "libcairo-gobject.so.2", "cairo_gobject_surface_get_type")],
+    [
+        t.boxed("CairoSurface", {
+            ownership: "borrowed",
+            library: "libcairo-gobject.so.2",
+            getTypeFn: "cairo_gobject_surface_get_type",
+        }),
+    ],
     CONTEXT_T,
 );
 
@@ -1159,9 +1237,9 @@ const cairoShowTextGlyphs = bind(
         CONTEXT_T,
         t.string("full"),
         t.int32,
-        t.boxed("cairo_glyph_t", "borrowed", "libcairo.so.2"),
+        t.boxed("cairo_glyph_t", { ownership: "borrowed", library: "libcairo.so.2" }),
         t.int32,
-        t.boxed("cairo_text_cluster_t", "borrowed", "libcairo.so.2"),
+        t.boxed("cairo_text_cluster_t", { ownership: "borrowed", library: "libcairo.so.2" }),
         t.int32,
         t.int32,
     ],

@@ -10,10 +10,6 @@ import { expect } from "vitest";
 import { DemoProvider, useDemo } from "../src/context/demo-context.js";
 import type { Demo, DemoProps, DemoProviderProps } from "../src/demos/types.js";
 
-/**
- * Builds a `GObject.Value` holding a UTF-8 string, the form GTK drag-and-drop
- * and clipboard pipelines expect for textual content.
- */
 export const makeStringValue = (text: string): GObject.Value => {
     const value = new GObject.Value();
     value.init(GObject.TYPE_STRING);
@@ -21,10 +17,6 @@ export const makeStringValue = (text: string): GObject.Value => {
     return value;
 };
 
-/**
- * Builds a `GObject.Value` holding a signed integer, used to exercise the
- * "unrecognised drop type" branch of drop handlers.
- */
 export const makeIntValue = (n: number): GObject.Value => {
     const value = new GObject.Value();
     value.init(GObject.TYPE_INT);
@@ -32,10 +24,6 @@ export const makeIntValue = (n: number): GObject.Value => {
     return value;
 };
 
-/**
- * Builds a `GObject.Value` boxing a `Gdk.RGBA` color, the form GTK colour
- * drop targets and clipboard colour content expect.
- */
 export const makeRgbaValue = (r: number, g: number, b: number, a: number): GObject.Value => {
     const rgba = new Gdk.RGBA();
     rgba.red = r;
@@ -48,10 +36,6 @@ export const makeRgbaValue = (r: number, g: number, b: number, a: number): GObje
     return value;
 };
 
-/**
- * Builds a `GObject.Value` holding the `Gio.File` for the given filesystem
- * path, the form GTK file drop targets and clipboard file content expect.
- */
 export const makeFileValue = (path: string): GObject.Value => {
     const file = Gio.fileNewForPath(path);
     const value = new GObject.Value();
@@ -143,10 +127,6 @@ export const renderDemo = async (
     });
 };
 
-/**
- * Finds the header-bar search toggle by name and asserts it is a
- * `Gtk.ToggleButton` that starts inactive, returning it for further use.
- */
 export const findInactiveSearchToggle = async (): Promise<Gtk.ToggleButton> => {
     const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
     expect(toggle).toBeInstanceOf(Gtk.ToggleButton);
@@ -154,17 +134,9 @@ export const findInactiveSearchToggle = async (): Promise<Gtk.ToggleButton> => {
     return toggle;
 };
 
-/**
- * Locates the underlined "_Open" button that demos place in their header bar,
- * resolving it by its accessible BUTTON role and mnemonic label.
- */
 export const findOpenButton = async (): Promise<Gtk.Button> =>
     (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" })) as Gtk.Button;
 
-/**
- * Renders the given demo and asserts its header bar exposes the shared
- * underlined "_Open" button used by demos that open files.
- */
 export const renderDemoAndExpectOpenButton = async (demo: Demo): Promise<void> => {
     await renderDemo(demo);
     const openButton = await findOpenButton();
@@ -172,10 +144,6 @@ export const renderDemoAndExpectOpenButton = async (demo: Demo): Promise<void> =
     expect(openButton.getUseUnderline()).toBe(true);
 };
 
-/**
- * Reads the full UTF-8 contents of a `Gtk.TextView`'s buffer, returning an empty
- * string when the buffer yields no text.
- */
 export const readBufferText = (view: Gtk.TextView): string => {
     const buffer = view.getBuffer();
     return buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false) ?? "";

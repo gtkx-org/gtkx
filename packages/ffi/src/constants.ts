@@ -5,4 +5,4 @@ export const LIB = "libgobject-2.0.so.0,libglib-2.0.so.0";
 
 export const GVALUE_SIZE = 24;
 
-export const GVALUE_T: BoxedType = boxedT("GValue", "borrowed", LIB, "g_value_get_type");
+export const GVALUE_T: BoxedType = boxedT("GValue", { library: LIB, getTypeFn: "g_value_get_type" });

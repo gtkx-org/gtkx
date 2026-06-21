@@ -318,14 +318,14 @@ const applyLayoutChild = (parent: Gtk.Widget, widget: Gtk.Widget, kind: "grid" |
 
 const multiChildState = new WeakMap<Node, Gtk.Widget[]>();
 
-// biome-ignore lint/complexity/useMaxParams: shared multi-child attach skeleton; add/remove/apply are supplied as closures
-const reconcileMultiChildAttach = (
-    child: Node,
-    parent: Gtk.Widget,
-    remove: (widget: Gtk.Widget) => void,
-    add: (widget: Gtk.Widget) => void,
-    applyChild: (widget: Gtk.Widget, props: Props) => void,
-): void => {
+type MultiChildHandlers = {
+    remove: (widget: Gtk.Widget) => void;
+    add: (widget: Gtk.Widget) => void;
+    applyChild: (widget: Gtk.Widget, props: Props) => void;
+};
+
+const reconcileMultiChildAttach = (child: Node, parent: Gtk.Widget, handlers: MultiChildHandlers): void => {
+    const { remove, add, applyChild } = handlers;
     const childState = stateOf(child);
     const desired = wrapperChildWidgets(child);
     const prev = multiChildState.get(child) ?? [];
@@ -353,13 +353,11 @@ const layoutChildMapping: ElementMapping = {
         if (!(parent instanceof Gtk.Widget)) return;
         const kind = resolveLayoutKind(parent);
         if (!kind) return;
-        reconcileMultiChildAttach(
-            child,
-            parent,
-            (widget) => detachChild(widget, parent),
-            (widget) => attachChild(widget, parent),
-            (widget, props) => applyLayoutChild(parent, widget, kind, props),
-        );
+        reconcileMultiChildAttach(child, parent, {
+            remove: (widget) => detachChild(widget, parent),
+            add: (widget) => attachChild(widget, parent),
+            applyChild: (widget, props) => applyLayoutChild(parent, widget, kind, props),
+        });
     },
     detach: (child, parent) => {
         reconcileMultiChildDetach(child, (widget) => {
@@ -377,15 +375,13 @@ const overlayMapping: ElementMapping = {
     matches: (child, parent) => isWrapperKind(child, OVERLAY_KIND) && parent instanceof Gtk.Overlay,
     attach: (child, parent) => {
         if (!(parent instanceof Gtk.Overlay)) return;
-        reconcileMultiChildAttach(
-            child,
-            parent,
-            (widget) => {
+        reconcileMultiChildAttach(child, parent, {
+            remove: (widget) => {
                 if (widget.getParent() === parent) parent.removeOverlay(widget);
             },
-            (widget) => parent.addOverlay(widget),
-            (widget, props) => applyOverlayFlags(parent, widget, props),
-        );
+            add: (widget) => parent.addOverlay(widget),
+            applyChild: (widget, props) => applyOverlayFlags(parent, widget, props),
+        });
     },
     detach: (child, parent) => {
         reconcileMultiChildDetach(child, (widget) => {

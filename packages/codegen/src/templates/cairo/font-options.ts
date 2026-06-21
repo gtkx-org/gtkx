@@ -4,12 +4,11 @@ import type { Antialias, HintMetrics, HintStyle, Status, SubpixelOrder } from ".
 import { FontOptions } from "../cairo.js";
 
 const { bind } = t;
-const FONT_OPTIONS_T = t.boxed(
-    "CairoFontOptions",
-    "borrowed",
-    "libcairo-gobject.so.2",
-    "cairo_gobject_font_options_get_type",
-);
+const FONT_OPTIONS_T = t.boxed("CairoFontOptions", {
+    ownership: "borrowed",
+    library: "libcairo-gobject.so.2",
+    getTypeFn: "cairo_gobject_font_options_get_type",
+});
 
 declare module "../cairo.js" {
     interface FontOptions {
@@ -30,13 +29,21 @@ const cairoFontOptionsCreate = bind(
     "libcairo.so.2",
     "cairo_font_options_create",
     [],
-    t.boxed("CairoFontOptions", "full", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type"),
+    t.boxed("CairoFontOptions", {
+        ownership: "full",
+        library: "libcairo-gobject.so.2",
+        getTypeFn: "cairo_gobject_font_options_get_type",
+    }),
 );
 const cairoFontOptionsCopy = bind(
     "libcairo.so.2",
     "cairo_font_options_copy",
     [FONT_OPTIONS_T],
-    t.boxed("CairoFontOptions", "full", "libcairo-gobject.so.2", "cairo_gobject_font_options_get_type"),
+    t.boxed("CairoFontOptions", {
+        ownership: "full",
+        library: "libcairo-gobject.so.2",
+        getTypeFn: "cairo_gobject_font_options_get_type",
+    }),
 );
 
 class FontOptionsImpl extends FontOptions {

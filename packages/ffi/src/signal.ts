@@ -35,14 +35,14 @@ export function signalDetailQuark(signal: string): number {
     return gQuarkFromString(signal.slice(detailIndex + 2)) as number;
 }
 
-// biome-ignore lint/complexity/useMaxParams: mirrors the positional arguments g_signal_connect_data takes after the symbol
-export function connectGobjectSignal(
-    instance: object,
-    signal: string,
-    callback: CallbackType,
-    handler: SignalHandler,
-    after: boolean,
-): number {
+export type SignalConnectSpec = {
+    callback: CallbackType;
+    handler: SignalHandler;
+    after: boolean;
+};
+
+export function connectGobjectSignal(instance: object, signal: string, spec: SignalConnectSpec): number {
+    const { callback, handler, after } = spec;
     const wrapped = wrapHandler(handler, callback, "skip");
     return call(
         LIB,

@@ -536,7 +536,7 @@ export class ListController implements ColumnHost {
     }): void {
         const { containers, containerKeys, resolveItem, renderFn, out } = args;
         if (this.modelController.treeModel === null) {
-            collectFlatBoundItems(containers, containerKeys, resolveItem, renderFn, out);
+            collectFlatBoundItems({ containers, containerKeys, resolveItem, render: renderFn, out });
             return;
         }
 

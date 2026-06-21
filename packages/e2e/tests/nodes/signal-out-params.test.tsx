@@ -146,6 +146,11 @@ describe("signal emit() - caller-allocated out-parameter", () => {
         );
 
         const overlay = overlayRef.current as Gtk.Overlay;
+
+        await waitFor(() => {
+            expect(overlay.getWidth()).toBeGreaterThan(0);
+        });
+
         const child = overlay.getLastChild() as Gtk.Widget;
         const [handled, allocation] = overlay.emit("get-child-position", child);
 

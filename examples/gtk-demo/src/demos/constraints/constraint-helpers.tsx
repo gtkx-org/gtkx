@@ -5,18 +5,10 @@ import { ConstraintChildButtons } from "./child-buttons.js";
 
 const A = Gtk.ConstraintAttribute;
 
-/**
- * Pins `button1` to the top edge of the container with the standard 8px inset
- * shared by the constraint demos.
- */
 export const TopEdgeConstraint = (): ReactNode => (
     <GtkConstraintLayout.Constraint target="button1" targetAttribute={A.TOP} sourceAttribute={A.TOP} constant={8} />
 );
 
-/**
- * Pins `button3` to the bottom edge of the container with the standard 8px
- * inset shared by the constraint demos.
- */
 export const BottomEdgeConstraint = (): ReactNode => (
     <GtkConstraintLayout.Constraint
         target="button3"
@@ -26,12 +18,6 @@ export const BottomEdgeConstraint = (): ReactNode => (
     />
 );
 
-/**
- * Renders the shared container scaffold for the constraint demos: an expanding
- * `GtkBox` driven by the given constraint `layoutManager`, holding the three
- * child buttons that every demo lays out. Extra `controllers` are attached when
- * supplied.
- */
 export const ConstraintContainer = ({
     layoutManager,
     controllers,

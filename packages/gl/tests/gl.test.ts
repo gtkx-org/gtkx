@@ -433,7 +433,6 @@ describe("sync objects", () => {
 describe("debug output", () => {
     it("delivers inserted messages to the synchronous callback", () => {
         const received: string[] = [];
-        // biome-ignore lint/complexity/useMaxParams: mirrors the C `GLDEBUGPROC` callback signature
         gl.debugMessageCallback((_source, _type, _id, _severity, message) => {
             received.push(message);
         });

@@ -15,7 +15,9 @@ export type ArgType = {
     consumed?: boolean;
 };
 
-export type FnOptions = {
+export type FnSignature = {
+    args: ArgType[];
+    returns: Type;
     throws?: boolean;
 };
 
@@ -32,7 +34,12 @@ const toNativeArgTypes = (argTypes: ArgType[], throws: boolean): Type[] => {
     const nativeArgTypes = argTypes.map((argType) =>
         argType.direction !== undefined && argType.callerAllocates !== true ? refT(argType.type) : argType.type,
     );
-    if (throws) nativeArgTypes.push(refT(boxedT("GError", "full", "libgobject-2.0.so.0", "g_error_get_type")));
+    if (throws)
+        nativeArgTypes.push(
+            refT(
+                boxedT("GError", { ownership: "full", library: "libgobject-2.0.so.0", getTypeFn: "g_error_get_type" }),
+            ),
+        );
     return nativeArgTypes;
 };
 
@@ -80,15 +87,8 @@ const toOutputs = (plans: ArgPlan[], inputs: unknown[], nativeValues: Value[]): 
     return outputs;
 };
 
-// biome-ignore lint/complexity/useMaxParams: mirrors the raw binder's (library, symbol, args, return) shape with added call-shape options
-export function fn(
-    library: string,
-    symbol: string,
-    argTypes: ArgType[],
-    returnType: Type,
-    options: FnOptions = {},
-): (...inputs: unknown[]) => unknown {
-    const throws = options.throws === true;
+export function fn(library: string, symbol: string, signature: FnSignature): (...inputs: unknown[]) => unknown {
+    const { args: argTypes, returns: returnType, throws = false } = signature;
     const nativeArgTypes = toNativeArgTypes(argTypes, throws);
     const nativeFn = bind(library, symbol, nativeArgTypes, returnType);
     const hasPrimary = returnType.type !== "void";

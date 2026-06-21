@@ -68,7 +68,13 @@ export class ColumnController {
         if (!renderCell) return [];
 
         const items: BoundItem[] = [];
-        collectFlatBoundItems(this.containers, this.containerKeys, resolveItem, renderCell, items);
+        collectFlatBoundItems({
+            containers: this.containers,
+            containerKeys: this.containerKeys,
+            resolveItem,
+            render: renderCell,
+            out: items,
+        });
         return items;
     }
 }

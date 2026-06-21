@@ -1,30 +1,23 @@
 import { offSignal, onceSignal, onSignal } from "@gtkx/ffi";
 import { Object as GObject, type GType, signalHandlerDisconnect } from "../gobject.js";
 
-// biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
-type Listener = (...args: any[]) => any;
+type Listener = (...args: unknown[]) => unknown;
 
 declare module "../gobject.js" {
     interface Object {
-        // biome-ignore lint/style/useNamingConvention: GObject runtime type key stamped on every instance
         __gtype__: GType;
 
         disconnect(handlerId: number): void;
 
-        // biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
-        on(sigName: string, callback: (...args: any[]) => any, after?: boolean): Object;
+        on(sigName: string, callback: (...args: unknown[]) => unknown, after?: boolean): Object;
 
-        // biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
-        once(sigName: string, callback: (...args: any[]) => any, after?: boolean): Object;
+        once(sigName: string, callback: (...args: unknown[]) => unknown, after?: boolean): Object;
 
-        // biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
-        off(sigName: string, callback: (...args: any[]) => any): Object;
+        off(sigName: string, callback: (...args: unknown[]) => unknown): Object;
 
-        // biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
-        addEventListener(sigName: string, callback: (...args: any[]) => any, after?: boolean): Object;
+        addEventListener(sigName: string, callback: (...args: unknown[]) => unknown, after?: boolean): Object;
 
-        // biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
-        removeEventListener(sigName: string, callback: (...args: any[]) => any): Object;
+        removeEventListener(sigName: string, callback: (...args: unknown[]) => unknown): Object;
     }
 }
 

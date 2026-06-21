@@ -30,8 +30,3 @@ export const configure = (newConfig: Partial<Config> | ConfigFn): void => {
     const updates = typeof newConfig === "function" ? newConfig(currentConfig) : newConfig;
     currentConfig = { ...currentConfig, ...updates };
 };
-
-/** @public */
-export const resetConfig = (): void => {
-    currentConfig = { ...defaultConfig };
-};
