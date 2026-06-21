@@ -18,7 +18,8 @@ import {
     GtkListBox,
     GtkSwitch,
 } from "@gtkx/jsx/gtk";
-import { render as baseRender, createRootElement, screen, userEvent, waitFor } from "@gtkx/testing";
+import { createRootElement } from "@gtkx/react";
+import { render as baseRender, screen, userEvent, waitFor } from "@gtkx/testing";
 import type { ReactNode } from "react";
 import { createRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";

@@ -34,6 +34,27 @@ fn u8_array_ref_type() -> RefType {
     }))
 }
 
+fn assert_array_decodes_empty(array_type: ArrayType, storage: &ffi::FfiValue) {
+    let ref_type = RefType::new(Type::Array(array_type));
+    let decoded = ref_type
+        .decode_with_context(storage, &[], &[])
+        .expect("array decode should succeed");
+    assert!(matches!(decoded, Value::Array(arr) if arr.is_empty()));
+}
+
+fn with_i32_storage_ref(value: i32, f: impl FnOnce(&ffi::FfiValue, &RefType)) {
+    let mut value = value;
+    let slot = &mut value as *mut i32 as *mut c_void;
+    let ffi_value = ffi::FfiValue::Storage(FfiStorage::new(slot, FfiStorageKind::Unit));
+    let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
+    f(&ffi_value, &ref_type);
+}
+
+fn ptr_sized_malloc_storage() -> ffi::FfiValue {
+    let inner = unsafe { glib::ffi::g_malloc0(std::mem::size_of::<*mut c_void>()) };
+    ptr_storage(inner)
+}
+
 #[test]
 fn decode_rejects_non_storage_non_null_ptr() {
     common::run(|| {
@@ -57,15 +78,12 @@ fn decode_null_ptr_yields_null() {
 #[test]
 fn decode_integer_reads_number() {
     common::run(|| {
-        let mut value: i32 = 4321;
-        let slot = &mut value as *mut i32 as *mut c_void;
-        let ffi_value = ffi::FfiValue::Storage(FfiStorage::new(slot, FfiStorageKind::Unit));
-
-        let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
-        let decoded = ref_type
-            .decode(&ffi_value)
-            .expect("integer ref decode should succeed");
-        assert!(matches!(decoded, Value::Number(n) if (n - 4321.0).abs() < f64::EPSILON));
+        with_i32_storage_ref(4321, |ffi_value, ref_type| {
+            let decoded = ref_type
+                .decode(ffi_value)
+                .expect("integer ref decode should succeed");
+            assert!(matches!(decoded, Value::Number(n) if (n - 4321.0).abs() < f64::EPSILON));
+        });
     });
 }
 
@@ -239,29 +257,23 @@ fn decode_ref_string_full_ownership_frees_pointer() {
 #[test]
 fn decode_with_context_non_array_delegates_to_decode() {
     common::run(|| {
-        let mut value: i32 = 11;
-        let slot = &mut value as *mut i32 as *mut c_void;
-        let ffi_value = ffi::FfiValue::Storage(FfiStorage::new(slot, FfiStorageKind::Unit));
-
-        let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
-        let decoded = ref_type
-            .decode_with_context(&ffi_value, &[], &[])
-            .expect("non-array decode_with_context should succeed");
-        assert!(matches!(decoded, Value::Number(n) if (n - 11.0).abs() < f64::EPSILON));
+        with_i32_storage_ref(11, |ffi_value, ref_type| {
+            let decoded = ref_type
+                .decode_with_context(ffi_value, &[], &[])
+                .expect("non-array decode_with_context should succeed");
+            assert!(matches!(decoded, Value::Number(n) if (n - 11.0).abs() < f64::EPSILON));
+        });
     });
 }
 
 #[test]
 fn decode_with_context_trait_method_delegates() {
     common::run(|| {
-        let mut value: i32 = 13;
-        let slot = &mut value as *mut i32 as *mut c_void;
-        let ffi_value = ffi::FfiValue::Storage(FfiStorage::new(slot, FfiStorageKind::Unit));
-
-        let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
-        let decoded = FfiDecoder::decode_with_context(&ref_type, &ffi_value, &[], &[])
-            .expect("trait decode_with_context should succeed");
-        assert!(matches!(decoded, Value::Number(n) if (n - 13.0).abs() < f64::EPSILON));
+        with_i32_storage_ref(13, |ffi_value, ref_type| {
+            let decoded = FfiDecoder::decode_with_context(ref_type, ffi_value, &[], &[])
+                .expect("trait decode_with_context should succeed");
+            assert!(matches!(decoded, Value::Number(n) if (n - 13.0).abs() < f64::EPSILON));
+        });
     });
 }
 
@@ -301,19 +313,14 @@ fn decode_with_context_array_string_items_not_freed_by_ref() {
             ownership: Ownership::Full,
             element_size: None,
         };
-        let ref_type = RefType::new(Type::Array(array_type));
-        let decoded = ref_type
-            .decode_with_context(&storage, &[], &[])
-            .expect("array string items decode should succeed");
-        assert!(matches!(decoded, Value::Array(arr) if arr.is_empty()));
+        assert_array_decodes_empty(array_type, &storage);
     });
 }
 
 #[test]
 fn decode_with_context_array_container_released_by_array_decoder() {
     common::run(|| {
-        let inner = unsafe { glib::ffi::g_malloc0(std::mem::size_of::<*mut c_void>()) };
-        let storage = ptr_storage(inner);
+        let storage = ptr_sized_malloc_storage();
 
         let array_type = ArrayType {
             item_type: Box::new(Type::GObject(GObjectType {
@@ -323,11 +330,7 @@ fn decode_with_context_array_container_released_by_array_decoder() {
             ownership: Ownership::Full,
             element_size: None,
         };
-        let ref_type = RefType::new(Type::Array(array_type));
-        let decoded = ref_type
-            .decode_with_context(&storage, &[], &[])
-            .expect("array decode should release null-terminated container once");
-        assert!(matches!(decoded, Value::Array(arr) if arr.is_empty()));
+        assert_array_decodes_empty(array_type, &storage);
     });
 }
 
@@ -344,19 +347,14 @@ fn decode_with_context_garray_container_released_by_array_decoder() {
             ownership: Ownership::Full,
             element_size: None,
         };
-        let ref_type = RefType::new(Type::Array(array_type));
-        let decoded = ref_type
-            .decode_with_context(&storage, &[], &[])
-            .expect("GArray decode should release container once");
-        assert!(matches!(decoded, Value::Array(arr) if arr.is_empty()));
+        assert_array_decodes_empty(array_type, &storage);
     });
 }
 
 #[test]
 fn decode_with_context_array_non_string_items_freed_by_ref() {
     common::run(|| {
-        let inner = unsafe { glib::ffi::g_malloc0(std::mem::size_of::<*mut c_void>()) };
-        let storage = ptr_storage(inner);
+        let storage = ptr_sized_malloc_storage();
 
         let array_type = ArrayType {
             item_type: Box::new(Type::Integer(IntegerKind::U8)),
@@ -364,11 +362,7 @@ fn decode_with_context_array_non_string_items_freed_by_ref() {
             ownership: Ownership::Full,
             element_size: None,
         };
-        let ref_type = RefType::new(Type::Array(array_type));
-        let decoded = ref_type
-            .decode_with_context(&storage, &[], &[])
-            .expect("array non-string items decode should succeed");
-        assert!(matches!(decoded, Value::Array(arr) if arr.is_empty()));
+        assert_array_decodes_empty(array_type, &storage);
     });
 }
 
@@ -387,11 +381,7 @@ fn decode_with_context_array_non_ptr_storage_uses_storage_pointer() {
             ownership: Ownership::Borrowed,
             element_size: None,
         };
-        let ref_type = RefType::new(Type::Array(array_type));
-        let decoded = ref_type
-            .decode_with_context(&storage, &[], &[])
-            .expect("array non-ptr-storage decode should succeed");
-        assert!(matches!(decoded, Value::Array(arr) if arr.is_empty()));
+        assert_array_decodes_empty(array_type, &storage);
     });
 }
 

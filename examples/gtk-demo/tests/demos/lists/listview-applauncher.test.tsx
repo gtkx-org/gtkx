@@ -11,6 +11,13 @@ const appInfoPrototype = (): Gio.AppInfo => {
     return Object.getPrototypeOf(first);
 };
 
+const activateFirstRowAndExpectLaunch = async (launchSpy: ReturnType<typeof vi.spyOn>): Promise<void> => {
+    await renderDemo(listviewApplauncherDemo);
+    const listView = (await screen.findByName("list-view")) as Gtk.ListView;
+    await fireEvent(listView, "activate", 0);
+    await waitFor(() => expect(launchSpy).toHaveBeenCalled());
+};
+
 describe("listviewApplauncherDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listviewApplauncherDemo.id).toBe("listview-applauncher");
@@ -54,10 +61,7 @@ describe("listviewApplauncherDemo rows", () => {
     it("invokes Gio.AppInfo.launch when a row is activated", async () => {
         const launchSpy = vi.spyOn(appInfoPrototype(), "launch").mockReturnValue(true);
         try {
-            await renderDemo(listviewApplauncherDemo);
-            const listView = (await screen.findByName("list-view")) as Gtk.ListView;
-            await fireEvent(listView, "activate", 0);
-            await waitFor(() => expect(launchSpy).toHaveBeenCalled());
+            await activateFirstRowAndExpectLaunch(launchSpy);
         } finally {
             launchSpy.mockRestore();
         }
@@ -68,10 +72,7 @@ describe("listviewApplauncherDemo rows", () => {
             throw new Error("denied by policy");
         });
         try {
-            await renderDemo(listviewApplauncherDemo);
-            const listView = (await screen.findByName("list-view")) as Gtk.ListView;
-            await fireEvent(listView, "activate", 0);
-            await waitFor(() => expect(launchSpy).toHaveBeenCalled());
+            await activateFirstRowAndExpectLaunch(launchSpy);
             await screen.findByText("denied by policy");
         } finally {
             launchSpy.mockRestore();

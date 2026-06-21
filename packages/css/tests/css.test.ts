@@ -234,6 +234,13 @@ describe("stylis pipeline correctness", () => {
         insertSpy.mockRestore();
     });
 
+    function findInsertedRule(selectorPrefix: string): string {
+        const rules = insertSpy.mock.calls.map((call) => call[0] as string);
+        const rule = rules.find((r) => r.startsWith(selectorPrefix));
+        expect(rule).toBeDefined();
+        return rule ?? "";
+    }
+
     it("preserves declarations carrying GTK named colors", () => {
         const className = css`
             background: @card_bg_color;
@@ -242,9 +249,7 @@ describe("stylis pipeline correctness", () => {
             border-radius: 12px;
         `;
 
-        const rules = insertSpy.mock.calls.map((call) => call[0] as string);
-        const rule = rules.find((r) => r.startsWith(`.${className}`));
-        expect(rule).toBeDefined();
+        const rule = findInsertedRule(`.${className}`);
         expect(rule).toContain("background:@card_bg_color;");
         expect(rule).toContain("color:alpha(@window_fg_color, 0.6);");
         expect(rule).toContain("box-shadow:0 0 0 1px alpha(@accent_bg_color, 0.4);");
@@ -303,9 +308,7 @@ describe("stylis pipeline correctness", () => {
             font-family: "Helvetica & Arial";
         `;
 
-        const rules = insertSpy.mock.calls.map((call) => call[0] as string);
-        const rule = rules.find((r) => r.startsWith(`.${className}`));
-        expect(rule).toBeDefined();
+        const rule = findInsertedRule(`.${className}`);
         expect(rule).toContain('font-family:"Helvetica & Arial"');
     });
 
@@ -328,9 +331,7 @@ describe("stylis pipeline correctness", () => {
     it("strips Emotion label declarations before they reach the GTK sink", () => {
         const className = css({ label: "btn", padding: "8px" });
 
-        const rules = insertSpy.mock.calls.map((call) => call[0] as string);
-        const rule = rules.find((r) => r.startsWith(`.${className}`));
-        expect(rule).toBeDefined();
+        const rule = findInsertedRule(`.${className}`);
         expect(rule).toContain("padding:8px;");
         expect(rule).not.toContain("label:");
     });

@@ -1,13 +1,11 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import * as Gio from "@gtkx/gi/gio";
-import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { pickersDemo } from "../../../src/demos/dialogs/pickers.js";
-import { renderDemo } from "../../test-utils.js";
+import { makeFileValue, makeStringValue, renderDemo } from "../../test-utils.js";
 
 const MIN_PDF =
     "%PDF-1.1\n%\xC2\xA5\xC2\xB1\xC3\xAB\n\n1 0 obj\n  << /Type /Catalog\n     /Pages 2 0 R\n  >>\nendobj\n\n2 0 obj\n  << /Type /Pages\n     /Kids [3 0 R]\n     /Count 1\n     /MediaBox [0 0 99 99]\n  >>\nendobj\n\n3 0 obj\n  <<  /Type /Page\n      /Parent 2 0 R\n      /Resources << >>\n      /Contents 4 0 R\n  >>\nendobj\n\n4 0 obj\n  << /Length 0 >>\nstream\nendstream\nendobj\n\nxref\n0 5\n0000000000 65535 f\n0000000009 00000 n\n0000000063 00000 n\n0000000136 00000 n\n0000000221 00000 n\n\ntrailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n264\n%%EOF\n";
@@ -24,21 +22,6 @@ beforeAll(() => {
 afterAll(() => {
     rmSync(tmpDir, { recursive: true, force: true });
 });
-
-const makeFileValue = (path: string): GObject.Value => {
-    const file = Gio.fileNewForPath(path);
-    const value = new GObject.Value();
-    value.init(GObject.typeFromName("GFile"));
-    value.setObject(file);
-    return value;
-};
-
-const makeStringValue = (text: string): GObject.Value => {
-    const value = new GObject.Value();
-    value.init(GObject.typeFromName("gchararray"));
-    value.setString(text);
-    return value;
-};
 
 describe("pickersDemo metadata", () => {
     it("exposes the expected metadata", () => {

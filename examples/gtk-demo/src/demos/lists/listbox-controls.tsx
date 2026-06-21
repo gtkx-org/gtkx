@@ -119,6 +119,8 @@ const Group1List = ({
     </GtkListBox>
 );
 
+const valueAdjustment = () => <GtkAdjustment value={50} upper={100} stepIncrement={1} pageIncrement={10} />;
+
 const Group2List = ({ labelRef }: { labelRef: Ref<Gtk.Label | null> }) => {
     return (
         <GtkListBox name="group-2-list" selectionMode={Gtk.SelectionMode.NONE} cssClasses={["rich-list", "boxed-list"]}>
@@ -129,7 +131,7 @@ const Group2List = ({ labelRef }: { labelRef: Ref<Gtk.Label | null> }) => {
                     valign={Gtk.Align.CENTER}
                     drawValue={false}
                     widthRequest={150}
-                    adjustment={<GtkAdjustment value={50} upper={100} stepIncrement={1} pageIncrement={10} />}
+                    adjustment={valueAdjustment()}
                 />
             </LabeledRow>
             <LabeledRow labelText="S_pinbutton" labelRef={labelRef} useUnderline activatable={false}>
@@ -137,7 +139,7 @@ const Group2List = ({ labelRef }: { labelRef: Ref<Gtk.Label | null> }) => {
                     name="spin"
                     halign={Gtk.Align.END}
                     valign={Gtk.Align.CENTER}
-                    adjustment={<GtkAdjustment value={50} upper={100} stepIncrement={1} pageIncrement={10} />}
+                    adjustment={valueAdjustment()}
                 />
             </LabeledRow>
             <LabeledRow labelText="_Dropdown" labelRef={labelRef} useUnderline activatable={false}>

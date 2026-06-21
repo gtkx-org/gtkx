@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel, GtkWindow } from "@gtkx/jsx/gtk";
+import { createRootElement } from "@gtkx/react";
 import { describe, expect, it } from "vitest";
-import { captureAndSaveScreenshot, cleanup, createRootElement, render, screen } from "../src/index.js";
+import { captureAndSaveScreenshot, cleanup, render, screen } from "../src/index.js";
 
 describe("screen binding", () => {
     it("routes queries through the global toplevel scope", async () => {

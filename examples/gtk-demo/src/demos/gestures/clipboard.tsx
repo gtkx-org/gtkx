@@ -67,6 +67,13 @@ const buildRgba = (red: number, green: number, blue: number, alpha: number): Gdk
     return rgba;
 };
 
+const applyColorFromValue = (value: GObject.Value, setPastedContent: SetPastedContent): boolean => {
+    const rgba = value.getBoxed<Gdk.RGBA>();
+    if (!rgba) return false;
+    setPastedContent({ type: "Color", color: buildRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha) });
+    return true;
+};
+
 function useClipboardState() {
     const [sourceType, setSourceType] = useState<SourceType>("Text");
     const [sourceText, setSourceText] = useState("Copy this!");
@@ -252,10 +259,7 @@ const tryPasteColor = async (
 ): Promise<boolean> => {
     if (!formats.containGtype(gdkRgbaType)) return false;
     const value = await readValueAsync(clipboard, gdkRgbaType);
-    const rgba = value.getBoxed<Gdk.RGBA>();
-    if (!rgba) return false;
-    setPastedContent({ type: "Color", color: buildRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha) });
-    return true;
+    return applyColorFromValue(value, setPastedContent);
 };
 
 const tryPasteFile = async (
@@ -314,10 +318,7 @@ const handleObjectDrop = (value: GObject.Value, setPastedContent: SetPastedConte
 
 const handleColorDrop = (value: GObject.Value, setPastedContent: SetPastedContent): boolean => {
     if (!GObject.typeCheckValueHolds(value, gdkRgbaType)) return false;
-    const rgba = value.getBoxed<Gdk.RGBA>();
-    if (!rgba) return false;
-    setPastedContent({ type: "Color", color: buildRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha) });
-    return true;
+    return applyColorFromValue(value, setPastedContent);
 };
 
 const handleTextDrop = (value: GObject.Value, setPastedContent: SetPastedContent): boolean => {

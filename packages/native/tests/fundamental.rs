@@ -23,6 +23,21 @@ fn create_param_spec() -> *mut c_void {
     }
 }
 
+fn ref_after_extra_ref_and_scoped_full(
+    ptr: *mut c_void,
+    unref: Option<unsafe extern "C" fn(*mut c_void)>,
+) -> u32 {
+    unsafe { glib::gobject_ffi::g_param_spec_ref(ptr as *mut _) };
+    let ref_after_extra = param_spec_refcount(ptr);
+
+    {
+        let _fundamental = Fundamental::from_glib_full(ptr, Some(param_spec_ref), unref);
+        assert_eq!(param_spec_refcount(ptr), ref_after_extra);
+    }
+
+    ref_after_extra
+}
+
 #[test]
 fn from_glib_full_takes_ownership() {
     let ptr = create_param_spec();
@@ -40,14 +55,7 @@ fn from_glib_full_takes_ownership() {
 fn from_glib_full_drop_calls_unref() {
     let ptr = create_param_spec();
 
-    unsafe { glib::gobject_ffi::g_param_spec_ref(ptr as *mut _) };
-    let ref_after_extra = param_spec_refcount(ptr);
-
-    {
-        let _fundamental =
-            Fundamental::from_glib_full(ptr, Some(param_spec_ref), Some(param_spec_unref));
-        assert_eq!(param_spec_refcount(ptr), ref_after_extra);
-    }
+    let ref_after_extra = ref_after_extra_ref_and_scoped_full(ptr, Some(param_spec_unref));
 
     let ref_after_drop = param_spec_refcount(ptr);
     assert_eq!(ref_after_drop, ref_after_extra - 1);
@@ -128,13 +136,7 @@ fn clone_null_ptr_safe() {
 fn drop_without_unref_fn_does_not_crash() {
     let ptr = create_param_spec();
 
-    unsafe { glib::gobject_ffi::g_param_spec_ref(ptr as *mut _) };
-    let ref_after_extra = param_spec_refcount(ptr);
-
-    {
-        let _fundamental = Fundamental::from_glib_full(ptr, Some(param_spec_ref), None);
-        assert_eq!(param_spec_refcount(ptr), ref_after_extra);
-    }
+    let ref_after_extra = ref_after_extra_ref_and_scoped_full(ptr, None);
 
     assert_eq!(param_spec_refcount(ptr), ref_after_extra);
 

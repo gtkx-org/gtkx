@@ -58,26 +58,23 @@ describe("getByRole value", () => {
 });
 
 describe("getByRole hidden", () => {
-    it("excludes accessibility-hidden widgets by default", async () => {
-        const { container } = await render(
-            <VBox>
-                <GtkButton label="Visible" />
-                <GtkButton label="Hidden" accessibleHidden />
-            </VBox>,
-        );
-        expect(queryAllByRole(container, Gtk.AccessibleRole.BUTTON)).toHaveLength(1);
-        expect(queryAllByRole(container, Gtk.AccessibleRole.BUTTON, { hidden: true })).toHaveLength(2);
-    });
-
-    it("excludes not-visible widgets by default", async () => {
+    const expectHiddenButtonExcludedByDefault = async (hiddenButton: ReactNode) => {
         const { container } = await render(
             <VBox>
                 <GtkButton label="Shown" />
-                <GtkButton label="Gone" visible={false} />
+                {hiddenButton}
             </VBox>,
         );
         expect(queryAllByRole(container, Gtk.AccessibleRole.BUTTON)).toHaveLength(1);
         expect(queryAllByRole(container, Gtk.AccessibleRole.BUTTON, { hidden: true })).toHaveLength(2);
+    };
+
+    it("excludes accessibility-hidden widgets by default", async () => {
+        await expectHiddenButtonExcludedByDefault(<GtkButton label="Hidden" accessibleHidden />);
+    });
+
+    it("excludes not-visible widgets by default", async () => {
+        await expectHiddenButtonExcludedByDefault(<GtkButton label="Gone" visible={false} />);
     });
 });
 

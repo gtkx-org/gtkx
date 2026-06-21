@@ -81,7 +81,7 @@ const renderInterfaceTypeMembers = (context: ModuleContext, iface: GirClass, cal
     }
     const methodByName = indexMethodsByName(callables.methods);
     for (const property of iface.properties) {
-        const signature = renderPropertyAccessorSignature(context, property, claimedNames, methodByName);
+        const signature = renderPropertyAccessorSignature({ context, property, claimedNames, methodByName });
         if (signature !== undefined) members.push(signature);
     }
     return members;
@@ -134,7 +134,7 @@ const renderInterfaceInstanceMembers = (context: ModuleContext, iface: GirClass,
     }
     const methodByName = indexMethodsByName(callables.methods);
     for (const property of iface.properties) {
-        const block = renderPropertyAccessor(context, property, claimedNames, methodByName);
+        const block = renderPropertyAccessor({ context, property, claimedNames, methodByName });
         if (block !== undefined) members.push(block);
     }
     members.push(...renderSignalMembers(context, iface));

@@ -4,7 +4,18 @@ import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import nodeEditorSvgUri from "#data/demos/drawing/org.gtk.gtk4.NodeEditor.Devel.svg";
 import { paintableSvgDemo } from "../../../src/demos/drawing/paintable-svg.js";
-import { renderDemo } from "../../test-utils.js";
+import { findOpenButton, renderDemo, renderDemoAndExpectOpenButton } from "../../test-utils.js";
+
+const renderAndFindPicture = async (): Promise<Gtk.Picture> => {
+    await renderDemo(paintableSvgDemo);
+    return (await screen.findByName("picture")) as Gtk.Picture;
+};
+
+const renderAndFindSvgPicture = async (): Promise<{ picture: Gtk.Picture; svg: Gtk.Svg }> => {
+    const picture = await renderAndFindPicture();
+    await waitFor(() => expect(picture.getPaintable()).toBeInstanceOf(Gtk.Svg));
+    return { picture, svg: picture.getPaintable() as Gtk.Svg };
+};
 
 describe("paintableSvgDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -23,15 +34,11 @@ describe("paintableSvgDemo metadata", () => {
 
 describe("paintableSvgDemo rendering", () => {
     it("renders the Open button in the header bar", async () => {
-        await renderDemo(paintableSvgDemo);
-        const openButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" })) as Gtk.Button;
-        expect(openButton).toBeInstanceOf(Gtk.Button);
-        expect(openButton.getUseUnderline()).toBe(true);
+        await renderDemoAndExpectOpenButton(paintableSvgDemo);
     });
 
     it("renders a GtkPicture displaying the SVG paintable", async () => {
-        await renderDemo(paintableSvgDemo);
-        const picture = (await screen.findByName("picture")) as Gtk.Picture;
+        const picture = await renderAndFindPicture();
         expect(picture).toBeInstanceOf(Gtk.Picture);
         const [width, height] = picture.getSizeRequest();
         expect(width).toBe(16);
@@ -48,9 +55,7 @@ describe("paintableSvgDemo rendering", () => {
     });
 
     it("loads the bundled SVG and attaches it to the picture", async () => {
-        await renderDemo(paintableSvgDemo);
-        const picture = (await screen.findByName("picture")) as Gtk.Picture;
-        await waitFor(() => expect(picture.getPaintable()).toBeInstanceOf(Gtk.Svg));
+        await renderAndFindSvgPicture();
     });
 });
 
@@ -59,11 +64,9 @@ describe("paintableSvgDemo open dialog", () => {
         const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open");
         openSpy.mockResolvedValue(Gio.fileNewForUri(nodeEditorSvgUri));
         try {
-            await renderDemo(paintableSvgDemo);
-            const picture = (await screen.findByName("picture")) as Gtk.Picture;
-            await waitFor(() => expect(picture.getPaintable()).toBeInstanceOf(Gtk.Svg));
+            const { picture } = await renderAndFindSvgPicture();
             const initial = picture.getPaintable();
-            const openButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" })) as Gtk.Button;
+            const openButton = await findOpenButton();
             await userEvent.click(openButton);
             await waitFor(() => expect(openSpy).toHaveBeenCalled());
             await waitFor(() => expect(picture.getPaintable()).not.toBe(initial));
@@ -77,11 +80,9 @@ describe("paintableSvgDemo open dialog", () => {
         const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open");
         openSpy.mockRejectedValue(new Error("dismissed"));
         try {
-            await renderDemo(paintableSvgDemo);
-            const picture = (await screen.findByName("picture")) as Gtk.Picture;
-            await waitFor(() => expect(picture.getPaintable()).toBeInstanceOf(Gtk.Svg));
+            const { picture } = await renderAndFindSvgPicture();
             const initial = picture.getPaintable();
-            const openButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" })) as Gtk.Button;
+            const openButton = await findOpenButton();
             await userEvent.click(openButton);
             await waitFor(() => expect(errorSpy).toHaveBeenCalledWith("dismissed"));
             expect(picture.getPaintable()).toBe(initial);
@@ -94,20 +95,14 @@ describe("paintableSvgDemo open dialog", () => {
 
 describe("paintableSvgDemo gesture", () => {
     it("cycles the SVG state when the picture is pressed", async () => {
-        await renderDemo(paintableSvgDemo);
-        const picture = (await screen.findByName("picture")) as Gtk.Picture;
-        await waitFor(() => expect(picture.getPaintable()).toBeInstanceOf(Gtk.Svg));
-        const svg = picture.getPaintable() as Gtk.Svg;
+        const { picture, svg } = await renderAndFindSvgPicture();
         const initialState = svg.getState();
         await userEvent.pointer(picture, "[MouseLeft]");
         await waitFor(() => expect(svg.getState()).not.toBe(initialState));
     });
 
     it("wraps the SVG state from 63 back to 0 when the picture is pressed at the upper bound", async () => {
-        await renderDemo(paintableSvgDemo);
-        const picture = (await screen.findByName("picture")) as Gtk.Picture;
-        await waitFor(() => expect(picture.getPaintable()).toBeInstanceOf(Gtk.Svg));
-        const svg = picture.getPaintable() as Gtk.Svg;
+        const { picture, svg } = await renderAndFindSvgPicture();
         svg.setState(63);
         await userEvent.pointer(picture, "[MouseLeft]");
         await waitFor(() => expect(svg.getState()).toBe(0));

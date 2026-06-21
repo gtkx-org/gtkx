@@ -1,10 +1,8 @@
-import * as Gdk from "@gtkx/gi/gdk";
-import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { act, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { dndDemo } from "../../../src/demos/gestures/dnd.js";
-import { renderDemo } from "../../test-utils.js";
+import { makeRgbaValue, makeStringValue, renderDemo } from "../../test-utils.js";
 
 const findCanvas = async (): Promise<Gtk.Fixed> => (await screen.findByName("canvas")) as Gtk.Fixed;
 const findItemLabel = async (id: string): Promise<Gtk.Label> => (await screen.findByName(`item${id}`)) as Gtk.Label;
@@ -21,23 +19,11 @@ const findController = <T extends Gtk.EventController>(
     return null;
 };
 
-const makeStringValue = (s: string): GObject.Value => {
-    const v = new GObject.Value();
-    v.init(GObject.TYPE_STRING);
-    v.setString(s);
-    return v;
-};
-
-const makeRgbaValue = (r: number, g: number, b: number, a: number): GObject.Value => {
-    const rgba = new Gdk.RGBA();
-    rgba.red = r;
-    rgba.green = g;
-    rgba.blue = b;
-    rgba.alpha = a;
-    const v = new GObject.Value();
-    v.init(GObject.typeFromName("GdkRGBA"));
-    v.setBoxed(rgba);
-    return v;
+const openInlineEntryForItem1 = async (): Promise<Gtk.Entry> => {
+    await renderDemo(dndDemo);
+    const item1 = await findItemLabel("1");
+    await userEvent.pointer(item1, "click");
+    return (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
 };
 
 const triggerContextMenu = async (canvas: Gtk.Fixed, x: number, y: number): Promise<void> => {
@@ -149,20 +135,13 @@ describe("dndDemo item styling", () => {
 
 describe("dndDemo inline editing", () => {
     it("opens an inline entry for the item when the item is clicked", async () => {
-        await renderDemo(dndDemo);
-        const item1 = await findItemLabel("1");
-        await userEvent.pointer(item1, "click");
-
-        const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
+        const entry = await openInlineEntryForItem1();
         expect(entry.getText()).toBe("Item 1");
     });
 
     it("updates the item label as the user types into the inline entry", async () => {
-        await renderDemo(dndDemo);
+        const entry = await openInlineEntryForItem1();
         const item1 = await findItemLabel("1");
-        await userEvent.pointer(item1, "click");
-
-        const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
         await userEvent.clear(entry);
         await userEvent.type(entry, "Renamed");
 
@@ -172,10 +151,7 @@ describe("dndDemo inline editing", () => {
     });
 
     it("closes the inline entry when Enter is pressed", async () => {
-        await renderDemo(dndDemo);
-        const item1 = await findItemLabel("1");
-        await userEvent.pointer(item1, "click");
-        const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
+        const entry = await openInlineEntryForItem1();
         await userEvent.keyboard(entry, "{Enter}");
         await waitFor(() => {
             expect(screen.queryAllByRole(Gtk.AccessibleRole.TEXT_BOX).length).toBe(0);

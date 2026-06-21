@@ -49,13 +49,18 @@ describe("listviewSettings2Demo layout", () => {
     });
 });
 
+async function activateSearch(): Promise<{ toggle: Gtk.ToggleButton; bar: Gtk.SearchBar }> {
+    const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
+    await userEvent.click(toggle);
+    const bar = (await screen.findByName("search-bar")) as Gtk.SearchBar;
+    await waitFor(() => expect(bar.getSearchMode()).toBe(true));
+    return { toggle, bar };
+}
+
 describe("listviewSettings2Demo search and editing", () => {
     it("enables the search bar when the titlebar search toggle is activated", async () => {
         await renderDemo(listviewSettings2Demo);
-        const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
-        await userEvent.click(toggle);
-        const bar = (await screen.findByName("search-bar")) as Gtk.SearchBar;
-        await waitFor(() => expect(bar.getSearchMode()).toBe(true));
+        await activateSearch();
     });
 
     it("updates the filter when the search entry text changes", async () => {
@@ -89,10 +94,7 @@ describe("listviewSettings2Demo search and editing", () => {
 
     it("turns the search bar off when the search toggle is deactivated", async () => {
         await renderDemo(listviewSettings2Demo);
-        const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
-        await userEvent.click(toggle);
-        const bar = (await screen.findByName("search-bar")) as Gtk.SearchBar;
-        await waitFor(() => expect(bar.getSearchMode()).toBe(true));
+        const { toggle, bar } = await activateSearch();
         await userEvent.click(toggle);
         await waitFor(() => expect(bar.getSearchMode()).toBe(false));
     });

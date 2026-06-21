@@ -1,9 +1,11 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication } from "@gtkx/jsx/gtk";
-import { createRootElement, render, screen } from "@gtkx/testing";
+import { createRootElement } from "@gtkx/react";
+import { render, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { Demo } from "../src/app.js";
+import { findInactiveSearchToggle } from "./test-utils.js";
 
 let nextAppId = 0;
 
@@ -35,9 +37,7 @@ describe("App", () => {
 
     it("renders a search toggle in the header bar", async () => {
         await renderDemo();
-        const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
-        expect(toggle).toBeInstanceOf(Gtk.ToggleButton);
-        expect(toggle.getActive()).toBe(false);
+        await findInactiveSearchToggle();
     });
 
     it("renders the sidebar with the intro demo entry", async () => {

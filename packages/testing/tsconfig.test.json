@@ -5,6 +5,9 @@
             "path": "./tsconfig.lib.json"
         },
         {
+            "path": "../ffi/tsconfig.lib.json"
+        },
+        {
             "path": "../react/tsconfig.lib.json"
         },
         {

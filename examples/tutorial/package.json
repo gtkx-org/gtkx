@@ -26,6 +26,7 @@
     },
     "devDependencies": {
         "@gtkx/cli": "workspace:*",
+        "@gtkx/config": "workspace:*",
         "esbuild": "^0.28.1",
         "postject": "1.0.0-alpha.6"
     }

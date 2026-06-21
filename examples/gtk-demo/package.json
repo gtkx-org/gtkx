@@ -24,6 +24,7 @@
     },
     "devDependencies": {
         "@gtkx/cli": "workspace:*",
+        "@gtkx/config": "workspace:*",
         "@gtkx/native": "workspace:*",
         "@gtkx/testing": "workspace:*",
         "@vitest/coverage-v8": "^4.1.8",

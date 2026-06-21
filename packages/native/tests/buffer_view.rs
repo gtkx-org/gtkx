@@ -172,34 +172,34 @@ fn array_encode_rejects_views_for_transfer_full_arrays() {
     assert!(err.to_string().contains("transfer-full"));
 }
 
-#[test]
-fn array_encode_accepts_views_for_sized_arrays() {
+fn assert_int32_view_passes_through(kind: ArrayKind, context: &str) {
     let mut data = vec![0u8; 16];
     let expected_ptr = data.as_mut_ptr() as *mut c_void;
     let view = view_over(&mut data, 4, BufferViewKind::Int32);
     let encoded = encode_view(
         Type::Integer(IntegerKind::I32),
-        ArrayKind::Sized { size_index: 1 },
+        kind,
         Ownership::Borrowed,
         view,
     )
-    .expect("sized arrays should accept views");
+    .expect(context);
     assert!(matches!(encoded, FfiValue::Ptr(ptr) if ptr == expected_ptr));
 }
 
 #[test]
+fn array_encode_accepts_views_for_sized_arrays() {
+    assert_int32_view_passes_through(
+        ArrayKind::Sized { size_index: 1 },
+        "sized arrays should accept views",
+    );
+}
+
+#[test]
 fn array_encode_checks_fixed_size_views_exactly() {
-    let mut data = vec![0u8; 16];
-    let expected_ptr = data.as_mut_ptr() as *mut c_void;
-    let view = view_over(&mut data, 4, BufferViewKind::Int32);
-    let encoded = encode_view(
-        Type::Integer(IntegerKind::I32),
+    assert_int32_view_passes_through(
         ArrayKind::Fixed { size: 4 },
-        Ownership::Borrowed,
-        view,
-    )
-    .expect("a fixed-size match should encode");
-    assert!(matches!(encoded, FfiValue::Ptr(ptr) if ptr == expected_ptr));
+        "a fixed-size match should encode",
+    );
 
     let mut short = vec![0u8; 8];
     let short_view = view_over(&mut short, 2, BufferViewKind::Int32);

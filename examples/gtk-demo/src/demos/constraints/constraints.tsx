@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkConstraintLayout } from "@gtkx/jsx/gtk";
+import { GtkConstraintLayout } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
-import { ConstraintChildButtons } from "./child-buttons.js";
+import { BottomEdgeConstraint, ConstraintContainer, TopEdgeConstraint } from "./constraint-helpers.js";
 import sourceCode from "./constraints.tsx?raw";
 
 const A = Gtk.ConstraintAttribute;
@@ -80,7 +80,7 @@ const renderHorizontalConstraints = () => (
 
 const renderVerticalConstraints = () => (
     <>
-        <GtkConstraintLayout.Constraint target="button1" targetAttribute={A.TOP} sourceAttribute={A.TOP} constant={8} />
+        <TopEdgeConstraint />
         <GtkConstraintLayout.Constraint target="button2" targetAttribute={A.TOP} sourceAttribute={A.TOP} constant={8} />
         <GtkConstraintLayout.Constraint
             target="button1"
@@ -108,12 +108,7 @@ const renderVerticalConstraints = () => (
             source="button2"
             sourceAttribute={A.HEIGHT}
         />
-        <GtkConstraintLayout.Constraint
-            target="button3"
-            targetAttribute={A.BOTTOM}
-            sourceAttribute={A.BOTTOM}
-            constant={-8}
-        />
+        <BottomEdgeConstraint />
     </>
 );
 
@@ -124,11 +119,7 @@ const renderLayout = () => (
     </GtkConstraintLayout>
 );
 
-const ConstraintsDemo = () => (
-    <GtkBox name="container" hexpand vexpand layoutManager={renderLayout()}>
-        <ConstraintChildButtons />
-    </GtkBox>
-);
+const ConstraintsDemo = () => <ConstraintContainer layoutManager={renderLayout()} />;
 
 export const constraintsDemo: Demo = {
     id: "constraints",

@@ -1,6 +1,7 @@
 import * as Adw from "@gtkx/gi/adw";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
-import { createRootElement, render } from "@gtkx/testing";
+import { createRootElement } from "@gtkx/react";
+import { render } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 import { renderChildren } from "../helpers/render-children.js";

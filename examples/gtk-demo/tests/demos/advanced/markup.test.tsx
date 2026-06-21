@@ -2,12 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { act, screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { markupDemo } from "../../../src/demos/advanced/markup.js";
-import { renderDemo } from "../../test-utils.js";
-
-const readBufferText = (tv: Gtk.TextView): string => {
-    const buf = tv.getBuffer();
-    return buf.getText(buf.getStartIter(), buf.getEndIter(), false) ?? "";
-};
+import { readBufferText, renderDemo } from "../../test-utils.js";
 
 describe("markupDemo metadata", () => {
     it("exposes the expected metadata", () => {

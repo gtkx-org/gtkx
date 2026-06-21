@@ -10,7 +10,10 @@ use native::managed::NativeHandle;
 use native::types::{FfiDecoder, FfiEncoder, GObjectType, Ownership, RawPtrCodec, ReadSource};
 use native::value::Value;
 
-use common::get_gobject_refcount;
+use common::{
+    assert_decode_null_yields_null, assert_read_null_yields_null,
+    assert_write_return_err_writes_null, get_gobject_refcount, read_slot, write_return_into_slot,
+};
 
 fn borrowed() -> GObjectType {
     GObjectType {
@@ -38,14 +41,6 @@ fn object_value_of(ptr: *mut glib::gobject_ffi::GObject) -> Value {
 fn encode_object(ty: &GObjectType, ptr: *mut glib::gobject_ffi::GObject) -> ffi::FfiValue {
     ty.encode(&object_value_of(ptr))
         .expect("encode should succeed")
-}
-
-fn write_return_into_slot(ty: &GObjectType, value: &Result<Value, ()>) -> *mut c_void {
-    let mut slot: *mut c_void = std::ptr::null_mut();
-    unsafe {
-        ty.write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, value);
-    }
-    slot
 }
 
 #[test]
@@ -95,10 +90,7 @@ fn encode_borrowed_does_not_change_refcount() {
 #[test]
 fn encode_null_object_stays_null() {
     common::run(|| {
-        let encoded = full()
-            .encode(&Value::Null)
-            .expect("null encode should succeed");
-        assert!(matches!(encoded, ffi::FfiValue::Ptr(p) if p.is_null()));
+        common::assert_encode_null_yields_null_ptr(&full());
     });
 }
 
@@ -199,10 +191,7 @@ fn decode_floating_object_is_sunk() {
 #[test]
 fn decode_null_pointer_yields_null() {
     common::run(|| {
-        let decoded = borrowed()
-            .decode(&ffi::FfiValue::Ptr(std::ptr::null_mut()))
-            .expect("null decode should succeed");
-        assert!(matches!(decoded, Value::Null));
+        assert_decode_null_yields_null(&borrowed());
     });
 }
 
@@ -223,9 +212,7 @@ fn ptr_to_value_wraps_borrowed_object() {
 #[test]
 fn ptr_to_value_null_yields_null() {
     common::run(|| {
-        let value = unsafe { borrowed().read(ReadSource::Value(std::ptr::null_mut(), "ctx")) }
-            .expect("null ptr_to_value should succeed");
-        assert!(matches!(value, Value::Null));
+        assert_read_null_yields_null(&borrowed());
     });
 }
 
@@ -233,15 +220,9 @@ fn ptr_to_value_null_yields_null() {
 fn read_from_raw_ptr_dereferences_and_wraps() {
     common::run(|| {
         let (_obj, obj_ptr, _) = fresh_gobject();
-        let slot: *mut c_void = obj_ptr as *mut c_void;
 
-        let value = unsafe {
-            borrowed().read(ReadSource::Slot(
-                &slot as *const *mut c_void as *const c_void,
-                "ctx",
-            ))
-        }
-        .expect("read_from_raw_ptr should succeed");
+        let value = unsafe { read_slot(&borrowed(), obj_ptr as *mut c_void) }
+            .expect("read_from_raw_ptr should succeed");
         assert!(matches!(value, Value::Object(_)));
         drop(value);
     });
@@ -275,13 +256,7 @@ fn write_return_to_raw_ptr_borrowed_keeps_refcount() {
 #[test]
 fn write_return_to_raw_ptr_err_writes_null() {
     common::run(|| {
-        let mut slot: *mut c_void = std::ptr::dangling_mut::<c_void>();
-        let value: Result<Value, ()> = Err(());
-        unsafe {
-            borrowed()
-                .write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &value);
-        }
-        assert!(slot.is_null());
+        assert_write_return_err_writes_null(&borrowed());
     });
 }
 

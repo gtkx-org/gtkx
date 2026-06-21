@@ -12,14 +12,26 @@ fn drain_pending() {
     while mailbox.dispatch_pending() {}
 }
 
-fn schedule_incrementing_task() -> Arc<AtomicUsize> {
-    drain_pending();
+fn schedule_increment(mailbox: &Mailbox) -> Arc<AtomicUsize> {
     let counter = Arc::new(AtomicUsize::new(0));
     let counter_clone = counter.clone();
-    Mailbox::global().schedule_glib(Box::new(move || {
+    mailbox.schedule_glib(Box::new(move || {
         counter_clone.fetch_add(1, Ordering::SeqCst);
     }));
     counter
+}
+
+fn schedule_incrementing_task() -> Arc<AtomicUsize> {
+    drain_pending();
+    schedule_increment(Mailbox::global())
+}
+
+fn frozen_mailbox_with_task() -> (&'static Mailbox, Arc<AtomicUsize>) {
+    drain_pending();
+    let mailbox = Mailbox::global();
+    assert!(mailbox.freeze());
+    let counter = schedule_increment(mailbox);
+    (mailbox, counter)
 }
 
 #[test]
@@ -50,12 +62,7 @@ fn schedule_glib_drops_task_when_stopped() {
         let mailbox = Mailbox::global();
         mailbox.mark_not_running();
 
-        let counter = Arc::new(AtomicUsize::new(0));
-        let counter_clone = counter.clone();
-
-        mailbox.schedule_glib(Box::new(move || {
-            counter_clone.fetch_add(1, Ordering::SeqCst);
-        }));
+        let counter = schedule_increment(mailbox);
 
         let dispatched = mailbox.dispatch_pending();
         assert!(!dispatched);
@@ -120,16 +127,7 @@ fn is_not_running_reflects_mark_and_reset() {
 #[test]
 fn run_freeze_loop_drains_until_unfrozen() {
     common::run(|| {
-        drain_pending();
-        let mailbox = Mailbox::global();
-        let counter = Arc::new(AtomicUsize::new(0));
-
-        assert!(mailbox.freeze());
-
-        let counter_for_task = counter.clone();
-        mailbox.schedule_glib(Box::new(move || {
-            counter_for_task.fetch_add(1, Ordering::SeqCst);
-        }));
+        let (mailbox, counter) = frozen_mailbox_with_task();
 
         let unfreezer = {
             let counter = counter.clone();
@@ -155,16 +153,7 @@ fn run_freeze_loop_drains_until_unfrozen() {
 #[test]
 fn run_freeze_loop_exits_when_stopped_while_frozen() {
     common::run(|| {
-        drain_pending();
-        let mailbox = Mailbox::global();
-        let counter = Arc::new(AtomicUsize::new(0));
-
-        assert!(mailbox.freeze());
-
-        let counter_for_task = counter.clone();
-        mailbox.schedule_glib(Box::new(move || {
-            counter_for_task.fetch_add(1, Ordering::SeqCst);
-        }));
+        let (mailbox, counter) = frozen_mailbox_with_task();
 
         let stopper = std::thread::spawn(move || {
             while counter.load(Ordering::SeqCst) == 0 {
@@ -257,12 +246,7 @@ fn dispatch_pending_from_depth_defers_top_level_tasks() {
     common::run(|| {
         drain_pending();
         let mailbox = Mailbox::global();
-        let counter = Arc::new(AtomicUsize::new(0));
-
-        let counter_clone = counter.clone();
-        mailbox.schedule_glib(Box::new(move || {
-            counter_clone.fetch_add(1, Ordering::SeqCst);
-        }));
+        let counter = schedule_increment(mailbox);
 
         assert!(!mailbox.dispatch_pending_from_depth(1));
         assert_eq!(counter.load(Ordering::SeqCst), 0);

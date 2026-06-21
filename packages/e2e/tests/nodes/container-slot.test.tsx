@@ -62,6 +62,22 @@ const renderToolbarWithSingleBar = async (bar: { addTopBar?: ReactNode; addBotto
     return { toolbarRef, contentRef };
 };
 
+const expectIndividualChildRemoval = async (
+    renderApp: (showSecond: boolean) => ReactNode,
+    firstRef: RefObject<Gtk.Label | null>,
+    secondRef: RefObject<Gtk.Label | null>,
+) => {
+    const { rerender } = await render(renderApp(true));
+
+    expect(firstRef.current).not.toBeNull();
+    expect(secondRef.current).not.toBeNull();
+
+    await rerender(renderApp(false));
+
+    expect(firstRef.current).not.toBeNull();
+    expect(secondRef.current).toBeNull();
+};
+
 describe("render - ContainerProp (1)", () => {
     describe("AdwActionRow (addPrefix/addSuffix) (1)", () => {
         it("creates ActionRow widget", async () => {
@@ -210,8 +226,8 @@ describe("render - ContainerProp (6)", () => {
             const firstRef = createRef<Gtk.Label>();
             const secondRef = createRef<Gtk.Label>();
 
-            function App({ showSecond }: { showSecond: boolean }) {
-                return (
+            await expectIndividualChildRemoval(
+                (showSecond) => (
                     <GtkListBox>
                         <AdwActionRow
                             ref={rowRef}
@@ -224,18 +240,10 @@ describe("render - ContainerProp (6)", () => {
                             }
                         />
                     </GtkListBox>
-                );
-            }
-
-            const { rerender } = await render(<App showSecond={true} />);
-
-            expect(firstRef.current).not.toBeNull();
-            expect(secondRef.current).not.toBeNull();
-
-            await rerender(<App showSecond={false} />);
-
-            expect(firstRef.current).not.toBeNull();
-            expect(secondRef.current).toBeNull();
+                ),
+                firstRef,
+                secondRef,
+            );
         });
     });
 });
@@ -585,8 +593,8 @@ describe("render - ContainerProp (16)", () => {
             const firstRef = createRef<Gtk.Label>();
             const secondRef = createRef<Gtk.Label>();
 
-            function App({ showSecond }: { showSecond: boolean }) {
-                return (
+            await expectIndividualChildRemoval(
+                (showSecond) => (
                     <GtkHeaderBar
                         ref={headerBarRef}
                         packStart={
@@ -596,18 +604,10 @@ describe("render - ContainerProp (16)", () => {
                             </>
                         }
                     />
-                );
-            }
-
-            const { rerender } = await render(<App showSecond={true} />);
-
-            expect(firstRef.current).not.toBeNull();
-            expect(secondRef.current).not.toBeNull();
-
-            await rerender(<App showSecond={false} />);
-
-            expect(firstRef.current).not.toBeNull();
-            expect(secondRef.current).toBeNull();
+                ),
+                firstRef,
+                secondRef,
+            );
         });
     });
 });

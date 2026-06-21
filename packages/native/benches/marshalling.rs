@@ -1,5 +1,8 @@
 #![allow(clippy::significant_drop_tightening)]
 
+#[path = "../tests/common/mod.rs"]
+mod common;
+
 use std::ffi::{CString, c_void};
 
 use codspeed_criterion_compat::measurement::WallTime;
@@ -8,21 +11,14 @@ use codspeed_criterion_compat::{
 };
 use native::ffi::FfiValue;
 use native::types::{
-    ArrayKind, ArrayType, BlobType, FfiDecoder as _, FfiEncoder as _, FloatKind, IntegerKind,
-    Ownership, StringType, Type,
+    ArrayKind, ArrayType, BlobType, FfiDecoder as _, FfiEncoder as _, IntegerKind, Ownership,
+    StringType, Type,
 };
 use native::value::{BufferView, BufferViewKind, Value};
 
-const SIZES: [usize; 3] = [256, 1024, 4096];
+use common::{f32_array_type, i32_array_type};
 
-fn i32_array_type(size: usize) -> ArrayType {
-    ArrayType {
-        item_type: Box::new(Type::Integer(IntegerKind::I32)),
-        kind: ArrayKind::Fixed { size },
-        ownership: Ownership::Borrowed,
-        element_size: None,
-    }
-}
+const SIZES: [usize; 3] = [256, 1024, 4096];
 
 fn borrowed_string_type() -> StringType {
     StringType {
@@ -97,12 +93,7 @@ fn bench_encode_view_passthrough(c: &mut Criterion) {
             false,
         );
         let value = Value::BufferView(view);
-        let array_type = ArrayType {
-            item_type: Box::new(Type::Float(FloatKind::F32)),
-            kind: ArrayKind::Sized { size_index: 1 },
-            ownership: Ownership::Borrowed,
-            element_size: None,
-        };
+        let array_type = f32_array_type();
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
             b.iter(|| {
                 let encoded = array_type.encode(black_box(&value)).expect("view encode");

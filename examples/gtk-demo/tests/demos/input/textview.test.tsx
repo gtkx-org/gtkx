@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { textviewDemo } from "../../../src/demos/input/textview.js";
-import { renderDemo } from "../../test-utils.js";
+import { readBufferText, renderDemo } from "../../test-utils.js";
 
 const findTextViews = async (): Promise<[Gtk.TextView, Gtk.TextView]> => {
     const view1 = (await screen.findByName("text-view-1")) as Gtk.TextView;
@@ -15,9 +15,14 @@ const findClickMeButtons = async (): Promise<Gtk.Button[]> => {
     return widgets.filter((w): w is Gtk.Button => w instanceof Gtk.Button);
 };
 
-const readBufferText = (view: Gtk.TextView): string => {
-    const buffer = view.getBuffer();
-    return buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false) ?? "";
+const clickClonedClickMeButton = async (): Promise<{ cloned: Gtk.Button | undefined; beforeWindows: number }> => {
+    await renderDemo(textviewDemo);
+    const buttons = await findClickMeButtons();
+    const cloned = buttons[buttons.length - 1];
+    expect(cloned).toBeInstanceOf(Gtk.Button);
+    const beforeWindows = Gtk.Window.listToplevels().length;
+    if (cloned) await userEvent.click(cloned);
+    return { cloned, beforeWindows };
 };
 
 describe("textviewDemo metadata", () => {
@@ -78,13 +83,8 @@ describe("textviewDemo cloned widgets", () => {
 
 describe("textviewDemo easter egg", () => {
     it("opens the easter-egg nested window when the cloned Click Me button is activated", async () => {
-        await renderDemo(textviewDemo);
-        const buttons = await findClickMeButtons();
-        const cloned = buttons[buttons.length - 1];
-        expect(cloned).toBeInstanceOf(Gtk.Button);
-        const beforeWindows = Gtk.Window.listToplevels().length;
+        const { cloned, beforeWindows } = await clickClonedClickMeButton();
         if (!cloned) return;
-        await userEvent.click(cloned);
         await waitFor(() => {
             expect(Gtk.Window.listToplevels().length).toBeGreaterThan(beforeWindows);
         });
@@ -104,13 +104,8 @@ describe("textviewDemo easter egg", () => {
     });
 
     it("reuses the same easter-egg window on subsequent activations", async () => {
-        await renderDemo(textviewDemo);
-        const buttons = await findClickMeButtons();
-        const cloned = buttons[buttons.length - 1];
-        expect(cloned).toBeInstanceOf(Gtk.Button);
-        const beforeWindows = Gtk.Window.listToplevels().length;
+        const { cloned, beforeWindows } = await clickClonedClickMeButton();
         if (!cloned) return;
-        await userEvent.click(cloned);
         const windowCountAfterFirst = await waitFor(() => {
             const count = Gtk.Window.listToplevels().length;
             expect(count).toBeGreaterThan(beforeWindows);

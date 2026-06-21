@@ -242,6 +242,22 @@ const setupDataDir = (tmp: string): string => {
     return dataDir;
 };
 
+type EnvPluginInit = {
+    dataDir: string;
+    plugin: ReturnType<typeof gtkxGSettings>;
+    envPath: string;
+};
+
+const initSchemaEnvPlugin = (tmp: string, seedSchemas?: (dataDir: string) => void): EnvPluginInit => {
+    const dataDir = setupDataDir(tmp);
+    seedSchemas?.(dataDir);
+    const plugin = gtkxGSettings();
+    (plugin.config as ConfigHook).call(plugin, { root: tmp });
+    (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve", root: tmp });
+    const envPath = join(tmp, "node_modules", ".gtkx", "env.d.ts");
+    return { dataDir, plugin, envPath };
+};
+
 const gsettingsVirtualId = (schemaPath: string): string => `\0gtkx-gsettings:${schemaPath}`;
 
 const loadSchemaInServeMode = (schemaPath: string): { plugin: ReturnType<typeof gtkxGSettings>; virtualId: string } => {
@@ -411,14 +427,9 @@ describe("gtkxGSettings (schema env emission)", () => {
     it("emits the project env.d.ts from schemas under the #data import root", () => {
         const tmp = mkdtempSync(join(tmpdir(), "gtkx-gsettings-env-"));
         try {
-            const dataDir = setupDataDir(tmp);
-            writeSchema(dataDir, "com.example.envtest.gschema.xml", "com.example.envtest");
-
-            const plugin = gtkxGSettings();
-            (plugin.config as ConfigHook).call(plugin, { root: tmp });
-            (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve", root: tmp });
-
-            const envPath = join(tmp, "node_modules", ".gtkx", "env.d.ts");
+            const { envPath } = initSchemaEnvPlugin(tmp, (dataDir) => {
+                writeSchema(dataDir, "com.example.envtest.gschema.xml", "com.example.envtest");
+            });
             expect(existsSync(envPath)).toBe(true);
             expect(readFileSync(envPath, "utf-8")).toContain(
                 `declare module "#data/com.example.envtest.gschema.xml" {`,
@@ -431,12 +442,7 @@ describe("gtkxGSettings (schema env emission)", () => {
     it("refreshes the env.d.ts when the watcher reports schema file changes", () => {
         const tmp = mkdtempSync(join(tmpdir(), "gtkx-gsettings-env-watch-"));
         try {
-            const dataDir = setupDataDir(tmp);
-            const plugin = gtkxGSettings();
-            (plugin.config as ConfigHook).call(plugin, { root: tmp });
-            (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve", root: tmp });
-
-            const envPath = join(tmp, "node_modules", ".gtkx", "env.d.ts");
+            const { dataDir, plugin, envPath } = initSchemaEnvPlugin(tmp);
             expect(readFileSync(envPath, "utf-8")).not.toContain("declare module");
 
             const schemaPath = writeSchema(dataDir, "com.example.added.gschema.xml", "com.example.added");

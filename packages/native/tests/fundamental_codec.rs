@@ -9,6 +9,11 @@ use native::managed::NativeHandle;
 use native::types::{FfiDecoder, FfiEncoder, FundamentalType, Ownership, RawPtrCodec, ReadSource};
 use native::value::Value;
 
+use common::{
+    assert_decode_null_yields_null, assert_read_null_yields_null,
+    assert_write_return_err_writes_null, read_slot, write_return_into_slot,
+};
+
 fn create_param_spec() -> *mut c_void {
     unsafe {
         let param = glib::gobject_ffi::g_param_spec_boolean(
@@ -94,11 +99,7 @@ fn assert_write_return_writes_pointer(codec: &FundamentalType, expected_extra_re
     let pspec = create_param_spec();
     let before = param_spec_refcount(pspec);
 
-    let mut slot: *mut c_void = std::ptr::null_mut();
-    let value: Result<Value, ()> = Ok(Value::Object(NativeHandle::borrowed(pspec)));
-    unsafe {
-        codec.write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &value);
-    }
+    let slot = write_return_into_slot(codec, &Ok(Value::Object(NativeHandle::borrowed(pspec))));
 
     assert_eq!(slot, pspec);
     assert_eq!(param_spec_refcount(pspec), before + expected_extra_refs);
@@ -156,10 +157,7 @@ fn encode_borrowed_keeps_refcount() {
 #[test]
 fn encode_full_null_pointer_stays_null() {
     common::run(|| {
-        let encoded = fundamental(Ownership::Full)
-            .encode(&Value::Null)
-            .expect("null encode should succeed");
-        assert!(matches!(encoded, ffi::FfiValue::Ptr(p) if p.is_null()));
+        common::assert_encode_null_yields_null_ptr(&fundamental(Ownership::Full));
     });
 }
 
@@ -311,10 +309,7 @@ fn decode_full_takes_ownership() {
 #[test]
 fn decode_null_yields_null() {
     common::run(|| {
-        let decoded = fundamental(Ownership::Borrowed)
-            .decode(&ffi::FfiValue::Ptr(std::ptr::null_mut()))
-            .expect("null decode should succeed");
-        assert!(matches!(decoded, Value::Null));
+        assert_decode_null_yields_null(&fundamental(Ownership::Borrowed));
     });
 }
 
@@ -338,11 +333,7 @@ fn ptr_to_value_wraps_fundamental() {
 #[test]
 fn ptr_to_value_null_yields_null() {
     common::run(|| {
-        let value = unsafe {
-            fundamental(Ownership::Borrowed).read(ReadSource::Value(std::ptr::null_mut(), "ctx"))
-        }
-        .expect("null ptr_to_value should succeed");
-        assert!(matches!(value, Value::Null));
+        assert_read_null_yields_null(&fundamental(Ownership::Borrowed));
     });
 }
 
@@ -350,15 +341,9 @@ fn ptr_to_value_null_yields_null() {
 fn read_from_raw_ptr_dereferences_slot() {
     common::run(|| {
         let pspec = create_param_spec();
-        let slot: *mut c_void = pspec;
 
-        let value = unsafe {
-            fundamental(Ownership::Borrowed).read(ReadSource::Slot(
-                &slot as *const *mut c_void as *const c_void,
-                "ctx",
-            ))
-        }
-        .expect("read_from_raw_ptr should succeed");
+        let value = unsafe { read_slot(&fundamental(Ownership::Borrowed), pspec) }
+            .expect("read_from_raw_ptr should succeed");
         assert!(matches!(value, Value::Object(_)));
         drop(value);
         release_param_spec_refs(pspec, 1);
@@ -382,13 +367,7 @@ fn write_return_to_raw_ptr_borrowed_keeps_refcount() {
 #[test]
 fn write_return_to_raw_ptr_err_writes_null() {
     common::run(|| {
-        let mut slot: *mut c_void = std::ptr::dangling_mut::<c_void>();
-        let value: Result<Value, ()> = Err(());
-        unsafe {
-            fundamental(Ownership::Borrowed)
-                .write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &value);
-        }
-        assert!(slot.is_null());
+        assert_write_return_err_writes_null(&fundamental(Ownership::Borrowed));
     });
 }
 

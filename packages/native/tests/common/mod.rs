@@ -8,7 +8,11 @@ use gtk4::glib::{self, translate::IntoGlib as _};
 use gtk4::prelude::StaticType as _;
 
 use native::managed::Boxed;
-use native::types::{IntegerKind, TaggedKind, TaggedType};
+use native::types::{
+    ArrayKind, ArrayType, FfiDecoder, FfiEncoder, FloatKind, IntegerKind, Ownership, RawPtrCodec,
+    ReadSource, TaggedKind, TaggedType, Type,
+};
+use native::value::Value;
 
 static GTK_INIT: Once = Once::new();
 
@@ -152,5 +156,81 @@ pub fn flags_tagged() -> TaggedType {
         library: "libgtk-4.so.1".to_owned(),
         get_type_fn: "gtk_state_flags_get_type".to_owned(),
         storage: IntegerKind::U32,
+    }
+}
+
+pub fn assert_encode_null_yields_null_ptr<C: FfiEncoder>(codec: &C) {
+    let encoded = codec
+        .encode(&Value::Null)
+        .expect("null encode should succeed");
+    assert!(matches!(encoded, native::ffi::FfiValue::Ptr(p) if p.is_null()));
+}
+
+pub fn assert_decode_null_yields_null<C: FfiDecoder>(codec: &C) {
+    let decoded = codec
+        .decode(&native::ffi::FfiValue::Ptr(std::ptr::null_mut()))
+        .expect("null decode should succeed");
+    assert!(matches!(decoded, Value::Null));
+}
+
+pub fn assert_read_null_yields_null<C: FfiDecoder>(codec: &C) {
+    let value = unsafe { codec.read(ReadSource::Value(std::ptr::null_mut(), "ctx")) }
+        .expect("null ptr_to_value should succeed");
+    assert!(matches!(value, Value::Null));
+}
+
+pub unsafe fn read_slot<C: FfiDecoder>(codec: &C, ptr: *mut c_void) -> anyhow::Result<Value> {
+    let slot: *mut c_void = ptr;
+    unsafe {
+        codec.read(ReadSource::Slot(
+            &slot as *const *mut c_void as *const c_void,
+            "ctx",
+        ))
+    }
+}
+
+pub fn write_return_into_slot<C: RawPtrCodec>(codec: &C, value: &Result<Value, ()>) -> *mut c_void {
+    let mut slot: *mut c_void = std::ptr::null_mut();
+    unsafe { codec.write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, value) };
+    slot
+}
+
+pub fn write_value_into_slot<C: RawPtrCodec>(
+    codec: &C,
+    initial: *mut c_void,
+    value: &Value,
+) -> *mut c_void {
+    let mut slot: *mut c_void = initial;
+    unsafe { codec.write_value_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, value) }
+        .expect("write_value_to_raw_ptr should succeed");
+    slot
+}
+
+pub fn assert_write_return_err_writes_null<C: RawPtrCodec>(codec: &C) {
+    let mut slot: *mut c_void = std::ptr::dangling_mut::<c_void>();
+    let value: Result<Value, ()> = Err(());
+    unsafe {
+        codec.write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &value);
+    }
+    assert!(slot.is_null());
+}
+
+#[must_use]
+pub fn i32_array_type(size: usize) -> ArrayType {
+    ArrayType {
+        item_type: Box::new(Type::Integer(IntegerKind::I32)),
+        kind: ArrayKind::Fixed { size },
+        ownership: Ownership::Borrowed,
+        element_size: None,
+    }
+}
+
+#[must_use]
+pub fn f32_array_type() -> ArrayType {
+    ArrayType {
+        item_type: Box::new(Type::Float(FloatKind::F32)),
+        kind: ArrayKind::Sized { size_index: 1 },
+        ownership: Ownership::Borrowed,
+        element_size: None,
     }
 }

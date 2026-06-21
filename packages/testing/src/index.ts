@@ -1,6 +1,5 @@
 import "./setup-runtime.js";
 
-export { createRootElement, type RootElement } from "@gtkx/react";
 export { act } from "./act.js";
 export type { Config, ConfigFn } from "./config.js";
 export { configure, getConfig } from "./config.js";

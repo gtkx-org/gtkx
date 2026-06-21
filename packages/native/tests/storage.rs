@@ -413,14 +413,18 @@ fn hashtable_storage_keeps_when_not_freed() {
     });
 }
 
+fn string_list_element_ptr(s: &CString, dup: bool) -> *mut c_void {
+    if dup {
+        unsafe { glib::ffi::g_strdup(s.as_ptr()) as *mut c_void }
+    } else {
+        s.as_ptr() as *mut c_void
+    }
+}
+
 fn build_string_glist(strings: &[CString], dup: bool) -> *mut glib::ffi::GList {
     let mut list: *mut glib::ffi::GList = std::ptr::null_mut();
     for s in strings {
-        let ptr = if dup {
-            unsafe { glib::ffi::g_strdup(s.as_ptr()) as *mut c_void }
-        } else {
-            s.as_ptr() as *mut c_void
-        };
+        let ptr = string_list_element_ptr(s, dup);
         list = unsafe { glib::ffi::g_list_append(list, ptr) };
     }
     list
@@ -469,11 +473,7 @@ fn string_glist_storage_null_ptr_safe_on_drop() {
 fn build_string_gslist(strings: &[CString], dup: bool) -> *mut glib::ffi::GSList {
     let mut list: *mut glib::ffi::GSList = std::ptr::null_mut();
     for s in strings.iter().rev() {
-        let ptr = if dup {
-            unsafe { glib::ffi::g_strdup(s.as_ptr()) as *mut c_void }
-        } else {
-            s.as_ptr() as *mut c_void
-        };
+        let ptr = string_list_element_ptr(s, dup);
         list = unsafe { glib::ffi::g_slist_prepend(list, ptr) };
     }
     list

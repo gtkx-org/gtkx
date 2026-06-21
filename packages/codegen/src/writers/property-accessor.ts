@@ -27,12 +27,15 @@ type ResolvedAccessor = {
     setterMember: string | undefined;
 };
 
-const resolveAccessor = (
-    context: ModuleContext,
-    property: GirProperty,
-    claimedNames: Set<string>,
-    methodByName: Map<string, GirFunction>,
-): ResolvedAccessor | undefined => {
+export type PropertyAccessorArgs = {
+    context: ModuleContext;
+    property: GirProperty;
+    claimedNames: Set<string>;
+    methodByName: Map<string, GirFunction>;
+};
+
+const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefined => {
+    const { context, property, claimedNames, methodByName } = args;
     const jsName = toCamelIdentifier(property.name);
     if (claimedNames.has(jsName)) return undefined;
     if (jsName === "constructor") return undefined;
@@ -56,39 +59,36 @@ const resolveAccessor = (
     return { jsName, tsType, writable, getterMember, getMethod, setterMember };
 };
 
-export const renderPropertyAccessor = (
-    context: ModuleContext,
-    property: GirProperty,
-    claimedNames: Set<string>,
-    methodByName: Map<string, GirFunction>,
+const withAccessor = (
+    args: PropertyAccessorArgs,
+    render: (accessor: ResolvedAccessor) => string,
 ): string | undefined => {
-    const accessor = resolveAccessor(context, property, claimedNames, methodByName);
+    const accessor = resolveAccessor(args);
     if (accessor === undefined) return undefined;
-    const { jsName, tsType, writable, getterMember, getMethod, setterMember } = accessor;
-
-    const blocks: string[] = [];
-    const getBody = renderGetterBody({ context, property, getterMember, getMethod, tsType });
-    blocks.push(renderBlock(`get ${jsName}(): ${tsType}`, getBody));
-
-    if (writable) {
-        const setBody =
-            setterMember !== undefined ? `this.${setterMember}(value);` : renderGenericSetBody(context, property);
-        blocks.push(renderBlock(`set ${jsName}(value: ${tsType})`, setBody));
-    }
-    return blocks.join("\n\n");
+    return render(accessor);
 };
 
-export const renderPropertyAccessorSignature = (
-    context: ModuleContext,
-    property: GirProperty,
-    claimedNames: Set<string>,
-    methodByName: Map<string, GirFunction>,
-): string | undefined => {
-    const accessor = resolveAccessor(context, property, claimedNames, methodByName);
-    if (accessor === undefined) return undefined;
-    const { jsName, tsType, writable } = accessor;
-    return writable ? `${jsName}: ${tsType};` : `get ${jsName}(): ${tsType};`;
-};
+export const renderPropertyAccessor = (args: PropertyAccessorArgs): string | undefined =>
+    withAccessor(args, (accessor) => {
+        const { context, property } = args;
+        const { jsName, tsType, writable, getterMember, getMethod, setterMember } = accessor;
+
+        const blocks: string[] = [];
+        const getBody = renderGetterBody({ context, property, getterMember, getMethod, tsType });
+        blocks.push(renderBlock(`get ${jsName}(): ${tsType}`, getBody));
+
+        if (writable) {
+            const setBody =
+                setterMember !== undefined ? `this.${setterMember}(value);` : renderGenericSetBody(context, property);
+            blocks.push(renderBlock(`set ${jsName}(value: ${tsType})`, setBody));
+        }
+        return blocks.join("\n\n");
+    });
+
+export const renderPropertyAccessorSignature = (args: PropertyAccessorArgs): string | undefined =>
+    withAccessor(args, ({ jsName, tsType, writable }) =>
+        writable ? `${jsName}: ${tsType};` : `get ${jsName}(): ${tsType};`,
+    );
 
 const renderPropertyFfiType = (context: ModuleContext, property: GirProperty): string =>
     renderFfiType(context, property.type, property.transferOwnership);

@@ -6,13 +6,22 @@ use gtk4::glib::{self, translate::IntoGlib as _};
 use gtk4::prelude::StaticType as _;
 use native::managed::Boxed;
 
+fn owned_rgba_boxed() -> (glib::Type, *mut c_void, Boxed) {
+    let gtype = gtk4::gdk::RGBA::static_type();
+    let ptr = common::allocate_test_boxed(gtype);
+    let boxed = Boxed::from_glib_full(Some(gtype), ptr);
+    (gtype, ptr, boxed)
+}
+
+fn null_rgba_boxed() -> Boxed {
+    let gtype = gtk4::gdk::RGBA::static_type();
+    Boxed::from_glib_none(Some(gtype), std::ptr::null_mut()).unwrap()
+}
+
 #[test]
 fn boxed_from_glib_full_owns_pointer() {
     common::run(|| {
-        let gtype = gtk4::gdk::RGBA::static_type();
-        let ptr = common::allocate_test_boxed(gtype);
-
-        let boxed = Boxed::from_glib_full(Some(gtype), ptr);
+        let (gtype, ptr, boxed) = owned_rgba_boxed();
 
         assert_eq!(boxed.as_ptr(), ptr);
         assert!(boxed.is_owned());
@@ -50,8 +59,7 @@ fn boxed_from_glib_none_copies_pointer() {
 #[test]
 fn boxed_from_glib_none_null_not_owned() {
     common::run(|| {
-        let gtype = gtk4::gdk::RGBA::static_type();
-        let boxed = Boxed::from_glib_none(Some(gtype), std::ptr::null_mut()).unwrap();
+        let boxed = null_rgba_boxed();
 
         assert!(boxed.as_ptr().is_null());
         assert!(!boxed.is_owned());
@@ -61,9 +69,7 @@ fn boxed_from_glib_none_null_not_owned() {
 #[test]
 fn boxed_clone_copies_when_owned() {
     common::run(|| {
-        let gtype = gtk4::gdk::RGBA::static_type();
-        let ptr = common::allocate_test_boxed(gtype);
-        let boxed = Boxed::from_glib_full(Some(gtype), ptr);
+        let (gtype, _ptr, boxed) = owned_rgba_boxed();
 
         let cloned = boxed.clone();
 
@@ -76,8 +82,7 @@ fn boxed_clone_copies_when_owned() {
 #[test]
 fn boxed_clone_null_remains_null() {
     common::run(|| {
-        let gtype = gtk4::gdk::RGBA::static_type();
-        let boxed = Boxed::from_glib_none(Some(gtype), std::ptr::null_mut()).unwrap();
+        let boxed = null_rgba_boxed();
 
         let cloned = boxed;
 

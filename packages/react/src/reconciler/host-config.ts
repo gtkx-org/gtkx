@@ -1,3 +1,4 @@
+import { BUFFER_TEXT_KIND, LABEL_TEXT_KIND } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { freeze, unfreeze } from "@gtkx/native";
@@ -21,7 +22,6 @@ import { getDescriptors } from "./prop-descriptor-table.js";
 import { reportReconcilerError } from "./reconciler-error-sink.js";
 import { ensureState, type Node, stateOf } from "./state.js";
 import { scheduleBufferRebuild } from "./text-buffer-rebuild.js";
-import { BUFFER_TEXT_KIND, LABEL_TEXT_KIND } from "./text-kinds.js";
 import { isBufferContentWrapper, isLabelTextWrapper } from "./text-wrapper.js";
 import type { ContainerInfo, Props } from "./types.js";
 import { isWrapperElement } from "./wrapper-element.js";

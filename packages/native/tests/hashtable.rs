@@ -106,6 +106,54 @@ fn roundtrip(ht: &HashTableType, input: &Value) -> Value {
     ht.decode(&encoded).expect("decoding should succeed")
 }
 
+fn assert_encoded_float(encoder: &HashTableEntryEncoder, value: &Value, expected: f64) {
+    let ptr = encoder.encode(value).expect("encoding should succeed");
+
+    let stored_value = unsafe {
+        *ptr.cast::<f64>()
+            .as_ref()
+            .expect("encoded float pointer should be non-null")
+    };
+    assert!((stored_value - expected).abs() < f64::EPSILON);
+
+    unsafe { glib::ffi::g_free(ptr) };
+}
+
+fn assert_boolean_ptr_reads_true(ptr: *mut c_void) {
+    let ty = Type::Boolean(BooleanType);
+
+    let value =
+        unsafe { ty.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
+
+    match value {
+        Value::Boolean(true) => (),
+        other => panic!("Expected Boolean(true), got {other:?}"),
+    }
+}
+
+fn boolean_boolean_ht() -> HashTableType {
+    ht_type(
+        Type::Boolean(BooleanType),
+        Type::Boolean(BooleanType),
+        Ownership::Full,
+    )
+}
+
+fn gobject_key_boolean_ht() -> HashTableType {
+    ht_type(
+        full_gobject_type(),
+        Type::Boolean(BooleanType),
+        Ownership::Full,
+    )
+}
+
+fn new_object_with_refcount() -> (glib::Object, *mut glib::gobject_ffi::GObject, u32) {
+    let obj = glib::Object::new::<glib::Object>();
+    let obj_ptr = obj.as_ptr();
+    let before = common::get_gobject_refcount(obj_ptr);
+    (obj, obj_ptr, before)
+}
+
 fn assert_kv_pairs<F>(decoded: Value, expected_len: usize, check_kv: F)
 where
     F: Fn(&Value, &Value),
@@ -197,16 +245,7 @@ fn encode_float_value() {
     let encoder = HashTableEntryEncoder::Float;
     let value = Value::Number(std::f64::consts::PI);
 
-    let ptr = encoder.encode(&value).expect("encoding should succeed");
-
-    let stored_value = unsafe {
-        *ptr.cast::<f64>()
-            .as_ref()
-            .expect("encoded float pointer should be non-null")
-    };
-    assert!((stored_value - std::f64::consts::PI).abs() < f64::EPSILON);
-
-    unsafe { glib::ffi::g_free(ptr) };
+    assert_encoded_float(&encoder, &value, std::f64::consts::PI);
 }
 
 #[test]
@@ -214,30 +253,12 @@ fn encode_float_negative() {
     let encoder = HashTableEntryEncoder::Float;
     let value = Value::Number(-123.456);
 
-    let ptr = encoder.encode(&value).expect("encoding should succeed");
-
-    let stored_value = unsafe {
-        *ptr.cast::<f64>()
-            .as_ref()
-            .expect("encoded float pointer should be non-null")
-    };
-    assert!((stored_value - (-123.456)).abs() < f64::EPSILON);
-
-    unsafe { glib::ffi::g_free(ptr) };
+    assert_encoded_float(&encoder, &value, -123.456);
 }
 
 #[test]
 fn ptr_to_value_boolean_true() {
-    let ty = Type::Boolean(BooleanType);
-    let ptr = std::ptr::dangling_mut::<c_void>();
-
-    let value =
-        unsafe { ty.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
-
-    match value {
-        Value::Boolean(true) => (),
-        other => panic!("Expected Boolean(true), got {other:?}"),
-    }
+    assert_boolean_ptr_reads_true(std::ptr::dangling_mut::<c_void>());
 }
 
 #[test]
@@ -256,16 +277,7 @@ fn ptr_to_value_boolean_false() {
 
 #[test]
 fn ptr_to_value_boolean_nonzero_is_true() {
-    let ty = Type::Boolean(BooleanType);
-    let ptr = 42isize as *mut c_void;
-
-    let value =
-        unsafe { ty.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
-
-    match value {
-        Value::Boolean(true) => (),
-        other => panic!("Expected Boolean(true), got {other:?}"),
-    }
+    assert_boolean_ptr_reads_true(42isize as *mut c_void);
 }
 
 #[test]
@@ -332,11 +344,7 @@ fn ptr_to_value_struct_non_null() {
 #[test]
 fn hashtable_encode_decode_booleans() {
     common::run(|| {
-        let ht_type = ht_type(
-            Type::Boolean(BooleanType),
-            Type::Boolean(BooleanType),
-            Ownership::Full,
-        );
+        let ht_type = boolean_boolean_ht();
 
         let input = Value::Array(vec![
             Value::Array(vec![Value::Boolean(true), Value::Boolean(false)]),
@@ -438,11 +446,7 @@ fn hashtable_encode_decode_float_keys() {
 #[test]
 fn hashtable_empty() {
     common::run(|| {
-        let ht_type = ht_type(
-            Type::Boolean(BooleanType),
-            Type::Boolean(BooleanType),
-            Ownership::Full,
-        );
+        let ht_type = boolean_boolean_ht();
 
         let input = Value::Array(vec![]);
 
@@ -458,11 +462,7 @@ fn hashtable_empty() {
 #[test]
 fn hashtable_null_optional() {
     common::run(|| {
-        let ht_type = ht_type(
-            Type::Boolean(BooleanType),
-            Type::Boolean(BooleanType),
-            Ownership::Full,
-        );
+        let ht_type = boolean_boolean_ht();
 
         let encoded = ht_type
             .encode(&Value::Null)
@@ -641,11 +641,7 @@ fn ptr_array_value_freed_when_hashtable_storage_drops() {
 #[test]
 fn hashtable_encode_propagates_key_encoder_error() {
     common::run(|| {
-        let ht_type = ht_type(
-            Type::Boolean(BooleanType),
-            Type::Boolean(BooleanType),
-            Ownership::Full,
-        );
+        let ht_type = boolean_boolean_ht();
         let input = Value::Array(vec![Value::Array(vec![
             Value::Number(1.0),
             Value::Boolean(true),
@@ -656,11 +652,7 @@ fn hashtable_encode_propagates_key_encoder_error() {
 
 #[test]
 fn hashtable_decode_null_yields_empty_array() {
-    let ht_type = ht_type(
-        Type::Boolean(BooleanType),
-        Type::Boolean(BooleanType),
-        Ownership::Full,
-    );
+    let ht_type = boolean_boolean_ht();
     let decoded = ht_type
         .decode(&FfiValue::Ptr(std::ptr::null_mut()))
         .unwrap();
@@ -797,9 +789,7 @@ fn fundamental_value_unreffed_when_hashtable_storage_drops() {
 #[test]
 fn gobject_value_unreffed_when_hashtable_storage_drops() {
     common::run(|| {
-        let obj = glib::Object::new::<glib::Object>();
-        let obj_ptr = obj.as_ptr();
-        let before = common::get_gobject_refcount(obj_ptr);
+        let (_obj, obj_ptr, before) = new_object_with_refcount();
 
         let ht_type = ht_type(
             Type::Integer(IntegerKind::I32),
@@ -832,15 +822,9 @@ fn gobject_value_unreffed_when_hashtable_storage_drops() {
 #[test]
 fn hashtable_encode_value_error_releases_transferred_gobject_key() {
     common::run(|| {
-        let obj = glib::Object::new::<glib::Object>();
-        let obj_ptr = obj.as_ptr();
-        let before = common::get_gobject_refcount(obj_ptr);
+        let (_obj, obj_ptr, before) = new_object_with_refcount();
 
-        let ht_type = ht_type(
-            full_gobject_type(),
-            Type::Boolean(BooleanType),
-            Ownership::Full,
-        );
+        let ht_type = gobject_key_boolean_ht();
         let input = Value::Array(vec![Value::Array(vec![
             Value::Object(NativeHandle::borrowed(obj_ptr as *mut c_void)),
             Value::Number(1.0),
@@ -895,18 +879,10 @@ fn hashtable_encode_value_destroy_error_releases_string_key() {
 #[test]
 fn hashtable_encode_second_tuple_error_unwinds_inserted_entries() {
     common::run(|| {
-        let inserted = glib::Object::new::<glib::Object>();
-        let inserted_ptr = inserted.as_ptr();
-        let failing = glib::Object::new::<glib::Object>();
-        let failing_ptr = failing.as_ptr();
-        let inserted_before = common::get_gobject_refcount(inserted_ptr);
-        let failing_before = common::get_gobject_refcount(failing_ptr);
+        let (_inserted, inserted_ptr, inserted_before) = new_object_with_refcount();
+        let (_failing, failing_ptr, failing_before) = new_object_with_refcount();
 
-        let ht_type = ht_type(
-            full_gobject_type(),
-            Type::Boolean(BooleanType),
-            Ownership::Full,
-        );
+        let ht_type = gobject_key_boolean_ht();
         let input = Value::Array(vec![
             Value::Array(vec![
                 Value::Object(NativeHandle::borrowed(inserted_ptr as *mut c_void)),

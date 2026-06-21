@@ -171,14 +171,7 @@ fn integer_encode_accepts_number_object_and_optional_null() {
 #[test]
 fn integer_libffi_type_matches_ffi_type() {
     for kind in INTEGER_KINDS {
-        assert_eq!(
-            FfiEncoder::libffi_type(&kind).as_raw_ptr(),
-            kind.ffi_type().as_raw_ptr()
-        );
-        assert_eq!(
-            middle::Type::from(kind).as_raw_ptr(),
-            kind.ffi_type().as_raw_ptr()
-        );
+        assert_libffi_type_matches(kind);
     }
 }
 
@@ -256,6 +249,46 @@ fn call_zero_arg(kind: IntegerKind, code: *mut c_void) -> f64 {
     let cif = middle::Cif::new(Vec::new(), kind.ffi_type());
     let result = FfiEncoder::call_cif(&kind, &cif, middle::CodePtr(code), &[]).unwrap();
     result.to_number().unwrap()
+}
+
+trait LibffiKind: FfiEncoder + Copy
+where
+    middle::Type: From<Self>,
+{
+    fn as_ffi_type(self) -> middle::Type;
+}
+
+impl LibffiKind for IntegerKind {
+    fn as_ffi_type(self) -> middle::Type {
+        self.ffi_type()
+    }
+}
+
+impl LibffiKind for FloatKind {
+    fn as_ffi_type(self) -> middle::Type {
+        self.ffi_type()
+    }
+}
+
+fn assert_libffi_type_matches<K>(kind: K)
+where
+    K: LibffiKind,
+    middle::Type: From<K>,
+{
+    let expected = kind.as_ffi_type().as_raw_ptr();
+    assert_eq!(FfiEncoder::libffi_type(&kind).as_raw_ptr(), expected);
+    assert_eq!(middle::Type::from(kind).as_raw_ptr(), expected);
+}
+
+unsafe fn assert_raw_ptr_codec_round_trip<K>(kind: &K, slot: &mut [u8; 8], value_ptr: *mut c_void)
+where
+    K: RawPtrCodec + FfiDecoder,
+{
+    let ptr = slot.as_mut_ptr().cast::<c_void>();
+    unsafe { RawPtrCodec::write_value_to_raw_ptr(kind, ptr, &Value::Number(2.0)) }.unwrap();
+    unsafe { FfiDecoder::read(kind, ReadSource::Slot(ptr.cast_const(), "c")) }.unwrap();
+    unsafe { RawPtrCodec::write_return_to_raw_ptr(kind, ptr, &Ok(Value::Number(1.0))) };
+    unsafe { FfiDecoder::read(kind, ReadSource::Value(value_ptr, "c")) }.unwrap();
 }
 
 #[test]
@@ -351,14 +384,7 @@ fn float_codec_encode_decode_and_raw_ptr() {
         assert!(FfiDecoder::decode(&kind, &encoded).is_ok());
         assert!(FfiEncoder::encode(&kind, &Value::Null).is_ok());
         assert!(FfiEncoder::encode(&kind, &Value::Boolean(true)).is_err());
-        assert_eq!(
-            FfiEncoder::libffi_type(&kind).as_raw_ptr(),
-            kind.ffi_type().as_raw_ptr()
-        );
-        assert_eq!(
-            middle::Type::from(kind).as_raw_ptr(),
-            kind.ffi_type().as_raw_ptr()
-        );
+        assert_libffi_type_matches(kind);
 
         let mut slot: f64 = 0.0;
         let ret = &mut slot as *mut f64 as *mut c_void;
@@ -480,18 +506,13 @@ fn integer_codec_covers_every_kind() {
             FfiDecoder::decode(&kind, &encoded).unwrap();
 
             let mut slot = [0u8; 8];
-            let ptr = slot.as_mut_ptr().cast::<c_void>();
-            unsafe { RawPtrCodec::write_value_to_raw_ptr(&kind, ptr, &Value::Number(2.0)) }
-                .unwrap();
-            unsafe { FfiDecoder::read(&kind, ReadSource::Slot(ptr.cast_const(), "c")) }.unwrap();
-            unsafe { RawPtrCodec::write_return_to_raw_ptr(&kind, ptr, &Ok(Value::Number(1.0))) };
             unsafe {
-                FfiDecoder::read(
+                assert_raw_ptr_codec_round_trip(
                     &kind,
-                    ReadSource::Value(std::ptr::dangling_mut::<c_void>(), "c"),
-                )
+                    &mut slot,
+                    std::ptr::dangling_mut::<c_void>(),
+                );
             }
-            .unwrap();
         }
     });
 }
@@ -513,13 +534,9 @@ fn float_codec_covers_every_kind() {
             let encoded = FfiEncoder::encode(&kind, &Value::Number(1.0)).unwrap();
             FfiDecoder::decode(&kind, &encoded).unwrap();
 
-            let ptr = slot.as_mut_ptr().cast::<c_void>();
-            unsafe { RawPtrCodec::write_value_to_raw_ptr(&kind, ptr, &Value::Number(2.0)) }
-                .unwrap();
-            unsafe { FfiDecoder::read(&kind, ReadSource::Slot(ptr.cast_const(), "c")) }.unwrap();
-            unsafe { RawPtrCodec::write_return_to_raw_ptr(&kind, ptr, &Ok(Value::Number(1.0))) };
-            unsafe { FfiDecoder::read(&kind, ReadSource::Value(std::ptr::null_mut(), "c")) }
-                .unwrap();
+            unsafe {
+                assert_raw_ptr_codec_round_trip(&kind, &mut slot, std::ptr::null_mut());
+            }
         }
     });
 }

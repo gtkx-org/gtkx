@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { fireEvent, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewSettingsDemo } from "../../../src/demos/lists/listview-settings.js";
-import { renderDemo } from "../../test-utils.js";
+import { findInactiveSearchToggle, renderDemo } from "../../test-utils.js";
 
 describe("listviewSettingsDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -20,9 +20,7 @@ describe("listviewSettingsDemo metadata", () => {
 describe("listviewSettingsDemo layout", () => {
     it("installs a header bar with a search toggle starting inactive", async () => {
         await renderDemo(listviewSettingsDemo);
-        const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
-        expect(toggle).toBeInstanceOf(Gtk.ToggleButton);
-        expect(toggle.getActive()).toBe(false);
+        await findInactiveSearchToggle();
     });
 
     it("renders a paned layout splitting sidebar from details", async () => {

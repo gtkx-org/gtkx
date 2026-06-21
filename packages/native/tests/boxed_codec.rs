@@ -14,6 +14,11 @@ use native::types::{
 };
 use native::value::Value;
 
+use common::{
+    assert_decode_null_yields_null, assert_read_null_yields_null,
+    assert_write_return_err_writes_null, read_slot, write_return_into_slot, write_value_into_slot,
+};
+
 fn rgba_type_name() -> String {
     gdk::RGBA::static_type().name().to_string()
 }
@@ -59,27 +64,20 @@ fn object_value_of(ptr: *mut c_void) -> Value {
     Value::Object(NativeHandle::borrowed(ptr))
 }
 
+fn assert_read_aliases_source<C: FfiDecoder>(codec: &C, original: *mut c_void, message: &str) {
+    let value = unsafe { codec.read(ReadSource::Value(original, "ctx")) }
+        .expect("ptr_to_value should succeed");
+    let Value::Object(handle) = &value else {
+        panic!("expected Object value");
+    };
+    assert_eq!(handle.ptr(), original, "{message}");
+    drop(value);
+}
+
 fn encode_rgba(ownership: Ownership, ptr: *mut c_void) -> ffi::FfiValue {
     boxed(ownership)
         .encode(&object_value_of(ptr))
         .expect("encode should succeed")
-}
-
-fn write_return_into_slot<C: RawPtrCodec>(codec: &C, value: &Result<Value, ()>) -> *mut c_void {
-    let mut slot: *mut c_void = std::ptr::null_mut();
-    unsafe { codec.write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, value) };
-    slot
-}
-
-fn write_value_into_slot<C: RawPtrCodec>(
-    codec: &C,
-    initial: *mut c_void,
-    value: &Value,
-) -> *mut c_void {
-    let mut slot: *mut c_void = initial;
-    unsafe { codec.write_value_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, value) }
-        .expect("write_value_to_raw_ptr should succeed");
-    slot
 }
 
 #[test]
@@ -156,10 +154,7 @@ fn encode_borrowed_keeps_same_pointer() {
 #[test]
 fn encode_full_null_pointer_stays_null() {
     common::run(|| {
-        let encoded = boxed(Ownership::Full)
-            .encode(&Value::Null)
-            .expect("null encode should succeed");
-        assert!(matches!(encoded, ffi::FfiValue::Ptr(p) if p.is_null()));
+        common::assert_encode_null_yields_null_ptr(&boxed(Ownership::Full));
     });
 }
 
@@ -231,10 +226,7 @@ fn decode_borrowed_copies_boxed() {
 #[test]
 fn decode_null_yields_null() {
     common::run(|| {
-        let decoded = boxed(Ownership::Borrowed)
-            .decode(&ffi::FfiValue::Ptr(std::ptr::null_mut()))
-            .expect("null decode should succeed");
-        assert!(matches!(decoded, Value::Null));
+        assert_decode_null_yields_null(&boxed(Ownership::Borrowed));
     });
 }
 
@@ -255,11 +247,7 @@ fn ptr_to_value_wraps_boxed() {
 #[test]
 fn ptr_to_value_null_yields_null() {
     common::run(|| {
-        let value = unsafe {
-            boxed(Ownership::Borrowed).read(ReadSource::Value(std::ptr::null_mut(), "ctx"))
-        }
-        .expect("null ptr_to_value should succeed");
-        assert!(matches!(value, Value::Null));
+        assert_read_null_yields_null(&boxed(Ownership::Borrowed));
     });
 }
 
@@ -296,17 +284,11 @@ fn caller_allocated_boxed_aliases_source_without_copying() {
             caller_allocated: true,
             ..boxed(Ownership::Borrowed)
         };
-        let value = unsafe { ty.read(ReadSource::Value(original, "ctx")) }
-            .expect("ptr_to_value should succeed");
-        let Value::Object(handle) = &value else {
-            panic!("expected Object value");
-        };
-        assert_eq!(
-            handle.ptr(),
+        assert_read_aliases_source(
+            &ty,
             original,
-            "a caller-allocated out boxed must alias the caller's buffer, not copy it"
+            "a caller-allocated out boxed must alias the caller's buffer, not copy it",
         );
-        drop(value);
         assert!(common::is_valid_boxed_ptr(original, gtype));
 
         free_rgba(gtype, original);
@@ -322,17 +304,11 @@ fn caller_allocated_struct_aliases_source_without_copying() {
             caller_allocated: true,
             ..struct_type(Ownership::Borrowed, Some(size_of::<gdk::ffi::GdkRGBA>()))
         };
-        let value = unsafe { ty.read(ReadSource::Value(original, "ctx")) }
-            .expect("ptr_to_value should succeed");
-        let Value::Object(handle) = &value else {
-            panic!("expected Object value");
-        };
-        assert_eq!(
-            handle.ptr(),
+        assert_read_aliases_source(
+            &ty,
             original,
-            "a caller-allocated out struct must alias the caller's buffer, not copy it"
+            "a caller-allocated out struct must alias the caller's buffer, not copy it",
         );
-        drop(value);
 
         free_rgba(gtype, original);
     });
@@ -342,15 +318,9 @@ fn caller_allocated_struct_aliases_source_without_copying() {
 fn read_from_raw_ptr_dereferences_slot() {
     common::run(|| {
         let (gtype, original) = rgba_boxed_alloc();
-        let slot: *mut c_void = original;
 
-        let value = unsafe {
-            boxed(Ownership::Borrowed).read(ReadSource::Slot(
-                &slot as *const *mut c_void as *const c_void,
-                "ctx",
-            ))
-        }
-        .expect("read_from_raw_ptr should succeed");
+        let value = unsafe { read_slot(&boxed(Ownership::Borrowed), original) }
+            .expect("read_from_raw_ptr should succeed");
         assert!(matches!(value, Value::Object(_)));
         drop(value);
 
@@ -385,13 +355,7 @@ fn write_return_to_raw_ptr_borrowed_writes_same_pointer() {
 #[test]
 fn write_return_to_raw_ptr_err_writes_null() {
     common::run(|| {
-        let mut slot: *mut c_void = std::ptr::dangling_mut::<c_void>();
-        let value: Result<Value, ()> = Err(());
-        unsafe {
-            boxed(Ownership::Borrowed)
-                .write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &value);
-        }
-        assert!(slot.is_null());
+        assert_write_return_err_writes_null(&boxed(Ownership::Borrowed));
     });
 }
 
@@ -521,10 +485,7 @@ fn struct_decode_borrowed_without_size_is_unowned() {
 #[test]
 fn struct_decode_null_yields_null() {
     common::run(|| {
-        let decoded = struct_type(Ownership::Borrowed, None)
-            .decode(&ffi::FfiValue::Ptr(std::ptr::null_mut()))
-            .expect("struct null decode should succeed");
-        assert!(matches!(decoded, Value::Null));
+        assert_decode_null_yields_null(&struct_type(Ownership::Borrowed, None));
     });
 }
 
@@ -546,12 +507,7 @@ fn struct_ptr_to_value_wraps_struct() {
 #[test]
 fn struct_ptr_to_value_null_yields_null() {
     common::run(|| {
-        let value = unsafe {
-            struct_type(Ownership::Borrowed, None)
-                .read(ReadSource::Value(std::ptr::null_mut(), "ctx"))
-        }
-        .expect("struct null ptr_to_value should succeed");
-        assert!(matches!(value, Value::Null));
+        assert_read_null_yields_null(&struct_type(Ownership::Borrowed, None));
     });
 }
 
@@ -811,12 +767,7 @@ mod free_fn {
     #[test]
     fn ptr_to_value_null_with_free_fn_yields_null() {
         common::run(|| {
-            let value = unsafe {
-                boxed_with_free_fn(Ownership::Full)
-                    .read(ReadSource::Value(std::ptr::null_mut::<c_void>(), "ctx"))
-            }
-            .expect("null ptr_to_value should succeed");
-            assert!(matches!(value, Value::Null));
+            common::assert_read_null_yields_null(&boxed_with_free_fn(Ownership::Full));
         });
     }
 

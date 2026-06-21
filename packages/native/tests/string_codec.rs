@@ -8,6 +8,10 @@ use native::ffi;
 use native::types::{FfiDecoder, FfiEncoder, Ownership, RawPtrCodec, ReadSource, StringType};
 use native::value::Value;
 
+use common::{
+    assert_decode_null_yields_null, assert_read_null_yields_null, read_slot, write_return_into_slot,
+};
+
 fn borrowed() -> StringType {
     StringType {
         ownership: Ownership::Borrowed,
@@ -104,10 +108,7 @@ fn decode_full_reads_and_frees() {
 #[test]
 fn decode_null_yields_null() {
     common::run(|| {
-        let decoded = borrowed()
-            .decode(&ffi::FfiValue::Ptr(std::ptr::null_mut()))
-            .expect("null decode should succeed");
-        assert!(matches!(decoded, Value::Null));
+        assert_decode_null_yields_null(&borrowed());
     });
 }
 
@@ -125,9 +126,7 @@ fn ptr_to_value_reads_string() {
 #[test]
 fn ptr_to_value_null_yields_null() {
     common::run(|| {
-        let value = unsafe { borrowed().read(ReadSource::Value(std::ptr::null_mut(), "ctx")) }
-            .expect("null ptr_to_value should succeed");
-        assert!(matches!(value, Value::Null));
+        assert_read_null_yields_null(&borrowed());
     });
 }
 
@@ -135,14 +134,8 @@ fn ptr_to_value_null_yields_null() {
 fn read_from_raw_ptr_dereferences_pointer_slot() {
     common::run(|| {
         let cstring = CString::new("slot").unwrap();
-        let slot: *mut c_void = cstring.as_ptr() as *mut c_void;
-        let value = unsafe {
-            borrowed().read(ReadSource::Slot(
-                &slot as *const *mut c_void as *const c_void,
-                "ctx",
-            ))
-        }
-        .expect("read_from_raw_ptr should succeed");
+        let value = unsafe { read_slot(&borrowed(), cstring.as_ptr() as *mut c_void) }
+            .expect("read_from_raw_ptr should succeed");
         assert!(matches!(value, Value::String(s) if s == "slot"));
     });
 }
@@ -150,12 +143,7 @@ fn read_from_raw_ptr_dereferences_pointer_slot() {
 #[test]
 fn write_return_to_raw_ptr_writes_duplicated_string() {
     common::run(|| {
-        let mut slot: *mut c_void = std::ptr::null_mut();
-        let value: Result<Value, ()> = Ok(Value::String("ret".to_owned()));
-        unsafe {
-            borrowed()
-                .write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &value);
-        }
+        let slot = write_return_into_slot(&borrowed(), &Ok(Value::String("ret".to_owned())));
 
         assert!(!slot.is_null());
         let read = unsafe { CStr::from_ptr(slot as *const c_char) };
@@ -167,12 +155,7 @@ fn write_return_to_raw_ptr_writes_duplicated_string() {
 #[test]
 fn write_return_to_raw_ptr_non_string_writes_null() {
     common::run(|| {
-        let mut slot: *mut c_void = std::ptr::dangling_mut::<c_void>();
-        let value: Result<Value, ()> = Ok(Value::Number(1.0));
-        unsafe {
-            borrowed()
-                .write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &value);
-        }
+        let slot = write_return_into_slot(&borrowed(), &Ok(Value::Number(1.0)));
         assert!(slot.is_null());
     });
 }

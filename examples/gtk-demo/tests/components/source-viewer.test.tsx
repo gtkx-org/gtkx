@@ -9,6 +9,23 @@ type DemoApi = ReturnType<typeof useDemo>;
 
 const intro: Demo = { id: "intro", title: "GTK Demo", description: "Introduction", keywords: [] };
 
+const renderWithSelectedDemo = async (demos: Demo[], selected: Demo): Promise<void> => {
+    let demoApi: DemoApi | undefined;
+    const Probe = (): null => {
+        demoApi = useDemo();
+        return null;
+    };
+    await render(
+        <DemoProvider demos={demos}>
+            <SourceViewer />
+            <Probe />
+        </DemoProvider>,
+    );
+    await act(() => {
+        demoApi?.setCurrentDemo(selected);
+    });
+};
+
 describe("SourceViewer", () => {
     it("shows the 'No source' placeholder when no demo is selected", async () => {
         await render(
@@ -28,20 +45,7 @@ describe("SourceViewer", () => {
             keywords: [],
             component: () => null,
         };
-        let demoApi: DemoApi | undefined;
-        const Probe = (): null => {
-            demoApi = useDemo();
-            return null;
-        };
-        await render(
-            <DemoProvider demos={[intro, withoutSource]}>
-                <SourceViewer />
-                <Probe />
-            </DemoProvider>,
-        );
-        await act(() => {
-            demoApi?.setCurrentDemo(withoutSource);
-        });
+        await renderWithSelectedDemo([intro, withoutSource], withoutSource);
         await screen.findByText("No source");
         expect(screen.queryByName("source-view")).toBeNull();
     });
@@ -56,20 +60,7 @@ describe("SourceViewer", () => {
             component: () => null,
             sourceCode,
         };
-        let demoApi: DemoApi | undefined;
-        const Probe = (): null => {
-            demoApi = useDemo();
-            return null;
-        };
-        await render(
-            <DemoProvider demos={[intro, withSource]}>
-                <SourceViewer />
-                <Probe />
-            </DemoProvider>,
-        );
-        await act(() => {
-            demoApi?.setCurrentDemo(withSource);
-        });
+        await renderWithSelectedDemo([intro, withSource], withSource);
         const view = (await screen.findByName("source-view")) as Gtk.TextView;
         const buffer = view.getBuffer();
         const start = buffer.getStartIter();

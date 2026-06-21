@@ -54,6 +54,21 @@ fn borrowed_fundamental(ptr: *mut c_void) -> NativeHandle {
     NativeValue::Fundamental(fundamental).into()
 }
 
+fn extra_referenced_decoded_gobject() -> (
+    glib::Object,
+    *mut glib::gobject_ffi::GObject,
+    u32,
+    NativeHandle,
+) {
+    let obj = glib::Object::new::<glib::Object>();
+    let obj_ptr = obj.as_ptr();
+    unsafe { glib::gobject_ffi::g_object_ref(obj_ptr) };
+    let initial_ref = get_gobject_refcount(obj_ptr);
+
+    let handle = NativeHandle::decoded_gobject(obj_ptr as *mut c_void);
+    (obj, obj_ptr, initial_ref, handle)
+}
+
 #[test]
 fn borrowed_gobject_handle_records_pointer() {
     common::run(|| {
@@ -159,12 +174,7 @@ fn drop_borrowed_handle_is_noop() {
 #[test]
 fn a_consumed_decoded_handle_drop_releases_nothing() {
     let _guard = common::serial_guard();
-    let obj = glib::Object::new::<glib::Object>();
-    let obj_ptr = obj.as_ptr();
-    unsafe { glib::gobject_ffi::g_object_ref(obj_ptr) };
-    let initial_ref = get_gobject_refcount(obj_ptr);
-
-    let handle = NativeHandle::decoded_gobject(obj_ptr as *mut c_void);
+    let (_obj, obj_ptr, initial_ref, handle) = extra_referenced_decoded_gobject();
     assert!(handle.take_pending_gobject_ref());
     drop(handle);
 
@@ -183,12 +193,7 @@ fn a_consumed_decoded_handle_drop_releases_nothing() {
 #[test]
 fn a_decoded_handle_drop_releases_unconsumed_pending_ref() {
     let _guard = common::serial_guard();
-    let obj = glib::Object::new::<glib::Object>();
-    let obj_ptr = obj.as_ptr();
-    unsafe { glib::gobject_ffi::g_object_ref(obj_ptr) };
-    let initial_ref = get_gobject_refcount(obj_ptr);
-
-    let handle = NativeHandle::decoded_gobject(obj_ptr as *mut c_void);
+    let (_obj, obj_ptr, initial_ref, handle) = extra_referenced_decoded_gobject();
     drop(handle);
 
     pump_default_context_until(|| get_gobject_refcount(obj_ptr) == initial_ref - 1);

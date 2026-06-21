@@ -203,6 +203,18 @@ impl From<BigIntKind> for libffi::Type {
 mod tests {
     use super::*;
 
+    fn assert_field_round_trip(kind: BigIntKind, big: i128) {
+        let mut slot = [0u8; 8];
+        unsafe {
+            kind.write_value_to_raw_ptr(slot.as_mut_ptr().cast(), &value::Value::BigInt(big))
+                .expect("write");
+            let read = kind
+                .read(ReadSource::Slot(slot.as_ptr().cast(), "test"))
+                .expect("read");
+            assert!(matches!(read, value::Value::BigInt(v) if v == big));
+        }
+    }
+
     #[test]
     fn encode_accepts_bigint_beyond_2_53() {
         let value = value::Value::BigInt(i128::from(u64::MAX));
@@ -233,17 +245,7 @@ mod tests {
 
     #[test]
     fn field_write_then_read_round_trips_beyond_2_53() {
-        let mut slot = [0u8; 8];
-        let big = i128::from(u64::MAX) - 7;
-        unsafe {
-            BigIntKind::U64
-                .write_value_to_raw_ptr(slot.as_mut_ptr().cast(), &value::Value::BigInt(big))
-                .expect("write");
-            let read = BigIntKind::U64
-                .read(ReadSource::Slot(slot.as_ptr().cast(), "test"))
-                .expect("read");
-            assert!(matches!(read, value::Value::BigInt(v) if v == big));
-        }
+        assert_field_round_trip(BigIntKind::U64, i128::from(u64::MAX) - 7);
     }
 
     #[test]
@@ -274,17 +276,7 @@ mod tests {
 
     #[test]
     fn field_write_then_read_round_trips_i64() {
-        let mut slot = [0u8; 8];
-        let big = i128::from(i64::MIN);
-        unsafe {
-            BigIntKind::I64
-                .write_value_to_raw_ptr(slot.as_mut_ptr().cast(), &value::Value::BigInt(big))
-                .expect("write");
-            let read = BigIntKind::I64
-                .read(ReadSource::Slot(slot.as_ptr().cast(), "test"))
-                .expect("read");
-            assert!(matches!(read, value::Value::BigInt(v) if v == big));
-        }
+        assert_field_round_trip(BigIntKind::I64, i128::from(i64::MIN));
     }
 
     #[test]

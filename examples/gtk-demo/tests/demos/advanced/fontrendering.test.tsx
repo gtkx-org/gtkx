@@ -4,6 +4,27 @@ import { describe, expect, it } from "vitest";
 import { fontRenderingDemo } from "../../../src/demos/advanced/fontrendering.js";
 import { renderDemo } from "../../test-utils.js";
 
+async function activateGridMode(): Promise<Gtk.ToggleButton> {
+    const gridToggle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
+        name: "Grid",
+    })) as Gtk.ToggleButton;
+    await act(() => gridToggle.setActive(true));
+    await fireEvent(gridToggle, "toggled");
+    return gridToggle;
+}
+
+async function toggleExtentsAndGridOverlays(): Promise<{ extents: Gtk.CheckButton; grid: Gtk.CheckButton }> {
+    const extents = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
+        name: "Show _Extents",
+    })) as Gtk.CheckButton;
+    const grid = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
+        name: "Show _Grid",
+    })) as Gtk.CheckButton;
+    await userEvent.click(extents);
+    await userEvent.click(grid);
+    return { extents, grid };
+}
+
 describe("fontRenderingDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(fontRenderingDemo.id).toBe("fontrendering");
@@ -50,11 +71,7 @@ describe("fontRenderingDemo header toggles", () => {
 
     it("switches to grid mode when the Grid toggle is activated", async () => {
         await renderDemo(fontRenderingDemo);
-        const gridToggle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
-            name: "Grid",
-        })) as Gtk.ToggleButton;
-        await act(() => gridToggle.setActive(true));
-        await fireEvent(gridToggle, "toggled");
+        const gridToggle = await activateGridMode();
         expect(gridToggle.getActive()).toBe(true);
     });
 });
@@ -101,14 +118,7 @@ describe("fontRenderingDemo overlay checks", () => {
 
     it("toggles extents and grid overlays", async () => {
         await renderDemo(fontRenderingDemo);
-        const extents = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-            name: "Show _Extents",
-        })) as Gtk.CheckButton;
-        const grid = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-            name: "Show _Grid",
-        })) as Gtk.CheckButton;
-        await userEvent.click(extents);
-        await userEvent.click(grid);
+        const { extents, grid } = await toggleExtentsAndGridOverlays();
         expect(extents.getActive()).toBe(true);
         expect(grid.getActive()).toBe(true);
     });
@@ -234,11 +244,7 @@ describe("fontRenderingDemo paint callback", () => {
 
     it("queues a draw on the drawing area after switching to grid mode", async () => {
         await renderDemo(fontRenderingDemo);
-        const gridToggle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
-            name: "Grid",
-        })) as Gtk.ToggleButton;
-        await act(() => gridToggle.setActive(true));
-        await fireEvent(gridToggle, "toggled");
+        await activateGridMode();
         const drawingArea = (await screen.findByName("image")) as Gtk.DrawingArea;
         await act(() => drawingArea.queueDraw());
         expect(drawingArea).toBeInstanceOf(Gtk.DrawingArea);
@@ -246,14 +252,7 @@ describe("fontRenderingDemo paint callback", () => {
 
     it("queues a draw after toggling extents and grid overlays so all branches are exercised", async () => {
         await renderDemo(fontRenderingDemo);
-        const extents = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-            name: "Show _Extents",
-        })) as Gtk.CheckButton;
-        const grid = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-            name: "Show _Grid",
-        })) as Gtk.CheckButton;
-        await userEvent.click(extents);
-        await userEvent.click(grid);
+        const { extents, grid } = await toggleExtentsAndGridOverlays();
         const drawingArea = (await screen.findByName("image")) as Gtk.DrawingArea;
         await act(() => drawingArea.queueDraw());
         expect(extents.getActive()).toBe(true);

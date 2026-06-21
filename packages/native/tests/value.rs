@@ -103,6 +103,22 @@ fn assert_string_item(items: &[Value], index: usize, expected: &str) {
     }
 }
 
+fn new_referenced_gobject() -> (glib::Object, *mut glib::gobject_ffi::GObject) {
+    let obj = glib::Object::new::<glib::Object>();
+    let obj_ptr = obj.as_ptr();
+    unsafe {
+        glib::gobject_ffi::g_object_ref(obj_ptr);
+    }
+    (obj, obj_ptr)
+}
+
+fn new_gobject_handle() -> (glib::Object, *mut c_void, native::NativeHandle) {
+    let obj = glib::Object::new::<glib::Object>();
+    let obj_ptr = obj.as_ptr() as *mut c_void;
+    let handle = native::NativeHandle::borrowed_gobject(obj_ptr);
+    (obj, obj_ptr, handle)
+}
+
 fn build_gobject_glist(count: usize) -> *mut glib::ffi::GList {
     let mut list: *mut glib::ffi::GList = std::ptr::null_mut();
     for _ in 0..count {
@@ -185,12 +201,7 @@ fn gobject_transfer_none_does_not_take_ownership() {
 #[test]
 fn gobject_full_transfer_keeps_pending_reference() {
     common::run(|| {
-        let obj = glib::Object::new::<glib::Object>();
-        let obj_ptr = obj.as_ptr();
-
-        unsafe {
-            glib::gobject_ffi::g_object_ref(obj_ptr);
-        }
+        let (_obj, obj_ptr) = new_referenced_gobject();
 
         let ref_before_transfer = get_gobject_refcount(obj_ptr);
 
@@ -216,11 +227,9 @@ fn gobject_null_returns_null_value() {
 #[test]
 fn gobject_floating_ref_gets_sunk() {
     common::run(|| {
-        let obj = glib::Object::new::<glib::Object>();
-        let obj_ptr = obj.as_ptr();
+        let (_obj, obj_ptr) = new_referenced_gobject();
 
         unsafe {
-            glib::gobject_ffi::g_object_ref(obj_ptr);
             glib::gobject_ffi::g_object_force_floating(obj_ptr);
         }
 
@@ -570,9 +579,7 @@ fn from_cif_value_struct_owned_without_size() {
 #[test]
 fn result_to_ptr_returns_handle_pointer_for_object() {
     common::run(|| {
-        let obj = glib::Object::new::<glib::Object>();
-        let obj_ptr = obj.as_ptr() as *mut c_void;
-        let handle = native::NativeHandle::borrowed_gobject(obj.as_ptr() as *mut c_void);
+        let (_obj, obj_ptr, handle) = new_gobject_handle();
 
         let result: Result<Value, ()> = Ok(Value::Object(handle));
         assert_eq!(Value::result_to_ptr(&result), obj_ptr);
@@ -655,9 +662,7 @@ fn as_array_is_none_for_other_variants() {
 #[test]
 fn object_ptr_returns_handle_pointer() {
     common::run(|| {
-        let obj = glib::Object::new::<glib::Object>();
-        let obj_ptr = obj.as_ptr() as *mut c_void;
-        let handle = native::NativeHandle::borrowed_gobject(obj.as_ptr() as *mut c_void);
+        let (_obj, obj_ptr, handle) = new_gobject_handle();
 
         let value = Value::Object(handle);
         assert_eq!(value.object_ptr("GObject").unwrap(), obj_ptr);

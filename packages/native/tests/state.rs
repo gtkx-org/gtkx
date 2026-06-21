@@ -2,6 +2,19 @@ mod common;
 
 use native::state::{GlibThread, GlibThreadState, RuntimePhase};
 
+fn join_panicking_handle<F>(panicking_body: F) -> Option<String>
+where
+    F: FnOnce() + Send + 'static,
+{
+    let previous_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(|_| {}));
+    let handle = std::thread::spawn(panicking_body);
+    GlibThread::global().set_handle(handle);
+    let result = GlibThread::global().join();
+    std::panic::set_hook(previous_hook);
+    result
+}
+
 #[test]
 fn gtk_thread_state_default_initializes_correctly() {
     common::run(|| {
@@ -231,14 +244,9 @@ fn gtk_thread_set_handle_replacing_unjoined_handle_keeps_replacement() {
 #[test]
 fn gtk_thread_join_reports_str_panic_payload() {
     common::run(|| {
-        let previous_hook = std::panic::take_hook();
-        std::panic::set_hook(Box::new(|_| {}));
-        let handle = std::thread::spawn(|| {
+        let result = join_panicking_handle(|| {
             std::panic::panic_any("static panic message");
         });
-        GlibThread::global().set_handle(handle);
-        let result = GlibThread::global().join();
-        std::panic::set_hook(previous_hook);
 
         assert_eq!(result.as_deref(), Some("static panic message"));
     });
@@ -247,14 +255,9 @@ fn gtk_thread_join_reports_str_panic_payload() {
 #[test]
 fn gtk_thread_join_reports_string_panic_payload() {
     common::run(|| {
-        let previous_hook = std::panic::take_hook();
-        std::panic::set_hook(Box::new(|_| {}));
-        let handle = std::thread::spawn(|| {
+        let result = join_panicking_handle(|| {
             panic!("{}", String::from("owned panic message"));
         });
-        GlibThread::global().set_handle(handle);
-        let result = GlibThread::global().join();
-        std::panic::set_hook(previous_hook);
 
         assert_eq!(result.as_deref(), Some("owned panic message"));
     });

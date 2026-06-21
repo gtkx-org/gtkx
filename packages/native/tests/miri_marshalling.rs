@@ -1,18 +1,21 @@
+mod common;
+
 use std::ffi::c_void;
 
 use native::ffi::FfiValue;
-use native::types::{
-    ArrayKind, ArrayType, BlobType, FfiEncoder as _, FloatKind, IntegerKind, Ownership, Type,
-};
+use native::types::{ArrayType, BlobType, FfiEncoder as _};
 use native::value::{BufferView, BufferViewKind, Value};
 
-fn i32_array_type(size: usize) -> ArrayType {
-    ArrayType {
-        item_type: Box::new(Type::Integer(IntegerKind::I32)),
-        kind: ArrayKind::Fixed { size },
-        ownership: Ownership::Borrowed,
-        element_size: None,
-    }
+use common::{f32_array_type, i32_array_type};
+
+fn decode_array_items(array_type: &ArrayType, buffer_ptr: *const i32) -> Vec<Value> {
+    let decoded = array_type
+        .decode_with_context(&FfiValue::Ptr(buffer_ptr as *mut c_void), &[], &[])
+        .expect("contiguous decode");
+    let Value::Array(items) = decoded else {
+        panic!("expected an array value");
+    };
+    items
 }
 
 #[test]
@@ -20,13 +23,8 @@ fn decodes_contiguous_i32_array_from_buffer() {
     let buffer: Vec<i32> = vec![10, 20, 30, 40];
     let array_type = i32_array_type(buffer.len());
 
-    let decoded = array_type
-        .decode_with_context(&FfiValue::Ptr(buffer.as_ptr() as *mut c_void), &[], &[])
-        .expect("contiguous decode");
+    let items = decode_array_items(&array_type, buffer.as_ptr());
 
-    let Value::Array(items) = decoded else {
-        panic!("expected an array value");
-    };
     assert_eq!(items.len(), buffer.len());
 }
 
@@ -35,13 +33,8 @@ fn decodes_empty_contiguous_array() {
     let array_type = i32_array_type(0);
     let buffer: Vec<i32> = vec![1];
 
-    let decoded = array_type
-        .decode_with_context(&FfiValue::Ptr(buffer.as_ptr() as *mut c_void), &[], &[])
-        .expect("contiguous decode");
+    let items = decode_array_items(&array_type, buffer.as_ptr());
 
-    let Value::Array(items) = decoded else {
-        panic!("expected an array value");
-    };
     assert!(items.is_empty());
 }
 
@@ -62,12 +55,7 @@ fn buffer_view_array_passthrough_shares_the_backing_store() {
         BufferViewKind::Float32,
         false,
     );
-    let array_type = ArrayType {
-        item_type: Box::new(Type::Float(FloatKind::F32)),
-        kind: ArrayKind::Sized { size_index: 1 },
-        ownership: Ownership::Borrowed,
-        element_size: None,
-    };
+    let array_type = f32_array_type();
 
     let encoded = array_type
         .encode(&Value::BufferView(view))

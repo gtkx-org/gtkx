@@ -67,6 +67,9 @@ importers:
       '@gtkx/cli':
         specifier: workspace:*
         version: link:../../packages/cli
+      '@gtkx/config':
+        specifier: workspace:*
+        version: link:../../packages/config
 
   examples/gtk-demo:
     dependencies:
@@ -89,6 +92,9 @@ importers:
       '@gtkx/cli':
         specifier: workspace:*
         version: link:../../packages/cli
+      '@gtkx/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@gtkx/native':
         specifier: workspace:*
         version: link:../../packages/native
@@ -117,6 +123,9 @@ importers:
       '@gtkx/cli':
         specifier: workspace:*
         version: link:../../packages/cli
+      '@gtkx/config':
+        specifier: workspace:*
+        version: link:../../packages/config
 
   examples/tutorial:
     dependencies:
@@ -136,6 +145,9 @@ importers:
       '@gtkx/cli':
         specifier: workspace:*
         version: link:../../packages/cli
+      '@gtkx/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       esbuild:
         specifier: ^0.28.1
         version: 0.28.1
@@ -393,6 +405,9 @@ importers:
 
   packages/testing:
     dependencies:
+      '@gtkx/ffi':
+        specifier: workspace:*
+        version: link:../ffi
       '@gtkx/react':
         specifier: workspace:*
         version: link:../react

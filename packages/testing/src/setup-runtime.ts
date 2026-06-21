@@ -1,4 +1,5 @@
-import { type GApplication, setApplicationLifecycle, setDeferredFlushWrapper } from "@gtkx/react";
+import type { GApplication } from "@gtkx/ffi";
+import { setApplicationLifecycle, setDeferredFlushWrapper } from "@gtkx/react";
 import * as React from "react";
 import { act, getIsReactActEnvironment } from "./act.js";
 

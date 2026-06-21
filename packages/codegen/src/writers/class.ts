@@ -84,7 +84,7 @@ const renderClassMembers = (
         className,
     });
     for (const property of klass.properties) {
-        const block = renderPropertyAccessor(context, property, claimedNames, methodByName);
+        const block = renderPropertyAccessor({ context, property, claimedNames, methodByName });
         if (block !== undefined) members.push(block);
     }
     members.push(...renderSignalMembers(context, klass));

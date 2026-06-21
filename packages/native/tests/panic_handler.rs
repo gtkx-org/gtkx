@@ -1,8 +1,23 @@
 mod common;
 
-use std::sync::Mutex;
+use std::panic::PanicHookInfo;
+use std::sync::{Arc, Mutex};
 
 use native::panic_handler::{format_panic_payload, format_panic_report, install_panic_hook};
+
+type PreviousHook = Box<dyn Fn(&PanicHookInfo<'_>) + Sync + Send>;
+
+fn capture_panic_report() -> (Arc<Mutex<String>>, PreviousHook) {
+    let captured = Arc::new(Mutex::new(String::new()));
+    let captured_for_hook = captured.clone();
+
+    let previous = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        *captured_for_hook.lock().unwrap() = format_panic_report(info);
+    }));
+
+    (captured, previous)
+}
 
 #[test]
 fn formats_static_str_payload() {
@@ -32,13 +47,7 @@ fn formats_owned_string_payload() {
 
 #[test]
 fn format_panic_report_includes_thread_location_and_message() {
-    let captured = std::sync::Arc::new(Mutex::new(String::new()));
-    let captured_for_hook = captured.clone();
-
-    let previous = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |info| {
-        *captured_for_hook.lock().unwrap() = format_panic_report(info);
-    }));
+    let (captured, previous) = capture_panic_report();
 
     let thread_name = "panic_report_thread";
     let handle = std::thread::Builder::new()
@@ -65,13 +74,7 @@ fn format_panic_report_includes_thread_location_and_message() {
 
 #[test]
 fn format_panic_report_uses_unnamed_when_thread_lacks_name() {
-    let captured = std::sync::Arc::new(Mutex::new(String::new()));
-    let captured_for_hook = captured.clone();
-
-    let previous = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |info| {
-        *captured_for_hook.lock().unwrap() = format_panic_report(info);
-    }));
+    let (captured, previous) = capture_panic_report();
 
     let handle = std::thread::spawn(|| {
         panic!("anonymous thread panic");

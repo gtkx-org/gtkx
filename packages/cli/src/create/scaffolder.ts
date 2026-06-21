@@ -62,7 +62,7 @@ export type Scaffolder = {
 
 const DEPENDENCIES = ["@gtkx/css", "@gtkx/ffi", "@gtkx/react", "react"];
 
-const DEV_DEPENDENCIES = ["@gtkx/cli", "@types/react", "typescript", "vite"];
+const DEV_DEPENDENCIES = ["@gtkx/cli", "@gtkx/config", "@types/react", "typescript", "vite"];
 
 const TESTING_DEV_DEPENDENCIES = ["@gtkx/testing", "vitest"];
 

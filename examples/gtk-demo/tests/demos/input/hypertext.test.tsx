@@ -2,12 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { act, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { hypertextDemo } from "../../../src/demos/input/hypertext.js";
-import { renderDemo } from "../../test-utils.js";
-
-const readBufferText = (view: Gtk.TextView): string => {
-    const buffer = view.getBuffer();
-    return buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false) ?? "";
-};
+import { readBufferText, renderDemo } from "../../test-utils.js";
 
 const findTextView = async (): Promise<Gtk.TextView> =>
     (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;

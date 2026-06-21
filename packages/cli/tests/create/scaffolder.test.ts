@@ -164,7 +164,7 @@ describe("createScaffolder (top-level generated files)", () => {
         await runScaffolder();
 
         const content = vol.readFileSync(`${TEST_DIR}/test-app/gtkx.config.ts`, "utf-8") as string;
-        expect(content).toContain('import { defineConfig } from "@gtkx/cli"');
+        expect(content).toContain('import { defineConfig } from "@gtkx/config"');
         expect(content).toContain('libraries: ["Gtk-4.0", "Adw-1"]');
     });
 

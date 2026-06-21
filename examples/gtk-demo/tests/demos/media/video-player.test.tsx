@@ -3,7 +3,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { act, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { videoPlayerDemo } from "../../../src/demos/media/video-player.js";
-import { renderDemo } from "../../test-utils.js";
+import { renderDemo, renderDemoAndExpectOpenButton } from "../../test-utils.js";
 
 describe("videoPlayerDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -32,10 +32,7 @@ describe("videoPlayerDemo header bar", () => {
     });
 
     it("wires the Open button with useUnderline in the header bar's pack-start area", async () => {
-        await renderDemo(videoPlayerDemo);
-        const openButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" })) as Gtk.Button;
-        expect(openButton).toBeInstanceOf(Gtk.Button);
-        expect(openButton.getUseUnderline()).toBe(true);
+        await renderDemoAndExpectOpenButton(videoPlayerDemo);
     });
 
     it("renders the Big Buck Bunny header button with a 24px image child", async () => {

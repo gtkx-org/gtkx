@@ -1,8 +1,8 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkConstraintLayout, GtkGestureDrag } from "@gtkx/jsx/gtk";
+import { GtkConstraintLayout, GtkGestureDrag } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import type { Demo } from "../types.js";
-import { ConstraintChildButtons } from "./child-buttons.js";
+import { BottomEdgeConstraint, ConstraintContainer, TopEdgeConstraint } from "./constraint-helpers.js";
 import sourceCode from "./constraints-interactive.tsx?raw";
 
 const A = Gtk.ConstraintAttribute;
@@ -70,7 +70,7 @@ const renderHorizontalConstraints = () => (
 
 const renderVerticalConstraints = () => (
     <>
-        <GtkConstraintLayout.Constraint target="button1" targetAttribute={A.TOP} sourceAttribute={A.TOP} constant={8} />
+        <TopEdgeConstraint />
         <GtkConstraintLayout.Constraint
             target="button2"
             targetAttribute={A.TOP}
@@ -83,12 +83,7 @@ const renderVerticalConstraints = () => (
             source="button2"
             sourceAttribute={A.BOTTOM}
         />
-        <GtkConstraintLayout.Constraint
-            target="button3"
-            targetAttribute={A.BOTTOM}
-            sourceAttribute={A.BOTTOM}
-            constant={-8}
-        />
+        <BottomEdgeConstraint />
     </>
 );
 
@@ -104,12 +99,9 @@ const ConstraintsInteractive = () => {
     const [dividerOffset, setDividerOffset] = useState<number | null>(null);
 
     return (
-        <GtkBox
-            name="container"
-            hexpand
-            vexpand
+        <ConstraintContainer
             layoutManager={renderLayout(dividerOffset)}
-            addController={
+            controllers={
                 <GtkGestureDrag
                     onDragUpdate={(offsetX, _offsetY, self) => {
                         const [success, startX] = self.getStartPoint();
@@ -117,9 +109,7 @@ const ConstraintsInteractive = () => {
                     }}
                 />
             }
-        >
-            <ConstraintChildButtons />
-        </GtkBox>
+        />
     );
 };
 

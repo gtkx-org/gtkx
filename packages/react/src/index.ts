@@ -1,4 +1,3 @@
-export type { GApplication } from "@gtkx/ffi";
 export { withApplication, withApplicationWindow } from "./components/application.js";
 export { type ConstraintLayoutProps, GtkConstraintLayout } from "./components/constraint-layout.js";
 export {

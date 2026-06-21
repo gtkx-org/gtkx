@@ -1,5 +1,5 @@
 import * as GtkSource from "@gtkx/gi/gtksource";
-import { GtkSourceBuffer, GtkSourceView } from "@gtkx/jsx/gtksource";
+import { GtkSourceBuffer, type GtkSourceBufferProps, GtkSourceView } from "@gtkx/jsx/gtksource";
 import { render, waitFor } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -20,6 +20,21 @@ const renderJsLanguageSourceView = async (ref: RefObject<GtkSource.View | null>)
     const buffer = getSourceBuffer(ref);
     expect(buffer.getLanguage()?.getId()).toBe("js");
     return { buffer, rerender };
+};
+
+const renderUndoableSourceViewAfterUserAction = async (
+    ref: RefObject<GtkSource.View | null>,
+    notify: Pick<GtkSourceBufferProps, "onNotifyCanUndo" | "onNotifyCanRedo">,
+): Promise<GtkSource.Buffer> => {
+    await render(<GtkSourceView ref={ref} buffer={<GtkSourceBuffer enableUndo {...notify} />} />);
+
+    const buffer = getSourceBuffer(ref);
+
+    buffer.beginUserAction();
+    buffer.insertAtCursor("text", -1);
+    buffer.endUserAction();
+
+    return buffer;
 };
 
 describe("render - SourceView (1)", () => {
@@ -89,15 +104,7 @@ describe("render - SourceView (2)", () => {
             const ref = createRef<GtkSource.View>();
             const onNotifyCanUndo = vi.fn();
 
-            await render(
-                <GtkSourceView ref={ref} buffer={<GtkSourceBuffer enableUndo onNotifyCanUndo={onNotifyCanUndo} />} />,
-            );
-
-            const buffer = getSourceBuffer(ref);
-
-            buffer.beginUserAction();
-            buffer.insertAtCursor("text", -1);
-            buffer.endUserAction();
+            await renderUndoableSourceViewAfterUserAction(ref, { onNotifyCanUndo });
 
             await waitFor(() => {
                 expect(onNotifyCanUndo).toHaveBeenCalled();
@@ -112,15 +119,7 @@ describe("render - SourceView (3)", () => {
             const ref = createRef<GtkSource.View>();
             const onNotifyCanRedo = vi.fn();
 
-            await render(
-                <GtkSourceView ref={ref} buffer={<GtkSourceBuffer enableUndo onNotifyCanRedo={onNotifyCanRedo} />} />,
-            );
-
-            const buffer = getSourceBuffer(ref);
-
-            buffer.beginUserAction();
-            buffer.insertAtCursor("text", -1);
-            buffer.endUserAction();
+            const buffer = await renderUndoableSourceViewAfterUserAction(ref, { onNotifyCanRedo });
             buffer.undo();
 
             await waitFor(() => {

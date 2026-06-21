@@ -5,8 +5,9 @@ import {
     type RegisterClassVfunc as NativeRegisterClassVfunc,
     setWrapper,
 } from "@gtkx/native";
-import type { AnyClass, Mixin } from "@gtkx/utils";
+import type { AnyClass } from "@gtkx/utils";
 import { type GType, type GTyped, TYPE_INVALID, typeFromName, typeInterfaces, typeIsA, typeParent } from "./gtype.js";
+import type { Mixin } from "./mixin.js";
 
 let gobjectGtype: GType = TYPE_INVALID;
 
@@ -167,8 +168,6 @@ function resolveWrapper(
     }
     return instance;
 }
-
-export type { Handle } from "@gtkx/native";
 
 export function getParentClass(cls: AnyClass): AnyClass | null {
     const parent: unknown = Object.getPrototypeOf(cls);

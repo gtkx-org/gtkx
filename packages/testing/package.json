@@ -48,6 +48,7 @@
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "dependencies": {
+        "@gtkx/ffi": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/utils": "workspace:*"
     },

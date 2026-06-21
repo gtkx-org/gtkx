@@ -1,7 +1,8 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
-import { createRootElement, render, screen, within } from "@gtkx/testing";
+import { createRootElement } from "@gtkx/react";
+import { render, screen, within } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 

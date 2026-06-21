@@ -16,7 +16,7 @@ export class GtkxConfigNotFoundError extends Error {
                 `Create one with:\n` +
                 `\n` +
                 `  // gtkx.config.ts\n` +
-                `  import { defineConfig } from "@gtkx/cli";\n` +
+                `  import { defineConfig } from "@gtkx/config";\n` +
                 `\n` +
                 `  export default defineConfig({\n` +
                 `      libraries: ["Gtk-4.0", "Adw-1"],\n` +

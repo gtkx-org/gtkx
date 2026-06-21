@@ -2,11 +2,27 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { act, screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { textundoDemo } from "../../../src/demos/input/textundo.js";
-import { renderDemo } from "../../test-utils.js";
+import { readBufferText, renderDemo } from "../../test-utils.js";
 
-const readBufferText = (textView: Gtk.TextView): string => {
+interface EditedTextView {
+    textView: Gtk.TextView;
+    buffer: Gtk.TextBuffer;
+    before: string;
+}
+
+const renderAndInsert = async (insertedText: string): Promise<EditedTextView> => {
+    await renderDemo(textundoDemo);
+    const textView = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
     const buffer = textView.getBuffer();
-    return buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false) ?? "";
+    const before = readBufferText(textView);
+
+    await act(() => {
+        buffer.beginUserAction();
+        buffer.insertAtCursor(insertedText, -1);
+        buffer.endUserAction();
+    });
+
+    return { textView, buffer, before };
 };
 
 describe("textundoDemo", () => {
@@ -42,16 +58,7 @@ describe("textundoDemo", () => {
     });
 
     it("undoes a buffer edit when Control+z is dispatched to the text view", async () => {
-        await renderDemo(textundoDemo);
-        const textView = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
-        const buffer = textView.getBuffer();
-        const before = readBufferText(textView);
-
-        await act(() => {
-            buffer.beginUserAction();
-            buffer.insertAtCursor(" — appended", -1);
-            buffer.endUserAction();
-        });
+        const { textView, buffer, before } = await renderAndInsert(" — appended");
         expect(readBufferText(textView)).toBe(`${before} — appended`);
         expect(buffer.getCanUndo()).toBe(true);
 
@@ -62,16 +69,7 @@ describe("textundoDemo", () => {
     });
 
     it("redoes the previous edit when Control+Shift+z is dispatched after an undo", async () => {
-        await renderDemo(textundoDemo);
-        const textView = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
-        const buffer = textView.getBuffer();
-        const before = readBufferText(textView);
-
-        await act(() => {
-            buffer.beginUserAction();
-            buffer.insertAtCursor(" REDO", -1);
-            buffer.endUserAction();
-        });
+        const { textView, before } = await renderAndInsert(" REDO");
         const afterInsert = readBufferText(textView);
         await userEvent.keyboard(textView, "{Control>}z{/Control}");
         expect(readBufferText(textView)).toBe(before);

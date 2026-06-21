@@ -4,6 +4,13 @@ import { describe, expect, it } from "vitest";
 import { listviewSelectionsDemo } from "../../../src/demos/lists/listview-selections.js";
 import { renderDemo } from "../../test-utils.js";
 
+async function findVerticalColumnSeparator() {
+    const sep = (await screen.findByName("column-separator")) as Gtk.Separator;
+    expect(sep).toBeInstanceOf(Gtk.Separator);
+    expect(sep.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
+    return sep;
+}
+
 describe("listviewSelectionsDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listviewSelectionsDemo.id).toBe("listview-selections");
@@ -26,16 +33,12 @@ describe("listviewSelectionsDemo layout", () => {
         await renderDemo(listviewSelectionsDemo);
         const fonts = (await screen.findByName("fonts-dropdown")) as Gtk.DropDown;
         expect(fonts).toBeInstanceOf(Gtk.DropDown);
-        const sep = (await screen.findByName("column-separator")) as Gtk.Separator;
-        expect(sep).toBeInstanceOf(Gtk.Separator);
-        expect(sep.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
+        await findVerticalColumnSeparator();
     });
 
     it("renders a vertical separator between the two columns", async () => {
         await renderDemo(listviewSelectionsDemo);
-        const sep = (await screen.findByName("column-separator")) as Gtk.Separator;
-        expect(sep).toBeInstanceOf(Gtk.Separator);
-        expect(sep.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
+        await findVerticalColumnSeparator();
     });
 });
 

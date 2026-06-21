@@ -18,6 +18,12 @@ afterEach(() => {
     rmSync(tempDir, { recursive: true, force: true });
 });
 
+async function renderDemoAndClickOpen() {
+    await renderDemo(listviewWordsDemo);
+    const openButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" })) as Gtk.Button;
+    await userEvent.click(openButton);
+}
+
 describe("listviewWordsDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listviewWordsDemo.id).toBe("listview-words");
@@ -130,9 +136,7 @@ describe("listviewWordsDemo Open button", () => {
         const file = Gio.fileNewForPath(wordsPath);
         const dialogSpy = vi.spyOn(Gtk.FileDialog.prototype, "open").mockResolvedValue(file);
         try {
-            await renderDemo(listviewWordsDemo);
-            const openButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" })) as Gtk.Button;
-            await userEvent.click(openButton);
+            await renderDemoAndClickOpen();
             await waitFor(() => expect(dialogSpy).toHaveBeenCalled());
             const lv = (await screen.findByName("list-view")) as Gtk.ListView;
             await waitFor(() => {
@@ -148,9 +152,7 @@ describe("listviewWordsDemo Open button", () => {
         const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
         const dialogSpy = vi.spyOn(Gtk.FileDialog.prototype, "open").mockRejectedValue(new Error("user cancelled"));
         try {
-            await renderDemo(listviewWordsDemo);
-            const openButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" })) as Gtk.Button;
-            await userEvent.click(openButton);
+            await renderDemoAndClickOpen();
             await waitFor(() => expect(errorSpy).toHaveBeenCalledWith("user cancelled"));
         } finally {
             dialogSpy.mockRestore();
@@ -164,9 +166,7 @@ describe("listviewWordsDemo Open button", () => {
         const alertShowSpy = vi.spyOn(Gtk.AlertDialog.prototype, "show").mockImplementation(() => {});
         const setMessageSpy = vi.spyOn(Gtk.AlertDialog.prototype, "setMessage");
         try {
-            await renderDemo(listviewWordsDemo);
-            const openButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" })) as Gtk.Button;
-            await userEvent.click(openButton);
+            await renderDemoAndClickOpen();
             await waitFor(() => expect(alertShowSpy).toHaveBeenCalled());
             expect(setMessageSpy).toHaveBeenCalledWith(expect.stringMatching(/Failure reading words/));
         } finally {

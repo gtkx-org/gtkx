@@ -10,12 +10,16 @@ use native::types::{
 use native::value::Value;
 use native::{ffi, value};
 
-#[test]
-fn ownership_is_full_and_is_borrowed() {
+fn assert_ownership_predicates_mutually_exclusive() {
     assert!(Ownership::Full.is_full());
     assert!(!Ownership::Full.is_borrowed());
     assert!(Ownership::Borrowed.is_borrowed());
     assert!(!Ownership::Borrowed.is_full());
+}
+
+#[test]
+fn ownership_is_full_and_is_borrowed() {
+    assert_ownership_predicates_mutually_exclusive();
 }
 
 #[test]
@@ -70,11 +74,7 @@ fn transfer_release_matches_codec_ownership() {
 
 #[test]
 fn ownership_predicates_are_mutually_exclusive() {
-    assert!(Ownership::Full.is_full());
-    assert!(!Ownership::Full.is_borrowed());
-
-    assert!(Ownership::Borrowed.is_borrowed());
-    assert!(!Ownership::Borrowed.is_full());
+    assert_ownership_predicates_mutually_exclusive();
 }
 
 fn gobject_type() -> GObjectType {

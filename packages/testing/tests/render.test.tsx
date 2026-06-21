@@ -1,16 +1,10 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { createRootElement } from "@gtkx/react";
 import { Component, createContext, type ReactNode, useContext } from "react";
 import { describe, expect, it, vi } from "vitest";
-import {
-    type Container,
-    cleanup,
-    createRootElement,
-    queryAllByRole,
-    render,
-    type WrapperComponent,
-} from "../src/index.js";
+import { type Container, cleanup, queryAllByRole, render, type WrapperComponent } from "../src/index.js";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
     override state = { hasError: false };

@@ -2,7 +2,8 @@ import { applicationId } from "virtual:gtkx-config";
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
-import { createRootElement, render } from "@gtkx/testing";
+import { createRootElement } from "@gtkx/react";
+import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { expect, it } from "vitest";
 

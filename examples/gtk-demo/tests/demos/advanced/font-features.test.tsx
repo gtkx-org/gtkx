@@ -10,6 +10,16 @@ const expandFeatures = async (): Promise<void> => {
     await fireEvent(expander, "notify::expanded");
 };
 
+const activateKerningFeature = async (): Promise<Gtk.Label> => {
+    await renderDemo(fontFeaturesDemo);
+    await expandFeatures();
+    const kerning = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Kerning" });
+    await userEvent.click(kerning);
+    const settings = (await screen.findByName("settings")) as Gtk.Label;
+    await waitFor(() => expect(settings.getLabel()).toContain("kern=1"));
+    return settings;
+};
+
 describe("fontFeaturesDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(fontFeaturesDemo.id).toBe("font-features");
@@ -119,12 +129,7 @@ describe("fontFeaturesDemo sample buttons", () => {
 
 describe("fontFeaturesDemo feature toggling", () => {
     it("activates Kerning when its checkbox is toggled", async () => {
-        await renderDemo(fontFeaturesDemo);
-        await expandFeatures();
-        const kerning = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Kerning" });
-        await userEvent.click(kerning);
-        const settings = (await screen.findByName("settings")) as Gtk.Label;
-        await waitFor(() => expect(settings.getLabel()).toContain("kern=1"));
+        await activateKerningFeature();
     });
 
     it("selects a non-default radio value to enable a feature", async () => {
@@ -148,12 +153,7 @@ describe("fontFeaturesDemo titlebar", () => {
     });
 
     it("clicking the titlebar Reset button clears active feature settings in the body", async () => {
-        await renderDemo(fontFeaturesDemo);
-        await expandFeatures();
-        const kerning = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Kerning" });
-        await userEvent.click(kerning);
-        const settings = (await screen.findByName("settings")) as Gtk.Label;
-        await waitFor(() => expect(settings.getLabel()).toContain("kern=1"));
+        const settings = await activateKerningFeature();
 
         const resetButton = (await screen.findByName("reset")) as Gtk.Button;
         await userEvent.click(resetButton);

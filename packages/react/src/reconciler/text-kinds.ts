@@ -1,6 +1,0 @@
-export {
-    BUFFER_TEXT_KIND,
-    LABEL_TEXT_KIND,
-    TEXT_ANCHOR_KIND as ANCHOR_KIND,
-    TEXT_PAINTABLE_KIND as PAINTABLE_KIND,
-} from "@gtkx/config";

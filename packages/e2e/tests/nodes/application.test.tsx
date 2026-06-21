@@ -2,8 +2,8 @@ import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GMenu } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
-import type { MenuEntry } from "@gtkx/react";
-import { createRootElement, render } from "@gtkx/testing";
+import { createRootElement, type MenuEntry } from "@gtkx/react";
+import { render } from "@gtkx/testing";
 import { createRef, type ReactElement, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 

@@ -23,6 +23,18 @@ macro_rules! expect_variant {
     }};
 }
 
+fn u8_array_arg(value: value::Value) -> Arg {
+    Arg::new(
+        Type::Array(ArrayType {
+            item_type: Box::new(Type::Integer(IntegerKind::U8)),
+            kind: ArrayKind::Array,
+            ownership: Ownership::Full,
+            element_size: None,
+        }),
+        value,
+    )
+}
+
 #[test]
 fn owned_ptr_new_stores_value_and_ptr() {
     let data = vec![1u32, 2, 3, 4, 5];
@@ -237,19 +249,11 @@ fn try_from_undefined() {
 
 #[test]
 fn try_from_array_u8() {
-    let arg = Arg::new(
-        Type::Array(ArrayType {
-            item_type: Box::new(Type::Integer(IntegerKind::U8)),
-            kind: ArrayKind::Array,
-            ownership: Ownership::Full,
-            element_size: None,
-        }),
-        value::Value::Array(vec![
-            value::Value::Number(1.0),
-            value::Value::Number(2.0),
-            value::Value::Number(3.0),
-        ]),
-    );
+    let arg = u8_array_arg(value::Value::Array(vec![
+        value::Value::Number(1.0),
+        value::Value::Number(2.0),
+        value::Value::Number(3.0),
+    ]));
 
     let owned = expect_variant!(arg, Storage);
     unsafe {
@@ -452,15 +456,7 @@ fn try_from_array_optional_null_yields_null_ptr() {
 
 #[test]
 fn try_from_array_propagates_encode_error() {
-    let arg = Arg::new(
-        Type::Array(ArrayType {
-            item_type: Box::new(Type::Integer(IntegerKind::U8)),
-            kind: ArrayKind::Array,
-            ownership: Ownership::Full,
-            element_size: None,
-        }),
-        value::Value::Number(1.0),
-    );
+    let arg = u8_array_arg(value::Value::Number(1.0));
 
     assert!(FfiValue::try_from(arg).is_err());
 }
