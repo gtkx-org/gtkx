@@ -58,17 +58,14 @@ fn schedule_glib_then_dispatch_pending_runs_task() {
 #[test]
 fn schedule_glib_drops_task_when_stopped() {
     common::run(|| {
-        drain_pending();
-        let mailbox = Mailbox::global();
+        let mailbox = Mailbox::new_for_test();
         mailbox.mark_not_running();
 
-        let counter = schedule_increment(mailbox);
+        let counter = schedule_increment(&mailbox);
 
         let dispatched = mailbox.dispatch_pending();
         assert!(!dispatched);
         assert_eq!(counter.load(Ordering::SeqCst), 0);
-
-        mailbox.reset_for_test();
     });
 }
 
@@ -110,17 +107,14 @@ fn a_schedule_glib_idle_source_dispatches_through_global_main_context() {
 }
 
 #[test]
-fn is_not_running_reflects_mark_and_reset() {
+fn is_not_running_reflects_mark_not_running() {
     common::run(|| {
-        let mailbox = Mailbox::global();
+        let mailbox = Mailbox::new_for_test();
 
         assert!(!mailbox.is_not_running());
 
         mailbox.mark_not_running();
         assert!(mailbox.is_not_running());
-
-        mailbox.reset_for_test();
-        assert!(!mailbox.is_not_running());
     });
 }
 
@@ -153,22 +147,24 @@ fn run_freeze_loop_drains_until_unfrozen() {
 #[test]
 fn run_freeze_loop_exits_when_stopped_while_frozen() {
     common::run(|| {
-        let (mailbox, counter) = frozen_mailbox_with_task();
+        let mailbox = Mailbox::new_for_test();
+        assert!(mailbox.freeze());
+        let counter = schedule_increment(&mailbox);
 
-        let stopper = std::thread::spawn(move || {
-            while counter.load(Ordering::SeqCst) == 0 {
-                std::thread::yield_now();
-            }
-            Mailbox::global().mark_not_running();
+        std::thread::scope(|scope| {
+            scope.spawn(|| {
+                while counter.load(Ordering::SeqCst) == 0 {
+                    std::thread::yield_now();
+                }
+                mailbox.mark_not_running();
+            });
+
+            mailbox.run_freeze_loop();
         });
-
-        mailbox.run_freeze_loop();
-        stopper.join().expect("stopper thread should finish");
 
         assert!(mailbox.is_not_running());
 
         mailbox.unfreeze();
-        mailbox.reset_for_test();
     });
 }
 

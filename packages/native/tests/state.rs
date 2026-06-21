@@ -266,8 +266,7 @@ fn gtk_thread_join_reports_string_panic_payload() {
 #[test]
 fn gtk_thread_phase_lifecycle_transitions() {
     common::run(|| {
-        let thread = GlibThread::global();
-        thread.reset_phase_for_test();
+        let thread = GlibThread::default();
 
         assert_eq!(thread.phase(), RuntimePhase::New);
         assert!(thread.begin_init().is_ok());
@@ -286,23 +285,18 @@ fn gtk_thread_phase_lifecycle_transitions() {
             .begin_init()
             .expect_err("re-init after quit must fail");
         assert!(restart.contains("cannot be reinitialized"));
-
-        thread.reset_phase_for_test();
-        assert_eq!(thread.phase(), RuntimePhase::New);
     });
 }
 
 #[test]
 fn gtk_thread_abort_start_restores_new_phase() {
     common::run(|| {
-        let thread = GlibThread::global();
-        thread.reset_phase_for_test();
+        let thread = GlibThread::default();
 
         assert!(thread.begin_init().is_ok());
         thread.abort_init();
         assert_eq!(thread.phase(), RuntimePhase::New);
 
         assert!(thread.begin_init().is_ok());
-        thread.reset_phase_for_test();
     });
 }

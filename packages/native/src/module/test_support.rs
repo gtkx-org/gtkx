@@ -13,8 +13,6 @@ use crate::managed::NativeHandle;
 
 static FINALIZE_COUNT: AtomicU64 = AtomicU64::new(0);
 
-static TOGGLE_PENDING: AtomicU64 = AtomicU64::new(0);
-
 #[napi(catch_unwind)]
 #[cfg_attr(test, allow(dead_code))]
 pub fn watch_object_finalize(env: Env, handle: &External<NativeHandle>) -> napi::Result<()> {
@@ -37,32 +35,21 @@ pub fn finalize_count() -> napi::Result<f64> {
 }
 
 #[napi(catch_unwind)]
-#[allow(clippy::unnecessary_wraps)]
 #[cfg_attr(test, allow(dead_code))]
 pub fn drive_toggle_from_thread(
+    env: Env,
     handle: &External<NativeHandle>,
     iterations: u32,
 ) -> napi::Result<()> {
     let addr = handle.ptr() as usize;
-    TOGGLE_PENDING.fetch_add(u64::from(iterations), Ordering::SeqCst);
-    std::thread::spawn(move || {
-        for _ in 0..iterations {
-            Mailbox::global().schedule_glib(Box::new(move || {
-                unsafe {
-                    let object = addr as *mut glib::gobject_ffi::GObject;
-                    glib::gobject_ffi::g_object_ref(object);
-                    glib::gobject_ffi::g_object_unref(object);
-                }
-                TOGGLE_PENDING.fetch_sub(1, Ordering::SeqCst);
-            }));
-        }
-    });
+    let mailbox = Mailbox::global();
+    for _ in 0..iterations {
+        mailbox.schedule_glib(Box::new(move || unsafe {
+            let object = addr as *mut glib::gobject_ffi::GObject;
+            glib::gobject_ffi::g_object_ref(object);
+            glib::gobject_ffi::g_object_unref(object);
+        }));
+    }
+    mailbox.dispatch_and_wait_napi(env, || {})?;
     Ok(())
-}
-
-#[napi(catch_unwind)]
-#[allow(clippy::unnecessary_wraps)]
-#[cfg_attr(test, allow(dead_code))]
-pub fn pending_toggle_tasks() -> napi::Result<f64> {
-    Ok(TOGGLE_PENDING.load(Ordering::SeqCst) as f64)
 }

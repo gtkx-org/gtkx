@@ -33,7 +33,7 @@ impl From<u8> for RuntimePhase {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct GlibThread {
     handle: Mutex<Option<JoinHandle<()>>>,
     phase: AtomicU8,
@@ -43,10 +43,7 @@ static GLIB_THREAD: OnceLock<GlibThread> = OnceLock::new();
 
 impl GlibThread {
     pub fn global() -> &'static Self {
-        GLIB_THREAD.get_or_init(|| Self {
-            handle: Mutex::new(None),
-            phase: AtomicU8::new(RuntimePhase::New as u8),
-        })
+        GLIB_THREAD.get_or_init(Self::default)
     }
 
     pub fn phase(&self) -> RuntimePhase {
@@ -87,10 +84,6 @@ impl GlibThread {
                 _ => "quit called on an already-quit runtime".to_owned(),
             }),
         }
-    }
-
-    pub fn reset_phase_for_test(&self) {
-        self.phase.store(RuntimePhase::New as u8, Ordering::Release);
     }
 
     pub fn set_handle(&self, handle: JoinHandle<()>) {

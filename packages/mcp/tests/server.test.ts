@@ -1,4 +1,5 @@
 import { EventEmitter } from "node:events";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ConnectionManager } from "../src/connection-manager.js";
 import type { AppInfo } from "../src/protocol/types.js";
@@ -78,9 +79,15 @@ vi.mock("../src/connection-manager.js", () => ({
     },
 }));
 
-import { buildTools, main } from "../src/server.js";
+import { createMcpServer, main } from "../src/server.js";
 
 type AppQueryClient = Pick<ConnectionManager, "getApps" | "hasConnectedApps" | "waitForApp" | "sendToApp">;
+
+type RegisteredTool = {
+    name: string;
+    config: { description: string; inputSchema: unknown };
+    handler: (args: never) => Promise<CallToolResult>;
+};
 
 function makeConnectionManager(overrides: Partial<AppQueryClient> = {}): AppQueryClient {
     return {
@@ -92,9 +99,21 @@ function makeConnectionManager(overrides: Partial<AppQueryClient> = {}): AppQuer
     };
 }
 
-function getTool(connectionManager: AppQueryClient, name: string) {
-    const tools = buildTools(connectionManager);
-    const tool = tools.find((t) => t.name === name);
+function registerTools(connectionManager: AppQueryClient): RegisteredTool[] {
+    resetMainMocks();
+    createMcpServer({ version: "test" });
+    const instance = connectionManagerInstances.at(-1);
+    if (!instance) throw new Error("ConnectionManager was not created");
+    Object.assign(instance, connectionManager);
+    return registerToolMock.mock.calls.map(([name, config, handler]) => ({
+        name: name as string,
+        config: config as RegisteredTool["config"],
+        handler: handler as RegisteredTool["handler"],
+    }));
+}
+
+function getTool(connectionManager: AppQueryClient, name: string): RegisteredTool {
+    const tool = registerTools(connectionManager).find((t) => t.name === name);
     if (!tool) throw new Error(`Tool not found: ${name}`);
     return tool;
 }
@@ -126,12 +145,12 @@ const allToolNames = [
 
 describe("buildTools — registration", () => {
     it("registers all expected tools in order", () => {
-        const tools = buildTools(makeConnectionManager());
+        const tools = registerTools(makeConnectionManager());
         expect(tools.map((t) => t.name)).toEqual(allToolNames);
     });
 
     it("attaches a description and inputSchema to every tool", () => {
-        const tools = buildTools(makeConnectionManager());
+        const tools = registerTools(makeConnectionManager());
         for (const tool of tools) {
             expect(tool.config.description.length).toBeGreaterThan(0);
             expect(tool.config.inputSchema).toBeDefined();

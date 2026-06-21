@@ -112,6 +112,12 @@ impl Mailbox {
         }
     }
 
+    #[cfg(feature = "test-support")]
+    #[must_use]
+    pub fn new_for_test() -> Self {
+        Self::new()
+    }
+
     pub fn mark_not_running(&self) {
         self.running.store(false, Ordering::Release);
         self.wake_js.notify();
@@ -119,6 +125,7 @@ impl Mailbox {
         self.freeze.wake_for_shutdown();
     }
 
+    #[cfg(feature = "test-support")]
     pub fn reset_for_test(&self) {
         self.running.store(true, Ordering::Release);
     }

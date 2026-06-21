@@ -13,7 +13,3 @@ export function finalizeCount(): number {
 export function driveToggleFromThread(handle: unknown, iterations: number): void {
     native.driveToggleFromThread(handle as RawHandle, iterations);
 }
-
-export function pendingToggleTasks(): number {
-    return native.pendingToggleTasks();
-}

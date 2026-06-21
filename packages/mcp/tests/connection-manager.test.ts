@@ -1,4 +1,5 @@
 import EventEmitter from "node:events";
+import { Duplex } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConnectionManager } from "../src/connection-manager.js";
 import { McpError, McpErrorCode } from "../src/protocol/errors.js";
@@ -7,29 +8,28 @@ import {
     type AppConnection,
     type AppTransport,
     type AppTransportEvents,
-    type FrameWriter,
     JsonStreamTransport,
 } from "../src/transport.js";
 
+class FakeSocket extends Duplex {
+    lines: string[] = [];
+
+    override _write(chunk: Buffer | string, _encoding: BufferEncoding, callback: (error?: Error | null) => void): void {
+        this.lines.push(chunk.toString());
+        callback();
+    }
+}
+
 type TestConnection = AppConnection & {
-    capture: { lines: string[]; writable: boolean };
+    socket: FakeSocket;
 };
 
 const createdConnections: TestConnection[] = [];
 
 function makeConnection(id: string): TestConnection {
-    const capture = { lines: [] as string[], writable: true };
-    const writer: FrameWriter = {
-        write(line) {
-            capture.lines.push(line);
-            return true;
-        },
-        get writable() {
-            return capture.writable;
-        },
-    };
-    const transport = new JsonStreamTransport(writer);
-    const connection: TestConnection = { id, transport, capture };
+    const socket = new FakeSocket();
+    const transport = new JsonStreamTransport(socket);
+    const connection: TestConnection = { id, transport, socket };
     createdConnections.push(connection);
     return connection;
 }
@@ -48,7 +48,7 @@ function lastResponse(transport: FakeAppTransport): IpcResponse | undefined {
 }
 
 function lastOutgoingRequest(conn: TestConnection): IpcRequest {
-    const line = conn.capture.lines[conn.capture.lines.length - 1];
+    const line = conn.socket.lines[conn.socket.lines.length - 1];
     if (!line) throw new Error("No outgoing request captured");
     return JSON.parse(line) as IpcRequest;
 }
@@ -280,7 +280,7 @@ describe("ConnectionManager sendToApp — transport errors", () => {
         const conn = registerAppForContext("app-a");
         const onUnregister = vi.fn();
         ctx.manager.on("appUnregistered", onUnregister);
-        conn.capture.writable = false;
+        conn.socket.destroy();
 
         await expect(ctx.manager.sendToApp("app-a", "ping")).rejects.toMatchObject({
             code: McpErrorCode.CONNECTION_WRITE_FAILED,

@@ -1,5 +1,6 @@
 import EventEmitter from "node:events";
 import type { Socket } from "node:net";
+import type { Duplex } from "node:stream";
 import { invalidRequestError, ipcTimeoutError, McpError, type McpErrorCode } from "./protocol/errors.js";
 import {
     type IpcMessage,
@@ -8,11 +9,6 @@ import {
     type IpcResponse,
     IpcResponseSchema,
 } from "./protocol/types.js";
-
-export interface FrameWriter {
-    write(line: string): boolean;
-    writable: boolean;
-}
 
 export type JsonStreamTransportEvents = {
     request: [IpcRequest];
@@ -35,9 +31,9 @@ export class TransportClosedError extends Error {
 export class JsonStreamTransport extends EventEmitter<JsonStreamTransportEvents> {
     private buffer = "";
     private pending: Map<string, PendingRequest> = new Map();
-    private writer: FrameWriter;
+    private writer: Duplex;
 
-    constructor(writer: FrameWriter) {
+    constructor(writer: Duplex) {
         super();
         this.writer = writer;
     }

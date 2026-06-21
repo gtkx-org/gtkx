@@ -210,7 +210,7 @@ const getWidgetTreeTool = (connectionManager: AppQueryClient) =>
         },
     });
 
-export function buildTools(connectionManager: AppQueryClient): ToolDefinition[] {
+function buildTools(connectionManager: AppQueryClient): ToolDefinition[] {
     return [
         listAppsTool(connectionManager),
         getWidgetTreeTool(connectionManager),
