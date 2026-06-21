@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { resolveAccessor } from "../utils/settings-accessor.js";
-import { useSignal } from "./use-signal.js";
+import { useGObjectSnapshot } from "./use-gobject-snapshot.js";
 
 export interface SchemaRef<K extends object = Record<string, unknown>> {
     id: string;
@@ -29,15 +29,8 @@ export function useSetting(schema: SchemaRef, key: string): [unknown, (value: un
         () => (path === null ? Gio.Settings.new(schemaId) : new Gio.Settings({ schemaId, path })),
         [schemaId, path],
     );
-    const [value, setValue] = useState<unknown>(() => accessor.read(settings, key));
 
-    useEffect(() => {
-        setValue(accessor.read(settings, key));
-    }, [accessor, settings, key]);
-
-    useSignal(settings, `changed::${key}`, () => {
-        setValue(accessor.read(settings, key));
-    });
+    const value = useGObjectSnapshot(settings, `changed::${key}`, () => accessor.read(settings, key));
 
     const set = useCallback(
         (newValue: unknown) => {
