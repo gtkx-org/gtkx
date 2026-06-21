@@ -9,7 +9,7 @@ import { isDefaultBlockableType } from "../utils/gtype.js";
 import { classHasType } from "../utils/gtype-predicates.js";
 import { applyAccessibleProps, isAccessibleProp } from "./accessible.js";
 import { applyProps } from "./apply-props.js";
-import { beginCommit, endCommit, runCommitFlush } from "./commit-flush.js";
+import { runCommitFlush } from "./commit-flush.js";
 import { attachNode, detachFromParent, detachNode, resyncWrapper } from "./element-map.js";
 import {
     createElementInstance,
@@ -313,7 +313,6 @@ const createCommitConfig = (): CommitConfig => ({
         else scheduleLabelTextRebuild(textInstance);
     },
     prepareForCommit: () => {
-        beginCommit();
         freeze();
         return null;
     },
@@ -324,7 +323,6 @@ const createCommitConfig = (): CommitConfig => ({
         } catch (error) {
             drainError = error;
         } finally {
-            endCommit();
             unfreeze();
         }
         if (drainError !== null) reportReconcilerError(drainError);

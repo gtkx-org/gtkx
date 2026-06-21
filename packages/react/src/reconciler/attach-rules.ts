@@ -6,7 +6,6 @@ import * as GObject from "@gtkx/gi/gobject";
 import { toLowerFirst } from "@gtkx/utils";
 import { collectTypeNameChain, findInheritedRow } from "../utils/gtype.js";
 import { hasType } from "../utils/gtype-predicates.js";
-import { notifyOrderedAttach } from "./attach-events.js";
 import type { ElementMapping } from "./element-mapping.js";
 import { callMethod } from "./reflect-call.js";
 import { type Node, stateOf } from "./state.js";
@@ -137,27 +136,65 @@ type OrderedInsertState = { parent: GObject.Object };
 
 const orderedInsertState = new WeakMap<Node, OrderedInsertState>();
 
+const itemsFrom = (collection: ItemCollection, fromIndex: number): GObject.Object[] => {
+    const items: GObject.Object[] = [];
+    const nItems = collection.getNItems();
+    for (let i = fromIndex; i < nItems; i++) {
+        const item = collection.getItem(i);
+        if (item instanceof GObject.Object) items.push(item);
+    }
+    return items;
+};
+
+const rerealizeTrailing = (
+    verb: OrderedInsertVerb,
+    parent: GObject.Object,
+    collection: ItemCollection,
+    afterPosition: number,
+): void => {
+    const following = itemsFrom(collection, afterPosition + 1);
+    for (const item of following) {
+        const at = indexOf(collection, item);
+        if (at < 0) continue;
+        callVerb(parent, verb.detach, [item]);
+        callVerb(parent, verb.attach, [at, item]);
+    }
+};
+
+const performOrderedInsert = (
+    verb: OrderedInsertVerb,
+    child: GObject.Object,
+    parent: GObject.Object,
+    anchor: GObject.Object | null | undefined,
+): void => {
+    const collection = collectionOf(parent, verb.collection);
+    if (!collection) return;
+    const state = orderedInsertState.get(child);
+    const isMove = state?.parent === parent && indexOf(collection, child) >= 0;
+    if (isMove) {
+        if (isPlacedBefore(collection, child, anchor)) return;
+        callVerb(parent, verb.detach, [child]);
+    }
+    const position = insertPosition(collection, anchor);
+    callVerb(parent, verb.attach, [position, child]);
+    orderedInsertState.set(child, { parent });
+    if (!isMove && position < collection.getNItems() - 1) {
+        rerealizeTrailing(verb, parent, collection, position);
+    }
+};
+
 const buildOrderedInsertMapping = (verb: OrderedInsertVerb, matches: RuleMatcher): ElementMapping => ({
     matches,
     attach: (child, parent, anchor) => {
-        if (!(child instanceof GObject.Object) || !(parent instanceof GObject.Object)) return;
-        const collection = collectionOf(parent, verb.collection);
-        if (!collection) return;
-        const state = orderedInsertState.get(child);
-        if (state?.parent === parent) {
-            if (isPlacedBefore(collection, child, anchor)) return;
-            if (indexOf(collection, child) >= 0) callVerb(parent, verb.detach, [child]);
+        if (child instanceof GObject.Object && parent instanceof GObject.Object) {
+            performOrderedInsert(verb, child, parent, anchor);
         }
-        callVerb(parent, verb.attach, [insertPosition(collection, anchor), child]);
-        orderedInsertState.set(child, { parent });
-        notifyOrderedAttach(parent);
     },
     detach: (child, parent) => {
         if (!(child instanceof GObject.Object) || !(parent instanceof GObject.Object)) return;
         if (orderedInsertState.get(child)?.parent !== parent) return;
         callVerb(parent, verb.detach, [child]);
         orderedInsertState.delete(child);
-        notifyOrderedAttach(parent);
     },
 });
 

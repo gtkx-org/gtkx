@@ -1,5 +1,4 @@
 import { type GTyped, requireWrapperClass, resolveWrapperClass } from "@gtkx/ffi";
-import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { AnyClass } from "@gtkx/utils";
 import { typeChainIncludes } from "./gtype.js";
@@ -16,20 +15,8 @@ export interface AdwDialogLike extends GTyped {
     forceClose(): void;
 }
 
-export interface DropDownLike extends GTyped {
-    setModel(model: Gio.ListModel | null): void;
-    setFactory(factory: Gtk.ListItemFactory | null): void;
-    setListFactory(factory: Gtk.ListItemFactory | null): void;
-    setHeaderFactory(factory: Gtk.ListItemFactory | null): void;
-    setSelected(position: number): void;
-    getSelected(): number;
-}
-
 export const isAdwDialog = <T extends GTyped>(instance: T): instance is T & AdwDialogLike =>
     hasType(instance, "AdwDialog");
-
-export const isAdwComboRow = <T extends GTyped>(instance: T): instance is T & DropDownLike =>
-    hasType(instance, "AdwComboRow");
 
 export const resolveBackingClass = (typeName: string): AnyClass<GTyped> | null => resolveWrapperClass(typeName);
 

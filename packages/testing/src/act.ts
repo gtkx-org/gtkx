@@ -4,7 +4,7 @@
  * This module deliberately does not import the harness `setup-runtime`, so consumers of the
  * `./act` subpath get only the act helpers without triggering harness side effects. Code that
  * renders through the harness must import the package main entry (`@gtkx/testing`) first, which
- * wires the deferred-flush, async/event wrappers, and application lifecycle.
+ * wires the async/event wrappers and application lifecycle.
  *
  * @packageDocumentation
  */
