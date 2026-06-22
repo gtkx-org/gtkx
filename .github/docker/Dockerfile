@@ -51,7 +51,6 @@ RUN apt-get update \
         gvfs \
         libgles2 \
         libgl1-mesa-dri \
-        weston \
         xwayland-run \
         dbus \
         git \
@@ -75,6 +74,29 @@ RUN apt-get update \
 # pinned runtime; the build-time cache refresh keeps the first test run cheap.
 COPY 60-gtkx-noto-sans.conf /etc/fonts/conf.d/60-gtkx-noto-sans.conf
 RUN fc-cache -f
+
+# The test suite targets weston 15 (the version the dev environment runs); Ubuntu
+# 26.04 only packages weston 14, whose headless backend is unstable under the GTK
+# drag-and-drop tests. Build weston 15.0.1 from the pinned upstream tarball into
+# /usr/local so it takes PATH precedence over the apt weston that xwayland-run
+# pulls in for `wlheadless-run`. build-dep (via deb-src) supplies the full build
+# dependency set, so the headless backend and pixman/GL renderers the tests use
+# are all available. The SHA-256 pins the release tarball under the image hash.
+ARG WESTON_VERSION=15.0.1
+RUN sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources \
+    && apt-get update \
+    && apt-get build-dep -y weston \
+    && apt-get install -y --no-install-recommends meson ninja-build \
+    && curl -fsSL -o /tmp/weston.tar.xz \
+        "https://gitlab.freedesktop.org/wayland/weston/-/releases/${WESTON_VERSION}/downloads/weston-${WESTON_VERSION}.tar.xz" \
+    && echo "551d039bfb0c837ba5a4d027cdb8ee16bded0eedb789821f8025d8a64b791f6d  /tmp/weston.tar.xz" | sha256sum -c - \
+    && mkdir -p /tmp/weston-src \
+    && tar -xJf /tmp/weston.tar.xz --strip-components=1 -C /tmp/weston-src \
+    && meson setup /tmp/weston-src/build /tmp/weston-src --prefix=/usr/local --buildtype=release \
+    && ninja -C /tmp/weston-src/build install \
+    && ldconfig \
+    && rm -rf /tmp/weston-src /tmp/weston.tar.xz /var/lib/apt/lists/* \
+    && weston --version | grep -q "weston ${WESTON_VERSION}"
 
 # Node 26 is the default runtime; a secondary Node 22 lives in /opt/node22 for
 # the CodSpeed reconciler benches, whose @codspeed/core native addon uses a V8
@@ -120,21 +142,25 @@ RUN cargo install cargo-codspeed --locked \
 
 # The CodSpeed runner instruments and uploads the benchmarks, so the bench job
 # runs it directly inside the container instead of wrapping a host action around
-# docker-run.
-RUN curl -fsSL https://codspeed.io/install.sh | bash \
+# docker-run. Pin the runner version: the unversioned install.sh tracks latest,
+# and each runner hard-codes the exact valgrind-codspeed iteration it expects
+# (see below), so the two must be bumped together.
+RUN curl -fsSL https://github.com/CodSpeedHQ/codspeed/releases/download/v4.17.6/codspeed-runner-installer.sh | bash \
     && install -m 0755 "$(find / -name codspeed -type f -path '*bin*' 2>/dev/null | head -1)" /usr/local/bin/codspeed \
     && codspeed --version \
     && chmod -R a+rwX "$CARGO_HOME"
 
 # CodSpeed publishes its patched valgrind only for Ubuntu 22.04/24.04. On 26.04
 # the runner classes its executor as "requires manual installation" and skips
-# its own download when a `.codspeed` valgrind is already present. Install the
-# 24.04 build — upstream valgrind 3.26, the same release this image ships — over
-# the stock package so `codspeed run` instruments here instead of bailing with
-# "Unsupported system". The SHA-256 matches the runner's own pinned artifact.
-RUN url="https://github.com/CodSpeedHQ/valgrind-codspeed/releases/download/3.26.0-0codspeed2/valgrind_3.26.0-0codspeed2_ubuntu-24.04_amd64.deb" \
+# its own download only when a `.codspeed` valgrind matching the iteration it
+# pins is already present; otherwise it tries to fetch one and bails with
+# "Unsupported system". Install the 24.04 build of that exact iteration —
+# 3.26.0-0codspeed3 for runner v4.17.6 above — so `codspeed run` instruments
+# here. Bump this in lockstep with the pinned runner. The SHA-256 matches the
+# runner's own pinned artifact.
+RUN url="https://github.com/CodSpeedHQ/valgrind-codspeed/releases/download/3.26.0-0codspeed3/valgrind_3.26.0-0codspeed3_ubuntu-24.04_amd64.deb" \
     && curl -fsSL -o /tmp/valgrind-codspeed.deb "$url" \
-    && echo "2e21cf5b1dea52bc7e23156fab6adc8893fac5ff101f33a4b68c0ecdb1716f3f  /tmp/valgrind-codspeed.deb" | sha256sum -c - \
+    && echo "e6da56bd90d7a22ed451c2108002a3f172914c77c705d0c8c4fedf6196830dee  /tmp/valgrind-codspeed.deb" | sha256sum -c - \
     && apt-get update \
     && apt-get install -y --no-install-recommends --allow-downgrades /tmp/valgrind-codspeed.deb \
     && rm -f /tmp/valgrind-codspeed.deb \
