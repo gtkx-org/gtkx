@@ -14,6 +14,7 @@ const babelPresetTypescript = babelPresetTypescriptNs.default ?? babelPresetType
 const babelPluginReactCompiler = babelPluginReactCompilerNs.default ?? babelPluginReactCompilerNs;
 
 const SOURCE_EXTENSION = /\.tsx?$/;
+const JSX_EXTENSION = /\.tsx$/;
 const NODE_MODULES = /(?:^|\/)node_modules\//;
 
 type ReactCompilerState = {
@@ -57,6 +58,7 @@ export function gtkxReactCompiler(loadConfig: GtkxConfigLoader = createGtkxConfi
                 babelrc: false,
                 configFile: false,
                 sourceMaps: true,
+                parserOpts: { plugins: JSX_EXTENSION.test(id) ? ["jsx"] : [] },
                 presets: [babelPresetTypescript],
                 plugins: [[babelPluginReactCompiler, options]],
             });

@@ -40,16 +40,16 @@
         "build": "tsc -b",
         "codegen:gl": "node --import tsx scripts/generate-gl.ts && biome check --write ../gl/src/generated"
     },
+    "engines": {
+        "node": ">=26"
+    },
     "dependencies": {
         "@gtkx/config": "workspace:*",
         "@gtkx/utils": "workspace:*",
-        "fast-xml-parser": "^5.8.0",
+        "fast-xml-parser": "^5.9.3",
         "typescript": "catalog:"
     },
     "devDependencies": {
         "@types/node": "catalog:"
-    },
-    "engines": {
-        "node": ">=24"
     }
 }

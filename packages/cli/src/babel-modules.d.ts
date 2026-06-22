@@ -6,8 +6,8 @@ declare module "babel-plugin-react-compiler" {
 }
 
 declare module "@babel/preset-typescript" {
-    import type { PluginTarget } from "@babel/core";
+    import type { PresetTarget } from "@babel/core";
 
-    const preset: PluginTarget & { default?: PluginTarget };
+    const preset: PresetTarget & { default?: PresetTarget };
     export default preset;
 }

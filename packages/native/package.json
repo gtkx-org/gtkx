@@ -60,12 +60,15 @@
         "prepublishOnly": "napi prepublish -t npm",
         "test": "node ../../scripts/ci.ts headless cargo test --features test-support -- --test-threads=1"
     },
+    "engines": {
+        "node": ">=26"
+    },
     "optionalDependencies": {
         "@gtkx/native-linux-arm64-gnu": "workspace:*",
         "@gtkx/native-linux-x64-gnu": "workspace:*"
     },
     "devDependencies": {
         "@gtkx/vitest": "workspace:*",
-        "@napi-rs/cli": "^3.7.1"
+        "@napi-rs/cli": "^3.7.2"
     }
 }

@@ -49,6 +49,9 @@
     "scripts": {
         "build": "tsc -b"
     },
+    "engines": {
+        "node": ">=26"
+    },
     "dependencies": {
         "@gtkx/ffi": "workspace:*",
         "@gtkx/react": "workspace:*",

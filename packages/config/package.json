@@ -44,6 +44,9 @@
     "scripts": {
         "build": "tsc -b"
     },
+    "engines": {
+        "node": ">=26"
+    },
     "dependencies": {
         "@gtkx/utils": "workspace:*",
         "c12": "^3.3.4",

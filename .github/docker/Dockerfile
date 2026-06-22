@@ -80,8 +80,8 @@ RUN fc-cache -f
 # the CodSpeed reconciler benches, whose @codspeed/core native addon uses a V8
 # symbol Node 26 has dropped. Both come from nodejs.org at exact patch versions
 # so the image stays reproducible under its content hash; bump these deliberately.
-ARG NODE26_VERSION=26.3.0
-ARG NODE22_VERSION=22.22.3
+ARG NODE26_VERSION=26.3.1
+ARG NODE22_VERSION=22.23.0
 RUN set -eux \
     && curl -fsSL "https://nodejs.org/dist/v${NODE26_VERSION}/node-v${NODE26_VERSION}-linux-x64.tar.xz" \
         | tar -xJ --strip-components=1 -C /usr/local \

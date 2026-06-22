@@ -45,6 +45,9 @@
     "scripts": {
         "build": "tsc -b"
     },
+    "engines": {
+        "node": ">=26"
+    },
     "dependencies": {
         "@gtkx/utils": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.29.0",

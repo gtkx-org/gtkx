@@ -68,9 +68,12 @@
         "codegen": "node --conditions=source --import tsx src/cli.ts codegen --cwd ../..",
         "generate:env": "node --conditions=source --import tsx scripts/generate-env-dts.ts"
     },
+    "engines": {
+        "node": ">=26"
+    },
     "dependencies": {
-        "@babel/core": "^7.29.7",
-        "@babel/preset-typescript": "^7.29.7",
+        "@babel/core": "^8.0.1",
+        "@babel/preset-typescript": "^8.0.1",
         "@gtkx/codegen": "workspace:*",
         "@gtkx/config": "workspace:*",
         "@gtkx/ffi": "workspace:*",
@@ -81,7 +84,7 @@
         "babel-plugin-react-compiler": "^1.0.0",
         "citty": "^0.2.2",
         "create-gtkx": "workspace:*",
-        "fast-xml-parser": "^5.8.0",
+        "fast-xml-parser": "^5.9.3",
         "picocolors": "^1.1.1",
         "react-refresh": "^0.18.0",
         "typescript": "catalog:",

@@ -8,7 +8,7 @@
         "build": "tsc -b"
     },
     "devDependencies": {
-        "@codspeed/vitest-plugin": "^5.5.0",
+        "@codspeed/vitest-plugin": "^5.6.0",
         "@gtkx/animate": "workspace:*",
         "@gtkx/config": "workspace:*",
         "@gtkx/ffi": "workspace:*",

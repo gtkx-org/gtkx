@@ -47,8 +47,11 @@
     "scripts": {
         "build": "tsc -b"
     },
+    "engines": {
+        "node": ">=26"
+    },
     "dependencies": {
-        "@clack/prompts": "^1.5.1",
+        "@clack/prompts": "^1.6.0",
         "@gtkx/utils": "workspace:*",
         "citty": "^0.2.2",
         "ejs": "^6.0.1",
@@ -58,7 +61,7 @@
     "devDependencies": {
         "@types/ejs": "^3.1.5",
         "@types/node": "catalog:",
-        "memfs": "^4.57.7",
+        "memfs": "^4.57.8",
         "typescript": "catalog:",
         "vitest": "catalog:"
     }
