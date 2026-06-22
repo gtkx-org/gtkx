@@ -23,7 +23,7 @@
             "outputLogs": "new-only"
         },
         "//#coverage:all": {
-            "dependsOn": ["@gtkx/vitest#build", "@gtkx/native#native-build", "@gtkx/cli#codegen"],
+            "dependsOn": ["@gtkx/cli#build", "@gtkx/vitest#build", "@gtkx/native#native-build"],
             "inputs": [
                 "vitest.config.ts",
                 "packages/*/vitest.config.ts",

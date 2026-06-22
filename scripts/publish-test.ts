@@ -60,6 +60,10 @@ packages:
     access: $all
     publish: $all
     unpublish: $all
+  'create-gtkx':
+    access: $all
+    publish: $all
+    unpublish: $all
   '@*/*':
     access: $all
     publish: $all

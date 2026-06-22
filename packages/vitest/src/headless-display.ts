@@ -1,4 +1,4 @@
-import { type ChildProcess, type StdioOptions, spawn } from "node:child_process";
+import { type ChildProcess, type StdioOptions, spawn, spawnSync } from "node:child_process";
 import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { Socket } from "node:net";
 import { tmpdir } from "node:os";
@@ -17,6 +17,16 @@ const spawnWorkerChild = (command: string, args: string[], stdio: StdioOptions):
     const child = spawn("setpriv", ["--pdeathsig", "SIGKILL", command, ...args], { stdio });
     child.unref();
     return child;
+};
+
+let westonFakeSeatSupport: boolean | undefined;
+
+const westonSupportsFakeSeat = (): boolean => {
+    if (westonFakeSeatSupport === undefined) {
+        const help = spawnSync("weston", ["--help"], { encoding: "utf8" });
+        westonFakeSeatSupport = `${help.stdout ?? ""}${help.stderr ?? ""}`.includes("--fake-seat");
+    }
+    return westonFakeSeatSupport;
 };
 
 type CompositorDescriptor = {
@@ -62,7 +72,7 @@ const compositorRegistry: { [K in CompositorId]: CompositorDescriptor } = {
                 [
                     "--backend=headless",
                     "--renderer=pixman",
-                    "--fake-seat",
+                    ...(westonSupportsFakeSeat() ? ["--fake-seat"] : []),
                     `--width=${width}`,
                     `--height=${height}`,
                     "--socket=wayland-0",

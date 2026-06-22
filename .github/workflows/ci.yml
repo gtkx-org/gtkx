@@ -241,7 +241,7 @@ jobs:
       - name: Build the workspace and the Rust benchmark
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm exec turbo build --filter=@gtkx/e2e && (cd packages/native && cargo codspeed build --bench marshalling)
+          command: pnpm exec turbo build --filter=@gtkx/e2e && (cd packages/native && cargo codspeed build --features test-support --bench marshalling)
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
 
