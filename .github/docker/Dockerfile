@@ -97,6 +97,15 @@ ENV RUSTUP_HOME=/usr/local/rustup
 ENV CARGO_HOME=/usr/local/cargo
 ENV PATH="/usr/local/cargo/bin:${PATH}"
 
+# Retry network operations and force HTTP/1.1 for crates.io transfers: the
+# crates.io CDN intermittently aborts multiplexed HTTP/2 streams ("Error in the
+# HTTP2 framing layer"), which `cargo install` surfaces as a hard failure. These
+# must precede the rustup/cargo-install layers below so they cover those fetches,
+# not just the jobs that later run in this image.
+ENV CARGO_NET_RETRY=10
+ENV RUSTUP_MAX_RETRIES=10
+ENV CARGO_HTTP_MULTIPLEXING=false
+
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component llvm-tools-preview --default-toolchain stable \
     && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
 
@@ -166,8 +175,6 @@ RUN if [ -d /usr/share/vulkan/icd.d ]; then \
 
 ENV RUSTUP_TOOLCHAIN=stable
 ENV CARGO_INCREMENTAL=0
-ENV CARGO_NET_RETRY=10
-ENV RUSTUP_MAX_RETRIES=10
 
 LABEL org.opencontainers.image.source="https://github.com/gtkx-org/gtkx"
 LABEL org.opencontainers.image.description="GTKX CI Base Image with GTK4, Node.js, Rust, and testing dependencies"

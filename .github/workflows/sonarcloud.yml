@@ -29,6 +29,13 @@ jobs:
   sonarcloud:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Pin this run's content-addressed CI image (same tag the ci.yml `image` job
+    # builds) so coverage runs against the current Dockerfile. Without it,
+    # pull-image falls back to the stale :latest, which lacks tools this run's
+    # code expects (e.g. wlheadless-run). When the tag is not yet pushed,
+    # pull-image rebuilds the current Dockerfile locally.
+    env:
+      CI_IMAGE_REF: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
