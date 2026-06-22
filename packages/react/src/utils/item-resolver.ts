@@ -8,16 +8,6 @@ const NO_TREE_METADATA: TreeItemMetadata = { hideExpander: false, indentForDepth
 
 const treeItemCache = new WeakMap<Gtk.TreeListRow, GObject.Object>();
 
-/**
- * Returns a tree row's item, caching it so the native `getItem` call runs at most once per row.
- *
- * A tree row's item is fixed for the row's lifetime, but `getItem` is a blocking native call that
- * drains the GLib inbox; calling it during a render would let a queued frame-clock tick mutate the
- * model mid-render. Caching keeps `resolve` free of native calls after a row is first seen.
- *
- * @param treeRow - The realized tree row to read.
- * @returns The row's item, or `null` when the row has none.
- */
 const treeRowItem = (treeRow: Gtk.TreeListRow): GObject.Object | null => {
     const cached = treeItemCache.get(treeRow);
     if (cached !== undefined) return cached;
@@ -26,32 +16,14 @@ const treeRowItem = (treeRow: Gtk.TreeListRow): GObject.Object | null => {
     return item;
 };
 
-/**
- * The resolution of a single realized position into its value and structural metadata.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- */
 export interface Resolved<T = unknown, S = unknown> {
     value: T | S | undefined;
-    /** Whether a value backs this position; `false` for a stale slot past the current contents. */
     present: boolean;
     isHeader: boolean;
     treeRow: Gtk.TreeListRow | null;
     metadata: TreeItemMetadata;
 }
 
-/**
- * The value index for one view: maps positions to values and ids to/from positions.
- *
- * The resolver is the data axis of the list. It never touches GTK realization; it answers
- * "what value sits at position p" and "what id is at position p" so the slots can render and the
- * selection layer can translate between ids and positions. A new `items` array (controlled) or a
- * fresh model (uncontrolled) yields a new resolver that flows into slots as an ordinary prop.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- */
 export interface ItemResolver<T = unknown, S = unknown> {
     resolve(position: number, treeRow: Gtk.TreeListRow | null, boundItem: GObject.Object | null): Resolved<T, S>;
     positionOf(id: string): number;
@@ -59,16 +31,6 @@ export interface ItemResolver<T = unknown, S = unknown> {
     count: number;
 }
 
-/**
- * The value carried by a realized tree row's underlying position-only GObject.
- *
- * When a controlled tree or section model is built, each placeholder GObject is tagged in this
- * map so that the resolver can recover the real value synchronously on the first bind, with no
- * asynchronous lookup and therefore no transient placeholder state.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- */
 export interface RowValue<T = unknown, S = unknown> {
     id: string;
     value: T | S;
@@ -76,20 +38,6 @@ export interface RowValue<T = unknown, S = unknown> {
     metadata: TreeItemMetadata;
 }
 
-/**
- * Builds an `ItemResolver` for a controlled `items` array.
- *
- * For a flat or auto-expanded structure the values resolve from the precomputed flattened records.
- * For a lazily expanded tree the resolver consults `rowValues` keyed by the realized row's item
- * GObject so newly realized children resolve to their real value immediately.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- * @param items - The declaration-ordered list to index, or `undefined` for an empty resolver.
- * @param flattenTreeChildren - Whether children are inlined into the records (auto-expanded).
- * @param rowValues - Tags realized tree/section row GObjects with their resolved value.
- * @returns A resolver indexing the supplied items.
- */
 export const createControlledResolver = <T, S>(
     items: ListItem<T, S>[] | undefined,
     flattenTreeChildren: boolean,
@@ -142,23 +90,6 @@ export const createControlledResolver = <T, S>(
     };
 };
 
-/**
- * Builds an `ItemResolver` for an uncontrolled external `Gio.ListModel`.
- *
- * Values come from the container's item captured at `bind` (passed as `boundItem`), falling back to
- * `model.getItem(position)` only when no bound item is supplied. Reading the captured item keeps
- * `resolve` free of native calls during render, so a rendering slot never drains the GLib inbox and
- * lets a queued signal mutate the model mid-render. Ids are derived from the position so selection
- * callbacks remain position-stable for the external model. The resolver identity is stable for a
- * given model: it never depends on the item count, so an external model growing — even a continuous
- * frame-clock fill — does not rebuild the resolver or re-render the slots, which the widget re-binds
- * natively as positions are realized. `count` is read lazily from the live model on access.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- * @param model - The external model owning the values.
- * @returns A resolver reading values from the external model.
- */
 export const createModelResolver = <T, S>(model: Gio.ListModel): ItemResolver<T, S> => {
     return {
         get count(): number {
@@ -184,19 +115,6 @@ export const createModelResolver = <T, S>(model: Gio.ListModel): ItemResolver<T,
     };
 };
 
-/**
- * Builds an `ItemResolver` that maps a section's start position to its header value.
- *
- * Used only by the header portal host of a sectioned list. A `Gtk.ListHeader`'s start position is
- * the first position of its section in the flattened model; this resolver records each section's
- * start as the children accumulate and answers `resolve(start)` with the section value, so headers
- * resolve with no header row existing in the model and are therefore never selectable.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- * @param items - The top-level section items, or `undefined`/non-sectioned for an empty resolver.
- * @returns A resolver answering header values by section start position.
- */
 export const createSectionHeaderResolver = <T, S>(items: ListItem<T, S>[] | undefined): ItemResolver<T, S> => {
     const valueByStart = new Map<number, S>();
     let start = 0;

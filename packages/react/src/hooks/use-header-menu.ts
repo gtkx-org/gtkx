@@ -12,19 +12,6 @@ const findMenuModel = (container: GObject.Object): Gio.MenuModel | null => {
     return null;
 };
 
-/**
- * Renders a column's `headerMenu` subtree offscreen and installs its menu model on the column.
- *
- * The `headerMenu` prop is a rendered menu subtree (for example a `<GMenu>` element), not a
- * `Gio.MenuModel` value. It is portalled into an offscreen container so the reconciler builds the
- * concrete `Gio.MenuModel`; after each commit the resulting model is read back and applied to the
- * column through `setHeaderMenu`. When the prop is absent the column's header menu is cleared to
- * `null`. The returned node must be rendered so the offscreen subtree mounts.
- *
- * @param column - The column whose header menu to manage, or `null` while it is still resolving.
- * @param headerMenu - The menu subtree to render, or `undefined`/`null` for no header menu.
- * @returns The offscreen portal element to render, or `null` when there is no header menu.
- */
 export const useHeaderMenu = (column: Gtk.ColumnViewColumn | null, headerMenu: ReactNode): ReactNode => {
     const containerRef = useRef<GObject.Object | null>(null);
     if (containerRef.current === null) {

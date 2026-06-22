@@ -4,27 +4,12 @@ import { Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-/**
- * The set of compositor identifiers a headless display can launch.
- */
 export type CompositorId = "sway" | "weston";
 
-/**
- * The default compositor output size, used when no size is requested.
- */
 export const DEFAULT_HEADLESS_SIZE = "1024x768";
 
-/**
- * Options controlling how the per-worker headless display environment is started.
- */
 export type HeadlessOptions = {
-    /**
-     * Requested compositor output size formatted as `WIDTHxHEIGHT` (for example `1024x768`).
-     */
     size: string;
-    /**
-     * Identifier of the compositor to launch.
-     */
     compositor: CompositorId;
 };
 
@@ -34,9 +19,6 @@ const spawnWorkerChild = (command: string, args: string[], stdio: StdioOptions):
     return child;
 };
 
-/**
- * A launched compositor, describing how to start it and the Wayland socket it serves.
- */
 type CompositorDescriptor = {
     socket: string;
     env: { [name: string]: string };
@@ -95,15 +77,6 @@ type SpawnedCompositor = {
     socket: string;
 };
 
-/**
- * Launches the configured compositor in the given runtime directory, applying its
- * environment contract and returning the spawned child plus the Wayland socket it serves.
- *
- * @param runtimeDir - The private XDG runtime directory to launch the compositor in.
- * @param options - The requested compositor size and compositor selection.
- * @returns The spawned compositor child and the Wayland socket name it serves.
- * @throws TypeError when `options.compositor` is not a known compositor id.
- */
 export const startCompositor = (runtimeDir: string, options: HeadlessOptions): SpawnedCompositor => {
     const descriptor = compositorRegistry[options.compositor];
     if (!descriptor) {
@@ -118,13 +91,6 @@ export const startCompositor = (runtimeDir: string, options: HeadlessOptions): S
     return { child: descriptor.start(runtimeDir, width ?? "", height ?? ""), socket: descriptor.socket };
 };
 
-/**
- * Writes a D-Bus session bus configuration file that listens on the given socket
- * path with EXTERNAL authentication and a permissive default policy.
- *
- * @param busConfigPath - The path to write the bus configuration file to.
- * @param busSocketPath - The Unix socket path the bus should listen on.
- */
 export const writeBusConfig = (busConfigPath: string, busSocketPath: string): void => {
     writeFileSync(
         busConfigPath,
@@ -148,15 +114,6 @@ type WaitForSocketOptions = {
     child?: ChildProcess;
 };
 
-/**
- * Resolves once `path` exists on disk, polling at a fixed interval. When a `child`
- * process is supplied, rejects early with the child's captured stderr if it exits
- * before the path appears, and rejects on timeout otherwise.
- *
- * @param path - The filesystem path to wait for.
- * @param options - The diagnostic label, optional timeout, and optional child to watch.
- * @returns A promise that resolves when the path appears or rejects on exit/timeout.
- */
 export const waitForSocket = (path: string, { label, timeout = 15000, child }: WaitForSocketOptions): Promise<void> =>
     new Promise((resolve, reject) => {
         let log = "";
@@ -197,22 +154,8 @@ export const waitForSocket = (path: string, { label, timeout = 15000, child }: W
         child?.on("exit", onExit);
     });
 
-/**
- * A callback that tears down the resources provisioned by {@link startHeadlessDisplay}:
- * it kills the compositor and bus children and removes the private XDG runtime directory.
- */
 export type HeadlessTeardown = () => void;
 
-/**
- * Starts an isolated, per-worker headless display environment: a private XDG runtime
- * directory, a dedicated D-Bus session bus, and a headless Wayland compositor, exporting
- * the environment variables that GTK and GSK need to render in software. Resolves once both
- * the bus and the compositor socket are ready.
- *
- * @param options - The requested compositor size and compositor selection.
- * @returns A promise resolving to a teardown callback that kills the spawned children and
- *   removes the private runtime directory.
- */
 export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<HeadlessTeardown> => {
     const runtimeDir = mkdtempSync(join(tmpdir(), "gtkx-xdg-"));
     chmodSync(runtimeDir, 0o700);

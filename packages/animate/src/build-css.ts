@@ -7,16 +7,6 @@ type PropertySerializer = {
     serialize: (props: AnimatableProperties) => string | undefined;
 };
 
-/**
- * The ordered set of serializers that turn animatable properties into GTK CSS
- * fragments. Entries declare whether they contribute a top-level style
- * declaration (`style`) or a `transform`-function fragment (`transform`), and
- * the iteration order fixes the order in which fragments appear in the output.
- *
- * Transform-family properties are grouped here so coupled axes serialize
- * together: `translateX`/`translateY` coalesce into a single `translate(...)`
- * and `scale` shadows the two-axis `scale(scaleX, scaleY)` form.
- */
 const propertySerializers: PropertySerializer[] = [
     {
         target: "style",
@@ -55,17 +45,6 @@ const propertySerializers: PropertySerializer[] = [
     },
 ];
 
-/**
- * Build a GTK CSS rule for a class from a keyframe of animatable properties.
- *
- * Style declarations and `transform` fragments are emitted in the declared
- * {@link propertySerializers} order; when no property is set the result is the
- * empty string so callers can skip writing an empty rule.
- *
- * @param className - The CSS class the rule targets.
- * @param props - The keyframe whose properties become CSS declarations.
- * @returns The CSS rule text, or the empty string when nothing is set.
- */
 export const buildCss = (className: string, props: AnimatableProperties): string => {
     const parts: string[] = [];
     const transforms: string[] = [];

@@ -1,12 +1,14 @@
 /// <reference types="@gtkx/config/env" />
 
 import {
+    ATTACH_SHAPES,
     CONSTRUCT_ONLY_PROPS,
     CONSTRUCT_PROPS,
     DEFAULT_BLOCKABLE_TYPES,
     DEFAULT_PROPS,
     SIGNALS,
 } from "virtual:gtkx-config";
+import type { AttachShape } from "@gtkx/config";
 import { type GType, type GTyped, typeInterfaces, typeName, typeParent } from "@gtkx/ffi";
 import { NOTIFY_SIGNAL, propToNotifySignal } from "./notify-name.js";
 
@@ -27,6 +29,7 @@ const signalCache = new Map<GType, Map<string, string | null>>();
 const constructOnlyCache = new Map<GType, Map<string, boolean>>();
 const defaultPropCache = new Map<GType, Map<string, DefaultPropLookup>>();
 const constructablePropsCache = new Map<GType, Set<string>>();
+const attachShapesCache = new Map<GType, Set<AttachShape>>();
 
 export const collectTypeNameChain = (gtype: GType): string[] => {
     const cached = typeNameChainCache.get(gtype);
@@ -110,6 +113,28 @@ export const typeChainIncludes = (gtype: GType, name: string): boolean => {
 
 export const isDefaultBlockableType = (gtype: GType): boolean =>
     DEFAULT_BLOCKABLE_TYPES.some((name) => typeChainIncludes(gtype, name));
+
+/**
+ * Resolves the verified child-attachment shapes a type satisfies by unioning the
+ * codegen-emitted {@link ATTACH_SHAPES} entries across the type-name chain and its
+ * implemented interfaces. Each shape is present only when codegen confirmed the
+ * underlying method exists with the expected signature.
+ */
+export const collectAttachShapes = (gtype: GType): Set<AttachShape> => {
+    const cached = attachShapesCache.get(gtype);
+    if (cached) return cached;
+    const shapes = foldInheritedTableWithInterfaces<AttachShape[], Set<AttachShape>>(
+        gtype,
+        ATTACH_SHAPES,
+        (collected, row) => {
+            for (const shape of row) collected.add(shape);
+            return collected;
+        },
+        new Set<AttachShape>(),
+    );
+    attachShapesCache.set(gtype, shapes);
+    return shapes;
+};
 
 const memoize = <T>(
     cache: Map<GType, Map<string, T>>,

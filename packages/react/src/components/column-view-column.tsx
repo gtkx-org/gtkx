@@ -17,22 +17,6 @@ const factoryBinding: FactoryBinding<Gtk.ColumnViewColumn> = {
     uninstall: (column) => column.setFactory(null),
 };
 
-/**
- * Registers a column with its parent `GtkColumnView` and renders that column's cells.
- *
- * The component renders the `GtkColumnViewColumn` intrinsic so the reconciler materializes and
- * orders the backing `Gtk.ColumnViewColumn` (by JSX declaration order) and applies its `id`,
- * `title`, `expand`, `resizable`, `fixedWidth`, and `visible` properties. It owns a per-column
- * `Gtk.SignalListItemFactory` and slot store so each realized cell renders `renderCell(value)` into
- * its own portal, with the row value resolved by position from the parent column view's resolver.
- * The `headerMenu` subtree is installed as the column's `Gio.MenuModel`, and `sortable` is reported
- * to the parent so the column participates in controlled sorting. The component renders nothing
- * visible of its own.
- *
- * @typeParam T - The value type of the rows rendered in this column.
- * @param props - The column configuration including its required `id`, `title`, and `renderCell`.
- * @returns The intrinsic column element together with its cell and header-menu portals.
- */
 export const GtkColumnViewColumn = <T = unknown>(props: ColumnViewColumnProps<T>): ReactNode => {
     const { id, title, expand, resizable, fixedWidth, visible, sortable, renderCell, headerMenu } = props;
     const context = useColumnViewContext();

@@ -17,16 +17,6 @@ const spliceCreationStack = (error: unknown, creationStack: string | undefined):
     error.stack = `${error.stack ?? ""}\n${PROMISE_CREATION_MARKER}\n${callerFrames}`;
 };
 
-/**
- * Bridges a GIO-style async start/finish pair into a Promise.
- *
- * Forwards `leading` arguments, the resolved `cancellable` handle, optional
- * `trailing` arguments, and a completion callback to `asyncFn`, then resolves
- * with the result of `finish` once the operation completes. If `finish` throws,
- * the rejected error's stack is augmented with the call site that started the
- * operation under a `### Promise created here: ###` marker so failures inside
- * the GLib completion callback remain traceable.
- */
 export const promisify = (
     asyncFn: AsyncStartFn,
     finish: AsyncFinishFn,

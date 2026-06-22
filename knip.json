@@ -13,11 +13,12 @@
             "project": ["src/**/*.{ts,tsx}!"]
         },
         "packages/cli": {
-            "entry": ["src/global.d.ts!"],
+            "entry": ["src/global.d.ts!", "scripts/generate-env-dts.ts!"],
             "project": ["src/**/*.{ts,tsx}!", "scripts/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/codegen": {
             "includeEntryExports": true,
+            "entry": ["scripts/generate-gl.ts!"],
             "project": ["src/**/*.ts!", "scripts/**/*.ts!", "!src/templates/**"]
         },
         "packages/config": {

@@ -113,16 +113,6 @@ const validateReactCompiler = (reactCompiler: GtkxConfig["reactCompiler"]): void
     validateReactCompilerEnum(reactCompiler.panicThreshold, REACT_COMPILER_PANIC_THRESHOLDS, "panicThreshold");
 };
 
-/**
- * Validates a `gtkx.config.ts` object, throwing on the first invalid field.
- *
- * The loader invokes this exactly once per config load, after the file is read
- * and before resolution, so every config — whether wrapped in {@link defineConfig}
- * or exported as a plain object — is checked at the same point.
- *
- * @param config - the user config to validate
- * @throws Error when any field violates its schema
- */
 export const validateGtkxConfig = (config: GtkxConfig): void => {
     validateLibraries(config.libraries);
     validateGirPath(config.girPath);
@@ -135,76 +125,20 @@ export const validateGtkxConfig = (config: GtkxConfig): void => {
     validateReactCompiler(config.reactCompiler);
 };
 
-/**
- * Resolution context passed to a config-defining function so it can compute
- * fields per environment.
- */
 export type GtkxConfigEnv = {
-    /**
-     * The mode the loader resolved the config in, e.g. `"development"` or
-     * `"production"`. Populated by the loader when available.
-     */
     mode?: string;
 };
 
-/**
- * A config-defining function that receives the {@link GtkxConfigEnv} and returns
- * a config synchronously.
- */
 export type GtkxConfigFn = (env: GtkxConfigEnv) => GtkxConfig;
 
-/**
- * A config-defining function that receives the {@link GtkxConfigEnv} and returns
- * a config asynchronously.
- */
 export type GtkxConfigFnPromise = (env: GtkxConfigEnv) => Promise<GtkxConfig>;
 
-/**
- * Every shape `gtkx.config.ts` may export as its default: a plain config, a
- * promise of one, or a function of {@link GtkxConfigEnv} returning either.
- */
 export type GtkxConfigExport = GtkxConfig | Promise<GtkxConfig> | GtkxConfigFn | GtkxConfigFnPromise;
 
-/**
- * Identity helper that gives `gtkx.config.ts` authors full type checking and
- * autocompletion over a plain config object. The loader validates the resolved
- * config once at load time via {@link validateGtkxConfig}.
- *
- * @param config - the user config, type-checked against {@link GtkxConfig}
- * @returns the same config object, unchanged
- */
 export function defineConfig(config: GtkxConfig): GtkxConfig;
-/**
- * Identity helper accepting a promise of a config, so authors can compute the
- * config asynchronously.
- *
- * @param config - a promise resolving to a {@link GtkxConfig}
- * @returns the same promise, unchanged
- */
 export function defineConfig(config: Promise<GtkxConfig>): Promise<GtkxConfig>;
-/**
- * Identity helper accepting a function of {@link GtkxConfigEnv} returning a
- * config, so authors can compute fields per environment (dev vs prod).
- *
- * @param config - a function returning a {@link GtkxConfig}
- * @returns the same function, unchanged
- */
 export function defineConfig(config: GtkxConfigFn): GtkxConfigFn;
-/**
- * Identity helper accepting a function of {@link GtkxConfigEnv} returning a
- * promise of a config, so authors can compute fields per environment
- * asynchronously.
- *
- * @param config - a function returning a promise of a {@link GtkxConfig}
- * @returns the same function, unchanged
- */
 export function defineConfig(config: GtkxConfigFnPromise): GtkxConfigFnPromise;
-/**
- * Identity helper accepting any supported config export shape.
- *
- * @param config - the config export, one of the {@link GtkxConfigExport} forms
- * @returns the same value, unchanged
- */
 export function defineConfig(config: GtkxConfigExport): GtkxConfigExport;
 export function defineConfig(config: GtkxConfigExport): GtkxConfigExport {
     return config;
@@ -227,29 +161,9 @@ const mergeConfigValue = (base: unknown, override: unknown): unknown => {
     return override;
 };
 
-/**
- * Deeply merges an override config onto a base config, mirroring Vite's
- * `mergeConfig`: arrays are concatenated, plain objects are merged recursively,
- * and any scalar value from `override` wins. Use it in a package's
- * `gtkx.config.ts` to extend a shared base config.
- *
- * @param base - the base config to extend.
- * @param override - the config whose values take precedence.
- * @returns a new merged config; the inputs are not mutated.
- */
 export const mergeConfig = (base: GtkxConfig, override: GtkxConfig): GtkxConfig =>
     mergeConfigValue(base, override) as GtkxConfig;
 
-/**
- * A fully resolved `gtkx.config.ts`, with every optional field defaulted to a
- * concrete value the toolchain consumes.
- *
- * `libraries` resolves to `[]` when omitted, distinct from the raw config's
- * `undefined`. This is the fingerprint/metadata view of the libraries setting
- * consumed by codegen's serialized config; the authoritative codegen default of
- * `["Gtk-4.0"]` is applied separately by `@gtkx/cli`'s library resolver, which
- * operates on the raw config and so still distinguishes `undefined` from `[]`.
- */
 export type ResolvedGtkxConfig = {
     libraries: typeof LIBRARIES_WILDCARD | string[];
     girPath: string[];
@@ -262,18 +176,6 @@ export type ResolvedGtkxConfig = {
     reactCompiler: ResolvedReactCompilerOptions | null;
 };
 
-/**
- * Resolves a user `gtkx.config.ts` into a {@link ResolvedGtkxConfig}, defaulting
- * every omitted field.
- *
- * Each call returns fresh, independent copies of the mutable array and object
- * defaults so resolved configs never share aliased state, and `reactCompiler`
- * is computed via {@link resolveReactCompilerOptions}. See
- * {@link ResolvedGtkxConfig} for why `libraries` defaults to `[]`.
- *
- * @param config - the raw user config to resolve
- * @returns the resolved config with all defaults applied
- */
 export const resolveGtkxConfig = (config: GtkxConfig): ResolvedGtkxConfig => ({
     libraries: config.libraries ?? [],
     girPath: config.girPath ?? [],

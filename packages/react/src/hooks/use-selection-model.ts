@@ -4,12 +4,6 @@ import { useLayoutEffect, useRef } from "react";
 import type { ItemResolver } from "../utils/item-resolver.js";
 import { useSignal } from "./use-signal.js";
 
-/**
- * Configuration for {@link useSelectionModel}.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- */
 export interface SelectionModelOptions<T, S> {
     base: Gio.ListModel;
     selectionMode: Gtk.SelectionMode | null | undefined;
@@ -79,24 +73,6 @@ const sameIds = (a: string[], b: string[]): boolean => {
     return true;
 };
 
-/**
- * Builds and maintains the live GTK selection model wrapping a view's position-only base model.
- *
- * The selection model class follows `selectionMode` (defaulting to single selection); a change of
- * mode produces a new wrapper over the same base model so the widget re-points to it, and the
- * controlled `selected` ids are re-applied in the same commit. When only the base model changes it
- * is set into the existing wrapper in place, so the widget's `getModel()` and the scroll state it
- * carries never transiently null and selection is never driven through a full model rebuild.
- *
- * Controlled `selected` ids are translated to positions through the resolver and applied into the
- * model, which fires `selection-changed`. That signal is mirrored back through the resolver to ids
- * and reported via `onSelectionChanged`, including on the initial render when `selected` is set.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- * @param options - The base model, selection mode, controlled selection, callback, and resolver.
- * @returns The live selection model to install on the view widget.
- */
 export const useSelectionModel = <T, S>(options: SelectionModelOptions<T, S>): Gtk.SelectionModel => {
     const { base, selectionMode, selected, onSelectionChanged, resolver } = options;
     const mode = selectionMode ?? Gtk.SelectionMode.SINGLE;

@@ -20,11 +20,6 @@ const rebuildLabelText = (owner: Node): void => {
     }
 };
 
-/**
- * Schedules a label-text rebuild for the nearest enclosing `Gtk.Label` of `node`.
- *
- * @param node - The node whose owning label should have its text recomputed.
- */
 export const scheduleLabelTextRebuild = (node: Node): void => {
     scheduleOwnerRebuild(
         node,

@@ -19,10 +19,6 @@ type RegisteredApp = {
     connection: AppConnection;
 };
 
-/**
- * Default time in milliseconds the connection manager waits for an app to
- * respond to a forwarded request before rejecting it as timed out.
- */
 export const DEFAULT_REQUEST_TIMEOUT_MS = 30000;
 
 export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {

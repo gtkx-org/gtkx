@@ -3,9 +3,6 @@ import { useLayoutEffect, useRef } from "react";
 import type { ColumnRegistration } from "../contexts/column-view-context.js";
 import { type GObjectTarget, resolveGobjectTarget } from "../utils/gobject-target.js";
 
-/**
- * Configuration for {@link useSortHandler}.
- */
 export interface SortHandlerOptions {
     columnView: GObjectTarget<Gtk.ColumnView>;
     sortColumn: string | null | undefined;
@@ -62,19 +59,6 @@ const disconnectSorter = (subscription: SorterSubscription): void => {
     subscription.handler = null;
 };
 
-/**
- * Drives the controlled sort indicator of a `GtkColumnView` and reports user-initiated changes.
- *
- * Sorting is controlled and React-side: GTK never reorders the position-only model. Each sortable
- * column (and the column named by `sortColumn`) is given a neutral `Gtk.CustomSorter` so the column
- * participates in the view's `Gtk.ColumnViewSorter` and `getSorter()` is non-null. The indicator is
- * synced to `sortColumn`/`sortOrder` through `sortByColumn` without rebuilding the model, so
- * `getModel()`/`getSorter()` never transiently null across repeated sorts. The view sorter's
- * `changed` signal is mirrored to `onSortChanged(columnId, order)` for changes the user makes (for
- * example clicking a header or `sortByColumn`), while programmatic indicator syncs are suppressed.
- *
- * @param options - The column view, controlled sort props, change callback, and registrations.
- */
 export const useSortHandler = (options: SortHandlerOptions): void => {
     const { columnView, sortColumn, sortOrder, onSortChanged, columns } = options;
     const activeId = sortColumn ?? null;

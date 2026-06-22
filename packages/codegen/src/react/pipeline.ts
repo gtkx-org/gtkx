@@ -2,6 +2,7 @@ import type { UserTableRows } from "@gtkx/config";
 import { sortedAlphaBy } from "@gtkx/utils";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import type { GirRepository } from "../gir/repository.js";
+import { collectAttachShapes } from "./attach-shapes.js";
 import { generateCompoundsSection } from "./compounds.js";
 import { emptyJsxImports, renderJsxImports } from "./imports.js";
 import { generateJsxSection, type JsxSurfaceMaps } from "./jsx.js";
@@ -67,6 +68,7 @@ export const generateJsxFiles = (repository: GirRepository, userTables: UserTabl
         metaObjectAddMethods: META_OBJECT_ADD_METHODS,
         pageMetaSetters: PAGE_META_SETTERS,
         containerProps: containerPropMap,
+        attachShapes: collectAttachShapes(repository),
     });
 
     return { namespaces, metadata, widgetCount };

@@ -4,28 +4,11 @@ import { createGtkxConfigPlugin, gtkxBundledModulePatterns } from "@gtkx/config"
 import type { Plugin } from "vitest/config";
 import type { CompositorId } from "./headless-display.js";
 
-/**
- * Typed configuration for the per-worker headless display the plugin provisions.
- */
 export type GtkxHeadlessOptions = {
-    /**
-     * Requested compositor output size formatted as `WIDTHxHEIGHT` (for example `1024x768`).
-     */
     size?: string;
-    /**
-     * The compositor to launch for the headless display. Defaults to `weston`.
-     */
     compositor?: CompositorId;
 };
 
-/**
- * Creates the gtkx Vitest plugin. It forces the forks pool and gtkx timeouts, inlines the
- * shared bundled-module patterns, wires the gtkx config virtual module, and prepends a
- * per-worker setup file that provisions an isolated headless display.
- *
- * @param options - Typed headless-display options threaded to each worker.
- * @returns The configured Vitest plugin.
- */
 const gtkx = (options: GtkxHeadlessOptions = {}): Plugin => {
     const workerSetupPath = join(import.meta.dirname, "setup.js");
 

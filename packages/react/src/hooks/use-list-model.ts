@@ -19,33 +19,18 @@ import {
     retagRows,
 } from "../utils/position-only-model.js";
 
-/**
- * Controlled mode: values come from an `items` array, GTK holds only positions.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- */
 export interface ControlledListMode<T, S> {
     items: ListItem<T, S>[] | undefined;
     autoexpand?: boolean | undefined;
     model?: never;
 }
 
-/**
- * Uncontrolled mode: the external `Gio.ListModel` is passed straight through to the widget.
- */
 export interface UncontrolledListMode {
     model: Gio.ListModel;
     items?: never;
     autoexpand?: never;
 }
 
-/**
- * The position-only model for a view together with its value resolver.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- */
 export interface ListModelResult<T, S> {
     model: Gio.ListModel;
     resolver: ItemResolver<T, S>;
@@ -134,21 +119,6 @@ const useUncontrolledModel = <T, S>(mode: UncontrolledListMode): ListModelResult
     return { model, resolver, headerResolver };
 };
 
-/**
- * Owns the position-only GTK model for one view and the resolver that maps positions to values.
- *
- * In controlled mode a position-only `Gtk.StringList` (flat), `Gtk.TreeListModel` (tree), or
- * `Gtk.FlattenListModel` (sections) is built sized to the logical item count; GTK never holds the
- * real values, which live in the returned `resolver`. Flat models are resized in place across
- * `items` changes so the model identity stays stable and the widget's `getModel()` never
- * transiently nulls. In uncontrolled mode the supplied external model is returned unchanged and
- * its values are read directly by position, with the count tracked through `items-changed`.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- * @param mode - Either a controlled `items` array (with optional `autoexpand`) or an external model.
- * @returns The position-only or external model and the value resolver for the current contents.
- */
 export const useListModel = <T, S>(mode: ControlledListMode<T, S> | UncontrolledListMode): ListModelResult<T, S> => {
     const controlled = useControlledModel<T, S>(
         mode.model === undefined ? { items: mode.items, autoexpand: mode.autoexpand } : { items: [] },

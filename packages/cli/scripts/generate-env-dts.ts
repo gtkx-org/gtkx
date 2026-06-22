@@ -1,18 +1,5 @@
 #!/usr/bin/env node
 
-/**
- * Generator for the committed public `./env` type entrypoint (`env.d.ts`).
- *
- * The file is the published ambient-module declaration surface for asset
- * imports. Every `declare module "*.<ext>"` block is derived from the single
- * {@link ASSET_EXTENSIONS} source-of-truth list via {@link renderAssetEnvModule}
- * so the declarations can never drift from the asset-matching regexes.
- *
- * Run without arguments to regenerate the committed `env.d.ts`. Run with
- * `--check` to regenerate in memory and exit non-zero when the committed file is
- * stale, mirroring `scripts/sync-ts-references.ts --check`.
- */
-
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";

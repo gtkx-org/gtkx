@@ -11,12 +11,6 @@ type Attachment = {
     dispose: () => void;
 };
 
-/**
- * Owns the GTK {@link Gtk.CssProvider} lifecycle that drives a single animated
- * widget. Attachment registers the provider, adds the animation class, and
- * records the inverse teardown; subsequent writes assume the widget is attached
- * and stream interpolated keyframes into the provider as CSS.
- */
 export class AnimationCssProvider {
     private className: string;
     private attachment: Attachment | null = null;
@@ -25,12 +19,6 @@ export class AnimationCssProvider {
         this.className = className;
     }
 
-    /**
-     * Register the CSS provider for the default display and add the animation
-     * class to the widget, recording the teardown that reverses both effects.
-     *
-     * @param widget - The widget the animation class is applied to.
-     */
     public attach(widget: Gtk.Widget): void {
         if (this.attachment) return;
 
@@ -46,11 +34,6 @@ export class AnimationCssProvider {
         };
     }
 
-    /**
-     * Serialize a keyframe to CSS and stream it into the attached provider.
-     *
-     * @param values - The keyframe to write as CSS declarations.
-     */
     public write(values: AnimatableProperties): void {
         if (!this.attachment) return;
 
@@ -60,10 +43,6 @@ export class AnimationCssProvider {
         }
     }
 
-    /**
-     * Run the recorded teardown, removing the provider and the animation class,
-     * and clear the attachment.
-     */
     public dispose(): void {
         if (!this.attachment) return;
 

@@ -1,4 +1,7 @@
+import type { AttachShape } from "@gtkx/config";
+import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import { collectAttachShapes } from "../utils/gtype.js";
 
 type AppendableWidget = Gtk.Widget & { append: (child: Gtk.Widget) => void };
 type AddableWidget = Gtk.Widget & { add: (child: Gtk.Widget) => void };
@@ -16,31 +19,38 @@ export type InsertableWidget = Gtk.Widget & {
     getFirstChild: () => Gtk.Widget | null;
 };
 
-const hasMethod = (obj: unknown, name: string): obj is Gtk.Widget =>
-    obj instanceof Gtk.Widget && name in obj && typeof Reflect.get(obj, name) === "function";
-
 export type SingleChildContainer = {
     getChild: () => Gtk.Widget | null;
     setChild: (child: Gtk.Widget | null) => void;
 };
 
-const hasFunction = (obj: object, name: string): boolean => name in obj && typeof Reflect.get(obj, name) === "function";
+const widgetShapes = (obj: unknown): Set<AttachShape> | null =>
+    obj instanceof Gtk.Widget ? collectAttachShapes(obj.__gtype__) : null;
 
-export const isSingleChildContainer = (obj: unknown): obj is SingleChildContainer =>
-    typeof obj === "object" && obj !== null && hasFunction(obj, "getChild") && hasFunction(obj, "setChild");
+export const isAppendable = (obj: unknown): obj is AppendableWidget => widgetShapes(obj)?.has("append") ?? false;
 
-export const isAppendable = (obj: unknown): obj is AppendableWidget => hasMethod(obj, "append");
+export const isAddable = (obj: unknown): obj is AddableWidget => widgetShapes(obj)?.has("add") ?? false;
 
-export const isAddable = (obj: unknown): obj is AddableWidget => hasMethod(obj, "add");
+export const isContentWidget = (obj: unknown): obj is ContentWidget => widgetShapes(obj)?.has("setContent") ?? false;
 
-export const isContentWidget = (obj: unknown): obj is ContentWidget => hasMethod(obj, "setContent");
+export const isSingleChild = (obj: unknown): obj is SingleChildWidget => widgetShapes(obj)?.has("setChild") ?? false;
 
-export const isSingleChild = (obj: unknown): obj is SingleChildWidget => hasMethod(obj, "setChild");
+export const isRemovable = (obj: unknown): obj is RemovableWidget => widgetShapes(obj)?.has("remove") ?? false;
 
-export const isRemovable = (obj: unknown): obj is RemovableWidget => hasMethod(obj, "remove");
+export const isReorderable = (obj: unknown): obj is ReorderableWidget => {
+    const shapes = widgetShapes(obj);
+    if (shapes === null) return false;
+    return shapes.has("reorderChildAfter") && shapes.has("insertChildAfter");
+};
 
-export const isReorderable = (obj: unknown): obj is ReorderableWidget =>
-    hasMethod(obj, "reorderChildAfter") && hasMethod(obj, "insertChildAfter");
+export const isInsertable = (obj: unknown): obj is InsertableWidget => {
+    const shapes = widgetShapes(obj);
+    if (shapes === null) return false;
+    return shapes.has("insert") && shapes.has("getFirstChild");
+};
 
-export const isInsertable = (obj: unknown): obj is InsertableWidget =>
-    hasMethod(obj, "insert") && hasMethod(obj, "getFirstChild");
+export const isSingleChildContainer = (obj: unknown): obj is SingleChildContainer => {
+    if (!(obj instanceof GObject.Object)) return false;
+    const shapes = collectAttachShapes(obj.__gtype__);
+    return shapes.has("getChild") && shapes.has("setChild");
+};

@@ -8,11 +8,6 @@ export const BUNDLE_FILENAME = "gtkx.gresource";
 
 export const REL_SEPARATOR = "\0rel=";
 
-/**
- * The prefix round-trip helpers for the GResource virtual namespace, sharing the
- * `\0`-prefix contract with the other asset plugins while leaving GResource's
- * own multiplexed `resolveId` (which carries a relative-path payload) in place.
- */
 export const { isVirtual, toVirtualId, fromVirtualId } = createVirtualNamespace(VIRTUAL_PREFIX);
 
 export const escapeXml = (value: string): string =>

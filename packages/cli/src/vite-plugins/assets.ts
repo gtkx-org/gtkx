@@ -7,13 +7,6 @@ const INJECT_SUFFIX = "?inject";
 const VIRTUAL_PREFIX = "\0gtkx:";
 const { isVirtual, fromVirtualId } = createVirtualNamespace(VIRTUAL_PREFIX);
 
-/**
- * Vite plugin that rewrites CSS imports into modules that push the stylesheet
- * through `@gtkx/css`'s `injectGlobal`, so plain `import "./style.css"` works in
- * the GTK runtime where there is no DOM stylesheet.
- *
- * @returns The configured Vite plugin.
- */
 export function gtkxAssets(): Plugin {
     return {
         name: "gtkx:assets",

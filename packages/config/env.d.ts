@@ -13,6 +13,7 @@ declare module "virtual:gtkx-config" {
     export const META_OBJECT_ADD_METHODS: Record<string, import("@gtkx/config").AddMethodRule[]>;
     export const PAGE_META_SETTERS: import("@gtkx/config").PageMetaSetter[];
     export const CONTAINER_PROPS: import("@gtkx/config").PerElementPropRows<import("@gtkx/config").ContainerPropRow>;
+    export const ATTACH_SHAPES: import("@gtkx/config").AttachShapeTable;
     export const libraries: import("@gtkx/config").ResolvedGtkxConfig["libraries"];
     export const girPath: import("@gtkx/config").ResolvedGtkxConfig["girPath"];
     export const applicationId: import("@gtkx/config").ResolvedGtkxConfig["applicationId"];

@@ -9,7 +9,7 @@ import { isDefaultBlockableType } from "../utils/gtype.js";
 import { classHasType } from "../utils/gtype-predicates.js";
 import { applyAccessibleProps, isAccessibleProp } from "./accessible.js";
 import { applyProps } from "./apply-props.js";
-import { runCommitFlush } from "./commit-flush.js";
+import { beginCommit, endCommit, runCommitFlush } from "./commit-flush.js";
 import { attachNode, detachFromParent, detachNode, resyncWrapper } from "./element-map.js";
 import {
     createElementInstance,
@@ -304,6 +304,22 @@ const createMutationConfig = (): MutationConfig => ({
 
 type CommitConfig = Pick<HostConfig, "commitUpdate" | "commitTextUpdate" | "prepareForCommit" | "resetAfterCommit">;
 
+const guardCommitStep = (step: () => void): void => {
+    try {
+        step();
+    } catch (error) {
+        reportReconcilerError(error);
+    }
+};
+
+const drainCommitQueue = (): void => guardCommitStep(runCommitFlush);
+
+const finalizeCommitAfterLayoutEffects = (): void => {
+    drainCommitQueue();
+    endCommit();
+    guardCommitStep(unfreeze);
+};
+
 const createCommitConfig = (): CommitConfig => ({
     commitUpdate: (instance, _type, oldProps, newProps) =>
         withSignalsBlocked(instance, () => commitInstanceProps(instance, oldProps, newProps)),
@@ -314,18 +330,12 @@ const createCommitConfig = (): CommitConfig => ({
     },
     prepareForCommit: () => {
         freeze();
+        beginCommit();
         return null;
     },
     resetAfterCommit: () => {
-        let drainError: unknown = null;
-        try {
-            runCommitFlush();
-        } catch (error) {
-            drainError = error;
-        } finally {
-            unfreeze();
-        }
-        if (drainError !== null) reportReconcilerError(drainError);
+        drainCommitQueue();
+        queueMicrotask(finalizeCommitAfterLayoutEffects);
     },
 });
 

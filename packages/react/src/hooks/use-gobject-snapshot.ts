@@ -9,25 +9,6 @@ interface SnapshotCache<T extends GObject.Object, V> {
     value: V;
 }
 
-/**
- * Subscribes to a GObject signal on a (possibly late-resolving) target and exposes the
- * value read from that target as a tear-free React snapshot via `useSyncExternalStore`.
- *
- * The value is read in the signal handler (and once on first read / target change) and cached,
- * so `getSnapshot` is pure — it never issues a native read and therefore never drains the GLib
- * inbox. That purity matters because a native read (e.g. `getNItems`) synchronously runs any
- * pending GTK work, including a frame-clock fill that mutates the watched model; a `getSnapshot`
- * that read live would make the snapshot change as a side effect of being read, and React's
- * post-commit store re-check would spin. The handler's read is guarded against re-entrancy (a read
- * that drains a nested emission does not read again), so the cached value stays consistent for
- * `getSnapshot` across a render pass.
- *
- * @param target A GObject, a ref to one, or `null`/`undefined` while it is still resolving.
- * @param signal The signal whose emission refreshes the snapshot (e.g. `notify::label`).
- * @param read Reads the snapshot value from the resolved target, or from `null` when unresolved.
- * @param after Whether to connect the signal handler after the default handler runs.
- * @returns The latest snapshot value, consistent across a concurrent render pass.
- */
 export function useGObjectSnapshot<T extends GObject.Object, V>(
     target: GObjectTarget<T>,
     signal: string,

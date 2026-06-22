@@ -1,25 +1,11 @@
 import type { ListItem } from "./element-props.js";
 
-/**
- * Per-item metadata controlling how a tree row's `Gtk.TreeExpander` is configured.
- */
 export interface TreeItemMetadata {
     hideExpander: boolean;
     indentForDepth: boolean;
     indentForIcon: boolean;
 }
 
-/**
- * A single flattened record produced from a `ListItem` tree.
- *
- * Records are emitted in depth-first declaration order: a parent precedes its children, and
- * siblings keep their array order. Each record carries the resolved value, the originating id,
- * whether it is a section header, whether it has children (and is therefore expandable), and the
- * tree-expander metadata to apply when the row realizes.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- */
 export interface FlattenedRecord<T = unknown, S = unknown> {
     id: string;
     value: T | S;
@@ -29,16 +15,6 @@ export interface FlattenedRecord<T = unknown, S = unknown> {
     metadata: TreeItemMetadata;
 }
 
-/**
- * The complete flattening of a `ListItem` array into ordered records plus id/position lookups.
- *
- * `records` is the depth-first declaration-ordered list. `idToPosition` and `positionToId` map
- * between an item id and its index within `records`. `isTree` is true when any item declares
- * non-section children; `isSectioned` is true when any top-level item is a section.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- */
 export interface FlattenResult<T = unknown, S = unknown> {
     records: FlattenedRecord<T, S>[];
     idToPosition: Map<string, number>;
@@ -47,19 +23,6 @@ export interface FlattenResult<T = unknown, S = unknown> {
     isSectioned: boolean;
 }
 
-/**
- * Computes a structural signature for a `ListItem` array.
- *
- * The signature captures only what the GTK position-only model depends on: the ordered ids, the
- * section flags, the expander-visibility flag, and the nested children shape. Two arrays with the
- * same signature produce an identical GTK model structure, so the model can be reused in place and
- * only the React-side values re-tagged, preserving the widget's scroll and expansion state.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- * @param items - The declaration-ordered list to summarize, or `undefined`.
- * @returns A string uniquely identifying the structural shape.
- */
 export const structuralSignature = <T, S>(items: ListItem<T, S>[] | undefined): string => {
     if (items === undefined) return "";
     const parts: string[] = [];
@@ -76,17 +39,6 @@ export const structuralSignature = <T, S>(items: ListItem<T, S>[] | undefined): 
     return parts.join(",");
 };
 
-/**
- * Derives the tree-expander metadata for a single `ListItem`.
- *
- * Section headers carry no indentation and never an expander; regular items default to indenting
- * for both depth and icon and to showing the expander unless `hideExpander` is set.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- * @param item - The item whose expander metadata to compute.
- * @returns The metadata applied to the realized row's `Gtk.TreeExpander`.
- */
 export const treeItemMetadata = <T, S>(item: ListItem<T, S>): TreeItemMetadata => {
     if (item.section === true) {
         return { hideExpander: false, indentForDepth: false, indentForIcon: false };
@@ -117,21 +69,6 @@ const appendRecord = <T, S>(item: ListItem<T, S>, result: FlattenResult<T, S>, i
     }
 };
 
-/**
- * Flattens a `ListItem` array into depth-first ordered records with id/position lookups.
- *
- * A section's children are inlined directly in declaration order; the section header itself is not
- * emitted as a record, since headers are rendered by the header factory and are never selectable
- * rows. Regular items with children are treated as tree nodes; their children are inlined only when
- * `flattenTreeChildren` is true (used when the tree is auto-expanded), otherwise only the root
- * level is emitted and children resolve lazily as positions are realized.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- * @param items - The declaration-ordered list to flatten, or `undefined` for an empty result.
- * @param flattenTreeChildren - Whether to inline non-section children into the records.
- * @returns The ordered records plus id/position maps and the detected structure flags.
- */
 export const flattenListItems = <T, S>(
     items: ListItem<T, S>[] | undefined,
     flattenTreeChildren: boolean,

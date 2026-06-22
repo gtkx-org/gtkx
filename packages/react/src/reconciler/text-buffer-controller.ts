@@ -10,10 +10,6 @@ export class TextBufferController {
     private anchoredWidgets = new Set<Gtk.Widget>();
     private owner: Node;
 
-    /**
-     * Bound, argument-less rebuild of the owning text buffer, suitable for scheduling via the
-     * shared commit flush. Reading it returns the same function instance for this controller.
-     */
     public boundRebuild = (): void => this.rebuild();
 
     constructor(owner: Node) {

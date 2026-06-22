@@ -66,14 +66,6 @@ const formatQueryDescription = (descriptor: QueryDescriptor): string => {
 
 let expensiveErrorDiagnosticsDisabled = false;
 
-/**
- * Runs `callback` with expensive error diagnostics (full widget-tree serialization in query
- * failures) disabled, restoring the previous setting afterward.
- *
- * @typeParam T - The return type of `callback`.
- * @param callback - The work to run with diagnostics suppressed.
- * @returns The value returned by `callback`.
- */
 export const runWithExpensiveErrorDiagnosticsDisabled = <T>(callback: () => T): T => {
     const previous = expensiveErrorDiagnosticsDisabled;
     expensiveErrorDiagnosticsDisabled = true;

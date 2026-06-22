@@ -20,12 +20,6 @@ const STAGED_NAME_LENGTH = 16;
 const stagedSchemaName = (filePath: string): string =>
     `${createHash("sha1").update(filePath).digest("hex").slice(0, STAGED_NAME_LENGTH)}${SCHEMA_SUFFIX}`;
 
-/**
- * Copies a schema file into a staging directory under its hashed staged name.
- *
- * @param dir - The directory the schema is copied into.
- * @param filePath - The source schema file path.
- */
 export const stageSchema = (dir: string, filePath: string): void => {
     copyFileSync(filePath, join(dir, stagedSchemaName(filePath)));
 };

@@ -20,21 +20,11 @@ const positionOf = (container: GObject.Object & ChildContainer): number => {
     return -1;
 };
 
-/**
- * Installs and removes a factory on a GObject that owns one.
- *
- * @typeParam W - The GObject type that owns the factory (a view widget or a column).
- */
 export interface FactoryBinding<W extends GObject.Object> {
     install(widget: W, factory: Gtk.SignalListItemFactory): void;
     uninstall(widget: W, factory: Gtk.SignalListItemFactory): void;
 }
 
-/**
- * Configuration for {@link useRealizedSlots}.
- *
- * @typeParam W - The GObject type that owns the factory.
- */
 export interface RealizedSlotsOptions<W extends GObject.Object> {
     target: GObjectTarget<W>;
     binding: FactoryBinding<W>;
@@ -42,9 +32,6 @@ export interface RealizedSlotsOptions<W extends GObject.Object> {
     estimatedWidth?: number | undefined;
 }
 
-/**
- * The factory and external store wiring the GTK realization signals to React slots.
- */
 export interface RealizedSlots {
     factory: Gtk.SignalListItemFactory;
     store: RealizedSlotStore;
@@ -55,20 +42,6 @@ const applyEstimatedSize = (child: Gtk.Widget, height: number | undefined, width
     child.setSizeRequest(width ?? -1, height ?? -1);
 };
 
-/**
- * Creates one `Gtk.SignalListItemFactory` and a {@link RealizedSlotStore}, translating the
- * factory's `setup`/`bind`/`unbind`/`teardown` signals into synchronous store writes.
- *
- * At `setup` an empty placeholder child is installed (carrying any estimated size request) so the
- * container measures correctly before binding. At `bind` the container's position and tree row are
- * captured into the store, notifying only that container's subscribers. There is no deferral: the
- * store writes and listener notifications run inside the signal handler so React batches them in
- * the surrounding render or act window.
- *
- * @typeParam W - The widget type that owns the factory.
- * @param options - The target widget, the factory binding, and optional estimated sizes.
- * @returns The factory to install on the widget and the store the portals subscribe to.
- */
 export const useRealizedSlots = <W extends GObject.Object>(options: RealizedSlotsOptions<W>): RealizedSlots => {
     const { target, binding, estimatedHeight, estimatedWidth } = options;
     const storeRef = useRef<RealizedSlotStore | null>(null);

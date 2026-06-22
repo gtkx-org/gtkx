@@ -7,12 +7,6 @@ import type { ItemResolver } from "../utils/item-resolver.js";
 import type { TreeItemMetadata } from "../utils/list-item-flatten.js";
 import type { RealizedSlotStore, SlotEntry } from "../utils/realized-slot-store.js";
 
-/**
- * Renders the content for one realized position into its container.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- */
 export type SlotRenderer<T, S> = (
     value: T | S | undefined,
     treeRow: Gtk.TreeListRow | null,
@@ -29,12 +23,6 @@ interface TreeExpanderElementProps {
 
 const GtkTreeExpanderElement = createElementComponent<TreeExpanderElementProps>("GtkTreeExpander");
 
-/**
- * Props for {@link ListSlot}.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- */
 export interface ListSlotProps<T, S> {
     container: GObject.Object;
     store: RealizedSlotStore;
@@ -75,17 +63,4 @@ const SlotImpl = <T, S>({ container, store, resolver, render }: ListSlotProps<T,
     return createPortal(portalled, container, store.keyFor(container));
 };
 
-/**
- * A memoized portal slot for one realized container.
- *
- * The slot subscribes only to its own container's position slice through `useSyncExternalStore`,
- * so a single `bind`/`unbind` re-renders exactly this slot and no sibling. It resolves the value
- * for its position from the `resolver` prop (the data axis, flowing through ordinary React
- * reconciliation) and portals the rendered content into its container. In tree mode the content is
- * wrapped in a `Gtk.TreeExpander` wired to the row and configured with the per-item indentation and
- * expander-visibility metadata. When unbound it renders nothing.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- */
 export const ListSlot = memo(SlotImpl) as <T, S>(props: ListSlotProps<T, S>) => ReactNode;

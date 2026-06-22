@@ -22,20 +22,6 @@ type GridViewComponentProps<T> = GridViewProps<T> & {
     estimatedItemWidth?: number | undefined;
 };
 
-/**
- * A `Gtk.GridView` driven by a controlled `items` array or an external `Gio.ListModel`.
- *
- * In controlled mode each item declares an `id` and a `value`; the GTK side holds only positions,
- * and `renderItem(value)` renders the value into each realized cell. Selection follows
- * `selectionMode`, controlled `selected` ids, and `onSelectionChanged`. In model mode the supplied
- * selection model is used directly and `renderItem` receives the actual stored object. Grid-only
- * widget options such as `singleClickActivate` pass straight through to the underlying widget, to
- * which the ref is forwarded.
- *
- * @typeParam T - The value type of the grid items.
- * @param props - The grid configuration plus any underlying `Gtk.GridView` props.
- * @returns The rendered grid view.
- */
 export const GtkGridView = <T = unknown>(props: GridViewComponentProps<T>): ReactNode => {
     const {
         ref,

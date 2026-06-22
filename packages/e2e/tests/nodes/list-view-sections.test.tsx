@@ -58,7 +58,6 @@ describe("ListView sections", () => {
         await renderSectioned(ref);
         await screen.findAllByText("Alpha");
 
-        // 3 children across 2 sections; the headers must NOT be selectable rows in the model.
         expect(ref.current?.getModel()?.getNItems()).toBe(3);
     });
 });

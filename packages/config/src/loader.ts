@@ -26,14 +26,7 @@ export class GtkxConfigNotFoundError extends Error {
     }
 }
 
-/**
- * Options for {@link loadGtkxConfig}.
- */
 export type LoadGtkxConfigOptions = {
-    /**
-     * The environment mode passed to a function-form `gtkx.config.ts` default
-     * export as `env.mode`, so authors can compute fields per environment.
-     */
     mode?: string;
 };
 
@@ -60,15 +53,7 @@ export const loadGtkxConfig = async (cwd: string, options: LoadGtkxConfigOptions
     };
 };
 
-/**
- * Options for {@link loadResolvedGtkxConfig} and {@link createGtkxConfigLoader}.
- */
 export type LoadResolvedGtkxConfigOptions = LoadGtkxConfigOptions & {
-    /**
-     * When `true`, a missing `gtkx.config.ts` resolves to the empty default
-     * config instead of throwing {@link GtkxConfigNotFoundError}. Defaults to
-     * `false`, so a missing config surfaces the helpful not-found error.
-     */
     allowMissing?: boolean;
 };
 

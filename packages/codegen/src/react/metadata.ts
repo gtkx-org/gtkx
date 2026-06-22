@@ -1,6 +1,7 @@
 import type {
     AddMethodRule,
     ArrayPropRow,
+    AttachShapeTable,
     ContainerPropRow,
     ElementMapRule,
     ObjectPropRow,
@@ -29,6 +30,7 @@ export type RuntimeTables = {
     metaObjectAddMethods: Record<string, AddMethodRule[]>;
     pageMetaSetters: PageMetaSetter[];
     containerProps: PerElementPropRows<ContainerPropRow>;
+    attachShapes: AttachShapeTable;
 };
 
 const configType = (name: string): string => `import("@gtkx/config").${name}`;
@@ -55,6 +57,7 @@ const RUNTIME_TABLE_SPECS: Record<keyof RuntimeTables, RuntimeTableSpec> = {
     metaObjectAddMethods: { name: "META_OBJECT_ADD_METHODS", annotation: recordOfArray("AddMethodRule") },
     pageMetaSetters: { name: "PAGE_META_SETTERS", annotation: arrayOf("PageMetaSetter") },
     containerProps: { name: "CONTAINER_PROPS", annotation: nestedRecordOf("ContainerPropRow") },
+    attachShapes: { name: "ATTACH_SHAPES", annotation: recordOfArray("AttachShape") },
 };
 
 const RUNTIME_TABLE_KEYS = Object.keys(RUNTIME_TABLE_SPECS) as Array<keyof RuntimeTables>;

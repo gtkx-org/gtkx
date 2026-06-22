@@ -25,6 +25,7 @@ export {
 } from "./hooks/use-signal.js";
 export { useTickCallback } from "./hooks/use-tick-callback.js";
 export { type TopLevelSurface, useWindowPresentation } from "./hooks/use-window-presentation.js";
+export { isInCommit, scheduleCommitWork } from "./reconciler/commit-flush.js";
 export { createPortal } from "./reconciler/portal.js";
 export { createRoot, quit, type Root } from "./reconciler/render.js";
 export { createRootElement, type RootElement } from "./reconciler/root-element.js";

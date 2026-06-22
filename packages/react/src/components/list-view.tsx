@@ -27,23 +27,6 @@ type ListViewComponentProps<T, S> = ListViewProps<T, S> & {
     estimatedItemWidth?: number | undefined;
 };
 
-/**
- * A `Gtk.ListView` driven by a controlled `items` array or an external `Gio.ListModel`.
- *
- * In controlled mode each item declares an `id` and a `value`; the GTK side holds only positions,
- * and `renderItem(value, row?)` renders the value into each realized row (receiving the
- * `Gtk.TreeListRow` for tree items). Trees are formed by item `children` with optional
- * `autoexpand`, per-item `hideExpander`/`indentForDepth`/`indentForIcon`, and section headers via
- * `renderHeader`. Selection follows `selectionMode`, controlled `selected` ids, and
- * `onSelectionChanged`. In model mode the supplied selection model is used directly and
- * `renderItem` receives the actual stored object. The ref is forwarded to the underlying
- * `Gtk.ListView`.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- * @param props - The list configuration plus any underlying `Gtk.ListView` props.
- * @returns The rendered list view.
- */
 export const GtkListView = <T = unknown, S = unknown>(props: ListViewComponentProps<T, S>): ReactNode => {
     const {
         ref,

@@ -33,15 +33,6 @@ const anchorBacking = (before: Node): GObject.Object | null => {
     return null;
 };
 
-/**
- * Attaches a freshly linked child to its parent, deciding between
- * wrapper-resync and backing-widget attachment and resyncing the parent wrapper
- * when the parent is itself a marker node.
- *
- * The child must already be linked into the parent's child list. Pass `before`
- * as `null` to append, or as the sibling the child was linked ahead of to
- * insert; `fresh` indicates the child had no previous parent.
- */
 export const attachNode = (parent: Node, child: Node, before: Node | null, fresh: boolean): void => {
     if (before === null) {
         if (isWrapperElement(child) || !isWrapperElement(parent)) attachToParent(child, parent, null, fresh);
@@ -53,14 +44,6 @@ export const attachNode = (parent: Node, child: Node, before: Node | null, fresh
     if (isWrapperElement(parent)) resyncWrapper(parent);
 };
 
-/**
- * Detaches an unlinked child from its parent, mirroring {@link attachNode}: it
- * runs the backing detachment when applicable and resyncs the parent wrapper
- * when the parent is itself a marker node.
- *
- * The child must already be unlinked from the parent's child list before this
- * call so the parent-wrapper resync observes the post-removal tree.
- */
 export const detachNode = (parent: Node, child: Node): void => {
     if (isWrapperElement(child) || !isWrapperElement(parent)) detachFromParent(child, parent);
     if (isWrapperElement(parent)) resyncWrapper(parent);

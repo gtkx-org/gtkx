@@ -43,6 +43,8 @@ export type {
 } from "./table-rules-ir.js";
 export type {
     ArrayPropRow,
+    AttachShape,
+    AttachShapeTable,
     AttachVerb,
     CallArg,
     CallStep,

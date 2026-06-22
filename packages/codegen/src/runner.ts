@@ -15,9 +15,6 @@ export type CodegenRunnerOptions = {
     jsx?: JsxStoreOptions | undefined;
 };
 
-/**
- * Per-phase wall-clock durations (in milliseconds) for a codegen run.
- */
 export type CodegenPhaseTimings = {
     loadRepository: number;
     emitFfiStore: number;
@@ -28,7 +25,6 @@ export type CodegenRunnerResult = {
     namespaces: number;
     widgets: number;
     duration: number;
-    /** Wall-clock duration of each named pipeline phase, in milliseconds. */
     phases: CodegenPhaseTimings;
 };
 

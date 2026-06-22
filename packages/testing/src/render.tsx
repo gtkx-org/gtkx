@@ -167,12 +167,6 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
     return result;
 };
 
-/**
- * Tears down everything registered with the cleanup queue: unmounts all active renders, clears the
- * screen singleton, and resets the clipboard.
- *
- * @returns A promise that resolves once teardown completes.
- */
 export const cleanup = async (): Promise<void> => {
     await runCleanup();
 };

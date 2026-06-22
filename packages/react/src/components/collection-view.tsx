@@ -12,11 +12,6 @@ import { useTargetRegistration } from "../utils/use-target-registration.js";
 import { ListPortalHost } from "./list-portal-host.js";
 import type { SlotRenderer } from "./list-slot.js";
 
-/**
- * Installs a model on a concrete view widget.
- *
- * @typeParam W - The widget type whose model is managed.
- */
 export interface ModelBinding<W extends Gtk.Widget> {
     install(widget: W, model: Gio.ListModel): void;
 }
@@ -38,13 +33,6 @@ const useModelInstallation = <W extends Gtk.Widget>(
     });
 };
 
-/**
- * Configuration for {@link CollectionView}.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- * @typeParam W - The underlying GTK view widget type.
- */
 export interface CollectionViewProps<T, S, W extends Gtk.Widget> {
     element: string;
     intrinsicProps: Record<string, unknown>;
@@ -125,22 +113,6 @@ const useCollectionWiring = <T, S, W extends Gtk.Widget>(
     };
 };
 
-/**
- * The shared implementation behind `GtkListView`, `GtkGridView`, and `GtkColumnView`.
- *
- * It forwards a ref to the underlying GTK view widget, builds the position-only model and value
- * resolver through {@link useListModel}, wraps that model in a live selection model (controlled
- * mode) or installs the user-supplied selection model directly (uncontrolled mode), installs the
- * realization factory, and renders the realized portals through {@link ListPortalHost}. When a
- * header factory binding is supplied and the items declare sections, a second factory drives the
- * section-header portals.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- * @typeParam W - The underlying GTK view widget type.
- * @param props - The element name, intrinsic props, data, renderers, selection, and bindings.
- * @returns The intrinsic element together with the realized item and header portals.
- */
 export const CollectionView = <T, S, W extends Gtk.Widget>(props: CollectionViewProps<T, S, W>): ReactNode => {
     const { setRef, resolver, headerResolver, itemStore, headerStore } = useCollectionWiring(props);
     const intrinsic: ReactElement = createElement(props.element, { ...props.intrinsicProps, ref: setRef });

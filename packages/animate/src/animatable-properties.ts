@@ -1,10 +1,5 @@
 import type { AnimatableProperties } from "./types.js";
 
-/**
- * The neutral value each animatable property falls back to when it is absent
- * from a keyframe. Scale-family properties and opacity rest at `1`; every
- * translation, rotation, and skew rests at `0`.
- */
 export const propertyDefaults: { [K in keyof Required<AnimatableProperties>]: number } = {
     opacity: 1,
     translateX: 0,

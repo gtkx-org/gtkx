@@ -71,10 +71,6 @@ export const RegisterParamsSchema: z.ZodObject<
 
 const emptyParams: z.ZodObject<Record<string, never>, z.core.$strip> = z.object({});
 const widgetIdParams: z.ZodObject<{ widgetId: z.ZodString }, z.core.$strip> = z.object({ widgetId: z.string() });
-/**
- * Optional matcher options shared by the `gtkx_query_widgets` tool input schema
- * and the wire-level `widget.query` request validation, so the two cannot drift.
- */
 export const queryOptionsSchema: z.ZodObject<
     { name: z.ZodOptional<z.ZodString>; exact: z.ZodOptional<z.ZodBoolean>; timeout: z.ZodOptional<z.ZodNumber> },
     z.core.$strip
@@ -136,11 +132,6 @@ export type WireParamsSchema<Output> = {
     safeParse(value: unknown): { success: true; data: Output } | { success: false; error: { message: string } };
 };
 
-/**
- * The set of request methods the MCP server initiates against a connected app —
- * exactly the keys of {@link ServerRequestParamsSchemas}. Shared by both ends of
- * the bridge so the server and the app-side handlers cannot diverge.
- */
 export type ServerInitiatedMethod = keyof typeof ServerRequestParamsSchemas;
 
 export type IpcMethod = ServerInitiatedMethod | "app.register" | "app.unregister";

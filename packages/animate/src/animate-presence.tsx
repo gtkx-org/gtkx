@@ -11,32 +11,9 @@ import {
     useState,
 } from "react";
 
-/**
- * The presence contract exposed to descendants of {@link AnimatePresence} through
- * context. Animated descendants register an id while mounted and report that id
- * complete from their exit "done" callback; the exiting child unmounts only once
- * every registered id has reported complete.
- */
 export interface PresenceState {
-    /**
-     * Whether the subtree is still present in the React tree. `false` means the
-     * subtree has been removed but is being kept mounted while it animates out.
-     */
     isPresent: boolean;
-    /**
-     * Report that the animated descendant identified by `id` has finished its exit
-     * animation and is safe to remove.
-     *
-     * @param id - The registration id returned via {@link PresenceState.register}.
-     */
     onExitComplete: (id: string) => void;
-    /**
-     * Register an animated descendant by `id` so the exiting child waits for it to
-     * complete before unmounting.
-     *
-     * @param id - A unique id for the animated descendant.
-     * @returns A cleanup callback that unregisters the descendant.
-     */
     register: (id: string) => () => void;
 }
 
@@ -46,14 +23,6 @@ type UsePresenceResult = [true, null] | [true] | [false, () => void];
 
 const alwaysPresent: [true, null] = [true, null];
 
-/**
- * Reads the {@link PresenceState} from context as a discriminated tuple.
- *
- * Returns `[true, null]` when used outside an {@link AnimatePresence}, `[true]`
- * while present, and `[false, safeToRemove]` while exiting. The `safeToRemove`
- * callback signals the owning {@link AnimatePresence} that this descendant has
- * finished animating out.
- */
 export const usePresence = (): UsePresenceResult => {
     const context = useContext(PresenceContext);
     const presenceId = useId();
@@ -84,14 +53,6 @@ const warnOnceUnkeyedChild = (): void => {
     console.warn(message);
 };
 
-/**
- * Extracts the keyed React element children of {@link AnimatePresence}, skipping
- * non-element children. In development a one-time warning is emitted for any
- * element child that is missing a key, since presence tracking requires one.
- *
- * @param children - The children passed to {@link AnimatePresence}.
- * @returns The element children that carry a key, in order.
- */
 export const toKeyedChildren = (children: ReactNode): KeyedChild[] => {
     const result: KeyedChild[] = [];
     const childArray = Array.isArray(children) ? children : [children];
@@ -147,18 +108,6 @@ const PresenceChild = ({ isPresent, onExitComplete, children }: PresenceChildPro
     return <PresenceContext.Provider value={context}>{children}</PresenceContext.Provider>;
 };
 
-/**
- * Animates the removal of keyed children from the tree. Children that leave keep
- * rendering until their exit animations complete, at which point they unmount.
- *
- * Every child must carry a unique `key`. The diff between committed and incoming
- * children is computed in a layout effect so the component is safe under React's
- * concurrent and StrictMode rendering.
- *
- * @param props - The component props.
- * @param props.children - The keyed children to track for presence.
- * @returns The present and exiting children wrapped in presence context.
- */
 export const AnimatePresence = ({ children }: { children: ReactNode }): ReactNode => {
     const presentChildren = useMemo(() => toKeyedChildren(children), [children]);
     const presentKeys = presentChildren.map((child) => child.key);

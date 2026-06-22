@@ -13,15 +13,6 @@ export type MethodVerb = {
     detachGuard?: DetachGuard;
 };
 
-/**
- * Attaches a child passed through a named container prop (e.g. `controllers`)
- * by calling `attach` on the parent, and detaches it by calling `detach`.
- *
- * The prop name is decoupled from the method names: it is the record key in the
- * {@link UserTableRows.containerProps} map, so any prop name can drive any
- * attach/detach pair. `attachArgs`/`detachArgs` default to `"child"`, and an
- * omitted `detach` unparents the widget instead of calling a method.
- */
 export type ContainerPropRow = {
     attach: string;
     attachArgs?: VerbArgs;
@@ -91,6 +82,32 @@ export type VirtualPropRow = {
 };
 
 export type PerElementPropRows<Row> = Record<string, Record<string, Row>>;
+
+/**
+ * Names of the child-attachment method shapes a GObject type can satisfy. Each
+ * shape corresponds to a runtime method whose presence *and* signature (argument
+ * arity, parameter types, nullability) `@gtkx/codegen` verifies against the GIR
+ * model, so the reconciler can rely on the call shape instead of duck-typing the
+ * method name alone.
+ */
+export type AttachShape =
+    | "append"
+    | "add"
+    | "setContent"
+    | "setChild"
+    | "getChild"
+    | "remove"
+    | "reorderChildAfter"
+    | "insertChildAfter"
+    | "insert"
+    | "getFirstChild";
+
+/**
+ * Maps a GLib type name to the verified {@link AttachShape}s its own methods
+ * introduce. The reconciler resolves an instance's full shape set by unioning
+ * the entries across its type-name chain and implemented interfaces.
+ */
+export type AttachShapeTable = Record<string, AttachShape[]>;
 
 export type UserTableRows = {
     containerProps?: PerElementPropRows<ContainerPropRow> | undefined;

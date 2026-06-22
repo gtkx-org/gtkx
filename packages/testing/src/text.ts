@@ -75,21 +75,10 @@ const writeClipboardText = (widget: Gtk.Widget, text: string): void => {
     widget.getClipboard().set(value);
 };
 
-/**
- * Clears the process clipboard contents.
- */
 export const resetClipboard = (): void => {
     Gdk.Display.getDefault()?.getClipboard().setContent(null);
 };
 
-/**
- * Types `text` into an editable widget inside a single `act()` wrap.
- *
- * @param widget - The target widget; must be editable.
- * @param text - The text to insert at the cursor.
- * @param options - Optional click-skip and initial-selection controls.
- * @returns A promise that resolves once the insertion is committed.
- */
 export const type = (widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> =>
     runInAct(() => {
         if (!isEditable(widget)) {
@@ -104,12 +93,6 @@ export const type = (widget: Gtk.Widget, text: string, options?: TypeOptions): P
         insertEditableText(widget, text);
     });
 
-/**
- * Clears an editable widget's text inside a single `act()` wrap.
- *
- * @param widget - The target widget; must be editable.
- * @returns A promise that resolves once the text is cleared.
- */
 export const clear = (widget: Gtk.Widget): Promise<void> =>
     runInAct(() => {
         if (!isEditable(widget)) {
@@ -119,12 +102,6 @@ export const clear = (widget: Gtk.Widget): Promise<void> =>
         setEditableText(widget, "");
     });
 
-/**
- * Copies an editable widget's current selection to the clipboard inside a single `act()` wrap.
- *
- * @param widget - The target widget; must be editable.
- * @returns A promise that resolves once the clipboard is set.
- */
 export const copy = (widget: Gtk.Widget): Promise<void> =>
     runInAct(() => {
         if (!isEditable(widget)) {
@@ -134,12 +111,6 @@ export const copy = (widget: Gtk.Widget): Promise<void> =>
         writeClipboardText(widget, readSelection(widget));
     });
 
-/**
- * Cuts an editable widget's current selection to the clipboard inside a single `act()` wrap.
- *
- * @param widget - The target widget; must be editable.
- * @returns A promise that resolves once the selection is cut.
- */
 export const cut = (widget: Gtk.Widget): Promise<void> =>
     runInAct(() => {
         if (!isEditable(widget)) {
@@ -150,14 +121,6 @@ export const cut = (widget: Gtk.Widget): Promise<void> =>
         deleteSelection(widget);
     });
 
-/**
- * Pastes text into an editable widget inside a single `act()` wrap, reading the clipboard when
- * `text` is omitted.
- *
- * @param widget - The target widget; must be editable.
- * @param text - Optional explicit text to paste instead of clipboard contents.
- * @returns A promise that resolves once the paste is committed.
- */
 export const paste = async (widget: Gtk.Widget, text?: string): Promise<void> => {
     if (!isEditable(widget)) {
         throw new Error(`Cannot paste: ${EDITABLE_REQUIRED}`);

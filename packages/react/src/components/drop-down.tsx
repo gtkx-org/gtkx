@@ -29,9 +29,6 @@ interface LabelElementProps {
 
 const GtkLabelElement = createElementComponent<LabelElementProps>("GtkLabel");
 
-/**
- * The widget surface shared by `Gtk.DropDown` and `Adw.ComboRow` used by the shared implementation.
- */
 export interface DropDownWidget extends Gtk.Widget {
     getSelected(): number;
     setSelected(position: number): void;
@@ -242,41 +239,11 @@ const extractDropDownProps = <T, S, W extends DropDownWidget>(
     };
 };
 
-/**
- * A `Gtk.DropDown` driven by a controlled `items` array or an external `Gio.ListModel`.
- *
- * The button face renders the currently selected value through `renderItem`, while the popup list
- * renders every position through `renderListItem` (falling back to `renderItem`); when neither is
- * supplied each value renders as a label by default. Controlled `selectedId` selects by item id and
- * `onSelectionChanged(id)` reports the selected id as a single string. When `renderHeader` is
- * provided over sectioned items a header factory renders the section headers. The position-only or
- * external model is installed directly because the widget owns its own single selection. The ref is
- * forwarded to the underlying `Gtk.DropDown`.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- * @param props - The drop-down configuration plus any underlying `Gtk.DropDown` props.
- * @returns The rendered drop-down.
- */
 export const GtkDropDown = <T = unknown, S = unknown>(props: DropDownComponentProps<T, S, Gtk.DropDown>): ReactNode => {
     const { impl, intrinsicProps } = extractDropDownProps<T, S, Gtk.DropDown>(props);
     return <DropDownImpl<T, S, Gtk.DropDown> element={DROP_DOWN_ELEMENT} intrinsicProps={intrinsicProps} {...impl} />;
 };
 
-/**
- * An `Adw.ComboRow` driven by a controlled `items` array or an external `Gio.ListModel`.
- *
- * `AdwComboRow` shares the drop-down behavior: the collapsed row face renders the selected value
- * through `renderItem` and the popup list renders every position through `renderListItem` (falling
- * back to `renderItem`), defaulting to a label per value. Controlled `selectedId` selects by id and
- * `onSelectionChanged(id)` reports the selected id. The `title` and other `Adw.ComboRow` props pass
- * through to the underlying widget, to which the ref is forwarded.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- * @param props - The drop-down configuration plus any underlying `Adw.ComboRow` props.
- * @returns The rendered combo row.
- */
 export const AdwComboRow = <T = unknown, S = unknown>(props: DropDownComponentProps<T, S, Adw.ComboRow>): ReactNode => {
     const { impl, intrinsicProps } = extractDropDownProps<T, S, Adw.ComboRow>(props);
     return <DropDownImpl<T, S, Adw.ComboRow> element={COMBO_ROW_ELEMENT} intrinsicProps={intrinsicProps} {...impl} />;

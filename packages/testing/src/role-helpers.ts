@@ -16,13 +16,6 @@ export const formatRole = (role: Gtk.AccessibleRole): string => {
     return name.toLowerCase();
 };
 
-/**
- * Formats a set of accessible roles into a human-readable enum-name list joined with "or".
- *
- * Each role is rendered as its uppercase enum name (matching the GTK `Gtk.AccessibleRole`
- * member spelling). Two roles are joined as "A or B"; three or more use an Oxford comma,
- * e.g. "A, B, or C".
- */
 export const formatRoleList = (roles: Iterable<Gtk.AccessibleRole>): string => {
     const names = [...roles].map((role) => formatRole(role).toUpperCase());
     if (names.length <= 1) {

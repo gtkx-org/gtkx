@@ -13,14 +13,6 @@ const copyStackTrace = (target: Error, source: Error): void => {
     }
 };
 
-/**
- * Repeatedly invokes `callback` until it returns without throwing or the timeout elapses.
- *
- * @typeParam T - The resolved value type of `callback`.
- * @param callback - The assertion or query to retry; its last thrown error is embedded on timeout.
- * @param options - Timeout, polling interval, timeout transform, and stack-trace controls.
- * @returns A promise resolving to `callback`'s value, or rejecting with a timeout error.
- */
 export const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOptions): Promise<T> => {
     if (typeof callback !== "function") {
         throw new TypeError("Received `callback` arg must be a function");
@@ -80,13 +72,6 @@ const isTargetRemoved = (target: RemovalTarget): boolean => {
 
 const ELEMENT_NOT_REMOVED = new Error("Element not yet removed");
 
-/**
- * Waits until the target element (or elements) is removed from the widget tree.
- *
- * @param elementOrCallback - The element, array of elements, or a callback returning the target(s).
- * @param options - Timeout and polling controls.
- * @returns A promise that resolves once the target is removed, or rejects on timeout.
- */
 export const waitForElementToBeRemoved = (
     elementOrCallback: ElementOrCallback,
     options?: WaitForOptions,

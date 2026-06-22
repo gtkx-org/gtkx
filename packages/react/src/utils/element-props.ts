@@ -7,18 +7,15 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import type * as Pango from "@gtkx/gi/pango";
 import type { ReactNode } from "react";
 
-/** Props for a child anchor inside a `Gtk.TextView`, optionally overriding the replacement character. */
 export type TextAnchorProps = {
     replacementChar?: string;
     children?: ReactNode;
 };
 
-/** Props for embedding a paintable into a text buffer. */
 export type TextPaintableProps = {
     paintable: Gdk.Paintable;
 };
 
-/** Props for a `Gtk.TextTag` applied to a span of buffer text. */
 export type TextTagProps = {
     id: string;
     priority?: number;
@@ -63,55 +60,41 @@ export type TextTagProps = {
     children?: ReactNode;
 };
 
-/** A single mark on a `Gtk.Scale`, with its value, position, and optional label. */
 export type ScaleMark = {
     value: number;
     position?: Gtk.PositionType;
     label?: string | null;
 };
 
-/** A named offset threshold on a `Gtk.LevelBar`. */
 export type LevelBarOffset = {
     id: string;
     value: number;
 };
 
-/** A day number marked on a `Gtk.Calendar`. */
 export type CalendarMark = number;
 
-/** An action name paired with its keyboard accelerators. */
 export type ActionAccel = {
     action: string;
     accels: string[];
 };
 
-/** A `GType` accepted as a drop target type. */
 export type DropTargetType = GType;
 
-/** A named section of credited people for an about dialog. */
 export type CreditSection = {
     name: string;
     people: string[];
 };
 
-/** Props for a named slot wrapper that fills a single object-valued property of its parent. */
 export type SlotProps = {
     id?: string;
     children?: ReactNode;
 };
 
-/** Props for a container-prop wrapper that contributes children through a parent add method. */
 export type ContainerPropProps = {
     id: string;
     children?: ReactNode;
 };
 
-/**
- * A list model item: either a value row (optionally with nested children) or a section header.
- *
- * @typeParam T - The value type of a regular item.
- * @typeParam S - The value type of a section header.
- */
 export type ListItem<T = unknown, S = unknown> =
     | {
           id: string;
@@ -129,7 +112,6 @@ export type ListItem<T = unknown, S = unknown> =
           children: ListItem<T, S>[];
       };
 
-/** Props positioning a child within a `Gtk.Grid` or `Gtk.GridLayout`. */
 export type GridChildProps = {
     children?: ReactNode;
     column?: number | undefined;
@@ -138,7 +120,6 @@ export type GridChildProps = {
     rowSpan?: number | undefined;
 };
 
-/** Props positioning a child within a `Gtk.Fixed` or `Gtk.FixedLayout`. */
 export type FixedChildProps = {
     children?: ReactNode;
     x?: number | undefined;
@@ -146,11 +127,6 @@ export type FixedChildProps = {
     transform?: Gsk.Transform | undefined;
 };
 
-/**
- * Props for a `Gtk.ColumnViewColumn`, including its cell renderer.
- *
- * @typeParam T - The value type of the rows rendered in the column.
- */
 export type ColumnViewColumnProps<T = unknown> = {
     title: string;
     expand?: boolean | undefined;
@@ -163,7 +139,6 @@ export type ColumnViewColumnProps<T = unknown> = {
     headerMenu?: ReactNode;
 };
 
-/** Props for a `Gtk.Notebook` page, including its tab label and tab packing flags. */
 export type NotebookPageProps = {
     children?: ReactNode;
     label?: string | undefined;
@@ -172,7 +147,6 @@ export type NotebookPageProps = {
     tabFill?: boolean | undefined;
 };
 
-/** Props for a `Gtk.Stack`/`Adw.ViewStack` page, including its id, title, and icon. */
 export type StackPageProps = {
     children?: ReactNode;
     id?: string | undefined;
@@ -184,14 +158,12 @@ export type StackPageProps = {
     badgeNumber?: number | undefined;
 };
 
-/** Props for a child placed in the overlay layer of a `Gtk.Overlay`. */
 export type OverlayChildProps = {
     children?: ReactNode;
     measure?: boolean | undefined;
     clipOverlay?: boolean | undefined;
 };
 
-/** Props for a response button on an `Adw.AlertDialog`. */
 export type AlertDialogResponseProps = {
     id: string;
     label: string;
@@ -212,12 +184,6 @@ type ListViewControlledSelectionProps = {
 
 type UncontrolledItemType<T> = [T] extends [GObject.Object] ? T : GObject.Object;
 
-/**
- * Props for a `Gtk.ListView`, either controlled via `items` or driven by an external model.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- */
 export type ListViewProps<T = unknown, S = unknown> = ListViewSharedProps &
     (
         | (ListViewControlledSelectionProps & {
@@ -239,11 +205,6 @@ export type ListViewProps<T = unknown, S = unknown> = ListViewSharedProps &
           }
     );
 
-/**
- * Props for a `Gtk.GridView`, either controlled via `items` or driven by an external model.
- *
- * @typeParam T - The value type of the grid items.
- */
 export type GridViewProps<T = unknown> = ListViewSharedProps &
     (
         | (ListViewControlledSelectionProps & {
@@ -268,12 +229,6 @@ type ColumnViewSortProps = {
     estimatedRowHeight?: number | null | undefined;
 };
 
-/**
- * Props for a `Gtk.ColumnView`, either controlled via `items` or driven by an external model.
- *
- * @typeParam T - The value type of regular rows.
- * @typeParam S - The value type of section headers.
- */
 export type ColumnViewProps<T = unknown, S = unknown> = ColumnViewSortProps &
     (
         | (ListViewControlledSelectionProps & {
@@ -291,12 +246,6 @@ export type ColumnViewProps<T = unknown, S = unknown> = ColumnViewSortProps &
           }
     );
 
-/**
- * Props for an `Adw.ComboRow`/`Gtk.DropDown`, either controlled via `items` or driven by a model.
- *
- * @typeParam T - The value type of regular items.
- * @typeParam S - The value type of section headers.
- */
 export type DropDownProps<T = unknown, S = unknown> =
     | {
           items?: ListItem<T, S>[] | undefined;
@@ -317,14 +266,12 @@ export type DropDownProps<T = unknown, S = unknown> =
           renderHeader?: never;
       };
 
-/** The drag icon for a `Gtk.DragSource`, with its paintable and hotspot offsets. */
 export type DragSourceIcon = {
     paintable: Gdk.Paintable;
     hotX?: number | undefined;
     hotY?: number | undefined;
 };
 
-/** A menu entry: an item, a submenu, or a section, used to build a `Gio.Menu` tree. */
 export type MenuEntry = {
     label?: string | undefined;
     action?: string | undefined;
@@ -332,17 +279,14 @@ export type MenuEntry = {
     section?: MenuEntry[] | undefined;
 };
 
-/** Props supplying the declarative menu entries of a menu. */
 export type MenuItemsProps = {
     items?: MenuEntry[] | null | undefined;
 };
 
-/** Props supplying the action-group prefix applied to descendant actions. */
 export type ActionGroupPrefixProps = {
     prefix?: string | undefined;
 };
 
-/** Props for a single constraint within a `Gtk.ConstraintLayout`. */
 export type ConstraintProps = {
     target?: string;
     targetAttribute: Gtk.ConstraintAttribute;
@@ -354,7 +298,6 @@ export type ConstraintProps = {
     strength?: number;
 };
 
-/** Props for a guide (flexible spacer) within a `Gtk.ConstraintLayout`. */
 export type ConstraintGuideProps = {
     id: string;
     minWidth?: number;
@@ -366,14 +309,12 @@ export type ConstraintGuideProps = {
     strength?: Gtk.ConstraintStrength;
 };
 
-/** Props for a Visual Format Language batch of constraints within a `Gtk.ConstraintLayout`. */
 export type ConstraintVflProps = {
     lines: string[];
     hspacing?: number;
     vspacing?: number;
 };
 
-/** Props for the internal reconciler wrapper element identified by its `kind` discriminator. */
 export type WrapperNodeElementProps = {
     kind: string;
     children?: ReactNode;
@@ -390,7 +331,6 @@ declare global {
     }
 }
 
-/** Accessibility props mapping to GTK accessible properties, states, and relations. */
 export type AccessibleProps = {
     accessibleAutocomplete?: Gtk.AccessibleAutocomplete | undefined;
     accessibleDescription?: string | undefined;

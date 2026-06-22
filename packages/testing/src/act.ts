@@ -1,14 +1,3 @@
-/**
- * React `act` primitives exposed standalone via the `@gtkx/testing/act` subpath.
- *
- * This module deliberately does not import the harness `setup-runtime`, so consumers of the
- * `./act` subpath get only the act helpers without triggering harness side effects. Code that
- * renders through the harness must import the package main entry (`@gtkx/testing`) first, which
- * wires the async/event wrappers and application lifecycle.
- *
- * @packageDocumentation
- */
-
 import { act as reactAct } from "react";
 
 declare global {
@@ -32,15 +21,6 @@ type ActImplementation = <T>(callback: ActCallback<T>) => PromiseLike<T>;
 const isThenable = <T>(value: unknown): value is PromiseLike<T> =>
     value !== null && typeof value === "object" && typeof (value as PromiseLike<T>).then === "function";
 
-/**
- * Temporarily forces `IS_REACT_ACT_ENVIRONMENT` to `forced` while `fn` runs, then restores
- * the previous value once `fn` settles.
- *
- * The previous flag value is captured before `fn` runs and reinstated whether `fn` returns
- * synchronously, returns a thenable that resolves, or throws/rejects. When `fn` returns a
- * thenable the restoration is deferred until that thenable settles, so async work observes
- * the forced value for its full duration.
- */
 export const runWithActEnvironment = <T>(forced: boolean, fn: () => T | PromiseLike<T>): T | PromiseLike<T> => {
     const previousActEnvironment = getIsReactActEnvironment();
     setIsReactActEnvironment(forced);

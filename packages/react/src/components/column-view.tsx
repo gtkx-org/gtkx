@@ -149,23 +149,6 @@ const useColumnViewWiring = <T, S>(
     };
 };
 
-/**
- * A `Gtk.ColumnView` driven by a controlled `items` array or an external `Gio.ListModel`.
- *
- * The column view holds only a position-only model (controlled) or the supplied selection model
- * (uncontrolled); the real row values live in the resolver and reach each column's cells by
- * position. Columns are declared as `GtkColumnViewColumn` children, which register through context
- * and own their own cell factories. Selection follows `selectionMode`, controlled `selected` ids,
- * and `onSelectionChanged`. Sorting is controlled and React-side: `sortColumn`/`sortOrder` drive
- * only the sort indicator while `onSortChanged` reports user-initiated sort changes; the column view
- * never reorders its model. Section headers render through `renderHeader`. The ref is forwarded to
- * the underlying `Gtk.ColumnView`.
- *
- * @typeParam T - The value type of regular rows.
- * @typeParam S - The value type of section headers.
- * @param props - The column view configuration plus its `GtkColumnViewColumn` children.
- * @returns The rendered column view together with its header portals and registered columns.
- */
 export const GtkColumnView = <T = unknown, S = unknown>(props: ColumnViewComponentProps<T, S>): ReactNode => {
     const {
         ref,
