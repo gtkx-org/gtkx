@@ -1,4 +1,4 @@
-import type { Middleware } from "stylis";
+import type { Element } from "stylis";
 
 export const AT_RULE_KEYWORDS: Set<string> = new Set([
     "binding-set",
@@ -30,7 +30,7 @@ export const restoreNamedColors = (rule: string): string => rule.replace(NAMED_C
 const LABEL_DECL_FIRST_CHAR = 108;
 const LABEL_DECL_THIRD_CHAR = 98;
 
-export const removeLabel: Middleware = (element) => {
+export const removeLabel = (element: Element): void => {
     if (
         element.type === "decl" &&
         element.value.codePointAt(0) === LABEL_DECL_FIRST_CHAR &&

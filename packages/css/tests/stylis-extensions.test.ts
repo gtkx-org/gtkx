@@ -59,14 +59,14 @@ describe("escapeNamedColors / restoreNamedColors", () => {
 describe("removeLabel", () => {
     it("clears a label declaration", () => {
         const element = declElement("label:btn");
-        removeLabel(element, 0, [], () => "");
+        removeLabel(element);
         expect(element.value).toBe("");
         expect(element.return).toBe("");
     });
 
     it("leaves a non-label declaration intact", () => {
         const element = declElement("padding:8px");
-        removeLabel(element, 0, [], () => "");
+        removeLabel(element);
         expect(element.value).toBe("padding:8px");
         expect(element.return).toBe("padding:8px;");
     });
