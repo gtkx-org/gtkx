@@ -1,6 +1,6 @@
 mod common;
 
-use native::state::{GlibThread, GlibThreadState, RuntimePhase};
+use native::state::{GlibThread, GlibThreadState};
 
 fn join_panicking_handle<F>(panicking_body: F) -> Option<String>
 where
@@ -260,43 +260,5 @@ fn gtk_thread_join_reports_string_panic_payload() {
         });
 
         assert_eq!(result.as_deref(), Some("owned panic message"));
-    });
-}
-
-#[test]
-fn gtk_thread_phase_lifecycle_transitions() {
-    common::run(|| {
-        let thread = GlibThread::default();
-
-        assert_eq!(thread.phase(), RuntimePhase::New);
-        assert!(thread.begin_init().is_ok());
-        assert_eq!(thread.phase(), RuntimePhase::Running);
-
-        let double_start = thread.begin_init().expect_err("second init must fail");
-        assert!(double_start.contains("already running"));
-
-        assert!(thread.begin_quit().is_ok());
-        assert_eq!(thread.phase(), RuntimePhase::NotRunning);
-
-        let double_quit = thread.begin_quit().expect_err("second quit must fail");
-        assert!(double_quit.contains("already-quit"));
-
-        let restart = thread
-            .begin_init()
-            .expect_err("re-init after quit must fail");
-        assert!(restart.contains("cannot be reinitialized"));
-    });
-}
-
-#[test]
-fn gtk_thread_abort_start_restores_new_phase() {
-    common::run(|| {
-        let thread = GlibThread::default();
-
-        assert!(thread.begin_init().is_ok());
-        thread.abort_init();
-        assert_eq!(thread.phase(), RuntimePhase::New);
-
-        assert!(thread.begin_init().is_ok());
     });
 }

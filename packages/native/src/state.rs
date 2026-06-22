@@ -2,7 +2,6 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use std::sync::OnceLock;
-use std::sync::atomic::{AtomicU8, Ordering};
 use std::thread::JoinHandle;
 
 use libloading::os::unix::{Library, RTLD_GLOBAL, RTLD_NOW};
@@ -16,35 +15,9 @@ thread_local! {
     static GLIB_THREAD_STATE: RefCell<GlibThreadState> = RefCell::new(GlibThreadState::default());
 }
 
-/// Lifecycle phase of the single `GLib` runtime thread.
-///
-/// The discriminants are pinned via `#[repr(u8)]` because the phase is stored in an
-/// [`AtomicU8`] and transitioned with `compare_exchange` over `RuntimePhase::X as u8`; the
-/// explicit values make that byte contract self-documenting and stable. The atomic is written
-/// only by this module from valid variants, so no out-of-range byte is reachable.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u8)]
-pub enum RuntimePhase {
-    New = 0,
-    Running = 1,
-    NotRunning = 2,
-}
-
-impl From<u8> for RuntimePhase {
-    fn from(value: u8) -> Self {
-        match value {
-            0 => Self::New,
-            1 => Self::Running,
-            2 => Self::NotRunning,
-            other => unreachable!("RuntimePhase atomic holds an unknown discriminant: {other}"),
-        }
-    }
-}
-
 #[derive(Debug, Default)]
 pub struct GlibThread {
     handle: Mutex<Option<JoinHandle<()>>>,
-    phase: AtomicU8,
 }
 
 static GLIB_THREAD: OnceLock<GlibThread> = OnceLock::new();
@@ -52,47 +25,6 @@ static GLIB_THREAD: OnceLock<GlibThread> = OnceLock::new();
 impl GlibThread {
     pub fn global() -> &'static Self {
         GLIB_THREAD.get_or_init(Self::default)
-    }
-
-    #[cfg(feature = "test-support")]
-    pub fn phase(&self) -> RuntimePhase {
-        RuntimePhase::from(self.phase.load(Ordering::Acquire))
-    }
-
-    pub fn begin_init(&self) -> Result<(), String> {
-        match self.phase.compare_exchange(
-            RuntimePhase::New as u8,
-            RuntimePhase::Running as u8,
-            Ordering::AcqRel,
-            Ordering::Acquire,
-        ) {
-            Ok(_) => Ok(()),
-            Err(current) => Err(match RuntimePhase::from(current) {
-                RuntimePhase::Running => {
-                    "init called while the GLib runtime is already running".to_owned()
-                }
-                _ => "the GLib runtime cannot be reinitialized after quit".to_owned(),
-            }),
-        }
-    }
-
-    pub fn abort_init(&self) {
-        self.phase.store(RuntimePhase::New as u8, Ordering::Release);
-    }
-
-    pub fn begin_quit(&self) -> Result<(), String> {
-        match self.phase.compare_exchange(
-            RuntimePhase::Running as u8,
-            RuntimePhase::NotRunning as u8,
-            Ordering::AcqRel,
-            Ordering::Acquire,
-        ) {
-            Ok(_) => Ok(()),
-            Err(current) => Err(match RuntimePhase::from(current) {
-                RuntimePhase::New => "quit called before init".to_owned(),
-                _ => "quit called on an already-quit runtime".to_owned(),
-            }),
-        }
     }
 
     pub fn set_handle(&self, handle: JoinHandle<()>) {

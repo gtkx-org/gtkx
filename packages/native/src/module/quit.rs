@@ -11,10 +11,6 @@ use crate::state::GlibThread;
 #[napi(catch_unwind)]
 #[cfg_attr(test, allow(dead_code))]
 pub fn quit(env: Env, main_loop: &External<glib::MainLoop>) -> napi::Result<()> {
-    GlibThread::global()
-        .begin_quit()
-        .map_err(|msg| napi::Error::new(napi::Status::GenericFailure, msg))?;
-
     let main_loop = (**main_loop).clone();
 
     Mailbox::global().dispatch_and_wait_napi(env, move || {

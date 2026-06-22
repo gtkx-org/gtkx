@@ -16,10 +16,6 @@ use crate::state::GlibThread;
 #[napi(catch_unwind)]
 #[cfg_attr(test, allow(dead_code))]
 pub fn init(env: Env) -> napi::Result<External<glib::MainLoop>> {
-    GlibThread::global()
-        .begin_init()
-        .map_err(|msg| napi::Error::new(napi::Status::GenericFailure, msg))?;
-
     Mailbox::global().install_wake(env)?;
     NativeErrorReporter::global().install(env)?;
     install_panic_hook();
@@ -54,7 +50,6 @@ pub fn init(env: Env) -> napi::Result<External<glib::MainLoop>> {
             }
         })
         .map_err(|err| {
-            GlibThread::global().abort_init();
             napi::Error::new(
                 napi::Status::GenericFailure,
                 format!("Error spawning GLib thread: {err}"),
@@ -66,7 +61,6 @@ pub fn init(env: Env) -> napi::Result<External<glib::MainLoop>> {
     let main_loop = rx.recv().map_err(|err| {
         let glib_thread = GlibThread::global();
         let panic_message = glib_thread.join();
-        let _ = glib_thread.begin_quit();
         let cause = panic_message.unwrap_or_else(|| err.to_string());
         napi::Error::new(
             napi::Status::GenericFailure,
