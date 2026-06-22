@@ -93,6 +93,7 @@ RUN sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.s
     && mkdir -p /tmp/weston-src \
     && tar -xJf /tmp/weston.tar.xz --strip-components=1 -C /tmp/weston-src \
     && meson setup /tmp/weston-src/build /tmp/weston-src --prefix=/usr/local --buildtype=release \
+        -Drenderer-vulkan=false \
     && ninja -C /tmp/weston-src/build install \
     && ldconfig \
     && rm -rf /tmp/weston-src /tmp/weston.tar.xz /var/lib/apt/lists/* \
