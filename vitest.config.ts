@@ -7,6 +7,7 @@ export default defineConfig({
         bail: 1,
         coverage: {
             provider: "v8",
+            allowExternal: true,
             reporter: ["lcov", "text-summary"],
             reportsDirectory: "coverage",
             include: [
@@ -14,6 +15,7 @@ export default defineConfig({
                 "packages/cli/src/**/*.{ts,tsx}",
                 "packages/codegen/src/**/*.{ts,tsx}",
                 "packages/config/src/**/*.{ts,tsx}",
+                "packages/create-gtkx/src/**/*.{ts,tsx}",
                 "packages/css/src/**/*.{ts,tsx}",
                 "packages/ffi/src/**/*.{ts,tsx}",
                 "packages/gl/src/**/*.{ts,tsx}",
@@ -29,6 +31,7 @@ export default defineConfig({
                 "**/*.test.{ts,tsx}",
                 "**/*.spec.{ts,tsx}",
                 "packages/codegen/src/templates/**",
+                "packages/gl/src/generated/**",
             ],
         },
     },
