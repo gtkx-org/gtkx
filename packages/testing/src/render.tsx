@@ -87,7 +87,8 @@ const resolveContainer = (container: RenderOptions["container"]): ResolvedContai
 
 const firstWidget = (baseElement: Container): Gtk.Widget => {
     if (baseElement instanceof Gtk.Widget) return baseElement;
-    for (const widget of traverse(baseElement)) return widget;
+    const [first] = traverse(baseElement);
+    if (first) return first;
     throw new Error("render() produced no widgets: ensure the element renders visible content");
 };
 

@@ -24,7 +24,7 @@ export const stageSchema = (dir: string, filePath: string): void => {
     copyFileSync(filePath, join(dir, stagedSchemaName(filePath)));
 };
 
-const toForwardSlashes = (value: string): string => value.split(/[/\\]/).join("/");
+const toForwardSlashes = (value: string): string => value.replaceAll(/[/\\]/g, "/");
 
 const moduleSpecifierFor = (dataDirAbs: string, filePath: string): string =>
     `${DATA_IMPORT_PREFIX}/${toForwardSlashes(relative(dataDirAbs, filePath))}`;

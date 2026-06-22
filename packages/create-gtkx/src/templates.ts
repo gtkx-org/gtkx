@@ -27,12 +27,7 @@ export const listTemplates = (): string[] =>
         readdirSync(getTemplatesDir(), { recursive: true, withFileTypes: true })
             .filter((entry) => entry.isFile() && entry.name.endsWith(TEMPLATE_SUFFIX))
             .map((entry) => join(entry.parentPath, entry.name))
-            .map((absolute) =>
-                absolute
-                    .slice(getTemplatesDir().length + 1)
-                    .split(/[/\\]/)
-                    .join("/"),
-            ),
+            .map((absolute) => absolute.slice(getTemplatesDir().length + 1).replaceAll(/[/\\]/g, "/")),
     );
 
 export const renderFile = (templateName: string, context: TemplateContext): string => {

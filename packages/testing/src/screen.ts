@@ -13,12 +13,16 @@ const defaultScreen: RenderResult = new Proxy({} as RenderResult, {
     },
 });
 
-export let screen: RenderResult = defaultScreen;
+let activeScreen: RenderResult = defaultScreen;
+
+export const screen: RenderResult = new Proxy({} as RenderResult, {
+    get: (_target, property) => Reflect.get(activeScreen, property),
+});
 
 export const setScreen = (result: RenderResult): void => {
-    screen = result;
+    activeScreen = result;
 };
 
 export const clearScreen = (): void => {
-    screen = defaultScreen;
+    activeScreen = defaultScreen;
 };

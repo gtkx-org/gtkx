@@ -33,8 +33,8 @@ const LABEL_DECL_THIRD_CHAR = 98;
 export const removeLabel: Middleware = (element) => {
     if (
         element.type === "decl" &&
-        element.value.charCodeAt(0) === LABEL_DECL_FIRST_CHAR &&
-        element.value.charCodeAt(2) === LABEL_DECL_THIRD_CHAR
+        element.value.codePointAt(0) === LABEL_DECL_FIRST_CHAR &&
+        element.value.codePointAt(2) === LABEL_DECL_THIRD_CHAR
     ) {
         element.return = "";
         element.value = "";
