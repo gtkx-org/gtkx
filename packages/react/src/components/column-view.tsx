@@ -82,6 +82,7 @@ const headerRenderer =
 interface ColumnViewWiring<T, S> {
     setRef: (value: Gtk.ColumnView | null) => void;
     resolver: ItemResolver<T, S>;
+    headerResolver: ItemResolver<T, S>;
     headerStore: ReturnType<typeof useRealizedSlots>["store"];
     useHeader: boolean;
     contextValue: ColumnViewContextValue;
@@ -138,7 +139,14 @@ const useColumnViewWiring = <T, S>(
         [listModel.resolver, registry.register, registry.unregister],
     );
 
-    return { setRef, resolver: listModel.resolver, headerStore: headers.store, useHeader, contextValue };
+    return {
+        setRef,
+        resolver: listModel.resolver,
+        headerResolver: listModel.headerResolver,
+        headerStore: headers.store,
+        useHeader,
+        contextValue,
+    };
 };
 
 /**
@@ -205,7 +213,7 @@ export const GtkColumnView = <T = unknown, S = unknown>(props: ColumnViewCompone
             {wiring.useHeader ? (
                 <ListPortalHost
                     store={wiring.headerStore}
-                    resolver={wiring.resolver}
+                    resolver={wiring.headerResolver}
                     render={headerRenderer<T, S>(renderHeader)}
                 />
             ) : null}

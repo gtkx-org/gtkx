@@ -130,7 +130,10 @@ describe("model resolver", () => {
         const selection = noSelection(store);
         const draw = (suffix: string) => (
             <ScrollWrapper minContentHeight={300} minContentWidth={300}>
-                <GtkGridView<NameObject> model={selection} renderItem={(item) => <GtkLabel label={`${item.name}${suffix}`} />} />
+                <GtkGridView<NameObject>
+                    model={selection}
+                    renderItem={(item) => <GtkLabel label={`${item.name}${suffix}`} />}
+                />
             </ScrollWrapper>
         );
         const { rerender } = await render(draw(""));

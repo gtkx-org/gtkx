@@ -6,6 +6,7 @@ import type { ListItem } from "../utils/element-props.js";
 import {
     createControlledResolver,
     createModelResolver,
+    createSectionHeaderResolver,
     type ItemResolver,
     type RowValue,
 } from "../utils/item-resolver.js";
@@ -48,6 +49,7 @@ export interface UncontrolledListMode {
 export interface ListModelResult<T, S> {
     model: Gio.ListModel;
     resolver: ItemResolver<T, S>;
+    headerResolver: ItemResolver<T, S>;
 }
 
 type Structure = "flat" | "tree" | "sections";
@@ -117,13 +119,19 @@ const useControlledModel = <T, S>(mode: ControlledListMode<T, S>): ListModelResu
         [items, structure, autoexpand, state.rowValues],
     );
 
-    return { model: state.model, resolver };
+    const headerResolver = useMemo(
+        () => createSectionHeaderResolver(structure === "sections" ? items : undefined),
+        [items, structure],
+    );
+
+    return { model: state.model, resolver, headerResolver };
 };
 
 const useUncontrolledModel = <T, S>(mode: UncontrolledListMode): ListModelResult<T, S> => {
     const { model } = mode;
     const resolver = useMemo<ItemResolver<T, S>>(() => createModelResolver(model), [model]);
-    return { model, resolver };
+    const headerResolver = useMemo<ItemResolver<T, S>>(() => createSectionHeaderResolver<T, S>(undefined), []);
+    return { model, resolver, headerResolver };
 };
 
 /**

@@ -167,13 +167,16 @@ export const createTreeModel = <T, S>(
 /**
  * Builds a flattened section model from a `Gio.ListStore` of per-section position-only stores.
  *
- * Each section contributes a header placeholder followed by its children placeholders, all tagged
- * in `rowValues`; a `Gtk.FlattenListModel` presents them as one flat position-only model.
+ * Each section's store holds only its children placeholders, all tagged in `rowValues`; a
+ * `Gtk.FlattenListModel` presents them as one flat position-only model. Because each sub-store is a
+ * section, the model is a `GtkSectionModel`, so the widget renders a header per section through its
+ * header factory — the header value is resolved from the section's start position, not from a row,
+ * so a header is never a selectable item.
  *
  * @typeParam T - The value type of regular items.
  * @typeParam S - The value type of section headers.
  * @param items - The top-level section items, each carrying its children.
- * @param rowValues - The map populated with every header and child value.
+ * @param rowValues - The map populated with every child value.
  * @returns A flattened model backing the sectioned items.
  */
 export const createSectionModel = <T, S>(
@@ -184,13 +187,6 @@ export const createSectionModel = <T, S>(
     const sections = Gio.ListStore.new(Gio.ListStore.prototype.__gtype__);
     for (const section of items) {
         const store = Gio.ListStore.new(Gtk.StringObject.prototype.__gtype__);
-        store.append(
-            createTaggedRow(
-                { id: section.id, value: section.value, isHeader: true, metadata: treeItemMetadata(section) },
-                rowValues,
-                placeholdersById,
-            ),
-        );
         if (section.children !== undefined) {
             for (const child of section.children) {
                 store.append(

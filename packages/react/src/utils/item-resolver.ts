@@ -183,3 +183,43 @@ export const createModelResolver = <T, S>(model: Gio.ListModel): ItemResolver<T,
         },
     };
 };
+
+/**
+ * Builds an `ItemResolver` that maps a section's start position to its header value.
+ *
+ * Used only by the header portal host of a sectioned list. A `Gtk.ListHeader`'s start position is
+ * the first position of its section in the flattened model; this resolver records each section's
+ * start as the children accumulate and answers `resolve(start)` with the section value, so headers
+ * resolve with no header row existing in the model and are therefore never selectable.
+ *
+ * @typeParam T - The value type of regular items.
+ * @typeParam S - The value type of section headers.
+ * @param items - The top-level section items, or `undefined`/non-sectioned for an empty resolver.
+ * @returns A resolver answering header values by section start position.
+ */
+export const createSectionHeaderResolver = <T, S>(items: ListItem<T, S>[] | undefined): ItemResolver<T, S> => {
+    const valueByStart = new Map<number, S>();
+    let start = 0;
+    for (const section of items ?? []) {
+        if (section.section !== true) continue;
+        valueByStart.set(start, section.value);
+        start += section.children?.length ?? 0;
+    }
+    return {
+        count: valueByStart.size,
+        positionOf: () => -1,
+        idOf: () => undefined,
+        resolve(position: number): Resolved<T, S> {
+            if (!valueByStart.has(position)) {
+                return { value: undefined, present: false, isHeader: true, treeRow: null, metadata: NO_TREE_METADATA };
+            }
+            return {
+                value: valueByStart.get(position),
+                present: true,
+                isHeader: true,
+                treeRow: null,
+                metadata: NO_TREE_METADATA,
+            };
+        },
+    };
+};

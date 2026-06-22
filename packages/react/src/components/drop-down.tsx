@@ -108,6 +108,7 @@ interface DropDownWiring<T, S, W extends DropDownWidget> {
     setRef: (value: W | null) => void;
     resolver: ItemResolver<T, S>;
     faceResolver: ItemResolver<T, S>;
+    headerResolver: ItemResolver<T, S>;
     faceStore: RealizedSlotStore;
     popupStore: RealizedSlotStore;
     headerStore: RealizedSlotStore;
@@ -165,6 +166,7 @@ const useDropDownWiring = <T, S, W extends DropDownWidget>(
         setRef,
         resolver: listModel.resolver,
         faceResolver: createFaceResolver(listModel.resolver, facePosition),
+        headerResolver: listModel.headerResolver,
         faceStore: face.store,
         popupStore: popup.store,
         headerStore: header.store,
@@ -173,7 +175,8 @@ const useDropDownWiring = <T, S, W extends DropDownWidget>(
 };
 
 const DropDownImpl = <T, S, W extends DropDownWidget>(props: DropDownImplProps<T, S, W>): ReactNode => {
-    const { setRef, resolver, faceResolver, faceStore, popupStore, headerStore, useHeader } = useDropDownWiring(props);
+    const { setRef, resolver, faceResolver, headerResolver, faceStore, popupStore, headerStore, useHeader } =
+        useDropDownWiring(props);
     const intrinsic: ReactElement = createElement(props.element, { ...props.intrinsicProps, ref: setRef });
 
     return (
@@ -188,7 +191,7 @@ const DropDownImpl = <T, S, W extends DropDownWidget>(props: DropDownImplProps<T
             {useHeader ? (
                 <ListPortalHost
                     store={headerStore}
-                    resolver={resolver}
+                    resolver={headerResolver}
                     render={toHeaderRenderer<T, S>(props.renderHeader)}
                 />
             ) : null}

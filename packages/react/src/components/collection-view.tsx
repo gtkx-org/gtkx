@@ -73,6 +73,7 @@ const headerRenderer =
 interface CollectionWiring<T, S, W extends Gtk.Widget> {
     setRef: (value: W | null) => void;
     resolver: ItemResolver<T, S>;
+    headerResolver: ItemResolver<T, S>;
     itemStore: RealizedSlotStore;
     headerStore: RealizedSlotStore;
 }
@@ -115,7 +116,13 @@ const useCollectionWiring = <T, S, W extends Gtk.Widget>(
 
     useModelInstallation(widgetRef, props.modelBinding, installedModel);
 
-    return { setRef, resolver: listModel.resolver, itemStore: items.store, headerStore: headers.store };
+    return {
+        setRef,
+        resolver: listModel.resolver,
+        headerResolver: listModel.headerResolver,
+        itemStore: items.store,
+        headerStore: headers.store,
+    };
 };
 
 /**
@@ -135,7 +142,7 @@ const useCollectionWiring = <T, S, W extends Gtk.Widget>(
  * @returns The intrinsic element together with the realized item and header portals.
  */
 export const CollectionView = <T, S, W extends Gtk.Widget>(props: CollectionViewProps<T, S, W>): ReactNode => {
-    const { setRef, resolver, itemStore, headerStore } = useCollectionWiring(props);
+    const { setRef, resolver, headerResolver, itemStore, headerStore } = useCollectionWiring(props);
     const intrinsic: ReactElement = createElement(props.element, { ...props.intrinsicProps, ref: setRef });
 
     return (
@@ -145,7 +152,7 @@ export const CollectionView = <T, S, W extends Gtk.Widget>(props: CollectionView
             {props.headerFactoryBinding ? (
                 <ListPortalHost
                     store={headerStore}
-                    resolver={resolver}
+                    resolver={headerResolver}
                     render={headerRenderer<T, S>(props.renderHeader)}
                 />
             ) : null}

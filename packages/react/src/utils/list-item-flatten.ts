@@ -120,8 +120,9 @@ const appendRecord = <T, S>(item: ListItem<T, S>, result: FlattenResult<T, S>, i
 /**
  * Flattens a `ListItem` array into depth-first ordered records with id/position lookups.
  *
- * Section items are flagged as headers and their children are always inlined after the header.
- * Regular items with children are treated as tree nodes; their children are inlined only when
+ * A section's children are inlined directly in declaration order; the section header itself is not
+ * emitted as a record, since headers are rendered by the header factory and are never selectable
+ * rows. Regular items with children are treated as tree nodes; their children are inlined only when
  * `flattenTreeChildren` is true (used when the tree is auto-expanded), otherwise only the root
  * level is emitted and children resolve lazily as positions are realized.
  *
@@ -146,7 +147,9 @@ export const flattenListItems = <T, S>(
     for (const item of items) {
         if (item.section === true) {
             result.isSectioned = true;
-            appendRecord(item, result, true);
+            if (item.children !== undefined) {
+                for (const child of item.children) appendRecord(child, result, true);
+            }
             continue;
         }
         if (hasChildren(item)) result.isTree = true;
