@@ -66,8 +66,10 @@ export const GtkListView = <T = unknown, S = unknown>(props: ListViewComponentPr
     };
 
     const renderItemFn = renderItem as (item: T, row?: Gtk.TreeListRow | null) => ReactNode;
-    const slotRenderer: SlotRenderer<T, S> = (value, treeRow) =>
-        treeRow === null ? renderItemFn(value as T) : renderItemFn(value as T, treeRow);
+    const slotRenderer: SlotRenderer<T, S> = (value, treeRow, isHeader) => {
+        if (isHeader) return null;
+        return treeRow === null ? renderItemFn(value as T) : renderItemFn(value as T, treeRow);
+    };
 
     const useHeader = model === undefined && typeof renderHeader === "function";
 

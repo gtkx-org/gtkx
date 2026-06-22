@@ -92,9 +92,10 @@ const useColumnViewWiring = <T, S>(
     registry: ColumnRegistry,
 ): ColumnViewWiring<T, S> => {
     const widgetRef = useRef<Gtk.ColumnView | null>(null);
-    const [, setRef] = useForwardedRef<Gtk.ColumnView>(props.ref, (value) => {
+    const captureWidget = useCallback((value: Gtk.ColumnView | null) => {
         widgetRef.current = value;
-    });
+    }, []);
+    const [, setRef] = useForwardedRef<Gtk.ColumnView>(props.ref, captureWidget);
 
     const externalModel = props.model as Gio.ListModel | undefined;
     const listModel = useListModel<T, S>(

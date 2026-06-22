@@ -48,6 +48,35 @@ describe("render - AdwComboRow", () => {
         expect(matches.length).toBeGreaterThanOrEqual(2);
     });
 
+    it("renders a section header through the header factory, not as a popup item", async () => {
+        const ref = createRef<Adw.ComboRow>();
+
+        await render(
+            <GtkListBox>
+                <AdwComboRow
+                    ref={ref}
+                    title="Sort Order"
+                    items={[
+                        {
+                            id: "ascending",
+                            value: "Ascending",
+                            section: true,
+                            children: [
+                                { id: "title", value: "By title" },
+                                { id: "date", value: "By date" },
+                            ],
+                        },
+                    ]}
+                    selectedId="title"
+                    renderHeader={(value: string) => <GtkLabel label={value} />}
+                />
+            </GtkListBox>,
+        );
+
+        await screen.findAllByText("By title");
+        expect(screen.queryAllByText("Ascending")).toHaveLength(1);
+    });
+
     it("renders custom item templates", async () => {
         const ref = createRef<Adw.ComboRow>();
 

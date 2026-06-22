@@ -56,7 +56,8 @@ export const GtkGridView = <T = unknown>(props: GridViewComponentProps<T>): Reac
     };
 
     const renderItemFn = renderItem as (item: T) => ReactNode;
-    const slotRenderer: SlotRenderer<T, unknown> = (value) => renderItemFn(value as T);
+    const slotRenderer: SlotRenderer<T, unknown> = (value, _treeRow, isHeader) =>
+        isHeader ? null : renderItemFn(value as T);
 
     return (
         <CollectionView<T, unknown, Gtk.GridView>

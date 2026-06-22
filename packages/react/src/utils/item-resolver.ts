@@ -6,6 +6,26 @@ import { flattenListItems, type TreeItemMetadata } from "./list-item-flatten.js"
 
 const NO_TREE_METADATA: TreeItemMetadata = { hideExpander: false, indentForDepth: true, indentForIcon: true };
 
+const treeItemCache = new WeakMap<Gtk.TreeListRow, GObject.Object>();
+
+/**
+ * Returns a tree row's item, caching it so the native `getItem` call runs at most once per row.
+ *
+ * A tree row's item is fixed for the row's lifetime, but `getItem` is a blocking native call that
+ * drains the GLib inbox; calling it during a render would let a queued frame-clock tick mutate the
+ * model mid-render. Caching keeps `resolve` free of native calls after a row is first seen.
+ *
+ * @param treeRow - The realized tree row to read.
+ * @returns The row's item, or `null` when the row has none.
+ */
+const treeRowItem = (treeRow: Gtk.TreeListRow): GObject.Object | null => {
+    const cached = treeItemCache.get(treeRow);
+    if (cached !== undefined) return cached;
+    const item = treeRow.getItem();
+    if (item !== null) treeItemCache.set(treeRow, item);
+    return item;
+};
+
 /**
  * The resolution of a single realized position into its value and structural metadata.
  *
@@ -87,7 +107,7 @@ export const createControlledResolver = <T, S>(
         },
         resolve(position: number, treeRow: Gtk.TreeListRow | null): Resolved<T, S> {
             if (treeRow !== null && !flattenTreeChildren) {
-                const rowItem = treeRow.getItem();
+                const rowItem = treeRowItem(treeRow);
                 if (rowItem !== null) {
                     const tagged = rowValues.get(rowItem);
                     if (tagged !== undefined) {
@@ -127,17 +147,21 @@ export const createControlledResolver = <T, S>(
  *
  * Values come straight from `model.getItem(position)`, relying on FFI wrapper identity so the
  * renderer receives the original user object. Ids are derived from the position so selection
- * callbacks remain position-stable for the external model.
+ * callbacks remain position-stable for the external model. The resolver identity is stable for a
+ * given model: it never depends on the item count, so an external model growing — even a continuous
+ * frame-clock fill — does not rebuild the resolver or re-render the slots, which the widget re-binds
+ * natively as positions are realized. `count` is read lazily from the live model on access.
  *
  * @typeParam T - The value type of regular items.
  * @typeParam S - The value type of section headers.
  * @param model - The external model owning the values.
- * @param count - The current item count read from the model.
  * @returns A resolver reading values from the external model.
  */
-export const createModelResolver = <T, S>(model: Gio.ListModel, count: number): ItemResolver<T, S> => {
+export const createModelResolver = <T, S>(model: Gio.ListModel): ItemResolver<T, S> => {
     return {
-        count,
+        get count(): number {
+            return model.getNItems();
+        },
         positionOf(id: string): number {
             const numeric = Number(id);
             return Number.isInteger(numeric) ? numeric : -1;

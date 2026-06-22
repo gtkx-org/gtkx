@@ -1,7 +1,7 @@
 import type * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import type { ListItem } from "../utils/element-props.js";
 import {
     createControlledResolver,
@@ -17,7 +17,6 @@ import {
     resizeFlatModel,
     retagRows,
 } from "../utils/position-only-model.js";
-import { useGObjectSnapshot } from "./use-gobject-snapshot.js";
 
 /**
  * Controlled mode: values come from an `items` array, GTK holds only positions.
@@ -98,7 +97,6 @@ const useControlledModel = <T, S>(mode: ControlledListMode<T, S>): ListModelResu
     if (stateRef.current === null || stateRef.current.structure !== structure) {
         stateRef.current = buildControlledState(items, autoexpand, structure, signature);
     } else if (structure === "flat") {
-        resizeFlatModel(stateRef.current.model as Gtk.StringList, flattenListItems(items, false).records.length);
         stateRef.current.signature = signature;
     } else if (stateRef.current.signature === signature) {
         retagRows(items ?? [], stateRef.current.rowValues, stateRef.current.placeholdersById);
@@ -107,6 +105,13 @@ const useControlledModel = <T, S>(mode: ControlledListMode<T, S>): ListModelResu
     }
 
     const state = stateRef.current;
+
+    useLayoutEffect(() => {
+        if (structure === "flat") {
+            resizeFlatModel(state.model as Gtk.StringList, flattenListItems(items, false).records.length);
+        }
+    }, [state.model, structure, items]);
+
     const resolver = useMemo(
         () => createControlledResolver(items, structure !== "flat" && autoexpand, state.rowValues),
         [items, structure, autoexpand, state.rowValues],
@@ -117,8 +122,7 @@ const useControlledModel = <T, S>(mode: ControlledListMode<T, S>): ListModelResu
 
 const useUncontrolledModel = <T, S>(mode: UncontrolledListMode): ListModelResult<T, S> => {
     const { model } = mode;
-    const count = useGObjectSnapshot(model, "items-changed", (m) => (m ? m.getNItems() : 0));
-    const resolver = useMemo<ItemResolver<T, S>>(() => createModelResolver(model, count), [model, count]);
+    const resolver = useMemo<ItemResolver<T, S>>(() => createModelResolver(model), [model]);
     return { model, resolver };
 };
 

@@ -1,6 +1,6 @@
 import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { createElement, type ReactElement, type ReactNode, type Ref, type RefObject, useRef } from "react";
+import { createElement, type ReactElement, type ReactNode, type Ref, type RefObject, useCallback, useRef } from "react";
 import { useForwardedRef } from "../hooks/use-forwarded-ref.js";
 import { useListModel } from "../hooks/use-list-model.js";
 import { type FactoryBinding, useRealizedSlots } from "../hooks/use-realized-slots.js";
@@ -81,9 +81,10 @@ const useCollectionWiring = <T, S, W extends Gtk.Widget>(
     props: CollectionViewProps<T, S, W>,
 ): CollectionWiring<T, S, W> => {
     const widgetRef = useRef<W | null>(null);
-    const [, setRef] = useForwardedRef<W>(props.ref, (value) => {
+    const captureWidget = useCallback((value: W | null) => {
         widgetRef.current = value;
-    });
+    }, []);
+    const [, setRef] = useForwardedRef<W>(props.ref, captureWidget);
 
     const externalModel = props.model;
     const listModel = useListModel<T, S>(

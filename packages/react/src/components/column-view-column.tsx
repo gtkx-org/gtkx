@@ -60,8 +60,8 @@ export const GtkColumnViewColumn = <T = unknown>(props: ColumnViewColumnProps<T>
 
     const headerMenuPortal = useHeaderMenu(column, headerMenu);
 
-    const renderCellFn = renderCell;
-    const slotRenderer: SlotRenderer<unknown, unknown> = (value) => renderCellFn(value as T);
+    const slotRenderer: SlotRenderer<unknown, unknown> = (value, _treeRow, isHeader) =>
+        isHeader ? null : renderCell(value as T);
 
     const intrinsicProps: Record<string, unknown> = { id, title, ref: captureColumn };
     if (expand !== undefined) intrinsicProps["expand"] = expand;

@@ -23,7 +23,7 @@ type WrappingSelectionModel = (Gtk.SingleSelection | Gtk.MultiSelection | Gtk.No
 const createSelectionModel = (mode: Gtk.SelectionMode, base: Gio.ListModel): WrappingSelectionModel => {
     if (mode === Gtk.SelectionMode.MULTIPLE) return Gtk.MultiSelection.new(base);
     if (mode === Gtk.SelectionMode.NONE) return Gtk.NoSelection.new(base);
-    return Gtk.SingleSelection.new(base);
+    return new Gtk.SingleSelection({ model: base, autoselect: false, canUnselect: true });
 };
 
 const bitsetOf = (positions: number[]): Gtk.Bitset => {
@@ -106,8 +106,6 @@ export const useSelectionModel = <T, S>(options: SelectionModelOptions<T, S>): G
     if (modelRef.current === null || modeRef.current !== mode) {
         modelRef.current = createSelectionModel(mode, base);
         modeRef.current = mode;
-    } else if (modelRef.current.getModel() !== base) {
-        modelRef.current.setModel(base);
     }
     const model = modelRef.current;
 
@@ -129,6 +127,7 @@ export const useSelectionModel = <T, S>(options: SelectionModelOptions<T, S>): G
     useSignal(model, "selection-changed", report);
 
     useLayoutEffect(() => {
+        if (model.getModel() !== base) model.setModel(base);
         if (selected !== undefined && selected !== null) {
             applySelectedPositions(model, idsToPositions(selected, resolver));
         }

@@ -1,7 +1,16 @@
 import type * as Adw from "@gtkx/gi/adw";
 import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { createElement, type ReactElement, type ReactNode, type Ref, type RefObject, useRef, useState } from "react";
+import {
+    createElement,
+    type ReactElement,
+    type ReactNode,
+    type Ref,
+    type RefObject,
+    useCallback,
+    useRef,
+    useState,
+} from "react";
 import { useDropDownSelection } from "../hooks/use-drop-down-selection.js";
 import { useForwardedRef } from "../hooks/use-forwarded-ref.js";
 import { useListModel } from "../hooks/use-list-model.js";
@@ -47,8 +56,8 @@ const headerFactoryBinding: FactoryBinding<DropDownWidget> = {
     uninstall: (widget) => widget.setHeaderFactory(null),
 };
 
-const defaultRenderer: SlotRenderer<unknown, unknown> = (value) => {
-    if (value === undefined || value === null) return null;
+const defaultRenderer: SlotRenderer<unknown, unknown> = (value, _treeRow, isHeader) => {
+    if (isHeader || value === undefined || value === null) return null;
     return createElement(GtkLabelElement, { label: String(value) });
 };
 
@@ -78,14 +87,15 @@ interface DropDownImplProps<T, S, W extends DropDownWidget> {
 
 const toItemRenderer = <T, S>(renderItem: ((value: T) => ReactNode) | null | undefined): SlotRenderer<T, S> => {
     if (typeof renderItem !== "function") return defaultRenderer as SlotRenderer<T, S>;
-    return (value) => renderItem(value as T);
+    return (value, _treeRow, isHeader) => (isHeader ? null : renderItem(value as T));
 };
 
 const toPopupRenderer = <T, S>(
     renderListItem: ((value: T) => ReactNode) | null | undefined,
     renderItem: ((value: T) => ReactNode) | null | undefined,
 ): SlotRenderer<T, S> => {
-    if (typeof renderListItem === "function") return (value) => renderListItem(value as T);
+    if (typeof renderListItem === "function")
+        return (value, _treeRow, isHeader) => (isHeader ? null : renderListItem(value as T));
     return toItemRenderer<T, S>(renderItem);
 };
 
@@ -116,10 +126,11 @@ const useDropDownWiring = <T, S, W extends DropDownWidget>(
 ): DropDownWiring<T, S, W> => {
     const widgetRef = useRef<DropDownWidget | null>(null);
     const [widget, setWidget] = useState<DropDownWidget | null>(null);
-    const [, setRef] = useForwardedRef<W>(props.ref, (value: W | null) => {
+    const captureWidget = useCallback((value: W | null) => {
         widgetRef.current = value;
         setWidget(value);
-    });
+    }, []);
+    const [, setRef] = useForwardedRef<W>(props.ref, captureWidget);
 
     const externalModel = props.model;
     const listModel = useListModel<T, S>(

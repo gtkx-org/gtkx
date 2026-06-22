@@ -26,21 +26,26 @@ let nextKey = 0;
  * slice is exposed through `subscribePosition`/`getPosition` so a single `bind` notifies exactly
  * one container's listeners, giving the "one bind = one portal" guarantee.
  *
- * All writers run synchronously inside the factory's signal handlers and notify listeners
- * synchronously; there is no deferral or coalescing.
+ * Writers run synchronously inside the factory's signal handlers. The structural snapshot
+ * `getSlotsSnapshot` exposes is *published*, not live: it returns a cached array recomputed only
+ * when {@link flushSet} runs — immediately, as a container is added or removed — so
+ * `useSyncExternalStore` reads a version-stable reference until the realized set actually changes
+ * rather than a fresh array on every read. Per-container position entries are published the same
+ * way (in {@link notifyPosition}), giving `getPosition` the same referential stability between
+ * rebinds.
  */
 export class RealizedSlotStore {
     private entries = new Map<GObject.Object, SlotEntry>();
+
+    private published = new Map<GObject.Object, SlotEntry>();
 
     private setListeners = new Set<() => void>();
 
     private positionListeners = new Map<GObject.Object, Set<() => void>>();
 
+    private positionFlushers = new Map<GObject.Object, () => void>();
+
     private keys = new WeakMap<GObject.Object, string>();
-
-    private structuralVersion = 0;
-
-    private snapshotVersion = -1;
 
     private snapshot: GObject.Object[] = [];
 
@@ -58,17 +63,14 @@ export class RealizedSlotStore {
     };
 
     /**
-     * Returns the realized containers as an array whose identity is stable until the set changes.
+     * Returns the last *published* set of realized containers.
      *
-     * @returns The current realized containers in insertion order.
+     * The array identity is stable until {@link flushSet} republishes it, so the value is constant
+     * across a render and its post-commit re-check even as containers realize during that commit.
+     *
+     * @returns The realized containers as of the last render-safe flush, in insertion order.
      */
-    getSlotsSnapshot = (): GObject.Object[] => {
-        if (this.snapshotVersion !== this.structuralVersion) {
-            this.snapshot = [...this.entries.keys()];
-            this.snapshotVersion = this.structuralVersion;
-        }
-        return this.snapshot;
-    };
+    getSlotsSnapshot = (): GObject.Object[] => this.snapshot;
 
     /**
      * Subscribes to bind/unbind changes for a single container.
@@ -93,15 +95,19 @@ export class RealizedSlotStore {
     };
 
     /**
-     * Returns the current entry for a container, with a stable identity until it is rebound.
+     * Returns the last *published* entry for a container, with a stable identity until
+     * {@link notifyPosition} republishes it.
      *
      * @param container - The realized container to read.
-     * @returns The container's entry; an unbound placeholder if it is not currently tracked.
+     * @returns The container's published entry; a stable unbound placeholder until first bind.
      */
     getPosition = (container: GObject.Object): SlotEntry => {
-        const entry = this.entries.get(container);
-        if (entry !== undefined) return entry;
-        return { container, position: -1, treeRow: null };
+        let entry = this.published.get(container);
+        if (entry === undefined) {
+            entry = { container, position: -1, treeRow: null };
+            this.published.set(container, entry);
+        }
+        return entry;
     };
 
     /**
@@ -126,7 +132,6 @@ export class RealizedSlotStore {
     addContainer = (container: GObject.Object): void => {
         if (this.entries.has(container)) return;
         this.entries.set(container, { container, position: -1, treeRow: null });
-        this.structuralVersion++;
         this.notifySet();
     };
 
@@ -140,7 +145,6 @@ export class RealizedSlotStore {
     bind = (container: GObject.Object, position: number, treeRow: Gtk.TreeListRow | null): void => {
         if (!this.entries.has(container)) {
             this.entries.set(container, { container, position, treeRow });
-            this.structuralVersion++;
             this.notifySet();
             return;
         }
@@ -166,17 +170,32 @@ export class RealizedSlotStore {
      */
     removeContainer = (container: GObject.Object): void => {
         if (!this.entries.delete(container)) return;
-        this.structuralVersion++;
+        this.published.delete(container);
+        this.positionFlushers.delete(container);
         this.notifySet();
     };
 
-    private notifySet(): void {
+    private flushSet = (): void => {
+        this.snapshot = [...this.entries.keys()];
         for (const listener of [...this.setListeners]) listener();
+    };
+
+    private notifySet(): void {
+        this.flushSet();
     }
 
     private notifyPosition(container: GObject.Object): void {
-        const listeners = this.positionListeners.get(container);
-        if (listeners === undefined) return;
-        for (const listener of [...listeners]) listener();
+        let flush = this.positionFlushers.get(container);
+        if (flush === undefined) {
+            flush = (): void => {
+                const live = this.entries.get(container);
+                if (live !== undefined) this.published.set(container, live);
+                const listeners = this.positionListeners.get(container);
+                if (listeners === undefined) return;
+                for (const listener of [...listeners]) listener();
+            };
+            this.positionFlushers.set(container, flush);
+        }
+        flush();
     }
 }
