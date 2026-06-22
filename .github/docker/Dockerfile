@@ -93,7 +93,15 @@ RUN sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.s
     && mkdir -p /tmp/weston-src \
     && tar -xJf /tmp/weston.tar.xz --strip-components=1 -C /tmp/weston-src \
     && meson setup /tmp/weston-src/build /tmp/weston-src --prefix=/usr/local --buildtype=release \
-        -Drenderer-vulkan=false \
+        -Dbackend-headless=true -Dbackend-default=headless \
+        -Dbackend-drm=false -Dbackend-pipewire=false -Dbackend-rdp=false \
+        -Dbackend-vnc=false -Dbackend-wayland=false -Dbackend-x11=false \
+        -Drenderer-gl=true -Drenderer-vulkan=false \
+        -Dxwayland=false -Dsystemd=false -Dremoting=false -Dpipewire=false \
+        -Dshell-desktop=true -Dshell-ivi=false -Dshell-kiosk=false -Dshell-lua=false \
+        -Dcolor-management-lcms=false -Dimage-jpeg=false -Dimage-webp=false \
+        -Ddemo-clients=false -Dresize-pool=false \
+        -Dwcap-decode=false -Dtests=false -Dtest-junit-xml=false \
     && ninja -C /tmp/weston-src/build install \
     && ldconfig \
     && rm -rf /tmp/weston-src /tmp/weston.tar.xz /var/lib/apt/lists/* \
