@@ -13,6 +13,8 @@ export interface SlotEntry {
     container: GObject.Object;
     position: number;
     treeRow: Gtk.TreeListRow | null;
+    /** The container's bound model item, captured at `bind` so the resolver needs no native read during render. */
+    item: GObject.Object | null;
 }
 
 let nextKey = 0;
@@ -104,7 +106,7 @@ export class RealizedSlotStore {
     getPosition = (container: GObject.Object): SlotEntry => {
         let entry = this.published.get(container);
         if (entry === undefined) {
-            entry = { container, position: -1, treeRow: null };
+            entry = { container, position: -1, treeRow: null, item: null };
             this.published.set(container, entry);
         }
         return entry;
@@ -131,7 +133,7 @@ export class RealizedSlotStore {
      */
     addContainer = (container: GObject.Object): void => {
         if (this.entries.has(container)) return;
-        this.entries.set(container, { container, position: -1, treeRow: null });
+        this.entries.set(container, { container, position: -1, treeRow: null, item: null });
         this.notifySet();
     };
 
@@ -142,13 +144,18 @@ export class RealizedSlotStore {
      * @param position - The logical position the container now displays.
      * @param treeRow - The tree row backing this position, or `null` outside tree mode.
      */
-    bind = (container: GObject.Object, position: number, treeRow: Gtk.TreeListRow | null): void => {
+    bind = (
+        container: GObject.Object,
+        position: number,
+        treeRow: Gtk.TreeListRow | null,
+        item: GObject.Object | null,
+    ): void => {
         if (!this.entries.has(container)) {
-            this.entries.set(container, { container, position, treeRow });
+            this.entries.set(container, { container, position, treeRow, item });
             this.notifySet();
             return;
         }
-        this.entries.set(container, { container, position, treeRow });
+        this.entries.set(container, { container, position, treeRow, item });
         this.notifyPosition(container);
     };
 
@@ -159,7 +166,7 @@ export class RealizedSlotStore {
      */
     unbind = (container: GObject.Object): void => {
         if (!this.entries.has(container)) return;
-        this.entries.set(container, { container, position: -1, treeRow: null });
+        this.entries.set(container, { container, position: -1, treeRow: null, item: null });
         this.notifyPosition(container);
     };
 

@@ -20,11 +20,6 @@ const positionOf = (container: GObject.Object & ChildContainer): number => {
     return -1;
 };
 
-const readTreeRow = (container: ChildContainer): Gtk.TreeListRow | null => {
-    const item = container.getItem();
-    return item instanceof Gtk.TreeListRow ? item : null;
-};
-
 /**
  * Installs and removes a factory on a GObject that owns one.
  *
@@ -96,9 +91,11 @@ export const useRealizedSlots = <W extends GObject.Object>(options: RealizedSlot
         });
         factory.on("bind", (container) => {
             if (isChildContainer(container)) {
-                store.bind(container, positionOf(container), readTreeRow(container));
+                const item = container.getItem();
+                const treeRow = item instanceof Gtk.TreeListRow ? item : null;
+                store.bind(container, positionOf(container), treeRow, item);
             } else {
-                store.bind(container, -1, null);
+                store.bind(container, -1, null, null);
             }
         });
         factory.on("unbind", (container) => {

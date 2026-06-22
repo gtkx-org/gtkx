@@ -53,7 +53,7 @@ export interface Resolved<T = unknown, S = unknown> {
  * @typeParam S - The value type of section headers.
  */
 export interface ItemResolver<T = unknown, S = unknown> {
-    resolve(position: number, treeRow: Gtk.TreeListRow | null): Resolved<T, S>;
+    resolve(position: number, treeRow: Gtk.TreeListRow | null, boundItem: GObject.Object | null): Resolved<T, S>;
     positionOf(id: string): number;
     idOf(position: number): string | undefined;
     count: number;
@@ -105,7 +105,7 @@ export const createControlledResolver = <T, S>(
         idOf(position: number): string | undefined {
             return flattened.positionToId.get(position);
         },
-        resolve(position: number, treeRow: Gtk.TreeListRow | null): Resolved<T, S> {
+        resolve(position: number, treeRow: Gtk.TreeListRow | null, _boundItem: GObject.Object | null): Resolved<T, S> {
             if (treeRow !== null && !flattenTreeChildren) {
                 const rowItem = treeRowItem(treeRow);
                 if (rowItem !== null) {
@@ -145,8 +145,10 @@ export const createControlledResolver = <T, S>(
 /**
  * Builds an `ItemResolver` for an uncontrolled external `Gio.ListModel`.
  *
- * Values come straight from `model.getItem(position)`, relying on FFI wrapper identity so the
- * renderer receives the original user object. Ids are derived from the position so selection
+ * Values come from the container's item captured at `bind` (passed as `boundItem`), falling back to
+ * `model.getItem(position)` only when no bound item is supplied. Reading the captured item keeps
+ * `resolve` free of native calls during render, so a rendering slot never drains the GLib inbox and
+ * lets a queued signal mutate the model mid-render. Ids are derived from the position so selection
  * callbacks remain position-stable for the external model. The resolver identity is stable for a
  * given model: it never depends on the item count, so an external model growing — even a continuous
  * frame-clock fill — does not rebuild the resolver or re-render the slots, which the widget re-binds
@@ -169,8 +171,8 @@ export const createModelResolver = <T, S>(model: Gio.ListModel): ItemResolver<T,
         idOf(position: number): string {
             return String(position);
         },
-        resolve(position: number, treeRow: Gtk.TreeListRow | null): Resolved<T, S> {
-            const item = model.getItem(position);
+        resolve(position: number, treeRow: Gtk.TreeListRow | null, boundItem: GObject.Object | null): Resolved<T, S> {
+            const item = boundItem ?? model.getItem(position);
             return {
                 value: (item ?? undefined) as T | undefined,
                 present: item !== null,

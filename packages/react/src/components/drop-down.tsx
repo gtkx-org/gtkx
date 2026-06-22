@@ -118,7 +118,7 @@ const createFaceResolver = <T, S>(resolver: ItemResolver<T, S>, selectedPosition
     count: resolver.count,
     positionOf: (id) => resolver.positionOf(id),
     idOf: (position) => resolver.idOf(position),
-    resolve: (_position, treeRow) => resolver.resolve(selectedPosition, treeRow),
+    resolve: (_position, treeRow) => resolver.resolve(selectedPosition, treeRow, null),
 });
 
 const useDropDownWiring = <T, S, W extends DropDownWidget>(

@@ -65,7 +65,7 @@ const SlotImpl = <T, S>({ container, store, resolver, render }: ListSlotProps<T,
     const entry = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
     if (entry.position < 0) return null;
-    const resolved = resolver.resolve(entry.position, entry.treeRow);
+    const resolved = resolver.resolve(entry.position, entry.treeRow, entry.item);
     if (!resolved.present) return null;
     const content = render(resolved.value, resolved.treeRow, resolved.isHeader);
     const portalled =

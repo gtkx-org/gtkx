@@ -5,7 +5,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnView, GtkColumnViewColumn, GtkDropDown, GtkGridView, GtkLabel, GtkListView } from "@gtkx/jsx/gtk";
 import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
 
 class NameObject extends GObject.Object {
@@ -121,6 +121,27 @@ describe("GridView model prop", () => {
         await screen.findAllByText("One");
         await screen.findAllByText("Two");
         await screen.findAllByText("Three");
+    });
+});
+
+describe("model resolver", () => {
+    it("reads no native getItem from the model during a slot re-render", async () => {
+        const store = namedStore(Array.from({ length: 60 }, (_, index) => `m-${index}`));
+        const selection = noSelection(store);
+        const draw = (suffix: string) => (
+            <ScrollWrapper minContentHeight={300} minContentWidth={300}>
+                <GtkGridView<NameObject> model={selection} renderItem={(item) => <GtkLabel label={`${item.name}${suffix}`} />} />
+            </ScrollWrapper>
+        );
+        const { rerender } = await render(draw(""));
+        await screen.findAllByText("m-0");
+
+        const getItemSpy = vi.spyOn(selection, "getItem");
+        await rerender(draw("!"));
+        await screen.findAllByText("m-0!");
+
+        expect(getItemSpy).not.toHaveBeenCalled();
+        getItemSpy.mockRestore();
     });
 });
 
