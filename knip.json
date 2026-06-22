@@ -2,7 +2,14 @@
     "$schema": "https://unpkg.com/knip@6/schema.json",
     "ignoreExportsUsedInFile": true,
     "ignore": ["**/out-tsc/**"],
-    "ignoreBinaries": ["espeak-ng", "glib-compile-resources", "glib-compile-schemas", "pkg-config", "setpriv", "weston"],
+    "ignoreBinaries": [
+        "espeak-ng",
+        "glib-compile-resources",
+        "glib-compile-schemas",
+        "pkg-config",
+        "setpriv",
+        "weston"
+    ],
     "ignoreDependencies": ["^@gtkx/gi(/.*)?$", "^@gtkx/jsx(/.*)?$"],
     "ignoreWorkspaces": ["packages/native/npm/*"],
     "workspaces": {
