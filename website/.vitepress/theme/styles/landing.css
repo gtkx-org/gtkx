@@ -1,0 +1,117 @@
+/* ============================================================
+   gtkx — landing-page layout helpers shared across sections.
+   Component-level styling lives in each section's scoped block;
+   this holds only the page shell, the glow device, and the
+   responsive container the voidzero/Red Hat blueprint calls for.
+   ============================================================ */
+
+.landing {
+  display: block;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* Soft off-center brand radial glow — the signature backdrop device.
+   Carried as a positioned overlay so headlines stay solid. */
+.glow {
+  position: absolute;
+  inset: 0;
+  background: var(--gradient-glow);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.glow-soft {
+  opacity: 0.55;
+}
+
+/* Mono eyebrow / overline — uppercase, wide tracking (the dev-tool tell). */
+.overline {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin: 0;
+}
+
+/* One emphasized phrase per block — the scarce red accent. */
+.accent {
+  color: var(--brand);
+}
+
+.section-narrow {
+  max-width: var(--container-md);
+}
+
+@media (max-width: 860px) {
+  .stack-md {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .stack-sm {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Syntax tokens for hand-highlighted code passed into CodeBlock slots.
+   Global (not scoped) because slot content is owned by the parent section. */
+.tok-kw {
+  color: var(--accent);
+}
+.tok-tag {
+  color: var(--brand);
+}
+.tok-str {
+  color: var(--success);
+}
+.tok-com {
+  color: var(--text-3);
+}
+.tok-fn {
+  color: var(--text-1);
+}
+.tok-num {
+  color: var(--warning);
+}
+.tok-punct {
+  color: var(--text-2);
+}
+.code-ok {
+  color: var(--success);
+}
+.code-dim {
+  color: var(--text-3);
+}
+
+/* Inline code chip used inside landing prose. */
+.l-code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  color: var(--code-text);
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  padding: 0.05em 0.35em;
+}
+
+/* Terminal line helpers for content slotted into a terminal CodeBlock. */
+.tcmd {
+  color: rgba(235, 235, 245, 0.9);
+}
+.tprompt {
+  color: var(--red-400);
+  padding-right: 0.5em;
+}
+.tout {
+  color: var(--success);
+}
+.tdim {
+  color: var(--text-3);
+}
+.tmark {
+  padding-right: 0.4em;
+}

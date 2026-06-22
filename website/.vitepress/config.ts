@@ -13,6 +13,11 @@ export default defineConfig({
   appearance: "dark",
   cleanUrls: true,
   lastUpdated: false,
+  vite: {
+    server: {
+      allowedHosts: ["workstation"],
+    },
+  },
 
   head: [
     ["link", { rel: "icon", type: "image/svg+xml", href: "/gtkx-mark.svg" }],
