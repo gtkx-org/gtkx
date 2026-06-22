@@ -1,0 +1,6 @@
+# Standalone project root: keeps the marketing site decoupled from the
+# framework monorepo's Turbo/native build graph. Its own lockfile and deps.
+packages:
+  - .
+allowBuilds:
+  esbuild: true

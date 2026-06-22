@@ -1,16 +1,18 @@
 {
-    "name": "@gtkx/config",
+    "name": "create-gtkx",
     "version": "0.21.0",
-    "description": "gtkx.config.ts schema, validation, and loader shared by the GTKX toolchain",
+    "description": "Scaffold a new native GTK4 + React desktop application with gtkx",
     "keywords": [
         "gtkx",
         "gtk",
         "gtk4",
         "react",
         "typescript",
-        "config",
+        "native",
         "linux",
-        "desktop"
+        "desktop",
+        "create",
+        "scaffold"
     ],
     "homepage": "https://gtkx.dev",
     "bugs": {
@@ -19,7 +21,7 @@
     "repository": {
         "type": "git",
         "url": "https://github.com/gtkx-org/gtkx.git",
-        "directory": "packages/config"
+        "directory": "packages/create-gtkx"
     },
     "license": "MPL-2.0",
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
@@ -30,23 +32,34 @@
             "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
-        },
-        "./env": {
-            "types": "./env.d.ts"
         }
+    },
+    "bin": {
+        "create-gtkx": "bin/create-gtkx.js"
     },
     "sideEffects": false,
     "files": [
+        "bin",
         "dist",
         "src",
-        "env.d.ts"
+        "templates"
     ],
     "scripts": {
         "build": "tsc -b"
     },
     "dependencies": {
+        "@clack/prompts": "^1.5.1",
         "@gtkx/utils": "workspace:*",
-        "c12": "^3.3.4",
-        "vite": "catalog:"
+        "citty": "^0.2.2",
+        "ejs": "^6.0.1",
+        "nypm": "^0.6.7",
+        "tinyexec": "^1.2.4"
+    },
+    "devDependencies": {
+        "@types/ejs": "^3.1.5",
+        "@types/node": "catalog:",
+        "memfs": "^4.57.7",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
     }
 }

@@ -40,7 +40,6 @@ Flags fill in answers; anything missing is prompted interactively. Options and t
 Templates live under `templates/` as `*.ejs` files. `templates.ts` lists every template (recursively, relative paths) and renders it through EJS with a `TemplateContext` of `name`, `applicationId`, `title`, and `testing`. The scaffolder maps each template's relative path to a destination:
 
 - Most templates map one-to-one; `gitignore` → `.gitignore`, `config/vitest.config.ts` → `vitest.config.ts`.
-- `claude/*` templates map under `.claude/skills/developing-gtkx-apps/` and are only emitted when `claudeSkills` is set.
 - `config/` and `tests/` templates are only emitted when `testing === "vitest"`.
 
 After writing files, the scaffolder installs runtime deps (`@gtkx/css`, `@gtkx/ffi`, `@gtkx/react`, `react`) and dev deps (`@gtkx/cli`, `@types/react`, `typescript`, `vite`, plus `@gtkx/testing`/`vitest` when testing is enabled) via the chosen package manager, seeds an initial empty GSettings env (`node_modules/.gtkx/env.d.ts`) so type-checking works before the first codegen, and git-inits with an initial commit.

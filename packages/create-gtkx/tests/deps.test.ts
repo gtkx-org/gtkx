@@ -11,7 +11,7 @@ vi.mock("tinyexec", () => ({
 
 import { addDependency, detectPackageManager } from "nypm";
 import { x } from "tinyexec";
-import { defaultScaffolderDeps } from "../../src/create/deps.js";
+import { defaultScaffolderDeps } from "../src/deps.js";
 
 const addDependencyMock = vi.mocked(addDependency);
 const detectMock = vi.mocked(detectPackageManager);
@@ -62,6 +62,12 @@ describe("defaultScaffolderDeps.gitInit", () => {
         );
         expect(xMock).toHaveBeenNthCalledWith(2, "git", ["add", "-A"], expect.anything());
         expect(xMock).toHaveBeenNthCalledWith(3, "git", ["commit", "-m", "Initial commit"], expect.anything());
+    });
+});
+
+describe("defaultScaffolderDeps.gtkxVersion", () => {
+    it("reads the create-gtkx package version used to pin scaffolded @gtkx/* dependencies", () => {
+        expect(defaultScaffolderDeps().gtkxVersion).toMatch(/^\d+\.\d+\.\d+/);
     });
 });
 

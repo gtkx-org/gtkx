@@ -1,16 +1,13 @@
 import { dirname, join, resolve } from "node:path";
-import { isValidApplicationId } from "@gtkx/config";
-import { errorMessage, toUpperFirst } from "@gtkx/utils";
-import { renderEnvModule } from "../gsettings/render.js";
-import { TEMPLATE_SUFFIX, type TemplateContext } from "../templates.js";
+import { errorMessage, isValidApplicationId, renderEmptyGtkxEnvModule, toUpperFirst } from "@gtkx/utils";
 import { isValidProjectName, PACKAGE_MANAGERS, type PackageManager, type TestingOption } from "./options.js";
+import { TEMPLATE_SUFFIX, type TemplateContext } from "./templates.js";
 
 export type CreateOptions = {
     name?: string | undefined;
     applicationId?: string | undefined;
     packageManager?: PackageManager | undefined;
     testing?: TestingOption | undefined;
-    claudeSkills?: boolean | undefined;
 };
 
 type ResolvedOptions = {
@@ -18,7 +15,6 @@ type ResolvedOptions = {
     applicationId: string;
     packageManager: PackageManager;
     testing: TestingOption;
-    claudeSkills: boolean;
 };
 
 type ScaffolderPrompts = Pick<
@@ -46,6 +42,7 @@ type GitInitFn = (cwd: string) => Promise<void>;
 
 export type ScaffolderDeps = {
     cwd(): string;
+    gtkxVersion: string;
     fs: ScaffolderFs;
     prompts: ScaffolderPrompts;
     listTemplates(): string[];
@@ -63,6 +60,9 @@ export type Scaffolder = {
 const DEPENDENCIES = ["@gtkx/css", "@gtkx/ffi", "@gtkx/react", "react"];
 
 const DEV_DEPENDENCIES = ["@gtkx/cli", "@gtkx/config", "@types/react", "typescript", "vite"];
+
+const pinGtkxDependency = (name: string, version: string): string =>
+    name.startsWith("@gtkx/") ? `${name}@^${version}` : name;
 
 const TESTING_DEV_DEPENDENCIES = ["@gtkx/testing", "vitest"];
 
@@ -161,44 +161,25 @@ const promptTesting = async (deps: ScaffolderDeps): Promise<TestingOption> => {
     return enable ? "vitest" : "none";
 };
 
-const promptClaudeSkills = async (deps: ScaffolderDeps): Promise<boolean> =>
-    guardCancellation(
-        deps,
-        await deps.prompts.confirm({
-            message: "Include Claude Code skills?",
-            initialValue: true,
-        }),
-    );
-
 const promptForOptions = async (deps: ScaffolderDeps, options: CreateOptions): Promise<ResolvedOptions> => {
     const name = options.name ?? (await promptName(deps));
     const applicationId = options.applicationId ?? (await promptApplicationId(deps, name));
     const packageManager = options.packageManager ?? (await promptPackageManager(deps));
     const testing = options.testing ?? (await promptTesting(deps));
-    const claudeSkills = options.claudeSkills ?? (await promptClaudeSkills(deps));
-    return { name, applicationId, packageManager, testing, claudeSkills };
+    return { name, applicationId, packageManager, testing };
 };
 
 const TESTING_TEMPLATE_PREFIXES = ["config/", "tests/"] as const;
-const CLAUDE_TEMPLATE_PREFIX = "claude/";
-const CLAUDE_SKILLS_DIR = ".claude/skills/developing-gtkx-apps";
 
 const TEMPLATE_DESTINATIONS: Record<string, string> = {
     gitignore: ".gitignore",
     "config/vitest.config.ts": "vitest.config.ts",
 };
 
-const destinationFor = (templateRelativePath: string): string => {
-    if (templateRelativePath.startsWith(CLAUDE_TEMPLATE_PREFIX)) {
-        return `${CLAUDE_SKILLS_DIR}/${templateRelativePath.slice(CLAUDE_TEMPLATE_PREFIX.length)}`;
-    }
-    return TEMPLATE_DESTINATIONS[templateRelativePath] ?? templateRelativePath;
-};
+const destinationFor = (templateRelativePath: string): string =>
+    TEMPLATE_DESTINATIONS[templateRelativePath] ?? templateRelativePath;
 
 const isTemplateIncluded = (templateRelativePath: string, resolved: ResolvedOptions): boolean => {
-    if (templateRelativePath.startsWith(CLAUDE_TEMPLATE_PREFIX)) {
-        return resolved.claudeSkills;
-    }
     if (TESTING_TEMPLATE_PREFIXES.some((prefix) => templateRelativePath.startsWith(prefix))) {
         return resolved.testing === "vitest";
     }
@@ -233,9 +214,11 @@ const installAllDependencies = async (deps: ScaffolderDeps, options: InstallAllO
     const spinner = deps.prompts.spinner();
     spinner.start("Installing dependencies...");
 
+    const pin = (names: string[]): string[] => names.map((name) => pinGtkxDependency(name, deps.gtkxVersion));
+
     try {
-        await deps.install({ cwd: projectPath, packageManager, dependencies: DEPENDENCIES, dev: false });
-        await deps.install({ cwd: projectPath, packageManager, dependencies: devDependencies, dev: true });
+        await deps.install({ cwd: projectPath, packageManager, dependencies: pin(DEPENDENCIES), dev: false });
+        await deps.install({ cwd: projectPath, packageManager, dependencies: pin(devDependencies), dev: true });
         spinner.stop("Dependencies installed!");
     } catch (error) {
         spinner.stop("Failed to install dependencies");
@@ -248,7 +231,7 @@ const installAllDependencies = async (deps: ScaffolderDeps, options: InstallAllO
 const writeInitialSchemaEnv = (deps: ScaffolderDeps, projectPath: string): void => {
     const storeDir = join(projectPath, "node_modules", ".gtkx");
     deps.fs.mkdirSync(storeDir, { recursive: true });
-    deps.fs.writeFileSync(join(storeDir, "env.d.ts"), renderEnvModule([]));
+    deps.fs.writeFileSync(join(storeDir, "env.d.ts"), renderEmptyGtkxEnvModule());
 };
 
 const initializeGitRepo = async (deps: ScaffolderDeps, projectPath: string): Promise<void> => {

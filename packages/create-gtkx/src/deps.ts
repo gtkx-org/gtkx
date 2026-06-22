@@ -1,13 +1,17 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import * as p from "@clack/prompts";
 import { addDependency, detectPackageManager as nypmDetectPackageManager } from "nypm";
 import { x } from "tinyexec";
-import { listTemplates, renderFile } from "../templates.js";
 import { isKnownPackageManager, type PackageManager } from "./options.js";
 import type { ScaffolderDeps } from "./scaffolder.js";
+import { listTemplates, renderFile } from "./templates.js";
+
+const { version } = createRequire(import.meta.url)("../package.json") as { version: string };
 
 export const defaultScaffolderDeps = (): ScaffolderDeps => ({
     cwd: () => process.cwd(),
+    gtkxVersion: version,
     fs: { existsSync, mkdirSync, writeFileSync },
     prompts: {
         intro: p.intro,

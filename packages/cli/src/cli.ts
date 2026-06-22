@@ -16,7 +16,7 @@ export const main = defineCommand({
         dev: () => import("./commands/dev.js").then((m) => m.dev),
         build: () => import("./commands/build.js").then((m) => m.build),
         codegen: () => import("./commands/codegen.js").then((m) => m.codegen),
-        create: () => import("./commands/create.js").then((m) => m.create),
+        create: () => import("create-gtkx").then((m) => m.createCommand),
     },
 });
 

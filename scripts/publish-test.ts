@@ -166,17 +166,7 @@ async function scaffoldConsumer(consumerRoot: string, env: NodeJS.ProcessEnv): P
     await run("npm", ["install", "--global", "--prefix", cliPrefix, "@gtkx/cli"], { cwd: consumerRoot, env });
     await run(
         join(cliPrefix, "bin", "gtkx"),
-        [
-            "create",
-            APP_NAME,
-            "--application-id",
-            APPLICATION_ID,
-            "--pm",
-            "npm",
-            "--testing",
-            "vitest",
-            "--no-claude-skills",
-        ],
+        ["create", APP_NAME, "--application-id", APPLICATION_ID, "--pm", "npm", "--testing", "vitest"],
         { cwd: consumerRoot, env },
     );
     return join(consumerRoot, APP_NAME);

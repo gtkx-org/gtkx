@@ -1,0 +1,19 @@
+{
+  "name": "@gtkx/website",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Marketing site for gtkx — Linux desktop application development for the modern age.",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
+  },
+  "dependencies": {
+    "vue": "^3.5.38"
+  },
+  "devDependencies": {
+    "@vueuse/core": "^14.3.0",
+    "vitepress": "^1.6.4"
+  }
+}

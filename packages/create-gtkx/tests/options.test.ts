@@ -5,7 +5,7 @@ import {
     isValidProjectName,
     PACKAGE_MANAGER_FLAG_DESCRIPTION,
     TESTING_FLAG_DESCRIPTION,
-} from "../../src/create/options.js";
+} from "../src/options.js";
 
 describe("isValidProjectName", () => {
     it("accepts lowercase letters, digits, and hyphens", () => {

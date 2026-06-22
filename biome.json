@@ -1,7 +1,7 @@
 {
     "$schema": "https://biomejs.dev/schemas/2.5.0/schema.json",
     "files": {
-        "includes": ["**", "!**/*.svg"]
+        "includes": ["**", "!**/*.svg", "!website", "!.design-handoff"]
     },
     "css": {
         "parser": {

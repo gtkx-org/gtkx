@@ -15,5 +15,6 @@ export {
     type GracefulShutdownOptions,
     installGracefulShutdown,
 } from "./graceful-shutdown.js";
+export { GTKX_ENV_MODULE_HEADER, isValidApplicationId, renderEmptyGtkxEnvModule } from "./project.js";
 export { quote, toCamelIdentifier, toIdentifier } from "./source.js";
 export { toCamelCase, toKebabCase, toLowerFirst, toPascalCase, toUpperFirst } from "./string.js";

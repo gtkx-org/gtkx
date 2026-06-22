@@ -3,12 +3,13 @@ import { join } from "node:path";
 import ejs from "ejs";
 import { vol } from "memfs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { PackageManager } from "../../src/create/options.js";
-import { type CreateOptions, createScaffolder, type ScaffolderDeps } from "../../src/create/scaffolder.js";
-import { listTemplates, type TemplateContext } from "../../src/templates.js";
+import type { PackageManager } from "../src/options.js";
+import { type CreateOptions, createScaffolder, type ScaffolderDeps } from "../src/scaffolder.js";
+import { listTemplates, type TemplateContext } from "../src/templates.js";
 
 const TEST_DIR = "/test-workspace";
-const TEMPLATES_DIR = join(import.meta.dirname, "..", "..", "templates");
+const TEST_GTKX_VERSION = "1.2.3";
+const TEMPLATES_DIR = join(import.meta.dirname, "..", "templates");
 
 type RecordedInstall = {
     cwd: string;
@@ -67,6 +68,7 @@ const buildHarness = (overrides: Partial<Omit<Harness, "deps">> = {}): Harness =
     };
     const deps: ScaffolderDeps = {
         cwd: () => TEST_DIR,
+        gtkxVersion: TEST_GTKX_VERSION,
         fs,
         prompts: {
             intro: () => undefined,
@@ -109,7 +111,6 @@ const defaultOptions = (overrides: Partial<CreateOptions> = {}): CreateOptions =
     applicationId: "org.test.app",
     packageManager: "pnpm",
     testing: "none",
-    claudeSkills: false,
     ...overrides,
 });
 
@@ -219,25 +220,6 @@ describe("createScaffolder (src/* generated files)", () => {
     });
 });
 
-describe("createScaffolder (claude skills)", () => {
-    setupVol();
-
-    it("writes the skills directory when enabled", async () => {
-        await runScaffolder({ claudeSkills: true });
-
-        const skillsDir = `${TEST_DIR}/test-app/.claude/skills/developing-gtkx-apps`;
-        expect(vol.existsSync(skillsDir)).toBe(true);
-        expect(vol.existsSync(`${skillsDir}/SKILL.md`)).toBe(true);
-        expect(vol.existsSync(`${skillsDir}/WIDGETS.md`)).toBe(true);
-        expect(vol.existsSync(`${skillsDir}/EXAMPLES.md`)).toBe(true);
-    });
-
-    it("skips the skills directory when disabled", async () => {
-        await runScaffolder();
-        expect(vol.existsSync(`${TEST_DIR}/test-app/.claude`)).toBe(false);
-    });
-});
-
 describe("createScaffolder (dependency installation)", () => {
     setupVol();
 
@@ -247,9 +229,11 @@ describe("createScaffolder (dependency installation)", () => {
         expect(harness.installs).toHaveLength(2);
         const [prod, dev] = harness.installs;
         expect(prod?.dev).toBe(false);
-        expect(prod?.dependencies).toEqual(["@gtkx/css", "@gtkx/ffi", "@gtkx/react", "react"]);
+        expect(prod?.dependencies).toEqual(["@gtkx/css@^1.2.3", "@gtkx/ffi@^1.2.3", "@gtkx/react@^1.2.3", "react"]);
         expect(dev?.dev).toBe(true);
-        expect(dev?.dependencies).toEqual(expect.arrayContaining(["@gtkx/cli", "vitest", "@gtkx/testing"]));
+        expect(dev?.dependencies).toEqual(
+            expect.arrayContaining(["@gtkx/cli@^1.2.3", "vitest", "@gtkx/testing@^1.2.3"]),
+        );
     });
 
     it("forwards the chosen package manager", async () => {
@@ -326,7 +310,6 @@ describe("createScaffolder (prompting cancellations)", () => {
             applicationId: "org.test.app",
             packageManager: "pnpm",
             testing: "none",
-            claudeSkills: false,
         });
 
         expect(harness.exit).toHaveBeenCalledWith(0);
@@ -341,7 +324,7 @@ describe("createScaffolder (prompting cancellations)", () => {
         };
 
         const scaffolder = createScaffolder(harness.deps);
-        await scaffolder.run({ name: "test-app", applicationId: "org.test.app", testing: "none", claudeSkills: false });
+        await scaffolder.run({ name: "test-app", applicationId: "org.test.app", testing: "none" });
 
         expect(calls[0]?.initialValue).toBe("yarn");
     });

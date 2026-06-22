@@ -42,9 +42,6 @@ describe("listTemplates", () => {
         const templates = listTemplates();
 
         expect(templates).toEqual([
-            "claude/EXAMPLES.md.ejs",
-            "claude/SKILL.md.ejs",
-            "claude/WIDGETS.md.ejs",
             "config/vitest.config.ts.ejs",
             "gitignore.ejs",
             "gtkx.config.ts.ejs",

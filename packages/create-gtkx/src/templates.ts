@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { sortedAlpha } from "@gtkx/utils";
 import ejs from "ejs";
-import type { TestingOption } from "./create/options.js";
+import type { TestingOption } from "./options.js";
 
 export type TemplateContext = {
     name: string;

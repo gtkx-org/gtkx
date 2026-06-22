@@ -25,7 +25,6 @@
         "publish-test": "node scripts/publish-test.ts",
         "release": "node scripts/publish.ts",
         "sync:ts-refs": "node scripts/sync-ts-references.ts",
-        "version": "changeset version",
         "version-key": "node scripts/compute-version-key.ts",
         "test": "turbo run test:all test --filter=!gtkx",
         "test:all": "vitest run",
@@ -34,7 +33,6 @@
     },
     "devDependencies": {
         "@biomejs/biome": "^2.5.0",
-        "@changesets/cli": "^2.31.0",
         "@types/node": "catalog:",
         "@types/react": "^19.2.17",
         "@vitest/coverage-v8": "catalog:",

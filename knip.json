@@ -25,6 +25,10 @@
             "includeEntryExports": true,
             "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
+        "packages/create-gtkx": {
+            "entry": ["src/cli.ts!"],
+            "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
+        },
         "packages/css": {
             "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
         },

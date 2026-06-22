@@ -1,3 +1,4 @@
+import { isValidApplicationId } from "@gtkx/utils";
 import {
     type ArrayPropRow,
     type ContainerPropRow,
@@ -187,13 +188,3 @@ export const resolveGtkxConfig = (config: GtkxConfig): ResolvedGtkxConfig => ({
     elementMap: config.elementMap ?? [],
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
 });
-
-const APPLICATION_ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$/;
-const APPLICATION_ID_MAX_LENGTH = 255;
-
-export const isValidApplicationId = (applicationId: string): boolean => {
-    if (applicationId.length === 0 || applicationId.length > APPLICATION_ID_MAX_LENGTH) {
-        return false;
-    }
-    return APPLICATION_ID_PATTERN.test(applicationId);
-};

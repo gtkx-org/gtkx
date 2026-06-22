@@ -7,7 +7,6 @@ export {
     type GtkxConfigExport,
     type GtkxConfigFn,
     type GtkxConfigFnPromise,
-    isValidApplicationId,
     LIBRARIES_WILDCARD,
     mergeConfig,
     type ReactCompilerCompilationMode,
