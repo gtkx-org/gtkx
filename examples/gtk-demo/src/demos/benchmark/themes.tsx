@@ -195,14 +195,14 @@ const ThemesTitlebar = () => {
     return (
         <GtkHeaderBar
             name="themes-header"
-            packStart={
+            start={
                 <GtkToggleButton
                     label="Cycle"
                     active={cycling.isRunning}
                     onToggled={(btn) => cycling.handleToggle(btn.getActive())}
                 />
             }
-            packEnd={<GtkLabel label={cycling.fps} widthChars={12} attributes={cycling.fpsAttrs} />}
+            end={<GtkLabel label={cycling.fps} widthChars={12} attributes={cycling.fpsAttrs} />}
         />
     );
 };

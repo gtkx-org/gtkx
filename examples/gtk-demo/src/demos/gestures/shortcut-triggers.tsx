@@ -15,10 +15,10 @@ const ShortcutTriggersDemo = () => {
             <GtkLabel
                 name="label-ctrl-g"
                 label="Press Ctrl-G"
-                addController={
+                controllers={
                     <GtkShortcutController
                         scope={Gtk.ShortcutScope.GLOBAL}
-                        addShortcut={
+                        shortcuts={
                             <GtkShortcut
                                 trigger={Gtk.ShortcutTrigger.parseString("<Control>g")}
                                 action={logAction("activated Press Ctrl-G")}
@@ -30,10 +30,10 @@ const ShortcutTriggersDemo = () => {
             <GtkLabel
                 name="label-x"
                 label="Press X"
-                addController={
+                controllers={
                     <GtkShortcutController
                         scope={Gtk.ShortcutScope.GLOBAL}
-                        addShortcut={
+                        shortcuts={
                             <GtkShortcut
                                 trigger={Gtk.ShortcutTrigger.parseString("x")}
                                 action={logAction("activated Press X")}

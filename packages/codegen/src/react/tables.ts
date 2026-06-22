@@ -1,6 +1,7 @@
 import type {
     AddMethodRule,
     ArrayPropRow,
+    ContainerPropRow,
     ElementMapRule,
     ObjectPropRow,
     PageMetaSetter,
@@ -8,7 +9,6 @@ import type {
     PropRule,
     VirtualPropRow,
 } from "@gtkx/config";
-import { sortedAlpha } from "@gtkx/utils";
 
 export const BUILT_IN_ELEMENT_MAP: ElementMapRule[] = [
     {
@@ -340,18 +340,40 @@ export const PAGE_META_SETTERS: PageMetaSetter[] = [
     { setter: "setBadgeNumber", prop: "badgeNumber", whenPresent: true },
 ];
 
-export const BUILT_IN_CONTAINER_PROPS: Record<string, string[]> = Object.freeze({
-    GtkWidget: ["addController", "insertActionGroup"],
-    GtkShortcutController: ["addShortcut"],
-    GtkApplicationWindow: ["addAction"],
-    AdwActionRow: ["addPrefix", "addSuffix"],
-    AdwEntryRow: ["addPrefix", "addSuffix"],
-    AdwExpanderRow: ["addPrefix", "addSuffix", "addRow", "addAction"],
-    AdwHeaderBar: ["packStart", "packEnd"],
-    AdwToolbarView: ["addTopBar", "addBottomBar"],
-    GtkActionBar: ["packStart", "packEnd"],
-    GtkHeaderBar: ["packStart", "packEnd"],
-});
+const PREFIX_SUFFIX_PROPS: Record<string, ContainerPropRow> = {
+    prefix: { attach: "addPrefix" },
+    suffix: { attach: "addSuffix" },
+};
+
+const PACK_PROPS: Record<string, ContainerPropRow> = {
+    start: { attach: "packStart" },
+    end: { attach: "packEnd" },
+};
+
+export const BUILT_IN_CONTAINER_PROPS: PerElementPropRows<ContainerPropRow> = {
+    GtkWidget: {
+        controllers: {
+            attach: "addController",
+            detach: "removeController",
+            detachGuard: { side: "child", getter: "getWidget" },
+        },
+        actionGroups: {
+            attach: "insertActionGroup",
+            attachArgs: "prefixChild",
+            detach: "insertActionGroup",
+            detachArgs: "prefixNull",
+        },
+    },
+    GtkShortcutController: { shortcuts: { attach: "addShortcut", detach: "removeShortcut" } },
+    GtkApplicationWindow: { actions: { attach: "addAction", detach: "removeAction", detachArgs: "childName" } },
+    AdwActionRow: PREFIX_SUFFIX_PROPS,
+    AdwEntryRow: PREFIX_SUFFIX_PROPS,
+    AdwExpanderRow: { ...PREFIX_SUFFIX_PROPS, rows: { attach: "addRow" }, actions: { attach: "addAction" } },
+    AdwHeaderBar: PACK_PROPS,
+    AdwToolbarView: { topBar: { attach: "addTopBar" }, bottomBar: { attach: "addBottomBar" } },
+    GtkActionBar: PACK_PROPS,
+    GtkHeaderBar: PACK_PROPS,
+};
 
 export const BUILT_IN_PROPS_MIXINS: Record<string, string[]> = Object.freeze({
     GMenu: ["MenuItemsProps"],
@@ -359,28 +381,6 @@ export const BUILT_IN_PROPS_MIXINS: Record<string, string[]> = Object.freeze({
 });
 
 export const WIDGET_BASE_PROPS_MIXINS: string[] = ["AccessibleProps"];
-
-const mergeSlotMap = (
-    builtIn: Record<string, string[]>,
-    userSlots: Record<string, string[]> | undefined,
-): Record<string, string[]> => {
-    const result: Record<string, string[]> = {};
-    for (const [key, values] of Object.entries(builtIn)) {
-        result[key] = [...values];
-    }
-    if (userSlots !== undefined) {
-        for (const [key, values] of Object.entries(userSlots)) {
-            const merged = new Set<string>(result[key] ?? []);
-            for (const value of values) merged.add(value);
-            result[key] = sortedAlpha(merged);
-        }
-    }
-    return result;
-};
-
-export const mergeContainerProps = (
-    userContainerProps: Record<string, string[]> | undefined,
-): Record<string, string[]> => mergeSlotMap(BUILT_IN_CONTAINER_PROPS, userContainerProps);
 
 const mergePropRowMap = <Row>(
     builtIn: PerElementPropRows<Row>,
@@ -397,6 +397,10 @@ const mergePropRowMap = <Row>(
     }
     return result;
 };
+
+export const mergeContainerProps = (
+    userContainerProps: PerElementPropRows<ContainerPropRow> | undefined,
+): PerElementPropRows<ContainerPropRow> => mergePropRowMap(BUILT_IN_CONTAINER_PROPS, userContainerProps);
 
 export const mergeArrayProps = (
     userArrayProps: PerElementPropRows<ArrayPropRow> | undefined,

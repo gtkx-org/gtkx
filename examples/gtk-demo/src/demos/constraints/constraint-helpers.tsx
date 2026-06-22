@@ -23,9 +23,9 @@ export const ConstraintContainer = ({
     controllers,
 }: {
     layoutManager: GtkBoxProps["layoutManager"];
-    controllers?: GtkBoxProps["addController"];
+    controllers?: GtkBoxProps["controllers"];
 }): ReactNode => (
-    <GtkBox name="container" hexpand vexpand layoutManager={layoutManager} addController={controllers}>
+    <GtkBox name="container" hexpand vexpand layoutManager={layoutManager} controllers={controllers}>
         <ConstraintChildButtons />
     </GtkBox>
 );

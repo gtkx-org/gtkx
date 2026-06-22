@@ -48,6 +48,8 @@ export type {
     CallStep,
     ConstructSetter,
     ConstructStep,
+    ContainerPropRow,
+    DetachGuard,
     ElementMapRule,
     MethodVerb,
     ObjectPropRow,

@@ -50,7 +50,7 @@ const PasswordEntryTitlebar = ({ onClose }: DemoProps) => {
         <GtkHeaderBar
             name="password-entry-header"
             showTitleButtons={false}
-            packEnd={
+            end={
                 <GtkButton
                     ref={setDefaultWidget}
                     label="_Done"

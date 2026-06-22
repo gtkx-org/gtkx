@@ -43,7 +43,7 @@ const SearchEntryTitlebar = () => {
     const { searchMode, handleToggleButtonClicked } = useSearchEntryContext();
     return (
         <GtkHeaderBar
-            packEnd={
+            end={
                 <GtkToggleButton
                     iconName="system-search-symbolic"
                     active={searchMode}

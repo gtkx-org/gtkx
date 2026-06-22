@@ -610,7 +610,7 @@ const ColorsHeader = () => {
     return (
         <GtkHeaderBar
             name="header-bar"
-            packStart={
+            start={
                 <>
                     <GtkToggleButton
                         name="selection-toggle"
@@ -635,7 +635,7 @@ const ColorsHeader = () => {
                     />
                 </>
             }
-            packEnd={
+            end={
                 <>
                     <GtkBox spacing={10}>
                         <GtkLabel label="Sort by:" />

@@ -2,13 +2,32 @@ import { CAMEL_CASE_NAME_PATTERN, PASCAL_CASE_NAME_PATTERN, validateArrayOf } fr
 
 export type VerbArgs = "child" | "childName" | "null" | "prefixChild" | "prefixNull";
 
+export type DetachGuard = { side: "child" | "parent"; getter: string };
+
 export type MethodVerb = {
     kind: "method";
     attach: string;
     attachArgs: VerbArgs;
     detach: string;
     detachArgs: VerbArgs;
-    detachGuard?: { side: "child" | "parent"; getter: string };
+    detachGuard?: DetachGuard;
+};
+
+/**
+ * Attaches a child passed through a named container prop (e.g. `controllers`)
+ * by calling `attach` on the parent, and detaches it by calling `detach`.
+ *
+ * The prop name is decoupled from the method names: it is the record key in the
+ * {@link UserTableRows.containerProps} map, so any prop name can drive any
+ * attach/detach pair. `attachArgs`/`detachArgs` default to `"child"`, and an
+ * omitted `detach` unparents the widget instead of calling a method.
+ */
+export type ContainerPropRow = {
+    attach: string;
+    attachArgs?: VerbArgs;
+    detach?: string;
+    detachArgs?: VerbArgs;
+    detachGuard?: DetachGuard;
 };
 
 export type OrderedInsertVerb = {
@@ -74,7 +93,7 @@ export type VirtualPropRow = {
 export type PerElementPropRows<Row> = Record<string, Record<string, Row>>;
 
 export type UserTableRows = {
-    containerProps?: Record<string, string[]> | undefined;
+    containerProps?: PerElementPropRows<ContainerPropRow> | undefined;
 
     arrayProps?: PerElementPropRows<ArrayPropRow> | undefined;
 
@@ -123,21 +142,39 @@ const requireReactMemberName = (value: unknown, path: string, example: string): 
     }
 };
 
+const validateVerbArgs = (value: unknown, path: string): void => {
+    if (!VERB_ARGS.includes(value as VerbArgs)) {
+        fail(path, `must be one of ${VERB_ARGS.join(", ")}`);
+    }
+};
+
+const validateDetachGuard = (value: unknown, path: string): void => {
+    const guard = requireRecord(value, path);
+    if (guard["side"] !== "child" && guard["side"] !== "parent") {
+        fail(`${path}.side`, 'must be "child" or "parent"');
+    }
+    requireMethodName(guard["getter"], `${path}.getter`);
+};
+
 const validateMethodVerb = (verb: Record<string, unknown>, path: string): void => {
     requireMethodName(verb["attach"], `${path}.attach`);
     requireMethodName(verb["detach"], `${path}.detach`);
-    for (const key of ["attachArgs", "detachArgs"] as const) {
-        if (!VERB_ARGS.includes(verb[key] as VerbArgs)) {
-            fail(`${path}.${key}`, `must be one of ${VERB_ARGS.join(", ")}`);
-        }
-    }
-    if (verb["detachGuard"] !== undefined) {
-        const guard = requireRecord(verb["detachGuard"], `${path}.detachGuard`);
-        if (guard["side"] !== "child" && guard["side"] !== "parent") {
-            fail(`${path}.detachGuard.side`, 'must be "child" or "parent"');
-        }
-        requireMethodName(guard["getter"], `${path}.detachGuard.getter`);
-    }
+    validateVerbArgs(verb["attachArgs"], `${path}.attachArgs`);
+    validateVerbArgs(verb["detachArgs"], `${path}.detachArgs`);
+    if (verb["detachGuard"] !== undefined) validateDetachGuard(verb["detachGuard"], `${path}.detachGuard`);
+};
+
+const validateContainerPropRow = (value: unknown, path: string): void => {
+    const row = requireRecord(value, path);
+    requireMethodName(row["attach"], `${path}.attach`);
+    if (row["attachArgs"] !== undefined) validateVerbArgs(row["attachArgs"], `${path}.attachArgs`);
+    if (row["detach"] !== undefined) requireMethodName(row["detach"], `${path}.detach`);
+    if (row["detachArgs"] !== undefined) validateVerbArgs(row["detachArgs"], `${path}.detachArgs`);
+    if (row["detachGuard"] !== undefined) validateDetachGuard(row["detachGuard"], `${path}.detachGuard`);
+};
+
+export const validateContainerPropRows = (containerProps: unknown): void => {
+    validatePropRowMap(containerProps, "containerProps", validateContainerPropRow);
 };
 
 const validateOrderedInsertVerb = (verb: Record<string, unknown>, path: string): void => {

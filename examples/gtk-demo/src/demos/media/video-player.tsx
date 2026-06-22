@@ -106,7 +106,7 @@ const VideoPlayerTitlebar = () => {
         useVideoPlayerContext();
     return (
         <GtkHeaderBar
-            packStart={
+            start={
                 <>
                     <GtkButton name="open-button" label="_Open" useUnderline onClicked={handleOpen} />
                     <GtkButton name="logo-button" accessibleLabel="GTK Logo" onClicked={handleLogo}>
@@ -117,7 +117,7 @@ const VideoPlayerTitlebar = () => {
                     </GtkButton>
                 </>
             }
-            packEnd={
+            end={
                 <GtkButton
                     name="fullscreen-button"
                     iconName={fullscreened ? "view-restore-symbolic" : "view-fullscreen-symbolic"}
@@ -137,10 +137,10 @@ const VideoPlayerDemo = () => {
             file={videoFile}
             autoplay
             graphicsOffload={Gtk.GraphicsOffloadEnabled.ENABLED}
-            addController={
+            controllers={
                 <GtkShortcutController
                     scope={Gtk.ShortcutScope.GLOBAL}
-                    addShortcut={
+                    shortcuts={
                         <GtkShortcut
                             trigger={Gtk.ShortcutTrigger.parseString("F11")}
                             action={Gtk.CallbackAction.new(() => {

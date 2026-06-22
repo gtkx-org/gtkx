@@ -16,10 +16,10 @@ const twoLabelFragment = (firstRef: RefObject<Gtk.Label | null>, secondRef: RefO
 
 const actionRowInListBox = (
     ref: RefObject<Adw.ActionRow | null>,
-    slots: { addPrefix?: ReactNode; addSuffix?: ReactNode },
+    slots: { prefix?: ReactNode; suffix?: ReactNode },
 ): ReactNode => (
     <GtkListBox>
-        <AdwActionRow ref={ref} title="Test Row" addPrefix={slots.addPrefix} addSuffix={slots.addSuffix} />
+        <AdwActionRow ref={ref} title="Test Row" prefix={slots.prefix} suffix={slots.suffix} />
     </GtkListBox>
 );
 
@@ -30,8 +30,8 @@ const renderActionRowWithPrefixAndSuffix = async (prefixLabel: string, suffixLab
 
     await render(
         actionRowInListBox(rowRef, {
-            addPrefix: <GtkLabel ref={prefixRef} label={prefixLabel} />,
-            addSuffix: <GtkLabel ref={suffixRef} label={suffixLabel} />,
+            prefix: <GtkLabel ref={prefixRef} label={prefixLabel} />,
+            suffix: <GtkLabel ref={suffixRef} label={suffixLabel} />,
         }),
     );
 
@@ -40,20 +40,20 @@ const renderActionRowWithPrefixAndSuffix = async (prefixLabel: string, suffixLab
 
 const headerBarWithPack = (
     ref: RefObject<Gtk.HeaderBar | null>,
-    slots: { packStart?: ReactNode; packEnd?: ReactNode },
-): ReactNode => <GtkHeaderBar ref={ref} packStart={slots.packStart} packEnd={slots.packEnd} />;
+    slots: { start?: ReactNode; end?: ReactNode },
+): ReactNode => <GtkHeaderBar ref={ref} start={slots.start} end={slots.end} />;
 
 const toolbarWithBar = (
     ref: RefObject<Adw.ToolbarView | null>,
-    bar: { addTopBar?: ReactNode; addBottomBar?: ReactNode },
+    bar: { topBar?: ReactNode; bottomBar?: ReactNode },
     content: ReactNode,
 ): ReactNode => (
-    <AdwToolbarView ref={ref} addTopBar={bar.addTopBar} addBottomBar={bar.addBottomBar}>
+    <AdwToolbarView ref={ref} topBar={bar.topBar} bottomBar={bar.bottomBar}>
         {content}
     </AdwToolbarView>
 );
 
-const renderToolbarWithSingleBar = async (bar: { addTopBar?: ReactNode; addBottomBar?: ReactNode }) => {
+const renderToolbarWithSingleBar = async (bar: { topBar?: ReactNode; bottomBar?: ReactNode }) => {
     const toolbarRef = createRef<Adw.ToolbarView>();
     const contentRef = createRef<Gtk.Label>();
 
@@ -79,7 +79,7 @@ const expectIndividualChildRemoval = async (
 };
 
 describe("render - ContainerProp (1)", () => {
-    describe("AdwActionRow (addPrefix/addSuffix) (1)", () => {
+    describe("AdwActionRow (prefix/suffix) (1)", () => {
         it("creates ActionRow widget", async () => {
             const ref = createRef<Adw.ActionRow>();
 
@@ -103,7 +103,7 @@ describe("render - ContainerProp (1)", () => {
 });
 
 describe("render - ContainerProp (2)", () => {
-    describe("AdwActionRow (addPrefix/addSuffix) (2)", () => {
+    describe("AdwActionRow (prefix/suffix) (2)", () => {
         it("removes prefix and suffix children", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const labelRefs = [createRef<Gtk.Label>(), createRef<Gtk.Label>(), createRef<Gtk.Label>()];
@@ -114,7 +114,7 @@ describe("render - ContainerProp (2)", () => {
                         <AdwActionRow
                             ref={rowRef}
                             title="Test Row"
-                            addSuffix={Array.from({ length: count }, (_, i) => (
+                            suffix={Array.from({ length: count }, (_, i) => (
                                 <GtkLabel key={`suffix-label-${i}`} ref={labelRefs[i]} label={`Label ${i}`} />
                             ))}
                         />
@@ -135,11 +135,11 @@ describe("render - ContainerProp (2)", () => {
             expect(labelRefs[2]?.current).toBeNull();
         });
 
-        it("adds child as prefix via addPrefix", async () => {
+        it("adds child as prefix via prefix", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const prefixRef = createRef<Gtk.Label>();
 
-            await render(actionRowInListBox(rowRef, { addPrefix: <GtkLabel ref={prefixRef} label="Prefix" /> }));
+            await render(actionRowInListBox(rowRef, { prefix: <GtkLabel ref={prefixRef} label="Prefix" /> }));
 
             expect(prefixRef.current).not.toBeNull();
         });
@@ -147,17 +147,17 @@ describe("render - ContainerProp (2)", () => {
 });
 
 describe("render - ContainerProp (3)", () => {
-    describe("AdwActionRow (addPrefix/addSuffix) (3)", () => {
-        it("adds child as suffix via addSuffix", async () => {
+    describe("AdwActionRow (prefix/suffix) (3)", () => {
+        it("adds child as suffix via suffix", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const suffixRef = createRef<Gtk.Label>();
 
-            await render(actionRowInListBox(rowRef, { addSuffix: <GtkLabel ref={suffixRef} label="Suffix" /> }));
+            await render(actionRowInListBox(rowRef, { suffix: <GtkLabel ref={suffixRef} label="Suffix" /> }));
 
             expect(suffixRef.current).not.toBeNull();
         });
 
-        it("combines addPrefix and addSuffix", async () => {
+        it("combines prefix and suffix", async () => {
             const { prefixRef, suffixRef } = await renderActionRowWithPrefixAndSuffix("Prefix", "Suffix");
 
             expect(prefixRef.current).not.toBeNull();
@@ -167,7 +167,7 @@ describe("render - ContainerProp (3)", () => {
 });
 
 describe("render - ContainerProp (4)", () => {
-    describe("AdwActionRow (addPrefix/addSuffix) (4)", () => {
+    describe("AdwActionRow (prefix/suffix) (4)", () => {
         it("removes prefix child", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const prefixRef = createRef<Gtk.Label>();
@@ -175,8 +175,8 @@ describe("render - ContainerProp (4)", () => {
 
             function App({ showPrefix }: { showPrefix: boolean }) {
                 return actionRowInListBox(rowRef, {
-                    addPrefix: showPrefix ? <GtkLabel ref={prefixRef} label="Prefix" /> : null,
-                    addSuffix: <GtkLabel ref={alwaysRef} label="Always" />,
+                    prefix: showPrefix ? <GtkLabel ref={prefixRef} label="Prefix" /> : null,
+                    suffix: <GtkLabel ref={alwaysRef} label="Always" />,
                 });
             }
 
@@ -194,24 +194,24 @@ describe("render - ContainerProp (4)", () => {
 });
 
 describe("render - ContainerProp (5)", () => {
-    describe("AdwActionRow (addPrefix/addSuffix) (5)", () => {
-        it("adds multiple children as prefix via addPrefix", async () => {
+    describe("AdwActionRow (prefix/suffix) (5)", () => {
+        it("adds multiple children as prefix via prefix", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const firstRef = createRef<Gtk.Label>();
             const secondRef = createRef<Gtk.Label>();
 
-            await render(actionRowInListBox(rowRef, { addPrefix: twoLabelFragment(firstRef, secondRef) }));
+            await render(actionRowInListBox(rowRef, { prefix: twoLabelFragment(firstRef, secondRef) }));
 
             expect(firstRef.current).not.toBeNull();
             expect(secondRef.current).not.toBeNull();
         });
 
-        it("adds multiple children as suffix via addSuffix", async () => {
+        it("adds multiple children as suffix via suffix", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const firstRef = createRef<Gtk.Label>();
             const secondRef = createRef<Gtk.Label>();
 
-            await render(actionRowInListBox(rowRef, { addSuffix: twoLabelFragment(firstRef, secondRef) }));
+            await render(actionRowInListBox(rowRef, { suffix: twoLabelFragment(firstRef, secondRef) }));
 
             expect(firstRef.current).not.toBeNull();
             expect(secondRef.current).not.toBeNull();
@@ -220,8 +220,8 @@ describe("render - ContainerProp (5)", () => {
 });
 
 describe("render - ContainerProp (6)", () => {
-    describe("AdwActionRow (addPrefix/addSuffix) (6)", () => {
-        it("removes individual children from addPrefix", async () => {
+    describe("AdwActionRow (prefix/suffix) (6)", () => {
+        it("removes individual children from prefix", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const firstRef = createRef<Gtk.Label>();
             const secondRef = createRef<Gtk.Label>();
@@ -232,7 +232,7 @@ describe("render - ContainerProp (6)", () => {
                         <AdwActionRow
                             ref={rowRef}
                             title="Test Row"
-                            addPrefix={
+                            prefix={
                                 <>
                                     <GtkLabel ref={firstRef} label="First" />
                                     {showSecond && <GtkLabel ref={secondRef} label="Second" />}
@@ -280,8 +280,8 @@ describe("render - ContainerProp (7)", () => {
             await render(
                 <AdwExpanderRow
                     title="Row"
-                    addPrefix={<GtkButton ref={prefixRef} label="Prefix" />}
-                    addSuffix={<GtkButton ref={suffixRef} label="Suffix" />}
+                    prefix={<GtkButton ref={prefixRef} label="Prefix" />}
+                    suffix={<GtkButton ref={suffixRef} label="Suffix" />}
                 />,
             );
 
@@ -296,7 +296,7 @@ describe("render - ContainerProp (8)", () => {
         it("adds nested rows to ExpanderRow", async () => {
             const rowRef = createRef<Adw.ActionRow>();
 
-            await render(<AdwExpanderRow title="Settings" addRow={<AdwActionRow ref={rowRef} title="Option 1" />} />);
+            await render(<AdwExpanderRow title="Settings" rows={<AdwActionRow ref={rowRef} title="Option 1" />} />);
 
             expect(rowRef.current).not.toBeNull();
             expect(rowRef.current?.getTitle()).toBe("Option 1");
@@ -309,7 +309,7 @@ describe("render - ContainerProp (8)", () => {
             await render(
                 <AdwExpanderRow
                     title="Settings"
-                    addRow={
+                    rows={
                         <>
                             <AdwActionRow ref={row1Ref} title="Option 1" />
                             <AdwActionRow ref={row2Ref} title="Option 2" />
@@ -334,7 +334,7 @@ describe("render - ContainerProp (9)", () => {
                     <AdwExpanderRow
                         ref={expanderRef}
                         title="Settings"
-                        addRow={
+                        rows={
                             <>
                                 <AdwActionRow title="Always" />
                                 {showRow && <AdwActionRow title="Conditional" />}
@@ -354,7 +354,7 @@ describe("render - ContainerProp (9)", () => {
         it("adds action widgets to ExpanderRow", async () => {
             const actionRef = createRef<Gtk.Button>();
 
-            await render(<AdwExpanderRow title="Group" addAction={<GtkButton ref={actionRef} label="Action" />} />);
+            await render(<AdwExpanderRow title="Group" actions={<GtkButton ref={actionRef} label="Action" />} />);
 
             expect(actionRef.current?.getLabel()).toBe("Action");
         });
@@ -370,7 +370,7 @@ describe("render - ContainerProp (10)", () => {
             await render(
                 <AdwExpanderRow
                     title="Group"
-                    addAction={
+                    actions={
                         <>
                             <GtkButton ref={action1Ref} label="Action 1" />
                             <GtkButton ref={action2Ref} label="Action 2" />
@@ -390,13 +390,13 @@ describe("render - ContainerProp (10)", () => {
                 <AdwExpanderRow
                     ref={ref}
                     title="Complex"
-                    addAction={
+                    actions={
                         <>
                             <GtkButton label="Action 1" />
                             <GtkButton label="Action 2" />
                         </>
                     }
-                    addRow={
+                    rows={
                         <>
                             <AdwActionRow title="Row 1" />
                             <AdwActionRow title="Row 2" />
@@ -412,22 +412,22 @@ describe("render - ContainerProp (10)", () => {
 });
 
 describe("render - ContainerProp (11)", () => {
-    describe("GtkHeaderBar (packStart/packEnd) (1)", () => {
-        it("packs child at start via packStart", async () => {
+    describe("GtkHeaderBar (start/end) (1)", () => {
+        it("packs child at start via start", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const startRef = createRef<Gtk.Label>();
 
-            await render(headerBarWithPack(headerBarRef, { packStart: <GtkLabel ref={startRef} label="Start" /> }));
+            await render(headerBarWithPack(headerBarRef, { start: <GtkLabel ref={startRef} label="Start" /> }));
 
             expect(startRef.current).not.toBeNull();
             expect(startRef.current?.getLabel()).toBe("Start");
         });
 
-        it("packs child at end via packEnd", async () => {
+        it("packs child at end via end", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const endRef = createRef<Gtk.Label>();
 
-            await render(headerBarWithPack(headerBarRef, { packEnd: <GtkLabel ref={endRef} label="End" /> }));
+            await render(headerBarWithPack(headerBarRef, { end: <GtkLabel ref={endRef} label="End" /> }));
 
             expect(endRef.current).not.toBeNull();
             expect(endRef.current?.getLabel()).toBe("End");
@@ -436,16 +436,16 @@ describe("render - ContainerProp (11)", () => {
 });
 
 describe("render - ContainerProp (12)", () => {
-    describe("GtkHeaderBar (packStart/packEnd) (2)", () => {
-        it("combines packStart and packEnd", async () => {
+    describe("GtkHeaderBar (start/end) (2)", () => {
+        it("combines start and end", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const startRef = createRef<Gtk.Label>();
             const endRef = createRef<Gtk.Label>();
 
             await render(
                 headerBarWithPack(headerBarRef, {
-                    packStart: <GtkLabel ref={startRef} label="Start" />,
-                    packEnd: <GtkLabel ref={endRef} label="End" />,
+                    start: <GtkLabel ref={startRef} label="Start" />,
+                    end: <GtkLabel ref={endRef} label="End" />,
                 }),
             );
 
@@ -463,7 +463,7 @@ describe("render - ContainerProp (12)", () => {
                     <GtkHeaderBar
                         ref={headerBarRef}
                         titleWidget={<GtkLabel ref={alwaysRef} label="Always" />}
-                        packStart={showStart ? <GtkLabel ref={startRef} label="Start" /> : null}
+                        start={showStart ? <GtkLabel ref={startRef} label="Start" /> : null}
                     />
                 );
             }
@@ -482,24 +482,24 @@ describe("render - ContainerProp (12)", () => {
 });
 
 describe("render - ContainerProp (13)", () => {
-    describe("GtkHeaderBar (packStart/packEnd) (3)", () => {
-        it("packs multiple children at start via packStart", async () => {
+    describe("GtkHeaderBar (start/end) (3)", () => {
+        it("packs multiple children at start via start", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const firstRef = createRef<Gtk.Label>();
             const secondRef = createRef<Gtk.Label>();
 
-            await render(headerBarWithPack(headerBarRef, { packStart: twoLabelFragment(firstRef, secondRef) }));
+            await render(headerBarWithPack(headerBarRef, { start: twoLabelFragment(firstRef, secondRef) }));
 
             expect(firstRef.current).not.toBeNull();
             expect(secondRef.current).not.toBeNull();
         });
 
-        it("packs multiple children at end via packEnd", async () => {
+        it("packs multiple children at end via end", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const firstRef = createRef<Gtk.Label>();
             const secondRef = createRef<Gtk.Label>();
 
-            await render(headerBarWithPack(headerBarRef, { packEnd: twoLabelFragment(firstRef, secondRef) }));
+            await render(headerBarWithPack(headerBarRef, { end: twoLabelFragment(firstRef, secondRef) }));
 
             expect(firstRef.current).not.toBeNull();
             expect(secondRef.current).not.toBeNull();
@@ -508,15 +508,15 @@ describe("render - ContainerProp (13)", () => {
 });
 
 describe("render - ContainerProp (14)", () => {
-    describe("GtkHeaderBar (packStart/packEnd) (4)", () => {
-        it("swaps keyed children in packStart without duplication", async () => {
+    describe("GtkHeaderBar (start/end) (4)", () => {
+        it("swaps keyed children in start without duplication", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
 
             function App({ showBack }: { showBack: boolean }) {
                 return (
                     <GtkHeaderBar
                         ref={headerBarRef}
-                        packStart={
+                        start={
                             <>
                                 {showBack ? (
                                     <GtkButton key="back" label="Back" />
@@ -546,8 +546,8 @@ describe("render - ContainerProp (14)", () => {
 });
 
 describe("render - ContainerProp (15)", () => {
-    describe("GtkHeaderBar (packStart/packEnd) (5)", () => {
-        it("reorders children in packStart via insertBefore", async () => {
+    describe("GtkHeaderBar (start/end) (5)", () => {
+        it("reorders children in start via insertBefore", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const firstRef = createRef<Gtk.Button>();
             const secondRef = createRef<Gtk.Button>();
@@ -556,7 +556,7 @@ describe("render - ContainerProp (15)", () => {
                 return (
                     <GtkHeaderBar
                         ref={headerBarRef}
-                        packStart={
+                        start={
                             order === "ab" ? (
                                 <>
                                     <GtkButton key="a" ref={firstRef} label="A" />
@@ -587,8 +587,8 @@ describe("render - ContainerProp (15)", () => {
 });
 
 describe("render - ContainerProp (16)", () => {
-    describe("GtkHeaderBar (packStart/packEnd) (6)", () => {
-        it("removes individual children from packStart", async () => {
+    describe("GtkHeaderBar (start/end) (6)", () => {
+        it("removes individual children from start", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const firstRef = createRef<Gtk.Label>();
             const secondRef = createRef<Gtk.Label>();
@@ -597,7 +597,7 @@ describe("render - ContainerProp (16)", () => {
                 (showSecond) => (
                     <GtkHeaderBar
                         ref={headerBarRef}
-                        packStart={
+                        start={
                             <>
                                 <GtkLabel ref={firstRef} label="First" />
                                 {showSecond && <GtkLabel ref={secondRef} label="Second" />}
@@ -614,15 +614,15 @@ describe("render - ContainerProp (16)", () => {
 
 describe("render - ContainerProp (17)", () => {
     describe("AdwToolbarView (topBar/bottomBar) (1)", () => {
-        it("adds child to top bar via addTopBar", async () => {
-            const { toolbarRef, contentRef } = await renderToolbarWithSingleBar({ addTopBar: <AdwHeaderBar /> });
+        it("adds child to top bar via topBar", async () => {
+            const { toolbarRef, contentRef } = await renderToolbarWithSingleBar({ topBar: <AdwHeaderBar /> });
 
             expect(contentRef.current).not.toBeNull();
             expect(toolbarRef.current?.getContent()).not.toBeNull();
         });
 
-        it("adds child to bottom bar via addBottomBar", async () => {
-            const { toolbarRef, contentRef } = await renderToolbarWithSingleBar({ addBottomBar: <AdwHeaderBar /> });
+        it("adds child to bottom bar via bottomBar", async () => {
+            const { toolbarRef, contentRef } = await renderToolbarWithSingleBar({ bottomBar: <AdwHeaderBar /> });
 
             expect(contentRef.current).not.toBeNull();
             expect(toolbarRef.current?.getContent()).not.toBeNull();
@@ -640,7 +640,7 @@ describe("render - ContainerProp (18)", () => {
             await render(
                 <AdwToolbarView
                     ref={toolbarRef}
-                    addTopBar={
+                    topBar={
                         <>
                             <AdwHeaderBar />
                             <GtkLabel ref={secondTopRef} label="Second Top Bar" />
@@ -661,7 +661,7 @@ describe("render - ContainerProp (18)", () => {
 
             function App({ showTop }: { showTop: boolean }) {
                 return (
-                    <AdwToolbarView ref={toolbarRef} addTopBar={showTop ? <AdwHeaderBar /> : null}>
+                    <AdwToolbarView ref={toolbarRef} topBar={showTop ? <AdwHeaderBar /> : null}>
                         <GtkLabel ref={contentRef} label="Content" />
                     </AdwToolbarView>
                 );
@@ -684,7 +684,7 @@ describe("render - ContainerProp (19)", () => {
             await expect(
                 render(
                     <GtkListBox>
-                        <WrapperNode kind="container-slot" method="thisMethodDoesNotExist">
+                        <WrapperNode kind="container-slot" verb={{ attach: "thisMethodDoesNotExist" }}>
                             <GtkLabel label="orphan" />
                         </WrapperNode>
                     </GtkListBox>,

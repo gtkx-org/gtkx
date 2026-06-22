@@ -142,7 +142,7 @@ const MarkupTitlebar = () => {
     const { showSource, handleSourceToggle } = useMarkupContext();
     return (
         <GtkHeaderBar
-            packStart={
+            start={
                 <GtkCheckButton
                     label="Source"
                     active={showSource}

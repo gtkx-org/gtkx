@@ -239,7 +239,7 @@ const ListViewSettings2Titlebar = () => {
     const { searchMode, setSearchMode, setSearchText } = useSettings2Context();
     return (
         <GtkHeaderBar
-            packEnd={
+            end={
                 <GtkToggleButton
                     name="search-toggle"
                     iconName="system-search-symbolic"

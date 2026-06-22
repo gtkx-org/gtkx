@@ -163,7 +163,7 @@ function ColorSwatch({ color }: { color: string }) {
         <GtkBox
             name={`swatch-${color}`}
             cssClasses={[swatchStyle, dynamicStyle]}
-            addController={<GtkDragSource onPrepare={createColorProvider} actions={Gdk.DragAction.COPY} />}
+            controllers={<GtkDragSource onPrepare={createColorProvider} actions={Gdk.DragAction.COPY} />}
         />
     );
 }
@@ -177,7 +177,7 @@ function CssPatternSwatch({ id, cssClass }: { id: string; cssClass: string }) {
         <GtkBox
             name={`pattern-${id}`}
             cssClasses={[swatchStyle, cssClass]}
-            addController={<GtkDragSource onPrepare={createClassProvider} actions={Gdk.DragAction.COPY} />}
+            controllers={<GtkDragSource onPrepare={createClassProvider} actions={Gdk.DragAction.COPY} />}
         />
     );
 }
@@ -496,7 +496,7 @@ const DndItem = ({ item, dnd }: { item: CanvasItem; dnd: DndState }) => {
                 name={`item${item.id}`}
                 label={item.label}
                 cssClasses={cx(itemStyle, ...getItemStyleClass(item.style))}
-                addController={
+                controllers={
                     <>
                         <GtkGestureClick
                             onReleased={() => {
@@ -627,7 +627,7 @@ const DndTrashZone = ({ boxRef, trashHovering, setTrashHovering, handleTrashDrop
                     css`padding: 12px;`,
                     trashHovering ? css`background-color: alpha(@error_color, 0.2); border-radius: 12px;` : "",
                 ]}
-                addController={
+                controllers={
                     <GtkDropTarget
                         types={[GObject.TYPE_STRING]}
                         actions={Gdk.DragAction.MOVE}
@@ -687,7 +687,7 @@ const DndDemo = () => {
                 hexpand
                 vexpand
                 cssClasses={[css`min-height: 400px;`]}
-                addController={
+                controllers={
                     <>
                         <GtkDropTarget
                             types={[GObject.TYPE_STRING]}

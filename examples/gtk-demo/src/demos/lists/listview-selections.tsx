@@ -179,7 +179,7 @@ const renderSuggestionEntry = ({
         hexpand
         placeholderText={placeholder}
         onChanged={onChanged}
-        addController={<GtkEventControllerKey onKeyPressed={onKeyPressed} />}
+        controllers={<GtkEventControllerKey onKeyPressed={onKeyPressed} />}
     >
         <GtkPopover
             ref={popoverRef}

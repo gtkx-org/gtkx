@@ -47,7 +47,7 @@ const renderColumns = async (
     actionGroups?: ReactNode,
 ): Promise<void> => {
     await render(
-        <ScrollWrapper insertActionGroup={actionGroups}>
+        <ScrollWrapper actionGroups={actionGroups}>
             <GtkColumnView ref={columnViewRef}>{columns}</GtkColumnView>
         </ScrollWrapper>,
     );
@@ -508,7 +508,7 @@ function ShowcaseSortableApp({ columnViewRef }: { columnViewRef: RefObject<Gtk.C
     );
 
     return (
-        <ScrollWrapper insertActionGroup={<ShowcaseActionGroups sortActions={sortActions} />}>
+        <ScrollWrapper actionGroups={<ShowcaseActionGroups sortActions={sortActions} />}>
             <GtkColumnView
                 ref={columnViewRef}
                 estimatedRowHeight={48}

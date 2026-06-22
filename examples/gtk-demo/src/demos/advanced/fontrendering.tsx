@@ -879,10 +879,10 @@ const FontRenderingDemo = () => {
         <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
             vexpand
-            addController={
+            controllers={
                 <GtkShortcutController
                     scope={Gtk.ShortcutScope.MANAGED}
-                    addShortcut={
+                    shortcuts={
                         <>
                             <GtkShortcut
                                 trigger={Gtk.ShortcutTrigger.parseString("<Control>plus")}

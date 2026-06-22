@@ -5,7 +5,7 @@ import sourceCode from "./headerbar.tsx?raw";
 const HeaderBarTitlebar = () => (
     <GtkHeaderBar
         name="headerbar-titlebar"
-        packStart={
+        start={
             <>
                 <GtkBox name="nav-box" cssClasses={["linked"]}>
                     <GtkButton name="back-button" iconName="go-previous-symbolic" tooltipText="Back" />
@@ -14,7 +14,7 @@ const HeaderBarTitlebar = () => (
                 <GtkSwitch accessibleLabel="Change something" />
             </>
         }
-        packEnd={<GtkButton name="check-out-button" iconName="mail-send-receive-symbolic" tooltipText="Check out" />}
+        end={<GtkButton name="check-out-button" iconName="mail-send-receive-symbolic" tooltipText="Check out" />}
     />
 );
 

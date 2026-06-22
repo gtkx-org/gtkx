@@ -204,10 +204,10 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
                     accessibleInvalid={showError ? Gtk.AccessibleInvalidState.TRUE : Gtk.AccessibleInvalidState.FALSE}
                     accessibleErrorMessage={showError && errorLabel ? [errorLabel] : undefined}
                     onStateSet={onStateSet}
-                    addController={
+                    controllers={
                         <GtkShortcutController
                             scope={Gtk.ShortcutScope.MANAGED}
-                            addShortcut={
+                            shortcuts={
                                 <GtkShortcut
                                     trigger={Gtk.ShortcutTrigger.parseString("<Control>m")}
                                     action={Gtk.CallbackAction.new(() => {
@@ -247,7 +247,7 @@ const ErrorstatesDemo = ({ onClose, window }: DemoProps) => {
             followsContentSize
             onClosed={() => onClose?.()}
         >
-            <AdwToolbarView addTopBar={<AdwHeaderBar />}>
+            <AdwToolbarView topBar={<AdwHeaderBar />}>
                 <GtkGrid
                     rowSpacing={10}
                     columnSpacing={10}

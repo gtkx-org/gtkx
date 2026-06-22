@@ -1,16 +1,17 @@
 import {
     type ArrayPropRow,
+    type ContainerPropRow,
     type ElementMapRule,
     type ObjectPropRow,
     type PerElementPropRows,
     type UserTableRows,
     type VirtualPropRow,
     validateArrayPropRows,
+    validateContainerPropRows,
     validateElementMap,
     validateObjectPropRows,
     validateVirtualPropRows,
 } from "./table-schema.js";
-import { CAMEL_CASE_NAME_PATTERN, PASCAL_CASE_NAME_PATTERN } from "./validators.js";
 
 export const LIBRARIES_WILDCARD = "*";
 
@@ -91,34 +92,6 @@ const validateApplicationId = (applicationId: GtkxConfig["applicationId"]): void
     }
 };
 
-const validateSlotMap = (slotMap: Record<string, string[]> | undefined, optionName: string): void => {
-    if (slotMap === undefined) return;
-    if (typeof slotMap !== "object" || Array.isArray(slotMap) || slotMap === null) {
-        throw new Error(
-            `gtkx.config.ts: \`${optionName}\` must be an object mapping JSX names to arrays of camelCase names`,
-        );
-    }
-    for (const [jsxName, names] of Object.entries(slotMap)) {
-        if (!PASCAL_CASE_NAME_PATTERN.test(jsxName)) {
-            throw new Error(
-                `gtkx.config.ts: invalid \`${optionName}\` key "${jsxName}" — must be a PascalCase JSX element name (e.g. "MyAppFooBar")`,
-            );
-        }
-        if (!Array.isArray(names) || names.length === 0) {
-            throw new Error(
-                `gtkx.config.ts: \`${optionName}.${jsxName}\` must be a non-empty array of camelCase names`,
-            );
-        }
-        for (const name of names) {
-            if (typeof name !== "string" || !CAMEL_CASE_NAME_PATTERN.test(name)) {
-                throw new Error(
-                    `gtkx.config.ts: invalid \`${optionName}.${jsxName}\` entry "${String(name)}" — must be a camelCase name (e.g. "content")`,
-                );
-            }
-        }
-    }
-};
-
 const REACT_COMPILER_COMPILATION_MODES: ReactCompilerCompilationMode[] = ["infer", "syntax", "annotation", "all"];
 
 const REACT_COMPILER_PANIC_THRESHOLDS: ReactCompilerPanicThreshold[] = ["none", "critical_errors", "all_errors"];
@@ -154,7 +127,7 @@ export const validateGtkxConfig = (config: GtkxConfig): void => {
     validateLibraries(config.libraries);
     validateGirPath(config.girPath);
     validateApplicationId(config.applicationId);
-    validateSlotMap(config.containerProps, "containerProps");
+    validateContainerPropRows(config.containerProps);
     validateArrayPropRows(config.arrayProps);
     validateObjectPropRows(config.objectProps);
     validateVirtualPropRows(config.virtualProps);
@@ -281,7 +254,7 @@ export type ResolvedGtkxConfig = {
     libraries: typeof LIBRARIES_WILDCARD | string[];
     girPath: string[];
     applicationId: string | undefined;
-    containerProps: Record<string, string[]>;
+    containerProps: PerElementPropRows<ContainerPropRow>;
     arrayProps: PerElementPropRows<ArrayPropRow>;
     objectProps: PerElementPropRows<ObjectPropRow>;
     virtualProps: PerElementPropRows<VirtualPropRow>;

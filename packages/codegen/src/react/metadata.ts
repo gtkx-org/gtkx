@@ -1,6 +1,7 @@
 import type {
     AddMethodRule,
     ArrayPropRow,
+    ContainerPropRow,
     ElementMapRule,
     ObjectPropRow,
     PageMetaSetter,
@@ -27,7 +28,7 @@ export type RuntimeTables = {
     defaultBlockableTypes: string[];
     metaObjectAddMethods: Record<string, AddMethodRule[]>;
     pageMetaSetters: PageMetaSetter[];
-    containerProps: Record<string, string[]>;
+    containerProps: PerElementPropRows<ContainerPropRow>;
 };
 
 const configType = (name: string): string => `import("@gtkx/config").${name}`;
@@ -53,7 +54,7 @@ const RUNTIME_TABLE_SPECS: Record<keyof RuntimeTables, RuntimeTableSpec> = {
     defaultBlockableTypes: { name: "DEFAULT_BLOCKABLE_TYPES", annotation: "string[]" },
     metaObjectAddMethods: { name: "META_OBJECT_ADD_METHODS", annotation: recordOfArray("AddMethodRule") },
     pageMetaSetters: { name: "PAGE_META_SETTERS", annotation: arrayOf("PageMetaSetter") },
-    containerProps: { name: "CONTAINER_PROPS", annotation: "Record<string, string[]>" },
+    containerProps: { name: "CONTAINER_PROPS", annotation: nestedRecordOf("ContainerPropRow") },
 };
 
 const RUNTIME_TABLE_KEYS = Object.keys(RUNTIME_TABLE_SPECS) as Array<keyof RuntimeTables>;

@@ -919,7 +919,7 @@ const FeatureGroupBox = ({
                       active={checkStates.get(tag) === "active"}
                       inconsistent={checkStates.get(tag) === "inconsistent"}
                       onToggled={() => onToggleCheck(tag)}
-                      addController={<GtkGestureClick button={3} onPressed={() => onResetToInconsistent(tag)} />}
+                      controllers={<GtkGestureClick button={3} onPressed={() => onResetToInconsistent(tag)} />}
                   />
               ))}
     </GtkBox>
@@ -1148,7 +1148,7 @@ const FontFeaturesTitlebar = () => {
     return (
         <GtkHeaderBar
             name="font-features-header"
-            packStart={
+            start={
                 <GtkButton
                     name="reset"
                     iconName="view-refresh-symbolic"
@@ -1179,10 +1179,10 @@ const FontFeaturesDemo = () => {
     return (
         <GtkBox
             ref={state.containerRef}
-            addController={
+            controllers={
                 <GtkShortcutController
                     scope={Gtk.ShortcutScope.MANAGED}
-                    addShortcut={
+                    shortcuts={
                         <GtkShortcut
                             trigger={Gtk.ShortcutTrigger.parseString("Escape")}
                             action={Gtk.CallbackAction.new(() => {

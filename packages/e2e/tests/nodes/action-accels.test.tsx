@@ -29,7 +29,7 @@ const AccelsApp = ({
 }): ReactNode => (
     <GtkApplication ref={appRef} applicationId={appId} flags={APP_FLAGS} actionAccels={actionAccels}>
         {appActions}
-        <GtkApplicationWindow defaultWidth={800} defaultHeight={600} addAction={windowActions} />
+        <GtkApplicationWindow defaultWidth={800} defaultHeight={600} actions={windowActions} />
     </GtkApplication>
 );
 

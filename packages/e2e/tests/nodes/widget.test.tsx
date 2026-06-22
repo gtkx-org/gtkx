@@ -562,7 +562,7 @@ describe("widget - signals (6)", () => {
                 const handleEnter = vi.fn();
 
                 await render(
-                    <GtkButton label="Hover Me" addController={<GtkEventControllerMotion onEnter={handleEnter} />} />,
+                    <GtkButton label="Hover Me" controllers={<GtkEventControllerMotion onEnter={handleEnter} />} />,
                 );
 
                 const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Hover Me" });
@@ -575,7 +575,7 @@ describe("widget - signals (6)", () => {
                 const handleLeave = vi.fn();
 
                 await render(
-                    <GtkButton label="Hover Me" addController={<GtkEventControllerMotion onLeave={handleLeave} />} />,
+                    <GtkButton label="Hover Me" controllers={<GtkEventControllerMotion onLeave={handleLeave} />} />,
                 );
 
                 const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Hover Me" });
@@ -598,7 +598,7 @@ describe("widget - signals (7)", () => {
                     return (
                         <GtkButton
                             label="Hover"
-                            addController={hasController && <GtkEventControllerMotion onEnter={handleEnter} />}
+                            controllers={hasController && <GtkEventControllerMotion onEnter={handleEnter} />}
                         />
                     );
                 }
@@ -626,7 +626,7 @@ describe("widget - signals (8)", () => {
                 const handlePressed = vi.fn();
 
                 await render(
-                    <GtkButton label="Press Me" addController={<GtkGestureClick onPressed={handlePressed} />} />,
+                    <GtkButton label="Press Me" controllers={<GtkGestureClick onPressed={handlePressed} />} />,
                 );
 
                 const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Press Me" });
@@ -639,7 +639,7 @@ describe("widget - signals (8)", () => {
                 const handleReleased = vi.fn();
 
                 await render(
-                    <GtkButton label="Release Me" addController={<GtkGestureClick onReleased={handleReleased} />} />,
+                    <GtkButton label="Release Me" controllers={<GtkGestureClick onReleased={handleReleased} />} />,
                 );
 
                 const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Release Me" });
@@ -651,7 +651,7 @@ describe("widget - signals (8)", () => {
             it("passes coordinates to press handler", async () => {
                 const handlePressed = vi.fn();
 
-                await render(<GtkButton label="Press" addController={<GtkGestureClick onPressed={handlePressed} />} />);
+                await render(<GtkButton label="Press" controllers={<GtkGestureClick onPressed={handlePressed} />} />);
 
                 const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Press" });
                 await userEvent.pointer(button, "down");
@@ -677,7 +677,7 @@ describe("widget - signals (9)", () => {
                         label="Focus me"
                         canFocus
                         focusable
-                        addController={<GtkEventControllerKey onKeyPressed={handleKeyPressed} />}
+                        controllers={<GtkEventControllerKey onKeyPressed={handleKeyPressed} />}
                     />,
                 );
 
@@ -695,7 +695,7 @@ describe("widget - signals (9)", () => {
                         label="Focus me"
                         canFocus
                         focusable
-                        addController={<GtkEventControllerKey onKeyReleased={handleKeyReleased} />}
+                        controllers={<GtkEventControllerKey onKeyReleased={handleKeyReleased} />}
                     />,
                 );
 
@@ -720,7 +720,7 @@ describe("widget - signals (10)", () => {
                             label="Focus me"
                             canFocus
                             focusable
-                            addController={hasController && <GtkEventControllerKey onKeyPressed={handleKeyPressed} />}
+                            controllers={hasController && <GtkEventControllerKey onKeyPressed={handleKeyPressed} />}
                         />
                     );
                 }

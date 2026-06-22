@@ -168,7 +168,7 @@ const ListViewMinesweeperTitlebar = () => {
         <GtkHeaderBar
             name="minesweeper-header"
             titleWidget={gameState === "won" ? <GtkImage iconName="trophy-gold" /> : null}
-            packStart={<GtkButton label="New Game" onClicked={resetGame} />}
+            start={<GtkButton label="New Game" onClicked={resetGame} />}
         />
     );
 };

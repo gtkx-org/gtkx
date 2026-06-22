@@ -400,7 +400,7 @@ const SourcePageText = ({
             valign={Gtk.Align.CENTER}
             accessibleLabel="Text Drag Source"
             onChanged={(entry) => state.setSourceText(entry.getText())}
-            addController={<GtkDragSource onPrepare={createTextDragProvider} actions={Gdk.DragAction.COPY} />}
+            controllers={<GtkDragSource onPrepare={createTextDragProvider} actions={Gdk.DragAction.COPY} />}
         />
     </GtkStackPage>
 );
@@ -422,7 +422,7 @@ const SourcePageColor = ({
             onNotifyRgba={(rgba) =>
                 rgba && state.setSourceColor(buildRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha))
             }
-            addController={<GtkDragSource onPrepare={createColorDragProvider} actions={Gdk.DragAction.COPY} />}
+            controllers={<GtkDragSource onPrepare={createColorDragProvider} actions={Gdk.DragAction.COPY} />}
         />
     </GtkStackPage>
 );
@@ -484,9 +484,7 @@ const ImageToggle = ({ name, buttonLabel, imageLabel, index, state, paintable, c
         onToggled={(btn) => {
             if (btn.getActive()) state.setSelectedImage(index);
         }}
-        addController={
-            createProvider ? <GtkDragSource onPrepare={createProvider} actions={Gdk.DragAction.COPY} /> : null
-        }
+        controllers={createProvider ? <GtkDragSource onPrepare={createProvider} actions={Gdk.DragAction.COPY} /> : null}
     >
         <GtkImage accessibleLabel={imageLabel} paintable={paintable} cssClasses={["large-icons"]} />
     </GtkToggleButton>
@@ -506,7 +504,7 @@ const SourcePageFile = ({ id, label, state, onClick, createFileDragProvider }: S
             valign={Gtk.Align.CENTER}
             accessibleLabel={label}
             onClicked={() => void onClick()}
-            addController={
+            controllers={
                 <GtkDragSource
                     onPrepare={createFileDragProvider}
                     actions={Gdk.DragAction.COPY}
@@ -581,7 +579,7 @@ const ClipboardPasteSection = ({ pastedContent, canPaste, onPaste, onDrop }: Cli
     <GtkBox
         name="paste-box"
         spacing={12}
-        addController={
+        controllers={
             <GtkDropTarget
                 types={[gdkTextureType, gdkPaintableType, gfileType, gdkRgbaType, GObject.TYPE_STRING]}
                 actions={Gdk.DragAction.COPY}

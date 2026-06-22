@@ -176,7 +176,7 @@ const ScribbleArea = ({ accessibleLabelledBy }: { accessibleLabelledBy?: Gtk.Wid
             onResize={handleResize}
             accessibleRole={Gtk.AccessibleRole.IMG}
             accessibleLabelledBy={accessibleLabelledBy}
-            addController={
+            controllers={
                 <GtkGestureDrag
                     button={0}
                     onDragBegin={handleDragBegin}

@@ -37,7 +37,7 @@ const expectEditableText = (entry: Gtk.Widget, expected: string): void => {
 };
 
 const renderGesturedLabel = async (name: string, label: string, gesture: ReactNode): Promise<Gtk.Widget> => {
-    await render(<GtkLabel name={name} label={label} addController={gesture} />);
+    await render(<GtkLabel name={name} label={label} controllers={gesture} />);
     return screen.findByName(name);
 };
 
@@ -543,7 +543,7 @@ const renderDropZone = async (
         <GtkLabel
             name={name}
             label={label}
-            addController={<GtkDropTarget types={[gtype]} actions={Gdk.DragAction.COPY} onDrop={onDrop} />}
+            controllers={<GtkDropTarget types={[gtype]} actions={Gdk.DragAction.COPY} onDrop={onDrop} />}
         />,
     );
     return screen.findByName(name);
@@ -610,12 +610,12 @@ describe("userEvent.dragAndDrop", () => {
                 <GtkLabel
                     name="drag-source"
                     label="Drag me"
-                    addController={<GtkDragSource actions={Gdk.DragAction.COPY} />}
+                    controllers={<GtkDragSource actions={Gdk.DragAction.COPY} />}
                 />
                 <GtkLabel
                     name="drop-target"
                     label="Drop here"
-                    addController={
+                    controllers={
                         <GtkDropTarget
                             types={[GObject.TYPE_STRING]}
                             actions={Gdk.DragAction.COPY}
@@ -641,7 +641,7 @@ describe("userEvent.dragAndDrop", () => {
                 <GtkLabel
                     name="drop-target"
                     label="Drop here"
-                    addController={
+                    controllers={
                         <GtkDropTarget
                             types={[GObject.TYPE_STRING]}
                             actions={Gdk.DragAction.COPY}
@@ -662,10 +662,10 @@ const renderShortcutHost = async (trigger: Gtk.ShortcutTrigger, onActivate: () =
     await render(
         <GtkBox
             name="host"
-            addController={
+            controllers={
                 <GtkShortcutController
                     scope={Gtk.ShortcutScope.GLOBAL}
-                    addShortcut={<GtkShortcut trigger={trigger} action={Gtk.CallbackAction.new(onActivate)} />}
+                    shortcuts={<GtkShortcut trigger={trigger} action={Gtk.CallbackAction.new(onActivate)} />}
                 />
             }
         >

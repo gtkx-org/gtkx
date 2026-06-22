@@ -29,8 +29,8 @@ export const Sidebar = ({
                 <AdwActionRow
                     key={cat.id}
                     title={cat.title}
-                    addPrefix={<GtkImage iconName={cat.icon} />}
-                    addSuffix={<GtkLabel label={String(noteCounts[cat.id] ?? 0)} cssClasses={["dim-label"]} />}
+                    prefix={<GtkImage iconName={cat.icon} />}
+                    suffix={<GtkLabel label={String(noteCounts[cat.id] ?? 0)} cssClasses={["dim-label"]} />}
                 />
             ))}
         </GtkListBox>

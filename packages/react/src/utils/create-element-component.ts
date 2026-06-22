@@ -1,39 +1,41 @@
 /// <reference types="@gtkx/config/env" />
 
 import { CONTAINER_PROPS } from "virtual:gtkx-config";
-import { CONTAINER_PROP_KIND, SLOT_KIND } from "@gtkx/config";
+import { CONTAINER_PROP_KIND, type ContainerPropRow, SLOT_KIND } from "@gtkx/config";
 import { createElement, isValidElement, type ReactNode } from "react";
 import { WRAPPER_NODE_ELEMENT } from "../reconciler/instance.js";
 import { foldInheritedTable } from "./gtype.js";
 import { resolveBackingClass } from "./gtype-predicates.js";
 
-const EMPTY_CONTAINER_PROPS: Set<string> = new Set();
+type ContainerPropMap = Map<string, ContainerPropRow>;
 
-const containerPropCache = new Map<string, Set<string>>();
+const EMPTY_CONTAINER_PROPS: ContainerPropMap = new Map();
 
-const resolveContainerProps = (elementName: string): Set<string> => {
+const containerPropCache = new Map<string, ContainerPropMap>();
+
+const resolveContainerProps = (elementName: string): ContainerPropMap => {
     const cached = containerPropCache.get(elementName);
     if (cached) return cached;
     const cls = resolveBackingClass(elementName);
-    const set = cls
+    const map = cls
         ? foldInheritedTable(
               cls.prototype.__gtype__,
               CONTAINER_PROPS,
-              (collected: Set<string>, names) => {
-                  for (const name of names) collected.add(name);
+              (collected: ContainerPropMap, rows) => {
+                  for (const [propName, row] of Object.entries(rows)) collected.set(propName, row);
                   return collected;
               },
-              new Set<string>(),
+              new Map<string, ContainerPropRow>(),
           )
         : EMPTY_CONTAINER_PROPS;
-    containerPropCache.set(elementName, set);
-    return set;
+    containerPropCache.set(elementName, map);
+    return map;
 };
 
-const needsSplit = (props: object, containerSet: Set<string>): boolean => {
+const needsSplit = (props: object, containerMap: ContainerPropMap): boolean => {
     for (const [name, value] of Object.entries(props)) {
         if (name === "children") continue;
-        if (containerSet.has(name)) return true;
+        if (containerMap.has(name)) return true;
         if (isValidElement(value)) return true;
     }
     return false;
@@ -45,7 +47,7 @@ type SplitProps = {
     children: ReactNode;
 };
 
-const splitProps = (props: object, containerSet: Set<string>): SplitProps => {
+const splitProps = (props: object, containerMap: ContainerPropMap): SplitProps => {
     const rest: Record<string, unknown> = {};
     const wrappers: ReactNode[] = [];
     let children: ReactNode = null;
@@ -54,12 +56,13 @@ const splitProps = (props: object, containerSet: Set<string>): SplitProps => {
             children = value as ReactNode;
             continue;
         }
-        if (containerSet.has(name)) {
+        const verb = containerMap.get(name);
+        if (verb) {
             if (value != null) {
                 wrappers.push(
                     createElement(
                         WRAPPER_NODE_ELEMENT,
-                        { kind: CONTAINER_PROP_KIND, method: name, key: `container-slot:${name}` },
+                        { kind: CONTAINER_PROP_KIND, propName: name, verb, key: `container-slot:${name}` },
                         value as ReactNode,
                     ),
                 );
@@ -90,10 +93,10 @@ const splitProps = (props: object, containerSet: Set<string>): SplitProps => {
  * @returns A function component rendering `elementName` with container/slot props extracted.
  */
 export const createElementComponent = <P extends object>(elementName: string): ((props: P) => ReactNode) => {
-    const containerSet = resolveContainerProps(elementName);
+    const containerMap = resolveContainerProps(elementName);
     return (props: P): ReactNode => {
-        if (!needsSplit(props, containerSet)) return createElement(elementName, props);
-        const { rest, wrappers, children } = splitProps(props, containerSet);
+        if (!needsSplit(props, containerMap)) return createElement(elementName, props);
+        const { rest, wrappers, children } = splitProps(props, containerMap);
         return createElement(elementName, rest, children, ...wrappers);
     };
 };

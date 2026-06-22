@@ -105,44 +105,78 @@ describe("validateGtkxConfig (applicationId)", () => {
     });
 });
 
-describe("validateGtkxConfig slot-map validation", () => {
+describe("validateGtkxConfig containerProps validation", () => {
     it("accepts a containerProps map", () => {
-        const config: GtkxConfig = { libraries: ["Gtk-4.0"], containerProps: { MyAppHeaderBar: ["packStart"] } };
+        const config: GtkxConfig = {
+            libraries: ["Gtk-4.0"],
+            containerProps: { MyAppHeaderBar: { start: { attach: "packStart" } } },
+        };
         expect(() => validateGtkxConfig(config)).not.toThrow();
     });
 
-    describe.each(["containerProps"] as const)("%s", (option) => {
-        it("rejects a value that is not an object", () => {
-            expect(() => validateUnknown({ [option]: "nope" })).toThrow(new RegExp(`\`${option}\` must be an object`));
-        });
+    it("accepts a row with a detach verb and guard", () => {
+        const config: GtkxConfig = {
+            containerProps: {
+                MyAppWidget: {
+                    controllers: {
+                        attach: "addController",
+                        attachArgs: "child",
+                        detach: "removeController",
+                        detachArgs: "child",
+                        detachGuard: { side: "child", getter: "getWidget" },
+                    },
+                },
+            },
+        };
+        expect(() => validateGtkxConfig(config)).not.toThrow();
+    });
 
-        it("rejects an array value", () => {
-            expect(() => validateUnknown({ [option]: [] })).toThrow(new RegExp(`\`${option}\` must be an object`));
-        });
+    it("rejects a value that is not an object", () => {
+        expect(() => validateUnknown({ containerProps: "nope" })).toThrow(
+            /invalid `containerProps` — must be an object/,
+        );
+    });
 
-        it("rejects a key that is not PascalCase", () => {
-            expect(() => validateUnknown({ [option]: { "kebab-name": ["content"] } })).toThrow(
-                new RegExp(`invalid \`${option}\` key "kebab-name"`),
-            );
-        });
+    it("rejects an array value", () => {
+        expect(() => validateUnknown({ containerProps: [] })).toThrow(/invalid `containerProps` — must be an object/);
+    });
 
-        it("rejects an entry with an empty array", () => {
-            expect(() => validateUnknown({ [option]: { MyAppFooBar: [] } })).toThrow(
-                new RegExp(`\`${option}\\.MyAppFooBar\` must be a non-empty array`),
-            );
-        });
+    it("rejects a key that is not PascalCase", () => {
+        expect(() => validateUnknown({ containerProps: { "kebab-name": { start: { attach: "packStart" } } } })).toThrow(
+            /invalid `containerProps key "kebab-name"`/,
+        );
+    });
 
-        it("rejects an entry that is not an array", () => {
-            expect(() => validateUnknown({ [option]: { MyAppFooBar: "content" } })).toThrow(
-                new RegExp(`\`${option}\\.MyAppFooBar\` must be a non-empty array`),
-            );
-        });
+    it("rejects an entry with no props", () => {
+        expect(() => validateUnknown({ containerProps: { MyAppHeaderBar: {} } })).toThrow(
+            /invalid `containerProps\.MyAppHeaderBar` — must declare at least one prop/,
+        );
+    });
 
-        it("rejects a name that is not camelCase", () => {
-            expect(() => validateUnknown({ [option]: { MyAppFooBar: ["Content"] } })).toThrow(
-                new RegExp(`invalid \`${option}\\.MyAppFooBar\` entry "Content"`),
-            );
-        });
+    it("rejects a prop name that is not camelCase", () => {
+        expect(() =>
+            validateUnknown({ containerProps: { MyAppHeaderBar: { Start: { attach: "packStart" } } } }),
+        ).toThrow(/invalid `containerProps\.MyAppHeaderBar prop "Start"`/);
+    });
+
+    it("rejects a row without an attach method", () => {
+        expect(() => validateUnknown({ containerProps: { MyAppHeaderBar: { start: {} } } })).toThrow(
+            /invalid `containerProps\.MyAppHeaderBar\.start\.attach`/,
+        );
+    });
+
+    it("rejects an attach method that is not camelCase", () => {
+        expect(() =>
+            validateUnknown({ containerProps: { MyAppHeaderBar: { start: { attach: "PackStart" } } } }),
+        ).toThrow(/invalid `containerProps\.MyAppHeaderBar\.start\.attach`/);
+    });
+
+    it("rejects an unknown detachArgs value", () => {
+        expect(() =>
+            validateUnknown({
+                containerProps: { MyAppHeaderBar: { start: { attach: "packStart", detachArgs: "nope" } } },
+            }),
+        ).toThrow(/invalid `containerProps\.MyAppHeaderBar\.start\.detachArgs` — must be one of/);
     });
 });
 
@@ -520,7 +554,7 @@ describe("resolveGtkxConfig", () => {
             libraries: ["Gtk-4.0", "Adw-1"],
             girPath: ["/opt/gir"],
             applicationId: "org.gtk.Demo4",
-            containerProps: { MyAppHeaderBar: ["packStart"] },
+            containerProps: { MyAppHeaderBar: { start: { attach: "packStart" } } },
             arrayProps: { MyAppChart: { series: { itemType: "ChartSeries", clear: "clearSeries" } } },
             objectProps: {
                 MyAppCanvas: {

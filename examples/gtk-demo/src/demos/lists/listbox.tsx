@@ -191,7 +191,7 @@ const MessageActions = ({
                             ]}
                         />
                     }
-                    insertActionGroup={
+                    actionGroups={
                         <GSimpleActionGroup prefix="msg">
                             <GSimpleAction name="email" onActivate={() => {}} />
                             <GSimpleAction name="embed" onActivate={() => {}} />

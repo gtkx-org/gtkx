@@ -122,7 +122,7 @@ const BrowserWindow = () => {
             }}
         >
             <AdwToolbarView
-                addTopBar={
+                topBar={
                     <AdwHeaderBar
                         titleWidget={
                             <GtkEntry
@@ -134,7 +134,7 @@ const BrowserWindow = () => {
                                 placeholderText="Enter URL..."
                             />
                         }
-                        packStart={
+                        start={
                             <NavigationButtons
                                 canGoBack={canGoBack}
                                 canGoForward={canGoForward}

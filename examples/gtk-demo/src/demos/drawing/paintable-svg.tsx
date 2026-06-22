@@ -72,7 +72,7 @@ const PaintableSvgTitlebar = () => {
     return (
         <GtkHeaderBar
             name="paintable-svg-header"
-            packStart={<GtkButton label="_Open" useUnderline onClicked={handleOpen} />}
+            start={<GtkButton label="_Open" useUnderline onClicked={handleOpen} />}
         />
     );
 };
@@ -92,7 +92,7 @@ const PaintableSvgDemo = () => {
             paintable={svg}
             widthRequest={16}
             heightRequest={16}
-            addController={<GtkGestureClick onPressed={handlePressed} />}
+            controllers={<GtkGestureClick onPressed={handlePressed} />}
         />
     );
 };

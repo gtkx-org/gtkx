@@ -175,20 +175,24 @@ describe("codegen React pipeline (auto-derived slots)", () => {
     });
 
     it("promotes a user-supplied container slot on a widget without built-in ones", () => {
-        const overridden = generateJsxFiles(repository, { containerProps: { GtkButton: ["addChild"] } });
+        const overridden = generateJsxFiles(repository, {
+            containerProps: { GtkButton: { extras: { attach: "addChild" } } },
+        });
         const gtk = sourceFor(overridden, "gtk");
-        expect(gtk).toContain("addChild?: ReactNode | null | undefined;");
-        expect(overridden.metadata).toMatch(/"GtkButton": \[\s*"addChild"\s*\]/);
+        expect(gtk).toContain("extras?: ReactNode | null | undefined;");
+        expect(overridden.metadata).toMatch(/"GtkButton": \{\s*"extras": \{\s*"attach": "addChild"/);
         const { js } = transpileSource("gtk/gtk.tsx", gtk);
         expect(js.length).toBeGreaterThan(0);
     });
 
     it("promotes a user container slot on a plain GObject class", () => {
-        const overridden = generateJsxFiles(repository, { containerProps: { GApplication: ["addWindow"] } });
+        const overridden = generateJsxFiles(repository, {
+            containerProps: { GApplication: { windows: { attach: "addWindow" } } },
+        });
         const gio = sourceFor(overridden, "gio");
         expect(gio).toContain("GApplicationProps");
-        expect(gio).toContain("addWindow?: ReactNode | null | undefined;");
-        expect(overridden.metadata).toMatch(/"GApplication": \[\s*"addWindow"\s*\]/);
+        expect(gio).toContain("windows?: ReactNode | null | undefined;");
+        expect(overridden.metadata).toMatch(/"GApplication": \{\s*"windows": \{\s*"attach": "addWindow"/);
         const { js, dts } = transpileSource("gio/gio.tsx", gio);
         expect(js.length).toBeGreaterThan(0);
         expect(dts.length).toBeGreaterThan(0);

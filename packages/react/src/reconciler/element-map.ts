@@ -4,18 +4,26 @@ import { META_OBJECT_ADD_METHODS, PAGE_META_SETTERS } from "virtual:gtkx-config"
 import {
     type AddMethodRule,
     CONTAINER_PROP_KIND,
+    type ContainerPropRow,
     LAYOUT_CHILD_KIND,
     META_OBJECT_KIND,
     OVERLAY_KIND,
     SLOT_KIND,
     TAB_LABEL_KIND,
+    type VerbArgs,
 } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { findInheritedRow } from "../utils/gtype.js";
-import { DATA_ATTACH_MAPPINGS, findDataAttachMapping, promotedNestingGuardMapping } from "./attach-rules.js";
+import {
+    callVerb,
+    DATA_ATTACH_MAPPINGS,
+    guardHolds,
+    promotedNestingGuardMapping,
+    resolveArgs,
+} from "./attach-rules.js";
 import type { ElementMapping } from "./element-mapping.js";
 import { attachToParent, setElementMap } from "./mappings/dispatch.js";
 import {
@@ -91,22 +99,28 @@ const wrapperChildInstances = (marker: Node): Node[] =>
 const sameInstances = (a: Node[], b: Node[]): boolean =>
     a.length === b.length && a.every((instance, index) => instance === b[index]);
 
-const attachContainerPropChild = (instance: Node, parent: Node, method: string): void => {
-    const mapping = findDataAttachMapping(instance, parent);
-    if (mapping) {
-        mapping.attach(instance, parent);
-        return;
-    }
-    if (parent instanceof GObject.Object) invokeRequiredMethod(parent, method, [instance]);
+const containerArgs = (args: VerbArgs | undefined): VerbArgs => args ?? "child";
+
+const attachContainerPropChild = (instance: Node, parent: Node, verb: ContainerPropRow): void => {
+    if (!(parent instanceof GObject.Object)) return;
+    const args = resolveArgs(containerArgs(verb.attachArgs), instance);
+    if (args) invokeRequiredMethod(parent, verb.attach, args);
 };
 
-const detachContainerPropChild = (instance: Node, parent: Node): void => {
-    const mapping = findDataAttachMapping(instance, parent);
-    if (mapping) {
-        mapping.detach(instance, parent);
+const detachContainerPropChild = (instance: Node, parent: Node, verb: ContainerPropRow): void => {
+    if (!(parent instanceof GObject.Object)) return;
+    if (verb.detach === undefined) {
+        if (instance instanceof Gtk.Widget) unparentWidget(instance);
         return;
     }
-    if (instance instanceof Gtk.Widget) unparentWidget(instance);
+    if (!guardHolds(verb.detachGuard, instance, parent)) return;
+    const args = resolveArgs(containerArgs(verb.detachArgs), instance);
+    if (args) callVerb(parent, verb.detach, args);
+};
+
+const containerPropVerb = (child: Node): ContainerPropRow | null => {
+    const verb = stateOf(child).props["verb"];
+    return typeof verb === "object" && verb !== null ? (verb as ContainerPropRow) : null;
 };
 
 const containerPropState = new WeakMap<Node, Node[]>();
@@ -114,21 +128,21 @@ const containerPropState = new WeakMap<Node, Node[]>();
 const containerPropMapping: ElementMapping = {
     matches: (child, parent) => isWrapperKind(child, CONTAINER_PROP_KIND) && parent instanceof GObject.Object,
     attach: (child, parent) => {
-        const childState = stateOf(child);
-        const method = childState.props["method"];
-        if (typeof method !== "string" || !(parent instanceof GObject.Object)) return;
+        const verb = containerPropVerb(child);
+        if (!verb || !(parent instanceof GObject.Object)) return;
         const desired = wrapperChildInstances(child);
         const prev = containerPropState.get(child) ?? [];
         if (sameInstances(prev, desired)) return;
-        for (const instance of prev) detachContainerPropChild(instance, parent);
-        for (const instance of desired) attachContainerPropChild(instance, parent, method);
+        for (const instance of prev) detachContainerPropChild(instance, parent, verb);
+        for (const instance of desired) attachContainerPropChild(instance, parent, verb);
         containerPropState.set(child, desired);
     },
     detach: (child, parent) => {
-        for (const instance of containerPropState.get(child) ?? []) {
-            detachContainerPropChild(instance, parent);
-        }
+        const verb = containerPropVerb(child);
+        const instances = containerPropState.get(child) ?? [];
         containerPropState.delete(child);
+        if (!verb) return;
+        for (const instance of instances) detachContainerPropChild(instance, parent, verb);
     },
 };
 

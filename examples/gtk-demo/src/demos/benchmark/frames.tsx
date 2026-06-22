@@ -122,10 +122,7 @@ const FramesProvider = ({ children }: DemoProviderProps) => {
 const FramesTitlebar = () => {
     const { fps, fpsAttrs } = useFrames();
     return (
-        <GtkHeaderBar
-            name="frames-header"
-            packEnd={<GtkLabel label={`${fps.toFixed(2)} fps`} attributes={fpsAttrs} />}
-        />
+        <GtkHeaderBar name="frames-header" end={<GtkLabel label={`${fps.toFixed(2)} fps`} attributes={fpsAttrs} />} />
     );
 };
 

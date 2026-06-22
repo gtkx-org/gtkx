@@ -1,4 +1,4 @@
-import type { ArrayPropRow, ObjectPropRow, PerElementPropRows, VirtualPropRow } from "@gtkx/config";
+import type { ArrayPropRow, ContainerPropRow, ObjectPropRow, PerElementPropRows, VirtualPropRow } from "@gtkx/config";
 import { quote } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
@@ -10,7 +10,7 @@ import { BUILT_IN_PROPS_MIXINS, WIDGET_BASE_PROPS_MIXINS } from "./tables.js";
 import { collectReactNodeClasses, type WidgetCandidate } from "./widgets.js";
 
 export type JsxSurfaceMaps = {
-    containerPropMap?: Record<string, string[]>;
+    containerPropMap?: PerElementPropRows<ContainerPropRow>;
     arrayPropMap?: PerElementPropRows<ArrayPropRow>;
     objectPropMap?: PerElementPropRows<ObjectPropRow>;
     virtualPropMap?: PerElementPropRows<VirtualPropRow>;
@@ -131,8 +131,8 @@ const renderPropBlock = (
         "    children?: ReactNode;",
         `    ref?: Ref<${widgetTypeRef}> | undefined;`,
         ...propLines.map((line) => `    ${line}`),
-        ...(context.containerPropMap[entry.glibName] ?? []).map(
-            (method) => `    ${method}?: ReactNode | null | undefined;`,
+        ...Object.keys(context.containerPropMap[entry.glibName] ?? {}).map(
+            (propName) => `    ${propName}?: ReactNode | null | undefined;`,
         ),
         ...arrayPropLines,
         ...objectPropLines,

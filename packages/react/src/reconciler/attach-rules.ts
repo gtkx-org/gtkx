@@ -1,7 +1,7 @@
 /// <reference types="@gtkx/config/env" />
 
 import { CONTAINER_PROPS, ELEMENT_MAP } from "virtual:gtkx-config";
-import type { ElementMapRule, MethodVerb, OrderedInsertVerb, VerbArgs } from "@gtkx/config";
+import type { DetachGuard, ElementMapRule, MethodVerb, OrderedInsertVerb, VerbArgs } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
 import { toLowerFirst } from "@gtkx/utils";
 import { collectTypeNameChain, findInheritedRow } from "../utils/gtype.js";
@@ -44,7 +44,7 @@ const memoizeByGtypePair = <T>(
     };
 };
 
-const resolveArgs = (shape: VerbArgs, child: Node): unknown[] | null => {
+export const resolveArgs = (shape: VerbArgs, child: Node): unknown[] | null => {
     switch (shape) {
         case "child":
             return [child];
@@ -65,12 +65,11 @@ const resolveArgs = (shape: VerbArgs, child: Node): unknown[] | null => {
     }
 };
 
-const callVerb = (parent: Node, method: string, args: unknown[]): void => {
+export const callVerb = (parent: Node, method: string, args: unknown[]): void => {
     if (parent instanceof GObject.Object) callMethod(parent, method, args);
 };
 
-const guardHolds = (verb: MethodVerb, child: Node, parent: Node): boolean => {
-    const { detachGuard } = verb;
+export const guardHolds = (detachGuard: DetachGuard | undefined, child: Node, parent: Node): boolean => {
     if (!detachGuard) return true;
     const subject = detachGuard.side === "child" ? child : parent;
     const counterpart = detachGuard.side === "child" ? parent : child;
@@ -87,7 +86,7 @@ const buildMethodMapping = (verb: MethodVerb, matches: RuleMatcher): ElementMapp
         if (args) callVerb(parent, verb.attach, args);
     },
     detach: (child, parent) => {
-        if (!guardHolds(verb, child, parent)) return;
+        if (!guardHolds(verb.detachGuard, child, parent)) return;
         const args = resolveArgs(verb.detachArgs, child);
         if (args) callVerb(parent, verb.detach, args);
     },
@@ -219,9 +218,6 @@ const findCompiledRule = memoizeByGtypePair<CompiledRule | null>(
     null,
 );
 
-export const findDataAttachMapping = (child: Node, parent: Node): ElementMapping | undefined =>
-    findCompiledRule(child, parent)?.mapping;
-
 const SETTER_PREFIX = "set";
 
 const propertyNameForSetter = (method: string): string | null =>
@@ -229,14 +225,20 @@ const propertyNameForSetter = (method: string): string | null =>
         ? toLowerFirst(method.slice(SETTER_PREFIX.length))
         : null;
 
+const containerPropNameFor = (parent: GObject.Object, attach: string): string | null => {
+    const rows = findInheritedRow(parent.__gtype__, CONTAINER_PROPS, (rowMap) =>
+        Object.values(rowMap).some((row) => row.attach === attach),
+    );
+    if (rows === undefined) return null;
+    return Object.keys(rows).find((propName) => rows[propName]?.attach === attach) ?? null;
+};
+
 const promotedPropFor = (rule: ElementMapRule, parent: Node): string | null => {
     if (rule.verb.kind !== "method" || !(parent instanceof GObject.Object)) return null;
     const attach = rule.verb.attach;
     const setterProp = propertyNameForSetter(attach);
     if (setterProp !== null) return setterProp;
-    return findInheritedRow(parent.__gtype__, CONTAINER_PROPS, (methods) => methods.includes(attach)) !== undefined
-        ? attach
-        : null;
+    return containerPropNameFor(parent, attach);
 };
 
 const displayName = (node: Node): string => {

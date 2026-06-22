@@ -223,7 +223,7 @@ const ListViewWordsProvider = ({ window, children }: DemoProviderProps) => {
 
 const ListViewWordsTitlebar = () => {
     const { handleOpen } = useWordsContext();
-    return <GtkHeaderBar packStart={<GtkButton label="_Open" useUnderline onClicked={handleOpen} />} />;
+    return <GtkHeaderBar start={<GtkButton label="_Open" useUnderline onClicked={handleOpen} />} />;
 };
 
 const ListViewWordsDemo = (_: DemoProps) => {

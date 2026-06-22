@@ -388,7 +388,7 @@ const SettingsColumnView = ({
                     tabBehavior={Gtk.ListTabBehavior.CELL}
                     cssClasses={["data-table"]}
                     items={filteredKeyInfos.map((k) => ({ id: k.name, value: k }))}
-                    insertActionGroup={renderColumnVisibilityActions(columnVisibility, toggleColumn)}
+                    actionGroups={renderColumnVisibilityActions(columnVisibility, toggleColumn)}
                 >
                     {renderSettingsColumns({ columnVisibility, onValueEdit })}
                 </GtkColumnView>
@@ -428,7 +428,7 @@ const ListViewSettingsTitlebar = () => {
     const { state } = useSettingsContext();
     return (
         <GtkHeaderBar
-            packEnd={
+            end={
                 <GtkToggleButton
                     name="search-toggle"
                     iconName="system-search-symbolic"

@@ -132,7 +132,7 @@ const GesturesDemo = () => {
             contentWidth={400}
             contentHeight={400}
             drawFunc={drawFunc}
-            addController={
+            controllers={
                 <>
                     <GtkGestureSwipe propagationPhase={Gtk.PropagationPhase.BUBBLE} onSwipe={handlers.handleSwipe} />
                     <GtkGestureSwipe

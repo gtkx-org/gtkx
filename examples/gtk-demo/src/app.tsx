@@ -155,7 +155,7 @@ interface AppHeaderBarProps {
 
 const AppHeaderBar = ({ hasDemo, searchMode, onRun, onSearchToggle }: AppHeaderBarProps) => (
     <GtkHeaderBar
-        packStart={
+        start={
             <>
                 <GtkButton
                     label="Run"
@@ -174,7 +174,7 @@ const AppHeaderBar = ({ hasDemo, searchMode, onRun, onSearchToggle }: AppHeaderB
                 />
             </>
         }
-        packEnd={
+        end={
             <GtkMenuButton
                 name="menu-button"
                 iconName="open-menu-symbolic"
@@ -218,7 +218,7 @@ const shortcut = (accelerator: string, run: () => void) => (
 const AppShortcuts = ({ onSearchToggle, onKeyboardShortcuts, onNotebookNext, onNotebookPrev }: AppShortcutsProps) => (
     <GtkShortcutController
         scope={Gtk.ShortcutScope.GLOBAL}
-        addShortcut={
+        shortcuts={
             <>
                 {shortcut("<Control>f", onSearchToggle)}
                 {shortcut("<Control><Shift>i", () => Gtk.Window.setInteractiveDebugging(true))}
@@ -315,7 +315,7 @@ const MainWindowBody = ({
         name="main-window-body"
         vexpand
         hexpand
-        addController={
+        controllers={
             <AppShortcuts
                 onSearchToggle={onSearchToggle}
                 onKeyboardShortcuts={onKeyboardShortcuts}
@@ -389,7 +389,7 @@ const MainWindow = () => {
                 quit();
                 return true;
             }}
-            addAction={renderMainWindowActions({
+            actions={renderMainWindowActions({
                 onKeyboardShortcuts: handleKeyboardShortcuts,
                 onShowAbout: () => setShowAbout(true),
             })}

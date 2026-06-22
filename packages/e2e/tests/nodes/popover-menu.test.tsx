@@ -63,10 +63,7 @@ describe("render - PopoverMenu actions", () => {
 
         await render(
             <GtkApplication applicationId={uniqueAppId()} flags={APP_FLAGS}>
-                <GtkApplicationWindow
-                    ref={windowRef}
-                    addAction={<GSimpleAction name="click" onActivate={onActivate} />}
-                >
+                <GtkApplicationWindow ref={windowRef} actions={<GSimpleAction name="click" onActivate={onActivate} />}>
                     <GtkPopoverMenu menuModel={<GMenu items={[{ label: "Click Me", action: "win.click" }]} />} />
                 </GtkApplicationWindow>
             </GtkApplication>,
@@ -87,7 +84,7 @@ describe("render - PopoverMenu actions", () => {
                 <GtkApplication applicationId={appId} flags={APP_FLAGS}>
                     <GtkApplicationWindow
                         ref={windowRef}
-                        addAction={enabled && <GSimpleAction name="toggle" onActivate={() => {}} />}
+                        actions={enabled && <GSimpleAction name="toggle" onActivate={() => {}} />}
                     />
                 </GtkApplication>
             );

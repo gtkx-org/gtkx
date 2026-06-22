@@ -152,7 +152,7 @@ const buildDefinitionPage = ({ title, phonetic, definition, sayWord }: Definitio
                 <GtkImage
                     iconName="audio-volume-high-symbolic"
                     cursor={Gdk.Cursor.newFromName("pointer", null)}
-                    addController={<GtkGestureClick onPressed={() => sayWord(title)} />}
+                    controllers={<GtkGestureClick onPressed={() => sayWord(title)} />}
                 />
             </GtkTextAnchor>
         </GtkTextTag>,
@@ -301,7 +301,7 @@ const HypertextDemo = () => {
                 pixelsBelowLines={10}
                 canFocus
                 focusable
-                addController={
+                controllers={
                     <>
                         <GtkGestureClick button={1} onReleased={handlers.handleClick} />
                         <GtkEventControllerMotion onMotion={handlers.handleMotion} />

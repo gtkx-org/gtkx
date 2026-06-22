@@ -6,7 +6,7 @@ export interface ScrollWrapperProps {
     minContentHeight?: number | undefined;
     maxContentHeight?: number | undefined;
     minContentWidth?: number | undefined;
-    insertActionGroup?: ReactNode;
+    actionGroups?: ReactNode;
 }
 
 export const ScrollWrapper = ({
@@ -14,13 +14,13 @@ export const ScrollWrapper = ({
     minContentHeight = 200,
     maxContentHeight,
     minContentWidth = 200,
-    insertActionGroup,
+    actionGroups,
 }: ScrollWrapperProps): ReactNode => (
     <GtkScrolledWindow
         minContentHeight={minContentHeight}
         maxContentHeight={maxContentHeight}
         minContentWidth={minContentWidth}
-        insertActionGroup={insertActionGroup}
+        actionGroups={actionGroups}
     >
         {children}
     </GtkScrolledWindow>

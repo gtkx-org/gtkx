@@ -1523,7 +1523,7 @@ const ShadertoyGLAreaPanel = ({
                 onUnrealize={handleUnrealize}
                 hexpand
                 vexpand
-                addController={
+                controllers={
                     <GtkGestureDrag
                         onDragBegin={dragHandlers.handleDragBegin}
                         onDragUpdate={dragHandlers.handleDragUpdate}
