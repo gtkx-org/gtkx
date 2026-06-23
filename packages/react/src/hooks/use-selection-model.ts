@@ -29,14 +29,16 @@ const bitsetOf = (positions: number[]): Gtk.Bitset => {
 };
 
 const applySelectedPositions = (model: Gtk.SelectionModel, positions: number[]): void => {
-    if (positions.length === 0) {
-        model.unselectAll();
+    if (model instanceof Gtk.MultiSelection) {
+        const requested = bitsetOf(positions);
+        const changed = model.getSelection();
+        changed.difference(requested);
+        if (changed.isEmpty()) return;
+        model.setSelection(requested, changed);
         return;
     }
-    if (model instanceof Gtk.MultiSelection) {
-        const selected = bitsetOf(positions);
-        const mask = Gtk.Bitset.newRange(0, Math.max(model.getNItems(), 1));
-        model.setSelection(selected, mask);
+    if (positions.length === 0) {
+        model.unselectAll();
         return;
     }
     const first = positions[0];
