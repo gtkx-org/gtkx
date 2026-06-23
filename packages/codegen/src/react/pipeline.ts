@@ -12,7 +12,6 @@ import {
     META_OBJECT_ADD_METHODS,
     ORDERED_INSERT,
     PAGE_META_SETTERS,
-    RUNTIME_OWNED_WIDGETS,
     SLOT_PROPS_BY_TYPE,
     TOP_LEVEL_TYPES,
 } from "./tables.js";
@@ -67,11 +66,8 @@ const generateJsxNamespace = (
 ): { source: string; count: number } => {
     const imports = emptyJsxImports();
 
-    const elementComponents = generateElementComponentsSection(targetNamespace, repository, {
-        imports,
-        excludeNames: RUNTIME_OWNED_WIDGETS,
-    });
-    const excludeNames = new Set<string>([...elementComponents.exportedNames, ...RUNTIME_OWNED_WIDGETS]);
+    const elementComponents = generateElementComponentsSection(targetNamespace, repository, { imports });
+    const excludeNames = new Set<string>(elementComponents.exportedNames);
     const { source: jsxSection, intrinsicCount } = generateJsxSection(targetNamespace, repository, {
         excludeNames,
         ruleRegistry,

@@ -14,10 +14,9 @@ export const generateElementComponentsSection = (
     repository: GirRepository,
     options: {
         imports: JsxImports;
-        excludeNames: Set<string>;
     },
 ): { source: string; exportedNames: Set<string> } => {
-    const { imports, excludeNames } = options;
+    const { imports } = options;
     const exportedNames = new Set<string>();
     const exportLines: string[] = [];
     let needsWrapperConst = false;
@@ -28,7 +27,7 @@ export const generateElementComponentsSection = (
     for (const candidate of collectReactNodeClasses(repository)) {
         if (candidate.namespace.name !== targetNamespace.name) continue;
         if (virtualNames.has(candidate.glibName)) continue;
-        const line = renderCandidateExport(candidate, repository, imports, excludeNames);
+        const line = renderCandidateExport(candidate, repository, imports);
         if (line === null) continue;
         exportLines.push(line);
         exportedNames.add(candidate.glibName);
@@ -71,10 +70,8 @@ const renderCandidateExport = (
     candidate: WidgetCandidate,
     repository: GirRepository,
     imports: JsxImports,
-    excludeNames: Set<string>,
 ): string | null => {
     const { glibName, klass, namespace } = candidate;
-    if (excludeNames.has(glibName)) return null;
     const ancestry = new Set(ancestorGlibNames(klass, namespace, repository));
     const hoc = resolveAncestryWrapper(ancestry);
     imports.hocs.add("createElementComponent");

@@ -4,11 +4,11 @@ import { shallowEqual } from "@gtkx/utils";
 import { type RefObject, useId, useLayoutEffect, useRef } from "react";
 import { AnimationCssProvider } from "./animation-css-provider.js";
 import { interpolate } from "./interpolation.js";
-import type { AdwSpringAnimationProps, AdwTimedAnimationProps, AnimatableProperties } from "./types.js";
+import type { AnimatableProperties, SpringAnimationProps, TimedAnimationProps } from "./types.js";
 
 export type WidgetAnimationProps =
-    | ({ kind: "timed" } & AdwTimedAnimationProps)
-    | ({ kind: "spring" } & AdwSpringAnimationProps);
+    | ({ kind: "timed" } & TimedAnimationProps)
+    | ({ kind: "spring" } & SpringAnimationProps);
 
 const timedDefaults = { duration: 300 };
 const springDefaults = { damping: 1, mass: 1, stiffness: 100 };
@@ -18,7 +18,7 @@ const sanitizeId = (id: string): string => `gtkx-anim-${id.replace(/[^a-zA-Z0-9]
 const buildTimedAnimation = (
     widget: Gtk.Widget,
     target: Adw.CallbackAnimationTarget,
-    props: AdwTimedAnimationProps,
+    props: TimedAnimationProps,
 ): Adw.TimedAnimation => {
     const duration = props.duration ?? timedDefaults.duration;
     const animation = Adw.TimedAnimation.new(widget, 0, 1, duration, target);
@@ -34,7 +34,7 @@ const buildTimedAnimation = (
 const buildSpringAnimation = (
     widget: Gtk.Widget,
     target: Adw.CallbackAnimationTarget,
-    props: AdwSpringAnimationProps,
+    props: SpringAnimationProps,
 ): Adw.SpringAnimation => {
     const damping = props.damping ?? springDefaults.damping;
     const mass = props.mass ?? springDefaults.mass;

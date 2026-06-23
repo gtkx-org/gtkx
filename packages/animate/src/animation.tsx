@@ -2,7 +2,7 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { useForwardedRef } from "@gtkx/react";
 import { Children, cloneElement, type ReactElement, type ReactNode, type Ref, useLayoutEffect, useRef } from "react";
 import { usePresence } from "./animate-presence.js";
-import type { AdwSpringAnimationProps, AdwTimedAnimationProps } from "./types.js";
+import type { SpringAnimationProps, TimedAnimationProps } from "./types.js";
 import { useWidgetAnimation, type WidgetAnimationProps } from "./use-widget-animation.js";
 
 type WidgetChild = ReactElement<{ ref?: Ref<Gtk.Widget | null> }>;
@@ -25,10 +25,6 @@ const WidgetAnimation = (props: WidgetAnimationProps): ReactNode => {
     return cloneElement(child, { ref: mergedRef });
 };
 
-export const AdwTimedAnimation = (props: AdwTimedAnimationProps): ReactNode => (
-    <WidgetAnimation kind="timed" {...props} />
-);
+export const TimedAnimation = (props: TimedAnimationProps): ReactNode => <WidgetAnimation kind="timed" {...props} />;
 
-export const AdwSpringAnimation = (props: AdwSpringAnimationProps): ReactNode => (
-    <WidgetAnimation kind="spring" {...props} />
-);
+export const SpringAnimation = (props: SpringAnimationProps): ReactNode => <WidgetAnimation kind="spring" {...props} />;

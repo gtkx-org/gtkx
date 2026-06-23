@@ -67,15 +67,15 @@ Selectors are written GTK-relative — use `&` and GTK node names. The `.css` im
 
 ### Public API
 
-- `AdwTimedAnimation`, `AdwSpringAnimation` — components that each wrap exactly one widget child and drive it.
+- `TimedAnimation`, `SpringAnimation` — components that each wrap exactly one widget child and drive it.
 - `AnimatePresence` — tracks keyed children and choreographs exit animations on removal.
-- Types: `AnimatableProperties`, `AnimationProps`, `AdwTimedAnimationProps`, `AdwSpringAnimationProps`.
+- Types: `AnimatableProperties`, `AnimationProps`, `TimedAnimationProps`, `SpringAnimationProps`.
 
 `AnimatableProperties` covers `opacity`, `translateX/Y`, `scale`/`scaleX`/`scaleY`, `rotate`, and `skewX/Y`. `buildCss` maps these to a GTK CSS rule of `opacity` plus a composed `transform` (translate, scale, rotate, skew). The genuinely shared base of both animation components is `initial` / `animate` / `exit` / `animateOnMount` plus the `onAnimationStart` / `onAnimationComplete` callbacks. `delay` is not part of that shared base — each props type declares its own `delay` alongside its mode-specific props. Timed props add `duration`, `easing`, `repeat`, `reverse`, `alternate` (and `delay`); spring props add `damping`, `mass`, `stiffness`, `initialVelocity`, `clamp` (and `delay`).
 
 ### Component contract
 
-Each `AdwTimed`/`AdwSpringAnimation` renders a shared `WidgetAnimation` that takes `Children.only` and forwards a merged ref onto the single child. The child must therefore accept a `ref` to a `Gtk.Widget`. `kind: "timed" | "spring"` selects which Adw animation to build.
+Each `AdwTimed`/`SpringAnimation` renders a shared `WidgetAnimation` that takes `Children.only` and forwards a merged ref onto the single child. The child must therefore accept a `ref` to a `Gtk.Widget`. `kind: "timed" | "spring"` selects which Adw animation to build.
 
 ### AnimationDriver lifecycle
 

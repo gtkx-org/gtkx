@@ -116,19 +116,3 @@ export const ACCESSIBLE_PROP_TYPES: Record<string, string> = {
     accessibleRowSpan: "number",
     accessibleSetSize: "number",
 };
-
-export type WidgetOverride = {
-    runtimeOwned?: boolean;
-};
-
-export const WIDGET_OVERRIDES: Record<string, WidgetOverride> = {
-    GMenuItem: { runtimeOwned: true },
-    AdwSpringAnimation: { runtimeOwned: true },
-    AdwTimedAnimation: { runtimeOwned: true },
-};
-
-export const RUNTIME_OWNED_WIDGETS: Set<string> = new Set(
-    Object.entries(WIDGET_OVERRIDES)
-        .filter(([, override]) => override.runtimeOwned === true)
-        .map(([glibName]) => glibName),
-);

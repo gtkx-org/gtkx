@@ -24,7 +24,7 @@ type AnimationBaseProps = {
     children?: ReactNode;
 };
 
-export type AdwTimedAnimationProps = AnimationBaseProps & {
+export type TimedAnimationProps = AnimationBaseProps & {
     duration?: number;
     easing?: Adw.Easing;
     repeat?: number;
@@ -32,7 +32,7 @@ export type AdwTimedAnimationProps = AnimationBaseProps & {
     alternate?: boolean;
 };
 
-export type AdwSpringAnimationProps = AnimationBaseProps & {
+export type SpringAnimationProps = AnimationBaseProps & {
     damping?: number;
     stiffness?: number;
     mass?: number;

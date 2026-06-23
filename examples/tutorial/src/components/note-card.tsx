@@ -1,4 +1,4 @@
-import { AdwTimedAnimation, AnimatePresence } from "@gtkx/animate";
+import { AnimatePresence, TimedAnimation } from "@gtkx/animate";
 import { css } from "@gtkx/css";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -47,7 +47,7 @@ export const NoteCard = ({ note, compact = false, fontSize = 14 }: NoteCardProps
 
     return (
         <AnimatePresence>
-            <AdwTimedAnimation
+            <TimedAnimation
                 key={note.id}
                 initial={{ opacity: 0, translateY: -10 }}
                 animate={{ opacity: 1, translateY: 0 }}
@@ -77,7 +77,7 @@ export const NoteCard = ({ note, compact = false, fontSize = 14 }: NoteCardProps
                         />
                     )}
                 </GtkBox>
-            </AdwTimedAnimation>
+            </TimedAnimation>
         </AnimatePresence>
     );
 };
