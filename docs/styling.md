@@ -75,7 +75,7 @@ Selectors are written GTK-relative — use `&` and GTK node names. The `.css` im
 
 ### Component contract
 
-Each `AdwTimed`/`SpringAnimation` renders a shared `WidgetAnimation` that takes `Children.only` and forwards a merged ref onto the single child. The child must therefore accept a `ref` to a `Gtk.Widget`. `kind: "timed" | "spring"` selects which Adw animation to build.
+Each `TimedAnimation`/`SpringAnimation` renders a shared `WidgetAnimation` that takes `Children.only` and forwards a merged ref onto the single child. The child must therefore accept a `ref` to a `Gtk.Widget`. `kind: "timed" | "spring"` selects which Adw animation to build.
 
 ### AnimationDriver lifecycle
 

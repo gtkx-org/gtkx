@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.svg" alt="gtkx" width="120" />
+  <img src="logo.svg" alt="gtkx" width="100" />
 </p>
 
 <h1 align="center">gtkx</h1>
