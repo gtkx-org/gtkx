@@ -1,5 +1,4 @@
 import {
-    type Arg,
     type ArrayType,
     type BigInt64Type,
     type BigUint64Type,
@@ -7,7 +6,8 @@ import {
     type BooleanType,
     type BoxedType,
     type CallbackType,
-    call,
+    callCompiled,
+    compileSignature,
     type EnumType,
     type FlagsType,
     type Float32Type,
@@ -50,14 +50,8 @@ export const bind = <R extends Type>(
     argTypes: Type[],
     returnType: R,
 ): ((...values: Value[]) => ValueOf<R>) => {
-    const args: Arg[] = argTypes.map((argType) => ({ type: argType, value: undefined }));
-    return (...values) => {
-        let i = 0;
-        for (const arg of args) {
-            arg.value = values[i++] as Value;
-        }
-        return call(library, symbol, args, returnType) as ValueOf<R>;
-    };
+    const compiled = compileSignature(argTypes, returnType);
+    return (...values) => callCompiled(library, symbol, compiled, values) as ValueOf<R>;
 };
 
 export const int8T: Int8Type = Object.freeze({ type: "int8" });

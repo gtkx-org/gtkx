@@ -23,6 +23,15 @@ struct CallRequest {
     result_type: Type,
 }
 
+/// A function signature whose argument and return type descriptors are parsed once.
+///
+/// `bind` compiles a signature a single time and reuses the resulting handle for every call, so
+/// the per-call path marshals only argument values and never re-walks the type descriptor objects.
+pub struct CompiledSignature {
+    arg_types: Vec<Type>,
+    result_type: Type,
+}
+
 impl ModuleRequest for CallRequest {
     type Output = (Value, Vec<RefUpdate>);
 
@@ -168,6 +177,73 @@ mod napi_export {
             symbol_name: symbol,
             args: parsed_args,
             result_type,
+        };
+        request.dispatch(env)
+    }
+
+    #[napi(catch_unwind)]
+    #[cfg_attr(test, allow(dead_code))]
+    pub fn compile_signature(
+        env: Env,
+        arg_types: Array,
+        return_type: Unknown<'_>,
+    ) -> napi::Result<External<CompiledSignature>> {
+        let parsed_arg_types = crate::value::map_js_array(&env, &arg_types, |env, value| {
+            let ty = Type::from_js_value(env, value)?;
+            if !ty.can_be_argument_type() {
+                return Err(napi::Error::new(
+                    napi::Status::InvalidArg,
+                    format!("'{ty}' cannot be used as a function argument type"),
+                ));
+            }
+            Ok(ty)
+        })?;
+        let result_type = Type::from_js_value(&env, return_type)?;
+        if !result_type.can_be_return_type() {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("'{result_type}' cannot be used as a function return type"),
+            ));
+        }
+        Ok(External::new(CompiledSignature {
+            arg_types: parsed_arg_types,
+            result_type,
+        }))
+    }
+
+    #[napi(catch_unwind)]
+    #[cfg_attr(test, allow(dead_code))]
+    pub fn call_compiled<'env>(
+        env: &'env Env,
+        library: String,
+        symbol: String,
+        compiled: &External<CompiledSignature>,
+        values: Array,
+    ) -> napi::Result<Unknown<'env>> {
+        let signature: &CompiledSignature = compiled;
+        let parsed_values = crate::value::map_js_array(env, &values, Value::from_js_value)?;
+        if parsed_values.len() != signature.arg_types.len() {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                format!(
+                    "{symbol}: expected {} arguments, received {}",
+                    signature.arg_types.len(),
+                    parsed_values.len()
+                ),
+            ));
+        }
+        let args = signature
+            .arg_types
+            .iter()
+            .cloned()
+            .zip(parsed_values)
+            .map(|(ty, value)| Arg::new(ty, value))
+            .collect();
+        let request = CallRequest {
+            library_name: library,
+            symbol_name: symbol,
+            args,
+            result_type: signature.result_type.clone(),
         };
         request.dispatch(env)
     }

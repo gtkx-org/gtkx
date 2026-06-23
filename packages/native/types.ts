@@ -4,6 +4,8 @@ type AnyValue = Handle | number | bigint | string | boolean | ArrayBufferView | 
 
 export type Handle = ExternalObject<unknown>;
 
+export type CompiledSignature = ExternalObject<unknown>;
+
 export type Value = Ref | AnyValue | Value[] | ((...args: never[]) => unknown);
 
 export type Ref = { value: Value | null };

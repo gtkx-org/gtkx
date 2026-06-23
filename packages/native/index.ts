@@ -1,10 +1,18 @@
 import * as native from "./native-binding.cjs";
-import type { Arg, Handle, RegisterClassOptions, Type, Value } from "./types.js";
+import type { Arg, CompiledSignature, Handle, RegisterClassOptions, Type, Value } from "./types.js";
 
 export * from "./types.js";
 
 export function call(library: string, symbol: string, args: Arg[], returnType: Type): Value {
     return native.call(library, symbol, args, returnType) as Value;
+}
+
+export function compileSignature(argTypes: Type[], returnType: Type): CompiledSignature {
+    return native.compileSignature(argTypes, returnType) as CompiledSignature;
+}
+
+export function callCompiled(library: string, symbol: string, compiled: CompiledSignature, values: Value[]): Value {
+    return native.callCompiled(library, symbol, compiled, values) as Value;
 }
 
 let mainLoopHandle: Handle | null = native.init();
