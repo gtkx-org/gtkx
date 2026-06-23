@@ -19,10 +19,10 @@ const drawLabels = (n: number, suffix: string): ReactNode => (
 describe("prop update", () => {
     for (const n of SIZES) {
         bench(`update one prop across ${n} labels`, async () => {
-            await render(drawLabels(n, "a"));
+            const { rerender } = await render(drawLabels(n, "a"));
             for (let k = 0; k < 3; k++) {
-                await render(drawLabels(n, "b"));
-                await render(drawLabels(n, "a"));
+                await rerender(drawLabels(n, "b"));
+                await rerender(drawLabels(n, "a"));
             }
             await cleanup();
         });
@@ -32,9 +32,9 @@ describe("prop update", () => {
 describe("no-op rerender", () => {
     for (const n of SIZES) {
         bench(`rerender ${n} labels with unchanged props`, async () => {
-            await render(drawLabels(n, "a"));
+            const { rerender } = await render(drawLabels(n, "a"));
             for (let k = 0; k < 10; k++) {
-                await render(drawLabels(n, "a"));
+                await rerender(drawLabels(n, "a"));
             }
             await cleanup();
         });
