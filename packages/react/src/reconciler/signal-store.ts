@@ -24,10 +24,10 @@ export interface SignalBinding {
 }
 
 export class SignalStore {
-    private ownerHandlers: Map<object, Map<GObject.Object, Map<string, SignalHandler>>> = new Map();
+    private ownerHandlers: Map<object, Map<GObject.Object, Map<string, number>>> = new Map();
     private blockDepth = 0;
 
-    private getObjectMap(owner: object, obj: GObject.Object): Map<string, SignalHandler> {
+    private getObjectMap(owner: object, obj: GObject.Object): Map<string, number> {
         let ownerMap = this.ownerHandlers.get(owner);
         if (!ownerMap) {
             ownerMap = new Map();
@@ -63,10 +63,10 @@ export class SignalStore {
     private disconnect(owner: object, obj: GObject.Object, signal: string): void {
         const ownerMap = this.ownerHandlers.get(owner);
         const objMap = ownerMap?.get(obj);
-        const wrappedHandler = objMap?.get(signal);
+        const handlerId = objMap?.get(signal);
 
-        if (wrappedHandler !== undefined) {
-            obj.off(signal, wrappedHandler);
+        if (handlerId !== undefined) {
+            obj.disconnect(handlerId);
             objMap?.delete(signal);
             if (objMap?.size === 0) {
                 ownerMap?.delete(obj);
@@ -77,8 +77,8 @@ export class SignalStore {
     private connect(binding: SignalBinding & { handler: SignalHandler; blockable: boolean }): void {
         const { owner, obj, signal, handler, blockable } = binding;
         const wrappedHandler = this.wrapHandler(handler, signal, obj, blockable);
-        obj.on(signal, wrappedHandler);
-        this.getObjectMap(owner, obj).set(signal, wrappedHandler);
+        const handlerId = obj.connect(signal, wrappedHandler);
+        this.getObjectMap(owner, obj).set(signal, handlerId);
     }
 
     public set(binding: SignalBinding): void {
@@ -95,8 +95,8 @@ export class SignalStore {
 
         if (ownerMap) {
             for (const [obj, objMap] of ownerMap) {
-                for (const [signal, wrappedHandler] of objMap) {
-                    obj.off(signal, wrappedHandler);
+                for (const [, handlerId] of objMap) {
+                    obj.disconnect(handlerId);
                 }
             }
 

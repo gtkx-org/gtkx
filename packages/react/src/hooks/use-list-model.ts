@@ -10,7 +10,7 @@ import {
     type ItemResolver,
     type RowValue,
 } from "../utils/item-resolver.js";
-import { flattenListItems, structuralSignature } from "../utils/list-item-flatten.js";
+import { detectStructure, type ListStructure, structuralSignature } from "../utils/list-item-flatten.js";
 import {
     createFlatModel,
     createSectionModel,
@@ -37,67 +37,80 @@ export interface ListModelResult<T, S> {
     headerResolver: ItemResolver<T, S>;
 }
 
-type Structure = "flat" | "tree" | "sections";
-
-const detectStructure = <T, S>(items: ListItem<T, S>[] | undefined, autoexpand: boolean): Structure => {
-    const flattened = flattenListItems(items, autoexpand);
-    if (flattened.isSectioned) return "sections";
-    if (flattened.isTree) return "tree";
-    return "flat";
-};
-
 interface ControlledState<T, S> {
     model: Gio.ListModel;
-    structure: Structure;
+    flatModel: Gtk.StringList | undefined;
+    items: ListItem<T, S>[] | undefined;
+    structure: ListStructure;
     autoexpand: boolean;
     signature: string;
     rowValues: WeakMap<GObject.Object, RowValue<T, S>>;
     placeholdersById: Map<string, GObject.Object>;
 }
 
+const controlledSignature = <T, S>(
+    structure: ListStructure,
+    autoexpand: boolean,
+    items: ListItem<T, S>[] | undefined,
+): string => (structure === "flat" ? "" : `${structure}|${autoexpand ? 1 : 0}|${structuralSignature(items)}`);
+
 const buildControlledState = <T, S>(
     items: ListItem<T, S>[] | undefined,
     autoexpand: boolean,
-    structure: Structure,
+    structure: ListStructure,
     signature: string,
 ): ControlledState<T, S> => {
     const rowValues = new WeakMap<GObject.Object, RowValue<T, S>>();
     const placeholdersById = new Map<string, GObject.Object>();
     let model: Gio.ListModel;
+    let flatModel: Gtk.StringList | undefined;
     if (structure === "sections") {
         model = createSectionModel(items ?? [], rowValues, placeholdersById);
     } else if (structure === "tree") {
         model = createTreeModel(items ?? [], autoexpand, rowValues, placeholdersById);
     } else {
-        model = createFlatModel(flattenListItems(items, false).records.length);
+        flatModel = createFlatModel(items?.length ?? 0);
+        model = flatModel;
     }
-    return { model, structure, autoexpand, signature, rowValues, placeholdersById };
+    return { model, flatModel, items, structure, autoexpand, signature, rowValues, placeholdersById };
+};
+
+const resolveControlledState = <T, S>(
+    prev: ControlledState<T, S> | null,
+    items: ListItem<T, S>[] | undefined,
+    autoexpand: boolean,
+): ControlledState<T, S> => {
+    if (prev !== null && prev.items === items && prev.autoexpand === autoexpand) return prev;
+    const structure = detectStructure(items);
+    const signature = controlledSignature(structure, autoexpand, items);
+    if (prev === null || prev.structure !== structure) {
+        return buildControlledState(items, autoexpand, structure, signature);
+    }
+    if (structure !== "flat" && prev.signature !== signature) {
+        return buildControlledState(items, autoexpand, structure, signature);
+    }
+    if (structure !== "flat") {
+        retagRows(items ?? [], prev.rowValues, prev.placeholdersById);
+    }
+    prev.items = items;
+    prev.autoexpand = autoexpand;
+    prev.signature = signature;
+    return prev;
 };
 
 const useControlledModel = <T, S>(mode: ControlledListMode<T, S>): ListModelResult<T, S> => {
     const { items } = mode;
     const autoexpand = mode.autoexpand ?? false;
-    const structure = detectStructure(items, autoexpand);
-    const signature = `${structure}|${autoexpand ? 1 : 0}|${structuralSignature(items)}`;
     const stateRef = useRef<ControlledState<T, S> | null>(null);
-
-    if (stateRef.current === null || stateRef.current.structure !== structure) {
-        stateRef.current = buildControlledState(items, autoexpand, structure, signature);
-    } else if (structure === "flat") {
-        stateRef.current.signature = signature;
-    } else if (stateRef.current.signature === signature) {
-        retagRows(items ?? [], stateRef.current.rowValues, stateRef.current.placeholdersById);
-    } else {
-        stateRef.current = buildControlledState(items, autoexpand, structure, signature);
-    }
-
-    const state = stateRef.current;
+    const state = resolveControlledState(stateRef.current, items, autoexpand);
+    stateRef.current = state;
+    const { structure, flatModel } = state;
 
     useLayoutEffect(() => {
-        if (structure === "flat") {
-            resizeFlatModel(state.model as Gtk.StringList, flattenListItems(items, false).records.length);
+        if (flatModel !== undefined) {
+            resizeFlatModel(flatModel, items?.length ?? 0);
         }
-    }, [state.model, structure, items]);
+    }, [flatModel, items]);
 
     const resolver = useMemo(
         () => createControlledResolver(items, structure !== "flat" && autoexpand, state.rowValues),

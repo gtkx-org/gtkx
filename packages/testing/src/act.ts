@@ -53,4 +53,9 @@ const withGlobalActEnvironment =
         return Promise.resolve(settled);
     };
 
-export const act: ActImplementation = withGlobalActEnvironment(reactAct as ActImplementation);
+const passthroughAct: ActImplementation = <T>(callback: ActCallback<T>): PromiseLike<T> => Promise.resolve(callback());
+
+const actImplementation: ActImplementation =
+    typeof reactAct === "function" ? (reactAct as ActImplementation) : passthroughAct;
+
+export const act: ActImplementation = withGlobalActEnvironment(actImplementation);

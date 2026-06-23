@@ -23,6 +23,23 @@ export interface FlattenResult<T = unknown, S = unknown> {
     isSectioned: boolean;
 }
 
+export type ListStructure = "flat" | "tree" | "sections";
+
+/**
+ * Classify a controlled item list as flat, tree, or sectioned without building a
+ * {@link FlattenResult}. A list is sectioned if any top-level item is a section, a
+ * tree if any top-level item carries children, and flat otherwise.
+ */
+export const detectStructure = <T, S>(items: ListItem<T, S>[] | undefined): ListStructure => {
+    if (items === undefined) return "flat";
+    let sawTree = false;
+    for (const item of items) {
+        if (item.section === true) return "sections";
+        if (item.children !== undefined && item.children.length > 0) sawTree = true;
+    }
+    return sawTree ? "tree" : "flat";
+};
+
 export const structuralSignature = <T, S>(items: ListItem<T, S>[] | undefined): string => {
     if (items === undefined) return "";
     const parts: string[] = [];

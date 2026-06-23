@@ -4,7 +4,7 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "bench": "vitest bench --run --config vitest.bench.config.ts",
+        "bench": "NODE_ENV=production vitest bench --run --config vitest.bench.config.ts",
         "build": "tsc -b"
     },
     "devDependencies": {
