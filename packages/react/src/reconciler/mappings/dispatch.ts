@@ -1,5 +1,8 @@
 import * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { ElementMapping } from "../element-mapping.js";
+import { attachOrderedInsert, detachOrderedInsert, resolveOrderedInsert } from "../ordered-insert.js";
+import { resolveAppendRuleSet, ruleNodeOf } from "../rule-registry.js";
 import { type Node, stateOf } from "../state.js";
 import { isWrapperElement } from "../wrapper-element.js";
 
@@ -7,6 +10,41 @@ let elementMap: ElementMapping[] = [];
 
 export const setElementMap = (mappings: ElementMapping[]): void => {
     elementMap = mappings;
+};
+
+const isSelfAttachingChild = (child: Node, parent: Node): boolean =>
+    child instanceof GObject.Object &&
+    !(child instanceof Gtk.Widget) &&
+    parent instanceof GObject.Object &&
+    resolveAppendRuleSet(child.__gtype__) !== null;
+
+export const orderedInsertMapping: ElementMapping = {
+    matches: (child, parent) =>
+        child instanceof GObject.Object && parent instanceof GObject.Object && resolveOrderedInsert(parent) !== null,
+    attach: (child, parent, anchor) => {
+        const spec = resolveOrderedInsert(parent);
+        if (spec) attachOrderedInsert(spec, child, parent, anchor);
+    },
+    detach: (child, parent) => {
+        const spec = resolveOrderedInsert(parent);
+        if (spec) detachOrderedInsert(spec, child, parent);
+    },
+};
+
+export const childRuleSetMapping: ElementMapping = {
+    matches: isSelfAttachingChild,
+    attach: (child, parent) => {
+        const parentNode = ruleNodeOf(parent);
+        const childNode = ruleNodeOf(child);
+        if (!parentNode || !childNode || !(child instanceof GObject.Object)) return;
+        resolveAppendRuleSet(child.__gtype__)?.appendChild?.(parentNode, childNode);
+    },
+    detach: (child, parent) => {
+        const parentNode = ruleNodeOf(parent);
+        const childNode = ruleNodeOf(child);
+        if (!parentNode || !childNode || !(child instanceof GObject.Object)) return;
+        resolveAppendRuleSet(child.__gtype__)?.removeChild?.(parentNode, childNode);
+    },
 };
 
 const resolveMapping = (child: Node, parent: Node): ElementMapping | undefined =>

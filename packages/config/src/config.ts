@@ -1,29 +1,17 @@
 import { isValidApplicationId } from "@gtkx/utils";
-import {
-    type ArrayPropRow,
-    type ContainerPropRow,
-    type ElementMapRule,
-    type ObjectPropRow,
-    type PerElementPropRows,
-    type UserTableRows,
-    type VirtualPropRow,
-    validateArrayPropRows,
-    validateContainerPropRows,
-    validateElementMap,
-    validateObjectPropRows,
-    validateVirtualPropRows,
-} from "./table-schema.js";
 
 export const LIBRARIES_WILDCARD = "*";
 
 export const GIR_NAMESPACE_PATTERN: RegExp = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/;
 
-export type GtkxConfig = UserTableRows & {
+export type GtkxConfig = {
     libraries?: typeof LIBRARIES_WILDCARD | string[];
 
     girPath?: string[];
 
     applicationId?: string;
+
+    rules?: string;
 
     reactCompiler?: boolean | ReactCompilerOptions;
 };
@@ -114,15 +102,19 @@ const validateReactCompiler = (reactCompiler: GtkxConfig["reactCompiler"]): void
     validateReactCompilerEnum(reactCompiler.panicThreshold, REACT_COMPILER_PANIC_THRESHOLDS, "panicThreshold");
 };
 
+const validateRules = (rules: GtkxConfig["rules"]): void => {
+    if (rules !== undefined && (typeof rules !== "string" || rules.length === 0)) {
+        throw new Error(
+            "gtkx.config.ts: `rules` must be a module specifier string default-exporting a `(builtins) => registry` function",
+        );
+    }
+};
+
 export const validateGtkxConfig = (config: GtkxConfig): void => {
     validateLibraries(config.libraries);
     validateGirPath(config.girPath);
     validateApplicationId(config.applicationId);
-    validateContainerPropRows(config.containerProps);
-    validateArrayPropRows(config.arrayProps);
-    validateObjectPropRows(config.objectProps);
-    validateVirtualPropRows(config.virtualProps);
-    validateElementMap(config.elementMap);
+    validateRules(config.rules);
     validateReactCompiler(config.reactCompiler);
 };
 
@@ -169,11 +161,7 @@ export type ResolvedGtkxConfig = {
     libraries: typeof LIBRARIES_WILDCARD | string[];
     girPath: string[];
     applicationId: string | undefined;
-    containerProps: PerElementPropRows<ContainerPropRow>;
-    arrayProps: PerElementPropRows<ArrayPropRow>;
-    objectProps: PerElementPropRows<ObjectPropRow>;
-    virtualProps: PerElementPropRows<VirtualPropRow>;
-    elementMap: ElementMapRule[];
+    rules: string | undefined;
     reactCompiler: ResolvedReactCompilerOptions | null;
 };
 
@@ -181,10 +169,6 @@ export const resolveGtkxConfig = (config: GtkxConfig): ResolvedGtkxConfig => ({
     libraries: config.libraries ?? [],
     girPath: config.girPath ?? [],
     applicationId: config.applicationId,
-    containerProps: config.containerProps ?? {},
-    arrayProps: config.arrayProps ?? {},
-    objectProps: config.objectProps ?? {},
-    virtualProps: config.virtualProps ?? {},
-    elementMap: config.elementMap ?? [],
+    rules: config.rules,
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
 });

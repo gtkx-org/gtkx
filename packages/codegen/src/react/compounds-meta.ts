@@ -7,63 +7,63 @@ import {
     TEXT_PAINTABLE_KIND,
 } from "@gtkx/config";
 
-export type VirtualSubcomponentSlot = {
+export type WrapperNodeElementSlot = {
     prop: string;
     kind: string;
 };
 
-export type VirtualSubcomponent = {
+export type WrapperNodeElement = {
     flatName: string;
     kind: string;
     propsType: string;
-    slot?: VirtualSubcomponentSlot;
+    slot?: WrapperNodeElementSlot;
 };
 
-const STACK_PAGE: VirtualSubcomponent = {
+const STACK_PAGE: WrapperNodeElement = {
     flatName: "GtkStackPage",
     kind: META_OBJECT_KIND,
     propsType: "StackPageProps",
 };
-const VIEW_STACK_PAGE: VirtualSubcomponent = {
+const VIEW_STACK_PAGE: WrapperNodeElement = {
     flatName: "AdwViewStackPage",
     kind: META_OBJECT_KIND,
     propsType: "StackPageProps",
 };
-const NOTEBOOK_PAGE: VirtualSubcomponent = {
+const NOTEBOOK_PAGE: WrapperNodeElement = {
     flatName: "GtkNotebookPage",
     kind: META_OBJECT_KIND,
     propsType: "NotebookPageProps",
     slot: { prop: "tabLabel", kind: TAB_LABEL_KIND },
 };
-const GRID_CHILD: VirtualSubcomponent = {
+const GRID_CHILD: WrapperNodeElement = {
     flatName: "GtkGridChild",
     kind: LAYOUT_CHILD_KIND,
     propsType: "GridChildProps",
 };
-const FIXED_CHILD: VirtualSubcomponent = {
+const FIXED_CHILD: WrapperNodeElement = {
     flatName: "GtkFixedChild",
     kind: LAYOUT_CHILD_KIND,
     propsType: "FixedChildProps",
 };
-const OVERLAY_CHILD: VirtualSubcomponent = {
+const OVERLAY_CHILD: WrapperNodeElement = {
     flatName: "GtkOverlayChild",
     kind: OVERLAY_KIND,
     propsType: "OverlayChildProps",
 };
-const TEXT_ANCHOR: VirtualSubcomponent = {
+const TEXT_ANCHOR: WrapperNodeElement = {
     flatName: "GtkTextAnchor",
     kind: TEXT_ANCHOR_KIND,
     propsType: "TextAnchorProps",
 };
-const TEXT_PAINTABLE: VirtualSubcomponent = {
+const TEXT_PAINTABLE: WrapperNodeElement = {
     flatName: "GtkTextPaintable",
     kind: TEXT_PAINTABLE_KIND,
     propsType: "TextPaintableProps",
 };
 
-const TEXT_VIEW_SUBCOMPONENTS: VirtualSubcomponent[] = [TEXT_ANCHOR, TEXT_PAINTABLE];
+const TEXT_VIEW_SUBCOMPONENTS: WrapperNodeElement[] = [TEXT_ANCHOR, TEXT_PAINTABLE];
 
-const VIRTUAL_SUBCOMPONENTS: Record<string, VirtualSubcomponent[]> = Object.freeze({
+const WRAPPER_NODE_ELEMENTS_BY_PARENT: Record<string, WrapperNodeElement[]> = Object.freeze({
     GtkStack: [STACK_PAGE],
     AdwViewStack: [VIEW_STACK_PAGE],
     GtkNotebook: [NOTEBOOK_PAGE],
@@ -74,12 +74,12 @@ const VIRTUAL_SUBCOMPONENTS: Record<string, VirtualSubcomponent[]> = Object.free
     GtkSourceView: TEXT_VIEW_SUBCOMPONENTS,
 });
 
-export type VirtualSubcomponentEntry = {
+export type WrapperNodeElementEntry = {
     parentGlibName: string;
-    virtual: VirtualSubcomponent;
+    virtual: WrapperNodeElement;
 };
 
-export const virtualSubcomponentEntries = (): VirtualSubcomponentEntry[] =>
-    Object.entries(VIRTUAL_SUBCOMPONENTS).flatMap(([parentGlibName, virtuals]) =>
+export const wrapperNodeElementEntries = (): WrapperNodeElementEntry[] =>
+    Object.entries(WRAPPER_NODE_ELEMENTS_BY_PARENT).flatMap(([parentGlibName, virtuals]) =>
         virtuals.map((virtual) => ({ parentGlibName, virtual })),
     );

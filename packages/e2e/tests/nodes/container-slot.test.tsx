@@ -1,7 +1,7 @@
 import type * as Adw from "@gtkx/gi/adw";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow, AdwExpanderRow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
-import { GtkButton, GtkHeaderBar, GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
+import { GtkButton, GtkHeaderBar, GtkLabel, GtkListBox, GtkShortcut } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
@@ -678,18 +678,14 @@ describe("render - ContainerProp (18)", () => {
 
 describe("render - ContainerProp (19)", () => {
     describe("error handling", () => {
-        it("throws when the requested method does not exist on the parent", async () => {
-            const WrapperNode = "__GTKX_WRAPPER_NODE__" as const;
-
+        it("throws when a self-attaching child is nested under an incompatible parent", async () => {
             await expect(
                 render(
                     <GtkListBox>
-                        <WrapperNode kind="container-slot" verb={{ attach: "thisMethodDoesNotExist" }}>
-                            <GtkLabel label="orphan" />
-                        </WrapperNode>
+                        <GtkShortcut />
                     </GtkListBox>,
                 ),
-            ).rejects.toThrow(/Method 'thisMethodDoesNotExist' not found/);
+            ).rejects.toThrow(/<GtkShortcut> cannot be a child of <GtkListBox>: pass it through the `shortcuts` prop/);
         });
     });
 });

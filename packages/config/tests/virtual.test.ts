@@ -20,12 +20,23 @@ describe("renderGtkxConfigModule", () => {
         expect(source).toContain('export * from "@gtkx/jsx/metadata";');
     });
 
+    it("merges the built-in rule registry, defaulting user rules to undefined", () => {
+        const lines = renderGtkxConfigModule(resolveGtkxConfig({})).split("\n");
+        expect(lines).toContain('import { BUILT_IN_RULES, mergeRules } from "@gtkx/config/rules";');
+        expect(lines).toContain("const userRules = undefined;");
+        expect(lines).toContain("export const RULE_REGISTRY = mergeRules(BUILT_IN_RULES, userRules);");
+    });
+
+    it("imports the user rules module when configured", () => {
+        const lines = renderGtkxConfigModule(resolveGtkxConfig({ rules: "./gtkx.rules.ts" })).split("\n");
+        expect(lines).toContain('import userRules from "./gtkx.rules.ts";');
+    });
+
     it("serializes each resolved config field as a named constant", () => {
         const source = renderGtkxConfigModule(resolveGtkxConfig({ applicationId: "org.gtk.Demo4" }));
         const lines = source.split("\n");
         expect(lines).toContain('export const applicationId = "org.gtk.Demo4";');
-        expect(lines).toContain("export const containerProps = {};");
-        expect(lines).toContain("export const elementMap = [];");
+        expect(lines).toContain("export const libraries = [];");
     });
 
     it("serializes an unset applicationId as undefined", () => {
@@ -38,17 +49,7 @@ describe("serializeGtkxConfig", () => {
     it("projects only the config-derived fields exported into the virtual module", () => {
         const serialized = serializeGtkxConfig(resolveGtkxConfig({ applicationId: "org.gtk.Demo4" }));
         expect(Object.keys(serialized).sort()).toEqual(
-            [
-                "applicationId",
-                "arrayProps",
-                "containerProps",
-                "elementMap",
-                "girPath",
-                "libraries",
-                "objectProps",
-                "reactCompiler",
-                "virtualProps",
-            ].sort(),
+            ["applicationId", "girPath", "libraries", "reactCompiler"].sort(),
         );
         expect(serialized.applicationId).toBe("org.gtk.Demo4");
     });

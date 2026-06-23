@@ -1,17 +1,11 @@
 import { rmSync } from "node:fs";
 import { resolve } from "node:path";
-import { CodegenRunner } from "@gtkx/codegen";
-import {
-    type GtkxConfig,
-    GtkxConfigNotFoundError,
-    loadGtkxConfig,
-    resolveDataDir,
-    type UserTableRows,
-} from "@gtkx/config";
+import { CodegenRunner, type UserRules } from "@gtkx/codegen";
+import { type GtkxConfig, GtkxConfigNotFoundError, loadGtkxConfig, resolveDataDir } from "@gtkx/config";
 import { emitSchemaEnv } from "../gsettings/env.js";
 import { GtkxError } from "../internal/errors.js";
 import { info } from "../internal/log.js";
-import { type CodegenInputs, isCodegenNeeded, resolveCodegenInputs } from "./freshness.js";
+import { type CodegenInputs, isCodegenNeeded, readUserRulesSource, resolveCodegenInputs } from "./freshness.js";
 import { type CodegenStore, findCodegenRoot, isWorkspaceRoot, resolveCodegenContext } from "./store-resolver.js";
 
 export type RunCodegenOptions = {
@@ -29,16 +23,28 @@ export type RunCodegenResult = {
     libraries?: string[] | undefined;
 };
 
-const tableRows = (config: GtkxConfig): UserTableRows => {
-    const { containerProps, arrayProps, objectProps, virtualProps, elementMap } = config;
-    return { containerProps, arrayProps, objectProps, virtualProps, elementMap };
+const resolveRulesModule = (cwd: string, config: GtkxConfig): string | undefined =>
+    config.rules === undefined ? undefined : resolve(cwd, config.rules);
+
+const loadUserRules = async (rulesModule: string | undefined): Promise<UserRules | undefined> => {
+    if (rulesModule === undefined) return undefined;
+    const imported = (await import(rulesModule)) as { default?: UserRules };
+    return imported.default;
 };
 
-const buildRunner = (store: CodegenStore, libraries: string[], girPath: string[], config: GtkxConfig): CodegenRunner =>
+type UserRulesInput = { rules: UserRules | undefined; rulesSource: string };
+
+const buildRunner = (
+    store: CodegenStore,
+    libraries: string[],
+    girPath: string[],
+    userRules: UserRulesInput,
+): CodegenRunner =>
     new CodegenRunner({
         libraries,
         girPath,
-        tables: tableRows(config),
+        rules: userRules.rules,
+        rulesSource: userRules.rulesSource,
         gi: {
             storeDir: store.giStoreDir,
             linkDir: store.giLinkDir,
@@ -78,7 +84,10 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
         }
     }
 
-    const result = await buildRunner(store, libraries, girPath, config).run();
+    const rulesModule = resolveRulesModule(cwd, config);
+    const rules = await loadUserRules(rulesModule);
+    const rulesSource = readUserRulesSource(rulesModule);
+    const result = await buildRunner(store, libraries, girPath, { rules, rulesSource }).run();
 
     return {
         namespaces: result.namespaces,
@@ -110,7 +119,7 @@ export const ensureGenerated = async (cwd: string): Promise<boolean> => {
     }
     syncSchemaEnv(cwd);
     const inputs = resolveInputsOrNull(context.root, context.config);
-    if (inputs !== null && !isCodegenNeeded(context.config, inputs)) {
+    if (inputs !== null && !isCodegenNeeded(context.root, context.config, inputs)) {
         return false;
     }
     await runCodegen(inputs === null ? { cwd: context.root } : { cwd: context.root, inputs });
@@ -128,7 +137,7 @@ export const preflightCodegen = async (cwd: string): Promise<void> => {
     }
     syncSchemaEnv(cwd);
     const inputs = resolveInputsOrNull(context.root, context.config);
-    if (inputs === null || isCodegenNeeded(context.config, inputs)) {
+    if (inputs === null || isCodegenNeeded(context.root, context.config, inputs)) {
         info("generated bindings missing; running codegen...");
         await runCodegen(inputs === null ? { cwd: context.root } : { cwd: context.root, inputs });
     }

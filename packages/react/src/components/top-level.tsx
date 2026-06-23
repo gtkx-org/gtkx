@@ -7,7 +7,7 @@ export interface TopLevelParentProps {
     parent?: Gtk.Window | null;
 }
 
-export const withTopLevel = <P extends { children?: ReactNode }>(
+export const withWindowPresentation = <P extends { children?: ReactNode }>(
     Underlying: ElementType,
 ): ((props: P) => ReactNode) => {
     const Element = Underlying;

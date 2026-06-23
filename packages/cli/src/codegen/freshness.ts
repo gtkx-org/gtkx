@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { type CodegenFingerprint, computeFingerprint, FINGERPRINT_FILENAME, serializeUserTables } from "@gtkx/codegen";
+import { join, resolve } from "node:path";
+import { type CodegenFingerprint, computeFingerprint, FINGERPRINT_FILENAME } from "@gtkx/codegen";
 import type { GtkxConfig } from "@gtkx/config";
 import { sortedAlpha } from "@gtkx/utils";
 import { resolveGirPath } from "./gir-resolver.js";
@@ -20,6 +20,18 @@ export const resolveCodegenInputs = (cwd: string, config: GtkxConfig): CodegenIn
     return { girPath, libraries, store };
 };
 
+export const readUserRulesSource = (rulesModule: string | undefined): string => {
+    if (rulesModule === undefined) return "";
+    try {
+        return readFileSync(rulesModule, "utf8");
+    } catch {
+        return "";
+    }
+};
+
+const userRulesSourceFor = (cwd: string, config: GtkxConfig): string =>
+    readUserRulesSource(config.rules === undefined ? undefined : resolve(cwd, config.rules));
+
 const REACT_GENERATED_MODULES: string[] = ["metadata.js", join("gtk", "gtk.js")];
 
 const namespaceBarrelPath = (giStoreDir: string, library: string): string => {
@@ -32,7 +44,7 @@ const giStoreLinksResolve = (giStoreDir: string): boolean =>
     existsSync(join(giStoreDir, "node_modules", "@gtkx", "ffi", "package.json")) &&
     existsSync(join(giStoreDir, "node_modules", "@gtkx", "gi", "package.json"));
 
-const fingerprintStale = (giStoreDir: string, libraries: string[], userTables: string): boolean => {
+const fingerprintStale = (giStoreDir: string, libraries: string[], userRulesSource: string): boolean => {
     const sentinelPath = join(giStoreDir, FINGERPRINT_FILENAME);
     if (!existsSync(sentinelPath)) return true;
     let sentinel: CodegenFingerprint;
@@ -44,13 +56,13 @@ const fingerprintStale = (giStoreDir: string, libraries: string[], userTables: s
     const sortAlpha = (values: string[]): string => sortedAlpha(values).join(",");
     if (sortAlpha(sentinel.libraries) !== sortAlpha(libraries)) return true;
     try {
-        return computeFingerprint(sentinel.girFiles, sentinel.libraries, userTables) !== sentinel.value;
+        return computeFingerprint(sentinel.girFiles, sentinel.libraries, userRulesSource) !== sentinel.value;
     } catch {
         return true;
     }
 };
 
-export const isCodegenNeeded = (config: GtkxConfig, inputs: CodegenInputs): boolean => {
+export const isCodegenNeeded = (cwd: string, config: GtkxConfig, inputs: CodegenInputs): boolean => {
     try {
         const { store, libraries } = inputs;
         if (!existsSync(store.giLinkDir) || !existsSync(store.giStoreDir)) {
@@ -66,7 +78,7 @@ export const isCodegenNeeded = (config: GtkxConfig, inputs: CodegenInputs): bool
             if (!existsSync(store.jsxLinkDir)) return true;
             if (REACT_GENERATED_MODULES.some((module) => !existsSync(join(store.jsxStoreDir, module)))) return true;
         }
-        return fingerprintStale(store.giStoreDir, libraries, serializeUserTables(config));
+        return fingerprintStale(store.giStoreDir, libraries, userRulesSourceFor(cwd, config));
     } catch {
         return true;
     }

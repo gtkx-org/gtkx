@@ -1,8 +1,6 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import { isConstructOnlyProp, resolveDefaultProp, resolveSignal } from "../utils/gtype.js";
 import { NOTIFY_DETAIL_PREFIX, notifyDetailToProp } from "../utils/notify-name.js";
-import { applyArrayProp } from "./array-props.js";
-import type { ImperativeHandler, PropDescriptorTable, SignalPropDescriptor } from "./prop-descriptor-table.js";
 import type { SignalHandler } from "./signal-store.js";
 import { stateOf } from "./state.js";
 import type { Props } from "./types.js";
@@ -11,8 +9,6 @@ const notifyValueHandler = (container: GObject.Object, signalName: string, callb
     const prop = notifyDetailToProp(signalName);
     return () => callback(Reflect.get(container, prop), container);
 };
-
-const EMPTY_TABLE: PropDescriptorTable = {};
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> => {
     if (typeof value !== "object" || value === null) return false;
@@ -36,7 +32,6 @@ const propsEqual = (a: unknown, b: unknown): boolean => {
 };
 
 export type ApplyPropsOptions = {
-    descriptors?: PropDescriptorTable;
     exclude?: (name: string) => boolean;
     defaultBlockable?: boolean;
 };
@@ -47,22 +42,14 @@ export function applyProps(
     newProps: Props,
     options?: ApplyPropsOptions,
 ): void {
-    const context: ApplyContext = {
-        container,
-        oldProps,
-        newProps,
-        descriptors: options?.descriptors ?? EMPTY_TABLE,
-    };
-
+    const context: ApplyContext = { container, oldProps, newProps };
     applyGenericProps(context, options?.exclude, options?.defaultBlockable ?? true);
-    applyDescriptors(context);
 }
 
 type ApplyContext = {
     container: GObject.Object;
     oldProps: Props | null;
     newProps: Props;
-    descriptors: PropDescriptorTable;
 };
 
 type PendingSignal = { signalName: string; newValue: unknown };
@@ -83,13 +70,13 @@ const collectGenericChanges = (
     context: ApplyContext,
     exclude: ((name: string) => boolean) | undefined,
 ): { pendingSignals: PendingSignal[]; pendingProperties: PendingProperty[] } => {
-    const { container, oldProps, newProps, descriptors } = context;
+    const { container, oldProps, newProps } = context;
     const constructionApplied = oldProps === null;
     const pendingSignals: PendingSignal[] = [];
     const pendingProperties: PendingProperty[] = [];
 
     const collect = (name: string): void => {
-        if (name === "children" || name in descriptors || exclude?.(name)) return;
+        if (name === "children" || exclude?.(name)) return;
         if (isConstructOnlyProp(container, name)) return;
 
         const oldValue = oldProps?.[name];
@@ -146,55 +133,4 @@ const applyGenericProps = (
         if (typeof newValue === "string" && Reflect.get(container, name) === newValue) continue;
         Reflect.set(container, name, newValue);
     }
-};
-
-const applyDescriptors = (context: ApplyContext): void => {
-    const { container, oldProps, newProps, descriptors } = context;
-    const ranImperatives = new Set<ImperativeHandler>();
-
-    for (const [key, descriptor] of Object.entries(descriptors)) {
-        const isEqual = descriptor.diff ?? propsEqual;
-        const changed = !isEqual(oldProps?.[key], newProps[key]);
-        switch (descriptor.kind) {
-            case "array":
-                if (changed) applyArrayProp(container, descriptor, oldProps?.[key], newProps[key]);
-                break;
-            case "signal":
-                if (changed) applySignalDescriptor(container, newProps[key], descriptor);
-                break;
-            case "imperative":
-                if ((descriptor.always || changed) && !ranImperatives.has(descriptor.handler)) {
-                    ranImperatives.add(descriptor.handler);
-                    descriptor.handler(container, newProps, oldProps);
-                }
-                break;
-        }
-    }
-};
-
-const applySignalDescriptor = (
-    container: GObject.Object,
-    callbackValue: unknown,
-    descriptor: SignalPropDescriptor,
-): void => {
-    const handler =
-        typeof callbackValue === "function"
-            ? buildSignalHandler(callbackValue as SignalHandler, descriptor)
-            : undefined;
-    const blockable = descriptor.blockable ?? true;
-    const { signalStore } = stateOf(container);
-
-    for (const signalName of descriptor.signals) {
-        signalStore.set({ owner: container, obj: container, signal: signalName, handler, blockable });
-    }
-};
-
-const buildSignalHandler = (callback: SignalHandler, descriptor: SignalPropDescriptor): SignalHandler => {
-    if (!descriptor.getArgs && descriptor.returnValue === undefined) return callback;
-
-    return (...signalArgs: unknown[]) => {
-        const args = descriptor.getArgs ? descriptor.getArgs() : signalArgs;
-        if (args !== null) callback(...args);
-        return descriptor.returnValue;
-    };
 };

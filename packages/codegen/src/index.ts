@@ -3,6 +3,6 @@ export {
     type CodegenFingerprint,
     computeFingerprint,
     FINGERPRINT_FILENAME,
-    serializeUserTables,
 } from "./fingerprint.js";
-export { CodegenRunner } from "./runner.js";
+export type { UserRules } from "./react/pipeline.js";
+export { CodegenRunner, type CodegenRunnerOptions } from "./runner.js";

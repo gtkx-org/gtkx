@@ -174,28 +174,17 @@ describe("codegen React pipeline (auto-derived slots)", () => {
         expect(reactPipeline.metadata).not.toContain("export const SLOTS");
     });
 
-    it("promotes a user-supplied container slot on a widget without built-in ones", () => {
-        const overridden = generateJsxFiles(repository, {
-            containerProps: { GtkButton: { extras: { attach: "addChild" } } },
-        });
-        const gtk = sourceFor(overridden, "gtk");
-        expect(gtk).toContain("extras?: ReactNode | null | undefined;");
-        expect(overridden.metadata).toMatch(/"GtkButton": \{\s*"extras": \{\s*"attach": "addChild"/);
-        const { js } = transpileSource("gtk/gtk.tsx", gtk);
-        expect(js.length).toBeGreaterThan(0);
+    it("types the built-in container-slot props as ReactNode on their host", () => {
+        const adw = sourceFor(reactPipeline, "adw");
+        const headerBar = interfaceBody(adw, "AdwHeaderBar");
+        expect(headerBar).toContain("start?: ReactNode | null | undefined;");
+        expect(headerBar).toContain("end?: ReactNode | null | undefined;");
     });
 
-    it("promotes a user container slot on a plain GObject class", () => {
-        const overridden = generateJsxFiles(repository, {
-            containerProps: { GApplication: { windows: { attach: "addWindow" } } },
-        });
-        const gio = sourceFor(overridden, "gio");
-        expect(gio).toContain("GApplicationProps");
-        expect(gio).toContain("windows?: ReactNode | null | undefined;");
-        expect(overridden.metadata).toMatch(/"GApplication": \{\s*"windows": \{\s*"attach": "addWindow"/);
-        const { js, dts } = transpileSource("gio/gio.tsx", gio);
-        expect(js.length).toBeGreaterThan(0);
-        expect(dts.length).toBeGreaterThan(0);
+    it("types the base GtkWidget controller and action-group slots as ReactNode", () => {
+        const gtk = sourceFor(reactPipeline, "gtk");
+        expect(gtk).toContain("controllers?: ReactNode | null | undefined;");
+        expect(gtk).toContain("actionGroups?: ReactNode | null | undefined;");
     });
 });
 
@@ -224,17 +213,34 @@ describe("codegen array props", () => {
         expect(dts).not.toContain("TS2717");
     });
 
-    it("merges a user arrayProps entry with the built-ins, emitting its line and import", () => {
-        const overridden = generateJsxFiles(repository, {
-            arrayProps: { GtkScale: { marks: { itemType: "ScaleMark", clear: "clearMarks" } } },
-        });
-        const gtk = sourceFor(overridden, "gtk");
+    it("emits the built-in extraProps array lines and shared-type imports across elements", () => {
+        const gtk = sourceFor(reactPipeline, "gtk");
         expect(interfaceBody(gtk, "GtkScale")).toContain("marks?: ScaleMark[] | null | undefined;");
         expect(interfaceBody(gtk, "GtkCalendar")).toContain("markedDays?: CalendarMark[] | null | undefined;");
+        expect(interfaceBody(gtk, "GtkAboutDialog")).toContain("creditSections?: CreditSection[] | null | undefined;");
         expect(gtk).toContain('from "@gtkx/react";');
         expect(gtk).toContain("ScaleMark");
-        const { dts } = transpileSource("gtk/gtk.tsx", gtk);
-        expect(dts.length).toBeGreaterThan(0);
+        const adw = sourceFor(reactPipeline, "adw");
+        expect(interfaceBody(adw, "AdwAlertDialog")).toContain(
+            "responses?: AlertDialogResponseProps[] | null | undefined;",
+        );
+    });
+
+    it("emits a synthetic draw-func prop with its qualified GIR type", () => {
+        const gtk = sourceFor(reactPipeline, "gtk");
+        expect(interfaceBody(gtk, "GtkDrawingArea")).toContain(
+            "drawFunc?: Gtk.DrawingAreaDrawFunc | null | undefined;",
+        );
+    });
+
+    it("emits a synthetic icon prop with its shared type", () => {
+        const gtk = sourceFor(reactPipeline, "gtk");
+        expect(interfaceBody(gtk, "GtkDragSource")).toContain("icon?: DragSourceIcon | null | undefined;");
+    });
+
+    it("emits the GSimpleActionGroup prefix string prop", () => {
+        const gio = sourceFor(reactPipeline, "gio");
+        expect(interfaceBody(gio, "GSimpleActionGroup")).toContain("prefix?: string | null | undefined;");
     });
 });
 
@@ -255,44 +261,29 @@ describe("codegen read-only props", () => {
 });
 
 describe("codegen runtime tables", () => {
-    it("bakes the reconciler tables into the metadata module", () => {
-        expect(reactPipeline.metadata).toContain("export const ELEMENT_MAP");
-        expect(reactPipeline.metadata).toContain('"child": "GtkEventController"');
-        expect(reactPipeline.metadata).toContain("export const ARRAY_PROPS");
-        expect(reactPipeline.metadata).toContain("export const PROP_RULES");
+    it("bakes the genuine GIR capability tables into the metadata module", () => {
         expect(reactPipeline.metadata).toContain("export const TOP_LEVEL_TYPES");
+        expect(reactPipeline.metadata).toContain("export const DEFAULT_BLOCKABLE_TYPES");
         expect(reactPipeline.metadata).toContain("export const META_OBJECT_ADD_METHODS");
         expect(reactPipeline.metadata).toContain("export const PAGE_META_SETTERS");
-        expect(reactPipeline.metadata).toContain("export const CONTAINER_PROPS");
+        expect(reactPipeline.metadata).toContain("export const ATTACH_SHAPES");
+        expect(reactPipeline.metadata).toContain("export const ORDERED_INSERT");
+        expect(reactPipeline.metadata).toContain("export const SLOT_PROPS");
     });
 
-    it("appends user elementMap rows after the built-ins", () => {
-        const overridden = generateJsxFiles(repository, {
-            elementMap: [
-                {
-                    child: "MyAppGadget",
-                    parentType: "MyAppBoard",
-                    verb: {
-                        kind: "method",
-                        attach: "add",
-                        attachArgs: "child",
-                        detach: "remove",
-                        detachArgs: "child",
-                    },
-                },
-            ],
-        });
-        expect(overridden.metadata).toContain('"child": "MyAppGadget"');
-        expect(overridden.metadata.indexOf('"child": "GtkEventController"')).toBeLessThan(
-            overridden.metadata.indexOf('"child": "MyAppGadget"'),
-        );
+    it("no longer bakes the deleted serialized rule tables", () => {
+        expect(reactPipeline.metadata).not.toContain("export const ELEMENT_MAP");
+        expect(reactPipeline.metadata).not.toContain("export const LIST_PROP_RULES");
+        expect(reactPipeline.metadata).not.toContain("export const PROP_RULES");
+        expect(reactPipeline.metadata).not.toContain("export const CHILD_ATTACH_RULES");
     });
 
-    it("bakes merged user array-prop rows into the metadata module", () => {
-        const overridden = generateJsxFiles(repository, {
-            arrayProps: { GtkScale: { marks: { itemType: "ScaleMark", clear: "clearAllMarks" } } },
-        });
-        expect(overridden.metadata).toContain('"clear": "clearAllMarks"');
+    it("bakes the ColumnView ordered-insert capability", () => {
+        expect(reactPipeline.metadata).toMatch(/"GtkColumnView":\s*\{\s*"collection": "getColumns"/);
+    });
+
+    it("bakes the per-host slot prop names", () => {
+        expect(reactPipeline.metadata).toMatch(/"AdwHeaderBar":\s*\[\s*"start",\s*"end"\s*\]/);
     });
 });
 

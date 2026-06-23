@@ -33,6 +33,11 @@
         },
         "./env": {
             "types": "./env.d.ts"
+        },
+        "./rules": {
+            "source": "./src/rules.ts",
+            "types": "./dist/rules.d.ts",
+            "default": "./dist/rules.js"
         }
     },
     "sideEffects": false,

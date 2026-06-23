@@ -1,317 +1,17 @@
-import type {
-    AddMethodRule,
-    ArrayPropRow,
-    ContainerPropRow,
-    ElementMapRule,
-    ObjectPropRow,
-    PageMetaSetter,
-    PerElementPropRows,
-    PropRule,
-    VirtualPropRow,
-} from "@gtkx/config";
+import type { AddMethodRule, OrderedInsertSpec, PageMetaSetter } from "@gtkx/config";
 
-export const BUILT_IN_ELEMENT_MAP: ElementMapRule[] = [
-    {
-        child: "GtkEventController",
-        parentType: "GtkWidget",
-        verb: {
-            kind: "method",
-            attach: "addController",
-            attachArgs: "child",
-            detach: "removeController",
-            detachArgs: "child",
-            detachGuard: { side: "child", getter: "getWidget" },
-        },
-    },
-    {
-        child: "GtkLayoutManager",
-        parentType: "GtkWidget",
-        verb: {
-            kind: "method",
-            attach: "setLayoutManager",
-            attachArgs: "child",
-            detach: "setLayoutManager",
-            detachArgs: "null",
-            detachGuard: { side: "parent", getter: "getLayoutManager" },
-        },
-    },
-    {
-        child: "GtkShortcut",
-        parentType: "GtkShortcutController",
-        verb: {
-            kind: "method",
-            attach: "addShortcut",
-            attachArgs: "child",
-            detach: "removeShortcut",
-            detachArgs: "child",
-        },
-    },
-    {
-        child: "GtkTextBuffer",
-        parentType: "GtkTextView",
-        verb: {
-            kind: "method",
-            attach: "setBuffer",
-            attachArgs: "child",
-            detach: "setBuffer",
-            detachArgs: "null",
-            detachGuard: { side: "parent", getter: "getBuffer" },
-        },
-    },
-    {
-        child: "GSimpleAction",
-        parentMethod: "addAction",
-        verb: {
-            kind: "method",
-            attach: "addAction",
-            attachArgs: "child",
-            detach: "removeAction",
-            detachArgs: "childName",
-        },
-    },
-    {
-        child: "GSimpleActionGroup",
-        parentType: "GtkWidget",
-        verb: {
-            kind: "method",
-            attach: "insertActionGroup",
-            attachArgs: "prefixChild",
-            detach: "insertActionGroup",
-            detachArgs: "prefixNull",
-        },
-    },
-    {
-        child: "GtkColumnViewColumn",
-        parentType: "GtkColumnView",
-        verb: {
-            kind: "orderedInsert",
-            attach: "insertColumn",
-            detach: "removeColumn",
-            collection: "getColumns",
-        },
-    },
-    {
-        child: "AdwToggle",
-        parentType: "AdwToggleGroup",
-        verb: {
-            kind: "method",
-            attach: "add",
-            attachArgs: "child",
-            detach: "remove",
-            detachArgs: "child",
-        },
-    },
+export type AncestryWrapperName =
+    | "withWindowPresentation"
+    | "withApplicationLifecycle"
+    | "withApplicationWindowPresentation";
+
+export type AncestryWrapperRule = { ancestors: string[]; hoc: AncestryWrapperName };
+
+export const BUILT_IN_ANCESTRY_WRAPPERS: AncestryWrapperRule[] = [
+    { ancestors: ["GtkApplication"], hoc: "withApplicationLifecycle" },
+    { ancestors: ["GtkApplicationWindow"], hoc: "withApplicationWindowPresentation" },
+    { ancestors: ["GtkWindow", "AdwDialog"], hoc: "withWindowPresentation" },
 ];
-
-export type CompoundHoc = "withTopLevel" | "withApplication" | "withApplicationWindow";
-
-export type CompoundHocRule = { ancestors: string[]; hoc: CompoundHoc };
-
-export const BUILT_IN_COMPOUND_HOCS: CompoundHocRule[] = [
-    { ancestors: ["GtkApplication"], hoc: "withApplication" },
-    { ancestors: ["GtkApplicationWindow"], hoc: "withApplicationWindow" },
-    { ancestors: ["GtkWindow", "AdwDialog"], hoc: "withTopLevel" },
-];
-
-const POSITION_TYPE_BOTTOM = 3;
-
-export const BUILT_IN_ARRAY_PROPS: PerElementPropRows<ArrayPropRow> = {
-    GtkApplication: {
-        actionAccels: {
-            itemType: "ActionAccel",
-            remove: {
-                method: "setAccelsForAction",
-                args: [
-                    { kind: "item", path: "action" },
-                    { kind: "value", value: [] },
-                ],
-            },
-            add: [
-                {
-                    method: "setAccelsForAction",
-                    args: [
-                        { kind: "item", path: "action" },
-                        { kind: "item", path: "accels" },
-                    ],
-                },
-            ],
-        },
-    },
-    GtkSizeGroup: {
-        widgets: {
-            itemType: "Gtk.Widget",
-            remove: { method: "removeWidget", args: [{ kind: "item" }] },
-            add: [{ method: "addWidget", args: [{ kind: "item" }] }],
-        },
-    },
-    GtkScale: {
-        marks: {
-            itemType: "ScaleMark",
-            clear: "clearMarks",
-            add: [
-                {
-                    method: "addMark",
-                    args: [
-                        { kind: "item", path: "value" },
-                        { kind: "item", path: "position", fallback: POSITION_TYPE_BOTTOM },
-                        { kind: "item", path: "label", fallback: null },
-                    ],
-                },
-            ],
-        },
-    },
-    GtkLevelBar: {
-        offsets: {
-            itemType: "LevelBarOffset",
-            remove: { method: "removeOffsetValue", args: [{ kind: "item", path: "id" }] },
-            add: [
-                {
-                    method: "addOffsetValue",
-                    args: [
-                        { kind: "item", path: "id" },
-                        { kind: "item", path: "value" },
-                    ],
-                },
-            ],
-        },
-    },
-    GtkCalendar: {
-        markedDays: {
-            itemType: "CalendarMark",
-            clear: "clearMarks",
-            add: [{ method: "markDay", args: [{ kind: "item" }] }],
-        },
-    },
-    AdwAlertDialog: {
-        responses: {
-            itemType: "AlertDialogResponseProps",
-            remove: { method: "removeResponse", args: [{ kind: "item", path: "id" }] },
-            add: [
-                {
-                    method: "addResponse",
-                    args: [
-                        { kind: "item", path: "id" },
-                        { kind: "item", path: "label" },
-                    ],
-                },
-                {
-                    method: "setResponseAppearance",
-                    args: [
-                        { kind: "item", path: "id" },
-                        { kind: "item", path: "appearance" },
-                    ],
-                    when: { path: "appearance", is: "defined" },
-                },
-                {
-                    method: "setResponseEnabled",
-                    args: [
-                        { kind: "item", path: "id" },
-                        { kind: "item", path: "enabled" },
-                    ],
-                    when: { path: "enabled", is: "defined" },
-                },
-            ],
-        },
-    },
-    GtkDropTarget: {
-        types: { itemType: "DropTargetType", set: "setGtypes" },
-    },
-    GtkAboutDialog: {
-        creditSections: {
-            itemType: "CreditSection",
-            appendOnce: true,
-            add: [
-                {
-                    method: "addCreditSection",
-                    args: [
-                        { kind: "item", path: "name" },
-                        { kind: "item", path: "people" },
-                    ],
-                },
-            ],
-        },
-    },
-};
-
-export const BUILT_IN_OBJECT_PROPS: PerElementPropRows<ObjectPropRow> = {
-    GtkDragSource: {
-        icon: {
-            itemType: "DragSourceIcon",
-            set: [
-                {
-                    method: "setIcon",
-                    args: [
-                        { kind: "item", path: "paintable" },
-                        { kind: "item", path: "hotX", fallback: 0 },
-                        { kind: "item", path: "hotY", fallback: 0 },
-                    ],
-                },
-            ],
-            unset: [
-                {
-                    method: "setIcon",
-                    args: [
-                        { kind: "value", value: null },
-                        { kind: "value", value: 0 },
-                        { kind: "value", value: 0 },
-                    ],
-                },
-            ],
-        },
-    },
-};
-
-export const BUILT_IN_VIRTUAL_PROPS: PerElementPropRows<VirtualPropRow> = {
-    GtkDrawingArea: {
-        drawFunc: { type: "Gtk.DrawingAreaDrawFunc", setter: "setDrawFunc", after: "queueDraw" },
-    },
-};
-
-const STACK_PAGE_RULE: PropRule = {
-    kind: "setters",
-    always: true,
-    props: [
-        {
-            prop: "visibleChildName",
-            call: "setVisibleChildName",
-            when: "truthy",
-            skipWhenGetterEquals: "getVisibleChildName",
-            requireGetterTruthyWithValue: "getChildByName",
-        },
-    ],
-};
-
-export const BUILT_IN_PROP_RULES: Record<string, PropRule[]> = {
-    GtkEditable: [
-        {
-            kind: "setters",
-            props: [{ prop: "text", set: "text", skipWhenGetterDivergedFromCommitted: "getText" }],
-        },
-    ],
-    AdwToggleGroup: [
-        {
-            kind: "setters",
-            always: true,
-            props: [
-                { prop: "activeName", call: "setActiveName", when: "defined" },
-                { prop: "active", call: "setActive", when: "nonNull" },
-            ],
-        },
-    ],
-    GtkStack: [STACK_PAGE_RULE],
-    AdwViewStack: [STACK_PAGE_RULE],
-    GtkTextTag: [
-        {
-            kind: "setters",
-            props: [
-                { prop: "priority", call: "setPriority", when: "nonNull" },
-                { prop: "foreground", set: "foreground", when: "nonNull" },
-                { prop: "background", set: "background", when: "nonNull" },
-                { prop: "paragraphBackground", set: "paragraphBackground", when: "nonNull" },
-            ],
-        },
-    ],
-};
 
 export const TOP_LEVEL_TYPES: string[] = ["GtkWindow", "AdwDialog"];
 
@@ -340,83 +40,82 @@ export const PAGE_META_SETTERS: PageMetaSetter[] = [
     { setter: "setBadgeNumber", prop: "badgeNumber", whenPresent: true },
 ];
 
-const PREFIX_SUFFIX_PROPS: Record<string, ContainerPropRow> = {
-    prefix: { attach: "addPrefix" },
-    suffix: { attach: "addSuffix" },
+export const ORDERED_INSERT: Record<string, OrderedInsertSpec> = {
+    GtkColumnView: { collection: "getColumns", attach: "insertColumn", detach: "removeColumn" },
 };
 
-const PACK_PROPS: Record<string, ContainerPropRow> = {
-    start: { attach: "packStart" },
-    end: { attach: "packEnd" },
+/**
+ * Per-host container-slot prop names whose values are wrapped as slot children
+ * and routed to the parent rule set by `slotTag`. Used by codegen to type these
+ * props as `ReactNode` and by the runtime split between slot and scalar props.
+ */
+export const SLOT_PROPS_BY_TYPE: Record<string, string[]> = {
+    GtkWidget: ["controllers", "actionGroups"],
+    GtkShortcutController: ["shortcuts"],
+    GtkApplicationWindow: ["actions"],
+    AdwActionRow: ["prefix", "suffix"],
+    AdwEntryRow: ["prefix", "suffix"],
+    AdwExpanderRow: ["prefix", "suffix", "rows", "actions"],
+    AdwHeaderBar: ["start", "end"],
+    AdwToolbarView: ["topBar", "bottomBar"],
+    GtkActionBar: ["start", "end"],
+    GtkHeaderBar: ["start", "end"],
 };
 
-export const BUILT_IN_CONTAINER_PROPS: PerElementPropRows<ContainerPropRow> = {
-    GtkWidget: {
-        controllers: {
-            attach: "addController",
-            detach: "removeController",
-            detachGuard: { side: "child", getter: "getWidget" },
-        },
-        actionGroups: {
-            attach: "insertActionGroup",
-            attachArgs: "prefixChild",
-            detach: "insertActionGroup",
-            detachArgs: "prefixNull",
-        },
-    },
-    GtkShortcutController: { shortcuts: { attach: "addShortcut", detach: "removeShortcut" } },
-    GtkApplicationWindow: { actions: { attach: "addAction", detach: "removeAction", detachArgs: "childName" } },
-    AdwActionRow: PREFIX_SUFFIX_PROPS,
-    AdwEntryRow: PREFIX_SUFFIX_PROPS,
-    AdwExpanderRow: { ...PREFIX_SUFFIX_PROPS, rows: { attach: "addRow" }, actions: { attach: "addAction" } },
-    AdwHeaderBar: PACK_PROPS,
-    AdwToolbarView: { topBar: { attach: "addTopBar" }, bottomBar: { attach: "addBottomBar" } },
-    GtkActionBar: PACK_PROPS,
-    GtkHeaderBar: PACK_PROPS,
+/**
+ * Accessible prop names mapped to their TypeScript type, mirroring the runtime
+ * `ACCESSIBLE_PROP_MAP` in `@gtkx/react`. Codegen inlines these directly into
+ * the base `WidgetProps` interface.
+ */
+export const ACCESSIBLE_PROP_TYPES: Record<string, string> = {
+    accessibleAutocomplete: "Gtk.AccessibleAutocomplete",
+    accessibleDescription: "string",
+    accessibleHasPopup: "boolean",
+    accessibleKeyShortcuts: "string",
+    accessibleLabel: "string",
+    accessibleLevel: "number",
+    accessibleModal: "boolean",
+    accessibleMultiLine: "boolean",
+    accessibleMultiSelectable: "boolean",
+    accessibleOrientation: "Gtk.Orientation",
+    accessiblePlaceholder: "string",
+    accessibleReadOnly: "boolean",
+    accessibleRequired: "boolean",
+    accessibleRoleDescription: "string",
+    accessibleSort: "Gtk.AccessibleSort",
+    accessibleValueMax: "number",
+    accessibleValueMin: "number",
+    accessibleValueNow: "number",
+    accessibleValueText: "string",
+    accessibleHelpText: "string",
+    accessibleBusy: "boolean",
+    accessibleChecked: "Gtk.AccessibleTristate",
+    accessibleDisabled: "boolean",
+    accessibleExpanded: "boolean",
+    accessibleHidden: "boolean",
+    accessibleInvalid: "Gtk.AccessibleInvalidState",
+    accessiblePressed: "Gtk.AccessibleTristate",
+    accessibleSelected: "boolean",
+    accessibleVisited: "boolean",
+    accessibleActiveDescendant: "Gtk.Widget",
+    accessibleColCount: "number",
+    accessibleColIndex: "number",
+    accessibleColIndexText: "string",
+    accessibleColSpan: "number",
+    accessibleControls: "Gtk.Widget[]",
+    accessibleDescribedBy: "Gtk.Widget[]",
+    accessibleDetails: "Gtk.Widget[]",
+    accessibleErrorMessage: "Gtk.Widget[]",
+    accessibleFlowTo: "Gtk.Widget[]",
+    accessibleLabelledBy: "Gtk.Widget[]",
+    accessibleOwns: "Gtk.Widget[]",
+    accessiblePosInSet: "number",
+    accessibleRowCount: "number",
+    accessibleRowIndex: "number",
+    accessibleRowIndexText: "string",
+    accessibleRowSpan: "number",
+    accessibleSetSize: "number",
 };
-
-export const BUILT_IN_PROPS_MIXINS: Record<string, string[]> = Object.freeze({
-    GSimpleActionGroup: ["ActionGroupPrefixProps"],
-});
-
-export const WIDGET_BASE_PROPS_MIXINS: string[] = ["AccessibleProps"];
-
-const mergePropRowMap = <Row>(
-    builtIn: PerElementPropRows<Row>,
-    userRows: PerElementPropRows<Row> | undefined,
-): PerElementPropRows<Row> => {
-    const result: Record<string, Record<string, Row>> = {};
-    for (const [key, props] of Object.entries(builtIn)) {
-        result[key] = { ...props };
-    }
-    if (userRows !== undefined) {
-        for (const [key, props] of Object.entries(userRows)) {
-            result[key] = { ...result[key], ...props };
-        }
-    }
-    return result;
-};
-
-export const mergeContainerProps = (
-    userContainerProps: PerElementPropRows<ContainerPropRow> | undefined,
-): PerElementPropRows<ContainerPropRow> => mergePropRowMap(BUILT_IN_CONTAINER_PROPS, userContainerProps);
-
-export const mergeArrayProps = (
-    userArrayProps: PerElementPropRows<ArrayPropRow> | undefined,
-): PerElementPropRows<ArrayPropRow> => mergePropRowMap(BUILT_IN_ARRAY_PROPS, userArrayProps);
-
-export const mergeObjectProps = (
-    userObjectProps: PerElementPropRows<ObjectPropRow> | undefined,
-): PerElementPropRows<ObjectPropRow> => mergePropRowMap(BUILT_IN_OBJECT_PROPS, userObjectProps);
-
-export const mergeVirtualProps = (
-    userVirtualProps: PerElementPropRows<VirtualPropRow> | undefined,
-): PerElementPropRows<VirtualPropRow> => mergePropRowMap(BUILT_IN_VIRTUAL_PROPS, userVirtualProps);
-
-export const mergeElementMap = (userElementMap: ElementMapRule[] | undefined): ElementMapRule[] =>
-    userElementMap === undefined || userElementMap.length === 0
-        ? BUILT_IN_ELEMENT_MAP
-        : [...BUILT_IN_ELEMENT_MAP, ...userElementMap];
 
 export type WidgetOverride = {
     runtimeOwned?: boolean;

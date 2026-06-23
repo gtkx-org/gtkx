@@ -1,41 +1,12 @@
-/// <reference types="@gtkx/config/env" />
-
-import { CONTAINER_PROPS } from "virtual:gtkx-config";
-import { CONTAINER_PROP_KIND, type ContainerPropRow, SLOT_KIND } from "@gtkx/config";
+import { CONTAINER_PROP_KIND, SLOT_KIND } from "@gtkx/config";
 import { createElement, isValidElement, type ReactNode } from "react";
 import { WRAPPER_NODE_ELEMENT } from "../reconciler/instance.js";
-import { foldInheritedTable } from "./gtype.js";
-import { resolveBackingClass } from "./gtype-predicates.js";
+import { slotPropsFor } from "../reconciler/slot-props.js";
 
-type ContainerPropMap = Map<string, ContainerPropRow>;
-
-const EMPTY_CONTAINER_PROPS: ContainerPropMap = new Map();
-
-const containerPropCache = new Map<string, ContainerPropMap>();
-
-const resolveContainerProps = (elementName: string): ContainerPropMap => {
-    const cached = containerPropCache.get(elementName);
-    if (cached) return cached;
-    const cls = resolveBackingClass(elementName);
-    const map = cls
-        ? foldInheritedTable(
-              cls.prototype.__gtype__,
-              CONTAINER_PROPS,
-              (collected: ContainerPropMap, rows) => {
-                  for (const [propName, row] of Object.entries(rows)) collected.set(propName, row);
-                  return collected;
-              },
-              new Map<string, ContainerPropRow>(),
-          )
-        : EMPTY_CONTAINER_PROPS;
-    containerPropCache.set(elementName, map);
-    return map;
-};
-
-const needsSplit = (props: object, containerMap: ContainerPropMap): boolean => {
+const needsSplit = (props: object, slotProps: Set<string>): boolean => {
     for (const [name, value] of Object.entries(props)) {
         if (name === "children") continue;
-        if (containerMap.has(name)) return true;
+        if (slotProps.has(name)) return true;
         if (isValidElement(value)) return true;
     }
     return false;
@@ -47,7 +18,7 @@ type SplitProps = {
     children: ReactNode;
 };
 
-const splitProps = (props: object, containerMap: ContainerPropMap): SplitProps => {
+const splitProps = (props: object, slotProps: Set<string>): SplitProps => {
     const rest: Record<string, unknown> = {};
     const wrappers: ReactNode[] = [];
     let children: ReactNode = null;
@@ -56,13 +27,12 @@ const splitProps = (props: object, containerMap: ContainerPropMap): SplitProps =
             children = value as ReactNode;
             continue;
         }
-        const verb = containerMap.get(name);
-        if (verb) {
+        if (slotProps.has(name)) {
             if (value != null) {
                 wrappers.push(
                     createElement(
                         WRAPPER_NODE_ELEMENT,
-                        { kind: CONTAINER_PROP_KIND, propName: name, verb, key: `container-slot:${name}` },
+                        { kind: CONTAINER_PROP_KIND, slotTag: name, key: `container-slot:${name}` },
                         value as ReactNode,
                     ),
                 );
@@ -85,10 +55,10 @@ const splitProps = (props: object, containerMap: ContainerPropMap): SplitProps =
 };
 
 export const createElementComponent = <P extends object>(elementName: string): ((props: P) => ReactNode) => {
-    const containerMap = resolveContainerProps(elementName);
+    const slotProps = slotPropsFor(elementName);
     return (props: P): ReactNode => {
-        if (!needsSplit(props, containerMap)) return createElement(elementName, props);
-        const { rest, wrappers, children } = splitProps(props, containerMap);
+        if (!needsSplit(props, slotProps)) return createElement(elementName, props);
+        const { rest, wrappers, children } = splitProps(props, slotProps);
         return createElement(elementName, rest, children, ...wrappers);
     };
 };

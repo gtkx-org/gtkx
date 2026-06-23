@@ -5,7 +5,7 @@ import { type ElementType, type ReactNode, type Ref, useCallback, useLayoutEffec
 import { ApplicationContext, useApplication } from "../hooks/use-application.js";
 import { useForwardedRef } from "../hooks/use-forwarded-ref.js";
 import { quitApplicationLifecycle, runApplicationLifecycle } from "../utils/application-lifecycle.js";
-import { withTopLevel } from "./top-level.js";
+import { withWindowPresentation } from "./top-level.js";
 
 type ApplicationOf<P> = P extends { ref?: Ref<infer T | null> }
     ? T extends Gtk.Application
@@ -47,7 +47,7 @@ type ApplicationComponentProps<T extends Gtk.Application> = {
     ref?: Ref<T | null>;
 };
 
-export const withApplication = <P extends ApplicationComponentProps<ApplicationOf<P>>>(
+export const withApplicationLifecycle = <P extends ApplicationComponentProps<ApplicationOf<P>>>(
     Element: ElementType,
 ): ((props: P) => ReactNode) => {
     return (props: P): ReactNode => {
@@ -63,14 +63,14 @@ export const withApplication = <P extends ApplicationComponentProps<ApplicationO
     };
 };
 
-export const withApplicationWindow = <P extends { children?: ReactNode; ref?: Ref<Gtk.Window | null> }>(
+export const withApplicationWindowPresentation = <P extends { children?: ReactNode; ref?: Ref<Gtk.Window | null> }>(
     Underlying: ElementType,
 ): ((props: P) => ReactNode) => {
     type SurfaceProps = Omit<P, "children"> & {
         application: ReturnType<typeof useApplication>;
         children?: ReactNode;
     };
-    const Surface = withTopLevel<SurfaceProps>(Underlying);
+    const Surface = withWindowPresentation<SurfaceProps>(Underlying);
     return (props: P): ReactNode => {
         const application = useApplication();
         const { children, ...rest } = props;

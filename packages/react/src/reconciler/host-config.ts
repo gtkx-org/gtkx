@@ -18,8 +18,8 @@ import {
     WRAPPER_NODE_ELEMENT,
 } from "./instance.js";
 import { scheduleLabelTextRebuild } from "./label-text-rebuild.js";
-import { getDescriptors } from "./prop-descriptor-table.js";
 import { reportReconcilerError } from "./reconciler-error-sink.js";
+import { isRuleManagedProp, resolveSetPropsRuleSet, ruleNodeOf } from "./rule-registry.js";
 import { ensureState, type Node, stateOf } from "./state.js";
 import { scheduleBufferRebuild } from "./text-buffer-rebuild.js";
 import { isBufferContentWrapper, isLabelTextWrapper } from "./text-wrapper.js";
@@ -132,15 +132,22 @@ const commitInstanceProps = (instance: Node, oldProps: Props | null, newProps: P
         return;
     }
     if (!(instance instanceof GObject.Object)) return;
-    const descriptors = getDescriptors(instance);
+    const excludeRuleManaged = (name: string): boolean => isRuleManagedProp(instance, name);
     if (instance instanceof Gtk.Widget) {
         applyAccessibleProps(instance, oldProps, newProps);
-        applyProps(instance, oldProps, newProps, { descriptors, exclude: isAccessibleProp });
+        applyProps(instance, oldProps, newProps, {
+            exclude: (name) => isAccessibleProp(name) || excludeRuleManaged(name),
+        });
     } else {
         applyProps(instance, oldProps, newProps, {
-            descriptors,
+            exclude: excludeRuleManaged,
             defaultBlockable: isDefaultBlockableType(instance.__gtype__),
         });
+    }
+    const ruleSet = resolveSetPropsRuleSet(instance.__gtype__);
+    if (ruleSet?.setProps) {
+        const node = ruleNodeOf(instance);
+        if (node) ruleSet.setProps(node, newProps, oldProps);
     }
     if (instance instanceof Gtk.TextTag) scheduleBufferRebuild(instance);
 };

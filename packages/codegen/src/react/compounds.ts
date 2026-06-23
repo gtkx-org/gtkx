@@ -2,14 +2,14 @@ import { WRAPPER_NODE_ELEMENT } from "@gtkx/config";
 import { quote, sortedAlphaBy, toCamelCase } from "@gtkx/utils";
 import type { GirNamespace } from "../gir/namespace.js";
 import type { GirRepository } from "../gir/repository.js";
-import { type VirtualSubcomponent, virtualSubcomponentEntries } from "./compounds-meta.js";
+import { type WrapperNodeElement, wrapperNodeElementEntries } from "./compounds-meta.js";
 import type { JsxImports } from "./imports.js";
-import { BUILT_IN_COMPOUND_HOCS, type CompoundHoc } from "./tables.js";
+import { type AncestryWrapperName, BUILT_IN_ANCESTRY_WRAPPERS } from "./tables.js";
 import { ancestorGlibNames, collectReactNodeClasses, type WidgetCandidate } from "./widgets.js";
 
 const WRAPPER_ELEMENT_CONST = "WrapperNodeElement";
 
-export const generateCompoundsSection = (
+export const generateElementComponentsSection = (
     targetNamespace: GirNamespace,
     repository: GirRepository,
     options: {
@@ -22,7 +22,7 @@ export const generateCompoundsSection = (
     const exportLines: string[] = [];
     let needsWrapperConst = false;
 
-    const virtuals = virtualSubcomponentsForNamespace(targetNamespace, repository);
+    const virtuals = wrapperNodeElementsForNamespace(targetNamespace, repository);
     const virtualNames = new Set(virtuals.map((virtual) => virtual.flatName));
 
     for (const candidate of collectReactNodeClasses(repository)) {
@@ -38,7 +38,7 @@ export const generateCompoundsSection = (
         needsWrapperConst = true;
         imports.sharedTypes.add(virtual.propsType);
         imports.reactBuiltins.add("ReactNode");
-        exportLines.push(renderVirtualSubcomponent(virtual));
+        exportLines.push(renderWrapperNodeElementExport(virtual));
         exportedNames.add(virtual.flatName);
     }
 
@@ -50,16 +50,16 @@ export const generateCompoundsSection = (
     return { source, exportedNames };
 };
 
-const virtualSubcomponentsForNamespace = (
+const wrapperNodeElementsForNamespace = (
     targetNamespace: GirNamespace,
     repository: GirRepository,
-): VirtualSubcomponent[] => {
+): WrapperNodeElement[] => {
     const namespaceByGlib = new Map(
         collectReactNodeClasses(repository).map((entry) => [entry.glibName, entry.namespace.name]),
     );
     const seen = new Set<string>();
-    const result: VirtualSubcomponent[] = [];
-    for (const { parentGlibName, virtual } of virtualSubcomponentEntries()) {
+    const result: WrapperNodeElement[] = [];
+    for (const { parentGlibName, virtual } of wrapperNodeElementEntries()) {
         if (seen.has(virtual.flatName)) continue;
         seen.add(virtual.flatName);
         if (namespaceByGlib.get(parentGlibName) === targetNamespace.name) result.push(virtual);
@@ -76,23 +76,27 @@ const renderCandidateExport = (
     const { glibName, klass, namespace } = candidate;
     if (excludeNames.has(glibName)) return null;
     const ancestry = new Set(ancestorGlibNames(klass, namespace, repository));
-    const hoc = compoundHoc(ancestry);
+    const hoc = resolveAncestryWrapper(ancestry);
     imports.hocs.add("createElementComponent");
     imports.reactBuiltins.add("ReactNode");
     if (hoc !== undefined) imports.hocs.add(hoc);
-    const isDialogSurface = hoc === "withTopLevel" && ancestry.has("AdwDialog");
+    const isDialogSurface = hoc === "withWindowPresentation" && ancestry.has("AdwDialog");
     if (isDialogSurface) imports.sharedTypes.add("TopLevelParentProps");
-    return renderCompound(glibName, hoc, isDialogSurface);
+    return renderElementComponentExport(glibName, hoc, isDialogSurface);
 };
 
-const compoundHoc = (ancestry: Set<string>): CompoundHoc | undefined => {
-    for (const rule of BUILT_IN_COMPOUND_HOCS) {
+const resolveAncestryWrapper = (ancestry: Set<string>): AncestryWrapperName | undefined => {
+    for (const rule of BUILT_IN_ANCESTRY_WRAPPERS) {
         if (rule.ancestors.some((ancestor) => ancestry.has(ancestor))) return rule.hoc;
     }
     return undefined;
 };
 
-const renderCompound = (glibName: string, hoc: CompoundHoc | undefined, isDialogSurface: boolean): string => {
+const renderElementComponentExport = (
+    glibName: string,
+    hoc: AncestryWrapperName | undefined,
+    isDialogSurface: boolean,
+): string => {
     const propsType = `${glibName}Props`;
     if (hoc === undefined) {
         return `export const ${glibName}: (props: ${propsType}) => ReactNode = createElementComponent<${propsType}>(${quote(glibName)});`;
@@ -109,7 +113,7 @@ const renderCompound = (glibName: string, hoc: CompoundHoc | undefined, isDialog
 const renderPositionalSlotChild = (kind: string, prop: string): string =>
     `{${prop} != null && <${WRAPPER_ELEMENT_CONST} kind=${quote(kind)}>{${prop}}</${WRAPPER_ELEMENT_CONST}>}`;
 
-const renderVirtualSubcomponent = (virtual: VirtualSubcomponent): string => {
+const renderWrapperNodeElementExport = (virtual: WrapperNodeElement): string => {
     const { flatName, kind, propsType, slot } = virtual;
     if (slot === undefined) {
         return `export const ${flatName} = (props: ${propsType}): ReactNode => (\n    <${WRAPPER_ELEMENT_CONST} kind=${quote(kind)} {...props} />\n);`;

@@ -11,7 +11,6 @@ vi.mock("@gtkx/codegen", () => ({
         }
     },
     computeFingerprint: () => "test-fingerprint",
-    serializeUserTables: () => "{}",
     FINGERPRINT_FILENAME: ".codegen-fingerprint.json",
 }));
 

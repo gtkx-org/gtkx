@@ -1,15 +1,4 @@
-import type {
-    AddMethodRule,
-    ArrayPropRow,
-    AttachShapeTable,
-    ContainerPropRow,
-    ElementMapRule,
-    ObjectPropRow,
-    PageMetaSetter,
-    PerElementPropRows,
-    PropRule,
-    VirtualPropRow,
-} from "@gtkx/config";
+import type { AddMethodRule, AttachShapeTable, OrderedInsertSpec, PageMetaSetter } from "@gtkx/config";
 import { quote, sortedAlphaBy, toCamelIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirEnum } from "../gir/enum.js";
@@ -20,26 +9,22 @@ import type { TypeId } from "../gir/type-id.js";
 import { implementedInterfaces, isReactNodeClass, iterateClassesWithGlibName, signalHandlerName } from "./widgets.js";
 
 export type RuntimeTables = {
-    elementMap: ElementMapRule[];
-    arrayProps: PerElementPropRows<ArrayPropRow>;
-    objectProps: PerElementPropRows<ObjectPropRow>;
-    virtualProps: PerElementPropRows<VirtualPropRow>;
-    propRules: Record<string, PropRule[]>;
     topLevelTypes: string[];
     defaultBlockableTypes: string[];
     metaObjectAddMethods: Record<string, AddMethodRule[]>;
     pageMetaSetters: PageMetaSetter[];
-    containerProps: PerElementPropRows<ContainerPropRow>;
     attachShapes: AttachShapeTable;
+    orderedInsert: Record<string, OrderedInsertSpec>;
+    slotProps: Record<string, string[]>;
 };
 
 const configType = (name: string): string => `import("@gtkx/config").${name}`;
 
-const nestedRecordOf = (rowType: string): string => `Record<string, Record<string, ${configType(rowType)}>>`;
-
 const recordOfArray = (rowType: string): string => `Record<string, Array<${configType(rowType)}>>`;
 
 const arrayOf = (rowType: string): string => `Array<${configType(rowType)}>`;
+
+const recordOf = (rowType: string): string => `Record<string, ${configType(rowType)}>`;
 
 type RuntimeTableSpec = {
     name: string;
@@ -47,17 +32,13 @@ type RuntimeTableSpec = {
 };
 
 const RUNTIME_TABLE_SPECS: Record<keyof RuntimeTables, RuntimeTableSpec> = {
-    elementMap: { name: "ELEMENT_MAP", annotation: arrayOf("ElementMapRule") },
-    arrayProps: { name: "ARRAY_PROPS", annotation: nestedRecordOf("ArrayPropRow") },
-    objectProps: { name: "OBJECT_PROPS", annotation: nestedRecordOf("ObjectPropRow") },
-    virtualProps: { name: "VIRTUAL_PROPS", annotation: nestedRecordOf("VirtualPropRow") },
-    propRules: { name: "PROP_RULES", annotation: recordOfArray("PropRule") },
     topLevelTypes: { name: "TOP_LEVEL_TYPES", annotation: "string[]" },
     defaultBlockableTypes: { name: "DEFAULT_BLOCKABLE_TYPES", annotation: "string[]" },
     metaObjectAddMethods: { name: "META_OBJECT_ADD_METHODS", annotation: recordOfArray("AddMethodRule") },
     pageMetaSetters: { name: "PAGE_META_SETTERS", annotation: arrayOf("PageMetaSetter") },
-    containerProps: { name: "CONTAINER_PROPS", annotation: nestedRecordOf("ContainerPropRow") },
     attachShapes: { name: "ATTACH_SHAPES", annotation: recordOfArray("AttachShape") },
+    orderedInsert: { name: "ORDERED_INSERT", annotation: recordOf("OrderedInsertSpec") },
+    slotProps: { name: "SLOT_PROPS", annotation: "Record<string, string[]>" },
 };
 
 const RUNTIME_TABLE_KEYS = Object.keys(RUNTIME_TABLE_SPECS) as Array<keyof RuntimeTables>;

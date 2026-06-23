@@ -4,28 +4,19 @@ import { META_OBJECT_ADD_METHODS, PAGE_META_SETTERS } from "virtual:gtkx-config"
 import {
     type AddMethodRule,
     CONTAINER_PROP_KIND,
-    type ContainerPropRow,
     LAYOUT_CHILD_KIND,
     META_OBJECT_KIND,
     OVERLAY_KIND,
     SLOT_KIND,
     TAB_LABEL_KIND,
-    type VerbArgs,
 } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { findInheritedRow } from "../utils/gtype.js";
-import {
-    callVerb,
-    DATA_ATTACH_MAPPINGS,
-    guardHolds,
-    promotedNestingGuardMapping,
-    resolveArgs,
-} from "./attach-rules.js";
+import { collectTypeNameChain, findInheritedRow } from "../utils/gtype.js";
 import type { ElementMapping } from "./element-mapping.js";
-import { attachToParent, setElementMap } from "./mappings/dispatch.js";
+import { attachToParent, childRuleSetMapping, orderedInsertMapping, setElementMap } from "./mappings/dispatch.js";
 import {
     childWidget,
     isTopLevel,
@@ -45,6 +36,8 @@ import {
     type ReorderableWidget,
 } from "./predicates.js";
 import { callMethod, invokeRequiredMethod } from "./reflect-call.js";
+import { namedRuleSet, resolveAppendRuleSet, ruleNodeOf } from "./rule-registry.js";
+import { SLOT_HOST_BASE_TYPE } from "./slot-props.js";
 import { isWrapperKind, type Node, stateOf } from "./state.js";
 import type { Props } from "./types.js";
 import { attachChild, detachChild, getFocusWidget, isAttachedTo, isDescendantOf, unparentWidget } from "./widget.js";
@@ -99,28 +92,27 @@ const wrapperChildInstances = (marker: Node): Node[] =>
 const sameInstances = (a: Node[], b: Node[]): boolean =>
     a.length === b.length && a.every((instance, index) => instance === b[index]);
 
-const containerArgs = (args: VerbArgs | undefined): VerbArgs => args ?? "child";
-
-const attachContainerPropChild = (instance: Node, parent: Node, verb: ContainerPropRow): void => {
-    if (!(parent instanceof GObject.Object)) return;
-    const args = resolveArgs(containerArgs(verb.attachArgs), instance);
-    if (args) invokeRequiredMethod(parent, verb.attach, args);
+const slotTagOf = (marker: Node): string | undefined => {
+    const slotTag = stateOf(marker).props["slotTag"];
+    return typeof slotTag === "string" ? slotTag : undefined;
 };
 
-const detachContainerPropChild = (instance: Node, parent: Node, verb: ContainerPropRow): void => {
-    if (!(parent instanceof GObject.Object)) return;
-    if (verb.detach === undefined) {
-        if (instance instanceof Gtk.Widget) unparentWidget(instance);
-        return;
-    }
-    if (!guardHolds(verb.detachGuard, instance, parent)) return;
-    const args = resolveArgs(containerArgs(verb.detachArgs), instance);
-    if (args) callVerb(parent, verb.detach, args);
+const slotHostRuleSet = (host: GObject.Object, slotTag: string) => {
+    const baseType = SLOT_HOST_BASE_TYPE[slotTag];
+    return baseType ? namedRuleSet(baseType) : resolveAppendRuleSet(host.__gtype__);
 };
 
-const containerPropVerb = (child: Node): ContainerPropRow | null => {
-    const verb = stateOf(child).props["verb"];
-    return typeof verb === "object" && verb !== null ? (verb as ContainerPropRow) : null;
+const attachContainerPropChild = (instance: Node, parent: GObject.Object, slotTag: string): void => {
+    const parentNode = ruleNodeOf(parent);
+    const childNode = ruleNodeOf(instance, slotTag);
+    if (parentNode && childNode) slotHostRuleSet(parent, slotTag)?.appendChild?.(parentNode, childNode);
+};
+
+const detachContainerPropChild = (instance: Node, parent: GObject.Object, slotTag: string): void => {
+    const parentNode = ruleNodeOf(parent);
+    const childNode = ruleNodeOf(instance, slotTag);
+    if (parentNode && childNode) slotHostRuleSet(parent, slotTag)?.removeChild?.(parentNode, childNode);
+    if (instance instanceof Gtk.Widget && instance.getParent() !== null) unparentWidget(instance);
 };
 
 const containerPropState = new WeakMap<Node, Node[]>();
@@ -128,21 +120,21 @@ const containerPropState = new WeakMap<Node, Node[]>();
 const containerPropMapping: ElementMapping = {
     matches: (child, parent) => isWrapperKind(child, CONTAINER_PROP_KIND) && parent instanceof GObject.Object,
     attach: (child, parent) => {
-        const verb = containerPropVerb(child);
-        if (!verb || !(parent instanceof GObject.Object)) return;
+        const slotTag = slotTagOf(child);
+        if (slotTag === undefined || !(parent instanceof GObject.Object)) return;
         const desired = wrapperChildInstances(child);
         const prev = containerPropState.get(child) ?? [];
         if (sameInstances(prev, desired)) return;
-        for (const instance of prev) detachContainerPropChild(instance, parent, verb);
-        for (const instance of desired) attachContainerPropChild(instance, parent, verb);
+        for (const instance of prev) detachContainerPropChild(instance, parent, slotTag);
+        for (const instance of desired) attachContainerPropChild(instance, parent, slotTag);
         containerPropState.set(child, desired);
     },
     detach: (child, parent) => {
-        const verb = containerPropVerb(child);
+        const slotTag = slotTagOf(child);
         const instances = containerPropState.get(child) ?? [];
         containerPropState.delete(child);
-        if (!verb) return;
-        for (const instance of instances) detachContainerPropChild(instance, parent, verb);
+        if (slotTag === undefined || !(parent instanceof GObject.Object)) return;
+        for (const instance of instances) detachContainerPropChild(instance, parent, slotTag);
     },
 };
 
@@ -560,6 +552,60 @@ const widgetContainerMapping: ElementMapping = {
     },
 };
 
+type PromotedChildTarget = {
+    matchesChild: (child: GObject.Object) => boolean;
+    acceptsParent: (parent: GObject.Object, child: GObject.Object) => boolean;
+    prop: string;
+};
+
+const PROMOTED_CHILD_TARGETS: PromotedChildTarget[] = [
+    {
+        matchesChild: (child) => child instanceof Gtk.EventController,
+        acceptsParent: (parent) => parent instanceof Gtk.Widget,
+        prop: "controllers",
+    },
+    {
+        matchesChild: (child) => child instanceof Gtk.LayoutManager,
+        acceptsParent: (parent) => parent instanceof Gtk.Widget,
+        prop: "layoutManager",
+    },
+    {
+        matchesChild: (child) => child instanceof Gtk.Shortcut,
+        acceptsParent: (parent) => parent instanceof Gtk.ShortcutController,
+        prop: "shortcuts",
+    },
+    {
+        matchesChild: (child) => child instanceof Gtk.TextBuffer,
+        acceptsParent: (parent) => parent instanceof Gtk.TextView,
+        prop: "buffer",
+    },
+];
+
+const promotedTargetFor = (child: Node, parent: Node): PromotedChildTarget | null => {
+    if (!(child instanceof GObject.Object) || !(parent instanceof GObject.Object)) return null;
+    for (const target of PROMOTED_CHILD_TARGETS) {
+        if (target.matchesChild(child) && !target.acceptsParent(parent, child)) return target;
+    }
+    return null;
+};
+
+const displayName = (node: Node): string => {
+    const state = stateOf(node);
+    if (node instanceof GObject.Object) return collectTypeNameChain(node.__gtype__)[0] ?? state.name ?? "GObject";
+    return state.name ?? state.kind ?? "node";
+};
+
+const promotedNestingGuardMapping: ElementMapping = {
+    matches: (child, parent) => promotedTargetFor(child, parent) !== null,
+    attach: (child, parent) => {
+        const target = promotedTargetFor(child, parent);
+        throw new Error(
+            `<${displayName(child)}> cannot be a child of <${displayName(parent)}>: pass it through the \`${target?.prop}\` prop instead.`,
+        );
+    },
+    detach: () => {},
+};
+
 export const ELEMENT_MAP: ElementMapping[] = [
     slotMapping,
     containerPropMapping,
@@ -568,7 +614,8 @@ export const ELEMENT_MAP: ElementMapping[] = [
     layoutChildMapping,
     overlayMapping,
     promotedNestingGuardMapping,
-    ...DATA_ATTACH_MAPPINGS,
+    orderedInsertMapping,
+    childRuleSetMapping,
     topLevelSkipMapping,
     listItemChildMapping,
     widgetContainerMapping,

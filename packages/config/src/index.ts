@@ -30,42 +30,18 @@ export {
     loadResolvedGtkxConfig,
 } from "./loader.js";
 export { createGtkxConfigPlugin, type GtkxConfigPluginOptions } from "./plugin.js";
+export { BUILT_IN_RULES, mergeRules } from "./rules.js";
 export type {
     AddMethodArg,
     AddMethodRule,
-    PageMetaSetter,
-    PropCondition,
-    PropRule,
-    SetterPropGroup,
-    SetterPropStep,
-    SignalPropRule,
-} from "./table-rules-ir.js";
-export type {
-    ArrayPropRow,
     AttachShape,
     AttachShapeTable,
-    AttachVerb,
-    CallArg,
-    CallStep,
-    ConstructSetter,
-    ConstructStep,
-    ContainerPropRow,
-    DetachGuard,
-    ElementMapRule,
-    MethodVerb,
-    ObjectPropRow,
-    OrderedInsertVerb,
-    PerElementPropRows,
-    PresenceCondition,
-    UserTableRows,
-    VerbArgs,
-    VirtualPropRow,
+    OrderedInsertSpec,
+    PageMetaSetter,
+    RuleNode,
+    RuleRegistry,
+    RuleSet,
 } from "./table-schema.js";
-export {
-    CAMEL_CASE_NAME_PATTERN,
-    PASCAL_CASE_NAME_PATTERN,
-    validateArrayOf,
-} from "./validators.js";
 export {
     GTKX_CONFIG_VIRTUAL_ID,
     RESOLVED_GTKX_CONFIG_VIRTUAL_ID,

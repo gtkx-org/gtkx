@@ -1,7 +1,7 @@
 import "./utils/element-props.js";
 
-export { withApplication, withApplicationWindow } from "./components/application.js";
-export { type TopLevelParentProps, withTopLevel } from "./components/top-level.js";
+export { withApplicationLifecycle, withApplicationWindowPresentation } from "./components/application.js";
+export { type TopLevelParentProps, withWindowPresentation } from "./components/top-level.js";
 export { ApplicationContext, useApplication } from "./hooks/use-application.js";
 export { useForwardedRef } from "./hooks/use-forwarded-ref.js";
 export { useProperty } from "./hooks/use-property.js";

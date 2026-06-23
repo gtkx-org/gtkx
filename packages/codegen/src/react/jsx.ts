@@ -1,31 +1,27 @@
-import type { ArrayPropRow, ContainerPropRow, ObjectPropRow, PerElementPropRows, VirtualPropRow } from "@gtkx/config";
+import type { RuleRegistry } from "@gtkx/config";
 import { quote } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import type { GirRepository } from "../gir/repository.js";
-import { splitOptionalNamespace } from "../gir/type-ref.js";
 import type { JsxImports } from "./imports.js";
 import { buildWidgetPropsEntries } from "./props.js";
-import { BUILT_IN_PROPS_MIXINS, WIDGET_BASE_PROPS_MIXINS } from "./tables.js";
+import { ACCESSIBLE_PROP_TYPES, SLOT_PROPS_BY_TYPE } from "./tables.js";
 import { collectReactNodeClasses, type WidgetCandidate } from "./widgets.js";
 
-export type JsxSurfaceMaps = {
-    containerPropMap?: PerElementPropRows<ContainerPropRow>;
-    arrayPropMap?: PerElementPropRows<ArrayPropRow>;
-    objectPropMap?: PerElementPropRows<ObjectPropRow>;
-    virtualPropMap?: PerElementPropRows<VirtualPropRow>;
+export type GenerateJsxOptions = {
+    excludeNames: Set<string>;
+    ruleRegistry: RuleRegistry;
+    imports: JsxImports;
 };
+
+const QUALIFIED_TYPE_PATTERN = /^[A-Z][A-Za-z0-9]*\.[A-Z]/;
 
 export const generateJsxSection = (
     targetNamespace: GirNamespace,
     repository: GirRepository,
-    options: {
-        excludeNames: Set<string>;
-        maps: JsxSurfaceMaps;
-        imports: JsxImports;
-    },
+    options: GenerateJsxOptions,
 ): { source: string; intrinsicCount: number } => {
-    const { excludeNames, maps, imports } = options;
+    const { excludeNames, ruleRegistry, imports } = options;
     const allWidgets = collectReactNodeClasses(repository);
     const widgets = allWidgets.filter((entry) => entry.namespace.name === targetNamespace.name);
     const intrinsicWidgets = widgets.filter((entry) => !excludeNames.has(entry.glibName));
@@ -46,10 +42,7 @@ export const generateJsxSection = (
     const propBlocks: string[] = [];
     for (const entry of widgets) {
         const { block, extendsBase, slotPropNames } = renderPropBlock(repository, entry, {
-            containerPropMap: maps.containerPropMap ?? {},
-            arrayPropMap: maps.arrayPropMap ?? {},
-            objectPropMap: maps.objectPropMap ?? {},
-            virtualPropMap: maps.virtualPropMap ?? {},
+            ruleRegistry,
             isWidgetAncestor,
             widgetByGlibName,
             targetNamespaceName: targetNamespace.name,
@@ -60,15 +53,21 @@ export const generateJsxSection = (
         propBlocks.push(block);
     }
     if (needsReactElement) imports.reactBuiltins.add("ReactElement");
-    if (needsWidgetPropsBase) {
-        for (const mixin of WIDGET_BASE_PROPS_MIXINS) imports.sharedTypes.add(mixin);
-        propBlocks.unshift(
-            `export interface WidgetProps extends ${WIDGET_BASE_PROPS_MIXINS.join(", ")} {\n    name?: string;\n}`,
-        );
-    }
+    if (needsWidgetPropsBase) propBlocks.unshift(renderWidgetPropsBase(imports));
 
     const source = [constLines.join("\n"), "", propBlocks.join("\n\n"), "", renderJsxAugmentation(widgets)].join("\n");
     return { source, intrinsicCount: intrinsicWidgets.length };
+};
+
+const renderWidgetPropsBase = (imports: JsxImports): string => {
+    const accessibleLines = Object.entries(ACCESSIBLE_PROP_TYPES).map(([name, tsType]) => {
+        const namespace = tsType.split(".")[0];
+        if (QUALIFIED_TYPE_PATTERN.test(tsType) && namespace !== undefined) {
+            imports.giNamespaces.set(namespace, namespace);
+        }
+        return `    ${name}?: ${tsType} | null | undefined;`;
+    });
+    return ["export interface WidgetProps {", "    name?: string;", ...accessibleLines, "}"].join("\n");
 };
 
 const renderJsxAugmentation = (widgets: WidgetCandidate[]): string =>
@@ -82,11 +81,25 @@ const renderJsxAugmentation = (widgets: WidgetCandidate[]): string =>
         "}",
     ].join("\n");
 
-type RenderPropBlockContext = Required<JsxSurfaceMaps> & {
+type RenderPropBlockContext = {
+    ruleRegistry: RuleRegistry;
     isWidgetAncestor: (candidate: GirClass) => boolean;
     widgetByGlibName: Map<string, WidgetCandidate>;
     targetNamespaceName: string;
     imports: JsxImports;
+};
+
+const PRIMITIVE_TYPES = new Set(["string", "number", "boolean"]);
+
+const resolveExtraPropType = (type: string, imports: JsxImports): string => {
+    const base = type.endsWith("[]") ? type.slice(0, -2) : type;
+    if (QUALIFIED_TYPE_PATTERN.test(base)) {
+        const namespace = base.split(".")[0];
+        if (namespace !== undefined) imports.giNamespaces.set(namespace, namespace);
+    } else if (!PRIMITIVE_TYPES.has(base)) {
+        imports.sharedTypes.add(base);
+    }
+    return type;
 };
 
 const renderPropBlock = (
@@ -94,57 +107,34 @@ const renderPropBlock = (
     entry: WidgetCandidate,
     context: RenderPropBlockContext,
 ): { block: string; extendsBase: boolean; slotPropNames: string[] } => {
-    const arrayProps = context.arrayPropMap[entry.glibName] ?? {};
-    const objectProps = context.objectPropMap[entry.glibName] ?? {};
-    const virtualProps = context.virtualPropMap[entry.glibName] ?? {};
+    const ruleSet = context.ruleRegistry[entry.glibName];
+    const extraProps = ruleSet?.extraProps ?? {};
+    const slotProps = SLOT_PROPS_BY_TYPE[entry.glibName] ?? [];
     const { propLines, imports, slotPropNames } = buildWidgetPropsEntries({
         repository,
         klass: entry.klass,
         namespace: entry.namespace,
-        dataPropNames: new Set([...Object.keys(arrayProps), ...Object.keys(objectProps), ...Object.keys(virtualProps)]),
+        dataPropNames: new Set([...Object.keys(extraProps), ...slotProps]),
         isWidgetAncestor: context.isWidgetAncestor,
     });
     for (const [namespace, alias] of imports) context.imports.giNamespaces.set(namespace, alias);
     context.imports.giNamespaces.set(entry.namespace.name, entry.namespace.name);
     const widgetTypeRef = `${entry.namespace.name}.${entry.klass.name} | null`;
-    const resolveItemType = (itemType: string): string => {
-        const [namespace] = splitOptionalNamespace(itemType);
-        if (namespace === undefined) {
-            context.imports.sharedTypes.add(itemType);
-        } else {
-            context.imports.giNamespaces.set(namespace, namespace);
-        }
-        return itemType;
-    };
-    const arrayPropLines = Object.entries(arrayProps).map(
-        ([propName, row]) => `    ${propName}?: ${resolveItemType(row.itemType)}[] | null | undefined;`,
+    const extraPropLines = Object.entries(extraProps).map(
+        ([propName, type]) => `    ${propName}?: ${resolveExtraPropType(type, context.imports)} | null | undefined;`,
     );
-    const objectPropLines = Object.entries(objectProps).map(
-        ([propName, row]) => `    ${propName}?: ${resolveItemType(row.itemType)} | null | undefined;`,
-    );
-    const virtualPropLines = Object.entries(virtualProps).map(([propName, row]) => {
-        const [namespace] = splitOptionalNamespace(row.type);
-        if (namespace) context.imports.giNamespaces.set(namespace, namespace);
-        return `    ${propName}?: ${row.type} | null | undefined;`;
-    });
+    const slotPropLines = slotProps.map((propName) => `    ${propName}?: ReactNode | null | undefined;`);
     const ownerLines = [
         "    children?: ReactNode;",
         `    ref?: Ref<${widgetTypeRef}> | undefined;`,
         ...propLines.map((line) => `    ${line}`),
-        ...Object.keys(context.containerPropMap[entry.glibName] ?? {}).map(
-            (propName) => `    ${propName}?: ReactNode | null | undefined;`,
-        ),
-        ...arrayPropLines,
-        ...objectPropLines,
-        ...virtualPropLines,
+        ...slotPropLines,
+        ...extraPropLines,
     ];
     const parentExtends = resolveParentPropsExtension(repository, entry, context);
-    const mixins = BUILT_IN_PROPS_MIXINS[entry.glibName] ?? [];
-    for (const mixin of mixins) context.imports.sharedTypes.add(mixin);
-    const extendsClause = [parentExtends, ...mixins].join(", ");
     const selfDefault = `${entry.namespace.name}.${entry.klass.name}`;
     return {
-        block: `export interface ${entry.glibName}Props<Self = ${selfDefault}> extends ${extendsClause} {\n${ownerLines.join("\n")}\n}`,
+        block: `export interface ${entry.glibName}Props<Self = ${selfDefault}> extends ${parentExtends} {\n${ownerLines.join("\n")}\n}`,
         extendsBase: parentExtends === "WidgetProps",
         slotPropNames,
     };
