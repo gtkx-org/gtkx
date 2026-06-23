@@ -30,6 +30,11 @@ const bitsetOf = (positions: number[]): Gtk.Bitset => {
 
 const applySelectedPositions = (model: Gtk.SelectionModel, positions: number[]): void => {
     if (model instanceof Gtk.MultiSelection) {
+        if (positions.length === 0) {
+            const current = model.getSelection();
+            if (!current.isEmpty()) model.unselectAll();
+            return;
+        }
         const requested = bitsetOf(positions);
         const changed = model.getSelection();
         changed.difference(requested);

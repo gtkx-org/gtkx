@@ -11,7 +11,10 @@ export function newGobjectWithProperties(gtype: GType, props: Record<string, Pro
     const names: string[] = [];
     const values: Handle[] = [];
 
-    for (const [name, [ffiType, value]] of Object.entries(props)) {
+    for (const name in props) {
+        const entry = props[name];
+        if (entry === undefined) continue;
+        const [ffiType, value] = entry;
         if (value === undefined) continue;
         names.push(name);
         values.push(toGvalue(ffiType, value));
