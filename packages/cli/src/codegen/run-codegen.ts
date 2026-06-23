@@ -5,8 +5,9 @@ import { type GtkxConfig, GtkxConfigNotFoundError, loadGtkxConfig, resolveDataDi
 import { emitSchemaEnv } from "../gsettings/env.js";
 import { GtkxError } from "../internal/errors.js";
 import { info } from "../internal/log.js";
-import { type CodegenInputs, isCodegenNeeded, readUserRulesSource, resolveCodegenInputs } from "./freshness.js";
+import { type CodegenInputs, isCodegenNeeded, resolveCodegenInputs } from "./freshness.js";
 import { type CodegenStore, findCodegenRoot, isWorkspaceRoot, resolveCodegenContext } from "./store-resolver.js";
+import { loadUserRules, readUserRulesSource } from "./user-rules.js";
 
 export type RunCodegenOptions = {
     cwd?: string;
@@ -21,15 +22,6 @@ export type RunCodegenResult = {
     girPath?: string[] | undefined;
     configFile?: string | undefined;
     libraries?: string[] | undefined;
-};
-
-const resolveRulesModule = (cwd: string, config: GtkxConfig): string | undefined =>
-    config.rules === undefined ? undefined : resolve(cwd, config.rules);
-
-const loadUserRules = async (rulesModule: string | undefined): Promise<UserRules | undefined> => {
-    if (rulesModule === undefined) return undefined;
-    const imported = (await import(rulesModule)) as { default?: UserRules };
-    return imported.default;
 };
 
 type UserRulesInput = { rules: UserRules | undefined; rulesSource: string };
@@ -84,9 +76,8 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
         }
     }
 
-    const rulesModule = resolveRulesModule(cwd, config);
-    const rules = await loadUserRules(rulesModule);
-    const rulesSource = readUserRulesSource(rulesModule);
+    const rules = await loadUserRules(cwd, config.rules);
+    const rulesSource = readUserRulesSource(cwd, config.rules);
     const result = await buildRunner(store, libraries, girPath, { rules, rulesSource }).run();
 
     return {

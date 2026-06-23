@@ -1,11 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { type CodegenFingerprint, computeFingerprint, FINGERPRINT_FILENAME } from "@gtkx/codegen";
 import type { GtkxConfig } from "@gtkx/config";
 import { sortedAlpha } from "@gtkx/utils";
 import { resolveGirPath } from "./gir-resolver.js";
 import { resolveLibraries } from "./library-resolver.js";
 import { type CodegenStore, resolveCodegenStore } from "./store-resolver.js";
+import { readUserRulesSource } from "./user-rules.js";
 
 export type CodegenInputs = {
     girPath: string[];
@@ -19,18 +20,6 @@ export const resolveCodegenInputs = (cwd: string, config: GtkxConfig): CodegenIn
     const store = resolveCodegenStore(cwd);
     return { girPath, libraries, store };
 };
-
-export const readUserRulesSource = (rulesModule: string | undefined): string => {
-    if (rulesModule === undefined) return "";
-    try {
-        return readFileSync(rulesModule, "utf8");
-    } catch {
-        return "";
-    }
-};
-
-const userRulesSourceFor = (cwd: string, config: GtkxConfig): string =>
-    readUserRulesSource(config.rules === undefined ? undefined : resolve(cwd, config.rules));
 
 const REACT_GENERATED_MODULES: string[] = ["metadata.js", join("gtk", "gtk.js")];
 
@@ -78,7 +67,7 @@ export const isCodegenNeeded = (cwd: string, config: GtkxConfig, inputs: Codegen
             if (!existsSync(store.jsxLinkDir)) return true;
             if (REACT_GENERATED_MODULES.some((module) => !existsSync(join(store.jsxStoreDir, module)))) return true;
         }
-        return fingerprintStale(store.giStoreDir, libraries, userRulesSourceFor(cwd, config));
+        return fingerprintStale(store.giStoreDir, libraries, readUserRulesSource(cwd, config.rules));
     } catch {
         return true;
     }

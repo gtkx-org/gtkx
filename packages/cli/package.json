@@ -85,6 +85,7 @@
         "citty": "^0.2.2",
         "create-gtkx": "workspace:*",
         "fast-xml-parser": "^5.9.3",
+        "jiti": "^2.7.0",
         "picocolors": "^1.1.1",
         "react-refresh": "^0.18.0",
         "typescript": "catalog:",
