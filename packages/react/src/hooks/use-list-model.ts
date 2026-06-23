@@ -65,7 +65,7 @@ const buildControlledState = <T, S>(
     let model: Gio.ListModel;
     let flatModel: Gtk.StringList | undefined;
     if (structure === "sections") {
-        model = createSectionModel(items ?? [], rowValues, placeholdersById);
+        model = createSectionModel(items ?? []);
     } else if (structure === "tree") {
         model = createTreeModel(items ?? [], autoexpand, rowValues, placeholdersById);
     } else {

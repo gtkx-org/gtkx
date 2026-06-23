@@ -106,26 +106,10 @@ export const createTreeModel = <T, S>(
     return Gtk.TreeListModel.new(root, false, autoexpand, createFunc);
 };
 
-export const createSectionModel = <T, S>(
-    items: ListItem<T, S>[],
-    rowValues: WeakMap<GObject.Object, RowValue<T, S>>,
-    placeholdersById: Map<string, GObject.Object>,
-): Gtk.FlattenListModel => {
-    const sections = Gio.ListStore.new(Gio.ListStore.prototype.__gtype__);
+export const createSectionModel = <T, S>(items: ListItem<T, S>[]): Gtk.FlattenListModel => {
+    const sections = Gio.ListStore.new(Gtk.StringList.prototype.__gtype__);
     for (const section of items) {
-        const store = Gio.ListStore.new(Gtk.StringObject.prototype.__gtype__);
-        if (section.children !== undefined) {
-            for (const child of section.children) {
-                store.append(
-                    createTaggedRow(
-                        { id: child.id, value: child.value, isHeader: false, metadata: treeItemMetadata(child) },
-                        rowValues,
-                        placeholdersById,
-                    ),
-                );
-            }
-        }
-        sections.append(store);
+        sections.append(Gtk.StringList.new(emptyStrings(section.children?.length ?? 0)));
     }
     return Gtk.FlattenListModel.new(sections);
 };
