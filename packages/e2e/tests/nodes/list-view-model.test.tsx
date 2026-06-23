@@ -1,8 +1,9 @@
+import { ColumnView, ColumnViewColumn, DropDown, GridView, ListView } from "@gtkx/components";
 import { registerClass } from "@gtkx/ffi";
 import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkColumnView, GtkColumnViewColumn, GtkDropDown, GtkGridView, GtkLabel, GtkListView } from "@gtkx/jsx/gtk";
+import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -33,11 +34,7 @@ const renderListWithModel = async (
     const selection = noSelection(store);
     const draw = (model: Gtk.SelectionModel) => (
         <ScrollWrapper>
-            <GtkListView<NameObject>
-                ref={refSlot}
-                model={model}
-                renderItem={(item) => <GtkLabel label={item.name} />}
-            />
+            <ListView<NameObject> ref={refSlot} model={model} renderItem={(item) => <GtkLabel label={item.name} />} />
         </ScrollWrapper>
     );
     const { rerender } = await render(draw(selection));
@@ -109,7 +106,7 @@ describe("GridView model prop", () => {
         const ref = createRef<Gtk.GridView>();
         await render(
             <ScrollWrapper>
-                <GtkGridView<NameObject>
+                <GridView<NameObject>
                     ref={ref}
                     model={noSelection(store)}
                     renderItem={(item) => <GtkLabel label={item.name} />}
@@ -130,7 +127,7 @@ describe("model resolver", () => {
         const selection = noSelection(store);
         const draw = (suffix: string) => (
             <ScrollWrapper minContentHeight={300} minContentWidth={300}>
-                <GtkGridView<NameObject>
+                <GridView<NameObject>
                     model={selection}
                     renderItem={(item) => <GtkLabel label={`${item.name}${suffix}`} />}
                 />
@@ -153,7 +150,7 @@ describe("DropDown model prop", () => {
         const store = namedStore(["Choice A", "Choice B"]);
         const ref = createRef<Gtk.DropDown>();
         await render(
-            <GtkDropDown<NameObject> ref={ref} model={store} renderItem={(item) => <GtkLabel label={item.name} />} />,
+            <DropDown<NameObject> ref={ref} model={store} renderItem={(item) => <GtkLabel label={item.name} />} />,
         );
 
         expect(ref.current).not.toBeNull();
@@ -167,13 +164,13 @@ describe("ColumnView model prop", () => {
         const ref = createRef<Gtk.ColumnView>();
         await render(
             <ScrollWrapper minContentHeight={300}>
-                <GtkColumnView<NameObject> ref={ref} model={noSelection(store)}>
-                    <GtkColumnViewColumn<NameObject>
+                <ColumnView<NameObject> ref={ref} model={noSelection(store)}>
+                    <ColumnViewColumn<NameObject>
                         id="name"
                         title="Name"
                         renderCell={(item) => <GtkLabel label={item.name} />}
                     />
-                </GtkColumnView>
+                </ColumnView>
             </ScrollWrapper>,
         );
 

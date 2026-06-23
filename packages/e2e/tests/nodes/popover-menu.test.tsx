@@ -1,6 +1,7 @@
+import { Menu } from "@gtkx/components";
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
+import { GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow, GtkMenuButton, GtkPopoverMenu } from "@gtkx/jsx/gtk";
 import { createRootElement } from "@gtkx/react";
 import { render } from "@gtkx/testing";
@@ -25,7 +26,7 @@ describe("render - PopoverMenu widget integration", () => {
             <GtkPopoverMenu
                 ref={ref}
                 menuModel={
-                    <GMenu
+                    <Menu
                         items={[
                             { label: "Item 1", action: "win.item1" },
                             { label: "Item 2", action: "win.item2" },
@@ -43,7 +44,7 @@ describe("render - PopoverMenu widget integration", () => {
             <GtkMenuButton
                 ref={ref}
                 menuModel={
-                    <GMenu
+                    <Menu
                         items={[
                             { label: "Option 1", action: "win.opt1" },
                             { label: "Option 2", action: "win.opt2" },
@@ -64,7 +65,7 @@ describe("render - PopoverMenu actions", () => {
         await render(
             <GtkApplication applicationId={uniqueAppId()} flags={APP_FLAGS}>
                 <GtkApplicationWindow ref={windowRef} actions={<GSimpleAction name="click" onActivate={onActivate} />}>
-                    <GtkPopoverMenu menuModel={<GMenu items={[{ label: "Click Me", action: "win.click" }]} />} />
+                    <GtkPopoverMenu menuModel={<Menu items={[{ label: "Click Me", action: "win.click" }]} />} />
                 </GtkApplicationWindow>
             </GtkApplication>,
             { container: createRootElement() },

@@ -1,11 +1,11 @@
 import * as path from "node:path/posix";
-import { applicationId } from "virtual:gtkx-config";
+import { Menu } from "@gtkx/components";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAboutDialog } from "@gtkx/jsx/adw";
-import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
+import { GSimpleAction } from "@gtkx/jsx/gio";
 import {
     GtkApplication,
     GtkApplicationWindow,
@@ -181,7 +181,7 @@ const AppHeaderBar = ({ hasDemo, searchMode, onRun, onSearchToggle }: AppHeaderB
                 valign={Gtk.Align.CENTER}
                 focusOnClick={false}
                 menuModel={
-                    <GMenu
+                    <Menu
                         items={[
                             {
                                 section: [
@@ -424,7 +424,6 @@ export const Demo = () => {
 
 export const App = () => (
     <GtkApplication
-        applicationId={applicationId}
         flags={Gio.ApplicationFlags.NON_UNIQUE}
         actionAccels={[
             { action: "win.inspector", accels: ["<Control><Shift>i"] },

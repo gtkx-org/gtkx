@@ -1,4 +1,4 @@
-import type { ListItem } from "./element-props.js";
+import type { ListItem } from "../types.js";
 
 export interface TreeItemMetadata {
     hideExpander: boolean;

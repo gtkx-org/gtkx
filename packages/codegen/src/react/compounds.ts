@@ -4,7 +4,7 @@ import type { GirNamespace } from "../gir/namespace.js";
 import type { GirRepository } from "../gir/repository.js";
 import { type VirtualSubcomponent, virtualSubcomponentEntries } from "./compounds-meta.js";
 import type { JsxImports } from "./imports.js";
-import { BUILT_IN_COMPOUND_HOCS, type CompoundHoc, type RuntimeComponentWrapper, widgetWrapper } from "./tables.js";
+import { BUILT_IN_COMPOUND_HOCS, type CompoundHoc } from "./tables.js";
 import { ancestorGlibNames, collectReactNodeClasses, type WidgetCandidate } from "./widgets.js";
 
 const WRAPPER_ELEMENT_CONST = "WrapperNodeElement";
@@ -67,22 +67,6 @@ const virtualSubcomponentsForNamespace = (
     return sortedAlphaBy(result, (entry) => entry.flatName);
 };
 
-const renderRuntimeWrapper = (glibName: string, wrapper: RuntimeComponentWrapper, imports: JsxImports): string => {
-    if (wrapper.kind === "reexport") {
-        return `export { ${glibName} } from "@gtkx/react";`;
-    }
-    const alias = `Runtime${glibName}`;
-    imports.hocs.add(`${glibName} as ${alias}`);
-    imports.reactBuiltins.add("ReactNode");
-    if (wrapper.kind === "typedProps") {
-        return `export const ${glibName}: (props: ${glibName}Props) => ReactNode = ${alias};`;
-    }
-    for (const sharedType of wrapper.sharedTypes) imports.sharedTypes.add(sharedType);
-    const omitKeys = wrapper.omitKeys ?? `keyof ${wrapper.controllerProps}`;
-    const propsExpr = `Omit<${glibName}Props, ${omitKeys}> & ${wrapper.controllerProps}`;
-    return `export const ${glibName}: ${wrapper.genericParams}(props: ${propsExpr}) => ReactNode = ${alias};`;
-};
-
 const renderCandidateExport = (
     candidate: WidgetCandidate,
     repository: GirRepository,
@@ -90,8 +74,6 @@ const renderCandidateExport = (
     excludeNames: Set<string>,
 ): string | null => {
     const { glibName, klass, namespace } = candidate;
-    const wrapper = widgetWrapper(glibName);
-    if (wrapper !== undefined) return renderRuntimeWrapper(glibName, wrapper, imports);
     if (excludeNames.has(glibName)) return null;
     const ancestry = new Set(ancestorGlibNames(klass, namespace, repository));
     const hoc = compoundHoc(ancestry);

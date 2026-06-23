@@ -1,12 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
+import { ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkBox,
     GtkButton,
     GtkHeaderBar,
     GtkInscription,
-    GtkListView,
     GtkOverlay,
     GtkOverlayChild,
     GtkProgressBar,
@@ -147,7 +147,7 @@ function useFilteredWords(words: string[], searchText: string) {
 const WordsList = ({ filteredWords, filterProgress }: { filteredWords: string[]; filterProgress: number }) => (
     <GtkOverlay vexpand hexpand>
         <GtkScrolledWindow vexpand hexpand>
-            <GtkListView
+            <ListView
                 name="list-view"
                 vexpand
                 hexpand

@@ -2,7 +2,7 @@ import type * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { useLayoutEffect, useMemo, useRef } from "react";
-import type { ListItem } from "../utils/element-props.js";
+import type { ListItem } from "../types.js";
 import {
     createControlledResolver,
     createModelResolver,

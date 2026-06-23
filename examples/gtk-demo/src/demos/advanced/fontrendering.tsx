@@ -1,3 +1,4 @@
+import { DropDown } from "@gtkx/components";
 import {
     Antialias,
     Content,
@@ -18,7 +19,6 @@ import {
     GtkButton,
     GtkCheckButton,
     GtkDrawingArea,
-    GtkDropDown,
     GtkEntry,
     GtkFontDialog,
     GtkFontDialogButton,
@@ -735,7 +735,7 @@ const FontRenderingHintControls = ({ state }: { state: FontRenderingState }) => 
             <GtkGridChild column={4} row={0} columnSpan={2}>
                 <GtkBox spacing={6}>
                     <GtkLabel label="_Hinting" useUnderline cssClasses={["dim-label"]} />
-                    <GtkDropDown
+                    <DropDown
                         name="hinting"
                         valign={Gtk.Align.CENTER}
                         selectedId={hintStyleOptions.find((o) => o.value === hintStyle)?.id}

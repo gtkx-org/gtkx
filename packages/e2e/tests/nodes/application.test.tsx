@@ -1,8 +1,9 @@
+import { Menu, type MenuEntry } from "@gtkx/components";
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GMenu } from "@gtkx/jsx/gio";
+
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
-import { createRootElement, type MenuEntry } from "@gtkx/react";
+import { createRootElement } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef, type ReactElement, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
@@ -39,7 +40,7 @@ describe("render - Application", () => {
     describe("menubar slot", () => {
         it("sets menubar from a GMenu", async () => {
             const app = await renderApp(
-                <GMenu
+                <Menu
                     items={[
                         {
                             label: "File",
@@ -61,7 +62,7 @@ describe("render - Application", () => {
         it("clears menubar when the GMenu is removed", async () => {
             const ref = createRef<Gtk.Application>();
             const appId = uniqueAppId();
-            const fileMenu = <GMenu items={[{ label: "File", submenu: [{ label: "New", action: "win.new" }] }]} />;
+            const fileMenu = <Menu items={[{ label: "File", submenu: [{ label: "New", action: "win.new" }] }]} />;
 
             const { rerender } = await render(<MenubarApp appRef={ref} appId={appId} menubar={fileMenu} />, {
                 container: createRootElement(),
@@ -77,7 +78,7 @@ describe("render - Application", () => {
             const appId = uniqueAppId();
             const fileMenu = (items: string[]): ReactElement => {
                 const submenu: MenuEntry[] = items.map((label) => ({ label, action: `win.${label}` }));
-                return <GMenu items={[{ label: "File", submenu }]} />;
+                return <Menu items={[{ label: "File", submenu }]} />;
             };
 
             const { rerender } = await render(

@@ -1,7 +1,7 @@
 import { Fragment, type ReactNode, useSyncExternalStore } from "react";
-import type { ItemResolver } from "../utils/item-resolver.js";
-import type { RealizedSlotStore } from "../utils/realized-slot-store.js";
 import { ListSlot, type SlotRenderer } from "./list-slot.js";
+import type { ItemResolver } from "./utils/item-resolver.js";
+import type { RealizedSlotStore } from "./utils/realized-slot-store.js";
 
 export interface ListPortalHostProps<T, S> {
     store: RealizedSlotStore;

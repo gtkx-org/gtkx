@@ -1,3 +1,4 @@
+import { DropDown, GridView } from "@gtkx/components";
 import { css } from "@gtkx/css";
 import { registerClass } from "@gtkx/ffi";
 import type { Context } from "@gtkx/gi/cairo";
@@ -9,10 +10,8 @@ import {
     GtkBox,
     GtkButton,
     GtkDrawingArea,
-    GtkDropDown,
     GtkGrid,
     GtkGridChild,
-    GtkGridView,
     GtkHeaderBar,
     GtkLabel,
     GtkOverlay,
@@ -291,7 +290,7 @@ const SelectionInfoPanel = ({
             </GtkGridChild>
             <GtkGridChild column={0} row={1} columnSpan={5}>
                 <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
-                    <GtkGridView
+                    <GridView
                         maxColumns={200}
                         cssClasses={SELECTION_GRID_CSS}
                         estimatedItemHeight={32}
@@ -627,7 +626,7 @@ const ColorsHeader = () => {
                         widthChars={8}
                         xalign={1}
                     />
-                    <GtkDropDown
+                    <DropDown
                         name="limit-dropdown"
                         selectedId={String(state.colorLimit)}
                         onSelectionChanged={computed.handleLimitChange}
@@ -639,7 +638,7 @@ const ColorsHeader = () => {
                 <>
                     <GtkBox spacing={10}>
                         <GtkLabel label="Sort by:" />
-                        <GtkDropDown
+                        <DropDown
                             name="sort-dropdown"
                             selectedId={state.sortMode}
                             onSelectionChanged={(id) => state.setSortMode(id as SortMode)}
@@ -648,7 +647,7 @@ const ColorsHeader = () => {
                     </GtkBox>
                     <GtkBox spacing={10}>
                         <GtkLabel label="Show:" />
-                        <GtkDropDown
+                        <DropDown
                             name="display-dropdown"
                             selectedId={state.displayFactory}
                             onSelectionChanged={(id) => state.setDisplayFactory(id as DisplayFactory)}
@@ -674,7 +673,7 @@ const ColorsGridOverlay = () => {
     return (
         <GtkOverlay name="grid-overlay" vexpand hexpand>
             <GtkScrolledWindow name="grid-scrolled" vexpand hexpand>
-                <GtkGridView<ColorObject>
+                <GridView<ColorObject>
                     ref={setGridView}
                     name="color-grid"
                     estimatedItemHeight={computed.showDetails ? 120 : 40}

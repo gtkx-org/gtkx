@@ -1,3 +1,4 @@
+import { ListView } from "@gtkx/components";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -6,7 +7,6 @@ import {
     GtkEntry,
     GtkHeaderBar,
     GtkLabel,
-    GtkListView,
     GtkScrolledWindow,
     GtkSearchBar,
     GtkSearchEntry,
@@ -160,7 +160,7 @@ interface SchemaKeysListViewProps {
 
 const SchemaKeysListView = ({ filteredSchemaKeys, keysState, onValueEdit }: SchemaKeysListViewProps) => (
     <GtkScrolledWindow name="scrolled">
-        <GtkListView
+        <ListView
             name="list-view"
             vexpand
             cssClasses={["rich-list"]}

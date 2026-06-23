@@ -1,15 +1,14 @@
 {
-    "name": "@gtkx/testing",
+    "name": "@gtkx/components",
     "version": "0.21.0",
-    "description": "Testing utilities for GTKX applications",
+    "description": "Hand-written higher-level GTKX components: list, grid, column, drop-down, menu, and constraint-layout abstractions over the generated bindings",
     "keywords": [
         "gtkx",
         "gtk",
         "gtk4",
+        "adwaita",
         "react",
-        "typescript",
-        "testing",
-        "testing-library",
+        "components",
         "linux",
         "desktop"
     ],
@@ -20,7 +19,7 @@
     "repository": {
         "type": "git",
         "url": "https://github.com/gtkx-org/gtkx.git",
-        "directory": "packages/testing"
+        "directory": "packages/components"
     },
     "license": "MPL-2.0",
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
@@ -31,17 +30,9 @@
             "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
-        },
-        "./act": {
-            "source": "./src/act.ts",
-            "types": "./dist/act.d.ts",
-            "default": "./dist/act.js"
         }
     },
-    "sideEffects": [
-        "./src/setup-runtime.ts",
-        "./dist/setup-runtime.js"
-    ],
+    "sideEffects": false,
     "files": [
         "dist",
         "src"
@@ -53,13 +44,12 @@
         "node": ">=24"
     },
     "dependencies": {
-        "@gtkx/ffi": "workspace:*",
-        "@gtkx/react": "workspace:*",
-        "@gtkx/utils": "workspace:*"
+        "@gtkx/react": "workspace:*"
     },
     "devDependencies": {
-        "@gtkx/components": "workspace:*",
-        "@gtkx/config": "workspace:*",
         "@gtkx/vitest": "workspace:*"
+    },
+    "peerDependencies": {
+        "react": "^19"
     }
 }

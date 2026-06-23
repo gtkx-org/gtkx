@@ -1,3 +1,4 @@
+import { DropDown } from "@gtkx/components";
 import { Context, Format, ImageSurface } from "@gtkx/gi/cairo";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GLib from "@gtkx/gi/glib";
@@ -6,7 +7,6 @@ import * as Pango from "@gtkx/gi/pango";
 import {
     GtkAdjustment,
     GtkButton,
-    GtkDropDown,
     GtkEntry,
     GtkPaned,
     GtkScale,
@@ -388,7 +388,7 @@ const TextViewWidgetsSection = ({ onClickMe }: { onClickMe: () => void }) => {
             </GtkTextAnchor>
             {" and a menu: "}
             <GtkTextAnchor>
-                <GtkDropDown
+                <DropDown
                     items={[
                         { id: "opt1", value: "Option 1" },
                         { id: "opt2", value: "Option 2" },

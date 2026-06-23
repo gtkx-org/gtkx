@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import { type GObjectTarget, resolveGobjectTarget } from "@gtkx/react/internal";
 import { useLayoutEffect, useRef } from "react";
 import type { ColumnRegistration } from "../contexts/column-view-context.js";
-import { type GObjectTarget, resolveGobjectTarget } from "../utils/gobject-target.js";
 
 export interface SortHandlerOptions {
     columnView: GObjectTarget<Gtk.ColumnView>;

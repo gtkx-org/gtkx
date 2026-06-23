@@ -1,3 +1,4 @@
+import { DropDown } from "@gtkx/components";
 import type { Context } from "@gtkx/gi/cairo";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
@@ -11,7 +12,6 @@ import {
     GtkColorDialogButton,
     GtkDragSource,
     GtkDrawingArea,
-    GtkDropDown,
     GtkDropTarget,
     GtkEntry,
     GtkImage,
@@ -352,7 +352,7 @@ const ClipboardSourceSection = ({
     onFolderSelect,
 }: ClipboardSourceSectionProps) => (
     <GtkBox spacing={12}>
-        <GtkDropDown
+        <DropDown
             name="source-type"
             accessibleLabel="Source Type"
             valign={Gtk.Align.CENTER}

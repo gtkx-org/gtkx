@@ -1,7 +1,7 @@
 import type * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
-import type { ListItem } from "./element-props.js";
+import type { ListItem } from "../types.js";
 import { flattenListItems, type TreeItemMetadata } from "./list-item-flatten.js";
 
 const NO_TREE_METADATA: TreeItemMetadata = { hideExpander: false, indentForDepth: true, indentForIcon: true };

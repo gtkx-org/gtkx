@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
+import { GridView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkGridView, GtkHeaderBar, GtkImage, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkHeaderBar, GtkImage, GtkLabel } from "@gtkx/jsx/gtk";
 import { createContext, useContext, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-minesweeper.tsx?raw";
@@ -177,7 +178,7 @@ const ListViewMinesweeperDemo = () => {
     const { board, handleCellClick } = useMinesweeperContext();
     return (
         <GtkBox halign={Gtk.Align.CENTER}>
-            <GtkGridView
+            <GridView
                 name="grid-view"
                 estimatedItemHeight={32}
                 minColumns={GRID_SIZE}

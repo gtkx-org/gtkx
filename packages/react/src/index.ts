@@ -1,16 +1,6 @@
 import "./utils/element-props.js";
 
 export { withApplication, withApplicationWindow } from "./components/application.js";
-export { type ConstraintLayoutProps, GtkConstraintLayout } from "./components/constraint-layout.js";
-export {
-    AdwComboRow,
-    GtkColumnView,
-    GtkColumnViewColumn,
-    GtkDropDown,
-    GtkGridView,
-    GtkListView,
-} from "./components/list.js";
-export { GMenu, type MenuProps } from "./components/menu.js";
 export { type TopLevelParentProps, withTopLevel } from "./components/top-level.js";
 export { ApplicationContext, useApplication } from "./hooks/use-application.js";
 export { useForwardedRef } from "./hooks/use-forwarded-ref.js";
@@ -42,24 +32,13 @@ export type {
     ActionGroupPrefixProps,
     AlertDialogResponseProps,
     CalendarMark,
-    ColumnViewColumnProps,
-    ColumnViewProps,
-    ConstraintGuideProps,
-    ConstraintProps,
-    ConstraintVflProps,
     ContainerPropProps,
     CreditSection,
     DragSourceIcon,
-    DropDownProps,
     DropTargetType,
     FixedChildProps,
     GridChildProps,
-    GridViewProps,
     LevelBarOffset,
-    ListItem,
-    ListViewProps,
-    MenuEntry,
-    MenuItemsProps,
     NotebookPageProps,
     OverlayChildProps,
     ScaleMark,

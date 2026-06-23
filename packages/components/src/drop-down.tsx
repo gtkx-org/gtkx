@@ -1,33 +1,28 @@
 import type * as Adw from "@gtkx/gi/adw";
 import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
+import { AdwComboRow, type AdwComboRowProps } from "@gtkx/jsx/adw";
+import { GtkDropDown, type GtkDropDownProps, GtkLabel } from "@gtkx/jsx/gtk";
+import { useForwardedRef } from "@gtkx/react";
 import {
     createElement,
+    type ElementType,
     type ReactElement,
     type ReactNode,
     type Ref,
-    type RefObject,
     useCallback,
     useRef,
     useState,
 } from "react";
-import { useDropDownSelection } from "../hooks/use-drop-down-selection.js";
-import { useForwardedRef } from "../hooks/use-forwarded-ref.js";
-import { useListModel } from "../hooks/use-list-model.js";
-import { type FactoryBinding, useRealizedSlots } from "../hooks/use-realized-slots.js";
-import { createElementComponent } from "../utils/create-element-component.js";
-import type { DropDownProps, ListItem } from "../utils/element-props.js";
-import type { ItemResolver } from "../utils/item-resolver.js";
-import type { RealizedSlotStore } from "../utils/realized-slot-store.js";
-import { useTargetRegistration } from "../utils/use-target-registration.js";
+import { useDropDownSelection } from "./hooks/use-drop-down-selection.js";
+import { useListModel } from "./hooks/use-list-model.js";
+import { useModelInstallation } from "./hooks/use-model-installation.js";
+import { type FactoryBinding, useRealizedSlots } from "./hooks/use-realized-slots.js";
 import { ListPortalHost } from "./list-portal-host.js";
 import type { SlotRenderer } from "./list-slot.js";
-
-interface LabelElementProps {
-    label?: string | undefined;
-}
-
-const GtkLabelElement = createElementComponent<LabelElementProps>("GtkLabel");
+import type { DropDownProps, ListItem } from "./types.js";
+import type { ItemResolver } from "./utils/item-resolver.js";
+import type { RealizedSlotStore } from "./utils/realized-slot-store.js";
 
 export interface DropDownWidget extends Gtk.Widget {
     getSelected(): number;
@@ -55,22 +50,11 @@ const headerFactoryBinding: FactoryBinding<DropDownWidget> = {
 
 const defaultRenderer: SlotRenderer<unknown, unknown> = (value, _treeRow, isHeader) => {
     if (isHeader || value === undefined || value === null) return null;
-    return createElement(GtkLabelElement, { label: String(value) });
-};
-
-const useModelInstallation = (target: RefObject<DropDownWidget | null>, model: Gio.ListModel): void => {
-    useTargetRegistration<DropDownWidget, { widget: DropDownWidget; model: Gio.ListModel }>(target, {
-        attach: (widget) => {
-            widget.setModel(model);
-            return { widget, model };
-        },
-        detach: () => {},
-        isSame: (registration, widget) => registration.widget === widget && registration.model === model,
-    });
+    return createElement(GtkLabel, { label: String(value) });
 };
 
 interface DropDownImplProps<T, S, W extends DropDownWidget> {
-    element: string;
+    element: ElementType;
     intrinsicProps: Record<string, unknown>;
     ref: Ref<W | null> | undefined;
     items: ListItem<T, S>[] | undefined;
@@ -144,7 +128,7 @@ const useDropDownWiring = <T, S, W extends DropDownWidget>(
         binding: headerFactoryBinding,
     });
 
-    useModelInstallation(widgetRef, listModel.model);
+    useModelInstallation(widgetRef, listModel.model, (widget, model) => widget.setModel(model));
 
     const selectedPosition = useDropDownSelection<T, S>({
         widget,
@@ -196,15 +180,12 @@ const DropDownImpl = <T, S, W extends DropDownWidget>(props: DropDownImplProps<T
     );
 };
 
-const DROP_DOWN_ELEMENT = "GtkDropDown";
-const COMBO_ROW_ELEMENT = "AdwComboRow";
-
-type DropDownComponentProps<T, S, W extends DropDownWidget> = DropDownProps<T, S> & {
+type DropDownImplComponentProps<T, S, W extends DropDownWidget> = DropDownProps<T, S> & {
     ref?: Ref<W | null> | undefined;
 };
 
 const extractDropDownProps = <T, S, W extends DropDownWidget>(
-    props: DropDownComponentProps<T, S, W>,
+    props: DropDownImplComponentProps<T, S, W>,
 ): {
     impl: Omit<DropDownImplProps<T, S, W>, "element" | "intrinsicProps">;
     intrinsicProps: Record<string, unknown>;
@@ -239,12 +220,40 @@ const extractDropDownProps = <T, S, W extends DropDownWidget>(
     };
 };
 
-export const GtkDropDown = <T = unknown, S = unknown>(props: DropDownComponentProps<T, S, Gtk.DropDown>): ReactNode => {
+/**
+ * Props for the {@link DropDown} component: the raw `GtkDropDown` element
+ * surface with its factory/model wiring replaced by the declarative
+ * {@link DropDownProps} API.
+ */
+export type DropDownComponentProps<T = unknown, S = unknown> = Omit<GtkDropDownProps, keyof DropDownProps<T, S>> &
+    DropDownProps<T, S>;
+
+/**
+ * Props for the {@link ComboRow} component: the raw `AdwComboRow` element
+ * surface with its factory/model wiring replaced by the declarative
+ * {@link DropDownProps} API.
+ */
+export type ComboRowComponentProps<T = unknown, S = unknown> = Omit<AdwComboRowProps, keyof DropDownProps<T, S>> &
+    DropDownProps<T, S>;
+
+/**
+ * A `GtkDropDown` driven by a declarative `items` model with a controlled
+ * `selectedId` and per-slot renderers for the selected face, the popup list,
+ * and section headers. Supplying an external `model` switches to the
+ * uncontrolled form.
+ */
+export const DropDown = <T = unknown, S = unknown>(props: DropDownComponentProps<T, S>): ReactNode => {
     const { impl, intrinsicProps } = extractDropDownProps<T, S, Gtk.DropDown>(props);
-    return <DropDownImpl<T, S, Gtk.DropDown> element={DROP_DOWN_ELEMENT} intrinsicProps={intrinsicProps} {...impl} />;
+    return <DropDownImpl<T, S, Gtk.DropDown> element={GtkDropDown} intrinsicProps={intrinsicProps} {...impl} />;
 };
 
-export const AdwComboRow = <T = unknown, S = unknown>(props: DropDownComponentProps<T, S, Adw.ComboRow>): ReactNode => {
+/**
+ * An `AdwComboRow` driven by a declarative `items` model with a controlled
+ * `selectedId` and per-slot renderers for the selected face, the popup list,
+ * and section headers. Supplying an external `model` switches to the
+ * uncontrolled form.
+ */
+export const ComboRow = <T = unknown, S = unknown>(props: ComboRowComponentProps<T, S>): ReactNode => {
     const { impl, intrinsicProps } = extractDropDownProps<T, S, Adw.ComboRow>(props);
-    return <DropDownImpl<T, S, Adw.ComboRow> element={COMBO_ROW_ELEMENT} intrinsicProps={intrinsicProps} {...impl} />;
+    return <DropDownImpl<T, S, Adw.ComboRow> element={AdwComboRow} intrinsicProps={intrinsicProps} {...impl} />;
 };

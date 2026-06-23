@@ -1,12 +1,12 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import type { ConstraintGuideProps, ConstraintProps, ConstraintVflProps } from "../utils/element-props.js";
+import type { ConstraintGuideProps, ConstraintProps, ConstraintVflProps } from "./types.js";
 
 const SUPER_ID = "super";
 
 const unknownIdMessage = (role: string, id: string): string =>
-    `<GtkConstraintLayout.Constraint> references unknown id '${id}'. ` +
-    `Set name="${id}" on the ${role} widget, or add a <GtkConstraintLayout.Guide id="${id}">.`;
+    `<ConstraintLayout.Constraint> references unknown id '${id}'. ` +
+    `Set name="${id}" on the ${role} widget, or add a <ConstraintLayout.Guide id="${id}">.`;
 
 const guideRegistry = new WeakMap<Gtk.ConstraintLayout, Map<string, Gtk.ConstraintGuide>>();
 

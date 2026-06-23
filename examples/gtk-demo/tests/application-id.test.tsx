@@ -17,16 +17,16 @@ it("applies the applicationId passed explicitly", async () => {
     const ref = createRef<Gtk.Application>();
 
     await render(
-        <GtkApplication ref={ref} applicationId={applicationId} flags={APP_FLAGS}>
+        <GtkApplication ref={ref} applicationId="org.gtkx.explicit" flags={APP_FLAGS}>
             <GtkApplicationWindow defaultWidth={400} defaultHeight={300} />
         </GtkApplication>,
         { container: createRootElement() },
     );
 
-    expect(ref.current?.applicationId).toBe("org.gtkx.gtk-demo");
+    expect(ref.current?.applicationId).toBe("org.gtkx.explicit");
 });
 
-it("leaves the applicationId unset when none is passed", async () => {
+it("defaults the applicationId to the config one when none is passed", async () => {
     const ref = createRef<Gtk.Application>();
 
     await render(
@@ -36,5 +36,5 @@ it("leaves the applicationId unset when none is passed", async () => {
         { container: createRootElement() },
     );
 
-    expect(ref.current?.applicationId ?? null).toBeNull();
+    expect(ref.current?.applicationId).toBe("org.gtkx.gtk-demo");
 });

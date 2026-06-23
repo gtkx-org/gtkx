@@ -1,6 +1,7 @@
+import { ListView } from "@gtkx/components";
 import type * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, type RefObject, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -212,7 +213,7 @@ function SidebarTree({
 }) {
     return (
         <GtkScrolledWindow ref={scrollRef} minContentHeight={200} maxContentHeight={200} minContentWidth={200}>
-            <GtkListView
+            <ListView
                 ref={listRef}
                 cssClasses={["navigation-sidebar"]}
                 autoexpand

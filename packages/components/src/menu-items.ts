@@ -1,5 +1,5 @@
 import * as Gio from "@gtkx/gi/gio";
-import type { MenuEntry } from "../utils/element-props.js";
+import type { MenuEntry } from "./types.js";
 
 const buildMenuModel = (entries: MenuEntry[]): Gio.Menu => {
     const menu = new Gio.Menu();

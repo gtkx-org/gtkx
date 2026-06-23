@@ -1,8 +1,9 @@
+import { ColumnView, ColumnViewColumn } from "@gtkx/components";
 import { css } from "@gtkx/css";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkColumnView, GtkColumnViewColumn, GtkInscription, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkInscription, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import { path as ucdDataPath } from "#data/demos/lists/ucdnames.data";
 import type { Demo } from "../types.js";
@@ -431,7 +432,7 @@ const renderUcdHeader = (script: string) => (
 );
 
 const UcdCodepointColumn = () => (
-    <GtkColumnViewColumn
+    <ColumnViewColumn
         id="codepoint"
         title="Codepoint"
         sortable
@@ -442,7 +443,7 @@ const UcdCodepointColumn = () => (
 );
 
 const UcdCharColumn = () => (
-    <GtkColumnViewColumn
+    <ColumnViewColumn
         id="char"
         title="Char"
         renderCell={(item: UcdEntry) => (
@@ -452,7 +453,7 @@ const UcdCharColumn = () => (
 );
 
 const UcdNameColumn = () => (
-    <GtkColumnViewColumn
+    <ColumnViewColumn
         id="name"
         title="Name"
         resizable
@@ -476,7 +477,7 @@ interface UcdInscriptionColumnProps {
 }
 
 const UcdInscriptionColumn = ({ id, title, label }: UcdInscriptionColumnProps) => (
-    <GtkColumnViewColumn
+    <ColumnViewColumn
         id={id}
         title={title}
         resizable
@@ -529,7 +530,7 @@ const ListViewUcdDemo = () => {
     return (
         <GtkBox orientation={Gtk.Orientation.HORIZONTAL}>
             <GtkScrolledWindow propagateNaturalWidth vexpand>
-                <GtkColumnView<UcdEntry, string>
+                <ColumnView<UcdEntry, string>
                     name="column-view"
                     showColumnSeparators
                     estimatedRowHeight={32}
@@ -548,7 +549,7 @@ const ListViewUcdDemo = () => {
                     <UcdTypeColumn />
                     <UcdBreakTypeColumn />
                     <UcdCombiningClassColumn />
-                </GtkColumnView>
+                </ColumnView>
             </GtkScrolledWindow>
             <GtkLabel
                 name="selected-char"

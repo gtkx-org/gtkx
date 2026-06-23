@@ -1,4 +1,3 @@
-import { applicationId } from "virtual:gtkx-config";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { quit } from "@gtkx/react";
@@ -40,7 +39,7 @@ const Counter = () => {
 };
 
 export const App = () => (
-    <GtkApplication applicationId={applicationId}>
+    <GtkApplication>
         <Counter />
     </GtkApplication>
 );

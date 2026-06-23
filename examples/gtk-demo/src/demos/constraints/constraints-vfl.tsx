@@ -1,4 +1,5 @@
-import { GtkBox, GtkConstraintLayout } from "@gtkx/jsx/gtk";
+import { ConstraintLayout } from "@gtkx/components";
+import { GtkBox } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
 import { ConstraintChildButtons } from "./child-buttons.js";
 import sourceCode from "./constraints-vfl.tsx?raw";
@@ -16,9 +17,9 @@ const ConstraintsVflDemo = () => (
         hexpand
         vexpand
         layoutManager={
-            <GtkConstraintLayout>
-                <GtkConstraintLayout.Vfl lines={VFL_CONSTRAINTS} hspacing={8} vspacing={8} />
-            </GtkConstraintLayout>
+            <ConstraintLayout>
+                <ConstraintLayout.Vfl lines={VFL_CONSTRAINTS} hspacing={8} vspacing={8} />
+            </ConstraintLayout>
         }
     >
         <ConstraintChildButtons />

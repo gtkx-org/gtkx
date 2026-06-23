@@ -22,7 +22,7 @@ export const ColumnViewContext: Context<ColumnViewContextValue | null> = createC
 export const useColumnViewContext = (): ColumnViewContextValue => {
     const context = useContext(ColumnViewContext);
     if (context === null) {
-        throw new Error("<GtkColumnViewColumn> must be rendered inside a <GtkColumnView>.");
+        throw new Error("<ColumnViewColumn> must be rendered inside a <ColumnView>.");
     }
     return context;
 };

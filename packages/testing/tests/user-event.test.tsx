@@ -1,3 +1,4 @@
+import { DropDown } from "@gtkx/components";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -6,7 +7,6 @@ import {
     GtkButton,
     GtkCheckButton,
     GtkDragSource,
-    GtkDropDown,
     GtkDropTarget,
     GtkEntry,
     GtkGestureDrag,
@@ -317,7 +317,7 @@ describe("userEvent clipboard", () => {
 describe("userEvent.selectOptions", () => {
     it("selects option in dropdown by index", async () => {
         await render(
-            <GtkDropDown
+            <DropDown
                 items={[
                     { id: "a", value: "Option A" },
                     { id: "b", value: "Option B" },
@@ -347,7 +347,7 @@ describe("userEvent.selectOptions", () => {
 
         it("throws when selecting multiple options on dropdown", async () => {
             await render(
-                <GtkDropDown
+                <DropDown
                     items={[
                         { id: "a", value: "A" },
                         { id: "b", value: "B" },
@@ -373,7 +373,7 @@ describe("userEvent.deselectOptions", () => {
 
     describe("error handling", () => {
         it("throws when element is not a list box", async () => {
-            await render(<GtkDropDown items={[{ id: "a", value: "A" }]} />);
+            await render(<DropDown items={[{ id: "a", value: "A" }]} />);
 
             const dropdown = await screen.findByRole(Gtk.AccessibleRole.COMBO_BOX);
             await expect(userEvent.deselectOptions(dropdown, 0)).rejects.toThrow(

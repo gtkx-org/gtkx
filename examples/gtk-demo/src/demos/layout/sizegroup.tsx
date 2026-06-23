@@ -1,5 +1,6 @@
+import { DropDown } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkCheckButton, GtkDropDown, GtkFrame, GtkLabel, GtkSizeGroup } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkCheckButton, GtkFrame, GtkLabel, GtkSizeGroup } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./sizegroup.tsx?raw";
@@ -25,7 +26,7 @@ const DropdownRow = ({ labelText, selectedId, options, onSelectionChanged, onDro
     return (
         <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={10}>
             <GtkLabel label={labelText} useUnderline halign={Gtk.Align.START} hexpand mnemonicWidget={dropdown} />
-            <GtkDropDown
+            <DropDown
                 ref={captureDropdown}
                 halign={Gtk.Align.END}
                 valign={Gtk.Align.BASELINE_FILL}

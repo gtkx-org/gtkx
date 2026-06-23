@@ -1,5 +1,6 @@
+import { DropDown } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkDropDown } from "@gtkx/jsx/gtk";
+
 import { act, render, screen, userEvent } from "@gtkx/testing";
 import { createRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -84,7 +85,7 @@ describe("act safety", () => {
         const onSelectionChanged = vi.fn();
 
         await render(
-            <GtkDropDown
+            <DropDown
                 ref={dropDownRef}
                 onSelectionChanged={onSelectionChanged}
                 items={valueItems(["Option 1", "Option 2", "Option 3"])}

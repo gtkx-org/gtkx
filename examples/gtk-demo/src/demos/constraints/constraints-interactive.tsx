@@ -1,5 +1,6 @@
+import { ConstraintLayout } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkConstraintLayout, GtkGestureDrag } from "@gtkx/jsx/gtk";
+import { GtkGestureDrag } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import { BottomEdgeConstraint, ConstraintContainer, TopEdgeConstraint } from "./constraint-helpers.js";
@@ -9,15 +10,10 @@ const A = Gtk.ConstraintAttribute;
 
 const renderDividerConstraints = (dividerOffset: number | null) => (
     <>
-        <GtkConstraintLayout.Guide id="divider" />
-        <GtkConstraintLayout.Constraint
-            target="divider"
-            targetAttribute={A.WIDTH}
-            sourceAttribute={A.NONE}
-            constant={0}
-        />
+        <ConstraintLayout.Guide id="divider" />
+        <ConstraintLayout.Constraint target="divider" targetAttribute={A.WIDTH} sourceAttribute={A.NONE} constant={0} />
         {dividerOffset === null ? null : (
-            <GtkConstraintLayout.Constraint
+            <ConstraintLayout.Constraint
                 target="divider"
                 targetAttribute={A.LEFT}
                 sourceAttribute={A.LEFT}
@@ -29,37 +25,32 @@ const renderDividerConstraints = (dividerOffset: number | null) => (
 
 const renderHorizontalConstraints = () => (
     <>
-        <GtkConstraintLayout.Constraint
+        <ConstraintLayout.Constraint
             target="button1"
             targetAttribute={A.START}
             sourceAttribute={A.START}
             constant={8}
         />
-        <GtkConstraintLayout.Constraint
+        <ConstraintLayout.Constraint
             target="button1"
             targetAttribute={A.END}
             source="divider"
             sourceAttribute={A.START}
         />
-        <GtkConstraintLayout.Constraint
+        <ConstraintLayout.Constraint
             target="button2"
             targetAttribute={A.START}
             source="divider"
             sourceAttribute={A.END}
         />
-        <GtkConstraintLayout.Constraint
-            target="button2"
-            targetAttribute={A.END}
-            sourceAttribute={A.END}
-            constant={-8}
-        />
-        <GtkConstraintLayout.Constraint
+        <ConstraintLayout.Constraint target="button2" targetAttribute={A.END} sourceAttribute={A.END} constant={-8} />
+        <ConstraintLayout.Constraint
             target="button3"
             targetAttribute={A.START}
             sourceAttribute={A.START}
             constant={8}
         />
-        <GtkConstraintLayout.Constraint
+        <ConstraintLayout.Constraint
             target="button3"
             targetAttribute={A.END}
             source="divider"
@@ -71,13 +62,13 @@ const renderHorizontalConstraints = () => (
 const renderVerticalConstraints = () => (
     <>
         <TopEdgeConstraint />
-        <GtkConstraintLayout.Constraint
+        <ConstraintLayout.Constraint
             target="button2"
             targetAttribute={A.TOP}
             source="button1"
             sourceAttribute={A.BOTTOM}
         />
-        <GtkConstraintLayout.Constraint
+        <ConstraintLayout.Constraint
             target="button3"
             targetAttribute={A.TOP}
             source="button2"
@@ -88,11 +79,11 @@ const renderVerticalConstraints = () => (
 );
 
 const renderLayout = (dividerOffset: number | null) => (
-    <GtkConstraintLayout>
+    <ConstraintLayout>
         {renderDividerConstraints(dividerOffset)}
         {renderHorizontalConstraints()}
         {renderVerticalConstraints()}
-    </GtkConstraintLayout>
+    </ConstraintLayout>
 );
 
 const ConstraintsInteractive = () => {

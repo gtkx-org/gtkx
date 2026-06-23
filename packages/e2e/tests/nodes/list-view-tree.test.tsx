@@ -1,6 +1,7 @@
+import type { ListItem } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import type { ListItem } from "@gtkx/react";
+
 import { act, screen, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { type FixtureInput, renderListView } from "../helpers/list-fixtures.js";

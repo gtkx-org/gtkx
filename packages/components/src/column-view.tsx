@@ -1,38 +1,26 @@
 import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
+import { GtkColumnView, type GtkColumnViewProps } from "@gtkx/jsx/gtk";
+import { useForwardedRef } from "@gtkx/react";
 import { createElement, type ReactNode, type Ref, useCallback, useMemo, useRef, useState } from "react";
 import {
     type ColumnRegistration,
     ColumnViewContext,
     type ColumnViewContextValue,
-} from "../contexts/column-view-context.js";
-import { useForwardedRef } from "../hooks/use-forwarded-ref.js";
-import { useListModel } from "../hooks/use-list-model.js";
-import { type FactoryBinding, useRealizedSlots } from "../hooks/use-realized-slots.js";
-import { useSelectionModel } from "../hooks/use-selection-model.js";
-import { useSortHandler } from "../hooks/use-sort-handler.js";
-import type { ColumnViewProps } from "../utils/element-props.js";
-import type { ItemResolver } from "../utils/item-resolver.js";
-import { useTargetRegistration } from "../utils/use-target-registration.js";
+} from "./contexts/column-view-context.js";
+import { useListModel } from "./hooks/use-list-model.js";
+import { useModelInstallation } from "./hooks/use-model-installation.js";
+import { type FactoryBinding, useRealizedSlots } from "./hooks/use-realized-slots.js";
+import { useSelectionModel } from "./hooks/use-selection-model.js";
+import { useSortHandler } from "./hooks/use-sort-handler.js";
 import { ListPortalHost } from "./list-portal-host.js";
 import type { SlotRenderer } from "./list-slot.js";
-
-const COLUMN_VIEW_ELEMENT = "GtkColumnView";
+import type { ColumnViewProps } from "./types.js";
+import type { ItemResolver } from "./utils/item-resolver.js";
 
 const headerFactoryBinding: FactoryBinding<Gtk.ColumnView> = {
     install: (widget, factory) => widget.setHeaderFactory(factory),
     uninstall: (widget) => widget.setHeaderFactory(null),
-};
-
-const useModelInstallation = (target: React.RefObject<Gtk.ColumnView | null>, model: Gtk.SelectionModel): void => {
-    useTargetRegistration<Gtk.ColumnView, { widget: Gtk.ColumnView; model: Gtk.SelectionModel }>(target, {
-        attach: (widget) => {
-            widget.setModel(model);
-            return { widget, model };
-        },
-        detach: () => {},
-        isSame: (registration, widget) => registration.widget === widget && registration.model === model,
-    });
 };
 
 interface ColumnRegistry {
@@ -62,10 +50,17 @@ const useColumnRegistry = (): ColumnRegistry => {
     return { columns, register, unregister };
 };
 
-type ColumnViewComponentProps<T, S> = ColumnViewProps<T, S> & {
-    ref?: Ref<Gtk.ColumnView | null> | undefined;
-    children?: ReactNode;
-};
+/**
+ * Props for the {@link ColumnView} component: the raw `GtkColumnView` element
+ * surface (minus its imperative `columns` property) with its model/sort wiring
+ * replaced by the declarative {@link ColumnViewProps} API. Columns are declared
+ * as {@link ColumnViewColumn} children.
+ */
+export type ColumnViewComponentProps<T = unknown, S = unknown> = Omit<
+    GtkColumnViewProps,
+    "columns" | keyof ColumnViewProps<T, S>
+> &
+    ColumnViewProps<T, S>;
 
 type NormalizedColumnViewProps<T, S> = ColumnViewProps<T, S> & {
     ref?: Ref<Gtk.ColumnView | null>;
@@ -112,7 +107,7 @@ const useColumnViewWiring = <T, S>(
     });
     const installedModel: Gtk.SelectionModel =
         externalModel === undefined ? controlledSelection : (externalModel as Gtk.SelectionModel);
-    useModelInstallation(widgetRef, installedModel);
+    useModelInstallation(widgetRef, installedModel, (widget, model) => widget.setModel(model));
 
     const useHeader = externalModel === undefined && typeof props.renderHeader === "function";
     const headers = useRealizedSlots<Gtk.ColumnView>({
@@ -149,7 +144,13 @@ const useColumnViewWiring = <T, S>(
     };
 };
 
-export const GtkColumnView = <T = unknown, S = unknown>(props: ColumnViewComponentProps<T, S>): ReactNode => {
+/**
+ * A `GtkColumnView` driven by a declarative `items` model with optional
+ * controlled selection, controlled sorting, and section headers. Columns are
+ * declared as {@link ColumnViewColumn} children. Supplying an external `model`
+ * switches to the uncontrolled form.
+ */
+export const ColumnView = <T = unknown, S = unknown>(props: ColumnViewComponentProps<T, S>): ReactNode => {
     const {
         ref,
         items,
@@ -185,7 +186,7 @@ export const GtkColumnView = <T = unknown, S = unknown>(props: ColumnViewCompone
     );
 
     const intrinsic = createElement(
-        COLUMN_VIEW_ELEMENT,
+        GtkColumnView,
         { ...intrinsicProps, ref: wiring.setRef },
         <ColumnViewContext.Provider value={wiring.contextValue}>{children}</ColumnViewContext.Provider>,
     );

@@ -1,5 +1,6 @@
+import { ConstraintLayout } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkConstraintLayout, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import type { ReactNode, RefObject } from "react";
 import { expect } from "vitest";
@@ -10,7 +11,7 @@ export const renderConstraintBox = async (
     children?: ReactNode,
 ): Promise<void> => {
     await render(
-        <GtkBox ref={boxRef} layoutManager={<GtkConstraintLayout>{markers}</GtkConstraintLayout>}>
+        <GtkBox ref={boxRef} layoutManager={<ConstraintLayout>{markers}</ConstraintLayout>}>
             {children}
         </GtkBox>,
     );

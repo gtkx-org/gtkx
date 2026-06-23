@@ -1,3 +1,4 @@
+import { applicationId as defaultApplicationId } from "virtual:gtkx-config";
 import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { type ElementType, type ReactNode, type Ref, useCallback, useLayoutEffect, useState } from "react";
@@ -40,6 +41,7 @@ const ApplicationChildren = ({ app, children }: { app: Gtk.Application | null; c
     app && <ApplicationContext.Provider value={app}>{children}</ApplicationContext.Provider>;
 
 type ApplicationComponentProps<T extends Gtk.Application> = {
+    applicationId?: string | null;
     children?: ReactNode;
     menubar?: Gio.MenuModel | ReactNode;
     ref?: Ref<T | null>;
@@ -49,11 +51,12 @@ export const withApplication = <P extends ApplicationComponentProps<ApplicationO
     Element: ElementType,
 ): ((props: P) => ReactNode) => {
     return (props: P): ReactNode => {
-        const { children, menubar, ref, ...rest } = props;
+        const { applicationId = defaultApplicationId, children, menubar, ref, ...rest } = props;
         const [app, captureApp] = useApplicationInstance<ApplicationOf<P>>(ref);
         const menubarProps = app ? { menubar } : {};
+        const applicationIdProps = applicationId === undefined ? {} : { applicationId };
         return (
-            <Element ref={captureApp} {...rest} {...menubarProps}>
+            <Element ref={captureApp} {...rest} {...applicationIdProps} {...menubarProps}>
                 <ApplicationChildren app={app}>{children}</ApplicationChildren>
             </Element>
         );

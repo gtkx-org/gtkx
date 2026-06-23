@@ -11,7 +11,6 @@ import { renderHandlerParameters } from "../writers/param-structure.js";
 import { foldOutParamShape } from "../writers/return-shape.js";
 import { renderBaseTypeFor, type TsTypeTarget } from "../writers/ts-type.js";
 import { isScalarRef } from "../writers/value.js";
-import { excludedPropsForWidget } from "./tables.js";
 import { classExposesMethod, isReactNodeClass, signalHandlerName } from "./widgets.js";
 
 export type WidgetPropsEntries = {
@@ -47,14 +46,11 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
     const slotPropNames: string[] = [];
     const seen = new Set<string>();
 
-    const ownerName = klass.glibTypeName ?? klass.cType ?? klass.name;
-
     const acceptProperty = (property: GirProperty): void => {
         if (!property.introspectable) return;
         const jsName = toCamelIdentifier(property.name);
         if (seen.has(jsName)) return;
         seen.add(jsName);
-        if (isPropOverridden(ownerName, jsName)) return;
         if (dataPropNames.has(jsName)) return;
         const tsType = renderReactPropType(types, property.type, false);
         if (isSlotProperty({ repository, klass, namespace }, property, jsName)) {
@@ -131,9 +127,6 @@ const isSlotProperty = (owner: SlotOwner, property: GirProperty, jsName: string)
     }
     return true;
 };
-
-const isPropOverridden = (ownerName: string, propName: string): boolean =>
-    excludedPropsForWidget(ownerName)?.has(propName) ?? false;
 
 const renderSignalHandler = (options: SignalRenderOptions): string => {
     const { types, signal, selfType } = options;

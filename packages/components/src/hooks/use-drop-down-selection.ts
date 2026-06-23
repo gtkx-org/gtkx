@@ -1,10 +1,8 @@
 import type * as GObject from "@gtkx/gi/gobject";
+import { useSignal } from "@gtkx/react";
+import { type GObjectTarget, resolveGobjectTarget, useGObjectSnapshot } from "@gtkx/react/internal";
 import { useLayoutEffect, useRef } from "react";
-import type { GObjectTarget } from "../utils/gobject-target.js";
-import { resolveGobjectTarget } from "../utils/gobject-target.js";
 import type { ItemResolver } from "../utils/item-resolver.js";
-import { useGObjectSnapshot } from "./use-gobject-snapshot.js";
-import { useSignal } from "./use-signal.js";
 
 export interface DropDownSelectionTarget extends GObject.Object {
     getSelected(): number;

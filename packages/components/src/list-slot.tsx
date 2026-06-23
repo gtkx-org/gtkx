@@ -1,27 +1,17 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
+import { GtkTreeExpander } from "@gtkx/jsx/gtk";
+import { createPortal } from "@gtkx/react";
 import { createElement, memo, type ReactNode, useCallback, useSyncExternalStore } from "react";
-import { createPortal } from "../reconciler/portal.js";
-import { createElementComponent } from "../utils/create-element-component.js";
-import type { ItemResolver } from "../utils/item-resolver.js";
-import type { TreeItemMetadata } from "../utils/list-item-flatten.js";
-import type { RealizedSlotStore, SlotEntry } from "../utils/realized-slot-store.js";
+import type { ItemResolver } from "./utils/item-resolver.js";
+import type { TreeItemMetadata } from "./utils/list-item-flatten.js";
+import type { RealizedSlotStore, SlotEntry } from "./utils/realized-slot-store.js";
 
 export type SlotRenderer<T, S> = (
     value: T | S | undefined,
     treeRow: Gtk.TreeListRow | null,
     isHeader: boolean,
 ) => ReactNode;
-
-interface TreeExpanderElementProps {
-    ref?: (value: Gtk.TreeExpander | null) => void;
-    hideExpander?: boolean;
-    indentForDepth?: boolean;
-    indentForIcon?: boolean;
-    children?: ReactNode;
-}
-
-const GtkTreeExpanderElement = createElementComponent<TreeExpanderElementProps>("GtkTreeExpander");
 
 export interface ListSlotProps<T, S> {
     container: GObject.Object;
@@ -32,7 +22,7 @@ export interface ListSlotProps<T, S> {
 
 const wrapInTreeExpander = (content: ReactNode, treeRow: Gtk.TreeListRow, metadata: TreeItemMetadata): ReactNode =>
     createElement(
-        GtkTreeExpanderElement,
+        GtkTreeExpander,
         {
             ref: (expander: Gtk.TreeExpander | null) => {
                 if (expander !== null) expander.setListRow(treeRow);

@@ -1,6 +1,4 @@
 import type * as Gdk from "@gtkx/gi/gdk";
-import type * as Gio from "@gtkx/gi/gio";
-import type * as GObject from "@gtkx/gi/gobject";
 import type { GType } from "@gtkx/gi/gobject";
 import type * as Gsk from "@gtkx/gi/gsk";
 import type * as Gtk from "@gtkx/gi/gtk";
@@ -95,23 +93,6 @@ export type ContainerPropProps = {
     children?: ReactNode;
 };
 
-export type ListItem<T = unknown, S = unknown> =
-    | {
-          id: string;
-          value: T;
-          section?: false | undefined;
-          children?: ListItem<T, S>[] | undefined;
-          hideExpander?: boolean | undefined;
-          indentForDepth?: boolean | undefined;
-          indentForIcon?: boolean | undefined;
-      }
-    | {
-          id: string;
-          value: S;
-          section: true;
-          children: ListItem<T, S>[];
-      };
-
 export type GridChildProps = {
     children?: ReactNode;
     column?: number | undefined;
@@ -125,18 +106,6 @@ export type FixedChildProps = {
     x?: number | undefined;
     y?: number | undefined;
     transform?: Gsk.Transform | undefined;
-};
-
-export type ColumnViewColumnProps<T = unknown> = {
-    title: string;
-    expand?: boolean | undefined;
-    resizable?: boolean | undefined;
-    fixedWidth?: number | undefined;
-    id: string;
-    sortable?: boolean | undefined;
-    visible?: boolean | undefined;
-    renderCell: (item: T) => ReactNode;
-    headerMenu?: ReactNode;
 };
 
 export type NotebookPageProps = {
@@ -171,148 +140,14 @@ export type AlertDialogResponseProps = {
     enabled?: boolean | undefined;
 };
 
-type ListViewSharedProps = {
-    estimatedItemHeight?: number | undefined;
-    estimatedItemWidth?: number | undefined;
-};
-
-type ListViewControlledSelectionProps = {
-    selected?: string[] | null | undefined;
-    onSelectionChanged?: ((ids: string[]) => void) | null | undefined;
-    selectionMode?: Gtk.SelectionMode | null | undefined;
-};
-
-type UncontrolledItemType<T> = [T] extends [GObject.Object] ? T : GObject.Object;
-
-export type ListViewProps<T = unknown, S = unknown> = ListViewSharedProps &
-    (
-        | (ListViewControlledSelectionProps & {
-              items?: ListItem<T, S>[] | undefined;
-              renderItem: (item: T, row?: Gtk.TreeListRow | null) => ReactNode;
-              autoexpand?: boolean | undefined;
-              renderHeader?: ((item: S) => ReactNode) | null | undefined;
-              model?: never;
-          })
-        | {
-              model: Gio.ListModel;
-              renderItem: (item: UncontrolledItemType<T>) => ReactNode;
-              items?: never;
-              autoexpand?: never;
-              renderHeader?: never;
-              selected?: never;
-              onSelectionChanged?: never;
-              selectionMode?: never;
-          }
-    );
-
-export type GridViewProps<T = unknown> = ListViewSharedProps &
-    (
-        | (ListViewControlledSelectionProps & {
-              items?: ListItem<T>[] | undefined;
-              renderItem: (item: T) => ReactNode;
-              model?: never;
-          })
-        | {
-              model: Gio.ListModel;
-              renderItem: (item: UncontrolledItemType<T>) => ReactNode;
-              items?: never;
-              selected?: never;
-              onSelectionChanged?: never;
-              selectionMode?: never;
-          }
-    );
-
-type ColumnViewSortProps = {
-    sortColumn?: string | null | undefined;
-    sortOrder?: Gtk.SortType | null | undefined;
-    onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null | undefined;
-    estimatedRowHeight?: number | null | undefined;
-};
-
-export type ColumnViewProps<T = unknown, S = unknown> = ColumnViewSortProps &
-    (
-        | (ListViewControlledSelectionProps & {
-              items?: ListItem<T, S>[] | undefined;
-              renderHeader?: ((item: S) => ReactNode) | null | undefined;
-              model?: never;
-          })
-        | {
-              model: Gio.ListModel;
-              items?: never;
-              renderHeader?: never;
-              selected?: never;
-              onSelectionChanged?: never;
-              selectionMode?: never;
-          }
-    );
-
-export type DropDownProps<T = unknown, S = unknown> =
-    | {
-          items?: ListItem<T, S>[] | undefined;
-          selectedId?: string | null | undefined;
-          onSelectionChanged?: ((id: string) => void) | null | undefined;
-          renderItem?: ((item: T) => ReactNode) | null | undefined;
-          renderListItem?: ((item: T) => ReactNode) | null | undefined;
-          renderHeader?: ((item: S) => ReactNode) | null | undefined;
-          model?: never;
-      }
-    | {
-          model: Gio.ListModel;
-          renderItem?: ((item: UncontrolledItemType<T>) => ReactNode) | null | undefined;
-          renderListItem?: ((item: UncontrolledItemType<T>) => ReactNode) | null | undefined;
-          items?: never;
-          selectedId?: never;
-          onSelectionChanged?: never;
-          renderHeader?: never;
-      };
-
 export type DragSourceIcon = {
     paintable: Gdk.Paintable;
     hotX?: number | undefined;
     hotY?: number | undefined;
 };
 
-export type MenuEntry = {
-    label?: string | undefined;
-    action?: string | undefined;
-    submenu?: MenuEntry[] | undefined;
-    section?: MenuEntry[] | undefined;
-};
-
-export type MenuItemsProps = {
-    items?: MenuEntry[] | null | undefined;
-};
-
 export type ActionGroupPrefixProps = {
     prefix?: string | undefined;
-};
-
-export type ConstraintProps = {
-    target?: string;
-    targetAttribute: Gtk.ConstraintAttribute;
-    relation?: Gtk.ConstraintRelation;
-    source?: string;
-    sourceAttribute?: Gtk.ConstraintAttribute;
-    multiplier?: number;
-    constant?: number;
-    strength?: number;
-};
-
-export type ConstraintGuideProps = {
-    id: string;
-    minWidth?: number;
-    minHeight?: number;
-    natWidth?: number;
-    natHeight?: number;
-    maxWidth?: number;
-    maxHeight?: number;
-    strength?: Gtk.ConstraintStrength;
-};
-
-export type ConstraintVflProps = {
-    lines: string[];
-    hspacing?: number;
-    vspacing?: number;
 };
 
 export type WrapperNodeElementProps = {

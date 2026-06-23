@@ -1,8 +1,9 @@
+import { Menu, type MenuEntry } from "@gtkx/components";
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GMenu } from "@gtkx/jsx/gio";
+
 import { GtkPopoverMenu, GtkPopoverMenuBar } from "@gtkx/jsx/gtk";
-import type { MenuEntry } from "@gtkx/react";
+
 import { render } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
@@ -40,7 +41,7 @@ const requireLink = (model: Gio.MenuModel | null): Gio.MenuModel => {
 
 const renderPopoverMenu = async (items: MenuEntry[]): Promise<Gio.MenuModel> => {
     const ref = createRef<Gtk.PopoverMenu>();
-    await render(<GtkPopoverMenu ref={ref} menuModel={<GMenu items={items} />} />);
+    await render(<GtkPopoverMenu ref={ref} menuModel={<Menu items={items} />} />);
     return requireModel(ref.current);
 };
 
@@ -49,7 +50,7 @@ type MenuRef = RefObject<Gtk.PopoverMenu | null>;
 const ItemListApp = ({ menuRef, items }: { menuRef: MenuRef; items: string[] }) => (
     <GtkPopoverMenu
         ref={menuRef}
-        menuModel={<GMenu items={items.map((label) => ({ label, action: `win.${label.replace(/\s+/g, "")}` }))} />}
+        menuModel={<Menu items={items.map((label) => ({ label, action: `win.${label.replace(/\s+/g, "")}` }))} />}
     />
 );
 
@@ -63,13 +64,13 @@ const renderItemListTransition = async (initialItems: string[], updatedItems: st
 };
 
 const LabeledItemApp = ({ menuRef, label }: { menuRef: MenuRef; label: string }) => (
-    <GtkPopoverMenu ref={menuRef} menuModel={<GMenu items={[{ label, action: "win.item" }]} />} />
+    <GtkPopoverMenu ref={menuRef} menuModel={<Menu items={[{ label, action: "win.item" }]} />} />
 );
 
 const RemovableItemApp = ({ menuRef, showItem }: { menuRef: MenuRef; showItem: boolean }) => (
     <GtkPopoverMenu
         ref={menuRef}
-        menuModel={<GMenu items={showItem ? [{ label: "Removable", action: "win.r" }] : []} />}
+        menuModel={<Menu items={showItem ? [{ label: "Removable", action: "win.r" }] : []} />}
     />
 );
 
@@ -188,13 +189,13 @@ const NESTED_SUBMENU_ITEMS: MenuEntry[] = [
 const GrowingSubmenuApp = ({ menuRef, extra }: { menuRef: MenuRef; extra: boolean }) => {
     const submenu: MenuEntry[] = [{ label: "Cut", action: "win.cut" }];
     if (extra) submenu.push({ label: "Copy", action: "win.copy" });
-    return <GtkPopoverMenu ref={menuRef} menuModel={<GMenu items={[{ label: "Edit", submenu }]} />} />;
+    return <GtkPopoverMenu ref={menuRef} menuModel={<Menu items={[{ label: "Edit", submenu }]} />} />;
 };
 
 describe("render - Menu submenus", () => {
     it("links a submenu entry's items as a submenu", async () => {
         const ref = createRef<Gtk.PopoverMenuBar>();
-        await render(<GtkPopoverMenuBar ref={ref} menuModel={<GMenu items={FILE_SUBMENU_ITEMS} />} />);
+        await render(<GtkPopoverMenuBar ref={ref} menuModel={<Menu items={FILE_SUBMENU_ITEMS} />} />);
 
         const model = requireModel(ref.current);
         expect(model.getNItems()).toBe(1);

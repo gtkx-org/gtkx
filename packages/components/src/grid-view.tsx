@@ -1,11 +1,10 @@
 import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
+import { GtkGridView, type GtkGridViewProps } from "@gtkx/jsx/gtk";
 import type { ReactNode, Ref } from "react";
-import type { GridViewProps } from "../utils/element-props.js";
 import { CollectionView, type ModelBinding } from "./collection-view.js";
 import type { SlotRenderer } from "./list-slot.js";
-
-const GRID_VIEW_ELEMENT = "GtkGridView";
+import type { GridViewProps } from "./types.js";
 
 const factoryBinding = {
     install: (widget: Gtk.GridView, factory: Gtk.SignalListItemFactory) => widget.setFactory(factory),
@@ -16,13 +15,19 @@ const modelBinding: ModelBinding<Gtk.GridView> = {
     install: (widget, model) => widget.setModel(model as Gtk.SelectionModel),
 };
 
-type GridViewComponentProps<T> = GridViewProps<T> & {
-    ref?: Ref<Gtk.GridView | null> | undefined;
-    estimatedItemHeight?: number | undefined;
-    estimatedItemWidth?: number | undefined;
-};
+/**
+ * Props for the {@link GridView} component: the raw `GtkGridView` element
+ * surface with its factory/model wiring replaced by the declarative
+ * {@link GridViewProps} API.
+ */
+export type GridViewComponentProps<T = unknown> = Omit<GtkGridViewProps, keyof GridViewProps<T>> & GridViewProps<T>;
 
-export const GtkGridView = <T = unknown>(props: GridViewComponentProps<T>): ReactNode => {
+/**
+ * A `GtkGridView` driven by a declarative `items`/`renderItem` API with
+ * optional controlled selection. Supplying an external `model` switches to the
+ * uncontrolled form.
+ */
+export const GridView = <T = unknown>(props: GridViewComponentProps<T>): ReactNode => {
     const {
         ref,
         items,
@@ -47,7 +52,7 @@ export const GtkGridView = <T = unknown>(props: GridViewComponentProps<T>): Reac
 
     return (
         <CollectionView<T, unknown, Gtk.GridView>
-            element={GRID_VIEW_ELEMENT}
+            element={GtkGridView}
             intrinsicProps={intrinsicProps}
             ref={ref}
             items={model === undefined ? items : undefined}

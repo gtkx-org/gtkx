@@ -1,11 +1,10 @@
 import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
+import { GtkListView, type GtkListViewProps } from "@gtkx/jsx/gtk";
 import type { ReactNode, Ref } from "react";
-import type { ListViewProps } from "../utils/element-props.js";
 import { CollectionView, type ModelBinding } from "./collection-view.js";
 import type { SlotRenderer } from "./list-slot.js";
-
-const LIST_VIEW_ELEMENT = "GtkListView";
+import type { ListViewProps } from "./types.js";
 
 const factoryBinding = {
     install: (widget: Gtk.ListView, factory: Gtk.SignalListItemFactory) => widget.setFactory(factory),
@@ -21,13 +20,20 @@ const modelBinding: ModelBinding<Gtk.ListView> = {
     install: (widget, model) => widget.setModel(model as Gtk.SelectionModel),
 };
 
-type ListViewComponentProps<T, S> = ListViewProps<T, S> & {
-    ref?: Ref<Gtk.ListView | null> | undefined;
-    estimatedItemHeight?: number | undefined;
-    estimatedItemWidth?: number | undefined;
-};
+/**
+ * Props for the {@link ListView} component: the raw `GtkListView` element
+ * surface with its factory/model wiring replaced by the declarative
+ * {@link ListViewProps} API.
+ */
+export type ListViewComponentProps<T = unknown, S = unknown> = Omit<GtkListViewProps, keyof ListViewProps<T, S>> &
+    ListViewProps<T, S>;
 
-export const GtkListView = <T = unknown, S = unknown>(props: ListViewComponentProps<T, S>): ReactNode => {
+/**
+ * A `GtkListView` driven by a declarative `items`/`renderItem` API with
+ * optional controlled selection, section headers, and tree autoexpansion.
+ * Supplying an external `model` switches to the uncontrolled form.
+ */
+export const ListView = <T = unknown, S = unknown>(props: ListViewComponentProps<T, S>): ReactNode => {
     const {
         ref,
         items,
@@ -58,7 +64,7 @@ export const GtkListView = <T = unknown, S = unknown>(props: ListViewComponentPr
 
     return (
         <CollectionView<T, S, Gtk.ListView>
-            element={LIST_VIEW_ELEMENT}
+            element={GtkListView}
             intrinsicProps={intrinsicProps}
             ref={ref}
             items={model === undefined ? items : undefined}

@@ -376,7 +376,6 @@ export const BUILT_IN_CONTAINER_PROPS: PerElementPropRows<ContainerPropRow> = {
 };
 
 export const BUILT_IN_PROPS_MIXINS: Record<string, string[]> = Object.freeze({
-    GMenu: ["MenuItemsProps"],
     GSimpleActionGroup: ["ActionGroupPrefixProps"],
 });
 
@@ -419,89 +418,18 @@ export const mergeElementMap = (userElementMap: ElementMapRule[] | undefined): E
         ? BUILT_IN_ELEMENT_MAP
         : [...BUILT_IN_ELEMENT_MAP, ...userElementMap];
 
-export type RuntimeComponentWrapper =
-    | { kind: "reexport" }
-    | { kind: "typedProps" }
-    | {
-          kind: "typed";
-          genericParams: string;
-          omitKeys?: string;
-          controllerProps: string;
-          sharedTypes: string[];
-      };
-
 export type WidgetOverride = {
-    wrapper?: RuntimeComponentWrapper;
     runtimeOwned?: boolean;
-    excludedProps?: Set<string>;
 };
 
 export const WIDGET_OVERRIDES: Record<string, WidgetOverride> = {
-    GtkListView: {
-        wrapper: {
-            kind: "typed",
-            genericParams: "<T = unknown, S = unknown>",
-            controllerProps: "ListViewProps<T, S>",
-            sharedTypes: ["ListViewProps"],
-        },
-    },
-    GtkGridView: {
-        wrapper: {
-            kind: "typed",
-            genericParams: "<T = unknown>",
-            controllerProps: "GridViewProps<T>",
-            sharedTypes: ["GridViewProps"],
-        },
-    },
-    GtkDropDown: {
-        wrapper: {
-            kind: "typed",
-            genericParams: "<T = unknown, S = unknown>",
-            controllerProps: "DropDownProps<T, S>",
-            sharedTypes: ["DropDownProps"],
-        },
-    },
-    AdwComboRow: {
-        wrapper: {
-            kind: "typed",
-            genericParams: "<T = unknown, S = unknown>",
-            controllerProps: "DropDownProps<T, S>",
-            sharedTypes: ["DropDownProps"],
-        },
-    },
-    GtkColumnView: {
-        wrapper: {
-            kind: "typed",
-            genericParams: "<T = unknown, S = unknown>",
-            controllerProps: "ColumnViewProps<T, S>",
-            sharedTypes: ["ColumnViewProps"],
-        },
-        excludedProps: new Set(["columns"]),
-    },
-    GtkColumnViewColumn: {
-        wrapper: {
-            kind: "typed",
-            genericParams: "<T = unknown>",
-            omitKeys: '"factory" | "sorter"',
-            controllerProps: "ColumnViewColumnProps<T>",
-            sharedTypes: ["ColumnViewColumnProps"],
-        },
-    },
-    GMenu: { wrapper: { kind: "typedProps" } },
-    GtkConstraintLayout: { wrapper: { kind: "reexport" } },
     GMenuItem: { runtimeOwned: true },
     AdwSpringAnimation: { runtimeOwned: true },
     AdwTimedAnimation: { runtimeOwned: true },
 };
 
-export const widgetWrapper = (glibName: string): RuntimeComponentWrapper | undefined =>
-    WIDGET_OVERRIDES[glibName]?.wrapper;
-
-export const excludedPropsForWidget = (glibName: string): Set<string> | undefined =>
-    WIDGET_OVERRIDES[glibName]?.excludedProps;
-
 export const RUNTIME_OWNED_WIDGETS: Set<string> = new Set(
     Object.entries(WIDGET_OVERRIDES)
-        .filter(([, override]) => override.runtimeOwned === true || override.wrapper !== undefined)
+        .filter(([, override]) => override.runtimeOwned === true)
         .map(([glibName]) => glibName),
 );

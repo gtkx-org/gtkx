@@ -1,9 +1,9 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
+import { createPortal } from "@gtkx/react";
+import { stateOf } from "@gtkx/react/internal";
 import { type ReactNode, useLayoutEffect, useRef } from "react";
-import { createPortal } from "../reconciler/portal.js";
-import { stateOf } from "../reconciler/state.js";
 
 const findMenuModel = (container: GObject.Object): Gio.MenuModel | null => {
     for (const child of stateOf(container).children) {

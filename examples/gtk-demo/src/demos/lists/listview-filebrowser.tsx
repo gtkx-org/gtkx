@@ -1,17 +1,9 @@
 import { homedir } from "node:os";
+import { GridView, ListView } from "@gtkx/components";
 import { css } from "@gtkx/css";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import {
-    GtkBox,
-    GtkButton,
-    GtkGridView,
-    GtkHeaderBar,
-    GtkImage,
-    GtkLabel,
-    GtkListView,
-    GtkScrolledWindow,
-} from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkHeaderBar, GtkImage, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { useSignal } from "@gtkx/react";
 
 import { createContext, useContext, useMemo, useState } from "react";
@@ -191,7 +183,7 @@ const ListViewFilebrowserTitlebar = () => {
             name="filebrowser-header"
             start={<GtkButton name="up-button" iconName="go-up-symbolic" onClicked={navigateUp} />}
             end={
-                <GtkListView
+                <ListView
                     name="view-switcher"
                     orientation={Gtk.Orientation.HORIZONTAL}
                     cssClasses={[
@@ -221,7 +213,7 @@ const ListViewFilebrowserDemo = () => {
     const { viewMode, files, handleActivate } = useFilebrowserContext();
     return (
         <GtkScrolledWindow name="files-scrolled" vexpand hexpand>
-            <GtkGridView
+            <GridView
                 name="files-grid"
                 estimatedItemHeight={viewMode === "grid" ? 80 : 48}
                 maxColumns={15}

@@ -1,5 +1,6 @@
+import { ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkInscription, GtkListView, GtkScrolledWindow, GtkSearchBar, GtkSearchEntry } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkInscription, GtkScrolledWindow, GtkSearchBar, GtkSearchEntry } from "@gtkx/jsx/gtk";
 import { useDemo } from "../context/demo-context.js";
 import type { TreeItem } from "../demos/types.js";
 
@@ -62,7 +63,7 @@ export const Sidebar = ({ searchMode, onSearchChanged }: SidebarProps) => {
                 propagateNaturalWidth
                 cssClasses={["sidebar"]}
             >
-                <GtkListView
+                <ListView
                     name="sidebar-list"
                     cssClasses={["navigation-sidebar"]}
                     autoexpand

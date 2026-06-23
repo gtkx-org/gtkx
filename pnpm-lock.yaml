@@ -89,6 +89,9 @@ importers:
 
   examples/gtk-demo:
     dependencies:
+      '@gtkx/components':
+        specifier: workspace:*
+        version: link:../../packages/components
       '@gtkx/css':
         specifier: workspace:*
         version: link:../../packages/css
@@ -148,6 +151,9 @@ importers:
       '@gtkx/animate':
         specifier: workspace:*
         version: link:../../packages/animate
+      '@gtkx/components':
+        specifier: workspace:*
+        version: link:../../packages/components
       '@gtkx/css':
         specifier: workspace:*
         version: link:../../packages/css
@@ -279,6 +285,19 @@ importers:
         specifier: ^24.0.0
         version: 24.13.2
 
+  packages/components:
+    dependencies:
+      '@gtkx/react':
+        specifier: workspace:*
+        version: link:../react
+      react:
+        specifier: ^19
+        version: 19.2.7
+    devDependencies:
+      '@gtkx/vitest':
+        specifier: workspace:*
+        version: link:../vitest
+
   packages/config:
     dependencies:
       '@gtkx/utils':
@@ -352,6 +371,9 @@ importers:
       '@gtkx/animate':
         specifier: workspace:*
         version: link:../animate
+      '@gtkx/components':
+        specifier: workspace:*
+        version: link:../components
       '@gtkx/config':
         specifier: workspace:*
         version: link:../config
@@ -466,6 +488,9 @@ importers:
         specifier: workspace:*
         version: link:../utils
     devDependencies:
+      '@gtkx/components':
+        specifier: workspace:*
+        version: link:../components
       '@gtkx/config':
         specifier: workspace:*
         version: link:../config

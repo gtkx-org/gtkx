@@ -28,6 +28,9 @@
             "includeEntryExports": true,
             "project": ["src/**/*.ts!", "scripts/**/*.ts!", "!src/templates/**"]
         },
+        "packages/components": {
+            "project": ["src/**/*.{ts,tsx}!"]
+        },
         "packages/config": {
             "includeEntryExports": true,
             "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]

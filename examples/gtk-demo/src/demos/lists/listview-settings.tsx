@@ -1,15 +1,13 @@
+import { ColumnView, ColumnViewColumn, ListView, Menu } from "@gtkx/components";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GMenu, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
+import { GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
 import {
     GtkBox,
-    GtkColumnView,
-    GtkColumnViewColumn,
     GtkEditableLabel,
     GtkHeaderBar,
     GtkLabel,
-    GtkListView,
     GtkPaned,
     GtkScrolledWindow,
     GtkSearchBar,
@@ -215,7 +213,7 @@ const INITIAL_COLUMN_VISIBILITY: ColumnVisibility = {
 };
 
 const columnVisibilityMenu = (
-    <GMenu
+    <Menu
         items={[
             {
                 section: TOGGLEABLE_COLUMNS.map((column) => ({
@@ -268,7 +266,7 @@ const commitKeyInfoEdit = ({ keyInfo, newText, widget, state }: CommitKeyInfoEdi
 
 const SchemaSidebar = ({ onSelectionChanged }: { onSelectionChanged: (ids: string[]) => void }) => (
     <GtkScrolledWindow>
-        <GtkListView
+        <ListView
             name="sidebar"
             tabBehavior={Gtk.ListTabBehavior.ITEM}
             selectionMode={Gtk.SelectionMode.BROWSE}
@@ -312,12 +310,12 @@ interface SettingsColumnsProps {
 
 const renderSettingsColumns = ({ columnVisibility, onValueEdit }: SettingsColumnsProps) => (
     <>
-        <GtkColumnViewColumn
+        <ColumnViewColumn
             id="name"
             title="Name"
             renderCell={(item: KeyInfo) => <GtkLabel label={item.name} xalign={0} />}
         />
-        <GtkColumnViewColumn
+        <ColumnViewColumn
             id="value"
             title="Value"
             resizable
@@ -328,7 +326,7 @@ const renderSettingsColumns = ({ columnVisibility, onValueEdit }: SettingsColumn
                 />
             )}
         />
-        <GtkColumnViewColumn
+        <ColumnViewColumn
             id="type"
             title="Type"
             resizable
@@ -337,7 +335,7 @@ const renderSettingsColumns = ({ columnVisibility, onValueEdit }: SettingsColumn
             headerMenu={columnVisibilityMenu}
             renderCell={(item: KeyInfo) => <GtkLabel label={item.type} xalign={0} />}
         />
-        <GtkColumnViewColumn
+        <ColumnViewColumn
             id="default"
             title="Default"
             resizable
@@ -346,7 +344,7 @@ const renderSettingsColumns = ({ columnVisibility, onValueEdit }: SettingsColumn
             headerMenu={columnVisibilityMenu}
             renderCell={(item: KeyInfo) => <GtkLabel label={item.defaultValue} xalign={0} />}
         />
-        <GtkColumnViewColumn
+        <ColumnViewColumn
             id="summary"
             title="Summary"
             resizable
@@ -355,7 +353,7 @@ const renderSettingsColumns = ({ columnVisibility, onValueEdit }: SettingsColumn
             headerMenu={columnVisibilityMenu}
             renderCell={(item: KeyInfo) => <GtkLabel label={item.summary} xalign={0} wrap />}
         />
-        <GtkColumnViewColumn
+        <ColumnViewColumn
             id="description"
             title="Description"
             resizable
@@ -383,7 +381,7 @@ const SettingsColumnView = ({
                 <GtkSearchEntry name="search-entry" onSearchChanged={onSearchChanged} onStopSearch={onStopSearch} />
             </GtkSearchBar>
             <GtkScrolledWindow hexpand vexpand>
-                <GtkColumnView
+                <ColumnView
                     name="column-view"
                     tabBehavior={Gtk.ListTabBehavior.CELL}
                     cssClasses={["data-table"]}
@@ -391,7 +389,7 @@ const SettingsColumnView = ({
                     actionGroups={renderColumnVisibilityActions(columnVisibility, toggleColumn)}
                 >
                     {renderSettingsColumns({ columnVisibility, onValueEdit })}
-                </GtkColumnView>
+                </ColumnView>
             </GtkScrolledWindow>
         </GtkBox>
     );

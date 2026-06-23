@@ -10,6 +10,7 @@
     "devDependencies": {
         "@codspeed/vitest-plugin": "^5.6.0",
         "@gtkx/animate": "workspace:*",
+        "@gtkx/components": "workspace:*",
         "@gtkx/config": "workspace:*",
         "@gtkx/ffi": "workspace:*",
         "@gtkx/react": "workspace:*",

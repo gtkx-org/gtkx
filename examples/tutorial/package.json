@@ -20,6 +20,7 @@
     },
     "dependencies": {
         "@gtkx/animate": "workspace:*",
+        "@gtkx/components": "workspace:*",
         "@gtkx/css": "workspace:*",
         "@gtkx/react": "workspace:*",
         "react": "catalog:"

@@ -1,6 +1,7 @@
+import { ColumnView, ColumnViewColumn, GridView, type ListItem, ListView } from "@gtkx/components";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkColumnView, GtkColumnViewColumn, GtkGridView, GtkLabel, GtkListView } from "@gtkx/jsx/gtk";
-import type { ListItem } from "@gtkx/react";
+import { GtkLabel } from "@gtkx/jsx/gtk";
+
 import { render } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { ScrollWrapper } from "./scroll-wrapper.js";
@@ -60,7 +61,7 @@ export const renderListView = async <T = NamedValue>(
                 maxContentHeight={maxContentHeight}
                 minContentWidth={minContentWidth}
             >
-                <GtkListView
+                <ListView
                     ref={ref}
                     items={toListItems(data)}
                     renderItem={renderItem}
@@ -95,7 +96,7 @@ export const renderGridView = async <T = NamedValue>(
                 maxContentHeight={maxContentHeight}
                 minContentWidth={minContentWidth}
             >
-                <GtkGridView
+                <GridView
                     ref={ref}
                     items={toListItems(data)}
                     renderItem={renderItem}
@@ -153,7 +154,7 @@ export const renderColumnView = async <T = NamedValue>(
         const { columns = defaultColumns, minContentHeight = 500, minContentWidth } = opts;
         return (
             <ScrollWrapper minContentHeight={minContentHeight} minContentWidth={minContentWidth}>
-                <GtkColumnView
+                <ColumnView
                     ref={ref}
                     items={toListItems(data)}
                     selected={opts.selected}
@@ -164,7 +165,7 @@ export const renderColumnView = async <T = NamedValue>(
                     onSortChanged={opts.onSortChanged}
                 >
                     {columns.map((column) => (
-                        <GtkColumnViewColumn
+                        <ColumnViewColumn
                             key={column.id}
                             id={column.id}
                             title={column.title}
@@ -174,7 +175,7 @@ export const renderColumnView = async <T = NamedValue>(
                             renderCell={column.renderCell}
                         />
                     ))}
-                </GtkColumnView>
+                </ColumnView>
             </ScrollWrapper>
         );
     };

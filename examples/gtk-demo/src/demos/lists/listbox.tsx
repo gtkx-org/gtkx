@@ -1,7 +1,8 @@
+import { Menu } from "@gtkx/components";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
-import { GMenu, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
+import { GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
 import {
     GtkBox,
     GtkButton,
@@ -180,7 +181,7 @@ const MessageActions = ({
                     hasFrame={false}
                     label="More..."
                     menuModel={
-                        <GMenu
+                        <Menu
                             items={[
                                 {
                                     section: [

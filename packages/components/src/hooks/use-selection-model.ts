@@ -1,8 +1,8 @@
 import type * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
+import { useSignal } from "@gtkx/react";
 import { useLayoutEffect, useRef } from "react";
 import type { ItemResolver } from "../utils/item-resolver.js";
-import { useSignal } from "./use-signal.js";
 
 export interface SelectionModelOptions<T, S> {
     base: Gio.ListModel;

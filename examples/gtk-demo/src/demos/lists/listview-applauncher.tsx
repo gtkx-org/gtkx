@@ -1,8 +1,9 @@
+import { ListView } from "@gtkx/components";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkImage, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./listview-applauncher.tsx?raw";
 
@@ -44,7 +45,7 @@ const ListViewApplauncherDemo = ({ window }: DemoProps) => {
 
     return (
         <GtkScrolledWindow name="scrolled" vexpand hexpand>
-            <GtkListView
+            <ListView
                 name="list-view"
                 estimatedItemHeight={48}
                 selectionMode={Gtk.SelectionMode.SINGLE}

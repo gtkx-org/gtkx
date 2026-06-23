@@ -1,7 +1,8 @@
+import { ColumnView, ColumnViewColumn, Menu, type MenuEntry } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GMenu, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
-import { GtkColumnView, GtkColumnViewColumn, GtkLabel } from "@gtkx/jsx/gtk";
-import type { MenuEntry } from "@gtkx/react";
+import { GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
+import { GtkLabel } from "@gtkx/jsx/gtk";
+
 import { render } from "@gtkx/testing";
 import type { ComponentProps, ReactElement, ReactNode, RefObject } from "react";
 import { createRef, useCallback, useMemo, useState } from "react";
@@ -12,10 +13,10 @@ import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
 const noop = () => {};
 const cellRenderer = () => <GtkLabel label="Cell" />;
 
-type ColumnExtra = Omit<ComponentProps<typeof GtkColumnViewColumn>, "id" | "title" | "renderCell">;
+type ColumnExtra = Omit<ComponentProps<typeof ColumnViewColumn>, "id" | "title" | "renderCell">;
 
 const DefaultColumn = ({ id, title, ...extra }: { id: string; title: string } & ColumnExtra) => (
-    <GtkColumnViewColumn id={id} title={title} expand renderCell={cellRenderer} {...extra} />
+    <ColumnViewColumn id={id} title={title} expand renderCell={cellRenderer} {...extra} />
 );
 
 interface ActionSpec {
@@ -35,10 +36,10 @@ const actionGroup = (prefix: string, specs: ActionSpec[]): ReactNode => (
 const menuEntries = (prefix: string, specs: ActionSpec[]): MenuEntry[] =>
     specs.map((spec) => ({ label: spec.label, action: `${prefix}.${spec.id}` }));
 
-const flatMenu = (prefix: string, specs: ActionSpec[]): ReactElement => <GMenu items={menuEntries(prefix, specs)} />;
+const flatMenu = (prefix: string, specs: ActionSpec[]): ReactElement => <Menu items={menuEntries(prefix, specs)} />;
 
 const sectionedMenu = (prefix: string, sections: ActionSpec[][]): ReactElement => (
-    <GMenu items={sections.map((specs) => ({ section: menuEntries(prefix, specs) }))} />
+    <Menu items={sections.map((specs) => ({ section: menuEntries(prefix, specs) }))} />
 );
 
 const renderColumns = async (
@@ -48,7 +49,7 @@ const renderColumns = async (
 ): Promise<void> => {
     await render(
         <ScrollWrapper actionGroups={actionGroups}>
-            <GtkColumnView ref={columnViewRef}>{columns}</GtkColumnView>
+            <ColumnView ref={columnViewRef}>{columns}</ColumnView>
         </ScrollWrapper>,
     );
 };
@@ -117,7 +118,7 @@ describe("render - ColumnViewColumn (1)", () => {
 
             await renderColumns(
                 columnViewRef,
-                <GtkColumnViewColumn id="expand" title="Expandable" expand={true} renderCell={cellRenderer} />,
+                <ColumnViewColumn id="expand" title="Expandable" expand={true} renderCell={cellRenderer} />,
             );
 
             const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
@@ -133,7 +134,7 @@ describe("render - ColumnViewColumn (2)", () => {
 
             await renderColumns(
                 columnViewRef,
-                <GtkColumnViewColumn id="resize" title="Resizable" expand resizable renderCell={cellRenderer} />,
+                <ColumnViewColumn id="resize" title="Resizable" expand resizable renderCell={cellRenderer} />,
             );
 
             const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
@@ -146,19 +147,19 @@ describe("render - ColumnViewColumn (2)", () => {
             await renderColumns(
                 columnViewRef,
                 <>
-                    <GtkColumnViewColumn
+                    <ColumnViewColumn
                         id="col1"
                         title="Column 1"
                         expand
                         renderCell={() => <GtkLabel label="Cell 1" />}
                     />
-                    <GtkColumnViewColumn
+                    <ColumnViewColumn
                         id="col2"
                         title="Column 2"
                         expand
                         renderCell={() => <GtkLabel label="Cell 2" />}
                     />
-                    <GtkColumnViewColumn
+                    <ColumnViewColumn
                         id="col3"
                         title="Column 3"
                         expand
@@ -180,9 +181,9 @@ describe("render - ColumnViewColumn (3)", () => {
             function App({ title }: { title: string }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={columnViewRef}>
-                            <GtkColumnViewColumn id="col" title={title} expand renderCell={cellRenderer} />
-                        </GtkColumnView>
+                        <ColumnView ref={columnViewRef}>
+                            <ColumnViewColumn id="col" title={title} expand renderCell={cellRenderer} />
+                        </ColumnView>
                     </ScrollWrapper>
                 );
             }
@@ -204,9 +205,9 @@ describe("render - ColumnViewColumn (4)", () => {
             function App({ columns }: { columns: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={columnViewRef}>
+                        <ColumnView ref={columnViewRef}>
                             {columns.map((title) => (
-                                <GtkColumnViewColumn
+                                <ColumnViewColumn
                                     key={title}
                                     id={title}
                                     title={title}
@@ -214,7 +215,7 @@ describe("render - ColumnViewColumn (4)", () => {
                                     renderCell={() => <GtkLabel label={title} />}
                                 />
                             ))}
-                        </GtkColumnView>
+                        </ColumnView>
                     </ScrollWrapper>
                 );
             }
@@ -285,7 +286,7 @@ describe("render - ColumnViewColumn (6)", () => {
     describe("header menu updates", () => {
         const buildColumnMenu = (columnViewRef: RefObject<Gtk.ColumnView | null>) => (items: string[]) => (
             <ScrollWrapper>
-                <GtkColumnView ref={columnViewRef}>
+                <ColumnView ref={columnViewRef}>
                     <DefaultColumn
                         id="name"
                         title="Name"
@@ -294,7 +295,7 @@ describe("render - ColumnViewColumn (6)", () => {
                             items.map((label) => ({ id: label, label })),
                         )}
                     />
-                </GtkColumnView>
+                </ColumnView>
             </ScrollWrapper>
         );
 
@@ -344,7 +345,7 @@ describe("render - ColumnViewColumn (7)", () => {
             function App({ showMenu }: { showMenu: boolean }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={columnViewRef}>
+                        <ColumnView ref={columnViewRef}>
                             <DefaultColumn
                                 id="name"
                                 title="Name"
@@ -352,7 +353,7 @@ describe("render - ColumnViewColumn (7)", () => {
                                     showMenu ? flatMenu("name", [{ id: "action", label: "Action" }]) : undefined
                                 }
                             />
-                        </GtkColumnView>
+                        </ColumnView>
                     </ScrollWrapper>
                 );
             }
@@ -404,7 +405,7 @@ describe("render - ColumnViewColumn (9)", () => {
             function App({ showColumn }: { showColumn: boolean }) {
                 return (
                     <ScrollWrapper>
-                        <GtkColumnView ref={columnViewRef}>
+                        <ColumnView ref={columnViewRef}>
                             {showColumn && (
                                 <DefaultColumn
                                     id="name"
@@ -413,7 +414,7 @@ describe("render - ColumnViewColumn (9)", () => {
                                 />
                             )}
                             <DefaultColumn id="other" title="Other" />
-                        </GtkColumnView>
+                        </ColumnView>
                     </ScrollWrapper>
                 );
             }
@@ -465,7 +466,7 @@ const ShowcaseActionGroups = ({ sortActions }: { sortActions: (column: ShowcaseS
 
 const ShowcaseColumns = ({ sortActions }: { sortActions: (column: ShowcaseSortColumn) => ActionSpec[] }) => (
     <>
-        <GtkColumnViewColumn
+        <ColumnViewColumn
             id="name"
             title="Name"
             expand
@@ -473,7 +474,7 @@ const ShowcaseColumns = ({ sortActions }: { sortActions: (column: ShowcaseSortCo
             renderCell={(item: ShowcasePerson) => <GtkLabel label={item.name} />}
             headerMenu={sectionedMenu("name", [sortActions("name")])}
         />
-        <GtkColumnViewColumn
+        <ColumnViewColumn
             id="role"
             title="Role"
             fixedWidth={100}
@@ -481,7 +482,7 @@ const ShowcaseColumns = ({ sortActions }: { sortActions: (column: ShowcaseSortCo
             renderCell={(item: ShowcasePerson) => <GtkLabel label={item.role} />}
             headerMenu={sectionedMenu("role", [sortActions("role"), [{ id: "hide", label: "Hide Column" }]])}
         />
-        <GtkColumnViewColumn
+        <ColumnViewColumn
             id="salary"
             title="Salary"
             fixedWidth={100}
@@ -509,7 +510,7 @@ function ShowcaseSortableApp({ columnViewRef }: { columnViewRef: RefObject<Gtk.C
 
     return (
         <ScrollWrapper actionGroups={<ShowcaseActionGroups sortActions={sortActions} />}>
-            <GtkColumnView
+            <ColumnView
                 ref={columnViewRef}
                 estimatedRowHeight={48}
                 sortColumn={sortColumn}
@@ -518,7 +519,7 @@ function ShowcaseSortableApp({ columnViewRef }: { columnViewRef: RefObject<Gtk.C
                 items={sortedPeople.map((person) => ({ id: person.name, value: person }))}
             >
                 <ShowcaseColumns sortActions={sortActions} />
-            </GtkColumnView>
+            </ColumnView>
         </ScrollWrapper>
     );
 }

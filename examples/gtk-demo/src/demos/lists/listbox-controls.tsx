@@ -1,9 +1,9 @@
+import { DropDown } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkAdjustment,
     GtkBox,
     GtkCheckButton,
-    GtkDropDown,
     GtkEntry,
     GtkImage,
     GtkLabel,
@@ -143,7 +143,7 @@ const Group2List = ({ labelRef }: { labelRef: Ref<Gtk.Label | null> }) => {
                 />
             </LabeledRow>
             <LabeledRow labelText="_Dropdown" labelRef={labelRef} useUnderline activatable={false}>
-                <GtkDropDown
+                <DropDown
                     name="dropdown"
                     halign={Gtk.Align.END}
                     valign={Gtk.Align.CENTER}

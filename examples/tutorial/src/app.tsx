@@ -1,4 +1,4 @@
-import { applicationId } from "virtual:gtkx-config";
+import { GridView, ListView, Menu } from "@gtkx/components";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
@@ -13,12 +13,10 @@ import {
     AdwToggleGroup,
     AdwToolbarView,
 } from "@gtkx/jsx/adw";
-import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
+import { GSimpleAction } from "@gtkx/jsx/gio";
 import {
     GtkBox,
     GtkButton,
-    GtkGridView,
-    GtkListView,
     GtkMenuButton,
     GtkScrolledWindow,
     GtkSearchBar,
@@ -101,7 +99,7 @@ function NoteListContent({
     if (viewMode === "list") {
         return (
             <GtkScrolledWindow vexpand>
-                <GtkListView
+                <ListView
                     estimatedItemHeight={compactMode ? 50 : 80}
                     selectionMode={Gtk.SelectionMode.SINGLE}
                     selected={selected}
@@ -115,7 +113,7 @@ function NoteListContent({
 
     return (
         <GtkScrolledWindow vexpand>
-            <GtkGridView
+            <GridView
                 minColumns={2}
                 maxColumns={4}
                 selectionMode={Gtk.SelectionMode.SINGLE}
@@ -209,7 +207,7 @@ const MainMenu = () => (
         iconName="open-menu-symbolic"
         tooltipText="Main Menu"
         menuModel={
-            <GMenu
+            <Menu
                 items={[
                     { label: "New Note", action: "win.new" },
                     {
@@ -685,7 +683,6 @@ function NotesWindow() {
 export function App() {
     return (
         <AdwApplication
-            applicationId={applicationId}
             actionAccels={[
                 { action: "win.new", accels: ["<Control>n"] },
                 { action: "win.preferences", accels: ["<Control>comma"] },

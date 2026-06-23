@@ -1,4 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import { GtkConstraintLayout } from "@gtkx/jsx/gtk";
+import { useForwardedRef } from "@gtkx/react";
 import {
     type Context,
     createContext,
@@ -12,13 +14,10 @@ import {
     useLayoutEffect,
     useRef,
 } from "react";
-import { useForwardedRef } from "../hooks/use-forwarded-ref.js";
-import type { ConstraintGuideProps, ConstraintProps, ConstraintVflProps } from "../utils/element-props.js";
 import { applyConstraint, applyGuide, applyVfl } from "./constraint-layout-apply.js";
+import type { ConstraintGuideProps, ConstraintProps, ConstraintVflProps } from "./types.js";
 
-const GtkConstraintLayoutElement = "GtkConstraintLayout" as const;
-
-const ORPHAN_MESSAGE = "<GtkConstraintLayout.Constraint> / <Guide> / <Vfl> must be a child of <GtkConstraintLayout>";
+const ORPHAN_MESSAGE = "<ConstraintLayout.Constraint> / <Guide> / <Vfl> must be a child of <ConstraintLayout>";
 
 const ConstraintLayoutContext: Context<RefObject<Gtk.ConstraintLayout | null> | null> =
     createContext<RefObject<Gtk.ConstraintLayout | null> | null>(null);
@@ -69,7 +68,7 @@ const useDeferredContribution = (apply: (layout: Gtk.ConstraintLayout) => () => 
     }, deps);
 };
 
-export const GtkConstraintLayout: ((props: ConstraintLayoutProps) => ReactNode) & {
+export const ConstraintLayout: ((props: ConstraintLayoutProps) => ReactNode) & {
     Guide: (props: ConstraintGuideProps) => ReactNode;
     Constraint: (props: ConstraintProps) => ReactNode;
     Vfl: (props: ConstraintVflProps) => ReactNode;
@@ -85,7 +84,7 @@ export const GtkConstraintLayout: ((props: ConstraintLayoutProps) => ReactNode) 
         const [, mergedRef] = useForwardedRef<Gtk.ConstraintLayout>(ref, captureLayout);
         return (
             <>
-                {createElement(GtkConstraintLayoutElement, { ref: mergedRef })}
+                {createElement(GtkConstraintLayout, { ref: mergedRef })}
                 <ConstraintLayoutContext.Provider value={layoutRef}>{children}</ConstraintLayoutContext.Provider>
             </>
         );

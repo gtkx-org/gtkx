@@ -1,5 +1,6 @@
+import { ColumnView, ColumnViewColumn } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkColumnView, GtkColumnViewColumn, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkLabel } from "@gtkx/jsx/gtk";
 import { act, render } from "@gtkx/testing";
 import { createRef, useCallback, useMemo, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -132,28 +133,28 @@ function SortableColumnView({
 
     return (
         <ScrollWrapper minContentHeight={500}>
-            <GtkColumnView
+            <ColumnView
                 ref={columnViewRef}
                 sortColumn={sortColumn}
                 sortOrder={sortOrder}
                 onSortChanged={handleSortChange}
                 items={sortedEmployees.map((emp) => ({ id: emp.id, value: emp }))}
             >
-                <GtkColumnViewColumn
+                <ColumnViewColumn
                     id="name"
                     title="Name"
                     expand
                     sortable
                     renderCell={(emp: Employee) => <GtkLabel label={emp.name} />}
                 />
-                <GtkColumnViewColumn
+                <ColumnViewColumn
                     id="salary"
                     title="Salary"
                     expand
                     sortable
                     renderCell={(emp: Employee) => <GtkLabel label={`$${emp.salary}`} />}
                 />
-            </GtkColumnView>
+            </ColumnView>
         </ScrollWrapper>
     );
 }

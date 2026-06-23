@@ -1,9 +1,8 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import { type GObjectTarget, useTargetRegistration } from "@gtkx/react/internal";
 import { useRef } from "react";
-import type { GObjectTarget } from "../utils/gobject-target.js";
 import { RealizedSlotStore } from "../utils/realized-slot-store.js";
-import { useTargetRegistration } from "../utils/use-target-registration.js";
 
 interface ChildContainer {
     getChild(): Gtk.Widget | null;

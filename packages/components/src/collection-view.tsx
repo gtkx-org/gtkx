@@ -1,40 +1,31 @@
 import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { createElement, type ReactElement, type ReactNode, type Ref, type RefObject, useCallback, useRef } from "react";
-import { useForwardedRef } from "../hooks/use-forwarded-ref.js";
-import { useListModel } from "../hooks/use-list-model.js";
-import { type FactoryBinding, useRealizedSlots } from "../hooks/use-realized-slots.js";
-import { useSelectionModel } from "../hooks/use-selection-model.js";
-import type { ListItem } from "../utils/element-props.js";
-import type { ItemResolver } from "../utils/item-resolver.js";
-import type { RealizedSlotStore } from "../utils/realized-slot-store.js";
-import { useTargetRegistration } from "../utils/use-target-registration.js";
+import { useForwardedRef } from "@gtkx/react";
+import {
+    createElement,
+    type ElementType,
+    type ReactElement,
+    type ReactNode,
+    type Ref,
+    useCallback,
+    useRef,
+} from "react";
+import { useListModel } from "./hooks/use-list-model.js";
+import { useModelInstallation } from "./hooks/use-model-installation.js";
+import { type FactoryBinding, useRealizedSlots } from "./hooks/use-realized-slots.js";
+import { useSelectionModel } from "./hooks/use-selection-model.js";
 import { ListPortalHost } from "./list-portal-host.js";
 import type { SlotRenderer } from "./list-slot.js";
+import type { ListItem } from "./types.js";
+import type { ItemResolver } from "./utils/item-resolver.js";
+import type { RealizedSlotStore } from "./utils/realized-slot-store.js";
 
 export interface ModelBinding<W extends Gtk.Widget> {
     install(widget: W, model: Gio.ListModel): void;
 }
 
-const useModelInstallation = <W extends Gtk.Widget>(
-    target: RefObject<W | null>,
-    binding: ModelBinding<W>,
-    model: Gio.ListModel,
-): void => {
-    const bindingRef = useRef(binding);
-    bindingRef.current = binding;
-    useTargetRegistration<W, { widget: W; model: Gio.ListModel }>(target, {
-        attach: (widget) => {
-            bindingRef.current.install(widget, model);
-            return { widget, model };
-        },
-        detach: () => {},
-        isSame: (registration, widget) => registration.widget === widget && registration.model === model,
-    });
-};
-
 export interface CollectionViewProps<T, S, W extends Gtk.Widget> {
-    element: string;
+    element: ElementType;
     intrinsicProps: Record<string, unknown>;
     ref: Ref<W | null> | undefined;
     items: ListItem<T, S>[] | undefined;
@@ -102,7 +93,7 @@ const useCollectionWiring = <T, S, W extends Gtk.Widget>(
         estimatedWidth: props.estimatedWidth,
     });
 
-    useModelInstallation(widgetRef, props.modelBinding, installedModel);
+    useModelInstallation(widgetRef, installedModel, (widget, model) => props.modelBinding.install(widget, model));
 
     return {
         setRef,

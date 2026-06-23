@@ -1,5 +1,6 @@
+import { DropDown } from "@gtkx/components";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkDropDown, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -9,7 +10,7 @@ const valueItems = (values: string[]): Array<{ id: string; value: string }> =>
     values.map((value, index) => ({ id: String(index + 1), value }));
 
 const buildDropDown = (dropDownRef: RefObject<Gtk.DropDown | null>) => (items: string[]) => (
-    <GtkDropDown ref={dropDownRef} items={valueItems(items)} />
+    <DropDown ref={dropDownRef} items={valueItems(items)} />
 );
 
 const expectSelectedText = async (dropDown: Gtk.DropDown | null, index: number, text: string): Promise<void> => {
@@ -21,7 +22,7 @@ describe("render - DropDown > DropDownNode (1)", () => {
     it("creates DropDown widget", async () => {
         const ref = createRef<Gtk.DropDown>();
 
-        await render(<GtkDropDown ref={ref} />);
+        await render(<DropDown ref={ref} />);
 
         expect(ref.current).not.toBeNull();
     });
@@ -29,7 +30,7 @@ describe("render - DropDown > DropDownNode (1)", () => {
     it("populates with items", async () => {
         const dropDownRef = createRef<Gtk.DropDown>();
 
-        await render(<GtkDropDown ref={dropDownRef} items={valueItems(["Option 1", "Option 2", "Option 3"])} />);
+        await render(<DropDown ref={dropDownRef} items={valueItems(["Option 1", "Option 2", "Option 3"])} />);
 
         await screen.findAllByText("Option 1");
 
@@ -41,7 +42,7 @@ describe("render - DropDown > DropDownNode (1)", () => {
         const dropDownRef = createRef<Gtk.DropDown>();
 
         await render(
-            <GtkDropDown ref={dropDownRef} selectedId="2" items={valueItems(["Option 1", "Option 2", "Option 3"])} />,
+            <DropDown ref={dropDownRef} selectedId="2" items={valueItems(["Option 1", "Option 2", "Option 3"])} />,
         );
 
         await waitFor(() => expect(dropDownRef.current?.getSelected()).toBe(1));
@@ -54,7 +55,7 @@ describe("render - DropDown > DropDownNode (2)", () => {
         const onSelectionChanged = vi.fn();
 
         await render(
-            <GtkDropDown
+            <DropDown
                 ref={dropDownRef}
                 onSelectionChanged={onSelectionChanged}
                 items={valueItems(["Option 1", "Option 2"])}
@@ -100,7 +101,7 @@ describe("render - DropDown > DropDownNode (3)", () => {
         const dropDownRef = createRef<Gtk.DropDown>();
 
         await render(
-            <GtkDropDown
+            <DropDown
                 ref={dropDownRef}
                 renderHeader={(value: string) => <GtkLabel label={value} />}
                 items={[
@@ -116,7 +117,7 @@ describe("render - DropDown > DropDownNode (3)", () => {
     it("leaves the header factory unset when renderHeader is omitted", async () => {
         const dropDownRef = createRef<Gtk.DropDown>();
 
-        await render(<GtkDropDown ref={dropDownRef} items={valueItems(["One", "Two"])} />);
+        await render(<DropDown ref={dropDownRef} items={valueItems(["One", "Two"])} />);
 
         expect(dropDownRef.current?.getHeaderFactory()).toBeNull();
     });

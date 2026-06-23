@@ -1,4 +1,5 @@
 import { readdirSync, statSync } from "node:fs";
+import { DropDown } from "@gtkx/components";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
@@ -8,7 +9,6 @@ import {
     GtkBox,
     GtkButton,
     GtkCheckButton,
-    GtkDropDown,
     GtkEntry,
     GtkEventControllerKey,
     GtkImage,
@@ -325,7 +325,7 @@ const TimesDropDown = () => {
     const [selectedId, setSelectedId] = useState(times[0] ?? "");
 
     return (
-        <GtkDropDown
+        <DropDown
             selectedId={selectedId}
             onSelectionChanged={setSelectedId}
             renderListItem={(label: string) => renderSelectableTimeItem(label, selectedId)}
@@ -338,7 +338,7 @@ const TimesSectionedDropDown = () => {
     const [selectedId, setSelectedId] = useState(minutes[0] ?? "");
 
     return (
-        <GtkDropDown
+        <DropDown
             selectedId={selectedId}
             onSelectionChanged={setSelectedId}
             enableSearch
@@ -389,7 +389,7 @@ const DevicesDropDown = () => {
     const [selectedId, setSelectedId] = useState(devices[0]?.id ?? "");
 
     return (
-        <GtkDropDown
+        <DropDown
             selectedId={selectedId}
             onSelectionChanged={setSelectedId}
             renderItem={(label: string) =>
@@ -509,7 +509,7 @@ const ListViewSelectionsDemo = () => {
 
                 <TimesSectionedDropDown />
 
-                <GtkDropDown
+                <DropDown
                     name="fonts-dropdown"
                     selectedId={getFontFamilies()[fontIndex] ?? ""}
                     enableSearch={enableFontSearch}
