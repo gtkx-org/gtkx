@@ -44,6 +44,8 @@ export type {
     ScaleMark,
     SlotProps,
     StackPageProps,
+    SyntheticProps,
+    SyntheticPropsFor,
     TextAnchorProps,
     TextPaintableProps,
     TextTagProps,

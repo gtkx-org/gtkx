@@ -82,15 +82,12 @@ export interface RuleNode {
 /**
  * A set of plain-function rules keyed in the {@link RuleRegistry} by GLib type
  * name. `appendChild`/`removeChild` attach or detach a child; `setProps`
- * applies synthetic and collection props after the generic GIR props; and
- * `extraProps` maps each synthetic prop name to a fully-qualified GIR type
- * string consumed by codegen for prop typing.
+ * applies synthetic and collection props after the generic GIR props.
  */
 export interface RuleSet {
     appendChild?: (parent: RuleNode, child: RuleNode) => void;
     removeChild?: (parent: RuleNode, child: RuleNode) => void;
     setProps?: (node: RuleNode, newProps: Record<string, unknown>, oldProps: Record<string, unknown> | null) => void;
-    extraProps?: Record<string, string>;
 }
 
 /**

@@ -32,7 +32,6 @@ describe("CodegenRunner", () => {
     it("writes the gi store with raw modules, barrels, a package.json and the visible alias", async () => {
         const { gi } = giOptions("gi-only");
         const result = await new CodegenRunner({
-            rulesSource: "",
             libraries: ["GObject-2.0"],
             girPath: GIR_PATH,
             gi,
@@ -65,7 +64,6 @@ describe("CodegenRunner", () => {
         };
 
         const result = await new CodegenRunner({
-            rulesSource: "",
             libraries: ["Gtk-4.0"],
             girPath: GIR_PATH,
             gi,
@@ -81,7 +79,7 @@ describe("CodegenRunner", () => {
 
     it("overwrites a pre-existing store on a second run", async () => {
         const { gi } = giOptions("rerun");
-        const options = { rulesSource: "", libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
+        const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
         await new CodegenRunner(options).run();
         const result = await new CodegenRunner(options).run();
         expect(result.namespaces).toBeGreaterThan(0);

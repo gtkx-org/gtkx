@@ -123,7 +123,6 @@ const SimpleActionGroup: RuleSet = {
             parent.instance.insertActionGroup(prefix, null);
         }
     },
-    extraProps: { prefix: "string" },
 };
 
 const ColumnViewColumn: RuleSet = {
@@ -279,7 +278,6 @@ const Application: RuleSet = {
             node.instance.setAccelsForAction(accel.action, accel.accels);
         }
     },
-    extraProps: { actionAccels: "ActionAccel[]" },
 };
 
 const SizeGroup: RuleSet = {
@@ -288,7 +286,6 @@ const SizeGroup: RuleSet = {
         for (const widget of asArray<Gtk.Widget>(oldProps?.["widgets"])) node.instance.removeWidget(widget);
         for (const widget of asArray<Gtk.Widget>(newProps["widgets"])) node.instance.addWidget(widget);
     },
-    extraProps: { widgets: "Gtk.Widget[]" },
 };
 
 interface ScaleMarkItem {
@@ -305,7 +302,6 @@ const Scale: RuleSet = {
             node.instance.addMark(mark.value, mark.position ?? POSITION_TYPE_BOTTOM, mark.label ?? null);
         }
     },
-    extraProps: { marks: "ScaleMark[]" },
 };
 
 interface LevelBarOffsetItem {
@@ -323,7 +319,6 @@ const LevelBar: RuleSet = {
             node.instance.addOffsetValue(offset.id, offset.value);
         }
     },
-    extraProps: { offsets: "LevelBarOffset[]" },
 };
 
 const Calendar: RuleSet = {
@@ -334,7 +329,6 @@ const Calendar: RuleSet = {
         node.instance.clearMarks();
         for (const day of asArray<number>(newProps["markedDays"])) node.instance.markDay(day);
     },
-    extraProps: { markedDays: "CalendarMark[]" },
 };
 
 interface AlertResponseItem {
@@ -360,7 +354,6 @@ const AlertDialog: RuleSet = {
             if (response.enabled !== undefined) node.instance.setResponseEnabled(response.id, response.enabled);
         }
     },
-    extraProps: { responses: "AlertDialogResponseProps[]" },
 };
 
 const DropTarget: RuleSet = {
@@ -368,7 +361,6 @@ const DropTarget: RuleSet = {
         if (!(node.instance instanceof Gtk.DropTarget) || !changed(oldProps?.["types"], newProps["types"])) return;
         node.instance.setGtypes(asArray<GObject.GType>(newProps["types"]));
     },
-    extraProps: { types: "DropTargetType[]" },
 };
 
 interface CreditSectionItem {
@@ -389,7 +381,6 @@ const AboutDialog: RuleSet = {
             node.instance.addCreditSection(section.name, section.people);
         }
     },
-    extraProps: { creditSections: "CreditSection[]" },
 };
 
 interface DragSourceIconItem {
@@ -409,7 +400,6 @@ const DragSource: RuleSet = {
         const value = icon as DragSourceIconItem;
         node.instance.setIcon(value.paintable, value.hotX ?? 0, value.hotY ?? 0);
     },
-    extraProps: { icon: "DragSourceIcon" },
 };
 
 const DrawingArea: RuleSet = {
@@ -421,7 +411,6 @@ const DrawingArea: RuleSet = {
         node.instance.setDrawFunc(typeof drawFunc === "function" ? (drawFunc as Gtk.DrawingAreaDrawFunc) : null);
         node.instance.queueDraw();
     },
-    extraProps: { drawFunc: "Gtk.DrawingAreaDrawFunc" },
 };
 
 const Editable: RuleSet = {
@@ -482,7 +471,10 @@ const TextTag: RuleSet = {
 /**
  * The hand-written rule registry keyed by GLib type name. Each entry supplies
  * the function-based attach/detach and prop-application behavior the reconciler
- * resolves by GType ancestry, and the synthetic-prop typing codegen consumes.
+ * resolves by GType ancestry. Consumed at runtime by the generated
+ * `virtual:gtkx-config` module via the `@gtkx/config/rules` export.
+ *
+ * @public
  */
 export const BUILT_IN_RULES: RuleRegistry = {
     GtkEventController: EventController,
@@ -522,8 +514,11 @@ export const BUILT_IN_RULES: RuleRegistry = {
 
 /**
  * Merges the built-in registry with an optional user-supplied transform. The
- * transform receives the built-ins and returns the registry the runtime and
- * codegen consume.
+ * transform receives the built-ins and returns the registry the runtime
+ * consumes. Consumed at runtime by the generated `virtual:gtkx-config` module
+ * via the `@gtkx/config/rules` export.
+ *
+ * @public
  */
 export const mergeRules = (builtins: RuleRegistry, user?: (builtins: RuleRegistry) => RuleRegistry): RuleRegistry =>
     user ? user(builtins) : builtins;

@@ -193,54 +193,27 @@ const interfaceBody = (jsxSource: string, glibName: string): string => {
     return block.slice(0, block.indexOf("\n}"));
 };
 
-describe("codegen array props", () => {
-    it("emits the built-in array-prop line and item-type import on its element", () => {
+describe("codegen synthetic props", () => {
+    it("composes the runtime-owned synthetic props onto every element component and imports the helper", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
-        expect(interfaceBody(gtk, "GtkScale")).toContain("marks?: ScaleMark[] | null | undefined;");
-        expect(gtk).toMatch(/import type \{[^}]*\} from "@gtkx\/react";/);
-        expect(gtk).toContain("ScaleMark");
-        const adw = sourceFor(reactPipeline, "adw");
-        expect(adw).toContain("ToggleProps");
+        expect(gtk).toMatch(/createElementComponent<GtkScaleProps & SyntheticPropsFor<"GtkScale"[^>]*>>\("GtkScale"\)/);
+        expect(gtk).toMatch(
+            /createElementComponent<GtkButtonProps & SyntheticPropsFor<"GtkButton"[^>]*>>\("GtkButton"\)/,
+        );
+        expect(gtk).toMatch(/import type \{[^}]*SyntheticPropsFor[^}]*\} from "@gtkx\/react";/);
     });
 
-    it("suppresses the raw GObject property of an array-prop name", () => {
+    it("unions a subclass with its ancestors so inherited synthetic props resolve", () => {
+        const adw = sourceFor(reactPipeline, "adw");
+        expect(adw).toMatch(/AdwApplicationProps & SyntheticPropsFor<"AdwApplication" \| "GtkApplication"/);
+    });
+
+    it("keeps the generated props interface and intrinsic-element map free of synthetic props", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
-        const dropTargetBody = interfaceBody(gtk, "GtkDropTarget");
-        expect(dropTargetBody).toContain("types?: DropTargetType[] | null | undefined;");
-        expect(dropTargetBody).not.toContain("types?: GType[] | null;");
-        expect(dropTargetBody).not.toContain("onNotifyTypes");
+        expect(interfaceBody(gtk, "GtkScale")).not.toContain("marks?:");
+        expect(gtk).toContain("GtkScale: GtkScaleProps;");
         const { dts } = transpileSource("gtk/gtk.tsx", gtk);
         expect(dts).not.toContain("TS2717");
-    });
-
-    it("emits the built-in extraProps array lines and shared-type imports across elements", () => {
-        const gtk = sourceFor(reactPipeline, "gtk");
-        expect(interfaceBody(gtk, "GtkScale")).toContain("marks?: ScaleMark[] | null | undefined;");
-        expect(interfaceBody(gtk, "GtkCalendar")).toContain("markedDays?: CalendarMark[] | null | undefined;");
-        expect(interfaceBody(gtk, "GtkAboutDialog")).toContain("creditSections?: CreditSection[] | null | undefined;");
-        expect(gtk).toContain('from "@gtkx/react";');
-        expect(gtk).toContain("ScaleMark");
-        const adw = sourceFor(reactPipeline, "adw");
-        expect(interfaceBody(adw, "AdwAlertDialog")).toContain(
-            "responses?: AlertDialogResponseProps[] | null | undefined;",
-        );
-    });
-
-    it("emits a synthetic draw-func prop with its qualified GIR type", () => {
-        const gtk = sourceFor(reactPipeline, "gtk");
-        expect(interfaceBody(gtk, "GtkDrawingArea")).toContain(
-            "drawFunc?: Gtk.DrawingAreaDrawFunc | null | undefined;",
-        );
-    });
-
-    it("emits a synthetic icon prop with its shared type", () => {
-        const gtk = sourceFor(reactPipeline, "gtk");
-        expect(interfaceBody(gtk, "GtkDragSource")).toContain("icon?: DragSourceIcon | null | undefined;");
-    });
-
-    it("emits the GSimpleActionGroup prefix string prop", () => {
-        const gio = sourceFor(reactPipeline, "gio");
-        expect(interfaceBody(gio, "GSimpleActionGroup")).toContain("prefix?: string | null | undefined;");
     });
 });
 

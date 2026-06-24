@@ -75,11 +75,13 @@ const renderCandidateExport = (
     const ancestry = new Set(ancestorGlibNames(klass, namespace, repository));
     const hoc = resolveAncestryWrapper(ancestry);
     imports.hocs.add("createElementComponent");
+    imports.sharedTypes.add("SyntheticPropsFor");
     imports.reactBuiltins.add("ReactNode");
     if (hoc !== undefined) imports.hocs.add(hoc);
     const isDialogSurface = hoc === "withWindowPresentation" && ancestry.has("AdwDialog");
     if (isDialogSurface) imports.sharedTypes.add("TopLevelParentProps");
-    return renderElementComponentExport(glibName, hoc, isDialogSurface);
+    const syntheticUnion = [...ancestry].map((name) => quote(name)).join(" | ");
+    return renderElementComponentExport(glibName, hoc, isDialogSurface, syntheticUnion);
 };
 
 const resolveAncestryWrapper = (ancestry: Set<string>): AncestryWrapperName | undefined => {
@@ -93,8 +95,9 @@ const renderElementComponentExport = (
     glibName: string,
     hoc: AncestryWrapperName | undefined,
     isDialogSurface: boolean,
+    syntheticUnion: string,
 ): string => {
-    const propsType = `${glibName}Props`;
+    const propsType = `${glibName}Props & SyntheticPropsFor<${syntheticUnion}>`;
     if (hoc === undefined) {
         return `export const ${glibName}: (props: ${propsType}) => ReactNode = createElementComponent<${propsType}>(${quote(glibName)});`;
     }

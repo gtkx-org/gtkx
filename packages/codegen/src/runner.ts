@@ -4,11 +4,9 @@ import { type GiNamespaceInput, type GiStoreOptions, writeGiStore } from "./gi-s
 import { namespaceDirectory } from "./gir/namespace.js";
 import { type GirRepository, loadGirRepository } from "./gir/repository.js";
 import { type JsxStoreOptions, writeJsxStore } from "./jsx-store.js";
-import { generateJsxFiles, type UserRules } from "./react/pipeline.js";
+import { generateJsxFiles } from "./react/pipeline.js";
 
 export type CodegenRunnerOptions = {
-    rules?: UserRules | undefined;
-    rulesSource: string;
     libraries: string[];
     girPath: string[];
     gi: GiStoreOptions;
@@ -72,7 +70,7 @@ export class CodegenRunner {
         }
         const libraries = [...this.options.libraries];
         writeGiStore(this.options.gi, namespaces, {
-            value: computeFingerprint(repository.girFiles, libraries, this.options.rulesSource),
+            value: computeFingerprint(repository.girFiles, libraries),
             girFiles: repository.girFiles,
             libraries,
         });
@@ -80,7 +78,7 @@ export class CodegenRunner {
 
     private emitJsxStore(repository: GirRepository): number {
         if (this.options.jsx === undefined) return 0;
-        const reactPipeline = generateJsxFiles(repository, this.options.rules);
+        const reactPipeline = generateJsxFiles(repository);
         writeJsxStore(this.options.jsx, reactPipeline.namespaces, reactPipeline.metadata);
         return reactPipeline.widgetCount;
     }

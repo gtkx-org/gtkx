@@ -6,7 +6,6 @@ import { sortedAlpha } from "@gtkx/utils";
 import { resolveGirPath } from "./gir-resolver.js";
 import { resolveLibraries } from "./library-resolver.js";
 import { type CodegenStore, resolveCodegenStore } from "./store-resolver.js";
-import { readUserRulesSource } from "./user-rules.js";
 
 export type CodegenInputs = {
     girPath: string[];
@@ -33,7 +32,7 @@ const giStoreLinksResolve = (giStoreDir: string): boolean =>
     existsSync(join(giStoreDir, "node_modules", "@gtkx", "ffi", "package.json")) &&
     existsSync(join(giStoreDir, "node_modules", "@gtkx", "gi", "package.json"));
 
-const fingerprintStale = (giStoreDir: string, libraries: string[], userRulesSource: string): boolean => {
+const fingerprintStale = (giStoreDir: string, libraries: string[]): boolean => {
     const sentinelPath = join(giStoreDir, FINGERPRINT_FILENAME);
     if (!existsSync(sentinelPath)) return true;
     let sentinel: CodegenFingerprint;
@@ -45,13 +44,13 @@ const fingerprintStale = (giStoreDir: string, libraries: string[], userRulesSour
     const sortAlpha = (values: string[]): string => sortedAlpha(values).join(",");
     if (sortAlpha(sentinel.libraries) !== sortAlpha(libraries)) return true;
     try {
-        return computeFingerprint(sentinel.girFiles, sentinel.libraries, userRulesSource) !== sentinel.value;
+        return computeFingerprint(sentinel.girFiles, sentinel.libraries) !== sentinel.value;
     } catch {
         return true;
     }
 };
 
-export const isCodegenNeeded = (cwd: string, config: GtkxConfig, inputs: CodegenInputs): boolean => {
+export const isCodegenNeeded = (inputs: CodegenInputs): boolean => {
     try {
         const { store, libraries } = inputs;
         if (!existsSync(store.giLinkDir) || !existsSync(store.giStoreDir)) {
@@ -67,7 +66,7 @@ export const isCodegenNeeded = (cwd: string, config: GtkxConfig, inputs: Codegen
             if (!existsSync(store.jsxLinkDir)) return true;
             if (REACT_GENERATED_MODULES.some((module) => !existsSync(join(store.jsxStoreDir, module)))) return true;
         }
-        return fingerprintStale(store.giStoreDir, libraries, readUserRulesSource(cwd, config.rules));
+        return fingerprintStale(store.giStoreDir, libraries);
     } catch {
         return true;
     }

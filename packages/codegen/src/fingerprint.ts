@@ -15,13 +15,11 @@ export type CodegenFingerprint = {
     libraries: string[];
 };
 
-export const computeFingerprint = (girFiles: string[], libraries: string[], userRulesSource: string): string => {
+export const computeFingerprint = (girFiles: string[], libraries: string[]): string => {
     const hash = createHash("sha256");
     hash.update(CODEGEN_VERSION);
     hash.update("\n");
     hash.update(sortedAlpha(libraries).join(","));
-    hash.update("\n");
-    hash.update(userRulesSource);
     for (const file of sortedAlpha(girFiles)) {
         hash.update("\n");
         hash.update(file);

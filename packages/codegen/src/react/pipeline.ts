@@ -1,4 +1,3 @@
-import { BUILT_IN_RULES, mergeRules, type RuleRegistry } from "@gtkx/config";
 import { sortedAlphaBy } from "@gtkx/utils";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import type { GirRepository } from "../gir/repository.js";
@@ -28,11 +27,7 @@ export type JsxFiles = {
     widgetCount: number;
 };
 
-export type UserRules = (builtins: RuleRegistry) => RuleRegistry;
-
-export const generateJsxFiles = (repository: GirRepository, userRules?: UserRules): JsxFiles => {
-    const ruleRegistry = mergeRules(BUILT_IN_RULES, userRules);
-
+export const generateJsxFiles = (repository: GirRepository): JsxFiles => {
     const namespacesWithWidgets = new Map<string, GirNamespace>();
     for (const entry of collectReactNodeClasses(repository)) {
         namespacesWithWidgets.set(entry.namespace.name, entry.namespace);
@@ -41,7 +36,7 @@ export const generateJsxFiles = (repository: GirRepository, userRules?: UserRule
     const namespaces: JsxNamespaceFile[] = [];
     let widgetCount = 0;
     for (const namespace of sortedAlphaBy(namespacesWithWidgets.values(), (entry) => entry.name)) {
-        const { source, count } = generateJsxNamespace(namespace, repository, ruleRegistry);
+        const { source, count } = generateJsxNamespace(namespace, repository);
         namespaces.push({ directory: namespaceDirectory(namespace), source });
         widgetCount += count;
     }
@@ -62,7 +57,6 @@ export const generateJsxFiles = (repository: GirRepository, userRules?: UserRule
 const generateJsxNamespace = (
     targetNamespace: GirNamespace,
     repository: GirRepository,
-    ruleRegistry: RuleRegistry,
 ): { source: string; count: number } => {
     const imports = emptyJsxImports();
 
@@ -70,7 +64,6 @@ const generateJsxNamespace = (
     const excludeNames = new Set<string>(elementComponents.exportedNames);
     const { source: jsxSection, intrinsicCount } = generateJsxSection(targetNamespace, repository, {
         excludeNames,
-        ruleRegistry,
         imports,
     });
 

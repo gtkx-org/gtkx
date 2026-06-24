@@ -1,4 +1,3 @@
-import type { RuleRegistry } from "@gtkx/config";
 import { quote } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
@@ -10,7 +9,6 @@ import { collectReactNodeClasses, type WidgetCandidate } from "./widgets.js";
 
 export type GenerateJsxOptions = {
     excludeNames: Set<string>;
-    ruleRegistry: RuleRegistry;
     imports: JsxImports;
 };
 
@@ -21,7 +19,7 @@ export const generateJsxSection = (
     repository: GirRepository,
     options: GenerateJsxOptions,
 ): { source: string; intrinsicCount: number } => {
-    const { excludeNames, ruleRegistry, imports } = options;
+    const { excludeNames, imports } = options;
     const allWidgets = collectReactNodeClasses(repository);
     const widgets = allWidgets.filter((entry) => entry.namespace.name === targetNamespace.name);
     const intrinsicWidgets = widgets.filter((entry) => !excludeNames.has(entry.glibName));
@@ -42,7 +40,6 @@ export const generateJsxSection = (
     const propBlocks: string[] = [];
     for (const entry of widgets) {
         const { block, extendsBase, slotPropNames } = renderPropBlock(repository, entry, {
-            ruleRegistry,
             isWidgetAncestor,
             widgetByGlibName,
             targetNamespaceName: targetNamespace.name,
@@ -82,24 +79,10 @@ const renderJsxAugmentation = (widgets: WidgetCandidate[]): string =>
     ].join("\n");
 
 type RenderPropBlockContext = {
-    ruleRegistry: RuleRegistry;
     isWidgetAncestor: (candidate: GirClass) => boolean;
     widgetByGlibName: Map<string, WidgetCandidate>;
     targetNamespaceName: string;
     imports: JsxImports;
-};
-
-const PRIMITIVE_TYPES = new Set(["string", "number", "boolean"]);
-
-const resolveExtraPropType = (type: string, imports: JsxImports): string => {
-    const base = type.endsWith("[]") ? type.slice(0, -2) : type;
-    if (QUALIFIED_TYPE_PATTERN.test(base)) {
-        const namespace = base.split(".")[0];
-        if (namespace !== undefined) imports.giNamespaces.set(namespace, namespace);
-    } else if (!PRIMITIVE_TYPES.has(base)) {
-        imports.sharedTypes.add(base);
-    }
-    return type;
 };
 
 const renderPropBlock = (
@@ -107,29 +90,22 @@ const renderPropBlock = (
     entry: WidgetCandidate,
     context: RenderPropBlockContext,
 ): { block: string; extendsBase: boolean; slotPropNames: string[] } => {
-    const ruleSet = context.ruleRegistry[entry.glibName];
-    const extraProps = ruleSet?.extraProps ?? {};
     const slotProps = SLOT_PROPS_BY_TYPE[entry.glibName] ?? [];
     const { propLines, imports, slotPropNames } = buildWidgetPropsEntries({
         repository,
         klass: entry.klass,
         namespace: entry.namespace,
-        dataPropNames: new Set([...Object.keys(extraProps), ...slotProps]),
         isWidgetAncestor: context.isWidgetAncestor,
     });
     for (const [namespace, alias] of imports) context.imports.giNamespaces.set(namespace, alias);
     context.imports.giNamespaces.set(entry.namespace.name, entry.namespace.name);
     const widgetTypeRef = `${entry.namespace.name}.${entry.klass.name} | null`;
-    const extraPropLines = Object.entries(extraProps).map(
-        ([propName, type]) => `    ${propName}?: ${resolveExtraPropType(type, context.imports)} | null | undefined;`,
-    );
     const slotPropLines = slotProps.map((propName) => `    ${propName}?: ReactNode | null | undefined;`);
     const ownerLines = [
         "    children?: ReactNode;",
         `    ref?: Ref<${widgetTypeRef}> | undefined;`,
         ...propLines.map((line) => `    ${line}`),
         ...slotPropLines,
-        ...extraPropLines,
     ];
     const parentExtends = resolveParentPropsExtension(repository, entry, context);
     const selfDefault = `${entry.namespace.name}.${entry.klass.name}`;

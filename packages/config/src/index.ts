@@ -30,7 +30,6 @@ export {
     loadResolvedGtkxConfig,
 } from "./loader.js";
 export { createGtkxConfigPlugin, type GtkxConfigPluginOptions } from "./plugin.js";
-export { BUILT_IN_RULES, mergeRules } from "./rules.js";
 export type {
     AddMethodArg,
     AddMethodRule,

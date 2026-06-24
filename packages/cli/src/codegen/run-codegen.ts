@@ -1,13 +1,12 @@
 import { rmSync } from "node:fs";
 import { resolve } from "node:path";
-import { CodegenRunner, type UserRules } from "@gtkx/codegen";
+import { CodegenRunner } from "@gtkx/codegen";
 import { type GtkxConfig, GtkxConfigNotFoundError, loadGtkxConfig, resolveDataDir } from "@gtkx/config";
 import { emitSchemaEnv } from "../gsettings/env.js";
 import { GtkxError } from "../internal/errors.js";
 import { info } from "../internal/log.js";
 import { type CodegenInputs, isCodegenNeeded, resolveCodegenInputs } from "./freshness.js";
 import { type CodegenStore, findCodegenRoot, isWorkspaceRoot, resolveCodegenContext } from "./store-resolver.js";
-import { loadUserRules, readUserRulesSource } from "./user-rules.js";
 
 export type RunCodegenOptions = {
     cwd?: string;
@@ -24,19 +23,10 @@ export type RunCodegenResult = {
     libraries?: string[] | undefined;
 };
 
-type UserRulesInput = { rules: UserRules | undefined; rulesSource: string };
-
-const buildRunner = (
-    store: CodegenStore,
-    libraries: string[],
-    girPath: string[],
-    userRules: UserRulesInput,
-): CodegenRunner =>
+const buildRunner = (store: CodegenStore, libraries: string[], girPath: string[]): CodegenRunner =>
     new CodegenRunner({
         libraries,
         girPath,
-        rules: userRules.rules,
-        rulesSource: userRules.rulesSource,
         gi: {
             storeDir: store.giStoreDir,
             linkDir: store.giLinkDir,
@@ -76,9 +66,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
         }
     }
 
-    const rules = await loadUserRules(cwd, config.rules);
-    const rulesSource = readUserRulesSource(cwd, config.rules);
-    const result = await buildRunner(store, libraries, girPath, { rules, rulesSource }).run();
+    const result = await buildRunner(store, libraries, girPath).run();
 
     return {
         namespaces: result.namespaces,
@@ -110,7 +98,7 @@ export const ensureGenerated = async (cwd: string): Promise<boolean> => {
     }
     syncSchemaEnv(cwd);
     const inputs = resolveInputsOrNull(context.root, context.config);
-    if (inputs !== null && !isCodegenNeeded(context.root, context.config, inputs)) {
+    if (inputs !== null && !isCodegenNeeded(inputs)) {
         return false;
     }
     await runCodegen(inputs === null ? { cwd: context.root } : { cwd: context.root, inputs });
@@ -128,7 +116,7 @@ export const preflightCodegen = async (cwd: string): Promise<void> => {
     }
     syncSchemaEnv(cwd);
     const inputs = resolveInputsOrNull(context.root, context.config);
-    if (inputs === null || isCodegenNeeded(context.root, context.config, inputs)) {
+    if (inputs === null || isCodegenNeeded(inputs)) {
         info("generated bindings missing; running codegen...");
         await runCodegen(inputs === null ? { cwd: context.root } : { cwd: context.root, inputs });
     }

@@ -23,7 +23,6 @@ export type WidgetPropsOptions = {
     repository: GirRepository;
     klass: GirClass;
     namespace: GirNamespace;
-    dataPropNames?: Set<string>;
     isWidgetAncestor?: (candidate: GirClass) => boolean;
 };
 
@@ -39,7 +38,7 @@ type SignalRenderOptions = {
 };
 
 export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetPropsEntries => {
-    const { repository, klass, namespace, dataPropNames = new Set<string>(), isWidgetAncestor = () => false } = options;
+    const { repository, klass, namespace, isWidgetAncestor = () => false } = options;
     const imports = new Map<string, string>();
     const types: PropTypeRenderContext = { repository, imports };
     const propEntries: string[] = [];
@@ -51,7 +50,6 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
         const jsName = toCamelIdentifier(property.name);
         if (seen.has(jsName)) return;
         seen.add(jsName);
-        if (dataPropNames.has(jsName)) return;
         const tsType = renderReactPropType(types, property.type, false);
         if (isSlotProperty({ repository, klass, namespace }, property, jsName)) {
             propEntries.push(`${jsName}?: ${tsType} | ReactElement | null | undefined;`);
