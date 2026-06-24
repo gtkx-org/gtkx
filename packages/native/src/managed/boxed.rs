@@ -106,7 +106,7 @@ impl Boxed {
     }
 
     #[must_use]
-    pub(crate) fn from_ptr_unowned(ptr: *mut c_void) -> Self {
+    pub(crate) fn from_glib_borrow(ptr: *mut c_void) -> Self {
         Self::borrowed(ptr, None, None)
     }
 

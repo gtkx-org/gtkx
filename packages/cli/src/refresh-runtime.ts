@@ -18,7 +18,7 @@ export function createModuleRegistration(moduleId: string): {
     };
 }
 
-export function isReactRefreshBoundary(moduleExports: Record<string, unknown>): boolean {
+export function isRefreshBoundary(moduleExports: Record<string, unknown>): boolean {
     if (RefreshRuntime.isLikelyComponentType(moduleExports)) {
         return true;
     }

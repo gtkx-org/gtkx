@@ -1,7 +1,7 @@
 export { gtkxBundledModulePatterns } from "./bundled-modules.js";
 export {
     defineConfig,
-    GIR_NAMESPACE_PATTERN,
+    GIR_LIBRARY_PATTERN,
     type GtkxConfig,
     type GtkxConfigEnv,
     type GtkxConfigExport,
@@ -40,7 +40,7 @@ export type {
     RuleNode,
     RuleRegistry,
     RuleSet,
-} from "./table-schema.js";
+} from "./reconciler-metadata.js";
 export {
     GTKX_CONFIG_VIRTUAL_ID,
     RESOLVED_GTKX_CONFIG_VIRTUAL_ID,
@@ -50,14 +50,14 @@ export {
 } from "./virtual.js";
 export {
     BUFFER_TEXT_KIND,
-    CONTAINER_PROP_KIND,
+    CONTAINER_SLOT_KIND,
     LABEL_TEXT_KIND,
     LAYOUT_CHILD_KIND,
     META_OBJECT_KIND,
     OVERLAY_KIND,
-    SLOT_KIND,
     TAB_LABEL_KIND,
     TEXT_ANCHOR_KIND,
     TEXT_PAINTABLE_KIND,
+    WIDGET_PROP_KIND,
     WRAPPER_NODE_ELEMENT,
 } from "./wrapper-protocol.js";

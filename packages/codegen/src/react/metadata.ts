@@ -1,10 +1,10 @@
 import type { AddMethodRule, AttachShapeTable, OrderedInsertSpec, PageMetaSetter } from "@gtkx/config";
-import { quote, sortedAlphaBy, toCamelIdentifier } from "@gtkx/utils";
+import { sourceStringLiteral, sortedStringsBy, toCamelIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirEnum } from "../gir/enum.js";
 import type { PrimitiveCategory } from "../gir/primitives.js";
 import { type GirProperty, isConstructableProperty } from "../gir/property.js";
-import type { GirRepository } from "../gir/repository.js";
+import type { Library } from "../gir/repository.js";
 import type { TypeId } from "../gir/type-id.js";
 import { implementedInterfaces, isReactNodeClass, iterateClassesWithGlibName, signalHandlerName } from "./widgets.js";
 
@@ -49,8 +49,8 @@ const renderRuntimeTables = (tables: RuntimeTables): string[] =>
         return `export const ${name}: ${annotation} = ${JSON.stringify(tables[key], null, 4)};`;
     });
 
-export const generateMetadata = (repository: GirRepository, tables: RuntimeTables): string => {
-    const widgets = collectWidgets(repository);
+export const generateMetadata = (library: Library, tables: RuntimeTables): string => {
+    const widgets = collectWidgets(library);
     const signalsEntries = widgets.map(
         ({ glibName, signals }) => `    "${glibName}": ${renderSignalsObject(signals)},`,
     );
@@ -82,13 +82,13 @@ type WidgetEntry = {
     defaults: [string, string][];
 };
 
-const collectWidgets = (repository: GirRepository): WidgetEntry[] => {
+const collectWidgets = (library: Library): WidgetEntry[] => {
     const entries: WidgetEntry[] = [];
-    for (const { glibName, klass, namespace } of iterateClassesWithGlibName(repository)) {
-        if (!isReactNodeClass(klass, namespace, repository)) continue;
+    for (const { glibName, klass, namespace } of iterateClassesWithGlibName(library)) {
+        if (!isReactNodeClass(klass, namespace, library)) continue;
         const sources: GirClass[] = [
             klass,
-            ...implementedInterfaces(klass, namespace, repository).map((entry) => entry.klass),
+            ...implementedInterfaces(klass, namespace, library).map((entry) => entry.klass),
         ];
         entries.push({
             glibName,
@@ -96,10 +96,10 @@ const collectWidgets = (repository: GirRepository): WidgetEntry[] => {
             signals: collectSignals(sources),
             constructOnly: collectConstructOnly(sources),
             constructable: collectConstructable(sources),
-            defaults: collectDefaultProps(repository, sources),
+            defaults: collectDefaultProps(library, sources),
         });
     }
-    return sortedAlphaBy(entries, (entry) => entry.glibName);
+    return sortedStringsBy(entries, (entry) => entry.glibName);
 };
 
 const collectSignals = (sources: GirClass[]): [string, string][] => {
@@ -138,15 +138,15 @@ const collectConstructable = (sources: GirClass[]): string[] => collectPropNames
 
 const renderObjectLiteral = (entries: [string, string][], renderValue: (value: string) => string): string => {
     if (entries.length === 0) return "{}";
-    const lines = entries.map(([key, value]) => `        ${quote(key)}: ${renderValue(value)}`);
+    const lines = entries.map(([key, value]) => `        ${sourceStringLiteral(key)}: ${renderValue(value)}`);
     return `{\n${lines.join(",\n")}\n    }`;
 };
 
-const renderStringSet = (names: string[]): string => `new Set([${names.map(quote).join(",")}])`;
+const renderStringSet = (names: string[]): string => `new Set([${names.map(sourceStringLiteral).join(",")}])`;
 
-const renderSignalsObject = (entries: [string, string][]): string => renderObjectLiteral(entries, quote);
+const renderSignalsObject = (entries: [string, string][]): string => renderObjectLiteral(entries, sourceStringLiteral);
 
-const collectDefaultProps = (repository: GirRepository, sources: GirClass[]): [string, string][] => {
+const collectDefaultProps = (library: Library, sources: GirClass[]): [string, string][] => {
     const seen = new Set<string>();
     const defaults: [string, string][] = [];
     for (const klass of sources) {
@@ -156,7 +156,7 @@ const collectDefaultProps = (repository: GirRepository, sources: GirClass[]): [s
             const jsName = toCamelIdentifier(property.name);
             if (seen.has(jsName)) continue;
             seen.add(jsName);
-            const literal = renderDefaultLiteral(repository, property);
+            const literal = renderDefaultLiteral(library, property);
             if (literal === undefined) continue;
             defaults.push([jsName, literal] as const);
         }
@@ -164,22 +164,22 @@ const collectDefaultProps = (repository: GirRepository, sources: GirClass[]): [s
     return defaults;
 };
 
-const renderDefaultLiteral = (repository: GirRepository, property: GirProperty): string | undefined =>
-    resolveDefaultLiteral(repository, property.type, property.defaultValue);
+const renderDefaultLiteral = (library: Library, property: GirProperty): string | undefined =>
+    resolveDefaultLiteral(library, property.type, property.defaultValue);
 
 const resolveDefaultLiteral = (
-    repository: GirRepository,
+    library: Library,
     ref: TypeId | undefined,
     raw: string | undefined,
 ): string | undefined => {
     if (raw === undefined) return undefined;
     if (raw === "NULL") return "null";
     if (ref === undefined) return undefined;
-    const resolved = repository.typeOf(ref);
+    const resolved = library.typeOf(ref);
     if (resolved === undefined) return undefined;
     if (resolved.kind === "primitive") return primitiveDefaultLiteral(resolved.category, raw);
     if (resolved.kind === "enum") return enumDefaultLiteral(resolved.value, raw);
-    if (resolved.kind === "alias") return resolveDefaultLiteral(repository, resolved.target, raw);
+    if (resolved.kind === "alias") return resolveDefaultLiteral(library, resolved.target, raw);
     return undefined;
 };
 
@@ -207,7 +207,7 @@ const primitiveDefaultLiteral = (category: PrimitiveCategory, raw: string): stri
             return Number.isFinite(value) ? String(value) : undefined;
         }
         case "string":
-            return quote(raw);
+            return sourceStringLiteral(raw);
         default:
             return undefined;
     }

@@ -7,8 +7,8 @@ const EXPECTED_RUNTIME_EXPORTS = [
     "newGobjectWithProperties",
     "getGobjectProperty",
     "setGobjectProperty",
-    "getGvalueBoxed",
-    "setGvalueBoxed",
+    "getGValueBoxed",
+    "setGValueBoxed",
     "promisify",
     "getHandle",
     "getInstanceGtype",
@@ -24,8 +24,8 @@ const EXPECTED_RUNTIME_EXPORTS = [
 const NATIVE_TRANSPORT_PRIMITIVES = ["alloc", "call", "read", "write", "freeze", "unfreeze"] as const;
 
 const PRIVATE_MARSHALLING_INTERNALS = [
-    "toGvalue",
-    "fromGvalue",
+    "toGValue",
+    "fromGValue",
     "valueGetType",
     "newValueFromFfi",
     "outBoxedFromFfi",

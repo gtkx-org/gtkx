@@ -11,12 +11,12 @@ import type { ReactNode } from "react";
  * tree `children`. A section item carries a value of type `S` and groups a list
  * of child items underneath a header.
  */
-export type ListItem<T = unknown, S = unknown> =
+export type ItemNode<T = unknown, S = unknown> =
     | {
           id: string;
           value: T;
           section?: false | undefined;
-          children?: ListItem<T, S>[] | undefined;
+          children?: ItemNode<T, S>[] | undefined;
           hideExpander?: boolean | undefined;
           indentForDepth?: boolean | undefined;
           indentForIcon?: boolean | undefined;
@@ -25,7 +25,7 @@ export type ListItem<T = unknown, S = unknown> =
           id: string;
           value: S;
           section: true;
-          children: ListItem<T, S>[];
+          children: ItemNode<T, S>[];
       };
 
 type ListViewSharedProps = {
@@ -50,7 +50,7 @@ type UncontrolledItemType<T> = [T] extends [GObject.Object] ? T : GObject.Object
 export type ListViewProps<T = unknown, S = unknown> = ListViewSharedProps &
     (
         | (ListViewControlledSelectionProps & {
-              items?: ListItem<T, S>[] | undefined;
+              items?: ItemNode<T, S>[] | undefined;
               renderItem: (item: T, row?: Gtk.TreeListRow | null) => ReactNode;
               autoexpand?: boolean | undefined;
               renderHeader?: ((item: S) => ReactNode) | null | undefined;
@@ -77,7 +77,7 @@ export type ListViewProps<T = unknown, S = unknown> = ListViewSharedProps &
 export type GridViewProps<T = unknown> = ListViewSharedProps &
     (
         | (ListViewControlledSelectionProps & {
-              items?: ListItem<T>[] | undefined;
+              items?: ItemNode<T>[] | undefined;
               renderItem: (item: T) => ReactNode;
               model?: never;
           })
@@ -95,7 +95,7 @@ type ColumnViewSortProps = {
     sortColumn?: string | null | undefined;
     sortOrder?: Gtk.SortType | null | undefined;
     onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null | undefined;
-    estimatedRowHeight?: number | null | undefined;
+    estimatedItemHeight?: number | null | undefined;
 };
 
 /**
@@ -108,7 +108,7 @@ type ColumnViewSortProps = {
 export type ColumnViewProps<T = unknown, S = unknown> = ColumnViewSortProps &
     (
         | (ListViewControlledSelectionProps & {
-              items?: ListItem<T, S>[] | undefined;
+              items?: ItemNode<T, S>[] | undefined;
               renderHeader?: ((item: S) => ReactNode) | null | undefined;
               model?: never;
           })
@@ -142,13 +142,13 @@ export type ColumnViewColumnProps<T = unknown> = {
 /**
  * Props shared by the {@link DropDown} and {@link ComboRow} components,
  * replacing the raw factory/model surface with declarative `items`, controlled
- * `selectedId`, and per-slot renderers for the selected face, the popup list,
- * and section headers. Supplying an external `model` switches to the
+ * `selectedId`, and per-cell renderers for the current selection, the list
+ * popup, and section headers. Supplying an external `model` switches to the
  * uncontrolled form.
  */
 export type DropDownProps<T = unknown, S = unknown> =
     | {
-          items?: ListItem<T, S>[] | undefined;
+          items?: ItemNode<T, S>[] | undefined;
           selectedId?: string | null | undefined;
           onSelectionChanged?: ((id: string) => void) | null | undefined;
           renderItem?: ((item: T) => ReactNode) | null | undefined;

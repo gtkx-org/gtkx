@@ -45,7 +45,13 @@ const collectLines = (socket: net.Socket): { lines: string[]; promise: Promise<v
 
 const waitForConnection = (registry: ConnectionRegistry): Promise<AppConnection> =>
     new Promise((resolve) => {
-        registry.once("connection", (connection) => resolve(connection));
+        const original = registry.register.bind(registry);
+        registry.register = (socket) => {
+            const connection = original(socket);
+            registry.register = original;
+            resolve(connection);
+            return connection;
+        };
     });
 
 interface SocketServerContext {
@@ -142,7 +148,7 @@ describe("SocketServer lifecycle", () => {
 
 describe("SocketServer connections", () => {
     setupSocketServer();
-    it("emits connection and disconnection events", async () => {
+    it("registers a connection and emits a disconnection event", async () => {
         const { server, socketPath, registry } = socketCtx;
         await server.start();
 
@@ -271,7 +277,7 @@ describe("ConnectionRegistry shutdown", () => {
         const client = await connectClient(socketPath);
         const connection = await connectionPromise;
 
-        const pending = connection.transport.sendRequest("ping", {}, 5000);
+        const pending = connection.connection.send("ping", {}, 5000);
         registry.closeAll("Server stopping");
 
         await expect(pending).rejects.toThrow("Server stopping");

@@ -55,7 +55,7 @@ const handleQuery = async (
     const testing = await loadTestingModule();
     let widgets: Gtk.Widget[] = [];
 
-    switch (params.queryType) {
+    switch (params.by) {
         case "role": {
             const roleValue =
                 typeof params.value === "string"

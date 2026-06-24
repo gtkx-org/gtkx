@@ -85,7 +85,7 @@ pub use gobject::GObjectType;
 pub use hashtable::HashTableType;
 #[cfg(feature = "test-support")]
 pub use hashtable::HashTableEntryEncoder;
-pub use numeric::{FloatKind, IntegerKind, TaggedKind, TaggedType};
+pub use numeric::{FloatKind, IntegerKind, EnumFlagsKind, EnumFlagsType};
 pub use ref_type::RefType;
 pub use string::{StringType, str_to_glib_full};
 pub use unichar::UnicharType;
@@ -96,6 +96,8 @@ pub(crate) use numeric::lossless_f64;
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Ownership {
+    /// Corresponds to glib's 'transfer none': the pointer is borrowed and the callee takes no
+    /// ownership of it.
     #[default]
     Borrowed,
     Full,
@@ -389,7 +391,7 @@ pub enum Type {
     Integer(IntegerKind),
     BigInt(BigIntKind),
     Float(FloatKind),
-    Tagged(TaggedType),
+    EnumFlags(EnumFlagsType),
     String(StringType),
     Void(VoidType),
     Boolean(BooleanType),
@@ -411,9 +413,9 @@ impl std::fmt::Display for Type {
             Self::Integer(kind) => write!(f, "Integer({kind:?})"),
             Self::BigInt(kind) => write!(f, "BigInt({kind:?})"),
             Self::Float(kind) => write!(f, "Float({kind:?})"),
-            Self::Tagged(t) => match t.kind {
-                TaggedKind::Enum => write!(f, "Enum({})", t.get_type_fn),
-                TaggedKind::Flags => write!(f, "Flags({})", t.get_type_fn),
+            Self::EnumFlags(t) => match t.kind {
+                EnumFlagsKind::Enum => write!(f, "Enum({})", t.get_type_fn),
+                EnumFlagsKind::Flags => write!(f, "Flags({})", t.get_type_fn),
             },
             Self::String(_) => write!(f, "String"),
             Self::Void(_) => write!(f, "Void"),
@@ -451,15 +453,15 @@ impl Type {
             "biguint64" => Ok(Self::BigInt(BigIntKind::U64)),
             "float32" => Ok(Self::Float(FloatKind::F32)),
             "float64" => Ok(Self::Float(FloatKind::F64)),
-            "enum" => Ok(Self::Tagged(TaggedType::from_js_value(
+            "enum" => Ok(Self::EnumFlags(EnumFlagsType::from_js_value(
                 env,
                 &obj,
-                TaggedKind::Enum,
+                EnumFlagsKind::Enum,
             )?)),
-            "flags" => Ok(Self::Tagged(TaggedType::from_js_value(
+            "flags" => Ok(Self::EnumFlags(EnumFlagsType::from_js_value(
                 env,
                 &obj,
-                TaggedKind::Flags,
+                EnumFlagsKind::Flags,
             )?)),
             "string" => Ok(Self::String(StringType::from_descriptor(env, &obj)?)),
             "boolean" => Ok(Self::Boolean(BooleanType)),

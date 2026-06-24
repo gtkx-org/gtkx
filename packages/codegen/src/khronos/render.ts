@@ -1,8 +1,8 @@
-import { quote, toCamelIdentifier, toLowerFirst } from "@gtkx/utils";
-import { tBind, tInlineStruct, tRef, tString, tUint8, tVoid } from "../writers/descriptor.js";
+import { sourceStringLiteral, toCamelIdentifier, toLowerFirst } from "@gtkx/utils";
+import { tBind, tInlineStruct, tRef, tString, tUint8, tVoid } from "../codegen/descriptor.js";
 import type { CommandPlan, ReturnPlan } from "./ctype.js";
 import { commandJsDoc, inParamDocLine, REFPAGES_BASE } from "./jsdoc.js";
-import { buildSlots, type EmittedOut, scalarAliasOrGroup, scalarPrefixSlots, trackInto } from "./slots.js";
+import { planArgs, type OutArg, scalarAliasOrGroup, scalarPrefixArgs, trackInto } from "./args.js";
 
 const GL_LIB_EXPRESSION = "LIB";
 
@@ -57,7 +57,7 @@ const buildEmittedReturn = (
     }
 };
 
-const returnTsType = (returned: EmittedReturn, outs: EmittedOut[]): string => {
+const returnTsType = (returned: EmittedReturn, outs: OutArg[]): string => {
     if (outs.length === 0) return returned.tsType;
     const outTypes = outs.map((out) => out.tsType);
     if (returned.expr === undefined) {
@@ -66,7 +66,7 @@ const returnTsType = (returned: EmittedReturn, outs: EmittedOut[]): string => {
     return `[${returned.tsType}, ${outTypes.join(", ")}]`;
 };
 
-const returnStatements = (call: string, returned: EmittedReturn, outs: EmittedOut[]): string[] => {
+const returnStatements = (call: string, returned: EmittedReturn, outs: OutArg[]): string[] => {
     if (outs.length === 0) {
         return returned.expr === undefined ? [`${call};`] : [`return ${returned.expr(call)};`];
     }
@@ -85,11 +85,11 @@ export const renderCommand = (
 ): RenderedCommand => {
     const { command } = plan;
     const exportName = commandExportName(command.name);
-    const { slots, ins, outs } = buildSlots(plan, usedTypes);
+    const { args, ins, outs } = planArgs(plan, usedTypes);
     const returned = buildEmittedReturn(plan.returnPlan, command.returnGroup, usedTypes);
-    const signature = ins.map((slot) => `${slot.name}: ${slot.tsType}`).join(", ");
-    const argNames = slots.map((slot) => (slot.out ? slot.cellName : slot.name)).join(", ");
-    const descriptors = renderDescriptorList(slots.map((slot) => slot.descriptor));
+    const signature = ins.map((arg) => `${arg.name}: ${arg.tsType}`).join(", ");
+    const argNames = args.map((arg) => (arg.out ? arg.cellName : arg.name)).join(", ");
+    const descriptors = renderDescriptorList(args.map((arg) => arg.descriptor));
     const tsReturn = returnTsType(returned, outs);
     const jsDoc = commandJsDoc({ command, feature, ins, outs, returnPlan: plan.returnPlan });
     const seeds = outs.map((out) => out.seed);
@@ -97,7 +97,7 @@ export const renderCommand = (
     if (hasStringOut) {
         const bindExpression = tBind({
             libExpr: GL_LIB_EXPRESSION,
-            symbolExpr: quote(command.name),
+            symbolExpr: sourceStringLiteral(command.name),
             argList: descriptors,
             returnType: returned.descriptor,
         });
@@ -116,7 +116,7 @@ export const renderCommand = (
     const bindingName = toCamelIdentifier(command.name);
     const bindExpression = tBind({
         libExpr: GL_LIB_EXPRESSION,
-        symbolExpr: quote(command.name),
+        symbolExpr: sourceStringLiteral(command.name),
         argList: descriptors,
         returnType: returned.descriptor,
     });
@@ -149,24 +149,24 @@ export const deriveGenSingular = (
     if (countPlan?.kind !== "scalar" || outPlan?.kind !== "ref-array-out") return undefined;
     if (countParam === undefined || outParam === undefined) return undefined;
     if (outPlan.lenParamName !== countParam.name || outParam.kind === undefined) return undefined;
-    const prefix = scalarPrefixSlots(plan, usedTypes);
+    const prefix = scalarPrefixArgs(plan, usedTypes);
     if (prefix === undefined) return undefined;
     const exportName = singularize(commandExportName(plan.command.name));
     const bindingName = `${plan.command.name}Single`;
     const descriptors = [
-        ...prefix.map((slot) => slot.descriptor),
+        ...prefix.map((arg) => arg.descriptor),
         `${countPlan.scalar.tExpr}`,
         tRef(outPlan.scalar.tExpr),
     ];
     usedTypes.add(outPlan.scalar.tsAlias);
-    const signature = prefix.map((slot) => `${slot.name}: ${slot.tsType}`).join(", ");
-    const callArgs = [...prefix.map((slot) => slot.name), "1", "out"].join(", ");
+    const signature = prefix.map((arg) => `${arg.name}: ${arg.tsType}`).join(", ");
+    const callArgs = [...prefix.map((arg) => arg.name), "1", "out"].join(", ");
     const jsDoc = [
         "/**",
         ` * Returns one ${outParam.kind} object name via \`${plan.command.name}(${prefix.length > 0 ? "..., " : ""}1, ...)\`.`,
         " *",
         ` * Provided by \`${feature}\`.`,
-        ...prefix.map((slot) => inParamDocLine(plan.command, slot)),
+        ...prefix.map((arg) => inParamDocLine(plan.command, arg)),
         ` * @returns The new ${outParam.kind} object name`,
         ` * @see ${REFPAGES_BASE}/${plan.command.name}.xhtml`,
         " */",
@@ -176,7 +176,7 @@ export const deriveGenSingular = (
     );
     const binding = tBind({
         libExpr: GL_LIB_EXPRESSION,
-        symbolExpr: quote(plan.command.name),
+        symbolExpr: sourceStringLiteral(plan.command.name),
         argList: renderDescriptorList(descriptors),
         returnType: tVoid,
     });

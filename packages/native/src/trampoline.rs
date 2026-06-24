@@ -133,7 +133,7 @@ impl TrampolineState {
         let cif_return_type: libffi::Type = data_ref.return_type.libffi_type();
         let cif = libffi::Cif::new(cif_arg_types, cif_return_type);
 
-        let closure = libffi::Closure::new(cif, trampoline_handler, data_ref);
+        let closure = libffi::Closure::new(cif, trampoline_callback, data_ref);
         let code_ptr = *closure.code_ptr() as *mut c_void;
 
         Self {
@@ -179,7 +179,7 @@ impl TrampolineState {
 impl TrampolineData {
     /// # Safety
     ///
-    /// Invoked from `trampoline_handler`, which libffi calls with the C ABI for the CIF built in
+    /// Invoked from `trampoline_callback`, which libffi calls with the C ABI for the CIF built in
     /// `TrampolineState::create`. `args` must point to an array of at least `self.arg_types.len()`
     /// argument slots laid out per that CIF, and `result` must point to the CIF's return slot. The
     /// `Type` descriptors in `self.arg_types`/`self.return_type` must match that ABI so each slot
@@ -336,7 +336,7 @@ pub(crate) fn seed_ref_cell(inner_ptr: *mut c_void, inner_type: &Type) -> Value 
         Type::Integer(_)
         | Type::BigInt(_)
         | Type::Float(_)
-        | Type::Tagged(_)
+        | Type::EnumFlags(_)
         | Type::Boolean(_)
         | Type::Unichar(_) => {
             // SAFETY: `inner_ptr` is non-null (checked above) and points to the inout cell for a
@@ -389,7 +389,7 @@ unsafe fn defer_oneshot_free(state_ptr: *mut TrampolineState) {
 /// CIF's return slot and `args` points to the CIF's argument slots, both laid out per that CIF;
 /// `data` is the `'static` borrow of the `TrampolineData` the closure was built with. The slot
 /// layout must match `data`'s argument/return descriptors.
-unsafe extern "C" fn trampoline_handler(
+unsafe extern "C" fn trampoline_callback(
     _cif: &libffi_low::ffi_cif,
     result: &mut u64,
     args: *const *const c_void,

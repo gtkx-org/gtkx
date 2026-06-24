@@ -1,4 +1,4 @@
-import type { ListItem } from "@gtkx/components";
+import type { ItemNode } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 
@@ -47,7 +47,7 @@ const demoCat = (id: string, name: string, children: ReturnType<typeof demoChild
     children,
 });
 
-const demoFullTree: ListItem<DemoItem>[] = [
+const demoFullTree: ItemNode<DemoItem>[] = [
     demoLeaf("demo-intro", "GTK Demo"),
     demoCat("cat-Benchmark", "Benchmark", [demoChild("demo-frames", "Frames"), demoChild("demo-themes", "Themes")]),
     demoLeaf("demo-clipboard", "Clipboard"),
@@ -899,7 +899,7 @@ describe("render - ListView (tree) (18)", () => {
     describe("tree filtering (3)", () => {
         it("shows children after filtering a large tree with many root items", async () => {
             type Item = { name: string };
-            const fullTree: ListItem<Item>[] = [];
+            const fullTree: ItemNode<Item>[] = [];
             for (let i = 0; i < 38; i++) {
                 if (i % 5 === 1) {
                     fullTree.push({
@@ -962,7 +962,7 @@ describe("render - ListView (tree) (20)", () => {
                 children,
             });
 
-            const fullTree: ListItem<Item>[] = [];
+            const fullTree: ItemNode<Item>[] = [];
             for (let i = 0; i < 40; i++) {
                 if (i % 4 === 0) {
                     fullTree.push(

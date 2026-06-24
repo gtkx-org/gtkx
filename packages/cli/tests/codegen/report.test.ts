@@ -4,7 +4,7 @@ import type { RunCodegenResult } from "../../src/codegen/run-codegen.js";
 
 const result = (overrides: Partial<RunCodegenResult> = {}): RunCodegenResult => ({
     namespaces: 2,
-    widgets: 142,
+    reactNodes: 142,
     duration: 250,
     girPath: ["/usr/share/gir-1.0"],
     configFile: "/project/gtkx.config.ts",
@@ -18,7 +18,7 @@ describe("formatCodegenResult", () => {
             "codegen: config=/project/gtkx.config.ts",
             "codegen: libraries=Gtk-4.0, Adw-1",
             "codegen: girPath=/usr/share/gir-1.0",
-            "codegen: 2 namespaces, 142 widgets in 250ms (total 300ms)",
+            "codegen: 2 namespaces, 142 react nodes in 250ms (total 300ms)",
         ]);
     });
 
@@ -27,6 +27,6 @@ describe("formatCodegenResult", () => {
             result({ configFile: undefined, libraries: undefined, girPath: undefined }),
             5,
         );
-        expect(lines).toEqual(["codegen: 2 namespaces, 142 widgets in 250ms (total 5ms)"]);
+        expect(lines).toEqual(["codegen: 2 namespaces, 142 react nodes in 250ms (total 5ms)"]);
     });
 });

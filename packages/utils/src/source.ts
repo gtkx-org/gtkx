@@ -50,9 +50,9 @@ const RESERVED: Set<string> = new Set([
     "yield",
 ]);
 
-export const toIdentifier = (name: string): string => (RESERVED.has(name) ? `${name}_` : name);
+export const mangleReserved = (name: string): string => (RESERVED.has(name) ? `${name}_` : name);
 
-export const toCamelIdentifier = (name: string): string => toIdentifier(toCamelCase(name));
+export const toCamelIdentifier = (name: string): string => mangleReserved(toCamelCase(name));
 
 const UNSAFE_SOURCE_CHARS = /[<>\u2028\u2029]/g;
 
@@ -71,4 +71,5 @@ const escapeSourceChar = (char: string): string => {
     }
 };
 
-export const quote = (value: string): string => JSON.stringify(value).replace(UNSAFE_SOURCE_CHARS, escapeSourceChar);
+export const sourceStringLiteral = (value: string): string =>
+    JSON.stringify(value).replace(UNSAFE_SOURCE_CHARS, escapeSourceChar);

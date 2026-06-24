@@ -11,7 +11,7 @@ const { version } = createRequire(import.meta.url)("../package.json") as { versi
 
 export const defaultScaffolderDeps = (): ScaffolderDeps => ({
     cwd: () => process.cwd(),
-    gtkxVersion: version,
+    selfVersion: version,
     fs: { existsSync, mkdirSync, writeFileSync },
     prompts: {
         intro: p.intro,

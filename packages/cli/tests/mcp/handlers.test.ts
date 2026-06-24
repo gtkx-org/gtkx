@@ -1,4 +1,4 @@
-import { McpError, McpErrorCode } from "@gtkx/mcp";
+import { IpcError, IpcErrorCode } from "@gtkx/mcp";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const hoisted = vi.hoisted(() => ({
@@ -13,7 +13,7 @@ const hoisted = vi.hoisted(() => ({
     fireEvent: vi.fn(async () => undefined),
     prettyWidget: vi.fn((_container: unknown, _options?: { getId?: (w: unknown) => string }) => "tree"),
     formatRole: vi.fn((role: number) => (role === 2 ? "label" : "button")),
-    getWidgetPropertyText: vi.fn((widget: { getLabel?: () => string | null; getText?: () => string | null }) => {
+    getWidgetNodeText: vi.fn((widget: { getLabel?: () => string | null; getText?: () => string | null }) => {
         return widget.getLabel?.() ?? widget.getText?.() ?? null;
     }),
     listToplevels: vi.fn(() => [] as unknown[]),
@@ -42,7 +42,7 @@ vi.mock("@gtkx/testing", () => ({
     fireEvent: hoisted.fireEvent,
     prettyWidget: hoisted.prettyWidget,
     formatRole: hoisted.formatRole,
-    getWidgetPropertyText: hoisted.getWidgetPropertyText,
+    getWidgetNodeText: hoisted.getWidgetNodeText,
     userEvent: { click: hoisted.click, type: hoisted.typeText, clear: hoisted.clear },
 }));
 
@@ -80,7 +80,7 @@ describe("dispatch (method routing)", () => {
         const app = makeApp();
 
         await expect(dispatch("widget.unknown", {}, { app: app as never, registry })).rejects.toMatchObject({
-            code: McpErrorCode.METHOD_NOT_FOUND,
+            code: IpcErrorCode.METHOD_NOT_FOUND,
         });
     });
 });
@@ -139,7 +139,7 @@ describe("widget.query", () => {
 
         const result = (await dispatch(
             "widget.query",
-            { queryType: "role", value: "BUTTON", options: { exact: true } },
+            { by: "role", value: "BUTTON", options: { exact: true } },
             { app: makeApp() as never, registry },
         )) as { widgets: Array<{ text: string | null }> };
 
@@ -155,9 +155,9 @@ describe("widget.query", () => {
         const registry = new WidgetRegistry();
         const ctx = { app: makeApp() as never, registry };
 
-        await dispatch("widget.query", { queryType: "text", value: "Hi" }, ctx);
-        await dispatch("widget.query", { queryType: "name", value: "btn" }, ctx);
-        await dispatch("widget.query", { queryType: "labelText", value: "Submit" }, ctx);
+        await dispatch("widget.query", { by: "text", value: "Hi" }, ctx);
+        await dispatch("widget.query", { by: "name", value: "btn" }, ctx);
+        await dispatch("widget.query", { by: "labelText", value: "Submit" }, ctx);
 
         expect(findAllByText).toHaveBeenCalledWith(expect.anything(), "Hi", undefined);
         expect(findAllByName).toHaveBeenCalledWith(expect.anything(), "btn", undefined);
@@ -167,8 +167,8 @@ describe("widget.query", () => {
     it("rejects an unknown query type at the wire-schema boundary", async () => {
         const registry = new WidgetRegistry();
         await expect(
-            dispatch("widget.query", { queryType: "id", value: "x" }, { app: makeApp() as never, registry }),
-        ).rejects.toMatchObject({ code: McpErrorCode.INVALID_REQUEST });
+            dispatch("widget.query", { by: "id", value: "x" }, { app: makeApp() as never, registry }),
+        ).rejects.toMatchObject({ code: IpcErrorCode.INVALID_REQUEST });
     });
 });
 
@@ -190,14 +190,14 @@ describe("widget.getProps", () => {
 
         await expect(
             dispatch("widget.getProps", { widgetId: "missing" }, { app: makeApp() as never, registry }),
-        ).rejects.toMatchObject({ code: McpErrorCode.WIDGET_NOT_FOUND });
+        ).rejects.toMatchObject({ code: IpcErrorCode.WIDGET_NOT_FOUND });
     });
 
     it("throws widgetNotFoundError when no widgetId is supplied", async () => {
         const registry = new WidgetRegistry();
 
         await expect(dispatch("widget.getProps", {}, { app: makeApp() as never, registry })).rejects.toBeInstanceOf(
-            McpError,
+            IpcError,
         );
     });
 });

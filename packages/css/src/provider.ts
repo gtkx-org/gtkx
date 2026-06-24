@@ -2,7 +2,7 @@ import type { Display } from "@gtkx/gi/gdk";
 import { DisplayManager } from "@gtkx/gi/gdk";
 import { CssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION, StyleContext } from "@gtkx/gi/gtk";
 
-export type DisplayProvider = {
+export type ProviderAttachment = {
     provider: CssProvider;
     dispose: () => void;
 };
@@ -13,7 +13,7 @@ const attachProviderToDisplay = (provider: CssProvider, display: Display, priori
 
 export const registerProviderForDefaultDisplay = (
     priority: number = STYLE_PROVIDER_PRIORITY_APPLICATION,
-): DisplayProvider => {
+): ProviderAttachment => {
     const provider = new CssProvider();
     const initialDisplay = DisplayManager.get().getDefaultDisplay();
     let display = initialDisplay;

@@ -7,7 +7,7 @@ use napi::bindgen_prelude::*;
 use napi::sys;
 use napi::{Env, JsFunction, JsObject, NapiRaw, NapiValue, ValueType};
 
-use crate::dispatch::{JsReference, Mailbox};
+use crate::dispatch::{JsRefDeletion, Mailbox};
 use crate::managed::NativeHandle;
 use crate::types::{FfiDecoder, Type};
 use crate::{arg::Arg, ffi};
@@ -39,7 +39,7 @@ impl<T> std::fmt::Debug for JsRef<T> {
 #[cfg_attr(coverage_nightly, coverage(off))]
 impl<T> Drop for JsRef<T> {
     fn drop(&mut self) {
-        let reference = JsReference::new(self.env, self.raw);
+        let reference = JsRefDeletion::new(self.env, self.raw);
         if std::thread::current().id() == self.owner_thread {
             reference.delete_on_js_thread();
         } else {

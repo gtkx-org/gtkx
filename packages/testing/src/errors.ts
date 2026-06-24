@@ -88,7 +88,7 @@ export const notFoundError = (container: Container, descriptor: QueryDescriptor)
     const description = formatQueryDescription(descriptor);
     const headLines = [`Unable to find an element with ${description}`];
 
-    if (!expensiveErrorDiagnosticsDisabled && getConfig().showSuggestions && descriptor.queryType === "role") {
+    if (!expensiveErrorDiagnosticsDisabled && descriptor.queryType === "role") {
         headLines.push("", "Here are the accessible roles:", "", prettyRoles(container));
     }
 

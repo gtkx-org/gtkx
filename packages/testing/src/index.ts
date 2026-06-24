@@ -87,5 +87,5 @@ export type {
 } from "./user-event.js";
 export { userEvent } from "./user-event.js";
 export { waitFor, waitForElementToBeRemoved } from "./wait-for.js";
-export { getWidgetPropertyText } from "./widget-text.js";
+export { getWidgetNodeText } from "./widget-text.js";
 export { within } from "./within.js";

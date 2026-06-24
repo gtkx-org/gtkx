@@ -107,7 +107,7 @@ fn can_be_return_type_accepts_value_shapes_and_rejects_argument_shapes() {
     assert!(Type::Integer(IntegerKind::I32).can_be_return_type());
     assert!(Type::Void(VoidType).can_be_return_type());
     assert!(Type::GObject(gobject_type()).can_be_return_type());
-    assert!(Type::Tagged(common::enum_tagged()).can_be_return_type());
+    assert!(Type::EnumFlags(common::enum_type()).can_be_return_type());
 
     assert!(!Type::Callback(callback_type()).can_be_return_type());
     assert!(!Type::Blob(BlobType).can_be_return_type());

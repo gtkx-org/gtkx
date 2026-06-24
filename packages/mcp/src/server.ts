@@ -6,7 +6,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { ConnectionManager } from "./connection-manager.js";
 import { ConnectionRegistry } from "./connection-registry.js";
-import { McpError } from "./protocol/errors.js";
+import { IpcError } from "./protocol/errors.js";
 import { DEFAULT_SOCKET_PATH, queryOptionsSchema, type ServerInitiatedMethod } from "./protocol/types.js";
 import { SocketServer } from "./socket-server.js";
 
@@ -67,7 +67,7 @@ const imageContent = (data: string, mimeType: string): CallToolResult => ({
     content: [{ type: "image", data, mimeType }],
 });
 
-export type AppQueryClient = Pick<ConnectionManager, "getApps" | "hasConnectedApps" | "waitForApp" | "sendToApp">;
+export type AppRouter = Pick<ConnectionManager, "getApps" | "hasConnectedApps" | "waitForApp" | "sendToApp">;
 
 type ToolHandlerResult = CallToolResult;
 
@@ -100,7 +100,7 @@ const runTool = async <Shape extends Record<string, z.ZodType>>(
     try {
         return await handler(args);
     } catch (error) {
-        if (error instanceof McpError) {
+        if (error instanceof IpcError) {
             return textError(hasStringHint(error.data) ? `${error.message}\n${error.data.hint}` : error.message);
         }
         return textError(error instanceof Error ? error.message : String(error));
@@ -135,7 +135,7 @@ type ForwardOptions<Shape extends Record<string, z.ZodType>> = {
     kind: ToolKind;
     description: string;
     inputSchema: Shape;
-    connectionManager: AppQueryClient;
+    connectionManager: AppRouter;
     method: ServerInitiatedMethod;
     params?: (args: ToolArgs<Shape>) => unknown;
 };
@@ -151,7 +151,7 @@ const buildForwardParams = <Shape extends Record<string, z.ZodType>>(
 const forwardTool = <Shape extends Record<string, z.ZodType>>(
     options: ForwardOptions<Shape>,
     perform: (
-        connectionManager: AppQueryClient,
+        connectionManager: AppRouter,
         applicationId: string | undefined,
         method: ServerInitiatedMethod,
         params: unknown,
@@ -191,7 +191,7 @@ const forwardImage = <Shape extends Record<string, z.ZodType>>(options: ForwardO
         return imageContent(result.data, result.mimeType);
     });
 
-const listAppsTool = (connectionManager: AppQueryClient) =>
+const listAppsTool = (connectionManager: AppRouter) =>
     defineTool({
         name: "gtkx_list_apps",
         kind: "readOnly",
@@ -221,7 +221,7 @@ const listAppsTool = (connectionManager: AppQueryClient) =>
         },
     });
 
-const getWidgetTreeTool = (connectionManager: AppQueryClient) =>
+const getWidgetTreeTool = (connectionManager: AppRouter) =>
     defineTool({
         name: "gtkx_get_widget_tree",
         kind: "readOnly",
@@ -236,7 +236,7 @@ const getWidgetTreeTool = (connectionManager: AppQueryClient) =>
         },
     });
 
-function buildInspectionTools(connectionManager: AppQueryClient): ToolDefinition[] {
+function buildInspectionTools(connectionManager: AppRouter): ToolDefinition[] {
     return [
         listAppsTool(connectionManager),
         getWidgetTreeTool(connectionManager),
@@ -248,7 +248,6 @@ function buildInspectionTools(connectionManager: AppQueryClient): ToolDefinition
             inputSchema: queryWidgetsShape,
             connectionManager,
             method: "widget.query",
-            params: ({ by, value, options }) => ({ queryType: by, value, options }),
         }),
         forwardJson({
             name: "gtkx_get_widget_props",
@@ -258,10 +257,18 @@ function buildInspectionTools(connectionManager: AppQueryClient): ToolDefinition
             connectionManager,
             method: "widget.getProps",
         }),
+        forwardImage({
+            name: "gtkx_take_screenshot",
+            kind: "readOnly",
+            description: "Capture a screenshot of a window. Returns base64-encoded PNG image data.",
+            inputSchema: screenshotShape,
+            connectionManager,
+            method: "widget.screenshot",
+        }),
     ];
 }
 
-function buildInteractionTools(connectionManager: AppQueryClient): ToolDefinition[] {
+function buildInteractionTools(connectionManager: AppRouter): ToolDefinition[] {
     return [
         forwardAck({
             name: "gtkx_click",
@@ -290,18 +297,10 @@ function buildInteractionTools(connectionManager: AppQueryClient): ToolDefinitio
             method: "widget.fireEvent",
             ack: "Event fired successfully",
         }),
-        forwardImage({
-            name: "gtkx_take_screenshot",
-            kind: "readOnly",
-            description: "Capture a screenshot of a window. Returns base64-encoded PNG image data.",
-            inputSchema: screenshotShape,
-            connectionManager,
-            method: "widget.screenshot",
-        }),
     ];
 }
 
-function buildTools(connectionManager: AppQueryClient): ToolDefinition[] {
+function buildTools(connectionManager: AppRouter): ToolDefinition[] {
     return [...buildInspectionTools(connectionManager), ...buildInteractionTools(connectionManager)];
 }
 

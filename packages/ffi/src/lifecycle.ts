@@ -2,7 +2,7 @@ import { quit as nativeQuit } from "@gtkx/native";
 
 const KEEP_ALIVE_INTERVAL = 2147483647;
 
-export type GApplication = {
+export type ApplicationRunner = {
     getIsRegistered(): boolean;
     register(cancellable: null): boolean;
     activate(): void;
@@ -28,7 +28,7 @@ const quit = (): void => {
 
 process.on("exit", quit);
 
-export const runApplication = (application: GApplication): void => {
+export const runApplication = (application: ApplicationRunner): void => {
     let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const scheduleKeepAlive = (): void => {
@@ -48,6 +48,6 @@ export const runApplication = (application: GApplication): void => {
     application.activate();
 };
 
-export const quitApplication = (application: GApplication): void => {
+export const quitApplication = (application: ApplicationRunner): void => {
     application.emit("shutdown");
 };

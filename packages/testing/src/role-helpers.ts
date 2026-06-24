@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { reverseNumericEnum, sortedAlphaBy } from "@gtkx/utils";
+import { enumNamesByValue, sortedStringsBy } from "@gtkx/utils";
 import { type Container, traverse } from "./traversal.js";
 import { getWidgetAccessibleName } from "./widget-text.js";
 
@@ -8,7 +8,7 @@ export type RoleInfo = {
     name: string | null;
 };
 
-const ROLE_NAMES_BY_VALUE = reverseNumericEnum(Gtk.AccessibleRole);
+const ROLE_NAMES_BY_VALUE = enumNamesByValue(Gtk.AccessibleRole);
 
 export const formatRole = (role: Gtk.AccessibleRole): string => {
     const name = ROLE_NAMES_BY_VALUE.get(role);
@@ -66,7 +66,7 @@ export const prettyRoles = (container: Container): string => {
 
     const lines: string[] = [];
 
-    const sortedRoles = sortedAlphaBy([...roles.entries()], ([roleName]) => roleName);
+    const sortedRoles = sortedStringsBy([...roles.entries()], ([roleName]) => roleName);
 
     for (const [roleName, widgets] of sortedRoles) {
         lines.push(`${roleName}:`);

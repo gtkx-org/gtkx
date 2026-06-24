@@ -5,7 +5,7 @@ import { type GtkxConfig, GtkxConfigNotFoundError, loadGtkxConfig, resolveDataDi
 import { emitSchemaEnv } from "../gsettings/env.js";
 import { GtkxError } from "../internal/errors.js";
 import { info } from "../internal/log.js";
-import { type CodegenInputs, isCodegenNeeded, resolveCodegenInputs } from "./freshness.js";
+import { type CodegenInputs, isCodegenStale, resolveCodegenInputs } from "./freshness.js";
 import { type CodegenStore, findCodegenRoot, isWorkspaceRoot, resolveCodegenContext } from "./store-resolver.js";
 
 export type RunCodegenOptions = {
@@ -16,7 +16,7 @@ export type RunCodegenOptions = {
 
 export type RunCodegenResult = {
     namespaces: number;
-    widgets: number;
+    reactNodes: number;
     duration: number;
     girPath?: string[] | undefined;
     configFile?: string | undefined;
@@ -70,7 +70,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
 
     return {
         namespaces: result.namespaces,
-        widgets: result.widgets,
+        reactNodes: result.reactNodes,
         duration: result.duration,
         girPath,
         configFile,
@@ -98,7 +98,7 @@ export const ensureGenerated = async (cwd: string): Promise<boolean> => {
     }
     syncSchemaEnv(cwd);
     const inputs = resolveInputsOrNull(context.root, context.config);
-    if (inputs !== null && !isCodegenNeeded(inputs)) {
+    if (inputs !== null && !isCodegenStale(inputs)) {
         return false;
     }
     await runCodegen(inputs === null ? { cwd: context.root } : { cwd: context.root, inputs });
@@ -116,7 +116,7 @@ export const preflightCodegen = async (cwd: string): Promise<void> => {
     }
     syncSchemaEnv(cwd);
     const inputs = resolveInputsOrNull(context.root, context.config);
-    if (inputs === null || isCodegenNeeded(inputs)) {
+    if (inputs === null || isCodegenStale(inputs)) {
         info("generated bindings missing; running codegen...");
         await runCodegen(inputs === null ? { cwd: context.root } : { cwd: context.root, inputs });
     }
@@ -125,14 +125,14 @@ export const preflightCodegen = async (cwd: string): Promise<void> => {
 export const resolveConfigWatch = async (
     cwd: string,
 ): Promise<{ paths: string[]; regenerate: () => Promise<void> } | undefined> => {
-    const root = findCodegenRoot(cwd);
+    const codegenRoot = findCodegenRoot(cwd);
     try {
-        const { configFile, rootDir } = await loadGtkxConfig(root);
+        const { configFile, rootDir } = await loadGtkxConfig(codegenRoot);
         if (configFile === undefined) return undefined;
         return {
             paths: [resolve(rootDir, configFile)],
             regenerate: async () => {
-                await runCodegen({ cwd: root });
+                await runCodegen({ cwd: rootDir });
             },
         };
     } catch (error) {

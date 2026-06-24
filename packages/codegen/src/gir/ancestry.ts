@@ -1,5 +1,5 @@
 import type { GirClass } from "./class.js";
-import type { GirRepository } from "./repository.js";
+import type { Library } from "./repository.js";
 
 export type ResolvedAncestor = {
     klass: GirClass;
@@ -7,17 +7,17 @@ export type ResolvedAncestor = {
 };
 
 export const resolveClassOrInterface = (
-    repository: GirRepository,
+    library: Library,
     defaultNamespace: string,
     name: string,
 ): ResolvedAncestor | undefined => {
-    const resolved = repository.resolveType(defaultNamespace, name);
+    const resolved = library.resolveType(defaultNamespace, name);
     if (resolved === undefined || (resolved.kind !== "class" && resolved.kind !== "interface")) return undefined;
     return { klass: resolved.value, namespaceName: resolved.namespace.name };
 };
 
 export function* ancestorChain(
-    repository: GirRepository,
+    library: Library,
     klass: GirClass,
     namespaceName: string,
 ): Generator<ResolvedAncestor> {
@@ -29,6 +29,6 @@ export function* ancestorChain(
         visited.add(key);
         yield current;
         if (current.klass.parent === undefined) return;
-        current = resolveClassOrInterface(repository, current.namespaceName, current.klass.parent);
+        current = resolveClassOrInterface(library, current.namespaceName, current.klass.parent);
     }
 }

@@ -23,7 +23,7 @@
 //! frame, which is what keeps the nested cross-thread dispatch deadlock-free.
 
 mod freeze_controller;
-mod js_bridge;
+mod node_thread;
 pub mod wait_signal;
 
 use std::collections::VecDeque;
@@ -61,7 +61,7 @@ struct NodeCallback {
 
 enum NodeTask {
     Callback(NodeCallback),
-    DeleteReference(JsReference),
+    DeleteReference(JsRefDeletion),
     WrapperRefOp {
         ref_ptr: usize,
         op: RefOp,
@@ -71,17 +71,17 @@ enum NodeTask {
 }
 
 #[derive(Debug)]
-pub(crate) struct JsReference {
+pub(crate) struct JsRefDeletion {
     env: sys::napi_env,
     raw: sys::napi_ref,
 }
 
-// SAFETY: a `JsReference` only carries the raw napi env/ref handles by value; it is moved to the
+// SAFETY: a `JsRefDeletion` only carries the raw napi env/ref handles by value; it is moved to the
 // Node (JS) thread and its handles are exclusively touched there (in `delete_on_js_thread`), never
 // dereferenced from the gtkx-glib thread, so transferring ownership across threads is sound.
-unsafe impl Send for JsReference {}
+unsafe impl Send for JsRefDeletion {}
 
-impl JsReference {
+impl JsRefDeletion {
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub(crate) fn new(env: sys::napi_env, raw: sys::napi_ref) -> Self {
         Self { env, raw }

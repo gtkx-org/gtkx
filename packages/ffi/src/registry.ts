@@ -50,13 +50,13 @@ export function registerWrapperClass(cls: AnyClass, gtype: GType, vfuncs?: Vfunc
     if (vfuncs) registerVfuncRegistry(cls, vfuncs);
 }
 
-const interfaceMakerByGtype = new Map<GType, Mixin>();
+const interfaceMixinByGtype = new Map<GType, Mixin>();
 const composedClassByGtype = new Map<GType, AnyClass>();
 
-export function registerInterface(cls: AnyClass, gtype: GType, maker: Mixin, vfuncs?: VfuncRegistry): void {
+export function registerInterface(cls: AnyClass, gtype: GType, mixin: Mixin, vfuncs?: VfuncRegistry): void {
     if (gtype === TYPE_INVALID) return;
     stampGtype(cls, gtype);
-    interfaceMakerByGtype.set(gtype, maker);
+    interfaceMixinByGtype.set(gtype, mixin);
     if (vfuncs) registerInterfaceVfuncRegistry(gtype, vfuncs);
 }
 
@@ -95,7 +95,7 @@ export function getWrapperClass(gtype: GType): AnyClass | null {
     return classRegistry.get(gtype) ?? null;
 }
 
-export function requireWrapperClassByGtype(gtype: GType): AnyClass {
+export function requireWrapperClass(gtype: GType): AnyClass {
     const cls = getWrapperClass(gtype);
     if (!cls) {
         throw new Error(`No registered wrapper class for GType '${typeName(gtype) ?? String(gtype)}'`);
@@ -103,12 +103,12 @@ export function requireWrapperClassByGtype(gtype: GType): AnyClass {
     return cls;
 }
 
-export function resolveWrapperClass(name: string): AnyClass<GTyped> | null {
+export function getWrapperClassByName(name: string): AnyClass<GTyped> | null {
     return getWrapperClass(typeFromName(name)) as AnyClass<GTyped> | null;
 }
 
-export function requireWrapperClass(name: string, describe: (name: string) => string): AnyClass<GTyped> {
-    const cls = resolveWrapperClass(name);
+export function requireWrapperClassByName(name: string, describe: (name: string) => string): AnyClass<GTyped> {
+    const cls = getWrapperClassByName(name);
     if (!cls) throw new Error(describe(name));
     return cls;
 }
@@ -130,7 +130,7 @@ function walkParentChain(gtype: GType, accept: (parentGtype: GType, parentCls: A
     return null;
 }
 
-export function findWrapperClass(gtype: GType): AnyClass | null {
+export function findWrapperClassInChain(gtype: GType): AnyClass | null {
     return getWrapperClass(gtype) ?? walkParentChain(gtype, () => true);
 }
 
@@ -140,10 +140,10 @@ function composeInterfaces(base: AnyClass, runtimeGtype: GType): AnyClass {
     let cls: AnyClass = base;
     for (const gtype of typeInterfaces(runtimeGtype)) {
         if (applied.has(gtype) || typeIsA(baseGtype, gtype)) continue;
-        const make = interfaceMakerByGtype.get(gtype);
-        if (make === undefined) continue;
+        const mixin = interfaceMixinByGtype.get(gtype);
+        if (mixin === undefined) continue;
         applied.add(gtype);
-        cls = make(cls);
+        cls = mixin(cls);
     }
     return applied.size === 0 ? base : cls;
 }
@@ -153,7 +153,7 @@ function resolveComposedClass(runtimeGtype: GType): AnyClass | null {
     if (exact) return exact;
     const cached = composedClassByGtype.get(runtimeGtype);
     if (cached) return cached;
-    const base = findWrapperClass(runtimeGtype);
+    const base = findWrapperClassInChain(runtimeGtype);
     if (base === null) return null;
     const composed = composeInterfaces(base, runtimeGtype);
     if (composed === base) return base;

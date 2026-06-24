@@ -18,15 +18,15 @@ describe("runCreate", () => {
         await runCreate({
             name: "my-app",
             "application-id": "com.example.myapp",
-            pm: "pnpm",
-            testing: "vitest",
+            "package-manager": "pnpm",
+            vitest: true,
         });
 
         expect(createAppMock).toHaveBeenCalledWith({
             name: "my-app",
             applicationId: "com.example.myapp",
             packageManager: "pnpm",
-            testing: "vitest",
+            includeTesting: true,
         });
     });
 
@@ -37,7 +37,7 @@ describe("runCreate", () => {
             name: undefined,
             applicationId: undefined,
             packageManager: undefined,
-            testing: undefined,
+            includeTesting: undefined,
         });
     });
 
@@ -47,11 +47,7 @@ describe("runCreate", () => {
     };
 
     it("rejects an unknown package manager before scaffolding", async () => {
-        await expectRejection({ pm: "bun" }, /Unknown package manager "bun"/);
-    });
-
-    it("rejects an unknown testing setup before scaffolding", async () => {
-        await expectRejection({ testing: "jest" }, /Unknown testing setup "jest"/);
+        await expectRejection({ "package-manager": "bun" }, /Unknown package manager "bun"/);
     });
 });
 

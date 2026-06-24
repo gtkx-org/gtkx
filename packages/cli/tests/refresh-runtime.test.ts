@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createModuleRegistration, isReactRefreshBoundary, performRefresh } from "../src/refresh-runtime.js";
+import { createModuleRegistration, isRefreshBoundary, performRefresh } from "../src/refresh-runtime.js";
 
 describe("createModuleRegistration", () => {
     it("returns registration helpers for a module id", () => {
@@ -20,7 +20,7 @@ describe("createModuleRegistration", () => {
     });
 });
 
-describe("isReactRefreshBoundary", () => {
+describe("isRefreshBoundary", () => {
     it("returns true when the module value itself is a likely component", () => {
         const Component = Object.assign(
             function MyComponent() {
@@ -28,47 +28,47 @@ describe("isReactRefreshBoundary", () => {
             },
             {} as Record<string, unknown>,
         );
-        expect(isReactRefreshBoundary(Component)).toBe(true);
+        expect(isRefreshBoundary(Component)).toBe(true);
     });
 
     it("returns false for a module exporting a non-component value", () => {
-        expect(isReactRefreshBoundary({ value: 42 })).toBe(false);
+        expect(isRefreshBoundary({ value: 42 })).toBe(false);
     });
 
     it("returns false for an empty exports object", () => {
-        expect(isReactRefreshBoundary({})).toBe(false);
+        expect(isRefreshBoundary({})).toBe(false);
     });
 
     it("returns false when only __esModule is present", () => {
-        expect(isReactRefreshBoundary({ __esModule: true })).toBe(false);
+        expect(isRefreshBoundary({ __esModule: true })).toBe(false);
     });
 
     it("returns true when all named exports are PascalCase functions", () => {
         const ComponentA = () => null;
         const ComponentB = () => null;
-        expect(isReactRefreshBoundary({ __esModule: true, ComponentA, ComponentB })).toBe(true);
+        expect(isRefreshBoundary({ __esModule: true, ComponentA, ComponentB })).toBe(true);
     });
 
     it("returns false when any non-component export is present", () => {
         const Component = () => null;
-        expect(isReactRefreshBoundary({ Component, helper: () => 1 })).toBe(false);
+        expect(isRefreshBoundary({ Component, helper: () => 1 })).toBe(false);
     });
 
     it("recognizes React.memo-wrapped components", () => {
         const memoized = { $$typeof: Symbol.for("react.memo"), type: () => null };
-        expect(isReactRefreshBoundary({ wrapped: memoized })).toBe(true);
+        expect(isRefreshBoundary({ wrapped: memoized })).toBe(true);
     });
 
     it("recognizes React.forwardRef-wrapped components", () => {
         const forwarded = { $$typeof: Symbol.for("react.forward_ref"), render: () => null };
-        expect(isReactRefreshBoundary({ wrapped: forwarded })).toBe(true);
+        expect(isRefreshBoundary({ wrapped: forwarded })).toBe(true);
     });
 
     it("returns false when a non-PascalCase named function is exported", () => {
         const helper = function lowercaseHelper() {
             return 1;
         };
-        expect(isReactRefreshBoundary({ helper })).toBe(false);
+        expect(isRefreshBoundary({ helper })).toBe(false);
     });
 });
 

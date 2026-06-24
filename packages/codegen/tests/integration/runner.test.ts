@@ -38,7 +38,7 @@ describe("CodegenRunner", () => {
         }).run();
 
         expect(result.namespaces).toBeGreaterThan(0);
-        expect(result.widgets).toBe(0);
+        expect(result.reactNodes).toBe(0);
         expect(result.duration).toBeGreaterThanOrEqual(0);
         expect(existsSync(join(gi.storeDir, "gobject", "gobject.js"))).toBe(true);
         expect(existsSync(join(gi.storeDir, "gobject", "gobject.d.ts"))).toBe(true);
@@ -70,7 +70,7 @@ describe("CodegenRunner", () => {
             jsx,
         }).run();
 
-        expect(result.widgets).toBeGreaterThan(0);
+        expect(result.reactNodes).toBeGreaterThan(0);
         expect(existsSync(join(gi.storeDir, "gtk", "gtk.js"))).toBe(true);
         expect(readFileSync(join(jsx.storeDir, "gtk", "gtk.js"), "utf8").length).toBeGreaterThan(0);
         expect(readFileSync(join(jsx.storeDir, "metadata.js"), "utf8").length).toBeGreaterThan(0);

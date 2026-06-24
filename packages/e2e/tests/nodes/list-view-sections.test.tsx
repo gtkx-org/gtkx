@@ -1,4 +1,4 @@
-import { type ListItem, ListView } from "@gtkx/components";
+import { type ItemNode, ListView } from "@gtkx/components";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 
@@ -11,7 +11,7 @@ interface Row {
     name: string;
 }
 
-const sectioned: ListItem<Row, string>[] = [
+const sectioned: ItemNode<Row, string>[] = [
     {
         id: "s1",
         value: "Section One",

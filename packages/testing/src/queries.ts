@@ -10,6 +10,7 @@ import {
     getWidgetDescription,
     getWidgetDisplayValue,
     getWidgetExpandedState,
+    getWidgetLabelText,
     getWidgetLabelledByText,
     getWidgetLevel,
     getWidgetName,
@@ -17,9 +18,8 @@ import {
     getWidgetPlaceholderText,
     getWidgetPressedState,
     getWidgetSelectedState,
-    getWidgetText,
     getWidgetValue,
-    isHiddenFromAccessibility,
+    isInaccessible,
 } from "./widget-text.js";
 
 export const getDefaultNormalizer = ({
@@ -128,7 +128,7 @@ const matchByRoleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolea
 export const queryAllByRole = (container: Container, role: Gtk.AccessibleRole, options?: ByRoleOptions): Gtk.Widget[] =>
     findAll(container, (widget) => {
         if (widget.getAccessibleRole() !== role) return false;
-        if (!options?.hidden && isHiddenFromAccessibility(widget)) return false;
+        if (!options?.hidden && isInaccessible(widget)) return false;
         return matchByRoleOptions(widget, options);
     });
 
@@ -175,7 +175,7 @@ const labelTextVariants = buildQueries<[text: Matcher, options?: MatcherOptions]
 );
 
 export const queryAllByText = (container: Container, text: Matcher, options?: MatcherOptions): Gtk.Widget[] =>
-    findAll(container, (widget) => matchText(getWidgetText(widget), text, widget, options));
+    findAll(container, (widget) => matchText(getWidgetLabelText(widget), text, widget, options));
 
 const textVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
     "Text",

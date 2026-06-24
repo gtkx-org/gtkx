@@ -3977,7 +3977,7 @@ export function getObjectPtrLabel(ptr: ArrayBufferView | GLintptr | null, bufSiz
     const binding = t.bind(
         LIB,
         "glGetObjectPtrLabel",
-        [t.blob, t.int32, t.ref(t.int32), t.ref(t.string("borrowed", bufSize))],
+        [t.buffer, t.int32, t.ref(t.int32), t.ref(t.string("borrowed", bufSize))],
         t.void,
     );
     binding(ptr, bufSize, out0, out1);
@@ -11211,11 +11211,11 @@ const glBlitNamedFramebuffer = t.bind(
     t.void,
 );
 
-const glBufferData = t.bind(LIB, "glBufferData", [t.uint32, t.int64, t.blob, t.uint32], t.void);
+const glBufferData = t.bind(LIB, "glBufferData", [t.uint32, t.int64, t.buffer, t.uint32], t.void);
 
-const glBufferStorage = t.bind(LIB, "glBufferStorage", [t.uint32, t.int64, t.blob, t.uint32], t.void);
+const glBufferStorage = t.bind(LIB, "glBufferStorage", [t.uint32, t.int64, t.buffer, t.uint32], t.void);
 
-const glBufferSubData = t.bind(LIB, "glBufferSubData", [t.uint32, t.int64, t.int64, t.blob], t.void);
+const glBufferSubData = t.bind(LIB, "glBufferSubData", [t.uint32, t.int64, t.int64, t.buffer], t.void);
 
 const glCheckFramebufferStatus = t.bind(LIB, "glCheckFramebufferStatus", [t.uint32], t.uint32);
 
@@ -11225,7 +11225,7 @@ const glClampColor = t.bind(LIB, "glClampColor", [t.uint32, t.uint32], t.void);
 
 const glClear = t.bind(LIB, "glClear", [t.uint32], t.void);
 
-const glClearBufferData = t.bind(LIB, "glClearBufferData", [t.uint32, t.uint32, t.uint32, t.uint32, t.blob], t.void);
+const glClearBufferData = t.bind(LIB, "glClearBufferData", [t.uint32, t.uint32, t.uint32, t.uint32, t.buffer], t.void);
 
 const glClearBufferfi = t.bind(LIB, "glClearBufferfi", [t.uint32, t.int32, t.float32, t.int32], t.void);
 
@@ -11236,7 +11236,7 @@ const glClearBufferiv = t.bind(LIB, "glClearBufferiv", [t.uint32, t.int32, t.arr
 const glClearBufferSubData = t.bind(
     LIB,
     "glClearBufferSubData",
-    [t.uint32, t.uint32, t.int64, t.int64, t.uint32, t.uint32, t.blob],
+    [t.uint32, t.uint32, t.int64, t.int64, t.uint32, t.uint32, t.buffer],
     t.void,
 );
 
@@ -11251,14 +11251,14 @@ const glClearDepthf = t.bind(LIB, "glClearDepthf", [t.float32], t.void);
 const glClearNamedBufferData = t.bind(
     LIB,
     "glClearNamedBufferData",
-    [t.uint32, t.uint32, t.uint32, t.uint32, t.blob],
+    [t.uint32, t.uint32, t.uint32, t.uint32, t.buffer],
     t.void,
 );
 
 const glClearNamedBufferSubData = t.bind(
     LIB,
     "glClearNamedBufferSubData",
-    [t.uint32, t.uint32, t.int64, t.int64, t.uint32, t.uint32, t.blob],
+    [t.uint32, t.uint32, t.int64, t.int64, t.uint32, t.uint32, t.buffer],
     t.void,
 );
 
@@ -11292,12 +11292,12 @@ const glClearNamedFramebufferuiv = t.bind(
 
 const glClearStencil = t.bind(LIB, "glClearStencil", [t.int32], t.void);
 
-const glClearTexImage = t.bind(LIB, "glClearTexImage", [t.uint32, t.int32, t.uint32, t.uint32, t.blob], t.void);
+const glClearTexImage = t.bind(LIB, "glClearTexImage", [t.uint32, t.int32, t.uint32, t.uint32, t.buffer], t.void);
 
 const glClearTexSubImage = t.bind(
     LIB,
     "glClearTexSubImage",
-    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.blob],
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.buffer],
     t.void,
 );
 
@@ -11314,63 +11314,63 @@ const glCompileShader = t.bind(LIB, "glCompileShader", [t.uint32], t.void);
 const glCompressedTexImage1D = t.bind(
     LIB,
     "glCompressedTexImage1D",
-    [t.uint32, t.int32, t.uint32, t.int32, t.int32, t.int32, t.blob],
+    [t.uint32, t.int32, t.uint32, t.int32, t.int32, t.int32, t.buffer],
     t.void,
 );
 
 const glCompressedTexImage2D = t.bind(
     LIB,
     "glCompressedTexImage2D",
-    [t.uint32, t.int32, t.uint32, t.int32, t.int32, t.int32, t.int32, t.blob],
+    [t.uint32, t.int32, t.uint32, t.int32, t.int32, t.int32, t.int32, t.buffer],
     t.void,
 );
 
 const glCompressedTexImage3D = t.bind(
     LIB,
     "glCompressedTexImage3D",
-    [t.uint32, t.int32, t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.blob],
+    [t.uint32, t.int32, t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.buffer],
     t.void,
 );
 
 const glCompressedTexSubImage1D = t.bind(
     LIB,
     "glCompressedTexSubImage1D",
-    [t.uint32, t.int32, t.int32, t.int32, t.uint32, t.int32, t.blob],
+    [t.uint32, t.int32, t.int32, t.int32, t.uint32, t.int32, t.buffer],
     t.void,
 );
 
 const glCompressedTexSubImage2D = t.bind(
     LIB,
     "glCompressedTexSubImage2D",
-    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.int32, t.blob],
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.int32, t.buffer],
     t.void,
 );
 
 const glCompressedTexSubImage3D = t.bind(
     LIB,
     "glCompressedTexSubImage3D",
-    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.int32, t.blob],
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.int32, t.buffer],
     t.void,
 );
 
 const glCompressedTextureSubImage1D = t.bind(
     LIB,
     "glCompressedTextureSubImage1D",
-    [t.uint32, t.int32, t.int32, t.int32, t.uint32, t.int32, t.blob],
+    [t.uint32, t.int32, t.int32, t.int32, t.uint32, t.int32, t.buffer],
     t.void,
 );
 
 const glCompressedTextureSubImage2D = t.bind(
     LIB,
     "glCompressedTextureSubImage2D",
-    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.int32, t.blob],
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.int32, t.buffer],
     t.void,
 );
 
 const glCompressedTextureSubImage3D = t.bind(
     LIB,
     "glCompressedTextureSubImage3D",
-    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.int32, t.blob],
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.int32, t.buffer],
     t.void,
 );
 
@@ -11772,21 +11772,21 @@ const glGetBufferParameteri64v = t.bind(LIB, "glGetBufferParameteri64v", [t.uint
 
 const glGetBufferParameteriv = t.bind(LIB, "glGetBufferParameteriv", [t.uint32, t.uint32, t.ref(t.int32)], t.void);
 
-const glGetBufferSubData = t.bind(LIB, "glGetBufferSubData", [t.uint32, t.int64, t.int64, t.blob], t.void);
+const glGetBufferSubData = t.bind(LIB, "glGetBufferSubData", [t.uint32, t.int64, t.int64, t.buffer], t.void);
 
-const glGetCompressedTexImage = t.bind(LIB, "glGetCompressedTexImage", [t.uint32, t.int32, t.blob], t.void);
+const glGetCompressedTexImage = t.bind(LIB, "glGetCompressedTexImage", [t.uint32, t.int32, t.buffer], t.void);
 
 const glGetCompressedTextureImage = t.bind(
     LIB,
     "glGetCompressedTextureImage",
-    [t.uint32, t.int32, t.int32, t.blob],
+    [t.uint32, t.int32, t.int32, t.buffer],
     t.void,
 );
 
 const glGetCompressedTextureSubImage = t.bind(
     LIB,
     "glGetCompressedTextureSubImage",
-    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.blob],
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.buffer],
     t.void,
 );
 
@@ -11840,7 +11840,7 @@ const glGetNamedBufferParameteriv = t.bind(
     t.void,
 );
 
-const glGetNamedBufferSubData = t.bind(LIB, "glGetNamedBufferSubData", [t.uint32, t.int64, t.int64, t.blob], t.void);
+const glGetNamedBufferSubData = t.bind(LIB, "glGetNamedBufferSubData", [t.uint32, t.int64, t.int64, t.buffer], t.void);
 
 const glGetNamedFramebufferAttachmentParameteriv = t.bind(
     LIB,
@@ -11863,14 +11863,14 @@ const glGetNamedRenderbufferParameteriv = t.bind(
     t.void,
 );
 
-const glGetnCompressedTexImage = t.bind(LIB, "glGetnCompressedTexImage", [t.uint32, t.int32, t.int32, t.blob], t.void);
+const glGetnCompressedTexImage = t.bind(LIB, "glGetnCompressedTexImage", [t.uint32, t.int32, t.int32, t.buffer], t.void);
 
-const glGetnTexImage = t.bind(LIB, "glGetnTexImage", [t.uint32, t.int32, t.uint32, t.uint32, t.int32, t.blob], t.void);
+const glGetnTexImage = t.bind(LIB, "glGetnTexImage", [t.uint32, t.int32, t.uint32, t.uint32, t.int32, t.buffer], t.void);
 
 const glGetProgramBinary = t.bind(
     LIB,
     "glGetProgramBinary",
-    [t.uint32, t.int32, t.ref(t.int32), t.ref(t.uint32), t.blob],
+    [t.uint32, t.int32, t.ref(t.int32), t.ref(t.uint32), t.buffer],
     t.void,
 );
 
@@ -11991,12 +11991,12 @@ const glGetSynciv = t.bind(
     t.void,
 );
 
-const glGetTexImage = t.bind(LIB, "glGetTexImage", [t.uint32, t.int32, t.uint32, t.uint32, t.blob], t.void);
+const glGetTexImage = t.bind(LIB, "glGetTexImage", [t.uint32, t.int32, t.uint32, t.uint32, t.buffer], t.void);
 
 const glGetTextureImage = t.bind(
     LIB,
     "glGetTextureImage",
-    [t.uint32, t.int32, t.uint32, t.uint32, t.int32, t.blob],
+    [t.uint32, t.int32, t.uint32, t.uint32, t.int32, t.buffer],
     t.void,
 );
 
@@ -12030,7 +12030,7 @@ const glGetTextureParameteriv = t.bind(LIB, "glGetTextureParameteriv", [t.uint32
 const glGetTextureSubImage = t.bind(
     LIB,
     "glGetTextureSubImage",
-    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.int32, t.blob],
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.int32, t.buffer],
     t.void,
 );
 
@@ -12210,7 +12210,7 @@ const glMultiDrawArraysIndirect = t.bind(
 const glMultiDrawArraysIndirectCount = t.bind(
     LIB,
     "glMultiDrawArraysIndirectCount",
-    [t.uint32, t.blob, t.int64, t.int32, t.int32],
+    [t.uint32, t.buffer, t.int64, t.int32, t.int32],
     t.void,
 );
 
@@ -12238,15 +12238,15 @@ const glMultiDrawElementsIndirect = t.bind(
 const glMultiDrawElementsIndirectCount = t.bind(
     LIB,
     "glMultiDrawElementsIndirectCount",
-    [t.uint32, t.uint32, t.blob, t.int64, t.int32, t.int32],
+    [t.uint32, t.uint32, t.buffer, t.int64, t.int32, t.int32],
     t.void,
 );
 
-const glNamedBufferData = t.bind(LIB, "glNamedBufferData", [t.uint32, t.int64, t.blob, t.uint32], t.void);
+const glNamedBufferData = t.bind(LIB, "glNamedBufferData", [t.uint32, t.int64, t.buffer, t.uint32], t.void);
 
-const glNamedBufferStorage = t.bind(LIB, "glNamedBufferStorage", [t.uint32, t.int64, t.blob, t.uint32], t.void);
+const glNamedBufferStorage = t.bind(LIB, "glNamedBufferStorage", [t.uint32, t.int64, t.buffer, t.uint32], t.void);
 
-const glNamedBufferSubData = t.bind(LIB, "glNamedBufferSubData", [t.uint32, t.int64, t.int64, t.blob], t.void);
+const glNamedBufferSubData = t.bind(LIB, "glNamedBufferSubData", [t.uint32, t.int64, t.int64, t.buffer], t.void);
 
 const glNamedFramebufferDrawBuffer = t.bind(LIB, "glNamedFramebufferDrawBuffer", [t.uint32, t.uint32], t.void);
 
@@ -12298,7 +12298,7 @@ const glNamedRenderbufferStorageMultisample = t.bind(
 
 const glObjectLabel = t.bind(LIB, "glObjectLabel", [t.uint32, t.uint32, t.int32, t.string("borrowed")], t.void);
 
-const glObjectPtrLabel = t.bind(LIB, "glObjectPtrLabel", [t.blob, t.int32, t.string("borrowed")], t.void);
+const glObjectPtrLabel = t.bind(LIB, "glObjectPtrLabel", [t.buffer, t.int32, t.string("borrowed")], t.void);
 
 const glPatchParameterfv = t.bind(LIB, "glPatchParameterfv", [t.uint32, t.array(t.float32)], t.void);
 
@@ -12330,7 +12330,7 @@ const glPopDebugGroup = t.bind(LIB, "glPopDebugGroup", [], t.void);
 
 const glPrimitiveRestartIndex = t.bind(LIB, "glPrimitiveRestartIndex", [t.uint32], t.void);
 
-const glProgramBinary = t.bind(LIB, "glProgramBinary", [t.uint32, t.uint32, t.blob, t.int32], t.void);
+const glProgramBinary = t.bind(LIB, "glProgramBinary", [t.uint32, t.uint32, t.buffer, t.int32], t.void);
 
 const glProgramParameteri = t.bind(LIB, "glProgramParameteri", [t.uint32, t.uint32, t.int32], t.void);
 
@@ -12630,14 +12630,14 @@ const glReadBuffer = t.bind(LIB, "glReadBuffer", [t.uint32], t.void);
 const glReadnPixels = t.bind(
     LIB,
     "glReadnPixels",
-    [t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.int32, t.blob],
+    [t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.int32, t.buffer],
     t.void,
 );
 
 const glReadPixels = t.bind(
     LIB,
     "glReadPixels",
-    [t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.blob],
+    [t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.buffer],
     t.void,
 );
 
@@ -12678,7 +12678,7 @@ const glScissorIndexed = t.bind(LIB, "glScissorIndexed", [t.uint32, t.int32, t.i
 
 const glScissorIndexedv = t.bind(LIB, "glScissorIndexedv", [t.uint32, t.array(t.int32)], t.void);
 
-const glShaderBinary = t.bind(LIB, "glShaderBinary", [t.int32, t.array(t.uint32), t.uint32, t.blob, t.int32], t.void);
+const glShaderBinary = t.bind(LIB, "glShaderBinary", [t.int32, t.array(t.uint32), t.uint32, t.buffer, t.int32], t.void);
 
 const glShaderSource = t.bind(
     LIB,
@@ -12715,14 +12715,14 @@ const glTexBufferRange = t.bind(LIB, "glTexBufferRange", [t.uint32, t.uint32, t.
 const glTexImage1D = t.bind(
     LIB,
     "glTexImage1D",
-    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.blob],
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.buffer],
     t.void,
 );
 
 const glTexImage2D = t.bind(
     LIB,
     "glTexImage2D",
-    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.blob],
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.buffer],
     t.void,
 );
 
@@ -12736,7 +12736,7 @@ const glTexImage2DMultisample = t.bind(
 const glTexImage3D = t.bind(
     LIB,
     "glTexImage3D",
-    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.blob],
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.buffer],
     t.void,
 );
 
@@ -12782,21 +12782,21 @@ const glTexStorage3DMultisample = t.bind(
 const glTexSubImage1D = t.bind(
     LIB,
     "glTexSubImage1D",
-    [t.uint32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.blob],
+    [t.uint32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.buffer],
     t.void,
 );
 
 const glTexSubImage2D = t.bind(
     LIB,
     "glTexSubImage2D",
-    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.blob],
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.buffer],
     t.void,
 );
 
 const glTexSubImage3D = t.bind(
     LIB,
     "glTexSubImage3D",
-    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.blob],
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.buffer],
     t.void,
 );
 
@@ -12851,21 +12851,21 @@ const glTextureStorage3DMultisample = t.bind(
 const glTextureSubImage1D = t.bind(
     LIB,
     "glTextureSubImage1D",
-    [t.uint32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.blob],
+    [t.uint32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.buffer],
     t.void,
 );
 
 const glTextureSubImage2D = t.bind(
     LIB,
     "glTextureSubImage2D",
-    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.blob],
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.buffer],
     t.void,
 );
 
 const glTextureSubImage3D = t.bind(
     LIB,
     "glTextureSubImage3D",
-    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.blob],
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.buffer],
     t.void,
 );
 

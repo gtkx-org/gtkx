@@ -1,4 +1,4 @@
-import type { ListItem } from "@gtkx/components";
+import type { ItemNode } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 
@@ -9,11 +9,11 @@ import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
 
 const SIZES = [100, 200, 400];
 
-function makeSectionItems(n: number): ListItem<{ name: string }>[] {
+function makeSectionItems(n: number): ItemNode<{ name: string }>[] {
     const perSection = 100;
-    const sections: ListItem<{ name: string }>[] = [];
+    const sections: ItemNode<{ name: string }>[] = [];
     for (let start = 0; start < n; start += perSection) {
-        const children: ListItem<{ name: string }>[] = [];
+        const children: ItemNode<{ name: string }>[] = [];
         for (let i = start; i < Math.min(start + perSection, n); i++) {
             children.push({ id: `row-${i}`, value: { name: `row-${i}` } });
         }

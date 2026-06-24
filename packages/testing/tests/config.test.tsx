@@ -17,7 +17,7 @@ describe("configure defaults", () => {
     it("has default configuration", () => {
         const config = getConfig();
 
-        expect(config.showSuggestions).toBe(true);
+        expect(config.throwSuggestions).toBe(false);
         expect(config.getElementError).toBeDefined();
     });
 });
@@ -26,49 +26,32 @@ describe("configure updates", () => {
     setupConfigReset();
 
     it("updates configuration with partial object", () => {
-        configure({ showSuggestions: false });
+        configure({ throwSuggestions: true });
 
         const config = getConfig();
-        expect(config.showSuggestions).toBe(false);
+        expect(config.throwSuggestions).toBe(true);
     });
 
     it("updates configuration with function", () => {
         configure((current) => ({
-            showSuggestions: !current.showSuggestions,
+            throwSuggestions: !current.throwSuggestions,
         }));
 
         const config = getConfig();
-        expect(config.showSuggestions).toBe(false);
+        expect(config.throwSuggestions).toBe(true);
     });
 });
 
 describe("configure suggestions", () => {
     setupConfigReset();
 
-    it.each([
-        {
-            title: "disables suggestions in error messages when showSuggestions is false",
-            showSuggestions: false,
-            assertMessage: (message: string) => {
-                expect(message).not.toContain("Here are the accessible roles:");
-            },
-        },
-        {
-            title: "includes suggestions in error messages when showSuggestions is true",
-            showSuggestions: true,
-            assertMessage: (message: string) => {
-                expect(message).toContain("Here are the accessible roles:");
-            },
-        },
-    ])("$title", async ({ showSuggestions, assertMessage }) => {
-        configure({ showSuggestions });
-
+    it("includes accessible roles in error messages for failing role queries", async () => {
         const { container } = await render(<GtkLabel label="Test" />);
 
         try {
             await findByRole(container, Gtk.AccessibleRole.BUTTON, { timeout: 100 });
         } catch (error) {
-            assertMessage((error as Error).message);
+            expect((error as Error).message).toContain("Here are the accessible roles:");
         }
     });
 });

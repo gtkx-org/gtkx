@@ -1,4 +1,4 @@
-import { ColumnView, ColumnViewColumn, GridView, type ListItem, ListView } from "@gtkx/components";
+import { ColumnView, ColumnViewColumn, GridView, type ItemNode, ListView } from "@gtkx/components";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 
@@ -10,12 +10,12 @@ export interface NamedValue {
     name: string;
 }
 
-export type FixtureInput<T> = string[] | ListItem<T>[];
+export type FixtureInput<T> = string[] | ItemNode<T>[];
 
-const toListItems = <T,>(items: FixtureInput<T>): ListItem<T>[] =>
+const toListItems = <T,>(items: FixtureInput<T>): ItemNode<T>[] =>
     items.length > 0 && typeof items[0] === "string"
         ? (items as string[]).map((id) => ({ id, value: { name: id } as T }))
-        : (items as ListItem<T>[]);
+        : (items as ItemNode<T>[]);
 
 const renderNamed = (item: unknown): ReactNode => <GtkLabel label={(item as NamedValue).name} />;
 

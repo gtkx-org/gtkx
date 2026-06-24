@@ -1,14 +1,13 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { sortedAlpha } from "@gtkx/utils";
+import { sortedStrings } from "@gtkx/utils";
 import ejs from "ejs";
-import type { TestingOption } from "./options.js";
 
 export type TemplateContext = {
     name: string;
     applicationId: string;
     title: string;
-    testing: TestingOption;
+    includeTesting: boolean;
 };
 
 export const TEMPLATE_SUFFIX = ".ejs";
@@ -23,7 +22,7 @@ const renderTemplate = (templatePath: string, context: TemplateContext): string 
 };
 
 export const listTemplates = (): string[] =>
-    sortedAlpha(
+    sortedStrings(
         readdirSync(getTemplatesDir(), { recursive: true, withFileTypes: true })
             .filter((entry) => entry.isFile() && entry.name.endsWith(TEMPLATE_SUFFIX))
             .map((entry) => join(entry.parentPath, entry.name))

@@ -5,7 +5,7 @@ const baseContext: TemplateContext = {
     name: "my-app",
     applicationId: "com.example.MyApp",
     title: "My App",
-    testing: "none",
+    includeTesting: false,
 };
 
 describe("renderFile", () => {
@@ -21,13 +21,13 @@ describe("renderFile", () => {
         expect(output).toContain('applicationId: "com.example.MyApp"');
     });
 
-    it("includes vitest hooks when testing is 'vitest'", () => {
-        const output = renderFile("package.json.ejs", { ...baseContext, testing: "vitest" });
+    it("includes vitest hooks when includeTesting is true", () => {
+        const output = renderFile("package.json.ejs", { ...baseContext, includeTesting: true });
         expect(output).toContain("vitest");
     });
 
-    it("omits vitest hooks when testing is 'none'", () => {
-        const output = renderFile("package.json.ejs", { ...baseContext, testing: "none" });
+    it("omits vitest hooks when includeTesting is false", () => {
+        const output = renderFile("package.json.ejs", { ...baseContext, includeTesting: false });
         expect(output).not.toContain("vitest");
     });
 

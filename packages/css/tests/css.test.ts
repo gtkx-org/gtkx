@@ -1,10 +1,10 @@
 import type { MockInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createInstance, type Instance } from "../src/create-instance.js";
-import { Stylesheet } from "../src/stylesheet.js";
+import { createInstance, type Css } from "../src/create-instance.js";
+import { StyleSheet } from "../src/stylesheet.js";
 
 describe("css", () => {
-    let instance: Instance;
+    let instance: Css;
 
     beforeEach(() => {
         instance = createInstance({ key: "gtkx" });
@@ -92,7 +92,7 @@ describe("css", () => {
 });
 
 describe("cx", () => {
-    let instance: Instance;
+    let instance: Css;
 
     beforeEach(() => {
         instance = createInstance({ key: "gtkx" });
@@ -120,9 +120,9 @@ describe("cx", () => {
         expect(mergedClass).not.toBe(style1);
         expect(mergedClass).not.toBe(style2);
 
-        const mergedStyles = instance.registeredStylesFor(mergedClass);
-        const style1Styles = instance.registeredStylesFor(style1);
-        const style2Styles = instance.registeredStylesFor(style2);
+        const mergedStyles = instance.getRegisteredStyles(mergedClass);
+        const style1Styles = instance.getRegisteredStyles(style1);
+        const style2Styles = instance.getRegisteredStyles(style2);
         expect(mergedStyles).toBe(`${style1Styles}${style2Styles}`);
         expect(mergedStyles?.lastIndexOf("color: blue")).toBeGreaterThan(mergedStyles?.lastIndexOf("color: red") ?? -1);
     });
@@ -140,7 +140,7 @@ describe("cx", () => {
 });
 
 describe("cx falsy filtering", () => {
-    let instance: Instance;
+    let instance: Css;
 
     beforeEach(() => {
         instance = createInstance({ key: "gtkx" });
@@ -175,7 +175,7 @@ describe("cx falsy filtering", () => {
 });
 
 describe("cx edge cases", () => {
-    let instance: Instance;
+    let instance: Css;
 
     beforeEach(() => {
         instance = createInstance({ key: "gtkx" });
@@ -207,7 +207,7 @@ describe("cx edge cases", () => {
 });
 
 describe("injectGlobal", () => {
-    let instance: Instance;
+    let instance: Css;
 
     beforeEach(() => {
         instance = createInstance({ key: "gtkx" });
@@ -263,11 +263,11 @@ describe("injectGlobal", () => {
 });
 
 describe("stylis pipeline correctness", () => {
-    let instance: Instance;
-    let insertSpy: MockInstance<Stylesheet["insert"]>;
+    let instance: Css;
+    let insertSpy: MockInstance<StyleSheet["insert"]>;
 
     beforeEach(() => {
-        insertSpy = vi.spyOn(Stylesheet.prototype, "insert");
+        insertSpy = vi.spyOn(StyleSheet.prototype, "insert");
         instance = createInstance({ key: "gtkx" });
     });
 

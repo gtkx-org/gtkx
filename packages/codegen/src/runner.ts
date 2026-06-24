@@ -2,7 +2,7 @@ import { generateNamespaceModule } from "./ffi/pipeline.js";
 import { computeFingerprint } from "./fingerprint.js";
 import { type GiNamespaceInput, type GiStoreOptions, writeGiStore } from "./gi-store.js";
 import { namespaceDirectory } from "./gir/namespace.js";
-import { type GirRepository, loadGirRepository } from "./gir/repository.js";
+import { type Library, loadLibrary } from "./gir/repository.js";
 import { type JsxStoreOptions, writeJsxStore } from "./jsx-store.js";
 import { generateJsxFiles } from "./react/pipeline.js";
 
@@ -21,7 +21,7 @@ export type CodegenPhaseTimings = {
 
 export type CodegenRunnerResult = {
     namespaces: number;
-    widgets: number;
+    reactNodes: number;
     duration: number;
     phases: CodegenPhaseTimings;
 };
@@ -42,13 +42,13 @@ export class CodegenRunner {
     async run(): Promise<CodegenRunnerResult> {
         const start = Date.now();
         const load = timed(() => this.loadRepository());
-        const repository = load.value;
-        const ffi = timed(() => this.emitFfiStore(repository));
-        const jsx = timed(() => this.emitJsxStore(repository));
+        const library = load.value;
+        const ffi = timed(() => this.emitFfiStore(library));
+        const jsx = timed(() => this.emitJsxStore(library));
 
         return {
-            namespaces: repository.namespaces.size,
-            widgets: jsx.value,
+            namespaces: library.namespaces.size,
+            reactNodes: jsx.value,
             duration: Date.now() - start,
             phases: {
                 loadRepository: load.duration,
@@ -58,28 +58,28 @@ export class CodegenRunner {
         };
     }
 
-    private loadRepository(): GirRepository {
-        return loadGirRepository(this.options.libraries, this.options.girPath);
+    private loadRepository(): Library {
+        return loadLibrary(this.options.libraries, this.options.girPath);
     }
 
-    private emitFfiStore(repository: GirRepository): void {
+    private emitFfiStore(library: Library): void {
         const namespaces: GiNamespaceInput[] = [];
-        for (const namespace of repository.namespaces.values()) {
-            const { source } = generateNamespaceModule(namespace, repository);
+        for (const namespace of library.namespaces.values()) {
+            const { source } = generateNamespaceModule(namespace, library);
             namespaces.push({ directory: namespaceDirectory(namespace), rawSource: source });
         }
         const libraries = [...this.options.libraries];
         writeGiStore(this.options.gi, namespaces, {
-            value: computeFingerprint(repository.girFiles, libraries),
-            girFiles: repository.girFiles,
+            value: computeFingerprint(library.girFiles, libraries),
+            girFiles: library.girFiles,
             libraries,
         });
     }
 
-    private emitJsxStore(repository: GirRepository): number {
+    private emitJsxStore(library: Library): number {
         if (this.options.jsx === undefined) return 0;
-        const reactPipeline = generateJsxFiles(repository);
+        const reactPipeline = generateJsxFiles(library);
         writeJsxStore(this.options.jsx, reactPipeline.namespaces, reactPipeline.metadata);
-        return reactPipeline.widgetCount;
+        return reactPipeline.reactNodeCount;
     }
 }

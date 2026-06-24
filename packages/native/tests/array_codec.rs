@@ -11,7 +11,7 @@ use native::ffi::{FfiStorageKind, FfiValue, GArrayData};
 use native::types::{
     ArrayKind, ArrayType, BigIntKind, BooleanType, FfiDecoder, FfiEncoder, FloatKind,
     FundamentalType, GObjectType, IntegerKind, Ownership, RawPtrCodec, ReadSource, RefType,
-    StringType, StructType, TaggedKind, TaggedType, Type,
+    StringType, StructType, EnumFlagsKind, EnumFlagsType, Type,
 };
 use native::value::Value;
 
@@ -30,9 +30,9 @@ fn string_item_type(ownership: Ownership) -> Type {
     })
 }
 
-fn tagged_item_type() -> Type {
-    Type::Tagged(TaggedType {
-        kind: TaggedKind::Enum,
+fn enum_flags_item_type() -> Type {
+    Type::EnumFlags(EnumFlagsType {
+        kind: EnumFlagsKind::Enum,
         library: "Gtk".to_string(),
         get_type_fn: "gtk_orientation_get_type".to_string(),
         storage: IntegerKind::I32,
@@ -224,9 +224,9 @@ fn ptr_to_value_sized_reads_explicit_length() {
 }
 
 #[test]
-fn ptr_to_value_sized_reads_tagged_elements_without_range_guard() {
+fn ptr_to_value_sized_reads_enum_flags_elements_without_range_guard() {
     let ty = array_type(
-        tagged_item_type(),
+        enum_flags_item_type(),
         ArrayKind::Sized { size_index: 1 },
         Ownership::Borrowed,
     );
@@ -296,8 +296,8 @@ fn encode_integer_array_extract_error() {
 }
 
 #[test]
-fn encode_tagged_array_roundtrips_through_storage() {
-    let ty = array_type(tagged_item_type(), ArrayKind::Array, Ownership::Full);
+fn encode_enum_flags_array_roundtrips_through_storage() {
+    let ty = array_type(enum_flags_item_type(), ArrayKind::Array, Ownership::Full);
     let val = Value::Array(vec![Value::Number(0.0), Value::Number(1.0)]);
     let encoded = ty.encode(&val).unwrap();
     let decoded = ty.decode(&encoded).unwrap();
@@ -787,9 +787,9 @@ fn encode_garray_boolean_roundtrips() {
 }
 
 #[test]
-fn encode_garray_tagged_roundtrips() {
+fn encode_garray_enum_flags_roundtrips() {
     common::run(|| {
-        let ty = array_type(tagged_item_type(), ArrayKind::GArray, Ownership::Borrowed);
+        let ty = array_type(enum_flags_item_type(), ArrayKind::GArray, Ownership::Borrowed);
         let val = Value::Array(vec![Value::Number(1.0)]);
         let encoded = ty.encode(&val).unwrap();
         assert!(matches!(encoded, FfiValue::Storage(_)));

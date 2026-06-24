@@ -16,18 +16,18 @@ import { splitOptionalNamespace } from "./type-ref.js";
 
 const INTERNAL_NS_ID = 0;
 
-type Arena = {
+type TypeTable = {
     types: (GirType | undefined)[];
     names: (string | undefined)[];
     index: Map<string, number>;
 };
 
-export class GirRepository {
+export class Library {
     private namespacesByName = new Map<string, GirNamespace>();
     private namespaceById: (GirNamespace | undefined)[] = [];
     private nsNameById: string[] = [];
     private nsIdByName = new Map<string, number>();
-    private arenas: Arena[] = [];
+    private typeTables: TypeTable[] = [];
     private girFilesValue: string[] = [];
 
     public get namespaces(): Map<string, GirNamespace> {
@@ -39,7 +39,7 @@ export class GirRepository {
     }
 
     constructor() {
-        this.arenas[INTERNAL_NS_ID] = { types: [], names: [], index: new Map() };
+        this.typeTables[INTERNAL_NS_ID] = { types: [], names: [], index: new Map() };
         this.namespaceById[INTERNAL_NS_ID] = undefined;
         this.nsNameById[INTERNAL_NS_ID] = "$internal";
     }
@@ -47,8 +47,8 @@ export class GirRepository {
     private ensureNsId(name: string): number {
         const existing = this.nsIdByName.get(name);
         if (existing !== undefined) return existing;
-        const nsId = this.arenas.length;
-        this.arenas[nsId] = { types: [], names: [], index: new Map() };
+        const nsId = this.typeTables.length;
+        this.typeTables[nsId] = { types: [], names: [], index: new Map() };
         this.namespaceById[nsId] = undefined;
         this.nsNameById[nsId] = name;
         this.nsIdByName.set(name, nsId);
@@ -66,69 +66,69 @@ export class GirRepository {
     private namespaceOf(nsId: number): GirNamespace {
         const namespace = this.namespaceById[nsId];
         if (namespace === undefined) {
-            throw new Error(`No namespace registered for arena id ${nsId}`);
+            throw new Error(`No namespace registered for type table id ${nsId}`);
         }
         return namespace;
     }
 
-    private arenaOf(nsId: number): Arena {
-        const arena = this.arenas[nsId];
-        if (arena === undefined) {
-            throw new Error(`No arena for namespace id ${nsId}`);
+    private typeTableOf(nsId: number): TypeTable {
+        const typeTable = this.typeTables[nsId];
+        if (typeTable === undefined) {
+            throw new Error(`No type table for namespace id ${nsId}`);
         }
-        return arena;
+        return typeTable;
     }
 
-    private insertIntoArena(
-        arena: Arena,
+    private insertIntoTypeTable(
+        typeTable: TypeTable,
         slot: { type: GirType | undefined; indexKey?: string; displayName?: string },
     ): number {
-        const id = arena.types.length;
-        arena.types.push(slot.type);
-        arena.names.push(slot.displayName);
-        if (slot.indexKey !== undefined) arena.index.set(slot.indexKey, id);
+        const id = typeTable.types.length;
+        typeTable.types.push(slot.type);
+        typeTable.names.push(slot.displayName);
+        if (slot.indexKey !== undefined) typeTable.index.set(slot.indexKey, id);
         return id;
     }
 
-    private setType(nsId: number, name: string, type: GirType): void {
-        const arena = this.arenaOf(nsId);
-        const existing = arena.index.get(name);
+    private addType(nsId: number, name: string, type: GirType): void {
+        const typeTable = this.typeTableOf(nsId);
+        const existing = typeTable.index.get(name);
         if (existing !== undefined) {
-            arena.types[existing] = type;
+            typeTable.types[existing] = type;
             return;
         }
-        this.insertIntoArena(arena, { type, indexKey: name, displayName: name });
+        this.insertIntoTypeTable(typeTable, { type, indexKey: name, displayName: name });
     }
 
-    private stubNamed(nsId: number, name: string): TypeId {
-        const arena = this.arenaOf(nsId);
-        const existing = arena.index.get(name);
+    private findType(nsId: number, name: string): TypeId {
+        const typeTable = this.typeTableOf(nsId);
+        const existing = typeTable.index.get(name);
         if (existing !== undefined) return { nsId, id: existing };
-        const id = this.insertIntoArena(arena, { type: undefined, indexKey: name, displayName: name });
+        const id = this.insertIntoTypeTable(typeTable, { type: undefined, indexKey: name, displayName: name });
         return { nsId, id };
     }
 
-    private pushAnonymous(nsId: number, type: GirType): TypeId {
-        const arena = this.arenaOf(nsId);
-        const id = this.insertIntoArena(arena, { type });
+    private addAnonymousType(nsId: number, type: GirType): TypeId {
+        const typeTable = this.typeTableOf(nsId);
+        const id = this.insertIntoTypeTable(typeTable, { type });
         return { nsId, id };
     }
 
-    private findOrStubType(currentNsId: number, name: string): TypeId {
+    private findTypeByName(currentNsId: number, name: string): TypeId {
         const [namespaceName, localName] = splitOptionalNamespace(name);
         const targetNsId = namespaceName === undefined ? currentNsId : this.ensureNsId(namespaceName);
-        return this.stubNamed(targetNsId, localName);
+        return this.findType(targetNsId, localName);
     }
 
     private parseContext(nsId: number): ParseContext {
         const context: ParseContext = {
             nsId,
-            findOrStubType: (name) => this.findOrStubType(nsId, name),
-            internPrimitive: (category) => this.internPrimitive(category),
-            internVarargs: () => this.internVarargs(),
-            internContainer: (type: CArrayType | GListType | GHashTableType) => this.pushAnonymous(nsId, type),
-            internInlineCallback: (node) =>
-                this.pushAnonymous(nsId, {
+            findType: (name) => this.findTypeByName(nsId, name),
+            addPrimitive: (category) => this.addPrimitive(category),
+            addVarargs: () => this.addVarargs(),
+            addContainer: (type: CArrayType | GListType | GHashTableType) => this.addAnonymousType(nsId, type),
+            addAnonymousCallback: (node) =>
+                this.addAnonymousType(nsId, {
                     kind: "callback",
                     namespace: this.namespaceOf(nsId),
                     value: callbackFromNode(node, context),
@@ -137,35 +137,35 @@ export class GirRepository {
         return context;
     }
 
-    private internPrimitive(category: PrimitiveCategory): TypeId {
-        return this.internInternal(`primitive:${category}`, { kind: "primitive", category });
+    private addPrimitive(category: PrimitiveCategory): TypeId {
+        return this.findOrAddContainer(`primitive:${category}`, { kind: "primitive", category });
     }
 
-    private internVarargs(): TypeId {
-        return this.internInternal("varargs", { kind: "varargs" });
+    private addVarargs(): TypeId {
+        return this.findOrAddContainer("varargs", { kind: "varargs" });
     }
 
-    private internInternal(key: string, type: GirType): TypeId {
-        const arena = this.arenaOf(INTERNAL_NS_ID);
-        const existing = arena.index.get(key);
+    private findOrAddContainer(key: string, type: GirType): TypeId {
+        const typeTable = this.typeTableOf(INTERNAL_NS_ID);
+        const existing = typeTable.index.get(key);
         if (existing !== undefined) return { nsId: INTERNAL_NS_ID, id: existing };
-        const id = this.insertIntoArena(arena, { type, indexKey: key });
+        const id = this.insertIntoTypeTable(typeTable, { type, indexKey: key });
         return { nsId: INTERNAL_NS_ID, id };
     }
 
-    private internDeclarations(shell: GirNamespace): void {
+    private addDeclarations(shell: GirNamespace): void {
         const nsId = shell.id;
-        for (const value of shell.classes) this.setType(nsId, value.name, { kind: "class", namespace: shell, value });
+        for (const value of shell.classes) this.addType(nsId, value.name, { kind: "class", namespace: shell, value });
         for (const value of shell.interfaces) {
-            this.setType(nsId, value.name, { kind: "interface", namespace: shell, value });
+            this.addType(nsId, value.name, { kind: "interface", namespace: shell, value });
         }
-        for (const value of shell.boxeds) this.setType(nsId, value.name, { kind: "boxed", namespace: shell, value });
-        for (const value of shell.enums) this.setType(nsId, value.name, { kind: "enum", namespace: shell, value });
+        for (const value of shell.records) this.addType(nsId, value.name, { kind: "record", namespace: shell, value });
+        for (const value of shell.enums) this.addType(nsId, value.name, { kind: "enum", namespace: shell, value });
         for (const value of shell.callbacks) {
-            this.setType(nsId, value.name, { kind: "callback", namespace: shell, value });
+            this.addType(nsId, value.name, { kind: "callback", namespace: shell, value });
         }
         for (const alias of shell.aliases) {
-            this.setType(nsId, alias.name, {
+            this.addType(nsId, alias.name, {
                 kind: "alias",
                 namespace: shell,
                 target: alias.target,
@@ -175,11 +175,11 @@ export class GirRepository {
     }
 
     typeOf(tid: TypeId): GirType | undefined {
-        return this.arenas[tid.nsId]?.types[tid.id];
+        return this.typeTables[tid.nsId]?.types[tid.id];
     }
 
     nameOf(tid: TypeId): { namespaceName: string; typeName: string } | undefined {
-        const typeName = this.arenas[tid.nsId]?.names[tid.id];
+        const typeName = this.typeTables[tid.nsId]?.names[tid.id];
         const namespaceName = this.nsNameById[tid.nsId];
         if (typeName === undefined || namespaceName === undefined) return undefined;
         return { namespaceName, typeName };
@@ -191,31 +191,31 @@ export class GirRepository {
         const [namespaceName, localName] = splitOptionalNamespace(name);
         const targetNsId = namespaceName === undefined ? currentNsId : this.nsIdByName.get(namespaceName);
         if (targetNsId === undefined) return undefined;
-        const id = this.arenaOf(targetNsId).index.get(localName);
+        const id = this.typeTableOf(targetNsId).index.get(localName);
         if (id === undefined) return undefined;
-        return this.arenaOf(targetNsId).types[id];
+        return this.typeTableOf(targetNsId).types[id];
     }
 
     resolveNamed(namespaceName: string, typeName: string): GirType | undefined {
         const nsId = this.nsIdByName.get(namespaceName);
         if (nsId === undefined) return undefined;
-        const id = this.arenaOf(nsId).index.get(typeName);
+        const id = this.typeTableOf(nsId).index.get(typeName);
         if (id === undefined) return undefined;
-        return this.arenaOf(nsId).types[id];
+        return this.typeTableOf(nsId).types[id];
     }
 
     collectUnresolved(): string[] {
         const unresolved: string[] = [];
         for (const [name, nsId] of this.nsIdByName) {
-            const arena = this.arenaOf(nsId);
-            for (const [local, id] of arena.index) {
-                if (arena.types[id] === undefined) unresolved.push(`${name}.${local}`);
+            const typeTable = this.typeTableOf(nsId);
+            for (const [local, id] of typeTable.index) {
+                if (typeTable.types[id] === undefined) unresolved.push(`${name}.${local}`);
             }
         }
         return unresolved;
     }
 
-    private static drive(repository: GirRepository, libraries: string[], girPath: string[]): void {
+    private static drive(library: Library, libraries: string[], girPath: string[]): void {
         const queue: string[] = [...libraries];
         const seen = new Set<string>();
         const discovered: { header: NamespaceHeader; shell: GirNamespace }[] = [];
@@ -230,25 +230,25 @@ export class GirRepository {
             girFiles.push(path);
             const repositoryNode = readRepositoryNode(path);
             const header = parseNamespaceHeader(repositoryNode);
-            const shell = repository.registerNamespace(header);
+            const shell = library.registerNamespace(header);
             discovered.push({ header, shell });
             for (const include of header.includes) {
                 queue.push(`${include.name}-${include.version}`);
             }
         }
         for (const { header, shell } of discovered) {
-            populateNamespaceBody(shell, header.namespaceNode, repository.parseContext(shell.id));
+            populateNamespaceBody(shell, header.namespaceNode, library.parseContext(shell.id));
         }
         for (const { shell } of discovered) {
-            repository.internDeclarations(shell);
+            library.addDeclarations(shell);
         }
-        repository.girFilesValue = girFiles;
+        library.girFilesValue = girFiles;
     }
 
-    static load(libraries: string[], girPath: string[]): GirRepository {
-        const repository = new GirRepository();
-        GirRepository.drive(repository, libraries, girPath);
-        return repository;
+    static load(libraries: string[], girPath: string[]): Library {
+        const library = new Library();
+        Library.drive(library, libraries, girPath);
+        return library;
     }
 }
 
@@ -261,8 +261,7 @@ const readRepositoryNode = (path: string): RawNode => {
     return repository as RawNode;
 };
 
-export const loadGirRepository = (libraries: string[], girPath: string[]): GirRepository =>
-    GirRepository.load(libraries, girPath);
+export const loadLibrary = (libraries: string[], girPath: string[]): Library => Library.load(libraries, girPath);
 
 const locateGirFile = (identifier: string, girPath: string[]): string => {
     const filename = `${identifier}.gir`;

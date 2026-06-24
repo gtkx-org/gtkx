@@ -9,16 +9,16 @@ import {
     type ColumnViewContextValue,
 } from "./contexts/column-view-context.js";
 import { useListModel } from "./hooks/use-list-model.js";
-import { useModelInstallation } from "./hooks/use-model-installation.js";
-import { type FactoryBinding, useRealizedSlots } from "./hooks/use-realized-slots.js";
+import { useInstalledModel } from "./hooks/use-installed-model.js";
+import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useSelectionModel } from "./hooks/use-selection-model.js";
 import { useSortHandler } from "./hooks/use-sort-handler.js";
-import { ListPortalHost } from "./list-portal-host.js";
-import type { SlotRenderer } from "./list-slot.js";
+import { CellRenderHost } from "./cell-render-host.js";
+import type { CellRenderer } from "./list-cell.js";
 import type { ColumnViewProps } from "./types.js";
 import type { ItemResolver } from "./utils/item-resolver.js";
 
-const headerFactoryBinding: FactoryBinding<Gtk.ColumnView> = {
+const headerFactoryInstaller: FactoryInstaller<Gtk.ColumnView> = {
     install: (widget, factory) => widget.setHeaderFactory(factory),
     uninstall: (widget) => widget.setHeaderFactory(null),
 };
@@ -70,7 +70,7 @@ type NormalizedColumnViewProps<T, S> = ColumnViewProps<T, S> & {
 };
 
 const headerRenderer =
-    <T, S>(renderHeader: ((value: S) => ReactNode) | null | undefined): SlotRenderer<T, S> =>
+    <T, S>(renderHeader: ((value: S) => ReactNode) | null | undefined): CellRenderer<T, S> =>
     (value) =>
         renderHeader ? renderHeader(value as S) : null;
 
@@ -78,7 +78,7 @@ interface ColumnViewWiring<T, S> {
     setRef: (value: Gtk.ColumnView | null) => void;
     resolver: ItemResolver<T, S>;
     headerResolver: ItemResolver<T, S>;
-    headerStore: ReturnType<typeof useRealizedSlots>["store"];
+    headerStore: ReturnType<typeof useCellContainers>["store"];
     useHeader: boolean;
     contextValue: ColumnViewContextValue;
 }
@@ -107,13 +107,13 @@ const useColumnViewWiring = <T, S>(
     });
     const installedModel: Gtk.SelectionModel =
         externalModel === undefined ? controlledSelection : (externalModel as Gtk.SelectionModel);
-    useModelInstallation(widgetRef, installedModel, (widget, model) => widget.setModel(model));
+    useInstalledModel(widgetRef, installedModel, (widget, model) => widget.setModel(model));
 
     const useHeader = externalModel === undefined && typeof props.renderHeader === "function";
-    const headers = useRealizedSlots<Gtk.ColumnView>({
+    const headers = useCellContainers<Gtk.ColumnView>({
         target: useHeader ? widgetRef : null,
-        binding: headerFactoryBinding,
-        estimatedHeight: props.estimatedRowHeight ?? undefined,
+        installer: headerFactoryInstaller,
+        estimatedHeight: props.estimatedItemHeight ?? undefined,
     });
 
     useSortHandler({
@@ -162,7 +162,7 @@ export const ColumnView = <T = unknown, S = unknown>(props: ColumnViewComponentP
         sortOrder,
         onSortChanged,
         renderHeader,
-        estimatedRowHeight,
+        estimatedItemHeight,
         children,
         ...intrinsicProps
     } = props as NormalizedColumnViewProps<T, S>;
@@ -180,7 +180,7 @@ export const ColumnView = <T = unknown, S = unknown>(props: ColumnViewComponentP
             sortOrder,
             onSortChanged,
             renderHeader,
-            estimatedRowHeight,
+            estimatedItemHeight,
         } as NormalizedColumnViewProps<T, S>,
         registry,
     );
@@ -195,7 +195,7 @@ export const ColumnView = <T = unknown, S = unknown>(props: ColumnViewComponentP
         <>
             {intrinsic}
             {wiring.useHeader ? (
-                <ListPortalHost
+                <CellRenderHost
                     store={wiring.headerStore}
                     resolver={wiring.headerResolver}
                     render={headerRenderer<T, S>(renderHeader)}

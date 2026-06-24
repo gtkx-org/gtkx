@@ -1,4 +1,5 @@
 import { BUFFER_TEXT_KIND, LABEL_TEXT_KIND } from "@gtkx/config";
+import { getWrapperClassByName } from "@gtkx/ffi";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { freeze, unfreeze } from "@gtkx/native";
@@ -11,19 +12,14 @@ import { applyAccessibleProps, isAccessibleProp } from "./accessible.js";
 import { applyProps } from "./apply-props.js";
 import { beginCommit, endCommit, runCommitFlush } from "./commit-flush.js";
 import { attachNode, detachFromParent, detachNode, resyncWrapper } from "./element-map.js";
-import {
-    createElementInstance,
-    createWrapperInstance,
-    resolveContainerClass,
-    WRAPPER_NODE_ELEMENT,
-} from "./instance.js";
+import { createElementInstance, createWrapperInstance, WRAPPER_NODE_ELEMENT } from "./instance.js";
 import { scheduleLabelTextRebuild } from "./label-text-rebuild.js";
-import { reportReconcilerError } from "./reconciler-error-sink.js";
+import { reportReconcilerError } from "./reconciler-error-handler.js";
 import { isRuleManagedProp, resolveSetPropsRuleSet, ruleNodeOf } from "./rule-registry.js";
 import { ensureState, type Node, stateOf } from "./state.js";
 import { scheduleBufferRebuild } from "./text-buffer-rebuild.js";
 import { isBufferContentWrapper, isLabelTextWrapper } from "./text-wrapper.js";
-import type { ContainerInfo, Props } from "./types.js";
+import type { Container, Props } from "./types.js";
 import { isWrapperElement } from "./wrapper-element.js";
 
 const FIXED_UPDATE_PRIORITY = DiscreteEventPriority;
@@ -37,7 +33,7 @@ type HostContext = {
 type HostConfig = ReactReconciler.HostConfig<
     string,
     Props,
-    ContainerInfo,
+    Container,
     Node,
     Node,
     never,
@@ -51,7 +47,7 @@ type HostConfig = ReactReconciler.HostConfig<
     number
 >;
 
-export type ReconcilerInstance = ReactReconciler.Reconciler<ContainerInfo, Node, Node, never, never, PublicInstance>;
+export type ReconcilerInstance = ReactReconciler.Reconciler<Container, Node, Node, never, never, PublicInstance>;
 
 const withSignalsBlocked = <T>(instance: Node, fn: () => T): T => {
     const { signalStore } = stateOf(instance);
@@ -152,8 +148,8 @@ const commitInstanceProps = (instance: Node, oldProps: Props | null, newProps: P
     if (instance instanceof Gtk.TextTag) scheduleBufferRebuild(instance);
 };
 
-const needsDetachOnDelete = (backing: GObject.Object): boolean =>
-    !(backing instanceof Gtk.Widget) && !(backing instanceof Gtk.TextBuffer);
+const needsDetachOnDelete = (wrapper: GObject.Object): boolean =>
+    !(wrapper instanceof Gtk.Widget) && !(wrapper instanceof Gtk.TextBuffer);
 
 const detachInstance = (instance: Node): void => {
     const state = stateOf(instance);
@@ -221,7 +217,7 @@ const textHostKinds = new Map<string, TextHostKind>();
 const resolveTextHostKind = (type: string): TextHostKind => {
     const cached = textHostKinds.get(type);
     if (cached !== undefined) return cached;
-    const containerClass = resolveContainerClass(type);
+    const containerClass = getWrapperClassByName(type);
     let kind: TextHostKind = null;
     if (classHasType(containerClass, "GtkLabel")) kind = "label";
     else if (classHasType(containerClass, "GtkTextBuffer")) kind = "buffer";

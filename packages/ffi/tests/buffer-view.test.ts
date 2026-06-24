@@ -14,7 +14,7 @@ const computeChecksumForData = t.bind(
     t.string("full"),
 );
 
-const unicharToUtf8 = t.bind(GLIB, "g_unichar_to_utf8", [t.uint32, t.blob], t.int32);
+const unicharToUtf8 = t.bind(GLIB, "g_unichar_to_utf8", [t.uint32, t.buffer], t.int32);
 
 describe("ArrayBufferView array arguments", () => {
     it("passes a typed array's bytes to the callee zero-copy", () => {

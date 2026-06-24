@@ -8,7 +8,7 @@ vi.mock("node:fs", async (importActual) => {
     return { ...actual, watch: vi.fn() };
 });
 
-import { RELOAD_EXIT_CODE } from "../../src/dev/protocol.js";
+import { RESTART_EXIT_CODE } from "../../src/dev/protocol.js";
 import { type ForkRunner, runDevSupervisor, type SupervisedChild } from "../../src/dev/supervisor.js";
 
 const flushMicrotasks = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
@@ -135,11 +135,11 @@ describe("runDevSupervisor (startup)", () => {
 describe("runDevSupervisor (child exit handling)", () => {
     const ctx = setupSupervisorCtx();
 
-    it("relaunches the runner when the child exits with the reload code", async () => {
+    it("relaunches the runner when the child exits with the restart code", async () => {
         const child = await startSupervisor();
         queueChild();
 
-        child.emit("exit", RELOAD_EXIT_CODE, null);
+        child.emit("exit", RESTART_EXIT_CODE, null);
 
         expect(forkMock).toHaveBeenCalledTimes(2);
         expect(ctx.exitSpy).not.toHaveBeenCalled();
@@ -147,7 +147,7 @@ describe("runDevSupervisor (child exit handling)", () => {
         expect(logged).toContain("Restarting dev runner");
     });
 
-    it("exits with the child's code when the child exits non-reloadably", async () => {
+    it("exits with the child's code when the child exits non-restartably", async () => {
         const child = await startSupervisor();
 
         child.emit("exit", 7, null);

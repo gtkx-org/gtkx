@@ -22,9 +22,9 @@ import "@gtkx/gi/gobject";
 import { getHandle, t } from "@gtkx/ffi";
 import { call } from "@gtkx/native";
 import {
-    fromGvalue,
+    fromGValue,
     newValueFromFfi,
-    toGvalue,
+    toGValue,
     valueGetBoolean,
     valueGetDouble,
     valueGetEnum,
@@ -80,89 +80,89 @@ describe("Value boxed accessors", () => {
     });
 });
 
-describe("toGvalue — gobject", () => {
+describe("toGValue — gobject", () => {
     it("creates a GValue holding a GObject", () => {
         const label = new Gtk.Label({ label: "test" });
-        const v = toGvalue({ type: "gobject", ownership: "borrowed" }, label);
+        const v = toGValue({ type: "gobject", ownership: "borrowed" }, label);
         expect(valueGetObject(v)).not.toBeNull();
     });
 
     it("creates a GValue holding null", () => {
-        const v = toGvalue({ type: "gobject", ownership: "borrowed" }, null);
+        const v = toGValue({ type: "gobject", ownership: "borrowed" }, null);
         expect(valueGetObject(v)).toBeNull();
     });
 });
 
 describe("valueGetType", () => {
     it("returns the GType of a string value", () => {
-        expect(valueGetType(toGvalue({ type: "string", ownership: "borrowed" }, "test"))).toBe(TYPE_STRING);
+        expect(valueGetType(toGValue({ type: "string", ownership: "borrowed" }, "test"))).toBe(TYPE_STRING);
     });
 
     it("returns the GType of a boolean value", () => {
-        expect(valueGetType(toGvalue({ type: "boolean" }, true))).toBe(TYPE_BOOLEAN);
+        expect(valueGetType(toGValue({ type: "boolean" }, true))).toBe(TYPE_BOOLEAN);
     });
 
     it("returns the GType of an int value", () => {
-        expect(valueGetType(toGvalue({ type: "int32" }, 42))).toBe(TYPE_INT);
+        expect(valueGetType(toGValue({ type: "int32" }, 42))).toBe(TYPE_INT);
     });
 });
 
-describe("fromGvalue extra coverage", () => {
+describe("fromGValue extra coverage", () => {
     it("returns null when reading a default-initialized G_TYPE_POINTER", () => {
         const v = new Value();
         v.init(TYPE_POINTER);
-        expect(fromGvalue(getHandle(v))).toBeNull();
+        expect(fromGValue(getHandle(v))).toBeNull();
     });
 
     it("returns an empty array when reading an unset GStrv value", () => {
         const v = new Value();
         v.init(typeFromName("GStrv"));
-        expect(fromGvalue(getHandle(v))).toEqual([]);
+        expect(fromGValue(getHandle(v))).toEqual([]);
     });
 
     it("returns a Gdk.RGBA wrapper when reading a boxed value", () => {
         const v = new Value();
         v.init(gdkRgbaGtype());
         v.setBoxed(makeRgba(0.1, 0.2, 0.3, 1.0));
-        expect(fromGvalue(getHandle(v))).toBeInstanceOf(Gdk.RGBA);
+        expect(fromGValue(getHandle(v))).toBeInstanceOf(Gdk.RGBA);
     });
 });
 
-describe("toGvalue — primitives", () => {
+describe("toGValue — primitives", () => {
     it("builds a boolean value", () => {
-        expect(valueGetBoolean(toGvalue({ type: "boolean" }, true))).toBe(true);
+        expect(valueGetBoolean(toGValue({ type: "boolean" }, true))).toBe(true);
     });
 
     it("builds a string value", () => {
-        expect(valueGetString(toGvalue({ type: "string", ownership: "borrowed" }, "hi"))).toBe("hi");
+        expect(valueGetString(toGValue({ type: "string", ownership: "borrowed" }, "hi"))).toBe("hi");
     });
 
     it("builds an int value for int8/int16/int32 descriptors", () => {
-        expect(valueGetInt(toGvalue({ type: "int8" }, -1))).toBe(-1);
-        expect(valueGetInt(toGvalue({ type: "int16" }, 100))).toBe(100);
-        expect(valueGetInt(toGvalue({ type: "int32" }, 2000))).toBe(2000);
+        expect(valueGetInt(toGValue({ type: "int8" }, -1))).toBe(-1);
+        expect(valueGetInt(toGValue({ type: "int16" }, 100))).toBe(100);
+        expect(valueGetInt(toGValue({ type: "int32" }, 2000))).toBe(2000);
     });
 
     it("builds a uint value for uint8/uint16/uint32 descriptors", () => {
-        expect(valueGetUint(toGvalue({ type: "uint8" }, 1))).toBe(1);
-        expect(valueGetUint(toGvalue({ type: "uint16" }, 200))).toBe(200);
-        expect(valueGetUint(toGvalue({ type: "uint32" }, 4000))).toBe(4000);
+        expect(valueGetUint(toGValue({ type: "uint8" }, 1))).toBe(1);
+        expect(valueGetUint(toGValue({ type: "uint16" }, 200))).toBe(200);
+        expect(valueGetUint(toGValue({ type: "uint32" }, 4000))).toBe(4000);
     });
 
     it("builds int64 and uint64 values as bigint", () => {
-        expect(valueGetInt64(toGvalue({ type: "bigint64" }, 42n))).toBe(42n);
-        expect(valueGetUint64(toGvalue({ type: "biguint64" }, 84n))).toBe(84n);
+        expect(valueGetInt64(toGValue({ type: "bigint64" }, 42n))).toBe(42n);
+        expect(valueGetUint64(toGValue({ type: "biguint64" }, 84n))).toBe(84n);
     });
 
     it("builds float and double values", () => {
-        expect(valueGetFloat(toGvalue({ type: "float32" }, 1.5))).toBeCloseTo(1.5, 3);
-        expect(valueGetDouble(toGvalue({ type: "float64" }, Math.PI))).toBeCloseTo(Math.PI);
+        expect(valueGetFloat(toGValue({ type: "float32" }, 1.5))).toBeCloseTo(1.5, 3);
+        expect(valueGetDouble(toGValue({ type: "float64" }, Math.PI))).toBeCloseTo(Math.PI);
     });
 });
 
-describe("toGvalue — enums and flags", () => {
+describe("toGValue — enums and flags", () => {
     it("builds an enum value from library/getTypeFn descriptor", () => {
-        const v = toGvalue(
+        const v = toGValue(
             { type: "enum", library: "libgtk-4.so.1", getTypeFn: "gtk_align_get_type", signed: false },
             Gtk.Align.CENTER,
         );
@@ -170,7 +170,7 @@ describe("toGvalue — enums and flags", () => {
     });
 
     it("builds a flags value from a flags-fundamental enum descriptor", () => {
-        const v = toGvalue(
+        const v = toGValue(
             { type: "enum", library: "libgobject-2.0.so.0", getTypeFn: "g_binding_flags_get_type", signed: false },
             3,
         );
@@ -178,7 +178,7 @@ describe("toGvalue — enums and flags", () => {
     });
 
     it("builds a flags value from a flags descriptor", () => {
-        const v = toGvalue(
+        const v = toGValue(
             { type: "flags", library: "libgobject-2.0.so.0", getTypeFn: "g_binding_flags_get_type", signed: false },
             5,
         );
@@ -186,14 +186,14 @@ describe("toGvalue — enums and flags", () => {
     });
 });
 
-describe("toGvalue — objects and boxed", () => {
+describe("toGValue — objects and boxed", () => {
     it("builds a gobject value", () => {
         const label = new Gtk.Label({ label: "x" });
-        expect(valueGetObject(toGvalue({ type: "gobject", ownership: "borrowed" }, label))).not.toBeNull();
+        expect(valueGetObject(toGValue({ type: "gobject", ownership: "borrowed" }, label))).not.toBeNull();
     });
 
     it("builds a boxed value via getTypeFn resolution", () => {
-        const v = toGvalue(
+        const v = toGValue(
             {
                 type: "boxed",
                 ownership: "borrowed",
@@ -207,18 +207,18 @@ describe("toGvalue — objects and boxed", () => {
     });
 
     it("builds a boxed value when only innerType is provided", () => {
-        const v = toGvalue({ type: "boxed", ownership: "borrowed", innerType: "GdkRGBA" }, makeRgba(0, 0, 0, 1));
+        const v = toGValue({ type: "boxed", ownership: "borrowed", innerType: "GdkRGBA" }, makeRgba(0, 0, 0, 1));
         expect(valueGetType(v)).toBe(gdkRgbaGtype());
     });
 
     it("throws for boxed types with an unresolvable innerType", () => {
         expect(() =>
-            toGvalue({ type: "boxed", ownership: "borrowed", innerType: "NotARealGType" }, makeRgba(0, 0, 0, 1)),
+            toGValue({ type: "boxed", ownership: "borrowed", innerType: "NotARealGType" }, makeRgba(0, 0, 0, 1)),
         ).toThrow(/Cannot resolve gtype/);
     });
 });
 
-describe("toGvalue — variant and param fundamentals", () => {
+describe("toGValue — variant and param fundamentals", () => {
     it("round-trips a GVariant through a fundamental descriptor keyed by typeName", () => {
         const variant = GLib.Variant.newString("payload");
         const descriptor = t.fundamental("libgobject-2.0.so.0,libglib-2.0.so.0", "g_variant_ref", "g_variant_unref", {
@@ -226,10 +226,10 @@ describe("toGvalue — variant and param fundamentals", () => {
             typeName: "GVariant",
         });
 
-        const value = toGvalue(descriptor, variant);
+        const value = toGValue(descriptor, variant);
         expect(valueGetType(value)).toBe(TYPE_VARIANT);
 
-        const result = fromGvalue(value);
+        const result = fromGValue(value);
         expect(result).toBeInstanceOf(GLib.Variant);
         expect((result as GLib.Variant).getString()[0]).toBe("payload");
     });
@@ -241,17 +241,17 @@ describe("toGvalue — variant and param fundamentals", () => {
             typeName: "GParam",
         });
 
-        const value = toGvalue(descriptor, spec);
+        const value = toGValue(descriptor, spec);
         expect(valueGetType(value)).toBe(TYPE_PARAM);
 
-        const result = fromGvalue(value) as typeof spec | null;
+        const result = fromGValue(value) as typeof spec | null;
         expect(result?.getName()).toBe(spec.getName());
     });
 });
 
-describe("toGvalue — arrays and errors", () => {
+describe("toGValue — arrays and errors", () => {
     it("builds a strv array value", () => {
-        const v = toGvalue(
+        const v = toGValue(
             {
                 type: "array",
                 kind: "array",
@@ -260,12 +260,12 @@ describe("toGvalue — arrays and errors", () => {
             },
             ["one", "two"],
         );
-        expect(fromGvalue(v)).toEqual(["one", "two"]);
+        expect(fromGValue(v)).toEqual(["one", "two"]);
     });
 
     it("throws for unsupported array types", () => {
         expect(() =>
-            toGvalue(
+            toGValue(
                 {
                     type: "array",
                     kind: "glist",
@@ -279,7 +279,7 @@ describe("toGvalue — arrays and errors", () => {
 
     it("throws for fundamental types without a typeName", () => {
         expect(() =>
-            toGvalue(
+            toGValue(
                 {
                     type: "fundamental",
                     ownership: "borrowed",
@@ -293,7 +293,7 @@ describe("toGvalue — arrays and errors", () => {
     });
 
     it("throws for unsupported FFI types", () => {
-        expect(() => toGvalue({ type: "unichar" }, 0)).toThrow(/unsupported FFI type/i);
+        expect(() => toGValue({ type: "unichar" }, 0)).toThrow(/unsupported FFI type/i);
     });
 });
 

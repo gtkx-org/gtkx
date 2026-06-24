@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type CodegenFingerprint, computeFingerprint, FINGERPRINT_FILENAME } from "@gtkx/codegen";
 import type { GtkxConfig } from "@gtkx/config";
-import { sortedAlpha } from "@gtkx/utils";
+import { sortedStrings } from "@gtkx/utils";
 import { resolveGirPath } from "./gir-resolver.js";
 import { resolveLibraries } from "./library-resolver.js";
 import { type CodegenStore, resolveCodegenStore } from "./store-resolver.js";
@@ -41,7 +41,7 @@ const fingerprintStale = (giStoreDir: string, libraries: string[]): boolean => {
     } catch {
         return true;
     }
-    const sortAlpha = (values: string[]): string => sortedAlpha(values).join(",");
+    const sortAlpha = (values: string[]): string => sortedStrings(values).join(",");
     if (sortAlpha(sentinel.libraries) !== sortAlpha(libraries)) return true;
     try {
         return computeFingerprint(sentinel.girFiles, sentinel.libraries) !== sentinel.value;
@@ -50,7 +50,7 @@ const fingerprintStale = (giStoreDir: string, libraries: string[]): boolean => {
     }
 };
 
-export const isCodegenNeeded = (inputs: CodegenInputs): boolean => {
+export const isCodegenStale = (inputs: CodegenInputs): boolean => {
     try {
         const { store, libraries } = inputs;
         if (!existsSync(store.giLinkDir) || !existsSync(store.giStoreDir)) {

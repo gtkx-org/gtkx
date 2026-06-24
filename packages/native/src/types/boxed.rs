@@ -88,7 +88,7 @@ impl BoxedType {
         if self.ownership.is_full() {
             Ok(Boxed::from_glib_full_with_free_fn(ptr, free_fn))
         } else {
-            Ok(Boxed::from_ptr_unowned(ptr))
+            Ok(Boxed::from_glib_borrow(ptr))
         }
     }
 
@@ -180,7 +180,7 @@ impl FfiDecoder for BoxedType {
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         self.null_guarded(ptr, |ptr| {
             if self.free_fn.is_some() || self.caller_allocated {
-                return Ok(boxed_value(Boxed::from_ptr_unowned(ptr)));
+                return Ok(boxed_value(Boxed::from_glib_borrow(ptr)));
             }
             Ok(boxed_value(Boxed::from_glib_none(self.gtype(), ptr)?))
         })
@@ -266,7 +266,7 @@ impl FfiDecoder for StructType {
         let boxed = match self.ownership {
             Ownership::Full => Boxed::from_glib_full(None, struct_ptr),
             Ownership::Borrowed => self.size.map_or_else(
-                || Boxed::from_ptr_unowned(struct_ptr),
+                || Boxed::from_glib_borrow(struct_ptr),
                 |size| Boxed::copy_with_size(struct_ptr, size),
             ),
         };
@@ -277,10 +277,10 @@ impl FfiDecoder for StructType {
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         self.null_guarded(ptr, |ptr| {
             if self.caller_allocated {
-                return Ok(boxed_value(Boxed::from_ptr_unowned(ptr)));
+                return Ok(boxed_value(Boxed::from_glib_borrow(ptr)));
             }
             let boxed = self.size.map_or_else(
-                || Boxed::from_ptr_unowned(ptr),
+                || Boxed::from_glib_borrow(ptr),
                 |size| Boxed::copy_with_size(ptr, size),
             );
             Ok(boxed_value(boxed))

@@ -1,8 +1,8 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { sortedAlphaBy } from "@gtkx/utils";
+import { sortedStringsBy } from "@gtkx/utils";
 import { formatRole } from "./role-helpers.js";
 import { type Container, roots } from "./traversal.js";
-import { getWidgetPropertyText } from "./widget-text.js";
+import { getWidgetNodeText } from "./widget-text.js";
 
 const DEFAULT_MAX_LENGTH = 7000;
 const INDENT = "  ";
@@ -38,7 +38,7 @@ const buildAttrs = (widget: Gtk.Widget, getId: WidgetIdResolver | undefined): [s
     }
 
     const idAttrs = attrs.filter(([key]) => key === "id");
-    const otherAttrs = sortedAlphaBy(
+    const otherAttrs = sortedStringsBy(
         attrs.filter(([key]) => key !== "id"),
         ([key]) => key,
     );
@@ -94,7 +94,7 @@ const formatWidget = (
     const openTag = `${colors.tag("<")}${colors.tag(tag)}${attrs}${colors.tag(">")}`;
     const closeTag = `${colors.tag("</")}${colors.tag(tag)}${colors.tag(">")}`;
 
-    const text = getWidgetPropertyText(widget);
+    const text = getWidgetNodeText(widget);
     const firstChild = widget.getFirstChild();
 
     if (!text && !firstChild) {

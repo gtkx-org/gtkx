@@ -1,4 +1,4 @@
-import type { GirBoxed } from "./boxed.js";
+import type { GirRecord } from "./boxed.js";
 import type { GirCallback } from "./callback.js";
 import type { GirClass } from "./class.js";
 import type { GirEnum } from "./enum.js";
@@ -8,7 +8,7 @@ import type { StructuralType, TypeId } from "./type-id.js";
 export type EntityType =
     | { kind: "class"; namespace: GirNamespace; value: GirClass }
     | { kind: "interface"; namespace: GirNamespace; value: GirClass }
-    | { kind: "boxed"; namespace: GirNamespace; value: GirBoxed }
+    | { kind: "record"; namespace: GirNamespace; value: GirRecord }
     | { kind: "enum"; namespace: GirNamespace; value: GirEnum }
     | { kind: "callback"; namespace: GirNamespace; value: GirCallback }
     | {

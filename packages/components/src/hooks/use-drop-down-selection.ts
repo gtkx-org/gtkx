@@ -36,7 +36,7 @@ export const useDropDownSelection = <T, S>(options: DropDownSelectionOptions<T, 
 
     useLayoutEffect(() => {
         if (resolved === null || selectedId === undefined || selectedId === null) return;
-        const position = resolverRef.current.positionOf(selectedId);
+        const position = resolverRef.current.positionOfKey(selectedId);
         if (position < 0) return;
         if (normalizeSelected(resolved.getSelected()) !== position) resolved.setSelected(position);
     }, [resolved, selectedId, resolver]);
@@ -45,7 +45,7 @@ export const useDropDownSelection = <T, S>(options: DropDownSelectionOptions<T, 
         if (resolved === null) return;
         const position = normalizeSelected(resolved.getSelected());
         if (position < 0) return;
-        const id = resolverRef.current.idOf(position);
+        const id = resolverRef.current.keyOf(position);
         if (id !== undefined) onSelectionChangedRef.current?.(id);
     });
 

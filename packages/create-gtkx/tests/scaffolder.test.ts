@@ -4,11 +4,11 @@ import ejs from "ejs";
 import { vol } from "memfs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PackageManager } from "../src/options.js";
-import { type CreateOptions, createScaffolder, type ScaffolderDeps } from "../src/scaffolder.js";
+import { type CreateOptions, scaffold, type ScaffolderDeps } from "../src/scaffolder.js";
 import { listTemplates, type TemplateContext } from "../src/templates.js";
 
 const TEST_DIR = "/test-workspace";
-const TEST_GTKX_VERSION = "1.2.3";
+const TEST_SELF_VERSION = "1.2.3";
 const TEMPLATES_DIR = join(import.meta.dirname, "..", "templates");
 
 type RecordedInstall = {
@@ -68,7 +68,7 @@ const buildHarness = (overrides: Partial<Omit<Harness, "deps">> = {}): Harness =
     };
     const deps: ScaffolderDeps = {
         cwd: () => TEST_DIR,
-        gtkxVersion: TEST_GTKX_VERSION,
+        selfVersion: TEST_SELF_VERSION,
         fs,
         prompts: {
             intro: () => undefined,
@@ -110,7 +110,7 @@ const defaultOptions = (overrides: Partial<CreateOptions> = {}): CreateOptions =
     name: "test-app",
     applicationId: "org.test.app",
     packageManager: "pnpm",
-    testing: "none",
+    includeTesting: false,
     ...overrides,
 });
 
@@ -129,32 +129,32 @@ const runScaffolder = async (
     harnessOverrides: Partial<Omit<Harness, "deps">> = {},
 ): Promise<Harness> => {
     const harness = buildHarness(harnessOverrides);
-    await createScaffolder(harness.deps).run(defaultOptions(optionOverrides));
+    await scaffold(harness.deps, defaultOptions(optionOverrides));
     return harness;
 };
 
-describe("createScaffolder (directory structure)", () => {
+describe("scaffold (directory structure)", () => {
     setupVol();
 
-    it("creates the src and tests directories when testing=vitest", async () => {
-        await runScaffolder({ testing: "vitest" });
+    it("creates the src and tests directories when includeTesting=true", async () => {
+        await runScaffolder({ includeTesting: true });
 
         expect(vol.existsSync(`${TEST_DIR}/test-app`)).toBe(true);
         expect(vol.existsSync(`${TEST_DIR}/test-app/src`)).toBe(true);
         expect(vol.existsSync(`${TEST_DIR}/test-app/tests`)).toBe(true);
     });
 
-    it("skips the tests directory when testing=none", async () => {
+    it("skips the tests directory when includeTesting=false", async () => {
         await runScaffolder();
         expect(vol.existsSync(`${TEST_DIR}/test-app/tests`)).toBe(false);
     });
 });
 
-describe("createScaffolder (top-level generated files)", () => {
+describe("scaffold (top-level generated files)", () => {
     setupVol();
 
     it("writes package.json with the project name", async () => {
-        await runScaffolder({ testing: "vitest" });
+        await runScaffolder({ includeTesting: true });
 
         const content = JSON.parse(vol.readFileSync(`${TEST_DIR}/test-app/package.json`, "utf-8") as string);
         expect(content.name).toBe("test-app");
@@ -178,7 +178,7 @@ describe("createScaffolder (top-level generated files)", () => {
     });
 });
 
-describe("createScaffolder (src/* generated files)", () => {
+describe("scaffold (src/* generated files)", () => {
     setupVol();
 
     it("derives the app title from the project name", async () => {
@@ -199,8 +199,8 @@ describe("createScaffolder (src/* generated files)", () => {
         expect(app).not.toContain('import { applicationId } from "virtual:gtkx-config";');
     });
 
-    it("writes vitest.config.ts when testing=vitest", async () => {
-        await runScaffolder({ testing: "vitest" });
+    it("writes vitest.config.ts when includeTesting=true", async () => {
+        await runScaffolder({ includeTesting: true });
         expect(vol.existsSync(`${TEST_DIR}/test-app/vitest.config.ts`)).toBe(true);
     });
 
@@ -220,11 +220,11 @@ describe("createScaffolder (src/* generated files)", () => {
     });
 });
 
-describe("createScaffolder (dependency installation)", () => {
+describe("scaffold (dependency installation)", () => {
     setupVol();
 
     it("invokes install twice: production deps then dev deps", async () => {
-        const harness = await runScaffolder({ testing: "vitest" });
+        const harness = await runScaffolder({ includeTesting: true });
 
         expect(harness.installs).toHaveLength(2);
         const [prod, dev] = harness.installs;
@@ -251,7 +251,7 @@ describe("createScaffolder (dependency installation)", () => {
     });
 });
 
-describe("createScaffolder (git initialization)", () => {
+describe("scaffold (git initialization)", () => {
     setupVol();
 
     it("initializes the git repository in the scaffolded project", async () => {
@@ -265,11 +265,11 @@ describe("createScaffolder (git initialization)", () => {
     });
 });
 
-describe("createScaffolder (next steps)", () => {
+describe("scaffold (next steps)", () => {
     setupVol();
 
     it("prints the package-manager-specific dev command and the compositor note for vitest", async () => {
-        const harness = await runScaffolder({ packageManager: "npm", testing: "vitest" });
+        const harness = await runScaffolder({ packageManager: "npm", includeTesting: true });
 
         const note = harness.notes.at(-1);
         expect(note?.message).toContain("cd test-app");
@@ -278,18 +278,18 @@ describe("createScaffolder (next steps)", () => {
     });
 
     it("prints the pnpm dev command", async () => {
-        const harness = await runScaffolder({ packageManager: "pnpm", testing: "none" });
+        const harness = await runScaffolder({ packageManager: "pnpm", includeTesting: false });
 
         expect(harness.notes.at(-1)?.message).toContain("pnpm dev");
     });
 
     it("prints the yarn dev command", async () => {
-        const harness = await runScaffolder({ packageManager: "yarn", testing: "none" });
+        const harness = await runScaffolder({ packageManager: "yarn", includeTesting: false });
 
         expect(harness.notes.at(-1)?.message).toContain("yarn dev");
     });
 
-    it("omits the compositor note when testing=none", async () => {
+    it("omits the compositor note when includeTesting=false", async () => {
         const harness = await runScaffolder();
 
         const note = harness.notes.at(-1);
@@ -297,7 +297,7 @@ describe("createScaffolder (next steps)", () => {
     });
 });
 
-describe("createScaffolder (prompting cancellations)", () => {
+describe("scaffold (prompting cancellations)", () => {
     setupVol();
 
     it("calls the exit hook when the user cancels a prompt", async () => {
@@ -305,11 +305,10 @@ describe("createScaffolder (prompting cancellations)", () => {
         harness.deps.prompts.isCancel = (value): value is symbol => value === "__CANCEL__";
         harness.deps.prompts.text = () => Promise.resolve("__CANCEL__");
 
-        const scaffolder = createScaffolder(harness.deps);
-        await scaffolder.run({
+        await scaffold(harness.deps, {
             applicationId: "org.test.app",
             packageManager: "pnpm",
-            testing: "none",
+            includeTesting: false,
         });
 
         expect(harness.exit).toHaveBeenCalledWith(0);
@@ -323,8 +322,7 @@ describe("createScaffolder (prompting cancellations)", () => {
             return Promise.resolve(opts.initialValue as Value);
         };
 
-        const scaffolder = createScaffolder(harness.deps);
-        await scaffolder.run({ name: "test-app", applicationId: "org.test.app", testing: "none" });
+        await scaffold(harness.deps, { name: "test-app", applicationId: "org.test.app", includeTesting: false });
 
         expect(calls[0]?.initialValue).toBe("yarn");
     });

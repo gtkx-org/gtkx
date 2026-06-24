@@ -32,7 +32,7 @@ export type {
     ActionGroupPrefixProps,
     AlertDialogResponseProps,
     CalendarMark,
-    ContainerPropProps,
+    ContainerSlotProps,
     CreditSection,
     DragSourceIcon,
     DropTargetType,

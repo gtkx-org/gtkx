@@ -3,11 +3,11 @@ import { formatRole } from "./role-helpers.js";
 import {
     getWidgetAccessibleName,
     getWidgetDisplayValue,
+    getWidgetLabelText,
     getWidgetLabelledByText,
     getWidgetName,
     getWidgetOwnLabel,
     getWidgetPlaceholderText,
-    getWidgetText,
 } from "./widget-text.js";
 
 export type Variant = "get" | "getAll" | "query" | "queryAll" | "find" | "findAll";
@@ -60,7 +60,7 @@ export const getSuggestedQuery = (
         LabelText: () =>
             textSuggestion("LabelText", variant, getWidgetOwnLabel(widget) ?? getWidgetLabelledByText(widget)),
         PlaceholderText: () => textSuggestion("PlaceholderText", variant, getWidgetPlaceholderText(widget)),
-        Text: () => textSuggestion("Text", variant, getWidgetText(widget)),
+        Text: () => textSuggestion("Text", variant, getWidgetLabelText(widget)),
         DisplayValue: () => textSuggestion("DisplayValue", variant, getWidgetDisplayValue(widget)),
         Name: () => textSuggestion("Name", variant, getWidgetName(widget)),
     };

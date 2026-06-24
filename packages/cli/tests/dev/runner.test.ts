@@ -1,7 +1,7 @@
 import { EventEmitter } from "node:events";
 import type { Plugin } from "vite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { RELOAD_EXIT_CODE } from "../../src/dev/protocol.js";
+import { RESTART_EXIT_CODE } from "../../src/dev/protocol.js";
 import { createDevRunner, type DevRunnerDeps, type DevServer } from "../../src/dev/runner.js";
 import { main } from "../../src/dev/runner-main.js";
 
@@ -69,7 +69,7 @@ const buildHarness = (
     const installShutdownHandlers = vi.fn<DevRunnerDeps["installShutdownHandlers"]>();
     const quitDefaultApp = vi.fn<DevRunnerDeps["quitDefaultApplication"]>();
     const performRefresh = vi.fn<DevRunnerDeps["performRefresh"]>();
-    const isBoundary = vi.fn<DevRunnerDeps["isReactRefreshBoundary"]>((mod) =>
+    const isBoundary = vi.fn<DevRunnerDeps["isRefreshBoundary"]>((mod) =>
         overrides.isBoundary ? overrides.isBoundary(mod) : mod["__isBoundary"] === true,
     );
     const log = vi.fn<DevRunnerDeps["log"]>();
@@ -84,7 +84,7 @@ const buildHarness = (
         installShutdownHandlers,
         quitDefaultApplication: quitDefaultApp,
         performRefresh,
-        isReactRefreshBoundary: isBoundary,
+        isRefreshBoundary: isBoundary,
         plugins: () => plugins,
         log,
         exit,
@@ -233,7 +233,7 @@ describe("createDevRunner (application quit)", () => {
         harness.performRefresh.mockImplementationOnce(() => schedule(() => onQuit(runDefault)));
         await emitBoundaryChange(harness, "/x/y.ts");
 
-        expect(harness.exit).toHaveBeenCalledWith(RELOAD_EXIT_CODE);
+        expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
         expect(runDefault).not.toHaveBeenCalled();
         return harness;
     };
@@ -396,7 +396,7 @@ describe("createDevRunner (file watcher dispatch)", () => {
         expect(harness.performRefresh).toHaveBeenCalled();
     });
 
-    it("requests a full reload via exit(RELOAD_EXIT_CODE) when the new module is not a boundary", async () => {
+    it("requests a full restart via exit(RESTART_EXIT_CODE) when the new module is not a boundary", async () => {
         const harness = buildHarness();
         const module = { id: "/x/y.ts", importers: new Set<object>() };
 
@@ -408,7 +408,7 @@ describe("createDevRunner (file watcher dispatch)", () => {
         await emitChangeAndFlush(harness, "/x/y.ts", 2);
 
         expect(harness.server.close).toHaveBeenCalled();
-        expect(harness.exit).toHaveBeenCalledWith(RELOAD_EXIT_CODE);
+        expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
     });
 });
 

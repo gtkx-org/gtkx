@@ -77,7 +77,7 @@ impl AnchoredValue {
 pub struct NativeHandle {
     ptr: usize,
     size_hint: usize,
-    inner: Option<AnchoredValue>,
+    owned_value: Option<AnchoredValue>,
     pending_gobject_ref: Option<Arc<AtomicBool>>,
 }
 
@@ -85,7 +85,7 @@ impl std::fmt::Debug for NativeHandle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("NativeHandle")
             .field("ptr", &(self.ptr as *const c_void))
-            .field("owned", &self.inner.is_some())
+            .field("owned", &self.owned_value.is_some())
             .finish_non_exhaustive()
     }
 }
@@ -97,7 +97,7 @@ impl From<NativeValue> for NativeHandle {
         Self {
             ptr,
             size_hint,
-            inner: Some(AnchoredValue::new(value)),
+            owned_value: Some(AnchoredValue::new(value)),
             pending_gobject_ref: None,
         }
     }
@@ -108,8 +108,8 @@ impl Clone for NativeHandle {
         Self {
             ptr: self.ptr,
             size_hint: self.size_hint,
-            inner: self
-                .inner
+            owned_value: self
+                .owned_value
                 .as_ref()
                 .map(|anchored| AnchoredValue::new(anchored.get_ref().clone())),
             pending_gobject_ref: self.pending_gobject_ref.clone(),
@@ -123,7 +123,7 @@ impl NativeHandle {
         Self {
             ptr: ptr as usize,
             size_hint: 0,
-            inner: None,
+            owned_value: None,
             pending_gobject_ref: None,
         }
     }
@@ -133,7 +133,7 @@ impl NativeHandle {
         Self {
             ptr: ptr as usize,
             size_hint: GOBJECT_SIZE_HINT,
-            inner: None,
+            owned_value: None,
             pending_gobject_ref: None,
         }
     }
@@ -143,7 +143,7 @@ impl NativeHandle {
         Self {
             ptr: ptr as usize,
             size_hint: GOBJECT_SIZE_HINT,
-            inner: None,
+            owned_value: None,
             pending_gobject_ref: Some(Arc::new(AtomicBool::new(true))),
         }
     }
@@ -187,7 +187,7 @@ impl Drop for NativeHandle {
             });
         }
 
-        let Some(wrapper) = self.inner.take() else {
+        let Some(wrapper) = self.owned_value.take() else {
             return;
         };
         if wrapper.droppable_here() {

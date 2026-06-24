@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dedupeBy, omit, reverseNumericEnum } from "../src/collection.js";
+import { dedupeBy, enumNamesByValue, omit } from "../src/collection.js";
 
 describe("dedupeBy", () => {
     it("keeps the first item seen for each distinct key", () => {
@@ -46,7 +46,7 @@ describe("omit", () => {
     });
 });
 
-describe("reverseNumericEnum", () => {
+describe("enumNamesByValue", () => {
     const Color: Record<string, string | number> = {
         Red: 0,
         Green: 5,
@@ -57,18 +57,18 @@ describe("reverseNumericEnum", () => {
     };
 
     it("maps each numeric enum value to its member name", () => {
-        const byValue = reverseNumericEnum(Color);
+        const byValue = enumNamesByValue(Color);
         expect(byValue.get(0)).toBe("Red");
         expect(byValue.get(5)).toBe("Green");
         expect(byValue.get(6)).toBe("Blue");
     });
 
     it("keeps only the value-to-name direction of the enum object", () => {
-        expect(reverseNumericEnum(Color).size).toBe(3);
+        expect(enumNamesByValue(Color).size).toBe(3);
     });
 
     it("reverses a plain object of numeric values", () => {
-        const byValue = reverseNumericEnum({ a: 1, b: 2 });
+        const byValue = enumNamesByValue({ a: 1, b: 2 });
         expect(byValue.get(1)).toBe("a");
         expect(byValue.get(2)).toBe("b");
     });

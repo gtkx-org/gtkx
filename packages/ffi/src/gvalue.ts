@@ -2,7 +2,7 @@ import {
     alloc,
     type BoxedType,
     call,
-    type Type as FfiType,
+    type Type,
     type FundamentalType,
     getType,
     type Handle,
@@ -50,7 +50,7 @@ import {
     typeFundamental,
     typeName,
 } from "./gtype.js";
-import { getHandle, requireWrapperClassByGtype, tryGetHandle, wrapHandle } from "./registry.js";
+import { getHandle, requireWrapperClass, tryGetHandle, wrapHandle } from "./registry.js";
 
 export const newGValue = (): Handle => alloc(GVALUE_SIZE, "GValue");
 
@@ -85,9 +85,9 @@ export const setGValuePointer = (value: Handle, pointer: Handle): void => {
     gValueSetPointer(value, pointer);
 };
 
-const scalarBind = <F extends FfiType>(symbol: string, ffiType: F) => ({
-    set: bind(LIB, `g_value_set_${symbol}`, [GVALUE_T, ffiType], voidT),
-    get: bind(LIB, `g_value_get_${symbol}`, [GVALUE_T], ffiType),
+const scalarBind = <F extends Type>(symbol: string, descriptor: F) => ({
+    set: bind(LIB, `g_value_set_${symbol}`, [GVALUE_T, descriptor], voidT),
+    get: bind(LIB, `g_value_get_${symbol}`, [GVALUE_T], descriptor),
 });
 
 const booleanBind = scalarBind("boolean", booleanT);
@@ -167,7 +167,7 @@ export const valueSetVariant = (value: Handle, v: object | null): void => {
 };
 export const valueGetVariant = (value: Handle): object | null => {
     const result = variantBind.get(value);
-    return result === null ? null : wrapHandle(result, requireWrapperClassByGtype(TYPE_VARIANT));
+    return result === null ? null : wrapHandle(result, requireWrapperClass(TYPE_VARIANT));
 };
 
 const gValueSetBoxedStrv = bind(LIB, "g_value_set_boxed", [GVALUE_T, arrayT(stringT("borrowed"))], voidT);
@@ -207,7 +207,7 @@ export function valueSetStaticBoxed(value: Handle, boxed: object): void {
 
 const OUT_PARAM_STORAGE_SIZE = 8;
 
-export function outValueFromFfi(innerFfi: FfiType, initial?: unknown): { value: Handle; read: () => unknown } {
+export function outValueFromFfi(innerFfi: Type, initial?: unknown): { value: Handle; read: () => unknown } {
     const storage = alloc(OUT_PARAM_STORAGE_SIZE);
     write(storage, uint64T, 0, 0);
     if (initial !== undefined) write(storage, innerFfi, 0, initial);
@@ -216,14 +216,14 @@ export function outValueFromFfi(innerFfi: FfiType, initial?: unknown): { value: 
     return { value, read: () => read(storage, innerFfi, 0) };
 }
 
-export function outBoxedFromFfi(ffiType: FfiType, boxed: object): Handle {
-    const value = newTypedGValue(resolveBoxedGtype(ffiType));
+export function outBoxedFromFfi(descriptor: Type, boxed: object): Handle {
+    const value = newTypedGValue(resolveBoxedGtype(descriptor));
     valueSetBoxed(value, boxed);
     return value;
 }
 
-export function inoutBoxedFromFfi(ffiType: FfiType, boxed: object): Handle {
-    const value = newTypedGValue(resolveBoxedGtype(ffiType));
+export function inoutBoxedFromFfi(descriptor: Type, boxed: object): Handle {
+    const value = newTypedGValue(resolveBoxedGtype(descriptor));
     valueSetStaticBoxed(value, boxed);
     return value;
 }
@@ -233,7 +233,7 @@ export function valueGetBoxed(value: Handle): object | null {
     if (typeFundamental(gtype) !== TYPE_BOXED) {
         return null;
     }
-    const cls = requireWrapperClassByGtype(gtype);
+    const cls = requireWrapperClass(gtype);
     const ptr = call(
         LIB,
         "g_value_dup_boxed",
@@ -243,41 +243,41 @@ export function valueGetBoxed(value: Handle): object | null {
     return ptr === null ? null : wrapHandle(ptr as Handle, cls);
 }
 
-export function setGvalueBoxed(value: object, boxed: object | null): void {
+export function setGValueBoxed(value: object, boxed: object | null): void {
     valueSetBoxed(getHandle(value), boxed);
 }
 
-export function getGvalueBoxed(value: object): object | null {
+export function getGValueBoxed(value: object): object | null {
     return valueGetBoxed(getHandle(value));
 }
 
-const resolveBoxedInnerGtype = (ffiType: BoxedType): GType => {
-    if (ffiType.getTypeFn && ffiType.library) {
-        return call(ffiType.library, ffiType.getTypeFn, [], biguint64T) as GType;
+const resolveBoxedInnerGtype = (descriptor: BoxedType): GType => {
+    if (descriptor.getTypeFn && descriptor.library) {
+        return call(descriptor.library, descriptor.getTypeFn, [], biguint64T) as GType;
     }
-    const gtype = typeFromName(ffiType.innerType);
+    const gtype = typeFromName(descriptor.innerType);
     if (gtype === TYPE_INVALID) {
-        throw new Error(`Cannot resolve gtype for boxed type '${ffiType.innerType}'`);
+        throw new Error(`Cannot resolve gtype for boxed type '${descriptor.innerType}'`);
     }
     return gtype;
 };
 
-const resolveFundamentalGtype = (ffiType: FundamentalType): GType => {
-    if (ffiType.typeName) {
-        const gtype = typeFromName(ffiType.typeName);
+const resolveFundamentalGtype = (descriptor: FundamentalType): GType => {
+    if (descriptor.typeName) {
+        const gtype = typeFromName(descriptor.typeName);
         if (gtype !== TYPE_INVALID) return gtype;
     }
     throw new Error(`Cannot resolve gtype for fundamental type without a typeName`);
 };
 
-export function resolveBoxedGtype(ffiType: FfiType): GType {
-    if (ffiType.type === "boxed") return resolveBoxedInnerGtype(ffiType);
-    if (ffiType.type === "fundamental") return resolveFundamentalGtype(ffiType);
-    throw new Error(`resolveBoxedGtype: unsupported FFI type '${ffiType.type}'`);
+export function resolveBoxedGtype(descriptor: Type): GType {
+    if (descriptor.type === "boxed") return resolveBoxedInnerGtype(descriptor);
+    if (descriptor.type === "fundamental") return resolveFundamentalGtype(descriptor);
+    throw new Error(`resolveBoxedGtype: unsupported FFI type '${descriptor.type}'`);
 }
 
-function gtypeFromFfiType(ffiType: FfiType): GType {
-    switch (ffiType.type) {
+function gtypeFromFfiType(descriptor: Type): GType {
+    switch (descriptor.type) {
         case "boolean":
             return TYPE_BOOLEAN;
         case "string":
@@ -304,24 +304,24 @@ function gtypeFromFfiType(ffiType: FfiType): GType {
             return TYPE_OBJECT;
         case "enum":
         case "flags":
-            return call(ffiType.library, ffiType.getTypeFn, [], biguint64T) as GType;
+            return call(descriptor.library, descriptor.getTypeFn, [], biguint64T) as GType;
         case "boxed":
-            return resolveBoxedInnerGtype(ffiType);
+            return resolveBoxedInnerGtype(descriptor);
         case "fundamental":
-            return resolveFundamentalGtype(ffiType);
+            return resolveFundamentalGtype(descriptor);
         case "array":
-            if (ffiType.itemType.type === "string" && ffiType.kind === "array") return getStrvGtype();
-            throw new Error(`Unsupported array type ${ffiType.kind} of ${ffiType.itemType.type}`);
+            if (descriptor.itemType.type === "string" && descriptor.kind === "array") return getStrvGtype();
+            throw new Error(`Unsupported array type ${descriptor.kind} of ${descriptor.itemType.type}`);
         default:
-            throw new Error(`Unsupported FFI type '${ffiType.type}'`);
+            throw new Error(`Unsupported FFI type '${descriptor.type}'`);
     }
 }
 
-export function newValueFromFfi(ffiType: FfiType): Handle {
-    return newTypedGValue(gtypeFromFfiType(ffiType));
+export function newValueFromFfi(descriptor: Type): Handle {
+    return newTypedGValue(gtypeFromFfiType(descriptor));
 }
 
-function objectToGvalue(value: object | null): Handle {
+function objectToGValue(value: object | null): Handle {
     const v = newTypedGValue(value ? getType(getHandle(value)) : TYPE_OBJECT);
     valueSetObject(v, value);
     return v;
@@ -336,17 +336,17 @@ const getPointerValue = (value: Handle): null => {
 };
 
 type PayloadHandler = {
-    set: (value: Handle, ffiType: FfiType, jsValue: unknown) => void;
+    set: (value: Handle, descriptor: Type, jsValue: unknown) => void;
     get: (value: Handle) => unknown;
 };
 
-const setBoxedOrStrv = (value: Handle, ffiType: FfiType, jsValue: unknown): void => {
-    if (ffiType.type === "array") valueSetStrv(value, jsValue as string[]);
+const setBoxedOrStrv = (value: Handle, descriptor: Type, jsValue: unknown): void => {
+    if (descriptor.type === "array") valueSetStrv(value, jsValue as string[]);
     else valueSetBoxed(value, jsValue as object | null);
 };
 
 const unsupportedSet = (gtype: GType): never => {
-    throw new Error(`Unsupported GType for toGvalue: ${typeName(gtype) ?? String(gtype)}`);
+    throw new Error(`Unsupported GType for toGValue: ${typeName(gtype) ?? String(gtype)}`);
 };
 
 const payloadHandlers = new Map<GType, PayloadHandler>([
@@ -382,26 +382,26 @@ const payloadHandlers = new Map<GType, PayloadHandler>([
     [TYPE_POINTER, { set: (value) => unsupportedSet(valueGetType(value)), get: getPointerValue }],
 ]);
 
-function setGvaluePayload(value: Handle, gtype: GType, ffiType: FfiType, jsValue: unknown): void {
+function setGValuePayload(value: Handle, gtype: GType, descriptor: Type, jsValue: unknown): void {
     const handler = payloadHandlers.get(typeFundamental(gtype));
     if (handler === undefined) unsupportedSet(gtype);
-    else handler.set(value, ffiType, jsValue);
+    else handler.set(value, descriptor, jsValue);
 }
 
-export function toGvalue(ffiType: FfiType, jsValue: unknown): Handle {
-    if (ffiType.type === "gobject") return objectToGvalue(jsValue as object | null);
-    const gtype = gtypeFromFfiType(ffiType);
+export function toGValue(descriptor: Type, jsValue: unknown): Handle {
+    if (descriptor.type === "gobject") return objectToGValue(jsValue as object | null);
+    const gtype = gtypeFromFfiType(descriptor);
     const value = newTypedGValue(gtype);
-    setGvaluePayload(value, gtype, ffiType, jsValue);
+    setGValuePayload(value, gtype, descriptor, jsValue);
     return value;
 }
 
-export function fromGvalue(value: Handle): unknown {
+export function fromGValue(value: Handle): unknown {
     const gtype = valueGetType(value);
     if (gtype === getStrvGtype()) return valueGetStrv(value);
     const handler = payloadHandlers.get(typeFundamental(gtype));
     if (handler === undefined) {
-        throw new Error(`Unsupported GType for fromGvalue: ${typeName(gtype) ?? String(gtype)}`);
+        throw new Error(`Unsupported GType for fromGValue: ${typeName(gtype) ?? String(gtype)}`);
     }
     return handler.get(value);
 }

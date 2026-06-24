@@ -3,7 +3,7 @@ import * as Gdk from "@gtkx/gi/gdk";
 import { Object as GObject, typeFromName, typeName, typeParent } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
-import { findWrapperClass } from "../src/registry.js";
+import { findWrapperClassInChain } from "../src/registry.js";
 import { instanceIsA } from "./helpers.js";
 
 let suffix = 0;
@@ -22,14 +22,14 @@ describe("registerClass — registration", () => {
         expect(typeName(typeParent(gtype))).toBe("GtkLabel");
     });
 
-    it("registers the JS class so findWrapperClass resolves to it for the new GType", () => {
+    it("registers the JS class so findWrapperClassInChain resolves to it for the new GType", () => {
         const name = uniqueName("GtkxResolvableSubclass");
         class CustomButton extends Gtk.Button {}
 
         registerClass(CustomButton, { gtypeName: name });
 
         const newGtype = typeFromName(name);
-        expect(findWrapperClass(newGtype)).toBe(CustomButton);
+        expect(findWrapperClassInChain(newGtype)).toBe(CustomButton);
     });
 
     it("falls back to klass.name when no gtypeName option is supplied", () => {

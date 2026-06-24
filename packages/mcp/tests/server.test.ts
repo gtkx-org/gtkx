@@ -81,7 +81,7 @@ vi.mock("../src/connection-manager.js", () => ({
 
 import { createMcpServer, main } from "../src/server.js";
 
-type AppQueryClient = Pick<ConnectionManager, "getApps" | "hasConnectedApps" | "waitForApp" | "sendToApp">;
+type AppRouter = Pick<ConnectionManager, "getApps" | "hasConnectedApps" | "waitForApp" | "sendToApp">;
 
 type RegisteredTool = {
     name: string;
@@ -89,7 +89,7 @@ type RegisteredTool = {
     handler: (args: never) => Promise<CallToolResult>;
 };
 
-function makeConnectionManager(overrides: Partial<AppQueryClient> = {}): AppQueryClient {
+function makeConnectionManager(overrides: Partial<AppRouter> = {}): AppRouter {
     return {
         getApps: vi.fn(() => []),
         hasConnectedApps: vi.fn(() => false),
@@ -99,7 +99,7 @@ function makeConnectionManager(overrides: Partial<AppQueryClient> = {}): AppQuer
     };
 }
 
-function registerTools(connectionManager: AppQueryClient): RegisteredTool[] {
+function registerTools(connectionManager: AppRouter): RegisteredTool[] {
     resetMainMocks();
     createMcpServer({ version: "test" });
     const instance = connectionManagerInstances.at(-1);
@@ -112,7 +112,7 @@ function registerTools(connectionManager: AppQueryClient): RegisteredTool[] {
     }));
 }
 
-function getTool(connectionManager: AppQueryClient, name: string): RegisteredTool {
+function getTool(connectionManager: AppRouter, name: string): RegisteredTool {
     const tool = registerTools(connectionManager).find((t) => t.name === name);
     if (!tool) throw new Error(`Tool not found: ${name}`);
     return tool;
@@ -137,10 +137,10 @@ const allToolNames = [
     "gtkx_get_widget_tree",
     "gtkx_query_widgets",
     "gtkx_get_widget_props",
+    "gtkx_take_screenshot",
     "gtkx_click",
     "gtkx_type",
     "gtkx_fire_event",
-    "gtkx_take_screenshot",
 ];
 
 describe("buildTools — registration", () => {
@@ -257,7 +257,7 @@ describe("buildTools — gtkx_query_widgets", () => {
         } as never);
 
         expect(sendToApp).toHaveBeenCalledWith("app-a", "widget.query", {
-            queryType: "role",
+            by: "role",
             value: "button",
             options: { exact: true },
         });

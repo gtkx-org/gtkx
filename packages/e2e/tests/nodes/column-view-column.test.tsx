@@ -512,7 +512,7 @@ function ShowcaseSortableApp({ columnViewRef }: { columnViewRef: RefObject<Gtk.C
         <ScrollWrapper actionGroups={<ShowcaseActionGroups sortActions={sortActions} />}>
             <ColumnView
                 ref={columnViewRef}
-                estimatedRowHeight={48}
+                estimatedItemHeight={48}
                 sortColumn={sortColumn}
                 sortOrder={sortOrder}
                 onSortChanged={handleSortChange}

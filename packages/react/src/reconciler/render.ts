@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { type ReconcilerErrorHandler, setReconcilerErrorHandler } from "./reconciler-error-sink.js";
+import { type ReconcilerErrorHandler, setReconcilerErrorHandler } from "./reconciler-error-handler.js";
 import { createReconcilerRoot, type ReconcilerRoot, unmountAllReconcilerRoots } from "./reconciler-root.js";
 import { createRootElement, type RootElement } from "./root-element.js";
 import { getSignalStore } from "./signal-store.js";

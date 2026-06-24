@@ -1,19 +1,19 @@
-import { type CallbackType, call, type Type as FfiType, type Handle } from "@gtkx/native";
+import { type CallbackType, call, type Type, type Handle } from "@gtkx/native";
 import { classifyArgCategory } from "./arg-category.js";
 import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
 import { arrayT, biguint64T, bind, objectT, stringT, uint32T, uint64T, voidT } from "./descriptors.js";
 import { tupleResult } from "./fn.js";
 import type { GType, GTyped } from "./gtype.js";
 import {
-    fromGvalue,
+    fromGValue,
     inoutBoxedFromFfi,
     newValueFromFfi,
     outBoxedFromFfi,
     outValueFromFfi,
-    toGvalue,
+    toGValue,
     valueGetBoxed,
 } from "./gvalue.js";
-import { wrapHandler } from "./handler-trampoline.js";
+import { wrapCallback } from "./callback.js";
 import { getHandle } from "./registry.js";
 
 export type SignalHandler = (...args: unknown[]) => unknown;
@@ -39,7 +39,7 @@ export type SignalConnectSpec = {
 
 export function connectGobjectSignal(instance: object, signal: string, spec: SignalConnectSpec): number {
     const { callback, handler, after } = spec;
-    const wrapped = wrapHandler(handler, callback, "skip");
+    const wrapped = wrapCallback(handler, callback, "skip");
     return call(
         LIB,
         "g_signal_connect_data",
@@ -63,7 +63,7 @@ const gSignalEmitv = bind(
 const gSignalLookup = bind(LIB, "g_signal_lookup", [stringT("borrowed"), biguint64T], uint32T);
 
 export type EmitArg = {
-    ffi: FfiType;
+    ffi: Type;
     direction?: "out" | "inout";
     callerAllocates?: boolean;
     value?: unknown;
@@ -71,7 +71,7 @@ export type EmitArg = {
 
 const emitCell = (arg: EmitArg): { value: Handle; read?: () => unknown } => {
     const category = classifyArgCategory({ direction: arg.direction, callerAllocated: Boolean(arg.callerAllocates) });
-    if (category.kind === "plainInput") return { value: toGvalue(arg.ffi, arg.value) };
+    if (category.kind === "plainInput") return { value: toGValue(arg.ffi, arg.value) };
     if (category.kind === "callerAllocated") {
         if (category.inout) return { value: inoutBoxedFromFfi(arg.ffi, arg.value as object) };
         const value = outBoxedFromFfi(arg.ffi, arg.value as object);
@@ -81,12 +81,12 @@ const emitCell = (arg: EmitArg): { value: Handle; read?: () => unknown } => {
     return { value: cell.value, read: cell.read };
 };
 
-export function emitGobjectSignal(instance: object, sigName: string, args: EmitArg[], returnFfi?: FfiType): unknown {
+export function emitGobjectSignal(instance: object, signal: string, args: EmitArg[], returnFfi?: Type): unknown {
     const gtype: GType = (instance as GTyped).__gtype__;
-    const signalId = gSignalLookup(signalBaseName(sigName), gtype) as number;
-    const detail = signalDetailQuark(sigName);
+    const signalId = gSignalLookup(signalBaseName(signal), gtype) as number;
+    const detail = signalDetailQuark(signal);
 
-    const values: Handle[] = [toGvalue(objectT("full"), instance)];
+    const values: Handle[] = [toGValue(objectT("full"), instance)];
     const reads: (() => unknown)[] = [];
     for (const arg of args) {
         const cell = emitCell(arg);
@@ -99,7 +99,7 @@ export function emitGobjectSignal(instance: object, sigName: string, args: EmitA
         gSignalEmitv(values, signalId, detail, returnValue);
         return tupleResult(
             reads.map((emit) => emit()),
-            fromGvalue(returnValue),
+            fromGValue(returnValue),
             true,
         );
     }

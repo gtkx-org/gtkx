@@ -3,14 +3,14 @@ import { type ArgCategory, classifyArgCategory } from "./arg-category.js";
 import { LIB } from "./constants.js";
 import { bind, boxedT, refT } from "./descriptors.js";
 import { checkError } from "./gerror.js";
-import { type UserHandler, wrapHandler } from "./handler-trampoline.js";
+import { type UserCallback, wrapCallback } from "./callback.js";
 import { getHandle } from "./registry.js";
 import { wrapValue } from "./wrap-value.js";
 
 const wrapCallbackValue = (spec: CallbackType, callback: unknown): Value =>
-    callback == null ? (callback as Value) : wrapHandler(callback as UserHandler, spec, "none");
+    callback == null ? (callback as Value) : wrapCallback(callback as UserCallback, spec, "none");
 
-export type ArgType = {
+export type ArgSpec = {
     type: Type;
     direction?: "out" | "inout";
     callerAllocates?: boolean;
@@ -18,7 +18,7 @@ export type ArgType = {
 };
 
 export type FnSignature = {
-    args: ArgType[];
+    args: ArgSpec[];
     returns: Type;
     throws?: boolean;
 };
@@ -32,9 +32,9 @@ export const tupleResult = (outs: unknown[], primary: unknown, hasPrimary: boole
     return outs;
 };
 
-const toNativeArgTypes = (argTypes: ArgType[], throws: boolean): Type[] => {
-    const nativeArgTypes = argTypes.map((argType) =>
-        argType.direction !== undefined && argType.callerAllocates !== true ? refT(argType.type) : argType.type,
+const toNativeArgTypes = (argSpecs: ArgSpec[], throws: boolean): Type[] => {
+    const nativeArgTypes = argSpecs.map((argSpec) =>
+        argSpec.direction !== undefined && argSpec.callerAllocates !== true ? refT(argSpec.type) : argSpec.type,
     );
     if (throws)
         nativeArgTypes.push(refT(boxedT("GError", { ownership: "full", library: LIB, getTypeFn: "g_error_get_type" })));
@@ -42,28 +42,28 @@ const toNativeArgTypes = (argTypes: ArgType[], throws: boolean): Type[] => {
 };
 
 type ArgPlan = {
-    argType: ArgType;
+    argSpec: ArgSpec;
     category: ArgCategory;
     consumesInput: boolean;
     inputIndex: number;
-    isOutput: boolean;
+    isOutParam: boolean;
 };
 
-const categoryOf = (argType: ArgType): ArgCategory =>
-    classifyArgCategory({ direction: argType.direction, callerAllocated: argType.callerAllocates === true });
+const categoryOfArgSpec = (argSpec: ArgSpec): ArgCategory =>
+    classifyArgCategory({ direction: argSpec.direction, callerAllocated: argSpec.callerAllocates === true });
 
-const planArgs = (argTypes: ArgType[]): ArgPlan[] => {
+const planArgs = (argSpecs: ArgSpec[]): ArgPlan[] => {
     let inputCursor = 0;
-    return argTypes.map((argType) => {
-        const category = categoryOf(argType);
+    return argSpecs.map((argSpec) => {
+        const category = categoryOfArgSpec(argSpec);
         const consumesInput = category.kind !== "outCell" || category.inout;
-        const isOutput = category.kind !== "plainInput" && argType.consumed !== true;
-        return { argType, category, consumesInput, inputIndex: consumesInput ? inputCursor++ : -1, isOutput };
+        const isOutParam = category.kind !== "plainInput" && argSpec.consumed !== true;
+        return { argSpec, category, consumesInput, inputIndex: consumesInput ? inputCursor++ : -1, isOutParam };
     });
 };
 
 const toNativeValues = (plans: ArgPlan[], inputs: unknown[]): Value[] =>
-    plans.map(({ argType, category, consumesInput, inputIndex }) => {
+    plans.map(({ argSpec, category, consumesInput, inputIndex }) => {
         if (category.kind === "callerAllocated") {
             const wrapper = inputs[inputIndex];
             return wrapper == null ? wrapper : getHandle(wrapper as object);
@@ -71,35 +71,35 @@ const toNativeValues = (plans: ArgPlan[], inputs: unknown[]): Value[] =>
         if (category.kind === "outCell") {
             return { value: consumesInput ? (inputs[inputIndex] as Value) : null };
         }
-        if (argType.type.type === "callback") {
-            return wrapCallbackValue(argType.type, inputs[inputIndex]);
+        if (argSpec.type.type === "callback") {
+            return wrapCallbackValue(argSpec.type, inputs[inputIndex]);
         }
         return inputs[inputIndex] as Value;
     });
 
-const toOutputs = (plans: ArgPlan[], inputs: unknown[], nativeValues: Value[]): unknown[] => {
-    const outputs: unknown[] = [];
-    plans.forEach(({ argType, category, inputIndex, isOutput }, index) => {
-        if (!isOutput) return;
-        outputs.push(
+const toOutParams = (plans: ArgPlan[], inputs: unknown[], nativeValues: Value[]): unknown[] => {
+    const outParams: unknown[] = [];
+    plans.forEach(({ argSpec, category, inputIndex, isOutParam }, index) => {
+        if (!isOutParam) return;
+        outParams.push(
             category.kind === "callerAllocated"
                 ? inputs[inputIndex]
-                : wrapValue(argType.type, (nativeValues[index] as Ref).value),
+                : wrapValue(argSpec.type, (nativeValues[index] as Ref).value),
         );
     });
-    return outputs;
+    return outParams;
 };
 
 export function fn(library: string, symbol: string, signature: FnSignature): (...inputs: unknown[]) => unknown {
-    const { args: argTypes, returns: returnType, throws = false } = signature;
-    const nativeArgTypes = toNativeArgTypes(argTypes, throws);
+    const { args: argSpecs, returns: returnType, throws = false } = signature;
+    const nativeArgTypes = toNativeArgTypes(argSpecs, throws);
     const nativeFn = bind(library, symbol, nativeArgTypes, returnType);
     const hasPrimary = returnType.type !== "void";
-    const plans = planArgs(argTypes);
+    const plans = planArgs(argSpecs);
 
     const shape = (inputs: unknown[], nativeValues: Value[], nativeResult: Value): unknown => {
         const primary = hasPrimary ? wrapValue(returnType, nativeResult) : undefined;
-        return tupleResult(toOutputs(plans, inputs, nativeValues), primary, hasPrimary);
+        return tupleResult(toOutParams(plans, inputs, nativeValues), primary, hasPrimary);
     };
 
     if (throws) {

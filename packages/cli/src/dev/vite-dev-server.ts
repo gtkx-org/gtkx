@@ -20,7 +20,7 @@ export type DevServer = {
     };
 };
 
-export const buildConfig = (root: string, plugins: Plugin[]): InlineConfig => ({
+export const createDevServerConfig = (root: string, plugins: Plugin[]): InlineConfig => ({
     root,
     appType: "custom",
     plugins,

@@ -5,7 +5,7 @@ import {
 } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { type GType, TYPE_INVALID, typeInterfaces } from "./gtype.js";
-import { wrapHandler } from "./handler-trampoline.js";
+import { wrapCallback } from "./callback.js";
 import {
     getClassGtype,
     getInterfaceVfuncRegistry,
@@ -113,7 +113,7 @@ function wrapVfunc(
     argTypes: NativeRegisterClassVfunc["argTypes"],
     returnType: NativeRegisterClassVfunc["returnType"],
 ): VfuncFn {
-    return wrapHandler(fn, { argTypes, returnType }, "this");
+    return wrapCallback(fn, { argTypes, returnType }, "this");
 }
 
 function discoverInheritedInterfaceVfuncs(

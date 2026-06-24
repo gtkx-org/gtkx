@@ -1,45 +1,45 @@
-import { ModuleContext } from "../dsl/context.js";
+import { ModuleContext } from "../writer/context.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
-import type { GirRepository } from "../gir/repository.js";
+import type { Library } from "../gir/repository.js";
 import { splitOptionalNamespace } from "../gir/type-ref.js";
-import { emitAlias } from "../writers/alias.js";
-import { emitBoxed } from "../writers/boxed.js";
-import { emitCallback } from "../writers/callback.js";
-import { emitClass } from "../writers/class.js";
-import { emitConstant } from "../writers/constant.js";
-import { emitEnum } from "../writers/enum.js";
-import { emitNamespaceBootstrap, emitNamespaceFunction } from "../writers/function.js";
-import { emitInterface } from "../writers/interface.js";
+import { generateAlias } from "../codegen/alias.js";
+import { generateBoxed } from "../codegen/boxed.js";
+import { generateCallback } from "../codegen/callback.js";
+import { generateClass } from "../codegen/class.js";
+import { generateConstant } from "../codegen/constant.js";
+import { generateEnum } from "../codegen/enum.js";
+import { generateNamespaceBootstrap, generateNamespaceFunction } from "../codegen/function.js";
+import { generateInterface } from "../codegen/interface.js";
 
-export const generateNamespaceModule = (namespace: GirNamespace, repository: GirRepository): { source: string } => {
-    const context = new ModuleContext(namespace, repository);
+export const generateNamespaceModule = (namespace: GirNamespace, library: Library): { source: string } => {
+    const context = new ModuleContext(namespace, library);
     context.addGobjectBootstrapImports();
 
     for (const enumeration of namespace.enums) {
-        emitEnum(context, enumeration);
+        generateEnum(context, enumeration);
     }
-    for (const boxed of namespace.boxeds) {
-        emitBoxed(context, boxed);
+    for (const boxed of namespace.records) {
+        generateBoxed(context, boxed);
     }
     for (const klass of topologicalClassOrder(namespace.classes, namespace.name)) {
-        emitClass(context, klass);
+        generateClass(context, klass);
     }
     for (const iface of namespace.interfaces) {
-        emitInterface(context, iface);
+        generateInterface(context, iface);
     }
     for (const callback of namespace.callbacks) {
-        emitCallback(context, callback);
+        generateCallback(context, callback);
     }
     for (const fn of namespace.functions) {
-        emitNamespaceFunction(context, fn);
+        generateNamespaceFunction(context, fn);
     }
-    emitNamespaceBootstrap(context, namespace);
+    generateNamespaceBootstrap(context, namespace);
     for (const constant of namespace.constants) {
-        emitConstant(context, constant);
+        generateConstant(context, constant);
     }
     for (const alias of namespace.aliases) {
-        emitAlias(context, alias);
+        generateAlias(context, alias);
     }
 
     context.flushImports();

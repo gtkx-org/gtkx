@@ -65,9 +65,9 @@ describe("defaultScaffolderDeps.gitInit", () => {
     });
 });
 
-describe("defaultScaffolderDeps.gtkxVersion", () => {
+describe("defaultScaffolderDeps.selfVersion", () => {
     it("reads the create-gtkx package version used to pin scaffolded @gtkx/* dependencies", () => {
-        expect(defaultScaffolderDeps().gtkxVersion).toMatch(/^\d+\.\d+\.\d+/);
+        expect(defaultScaffolderDeps().selfVersion).toMatch(/^\d+\.\d+\.\d+/);
     });
 });
 

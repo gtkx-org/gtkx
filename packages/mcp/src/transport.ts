@@ -1,7 +1,7 @@
 import EventEmitter from "node:events";
 import type { Socket } from "node:net";
 import type { Duplex } from "node:stream";
-import { invalidRequestError, ipcTimeoutError, isMcpErrorCode, McpError, McpErrorCode } from "./protocol/errors.js";
+import { invalidRequestError, IpcError, IpcErrorCode, ipcTimeoutError, isIpcErrorCode } from "./protocol/errors.js";
 import {
     type IpcMessage,
     type IpcRequest,
@@ -10,9 +10,9 @@ import {
     IpcResponseSchema,
 } from "./protocol/types.js";
 
-export type JsonStreamTransportEvents = {
+export type JsonStreamConnectionEvents = {
     request: [IpcRequest];
-    invalid: [{ id: string; error: McpError }];
+    invalid: [{ id: string; error: IpcError }];
 };
 
 type PendingRequest = {
@@ -21,14 +21,14 @@ type PendingRequest = {
     timeout: NodeJS.Timeout;
 };
 
-export class TransportClosedError extends Error {
+export class ConnectionClosedError extends Error {
     constructor() {
-        super("Transport stream is not writable");
-        this.name = "TransportClosedError";
+        super("Connection stream is not writable");
+        this.name = "ConnectionClosedError";
     }
 }
 
-export class JsonStreamTransport extends EventEmitter<JsonStreamTransportEvents> {
+export class JsonStreamConnection extends EventEmitter<JsonStreamConnectionEvents> {
     private buffer = "";
     private pending: Map<string, PendingRequest> = new Map();
     private writer: Duplex;
@@ -53,7 +53,7 @@ export class JsonStreamTransport extends EventEmitter<JsonStreamTransportEvents>
         }
     }
 
-    send(message: IpcMessage): void {
+    write(message: IpcMessage): void {
         if (!this.writer.writable) return;
         this.writer.write(`${JSON.stringify(message)}\n`);
     }
@@ -64,43 +64,43 @@ export class JsonStreamTransport extends EventEmitter<JsonStreamTransportEvents>
             onClose?: () => void;
             onError?: (error: Error) => void;
         } = {},
-    ): JsonStreamTransport {
-        const transport = new JsonStreamTransport(socket);
-        socket.on("data", (data: Buffer) => transport.feed(data));
+    ): JsonStreamConnection {
+        const connection = new JsonStreamConnection(socket);
+        socket.on("data", (data: Buffer) => connection.feed(data));
         socket.on("close", () => {
-            transport.rejectPending(new Error("Connection closed"));
+            connection.rejectPending(new Error("Connection closed"));
             options.onClose?.();
         });
         if (options.onError) {
             socket.on("error", options.onError);
         }
-        return transport;
+        return connection;
     }
 
-    sendRequest<T = unknown>(method: string, params: unknown, timeoutMs: number): Promise<T> {
+    send<T = unknown>(method: string, params: unknown, timeout: number): Promise<T> {
         return new Promise<T>((resolve, reject) => {
             if (!this.writer.writable) {
-                reject(new TransportClosedError());
+                reject(new ConnectionClosedError());
                 return;
             }
 
             const id = crypto.randomUUID();
-            const timeout = setTimeout(() => {
+            const timeoutHandle = setTimeout(() => {
                 this.pending.delete(id);
-                reject(ipcTimeoutError(timeoutMs));
-            }, timeoutMs);
+                reject(ipcTimeoutError(timeout));
+            }, timeout);
 
             this.pending.set(id, {
                 resolve: resolve as (result: unknown) => void,
                 reject,
-                timeout,
+                timeout: timeoutHandle,
             });
 
-            this.send({ id, method, params });
+            this.write({ id, method, params });
             if (!this.writer.writable) {
-                clearTimeout(timeout);
+                clearTimeout(timeoutHandle);
                 this.pending.delete(id);
-                reject(new TransportClosedError());
+                reject(new ConnectionClosedError());
             }
         });
     }
@@ -151,7 +151,7 @@ export class JsonStreamTransport extends EventEmitter<JsonStreamTransportEvents>
         if (response.error) {
             const err = response.error;
             entry.reject(
-                new McpError(isMcpErrorCode(err.code) ? err.code : McpErrorCode.INTERNAL_ERROR, err.message, err.data),
+                new IpcError(isIpcErrorCode(err.code) ? err.code : IpcErrorCode.INTERNAL_ERROR, err.message, err.data),
             );
         } else {
             entry.resolve(response.result);
@@ -161,16 +161,15 @@ export class JsonStreamTransport extends EventEmitter<JsonStreamTransportEvents>
 
 export type AppConnection = {
     id: string;
-    transport: JsonStreamTransport;
+    connection: JsonStreamConnection;
 };
 
-export type AppTransportEvents = {
-    connection: [AppConnection];
+export type AppConnectionEvents = {
     disconnection: [AppConnection];
     request: [AppConnection, IpcRequest];
     error: [Error];
 };
 
-export interface AppTransport extends EventEmitter<AppTransportEvents> {
+export interface AppConnections extends EventEmitter<AppConnectionEvents> {
     send(connectionId: string, message: IpcMessage): void;
 }

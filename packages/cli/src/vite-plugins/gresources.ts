@@ -178,7 +178,7 @@ const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void 
     server.watcher.on("add", onFileEvent);
 };
 
-export function gtkxResources(loadConfig: GtkxConfigLoader = createGtkxConfigLoader()): Plugin {
+export function gtkxGResources(loadConfig: GtkxConfigLoader = createGtkxConfigLoader()): Plugin {
     const state: PluginState = {
         prefix: DEFAULT_RESOURCE_PREFIX,
         isBuild: false,

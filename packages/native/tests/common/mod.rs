@@ -1,40 +1,110 @@
 #![allow(dead_code)]
 
 use std::ffi::c_void;
-use std::sync::{Mutex, MutexGuard, Once, PoisonError};
+use std::sync::mpsc::{RecvError, Sender, sync_channel};
+use std::sync::{Mutex, MutexGuard, OnceLock, PoisonError};
+use std::thread;
 
 use gtk4::gdk;
 use gtk4::glib::{self, translate::IntoGlib as _};
 use gtk4::prelude::StaticType as _;
 
 use native::managed::Boxed;
+use native::state::GlibThreadState;
 use native::types::{
     ArrayKind, ArrayType, FfiDecoder, FfiEncoder, FloatKind, IntegerKind, Ownership, RawPtrCodec,
-    ReadSource, TaggedKind, TaggedType, Type,
+    ReadSource, EnumFlagsKind, EnumFlagsType, Type,
 };
 use native::value::Value;
 
-static GTK_INIT: Once = Once::new();
-
 static SERIAL: Mutex<()> = Mutex::new(());
 
+type GtkJob = Box<dyn FnOnce() + Send>;
+
+/// Channel into the dedicated GTK worker thread that owns the process default
+/// [`glib::MainContext`].
+///
+/// GTK acquires ownership of the default main context on whichever thread first runs
+/// [`gtk4::init`]; any code that iterates that context — pumping idle sources, draining the
+/// dispatch mailbox — only makes progress on the owning thread. The cargo test harness spreads
+/// test bodies across worker threads, so every GTK-touching body is funnelled onto this single
+/// thread to keep the GTK-owning thread and the executing thread identical.
+static GTK_THREAD: OnceLock<Sender<GtkJob>> = OnceLock::new();
+
+thread_local! {
+    static ON_GTK_THREAD: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+fn gtk_thread() -> &'static Sender<GtkJob> {
+    GTK_THREAD.get_or_init(|| {
+        let (tx, rx) = std::sync::mpsc::channel::<GtkJob>();
+        thread::Builder::new()
+            .name("gtkx-test-gtk".to_owned())
+            .spawn(move || {
+                ON_GTK_THREAD.with(|flag| flag.set(true));
+                gtk4::init().expect("Failed to initialize GTK4 for tests");
+                for job in rx {
+                    job();
+                }
+            })
+            .expect("spawning the GTK test thread should succeed");
+        tx
+    })
+}
+
 pub fn ensure_gtk_init() {
-    GTK_INIT.call_once(|| {
-        gtk4::init().expect("Failed to initialize GTK4 for tests");
-    });
+    on_gtk_thread(|| {});
 }
 
 pub fn serial_guard() -> MutexGuard<'static, ()> {
     SERIAL.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
+/// Runs `f` on the dedicated GTK worker thread and returns its result, propagating any panic to
+/// the caller so test failures surface normally.
+fn on_gtk_thread<F, R>(f: F) -> R
+where
+    F: FnOnce() -> R + Send,
+    R: Send,
+{
+    if ON_GTK_THREAD.with(std::cell::Cell::get) {
+        return f();
+    }
+
+    let (result_tx, result_rx) = sync_channel::<thread::Result<R>>(0);
+    let scoped_job: Box<dyn FnOnce() + Send + '_> = Box::new(move || {
+        let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
+        let _ = result_tx.send(outcome);
+    });
+    // SAFETY: `on_gtk_thread` blocks on `result_rx.recv()` below until the job has run and sent its
+    // result, so neither `f` nor `R` outlives this stack frame. Erasing their non-`'static`
+    // lifetimes for the duration of that synchronous round trip is sound because the borrow cannot
+    // escape it.
+    let job: Box<dyn FnOnce() + Send> = unsafe {
+        std::mem::transmute::<Box<dyn FnOnce() + Send + '_>, Box<dyn FnOnce() + Send>>(scoped_job)
+    };
+
+    gtk_thread()
+        .send(job)
+        .expect("the GTK test thread should accept jobs");
+
+    match result_rx.recv() {
+        Ok(Ok(value)) => value,
+        Ok(Err(payload)) => std::panic::resume_unwind(payload),
+        Err(RecvError) => panic!("the GTK test thread terminated before returning a result"),
+    }
+}
+
 pub fn run<F, R>(f: F) -> R
 where
-    F: FnOnce() -> R,
+    F: FnOnce() -> R + Send,
+    R: Send,
 {
     let _guard = serial_guard();
-    ensure_gtk_init();
-    f()
+    on_gtk_thread(|| {
+        GlibThreadState::with(|state| *state = GlibThreadState::default());
+        f()
+    })
 }
 
 pub fn make_integer_hash_table(entries: &[(usize, usize)]) -> *mut glib::ffi::GHashTable {
@@ -174,18 +244,18 @@ impl Drop for TestBoxed {
     }
 }
 
-pub fn enum_tagged() -> TaggedType {
-    TaggedType {
-        kind: TaggedKind::Enum,
+pub fn enum_type() -> EnumFlagsType {
+    EnumFlagsType {
+        kind: EnumFlagsKind::Enum,
         library: "libgtk-4.so.1".to_owned(),
         get_type_fn: "gtk_orientation_get_type".to_owned(),
         storage: IntegerKind::I32,
     }
 }
 
-pub fn flags_tagged() -> TaggedType {
-    TaggedType {
-        kind: TaggedKind::Flags,
+pub fn flags_type() -> EnumFlagsType {
+    EnumFlagsType {
+        kind: EnumFlagsKind::Flags,
         library: "libgtk-4.so.1".to_owned(),
         get_type_fn: "gtk_state_flags_get_type".to_owned(),
         storage: IntegerKind::U32,

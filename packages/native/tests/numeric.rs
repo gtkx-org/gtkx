@@ -473,60 +473,62 @@ fn float_call_cif_invokes_native_functions() {
 }
 
 #[test]
-fn tagged_encode_decode_and_libffi_type() {
+fn enum_flags_encode_decode_and_libffi_type() {
     common::run(|| {
-        let tagged = common::enum_tagged();
-        let encoded = FfiEncoder::encode(&tagged, &Value::Number(1.0)).unwrap();
+        let enum_flags = common::enum_type();
+        let encoded = FfiEncoder::encode(&enum_flags, &Value::Number(1.0)).unwrap();
         assert!(matches!(encoded, ffi::FfiValue::I32(1)));
-        let decoded = FfiDecoder::decode(&tagged, &ffi::FfiValue::I32(1)).unwrap();
+        let decoded = FfiDecoder::decode(&enum_flags, &ffi::FfiValue::I32(1)).unwrap();
         assert!(matches!(decoded, Value::Number(n) if n == 1.0));
         assert_eq!(
-            FfiEncoder::libffi_type(&tagged).as_raw_ptr(),
+            FfiEncoder::libffi_type(&enum_flags).as_raw_ptr(),
             IntegerKind::I32.ffi_type().as_raw_ptr()
         );
     });
 }
 
 #[test]
-fn tagged_call_cif_invokes_native_function() {
+fn enum_flags_call_cif_invokes_native_function() {
     common::run(|| {
-        let tagged = common::enum_tagged();
+        let enum_flags = common::enum_type();
         let cif = middle::Cif::new(Vec::new(), IntegerKind::I32.ffi_type());
         let result =
-            FfiEncoder::call_cif(&tagged, &cif, middle::CodePtr(ret_i32 as *mut c_void), &[])
+            FfiEncoder::call_cif(&enum_flags, &cif, middle::CodePtr(ret_i32 as *mut c_void), &[])
                 .unwrap();
         assert!(matches!(result, ffi::FfiValue::I32(-32)));
     });
 }
 
 #[test]
-fn tagged_raw_ptr_codec() {
+fn enum_flags_raw_ptr_codec() {
     common::run(|| {
-        let tagged = common::enum_tagged();
+        let enum_flags = common::enum_type();
         let mut slot: i64 = 0;
         let ptr = &mut slot as *mut i64 as *mut c_void;
-        // SAFETY: `ptr` is the live, pointer-sized `slot` stack variable; the tagged codec writes
-        // one i32 enum value into it.
-        unsafe { RawPtrCodec::write_value_to_raw_ptr(&tagged, ptr, &Value::Number(2.0)) }.unwrap();
+        // SAFETY: `ptr` is the live, pointer-sized `slot` stack variable; the enum/flags codec
+        // writes one i32 enum value into it.
+        unsafe { RawPtrCodec::write_value_to_raw_ptr(&enum_flags, ptr, &Value::Number(2.0)) }
+            .unwrap();
         let read =
             // SAFETY: `ptr` still addresses the live `slot` holding the value just written, so
             // reading it back through the slot source is valid.
-            unsafe { FfiDecoder::read(&tagged, ReadSource::Slot(ptr as *const c_void, "c")) }
+            unsafe { FfiDecoder::read(&enum_flags, ReadSource::Slot(ptr as *const c_void, "c")) }
                 .unwrap();
         assert!(matches!(read, Value::Number(n) if n == 2.0));
         // SAFETY: `ptr` is the live, pointer-sized `slot`; the call writes one enum return value.
-        unsafe { RawPtrCodec::write_return_to_raw_ptr(&tagged, ptr, &Ok(Value::Number(4.0))) };
+        unsafe { RawPtrCodec::write_return_to_raw_ptr(&enum_flags, ptr, &Ok(Value::Number(4.0))) };
         let from_ptr =
-            // SAFETY: a tagged value decode reads the integer payload directly from the pointer
-            // bits (here the small constant 3) rather than dereferencing it.
-            unsafe { FfiDecoder::read(&tagged, ReadSource::Value(3 as *mut c_void, "c")) }.unwrap();
+            // SAFETY: an enum/flags value decode reads the integer payload directly from the
+            // pointer bits (here the small constant 3) rather than dereferencing it.
+            unsafe { FfiDecoder::read(&enum_flags, ReadSource::Value(3 as *mut c_void, "c")) }
+                .unwrap();
         assert!(matches!(from_ptr, Value::Number(n) if n == 3.0));
     });
 }
 
 #[test]
-fn tagged_type_appears_in_type_enum() {
-    let ty = Type::Tagged(common::enum_tagged());
+fn enum_flags_type_appears_in_type_enum() {
+    let ty = Type::EnumFlags(common::enum_type());
     assert!(ty.can_be_return_type());
 }
 

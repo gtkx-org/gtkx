@@ -19,24 +19,24 @@ export const childWidget = (instance: Node): Gtk.Widget | null => {
 export const isTopLevel = (instance: Node): boolean =>
     instance instanceof GObject.Object && isTopLevelSurface(instance);
 
-const trackedChild = (marker: Node): Node | null => {
-    const { children } = stateOf(marker);
+const trackedChild = (wrapper: Node): Node | null => {
+    const { children } = stateOf(wrapper);
     return children.find((child) => !isWrapperKind(child, TAB_LABEL_KIND)) ?? children[0] ?? null;
 };
 
-export const trackedWidget = (marker: Node): Gtk.Widget | null => {
-    const child = trackedChild(marker);
+export const trackedWidget = (wrapper: Node): Gtk.Widget | null => {
+    const child = trackedChild(wrapper);
     return child instanceof Gtk.Widget ? child : null;
 };
 
-export const trackedInstance = (marker: Node): GObject.Object | undefined => {
-    const child = trackedChild(marker);
+export const trackedInstance = (wrapper: Node): GObject.Object | undefined => {
+    const child = trackedChild(wrapper);
     return child instanceof GObject.Object ? child : undefined;
 };
 
-export const wrapperChildWidgets = (marker: Node): Gtk.Widget[] => {
+export const wrapperChildWidgets = (wrapper: Node): Gtk.Widget[] => {
     const widgets: Gtk.Widget[] = [];
-    for (const child of stateOf(marker).children) {
+    for (const child of stateOf(wrapper).children) {
         if (child instanceof Gtk.Widget) widgets.push(child);
     }
     return widgets;

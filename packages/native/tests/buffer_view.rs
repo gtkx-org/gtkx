@@ -4,7 +4,7 @@ use napi::sys::TypedarrayType;
 use native::ffi::FfiValue;
 use native::types::{
     ArrayKind, ArrayType, BigIntKind, BooleanType, FfiEncoder as _, FloatKind, IntegerKind,
-    Ownership, TaggedKind, TaggedType, Type,
+    Ownership, EnumFlagsKind, EnumFlagsType, Type,
 };
 use native::value::{BufferView, BufferViewKind, Value};
 
@@ -148,14 +148,14 @@ fn array_encode_rejects_views_for_non_buffer_element_kinds() {
 }
 
 #[test]
-fn array_encode_accepts_views_for_tagged_storage() {
-    let tagged = TaggedType {
-        kind: TaggedKind::Enum,
+fn array_encode_accepts_views_for_enum_flags_storage() {
+    let enum_flags = EnumFlagsType {
+        kind: EnumFlagsKind::Enum,
         library: "libgtk-4.so.1".to_owned(),
         get_type_fn: "gtk_orientation_get_type".to_owned(),
         storage: IntegerKind::I32,
     };
-    assert_passthrough(Type::Tagged(tagged), BufferViewKind::Int32);
+    assert_passthrough(Type::EnumFlags(enum_flags), BufferViewKind::Int32);
 }
 
 #[test]

@@ -1,4 +1,4 @@
-import type { GApplication } from "@gtkx/ffi";
+import type { ApplicationRunner } from "@gtkx/ffi";
 import { setApplicationLifecycle } from "@gtkx/react";
 import { act, runWithActEnvironment } from "./act.js";
 import { configure } from "./config.js";
@@ -18,7 +18,7 @@ configure({
 });
 
 setApplicationLifecycle({
-    run: (application: GApplication) => {
+    run: (application: ApplicationRunner) => {
         application.on("activate", () => {});
         if (!application.getIsRegistered()) application.register(null);
         application.activate();

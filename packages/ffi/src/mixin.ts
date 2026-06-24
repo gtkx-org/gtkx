@@ -11,10 +11,10 @@ function definedInClassChain(prototype: object, key: string): boolean {
     return false;
 }
 
-export function installMixins(target: AnyClass, makers: Mixin[]): void {
+export function installMixins(target: AnyClass, mixins: Mixin[]): void {
     const empty: AnyClass = class {};
-    for (const make of makers) {
-        const layer: object = make(empty).prototype;
+    for (const mixin of mixins) {
+        const layer: object = mixin(empty).prototype;
         for (const key of Object.getOwnPropertyNames(layer)) {
             if (key === "constructor") continue;
             if (definedInClassChain(target.prototype, key)) continue;

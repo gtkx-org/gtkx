@@ -12,7 +12,7 @@ export const formatCodegenResult = (result: RunCodegenResult, totalMs: number): 
         lines.push(`codegen: girPath=${result.girPath.join(":")}`);
     }
     lines.push(
-        `codegen: ${result.namespaces} namespaces, ${result.widgets} widgets in ${result.duration}ms (total ${totalMs}ms)`,
+        `codegen: ${result.namespaces} namespaces, ${result.reactNodes} react nodes in ${result.duration}ms (total ${totalMs}ms)`,
     );
     return lines;
 };

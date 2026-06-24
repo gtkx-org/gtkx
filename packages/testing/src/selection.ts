@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { runInAct } from "./dispatch.js";
+import { wrapEvent } from "./event-wrapper.js";
 import { formatRoleList } from "./role-helpers.js";
 
 const SELECTABLE_ROLES = new Set<Gtk.AccessibleRole>([Gtk.AccessibleRole.COMBO_BOX, Gtk.AccessibleRole.LIST]);
@@ -92,7 +92,7 @@ const selectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
 };
 
 export const selectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
-    runInAct(() => {
+    wrapEvent(() => {
         const valueArray = Array.isArray(values) ? values : [values];
         if (isListView(widget)) {
             selectInListView(widget, valueArray);
@@ -109,7 +109,7 @@ const deselectInListView = (widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView
 };
 
 export const deselectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
-    runInAct(() => {
+    wrapEvent(() => {
         const valueArray = Array.isArray(values) ? values : [values];
         if (isListView(widget)) {
             deselectInListView(widget, valueArray);

@@ -2,11 +2,11 @@
 
 How a React element tree becomes live GTK4/libadwaita widgets, and how those widgets emit events back into React. The path crosses three packages and converges on a single GLib main-loop thread:
 
-- `@gtkx/react` — a `react-reconciler` host config that mutates a tree of GObject wrappers.
-- `@gtkx/ffi` — TypeScript that turns the native addon's descriptor-driven primitives into GObject-shaped operations (construction, GValue marshalling, signals, subclassing, the GType↔class registry).
+- `@gtkx/react` — a custom `react-reconciler` host config that mutates a tree of GObject wrappers.
+- `@gtkx/ffi` — TypeScript that turns the native addon's descriptor-driven primitives into GObject-shaped operations: construction, value marshalling, signals, subclassing, and the GType↔class registry.
 - `@gtkx/native` — a Rust napi addon that owns the GLib thread and performs every `libffi` call into GTK.
 
-The build-time generator emits the wrapper classes, the `t.*` type-descriptor vocabulary, and the reconciler metadata tables consumed below; [./architecture.md](./architecture.md) is the orientation hub for the two generated binding stores and the `t.*` contract, and the generator mechanics themselves live under `packages/codegen/src/`. Setup, prerequisites, and commands live in [../README.md](../README.md).
+The build-time generator emits the wrapper classes, the Type-descriptor vocabulary, and the reconciler metadata tables consumed below. [./architecture.md](./architecture.md) is the orientation hub for the two generated binding stores and the descriptor contract; [./codegen.md](./codegen.md) covers the generator mechanics. Setup, prerequisites, and commands live in [../README.md](../README.md).
 
 ## Layered view
 
@@ -15,131 +15,98 @@ React element tree (JSX, element types = GTK type names)
         │  react-reconciler (mutation mode)
         ▼
 @gtkx/react host config
-  createInstance · applyProps · ELEMENT_MAP attach · SignalStore · commit freeze
-        │  constructWrapper, get/setGobjectProperty, connectGobjectSignal, registry
+  create instances · apply props · attach children · suppress feedback signals
+        │  construct, get/set property, connect signal, registry lookup
         ▼
 @gtkx/ffi
-  Type descriptors (t.*) · GValue marshal · trampolines · registry · handle map
-        │  call / alloc / read / write / registerClass / get|setWrapper / freeze
+  Type descriptors · value marshalling · trampolines · registries
+        │  native primitives
         ▼
-@gtkx/native (Rust)  ── Mailbox ──▶  gtkx-glib thread
-  Type enum codecs · libffi CIF · dlopen symbols · toggle refs · trampolines
+@gtkx/native (Rust)  ──▶  single GLib main-loop thread
+  Type codecs · libffi calls · dlopen'd symbols · toggle refs · trampolines
         ▼
-system GTK4 / GLib / libadwaita (dlopen'd by name)
+system GTK4 / GLib / libadwaita
 ```
 
 ## The host node model
 
-The reconciler's host instance type, `Node`, is a union of three things:
+A reconciler host node is one of two things: a **wrapper** — the JS object backing a live GObject — or a relationship node that carries no GObject backing. Relationship nodes express connections that are not plain widget parenting (a prop that takes an element, a collection-valued prop, a layout child, a stack or notebook page, an overlay, a tab label, a text run, and similar). Such a node has no live object behind it; it exists only so the reconciler can map a parent/child relationship to a method call or property set instead of to GTK widget parenting.
 
-- `GObject.Object` — a real wrapper instance backing a GTK/GObject type.
-- `WrapperElement` — a symbol-branded marker carrying no GObject backing, used for relationships that are not plain widget parenting.
-- `RootElement` — the detached default container sentinel.
+Per-node bookkeeping (name, kind, current props, parent, children, owning signal store, root container) does not live on the node itself. It is held in an external side table keyed by node, so a wrapper stays a clean GObject and a relationship node can still carry tree structure it could not otherwise hold. All reconciler code reads relationships through that side table, never off the GObject.
 
-Per-node bookkeeping does **not** live on the node. `state.ts` keeps a `WeakMap<Node, State>` where `State` holds `name`/`kind`, the current `props`, `parent`, the `children` array, the `rootContainer`, and the owning `SignalStore`. All reconciler code reads relationships through `stateOf`/`ensureState`, never off the GObject. This keeps the wrapper a clean GI object and lets the marker nodes carry tree structure they could not otherwise hold.
-
-The host config (`host-config.ts`) runs in mutation mode (`supportsMutation: true`), is the primary renderer, and reports a single fixed `DiscreteEventPriority` for every update.
-
-### Wrapper elements
-
-Non-widget JSX constructs are modelled as marker nodes tagged by a string `kind`: slots (props that take an element), container-prop groups (collection-valued props), layout children, stack/notebook pages, overlays, meta-objects, tab labels, and text runs. A marker has no handle; it exists only to express a parent/child relationship that maps to a method call or property set rather than to GTK widget parenting.
+The host config runs in mutation mode and is the primary renderer.
 
 ## Render path (mount and update)
 
-### 1. Instance creation
+### Instance creation
 
-`createInstance` dispatches on the element type. A `WRAPPER_NODE_ELEMENT` type produces a marker via `createWrapperInstance`; any other type produces a real backing via `createElementInstance` → `constructBacking` (`instance.ts`):
+Creating an instance dispatches on the element type. Relationship element types produce a relationship node; every other type resolves the registered wrapper class for that type name from the FFI class registry and constructs a backing GObject. Only construct-time properties — determined from the generated config tables folded over the type's inheritance chain, not from runtime GObject introspection — are passed at construction; a small set of order-sensitive construct properties is deliberately deferred and applied afterward. Construction marshals each property into a value, calls into native to create the object, and registers the resulting wrapper.
 
-- `requireClassByName` resolves the registered wrapper class for the type name from the FFI class registry (throwing with guidance if the type's `@gtkx/jsx` namespace was never imported).
-- `pickConstructProps` keeps only props that are construct-time properties for that type. The construct-prop set comes from the codegen-emitted `CONSTRUCT_PROPS` config table (imported from `virtual:gtkx-config`) folded over the type's name inheritance chain by `collectConstructableProps` — not from runtime GObject GType introspection. `CONSTRUCTION_SKIP_PROPS` deliberately withholds a small set of order-sensitive construct props so they are applied after construction instead.
-- `constructWrapper` invokes the class constructor, which calls `newGobjectWithProperties` in `@gtkx/ffi`. That function marshals each prop into a freshly `g_value_init`'d GValue via `toGvalue`, then issues a native `call` to `g_object_new_with_properties`. The returned opaque `Handle` is bound to the wrapper in the FFI handle map and the wrapper is registered in the reconciler state map.
+### Prop commit
 
-### 2. Prop commit
+Mount and update both apply props with feedback signals suppressed (see [Event path](#event-path-gtk--react)). Application diffs old against new props. Each changed prop resolves to a signal connection, a plain GObject property write, or a generated imperative or collection operation; a *removed* prop is reset to a config-provided default, so omitting a prop actively reverts GTK state rather than leaving it. Accessibility props on widgets are routed through a dedicated path.
 
-`finalizeInitialChildren` (mount) and `commitUpdate` (update) both run `commitInstanceProps` wrapped in `withSignalsBlocked`. For a real backing, `getDescriptors` produces the per-type descriptor table (see below) and `applyProps` (`apply-props.ts`) does the work in two passes:
+How a named prop maps to GObject behavior is driven entirely by the generated config tables, compiled per type name and merged along the instance's GType inheritance chain and interfaces. The descriptor kinds — property write, collection diff, imperative method, and signal connection — are the contract; their data comes from codegen.
 
-- **Generic pass** — diffs old vs. new props. Each changed prop resolves to one of: a signal connection (when the name maps to a signal, registered through the `SignalStore`), a construct-only skip, a plain GObject property write (`Reflect.set` → `setGobjectProperty` → GValue → native `call`), or — when a prop is *removed* — a reset to a config-provided default (`resolveDefaultProp`). Omitting a prop therefore actively reverts GTK state rather than leaving it.
-- **Descriptor pass** — runs the per-type `array | signal | imperative` descriptors. `imperative` descriptors invoke generated setter steps / method calls; `array` descriptors diff collection props; `signal` descriptors connect through the store with optional arg/return shaping.
+### Child attachment
 
-Widget instances additionally route accessible props through `applyAccessibleProps` and exclude them from the generic pass.
+Appending, inserting, and removing children first updates the side-table children array, then dispatches the relationship through an **ordered** list of attach/detach strategies. The first strategy that matches a (child, parent) pair wins, so ordering is significant: the generic widget-container strategy is last, and a guard strategy deliberately throws when a child that should have been passed through a prop is placed directly under its parent.
 
-### 3. Descriptor tables
+Each strategy turns the pair into concrete GTK calls — an element-valued prop sets a property, a collection prop calls an add method, a page is added to a stack or notebook, layout metadata is configured, an overlay is added, and the generic strategy parents the widget (with reorder and autowrap handling where the container requires it). A relationship-node parent re-syncs its GTK state whenever its children change.
 
-`prop-descriptor-table.ts` compiles the generated config tables (`ARRAY_PROPS`, `PROP_RULES`, `OBJECT_PROPS`, `VIRTUAL_PROPS` from `virtual:gtkx-config`) into a per-type-name `PropDescriptorTable`. At commit time `getDescriptors` folds these along the instance's GType inheritance chain plus its interfaces into a single merged table, cached by GType. The descriptor kinds and the `signal()`/`imperative()` builders are the contract for how a named prop maps to GObject behavior; their data comes entirely from codegen.
+### Text and lists
 
-### 4. Child attachment
+Text is realized through host context rather than as real child nodes: the reconciler tracks whether the current subtree is a label or text-buffer host and turns a raw string into a text-run node, throwing if a string appears anywhere text is not expected. Label content is rebuilt by concatenating text-run children; buffers are rebuilt by re-inserting text, tags, paintables, and anchors. Rebuilds are deferred and flushed at the end of a commit.
 
-`appendChild`/`insertBefore`/`removeChild` (`host-config.ts`) first update the side-table `children` array, then dispatch the relationship through `ELEMENT_MAP` — an **ordered** list of `ElementMapping { matches, attach, detach }` strategies. The first mapping whose `matches` returns true wins, so ordering is significant; the generic widget-container mapping is intentionally last, and a `promotedNestingGuard` mapping deliberately throws when a child that should have been passed through a prop is placed directly under its parent. `element-map.ts` is the source of truth for the exact mapping order — read the `ELEMENT_MAP` array there rather than trusting a snapshot of it here.
+List-family widgets run a parallel data path: a controller owns the GTK model and item factory, and rendered cell or header content is projected back into React through a portal into factory-created containers.
 
-Each mapping turns the (child, parent) pair into concrete GTK calls: a slot sets a property, a container-prop calls an add-method, a page adds a stack/notebook page, layout-child configures layout metadata, overlay calls `addOverlay`, and the widget-container mapping does `setChild`/`append`/`insert`/reorder with autowrap handling for `GtkListBox`/`GtkFlowBox`. Marker parents re-sync via `resyncWrapper` whenever their children change.
+### Commit bracketing
 
-### 5. Text and lists
-
-Text is realized through host context, not as real child nodes. `getChildHostContext` tracks whether the current subtree is a `GtkLabel` or `GtkTextBuffer` text host. `createTextInstance` turns a raw string into a `LABEL_TEXT_KIND` or `BUFFER_TEXT_KIND` marker, and **throws** if the string appears anywhere else. Label text is rebuilt by concatenating text-run children (`label-text-rebuild.ts`); buffers are rebuilt by a `TextBufferController` re-inserting text, tags, paintables, and anchors. Rebuilds are deferred and flushed at commit end.
-
-List-family widgets run a parallel data path: a `ListController` owns the GTK model and `SignalListItemFactory`, and rendered cell/header content is projected back into React via `createPortal` into factory-created containers.
-
-### 6. Commit bracketing
-
-`prepareForCommit` calls `beginCommit()` then native `freeze()`; `resetAfterCommit` drains deferred rebuilds via `runCommitFlush`, then calls `endCommit()` and `unfreeze()`. During a freeze the GLib thread runs a dedicated drain loop (below), so the whole React commit batch executes back-to-back against GTK as one main-loop turn instead of yielding mid-commit. A drain error is routed to the reconciler error sink rather than thrown.
+A commit is bracketed so the whole React batch executes back-to-back against GTK as a single main-loop turn instead of yielding mid-commit. The reconciler freezes the GLib thread at the start of a commit, drains deferred text/list rebuilds at the end, then unfreezes. During a freeze the GLib thread runs a dedicated drain loop (see [Single thread and serialization](#single-thread-and-serialization)).
 
 ## Event path (GTK → React)
 
-GTK emits a signal on the GLib thread into a `libffi` trampoline closure. The closure reads C args per their `Type`s, packages them as `Value`s, posts a callback task to the Mailbox's node inbox, wakes the JS thread, and blocks pumping the GLib inbox so nested work proceeds. On the JS thread the handler runs; any return or out-parameter values are written back into C memory before the trampoline returns.
+GTK emits a signal on the GLib thread into a **trampoline** — a `libffi` closure. The closure reads the C arguments according to their Type descriptors, hands them to the JS thread, runs the user handler, and writes any return or out-parameter values back into C memory before returning. The same machinery carries vfuncs and plain callbacks.
 
-The `SignalStore` (`signal-store.ts`) is what prevents GTK→React feedback loops. Every connected handler is wrapped so that while a commit is in flight (`blockDepth > 0`) non-lifecycle signals are suppressed, and running any handler itself blocks all signals re-entrantly. Only the explicit `LIFECYCLE_SIGNALS` allowlist (realize/unrealize/map/unmap/show/hide/destroy/resize/render) fires while blocked. Handlers therefore must not rely on observing intra-commit change signals. On an uncaught render error the root force-unblocks all signals to avoid a stuck blocked state.
+A signal store prevents GTK→React feedback loops. Every connected handler is wrapped so that, while a commit is in flight, non-lifecycle signals are suppressed, and running any handler itself re-entrantly blocks all signals. Only an explicit lifecycle allowlist (realize/unrealize, map/unmap, show/hide, destroy, resize, render) fires while blocked, so handlers must not rely on observing intra-commit change signals. On an uncaught render error the root force-unblocks all signals to avoid a stuck state.
 
 ## The FFI boundary contract
 
-Every native operation is parameterized by a plain-object **Type descriptor** built by the factories in `descriptors.ts` and bundled as the `t` namespace that generated bindings import. The descriptor (`{ type: 'gobject' | 'boxed' | 'string' | … , ownership, … }`) is the serialized contract: the same object shape is parsed in Rust by `Type::from_js_value`. `ownership` (`'full' | 'borrowed'`) on every pointer-bearing descriptor decides reference counting and freeing on both sides — it is safety-critical, since `full` vs. `borrowed` selects ref/sink/unref versus a no-op.
+Every native operation is parameterized by a plain-object **Type descriptor**, built by factories in `@gtkx/ffi` and bundled as the namespace that generated bindings import. The descriptor is the serialized marshalling contract: the same object shape is produced in TypeScript and parsed in Rust, so both sides agree on how each value crosses the boundary. Pointer-bearing descriptors carry an ownership marker that decides reference counting and freeing on both sides; it is safety-critical, since it selects ref/sink/unref versus a no-op.
 
 The pieces `@gtkx/ffi` layers on top of the native primitives:
 
-- **Handle map** (`registry.ts`) — a `WeakMap<wrapper, Handle>`. `getHandle` throws when an instance has no handle; `tryGetHandle` tolerates null. Marshalling unwraps JS objects back to pointers through this map.
-- **Class registry** (`registry.ts`) — a `Map<GType, class>` plus a `__gtype__` stamp on each wrapper prototype. `findWrapperClass` resolves a runtime GType to the most-derived registered class, walking the GObject parent chain when there is no exact match; interface handles resolve through `wrapInterfaceHandle`.
-- **Wrapper identity** — `resolveWrapper` enforces one JS wrapper per live GObject: it asks native `getWrapper(handle)` first and returns that exact instance if present; otherwise it `Object.create`s the resolved prototype and, for true GObject-derived types, registers a toggle-ref-backed wrapper via native `setWrapper`. Boxed/struct/fundamental wrappers only get a handle-map entry.
-- **GValue marshalling** (`gvalue.ts`) — `toGvalue`/`fromGvalue` bridge JS values and GLib `GValue`s, dispatching on the fundamental GType derived from the descriptor. `gobject.ts` wraps `g_object_new_with_properties` and `g_object_get|set_property`. `G_TYPE_POINTER` is read-only: a non-null pointer GValue throws when read back to JS.
-- **Signals** (`signal.ts`) — `connectGobjectSignal` wraps the user handler in a trampoline (skip-receiver) and calls `g_signal_connect_data`; `emitGobjectSignal` builds an instance+arg GValue vector, looks up the signal id and detail quark, calls `g_signal_emitv`, and reassembles out-params and return into a tuple.
-- **Trampoline** (`handler-trampoline.ts`) — one `wrapHandler` serves signals, vfuncs, and plain callbacks. It wraps incoming native args, optionally binds the first as `this` (receiver `'this'` for vfuncs, `'skip'` for signals, `'none'` for plain callbacks), partitions in/out/inout and caller-allocated buffer params, calls the user function, then writes results back into out-cells and unwraps the return.
-- **Subclassing** (`register-class.ts`) — `registerClass` derives the parent GType, discovers overridden class and inherited-interface vfuncs against the per-class/per-interface vfunc registries, wraps each as a `this`-receiver trampoline, and hands native `registerClass` the byte-offset/arg/return descriptors. Overriding the construct-time slots `constructed`/`setProperty`/`getProperty` is rejected — such init must run in the subclass constructor after `super(...)`.
-- **Call shape** (`fn.ts`) — builds a callable from a symbol plus per-arg metadata (direction out/inout, callerAllocates, consumed, throws), planning which JS inputs feed which native slots, allocating ref cells for out params, and appending a trailing `GError` ref cell checked by `checkError` when `throws` is set.
+- **Handle map** — associates each wrapper with the opaque native handle for its live object; marshalling unwraps JS objects back to pointers through it.
+- **Class registry** — maps a runtime GType to the most-derived registered wrapper class, walking the GObject parent chain when there is no exact match, and resolving interface handles to their implementing class.
+- **Wrapper identity** — enforces one JS wrapper per live GObject: native is asked for an existing wrapper first, and only when none exists is a new one created and, for true GObject-derived types, registered with a toggle reference. Boxed, struct, and fundamental wrappers only get a handle-map entry.
+- **Value marshalling** — bridges JS values and GLib values in both directions, dispatching on the GType derived from the descriptor, and wraps GObject construction and property get/set.
+- **Signals** — connecting a signal wraps the user handler in a trampoline; emitting a signal builds the argument vector, invokes the GLib emission, and reassembles out-params and the return into a tuple.
+- **Subclassing** — registering a subclass derives the parent GType, discovers overridden class and inherited-interface vfuncs, wraps each as a trampoline, and hands native the vtable descriptors. Overriding construct-time slots is rejected; such initialization must run in the subclass constructor after `super(...)`.
 
 ## The native boundary contract
 
-`@gtkx/native` exposes a fixed set of napi functions that the FFI layer binds against: `call`, `quit`, `read`, `write`, `alloc`, `getType`, `registerClass`, `setWrapper`, `getWrapper`, `freeze`, `unfreeze`. (`init` is also `#[napi]`, but it is an internal bootstrap that `@gtkx/native` invokes once during its own module load to spawn the GLib thread; it is not re-exported from `@gtkx/native`'s public TS surface and `@gtkx/ffi` never calls it.) Each crossing-value is described by the same `Type` descriptor union and carries `Value`/`Handle` (an opaque `External` over a native pointer).
+`@gtkx/native` exposes a fixed set of napi functions that the FFI layer binds against, covering outbound calls, memory read/write/alloc, type lookup, subclass registration, wrapper get/set, and freeze/unfreeze. Native initialization runs once as an import side effect to spawn the GLib thread; it is not part of the callable surface. Each value crossing the boundary is described by the same Type descriptor union and carries an opaque handle over a native pointer.
 
-### Single thread + Mailbox
+### Single thread and serialization
 
-`init` spawns one thread named `gtkx-glib` that owns the GLib `MainContext`/`MainLoop`; the JS thread stays separate. The `GlibThread` phase machine is `New → Running → NotRunning`: `init` is one-shot and `quit` is terminal, so the runtime cannot be reinitialized after quit.
+One thread owns the GLib main context and main loop; the JS thread stays separate. That thread is single-lifecycle: initialization is one-shot and quit is terminal, so the runtime cannot be reinitialized after quit.
 
-All GLib/GTK work is serialized through the `Mailbox` (a global `OnceLock` singleton). It holds a `glib_inbox` and a `node_inbox` of queued tasks plus wake signals. A napi call packages work as a `ModuleRequest`, pushes the closure to the GLib inbox (via `glib::idle_add` at `HIGH_IDLE`, or directly when a freeze loop is active), and **blocks** on the JS thread waiting for the result — while still draining its own `node_inbox` so GLib-initiated callbacks can run. This is what lets a native call re-enter JS without deadlocking.
+All GLib/GTK work is serialized through a single mailbox. A napi call queues its work onto the GLib thread and blocks the JS thread waiting for the result — while still draining its own inbox so GLib-initiated callbacks (event handlers, vfuncs) can run. This is what lets a native call re-enter JS without deadlocking. Re-entrancy is kept ordered by tagging each queued task with the current callback depth and draining only tasks at or above the depth a blocking round-trip is waiting on, so nested commit and handler work proceeds in the right order.
 
-Re-entrancy is kept ordered by **callback-depth tagging**: each GLib task is tagged with the current depth, and a blocking node round-trip waits at `current_depth + 1`, draining only tasks at or above that depth (`dispatch_pending_from_depth`). Nested commit/handler work proceeds in the right order instead of deadlocking or running out of order.
+### Outbound calls and Type codecs
 
-The `ModuleRequest`/`ModuleResponse` traits standardize every entry point: parse JS on the JS thread, `dispatch` the closure to the GLib thread, wait, and convert the result back.
+On the GLib thread, an outbound call builds a `libffi` call signature from the argument and result Type descriptors, encodes each argument, resolves the target symbol through a cache that `dlopen`s the named library (trying soname candidates in order and never unloading), invokes it, and decodes the return and any out-parameters back into values. Updated out-parameter values are written back into their JS cells once control returns to the JS thread.
 
-### Outbound call execution
-
-On the GLib thread, `CallRequest::execute` (`module/call.rs`):
-
-1. Builds a `libffi` CIF from the arg `Type`s and the result `Type`.
-2. Encodes each `Arg` into an `FfiValue`, arming any pending ownership transfer.
-3. Resolves the symbol through a thread-local `LibraryCache` that `dlopen`s the named library (comma-separated soname candidates tried in order, `RTLD_GLOBAL`, cached and never unloaded).
-4. Invokes via `libffi`, decodes the return and any inout `Ref` out-params back into `Value`s, disarms transfers consumed by the call, and frees transfer-full sized-array returns.
-5. Returns the value plus a list of `RefUpdate`s; back on the JS thread, `to_js_response` writes each updated value into the original JS `{ value }` cell.
-
-### Type codecs
-
-The `Type` enum implements three `enum_dispatch` traits — `FfiEncoder` (JS `Value` → libffi arg), `FfiDecoder` (FFI result → `Value`), and `RawPtrCodec` (read/write through a raw pointer slot, used for struct fields, out-params, and vfunc returns) — combined as `FfiCodec`. `Value` is the Rust mirror of a JS value (`Number`, `BigInt`, `String`, `Boolean`, `Object(NativeHandle)`, `Array`, `BufferView`, `Callback`, `Ref`, `Null`, `Undefined`). For GObjects specifically, decoding (`tracked_gobject_value`) takes a reference and `ref_sink`s floating/unowned objects under specific conditions, carrying a pending ref that `setWrapper` later consumes.
+The Type descriptor union drives all of this: each variant knows how to encode a JS value into a `libffi` argument, decode an FFI result back into a JS value, and read or write itself through a raw pointer slot (for struct fields, out-params, and vfunc returns). GObject decoding takes a reference and sinks floating or unowned objects under specific conditions, carrying a pending reference that wrapper registration later consumes or releases.
 
 ### Trampolines (callbacks and vfuncs)
 
-`build_trampoline` (`trampoline.rs`) creates a `libffi` `Closure` whose handler reads C args into `Value`s, invokes the JS function through the Mailbox, and writes the JS return into the C return slot. Out/inout `Ref` args seed cells from the inbound pointer and flush the returned values back. Borrowed string and borrowed container returns are retained on the `TrampolineData` and freed on the next invocation (the C caller does not take ownership). The same machinery installs vfunc pointers into class/interface vtables for `register_class`. Closure lifetime follows the callback scope: `call` frees when the encoded value drops, `notified` attaches a destroy-notify, `async` frees itself one-shot, `forever` leaks intentionally.
+A **trampoline** is a `libffi` closure whose handler reads C arguments into JS values, invokes a JS function across the mailbox, and writes the JS return into the C return slot; out and inout parameters are seeded from inbound pointers and flushed back after the call. Borrowed string and container returns are retained and freed on the next invocation, since the C caller does not take ownership. The same mechanism installs vfunc pointers into class and interface vtables for subclass registration. Closure lifetime follows the callback scope — freed when its encoded value drops, freed via a destroy-notify, freed one-shot for async callbacks, or intentionally leaked for callbacks that must live for the process.
 
-### Freeze / drain loop
+### Freeze and drain loop
 
-`freeze()` enters a long-lived GLib task running `FreezeController::run_loop`, which drains the `glib_inbox` without yielding to the GLib idle scheduler so a burst of native calls executes back-to-back; `unfreeze()` exits it. Freezes are reference-counted, so nested freezes are safe. This is the mechanism the React commit relies on to run a whole batch as one main-loop turn.
+A freeze enters a long-lived GLib task that drains queued native calls back-to-back without yielding to the GLib idle scheduler, so a burst of calls executes as one main-loop turn; unfreezing exits it. Freezes are reference-counted, so nesting is safe. This is the mechanism the React commit relies on to apply a whole batch atomically.
 
 ### Wrapper lifetime (toggle references)
 
-A wrapper's lifetime is tied to its GObject through a toggle reference plus a napi reference. `set_wrapper` (`module/toggle_ref.rs`) adds a finalizer to the JS wrapper and installs a `WrapperBinding` (napi ref + generation + strong flag) in the GObject's qdata via `g_object_add_toggle_ref`. The toggle-notify callback flips the napi reference between strong and weak as the object's external ref count crosses 1, so the JS wrapper stays alive exactly while GTK or other native code holds a reference, and JS GC can reclaim it only once GTK holds the last ref. Cleanup is finalizer-driven and scheduled onto the main loop (`schedule_cleanup`), guarded by a generation counter and a lookup lock against rebind-vs-finalize races — so wrapper disposal is asynchronous relative to JS GC. A decoded GObject carries a `pending_gobject_ref` so its extra decode-time ref is released if no wrapper is ever installed.
+A wrapper's lifetime is tied to its GObject through a toggle reference plus a napi reference. The toggle-notify callback flips the napi reference between strong and weak as the object's external reference count crosses one, so the JS wrapper stays alive exactly while GTK or other native code holds a reference, and JS GC can reclaim it only once GTK holds the last one. Cleanup is finalizer-driven and scheduled onto the main loop, guarded against rebind-versus-finalize races, so wrapper disposal is asynchronous relative to JS GC. A decoded GObject carries a pending reference so its extra decode-time reference is released if no wrapper is ever installed.

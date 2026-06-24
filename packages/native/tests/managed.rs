@@ -182,34 +182,36 @@ fn drop_borrowed_handle_is_noop() {
 
 #[test]
 fn a_consumed_decoded_handle_drop_releases_nothing() {
-    let _guard = common::serial_guard();
-    let (_obj, obj_ptr, initial_ref, handle) = extra_referenced_decoded_gobject();
-    assert!(handle.take_pending_gobject_ref());
-    drop(handle);
+    common::run(|| {
+        let (_obj, obj_ptr, initial_ref, handle) = extra_referenced_decoded_gobject();
+        assert!(handle.take_pending_gobject_ref());
+        drop(handle);
 
-    let sentinel = Arc::new(AtomicBool::new(false));
-    let sentinel_in_idle = Arc::clone(&sentinel);
-    glib::idle_add_once(move || sentinel_in_idle.store(true, Ordering::SeqCst));
-    pump_default_context_until(|| sentinel.load(Ordering::SeqCst));
+        let sentinel = Arc::new(AtomicBool::new(false));
+        let sentinel_in_idle = Arc::clone(&sentinel);
+        glib::idle_add_once(move || sentinel_in_idle.store(true, Ordering::SeqCst));
+        pump_default_context_until(|| sentinel.load(Ordering::SeqCst));
 
-    assert!(sentinel.load(Ordering::SeqCst));
-    assert_eq!(get_gobject_refcount(obj_ptr), initial_ref);
+        assert!(sentinel.load(Ordering::SeqCst));
+        assert_eq!(get_gobject_refcount(obj_ptr), initial_ref);
 
-    // SAFETY: `obj_ptr` is still alive (the `_obj` binding plus the extra reference taken in
-    // `extra_referenced_decoded_gobject`); this releases that one extra reference.
-    unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
-    assert_eq!(get_gobject_refcount(obj_ptr), initial_ref - 1);
+        // SAFETY: `obj_ptr` is still alive (the `_obj` binding plus the extra reference taken in
+        // `extra_referenced_decoded_gobject`); this releases that one extra reference.
+        unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
+        assert_eq!(get_gobject_refcount(obj_ptr), initial_ref - 1);
+    });
 }
 
 #[test]
 fn a_decoded_handle_drop_releases_unconsumed_pending_ref() {
-    let _guard = common::serial_guard();
-    let (_obj, obj_ptr, initial_ref, handle) = extra_referenced_decoded_gobject();
-    drop(handle);
+    common::run(|| {
+        let (_obj, obj_ptr, initial_ref, handle) = extra_referenced_decoded_gobject();
+        drop(handle);
 
-    pump_default_context_until(|| get_gobject_refcount(obj_ptr) == initial_ref - 1);
+        pump_default_context_until(|| get_gobject_refcount(obj_ptr) == initial_ref - 1);
 
-    assert_eq!(get_gobject_refcount(obj_ptr), initial_ref - 1);
+        assert_eq!(get_gobject_refcount(obj_ptr), initial_ref - 1);
+    });
 }
 
 #[test]

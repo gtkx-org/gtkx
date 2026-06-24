@@ -18,7 +18,7 @@ type T = {
     boolean: typeof helpers.booleanT;
     void: typeof helpers.voidT;
     unichar: typeof helpers.unicharT;
-    blob: typeof helpers.blobT;
+    buffer: typeof helpers.bufferT;
     string: typeof helpers.stringT;
     object: typeof helpers.objectT;
     boxed: typeof helpers.boxedT;
@@ -57,7 +57,7 @@ export const t: T = {
     boolean: helpers.booleanT,
     void: helpers.voidT,
     unichar: helpers.unicharT,
-    blob: helpers.blobT,
+    buffer: helpers.bufferT,
     string: helpers.stringT,
     object: helpers.objectT,
     boxed: helpers.boxedT,

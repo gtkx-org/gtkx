@@ -1,7 +1,7 @@
 import * as GObject from "@gtkx/gi/gobject";
 import { isRootElement, type RootElement } from "./root-element.js";
 import { getSignalStore, type SignalStore } from "./signal-store.js";
-import type { ContainerInfo, Props } from "./types.js";
+import type { Container, Props } from "./types.js";
 import { isWrapperElement, type WrapperElement } from "./wrapper-element.js";
 
 export type Node = GObject.Object | WrapperElement | RootElement;
@@ -12,7 +12,7 @@ export interface State {
     props: Props;
     parent: Node | null;
     children: Node[];
-    rootContainer: ContainerInfo;
+    rootContainer: Container;
     signalStore: SignalStore;
 }
 
@@ -22,7 +22,7 @@ export type StateSeed = {
     name?: string;
     kind?: string;
     props: Props;
-    rootContainer: ContainerInfo;
+    rootContainer: Container;
 };
 
 export const registerState = (node: Node, { name, kind, props, rootContainer }: StateSeed): State => {
@@ -39,7 +39,7 @@ export const registerState = (node: Node, { name, kind, props, rootContainer }: 
     return state;
 };
 
-export const ensureState = (container: ContainerInfo): State =>
+export const ensureState = (container: Container): State =>
     stateMap.get(container) ?? registerState(container, { props: {}, rootContainer: container });
 
 export const stateOf = (node: Node): State => {

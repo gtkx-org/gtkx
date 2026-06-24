@@ -1,1 +1,1 @@
-export { default, type GtkxHeadlessOptions } from "./plugin.js";
+export { default, type GtkxPluginOptions } from "./plugin.js";

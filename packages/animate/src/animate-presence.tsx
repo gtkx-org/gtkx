@@ -11,13 +11,13 @@ import {
     useState,
 } from "react";
 
-export interface PresenceState {
+export interface PresenceContextProps {
     isPresent: boolean;
     onExitComplete: (id: string) => void;
     register: (id: string) => () => void;
 }
 
-const PresenceContext = createContext<PresenceState | null>(null);
+const PresenceContext = createContext<PresenceContextProps | null>(null);
 
 type UsePresenceResult = [true, null] | [true] | [false, () => void];
 
@@ -53,7 +53,7 @@ const warnOnceUnkeyedChild = (): void => {
     console.warn(message);
 };
 
-export const toKeyedChildren = (children: ReactNode): KeyedChild[] => {
+export const onlyKeyedElements = (children: ReactNode): KeyedChild[] => {
     const result: KeyedChild[] = [];
     const childArray = Array.isArray(children) ? children : [children];
 
@@ -79,7 +79,7 @@ type PresenceChildProps = {
 const PresenceChild = ({ isPresent, onExitComplete, children }: PresenceChildProps): ReactNode => {
     const registrationsRef = useRef<Map<string, boolean>>(new Map());
 
-    const context = useMemo<PresenceState>(() => {
+    const context = useMemo<PresenceContextProps>(() => {
         const registrations = registrationsRef.current;
         return {
             isPresent,
@@ -109,7 +109,7 @@ const PresenceChild = ({ isPresent, onExitComplete, children }: PresenceChildPro
 };
 
 export const AnimatePresence = ({ children }: { children: ReactNode }): ReactNode => {
-    const presentChildren = useMemo(() => toKeyedChildren(children), [children]);
+    const presentChildren = useMemo(() => onlyKeyedElements(children), [children]);
     const presentKeys = presentChildren.map((child) => child.key);
 
     const pendingPresentChildren = useRef(presentChildren);

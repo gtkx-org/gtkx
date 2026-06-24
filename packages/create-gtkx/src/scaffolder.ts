@@ -1,20 +1,20 @@
 import { dirname, join, resolve } from "node:path";
 import { errorMessage, isValidApplicationId, renderEmptyGtkxEnvModule, toUpperFirst } from "@gtkx/utils";
-import { isValidProjectName, PACKAGE_MANAGERS, type PackageManager, type TestingOption } from "./options.js";
+import { isValidProjectName, PACKAGE_MANAGERS, type PackageManager } from "./options.js";
 import { TEMPLATE_SUFFIX, type TemplateContext } from "./templates.js";
 
 export type CreateOptions = {
     name?: string | undefined;
     applicationId?: string | undefined;
     packageManager?: PackageManager | undefined;
-    testing?: TestingOption | undefined;
+    includeTesting?: boolean | undefined;
 };
 
 type ResolvedOptions = {
     name: string;
     applicationId: string;
     packageManager: PackageManager;
-    testing: TestingOption;
+    includeTesting: boolean;
 };
 
 type ScaffolderPrompts = Pick<
@@ -42,7 +42,7 @@ type GitInitFn = (cwd: string) => Promise<void>;
 
 export type ScaffolderDeps = {
     cwd(): string;
-    gtkxVersion: string;
+    selfVersion: string;
     fs: ScaffolderFs;
     prompts: ScaffolderPrompts;
     listTemplates(): string[];
@@ -51,10 +51,6 @@ export type ScaffolderDeps = {
     gitInit: GitInitFn;
     detectPackageManager(cwd: string): Promise<PackageManager | undefined>;
     exit(code: number): never;
-};
-
-export type Scaffolder = {
-    run(options?: CreateOptions): Promise<void>;
 };
 
 const DEPENDENCIES = ["@gtkx/css", "@gtkx/ffi", "@gtkx/react", "react"];
@@ -66,19 +62,19 @@ const pinGtkxDependency = (name: string, version: string): string =>
 
 const TESTING_DEV_DEPENDENCIES = ["@gtkx/testing", "vitest"];
 
-const RUN_DEV_COMMAND: Record<PackageManager, string> = Object.fromEntries(
-    PACKAGE_MANAGERS.map((manager) => [manager.value, manager.runDev]),
+const DEV_COMMAND: Record<PackageManager, string> = Object.fromEntries(
+    PACKAGE_MANAGERS.map((manager) => [manager.value, manager.devCommand]),
 ) as Record<PackageManager, string>;
 
-const getRunCommand = (pm: PackageManager): string => RUN_DEV_COMMAND[pm];
+const getDevCommand = (packageManager: PackageManager): string => DEV_COMMAND[packageManager];
 
 const titleFromName = (name: string): string => name.split("-").map(toUpperFirst).join(" ");
 
 const suggestApplicationId = (name: string): string => `com.${name.replaceAll("-", "")}.app`;
 
-const getDevDependencies = (testing: TestingOption): string[] => {
+const getDevDependencies = (includeTesting: boolean): string[] => {
     const devDeps = [...DEV_DEPENDENCIES];
-    if (testing === "vitest") {
+    if (includeTesting) {
         devDeps.push(...TESTING_DEV_DEPENDENCIES);
     }
     return devDeps;
@@ -150,23 +146,21 @@ const promptPackageManager = async (deps: ScaffolderDeps): Promise<PackageManage
     );
 };
 
-const promptTesting = async (deps: ScaffolderDeps): Promise<TestingOption> => {
-    const enable = guardCancellation(
+const promptTesting = async (deps: ScaffolderDeps): Promise<boolean> =>
+    guardCancellation(
         deps,
         await deps.prompts.confirm({
             message: "Include testing setup (Vitest)?",
             initialValue: true,
         }),
     );
-    return enable ? "vitest" : "none";
-};
 
 const promptForOptions = async (deps: ScaffolderDeps, options: CreateOptions): Promise<ResolvedOptions> => {
     const name = options.name ?? (await promptName(deps));
     const applicationId = options.applicationId ?? (await promptApplicationId(deps, name));
     const packageManager = options.packageManager ?? (await promptPackageManager(deps));
-    const testing = options.testing ?? (await promptTesting(deps));
-    return { name, applicationId, packageManager, testing };
+    const includeTesting = options.includeTesting ?? (await promptTesting(deps));
+    return { name, applicationId, packageManager, includeTesting };
 };
 
 const TESTING_TEMPLATE_PREFIXES = ["config/", "tests/"] as const;
@@ -181,44 +175,44 @@ const destinationFor = (templateRelativePath: string): string =>
 
 const isTemplateIncluded = (templateRelativePath: string, resolved: ResolvedOptions): boolean => {
     if (TESTING_TEMPLATE_PREFIXES.some((prefix) => templateRelativePath.startsWith(prefix))) {
-        return resolved.testing === "vitest";
+        return resolved.includeTesting;
     }
     return true;
 };
 
-const scaffoldProject = (deps: ScaffolderDeps, projectPath: string, resolved: ResolvedOptions): void => {
-    const { name, applicationId, testing } = resolved;
-    const context: TemplateContext = { name, applicationId, title: titleFromName(name), testing };
+const scaffoldProject = (deps: ScaffolderDeps, targetDir: string, resolved: ResolvedOptions): void => {
+    const { name, applicationId, includeTesting } = resolved;
+    const context: TemplateContext = { name, applicationId, title: titleFromName(name), includeTesting };
 
-    deps.fs.mkdirSync(projectPath, { recursive: true });
+    deps.fs.mkdirSync(targetDir, { recursive: true });
 
     for (const template of deps.listTemplates()) {
         const relativeTemplate = template.slice(0, -TEMPLATE_SUFFIX.length);
         if (!isTemplateIncluded(relativeTemplate, resolved)) continue;
 
-        const destination = join(projectPath, destinationFor(relativeTemplate));
+        const destination = join(targetDir, destinationFor(relativeTemplate));
         deps.fs.mkdirSync(dirname(destination), { recursive: true });
         deps.fs.writeFileSync(destination, deps.render(template, context));
     }
 };
 
 type InstallAllOptions = {
-    projectPath: string;
+    targetDir: string;
     name: string;
     packageManager: PackageManager;
     devDependencies: string[];
 };
 
 const installAllDependencies = async (deps: ScaffolderDeps, options: InstallAllOptions): Promise<void> => {
-    const { projectPath, name, packageManager, devDependencies } = options;
+    const { targetDir, name, packageManager, devDependencies } = options;
     const spinner = deps.prompts.spinner();
     spinner.start("Installing dependencies...");
 
-    const pin = (names: string[]): string[] => names.map((name) => pinGtkxDependency(name, deps.gtkxVersion));
+    const pin = (names: string[]): string[] => names.map((name) => pinGtkxDependency(name, deps.selfVersion));
 
     try {
-        await deps.install({ cwd: projectPath, packageManager, dependencies: pin(DEPENDENCIES), dev: false });
-        await deps.install({ cwd: projectPath, packageManager, dependencies: pin(devDependencies), dev: true });
+        await deps.install({ cwd: targetDir, packageManager, dependencies: pin(DEPENDENCIES), dev: false });
+        await deps.install({ cwd: targetDir, packageManager, dependencies: pin(devDependencies), dev: true });
         spinner.stop("Dependencies installed!");
     } catch (error) {
         spinner.stop("Failed to install dependencies");
@@ -228,17 +222,17 @@ const installAllDependencies = async (deps: ScaffolderDeps, options: InstallAllO
     }
 };
 
-const writeInitialSchemaEnv = (deps: ScaffolderDeps, projectPath: string): void => {
-    const storeDir = join(projectPath, "node_modules", ".gtkx");
+const writeInitialEnvModule = (deps: ScaffolderDeps, targetDir: string): void => {
+    const storeDir = join(targetDir, "node_modules", ".gtkx");
     deps.fs.mkdirSync(storeDir, { recursive: true });
     deps.fs.writeFileSync(join(storeDir, "env.d.ts"), renderEmptyGtkxEnvModule());
 };
 
-const initializeGitRepo = async (deps: ScaffolderDeps, projectPath: string): Promise<void> => {
+const initializeGitRepo = async (deps: ScaffolderDeps, targetDir: string): Promise<void> => {
     const spinner = deps.prompts.spinner();
     spinner.start("Initializing git repository...");
     try {
-        await deps.gitInit(projectPath);
+        await deps.gitInit(targetDir);
         spinner.stop("Git repository initialized!");
     } catch {
         spinner.stop("Failed to initialize git repository");
@@ -252,34 +246,32 @@ To run tests, you need a headless Wayland compositor installed:
   Ubuntu: sudo apt install weston`;
 
 const printNextSteps = (deps: ScaffolderDeps, resolved: ResolvedOptions): void => {
-    const runCmd = getRunCommand(resolved.packageManager);
-    const nextSteps = `cd ${resolved.name}\n${runCmd}`;
-    const testingNote = resolved.testing === "none" ? "" : HEADLESS_COMPOSITOR_NOTE;
+    const devCmd = getDevCommand(resolved.packageManager);
+    const nextSteps = `cd ${resolved.name}\n${devCmd}`;
+    const testingNote = resolved.includeTesting ? HEADLESS_COMPOSITOR_NOTE : "";
     deps.prompts.note(`${nextSteps}${testingNote}`, "Next steps");
 };
 
-export const createScaffolder = (deps: ScaffolderDeps): Scaffolder => ({
-    async run(options: CreateOptions = {}): Promise<void> {
-        deps.prompts.intro("Create GTKX App");
+export const scaffold = async (deps: ScaffolderDeps, options: CreateOptions = {}): Promise<void> => {
+    deps.prompts.intro("Create GTKX App");
 
-        const resolved = await promptForOptions(deps, options);
-        const projectPath = resolve(deps.cwd(), resolved.name);
-        const devDeps = getDevDependencies(resolved.testing);
+    const resolved = await promptForOptions(deps, options);
+    const targetDir = resolve(deps.cwd(), resolved.name);
+    const devDeps = getDevDependencies(resolved.includeTesting);
 
-        const projectSpinner = deps.prompts.spinner();
-        projectSpinner.start("Creating project structure...");
-        scaffoldProject(deps, projectPath, resolved);
-        projectSpinner.stop("Project structure created!");
+    const projectSpinner = deps.prompts.spinner();
+    projectSpinner.start("Creating project structure...");
+    scaffoldProject(deps, targetDir, resolved);
+    projectSpinner.stop("Project structure created!");
 
-        await installAllDependencies(deps, {
-            projectPath,
-            name: resolved.name,
-            packageManager: resolved.packageManager,
-            devDependencies: devDeps,
-        });
-        writeInitialSchemaEnv(deps, projectPath);
-        await initializeGitRepo(deps, projectPath);
+    await installAllDependencies(deps, {
+        targetDir,
+        name: resolved.name,
+        packageManager: resolved.packageManager,
+        devDependencies: devDeps,
+    });
+    writeInitialEnvModule(deps, targetDir);
+    await initializeGitRepo(deps, targetDir);
 
-        printNextSteps(deps, resolved);
-    },
-});
+    printNextSteps(deps, resolved);
+};

@@ -82,13 +82,13 @@ export const queryOptionsSchema: z.ZodObject<
 
 const queryParams: z.ZodObject<
     {
-        queryType: z.ZodEnum<{ role: "role"; text: "text"; name: "name"; labelText: "labelText" }>;
+        by: z.ZodEnum<{ role: "role"; text: "text"; name: "name"; labelText: "labelText" }>;
         value: z.ZodUnion<[z.ZodString, z.ZodNumber]>;
         options: z.ZodOptional<typeof queryOptionsSchema>;
     },
     z.core.$strip
 > = z.object({
-    queryType: z.enum(["role", "text", "name", "labelText"]),
+    by: z.enum(["role", "text", "name", "labelText"]),
     value: z.union([z.string(), z.number()]),
     options: queryOptionsSchema.optional(),
 });

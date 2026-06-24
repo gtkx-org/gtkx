@@ -10,7 +10,7 @@
         "dev": "gtkx dev",
         "build": "gtkx build",
         "typecheck": "gtkx codegen && tsc --noEmit",
-        "start": "node dist/bundle.js"<% if (testing === 'vitest') { %>,
+        "start": "node dist/bundle.js"<% if (includeTesting) { %>,
         "test": "vitest"<% } %>
     }
 }

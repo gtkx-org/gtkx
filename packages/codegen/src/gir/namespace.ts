@@ -1,4 +1,4 @@
-import { boxedFromNode, type GirBoxed, isVtableRecord } from "./boxed.js";
+import { type GirRecord, isVtableRecord, recordFromNode } from "./boxed.js";
 import { callbackFromNode, type GirCallback } from "./callback.js";
 import { classFromNode, type GirClass } from "./class.js";
 import { enumFromNode, type GirEnum } from "./enum.js";
@@ -27,7 +27,7 @@ export type GirNamespace = {
     includes: NamespaceInclude[];
     classes: GirClass[];
     interfaces: GirClass[];
-    boxeds: GirBoxed[];
+    records: GirRecord[];
     enums: GirEnum[];
     callbacks: GirCallback[];
     functions: GirFunction[];
@@ -80,7 +80,7 @@ export const createNamespaceShell = (header: NamespaceHeader, id: number): GirNa
     includes: header.includes,
     classes: [],
     interfaces: [],
-    boxeds: [],
+    records: [],
     enums: [],
     callbacks: [],
     functions: [],
@@ -92,7 +92,7 @@ export const populateNamespaceBody = (shell: GirNamespace, namespaceNode: RawNod
     const mutable: MutableNamespace = shell;
     mutable.classes = childrenOf(namespaceNode, "class").map((klass) => classFromNode(klass, false, context));
     mutable.interfaces = childrenOf(namespaceNode, "interface").map((iface) => classFromNode(iface, true, context));
-    mutable.boxeds = collectBoxeds(namespaceNode, context);
+    mutable.records = collectRecords(namespaceNode, context);
     mutable.enums = collectEnums(namespaceNode, context);
     mutable.callbacks = childrenOf(namespaceNode, "callback").map((callback) => callbackFromNode(callback, context));
     mutable.functions = childrenOf(namespaceNode, "function").map((fn) => functionFromNode(fn, "function", context));
@@ -111,11 +111,11 @@ export const populateNamespaceBody = (shell: GirNamespace, namespaceNode: RawNod
 const splitPrefixes = (raw: string | undefined): string[] =>
     (raw ?? "").split(",").filter((prefix) => prefix.length > 0);
 
-const collectBoxeds = (namespaceNode: RawNode, context: ParseContext): GirBoxed[] => [
+const collectRecords = (namespaceNode: RawNode, context: ParseContext): GirRecord[] => [
     ...childrenOf(namespaceNode, "record").map((record) =>
-        boxedFromNode(record, isVtableRecord(record), false, context),
+        recordFromNode(record, isVtableRecord(record), false, context),
     ),
-    ...childrenOf(namespaceNode, "union").map((union) => boxedFromNode(union, isVtableRecord(union), true, context)),
+    ...childrenOf(namespaceNode, "union").map((union) => recordFromNode(union, isVtableRecord(union), true, context)),
 ];
 
 const collectEnums = (namespaceNode: RawNode, context: ParseContext): GirEnum[] => [

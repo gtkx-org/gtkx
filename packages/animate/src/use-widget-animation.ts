@@ -7,8 +7,8 @@ import { interpolate } from "./interpolation.js";
 import type { AnimatableProperties, SpringAnimationProps, TimedAnimationProps } from "./types.js";
 
 export type WidgetAnimationProps =
-    | ({ kind: "timed" } & TimedAnimationProps)
-    | ({ kind: "spring" } & SpringAnimationProps);
+    | ({ type: "timed" } & TimedAnimationProps)
+    | ({ type: "spring" } & SpringAnimationProps);
 
 const timedDefaults = { duration: 300 };
 const springDefaults = { damping: 1, mass: 1, stiffness: 100 };
@@ -54,7 +54,7 @@ const buildAnimation = (
     target: Adw.CallbackAnimationTarget,
     props: WidgetAnimationProps,
 ): Adw.Animation =>
-    props.kind === "spring" ? buildSpringAnimation(widget, target, props) : buildTimedAnimation(widget, target, props);
+    props.type === "spring" ? buildSpringAnimation(widget, target, props) : buildTimedAnimation(widget, target, props);
 
 const resolveInitialValues = (props: WidgetAnimationProps): AnimatableProperties => {
     const { initial, animate, animateOnMount } = props;
@@ -71,7 +71,7 @@ const resolveInitialValues = (props: WidgetAnimationProps): AnimatableProperties
     return initial !== undefined ? { ...initial } : animateValues;
 };
 
-export class AnimationDriver {
+export class WidgetAnimator {
     private cssProvider: AnimationCssProvider;
     private propsRef: RefObject<WidgetAnimationProps>;
     private ref: RefObject<Gtk.Widget | null>;
@@ -164,21 +164,21 @@ export class AnimationDriver {
     }
 }
 
-export const useWidgetAnimation = (ref: RefObject<Gtk.Widget | null>, props: WidgetAnimationProps): AnimationDriver => {
+export const useWidgetAnimation = (ref: RefObject<Gtk.Widget | null>, props: WidgetAnimationProps): WidgetAnimator => {
     const className = sanitizeId(useId());
     const propsRef = useRef(props);
     propsRef.current = props;
 
-    const driverRef = useRef<AnimationDriver | null>(null);
-    if (!driverRef.current) {
-        driverRef.current = new AnimationDriver(className, ref, propsRef);
+    const animatorRef = useRef<WidgetAnimator | null>(null);
+    if (!animatorRef.current) {
+        animatorRef.current = new WidgetAnimator(className, ref, propsRef);
     }
-    const driver = driverRef.current;
+    const animator = animatorRef.current;
 
     useLayoutEffect(() => {
-        driver.applyMount();
-        return () => driver.dispose();
-    }, [driver]);
+        animator.applyMount();
+        return () => animator.dispose();
+    }, [animator]);
 
     const previousAnimateRef = useRef<AnimatableProperties | undefined>(props.animate);
     useLayoutEffect(() => {
@@ -188,8 +188,8 @@ export const useWidgetAnimation = (ref: RefObject<Gtk.Widget | null>, props: Wid
         if (!ref.current || !props.animate) return;
         if (shallowEqual(previous, props.animate)) return;
 
-        driver.startAnimation(props.animate);
-    }, [ref, driver, props.animate]);
+        animator.startAnimation(props.animate);
+    }, [ref, animator, props.animate]);
 
-    return driver;
+    return animator;
 };

@@ -1,1 +1,1 @@
-export const RELOAD_EXIT_CODE = 75;
+export const RESTART_EXIT_CODE = 75;

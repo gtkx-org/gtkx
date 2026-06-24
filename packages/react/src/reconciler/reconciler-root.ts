@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { reconciler } from "./reconciler.js";
-import type { ContainerInfo } from "./types.js";
+import type { Container } from "./types.js";
 
 const noop = (): void => {};
 
@@ -9,7 +9,7 @@ type FiberRoot = ReturnType<typeof reconciler.createContainer>;
 type ReconcilerErrorCallback = (error: Error, info: { componentStack?: string | null }) => void;
 
 export type ReconcilerRootOptions = {
-    containerInfo: ContainerInfo;
+    containerInfo: Container;
     onUncaughtError: ReconcilerErrorCallback;
     onCaughtError: ReconcilerErrorCallback;
     onRecoverableError?: ReconcilerErrorCallback;

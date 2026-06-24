@@ -182,10 +182,10 @@ impl FfiDecoder for RefType {
                 let number = unsafe { int_type.read_ptr(storage.ptr() as *const u8) };
                 Ok(value::Value::Number(number))
             }
-            Type::Tagged(tagged) => {
-                // SAFETY: `storage.ptr()` is the scalar out-slot sized for the tagged enum/flags
-                // backing integer; `read_ptr` reads that integer.
-                let number = unsafe { tagged.storage.read_ptr(storage.ptr() as *const u8) };
+            Type::EnumFlags(enum_flags) => {
+                // SAFETY: `storage.ptr()` is the scalar out-slot sized for the enum/flags backing
+                // integer; `read_ptr` reads that integer.
+                let number = unsafe { enum_flags.storage.read_ptr(storage.ptr() as *const u8) };
                 Ok(value::Value::Number(number))
             }
             Type::Float(float_kind) => {

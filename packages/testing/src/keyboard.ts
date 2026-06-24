@@ -1,7 +1,8 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { dispatchOnController, runInAct } from "./dispatch.js";
+import { dispatchOnOrCreateController } from "./dispatch.js";
 import { getEditableDelegate } from "./editable.js";
+import { wrapEvent } from "./event-wrapper.js";
 import { fireEvent } from "./fire-event.js";
 import type { UserEventState } from "./state.js";
 
@@ -10,7 +11,7 @@ export type TabOptions = {
 };
 
 export const tab = (widget: Gtk.Widget, options?: TabOptions): Promise<void> =>
-    runInAct(() => {
+    wrapEvent(() => {
         const direction = options?.shift ? Gtk.DirectionType.TAB_BACKWARD : Gtk.DirectionType.TAB_FORWARD;
         const root = widget.getRoot();
 
@@ -194,7 +195,7 @@ const applyKeyAction = async (
 export const keyboardWith =
     (state: UserEventState) =>
     (widget: Gtk.Widget, input: string): Promise<void> =>
-        dispatchOnController(widget, Gtk.EventControllerKey, async (controller) => {
+        dispatchOnOrCreateController(widget, Gtk.EventControllerKey, async (controller) => {
             for (const action of parseKeyboardInput(input)) {
                 await applyKeyAction(widget, controller, state, action);
             }

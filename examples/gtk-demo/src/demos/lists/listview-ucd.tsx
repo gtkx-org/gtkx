@@ -533,7 +533,7 @@ const ListViewUcdDemo = () => {
                 <ColumnView<UcdEntry, string>
                     name="column-view"
                     showColumnSeparators
-                    estimatedRowHeight={32}
+                    estimatedItemHeight={32}
                     onActivate={handleActivate}
                     renderHeader={renderUcdHeader}
                     items={characterSections.map((section) => ({

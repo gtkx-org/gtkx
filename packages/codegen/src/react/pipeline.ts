@@ -1,6 +1,6 @@
-import { sortedAlphaBy } from "@gtkx/utils";
+import { sortedStringsBy } from "@gtkx/utils";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
-import type { GirRepository } from "../gir/repository.js";
+import type { Library } from "../gir/repository.js";
 import { collectAttachShapes } from "./attach-shapes.js";
 import { generateElementComponentsSection } from "./compounds.js";
 import { emptyJsxImports, renderJsxImports } from "./imports.js";
@@ -24,45 +24,45 @@ export type JsxNamespaceFile = {
 export type JsxFiles = {
     namespaces: JsxNamespaceFile[];
     metadata: string;
-    widgetCount: number;
+    reactNodeCount: number;
 };
 
-export const generateJsxFiles = (repository: GirRepository): JsxFiles => {
+export const generateJsxFiles = (library: Library): JsxFiles => {
     const namespacesWithWidgets = new Map<string, GirNamespace>();
-    for (const entry of collectReactNodeClasses(repository)) {
+    for (const entry of collectReactNodeClasses(library)) {
         namespacesWithWidgets.set(entry.namespace.name, entry.namespace);
     }
 
     const namespaces: JsxNamespaceFile[] = [];
-    let widgetCount = 0;
-    for (const namespace of sortedAlphaBy(namespacesWithWidgets.values(), (entry) => entry.name)) {
-        const { source, count } = generateJsxNamespace(namespace, repository);
+    let reactNodeCount = 0;
+    for (const namespace of sortedStringsBy(namespacesWithWidgets.values(), (entry) => entry.name)) {
+        const { source, count } = generateJsxNamespace(namespace, library);
         namespaces.push({ directory: namespaceDirectory(namespace), source });
-        widgetCount += count;
+        reactNodeCount += count;
     }
 
-    const metadata = generateMetadata(repository, {
+    const metadata = generateMetadata(library, {
         topLevelTypes: TOP_LEVEL_TYPES,
         defaultBlockableTypes: DEFAULT_BLOCKABLE_TYPES,
         metaObjectAddMethods: META_OBJECT_ADD_METHODS,
         pageMetaSetters: PAGE_META_SETTERS,
-        attachShapes: collectAttachShapes(repository),
+        attachShapes: collectAttachShapes(library),
         orderedInsert: ORDERED_INSERT,
         slotProps: SLOT_PROPS_BY_TYPE,
     });
 
-    return { namespaces, metadata, widgetCount };
+    return { namespaces, metadata, reactNodeCount };
 };
 
 const generateJsxNamespace = (
     targetNamespace: GirNamespace,
-    repository: GirRepository,
+    library: Library,
 ): { source: string; count: number } => {
     const imports = emptyJsxImports();
 
-    const elementComponents = generateElementComponentsSection(targetNamespace, repository, { imports });
+    const elementComponents = generateElementComponentsSection(targetNamespace, library, { imports });
     const excludeNames = new Set<string>(elementComponents.exportedNames);
-    const { source: jsxSection, intrinsicCount } = generateJsxSection(targetNamespace, repository, {
+    const { source: jsxSection, intrinsicCount } = generateJsxSection(targetNamespace, library, {
         excludeNames,
         imports,
     });

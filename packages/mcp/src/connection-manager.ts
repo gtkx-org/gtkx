@@ -7,7 +7,7 @@ import {
     noAppConnectedError,
 } from "./protocol/errors.js";
 import { type AppInfo, type IpcRequest, type IpcResponse, RegisterParamsSchema } from "./protocol/types.js";
-import { type AppConnection, type AppTransport, TransportClosedError } from "./transport.js";
+import { type AppConnection, type AppConnections, ConnectionClosedError } from "./transport.js";
 
 type ConnectionManagerEventMap = {
     appRegistered: [AppInfo];
@@ -27,18 +27,18 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
     private apps: Map<string, RegisteredApp> = new Map();
     private connectionToApp: Map<string, string> = new Map();
     private requestTimeout: number;
-    private transport: AppTransport;
+    private connections: AppConnections;
 
-    constructor(transport: AppTransport, options: { requestTimeout?: number } = {}) {
+    constructor(connections: AppConnections, options: { requestTimeout?: number } = {}) {
         super();
-        this.transport = transport;
+        this.connections = connections;
         this.requestTimeout = options.requestTimeout ?? DEFAULT_REQUEST_TIMEOUT_MS;
 
-        this.transport.on("request", (connection, request) => {
+        this.connections.on("request", (connection, request) => {
             this.handleRequest(connection, request);
         });
 
-        this.transport.on("disconnection", (connection) => {
+        this.connections.on("disconnection", (connection) => {
             this.removeApp(connection);
         });
     }
@@ -94,9 +94,9 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
         }
 
         try {
-            return await app.connection.transport.sendRequest<T>(method, params, this.requestTimeout);
+            return await app.connection.connection.send<T>(method, params, this.requestTimeout);
         } catch (error) {
-            if (error instanceof TransportClosedError) {
+            if (error instanceof ConnectionClosedError) {
                 this.removeApp(app.connection);
                 throw connectionWriteFailedError(app.info.applicationId);
             }
@@ -110,7 +110,7 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
         } else if (request.method === "app.unregister") {
             this.handleUnregister(connection, request);
         } else {
-            this.transport.send(connection.id, {
+            this.connections.send(connection.id, {
                 id: request.id,
                 error: methodNotFoundError(request.method).toIpcError(),
             });
@@ -120,7 +120,7 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
     private handleRegister(connection: AppConnection, request: IpcRequest): void {
         const parseResult = RegisterParamsSchema.safeParse(request.params);
         if (!parseResult.success) {
-            this.transport.send(connection.id, {
+            this.connections.send(connection.id, {
                 id: request.id,
                 error: invalidRequestError(parseResult.error.message).toIpcError(),
             });
@@ -151,7 +151,7 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
             id: request.id,
             result: { success: true },
         };
-        this.transport.send(connection.id, response);
+        this.connections.send(connection.id, response);
     }
 
     private removeApp(connection: AppConnection): void {

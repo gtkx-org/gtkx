@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { sortedAlpha } from "@gtkx/utils";
+import { sortedStrings } from "@gtkx/utils";
 
 const require = createRequire(import.meta.url);
 
@@ -19,8 +19,8 @@ export const computeFingerprint = (girFiles: string[], libraries: string[]): str
     const hash = createHash("sha256");
     hash.update(CODEGEN_VERSION);
     hash.update("\n");
-    hash.update(sortedAlpha(libraries).join(","));
-    for (const file of sortedAlpha(girFiles)) {
+    hash.update(sortedStrings(libraries).join(","));
+    for (const file of sortedStrings(girFiles)) {
         hash.update("\n");
         hash.update(file);
         hash.update("\0");

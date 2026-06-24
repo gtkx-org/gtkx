@@ -141,7 +141,7 @@ impl FfiEncoder for ArrayType {
             ItemCodec::Integer(kind) => {
                 Self::encode_integer_array(&Self::extract_numbers(array)?, kind)
             }
-            ItemCodec::Tagged(kind) => Ok(ffi::FfiValue::Storage(
+            ItemCodec::EnumFlags(kind) => Ok(ffi::FfiValue::Storage(
                 kind.to_ffi_storage(&Self::extract_numbers(array)?),
             )),
             ItemCodec::BigInt(kind) => Ok(ffi::FfiValue::Storage(kind.to_ffi_storage(array)?)),
@@ -205,7 +205,7 @@ impl FfiDecoder for ArrayType {
                 ItemCodec::String => Ok(self.decode_null_terminated_string_array(*ptr)),
                 ItemCodec::Pointer => self.decode_null_terminated_ptr_array(*ptr),
                 codec @ (ItemCodec::Integer(_)
-                | ItemCodec::Tagged(_)
+                | ItemCodec::EnumFlags(_)
                 | ItemCodec::BigInt(_)
                 | ItemCodec::Float(_)
                 | ItemCodec::Boolean) => self.decode_zero_terminated_scalar_array(codec, *ptr),
@@ -324,7 +324,7 @@ impl RawPtrCodec for ArrayType {
 #[derive(Debug, Clone, Copy)]
 enum ItemCodec {
     Integer(IntegerKind),
-    Tagged(IntegerKind),
+    EnumFlags(IntegerKind),
     BigInt(BigIntKind),
     Float(FloatKind),
     Boolean,
@@ -336,7 +336,7 @@ impl ItemCodec {
     fn resolve(item_type: &Type) -> Option<Self> {
         Some(match item_type {
             Type::Integer(kind) => Self::Integer(*kind),
-            Type::Tagged(tagged) => Self::Tagged(tagged.storage),
+            Type::EnumFlags(enum_flags) => Self::EnumFlags(enum_flags.storage),
             Type::BigInt(kind) => Self::BigInt(*kind),
             Type::Float(kind) => Self::Float(*kind),
             Type::Boolean(_) => Self::Boolean,
@@ -356,7 +356,7 @@ impl ItemCodec {
 
     fn accepts_buffer_view(self, view_kind: BufferViewKind) -> bool {
         match self {
-            Self::Integer(kind) | Self::Tagged(kind) => matches!(
+            Self::Integer(kind) | Self::EnumFlags(kind) => matches!(
                 (kind, view_kind),
                 (IntegerKind::I8, BufferViewKind::Int8)
                     | (
@@ -383,7 +383,7 @@ impl ItemCodec {
 
     fn element_size(self) -> usize {
         match self {
-            Self::Integer(kind) | Self::Tagged(kind) => kind.byte_size(),
+            Self::Integer(kind) | Self::EnumFlags(kind) => kind.byte_size(),
             Self::BigInt(kind) => kind.byte_size(),
             Self::Float(FloatKind::F32) => size_of::<f32>(),
             Self::Float(FloatKind::F64) => size_of::<f64>(),
@@ -790,7 +790,7 @@ impl ArrayType {
             }
             // SAFETY: `data`/`len` describe a contiguous array of `kind`'s wire-integer elements,
             // satisfying `read_slice`'s contract.
-            ItemCodec::Tagged(kind) => unsafe { kind.read_slice(data, len) }
+            ItemCodec::EnumFlags(kind) => unsafe { kind.read_slice(data, len) }
                 .into_iter()
                 .map(value::Value::Number)
                 .collect(),
@@ -1010,7 +1010,7 @@ impl ArrayType {
         array: &[value::Value],
     ) -> anyhow::Result<Vec<ffi::PendingTransfer>> {
         match self.item_codec("GArray")? {
-            ItemCodec::Integer(kind) | ItemCodec::Tagged(kind) => {
+            ItemCodec::Integer(kind) | ItemCodec::EnumFlags(kind) => {
                 Self::append_integer_values_to_garray(g_array, kind, array).map(|()| Vec::new())
             }
             ItemCodec::BigInt(kind) => {
@@ -1355,7 +1355,7 @@ impl ArrayType {
 
     fn decode_storage(&self, storage: &FfiStorage) -> anyhow::Result<value::Value> {
         let values = match self.item_codec("array")? {
-            ItemCodec::Integer(kind) | ItemCodec::Tagged(kind) => kind
+            ItemCodec::Integer(kind) | ItemCodec::EnumFlags(kind) => kind
                 .vec_to_f64(storage)?
                 .into_iter()
                 .map(value::Value::Number)

@@ -2,7 +2,7 @@ export { promisify } from "./async.js";
 export { createErrorDomain, type ErrorDomain } from "./gerror.js";
 export { getGobjectProperty, newGobjectWithProperties, setGobjectProperty } from "./gobject.js";
 export * from "./gtype.js";
-export { getGvalueBoxed, setGvalueBoxed } from "./gvalue.js";
+export { getGValueBoxed, setGValueBoxed } from "./gvalue.js";
 export * from "./lifecycle.js";
 export { offSignal, onceSignal, onSignal } from "./listeners.js";
 export { installMixins, type Mixin } from "./mixin.js";
@@ -13,8 +13,8 @@ export {
     getInstanceGtype,
     registerInterface,
     registerWrapperClass,
-    requireWrapperClass,
-    resolveWrapperClass,
+    requireWrapperClassByName,
+    getWrapperClassByName,
     setHandle,
     tryGetHandle,
     wrapHandle,

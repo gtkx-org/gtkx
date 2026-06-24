@@ -2,7 +2,7 @@ import type * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { useLayoutEffect, useMemo, useRef } from "react";
-import type { ListItem } from "../types.js";
+import type { ItemNode } from "../types.js";
 import {
     createControlledResolver,
     createModelResolver,
@@ -17,10 +17,10 @@ import {
     createTreeModel,
     resizeFlatModel,
     retagRows,
-} from "../utils/position-only-model.js";
+} from "../utils/item-models.js";
 
 export interface ControlledListMode<T, S> {
-    items: ListItem<T, S>[] | undefined;
+    items: ItemNode<T, S>[] | undefined;
     autoexpand?: boolean | undefined;
     model?: never;
 }
@@ -40,7 +40,7 @@ export interface ListModelResult<T, S> {
 interface ControlledState<T, S> {
     model: Gio.ListModel;
     flatModel: Gtk.StringList | undefined;
-    items: ListItem<T, S>[] | undefined;
+    items: ItemNode<T, S>[] | undefined;
     structure: ListStructure;
     autoexpand: boolean;
     signature: string;
@@ -51,11 +51,11 @@ interface ControlledState<T, S> {
 const controlledSignature = <T, S>(
     structure: ListStructure,
     autoexpand: boolean,
-    items: ListItem<T, S>[] | undefined,
+    items: ItemNode<T, S>[] | undefined,
 ): string => (structure === "flat" ? "" : `${structure}|${autoexpand ? 1 : 0}|${structuralSignature(items)}`);
 
 const buildControlledState = <T, S>(
-    items: ListItem<T, S>[] | undefined,
+    items: ItemNode<T, S>[] | undefined,
     autoexpand: boolean,
     structure: ListStructure,
     signature: string,
@@ -77,7 +77,7 @@ const buildControlledState = <T, S>(
 
 const resolveControlledState = <T, S>(
     prev: ControlledState<T, S> | null,
-    items: ListItem<T, S>[] | undefined,
+    items: ItemNode<T, S>[] | undefined,
     autoexpand: boolean,
 ): ControlledState<T, S> => {
     if (prev !== null && prev.items === items && prev.autoexpand === autoexpand) return prev;

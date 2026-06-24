@@ -122,7 +122,7 @@ const applyGenericProps = (
                 : callback;
         signalStore.set({
             owner: container,
-            obj: container,
+            instance: container,
             signal: signalName,
             handler,
             blockable: defaultBlockable,

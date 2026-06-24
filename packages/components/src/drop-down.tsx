@@ -14,15 +14,15 @@ import {
     useRef,
     useState,
 } from "react";
+import { CellRenderHost } from "./cell-render-host.js";
 import { useDropDownSelection } from "./hooks/use-drop-down-selection.js";
+import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
+import { useInstalledModel } from "./hooks/use-installed-model.js";
 import { useListModel } from "./hooks/use-list-model.js";
-import { useModelInstallation } from "./hooks/use-model-installation.js";
-import { type FactoryBinding, useRealizedSlots } from "./hooks/use-realized-slots.js";
-import { ListPortalHost } from "./list-portal-host.js";
-import type { SlotRenderer } from "./list-slot.js";
-import type { DropDownProps, ListItem } from "./types.js";
+import type { CellRenderer } from "./list-cell.js";
+import type { DropDownProps, ItemNode } from "./types.js";
+import type { CellContainerStore } from "./utils/cell-container-store.js";
 import type { ItemResolver } from "./utils/item-resolver.js";
-import type { RealizedSlotStore } from "./utils/realized-slot-store.js";
 
 export interface DropDownWidget extends Gtk.Widget {
     getSelected(): number;
@@ -33,22 +33,22 @@ export interface DropDownWidget extends Gtk.Widget {
     setHeaderFactory(factory: Gtk.ListItemFactory | null): void;
 }
 
-const itemFactoryBinding: FactoryBinding<DropDownWidget> = {
+const itemFactoryInstaller: FactoryInstaller<DropDownWidget> = {
     install: (widget, factory) => widget.setFactory(factory),
     uninstall: (widget) => widget.setFactory(null),
 };
 
-const listFactoryBinding: FactoryBinding<DropDownWidget> = {
+const listFactoryInstaller: FactoryInstaller<DropDownWidget> = {
     install: (widget, factory) => widget.setListFactory(factory),
     uninstall: (widget) => widget.setListFactory(null),
 };
 
-const headerFactoryBinding: FactoryBinding<DropDownWidget> = {
+const headerFactoryInstaller: FactoryInstaller<DropDownWidget> = {
     install: (widget, factory) => widget.setHeaderFactory(factory),
     uninstall: (widget) => widget.setHeaderFactory(null),
 };
 
-const defaultRenderer: SlotRenderer<unknown, unknown> = (value, _treeRow, isHeader) => {
+const defaultRenderer: CellRenderer<unknown, unknown> = (value, _treeRow, isHeader) => {
     if (isHeader || value === undefined || value === null) return null;
     return createElement(GtkLabel, { label: String(value) });
 };
@@ -57,7 +57,7 @@ interface DropDownImplProps<T, S, W extends DropDownWidget> {
     element: ElementType;
     intrinsicProps: Record<string, unknown>;
     ref: Ref<W | null> | undefined;
-    items: ListItem<T, S>[] | undefined;
+    items: ItemNode<T, S>[] | undefined;
     model: Gio.ListModel | undefined;
     renderItem: ((value: T) => ReactNode) | null | undefined;
     renderListItem: ((value: T) => ReactNode) | null | undefined;
@@ -66,21 +66,21 @@ interface DropDownImplProps<T, S, W extends DropDownWidget> {
     onSelectionChanged: ((id: string) => void) | null | undefined;
 }
 
-const toItemRenderer = <T, S>(renderItem: ((value: T) => ReactNode) | null | undefined): SlotRenderer<T, S> => {
-    if (typeof renderItem !== "function") return defaultRenderer as SlotRenderer<T, S>;
+const toItemRenderer = <T, S>(renderItem: ((value: T) => ReactNode) | null | undefined): CellRenderer<T, S> => {
+    if (typeof renderItem !== "function") return defaultRenderer as CellRenderer<T, S>;
     return (value, _treeRow, isHeader) => (isHeader ? null : renderItem(value as T));
 };
 
-const toPopupRenderer = <T, S>(
+const toListRenderer = <T, S>(
     renderListItem: ((value: T) => ReactNode) | null | undefined,
     renderItem: ((value: T) => ReactNode) | null | undefined,
-): SlotRenderer<T, S> => {
+): CellRenderer<T, S> => {
     if (typeof renderListItem === "function")
         return (value, _treeRow, isHeader) => (isHeader ? null : renderListItem(value as T));
     return toItemRenderer<T, S>(renderItem);
 };
 
-const toHeaderRenderer = <T, S>(renderHeader: ((value: S) => ReactNode) | null | undefined): SlotRenderer<T, S> => {
+const toHeaderRenderer = <T, S>(renderHeader: ((value: S) => ReactNode) | null | undefined): CellRenderer<T, S> => {
     if (typeof renderHeader !== "function") return () => null;
     return (value) => renderHeader(value as S);
 };
@@ -88,18 +88,18 @@ const toHeaderRenderer = <T, S>(renderHeader: ((value: S) => ReactNode) | null |
 interface DropDownWiring<T, S, W extends DropDownWidget> {
     setRef: (value: W | null) => void;
     resolver: ItemResolver<T, S>;
-    faceResolver: ItemResolver<T, S>;
+    selectionResolver: ItemResolver<T, S>;
     headerResolver: ItemResolver<T, S>;
-    faceStore: RealizedSlotStore;
-    popupStore: RealizedSlotStore;
-    headerStore: RealizedSlotStore;
+    selectionStore: CellContainerStore;
+    listStore: CellContainerStore;
+    headerStore: CellContainerStore;
     useHeader: boolean;
 }
 
-const createFaceResolver = <T, S>(resolver: ItemResolver<T, S>, selectedPosition: number): ItemResolver<T, S> => ({
+const createSelectionResolver = <T, S>(resolver: ItemResolver<T, S>, selectedPosition: number): ItemResolver<T, S> => ({
     count: resolver.count,
-    positionOf: (id) => resolver.positionOf(id),
-    idOf: (position) => resolver.idOf(position),
+    positionOfKey: (key) => resolver.positionOfKey(key),
+    keyOf: (position) => resolver.keyOf(position),
     resolve: (_position, treeRow) => resolver.resolve(selectedPosition, treeRow, null),
 });
 
@@ -121,14 +121,14 @@ const useDropDownWiring = <T, S, W extends DropDownWidget>(
 
     const useHeader = externalModel === undefined && typeof props.renderHeader === "function";
 
-    const face = useRealizedSlots<DropDownWidget>({ target: widgetRef, binding: itemFactoryBinding });
-    const popup = useRealizedSlots<DropDownWidget>({ target: widgetRef, binding: listFactoryBinding });
-    const header = useRealizedSlots<DropDownWidget>({
+    const selection = useCellContainers<DropDownWidget>({ target: widgetRef, installer: itemFactoryInstaller });
+    const list = useCellContainers<DropDownWidget>({ target: widgetRef, installer: listFactoryInstaller });
+    const header = useCellContainers<DropDownWidget>({
         target: useHeader ? widgetRef : null,
-        binding: headerFactoryBinding,
+        installer: headerFactoryInstaller,
     });
 
-    useModelInstallation(widgetRef, listModel.model, (widget, model) => widget.setModel(model));
+    useInstalledModel(widgetRef, listModel.model, (widget, model) => widget.setModel(model));
 
     const selectedPosition = useDropDownSelection<T, S>({
         widget,
@@ -140,37 +140,41 @@ const useDropDownWiring = <T, S, W extends DropDownWidget>(
     const controlledPosition =
         props.selectedId === undefined || props.selectedId === null
             ? -1
-            : listModel.resolver.positionOf(props.selectedId);
-    const facePosition = controlledPosition >= 0 ? controlledPosition : selectedPosition < 0 ? 0 : selectedPosition;
+            : listModel.resolver.positionOfKey(props.selectedId);
+    const selectionPosition = controlledPosition >= 0 ? controlledPosition : selectedPosition < 0 ? 0 : selectedPosition;
 
     return {
         setRef,
         resolver: listModel.resolver,
-        faceResolver: createFaceResolver(listModel.resolver, facePosition),
+        selectionResolver: createSelectionResolver(listModel.resolver, selectionPosition),
         headerResolver: listModel.headerResolver,
-        faceStore: face.store,
-        popupStore: popup.store,
+        selectionStore: selection.store,
+        listStore: list.store,
         headerStore: header.store,
         useHeader,
     };
 };
 
 const DropDownImpl = <T, S, W extends DropDownWidget>(props: DropDownImplProps<T, S, W>): ReactNode => {
-    const { setRef, resolver, faceResolver, headerResolver, faceStore, popupStore, headerStore, useHeader } =
+    const { setRef, resolver, selectionResolver, headerResolver, selectionStore, listStore, headerStore, useHeader } =
         useDropDownWiring(props);
     const intrinsic: ReactElement = createElement(props.element, { ...props.intrinsicProps, ref: setRef });
 
     return (
         <>
             {intrinsic}
-            <ListPortalHost store={faceStore} resolver={faceResolver} render={toItemRenderer<T, S>(props.renderItem)} />
-            <ListPortalHost
-                store={popupStore}
+            <CellRenderHost
+                store={selectionStore}
+                resolver={selectionResolver}
+                render={toItemRenderer<T, S>(props.renderItem)}
+            />
+            <CellRenderHost
+                store={listStore}
                 resolver={resolver}
-                render={toPopupRenderer<T, S>(props.renderListItem, props.renderItem)}
+                render={toListRenderer<T, S>(props.renderListItem, props.renderItem)}
             />
             {useHeader ? (
-                <ListPortalHost
+                <CellRenderHost
                     store={headerStore}
                     resolver={headerResolver}
                     render={toHeaderRenderer<T, S>(props.renderHeader)}
@@ -208,7 +212,7 @@ const extractDropDownProps = <T, S, W extends DropDownWidget>(
     return {
         impl: {
             ref,
-            items: items as ListItem<T, S>[] | undefined,
+            items: items as ItemNode<T, S>[] | undefined,
             model: model as Gio.ListModel | undefined,
             renderItem: renderItem as ((value: T) => ReactNode) | null | undefined,
             renderListItem: renderListItem as ((value: T) => ReactNode) | null | undefined,
@@ -238,8 +242,8 @@ export type ComboRowComponentProps<T = unknown, S = unknown> = Omit<AdwComboRowP
 
 /**
  * A `GtkDropDown` driven by a declarative `items` model with a controlled
- * `selectedId` and per-slot renderers for the selected face, the popup list,
- * and section headers. Supplying an external `model` switches to the
+ * `selectedId` and per-cell renderers for the current selection, the list
+ * popup, and section headers. Supplying an external `model` switches to the
  * uncontrolled form.
  */
 export const DropDown = <T = unknown, S = unknown>(props: DropDownComponentProps<T, S>): ReactNode => {
@@ -249,8 +253,8 @@ export const DropDown = <T = unknown, S = unknown>(props: DropDownComponentProps
 
 /**
  * An `AdwComboRow` driven by a declarative `items` model with a controlled
- * `selectedId` and per-slot renderers for the selected face, the popup list,
- * and section headers. Supplying an external `model` switches to the
+ * `selectedId` and per-cell renderers for the current selection, the list
+ * popup, and section headers. Supplying an external `model` switches to the
  * uncontrolled form.
  */
 export const ComboRow = <T = unknown, S = unknown>(props: ComboRowComponentProps<T, S>): ReactNode => {

@@ -7,7 +7,7 @@ mod macros;
 
 pub(crate) mod error_reporter;
 pub(crate) mod glib_log_handler;
-pub(crate) mod module;
+pub(crate) mod op;
 pub(crate) mod toggle_ref;
 
 // These modules form no part of the napi-only public contract. They are reachable as a real

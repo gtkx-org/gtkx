@@ -1,12 +1,12 @@
 export type { AnyClass } from "./class.js";
 export {
-    compareAlpha,
+    compareStrings,
     dedupeBy,
+    enumNamesByValue,
     omit,
-    reverseNumericEnum,
     shallowEqual,
-    sortedAlpha,
-    sortedAlphaBy,
+    sortedStrings,
+    sortedStringsBy,
 } from "./collection.js";
 export { errorMessage, formatChildProcessError, normalizeError } from "./error.js";
 export {
@@ -15,6 +15,6 @@ export {
     type GracefulShutdownOptions,
     installGracefulShutdown,
 } from "./graceful-shutdown.js";
-export { GTKX_ENV_MODULE_HEADER, isValidApplicationId, renderEmptyGtkxEnvModule } from "./project.js";
-export { quote, toCamelIdentifier, toIdentifier } from "./source.js";
+export { GtkxEnvModuleHeader, isValidApplicationId, renderEmptyGtkxEnvModule } from "./project.js";
+export { mangleReserved, sourceStringLiteral, toCamelIdentifier } from "./source.js";
 export { toCamelCase, toKebabCase, toLowerFirst, toPascalCase, toUpperFirst } from "./string.js";

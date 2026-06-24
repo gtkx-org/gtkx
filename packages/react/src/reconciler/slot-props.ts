@@ -1,8 +1,8 @@
 /// <reference types="@gtkx/config/env" />
 
+import { getWrapperClassByName } from "@gtkx/ffi";
 import { SLOT_PROPS } from "virtual:gtkx-config";
 import { foldInheritedTable } from "../utils/gtype.js";
-import { resolveBackingClass } from "../utils/gtype-predicates.js";
 
 export const SLOT_HOST_BASE_TYPE: Record<string, string> = {
     controllers: "GtkWidget",
@@ -16,7 +16,7 @@ const EMPTY_SLOT_PROPS: Set<string> = new Set();
 export const slotPropsFor = (elementName: string): Set<string> => {
     const cached = slotPropsCache.get(elementName);
     if (cached) return cached;
-    const cls = resolveBackingClass(elementName);
+    const cls = getWrapperClassByName(elementName);
     const names = cls
         ? foldInheritedTable(
               cls.prototype.__gtype__,

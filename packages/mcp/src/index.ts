@@ -1,7 +1,7 @@
 export {
     invalidRequestError,
-    McpError,
-    McpErrorCode,
+    IpcError,
+    IpcErrorCode,
     methodNotFoundError,
     widgetNotFoundError,
 } from "./protocol/errors.js";
@@ -15,4 +15,4 @@ export {
     ServerRequestParamsSchemas,
     type WireParamsSchema,
 } from "./protocol/types.js";
-export { JsonStreamTransport, TransportClosedError } from "./transport.js";
+export { ConnectionClosedError, JsonStreamConnection } from "./transport.js";

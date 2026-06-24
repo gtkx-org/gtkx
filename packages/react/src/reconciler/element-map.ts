@@ -3,12 +3,12 @@
 import { META_OBJECT_ADD_METHODS, PAGE_META_SETTERS } from "virtual:gtkx-config";
 import {
     type AddMethodRule,
-    CONTAINER_PROP_KIND,
+    CONTAINER_SLOT_KIND,
     LAYOUT_CHILD_KIND,
     META_OBJECT_KIND,
     OVERLAY_KIND,
-    SLOT_KIND,
     TAB_LABEL_KIND,
+    WIDGET_PROP_KIND,
 } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Graphene from "@gtkx/gi/graphene";
@@ -35,7 +35,7 @@ import {
     isSingleChildContainer,
     type ReorderableWidget,
 } from "./predicates.js";
-import { callMethod, invokeRequiredMethod } from "./reflect-call.js";
+import { callMethod, callRequiredMethod } from "./method-call.js";
 import { namedRuleSet, resolveAppendRuleSet, ruleNodeOf } from "./rule-registry.js";
 import { SLOT_HOST_BASE_TYPE } from "./slot-props.js";
 import { isWrapperKind, type Node, stateOf } from "./state.js";
@@ -64,7 +64,7 @@ const resyncLayoutChildWrappers = (parent: Node): void => {
 };
 
 const slotMapping: ElementMapping = {
-    matches: (child, parent) => isWrapperKind(child, SLOT_KIND) && parent instanceof GObject.Object,
+    matches: (child, parent) => isWrapperKind(child, WIDGET_PROP_KIND) && parent instanceof GObject.Object,
     attach: (child, parent) => {
         const childState = stateOf(child);
         const prop = childState.props["propName"];
@@ -86,14 +86,14 @@ const slotMapping: ElementMapping = {
     },
 };
 
-const wrapperChildInstances = (marker: Node): Node[] =>
-    stateOf(marker).children.filter((child) => child instanceof GObject.Object);
+const wrapperChildInstances = (wrapper: Node): Node[] =>
+    stateOf(wrapper).children.filter((child) => child instanceof GObject.Object);
 
 const sameInstances = (a: Node[], b: Node[]): boolean =>
     a.length === b.length && a.every((instance, index) => instance === b[index]);
 
-const slotTagOf = (marker: Node): string | undefined => {
-    const slotTag = stateOf(marker).props["slotTag"];
+const slotTagOf = (wrapper: Node): string | undefined => {
+    const slotTag = stateOf(wrapper).props["slotTag"];
     return typeof slotTag === "string" ? slotTag : undefined;
 };
 
@@ -118,7 +118,7 @@ const detachContainerPropChild = (instance: Node, parent: GObject.Object, slotTa
 const containerPropState = new WeakMap<Node, Node[]>();
 
 const containerPropMapping: ElementMapping = {
-    matches: (child, parent) => isWrapperKind(child, CONTAINER_PROP_KIND) && parent instanceof GObject.Object,
+    matches: (child, parent) => isWrapperKind(child, CONTAINER_SLOT_KIND) && parent instanceof GObject.Object,
     attach: (child, parent) => {
         const slotTag = slotTagOf(child);
         if (slotTag === undefined || !(parent instanceof GObject.Object)) return;
@@ -142,7 +142,7 @@ const applyPageMeta = (page: object, props: Props): void => {
     for (const { setter, prop, fallback, whenPresent } of PAGE_META_SETTERS) {
         if (typeof Reflect.get(page, setter) !== "function") continue;
         if (whenPresent && props[prop] === undefined) continue;
-        invokeRequiredMethod(page, setter, [props[prop] ?? fallback]);
+        callRequiredMethod(page, setter, [props[prop] ?? fallback]);
     }
 };
 
@@ -165,26 +165,26 @@ const addStackPage = (
     for (const rule of rules) {
         if (!rule.requires.every((key) => pagePropValue(props, key) !== null)) continue;
         const args = rule.args.map((arg) => (arg === "widget" ? widget : pagePropValue(props, arg)));
-        const page = invokeRequiredMethod(stack, rule.method, args);
+        const page = callRequiredMethod(stack, rule.method, args);
         return typeof page === "object" && page !== null ? page : undefined;
     }
     return undefined;
 };
 
-const notebookPosition = (marker: Node): number | null => {
-    const parent = stateOf(marker).parent;
+const notebookPosition = (wrapper: Node): number | null => {
+    const parent = stateOf(wrapper).parent;
     const siblings = parent ? stateOf(parent).children.filter((child) => isWrapperKind(child, META_OBJECT_KIND)) : [];
-    const index = siblings.indexOf(marker);
+    const index = siblings.indexOf(wrapper);
     return index >= 0 ? index : null;
 };
 
-const notebookTabLabel = (marker: Node): Gtk.Widget => {
-    const markerState = stateOf(marker);
-    const tab = markerState.children.find((child) => isWrapperKind(child, TAB_LABEL_KIND));
+const notebookTabLabel = (wrapper: Node): Gtk.Widget => {
+    const wrapperState = stateOf(wrapper);
+    const tab = wrapperState.children.find((child) => isWrapperKind(child, TAB_LABEL_KIND));
     const label = tab ? stateOf(tab).children[0] : undefined;
     if (label instanceof Gtk.Widget) return label;
     const synthesized = new Gtk.Label();
-    synthesized.setLabel(typeof markerState.props["label"] === "string" ? markerState.props["label"] : "");
+    synthesized.setLabel(typeof wrapperState.props["label"] === "string" ? wrapperState.props["label"] : "");
     return synthesized;
 };
 
@@ -195,20 +195,20 @@ const applyNotebookMeta = (notebook: Gtk.Notebook, widget: Gtk.Widget, props: Pr
     if (props["tabFill"] !== undefined) Reflect.set(page, "tabFill", props["tabFill"]);
 };
 
-const updateNotebookTabLabel = (notebook: Gtk.Notebook, widget: Gtk.Widget, marker: Node): void => {
-    const markerState = stateOf(marker);
-    if (markerState.children.some((child) => isWrapperKind(child, TAB_LABEL_KIND))) return;
+const updateNotebookTabLabel = (notebook: Gtk.Notebook, widget: Gtk.Widget, wrapper: Node): void => {
+    const wrapperState = stateOf(wrapper);
+    if (wrapperState.children.some((child) => isWrapperKind(child, TAB_LABEL_KIND))) return;
     const current = notebook.getTabLabel(widget);
     if (current instanceof Gtk.Label)
-        current.setLabel(typeof markerState.props["label"] === "string" ? markerState.props["label"] : "");
+        current.setLabel(typeof wrapperState.props["label"] === "string" ? wrapperState.props["label"] : "");
 };
 
-const attachNotebookPage = (notebook: Gtk.Notebook, widget: Gtk.Widget, marker: Node): void => {
-    const label = notebookTabLabel(marker);
-    const position = notebookPosition(marker);
+const attachNotebookPage = (notebook: Gtk.Notebook, widget: Gtk.Widget, wrapper: Node): void => {
+    const label = notebookTabLabel(wrapper);
+    const position = notebookPosition(wrapper);
     if (position == null) notebook.appendPage(widget, label);
     else notebook.insertPage(widget, label, position);
-    applyNotebookMeta(notebook, widget, stateOf(marker).props);
+    applyNotebookMeta(notebook, widget, stateOf(wrapper).props);
 };
 
 type NotebookPageState = { widget: Gtk.Widget };
@@ -304,7 +304,7 @@ const applyGridLayoutChild = (layoutChild: Gtk.LayoutChild, props: Props): void 
 const applyFixedLayoutChild = (layoutChild: Gtk.LayoutChild, props: Props): void => {
     if (typeof Reflect.get(layoutChild, "setTransform") !== "function") return;
     const value = buildFixedTransform(props);
-    if (value) invokeRequiredMethod(layoutChild, "setTransform", [value]);
+    if (value) callRequiredMethod(layoutChild, "setTransform", [value]);
 };
 
 const applyLayoutChild = (parent: Gtk.Widget, widget: Gtk.Widget, kind: "grid" | "fixed", props: Props): void => {

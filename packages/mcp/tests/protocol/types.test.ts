@@ -2,17 +2,17 @@ import { describe, expect, it } from "vitest";
 import { ServerRequestParamsSchemas } from "../../src/protocol/types.js";
 
 describe("ServerRequestParamsSchemas", () => {
-    it("validates a widget.query payload with a queryType enum and no applicationId", () => {
+    it("validates a widget.query payload with a by enum and no applicationId", () => {
         const parsed = ServerRequestParamsSchemas["widget.query"].safeParse({
-            queryType: "role",
+            by: "role",
             value: "BUTTON",
             options: { exact: true },
         });
         expect(parsed.success).toBe(true);
     });
 
-    it("rejects a widget.query payload with an unknown queryType", () => {
-        const parsed = ServerRequestParamsSchemas["widget.query"].safeParse({ queryType: "id", value: "x" });
+    it("rejects a widget.query payload with an unknown by value", () => {
+        const parsed = ServerRequestParamsSchemas["widget.query"].safeParse({ by: "id", value: "x" });
         expect(parsed.success).toBe(false);
     });
 

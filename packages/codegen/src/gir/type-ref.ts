@@ -11,13 +11,13 @@ const elementRefOf = (node: RawNode, context: ParseContext): TypeId => {
 
 export const typeRefFromSlot = (parent: RawNode | undefined, context: ParseContext): TypeId | undefined => {
     if (parent === undefined) return undefined;
-    if (childOf(parent, "varargs") !== undefined) return context.internVarargs();
+    if (childOf(parent, "varargs") !== undefined) return context.addVarargs();
     const arrayNode = childOf(parent, "array");
     if (arrayNode !== undefined) return arrayTypeRefFromNode(arrayNode, context);
     const typeNode = childOf(parent, "type");
     if (typeNode !== undefined) return typeRefFromTypeNode(typeNode, context);
     const callback = childOf(parent, "callback");
-    if (callback !== undefined) return context.internInlineCallback(callback);
+    if (callback !== undefined) return context.addAnonymousCallback(callback);
     return undefined;
 };
 
@@ -26,14 +26,14 @@ const typeRefFromTypeNode = (typeNode: RawNode, context: ParseContext): TypeId =
 
     const listFlavor = LIST_FLAVOR_BY_NAME_LOOKUP.get(name);
     if (listFlavor !== undefined) {
-        return context.internContainer({ kind: "list", flavor: listFlavor, element: elementRefOf(typeNode, context) });
+        return context.addContainer({ kind: "list", flavor: listFlavor, element: elementRefOf(typeNode, context) });
     }
 
     if (name === "GLib.HashTable") {
         const elementTypes = childrenOf(typeNode, "type");
         const keyNode = elementTypes[0];
         const valueNode = elementTypes[1];
-        return context.internContainer({
+        return context.addContainer({
             kind: "hashtable",
             key: keyNode === undefined ? pointerFallback(context) : typeRefFromTypeNode(keyNode, context),
             value: valueNode === undefined ? pointerFallback(context) : typeRefFromTypeNode(valueNode, context),
@@ -42,10 +42,10 @@ const typeRefFromTypeNode = (typeNode: RawNode, context: ParseContext): TypeId =
 
     const primitive = primitiveCategory(name);
     if (primitive !== undefined) {
-        return context.internPrimitive(primitive);
+        return context.addPrimitive(primitive);
     }
 
-    return context.findOrStubType(name);
+    return context.findType(name);
 };
 
 const arrayTypeRefFromNode = (arrayNode: RawNode, context: ParseContext): TypeId => {
@@ -53,7 +53,7 @@ const arrayTypeRefFromNode = (arrayNode: RawNode, context: ParseContext): TypeId
     const arrayName = attr(arrayNode, "name");
     const listFlavor = arrayName === undefined ? undefined : LIST_FLAVOR_BY_NAME_LOOKUP.get(arrayName);
     if (listFlavor !== undefined) {
-        return context.internContainer({ kind: "list", flavor: listFlavor, element });
+        return context.addContainer({ kind: "list", flavor: listFlavor, element });
     }
     const elementNode = childOf(arrayNode, "type");
     const carray: CArrayType = {
@@ -63,10 +63,10 @@ const arrayTypeRefFromNode = (arrayNode: RawNode, context: ParseContext): TypeId
         lengthParameterIndex: intAttr(arrayNode, "length"),
         fixedSize: intAttr(arrayNode, "fixed-size"),
     };
-    return context.internContainer(carray);
+    return context.addContainer(carray);
 };
 
-const pointerFallback = (context: ParseContext): TypeId => context.internPrimitive("pointer");
+const pointerFallback = (context: ParseContext): TypeId => context.addPrimitive("pointer");
 
 export const splitOptionalNamespace = (name: string): [string | undefined, string] => {
     const dot = name.indexOf(".");

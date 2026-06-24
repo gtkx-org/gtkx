@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-    isKnownPackageManager,
-    isTestingOption,
-    isValidProjectName,
-    PACKAGE_MANAGER_FLAG_DESCRIPTION,
-    TESTING_FLAG_DESCRIPTION,
-} from "../src/options.js";
+import { isKnownPackageManager, isValidProjectName, PACKAGE_MANAGER_FLAG_DESCRIPTION } from "../src/options.js";
 
 describe("isValidProjectName", () => {
     it("accepts lowercase letters, digits, and hyphens", () => {
@@ -41,20 +35,8 @@ describe("isKnownPackageManager", () => {
     });
 });
 
-describe("isTestingOption", () => {
-    it("accepts the supported testing options", () => {
-        expect(isTestingOption("vitest")).toBe(true);
-        expect(isTestingOption("none")).toBe(true);
-    });
-
-    it("rejects an unsupported testing option", () => {
-        expect(isTestingOption("jest")).toBe(false);
-    });
-});
-
 describe("flag descriptions", () => {
     it("derive the accepted values from the supported sets", () => {
         expect(PACKAGE_MANAGER_FLAG_DESCRIPTION).toBe("Package manager (pnpm, npm, yarn)");
-        expect(TESTING_FLAG_DESCRIPTION).toBe("Testing setup (vitest, none)");
     });
 });

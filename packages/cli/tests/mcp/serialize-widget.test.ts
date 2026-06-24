@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { serializeWidget, type WidgetProjection } from "../../src/mcp/serialize-widget.js";
+import { serializeWidget, type WidgetFormatting } from "../../src/mcp/serialize-widget.js";
 import { type FakeWidgetOverrides, makeFakeWidget } from "./_widget-helpers.js";
 
 const ROLE_NAMES: Record<number, string> = { 1: "button", 2: "label" };
 
-const projection: WidgetProjection = {
+const testing: WidgetFormatting = {
     formatRole: (role) => ROLE_NAMES[role as number] ?? String(role),
-    getWidgetPropertyText: (widget) => {
+    getWidgetNodeText: (widget) => {
         const probe = widget as { getLabel?: () => string | null; getText?: () => string | null };
         return probe.getLabel?.() ?? probe.getText?.() ?? null;
     },
@@ -29,7 +29,7 @@ describe("serializeWidget", () => {
             getFirstChild: () => child,
         });
 
-        const result = serializeWidget(root as never, idFor, projection);
+        const result = serializeWidget(root as never, idFor, testing);
 
         expect(result.type).toBe("GtkBox");
         expect(result.role).toBe("label");
@@ -43,12 +43,12 @@ describe("serializeWidget", () => {
         expect(result.id).not.toBe(serializedChild?.id);
     });
 
-    it("reads property text through the projection", () => {
+    it("reads property text through the testing module", () => {
         const labelOnly = makeWidget({ getLabel: () => "L" });
         const textOnly = makeWidget({ getText: () => "T" });
 
-        expect(serializeWidget(labelOnly as never, idFor, projection).text).toBe("L");
-        expect(serializeWidget(textOnly as never, idFor, projection).text).toBe("T");
+        expect(serializeWidget(labelOnly as never, idFor, testing).text).toBe("L");
+        expect(serializeWidget(textOnly as never, idFor, testing).text).toBe("T");
     });
 
     it("walks sibling chains via getNextSibling", () => {
@@ -56,7 +56,7 @@ describe("serializeWidget", () => {
         const firstChild = makeWidget({ type: "GtkLabel", getNextSibling: () => sibling });
         const root = makeWidget({ type: "GtkBox", getFirstChild: () => firstChild });
 
-        const result = serializeWidget(root as never, idFor, projection);
+        const result = serializeWidget(root as never, idFor, testing);
         expect(result.children.map((node) => node.type)).toEqual(["GtkLabel", "GtkButton"]);
     });
 });

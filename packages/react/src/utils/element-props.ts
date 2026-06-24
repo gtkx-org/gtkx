@@ -88,7 +88,7 @@ export type SlotProps = {
     children?: ReactNode;
 };
 
-export type ContainerPropProps = {
+export type ContainerSlotProps = {
     id: string;
     children?: ReactNode;
 };

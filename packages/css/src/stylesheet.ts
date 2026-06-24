@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { registerProviderForDefaultDisplay } from "./provider.js";
 
-export class Stylesheet {
+export class StyleSheet {
     private css = "";
     private provider: Gtk.CssProvider | null = null;
     private updateScheduled = false;

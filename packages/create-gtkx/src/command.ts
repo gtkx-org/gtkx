@@ -1,20 +1,13 @@
 import { defineCommand } from "citty";
 import { createApp } from "./create.js";
-import {
-    isKnownPackageManager,
-    isTestingOption,
-    PACKAGE_MANAGER_FLAG_DESCRIPTION,
-    type PackageManager,
-    TESTING_FLAG_DESCRIPTION,
-    type TestingOption,
-} from "./options.js";
+import { isKnownPackageManager, PACKAGE_MANAGER_FLAG_DESCRIPTION, type PackageManager } from "./options.js";
 
 /** Raw, unparsed command-line arguments accepted by the create command. */
 export type CreateCommandArgs = {
     name?: string | undefined;
     "application-id"?: string | undefined;
-    pm?: string | undefined;
-    testing?: string | undefined;
+    "package-manager"?: string | undefined;
+    vitest?: boolean | undefined;
 };
 
 const parsePackageManager = (value: string | undefined): PackageManager | undefined => {
@@ -25,24 +18,16 @@ const parsePackageManager = (value: string | undefined): PackageManager | undefi
     return value;
 };
 
-const parseTestingOption = (value: string | undefined): TestingOption | undefined => {
-    if (value === undefined) return undefined;
-    if (!isTestingOption(value)) {
-        throw new Error(`Unknown testing setup "${value}". Expected one of: ${TESTING_FLAG_DESCRIPTION}.`);
-    }
-    return value;
-};
-
 /**
  * Normalize raw create arguments and scaffold the application. Throws on an
- * unknown package manager or testing option before any files are written.
+ * unknown package manager before any files are written.
  */
 export const runCreate = async (args: CreateCommandArgs): Promise<void> => {
     await createApp({
         name: args.name,
         applicationId: args["application-id"],
-        packageManager: parsePackageManager(args.pm),
-        testing: parseTestingOption(args.testing),
+        packageManager: parsePackageManager(args["package-manager"]),
+        includeTesting: args.vitest,
     });
 };
 
@@ -59,20 +44,21 @@ export const createCommand = defineCommand({
     args: {
         name: {
             type: "positional",
-            description: "Project name",
+            description: "Project name (used as directory name)",
             required: false,
         },
         "application-id": {
             type: "string",
             description: "Application ID (e.g., com.example.myapp)",
         },
-        pm: {
+        "package-manager": {
             type: "string",
+            alias: "pm",
             description: PACKAGE_MANAGER_FLAG_DESCRIPTION,
         },
-        testing: {
-            type: "string",
-            description: TESTING_FLAG_DESCRIPTION,
+        vitest: {
+            type: "boolean",
+            description: "Include a Vitest testing setup",
         },
     },
     run: ({ args }) => runCreate(args),

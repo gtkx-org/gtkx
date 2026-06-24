@@ -20,12 +20,12 @@ export const dedupeBy = <T>(items: T[], key: (item: T) => string): T[] => {
     return result;
 };
 
-export const compareAlpha = (a: string, b: string): number => a.localeCompare(b);
+export const compareStrings = (a: string, b: string): number => a.localeCompare(b);
 
-export const sortedAlpha = (values: Iterable<string>): string[] => [...values].sort(compareAlpha);
+export const sortedStrings = (values: Iterable<string>): string[] => [...values].sort(compareStrings);
 
-export const sortedAlphaBy = <T>(items: Iterable<T>, key: (item: T) => string): T[] =>
-    [...items].sort((a, b) => compareAlpha(key(a), key(b)));
+export const sortedStringsBy = <T>(items: Iterable<T>, key: (item: T) => string): T[] =>
+    [...items].sort((a, b) => compareStrings(key(a), key(b)));
 
 export const shallowEqual = <T extends Record<string, unknown>>(a?: T, b?: T): boolean => {
     if (a === b) return true;
@@ -42,7 +42,7 @@ export const shallowEqual = <T extends Record<string, unknown>>(a?: T, b?: T): b
     return true;
 };
 
-export const reverseNumericEnum = (enumObject: Record<string, string | number>): Map<number, string> =>
+export const enumNamesByValue = (enumObject: Record<string, string | number>): Map<number, string> =>
     new Map<number, string>(
         Object.entries(enumObject)
             .filter((entry): entry is [string, number] => typeof entry[1] === "number")

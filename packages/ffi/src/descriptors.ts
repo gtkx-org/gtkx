@@ -69,7 +69,7 @@ export const float64T: Float64Type = Object.freeze({ type: "float64" });
 export const booleanT: BooleanType = Object.freeze({ type: "boolean" });
 export const voidT: VoidType = Object.freeze({ type: "void" });
 export const unicharT: UnicharType = Object.freeze({ type: "unichar" });
-export const blobT: BlobType = Object.freeze({ type: "blob" });
+export const bufferT: BlobType = Object.freeze({ type: "blob" });
 
 export const stringT = (ownership: Ownership = "borrowed", length?: number): StringType =>
     length === undefined ? { type: "string", ownership } : { type: "string", ownership, length };
@@ -93,8 +93,8 @@ type StructOptions = CallerAllocatable & {
     wrapperClass?: AnyClass;
 };
 
-export const boxedT = (innerType: string, options: BoxedOptions = {}): BoxedType => {
-    const result: BoxedType = { type: "boxed", ownership: options.ownership ?? "borrowed", innerType };
+export const boxedT = (innerTypeName: string, options: BoxedOptions = {}): BoxedType => {
+    const result: BoxedType = { type: "boxed", ownership: options.ownership ?? "borrowed", innerType: innerTypeName };
     if (options.library !== undefined) result.library = options.library;
     if (options.getTypeFn !== undefined) result.getTypeFn = options.getTypeFn;
     if (options.freeFn !== undefined) result.freeFn = options.freeFn;

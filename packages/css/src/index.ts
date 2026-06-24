@@ -1,8 +1,8 @@
 import type { CSSInterpolation } from "@emotion/serialize";
 import { createInstance } from "./create-instance.js";
 
-export { createInstance, type Instance, type InstanceOptions } from "./create-instance.js";
-export { type DisplayProvider, registerProviderForDefaultDisplay } from "./provider.js";
+export { createInstance, type Css, type CssOptions } from "./create-instance.js";
+export { type ProviderAttachment, registerProviderForDefaultDisplay } from "./provider.js";
 
 type CxToken = string | boolean | undefined | null;
 

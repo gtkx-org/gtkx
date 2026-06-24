@@ -526,22 +526,22 @@ impl From<FloatKind> for libffi::Type {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
-pub enum TaggedKind {
+pub enum EnumFlagsKind {
     Enum,
     Flags,
 }
 
 #[derive(Debug, Clone)]
-pub struct TaggedType {
-    pub kind: TaggedKind,
+pub struct EnumFlagsType {
+    pub kind: EnumFlagsKind,
     pub library: String,
     pub get_type_fn: String,
     pub storage: IntegerKind,
 }
 
-impl TaggedType {
+impl EnumFlagsType {
     #[cfg_attr(coverage_nightly, coverage(off))]
-    pub fn from_js_value(_env: &Env, obj: &JsObject, kind: TaggedKind) -> napi::Result<Self> {
+    pub fn from_js_value(_env: &Env, obj: &JsObject, kind: EnumFlagsKind) -> napi::Result<Self> {
         let library: String = obj.get_named_property("library")?;
         let get_type_fn: String = obj.get_named_property("getTypeFn")?;
         let signed: bool = obj.get_named_property("signed")?;
@@ -588,11 +588,11 @@ impl TaggedType {
     }
 }
 
-impl FfiEncoder for TaggedType {
+impl FfiEncoder for EnumFlagsType {
     fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::FfiValue> {
         let result = FfiEncoder::encode(&self.storage, value)?;
         #[cfg(debug_assertions)]
-        if self.kind == TaggedKind::Enum
+        if self.kind == EnumFlagsKind::Enum
             && let value::Value::Number(n) = value
         {
             self.validate_enum_value(*n as i32);
@@ -603,7 +603,7 @@ impl FfiEncoder for TaggedType {
     integer_wire_encoder!(wire_kind);
 }
 
-impl FfiDecoder for TaggedType {
+impl FfiDecoder for EnumFlagsType {
     unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
         match src {
             ReadSource::Call(ffi_value) => FfiDecoder::decode(&self.storage, ffi_value),
@@ -617,7 +617,7 @@ impl FfiDecoder for TaggedType {
     }
 }
 
-impl RawPtrCodec for TaggedType {
+impl RawPtrCodec for EnumFlagsType {
     /// # Safety
     ///
     /// `ret` must point to a writable return slot wide enough for the backing integer storage

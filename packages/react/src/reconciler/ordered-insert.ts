@@ -4,7 +4,7 @@ import { ORDERED_INSERT } from "virtual:gtkx-config";
 import type { OrderedInsertSpec } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
 import { findInheritedRow } from "../utils/gtype.js";
-import { callMethod } from "./reflect-call.js";
+import { callMethod } from "./method-call.js";
 import type { Node } from "./state.js";
 
 type ItemCollection = { getNItems(): number; getItem(position: number): unknown };

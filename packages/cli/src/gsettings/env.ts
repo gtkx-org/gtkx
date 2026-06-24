@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { copyFileSync, type Dirent, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { DATA_IMPORT_PREFIX } from "@gtkx/config";
-import { sortedAlpha } from "@gtkx/utils";
+import { sortedStrings } from "@gtkx/utils";
 import { warn } from "../internal/log.js";
 import { type ParsedSchemaFile, parseSchemaXml, SchemaParseError } from "./parser.js";
 import { renderEnvModule } from "./render.js";
@@ -58,7 +58,7 @@ export const findSchemaFiles = (dataDir: string): string[] => {
         }
     };
     walk(dataDir);
-    return sortedAlpha(found);
+    return sortedStrings(found);
 };
 
 export const schemaEnvPath = (rootDir: string): string => join(rootDir, "node_modules", ".gtkx", "env.d.ts");

@@ -8,7 +8,7 @@ use gtk4::prelude::ObjectType as _;
 use native::ffi::{self, FfiStorage, FfiStorageKind};
 use native::types::{
     ArrayKind, ArrayType, BooleanType, FfiDecoder, FloatKind, GObjectType, IntegerKind, Ownership,
-    ReadSource, RefType, StringType, TaggedKind, TaggedType, Type, UnicharType,
+    ReadSource, RefType, StringType, EnumFlagsKind, EnumFlagsType, Type, UnicharType,
 };
 use native::value::Value;
 
@@ -90,22 +90,22 @@ fn decode_integer_reads_number() {
 }
 
 #[test]
-fn decode_tagged_reads_number() {
+fn decode_enum_flags_reads_number() {
     common::run(|| {
         let mut value: i32 = 9;
         let slot = &mut value as *mut i32 as *mut c_void;
         let ffi_value = ffi::FfiValue::Storage(FfiStorage::new(slot, FfiStorageKind::Unit));
 
-        let tagged = TaggedType {
-            kind: TaggedKind::Enum,
+        let enum_flags = EnumFlagsType {
+            kind: EnumFlagsKind::Enum,
             library: "libgobject-2.0.so.0".to_owned(),
             get_type_fn: "g_unused_get_type".to_owned(),
             storage: IntegerKind::I32,
         };
-        let ref_type = RefType::new(Type::Tagged(tagged));
+        let ref_type = RefType::new(Type::EnumFlags(enum_flags));
         let decoded = ref_type
             .decode(&ffi_value)
-            .expect("tagged ref decode should succeed");
+            .expect("enum/flags ref decode should succeed");
         assert!(matches!(decoded, Value::Number(n) if (n - 9.0).abs() < f64::EPSILON));
     });
 }

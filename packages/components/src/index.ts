@@ -24,7 +24,7 @@ export type {
     ConstraintVflProps,
     DropDownProps,
     GridViewProps,
-    ListItem,
+    ItemNode,
     ListViewProps,
     MenuEntry,
     MenuItemsProps,

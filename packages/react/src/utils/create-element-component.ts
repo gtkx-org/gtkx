@@ -1,4 +1,4 @@
-import { CONTAINER_PROP_KIND, SLOT_KIND } from "@gtkx/config";
+import { CONTAINER_SLOT_KIND, WIDGET_PROP_KIND } from "@gtkx/config";
 import { createElement, isValidElement, type ReactNode } from "react";
 import { WRAPPER_NODE_ELEMENT } from "../reconciler/instance.js";
 import { slotPropsFor } from "../reconciler/slot-props.js";
@@ -32,7 +32,7 @@ const splitProps = (props: object, slotProps: Set<string>): SplitProps => {
                 wrappers.push(
                     createElement(
                         WRAPPER_NODE_ELEMENT,
-                        { kind: CONTAINER_PROP_KIND, slotTag: name, key: `container-slot:${name}` },
+                        { kind: CONTAINER_SLOT_KIND, slotTag: name, key: `container-slot:${name}` },
                         value as ReactNode,
                     ),
                 );
@@ -43,7 +43,7 @@ const splitProps = (props: object, slotProps: Set<string>): SplitProps => {
             wrappers.push(
                 createElement(
                     WRAPPER_NODE_ELEMENT,
-                    { kind: SLOT_KIND, propName: name, key: `slot:${name}` },
+                    { kind: WIDGET_PROP_KIND, propName: name, key: `slot:${name}` },
                     value as ReactNode,
                 ),
             );

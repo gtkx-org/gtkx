@@ -1,4 +1,4 @@
-import { type GTyped, requireWrapperClass, resolveWrapperClass } from "@gtkx/ffi";
+import { type GTyped, requireWrapperClassByName } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { AnyClass } from "@gtkx/utils";
 import { typeChainIncludes } from "./gtype.js";
@@ -18,10 +18,8 @@ export interface AdwDialogLike extends GTyped {
 export const isAdwDialog = <T extends GTyped>(instance: T): instance is T & AdwDialogLike =>
     hasType(instance, "AdwDialog");
 
-export const resolveBackingClass = (typeName: string): AnyClass<GTyped> | null => resolveWrapperClass(typeName);
-
 const describeUnregistered = (typeName: string): string =>
     `${typeName} is not registered. Import its @gtkx/jsx namespace module (e.g. \`import "@gtkx/jsx/adw"\`) before use.`;
 
 export const requireClassByName = (typeName: string): AnyClass<GTyped> =>
-    requireWrapperClass(typeName, describeUnregistered);
+    requireWrapperClassByName(typeName, describeUnregistered);

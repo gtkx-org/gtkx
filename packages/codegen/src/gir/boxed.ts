@@ -3,7 +3,7 @@ import { functionFromNode, type GirFunction } from "./function.js";
 import { attr, attrBool, childrenOf, GIR_CONSTRUCTOR_TAG, type RawNode } from "./parse.js";
 import type { ParseContext } from "./type-id.js";
 
-export type GirBoxed = {
+export type GirRecord = {
     isVtable: boolean;
     name: string;
     cType: string | undefined;
@@ -23,7 +23,7 @@ export type GirBoxed = {
     isUnion: boolean;
 };
 
-export const boxedFromNode = (node: RawNode, isVtable: boolean, isUnion: boolean, context: ParseContext): GirBoxed => ({
+export const recordFromNode = (node: RawNode, isVtable: boolean, isUnion: boolean, context: ParseContext): GirRecord => ({
     isVtable,
     name: attr(node, "name") ?? attr(node, "glib:name") ?? "",
     cType: attr(node, "c:type"),

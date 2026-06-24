@@ -1,11 +1,11 @@
-import { call, type Type as FfiType, type Handle, type Value } from "@gtkx/native";
+import { call, type Type, type Handle, type Value } from "@gtkx/native";
 import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
 import { biguint64T, bind, objectT, sizedArrayT, stringT, uint32T, voidT } from "./descriptors.js";
 import type { GType } from "./gtype.js";
-import { fromGvalue, newValueFromFfi, toGvalue } from "./gvalue.js";
+import { fromGValue, newValueFromFfi, toGValue } from "./gvalue.js";
 import { getHandle } from "./registry.js";
 
-type Property = [FfiType, Value];
+type Property = [Type, Value];
 
 export function newGobjectWithProperties(gtype: GType, props: Record<string, Property>): Handle {
     const names: string[] = [];
@@ -14,10 +14,10 @@ export function newGobjectWithProperties(gtype: GType, props: Record<string, Pro
     for (const name in props) {
         const entry = props[name];
         if (entry === undefined) continue;
-        const [ffiType, value] = entry;
+        const [descriptor, value] = entry;
         if (value === undefined) continue;
         names.push(name);
-        values.push(toGvalue(ffiType, value));
+        values.push(toGValue(descriptor, value));
     }
 
     return call(
@@ -38,12 +38,12 @@ const PROPERTY_CALL_ARGS = [objectT("borrowed"), stringT("borrowed"), GVALUE_T] 
 const gObjectGetProperty = bind(LIB, "g_object_get_property", [...PROPERTY_CALL_ARGS], voidT);
 const gObjectSetProperty = bind(LIB, "g_object_set_property", [...PROPERTY_CALL_ARGS], voidT);
 
-export function getGobjectProperty(obj: object, propertyName: string, ffiType: FfiType): unknown {
-    const value = newValueFromFfi(ffiType);
+export function getGobjectProperty(obj: object, propertyName: string, descriptor: Type): unknown {
+    const value = newValueFromFfi(descriptor);
     gObjectGetProperty(getHandle(obj), propertyName, value);
-    return fromGvalue(value);
+    return fromGValue(value);
 }
 
-export function setGobjectProperty(obj: object, propertyName: string, ffiType: FfiType, jsValue: unknown): void {
-    gObjectSetProperty(getHandle(obj), propertyName, toGvalue(ffiType, jsValue));
+export function setGobjectProperty(obj: object, propertyName: string, descriptor: Type, jsValue: unknown): void {
+    gObjectSetProperty(getHandle(obj), propertyName, toGValue(descriptor, jsValue));
 }

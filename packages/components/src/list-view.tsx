@@ -2,21 +2,21 @@ import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkListView, type GtkListViewProps } from "@gtkx/jsx/gtk";
 import type { ReactNode, Ref } from "react";
-import { CollectionView, type ModelBinding } from "./collection-view.js";
-import type { SlotRenderer } from "./list-slot.js";
+import { CollectionView, type ModelInstaller } from "./collection-view.js";
+import type { CellRenderer } from "./list-cell.js";
 import type { ListViewProps } from "./types.js";
 
-const factoryBinding = {
+const factoryInstaller = {
     install: (widget: Gtk.ListView, factory: Gtk.SignalListItemFactory) => widget.setFactory(factory),
     uninstall: (widget: Gtk.ListView) => widget.setFactory(null),
 };
 
-const headerFactoryBinding = {
+const headerFactoryInstaller = {
     install: (widget: Gtk.ListView, factory: Gtk.SignalListItemFactory) => widget.setHeaderFactory(factory),
     uninstall: (widget: Gtk.ListView) => widget.setHeaderFactory(null),
 };
 
-const modelBinding: ModelBinding<Gtk.ListView> = {
+const modelInstaller: ModelInstaller<Gtk.ListView> = {
     install: (widget, model) => widget.setModel(model as Gtk.SelectionModel),
 };
 
@@ -55,7 +55,7 @@ export const ListView = <T = unknown, S = unknown>(props: ListViewComponentProps
     };
 
     const renderItemFn = renderItem as (item: T, row?: Gtk.TreeListRow | null) => ReactNode;
-    const slotRenderer: SlotRenderer<T, S> = (value, treeRow, isHeader) => {
+    const cellRenderer: CellRenderer<T, S> = (value, treeRow, isHeader) => {
         if (isHeader) return null;
         return treeRow === null ? renderItemFn(value as T) : renderItemFn(value as T, treeRow);
     };
@@ -69,7 +69,7 @@ export const ListView = <T = unknown, S = unknown>(props: ListViewComponentProps
             ref={ref}
             items={model === undefined ? items : undefined}
             model={model as Gio.ListModel | undefined}
-            renderItem={slotRenderer}
+            renderItem={cellRenderer}
             autoexpand={autoexpand}
             renderHeader={useHeader ? (value) => renderHeader?.(value as S) ?? null : undefined}
             estimatedHeight={estimatedItemHeight}
@@ -77,9 +77,9 @@ export const ListView = <T = unknown, S = unknown>(props: ListViewComponentProps
             selected={selected}
             selectionMode={selectionMode}
             onSelectionChanged={onSelectionChanged}
-            factoryBinding={factoryBinding}
-            headerFactoryBinding={useHeader ? headerFactoryBinding : undefined}
-            modelBinding={modelBinding}
+            factoryInstaller={factoryInstaller}
+            headerFactoryInstaller={useHeader ? headerFactoryInstaller : undefined}
+            modelInstaller={modelInstaller}
         />
     );
 };

@@ -3,12 +3,12 @@ import { GtkColumnViewColumn, type GtkColumnViewColumnProps } from "@gtkx/jsx/gt
 import { createElement, type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { useColumnViewContext } from "./contexts/column-view-context.js";
 import { useHeaderMenu } from "./hooks/use-header-menu.js";
-import { type FactoryBinding, useRealizedSlots } from "./hooks/use-realized-slots.js";
-import { ListPortalHost } from "./list-portal-host.js";
-import type { SlotRenderer } from "./list-slot.js";
+import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
+import { CellRenderHost } from "./cell-render-host.js";
+import type { CellRenderer } from "./list-cell.js";
 import type { ColumnViewColumnProps } from "./types.js";
 
-const factoryBinding: FactoryBinding<Gtk.ColumnViewColumn> = {
+const factoryInstaller: FactoryInstaller<Gtk.ColumnViewColumn> = {
     install: (column, factory) => column.setFactory(factory),
     uninstall: (column) => column.setFactory(null),
 };
@@ -36,9 +36,9 @@ export const ColumnViewColumn = <T = unknown>(props: ColumnViewColumnComponentPr
         setColumn(value);
     }).current;
 
-    const { store } = useRealizedSlots<Gtk.ColumnViewColumn>({
+    const { store } = useCellContainers<Gtk.ColumnViewColumn>({
         target: column,
-        binding: factoryBinding,
+        installer: factoryInstaller,
     });
 
     const registerRef = useRef(context.register);
@@ -54,7 +54,7 @@ export const ColumnViewColumn = <T = unknown>(props: ColumnViewColumnComponentPr
 
     const headerMenuPortal = useHeaderMenu(column, headerMenu);
 
-    const slotRenderer: SlotRenderer<unknown, unknown> = (value, _treeRow, isHeader) =>
+    const cellRenderer: CellRenderer<unknown, unknown> = (value, _treeRow, isHeader) =>
         isHeader ? null : renderCell(value as T);
 
     const intrinsicProps: Record<string, unknown> = { id, title, ref: captureColumn };
@@ -66,7 +66,7 @@ export const ColumnViewColumn = <T = unknown>(props: ColumnViewColumnComponentPr
     return (
         <>
             {createElement(GtkColumnViewColumn, intrinsicProps)}
-            <ListPortalHost store={store} resolver={context.resolver} render={slotRenderer} />
+            <CellRenderHost store={store} resolver={context.resolver} render={cellRenderer} />
             {headerMenuPortal}
         </>
     );

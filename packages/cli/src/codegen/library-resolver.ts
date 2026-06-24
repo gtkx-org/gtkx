@@ -1,6 +1,6 @@
 import { readdirSync } from "node:fs";
-import { GIR_NAMESPACE_PATTERN, type GtkxConfig, LIBRARIES_WILDCARD } from "@gtkx/config";
-import { sortedAlpha } from "@gtkx/utils";
+import { GIR_LIBRARY_PATTERN, type GtkxConfig, LIBRARIES_WILDCARD } from "@gtkx/config";
+import { sortedStrings } from "@gtkx/utils";
 import { GtkxError } from "../internal/errors.js";
 
 const DEFAULT_LIBRARIES: string[] = ["Gtk-4.0"];
@@ -44,7 +44,7 @@ const discoverGirNamespaces = (girPath: string[]): string[] => {
             }
 
             const identifier = entry.slice(0, -GIR_FILE_SUFFIX.length);
-            if (!GIR_NAMESPACE_PATTERN.test(identifier)) {
+            if (!GIR_LIBRARY_PATTERN.test(identifier)) {
                 continue;
             }
 
@@ -58,7 +58,7 @@ const discoverGirNamespaces = (girPath: string[]): string[] => {
         }
     }
 
-    return sortedAlpha([...highestByName.values()].map(({ identifier }) => identifier));
+    return sortedStrings([...highestByName.values()].map(({ identifier }) => identifier));
 };
 
 const compareVersions = (a: string, b: string): number => {

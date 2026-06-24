@@ -1,11 +1,11 @@
 import type { Plugin } from "vite";
 import { describe, expect, it } from "vitest";
-import { buildConfig } from "../../src/dev/vite-dev-server.js";
+import { createDevServerConfig } from "../../src/dev/vite-dev-server.js";
 
-describe("buildConfig", () => {
+describe("createDevServerConfig", () => {
     it("builds the SSR middleware-mode config keeping the gtkx packages bundled", () => {
         const plugins: Plugin[] = [{ name: "stub" }];
-        const config = buildConfig("/proj", plugins);
+        const config = createDevServerConfig("/proj", plugins);
 
         expect(config.root).toBe("/proj");
         expect(config.appType).toBe("custom");

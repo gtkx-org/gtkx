@@ -17,7 +17,7 @@ const LIFECYCLE_SIGNALS = new Set([
 
 export interface SignalBinding {
     owner: object;
-    obj: GObject.Object;
+    instance: GObject.Object;
     signal: string;
     handler?: SignalHandler | null | undefined;
     blockable?: boolean | undefined;
@@ -27,24 +27,24 @@ export class SignalStore {
     private ownerHandlers: Map<object, Map<GObject.Object, Map<string, number>>> = new Map();
     private blockDepth = 0;
 
-    private getObjectMap(owner: object, obj: GObject.Object): Map<string, number> {
+    private getInstanceMap(owner: object, instance: GObject.Object): Map<string, number> {
         let ownerMap = this.ownerHandlers.get(owner);
         if (!ownerMap) {
             ownerMap = new Map();
             this.ownerHandlers.set(owner, ownerMap);
         }
-        let objMap = ownerMap.get(obj);
-        if (!objMap) {
-            objMap = new Map();
-            ownerMap.set(obj, objMap);
+        let instanceMap = ownerMap.get(instance);
+        if (!instanceMap) {
+            instanceMap = new Map();
+            ownerMap.set(instance, instanceMap);
         }
-        return objMap;
+        return instanceMap;
     }
 
-    private wrapHandler(
+    private wrapCallback(
         handler: SignalHandler,
         signal: string,
-        obj: GObject.Object,
+        instance: GObject.Object,
         blockable: boolean,
     ): SignalHandler {
         return (...args: unknown[]) => {
@@ -53,40 +53,40 @@ export class SignalStore {
             }
             this.blockAll();
             try {
-                return handler(...args, obj);
+                return handler(...args, instance);
             } finally {
                 this.unblockAll();
             }
         };
     }
 
-    private disconnect(owner: object, obj: GObject.Object, signal: string): void {
+    private disconnect(owner: object, instance: GObject.Object, signal: string): void {
         const ownerMap = this.ownerHandlers.get(owner);
-        const objMap = ownerMap?.get(obj);
-        const handlerId = objMap?.get(signal);
+        const instanceMap = ownerMap?.get(instance);
+        const handlerId = instanceMap?.get(signal);
 
         if (handlerId !== undefined) {
-            obj.disconnect(handlerId);
-            objMap?.delete(signal);
-            if (objMap?.size === 0) {
-                ownerMap?.delete(obj);
+            instance.disconnect(handlerId);
+            instanceMap?.delete(signal);
+            if (instanceMap?.size === 0) {
+                ownerMap?.delete(instance);
             }
         }
     }
 
     private connect(binding: SignalBinding & { handler: SignalHandler; blockable: boolean }): void {
-        const { owner, obj, signal, handler, blockable } = binding;
-        const wrappedHandler = this.wrapHandler(handler, signal, obj, blockable);
-        const handlerId = obj.connect(signal, wrappedHandler);
-        this.getObjectMap(owner, obj).set(signal, handlerId);
+        const { owner, instance, signal, handler, blockable } = binding;
+        const wrappedHandler = this.wrapCallback(handler, signal, instance, blockable);
+        const handlerId = instance.connect(signal, wrappedHandler);
+        this.getInstanceMap(owner, instance).set(signal, handlerId);
     }
 
     public set(binding: SignalBinding): void {
-        const { owner, obj, signal, handler, blockable = true } = binding;
-        this.disconnect(owner, obj, signal);
+        const { owner, instance, signal, handler, blockable = true } = binding;
+        this.disconnect(owner, instance, signal);
 
         if (handler) {
-            this.connect({ owner, obj, signal, handler, blockable });
+            this.connect({ owner, instance, signal, handler, blockable });
         }
     }
 
@@ -94,9 +94,9 @@ export class SignalStore {
         const ownerMap = this.ownerHandlers.get(owner);
 
         if (ownerMap) {
-            for (const [obj, objMap] of ownerMap) {
-                for (const [, handlerId] of objMap) {
-                    obj.disconnect(handlerId);
+            for (const [instance, instanceMap] of ownerMap) {
+                for (const [, handlerId] of instanceMap) {
+                    instance.disconnect(handlerId);
                 }
             }
 

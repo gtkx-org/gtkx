@@ -129,7 +129,7 @@ describe("codegen React pipeline", () => {
     });
 
     it("counts the widget intrinsics it emitted", () => {
-        expect(reactPipeline.widgetCount).toBeGreaterThan(0);
+        expect(reactPipeline.reactNodeCount).toBeGreaterThan(0);
     });
 
     it("transpiles every generated React module and the metadata", () => {

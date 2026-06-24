@@ -1,8 +1,8 @@
-import { type GApplication, quitApplication, runApplication } from "@gtkx/ffi";
+import { type ApplicationRunner, quitApplication, runApplication } from "@gtkx/ffi";
 
 export type ApplicationLifecycle = {
-    run(application: GApplication): void;
-    quit(application: GApplication): void;
+    run(application: ApplicationRunner): void;
+    quit(application: ApplicationRunner): void;
 };
 
 export type ApplicationLifecycleModule = {
@@ -21,10 +21,10 @@ export const setApplicationLifecycle = (next: Partial<ApplicationLifecycle> | nu
     lifecycle = { ...defaultApplicationLifecycle, ...next };
 };
 
-export const runApplicationLifecycle = (application: GApplication): void => {
+export const runApplicationLifecycle = (application: ApplicationRunner): void => {
     lifecycle.run(application);
 };
 
-export const quitApplicationLifecycle = (application: GApplication): void => {
+export const quitApplicationLifecycle = (application: ApplicationRunner): void => {
     lifecycle.quit(application);
 };

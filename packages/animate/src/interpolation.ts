@@ -1,4 +1,4 @@
-import { propertyDefaults } from "./animatable-properties.js";
+import { propertyDefaults } from "./property-defaults.js";
 import type { AnimatableProperties } from "./types.js";
 
 export const interpolate = (

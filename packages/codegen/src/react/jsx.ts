@@ -1,11 +1,11 @@
-import { quote } from "@gtkx/utils";
+import { sourceStringLiteral } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
-import type { GirRepository } from "../gir/repository.js";
+import type { Library } from "../gir/repository.js";
 import type { JsxImports } from "./imports.js";
-import { buildWidgetPropsEntries } from "./props.js";
+import { buildElementPropsEntries } from "./props.js";
 import { ACCESSIBLE_PROP_TYPES, SLOT_PROPS_BY_TYPE } from "./tables.js";
-import { collectReactNodeClasses, type WidgetCandidate } from "./widgets.js";
+import { collectReactNodeClasses, type ReactNodeClass } from "./widgets.js";
 
 export type GenerateJsxOptions = {
     excludeNames: Set<string>;
@@ -16,21 +16,21 @@ const QUALIFIED_TYPE_PATTERN = /^[A-Z][A-Za-z0-9]*\.[A-Z]/;
 
 export const generateJsxSection = (
     targetNamespace: GirNamespace,
-    repository: GirRepository,
+    library: Library,
     options: GenerateJsxOptions,
 ): { source: string; intrinsicCount: number } => {
     const { excludeNames, imports } = options;
-    const allWidgets = collectReactNodeClasses(repository);
+    const allWidgets = collectReactNodeClasses(library);
     const widgets = allWidgets.filter((entry) => entry.namespace.name === targetNamespace.name);
     const intrinsicWidgets = widgets.filter((entry) => !excludeNames.has(entry.glibName));
     const constLines = intrinsicWidgets.map(
-        (entry) => `export const ${entry.glibName} = ${quote(entry.glibName)} as const;`,
+        (entry) => `export const ${entry.glibName} = ${sourceStringLiteral(entry.glibName)} as const;`,
     );
 
-    const widgetByGlibName = new Map(allWidgets.map((entry) => [entry.glibName, entry]));
-    const isWidgetAncestor = (candidate: GirClass): boolean => {
+    const reactNodeByGlibName = new Map(allWidgets.map((entry) => [entry.glibName, entry]));
+    const isReactNodeAncestor = (candidate: GirClass): boolean => {
         const candidateGlib = candidate.glibTypeName ?? candidate.cType;
-        return candidateGlib !== undefined && widgetByGlibName.has(candidateGlib);
+        return candidateGlib !== undefined && reactNodeByGlibName.has(candidateGlib);
     };
     imports.reactBuiltins.add("ReactNode");
     imports.reactBuiltins.add("Ref");
@@ -39,9 +39,9 @@ export const generateJsxSection = (
     let needsReactElement = false;
     const propBlocks: string[] = [];
     for (const entry of widgets) {
-        const { block, extendsBase, slotPropNames } = renderPropBlock(repository, entry, {
-            isWidgetAncestor,
-            widgetByGlibName,
+        const { block, extendsBase, slotPropNames } = renderPropBlock(library, entry, {
+            isReactNodeAncestor,
+            reactNodeByGlibName,
             targetNamespaceName: targetNamespace.name,
             imports,
         });
@@ -67,7 +67,7 @@ const renderWidgetPropsBase = (imports: JsxImports): string => {
     return ["export interface WidgetProps {", "    name?: string;", ...accessibleLines, "}"].join("\n");
 };
 
-const renderJsxAugmentation = (widgets: WidgetCandidate[]): string =>
+const renderJsxAugmentation = (widgets: ReactNodeClass[]): string =>
     [
         "declare global {",
         "    namespace React.JSX {",
@@ -79,23 +79,23 @@ const renderJsxAugmentation = (widgets: WidgetCandidate[]): string =>
     ].join("\n");
 
 type RenderPropBlockContext = {
-    isWidgetAncestor: (candidate: GirClass) => boolean;
-    widgetByGlibName: Map<string, WidgetCandidate>;
+    isReactNodeAncestor: (candidate: GirClass) => boolean;
+    reactNodeByGlibName: Map<string, ReactNodeClass>;
     targetNamespaceName: string;
     imports: JsxImports;
 };
 
 const renderPropBlock = (
-    repository: GirRepository,
-    entry: WidgetCandidate,
+    library: Library,
+    entry: ReactNodeClass,
     context: RenderPropBlockContext,
 ): { block: string; extendsBase: boolean; slotPropNames: string[] } => {
     const slotProps = SLOT_PROPS_BY_TYPE[entry.glibName] ?? [];
-    const { propLines, imports, slotPropNames } = buildWidgetPropsEntries({
-        repository,
+    const { propLines, imports, slotPropNames } = buildElementPropsEntries({
+        library,
         klass: entry.klass,
         namespace: entry.namespace,
-        isWidgetAncestor: context.isWidgetAncestor,
+        isReactNodeAncestor: context.isReactNodeAncestor,
     });
     for (const [namespace, alias] of imports) context.imports.giNamespaces.set(namespace, alias);
     context.imports.giNamespaces.set(entry.namespace.name, entry.namespace.name);
@@ -107,7 +107,7 @@ const renderPropBlock = (
         ...propLines.map((line) => `    ${line}`),
         ...slotPropLines,
     ];
-    const parentExtends = resolveParentPropsExtension(repository, entry, context);
+    const parentExtends = resolveParentPropsExtension(library, entry, context);
     const selfDefault = `${entry.namespace.name}.${entry.klass.name}`;
     return {
         block: `export interface ${entry.glibName}Props<Self = ${selfDefault}> extends ${parentExtends} {\n${ownerLines.join("\n")}\n}`,
@@ -117,18 +117,18 @@ const renderPropBlock = (
 };
 
 const resolveParentPropsExtension = (
-    repository: GirRepository,
-    entry: WidgetCandidate,
+    library: Library,
+    entry: ReactNodeClass,
     context: RenderPropBlockContext,
 ): string => {
     const parent = entry.klass.parent;
     if (parent === undefined) return "WidgetProps";
-    const resolved = repository.resolveType(entry.namespace.name, parent);
+    const resolved = library.resolveType(entry.namespace.name, parent);
     if (resolved === undefined) return "WidgetProps";
     if (resolved.kind !== "class" && resolved.kind !== "interface") return "WidgetProps";
     const parentGlib = resolved.value.glibTypeName ?? resolved.value.cType;
     if (parentGlib === undefined) return "WidgetProps";
-    if (!context.widgetByGlibName.has(parentGlib)) return "WidgetProps";
+    if (!context.reactNodeByGlibName.has(parentGlib)) return "WidgetProps";
     const parentNamespaceName = resolved.namespace.name;
     if (parentNamespaceName !== context.targetNamespaceName) {
         const directory = parentNamespaceName.toLowerCase();

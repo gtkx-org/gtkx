@@ -2,7 +2,7 @@ import { isValidApplicationId } from "@gtkx/utils";
 
 export const LIBRARIES_WILDCARD = "*";
 
-export const GIR_NAMESPACE_PATTERN: RegExp = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/;
+export const GIR_LIBRARY_PATTERN: RegExp = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/;
 
 export type GtkxConfig = {
     libraries?: typeof LIBRARIES_WILDCARD | string[];
@@ -40,7 +40,7 @@ export const resolveReactCompilerOptions = (
 };
 
 const validateLibraryEntry = (library: unknown): void => {
-    if (typeof library === "string" && GIR_NAMESPACE_PATTERN.test(library)) {
+    if (typeof library === "string" && GIR_LIBRARY_PATTERN.test(library)) {
         return;
     }
     if (library === LIBRARIES_WILDCARD) {

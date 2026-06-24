@@ -4,7 +4,7 @@ import { basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { exitCodeForSignal, installGracefulShutdown } from "@gtkx/utils";
 import { error, info } from "../internal/log.js";
-import { RELOAD_EXIT_CODE } from "./protocol.js";
+import { RESTART_EXIT_CODE } from "./protocol.js";
 
 const DEV_RUNNER_URL = new URL("../../bin/gtkx-dev-runner.js", import.meta.url);
 const FORCE_KILL_TIMEOUT_MS = 5000;
@@ -67,7 +67,7 @@ const launch = (state: SupervisorState): void => {
             }
             return;
         }
-        if (code === RELOAD_EXIT_CODE) {
+        if (code === RESTART_EXIT_CODE) {
             info("Restarting dev runner...");
             launch(state);
             return;

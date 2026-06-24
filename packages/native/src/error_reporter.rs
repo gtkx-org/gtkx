@@ -29,10 +29,6 @@ impl NativeErrorReporter {
         })
     }
 
-    pub fn initialize(&self, tsfn: Arc<ErrorReporterTsfn>) {
-        let _ = self.tsfn.set(tsfn);
-    }
-
     pub fn install(&self, env: Env) -> napi::Result<()> {
         let error_fn =
             env.create_function_from_closure::<String, (), _>("gtkx_report_error", |ctx| {
@@ -47,7 +43,7 @@ impl NativeErrorReporter {
             .callee_handled::<false>()
             .build()?;
 
-        self.initialize(Arc::new(error_tsfn));
+        let _ = self.tsfn.set(Arc::new(error_tsfn));
         Ok(())
     }
 

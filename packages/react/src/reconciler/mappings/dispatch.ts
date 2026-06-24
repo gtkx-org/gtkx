@@ -58,12 +58,12 @@ export const detachFromParent = (child: Node, parent: Node): void => {
     resolveMapping(child, parent)?.detach(child, parent);
 };
 
-export const resyncWrapper = (marker: Node): void => {
-    const parent = stateOf(marker).parent;
-    if (isWrapperElement(marker) && parent) attachToParent(marker, parent);
+export const resyncWrapper = (wrapper: Node): void => {
+    const parent = stateOf(wrapper).parent;
+    if (isWrapperElement(wrapper) && parent) attachToParent(wrapper, parent);
 };
 
-const anchorBacking = (before: Node): GObject.Object | null => {
+const anchorWrapper = (before: Node): GObject.Object | null => {
     if (before instanceof GObject.Object) return before;
     for (const grandchild of stateOf(before).children) {
         if (grandchild instanceof GObject.Object) return grandchild;
@@ -77,7 +77,7 @@ export const attachNode = (parent: Node, child: Node, before: Node | null, fresh
     } else if (isWrapperElement(child)) {
         attachToParent(child, parent);
     } else if (!isWrapperElement(parent)) {
-        attachToParent(child, parent, anchorBacking(before));
+        attachToParent(child, parent, anchorWrapper(before));
     }
     if (isWrapperElement(parent)) resyncWrapper(parent);
 };

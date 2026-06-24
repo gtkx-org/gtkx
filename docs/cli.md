@@ -2,20 +2,20 @@
 
 `@gtkx/cli` is the user-facing command-line tool and the Vite integration layer. It scaffolds new apps, runs a hot-reloading dev server, produces a single-file production bundle, and orchestrates GIR/JSX binding generation. It owns the Vite plugins that turn GTK assets (GResources, GSettings schemas, CSS, the native addon) into runnable modules, and an embedded MCP client that lets external tooling drive a live dev app.
 
-For the package map and how the CLI relates to the rest of the stack, see [./architecture.md](./architecture.md). Setup, prerequisites, and the day-to-day commands for humans live in [../README.md](../README.md). This document describes the CLI's architecture and the lifecycle of an app.
+For the package map and how the CLI relates to the rest of the stack, see [./architecture.md](./architecture.md). Setup, prerequisites, and the day-to-day commands for humans live in [../README.md](../README.md). This document describes the CLI's responsibilities and the lifecycle of an app.
 
-## Command tree
+## Commands
 
-The CLI is a single [citty](https://github.com/unjs/citty) command (`gtkx`) with four subcommands. The `bin/gtkx.js` shim runs the compiled command via `runMain`. The package entry (`src/index.ts`) re-exports `defineConfig` (from `@gtkx/config`), `build`, and `createApp` as a library API.
+The CLI exposes four subcommands, and a small library API (`defineConfig`, `build`, `createApp`) for embedding the same behavior programmatically.
 
-| Subcommand | Module | Responsibility |
-| --- | --- | --- |
-| `dev` | `commands/dev.ts` | Preflight codegen, then start the dev supervisor over the resolved entry. |
-| `build` | `commands/build.ts` | Preflight codegen, then run the production SSR bundle. |
-| `codegen` | `commands/codegen.ts` | Generate or refresh the GIR/JSX binding stores (`--force` wipes and regenerates). |
-| `create` | `commands/create.ts` | Scaffold a new app from templates, install deps, git-init. |
+| Subcommand | Responsibility |
+| --- | --- |
+| `dev` | Run a codegen freshness check, then start the hot-reloading dev server over the resolved entry. |
+| `build` | Run a codegen freshness check, then produce the single-file production bundle. |
+| `codegen` | Generate or refresh the GIR/JSX binding stores; a force flag wipes and regenerates unconditionally. |
+| `create` | Scaffold a new app from templates, install dependencies, and initialize a git repository. |
 
-`commands/entry.ts` resolves the working directory and entry file shared by `dev` and `build`; the entry defaults to `src/index.tsx` relative to the cwd.
+`dev` and `build` share entry resolution: the working directory and the entry file (defaulting to a conventional source entry relative to the cwd).
 
 ## App lifecycle at a glance
 
@@ -23,175 +23,93 @@ The CLI is a single [citty](https://github.com/unjs/citty) command (`gtkx`) with
 create  →  scaffold templates, install deps, seed schema env, git init
    │
 codegen preflight  →  resolve codegen root + config, sync schema types,
-   │                   fingerprint freshness, run @gtkx/codegen if stale
-   ├── dev    →  supervisor forks dev-runner child; child runs Vite SSR
-   │             server, ssrLoadModule's the entry, Fast Refresh / restart,
+   │                   check freshness, regenerate if stale
+   ├── dev    →  hot-reloading SSR dev server with Fast Refresh and an
    │             embedded MCP client
-   └── build  →  vite build in SSR mode → dist/bundle.js + emitted assets
-                 (gtkx.node, gtkx.gresource, gschemas.compiled)
+   └── build  →  single-file SSR bundle plus emitted GTK assets
 ```
 
-## Scaffolding (`create`)
+## Scaffolding
 
-`createApp` (`create.ts`) wires `createScaffolder` (`create/scaffolder.ts`) with injected dependencies (`create/deps.ts`: filesystem, `@clack/prompts`, `nypm` for installs, `tinyexec` for git, `nypm` for package-manager detection). The scaffolder is pure logic over that interface, so the prompt/IO surface is swappable for tests.
+`create` renders a set of project templates, fills in interactive answers (any value not supplied as a flag is prompted for, and each answer is validated — project name, application id, package manager, testing choice), then writes the project, installs runtime and dev dependencies through the chosen package manager, seeds an initial empty GSettings type-environment so the project type-checks before its first codegen run, and initializes a git repository with a first commit.
 
-Flags fill in answers; anything missing is prompted interactively. Options and their validators live in `create/options.ts` — project name must be lowercase letters/digits/hyphens, application id must satisfy `isValidApplicationId` (from `@gtkx/config`), package manager is one of pnpm/npm/yarn, testing is `vitest` or `none`.
-
-Templates live under `templates/` as `*.ejs` files. `templates.ts` lists every template (recursively, relative paths) and renders it through EJS with a `TemplateContext` of `name`, `applicationId`, `title`, and `testing`. The scaffolder maps each template's relative path to a destination:
-
-- Most templates map one-to-one; `gitignore` → `.gitignore`, `config/vitest.config.ts` → `vitest.config.ts`.
-- `config/` and `tests/` templates are only emitted when `testing === "vitest"`.
-
-After writing files, the scaffolder installs runtime deps (`@gtkx/css`, `@gtkx/ffi`, `@gtkx/react`, `react`) and dev deps (`@gtkx/cli`, `@types/react`, `typescript`, `vite`, plus `@gtkx/testing`/`vitest` when testing is enabled) via the chosen package manager, seeds an initial empty GSettings env (`node_modules/.gtkx/env.d.ts`) so type-checking works before the first codegen, and git-inits with an initial commit.
-
-The generated `package.json` declares an `imports` map with `#data/*` → `./data/*` and scripts that call `gtkx dev` / `gtkx build`, plus `gtkx codegen && tsc --noEmit` for typecheck.
+Test-only templates are emitted only when the testing option selects a framework. The scaffolding logic is written against an injected IO interface (filesystem, prompts, installer, process runner) so the prompt/IO surface is swappable in tests.
 
 ## Codegen orchestration and freshness
 
-Codegen internals (the GIR repository, the `t.*` descriptor contract, store emission, the fingerprint) live in `@gtkx/codegen` under `packages/codegen/src/`; see the two-store overview in [./architecture.md](./architecture.md). The CLI's job is to decide *where* to run it, *whether* it needs to run, and to delegate to `@gtkx/codegen`'s `CodegenRunner`. This logic lives in `src/codegen/`.
+Codegen itself — the GIR repository, the Type descriptor contract, store emission, and the fingerprint — lives in `@gtkx/codegen`; see [./codegen.md](./codegen.md). The CLI's job is to decide *where* to run it, *whether* it needs to run, and to delegate to the generator.
 
-### Where: the codegen root and store
+**Where.** The CLI walks up from the project directory to the nearest ancestor that is both a workspace root and holds a `gtkx.config`, and runs codegen from there so a monorepo has one authoritative binding store. The generated store is placed under that root and surfaced to consumers through stable package links; when invoked from a non-root member, any shadowing copies of the generated packages are pruned so the root store wins. The store links against the actual resolved runtime packages (the FFI runtime, the native addon, the React layer, and `react`), and the JSX bindings are generated only when the React layer and `react` both resolve.
 
-`findCodegenRoot` (`store-resolver.ts`) walks up from the project directory to the nearest ancestor that is both a workspace root (`pnpm-workspace.yaml` or a `workspaces` field) and holds a `gtkx.config.*`. Codegen always runs from that root, not necessarily the invocation cwd, so a monorepo has one authoritative store. When the cwd is a non-root member, its shadowing `.gtkx`/`@gtkx` gi/jsx directories are pruned so the root store wins.
+**GIR and libraries.** The CLI assembles the GIR search paths from config, an environment override, and the system introspection directories, and expands the configured library list into concrete versioned namespace identifiers — defaulting to GTK 4, ensuring GTK is always present, and supporting a wildcard that discovers every available namespace at its highest version. An empty search path is a hard error pointing at the introspection packages.
 
-`resolveCodegenStore` computes the store directories under the root's `node_modules`: the content stores at `.gtkx/gi` and `.gtkx/jsx`, and the consumer-facing links at `@gtkx/gi` and `@gtkx/jsx`. It resolves the real install dirs and versions of `@gtkx/ffi`, `@gtkx/native`, `@gtkx/react`, and `react` (falling back to `packages/<name>` inside the root for workspace dev). Those real dirs and versions are passed into `CodegenRunner` so the emitted store can symlink against the actual runtime packages. The JSX store is only generated when both `@gtkx/react` and `react` resolve.
-
-### GIR and library resolution
-
-`gir-resolver.ts` assembles GIR search paths, de-duplicated, from: the config `girPath`, the `GTKX_GIR_PATH` env var (colon-separated), the system `/usr/share/gir-1.0`, and `pkg-config --variable=girdir gobject-introspection-1.0`. An empty result is a hard error pointing at the gobject-introspection packages.
-
-`library-resolver.ts` expands the config `libraries` into concrete `Name-Version` identifiers. Undefined defaults to `Gtk-4.0`. An explicit list that lacks any `Gtk-` entry has `Gtk-4.0` prepended. The wildcard `"*"` discovers `.gir` files across the search paths and keeps the highest version per namespace.
-
-### Whether: fingerprint freshness
-
-`freshness.ts` (`isCodegenNeeded`) decides if regeneration is required without parsing GIR. It returns "needed" when any of the following hold:
-
-- the `.gtkx/gi` store or its `@gtkx/gi` link is missing;
-- the store's internal `@gtkx/ffi` / `@gtkx/gi` package links don't resolve;
-- a requested library's namespace barrel is missing;
-- the JSX store is expected but its link or generated modules (`metadata.js`, `gtk/gtk.js`) are missing;
-- the fingerprint sentinel is absent, unparseable, has a different sorted library set, or its recomputed value (over the recorded GIR file contents, libraries, and the serialized user tables from config) no longer matches.
-
-The fingerprint primitives (`computeFingerprint`, `FINGERPRINT_FILENAME`, `serializeUserTables`) come from `@gtkx/codegen`.
-
-### Entry points
-
-`run-codegen.ts` exposes the orchestration surface:
-
-- `runCodegen` — load config from the codegen root, resolve GIR/libraries/store, optionally wipe (force), build a `CodegenRunner`, run it.
-- `ensureGenerated` / `preflightCodegen` — resolve the codegen context, sync schema types, and run codegen only when `isCodegenNeeded`. `dev` and `build` call `preflightCodegen`; `GTKX_DISABLE_PREFLIGHT=1` skips it.
-- `syncSchemaEnv` — regenerate the GSettings env types (see below); skipped at a bare workspace root.
-- `resolveConfigWatch` — return the config file path(s) plus a `regenerate` callback that the dev supervisor watches.
-
-The `codegen` command without `--force` calls `ensureGenerated`; with `--force` it wipes the stores, runs unconditionally, syncs schema types, and prints a report from `report.ts`.
+**Whether.** A freshness check decides if regeneration is required without parsing GIR. Regeneration is triggered when the generated store or its consumer links are missing or unresolvable, when a requested namespace is absent from the store, when the expected JSX bindings are missing, or when a recorded fingerprint is absent, unparseable, or no longer matches a value recomputed over the GIR inputs, the library set, and the user-supplied configuration. `dev` and `build` run this check before starting (it can be disabled by an environment flag); the `codegen` command runs it directly, or skips it and regenerates unconditionally under the force flag.
 
 ## Configuration: `gtkx.config.ts`
 
-The config schema, validators, loader, and the `virtual:gtkx-config` module are owned by `@gtkx/config` (`packages/config/src/`). It is the connective tissue described in [./architecture.md](./architecture.md): codegen consumes the binding tables, and the reconciler consumes the virtual module at runtime. The relevant contracts for the CLI:
+The config schema, validators, loader, and the `virtual:gtkx-config` module are owned by `@gtkx/config`. It is the connective tissue described in [./architecture.md](./architecture.md): codegen consumes the binding tables, and the reconciler consumes the virtual module at runtime. From the CLI's perspective:
 
-- **Authoring** — `defineConfig` validates every field at module-evaluation time (library identifiers, application-id rules mirroring `g_application_id_is_valid`, the binding-table row shapes) and returns the config unchanged. Top-level options are `libraries`, `girPath`, `applicationId`, and `reactCompiler`, plus the spread `UserTableRows` that extend the JSX binding tables. The repo's own `gtkx.config.ts` is a minimal `{ libraries: [...] }`.
-- **Loading** — `loadGtkxConfig` wraps c12 to import `gtkx.config.ts` (rc files, global rc, and package.json sources disabled), re-validating through `defineConfig`. `loadResolvedGtkxConfig` resolves every optional field to a concrete default and swallows only the not-found case (returning an empty resolved config). `createGtkxConfigLoader` memoizes per cwd so one promise is shared.
-- **Resolved shape** — `resolveGtkxConfig` normalizes `reactCompiler` into `ResolvedReactCompilerOptions | null` (pinned to the React target) and fills arrays/objects, so downstream code can rely on every key existing.
+- **Authoring** — `defineConfig` validates every field when the config module evaluates (library identifiers, the application-id rules, and any binding-table extensions) and returns the config unchanged. The top-level options cover the target libraries, the GIR search path, the application id, the React compiler toggle, and optional extensions to the JSX binding tables.
+- **Loading** — the loader imports `gtkx.config.ts` in isolation (external rc and package.json sources disabled), re-validates it, resolves every optional field to a concrete default, and tolerates a missing config by returning an empty resolved config. Loading is memoized per working directory so plugins share one result.
 
 ### Who consumes the config
 
 | Field / output | Consumer |
 | --- | --- |
-| `libraries`, `girPath` | `library-resolver`, `gir-resolver` for codegen |
-| `applicationId` | GResource prefix derivation; the MCP client; the `virtual:gtkx-config` export |
-| `reactCompiler` | the `gtkx:react-compiler` Vite plugin |
-| `UserTableRows` | merged into codegen's built-in binding tables; fed into the fingerprint |
-| resolved config + `@gtkx/jsx/metadata` | the `virtual:gtkx-config` module the reconciler imports |
-| `#data/*` imports map | `resolveDataDir`, used by the GResource and GSettings plugins |
+| target libraries, GIR search path | codegen library and GIR resolution |
+| application id | GResource prefix derivation, the MCP client, and the config virtual module |
+| React compiler options | the React-compiler Vite plugin |
+| binding-table extensions | merged into codegen's built-in tables and folded into the freshness fingerprint |
+| resolved config + JSX metadata | the `virtual:gtkx-config` module the reconciler imports |
+| data-imports map | the GResource and GSettings plugins |
 
-The config loader is created once in `gtkxVitePlugins` and shared by the config, gresources, and react-compiler plugins.
+## Dev: hot-reloading SSR server
 
-## Dev: supervisor + runner
+`gtkx dev` runs as a long-lived supervisor process and a child runner that owns the app, communicating only through the child's exit code. The supervisor relaunches the child on a reload exit code and propagates any other code, watches the config file(s) and — on a change — debounces, regenerates the bindings, and restarts the child (a codegen failure leaves the running child untouched), and installs graceful shutdown that forwards signals to the child.
 
-`gtkx dev` is two processes communicating only through a process exit code.
+The execution model is server-side rendering, not bundling. The runner starts Vite in middleware mode with the gtkx plugins, keeps the gtkx runtime packages and the generated stores internal to SSR rather than pre-bundled, then SSR-loads the entry. The entry's top-level render runs once and mounts the GTK app directly in Node, with Vite transforming project files on demand. The runner installs an application-lifecycle hook so an app quit can be distinguished from a hot-reload remount, and — once an application is mounted — opens the embedded MCP client keyed by the application id.
 
-### Supervisor (`dev/supervisor.ts`)
-
-The long-lived parent forks the dev-runner child (`bin/gtkx-dev-runner.js`) with the entry path as its argument. It:
-
-- relaunches the child when it exits with `RELOAD_EXIT_CODE` (`dev/protocol.ts`), and propagates any other exit code;
-- watches the config file path(s) returned by `resolveConfigWatch`; on a change it debounces, calls `regenerate` (re-running codegen), then signals the child to exit and relaunches it. A codegen failure keeps the current child running;
-- installs graceful shutdown that forwards the signal to the child and force-kills after a timeout.
-
-### Runner (`dev/runner.ts`, child entry `dev/runner-main.ts`)
-
-The child owns the actual app. `runner-main.ts` first prepares a temp compiled-schema directory (see GSettings below), then builds the runner with its default dependency wiring (`dev/runner-deps.ts`) and runs it. The runner logic is pure over an injected `DevRunnerDeps` interface; defaults bind Vite's `createServer`, the refresh runtime, the MCP client, and the application-lifecycle hook.
-
-The execution model is **SSR, not bundled**:
-
-1. `vite-dev-server.ts` builds a middleware-mode (`appType: "custom"`, `server.middlewareMode`) Vite config with the gtkx plugins. Dependency discovery is disabled; `@gtkx/config|react|jsx|animate` and the `.gtkx` stores are kept internal to SSR.
-2. The runner `ssrLoadModule`'s the entry. The entry's top-level `createRoot().render()` runs once and mounts the GTK app in Node, with Vite transforming project files on the fly.
-3. The app lifecycle hook is installed by `ssrLoadModule`'ing `@gtkx/react` and calling `setApplicationLifecycle`, so an app quit is intercepted (see refresh vs. shutdown below).
-4. If the entry mounted a `Gio.Application`, the runner opens the embedded MCP client keyed by the configured (or live) application id.
-
-### Fast Refresh vs. process restart
-
-On a watched file change, the runner invalidates the changed module and its importers, re-`ssrLoadModule`'s it, and asks `isReactRefreshBoundary` whether every export looks like a React component. If so it performs a React Fast Refresh; otherwise it closes the server and exits with `RELOAD_EXIT_CODE`, prompting the supervisor to relaunch.
-
-Two plugins make Fast Refresh work over SSR (`vite-plugins/fast-refresh/`):
-
-- `swcSsrRefresh` transforms project TSX via SWC (automatic runtime, `refresh: true`) for SSR-transformed modules that pass the refresh gate.
-- `gtkxRefresh` injects a per-module header binding `$RefreshReg$`/`$RefreshSig$` to `@gtkx/cli/refresh-runtime`, and resolves that runtime specifier.
-
-The shared refresh gate (`internal/vite-refresh-shared.ts`) applies only to SSR transforms matching `/\.[tj]sx?$/` and excluding `node_modules`, `dist`, and `.gtkx`.
-
-A `RefreshTracker` (`dev/refresh-tracker.ts`) marks a refresh in progress. If the app unmounts *during* a refresh, the lifecycle hook treats it as a restart (exit 75) rather than a real quit; an app quit outside a refresh shuts the runner down cleanly.
-
-`gtkxSkipReactDomOptimize` strips `react-dom` from Vite's `optimizeDeps`, since the SSR/GTK target must not pre-bundle it.
+**Fast Refresh vs. restart.** On a watched file change, the runner re-loads the changed module and its importers and checks whether every export looks like a React component. If so it performs a React Fast Refresh in place; otherwise it tears down the server and exits with the reload code so the supervisor relaunches a clean process. Fast Refresh over SSR is enabled by plugins that transform project TSX with the refresh runtime and bind the per-module refresh registration to a runtime shipped by the CLI; the transform applies only to project source, excluding dependencies, build output, and the generated stores. A remount that happens *during* a refresh is treated as a restart rather than a real app quit.
 
 ## Production build
 
-`builder.ts` (`build`, also a package export) runs `vite build` in SSR mode with `noExternal: true`, bundling everything into `dist/bundle.js` (a single SSR bundle). It adds:
+`build` runs Vite in SSR mode with nothing externalized, producing a single self-contained bundle plus emitted GTK assets. Beyond the shared asset plugins, the build:
 
-- `gtkxVitePlugins()` (config, gsettings, gresources, assets, react-compiler);
-- `gtkxNative` (`vite-plugins/native.ts`) — rejects non-Linux platforms and non-x64/arm64 archs, reads the `@gtkx/native-linux-<arch>-gnu` binding, emits it as `gtkx.node`, and rewrites the native-binding require so the bundle loads the emitted file as an external;
-- `gtkxBuiltUrl` (`vite-plugins/built-url.ts`) — rewrites emitted asset URLs. By default they resolve relative to `import.meta.url`; with `--asset-base` they resolve relative to the executable directory (`process.execPath`), for installed-app layouts.
-
-GResource and GSettings plugins emit `gtkx.gresource` and `gschemas.compiled` as build assets (below).
+- resolves the prebuilt native addon for the host platform/arch, emits it alongside the bundle, and rewrites the native binding so the bundle loads it as an external file (non-Linux platforms and unsupported architectures are rejected);
+- rewrites emitted asset URLs so they resolve relative to the bundle by default, or relative to the executable directory when targeting an installed-app layout.
 
 ## GTK asset plugins
 
-All asset plugins are `enforce: "pre"` and registered by `gtkxVitePlugins` (`vite-plugins/index.ts`).
+The asset plugins run before other Vite transforms and are registered together. Each turns a kind of GTK asset into a module the app can import.
 
-### GResources (`vite-plugins/gresources.ts`)
+### GResources
 
-Imports under the `#data/` alias (`DATA_IMPORT_PREFIX`) that resolve to known asset extensions are rewritten to a virtual module that registers a compiled GResource bundle and exports a `resource://` URI plus its `path`. The resource prefix is derived from the application id (`/com/example/app` style), defaulting to `/gtkx/app`. Files are staged into a temp dir and compiled with `glib-compile-resources` into `gtkx.gresource`.
+Imports under the data alias that resolve to known asset extensions are rewritten to a virtual module that registers a compiled GResource bundle and exports its `resource://` URI and path. The resource prefix is derived from the application id. In dev the bundle is compiled into a temporary staging directory and re-registered when a tracked source changes, skipping redundant re-registration via a size/mtime signature; in build the bundle is compiled once and emitted as a build asset that the init module loads relative to its own URL.
 
-- **Dev** recompiles into a temp staging dir and refreshes the registration when a tracked source changes. The dev init module (rendered by `gresources/render.ts`) re-registers the bundle on `__refresh`, and uses a size/mtime signature (checked in `ensureRegistered`) to skip redundant re-registration.
-- **Build** compiles all tracked entries and emits `gtkx.gresource` as an asset; the init module loads and registers it relative to its own URL.
+### GSettings
 
-### GSettings (`vite-plugins/gsettings.ts`)
+Schema XML imports become runtime modules describing schemas and keys, staged under collision-free names and compiled with the GLib schema compiler. In dev the compiled schemas are written to a temporary directory that the runner pre-stages before the server starts and prepends to the schema search path, recompiling on edits; in build all schemas are compiled into a single emitted asset and the bundle is given a banner that points the schema search path at the bundle directory at runtime.
 
-`*.gschema.xml` imports become runtime modules describing schemas and keys (`gsettings/parser.ts` parses, `gsettings/render.ts` renders the runtime module). Schemas are staged under SHA1-derived names (`gsettings/env.ts`) to avoid collisions and compiled with `glib-compile-schemas`.
+Separately, the plugin keeps a type-only declaration file in sync — one typed module per schema, with keys derived from the schema XML — so apps get typed settings. This declaration is also re-synced during codegen preflight and seeded empty during scaffolding.
 
-- **Dev** compiles into a temp dir and prepends it to `GSETTINGS_SCHEMA_DIR`. The dev runner pre-stages this directory before the server starts (`dev/schema-env.ts`, exposing `GTKX_DEV_SCHEMA_DIR`) so the schema dir exists at app start. Schema edits recompile and invalidate the module.
-- **Build** compiles all queued schemas into `gschemas.compiled` (emitted as an asset) and injects a bundle banner that points `GSETTINGS_SCHEMA_DIR` at the bundle directory at runtime.
+### CSS
 
-Separately, the plugin keeps a type-only `node_modules/.gtkx/env.d.ts` in sync (`emitSchemaEnv`): one `declare module "#data/..."` per schema file, with typed keys derived from the schema XML, so apps get typed settings. This is also re-synced by `syncSchemaEnv` during codegen preflight, and seeded empty during scaffolding. Schema discovery walks the resolved data dir, skipping dotfile entries.
+CSS imports are rewritten to a module that injects the stylesheet through `@gtkx/css`. The CSS-in-JS pipeline itself lives in `@gtkx/css`; see [./styling.md](./styling.md).
 
-### CSS (`vite-plugins/assets.ts`)
+### Config
 
-`*.css` imports are rewritten to a module that calls `injectGlobal` from `@gtkx/css`. The CSS-in-JS pipeline itself lives in `@gtkx/css` under `packages/css/src/` (see the package map in [./architecture.md](./architecture.md)).
+A thin wrapper over the config plugin from `@gtkx/config`, providing the `virtual:gtkx-config` module that fuses the resolved config with the JSX metadata for the runtime.
 
-### Config (`vite-plugins/config.ts`)
+## React compiler
 
-A thin wrapper over `createGtkxConfigPlugin` from `@gtkx/config`, providing the `virtual:gtkx-config` module that fuses the resolved config with `@gtkx/jsx/metadata` for the runtime.
-
-## React compiler (`vite-plugins/react-compiler.ts`)
-
-Transforms project `.ts`/`.tsx` (not `node_modules`, only under the project root) through Babel with `babel-plugin-react-compiler` and the TypeScript preset, using the `reactCompiler` options resolved from config. When `reactCompiler` is `false` the plugin is inert.
+A plugin transforms project source through the React compiler using the options resolved from config, scoped to the project root and excluding dependencies. When the React compiler is disabled in config the plugin is inert.
 
 ## Embedded MCP client
 
-When the dev entry mounts an application, the runner opens a Unix-socket MCP client (`mcp/`) keyed by the application id and answers server-initiated widget commands by driving `@gtkx/testing` against the live widget tree. The MCP server, the dual-server design, the protocol, and the tool catalog live in `@gtkx/mcp` under `packages/mcp/src/` (see the package map in [./architecture.md](./architecture.md)). The runner's role: start the client only when an application id is present, lazily load `@gtkx/testing` through a swappable loader, and stop the client on shutdown.
+When the dev entry mounts an application, the runner opens a Unix-socket MCP client keyed by the application id and answers server-initiated widget commands by driving `@gtkx/testing` against the live widget tree. The client starts only when an application id is present, lazily loads the testing harness, and stops on shutdown. The server, the dual-server design, the protocol, and the tool catalog live in `@gtkx/mcp`; see [./mcp.md](./mcp.md).
 
 ## Other package exports
 
-- `@gtkx/cli/refresh-runtime` (`refresh-runtime.ts`) — the Fast Refresh runtime the injected header binds to.
-- `@gtkx/cli/vitest` (`vitest.ts`) — composes `gtkxVitePlugins` with the `@gtkx/vitest` worker for app test configs; the testing harness and display isolation live in `@gtkx/testing` and `@gtkx/vitest` under `packages/testing/src/` and `packages/vitest/src/` (see [./architecture.md](./architecture.md)).
-- `@gtkx/cli/env` — ambient asset/module declarations for `#data/`, CSS, and schema imports.
+- A Fast Refresh runtime that the injected refresh header binds to.
+- A Vitest entry that composes the gtkx Vite plugins with the `@gtkx/vitest` worker for app test configs; the testing harness and headless display isolation live in `@gtkx/testing` and `@gtkx/vitest` (see [./testing.md](./testing.md)).
+- Ambient module declarations for the data, CSS, and schema imports.

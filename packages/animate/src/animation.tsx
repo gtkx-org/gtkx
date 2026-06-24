@@ -12,19 +12,19 @@ const WidgetAnimation = (props: WidgetAnimationProps): ReactNode => {
     const child = Children.only(children) as WidgetChild;
     const [widgetRef, mergedRef] = useForwardedRef(child.props.ref);
 
-    const handle = useWidgetAnimation(widgetRef, props);
+    const animator = useWidgetAnimation(widgetRef, props);
     const [isPresent, safeToRemove] = usePresence();
 
     const exitStartedRef = useRef(false);
     useLayoutEffect(() => {
         if (isPresent || exitStartedRef.current) return;
         exitStartedRef.current = true;
-        handle.startAnimation(exit ?? {}, () => safeToRemove?.());
-    }, [isPresent, exit, handle, safeToRemove]);
+        animator.startAnimation(exit ?? {}, () => safeToRemove?.());
+    }, [isPresent, exit, animator, safeToRemove]);
 
     return cloneElement(child, { ref: mergedRef });
 };
 
-export const TimedAnimation = (props: TimedAnimationProps): ReactNode => <WidgetAnimation kind="timed" {...props} />;
+export const TimedAnimation = (props: TimedAnimationProps): ReactNode => <WidgetAnimation type="timed" {...props} />;
 
-export const SpringAnimation = (props: SpringAnimationProps): ReactNode => <WidgetAnimation kind="spring" {...props} />;
+export const SpringAnimation = (props: SpringAnimationProps): ReactNode => <WidgetAnimation type="spring" {...props} />;

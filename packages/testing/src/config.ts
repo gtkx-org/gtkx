@@ -5,8 +5,6 @@ export type AsyncWrapper = <T>(callback: () => Promise<T>) => Promise<T>;
 export type EventWrapper = (callback: () => void) => void | Promise<void>;
 
 export type Config = {
-    showSuggestions: boolean;
-
     throwSuggestions: boolean;
 
     getElementError: (message: string, container?: Container) => Error;
@@ -25,7 +23,6 @@ const defaultGetElementError = (message: string, _container?: Container): Error 
 };
 
 const defaultConfig: Config = {
-    showSuggestions: true,
     throwSuggestions: false,
     getElementError: defaultGetElementError,
     asyncUtilTimeout: 1000,

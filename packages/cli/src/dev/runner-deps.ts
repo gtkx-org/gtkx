@@ -7,7 +7,7 @@ import { createServer } from "vite";
 import { info } from "../internal/log.js";
 import { startMcpClient, stopMcpClient } from "../mcp/index.js";
 import { setTestingModuleLoader } from "../mcp/testing-loader.js";
-import { isReactRefreshBoundary, performRefresh } from "../refresh-runtime.js";
+import { isRefreshBoundary, performRefresh } from "../refresh-runtime.js";
 import { gtkxFastRefresh } from "../vite-plugins/fast-refresh/index.js";
 import { gtkxVitePlugins } from "../vite-plugins/index.js";
 import { gtkxSkipReactDomOptimize } from "../vite-plugins/skip-react-dom-optimize.js";
@@ -37,7 +37,7 @@ export const defaultDevRunnerDeps = (): DevRunnerDeps => ({
         if (application) quitApplication(application);
     },
     performRefresh,
-    isReactRefreshBoundary,
+    isRefreshBoundary,
     plugins: () => [...gtkxVitePlugins(), ...gtkxFastRefresh(), gtkxSkipReactDomOptimize()],
     log: info,
     exit: (code: number): never => process.exit(code),

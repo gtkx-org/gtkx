@@ -26,7 +26,7 @@ const unwrap = <Fn extends (...args: never[]) => unknown>(hook: Fn | { handler: 
     return typeof hook === "function" ? hook : hook.handler;
 };
 
-const setupPath = join(import.meta.dirname, "..", "src", "setup.js");
+const setupPath = join(import.meta.dirname, "..", "src", "worker-setup.js");
 
 const callConfig = (plugin: Plugin, config: InputConfig): WorkerConfig =>
     unwrap(plugin.config as ConfigHook | { handler: ConfigHook } | undefined)(config);
@@ -40,7 +40,7 @@ const loadVirtual = (plugin: Plugin, id: string): Promise<string | undefined> =>
 describe("gtkx vitest plugin", () => {
     it("names the plugin and exposes config/resolveId/load hooks", () => {
         const plugin = gtkx();
-        expect(plugin.name).toBe("gtkx");
+        expect(plugin.name).toBe("gtkx:vitest");
         expect(plugin.config).toBeDefined();
         expect(plugin.resolveId).toBeDefined();
         expect(plugin.load).toBeDefined();
