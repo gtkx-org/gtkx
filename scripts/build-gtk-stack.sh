@@ -84,7 +84,7 @@ build_meson() {
 }
 
 build_meson "https://gitlab.freedesktop.org/wayland/wayland/-/releases/1.25.0/downloads/wayland-1.25.0.tar.xz" \
-    -Ddocumentation=false -Dtests=false -Ddtd-validation=false
+    -Ddocumentation=false -Dtests=false -Ddtd_validation=false
 build_meson "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/1.49/downloads/wayland-protocols-1.49.tar.xz" \
     -Dtests=false
 build_meson "https://download.savannah.gnu.org/releases/freetype/freetype-2.14.3.tar.xz" \
@@ -92,23 +92,26 @@ build_meson "https://download.savannah.gnu.org/releases/freetype/freetype-2.14.3
 build_meson "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/2.18.1/fontconfig-2.18.1.tar.gz" \
     -Ddoc=disabled -Dtests=disabled -Dnls=disabled
 build_meson "https://download.gnome.org/sources/glib/2.88/glib-2.88.1.tar.xz" \
-    -Dintrospection=enabled -Dman-pages=disabled -Ddocumentation=false -Dtests=false -Dnls=disabled
+    -Dintrospection=enabled -Dman-pages=disabled -Ddocumentation=false -Dtests=false \
+    -Dnls=disabled -Dsysprof=disabled
 build_meson "https://download.gnome.org/sources/gobject-introspection/1.86/gobject-introspection-1.86.0.tar.xz" \
     -Dbuild_introspection_data=true -Ddoctool=disabled -Dtests=false -Dgtk_doc=false
 build_meson "https://cairographics.org/releases/cairo-1.18.4.tar.xz" \
     -Dtests=disabled -Dxlib=disabled -Dxcb=disabled -Dglib=enabled \
-    -Dfontconfig=enabled -Dfreetype=enabled -Dpng=enabled -Dgl-backend=disabled
+    -Dfontconfig=enabled -Dfreetype=enabled -Dpng=enabled
 build_meson "https://github.com/harfbuzz/harfbuzz/releases/download/14.2.1/harfbuzz-14.2.1.tar.xz" \
     -Dintrospection=enabled -Dtests=disabled -Ddocs=disabled -Dfreetype=enabled \
     -Dglib=enabled -Dgobject=enabled -Dcairo=enabled -Dgraphite2=disabled -Dicu=disabled
 build_meson "https://github.com/ebassi/graphene/releases/download/1.10.8/graphene-1.10.8.tar.xz" \
     -Dintrospection=enabled -Dtests=false -Dgtk_doc=false -Dgobject_types=true -Darm_neon=true
 build_meson "https://download.gnome.org/sources/pango/1.57/pango-1.57.1.tar.xz" \
-    -Dintrospection=enabled -Dtests=disabled -Dgtk_doc=false -Dfontconfig=enabled \
-    -Dfreetype=enabled -Dcairo=enabled -Dxft=disabled
+    -Dintrospection=enabled -Dbuild-testsuite=false -Dbuild-examples=false \
+    -Dgtk_doc=false -Dfontconfig=enabled -Dfreetype=enabled -Dcairo=enabled \
+    -Dxft=disabled -Dlibthai=disabled
 build_meson "https://download.gnome.org/sources/gdk-pixbuf/2.44/gdk-pixbuf-2.44.6.tar.xz" \
-    -Dintrospection=enabled -Dman=false -Dtests=false -Dgtk_doc=false \
-    -Dpng=enabled -Dbuiltin_loaders=png -Dothers=enabled
+    -Dintrospection=enabled -Dman=false -Dtests=false -Dinstalled_tests=false \
+    -Dgtk_doc=false -Dpng=enabled -Dbuiltin_loaders=png -Dothers=enabled \
+    -Dtiff=disabled -Djpeg=disabled -Dglycin=disabled
 build_meson "https://download.gnome.org/sources/gtk/4.22/gtk-4.22.4.tar.xz" \
     -Dintrospection=enabled -Dwayland-backend=true -Dx11-backend=false \
     -Dbroadway-backend=false -Dwin32-backend=false -Dmedia-gstreamer=disabled \
@@ -117,9 +120,10 @@ build_meson "https://download.gnome.org/sources/gtk/4.22/gtk-4.22.4.tar.xz" \
     -Dbuild-testsuite=false -Dbuild-tests=false -Dbuild-examples=false \
     -Ddocumentation=false -Dman-pages=false
 build_meson "https://download.gnome.org/sources/libadwaita/1.8/libadwaita-1.8.6.tar.xz" \
-    -Dintrospection=enabled -Dtests=false -Dexamples=false -Dvapi=false -Dgtk_doc=false
+    -Dintrospection=enabled -Dtests=false -Dexamples=false -Dvapi=false -Ddocumentation=false
 build_meson "https://download.gnome.org/sources/gtksourceview/5.18/gtksourceview-5.18.0.tar.xz" \
-    -Dintrospection=enabled -Dtests=false -Dgtk_doc=false -Dinstall_tests=false -Dvapi=false -Dsysprof=false
+    -Dintrospection=enabled -Dbuild-testsuite=false -Ddocumentation=false \
+    -Dinstall-tests=false -Dvapi=false -Dsysprof=false
 
 # Headless harness: weston 15 (jammy's is 9; the suite targets 15) built against
 # the from-source wayland into /usr/local so it shadows any apt weston, and
