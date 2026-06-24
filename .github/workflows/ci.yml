@@ -361,9 +361,12 @@ jobs:
 
       - name: Build the e2e workspace and the native addon
         shell: bash
+        # Loose env mode lets codegen and the native build see the exported
+        # /opt/gtkx paths (PKG_CONFIG_PATH, GI_TYPELIB_PATH, ...); Turbo's default
+        # strict mode would strip them, so codegen could not locate the gir.
         run: |
           pnpm install --frozen-lockfile
-          pnpm exec turbo build --filter=@gtkx/e2e
+          pnpm exec turbo build --filter=@gtkx/e2e --env-mode=loose
 
       - name: Run the TypeScript benchmarks under CodSpeed (walltime)
         shell: bash
