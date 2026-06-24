@@ -14,6 +14,7 @@ export default defineConfig({
                 "packages/animate/src/**/*.{ts,tsx}",
                 "packages/cli/src/**/*.{ts,tsx}",
                 "packages/codegen/src/**/*.{ts,tsx}",
+                "packages/components/src/**/*.{ts,tsx}",
                 "packages/config/src/**/*.{ts,tsx}",
                 "packages/create-gtkx/src/**/*.{ts,tsx}",
                 "packages/css/src/**/*.{ts,tsx}",
