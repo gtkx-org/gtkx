@@ -258,48 +258,71 @@ jobs:
   # which requires a CodSpeed Macro Runner (ARM64 bare metal); Macro Runners must
   # be enabled for the org. The macro runner is bare Ubuntu 22.04 (GTK 4.6, no
   # Docker), so the GTK 4.22.4 stack the benches target is built from source into
-  # a cached prefix by scripts/build-gtk-stack.sh; codegen is restricted to the
-  # libraries the benches need (WebKit dropped) so WebKit need not be built.
+  # /opt/gtkx by scripts/build-gtk-stack.sh and published as a GitHub Release
+  # asset keyed by the script hash; later runs download it instead of rebuilding.
+  # Codegen is restricted to the libraries the benches need (WebKit dropped) so
+  # WebKitGTK need not be built.
   bench-ts:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: codspeed-macro
-    timeout-minutes: 90 # first cold build of the GTK stack is long; warm cache is a no-op
+    timeout-minutes: 90 # first run builds + publishes the stack; later runs download it
     permissions:
-      contents: read
+      contents: write # publish/download the prebuilt GTK stack release asset
       packages: read
       id-token: write # public repo: authenticate to CodSpeed over OIDC, no token
     env:
       NODE24_VERSION: "24.17.0"
       NODE22_VERSION: "22.23.0"
-      PREFIX: /opt/gtkstack
+      PREFIX: /opt/gtkx
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - name: Restore the from-source GTK stack
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: |
-            /opt/gtkstack
-            /usr/local
-          key: gtkstack-jammy-arm64-${{ hashFiles('scripts/build-gtk-stack.sh') }}
-
-      - name: Build the GTK 4.22.4 stack from source
+      - name: Provision the GTK stack
         shell: bash
-        run: sudo -E bash scripts/build-gtk-stack.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Download the prebuilt /opt/gtkx tree from the gtkx-stack-cache release
+        # when one matches this script's hash; otherwise build it from source and
+        # publish it so later runs skip the ~35-minute build. The build script's
+        # apt prerequisites run on both paths, so a downloaded stack still has
+        # weston's runtime libraries even though build-dep weston is skipped.
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq zstd
+          if ! command -v gh >/dev/null; then
+            curl -fsSL https://github.com/cli/cli/releases/download/v2.62.0/gh_2.62.0_linux_arm64.tar.gz \
+              | sudo tar -xz -C /usr/local/bin --strip-components=2 gh_2.62.0_linux_arm64/bin/gh
+          fi
+          hash="$(sha256sum scripts/build-gtk-stack.sh | cut -c1-16)"
+          asset="gtkx-stack-${hash}.tar.zst"
+          tag="gtkx-stack-cache"
+          if gh release download "$tag" --pattern "$asset" --dir /tmp 2>/dev/null; then
+            echo "restoring prebuilt $asset"
+            sudo tar -C / -I zstd -xf "/tmp/$asset"
+          fi
+          sudo -E bash scripts/build-gtk-stack.sh
+          if [ ! -f "/tmp/$asset" ]; then
+            echo "publishing $asset"
+            sudo tar -C / -I zstd -cf "/tmp/$asset" opt/gtkx
+            gh release view "$tag" >/dev/null 2>&1 \
+              || gh release create "$tag" --title "GTK stack cache" \
+                   --notes "Prebuilt /opt/gtkx GTK 4.22.4 stacks, keyed by build-gtk-stack.sh hash."
+            gh release upload "$tag" "/tmp/$asset" --clobber
+          fi
 
       - name: Export the GTK stack environment
         shell: bash
         run: |
           {
-            echo "PATH=/opt/gtkstack/bin:$PATH"
-            echo "PKG_CONFIG_PATH=/opt/gtkstack/lib/aarch64-linux-gnu/pkgconfig:/opt/gtkstack/lib/pkgconfig:/opt/gtkstack/share/pkgconfig"
-            echo "LD_LIBRARY_PATH=/opt/gtkstack/lib/aarch64-linux-gnu:/opt/gtkstack/lib"
-            echo "GI_TYPELIB_PATH=/opt/gtkstack/lib/aarch64-linux-gnu/girepository-1.0:/opt/gtkstack/lib/girepository-1.0"
-            echo "XDG_DATA_DIRS=/opt/gtkstack/share:/usr/share:/usr/local/share"
-            echo "GTKX_GIR_PATH=/opt/gtkstack/share/gir-1.0"
-            echo "GDK_PIXBUF_MODULE_FILE=/opt/gtkstack/lib/aarch64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders.cache"
+            echo "PATH=/opt/gtkx/bin:$PATH"
+            echo "PKG_CONFIG_PATH=/opt/gtkx/lib/aarch64-linux-gnu/pkgconfig:/opt/gtkx/lib/pkgconfig:/opt/gtkx/share/pkgconfig"
+            echo "LD_LIBRARY_PATH=/opt/gtkx/lib/aarch64-linux-gnu:/opt/gtkx/lib"
+            echo "GI_TYPELIB_PATH=/opt/gtkx/lib/aarch64-linux-gnu/girepository-1.0:/opt/gtkx/lib/girepository-1.0"
+            echo "XDG_DATA_DIRS=/opt/gtkx/share:/usr/share:/usr/local/share"
+            echo "GTKX_GIR_PATH=/opt/gtkx/share/gir-1.0"
+            echo "GDK_PIXBUF_MODULE_FILE=/opt/gtkx/lib/aarch64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders.cache"
+            echo "PYTHONPATH=/opt/gtkx/lib/python3/dist-packages"
           } >> "$GITHUB_ENV"
 
       - name: Install the Rust toolchain
