@@ -91,8 +91,12 @@ build_meson "https://download.savannah.gnu.org/releases/freetype/freetype-2.14.3
     -Dharfbuzz=disabled -Dbrotli=disabled
 build_meson "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/2.18.1/fontconfig-2.18.1.tar.gz" \
     -Ddoc=disabled -Dtests=disabled -Dnls=disabled
+# glib introspection is intentionally OFF: at this point g-ir-scanner does not
+# exist yet (gobject-introspection links glib, so glib must come first). The
+# GLib/GObject/Gio/GModule gir + typelibs are instead produced by
+# gobject-introspection below, which scans glib's installed headers/libraries.
 build_meson "https://download.gnome.org/sources/glib/2.88/glib-2.88.1.tar.xz" \
-    -Dintrospection=enabled -Dman-pages=disabled -Ddocumentation=false -Dtests=false \
+    -Dintrospection=disabled -Dman-pages=disabled -Ddocumentation=false -Dtests=false \
     -Dnls=disabled -Dsysprof=disabled
 build_meson "https://download.gnome.org/sources/gobject-introspection/1.86/gobject-introspection-1.86.0.tar.xz" \
     -Dbuild_introspection_data=true -Ddoctool=disabled -Dtests=false -Dgtk_doc=false
