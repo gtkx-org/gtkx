@@ -26,6 +26,29 @@ function run(command: string, args: string[], options: RunOptions = {}): void {
     }
 }
 
+function runCodspeed(mode: string, measuredTask: string): void {
+    const profileFolder = process.env["CODSPEED_PROFILE_FOLDER"] ?? "/tmp/codspeed-profile";
+    mkdirSync(profileFolder, { recursive: true });
+    run("codspeed", ["run", "-m", mode, "--", "node", selfPath, measuredTask], {
+        env: { ...process.env, CODSPEED_PROFILE_FOLDER: profileFolder },
+    });
+}
+
+function runRustBench(): void {
+    run("cargo", ["codspeed", "run"], { cwd: nativeDir });
+}
+
+function runTsBench(): void {
+    const [command, args] = wlheadless("pnpm", ["--filter", "@gtkx/e2e", "bench"]);
+    run(command, args, {
+        env: {
+            ...process.env,
+            ...HEADLESS_RENDER_ENV,
+            PATH: `/opt/node22/bin:${process.env["PATH"] ?? ""}`,
+        },
+    });
+}
+
 const tasks: Record<string, () => void> = {
     asan() {
         const [command, args] = wlheadless("cargo", [
@@ -56,22 +79,23 @@ const tasks: Record<string, () => void> = {
         });
     },
     bench() {
-        const profileFolder = process.env["CODSPEED_PROFILE_FOLDER"] ?? "/tmp/codspeed-profile";
-        mkdirSync(profileFolder, { recursive: true });
-        run("codspeed", ["run", "-m", "simulation", "--", "node", selfPath, "bench:measured"], {
-            env: { ...process.env, CODSPEED_PROFILE_FOLDER: profileFolder },
-        });
+        runCodspeed("simulation", "bench:measured");
     },
     "bench:measured"() {
-        run("cargo", ["codspeed", "run"], { cwd: nativeDir });
-        const [command, args] = wlheadless("pnpm", ["--filter", "@gtkx/e2e", "bench"]);
-        run(command, args, {
-            env: {
-                ...process.env,
-                ...HEADLESS_RENDER_ENV,
-                PATH: `/opt/node22/bin:${process.env["PATH"] ?? ""}`,
-            },
-        });
+        runRustBench();
+        runTsBench();
+    },
+    "bench:rust"() {
+        runCodspeed("simulation", "bench:rust:measured");
+    },
+    "bench:rust:measured"() {
+        runRustBench();
+    },
+    "bench:ts"() {
+        runCodspeed("walltime", "bench:ts:measured");
+    },
+    "bench:ts:measured"() {
+        runTsBench();
     },
     headless() {
         const [forwarded, ...rest] = process.argv.slice(3);

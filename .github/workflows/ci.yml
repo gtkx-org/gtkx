@@ -215,12 +215,10 @@ jobs:
           command: pnpm miri
           mount-cargo-cache: "true"
 
-  # The benches need the image's pinned GTK runtime, and that image is now
-  # Ubuntu-based — the platform the CodSpeed runner supports — so the runner runs
-  # directly inside the container (pnpm bench) and uploads over OIDC.
-  # One `codspeed run` wraps both the Rust and TypeScript suites as a single
-  # report; run-in-container forwards the OIDC token and GitHub context it needs.
-  bench:
+  # The Rust marshalling benches are pure CPU and run in CodSpeed Simulation
+  # (instrumented) mode inside the pinned amd64 CI image — deterministic and
+  # gate-worthy. run-in-container forwards the OIDC token and GitHub context.
+  bench-rust:
     needs: [changes, image]
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
@@ -238,18 +236,97 @@ jobs:
       - name: Setup CI
         uses: ./.github/actions/setup-ci
 
-      - name: Build the workspace and the Rust benchmark
+      - name: Build the Rust benchmark
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm exec turbo build --filter=@gtkx/e2e && (cd packages/native && cargo codspeed build --features test-support --bench marshalling)
+          command: cd packages/native && cargo codspeed build --features test-support --bench marshalling
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
 
-      - name: Run the benchmarks under CodSpeed inside the container
+      - name: Run the Rust benchmarks under CodSpeed (simulation)
         uses: ./.github/actions/run-in-container
         with:
           install: "false"
-          command: pnpm bench
+          command: pnpm bench:rust
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
           seccomp-unconfined: "true"
+
+  # The TypeScript/GTK benches measure multi-threaded, I/O-heavy work (the GLib
+  # main-loop thread, FFI, a headless compositor), which CodSpeed's instrumented
+  # Simulation mode cannot measure deterministically. They run in Walltime mode,
+  # which requires a CodSpeed Macro Runner (ARM64 bare metal); Macro Runners must
+  # be enabled for the org. The macro runner is a bare host (CodSpeed does not
+  # document Docker there), so the GTK/headless/Node/Rust toolchain is installed
+  # directly rather than via the amd64 CI container. GTK comes from apt (a newer
+  # series than the image's pinned 4.22.4) — fine for Walltime, which compares
+  # HEAD against BASE on the same runner with the same toolchain.
+  bench-ts:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: codspeed-macro
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: read
+      id-token: write # public repo: authenticate to CodSpeed over OIDC, no token
+    env:
+      NODE24_VERSION: "24.17.0"
+      NODE22_VERSION: "22.23.0"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Install the GTK and headless runtime
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config \
+            libgtk-4-dev libadwaita-1-dev libgtksourceview-5-dev \
+            libwebkitgtk-6.0-dev libvte-2.91-gtk4-dev libsoup-3.0-dev \
+            libjson-glib-dev libgtk4-layer-shell-dev \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+            libxml2-dev libsecret-1-dev libatspi2.0-dev libappstream-dev \
+            libgirepository1.0-dev gobject-introspection \
+            gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
+            gvfs libgles2 libgl1-mesa-dri xwayland-run weston dbus \
+            adwaita-icon-theme gsettings-desktop-schemas shared-mime-info \
+            hicolor-icon-theme librsvg2-common fontconfig \
+            fonts-noto-core fonts-dejavu-core
+
+      - name: Install the Rust toolchain
+        shell: bash
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+            | sh -s -- -y --profile minimal --default-toolchain stable
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Install Node and pnpm
+        shell: bash
+        run: |
+          curl -fsSL "https://nodejs.org/dist/v${NODE24_VERSION}/node-v${NODE24_VERSION}-linux-arm64.tar.xz" \
+            | sudo tar -xJ --strip-components=1 -C /usr/local
+          sudo mkdir -p /opt/node22
+          curl -fsSL "https://nodejs.org/dist/v${NODE22_VERSION}/node-v${NODE22_VERSION}-linux-arm64.tar.xz" \
+            | sudo tar -xJ --strip-components=1 -C /opt/node22
+          node --version | grep -q "v${NODE24_VERSION}"
+          /opt/node22/bin/node --version | grep -q "v${NODE22_VERSION}"
+          sudo corepack enable
+
+      - name: Install the CodSpeed runner
+        shell: bash
+        run: |
+          curl -fsSL https://github.com/CodSpeedHQ/codspeed/releases/download/v4.17.6/codspeed-runner-installer.sh | bash
+          sudo install -m 0755 "$(find "$HOME/.local" /usr -name codspeed -type f -path '*bin*' 2>/dev/null | head -1)" /usr/local/bin/codspeed
+          codspeed --version
+
+      - name: Build the e2e workspace and the native addon
+        shell: bash
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec turbo build --filter=@gtkx/e2e
+
+      - name: Run the TypeScript benchmarks under CodSpeed (walltime)
+        shell: bash
+        run: pnpm bench:ts

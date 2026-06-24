@@ -9,6 +9,8 @@
     "scripts": {
         "asan": "node scripts/ci.ts asan",
         "bench": "node scripts/ci.ts bench",
+        "bench:rust": "node scripts/ci.ts bench:rust",
+        "bench:ts": "node scripts/ci.ts bench:ts",
         "build": "turbo build --filter=!gtkx",
         "codegen": "turbo run codegen --filter=@gtkx/cli",
         "coverage": "turbo coverage:all native-coverage --filter=!gtkx",
